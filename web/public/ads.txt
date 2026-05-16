@@ -1,0 +1,4 @@
+# This file is required by Google AdSense once your site is approved.
+# Replace pub-0000000000000000 with your real AdSense publisher ID (format: pub-xxxxxxxxxxxxxxxx).
+# Leave this file in place even before approval — AdSense checks for it during review.
+google.com, pub-0000000000000000, DIRECT, f08c47fec0942fa0
