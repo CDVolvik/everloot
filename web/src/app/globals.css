@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background: #0f0c08; /* parchment.950 */
+  color: #f1e6c8;       /* parchment.100 */
+  min-height: 100vh;
+}
+
+body {
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Subtle parchment-ish grain — pure CSS, no image. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(240, 180, 41, 0.08), transparent 60%),
+    radial-gradient(900px 500px at 110% 20%, rgba(163, 53, 238, 0.06), transparent 60%);
+  z-index: -1;
+}
+
+/* Focus ring — AdSense-friendly accessibility */
+:focus-visible {
+  outline: 2px solid #f0b429;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Number inputs: strip spinners for cleaner look */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
