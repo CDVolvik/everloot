@@ -30,18 +30,13 @@ If you want to start tonight on Windows: do Session 0 (scaffolding the backend +
 
 Each session is one focused chunk. Don't combine; don't skip ahead. Mark done as you go.
 
-### Session 0 — Repo + git init (partly done by consolidation 2026-05-16)
-The folder structure is already in place at `D:\R21-Brain\projects\wowvault\` (or `~/R21-Brain/projects/wowvault/` on Mac/Linux). Strategy docs are in `docs/`, GoldGoblin's Next.js app is in `web/`, empty placeholders for `ios/`, `supabase/`, `scripts/`, `addon/`, `bot/` are in place.
-
-What's left for Session 0:
-- [ ] Decide repo strategy:
-  - **Option A** (recommended): make `wowvault/` its own git repo, push to a new private `github.com/CDVolvik/wowvault`. Add `/projects/wowvault/` to the parent workspace `.gitignore` so the nested repo doesn't confuse the workspace tree.
-  - **Option B**: keep it nested under the workspace repo for now, push to a separate GitHub repo later. Simpler but means doc commits get mixed with code commits.
-- [ ] `cd D:\R21-Brain\projects\wowvault` (or Mac path) → `git init` → first commit "consolidated 2026-05-16 — folder structure ready"
-- [ ] Add `.gitignore` at the wowvault root (Swift, Node, Python, `.env*`, `.DS_Store`, `node_modules`, `.next/`, `*.xcuserdata`, `DerivedData/`, `scratch/`)
-- [ ] Connect GitHub remote and push
-- [ ] On the Mac, clone the new repo to `~/Code/wowvault` so both machines stay in sync via GitHub
-- [ ] Commit "initial scaffold"
+### Session 0 — Repo + git init ✅ DONE 2026-05-16
+- [x] Folder consolidation: `world-of-warcraft/` → `wowvault/`, GoldGoblin merged into `web/`, subfolder placeholders in place
+- [x] Option A chosen: standalone repo, parent workspace `.gitignore` has `/projects/wowvault/`
+- [x] `.gitignore` at wowvault root (Swift, Node, Python, Supabase, scratch)
+- [x] `git init -b main` + initial commit (39 files, 2149 lines)
+- [x] Remote `github.com/CDVolvik/wowvault` connected, rebased on top of GitHub's initial README commit, pushed to `main`
+- [ ] **Carlos**: on the Mac, clone the new repo to `~/Code/wowvault` (or `~/R21-Brain/projects/wowvault/` if you prefer to keep it inside the workspace path on Mac too). `git clone git@github.com:CDVolvik/wowvault.git` if SSH is set up, else HTTPS.
 
 ### Session 1 — Battle.net OAuth proof of concept (CLI)
 **Goal**: A Node script that does the BNet OAuth flow, gets an access token, and prints Volvainz's character data as JSON. No UI, no database. Just prove the auth works and we can read the data.
@@ -160,7 +155,7 @@ What you **don't** drop: Sessions 1, 2, 4, 5, 6, 7, 12. That's the irreducible p
 
 ## Done
 
-_(Empty. First entry goes here after Session 0.)_
+- **2026-05-16 — Session 0**: scattered WoW workstreams consolidated into `projects/wowvault/`, GoldGoblin merged in at `web/`, standalone git repo created and pushed to `github.com/CDVolvik/wowvault`. Mac clone is the only step left at the organizational layer before Session 1.
 
 ---
 
