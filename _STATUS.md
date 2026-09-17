@@ -85,6 +85,23 @@ These don't block coding the MVP — they block monetization. Work them in paral
 
 ---
 
+## 2026-09-17 — Forever companion ideas parked (do not start a second repo)
+
+Carlos asked about an autonomous Forever farmer after the BlizzCon announcement. **Refused.** Four legal leftovers live in the brain, not as a new project:
+
+Wiki (canonical): `wiki/projects/wowvault/2026-09-17-forever-companion-ideas.md`
+
+- Profession math / spawn notes / zone graph → already stubbed here as `web/tools/profession-planner`. Public Forever perk lists already exist (wowforevertools.com). Only interesting as *his* characters.
+- Official Lua addon that *displays* notes → already the Phase 4 SavedVariables bridge. Not a player. Wait for Forever TOC.
+- Talent / BiS sheets as a public product → skip. Wowhead, Icy Veins, and several fan calcs are live as of 9/17.
+- Local wiki of videos/guides he used → maybe, private ingest only.
+
+Phase 1 is still retail collection. Do not silently retarget the MVP at Forever.
+
+**Still refused:** unattended client, HonorBuddy/MMOminion, VPN + burner account, "play as a human."
+
+---
+
 ## What this file is NOT
 
 The historical 35-page strategy doc covers Angel as co-founder, founder paperwork, monetization tiers, GTM viral loops, influencer strategy, the 24-month phased plan. None of that matters until there's a product. Read it once for context, then ignore it. We rewrite that material when there's 1K beta users and revenue to defend.
