@@ -30,6 +30,9 @@ export async function replaceSourceRows(
   rows: Iterable<EntityInput> | AsyncIterable<EntityInput>,
 ): Promise<number> {
   const licence = SOURCES[sourceId].licence;
+  const countBefore = db.prepare(
+    `SELECT count(*) AS n FROM entities WHERE source_id = ? AND kind IN (${kinds.map(() => "?").join(",")})`,
+  );
   const del = db.prepare("DELETE FROM entities WHERE source_id = ? AND kind = ?");
   const ins = db.prepare(
     `INSERT INTO entities (kind, ext_id, name, body, data, game_version, source_id, source_url, licence, retrieved_at)
@@ -37,12 +40,16 @@ export async function replaceSourceRows(
   );
   db.exec("BEGIN");
   try {
+    const { n: before } = countBefore.get(sourceId, ...kinds) as { n: number };
     for (const k of kinds) del.run(sourceId, k);
     let n = 0;
     for await (const r of rows) {
       if (!kinds.includes(r.kind)) throw new Error(`row kind ${r.kind} is not one of: ${kinds.join(", ")}`);
       ins.run({ ...r, body: r.body ?? "", data: JSON.stringify(r.data ?? {}), sourceId, licence });
       n++;
+    }
+    if (n === 0 && before > 0) {
+      throw new Error(`refusing to replace ${before} ${sourceId} row(s) with an empty import`);
     }
     db.exec("COMMIT");
     return n;
