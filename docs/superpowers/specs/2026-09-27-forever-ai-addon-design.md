@@ -57,14 +57,19 @@ Each part gets its own implementation plan. Part 1 is planned first.
 
 | Importer | Input | Licence / basis | Notes |
 |---|---|---|---|
-| Wiki dump | Internet Archive dump of warcraft.wiki.gg, 2023-11-13 (`history.xml.zst`, 637 MB) | CC BY-SA 4.0 | Lore baseline. Pre-dates Forever. Current revisions only |
+| Wiki dump | Internet Archive dump of warcraft.wiki.gg, 2023-11-13 (`history.xml.zst`, 637 MB) | CC BY-SA 4.0 | Lore baseline. Pre-dates Forever. A WikiTeam export: each page's history is split across many non-adjacent blocks, so the importer reads it twice and keeps the newest revision per page; text redirects are dropped |
 | Wiki sync (fresh) | warcraft.wiki.gg | CC BY-SA 4.0 — **blocked on permission** | Its robots.txt disallows `/api.php` and names `ClaudeBot`/`GPTBot`; content signal `ai-train=no, use=reference`. We email wiki.gg for permission or a current dump before any sync |
-| Game tables | wago.tools DB2 CSV exports for Forever builds | Community-tolerated datamining, not a grant | **Rebuilt locally by script**; we publish the script, not Blizzard's tables |
 | Blizzard API | Battle.net Game Data + Profile APIs (§4.5) | Blizzard Developer API Terms | **Local only**: cached per user, never in the published snapshot, never on ad pages |
 | Curated | YAML/Markdown files in this repo | Ours | Forever rules we write, creators, realms, quest notes |
 | Player collection | Uploads from the addon collector (Part 3) | Ours, opt-in | Drops, NPC positions, quest givers — the original Thottbot model |
 
-Importers are idempotent: re-running replaces rows from that source, never duplicates them.
+Importers are idempotent: re-running replaces rows from that source, never duplicates them, and
+an import that yields no rows never replaces existing ones.
+
+**Removed 2026-09-27: game tables from wago.tools.** Its robots.txt is `Allow: /$`, `Disallow: /`
+for every user agent, so the DB2 CSV exports are off-limits (charter rule 1). Forever items, spells
+and zones now come from the player collector (Part 3) until a permitted source exists; the gap is on
+the backlog.
 
 ### 4.3 Gaps backlog
 
@@ -78,8 +83,7 @@ knowledge base.
 - **Data we publish:** CC BY-SA 4.0 — required by the wiki's share-alike terms, allows commercial
   use. Our curated and player-collected data use the same licence, so the whole dataset has one.
 - **Release:** a versioned SQLite snapshot of the publishable data on GitHub Releases, plus the
-  scripts that rebuild everything (including the local-only game tables and Blizzard API cache)
-  from scratch.
+  scripts that rebuild everything (including the local-only Blizzard API cache) from scratch.
 
 ### 4.5 Blizzard API — everything free
 
@@ -229,8 +233,8 @@ session.
 - Pages generated from the knowledge base: items, quests, NPCs, zones, lore, creators.
 - Every page shows attribution and the CC BY-SA notice for the data on it.
 - **No Blizzard API data on ad-supported pages** (Blizzard Developer API terms: no monetising the
-  data). Whether datamined game tables may appear on an ad-supported page is checked against
-  Blizzard's fan-content rules before Part 4 starts.
+  data). Whether player-collected game facts may appear on an ad-supported page is checked
+  against Blizzard's fan-content rules before Part 4 starts.
 
 ## 8. One question, end to end
 
@@ -265,7 +269,7 @@ session.
 
 | Phase | Scope | Audience |
 |---|---|---|
-| **v1** | Part 1 (wiki dump + wago.tools + curated + Blizzard Game Data adapter) · Part 2 · Part 3 with the live bridge, memory and session loop · golden set | Carlos |
+| **v1** | Part 1 (wiki dump + curated + Blizzard Game Data adapter) · Part 2 · Part 3 with the live bridge, memory and session loop · golden set | Carlos |
 | **v2** | Collector + intake · auction house (§6.7) · Blizzard Profile incl. Battle.net sign-in · fresh wiki sync if permitted · more sources per the catalogue · creator registry with Twitch live status | Carlos + testers |
 | **v3** | Public: addon on CurseForge (file bridge), companion + data snapshot on GitHub · `craft-ownership-gate` + `oss-pr-safeguard` + Codex adversarial review | Everyone |
 | **v4** | Part 4 website with AdSense | Everyone |
