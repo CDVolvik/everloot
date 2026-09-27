@@ -19,7 +19,11 @@ export function wikitextToText(wikitext: string): { text: string; categories: st
   return { text: doc.text().trim(), categories: doc.categories() };
 }
 
-async function* toRows(pages: AsyncIterable<WikiPage>, limit?: number): AsyncGenerator<EntityInput> {
+async function* toRows(
+  pages: AsyncIterable<WikiPage>,
+  limit: number | undefined,
+  counts: { skipped: number },
+): AsyncGenerator<EntityInput> {
   let n = 0;
   for await (const p of pages) {
     if (p.ns !== 0 || p.redirect || !p.text) continue;
@@ -27,9 +31,13 @@ async function* toRows(pages: AsyncIterable<WikiPage>, limit?: number): AsyncGen
     try {
       converted = wikitextToText(p.text);
     } catch {
-      continue; // wikitext the parser cannot read is skipped, not guessed at
+      counts.skipped++; // wikitext the parser cannot read is skipped, not guessed at
+      continue;
     }
-    if (!converted.text) continue;
+    if (!converted.text) {
+      counts.skipped++;
+      continue;
+    }
     yield {
       kind: "lore_page",
       extId: p.id,
@@ -44,11 +52,18 @@ async function* toRows(pages: AsyncIterable<WikiPage>, limit?: number): AsyncGen
   }
 }
 
-/** Imports a MediaWiki XML dump (`.xml` or `.xml.zst`). Returns the number of pages stored. */
-export async function importWikiDump(db: DB, file: string, opts: { limit?: number } = {}): Promise<number> {
+/**
+ * Imports a MediaWiki XML dump (`.xml` or `.xml.zst`). Returns how many pages were stored and how
+ * many main-namespace pages were skipped because their wikitext converted to no text.
+ */
+export async function importWikiDump(
+  db: DB,
+  file: string,
+  opts: { limit?: number } = {},
+): Promise<{ stored: number; skipped: number }> {
   const raw = createReadStream(file);
   const xml: Readable = file.endsWith(".zst") ? zstdDecompress(raw) : raw;
-  // When the parser stops early it destroys `xml`; make sure the file handle underneath closes too.
-  xml.once("close", () => raw.destroy());
-  return replaceSourceRows(db, "warcraft-wiki-2023", ["lore_page"], toRows(parsePages(xml), opts.limit));
+  const counts = { skipped: 0 };
+  const stored = await replaceSourceRows(db, "warcraft-wiki-2023", ["lore_page"], toRows(parsePages(xml), opts.limit, counts));
+  return { stored, skipped: counts.skipped };
 }

@@ -1,40 +1,18 @@
-import { Decompress } from "fzstd";
-import { Readable } from "node:stream";
+import { pipeline, type Readable } from "node:stream";
+import { DecompressStream } from "zstd-napi";
 
-/** zstd-decompresses `input` with backpressure: the source pauses whenever the output is full. */
+/**
+ * The Warcraft Wiki dump's zstd frame header declares windowLog 31 (a 2 GB window), above libzstd's
+ * default decoding limit of 27. Decoding it needs up to ~2 GB of memory.
+ */
+export const WINDOW_LOG_MAX = 31;
+
+/**
+ * zstd-decompresses `input` with libzstd (native backpressure, checksum verified). Errors surface on
+ * the returned stream; destroying it also destroys `input`, so the file handle closes on early stop.
+ */
 export function zstdDecompress(input: Readable): Readable {
-  let ended = false;
-  const end = () => {
-    if (!ended) {
-      ended = true;
-      out.push(null);
-    }
-  };
-  const out = new Readable({
-    read() {
-      input.resume();
-    },
+  return pipeline(input, new DecompressStream({ windowLogMax: WINDOW_LOG_MAX }), () => {
+    // errors are delivered to the consumer through the returned stream
   });
-  const d = new Decompress((chunk, final) => {
-    if (chunk.length > 0 && !out.push(Buffer.from(chunk))) input.pause();
-    if (final) end();
-  });
-  input.on("data", (c: Buffer) => {
-    try {
-      d.push(new Uint8Array(c));
-    } catch (e) {
-      out.destroy(e as Error);
-    }
-  });
-  input.on("end", () => {
-    try {
-      d.push(new Uint8Array(0), true);
-    } catch (e) {
-      out.destroy(e as Error);
-      return;
-    }
-    end();
-  });
-  input.on("error", (e) => out.destroy(e));
-  return out;
 }
