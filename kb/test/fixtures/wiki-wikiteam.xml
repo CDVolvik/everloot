@@ -1,0 +1,78 @@
+<mediawiki xmlns="http://www.mediawiki.org/xml/export-0.11/" version="0.11" xml:lang="en">
+  <siteinfo><sitename>Warcraft Wiki</sitename></siteinfo>
+  <page arvcontinue="">
+    <title>Thunderfury (old name)</title>
+    <ns>0</ns>
+    <id>101</id>
+    <revision>
+      <id>1</id>
+      <timestamp>2019-01-01T00:00:00Z</timestamp>
+      <text bytes="18" xml:space="preserve">Very old sword text</text>
+    </revision>
+    <revision>
+      <id>2</id>
+      <timestamp>2020-01-01T00:00:00Z</timestamp>
+      <text bytes="14" xml:space="preserve">Old sword text</text>
+    </revision>
+  </page>
+  <page arvcontinue="">
+    <title>Onyxia</title>
+    <ns>0</ns>
+    <id>400</id>
+    <revision>
+      <id>20</id>
+      <timestamp>2023-03-01T00:00:00Z</timestamp>
+      <text bytes="40" xml:space="preserve">'''Onyxia''' is the brood mother of the black dragonflight.</text>
+    </revision>
+  </page>
+  <page arvcontinue="">
+    <title>Hogger</title>
+    <ns>0</ns>
+    <id>200</id>
+    <revision>
+      <id>10</id>
+      <timestamp>2022-06-01T00:00:00Z</timestamp>
+      <text bytes="40" xml:space="preserve">'''Hogger''' is a gnoll chieftain in [[Elwynn Forest]].</text>
+    </revision>
+  </page>
+  <page arvcontinue="">
+    <title>Thunderfury (sword)</title>
+    <ns>0</ns>
+    <id>300</id>
+    <revision>
+      <id>30</id>
+      <timestamp>2023-01-01T00:00:00Z</timestamp>
+      <text bytes="24" xml:space="preserve">#REDIRECT [[Thunderfury]]</text>
+    </revision>
+  </page>
+  <page arvcontinue="">
+    <title>Thunderfury</title>
+    <ns>0</ns>
+    <id>101</id>
+    <revision>
+      <id>3</id>
+      <timestamp>2023-05-01T00:00:00Z</timestamp>
+      <text bytes="42" xml:space="preserve">'''Thunderfury''' is a [[legendary]] sword.</text>
+    </revision>
+  </page>
+  <page arvcontinue="">
+    <title>Onyxia</title>
+    <ns>0</ns>
+    <id>400</id>
+    <revision>
+      <id>19</id>
+      <timestamp>2021-03-01T00:00:00Z</timestamp>
+      <text bytes="30" xml:space="preserve">'''Onyxia''' hides in her lair in Dustwallow Marsh.</text>
+    </revision>
+  </page>
+  <page arvcontinue="">
+    <title>User:Someone</title>
+    <ns>2</ns>
+    <id>500</id>
+    <revision>
+      <id>50</id>
+      <timestamp>2023-01-01T00:00:00Z</timestamp>
+      <text bytes="5" xml:space="preserve">Hello</text>
+    </revision>
+  </page>
+</mediawiki>
