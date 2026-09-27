@@ -11,13 +11,13 @@ function isMissing(value: unknown): boolean {
 }
 
 /**
- * Reads every `*.yaml` in `dir`. Each file is a list of entries written in our own words; `source_url`
+ * Reads every `*.yaml`/`*.yml` in `dir`. Each file is a list of entries written in our own words; `source_url`
  * points at the evidence. Replaces all curated rows.
  */
 export async function importCurated(db: DB, dir: string): Promise<number> {
   const rows: EntityInput[] = [];
   const seen = new Map<string, string>();
-  for (const file of readdirSync(dir).filter((f) => f.endsWith(".yaml")).sort()) {
+  for (const file of readdirSync(dir).filter((f) => f.endsWith(".yaml") || f.endsWith(".yml")).sort()) {
     const entries = parse(readFileSync(join(dir, file), "utf8")) as Record<string, unknown>[] | null;
     if (entries !== null && !Array.isArray(entries)) {
       throw new Error(`${file}: top level must be a list of entries`);

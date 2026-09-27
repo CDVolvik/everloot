@@ -18,6 +18,14 @@ test("openDb creates the schema and registers every source", () => {
   expect(sources).toContainEqual({ id: "warcraft-wiki-2023", licence: "CC-BY-SA-4.0", publishable: 1 });
 });
 
+test("name lookups use the entities_name index", () => {
+  const db = openDb(":memory:");
+  const plan = db
+    .prepare("EXPLAIN QUERY PLAN SELECT * FROM entities WHERE name = ? COLLATE NOCASE")
+    .all("Thrall") as { detail: string }[];
+  expect(plan.some((row) => row.detail.includes("entities_name"))).toBe(true);
+});
+
 test("openDb is safe to call twice on the same file", () => {
   const file = join(mkdtempSync(join(tmpdir(), "kb-db-")), "kb.sqlite");
   openDb(file).close();
