@@ -1,5 +1,6 @@
 import { createReadStream } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { Readable } from "node:stream";
 import { expect, test } from "vitest";
 import { parsePages, type WikiPage } from "../src/importers/wiki-xml.js";
 
@@ -30,4 +31,42 @@ test("stopping early does not hang", async () => {
     expect(p.id).toBe("101");
     break;
   }
+});
+
+test("an input that closes before the end rejects instead of hanging", async () => {
+  const src = new Readable({ read() {} });
+  src.push("<mediawiki><page><title>A</title>");
+  setTimeout(() => src.destroy(), 10);
+  await expect(
+    (async () => {
+      for await (const _ of parsePages(src)) {
+        // no complete page ever arrives
+      }
+    })(),
+  ).rejects.toThrow();
+});
+
+test("malformed XML rejects without yielding pages from the bad chunk", async () => {
+  const xml =
+    "<mediawiki><page><title>A</title><ns>0</ns><id>1</id><revision><timestamp>t</timestamp>" +
+    "<text>x</txt></revision></page></mediawiki>";
+  const seen: string[] = [];
+  await expect(
+    (async () => {
+      for await (const p of parsePages(Readable.from([xml]))) seen.push(p.id);
+    })(),
+  ).rejects.toThrow(/close tag/i);
+  expect(seen).toEqual([]);
+});
+
+test("decodes a multi-byte character split across Buffer chunks", async () => {
+  const bytes = Buffer.from(
+    "<mediawiki><page><title>Dash — here</title><ns>0</ns><id>1</id><revision>" +
+      "<timestamp>t</timestamp><text>ok</text></revision></page></mediawiki>",
+    "utf8",
+  );
+  const cut = bytes.indexOf(Buffer.from("—", "utf8")) + 1;
+  const pages: WikiPage[] = [];
+  for await (const p of parsePages(Readable.from([bytes.subarray(0, cut), bytes.subarray(cut)]))) pages.push(p);
+  expect(pages[0].title).toBe("Dash — here");
 });
