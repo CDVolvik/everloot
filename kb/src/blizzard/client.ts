@@ -48,6 +48,12 @@ export class BlizzardClient {
     });
     if (!res.ok) throw new Error(`Blizzard API HTTP ${res.status}: ${path} (${ns})`);
     const body = await res.text();
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(body);
+    } catch {
+      throw new Error(`Blizzard API returned non-JSON for ${path} (${ns})`);
+    }
     const now = this.clock();
     this.db
       .prepare(
@@ -55,7 +61,7 @@ export class BlizzardClient {
          ON CONFLICT(key) DO UPDATE SET body = excluded.body, fetched_at = excluded.fetched_at, expires_at = excluded.expires_at`,
       )
       .run(key, body, new Date(now).toISOString(), new Date(now + ttlSeconds * 1000).toISOString());
-    return JSON.parse(body);
+    return parsed;
   }
 
   private async accessToken(): Promise<string> {

@@ -59,3 +59,17 @@ test("API errors name the path and namespace", async () => {
   const client = new BlizzardClient(db, { clientId: "id", clientSecret: "s", region: "us", fetchImpl: impl });
   await expect(client.get("/data/wow/item/1", "retail", "static")).rejects.toThrow("HTTP 404: /data/wow/item/1 (static-us)");
 });
+
+test("a non-JSON 200 response is not cached", async () => {
+  const db = openDb(":memory:");
+  let body = "<html>maintenance</html>";
+  const impl = (async (url: string | URL | Request) =>
+    String(url).startsWith("https://oauth.battle.net")
+      ? new Response(JSON.stringify({ access_token: "t", expires_in: 100 }), { status: 200 })
+      : new Response(body, { status: 200 })) as typeof fetch;
+  const client = new BlizzardClient(db, { clientId: "id", clientSecret: "s", region: "us", fetchImpl: impl });
+  await expect(client.get("/data/wow/item/1", "retail", "static")).rejects.toThrow();
+  expect(db.prepare("SELECT count(*) AS n FROM api_cache").get()).toEqual({ n: 0 });
+  body = JSON.stringify({ id: 1 });
+  expect(await client.get("/data/wow/item/1", "retail", "static")).toEqual({ id: 1 });
+});
