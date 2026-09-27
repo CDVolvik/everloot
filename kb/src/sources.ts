@@ -1,6 +1,6 @@
 import type { DB } from "./db.js";
 
-export type SourceId = "warcraft-wiki-2023" | "wago-tools" | "curated" | "blizzard-api";
+export type SourceId = "warcraft-wiki-2023" | "curated" | "blizzard-api";
 
 export interface Source {
   id: SourceId;
@@ -11,6 +11,7 @@ export interface Source {
   homepage: string;
 }
 
+// wago.tools was removed 2026-09-27: its robots.txt disallows everything but the homepage.
 export const SOURCES: Record<SourceId, Source> = {
   "warcraft-wiki-2023": {
     id: "warcraft-wiki-2023",
@@ -18,13 +19,6 @@ export const SOURCES: Record<SourceId, Source> = {
     licence: "CC-BY-SA-4.0",
     publishable: true,
     homepage: "https://warcraft.wiki.gg",
-  },
-  "wago-tools": {
-    id: "wago-tools",
-    name: "wago.tools DB2 export (rebuilt locally)",
-    licence: "blizzard-game-data",
-    publishable: false,
-    homepage: "https://wago.tools",
   },
   curated: {
     id: "curated",

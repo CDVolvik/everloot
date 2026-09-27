@@ -14,7 +14,7 @@ test("openDb creates the schema and registers every source", () => {
   expect(tables).toEqual(expect.arrayContaining(["api_cache", "entities", "entities_fts", "sources"]));
   const sources = db.prepare("SELECT id, licence, publishable FROM sources ORDER BY id").all();
   expect(sources).toHaveLength(Object.keys(SOURCES).length);
-  expect(sources).toContainEqual({ id: "wago-tools", licence: "blizzard-game-data", publishable: 0 });
+  expect(sources).toContainEqual({ id: "blizzard-api", licence: "blizzard-developer-api-terms", publishable: 0 });
   expect(sources).toContainEqual({ id: "warcraft-wiki-2023", licence: "CC-BY-SA-4.0", publishable: 1 });
 });
 

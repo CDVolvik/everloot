@@ -14,8 +14,8 @@ test("snapshot keeps publishable rows only and writes a manifest", async () => {
   await replaceSourceRows(db, "curated", ["lore_page"], [
     { kind: "lore_page", extId: "1", name: "Thrall", body: "Warchief", gameVersion: "lore", sourceUrl: "https://example.test/1", retrievedAt: "2026-09-27" },
   ]);
-  await replaceSourceRows(db, "wago-tools", ["item"], [
-    { kind: "item", extId: "19019", name: "ZzWagoLeakMarker", gameVersion: "forever", sourceUrl: "https://wago.tools/x", retrievedAt: "2026-09-27" },
+  await replaceSourceRows(db, "blizzard-api", ["item"], [
+    { kind: "item", extId: "19019", name: "ZzBlizzardLeakMarker", gameVersion: "forever", sourceUrl: "https://develop.battle.net/x", retrievedAt: "2026-09-27" },
   ]);
   db.prepare("INSERT INTO api_cache VALUES ('k', '{\"leak\":\"ZzApiLeakMarker\"}', '2026-09-27', '2026-09-28')").run();
 
@@ -31,7 +31,7 @@ test("snapshot keeps publishable rows only and writes a manifest", async () => {
   snap.close();
 
   const bytes = readFileSync(out).toString("latin1");
-  for (const marker of ["ZzWagoLeakMarker", "zzwagoleakmarker", "ZzApiLeakMarker"]) expect(bytes).not.toContain(marker);
+  for (const marker of ["ZzBlizzardLeakMarker", "zzblizzardleakmarker", "ZzApiLeakMarker"]) expect(bytes).not.toContain(marker);
 
   const written = JSON.parse(readFileSync(`${out}.manifest.json`, "utf8"));
   expect(written).toMatchObject({ createdAt: "2026-09-27T12:00:00.000Z", licence: "CC-BY-SA-4.0", counts: { curated: 1, "warcraft-wiki-2023": 0 } });
@@ -49,19 +49,19 @@ test("snapshot refuses to run when validation fails", async () => {
   expect(() => snapshot(db, join(dir, "release", "release.sqlite"))).toThrow("bad source_url");
 });
 
-test("a registry is the authority: a tampered sources table cannot publish wago data", async () => {
+test("a registry is the authority: a tampered sources table cannot publish blizzard data", async () => {
   const dir = mkdtempSync(join(tmpdir(), "kb-snap-"));
   const db = openDb(join(dir, "kb.sqlite"));
   await replaceSourceRows(db, "curated", ["lore_page"], [
     { kind: "lore_page", extId: "1", name: "Thrall", gameVersion: "lore", sourceUrl: "https://example.test/1", retrievedAt: "2026-09-27" },
   ]);
-  await replaceSourceRows(db, "wago-tools", ["item"], [
-    { kind: "item", extId: "1", name: "ZzWagoLeakMarker", gameVersion: "forever", sourceUrl: "https://wago.tools/x", retrievedAt: "2026-09-27" },
+  await replaceSourceRows(db, "blizzard-api", ["item"], [
+    { kind: "item", extId: "1", name: "ZzBlizzardLeakMarker", gameVersion: "forever", sourceUrl: "https://develop.battle.net/x", retrievedAt: "2026-09-27" },
   ]);
-  db.prepare("UPDATE sources SET publishable = 1 WHERE id = 'wago-tools'").run();
+  db.prepare("UPDATE sources SET publishable = 1 WHERE id = 'blizzard-api'").run();
   const out = join(dir, "release", "release.sqlite");
   expect(snapshot(db, out).counts).toEqual({ curated: 1, "warcraft-wiki-2023": 0 });
-  expect(readFileSync(out).toString("latin1")).not.toContain("ZzWagoLeakMarker");
+  expect(readFileSync(out).toString("latin1")).not.toContain("ZzBlizzardLeakMarker");
 });
 
 test("a failure mid-snapshot leaves nothing at the output path", async () => {
@@ -134,10 +134,10 @@ test("ANALYZE on the live database does not block or leak into the snapshot", as
   await replaceSourceRows(db, "curated", ["lore_page"], [
     { kind: "lore_page", extId: "1", name: "Thrall", body: "Warchief", gameVersion: "lore", sourceUrl: "https://example.test/1", retrievedAt: "2026-09-27" },
   ]);
-  await replaceSourceRows(db, "wago-tools", ["item"], [
-    { kind: "item", extId: "19019", name: "ZzWagoLeakMarker", gameVersion: "forever", sourceUrl: "https://wago.tools/x", retrievedAt: "2026-09-27" },
-    { kind: "item", extId: "19020", name: "Some Wago Item Two", gameVersion: "forever", sourceUrl: "https://wago.tools/y", retrievedAt: "2026-09-27" },
-    { kind: "item", extId: "19021", name: "Some Wago Item Three", gameVersion: "forever", sourceUrl: "https://wago.tools/z", retrievedAt: "2026-09-27" },
+  await replaceSourceRows(db, "blizzard-api", ["item"], [
+    { kind: "item", extId: "19019", name: "ZzBlizzardLeakMarker", gameVersion: "forever", sourceUrl: "https://develop.battle.net/x", retrievedAt: "2026-09-27" },
+    { kind: "item", extId: "19020", name: "Some Blizzard Item Two", gameVersion: "forever", sourceUrl: "https://develop.battle.net/y", retrievedAt: "2026-09-27" },
+    { kind: "item", extId: "19021", name: "Some Blizzard Item Three", gameVersion: "forever", sourceUrl: "https://develop.battle.net/z", retrievedAt: "2026-09-27" },
   ]);
   db.exec("ANALYZE; PRAGMA optimize;");
 
@@ -150,8 +150,8 @@ test("ANALYZE on the live database does not block or leak into the snapshot", as
   expect(statTables).toEqual([]);
 
   const bytes = readFileSync(out).toString("latin1");
-  expect(bytes).not.toContain("ZzWagoLeakMarker");
-  expect(bytes).not.toContain("zzwagoleakmarker");
+  expect(bytes).not.toContain("ZzBlizzardLeakMarker");
+  expect(bytes).not.toContain("zzblizzardleakmarker");
 });
 
 test("stale partial and work files from a crashed run are swept, but a user file is not", async () => {

@@ -23,8 +23,8 @@ export const PUBLISHED_LICENCE = "CC-BY-SA-4.0";
 export const NOTICE =
   "Data licensed CC BY-SA 4.0. Lore text comes from Warcraft Wiki (warcraft.wiki.gg) via the Internet " +
   "Archive dump of 2023-11-13, used under CC BY-SA 4.0; curated entries are written by the WoWVault project " +
-  "under CC BY-SA 4.0. Every row carries its source URL. Blizzard game data and Blizzard API responses are " +
-  "not included — rebuild them locally with the kb scripts. World of Warcraft is a trademark of Blizzard " +
+  "under CC BY-SA 4.0. Every row carries its source URL. Blizzard API responses are not included; they stay " +
+  "in each user's local cache. World of Warcraft is a trademark of Blizzard " +
   "Entertainment; this project is not affiliated with Blizzard.";
 
 export interface Manifest {
