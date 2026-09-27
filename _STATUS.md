@@ -113,10 +113,10 @@ describing Phase 1 scope and stack is now historical until the build plan is rew
 
 **Part 1 (knowledge base) built** on branch `feat/kb-part1`: `kb/` package — two-pass Warcraft Wiki
 dump importer, curated importer, Blizzard client (local cache, Forever gated), provenance validator,
-leak-proof snapshot, CLI. First build: 261,656 lore pages from the 2023 wiki dump, 1 curated entry.
+leak-proof snapshot, CLI. First build: 257,110 lore pages from the 2023 wiki dump, 1 curated entry.
 wago.tools dropped (robots.txt disallows /db2) — Forever item/spell/zone data now waits for the
 player collector (Part 3). Blizzard API check pending a fresh client in `kb/.env`. Next: Part 2
-(MCP server) plan.
+(MCP server) plan. Search ranking (the exact-title article must rank first) is Part 2's first task.
 
 ---
 

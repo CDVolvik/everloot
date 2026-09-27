@@ -15,7 +15,7 @@ WikiTeam export, so each page's history is split across many blocks; the importe
 twice and keeps each page's newest revision. Its zstd frame declares a 2 GB window, so decoding needs
 about 2 GB of RAM (handled by `zstd-napi`).
 
-First build (2026-09-27): 261,656 lore pages, 14,167 skipped, 48,341 redirects dropped, 239,941 other-namespace, 0 empty; 1 curated; import took ~16 minutes with peak memory ~2.3 GB. Skipped pages are template-only (item tooltips, TCG cards, disambiguation stubs); importing item tooltips as structured item rows is the next task.
+First build (2026-09-27): 257,110 lore pages, 18,713 skipped, 48,341 redirects dropped, 239,941 other-namespace, 0 empty; 1 curated; import took ~16 minutes with peak memory ~2.65 GB. Skipped pages are template-only (item tooltips, TCG cards, disambiguation stubs) and near-empty stubs (under 20 letters); importing item tooltips as structured item rows is the next task.
 
 ## Sources and what may be published
 
