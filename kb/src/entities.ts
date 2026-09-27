@@ -5,6 +5,7 @@ export type Kind = "item" | "npc" | "quest" | "zone" | "spell" | "lore_page" | "
 export type GameVersion = "forever" | "classic" | "retail" | "lore";
 
 export const ALL_KINDS: Kind[] = ["item", "npc", "quest", "zone", "spell", "lore_page", "creator", "realm"];
+export const ALL_GAME_VERSIONS: GameVersion[] = ["forever", "classic", "retail", "lore"];
 
 export interface EntityInput {
   kind: Kind;
