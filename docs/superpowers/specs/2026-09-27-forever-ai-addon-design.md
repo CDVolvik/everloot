@@ -213,7 +213,10 @@ harness library, later, never reachable from game text); model training; Retail;
 
 - **wiki.gg permission:** email for a current dump or permission to sync. Until answered, lore comes
   from the 2023 dump and Forever lore is a gap.
-- Product name for the addon, MCP server and site (repo stays `wowvault`).
+- Product name and domain for the addon, MCP server and site (repo stays `wowvault`). Checked
+  2026-09-27: no wowvault domain is owned; `wowvault.com` is held by another party since 2003,
+  parked on GoDaddy/NameFind; `wowvault.app` and `wowvault.gg` are available. Before buying anything
+  with "WoW" in it, check Blizzard's trademark / fan-content rules, since the site carries ads.
 - Which Forever fan wiki (three sites use the name — see the catalogue).
 - Blizzard fan-content rules for game data on an ad-supported site (before Part 4).
 - Warcraft Logs API redistribution terms — ask `support@rpglogs.com` before using it.
