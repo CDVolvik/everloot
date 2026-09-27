@@ -1,5 +1,6 @@
 import sax from "sax";
 import type { Readable } from "node:stream";
+import { StringDecoder } from "node:string_decoder";
 
 export interface WikiPage {
   id: string;
@@ -12,29 +13,21 @@ export interface WikiPage {
   text: string;
 }
 
-const HIGH_WATER = 500;
-const LOW_WATER = 50;
-
 /**
  * Streams a MediaWiki XML export (current or full history) and yields each page with its newest
- * revision. Pauses the input while the consumer falls behind, so multi-GB dumps stay in bounded memory.
- * Pass a stream with `setEncoding("utf8")` so multi-byte characters are never split across chunks.
+ * revision. The consumer pulls input through the stream's async iterator, so backpressure is exact
+ * and memory stays bounded by one input chunk. Breaking out of the loop destroys the input; an input
+ * that closes early, or malformed XML, rejects. Accepts Buffer or string chunks.
  */
 export async function* parsePages(input: Readable): AsyncGenerator<WikiPage> {
   const parser = sax.parser(true);
-  const queue: WikiPage[] = [];
+  const decoder = new StringDecoder("utf8");
+  const ready: WikiPage[] = [];
   const path: string[] = [];
   let page: WikiPage | null = null;
   let rev: { timestamp: string; text: string } | null = null;
   let buf = "";
-  let finished = false;
   let failure: Error | null = null;
-  let wake: (() => void) | null = null;
-  const notify = () => {
-    const w = wake;
-    wake = null;
-    w?.();
-  };
 
   parser.onopentag = (node) => {
     path.push(node.name);
@@ -64,10 +57,8 @@ export async function* parsePages(input: Readable): AsyncGenerator<WikiPage> {
         }
         rev = null;
       } else if (name === "page") {
-        queue.push(page);
+        ready.push(page);
         page = null;
-        if (queue.length >= HIGH_WATER) input.pause();
-        notify();
       }
     }
     path.pop();
@@ -75,45 +66,19 @@ export async function* parsePages(input: Readable): AsyncGenerator<WikiPage> {
   };
   parser.onerror = (e) => {
     failure = e;
-    notify();
   };
 
-  input.on("data", (chunk: Buffer | string) => {
-    try {
-      parser.write(chunk.toString());
-    } catch (e) {
-      failure = e as Error;
-      notify();
-    }
-  });
-  input.on("end", () => {
-    try {
-      parser.close();
-    } catch (e) {
-      failure = e as Error;
-    }
-    finished = true;
-    notify();
-  });
-  input.on("error", (e) => {
-    failure = e;
-    notify();
-  });
-
-  try {
-    while (true) {
-      if (queue.length > 0) {
-        yield queue.shift()!;
-        if (queue.length <= LOW_WATER && input.isPaused()) input.resume();
-        continue;
-      }
-      if (failure) throw failure;
-      if (finished) return;
-      await new Promise<void>((resolve) => {
-        wake = resolve;
-      });
-    }
-  } finally {
-    input.destroy();
+  // Throws before handing out anything parsed from a chunk that contained an error.
+  function* drain(): Generator<WikiPage> {
+    if (failure) throw failure;
+    while (ready.length > 0) yield ready.shift()!;
   }
+
+  for await (const chunk of input) {
+    parser.write(typeof chunk === "string" ? chunk : decoder.write(chunk as Buffer));
+    yield* drain();
+  }
+  parser.write(decoder.end());
+  parser.close();
+  yield* drain();
 }
