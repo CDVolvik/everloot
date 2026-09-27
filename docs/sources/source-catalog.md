@@ -29,7 +29,8 @@ Access types: `api` official API · `wiki` MediaWiki API · `fetch` occasional c
 
 | Source | URL | Why | Forever | Access | Terms evidence |
 |---|---|---|---|---|---|
-| Warcraft Wiki | warcraft.wiki.gg | Lore + general facts; the live community wiki (moved off Fandom 2023) | yes — [Forever article](https://warcraft.wiki.gg/wiki/World_of_Warcraft:_Forever) | `wiki` | CC BY-SA 4.0 (General disclaimer page) — attribute, share-alike |
+| Warcraft Wiki — 2023 dump | [archive.org/details/wiki-warcraft.wiki.gg-20231113](https://archive.org/details/wiki-warcraft.wiki.gg-20231113) | Lore baseline (`history.xml.zst`, 637 MB) | no — predates Forever | import | CC BY-SA 4.0 — attribute, share-alike |
+| Warcraft Wiki — live | warcraft.wiki.gg | Current lore, Forever article | yes — [Forever article](https://warcraft.wiki.gg/wiki/World_of_Warcraft:_Forever) | **blocked on permission** | CC BY-SA 4.0, but robots.txt (read 2026-09-27): `Disallow: /api.php` and `/wiki/Special:` for all bots; `ClaudeBot`, `GPTBot`, `anthropic-ai` disallowed entirely; `Content-Signal: search=yes,ai-train=no,use=reference`, declared a reservation of rights under EU DSM Art. 4. No automated sync until wiki.gg grants it |
 | Forever fan wiki | **domain to pick** — see conflict below | Forever rules, races, zones | yes | `fetch` | ToS unverified |
 | Wowhead Forever | wowhead.com/forever | Items, NPCs, quests, guides — richest Forever coverage | yes | **`link`** | No API; robots.txt disallows `ClaudeBot`, `anthropic-ai`, `GPTBot` by name; history of enforcement against scrapers. Point users here; never fetch |
 | wago.tools | wago.tools/db2/`<Table>`/csv?build=1.60.1.x | Item/quest/NPC tables for the item/quest tool | yes (builds 1.60.1.x) | `fetch` + cache | No documented API or reuse grant — community-tolerated datamining. Never label it official |
@@ -56,7 +57,7 @@ name the exact domain in the map.
 
 | Source | URL | Good for | Forever | Access |
 |---|---|---|---|---|
-| Warcraft Wiki | warcraft.wiki.gg | Lore, mechanics, WoW API docs | yes | `wiki` |
+| Warcraft Wiki | warcraft.wiki.gg | Lore, mechanics, WoW API docs | yes | 2023 dump now; live sync blocked on permission (see v1 table) |
 | Wowpedia (Fandom) | wowpedia.fandom.com | Frozen since 2023 | no | skip — Fandom ToS bars scraping/AI use without written consent (quote secondhand) |
 | WoWWiki archive | wowwiki-archive.fandom.com | Frozen original wiki | no | skip |
 | Blizzard official | worldofwarcraft.blizzard.com/en-us/forever, news.blizzard.com | Canonical announcements | yes | `link` |
@@ -166,8 +167,26 @@ enters the registry.**
 Unresolved: "Max (Echo)" — the Max found is Limit/Team Liquid, not Echo; don't add until confirmed.
 Discovery feeds for Forever streams: forever-guides.com, wowforeverstreams.com.
 
+## Gaps backlog
+
+Sources we can't use (blocked, paid, unlicensed, or no Forever data yet), what they would have
+given us, and how we fill that gap ourselves. Never filled by copying the blocked source.
+
+| Gap | Blocked source | Why | How we fill it | Part |
+|---|---|---|---|---|
+| Forever item/NPC/quest details, drop rates, spawn points | Wowhead | robots.txt bans AI bots; no API | Addon collector (opt-in) + wago.tools tables | 3, 1 |
+| Current lore and Forever pages | warcraft.wiki.gg (live) | `/api.php` disallowed, AI bots disallowed | 2023 dump now; email wiki.gg for permission / a current dump | 1 |
+| Class and leveling guides | Icy Veins, Method, Wowhead guides | No API; bot blocking | Curated guides we write, drawing on player-collected data | 1 (curated) |
+| Hunter pet families and taming | Petopia | "may not be copied or reprinted" | Collector records tameable beasts + wago.tools creature tables | 3, 1 |
+| Balance-sensitive item stats | wago.tools | Blizzard hides stats until drop | Collector records item tooltips players see | 3 |
+| Character / guild profiles | Blizzard API, Raider.IO | No Forever namespace yet | Addon character context now; re-check after 11/04 launch | 3 |
+| Combat rankings | Warcraft Logs | No Forever support; redistribution terms silent | Ask `support@rpglogs.com`; revisit after launch | later |
+| Lore from the old wiki | Wowpedia (Fandom) | ToS bars AI use without consent | Covered by the warcraft.wiki.gg dump (same history pre-2023) | 1 |
+| Community discussion | Reddit | Paid API | Link-out only | — |
+| Auction prices | TSM, Undermine Exchange | No Forever data; keys/Patreon | Collector could record AH scans the player runs — decide later | later |
+
 ## Still to verify by hand (browser, before v3)
 
 Terms pages that blocked automated reads: Wowhead `/tos`, Icy Veins `/terms`, Raider.IO ToS,
-Fandom ToS, Wago developer agreement, world-of-warcraft-forever.wiki ToS. Plus: warcraft.wiki.gg
-robots.txt, Raider.IO registered-app rate limit, WCL point limits.
+Fandom ToS, Wago developer agreement, world-of-warcraft-forever.wiki ToS. Plus: wiki.gg's own terms
+for bots and dumps, Raider.IO registered-app rate limit, WCL point limits.
