@@ -47,11 +47,12 @@ Each part gets its own implementation plan. Part 1 is planned first.
 
 ### 4.1 Storage
 
-- **SQLite**, one file. Entities: `item`, `npc`, `quest`, `zone`, `spell`, `lore_page`, `creator`,
-  `realm`, plus `source` and `record_provenance`.
-- Every row links to provenance: `source_id`, `licence`, `retrieved_at`, `source_url`,
+- **SQLite**, one file. One `entities` table with a `kind` column (`item`, `npc`, `quest`, `zone`,
+  `spell`, `lore_page`, `creator`, `realm`), a `sources` table, and an `api_cache` table for local
+  Blizzard API responses.
+- Provenance sits on every row: `source_id`, `licence`, `retrieved_at`, `source_url`,
   `game_version` (`forever` / `classic` / `retail` / `lore`).
-- Full-text search index over names and page text.
+- Full-text search index over names and page text; a case-insensitive index on names.
 
 ### 4.2 Importers
 
