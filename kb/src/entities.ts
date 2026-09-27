@@ -20,6 +20,8 @@ export interface EntityInput {
 /**
  * Atomically replaces every row of `sourceId` whose kind is in `kinds` with `rows`.
  * On any error the previous rows are kept.
+ * Single writer: run one import at a time per connection — a second BEGIN while this one awaits
+ * rows throws "cannot start a transaction within a transaction".
  */
 export async function replaceSourceRows(
   db: DB,
