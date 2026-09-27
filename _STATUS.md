@@ -111,6 +111,13 @@ the addon answers, it never plays.
 Spec: `docs/superpowers/specs/2026-09-27-forever-ai-addon-design.md`. Everything above this section
 describing Phase 1 scope and stack is now historical until the build plan is rewritten.
 
+**Part 1 (knowledge base) built** on branch `feat/kb-part1`: `kb/` package — two-pass Warcraft Wiki
+dump importer, curated importer, Blizzard client (local cache, Forever gated), provenance validator,
+leak-proof snapshot, CLI. First build: 261,656 lore pages from the 2023 wiki dump, 1 curated entry.
+wago.tools dropped (robots.txt disallows /db2) — Forever item/spell/zone data now waits for the
+player collector (Part 3). Blizzard API check pending a fresh client in `kb/.env`. Next: Part 2
+(MCP server) plan.
+
 ---
 
 ## What this file is NOT
