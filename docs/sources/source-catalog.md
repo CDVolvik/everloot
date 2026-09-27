@@ -103,7 +103,7 @@ name the exact domain in the map.
 | wago.tools | wago.tools | DB2 tables, build monitor | yes | `fetch` + cache (see v1 table) |
 | Gethe/wow-ui-source | github.com/Gethe/wow-ui-source (branch `forever`, updated 2026-09-24) | Blizzard UI/Lua source mirror — ground truth for **building the addon** | yes | `fetch` (git) |
 | Warcraft Wiki — WoW API | warcraft.wiki.gg/wiki/World_of_Warcraft_API | Addon API reference | unconfirmed for Forever | `wiki` |
-| Blizzard Game Data / Profile API | community.developer.battle.net | Official data | **no Forever namespace yet** | `api` — build the adapter, gate Forever. Terms: attribution required, no redistribution/resale, no monetising the data, 36,000 calls/hr |
+| Blizzard Game Data / Profile API | community.developer.battle.net | Official data — **all free groups adopted**, see spec §4.5 | **no Forever namespace yet** | `api` — one adapter, all namespaces (retail, `classic`, `classic1x`), Forever gated. Each user brings their own free client. Terms: attribution required, no redistribution/resale, no monetising the data, 36,000 calls/hr → local cache only |
 | WoWDev wiki | wowdev.wiki | File formats | no | skip |
 | wow.tools | — | Dead since ~2025 | — | skip |
 | Community Forever datasets | github.com/alcaras/forever-ref | Example consumer of wago.tools Forever exports | yes | reference only |
@@ -183,7 +183,7 @@ given us, and how we fill that gap ourselves. Never filled by copying the blocke
 | Combat rankings | Warcraft Logs | No Forever support; redistribution terms silent | Ask `support@rpglogs.com`; revisit after launch | later |
 | Lore from the old wiki | Wowpedia (Fandom) | ToS bars AI use without consent | Covered by the warcraft.wiki.gg dump (same history pre-2023) | 1 |
 | Community discussion | Reddit | Paid API | Link-out only | — |
-| Auction prices | TSM, Undermine Exchange | No Forever data; keys/Patreon | Collector could record AH scans the player runs — decide later | later |
+| Auction prices | TSM, Undermine Exchange | No Forever data; TSM terms unread; Undermine needs Patreon key | Blizzard AH API (local, retail/Classic now) + collector records the player's own AH browsing → our own price history. TSM feeds only if terms allow; never TSM's addon files | 3 (v2) |
 
 ## Still to verify by hand (browser, before v3)
 

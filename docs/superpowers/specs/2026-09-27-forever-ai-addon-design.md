@@ -60,6 +60,7 @@ Each part gets its own implementation plan. Part 1 is planned first.
 | Wiki dump | Internet Archive dump of warcraft.wiki.gg, 2023-11-13 (`history.xml.zst`, 637 MB) | CC BY-SA 4.0 | Lore baseline. Pre-dates Forever. Current revisions only |
 | Wiki sync (fresh) | warcraft.wiki.gg | CC BY-SA 4.0 — **blocked on permission** | Its robots.txt disallows `/api.php` and names `ClaudeBot`/`GPTBot`; content signal `ai-train=no, use=reference`. We email wiki.gg for permission or a current dump before any sync |
 | Game tables | wago.tools DB2 CSV exports for Forever builds | Community-tolerated datamining, not a grant | **Rebuilt locally by script**; we publish the script, not Blizzard's tables |
+| Blizzard API | Battle.net Game Data + Profile APIs (§4.5) | Blizzard Developer API Terms | **Local only**: cached per user, never in the published snapshot, never on ad pages |
 | Curated | YAML/Markdown files in this repo | Ours | Forever rules we write, creators, realms, quest notes |
 | Player collection | Uploads from the addon collector (Part 3) | Ours, opt-in | Drops, NPC positions, quest givers — the original Thottbot model |
 
@@ -77,12 +78,48 @@ knowledge base.
 - **Data we publish:** CC BY-SA 4.0 — required by the wiki's share-alike terms, allows commercial
   use. Our curated and player-collected data use the same licence, so the whole dataset has one.
 - **Release:** a versioned SQLite snapshot of the publishable data on GitHub Releases, plus the
-  scripts that rebuild everything (including the local-only game tables) from scratch.
+  scripts that rebuild everything (including the local-only game tables and Blizzard API cache)
+  from scratch.
+
+### 4.5 Blizzard API — everything free
+
+Blizzard's Battle.net APIs are free with a developer client (client ID + secret from
+develop.battle.net). We cover every group they offer, through one adapter that takes the
+namespace as a parameter.
+
+- **Game Data** (client credentials): achievements, auction house (per connected realm) and
+  commodities, connected realms / realms / regions, creatures and families, guild crests,
+  heirlooms, items / item sets / appearances, journal (expansions, instances, encounters), media,
+  mounts, Mythic+ affixes / dungeons / leaderboards, Mythic raid leaderboards, battle pets and
+  abilities, playable classes / races / specs, power types, professions and recipes, PvP seasons
+  and tiers, quests (categories, areas, types), reputations, spells, talents, titles, toys, WoW
+  Token.
+- **Profile** — public character data (client credentials): summary, status, achievements and
+  statistics, appearance, collections, dungeon and raid encounters, equipment, hunter pets, media,
+  Mythic+ profile, professions, PvP, quests, reputations, specialisations, titles; guild, roster,
+  activity.
+- **Profile** — account data (player signs in with Battle.net OAuth): the player's own account-wide
+  collections (mounts, pets, toys, heirlooms, transmog).
+- **Namespaces:** retail (`static|dynamic|profile-{region}`), Classic progression
+  (`*-classic-{region}`) and Classic Era (`*-classic1x-{region}`). Classic exposes fewer groups
+  (auction house, character profile, creatures, guilds, items, playable content, realms, PvP,
+  media). **Forever has no namespace yet**; the adapter gets one line added the day it ships, and
+  Forever questions answer "not available yet" until then.
+
+Rules (Blizzard Developer API Terms, verified 2026-09-27):
+
+- **Each user brings their own free Blizzard client** in the companion config. We never ship our
+  own secret in open-source code.
+- Responses are cached **locally** for that user. They never enter the published CC BY-SA snapshot
+  (no redistribution) and never appear on ad-supported pages (no monetising the data).
+- Attribution to Blizzard wherever the data is shown. Stay under 36,000 calls per hour.
 
 ## 5. Part 2 — wow-knowledge MCP server
 
 - **Tools:** `search`, `get_item`, `get_quest`, `get_npc`, `get_zone`, `get_lore`,
-  `get_character_context`. Each returns facts with provenance (source name + URL).
+  `get_character_context`, plus Blizzard-backed `get_character_profile`, `get_collections`,
+  `get_encounters`, `get_realm`, `get_auction_prices`. Each returns facts with provenance (source
+  name + URL).
 - **Knowledge base first.** Live sources are a fallback only where their terms allow it (§2.1).
 - **Link-outs:** when we lack data, the answer points to where to look (e.g. `wowhead.com/forever`)
   instead of fetching it.
@@ -158,6 +195,33 @@ CurseForge app replaces it on update):
 
 - `characters/<realm>-<name>.md` — class, goals, things to remember.
 - `conversations/YYYY-MM.md` — one line per exchange.
+- `sessions/YYYY-MM-DD-HHMM.md` — one summary per play session: zones visited, questions asked,
+  what it couldn't answer, what the collector recorded.
+
+**Session loop.** A session opens when the companion first hears from the addon and closes after
+30 minutes of silence or on logout. At close:
+
+1. The session summary is written.
+2. Questions it couldn't answer become **candidate** entries in the gaps backlog
+   (`gaps/candidates.md`), for review before they join the catalogue.
+3. Opted-in collector data from the session is queued for knowledge-base import.
+
+The next session starts by reading the character file and the last session summary, so it picks up
+where the player left off. Files stay small: monthly conversation files, one short summary per
+session.
+
+### 6.7 Auction house (v2)
+
+- **Blizzard auction house API** — per connected realm plus region-wide commodities; retail and
+  Classic today, Forever when its namespace ships. Local use for the player only (§4.5 rules).
+- **Our own scans (opt-in)** — when the player opens the auction house, the collector records the
+  listings their own browsing shows. Over time this builds our own per-realm price history, which we
+  may publish.
+- **TSM public price feeds** — only if TSM's terms allow our use; to be checked. We never read TSM's
+  addon files: that data comes from TSM's servers under TSM's terms.
+- Tools: `get_auction_prices` (current + history for an item on the player's realm).
+- Forever's auction house rules (cross-realm or not) are not published yet; design for per-realm
+  and adjust at launch.
 
 ## 7. Part 4 — Public website
 
@@ -201,13 +265,14 @@ CurseForge app replaces it on update):
 
 | Phase | Scope | Audience |
 |---|---|---|
-| **v1** | Part 1 (wiki dump + wago.tools + curated) · Part 2 · Part 3 with the live bridge · golden set | Carlos |
-| **v2** | Collector + intake · fresh wiki sync if permitted · more sources per the catalogue · creator registry with Twitch live status | Carlos + testers |
+| **v1** | Part 1 (wiki dump + wago.tools + curated + Blizzard Game Data adapter) · Part 2 · Part 3 with the live bridge, memory and session loop · golden set | Carlos |
+| **v2** | Collector + intake · auction house (§6.7) · Blizzard Profile incl. Battle.net sign-in · fresh wiki sync if permitted · more sources per the catalogue · creator registry with Twitch live status | Carlos + testers |
 | **v3** | Public: addon on CurseForge (file bridge), companion + data snapshot on GitHub · `craft-ownership-gate` + `oss-pr-safeguard` + Codex adversarial review | Everyone |
 | **v4** | Part 4 website with AdSense | Everyone |
 
 **Not planned:** a general coding/terminal assistant on the game path (a separate front end on the
-harness library, later, never reachable from game text); model training; Retail; mobile.
+harness library, later, never reachable from game text); model training; a Retail addon build
+(the Blizzard adapter reads retail and Classic data, but the addon targets Forever); mobile.
 
 ## 11. Open questions
 
@@ -220,4 +285,6 @@ harness library, later, never reachable from game text); model training; Retail;
 - Which Forever fan wiki (three sites use the name — see the catalogue).
 - Blizzard fan-content rules for game data on an ad-supported site (before Part 4).
 - Warcraft Logs API redistribution terms — ask `support@rpglogs.com` before using it.
+- TSM public data terms — read before using its price feeds.
+- Whether Forever will use its own namespace or a Classic/retail one — watch at launch (11/04).
 - Where the collector intake is hosted (Part 3 plan).
