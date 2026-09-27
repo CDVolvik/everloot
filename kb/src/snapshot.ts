@@ -49,13 +49,24 @@ function pathKey(path: string): string {
   return process.platform === "win32" || process.platform === "darwin" ? real.toLowerCase() : real;
 }
 
+/** Escapes a string for use as a literal fragment inside a `RegExp` pattern. */
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 /**
  * Removes leftovers from a crashed prior run: `.kb-snapshot-work-*` files (and their
- * -journal/-wal/-shm sidecars) in `workDir`, and `<targetBase>.partial-*` files in `targetDir`.
+ * -journal/-wal/-shm sidecars) in `workDir`, and `<targetBase>.partial-*` /
+ * `<targetBase>.manifest.json.partial-*` files in `targetDir`. Patterns are anchored to the
+ * digits-only pid suffix so an unrelated file that merely starts with the same prefix — e.g. a
+ * user's own `<targetBase>.partial-notes.txt` — is never touched.
  * Best-effort — a removal failure here must never block a fresh snapshot.
  */
 function sweepStaleFiles(dirs: string[], targetBase: string): void {
+  const escapedBase = escapeRegExp(targetBase);
   const workPattern = /^\.kb-snapshot-work-\d+\.sqlite(-journal|-wal|-shm)?$/;
+  const partialPattern = new RegExp(`^${escapedBase}\\.partial-\\d+(-journal|-wal|-shm)?$`);
+  const manifestPartialPattern = new RegExp(`^${escapedBase}\\.manifest\\.json\\.partial-\\d+$`);
   for (const dir of new Set(dirs)) {
     let entries: string[];
     try {
@@ -64,7 +75,7 @@ function sweepStaleFiles(dirs: string[], targetBase: string): void {
       continue;
     }
     for (const name of entries) {
-      if (workPattern.test(name) || name.startsWith(`${targetBase}.partial-`)) {
+      if (workPattern.test(name) || partialPattern.test(name) || manifestPartialPattern.test(name)) {
         try {
           rmSync(join(dir, name), { force: true });
         } catch {
@@ -98,9 +109,14 @@ function sha256File(path: string): string {
  * or under the OS temp dir for an in-memory `db`) — never inside the release folder — so a hard
  * kill mid-run cannot leave an unfiltered copy where the published file is expected. Only once
  * `verifyOutput` has proven the work file clean does it get copied into the release folder as
- * `<target>.partial-<pid>` and renamed into place; the manifest is hashed and (re)written the same
- * way, so a crash leaves either the old published pair intact, nothing, or a verified new pair —
- * never an unfiltered file and never a DB paired with the wrong manifest.
+ * `<target>.partial-<pid>`. The old manifest is removed immediately before that partial is renamed
+ * into place as `<target>` — the two steps are back-to-back with no other I/O between them — so a
+ * crash before them leaves the old published DB and its old manifest intact, and a crash after them
+ * leaves the new DB in place with its (already-hashed) manifest write still to follow; the next
+ * run's sweep clears any stray `.partial-` leftovers either way. The only residual risk is a crash
+ * landing in the instant between the manifest removal and the rename, which at worst leaves a
+ * published DB (old or new) briefly without a manifest — never an unfiltered file, and never a DB
+ * paired with the wrong manifest.
  */
 export function snapshot(db: DB, outPath: string, now = new Date()): Manifest {
   const target = resolve(outPath);
@@ -113,6 +129,9 @@ export function snapshot(db: DB, outPath: string, now = new Date()): Manifest {
     const targetKey = pathKey(target);
     if (targetKey === liveKey || targetKey.startsWith(`${liveKey}-`)) {
       throw new Error("refusing to write the snapshot over the live database");
+    }
+    if (dirname(targetKey) === dirname(liveKey)) {
+      throw new Error("refusing to write the snapshot into the live database's folder");
     }
   }
 
@@ -163,8 +182,8 @@ export function snapshot(db: DB, outPath: string, now = new Date()): Manifest {
     }
     const counts = verifyOutput(work, keep);
     const sha256 = sha256File(work);
-    rmSync(manifestPath, { force: true }); // delete the old manifest before the DB is replaced
     copyFileSync(work, targetPartial);
+    rmSync(manifestPath, { force: true }); // delete the old manifest right before the DB swap below
     renameSync(targetPartial, target);
     const manifest: Manifest = {
       createdAt: now.toISOString(),
@@ -181,14 +200,23 @@ export function snapshot(db: DB, outPath: string, now = new Date()): Manifest {
   }
 }
 
-/** The full schema (table/view/trigger/index names) a fresh database is expected to have. */
+/** Normalises `sqlite_master.sql` for comparison: collapses whitespace; autoindexes have no sql. */
+function normalizeSchemaSql(sql: string | null): string {
+  return sql === null ? "" : sql.replace(/\s+/g, " ").trim();
+}
+
+/** The full schema (table/view/trigger/index definitions) a fresh database is expected to have. */
 function expectedSchemaEntries(): Set<string> {
   const ref = openDb(":memory:");
   try {
     return new Set(
-      (ref.prepare("SELECT type, name FROM sqlite_master").all() as { type: string; name: string }[]).map(
-        (r) => `${r.type}:${r.name}`,
-      ),
+      (
+        ref.prepare("SELECT type, name, sql FROM sqlite_master").all() as {
+          type: string;
+          name: string;
+          sql: string | null;
+        }[]
+      ).map((r) => `${r.type}:${r.name}:${normalizeSchemaSql(r.sql)}`),
     );
   } finally {
     ref.close();
@@ -204,9 +232,13 @@ function verifyOutput(file: string, keep: SourceId[]): Record<string, number> {
     };
     const expected = expectedSchemaEntries();
     const actual = new Set(
-      (out.prepare("SELECT type, name FROM sqlite_master").all() as { type: string; name: string }[]).map(
-        (r) => `${r.type}:${r.name}`,
-      ),
+      (
+        out.prepare("SELECT type, name, sql FROM sqlite_master").all() as {
+          type: string;
+          name: string;
+          sql: string | null;
+        }[]
+      ).map((r) => `${r.type}:${r.name}:${normalizeSchemaSql(r.sql)}`),
     );
     const missing = [...expected].filter((e) => !actual.has(e));
     const extra = [...actual].filter((e) => !expected.has(e));
@@ -231,6 +263,18 @@ function verifyOutput(file: string, keep: SourceId[]): Record<string, number> {
     if (badRows.n !== 0) fail(`${badRows.n} row(s) not licensed ${PUBLISHED_LICENCE}`);
     const integrity = out.pragma("integrity_check", { simple: true });
     if (integrity !== "ok") fail(`integrity_check: ${String(integrity)}`);
+    const freelistCount = out.pragma("freelist_count", { simple: true }) as number;
+    if (freelistCount !== 0) fail(`freelist_count is ${freelistCount} (VACUUM did not reclaim pages)`);
+    // The fts5 integrity-check command is a write (it's issued as an INSERT), so it needs a
+    // writable handle even though the rest of this check runs read-only; open one just for this.
+    const writable = new Database(file);
+    try {
+      writable.prepare("INSERT INTO entities_fts(entities_fts, rank) VALUES ('integrity-check', 1)").run();
+    } catch (err) {
+      fail(`entities_fts integrity-check: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      writable.close();
+    }
     return counts;
   } finally {
     out.close();
