@@ -1,6 +1,6 @@
 import Database from "better-sqlite3";
 import { createHash } from "node:crypto";
-import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vitest";
@@ -19,7 +19,7 @@ test("snapshot keeps publishable rows only and writes a manifest", async () => {
   ]);
   db.prepare("INSERT INTO api_cache VALUES ('k', '{\"leak\":\"ZzApiLeakMarker\"}', '2026-09-27', '2026-09-28')").run();
 
-  const out = join(dir, "release.sqlite");
+  const out = join(dir, "release", "release.sqlite");
   const manifest = snapshot(db, out, new Date("2026-09-27T12:00:00Z"));
   expect(manifest.counts).toEqual({ curated: 1, "warcraft-wiki-2023": 0 });
 
@@ -46,7 +46,7 @@ test("snapshot refuses to run when validation fails", async () => {
   await replaceSourceRows(db, "curated", ["lore_page"], [
     { kind: "lore_page", extId: "1", name: "Thrall", gameVersion: "lore", sourceUrl: "nope", retrievedAt: "2026-09-27" },
   ]);
-  expect(() => snapshot(db, join(dir, "release.sqlite"))).toThrow("bad source_url");
+  expect(() => snapshot(db, join(dir, "release", "release.sqlite"))).toThrow("bad source_url");
 });
 
 test("a registry is the authority: a tampered sources table cannot publish wago data", async () => {
@@ -59,7 +59,7 @@ test("a registry is the authority: a tampered sources table cannot publish wago 
     { kind: "item", extId: "1", name: "ZzWagoLeakMarker", gameVersion: "forever", sourceUrl: "https://wago.tools/x", retrievedAt: "2026-09-27" },
   ]);
   db.prepare("UPDATE sources SET publishable = 1 WHERE id = 'wago-tools'").run();
-  const out = join(dir, "release.sqlite");
+  const out = join(dir, "release", "release.sqlite");
   expect(snapshot(db, out).counts).toEqual({ curated: 1, "warcraft-wiki-2023": 0 });
   expect(readFileSync(out).toString("latin1")).not.toContain("ZzWagoLeakMarker");
 });
@@ -85,6 +85,13 @@ test("refuses to overwrite the live database", async () => {
   expect(() => snapshot(db, file)).toThrow("refusing to write the snapshot over the live database");
 });
 
+test("refuses to write the snapshot into the live database's folder", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "kb-snap-"));
+  const db = openDb(join(dir, "kb.sqlite"));
+  const out = join(dir, "release.sqlite");
+  expect(() => snapshot(db, out)).toThrow("refusing to write the snapshot into the live database's folder");
+});
+
 test("verifyOutput rejects an extra table", async () => {
   const dir = mkdtempSync(join(tmpdir(), "kb-snap-"));
   const db = openDb(join(dir, "kb.sqlite"));
@@ -92,7 +99,7 @@ test("verifyOutput rejects an extra table", async () => {
     { kind: "lore_page", extId: "1", name: "Thrall", gameVersion: "lore", sourceUrl: "https://example.test/1", retrievedAt: "2026-09-27" },
   ]);
   db.exec("CREATE TABLE zz_extra (id INTEGER PRIMARY KEY)");
-  const out = join(dir, "release.sqlite");
+  const out = join(dir, "release", "release.sqlite");
   expect(() => snapshot(db, out)).toThrow("snapshot check failed");
   expect(existsSync(out)).toBe(false);
 });
@@ -104,7 +111,19 @@ test("verifyOutput rejects an extra view", async () => {
     { kind: "lore_page", extId: "1", name: "Thrall", gameVersion: "lore", sourceUrl: "https://example.test/1", retrievedAt: "2026-09-27" },
   ]);
   db.exec("CREATE VIEW zz_extra_view AS SELECT id FROM entities");
-  const out = join(dir, "release.sqlite");
+  const out = join(dir, "release", "release.sqlite");
+  expect(() => snapshot(db, out)).toThrow("snapshot check failed");
+  expect(existsSync(out)).toBe(false);
+});
+
+test("verifyOutput rejects a live DB whose entities table gained a column", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "kb-snap-"));
+  const db = openDb(join(dir, "kb.sqlite"));
+  await replaceSourceRows(db, "curated", ["lore_page"], [
+    { kind: "lore_page", extId: "1", name: "Thrall", gameVersion: "lore", sourceUrl: "https://example.test/1", retrievedAt: "2026-09-27" },
+  ]);
+  db.exec("ALTER TABLE entities ADD COLUMN secret TEXT");
+  const out = join(dir, "release", "release.sqlite");
   expect(() => snapshot(db, out)).toThrow("snapshot check failed");
   expect(existsSync(out)).toBe(false);
 });
@@ -122,7 +141,7 @@ test("ANALYZE on the live database does not block or leak into the snapshot", as
   ]);
   db.exec("ANALYZE; PRAGMA optimize;");
 
-  const out = join(dir, "release.sqlite");
+  const out = join(dir, "release", "release.sqlite");
   snapshot(db, out);
 
   const snap = new Database(out, { readonly: true });
@@ -135,22 +154,31 @@ test("ANALYZE on the live database does not block or leak into the snapshot", as
   expect(bytes).not.toContain("zzwagoleakmarker");
 });
 
-test("stale partial and work files from a crashed run are swept", async () => {
+test("stale partial and work files from a crashed run are swept, but a user file is not", async () => {
   const dir = mkdtempSync(join(tmpdir(), "kb-snap-"));
   const db = openDb(join(dir, "kb.sqlite"));
   await replaceSourceRows(db, "curated", ["lore_page"], [
     { kind: "lore_page", extId: "1", name: "Thrall", body: "Warchief", gameVersion: "lore", sourceUrl: "https://example.test/1", retrievedAt: "2026-09-27" },
   ]);
-  const out = join(dir, "release.sqlite");
+  const outDir = join(dir, "release");
+  mkdirSync(outDir, { recursive: true });
+  const out = join(outDir, "release.sqlite");
   const stalePartial = `${out}.partial-99999`;
   writeFileSync(stalePartial, "ZzStale");
+  const staleManifestPartial = `${out}.manifest.json.partial-99999`;
+  writeFileSync(staleManifestPartial, "ZzStale");
   const staleWork = join(dir, ".kb-snapshot-work-99999.sqlite");
   writeFileSync(staleWork, "ZzStale");
+  const userFile = join(outDir, "release.sqlite.partial-notes.txt");
+  writeFileSync(userFile, "my own notes, not a snapshot leftover");
 
   snapshot(db, out);
 
   expect(existsSync(stalePartial)).toBe(false);
+  expect(existsSync(staleManifestPartial)).toBe(false);
   expect(existsSync(staleWork)).toBe(false);
+  expect(existsSync(userFile)).toBe(true);
+  expect(readFileSync(userFile, "utf8")).toBe("my own notes, not a snapshot leftover");
 });
 
 test("the manifest hash matches the published file", async () => {
@@ -159,7 +187,7 @@ test("the manifest hash matches the published file", async () => {
   await replaceSourceRows(db, "curated", ["lore_page"], [
     { kind: "lore_page", extId: "1", name: "Thrall", body: "Warchief", gameVersion: "lore", sourceUrl: "https://example.test/1", retrievedAt: "2026-09-27" },
   ]);
-  const out = join(dir, "release.sqlite");
+  const out = join(dir, "release", "release.sqlite");
   const manifest = snapshot(db, out);
   const recomputed = createHash("sha256").update(readFileSync(out)).digest("hex");
   expect(manifest.sha256).toBe(recomputed);
