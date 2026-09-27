@@ -50,38 +50,60 @@ async function* counted(pages: AsyncIterable<WikiPage>, pass: 1 | 2, opts: WikiI
 }
 
 /**
- * Pass 1: page id -> newest revision time (ms) across every block of that page. A WikiTeam history
- * dump splits one page over many non-adjacent, out-of-order `<page>` blocks. Stores numbers only:
- * a substring of the parsed text would keep its whole decoded chunk alive.
+ * Pass 1: page id -> the ordinal (1-based position among all blocks read) of the block holding that
+ * page's newest revision. A WikiTeam history dump splits one page over many non-adjacent,
+ * out-of-order `<page>` blocks. When two blocks tie on newest timestamp, the later block in the file
+ * wins (`t >= prev`), matching the parser's own in-block tie rule. Stores numbers only: a substring
+ * of the parsed text would keep its whole decoded chunk alive.
  */
-async function newestRevisions(file: string, opts: WikiImportOptions): Promise<Map<number, number>> {
-  const newest = new Map<number, number>();
+async function newestBlockOrdinals(file: string, opts: WikiImportOptions): Promise<Map<number, number>> {
+  const newestTime = new Map<number, number>();
+  const newestOrdinal = new Map<number, number>();
+  let ordinal = 0;
   for await (const p of counted(openPages(file), 1, opts)) {
+    ordinal++;
     const t = Date.parse(p.timestamp);
     if (Number.isNaN(t)) continue; // a block with no revision has nothing to offer
     const id = Number(p.id);
-    const prev = newest.get(id);
-    if (prev === undefined || t > prev) newest.set(id, t);
+    const prev = newestTime.get(id);
+    if (prev === undefined || t >= prev) {
+      newestTime.set(id, t);
+      newestOrdinal.set(id, ordinal);
+    }
   }
-  return newest;
+  return newestOrdinal;
 }
 
 /**
  * Pass 2: one row per main-namespace page, from the block holding its newest revision (that block's
- * title and text). Pages whose newest text is a redirect are dropped, not counted as skipped.
+ * title and text). Pages whose newest block is a redirect (tag or `#REDIRECT` text), outside
+ * namespace 0, or has empty text are dropped and counted by reason, not counted as skipped.
  */
 async function* toRows(
   pages: AsyncIterable<WikiPage>,
-  newest: Map<number, number>,
+  newestOrdinal: Map<number, number>,
   limit: number | undefined,
-  counts: { skipped: number },
+  counts: { skipped: number; dropped: { redirect: number; namespace: number; empty: number } },
 ): AsyncGenerator<EntityInput> {
   let n = 0;
+  let ordinal = 0;
   for await (const p of pages) {
+    ordinal++;
     const id = Number(p.id);
-    if (Date.parse(p.timestamp) !== newest.get(id)) continue;
-    newest.delete(id); // settled: a tied block later in the file must not emit the page again
-    if (p.ns !== 0 || p.redirect || !p.text || REDIRECT.test(p.text)) continue;
+    if (newestOrdinal.get(id) !== ordinal) continue;
+    newestOrdinal.delete(id); // settled: a tied id later in the file must not emit the page again
+    if (p.ns !== 0) {
+      counts.dropped.namespace++;
+      continue;
+    }
+    if (p.redirect || REDIRECT.test(p.text)) {
+      counts.dropped.redirect++;
+      continue;
+    }
+    if (!p.text) {
+      counts.dropped.empty++;
+      continue;
+    }
     let converted: { text: string; categories: string[] };
     try {
       converted = wikitextToText(p.text);
@@ -110,17 +132,18 @@ async function* toRows(
 /**
  * Imports a MediaWiki XML dump (`.xml` or `.xml.zst`), including WikiTeam history dumps where one
  * page spans many `<page>` blocks. Reads the file twice: pass 1 finds each page's newest revision,
- * pass 2 stores it inside one atomic replace. Returns how many pages were stored and how many
- * main-namespace pages were skipped because their wikitext could not be converted or converted to no text.
+ * pass 2 stores it inside one atomic replace. Returns how many pages were stored, how many
+ * main-namespace pages were skipped because their wikitext could not be converted or converted to no
+ * text, and how many pages were dropped (and why: redirect, outside namespace 0, or empty text).
  */
 export async function importWikiDump(
   db: DB,
   file: string,
   opts: WikiImportOptions = {},
-): Promise<{ stored: number; skipped: number }> {
-  const newest = await newestRevisions(file, opts);
-  const counts = { skipped: 0 };
-  const rows = toRows(counted(openPages(file), 2, opts), newest, opts.limit, counts);
+): Promise<{ stored: number; skipped: number; dropped: { redirect: number; namespace: number; empty: number } }> {
+  const newestOrdinal = await newestBlockOrdinals(file, opts);
+  const counts = { skipped: 0, dropped: { redirect: 0, namespace: 0, empty: 0 } };
+  const rows = toRows(counted(openPages(file), 2, opts), newestOrdinal, opts.limit, counts);
   const stored = await replaceSourceRows(db, "warcraft-wiki-2023", ["lore_page"], rows);
-  return { stored, skipped: counts.skipped };
+  return { stored, skipped: counts.skipped, dropped: counts.dropped };
 }
