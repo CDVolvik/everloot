@@ -73,6 +73,16 @@ test("counts main-namespace pages whose text converts to nothing as skipped", as
   expect(await importWikiDump(db, file)).toMatchObject({ stored: 0, skipped: 1 });
 });
 
+test("counts a near-empty template stub (fewer than 20 letters) as skipped, not stored", async () => {
+  const db = openDb(":memory:");
+  const xml =
+    '<mediawiki><page><title>SS TCG Stub</title><ns>0</ns><id>8</id><revision>' +
+    "<timestamp>2023-01-01T00:00:00Z</timestamp><text>{{Tcgcard|name=X}}SS TCG</text></revision></page></mediawiki>";
+  const file = join(mkdtempSync(join(tmpdir(), "kb-xml-stub-")), "stub.xml");
+  writeFileSync(file, xml);
+  expect(await importWikiDump(db, file)).toMatchObject({ stored: 0, skipped: 1 });
+});
+
 const wikiteam = fileURLToPath(new URL("./fixtures/wiki-wikiteam.xml", import.meta.url));
 const wikiteamZst = fileURLToPath(new URL("./fixtures/wiki-wikiteam.xml.zst", import.meta.url));
 
@@ -103,15 +113,15 @@ test("a page split across two blocks with the same newest timestamp keeps the la
   const xml =
     "<mediawiki>" +
     "<page><title>Tied Page</title><ns>0</ns><id>9</id><revision>" +
-    "<timestamp>2023-06-01T00:00:00Z</timestamp><text>Earlier block text.</text></revision></page>" +
+    "<timestamp>2023-06-01T00:00:00Z</timestamp><text>Earlier block text, with enough words to pass the stub filter.</text></revision></page>" +
     "<page><title>Tied Page</title><ns>0</ns><id>9</id><revision>" +
-    "<timestamp>2023-06-01T00:00:00Z</timestamp><text>Later block text.</text></revision></page>" +
+    "<timestamp>2023-06-01T00:00:00Z</timestamp><text>Later block text, with enough words to pass the stub filter.</text></revision></page>" +
     "</mediawiki>";
   const file = join(mkdtempSync(join(tmpdir(), "kb-xml-tie-")), "tie.xml");
   writeFileSync(file, xml);
   expect(await importWikiDump(db, file)).toMatchObject({ stored: 1, skipped: 0 });
   const row = db.prepare("SELECT body FROM entities").get() as { body: string };
-  expect(row.body).toContain("Later block text.");
+  expect(row.body).toContain("Later block text,");
 });
 
 test("WikiTeam-style dump: limit applies to stored rows", async () => {

@@ -28,6 +28,13 @@ test("imports every yaml file in the folder as curated rows", async () => {
   expect(r).toEqual({ kind: "lore_page", ext_id: "forever-launch", game_version: "forever", licence: "CC-BY-SA-4.0", source_id: "curated" });
 });
 
+test("imports .yml files too, not just .yaml", async () => {
+  const db = openDb(":memory:");
+  expect(await importCurated(db, dirWith({ "a.yml": GOOD }))).toBe(1);
+  const r = db.prepare("SELECT kind, ext_id FROM entities").get();
+  expect(r).toEqual({ kind: "lore_page", ext_id: "forever-launch" });
+});
+
 test("a missing field names the file and the field", async () => {
   const db = openDb(":memory:");
   const bad = GOOD.replace(/  source_url:.*\n/, "");

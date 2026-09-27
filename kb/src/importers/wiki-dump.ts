@@ -111,7 +111,9 @@ async function* toRows(
       counts.skipped++; // wikitext the parser cannot read is skipped, not guessed at
       continue;
     }
-    if (!converted.text) {
+    if ((converted.text.match(/\p{L}/gu) ?? []).length < 20) {
+      // near-empty: template-only stubs (item tooltips, TCG cards, disambiguation stubs)
+      // convert to a handful of words or less; not worth storing.
       counts.skipped++;
       continue;
     }
@@ -119,7 +121,7 @@ async function* toRows(
       kind: "lore_page",
       extId: p.id,
       name: p.title,
-      body: converted.text,
+      body: converted.text.replace(/\n{3,}/g, "\n\n"),
       data: { categories: converted.categories, revisionTimestamp: p.timestamp },
       gameVersion: "lore",
       sourceUrl: wikiUrl(p.title),

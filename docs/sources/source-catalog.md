@@ -102,7 +102,7 @@ name the exact domain in the map.
 |---|---|---|---|---|
 | wago.tools | wago.tools | DB2 tables, build monitor | yes | **blocked** — robots.txt disallows everything but the home page (see v1 table) |
 | Gethe/wow-ui-source | github.com/Gethe/wow-ui-source (branch `forever`, updated 2026-09-24) | Blizzard UI/Lua source mirror — ground truth for **building the addon** | yes | `fetch` (git) |
-| Warcraft Wiki — WoW API | warcraft.wiki.gg/wiki/World_of_Warcraft_API | Addon API reference | unconfirmed for Forever | `wiki` |
+| Warcraft Wiki — WoW API | warcraft.wiki.gg/wiki/World_of_Warcraft_API | Addon API reference | unconfirmed for Forever | 2023 dump (import); live pages: link only — /api.php disallowed |
 | Blizzard Game Data / Profile API | community.developer.battle.net | Official data — **all free groups adopted**, see spec §4.5 | **no Forever namespace yet** | `api` — one adapter, all namespaces (retail, `classic`, `classic1x`), Forever gated. Each user brings their own free client. Terms: attribution required, no redistribution/resale, no monetising the data, 36,000 calls/hr → local cache only |
 | WoWDev wiki | wowdev.wiki | File formats | no | skip |
 | wow.tools | — | Dead since ~2025 | — | skip |
