@@ -40,3 +40,13 @@ test("HTTP errors are reported with the table and build", async () => {
   const notFound = async () => new Response("nope", { status: 404 });
   await expect(importWagoTable(db, items, "9.9.9", notFound as typeof fetch)).rejects.toThrow("ItemSparse 9.9.9: HTTP 404");
 });
+
+test("a header-only CSV or an HTML page is rejected, not treated as an empty table", () => {
+  expect(() => wagoRows(items, "ID,Display_lang,OverallQualityID,ItemLevel,RequiredLevel\n", "b", "t")).toThrow("no rows");
+  expect(() => wagoRows(items, "<!doctype html><html><body>Error</body></html>", "b", "t")).toThrow();
+});
+
+test("a duplicate ID in the export is reported with the table and ID", () => {
+  const dup = [CSV.split("\n")[0], '19019,"A",5,80,60,x', '19019,"B",5,80,60,x'].join("\n");
+  expect(() => wagoRows(items, dup, "b", "t")).toThrow("ItemSparse: duplicate ID 19019 in export");
+});

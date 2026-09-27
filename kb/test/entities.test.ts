@@ -48,6 +48,20 @@ test("rows of a kind outside the declared kinds are rejected", async () => {
   ).rejects.toThrow("lore_page");
 });
 
+test("refuses to replace existing rows with an empty import", async () => {
+  const db = openDb(":memory:");
+  await replaceSourceRows(db, "curated", ["lore_page"], [row("1", "Thrall")]);
+  await expect(replaceSourceRows(db, "curated", ["lore_page"], [])).rejects.toThrow(
+    "refusing to replace 1 curated row(s) with an empty import",
+  );
+  expect(search(db, "thrall")).toHaveLength(1);
+});
+
+test("an empty import into an empty source is fine", async () => {
+  const db = openDb(":memory:");
+  expect(await replaceSourceRows(db, "curated", ["lore_page"], [])).toBe(0);
+});
+
 test("search finds by name and body and returns provenance", async () => {
   const db = openDb(":memory:");
   await replaceSourceRows(db, "curated", ["lore_page"], [row("1", "Thrall", "Warchief of the Horde")]);

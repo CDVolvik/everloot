@@ -37,25 +37,30 @@ export function wagoCsvUrl(table: string, build: string): string {
 
 export function wagoRows(cfg: WagoTable, csv: string, build: string, retrievedAt: string): EntityInput[] {
   const records = parse(csv, { columns: true, skip_empty_lines: true }) as Record<string, string>[];
-  if (records.length > 0) {
-    const wanted = [cfg.columns.id, cfg.columns.name, ...Object.values(cfg.columns.extra)];
-    const missing = wanted.filter((c) => !(c in records[0]));
-    if (missing.length > 0) throw new Error(`${cfg.table}: missing columns ${missing.join(", ")}`);
-  }
+  if (records.length === 0) throw new Error(`${cfg.table}: no rows — not a valid export (wrong build, or an error page?)`);
+  const wanted = [cfg.columns.id, cfg.columns.name, ...Object.values(cfg.columns.extra)];
+  const missing = wanted.filter((c) => !(c in records[0]));
+  if (missing.length > 0) throw new Error(`${cfg.table}: missing columns ${missing.join(", ")}`);
+  const seenIds = new Set<string>();
   return records
     .filter((r) => r[cfg.columns.name]?.trim())
-    .map((r) => ({
-      kind: cfg.kind,
-      extId: r[cfg.columns.id],
-      name: r[cfg.columns.name].trim(),
-      data: {
-        build,
-        ...Object.fromEntries(Object.entries(cfg.columns.extra).map(([key, col]) => [key, r[col]])),
-      },
-      gameVersion: "forever" as const,
-      sourceUrl: wagoCsvUrl(cfg.table, build),
-      retrievedAt,
-    }));
+    .map((r) => {
+      const id = r[cfg.columns.id];
+      if (seenIds.has(id)) throw new Error(`${cfg.table}: duplicate ID ${id} in export`);
+      seenIds.add(id);
+      return {
+        kind: cfg.kind,
+        extId: id,
+        name: r[cfg.columns.name].trim(),
+        data: {
+          build,
+          ...Object.fromEntries(Object.entries(cfg.columns.extra).map(([key, col]) => [key, r[col]])),
+        },
+        gameVersion: "forever" as const,
+        sourceUrl: wagoCsvUrl(cfg.table, build),
+        retrievedAt,
+      };
+    });
 }
 
 /** Downloads one table for one build and replaces that kind's wago.tools rows. */
