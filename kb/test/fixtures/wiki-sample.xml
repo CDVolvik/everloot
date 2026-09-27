@@ -1,0 +1,42 @@
+<mediawiki xmlns="http://www.mediawiki.org/xml/export-0.11/" version="0.11" xml:lang="en">
+  <siteinfo><sitename>Warcraft Wiki</sitename></siteinfo>
+  <page>
+    <title>Thunderfury</title>
+    <ns>0</ns>
+    <id>101</id>
+    <revision>
+      <id>1</id>
+      <timestamp>2020-01-01T00:00:00Z</timestamp>
+      <contributor><username>A</username><id>9</id></contributor>
+      <text bytes="8" xml:space="preserve">Old text</text>
+    </revision>
+    <revision>
+      <id>2</id>
+      <timestamp>2023-05-01T00:00:00Z</timestamp>
+      <contributor><username>B</username><id>10</id></contributor>
+      <text bytes="90" xml:space="preserve">'''Thunderfury''' is a [[legendary]] sword. Blessed Blade &amp; more.
+[[Category:Legendary items]]</text>
+    </revision>
+  </page>
+  <page>
+    <title>Thunderfury (sword)</title>
+    <ns>0</ns>
+    <id>102</id>
+    <redirect title="Thunderfury" />
+    <revision>
+      <id>3</id>
+      <timestamp>2023-01-01T00:00:00Z</timestamp>
+      <text bytes="24" xml:space="preserve">#REDIRECT [[Thunderfury]]</text>
+    </revision>
+  </page>
+  <page>
+    <title>User:Someone</title>
+    <ns>2</ns>
+    <id>103</id>
+    <revision>
+      <id>4</id>
+      <timestamp>2023-01-01T00:00:00Z</timestamp>
+      <text bytes="5" xml:space="preserve">Hello</text>
+    </revision>
+  </page>
+</mediawiki>
