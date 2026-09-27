@@ -65,7 +65,7 @@ export async function* parsePages(input: Readable): AsyncGenerator<WikiPage> {
     buf = "";
   };
   parser.onerror = (e) => {
-    failure = e;
+    failure ??= e; // sax keeps going after an error; the first one is the root cause
   };
 
   // Throws before handing out anything parsed from a chunk that contained an error.
