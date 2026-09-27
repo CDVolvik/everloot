@@ -65,9 +65,16 @@ companion captures and decodes it. Inbound: the companion writes the reply into 
 pre-made slot addons that the client loads on a timer. Every message carries a checksum; a bad
 checksum is retried once, then reported.
 
-Known costs: requires windowed/borderless mode; an external program reading the screen is a grey
-area under Blizzard's rules. Users are told this plainly at install, and the addon is useful without
-it.
+Known costs: requires windowed/borderless mode, and it runs against a quotable EULA clause. The
+Blizzard EULA bars "any unauthorized process or software that intercepts, collects, reads, or
+'mines' information generated or stored by the Platform." Tools Blizzard tolerates read files the
+client writes (SavedVariables, the combat log) and never memory or the screen; the pixel bridge
+reads the screen. Users are told this plainly at install, and the addon is useful without it.
+
+**File bridge (the tolerated path).** The addon stores the question in SavedVariables; the companion
+reads the file, answers, and writes the reply into a slot addon that shows after `/reload`. Slower,
+but it stays inside what Blizzard tolerates. Which bridge is the **public default** is an open
+question (§8); v1 (private, test account) uses the live bridge.
 
 ### 2.3 Companion
 
@@ -155,9 +162,14 @@ Rules:
 
 - **Game data:** use public dumps where they exist (e.g. wago.tools). We do not unpack the game
   client ourselves.
-- **Wowhead:** `link` unless its terms turn out to allow more. No bulk copying.
-- **Forever coverage is checked per source**, never assumed (Raider.IO, Warcraft Logs and the
-  Blizzard APIs are Retail/Classic-first).
+- **Wowhead:** `link` only. No API, and its robots.txt disallows `ClaudeBot`, `anthropic-ai` and
+  `GPTBot` by name. We point users to `wowhead.com/forever`; we never fetch it.
+- **Forever coverage is checked per source**, never assumed. As of 2026-09-27 Forever is in beta
+  (launch 2026-11-04) and has **no machine-readable feed**: no Blizzard API namespace, so Raider.IO
+  and Warcraft Logs have nothing yet either. Blizzard also runs no PTR and hides item stats until
+  drop, so datamined tables have gaps. Re-verify every Forever source after launch.
+- **Attribution is required** for warcraft.wiki.gg (CC BY-SA 4.0), the Blizzard API and Twitch. The
+  in-game source line satisfies it for short answers.
 - The full candidate catalogue and the per-source verification live in
   `docs/sources/source-catalog.md`. A source enters the live map only when its entry is complete.
 
@@ -177,7 +189,7 @@ Rules:
 
 | Phase | Scope | Audience |
 |---|---|---|
-| **v1 — the spine** | Addon (offline + bridge) · companion with 4 adapters, fallback, memory · MCP server with ~4 verified sources: lore wiki, Forever wiki, one item/quest source, character context · golden set | Carlos only |
+| **v1 — the spine** | Addon (offline + bridge) · companion with 4 adapters, fallback, memory · MCP server with the v1 sources from the catalogue: warcraft.wiki.gg (`wiki`), one Forever fan wiki (`fetch`), wago.tools tables for items/quests (`fetch` + cache), character context, and Wowhead as `link` · golden set | Carlos only |
 | **v2 — the ecosystem** | More sources from the catalogue: Raider.IO / Warcraft Logs if they cover Forever, Petopia, realm status, streamer registry with live status, guide links | Carlos + testers |
 | **v3 — public** | Addon on CurseForge, companion on GitHub, wow-ai credited · `craft-ownership-gate` + `oss-pr-safeguard` + Codex adversarial review before anything ships under Carlos's name · vendor terms re-read | Everyone |
 
@@ -194,6 +206,10 @@ Rules:
 ## 8. Open questions
 
 - Product name for the addon and the MCP server (repo stays `wowvault` for now).
-- Which item/quest source covers Forever well enough for v1 — answered by the source catalogue.
-- Whether CurseForge moderation accepts an addon whose optional companion reads the screen — ask
-  before the v3 submission.
+- **Public default bridge (Carlos):** file bridge by default with the live bridge as a labelled
+  opt-in, or file bridge only. Recommended: file bridge only for the public build, given the EULA
+  clause in §2.2.
+- Which Forever fan wiki: three sites use the name (see the catalogue). Pick one by content and terms.
+- Whether CurseForge moderation accepts an addon with a screen-reading companion. Only relevant if
+  the live bridge ships publicly.
+- Warcraft Logs: API redistribution terms are silent. Ask `support@rpglogs.com` before v2.
