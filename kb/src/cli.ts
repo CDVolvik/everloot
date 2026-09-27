@@ -14,7 +14,7 @@ const KINDS: NsKind[] = ["static", "dynamic", "profile"];
 const REGIONS: Region[] = ["us", "eu", "kr", "tw"];
 
 const USAGE = `usage: npm run kb -- <command> [--db data/wowvault-kb.sqlite]
-  import-wiki <dump.xml|dump.xml.zst> [--limit N]
+  import-wiki <dump.xml|dump.xml.zst> [--limit N]   (reads the dump twice; --limit still costs one full pass)
   import-wago <build> [--table ItemSparse]
   import-curated [dir=curated]
   blizzard-get <data/wow/...|profile/wow/...> --game retail|classic|classic1x|forever --kind static|dynamic|profile [--region us]
@@ -49,7 +49,10 @@ async function main(): Promise<number> {
         }
         limit = n;
       }
-      const { stored, skipped } = await importWikiDump(db(), args[0], { limit });
+      const { stored, skipped } = await importWikiDump(db(), args[0], {
+        limit,
+        onProgress: ({ pass, blocks }) => console.error(`pass ${pass}: ${blocks.toLocaleString("en-US")} blocks…`),
+      });
       db().pragma("wal_checkpoint(TRUNCATE)");
       console.log(`imported ${stored} lore pages (${skipped} skipped: wikitext converted to no text)`);
       return 0;
