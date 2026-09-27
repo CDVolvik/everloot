@@ -8,6 +8,7 @@ test("namespace names per game version", () => {
   expect(namespace("classic", "dynamic", "eu")).toBe("dynamic-classic-eu");
   expect(namespace("classic1x", "profile", "us")).toBe("profile-classic1x-us");
   expect(() => namespace("forever", "static", "us")).toThrow(NotAvailableYetError);
+  expect(() => namespace("retale" as never, "static", "us")).toThrow();
 });
 
 function fakeBlizzard() {

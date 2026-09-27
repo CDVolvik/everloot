@@ -18,5 +18,9 @@ export function namespace(game: Game, kind: NsKind, region: Region): string {
       return `${kind}-classic1x-${region}`;
     case "forever":
       throw new NotAvailableYetError("Blizzard has not published a WoW: Forever API namespace yet");
+    default: {
+      const check: never = game;
+      throw new Error(`unknown game version: ${check}`);
+    }
   }
 }
