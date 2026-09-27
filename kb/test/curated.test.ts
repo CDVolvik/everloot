@@ -33,3 +33,24 @@ test("a missing field names the file and the field", async () => {
   const bad = GOOD.replace(/  source_url:.*\n/, "");
   await expect(importCurated(db, dirWith({ "bad.yaml": bad }))).rejects.toThrow("bad.yaml: entry 1 is missing source_url");
 });
+
+test("a file whose top level is not a list is named in the error", async () => {
+  const db = openDb(":memory:");
+  await expect(importCurated(db, dirWith({ "map.yaml": "kind: lore_page\nid: x\n" }))).rejects.toThrow("map.yaml: top level must be a list of entries");
+});
+
+test("an unknown game_version or kind is named with the file and entry", async () => {
+  const db = openDb(":memory:");
+  await expect(importCurated(db, dirWith({ "v.yaml": GOOD.replace("game_version: forever", "game_version: tbc") }))).rejects.toThrow('v.yaml: entry 1 has game_version "tbc"');
+  await expect(importCurated(db, dirWith({ "k.yaml": GOOD.replace("kind: lore_page", "kind: boss") }))).rejects.toThrow('k.yaml: entry 1 has kind "boss"');
+});
+
+test("a duplicate id across files names both files", async () => {
+  const db = openDb(":memory:");
+  await expect(importCurated(db, dirWith({ "a.yaml": GOOD, "b.yaml": GOOD }))).rejects.toThrow('b.yaml: entry 1 duplicates lore_page id "forever-launch" (first defined in a.yaml)');
+});
+
+test("whitespace-only required fields count as missing", async () => {
+  const db = openDb(":memory:");
+  await expect(importCurated(db, dirWith({ "w.yaml": GOOD.replace("name: WoW Forever launch date", 'name: "   "') }))).rejects.toThrow("w.yaml: entry 1 is missing name");
+});
