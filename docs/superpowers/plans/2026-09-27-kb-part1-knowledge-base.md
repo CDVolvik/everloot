@@ -18,6 +18,14 @@ registry that says whether they are publishable; the snapshot command uses that 
 
 **Spec:** `docs/superpowers/specs/2026-09-27-forever-ai-addon-design.md` §2 (legal charter), §4.
 
+> **As built (2026-09-27) — where the code departs from this plan, the code and its commits win:**
+> `fzstd` → `zstd-napi` (the dump's frame needs a 2 GB window); the wiki parser pulls through the
+> stream iterator; the wiki importer reads the dump twice (WikiTeam layout: pages split across
+> blocks, text redirects); `replaceSourceRows` refuses empty replacements; curated/validator/snapshot
+> were hardened in review (the snapshot is built in a work file beside the live DB and verified
+> before it is moved into place); **Task 6 (wago.tools) was removed** — its robots.txt disallows
+> `/db2`; the CLI validates flags and takes Blizzard paths without a leading slash.
+
 **Why not `node:sqlite`:** Node 22.14's built-in SQLite has no FTS5 (`no such module: fts5`) and
 `zlib` has no zstd on 22.14 — both checked 2026-09-27.
 

@@ -33,7 +33,7 @@ Access types: `api` official API · `wiki` MediaWiki API · `fetch` occasional c
 | Warcraft Wiki — live | warcraft.wiki.gg | Current lore, Forever article | yes — [Forever article](https://warcraft.wiki.gg/wiki/World_of_Warcraft:_Forever) | **blocked on permission** | CC BY-SA 4.0, but robots.txt (read 2026-09-27): `Disallow: /api.php` and `/wiki/Special:` for all bots; `ClaudeBot`, `GPTBot`, `anthropic-ai` disallowed entirely; `Content-Signal: search=yes,ai-train=no,use=reference`, declared a reservation of rights under EU DSM Art. 4. No automated sync until wiki.gg grants it |
 | Forever fan wiki | **domain to pick** — see conflict below | Forever rules, races, zones | yes | `fetch` | ToS unverified |
 | Wowhead Forever | wowhead.com/forever | Items, NPCs, quests, guides — richest Forever coverage | yes | **`link`** | No API; robots.txt disallows `ClaudeBot`, `anthropic-ai`, `GPTBot` by name; history of enforcement against scrapers. Point users here; never fetch |
-| wago.tools | wago.tools/db2/`<Table>`/csv?build=1.60.1.x | Item/quest/NPC tables for the item/quest tool | yes (builds 1.60.1.x) | `fetch` + cache | No documented API or reuse grant — community-tolerated datamining. Never label it official |
+| ~~wago.tools~~ | wago.tools/db2/`<Table>`/csv | Item/quest/NPC tables | yes (builds 1.60.1.x) | **blocked** | robots.txt (read 2026-09-27): `User-agent: *` `Allow: /$` `Disallow: /`. Importer removed; see Gaps backlog |
 | Character context | the addon (game API) | Name, class, level, zone, quests | yes | local | — |
 
 ⚠️ **Three different sites call themselves the Forever wiki:** `world-of-warcraft-forever.wiki`
@@ -100,7 +100,7 @@ name the exact domain in the map.
 
 | Source | URL | Good for | Forever | Access |
 |---|---|---|---|---|
-| wago.tools | wago.tools | DB2 tables, build monitor | yes | `fetch` + cache (see v1 table) |
+| wago.tools | wago.tools | DB2 tables, build monitor | yes | **blocked** — robots.txt disallows everything but the home page (see v1 table) |
 | Gethe/wow-ui-source | github.com/Gethe/wow-ui-source (branch `forever`, updated 2026-09-24) | Blizzard UI/Lua source mirror — ground truth for **building the addon** | yes | `fetch` (git) |
 | Warcraft Wiki — WoW API | warcraft.wiki.gg/wiki/World_of_Warcraft_API | Addon API reference | unconfirmed for Forever | `wiki` |
 | Blizzard Game Data / Profile API | community.developer.battle.net | Official data — **all free groups adopted**, see spec §4.5 | **no Forever namespace yet** | `api` — one adapter, all namespaces (retail, `classic`, `classic1x`), Forever gated. Each user brings their own free client. Terms: attribution required, no redistribution/resale, no monetising the data, 36,000 calls/hr → local cache only |
@@ -174,16 +174,17 @@ given us, and how we fill that gap ourselves. Never filled by copying the blocke
 
 | Gap | Blocked source | Why | How we fill it | Part |
 |---|---|---|---|---|
-| Forever item/NPC/quest details, drop rates, spawn points | Wowhead | robots.txt bans AI bots; no API | Addon collector (opt-in) + wago.tools tables | 3, 1 |
+| Forever item/NPC/quest details, drop rates, spawn points | Wowhead | robots.txt bans AI bots; no API | Addon collector (opt-in) | 3 |
 | Current lore and Forever pages | warcraft.wiki.gg (live) | `/api.php` disallowed, AI bots disallowed | 2023 dump now; email wiki.gg for permission / a current dump | 1 |
 | Class and leveling guides | Icy Veins, Method, Wowhead guides | No API; bot blocking | Curated guides we write, drawing on player-collected data | 1 (curated) |
-| Hunter pet families and taming | Petopia | "may not be copied or reprinted" | Collector records tameable beasts + wago.tools creature tables | 3, 1 |
-| Balance-sensitive item stats | wago.tools | Blizzard hides stats until drop | Collector records item tooltips players see | 3 |
+| Hunter pet families and taming | Petopia | "may not be copied or reprinted" | Collector records tameable beasts | 3 |
+| Balance-sensitive item stats | datamined tables | Blizzard hides stats until drop | Collector records item tooltips players see | 3 |
 | Character / guild profiles | Blizzard API, Raider.IO | No Forever namespace yet | Addon character context now; re-check after 11/04 launch | 3 |
 | Combat rankings | Warcraft Logs | No Forever support; redistribution terms silent | Ask `support@rpglogs.com`; revisit after launch | later |
 | Lore from the old wiki | Wowpedia (Fandom) | ToS bars AI use without consent | Covered by the warcraft.wiki.gg dump (same history pre-2023) | 1 |
 | Community discussion | Reddit | Paid API | Link-out only | — |
 | Auction prices | TSM, Undermine Exchange | No Forever data; TSM terms unread; Undermine needs Patreon key | Blizzard AH API (local, retail/Classic now) + collector records the player's own AH browsing → our own price history. TSM feeds only if terms allow; never TSM's addon files | 3 (v2) |
+| Forever game tables — wago.tools robots.txt disallows /db2 | wago.tools | robots.txt (read 2026-09-27) for `User-agent: *`: `Allow: /$`, `Disallow: /` — everything except the home page, `/db2/` CSVs included. The importer was never run against the site and was removed from `kb/` the same day | Addon collector (opt-in) records items, spells and zones players see; ask wago.tools for permission or a bulk export | 3 |
 
 ## Still to verify by hand (browser, before v3)
 
