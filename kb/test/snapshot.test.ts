@@ -1,5 +1,6 @@
 import Database from "better-sqlite3";
-import { existsSync, mkdtempSync, readdirSync, readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vitest";
@@ -82,4 +83,86 @@ test("refuses to overwrite the live database", async () => {
   const file = join(dir, "kb.sqlite");
   const db = openDb(file);
   expect(() => snapshot(db, file)).toThrow("refusing to write the snapshot over the live database");
+});
+
+test("verifyOutput rejects an extra table", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "kb-snap-"));
+  const db = openDb(join(dir, "kb.sqlite"));
+  await replaceSourceRows(db, "curated", ["lore_page"], [
+    { kind: "lore_page", extId: "1", name: "Thrall", gameVersion: "lore", sourceUrl: "https://example.test/1", retrievedAt: "2026-09-27" },
+  ]);
+  db.exec("CREATE TABLE zz_extra (id INTEGER PRIMARY KEY)");
+  const out = join(dir, "release.sqlite");
+  expect(() => snapshot(db, out)).toThrow("snapshot check failed");
+  expect(existsSync(out)).toBe(false);
+});
+
+test("verifyOutput rejects an extra view", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "kb-snap-"));
+  const db = openDb(join(dir, "kb.sqlite"));
+  await replaceSourceRows(db, "curated", ["lore_page"], [
+    { kind: "lore_page", extId: "1", name: "Thrall", gameVersion: "lore", sourceUrl: "https://example.test/1", retrievedAt: "2026-09-27" },
+  ]);
+  db.exec("CREATE VIEW zz_extra_view AS SELECT id FROM entities");
+  const out = join(dir, "release.sqlite");
+  expect(() => snapshot(db, out)).toThrow("snapshot check failed");
+  expect(existsSync(out)).toBe(false);
+});
+
+test("ANALYZE on the live database does not block or leak into the snapshot", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "kb-snap-"));
+  const db = openDb(join(dir, "kb.sqlite"));
+  await replaceSourceRows(db, "curated", ["lore_page"], [
+    { kind: "lore_page", extId: "1", name: "Thrall", body: "Warchief", gameVersion: "lore", sourceUrl: "https://example.test/1", retrievedAt: "2026-09-27" },
+  ]);
+  await replaceSourceRows(db, "wago-tools", ["item"], [
+    { kind: "item", extId: "19019", name: "ZzWagoLeakMarker", gameVersion: "forever", sourceUrl: "https://wago.tools/x", retrievedAt: "2026-09-27" },
+    { kind: "item", extId: "19020", name: "Some Wago Item Two", gameVersion: "forever", sourceUrl: "https://wago.tools/y", retrievedAt: "2026-09-27" },
+    { kind: "item", extId: "19021", name: "Some Wago Item Three", gameVersion: "forever", sourceUrl: "https://wago.tools/z", retrievedAt: "2026-09-27" },
+  ]);
+  db.exec("ANALYZE; PRAGMA optimize;");
+
+  const out = join(dir, "release.sqlite");
+  snapshot(db, out);
+
+  const snap = new Database(out, { readonly: true });
+  const statTables = snap.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE 'sqlite_stat%'").all();
+  snap.close();
+  expect(statTables).toEqual([]);
+
+  const bytes = readFileSync(out).toString("latin1");
+  expect(bytes).not.toContain("ZzWagoLeakMarker");
+  expect(bytes).not.toContain("zzwagoleakmarker");
+});
+
+test("stale partial and work files from a crashed run are swept", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "kb-snap-"));
+  const db = openDb(join(dir, "kb.sqlite"));
+  await replaceSourceRows(db, "curated", ["lore_page"], [
+    { kind: "lore_page", extId: "1", name: "Thrall", body: "Warchief", gameVersion: "lore", sourceUrl: "https://example.test/1", retrievedAt: "2026-09-27" },
+  ]);
+  const out = join(dir, "release.sqlite");
+  const stalePartial = `${out}.partial-99999`;
+  writeFileSync(stalePartial, "ZzStale");
+  const staleWork = join(dir, ".kb-snapshot-work-99999.sqlite");
+  writeFileSync(staleWork, "ZzStale");
+
+  snapshot(db, out);
+
+  expect(existsSync(stalePartial)).toBe(false);
+  expect(existsSync(staleWork)).toBe(false);
+});
+
+test("the manifest hash matches the published file", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "kb-snap-"));
+  const db = openDb(join(dir, "kb.sqlite"));
+  await replaceSourceRows(db, "curated", ["lore_page"], [
+    { kind: "lore_page", extId: "1", name: "Thrall", body: "Warchief", gameVersion: "lore", sourceUrl: "https://example.test/1", retrievedAt: "2026-09-27" },
+  ]);
+  const out = join(dir, "release.sqlite");
+  const manifest = snapshot(db, out);
+  const recomputed = createHash("sha256").update(readFileSync(out)).digest("hex");
+  expect(manifest.sha256).toBe(recomputed);
+  const written = JSON.parse(readFileSync(`${out}.manifest.json`, "utf8"));
+  expect(written.sha256).toBe(recomputed);
 });
