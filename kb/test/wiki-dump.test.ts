@@ -14,7 +14,7 @@ const w31Fixture = fileURLToPath(new URL("./fixtures/wiki-sample.w31.xml.zst", i
 test("imports only main-namespace, non-redirect pages as lore_page rows", async () => {
   const db = openDb(":memory:");
   const n = await importWikiDump(db, fixture);
-  expect(n).toEqual({ stored: 1, skipped: 0 });
+  expect(n).toMatchObject({ stored: 1, skipped: 0 });
   const r = db.prepare("SELECT kind, name, game_version, source_url, retrieved_at, licence, data FROM entities").get() as Record<string, string>;
   expect(r).toMatchObject({
     kind: "lore_page",
@@ -30,7 +30,7 @@ test("imports only main-namespace, non-redirect pages as lore_page rows", async 
 
 test("reads a zstd-compressed dump the same way", async () => {
   const db = openDb(":memory:");
-  expect(await importWikiDump(db, zstFixture)).toEqual({ stored: 1, skipped: 0 });
+  expect(await importWikiDump(db, zstFixture)).toMatchObject({ stored: 1, skipped: 0 });
   expect(search(db, "blessed blade")).toHaveLength(1);
 });
 
@@ -49,7 +49,7 @@ test("limit stops early", async () => {
 
 test("reads a dump whose zstd frame declares a 2 GB window (like the real Warcraft Wiki dump)", async () => {
   const db = openDb(":memory:");
-  expect(await importWikiDump(db, w31Fixture)).toEqual({ stored: 1, skipped: 0 });
+  expect(await importWikiDump(db, w31Fixture)).toMatchObject({ stored: 1, skipped: 0 });
 });
 
 test("a truncated .zst dump is rejected and keeps the previous rows", async () => {
@@ -70,7 +70,7 @@ test("counts main-namespace pages whose text converts to nothing as skipped", as
     "<timestamp>2023-01-01T00:00:00Z</timestamp><text>[[Category:Stubs]]</text></revision></page></mediawiki>";
   const file = join(mkdtempSync(join(tmpdir(), "kb-xml-")), "skip.xml");
   writeFileSync(file, xml);
-  expect(await importWikiDump(db, file)).toEqual({ stored: 0, skipped: 1 });
+  expect(await importWikiDump(db, file)).toMatchObject({ stored: 0, skipped: 1 });
 });
 
 const wikiteam = fileURLToPath(new URL("./fixtures/wiki-wikiteam.xml", import.meta.url));
@@ -79,7 +79,11 @@ const wikiteamZst = fileURLToPath(new URL("./fixtures/wiki-wikiteam.xml.zst", im
 for (const [label, file] of [["xml", wikiteam], ["xml.zst", wikiteamZst]] as const) {
   test(`WikiTeam-style dump (${label}): one row per page, newest revision across blocks, text redirects dropped`, async () => {
     const db = openDb(":memory:");
-    expect(await importWikiDump(db, file)).toEqual({ stored: 3, skipped: 0 });
+    expect(await importWikiDump(db, file)).toEqual({
+      stored: 3,
+      skipped: 0,
+      dropped: { redirect: 1, namespace: 1, empty: 0 },
+    });
     const rows = db.prepare("SELECT ext_id, name, body FROM entities ORDER BY CAST(ext_id AS INTEGER)").all() as {
       ext_id: string;
       name: string;
@@ -93,6 +97,22 @@ for (const [label, file] of [["xml", wikiteam], ["xml.zst", wikiteamZst]] as con
     expect(onyxia.body).not.toContain("Dustwallow");
   });
 }
+
+test("a page split across two blocks with the same newest timestamp keeps the later block's text", async () => {
+  const db = openDb(":memory:");
+  const xml =
+    "<mediawiki>" +
+    "<page><title>Tied Page</title><ns>0</ns><id>9</id><revision>" +
+    "<timestamp>2023-06-01T00:00:00Z</timestamp><text>Earlier block text.</text></revision></page>" +
+    "<page><title>Tied Page</title><ns>0</ns><id>9</id><revision>" +
+    "<timestamp>2023-06-01T00:00:00Z</timestamp><text>Later block text.</text></revision></page>" +
+    "</mediawiki>";
+  const file = join(mkdtempSync(join(tmpdir(), "kb-xml-tie-")), "tie.xml");
+  writeFileSync(file, xml);
+  expect(await importWikiDump(db, file)).toMatchObject({ stored: 1, skipped: 0 });
+  const row = db.prepare("SELECT body FROM entities").get() as { body: string };
+  expect(row.body).toContain("Later block text.");
+});
 
 test("WikiTeam-style dump: limit applies to stored rows", async () => {
   const db = openDb(":memory:");
