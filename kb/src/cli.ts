@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { BlizzardClient } from "./blizzard/client.js";
 import type { Game, NsKind, Region } from "./blizzard/namespaces.js";
-import { openDb } from "./db.js";
+import { openDb, type DB } from "./db.js";
 import { importCurated } from "./importers/curated.js";
 import { importWagoTable, WAGO_TABLES } from "./importers/wago.js";
 import { importWikiDump } from "./importers/wiki-dump.js";
@@ -9,11 +9,16 @@ import { search } from "./search.js";
 import { snapshot } from "./snapshot.js";
 import { validate } from "./validate.js";
 
+const GAMES: Game[] = ["retail", "classic", "classic1x", "forever"];
+const KINDS: NsKind[] = ["static", "dynamic", "profile"];
+const REGIONS: Region[] = ["us", "eu", "kr", "tw"];
+
 const USAGE = `usage: npm run kb -- <command> [--db data/wowvault-kb.sqlite]
   import-wiki <dump.xml|dump.xml.zst> [--limit N]
   import-wago <build> [--table ItemSparse]
   import-curated [dir=curated]
-  blizzard-get <path> --game retail|classic|classic1x|forever --kind static|dynamic|profile [--region us]
+  blizzard-get <data/wow/...|profile/wow/...> --game retail|classic|classic1x|forever --kind static|dynamic|profile [--region us]
+    (path has no leading slash; works unchanged in Git Bash and PowerShell)
   search <words...>
   stats
   validate
@@ -28,14 +33,24 @@ async function main(): Promise<number> {
     else args.push(rest[i]);
   }
   if (existsSync(".env")) process.loadEnvFile(".env");
-  const db = openDb(flags.get("db") ?? "data/wowvault-kb.sqlite");
+  let opened: DB | undefined;
+  const db = () => (opened ??= openDb(flags.get("db") ?? "data/wowvault-kb.sqlite"));
 
   switch (cmd) {
     case "import-wiki": {
       if (!args[0]) break;
-      const limit = flags.has("limit") ? Number(flags.get("limit")) : undefined;
-      const { stored, skipped } = await importWikiDump(db, args[0], { limit });
-      db.pragma("wal_checkpoint(TRUNCATE)");
+      let limit: number | undefined;
+      if (flags.has("limit")) {
+        const raw = flags.get("limit")!;
+        const n = Number(raw);
+        if (!Number.isInteger(n) || n <= 0) {
+          console.error(`invalid --limit "${raw}"; expected a positive whole number`);
+          return 1;
+        }
+        limit = n;
+      }
+      const { stored, skipped } = await importWikiDump(db(), args[0], { limit });
+      db().pragma("wal_checkpoint(TRUNCATE)");
       console.log(`imported ${stored} lore pages (${skipped} skipped: wikitext converted to no text)`);
       return 0;
     }
@@ -43,38 +58,60 @@ async function main(): Promise<number> {
       if (!args[0]) break;
       const tables = flags.has("table") ? WAGO_TABLES.filter((t) => t.table === flags.get("table")) : WAGO_TABLES;
       if (tables.length === 0) throw new Error(`unknown table ${flags.get("table")}`);
-      for (const t of tables) console.log(`${t.table}: ${await importWagoTable(db, t, args[0])} rows`);
-      db.pragma("wal_checkpoint(TRUNCATE)");
+      for (const t of tables) console.log(`${t.table}: ${await importWagoTable(db(), t, args[0])} rows`);
+      db().pragma("wal_checkpoint(TRUNCATE)");
       return 0;
     }
     case "import-curated":
-      console.log(`imported ${await importCurated(db, args[0] ?? "curated")} curated entries`);
+      console.log(`imported ${await importCurated(db(), args[0] ?? "curated")} curated entries`);
       return 0;
     case "blizzard-get": {
-      const { BLIZZARD_CLIENT_ID: id, BLIZZARD_CLIENT_SECRET: secret } = process.env;
-      if (!args[0] || !id || !secret) {
-        console.error("needs a path plus BLIZZARD_CLIENT_ID and BLIZZARD_CLIENT_SECRET in kb/.env");
+      if (!args[0]) break;
+      const game = flags.get("game") ?? "retail";
+      const kind = flags.get("kind") ?? "static";
+      const region = flags.get("region") ?? "us";
+      if (!GAMES.includes(game as Game)) {
+        console.error(`invalid --game "${game}"; expected one of: ${GAMES.join(", ")}`);
         return 1;
       }
-      const client = new BlizzardClient(db, { clientId: id, clientSecret: secret, region: (flags.get("region") ?? "us") as Region });
-      const body = await client.get(args[0], (flags.get("game") ?? "retail") as Game, (flags.get("kind") ?? "static") as NsKind);
+      if (!KINDS.includes(kind as NsKind)) {
+        console.error(`invalid --kind "${kind}"; expected one of: ${KINDS.join(", ")}`);
+        return 1;
+      }
+      if (!REGIONS.includes(region as Region)) {
+        console.error(`invalid --region "${region}"; expected one of: ${REGIONS.join(", ")}`);
+        return 1;
+      }
+      let path = args[0];
+      if (!path.startsWith("/")) path = `/${path}`;
+      if (!path.startsWith("/data/wow/") && !path.startsWith("/profile/wow/")) {
+        console.error(`invalid path "${path}": must start with data/wow/ or profile/wow/ (omit the leading slash in Git Bash)`);
+        return 1;
+      }
+      const { BLIZZARD_CLIENT_ID: id, BLIZZARD_CLIENT_SECRET: secret } = process.env;
+      if (!id || !secret) {
+        console.error("needs BLIZZARD_CLIENT_ID and BLIZZARD_CLIENT_SECRET in kb/.env");
+        return 1;
+      }
+      const client = new BlizzardClient(db(), { clientId: id, clientSecret: secret, region: region as Region });
+      const body = await client.get(path, game as Game, kind as NsKind);
       console.log(JSON.stringify(body, null, 2));
       return 0;
     }
     case "search":
-      for (const h of search(db, args.join(" "))) console.log(`${h.kind}  ${h.name}\n  ${h.snippet}\n  ${h.sourceUrl} (${h.licence})`);
+      for (const h of search(db(), args.join(" "))) console.log(`${h.kind}  ${h.name}\n  ${h.snippet}\n  ${h.sourceUrl} (${h.licence})`);
       return 0;
     case "stats":
-      console.table(db.prepare("SELECT source_id, kind, count(*) AS rows FROM entities GROUP BY source_id, kind").all());
+      console.table(db().prepare("SELECT source_id, kind, count(*) AS rows FROM entities GROUP BY source_id, kind").all());
       return 0;
     case "validate": {
-      const problems = validate(db);
+      const problems = validate(db());
       console.log(problems.length === 0 ? "ok" : problems.join("\n"));
       return problems.length === 0 ? 0 : 1;
     }
     case "snapshot":
       if (!args[0]) break;
-      console.log(JSON.stringify(snapshot(db, args[0]), null, 2));
+      console.log(JSON.stringify(snapshot(db(), args[0]), null, 2));
       return 0;
   }
   console.error(USAGE);
