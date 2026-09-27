@@ -3,7 +3,6 @@ import { BlizzardClient } from "./blizzard/client.js";
 import type { Game, NsKind, Region } from "./blizzard/namespaces.js";
 import { openDb, type DB } from "./db.js";
 import { importCurated } from "./importers/curated.js";
-import { importWagoTable, WAGO_TABLES } from "./importers/wago.js";
 import { importWikiDump } from "./importers/wiki-dump.js";
 import { search } from "./search.js";
 import { snapshot } from "./snapshot.js";
@@ -16,7 +15,6 @@ const REGIONS: Region[] = ["us", "eu", "kr", "tw"];
 const USAGE = `usage: npm run kb -- <command> [--db data/wowvault-kb.sqlite]
   import-wiki <dump.xml|dump.xml.zst> [--limit N]   (reads the dump twice; --limit still costs one full pass;
     a limited import REPLACES all wiki rows in the target DB — use --db <scratch> for trials)
-  import-wago <build> [--table ItemSparse]
   import-curated [dir=curated]
   blizzard-get <data/wow/...|profile/wow/...> --game retail|classic|classic1x|forever --kind static|dynamic|profile [--region us]
     (path has no leading slash; works unchanged in Git Bash and PowerShell)
@@ -59,14 +57,6 @@ async function main(): Promise<number> {
         `imported ${stored} lore pages (${skipped} skipped: wikitext unreadable or empty after conversion; ` +
           `dropped ${dropped.redirect} redirects, ${dropped.namespace} other-namespace, ${dropped.empty} empty)`,
       );
-      return 0;
-    }
-    case "import-wago": {
-      if (!args[0]) break;
-      const tables = flags.has("table") ? WAGO_TABLES.filter((t) => t.table === flags.get("table")) : WAGO_TABLES;
-      if (tables.length === 0) throw new Error(`unknown table ${flags.get("table")}`);
-      for (const t of tables) console.log(`${t.table}: ${await importWagoTable(db(), t, args[0])} rows`);
-      db().pragma("wal_checkpoint(TRUNCATE)");
       return 0;
     }
     case "import-curated":
