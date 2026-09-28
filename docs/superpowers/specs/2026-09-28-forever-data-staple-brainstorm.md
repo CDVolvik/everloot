@@ -75,9 +75,18 @@
 ### Section 3 (not yet presented)
 Testing and quality gates for each track.
 
+## Name (decided 2026-09-28): **Everloot**
+
+Not Thottbot: thottbot.com still 301-redirects to Wowhead, and the name belongs to Wowhead's parent
+(Fanbyte / ZAM Network). No "bot" either, because in WoW today that means botting. Checked 9/28:
+`everloot.app` ($9.99 first year, then $15/yr) and `everloot.gg` ($129.99/yr) are available; `.com` is
+taken. Existing uses of the name are a small 2023 case-opening mobile game and an NFT set, neither
+WoW-related. Rejected: LootLedger (already a WoW Forever loot addon), Dropwise, Lorewise, Wanderdex.
+
 ## Calendar-bound items only Carlos can start
 
-1. **Domain.** `wowvault.app` was available at $9.99 for the first year on 2026-09-27.
+1. **Trademark check, then the domain.** Buy `everloot.app` (and `everloot.gg` if wanted), then
+   rename the repo from `wowvault` to `everloot`.
 2. **Windows code signing.** Either a cloud signing service (~$10/mo) or an OV certificate
    ($200+/yr). Validation takes days, and R21 Media Group LLC is the likely publisher. Verify
    current pricing and requirements before paying.
