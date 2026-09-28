@@ -117,6 +117,21 @@ leak-proof snapshot, CLI. First build: 257,110 lore pages from the 2023 wiki dum
 wago.tools dropped (robots.txt disallows /db2) — Forever item/spell/zone data now waits for the
 player collector (Part 3). Blizzard API check pending a fresh client in `kb/.env`. Next: Part 2
 (MCP server) plan. Search ranking (the exact-title article must rank first) is Part 2's first task.
+Merged to `main` 2026-09-27 (`b4dd702`).
+
+## 2026-09-28 — Direction: Forever data staple, full build at launch (brainstorm paused)
+
+Carlos's calls: WoWVault becomes a **"Thottbot reborn"** — a public Forever database built from our
+own opt-in addon data (not a Raider.IO clone; forever.raider.io already exists). **Full build live
+at Forever launch, 2026-11-04**: collector + upload page + intake, public data site, AI in-game
+(`/ask` + companion), desktop auto-uploader. Carlos has beta access; **beta closes 2026-10-21**, so
+all addon work must be tested in the client by then.
+
+**Resume:** `docs/superpowers/specs/2026-09-28-forever-data-staple-brainstorm.md` — Sections 1–2
+await approval, Section 3 not yet presented; then spec → per-track plans → build. **Waiting on
+Carlos (calendar-bound):** domain (`wowvault.app`), Windows code signing, Apple Developer (Mac,
+optional), Supabase + Vercel projects, fresh Blizzard client in `kb/.env`, Forever fan-wiki pick,
+wiki.gg's reply (email to support@indie.io, 2026-09-27).
 
 ---
 
