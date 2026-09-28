@@ -1,0 +1,9 @@
+# Curated entries, written in our own words. source_url is the evidence, not copied text.
+# Licence: CC BY-SA 4.0 (same as the rest of the published dataset).
+- kind: lore_page
+  id: forever-launch-date
+  name: WoW Forever launch date
+  game_version: forever
+  body: World of Warcraft Forever launches globally on November 4, 2026.
+  source_url: https://news.blizzard.com/en-us/article/24302498/updated-9-24-pre-purchase-the-world-of-warcraft-forever-collectors-edition
+  retrieved_at: "2026-09-27"

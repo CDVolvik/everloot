@@ -102,6 +102,24 @@ Phase 1 is still retail collection. Do not silently retarget the MVP at Forever.
 
 ---
 
+## 2026-09-27 — MVP replaced: WoW: Forever AI addon
+
+Carlos's call: the Forever AI addon **replaces** the Retail collection-tracker MVP, in this repo (no
+second repo). The collection tracker is parked, not deleted. The 9/17 refusals above still stand —
+the addon answers, it never plays.
+
+Spec: `docs/superpowers/specs/2026-09-27-forever-ai-addon-design.md`. Everything above this section
+describing Phase 1 scope and stack is now historical until the build plan is rewritten.
+
+**Part 1 (knowledge base) built** on branch `feat/kb-part1`: `kb/` package — two-pass Warcraft Wiki
+dump importer, curated importer, Blizzard client (local cache, Forever gated), provenance validator,
+leak-proof snapshot, CLI. First build: 257,110 lore pages from the 2023 wiki dump, 1 curated entry.
+wago.tools dropped (robots.txt disallows /db2) — Forever item/spell/zone data now waits for the
+player collector (Part 3). Blizzard API check pending a fresh client in `kb/.env`. Next: Part 2
+(MCP server) plan. Search ranking (the exact-title article must rank first) is Part 2's first task.
+
+---
+
 ## What this file is NOT
 
 The historical 35-page strategy doc covers Angel as co-founder, founder paperwork, monetization tiers, GTM viral loops, influencer strategy, the 24-month phased plan. None of that matters until there's a product. Read it once for context, then ignore it. We rewrite that material when there's 1K beta users and revenue to defend.
