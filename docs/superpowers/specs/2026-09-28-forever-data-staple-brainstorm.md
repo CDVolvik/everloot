@@ -92,8 +92,8 @@ WoW-related. Rejected: LootLedger (already a WoW Forever loot addon), Dropwise, 
    current pricing and requirements before paying.
 3. **Apple Developer Program** ($99/yr), only if a Mac build should ship at launch.
 4. **Supabase and Vercel projects** under Carlos's accounts.
-5. **Blizzard trademark / fan-content rules** for an ad-supported site with "WoW" in its name.
-   The agent researches these, Carlos decides.
+5. **Blizzard fan-content rules** for an ad-supported WoW fan site (the name no longer contains
+   "WoW"). The agent researches these, Carlos decides.
 
 ## Resume here
 
