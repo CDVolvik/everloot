@@ -52,3 +52,6 @@ supabase/.temp/
 # --- scratch / experiments (gitignored to keep noise out) ---
 scratch/
 *.local
+
+# --- kb/ (knowledge base) ---
+kb/data/
