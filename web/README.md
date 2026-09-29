@@ -36,7 +36,7 @@ npm run dev
 Vercel auto-detects Next.js. Connect the GitHub repo, set env vars:
 
 ```
-NEXT_PUBLIC_SITE_URL=https://wowvault.app
+NEXT_PUBLIC_SITE_URL=https://everloot.app
 NEXT_PUBLIC_SUPABASE_URL=...
 NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 NEXT_PUBLIC_ADSENSE_CLIENT=     # empty until AdSense approves

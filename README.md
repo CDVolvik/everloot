@@ -43,7 +43,7 @@ The 35-page strategy doc and competitive matrix in `docs/` are historical refere
 
 ```bash
 # clone
-git clone git@github.com:CDVolvik/wowvault.git
+git clone git@github.com:CDVolvik/everloot.git
 cd wowvault
 
 # backend

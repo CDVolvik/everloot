@@ -25,7 +25,7 @@ export const SOURCES: Record<SourceId, Source> = {
     name: "WoWVault curated entries",
     licence: "CC-BY-SA-4.0",
     publishable: true,
-    homepage: "https://github.com/CDVolvik/wowvault",
+    homepage: "https://github.com/CDVolvik/everloot",
   },
   "blizzard-api": {
     id: "blizzard-api",
