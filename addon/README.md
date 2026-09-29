@@ -1,23 +1,25 @@
-# addon/
+# addon/ — Everloot collector (WoW: Forever)
 
-Lua addon — in-game WoW client side. The bridge that exports live character state (bag contents, exact AH bids, etc.) that the Battle.net API doesn't surface.
+In-game collector for the Forever database + guild tracker. Official Lua API only, own
+SavedVariables, nothing that plays the character. Records match the intake contract
+(`web/src/lib/intake.ts`) field for field.
 
-**Status**: empty placeholder. Belongs to Phase 4 of the build plan, NOT Phase 1. Don't write code here yet.
+**Status**: skeleton (2026-09-30). Loads defensively — every Blizzard call is guarded, so missing
+beta systems disable their module instead of erroring. **Not yet loaded in a client**: needs the
+beta load test (`/everloot status` clean, two raid nights) before 10/21.
 
-**Pattern**: TSM / AskMrRobot / Raider.IO model. Addon writes to `SavedVariables` on `/reload` or `/logout`. Companion desktop app (see `../desktop/` future folder, or Electron app) reads the file and uploads to the backend. WoW addons cannot make HTTP requests — this constraint has held for 20 years.
-
-**Existing salvageable code**: there's an archived **Arcane Companion** addon (Arcane Mage rotation HUD) at `D:\R21-Brain\docs\archive\2026-05-14-ggb-snapshot\projects\wow-addons\` — only the MVP zip survives, supporting markdowns were lost in archival. It's a different addon (rotation helper, not data bridge) but could be revived as the first WoWVault-published in-game addon if WoWVault grows an addon distribution surface in Phase 4-5.
-
-**TOC + folder layout (when scaffolded)**:
 ```
 addon/
-├── WoWVault.toc
-├── WoWVault.lua
-├── lib/
+├── Everloot.toc        ## Interface: 70058 (Forever 1.60.1), SavedVariables: EverlootDB
+├── core.lua            event dispatch, module registry, toggles, rolling store, /everloot
 └── modules/
-    ├── collections-export.lua
-    ├── ah-bids-export.lua
-    └── ...
+    ├── openworld.lua   target/mouseover sightings + loot windows (quest+merchant pending beta confirm)
+    ├── guild.lua       roster snapshots + raid attendance (lockout+loot pending raid test)
+    └── gear.lua        equipped ilvl sample, max 1/hour
 ```
 
-Test install path on Mac: `~/Applications/World of Warcraft/_retail_/Interface/AddOns/WoWVault/`.
+Test install: copy this folder to `Interface/AddOns/Everloot/` in the Forever client, `/reload`,
+run `/everloot status`. Upload path: SavedVariables file → desktop uploader / `/upload` page (Track 2/4).
+
+History: placeholder since Phase 4 planning; the 9/27 Forever pivot made it Track 1. The Arcane
+Companion archive (rotation HUD, different addon) stays in the docs archive, not salvaged here.

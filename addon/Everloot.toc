@@ -1,0 +1,12 @@
+## Interface: 70058
+## Title: Everloot
+## Notes: WoW: Forever data collector — drops, spawns, quests, vendors, guilds. Answers never play.
+## Author: Everloot
+## Version: 0.1.0
+## SavedVariables: EverlootDB
+## IconTexture: Interface\Icons\INV_Misc_Coin_02
+
+core.lua
+modules\openworld.lua
+modules\guild.lua
+modules\gear.lua
