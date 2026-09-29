@@ -5,7 +5,7 @@ import { tools } from "@/data/tools";
 export const metadata: Metadata = {
   title: "About",
   description:
-    "GoldGoblin.gg is a free toolkit for World of Warcraft players — calculators, planners, and trackers built to save playtime.",
+    "Everloot is the free WoW: Forever database — drop rates, guild progression, professions and tools, built from player data.",
   alternates: { canonical: "/about" },
 };
 
@@ -13,13 +13,14 @@ export default function AboutPage() {
   return (
     <article className="prose prose-invert max-w-3xl">
       <h1 className="font-display text-3xl font-bold text-parchment-100">
-        About GoldGoblin.gg
+        About Everloot
       </h1>
 
       <p className="text-parchment-100/80">
-        GoldGoblin.gg is a growing collection of free, no-account-required tools
-        for World of Warcraft players. Every tool here comes from a
-        &ldquo;I wish something just did X&rdquo; moment mid-raid or mid-farm.
+        Everloot is the WoW: Forever database, rebuilt Thottbot-style: drop
+        rates, spawn maps, quest pages and guild progression collected by
+        players running our lightweight addon — plus free tools that make the
+        data usable. No account required to browse.
       </p>
 
       <h2 className="font-display text-xl text-parchment-100 mt-8">
@@ -67,7 +68,7 @@ export default function AboutPage() {
         Not affiliated with Blizzard
       </h2>
       <p className="text-parchment-100/80">
-        GoldGoblin.gg is an independent fan project. World of Warcraft, its
+        Everloot is an independent fan project. World of Warcraft, its
         artwork, and related trademarks are property of Blizzard Entertainment,
         Inc.
       </p>
