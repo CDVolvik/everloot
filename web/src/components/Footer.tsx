@@ -6,8 +6,8 @@ export default function Footer() {
     <footer className="border-t border-parchment-100/10 mt-24">
       <div className="mx-auto max-w-6xl px-4 py-8 text-sm text-parchment-100/60 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <span className="font-display text-gold-400 font-semibold">GoldGoblin.gg</span>{" "}
-          &copy; {year}. Free tools for World of Warcraft players.
+          <span className="font-display text-gold-400 font-semibold">Everloot</span>{" "}
+          &copy; {year}. The WoW: Forever database, built from player data.
         </div>
         <div className="flex items-center gap-4">
           <Link href="/privacy" className="hover:text-gold-400 transition">

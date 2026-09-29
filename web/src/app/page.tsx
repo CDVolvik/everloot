@@ -7,16 +7,15 @@ export default function Home() {
       {/* Hero */}
       <section className="pt-6 pb-2 text-center">
         <p className="uppercase tracking-[0.2em] text-xs text-gold-500/80 mb-4">
-          Free · No Login · No Addon
+          Free · No Login · Built From Player Data
         </p>
-        <h1 className="font-display text-4xl sm:text-6xl font-bold text-parchment-100 leading-tight">
-          The WoW toolkit that <span className="text-gold-400">respects</span>
-          <br className="hidden sm:block" /> your playtime.
+        <h1 className="font-display text-4xl sm:text-6xl font-bold text-parchment-100 leading-tight tracking-tight">
+          Every drop. Every guild. <span className="text-gold-400">Every reset.</span>
         </h1>
         <p className="mt-6 max-w-2xl mx-auto text-lg text-parchment-100/75">
-          Calculators, planners, and trackers for World of Warcraft players who
-          want answers fast. No signup. No fluff. Built by someone who actually
-          plays.
+          Everloot is the WoW: Forever database — drop rates, guild progression,
+          professions and farming routes, collected by players running our
+          lightweight addon. Plus the tools that make it all usable.
         </p>
         <div className="mt-8 flex items-center justify-center gap-3">
           <Link

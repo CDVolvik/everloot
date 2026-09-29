@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Privacy Policy",
   description:
-    "How GoldGoblin.gg handles your data, cookies, and information shared with advertising partners.",
+    "How Everloot handles your data, cookies, and information shared with advertising partners.",
   alternates: { canonical: "/privacy" },
 };
 
@@ -18,7 +18,7 @@ export default function PrivacyPage() {
 
       <h2 className="font-display text-xl text-parchment-100 mt-6">Overview</h2>
       <p className="text-parchment-100/80">
-        GoldGoblin.gg (&ldquo;we&rdquo;, &ldquo;us&rdquo;) provides free utility
+        Everloot (&ldquo;we&rdquo;, &ldquo;us&rdquo;) provides free utility
         tools for World of Warcraft players. We value your privacy and try to
         collect the minimum information possible.
       </p>
@@ -87,8 +87,8 @@ export default function PrivacyPage() {
       <h2 className="font-display text-xl text-parchment-100 mt-6">Contact</h2>
       <p className="text-parchment-100/80">
         Questions? Email{" "}
-        <a className="text-gold-400 hover:underline" href="mailto:hello@goldgoblin.gg">
-          hello@goldgoblin.gg
+        <a className="text-gold-400 hover:underline" href="mailto:hello@everloot.app">
+          hello@everloot.app
         </a>
         .
       </p>

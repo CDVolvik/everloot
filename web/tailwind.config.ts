@@ -23,19 +23,22 @@ const config: Config = {
         },
         parchment: {
           50: "#faf5e9",
-          100: "#f1e6c8",
-          900: "#1a1510",
-          950: "#0f0c08",
+          100: "#F4F1EA", // bone
+          900: "#14141D", // raised surface
+          950: "#0B0B12", // abyss canvas
         },
-        // WoW item-quality accents
+        // Everloot accent: arcane violet for progression/data highlights
+        arcane: "#8B5CF6",
+        // WoW item-quality accents (tuned for the dark canvas)
         epic: "#a335ee",
         rare: "#0070dd",
-        uncommon: "#1eff00",
+        uncommon: "#4ADE80",
         legendary: "#ff8000",
       },
       fontFamily: {
+        // Tight grotesk voice: system sans for both, display gets tracking via classes
         sans: ["ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"],
-        display: ["ui-serif", "Georgia", "Cambria", "Times New Roman", "serif"],
+        display: ["ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"],
       },
     },
   },
