@@ -4,36 +4,36 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import CookieConsent from "@/components/CookieConsent";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://goldgoblin.gg";
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://everloot.app";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "GoldGoblin.gg — World of Warcraft Utility Tools",
-    template: "%s · GoldGoblin.gg",
+    default: "Everloot — WoW: Forever Database, Guild Tracker & Tools",
+    template: "%s · Everloot",
   },
   description:
-    "Free World of Warcraft tools: gold farming calculator, profession planner, completionist tracker. Built for players, by players.",
+    "Everloot is the WoW: Forever database built from player data: drop rates, guild progression, professions, farming routes and tools. Free for players, by players.",
   keywords: [
-    "world of warcraft tools",
-    "wow calculator",
-    "wow utilities",
+    "wow forever database",
+    "wow forever guild tracker",
+    "wow forever tools",
     "wow gold calculator",
     "wow profession planner",
   ],
   openGraph: {
     type: "website",
-    siteName: "GoldGoblin.gg",
-    title: "GoldGoblin.gg — World of Warcraft Utility Tools",
+    siteName: "Everloot",
+    title: "Everloot — WoW: Forever Database, Guild Tracker & Tools",
     description:
-      "Free WoW tools: gold farming calculator, profession planner, completionist tracker.",
+      "Drop rates, guild progression, professions, farming routes and tools for WoW: Forever, built from player data.",
     url: siteUrl,
   },
   twitter: {
     card: "summary_large_image",
-    title: "GoldGoblin.gg — World of Warcraft Utility Tools",
+    title: "Everloot — WoW: Forever Database, Guild Tracker & Tools",
     description:
-      "Free WoW tools: gold farming calculator, profession planner, completionist tracker.",
+      "Drop rates, guild progression, professions, farming routes and tools for WoW: Forever, built from player data.",
   },
   robots: { index: true, follow: true },
 };

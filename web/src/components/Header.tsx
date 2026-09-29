@@ -9,7 +9,7 @@ export default function Header() {
           href="/"
           className="font-display text-xl font-bold text-gold-400 hover:text-gold-300 transition"
         >
-          GoldGoblin<span className="text-parchment-100">.gg</span>
+          Everloot<span className="text-parchment-100">.app</span>
         </Link>
 
         <nav className="hidden md:flex items-center gap-6 text-sm">
