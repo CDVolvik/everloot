@@ -6,9 +6,14 @@ capturing open-world + guild records into SavedVariables with an upload path tha
 
 ## Week 1 (by 10/06): API truth + skeleton
 
-1. Confirm the Forever API surface: TOC version, Retail-vs-Classic API, and the five guild calls
-   (roster, raid roster, lockouts, loot events, inventory ilvl) against `Gethe/wow-ui-source` branch
-   `forever`. Unknowns become gaps, never guesses.
+1. API truth — CONFIRMED 2026-09-29 (no longer unknown): Forever runs the **Retail-flavored
+   API** (`Gethe/wow-ui-source` branch `forever` @ `cde14c6`, build 1.60.1 / interface **70058**,
+   updated daily). Available: `C_GuildInfo` (roster, news, ranks, tabard, rename, preferred
+   settings) + `GUILD_ROSTER_UPDATE` / `GUILD_RANKS_UPDATE` / `PLAYER_GUILD_UPDATE` events,
+   `C_GuildBank`, `RaidLocks` (lockout info), `LootHistory`, Encounter Journal, professions +
+   tradeskill, talents, maps. Addon TOC: `## Interface: 70058`. Remaining check (in-client):
+   which systems are live vs stubbed in beta (e.g. Mythic+/ChallengeMode docs exist — verify
+   they function before depending on them).
 2. Skeleton addon: loads with zero Lua errors, writes versioned SavedVariables, `/everloot status`
    prints capture state. Per-module toggles from day one.
 3. Schema freeze for all 10 records (5 open-world from 9/28 §1 + 5 guild from the guild-system spec).
