@@ -4,6 +4,7 @@ import type { Game, NsKind, Region } from "./blizzard/namespaces.js";
 import { openDb, type DB } from "./db.js";
 import { importCurated } from "./importers/curated.js";
 import { importWikiDump } from "./importers/wiki-dump.js";
+import { serveStdio } from "./mcp-server.js";
 import { search } from "./search.js";
 import { snapshot } from "./snapshot.js";
 import { validate } from "./validate.js";
@@ -12,13 +13,14 @@ const GAMES: Game[] = ["retail", "classic", "classic1x", "forever"];
 const KINDS: NsKind[] = ["static", "dynamic", "profile"];
 const REGIONS: Region[] = ["us", "eu", "kr", "tw"];
 
-const USAGE = `usage: npm run kb -- <command> [--db data/wowvault-kb.sqlite]
+const USAGE = `usage: npm run kb -- <command> [--db data/everloot-kb.sqlite]
   import-wiki <dump.xml|dump.xml.zst> [--limit N]   (reads the dump twice; --limit still costs one full pass;
     a limited import REPLACES all wiki rows in the target DB — use --db <scratch> for trials)
   import-curated [dir=curated]
   blizzard-get <data/wow/...|profile/wow/...> --game retail|classic|classic1x|forever --kind static|dynamic|profile [--region us]
     (path has no leading slash; works unchanged in Git Bash and PowerShell)
   search <words...>
+  serve-mcp   (stdio MCP server: everloot-knowledge, for Claude / ChatGPT dev mode / companion)
   stats
   validate
   snapshot <out.sqlite>   (outside the database's own folder, e.g. data/release/kb.sqlite)`;
@@ -33,7 +35,7 @@ async function main(): Promise<number> {
   }
   if (existsSync(".env")) process.loadEnvFile(".env");
   let opened: DB | undefined;
-  const db = () => (opened ??= openDb(flags.get("db") ?? "data/wowvault-kb.sqlite"));
+  const db = () => (opened ??= openDb(flags.get("db") ?? "data/everloot-kb.sqlite"));
 
   switch (cmd) {
     case "import-wiki": {
@@ -97,6 +99,9 @@ async function main(): Promise<number> {
     }
     case "search":
       for (const h of search(db(), args.join(" "))) console.log(`${h.kind}  ${h.name}\n  ${h.snippet}\n  ${h.sourceUrl} (${h.licence})`);
+      return 0;
+    case "serve-mcp":
+      await serveStdio(flags.get("db") ?? "data/everloot-kb.sqlite");
       return 0;
     case "stats":
       console.table(db().prepare("SELECT source_id, kind, count(*) AS rows FROM entities GROUP BY source_id, kind").all());
