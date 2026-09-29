@@ -1,18 +1,21 @@
 {
-  "name": "wow-utility-hub",
+  "name": "everloot-web",
   "version": "0.1.0",
   "private": true,
-  "description": "World of Warcraft utility hub — calculators, planners, and trackers for WoW players.",
+  "description": "Everloot — WoW: Forever database, guild tracker and tools.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "vitest run"
   },
   "dependencies": {
     "next": "14.2.5",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "vitest": "^3.2.7",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@types/node": "^20.14.11",
