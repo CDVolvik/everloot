@@ -128,9 +128,9 @@ at Forever launch, 2026-11-04**: collector + upload page + intake, public data s
 all addon work must be tested in the client by then.
 
 **Name (Carlos, 2026-09-28): Everloot.** Not "Thottbot" (thottbot.com still 301s to Wowhead; the
-name belongs to Wowhead's parent) and no "bot" (reads as botting). Next session: quick trademark
-check → buy `everloot.app` ($9.99 first yr; `everloot.gg` $129.99/yr also free; `.com` taken) → rename
-the GitHub repo `wowvault` → `everloot` (GitHub redirects the old URL; update local remotes).
+name belongs to Wowhead's parent) and no "bot" (reads as botting). **Done 2026-09-29:** `everloot.app`
+bought, repo renamed `wowvault` → [`everloot`](https://github.com/CDVolvik/everloot) (old URL redirects;
+local remote updated). Still open: trademark check, `everloot.gg` (optional).
 
 **Resume:** `docs/superpowers/specs/2026-09-28-forever-data-staple-brainstorm.md` — Sections 1–2
 await approval, Section 3 not yet presented; then spec → per-track plans → build. **Waiting on
