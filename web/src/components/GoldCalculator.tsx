@@ -200,7 +200,7 @@ export default function GoldCalculator() {
         ),
       state.vendorGold ? `• Vendor gold: ${formatGold(state.vendorGold)}` : "",
       ``,
-      `via GoldGoblin.gg`,
+      `via Everloot`,
     ]
       .filter(Boolean)
       .join("\n");

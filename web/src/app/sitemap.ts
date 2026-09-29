@@ -1,7 +1,7 @@
 import { MetadataRoute } from "next";
 import { tools } from "@/data/tools";
 
-const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://goldgoblin.gg";
+const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://everloot.app";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();

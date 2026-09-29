@@ -64,6 +64,54 @@ export const tools: Tool[] = [
       "achievement tracker",
     ],
   },
+  {
+    slug: "guild-tracker",
+    title: "Forever Guild Tracker",
+    shortTitle: "Guilds",
+    tagline: "Progression, roster and the Everloot score.",
+    description:
+      "Raid progression, attendance and loot history for WoW: Forever guilds, published by their own officers through the Everloot addon. Ranked by an internal score from progression, roster strength and gear.",
+    status: "coming-soon",
+    icon: "🛡️",
+    keywords: [
+      "wow forever guild tracker",
+      "wow forever guild progression",
+      "forever guild rankings",
+      "everloot score",
+    ],
+  },
+  {
+    slug: "database",
+    title: "Forever Database",
+    shortTitle: "Database",
+    tagline: "Items, NPCs and quests from real drops.",
+    description:
+      "Drop rates with kill counts, spawn maps, quest givers and vendors — every fact corroborated by independent players running the Everloot addon. Thottbot reborn for Forever.",
+    status: "coming-soon",
+    icon: "📖",
+    keywords: [
+      "wow forever database",
+      "wow forever drop rates",
+      "wow forever items",
+      "wow forever quests",
+    ],
+  },
+  {
+    slug: "farming-routes",
+    title: "Farming Routes",
+    shortTitle: "Routes",
+    tagline: "Spawn maps drawn from player data.",
+    description:
+      "Gold and material farming routes for WoW: Forever, drawn from real spawn sightings collected by the community. Zones, respawns and gold-per-hour in one page.",
+    status: "coming-soon",
+    icon: "🗺️",
+    keywords: [
+      "wow forever farming",
+      "wow forever gold farm",
+      "wow forever routes",
+      "best gold farm forever",
+    ],
+  },
 ];
 
 export const getTool = (slug: string): Tool | undefined =>
