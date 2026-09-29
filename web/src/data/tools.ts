@@ -97,19 +97,33 @@ export const tools: Tool[] = [
     ],
   },
   {
-    slug: "farming-routes",
-    title: "Farming Routes",
-    shortTitle: "Routes",
-    tagline: "Spawn maps drawn from player data.",
+    slug: "professions",
+    title: "Forever Profession Hubs",
+    shortTitle: "Professions",
+    tagline: "Leveling routes and perks from player data.",
     description:
-      "Gold and material farming routes for WoW: Forever, drawn from real spawn sightings collected by the community. Zones, respawns and gold-per-hour in one page.",
-    status: "coming-soon",
+      "One hub per Forever profession: skill-up paths, materials lists and perk tracking, all drawn from in-game collection. Hubs open their numbers as reports arrive.",
+    status: "live",
+    icon: "⚒️",
+    keywords: [
+      "wow forever professions",
+      "wow forever profession leveling",
+      "forever profession perks",
+    ],
+  },
+  {
+    slug: "farming-routes",
+    title: "Forever Farming Routes",
+    shortTitle: "Routes",
+    tagline: "Spawn maps drawn from player sightings.",
+    description:
+      "Gold and material routes per zone with respawn timing and gold-per-hour attached — drawn from community spawn collection, not decades-old static circles.",
+    status: "live",
     icon: "🗺️",
     keywords: [
       "wow forever farming",
       "wow forever gold farm",
       "wow forever routes",
-      "best gold farm forever",
     ],
   },
 ];
