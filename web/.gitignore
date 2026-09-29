@@ -1,3 +1,6 @@
+# local intake uploads (dev file store; production uses Supabase)
+/data/uploads/
+
 # dependencies
 /node_modules
 /.pnp
