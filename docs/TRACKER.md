@@ -33,7 +33,7 @@ Rows: 55.
 
 | Id | Name | Done when |
 |---|---|---|
-| `mcp.public_https` | Public HTTPS MCP | same /mcp handler on a public URL with auth, so a ChatGPT subscription can connect |
+| `mcp.public_https` | Public HTTPS MCP | Bearer token is on the loopback handler (--token or EVERLOOT_MCP_TOKEN). Done when that same handler is on a public HTTPS URL and ChatGPT can connect. |
 | `tool.profession_path` | Profession leveling path | reagent list and a gold cost from our uploads, one MCP tool |
 | `tool.item_page` | Item page for a drop row | name, source, drop, map, from our rollups, one MCP tool |
 | `tool.collection` | Missing-collection view | owned versus missing from an upload, grouped by source. Not a Blizzard profile read. |

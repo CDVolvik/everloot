@@ -28,7 +28,7 @@ export const BRIDGE_PLAN: readonly PlanItem[] = [
   { id: "site.waitlist", status: "live", name: "Waitlist", done: "signup path exists. Persists when Supabase is connected." },
   { id: "addon.skeleton", status: "live", name: "Collector skeleton", done: "TOC 70058, SavedVariables, /upload import. In-client beta test is still waiting." },
 
-  { id: "mcp.public_https", status: "next", name: "Public HTTPS MCP", done: "same /mcp handler on a public URL with auth, so a ChatGPT subscription can connect" },
+  { id: "mcp.public_https", status: "next", name: "Public HTTPS MCP", done: "Bearer token is on the loopback handler (--token or EVERLOOT_MCP_TOKEN). Done when that same handler is on a public HTTPS URL and ChatGPT can connect." },
   { id: "tool.profession_path", status: "next", name: "Profession leveling path", done: "reagent list and a gold cost from our uploads, one MCP tool" },
   { id: "tool.item_page", status: "next", name: "Item page for a drop row", done: "name, source, drop, map, from our rollups, one MCP tool" },
   { id: "tool.collection", status: "next", name: "Missing-collection view", done: "owned versus missing from an upload, grouped by source. Not a Blizzard profile read." },

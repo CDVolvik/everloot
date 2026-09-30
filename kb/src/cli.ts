@@ -22,7 +22,7 @@ const USAGE = `usage: npm run kb -- <command> [--db data/everloot-kb.sqlite]
     (path has no leading slash; works unchanged in Git Bash and PowerShell)
   search <words...>
   serve-mcp        (stdio MCP: everloot-knowledge)
-  serve-mcp-http   (loopback HTTP MCP on 127.0.0.1:8787, POST /mcp; --port N)
+  serve-mcp-http   (loopback HTTP MCP on 127.0.0.1:8787, POST /mcp; --port N; --token or EVERLOOT_MCP_TOKEN)
   stats
   validate
   snapshot <out.sqlite>   (outside the database's own folder, e.g. data/release/kb.sqlite)`;
@@ -107,10 +107,13 @@ async function main(): Promise<number> {
       return 0;
     case "serve-mcp-http": {
       const port = Number(flags.get("port") ?? 8787);
-      const http = await startHttpBridge(db(), port);
+      const token = flags.get("token") || process.env.EVERLOOT_MCP_TOKEN;
+      const http = await startHttpBridge(db(), port, token ? { token } : {});
       const addr = http.address();
       const bound = typeof addr === "object" && addr ? addr.port : port;
-      console.log(`everloot-knowledge HTTP MCP on http://127.0.0.1:${bound}/mcp`);
+      console.log(
+        `everloot-knowledge HTTP MCP on http://127.0.0.1:${bound}/mcp (${token ? "bearer required" : "open on loopback"})`,
+      );
       await new Promise<never>(() => {});
     }
     case "stats":
