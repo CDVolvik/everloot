@@ -54,7 +54,7 @@ export const tools: Tool[] = [
     shortTitle: "Completionist",
     tagline: "See everything you haven't collected yet.",
     description:
-      "Enter your character and we'll surface every mount, pet, toy, and achievement you're missing — filtered by how obtainable each one is right now. The 'All the Things' experience, on the web.",
+      "Owned versus missing in a collection. The list appears when 3 installs agree on the item and its source. Owned is one install's upload. Not a Battle.net profile.",
     status: "coming-soon",
     icon: "🏆",
     keywords: [
@@ -70,7 +70,7 @@ export const tools: Tool[] = [
     shortTitle: "Guilds",
     tagline: "Progression, roster and the Everloot score.",
     description:
-      "Raid progression, attendance and loot history for WoW: Forever guilds, published by their own officers through the Everloot addon. Ranked by an internal score from progression, roster strength and gear.",
+      "Raid progression, roster, loot, and item level for WoW: Forever guilds, published by their own officers. A figure is public when two uploads agree. score_v1 has no published weights, so there is no single score yet.",
     status: "coming-soon",
     icon: "🛡️",
     keywords: [

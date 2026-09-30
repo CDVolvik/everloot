@@ -243,6 +243,46 @@ export function formatProfessionPath(path: ProfessionPath): string {
   return lines.join("\n");
 }
 
+export function professionFactsFromRecords(records: unknown[]): { sightings: RecipeSighting[]; prices: PriceSighting[] } {
+  const sightings: RecipeSighting[] = [];
+  const prices: PriceSighting[] = [];
+  for (const raw of records) {
+    if (!raw || typeof raw !== "object") continue;
+    const row = raw as Record<string, unknown>;
+    if (typeof row.installId !== "string") continue;
+    if (
+      row.kind === "recipe_seen" &&
+      typeof row.profession === "string" &&
+      typeof row.recipe === "string" &&
+      typeof row.skillMin === "number" &&
+      typeof row.skillMax === "number" &&
+      typeof row.points === "number" &&
+      Array.isArray(row.reagents)
+    ) {
+      const reagents: Reagent[] = [];
+      for (const reagent of row.reagents) {
+        if (!reagent || typeof reagent !== "object") continue;
+        const item = (reagent as { item?: unknown }).item;
+        const count = (reagent as { count?: unknown }).count;
+        if (typeof item === "string" && typeof count === "number") reagents.push({ item, count });
+      }
+      sightings.push({
+        installId: row.installId,
+        profession: row.profession,
+        recipe: row.recipe,
+        skillMin: row.skillMin,
+        skillMax: row.skillMax,
+        points: row.points,
+        reagents,
+      });
+    }
+    if (row.kind === "price_seen" && typeof row.item === "string" && typeof row.copper === "number") {
+      prices.push({ installId: row.installId, item: row.item, copper: row.copper });
+    }
+  }
+  return { sightings, prices };
+}
+
 export function handleProfessionPath(
   args: { profession: string; fromSkill?: number; toSkill?: number },
   sightings: RecipeSighting[] = [],

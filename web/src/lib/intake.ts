@@ -120,6 +120,45 @@ export const gearSnapshot = base.extend({
   })).min(1).max(30),
 });
 
+export const collectionCatalog = base.extend({
+  kind: z.literal("collection_catalog"),
+  collection: z.string().min(1).max(40),
+  source: z.string().min(1).max(80),
+  itemId: z.number().int().positive(),
+});
+
+export const collectionOwned = base.extend({
+  kind: z.literal("collection_owned"),
+  collection: z.string().min(1).max(40),
+  itemId: z.number().int().positive(),
+});
+
+export const auctionScan = base.extend({
+  kind: z.literal("auction_scan"),
+  realm: z.string().min(2).max(60),
+  itemId: z.number().int().positive(),
+  copper: z.number().int().nonnegative(),
+});
+
+export const recipeSeen = base.extend({
+  kind: z.literal("recipe_seen"),
+  profession: z.string().min(1).max(40),
+  recipe: z.string().min(1).max(120),
+  skillMin: z.number().int().min(1).max(500),
+  skillMax: z.number().int().min(1).max(500),
+  points: z.number().int().min(1).max(10),
+  reagents: z.array(z.object({
+    item: z.string().min(1).max(80),
+    count: z.number().int().min(1).max(1000),
+  })).min(1).max(20),
+});
+
+export const priceSeen = base.extend({
+  kind: z.literal("price_seen"),
+  item: z.string().min(1).max(80),
+  copper: z.number().int().nonnegative(),
+});
+
 const recordSchemas = {
   npc_sighting: npcSighting,
   loot: lootWindow,
@@ -131,6 +170,11 @@ const recordSchemas = {
   attendance,
   loot_award: lootAward,
   gear_snapshot: gearSnapshot,
+  collection_catalog: collectionCatalog,
+  collection_owned: collectionOwned,
+  auction_scan: auctionScan,
+  recipe_seen: recipeSeen,
+  price_seen: priceSeen,
 } as const;
 
 export type RecordKind = keyof typeof recordSchemas;
@@ -139,6 +183,7 @@ export const ALL_RECORD_KINDS = Object.keys(recordSchemas) as RecordKind[];
 const anyRecord = z.discriminatedUnion("kind", [
   npcSighting, lootWindow, questEvent, vendorList, itemSeen,
   guildSnapshot, raidLockout, attendance, lootAward, gearSnapshot,
+  collectionCatalog, collectionOwned, auctionScan, recipeSeen, priceSeen,
 ]);
 
 export type IntakeRecord = z.infer<typeof anyRecord>;

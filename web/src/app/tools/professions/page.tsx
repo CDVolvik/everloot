@@ -1,8 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { join } from "node:path";
 import EmailCapture from "@/components/EmailCapture";
 import ProfessionPathForm from "@/components/ProfessionPathForm";
-import { handleProfessionPath } from "../../../../../kb/src/profession-path";
+import { handleProfessionPath, professionFactsFromRecords } from "../../../../../kb/src/profession-path";
+import { loadUploadRecords } from "../../../../../kb/src/load-uploads";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Forever Profession Hubs",
@@ -32,6 +36,7 @@ const CARDS = [
 ];
 
 export default function ProfessionsPage() {
+  const facts = professionFactsFromRecords(loadUploadRecords(join(process.cwd(), "data", "uploads")));
   return (
     <article className="space-y-10 max-w-4xl">
       <header className="space-y-3">
@@ -51,12 +56,12 @@ export default function ProfessionsPage() {
       <section className="space-y-3">
         <h2 className="font-display text-2xl text-parchment-100">The path</h2>
         <p className="text-sm text-parchment-100/70 max-w-2xl">
-          No recipe uploads are stored yet, so every profession answers with the rule and a gap.
-          The same answer is the <span className="text-parchment-100">profession_path</span> tool
-          on the Everloot server.
+          The path below reads recipe uploads stored on this server. The form asks the same engine
+          without those files. The profession_path tool reads them when EVERLOOT_UPLOADS points at
+          the same directory.
         </p>
         <pre className="whitespace-pre-wrap text-sm text-parchment-100/85 rounded-xl border border-parchment-100/10 bg-parchment-900 p-5">
-          {handleProfessionPath({ profession: "Alchemy", fromSkill: 1, toSkill: 75 })}
+          {handleProfessionPath({ profession: "Alchemy", fromSkill: 1, toSkill: 75 }, facts.sightings, facts.prices)}
         </pre>
         <ProfessionPathForm />
       </section>
