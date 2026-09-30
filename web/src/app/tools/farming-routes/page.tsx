@@ -48,14 +48,14 @@ export default function FarmingRoutesPage() {
 
       <div className="grid md:grid-cols-2 gap-4">
         {CARDS.map((s) => (
-          <div key={s.title} className="rounded-xl border border-parchment-100/10 p-5 bg-parchment-900/40">
+          <div key={s.title} className="rounded-xl border border-parchment-100/10 p-5 bg-parchment-900">
             <h2 className="font-display text-lg font-semibold text-gold-400">{s.title}</h2>
             <p className="mt-1 text-sm text-parchment-100/80">{s.body}</p>
           </div>
         ))}
       </div>
 
-      <div className="rounded-2xl border border-arcane/30 bg-gradient-to-br from-arcane/10 to-transparent p-6">
+      <div className="rounded-2xl border border-arcane/30 bg-parchment-900 p-6">
         <h2 className="font-display text-xl text-parchment-100">Draw the first route</h2>
         <p className="mt-1 text-sm text-parchment-100/75 max-w-xl">
           Farm with the Everloot addon running — your sightings become the first spawn
@@ -66,7 +66,7 @@ export default function FarmingRoutesPage() {
         </p>
       </div>
 
-      <div className="rounded-2xl border border-gold-500/30 bg-gradient-to-br from-gold-500/5 to-transparent p-6 max-w-xl">
+      <div className="rounded-2xl border border-gold-500/30 bg-parchment-900 p-6 max-w-xl">
         <EmailCapture toolSlug="farming-routes" />
       </div>
     </article>

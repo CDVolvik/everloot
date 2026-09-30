@@ -1,11 +1,25 @@
 import Link from "next/link";
+import Reveal from "@/components/Reveal";
 import { tools } from "@/data/tools";
+
+const TICKER = [
+  "Drop rates",
+  "Guild scores",
+  "Spawn maps",
+  "Profession routes",
+  "Loot history",
+  "Farming routes",
+  "Raid progression",
+  "Vendor lists",
+];
 
 export default function Home() {
   return (
     <div className="space-y-16">
       {/* Hero */}
-      <section className="pt-6 pb-2 text-center">
+      <section className="relative pt-6 pb-2 text-center">
+        <div className="aurora" aria-hidden="true" />
+        <div className="relative">
         <p className="uppercase tracking-[0.2em] text-xs text-gold-500/80 mb-4">
           Free · No Login · Built From Player Data
         </p>
@@ -20,7 +34,7 @@ export default function Home() {
         <div className="mt-8 flex items-center justify-center gap-3">
           <Link
             href="/tools/gold-per-hour"
-            className="inline-flex items-center gap-2 px-5 py-3 rounded-lg bg-gold-500 text-parchment-950 font-semibold hover:bg-gold-400 transition"
+            className="cta-glow inline-flex items-center gap-2 px-5 py-3 rounded-lg bg-gold-500 text-parchment-950 font-semibold hover:bg-gold-400 transition"
           >
             <span>🪙</span>
             <span>Try the Gold/Hour Calculator</span>
@@ -32,9 +46,22 @@ export default function Home() {
             See all tools
           </Link>
         </div>
+        </div>
+
+        {/* Ticker */}
+        <div className="relative mt-10 overflow-hidden" aria-hidden="true">
+          <div className="ticker-track gap-8 text-xs uppercase tracking-[0.25em] text-parchment-100/40">
+            {[...TICKER, ...TICKER].map((t, i) => (
+              <span key={i} className="flex items-center gap-8 whitespace-nowrap">
+                {t} <span className="text-gold-500/60">◆</span>
+              </span>
+            ))}
+          </div>
+        </div>
       </section>
 
       {/* Tools grid */}
+      <Reveal>
       <section id="tools" className="scroll-mt-20">
         <div className="flex items-end justify-between mb-6">
           <h2 className="font-display text-2xl sm:text-3xl font-semibold text-parchment-100">
@@ -52,15 +79,15 @@ export default function Home() {
               <Link
                 key={tool.slug}
                 href={`/tools/${tool.slug}`}
-                className="group relative rounded-xl border border-parchment-100/10 bg-parchment-900/40 p-5 hover:border-gold-400/50 hover:bg-parchment-900/60 transition"
+                className="tool-card group relative rounded-xl border border-parchment-100/10 bg-parchment-900 p-5 hover:border-gold-400/50 transition"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="text-3xl">{tool.icon}</div>
                   <span
-                    className={`text-[10px] uppercase tracking-wider px-2 py-1 rounded-full ${
+                    className={`text-[10px] uppercase tracking-wider px-2 py-1 rounded-full border ${
                       isLive
-                        ? "bg-uncommon/15 text-uncommon"
-                        : "bg-gold-500/15 text-gold-400"
+                        ? "bg-parchment-950 text-uncommon border-uncommon/40"
+                        : "bg-parchment-950 text-gold-400 border-gold-500/40"
                     }`}
                   >
                     {isLive ? "Live" : "Coming soon"}
@@ -77,8 +104,10 @@ export default function Home() {
           })}
         </div>
       </section>
+      </Reveal>
 
       {/* Why this site */}
+      <Reveal delay={120}>
       <section className="grid md:grid-cols-3 gap-6 text-sm">
         <div className="rounded-lg border border-parchment-100/10 p-5">
           <div className="text-gold-400 text-xl mb-2">⚡</div>
@@ -105,6 +134,7 @@ export default function Home() {
           </p>
         </div>
       </section>
+      </Reveal>
     </div>
   );
 }

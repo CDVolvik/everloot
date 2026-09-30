@@ -21,7 +21,7 @@ export default function ComingSoon({
         <p className="text-lg text-parchment-100/75 max-w-2xl">{tool.description}</p>
       </header>
 
-      <div className="rounded-2xl border border-gold-500/30 bg-gradient-to-br from-gold-500/5 to-transparent p-6 max-w-xl">
+      <div className="rounded-2xl border border-gold-500/30 bg-parchment-900 p-6 max-w-xl">
         <EmailCapture toolSlug={tool.slug} />
       </div>
 
@@ -33,7 +33,7 @@ export default function ComingSoon({
           {previewSections.map((s) => (
             <div
               key={s.title}
-              className="rounded-xl border border-parchment-100/10 p-5 bg-parchment-900/40"
+              className="rounded-xl border border-parchment-100/10 p-5 bg-parchment-900"
             >
               <h3 className="font-display text-lg font-semibold text-gold-400">
                 {s.title}

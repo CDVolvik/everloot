@@ -46,7 +46,7 @@ export default function EmailCapture({ toolSlug }: { toolSlug: string }) {
             setEmail(e.target.value);
             if (state === "error") setState("idle");
           }}
-          className="flex-1 rounded-lg bg-parchment-900/60 border border-parchment-100/10 px-3 py-2 text-parchment-100 placeholder:text-parchment-100/30 focus:border-gold-400 outline-none"
+          className="flex-1 rounded-lg bg-parchment-900 border border-parchment-100/10 px-3 py-2 text-parchment-100 placeholder:text-parchment-100/30 focus:border-gold-400 outline-none"
         />
         <button
           type="submit"

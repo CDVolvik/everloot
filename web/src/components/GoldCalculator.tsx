@@ -224,7 +224,7 @@ export default function GoldCalculator() {
             placeholder="e.g. Revendreth cloth run"
             value={state.farmName}
             onChange={(e) => patch({ farmName: e.target.value })}
-            className="w-full rounded-lg bg-parchment-900/60 border border-parchment-100/10 px-3 py-2 text-parchment-100 placeholder:text-parchment-100/30 focus:border-gold-400 outline-none"
+            className="w-full rounded-lg bg-parchment-900 border border-parchment-100/10 px-3 py-2 text-parchment-100 placeholder:text-parchment-100/30 focus:border-gold-400 outline-none"
           />
         </label>
         <label className="block">
@@ -238,7 +238,7 @@ export default function GoldCalculator() {
             onChange={(e) =>
               patch({ hours: Math.max(0, Number(e.target.value) || 0) })
             }
-            className="w-24 rounded-lg bg-parchment-900/60 border border-parchment-100/10 px-3 py-2 text-parchment-100 focus:border-gold-400 outline-none"
+            className="w-24 rounded-lg bg-parchment-900 border border-parchment-100/10 px-3 py-2 text-parchment-100 focus:border-gold-400 outline-none"
           />
         </label>
         <label className="block">
@@ -255,7 +255,7 @@ export default function GoldCalculator() {
                 minutes: Math.min(59, Math.max(0, Number(e.target.value) || 0)),
               })
             }
-            className="w-24 rounded-lg bg-parchment-900/60 border border-parchment-100/10 px-3 py-2 text-parchment-100 focus:border-gold-400 outline-none"
+            className="w-24 rounded-lg bg-parchment-900 border border-parchment-100/10 px-3 py-2 text-parchment-100 focus:border-gold-400 outline-none"
           />
         </label>
       </div>
@@ -273,7 +273,7 @@ export default function GoldCalculator() {
         </div>
 
         <div className="rounded-xl border border-parchment-100/10 overflow-hidden">
-          <div className="hidden md:grid grid-cols-[1fr,100px,140px,140px,40px] gap-2 px-4 py-2 bg-parchment-900/40 text-xs uppercase tracking-wider text-parchment-100/50">
+          <div className="hidden md:grid grid-cols-[1fr,100px,140px,140px,40px] gap-2 px-4 py-2 bg-parchment-900 text-xs uppercase tracking-wider text-parchment-100/50">
             <div>Item</div>
             <div>Quantity</div>
             <div>Price each (g)</div>
@@ -349,7 +349,7 @@ export default function GoldCalculator() {
               patch({ vendorGold: Number(e.target.value) || 0 })
             }
             placeholder="Lump sum from trash / quests"
-            className="w-full rounded-lg bg-parchment-900/60 border border-parchment-100/10 px-3 py-2 text-parchment-100 placeholder:text-parchment-100/30 focus:border-gold-400 outline-none"
+            className="w-full rounded-lg bg-parchment-900 border border-parchment-100/10 px-3 py-2 text-parchment-100 placeholder:text-parchment-100/30 focus:border-gold-400 outline-none"
           />
         </label>
 
@@ -367,7 +367,7 @@ export default function GoldCalculator() {
       </div>
 
       {/* Results */}
-      <div className="rounded-2xl border border-gold-500/30 bg-gradient-to-br from-gold-500/5 to-transparent p-6">
+      <div className="rounded-2xl border border-gold-500/30 bg-parchment-900 p-6">
         <div className="flex flex-col sm:flex-row sm:items-end gap-4 sm:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-gold-500/80">
