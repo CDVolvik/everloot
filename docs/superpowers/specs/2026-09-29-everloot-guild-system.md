@@ -49,6 +49,41 @@ quarantined, 3-install corroboration where the data is observable.
 - **What we never claim:** cross-faction player identity without a claim, Blizzard-verified status,
   or anything from logs/armory ingestion. Our graph is our data; gaps say so.
 
+## Census outside the game (Olympus, checked 2026-09-30)
+
+There is no public Forever roster feed. Raider.IO's Forever tab and sites such as Raidify and CoGM
+say the same thing: armory sync waits on a Blizzard namespace that does not exist. Warcraft Logs
+is the same. News numbers are people repeating a stream.
+
+The ~50k figure is Asmongold reading an in-game census out loud. Clips from late September put the
+addon near 45,000 members and 5,000 online in one second, with 50,000 named as the next mark, and
+an earlier reading of 38,500 "registered Olympians." Those are not a dataset we can download.
+
+The community addon that produces the number is [Olympus Guild](https://github.com/dnl-gentile/olympus-addon)
+(MIT, CurseForge, Forever 1.60.1). Its own page says the useful part: a player only sees their own
+guild's roster, a guild caps near 1,000, and Olympus is many guilds. One member per guild is elected
+reporter and broadcasts a short summary on an addon channel. Every client adds those summaries up.
+The addon has no server. Nothing it sends leaves the game. The Forever beta also forgets addon
+saved data on login, so the census rebuilds from whoever is online.
+
+Our copy of that count, outside the game:
+
+1. One opted-in member of a guild uploads the snapshot the game already gave them (the guild
+   snapshot row above). One upload covers that whole guild. We do not sit a second reporter in
+   the channel, and we do not scrape the addon.
+2. A family total is the sum of the latest snapshot per guild. A character is in one guild, so
+   the sum does not double-count characters. "Confirmed players" still requires the opt-in alt
+   link. Until then the page says "X characters."
+3. Two uploads of the same guild must agree on the member count before the number is public.
+   A reporter's own character never confirms their own rank. This matches the drop rule: one
+   install is a claim, agreement is a fact.
+4. Online is whoever that snapshot saw online, with the time on it. A guild with no fresh
+   upload is missing, not zero.
+5. The server is the memory the beta client does not keep. The page is only as new as the
+   last agreeing upload.
+
+Tracker rows: `tool.guild_census`, `ref.olympus_addon`.
+
 ## Site surfaces (Track 3 consumes this)
 
 Guild pages (progression + roster + score components), family pages, realm/faction ladders, loot

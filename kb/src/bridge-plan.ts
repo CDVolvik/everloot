@@ -33,6 +33,7 @@ export const BRIDGE_PLAN: readonly PlanItem[] = [
   { id: "tool.item_page", status: "next", name: "Item page for a drop row", done: "name, source, drop, map, from our rollups, one MCP tool" },
   { id: "tool.collection", status: "next", name: "Missing-collection view", done: "owned versus missing from an upload, grouped by source. Not a Blizzard profile read." },
   { id: "tool.guild", status: "next", name: "Guild tracker", done: "progression, roster, loot, internal score. Officer-published guild data only." },
+  { id: "tool.guild_census", status: "next", name: "Guild-family census", done: "Sum of one upload per guild. Two reporters must agree. Characters are not double-counted. Players dedupe only by an opt-in alt link. Missing guilds stay missing. No public Forever roster API. Spec: guild system, census section." },
   { id: "tool.auction", status: "next", name: "Auction history", done: "prices from the player's own AH browsing, uploaded on purpose" },
   { id: "tool.simc", status: "next", name: "SimulationCraft sidecar", done: "run the GPL-3.0 forever branch as its own process once it can sim. Report comes back through MCP. Do not paste the C++ into this repo." },
   { id: "mcp.chatgpt_directory", status: "next", name: "ChatGPT apps directory", done: "submit the same MCP server the day submissions open" },
@@ -50,6 +51,7 @@ export const BRIDGE_PLAN: readonly PlanItem[] = [
   { id: "ops.apple", status: "waiting", name: "Apple Developer", done: "only if a Mac build ships at launch" },
   { id: "ops.wiki_permission", status: "waiting", name: "wiki.gg reply", done: "email to support@indie.io on 2026-09-27. Live wiki stays off the importer until they say yes." },
 
+  { id: "ref.olympus_addon", status: "shape", name: "Olympus Guild addon (MIT)", done: "In-game census of Asmongold's guilds. The author says nothing leaves the client. Learn the rules. Do not run our own hidden-channel reporter." },
   { id: "ref.simc", status: "shape", name: "github.com/simulationcraft", done: "forever branch is the sidecar. Addon is Unlicense and may fold into ours. Engine stays GPL-3.0 outside this tree." },
   { id: "ref.wow_tools_local", status: "shape", name: "Marlamin/wow.tools.local", done: "MIT dev tool on Carlos's machine. Do not publish extracted tables. Do not use its wago.tools download path." },
   { id: "ref.pengu", status: "shape", name: "Pengu's Midnight profession sheet", done: "page shape: one profession bible. Do not copy the cells." },
