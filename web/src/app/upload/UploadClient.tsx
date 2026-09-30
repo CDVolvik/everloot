@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { LuaParseError, parseEverlootLua } from "@/lib/sv-parse";
 
 interface Receipt {
   ok: boolean;
@@ -32,6 +33,19 @@ export default function UploadClient() {
     setError(null);
     file.text().then(
       (t) => {
+        // Everloot.lua (SavedVariables) first, JSON payload second.
+        if (/\.lua$/i.test(file.name) || /EverlootDB\s*=/.test(t.slice(0, 500))) {
+          try {
+            const parsed = parseEverlootLua(t);
+            const payload = JSON.stringify({ addonVersion: parsed.version, records: parsed.records }, null, 2);
+            setText(payload);
+            summarize(payload);
+          } catch (e) {
+            setPreview(null);
+            setError(e instanceof LuaParseError ? e.message : "Could not parse that Lua file.");
+          }
+          return;
+        }
         setText(t);
         summarize(t);
       },
@@ -87,13 +101,13 @@ export default function UploadClient() {
           if (f) loadFile(f);
         }}
       >
-        <p className="text-parchment-100/80">Drop your Everloot payload JSON here, or</p>
+        <p className="text-parchment-100/80">Drop your Everloot.lua or payload JSON here, or</p>
         <div className="mt-4 flex items-center justify-center gap-3">
           <label className="cursor-pointer px-4 py-2 rounded-lg bg-gold-500 text-parchment-950 font-semibold hover:bg-gold-400 transition">
             Choose file
             <input
               type="file"
-              accept="application/json,.json"
+              accept="application/json,.json,.lua"
               className="hidden"
               onChange={(e) => {
                 const f = e.target.files?.[0];
@@ -114,7 +128,7 @@ export default function UploadClient() {
           </button>
         </div>
         <p className="mt-4 text-xs text-parchment-100/50">
-          The addon exports this file. Direct .lua SavedVariables import lands with the addon build.
+          The addon writes Everloot.lua to your SavedVariables — drop that file straight in.
         </p>
       </div>
 
