@@ -33,7 +33,7 @@ export const BRIDGE_PLAN: readonly PlanItem[] = [
   { id: "tool.item_page", status: "next", name: "Item page for a drop row", done: "name, source, drop, map, from our rollups, one MCP tool" },
   { id: "tool.collection", status: "next", name: "Missing-collection view", done: "owned versus missing from an upload, grouped by source. Not a Blizzard profile read." },
   { id: "tool.guild", status: "next", name: "Guild tracker", done: "progression, roster, loot, internal score. Officer-published guild data only." },
-  { id: "tool.guild_census", status: "next", name: "Public guild-family page", done: "One public family URL filled by citing pages that already published a number. No upload is asked. A real API replaces the citation when it exists. First target is Olympus. Spec: guild system, census section." },
+  { id: "tool.guild_census", status: "next", name: "Public guild-family page", done: "Citation page is /guilds/olympus. Each figure has its source and date. Battle.net guild profile answers for retail and Classic Era in the local adapter. Forever namespaces were refused on 2026-09-30. Done when that namespace fills the same table. Spec: guild system, census section." },
   { id: "tool.auction", status: "next", name: "Auction history", done: "prices from the player's own AH browsing, uploaded on purpose" },
   { id: "tool.simc", status: "next", name: "SimulationCraft sidecar", done: "run the GPL-3.0 forever branch as its own process once it can sim. Report comes back through MCP. Do not paste the C++ into this repo." },
   { id: "mcp.chatgpt_directory", status: "next", name: "ChatGPT apps directory", done: "submit the same MCP server the day submissions open" },

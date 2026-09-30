@@ -38,7 +38,7 @@ Rows: 55.
 | `tool.item_page` | Item page for a drop row | name, source, drop, map, from our rollups, one MCP tool |
 | `tool.collection` | Missing-collection view | owned versus missing from an upload, grouped by source. Not a Blizzard profile read. |
 | `tool.guild` | Guild tracker | progression, roster, loot, internal score. Officer-published guild data only. |
-| `tool.guild_census` | Public guild-family page | One public family URL filled by citing pages that already published a number. No upload is asked. A real API replaces the citation when it exists. First target is Olympus. Spec: guild system, census section. |
+| `tool.guild_census` | Public guild-family page | Citation page is /guilds/olympus. Each figure has its source and date. Battle.net guild profile answers for retail and Classic Era in the local adapter. Forever namespaces were refused on 2026-09-30. Done when that namespace fills the same table. Spec: guild system, census section. |
 | `tool.auction` | Auction history | prices from the player's own AH browsing, uploaded on purpose |
 | `tool.simc` | SimulationCraft sidecar | run the GPL-3.0 forever branch as its own process once it can sim. Report comes back through MCP. Do not paste the C++ into this repo. |
 | `mcp.chatgpt_directory` | ChatGPT apps directory | submit the same MCP server the day submissions open |

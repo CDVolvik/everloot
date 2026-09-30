@@ -152,9 +152,10 @@ Same night: one cohesive app that offers those tools, and a bridge so a ChatGPT 
 (connected directly) and any other MCP client pull the data from our server. Their model reasons.
 Our server holds the rows. The list that must not be dropped is `docs/TRACKER.md`
 (`kb/src/bridge-plan.ts`, also the `everloot_plan` tool). Local HTTP MCP is `npm run kb -- serve-mcp-http`.
-The guild-family page is the public reference an in-game census cannot be. It fills from pages
-that already published a number, and it does not ask for an upload. First target is Olympus: one
-URL they can point people at. Row `tool.guild_census` on the tracker.
+The guild-family page is the public reference an in-game census cannot be. `/guilds/olympus`
+cites pages that already published a number, and it does not ask for an upload. Battle.net guild
+profile answers for retail and Classic Era; guessed Forever namespaces were refused on 2026-09-30.
+Row `tool.guild_census` on the tracker.
 
 ---
 

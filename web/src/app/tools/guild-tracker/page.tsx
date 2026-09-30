@@ -30,7 +30,9 @@ export default function GuildTrackerPage() {
         },
         {
           title: "Guild families",
-          body: "Multi-guild umbrellas like Olympus tracked as one family across realms and factions, with honest character-vs-player counts.",
+          body: "One public record for a family of guilds. Every figure cites the page that published it and the date.",
+          href: "/guilds/olympus",
+          hrefLabel: "Olympus family record",
         },
       ]}
     />
