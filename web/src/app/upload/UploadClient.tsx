@@ -6,6 +6,7 @@ import { LuaParseError, parseEverlootLua } from "@/lib/sv-parse";
 interface Receipt {
   ok: boolean;
   uploadId?: string;
+  persisted?: boolean;
   accepted?: Array<{ index: number; kind: string }>;
   rejected?: Array<{ index: number; reason: string }>;
   error?: string;
@@ -164,6 +165,9 @@ export default function UploadClient() {
                 Upload <span className="text-parchment-100">{receipt.uploadId}</span>:{" "}
                 {receipt.accepted?.length ?? 0} accepted
                 {receipt.rejected?.length ? `, ${receipt.rejected.length} rejected` : ""}.
+                {receipt.persisted === false && (
+                  <span className="block mt-1">Validated and counted — permanent storage connects with the site launch.</span>
+                )}
               </p>
               {!!receipt.rejected?.length && (
                 <ul className="mt-2 text-parchment-100/60">

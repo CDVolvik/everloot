@@ -17,10 +17,15 @@ const RATE_WINDOW_MS = 60 * 60 * 1000;
 const RATE_MAX_UPLOADS = 20;
 const hits = new Map<string, number[]>();
 
-async function storeUpload(uploadId: string, payload: unknown): Promise<void> {
-  const dir = join(process.cwd(), "data", "uploads");
-  await mkdir(dir, { recursive: true });
-  await writeFile(join(dir, `${uploadId}.json`), JSON.stringify(payload));
+async function storeUpload(uploadId: string, payload: unknown): Promise<boolean> {
+  try {
+    const dir = join(process.cwd(), "data", "uploads");
+    await mkdir(dir, { recursive: true });
+    await writeFile(join(dir, `${uploadId}.json`), JSON.stringify(payload));
+    return true;
+  } catch {
+    return false; // serverless FS is ephemeral/read-only: validate now, persist after Supabase lands
+  }
 }
 
 function rateLimited(installId: string): boolean {
@@ -54,6 +59,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: `max ${MAX_RECORDS} records per upload` }, { status: 413 });
   }
   const uploadId = randomUUID();
-  await storeUpload(uploadId, payload);
-  return NextResponse.json({ ok: true, uploadId, ...result });
+  const persisted = await storeUpload(uploadId, payload);
+  return NextResponse.json({ ok: true, uploadId, persisted, ...result });
 }
