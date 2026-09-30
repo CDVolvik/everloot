@@ -17,8 +17,10 @@ export default function CompletionistPage() {
       tool={tool}
       previewSections={[
         {
-          title: "Your personal missing list",
-          body: "Paste your armory URL and we'll surface every mount, pet, toy, title, and achievement you haven't collected yet — across the entire game's history.",
+          title: "Owned versus missing",
+          body: "The list is items 3 installs agree belong to a collection and a source. Owned is what one install uploaded. Missing is the rest of that list.",
+          href: "/tools/collections",
+          hrefLabel: "Open the collection gap",
         },
         {
           title: "Obtainability filter",

@@ -1,14 +1,23 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+import { auctionSightingsFromRecords, handleAuctionHistory } from "./auction-history.js";
 import { handlePlan } from "./bridge-plan.js";
+import { collectionFactsFromRecords, handleCollectionGap } from "./collection-gap.js";
+import { guildFactsFromRecords, handleGuildBoard } from "./guild-board.js";
 import { handleItemPage } from "./item-page.js";
-import { handleProfessionPath } from "./profession-path.js";
+import { loadUploadRecords } from "./load-uploads.js";
+import { handleProfessionPath, professionFactsFromRecords } from "./profession-path.js";
 import { openDb, type DB } from "./db.js";
 import { getByName, getEntity, search, type SearchHit } from "./search.js";
 
 export const SERVER_NAME = "everloot-knowledge";
-export const SERVER_VERSION = "0.4.0";
+export const SERVER_VERSION = "0.5.0";
+
+function storedRecords(): unknown[] {
+  const dir = process.env.EVERLOOT_UPLOADS?.trim();
+  return dir ? loadUploadRecords(dir) : [];
+}
 
 const KINDS = ["item", "npc", "quest", "zone", "spell", "lore_page", "creator", "realm"] as const;
 const VERSIONS = ["forever", "classic", "retail", "lore"] as const;
@@ -87,7 +96,7 @@ export function createKnowledgeServer(db: DB): McpServer {
     {
       title: "Profession leveling path",
       description:
-        "Leveling path for one Forever profession from Everloot uploads. A step exists only after 3 installs agree. Gold exists only after 3 price uploads agree. No copied guide. This process has no upload store yet, so the answer is the rule and any gap.",
+        "Leveling path for one Forever profession from Everloot uploads. A step exists only after 3 installs agree. Gold exists only after 3 price uploads agree. No copied guide. Reads EVERLOOT_UPLOADS when that directory is set. Otherwise the answer is the rule and any gap.",
       inputSchema: {
         profession: z.string().describe("Profession name, such as Alchemy."),
         fromSkill: z.number().int().min(1).max(500).default(1).describe("Skill the character has now."),
@@ -95,7 +104,10 @@ export function createKnowledgeServer(db: DB): McpServer {
       },
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
-    (args) => ({ content: [{ type: "text" as const, text: handleProfessionPath(args) }] }),
+    (args) => {
+      const facts = professionFactsFromRecords(storedRecords());
+      return { content: [{ type: "text" as const, text: handleProfessionPath(args, facts.sightings, facts.prices) }] };
+    },
   );
   server.registerTool(
     "item_page",
@@ -107,6 +119,54 @@ export function createKnowledgeServer(db: DB): McpServer {
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     (args) => ({ content: [{ type: "text" as const, text: handleItemPage(args) }] }),
+  );
+  server.registerTool(
+    "collection_gap",
+    {
+      title: "Owned versus missing in a collection",
+      description:
+        "Missing items in one collection for one install. A list row is public after 3 installs agree on the collection, the source, and the item. Owned is what that install uploaded. Not a Blizzard profile read and not a copied catalog. Reads EVERLOOT_UPLOADS when that directory is set.",
+      inputSchema: {
+        collection: z.string().describe("Collection name, such as Mounts."),
+        ownerInstallId: z.string().describe("Install id whose owned upload to compare."),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    (args) => ({
+      content: [{ type: "text" as const, text: handleCollectionGap(args, collectionFactsFromRecords(storedRecords())) }],
+    }),
+  );
+  server.registerTool(
+    "guild_board",
+    {
+      title: "Officer guild board",
+      description:
+        "Roster, bosses, loot, attendance, and average item level from officer uploads. A figure is public after 2 uploads agree. There is no single score because score_v1 weights are not published. Reads EVERLOOT_UPLOADS when that directory is set.",
+      inputSchema: {
+        guildName: z.string().describe("Guild name."),
+        realm: z.string().describe("Realm name."),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    (args) => ({
+      content: [{ type: "text" as const, text: handleGuildBoard(args, guildFactsFromRecords(storedRecords())) }],
+    }),
+  );
+  server.registerTool(
+    "auction_history",
+    {
+      title: "Auction history for one item",
+      description:
+        "Price history from auction scans players uploaded on purpose. A day is public after 3 installs scanned that item on that realm. Copper is the median. Reads EVERLOOT_UPLOADS when that directory is set.",
+      inputSchema: {
+        realm: z.string().describe("Realm name."),
+        itemId: z.number().int().positive().describe("Item id."),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    (args) => ({
+      content: [{ type: "text" as const, text: handleAuctionHistory(args, auctionSightingsFromRecords(storedRecords())) }],
+    }),
   );
   server.registerTool(
     "everloot_plan",

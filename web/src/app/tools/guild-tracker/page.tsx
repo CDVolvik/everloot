@@ -26,7 +26,9 @@ export default function GuildTrackerPage() {
         },
         {
           title: "The Everloot score",
-          body: "One internal score from progression, roster strength and gear — transparent components, versioned weights, computed never gamed.",
+          body: "The board shows bosses, roster, loot, and average item level once two officer uploads agree. score_v1 has no published weights, so those parts stay separate.",
+          href: "/tools/guild-board",
+          hrefLabel: "Open the guild board",
         },
         {
           title: "Guild families",

@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { handleProfessionPath, professionPath, type PriceSighting, type RecipeSighting } from "../src/profession-path.js";
+import { handleProfessionPath, professionFactsFromRecords, professionPath, type PriceSighting, type RecipeSighting } from "../src/profession-path.js";
 
 const sight = (installId: string, recipe: string, reagents: RecipeSighting["reagents"], extra: Partial<RecipeSighting> = {}): RecipeSighting => ({
   installId,
@@ -69,4 +69,23 @@ test("gold is the median of 3 prices, and a missing reagent price keeps the tota
 test("a blank profession or a backwards range is refused", () => {
   expect(handleProfessionPath({ profession: "  " })).toBe("Name a profession.");
   expect(handleProfessionPath({ profession: "Alchemy", fromSkill: 10, toSkill: 10 })).toContain("target skill");
+});
+
+test("recipe_seen and price_seen records become path facts", () => {
+  const facts = professionFactsFromRecords([
+    {
+      kind: "recipe_seen",
+      installId: "a",
+      profession: "Alchemy",
+      recipe: "Minor Healing Potion",
+      skillMin: 1,
+      skillMax: 10,
+      points: 1,
+      reagents: [{ item: "Peacebloom", count: 1 }],
+    },
+    { kind: "price_seen", installId: "a", item: "Peacebloom", copper: 100 },
+    { kind: "loot", installId: "a" },
+  ]);
+  expect(facts.sightings).toHaveLength(1);
+  expect(facts.prices).toEqual([{ installId: "a", item: "Peacebloom", copper: 100 }]);
 });

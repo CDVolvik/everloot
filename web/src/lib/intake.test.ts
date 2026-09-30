@@ -4,9 +4,12 @@ import { ALL_RECORD_KINDS, validateUpload } from "./intake.js";
 const base = { installId: "test-install-1234", capturedAt: "2026-09-29T12:00:00.000Z" };
 
 describe("intake contract", () => {
-  test("all ten record kinds exist", () => {
-    expect(ALL_RECORD_KINDS).toHaveLength(10);
+  test("all record kinds exist", () => {
+    expect(ALL_RECORD_KINDS).toHaveLength(15);
     expect(ALL_RECORD_KINDS).toContain("loot_award");
+    expect(ALL_RECORD_KINDS).toContain("collection_catalog");
+    expect(ALL_RECORD_KINDS).toContain("recipe_seen");
+    expect(ALL_RECORD_KINDS).toContain("auction_scan");
   });
 
   test("accepts a mixed valid upload", () => {
@@ -41,6 +44,21 @@ describe("intake contract", () => {
       "loot needs a source: npc or object",
       expect.stringContaining(">0"),
     ]);
+  });
+
+  test("accepts collection, auction, and recipe records", () => {
+    const r = validateUpload({
+      addonVersion: "0.1.0",
+      records: [
+        { ...base, kind: "collection_catalog", collection: "Mounts", source: "Vendor", itemId: 1 },
+        { ...base, kind: "collection_owned", collection: "Mounts", itemId: 1 },
+        { ...base, kind: "auction_scan", realm: "Forever", itemId: 1, copper: 50 },
+        { ...base, kind: "recipe_seen", profession: "Alchemy", recipe: "Minor Healing Potion", skillMin: 1, skillMax: 10, points: 1, reagents: [{ item: "Peacebloom", count: 1 }] },
+        { ...base, kind: "price_seen", item: "Peacebloom", copper: 100 },
+      ],
+    });
+    expect(r.rejected).toHaveLength(0);
+    expect(r.accepted).toHaveLength(5);
   });
 
   test("rejects empty and oversized payloads", () => {
