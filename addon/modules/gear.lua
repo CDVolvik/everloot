@@ -26,12 +26,10 @@ local function sample()
     if slotId then
       local link = GetInventoryItemLink("player", slotId)
       local itemId = link and tonumber(link:match("item:(%d+)"))
-      if itemId then
-        local _, _, ilvl = pcall(GetDetailedItemLevelInfo, link)
-        equipped[#equipped + 1] = {
-          slot = slotName, itemId = itemId,
-          itemLevel = (type(ilvl) == "number" and ilvl) or 0,
-        }
+      local ok, detailed = pcall(GetDetailedItemLevelInfo, link)
+      local ilvl = (ok and type(detailed) == "number") and math.floor(detailed) or nil
+      if itemId and ilvl and ilvl >= 1 then
+        equipped[#equipped + 1] = { slot = slotName, itemId = itemId, itemLevel = ilvl }
       end
     end
   end
