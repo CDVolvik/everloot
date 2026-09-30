@@ -4,6 +4,7 @@ import type { Game, NsKind, Region } from "./blizzard/namespaces.js";
 import { openDb, type DB } from "./db.js";
 import { importCurated } from "./importers/curated.js";
 import { importWikiDump } from "./importers/wiki-dump.js";
+import { startHttpBridge } from "./mcp-http.js";
 import { serveStdio } from "./mcp-server.js";
 import { search } from "./search.js";
 import { snapshot } from "./snapshot.js";
@@ -20,7 +21,8 @@ const USAGE = `usage: npm run kb -- <command> [--db data/everloot-kb.sqlite]
   blizzard-get <data/wow/...|profile/wow/...> --game retail|classic|classic1x|forever --kind static|dynamic|profile [--region us]
     (path has no leading slash; works unchanged in Git Bash and PowerShell)
   search <words...>
-  serve-mcp   (stdio MCP server: everloot-knowledge, for Claude / ChatGPT dev mode / companion)
+  serve-mcp        (stdio MCP: everloot-knowledge)
+  serve-mcp-http   (loopback HTTP MCP on 127.0.0.1:8787, POST /mcp; --port N)
   stats
   validate
   snapshot <out.sqlite>   (outside the database's own folder, e.g. data/release/kb.sqlite)`;
@@ -103,6 +105,14 @@ async function main(): Promise<number> {
     case "serve-mcp":
       await serveStdio(flags.get("db") ?? "data/everloot-kb.sqlite");
       return 0;
+    case "serve-mcp-http": {
+      const port = Number(flags.get("port") ?? 8787);
+      const http = await startHttpBridge(db(), port);
+      const addr = http.address();
+      const bound = typeof addr === "object" && addr ? addr.port : port;
+      console.log(`everloot-knowledge HTTP MCP on http://127.0.0.1:${bound}/mcp`);
+      await new Promise<never>(() => {});
+    }
     case "stats":
       console.table(db().prepare("SELECT source_id, kind, count(*) AS rows FROM entities GROUP BY source_id, kind").all());
       return 0;
