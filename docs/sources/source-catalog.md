@@ -72,7 +72,7 @@ name the exact domain in the map.
 | Wowhead guides | wowhead.com/forever/guides/classes | Per-class guides | yes | `link` |
 | MythicSim | mythicsim.com/wow-forever | Forever DPS/gear sim (wowsims fork) | yes (beta) | `link?` |
 | Maxroll | maxroll.gg/wow | Retail guides | no (yet) | `link?` |
-| Raidbots / SimulationCraft / Bloodmallet | raidbots.com, simulationcraft.org, bloodmallet.com | Retail sims | no — SimC never supported Classic-architecture clients | skip for Forever |
+| Raidbots / SimulationCraft / Bloodmallet | raidbots.com, simulationcraft.org, bloodmallet.com | Combat sims | **`forever` branch exists** on [simulationcraft/simc](https://github.com/simulationcraft/simc), updated 2026-09-27, still a port (profiles deleted, class modules resetting). Default branch is retail `midnight`. GPL-3.0. Addon is Unlicense. | Run as a separate binary once it sims. Do not vendor into this tree. See `docs/references.md`. |
 | Archon.gg | archon.gg/wow | WCL-driven tier lists | unknown | `link?` |
 | Class Discords | wowhead.com/discord-servers (directory) | Live theorycraft | unknown | `link` |
 
@@ -105,7 +105,7 @@ name the exact domain in the map.
 | Warcraft Wiki — WoW API | warcraft.wiki.gg/wiki/World_of_Warcraft_API | Addon API reference | unconfirmed for Forever | 2023 dump (import); live pages: link only — /api.php disallowed |
 | Blizzard Game Data / Profile API | community.developer.battle.net | Official data — **all free groups adopted**, see spec §4.5 | **no Forever namespace yet** | `api` — one adapter, all namespaces (retail, `classic`, `classic1x`), Forever gated. Each user brings their own free client. Terms: attribution required, no redistribution/resale, no monetising the data, 36,000 calls/hr → local cache only |
 | WoWDev wiki | wowdev.wiki | File formats | no | skip |
-| wow.tools | — | Dead since ~2025 | — | skip |
+| wow.tools | wow.tools (site retired May 2025) | Public site dead. Local app [Marlamin/wow.tools.local](https://github.com/Marlamin/wow.tools.local) is MIT and still updated. It downloads older builds from wago.tools. | dev machine only | Do not publish extracted tables. Do not import via its wago.tools path. |
 | Community Forever datasets | github.com/alcaras/forever-ref | Example consumer of wago.tools Forever exports | yes | reference only |
 
 ## Addons & UI ecosystem

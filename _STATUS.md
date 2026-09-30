@@ -134,9 +134,24 @@ local remote updated). Still open: trademark check, `everloot.gg` (optional).
 
 **Resume:** `docs/superpowers/specs/2026-09-28-forever-data-staple-brainstorm.md` — Sections 1–2
 await approval, Section 3 not yet presented; then spec → per-track plans → build. **Waiting on
-Carlos (calendar-bound):** trademark check + domain (`everloot.app`), Windows code signing, Apple Developer (Mac,
+Carlos (calendar-bound):** trademark check, Windows code signing, Apple Developer (Mac,
 optional), Supabase + Vercel projects, fresh Blizzard client in `kb/.env`, Forever fan-wiki pick,
-wiki.gg's reply (email to support@indie.io, 2026-09-27).
+wiki.gg's reply (email to support@indie.io, 2026-09-27). The domain is already bought (line above).
+The web build on 2026-09-29 (home, upload, drops, profession hubs, waitlist) already ran past this
+pause. Read `git log` and `docs/references.md` before treating the brainstorm as the current cursor.
+
+## 2026-09-29 — Reference sites
+
+Carlos sent a profession sheet plus collection, database, guide, and economy sites. Filed in
+`docs/references.md`. Those are page shapes, not sources to copy. US / Moon Guard / Hakoovak is
+his own character, sent so two of those pages could be opened on a real name. It is not a fixture
+and not the Forever beta character. `everloot.app` is on Cloudflare nameservers and did not answer
+HTTP at the start of that session.
+
+Same night: one cohesive app that offers those tools, and a bridge so a ChatGPT subscription
+(connected directly) and any other MCP client pull the data from our server. Their model reasons.
+Our server holds the rows. The list that must not be dropped is `docs/TRACKER.md`
+(`kb/src/bridge-plan.ts`, also the `everloot_plan` tool). Local HTTP MCP is `npm run kb -- serve-mcp-http`.
 
 ---
 

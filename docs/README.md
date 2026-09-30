@@ -9,7 +9,7 @@ Reference material for the build. Not source-of-truth for the product (that's `_
 | `WoWCollectorTracker_Architecture_and_Strategy.docx` | Historical strategy artifact (2026-05-02, 35 pages) | Once for context. Reread before Phase 2 GTM work. |
 | `WoWCollectorTracker_Competitive_Matrix.xlsx` | Historical competitive matrix (30 tools × 50+ features) | When deciding which APIs to integrate or which feature niches to attack. |
 | `architecture.md` | Live tech decisions (TO BE WRITTEN — Session 0) | Every session. Keep updated. |
-| `references.md` | API + reference site index (TO BE WRITTEN — when relevant) | When you need to remember which site does what. |
+| `references.md` | Product-shape references Carlos sent 2026-09-29. Access rules stay in `sources/source-catalog.md`. | Before borrowing a page layout from another WoW site. |
 
 ## The two historical docs
 
