@@ -33,7 +33,7 @@ export const BRIDGE_PLAN: readonly PlanItem[] = [
   { id: "tool.item_page", status: "next", name: "Item page for a drop row", done: "name, source, drop, map, from our rollups, one MCP tool" },
   { id: "tool.collection", status: "next", name: "Missing-collection view", done: "owned versus missing from an upload, grouped by source. Not a Blizzard profile read." },
   { id: "tool.guild", status: "next", name: "Guild tracker", done: "progression, roster, loot, internal score. Officer-published guild data only." },
-  { id: "tool.guild_census", status: "next", name: "Public guild-family page", done: "One URL a family can cite: guild list, character total, online, as-of time. One upload per guild, two must agree. This is the external page an in-game census cannot be. First target is Olympus. Spec: guild system, census section." },
+  { id: "tool.guild_census", status: "next", name: "Public guild-family page", done: "One public family URL filled by citing pages that already published a number. No upload is asked. A real API replaces the citation when it exists. First target is Olympus. Spec: guild system, census section." },
   { id: "tool.auction", status: "next", name: "Auction history", done: "prices from the player's own AH browsing, uploaded on purpose" },
   { id: "tool.simc", status: "next", name: "SimulationCraft sidecar", done: "run the GPL-3.0 forever branch as its own process once it can sim. Report comes back through MCP. Do not paste the C++ into this repo." },
   { id: "mcp.chatgpt_directory", status: "next", name: "ChatGPT apps directory", done: "submit the same MCP server the day submissions open" },
@@ -51,7 +51,7 @@ export const BRIDGE_PLAN: readonly PlanItem[] = [
   { id: "ops.apple", status: "waiting", name: "Apple Developer", done: "only if a Mac build ships at launch" },
   { id: "ops.wiki_permission", status: "waiting", name: "wiki.gg reply", done: "email to support@indie.io on 2026-09-27. Live wiki stays off the importer until they say yes." },
 
-  { id: "ref.olympus_addon", status: "shape", name: "Olympus Guild addon (MIT)", done: "Their in-game census. It has no server and nothing leaves the client. We do not replace it. The public page is the piece they do not have." },
+  { id: "ref.olympus_addon", status: "shape", name: "Olympus Guild addon (MIT)", done: "Their in-game census. It has no server and nothing leaves the client. We cite public pages. We do not join their channel, and we do not replace the addon." },
   { id: "ref.simc", status: "shape", name: "github.com/simulationcraft", done: "forever branch is the sidecar. Addon is Unlicense and may fold into ours. Engine stays GPL-3.0 outside this tree." },
   { id: "ref.wow_tools_local", status: "shape", name: "Marlamin/wow.tools.local", done: "MIT dev tool on Carlos's machine. Do not publish extracted tables. Do not use its wago.tools download path." },
   { id: "ref.pengu", status: "shape", name: "Pengu's Midnight profession sheet", done: "page shape: one profession bible. Do not copy the cells." },
