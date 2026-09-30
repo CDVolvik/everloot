@@ -5,6 +5,7 @@ import { auctionSightingsFromRecords, handleAuctionHistory } from "./auction-his
 import { handlePlan } from "./bridge-plan.js";
 import { collectionFactsFromRecords, handleCollectionGap } from "./collection-gap.js";
 import { guildFactsFromRecords, handleGuildBoard } from "./guild-board.js";
+import { itemFactsFromRecords } from "./drop-rollup.js";
 import { handleItemPage } from "./item-page.js";
 import { loadUploadRecords } from "./load-uploads.js";
 import { handleProfessionPath, professionFactsFromRecords } from "./profession-path.js";
@@ -12,7 +13,7 @@ import { openDb, type DB } from "./db.js";
 import { getByName, getEntity, search, type SearchHit } from "./search.js";
 
 export const SERVER_NAME = "everloot-knowledge";
-export const SERVER_VERSION = "0.5.0";
+export const SERVER_VERSION = "0.6.0";
 
 function storedRecords(): unknown[] {
   const dir = process.env.EVERLOOT_UPLOADS?.trim();
@@ -114,11 +115,13 @@ export function createKnowledgeServer(db: DB): McpServer {
     {
       title: "Item page for a drop",
       description:
-        "One Forever item: agreed name, public drop rate with kill count, and an agreed map pin. A rate is public after 3 installs kill the source. A name or pin needs 3 installs agreeing. No Wowhead rows. This process has no upload store yet, so the answer is the empty page.",
+        "One Forever item: agreed name, public drop rate with kill count, and an agreed map pin. A rate is public after 3 installs kill the source. A name or pin needs 3 installs agreeing. No Wowhead rows. Reads EVERLOOT_UPLOADS when that directory is set. Otherwise the answer is the empty page.",
       inputSchema: { itemId: z.number().int().positive().describe("Item id from a drop row.") },
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
-    (args) => ({ content: [{ type: "text" as const, text: handleItemPage(args) }] }),
+    (args) => ({
+      content: [{ type: "text" as const, text: handleItemPage(args, itemFactsFromRecords(storedRecords())) }],
+    }),
   );
   server.registerTool(
     "collection_gap",

@@ -46,6 +46,23 @@ local function targetSighting(unit)
   })
 end
 
+local QUALITY = {
+  [0] = "poor", [1] = "common", [2] = "uncommon", [3] = "rare",
+  [4] = "epic", [5] = "legendary", [6] = "artifact", [7] = "heirloom",
+}
+
+local function rememberItem(itemId)
+  if not GetItemInfo then return end
+  local name, _, quality = GetItemInfo(itemId)
+  local label = QUALITY[quality]
+  if not name or not label then return end
+  E:Store("item_seen", {
+    installId = EverlootDB.installId,
+    capturedAt = date("!%Y-%m-%dT%H:%M:%SZ"),
+    itemId = itemId, name = name, quality = label,
+  })
+end
+
 local function lootCapture()
   local items = {}
   local n = GetNumLootItems and GetNumLootItems() or 0
@@ -53,7 +70,10 @@ local function lootCapture()
     local link = GetLootSlotLink and GetLootSlotLink(i)
     local _, _, count = GetLootSlotInfo and GetLootSlotInfo(i)
     local itemId = link and tonumber(link:match("item:(%d+)"))
-    if itemId then items[#items + 1] = { itemId = itemId, count = count or 1 } end
+    if itemId then
+      items[#items + 1] = { itemId = itemId, count = count or 1 }
+      rememberItem(itemId)
+    end
   end
   if #items == 0 then return end
   local sourceNpcId = npcIdFromGuid(UnitGUID("target"))

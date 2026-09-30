@@ -15,18 +15,31 @@ end
 local function snapshotRoster()
   local ctx = guildContext()
   if not ctx then return "not in a guild" end
+  if ctx.faction ~= "alliance" and ctx.faction ~= "horde" then return "faction not alliance or horde" end
   local members = {}
   local n = GetNumGuildMembers and GetNumGuildMembers() or 0
   for i = 1, math.min(n, 2000) do
     -- Legacy roster getters are the stable cross-flavor call; C_GuildInfo covers the rest.
     local name, rank, _, level, _, _, _, _, online, _, class = GetGuildRosterInfo and GetGuildRosterInfo(i)
-    if name and online then
-      members[#members + 1] = {
-        name = name:gsub("%-.+", ""), rank = rank or "?", level = level or 0,
-        class = class or "?", lastOnlineDays = 0,
-      }
+    if name then
+      local lastOnlineDays = nil
+      if online then
+        lastOnlineDays = 0
+      elseif GetGuildRosterLastOnline then
+        local years, months, days = GetGuildRosterLastOnline(i)
+        if type(years) == "number" or type(months) == "number" or type(days) == "number" then
+          lastOnlineDays = math.min(3650, (years or 0) * 365 + (months or 0) * 30 + (days or 0))
+        end
+      end
+      if lastOnlineDays ~= nil and (level or 0) >= 1 then
+        members[#members + 1] = {
+          name = name:gsub("%-.+", ""), rank = rank or "?", level = level,
+          class = class or "?", lastOnlineDays = lastOnlineDays,
+        }
+      end
     end
   end
+  if #members == 0 then return "no readable members" end
   E:Store("guild_snapshot", {
     installId = EverlootDB.installId,
     capturedAt = date("!%Y-%m-%dT%H:%M:%SZ"),
@@ -34,7 +47,38 @@ local function snapshotRoster()
     claimToken = "pending-officer-claim",
     members = members,
   })
-  return "snapshot stored (" .. #members .. " online)"
+  return "snapshot stored (" .. #members .. " members)"
+end
+
+local function raidLockouts()
+  local ctx = guildContext()
+  if not ctx then return end
+  if ctx.faction ~= "alliance" and ctx.faction ~= "horde" then return end
+  if not (GetNumSavedInstances and GetSavedInstanceInfo) then return end
+  local n = GetNumSavedInstances()
+  if type(n) ~= "number" or n < 1 then return end
+  for i = 1, n do
+    local name, _, reset, difficulty, _, _, _, _, _, _, numEncounters = GetSavedInstanceInfo(i)
+    if type(name) == "string" and name ~= "" then
+      local bosses = {}
+      local encounters = type(numEncounters) == "number" and numEncounters or 0
+      if GetSavedInstanceEncounterInfo then
+        for encounter = 1, encounters do
+          local boss, _, killed = GetSavedInstanceEncounterInfo(i, encounter)
+          if killed and type(boss) == "string" and boss ~= "" then bosses[#bosses + 1] = boss end
+        end
+      end
+      local resetSeconds = type(reset) == "number" and reset or 0
+      E:Store("raid_lockout", {
+        installId = EverlootDB.installId,
+        capturedAt = date("!%Y-%m-%dT%H:%M:%SZ"),
+        guildName = ctx.guildName, realm = ctx.realm,
+        instance = name, difficulty = tostring(difficulty or "unknown"),
+        bossesKilled = bosses,
+        resetAt = date("!%Y-%m-%dT%H:%M:%SZ", time() + resetSeconds),
+      })
+    end
+  end
 end
 
 local function raidAttendance()
@@ -69,11 +113,15 @@ E:RegisterModule("guild", function()
   local f = E.frame
   f:RegisterEvent("GUILD_ROSTER_UPDATE")
   f:RegisterEvent("PLAYER_ENTERING_WORLD")
+  f:RegisterEvent("UPDATE_INSTANCE_INFO")
   f:HookScript("OnEvent", function(_, event)
+    if event == "GUILD_ROSTER_UPDATE" then pcall(snapshotRoster) end
     if event == "GUILD_ROSTER_UPDATE" or event == "PLAYER_ENTERING_WORLD" then
       pcall(raidAttendance)
     end
+    if event == "UPDATE_INSTANCE_INFO" or event == "PLAYER_ENTERING_WORLD" then
+      pcall(raidLockouts)
+    end
   end)
-  -- Lockout + loot-award capture lands with the beta raid test (RaidLocks + loot events).
-  return "ready (roster/attendance; lockout+loot pending raid test)"
+  return "ready (roster, attendance, lockouts; loot awards still wait on a raid test)"
 end)
