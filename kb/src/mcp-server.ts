@@ -9,11 +9,12 @@ import { itemFactsFromRecords } from "./drop-rollup.js";
 import { handleItemPage } from "./item-page.js";
 import { loadUploadRecords } from "./load-uploads.js";
 import { handleProfessionPath, professionFactsFromRecords } from "./profession-path.js";
+import { handleNpcPage, handleQuestPage, handleVendorPage, worldFactsFromRecords } from "./world-pages.js";
 import { openDb, type DB } from "./db.js";
 import { getByName, getEntity, search, type SearchHit } from "./search.js";
 
 export const SERVER_NAME = "everloot-knowledge";
-export const SERVER_VERSION = "0.6.0";
+export const SERVER_VERSION = "0.7.0";
 
 function storedRecords(): unknown[] {
   const dir = process.env.EVERLOOT_UPLOADS?.trim();
@@ -121,6 +122,45 @@ export function createKnowledgeServer(db: DB): McpServer {
     },
     (args) => ({
       content: [{ type: "text" as const, text: handleItemPage(args, itemFactsFromRecords(storedRecords())) }],
+    }),
+  );
+  server.registerTool(
+    "npc_page",
+    {
+      title: "NPC page",
+      description:
+        "One Forever NPC: agreed name and map pins. A name or pin needs 3 installs agreeing. The pin does not require a drop. No copied spawn list. Reads EVERLOOT_UPLOADS when that directory is set. Otherwise the answer is the empty page.",
+      inputSchema: { npcId: z.number().int().positive().describe("NPC id.") },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    (args) => ({
+      content: [{ type: "text" as const, text: handleNpcPage(args, worldFactsFromRecords(storedRecords())) }],
+    }),
+  );
+  server.registerTool(
+    "quest_page",
+    {
+      title: "Quest page",
+      description:
+        "One Forever quest: agreed title, level, giver, turn-in, and rewards. Each fact needs 3 installs agreeing. No copied quest text. Reads EVERLOOT_UPLOADS when that directory is set. Otherwise the answer is the empty page.",
+      inputSchema: { questId: z.number().int().positive().describe("Quest id.") },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    (args) => ({
+      content: [{ type: "text" as const, text: handleQuestPage(args, worldFactsFromRecords(storedRecords())) }],
+    }),
+  );
+  server.registerTool(
+    "vendor_page",
+    {
+      title: "Vendor page",
+      description:
+        "Goods one Forever vendor sells. An item is listed when 3 installs agree on that item and its copper price. Two agreed prices both stay listed. No copied catalog. Reads EVERLOOT_UPLOADS when that directory is set. Otherwise the answer is the empty page.",
+      inputSchema: { vendorNpcId: z.number().int().positive().describe("Vendor NPC id.") },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    (args) => ({
+      content: [{ type: "text" as const, text: handleVendorPage(args, worldFactsFromRecords(storedRecords())) }],
     }),
   );
   server.registerTool(

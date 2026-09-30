@@ -85,17 +85,50 @@ local function lootCapture()
   })
 end
 
+local function vendorCapture()
+  if not GetMerchantNumItems or not GetMerchantItemLink or not GetMerchantItemInfo then return end
+  local vendorNpcId = npcIdFromGuid(UnitGUID("npc")) or npcIdFromGuid(UnitGUID("target"))
+  if not vendorNpcId then return end
+  local okCount, count = pcall(GetMerchantNumItems)
+  if not okCount or type(count) ~= "number" or count < 1 then return end
+  local items = {}
+  for i = 1, math.min(count, 200) do
+    local okLink, link = pcall(GetMerchantItemLink, i)
+    local itemId = okLink and type(link) == "string" and tonumber(link:match("item:(%d+)"))
+    if itemId then
+      local okInfo, _, _, price, _, stock = pcall(GetMerchantItemInfo, i)
+      if okInfo and type(price) == "number" and price >= 0 and price == math.floor(price) then
+        local row = { itemId = itemId, priceCopper = price }
+        if type(stock) == "number" and stock > 0 and stock == math.floor(stock) then
+          row.limitedStock = stock
+        end
+        items[#items + 1] = row
+        rememberItem(itemId)
+      end
+    end
+  end
+  if #items == 0 then return end
+  E:Store("vendor", {
+    installId = EverlootDB.installId,
+    capturedAt = date("!%Y-%m-%dT%H:%M:%SZ"),
+    vendorNpcId = vendorNpcId,
+    items = items,
+  })
+end
+
 E:RegisterModule("openworld", function()
   local f = E.frame
   f:RegisterEvent("PLAYER_TARGET_CHANGED")
   f:RegisterEvent("UPDATE_MOUSEOVER_UNIT")
   f:RegisterEvent("LOOT_OPENED")
+  -- MERCHANT_SHOW is an old client event. A missing event disables the hook.
+  pcall(function() f:RegisterEvent("MERCHANT_SHOW") end)
   f:HookScript("OnEvent", function(_, event, ...)
     if event == "PLAYER_TARGET_CHANGED" then targetSighting("target")
     elseif event == "UPDATE_MOUSEOVER_UNIT" then targetSighting("mouseover")
-    elseif event == "LOOT_OPENED" then lootCapture() end
+    elseif event == "LOOT_OPENED" then lootCapture()
+    elseif event == "MERCHANT_SHOW" then vendorCapture() end
   end)
-  -- Quest + merchant capture lands once the beta quest/merchant event names are confirmed
-  -- in-client (MUST stay guarded: missing events disable, never error).
-  return "ready (target/mouseover/loot; quest+merchant pending beta confirm)"
+  -- Quest capture stays off. The intake requires a real level, and this client has no honest level call to store.
+  return "ready (target/mouseover/loot/merchant; quest capture still waits on a real level)"
 end)

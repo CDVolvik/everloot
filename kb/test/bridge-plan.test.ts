@@ -69,6 +69,9 @@ test("loopback HTTP MCP answers initialize and lists everloot_plan", async () =>
     expect(names).toContain("search_knowledge");
     expect(names).toContain("profession_path");
     expect(names).toContain("item_page");
+    expect(names).toContain("npc_page");
+    expect(names).toContain("quest_page");
+    expect(names).toContain("vendor_page");
     expect(names).toContain("collection_gap");
     expect(names).toContain("guild_board");
     expect(names).toContain("auction_history");
