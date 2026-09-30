@@ -5,7 +5,7 @@ const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://everloot.app";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
-  const staticRoutes = ["/", "/about", "/privacy"];
+  const staticRoutes = ["/", "/about", "/privacy", "/upload", "/database"];
 
   return [
     ...staticRoutes.map((path) => ({
