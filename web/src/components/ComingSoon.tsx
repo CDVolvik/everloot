@@ -7,7 +7,7 @@ export default function ComingSoon({
   previewSections,
 }: {
   tool: Tool;
-  previewSections: { title: string; body: string }[];
+  previewSections: { title: string; body: string; href?: string; hrefLabel?: string }[];
 }) {
   return (
     <article className="space-y-10">
@@ -39,6 +39,14 @@ export default function ComingSoon({
                 {s.title}
               </h3>
               <p className="mt-1 text-sm text-parchment-100/80">{s.body}</p>
+              {s.href && (
+                <Link
+                  href={s.href}
+                  className="mt-3 inline-block text-sm text-gold-400 hover:underline underline-offset-4"
+                >
+                  {s.hrefLabel ?? "Open"}
+                </Link>
+              )}
             </div>
           ))}
         </div>

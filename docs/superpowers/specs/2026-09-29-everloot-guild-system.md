@@ -125,7 +125,10 @@ The page gets more automatic in this order, and only when that source is actuall
 2. Count a list a guild already published on its own site. The row still names that site.
    Quoting their total is the default. Taking the names in waits on the page offering them for reuse.
 3. Blizzard's public namespace, the day it exists. It replaces the citation for whatever the API
-   returns. This is the door Raider.IO uses.
+   returns. This is the door Raider.IO uses. Checked 2026-09-30 with the client already on disk:
+   retail guild profile and Classic Era static both answered (a retail guild lookup returned a
+   name and a member count). Guessed Forever namespaces returned 403. The adapter still throws
+   before any Forever call. API bodies stay in that local cache and off the ad-supported site.
 4. Warcraft Logs, once Forever logs exist and their terms allow a count. A raid roster falls out
    of logs people already record for themselves.
 5. An Everloot upload stays in the product for drops, professions, and a guild that wants a
@@ -134,6 +137,10 @@ The page gets more automatic in this order, and only when that source is actuall
 
 A guild the public web has not mentioned is absent. It is not shown as zero. We still do not join
 the addon channel.
+
+The first page is `/guilds/olympus` (`web/src/app/guilds/[slug]/page.tsx`, rows in
+`web/src/data/families.ts`). It is the guild-hall logic made into a family record: their count,
+who was online, the source, and the date. It does not copy a member list.
 
 Tracker rows: `tool.guild_census`, `ref.olympus_addon`.
 
