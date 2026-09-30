@@ -67,6 +67,7 @@ test("loopback HTTP MCP answers initialize and lists everloot_plan", async () =>
     const names = tools.result.tools.map((tool: { name: string }) => tool.name);
     expect(names).toContain("everloot_plan");
     expect(names).toContain("search_knowledge");
+    expect(names).toContain("profession_path");
   } finally {
     http.close();
     await once(http, "close");
