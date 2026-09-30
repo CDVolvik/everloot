@@ -14,22 +14,27 @@ const RATE_MAX = 10;
 const RATE_WINDOW_MS = 60 * 60 * 1000;
 const hits = new Map<string, number[]>();
 
-async function store(entry: { toolSlug: string; email: string; ts: string }): Promise<void> {
-  const dir = join(process.cwd(), "data");
-  await mkdir(dir, { recursive: true });
-  const file = join(dir, "waitlist.json");
-  let list: unknown[] = [];
+async function store(entry: { toolSlug: string; email: string; ts: string }): Promise<boolean> {
   try {
-    list = JSON.parse(await readFile(file, "utf8")) as unknown[];
-    if (!Array.isArray(list)) list = [];
+    const dir = join(process.cwd(), "data");
+    await mkdir(dir, { recursive: true });
+    const file = join(dir, "waitlist.json");
+    let list: unknown[] = [];
+    try {
+      list = JSON.parse(await readFile(file, "utf8")) as unknown[];
+      if (!Array.isArray(list)) list = [];
+    } catch {
+      list = [];
+    }
+    if (list.some((e) => (e as { email?: unknown })?.email === entry.email && (e as { toolSlug?: unknown })?.toolSlug === entry.toolSlug)) {
+      return true; // already on this list — idempotent
+    }
+    list.push(entry);
+    await writeFile(file, JSON.stringify(list, null, 2));
+    return true;
   } catch {
-    list = [];
+    return false; // serverless FS: accepted, persists after Supabase lands
   }
-  if (list.some((e) => (e as { email?: unknown })?.email === entry.email && (e as { toolSlug?: unknown })?.toolSlug === entry.toolSlug)) {
-    return; // already on this list — idempotent
-  }
-  list.push(entry);
-  await writeFile(file, JSON.stringify(list, null, 2));
 }
 
 export async function POST(req: Request) {
