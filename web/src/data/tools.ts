@@ -38,7 +38,7 @@ export const tools: Tool[] = [
     shortTitle: "Profession Planner",
     tagline: "The cheapest route from 1 to max skill.",
     description:
-      "Pick your profession, current skill level, and expansion. We'll plan the optimal recipe path, build a materials shopping list, and estimate total cost based on your realm's AH prices.",
+      "A Forever leveling path from recipe uploads. A step appears when 3 installs agree, and the gold cost appears when 3 price uploads agree. No copied guide and no retail auction price.",
     status: "coming-soon",
     icon: "⚒️",
     keywords: [

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import EmailCapture from "@/components/EmailCapture";
+import ProfessionPathForm from "@/components/ProfessionPathForm";
+import { handleProfessionPath } from "../../../../../kb/src/profession-path";
 
 export const metadata: Metadata = {
   title: "Forever Profession Hubs",
@@ -45,6 +47,19 @@ export default function ProfessionsPage() {
           guides, no invented numbers: a hub opens its numbers when the reports exist.
         </p>
       </header>
+
+      <section className="space-y-3">
+        <h2 className="font-display text-2xl text-parchment-100">The path</h2>
+        <p className="text-sm text-parchment-100/70 max-w-2xl">
+          No recipe uploads are stored yet, so every profession answers with the rule and a gap.
+          The same answer is the <span className="text-parchment-100">profession_path</span> tool
+          on the Everloot server.
+        </p>
+        <pre className="whitespace-pre-wrap text-sm text-parchment-100/85 rounded-xl border border-parchment-100/10 bg-parchment-900 p-5">
+          {handleProfessionPath({ profession: "Alchemy", fromSkill: 1, toSkill: 75 })}
+        </pre>
+        <ProfessionPathForm />
+      </section>
 
       <div className="grid md:grid-cols-2 gap-4">
         {CARDS.map((s) => (

@@ -17,20 +17,22 @@ export default function ProfessionPlannerPage() {
       tool={tool}
       previewSections={[
         {
-          title: "Optimal leveling route",
-          body: "Tell us your profession and current skill. We'll pick the recipes with the best skill-up-per-material ratio for your current bracket, factoring in yellow/green thresholds.",
+          title: "Skill per reagent",
+          body: "The path picks the agreed recipe that grants the most skill for the reagents it spends. The skill window is the one the uploads reported.",
+          href: "/tools/professions",
+          hrefLabel: "Open the profession path",
         },
         {
-          title: "Materials shopping list",
-          body: "Totals all mats you need for the full path, grouped so you can paste into an addon like TradeSkillMaster or copy-buy on the AH.",
+          title: "Materials, then gold",
+          body: "The reagent totals are exact. A gold figure appears only when 3 uploads agree on a price for every reagent. Forever has no auction API to borrow.",
         },
         {
-          title: "Realm-aware cost",
-          body: "Pulls live auction-house prices from the Blizzard API for your realm so the estimate reflects what leveling will actually cost you today.",
+          title: "Three installs",
+          body: "One report is a claim. The step goes on the page when 3 independent installs agree on the recipe, the window, the points, and the reagents.",
         },
         {
-          title: "Expansion-aware",
-          body: "Supports current expansion (The War Within) plus all legacy brackets so you can power through older tiers efficiently.",
+          title: "Forever, not a retail guide",
+          body: "No copied profession sheet and no retail auction price. A bracket nobody has reported is a gap.",
         },
       ]}
     />

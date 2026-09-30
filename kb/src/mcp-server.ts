@@ -2,11 +2,12 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { handlePlan } from "./bridge-plan.js";
+import { handleProfessionPath } from "./profession-path.js";
 import { openDb, type DB } from "./db.js";
 import { getByName, getEntity, search, type SearchHit } from "./search.js";
 
 export const SERVER_NAME = "everloot-knowledge";
-export const SERVER_VERSION = "0.2.0";
+export const SERVER_VERSION = "0.3.0";
 
 const KINDS = ["item", "npc", "quest", "zone", "spell", "lore_page", "creator", "realm"] as const;
 const VERSIONS = ["forever", "classic", "retail", "lore"] as const;
@@ -79,6 +80,21 @@ export function createKnowledgeServer(db: DB): McpServer {
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     (args) => ({ content: [{ type: "text" as const, text: handleGetByName(db, args) }] }),
+  );
+  server.registerTool(
+    "profession_path",
+    {
+      title: "Profession leveling path",
+      description:
+        "Leveling path for one Forever profession from Everloot uploads. A step exists only after 3 installs agree. Gold exists only after 3 price uploads agree. No copied guide. This process has no upload store yet, so the answer is the rule and any gap.",
+      inputSchema: {
+        profession: z.string().describe("Profession name, such as Alchemy."),
+        fromSkill: z.number().int().min(1).max(500).default(1).describe("Skill the character has now."),
+        toSkill: z.number().int().min(1).max(500).describe("Skill to stop at. Must be above fromSkill."),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    (args) => ({ content: [{ type: "text" as const, text: handleProfessionPath(args) }] }),
   );
   server.registerTool(
     "everloot_plan",
