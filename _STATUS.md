@@ -154,6 +154,7 @@ Our server holds the rows. The list that must not be dropped is `docs/TRACKER.md
 (`kb/src/bridge-plan.ts`, also the `everloot_plan` tool). Local HTTP MCP is `npm run kb -- serve-mcp-http`.
 A bearer token (`--token` or `EVERLOOT_MCP_TOKEN`) locks `POST /mcp`. The public HTTPS host is still unmounted.
 The profession path engine and the `profession_path` MCP tool are in. A step needs 3 agreeing uploads, and gold needs 3 prices. No recipe store is connected yet. Page: `/tools/professions`.
+An item page is `/database/items/[id]`. The name and the map pin need 3 agreeing sightings. The rate is the public rollup. The `item_page` tool uses the same formatter. The MCP process has no upload store yet.
 The guild-family page is the public reference an in-game census cannot be. `/guilds/olympus`
 cites pages that already published a number, and it does not ask for an upload. Battle.net guild
 profile answers for retail and Classic Era; guessed Forever namespaces were refused on 2026-09-30.

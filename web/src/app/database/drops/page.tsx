@@ -52,7 +52,11 @@ export default async function DropsPage() {
             <tbody>
               {live.map((r) => (
                 <tr key={`${r.sourceNpcId ?? r.sourceObjectId}-${r.itemId}`} className="border-t border-parchment-100/10 bg-parchment-900 text-parchment-100/85">
-                  <td className="px-4 py-3 text-gold-400">Item #{r.itemId}</td>
+                  <td className="px-4 py-3">
+                    <Link href={`/database/items/${r.itemId}`} className="text-gold-400 hover:underline underline-offset-4">
+                      Item #{r.itemId}
+                    </Link>
+                  </td>
                   <td className="px-4 py-3">
                     {r.sourceNpcId !== undefined ? `NPC #${r.sourceNpcId}` : `Object #${r.sourceObjectId}`}
                   </td>

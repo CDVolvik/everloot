@@ -30,7 +30,7 @@ export const BRIDGE_PLAN: readonly PlanItem[] = [
 
   { id: "mcp.public_https", status: "next", name: "Public HTTPS MCP", done: "Bearer token is on the loopback handler (--token or EVERLOOT_MCP_TOKEN). Done when that same handler is on a public HTTPS URL and ChatGPT can connect." },
   { id: "tool.profession_path", status: "next", name: "Profession leveling path", done: "Engine and MCP tool profession_path. A step needs 3 agreeing uploads. Gold needs 3 prices per reagent. No upload store is connected yet, so the tool returns the rule and the gaps. Page: /tools/professions." },
-  { id: "tool.item_page", status: "next", name: "Item page for a drop row", done: "name, source, drop, map, from our rollups, one MCP tool" },
+  { id: "tool.item_page", status: "next", name: "Item page for a drop row", done: "Page /database/items/[id] and MCP tool item_page. Name and map pin need 3 agreeing sightings. The rate is the public rollup. The MCP process has no upload store yet, so it returns the empty page." },
   { id: "tool.collection", status: "next", name: "Missing-collection view", done: "owned versus missing from an upload, grouped by source. Not a Blizzard profile read." },
   { id: "tool.guild", status: "next", name: "Guild tracker", done: "progression, roster, loot, internal score. Officer-published guild data only." },
   { id: "tool.guild_census", status: "next", name: "Public guild-family page", done: "Citation page is /guilds/olympus. Each figure has its source and date. Battle.net guild profile answers for retail and Classic Era in the local adapter. Forever namespaces were refused on 2026-09-30. Done when that namespace fills the same table. Spec: guild system, census section." },
