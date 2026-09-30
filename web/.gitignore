@@ -1,5 +1,6 @@
-# local intake uploads (dev file store; production uses Supabase)
+# local intake uploads + waitlist (dev file store; production uses Supabase)
 /data/uploads/
+/data/waitlist.json
 
 # dependencies
 /node_modules
