@@ -12,14 +12,22 @@ export default function EmailCapture({ toolSlug }: { toolSlug: string }) {
       setState("error");
       return;
     }
-    // TODO: wire to ConvertKit / Mailchimp / Resend once picked.
-    // For now, stash locally so we don't lose early signups during validation.
     try {
-      const key = `gg-waitlist-${toolSlug}`;
-      const existing = JSON.parse(localStorage.getItem(key) || "[]");
-      existing.push({ email, ts: Date.now() });
-      localStorage.setItem(key, JSON.stringify(existing));
-    } catch {}
+      const res = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ toolSlug, email }),
+      });
+      if (!res.ok) throw new Error("rejected");
+    } catch {
+      // Server unreachable: stash locally so the signup survives, user sees success.
+      try {
+        const key = `everloot-waitlist-${toolSlug}`;
+        const existing = JSON.parse(localStorage.getItem(key) || "[]");
+        existing.push({ email, ts: Date.now() });
+        localStorage.setItem(key, JSON.stringify(existing));
+      } catch {}
+    }
     setState("submitted");
   };
 
