@@ -75,3 +75,9 @@ session, guild claims — not page count.
 - [ ] Upload page + intake API contract (Track 2) lands here, styled as pattern 1 + consent (pattern 6).
 
 → Tracks: collector + intake feed the numbers; the site never shows Blizzard-API bytes on public pages.
+
+## Decision log (append-only)
+
+- 2026-09-29 · system · KEPT · Leonardo-translated dark (abyss + loot-gold + arcane violet), six page patterns, phased IA — Carlos picked the reference.
+- 2026-09-30 · motion · KEPT · r21-design max-out, dials 7/7/4: aurora hero, ticker, scroll reveals, card glow, CTA settle. Owned exception to anti-defaults (mesh/glow are the brief, gold-dominant). Run: `design-run.md`.
+- 2026-09-30 · surfaces · KEPT · all text-bearing surfaces opaque (pills/cards/header/banner solid) after run_floor §1 flagged translucent gold overlaps. 5 residual fails = consent-banner overlay, recorded in `design-run.md`, not page contrast.
