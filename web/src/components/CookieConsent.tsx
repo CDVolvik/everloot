@@ -26,7 +26,7 @@ export default function CookieConsent() {
   };
 
   return (
-    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[min(92%,640px)] z-50 rounded-xl border border-gold-500/30 bg-parchment-950/95 backdrop-blur p-4 shadow-xl">
+    <div className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[min(92%,640px)] z-50 rounded-xl border border-gold-500/30 bg-parchment-950 p-4 shadow-xl">
       <p className="text-sm text-parchment-100/90">
         This site uses cookies for analytics and, once approved, Google AdSense
         personalized ads. You can reject non-essential cookies.

@@ -79,7 +79,7 @@ export default function UploadClient() {
   return (
     <div className="space-y-6">
       <div
-        className="rounded-xl border border-dashed border-parchment-100/25 bg-parchment-900/40 p-8 text-center"
+        className="rounded-xl border border-dashed border-parchment-100/25 bg-parchment-900 p-8 text-center"
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
           e.preventDefault();
@@ -121,7 +121,7 @@ export default function UploadClient() {
       {error && <p className="text-sm text-red-400">{error}</p>}
 
       {preview && (
-        <div className="rounded-xl border border-parchment-100/10 bg-parchment-900/40 p-5">
+        <div className="rounded-xl border border-parchment-100/10 bg-parchment-900 p-5">
           <h2 className="font-display text-lg font-semibold text-parchment-100">Preview — this is everything that goes out</h2>
           <ul className="mt-3 grid grid-cols-2 gap-2 text-sm">
             {Object.entries(preview).map(([kind, n]) => (
@@ -142,7 +142,7 @@ export default function UploadClient() {
       )}
 
       {receipt && (
-        <div className="rounded-xl border border-parchment-100/10 bg-parchment-900/40 p-5 text-sm">
+        <div className="rounded-xl border border-parchment-100/10 bg-parchment-900 p-5 text-sm">
           {receipt.ok ? (
             <>
               <p className="text-uncommon font-semibold">Received — thank you.</p>

@@ -3,7 +3,7 @@ import { tools } from "@/data/tools";
 
 export default function Header() {
   return (
-    <header className="border-b border-parchment-100/10 bg-parchment-950/80 backdrop-blur sticky top-0 z-40">
+    <header className="border-b border-parchment-100/10 bg-parchment-950 sticky top-0 z-40">
       <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between gap-4">
         <Link
           href="/"
