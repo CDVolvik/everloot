@@ -2,12 +2,13 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import { handlePlan } from "./bridge-plan.js";
+import { handleItemPage } from "./item-page.js";
 import { handleProfessionPath } from "./profession-path.js";
 import { openDb, type DB } from "./db.js";
 import { getByName, getEntity, search, type SearchHit } from "./search.js";
 
 export const SERVER_NAME = "everloot-knowledge";
-export const SERVER_VERSION = "0.3.0";
+export const SERVER_VERSION = "0.4.0";
 
 const KINDS = ["item", "npc", "quest", "zone", "spell", "lore_page", "creator", "realm"] as const;
 const VERSIONS = ["forever", "classic", "retail", "lore"] as const;
@@ -95,6 +96,17 @@ export function createKnowledgeServer(db: DB): McpServer {
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     (args) => ({ content: [{ type: "text" as const, text: handleProfessionPath(args) }] }),
+  );
+  server.registerTool(
+    "item_page",
+    {
+      title: "Item page for a drop",
+      description:
+        "One Forever item: agreed name, public drop rate with kill count, and an agreed map pin. A rate is public after 3 installs kill the source. A name or pin needs 3 installs agreeing. No Wowhead rows. This process has no upload store yet, so the answer is the empty page.",
+      inputSchema: { itemId: z.number().int().positive().describe("Item id from a drop row.") },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    (args) => ({ content: [{ type: "text" as const, text: handleItemPage(args) }] }),
   );
   server.registerTool(
     "everloot_plan",

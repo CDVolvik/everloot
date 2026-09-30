@@ -35,7 +35,7 @@ Rows: 55.
 |---|---|---|
 | `mcp.public_https` | Public HTTPS MCP | Bearer token is on the loopback handler (--token or EVERLOOT_MCP_TOKEN). Done when that same handler is on a public HTTPS URL and ChatGPT can connect. |
 | `tool.profession_path` | Profession leveling path | Engine and MCP tool profession_path. A step needs 3 agreeing uploads. Gold needs 3 prices per reagent. No upload store is connected yet, so the tool returns the rule and the gaps. Page: /tools/professions. |
-| `tool.item_page` | Item page for a drop row | name, source, drop, map, from our rollups, one MCP tool |
+| `tool.item_page` | Item page for a drop row | Page /database/items/[id] and MCP tool item_page. Name and map pin need 3 agreeing sightings. The rate is the public rollup. The MCP process has no upload store yet, so it returns the empty page. |
 | `tool.collection` | Missing-collection view | owned versus missing from an upload, grouped by source. Not a Blizzard profile read. |
 | `tool.guild` | Guild tracker | progression, roster, loot, internal score. Officer-published guild data only. |
 | `tool.guild_census` | Public guild-family page | Citation page is /guilds/olympus. Each figure has its source and date. Battle.net guild profile answers for retail and Classic Era in the local adapter. Forever namespaces were refused on 2026-09-30. Done when that namespace fills the same table. Spec: guild system, census section. |
