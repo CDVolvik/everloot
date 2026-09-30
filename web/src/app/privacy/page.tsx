@@ -42,6 +42,14 @@ export default function PrivacyPage() {
           notification.
         </li>
         <li>
+          <strong>Uploads:</strong> files you send on the upload page
+          (addon records plus a random install id — no account, no character
+          login). Open-world sightings publish only after independent uploads
+          agree; guild data publishes only through an officer upload and any
+          character can opt out. Uploads build the public database; we never
+          sell them.
+        </li>
+        <li>
           <strong>Cookies:</strong> we use cookies for session preferences and,
           where enabled, for advertising via Google AdSense (see below).
         </li>
