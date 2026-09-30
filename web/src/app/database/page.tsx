@@ -11,10 +11,11 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 const SECTIONS = [
-  { title: "Drop rates", body: "Rates ship with kill counts. A fact goes public after 3+ independent installs report it." },
-  { title: "Spawn maps", body: "NPC positions from corroborated sightings. Single reports stay queued, never published." },
-  { title: "Quests + vendors", body: "Givers, turn-ins, rewards and merchant lists with provenance on every row." },
-  { title: "Guilds", body: "Progression, roster and the Everloot score — published by officers, linked from the tracker." },
+  { title: "Drop rates", href: "/database/drops", body: "Rates ship with kill counts. A fact goes public after 3+ independent installs report it." },
+  { title: "Spawn maps", href: "/database/npcs", body: "NPC positions from corroborated sightings. Single reports stay queued, never published." },
+  { title: "Quests", href: "/database/quests", body: "Givers, turn-ins, and rewards. A row is public after 3 installs agree." },
+  { title: "Vendors", href: "/database/vendors", body: "Merchant lists. A price is public after 3 installs agree on the item and the copper." },
+  { title: "Guilds", href: "/tools/guild-board", body: "Progression, roster and the Everloot score — published by officers, linked from the tracker." },
 ];
 
 export default async function DatabasePage() {
@@ -53,10 +54,10 @@ export default async function DatabasePage() {
 
       <div className="grid md:grid-cols-2 gap-4">
         {SECTIONS.map((s) => (
-          <div key={s.title} className="rounded-xl border border-parchment-100/10 p-5 bg-parchment-900">
+          <Link key={s.title} href={s.href} className="rounded-xl border border-parchment-100/10 p-5 bg-parchment-900 hover:border-gold-400/40">
             <h2 className="font-display text-lg font-semibold text-gold-400">{s.title}</h2>
             <p className="mt-1 text-sm text-parchment-100/80">{s.body}</p>
-          </div>
+          </Link>
         ))}
       </div>
 

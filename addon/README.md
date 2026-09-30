@@ -13,7 +13,7 @@ addon/
 ├── Everloot.toc        ## Interface: 70058 (Forever 1.60.1), SavedVariables: EverlootDB
 ├── core.lua            event dispatch, module registry, toggles, rolling store, /everloot
 └── modules/
-    ├── openworld.lua   target/mouseover sightings, loot windows, item names when the client already knows them
+    ├── openworld.lua   target/mouseover sightings, loot windows, item names when the client already knows them, merchant windows (quest levels stay uncaptured)
     ├── guild.lua       roster, attendance, saved lockouts (loot awards still wait on a raid test)
     ├── gear.lua        equipped ilvl sample, max 1/hour
     └── auctions.lua    buyouts from a list the player opened; toggle starts off
