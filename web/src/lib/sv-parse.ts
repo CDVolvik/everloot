@@ -1,0 +1,174 @@
+/**
+ * Minimal SavedVariables parser for EverlootDB exports.
+ * Handles the Lua subset our addon writes: nested tables, 1-indexed arrays,
+ * strings (quoted + long-bracket), numbers, booleans, nil (skipped).
+ * Anything outside the subset throws — never silently misreads a file.
+ */
+
+export type LuaValue = string | number | boolean | LuaTable;
+export interface LuaTable {
+  array: LuaValue[];
+  map: Map<string, LuaValue>;
+}
+
+const IDENT = /[A-Za-z_][A-Za-z0-9_]*/y;
+
+export class LuaParseError extends Error {}
+
+class Parser {
+  private i = 0;
+  constructor(private readonly s: string) {}
+
+  parse(): LuaTable {
+    // EverlootDB = { ... } — find the assignment, parse the table.
+    const m = /EverlootDB\s*=\s*/.exec(this.s);
+    if (!m) throw new LuaParseError("not an Everloot export (EverlootDB = {...} not found)");
+    this.i = m.index + m[0].length;
+    const v = this.value();
+    if (typeof v !== "object" || v === null || !("array" in v)) {
+      throw new LuaParseError("EverlootDB is not a table");
+    }
+    return v as LuaTable;
+  }
+
+  private ws(): void {
+    while (this.i < this.s.length) {
+      const c = this.s[this.i];
+      if (c === " " || c === "\t" || c === "\n" || c === "\r") this.i++;
+      else if (c === "-" && this.s[this.i + 1] === "-") {
+        while (this.i < this.s.length && this.s[this.i] !== "\n") this.i++;
+      } else break;
+    }
+  }
+
+  private value(): LuaValue {
+    this.ws();
+    const c = this.s[this.i];
+    if (c === "{") return this.table();
+    if (c === '"' || c === "'") return this.quoted();
+    if (c === "[" && this.s[this.i + 1] === "[") return this.longString();
+    if (c === "t" && this.s.startsWith("true", this.i)) { this.i += 4; return true; }
+    if (c === "f" && this.s.startsWith("false", this.i)) { this.i += 5; return false; }
+    if (c === "n" && this.s.startsWith("nil", this.i)) { this.i += 3; return "__nil__" as unknown as LuaValue; }
+    const num = /-?\d+(\.\d+)?([eE][+-]?\d+)?/y;
+    num.lastIndex = this.i;
+    const m = num.exec(this.s);
+    if (m) { this.i += m[0].length; return Number(m[0]); }
+    throw new LuaParseError(`unexpected token at offset ${this.i}: ${this.s.slice(this.i, this.i + 20)}`);
+  }
+
+  private quoted(): string {
+    const q = this.s[this.i++];
+    let out = "";
+    for (;;) {
+      if (this.i >= this.s.length) throw new LuaParseError("unterminated string");
+      const c = this.s[this.i++];
+      if (c === q) return out;
+      if (c === "\\") {
+        const e = this.s[this.i++];
+        out += e === "n" ? "\n" : e === "t" ? "\t" : e === "r" ? "\r" : e;
+      } else out += c;
+    }
+  }
+
+  private longString(): string {
+    this.i += 2;
+    const end = this.s.indexOf("]]", this.i);
+    if (end < 0) throw new LuaParseError("unterminated long string");
+    const out = this.s.slice(this.i, end);
+    this.i = end + 2;
+    return out;
+  }
+
+  private table(): LuaTable {
+    this.i++; // {
+    const t: LuaTable = { array: [], map: new Map() };
+    for (;;) {
+      this.ws();
+      if (this.s[this.i] === "}") { this.i++; return t; }
+      if (this.i >= this.s.length) throw new LuaParseError("unterminated table");
+      // [key] = value  |  name = value  |  value (array item)
+      let key: string | null = null;
+      if (this.s[this.i] === "[") {
+        this.i++;
+        const k = this.value();
+        this.ws();
+        if (this.s[this.i] !== "]") throw new LuaParseError("expected ]");
+        this.i++;
+        this.ws();
+        if (this.s[this.i] !== "=") throw new LuaParseError("expected =");
+        this.i++;
+        key = String(k === "__nil__" ? "" : k);
+      } else {
+        IDENT.lastIndex = this.i;
+        const m = IDENT.exec(this.s);
+        if (m) {
+          const save = this.i;
+          this.i += m[0].length;
+          this.ws();
+          if (this.s[this.i] === "=") { this.i++; key = m[0]; }
+          else { this.i = save; }
+        }
+      }
+      const v = this.value();
+      if (v !== ("__nil__" as unknown as LuaValue)) {
+        if (key === null) t.array.push(v);
+        else t.map.set(key, v);
+      }
+      this.ws();
+      if (this.s[this.i] === "," || this.s[this.i] === ";") this.i++;
+    }
+  }
+}
+
+function toPlain(v: LuaValue): unknown {
+  if (typeof v !== "object" || v === null) return v;
+  // Lua 1-indexed arrays serialize as objects with numeric keys in map or array items.
+  if (v.array.length > 0 && v.map.size === 0) return v.array.map(toPlain);
+  const obj: Record<string, unknown> = {};
+  for (const [k, val] of v.map) obj[k] = toPlain(val);
+  // Numeric-keyed maps (e.g. ["1"] = {...} from ["..."] keys) become arrays when dense.
+  const keys = [...v.map.keys()];
+  if (v.array.length === 0 && keys.length > 0 && keys.every((k) => /^\d+$/.test(k))) {
+    const nums = keys.map(Number).sort((a, b) => a - b);
+    if (nums[0] === 1 && nums.every((n, i) => n === i + 1)) {
+      return nums.map((n) => toPlain(v.map.get(String(n)) as LuaValue));
+    }
+  }
+  if (v.array.length > 0) obj["__array"] = v.array.map(toPlain);
+  return obj;
+}
+
+export interface EverlootFile {
+  version: string;
+  installId: string;
+  records: Array<Record<string, unknown>>;
+}
+
+/** Parse Everloot.lua text into an intake-ready payload. Throws LuaParseError. */
+export function parseEverlootLua(text: string): EverlootFile {
+  const root = new Parser(text).parse();
+  const get = (k: string): LuaValue | undefined => root.map.get(k);
+  const version = get("version");
+  const installId = get("installId");
+  if (typeof version !== "string" || typeof installId !== "string") {
+    throw new LuaParseError("EverlootDB needs version + installId strings");
+  }
+  const recordsNode = get("records");
+  if (typeof recordsNode !== "object" || recordsNode === null || !("map" in recordsNode)) {
+    throw new LuaParseError("EverlootDB.records is not a table");
+  }
+  const records: Array<Record<string, unknown>> = [];
+  for (const [kind, rows] of (recordsNode as LuaTable).map) {
+    const list = toPlain(rows);
+    if (!Array.isArray(list)) throw new LuaParseError(`records.${kind} is not a list`);
+    for (const row of list) {
+      if (typeof row !== "object" || row === null || Array.isArray(row)) {
+        throw new LuaParseError(`records.${kind} holds a non-row`);
+      }
+      // kind lives in the table key, not the row — the intake contract needs it per record.
+      records.push({ kind, installId, ...(row as Record<string, unknown>) });
+    }
+  }
+  return { version, installId, records };
+}
