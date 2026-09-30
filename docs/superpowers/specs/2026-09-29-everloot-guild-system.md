@@ -82,6 +82,13 @@ Our copy of that count, outside the game:
 5. The server is the memory the beta client does not keep. The page is only as new as the
    last agreeing upload.
 
+**The page is the product (Carlos, 2026-09-30).** Olympus already counts its own guilds, inside
+the client, for people who installed their addon. That number cannot be linked, quoted, or opened
+by anyone who is not logged in. Everloot is the public reference for the same fact: one family
+URL, the guild list, the character total, the online count, and the time it was last agreed.
+Their addon can keep doing the in-game job. The win is an Olympus officer, or Asmongold, pointing
+people at that URL. The first page to build is that family page, not a second in-game census.
+
 Tracker rows: `tool.guild_census`, `ref.olympus_addon`.
 
 ## Site surfaces (Track 3 consumes this)

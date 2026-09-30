@@ -38,7 +38,7 @@ Rows: 55.
 | `tool.item_page` | Item page for a drop row | name, source, drop, map, from our rollups, one MCP tool |
 | `tool.collection` | Missing-collection view | owned versus missing from an upload, grouped by source. Not a Blizzard profile read. |
 | `tool.guild` | Guild tracker | progression, roster, loot, internal score. Officer-published guild data only. |
-| `tool.guild_census` | Guild-family census | Sum of one upload per guild. Two reporters must agree. Characters are not double-counted. Players dedupe only by an opt-in alt link. Missing guilds stay missing. No public Forever roster API. Spec: guild system, census section. |
+| `tool.guild_census` | Public guild-family page | One URL a family can cite: guild list, character total, online, as-of time. One upload per guild, two must agree. This is the external page an in-game census cannot be. First target is Olympus. Spec: guild system, census section. |
 | `tool.auction` | Auction history | prices from the player's own AH browsing, uploaded on purpose |
 | `tool.simc` | SimulationCraft sidecar | run the GPL-3.0 forever branch as its own process once it can sim. Report comes back through MCP. Do not paste the C++ into this repo. |
 | `mcp.chatgpt_directory` | ChatGPT apps directory | submit the same MCP server the day submissions open |
@@ -64,7 +64,7 @@ Rows: 55.
 
 | Id | Name | Done when |
 |---|---|---|
-| `ref.olympus_addon` | Olympus Guild addon (MIT) | In-game census of Asmongold's guilds. The author says nothing leaves the client. Learn the rules. Do not run our own hidden-channel reporter. |
+| `ref.olympus_addon` | Olympus Guild addon (MIT) | Their in-game census. It has no server and nothing leaves the client. We do not replace it. The public page is the piece they do not have. |
 | `ref.simc` | github.com/simulationcraft | forever branch is the sidecar. Addon is Unlicense and may fold into ours. Engine stays GPL-3.0 outside this tree. |
 | `ref.wow_tools_local` | Marlamin/wow.tools.local | MIT dev tool on Carlos's machine. Do not publish extracted tables. Do not use its wago.tools download path. |
 | `ref.pengu` | Pengu's Midnight profession sheet | page shape: one profession bible. Do not copy the cells. |
