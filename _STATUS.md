@@ -162,6 +162,21 @@ cites pages that already published a number, and it does not ask for an upload. 
 profile answers for retail and Classic Era; guessed Forever namespaces were refused on 2026-09-30.
 Row `tool.guild_census` on the tracker.
 
+
+## 2026-10-03 — Git deploys on, stray project gone, Supabase created
+
+- Vercel `everloot-web` root directory was `.`, so git builds could not find the app. Now `web`.
+  Production had been the 9/29 CLI build; the first git deploy (`5891fac`) put the 9/30 pages live.
+  A push to `main` now deploys production.
+- Deleted the stray Vercel project `web` (created 9/29, same repo, 6 builds, all failed).
+- Supabase project `everloot` created: ref `uinmowrmyckklpbwzqhn`, us-east-1, free plan, in the
+  Vercel-managed org (now 2 of 2 free projects). Not connected to `everloot-web` yet; intake and
+  waitlist still fail soft. Plan: raw uploads to Cloudflare R2, rollups + waitlist in Supabase, Pro
+  ($25/mo) before 11/04.
+- Still waiting on Carlos: `everloot.app` DNS (`A @ 76.76.21.21`, `CNAME www cname.vercel-dns.com`,
+  both DNS only, or the Cloudflare connect button on the Vercel domains page), and Vercel → Storage →
+  connect `everloot`. Browser tools did not connect in that session, so neither was done for him.
+
 ---
 
 ## What this file is NOT
