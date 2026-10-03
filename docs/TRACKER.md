@@ -28,6 +28,7 @@ Rows: 58.
 | `site.professions` | Profession hubs | hub pages exist. The leveling path is tool.profession_path. |
 | `site.waitlist` | Waitlist | signup path exists. Persists when Supabase is connected. |
 | `addon.skeleton` | Collector skeleton | TOC 70058, SavedVariables, /upload import. In-client beta test is still waiting. |
+| `ops.vercel_git` | vercel git connect | CDVolvik/everloot is connected and the root directory is web. A push to main deploys production. |
 
 ## Next
 
@@ -51,8 +52,7 @@ Rows: 58.
 
 | Id | Name | Done when |
 |---|---|---|
-| `ops.dns` | everloot.app DNS | Carlos approves the Domain Connect click. Apex did not answer HTTP on 2026-09-29. |
-| `ops.vercel_git` | vercel git connect | Carlos connects the GitHub repo in Vercel |
+| `ops.dns` | everloot.app DNS | Carlos adds A @ 76.76.21.21 and CNAME www cname.vercel-dns.com in Cloudflare, both DNS only. The apex had no A record on 2026-10-03. |
 | `ops.supabase` | Supabase project | intake and waitlist stop failing soft |
 | `ops.adsense` | AdSense | Carlos's account. Consent banner already on the site. |
 | `ops.beta_guild` | Beta character in a guild | two raid nights before 2026-10-21. Hakoovak is not this character. |

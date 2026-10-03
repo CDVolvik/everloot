@@ -42,8 +42,8 @@ export const BRIDGE_PLAN: readonly PlanItem[] = [
   { id: "mcp.chatgpt_directory", status: "next", name: "ChatGPT apps directory", done: "submit the same MCP server the day submissions open" },
   { id: "mcp.subscription_signin", status: "next", name: "Subscription sign-in", done: "ChatGPT or Claude subscription unlocks the companion. API keys stay the fallback." },
 
-  { id: "ops.dns", status: "waiting", name: "everloot.app DNS", done: "Carlos approves the Domain Connect click. Apex did not answer HTTP on 2026-09-29." },
-  { id: "ops.vercel_git", status: "waiting", name: "vercel git connect", done: "Carlos connects the GitHub repo in Vercel" },
+  { id: "ops.dns", status: "waiting", name: "everloot.app DNS", done: "Carlos adds A @ 76.76.21.21 and CNAME www cname.vercel-dns.com in Cloudflare, both DNS only. The apex had no A record on 2026-10-03." },
+  { id: "ops.vercel_git", status: "live", name: "vercel git connect", done: "CDVolvik/everloot is connected and the root directory is web. A push to main deploys production." },
   { id: "ops.supabase", status: "waiting", name: "Supabase project", done: "intake and waitlist stop failing soft" },
   { id: "ops.adsense", status: "waiting", name: "AdSense", done: "Carlos's account. Consent banner already on the site." },
   { id: "ops.beta_guild", status: "waiting", name: "Beta character in a guild", done: "two raid nights before 2026-10-21. Hakoovak is not this character." },
