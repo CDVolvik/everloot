@@ -28,6 +28,7 @@ Rows: 58.
 | `site.professions` | Profession hubs | hub pages exist. The leveling path is tool.profession_path. |
 | `site.waitlist` | Waitlist | signup path exists. Persists when Supabase is connected. |
 | `addon.skeleton` | Collector skeleton | TOC 70058, SavedVariables, /upload import. In-client beta test is still waiting. |
+| `ops.dns` | everloot.app DNS | A @ 76.76.21.21 and CNAME www cname.vercel-dns.com in Cloudflare, both DNS only. https://everloot.app and www answer 200 with a Let's Encrypt certificate. |
 | `ops.vercel_git` | vercel git connect | CDVolvik/everloot is connected and the root directory is web. A push to main deploys production. |
 
 ## Next
@@ -47,13 +48,12 @@ Rows: 58.
 | `tool.simc` | SimulationCraft sidecar | run the GPL-3.0 forever branch as its own process once it can sim. Report comes back through MCP. Do not paste the C++ into this repo. |
 | `mcp.chatgpt_directory` | ChatGPT apps directory | submit the same MCP server the day submissions open |
 | `mcp.subscription_signin` | Subscription sign-in | ChatGPT or Claude subscription unlocks the companion. API keys stay the fallback. |
+| `ops.supabase` | Supabase project | Project everloot (ref uinmowrmyckklpbwzqhn, us-east-1, free) is connected to everloot-web and its env vars are set. Done when intake and waitlist write to it and stop failing soft. |
 
 ## Waiting on Carlos
 
 | Id | Name | Done when |
 |---|---|---|
-| `ops.dns` | everloot.app DNS | Carlos adds A @ 76.76.21.21 and CNAME www cname.vercel-dns.com in Cloudflare, both DNS only. The apex had no A record on 2026-10-03. |
-| `ops.supabase` | Supabase project | intake and waitlist stop failing soft |
 | `ops.adsense` | AdSense | Carlos's account. Consent banner already on the site. |
 | `ops.beta_guild` | Beta character in a guild | two raid nights before 2026-10-21. Hakoovak is not this character. |
 | `ops.hero_shot` | Hero screenshot | a real beta screenshot replaces the empty hero |
