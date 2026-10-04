@@ -176,8 +176,23 @@ Row `tool.guild_census` on the tracker.
 - Same day, later: DNS added in Cloudflare (`A @ 76.76.21.21`, `CNAME www cname.vercel-dns.com`, both
   DNS only). https://everloot.app and www answer 200 with a Let's Encrypt cert (to 2027-01-02).
   Supabase `everloot` connected to `everloot-web` in Vercel Storage (no prefix: `SUPABASE_URL`,
-  `SUPABASE_SERVICE_ROLE_KEY`, `POSTGRES_URL`, …; Production + Preview). Next: the intake/waitlist
-  adapter that writes to it (raw uploads to R2).
+  `SUPABASE_SERVICE_ROLE_KEY`, `POSTGRES_URL`, …; Production + Preview).
+
+## 2026-10-04 — Uploads and waitlist persist (R2 + Supabase)
+
+- `web/src/lib/upload-store.ts` is the one store. Production: the raw upload is an R2 object in
+  `everloot-uploads` (`uploads/<date>/<id>.json`) and Supabase `public.uploads` holds one index row;
+  `public.waitlist` holds signups. RLS on, no policies: server key only. Migration in
+  `supabase/migrations/`. Without all six cloud vars it falls back to `web/data` (dev).
+- R2 key `everloot-web uploads`: Object Read & Write, `everloot-uploads` only, no expiry. Its values
+  live only in Vercel (sensitive). Lost key → roll it in Cloudflare and re-add the two vars.
+- Proven live: a test upload returned `persisted: true`, the index row and R2 object exist, and
+  `/api/rollups/drops` read it back (`uploads: 1`).
+- ⚠️ Test rows still present (deletion was declined in-session): upload
+  `1d694078-785b-4812-8466-69fcf7c8670b` (install `e2e-test-20261004`, one `item_seen` for fake item
+  999999001) and waitlist `e2e-test@everloot.app` / `e2e-test`. Single install, so nothing goes
+  public, but the upload counts in stats. Remove the index row, the R2 object and the waitlist row.
+- Next: `ops.stored_rollups` (pages read every object on a cold cache) and `site.gap_marking`.
 
 ---
 
