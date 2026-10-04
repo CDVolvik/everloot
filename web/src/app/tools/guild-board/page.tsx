@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { guildFactsFromRecords, handleGuildBoard } from "../../../../../kb/src/guild-board";
-import { uploadStore } from "@/lib/upload-store";
+import { STORAGE_UNREACHABLE, uploadStore } from "@/lib/upload-store";
 
 export const dynamic = "force-dynamic";
 
@@ -22,8 +22,10 @@ export default async function GuildBoardPage({
 }) {
   const guild = one(searchParams.guild);
   const realm = one(searchParams.realm);
-  const facts = guildFactsFromRecords((await uploadStore.loadCorpus()).records);
-  const answer = handleGuildBoard({ guildName: guild, realm }, facts);
+  const corpus = await uploadStore.loadCorpus();
+  const answer = corpus.unreachable
+    ? STORAGE_UNREACHABLE
+    : handleGuildBoard({ guildName: guild, realm }, guildFactsFromRecords(corpus.records));
 
   return (
     <article className="space-y-8 max-w-4xl">

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { formatMeasuredZero } from "../../../../../kb/src/item-page";
 import { computeRollups } from "@/lib/rollup-compute";
+import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
 
 export const metadata: Metadata = {
   title: "Forever drop rates",
@@ -11,13 +13,14 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function DropsPage() {
-  const { rates, stats } = await computeRollups();
+  const { rates, measuredZeros, stats } = await computeRollups();
   const live = rates.filter((r) => r.public);
+  const zeros = measuredZeros.filter((z) => z.public);
   return (
     <article className="space-y-8 max-w-4xl">
       <header className="space-y-3">
         <p className="uppercase tracking-[0.2em] text-xs text-gold-500/80">
-          {stats.lootWindows} windows · {live.length} public rates
+          {stats.unreachable ? "Storage unreachable" : `${stats.lootWindows} windows · ${live.length + zeros.length} public rates`}
         </p>
         <h1 className="font-display text-3xl sm:text-4xl font-bold text-parchment-100 tracking-tight">
           Forever drop rates
@@ -28,7 +31,9 @@ export default async function DropsPage() {
         </p>
       </header>
 
-      {live.length === 0 ? (
+      {stats.unreachable ? (
+        <p className="text-parchment-100/75">{STORAGE_UNREACHABLE}</p>
+      ) : live.length + zeros.length === 0 ? (
         <div className="rounded-xl border border-parchment-100/10 bg-parchment-900 p-8 text-center">
           <p className="text-parchment-100/80">No agreed rates yet. A rate goes public when 3 installs have killed the source.</p>
           <p className="mt-1 text-sm text-parchment-100/60">
@@ -62,8 +67,20 @@ export default async function DropsPage() {
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums">{r.kills}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{r.drops}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{(r.rate * 100).toFixed(1)}%</td>
+                  <td className="px-4 py-3 text-right tabular-nums">{r.drops === 0 ? formatMeasuredZero(r.kills) : `${(r.rate * 100).toFixed(1)}%`}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{r.reporters}</td>
+                </tr>
+              ))}
+              {zeros.map((z) => (
+                <tr key={`zero-${z.sourceNpcId ?? "o"}-${z.sourceObjectId ?? "n"}`} className="border-t border-parchment-100/10 bg-parchment-900 text-parchment-100/85">
+                  <td className="px-4 py-3">No item dropped</td>
+                  <td className="px-4 py-3">
+                    {z.sourceNpcId !== undefined ? `NPC #${z.sourceNpcId}` : `Object #${z.sourceObjectId}`}
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums">{z.kills}</td>
+                  <td className="px-4 py-3 text-right tabular-nums">0</td>
+                  <td className="px-4 py-3 text-right tabular-nums">{formatMeasuredZero(z.kills)}</td>
+                  <td className="px-4 py-3 text-right tabular-nums">{z.reporters}</td>
                 </tr>
               ))}
             </tbody>

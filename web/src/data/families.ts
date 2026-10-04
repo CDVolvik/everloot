@@ -149,5 +149,5 @@ export function figureLabel(fact: FamilyFact): string {
     else parts.push(n);
   }
   if (fact.online !== undefined) parts.push(`${fact.online.toLocaleString("en-US")} online`);
-  return parts.length > 0 ? parts.join(" · ") : "—";
+  return parts.length > 0 ? parts.join(" · ") : "unrecorded";
 }

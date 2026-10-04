@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { auctionSightingsFromRecords, handleAuctionHistory } from "../../../../../kb/src/auction-history";
-import { uploadStore } from "@/lib/upload-store";
+import { STORAGE_UNREACHABLE, uploadStore } from "@/lib/upload-store";
 
 export const dynamic = "force-dynamic";
 
@@ -23,8 +23,10 @@ export default async function AuctionsPage({
   const realm = one(searchParams.realm);
   const itemText = one(searchParams.item);
   const itemId = /^\d+$/.test(itemText) ? Number(itemText) : 0;
-  const sightings = auctionSightingsFromRecords((await uploadStore.loadCorpus()).records);
-  const answer = handleAuctionHistory({ realm, itemId }, sightings);
+  const corpus = await uploadStore.loadCorpus();
+  const answer = corpus.unreachable
+    ? STORAGE_UNREACHABLE
+    : handleAuctionHistory({ realm, itemId }, auctionSightingsFromRecords(corpus.records));
 
   return (
     <article className="space-y-8 max-w-4xl">

@@ -1,10 +1,15 @@
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { expect, test } from "vitest";
 import { openDb } from "../src/db.js";
 import { replaceSourceRows, type EntityInput } from "../src/entities.js";
 import {
   SERVER_NAME,
   SERVER_VERSION,
+  UPLOADS_UNSET,
   createKnowledgeServer,
+  fromUploads,
   handleGetByName,
   handleGetEntity,
   handleSearch,
@@ -52,6 +57,31 @@ test("get_by_name handler matches exactly and suggests search otherwise", async 
   const db = await seed();
   expect(handleGetByName(db, { name: "thunderfury" })).toContain("[lore_page/lore] Thunderfury");
   expect(handleGetByName(db, { name: "Thunderfury", kind: "npc" })).toContain("search_knowledge");
+});
+
+test("unset uploads are not an empty corpus", () => {
+  const prev = process.env.EVERLOOT_UPLOADS;
+  try {
+    delete process.env.EVERLOOT_UPLOADS;
+    expect(fromUploads(() => { throw new Error("renderer ran"); })).toBe(UPLOADS_UNSET);
+    process.env.EVERLOOT_UPLOADS = "   ";
+    expect(fromUploads(() => { throw new Error("renderer ran"); })).toBe(UPLOADS_UNSET);
+  } finally {
+    if (prev === undefined) delete process.env.EVERLOOT_UPLOADS;
+    else process.env.EVERLOOT_UPLOADS = prev;
+  }
+});
+
+test("an empty uploads directory is a real empty corpus", () => {
+  const prev = process.env.EVERLOOT_UPLOADS;
+  const dir = mkdtempSync(join(tmpdir(), "everloot-uploads-"));
+  try {
+    process.env.EVERLOOT_UPLOADS = dir;
+    expect(fromUploads((records) => `records:${records.length}`)).toBe("records:0");
+  } finally {
+    if (prev === undefined) delete process.env.EVERLOOT_UPLOADS;
+    else process.env.EVERLOOT_UPLOADS = prev;
+  }
 });
 
 test("the server registers under the Everloot name", async () => {

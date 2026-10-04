@@ -31,7 +31,7 @@ export const lootWindow = base.extend({
   kind: z.literal("loot"),
   sourceNpcId: z.number().int().positive().optional(),
   sourceObjectId: z.number().int().positive().optional(),
-  items: z.array(z.object({ itemId: z.number().int().positive(), count: z.number().int().min(1).max(1000) })).min(1).max(50),
+  items: z.array(z.object({ itemId: z.number().int().positive(), count: z.number().int().min(1).max(1000) })).max(50),
 }).refine((r) => r.sourceNpcId !== undefined || r.sourceObjectId !== undefined, {
   message: "loot needs a source: npc or object",
 });

@@ -29,6 +29,8 @@ describe("guild family record", () => {
     });
     expect(figureLabel(hall!)).toBe("44 · 7 online");
     expect(figureLabel(getFamily("olympus")!.facts.find((fact) => fact.id === "forum-ten-thousand")!)).toBe("10,000+");
+    expect(figureLabel(getFamily("olympus")!.facts.find((fact) => fact.id === "olympus-viii-second-site")!)).toBe("unrecorded");
+    expect(figureLabel(getFamily("olympus")!.facts.find((fact) => fact.id === "mute-screenshot-xli")!)).toBe("unrecorded");
   });
 
   test("the Battle.net check records that Forever's guessed namespaces were refused", () => {

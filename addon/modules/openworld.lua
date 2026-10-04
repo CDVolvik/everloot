@@ -75,8 +75,9 @@ local function lootCapture()
       rememberItem(itemId)
     end
   end
-  if #items == 0 then return end
   local sourceNpcId = npcIdFromGuid(UnitGUID("target"))
+  -- No source and no items is not a kill. An empty window with a source is a measured 0.
+  if #items == 0 and not sourceNpcId then return end
   E:Store("loot", {
     installId = EverlootDB.installId,
     capturedAt = date("!%Y-%m-%dT%H:%M:%SZ"),

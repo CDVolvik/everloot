@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { stockLabel, vendorPage } from "../../../../../../kb/src/world-pages";
 import { loadWorldFacts } from "@/lib/rollup-compute";
+import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,8 @@ function formatCopper(copper: number): string {
 
 export default async function VendorPage({ params }: { params: { id: string } }) {
   if (!/^[1-9]\d*$/.test(params.id)) notFound();
-  const page = vendorPage(Number(params.id), await loadWorldFacts());
+  const facts = await loadWorldFacts();
+  const page = vendorPage(Number(params.id), facts);
 
   return (
     <article className="space-y-8 max-w-4xl">
@@ -37,7 +39,9 @@ export default async function VendorPage({ params }: { params: { id: string } })
         <p className="text-sm text-parchment-100/60">An item is listed when 3 installs agree on that item and its copper price.</p>
       </header>
 
-      {page.offers.length === 0 ? (
+      {facts.unreachable ? (
+        <p className="text-parchment-100/75">{STORAGE_UNREACHABLE}</p>
+      ) : page.offers.length === 0 ? (
         <p className="text-parchment-100/75">Goods unrecorded. A price needs 3 installs agreeing.</p>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-parchment-100/10">
