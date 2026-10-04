@@ -123,6 +123,8 @@ class Parser {
 
 function toPlain(v: LuaValue): unknown {
   if (typeof v !== "object" || v === null) return v;
+  // `items = {}` is a kill that dropped nothing. An empty Lua table has no keys to tell an array from a map.
+  if (v.array.length === 0 && v.map.size === 0) return [];
   // Lua 1-indexed arrays serialize as objects with numeric keys in map or array items.
   if (v.array.length > 0 && v.map.size === 0) return v.array.map(toPlain);
   const obj: Record<string, unknown> = {};

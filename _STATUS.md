@@ -201,6 +201,11 @@ Row `tool.guild_census` on the tracker.
   hardcoded 0 counters. Left list is in tracker row `site.gap_marking`.
 - Test-row deletion was declined twice in-session (SQL delete). Still present; if removed later, run
   the cron with `?rebuild=1` (Vercel dashboard → Cron Jobs → Run) so the snapshot drops it too.
+- Same day, later: **gap marking finished**. A source 3 installs killed with no item dropped reads
+  `0 drops in N kills`. Guild item level names how many roster members were measured. A storage
+  failure, an unset `EVERLOOT_UPLOADS`, and a guild-family row with no published count read
+  unrecorded, not zero. The profession form is a server GET form. MCP server is 0.7.1. Tracker row
+  `site.gap_marking` is live. Not pushed.
 
 ---
 

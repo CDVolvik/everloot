@@ -144,6 +144,37 @@ describe("corpus snapshot", () => {
     expect(put.lastIds).toEqual(["c"]);
   });
 
+  test("an unreadable object is not a silent empty corpus and is not cached", async () => {
+    const { fn, calls } = fakeFetch([
+      [SNAP, "GET", () => new Response("missing", { status: 404 })],
+      [INDEX, "GET", () => Response.json([{ object_key: "uploads/a.json" }])],
+      [`${R2}uploads/a.json`, "GET", () => new Response("down", { status: 500 })],
+    ]);
+    const store = createUploadStore({ cloud, localDir: "unused", fetch: fn, now, cacheMs: 60_000 });
+    expect(await store.loadCorpus()).toEqual({ uploads: 0, records: [], unreachable: true });
+    const before = calls.length;
+    await store.loadCorpus();
+    expect(calls.length).toBeGreaterThan(before);
+  });
+
+  test("a failed snapshot read is unreachable, not an empty corpus", async () => {
+    const { fn } = fakeFetch([[SNAP, "GET", () => new Response("down", { status: 500 })]]);
+    const store = createUploadStore({ cloud, localDir: "unused", fetch: fn, now, cacheMs: 60_000 });
+    expect(await store.loadCorpus()).toEqual({ uploads: 0, records: [], unreachable: true });
+  });
+
+  test("a missed object is not written into the snapshot", async () => {
+    const { fn, calls } = fakeFetch([
+      [SNAP, "GET", () => new Response("missing", { status: 404 })],
+      [INDEX, "GET", () => Response.json([{ id: "a", object_key: "uploads/a.json", received_at: "2026-10-04T07:00:00+00:00" }])],
+      [`${R2}uploads/a.json`, "GET", () => new Response("down", { status: 500 })],
+      [SNAP, "PUT", () => new Response(null, { status: 200 })],
+    ]);
+    const store = createUploadStore({ cloud, localDir: "unused", fetch: fn, now });
+    await expect(store.writeSnapshot()).rejects.toThrow(/unreadable/);
+    expect(calls.some((call) => call.method === "PUT")).toBe(false);
+  });
+
   test("pages read the snapshot in one request when it exists", async () => {
     const { fn, calls } = fakeFetch([
       [SNAP, "GET", () => Response.json({ generatedAt: "x", uploads: 5, records: [{ kind: "loot" }], lastReceivedAt: null, lastIds: [] })],
@@ -172,5 +203,11 @@ describe("upload store, local mode", () => {
     const store = createUploadStore({ cloud: null, localDir: dir, now, cacheMs: 0 });
     expect(await store.putUpload("u-1", "install-1", payload)).toBe(true);
     expect(await store.loadCorpus()).toEqual({ uploads: 1, records: payload.records });
+  });
+
+  test("a missing local directory is empty, not unreachable", async () => {
+    const dir = join(mkdtempSync(join(tmpdir(), "everloot-store-")), "missing");
+    const store = createUploadStore({ cloud: null, localDir: dir, now, cacheMs: 0 });
+    expect(await store.loadCorpus()).toEqual({ uploads: 0, records: [] });
   });
 });

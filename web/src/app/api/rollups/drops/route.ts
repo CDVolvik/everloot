@@ -5,11 +5,13 @@ import { computeRollups } from "@/lib/rollup-compute";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const { rates, stats } = await computeRollups();
+  const { rates, measuredZeros, stats } = await computeRollups();
   return NextResponse.json({
     generatedAt: new Date().toISOString(),
     stats,
-    rates: rates.filter((r) => r.public),
-    queued: rates.filter((r) => !r.public).length,
+    unreachable: stats.unreachable,
+    rates: stats.unreachable ? [] : rates.filter((r) => r.public),
+    measuredZeros: stats.unreachable ? [] : measuredZeros.filter((z) => z.public),
+    queued: stats.unreachable ? null : rates.filter((r) => !r.public).length + measuredZeros.filter((z) => !z.public).length,
   });
 }

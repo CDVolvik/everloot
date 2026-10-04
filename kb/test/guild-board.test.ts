@@ -42,7 +42,8 @@ test("two agreeing officer uploads publish the components and do not invent a sc
   expect(text).toContain("Molten Core · 40: Lucifron");
   expect(text).not.toContain("Magmadar");
   expect(text).toContain("Item 17076 to Ada from Lucifron");
-  expect(text).toContain("Average item level: 66");
+  expect(text).toContain("Average item level: 66, from 1 of 1 roster members.");
+  expect(text).not.toContain("The rest are unrecorded.");
   expect(text).toContain("Present 1 of 2: Ada");
   expect(text).toContain("no published weights");
 });
@@ -58,6 +59,36 @@ test("one install cannot agree with itself, and a blank guild is refused", () =>
   expect(handleGuildBoard({ guildName: "Olympus", realm: "Forever" }, facts)).toContain("No agreed member count");
   expect(handleGuildBoard({ guildName: " ", realm: "Forever" })).toBe("Name a guild.");
   expect(handleGuildBoard({ guildName: "Olympus", realm: " " })).toBe("Name a realm.");
+});
+
+test("item level names how many roster members were measured", () => {
+  const member = (installId: string, name: string) => ({
+    installId, guildName: "Olympus", realm: "Forever", name, rank: "Member", level: 60, className: "Mage",
+  });
+  const partial: GuildFacts = {
+    ...base,
+    members: [member("a", "Ada"), member("b", "Ada"), member("a", "Bea"), member("b", "Bea")],
+    gear: [
+      { installId: "a", realm: "Forever", character: "Ada", itemLevel: 66 },
+      { installId: "b", realm: "Forever", character: "Ada", itemLevel: 66 },
+    ],
+  };
+  const partialText = handleGuildBoard({ guildName: "Olympus", realm: "Forever" }, partial);
+  expect(partialText).toContain("Average item level: 66, from 1 of 2 roster members.");
+  expect(partialText).toContain("The rest are unrecorded.");
+
+  const none: GuildFacts = {
+    ...base,
+    members: [member("a", "Ada"), member("b", "Ada"), member("a", "Bea"), member("b", "Bea")],
+  };
+  expect(handleGuildBoard({ guildName: "Olympus", realm: "Forever" }, none)).toContain(
+    "Item level unrecorded. 0 of 2 roster members have an agreed gear upload.",
+  );
+
+  const empty = handleGuildBoard({ guildName: "Olympus", realm: "Forever" });
+  expect(empty).toContain("Item level unrecorded.");
+  expect(empty).not.toContain("0 of 0");
+  expect(empty).not.toContain("No agreed item level.");
 });
 
 test("a snapshot without an officer claim does not become a roster", () => {

@@ -52,6 +52,13 @@ describe("SavedVariables parser", () => {
     expect(f.records[2]).toMatchObject({ items: [{ itemId: 456, count: 2 }] });
   });
 
+  test("an empty item list is a kill that dropped nothing, and an empty kind adds no rows", () => {
+    const text = `EverlootDB = { version = "0.1.0", installId = "abcd-1234", records = { loot = { { sourceNpcId = 7, items = {} } }, quest = {} } }`;
+    const f = parseEverlootLua(text);
+    expect(f.records).toHaveLength(1);
+    expect(f.records[0]).toMatchObject({ kind: "loot", sourceNpcId: 7, items: [] });
+  });
+
   test("rejects non-exports and malformed tables", () => {
     expect(() => parseEverlootLua("x = 1")).toThrow(LuaParseError);
     expect(() => parseEverlootLua("EverlootDB = { version = ")).toThrow(LuaParseError);

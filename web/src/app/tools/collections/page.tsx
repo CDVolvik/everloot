@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { collectionFactsFromRecords, handleCollectionGap } from "../../../../../kb/src/collection-gap";
-import { uploadStore } from "@/lib/upload-store";
+import { STORAGE_UNREACHABLE, uploadStore } from "@/lib/upload-store";
 
 export const dynamic = "force-dynamic";
 
@@ -22,8 +22,10 @@ export default async function CollectionsPage({
 }) {
   const collection = one(searchParams.collection);
   const install = one(searchParams.install);
-  const facts = collectionFactsFromRecords((await uploadStore.loadCorpus()).records);
-  const answer = handleCollectionGap({ collection, ownerInstallId: install }, facts);
+  const corpus = await uploadStore.loadCorpus();
+  const answer = corpus.unreachable
+    ? STORAGE_UNREACHABLE
+    : handleCollectionGap({ collection, ownerInstallId: install }, collectionFactsFromRecords(corpus.records));
 
   return (
     <article className="space-y-8 max-w-4xl">

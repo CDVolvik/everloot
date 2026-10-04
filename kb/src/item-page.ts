@@ -146,6 +146,11 @@ export function itemPage(itemId: number, facts: ItemFacts): ItemPage {
   return { itemId, name, drops, pins };
 }
 
+/** A numerator of 0 with a real kill count. Not the same sentence as an unrecorded rate. */
+export function formatMeasuredZero(kills: number): string {
+  return `0 drops in ${kills} kills`;
+}
+
 export function formatItemPage(page: ItemPage): string {
   const title = page.name ? `Item ${page.itemId} — ${page.name}` : `Item ${page.itemId}`;
   const lines = [title];
@@ -156,9 +161,10 @@ export function formatItemPage(page: ItemPage): string {
   }
   lines.push("Drops");
   for (const drop of page.drops) {
-    lines.push(
-      `${drop.source}  ${drop.kills} kills  ${drop.drops} drops  ${(drop.rate * 100).toFixed(1)}%  ${drop.reporters} reporters`,
-    );
+    const rate = drop.drops === 0
+      ? `${formatMeasuredZero(drop.kills)}  ${drop.reporters} reporters`
+      : `${drop.kills} kills  ${drop.drops} drops  ${(drop.rate * 100).toFixed(1)}%  ${drop.reporters} reporters`;
+    lines.push(`${drop.source}  ${rate}`);
   }
   lines.push("Map");
   if (page.pins.length === 0) lines.push("No agreed position. A pin needs 3 installs on the same map.");

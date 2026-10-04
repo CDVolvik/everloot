@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { itemPage } from "../../../../../../kb/src/item-page";
+import { formatMeasuredZero, itemPage } from "../../../../../../kb/src/item-page";
 import { loadItemFacts } from "@/lib/rollup-compute";
+import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
 
 export const dynamic = "force-dynamic";
 
@@ -17,8 +18,9 @@ export function generateMetadata({ params }: { params: { id: string } }): Metada
 export default async function ItemPage({ params }: { params: { id: string } }) {
   if (!/^[1-9]\d*$/.test(params.id)) notFound();
   const itemId = Number(params.id);
-  const page = itemPage(itemId, await loadItemFacts());
-  const title = page.name ?? `Item ${page.itemId}`;
+  const facts = await loadItemFacts();
+  const page = itemPage(itemId, facts);
+  const title = facts.unreachable ? `Item ${page.itemId}` : page.name ?? `Item ${page.itemId}`;
 
   return (
     <article className="space-y-8 max-w-4xl">
@@ -26,11 +28,15 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
         <p className="uppercase tracking-[0.2em] text-xs text-gold-500/80">WoW: Forever · item</p>
         <h1 className="font-display text-3xl sm:text-4xl font-bold text-parchment-100 tracking-tight">{title}</h1>
         <p className="text-sm text-parchment-100/60">
-          {page.name ? `Item ${page.itemId}` : "No agreed name yet. A name needs 3 installs reporting the same one."}
+          {facts.unreachable
+            ? STORAGE_UNREACHABLE
+            : page.name
+              ? `Item ${page.itemId}`
+              : "No agreed name yet. A name needs 3 installs reporting the same one."}
         </p>
       </header>
 
-      {page.drops.length === 0 ? (
+      {facts.unreachable ? null : page.drops.length === 0 ? (
         <p className="text-parchment-100/75">Drop rate unrecorded. A rate goes public when 3 installs have killed the source.</p>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-parchment-100/10">
@@ -50,7 +56,7 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
                   <td className="px-4 py-3">{drop.source}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{drop.kills}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{drop.drops}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{(drop.rate * 100).toFixed(1)}%</td>
+                  <td className="px-4 py-3 text-right tabular-nums">{drop.drops === 0 ? formatMeasuredZero(drop.kills) : `${(drop.rate * 100).toFixed(1)}%`}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{drop.reporters}</td>
                 </tr>
               ))}
@@ -59,6 +65,7 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
         </div>
       )}
 
+      {facts.unreachable ? null : (
       <section className="space-y-2">
         <h2 className="font-display text-2xl text-parchment-100">Map</h2>
         {page.pins.length === 0 ? (
@@ -74,6 +81,7 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
           </ul>
         )}
       </section>
+      )}
 
       <p className="text-sm text-parchment-100/60">
         <Link href="/database/drops" className="text-gold-400 hover:underline underline-offset-4">

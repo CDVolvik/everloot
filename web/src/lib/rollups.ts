@@ -10,6 +10,7 @@ export {
   rollupDrops,
   type DropRate,
   type LootRow,
+  type MeasuredZero,
   type RollupResult,
 } from "../../../kb/src/drop-rollup";
 

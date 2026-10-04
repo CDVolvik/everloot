@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { itemFactsFromRecords } from "../src/drop-rollup.js";
+import { itemFactsFromRecords, rollupDrops } from "../src/drop-rollup.js";
 import { handleItemPage } from "../src/item-page.js";
 
 test("loot and item_seen records become the same item page the site renders", () => {
@@ -16,6 +16,37 @@ test("loot and item_seen records become the same item page the site renders", ()
   expect(text).toContain("Peacebloom");
   expect(text).toContain("100.0%");
   expect(text).toContain("NPC 456");
+});
+
+test("kills that dropped no item are a measured zero once 3 installs agree", () => {
+  const empty = (installId: string) => ({ installId, sourceNpcId: 7, items: [] as { itemId: number; count: number }[] });
+  const { rates, measuredZeros } = rollupDrops([empty("a"), empty("b"), empty("c"), empty("a")]);
+  expect(rates).toHaveLength(0);
+  expect(measuredZeros).toEqual([{ sourceNpcId: 7, kills: 4, reporters: 3, public: true }]);
+});
+
+test("an empty window still counts in the kills of an item that did drop", () => {
+  const { rates, measuredZeros } = rollupDrops([
+    { installId: "a", sourceNpcId: 7, items: [{ itemId: 11, count: 1 }] },
+    { installId: "b", sourceNpcId: 7, items: [] },
+    { installId: "c", sourceNpcId: 7, items: [{ itemId: 11, count: 1 }] },
+  ]);
+  expect(measuredZeros).toHaveLength(0);
+  expect(rates[0]).toMatchObject({ itemId: 11, kills: 3, drops: 2, reporters: 3, public: true });
+});
+
+test("two installs do not publish a zero, and an object with no item is the same zero", () => {
+  const quiet = rollupDrops([
+    { installId: "a", sourceNpcId: 7, items: [] },
+    { installId: "b", sourceNpcId: 7, items: [] },
+  ]);
+  expect(quiet.measuredZeros[0]).toMatchObject({ kills: 2, reporters: 2, public: false });
+  const chest = rollupDrops([
+    { installId: "a", sourceObjectId: 900, items: [] },
+    { installId: "b", sourceObjectId: 900, items: [] },
+    { installId: "c", sourceObjectId: 900, items: [] },
+  ]);
+  expect(chest.measuredZeros[0]).toMatchObject({ sourceObjectId: 900, kills: 3, public: true });
 });
 
 test("loot from an object (a chest, a node) is a kill too", () => {

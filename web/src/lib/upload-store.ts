@@ -23,7 +23,11 @@ export interface CloudConfig {
 export interface Corpus {
   uploads: number;
   records: unknown[];
+  /** Set when the read failed. An empty `records` array is then not a count of uploads. */
+  unreachable?: boolean;
 }
+
+export const STORAGE_UNREACHABLE = "Storage unreachable. These figures are unrecorded, not zero.";
 
 interface Snapshot extends Corpus {
   generatedAt: string;
@@ -144,8 +148,10 @@ export function createUploadStore(opts: {
     let files: string[] = [];
     try {
       files = (await readdir(dir)).filter((f) => f.endsWith(".json"));
-    } catch {
-      return { uploads: 0, records: [] };
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code;
+      if (code === "ENOENT") return { uploads: 0, records: [] };
+      return { uploads: 0, records: [], unreachable: true };
     }
     const records: unknown[] = [];
     for (const f of files) {
@@ -174,20 +180,29 @@ export function createUploadStore(opts: {
     return rows;
   }
 
-  async function readObjects(keys: string[]): Promise<unknown[]> {
+  async function readObjects(keys: string[]): Promise<{ records: unknown[]; missed: boolean }> {
     const records: unknown[] = [];
+    let missed = false;
     for (let i = 0; i < keys.length; i += PARALLEL_READS) {
       const batch = await Promise.all(keys.slice(i, i + PARALLEL_READS).map(async (key) => {
         try {
           const res = await r2Fetch(key, { method: "GET" });
-          return res.ok ? recordsOf(JSON.parse(await res.text())) : [];
+          if (!res.ok) return { records: [] as unknown[], missed: true };
+          try {
+            return { records: recordsOf(JSON.parse(await res.text())), missed: false };
+          } catch {
+            return { records: [] as unknown[], missed: false };
+          }
         } catch {
-          return [];
+          return { records: [] as unknown[], missed: true };
         }
       }));
-      for (const rows of batch) records.push(...rows);
+      for (const row of batch) {
+        if (row.missed) missed = true;
+        else records.push(...row.records);
+      }
     }
-    return records;
+    return { records, missed };
   }
 
   async function readSnapshot(): Promise<Snapshot | null> {
@@ -201,7 +216,9 @@ export function createUploadStore(opts: {
     const snapshot = await readSnapshot();
     if (snapshot) return { uploads: snapshot.uploads, records: snapshot.records };
     const keys = (await listIndex()).map((r) => r.object_key);
-    return { uploads: keys.length, records: await readObjects(keys) };
+    const read = await readObjects(keys);
+    if (read.missed) throw new Error("upload object unreadable");
+    return { uploads: keys.length, records: read.records };
   }
 
   /**
@@ -213,7 +230,9 @@ export function createUploadStore(opts: {
     const prev = opts.rebuild ? null : await readSnapshot();
     const rows = await listIndex(prev?.lastReceivedAt ?? undefined);
     const fresh = rows.filter((r) => !(prev && r.received_at === prev.lastReceivedAt && prev.lastIds.includes(r.id)));
-    const records = [...(prev?.records ?? []), ...(await readObjects(fresh.map((r) => r.object_key)))];
+    const read = await readObjects(fresh.map((r) => r.object_key));
+    if (read.missed) throw new Error("upload object unreadable");
+    const records = [...(prev?.records ?? []), ...read.records];
     const lastReceivedAt = rows.length > 0 ? rows[rows.length - 1].received_at : prev?.lastReceivedAt ?? null;
     const lastIds = rows.length > 0 ? rows.filter((r) => r.received_at === lastReceivedAt).map((r) => r.id) : prev?.lastIds ?? [];
     const snapshot: Snapshot = {
@@ -235,9 +254,13 @@ export function createUploadStore(opts: {
 
   async function loadCorpus(): Promise<Corpus> {
     if (cached && Date.now() - cached.at < cacheMs) return cached.corpus;
-    const corpus = cloud ? await readCloud() : await readLocal();
-    cached = { at: Date.now(), corpus };
-    return corpus;
+    try {
+      const corpus = cloud ? await readCloud() : await readLocal();
+      cached = { at: Date.now(), corpus };
+      return corpus;
+    } catch {
+      return { uploads: 0, records: [], unreachable: true };
+    }
   }
 
   async function putWaitlist(entry: WaitlistEntry): Promise<boolean> {

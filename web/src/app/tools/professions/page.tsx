@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import EmailCapture from "@/components/EmailCapture";
-import ProfessionPathForm from "@/components/ProfessionPathForm";
 import { handleProfessionPath, professionFactsFromRecords } from "../../../../../kb/src/profession-path";
-import { uploadStore } from "@/lib/upload-store";
+import { STORAGE_UNREACHABLE, uploadStore } from "@/lib/upload-store";
 
 export const dynamic = "force-dynamic";
 
@@ -34,13 +33,39 @@ const CARDS = [
   },
 ];
 
-export default async function ProfessionsPage() {
-  const facts = professionFactsFromRecords((await uploadStore.loadCorpus()).records);
+function one(value: string | string[] | undefined): string {
+  return Array.isArray(value) ? value[0] ?? "" : value ?? "";
+}
+
+function skill(value: string, fallback: number): number {
+  if (!/^\d+$/.test(value)) return fallback;
+  const n = Number(value);
+  return n >= 1 && n <= 500 ? n : fallback;
+}
+
+export default async function ProfessionsPage({
+  searchParams,
+}: {
+  searchParams: { profession?: string | string[]; from?: string | string[]; to?: string | string[] };
+}) {
+  const profession = one(searchParams.profession).trim() || "Alchemy";
+  const fromSkill = skill(one(searchParams.from), 1);
+  const toSkill = skill(one(searchParams.to), 75);
+  const corpus = await uploadStore.loadCorpus();
+  const facts = corpus.unreachable
+    ? { sightings: [], prices: [] }
+    : professionFactsFromRecords(corpus.records);
+  const answer = corpus.unreachable
+    ? STORAGE_UNREACHABLE
+    : handleProfessionPath({ profession, fromSkill, toSkill }, facts.sightings, facts.prices);
+  const reports = facts.sightings.length;
   return (
     <article className="space-y-10 max-w-4xl">
       <header className="space-y-3">
         <p className="uppercase tracking-[0.2em] text-xs text-gold-500/80">
-          Collecting data · {facts.sightings.length} recipe {facts.sightings.length === 1 ? "report" : "reports"}
+          {corpus.unreachable
+            ? "Storage unreachable"
+            : `Collecting data · ${reports} recipe ${reports === 1 ? "report" : "reports"}`}
         </p>
         <h1 className="font-display text-3xl sm:text-4xl font-bold text-parchment-100 tracking-tight">
           Forever Profession Hubs
@@ -55,14 +80,32 @@ export default async function ProfessionsPage() {
       <section className="space-y-3">
         <h2 className="font-display text-2xl text-parchment-100">The path</h2>
         <p className="text-sm text-parchment-100/70 max-w-2xl">
-          The path below reads recipe uploads stored on this server. The form asks the same engine
-          without those files. The profession_path tool reads them when EVERLOOT_UPLOADS points at
-          the same directory.
+          The path reads recipe uploads stored on this server. The profession_path tool reads the
+          same uploads when EVERLOOT_UPLOADS points at that directory. If that variable is unset,
+          the tool says uploads are not connected.
         </p>
+        <form method="get" className="rounded-xl border border-parchment-100/10 bg-parchment-900 p-5 space-y-4">
+          <div className="grid sm:grid-cols-3 gap-3">
+            <label className="text-sm text-parchment-100/80 space-y-1">
+              <span className="block text-xs uppercase tracking-wider text-parchment-100/50">Profession</span>
+              <input name="profession" defaultValue={profession} className="w-full rounded-lg border border-parchment-100/15 bg-parchment-950 px-3 py-2 text-parchment-100" />
+            </label>
+            <label className="text-sm text-parchment-100/80 space-y-1">
+              <span className="block text-xs uppercase tracking-wider text-parchment-100/50">From skill</span>
+              <input name="from" defaultValue={fromSkill} inputMode="numeric" className="w-full rounded-lg border border-parchment-100/15 bg-parchment-950 px-3 py-2 text-parchment-100" />
+            </label>
+            <label className="text-sm text-parchment-100/80 space-y-1">
+              <span className="block text-xs uppercase tracking-wider text-parchment-100/50">To skill</span>
+              <input name="to" defaultValue={toSkill} inputMode="numeric" className="w-full rounded-lg border border-parchment-100/15 bg-parchment-950 px-3 py-2 text-parchment-100" />
+            </label>
+          </div>
+          <button type="submit" className="px-4 py-2 rounded-lg bg-gold-500 text-parchment-950 font-semibold hover:bg-gold-400 transition">
+            Show the path
+          </button>
+        </form>
         <pre className="whitespace-pre-wrap text-sm text-parchment-100/85 rounded-xl border border-parchment-100/10 bg-parchment-900 p-5">
-          {handleProfessionPath({ profession: "Alchemy", fromSkill: 1, toSkill: 75 }, facts.sightings, facts.prices)}
+          {answer}
         </pre>
-        <ProfessionPathForm />
       </section>
 
       <div className="grid md:grid-cols-2 gap-4">

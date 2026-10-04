@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { formatMeasuredZero } from "../../../../../../kb/src/item-page";
 import { npcPage } from "../../../../../../kb/src/world-pages";
-import { loadWorldFacts } from "@/lib/rollup-compute";
+import { computeRollups, loadWorldFacts } from "@/lib/rollup-compute";
+import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
 
 export const dynamic = "force-dynamic";
 
@@ -16,8 +18,14 @@ export function generateMetadata({ params }: { params: { id: string } }): Metada
 
 export default async function NpcPage({ params }: { params: { id: string } }) {
   if (!/^[1-9]\d*$/.test(params.id)) notFound();
-  const page = npcPage(Number(params.id), await loadWorldFacts());
-  const title = page.name ?? `NPC ${page.npcId}`;
+  const npcId = Number(params.id);
+  const facts = await loadWorldFacts();
+  const rollup = await computeRollups();
+  const unreachable = facts.unreachable || rollup.stats.unreachable;
+  const page = npcPage(npcId, facts);
+  const title = unreachable ? `NPC ${page.npcId}` : page.name ?? `NPC ${page.npcId}`;
+  const zero = rollup.measuredZeros.find((row) => row.public && row.sourceNpcId === npcId);
+  const dropped = rollup.rates.filter((row) => row.public && row.sourceNpcId === npcId);
 
   return (
     <article className="space-y-8 max-w-4xl">
@@ -25,10 +33,35 @@ export default async function NpcPage({ params }: { params: { id: string } }) {
         <p className="uppercase tracking-[0.2em] text-xs text-gold-500/80">WoW: Forever · npc</p>
         <h1 className="font-display text-3xl sm:text-4xl font-bold text-parchment-100 tracking-tight">{title}</h1>
         <p className="text-sm text-parchment-100/60">
-          {page.name ? `NPC ${page.npcId}` : "No agreed name yet. A name needs 3 installs reporting the same one."}
+          {unreachable
+            ? STORAGE_UNREACHABLE
+            : page.name
+              ? `NPC ${page.npcId}`
+              : "No agreed name yet. A name needs 3 installs reporting the same one."}
         </p>
       </header>
 
+      {unreachable ? null : (
+      <section className="space-y-2">
+        <h2 className="font-display text-2xl text-parchment-100">Drops</h2>
+        {zero ? (
+          <p className="text-sm text-parchment-100/85">{formatMeasuredZero(zero.kills)}. {zero.reporters} reporters.</p>
+        ) : dropped.length === 0 ? (
+          <p className="text-sm text-parchment-100/70">Drops unrecorded. A rate goes public when 3 installs have killed this NPC.</p>
+        ) : (
+          <ul className="text-sm text-parchment-100/85 space-y-1">
+            {dropped.map((row) => (
+              <li key={row.itemId}>
+                <Link href={`/database/items/${row.itemId}`} className="text-gold-400 hover:underline underline-offset-4">Item {row.itemId}</Link>
+                {" "}· {row.drops} drops in {row.kills} kills · {row.reporters} reporters
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+      )}
+
+      {unreachable ? null : (
       <section className="space-y-2">
         <h2 className="font-display text-2xl text-parchment-100">Map</h2>
         {page.pins.length === 0 ? (
@@ -43,6 +76,7 @@ export default async function NpcPage({ params }: { params: { id: string } }) {
           </ul>
         )}
       </section>
+      )}
 
       <p className="text-sm text-parchment-100/60">
         <Link href="/database/npcs" className="text-gold-400 hover:underline underline-offset-4">NPC lookup</Link>

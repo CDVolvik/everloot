@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { questPage } from "../../../../../../kb/src/world-pages";
 import { loadWorldFacts } from "@/lib/rollup-compute";
+import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
 
 export const dynamic = "force-dynamic";
 
@@ -16,8 +17,9 @@ export function generateMetadata({ params }: { params: { id: string } }): Metada
 
 export default async function QuestPage({ params }: { params: { id: string } }) {
   if (!/^[1-9]\d*$/.test(params.id)) notFound();
-  const page = questPage(Number(params.id), await loadWorldFacts());
-  const title = page.title ?? `Quest ${page.questId}`;
+  const facts = await loadWorldFacts();
+  const page = questPage(Number(params.id), facts);
+  const title = facts.unreachable ? `Quest ${page.questId}` : page.title ?? `Quest ${page.questId}`;
 
   return (
     <article className="space-y-8 max-w-4xl">
@@ -25,10 +27,16 @@ export default async function QuestPage({ params }: { params: { id: string } }) 
         <p className="uppercase tracking-[0.2em] text-xs text-gold-500/80">WoW: Forever · quest</p>
         <h1 className="font-display text-3xl sm:text-4xl font-bold text-parchment-100 tracking-tight">{title}</h1>
         <p className="text-sm text-parchment-100/60">
-          {page.title ? `Quest ${page.questId}` : "No agreed title yet. A title needs 3 installs reporting the same one."}
+          {facts.unreachable
+            ? STORAGE_UNREACHABLE
+            : page.title
+              ? `Quest ${page.questId}`
+              : "No agreed title yet. A title needs 3 installs reporting the same one."}
         </p>
       </header>
 
+      {facts.unreachable ? null : (
+      <>
       <dl className="text-sm text-parchment-100/85 space-y-2">
         <div>{page.level === null ? "No agreed level. A level needs 3 installs reporting the same one." : `Level ${page.level}`}</div>
         <div>{page.giverNpcId === null ? "No agreed giver." : <Link href={`/database/npcs/${page.giverNpcId}`} className="text-gold-400 hover:underline underline-offset-4">Giver NPC {page.giverNpcId}</Link>}</div>
@@ -49,6 +57,8 @@ export default async function QuestPage({ params }: { params: { id: string } }) 
           </ul>
         )}
       </section>
+      </>
+      )}
 
       <p className="text-sm text-parchment-100/60">
         <Link href="/database/quests" className="text-gold-400 hover:underline underline-offset-4">Quest lookup</Link>

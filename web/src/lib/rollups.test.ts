@@ -36,6 +36,27 @@ describe("drop rollups", () => {
     expect(rejected).toHaveLength(3);
   });
 
+  test("kills that dropped no item are 0 drops in N kills once 3 installs agree", () => {
+    const { rates, measuredZeros } = rollupDrops([
+      win("a", 7, []),
+      win("b", 7, []),
+      win("c", 7, []),
+      win("a", 7, []),
+    ]);
+    expect(rates).toHaveLength(0);
+    expect(measuredZeros).toEqual([{ sourceNpcId: 7, kills: 4, reporters: 3, public: true }]);
+  });
+
+  test("an empty window counts in the kills of an item that did drop", () => {
+    const { rates, measuredZeros } = rollupDrops([
+      win("a", 7, [{ itemId: 11, count: 1 }]),
+      win("b", 7, []),
+      win("c", 7, [{ itemId: 11, count: 1 }]),
+    ]);
+    expect(measuredZeros).toHaveLength(0);
+    expect(rates[0]).toMatchObject({ itemId: 11, kills: 3, drops: 2, rate: 2 / 3, public: true });
+  });
+
   test("duplicate item lines in one window count one drop", () => {
     const { rates } = rollupDrops([win("a", 7, [{ itemId: 1, count: 1 }, { itemId: 1, count: 3 }])]);
     expect(rates[0]).toMatchObject({ kills: 1, drops: 1, rate: 1 });

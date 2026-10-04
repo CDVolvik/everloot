@@ -52,3 +52,10 @@ test("two installs, a second name, or a private rate stay off the page", () => {
   expect(handleItemPage({ itemId: 1234 }, { rates: [], names: [], npcs: [] })).toContain("Drop rate unrecorded");
   expect(handleItemPage({ itemId: 0 })).toBe("Name an item id.");
 });
+
+test("zero drops in a public sample names the kills", () => {
+  const text = handleItemPage({ itemId: 1234 }, facts({ rates: [rate({ drops: 0, kills: 9, rate: 0 })] }));
+  expect(text).toContain("0 drops in 9 kills");
+  expect(text).not.toContain("Drop rate unrecorded");
+  expect(text).not.toContain("0.0%");
+});

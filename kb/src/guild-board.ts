@@ -53,6 +53,8 @@ export type GuildBoard = {
   progression: { instance: string; bosses: string[] }[];
   loot: { itemId: number; recipient: string; sourceBoss: string }[];
   averageItemLevel: number | null;
+  /** Roster members with one agreed item level, over the agreed roster. */
+  gearCoverage: { measured: number; roster: number };
   present: string[];
   attendanceWaiting: boolean;
 };
@@ -185,6 +187,7 @@ export function guildBoard(guildName: string, realm: string, facts: GuildFacts):
   const averageItemLevel = levels.length
     ? Math.round(levels.reduce((sum, level) => sum + level, 0) / levels.length)
     : null;
+  const gearCoverage = { measured: levels.length, roster: roster.length };
 
   const presentGroups = winners(
     agreedValue(
@@ -201,7 +204,7 @@ export function guildBoard(guildName: string, realm: string, facts: GuildFacts):
         .sort((a, b) => a.localeCompare(b))
     : [];
 
-  return { guildName: displayGuild, realm: displayRealm, memberCount, roster, progression, loot, averageItemLevel, present, attendanceWaiting };
+  return { guildName: displayGuild, realm: displayRealm, memberCount, roster, progression, loot, averageItemLevel, gearCoverage, present, attendanceWaiting };
 }
 
 export function formatGuildBoard(board: GuildBoard): string {
@@ -228,7 +231,13 @@ export function formatGuildBoard(board: GuildBoard): string {
     lines.push("Loot");
     for (const row of board.loot) lines.push(`Item ${row.itemId} to ${row.recipient} from ${row.sourceBoss}`);
   }
-  lines.push(board.averageItemLevel === null ? "No agreed item level." : `Average item level: ${board.averageItemLevel}`);
+  const { measured, roster } = board.gearCoverage;
+  if (roster === 0) lines.push("Item level unrecorded.");
+  else if (measured === 0) lines.push(`Item level unrecorded. 0 of ${roster} roster members have an agreed gear upload.`);
+  else {
+    const line = `Average item level: ${board.averageItemLevel}, from ${measured} of ${roster} roster members.`;
+    lines.push(measured < roster ? `${line} The rest are unrecorded.` : line);
+  }
   if (board.attendanceWaiting) lines.push("Attendance is waiting on an agreed roster.");
   else if (board.present.length === 0) lines.push("No agreed attendance.");
   else if (board.memberCount) lines.push(`Present ${board.present.length} of ${board.memberCount}: ${board.present.join(", ")}`);

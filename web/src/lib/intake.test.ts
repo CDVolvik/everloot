@@ -61,6 +61,21 @@ describe("intake contract", () => {
     expect(r.accepted).toHaveLength(5);
   });
 
+  test("a loot window with no items is a kill when it names a source", () => {
+    const r = validateUpload({
+      addonVersion: "0.1.0",
+      records: [{ ...base, kind: "loot", sourceNpcId: 1234, items: [] }],
+    });
+    expect(r.rejected).toHaveLength(0);
+    expect(r.accepted).toEqual([{ index: 0, kind: "loot" }]);
+    const bare = validateUpload({
+      addonVersion: "0.1.0",
+      records: [{ ...base, kind: "loot", items: [] }],
+    });
+    expect(bare.accepted).toHaveLength(0);
+    expect(bare.rejected.map((row) => row.reason)).toContain("loot needs a source: npc or object");
+  });
+
   test("rejects empty and oversized payloads", () => {
     expect(validateUpload({ addonVersion: "0.1.0", records: [] }).rejected[0].index).toBe(-1);
     expect(validateUpload({}).rejected).toHaveLength(1);

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { computeRollups } from "@/lib/rollup-compute";
+import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
 
 export const metadata: Metadata = {
   title: "Forever Database",
@@ -19,9 +20,9 @@ const SECTIONS = [
 ];
 
 export default async function DatabasePage() {
-  const { rates, stats } = await computeRollups();
-  const live = rates.filter((r) => r.public).length;
-  const queued = rates.length - live;
+  const { rates, measuredZeros, stats } = await computeRollups();
+  const live = rates.filter((r) => r.public).length + measuredZeros.filter((z) => z.public).length;
+  const queued = rates.length + measuredZeros.length - live;
   const counts = [
     { label: "Uploads", value: stats.uploads },
     { label: "Loot windows", value: stats.lootWindows },
@@ -46,7 +47,7 @@ export default async function DatabasePage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {counts.map((c) => (
           <div key={c.label} className="rounded-xl border border-parchment-100/10 bg-parchment-900 p-5 text-center">
-            <div className="font-display text-3xl font-bold text-gold-400">{c.value}</div>
+            <div className="font-display text-3xl font-bold text-gold-400">{stats.unreachable ? "unrecorded" : c.value}</div>
             <div className="mt-1 text-xs uppercase tracking-wider text-parchment-100/60">{c.label}</div>
           </div>
         ))}
@@ -64,10 +65,16 @@ export default async function DatabasePage() {
       <div className="rounded-2xl border border-arcane/30 bg-parchment-900 p-6">
         <h2 className="font-display text-xl text-parchment-100">Be the first source</h2>
         <p className="mt-1 text-sm text-parchment-100/75 max-w-xl">
-          Every number above starts at zero and fills as uploads arrive. Run the addon,
-          send data on the{" "}
-          <Link href="/upload" className="text-gold-400 hover:underline underline-offset-4">upload page</Link>,
-          and watch your farms become the reference.
+          {stats.unreachable ? (
+            STORAGE_UNREACHABLE
+          ) : (
+            <>
+              A count above is what the store returned. Zero means that store was empty. Run the addon,
+              send data on the{" "}
+              <Link href="/upload" className="text-gold-400 hover:underline underline-offset-4">upload page</Link>,
+              and watch your farms become the reference.
+            </>
+          )}
         </p>
       </div>
     </article>

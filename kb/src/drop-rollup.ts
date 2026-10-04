@@ -2,6 +2,8 @@
  * Drop rollup shared by the site and the item_page tool.
  * A rate is public when 3 distinct installs have killed the source.
  * One loot window is one kill. A window that contains the item is one drop.
+ * A source whose windows contain no valid item is a measured zero
+ * (0 drops in N kills). A source nobody killed is absent, not zero.
  */
 
 export const INDEPENDENT_INSTALLS = 3;
@@ -24,8 +26,18 @@ export interface DropRate {
   public: boolean;
 }
 
+/** Kills of one source, and no valid item in any of those windows. */
+export interface MeasuredZero {
+  sourceNpcId?: number;
+  sourceObjectId?: number;
+  kills: number;
+  reporters: number;
+  public: boolean;
+}
+
 export interface RollupResult {
   rates: DropRate[];
+  measuredZeros: MeasuredZero[];
   rejected: string[];
 }
 
@@ -38,6 +50,7 @@ export function rollupDrops(windows: LootRow[]): RollupResult {
   const rejected: string[] = [];
   const kills = new Map<string, { n: number; reporters: Set<string> }>();
   const drops = new Map<string, { n: number; reporters: Set<string> }>();
+  const sourcesWithDrops = new Set<string>();
   const meta = new Map<string, { sourceNpcId?: number; sourceObjectId?: number; itemId: number }>();
 
   const sourceKey = (w: LootRow): string | null => {
@@ -75,6 +88,7 @@ export function rollupDrops(windows: LootRow[]): RollupResult {
       }
       d.reporters.add(w.installId);
       drops.set(key, d);
+      sourcesWithDrops.add(s);
       const [src, item] = key.split("|");
       const [kind, id] = src.split(":");
       meta.set(key, {
@@ -99,7 +113,21 @@ export function rollupDrops(windows: LootRow[]): RollupResult {
     });
   }
   rates.sort((a, b) => b.kills - a.kills || b.rate - a.rate);
-  return { rates, rejected };
+
+  const measuredZeros: MeasuredZero[] = [];
+  for (const [src, k] of kills) {
+    if (sourcesWithDrops.has(src)) continue;
+    const [kind, idText] = src.split(":");
+    const id = Number(idText);
+    measuredZeros.push({
+      ...(kind === "npc" ? { sourceNpcId: id } : { sourceObjectId: id }),
+      kills: k.n,
+      reporters: k.reporters.size,
+      public: k.reporters.size >= INDEPENDENT_INSTALLS,
+    });
+  }
+  measuredZeros.sort((a, b) => b.kills - a.kills || (a.sourceNpcId ?? a.sourceObjectId ?? 0) - (b.sourceNpcId ?? b.sourceObjectId ?? 0));
+  return { rates, measuredZeros, rejected };
 }
 
 export function lootWindowsFromRecords(records: unknown[]): LootRow[] {
