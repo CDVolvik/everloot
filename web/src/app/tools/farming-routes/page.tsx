@@ -34,7 +34,7 @@ export default function FarmingRoutesPage() {
     <article className="space-y-10 max-w-4xl">
       <header className="space-y-3">
         <p className="uppercase tracking-[0.2em] text-xs text-gold-500/80">
-          Collecting data · 0 sightings yet
+          Collecting data
         </p>
         <h1 className="font-display text-3xl sm:text-4xl font-bold text-parchment-100 tracking-tight">
           Forever Farming Routes

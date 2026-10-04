@@ -151,7 +151,7 @@ export function formatItemPage(page: ItemPage): string {
   const lines = [title];
   if (!page.name) lines.push("No agreed name yet. A name needs 3 installs reporting the same one.");
   if (page.drops.length === 0) {
-    lines.push("No public drop. A rate goes public when 3 installs have killed the source.");
+    lines.push("Drop rate unrecorded. A rate goes public when 3 installs have killed the source.");
     return lines.join("\n");
   }
   lines.push("Drops");

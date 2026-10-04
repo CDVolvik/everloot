@@ -88,6 +88,18 @@ test("two prices with 3 installs each both stay on the vendor page", () => {
   const text = handleVendorPage({ vendorNpcId: 80 }, facts);
   expect(text).toContain("Item 5  1s 0c  stock 10  3 reporters");
   expect(text).toContain("Item 5  2s 0c  not limited  3 reporters");
-  expect(handleVendorPage({ vendorNpcId: 1 })).toContain("No public goods");
+  expect(handleVendorPage({ vendorNpcId: 1 })).toContain("Goods unrecorded");
   expect(handleVendorPage({ vendorNpcId: 0 })).toBe("Name a vendor id.");
+});
+
+test("a stock only some installs reported is unrecorded, not unlimited", () => {
+  const vendor = (installId: string, limitedStock?: number) => ({
+    kind: "vendor",
+    installId,
+    vendorNpcId: 81,
+    items: [{ itemId: 6, priceCopper: 50, ...(limitedStock ? { limitedStock } : {}) }],
+  });
+  const text = handleVendorPage({ vendorNpcId: 81 }, worldFactsFromRecords([vendor("a", 5), vendor("b", 5), vendor("c")]));
+  expect(text).toContain("Item 6  50c  stock unrecorded  3 reporters");
+  expect(text).not.toContain("not limited");
 });

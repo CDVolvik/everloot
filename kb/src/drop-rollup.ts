@@ -52,7 +52,8 @@ export function rollupDrops(windows: LootRow[]): RollupResult {
       rejected.push("loot window without a source is not a kill");
       continue;
     }
-    if (!Number.isInteger(w.sourceNpcId ?? w.sourceObjectId) || (w.sourceNpcId ?? 0) < 1) {
+    const sourceId = w.sourceNpcId ?? w.sourceObjectId;
+    if (!Number.isInteger(sourceId) || sourceId! < 1) {
       rejected.push("implausible source id");
       continue;
     }

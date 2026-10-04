@@ -89,3 +89,17 @@ test("recipe_seen and price_seen records become path facts", () => {
   expect(facts.sightings).toHaveLength(1);
   expect(facts.prices).toEqual([{ installId: "a", item: "Peacebloom", copper: 100 }]);
 });
+
+test("a gold total never hides a gap: it covers the agreed steps and names the gap", () => {
+  const reagents = [{ item: "Peacebloom", count: 1 }];
+  const recipe = (installId: string) => sight(installId, "Minor Healing Potion", reagents, { skillMin: 1, skillMax: 10 });
+  const text = handleProfessionPath(
+    { profession: "Alchemy", fromSkill: 1, toSkill: 20 },
+    [recipe("a"), recipe("b"), recipe("c")],
+    [price("a", 10), price("b", 10), price("c", 10)],
+  );
+  expect(text).toContain("Gap 10–20");
+  expect(text).toContain("Gold for agreed steps:");
+  expect(text).toContain("Gold for 10–20 unrecorded");
+  expect(text).not.toMatch(/^Gold: /m);
+});

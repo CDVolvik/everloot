@@ -28,6 +28,7 @@ Rows: 62.
 | `site.professions` | Profession hubs | hub pages exist. The leveling path is tool.profession_path. |
 | `site.waitlist` | Waitlist | signup path exists. Persists when Supabase is connected. |
 | `addon.skeleton` | Collector skeleton | TOC 70058, SavedVariables, /upload import. In-client beta test is still waiting. |
+| `ops.stored_rollups` | Corpus snapshot | Vercel cron every 10 minutes extends snapshots/corpus.json in R2 with uploads it has not seen. Pages read that one object. ?rebuild=1 (with CRON_SECRET) rebuilds from empty after a deletion. |
 | `ops.dns` | everloot.app DNS | A @ 76.76.21.21 and CNAME www cname.vercel-dns.com in Cloudflare, both DNS only. https://everloot.app and www answer 200 with a Let's Encrypt certificate. |
 | `ops.vercel_git` | vercel git connect | CDVolvik/everloot is connected and the root directory is web. A push to main deploys production. |
 | `ops.supabase` | Supabase + R2 storage | Intake writes the raw upload to R2 bucket everloot-uploads and one index row to Supabase everloot (ref uinmowrmyckklpbwzqhn); the waitlist is a Supabase table. Pages read the indexed objects. Proven end to end on everloot.app 2026-10-04. |
@@ -47,8 +48,7 @@ Rows: 62.
 | `tool.guild_census` | Public guild-family page | Citation page is /guilds/olympus. Each figure has its source and date. Battle.net guild profile answers for retail and Classic Era in the local adapter. Forever namespaces were refused on 2026-09-30. Done when that namespace fills the same table. Spec: guild system, census section. |
 | `tool.auction` | Auction history | Page /tools/auctions and MCP tool auction_history. A day is public when 3 installs scanned that item on that realm. Intake accepts auction_scan. The tool reads EVERLOOT_UPLOADS when it is set. |
 | `tool.simc` | SimulationCraft sidecar | run the GPL-3.0 forever branch as its own process once it can sim. Report comes back through MCP. Do not paste the C++ into this repo. |
-| `site.gap_marking` | Unrecorded is not zero | Every count, rate, or price with no agreed uploads reads unrecorded, never 0, on every page and MCP tool. Standard taken from wowforevertalent.com. |
-| `ops.stored_rollups` | Stored rollups | Pages read every R2 object on a cold cache today. Before launch traffic, a scheduled job writes the rollups to Supabase and pages read those instead. |
+| `site.gap_marking` | Unrecorded is not zero | Done 2026-10-04: drop, goods, list, and price empties read unrecorded; vendor stock 2-of-3 no longer reads not limited; an install that never uploaded a collection is unrecorded, not owning nothing; a profession gold total names its gaps; hardcoded 0 counters removed; object loot is no longer discarded. Left: 0-of-N measured drops, guild item-level coverage, storage-unreachable shows 0, MCP with EVERLOOT_UPLOADS unset, the client-side profession form, guild-family dash. |
 | `mcp.chatgpt_directory` | ChatGPT apps directory | submit the same MCP server the day submissions open |
 | `mcp.subscription_signin` | Subscription sign-in | ChatGPT or Claude subscription unlocks the companion. API keys stay the fallback. |
 

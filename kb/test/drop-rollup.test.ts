@@ -17,3 +17,10 @@ test("loot and item_seen records become the same item page the site renders", ()
   expect(text).toContain("100.0%");
   expect(text).toContain("NPC 456");
 });
+
+test("loot from an object (a chest, a node) is a kill too", () => {
+  const open = (installId: string) => ({ kind: "loot", installId, sourceObjectId: 900, items: [{ itemId: 77, count: 2 }] });
+  const facts = itemFactsFromRecords([open("a"), open("b"), open("c")]);
+  expect(facts.rates).toHaveLength(1);
+  expect(facts.rates[0]).toMatchObject({ sourceObjectId: 900, itemId: 77, kills: 3, drops: 3, reporters: 3, public: true });
+});
