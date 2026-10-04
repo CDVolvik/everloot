@@ -173,9 +173,11 @@ Row `tool.guild_census` on the tracker.
   Vercel-managed org (now 2 of 2 free projects). Not connected to `everloot-web` yet; intake and
   waitlist still fail soft. Plan: raw uploads to Cloudflare R2, rollups + waitlist in Supabase, Pro
   ($25/mo) before 11/04.
-- Still waiting on Carlos: `everloot.app` DNS (`A @ 76.76.21.21`, `CNAME www cname.vercel-dns.com`,
-  both DNS only, or the Cloudflare connect button on the Vercel domains page), and Vercel → Storage →
-  connect `everloot`. Browser tools did not connect in that session, so neither was done for him.
+- Same day, later: DNS added in Cloudflare (`A @ 76.76.21.21`, `CNAME www cname.vercel-dns.com`, both
+  DNS only). https://everloot.app and www answer 200 with a Let's Encrypt cert (to 2027-01-02).
+  Supabase `everloot` connected to `everloot-web` in Vercel Storage (no prefix: `SUPABASE_URL`,
+  `SUPABASE_SERVICE_ROLE_KEY`, `POSTGRES_URL`, …; Production + Preview). Next: the intake/waitlist
+  adapter that writes to it (raw uploads to R2).
 
 ---
 
