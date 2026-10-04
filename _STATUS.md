@@ -192,7 +192,15 @@ Row `tool.guild_census` on the tracker.
   `1d694078-785b-4812-8466-69fcf7c8670b` (install `e2e-test-20261004`, one `item_seen` for fake item
   999999001) and waitlist `e2e-test@everloot.app` / `e2e-test`. Single install, so nothing goes
   public, but the upload counts in stats. Remove the index row, the R2 object and the waitlist row.
-- Next: `ops.stored_rollups` (pages read every object on a cold cache) and `site.gap_marking`.
+- Same day, later: **corpus snapshot** — Vercel cron `/api/cron/snapshot` (*/10, `CRON_SECRET` in
+  Vercel production only) extends `snapshots/corpus.json` in R2 with only unseen uploads; pages read
+  that one object. `?rebuild=1` rebuilds from empty (needed after any upload is deleted).
+- **Unrecorded is not zero** pass (audit found 17 spots): fixed object loot being discarded
+  (`sourceNpcId ?? 0` rejected chests/nodes), vendor 2-of-3 stock read as "not limited", "Owned: none"
+  for an install that never uploaded, profession gold total hiding gaps, "No public X" wording,
+  hardcoded 0 counters. Left list is in tracker row `site.gap_marking`.
+- Test-row deletion was declined twice in-session (SQL delete). Still present; if removed later, run
+  the cron with `?rebuild=1` (Vercel dashboard → Cron Jobs → Run) so the snapshot drops it too.
 
 ---
 
