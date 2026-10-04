@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { join } from "node:path";
 import { auctionSightingsFromRecords, handleAuctionHistory } from "../../../../../kb/src/auction-history";
-import { loadUploadRecords } from "../../../../../kb/src/load-uploads";
+import { uploadStore } from "@/lib/upload-store";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +15,7 @@ function one(value: string | string[] | undefined): string {
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
 }
 
-export default function AuctionsPage({
+export default async function AuctionsPage({
   searchParams,
 }: {
   searchParams: { realm?: string | string[]; item?: string | string[] };
@@ -24,7 +23,7 @@ export default function AuctionsPage({
   const realm = one(searchParams.realm);
   const itemText = one(searchParams.item);
   const itemId = /^\d+$/.test(itemText) ? Number(itemText) : 0;
-  const sightings = auctionSightingsFromRecords(loadUploadRecords(join(process.cwd(), "data", "uploads")));
+  const sightings = auctionSightingsFromRecords((await uploadStore.loadCorpus()).records);
   const answer = handleAuctionHistory({ realm, itemId }, sightings);
 
   return (

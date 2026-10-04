@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { join } from "node:path";
 import EmailCapture from "@/components/EmailCapture";
 import ProfessionPathForm from "@/components/ProfessionPathForm";
 import { handleProfessionPath, professionFactsFromRecords } from "../../../../../kb/src/profession-path";
-import { loadUploadRecords } from "../../../../../kb/src/load-uploads";
+import { uploadStore } from "@/lib/upload-store";
 
 export const dynamic = "force-dynamic";
 
@@ -35,8 +34,8 @@ const CARDS = [
   },
 ];
 
-export default function ProfessionsPage() {
-  const facts = professionFactsFromRecords(loadUploadRecords(join(process.cwd(), "data", "uploads")));
+export default async function ProfessionsPage() {
+  const facts = professionFactsFromRecords((await uploadStore.loadCorpus()).records);
   return (
     <article className="space-y-10 max-w-4xl">
       <header className="space-y-3">

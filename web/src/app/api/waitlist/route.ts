@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { uploadStore } from "@/lib/upload-store";
 
 /**
  * POST /api/waitlist — launch notification signups per tool.
- * File store for dev (gitignored); moves to Supabase with the intake store.
+ * Stored by `uploadStore`: a Supabase table in production, a gitignored file in dev.
  */
 export const dynamic = "force-dynamic";
 
@@ -13,29 +12,6 @@ const SLUG = /^[a-z0-9-]{1,60}$/;
 const RATE_MAX = 10;
 const RATE_WINDOW_MS = 60 * 60 * 1000;
 const hits = new Map<string, number[]>();
-
-async function store(entry: { toolSlug: string; email: string; ts: string }): Promise<boolean> {
-  try {
-    const dir = join(process.cwd(), "data");
-    await mkdir(dir, { recursive: true });
-    const file = join(dir, "waitlist.json");
-    let list: unknown[] = [];
-    try {
-      list = JSON.parse(await readFile(file, "utf8")) as unknown[];
-      if (!Array.isArray(list)) list = [];
-    } catch {
-      list = [];
-    }
-    if (list.some((e) => (e as { email?: unknown })?.email === entry.email && (e as { toolSlug?: unknown })?.toolSlug === entry.toolSlug)) {
-      return true; // already on this list — idempotent
-    }
-    list.push(entry);
-    await writeFile(file, JSON.stringify(list, null, 2));
-    return true;
-  } catch {
-    return false; // serverless FS: accepted, persists after Supabase lands
-  }
-}
 
 export async function POST(req: Request) {
   let body: unknown;
@@ -58,6 +34,6 @@ export async function POST(req: Request) {
   if (window.length > RATE_MAX) {
     return NextResponse.json({ ok: false, error: "rate limited" }, { status: 429 });
   }
-  await store({ toolSlug, email: email.trim().toLowerCase(), ts: new Date(now).toISOString() });
-  return NextResponse.json({ ok: true });
+  const persisted = await uploadStore.putWaitlist({ toolSlug, email: email.trim().toLowerCase(), ts: new Date(now).toISOString() });
+  return NextResponse.json({ ok: true, persisted });
 }
