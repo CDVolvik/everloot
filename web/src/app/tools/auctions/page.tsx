@@ -57,6 +57,8 @@ export default async function AuctionsPage({
 
       <p className="text-sm text-parchment-100/60">
         <Link href="/tools/gold-per-hour" className="text-gold-400 hover:underline underline-offset-4">Gold per hour</Link>
+        {" · "}
+        <Link href="/tools/gold-ledger" className="text-gold-400 hover:underline underline-offset-4">Gold ledger</Link>
       </p>
     </article>
   );

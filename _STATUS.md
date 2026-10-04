@@ -214,6 +214,10 @@ Row `tool.guild_census` on the tracker.
   gold and 4 Moss Agate, and shows the offer as a multiple of recorded income. Tracker row
   `tool.gold_ledger` keeps those two lines apart. A missing line is unrecorded. The report never
   says bought and never says ban. The addon is not copied.
+- Same day, later: **gold ledger slice**. The addon records current gold, the peak it has seen, and
+  copper from a loot window (`gold_snapshot`, `money_event`). `/tools/gold-ledger` and MCP
+  `gold_ledger` (server 0.7.2) print those lines and leave every other income line, spending, and
+  gameplay unrecorded. Two installs are not merged. Not pushed.
 
 ---
 
