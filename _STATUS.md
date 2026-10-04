@@ -218,6 +218,8 @@ Row `tool.guild_census` on the tracker.
   copper from a loot window (`gold_snapshot`, `money_event`). `/tools/gold-ledger` and MCP
   `gold_ledger` (server 0.7.2) print those lines and leave every other income line, spending, and
   gameplay unrecorded. Two installs are not merged. Not pushed.
+- Closeout 2026-10-04: the four local commits through `ce53a03` are the session's work. Pushing
+  `main` deploys everloot.app. GitLab is not a push target for this repo.
 
 ---
 
