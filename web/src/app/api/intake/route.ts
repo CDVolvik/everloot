@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
-import { mkdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { validateUpload } from "@/lib/intake";
+import { uploadStore } from "@/lib/upload-store";
 
 /**
  * POST /api/intake — step 1: validate + store the raw upload, return a receipt.
- * Storage is a local JSON file (dev). The Supabase adapter replaces `storeUpload`
- * without touching the contract. Rollups and corroboration are step 2.
+ * Storage is `uploadStore`: an R2 object plus a Supabase index row in production, a local
+ * JSON file in dev. Rollups and corroboration are step 2.
  * Best-effort per-install rate limit (in-memory; Supabase enforces it for real later).
  */
 export const dynamic = "force-dynamic";
@@ -16,17 +15,6 @@ const MAX_RECORDS = 2000;
 const RATE_WINDOW_MS = 60 * 60 * 1000;
 const RATE_MAX_UPLOADS = 20;
 const hits = new Map<string, number[]>();
-
-async function storeUpload(uploadId: string, payload: unknown): Promise<boolean> {
-  try {
-    const dir = join(process.cwd(), "data", "uploads");
-    await mkdir(dir, { recursive: true });
-    await writeFile(join(dir, `${uploadId}.json`), JSON.stringify(payload));
-    return true;
-  } catch {
-    return false; // serverless FS is ephemeral/read-only: validate now, persist after Supabase lands
-  }
-}
 
 function rateLimited(installId: string): boolean {
   const now = Date.now();
@@ -59,6 +47,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: `max ${MAX_RECORDS} records per upload` }, { status: 413 });
   }
   const uploadId = randomUUID();
-  const persisted = await storeUpload(uploadId, payload);
+  const persisted = await uploadStore.putUpload(uploadId, installId, payload);
   return NextResponse.json({ ok: true, uploadId, persisted, ...result });
 }

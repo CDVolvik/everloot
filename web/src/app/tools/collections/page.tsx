@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { join } from "node:path";
 import { collectionFactsFromRecords, handleCollectionGap } from "../../../../../kb/src/collection-gap";
-import { loadUploadRecords } from "../../../../../kb/src/load-uploads";
+import { uploadStore } from "@/lib/upload-store";
 
 export const dynamic = "force-dynamic";
 
@@ -16,14 +15,14 @@ function one(value: string | string[] | undefined): string {
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
 }
 
-export default function CollectionsPage({
+export default async function CollectionsPage({
   searchParams,
 }: {
   searchParams: { collection?: string | string[]; install?: string | string[] };
 }) {
   const collection = one(searchParams.collection);
   const install = one(searchParams.install);
-  const facts = collectionFactsFromRecords(loadUploadRecords(join(process.cwd(), "data", "uploads")));
+  const facts = collectionFactsFromRecords((await uploadStore.loadCorpus()).records);
   const answer = handleCollectionGap({ collection, ownerInstallId: install }, facts);
 
   return (

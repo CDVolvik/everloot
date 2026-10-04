@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { join } from "node:path";
 import { guildFactsFromRecords, handleGuildBoard } from "../../../../../kb/src/guild-board";
-import { loadUploadRecords } from "../../../../../kb/src/load-uploads";
+import { uploadStore } from "@/lib/upload-store";
 
 export const dynamic = "force-dynamic";
 
@@ -16,14 +15,14 @@ function one(value: string | string[] | undefined): string {
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
 }
 
-export default function GuildBoardPage({
+export default async function GuildBoardPage({
   searchParams,
 }: {
   searchParams: { guild?: string | string[]; realm?: string | string[] };
 }) {
   const guild = one(searchParams.guild);
   const realm = one(searchParams.realm);
-  const facts = guildFactsFromRecords(loadUploadRecords(join(process.cwd(), "data", "uploads")));
+  const facts = guildFactsFromRecords((await uploadStore.loadCorpus()).records);
   const answer = handleGuildBoard({ guildName: guild, realm }, facts);
 
   return (
