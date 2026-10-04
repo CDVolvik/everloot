@@ -11,7 +11,7 @@ subscription connects to the public HTTPS mount and uses its own model. Closed
 sites contribute a page shape. Their text and tables stay put. SimulationCraft's
 engine stays a separate GPL program.
 
-Rows: 62.
+Rows: 63.
 
 ## Live
 
@@ -48,6 +48,7 @@ Rows: 62.
 | `tool.guild` | Guild tracker | Page /tools/guild-board and MCP tool guild_board. Roster, bosses, loot, and item level need 2 agreeing officer uploads. The average names how many roster members were measured. score_v1 has no published weights, so there is no single score. The tool reads EVERLOOT_UPLOADS when it is set. If EVERLOOT_UPLOADS is unset, the answer says uploads are not connected. |
 | `tool.guild_census` | Public guild-family page | Citation page is /guilds/olympus. Each figure has its source and date. Battle.net guild profile answers for retail and Classic Era in the local adapter. Forever namespaces were refused on 2026-09-30. Done when that namespace fills the same table. Spec: guild system, census section. |
 | `tool.auction` | Auction history | Page /tools/auctions and MCP tool auction_history. A day is public when 3 installs scanned that item on that realm. Intake accepts auction_scan. The tool reads EVERLOOT_UPLOADS when it is set. If EVERLOOT_UPLOADS is unset, the answer says uploads are not connected. |
+| `tool.gold_ledger` | Gold ledger | Noted 2026-10-04 from the Dexerto IRS post. A character's own upload records money in and money out: loot, quests, vendors, auction sales, mail, and trades, plus the most gold that character has held. The remainder reads unrecorded, not bought. A trade check uses only a ledger that player uploaded. No public buyer list. The IRS addon is not copied. Gold-per-hour stays the calculator. |
 | `tool.simc` | SimulationCraft sidecar | run the GPL-3.0 forever branch as its own process once it can sim. Report comes back through MCP. Do not paste the C++ into this repo. |
 | `mcp.chatgpt_directory` | ChatGPT apps directory | submit the same MCP server the day submissions open |
 | `mcp.subscription_signin` | Subscription sign-in | ChatGPT or Claude subscription unlocks the companion. API keys stay the fallback. |

@@ -206,6 +206,10 @@ Row `tool.guild_census` on the tracker.
   failure, an unset `EVERLOOT_UPLOADS`, and a guild-family row with no published count read
   unrecorded, not zero. The profession form is a server GET form. MCP server is 0.7.1. Tracker row
   `site.gap_marking` is live. Not pushed.
+- Same day: Dexerto posted the Forever "IRS" addon (Illicit Riches Scanner), which compares peak
+  gold with recorded income and flags the gap. Everloot's version is tracker row `tool.gold_ledger`:
+  a character's own money in and money out. The remainder is unrecorded, not bought. No public buyer
+  list, and that addon is not copied.
 
 ---
 
