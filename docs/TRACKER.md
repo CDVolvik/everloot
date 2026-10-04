@@ -11,7 +11,7 @@ subscription connects to the public HTTPS mount and uses its own model. Closed
 sites contribute a page shape. Their text and tables stay put. SimulationCraft's
 engine stays a separate GPL program.
 
-Rows: 61.
+Rows: 62.
 
 ## Live
 
@@ -30,6 +30,7 @@ Rows: 61.
 | `addon.skeleton` | Collector skeleton | TOC 70058, SavedVariables, /upload import. In-client beta test is still waiting. |
 | `ops.dns` | everloot.app DNS | A @ 76.76.21.21 and CNAME www cname.vercel-dns.com in Cloudflare, both DNS only. https://everloot.app and www answer 200 with a Let's Encrypt certificate. |
 | `ops.vercel_git` | vercel git connect | CDVolvik/everloot is connected and the root directory is web. A push to main deploys production. |
+| `ops.supabase` | Supabase + R2 storage | Intake writes the raw upload to R2 bucket everloot-uploads and one index row to Supabase everloot (ref uinmowrmyckklpbwzqhn); the waitlist is a Supabase table. Pages read the indexed objects. Proven end to end on everloot.app 2026-10-04. |
 
 ## Next
 
@@ -47,9 +48,9 @@ Rows: 61.
 | `tool.auction` | Auction history | Page /tools/auctions and MCP tool auction_history. A day is public when 3 installs scanned that item on that realm. Intake accepts auction_scan. The tool reads EVERLOOT_UPLOADS when it is set. |
 | `tool.simc` | SimulationCraft sidecar | run the GPL-3.0 forever branch as its own process once it can sim. Report comes back through MCP. Do not paste the C++ into this repo. |
 | `site.gap_marking` | Unrecorded is not zero | Every count, rate, or price with no agreed uploads reads unrecorded, never 0, on every page and MCP tool. Standard taken from wowforevertalent.com. |
+| `ops.stored_rollups` | Stored rollups | Pages read every R2 object on a cold cache today. Before launch traffic, a scheduled job writes the rollups to Supabase and pages read those instead. |
 | `mcp.chatgpt_directory` | ChatGPT apps directory | submit the same MCP server the day submissions open |
 | `mcp.subscription_signin` | Subscription sign-in | ChatGPT or Claude subscription unlocks the companion. API keys stay the fallback. |
-| `ops.supabase` | Supabase project | Project everloot (ref uinmowrmyckklpbwzqhn, us-east-1, free) is connected to everloot-web and its env vars are set. Done when intake and waitlist write to it and stop failing soft. |
 
 ## Waiting on Carlos
 
