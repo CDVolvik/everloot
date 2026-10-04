@@ -95,6 +95,65 @@ describe("upload store, cloud mode", () => {
   });
 });
 
+describe("corpus snapshot", () => {
+  const SNAP = `${R2}snapshots/corpus.json`;
+  const INDEX = "https://sb.example/rest/v1/uploads";
+
+  test("the first snapshot reads every indexed upload and records where it stopped", async () => {
+    const { fn, calls } = fakeFetch([
+      [SNAP, "GET", () => new Response("missing", { status: 404 })],
+      [INDEX, "GET", () => Response.json([
+        { id: "a", object_key: "uploads/a.json", received_at: "2026-10-04T07:00:00+00:00" },
+        { id: "b", object_key: "uploads/b.json", received_at: "2026-10-04T08:00:00+00:00" },
+      ])],
+      [`${R2}uploads/a.json`, "GET", () => Response.json({ records: [{ kind: "loot" }] })],
+      [`${R2}uploads/b.json`, "GET", () => Response.json({ records: [{ kind: "quest" }] })],
+      [SNAP, "PUT", () => new Response(null, { status: 200 })],
+    ]);
+    const store = createUploadStore({ cloud, localDir: "unused", fetch: fn, now });
+    expect(await store.writeSnapshot()).toEqual({ uploads: 2, added: 2 });
+    const put = calls.find((c) => c.method === "PUT")!;
+    expect(JSON.parse(put.body)).toEqual({
+      generatedAt: "2026-10-04T12:00:00.000Z",
+      uploads: 2,
+      records: [{ kind: "loot" }, { kind: "quest" }],
+      lastReceivedAt: "2026-10-04T08:00:00+00:00",
+      lastIds: ["b"],
+    });
+  });
+
+  test("a later snapshot reads only uploads it has not seen", async () => {
+    const { fn, calls } = fakeFetch([
+      [SNAP, "GET", () => Response.json({
+        generatedAt: "x", uploads: 2, records: [{ kind: "loot" }, { kind: "quest" }],
+        lastReceivedAt: "2026-10-04T08:00:00+00:00", lastIds: ["b"],
+      })],
+      [INDEX, "GET", () => Response.json([
+        { id: "b", object_key: "uploads/b.json", received_at: "2026-10-04T08:00:00+00:00" },
+        { id: "c", object_key: "uploads/c.json", received_at: "2026-10-04T09:00:00+00:00" },
+      ])],
+      [`${R2}uploads/c.json`, "GET", () => Response.json({ records: [{ kind: "vendor" }] })],
+      [SNAP, "PUT", () => new Response(null, { status: 200 })],
+    ]);
+    const store = createUploadStore({ cloud, localDir: "unused", fetch: fn, now });
+    expect(await store.writeSnapshot()).toEqual({ uploads: 3, added: 1 });
+    expect(calls.some((c) => c.url.endsWith("uploads/b.json"))).toBe(false);
+    expect(calls.find((c) => c.method === "GET" && c.url.startsWith(INDEX))!.url).toContain("received_at=gte.2026-10-04T08%3A00%3A00%2B00%3A00");
+    const put = JSON.parse(calls.find((c) => c.method === "PUT")!.body);
+    expect(put.records).toEqual([{ kind: "loot" }, { kind: "quest" }, { kind: "vendor" }]);
+    expect(put.lastIds).toEqual(["c"]);
+  });
+
+  test("pages read the snapshot in one request when it exists", async () => {
+    const { fn, calls } = fakeFetch([
+      [SNAP, "GET", () => Response.json({ generatedAt: "x", uploads: 5, records: [{ kind: "loot" }], lastReceivedAt: null, lastIds: [] })],
+    ]);
+    const store = createUploadStore({ cloud, localDir: "unused", fetch: fn, now });
+    expect(await store.loadCorpus()).toEqual({ uploads: 5, records: [{ kind: "loot" }] });
+    expect(calls).toHaveLength(1);
+  });
+});
+
 describe("upload store, local mode", () => {
   test("cloud mode needs every variable", () => {
     expect(cloudConfig({})).toBeNull();

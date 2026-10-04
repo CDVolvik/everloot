@@ -6,6 +6,8 @@ import { AwsClient } from "aws4fetch";
  * Where uploads and waitlist signups live.
  * Cloud: the raw upload is an R2 object (cheap, the record of truth) and Supabase holds one index
  * row per upload plus the waitlist. Every rollup can be rebuilt from the R2 objects.
+ * Pages read one snapshot object (`snapshots/corpus.json`) that a cron job extends with only the
+ * uploads it has not seen yet. With no snapshot they fall back to reading every indexed object.
  * Local (no cloud variables, i.e. dev): the same files under web/data, as before.
  */
 
@@ -21,6 +23,19 @@ export interface CloudConfig {
 export interface Corpus {
   uploads: number;
   records: unknown[];
+}
+
+interface Snapshot extends Corpus {
+  generatedAt: string;
+  /** received_at of the newest upload included, and the ids sharing it, so ties are not re-read. */
+  lastReceivedAt: string | null;
+  lastIds: string[];
+}
+
+interface IndexRow {
+  id: string;
+  object_key: string;
+  received_at: string;
 }
 
 export interface WaitlistEntry {
@@ -45,6 +60,7 @@ export function cloudConfig(env: Record<string, string | undefined> = process.en
 
 const PAGE = 1000; // PostgREST's default row cap on Supabase
 const PARALLEL_READS = 16;
+const SNAPSHOT_KEY = "snapshots/corpus.json";
 
 function recordsOf(payload: unknown): unknown[] {
   const records = (payload as { records?: unknown })?.records;
@@ -142,17 +158,23 @@ export function createUploadStore(opts: {
     return { uploads: files.length, records };
   }
 
-  async function readCloud(): Promise<Corpus> {
-    const keys: string[] = [];
+  async function listIndex(since?: string): Promise<IndexRow[]> {
+    const filter = since ? `&received_at=gte.${encodeURIComponent(since)}` : "";
+    const rows: IndexRow[] = [];
     for (let offset = 0; ; offset += PAGE) {
-      const res = await doFetch(rest(`uploads?select=object_key&order=received_at.asc&limit=${PAGE}&offset=${offset}`), {
-        headers: restHeaders(),
-      });
+      const res = await doFetch(
+        rest(`uploads?select=id,object_key,received_at&order=received_at.asc,id.asc&limit=${PAGE}&offset=${offset}${filter}`),
+        { headers: restHeaders() },
+      );
       if (!res.ok) throw new Error(`upload index read failed (${res.status})`);
-      const rows = (await res.json()) as Array<{ object_key: string }>;
-      keys.push(...rows.map((r) => r.object_key));
-      if (rows.length < PAGE) break;
+      const page = (await res.json()) as IndexRow[];
+      rows.push(...page);
+      if (page.length < PAGE) break;
     }
+    return rows;
+  }
+
+  async function readObjects(keys: string[]): Promise<unknown[]> {
     const records: unknown[] = [];
     for (let i = 0; i < keys.length; i += PARALLEL_READS) {
       const batch = await Promise.all(keys.slice(i, i + PARALLEL_READS).map(async (key) => {
@@ -165,7 +187,50 @@ export function createUploadStore(opts: {
       }));
       for (const rows of batch) records.push(...rows);
     }
-    return { uploads: keys.length, records };
+    return records;
+  }
+
+  async function readSnapshot(): Promise<Snapshot | null> {
+    const res = await r2Fetch(SNAPSHOT_KEY, { method: "GET" });
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error(`snapshot read failed (${res.status})`);
+    return JSON.parse(await res.text()) as Snapshot;
+  }
+
+  async function readCloud(): Promise<Corpus> {
+    const snapshot = await readSnapshot();
+    if (snapshot) return { uploads: snapshot.uploads, records: snapshot.records };
+    const keys = (await listIndex()).map((r) => r.object_key);
+    return { uploads: keys.length, records: await readObjects(keys) };
+  }
+
+  /**
+   * Extend the snapshot with uploads newer than its last one (cron). `rebuild` starts from empty,
+   * which is how a deleted upload leaves the snapshot.
+   */
+  async function writeSnapshot(opts: { rebuild?: boolean } = {}): Promise<{ uploads: number; added: number }> {
+    if (!cloud) throw new Error("snapshots need the cloud store");
+    const prev = opts.rebuild ? null : await readSnapshot();
+    const rows = await listIndex(prev?.lastReceivedAt ?? undefined);
+    const fresh = rows.filter((r) => !(prev && r.received_at === prev.lastReceivedAt && prev.lastIds.includes(r.id)));
+    const records = [...(prev?.records ?? []), ...(await readObjects(fresh.map((r) => r.object_key)))];
+    const lastReceivedAt = rows.length > 0 ? rows[rows.length - 1].received_at : prev?.lastReceivedAt ?? null;
+    const lastIds = rows.length > 0 ? rows.filter((r) => r.received_at === lastReceivedAt).map((r) => r.id) : prev?.lastIds ?? [];
+    const snapshot: Snapshot = {
+      generatedAt: now().toISOString(),
+      uploads: (prev?.uploads ?? 0) + fresh.length,
+      records,
+      lastReceivedAt,
+      lastIds,
+    };
+    const put = await r2Fetch(SNAPSHOT_KEY, {
+      method: "PUT",
+      body: JSON.stringify(snapshot),
+      headers: { "content-type": "application/json" },
+    });
+    if (!put.ok) throw new Error(`snapshot write failed (${put.status})`);
+    cached = null;
+    return { uploads: snapshot.uploads, added: fresh.length };
   }
 
   async function loadCorpus(): Promise<Corpus> {
@@ -208,7 +273,7 @@ export function createUploadStore(opts: {
     }
   }
 
-  return { putUpload, loadCorpus, putWaitlist };
+  return { putUpload, loadCorpus, putWaitlist, writeSnapshot };
 }
 
 /** The store the routes and pages use. */
