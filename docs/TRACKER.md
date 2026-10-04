@@ -11,7 +11,7 @@ subscription connects to the public HTTPS mount and uses its own model. Closed
 sites contribute a page shape. Their text and tables stay put. SimulationCraft's
 engine stays a separate GPL program.
 
-Rows: 58.
+Rows: 61.
 
 ## Live
 
@@ -46,6 +46,7 @@ Rows: 58.
 | `tool.guild_census` | Public guild-family page | Citation page is /guilds/olympus. Each figure has its source and date. Battle.net guild profile answers for retail and Classic Era in the local adapter. Forever namespaces were refused on 2026-09-30. Done when that namespace fills the same table. Spec: guild system, census section. |
 | `tool.auction` | Auction history | Page /tools/auctions and MCP tool auction_history. A day is public when 3 installs scanned that item on that realm. Intake accepts auction_scan. The tool reads EVERLOOT_UPLOADS when it is set. |
 | `tool.simc` | SimulationCraft sidecar | run the GPL-3.0 forever branch as its own process once it can sim. Report comes back through MCP. Do not paste the C++ into this repo. |
+| `site.gap_marking` | Unrecorded is not zero | Every count, rate, or price with no agreed uploads reads unrecorded, never 0, on every page and MCP tool. Standard taken from wowforevertalent.com. |
 | `mcp.chatgpt_directory` | ChatGPT apps directory | submit the same MCP server the day submissions open |
 | `mcp.subscription_signin` | Subscription sign-in | ChatGPT or Claude subscription unlocks the companion. API keys stay the fallback. |
 | `ops.supabase` | Supabase project | Project everloot (ref uinmowrmyckklpbwzqhn, us-east-1, free) is connected to everloot-web and its env vars are set. Done when intake and waitlist write to it and stop failing soft. |
@@ -82,7 +83,9 @@ Rows: 58.
 | `ref.liquid_armory` | liquidarmory.com | page shape: trinkets per class, loot table, seasonal overview. |
 | `ref.warcraft_tools` | warcraft.tools | page shape: is the name free, what is the item worth, all alts on one page. Their Forever door is not built. |
 | `ref.wow_gg` | wow.gg | page shape: a markdown twin per page. Our bridge is our MCP server, not their chat. |
-| `ref.wowhead` | wowhead.com | page shape for an item. Link only. |
+| `ref.wowhead` | wowhead.com | page shape for an item. Link only. A person may check one row by hand in a browser; no bulk reads or XML endpoint. |
+| `ref.wowforevertalent` | wowforevertalent.com | the gap standard: unrecorded is not zero. Their rows stay theirs. |
+| `ref.foreverdiff` | foreverdiff.com | blocked. Client-extracted tables. Never fetch or compare against it. |
 | `ref.icy_veins` | icy-veins.com | page shape: class grid and a news rail. Link only. |
 | `ref.raider` | raider.io/search | page shape: one search box. Not a score. |
 | `ref.wowprogress` | wowprogress.com | page shape: guild progress. Link only until terms are read. |

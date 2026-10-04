@@ -36,6 +36,30 @@ Collection pages (Missing Mounts, Simple Armory, Data for Azeroth) wait on uploa
 key. Auction pages wait on the same uploads.
 Wowhead-shaped item pages are the public face of a drop row we already roll up.
 
+## Forever competitors and how Everloot becomes the #1 source (2026-10-04)
+
+From a research pass in another session. Access rules for each site are in the source catalogue.
+
+| Site | What it has | What we take |
+|---|---|---|
+| Wowhead `/forever` | The full vertical: database, talent calc, item tooltips | A person opening a page to check that one item exists. No bulk reads, no XML endpoint, no stored rows |
+| wowforevertools.com | Talents, racials, builds. No item database | The page shape of a build planner. Their builds stay theirs |
+| wowforevertalent.com | About 146 recorded dungeon and quest items, with gaps marked "unrecorded, not zero" | The gap standard. Every count or rate on our pages follows it |
+| foreverdiff.com | A claimed client-extracted spell and item diff | Nothing. Blocked |
+
+We will not out-copy Wowhead, and copying is the one thing that would sink us. We win on three
+things they cannot match:
+
+1. **Provenance on every row.** Each figure carries its install count and its last-seen date, so a
+   reader can see why we believe it. Nobody else in Forever publishes the denominator.
+2. **Honest gaps.** "Unrecorded" is a different statement from zero, and we always say which one it
+   is (row `site.gap_marking`).
+3. **Speed after a patch.** Beta rows change weekly. Collector uploads re-confirm or retire a row
+   within days, while a scraped table stays wrong until someone notices.
+
+Other sites still help: we link out to them when we have no row yet, and a person can check one
+of our rows against a public page by hand. They never become our data.
+
 ## Adopt and bridge (Carlos, 2026-09-29)
 
 Goal (Carlos, same night): one cohesive Everloot that offers these tools, and a bridge in the app
