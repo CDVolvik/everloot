@@ -237,8 +237,17 @@ export function formatProfessionPath(path: ProfessionPath): string {
   }
   for (const gap of path.gaps) lines.push(`Gap ${gap.fromSkill}–${gap.toSkill}. No agreed recipe.`);
   if (path.reagents.length > 0) {
-    lines.push(`Reagents: ${path.reagents.map((reagent) => `${reagent.count} ${reagent.item}`).join(", ")}`);
-    lines.push(path.copper === null ? "Gold: waiting on agreed prices." : `Gold: ${formatCopper(path.copper)}`);
+    const partial = path.gaps.length > 0;
+    const mats = path.reagents.map((reagent) => `${reagent.count} ${reagent.item}`).join(", ");
+    lines.push(partial ? `Reagents for agreed steps: ${mats}` : `Reagents: ${mats}`);
+    if (path.copper === null) {
+      lines.push("Gold: waiting on agreed prices.");
+    } else if (partial) {
+      const gaps = path.gaps.map((gap) => `${gap.fromSkill}–${gap.toSkill}`).join(", ");
+      lines.push(`Gold for agreed steps: ${formatCopper(path.copper)}. Gold for ${gaps} unrecorded.`);
+    } else {
+      lines.push(`Gold: ${formatCopper(path.copper)}`);
+    }
   }
   return lines.join("\n");
 }

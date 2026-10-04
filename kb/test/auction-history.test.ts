@@ -23,7 +23,7 @@ test("one install repeating a scan is not three reporters", () => {
     scan("a", 100, "2026-09-30T18:00:00.000Z"),
     scan("b", 100),
   ]);
-  expect(text).toContain("No public price");
+  expect(text).toContain("Price unrecorded");
   expect(handleAuctionHistory({ realm: " ", itemId: 1 })).toBe("Name a realm.");
   expect(handleAuctionHistory({ realm: "Forever", itemId: 0 })).toBe("Name an item id.");
 });

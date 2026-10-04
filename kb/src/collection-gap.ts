@@ -36,6 +36,8 @@ export type CollectionGap = {
   ownerInstallId: string;
   groups: CollectionGroup[];
   queued: number[];
+  /** False when this install never uploaded this collection: owned is unknown, not empty. */
+  ownedRecorded: boolean;
 };
 
 const EMPTY_FACTS: CollectionFacts = { catalog: [], owned: [] };
@@ -61,6 +63,7 @@ export function collectionGap(collection: string, ownerInstallId: string, facts:
   }
 
   const owned = new Set<number>();
+  const ownedRecorded = facts.owned.some((row) => row.installId.trim() === owner && clean(row.collection) === wanted);
   for (const row of facts.owned) {
     if (row.installId.trim() !== owner || clean(row.collection) !== wanted || !positiveId(row.itemId)) continue;
     owned.add(row.itemId);
@@ -90,6 +93,7 @@ export function collectionGap(collection: string, ownerInstallId: string, facts:
     ownerInstallId: owner,
     groups,
     queued: [...owned].filter((itemId) => !listed.has(itemId)).sort((a, b) => a - b),
+    ownedRecorded,
   };
 }
 
@@ -99,10 +103,15 @@ export function formatCollectionGap(gap: CollectionGap): string {
     "An item joins the list when 3 installs agree on the collection, the source, and the item. Owned is what this install uploaded. Missing is the rest of that list.",
   ];
   if (gap.groups.length === 0) {
-    lines.push("No public list. An item joins when 3 installs agree on it and its source.");
+    lines.push("List unrecorded. An item joins when 3 installs agree on it and its source.");
   }
   for (const group of gap.groups) {
     lines.push(`${group.source}`);
+    if (!gap.ownedRecorded) {
+      lines.push(`Listed: ${[...group.owned, ...group.missing].sort((a, b) => a - b).join(", ")}`);
+      lines.push("Owned: unrecorded. This install has not uploaded this collection.");
+      continue;
+    }
     lines.push(`Owned: ${group.owned.length ? group.owned.join(", ") : "none"}`);
     lines.push(`Missing: ${group.missing.length ? group.missing.join(", ") : "none"}`);
   }

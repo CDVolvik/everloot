@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { vendorPage } from "../../../../../../kb/src/world-pages";
+import { stockLabel, vendorPage } from "../../../../../../kb/src/world-pages";
 import { loadWorldFacts } from "@/lib/rollup-compute";
 
 export const dynamic = "force-dynamic";
@@ -38,7 +38,7 @@ export default async function VendorPage({ params }: { params: { id: string } })
       </header>
 
       {page.offers.length === 0 ? (
-        <p className="text-parchment-100/75">No public goods. A price needs 3 installs agreeing.</p>
+        <p className="text-parchment-100/75">Goods unrecorded. A price needs 3 installs agreeing.</p>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-parchment-100/10">
           <table className="w-full text-sm">
@@ -57,7 +57,7 @@ export default async function VendorPage({ params }: { params: { id: string } })
                     <Link href={`/database/items/${offer.itemId}`} className="text-gold-400 hover:underline underline-offset-4">Item {offer.itemId}</Link>
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums">{formatCopper(offer.priceCopper)}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{offer.limitedStock === null ? "not limited" : offer.limitedStock}</td>
+                  <td className="px-4 py-3 text-right tabular-nums">{stockLabel(offer)}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{offer.reporters}</td>
                 </tr>
               ))}

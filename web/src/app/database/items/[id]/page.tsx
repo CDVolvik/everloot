@@ -31,7 +31,7 @@ export default async function ItemPage({ params }: { params: { id: string } }) {
       </header>
 
       {page.drops.length === 0 ? (
-        <p className="text-parchment-100/75">No public drop. A rate goes public when 3 installs have killed the source.</p>
+        <p className="text-parchment-100/75">Drop rate unrecorded. A rate goes public when 3 installs have killed the source.</p>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-parchment-100/10">
           <table className="w-full text-sm">

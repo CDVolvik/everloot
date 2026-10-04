@@ -28,7 +28,7 @@ test("two reporters, one install repeating itself, and a blank query stay empty"
     { collection: "Mounts", ownerInstallId: "owner" },
     { catalog: [catalog("a", 1), catalog("a", 1), catalog("b", 1)], owned: [] },
   );
-  expect(text).toContain("No public list");
+  expect(text).toContain("List unrecorded");
   expect(handleCollectionGap({ collection: " ", ownerInstallId: "owner" })).toBe("Name a collection.");
   expect(handleCollectionGap({ collection: "Mounts", ownerInstallId: " " })).toBe("Name the install.");
 });
@@ -41,4 +41,13 @@ test("records become catalog and owned sightings", () => {
   ]);
   expect(facts.catalog).toHaveLength(1);
   expect(facts.owned).toHaveLength(1);
+});
+
+test("an install that never uploaded the collection has an unrecorded owned set, not an empty one", () => {
+  const catalogRows = [catalog("a", 1), catalog("b", 1), catalog("c", 1)];
+  const text = handleCollectionGap({ collection: "Mounts", ownerInstallId: "stranger" }, { catalog: catalogRows, owned: [] });
+  expect(text).toContain("Owned: unrecorded");
+  expect(text).not.toContain("Owned: none");
+  expect(text).not.toContain("Missing: 1");
+  expect(text).toContain("Listed: 1");
 });

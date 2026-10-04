@@ -79,7 +79,7 @@ export function formatAuctionHistory(history: AuctionHistory): string {
     "A day is public when 3 installs scanned this item on this realm. The copper is the median of the last scan from each install.",
   ];
   if (history.points.length === 0) {
-    lines.push("No public price. A day goes on the history when 3 installs scanned that item.");
+    lines.push("Price unrecorded. A day goes on the history when 3 installs scanned that item.");
     return lines.join("\n");
   }
   for (const point of history.points) {

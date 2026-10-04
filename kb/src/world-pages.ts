@@ -49,7 +49,8 @@ export type QuestPage = {
   turnInNpcId: number | null;
   rewards: number[];
 };
-export type VendorOffer = { itemId: number; priceCopper: number; limitedStock: number | null; reporters: number };
+/** `limitedStock` null with `unlimited` false means the stock is unrecorded, not unlimited. */
+export type VendorOffer = { itemId: number; priceCopper: number; limitedStock: number | null; unlimited: boolean; reporters: number };
 export type VendorPage = { vendorNpcId: number; offers: VendorOffer[] };
 
 const EMPTY: WorldFacts = { npcs: [], quests: [], vendors: [] };
@@ -190,19 +191,27 @@ export function vendorPage(vendorNpcId: number, facts: WorldFacts): VendorPage {
     .filter((group) => group.installs.size >= WORLD_AGREEMENT)
     .map((group) => {
       const stocks = new Map<number, number>();
+      let noLimit = 0;
       for (const stock of group.installs.values()) {
-        if (stock !== undefined && Number.isInteger(stock) && stock > 0) stocks.set(stock, (stocks.get(stock) ?? 0) + 1);
+        if (stock === undefined) noLimit += 1;
+        else if (Number.isInteger(stock) && stock > 0) stocks.set(stock, (stocks.get(stock) ?? 0) + 1);
       }
       const agreed = [...stocks.entries()].filter(([, count]) => count >= WORLD_AGREEMENT);
       return {
         itemId: group.itemId,
         priceCopper: group.priceCopper,
         limitedStock: agreed.length === 1 ? agreed[0]![0] : null,
+        unlimited: noLimit >= WORLD_AGREEMENT,
         reporters: group.installs.size,
       };
     })
     .sort((a, b) => a.itemId - b.itemId || a.priceCopper - b.priceCopper);
   return { vendorNpcId, offers };
+}
+
+export function stockLabel(offer: VendorOffer): string {
+  if (offer.limitedStock !== null) return `stock ${offer.limitedStock}`;
+  return offer.unlimited ? "not limited" : "stock unrecorded";
 }
 
 export function formatVendorPage(page: VendorPage): string {
@@ -211,11 +220,11 @@ export function formatVendorPage(page: VendorPage): string {
     "An item is listed when 3 installs agree on that item and its copper price.",
   ];
   if (page.offers.length === 0) {
-    lines.push("No public goods. A price needs 3 installs agreeing.");
+    lines.push("Goods unrecorded. A price needs 3 installs agreeing.");
     return lines.join("\n");
   }
   for (const offer of page.offers) {
-    const stock = offer.limitedStock === null ? "not limited" : `stock ${offer.limitedStock}`;
+    const stock = stockLabel(offer);
     lines.push(`Item ${offer.itemId}  ${formatCopper(offer.priceCopper)}  ${stock}  ${offer.reporters} reporters`);
   }
   return lines.join("\n");

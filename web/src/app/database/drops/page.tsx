@@ -30,7 +30,7 @@ export default async function DropsPage() {
 
       {live.length === 0 ? (
         <div className="rounded-xl border border-parchment-100/10 bg-parchment-900 p-8 text-center">
-          <p className="text-parchment-100/80">No public rates yet.</p>
+          <p className="text-parchment-100/80">No agreed rates yet. A rate goes public when 3 installs have killed the source.</p>
           <p className="mt-1 text-sm text-parchment-100/60">
             Be the first source — run the addon and send data on the{" "}
             <Link href="/upload" className="text-gold-400 hover:underline underline-offset-4">upload page</Link>.

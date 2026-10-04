@@ -49,6 +49,6 @@ test("two installs, a second name, or a private rate stay off the page", () => {
   expect(page.name).toBeNull();
   expect(page.drops).toHaveLength(0);
   expect(page.pins).toHaveLength(0);
-  expect(handleItemPage({ itemId: 1234 }, { rates: [], names: [], npcs: [] })).toContain("No public drop");
+  expect(handleItemPage({ itemId: 1234 }, { rates: [], names: [], npcs: [] })).toContain("Drop rate unrecorded");
   expect(handleItemPage({ itemId: 0 })).toBe("Name an item id.");
 });
