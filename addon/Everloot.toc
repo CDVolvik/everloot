@@ -11,3 +11,4 @@ modules\openworld.lua
 modules\guild.lua
 modules\gear.lua
 modules\auctions.lua
+modules\gold.lua

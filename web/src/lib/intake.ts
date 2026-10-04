@@ -159,6 +159,27 @@ export const priceSeen = base.extend({
   copper: z.number().int().nonnegative(),
 });
 
+const COPPER = z.number().int().nonnegative().max(2_000_000_000);
+const MONEY_CATEGORY = z.enum(["loot", "quest", "vendor", "auction", "flight", "postage", "barber", "respec", "auction_spend"]);
+
+export const goldSnapshot = base.extend({
+  kind: z.literal("gold_snapshot"),
+  character: z.string().min(2).max(30),
+  realm: z.string().min(2).max(60),
+  currentCopper: COPPER,
+  peakCopper: COPPER,
+}).refine((row) => row.peakCopper >= row.currentCopper, {
+  message: "peak gold cannot be below current gold",
+});
+
+export const moneyEvent = base.extend({
+  kind: z.literal("money_event"),
+  character: z.string().min(2).max(30),
+  realm: z.string().min(2).max(60),
+  category: MONEY_CATEGORY,
+  copper: COPPER.min(1),
+});
+
 const recordSchemas = {
   npc_sighting: npcSighting,
   loot: lootWindow,
@@ -175,6 +196,8 @@ const recordSchemas = {
   auction_scan: auctionScan,
   recipe_seen: recipeSeen,
   price_seen: priceSeen,
+  gold_snapshot: goldSnapshot,
+  money_event: moneyEvent,
 } as const;
 
 export type RecordKind = keyof typeof recordSchemas;
@@ -184,6 +207,7 @@ const anyRecord = z.discriminatedUnion("kind", [
   npcSighting, lootWindow, questEvent, vendorList, itemSeen,
   guildSnapshot, raidLockout, attendance, lootAward, gearSnapshot,
   collectionCatalog, collectionOwned, auctionScan, recipeSeen, priceSeen,
+  goldSnapshot, moneyEvent,
 ]);
 
 export type IntakeRecord = z.infer<typeof anyRecord>;

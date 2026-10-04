@@ -11,7 +11,7 @@ E.MAX_ROWS_PER_KIND = 2000
 local defaults = {
   version = E.VERSION,
   installId = nil,
-  toggles = { openworld = true, guild = true, gear = true, auctions = false },
+  toggles = { openworld = true, guild = true, gear = true, auctions = false, gold = true },
   records = {},
 }
 
@@ -69,7 +69,8 @@ function E:Status()
   end
   for _, kind in ipairs({ "npc_sighting", "loot", "quest", "vendor", "item_seen",
     "guild_snapshot", "raid_lockout", "attendance", "loot_award", "gear_snapshot",
-    "collection_catalog", "collection_owned", "auction_scan", "recipe_seen", "price_seen" }) do
+    "collection_catalog", "collection_owned", "auction_scan", "recipe_seen", "price_seen",
+    "gold_snapshot", "money_event" }) do
     lines[#lines + 1] = string.format("  rows %s: %d", kind, self:Count(kind))
   end
   return table.concat(lines, "\n")

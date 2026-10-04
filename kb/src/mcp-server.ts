@@ -4,6 +4,7 @@ import { z } from "zod";
 import { auctionSightingsFromRecords, handleAuctionHistory } from "./auction-history.js";
 import { handlePlan } from "./bridge-plan.js";
 import { collectionFactsFromRecords, handleCollectionGap } from "./collection-gap.js";
+import { goldFactsFromRecords, handleGoldLedger } from "./gold-ledger.js";
 import { guildFactsFromRecords, handleGuildBoard } from "./guild-board.js";
 import { itemFactsFromRecords } from "./drop-rollup.js";
 import { handleItemPage } from "./item-page.js";
@@ -14,7 +15,7 @@ import { openDb, type DB } from "./db.js";
 import { getByName, getEntity, search, type SearchHit } from "./search.js";
 
 export const SERVER_NAME = "everloot-knowledge";
-export const SERVER_VERSION = "0.7.1";
+export const SERVER_VERSION = "0.7.2";
 
 export const UPLOADS_UNSET =
   "Uploads are not connected. EVERLOOT_UPLOADS is unset, so this is not a measured zero.";
@@ -221,6 +222,28 @@ export function createKnowledgeServer(db: DB): McpServer {
     },
     (args) => ({
       content: [{ type: "text" as const, text: fromUploads((records) => handleAuctionHistory(args, auctionSightingsFromRecords(records))) }],
+    }),
+  );
+  server.registerTool(
+    "gold_ledger",
+    {
+      title: "Gold ledger for one character",
+      description:
+        "Peak gold and the money events that character's own upload recorded. Loot, quests, vendors, and auction sales stay on the money line. Gameplay stays on its own line. A missing line is unrecorded. The difference is not called bought and is not a ban. Installs are not merged. No scan of a player who did not upload. Reads EVERLOOT_UPLOADS when that directory is set. If EVERLOOT_UPLOADS is unset, the answer says uploads are not connected.",
+      inputSchema: {
+        character: z.string().describe("Character name."),
+        realm: z.string().describe("Realm name."),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    (args) => ({
+      content: [{
+        type: "text" as const,
+        text: fromUploads((records) => {
+          const facts = goldFactsFromRecords(records);
+          return handleGoldLedger(args, facts.snapshots, facts.events);
+        }),
+      }],
     }),
   );
   server.registerTool(

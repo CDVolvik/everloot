@@ -5,7 +5,9 @@ const base = { installId: "test-install-1234", capturedAt: "2026-09-29T12:00:00.
 
 describe("intake contract", () => {
   test("all record kinds exist", () => {
-    expect(ALL_RECORD_KINDS).toHaveLength(15);
+    expect(ALL_RECORD_KINDS).toHaveLength(17);
+    expect(ALL_RECORD_KINDS).toContain("gold_snapshot");
+    expect(ALL_RECORD_KINDS).toContain("money_event");
     expect(ALL_RECORD_KINDS).toContain("loot_award");
     expect(ALL_RECORD_KINDS).toContain("collection_catalog");
     expect(ALL_RECORD_KINDS).toContain("recipe_seen");
@@ -74,6 +76,23 @@ describe("intake contract", () => {
     });
     expect(bare.accepted).toHaveLength(0);
     expect(bare.rejected.map((row) => row.reason)).toContain("loot needs a source: npc or object");
+  });
+
+  test("accepts a gold snapshot and a loot money event", () => {
+    const r = validateUpload({
+      addonVersion: "0.1.0",
+      records: [
+        { ...base, kind: "gold_snapshot", character: "Bigz", realm: "Forever", currentCopper: 120000, peakCopper: 5389075 },
+        { ...base, kind: "money_event", character: "Bigz", realm: "Forever", category: "loot", copper: 64600 },
+      ],
+    });
+    expect(r.rejected).toHaveLength(0);
+    expect(r.accepted.map((row) => row.kind)).toEqual(["gold_snapshot", "money_event"]);
+    const low = validateUpload({
+      addonVersion: "0.1.0",
+      records: [{ ...base, kind: "gold_snapshot", character: "Bigz", realm: "Forever", currentCopper: 10, peakCopper: 1 }],
+    });
+    expect(low.rejected.map((row) => row.reason).join(" ")).toContain("peak gold cannot be below current gold");
   });
 
   test("rejects empty and oversized payloads", () => {
