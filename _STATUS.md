@@ -206,10 +206,14 @@ Row `tool.guild_census` on the tracker.
   failure, an unset `EVERLOOT_UPLOADS`, and a guild-family row with no published count read
   unrecorded, not zero. The profession form is a server GET form. MCP server is 0.7.1. Tracker row
   `site.gap_marking` is live. Not pushed.
-- Same day: Dexerto posted the Forever "IRS" addon (Illicit Riches Scanner), which compares peak
-  gold with recorded income and flags the gap. Everloot's version is tracker row `tool.gold_ledger`:
-  a character's own money in and money out. The remainder is unrecorded, not bought. No public buyer
-  list, and that addon is not copied.
+- Same day: looked at the Dexerto still and Ziqo's 60-second clip of the unpublished IRS addon
+  (Illicit Riches Scanner). It is a right-click "IRS Scan" of the character-sheet Wealth tab.
+  LilleJenny's scan is green: recorded income covers 100% of a 2g 97s peak, with 101 quests and
+  2,378 kills. Bigz Foreverpyp's still is red on gold (529g of a 538g 90s peak unexplained) and
+  green on gameplay (97 quests, 1,673 kills) at the same time. The trade popup opens even for 0
+  gold and 4 Moss Agate, and shows the offer as a multiple of recorded income. Tracker row
+  `tool.gold_ledger` keeps those two lines apart. A missing line is unrecorded. The report never
+  says bought and never says ban. The addon is not copied.
 
 ---
 
