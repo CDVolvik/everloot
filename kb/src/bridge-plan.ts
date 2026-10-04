@@ -39,6 +39,7 @@ export const BRIDGE_PLAN: readonly PlanItem[] = [
   { id: "tool.guild_census", status: "next", name: "Public guild-family page", done: "Citation page is /guilds/olympus. Each figure has its source and date. Battle.net guild profile answers for retail and Classic Era in the local adapter. Forever namespaces were refused on 2026-09-30. Done when that namespace fills the same table. Spec: guild system, census section." },
   { id: "tool.auction", status: "next", name: "Auction history", done: "Page /tools/auctions and MCP tool auction_history. A day is public when 3 installs scanned that item on that realm. Intake accepts auction_scan. The tool reads EVERLOOT_UPLOADS when it is set." },
   { id: "tool.simc", status: "next", name: "SimulationCraft sidecar", done: "run the GPL-3.0 forever branch as its own process once it can sim. Report comes back through MCP. Do not paste the C++ into this repo." },
+  { id: "site.gap_marking", status: "next", name: "Unrecorded is not zero", done: "Every count, rate, or price with no agreed uploads reads unrecorded, never 0, on every page and MCP tool. Standard taken from wowforevertalent.com." },
   { id: "mcp.chatgpt_directory", status: "next", name: "ChatGPT apps directory", done: "submit the same MCP server the day submissions open" },
   { id: "mcp.subscription_signin", status: "next", name: "Subscription sign-in", done: "ChatGPT or Claude subscription unlocks the companion. API keys stay the fallback." },
 
@@ -69,7 +70,9 @@ export const BRIDGE_PLAN: readonly PlanItem[] = [
   { id: "ref.liquid_armory", status: "shape", name: "liquidarmory.com", done: "page shape: trinkets per class, loot table, seasonal overview." },
   { id: "ref.warcraft_tools", status: "shape", name: "warcraft.tools", done: "page shape: is the name free, what is the item worth, all alts on one page. Their Forever door is not built." },
   { id: "ref.wow_gg", status: "shape", name: "wow.gg", done: "page shape: a markdown twin per page. Our bridge is our MCP server, not their chat." },
-  { id: "ref.wowhead", status: "shape", name: "wowhead.com", done: "page shape for an item. Link only." },
+  { id: "ref.wowhead", status: "shape", name: "wowhead.com", done: "page shape for an item. Link only. A person may check one row by hand in a browser; no bulk reads or XML endpoint." },
+  { id: "ref.wowforevertalent", status: "shape", name: "wowforevertalent.com", done: "the gap standard: unrecorded is not zero. Their rows stay theirs." },
+  { id: "ref.foreverdiff", status: "shape", name: "foreverdiff.com", done: "blocked. Client-extracted tables. Never fetch or compare against it." },
   { id: "ref.icy_veins", status: "shape", name: "icy-veins.com", done: "page shape: class grid and a news rail. Link only." },
   { id: "ref.raider", status: "shape", name: "raider.io/search", done: "page shape: one search box. Not a score." },
   { id: "ref.wowprogress", status: "shape", name: "wowprogress.com", done: "page shape: guild progress. Link only until terms are read." },

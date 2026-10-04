@@ -45,7 +45,7 @@ name the exact domain in the map.
 
 | Source | URL | Good for | Forever | Access |
 |---|---|---|---|---|
-| Wowhead (retail / classic / forever) | wowhead.com | Standard item/NPC/quest DB | yes (/forever) | `link` |
+| Wowhead (retail / classic / forever) | wowhead.com | Standard item/NPC/quest DB. `/forever` is a full vertical: database, talent calc, item tooltips. Other catalogues read its XML tooltip endpoints; we do not | yes (/forever) | `link`. A person may open a page in a browser to confirm an item exists or to check one of our rows by hand. No bulk reads, no XML endpoint, no stored rows (terms, robots.txt, beta churn). Research pass 2026-10-04 |
 | Warcraft DB — Forever | forever.warcraftdb.com | Forever items/quests/dungeons (wowdb successor) | yes | `fetch?` |
 | WoW Eternity | woweternity.com/forever | Loot, sets, BiS, build planner | yes | `fetch?` |
 | Warcraft Tavern | warcrafttavern.com/forever | Guide-style reference pages | yes | `fetch?` |
@@ -107,6 +107,7 @@ name the exact domain in the map.
 | WoWDev wiki | wowdev.wiki | File formats | no | skip |
 | wow.tools | wow.tools (site retired May 2025) | Public site dead. Local app [Marlamin/wow.tools.local](https://github.com/Marlamin/wow.tools.local) is MIT and still updated. It downloads older builds from wago.tools. | dev machine only | Do not publish extracted tables. Do not import via its wago.tools path. |
 | Community Forever datasets | github.com/alcaras/forever-ref | Example consumer of wago.tools Forever exports | yes | reference only |
+| foreverdiff.com | foreverdiff.com | Claims a full client-extracted spell/item diff | yes | **blocked**. Client extraction is their liability and beta rows change weekly. Never fetch, import, or check our rows against it: one foreign row would contaminate a pack. Research pass 2026-10-04 |
 
 ## Addons & UI ecosystem
 
@@ -132,7 +133,8 @@ name the exact domain in the map.
 | Wowhead news | wowhead.com/forever | yes | `link` |
 | MMO-Champion | mmo-champion.com | active; depth unverified | `link?` |
 | Warcraft Tavern | warcrafttavern.com/forever | yes (tracks beta window 9/17–10/22) | `fetch?` |
-| wowforevertools.com | wowforevertools.com | yes (talent calc, map, checklist) | `link?` |
+| wowforevertools.com | wowforevertools.com | yes (talents, racials, builds, map, checklist; no item database) | `link?` |
+| wowforevertalent.com | wowforevertalent.com | yes (~146 recorded dungeon and quest items) | `link`. Copy the standard, not the rows: an item nobody recorded reads "unrecorded", never zero. Research pass 2026-10-04 |
 | Reddit r/wow, r/classicwow | reddit.com | partial | `api` is **paid** since 2023 (~$0.24/1,000 calls) — `link` for v1 |
 | r/wowforever | — | unconfirmed it exists | — |
 
