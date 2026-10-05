@@ -4,7 +4,7 @@
 
 Make the data trustworthy, then enrich it and put the knowledge server on a public host. Keep the full-launch scope already recorded; this closeout did not authorize a scope reduction or provision a new host.
 
-Read in order: `_STATUS.md` current cursor → `docs/2026-10-05-full-assessment.md` → `docs/architecture.md` → `docs/sources/source-catalog.md` and only the relevant specs. Historical Retail/iOS plans are superseded.
+Read in order: `_STATUS.md` current cursor → [`docs/2026-10-05-next-sprint.md`](docs/2026-10-05-next-sprint.md) → `docs/2026-10-05-full-assessment.md` → `docs/architecture.md` → `docs/sources/source-catalog.md` and the relevant linked spec/plan. Historical Retail/iOS plans are superseded.
 
 The assessment and this handoff are on **`docs/assessment-handoff-2026-10-05`** in `CDVolvik/everloot`, published to GitHub at closeout. Start the next implementation branch from that branch, retaining these documents. `main` pushes deploy everloot.app; no main push in this session. GitLab is not a push target for Everloot.
 
@@ -20,14 +20,14 @@ The assessment and this handoff are on **`docs/assessment-handoff-2026-10-05`** 
 
 ## First implementation slice — fix before collecting more player data
 
-1. Create `fix/intake-trust-boundary` from the documentation branch, after checking checkout ownership and uncommitted changes.
-2. Write failing boundary tests: mixed valid/invalid payload, unknown fields, repeated whole-file upload, old-plus-one-new event, mixed install IDs, partial persistence/retry, and 2,001+ multi-kind rows.
-3. Implement parsed-accepted-record-only persistence and stable event identity/deduplication across intake, snapshot/rebuild and rollups. Rejected/raw submissions must not become public facts.
-4. Add resumable batches; align the addon's per-kind cap with intake's aggregate cap. Preserve unsent records and show real persistence failure as a retryable failure.
-5. Next slice: verified guild claims, revocation/opt-out and explicit sharing of named character/gold data. Placeholder claims must never publish. Add shared abuse limits and production-config fail-closed behavior.
-6. Upgrade vulnerable web dependencies on a reviewable branch, configure noninteractive lint/CI, rerun tests/build and preview the affected flows. Resolve advisory applicability rather than treating every audit entry as a reachable exploit.
+1. Read/review the sprint brief and its two scoped specs. Start `fix/accepted-only-web` from the documentation branch after checking ownership/uncommitted changes. Execute the linked A plan with failing tests: canonical persistence, historical web read normalization, mixed accepted identities and truthful storage failures.
+2. Independently start `fix/readonly-kb-service` from the same docs branch once the checkout is clean. Execute B: explicit existing populated release, manifest/hash/publication checks and read-only service handles. The existing validator writes FTS; do not call it unchanged during serving.
+3. Review the historical event-identity policy in the sprint brief before writing/executing C's dedup migration. Cover repeated files, old-plus-new, conflicting IDs, conflict replay, incremental/full rebuild agreement and web/MCP consistency. Stable IDs do not establish contributor or officer authority.
+4. After deduplication, add resumable batches above 2,000 aggregate records; preserve unsent rows and exact retry progress. A normalizer's corpus must not use the per-request cap.
+5. Next: verified guild claims, revocation/opt-out and explicit named sharing, shared abuse limits, and production-config fail-closed behavior. Placeholder claims must never publish.
+6. Separately upgrade vulnerable web dependencies with current official advisory review, noninteractive lint/CI, tests/build and affected preview flows.
 
-Done means actual accepted-only/deduplicated corpus behavior, not just a green pure-function suite. Production test upload/waitlist deletion remains **declined**; do not delete or rebuild them during testing.
+Next session's minimum outcome is two reviewable A/B patches, not all 20 findings closed. Public collection/enrichment/hosting remain gated on deduplication, verified sharing and the sanitized shared reader. Production test upload/waitlist deletion remains **declined**; do not delete or rebuild them during testing.
 
 ## Enrichment work after the trust boundary
 
@@ -69,4 +69,4 @@ This binds loopback only. Stop the foreground process when the test ends. The cu
 
 Recorded beta cutoff 10/21 → in-client addon load and two raid nights. CurseForge target ~10/24 → reviewed package and metadata. Recorded launch 11/04 → signing, public MCP, companion/uploader, privacy/share controls, billing/plan confirmation and recovery evidence. Hero screenshot, officer authority, trademark and wiki permission remain owner/external inputs.
 
-Resume prompt: **“Read NEXT_SESSION.md and architecture.md; implement the accepted-only ingestion and idempotency slice with failing boundary tests first. Do not deploy or delete production test data.”**
+Resume prompt: **“Read NEXT_SESSION.md and docs/2026-10-05-next-sprint.md. Review and execute A's accepted-only web plan, then B's read-only KB startup plan with failing tests first. Resolve the historical replay policy before C. Do not deploy or delete production test data.”**

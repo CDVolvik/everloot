@@ -4,6 +4,8 @@ Reference material for the build. Not source-of-truth for the product (that's `_
 
 **Current entry points (2026-10-05):** [`../NEXT_SESSION.md`](../NEXT_SESSION.md) for the ordered trust-boundary → enrichment → server setup handoff; [`architecture.md`](architecture.md) for current/proposed services; [`2026-10-05-full-assessment.md`](2026-10-05-full-assessment.md) for 20 open findings. Retail/iOS references below are historical where superseded.
 
+**Next work session:** [`2026-10-05-next-sprint.md`](2026-10-05-next-sprint.md) has the work order, dependencies and migration decisions, plus scoped specs and task-by-task plans for accepted-only web boundaries and read-only KB service startup. Prepared only; no implementation completed.
+
 ## What's here
 
 | File | Type | Read when |
