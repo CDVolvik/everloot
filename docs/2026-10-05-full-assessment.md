@@ -117,6 +117,12 @@ Acceptance: loading and configuration respect the saved choice and supported con
 
 Acceptance: noninteractive lint/typecheck/test/build CI, focused boundary regressions for P0/P1 findings, a concise current-scope status header, and tracker states distinguishing implemented / deployed / tested in client / publicly connected / useful with real data.
 
+### Closeout follow-up — F20 (P1): implicit DB path opens an empty KB
+
+Verified during 10/05 server preparation: populated data lives at `kb/data/wowvault-kb.sqlite`, while CLI default is `data/everloot-kb.sqlite`. A default invocation created an empty DB and validation reported `ok`; the empty diagnostic DB was removed. Explicit-path stats on the populated DB returned 257,110 lore rows and 1 curated row, and validation passed. Missing files should fail closed when serving, and a structurally valid empty KB is not a ready knowledge server. Pin explicit paths and expected coverage in deployment checks; do not silently rename or replace the live DB. See `NEXT_SESSION.md` for exact commands and the validated filtered snapshot.
+
+The assessment now has **20 open findings**. No application remediation occurred during closeout. A filtered public snapshot and authenticated local MCP smoke test were prepared; public hosting and the gameplay-data connection remain pending.
+
 ## Product and design judgment
 
 The recorded gold/dark Leonardo-influenced direction and dials **7/7/4** belong to Carlos; this assessment does not reopen that choice. The main weakness supported by current evidence is **proof and utility**: no real public rates, no obvious contribution/download path, technical prose in player flows, and repeated feature claims for pages that collect interest rather than answer a question. A real beta screenshot and real corroborated item/route will communicate the product better than another ambient effect. Screenshot-based aesthetics, contrast and motion quality were not assessed successfully in this pass.
