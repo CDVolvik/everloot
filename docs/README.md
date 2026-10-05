@@ -2,13 +2,15 @@
 
 Reference material for the build. Not source-of-truth for the product (that's `_STATUS.md` and `BUILD_PLAN.md` at the project root).
 
+**Current entry points (2026-10-05):** [`../NEXT_SESSION.md`](../NEXT_SESSION.md) for the ordered trust-boundary → enrichment → server setup handoff; [`architecture.md`](architecture.md) for current/proposed services; [`2026-10-05-full-assessment.md`](2026-10-05-full-assessment.md) for 20 open findings. Retail/iOS references below are historical where superseded.
+
 ## What's here
 
 | File | Type | Read when |
 |---|---|---|
 | `WoWCollectorTracker_Architecture_and_Strategy.docx` | Historical strategy artifact (2026-05-02, 35 pages) | Once for context. Reread before Phase 2 GTM work. |
 | `WoWCollectorTracker_Competitive_Matrix.xlsx` | Historical competitive matrix (30 tools × 50+ features) | When deciding which APIs to integrate or which feature niches to attack. |
-| `architecture.md` | Live tech decisions (TO BE WRITTEN — Session 0) | Every session. Keep updated. |
+| `architecture.md` | Current service/data map and proposed public MCP setup; verified 2026-10-05 | Before enrichment, server provisioning or changing data boundaries. |
 | `references.md` | Product-shape references Carlos sent 2026-09-29. Access rules stay in `sources/source-catalog.md`. | Before borrowing a page layout from another WoW site. |
 
 ## The two historical docs
