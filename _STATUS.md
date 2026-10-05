@@ -2,9 +2,11 @@
 
 ## Current cursor — 2026-10-05 assessment
 
+**10/05 evening preparation:** [`docs/2026-10-05-next-sprint.md`](docs/2026-10-05-next-sprint.md) organizes the next work session (expected 10/06): two scoped specs and executable plans for accepted-only web boundaries (A) and explicit read-only KB readiness (B), then a separately reviewed replay migration (C), batching, claims/sharing, dependency/lint repair and enrichment/hosting. Plans self-reviewed against call sites; no implementation task run. Local release hash rechecked and unchanged. Tomorrow's minimum outcome is two reviewable patches; all 20 assessment findings remain open today. No host/import/production write or main push.
+
 Current product is **Everloot's player-collected Forever database + guild/tools + AI bridge**, not the historical Retail/iOS Phase 1 below. Recorded milestones: beta closes 10/21, CurseForge around 10/24, full launch 11/04.
 
-Full assessment: [`docs/2026-10-05-full-assessment.md`](docs/2026-10-05-full-assessment.md), now 20 findings with acceptance checks (F20 added during server preflight). **Not ready for full launch.** First slice: only parsed accepted records enter the trusted corpus; stable event IDs/idempotency across upload retries. Next: verified guild claims and explicit named-data sharing. No remediation or deployment performed.
+Full assessment: [`docs/2026-10-05-full-assessment.md`](docs/2026-10-05-full-assessment.md), now 20 findings with acceptance checks (F20 added during server preflight). **Not ready for full launch.** First slice: parsed accepted web records and safe KB startup; next stable event IDs/idempotency across upload retries, verified guild claims and explicit named-data sharing. No remediation or deployment performed.
 
 Verified 10/05: web 33 tests + KB 121 tests pass; web production build and KB typecheck pass. Lint stops at interactive configuration. Web audit reports 16 affected packages (1 critical/13 high/2 moderate, includes dev/transitive), KB 0. Local probes reproduce rejected-row ingestion, duplicate loot counting, placeholder-token guild publication and non-cheapest profession routing. Addon per-kind caps exceed intake's aggregate cap. Live checks expose absent phone navigation, tablet overflow, the old GoldGoblin robots sitemap and stale tool destinations. Live corpus still shows 1 upload / 1 record / 0 loot windows; existing test-row deletion remains declined.
 
