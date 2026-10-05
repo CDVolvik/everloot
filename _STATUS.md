@@ -1,5 +1,17 @@
 # WoWVault — Status
 
+## Current cursor — 2026-10-05 assessment
+
+Current product is **Everloot's player-collected Forever database + guild/tools + AI bridge**, not the historical Retail/iOS Phase 1 below. Recorded milestones: beta closes 10/21, CurseForge around 10/24, full launch 11/04.
+
+Full assessment: [`docs/2026-10-05-full-assessment.md`](docs/2026-10-05-full-assessment.md), 19 findings with acceptance checks. **Not ready for full launch.** First slice: only parsed accepted records enter the trusted corpus; stable event IDs/idempotency across upload retries. Next: verified guild claims and explicit named-data sharing. No remediation or deployment performed.
+
+Verified 10/05: web 33 tests + KB 121 tests pass; web production build and KB typecheck pass. Lint stops at interactive configuration. Web audit reports 16 affected packages (1 critical/13 high/2 moderate, includes dev/transitive), KB 0. Local probes reproduce rejected-row ingestion, duplicate loot counting, placeholder-token guild publication and non-cheapest profession routing. Addon per-kind caps exceed intake's aggregate cap. Live checks expose absent phone navigation, tablet overflow, the old GoldGoblin robots sitemap and stale tool destinations. Live corpus still shows 1 upload / 1 record / 0 loot windows; existing test-row deletion remains declined.
+
+Fetched origin on 10/05: `main` and `origin/main` both at `6accdb6` before assessment docs. Live gold-ledger route answers 200; earlier “not pushed” closeout text is historical. Gap marking is implemented and visible in current tracker; it is not the next task. Full-launch AI companion, desktop uploader and public MCP remain incomplete. In-client beta tests, screenshot/composited contrast, real phone, load/recovery, provider-account and delivery checks remain unverified.
+
+Assessment was read-only against production. Documentation below remains historical where superseded by this cursor; do not revive the parked Retail/iOS plan.
+
 **You're building this solo with Claude Code.** No co-founder, no fundraise, no marketing-org thinking until there's a product. The 35-page strategy doc exists as historical reference in `docs/`; this file is the working state.
 
 **One-liner**: Mobile-first WoW companion. Tracks your collection, hits you with smart alerts, answers "what should I do tonight" with character-aware AI.
