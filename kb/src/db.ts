@@ -1,5 +1,5 @@
 import Database from "better-sqlite3";
-import { mkdirSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { syncSources } from "./sources.js";
 
@@ -56,4 +56,32 @@ export function openDb(path: string): DB {
   db.exec(SCHEMA);
   syncSources(db);
   return db;
+}
+
+const CORE_TABLES = ["sources", "entities", "entities_fts"];
+
+/**
+ * Open an existing, populated knowledge base for reading. This is the only opener the MCP
+ * service may use: it never creates a file, never initializes a schema, never syncs sources and
+ * never writes — including the FTS checks, which write. A missing, empty or foreign file is a
+ * startup failure rather than a healthy-looking empty knowledge base.
+ */
+export function openExistingReadOnlyDb(path: string): DB {
+  const target = path.trim();
+  if (!target) throw new Error("knowledge base path is blank: pass an explicit --db path");
+  if (!existsSync(target)) throw new Error(`knowledge base not found: ${target}`);
+  const db = new Database(target, { readonly: true, fileMustExist: true });
+  try {
+    const tables = new Set(
+      (db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as { name: string }[]).map((r) => r.name),
+    );
+    const missing = CORE_TABLES.filter((name) => !tables.has(name));
+    if (missing.length > 0) throw new Error(`knowledge base is not an Everloot KB: missing tables ${missing.join(", ")}`);
+    const { n } = db.prepare("SELECT count(*) AS n FROM entities").get() as { n: number };
+    if (n < 1) throw new Error("knowledge base has no entities: refusing to serve an empty knowledge base");
+    return db;
+  } catch (err) {
+    db.close();
+    throw err;
+  }
 }
