@@ -1,4 +1,4 @@
-import { mkdtempSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
@@ -29,7 +29,47 @@ function fakeFetch(routes: Array<[string, string, () => Response]>) {
 
 const R2 = "https://acct.r2.cloudflarestorage.com/everloot-uploads/";
 const now = () => new Date("2026-10-04T12:00:00Z");
-const payload = { records: [{ kind: "loot", installId: "install-1" }, { kind: "npc_sighting", installId: "install-1" }] };
+const capturedAt = "2026-10-04T07:00:00.000Z";
+
+/** Schema-valid records: a corpus normalizer parses stored rows, so a kind-only fixture is not a fixture. */
+const lootRow = (over: Record<string, unknown> = {}) => ({
+  kind: "loot",
+  installId: "install-1",
+  capturedAt,
+  sourceNpcId: 1234,
+  items: [{ itemId: 456, count: 2 }],
+  ...over,
+});
+const questRow = () => ({
+  kind: "quest",
+  installId: "install-1",
+  capturedAt,
+  questId: 55,
+  title: "Road to Westfall",
+  level: 12,
+  rewardItemIds: [],
+});
+const npcRow = () => ({
+  kind: "npc_sighting",
+  installId: "install-1",
+  capturedAt,
+  npcId: 1234,
+  name: "Forest Spider",
+  mapId: 141,
+  x: 42.5,
+  y: 61,
+  level: 60,
+  reaction: "hostile" as const,
+});
+const vendorRow = () => ({
+  kind: "vendor",
+  installId: "install-1",
+  capturedAt,
+  vendorNpcId: 7,
+  items: [{ itemId: 456, priceCopper: 100 }],
+});
+
+const payload = { addonVersion: "0.1.0", records: [lootRow(), npcRow()] };
 
 describe("upload store, cloud mode", () => {
   test("a stored upload is a signed R2 object plus one index row", async () => {
@@ -74,12 +114,12 @@ describe("upload store, cloud mode", () => {
   test("the corpus reads indexed objects, skips a corrupt one, and caches", async () => {
     const { fn, calls } = fakeFetch([
       ["https://sb.example/rest/v1/uploads", "GET", () => Response.json([{ object_key: "uploads/a.json" }, { object_key: "uploads/b.json" }])],
-      [`${R2}uploads/a.json`, "GET", () => Response.json({ records: [{ kind: "loot" }, { kind: "quest" }] })],
+      [`${R2}uploads/a.json`, "GET", () => Response.json({ records: [lootRow(), questRow()] })],
       [`${R2}uploads/b.json`, "GET", () => new Response("{not json")],
     ]);
     const store = createUploadStore({ cloud, localDir: "unused", fetch: fn, now, cacheMs: 60_000 });
     const corpus = await store.loadCorpus();
-    expect(corpus).toEqual({ uploads: 2, records: [{ kind: "loot" }, { kind: "quest" }] });
+    expect(corpus).toEqual({ uploads: 2, records: [lootRow(), questRow()] });
 
     const before = calls.length;
     await store.loadCorpus();
@@ -106,8 +146,8 @@ describe("corpus snapshot", () => {
         { id: "a", object_key: "uploads/a.json", received_at: "2026-10-04T07:00:00+00:00" },
         { id: "b", object_key: "uploads/b.json", received_at: "2026-10-04T08:00:00+00:00" },
       ])],
-      [`${R2}uploads/a.json`, "GET", () => Response.json({ records: [{ kind: "loot" }] })],
-      [`${R2}uploads/b.json`, "GET", () => Response.json({ records: [{ kind: "quest" }] })],
+      [`${R2}uploads/a.json`, "GET", () => Response.json({ records: [lootRow()] })],
+      [`${R2}uploads/b.json`, "GET", () => Response.json({ records: [questRow()] })],
       [SNAP, "PUT", () => new Response(null, { status: 200 })],
     ]);
     const store = createUploadStore({ cloud, localDir: "unused", fetch: fn, now });
@@ -116,7 +156,7 @@ describe("corpus snapshot", () => {
     expect(JSON.parse(put.body)).toEqual({
       generatedAt: "2026-10-04T12:00:00.000Z",
       uploads: 2,
-      records: [{ kind: "loot" }, { kind: "quest" }],
+      records: [lootRow(), questRow()],
       lastReceivedAt: "2026-10-04T08:00:00+00:00",
       lastIds: ["b"],
     });
@@ -125,14 +165,14 @@ describe("corpus snapshot", () => {
   test("a later snapshot reads only uploads it has not seen", async () => {
     const { fn, calls } = fakeFetch([
       [SNAP, "GET", () => Response.json({
-        generatedAt: "x", uploads: 2, records: [{ kind: "loot" }, { kind: "quest" }],
+        generatedAt: "x", uploads: 2, records: [lootRow(), questRow()],
         lastReceivedAt: "2026-10-04T08:00:00+00:00", lastIds: ["b"],
       })],
       [INDEX, "GET", () => Response.json([
         { id: "b", object_key: "uploads/b.json", received_at: "2026-10-04T08:00:00+00:00" },
         { id: "c", object_key: "uploads/c.json", received_at: "2026-10-04T09:00:00+00:00" },
       ])],
-      [`${R2}uploads/c.json`, "GET", () => Response.json({ records: [{ kind: "vendor" }] })],
+      [`${R2}uploads/c.json`, "GET", () => Response.json({ records: [vendorRow()] })],
       [SNAP, "PUT", () => new Response(null, { status: 200 })],
     ]);
     const store = createUploadStore({ cloud, localDir: "unused", fetch: fn, now });
@@ -140,7 +180,7 @@ describe("corpus snapshot", () => {
     expect(calls.some((c) => c.url.endsWith("uploads/b.json"))).toBe(false);
     expect(calls.find((c) => c.method === "GET" && c.url.startsWith(INDEX))!.url).toContain("received_at=gte.2026-10-04T08%3A00%3A00%2B00%3A00");
     const put = JSON.parse(calls.find((c) => c.method === "PUT")!.body);
-    expect(put.records).toEqual([{ kind: "loot" }, { kind: "quest" }, { kind: "vendor" }]);
+    expect(put.records).toEqual([lootRow(), questRow(), vendorRow()]);
     expect(put.lastIds).toEqual(["c"]);
   });
 
@@ -177,11 +217,94 @@ describe("corpus snapshot", () => {
 
   test("pages read the snapshot in one request when it exists", async () => {
     const { fn, calls } = fakeFetch([
-      [SNAP, "GET", () => Response.json({ generatedAt: "x", uploads: 5, records: [{ kind: "loot" }], lastReceivedAt: null, lastIds: [] })],
+      [SNAP, "GET", () => Response.json({ generatedAt: "x", uploads: 5, records: [lootRow()], lastReceivedAt: null, lastIds: [] })],
     ]);
     const store = createUploadStore({ cloud, localDir: "unused", fetch: fn, now });
-    expect(await store.loadCorpus()).toEqual({ uploads: 5, records: [{ kind: "loot" }] });
+    expect(await store.loadCorpus()).toEqual({ uploads: 5, records: [lootRow()] });
     expect(calls).toHaveLength(1);
+  });
+});
+
+describe("corpus normalization", () => {
+  const SNAP = `${R2}snapshots/corpus.json`;
+  const INDEX = "https://sb.example/rest/v1/uploads";
+  const badRows: unknown[] = [
+    { kind: "flying_mounts", installId: "install-1" },
+    { ...lootRow(), sourceNpcId: 0, sourceObjectId: undefined },
+    { ...lootRow(), capturedAt: "yesterday" },
+    "not a record",
+  ];
+
+  test("a stored local file contributes only its valid records, and still counts as one upload", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "everloot-corpus-"));
+    mkdirSync(join(dir, "uploads"));
+    writeFileSync(join(dir, "uploads", "u-1.json"), JSON.stringify({ addonVersion: "0.1.0", records: [lootRow(), ...badRows] }));
+    const store = createUploadStore({ cloud: null, localDir: dir, now, cacheMs: 0 });
+
+    expect(await store.loadCorpus()).toEqual({ uploads: 1, records: [lootRow()] });
+  });
+
+  test("nested extra fields are stripped from a stored object", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "everloot-corpus-"));
+    mkdirSync(join(dir, "uploads"));
+    const nested = lootRow({ items: [{ itemId: 456, count: 2, smuggle: true }] });
+    writeFileSync(join(dir, "uploads", "u-1.json"), JSON.stringify({ addonVersion: "0.1.0", records: [nested] }));
+    const store = createUploadStore({ cloud: null, localDir: dir, now, cacheMs: 0 });
+
+    expect(await store.loadCorpus()).toEqual({ uploads: 1, records: [lootRow()] });
+  });
+
+  test("an existing snapshot is normalized on read and stays normalized in the cache", async () => {
+    const { fn, calls } = fakeFetch([
+      [SNAP, "GET", () => Response.json({
+        generatedAt: "x", uploads: 1, records: [lootRow(), ...badRows],
+        lastReceivedAt: null, lastIds: [],
+      })],
+    ]);
+    const store = createUploadStore({ cloud, localDir: "unused", fetch: fn, now, cacheMs: 60_000 });
+
+    expect(await store.loadCorpus()).toEqual({ uploads: 1, records: [lootRow()] });
+    expect(await store.loadCorpus()).toEqual({ uploads: 1, records: [lootRow()] });
+    expect(calls).toHaveLength(1);
+  });
+
+  test("the next snapshot write normalizes the prior records it carries forward", async () => {
+    const { fn, calls } = fakeFetch([
+      [SNAP, "GET", () => Response.json({
+        generatedAt: "x", uploads: 1, records: [lootRow(), ...badRows],
+        lastReceivedAt: "2026-10-04T08:00:00+00:00", lastIds: ["b"],
+      })],
+      [INDEX, "GET", () => Response.json([
+        { id: "c", object_key: "uploads/c.json", received_at: "2026-10-04T09:00:00+00:00" },
+      ])],
+      [`${R2}uploads/c.json`, "GET", () => Response.json({ records: [vendorRow(), ...badRows] })],
+      [SNAP, "PUT", () => new Response(null, { status: 200 })],
+    ]);
+    const store = createUploadStore({ cloud, localDir: "unused", fetch: fn, now });
+
+    expect(await store.writeSnapshot()).toEqual({ uploads: 2, added: 1 });
+    const put = JSON.parse(calls.find((c) => c.method === "PUT")!.body);
+    expect(put.records).toEqual([lootRow(), vendorRow()]);
+  });
+
+  test("a corpus larger than the 2000-row request cap keeps every valid record", async () => {
+    const records = Array.from({ length: 2001 }, () => lootRow({ installId: `install-${String(Math.random()).slice(2, 10)}` }));
+    const { fn } = fakeFetch([
+      [SNAP, "GET", () => Response.json({ generatedAt: "x", uploads: 2001, records, lastReceivedAt: null, lastIds: [] })],
+    ]);
+    const store = createUploadStore({ cloud, localDir: "unused", fetch: fn, now, cacheMs: 0 });
+
+    const corpus = await store.loadCorpus();
+    expect(corpus.records).toHaveLength(2001);
+  });
+
+  test("a snapshot with no records array is unreachable, not an empty corpus", async () => {
+    const { fn } = fakeFetch([
+      [SNAP, "GET", () => Response.json({ generatedAt: "x", uploads: 3, lastReceivedAt: null, lastIds: [] })],
+    ]);
+    const store = createUploadStore({ cloud, localDir: "unused", fetch: fn, now, cacheMs: 0 });
+
+    expect(await store.loadCorpus()).toEqual({ uploads: 0, records: [], unreachable: true });
   });
 });
 
