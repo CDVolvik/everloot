@@ -1,6 +1,7 @@
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { AwsClient } from "aws4fetch";
+import { parseRecords, type CanonicalUpload, type IntakeRecord } from "./intake";
 
 /**
  * Where uploads and waitlist signups live.
@@ -22,7 +23,8 @@ export interface CloudConfig {
 
 export interface Corpus {
   uploads: number;
-  records: unknown[];
+  /** Every record already passed its kind schema, so a rollup never reads a row no schema accepted. */
+  records: IntakeRecord[];
   /** Set when the read failed. An empty `records` array is then not a count of uploads. */
   unreachable?: boolean;
 }
@@ -66,9 +68,18 @@ const PAGE = 1000; // PostgREST's default row cap on Supabase
 const PARALLEL_READS = 16;
 const SNAPSHOT_KEY = "snapshots/corpus.json";
 
-function recordsOf(payload: unknown): unknown[] {
+function rawRecordsOf(payload: unknown): unknown[] {
   const records = (payload as { records?: unknown })?.records;
   return Array.isArray(records) ? records : [];
+}
+
+/**
+ * Every read boundary normalizes through the same kind schemas: stored files, R2 objects and
+ * snapshot rows may predate a schema change. Unknown kinds and invalid rows are dropped, extra
+ * fields stripped. No aggregate cap — 2,000 is a per-request limit, not a corpus size.
+ */
+function normalizedRecordsOf(payload: unknown): IntakeRecord[] {
+  return parseRecords(rawRecordsOf(payload)).records;
 }
 
 export function createUploadStore(opts: {
@@ -103,7 +114,7 @@ export function createUploadStore(opts: {
     return doFetch(await r2!.sign(objectUrl(key), init));
   }
 
-  async function putUpload(uploadId: string, installId: string, payload: unknown): Promise<boolean> {
+  async function putUpload(uploadId: string, installId: string, payload: CanonicalUpload): Promise<boolean> {
     const body = JSON.stringify(payload);
     if (!cloud) {
       try {
@@ -126,7 +137,7 @@ export function createUploadStore(opts: {
         body: JSON.stringify({
           id: uploadId,
           install_id: installId,
-          record_count: recordsOf(payload).length,
+          record_count: rawRecordsOf(payload).length,
           bytes: body.length,
           object_key: key,
         }),
@@ -153,10 +164,10 @@ export function createUploadStore(opts: {
       if (code === "ENOENT") return { uploads: 0, records: [] };
       return { uploads: 0, records: [], unreachable: true };
     }
-    const records: unknown[] = [];
+    const records: IntakeRecord[] = [];
     for (const f of files) {
       try {
-        records.push(...recordsOf(JSON.parse(await readFile(join(dir, f), "utf8"))));
+        records.push(...normalizedRecordsOf(JSON.parse(await readFile(join(dir, f), "utf8"))));
       } catch {
         continue; // a corrupt file never breaks a rollup
       }
@@ -180,21 +191,21 @@ export function createUploadStore(opts: {
     return rows;
   }
 
-  async function readObjects(keys: string[]): Promise<{ records: unknown[]; missed: boolean }> {
-    const records: unknown[] = [];
+  async function readObjects(keys: string[]): Promise<{ records: IntakeRecord[]; missed: boolean }> {
+    const records: IntakeRecord[] = [];
     let missed = false;
     for (let i = 0; i < keys.length; i += PARALLEL_READS) {
       const batch = await Promise.all(keys.slice(i, i + PARALLEL_READS).map(async (key) => {
         try {
           const res = await r2Fetch(key, { method: "GET" });
-          if (!res.ok) return { records: [] as unknown[], missed: true };
+          if (!res.ok) return { records: [] as IntakeRecord[], missed: true };
           try {
-            return { records: recordsOf(JSON.parse(await res.text())), missed: false };
+            return { records: normalizedRecordsOf(JSON.parse(await res.text())), missed: false };
           } catch {
-            return { records: [] as unknown[], missed: false };
+            return { records: [] as IntakeRecord[], missed: false };
           }
         } catch {
-          return { records: [] as unknown[], missed: true };
+          return { records: [] as IntakeRecord[], missed: true };
         }
       }));
       for (const row of batch) {
@@ -209,7 +220,21 @@ export function createUploadStore(opts: {
     const res = await r2Fetch(SNAPSHOT_KEY, { method: "GET" });
     if (res.status === 404) return null;
     if (!res.ok) throw new Error(`snapshot read failed (${res.status})`);
-    return JSON.parse(await res.text()) as Snapshot;
+    let parsed: Partial<Snapshot>;
+    try {
+      parsed = JSON.parse(await res.text()) as Partial<Snapshot>;
+    } catch {
+      throw new Error("snapshot is not JSON");
+    }
+    // A snapshot without a records array is unreadable, never an empty corpus.
+    if (!Array.isArray(parsed.records)) throw new Error("snapshot has no records array");
+    return {
+      generatedAt: parsed.generatedAt ?? "",
+      uploads: typeof parsed.uploads === "number" ? parsed.uploads : 0,
+      records: parseRecords(parsed.records).records,
+      lastReceivedAt: parsed.lastReceivedAt ?? null,
+      lastIds: Array.isArray(parsed.lastIds) ? parsed.lastIds : [],
+    };
   }
 
   async function readCloud(): Promise<Corpus> {

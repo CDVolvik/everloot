@@ -232,30 +232,79 @@ export interface ValidationResult {
   rejected: RejectedRecord[];
 }
 
+/** An upload reduced to its accepted records: what a store may persist, what a corpus may serve. */
+export interface CanonicalUpload {
+  addonVersion: string;
+  records: IntakeRecord[];
+}
+
+export interface ParsedRecords {
+  records: IntakeRecord[];
+  receipt: ValidationResult;
+}
+
+export type ParsedUpload =
+  | { ok: true; upload: CanonicalUpload; receipt: ValidationResult }
+  | { ok: false; receipt: ValidationResult };
+
+/** The record's own `kind`; a prototype or inherited key never names a schema. */
+function ownKindOf(raw: unknown): unknown {
+  if (typeof raw !== "object" || raw === null || !Object.hasOwn(raw, "kind")) return undefined;
+  return (raw as { kind: unknown }).kind;
+}
+
+/**
+ * Parse every record against its own kind schema, keeping the parsed value and the original
+ * index. Only own `kind` keys name a schema: inherited or prototype keys are unknown kinds.
+ */
+export function parseRecords(records: readonly unknown[]): ParsedRecords {
+  const parsed: IntakeRecord[] = [];
+  const accepted: AcceptedRecord[] = [];
+  const rejected: RejectedRecord[] = [];
+  records.forEach((raw, index) => {
+    const kind = ownKindOf(raw);
+    const schema =
+      typeof kind === "string" && Object.hasOwn(recordSchemas, kind)
+        ? recordSchemas[kind as RecordKind]
+        : undefined;
+    if (!schema) {
+      rejected.push({ index, reason: `unknown kind: ${String(kind)}` });
+      return;
+    }
+    const r = schema.safeParse(raw);
+    if (r.success) {
+      parsed.push(r.data as IntakeRecord);
+      accepted.push({ index, kind: kind as RecordKind });
+    } else {
+      rejected.push({ index, reason: r.error.issues[0]?.message ?? "invalid record" });
+    }
+  });
+  return { records: parsed, receipt: { accepted, rejected } };
+}
+
+/**
+ * Parse an upload envelope. `ok` means the envelope itself parsed, so a valid envelope whose
+ * rows were all rejected still returns an upload with zero records — callers decide what that means.
+ */
+export function parseUpload(payload: unknown): ParsedUpload {
+  const parsed = uploadPayload.safeParse(payload);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      receipt: { accepted: [], rejected: [{ index: -1, reason: "payload needs addonVersion + records[1..2000]" }] },
+    };
+  }
+  const { records, receipt } = parseRecords(parsed.data.records);
+  return { ok: true, upload: { addonVersion: parsed.data.addonVersion, records }, receipt };
+}
+
 /**
  * Validate an upload: every record is checked against its kind schema.
  * Implausible data is rejected with a reason; nothing is stored here.
  * Rate limits (per install / per IP) are enforced at the route layer.
  */
 export function validateUpload(payload: unknown): ValidationResult {
-  const parsed = uploadPayload.safeParse(payload);
-  if (!parsed.success) {
-    return { accepted: [], rejected: [{ index: -1, reason: "payload needs addonVersion + records[1..2000]" }] };
-  }
-  const accepted: AcceptedRecord[] = [];
-  const rejected: RejectedRecord[] = [];
-  parsed.data.records.forEach((raw, index) => {
-    const kind = (raw as { kind?: unknown } | null)?.kind;
-    const schema = typeof kind === "string" ? recordSchemas[kind as RecordKind] : undefined;
-    if (!schema) {
-      rejected.push({ index, reason: `unknown kind: ${String(kind)}` });
-      return;
-    }
-    const r = schema.safeParse(raw);
-    if (r.success) accepted.push({ index, kind: kind as RecordKind });
-    else rejected.push({ index, reason: r.error.issues[0]?.message ?? "invalid record" });
-  });
-  return { accepted, rejected };
+  return parseUpload(payload).receipt;
 }
 
 /** Summarize accepted records for the pre-send preview: counts per kind, never names. */
