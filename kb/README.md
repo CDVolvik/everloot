@@ -32,6 +32,34 @@ database's own folder) and a `.manifest.json` with its sha256. The file is built
 work file next to the live database, filtered by the code's source registry, and only then moved
 into place.
 
+## Serve a public release
+
+The MCP service answers questions; it never builds a database. It takes a **public release** — the
+filtered file `snapshot` wrote, together with its `.manifest.json` — and nothing else. A source
+database is not a release: it still holds non-publishable sources and API cache rows.
+
+    node ./node_modules/tsx/dist/cli.mjs src/cli.ts snapshot data/release/kb.sqlite --db data/wowvault-kb.sqlite
+    node ./node_modules/tsx/dist/cli.mjs src/cli.ts serve-mcp      --db data/release/kb.sqlite
+    node ./node_modules/tsx/dist/cli.mjs src/cli.ts serve-mcp-http --db data/release/kb.sqlite --port 8787
+
+Invoke it through `node` directly: some npm and PowerShell combinations swallow the `--db` value.
+
+Before anything listens, the release is opened read-only and checked against its own manifest. The
+manifest must exist, carry this build's licence and notice plus a sha256; the file must match that
+hash; the database must hold only registry-publishable sources with an empty API cache, exactly the
+expected schema, no free pages and at least one row. Any failure exits non-zero with the reason on
+stderr and no port is opened. A leftover `-wal`/`-shm`/`-journal` sidecar means the file is still
+being written to, so it is refused as well.
+
+`stats` and `search` read an existing knowledge base the same way, create nothing, and both need an
+explicit `--db`. The import commands still default to `data/everloot-kb.sqlite`.
+
+`validate` is the one command that writes to the file it opens — it rebuilds the fts5 index — so it
+is a diagnostic for a source database and never part of a serving path.
+
+`serve-mcp-http` binds loopback only and takes `--token` or `EVERLOOT_MCP_TOKEN`. A bearer token is
+transport authentication; it is not evidence that any particular client can connect.
+
 ## Blizzard API
 
 Create a free client at https://develop.battle.net/access/clients and put it in `kb/.env`:

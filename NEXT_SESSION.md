@@ -57,13 +57,23 @@ node ./node_modules/tsx/dist/cli.mjs src/cli.ts validate --db data/wowvault-kb.s
 node ./node_modules/tsx/dist/cli.mjs src/cli.ts snapshot data/release/<new-dated-name>.sqlite --db data/wowvault-kb.sqlite
 ```
 
+`stats`, `search`, `validate` and both `serve-mcp*` commands require an explicit `--db` and refuse
+without it; they never fall back to a default path and never create a database to answer a question.
+The importers keep their existing default.
+
 Before running a local HTTP server, set `EVERLOOT_MCP_TOKEN` through the local secret mechanism; do not print/paste it or pass it on the command line. Keep uploads unset until a sanitized shared reader is implemented; pointing MCP at a random empty directory hides a missing data connection.
 
 ```powershell
 node ./node_modules/tsx/dist/cli.mjs src/cli.ts serve-mcp-http --db data/release/2026-10-05-everloot-public.sqlite --port 8787
 ```
 
-This binds loopback only. Stop the foreground process when the test ends. The current CLI opens DBs in read/write mode even for serving; harden service open/paths and missing/empty DB behavior under F20 before hosting it.
+Both `serve-mcp` commands now accept only an approved public release: an existing file **and** its
+`.manifest.json`, opened read-only and checked against that manifest (licence, notice, sha256,
+registry sources only, empty `api_cache`, exact schema, zero free pages, at least one row, no active
+`-wal`/`-shm`/`-journal` sidecar). A missing, empty or tampered release exits non-zero with the reason
+on stderr and never opens a port. `validate` is still the documented writable diagnostic (it rebuilds
+the fts5 index) and must never be pointed at a release you are serving. A bearer token is transport
+auth only — it is not proof that a client such as ChatGPT can connect.
 
 ## Owner-dependent evidence before launch
 
