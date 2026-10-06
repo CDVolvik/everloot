@@ -83,7 +83,7 @@ export default function UploadClient() {
       });
       const body = (await res.json()) as Receipt;
       setReceipt(body);
-      if (!res.ok && !body.rejected) setError(body.error ?? "Upload failed.");
+      if (!res.ok) setError(body.error ?? "Upload failed.");
     } catch {
       setError("Network error sending the upload.");
     } finally {
@@ -158,16 +158,28 @@ export default function UploadClient() {
 
       {receipt && (
         <div className="rounded-xl border border-parchment-100/10 bg-parchment-900 p-5 text-sm">
-          {receipt.ok ? (
+          {receipt.persisted === false ? (
+            <>
+              <p className="text-red-400 font-semibold">Not saved — nothing was stored.</p>
+              <p className="mt-1 text-parchment-100/70">
+                Your file is still loaded and the records validated, but the upload was not stored.
+                Press Send upload again to retry.
+              </p>
+              {!!receipt.rejected?.length && (
+                <ul className="mt-2 text-parchment-100/60">
+                  {receipt.rejected.map((r) => (
+                    <li key={r.index}>Record {r.index}: {r.reason}</li>
+                  ))}
+                </ul>
+              )}
+            </>
+          ) : receipt.ok ? (
             <>
               <p className="text-uncommon font-semibold">Received — thank you.</p>
               <p className="mt-1 text-parchment-100/70">
                 Upload <span className="text-parchment-100">{receipt.uploadId}</span>:{" "}
                 {receipt.accepted?.length ?? 0} accepted
                 {receipt.rejected?.length ? `, ${receipt.rejected.length} rejected` : ""}.
-                {receipt.persisted === false && (
-                  <span className="block mt-1">Validated and counted — permanent storage connects with the site launch.</span>
-                )}
               </p>
               {!!receipt.rejected?.length && (
                 <ul className="mt-2 text-parchment-100/60">
