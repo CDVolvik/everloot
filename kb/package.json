@@ -10,7 +10,8 @@
   "scripts": {
     "kb": "tsx src/cli.ts",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "export:markdown": "tsx src/exporters/cli.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.31.0",
@@ -19,12 +20,14 @@
     "wtf_wikipedia": "^10.4.2",
     "yaml": "^2.9.1",
     "zod": "^4.6.5",
-    "zstd-napi": "^0.0.13"
+    "zstd-napi": "^0.0.13",
+    "js-yaml": "^4.1.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^22.20.4",
     "@types/sax": "^1.2.7",
+    "@types/js-yaml": "^4.0.9",
     "luaparse": "^0.3.1",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
