@@ -3,7 +3,9 @@
 ## Resume correction — 2026-10-07 continuation complete locally
 
 **C: Event identity and replay migration IMPLEMENTED on `fix/readonly-kb-service` at `356aec7`.**
+**D: Resumable batch uploads IMPLEMENTED on `fix/readonly-kb-service` at `1847c89`.**
 
+**C — Event identity & replay dedup:**
 - `eventId` field added to all 17 record kinds (`intake.ts`)
 - Addon `core.lua`: `NextEventId()` counter in SavedVariables, `Store()` auto-attaches eventId
 - Upload store: dedup by `(installId, eventId)` with conflict tombstones
@@ -13,9 +15,14 @@
 - 66 web tests (10 new dedup), 152 KB, both typechecks, web build pass
 - Fixtures updated with `eventId` across test files
 
+**D — Resumable batches:**
+- Addon `core.lua`: `GetNextBatch()` / `AdvanceBatchCursor()` / `ResetBatchCursor()` with persisted cursor per kind; `/everloot batch` command
+- Web `UploadClient.tsx`: chunked upload (500 records/batch), progress bar, retry on failure, sequential send with rate-limit delay
+- Stays under 2000 aggregate cap per request; preserves unsent rows for exact retry progress
+
 **Verified locally:** web `npm test` **66/66**, KB `npm test` **152/152**, KB `npm run typecheck`, web `npm run build` pass.
 
-**Next:** D (resumable batches >2000 rows), E (guild authority/named sharing/revocation/quotas), F (dependency/lint repair + preview regression). Legacy-data policy review needed before C's migration is complete — historical rows have no stable IDs. Production test-data deletion remains declined. Beta cutoff 10/21, CurseForge ~10/24, launch 11/04 targets unchanged.
+**Next:** E (guild authority/named sharing/revocation/quotas), F (dependency/lint repair + preview regression). Legacy-data policy review needed before C's migration is complete — historical rows have no stable IDs. Production test-data deletion remains declined. Beta cutoff 10/21, CurseForge ~10/24, launch 11/04 targets unchanged.
 
 ## Resume correction — 2026-10-06
 

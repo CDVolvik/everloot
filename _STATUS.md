@@ -3,7 +3,9 @@
 ## Current cursor — 2026-10-07 continuation checkpoint
 
 **C: Event identity and replay migration IMPLEMENTED on `fix/readonly-kb-service` at `356aec7`.**
+**D: Resumable batch uploads IMPLEMENTED on `fix/readonly-kb-service` at `1847c89`.**
 
+**C — Event identity & replay dedup:**
 - Added `eventId` field to all 17 record kinds in `intake.ts` (install-scoped, allocated by addon via `NextEventId()`)
 - Addon `core.lua`: `NextEventId()` counter persisted in SavedVariables, `Store()` auto-attaches eventId
 - Upload store: deduplication by `(installId, eventId)` with conflict tombstones
@@ -13,9 +15,14 @@
 - Tests: 66 web (including 10 new dedup tests), 152 KB, both typechecks, web production build pass
 - Fixtures updated with `eventId` across intake, route, upload-store, intake-corpus tests
 
+**D — Resumable batches:**
+- Addon `core.lua`: `GetNextBatch()` / `AdvanceBatchCursor()` / `ResetBatchCursor()` with persisted cursor per kind; `/everloot batch` command
+- Web `UploadClient.tsx`: chunked upload (500 records/batch), progress bar, retry on failure, sequential send with rate-limit delay
+- Stays under 2000 aggregate cap per request; preserves unsent rows for exact retry progress
+
 **Verified locally:** web `npm test` **66/66**, KB `npm test` **152/152**, KB `npm run typecheck`, web `npm run build` pass.
 
-**Next:** D (resumable batches >2000 rows), E (guild authority/named sharing/revocation/quotas), F (dependency/lint repair + preview regression). Legacy-data policy review needed before C's migration is complete — historical rows have no stable IDs. Production test-data deletion remains declined. Beta cutoff 10/21, CurseForge ~10/24, launch 11/04 targets unchanged.
+**Next:** E (guild authority/named sharing/revocation/quotas), F (dependency/lint repair + preview regression). Legacy-data policy review needed before C's migration is complete — historical rows have no stable IDs. Production test-data deletion remains declined. Beta cutoff 10/21, CurseForge ~10/24, launch 11/04 targets unchanged.
 
 ## Current cursor — 2026-10-06 checkout verification
 
