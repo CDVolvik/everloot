@@ -6,7 +6,8 @@
 **D: Resumable batch uploads IMPLEMENTED.**
 **E: Guild authority, claim tokens, revocation, quotas, opt-out IMPLEMENTED.**
 **F: Dependency/lint repair + preview regression IMPLEMENTED.**
-**Merged to `main` at `cc964a1` — Vercel preview deploying.**
+**G: Public MCP HTTP server with auth, rate limiting, CORS IMPLEMENTED.**
+**Merged to `main` at `e3d94b1` — Vercel preview deploying.**
 
 **C — Event identity & replay dedup:**
 - Added `eventId` field to all 17 record kinds in `intake.ts` (install-scoped, allocated by addon via `NextEventId()`)
@@ -35,11 +36,18 @@
 - ESLint + `@typescript-eslint` config; lint passes (warnings only)
 - All 66 web tests, 152 KB tests, typechecks, build pass
 
+**G — Public MCP HTTP server (knowledge tools only):**
+- `kb/src/mcp-http-server.ts`: WebStandardStreamableHTTPServerTransport, bearer auth, rate limiting (60 req/min), CORS, body size limit (1 MB)
+- `kb/src/mcp-http-main.ts`: Node HTTP entry point, loads public snapshot, health endpoint
+- Knowledge tools exposed: `search_knowledge`, `get_entity`, `get_by_name`, `everloot_plan`
+- Gameplay tools return "uploads not connected" (sanitized public views pending)
+- `kb/src/public-rollups.ts`: typed interfaces for future sanitized gameplay views
+
 **Legacy-data policy:** Conservative exclusion — pre-C uploads (no `eventId`) normalized out of public facts. See `docs/LEGACY_DATA_POLICY.md`.
 
 **Verified locally:** web `npm test` **66/66**, KB `npm test` **152/152**, KB `npm run typecheck`, web `npm run build`, `npm run lint` pass. `main` pushed — Vercel preview building.
 
-**Next:** Preview review (upload flow, batch progress, claim-token gate, lint), then test-data cleanup + snapshot rebuild. Beta cutoff 10/21, CurseForge ~10/24, launch 11/04 targets unchanged.
+**Next:** Preview review (knowledge tools, auth, rate limiting), then test-data cleanup + snapshot rebuild. Beta cutoff 10/21, CurseForge ~10/24, launch 11/04 targets unchanged.
 
 ## Current cursor — 2026-10-06 checkout verification
 
