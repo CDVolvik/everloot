@@ -12,6 +12,7 @@ export const INSTALL_ID = z.string().min(8).max(64).describe("Random install id,
 const base = z.object({
   installId: INSTALL_ID,
   capturedAt: z.string().datetime({ offset: true }).describe("ISO time the event happened in-game."),
+  eventId: z.string().min(1).max(64).describe("Stable event identity allocated by the addon; preserved across retries."),
 });
 
 // --- Open-world records (anonymous: no character or guild names, no chat) ---
@@ -64,20 +65,25 @@ export const itemSeen = base.extend({
   itemLevel: z.number().int().min(1).max(1000).optional(),
 });
 
-// --- Guild-consented records (named: published only by an officer upload) ---
+// --- Guild-consented records (named: published only by a verified officer upload) ---
+
+/** Claim token issued by the server after officer verification. Opaque to the addon. */
+export const claimToken = z.string().min(32).max(128).regex(/^evt_[a-zA-Z0-9_-]+$/);
 
 export const guildSnapshot = base.extend({
   kind: z.literal("guild_snapshot"),
   guildName: z.string().min(2).max(60),
   realm: z.string().min(2).max(60),
   faction: z.enum(["alliance", "horde"]),
-  claimToken: z.string().min(16).describe("Officer claim token: proves this upload may publish."),
+  claimToken: claimToken.describe("Server-issued officer claim token (format: evt_...)."),
   members: z.array(z.object({
     name: z.string().min(2).max(30),
     rank: z.string().min(1).max(60),
     level: z.number().int().min(1).max(100),
     class: z.string().min(1).max(30),
     lastOnlineDays: z.number().min(0).max(3650),
+    /** Opt-in for public roster listing (default false). */
+    publicProfile: z.boolean().default(false).optional(),
   })).min(1).max(2000),
 });
 
@@ -89,6 +95,7 @@ export const raidLockout = base.extend({
   difficulty: z.string().min(1).max(60),
   bossesKilled: z.array(z.string().min(1).max(120)).max(60),
   resetAt: z.string().datetime({ offset: true }),
+  claimToken: claimToken,
 });
 
 export const attendance = base.extend({
@@ -97,6 +104,7 @@ export const attendance = base.extend({
   realm: z.string().min(2).max(60),
   instance: z.string().min(1).max(120),
   present: z.array(z.string().min(2).max(30)).min(1).max(100),
+  claimToken: claimToken,
 });
 
 export const lootAward = base.extend({
@@ -107,6 +115,7 @@ export const lootAward = base.extend({
   itemName: z.string().min(1).max(200),
   recipient: z.string().min(2).max(30),
   sourceBoss: z.string().min(1).max(120),
+  claimToken: claimToken,
 });
 
 export const gearSnapshot = base.extend({
@@ -232,30 +241,79 @@ export interface ValidationResult {
   rejected: RejectedRecord[];
 }
 
+/** An upload reduced to its accepted records: what a store may persist, what a corpus may serve. */
+export interface CanonicalUpload {
+  addonVersion: string;
+  records: IntakeRecord[];
+}
+
+export interface ParsedRecords {
+  records: IntakeRecord[];
+  receipt: ValidationResult;
+}
+
+export type ParsedUpload =
+  | { ok: true; upload: CanonicalUpload; receipt: ValidationResult }
+  | { ok: false; receipt: ValidationResult };
+
+/** The record's own `kind`; a prototype or inherited key never names a schema. */
+function ownKindOf(raw: unknown): unknown {
+  if (typeof raw !== "object" || raw === null || !Object.hasOwn(raw, "kind")) return undefined;
+  return (raw as { kind: unknown }).kind;
+}
+
+/**
+ * Parse every record against its own kind schema, keeping the parsed value and the original
+ * index. Only own `kind` keys name a schema: inherited or prototype keys are unknown kinds.
+ */
+export function parseRecords(records: readonly unknown[]): ParsedRecords {
+  const parsed: IntakeRecord[] = [];
+  const accepted: AcceptedRecord[] = [];
+  const rejected: RejectedRecord[] = [];
+  records.forEach((raw, index) => {
+    const kind = ownKindOf(raw);
+    const schema =
+      typeof kind === "string" && Object.hasOwn(recordSchemas, kind)
+        ? recordSchemas[kind as RecordKind]
+        : undefined;
+    if (!schema) {
+      rejected.push({ index, reason: `unknown kind: ${String(kind)}` });
+      return;
+    }
+    const r = schema.safeParse(raw);
+    if (r.success) {
+      parsed.push(r.data as IntakeRecord);
+      accepted.push({ index, kind: kind as RecordKind });
+    } else {
+      rejected.push({ index, reason: r.error.issues[0]?.message ?? "invalid record" });
+    }
+  });
+  return { records: parsed, receipt: { accepted, rejected } };
+}
+
+/**
+ * Parse an upload envelope. `ok` means the envelope itself parsed, so a valid envelope whose
+ * rows were all rejected still returns an upload with zero records — callers decide what that means.
+ */
+export function parseUpload(payload: unknown): ParsedUpload {
+  const parsed = uploadPayload.safeParse(payload);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      receipt: { accepted: [], rejected: [{ index: -1, reason: "payload needs addonVersion + records[1..2000]" }] },
+    };
+  }
+  const { records, receipt } = parseRecords(parsed.data.records);
+  return { ok: true, upload: { addonVersion: parsed.data.addonVersion, records }, receipt };
+}
+
 /**
  * Validate an upload: every record is checked against its kind schema.
  * Implausible data is rejected with a reason; nothing is stored here.
  * Rate limits (per install / per IP) are enforced at the route layer.
  */
 export function validateUpload(payload: unknown): ValidationResult {
-  const parsed = uploadPayload.safeParse(payload);
-  if (!parsed.success) {
-    return { accepted: [], rejected: [{ index: -1, reason: "payload needs addonVersion + records[1..2000]" }] };
-  }
-  const accepted: AcceptedRecord[] = [];
-  const rejected: RejectedRecord[] = [];
-  parsed.data.records.forEach((raw, index) => {
-    const kind = (raw as { kind?: unknown } | null)?.kind;
-    const schema = typeof kind === "string" ? recordSchemas[kind as RecordKind] : undefined;
-    if (!schema) {
-      rejected.push({ index, reason: `unknown kind: ${String(kind)}` });
-      return;
-    }
-    const r = schema.safeParse(raw);
-    if (r.success) accepted.push({ index, kind: kind as RecordKind });
-    else rejected.push({ index, reason: r.error.issues[0]?.message ?? "invalid record" });
-  });
-  return { accepted, rejected };
+  return parseUpload(payload).receipt;
 }
 
 /** Summarize accepted records for the pre-send preview: counts per kind, never names. */

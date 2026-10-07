@@ -11,6 +11,7 @@ E.MAX_ROWS_PER_KIND = 2000
 local defaults = {
   version = E.VERSION,
   installId = nil,
+  eventCounter = 0,
   toggles = { openworld = true, guild = true, gear = true, auctions = false, gold = true },
   records = {},
 }
@@ -21,6 +22,71 @@ local function newInstallId()
   return table.concat(t, "-")
 end
 
+--- Allocate a new event ID for this install. Persisted in SavedVariables.
+--- Returns a string like "evt-1", "evt-2", etc.
+function E:NextEventId()
+  EverlootDB = EverlootDB or {}
+  EverlootDB.eventCounter = (EverlootDB.eventCounter or 0) + 1
+  return "evt-" .. EverlootDB.eventCounter
+end
+
+--- Batch upload state (resumable across reloads)
+local batchDefaults = {
+  batchCursor = {}, -- kind -> index of next unsent record
+  batchSize = 500,  -- records per batch (stays under 2000 aggregate cap)
+}
+
+local function initBatchState()
+  EverlootDB = EverlootDB or {}
+  EverlootDB.batchCursor = EverlootDB.batchCursor or {}
+  EverlootDB.batchSize = EverlootDB.batchSize or batchDefaults.batchSize
+end
+
+--- Get the next batch of unsent records across all kinds.
+--- Returns { records: {...}, hasMore: boolean, totalUnsent: number }
+function E:GetNextBatch()
+  initBatchState()
+  local allRecords = {}
+  local totalUnsent = 0
+  for kind, store in pairs(EverlootDB.records or {}) do
+    local cursor = EverlootDB.batchCursor[kind] or 1
+    local unsent = #store - cursor + 1
+    if unsent > 0 then
+      totalUnsent = totalUnsent + unsent
+      for i = cursor, math.min(cursor + EverlootDB.batchSize - 1, #store) do
+        local row = store[i]
+        if row then
+          allRecords[#allRecords + 1] = row
+        end
+      end
+    end
+  end
+  local hasMore = totalUnsent > EverlootDB.batchSize
+  return { records = allRecords, hasMore = hasMore, totalUnsent = totalUnsent }
+end
+
+--- Advance the batch cursor after a successful upload.
+--- `count` is the number of records that were accepted by the server.
+function E:AdvanceBatchCursor(count)
+  initBatchState()
+  local remaining = count
+  for kind, store in pairs(EverlootDB.records or {}) do
+    if remaining <= 0 then break end
+    local cursor = EverlootDB.batchCursor[kind] or 1
+    local unsent = #store - cursor + 1
+    if unsent > 0 then
+      local advance = math.min(remaining, unsent)
+      EverlootDB.batchCursor[kind] = cursor + advance
+      remaining = remaining - advance
+    end
+  end
+end
+
+--- Reset batch cursor (for testing or full resend).
+function E:ResetBatchCursor()
+  EverlootDB.batchCursor = {}
+end
+
 local frame = CreateFrame("Frame")
 E.frame = frame
 
@@ -29,9 +95,11 @@ function E:IsEnabled(module)
 end
 
 --- Append a row to a kind store with a rolling cap (oldest rows drop first).
-function E:Store(kind, row)
+--- If eventId is not provided, allocates a new one via NextEventId().
+function E:Store(kind, row, eventId)
   if type(row) ~= "table" then return false end
   row.kindLoggedAt = date("!%Y-%m-%dT%H:%M:%SZ")
+  row.eventId = eventId or E:NextEventId()
   local store = EverlootDB.records[kind]
   if not store then store = {}; EverlootDB.records[kind] = store end
   store[#store + 1] = row
@@ -94,7 +162,13 @@ SlashCmdList["EVERLOOT"] = function(msg)
     print(E:Status())
   elseif msg == "version" then
     print("Everloot " .. E.VERSION)
+  elseif msg == "batch" then
+    local b = E:GetNextBatch()
+    print("Next batch: " .. #b.records .. " records, hasMore=" .. tostring(b.hasMore) .. ", totalUnsent=" .. b.totalUnsent)
+  elseif msg == "batch reset" then
+    E:ResetBatchCursor()
+    print("Batch cursor reset")
   else
-    print("Everloot commands: /everloot status")
+    print("Everloot commands: /everloot status, /everloot batch, /everloot batch reset")
   end
 end

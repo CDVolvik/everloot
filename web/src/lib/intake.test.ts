@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
-import { ALL_RECORD_KINDS, validateUpload } from "./intake.js";
+import { ALL_RECORD_KINDS, parseRecords, parseUpload, validateUpload } from "./intake.js";
 
-const base = { installId: "test-install-1234", capturedAt: "2026-09-29T12:00:00.000Z" };
+const base = { installId: "test-install-1234", capturedAt: "2026-09-29T12:00:00.000Z", eventId: "evt-1" };
 
 describe("intake contract", () => {
   test("all record kinds exist", () => {
@@ -22,7 +22,7 @@ describe("intake contract", () => {
         { ...base, kind: "loot", sourceNpcId: 1234, items: [{ itemId: 456, count: 2 }] },
         {
           ...base, kind: "guild_snapshot", guildName: "Olympus", realm: "Forever-1", faction: "horde",
-          claimToken: "officer-claim-token-0123456789",
+          claimToken: "evt_officerclaimtoken0123456789abcdef",
           members: [{ name: "Thrallfan", rank: "Guild Master", level: 60, class: "Shaman", lastOnlineDays: 0 }],
         },
       ],
@@ -92,11 +92,131 @@ describe("intake contract", () => {
       addonVersion: "0.1.0",
       records: [{ ...base, kind: "gold_snapshot", character: "Bigz", realm: "Forever", currentCopper: 10, peakCopper: 1 }],
     });
-    expect(low.rejected.map((row) => row.reason).join(" ")).toContain("peak gold cannot be below current gold");
+expect(low.rejected.map((row) => row.reason).join(" ")).toContain("peak gold cannot be below current gold");
   });
 
   test("rejects empty and oversized payloads", () => {
     expect(validateUpload({ addonVersion: "0.1.0", records: [] }).rejected[0].index).toBe(-1);
     expect(validateUpload({}).rejected).toHaveLength(1);
+  });
+});
+
+describe("canonical parsing", () => {
+  const validLoot = {
+    kind: "loot",
+    installId: "install-1234",
+    capturedAt: "2026-10-05T00:00:00.000Z",
+    eventId: "evt-1",
+    sourceNpcId: 123,
+    items: [{ itemId: 456, count: 1, secret: "strip" }],
+    extra: "strip",
+  };
+  const canonicalLoot = {
+    kind: "loot",
+    installId: "install-1234",
+    capturedAt: "2026-10-05T00:00:00.000Z",
+    eventId: "evt-1",
+    sourceNpcId: 123,
+    items: [{ itemId: 456, count: 1 }],
+  };
+
+  test("a rejected first row does not own attribution; accepted rows are stored parsed", () => {
+    const result = parseUpload({
+      addonVersion: "0.1.0",
+      records: [{ ...validLoot, installId: "" }, validLoot],
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("expected a parsed envelope");
+    expect(result.upload).toEqual({ addonVersion: "0.1.0", records: [canonicalLoot] });
+    expect(result.receipt.accepted).toEqual([{ index: 1, kind: "loot" }]);
+    expect(result.receipt.rejected[0].index).toBe(0);
+  });
+
+  test("schema defaults survive and unknown extra fields are stripped", () => {
+    const result = parseUpload({
+      addonVersion: "0.1.0",
+      records: [
+        {
+          ...base,
+          kind: "quest",
+          questId: 55,
+          title: "Road to Westfall",
+          level: 12,
+          nested: { keep: "no" },
+        },
+        { ...base, kind: "price_seen", item: "Peacebloom", copper: 100, note: "strip" },
+      ],
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("expected a parsed envelope");
+    expect(result.upload.records[0]).toEqual({
+      ...base,
+      kind: "quest",
+      questId: 55,
+      title: "Road to Westfall",
+      level: 12,
+      rewardItemIds: [],
+    });
+    expect(result.upload.records[1]).toEqual({ ...base, kind: "price_seen", item: "Peacebloom", copper: 100 });
+  });
+
+  test("a valid envelope whose rows are all rejected still parses with no records", () => {
+    const result = parseUpload({
+      addonVersion: "0.1.0",
+      records: [{ ...validLoot, installId: "" }, { ...base, kind: "flying_mounts" }],
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("expected a parsed envelope");
+    expect(result.upload.records).toEqual([]);
+    expect(result.receipt.accepted).toEqual([]);
+    expect(result.receipt.rejected.map((row) => row.index)).toEqual([0, 1]);
+  });
+
+  test("an invalid envelope does not parse and keeps the receipt reason", () => {
+    const result = parseUpload({});
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error("expected a rejected envelope");
+    expect(result.receipt.accepted).toEqual([]);
+    expect(result.receipt.rejected).toHaveLength(1);
+    expect(result.receipt.rejected[0].index).toBe(-1);
+    expect(validateUpload({})).toEqual(result.receipt);
+  });
+
+  test("2000 rows parse and 2001 rows are an envelope failure", () => {
+    const rows = Array.from({ length: 2000 }, () => validLoot);
+    expect(parseUpload({ addonVersion: "0.1.0", records: rows }).ok).toBe(true);
+    const over = parseUpload({ addonVersion: "0.1.0", records: [...rows, validLoot] });
+    expect(over.ok).toBe(false);
+    if (over.ok) throw new Error("expected the 2001-row envelope to be refused");
+    expect(over.receipt.rejected[0].reason).toContain("2000");
+  });
+
+  test("hostile kinds and non-object rows are ordinary rejected rows", () => {
+    const rows: unknown[] = [
+      { ...base, kind: "constructor" },
+      { ...base, kind: "toString" },
+      { ...base, kind: "__proto__" },
+      { ...base, kind: "hasOwnProperty" },
+      42,
+      "loot",
+      null,
+      true,
+      [],
+      Object.create({ kind: "loot" }),
+    ];
+    const result = parseRecords(rows);
+    expect(result.records).toEqual([]);
+    expect(result.receipt.accepted).toEqual([]);
+    expect(result.receipt.rejected.map((row) => row.index)).toEqual(rows.map((_, index) => index));
+    expect(result.receipt.rejected[rows.length - 1].reason).toContain("unknown kind");
+  });
+
+  test("parseRecords reports original indices without an envelope cap", () => {
+    const rows: unknown[] = Array.from({ length: 2001 }, (_, index) =>
+      index === 1500 ? { ...base, kind: "price_seen", item: "Peacebloom", copper: 1 } : { ...base, kind: "price_seen", copper: -1 },
+    );
+    const result = parseRecords(rows);
+    expect(result.receipt.accepted).toEqual([{ index: 1500, kind: "price_seen" }]);
+    expect(result.records).toHaveLength(1);
   });
 });

@@ -1,4 +1,4 @@
-# WoWVault
+# Everloot
 
 Mobile-first WoW companion. Tracks your collection, sends smart alerts, answers character-aware questions with AI.
 
@@ -8,7 +8,7 @@ Mobile-first WoW companion. Tracks your collection, sends smart alerts, answers 
 ## Repo layout
 
 ```
-wowvault/
+everloot/
 ├── _STATUS.md            Working state — read this first
 ├── BUILD_PLAN.md         Session-by-session build sequence (Phase 1)
 ├── README.md             This file
@@ -44,7 +44,7 @@ The 35-page strategy doc and competitive matrix in `docs/` are historical refere
 ```bash
 # clone
 git clone git@github.com:CDVolvik/everloot.git
-cd wowvault
+cd everloot
 
 # backend
 cd supabase && supabase start && supabase db reset
@@ -53,7 +53,7 @@ cd supabase && supabase start && supabase db reset
 cd ../web && pnpm install && pnpm dev
 
 # iOS (Mac only)
-open ios/WoWVault.xcodeproj
+open ios/Everloot.xcodeproj
 ```
 
 Each surface has its own `.env.local` (gitignored). Copy from the secrets file after rotating the keys.

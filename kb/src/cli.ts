@@ -1,11 +1,12 @@
 import { existsSync } from "node:fs";
 import { BlizzardClient } from "./blizzard/client.js";
 import type { Game, NsKind, Region } from "./blizzard/namespaces.js";
-import { openDb, type DB } from "./db.js";
+import { openDb, openExistingReadOnlyDb, type DB } from "./db.js";
 import { importCurated } from "./importers/curated.js";
 import { importWikiDump } from "./importers/wiki-dump.js";
 import { startHttpBridge } from "./mcp-http.js";
 import { serveStdio } from "./mcp-server.js";
+import { openPublicSnapshot } from "./public-snapshot.js";
 import { search } from "./search.js";
 import { snapshot } from "./snapshot.js";
 import { validate } from "./validate.js";
@@ -14,18 +15,50 @@ const GAMES: Game[] = ["retail", "classic", "classic1x", "forever"];
 const KINDS: NsKind[] = ["static", "dynamic", "profile"];
 const REGIONS: Region[] = ["us", "eu", "kr", "tw"];
 
-const USAGE = `usage: npm run kb -- <command> [--db data/everloot-kb.sqlite]
+const USAGE = `usage: npm run kb -- <command> --db <path>
   import-wiki <dump.xml|dump.xml.zst> [--limit N]   (reads the dump twice; --limit still costs one full pass;
     a limited import REPLACES all wiki rows in the target DB — use --db <scratch> for trials)
   import-curated [dir=curated]
   blizzard-get <data/wow/...|profile/wow/...> --game retail|classic|classic1x|forever --kind static|dynamic|profile [--region us]
     (path has no leading slash; works unchanged in Git Bash and PowerShell)
-  search <words...>
-  serve-mcp        (stdio MCP: everloot-knowledge)
-  serve-mcp-http   (loopback HTTP MCP on 127.0.0.1:8787, POST /mcp; --port N; --token or EVERLOOT_MCP_TOKEN)
-  stats
-  validate
-  snapshot <out.sqlite>   (outside the database's own folder, e.g. data/release/kb.sqlite)`;
+  search <words...> --db <existing knowledge base>
+  serve-mcp --db <public release>        (stdio MCP: everloot-knowledge)
+  serve-mcp-http --db <public release> [--port N]   (loopback HTTP MCP on 127.0.0.1:8787, POST /mcp;
+    --token or EVERLOOT_MCP_TOKEN; a bearer token is transport auth, not proof of client compatibility)
+  stats --db <existing knowledge base>
+  validate --db <existing knowledge base>   (documented diagnostic: it WRITES the fts5 index, so never
+    run it against a public release you are serving)
+  snapshot <out.sqlite> --db <source knowledge base>   (writes a filtered public release + manifest,
+    outside the database's own folder, e.g. data/release/kb.sqlite)
+
+  A source database and a public release are different artifacts. The serve commands accept only a
+  release: an existing file plus its <release>.manifest.json, opened read-only and checked against
+  that manifest. Importers may still default to data/everloot-kb.sqlite; the read and serve
+  commands above never guess a path.
+
+  Run through node directly if a wrapper eats the flag:
+    node ./node_modules/tsx/dist/cli.mjs src/cli.ts stats --db data/wowvault-kb.sqlite`;
+
+/** Commands that answer questions require an explicit path: there is no default knowledge base. */
+function requireDbPath(flags: Map<string, string>, command: string): string {
+  const path = flags.get("db")?.trim();
+  if (!path) throw new Error(`${command} needs an explicit --db path; no default knowledge database is used`);
+  return path;
+}
+
+/** Release handles are opened before anything listens, and closed when the process is stopped. */
+function closeOnExit(db: DB): void {
+  for (const signal of ["SIGINT", "SIGTERM"] as const) {
+    process.once(signal, () => {
+      try {
+        db.close();
+      } catch {
+        // already closed
+      }
+      process.exit(0);
+    });
+  }
+}
 
 async function main(): Promise<number> {
   const [cmd, ...rest] = process.argv.slice(2);
@@ -100,15 +133,21 @@ async function main(): Promise<number> {
       return 0;
     }
     case "search":
-      for (const h of search(db(), args.join(" "))) console.log(`${h.kind}  ${h.name}\n  ${h.snippet}\n  ${h.sourceUrl} (${h.licence})`);
+      for (const h of search(openExistingReadOnlyDb(requireDbPath(flags, "search")), args.join(" ")))
+        console.log(`${h.kind}  ${h.name}\n  ${h.snippet}\n  ${h.sourceUrl} (${h.licence})`);
       return 0;
-    case "serve-mcp":
-      await serveStdio(flags.get("db") ?? "data/everloot-kb.sqlite");
+    case "serve-mcp": {
+      const release = openPublicSnapshot(requireDbPath(flags, "serve-mcp"));
+      closeOnExit(release.db);
+      await serveStdio(release.db);
       return 0;
+    }
     case "serve-mcp-http": {
+      const release = openPublicSnapshot(requireDbPath(flags, "serve-mcp-http"));
       const port = Number(flags.get("port") ?? 8787);
       const token = flags.get("token") || process.env.EVERLOOT_MCP_TOKEN;
-      const http = await startHttpBridge(db(), port, token ? { token } : {});
+      const http = await startHttpBridge(release.db, port, token ? { token } : {});
+      closeOnExit(release.db);
       const addr = http.address();
       const bound = typeof addr === "object" && addr ? addr.port : port;
       console.log(
@@ -117,10 +156,16 @@ async function main(): Promise<number> {
       await new Promise<never>(() => {});
     }
     case "stats":
-      console.table(db().prepare("SELECT source_id, kind, count(*) AS rows FROM entities GROUP BY source_id, kind").all());
+      console.table(
+        openExistingReadOnlyDb(requireDbPath(flags, "stats")).prepare(
+          "SELECT source_id, kind, count(*) AS rows FROM entities GROUP BY source_id, kind",
+        ).all(),
+      );
       return 0;
     case "validate": {
-      const problems = validate(db());
+      // Documented diagnostic, deliberately writable: validate rebuilds the fts5 index, so it must
+      // never be pointed at a public release.
+      const problems = validate(openDb(requireDbPath(flags, "validate")));
       console.log(problems.length === 0 ? "ok" : problems.join("\n"));
       return problems.length === 0 ? 0 : 1;
     }
