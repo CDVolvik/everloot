@@ -1,5 +1,13 @@
 # WoWVault — Status
 
+## Current cursor — 2026-10-06 checkout verification
+
+The shared checkout is clean on `fix/readonly-kb-service` at `eaa29c8`, which carries the accepted-only web patch A and read-only KB startup patch B. Both are implemented locally; origin/main remains `6accdb6`, so these repairs are not deployed. The older assessment/preparation cursor below predates these implementation commits.
+
+Reverified in this session: web `npm test` **56/56**, KB `npm test` **152/152**, KB `npm run typecheck` passed. This is regression verification, not a full implementation review, web build, browser preview, public MCP connection or in-client test. No application edits, production writes, deployment, test-data deletion or production snapshot rebuild performed.
+
+**Next:** review A/B against their scoped acceptance checks and verify the upload receipt on preview; then review the conservative legacy-data policy and prepare C (stable event IDs and replay deduplication) from `docs/2026-10-05-next-sprint.md`. Repeated files and old-plus-one-new uploads must not inflate kills, drops or gold; conflicting IDs must stay suppressed across incremental snapshots and rebuilds. Follow with resumable batches, verified guild authority/named sharing and dependency/lint repair. Existing production test-data deletion remains declined. Recorded beta cutoff 10/21 and full launch 11/04 remain targets.
+
 ## Current cursor — 2026-10-05 assessment
 
 **10/05 evening preparation:** [`docs/2026-10-05-next-sprint.md`](docs/2026-10-05-next-sprint.md) organizes the next work session (expected 10/06): two scoped specs and executable plans for accepted-only web boundaries (A) and explicit read-only KB readiness (B), then a separately reviewed replay migration (C), batching, claims/sharing, dependency/lint repair and enrichment/hosting. Plans self-reviewed against call sites; no implementation task run. Local release hash rechecked and unchanged. Tomorrow's minimum outcome is two reviewable patches; all 20 assessment findings remain open today. No host/import/production write or main push.

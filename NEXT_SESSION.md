@@ -1,5 +1,11 @@
 # Everloot — resume after 2026-10-05 assessment
 
+## Resume correction — 2026-10-06
+
+Start from the existing clean `fix/readonly-kb-service` branch (`eaa29c8`), which already integrates A and B; do not repeat the first two implementation slices below. This session reverified 56 web tests, 152 KB tests and KB typecheck. The fixes remain local and undeployed (`origin/main` is `6accdb6`). Review their final diff and preview acceptance before release; this session did not run a new web build or browser check.
+
+Next implementation is C's stable event identity/replay protection, after reviewing the legacy-data policy in `docs/2026-10-05-next-sprint.md`. Then resumable batches, verified guild authority/named sharing and dependency/lint repair. Public collection/enrichment/hosting still depend on the remaining trust-boundary work. No production test-data deletion, snapshot rebuild, host provisioning or main push was performed or newly authorized here. The assessment's original 20 findings are a baseline, not a claim that all remain untouched or that all are now closed.
+
 ## Objective and current state
 
 Make the data trustworthy, then enrich it and put the knowledge server on a public host. Keep the full-launch scope already recorded; this closeout did not authorize a scope reduction or provision a new host.
