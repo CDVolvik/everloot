@@ -22,7 +22,9 @@ function fakeFetch(routes: Array<[string, string, () => Response]>) {
     const req = new Request(input, init);
     calls.push({ url: req.url, method: req.method, headers: req.headers, body: await req.text() });
     const hit = routes.find(([prefix, method]) => req.url.startsWith(prefix) && req.method === method);
-    return hit ? hit[2]() : new Response("no route", { status: 404 });
+    const response = hit ? hit[2]() : new Response("no route", { status: 404 });
+    if (response.ok && req.method === "GET") response.headers.set("etag", '"fixture"');
+    return response;
   }) as typeof fetch;
   return { fn, calls };
 }
@@ -33,7 +35,8 @@ const capturedAt = "2026-10-04T07:00:00.000Z";
 
 /** Schema-valid records: a corpus normalizer parses stored rows, so a kind-only fixture is not a fixture. */
 const lootRow = (over: Record<string, unknown> = {}) => ({
-  kind: "loot",
+  kind: "loot" as const,
+  eventId: "event:1",
   installId: "install-1",
   capturedAt,
   sourceNpcId: 1234,
@@ -42,6 +45,7 @@ const lootRow = (over: Record<string, unknown> = {}) => ({
 });
 const questRow = () => ({
   kind: "quest",
+  eventId: "event:2",
   installId: "install-1",
   capturedAt,
   questId: 55,
@@ -50,7 +54,8 @@ const questRow = () => ({
   rewardItemIds: [],
 });
 const npcRow = () => ({
-  kind: "npc_sighting",
+  kind: "npc_sighting" as const,
+  eventId: "event:3",
   installId: "install-1",
   capturedAt,
   npcId: 1234,
@@ -63,6 +68,7 @@ const npcRow = () => ({
 });
 const vendorRow = () => ({
   kind: "vendor",
+  eventId: "event:4",
   installId: "install-1",
   capturedAt,
   vendorNpcId: 7,
@@ -153,13 +159,15 @@ describe("corpus snapshot", () => {
     const store = createUploadStore({ cloud, localDir: "unused", fetch: fn, now });
     expect(await store.writeSnapshot()).toEqual({ uploads: 2, added: 2 });
     const put = calls.find((c) => c.method === "PUT")!;
-    expect(JSON.parse(put.body)).toEqual({
+    expect(JSON.parse(put.body)).toMatchObject({
       generatedAt: "2026-10-04T12:00:00.000Z",
       uploads: 2,
       records: [lootRow(), questRow()],
       lastReceivedAt: "2026-10-04T08:00:00+00:00",
       lastIds: ["b"],
     });
+    expect(JSON.parse(put.body).corpusState.events).toHaveLength(2);
+    expect(put.headers.get("if-none-match")).toBe("*");
   });
 
   test("a later snapshot reads only uploads it has not seen", async () => {

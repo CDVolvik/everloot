@@ -2,6 +2,8 @@ import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { AwsClient } from "aws4fetch";
 import { parseRecords, type CanonicalUpload, type IntakeRecord } from "./intake";
+import { mergeCorpus, publicRecords, type CorpusState } from "../../../kb/src/corpus";
+import { createSharingStore } from "./sharing-store";
 
 /**
  * Where uploads and waitlist signups live.
@@ -27,11 +29,17 @@ export interface Corpus {
   records: IntakeRecord[];
   /** Set when the read failed. An empty `records` array is then not a count of uploads. */
   unreachable?: boolean;
+  legacyRecords?: number;
 }
+
+interface RawCorpus { uploads: number; state: CorpusState; unreachable?: boolean }
 
 export const STORAGE_UNREACHABLE = "Storage unreachable. These figures are unrecorded, not zero.";
 
 interface Snapshot extends Corpus {
+  corpusState?: CorpusState;
+  seenUploadIds?: string[];
+  etag?: string;
   generatedAt: string;
   /** received_at of the newest upload included, and the ids sharing it, so ties are not re-read. */
   lastReceivedAt: string | null;
@@ -78,21 +86,19 @@ function rawRecordsOf(payload: unknown): unknown[] {
  * snapshot rows may predate a schema change. Unknown kinds and invalid rows are dropped, extra
  * fields stripped. No aggregate cap — 2,000 is a per-request limit, not a corpus size.
  */
-function normalizedRecordsOf(payload: unknown): IntakeRecord[] {
-  return parseRecords(rawRecordsOf(payload)).records;
-}
-
 export function createUploadStore(opts: {
   cloud: CloudConfig | null;
   localDir: string;
   fetch?: typeof fetch;
   now?: () => Date;
   cacheMs?: number;
+  /** Recheck current publication authority on EVERY read, including cache hits. */
+  publication?: (state: CorpusState) => Promise<IntakeRecord[]>;
 }) {
   const doFetch = opts.fetch ?? fetch;
   const now = opts.now ?? (() => new Date());
   const cacheMs = opts.cacheMs ?? 5 * 60 * 1000;
-  let cached: { at: number; corpus: Corpus } | null = null;
+  let cached: { at: number; corpus: RawCorpus } | null = null;
 
   const cloud = opts.cloud;
   const r2 = cloud && new AwsClient({
@@ -114,8 +120,8 @@ export function createUploadStore(opts: {
     return doFetch(await r2!.sign(objectUrl(key), init));
   }
 
-  async function putUpload(uploadId: string, installId: string, payload: CanonicalUpload): Promise<boolean> {
-    const body = JSON.stringify(payload);
+  async function putUpload(uploadId: string, installId: string, payload: CanonicalUpload, publicationGrants: string[] = []): Promise<boolean> {
+    const body = JSON.stringify(publicationGrants.length ? { ...payload, publicationGrants } : payload);
     if (!cloud) {
       try {
         const dir = join(opts.localDir, "uploads");
@@ -154,25 +160,31 @@ export function createUploadStore(opts: {
     }
   }
 
-  async function readLocal(): Promise<Corpus> {
+  function grantsOf(payload: unknown): string[] {
+    const grants = (payload as { publicationGrants?: unknown })?.publicationGrants;
+    return Array.isArray(grants) ? grants.filter((g) => typeof g === "string" && /^[a-f0-9]{64}$/.test(g)) : [];
+  }
+
+  async function readLocal(): Promise<RawCorpus> {
     const dir = join(opts.localDir, "uploads");
     let files: string[] = [];
     try {
       files = (await readdir(dir)).filter((f) => f.endsWith(".json"));
     } catch (err) {
       const code = (err as NodeJS.ErrnoException).code;
-      if (code === "ENOENT") return { uploads: 0, records: [] };
-      return { uploads: 0, records: [], unreachable: true };
+      if (code === "ENOENT") return { uploads: 0, state: mergeCorpus(undefined, []) };
+      return { uploads: 0, state: mergeCorpus(undefined, []), unreachable: true };
     }
-    const records: IntakeRecord[] = [];
+    let state = mergeCorpus(undefined, []);
     for (const f of files) {
       try {
-        records.push(...normalizedRecordsOf(JSON.parse(await readFile(join(dir, f), "utf8"))));
+        const payload = JSON.parse(await readFile(join(dir, f), "utf8"));
+        state = mergeCorpus(state, rawRecordsOf(payload), grantsOf(payload));
       } catch {
         continue; // a corrupt file never breaks a rollup
       }
     }
-    return { uploads: files.length, records };
+    return { uploads: files.length, state };
   }
 
   async function listIndex(since?: string): Promise<IndexRow[]> {
@@ -191,29 +203,29 @@ export function createUploadStore(opts: {
     return rows;
   }
 
-  async function readObjects(keys: string[]): Promise<{ records: IntakeRecord[]; missed: boolean }> {
-    const records: IntakeRecord[] = [];
+  async function readObjects(keys: string[], previous?: CorpusState): Promise<{ state: CorpusState; missed: boolean }> {
+    let state = previous ?? mergeCorpus(undefined, []);
     let missed = false;
     for (let i = 0; i < keys.length; i += PARALLEL_READS) {
       const batch = await Promise.all(keys.slice(i, i + PARALLEL_READS).map(async (key) => {
         try {
           const res = await r2Fetch(key, { method: "GET" });
-          if (!res.ok) return { records: [] as IntakeRecord[], missed: true };
+          if (!res.ok) return { payload: null, missed: true };
           try {
-            return { records: normalizedRecordsOf(JSON.parse(await res.text())), missed: false };
+            return { payload: JSON.parse(await res.text()) as unknown, missed: false };
           } catch {
-            return { records: [] as IntakeRecord[], missed: false };
+            return { payload: null, missed: false };
           }
         } catch {
-          return { records: [] as IntakeRecord[], missed: true };
+          return { payload: null, missed: true };
         }
       }));
       for (const row of batch) {
         if (row.missed) missed = true;
-        else records.push(...row.records);
+        else state = mergeCorpus(state, rawRecordsOf(row.payload), grantsOf(row.payload));
       }
     }
-    return { records, missed };
+    return { state, missed };
   }
 
   async function readSnapshot(): Promise<Snapshot | null> {
@@ -229,6 +241,9 @@ export function createUploadStore(opts: {
     // A snapshot without a records array is unreadable, never an empty corpus.
     if (!Array.isArray(parsed.records)) throw new Error("snapshot has no records array");
     return {
+      corpusState: parsed.corpusState,
+      seenUploadIds: parsed.seenUploadIds,
+      etag: res.headers.get("etag") ?? undefined,
       generatedAt: parsed.generatedAt ?? "",
       uploads: typeof parsed.uploads === "number" ? parsed.uploads : 0,
       records: parseRecords(parsed.records).records,
@@ -237,13 +252,28 @@ export function createUploadStore(opts: {
     };
   }
 
-  async function readCloud(): Promise<Corpus> {
+  function stateOf(snapshot: Snapshot): CorpusState {
+    const state = snapshot.corpusState;
+    if (!state) return mergeCorpus(undefined, snapshot.records);
+    if (state.version !== 1 || !Array.isArray(state.events) || !Array.isArray(state.conflicts) ||
+        !state.conflicts.every((k) => typeof k === "string") || !Number.isSafeInteger(state.legacyRecords) || state.legacyRecords < 0) {
+      throw new Error("snapshot replay state is invalid");
+    }
+    let checked: CorpusState = { version: 1, events: [], conflicts: state.conflicts, legacyRecords: state.legacyRecords };
+    for (const event of state.events) {
+      if (!event?.record || !event.record.eventId || !Array.isArray(event.grants)) throw new Error("snapshot event is invalid");
+      checked = mergeCorpus(checked, [event.record], grantsOf({ publicationGrants: event.grants }));
+    }
+    return checked;
+  }
+
+  async function readCloud(): Promise<RawCorpus> {
     const snapshot = await readSnapshot();
-    if (snapshot) return { uploads: snapshot.uploads, records: snapshot.records };
+    if (snapshot) return { uploads: snapshot.uploads, state: stateOf(snapshot) };
     const keys = (await listIndex()).map((r) => r.object_key);
     const read = await readObjects(keys);
     if (read.missed) throw new Error("upload object unreadable");
-    return { uploads: keys.length, records: read.records };
+    return { uploads: keys.length, state: read.state };
   }
 
   /**
@@ -252,25 +282,35 @@ export function createUploadStore(opts: {
    */
   async function writeSnapshot(opts: { rebuild?: boolean } = {}): Promise<{ uploads: number; added: number }> {
     if (!cloud) throw new Error("snapshots need the cloud store");
-    const prev = opts.rebuild ? null : await readSnapshot();
-    const rows = await listIndex(prev?.lastReceivedAt ?? undefined);
-    const fresh = rows.filter((r) => !(prev && r.received_at === prev.lastReceivedAt && prev.lastIds.includes(r.id)));
-    const read = await readObjects(fresh.map((r) => r.object_key));
+    const current = await readSnapshot();
+    if (current && !current.etag) throw new Error("snapshot has no ETag: cannot safely update it");
+    const prev = opts.rebuild ? null : current;
+    const seen = prev?.seenUploadIds ? new Set(prev.seenUploadIds) : null;
+    const rows = await listIndex(seen ? undefined : prev?.lastReceivedAt ?? undefined);
+    const fresh = rows.filter((r) => seen ? !seen.has(r.id) : !(prev && r.received_at === prev.lastReceivedAt && prev.lastIds.includes(r.id)));
+    // Rebuilds preserve known conflict tombstones, including after a raw file is removed.
+    const start = prev ? stateOf(prev) : current?.corpusState
+      ? { ...mergeCorpus(undefined, []), conflicts: stateOf(current).conflicts } : undefined;
+    const read = await readObjects(fresh.map((r) => r.object_key), start);
     if (read.missed) throw new Error("upload object unreadable");
-    const records = [...(prev?.records ?? []), ...read.records];
+    const records = publicRecords(read.state);
     const lastReceivedAt = rows.length > 0 ? rows[rows.length - 1].received_at : prev?.lastReceivedAt ?? null;
     const lastIds = rows.length > 0 ? rows.filter((r) => r.received_at === lastReceivedAt).map((r) => r.id) : prev?.lastIds ?? [];
     const snapshot: Snapshot = {
       generatedAt: now().toISOString(),
       uploads: (prev?.uploads ?? 0) + fresh.length,
       records,
+      corpusState: read.state,
+      seenUploadIds: [...new Set([...(prev?.seenUploadIds ?? []), ...rows.map((r) => r.id)])].sort(),
       lastReceivedAt,
       lastIds,
     };
     const put = await r2Fetch(SNAPSHOT_KEY, {
       method: "PUT",
       body: JSON.stringify(snapshot),
-      headers: { "content-type": "application/json" },
+      // R2 supports conditional PutObject; a race fails instead of losing tombstones.
+      // https://developers.cloudflare.com/r2/api/s3/api/
+      headers: { "content-type": "application/json", ...(current ? { "if-match": current.etag! } : { "if-none-match": "*" }) },
     });
     if (!put.ok) throw new Error(`snapshot write failed (${put.status})`);
     cached = null;
@@ -278,11 +318,13 @@ export function createUploadStore(opts: {
   }
 
   async function loadCorpus(): Promise<Corpus> {
-    if (cached && Date.now() - cached.at < cacheMs) return cached.corpus;
     try {
-      const corpus = cloud ? await readCloud() : await readLocal();
+      const corpus = cached && Date.now() - cached.at < cacheMs
+        ? cached.corpus : cloud ? await readCloud() : await readLocal();
+      if (corpus.unreachable) throw new Error("corpus unreachable");
       cached = { at: Date.now(), corpus };
-      return corpus;
+      const records = opts.publication ? await opts.publication(corpus.state) : publicRecords(corpus.state);
+      return { uploads: corpus.uploads, records, ...(corpus.state.legacyRecords ? { legacyRecords: corpus.state.legacyRecords } : {}) };
     } catch {
       return { uploads: 0, records: [], unreachable: true };
     }
@@ -325,4 +367,7 @@ export function createUploadStore(opts: {
 }
 
 /** The store the routes and pages use. */
-export const uploadStore = createUploadStore({ cloud: cloudConfig(), localDir: join(process.cwd(), "data") });
+const configuredCloud = cloudConfig();
+const localDir = join(process.cwd(), "data");
+export const sharingStore = createSharingStore({ cloud: configuredCloud, localDir });
+export const uploadStore = createUploadStore({ cloud: configuredCloud, localDir, publication: sharingStore.publish });

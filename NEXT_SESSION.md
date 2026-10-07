@@ -1,5 +1,13 @@
 # Everloot — resume after 2026-10-05 assessment
 
+## Resume correction — 2026-10-07
+
+Continue `fix/replay-sharing-2026-10-07`, isolated checkout at `C:/Users/carli/.t3/worktrees/R21-Brain/t3-248c1b60/tmp/everloot`. The interrupted three-step implementation is now complete locally; E's quotas remain open. Read `_STATUS.md` current cursor and [`docs/2026-10-07-replay-sharing-verification.md`](docs/2026-10-07-replay-sharing-verification.md) before the historical material below. Do not repeat A/B/C/D or the scoped grant/sharing implementation.
+
+Verified: 68 web + 163 KB tests, both typechecks, web build, Lua 5.1 event/capacity execution, local PostgreSQL permissions, browser 503/retry/200, 4,500-record three-batch upload/replay, unchecked named data and local grant revocation. Production is untouched; no main push, migration, deletion, snapshot rebuild or public server.
+
+Next authorized preparation: shared quotas/abuse protection, fail-closed production config, dependency/lint repair and review. Deployment and production legacy migration remain separate checkpoints. MCP now supports `EVERLOOT_PUBLIC_CORPUS_URL` for current authorized web facts; local raw files expose only anonymous facts. Actual officer verification remains an operator responsibility, not a client token assertion. The run used synthetic local fixtures and does not prove live provider rollout or real beta-client behavior.
+
 ## Resume correction — 2026-10-06
 
 Start from the existing clean `fix/readonly-kb-service` branch (`eaa29c8`), which already integrates A and B; do not repeat the first two implementation slices below. This session reverified 56 web tests, 152 KB tests and KB typecheck. The fixes remain local and undeployed (`origin/main` is `6accdb6`). Review their final diff and preview acceptance before release; this session did not run a new web build or browser check.

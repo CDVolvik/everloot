@@ -11,6 +11,8 @@ export const INSTALL_ID = z.string().min(8).max(64).describe("Random install id,
 
 const base = z.object({
   installId: INSTALL_ID,
+  // Optional only to retain legacy files; public readers withhold rows without stable identity.
+  eventId: z.string().min(3).max(96).regex(/^[A-Za-z0-9:_-]+$/).optional(),
   capturedAt: z.string().datetime({ offset: true }).describe("ISO time the event happened in-game."),
 });
 
@@ -71,7 +73,7 @@ export const guildSnapshot = base.extend({
   guildName: z.string().min(2).max(60),
   realm: z.string().min(2).max(60),
   faction: z.enum(["alliance", "horde"]),
-  claimToken: z.string().min(16).describe("Officer claim token: proves this upload may publish."),
+  claimToken: z.string().min(16).optional().describe("Legacy field; never proof of officer authority."),
   members: z.array(z.object({
     name: z.string().min(2).max(30),
     rank: z.string().min(1).max(60),

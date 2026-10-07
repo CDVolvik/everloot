@@ -55,3 +55,5 @@ scratch/
 
 # --- kb/ (knowledge base) ---
 kb/data/
+# Local uploads and private publication evidence.
+web/data/

@@ -9,6 +9,7 @@ import { guildFactsFromRecords, handleGuildBoard } from "./guild-board.js";
 import { itemFactsFromRecords } from "./drop-rollup.js";
 import { handleItemPage } from "./item-page.js";
 import { loadUploadRecords } from "./load-uploads.js";
+import { parseRecords } from "../../web/src/lib/intake.js";
 import { handleProfessionPath, professionFactsFromRecords } from "./profession-path.js";
 import { handleNpcPage, handleQuestPage, handleVendorPage, worldFactsFromRecords } from "./world-pages.js";
 import type { DB } from "./db.js";
@@ -20,11 +21,26 @@ export const SERVER_VERSION = "0.7.2";
 export const UPLOADS_UNSET =
   "Uploads are not connected. EVERLOOT_UPLOADS is unset, so this is not a measured zero.";
 
-/** Product tools read the upload directory. An unset directory is not an empty corpus. */
-export function fromUploads(render: (records: unknown[]) => string): string {
+/** Prefer the web's sanitized current view; raw local files can supply anonymous facts only. */
+export function fromUploads(render: (records: unknown[]) => string): string | Promise<string> {
+  const url = process.env.EVERLOOT_PUBLIC_CORPUS_URL?.trim();
+  if (url) return fromPublicCorpus(url, render);
   const dir = process.env.EVERLOOT_UPLOADS?.trim();
   if (!dir) return UPLOADS_UNSET;
   return render(loadUploadRecords(dir));
+}
+
+async function fromPublicCorpus(url: string, render: (records: unknown[]) => string): Promise<string> {
+  let records;
+  try {
+    const response = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(10_000) });
+    const corpus = await response.json() as { ok?: boolean; records?: unknown };
+    if (!response.ok || corpus.ok !== true || !Array.isArray(corpus.records)) throw new Error("Invalid public corpus");
+    const parsed = parseRecords(corpus.records);
+    if (parsed.receipt.rejected.length) throw new Error("Invalid public records");
+    records = parsed.records;
+  } catch { return "Public corpus unavailable. These figures are unrecorded, not zero."; }
+  return render(records);
 }
 
 const KINDS = ["item", "npc", "quest", "zone", "spell", "lore_page", "creator", "realm"] as const;
@@ -112,11 +128,11 @@ export function createKnowledgeServer(db: DB): McpServer {
       },
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
-    (args) => {
+    async (args) => {
       return {
         content: [{
           type: "text" as const,
-          text: fromUploads((records) => {
+          text: await fromUploads((records) => {
             const facts = professionFactsFromRecords(records);
             return handleProfessionPath(args, facts.sightings, facts.prices);
           }),
@@ -133,8 +149,8 @@ export function createKnowledgeServer(db: DB): McpServer {
       inputSchema: { itemId: z.number().int().positive().describe("Item id from a drop row.") },
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
-    (args) => ({
-      content: [{ type: "text" as const, text: fromUploads((records) => handleItemPage(args, itemFactsFromRecords(records))) }],
+    async (args) => ({
+      content: [{ type: "text" as const, text: await fromUploads((records) => handleItemPage(args, itemFactsFromRecords(records))) }],
     }),
   );
   server.registerTool(
@@ -146,8 +162,8 @@ export function createKnowledgeServer(db: DB): McpServer {
       inputSchema: { npcId: z.number().int().positive().describe("NPC id.") },
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
-    (args) => ({
-      content: [{ type: "text" as const, text: fromUploads((records) => handleNpcPage(args, worldFactsFromRecords(records))) }],
+    async (args) => ({
+      content: [{ type: "text" as const, text: await fromUploads((records) => handleNpcPage(args, worldFactsFromRecords(records))) }],
     }),
   );
   server.registerTool(
@@ -159,8 +175,8 @@ export function createKnowledgeServer(db: DB): McpServer {
       inputSchema: { questId: z.number().int().positive().describe("Quest id.") },
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
-    (args) => ({
-      content: [{ type: "text" as const, text: fromUploads((records) => handleQuestPage(args, worldFactsFromRecords(records))) }],
+    async (args) => ({
+      content: [{ type: "text" as const, text: await fromUploads((records) => handleQuestPage(args, worldFactsFromRecords(records))) }],
     }),
   );
   server.registerTool(
@@ -172,8 +188,8 @@ export function createKnowledgeServer(db: DB): McpServer {
       inputSchema: { vendorNpcId: z.number().int().positive().describe("Vendor NPC id.") },
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
-    (args) => ({
-      content: [{ type: "text" as const, text: fromUploads((records) => handleVendorPage(args, worldFactsFromRecords(records))) }],
+    async (args) => ({
+      content: [{ type: "text" as const, text: await fromUploads((records) => handleVendorPage(args, worldFactsFromRecords(records))) }],
     }),
   );
   server.registerTool(
@@ -188,8 +204,8 @@ export function createKnowledgeServer(db: DB): McpServer {
       },
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
-    (args) => ({
-      content: [{ type: "text" as const, text: fromUploads((records) => handleCollectionGap(args, collectionFactsFromRecords(records))) }],
+    async (args) => ({
+      content: [{ type: "text" as const, text: await fromUploads((records) => handleCollectionGap(args, collectionFactsFromRecords(records))) }],
     }),
   );
   server.registerTool(
@@ -204,8 +220,8 @@ export function createKnowledgeServer(db: DB): McpServer {
       },
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
-    (args) => ({
-      content: [{ type: "text" as const, text: fromUploads((records) => handleGuildBoard(args, guildFactsFromRecords(records))) }],
+    async (args) => ({
+      content: [{ type: "text" as const, text: await fromUploads((records) => handleGuildBoard(args, guildFactsFromRecords(records))) }],
     }),
   );
   server.registerTool(
@@ -220,8 +236,8 @@ export function createKnowledgeServer(db: DB): McpServer {
       },
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
-    (args) => ({
-      content: [{ type: "text" as const, text: fromUploads((records) => handleAuctionHistory(args, auctionSightingsFromRecords(records))) }],
+    async (args) => ({
+      content: [{ type: "text" as const, text: await fromUploads((records) => handleAuctionHistory(args, auctionSightingsFromRecords(records))) }],
     }),
   );
   server.registerTool(
@@ -236,10 +252,10 @@ export function createKnowledgeServer(db: DB): McpServer {
       },
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
-    (args) => ({
+    async (args) => ({
       content: [{
         type: "text" as const,
-        text: fromUploads((records) => {
+        text: await fromUploads((records) => {
           const facts = goldFactsFromRecords(records);
           return handleGoldLedger(args, facts.snapshots, facts.events);
         }),
