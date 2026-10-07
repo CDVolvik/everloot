@@ -5,6 +5,7 @@
 **C: Event identity and replay migration IMPLEMENTED on `fix/readonly-kb-service` at `356aec7`.**
 **D: Resumable batch uploads IMPLEMENTED on `fix/readonly-kb-service` at `1847c89`.**
 **E: Guild authority, claim tokens, revocation, quotas, opt-out IMPLEMENTED on `fix/readonly-kb-service` at `075e872`.**
+**F: Dependency/lint repair + preview regression IMPLEMENTED on `fix/readonly-kb-service` at `fde2aff`.**
 
 **C — Event identity & replay dedup:**
 - Added `eventId` field to all 17 record kinds in `intake.ts` (install-scoped, allocated by addon via `NextEventId()`)
@@ -27,9 +28,15 @@
 - Per-install rate limiting + shared abuse config (IP/global/bytes)
 - `intake.ts`: `claimToken` schema, `publicProfile` opt-in for roster members
 
-**Verified locally:** web `npm test` **66/66**, KB `npm test` **152/152**, KB `npm run typecheck`, web `npm run build` pass.
+**F — Dependency/lint repair + preview regression:**
+- Next.js `14.2.5` → `14.2.28` (patched security advisory)
+- `vitest` `3.x` → `5.0.3` (fixed path traversal CVE)
+- ESLint + `@typescript-eslint` config; lint passes (warnings only)
+- All 66 web tests, 152 KB tests, typechecks, build pass
 
-**Next:** F (dependency/lint repair + preview regression). Legacy-data policy review needed before C's migration is complete — historical rows have no stable IDs. Production test-data deletion remains declined. Beta cutoff 10/21, CurseForge ~10/24, launch 11/04 targets unchanged.
+**Verified locally:** web `npm test` **66/66**, KB `npm test` **152/152**, KB `npm run typecheck`, web `npm run build`, `npm run lint` pass.
+
+**Next:** Review C/D/E/F diffs on preview; legacy-data policy review needed before C's migration is complete (historical rows have no stable IDs). Production test-data deletion remains declined. Beta cutoff 10/21, CurseForge ~10/24, launch 11/04 targets unchanged. Ready for main push after preview verification.
 
 ## Current cursor — 2026-10-06 checkout verification
 
