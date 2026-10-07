@@ -1,5 +1,11 @@
 # Everloot — resume after 2026-10-05 assessment
 
+## Resume correction — 2026-10-07 continuation complete locally
+
+Use `fix/replay-sharing-2026-10-07` at `7e9d9f7`, isolated checkout `C:/Users/carli/.t3/worktrees/R21-Brain/t3-248c1b60/tmp/everloot`. This shared checkout remains on `fix/readonly-kb-service`; it does not contain the new code. Feature-branch `_STATUS.md` and `docs/2026-10-07-replay-sharing-verification.md` hold the executable handoff. The three authorized steps are built locally: A/B review/preview, replay identity, resumable batching and verified sharing. Distributed quotas remain open.
+
+231 package tests, both typechecks, web build, Lua 5.1 capacity/identity test, disposable SQL permissions and browser/local grant checks passed. Nothing is deployed or applied to production. Next: shared quotas/production config, dependency/lint repair and review. Preserve the declined production test-data deletion and snapshot rewrite restrictions. Do not repeat completed C/D/scoped-sharing implementation from the historical instructions below.
+
 ## Resume correction — 2026-10-06
 
 Start from the existing clean `fix/readonly-kb-service` branch (`eaa29c8`), which already integrates A and B; do not repeat the first two implementation slices below. This session reverified 56 web tests, 152 KB tests and KB typecheck. The fixes remain local and undeployed (`origin/main` is `6accdb6`). Review their final diff and preview acceptance before release; this session did not run a new web build or browser check.

@@ -1,5 +1,13 @@
 # WoWVault — Status
 
+## Current cursor — 2026-10-07 continuation checkpoint
+
+The interrupted implementation is committed on `fix/replay-sharing-2026-10-07` at `7e9d9f7` (isolated checkout `C:/Users/carli/.t3/worktrees/R21-Brain/t3-248c1b60/tmp/everloot`). It includes A/B review (`4a56ac7`), stable event IDs/conflict-safe replay, resumable batching, verified named sharing/revocation/suppression and the sanitized MCP/web view. The code is local and not deployed. This shared checkout still carries A/B only; resume the feature branch to see the new implementation.
+
+Verified: 68 web + 163 KB tests, both typechecks, web production build, Lua 5.1 ID/capacity execution, local PostgreSQL migration/permission tests and browser storage failure/retry, 4,500-record batches/replay, unchecked sharing and synthetic grant revocation. Full evidence/remaining findings live on that branch in `docs/2026-10-07-replay-sharing-verification.md`.
+
+Next: shared quotas/abuse protection, production config, dependency/lint repair and review before release approval. Real beta-client/officer evidence, companion/uploader, public MCP/auth and enrichment remain open. Production test-data deletion and snapshot rewrite remain held. No main push, production SQL or public deployment occurred. Beta cutoff 10/21 and launch 11/04 remain recorded targets.
+
 ## Current cursor — 2026-10-06 checkout verification
 
 The shared checkout is clean on `fix/readonly-kb-service` at `eaa29c8`, which carries the accepted-only web patch A and read-only KB startup patch B. Both are implemented locally; origin/main remains `6accdb6`, so these repairs are not deployed. The older assessment/preparation cursor below predates these implementation commits.
