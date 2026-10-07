@@ -1,7 +1,7 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { openDb } from "../src/db.js";
 import { replaceSourceRows, type EntityInput } from "../src/entities.js";
 import {
@@ -82,6 +82,23 @@ test("an empty uploads directory is a real empty corpus", () => {
     if (prev === undefined) delete process.env.EVERLOOT_UPLOADS;
     else process.env.EVERLOOT_UPLOADS = prev;
   }
+});
+
+test("MCP reads the current sanitized public corpus without caching named grants", async () => {
+  vi.stubEnv("EVERLOOT_PUBLIC_CORPUS_URL", "https://everloot.example/api/corpus/public");
+  const gold = { kind: "gold_snapshot", installId: "install-one", eventId: "epoch:1",
+    capturedAt: "2026-10-07T00:00:00Z", realm: "Moon Guard", character: "Thrall", currentCopper: 10, peakCopper: 10 };
+  const send = vi.fn().mockResolvedValueOnce(Response.json({ ok: true, records: [gold] }))
+    .mockResolvedValueOnce(Response.json({ ok: true, records: [] }))
+    .mockResolvedValueOnce(Response.json({ ok: false }, { status: 503 }));
+  vi.stubGlobal("fetch", send);
+  try {
+    expect(JSON.parse(await fromUploads((records) => JSON.stringify(records)))).toEqual([gold]);
+    expect(await fromUploads((records) => `records:${records.length}`)).toBe("records:0");
+    expect(await fromUploads(() => { throw new Error("renderer must not run"); })).toMatch(/unavailable/i);
+    expect(send).toHaveBeenCalledTimes(3);
+    expect(send.mock.calls[0][1].cache).toBe("no-store");
+  } finally { vi.unstubAllEnvs(); vi.unstubAllGlobals(); }
 });
 
 test("the server registers under the Everloot name", async () => {

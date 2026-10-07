@@ -24,6 +24,7 @@ const now = () => new Date("2026-10-05T12:00:00Z");
 const capturedAt = "2026-10-05T00:00:00.000Z";
 
 const goodLoot = {
+  eventId: "event:1",
   kind: "loot",
   installId: "install-1234",
   capturedAt,

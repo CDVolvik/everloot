@@ -5,7 +5,7 @@
 Everloot = Everloot or {}
 local E = Everloot
 
-E.VERSION = "0.1.0"
+E.VERSION = "0.2.0"
 E.MAX_ROWS_PER_KIND = 2000
 
 local defaults = {
@@ -28,14 +28,29 @@ function E:IsEnabled(module)
   return EverlootDB and EverlootDB.toggles and EverlootDB.toggles[module] ~= false
 end
 
---- Append a row to a kind store with a rolling cap (oldest rows drop first).
+--- Preserve retained rows. At capacity, pause this kind instead of silently discarding data.
 function E:Store(kind, row)
   if type(row) ~= "table" then return false end
-  row.kindLoggedAt = date("!%Y-%m-%dT%H:%M:%SZ")
   local store = EverlootDB.records[kind]
   if not store then store = {}; EverlootDB.records[kind] = store end
+  if #store >= E.MAX_ROWS_PER_KIND then
+    EverlootDB.paused = EverlootDB.paused or {}
+    if not EverlootDB.paused[kind] then
+      print("Everloot: " .. kind .. " collection paused at capacity. Keep and upload your SavedVariables file.")
+    end
+    EverlootDB.paused[kind] = true
+    return false
+  end
+  -- Allocate once, not at export. Persist epoch + counter together; never reuse an ID.
+  if not EverlootDB.eventEpoch or type(EverlootDB.nextEvent) ~= "number" then
+    EverlootDB.eventEpoch = newInstallId() .. "-" .. tostring(time())
+    EverlootDB.nextEvent = 0
+  end
+  if EverlootDB.nextEvent >= 9007199254740990 then return false end
+  EverlootDB.nextEvent = EverlootDB.nextEvent + 1
+  row.eventId = EverlootDB.eventEpoch .. ":" .. string.format("%.0f", EverlootDB.nextEvent)
+  row.kindLoggedAt = date("!%Y-%m-%dT%H:%M:%SZ")
   store[#store + 1] = row
-  while #store > E.MAX_ROWS_PER_KIND do table.remove(store, 1) end
   return true
 end
 
@@ -64,6 +79,9 @@ end
 
 function E:Status()
   local lines = { "Everloot " .. E.VERSION .. " (" .. (EverlootDB and EverlootDB.installId or "?") .. ")" }
+  for kind in pairs(EverlootDB and EverlootDB.paused or {}) do
+    lines[#lines + 1] = "  " .. kind .. ": collection paused; retained rows were not deleted"
+  end
   for _, m in ipairs(modules) do
     lines[#lines + 1] = string.format("  %s: %s", m.name, m.note)
   end
@@ -82,6 +100,7 @@ frame:SetScript("OnEvent", function(_, event, arg1)
     EverlootDB = EverlootDB or {}
     for k, v in pairs(defaults) do if EverlootDB[k] == nil then EverlootDB[k] = v end end
     if not EverlootDB.installId then EverlootDB.installId = newInstallId() end
+    EverlootDB.version = E.VERSION
     E:InitModules()
     print(E:Status())
   end

@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { mergeCorpus, publicRecords } from "./corpus.js";
 
 /** Every record array in a directory of upload JSON files. A bad file is skipped. */
 export function loadUploadRecords(dir: string): unknown[] {
@@ -18,5 +19,5 @@ export function loadUploadRecords(dir: string): unknown[] {
       continue;
     }
   }
-  return records;
+  return publicRecords(mergeCorpus(undefined, records));
 }
