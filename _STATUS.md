@@ -1,16 +1,66 @@
-# WoWVault — Status
+# Everloot — Status
+
+## Current cursor — 2026-10-07 continuation checkpoint
+
+**C: Event identity and replay migration IMPLEMENTED on `fix/readonly-kb-service` at `356aec7`.**
+**D: Resumable batch uploads IMPLEMENTED on `fix/readonly-kb-service` at `1847c89`.**
+**E: Guild authority, claim tokens, revocation, quotas, opt-out IMPLEMENTED on `fix/readonly-kb-service` at `075e872`.**
+**F: Dependency/lint repair + preview regression IMPLEMENTED on `fix/readonly-kb-service` at `fde2aff`.**
+
+**C — Event identity & replay dedup:**
+- Added `eventId` field to all 17 record kinds in `intake.ts` (install-scoped, allocated by addon via `NextEventId()`)
+- Addon `core.lua`: `NextEventId()` counter persisted in SavedVariables, `Store()` auto-attaches eventId
+- Upload store: deduplication by `(installId, eventId)` with conflict tombstones
+  - Identical replays collapse to one record
+  - Conflicting payloads for same eventId excluded from public facts, tombstone retained
+  - Snapshot writes carry `dedupVersion` and `conflictTombstones` for incremental/rebuild agreement
+- Tests: 66 web (including 10 new dedup tests), 152 KB, both typechecks, web production build pass
+- Fixtures updated with `eventId` across intake, route, upload-store, intake-corpus tests
+
+**D — Resumable batches:**
+- Addon `core.lua`: `GetNextBatch()` / `AdvanceBatchCursor()` / `ResetBatchCursor()` with persisted cursor per kind; `/everloot batch` command
+- Web `UploadClient.tsx`: chunked upload (500 records/batch), progress bar, retry on failure, sequential send with rate-limit delay
+- Stays under 2000 aggregate cap per request; preserves unsent rows for exact retry progress
+
+**E — Guild authority & sharing control:**
+- `guild-authority.ts`: server-issued claim tokens (`evt_` format), validation, revocation lists (token/guild/character), opt-out/suppression
+- Guild record kinds (`guild_snapshot`, `raid_lockout`, `attendance`, `loot_award`) now require valid `claimToken`
+- Per-install rate limiting + shared abuse config (IP/global/bytes)
+- `intake.ts`: `claimToken` schema, `publicProfile` opt-in for roster members
+
+**F — Dependency/lint repair + preview regression:**
+- Next.js `14.2.5` → `14.2.28` (patched security advisory)
+- `vitest` `3.x` → `5.0.3` (fixed path traversal CVE)
+- ESLint + `@typescript-eslint` config; lint passes (warnings only)
+- All 66 web tests, 152 KB tests, typechecks, build pass
+
+**Verified locally:** web `npm test` **66/66**, KB `npm test` **152/152**, KB `npm run typecheck`, web `npm run build`, `npm run lint` pass.
+
+**Next:** Review C/D/E/F diffs on preview; legacy-data policy review needed before C's migration is complete (historical rows have no stable IDs). Production test-data deletion remains declined. Beta cutoff 10/21, CurseForge ~10/24, launch 11/04 targets unchanged. Ready for main push after preview verification.
+
+## Current cursor — 2026-10-06 checkout verification
+
+The shared checkout is clean on `fix/readonly-kb-service` at `eaa29c8`, which carries the accepted-only web patch A and read-only KB startup patch B. Both are implemented locally; origin/main remains `6accdb6`, so these repairs are not deployed. The older assessment/preparation cursor below predates these implementation commits.
+
+Reverified in this session: web `npm test` **56/56**, KB `npm test` **152/152**, KB `npm run typecheck` passed. This is regression verification, not a full implementation review, web build, browser preview, public MCP connection or in-client test. No application edits, production writes, deployment, test-data deletion or production snapshot rebuild performed.
+
+**Next:** review A/B against their scoped acceptance checks and verify the upload receipt on preview; then review the conservative legacy-data policy and prepare C (stable event IDs and replay deduplication) from `docs/2026-10-05-next-sprint.md`. Repeated files and old-plus-one-new uploads must not inflate kills, drops or gold; conflicting IDs must stay suppressed across incremental snapshots and rebuilds. Follow with resumable batches, verified guild authority/named sharing and dependency/lint repair. Existing production test-data deletion remains declined. Recorded beta cutoff 10/21 and full launch 11/04 remain targets.
 
 ## Current cursor — 2026-10-05 assessment
 
+**10/05 evening preparation:** [`docs/2026-10-05-next-sprint.md`](docs/2026-10-05-next-sprint.md) organizes the next work session (expected 10/06): two scoped specs and executable plans for accepted-only web boundaries (A) and explicit read-only KB readiness (B), then a separately reviewed replay migration (C), batching, claims/sharing, dependency/lint repair and enrichment/hosting. Plans self-reviewed against call sites; no implementation task run. Local release hash rechecked and unchanged. Tomorrow's minimum outcome is two reviewable patches; all 20 assessment findings remain open today. No host/import/production write or main push.
+
 Current product is **Everloot's player-collected Forever database + guild/tools + AI bridge**, not the historical Retail/iOS Phase 1 below. Recorded milestones: beta closes 10/21, CurseForge around 10/24, full launch 11/04.
 
-Full assessment: [`docs/2026-10-05-full-assessment.md`](docs/2026-10-05-full-assessment.md), 19 findings with acceptance checks. **Not ready for full launch.** First slice: only parsed accepted records enter the trusted corpus; stable event IDs/idempotency across upload retries. Next: verified guild claims and explicit named-data sharing. No remediation or deployment performed.
+Full assessment: [`docs/2026-10-05-full-assessment.md`](docs/2026-10-05-full-assessment.md), now 20 findings with acceptance checks (F20 added during server preflight). **Not ready for full launch.** First slice: parsed accepted web records and safe KB startup; next stable event IDs/idempotency across upload retries, verified guild claims and explicit named-data sharing. No remediation or deployment performed.
 
 Verified 10/05: web 33 tests + KB 121 tests pass; web production build and KB typecheck pass. Lint stops at interactive configuration. Web audit reports 16 affected packages (1 critical/13 high/2 moderate, includes dev/transitive), KB 0. Local probes reproduce rejected-row ingestion, duplicate loot counting, placeholder-token guild publication and non-cheapest profession routing. Addon per-kind caps exceed intake's aggregate cap. Live checks expose absent phone navigation, tablet overflow, the old GoldGoblin robots sitemap and stale tool destinations. Live corpus still shows 1 upload / 1 record / 0 loot windows; existing test-row deletion remains declined.
 
 Fetched origin on 10/05: `main` and `origin/main` both at `6accdb6` before assessment docs. Live gold-ledger route answers 200; earlier “not pushed” closeout text is historical. Gap marking is implemented and visible in current tracker; it is not the next task. Full-launch AI companion, desktop uploader and public MCP remain incomplete. In-client beta tests, screenshot/composited contrast, real phone, load/recovery, provider-account and delivery checks remain unverified.
 
 Assessment was read-only against production. Documentation below remains historical where superseded by this cursor; do not revive the parked Retail/iOS plan.
+
+**10/05 closeout / next session:** [`NEXT_SESSION.md`](NEXT_SESSION.md) is the executable resume handoff; [`docs/architecture.md`](docs/architecture.md) maps current services and proposed server/data boundaries. Populated KB `kb/data/wowvault-kb.sqlite` verified: 257,110 lore + 1 curated, provenance/FTS validation pass. The default rebranded filename creates an empty DB (F20); use explicit paths. Filtered local snapshot + manifest prepared under `kb/data/release/2026-10-05-everloot-public.sqlite`, SHA-256 `d21bb3c414db9f5f40a3146fe78d0ba3e7071eb083c59003fbf6062bd8ab41eb`. Local authenticated HTTP MCP smoke test passed (13 tools, sourced search, unauthenticated 401); gameplay uploads correctly unavailable. Test server stopped. Snapshot is local/gitignored, not hosted or pushed. Enrichment/server deployment remain gated on the trust-boundary repairs and source/client-auth verification. Docs branch: `docs/assessment-handoff-2026-10-05`; no production main push or GitLab push.
 
 **You're building this solo with Claude Code.** No co-founder, no fundraise, no marketing-org thinking until there's a product. The 35-page strategy doc exists as historical reference in `docs/`; this file is the working state.
 

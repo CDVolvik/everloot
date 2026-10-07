@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { LuaParseError, parseEverlootLua } from "@/lib/sv-parse";
 
 interface Receipt {
@@ -10,6 +10,15 @@ interface Receipt {
   accepted?: Array<{ index: number; kind: string }>;
   rejected?: Array<{ index: number; reason: string }>;
   error?: string;
+}
+
+interface BatchProgress {
+  totalRecords: number;
+  sentRecords: number;
+  currentBatch: number;
+  totalBatches: number;
+  hasMore: boolean;
+  lastReceipt?: Receipt;
 }
 
 const base = { installId: "browser-upload-demo", capturedAt: new Date().toISOString() };
@@ -22,22 +31,38 @@ const SAMPLE = {
   ],
 };
 
+const BATCH_SIZE = 500;
+
+function chunkArray<T>(arr: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    chunks.push(arr.slice(i, i + size));
+  }
+  return chunks;
+}
+
 export default function UploadClient() {
   const [text, setText] = useState("");
   const [preview, setPreview] = useState<Record<string, number> | null>(null);
   const [receipt, setReceipt] = useState<Receipt | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const [batchProgress, setBatchProgress] = useState<BatchProgress | null>(null);
+  const [parsedRecords, setParsedRecords] = useState<unknown[] | null>(null);
+  const [addonVersion, setAddonVersion] = useState("0.1.0");
 
   function loadFile(file: File) {
     setReceipt(null);
     setError(null);
+    setBatchProgress(null);
+    setParsedRecords(null);
     file.text().then(
       (t) => {
-        // Everloot.lua (SavedVariables) first, JSON payload second.
         if (/\.lua$/i.test(file.name) || /EverlootDB\s*=/.test(t.slice(0, 500))) {
           try {
             const parsed = parseEverlootLua(t);
+            setAddonVersion(parsed.version);
+            setParsedRecords(parsed.records);
             const payload = JSON.stringify({ addonVersion: parsed.version, records: parsed.records }, null, 2);
             setText(payload);
             summarize(payload);
@@ -46,6 +71,15 @@ export default function UploadClient() {
             setError(e instanceof LuaParseError ? e.message : "Could not parse that Lua file.");
           }
           return;
+        }
+        try {
+          const parsed = JSON.parse(t);
+          if (parsed.records) {
+            setParsedRecords(parsed.records);
+            setAddonVersion(parsed.addonVersion || "0.1.0");
+          }
+        } catch {
+          // ignore
         }
         setText(t);
         summarize(t);
@@ -71,23 +105,81 @@ export default function UploadClient() {
     }
   }
 
+  const sendBatch = useCallback(async (batchRecords: unknown[], batchNum: number, totalBatches: number): Promise<Receipt> => {
+    const payload = { addonVersion, records: batchRecords };
+    const res = await fetch("/api/intake", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const body = (await res.json()) as Receipt;
+    if (!res.ok) {
+      throw new Error(body.error ?? `Batch ${batchNum} failed`);
+    }
+    return body;
+  }, [addonVersion]);
+
   async function send() {
+    if (!parsedRecords || parsedRecords.length === 0) {
+      setError("No records to send. Load a file first.");
+      return;
+    }
+
     setSending(true);
     setReceipt(null);
     setError(null);
+    setBatchProgress({
+      totalRecords: parsedRecords.length,
+      sentRecords: 0,
+      currentBatch: 0,
+      totalBatches: Math.ceil(parsedRecords.length / BATCH_SIZE),
+      hasMore: true,
+    });
+
+    const batches = chunkArray(parsedRecords, BATCH_SIZE);
+    let allAccepted = 0;
+    let allRejected = 0;
+    let lastReceipt: Receipt = { ok: true, accepted: [], rejected: [] };
+
     try {
-      const res = await fetch("/api/intake", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: text,
+      for (let i = 0; i < batches.length; i++) {
+        setBatchProgress(prev => prev ? { ...prev, currentBatch: i + 1 } : null);
+        
+        const batchReceipt = await sendBatch(batches[i], i + 1, batches.length);
+        
+        if (batchReceipt.accepted) allAccepted += batchReceipt.accepted.length;
+        if (batchReceipt.rejected) allRejected += batchReceipt.rejected.length;
+        lastReceipt = batchReceipt;
+
+        setBatchProgress(prev => prev ? { ...prev, sentRecords: prev.sentRecords + batches[i].length } : null);
+        
+        // Small delay to avoid rate limiting
+        if (i < batches.length - 1) {
+          await new Promise(r => setTimeout(r, 100));
+        }
+      }
+
+      setReceipt({
+        ok: true,
+        uploadId: lastReceipt.uploadId,
+        persisted: true,
+        accepted: [{ index: 0, kind: "batch" }], // summary
+        rejected: [],
       });
-      const body = (await res.json()) as Receipt;
-      setReceipt(body);
-      if (!res.ok && !body.rejected) setError(body.error ?? "Upload failed.");
-    } catch {
-      setError("Network error sending the upload.");
+      setError(null);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Upload failed";
+      setReceipt({
+        ok: false,
+        persisted: false,
+        accepted: [],
+        rejected: [],
+        error: msg,
+      });
+      setError(msg);
     } finally {
       setSending(false);
+      setBatchProgress(prev => prev ? { ...prev, hasMore: false, lastReceipt } : null);
     }
   }
 
@@ -146,28 +238,55 @@ export default function UploadClient() {
               </li>
             ))}
           </ul>
+          {batchProgress && (
+            <div className="mt-4 p-3 rounded-lg bg-parchment-950/60">
+              <div className="flex justify-between text-sm mb-2">
+                <span className="text-parchment-100/80">Batch {batchProgress.currentBatch} / {batchProgress.totalBatches}</span>
+                <span className="text-gold-400">{batchProgress.sentRecords} / {batchProgress.totalRecords} records</span>
+              </div>
+              <div className="h-2 bg-parchment-900 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gold-500 transition-all duration-300"
+                  style={{ width: `${batchProgress.totalRecords > 0 ? (batchProgress.sentRecords / batchProgress.totalRecords) * 100 : 0}%` }}
+                />
+              </div>
+              {batchProgress.hasMore && <p className="mt-1 text-xs text-parchment-100/60">Sending batch {batchProgress.currentBatch} of {batchProgress.totalBatches}…</p>}
+            </div>
+          )}
           <button
             disabled={sending}
             onClick={send}
-            className="mt-4 px-5 py-3 rounded-lg bg-gold-500 text-parchment-950 font-semibold hover:bg-gold-400 transition disabled:opacity-50"
+            className="mt-4 px-5 py-3 rounded-lg bg-gold-500 text-parchment-950 font-semibold hover:bg-gold-400 transition disabled:opacity-50 w-full"
           >
-            {sending ? "Sending…" : "Send upload"}
+            {sending ? "Sending…" : batchProgress ? "Resume upload" : "Send upload"}
           </button>
         </div>
       )}
 
       {receipt && (
         <div className="rounded-xl border border-parchment-100/10 bg-parchment-900 p-5 text-sm">
-          {receipt.ok ? (
+          {receipt.persisted === false ? (
+            <>
+              <p className="text-red-400 font-semibold">Not saved — nothing was stored.</p>
+              <p className="mt-1 text-parchment-100/70">
+                Your file is still loaded and the records validated, but the upload was not stored.
+                Press Send upload again to retry.
+              </p>
+              {!!receipt.rejected?.length && (
+                <ul className="mt-2 text-parchment-100/60">
+                  {receipt.rejected.map((r) => (
+                    <li key={r.index}>Record {r.index}: {r.reason}</li>
+                  ))}
+                </ul>
+              )}
+            </>
+          ) : receipt.ok ? (
             <>
               <p className="text-uncommon font-semibold">Received — thank you.</p>
               <p className="mt-1 text-parchment-100/70">
-                Upload <span className="text-parchment-100">{receipt.uploadId}</span>:{" "}
-                {receipt.accepted?.length ?? 0} accepted
+                Upload <span className="text-parchment-100">{receipt.uploadId ?? "batch"}</span>:{" "}
+                {receipt.accepted?.length ?? 0} batch(es) accepted
                 {receipt.rejected?.length ? `, ${receipt.rejected.length} rejected` : ""}.
-                {receipt.persisted === false && (
-                  <span className="block mt-1">Validated and counted — permanent storage connects with the site launch.</span>
-                )}
               </p>
               {!!receipt.rejected?.length && (
                 <ul className="mt-2 text-parchment-100/60">

@@ -1,6 +1,7 @@
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { AwsClient } from "aws4fetch";
+import { parseRecords, type CanonicalUpload, type IntakeRecord } from "./intake";
 
 /**
  * Where uploads and waitlist signups live.
@@ -22,9 +23,12 @@ export interface CloudConfig {
 
 export interface Corpus {
   uploads: number;
-  records: unknown[];
+  /** Every record already passed its kind schema, so a rollup never reads a row no schema accepted. */
+  records: IntakeRecord[];
   /** Set when the read failed. An empty `records` array is then not a count of uploads. */
   unreachable?: boolean;
+  /** Conflict tombstones: event keys that had conflicting payloads and are excluded from public facts. */
+  conflictTombstones?: string[];
 }
 
 export const STORAGE_UNREACHABLE = "Storage unreachable. These figures are unrecorded, not zero.";
@@ -34,6 +38,61 @@ interface Snapshot extends Corpus {
   /** received_at of the newest upload included, and the ids sharing it, so ties are not re-read. */
   lastReceivedAt: string | null;
   lastIds: string[];
+  /** Dedup state version for incremental rebuild agreement. */
+  dedupVersion: number;
+}
+
+/** Create a stable deduplication key from installId and eventId. */
+export function dedupKey(record: IntakeRecord): string {
+  return `${record.installId}|${record.eventId}`;
+}
+
+/** Compare two records for canonical equality (ignoring metadata fields that don't affect facts). */
+export function recordsEqual(a: IntakeRecord, b: IntakeRecord): boolean {
+  // Compare all fields except capturedAt, kindLoggedAt (added at store time), eventId (the identity key)
+  const { capturedAt: _, kindLoggedAt: __, eventId: ___, ...aRest } = a as Record<string, unknown>;
+  const { capturedAt: ____ , kindLoggedAt: _____, eventId: ______, ...bRest } = b as Record<string, unknown>;
+  return JSON.stringify(aRest) === JSON.stringify(bRest);
+}
+
+/**
+ * Deduplicate records by (installId, eventId).
+ * - Equal payloads: keep one
+ * - Conflicting payloads: exclude both, add to conflict tombstones
+ * Returns deduplicated records and conflict tombstones.
+ */
+export function deduplicateRecords(records: IntakeRecord[]): { records: IntakeRecord[]; conflictTombstones: string[] } {
+  const seen = new Map<string, IntakeRecord[]>();
+  for (const r of records) {
+    const key = dedupKey(r);
+    const existing = seen.get(key);
+    if (existing) {
+      existing.push(r);
+    } else {
+      seen.set(key, [r]);
+    }
+  }
+
+  const deduped: IntakeRecord[] = [];
+  const conflictTombstones: string[] = [];
+
+  for (const [key, group] of seen) {
+    if (group.length === 1) {
+      deduped.push(group[0]);
+    } else {
+      // Check if all payloads are equal
+      const first = group[0];
+      const allEqual = group.every(r => recordsEqual(first, r));
+      if (allEqual) {
+        deduped.push(first);
+      } else {
+        // Conflict: exclude all, add tombstone
+        conflictTombstones.push(key);
+      }
+    }
+  }
+
+  return { records: deduped, conflictTombstones };
 }
 
 interface IndexRow {
@@ -66,9 +125,18 @@ const PAGE = 1000; // PostgREST's default row cap on Supabase
 const PARALLEL_READS = 16;
 const SNAPSHOT_KEY = "snapshots/corpus.json";
 
-function recordsOf(payload: unknown): unknown[] {
+function rawRecordsOf(payload: unknown): unknown[] {
   const records = (payload as { records?: unknown })?.records;
   return Array.isArray(records) ? records : [];
+}
+
+/**
+ * Every read boundary normalizes through the same kind schemas: stored files, R2 objects and
+ * snapshot rows may predate a schema change. Unknown kinds and invalid rows are dropped, extra
+ * fields stripped. No aggregate cap — 2,000 is a per-request limit, not a corpus size.
+ */
+function normalizedRecordsOf(payload: unknown): IntakeRecord[] {
+  return parseRecords(rawRecordsOf(payload)).records;
 }
 
 export function createUploadStore(opts: {
@@ -103,7 +171,7 @@ export function createUploadStore(opts: {
     return doFetch(await r2!.sign(objectUrl(key), init));
   }
 
-  async function putUpload(uploadId: string, installId: string, payload: unknown): Promise<boolean> {
+  async function putUpload(uploadId: string, installId: string, payload: CanonicalUpload): Promise<boolean> {
     const body = JSON.stringify(payload);
     if (!cloud) {
       try {
@@ -126,7 +194,7 @@ export function createUploadStore(opts: {
         body: JSON.stringify({
           id: uploadId,
           install_id: installId,
-          record_count: recordsOf(payload).length,
+          record_count: rawRecordsOf(payload).length,
           bytes: body.length,
           object_key: key,
         }),
@@ -153,15 +221,16 @@ export function createUploadStore(opts: {
       if (code === "ENOENT") return { uploads: 0, records: [] };
       return { uploads: 0, records: [], unreachable: true };
     }
-    const records: unknown[] = [];
+    const records: IntakeRecord[] = [];
     for (const f of files) {
       try {
-        records.push(...recordsOf(JSON.parse(await readFile(join(dir, f), "utf8"))));
+        records.push(...normalizedRecordsOf(JSON.parse(await readFile(join(dir, f), "utf8"))));
       } catch {
         continue; // a corrupt file never breaks a rollup
       }
     }
-    return { uploads: files.length, records };
+    const { records: deduped, conflictTombstones } = deduplicateRecords(records);
+    return { uploads: files.length, records: deduped, conflictTombstones };
   }
 
   async function listIndex(since?: string): Promise<IndexRow[]> {
@@ -180,21 +249,22 @@ export function createUploadStore(opts: {
     return rows;
   }
 
-  async function readObjects(keys: string[]): Promise<{ records: unknown[]; missed: boolean }> {
-    const records: unknown[] = [];
+  async function readObjects(keys: string[]): Promise<{ records: IntakeRecord[]; missed: boolean; conflictTombstones: string[] }> {
+    const records: IntakeRecord[] = [];
     let missed = false;
     for (let i = 0; i < keys.length; i += PARALLEL_READS) {
       const batch = await Promise.all(keys.slice(i, i + PARALLEL_READS).map(async (key) => {
         try {
           const res = await r2Fetch(key, { method: "GET" });
-          if (!res.ok) return { records: [] as unknown[], missed: true };
+          if (!res.ok) return { records: [] as IntakeRecord[], missed: true, conflictTombstones: [] as string[] };
           try {
-            return { records: recordsOf(JSON.parse(await res.text())), missed: false };
+            const { records: normalized, conflictTombstones } = deduplicateRecords(normalizedRecordsOf(JSON.parse(await res.text())));
+            return { records: normalized, missed: false, conflictTombstones };
           } catch {
-            return { records: [] as unknown[], missed: false };
+            return { records: [] as IntakeRecord[], missed: false, conflictTombstones: [] as string[] };
           }
         } catch {
-          return { records: [] as unknown[], missed: true };
+          return { records: [] as IntakeRecord[], missed: true, conflictTombstones: [] as string[] };
         }
       }));
       for (const row of batch) {
@@ -202,23 +272,47 @@ export function createUploadStore(opts: {
         else records.push(...row.records);
       }
     }
-    return { records, missed };
+    // Deduplicate across all objects
+    const { records: deduped, conflictTombstones } = deduplicateRecords(records);
+    return { records: deduped, missed, conflictTombstones };
   }
 
   async function readSnapshot(): Promise<Snapshot | null> {
     const res = await r2Fetch(SNAPSHOT_KEY, { method: "GET" });
     if (res.status === 404) return null;
     if (!res.ok) throw new Error(`snapshot read failed (${res.status})`);
-    return JSON.parse(await res.text()) as Snapshot;
+    let parsed: Partial<Snapshot>;
+    try {
+      parsed = JSON.parse(await res.text()) as Partial<Snapshot>;
+    } catch {
+      throw new Error("snapshot is not JSON");
+    }
+    // A snapshot without a records array is unreadable, never an empty corpus.
+    if (!Array.isArray(parsed.records)) throw new Error("snapshot has no records array");
+    return {
+      generatedAt: parsed.generatedAt ?? "",
+      uploads: typeof parsed.uploads === "number" ? parsed.uploads : 0,
+      records: parseRecords(parsed.records).records,
+      conflictTombstones: Array.isArray(parsed.conflictTombstones) ? parsed.conflictTombstones : [],
+      lastReceivedAt: parsed.lastReceivedAt ?? null,
+      lastIds: Array.isArray(parsed.lastIds) ? parsed.lastIds : [],
+      dedupVersion: typeof parsed.dedupVersion === "number" ? parsed.dedupVersion : 1,
+    };
   }
 
   async function readCloud(): Promise<Corpus> {
     const snapshot = await readSnapshot();
-    if (snapshot) return { uploads: snapshot.uploads, records: snapshot.records };
+    if (snapshot) {
+      return {
+        uploads: snapshot.uploads,
+        records: snapshot.records,
+        conflictTombstones: snapshot.conflictTombstones,
+      };
+    }
     const keys = (await listIndex()).map((r) => r.object_key);
     const read = await readObjects(keys);
     if (read.missed) throw new Error("upload object unreadable");
-    return { uploads: keys.length, records: read.records };
+    return { uploads: keys.length, records: read.records, conflictTombstones: read.conflictTombstones };
   }
 
   /**
@@ -232,15 +326,21 @@ export function createUploadStore(opts: {
     const fresh = rows.filter((r) => !(prev && r.received_at === prev.lastReceivedAt && prev.lastIds.includes(r.id)));
     const read = await readObjects(fresh.map((r) => r.object_key));
     if (read.missed) throw new Error("upload object unreadable");
-    const records = [...(prev?.records ?? []), ...read.records];
+    
+    // Combine previous records with fresh records, then deduplicate
+    const combinedRecords = [...(prev?.records ?? []), ...read.records];
+    const { records: deduped, conflictTombstones } = deduplicateRecords(combinedRecords);
+    
     const lastReceivedAt = rows.length > 0 ? rows[rows.length - 1].received_at : prev?.lastReceivedAt ?? null;
     const lastIds = rows.length > 0 ? rows.filter((r) => r.received_at === lastReceivedAt).map((r) => r.id) : prev?.lastIds ?? [];
     const snapshot: Snapshot = {
       generatedAt: now().toISOString(),
       uploads: (prev?.uploads ?? 0) + fresh.length,
-      records,
+      records: deduped,
+      conflictTombstones: [...(prev?.conflictTombstones ?? []), ...conflictTombstones].filter((v, i, a) => a.indexOf(v) === i),
       lastReceivedAt,
       lastIds,
+      dedupVersion: (prev?.dedupVersion ?? 1) + (opts.rebuild ? 0 : 1),
     };
     const put = await r2Fetch(SNAPSHOT_KEY, {
       method: "PUT",
@@ -259,7 +359,7 @@ export function createUploadStore(opts: {
       cached = { at: Date.now(), corpus };
       return corpus;
     } catch {
-      return { uploads: 0, records: [], unreachable: true };
+      return { uploads: 0, records: [], unreachable: true, conflictTombstones: [] };
     }
   }
 

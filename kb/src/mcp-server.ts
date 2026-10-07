@@ -11,7 +11,7 @@ import { handleItemPage } from "./item-page.js";
 import { loadUploadRecords } from "./load-uploads.js";
 import { handleProfessionPath, professionFactsFromRecords } from "./profession-path.js";
 import { handleNpcPage, handleQuestPage, handleVendorPage, worldFactsFromRecords } from "./world-pages.js";
-import { openDb, type DB } from "./db.js";
+import type { DB } from "./db.js";
 import { getByName, getEntity, search, type SearchHit } from "./search.js";
 
 export const SERVER_NAME = "everloot-knowledge";
@@ -261,8 +261,8 @@ export function createKnowledgeServer(db: DB): McpServer {
 }
 
 /** stdio transport: Claude, ChatGPT dev mode, and the Everloot companion all speak this. Never returns. */
-export async function serveStdio(dbPath: string): Promise<never> {
-  const server = createKnowledgeServer(openDb(dbPath));
+export async function serveStdio(db: DB): Promise<never> {
+  const server = createKnowledgeServer(db);
   await server.connect(new StdioServerTransport());
   return new Promise<never>(() => {});
 }

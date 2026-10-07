@@ -88,7 +88,7 @@ function sweepStaleFiles(dirs: string[], targetBase: string): void {
 }
 
 /** Streaming sha256 of a file — avoids readFileSync's ~2 GiB (ERR_FS_FILE_TOO_LARGE) limit. */
-function sha256File(path: string): string {
+export function sha256File(path: string): string {
   const hash = createHash("sha256");
   const fd = openSync(path, "r");
   try {
@@ -181,7 +181,7 @@ export function snapshot(db: DB, outPath: string, now = new Date()): Manifest {
     } finally {
       out.close();
     }
-    const counts = verifyOutput(work, keep);
+    const counts = verifyOutput(work);
     const sha256 = sha256File(work);
     copyFileSync(work, targetPartial);
     rmSync(manifestPath, { force: true }); // delete the old manifest right before the DB swap below
@@ -224,55 +224,70 @@ function expectedSchemaEntries(): Set<string> {
   }
 }
 
+/**
+ * Proves an open database holds only publishable data and is clean: exact schema, registry
+ * source allowlist, empty API cache, published licences, integrity check and no free pages.
+ * Returns rows per publishable registry source. It performs no writes on `db`, so it is safe on a
+ * read-only handle; the fts5 integrity-check command is deliberately absent because SQLite issues
+ * it as an INSERT, and that stays in the exporter's writable phase (`verifyOutput`).
+ */
+export function checkPublishedDb(db: DB): Record<string, number> {
+  const fail = (why: string): never => {
+    throw new Error(`snapshot check failed: ${why}`);
+  };
+  const keep = publishableIds();
+  const expected = expectedSchemaEntries();
+  const actual = new Set(
+    (
+      db.prepare("SELECT type, name, sql FROM sqlite_master").all() as {
+        type: string;
+        name: string;
+        sql: string | null;
+      }[]
+    ).map((r) => `${r.type}:${r.name}:${normalizeSchemaSql(r.sql)}`),
+  );
+  const missing = [...expected].filter((e) => !actual.has(e));
+  const extra = [...actual].filter((e) => !expected.has(e));
+  if (missing.length > 0 || extra.length > 0) {
+    fail(`unexpected schema — missing: ${missing.join(", ") || "(none)"}; extra: ${extra.join(", ") || "(none)"}`);
+  }
+  const counts: Record<string, number> = Object.fromEntries(keep.map((id) => [id, 0]));
+  for (const r of db.prepare("SELECT source_id, count(*) AS n FROM entities GROUP BY source_id").all() as { source_id: string; n: number }[]) {
+    if (!(keep as string[]).includes(r.source_id)) fail(`non-publishable source ${r.source_id}`);
+    counts[r.source_id] = r.n;
+  }
+  for (const r of db.prepare("SELECT id FROM sources").all() as { id: string }[]) {
+    if (!(keep as string[]).includes(r.id)) fail(`non-publishable source row present: ${r.id}`);
+  }
+  const cache = db.prepare("SELECT count(*) AS n FROM api_cache").get() as { n: number };
+  if (cache.n !== 0) fail("api_cache is not empty");
+  const badSources = db
+    .prepare("SELECT count(*) AS n FROM sources WHERE publishable <> 1 OR licence <> ?")
+    .get(PUBLISHED_LICENCE) as { n: number };
+  if (badSources.n !== 0) fail("a source in the file is not publishable CC BY-SA 4.0");
+  const badRows = db.prepare("SELECT count(*) AS n FROM entities WHERE licence <> ?").get(PUBLISHED_LICENCE) as { n: number };
+  if (badRows.n !== 0) fail(`${badRows.n} row(s) not licensed ${PUBLISHED_LICENCE}`);
+  const integrity = db.pragma("integrity_check", { simple: true });
+  if (integrity !== "ok") fail(`integrity_check: ${String(integrity)}`);
+  const freelistCount = db.pragma("freelist_count", { simple: true }) as number;
+  if (freelistCount !== 0) fail(`freelist_count is ${freelistCount} (VACUUM did not reclaim pages)`);
+  return counts;
+}
+
 /** Reopens the output read-only and proves it holds only publishable data. Returns rows per source. */
-function verifyOutput(file: string, keep: SourceId[]): Record<string, number> {
+function verifyOutput(file: string): Record<string, number> {
   const out = new Database(file, { readonly: true });
   try {
-    const fail = (why: string): never => {
-      throw new Error(`snapshot check failed: ${why}`);
-    };
-    const expected = expectedSchemaEntries();
-    const actual = new Set(
-      (
-        out.prepare("SELECT type, name, sql FROM sqlite_master").all() as {
-          type: string;
-          name: string;
-          sql: string | null;
-        }[]
-      ).map((r) => `${r.type}:${r.name}:${normalizeSchemaSql(r.sql)}`),
-    );
-    const missing = [...expected].filter((e) => !actual.has(e));
-    const extra = [...actual].filter((e) => !expected.has(e));
-    if (missing.length > 0 || extra.length > 0) {
-      fail(`unexpected schema — missing: ${missing.join(", ") || "(none)"}; extra: ${extra.join(", ") || "(none)"}`);
-    }
-    const counts: Record<string, number> = Object.fromEntries(keep.map((id) => [id, 0]));
-    for (const r of out.prepare("SELECT source_id, count(*) AS n FROM entities GROUP BY source_id").all() as { source_id: string; n: number }[]) {
-      if (!(keep as string[]).includes(r.source_id)) fail(`non-publishable source ${r.source_id}`);
-      counts[r.source_id] = r.n;
-    }
-    for (const r of out.prepare("SELECT id FROM sources").all() as { id: string }[]) {
-      if (!(keep as string[]).includes(r.id)) fail(`non-publishable source row present: ${r.id}`);
-    }
-    const cache = out.prepare("SELECT count(*) AS n FROM api_cache").get() as { n: number };
-    if (cache.n !== 0) fail("api_cache is not empty");
-    const badSources = out
-      .prepare("SELECT count(*) AS n FROM sources WHERE publishable <> 1 OR licence <> ?")
-      .get(PUBLISHED_LICENCE) as { n: number };
-    if (badSources.n !== 0) fail("a source in the file is not publishable CC BY-SA 4.0");
-    const badRows = out.prepare("SELECT count(*) AS n FROM entities WHERE licence <> ?").get(PUBLISHED_LICENCE) as { n: number };
-    if (badRows.n !== 0) fail(`${badRows.n} row(s) not licensed ${PUBLISHED_LICENCE}`);
-    const integrity = out.pragma("integrity_check", { simple: true });
-    if (integrity !== "ok") fail(`integrity_check: ${String(integrity)}`);
-    const freelistCount = out.pragma("freelist_count", { simple: true }) as number;
-    if (freelistCount !== 0) fail(`freelist_count is ${freelistCount} (VACUUM did not reclaim pages)`);
+    const counts = checkPublishedDb(out);
     // The fts5 integrity-check command is a write (it's issued as an INSERT), so it needs a
     // writable handle even though the rest of this check runs read-only; open one just for this.
     const writable = new Database(file);
     try {
       writable.prepare("INSERT INTO entities_fts(entities_fts, rank) VALUES ('integrity-check', 1)").run();
     } catch (err) {
-      fail(`entities_fts integrity-check: ${err instanceof Error ? err.message : String(err)}`);
+      throw new Error(
+        `snapshot check failed: entities_fts integrity-check: ${err instanceof Error ? err.message : String(err)}`,
+      );
     } finally {
       writable.close();
     }
