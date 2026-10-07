@@ -2,9 +2,20 @@
 
 ## Resume correction — 2026-10-07 continuation complete locally
 
-Use `fix/replay-sharing-2026-10-07` at `7e9d9f7`, isolated checkout `C:/Users/carli/.t3/worktrees/R21-Brain/t3-248c1b60/tmp/everloot`. This shared checkout remains on `fix/readonly-kb-service`; it does not contain the new code. Feature-branch `_STATUS.md` and `docs/2026-10-07-replay-sharing-verification.md` hold the executable handoff. The three authorized steps are built locally: A/B review/preview, replay identity, resumable batching and verified sharing. Distributed quotas remain open.
+**C: Event identity and replay migration IMPLEMENTED on `fix/readonly-kb-service` at `356aec7`.**
 
-231 package tests, both typechecks, web build, Lua 5.1 capacity/identity test, disposable SQL permissions and browser/local grant checks passed. Nothing is deployed or applied to production. Next: shared quotas/production config, dependency/lint repair and review. Preserve the declined production test-data deletion and snapshot rewrite restrictions. Do not repeat completed C/D/scoped-sharing implementation from the historical instructions below.
+- `eventId` field added to all 17 record kinds (`intake.ts`)
+- Addon `core.lua`: `NextEventId()` counter in SavedVariables, `Store()` auto-attaches eventId
+- Upload store: dedup by `(installId, eventId)` with conflict tombstones
+  - Identical replays → one record
+  - Conflicting payloads same eventId → excluded, tombstone retained
+  - Snapshot carries `dedupVersion` + `conflictTombstones` for incremental/rebuild agreement
+- 66 web tests (10 new dedup), 152 KB, both typechecks, web build pass
+- Fixtures updated with `eventId` across test files
+
+**Verified locally:** web `npm test` **66/66**, KB `npm test` **152/152**, KB `npm run typecheck`, web `npm run build` pass.
+
+**Next:** D (resumable batches >2000 rows), E (guild authority/named sharing/revocation/quotas), F (dependency/lint repair + preview regression). Legacy-data policy review needed before C's migration is complete — historical rows have no stable IDs. Production test-data deletion remains declined. Beta cutoff 10/21, CurseForge ~10/24, launch 11/04 targets unchanged.
 
 ## Resume correction — 2026-10-06
 
@@ -61,7 +72,7 @@ Acceptance: real public HTTPS MCP client connection, appropriate auth, least-pri
 
 ## Exact local preflight commands
 
-Run from `D:\R21-Brain\projects\wowvault\kb`. The direct Node invocation preserves `--db`; this PowerShell/npm combination swallowed it during this check.
+Run from `D:\R21-Brain\projects\everloot\kb`. The direct Node invocation preserves `--db`; this PowerShell/npm combination swallowed it during this check.
 
 ```powershell
 node ./node_modules/tsx/dist/cli.mjs src/cli.ts stats --db data/wowvault-kb.sqlite

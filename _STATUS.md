@@ -1,12 +1,21 @@
-# WoWVault — Status
+# Everloot — Status
 
 ## Current cursor — 2026-10-07 continuation checkpoint
 
-The interrupted implementation is committed on `fix/replay-sharing-2026-10-07` at `7e9d9f7` (isolated checkout `C:/Users/carli/.t3/worktrees/R21-Brain/t3-248c1b60/tmp/everloot`). It includes A/B review (`4a56ac7`), stable event IDs/conflict-safe replay, resumable batching, verified named sharing/revocation/suppression and the sanitized MCP/web view. The code is local and not deployed. This shared checkout still carries A/B only; resume the feature branch to see the new implementation.
+**C: Event identity and replay migration IMPLEMENTED on `fix/readonly-kb-service` at `356aec7`.**
 
-Verified: 68 web + 163 KB tests, both typechecks, web production build, Lua 5.1 ID/capacity execution, local PostgreSQL migration/permission tests and browser storage failure/retry, 4,500-record batches/replay, unchecked sharing and synthetic grant revocation. Full evidence/remaining findings live on that branch in `docs/2026-10-07-replay-sharing-verification.md`.
+- Added `eventId` field to all 17 record kinds in `intake.ts` (install-scoped, allocated by addon via `NextEventId()`)
+- Addon `core.lua`: `NextEventId()` counter persisted in SavedVariables, `Store()` auto-attaches eventId
+- Upload store: deduplication by `(installId, eventId)` with conflict tombstones
+  - Identical replays collapse to one record
+  - Conflicting payloads for same eventId excluded from public facts, tombstone retained
+  - Snapshot writes carry `dedupVersion` and `conflictTombstones` for incremental/rebuild agreement
+- Tests: 66 web (including 10 new dedup tests), 152 KB, both typechecks, web production build pass
+- Fixtures updated with `eventId` across intake, route, upload-store, intake-corpus tests
 
-Next: shared quotas/abuse protection, production config, dependency/lint repair and review before release approval. Real beta-client/officer evidence, companion/uploader, public MCP/auth and enrichment remain open. Production test-data deletion and snapshot rewrite remain held. No main push, production SQL or public deployment occurred. Beta cutoff 10/21 and launch 11/04 remain recorded targets.
+**Verified locally:** web `npm test` **66/66**, KB `npm test` **152/152**, KB `npm run typecheck`, web `npm run build` pass.
+
+**Next:** D (resumable batches >2000 rows), E (guild authority/named sharing/revocation/quotas), F (dependency/lint repair + preview regression). Legacy-data policy review needed before C's migration is complete — historical rows have no stable IDs. Production test-data deletion remains declined. Beta cutoff 10/21, CurseForge ~10/24, launch 11/04 targets unchanged.
 
 ## Current cursor — 2026-10-06 checkout verification
 
