@@ -4,6 +4,7 @@
 
 **C: Event identity and replay migration IMPLEMENTED on `fix/readonly-kb-service` at `356aec7`.**
 **D: Resumable batch uploads IMPLEMENTED on `fix/readonly-kb-service` at `1847c89`.**
+**E: Guild authority, claim tokens, revocation, quotas, opt-out IMPLEMENTED on `fix/readonly-kb-service` at `075e872`.**
 
 **C — Event identity & replay dedup:**
 - Added `eventId` field to all 17 record kinds in `intake.ts` (install-scoped, allocated by addon via `NextEventId()`)
@@ -20,9 +21,15 @@
 - Web `UploadClient.tsx`: chunked upload (500 records/batch), progress bar, retry on failure, sequential send with rate-limit delay
 - Stays under 2000 aggregate cap per request; preserves unsent rows for exact retry progress
 
+**E — Guild authority & sharing control:**
+- `guild-authority.ts`: server-issued claim tokens (`evt_` format), validation, revocation lists (token/guild/character), opt-out/suppression
+- Guild record kinds (`guild_snapshot`, `raid_lockout`, `attendance`, `loot_award`) now require valid `claimToken`
+- Per-install rate limiting + shared abuse config (IP/global/bytes)
+- `intake.ts`: `claimToken` schema, `publicProfile` opt-in for roster members
+
 **Verified locally:** web `npm test` **66/66**, KB `npm test` **152/152**, KB `npm run typecheck`, web `npm run build` pass.
 
-**Next:** E (guild authority/named sharing/revocation/quotas), F (dependency/lint repair + preview regression). Legacy-data policy review needed before C's migration is complete — historical rows have no stable IDs. Production test-data deletion remains declined. Beta cutoff 10/21, CurseForge ~10/24, launch 11/04 targets unchanged.
+**Next:** F (dependency/lint repair + preview regression). Legacy-data policy review needed before C's migration is complete — historical rows have no stable IDs. Production test-data deletion remains declined. Beta cutoff 10/21, CurseForge ~10/24, launch 11/04 targets unchanged.
 
 ## Current cursor — 2026-10-06 checkout verification
 
