@@ -22,7 +22,7 @@ describe("intake contract", () => {
         { ...base, kind: "loot", sourceNpcId: 1234, items: [{ itemId: 456, count: 2 }] },
         {
           ...base, kind: "guild_snapshot", guildName: "Olympus", realm: "Forever-1", faction: "horde",
-          claimToken: "officer-claim-token-0123456789",
+          claimToken: "evt_officerclaimtoken0123456789abcdef",
           members: [{ name: "Thrallfan", rank: "Guild Master", level: 60, class: "Shaman", lastOnlineDays: 0 }],
         },
       ],

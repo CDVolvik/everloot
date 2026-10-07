@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
-import { parseUpload, type CanonicalUpload } from "@/lib/intake";
+import { parseUpload, type CanonicalUpload, type IntakeRecord, type RecordKind } from "@/lib/intake";
 import { uploadStore } from "@/lib/upload-store";
+import { validateClaimToken } from "@/lib/guild-authority";
 
 /**
  * POST /api/intake — step 1: parse + store the accepted records, return a receipt.
@@ -22,6 +23,24 @@ function rateLimited(installId: string): boolean {
   window.push(now);
   hits.set(installId, window);
   return window.length > RATE_MAX_UPLOADS;
+}
+
+/** Guild record kinds that require a valid claim token. */
+const GUILD_KINDS: RecordKind[] = ["guild_snapshot", "raid_lockout", "attendance", "loot_award"];
+
+function validateGuildClaims(records: IntakeRecord[]): { valid: boolean; reason?: string } {
+  for (const r of records) {
+    if (!GUILD_KINDS.includes(r.kind)) continue;
+    const guildRecord = r as { claimToken: string; guildName: string; realm: string };
+    const check = validateClaimToken(guildRecord.claimToken, {
+      guildName: guildRecord.guildName,
+      realm: guildRecord.guildName,
+    });
+    if (!check.valid) {
+      return { valid: false, reason: check.reason ?? "invalid guild claim" };
+    }
+  }
+  return { valid: true };
 }
 
 export async function POST(req: Request) {
@@ -46,6 +65,16 @@ export async function POST(req: Request) {
     );
   }
   const installId = upload.records[0].installId;
+
+  // Validate guild claim tokens for guild records
+  const guildCheck = validateGuildClaims(upload.records);
+  if (!guildCheck.valid) {
+    return NextResponse.json(
+      { ok: false, error: guildCheck.reason ?? "invalid guild claim", ...receipt },
+      { status: 422 },
+    );
+  }
+
   if (rateLimited(installId)) {
     return NextResponse.json({ ok: false, error: "rate limited: max 20 uploads/hour per install" }, { status: 429 });
   }

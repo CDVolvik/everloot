@@ -65,20 +65,25 @@ export const itemSeen = base.extend({
   itemLevel: z.number().int().min(1).max(1000).optional(),
 });
 
-// --- Guild-consented records (named: published only by an officer upload) ---
+// --- Guild-consented records (named: published only by a verified officer upload) ---
+
+/** Claim token issued by the server after officer verification. Opaque to the addon. */
+export const claimToken = z.string().min(32).max(128).regex(/^evt_[a-zA-Z0-9_-]+$/);
 
 export const guildSnapshot = base.extend({
   kind: z.literal("guild_snapshot"),
   guildName: z.string().min(2).max(60),
   realm: z.string().min(2).max(60),
   faction: z.enum(["alliance", "horde"]),
-  claimToken: z.string().min(16).describe("Officer claim token: proves this upload may publish."),
+  claimToken: claimToken.describe("Server-issued officer claim token (format: evt_...)."),
   members: z.array(z.object({
     name: z.string().min(2).max(30),
     rank: z.string().min(1).max(60),
     level: z.number().int().min(1).max(100),
     class: z.string().min(1).max(30),
     lastOnlineDays: z.number().min(0).max(3650),
+    /** Opt-in for public roster listing (default false). */
+    publicProfile: z.boolean().default(false).optional(),
   })).min(1).max(2000),
 });
 
@@ -90,6 +95,7 @@ export const raidLockout = base.extend({
   difficulty: z.string().min(1).max(60),
   bossesKilled: z.array(z.string().min(1).max(120)).max(60),
   resetAt: z.string().datetime({ offset: true }),
+  claimToken: claimToken,
 });
 
 export const attendance = base.extend({
@@ -98,6 +104,7 @@ export const attendance = base.extend({
   realm: z.string().min(2).max(60),
   instance: z.string().min(1).max(120),
   present: z.array(z.string().min(2).max(30)).min(1).max(100),
+  claimToken: claimToken,
 });
 
 export const lootAward = base.extend({
@@ -108,6 +115,7 @@ export const lootAward = base.extend({
   itemName: z.string().min(1).max(200),
   recipient: z.string().min(2).max(30),
   sourceBoss: z.string().min(1).max(120),
+  claimToken: claimToken,
 });
 
 export const gearSnapshot = base.extend({
