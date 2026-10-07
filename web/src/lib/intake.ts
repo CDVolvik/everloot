@@ -12,6 +12,7 @@ export const INSTALL_ID = z.string().min(8).max(64).describe("Random install id,
 const base = z.object({
   installId: INSTALL_ID,
   capturedAt: z.string().datetime({ offset: true }).describe("ISO time the event happened in-game."),
+  eventId: z.string().min(1).max(64).describe("Stable event identity allocated by the addon; preserved across retries."),
 });
 
 // --- Open-world records (anonymous: no character or guild names, no chat) ---

@@ -11,6 +11,7 @@ E.MAX_ROWS_PER_KIND = 2000
 local defaults = {
   version = E.VERSION,
   installId = nil,
+  eventCounter = 0,
   toggles = { openworld = true, guild = true, gear = true, auctions = false, gold = true },
   records = {},
 }
@@ -21,6 +22,14 @@ local function newInstallId()
   return table.concat(t, "-")
 end
 
+--- Allocate a new event ID for this install. Persisted in SavedVariables.
+--- Returns a string like "evt-1", "evt-2", etc.
+function E:NextEventId()
+  EverlootDB = EverlootDB or {}
+  EverlootDB.eventCounter = (EverlootDB.eventCounter or 0) + 1
+  return "evt-" .. EverlootDB.eventCounter
+end
+
 local frame = CreateFrame("Frame")
 E.frame = frame
 
@@ -29,9 +38,11 @@ function E:IsEnabled(module)
 end
 
 --- Append a row to a kind store with a rolling cap (oldest rows drop first).
-function E:Store(kind, row)
+--- If eventId is not provided, allocates a new one via NextEventId().
+function E:Store(kind, row, eventId)
   if type(row) ~= "table" then return false end
   row.kindLoggedAt = date("!%Y-%m-%dT%H:%M:%SZ")
+  row.eventId = eventId or E:NextEventId()
   local store = EverlootDB.records[kind]
   if not store then store = {}; EverlootDB.records[kind] = store end
   store[#store + 1] = row
