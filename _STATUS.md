@@ -7,7 +7,9 @@
 **E: Guild authority, claim tokens, revocation, quotas, opt-out IMPLEMENTED.**
 **F: Dependency/lint repair + preview regression IMPLEMENTED.**
 **G: Public MCP HTTP server with auth, rate limiting, CORS IMPLEMENTED.**
-**Merged to `main` at `e3d94b1` — Vercel preview deploying.**
+**H: Public rollups with corroboration, opt-out, suppression IMPLEMENTED.**
+**I: Battle.net OAuth, Supabase auth, session management, entitlements schema IMPLEMENTED.**
+**Merged to `main` at `2aa6f69` — Vercel preview building.**
 
 **C — Event identity & replay dedup:**
 - Added `eventId` field to all 17 record kinds in `intake.ts` (install-scoped, allocated by addon via `NextEventId()`)
@@ -42,6 +44,21 @@
 - Knowledge tools exposed: `search_knowledge`, `get_entity`, `get_by_name`, `everloot_plan`
 - Gameplay tools return "uploads not connected" (sanitized public views pending)
 - `kb/src/public-rollups.ts`: typed interfaces for future sanitized gameplay views
+
+**H — Public rollups with corroboration, opt-out, suppression:**
+- `kb/src/public-rollups.ts`: Computes all rollups from deduplicated snapshot
+  - Drop rates (3 installs), NPC/quest/vendor (3 installs), Guild (2 officer uploads)
+  - Applies opt-out/suppression from Supabase
+  - Caches results for fast MCP lookups
+- Health endpoint for monitoring rollup freshness
+
+**I — Battle.net OAuth, Supabase auth, session management, entitlements:**
+- `web/src/app/api/auth/bnet/*`: OAuth flow with PKCE-ready state, token exchange, profile fetch
+- `web/src/lib/supabase/server.ts`: Supabase SSR client with session cookies
+- `web/src/app/api/auth/me|logout`: Session management endpoints
+- `supabase/auth_schema.sql`: Complete schema (users, sessions, profiles, entitlements, characters, suppressions, revoked guilds/tokens)
+- RLS policies for user isolation
+- Plan entitlements: free/premium/lifetime with Stripe integration ready
 
 **Legacy-data policy:** Conservative exclusion — pre-C uploads (no `eventId`) normalized out of public facts. See `docs/LEGACY_DATA_POLICY.md`.
 
