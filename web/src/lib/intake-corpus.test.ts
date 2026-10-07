@@ -27,11 +27,12 @@ const goodLoot = {
   kind: "loot",
   installId: "install-1234",
   capturedAt,
+  eventId: "evt-1",
   sourceNpcId: 123,
   items: [{ itemId: 456, count: 1 }],
 };
 /** Same install, a source with no id, so the loot refinement refuses it. */
-const rejectedLoot = { ...goodLoot, sourceNpcId: 0, sourceObjectId: undefined };
+const rejectedLoot = { ...goodLoot, eventId: "evt-2", sourceNpcId: 0, sourceObjectId: undefined };
 const mixedPayload = { addonVersion: "0.1.0", records: [goodLoot, rejectedLoot] };
 
 function jsonRequest(payload: unknown): Request {
@@ -73,6 +74,7 @@ describe("intake through the store into published facts", () => {
 
     const corpus = await store.loadCorpus();
     expect(corpus.records).toEqual([goodLoot]);
+    expect(corpus.conflictTombstones).toEqual([]);
     expect(corpus.unreachable).not.toBe(true);
     expect(lootWindowsFromRecords(corpus.records)).toEqual([
       { installId: "install-1234", sourceNpcId: 123, items: [{ itemId: 456, count: 1 }] },
@@ -120,10 +122,11 @@ describe("intake through the store into published facts", () => {
 
     expect(await writer.writeSnapshot()).toEqual({ uploads: 1, added: 1 });
     expect(JSON.parse(snapshotBody).records).toEqual([goodLoot]);
+    expect(JSON.parse(snapshotBody).conflictTombstones).toEqual([]);
 
     const reader = createUploadStore({ cloud, localDir: "unused", fetch: fn, now, cacheMs: 0 });
     const corpus = await reader.loadCorpus();
-    expect(corpus).toEqual({ uploads: 1, records: [goodLoot] });
+    expect(corpus).toEqual({ uploads: 1, records: [goodLoot], conflictTombstones: [] });
     expect(lootWindowsFromRecords(corpus.records)).toHaveLength(1);
   });
 });

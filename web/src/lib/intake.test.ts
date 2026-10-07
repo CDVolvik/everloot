@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { ALL_RECORD_KINDS, parseRecords, parseUpload, validateUpload } from "./intake.js";
 
-const base = { installId: "test-install-1234", capturedAt: "2026-09-29T12:00:00.000Z" };
+const base = { installId: "test-install-1234", capturedAt: "2026-09-29T12:00:00.000Z", eventId: "evt-1" };
 
 describe("intake contract", () => {
   test("all record kinds exist", () => {
@@ -106,6 +106,7 @@ describe("canonical parsing", () => {
     kind: "loot",
     installId: "install-1234",
     capturedAt: "2026-10-05T00:00:00.000Z",
+    eventId: "evt-1",
     sourceNpcId: 123,
     items: [{ itemId: 456, count: 1, secret: "strip" }],
     extra: "strip",
@@ -114,6 +115,7 @@ describe("canonical parsing", () => {
     kind: "loot",
     installId: "install-1234",
     capturedAt: "2026-10-05T00:00:00.000Z",
+    eventId: "evt-1",
     sourceNpcId: 123,
     items: [{ itemId: 456, count: 1 }],
   };

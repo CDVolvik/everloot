@@ -21,6 +21,7 @@ const loot = (installId: string) => ({
   kind: "loot",
   installId,
   capturedAt,
+  eventId: "evt-1",
   sourceNpcId: 123,
   items: [{ itemId: 456, count: 1, secret: "strip" }],
   extra: "strip",
@@ -29,6 +30,7 @@ const canonicalLoot = {
   kind: "loot",
   installId: "install-1234",
   capturedAt,
+  eventId: "evt-1",
   sourceNpcId: 123,
   items: [{ itemId: 456, count: 1 }],
 };
