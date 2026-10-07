@@ -2,6 +2,11 @@
 
 ## Current cursor — 2026-10-07 replay/sharing continuation
 
+**Closeout:** implementation `7e9d9f7` and the A/B shared-checkout handoff are backed up on
+private GitHub feature branches. `NEXT_SESSION.md` contains cold-start commands and the exact
+resume prompt. Local preview stopped after verification; disposable SQL container is stopped.
+No new application changes during closeout.
+
 Carlos's three authorized steps are implemented and locally verified on `fix/replay-sharing-2026-10-07`: A/B review, stable event IDs/conflict-safe replay, resumable upload batches, scoped verified publication, revocation and character suppression. E's distributed quotas remain open. No production deployment or migration. Shared checkout remains on `fix/readonly-kb-service`; resume the feature branch, not the old implementation cursor.
 
 Evidence: 68 web + 163 KB tests, both typechecks, web production build, Lua 5.1 event/capacity test and disposable PostgreSQL migration/permissions pass. Browser verified actual storage failure/retry, 4,500 records in three batches, withheld named data and replay count invariance. Synthetic local grant upload/read/revoke/read removed the named row immediately. Details and remaining findings: [`docs/2026-10-07-replay-sharing-verification.md`](docs/2026-10-07-replay-sharing-verification.md).

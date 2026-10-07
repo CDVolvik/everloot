@@ -2,6 +2,40 @@
 
 ## Resume correction — 2026-10-07
 
+**Terminal closeout:** code checkpoint `7e9d9f7` is backed up on private GitHub
+`origin/fix/replay-sharing-2026-10-07`. Shared A/B handoff `5c676ce` is backed up on
+`origin/fix/readonly-kb-service`. Closing T3/Codex does not lose the commits. Keep the
+T3 checkout until another checkout is prepared; ignored fixtures/dependencies are local
+and are not required for the next implementation step.
+
+### Cold start in another terminal
+
+Same machine: use this feature checkout, read R21-Brain `AGENTS.md` and startup restrictions,
+then this handoff and the verification report. Another machine: fetch private
+`CDVolvik/everloot`, check out `fix/replay-sharing-2026-10-07`, and read those same files.
+On Windows the shared repo is `D:/R21-Brain/projects/wowvault`. The feature branch is already
+checked out by T3, so use its path or prepare a separate detached checkout:
+
+```powershell
+git -C D:/R21-Brain/projects/wowvault fetch origin
+git -C D:/R21-Brain/projects/wowvault worktree add --detach D:/R21-Brain/projects/everloot-resume origin/fix/replay-sharing-2026-10-07
+```
+
+Run worktree-add only if the destination does not exist. Create a `codex/` feature branch
+before editing a detached checkout. Install with `npm ci` in `web/` and `kb/` (Node >=22).
+Next implementation needs no production secrets or source KB snapshot. Verify affected
+changes with both package test suites, KB typecheck and web build. The approved large SQLite
+release is gitignored in the shared checkout: it does not come from GitHub; do not recreate
+or import it just to resume coding.
+
+Resume prompt: **Read R21-Brain startup restrictions, Everloot NEXT_SESSION.md and
+docs/2026-10-07-replay-sharing-verification.md on fix/replay-sharing-2026-10-07. A/B/C/D and
+scoped publication controls are implemented locally, not deployed. Continue shared quotas,
+production-config fail-closed behavior, then dependency/lint repair. Preserve held production
+test-data deletion and snapshot rewrite; do not push main or deploy.**
+
+### Implementation cursor
+
 Continue `fix/replay-sharing-2026-10-07`, isolated checkout at `C:/Users/carli/.t3/worktrees/R21-Brain/t3-248c1b60/tmp/everloot`. The interrupted three-step implementation is now complete locally; E's quotas remain open. Read `_STATUS.md` current cursor and [`docs/2026-10-07-replay-sharing-verification.md`](docs/2026-10-07-replay-sharing-verification.md) before the historical material below. Do not repeat A/B/C/D or the scoped grant/sharing implementation.
 
 Verified: 68 web + 163 KB tests, both typechecks, web build, Lua 5.1 event/capacity execution, local PostgreSQL permissions, browser 503/retry/200, 4,500-record three-batch upload/replay, unchecked named data and local grant revocation. Production is untouched; no main push, migration, deletion, snapshot rebuild or public server.
