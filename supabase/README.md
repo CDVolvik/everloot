@@ -9,7 +9,7 @@ Backend — Postgres + Auth + Edge Functions + pgvector (for AI RAG, post-Phase-
 npm install -g supabase
 supabase init
 supabase login
-supabase link --project-ref <wowvault-dev-ref>
+supabase link --project-ref <everloot-dev-ref>
 ```
 
 **Layout (target)**:
