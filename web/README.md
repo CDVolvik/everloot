@@ -1,8 +1,8 @@
 # web/
 
-Next.js 14 (App Router) + TypeScript + Tailwind. Public web surface for WoWVault.
+Next.js 14 (App Router) + TypeScript + Tailwind. Public web surface for Everloot.
 
-**History**: this folder started life as **GoldGoblin.gg** — a standalone Next.js project for a WoW tools site with AdSense monetization. Merged into WoWVault on 2026-05-16 as the public web surface (per the "everything under one brand" decision). The existing Gold/Hour calculator stays as a public tool; profile pages get added in `BUILD_PLAN.md` Session 8.
+**History**: this folder started life as **GoldGoblin.gg** — a standalone Next.js project for a WoW tools site with AdSense monetization. Merged into Everloot on 2026-05-16 as the public web surface (per the "everything under one brand" decision). The existing Gold/Hour calculator stays as a public tool; profile pages get added in `BUILD_PLAN.md` Session 8.
 
 ## What's already built (from GoldGoblin)
 
@@ -25,7 +25,7 @@ Session 8 of `../BUILD_PLAN.md`:
 ## Run locally
 
 ```bash
-cd projects/wowvault/web
+cd projects/everloot/web
 npm install
 npm run dev
 # http://localhost:3000
@@ -42,7 +42,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 NEXT_PUBLIC_ADSENSE_CLIENT=     # empty until AdSense approves
 ```
 
-The old GoldGoblin deploy at "D:\Claude Cowork\Google Adsense Builds" referenced in old commits no longer exists — that path is gone since the 2026-05-07 Cowork-into-workspace merge. New canonical path: `D:\R21-Brain\projects\wowvault\web\`.
+The old GoldGoblin deploy at "D:\Claude Cowork\Google Adsense Builds" referenced in old commits no longer exists — that path is gone since the 2026-05-07 Cowork-into-workspace merge. New canonical path: `D:\R21-Brain\projects\everloot\web\`.
 
 ## Rebrand TODO before first push
 

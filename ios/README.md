@@ -6,7 +6,7 @@ Native Swift + SwiftUI iOS app — the primary mobile surface.
 
 **Built on**: MacBook Air with Xcode 15+. Cannot be developed from Windows.
 
-**First file to land here**: `WoWVault.xcodeproj` from `xcodebuild` or "File → New Project → iOS App" in Xcode. Bundle ID suggestion: `com.r21digital.wowvault`.
+**First file to land here**: `Everloot.xcodeproj` from `xcodebuild` or "File → New Project → iOS App" in Xcode. Bundle ID suggestion: `com.r21digital.everloot`.
 
 **Auth**: `ASWebAuthenticationSession` for Battle.net OAuth. Tokens in Keychain, never UserDefaults.
 
