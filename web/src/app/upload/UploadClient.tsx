@@ -160,9 +160,9 @@ export default function UploadClient() {
         <div className="rounded-xl border border-parchment-100/10 bg-parchment-900 p-5 text-sm">
           {receipt.persisted === false ? (
             <>
-              <p className="text-red-400 font-semibold">Not saved — nothing was stored.</p>
+              <p className="text-red-400 font-semibold">Not saved — keep your file.</p>
               <p className="mt-1 text-parchment-100/70">
-                Your file is still loaded and the records validated, but the upload was not stored.
+                Your file is still loaded and the records validated, but storage could not be confirmed.
                 Press Send upload again to retry.
               </p>
               {!!receipt.rejected?.length && (
