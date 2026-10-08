@@ -41,6 +41,15 @@ export default function PrivacyPage() {
           notification.
         </li>
         <li>
+          <strong>Battle.net sign-in:</strong> we store your Battle.net Account ID
+          and BattleTag to manage your account and sharing choices. The current
+          sign-in flow requests identity and World of Warcraft profile permissions,
+          but reads only your identity and BattleTag. Provider access tokens are
+          not stored. The essential login cookie lasts up to 30 days; signing out
+          revokes that Everloot session. Signing in does not publish your named
+          addon records or establish guild officer authority.
+        </li>
+        <li>
           <strong>Uploads:</strong> files you send on the upload page
           (addon records plus a random install id — no account, no character
           login). Open-world facts publish only after matching install reports

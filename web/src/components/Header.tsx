@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { tools, toolHref } from "@/data/tools";
+import AccountControls from "./AccountControls";
 
 export default function Header() {
   const [open, setOpen] = useState(false);
@@ -20,9 +21,12 @@ export default function Header() {
           <Link href="/upload" className="inline-flex items-center min-h-11 text-parchment-100/80 hover:text-gold-400">Upload</Link>
           <Link href="/tools/gold-per-hour" className="inline-flex items-center min-h-11 text-parchment-100/80 hover:text-gold-400">Gold/Hour</Link>
         </nav>
-        <button ref={toggle} type="button" aria-expanded={open} aria-controls="site-navigation" onClick={() => setOpen(!open)} className="min-h-11 px-3 rounded-lg border border-parchment-100/20 text-sm text-parchment-100 hover:border-gold-400/60">
-          {open ? "Close menu" : "Menu"}
-        </button>
+        <div className="flex items-center gap-1 shrink-0">
+          <AccountControls />
+          <button ref={toggle} type="button" aria-label={open ? "Close menu" : "Menu"} aria-expanded={open} aria-controls="site-navigation" onClick={() => setOpen(!open)} className="min-h-11 px-3 rounded-lg border border-parchment-100/20 text-sm text-parchment-100 hover:border-gold-400/60">
+            {open ? "Close" : "Menu"}
+          </button>
+        </div>
       </div>
       {open && (
         <nav id="site-navigation" aria-label="All tools" className="absolute top-full inset-x-0 border-b border-parchment-100/20 bg-parchment-950 shadow-xl max-h-[70vh] overflow-y-auto">
