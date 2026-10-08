@@ -2,7 +2,7 @@
 
 ## Resume — 2026-10-07 integrated recovery
 
-Read the current `_STATUS.md` cursor and [launch recovery](docs/2026-10-07-launch-recovery.md) first. Actual checkout `D:\R21-Brain\projects\everloot`, branch `fix/launch-recovery`. Corrected web, private auth/publication schema and guarded corpus rebuild are deployed. Exact e2e cleanup is complete. Earlier held deployment/cleanup instructions below are historical and superseded by this thread's instruction to proceed with all necessary steps and push.
+Read the current `_STATUS.md` cursor and [launch recovery](docs/2026-10-07-launch-recovery.md) first. Actual checkout `D:\R21-Brain\projects\everloot`, branch `fix/launch-recovery`. Integration `74df978` is pushed to GitHub main; its automatic production build is Ready and live checks pass. Corrected web, private auth/publication schema and guarded corpus rebuild are deployed. Exact e2e cleanup is complete. Earlier held deployment/cleanup instructions below are historical and superseded by this thread's instruction to proceed with all necessary steps and push.
 
 Pending owner inputs: authenticated Fly.io access (use only if available) and the storage location of the fresh registered Battle.net OAuth client's credentials. Never paste secrets or reuse old rotated credentials. Configure Vercel privately, redeploy, then verify actual sign-in/logout. Fly uses only a generated service token, the immutable approved knowledge image and `EVERLOOT_PUBLIC_CORPUS_URL=https://everloot.app/api/corpus/public`; no Supabase/R2 credentials or raw uploads on that host. No public MCP deployment or real OAuth login is claimed.
 

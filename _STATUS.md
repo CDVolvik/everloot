@@ -2,7 +2,7 @@
 
 ## Current cursor — 2026-10-07 integrated launch recovery
 
-Actual checkout: `D:\R21-Brain\projects\everloot`, branch `fix/launch-recovery`, base `7fd2daf`. Recovery commit `ea5b4a1` is integrated with replay/sharing branch tip `9076773` (implementation `7e9d9f7`). Earlier E/H/I completion claims are historical and unsupported; full launch remains incomplete. Evidence and next actions: [launch recovery](docs/2026-10-07-launch-recovery.md).
+Actual checkout: `D:\R21-Brain\projects\everloot`, branch `fix/launch-recovery`, base `7fd2daf`. Recovery `ea5b4a1` and replay/sharing tip `9076773` (implementation `7e9d9f7`) are integrated at `74df978`, pushed to GitHub main and the recovery branch. Its automatic production deployment is Ready: `dpl_388xNMg1rZPBCfg2WgfezGpZZ7R3`, `https://everloot-p2hgdi31b-r21digital.vercel.app`, aliased to everloot.app. Earlier E/H/I completion claims are historical and unsupported; full launch remains incomplete. Evidence and next actions: [launch recovery](docs/2026-10-07-launch-recovery.md).
 
 Implemented: hashed custom Battle.net sessions; patched Next 15.5.27/React 19.2.8; stable addon identities and resumable batches; shared conflict-safe replay; operator-verified scoped publication grants, revocation and persistent character suppression; current sanitized public corpus; authenticated stateless MCP using that view. Production without complete cloud configuration now refuses local persistence and reports storage unavailable. Legacy watermark updates retain their mode until a full inventory exists, preventing double counts.
 
