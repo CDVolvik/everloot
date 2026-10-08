@@ -1,6 +1,14 @@
 # Everloot — Status
 
-## Current cursor — 2026-10-08 five-track continuation
+## Current cursor — 2026-10-08 visible account controls verified
+
+Visible Battle.net Sign in/Sign out controls are live at `4030303`. Account lookup and logout failures remain retryable; pending logout prevents duplicate submission. The compact mobile Close label retains its accessible name and Escape focus restoration. Privacy copy describes identity storage, provider permissions and session revocation. Six new DOM regressions passed red/green; all 133 web tests and production build pass. Independent review has no remaining findings. Full [release checks 37847388745](https://github.com/CDVolvik/everloot/actions/runs/37847388745) succeeded on this exact code SHA.
+
+Carlos generated another Battle.net secret with duration 0; the developer client no longer displays an Old Secret entry. Initial replacement did not persist in Vercel (history showed only its original addition), and the live callback failed. Replacement was corrected privately; Vercel confirms BNET_CLIENT_SECRET as Production sensitive with update time 2026-10-08 21:35:33Z. No secret value was printed or saved locally. Production `dpl_7z2SmKRhrPhHfYiYLXPHNy29e9oe` is Ready on everloot.app/www at `4030303`, with the ten-minute cron. Actual visible Sign in now succeeds with `/me` 200/authenticated; signed-in/open-menu geometry fits 320px; visible Sign out returns `/me` 200/anonymous. Browser left signed out, viewport restored. Earlier real revoked-cookie replay also passed. Screenshots are Brain scratch `tmp/everloot-account-controls-2026-10-08.jpg` and `tmp/everloot-account-signed-in-320-2026-10-08.jpg`; masked environment proof was refreshed.
+
+Next: real beta-client collection/upload and owner/officer publication/revocation evidence, then remaining launch scope. Render remains deferred to the free-host pipeline; no public MCP service or new paid resource was provisioned. All five tracks remain the scope; this closes the visible OAuth user-flow gap, not the full launch.
+
+## Earlier checkpoint — 2026-10-08 five-track continuation
 
 All five tracks are authorized, subject to free services only. Collection/source provenance, profession cost routing, navigation/discovery/accessibility and consent repairs are implemented. Addon 0.2.1 zip and real-client checklist prepared. Local verification: 178 KB tests/typecheck, 127 web tests/typecheck/build, Lua 5.1 collection/identity checks; independent consent finding repaired and re-reviewed. Snapshot metadata health and bounded CI/image workflows prepared. See [five-track progress](docs/2026-10-08-five-track-progress.md) for exact scope and limits.
 
