@@ -87,7 +87,7 @@ identity and collection execution pass. Full-parallel KB startup once exceeded
 its existing three-second wait; isolated and bounded-worker suites pass.
 Independent review found one consent-write failure bug; fixed and re-reviewed,
 with no remaining blockers in the bounded reviewed code. This is not a full
-launch closure. CI and deployments remain unverified until explicitly recorded.
+launch closure. Remote CI and deployment evidence are recorded below.
 
 ## Published release evidence
 
@@ -105,8 +105,9 @@ console errors. No synthetic public upload was created.
 The private GitHub prerelease `mcp-knowledge-2026-10-05` contains both the exact
 338,112,512-byte SQLite and 765-byte manifest. First abbreviated target SHA was
 rejected without a release; retry used the full reviewed commit successfully.
-Remote release-check run 37812194665 started; image publishing dispatched after
-both assets were confirmed uploaded. Completion/results still need recording.
+Remote release-check run 37812194665 was the first check; its packaging failure
+and successful replacement are recorded below. Image publishing was dispatched
+after both assets were confirmed uploaded.
 Local MCP restart returned healthy with matching hash and no OOM; test container
 then stopped/removed. Read-only root requires a small writable /tmp for tsx.
 
@@ -115,4 +116,18 @@ Lua execution, but found cross-OS zip metadata/compression differences. Packagin
 now pins Unix file attributes and uses stored entries to avoid zlib differences.
 The revised source-only zip hash above supersedes the first compressed zip
 `50ddbf9c64340391029a69c823b67c2b338a45528d165f207449d3c0eb75ce99`;
-addon source content is unchanged. Rerun the complete remote check on that fix.
+addon source content is unchanged. Complete remote release-check run
+[37813002820](https://github.com/CDVolvik/everloot/actions/runs/37813002820)
+succeeded on `912a465b3f3d13ad20083b2fe333c11e52a21881`, including all KB/web,
+type/build/lint, Lua and zip reproducibility checks. Production
+`dpl_7UUDzRjQmeKe2jkwGUtYyTADP2Dp` is Ready on that exact code SHA, aliased to
+everloot.app/www, with the ten-minute cron intact. Live beta download hash is the
+revised hash above. The companion branch deployment is a preview.
+
+MCP image publishing run 37812526741 completed successfully for reviewed commit
+`d2cf28f`. Both commit/beta tags resolve to digest
+`sha256:921c21c6d0f143de645779e4ca31c490f186044b8c6b696021b2ec2e88fb1448`.
+The Render draft pins this digest. The package is not asserted anonymously
+accessible; registry pull access must be verified/configured at deployment.
+Private knowledge prerelease/assets and registry publishing do not mean public
+MCP hosting is complete. Follow Carlos's pipeline deferral.
