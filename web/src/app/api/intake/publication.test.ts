@@ -1,6 +1,7 @@
 import { beforeEach, expect, test, vi } from "vitest";
 const store = vi.hoisted(() => ({ putUpload: vi.fn(), lookup: vi.fn() }));
 vi.mock("@/lib/upload-store", () => ({ uploadStore: { putUpload: store.putUpload }, sharingStore: { lookup: store.lookup } }));
+vi.mock("@/lib/intake-quota", () => ({ intakeQuota: { request: async () => ({ allowed: true, retryAfter: 0 }), install: async () => ({ allowed: true, retryAfter: 0 }) } }));
 import { POST } from "./route";
 const token = "a".repeat(64), tokenHash = "b".repeat(64);
 const grant = { tokenHash, installId: "named-install", realm: "Moon Guard", subjectType: "character", subject: "Thrall",

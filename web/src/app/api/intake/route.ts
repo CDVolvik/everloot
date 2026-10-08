@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
 import { parseUpload, type CanonicalUpload } from "@/lib/intake";
 import { uploadStore, sharingStore } from "@/lib/upload-store";
+import { intakeQuota, type QuotaResult } from "@/lib/intake-quota";
 import { authorizeRecord, sharingCategory, type PublicationGrant } from "../../../../../kb/src/publication";
 
 /**
@@ -9,23 +10,24 @@ import { authorizeRecord, sharingCategory, type PublicationGrant } from "../../.
  * Storage is `uploadStore`: an R2 object plus a Supabase index row in production, a local
  * JSON file in dev. Rollups and corroboration are step 2.
  * Only schema-parsed records are stored, so what the store holds is what the receipt describes.
- * Best-effort per-install rate limit (in-memory; Supabase enforces it for real later).
+ * Production request and install admission share atomic Supabase counters.
  */
 export const dynamic = "force-dynamic";
 
-const RATE_WINDOW_MS = 60 * 60 * 1000;
-const RATE_MAX_UPLOADS = 20;
-const hits = new Map<string, number[]>();
-
-function rateLimited(installId: string): boolean {
-  const now = Date.now();
-  const window = (hits.get(installId) ?? []).filter((t) => now - t < RATE_WINDOW_MS);
-  window.push(now);
-  hits.set(installId, window);
-  return window.length > RATE_MAX_UPLOADS;
+async function admission(check: () => Promise<QuotaResult>) {
+  try {
+    const result = await check();
+    if (!result.allowed) return NextResponse.json({ ok: false, error: "Upload rate limited. Keep your file and retry later." },
+      { status: 429, headers: { "retry-after": String(result.retryAfter), "cache-control": "no-store" } });
+  } catch {
+    return NextResponse.json({ ok: false, error: "Upload admission unavailable. Keep your file and retry." }, { status: 503 });
+  }
+  return null;
 }
 
 export async function POST(req: Request) {
+  const requestDenied = await admission(() => intakeQuota.request(req));
+  if (requestDenied) return requestDenied;
   let payload: unknown;
   try {
     const reader = req.body?.getReader();
@@ -90,9 +92,8 @@ export async function POST(req: Request) {
     );
   }
   const installId = upload.records[0].installId;
-  if (rateLimited(installId)) {
-    return NextResponse.json({ ok: false, error: "rate limited: max 20 uploads/hour per install" }, { status: 429 });
-  }
+  const installDenied = await admission(() => intakeQuota.install(installId));
+  if (installDenied) return installDenied;
   const uploadId = randomUUID();
   let persisted = false;
   try {

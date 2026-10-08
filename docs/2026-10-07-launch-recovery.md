@@ -42,14 +42,13 @@ Vercel CLI access works in scope `r21digital`, project `everloot-web`, root `web
 
 ## Hosting and next actions
 
-User preference: use Fly.io if account access is available. No local Fly session/CLI credential or authenticated browser account was found. Do not invent an account or claim deployment. Ready configuration: `kb/Dockerfile`, `kb/fly.toml`; proposed app `everloot-kb-mcp`, region `iad`, one shared CPU / 1 GB, always running. Verify app-name availability and organization after authentication. Run from repo root:
+Budget update (10/07): Carlos requires free services. Fly login is confirmed in Chrome, but its [trial](https://docs.fly.io/about/free-trial) is temporary and ongoing [hosting is paid](https://docs.fly.io/about/pricing). No Fly machines or billing were enabled. Fly deployment and the earlier planned Supabase Pro upgrade are held. Keep the tested Docker image for a suitable free host; `kb/fly.toml` is a historical provider draft, not the current deployment instruction. Local container verification remains available:
 
 ```powershell
 docker build -f kb/Dockerfile -t everloot-mcp .
-fly deploy --config kb/fly.toml
 ```
 
-Set only a generated `EVERLOOT_MCP_TOKEN` privately on Fly. Allowed origins and `EVERLOOT_PUBLIC_CORPUS_URL=https://everloot.app/api/corpus/public` are configuration. Verify HTTPS health, unauthorized rejection, initialized search/gameplay calls and restart/restore before connecting a real client. No persistent volume is required for the immutable release. Bearer transport support does not establish ChatGPT directory authentication compatibility or submission.
+On the selected free host, set only a generated `EVERLOOT_MCP_TOKEN` privately. Allowed origins and `EVERLOOT_PUBLIC_CORPUS_URL=https://everloot.app/api/corpus/public` are configuration. Verify HTTPS health, unauthorized rejection, initialized search/gameplay calls and restart/restore before connecting a real client. No persistent volume is required for the immutable release. Bearer transport support does not establish ChatGPT directory authentication compatibility or submission.
 
 User says a fresh Battle.net OAuth client is already registered with `https://everloot.app/api/auth/bnet/callback` and will provide its local storage location. Await that location, configure `BNET_CLIENT_ID` / `BNET_CLIENT_SECRET` in Vercel without printing values, redeploy, then verify a real owner sign-in and logout. Do not reuse historical credentials that required rotation. Subscription billing and enforcement are not implemented merely because entitlement tables exist.
 

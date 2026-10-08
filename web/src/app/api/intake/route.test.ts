@@ -5,7 +5,8 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
  * accepted records, and it must never report a receipt the store did not write.
  */
 
-const store = vi.hoisted(() => ({ putUpload: vi.fn(), lookup: vi.fn() }));
+const store = vi.hoisted(() => ({ putUpload: vi.fn(), lookup: vi.fn(), requestQuota: vi.fn(), installQuota: vi.fn() }));
+vi.mock("@/lib/intake-quota", () => ({ intakeQuota: { request: store.requestQuota, install: store.installQuota } }));
 
 vi.mock("@/lib/upload-store", () => ({
   sharingStore: { lookup: store.lookup },
@@ -42,7 +43,7 @@ function request(payload: unknown): Request {
   });
 }
 
-/** A fresh module per call so the in-memory rate limit starts empty. */
+/** A fresh route module per test. */
 async function freshPost() {
   vi.resetModules();
   const { POST } = await import("./route.js");
@@ -50,6 +51,8 @@ async function freshPost() {
 }
 
 beforeEach(() => {
+  store.requestQuota.mockReset().mockResolvedValue({ allowed: true, retryAfter: 0 });
+  store.installQuota.mockReset().mockResolvedValue({ allowed: true, retryAfter: 0 });
   store.putUpload.mockReset();
   store.putUpload.mockResolvedValue(true);
   store.lookup.mockReset();
@@ -130,12 +133,37 @@ describe("POST /api/intake", () => {
     expect(await response.json()).toMatchObject({ ok: false, persisted: false });
   });
 
-  test("the per-install rate limit still answers 429 after 20 uploads", async () => {
+  test("shared install denial answers 429 with Retry-After and writes nothing", async () => {
+    store.installQuota.mockResolvedValue({ allowed: false, retryAfter: 75 });
     const POST = await freshPost();
-    const send = () => POST(request({ addonVersion: "0.1.0", records: [loot("install-1234")] }));
+    const response = await POST(request({ addonVersion: "0.1.0", records: [loot("install-1234")] }));
+    expect(response.status).toBe(429);
+    expect(response.headers.get("retry-after")).toBe("75");
+    expect(store.installQuota).toHaveBeenCalledWith("install-1234");
+    expect(store.putUpload).not.toHaveBeenCalled();
+  });
 
-    for (let i = 0; i < 20; i += 1) expect((await send()).status).toBe(200);
-    expect((await send()).status).toBe(429);
-    expect(store.putUpload).toHaveBeenCalledTimes(20);
+  test("request quota denial precedes body reads and grant lookups", async () => {
+    store.requestQuota.mockResolvedValue({ allowed: false, retryAfter: 40 });
+    const POST = await freshPost();
+    const req = request({});
+    const read = vi.spyOn(req.body!, "getReader");
+    const response = await POST(req);
+    expect(response.status).toBe(429);
+    expect(response.headers.get("retry-after")).toBe("40");
+    expect(read).not.toHaveBeenCalled();
+    expect(store.lookup).not.toHaveBeenCalled();
+    expect(store.putUpload).not.toHaveBeenCalled();
+  });
+
+  test("quota storage failure refuses intake rather than falling back", async () => {
+    const POST = await freshPost();
+    for (const quota of [store.requestQuota, store.installQuota]) {
+      quota.mockRejectedValueOnce(new Error("database down"));
+      const response = await POST(request({ addonVersion: "0.1.0", records: [loot("install-1234")] }));
+      expect(response.status).toBe(503);
+      expect(await response.json()).toMatchObject({ ok: false });
+    }
+    expect(store.putUpload).not.toHaveBeenCalled();
   });
 });

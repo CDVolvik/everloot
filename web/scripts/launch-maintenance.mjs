@@ -48,7 +48,7 @@ export async function cleanupTestData({ rest, r2 }) {
 
 async function main() {
   const action = process.env.EVERLOOT_MAINTENANCE_ACTION;
-  if (!['preflight', 'apply-schema-and-cleanup'].includes(action)) throw new Error("An explicit maintenance action is required");
+  if (!['preflight', 'apply-schema-and-cleanup', 'apply-intake-quota'].includes(action)) throw new Error("An explicit maintenance action is required");
   if (new URL(process.env.SUPABASE_URL).hostname !== `${REF}.supabase.co` || process.env.R2_BUCKET !== "everloot-uploads") {
     throw new Error("Maintenance target does not match Everloot production");
   }
@@ -64,6 +64,27 @@ async function main() {
     const before = await client.query("select table_name, column_name from information_schema.columns where table_schema='public' order by table_name, ordinal_position");
     console.log("Everloot schema preflight:", JSON.stringify(before.rows));
     if (action === "preflight") return;
+    if (action === "apply-intake-quota") {
+      const quota = await readFile(new URL("../../supabase/migrations/20261007220000_intake_quotas.sql", import.meta.url), "utf8");
+      await client.query('BEGIN');
+      try {
+        await client.query(quota);
+        const check = await client.query(`select relrowsecurity from pg_class where oid='public.intake_quota_buckets'::regclass`);
+        if (!check.rows[0]?.relrowsecurity) throw new Error("Quota RLS verification failed");
+        for (const role of ['anon', 'authenticated']) {
+          const access = await client.query(`select has_function_privilege($1, 'public.consume_intake_quota(text,text)', 'execute') as execute,
+            has_table_privilege($1, 'public.intake_quota_buckets', 'select,insert,update,delete') as access`, [role]);
+          if (access.rows[0].execute || access.rows[0].access) throw new Error("Quota browser privilege verification failed");
+        }
+        const server = await client.query(`select has_function_privilege('service_role', 'public.consume_intake_quota(text,text)', 'execute') as execute,
+          has_table_privilege('service_role', 'public.intake_quota_buckets', 'select') as read,
+          has_table_privilege('service_role', 'public.intake_quota_buckets', 'delete') as prune`);
+        if (!server.rows[0].execute || !server.rows[0].read || !server.rows[0].prune) throw new Error("Quota server privilege verification failed");
+        await client.query('COMMIT');
+      } catch (error) { await client.query('ROLLBACK'); throw error; }
+      console.log("Intake quota schema verified: private RLS table; browser execution revoked; service-only atomic admission.");
+      return;
+    }
     // Refuse to reinterpret an existing session table from a different auth model.
     if (before.rows.some(r => r.table_name === 'sessions') && !before.rows.some(r => r.table_name === 'sessions' && r.column_name === 'token_hash')) {
       throw new Error("Existing session schema requires a reviewed migration");
