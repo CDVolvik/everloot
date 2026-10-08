@@ -5,7 +5,7 @@ services:
     name: everloot-mcp-beta
     runtime: image
     image:
-      url: ghcr.io/cdvolvik/everloot-mcp:beta
+      url: ghcr.io/cdvolvik/everloot-mcp@sha256:921c21c6d0f143de645779e4ca31c490f186044b8c6b696021b2ec2e88fb1448
     plan: free
     region: virginia
     healthCheckPath: /health

@@ -10,13 +10,15 @@
 - Check 390/768/1440px layout, keyboard menu, calculator and empty entity `noindex`.
 - With advertising intercepted, inspect absent/reject/accept/withdraw network
   behavior and storage-write failure. These checks do not certify an advertising
-  provider's required consent platform; do not enable production ads until that
-  setup is established.
+  provider's required consent platform. Google's current [publisher requirements](https://support.google.com/adsense/answer/13554116?hl=en)
+  require a certified CMP integrated with IAB TCF for personalized ads served in
+  the EEA, UK and Switzerland. The local preferences control is not a certified
+  CMP. Establish the provider setup before enabling those ads.
 
-The GitHub workflow runs the code and Lua checks with a ten-minute job cap and
-supersedes concurrent runs. It uses existing Actions allowances; no paid runner or
-upgrade is configured. Account-wide allowance/spend settings still need checking
-before triggering it. Passing locally does not establish that CI has run remotely.
+The GitHub workflow runs code/Lua checks and verifies reproducible packaging with
+a ten-minute job cap; concurrent runs are superseded. Existing GitHub Actions and
+Packages $0 stop-usage budgets were inspected on 10/08, without changing them.
+No paid runner or upgrade is configured. Keep those controls when rerunning.
 
 ## Production checks
 
