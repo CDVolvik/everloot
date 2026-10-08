@@ -5,7 +5,7 @@ import EmailCapture from "@/components/EmailCapture";
 export const metadata: Metadata = {
   title: "Forever Farming Routes",
   description:
-    "Gold and material farming routes for WoW: Forever, drawn from real player spawn sightings. Collecting now.",
+    "Planned WoW: Forever farming routes from uploaded sightings. Route optimization and respawn timing are not available yet.",
   keywords: ["wow forever farming", "wow forever gold farm", "wow forever routes"],
   alternates: { canonical: "/tools/farming-routes" },
 };
@@ -13,19 +13,19 @@ export const metadata: Metadata = {
 const CARDS = [
   {
     title: "Spawn maps, not guesses",
-    body: "Every node and mob position on a route comes from target and mouseover sightings players upload — with independent-player counts, so farmed-out spots show their age honestly.",
+    body: "Planned maps will use uploaded sightings. Distinct install IDs are not verified independent players, and sightings do not establish respawn timing.",
   },
   {
     title: "Gold-per-hour attached",
-    body: "Each route links into the Gold/Hour Calculator with its own loot table, so a route tells you what to farm and the math tells you what it's worth right now.",
+    body: "Route-linked estimates are planned. The available Gold/Hour Calculator uses the time, quantities and prices you enter yourself.",
   },
   {
     title: "Respawns included",
-    body: "Repeated sightings build respawn timing per spawn point. Routes optimize the loop order around real respawns instead of a static circle drawn in 2006.",
+    body: "Respawn measurement and loop optimization are not available yet. Repeated sightings alone do not prove a respawn interval.",
   },
   {
     title: "Gatherers + hunters",
-    body: "Herb and mining nodes ride the same system as mob drops. One route page can carry the ore loop, the mob loop between nodes, and the combined gold rate.",
+    body: "Combined gathering and mob routes are planned, pending verified collection and enough usable observations.",
   },
 ];
 
@@ -34,15 +34,15 @@ export default function FarmingRoutesPage() {
     <article className="space-y-10 max-w-4xl">
       <header className="space-y-3">
         <p className="uppercase tracking-[0.2em] text-xs text-gold-500/80">
-          Collecting data
+          Planned · routes not yet available
         </p>
         <h1 className="font-display text-3xl sm:text-4xl font-bold text-parchment-100 tracking-tight">
           Forever Farming Routes
         </h1>
         <p className="text-lg text-parchment-100/75 max-w-2xl">
-          Zone-by-zone gold and material routes for WoW: Forever. No static circles from
-          decades-old guides — routes are drawn from spawn sightings the community
-          collects, and each one opens when its zone has the data.
+          Zone-by-zone gold and material routes are planned. No optimized routes or
+          respawn estimates are available yet. You can upload sightings or use the
+          calculator for a farm you already know.
         </p>
       </header>
 

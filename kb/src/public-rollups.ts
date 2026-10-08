@@ -6,6 +6,7 @@
 
 import type { DB } from "./db.js";
 import { rollupDrops, lootWindowsFromRecords, itemFactsFromRecords } from "./drop-rollup.js";
+import { itemPage } from "./item-page.js";
 import { npcPage, questPage, vendorPage, worldFactsFromRecords, type WorldFacts } from "./world-pages.js";
 import { guildBoard, guildFactsFromRecords, type GuildFacts } from "./guild-board.js";
 import { auctionHistory, auctionSightingsFromRecords, type AuctionSighting } from "./auction-history.js";
@@ -169,18 +170,15 @@ export function loadPublicRollups(db: DB): void {
   for (const rate of dropResult.rates) {
     if (!rate.public) continue;
     const itemId = rate.itemId;
-    const nameRow = itemFacts.names.find(n => n.itemId === itemId);
+    const page = itemPage(itemId, itemFacts);
     
     // Find NPC pin from loot windows that dropped this item
-    const sourceId = rate.sourceNpcId ?? rate.sourceObjectId;
     const sourceNpcId = rate.sourceNpcId;
-    const npcPin = allRecords.find(r => 
-      r.kind === "npc_sighting" && r.npcId === sourceNpcId
-    ) as { npcId: number; name: string; mapId: number; x: number; y: number } | undefined;
+    const npcPin = page.pins.find(pin => pin.npcId === sourceNpcId);
     
     const fact: PublicItemFact = {
       itemId,
-      name: nameRow?.name ?? `Item ${itemId}`,
+      name: page.name ?? `Item ${itemId}`,
       quality: "unknown",
       dropRate: {
         kills: rate.kills,
@@ -193,11 +191,11 @@ export function loadPublicRollups(db: DB): void {
     if (sourceNpcId && npcPin) {
       fact.mapPin = {
         npcId: sourceNpcId,
-        name: npcPin.name,
+        name: npcPin.name ?? `NPC ${sourceNpcId}`,
         mapId: npcPin.mapId,
         x: npcPin.x,
         y: npcPin.y,
-        installs: rate.reporters,
+        installs: npcPin.reporters,
       };
     }
     publicCache.itemFacts.set(itemId, fact);

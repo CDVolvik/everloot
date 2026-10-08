@@ -1,6 +1,6 @@
 /**
  * One item page from Everloot rollups.
- * A drop rate is public when 3 installs have killed the source.
+ * Observed loot-window frequency is public after 3 distinct install reports.
  * A name or a map pin is public when 3 installs agree.
  * Wowhead is the page shape. Its rows stay there.
  */
@@ -146,9 +146,9 @@ export function itemPage(itemId: number, facts: ItemFacts): ItemPage {
   return { itemId, name, drops, pins };
 }
 
-/** A numerator of 0 with a real kill count. Not the same sentence as an unrecorded rate. */
+/** Zero within an observed sample, not a census of kills. */
 export function formatMeasuredZero(kills: number): string {
-  return `0 drops in ${kills} kills`;
+  return `0 items in ${kills} observed loot windows`;
 }
 
 export function formatItemPage(page: ItemPage): string {
@@ -156,14 +156,14 @@ export function formatItemPage(page: ItemPage): string {
   const lines = [title];
   if (!page.name) lines.push("No agreed name yet. A name needs 3 installs reporting the same one.");
   if (page.drops.length === 0) {
-    lines.push("Drop rate unrecorded. A rate goes public when 3 installs have killed the source.");
+    lines.push("Drop rate unrecorded. Observed loot-window frequency needs 3 distinct install reports; total kills are unknown.");
     return lines.join("\n");
   }
   lines.push("Drops");
   for (const drop of page.drops) {
     const rate = drop.drops === 0
       ? `${formatMeasuredZero(drop.kills)}  ${drop.reporters} reporters`
-      : `${drop.kills} kills  ${drop.drops} drops  ${(drop.rate * 100).toFixed(1)}%  ${drop.reporters} reporters`;
+      : `${drop.kills} observed loot windows  ${drop.drops} windows with this item  ${(drop.rate * 100).toFixed(1)}%  ${drop.reporters} distinct install reports`;
     lines.push(`${drop.source}  ${rate}`);
   }
   lines.push("Map");

@@ -4,6 +4,7 @@ import { handleNpcPage, handleQuestPage, handleVendorPage, worldFactsFromRecords
 test("three agreeing sightings publish a name and a pin, and a split name stays blank", () => {
   const sight = (installId: string, name: string, x: number) => ({
     kind: "npc_sighting",
+    positionKind: "npc",
     installId,
     npcId: 42,
     name,

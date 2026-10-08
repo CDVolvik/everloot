@@ -33,7 +33,8 @@ local function targetSighting(unit)
   local name = UnitName(unit)
   local level = UnitLevel(unit)
   if not name or not level or level < 1 then return end
-  local where = mapPosition() or {}
+  local where = mapPosition()
+  if not where or not where.x or not where.y then return end
   local reaction = "neutral"
   if UnitIsFriend("player", unit) then reaction = "friendly"
   elseif UnitCanAttack("player", unit) then reaction = "hostile" end
@@ -41,7 +42,7 @@ local function targetSighting(unit)
     installId = EverlootDB.installId,
     capturedAt = date("!%Y-%m-%dT%H:%M:%SZ"),
     npcId = npcId, name = name,
-    mapId = where.mapId or 0, x = where.x or 0, y = where.y or 0,
+    mapId = where.mapId, x = where.x, y = where.y, positionKind = "player",
     level = level, reaction = reaction,
   })
 end
@@ -64,26 +65,46 @@ local function rememberItem(itemId)
 end
 
 local function lootCapture()
-  local items = {}
+  -- Source pairs are GUID, quantity, GUID, quantity. Never infer loot from the target.
+  if not (GetLootSourceInfo and GetLootSlotInfo and GetLootSlotLink) then return end
+  EverlootDB.lootSources = EverlootDB.lootSources or {}
+  local groups = {}
   local n = GetNumLootItems and GetNumLootItems() or 0
   for i = 1, math.min(n, 50) do
-    local link = GetLootSlotLink and GetLootSlotLink(i)
-    local _, _, count = GetLootSlotInfo and GetLootSlotInfo(i)
+    local okLink, link = pcall(GetLootSlotLink, i)
+    local okInfo, _, _, count = pcall(GetLootSlotInfo, i)
+    if not okLink or not okInfo or type(link) ~= "string" then link = nil end
     local itemId = link and tonumber(link:match("item:(%d+)"))
-    if itemId then
-      items[#items + 1] = { itemId = itemId, count = count or 1 }
+    if itemId and type(count) == "number" and count > 0 then
+      local sources = { pcall(GetLootSourceInfo, i) }
+      if sources[1] then
+        for j = 2, #sources, 2 do
+          local guid, quantity = sources[j], sources[j + 1]
+          local npcId = npcIdFromGuid(guid)
+          local objectId = type(guid) == "string" and guid:match("^GameObject%-%d+%-%d+%-%d+%-%d+%-(%d+)%-")
+          if (npcId or objectId) and type(quantity) == "number" and quantity >= 1
+            and quantity <= 1000 and quantity == math.floor(quantity) then
+            local group = groups[guid] or { sourceNpcId = npcId, sourceObjectId = tonumber(objectId), items = {} }
+            group.items[#group.items + 1] = { itemId = itemId, count = quantity }
+            groups[guid] = group
+          end
+        end
+      end
       rememberItem(itemId)
     end
   end
-  local sourceNpcId = npcIdFromGuid(UnitGUID("target"))
-  -- No source and no items is not a kill. An empty window with a source is a measured 0.
-  if #items == 0 and not sourceNpcId then return end
-  E:Store("loot", {
-    installId = EverlootDB.installId,
-    capturedAt = date("!%Y-%m-%dT%H:%M:%SZ"),
-    sourceNpcId = sourceNpcId,
-    items = items,
-  })
+  for guid, group in pairs(groups) do
+    if not EverlootDB.lootSources[guid] then
+      group.installId = EverlootDB.installId
+      group.capturedAt = date("!%Y-%m-%dT%H:%M:%SZ")
+      group.sourceEvidence = "loot-api"
+      if E:Store("loot", group) then
+        -- Local-only corpse identity: retained across reloads, never exported as a row.
+        -- Bounded by the same retained loot-row capacity; failures do not mark seen.
+        EverlootDB.lootSources[guid] = true
+      end
+    end
+  end
 end
 
 local function vendorCapture()

@@ -1,0 +1,18 @@
+# From the Render dashboard use Existing Image. No database or paid disk is needed.
+# The image must first be published/access-verified; pin its digest for release.
+services:
+  - type: web
+    name: everloot-mcp-beta
+    runtime: image
+    image:
+      url: ghcr.io/cdvolvik/everloot-mcp:beta
+    plan: free
+    region: virginia
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: '8787'
+      - key: EVERLOOT_PUBLIC_CORPUS_URL
+        value: https://everloot.app/api/corpus/public
+      - key: EVERLOOT_MCP_TOKEN
+        sync: false

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CookiePreferencesButton } from "./CookieConsent";
 
 export default function Footer() {
   const year = new Date().getFullYear();
@@ -9,10 +10,13 @@ export default function Footer() {
           <span className="font-display text-gold-400 font-semibold">Everloot</span>{" "}
           &copy; {year}. The WoW: Forever database, built from player data.
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <Link href="/database" className="inline-flex items-center min-h-11 hover:text-gold-400 transition">Database</Link>
+          <Link href="/upload" className="inline-flex items-center min-h-11 hover:text-gold-400 transition">Upload</Link>
           <Link href="/privacy" className="hover:text-gold-400 transition">
             Privacy
           </Link>
+          <CookiePreferencesButton />
           <Link href="/about" className="hover:text-gold-400 transition">
             About
           </Link>

@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { formatMeasuredZero } from "../../../../../../kb/src/item-page";
 import { npcPage } from "../../../../../../kb/src/world-pages";
 import { computeRollups, loadWorldFacts } from "@/lib/rollup-compute";
 import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
@@ -10,10 +9,14 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata(props: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const params = await props.params;
+  if (!/^[1-9]\d*$/.test(params.id)) return { robots: { index: false, follow: true } };
+  const facts = await loadWorldFacts();
+  const page = npcPage(Number(params.id), facts);
   return {
-    title: `NPC ${params.id}`,
+    title: !facts.unreachable && page.name ? page.name : `NPC ${params.id}`,
     description: "A WoW: Forever NPC page from corroborated names and map pins.",
     alternates: { canonical: `/database/npcs/${params.id}` },
+    robots: { index: !facts.unreachable && Boolean(page.name || page.pins.length), follow: true },
   };
 }
 
@@ -47,21 +50,23 @@ export default async function NpcPage(props: { params: Promise<{ id: string }> }
       <section className="space-y-2">
         <h2 className="font-display text-2xl text-parchment-100">Drops</h2>
         {zero ? (
-          <p className="text-sm text-parchment-100/85">{formatMeasuredZero(zero.kills)}. {zero.reporters} reporters.</p>
+          <p className="text-sm text-parchment-100/85">No items observed in {zero.kills} recorded loot windows. {zero.reporters} install IDs.</p>
         ) : dropped.length === 0 ? (
-          <p className="text-sm text-parchment-100/70">Drops unrecorded. A rate goes public when 3 installs have killed this NPC.</p>
+          <p className="text-sm text-parchment-100/70">Loot observations unrecorded. Public frequencies require source observations from 3 install IDs.</p>
         ) : (
           <ul className="text-sm text-parchment-100/85 space-y-1">
             {dropped.map((row) => (
               <li key={row.itemId}>
                 <Link href={`/database/items/${row.itemId}`} className="text-gold-400 hover:underline underline-offset-4">Item {row.itemId}</Link>
-                {" "}· {row.drops} drops in {row.kills} kills · {row.reporters} reporters
+                {" "}· {row.drops} item observations in {row.kills} loot windows · {row.reporters} install IDs
               </li>
             ))}
           </ul>
         )}
       </section>
       )}
+
+      <p className="text-sm text-parchment-100/60">Loot windows are observations, not verified kills. Distinct install IDs do not prove independent players.</p>
 
       {unreachable ? null : (
       <section className="space-y-2">

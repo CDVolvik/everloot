@@ -1,0 +1,29 @@
+name: MCP release image
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  packages: write
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch the immutable approved release from this private repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p kb/data/release
+          gh release download mcp-knowledge-2026-10-05 --repo "$GITHUB_REPOSITORY" --dir kb/data/release
+          echo 'd21bb3c414db9f5f40a3146fe78d0ba3e7071eb083c59003fbf6062bd8ab41eb  kb/data/release/2026-10-05-everloot-public.sqlite' | sha256sum --check
+      - name: Build and publish the knowledge-only image
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          image="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/everloot-mcp"
+          docker build --platform linux/amd64 -f kb/Dockerfile -t "$image:$GITHUB_SHA" -t "$image:beta" .
+          docker push "$image:$GITHUB_SHA"
+          docker push "$image:beta"
+          docker logout ghcr.io

@@ -224,7 +224,7 @@ export default function GoldCalculator() {
             placeholder="e.g. Revendreth cloth run"
             value={state.farmName}
             onChange={(e) => patch({ farmName: e.target.value })}
-            className="w-full rounded-lg bg-parchment-900 border border-parchment-100/10 px-3 py-2 text-parchment-100 placeholder:text-parchment-100/30 focus:border-gold-400 outline-none"
+            className="min-h-11 text-base w-full rounded-lg bg-parchment-900 border border-parchment-100/10 px-3 py-2 text-parchment-100 placeholder:text-parchment-100/30 focus:border-gold-400 "
           />
         </label>
         <label className="block">
@@ -238,7 +238,7 @@ export default function GoldCalculator() {
             onChange={(e) =>
               patch({ hours: Math.max(0, Number(e.target.value) || 0) })
             }
-            className="w-24 rounded-lg bg-parchment-900 border border-parchment-100/10 px-3 py-2 text-parchment-100 focus:border-gold-400 outline-none"
+            className="min-h-11 text-base w-24 rounded-lg bg-parchment-900 border border-parchment-100/10 px-3 py-2 text-parchment-100 focus:border-gold-400 "
           />
         </label>
         <label className="block">
@@ -255,7 +255,7 @@ export default function GoldCalculator() {
                 minutes: Math.min(59, Math.max(0, Number(e.target.value) || 0)),
               })
             }
-            className="w-24 rounded-lg bg-parchment-900 border border-parchment-100/10 px-3 py-2 text-parchment-100 focus:border-gold-400 outline-none"
+            className="min-h-11 text-base w-24 rounded-lg bg-parchment-900 border border-parchment-100/10 px-3 py-2 text-parchment-100 focus:border-gold-400 "
           />
         </label>
       </div>
@@ -266,14 +266,14 @@ export default function GoldCalculator() {
           <h2 className="font-display text-xl text-parchment-100">Items looted</h2>
           <button
             onClick={addItem}
-            className="text-sm px-3 py-1.5 rounded-md border border-parchment-100/20 hover:border-gold-400/60 hover:text-gold-400 transition"
+            className="min-h-11 text-sm px-3 py-1.5 rounded-md border border-parchment-100/20 hover:border-gold-400/60 hover:text-gold-400 transition"
           >
             + Add item
           </button>
         </div>
 
         <div className="rounded-xl border border-parchment-100/10 overflow-hidden">
-          <div className="hidden md:grid grid-cols-[1fr,100px,140px,140px,40px] gap-2 px-4 py-2 bg-parchment-900 text-xs uppercase tracking-wider text-parchment-100/50">
+          <div className="hidden md:grid grid-cols-[minmax(0,1fr),100px,120px,130px,44px] gap-2 px-4 py-2 bg-parchment-900 text-xs uppercase tracking-wider text-parchment-100/50">
             <div>Item</div>
             <div>Quantity</div>
             <div>Price each (g)</div>
@@ -287,15 +287,20 @@ export default function GoldCalculator() {
               return (
                 <div
                   key={it.id}
-                  className="grid grid-cols-2 md:grid-cols-[1fr,100px,140px,140px,40px] gap-2 px-4 py-3 items-center"
+                  className="grid grid-cols-2 md:grid-cols-[minmax(0,1fr),100px,120px,130px,44px] gap-2 px-4 py-3 items-center"
                 >
+                  <label className="col-span-2 md:col-span-1 min-w-0">
+                  <span className="sr-only">Item {idx + 1} name</span>
                   <input
                     type="text"
                     placeholder="e.g. Shrouded Cloth"
                     value={it.name}
                     onChange={(e) => updateItem(it.id, { name: e.target.value })}
-                    className="col-span-2 md:col-span-1 rounded-md bg-parchment-950/60 border border-parchment-100/10 px-3 py-2 text-sm text-parchment-100 placeholder:text-parchment-100/30 focus:border-gold-400 outline-none"
+                    className="min-h-11 w-full min-w-0 rounded-md bg-parchment-950/60 border border-parchment-100/10 px-3 py-2 text-base text-parchment-100 placeholder:text-parchment-100/30 focus:border-gold-400"
                   />
+                  </label>
+                  <label className="min-w-0">
+                  <span className="block md:sr-only text-xs text-parchment-100/60 mb-1">Item {idx + 1} quantity</span>
                   <input
                     type="number"
                     min={0}
@@ -304,8 +309,11 @@ export default function GoldCalculator() {
                     onChange={(e) =>
                       updateItem(it.id, { qty: Number(e.target.value) || 0 })
                     }
-                    className="rounded-md bg-parchment-950/60 border border-parchment-100/10 px-3 py-2 text-sm text-parchment-100 focus:border-gold-400 outline-none"
+                    className="min-h-11 w-full min-w-0 rounded-md bg-parchment-950/60 border border-parchment-100/10 px-3 py-2 text-base text-parchment-100 focus:border-gold-400"
                   />
+                  </label>
+                  <label className="min-w-0">
+                  <span className="block md:sr-only text-xs text-parchment-100/60 mb-1">Item {idx + 1} price each (g)</span>
                   <input
                     type="number"
                     min={0}
@@ -315,15 +323,17 @@ export default function GoldCalculator() {
                     onChange={(e) =>
                       updateItem(it.id, { price: Number(e.target.value) || 0 })
                     }
-                    className="rounded-md bg-parchment-950/60 border border-parchment-100/10 px-3 py-2 text-sm text-parchment-100 focus:border-gold-400 outline-none"
+                    className="min-h-11 w-full min-w-0 rounded-md bg-parchment-950/60 border border-parchment-100/10 px-3 py-2 text-base text-parchment-100 focus:border-gold-400"
                   />
+                  </label>
                   <div className="text-sm text-gold-300 tabular-nums">
                     {formatGold(line?.net ?? 0)}
                   </div>
                   <button
                     onClick={() => removeItem(it.id)}
-                    aria-label="Remove item"
-                    className="text-parchment-100/40 hover:text-red-400 transition text-lg justify-self-end"
+                    aria-label={`Remove item ${idx + 1}`}
+                    disabled={state.items.length === 1}
+                    className="min-h-11 min-w-11 text-parchment-100/40 hover:text-red-400 transition text-lg justify-self-end disabled:opacity-40"
                   >
                     &times;
                   </button>
@@ -349,11 +359,11 @@ export default function GoldCalculator() {
               patch({ vendorGold: Number(e.target.value) || 0 })
             }
             placeholder="Lump sum from trash / quests"
-            className="w-full rounded-lg bg-parchment-900 border border-parchment-100/10 px-3 py-2 text-parchment-100 placeholder:text-parchment-100/30 focus:border-gold-400 outline-none"
+            className="min-h-11 text-base w-full rounded-lg bg-parchment-900 border border-parchment-100/10 px-3 py-2 text-parchment-100 placeholder:text-parchment-100/30 focus:border-gold-400 "
           />
         </label>
 
-        <label className="flex items-center gap-3 rounded-lg border border-parchment-100/10 px-3 py-2 cursor-pointer select-none">
+        <label className="min-h-11 flex items-center gap-3 rounded-lg border border-parchment-100/10 px-3 py-2 cursor-pointer select-none">
           <input
             type="checkbox"
             checked={state.ahCut}
@@ -420,19 +430,19 @@ export default function GoldCalculator() {
       <div className="flex flex-wrap gap-2 text-sm">
         <button
           onClick={shareLink}
-          className="px-4 py-2 rounded-lg bg-gold-500 text-parchment-950 font-medium hover:bg-gold-400 transition"
+          className="min-h-11 px-4 py-2 rounded-lg bg-gold-500 text-parchment-950 font-medium hover:bg-gold-400 transition"
         >
           {copied === "link" ? "✓ Link copied" : "Copy share link"}
         </button>
         <button
           onClick={copySummary}
-          className="px-4 py-2 rounded-lg border border-parchment-100/20 hover:border-gold-400/60 hover:text-gold-400 transition"
+          className="min-h-11 px-4 py-2 rounded-lg border border-parchment-100/20 hover:border-gold-400/60 hover:text-gold-400 transition"
         >
           {copied === "summary" ? "✓ Summary copied" : "Copy summary for Discord"}
         </button>
         <button
           onClick={resetAll}
-          className="px-4 py-2 rounded-lg border border-parchment-100/10 hover:border-red-400/50 hover:text-red-400 transition ml-auto"
+          className="min-h-11 px-4 py-2 rounded-lg border border-parchment-100/10 hover:border-red-400/50 hover:text-red-400 transition ml-auto"
         >
           Reset
         </button>

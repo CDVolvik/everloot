@@ -1,5 +1,11 @@
 # Everloot — resume after 2026-10-05 assessment
 
+## Resume — 2026-10-08 five-track work (current)
+
+Read [five-track progress](docs/2026-10-08-five-track-progress.md) first. Collection/profession/web repairs, beta zip, snapshot health and CI/image drafts are implemented and locally tested. 178 KB and 127 web tests pass, typechecks/build pass, independent review resolved consent persistence failure. GitHub $0 Actions/Packages stop-usage budgets verified. No paid upgrade/resource authorized.
+
+Chrome handoffs: Battle.net Everloot client saved with correct callback, historical secret still requires Carlos's rotation; Vercel env page open for private configuration afterward. Render login open for a managed free beta host; no Render resource created. Do not assume either owner step finished without a reply. Local MCP 512MiB/0.5CPU test starts non-root, initializes 13 tools, returns sourced knowledge and sanitized live empty item data; restart requested and needs health recheck. Code/CI/image publishing still await verified release evidence. Real client/phone/officer and remaining full-launch work stay open.
+
 ## Resume — 2026-10-07 integrated recovery
 
 Read the current `_STATUS.md` cursor, [quota verification](docs/2026-10-07-intake-quota-verification.md) and [launch recovery](docs/2026-10-07-launch-recovery.md) first. Actual checkout `D:\R21-Brain\projects\everloot`, branch `fix/launch-recovery`. Recovery integration `74df978` and shared quotas `fe67af2` are now pushed to GitHub main and recovery; automatic main deployment `dpl_4ThhXjHzduzQ8eSsiqJePjLMEPCt` is Ready on everloot.app. Earlier documentation overstated the main push: main was still `7fd2daf` until this continuation, while the corrected code was live through CLI deployments. Corrected web, private auth/publication/quota schema and guarded corpus rebuild are deployed. Exact e2e cleanup is complete. Earlier held deployment/cleanup instructions below are historical and superseded by this thread's instruction to proceed with all necessary steps and push.

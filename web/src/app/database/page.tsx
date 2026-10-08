@@ -6,17 +6,17 @@ import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
 export const metadata: Metadata = {
   title: "Forever Database",
   description:
-    "Drop rates, spawn maps, quests and vendors for WoW: Forever — every fact corroborated by independent players.",
+    "Loot-window observations, NPC sightings, quests and vendors for WoW: Forever. Public facts depend on corroborated install reports.",
   alternates: { canonical: "/database" },
 };
 export const dynamic = "force-dynamic";
 
 const SECTIONS = [
-  { title: "Drop rates", href: "/database/drops", body: "Rates ship with kill counts. A fact goes public after 3+ independent installs report it." },
+  { title: "Loot observations", href: "/database/drops", body: "Observed frequency per source-attributed loot window. Source observations from 3 install IDs are required; these are not verified kills or drop probabilities." },
   { title: "Spawn maps", href: "/database/npcs", body: "NPC positions from corroborated sightings. Single reports stay queued, never published." },
   { title: "Quests", href: "/database/quests", body: "Givers, turn-ins, and rewards. A row is public after 3 installs agree." },
   { title: "Vendors", href: "/database/vendors", body: "Merchant lists. A price is public after 3 installs agree on the item and the copper." },
-  { title: "Guilds", href: "/tools/guild-board", body: "Progression, roster and the Everloot score — published by officers, linked from the tracker." },
+  { title: "Guilds", href: "/tools/guild-board", body: "Officer-authorized progression and roster uploads. No aggregate guild score is published." },
 ];
 
 export default async function DatabasePage() {
@@ -26,7 +26,7 @@ export default async function DatabasePage() {
   const counts = [
     { label: "Uploads", value: stats.uploads },
     { label: "Loot windows", value: stats.lootWindows },
-    { label: "Public rates", value: live },
+    { label: "Public frequencies", value: live },
     { label: "Queued facts", value: queued },
   ];
   return (
@@ -40,7 +40,8 @@ export default async function DatabasePage() {
         </h1>
         <p className="text-lg text-parchment-100/75 max-w-2xl">
           Items, NPCs, quests and vendors for WoW: Forever — built from data players
-          collect, published only when independent uploads agree. No scrapes, no guesses.
+          collect, with public facts gated by matching install reports. Distinct install IDs
+          do not establish independent players. Actual beta-client collection remains unverified.
         </p>
       </header>
 

@@ -1,5 +1,4 @@
 User-agent: *
 Allow: /
 
-# Update with your real domain after deploy
-Sitemap: https://goldgoblin.gg/sitemap.xml
+Sitemap: https://everloot.app/sitemap.xml
