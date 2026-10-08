@@ -1,6 +1,10 @@
 # Everloot — resume after 2026-10-05 assessment
 
-## Resume — 2026-10-08 five-track work (current)
+## Resume — 2026-10-08 OAuth access checkpoint (current)
+
+Fresh Battle.net secret rotation is confirmed by Carlos and all three BNET settings are saved privately in Vercel Production. No credential value is in this handoff or a local file. Redeployment `dpl_FHL1nVLjHQzXUQmfJzqybTP5B6Tb` is Ready on everloot.app/www at `509abb5`, cron intact. Browser sign-in reaches Battle.net's OAuth Approval page for Account ID/BattleTag and WoW profile. A permission confirmation card is pending; do not click Allow without the action-time approval. Continue from that page (restart sign-in if the ten-minute state expired), verify `/api/auth/me` session and logout. The site currently has no visible login/logout controls; that user-flow gap remains. The earlier authenticator prompt and Chrome timeout are cleared, not evidence of MFA being configured. Render remains deferred to the pipeline.
+
+## Resume — 2026-10-08 five-track work (earlier checkpoint)
 
 Read [five-track progress](docs/2026-10-08-five-track-progress.md) first. Collection/profession/web repairs, beta zip, snapshot health and CI/image drafts are implemented and locally tested. 178 KB and 127 web tests pass, typechecks/build pass, independent review resolved consent persistence failure. GitHub $0 Actions/Packages stop-usage budgets verified. No paid upgrade/resource authorized.
 

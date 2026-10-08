@@ -48,9 +48,16 @@ or production upload fixtures were sent. Emulation is not a real phone trial.
 
 Chrome access to Battle.net worked. Existing WoWCollectorTracker client renamed
 Everloot; service URL and callback `https://everloot.app/api/auth/bnet/callback`
-saved and verified. Historical secret was documented exposed; Carlos was asked
-to perform Generate New Secret. Fresh Vercel secret configuration, real sign-in,
-logout and actual owner/officer publication/revocation remain pending.
+saved and verified. Carlos subsequently confirmed Generate New Secret. The fresh
+secret was transferred privately to Vercel Production as Secret; client ID and
+exact callback are Production Config. Chrome control recovered and environment
+entry no longer shows the authenticator prompt. No account MFA completion is
+claimed. Production redeployment `dpl_FHL1nVLjHQzXUQmfJzqybTP5B6Tb` is Ready
+at `509abb5` on everloot.app/www with ten-minute cron. Live browser sign-in reaches
+Battle.net OAuth Approval for Account ID/BattleTag and WoW profile. Action-time
+permission confirmation is pending; actual login/session/logout and real
+owner/officer publication/revocation remain unverified. Visible site login/logout
+controls are absent and remain a user-flow gap.
 
 Carlos asked for managed free hosting rather than an always-online machine.
 Render Free is a beta candidate: 15-minute idle sleep, about one-minute wake,
@@ -69,9 +76,10 @@ connectivity. Pin a registry digest and configure its generated bearer privately
 
 Carlos's later steering keeps Render in the pipeline for a future free beta
 deployment. Its account access is not supplied yet; do not provision under an
-assumption that the login is complete. Vercel Chrome showed an authenticator
-setup prompt on private env entry; owner handoff requested, never submitted by
-the agent. Secret rotation is authorized but still requires the owner's action.
+assumption that the login is complete. The earlier Vercel authenticator prompt
+and Chrome timeouts were cleared on the later access check. Rotation was done by
+the owner; no credential setup/rotation or account MFA submission was performed
+by the agent.
 
 ## Monitoring and verification
 
