@@ -29,6 +29,7 @@ const goodLoot = {
   installId: "install-1234",
   capturedAt,
   sourceNpcId: 123,
+  sourceEvidence: "loot-api",
   items: [{ itemId: 456, count: 1 }],
 };
 /** Same install, a source with no id, so the loot refinement refuses it. */

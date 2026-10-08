@@ -20,8 +20,9 @@ local function snapshotRoster()
   local n = GetNumGuildMembers and GetNumGuildMembers() or 0
   for i = 1, math.min(n, 2000) do
     -- Legacy roster getters are the stable cross-flavor call; C_GuildInfo covers the rest.
-    local name, rank, _, level, _, _, _, _, online, _, class = GetGuildRosterInfo and GetGuildRosterInfo(i)
-    if name then
+    if not GetGuildRosterInfo then return "no roster API" end
+    local ok, name, rank, _, level, _, _, _, _, online, _, class = pcall(GetGuildRosterInfo, i)
+    if ok and name then
       local lastOnlineDays = nil
       if online then
         lastOnlineDays = 0
@@ -44,7 +45,6 @@ local function snapshotRoster()
     installId = EverlootDB.installId,
     capturedAt = date("!%Y-%m-%dT%H:%M:%SZ"),
     guildName = ctx.guildName, realm = ctx.realm, faction = ctx.faction,
-    claimToken = "pending-officer-claim",
     members = members,
   })
   return "snapshot stored (" .. #members .. " members)"

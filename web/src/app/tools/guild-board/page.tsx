@@ -35,7 +35,7 @@ export default async function GuildBoardPage(
         <h1 className="font-display text-3xl sm:text-4xl font-bold text-parchment-100 tracking-tight">Guild board</h1>
         <p className="text-sm text-parchment-100/70 max-w-2xl">
           Roster, bosses, loot, and item level come from officer uploads. A figure is public when two of those uploads agree.
-          score_v1 has no published weights, so the board does not add the components into one number.
+          A combined guild score is not available; each component is shown separately.
         </p>
       </header>
 

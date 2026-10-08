@@ -5,6 +5,7 @@ import { handleItemPage } from "../src/item-page.js";
 test("loot and item_seen records become the same item page the site renders", () => {
   const loot = (installId: string) => ({
     kind: "loot",
+    sourceEvidence: "loot-api",
     installId,
     sourceNpcId: 456,
     items: [{ itemId: 1234, count: 1 }],
@@ -50,7 +51,7 @@ test("two installs do not publish a zero, and an object with no item is the same
 });
 
 test("loot from an object (a chest, a node) is a kill too", () => {
-  const open = (installId: string) => ({ kind: "loot", installId, sourceObjectId: 900, items: [{ itemId: 77, count: 2 }] });
+  const open = (installId: string) => ({ kind: "loot", sourceEvidence: "loot-api", installId, sourceObjectId: 900, items: [{ itemId: 77, count: 2 }] });
   const facts = itemFactsFromRecords([open("a"), open("b"), open("c")]);
   expect(facts.rates).toHaveLength(1);
   expect(facts.rates[0]).toMatchObject({ sourceObjectId: 900, itemId: 77, kills: 3, drops: 3, reporters: 3, public: true });

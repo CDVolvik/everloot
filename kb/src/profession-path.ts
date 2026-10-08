@@ -1,15 +1,15 @@
 /**
  * Leveling path from Everloot uploads.
- * A recipe is public after 3 independent installs agree on the name, the skill
- * window, the points per craft, and the reagents. Gold is the median of 3
- * price uploads. A bracket with no agreed recipe is a gap, not a guess.
+ * A recipe is public after 3 distinct install reports agree on the name, the
+ * skill window, the points per craft, and the reagents. Costs use unscoped
+ * observed prices. A bracket with no agreed recipe is a gap, not a guess.
  * Same agreement bar as drop rates. Do not feed this a copied guide.
  */
 
 export const PATH_AGREEMENT = 3;
 
 export const PATH_RULE =
-  "A recipe joins the path when 3 independent uploads agree on its name, the skill window where it still gives points, the points per craft, and the reagents. Gold is the median of 3 price uploads for every reagent on those steps. A bracket with no agreed recipe is a gap, not a guess.";
+  "A recipe joins the path when 3 distinct install reports agree on its name, skill window, points per craft, and reagents. Routes prioritize recipe coverage, then priced skill gains, then estimated reagent cost. Estimates use median reagent prices from at least 3 distinct install reports: unscoped observed prices without realm, build, or observation time, not a guaranteed current realm minimum. Missing prices prevent comparison of all recipes; unpriced steps keep their cost unknown. A bracket with no agreed recipe is a gap, not a guess.";
 
 export type Reagent = { item: string; count: number };
 
@@ -172,36 +172,77 @@ export function professionPath(
   const priceByItem = agreePrices(prices);
   const steps: PathStep[] = [];
   const gaps: { fromSkill: number; toSkill: number }[] = [];
-  let skill = query.fromSkill;
+  type Plan = { gapSkills: number; unpricedSkills: number; copper: number; units: number; crafts: number; nextSkill: number; recipe?: AgreedRecipe };
+  const plans = new Map<number, Plan>();
+  const craftPrices = new Map(recipes.map((recipe) => [recipe, stepCost(recipe.reagents, priceByItem)]));
+  // Stable order resolves otherwise equal plans, including multiple windows for one recipe.
+  recipes.sort((a, b) => a.recipe.localeCompare(b.recipe) || a.skillMin - b.skillMin || a.skillMax - b.skillMax || b.points - a.points || reagentKey(a.reagents).localeCompare(reagentKey(b.reagents)));
+  plans.set(query.toSkill, { gapSkills: 0, unpricedSkills: 0, copper: 0, units: 0, crafts: 0, nextSkill: query.toSkill });
+  const compare = (a: Plan, b: Plan): number => a.gapSkills - b.gapSkills || a.unpricedSkills - b.unpricedSkills || a.copper - b.copper || a.units - b.units || a.crafts - b.crafts;
 
-  while (skill < query.toSkill) {
-    const open = recipes.filter((recipe) => recipe.skillMin <= skill && skill < recipe.skillMax);
-    if (open.length === 0) {
-      const later = recipes
-        .map((recipe) => recipe.skillMin)
-        .filter((start) => start > skill && start < query.toSkill);
-      const gapEnd = later.length > 0 ? Math.min(...later) : query.toSkill;
-      gaps.push({ fromSkill: skill, toSkill: gapEnd });
-      if (later.length === 0) break;
-      skill = gapEnd;
-      continue;
+  // Callers bound skill ranges to a few hundred points. One craft per edge allows
+  // switches at unlocks and counts the full cost of a craft that overshoots a target.
+  if (Number.isInteger(query.fromSkill) && Number.isInteger(query.toSkill)) {
+    for (let skill = query.toSkill - 1; skill >= query.fromSkill; skill--) {
+      const open = recipes.filter((recipe) => recipe.skillMin <= skill && skill < recipe.skillMax);
+      if (open.length === 0) {
+        const rest = plans.get(skill + 1)!;
+        plans.set(skill, { ...rest, gapSkills: rest.gapSkills + 1, nextSkill: skill + 1, recipe: undefined });
+        continue;
+      }
+      let best: Plan | undefined;
+      for (const recipe of open) {
+        const nextSkill = Math.min(skill + recipe.points, query.toSkill);
+        const rest = plans.get(nextSkill)!;
+        const copper = craftPrices.get(recipe)!;
+        const candidate: Plan = {
+          gapSkills: rest.gapSkills,
+          unpricedSkills: rest.unpricedSkills + (copper === null ? nextSkill - skill : 0),
+          copper: rest.copper + (copper ?? 0),
+          units: rest.units + units(recipe.reagents),
+          crafts: rest.crafts + 1,
+          nextSkill,
+          recipe,
+        };
+        if (!best || compare(candidate, best) < 0) best = candidate;
+      }
+      plans.set(skill, best!);
     }
-    open.sort((a, b) => b.points / units(b.reagents) - a.points / units(a.reagents) || b.points - a.points || a.recipe.localeCompare(b.recipe));
-    const chosen = open[0]!;
-    const toSkill = Math.min(chosen.skillMax, query.toSkill);
-    const crafts = Math.ceil((toSkill - skill) / chosen.points);
-    const reagents = scale(chosen.reagents, crafts);
-    steps.push({
-      recipe: chosen.recipe,
-      fromSkill: skill,
-      toSkill,
-      crafts,
-      points: chosen.points,
-      reagents,
-      copper: stepCost(reagents, priceByItem),
-      reporters: chosen.reporters,
-    });
-    skill = toSkill;
+  }
+
+  let skill = query.fromSkill;
+  let previousRecipe: AgreedRecipe | undefined;
+  while (skill < query.toSkill && plans.has(skill)) {
+    const { recipe: chosen, nextSkill } = plans.get(skill)!;
+    if (!chosen) {
+      const previous = gaps[gaps.length - 1];
+      if (previous?.toSkill === skill) previous.toSkill = nextSkill;
+      else gaps.push({ fromSkill: skill, toSkill: nextSkill });
+      previousRecipe = undefined;
+    } else {
+      const previous = steps[steps.length - 1];
+      const crafts = chosen === previousRecipe && previous ? previous.crafts + 1 : 1;
+      const reagents = scale(chosen.reagents, crafts);
+      if (chosen === previousRecipe && previous) {
+        previous.toSkill = nextSkill;
+        previous.crafts = crafts;
+        previous.reagents = reagents;
+        previous.copper = stepCost(reagents, priceByItem);
+      } else {
+        steps.push({
+          recipe: chosen.recipe,
+          fromSkill: skill,
+          toSkill: nextSkill,
+          crafts,
+          points: chosen.points,
+          reagents,
+          copper: stepCost(reagents, priceByItem),
+          reporters: chosen.reporters,
+        });
+      }
+      previousRecipe = chosen;
+    }
+    skill = nextSkill;
   }
 
   const reagents = merge(steps.map((step) => step.reagents));
@@ -230,7 +271,7 @@ export function formatProfessionPath(path: ProfessionPath): string {
   if (path.steps.length === 0 && path.gaps.length === 0) return lines.join("\n");
   for (const step of path.steps) {
     const mats = step.reagents.map((reagent) => `${reagent.count} ${reagent.item}`).join(", ");
-    const gold = step.copper === null ? "no agreed price yet" : formatCopper(step.copper);
+    const gold = step.copper === null ? "no agreed price yet" : `estimated ${formatCopper(step.copper)}`;
     lines.push(
       `${step.fromSkill}–${step.toSkill}  ${step.recipe}  ${step.crafts} crafts × ${step.points}  ${mats}  ${step.reporters} reporters  ${gold}`,
     );
@@ -241,12 +282,12 @@ export function formatProfessionPath(path: ProfessionPath): string {
     const mats = path.reagents.map((reagent) => `${reagent.count} ${reagent.item}`).join(", ");
     lines.push(partial ? `Reagents for agreed steps: ${mats}` : `Reagents: ${mats}`);
     if (path.copper === null) {
-      lines.push("Gold: waiting on agreed prices.");
+      lines.push("Estimated gold: waiting on agreed prices.");
     } else if (partial) {
       const gaps = path.gaps.map((gap) => `${gap.fromSkill}–${gap.toSkill}`).join(", ");
-      lines.push(`Gold for agreed steps: ${formatCopper(path.copper)}. Gold for ${gaps} unrecorded.`);
+      lines.push(`Estimated gold for agreed steps: ${formatCopper(path.copper)}. Gold for ${gaps} unrecorded.`);
     } else {
-      lines.push(`Gold: ${formatCopper(path.copper)}`);
+      lines.push(`Estimated gold: ${formatCopper(path.copper)}`);
     }
   }
   return lines.join("\n");

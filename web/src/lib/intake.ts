@@ -27,12 +27,14 @@ export const npcSighting = base.extend({
   y: z.number().min(0).max(100),
   level: z.number().int().min(1).max(100),
   reaction: z.enum(["friendly", "neutral", "hostile"]),
+  positionKind: z.enum(["player", "npc"]).optional().describe("Whose coordinates were measured; legacy unknown positions never become spawn pins."),
 });
 
 export const lootWindow = base.extend({
   kind: z.literal("loot"),
   sourceNpcId: z.number().int().positive().optional(),
   sourceObjectId: z.number().int().positive().optional(),
+  sourceEvidence: z.literal("loot-api").optional().describe("Legacy target guesses are withheld from public loot observations."),
   items: z.array(z.object({ itemId: z.number().int().positive(), count: z.number().int().min(1).max(1000) })).max(50),
 }).refine((r) => r.sourceNpcId !== undefined || r.sourceObjectId !== undefined, {
   message: "loot needs a source: npc or object",

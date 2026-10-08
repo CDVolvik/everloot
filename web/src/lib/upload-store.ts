@@ -34,6 +34,12 @@ export interface Corpus {
 
 interface RawCorpus { uploads: number; state: CorpusState; unreachable?: boolean }
 
+export interface SnapshotHealth {
+  status: "fresh" | "stale" | "missing" | "unavailable" | "local";
+  updatedAt: string | null;
+  ageSeconds: number | null;
+}
+
 export const STORAGE_UNREACHABLE = "Storage unreachable. These figures are unrecorded, not zero.";
 
 interface Snapshot extends Corpus {
@@ -382,7 +388,23 @@ export function createUploadStore(opts: {
     }
   }
 
-  return { putUpload, loadCorpus, putWaitlist, writeSnapshot };
+  async function snapshotHealth(): Promise<SnapshotHealth> {
+    const unknown = { updatedAt: null, ageSeconds: null };
+    if (unavailable) return { status: "unavailable", ...unknown };
+    if (!cloud) return { status: "local", ...unknown };
+    try {
+      // Metadata only: never expose raw snapshot contents, keys or credentials.
+      const res = await r2Fetch(SNAPSHOT_KEY, { method: "HEAD", signal: AbortSignal.timeout(10_000) });
+      if (res.status === 404) return { status: "missing", ...unknown };
+      if (!res.ok) return { status: "unavailable", ...unknown };
+      const modified = Date.parse(res.headers.get("last-modified") ?? "");
+      const age = now().getTime() - modified;
+      if (!Number.isFinite(age) || age < -30_000) return { status: "unavailable", ...unknown };
+      return { status: age > 30 * 60_000 ? "stale" : "fresh", updatedAt: new Date(modified).toISOString(), ageSeconds: Math.max(0, Math.floor(age / 1000)) };
+    } catch { return { status: "unavailable", ...unknown }; }
+  }
+
+  return { putUpload, loadCorpus, putWaitlist, writeSnapshot, snapshotHealth };
 }
 
 /** The store the routes and pages use. */

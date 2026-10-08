@@ -10,6 +10,7 @@ export type NpcSightingRow = {
   installId: string;
   npcId: number;
   name: string;
+  positionKind?: "player" | "npc";
   mapId: number;
   x: number;
   y: number;
@@ -107,6 +108,7 @@ export function npcPage(npcId: number, facts: WorldFacts): NpcPage {
   const name = agreedLabel(rows.map((row) => ({ installId: row.installId, label: row.name })));
   const grouped = new Map<number, Map<string, NpcSightingRow>>();
   for (const row of rows) {
+    if (row.positionKind !== "npc") continue;
     if (!Number.isInteger(row.mapId) || row.mapId < 0) continue;
     if (row.x < 0 || row.x > 100 || row.y < 0 || row.y > 100) continue;
     const installs = grouped.get(row.mapId) ?? new Map<string, NpcSightingRow>();
@@ -249,7 +251,8 @@ export function worldFactsFromRecords(records: unknown[]): WorldFacts {
       typeof row.x === "number" &&
       typeof row.y === "number"
     ) {
-      facts.npcs.push({ installId: row.installId, npcId: row.npcId, name: row.name, mapId: row.mapId, x: row.x, y: row.y });
+      facts.npcs.push({ installId: row.installId, npcId: row.npcId, name: row.name, mapId: row.mapId, x: row.x, y: row.y,
+        ...(row.positionKind === "npc" || row.positionKind === "player" ? { positionKind: row.positionKind } : {}) });
     }
     if (row.kind === "quest" && typeof row.questId === "number" && typeof row.title === "string" && typeof row.level === "number") {
       facts.quests.push({

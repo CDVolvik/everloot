@@ -1,10 +1,15 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import Reveal from "@/components/Reveal";
-import { tools } from "@/data/tools";
+import { tools, toolHref } from "@/data/tools";
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
 
 const TICKER = [
-  "Drop rates",
-  "Guild scores",
+  "Loot observations",
+  "Guild records",
   "Spawn maps",
   "Profession routes",
   "Loot history",
@@ -14,37 +19,46 @@ const TICKER = [
 ];
 
 export default function Home() {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://everloot.app";
   return (
     <div className="space-y-16">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        name: "Everloot",
+        url: siteUrl,
+        description: "WoW: Forever addon observations and player tools. Public facts depend on available corroborated reports.",
+      }).replace(/</g, "\\u003c") }} />
       {/* Hero */}
-      <section className="relative pt-6 pb-2 text-center">
+      <section className="relative pt-6 pb-2 text-center overflow-hidden">
         <div className="aurora" aria-hidden="true" />
         <div className="relative">
         <p className="uppercase tracking-[0.2em] text-xs text-gold-500/80 mb-4">
-          Free · No Login · Built From Player Data
+          Free tools · Addon uploads · Collecting data
         </p>
         <h1 className="font-display text-4xl sm:text-6xl font-bold text-parchment-100 leading-tight tracking-tight">
           Every drop. Every guild. <span className="text-gold-400">Every reset.</span>
         </h1>
         <p className="mt-6 max-w-2xl mx-auto text-lg text-parchment-100/75">
-          Everloot is the WoW: Forever database — drop rates, guild progression,
-          professions and farming routes, collected by players running our
-          lightweight addon. Plus the tools that make it all usable.
+          Browse WoW: Forever observations, upload your addon records, or calculate
+          a farm&apos;s gold per hour. Database facts appear when enough install reports
+          agree. Loot-window observations do not establish kill-based drop probabilities.
         </p>
-        <div className="mt-8 flex items-center justify-center gap-3">
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <Link
-            href="/tools/gold-per-hour"
+            href="/database"
             className="cta-glow inline-flex items-center gap-2 px-5 py-3 rounded-lg bg-gold-500 text-parchment-950 font-semibold hover:bg-gold-400 transition"
           >
-            <span>🪙</span>
-            <span>Try the Gold/Hour Calculator</span>
+            <span aria-hidden="true">📖</span>
+            <span>Browse the database</span>
           </Link>
           <Link
-            href="#tools"
+            href="/upload"
             className="px-5 py-3 rounded-lg border border-parchment-100/20 hover:border-gold-400/60 transition text-parchment-100/90"
           >
-            See all tools
+            Upload addon data
           </Link>
+          <Link href="/tools/gold-per-hour" className="inline-flex min-h-11 items-center px-3 text-gold-400 hover:underline">Gold/Hour Calculator</Link>
         </div>
         </div>
 
@@ -63,12 +77,12 @@ export default function Home() {
       {/* Tools grid */}
       <Reveal>
       <section id="tools" className="scroll-mt-20">
-        <div className="flex items-end justify-between mb-6">
+        <div className="flex flex-wrap items-end justify-between gap-3 mb-6">
           <h2 className="font-display text-2xl sm:text-3xl font-semibold text-parchment-100">
             The toolkit
           </h2>
           <p className="text-sm text-parchment-100/60">
-            More dropping each patch.
+            Available, collecting data, and planned.
           </p>
         </div>
 
@@ -78,7 +92,7 @@ export default function Home() {
             return (
               <Link
                 key={tool.slug}
-                href={`/tools/${tool.slug}`}
+                href={toolHref(tool)}
                 className="tool-card group relative rounded-xl border border-parchment-100/10 bg-parchment-900 p-5 hover:border-gold-400/50 transition"
               >
                 <div className="flex items-start justify-between gap-3">
@@ -90,7 +104,7 @@ export default function Home() {
                         : "bg-parchment-950 text-gold-400 border-gold-500/40"
                     }`}
                   >
-                    {isLive ? "Live" : "Coming soon"}
+                    {isLive ? "Available" : tool.status === "collecting" ? "Collecting data" : "Planned"}
                   </span>
                 </div>
                 <h3 className="mt-4 font-display text-lg font-semibold text-parchment-100 group-hover:text-gold-400 transition">
@@ -121,8 +135,8 @@ export default function Home() {
           <div className="text-gold-400 text-xl mb-2">🔓</div>
           <h3 className="font-semibold text-parchment-100">No account needed</h3>
           <p className="mt-1 text-parchment-100/70">
-            All tools work in your browser. Your data stays on your device unless
-            you choose to share a link.
+            The calculator runs on your device. Addon files go to the server only
+            when you upload them, with explicit choices for named sharing.
           </p>
         </div>
         <div className="rounded-lg border border-parchment-100/10 p-5">

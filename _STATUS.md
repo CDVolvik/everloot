@@ -1,5 +1,11 @@
 # Everloot — Status
 
+## Current cursor — 2026-10-08 five-track continuation
+
+All five tracks are authorized, subject to free services only. Collection/source provenance, profession cost routing, navigation/discovery/accessibility and consent repairs are implemented. Addon 0.2.1 zip and real-client checklist prepared. Local verification: 178 KB tests/typecheck, 127 web tests/typecheck/build, Lua 5.1 collection/identity checks; independent consent finding repaired and re-reviewed. Snapshot metadata health and bounded CI/image workflows prepared. See [five-track progress](docs/2026-10-08-five-track-progress.md) for exact scope and limits.
+
+Battle.net client renamed Everloot, correct callback/service URL saved. Carlos must rotate the documented exposed historical secret in Chrome; private Vercel configuration and actual login/logout follow. Render sign-in handed off as a managed free beta candidate; no service or paid resource created. New local MCP image runs non-root under 512MiB/0.5CPU, initializes 13 tools (~72MiB steady). Actual beta-client/officer proof, real phone and full launch scope remain open. Current code is not yet pushed/deployed; append release evidence when verified.
+
 ## Current cursor — 2026-10-07 shared intake quotas and free-only budget
 
 Actual checkout: `D:\R21-Brain\projects\everloot`, branch `fix/launch-recovery`. Recovery/replay/sharing integration is `74df978`; shared intake quotas are `fe67af2`. Both GitHub main and recovery branch now contain `fe67af2`, verified by a successful atomic push. Correction: earlier handoffs overstated the main push; main was still `7fd2daf` until this continuation. The corrected code was already live through CLI deployments. Automatic main deployment `dpl_4ThhXjHzduzQ8eSsiqJePjLMEPCt` / `https://everloot-b4hoihf8b-r21digital.vercel.app` is Ready and aliased to everloot.app. Full launch remains incomplete. Evidence: [launch recovery](docs/2026-10-07-launch-recovery.md), [quota verification](docs/2026-10-07-intake-quota-verification.md).

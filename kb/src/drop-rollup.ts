@@ -1,9 +1,8 @@
 /**
  * Drop rollup shared by the site and the item_page tool.
- * A rate is public when 3 distinct installs have killed the source.
- * One loot window is one kill. A window that contains the item is one drop.
- * A source whose windows contain no valid item is a measured zero
- * (0 drops in N kills). A source nobody killed is absent, not zero.
+ * A rate is public after 3 distinct install reports. These are observed loot
+ * windows, not a census of kills or independent people. The legacy `kills`
+ * field names the window count for compatibility. Unobserved kills are unknown.
  */
 
 export const INDEPENDENT_INSTALLS = 3;
@@ -45,7 +44,7 @@ export type ItemNameRow = { installId: string; itemId: number; name: string };
 export type NpcPinRow = { installId: string; npcId: number; name: string; mapId: number; x: number; y: number };
 export type ItemFactRows = { rates: DropRate[]; names: ItemNameRow[]; npcs: NpcPinRow[] };
 
-/** One loot window = one kill against its source. Windows without a source are rejected. */
+/** Frequency among source-attributed observations; missing kills are not inferred. */
 export function rollupDrops(windows: LootRow[]): RollupResult {
   const rejected: string[] = [];
   const kills = new Map<string, { n: number; reporters: Set<string> }>();
@@ -62,7 +61,7 @@ export function rollupDrops(windows: LootRow[]): RollupResult {
   for (const w of windows) {
     const s = sourceKey(w);
     if (!s) {
-      rejected.push("loot window without a source is not a kill");
+      rejected.push("loot window without a source is not an attributed observation");
       continue;
     }
     const sourceId = w.sourceNpcId ?? w.sourceObjectId;
@@ -135,7 +134,7 @@ export function lootWindowsFromRecords(records: unknown[]): LootRow[] {
   for (const raw of records) {
     if (!raw || typeof raw !== "object") continue;
     const row = raw as Record<string, unknown>;
-    if (row.kind !== "loot" || typeof row.installId !== "string" || !Array.isArray(row.items)) continue;
+    if (row.kind !== "loot" || row.sourceEvidence !== "loot-api" || typeof row.installId !== "string" || !Array.isArray(row.items)) continue;
     windows.push({
       installId: row.installId,
       ...(typeof row.sourceNpcId === "number" ? { sourceNpcId: row.sourceNpcId } : {}),
@@ -161,6 +160,7 @@ export function itemFactsFromRecords(records: unknown[]): ItemFactRows {
     }
     if (
       row.kind === "npc_sighting" &&
+      row.positionKind === "npc" &&
       typeof row.npcId === "number" &&
       typeof row.name === "string" &&
       typeof row.mapId === "number" &&

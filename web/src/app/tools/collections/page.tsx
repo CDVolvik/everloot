@@ -35,7 +35,7 @@ export default async function CollectionsPage(
         <h1 className="font-display text-3xl sm:text-4xl font-bold text-parchment-100 tracking-tight">Collection gap</h1>
         <p className="text-sm text-parchment-100/70 max-w-2xl">
           An item joins the list when 3 installs agree on the collection, the source, and the item.
-          Owned is what one install uploaded. This is the same answer as the collection_gap tool.
+          Owned is what one install uploaded. This view uses uploaded records, not a Battle.net profile.
         </p>
       </header>
 

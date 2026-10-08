@@ -1,10 +1,11 @@
 // Single source of truth for the tool catalog.
 // Add a new tool here and it automatically appears in nav + landing page cards.
 
-export type ToolStatus = "live" | "coming-soon";
+export type ToolStatus = "live" | "collecting" | "coming-soon";
 
 export interface Tool {
   slug: string;
+  href?: string;
   title: string;
   shortTitle: string;
   tagline: string;
@@ -34,12 +35,13 @@ export const tools: Tool[] = [
   },
   {
     slug: "profession-planner",
+    href: "/tools/professions",
     title: "Profession Leveling Planner",
     shortTitle: "Profession Planner",
-    tagline: "The cheapest route from 1 to max skill.",
+    tagline: "Recipe paths when enough uploads agree.",
     description:
       "A Forever leveling path from recipe uploads. A step appears when 3 installs agree, and the gold cost appears when 3 price uploads agree. No copied guide and no retail auction price.",
-    status: "coming-soon",
+    status: "collecting",
     icon: "⚒️",
     keywords: [
       "wow profession leveling",
@@ -50,12 +52,13 @@ export const tools: Tool[] = [
   },
   {
     slug: "completionist",
+    href: "/tools/collections",
     title: "Completionist Tracker",
     shortTitle: "Completionist",
-    tagline: "See everything you haven't collected yet.",
+    tagline: "Compare uploaded collections and ownership.",
     description:
       "Owned versus missing in a collection. The list appears when 3 installs agree on the item and its source. Owned is one install's upload. Not a Battle.net profile.",
-    status: "coming-soon",
+    status: "collecting",
     icon: "🏆",
     keywords: [
       "wow completionist",
@@ -66,28 +69,30 @@ export const tools: Tool[] = [
   },
   {
     slug: "guild-tracker",
+    href: "/tools/guild-board",
     title: "Forever Guild Tracker",
     shortTitle: "Guilds",
-    tagline: "Progression, roster and the Everloot score.",
+    tagline: "Officer-published roster and progression.",
     description:
-      "Raid progression, roster, loot, and item level for WoW: Forever guilds, published by their own officers. A figure is public when two uploads agree. score_v1 has no published weights, so there is no single score yet.",
-    status: "coming-soon",
+      "Raid progression, roster, loot, and item level for WoW: Forever guilds from authorized officer uploads. A figure is public when two uploads agree. A combined guild score is not available.",
+    status: "collecting",
     icon: "🛡️",
     keywords: [
       "wow forever guild tracker",
       "wow forever guild progression",
       "forever guild rankings",
-      "everloot score",
+      "guild progression",
     ],
   },
   {
     slug: "database",
+    href: "/database",
     title: "Forever Database",
     shortTitle: "Database",
-    tagline: "Items, NPCs and quests from real drops.",
+    tagline: "Browse uploaded observations and agreed facts.",
     description:
-      "Drop rates with kill counts, spawn maps, quest givers and vendors — every fact corroborated by independent players running the Everloot addon. Thottbot reborn for Forever.",
-    status: "coming-soon",
+      "Loot-window observations, NPC sightings, quests and vendors from addon uploads. Install counts are not proof of independent players; observations are not kill-based drop probabilities.",
+    status: "collecting",
     icon: "📖",
     keywords: [
       "wow forever database",
@@ -103,7 +108,7 @@ export const tools: Tool[] = [
     tagline: "Leveling routes and perks from player data.",
     description:
       "One hub per Forever profession: skill-up paths, materials lists and perk tracking, all drawn from in-game collection. Hubs open their numbers as reports arrive.",
-    status: "live",
+    status: "collecting",
     icon: "⚒️",
     keywords: [
       "wow forever professions",
@@ -115,10 +120,10 @@ export const tools: Tool[] = [
     slug: "farming-routes",
     title: "Forever Farming Routes",
     shortTitle: "Routes",
-    tagline: "Spawn maps drawn from player sightings.",
+    tagline: "Planned routes from uploaded sightings.",
     description:
-      "Gold and material routes per zone with respawn timing and gold-per-hour attached — drawn from community spawn collection, not decades-old static circles.",
-    status: "live",
+      "Zone routes and respawn timing are planned. Upload sightings now, or calculate your own farm using the Gold/Hour Calculator.",
+    status: "coming-soon",
     icon: "🗺️",
     keywords: [
       "wow forever farming",
@@ -126,7 +131,20 @@ export const tools: Tool[] = [
       "wow forever routes",
     ],
   },
+  {
+    slug: "upload",
+    href: "/upload",
+    title: "Upload Addon Data",
+    shortTitle: "Upload",
+    tagline: "Send addon records with explicit sharing choices.",
+    description: "Upload Everloot addon files. Public observations require corroboration; named sharing requires a reviewed grant.",
+    status: "live",
+    icon: "📤",
+    keywords: ["everloot upload", "wow forever addon"],
+  },
 ];
+
+export const toolHref = (tool: Tool): string => tool.href ?? `/tools/${tool.slug}`;
 
 export const getTool = (slug: string): Tool | undefined =>
   tools.find((t) => t.slug === slug);

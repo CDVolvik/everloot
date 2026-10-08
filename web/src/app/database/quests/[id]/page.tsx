@@ -9,10 +9,14 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata(props: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const params = await props.params;
+  if (!/^[1-9]\d*$/.test(params.id)) return { robots: { index: false, follow: true } };
+  const facts = await loadWorldFacts();
+  const page = questPage(Number(params.id), facts);
   return {
-    title: `Quest ${params.id}`,
+    title: !facts.unreachable && page.title ? page.title : `Quest ${params.id}`,
     description: "A WoW: Forever quest page from corroborated titles, levels, givers, and rewards.",
     alternates: { canonical: `/database/quests/${params.id}` },
+    robots: { index: !facts.unreachable && Boolean(page.title || page.level !== null || page.giverNpcId !== null || page.turnInNpcId !== null || page.rewards.length), follow: true },
   };
 }
 

@@ -9,10 +9,14 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata(props: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const params = await props.params;
+  if (!/^[1-9]\d*$/.test(params.id)) return { robots: { index: false, follow: true } };
+  const facts = await loadWorldFacts();
+  const page = vendorPage(Number(params.id), facts);
   return {
     title: `Vendor ${params.id}`,
     description: "A WoW: Forever vendor page. A price is public after 3 installs agree on the item and the copper.",
     alternates: { canonical: `/database/vendors/${params.id}` },
+    robots: { index: !facts.unreachable && page.offers.length > 0, follow: true },
   };
 }
 

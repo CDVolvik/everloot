@@ -78,8 +78,8 @@ describe("deduplication", () => {
   });
 
   test("conflicting records from different installs -> both retained (different dedup keys)", () => {
-    const r1 = { ...lootRecord(), installId: "install-a", eventId: "evt-1", items: [{ itemId: 1, count: 1 }] };
-    const r2 = { ...lootRecord(), installId: "install-b", eventId: "evt-1", items: [{ itemId: 1, count: 2 }] };
+    const r1 = lootRecord({ installId: "install-a", eventId: "evt-1", items: [{ itemId: 1, count: 1 }] });
+    const r2 = lootRecord({ installId: "install-b", eventId: "evt-1", items: [{ itemId: 1, count: 2 }] });
     const { records, conflictTombstones } = deduplicateRecords([r1, r2]);
     expect(records).toHaveLength(2);
     expect(conflictTombstones).toHaveLength(0);

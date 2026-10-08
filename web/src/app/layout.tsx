@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     template: "%s · Everloot",
   },
   description:
-    "Everloot is the WoW: Forever database built from player data: drop rates, guild progression, professions, farming routes and tools. Free for players, by players.",
+    "WoW: Forever addon uploads, loot-window observations, guild tools and a gold-per-hour calculator. Public facts depend on available corroborated data.",
   keywords: [
     "wow forever database",
     "wow forever guild tracker",
@@ -26,14 +26,14 @@ export const metadata: Metadata = {
     siteName: "Everloot",
     title: "Everloot — WoW: Forever Database, Guild Tracker & Tools",
     description:
-      "Drop rates, guild progression, professions, farming routes and tools for WoW: Forever, built from player data.",
+      "WoW: Forever observations from addon uploads, guild tools and a gold-per-hour calculator.",
     url: siteUrl,
   },
   twitter: {
-    card: "summary_large_image",
+    card: "summary",
     title: "Everloot — WoW: Forever Database, Guild Tracker & Tools",
     description:
-      "Drop rates, guild progression, professions, farming routes and tools for WoW: Forever, built from player data.",
+      "WoW: Forever observations from addon uploads, guild tools and a gold-per-hour calculator.",
   },
   robots: { index: true, follow: true },
 };
@@ -47,24 +47,14 @@ export default function RootLayout({
 
   return (
     <html lang="en">
-      <head>
-        {adsenseClient && (
-          // Google AdSense — loaded only after AdSense approval, when env var is set.
-          // eslint-disable-next-line @next/next/no-sync-scripts
-          <script
-            async
-            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseClient}`}
-            crossOrigin="anonymous"
-          />
-        )}
-      </head>
       <body className="flex flex-col min-h-screen">
+        <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:bg-parchment-950 focus:px-4 focus:py-3">Skip to content</a>
         <Header />
-        <main className="flex-1 mx-auto w-full max-w-6xl px-4 py-8">
+        <main id="main-content" className="flex-1 min-w-0 mx-auto w-full max-w-6xl px-4 py-8">
           {children}
         </main>
         <Footer />
-        <CookieConsent />
+        <CookieConsent adsenseClient={adsenseClient} />
       </body>
     </html>
   );

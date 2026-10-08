@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 const CARDS = [
   {
     title: "Leveling routes from real data",
-    body: "Skill-up-per-material paths computed from recipes players actually report — not copied from a ten-year-old guide. Routes go live per profession as reports arrive.",
+    body: "Routes compare estimated reagent costs from reported recipes. Missing recipes remain gaps, and missing prices remain unknown.",
   },
   {
     title: "Forever perk tracking",
@@ -25,7 +25,7 @@ const CARDS = [
   },
   {
     title: "Materials shopping lists",
-    body: "Totals for the full path, grouped for the auction house. Cost estimates switch on once realm price feeds exist; until then the lists are exact quantities.",
+    body: "Estimated materials and costs use reported recipes and prices. Prices are not scoped to a realm, build or time; three install reports per reagent do not guarantee today's cheapest route.",
   },
   {
     title: "Gathering + crafting, together",
@@ -72,18 +72,17 @@ export default async function ProfessionsPage(
           Forever Profession Hubs
         </h1>
         <p className="text-lg text-parchment-100/75 max-w-2xl">
-          Every profession, one hub each: the cheapest skill-up path, the materials list,
-          and the Forever perks — all drawn from data players collect in-game. No copied
-          guides, no invented numbers: a hub opens its numbers when the reports exist.
+          Estimate a profession path from uploaded recipes and prices. Missing recipes
+          remain gaps, and missing prices remain unknown. Reported install IDs do not
+          establish independent contributors or guarantee current realm prices.
         </p>
       </header>
 
       <section className="space-y-3">
         <h2 className="font-display text-2xl text-parchment-100">The path</h2>
         <p className="text-sm text-parchment-100/70 max-w-2xl">
-          The path reads recipe uploads stored on this server. The profession_path tool reads the
-          same uploads when EVERLOOT_UPLOADS points at that directory. If that variable is unset,
-          the tool says uploads are not connected.
+          Choose a profession and skill range to see a path from available recipe uploads.
+          Estimated costs use reported prices without realm, build or time guarantees.
         </p>
         <form method="get" className="rounded-xl border border-parchment-100/10 bg-parchment-900 p-5 space-y-4">
           <div className="grid sm:grid-cols-3 gap-3">

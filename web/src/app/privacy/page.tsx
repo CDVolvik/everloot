@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 };
 
 export default function PrivacyPage() {
-  const updated = "April 2026";
+  const updated = "October 2026";
   return (
     <article className="prose prose-invert max-w-3xl">
       <h1 className="font-display text-3xl font-bold text-parchment-100">
@@ -28,13 +28,12 @@ export default function PrivacyPage() {
       </h2>
       <p className="text-parchment-100/80">
         Most of our tools run entirely in your browser. Data you enter into a
-        calculator is not sent to our servers unless you explicitly generate a
-        share link.
+        calculator stays in your browser. A calculator share link encodes those
+        values in the URL; anyone you give that link to can read them.
       </p>
       <ul className="list-disc pl-6 text-parchment-100/80">
         <li>
-          <strong>Analytics:</strong> we may use privacy-respecting analytics
-          (e.g. Plausible) to understand which tools are used.
+          <strong>Analytics:</strong> no analytics service is currently enabled.
         </li>
         <li>
           <strong>Email (optional):</strong> if you sign up to be notified when
@@ -44,8 +43,8 @@ export default function PrivacyPage() {
         <li>
           <strong>Uploads:</strong> files you send on the upload page
           (addon records plus a random install id — no account, no character
-          login). Open-world sightings publish only after independent uploads
-          agree; guild data publishes only through an officer upload and any
+          login). Open-world facts publish only after matching install reports
+          agree. Install IDs are not proof of independent people. Guild data publishes only through an authorized officer upload and any
           character can opt out. Uploads build the public database; we never
           sell them.
         </li>
@@ -59,7 +58,7 @@ export default function PrivacyPage() {
         Advertising and Google AdSense
       </h2>
       <p className="text-parchment-100/80">
-        Once approved, this site may display ads served by Google AdSense. Google
+        If configured, Google AdSense loads only after you accept optional cookies. Google
         and its partners may use cookies to serve ads based on your prior visits
         to this site or other sites. You can opt out of personalized advertising
         by visiting{" "}
@@ -87,9 +86,11 @@ export default function PrivacyPage() {
         Your choices
       </h2>
       <p className="text-parchment-100/80">
-        You can reject non-essential cookies using the banner at the bottom of
-        any page. You can clear local storage at any time through your browser
-        settings.
+        You can accept or reject optional cookies in the banner and reopen Cookie
+        preferences from the footer on any page. The choice is stored locally.
+        Rejecting does not load advertising scripts. If ads already loaded,
+        withdrawing consent reloads the page without optional scripts. You can
+        also clear local storage through your browser settings.
       </p>
 
       <h2 className="font-display text-xl text-parchment-100 mt-6">Contact</h2>
