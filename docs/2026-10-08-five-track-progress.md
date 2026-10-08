@@ -46,6 +46,31 @@ or production upload fixtures were sent. Emulation is not a real phone trial.
 
 ## Login, sharing and free MCP hosting
 
+Latest verified account UI code is `4030303`: visible Sign in and Sign out,
+retryable lookup/logout errors, pending logout prevention, accessible compact
+mobile menu and factual identity/session disclosure. Six DOM regressions were
+verified red/green, all 133 web tests and production build pass, and independent
+review approved after the compact Close label resolved the padded-width concern.
+Full [release checks 37847388745](https://github.com/CDVolvik/everloot/actions/runs/37847388745)
+succeeded on `4030303c138a7b108c142a97fcbe467ed2514dce`.
+
+Carlos generated another secret with duration 0; no Old Secret entry remains in
+the developer client. The first attempted Vercel replacement did not persist:
+history contained only the original addition, and a live callback failed. The
+replacement was corrected privately and its Production sensitive metadata shows
+update 2026-10-08 21:35:33Z. No credential value was printed or written locally.
+Redeployment `dpl_7z2SmKRhrPhHfYiYLXPHNy29e9oe` is Ready at this exact code SHA
+on everloot.app/www, with `*/10` snapshot cron. Visible Sign in with the newest
+secret created a real authenticated session (`/me` 200, identity present). The
+signed-in open menu fits 320px. Visible Sign out returned the UI to Sign in and
+`/me` to 200/anonymous. Browser was left signed out and viewport restored.
+Proof screenshots are Brain scratch `tmp/everloot-account-controls-2026-10-08.jpg`
+and `tmp/everloot-account-signed-in-320-2026-10-08.jpg`; the masked environment
+screenshot below was refreshed. Real owner/officer sharing and beta-client
+evidence remain open.
+
+Earlier backend verification, before the visible controls:
+
 Chrome access to Battle.net worked. Existing WoWCollectorTracker client renamed
 Everloot; service URL and callback `https://everloot.app/api/auth/bnet/callback`
 saved and verified. Carlos subsequently confirmed Generate New Secret. The fresh
@@ -64,7 +89,7 @@ session cookie also returned anonymous, establishing revocation for the real
 session. Cookie flags were HttpOnly/Secure/SameSite=Lax. Temporary replay cookie
 was removed and the browser left signed out of Everloot. Checks used same-origin
 browser developer HTTP calls; direct JSON navigation was blocked by the browser.
-Visible site login/logout controls are absent and remain a user-flow gap. Real
+Visible site login/logout controls were absent at that earlier check. Real
 owner/officer publication/revocation and expired-session trials remain open.
 Latest checked production `dpl_DDMy4BwkmVRUk9ZV8mbG6Ui7ShJx` is Ready at
 `8eee50a` on everloot.app/www with ten-minute cron. Configuration screenshot is
