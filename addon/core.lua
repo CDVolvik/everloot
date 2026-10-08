@@ -5,13 +5,12 @@
 Everloot = Everloot or {}
 local E = Everloot
 
-E.VERSION = "0.1.0"
+E.VERSION = "0.2.0"
 E.MAX_ROWS_PER_KIND = 2000
 
 local defaults = {
   version = E.VERSION,
   installId = nil,
-  eventCounter = 0,
   toggles = { openworld = true, guild = true, gear = true, auctions = false, gold = true },
   records = {},
 }
@@ -22,71 +21,6 @@ local function newInstallId()
   return table.concat(t, "-")
 end
 
---- Allocate a new event ID for this install. Persisted in SavedVariables.
---- Returns a string like "evt-1", "evt-2", etc.
-function E:NextEventId()
-  EverlootDB = EverlootDB or {}
-  EverlootDB.eventCounter = (EverlootDB.eventCounter or 0) + 1
-  return "evt-" .. EverlootDB.eventCounter
-end
-
---- Batch upload state (resumable across reloads)
-local batchDefaults = {
-  batchCursor = {}, -- kind -> index of next unsent record
-  batchSize = 500,  -- records per batch (stays under 2000 aggregate cap)
-}
-
-local function initBatchState()
-  EverlootDB = EverlootDB or {}
-  EverlootDB.batchCursor = EverlootDB.batchCursor or {}
-  EverlootDB.batchSize = EverlootDB.batchSize or batchDefaults.batchSize
-end
-
---- Get the next batch of unsent records across all kinds.
---- Returns { records: {...}, hasMore: boolean, totalUnsent: number }
-function E:GetNextBatch()
-  initBatchState()
-  local allRecords = {}
-  local totalUnsent = 0
-  for kind, store in pairs(EverlootDB.records or {}) do
-    local cursor = EverlootDB.batchCursor[kind] or 1
-    local unsent = #store - cursor + 1
-    if unsent > 0 then
-      totalUnsent = totalUnsent + unsent
-      for i = cursor, math.min(cursor + EverlootDB.batchSize - 1, #store) do
-        local row = store[i]
-        if row then
-          allRecords[#allRecords + 1] = row
-        end
-      end
-    end
-  end
-  local hasMore = totalUnsent > EverlootDB.batchSize
-  return { records = allRecords, hasMore = hasMore, totalUnsent = totalUnsent }
-end
-
---- Advance the batch cursor after a successful upload.
---- `count` is the number of records that were accepted by the server.
-function E:AdvanceBatchCursor(count)
-  initBatchState()
-  local remaining = count
-  for kind, store in pairs(EverlootDB.records or {}) do
-    if remaining <= 0 then break end
-    local cursor = EverlootDB.batchCursor[kind] or 1
-    local unsent = #store - cursor + 1
-    if unsent > 0 then
-      local advance = math.min(remaining, unsent)
-      EverlootDB.batchCursor[kind] = cursor + advance
-      remaining = remaining - advance
-    end
-  end
-end
-
---- Reset batch cursor (for testing or full resend).
-function E:ResetBatchCursor()
-  EverlootDB.batchCursor = {}
-end
-
 local frame = CreateFrame("Frame")
 E.frame = frame
 
@@ -94,16 +28,29 @@ function E:IsEnabled(module)
   return EverlootDB and EverlootDB.toggles and EverlootDB.toggles[module] ~= false
 end
 
---- Append a row to a kind store with a rolling cap (oldest rows drop first).
---- If eventId is not provided, allocates a new one via NextEventId().
-function E:Store(kind, row, eventId)
+--- Preserve retained rows. At capacity, pause this kind instead of silently discarding data.
+function E:Store(kind, row)
   if type(row) ~= "table" then return false end
-  row.kindLoggedAt = date("!%Y-%m-%dT%H:%M:%SZ")
-  row.eventId = eventId or E:NextEventId()
   local store = EverlootDB.records[kind]
   if not store then store = {}; EverlootDB.records[kind] = store end
+  if #store >= E.MAX_ROWS_PER_KIND then
+    EverlootDB.paused = EverlootDB.paused or {}
+    if not EverlootDB.paused[kind] then
+      print("Everloot: " .. kind .. " collection paused at capacity. Keep and upload your SavedVariables file.")
+    end
+    EverlootDB.paused[kind] = true
+    return false
+  end
+  -- Allocate once, not at export. Persist epoch + counter together; never reuse an ID.
+  if not EverlootDB.eventEpoch or type(EverlootDB.nextEvent) ~= "number" then
+    EverlootDB.eventEpoch = newInstallId() .. "-" .. tostring(time())
+    EverlootDB.nextEvent = 0
+  end
+  if EverlootDB.nextEvent >= 9007199254740990 then return false end
+  EverlootDB.nextEvent = EverlootDB.nextEvent + 1
+  row.eventId = EverlootDB.eventEpoch .. ":" .. string.format("%.0f", EverlootDB.nextEvent)
+  row.kindLoggedAt = date("!%Y-%m-%dT%H:%M:%SZ")
   store[#store + 1] = row
-  while #store > E.MAX_ROWS_PER_KIND do table.remove(store, 1) end
   return true
 end
 
@@ -132,6 +79,9 @@ end
 
 function E:Status()
   local lines = { "Everloot " .. E.VERSION .. " (" .. (EverlootDB and EverlootDB.installId or "?") .. ")" }
+  for kind in pairs(EverlootDB and EverlootDB.paused or {}) do
+    lines[#lines + 1] = "  " .. kind .. ": collection paused; retained rows were not deleted"
+  end
   for _, m in ipairs(modules) do
     lines[#lines + 1] = string.format("  %s: %s", m.name, m.note)
   end
@@ -150,6 +100,7 @@ frame:SetScript("OnEvent", function(_, event, arg1)
     EverlootDB = EverlootDB or {}
     for k, v in pairs(defaults) do if EverlootDB[k] == nil then EverlootDB[k] = v end end
     if not EverlootDB.installId then EverlootDB.installId = newInstallId() end
+    EverlootDB.version = E.VERSION
     E:InitModules()
     print(E:Status())
   end
@@ -162,13 +113,7 @@ SlashCmdList["EVERLOOT"] = function(msg)
     print(E:Status())
   elseif msg == "version" then
     print("Everloot " .. E.VERSION)
-  elseif msg == "batch" then
-    local b = E:GetNextBatch()
-    print("Next batch: " .. #b.records .. " records, hasMore=" .. tostring(b.hasMore) .. ", totalUnsent=" .. b.totalUnsent)
-  elseif msg == "batch reset" then
-    E:ResetBatchCursor()
-    print("Batch cursor reset")
   else
-    print("Everloot commands: /everloot status, /everloot batch, /everloot batch reset")
+    print("Everloot commands: /everloot status")
   end
 end

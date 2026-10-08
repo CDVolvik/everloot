@@ -5,6 +5,10 @@
 !kb/tsconfig.json
 !kb/src
 !kb/src/**
+!web
+!web/src
+!web/src/lib
+!web/src/lib/intake.ts
 !kb/data
 !kb/data/release
 !kb/data/release/2026-10-05-everloot-public.sqlite

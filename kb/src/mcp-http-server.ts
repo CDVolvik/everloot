@@ -1,10 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
-import { z } from "zod";
 import type { DB } from "./db.js";
-import { SERVER_NAME, SERVER_VERSION, handleSearch, handleGetEntity, handleGetByName } from "./mcp-server.js";
-import { handlePlan } from "./bridge-plan.js";
+import { createKnowledgeServer } from "./mcp-server.js";
 
 export interface PublicMcpConfig {
   db: DB;
@@ -14,39 +11,8 @@ export interface PublicMcpConfig {
   allowedOrigins: string[];
 }
 
-const KINDS = ["item", "npc", "quest", "zone", "spell", "lore_page", "creator", "realm"] as const;
-const VERSIONS = ["forever", "classic", "retail", "lore"] as const;
-const UPLOADS_UNSET = "Gameplay uploads are not connected to this public service. These facts are unrecorded, not measured zero.";
-const text = (value: string) => ({ content: [{ type: "text" as const, text: value }] });
-
 export function createPublicMcpServer(config: { db: DB }) {
-  const server = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION });
-  server.registerTool("search_knowledge", {
-    description: "Search WoW knowledge. Each answer carries its source, licence, date, and game version.",
-    inputSchema: { query: z.string().max(1000), kind: z.enum(KINDS).optional(), version: z.enum(VERSIONS).optional(),
-      limit: z.number().int().min(1).max(25).default(8) },
-    annotations: { readOnlyHint: true, openWorldHint: false },
-  }, (args) => text(handleSearch(config.db, args)));
-  server.registerTool("get_entity", {
-    description: "Get a knowledge record by its search result id.",
-    inputSchema: { id: z.number().int() }, annotations: { readOnlyHint: true, openWorldHint: false },
-  }, (args) => text(handleGetEntity(config.db, args)));
-  server.registerTool("get_by_name", {
-    description: "Get knowledge records by exact name.",
-    inputSchema: { name: z.string().max(200), kind: z.enum(KINDS).optional() },
-    annotations: { readOnlyHint: true, openWorldHint: false },
-  }, (args) => text(handleGetByName(config.db, args)));
-  for (const name of ["profession_path", "item_page", "npc_page", "quest_page", "vendor_page",
-    "collection_gap", "guild_board", "auction_history", "gold_ledger"]) {
-    server.registerTool(name, {
-      description: UPLOADS_UNSET, inputSchema: {},
-      annotations: { readOnlyHint: true, openWorldHint: false },
-    }, () => text(UPLOADS_UNSET));
-  }
-  server.registerTool("everloot_plan", {
-    description: "Everloot implementation tracker. Status describes implementation, not production verification.",
-    inputSchema: {}, annotations: { readOnlyHint: true, openWorldHint: false },
-  }, () => text(handlePlan()));
+  const server = createKnowledgeServer(config.db);
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined, enableJsonResponse: true,
   });

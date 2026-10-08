@@ -50,6 +50,11 @@ function loadEnv(): EnvConfig {
 
 async function main(): Promise<void> {
   const env = loadEnv();
+  if (process.env.EVERLOOT_UPLOADS) throw new Error("Public MCP cannot read raw contributor files");
+  const corpusUrl = process.env.EVERLOOT_PUBLIC_CORPUS_URL?.trim();
+  if (corpusUrl && corpusUrl !== "https://everloot.app/api/corpus/public") {
+    throw new Error("Public MCP corpus URL must name Everloot's approved HTTPS public view");
+  }
 
   // Open the public snapshot (validates manifest, hash, schema, licence)
   let snapshot: PublicSnapshot;
@@ -83,7 +88,7 @@ async function main(): Promise<void> {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ status: "ok", knowledge: { createdAt: snapshot.manifest.createdAt,
         sha256: snapshot.manifest.sha256, counts: snapshot.manifest.counts },
-        gameplay: "disconnected", timestamp: new Date().toISOString() }));
+        gameplay: corpusUrl ? "configured" : "disconnected", timestamp: new Date().toISOString() }));
       return;
     }
 

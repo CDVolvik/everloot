@@ -5,9 +5,10 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
  * accepted records, and it must never report a receipt the store did not write.
  */
 
-const store = vi.hoisted(() => ({ putUpload: vi.fn() }));
+const store = vi.hoisted(() => ({ putUpload: vi.fn(), lookup: vi.fn() }));
 
 vi.mock("@/lib/upload-store", () => ({
+  sharingStore: { lookup: store.lookup },
   uploadStore: {
     putUpload: store.putUpload,
     loadCorpus: vi.fn(),
@@ -21,7 +22,6 @@ const loot = (installId: string) => ({
   kind: "loot",
   installId,
   capturedAt,
-  eventId: "evt-1",
   sourceNpcId: 123,
   items: [{ itemId: 456, count: 1, secret: "strip" }],
   extra: "strip",
@@ -30,7 +30,6 @@ const canonicalLoot = {
   kind: "loot",
   installId: "install-1234",
   capturedAt,
-  eventId: "evt-1",
   sourceNpcId: 123,
   items: [{ itemId: 456, count: 1 }],
 };
@@ -53,6 +52,8 @@ async function freshPost() {
 beforeEach(() => {
   store.putUpload.mockReset();
   store.putUpload.mockResolvedValue(true);
+  store.lookup.mockReset();
+  store.lookup.mockResolvedValue(null);
 });
 
 describe("POST /api/intake", () => {
@@ -64,7 +65,7 @@ describe("POST /api/intake", () => {
     expect(store.putUpload).toHaveBeenCalledWith(expect.any(String), "install-1234", {
       addonVersion: "0.1.0",
       records: [canonicalLoot],
-    });
+    }, []);
     const body = await response.json();
     expect(body).toMatchObject({ ok: true, persisted: true, accepted: [{ index: 1, kind: "loot" }] });
     expect(body).not.toHaveProperty("records");

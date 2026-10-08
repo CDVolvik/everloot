@@ -69,14 +69,15 @@ async function main() {
       throw new Error("Existing session schema requires a reviewed migration");
     }
     const schema = await readFile(new URL("../../supabase/auth_schema.sql", import.meta.url), "utf8");
+    const publication = await readFile(new URL("../../supabase/migrations/20261007070647_verified_publication.sql", import.meta.url), "utf8");
     await client.query('BEGIN');
-    try { await client.query(schema); await client.query('COMMIT'); }
+    try { await client.query(schema); await client.query(publication); await client.query('COMMIT'); }
     catch (error) { await client.query('ROLLBACK'); throw error; }
-    const tables = await client.query("select relname, relrowsecurity from pg_class where relnamespace='public'::regnamespace and relname in ('users','sessions','profiles','entitlements','characters','suppressions','revoked_guilds','revoked_tokens') order by relname");
-    if (tables.rows.length !== 8 || tables.rows.some(r => !r.relrowsecurity)) throw new Error("Auth RLS verification failed");
-    const grants = await client.query("select table_name from information_schema.table_privileges where table_schema='public' and grantee in ('anon','authenticated') and table_name in ('users','sessions','profiles','entitlements','characters','suppressions','revoked_guilds','revoked_tokens')");
+    const tables = await client.query("select relname, relrowsecurity from pg_class where relnamespace='public'::regnamespace and relname in ('users','sessions','profiles','entitlements','characters','suppressions','revoked_guilds','revoked_tokens','publication_grants','character_suppressions') order by relname");
+    if (tables.rows.length !== 10 || tables.rows.some(r => !r.relrowsecurity)) throw new Error("Auth/publication RLS verification failed");
+    const grants = await client.query("select table_name from information_schema.table_privileges where table_schema='public' and grantee in ('anon','authenticated') and table_name in ('users','sessions','profiles','entitlements','characters','suppressions','revoked_guilds','revoked_tokens','publication_grants','character_suppressions')");
     if (grants.rows.length) throw new Error("Auth tables still grant browser access");
-    console.log("Auth schema verified: 8 private tables, RLS enabled, no browser grants.");
+    console.log("Auth/publication schema verified: 10 private tables, RLS enabled, no browser grants.");
   } finally { await client.end(); }
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const rest = async (path, init = {}) => {
@@ -94,7 +95,16 @@ async function main() {
   };
   console.log("Test-data cleanup verified:", JSON.stringify(await cleanupTestData({ rest, r2 })));
   const { uploadStore } = await import("../src/lib/upload-store.ts");
-  console.log("Corpus rebuilt:", JSON.stringify(await uploadStore.writeSnapshot({ rebuild: true })));
+  const current = await r2("snapshots/corpus.json", { method: "GET", headers: { "accept-encoding": "identity" } });
+  console.log("Snapshot conditional-write preflight:", JSON.stringify({ status: current.status, etag: current.headers.get("etag") }));
+  await current.body?.cancel();
+  for (let attempt = 1; ; attempt++) {
+    try { console.log("Corpus rebuilt:", JSON.stringify(await uploadStore.writeSnapshot({ rebuild: true }))); break; }
+    catch (error) {
+      if (error.message !== "snapshot write failed (412)" || attempt >= 3) throw error;
+      console.log("Snapshot precondition failed; rereading for a conditional retry.");
+    }
+  }
   const corpus = await uploadStore.loadCorpus();
   if (corpus.unreachable || corpus.records.some(r => r.installId === "e2e-test-20261004")) throw new Error("Corpus verification failed");
   console.log("Corpus verified:", JSON.stringify({ uploads: corpus.uploads, records: corpus.records.length }));

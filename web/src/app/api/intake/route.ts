@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
-import { parseUpload, type CanonicalUpload, type IntakeRecord, type RecordKind } from "@/lib/intake";
-import { uploadStore } from "@/lib/upload-store";
-import { validateClaimToken } from "@/lib/guild-authority";
+import { parseUpload, type CanonicalUpload } from "@/lib/intake";
+import { uploadStore, sharingStore } from "@/lib/upload-store";
+import { authorizeRecord, sharingCategory, type PublicationGrant } from "../../../../../kb/src/publication";
 
 /**
  * POST /api/intake — step 1: parse + store the accepted records, return a receipt.
@@ -25,28 +25,24 @@ function rateLimited(installId: string): boolean {
   return window.length > RATE_MAX_UPLOADS;
 }
 
-/** Guild record kinds that require a valid claim token. */
-const GUILD_KINDS: RecordKind[] = ["guild_snapshot", "raid_lockout", "attendance", "loot_award"];
-
-function validateGuildClaims(records: IntakeRecord[]): { valid: boolean; reason?: string } {
-  for (const r of records) {
-    if (!GUILD_KINDS.includes(r.kind)) continue;
-    const guildRecord = r as { claimToken: string; guildName: string; realm: string };
-    const check = validateClaimToken(guildRecord.claimToken, {
-      guildName: guildRecord.guildName,
-      realm: guildRecord.realm,
-    });
-    if (!check.valid) {
-      return { valid: false, reason: check.reason ?? "invalid guild claim" };
-    }
-  }
-  return { valid: true };
-}
-
 export async function POST(req: Request) {
   let payload: unknown;
   try {
-    payload = await req.json();
+    const reader = req.body?.getReader();
+    if (!reader) throw new Error("empty body");
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    for (;;) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      size += chunk.value.byteLength;
+      if (size > 1_000_000) {
+        await reader.cancel();
+        return NextResponse.json({ ok: false, error: "Upload batch exceeds 1 MB. Split the file and retry." }, { status: 413 });
+      }
+      chunks.push(chunk.value);
+    }
+    payload = JSON.parse(Buffer.concat(chunks).toString("utf8"));
   } catch {
     return NextResponse.json({ ok: false, error: "body must be JSON" }, { status: 400 });
   }
@@ -56,6 +52,35 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, ...receipt }, { status: 422 });
   }
   const upload: CanonicalUpload = parsed.upload;
+  const options = payload as { sharing?: Record<string, unknown>; grantTokens?: unknown };
+  const tokens = options.grantTokens ?? [];
+  if (!Array.isArray(tokens) || tokens.length > 4 || tokens.some((t) => typeof t !== "string" || !/^[a-f0-9]{64}$/.test(t))) {
+    return NextResponse.json({ ok: false, error: "Invalid verification grants" }, { status: 400 });
+  }
+  const needsAuthority = upload.records.some((row) => sharingCategory(row) !== null);
+  let grants: PublicationGrant[] = [];
+  try {
+    if (needsAuthority) grants = (await Promise.all(tokens.map((token) => sharingStore.lookup(token)))).filter((g): g is PublicationGrant => g !== null);
+  } catch {
+    return NextResponse.json({ ok: false, error: "Verification storage unavailable. Keep your file and retry." }, { status: 503 });
+  }
+  const authorized = [];
+  const accepted = [];
+  const grantHashes = new Set<string>();
+  for (let i = 0; i < upload.records.length; i++) {
+    const row = upload.records[i];
+    const category = sharingCategory(row);
+    const matching = category ? grants.filter((g) => authorizeRecord(row, [g.tokenHash], { grants: [g], suppressions: [] }, new Date())) : [];
+    if (category && (options.sharing?.[category] !== true || matching.length === 0)) {
+      receipt.rejected.push({ index: receipt.accepted[i].index, reason: "Named data requires an explicit sharing choice and a current matching verified grant." });
+      continue;
+    }
+    if ("claimToken" in row) delete row.claimToken;
+    matching.forEach((g) => grantHashes.add(g.tokenHash));
+    authorized.push(row); accepted.push(receipt.accepted[i]);
+  }
+  upload.records = authorized; receipt.accepted = accepted;
+  if (!authorized.length) return NextResponse.json({ ok: false, ...receipt }, { status: 422 });
   // Attribution comes from the accepted records, never from the first raw row.
   const installs = new Set(upload.records.map((r) => r.installId));
   if (installs.size !== 1) {
@@ -65,23 +90,13 @@ export async function POST(req: Request) {
     );
   }
   const installId = upload.records[0].installId;
-
-  // Validate guild claim tokens for guild records
-  const guildCheck = validateGuildClaims(upload.records);
-  if (!guildCheck.valid) {
-    return NextResponse.json(
-      { ok: false, error: guildCheck.reason ?? "invalid guild claim", ...receipt },
-      { status: 422 },
-    );
-  }
-
   if (rateLimited(installId)) {
     return NextResponse.json({ ok: false, error: "rate limited: max 20 uploads/hour per install" }, { status: 429 });
   }
   const uploadId = randomUUID();
   let persisted = false;
   try {
-    persisted = await uploadStore.putUpload(uploadId, installId, upload);
+    persisted = await uploadStore.putUpload(uploadId, installId, upload, [...grantHashes].sort());
   } catch (err) {
     console.error(`upload ${uploadId}: store threw`, err);
   }
@@ -92,7 +107,7 @@ export async function POST(req: Request) {
         ok: false,
         persisted: false,
         uploadId,
-        error: "this upload was not saved — keep the file and retry in a moment",
+        error: "storage could not be confirmed — keep the file and retry in a moment",
         ...receipt,
       },
       { status: 503 },

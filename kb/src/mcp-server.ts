@@ -9,6 +9,7 @@ import { guildFactsFromRecords, handleGuildBoard } from "./guild-board.js";
 import { itemFactsFromRecords } from "./drop-rollup.js";
 import { handleItemPage } from "./item-page.js";
 import { loadUploadRecords } from "./load-uploads.js";
+import { parseRecords } from "../../web/src/lib/intake.js";
 import { handleProfessionPath, professionFactsFromRecords } from "./profession-path.js";
 import { handleNpcPage, handleQuestPage, handleVendorPage, worldFactsFromRecords } from "./world-pages.js";
 import type { DB } from "./db.js";
@@ -20,18 +21,47 @@ export const SERVER_VERSION = "0.7.2";
 export const UPLOADS_UNSET =
   "Uploads are not connected. EVERLOOT_UPLOADS is unset, so this is not a measured zero.";
 
-/** Product tools read the upload directory. An unset directory is not an empty corpus. */
-export function fromUploads(render: (records: unknown[]) => string): string {
+/** Prefer the web's sanitized current view; raw local files can supply anonymous facts only. */
+export function fromUploads(render: (records: unknown[]) => string): string | Promise<string> {
+  const url = process.env.EVERLOOT_PUBLIC_CORPUS_URL?.trim();
+  if (url) return fromPublicCorpus(url, render);
   const dir = process.env.EVERLOOT_UPLOADS?.trim();
   if (!dir) return UPLOADS_UNSET;
   return render(loadUploadRecords(dir));
+}
+
+async function fromPublicCorpus(url: string, render: (records: unknown[]) => string): Promise<string> {
+  let records;
+  try {
+    const response = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(10_000) });
+    if (!response.ok || Number(response.headers.get("content-length")) > 2_000_000) throw new Error("Public corpus too large or unavailable");
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error("Public corpus has no body");
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        size += value.byteLength;
+        if (size > 2_000_000) { await reader.cancel(); throw new Error("Public corpus too large"); }
+        chunks.push(value);
+      }
+    } finally { reader.releaseLock(); }
+    const corpus = JSON.parse(Buffer.concat(chunks).toString("utf8")) as { ok?: boolean; records?: unknown };
+    if (!response.ok || corpus.ok !== true || !Array.isArray(corpus.records)) throw new Error("Invalid public corpus");
+    const parsed = parseRecords(corpus.records);
+    if (parsed.receipt.rejected.length) throw new Error("Invalid public records");
+    records = parsed.records;
+  } catch { return "Public corpus unavailable. These figures are unrecorded, not zero."; }
+  return render(records);
 }
 
 const KINDS = ["item", "npc", "quest", "zone", "spell", "lore_page", "creator", "realm"] as const;
 const VERSIONS = ["forever", "classic", "retail", "lore"] as const;
 
 const searchArgs = {
-  query: z.string().describe("What to look up: names, questions, keywords. Question words are ignored."),
+  query: z.string().max(1000).describe("What to look up: names, questions, keywords. Question words are ignored."),
   kind: z.enum(KINDS).optional().describe("Narrow to one record kind."),
   version: z.enum(VERSIONS).optional().describe("Narrow to one game version."),
   limit: z.number().int().min(1).max(25).default(8),
@@ -92,7 +122,7 @@ export function createKnowledgeServer(db: DB): McpServer {
       title: "Get records by exact name",
       description: "Exact full-name match (case-insensitive) for disambiguation. Use search_knowledge for fuzzy matches.",
       inputSchema: {
-        name: z.string().describe("Full record name."),
+        name: z.string().max(200).describe("Full record name."),
         kind: z.enum(KINDS).optional().describe("Narrow to one record kind."),
       },
       annotations: { readOnlyHint: true, openWorldHint: false },
@@ -104,7 +134,7 @@ export function createKnowledgeServer(db: DB): McpServer {
     {
       title: "Profession leveling path",
       description:
-        "Leveling path for one Forever profession from Everloot uploads. A step exists only after 3 installs agree. Gold exists only after 3 price uploads agree. No copied guide. Reads EVERLOOT_UPLOADS when that directory is set. If EVERLOOT_UPLOADS is unset, the answer says uploads are not connected.",
+        "Leveling path for one Forever profession from Everloot uploads. A step exists only after 3 installs agree. Gold exists only after 3 price uploads agree. No copied guide. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.",
       inputSchema: {
         profession: z.string().describe("Profession name, such as Alchemy."),
         fromSkill: z.number().int().min(1).max(500).default(1).describe("Skill the character has now."),
@@ -112,11 +142,11 @@ export function createKnowledgeServer(db: DB): McpServer {
       },
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
-    (args) => {
+    async (args) => {
       return {
         content: [{
           type: "text" as const,
-          text: fromUploads((records) => {
+          text: await fromUploads((records) => {
             const facts = professionFactsFromRecords(records);
             return handleProfessionPath(args, facts.sightings, facts.prices);
           }),
@@ -129,12 +159,12 @@ export function createKnowledgeServer(db: DB): McpServer {
     {
       title: "Item page for a drop",
       description:
-        "One Forever item: agreed name, public drop rate with kill count, and an agreed map pin. A rate is public after 3 installs kill the source. A name or pin needs 3 installs agreeing. No Wowhead rows. Reads EVERLOOT_UPLOADS when that directory is set. If EVERLOOT_UPLOADS is unset, the answer says uploads are not connected.",
+        "One Forever item: agreed name, public drop rate with kill count, and an agreed map pin. A rate is public after 3 installs kill the source. A name or pin needs 3 installs agreeing. No Wowhead rows. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.",
       inputSchema: { itemId: z.number().int().positive().describe("Item id from a drop row.") },
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
-    (args) => ({
-      content: [{ type: "text" as const, text: fromUploads((records) => handleItemPage(args, itemFactsFromRecords(records))) }],
+    async (args) => ({
+      content: [{ type: "text" as const, text: await fromUploads((records) => handleItemPage(args, itemFactsFromRecords(records))) }],
     }),
   );
   server.registerTool(
@@ -142,12 +172,12 @@ export function createKnowledgeServer(db: DB): McpServer {
     {
       title: "NPC page",
       description:
-        "One Forever NPC: agreed name and map pins. A name or pin needs 3 installs agreeing. The pin does not require a drop. No copied spawn list. Reads EVERLOOT_UPLOADS when that directory is set. If EVERLOOT_UPLOADS is unset, the answer says uploads are not connected.",
+        "One Forever NPC: agreed name and map pins. A name or pin needs 3 installs agreeing. The pin does not require a drop. No copied spawn list. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.",
       inputSchema: { npcId: z.number().int().positive().describe("NPC id.") },
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
-    (args) => ({
-      content: [{ type: "text" as const, text: fromUploads((records) => handleNpcPage(args, worldFactsFromRecords(records))) }],
+    async (args) => ({
+      content: [{ type: "text" as const, text: await fromUploads((records) => handleNpcPage(args, worldFactsFromRecords(records))) }],
     }),
   );
   server.registerTool(
@@ -155,12 +185,12 @@ export function createKnowledgeServer(db: DB): McpServer {
     {
       title: "Quest page",
       description:
-        "One Forever quest: agreed title, level, giver, turn-in, and rewards. Each fact needs 3 installs agreeing. No copied quest text. Reads EVERLOOT_UPLOADS when that directory is set. If EVERLOOT_UPLOADS is unset, the answer says uploads are not connected.",
+        "One Forever quest: agreed title, level, giver, turn-in, and rewards. Each fact needs 3 installs agreeing. No copied quest text. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.",
       inputSchema: { questId: z.number().int().positive().describe("Quest id.") },
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
-    (args) => ({
-      content: [{ type: "text" as const, text: fromUploads((records) => handleQuestPage(args, worldFactsFromRecords(records))) }],
+    async (args) => ({
+      content: [{ type: "text" as const, text: await fromUploads((records) => handleQuestPage(args, worldFactsFromRecords(records))) }],
     }),
   );
   server.registerTool(
@@ -168,12 +198,12 @@ export function createKnowledgeServer(db: DB): McpServer {
     {
       title: "Vendor page",
       description:
-        "Goods one Forever vendor sells. An item is listed when 3 installs agree on that item and its copper price. Two agreed prices both stay listed. No copied catalog. Reads EVERLOOT_UPLOADS when that directory is set. If EVERLOOT_UPLOADS is unset, the answer says uploads are not connected.",
+        "Goods one Forever vendor sells. An item is listed when 3 installs agree on that item and its copper price. Two agreed prices both stay listed. No copied catalog. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.",
       inputSchema: { vendorNpcId: z.number().int().positive().describe("Vendor NPC id.") },
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
-    (args) => ({
-      content: [{ type: "text" as const, text: fromUploads((records) => handleVendorPage(args, worldFactsFromRecords(records))) }],
+    async (args) => ({
+      content: [{ type: "text" as const, text: await fromUploads((records) => handleVendorPage(args, worldFactsFromRecords(records))) }],
     }),
   );
   server.registerTool(
@@ -181,15 +211,15 @@ export function createKnowledgeServer(db: DB): McpServer {
     {
       title: "Owned versus missing in a collection",
       description:
-        "Missing items in one collection for one install. A list row is public after 3 installs agree on the collection, the source, and the item. Owned is what that install uploaded. Not a Blizzard profile read and not a copied catalog. Reads EVERLOOT_UPLOADS when that directory is set. If EVERLOOT_UPLOADS is unset, the answer says uploads are not connected.",
+        "Missing items in one collection for one install. A list row is public after 3 installs agree on the collection, the source, and the item. Owned is what that install uploaded. Not a Blizzard profile read and not a copied catalog. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.",
       inputSchema: {
         collection: z.string().describe("Collection name, such as Mounts."),
         ownerInstallId: z.string().describe("Install id whose owned upload to compare."),
       },
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
-    (args) => ({
-      content: [{ type: "text" as const, text: fromUploads((records) => handleCollectionGap(args, collectionFactsFromRecords(records))) }],
+    async (args) => ({
+      content: [{ type: "text" as const, text: await fromUploads((records) => handleCollectionGap(args, collectionFactsFromRecords(records))) }],
     }),
   );
   server.registerTool(
@@ -197,15 +227,15 @@ export function createKnowledgeServer(db: DB): McpServer {
     {
       title: "Officer guild board",
       description:
-        "Roster, bosses, loot, attendance, and average item level from officer uploads. A figure is public after 2 uploads agree. The average names how many roster members were measured. There is no single score because score_v1 weights are not published. Reads EVERLOOT_UPLOADS when that directory is set. If EVERLOOT_UPLOADS is unset, the answer says uploads are not connected.",
+        "Roster, bosses, loot, attendance, and average item level from officer uploads. A figure is public after 2 uploads agree. The average names how many roster members were measured. There is no single score because score_v1 weights are not published. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.",
       inputSchema: {
         guildName: z.string().describe("Guild name."),
         realm: z.string().describe("Realm name."),
       },
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
-    (args) => ({
-      content: [{ type: "text" as const, text: fromUploads((records) => handleGuildBoard(args, guildFactsFromRecords(records))) }],
+    async (args) => ({
+      content: [{ type: "text" as const, text: await fromUploads((records) => handleGuildBoard(args, guildFactsFromRecords(records))) }],
     }),
   );
   server.registerTool(
@@ -213,15 +243,15 @@ export function createKnowledgeServer(db: DB): McpServer {
     {
       title: "Auction history for one item",
       description:
-        "Price history from auction scans players uploaded on purpose. A day is public after 3 installs scanned that item on that realm. Copper is the median. Reads EVERLOOT_UPLOADS when that directory is set. If EVERLOOT_UPLOADS is unset, the answer says uploads are not connected.",
+        "Price history from auction scans players uploaded on purpose. A day is public after 3 installs scanned that item on that realm. Copper is the median. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.",
       inputSchema: {
         realm: z.string().describe("Realm name."),
         itemId: z.number().int().positive().describe("Item id."),
       },
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
-    (args) => ({
-      content: [{ type: "text" as const, text: fromUploads((records) => handleAuctionHistory(args, auctionSightingsFromRecords(records))) }],
+    async (args) => ({
+      content: [{ type: "text" as const, text: await fromUploads((records) => handleAuctionHistory(args, auctionSightingsFromRecords(records))) }],
     }),
   );
   server.registerTool(
@@ -229,17 +259,17 @@ export function createKnowledgeServer(db: DB): McpServer {
     {
       title: "Gold ledger for one character",
       description:
-        "Peak gold and the money events that character's own upload recorded. Loot, quests, vendors, and auction sales stay on the money line. Gameplay stays on its own line. A missing line is unrecorded. The difference is not called bought and is not a ban. Installs are not merged. No scan of a player who did not upload. Reads EVERLOOT_UPLOADS when that directory is set. If EVERLOOT_UPLOADS is unset, the answer says uploads are not connected.",
+        "Peak gold and the money events that character's own upload recorded. Loot, quests, vendors, and auction sales stay on the money line. Gameplay stays on its own line. A missing line is unrecorded. The difference is not called bought and is not a ban. Installs are not merged. No scan of a player who did not upload. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.",
       inputSchema: {
         character: z.string().describe("Character name."),
         realm: z.string().describe("Realm name."),
       },
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
-    (args) => ({
+    async (args) => ({
       content: [{
         type: "text" as const,
-        text: fromUploads((records) => {
+        text: await fromUploads((records) => {
           const facts = goldFactsFromRecords(records);
           return handleGoldLedger(args, facts.snapshots, facts.events);
         }),
