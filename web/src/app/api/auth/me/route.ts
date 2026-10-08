@@ -1,37 +1,18 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { authQuery, getUser } from "@/lib/supabase/server";
 
-/**
- * GET /api/auth/me — Get current authenticated user.
- * Returns user profile and entitlements.
- */
+export const dynamic = "force-dynamic";
+
 export async function GET() {
-  const supabase = createClient();
-  
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) {
-    return NextResponse.json({ user: null });
+  const headers = { "Cache-Control": "private, no-store" };
+  try {
+    const user = await getUser();
+    if (!user) return NextResponse.json({ user: null }, { headers });
+    const entitlements = await authQuery<Array<{ plan: string; status: string }>>(
+      `entitlements?select=plan,status,current_period_end&user_id=eq.${encodeURIComponent(user.id)}`,
+    );
+    return NextResponse.json({ user: { ...user, entitlements } }, { headers });
+  } catch {
+    return NextResponse.json({ error: "Authentication is temporarily unavailable" }, { status: 503, headers });
   }
-
-  // Fetch user profile with entitlements
-  const { data: profile, error } = await supabase
-    .from("profiles")
-    .select("*, entitlements(*)")
-    .eq("id", session.user.id)
-    .single();
-
-  if (error) {
-    console.error("Profile fetch error:", error);
-    return NextResponse.json({ user: null });
-  }
-
-  return NextResponse.json({
-    user: {
-      id: session.user.id,
-      email: session.user.email,
-      battletag: profile.battletag,
-      bnet_id: profile.bnet_id,
-      entitlements: profile.entitlements ?? [],
-    },
-  });
 }

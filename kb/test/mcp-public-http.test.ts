@@ -1,0 +1,66 @@
+import { afterEach, expect, test } from "vitest";
+import { openDb, type DB } from "../src/db.js";
+import { replaceSourceRows } from "../src/entities.js";
+import { createMcpHttpHandler } from "../src/mcp-http-server.js";
+
+const databases: DB[] = [];
+afterEach(() => { for (const db of databases.splice(0)) db.close(); });
+
+async function handler(overrides = {}) {
+  const db = openDb(":memory:");
+  databases.push(db);
+  await replaceSourceRows(db, "curated", ["lore_page"], [{
+    kind: "lore_page", extId: "1", name: "Thrall", body: "Warchief",
+    gameVersion: "lore", sourceUrl: "https://example.test/thrall", retrievedAt: "2023-11-13",
+  }]);
+  return createMcpHttpHandler({ db, bearerToken: "test-token", maxRequestBodyBytes: 1024,
+    rateLimitPerMinute: 20, allowedOrigins: ["https://chatgpt.com"], ...overrides });
+}
+
+function request(method: string, params?: unknown, headers = {}) {
+  return new Request("http://localhost/mcp", { method: "POST", headers: {
+    authorization: "Bearer test-token", "content-type": "application/json",
+    accept: "application/json, text/event-stream", ...headers,
+  }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }) });
+}
+
+test("independent clients initialize and receive sourced knowledge plus the tracker", async () => {
+  const handle = await handler();
+  for (let i = 0; i < 2; i++) {
+    const init = await handle(request("initialize", { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "test", version: "1" } }));
+    expect(init.status).toBe(200);
+    expect((await init.json()).result.serverInfo.name).toBe("everloot-knowledge");
+  }
+  const search = await handle(request("tools/call", { name: "search_knowledge", arguments: { query: "Thrall" } }));
+  const answer = await search.json();
+  expect(answer.result.isError).not.toBe(true);
+  expect(answer.result.content[0].text).toContain("https://example.test/thrall");
+  expect(answer.result.content[0].text).toContain("CC-BY-SA-4.0");
+  const plan = await handle(request("tools/call", { name: "everloot_plan", arguments: {} }));
+  expect((await plan.json()).result.isError).not.toBe(true);
+});
+
+test("rejects an untrusted Origin even with valid authorization", async () => {
+  const handle = await handler();
+  expect((await handle(request("tools/list", {}, { origin: "https://evil.test" }))).status).toBe(403);
+});
+
+test("checks actual body bytes without trusting Content-Length", async () => {
+  const handle = await handler({ maxRequestBodyBytes: 100 });
+  expect((await handle(request("tools/call", { name: "search_knowledge", arguments: { query: "x".repeat(500) } }))).status).toBe(413);
+});
+
+test("missing authorization is rejected and token quota cannot be bypassed with spoofed IPs", async () => {
+  const handle = await handler({ rateLimitPerMinute: 1 });
+  expect((await handle(request("tools/list", {}, { authorization: "" }))).status).toBe(401);
+  await handle(request("tools/list", {}, { "x-forwarded-for": "1.2.3.4" }));
+  expect((await handle(request("tools/list", {}, { "x-forwarded-for": "5.6.7.8" }))).status).toBe(429);
+});
+
+test("preflight permits MCP headers and GET is explicitly unsupported", async () => {
+  const handle = await handler();
+  const preflight = await handle(new Request("http://localhost/mcp", { method: "OPTIONS", headers: { origin: "https://chatgpt.com" } }));
+  expect(preflight.status).toBe(204);
+  expect(preflight.headers.get("access-control-allow-headers")).toContain("MCP-Session-Id");
+  expect((await handle(new Request("http://localhost/mcp", { headers: { authorization: "Bearer test-token" } }))).status).toBe(405);
+});

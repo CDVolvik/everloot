@@ -34,7 +34,7 @@ function validateGuildClaims(records: IntakeRecord[]): { valid: boolean; reason?
     const guildRecord = r as { claimToken: string; guildName: string; realm: string };
     const check = validateClaimToken(guildRecord.claimToken, {
       guildName: guildRecord.guildName,
-      realm: guildRecord.guildName,
+      realm: guildRecord.realm,
     });
     if (!check.valid) {
       return { valid: false, reason: check.reason ?? "invalid guild claim" };

@@ -15,11 +15,12 @@ function one(value: string | string[] | undefined): string {
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
 }
 
-export default async function AuctionsPage({
-  searchParams,
-}: {
-  searchParams: { realm?: string | string[]; item?: string | string[] };
-}) {
+export default async function AuctionsPage(
+  props: {
+    searchParams: Promise<{ realm?: string | string[]; item?: string | string[] }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const realm = one(searchParams.realm);
   const itemText = one(searchParams.item);
   const itemId = /^\d+$/.test(itemText) ? Number(itemText) : 0;

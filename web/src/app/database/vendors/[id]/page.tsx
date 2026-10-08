@@ -7,7 +7,8 @@ import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
 
 export const dynamic = "force-dynamic";
 
-export function generateMetadata({ params }: { params: { id: string } }): Metadata {
+export async function generateMetadata(props: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const params = await props.params;
   return {
     title: `Vendor ${params.id}`,
     description: "A WoW: Forever vendor page. A price is public after 3 installs agree on the item and the copper.",
@@ -26,7 +27,8 @@ function formatCopper(copper: number): string {
   return parts.join(" ");
 }
 
-export default async function VendorPage({ params }: { params: { id: string } }) {
+export default async function VendorPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   if (!/^[1-9]\d*$/.test(params.id)) notFound();
   const facts = await loadWorldFacts();
   const page = vendorPage(Number(params.id), facts);

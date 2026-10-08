@@ -1,6 +1,6 @@
 # web/
 
-Next.js 14 (App Router) + TypeScript + Tailwind. Public web surface for Everloot.
+Next.js 15 (App Router) + TypeScript + Tailwind. Public web surface for Everloot. Current production/auth setup and outstanding launch work: [launch recovery](../docs/2026-10-07-launch-recovery.md). Use `.env.example` for current server-side variables; the historical client-key setup below does not configure custom Battle.net sessions.
 
 **History**: this folder started life as **GoldGoblin.gg** — a standalone Next.js project for a WoW tools site with AdSense monetization. Merged into Everloot on 2026-05-16 as the public web surface (per the "everything under one brand" decision). The existing Gold/Hour calculator stays as a public tool; profile pages get added in `BUILD_PLAN.md` Session 8.
 

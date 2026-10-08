@@ -1,0 +1,29 @@
+# Run from the repository root: fly deploy --config kb/fly.toml
+app = "everloot-kb-mcp"
+primary_region = "iad"
+
+[build]
+  dockerfile = "kb/Dockerfile"
+
+[env]
+  PORT = "8787"
+  NODE_ENV = "production"
+  KB_SNAPSHOT_PATH = "/data/release/everloot-public.sqlite"
+
+[http_service]
+  internal_port = 8787
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "10s"
+    grace_period = "30s"
+    method = "GET"
+    path = "/health"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "1gb"

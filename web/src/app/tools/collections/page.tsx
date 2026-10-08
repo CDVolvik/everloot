@@ -15,11 +15,12 @@ function one(value: string | string[] | undefined): string {
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
 }
 
-export default async function CollectionsPage({
-  searchParams,
-}: {
-  searchParams: { collection?: string | string[]; install?: string | string[] };
-}) {
+export default async function CollectionsPage(
+  props: {
+    searchParams: Promise<{ collection?: string | string[]; install?: string | string[] }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const collection = one(searchParams.collection);
   const install = one(searchParams.install);
   const corpus = await uploadStore.loadCorpus();

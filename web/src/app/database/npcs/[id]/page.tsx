@@ -8,7 +8,8 @@ import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
 
 export const dynamic = "force-dynamic";
 
-export function generateMetadata({ params }: { params: { id: string } }): Metadata {
+export async function generateMetadata(props: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const params = await props.params;
   return {
     title: `NPC ${params.id}`,
     description: "A WoW: Forever NPC page from corroborated names and map pins.",
@@ -16,7 +17,8 @@ export function generateMetadata({ params }: { params: { id: string } }): Metada
   };
 }
 
-export default async function NpcPage({ params }: { params: { id: string } }) {
+export default async function NpcPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   if (!/^[1-9]\d*$/.test(params.id)) notFound();
   const npcId = Number(params.id);
   const facts = await loadWorldFacts();

@@ -143,6 +143,48 @@ describe("corpus snapshot", () => {
   const SNAP = `${R2}snapshots/corpus.json`;
   const INDEX = "https://sb.example/rest/v1/uploads";
 
+  test("a conflict inside one object excludes later copies in other objects", async () => {
+    const { fn } = fakeFetch([
+      [INDEX, "GET", () => Response.json([{ object_key: "uploads/a.json" }, { object_key: "uploads/b.json" }])],
+      [`${R2}uploads/a.json`, "GET", () => Response.json({ records: [lootRow(), lootRow({ sourceNpcId: 99 })] })],
+      [`${R2}uploads/b.json`, "GET", () => Response.json({ records: [lootRow()] })],
+    ]);
+    const corpus = await createUploadStore({ cloud, localDir: "unused", fetch: fn }).loadCorpus();
+    expect(corpus.records).toEqual([]);
+    expect(corpus.conflictTombstones).toEqual(["install-1|evt-1"]);
+  });
+
+  test("a snapshot reader excludes tombstoned rows", async () => {
+    const { fn } = fakeFetch([[SNAP, "GET", () => Response.json({ records: [lootRow()], conflictTombstones: ["install-1|evt-1"] })]]);
+    expect((await createUploadStore({ cloud, localDir: "unused", fetch: fn }).loadCorpus()).records).toEqual([]);
+  });
+
+  test("named records stay private until verified sharing and suppression are connected", async () => {
+    const gear = { kind: "gear_snapshot", installId: "install-1", eventId: "gear-1", capturedAt,
+      character: "PrivatePlayer", realm: "PrivateRealm", equipped: [{ slot: "head", itemId: 1, itemLevel: 10 }] };
+    for (const snapshot of [false, true]) {
+      const { fn } = fakeFetch([
+        [SNAP, "GET", () => snapshot ? Response.json({ records: [lootRow(), gear] }) : new Response(null, { status: 404 })],
+        [INDEX, "GET", () => Response.json([{ object_key: "uploads/a.json" }])],
+        [`${R2}uploads/a.json`, "GET", () => Response.json({ records: [lootRow(), gear] })],
+      ]);
+      expect((await createUploadStore({ cloud, localDir: "unused", fetch: fn }).loadCorpus()).records).toEqual([lootRow()]);
+    }
+  });
+
+  test("incremental snapshots preserve old and new tombstones", async () => {
+    const { fn, calls } = fakeFetch([
+      [SNAP, "GET", () => Response.json({ uploads: 1, records: [], conflictTombstones: ["install-1|evt-1"], lastReceivedAt: capturedAt, lastIds: ["old"] })],
+      [INDEX, "GET", () => Response.json([{ id: "new", object_key: "uploads/new.json", received_at: "2026-10-05T00:00:00Z" }])],
+      [`${R2}uploads/new.json`, "GET", () => Response.json({ records: [lootRow(), lootRow({ eventId: "conflict" }), lootRow({ eventId: "conflict", sourceNpcId: 99 })] })],
+      [SNAP, "PUT", () => new Response(null, { status: 200 })],
+    ]);
+    await createUploadStore({ cloud, localDir: "unused", fetch: fn }).writeSnapshot();
+    const snapshot = JSON.parse(calls.find(c => c.method === "PUT")!.body);
+    expect(snapshot.records).toEqual([]);
+    expect(snapshot.conflictTombstones.sort()).toEqual(["install-1|conflict", "install-1|evt-1"]);
+  });
+
   test("the first snapshot reads every indexed upload and records where it stopped", async () => {
     const { fn, calls } = fakeFetch([
       [SNAP, "GET", () => new Response("missing", { status: 404 })],

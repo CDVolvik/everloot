@@ -7,7 +7,8 @@ import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
 
 export const dynamic = "force-dynamic";
 
-export function generateMetadata({ params }: { params: { id: string } }): Metadata {
+export async function generateMetadata(props: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const params = await props.params;
   return {
     title: `Item ${params.id}`,
     description: "A WoW: Forever item page from corroborated drops, names, and map pins.",
@@ -15,7 +16,8 @@ export function generateMetadata({ params }: { params: { id: string } }): Metada
   };
 }
 
-export default async function ItemPage({ params }: { params: { id: string } }) {
+export default async function ItemPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   if (!/^[1-9]\d*$/.test(params.id)) notFound();
   const itemId = Number(params.id);
   const facts = await loadItemFacts();

@@ -13,7 +13,8 @@ export function generateStaticParams() {
   return FAMILIES.map((family) => ({ slug: family.slug }));
 }
 
-export function generateMetadata({ params }: { params: { slug: string } }): Metadata {
+export async function generateMetadata(props: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const params = await props.params;
   const family = getFamily(params.slug);
   if (!family) return { title: "Guild family" };
   return {
@@ -23,7 +24,8 @@ export function generateMetadata({ params }: { params: { slug: string } }): Meta
   };
 }
 
-export default function GuildFamilyPage({ params }: { params: { slug: string } }) {
+export default async function GuildFamilyPage(props: { params: Promise<{ slug: string }> }) {
+  const params = await props.params;
   const family = getFamily(params.slug);
   if (!family) notFound();
 

@@ -1,21 +1,23 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { siteUrl } from "@/lib/supabase/server";
 
 /**
  * GET /api/auth/bnet — Initiate Battle.net OAuth flow.
  * Redirects user to Battle.net authorization page.
  */
-export async function GET(req: Request) {
+export async function GET() {
   const clientId = process.env.BNET_CLIENT_ID;
-  const redirectUri = process.env.BNET_REDIRECT_URI ?? `${process.env.NEXT_PUBLIC_SITE_URL}/api/auth/bnet/callback`;
+  const redirectUri = process.env.BNET_REDIRECT_URI ?? `${siteUrl()}/api/auth/bnet/callback`;
   const state = crypto.randomUUID();
   
-  if (!clientId) {
-    return NextResponse.json({ error: "Battle.net client ID not configured" }, { status: 500 });
+  if (!clientId || !process.env.BNET_CLIENT_SECRET) {
+    return NextResponse.json({ error: "Battle.net sign-in is not configured" }, { status: 503 });
   }
 
   // Store state in cookie for CSRF protection
-  const cookieStore = (await import("next/headers")).cookies();
-  (await cookieStore).set("bnet_oauth_state", state, {
+  const cookieStore = await cookies();
+  cookieStore.set("bnet_oauth_state", state, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",

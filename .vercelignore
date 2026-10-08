@@ -1,0 +1,9 @@
+.git
+.vercel
+.env*
+**/.env*
+**/node_modules
+**/.next
+kb/data
+scratch
+**/*.local

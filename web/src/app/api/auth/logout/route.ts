@@ -1,33 +1,17 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { revokeSession, siteUrl } from "@/lib/supabase/server";
 
-/**
- * POST /api/auth/logout — Log out the current user.
- * Invalidates the session cookie and deletes the server-side session.
- */
-export async function POST() {
-  const supabase = createClient();
-  
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session) {
-    // Delete server-side session
-    await supabase
-      .from("sessions")
-      .delete()
-      .eq("user_id", session.user.id);
-    
-    // Sign out from Supabase auth
-    await supabase.auth.signOut();
+export async function POST(req: Request) {
+  const origin = req.headers.get("origin");
+  if (origin && origin !== siteUrl()) return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
+  try {
+    await revokeSession();
+  } catch {
+    return NextResponse.json({ error: "Logout is temporarily unavailable" }, { status: 503 });
   }
-
-  const response = NextResponse.json({ ok: true });
+  const response = NextResponse.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
   response.cookies.set("everloot_session", "", {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 0,
-    path: "/",
+    httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", maxAge: 0, path: "/",
   });
-
   return response;
 }
