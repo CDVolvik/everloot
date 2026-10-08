@@ -15,11 +15,12 @@ function one(value: string | string[] | undefined): string {
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
 }
 
-export default async function GoldLedgerPage({
-  searchParams,
-}: {
-  searchParams: { character?: string | string[]; realm?: string | string[] };
-}) {
+export default async function GoldLedgerPage(
+  props: {
+    searchParams: Promise<{ character?: string | string[]; realm?: string | string[] }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const character = one(searchParams.character);
   const realm = one(searchParams.realm);
   const corpus = await uploadStore.loadCorpus();

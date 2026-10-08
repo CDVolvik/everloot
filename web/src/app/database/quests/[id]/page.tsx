@@ -7,7 +7,8 @@ import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
 
 export const dynamic = "force-dynamic";
 
-export function generateMetadata({ params }: { params: { id: string } }): Metadata {
+export async function generateMetadata(props: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const params = await props.params;
   return {
     title: `Quest ${params.id}`,
     description: "A WoW: Forever quest page from corroborated titles, levels, givers, and rewards.",
@@ -15,7 +16,8 @@ export function generateMetadata({ params }: { params: { id: string } }): Metada
   };
 }
 
-export default async function QuestPage({ params }: { params: { id: string } }) {
+export default async function QuestPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   if (!/^[1-9]\d*$/.test(params.id)) notFound();
   const facts = await loadWorldFacts();
   const page = questPage(Number(params.id), facts);

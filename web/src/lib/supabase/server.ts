@@ -1,38 +1,74 @@
-import { createServerClient } from "@supabase/ssr"
-import { cookies } from "next/headers"
+import { createHash, randomBytes } from "node:crypto";
+import { cookies } from "next/headers";
 
-export function createClient() {
-  const cookieStore = cookies()
+// Battle.net uses our server-side sessions, not Supabase Auth JWTs. The browser
+// receives an opaque cookie; only its hash is stored in the private sessions table.
+export interface AccountUser { id: string; bnet_id: string; battletag: string }
+export const SESSION_SECONDS = 30 * 24 * 60 * 60;
 
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookies().getAll()
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach((cookie) => {
-              cookies().set(cookie.name, cookie.value, cookie.options)
-            })
-          } catch (e) {
-            console.debug("setAll catch:", e)
-          }
-        },
-      },
-    })
+export function siteUrl(): string {
+  const url = new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://everloot.app");
+  if (url.protocol !== "https:" && !(process.env.NODE_ENV !== "production" && url.hostname === "localhost")) {
+    throw new Error("Invalid site URL");
+  }
+  return url.origin;
 }
 
-export async function getUser() {
-  const supabase = createClient()
-  const { data: { session } } = await supabase.auth.getSession()
-  return session?.user ?? null
+export async function authQuery<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const url = process.env.SUPABASE_URL?.trim();
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (!url || !key) throw new Error("Authentication storage is not configured");
+  const response = await fetch(`${url.replace(/\/$/, "")}/rest/v1/${path}`, {
+    ...init,
+    cache: "no-store",
+    signal: AbortSignal.timeout(10_000),
+    headers: { apikey: key, authorization: `Bearer ${key}`, "content-type": "application/json", ...init.headers },
+  });
+  if (!response.ok) throw new Error(`Authentication storage failed (${response.status})`);
+  if (response.status === 204 || new Headers(init.headers).get("prefer")?.includes("return=minimal")) return undefined as T;
+  return await response.json() as T;
 }
 
-export async function requireAuth() {
-  const user = await getUser()
-  if (!user) throw new Error("UNAUTHORIZED")
-  return user
+async function sessionHash(): Promise<string | null> {
+  const token = (await cookies()).get("everloot_session")?.value;
+  if (!token || !/^[a-f0-9]{64}$/.test(token)) return null;
+  return createHash("sha256").update(token).digest("hex");
+}
+
+export async function getUser(): Promise<AccountUser | null> {
+  const hash = await sessionHash();
+  if (!hash) return null;
+  const sessions = await authQuery<Array<{ user_id: string }>>(
+    `sessions?select=user_id&token_hash=eq.${hash}&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&limit=1`,
+  );
+  if (!sessions[0]) return null;
+  const users = await authQuery<AccountUser[]>(`users?select=id,bnet_id,battletag&id=eq.${encodeURIComponent(sessions[0].user_id)}&limit=1`);
+  const user = users[0];
+  return user ? { id: user.id, bnet_id: user.bnet_id, battletag: user.battletag } : null;
+}
+
+export async function createSession(profile: { id: string; battletag: string }): Promise<string> {
+  const users = await authQuery<AccountUser[]>("users?on_conflict=bnet_id&select=id,bnet_id,battletag", {
+    method: "POST", headers: { prefer: "resolution=merge-duplicates,return=representation" },
+    body: JSON.stringify({ bnet_id: profile.id, battletag: profile.battletag, updated_at: new Date().toISOString() }),
+  });
+  if (!users[0]?.id) throw new Error("Authentication user was not saved");
+  const token = randomBytes(32).toString("hex");
+  await authQuery("sessions", {
+    method: "POST", headers: { prefer: "return=minimal" },
+    body: JSON.stringify({ user_id: users[0].id, token_hash: createHash("sha256").update(token).digest("hex"),
+      expires_at: new Date(Date.now() + SESSION_SECONDS * 1000).toISOString() }),
+  });
+  return token;
+}
+
+export async function revokeSession(): Promise<void> {
+  const hash = await sessionHash();
+  if (hash) await authQuery(`sessions?token_hash=eq.${hash}`, { method: "DELETE", headers: { prefer: "return=minimal" } });
+}
+
+export async function requireAuth(): Promise<AccountUser> {
+  const user = await getUser();
+  if (!user) throw new Error("UNAUTHORIZED");
+  return user;
 }

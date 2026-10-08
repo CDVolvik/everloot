@@ -1,14 +1,11 @@
 -- Everloot authentication and entitlement schema
 -- Run in Supabase SQL editor
 
--- Users table (extends Supabase auth.users)
+-- Private Battle.net users. Custom sessions are not Supabase Auth JWTs.
 create table if not exists public.users (
   id uuid primary key default gen_random_uuid(),
   bnet_id text unique not null,
   battletag text not null,
-  access_token_encrypted text,
-  refresh_token_encrypted text,
-  token_expires_at timestamptz,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
@@ -17,6 +14,7 @@ create table if not exists public.users (
 create table if not exists public.sessions (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.users(id) on delete cascade,
+  token_hash text unique not null check (token_hash ~ '^[a-f0-9]{64}$'),
   expires_at timestamptz not null,
   created_at timestamptz default now()
 );
@@ -123,61 +121,34 @@ alter table public.suppressions enable row level security;
 alter table public.revoked_guilds enable row level security;
 alter table public.revoked_tokens enable row level security;
 
--- Users: users can read their own record
-create policy "users_read_own" on public.users
-  for select using (auth.uid() = id);
-
--- Sessions: users can read/delete their own sessions
-create policy "sessions_read_own" on public.sessions
-  for select using (auth.uid() = user_id);
-create policy "sessions_delete_own" on public.sessions
-  for delete using (auth.uid() = user_id);
-
--- Profiles: users can read/update their own profile
-create policy "profiles_read_own" on public.profiles
-  for select using (auth.uid() = id);
-create policy "profiles_update_own" on public.profiles
-  for update using (auth.uid() = id);
-
--- Entitlements: users can read their own
-create policy "entitlements_read_own" on public.entitlements
-  for select using (auth.uid() = user_id);
-
--- Characters: users can manage their own characters
-create policy "characters_read_own" on public.characters
-  for select using (auth.uid() = user_id);
-create policy "characters_insert_own" on public.characters
-  for insert with check (auth.uid() = user_id);
-create policy "characters_update_own" on public.characters
-  for update using (auth.uid() = user_id);
-create policy "characters_delete_own" on public.characters
-  for delete using (auth.uid() = user_id);
-
--- Suppressions: public read, admin write
-create policy "suppressions_read" on public.suppressions
-  for select using (true);
-
--- Revoked guilds: public read
-create policy "revoked_guilds_read" on public.revoked_guilds
-  for select using (true);
-
--- Revoked tokens: public read
-create policy "revoked_tokens_read" on public.revoked_tokens
-  for select using (true);
+-- Custom cookies are validated by server routes. RLS has no client policies;
+-- neither anon nor authenticated may read users, session hashes or revocation tokens.
+revoke all on public.users, public.sessions, public.profiles, public.entitlements,
+  public.characters, public.suppressions, public.revoked_guilds, public.revoked_tokens
+  from anon, authenticated;
+grant all on public.users, public.sessions, public.profiles, public.entitlements,
+  public.characters, public.suppressions, public.revoked_guilds, public.revoked_tokens
+  to service_role;
 
 -- Updated_at trigger
 create or replace function public.handle_updated_at()
-returns trigger language plpgsql as $$
+returns trigger language plpgsql set search_path = '' as $$
 begin
   new.updated_at = now();
   return new;
 end; $$;
 
+drop trigger if exists users_updated_at on public.users;
 create trigger users_updated_at before update on public.users
   for each row execute function public.handle_updated_at();
+drop trigger if exists profiles_updated_at on public.profiles;
 create trigger profiles_updated_at before update on public.profiles
   for each row execute function public.handle_updated_at();
+drop trigger if exists entitlements_updated_at on public.entitlements;
 create trigger entitlements_updated_at before update on public.entitlements
   for each row execute function public.handle_updated_at();
+drop trigger if exists characters_updated_at on public.characters;
 create trigger characters_updated_at before update on public.characters
   for each row execute function public.handle_updated_at();
+revoke all on function public.handle_updated_at() from public, anon, authenticated;
+grant execute on function public.handle_updated_at() to service_role;

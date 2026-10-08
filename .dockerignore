@@ -1,0 +1,11 @@
+**
+!kb
+!kb/package.json
+!kb/package-lock.json
+!kb/tsconfig.json
+!kb/src
+!kb/src/**
+!kb/data
+!kb/data/release
+!kb/data/release/2026-10-05-everloot-public.sqlite
+!kb/data/release/2026-10-05-everloot-public.sqlite.manifest.json

@@ -1,6 +1,16 @@
 # Everloot — resume after 2026-10-05 assessment
 
-## Resume correction — 2026-10-07 continuation complete locally
+## Resume — 2026-10-07 recovery
+
+Use the current `_STATUS.md` cursor and [launch recovery](docs/2026-10-07-launch-recovery.md), not the completion claims below. Actual checkout `D:\R21-Brain\projects\everloot`, branch `fix/launch-recovery`, base `7fd2daf`. Normal corrected web deployment is live; production auth schema and exact e2e cleanup/rebuild are verified. No public Fly MCP deployment or completed real OAuth login yet.
+
+Pending owner inputs: Fly.io authenticated account access (use only if available) and the storage location of the already registered fresh Battle.net OAuth client's credentials. Never paste secrets; install/configure them privately, redeploy and verify real sign-in/logout. Fly container is tested and includes only approved knowledge; gameplay intentionally disconnected. No Supabase/R2 secrets on the public host.
+
+Web 82 tests/build, KB 158 tests/typecheck, native HTTP Unicode/auth regression, PostgreSQL idempotent/RLS checks and real-release Docker startup passed. Runtime web audit and KB audit have zero findings; web development findings remain. Guild authority/named sharing, persistent suppression, distributed quotas and the other full-launch components remain incomplete; do not repeat the previous E/H/I readiness claim.
+
+The user authorized all necessary next steps, including exact test-data cleanup, in this thread. Earlier declined-cleanup entries below are historical and superseded. Keep full launch scope and milestones; continue from outstanding work rather than redoing applied schema or deleted fixtures.
+
+## Historical resume — 2026-10-07 (superseded)
 
 **C: Event identity and replay migration IMPLEMENTED on `fix/readonly-kb-service` at `356aec7`.**
 **D: Resumable batch uploads IMPLEMENTED on `fix/readonly-kb-service` at `1847c89`.**

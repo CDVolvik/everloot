@@ -136,7 +136,11 @@ function rawRecordsOf(payload: unknown): unknown[] {
  * fields stripped. No aggregate cap — 2,000 is a per-request limit, not a corpus size.
  */
 function normalizedRecordsOf(payload: unknown): IntakeRecord[] {
-  return parseRecords(rawRecordsOf(payload)).records;
+  // No verified ownership, named opt-in or durable suppression reader is wired
+  // yet. Preserve raw accepted uploads privately, but exclude named public facts.
+  const privateKinds = new Set(["guild_snapshot", "raid_lockout", "attendance", "loot_award",
+    "gear_snapshot", "gold_snapshot", "money_event"]);
+  return parseRecords(rawRecordsOf(payload)).records.filter(r => !privateKinds.has(r.kind));
 }
 
 export function createUploadStore(opts: {
@@ -251,6 +255,7 @@ export function createUploadStore(opts: {
 
   async function readObjects(keys: string[]): Promise<{ records: IntakeRecord[]; missed: boolean; conflictTombstones: string[] }> {
     const records: IntakeRecord[] = [];
+    const tombstones = new Set<string>();
     let missed = false;
     for (let i = 0; i < keys.length; i += PARALLEL_READS) {
       const batch = await Promise.all(keys.slice(i, i + PARALLEL_READS).map(async (key) => {
@@ -270,11 +275,13 @@ export function createUploadStore(opts: {
       for (const row of batch) {
         if (row.missed) missed = true;
         else records.push(...row.records);
+        for (const key of row.conflictTombstones) tombstones.add(key);
       }
     }
     // Deduplicate across all objects
     const { records: deduped, conflictTombstones } = deduplicateRecords(records);
-    return { records: deduped, missed, conflictTombstones };
+    for (const key of conflictTombstones) tombstones.add(key);
+    return { records: deduped.filter(r => !tombstones.has(dedupKey(r))), missed, conflictTombstones: [...tombstones] };
   }
 
   async function readSnapshot(): Promise<Snapshot | null> {
@@ -289,11 +296,16 @@ export function createUploadStore(opts: {
     }
     // A snapshot without a records array is unreadable, never an empty corpus.
     if (!Array.isArray(parsed.records)) throw new Error("snapshot has no records array");
+    const deduped = deduplicateRecords(normalizedRecordsOf(parsed));
+    const tombstones = new Set([
+      ...(Array.isArray(parsed.conflictTombstones) ? parsed.conflictTombstones.filter(k => typeof k === "string") : []),
+      ...deduped.conflictTombstones,
+    ]);
     return {
       generatedAt: parsed.generatedAt ?? "",
       uploads: typeof parsed.uploads === "number" ? parsed.uploads : 0,
-      records: parseRecords(parsed.records).records,
-      conflictTombstones: Array.isArray(parsed.conflictTombstones) ? parsed.conflictTombstones : [],
+      records: deduped.records.filter(r => !tombstones.has(dedupKey(r))),
+      conflictTombstones: [...tombstones],
       lastReceivedAt: parsed.lastReceivedAt ?? null,
       lastIds: Array.isArray(parsed.lastIds) ? parsed.lastIds : [],
       dedupVersion: typeof parsed.dedupVersion === "number" ? parsed.dedupVersion : 1,
@@ -330,14 +342,15 @@ export function createUploadStore(opts: {
     // Combine previous records with fresh records, then deduplicate
     const combinedRecords = [...(prev?.records ?? []), ...read.records];
     const { records: deduped, conflictTombstones } = deduplicateRecords(combinedRecords);
+    const tombstones = new Set([...(prev?.conflictTombstones ?? []), ...read.conflictTombstones, ...conflictTombstones]);
     
     const lastReceivedAt = rows.length > 0 ? rows[rows.length - 1].received_at : prev?.lastReceivedAt ?? null;
     const lastIds = rows.length > 0 ? rows.filter((r) => r.received_at === lastReceivedAt).map((r) => r.id) : prev?.lastIds ?? [];
     const snapshot: Snapshot = {
       generatedAt: now().toISOString(),
       uploads: (prev?.uploads ?? 0) + fresh.length,
-      records: deduped,
-      conflictTombstones: [...(prev?.conflictTombstones ?? []), ...conflictTombstones].filter((v, i, a) => a.indexOf(v) === i),
+      records: deduped.filter(r => !tombstones.has(dedupKey(r))),
+      conflictTombstones: [...tombstones],
       lastReceivedAt,
       lastIds,
       dedupVersion: (prev?.dedupVersion ?? 1) + (opts.rebuild ? 0 : 1),

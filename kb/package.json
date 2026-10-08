@@ -11,7 +11,8 @@
     "kb": "tsx src/cli.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "export:markdown": "tsx src/exporters/cli.ts"
+    "export:markdown": "tsx src/exporters/cli.ts",
+    "serve:mcp": "tsx src/mcp-http-main.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.31.0",

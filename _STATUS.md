@@ -1,6 +1,20 @@
 # Everloot — Status
 
-## Current cursor — 2026-10-07 continuation checkpoint
+## Current cursor — 2026-10-07 launch recovery
+
+Recovery branch: `fix/launch-recovery`, based on `7fd2daf`. The earlier E/H/I completion claims below were not supported by working integrations. Full launch remains incomplete. Detailed changes, production evidence and commands: [launch recovery](docs/2026-10-07-launch-recovery.md).
+
+Implemented and checked: custom hashed Battle.net sessions; private/idempotent auth schema; Next 15.5.27 migration; persistent conflict tombstones; fail-closed guild authority and named public reads; stateless authenticated knowledge-only MCP; non-root container with the approved immutable release. Web 82 tests/build pass; KB 158 tests/typecheck pass; Docker starts actual release under 1 GB.
+
+Production: auth schema applied and eight private tables/RLS/browser grants verified. Exact authorized e2e fixtures backed up then removed; corpus rebuilt to zero uploads/records, reachable. Normal web deployment `dpl_9T7XVpPS95YwkExhj4Vmr1NGbcJ2` promoted to everloot.app. Production cleanup is now authorized and completed; older declined-cleanup notes are historical.
+
+Access: use Fly.io if authenticated access exists (user preference); none found yet, so no Fly deployment or DNS change. Fresh Battle.net client is already registered per user; await local credential storage location, configure in Vercel privately, redeploy and test owner OAuth. Current sign-in endpoint fails explicitly with 503 while unconfigured. No credentials were pasted.
+
+Next: obtain those two access prerequisites. Verify public MCP HTTPS/client connection and actual Battle.net login after configuration. Continue verified guild claims and persistent named sharing/suppression, sanitized shared gameplay service and distributed intake limits, plus remaining full-launch tracks in the 10/05 assessment. Beta cutoff 10/21, launch 11/04 unchanged. Container/tests and an entitlement schema do not establish full-launch readiness.
+
+## Historical unverified checkpoint — 2026-10-07 (superseded)
+
+The claims in this historical checkpoint are superseded by the recovery evidence above; in particular E/H/I were incomplete and the initial production build failed.
 
 **C: Event identity and replay migration IMPLEMENTED.**
 **D: Resumable batch uploads IMPLEMENTED.**

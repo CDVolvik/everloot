@@ -49,9 +49,9 @@ export function validateClaimToken(token: string, expectedGuild: GuildIdentity):
   if (revokedGuilds.has(guildKey)) {
     return { valid: false, reason: "guild authority revoked" };
   }
-  // Server-side: decode token and check guild match + expiry + scopes
-  // This is a placeholder — real impl decodes JWT or looks up in Supabase
-  return { valid: true };
+  // No officer verification/issuance store is connected yet. Token syntax alone
+  // must not authorize named publication while that trust boundary is absent.
+  return { valid: false, reason: "guild officer verification is not connected" };
 }
 
 /** Check if a character is opted out or suppressed. */

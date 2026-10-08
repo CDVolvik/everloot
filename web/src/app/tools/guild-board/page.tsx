@@ -15,11 +15,12 @@ function one(value: string | string[] | undefined): string {
   return Array.isArray(value) ? value[0] ?? "" : value ?? "";
 }
 
-export default async function GuildBoardPage({
-  searchParams,
-}: {
-  searchParams: { guild?: string | string[]; realm?: string | string[] };
-}) {
+export default async function GuildBoardPage(
+  props: {
+    searchParams: Promise<{ guild?: string | string[]; realm?: string | string[] }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const guild = one(searchParams.guild);
   const realm = one(searchParams.realm);
   const corpus = await uploadStore.loadCorpus();

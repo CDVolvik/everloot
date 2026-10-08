@@ -43,11 +43,12 @@ function skill(value: string, fallback: number): number {
   return n >= 1 && n <= 500 ? n : fallback;
 }
 
-export default async function ProfessionsPage({
-  searchParams,
-}: {
-  searchParams: { profession?: string | string[]; from?: string | string[]; to?: string | string[] };
-}) {
+export default async function ProfessionsPage(
+  props: {
+    searchParams: Promise<{ profession?: string | string[]; from?: string | string[]; to?: string | string[] }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const profession = one(searchParams.profession).trim() || "Alchemy";
   const fromSkill = skill(one(searchParams.from), 1);
   const toSkill = skill(one(searchParams.to), 75);
