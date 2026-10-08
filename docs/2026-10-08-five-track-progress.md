@@ -54,10 +54,21 @@ exact callback are Production Config. Chrome control recovered and environment
 entry no longer shows the authenticator prompt. No account MFA completion is
 claimed. Production redeployment `dpl_FHL1nVLjHQzXUQmfJzqybTP5B6Tb` is Ready
 at `509abb5` on everloot.app/www with ten-minute cron. Live browser sign-in reaches
-Battle.net OAuth Approval for Account ID/BattleTag and WoW profile. Action-time
-permission confirmation is pending; actual login/session/logout and real
-owner/officer publication/revocation remain unverified. Visible site login/logout
-controls are absent and remain a user-flow gap.
+Battle.net OAuth Approval for Account ID/BattleTag and WoW profile. Carlos gave
+action-time approval and completed the provider approval. Actual callback created
+an authenticated session; `/api/auth/me` returned 200 with Battle.net identity
+and BattleTag present. No private account values are in this evidence.
+
+Logout returned 200/ok; `/me` returned 200/anonymous afterward. Replaying the old
+session cookie also returned anonymous, establishing revocation for the real
+session. Cookie flags were HttpOnly/Secure/SameSite=Lax. Temporary replay cookie
+was removed and the browser left signed out of Everloot. Checks used same-origin
+browser developer HTTP calls; direct JSON navigation was blocked by the browser.
+Visible site login/logout controls are absent and remain a user-flow gap. Real
+owner/officer publication/revocation and expired-session trials remain open.
+Latest checked production `dpl_DDMy4BwkmVRUk9ZV8mbG6Ui7ShJx` is Ready at
+`8eee50a` on everloot.app/www with ten-minute cron. Configuration screenshot is
+Brain scratch `tmp/everloot-oauth-env-2026-10-08.jpg`, with all values masked.
 
 Carlos asked for managed free hosting rather than an always-online machine.
 Render Free is a beta candidate: 15-minute idle sleep, about one-minute wake,

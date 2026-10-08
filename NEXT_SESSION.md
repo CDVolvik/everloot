@@ -1,8 +1,8 @@
 # Everloot — resume after 2026-10-05 assessment
 
-## Resume — 2026-10-08 OAuth access checkpoint (current)
+## Resume — 2026-10-08 OAuth verified (current)
 
-Fresh Battle.net secret rotation is confirmed by Carlos and all three BNET settings are saved privately in Vercel Production. No credential value is in this handoff or a local file. Redeployment `dpl_FHL1nVLjHQzXUQmfJzqybTP5B6Tb` is Ready on everloot.app/www at `509abb5`, cron intact. Browser sign-in reaches Battle.net's OAuth Approval page for Account ID/BattleTag and WoW profile. A permission confirmation card is pending; do not click Allow without the action-time approval. Continue from that page (restart sign-in if the ten-minute state expired), verify `/api/auth/me` session and logout. The site currently has no visible login/logout controls; that user-flow gap remains. The earlier authenticator prompt and Chrome timeout are cleared, not evidence of MFA being configured. Render remains deferred to the pipeline.
+Fresh Battle.net secret rotation is confirmed by Carlos and all three BNET settings are saved privately in Vercel Production. No credential value is in this handoff or a local file. Carlos approved the provider permissions and completed the approval. Actual OAuth callback, authenticated `/api/auth/me`, logout and revoked-cookie replay checks passed. Cookie is HttpOnly/Secure/SameSite=Lax; test browser left signed out and replay cookie removed. Latest checked production `dpl_DDMy4BwkmVRUk9ZV8mbG6Ui7ShJx` is Ready on everloot.app/www at `8eee50a`, cron intact. No visible site login/logout controls exist; developer HTTP checks establish backend behavior, not completion of that user flow. Next: expose those controls, then real owner/officer sharing and beta-client evidence. The earlier authenticator prompt and Chrome timeout are cleared, not evidence of MFA being configured. Render remains deferred to the pipeline; public MCP is not hosted. Other full-launch scope remains open.
 
 ## Resume — 2026-10-08 five-track work (earlier checkpoint)
 
