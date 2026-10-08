@@ -21,7 +21,7 @@ First-window-per-GUID suppression cannot distinguish pickpocket/corpse/skinning.
 Source API compatibility and collection completeness require the real beta
 client. [Client checklist](2026-10-08-beta-client-checklist.md). A reproducible
 TOC-only zip is prepared at `web/public/downloads/Everloot-0.2.1.zip`, SHA-256
-`50ddbf9c64340391029a69c823b67c2b338a45528d165f207449d3c0eb75ce99`.
+`46b6ed6d2fae81a63fb5aaaa5a38619a664caf7b6ab28cf7e20b0feb000ac9f5`.
 
 Profession routing compares total observed craft costs across skill unlocks,
 handles multi-point crafts, gaps and unknown costs, and resolves ties consistently.
@@ -67,6 +67,12 @@ steady observation ~72MiB. Knowledge hash remains
 Local container proof does not establish Render deployment or real MCP client
 connectivity. Pin a registry digest and configure its generated bearer privately.
 
+Carlos's later steering keeps Render in the pipeline for a future free beta
+deployment. Its account access is not supplied yet; do not provision under an
+assumption that the login is complete. Vercel Chrome showed an authenticator
+setup prompt on private env entry; owner handoff requested, never submitted by
+the agent. Secret rotation is authorized but still requires the owner's action.
+
 ## Monitoring and verification
 
 Signed R2 HEAD-based snapshot age endpoint `/api/health` reports fresh/stale/
@@ -82,3 +88,31 @@ its existing three-second wait; isolated and bounded-worker suites pass.
 Independent review found one consent-write failure bug; fixed and re-reviewed,
 with no remaining blockers in the bounded reviewed code. This is not a full
 launch closure. CI and deployments remain unverified until explicitly recorded.
+
+## Published release evidence
+
+Code `d2cf28f36d7c086f37ca8e23a06a93d9e2a5ea9a` pushed atomically to GitHub
+main/recovery. Production `dpl_FS3w5YN7DwXo9QU1q4Q8fMTjNYQ5` /
+`https://everloot-oi18j0zpc-r21digital.vercel.app` is Ready and aliased to
+everloot.app/www, with `*/10` snapshot cron. The newer-listed deployment
+`dpl_GQj8bLKLxRXwiB4mxbR6fNqiXbMg` is the branch preview, not production.
+Live `/api/health` returned fresh/200 with snapshot last-modified
+2026-10-08T16:50:28Z. Anonymous auth and empty public corpus returned 200.
+Robots/llms are live; public beta zip downloads with the exact recorded SHA-256.
+Live upload UI renders the beta download and sharing controls at 390px without
+console errors. No synthetic public upload was created.
+
+The private GitHub prerelease `mcp-knowledge-2026-10-05` contains both the exact
+338,112,512-byte SQLite and 765-byte manifest. First abbreviated target SHA was
+rejected without a release; retry used the full reviewed commit successfully.
+Remote release-check run 37812194665 started; image publishing dispatched after
+both assets were confirmed uploaded. Completion/results still need recording.
+Local MCP restart returned healthy with matching hash and no OOM; test container
+then stopped/removed. Read-only root requires a small writable /tmp for tsx.
+
+First remote release-check run passed installs, KB/web suites/types/lint/build and
+Lua execution, but found cross-OS zip metadata/compression differences. Packaging
+now pins Unix file attributes and uses stored entries to avoid zlib differences.
+The revised source-only zip hash above supersedes the first compressed zip
+`50ddbf9c64340391029a69c823b67c2b338a45528d165f207449d3c0eb75ce99`;
+addon source content is unchanged. Rerun the complete remote check on that fix.
