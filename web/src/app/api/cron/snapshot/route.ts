@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { uploadStore } from "@/lib/upload-store";
+import { intakeQuota } from "@/lib/intake-quota";
 
 /**
  * GET /api/cron/snapshot — Vercel Cron (vercel.json) extends the corpus snapshot with new uploads.
@@ -18,6 +19,7 @@ export async function GET(req: Request) {
   const rebuild = new URL(req.url).searchParams.get("rebuild") === "1";
   try {
     const result = await uploadStore.writeSnapshot({ rebuild });
+    await intakeQuota.prune();
     return NextResponse.json({ ok: true, rebuild, ...result });
   } catch (err) {
     console.error("snapshot failed", err);
