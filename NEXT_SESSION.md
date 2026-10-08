@@ -1,14 +1,14 @@
 # Everloot — resume after 2026-10-05 assessment
 
-## Resume — 2026-10-07 recovery
+## Resume — 2026-10-07 integrated recovery
 
-Use the current `_STATUS.md` cursor and [launch recovery](docs/2026-10-07-launch-recovery.md), not the completion claims below. Actual checkout `D:\R21-Brain\projects\everloot`, branch `fix/launch-recovery`, base `7fd2daf`. Normal corrected web deployment is live; production auth schema and exact e2e cleanup/rebuild are verified. No public Fly MCP deployment or completed real OAuth login yet.
+Read the current `_STATUS.md` cursor and [launch recovery](docs/2026-10-07-launch-recovery.md) first. Actual checkout `D:\R21-Brain\projects\everloot`, branch `fix/launch-recovery`. Corrected web, private auth/publication schema and guarded corpus rebuild are deployed. Exact e2e cleanup is complete. Earlier held deployment/cleanup instructions below are historical and superseded by this thread's instruction to proceed with all necessary steps and push.
 
-Pending owner inputs: Fly.io authenticated account access (use only if available) and the storage location of the already registered fresh Battle.net OAuth client's credentials. Never paste secrets; install/configure them privately, redeploy and verify real sign-in/logout. Fly container is tested and includes only approved knowledge; gameplay intentionally disconnected. No Supabase/R2 secrets on the public host.
+Pending owner inputs: authenticated Fly.io access (use only if available) and the storage location of the fresh registered Battle.net OAuth client's credentials. Never paste secrets or reuse old rotated credentials. Configure Vercel privately, redeploy, then verify actual sign-in/logout. Fly uses only a generated service token, the immutable approved knowledge image and `EVERLOOT_PUBLIC_CORPUS_URL=https://everloot.app/api/corpus/public`; no Supabase/R2 credentials or raw uploads on that host. No public MCP deployment or real OAuth login is claimed.
 
-Web 82 tests/build, KB 158 tests/typecheck, native HTTP Unicode/auth regression, PostgreSQL idempotent/RLS checks and real-release Docker startup passed. Runtime web audit and KB audit have zero findings; web development findings remain. Guild authority/named sharing, persistent suppression, distributed quotas and the other full-launch components remain incomplete; do not repeat the previous E/H/I readiness claim.
+Final verification: 95 web tests/build; 170 KB tests/typecheck; Lua 5.1 identity/capacity; reviewed native HTTP regressions; R2 strong-ETag conditional write in production; non-root 1 GB Docker, 13 initialized tools, sourced knowledge and live sanitized gameplay read. Release hash remains `d21bb3c414db9f5f40a3146fe78d0ba3e7071eb083c59003fbf6062bd8ab41eb`. Web runtime/KB audit zero; development findings remain.
 
-The user authorized all necessary next steps, including exact test-data cleanup, in this thread. Earlier declined-cleanup entries below are historical and superseded. Keep full launch scope and milestones; continue from outstanding work rather than redoing applied schema or deleted fixtures.
+Named sharing/revocation/suppression are implemented with private operator grants and current read checks, with synthetic local evidence only. Distributed quotas, contributor independence, freshness/recovery/scale, real officer policy/evidence and other assessment tracks remain. Subscription billing/enforcement and ChatGPT directory registration remain separate work. Preserve full launch scope and targets; do not revive obsolete Retail/iOS plans or E/H/I completion claims.
 
 ## Historical resume — 2026-10-07 (superseded)
 

@@ -1,16 +1,18 @@
 # Everloot — Status
 
-## Current cursor — 2026-10-07 launch recovery
+## Current cursor — 2026-10-07 integrated launch recovery
 
-Recovery branch: `fix/launch-recovery`, based on `7fd2daf`. The earlier E/H/I completion claims below were not supported by working integrations. Full launch remains incomplete. Detailed changes, production evidence and commands: [launch recovery](docs/2026-10-07-launch-recovery.md).
+Actual checkout: `D:\R21-Brain\projects\everloot`, branch `fix/launch-recovery`, base `7fd2daf`. Recovery commit `ea5b4a1` is integrated with replay/sharing branch tip `9076773` (implementation `7e9d9f7`). Earlier E/H/I completion claims are historical and unsupported; full launch remains incomplete. Evidence and next actions: [launch recovery](docs/2026-10-07-launch-recovery.md).
 
-Implemented and checked: custom hashed Battle.net sessions; private/idempotent auth schema; Next 15.5.27 migration; persistent conflict tombstones; fail-closed guild authority and named public reads; stateless authenticated knowledge-only MCP; non-root container with the approved immutable release. Web 82 tests/build pass; KB 158 tests/typecheck pass; Docker starts actual release under 1 GB.
+Implemented: hashed custom Battle.net sessions; patched Next 15.5.27/React 19.2.8; stable addon identities and resumable batches; shared conflict-safe replay; operator-verified scoped publication grants, revocation and persistent character suppression; current sanitized public corpus; authenticated stateless MCP using that view. Production without complete cloud configuration now refuses local persistence and reports storage unavailable. Legacy watermark updates retain their mode until a full inventory exists, preventing double counts.
 
-Production: auth schema applied and eight private tables/RLS/browser grants verified. Exact authorized e2e fixtures backed up then removed; corpus rebuilt to zero uploads/records, reachable. Normal web deployment `dpl_9T7XVpPS95YwkExhj4Vmr1NGbcJ2` promoted to everloot.app. Production cleanup is now authorized and completed; older declined-cleanup notes are historical.
+Verified: 95 web tests, production build/lint/type checks; 170 KB tests/typecheck; Lua 5.1 event/capacity checks. Actual approved-release Docker runs as non-root under 1 GB, initializes 13 tools, returns sourced/licensed knowledge and reads the live sanitized empty corpus. Independent Astra reviews found four bugs (pre-auth buffering, split Unicode, production local fallback, legacy upload totals); fixed with regressions. Web runtime and KB audits are zero; web development findings remain.
 
-Access: use Fly.io if authenticated access exists (user preference); none found yet, so no Fly deployment or DNS change. Fresh Battle.net client is already registered per user; await local credential storage location, configure in Vercel privately, redeploy and test owner OAuth. Current sign-in endpoint fails explicitly with 503 while unconfigured. No credentials were pasted.
+Production: 10 private auth/publication tables have RLS and no browser-role grants. Exact authorized e2e fixtures backed up/deleted. R2 conditional snapshot rebuild succeeded after requesting an uncompressed response to retain a strong ETag; overwrite protection remains enforced. Normal release `dpl_8wEA6A2xqSsYXvFGkWMpmfgASSDR` / `https://everloot-exww9h3hn-r21digital.vercel.app` is promoted to everloot.app with the ten-minute cron restored. Live corpus is reachable with zero uploads/records; anonymous `/api/auth/me` is 200/private,no-store. Production UI renders sharing choices; real-authority grant issuance/revocation has only synthetic local evidence, not a real officer/owner trial.
 
-Next: obtain those two access prerequisites. Verify public MCP HTTPS/client connection and actual Battle.net login after configuration. Continue verified guild claims and persistent named sharing/suppression, sanitized shared gameplay service and distributed intake limits, plus remaining full-launch tracks in the 10/05 assessment. Beta cutoff 10/21, launch 11/04 unchanged. Container/tests and an entitlement schema do not establish full-launch readiness.
+Access: user chose Fly.io if authenticated access exists; none found, so no Fly deployment/DNS change. Fresh Battle.net client is registered per user; await its local credential storage location, configure Vercel privately, redeploy and verify owner login/logout. `/api/auth/bnet` remains explicit 503 while unconfigured. No old credentials reused or secrets pasted.
+
+Next: configure fresh OAuth credentials and deploy Fly when access is supplied; verify real public HTTPS MCP/client authentication and directory registration. Continue shared intake quotas/contributor abuse protection, operator verification UX and real authority trials, freshness/recovery/scale and remaining full-launch assessment tracks. Billing/enforcement and ChatGPT directory integration are not implemented by entitlement tables or a bearer-auth container. Beta cutoff 10/21 and launch 11/04 remain targets; no scope reduction.
 
 ## Historical unverified checkpoint — 2026-10-07 (superseded)
 
@@ -79,6 +81,19 @@ The claims in this historical checkpoint are superseded by the recovery evidence
 **Verified locally:** web `npm test` **66/66**, KB `npm test` **152/152**, KB `npm run typecheck`, web `npm run build`, `npm run lint` pass. `main` pushed — Vercel preview building.
 
 **Next:** Preview review (knowledge tools, auth, rate limiting), then test-data cleanup + snapshot rebuild. Beta cutoff 10/21, CurseForge ~10/24, launch 11/04 targets unchanged.
+
+## Historical replay/sharing cursor — 2026-10-07 (superseded by integration)
+
+**Closeout:** implementation `7e9d9f7` and the A/B shared-checkout handoff are backed up on
+private GitHub feature branches. `NEXT_SESSION.md` contains cold-start commands and the exact
+resume prompt. Local preview stopped after verification; disposable SQL container is stopped.
+No new application changes during closeout.
+
+Carlos's three authorized steps are implemented and locally verified on `fix/replay-sharing-2026-10-07`: A/B review, stable event IDs/conflict-safe replay, resumable upload batches, scoped verified publication, revocation and character suppression. E's distributed quotas remain open. No production deployment or migration. Shared checkout remains on `fix/readonly-kb-service`; resume the feature branch, not the old implementation cursor.
+
+Evidence: 68 web + 163 KB tests, both typechecks, web production build, Lua 5.1 event/capacity test and disposable PostgreSQL migration/permissions pass. Browser verified actual storage failure/retry, 4,500 records in three batches, withheld named data and replay count invariance. Synthetic local grant upload/read/revoke/read removed the named row immediately. Details and remaining findings: [`docs/2026-10-07-replay-sharing-verification.md`](docs/2026-10-07-replay-sharing-verification.md).
+
+Next: review the local diff, then complete shared quotas/production-config and dependency/lint repair before release approval. Real beta-client/raid/officer evidence, signing, public MCP/companion/uploader and enrichment remain open. Preserve the declined production test-data deletion and production snapshot rewrite restriction. Recorded beta cutoff 10/21 and full launch 11/04 remain targets.
 
 ## Current cursor — 2026-10-06 checkout verification
 

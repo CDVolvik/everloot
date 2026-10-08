@@ -59,6 +59,12 @@ async function editManifest(manifestPath: string, edit: (m: Record<string, any>)
   writeManifest(manifestPath, manifest);
 }
 
+test("a release refuses omitted source counts even when its file hash matches", async () => {
+  const { dbPath, manifestPath } = await genuineRelease();
+  await editManifest(manifestPath, (m) => { m.counts = {}; });
+  expect(() => openPublicSnapshot(dbPath)).toThrow(/counts/i);
+});
+
 /** Mutate a genuine release and return the paths, with the manifest re-hashed to match. */
 async function mutatedRelease(
   mutate: (db: Database.Database) => void,

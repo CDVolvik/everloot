@@ -55,6 +55,7 @@ scratch/
 
 # --- kb/ (knowledge base) ---
 kb/data/
+web/data/
 .vercel
 .env*
 !.env.example

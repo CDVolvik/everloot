@@ -2,6 +2,8 @@ import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { AwsClient } from "aws4fetch";
 import { parseRecords, type CanonicalUpload, type IntakeRecord } from "./intake";
+import { mergeCorpus, publicRecords, type CorpusState } from "../../../kb/src/corpus";
+import { createSharingStore } from "./sharing-store";
 
 /**
  * Where uploads and waitlist signups live.
@@ -27,72 +29,22 @@ export interface Corpus {
   records: IntakeRecord[];
   /** Set when the read failed. An empty `records` array is then not a count of uploads. */
   unreachable?: boolean;
-  /** Conflict tombstones: event keys that had conflicting payloads and are excluded from public facts. */
-  conflictTombstones?: string[];
+  legacyRecords?: number;
 }
+
+interface RawCorpus { uploads: number; state: CorpusState; unreachable?: boolean }
 
 export const STORAGE_UNREACHABLE = "Storage unreachable. These figures are unrecorded, not zero.";
 
 interface Snapshot extends Corpus {
+  conflictTombstones?: string[];
+  corpusState?: CorpusState;
+  seenUploadIds?: string[];
+  etag?: string;
   generatedAt: string;
   /** received_at of the newest upload included, and the ids sharing it, so ties are not re-read. */
   lastReceivedAt: string | null;
   lastIds: string[];
-  /** Dedup state version for incremental rebuild agreement. */
-  dedupVersion: number;
-}
-
-/** Create a stable deduplication key from installId and eventId. */
-export function dedupKey(record: IntakeRecord): string {
-  return `${record.installId}|${record.eventId}`;
-}
-
-/** Compare two records for canonical equality (ignoring metadata fields that don't affect facts). */
-export function recordsEqual(a: IntakeRecord, b: IntakeRecord): boolean {
-  // Compare all fields except capturedAt, kindLoggedAt (added at store time), eventId (the identity key)
-  const { capturedAt: _, kindLoggedAt: __, eventId: ___, ...aRest } = a as Record<string, unknown>;
-  const { capturedAt: ____ , kindLoggedAt: _____, eventId: ______, ...bRest } = b as Record<string, unknown>;
-  return JSON.stringify(aRest) === JSON.stringify(bRest);
-}
-
-/**
- * Deduplicate records by (installId, eventId).
- * - Equal payloads: keep one
- * - Conflicting payloads: exclude both, add to conflict tombstones
- * Returns deduplicated records and conflict tombstones.
- */
-export function deduplicateRecords(records: IntakeRecord[]): { records: IntakeRecord[]; conflictTombstones: string[] } {
-  const seen = new Map<string, IntakeRecord[]>();
-  for (const r of records) {
-    const key = dedupKey(r);
-    const existing = seen.get(key);
-    if (existing) {
-      existing.push(r);
-    } else {
-      seen.set(key, [r]);
-    }
-  }
-
-  const deduped: IntakeRecord[] = [];
-  const conflictTombstones: string[] = [];
-
-  for (const [key, group] of seen) {
-    if (group.length === 1) {
-      deduped.push(group[0]);
-    } else {
-      // Check if all payloads are equal
-      const first = group[0];
-      const allEqual = group.every(r => recordsEqual(first, r));
-      if (allEqual) {
-        deduped.push(first);
-      } else {
-        // Conflict: exclude all, add tombstone
-        conflictTombstones.push(key);
-      }
-    }
-  }
-
-  return { records: deduped, conflictTombstones };
 }
 
 interface IndexRow {
@@ -107,7 +59,7 @@ export interface WaitlistEntry {
   ts: string;
 }
 
-/** Cloud mode only when every variable is set. Half a config falls back to local, never half-writes. */
+/** Cloud mode requires every variable. Production rejects incomplete configuration. */
 export function cloudConfig(env: Record<string, string | undefined> = process.env): CloudConfig | null {
   const v = (k: string) => env[k]?.trim() || undefined;
   const c = {
@@ -135,27 +87,22 @@ function rawRecordsOf(payload: unknown): unknown[] {
  * snapshot rows may predate a schema change. Unknown kinds and invalid rows are dropped, extra
  * fields stripped. No aggregate cap — 2,000 is a per-request limit, not a corpus size.
  */
-function normalizedRecordsOf(payload: unknown): IntakeRecord[] {
-  // No verified ownership, named opt-in or durable suppression reader is wired
-  // yet. Preserve raw accepted uploads privately, but exclude named public facts.
-  const privateKinds = new Set(["guild_snapshot", "raid_lockout", "attendance", "loot_award",
-    "gear_snapshot", "gold_snapshot", "money_event"]);
-  return parseRecords(rawRecordsOf(payload)).records.filter(r => !privateKinds.has(r.kind));
-}
-
 export function createUploadStore(opts: {
   cloud: CloudConfig | null;
   localDir: string;
   fetch?: typeof fetch;
   now?: () => Date;
   cacheMs?: number;
+  /** Recheck current publication authority on EVERY read, including cache hits. */
+  publication?: (state: CorpusState) => Promise<IntakeRecord[]>;
 }) {
   const doFetch = opts.fetch ?? fetch;
   const now = opts.now ?? (() => new Date());
   const cacheMs = opts.cacheMs ?? 5 * 60 * 1000;
-  let cached: { at: number; corpus: Corpus } | null = null;
+  let cached: { at: number; corpus: RawCorpus } | null = null;
 
   const cloud = opts.cloud;
+  const unavailable = !cloud && process.env.NODE_ENV === "production";
   const r2 = cloud && new AwsClient({
     accessKeyId: cloud.r2AccessKeyId,
     secretAccessKey: cloud.r2SecretAccessKey,
@@ -175,8 +122,9 @@ export function createUploadStore(opts: {
     return doFetch(await r2!.sign(objectUrl(key), init));
   }
 
-  async function putUpload(uploadId: string, installId: string, payload: CanonicalUpload): Promise<boolean> {
-    const body = JSON.stringify(payload);
+  async function putUpload(uploadId: string, installId: string, payload: CanonicalUpload, publicationGrants: string[] = []): Promise<boolean> {
+    if (unavailable) return false;
+    const body = JSON.stringify(publicationGrants.length ? { ...payload, publicationGrants } : payload);
     if (!cloud) {
       try {
         const dir = join(opts.localDir, "uploads");
@@ -215,26 +163,31 @@ export function createUploadStore(opts: {
     }
   }
 
-  async function readLocal(): Promise<Corpus> {
+  function grantsOf(payload: unknown): string[] {
+    const grants = (payload as { publicationGrants?: unknown })?.publicationGrants;
+    return Array.isArray(grants) ? grants.filter((g) => typeof g === "string" && /^[a-f0-9]{64}$/.test(g)) : [];
+  }
+
+  async function readLocal(): Promise<RawCorpus> {
     const dir = join(opts.localDir, "uploads");
     let files: string[] = [];
     try {
       files = (await readdir(dir)).filter((f) => f.endsWith(".json"));
     } catch (err) {
       const code = (err as NodeJS.ErrnoException).code;
-      if (code === "ENOENT") return { uploads: 0, records: [] };
-      return { uploads: 0, records: [], unreachable: true };
+      if (code === "ENOENT") return { uploads: 0, state: mergeCorpus(undefined, []) };
+      return { uploads: 0, state: mergeCorpus(undefined, []), unreachable: true };
     }
-    const records: IntakeRecord[] = [];
+    let state = mergeCorpus(undefined, []);
     for (const f of files) {
       try {
-        records.push(...normalizedRecordsOf(JSON.parse(await readFile(join(dir, f), "utf8"))));
+        const payload = JSON.parse(await readFile(join(dir, f), "utf8"));
+        state = mergeCorpus(state, rawRecordsOf(payload), grantsOf(payload));
       } catch {
         continue; // a corrupt file never breaks a rollup
       }
     }
-    const { records: deduped, conflictTombstones } = deduplicateRecords(records);
-    return { uploads: files.length, records: deduped, conflictTombstones };
+    return { uploads: files.length, state };
   }
 
   async function listIndex(since?: string): Promise<IndexRow[]> {
@@ -253,39 +206,34 @@ export function createUploadStore(opts: {
     return rows;
   }
 
-  async function readObjects(keys: string[]): Promise<{ records: IntakeRecord[]; missed: boolean; conflictTombstones: string[] }> {
-    const records: IntakeRecord[] = [];
-    const tombstones = new Set<string>();
+  async function readObjects(keys: string[], previous?: CorpusState): Promise<{ state: CorpusState; missed: boolean }> {
+    let state = previous ?? mergeCorpus(undefined, []);
     let missed = false;
     for (let i = 0; i < keys.length; i += PARALLEL_READS) {
       const batch = await Promise.all(keys.slice(i, i + PARALLEL_READS).map(async (key) => {
         try {
           const res = await r2Fetch(key, { method: "GET" });
-          if (!res.ok) return { records: [] as IntakeRecord[], missed: true, conflictTombstones: [] as string[] };
+          if (!res.ok) return { payload: null, missed: true };
           try {
-            const { records: normalized, conflictTombstones } = deduplicateRecords(normalizedRecordsOf(JSON.parse(await res.text())));
-            return { records: normalized, missed: false, conflictTombstones };
+            return { payload: JSON.parse(await res.text()) as unknown, missed: false };
           } catch {
-            return { records: [] as IntakeRecord[], missed: false, conflictTombstones: [] as string[] };
+            return { payload: null, missed: false };
           }
         } catch {
-          return { records: [] as IntakeRecord[], missed: true, conflictTombstones: [] as string[] };
+          return { payload: null, missed: true };
         }
       }));
       for (const row of batch) {
         if (row.missed) missed = true;
-        else records.push(...row.records);
-        for (const key of row.conflictTombstones) tombstones.add(key);
+        else state = mergeCorpus(state, rawRecordsOf(row.payload), grantsOf(row.payload));
       }
     }
-    // Deduplicate across all objects
-    const { records: deduped, conflictTombstones } = deduplicateRecords(records);
-    for (const key of conflictTombstones) tombstones.add(key);
-    return { records: deduped.filter(r => !tombstones.has(dedupKey(r))), missed, conflictTombstones: [...tombstones] };
+    return { state, missed };
   }
 
   async function readSnapshot(): Promise<Snapshot | null> {
-    const res = await r2Fetch(SNAPSHOT_KEY, { method: "GET" });
+    // Compression can turn the object's strong ETag into a weak response validator.
+    const res = await r2Fetch(SNAPSHOT_KEY, { method: "GET", headers: { "accept-encoding": "identity" } });
     if (res.status === 404) return null;
     if (!res.ok) throw new Error(`snapshot read failed (${res.status})`);
     let parsed: Partial<Snapshot>;
@@ -296,35 +244,50 @@ export function createUploadStore(opts: {
     }
     // A snapshot without a records array is unreadable, never an empty corpus.
     if (!Array.isArray(parsed.records)) throw new Error("snapshot has no records array");
-    const deduped = deduplicateRecords(normalizedRecordsOf(parsed));
-    const tombstones = new Set([
-      ...(Array.isArray(parsed.conflictTombstones) ? parsed.conflictTombstones.filter(k => typeof k === "string") : []),
-      ...deduped.conflictTombstones,
-    ]);
     return {
+      corpusState: parsed.corpusState,
+      conflictTombstones: parsed.conflictTombstones,
+      seenUploadIds: parsed.seenUploadIds,
+      etag: res.headers.get("etag") ?? undefined,
       generatedAt: parsed.generatedAt ?? "",
       uploads: typeof parsed.uploads === "number" ? parsed.uploads : 0,
-      records: deduped.records.filter(r => !tombstones.has(dedupKey(r))),
-      conflictTombstones: [...tombstones],
+      records: parseRecords(parsed.records).records,
       lastReceivedAt: parsed.lastReceivedAt ?? null,
       lastIds: Array.isArray(parsed.lastIds) ? parsed.lastIds : [],
-      dedupVersion: typeof parsed.dedupVersion === "number" ? parsed.dedupVersion : 1,
     };
   }
 
-  async function readCloud(): Promise<Corpus> {
-    const snapshot = await readSnapshot();
-    if (snapshot) {
-      return {
-        uploads: snapshot.uploads,
-        records: snapshot.records,
-        conflictTombstones: snapshot.conflictTombstones,
-      };
+  function stateOf(snapshot: Snapshot): CorpusState {
+    const state = snapshot.corpusState;
+    if (!state) {
+      // The first recovery deployment used pipe-delimited conflict identities.
+      // Migrate unambiguous keys; refuse ambiguous ones instead of resurrecting data.
+      const conflicts = (snapshot.conflictTombstones ?? []).map(key => {
+        const parts = typeof key === "string" ? key.split("|") : [];
+        if (parts.length !== 2 || !parts[0] || !parts[1]) throw new Error("Legacy conflicts need a reviewed migration");
+        return JSON.stringify(parts);
+      });
+      return mergeCorpus({ version: 1, events: [], conflicts, legacyRecords: 0 }, snapshot.records);
     }
+    if (state.version !== 1 || !Array.isArray(state.events) || !Array.isArray(state.conflicts) ||
+        !state.conflicts.every((k) => typeof k === "string") || !Number.isSafeInteger(state.legacyRecords) || state.legacyRecords < 0) {
+      throw new Error("snapshot replay state is invalid");
+    }
+    let checked: CorpusState = { version: 1, events: [], conflicts: state.conflicts, legacyRecords: state.legacyRecords };
+    for (const event of state.events) {
+      if (!event?.record || !event.record.eventId || !Array.isArray(event.grants)) throw new Error("snapshot event is invalid");
+      checked = mergeCorpus(checked, [event.record], grantsOf({ publicationGrants: event.grants }));
+    }
+    return checked;
+  }
+
+  async function readCloud(): Promise<RawCorpus> {
+    const snapshot = await readSnapshot();
+    if (snapshot) return { uploads: snapshot.uploads, state: stateOf(snapshot) };
     const keys = (await listIndex()).map((r) => r.object_key);
     const read = await readObjects(keys);
     if (read.missed) throw new Error("upload object unreadable");
-    return { uploads: keys.length, records: read.records, conflictTombstones: read.conflictTombstones };
+    return { uploads: keys.length, state: read.state };
   }
 
   /**
@@ -333,32 +296,38 @@ export function createUploadStore(opts: {
    */
   async function writeSnapshot(opts: { rebuild?: boolean } = {}): Promise<{ uploads: number; added: number }> {
     if (!cloud) throw new Error("snapshots need the cloud store");
-    const prev = opts.rebuild ? null : await readSnapshot();
-    const rows = await listIndex(prev?.lastReceivedAt ?? undefined);
-    const fresh = rows.filter((r) => !(prev && r.received_at === prev.lastReceivedAt && prev.lastIds.includes(r.id)));
-    const read = await readObjects(fresh.map((r) => r.object_key));
+    const current = await readSnapshot();
+    if (current && !current.etag) throw new Error("snapshot has no ETag: cannot safely update it");
+    if (current?.etag?.startsWith("W/")) throw new Error("snapshot has a weak ETag: cannot safely update it");
+    const prev = opts.rebuild ? null : current;
+    const seen = prev?.seenUploadIds ? new Set(prev.seenUploadIds) : null;
+    const rows = await listIndex(seen ? undefined : prev?.lastReceivedAt ?? undefined);
+    const fresh = rows.filter((r) => seen ? !seen.has(r.id) : !(prev && r.received_at === prev.lastReceivedAt && prev.lastIds.includes(r.id)));
+    // Rebuilds preserve known conflict tombstones, including after a raw file is removed.
+    const start = prev ? stateOf(prev) : current
+      ? { ...mergeCorpus(undefined, []), conflicts: stateOf(current).conflicts } : undefined;
+    const read = await readObjects(fresh.map((r) => r.object_key), start);
     if (read.missed) throw new Error("upload object unreadable");
-    
-    // Combine previous records with fresh records, then deduplicate
-    const combinedRecords = [...(prev?.records ?? []), ...read.records];
-    const { records: deduped, conflictTombstones } = deduplicateRecords(combinedRecords);
-    const tombstones = new Set([...(prev?.conflictTombstones ?? []), ...read.conflictTombstones, ...conflictTombstones]);
-    
+    const records = publicRecords(read.state);
     const lastReceivedAt = rows.length > 0 ? rows[rows.length - 1].received_at : prev?.lastReceivedAt ?? null;
     const lastIds = rows.length > 0 ? rows.filter((r) => r.received_at === lastReceivedAt).map((r) => r.id) : prev?.lastIds ?? [];
     const snapshot: Snapshot = {
       generatedAt: now().toISOString(),
       uploads: (prev?.uploads ?? 0) + fresh.length,
-      records: deduped.filter(r => !tombstones.has(dedupKey(r))),
-      conflictTombstones: [...tombstones],
+      records,
+      corpusState: read.state,
+      // A legacy watermark query covers only a suffix of the index. Stay in that
+      // mode until a full rebuild supplies the complete upload inventory.
+      seenUploadIds: seen || !prev ? [...new Set([...(prev?.seenUploadIds ?? []), ...rows.map((r) => r.id)])].sort() : undefined,
       lastReceivedAt,
       lastIds,
-      dedupVersion: (prev?.dedupVersion ?? 1) + (opts.rebuild ? 0 : 1),
     };
     const put = await r2Fetch(SNAPSHOT_KEY, {
       method: "PUT",
       body: JSON.stringify(snapshot),
-      headers: { "content-type": "application/json" },
+      // R2 supports conditional PutObject; a race fails instead of losing tombstones.
+      // https://developers.cloudflare.com/r2/api/s3/api/
+      headers: { "content-type": "application/json", ...(current ? { "if-match": current.etag! } : { "if-none-match": "*" }) },
     });
     if (!put.ok) throw new Error(`snapshot write failed (${put.status})`);
     cached = null;
@@ -366,17 +335,21 @@ export function createUploadStore(opts: {
   }
 
   async function loadCorpus(): Promise<Corpus> {
-    if (cached && Date.now() - cached.at < cacheMs) return cached.corpus;
     try {
-      const corpus = cloud ? await readCloud() : await readLocal();
+      if (unavailable) throw new Error("Production storage is not configured");
+      const corpus = cached && Date.now() - cached.at < cacheMs
+        ? cached.corpus : cloud ? await readCloud() : await readLocal();
+      if (corpus.unreachable) throw new Error("corpus unreachable");
       cached = { at: Date.now(), corpus };
-      return corpus;
+      const records = opts.publication ? await opts.publication(corpus.state) : publicRecords(corpus.state);
+      return { uploads: corpus.uploads, records, ...(corpus.state.legacyRecords ? { legacyRecords: corpus.state.legacyRecords } : {}) };
     } catch {
-      return { uploads: 0, records: [], unreachable: true, conflictTombstones: [] };
+      return { uploads: 0, records: [], unreachable: true };
     }
   }
 
   async function putWaitlist(entry: WaitlistEntry): Promise<boolean> {
+    if (unavailable) return false;
     if (!cloud) {
       try {
         await mkdir(opts.localDir, { recursive: true });
@@ -413,4 +386,7 @@ export function createUploadStore(opts: {
 }
 
 /** The store the routes and pages use. */
-export const uploadStore = createUploadStore({ cloud: cloudConfig(), localDir: join(process.cwd(), "data") });
+const configuredCloud = cloudConfig();
+const localDir = join(process.cwd(), "data");
+export const sharingStore = createSharingStore({ cloud: configuredCloud, localDir });
+export const uploadStore = createUploadStore({ cloud: configuredCloud, localDir, publication: sharingStore.publish });

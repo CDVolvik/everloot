@@ -57,6 +57,9 @@ function readManifest(dbPath: string): Manifest {
     throw new Error("public snapshot manifest has no counts");
   }
   const allowed = publishableIds();
+  if (Object.keys(m.counts).length !== allowed.length || allowed.some((id) => !Object.hasOwn(m.counts as object, id))) {
+    throw new Error("public snapshot manifest counts must name every publishable source exactly once");
+  }
   for (const [id, n] of Object.entries(m.counts as Record<string, unknown>)) {
     if (!allowed.includes(id)) throw new Error(`public snapshot manifest counts name a non-publishable source: ${id}`);
     if (typeof n !== "number" || !Number.isInteger(n) || n < 0) {

@@ -1,5 +1,11 @@
 import { describe, expect, test } from "vitest";
-import { deduplicateRecords, dedupKey } from "./upload-store.js";
+import { mergeCorpus, publicRecords, eventKey } from "../../../kb/src/corpus";
+import { parseRecords } from "./intake";
+
+function deduplicateRecords(rows: unknown[]) {
+  const state = mergeCorpus(undefined, rows);
+  return { records: publicRecords(state), conflictTombstones: state.conflicts };
+}
 
 const capturedAt = "2026-10-05T00:00:00.000Z";
 
@@ -31,7 +37,7 @@ function questRecord(over: Record<string, unknown> = {}): unknown {
 
 describe("deduplication", () => {
   test("dedupKey creates stable key from installId and eventId", () => {
-    expect(dedupKey(lootRecord() as any)).toBe("install-1234|evt-1");
+    expect(eventKey(parseRecords([lootRecord()]).records[0])).toBe('["install-1234","evt-1"]');
   });
 
   test("identical file twice -> one record, no tombstones", () => {
@@ -59,7 +65,7 @@ describe("deduplication", () => {
     const { records, conflictTombstones } = deduplicateRecords([conflicting1, conflicting2]);
     expect(records).toHaveLength(0);
     expect(conflictTombstones).toHaveLength(1);
-    expect(conflictTombstones[0]).toBe("install-1234|evt-1");
+    expect(conflictTombstones[0]).toBe('["install-1234","evt-1"]');
   });
 
   test("conflict then replay of one version -> still excluded, tombstone persists", () => {

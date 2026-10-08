@@ -9,6 +9,7 @@ primary_region = "iad"
   PORT = "8787"
   NODE_ENV = "production"
   KB_SNAPSHOT_PATH = "/data/release/everloot-public.sqlite"
+  EVERLOOT_PUBLIC_CORPUS_URL = "https://everloot.app/api/corpus/public"
 
 [http_service]
   internal_port = 8787

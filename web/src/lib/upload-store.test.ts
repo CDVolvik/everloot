@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { cloudConfig, createUploadStore, type CloudConfig } from "./upload-store.js";
 
 const cloud: CloudConfig = {
@@ -22,7 +22,9 @@ function fakeFetch(routes: Array<[string, string, () => Response]>) {
     const req = new Request(input, init);
     calls.push({ url: req.url, method: req.method, headers: req.headers, body: await req.text() });
     const hit = routes.find(([prefix, method]) => req.url.startsWith(prefix) && req.method === method);
-    return hit ? hit[2]() : new Response("no route", { status: 404 });
+    const response = hit ? hit[2]() : new Response("no route", { status: 404 });
+    if (response.ok && req.method === "GET") response.headers.set("etag", '"fixture"');
+    return response;
   }) as typeof fetch;
   return { fn, calls };
 }
@@ -33,29 +35,29 @@ const capturedAt = "2026-10-04T07:00:00.000Z";
 
 /** Schema-valid records: a corpus normalizer parses stored rows, so a kind-only fixture is not a fixture. */
 const lootRow = (over: Record<string, unknown> = {}) => ({
-  kind: "loot",
+  kind: "loot" as const,
+  eventId: "event:1",
   installId: "install-1",
   capturedAt,
-  eventId: "evt-1",
   sourceNpcId: 1234,
   items: [{ itemId: 456, count: 2 }],
   ...over,
 });
 const questRow = () => ({
   kind: "quest",
+  eventId: "event:2",
   installId: "install-1",
   capturedAt,
-  eventId: "evt-2",
   questId: 55,
   title: "Road to Westfall",
   level: 12,
   rewardItemIds: [],
 });
 const npcRow = () => ({
-  kind: "npc_sighting",
+  kind: "npc_sighting" as const,
+  eventId: "event:3",
   installId: "install-1",
   capturedAt,
-  eventId: "evt-3",
   npcId: 1234,
   name: "Forest Spider",
   mapId: 141,
@@ -66,9 +68,9 @@ const npcRow = () => ({
 });
 const vendorRow = () => ({
   kind: "vendor",
+  eventId: "event:4",
   installId: "install-1",
   capturedAt,
-  eventId: "evt-4",
   vendorNpcId: 7,
   items: [{ itemId: 456, priceCopper: 100 }],
 });
@@ -123,7 +125,7 @@ describe("upload store, cloud mode", () => {
     ]);
     const store = createUploadStore({ cloud, localDir: "unused", fetch: fn, now, cacheMs: 60_000 });
     const corpus = await store.loadCorpus();
-    expect(corpus).toEqual({ uploads: 2, records: [lootRow(), questRow()], conflictTombstones: [] });
+    expect(corpus).toEqual({ uploads: 2, records: [lootRow(), questRow()] });
 
     const before = calls.length;
     await store.loadCorpus();
@@ -143,48 +145,6 @@ describe("corpus snapshot", () => {
   const SNAP = `${R2}snapshots/corpus.json`;
   const INDEX = "https://sb.example/rest/v1/uploads";
 
-  test("a conflict inside one object excludes later copies in other objects", async () => {
-    const { fn } = fakeFetch([
-      [INDEX, "GET", () => Response.json([{ object_key: "uploads/a.json" }, { object_key: "uploads/b.json" }])],
-      [`${R2}uploads/a.json`, "GET", () => Response.json({ records: [lootRow(), lootRow({ sourceNpcId: 99 })] })],
-      [`${R2}uploads/b.json`, "GET", () => Response.json({ records: [lootRow()] })],
-    ]);
-    const corpus = await createUploadStore({ cloud, localDir: "unused", fetch: fn }).loadCorpus();
-    expect(corpus.records).toEqual([]);
-    expect(corpus.conflictTombstones).toEqual(["install-1|evt-1"]);
-  });
-
-  test("a snapshot reader excludes tombstoned rows", async () => {
-    const { fn } = fakeFetch([[SNAP, "GET", () => Response.json({ records: [lootRow()], conflictTombstones: ["install-1|evt-1"] })]]);
-    expect((await createUploadStore({ cloud, localDir: "unused", fetch: fn }).loadCorpus()).records).toEqual([]);
-  });
-
-  test("named records stay private until verified sharing and suppression are connected", async () => {
-    const gear = { kind: "gear_snapshot", installId: "install-1", eventId: "gear-1", capturedAt,
-      character: "PrivatePlayer", realm: "PrivateRealm", equipped: [{ slot: "head", itemId: 1, itemLevel: 10 }] };
-    for (const snapshot of [false, true]) {
-      const { fn } = fakeFetch([
-        [SNAP, "GET", () => snapshot ? Response.json({ records: [lootRow(), gear] }) : new Response(null, { status: 404 })],
-        [INDEX, "GET", () => Response.json([{ object_key: "uploads/a.json" }])],
-        [`${R2}uploads/a.json`, "GET", () => Response.json({ records: [lootRow(), gear] })],
-      ]);
-      expect((await createUploadStore({ cloud, localDir: "unused", fetch: fn }).loadCorpus()).records).toEqual([lootRow()]);
-    }
-  });
-
-  test("incremental snapshots preserve old and new tombstones", async () => {
-    const { fn, calls } = fakeFetch([
-      [SNAP, "GET", () => Response.json({ uploads: 1, records: [], conflictTombstones: ["install-1|evt-1"], lastReceivedAt: capturedAt, lastIds: ["old"] })],
-      [INDEX, "GET", () => Response.json([{ id: "new", object_key: "uploads/new.json", received_at: "2026-10-05T00:00:00Z" }])],
-      [`${R2}uploads/new.json`, "GET", () => Response.json({ records: [lootRow(), lootRow({ eventId: "conflict" }), lootRow({ eventId: "conflict", sourceNpcId: 99 })] })],
-      [SNAP, "PUT", () => new Response(null, { status: 200 })],
-    ]);
-    await createUploadStore({ cloud, localDir: "unused", fetch: fn }).writeSnapshot();
-    const snapshot = JSON.parse(calls.find(c => c.method === "PUT")!.body);
-    expect(snapshot.records).toEqual([]);
-    expect(snapshot.conflictTombstones.sort()).toEqual(["install-1|conflict", "install-1|evt-1"]);
-  });
-
   test("the first snapshot reads every indexed upload and records where it stopped", async () => {
     const { fn, calls } = fakeFetch([
       [SNAP, "GET", () => new Response("missing", { status: 404 })],
@@ -199,23 +159,22 @@ describe("corpus snapshot", () => {
     const store = createUploadStore({ cloud, localDir: "unused", fetch: fn, now });
     expect(await store.writeSnapshot()).toEqual({ uploads: 2, added: 2 });
     const put = calls.find((c) => c.method === "PUT")!;
-    expect(JSON.parse(put.body)).toEqual({
+    expect(JSON.parse(put.body)).toMatchObject({
       generatedAt: "2026-10-04T12:00:00.000Z",
       uploads: 2,
       records: [lootRow(), questRow()],
-      conflictTombstones: [],
       lastReceivedAt: "2026-10-04T08:00:00+00:00",
       lastIds: ["b"],
-      dedupVersion: 2,
     });
+    expect(JSON.parse(put.body).corpusState.events).toHaveLength(2);
+    expect(put.headers.get("if-none-match")).toBe("*");
   });
 
   test("a later snapshot reads only uploads it has not seen", async () => {
     const { fn, calls } = fakeFetch([
       [SNAP, "GET", () => Response.json({
         generatedAt: "x", uploads: 2, records: [lootRow(), questRow()],
-        conflictTombstones: [], lastReceivedAt: "2026-10-04T08:00:00+00:00", lastIds: ["b"],
-        dedupVersion: 2,
+        lastReceivedAt: "2026-10-04T08:00:00+00:00", lastIds: ["b"],
       })],
       [INDEX, "GET", () => Response.json([
         { id: "b", object_key: "uploads/b.json", received_at: "2026-10-04T08:00:00+00:00" },
@@ -230,9 +189,7 @@ describe("corpus snapshot", () => {
     expect(calls.find((c) => c.method === "GET" && c.url.startsWith(INDEX))!.url).toContain("received_at=gte.2026-10-04T08%3A00%3A00%2B00%3A00");
     const put = JSON.parse(calls.find((c) => c.method === "PUT")!.body);
     expect(put.records).toEqual([lootRow(), questRow(), vendorRow()]);
-    expect(put.conflictTombstones).toEqual([]);
     expect(put.lastIds).toEqual(["c"]);
-    expect(put.dedupVersion).toBe(3);
   });
 
   test("an unreadable object is not a silent empty corpus and is not cached", async () => {
@@ -242,7 +199,7 @@ describe("corpus snapshot", () => {
       [`${R2}uploads/a.json`, "GET", () => new Response("down", { status: 500 })],
     ]);
     const store = createUploadStore({ cloud, localDir: "unused", fetch: fn, now, cacheMs: 60_000 });
-    expect(await store.loadCorpus()).toEqual({ uploads: 0, records: [], unreachable: true, conflictTombstones: [] });
+    expect(await store.loadCorpus()).toEqual({ uploads: 0, records: [], unreachable: true });
     const before = calls.length;
     await store.loadCorpus();
     expect(calls.length).toBeGreaterThan(before);
@@ -251,7 +208,7 @@ describe("corpus snapshot", () => {
   test("a failed snapshot read is unreachable, not an empty corpus", async () => {
     const { fn } = fakeFetch([[SNAP, "GET", () => new Response("down", { status: 500 })]]);
     const store = createUploadStore({ cloud, localDir: "unused", fetch: fn, now, cacheMs: 60_000 });
-    expect(await store.loadCorpus()).toEqual({ uploads: 0, records: [], unreachable: true, conflictTombstones: [] });
+    expect(await store.loadCorpus()).toEqual({ uploads: 0, records: [], unreachable: true });
   });
 
   test("a missed object is not written into the snapshot", async () => {
@@ -268,10 +225,10 @@ describe("corpus snapshot", () => {
 
   test("pages read the snapshot in one request when it exists", async () => {
     const { fn, calls } = fakeFetch([
-      [SNAP, "GET", () => Response.json({ generatedAt: "x", uploads: 5, records: [lootRow()], conflictTombstones: [], lastReceivedAt: null, lastIds: [], dedupVersion: 1 })],
+      [SNAP, "GET", () => Response.json({ generatedAt: "x", uploads: 5, records: [lootRow()], lastReceivedAt: null, lastIds: [] })],
     ]);
     const store = createUploadStore({ cloud, localDir: "unused", fetch: fn, now });
-    expect(await store.loadCorpus()).toEqual({ uploads: 5, records: [lootRow()], conflictTombstones: [] });
+    expect(await store.loadCorpus()).toEqual({ uploads: 5, records: [lootRow()] });
     expect(calls).toHaveLength(1);
   });
 });
@@ -292,7 +249,7 @@ describe("corpus normalization", () => {
     writeFileSync(join(dir, "uploads", "u-1.json"), JSON.stringify({ addonVersion: "0.1.0", records: [lootRow(), ...badRows] }));
     const store = createUploadStore({ cloud: null, localDir: dir, now, cacheMs: 0 });
 
-    expect(await store.loadCorpus()).toEqual({ uploads: 1, records: [lootRow()], conflictTombstones: [] });
+    expect(await store.loadCorpus()).toEqual({ uploads: 1, records: [lootRow()] });
   });
 
   test("nested extra fields are stripped from a stored object", async () => {
@@ -302,20 +259,20 @@ describe("corpus normalization", () => {
     writeFileSync(join(dir, "uploads", "u-1.json"), JSON.stringify({ addonVersion: "0.1.0", records: [nested] }));
     const store = createUploadStore({ cloud: null, localDir: dir, now, cacheMs: 0 });
 
-    expect(await store.loadCorpus()).toEqual({ uploads: 1, records: [lootRow()], conflictTombstones: [] });
+    expect(await store.loadCorpus()).toEqual({ uploads: 1, records: [lootRow()] });
   });
 
   test("an existing snapshot is normalized on read and stays normalized in the cache", async () => {
     const { fn, calls } = fakeFetch([
       [SNAP, "GET", () => Response.json({
         generatedAt: "x", uploads: 1, records: [lootRow(), ...badRows],
-        conflictTombstones: [], lastReceivedAt: null, lastIds: [], dedupVersion: 1,
+        lastReceivedAt: null, lastIds: [],
       })],
     ]);
     const store = createUploadStore({ cloud, localDir: "unused", fetch: fn, now, cacheMs: 60_000 });
 
-    expect(await store.loadCorpus()).toEqual({ uploads: 1, records: [lootRow()], conflictTombstones: [] });
-    expect(await store.loadCorpus()).toEqual({ uploads: 1, records: [lootRow()], conflictTombstones: [] });
+    expect(await store.loadCorpus()).toEqual({ uploads: 1, records: [lootRow()] });
+    expect(await store.loadCorpus()).toEqual({ uploads: 1, records: [lootRow()] });
     expect(calls).toHaveLength(1);
   });
 
@@ -323,7 +280,7 @@ describe("corpus normalization", () => {
     const { fn, calls } = fakeFetch([
       [SNAP, "GET", () => Response.json({
         generatedAt: "x", uploads: 1, records: [lootRow(), ...badRows],
-        conflictTombstones: [], lastReceivedAt: "2026-10-04T08:00:00+00:00", lastIds: ["b"], dedupVersion: 2,
+        lastReceivedAt: "2026-10-04T08:00:00+00:00", lastIds: ["b"],
       })],
       [INDEX, "GET", () => Response.json([
         { id: "c", object_key: "uploads/c.json", received_at: "2026-10-04T09:00:00+00:00" },
@@ -336,7 +293,6 @@ describe("corpus normalization", () => {
     expect(await store.writeSnapshot()).toEqual({ uploads: 2, added: 1 });
     const put = JSON.parse(calls.find((c) => c.method === "PUT")!.body);
     expect(put.records).toEqual([lootRow(), vendorRow()]);
-    expect(put.conflictTombstones).toEqual([]);
   });
 
   test("a corpus larger than the 2000-row request cap keeps every valid record", async () => {
@@ -352,15 +308,25 @@ describe("corpus normalization", () => {
 
   test("a snapshot with no records array is unreachable, not an empty corpus", async () => {
     const { fn } = fakeFetch([
-      [SNAP, "GET", () => Response.json({ generatedAt: "x", uploads: 3, conflictTombstones: [], lastReceivedAt: null, lastIds: [], dedupVersion: 1 })],
+      [SNAP, "GET", () => Response.json({ generatedAt: "x", uploads: 3, lastReceivedAt: null, lastIds: [] })],
     ]);
     const store = createUploadStore({ cloud, localDir: "unused", fetch: fn, now, cacheMs: 0 });
 
-    expect(await store.loadCorpus()).toEqual({ uploads: 0, records: [], unreachable: true, conflictTombstones: [] });
+    expect(await store.loadCorpus()).toEqual({ uploads: 0, records: [], unreachable: true });
   });
 });
 
 describe("upload store, local mode", () => {
+  test("production without complete cloud configuration never writes to local disk", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    try {
+      const dir = join(mkdtempSync(join(tmpdir(), "everloot-prod-config-")), "missing");
+      const store = createUploadStore({ cloud: null, localDir: dir });
+      expect(await store.putUpload("u-1", "install-1", payload)).toBe(false);
+      expect(await store.putWaitlist({ toolSlug: "tool", email: "user@example.test", ts: capturedAt })).toBe(false);
+      expect((await store.loadCorpus()).unreachable).toBe(true);
+    } finally { vi.unstubAllEnvs(); }
+  });
   test("cloud mode needs every variable", () => {
     expect(cloudConfig({})).toBeNull();
     expect(cloudConfig({
@@ -377,7 +343,7 @@ describe("upload store, local mode", () => {
     const dir = mkdtempSync(join(tmpdir(), "everloot-store-"));
     const store = createUploadStore({ cloud: null, localDir: dir, now, cacheMs: 0 });
     expect(await store.putUpload("u-1", "install-1", payload)).toBe(true);
-    expect(await store.loadCorpus()).toEqual({ uploads: 1, records: payload.records, conflictTombstones: [] });
+    expect(await store.loadCorpus()).toEqual({ uploads: 1, records: payload.records });
   });
 
   test("a missing local directory is empty, not unreachable", async () => {
