@@ -100,6 +100,8 @@ export function auctionSightingsFromRecords(records: unknown[]): AuctionSighting
     if (!raw || typeof raw !== "object") continue;
     const row = raw as Record<string, unknown>;
     if (row.kind !== "auction_scan") continue;
+    // 0.2.1 rows stored a whole stack's buyout as one item's price; only per-unit rows are comparable.
+    if (row.priceBasis !== "unit") continue;
     if (typeof row.installId !== "string" || typeof row.realm !== "string" || typeof row.itemId !== "number" || typeof row.copper !== "number") continue;
     const seenAt = typeof row.capturedAt === "string" ? row.capturedAt : "";
     sightings.push({ installId: row.installId, realm: row.realm, itemId: row.itemId, copper: row.copper, seenAt });

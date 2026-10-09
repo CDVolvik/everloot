@@ -5,7 +5,7 @@
 Everloot = Everloot or {}
 local E = Everloot
 
-E.VERSION = "0.2.1"
+E.VERSION = "0.2.2"
 E.MAX_ROWS_PER_KIND = 2000
 
 local defaults = {
@@ -113,7 +113,10 @@ SlashCmdList["EVERLOOT"] = function(msg)
     print(E:Status())
   elseif msg == "version" then
     print("Everloot " .. E.VERSION)
+  elseif msg == "auctions on" or msg == "auctions off" then
+    EverlootDB.toggles.auctions = (msg == "auctions on")
+    print("Everloot: auction scans " .. (EverlootDB.toggles.auctions and "on" or "off") .. ". /reload to apply.")
   else
-    print("Everloot commands: /everloot status")
+    print("Everloot commands: /everloot status, /everloot auctions on|off")
   end
 end
