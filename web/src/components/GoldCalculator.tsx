@@ -108,6 +108,7 @@ function decodeState(str: string): State | null {
 export default function GoldCalculator() {
   const [state, setState] = useState<State>(DEFAULT_STATE);
   const [copied, setCopied] = useState<"link" | "summary" | null>(null);
+  const [announcement, setAnnouncement] = useState("");
 
   // Load state from URL on first mount.
   useEffect(() => {
@@ -153,6 +154,15 @@ export default function GoldCalculator() {
       best,
     };
   }, [state]);
+
+  // Announce after typing settles; a live region updated on every keystroke talks over the user.
+  useEffect(() => {
+    const timer = setTimeout(
+      () => setAnnouncement(`Gold per hour ${formatGold(calc.perHour)}. Total ${formatGold(calc.total)}.`),
+      750,
+    );
+    return () => clearTimeout(timer);
+  }, [calc.perHour, calc.total]);
 
   /* ---------- Handlers ---------- */
 
@@ -425,6 +435,11 @@ export default function GoldCalculator() {
           </p>
         )}
       </div>
+
+      {/* One polite announcement for screen readers: settled results, and copy feedback the buttons only show visually. */}
+      <p role="status" aria-live="polite" className="sr-only">
+        {copied === "link" ? "Share link copied." : copied === "summary" ? "Summary copied." : announcement}
+      </p>
 
       {/* Actions */}
       <div className="flex flex-wrap gap-2 text-sm">
