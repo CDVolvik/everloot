@@ -3,6 +3,7 @@ import Link from "next/link";
 import EmailCapture from "@/components/EmailCapture";
 import { handleProfessionPath, professionFactsFromRecords } from "../../../../../kb/src/profession-path";
 import { STORAGE_UNREACHABLE, uploadStore } from "@/lib/upload-store";
+import { dataAgeLabel } from "@/lib/data-age";
 
 export const dynamic = "force-dynamic";
 
@@ -106,6 +107,7 @@ export default async function ProfessionsPage(
         <pre className="whitespace-pre-wrap text-sm text-parchment-100/85 rounded-xl border border-parchment-100/10 bg-parchment-900 p-5">
           {answer}
         </pre>
+        {!corpus.unreachable && <p className="text-xs text-parchment-100/60">{dataAgeLabel(corpus.dataAsOf)}</p>}
       </section>
 
       <div className="grid md:grid-cols-2 gap-4">
