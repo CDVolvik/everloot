@@ -226,6 +226,34 @@ test("validate needs an explicit path and stays the documented writable diagnost
   // That is why it is a diagnostic command and never part of a serving path.
 });
 
+test("validate refuses a missing or empty knowledge base instead of creating one and printing ok", async () => {
+  const cwd = mkdtempSync(join(tmpdir(), "kb-cwd-"));
+  const typo = join(cwd, "typo.sqlite");
+  const missing = await runCli(["validate", "--db", typo], { cwd });
+  expect(missing.code).not.toBe(0);
+  expect(missing.stdout.trim()).not.toBe("ok");
+  expect(existsSync(typo)).toBe(false);
+
+  const emptyPath = join(cwd, "empty.sqlite");
+  openDb(emptyPath).close();
+  const empty = await runCli(["validate", "--db", emptyPath], { cwd });
+  expect(empty.code).not.toBe(0);
+  expect(empty.stdout + empty.stderr).toMatch(/no entities/);
+});
+
+test("snapshot needs an explicit, existing source database and creates no default one", async () => {
+  const cwd = mkdtempSync(join(tmpdir(), "kb-cwd-"));
+  const implicit = await runCli(["snapshot", join(cwd, "out", "release.sqlite")], { cwd });
+  expect(implicit.code).not.toBe(0);
+  expect(implicit.stderr).toMatch(/--db/);
+  expect(existsSync(join(cwd, "data"))).toBe(false);
+
+  const typo = join(cwd, "typo.sqlite");
+  const missing = await runCli(["snapshot", join(cwd, "out", "release.sqlite"), "--db", typo], { cwd });
+  expect(missing.code).not.toBe(0);
+  expect(existsSync(typo)).toBe(false);
+});
+
 test("serve-mcp-http serves an approved release: bearer refused, token accepted, file unchanged", async () => {
   const dbPath = await release();
   const before = sha256(dbPath);
