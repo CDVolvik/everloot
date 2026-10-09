@@ -36,6 +36,13 @@ No paid runner or upgrade is configured. Keep those controls when rerunning.
   sanitized live gameplay read, restart recovery and a real client connection.
   A health response alone does not prove ChatGPT directory compatibility.
 
+## Recovery and scale
+
+- Follow the [recovery runbook](2026-10-09-recovery-runbook.md) for stale snapshots,
+  orphans, upload removal and restore. Backup and restore are not configured or rehearsed.
+- `cd web; npx tsx scripts/corpus-load.mts` measures merge, snapshot size, cold read and
+  rollup on synthetic rows. Rerun it after storage changes.
+
 ## Held release evidence
 
 Run the [beta client checklist](2026-10-08-beta-client-checklist.md), real phone,
