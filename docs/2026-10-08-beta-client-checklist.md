@@ -24,6 +24,9 @@ SavedVariables file before installing. No script here plays the character.
    For auctions, run `/everloot auctions on`, `/reload`, and browse a search at the
    auction house. Each row should hold the stack size and a per-unit copper price;
    bid-only listings (no buyout) produce no row. Compare two listings by hand.
+   For gold, sell an item to a vendor, buy one back, take a paid flight and turn in a
+   quest with a money reward. Expect one `vendor`, one `flight` and one `quest`
+   money_event with the copper the client showed; the purchase produces none.
 7. Log out so SavedVariables flush. Preview the file at `/upload` before sending.
    Keep named sharing off unless actual owner/officer authority is verified and
    the scoped grant has been issued. Upload, record receipts and repeat the same
