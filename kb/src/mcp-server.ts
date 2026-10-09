@@ -19,7 +19,7 @@ export const SERVER_NAME = "everloot-knowledge";
 export const SERVER_VERSION = "0.7.2";
 
 export const UPLOADS_UNSET =
-  "Uploads are not connected. EVERLOOT_UPLOADS is unset, so this is not a measured zero.";
+  "Uploads are not connected. Neither EVERLOOT_PUBLIC_CORPUS_URL nor EVERLOOT_UPLOADS is set, so this is not a measured zero.";
 
 /** Record kinds each gameplay tool reads. tool-kinds.test.ts checks them against the fact functions. */
 export const TOOL_KINDS = {

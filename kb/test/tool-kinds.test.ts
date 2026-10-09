@@ -4,7 +4,7 @@ import { collectionFactsFromRecords } from "../src/collection-gap.js";
 import { itemFactsFromRecords } from "../src/drop-rollup.js";
 import { goldFactsFromRecords } from "../src/gold-ledger.js";
 import { guildFactsFromRecords } from "../src/guild-board.js";
-import { fromUploads, TOOL_KINDS } from "../src/mcp-server.js";
+import { fromUploads, TOOL_KINDS, UPLOADS_UNSET } from "../src/mcp-server.js";
 import { professionFactsFromRecords } from "../src/profession-path.js";
 import { worldFactsFromRecords } from "../src/world-pages.js";
 import { ALL_RECORD_KINDS, parseRecords } from "../../web/src/lib/intake.js";
@@ -66,4 +66,9 @@ test("a tool asks the public corpus for its kinds only", async () => {
     await fromUploads(() => "ok", TOOL_KINDS.auction_history);
     expect(send.mock.calls[0][0]).toBe("https://everloot.example/api/corpus/public?kinds=auction_scan");
   } finally { vi.unstubAllEnvs(); vi.unstubAllGlobals(); }
+});
+
+test("with no corpus source the answer names both settings, and is not a zero", () => {
+  expect(UPLOADS_UNSET).toContain("EVERLOOT_PUBLIC_CORPUS_URL");
+  expect(UPLOADS_UNSET).toContain("not a measured zero");
 });
