@@ -1,5 +1,12 @@
 # Everloot — Status
 
+## Current cursor — 2026-10-09 autonomous loop (branches + PRs only, nothing deployed)
+
+Working the agent-doable backlog from the 10/09 audit of F01–F20 and the tracker. Each unit lands on its own branch and PR into `main`; merging deploys production, so every merge is Carlos's. Free services only.
+
+- `feat/auction-unit-price` — addon **0.2.2**: auction rows store stack `count` and per-unit `copper` (`priceBasis: "unit"`), bid-only listings are skipped, and `/everloot auctions on|off` turns on the toggle that previously had no in-game control. Intake keeps the new fields; auction history counts only per-unit rows, so 0.2.1 stack totals cannot skew a median. New `addon/tests/auction_contract.py` runs in CI. Beta checklist and upload page now name 0.2.2; the 0.2.1 zip is kept.
+- Owner-blocked: in-game beta trial (now with 0.2.2 + the auction step), officer publish/revoke evidence, Render/AdSense accounts. `recipe_seen` emitter needs a design call: the trade-skill API exposes difficulty colors, not the exact skill thresholds the schema requires.
+
 ## Current cursor — 2026-10-08 visible account controls verified
 
 Visible Battle.net Sign in/Sign out controls are live at `4030303`. Account lookup and logout failures remain retryable; pending logout prevents duplicate submission. The compact mobile Close label retains its accessible name and Escape focus restoration. Privacy copy describes identity storage, provider permissions and session revocation. Six new DOM regressions passed red/green; all 133 web tests and production build pass. Independent review has no remaining findings. Full [release checks 37847388745](https://github.com/CDVolvik/everloot/actions/runs/37847388745) succeeded on this exact code SHA.
