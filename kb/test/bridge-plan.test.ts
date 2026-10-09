@@ -15,7 +15,10 @@ test("every tracker row has a unique id", () => {
 });
 
 test("the markdown file is the plan, not a second list", () => {
-  const disk = readFileSync(new URL("../../docs/TRACKER.md", import.meta.url), "utf8");
+  // A Windows checkout with core.autocrlf writes CRLF; the content is what must match.
+  const disk = readFileSync(new URL("../../docs/TRACKER.md", import.meta.url), "utf8").replace(/
+/g, "
+");
   expect(disk.trim()).toBe(renderTracker().trim());
   expect(handlePlan()).toContain("Hakoovak");
   expect(handlePlan()).toContain("not the Forever beta character");
