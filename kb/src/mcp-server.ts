@@ -32,6 +32,7 @@ export function fromUploads(render: (records: unknown[]) => string): string | Pr
 
 async function fromPublicCorpus(url: string, render: (records: unknown[]) => string): Promise<string> {
   let records;
+  let dataAsOf: unknown;
   try {
     const response = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(10_000) });
     if (!response.ok || Number(response.headers.get("content-length")) > 2_000_000) throw new Error("Public corpus too large or unavailable");
@@ -48,13 +49,21 @@ async function fromPublicCorpus(url: string, render: (records: unknown[]) => str
         chunks.push(value);
       }
     } finally { reader.releaseLock(); }
-    const corpus = JSON.parse(Buffer.concat(chunks).toString("utf8")) as { ok?: boolean; records?: unknown };
+    const corpus = JSON.parse(Buffer.concat(chunks).toString("utf8")) as { ok?: boolean; records?: unknown; dataAsOf?: unknown };
     if (!response.ok || corpus.ok !== true || !Array.isArray(corpus.records)) throw new Error("Invalid public corpus");
     const parsed = parseRecords(corpus.records);
     if (parsed.receipt.rejected.length) throw new Error("Invalid public records");
     records = parsed.records;
+    dataAsOf = corpus.dataAsOf;
   } catch { return "Public corpus unavailable. These figures are unrecorded, not zero."; }
-  return render(records);
+  return `${render(records)}\n${dataAgeLine(dataAsOf)}`;
+}
+
+/** The web's snapshot time; a stalled snapshot must not read as current. */
+function dataAgeLine(dataAsOf: unknown): string {
+  if (typeof dataAsOf !== "string" || !Number.isFinite(Date.parse(dataAsOf))) return "Data age unrecorded.";
+  const iso = new Date(dataAsOf).toISOString();
+  return `Data as of ${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC.`;
 }
 
 const KINDS = ["item", "npc", "quest", "zone", "spell", "lore_page", "creator", "realm"] as const;

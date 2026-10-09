@@ -93,11 +93,23 @@ test("MCP reads the current sanitized public corpus without caching named grants
     .mockResolvedValueOnce(Response.json({ ok: false }, { status: 503 }));
   vi.stubGlobal("fetch", send);
   try {
-    expect(JSON.parse(await fromUploads((records) => JSON.stringify(records)))).toEqual([gold]);
-    expect(await fromUploads((records) => `records:${records.length}`)).toBe("records:0");
+    const [answer] = (await fromUploads((records) => JSON.stringify(records))).split("\n");
+    expect(JSON.parse(answer!)).toEqual([gold]);
+    expect(await fromUploads((records) => `records:${records.length}`)).toBe("records:0\nData age unrecorded.");
     expect(await fromUploads(() => { throw new Error("renderer must not run"); })).toMatch(/unavailable/i);
     expect(send).toHaveBeenCalledTimes(3);
     expect(send.mock.calls[0][1].cache).toBe("no-store");
+  } finally { vi.unstubAllEnvs(); vi.unstubAllGlobals(); }
+});
+
+test("answers from the public corpus say how old its data is", async () => {
+  vi.stubEnv("EVERLOOT_PUBLIC_CORPUS_URL", "https://everloot.example/api/corpus/public");
+  vi.stubGlobal("fetch", vi.fn()
+    .mockResolvedValueOnce(Response.json({ ok: true, records: [], dataAsOf: "2026-10-09T10:05:42.000Z" }))
+    .mockResolvedValueOnce(Response.json({ ok: true, records: [], dataAsOf: "not a time" })));
+  try {
+    expect(await fromUploads(() => "Price unrecorded.")).toBe("Price unrecorded.\nData as of 2026-10-09 10:05 UTC.");
+    expect(await fromUploads(() => "Price unrecorded.")).toBe("Price unrecorded.\nData age unrecorded.");
   } finally { vi.unstubAllEnvs(); vi.unstubAllGlobals(); }
 });
 
