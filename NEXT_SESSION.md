@@ -1,5 +1,30 @@
 # Everloot — resume after 2026-10-05 assessment
 
+## Resume — 2026-10-09 autonomous loop: 12 PRs open, nothing merged or deployed
+
+Every unit is its own PR into `main` (merging deploys everloot.app, so every merge is Carlos's). Free services only; no production data touched.
+
+| PR | Unit | Notes |
+|---|---|---|
+| #1 | Addon 0.2.2: per-unit auction prices, skip bid-only, `/everloot auctions on\|off` | carries the 10/09 `_STATUS.md` cursor |
+| #10 | Addon 0.2.2: quest rewards, vendor sales, flight costs | **stacked on #1**; retarget to `main` after #1 |
+| #2 | KB CLI: `validate`/`snapshot` refuse a missing or empty DB; startup test wait | F20 |
+| #3 | Copy: no perk / recipe-flow / routes / open opt-out / guild score claims | F09/F11/F13 |
+| #4 | "Data as of" on pages and `/api/rollups/drops` | F14; touches `upload-store.ts` like #7 |
+| #12 | MCP answers state data age | F14; safe before or after #4 |
+| #5 | Tracker: Proven column, stale rows, missing tracks; CRLF-safe tracker test | F19; merge early, it fixes a Windows-only local test failure |
+| #6 | Waitlist on the shared request quota; dead `guild-authority` / `public-rollups` removed | F04 |
+| #7 | **Batched snapshot replay**: cold read 15.2 s → 54 ms at 10k records | merge early; quadratic before |
+| #8 | Recovery runbook + `web/scripts/corpus-load.mts` | F14 |
+| #9 | Deterministic ids in the flaky 2001-record test | CI flake |
+| #11 | Calculator polite status region | F17 |
+
+Suggested merge order: #9, #5, #7, #2, then the rest; #1 then #10 (retarget). Whichever of #4/#7 lands second may need a rebase.
+
+After merges: add the `_STATUS.md` scope header (F19), owner/artifact/result columns in the release checklist (F15), and update the `tool.gold_ledger` tracker row for #10.
+
+Owner-blocked: in-game beta trial with 0.2.2 (checklist now has auction and gold steps); real officer publish/revoke; Render (public MCP); AdSense + certified consent platform; backup/restore setup and rehearsal (runbook); MCP 2 MB public-corpus cap (pre-aggregated view or reviewed higher cap, about 11k synthetic records today); recipe emitter design (the trade-skill API gives difficulty colors, not the schema's skill thresholds); social preview image; real screen-reader and phone checks.
+
 ## Resume — 2026-10-08 OAuth verified (current)
 
 Visible Sign in/Sign out controls, retryable errors, pending logout and compact accessible mobile menu are implemented at `4030303`. All 133 web tests/build pass; independent review approved; complete release-check run 37847388745 succeeded. Carlos generated a zero-duration Battle.net secret rotation. Its first Vercel replacement did not persist; corrected privately and metadata confirms update 2026-10-08 21:35:33Z. No credential value is in this handoff or a local file. Production `dpl_7z2SmKRhrPhHfYiYLXPHNy29e9oe` is Ready on everloot.app/www at this code SHA, cron intact. Actual visible Sign in with the latest secret, authenticated `/me`, signed-in open menu at 320px and visible Sign out returning `/me` anonymous passed. Earlier revoked-cookie replay passed; browser left signed out and viewport restored. Next: real beta-client collection/upload and owner/officer publication/revocation evidence; see the current status and five-track progress. The former authenticator prompt is cleared, not evidence of MFA being configured. Render remains deferred to the free-host pipeline; public MCP and other full-launch scope remain open.
