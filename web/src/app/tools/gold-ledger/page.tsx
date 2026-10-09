@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { goldFactsFromRecords, handleGoldLedger } from "../../../../../kb/src/gold-ledger";
 import { STORAGE_UNREACHABLE, uploadStore } from "@/lib/upload-store";
+import { dataAgeLabel } from "@/lib/data-age";
 
 export const dynamic = "force-dynamic";
 
@@ -56,6 +57,7 @@ export default async function GoldLedgerPage(
       </form>
 
       <pre className="whitespace-pre-wrap text-sm text-parchment-100/85 rounded-xl border border-parchment-100/10 bg-parchment-900 p-5">{answer}</pre>
+      {!corpus.unreachable && <p className="text-xs text-parchment-100/60">{dataAgeLabel(corpus.dataAsOf)}</p>}
 
       <p className="text-sm text-parchment-100/60">
         <Link href="/tools/gold-per-hour" className="text-gold-400 hover:underline underline-offset-4">Gold per hour</Link>

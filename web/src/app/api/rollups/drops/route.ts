@@ -7,7 +7,9 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const { rates, measuredZeros, stats } = await computeRollups();
   return NextResponse.json({
+    // generatedAt is when this response was made; dataAsOf is when the uploads behind it were current.
     generatedAt: new Date().toISOString(),
+    dataAsOf: stats.dataAsOf,
     stats,
     unreachable: stats.unreachable,
     rates: stats.unreachable ? [] : rates.filter((r) => r.public),

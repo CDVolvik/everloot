@@ -125,7 +125,7 @@ describe("intake through the store into published facts", () => {
 
     const reader = createUploadStore({ cloud, localDir: "unused", fetch: fn, now, cacheMs: 0 });
     const corpus = await reader.loadCorpus();
-    expect(corpus).toEqual({ uploads: 1, records: [goodLoot] });
+    expect(corpus).toEqual({ uploads: 1, records: [goodLoot], dataAsOf: "2026-10-05T12:00:00.000Z" });
     expect(lootWindowsFromRecords(corpus.records)).toHaveLength(1);
   });
 });

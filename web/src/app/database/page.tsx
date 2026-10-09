@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { computeRollups } from "@/lib/rollup-compute";
 import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
+import { dataAgeLabel } from "@/lib/data-age";
 
 export const metadata: Metadata = {
   title: "Forever Database",
@@ -53,6 +54,7 @@ export default async function DatabasePage() {
           </div>
         ))}
       </div>
+      {!stats.unreachable && <p className="text-xs text-parchment-100/60">{dataAgeLabel(stats.dataAsOf)}</p>}
 
       <div className="grid md:grid-cols-2 gap-4">
         {SECTIONS.map((s) => (
