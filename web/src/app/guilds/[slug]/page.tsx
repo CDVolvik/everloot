@@ -80,9 +80,9 @@ export default async function GuildFamilyPage(props: { params: Promise<{ slug: s
       </section>
 
       <p className="text-sm text-parchment-100/60">
-        Progression, loot, and the score are still the{" "}
-        <Link href="/tools/guild-tracker" className="text-gold-400 hover:underline underline-offset-4">
-          guild tracker
+        Progression, roster, and loot from officer uploads are on the{" "}
+        <Link href="/tools/guild-board" className="text-gold-400 hover:underline underline-offset-4">
+          guild board
         </Link>
         . A guild the public web has not mentioned is left off this page.
       </p>
