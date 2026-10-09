@@ -49,6 +49,33 @@ export function mergeCorpus(previous: CorpusState | undefined, raw: readonly unk
   };
 }
 
+/**
+ * The same result as one mergeCorpus call per batch, in order. Each call rebuilds and re-sorts every
+ * prior event, so replaying a snapshot event by event was quadratic. Consecutive batches with the same
+ * grant set fold identically in a single call, and anonymous uploads all share the empty set.
+ */
+export function mergeCorpusBatches(
+  previous: CorpusState | undefined,
+  batches: readonly { raw: readonly unknown[]; grants: readonly string[] }[],
+): CorpusState {
+  let state = previous;
+  let raw: unknown[] = [];
+  let grants: string[] = [];
+  let key: string | null = null;
+  for (const batch of batches) {
+    const set = [...new Set(batch.grants)].sort();
+    const next = set.join(",");
+    if (key !== null && next !== key) {
+      state = mergeCorpus(state, raw, grants);
+      raw = [];
+    }
+    key = next;
+    grants = set;
+    for (const row of batch.raw) raw.push(row);
+  }
+  return key === null ? state ?? mergeCorpus(undefined, []) : mergeCorpus(state, raw, grants);
+}
+
 /** Named publication is evaluated against CURRENT authority, never a cached assertion. */
 export function publicRecords(state: CorpusState,
   authorize?: (row: IntakeRecord, grants: string[]) => IntakeRecord | null,
