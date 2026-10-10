@@ -5,7 +5,8 @@ const base = { installId: "test-install-1234", capturedAt: "2026-09-29T12:00:00.
 
 describe("intake contract", () => {
   test("all record kinds exist", () => {
-    expect(ALL_RECORD_KINDS).toHaveLength(17);
+    expect(ALL_RECORD_KINDS).toHaveLength(18);
+    expect(ALL_RECORD_KINDS).toContain("recipe_observed");
     expect(ALL_RECORD_KINDS).toContain("gold_snapshot");
     expect(ALL_RECORD_KINDS).toContain("money_event");
     expect(ALL_RECORD_KINDS).toContain("loot_award");
@@ -73,6 +74,18 @@ describe("intake contract", () => {
       expect.objectContaining({ kind: "auction_scan", copper: 25, count: 4, priceBasis: "unit" }),
     ]);
     expect(result.receipt.rejected.map((r) => r.index)).toEqual([1, 2]);
+  });
+
+  test("a recipe observation keeps the colour the window showed at that rank", () => {
+    const result = parseRecords([
+      { ...base, kind: "recipe_observed", profession: "Alchemy", rank: 60, maxRank: 75, recipe: "Lesser Healing Potion",
+        difficulty: "optimal", productItemId: 858, reagents: [{ item: "Briarthorn", count: 1 }] },
+      { ...base, kind: "recipe_observed", profession: "Enchanting", rank: 40, recipe: "Enchant Bracer - Minor Health",
+        difficulty: "medium", reagents: [] },
+      { ...base, kind: "recipe_observed", profession: "Alchemy", rank: 60, recipe: "X", difficulty: "glowing", reagents: [] },
+    ]);
+    expect(result.records).toHaveLength(2);
+    expect(result.receipt.rejected.map((r) => r.index)).toEqual([2]);
   });
 
   test("a loot window with no items is a kill when it names a source", () => {

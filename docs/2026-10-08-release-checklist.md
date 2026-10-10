@@ -8,7 +8,8 @@
   `uv run --with lupa python addon/tests/collection_contract.py`,
   `uv run --with lupa python addon/tests/auction_contract.py` and
   `uv run --with lupa python addon/tests/gold_contract.py`,
-  `uv run --with lupa python addon/tests/ask_contract.py` and
+  `uv run --with lupa python addon/tests/ask_contract.py`,
+  `uv run --with lupa python addon/tests/recipes_contract.py` and
   `uv run --with lupa python addon/tests/answers_contract.py`.
 - `cd companion; npm ci; npm test; npm run typecheck` (needs `web` installed).
 - Review every changed file and independent review findings before release.
