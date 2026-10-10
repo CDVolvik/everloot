@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { LuaParseError, parseEverlootLua } from "./sv-parse.js";
+import { LuaParseError, parseEverlootLua, parseEverlootTable } from "./sv-parse.js";
 
 const SV = `-- Everloot export
 EverlootDB = {
@@ -64,4 +64,13 @@ describe("SavedVariables parser", () => {
     expect(() => parseEverlootLua("EverlootDB = { version = ")).toThrow(LuaParseError);
     expect(() => parseEverlootLua('EverlootDB = { version = "0.1.0" }')).toThrow(LuaParseError);
   });
+});
+
+test("the whole table is readable for fields beyond records, such as /ask questions", () => {
+  const table = parseEverlootTable(`EverlootDB = {
+["version"] = "0.2.3", ["installId"] = "abcd-1234", ["records"] = {},
+["asks"] = { {["id"] = "ask:1", ["question"] = "Who is Thrall?", ["askedAt"] = "2026-10-09T00:00:00Z"} },
+}`);
+  expect(table.asks).toEqual([{ id: "ask:1", question: "Who is Thrall?", askedAt: "2026-10-09T00:00:00Z" }]);
+  expect(() => parseEverlootTable("not lua")).toThrow(LuaParseError);
 });
