@@ -61,7 +61,7 @@ function clean(value: string): string {
   return value.trim().toLowerCase();
 }
 
-function reagentKey(reagents: Reagent[]): string {
+export function reagentKey(reagents: Reagent[]): string {
   return [...reagents]
     .map((reagent) => ({ item: clean(reagent.item), count: reagent.count }))
     .sort((a, b) => a.item.localeCompare(b.item) || a.count - b.count)
@@ -112,7 +112,7 @@ function median(values: number[]): number {
   return Math.round((sorted[mid - 1]! + sorted[mid]!) / 2);
 }
 
-function agreePrices(prices: PriceSighting[]): Map<string, number> {
+export function agreePrices(prices: PriceSighting[]): Map<string, number> {
   const latest = new Map<string, number>();
   for (const row of prices) {
     if (!row.installId.trim() || !row.item.trim() || !Number.isInteger(row.copper) || row.copper < 0) continue;
