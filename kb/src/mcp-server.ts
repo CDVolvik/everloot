@@ -24,7 +24,7 @@ export const UPLOADS_UNSET =
 
 /** Record kinds each gameplay tool reads. tool-kinds.test.ts checks them against the fact functions. */
 export const TOOL_KINDS = {
-  profession_path: ["recipe_seen", "price_seen"],
+  profession_path: ["recipe_seen", "price_seen", "auction_scan", "item_seen"],
   recipe_thresholds: ["recipe_observed"],
   item_page: ["loot", "item_seen", "npc_sighting"],
   npc_page: ["npc_sighting", "quest", "vendor"],
