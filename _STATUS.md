@@ -26,7 +26,9 @@
 - officer grant trial
 - two backup read keys: `%USERPROFILE%\.r21\everloot-backup.env` (Supabase secret key) and `everloot-r2-backup.env` (read-only R2 token)
 - signing, AdSense with a certified consent platform, trademark check
-- rotate or delete the old preview token (`_secrets\everloot\mcp-preview-token.txt`)
+- decide ChatGPT access: ChatGPT's connector uses OAuth or no auth, not a static bearer token, so listing `/mcp` there means either a rate-limited public (no-auth) mode or OAuth sign-in (e.g. tied to Battle.net)
+
+Trial cleanup done 2026-10-10: both trial previews removed (the #17 one still answered `/mcp` with the preview token), the preview token deleted, the branch-scoped Preview variables removed.
 
 Release state per check: `docs/2026-10-08-release-checklist.md`. Build list: `docs/TRACKER.md`.
 
