@@ -1,7 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import type { DB } from "./db.js";
-import { createKnowledgeServer } from "./mcp-server.js";
+import { createKnowledgeServer, type CorpusLoader } from "./mcp-server.js";
 
 export interface PublicMcpConfig {
   db: DB;
@@ -9,10 +9,12 @@ export interface PublicMcpConfig {
   maxRequestBodyBytes: number;
   rateLimitPerMinute: number;
   allowedOrigins: string[];
+  /** The web route's in-process reader; the standalone server reads the public corpus URL instead. */
+  corpus?: CorpusLoader;
 }
 
-export function createPublicMcpServer(config: { db: DB }) {
-  const server = createKnowledgeServer(config.db);
+export function createPublicMcpServer(config: { db: DB; corpus?: CorpusLoader }) {
+  const server = createKnowledgeServer(config.db, { corpus: config.corpus });
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined, enableJsonResponse: true,
   });

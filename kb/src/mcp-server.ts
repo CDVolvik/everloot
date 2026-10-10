@@ -34,8 +34,19 @@ export const TOOL_KINDS = {
   gold_ledger: ["gold_snapshot", "money_event"],
 } as const satisfies Record<string, readonly string[]>;
 
+/**
+ * The site's own public records, read in process. The /mcp route on the web deployment passes one, so
+ * gameplay answers skip the HTTP self-fetch and its byte ceiling. Null means the store was unreadable.
+ */
+export type CorpusLoader = () => Promise<{ records: unknown[]; dataAsOf?: string | null } | null>;
+
+const UNAVAILABLE = "Public corpus unavailable. These figures are unrecorded, not zero.";
+
 /** Prefer the web's sanitized current view; raw local files can supply anonymous facts only. */
-export function fromUploads(render: (records: unknown[]) => string, kinds?: readonly string[]): string | Promise<string> {
+export function fromUploads(
+  render: (records: unknown[]) => string, kinds?: readonly string[], loader?: CorpusLoader,
+): string | Promise<string> {
+  if (loader) return fromLoader(loader, render, kinds);
   const base = process.env.EVERLOOT_PUBLIC_CORPUS_URL?.trim();
   // Asking for only the kinds a tool reads keeps the body under the byte ceiling for longer.
   const url = base && kinds ? `${base}${base.includes("?") ? "&" : "?"}kinds=${kinds.join(",")}` : base;
@@ -43,6 +54,19 @@ export function fromUploads(render: (records: unknown[]) => string, kinds?: read
   const dir = process.env.EVERLOOT_UPLOADS?.trim();
   if (!dir) return UPLOADS_UNSET;
   return render(loadUploadRecords(dir));
+}
+
+async function fromLoader(loader: CorpusLoader, render: (records: unknown[]) => string, kinds?: readonly string[]): Promise<string> {
+  let corpus;
+  try {
+    corpus = await loader();
+  } catch {
+    return UNAVAILABLE;
+  }
+  if (!corpus) return UNAVAILABLE;
+  const wanted = kinds ? new Set<string>(kinds) : null;
+  const records = wanted ? corpus.records.filter((r) => wanted.has((r as { kind?: string }).kind ?? "")) : corpus.records;
+  return `${render(records)}\n${dataAgeLine(corpus.dataAsOf)}`;
 }
 
 async function fromPublicCorpus(url: string, render: (records: unknown[]) => string): Promise<string> {
@@ -70,7 +94,7 @@ async function fromPublicCorpus(url: string, render: (records: unknown[]) => str
     if (parsed.receipt.rejected.length) throw new Error("Invalid public records");
     records = parsed.records;
     dataAsOf = corpus.dataAsOf;
-  } catch { return "Public corpus unavailable. These figures are unrecorded, not zero."; }
+  } catch { return UNAVAILABLE; }
   return `${render(records)}\n${dataAgeLine(dataAsOf)}`;
 }
 
@@ -117,8 +141,9 @@ export function handleGetByName(db: DB, args: { name: string; kind?: (typeof KIN
   return hits.map(formatHit).join("\n\n");
 }
 
-export function createKnowledgeServer(db: DB): McpServer {
+export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader } = {}): McpServer {
   const server = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION });
+  const read = (render: (records: unknown[]) => string, kinds?: readonly string[]) => fromUploads(render, kinds, options.corpus);
   server.registerTool(
     "search_knowledge",
     {
@@ -170,7 +195,7 @@ export function createKnowledgeServer(db: DB): McpServer {
       return {
         content: [{
           type: "text" as const,
-          text: await fromUploads((records) => {
+          text: await read((records) => {
             const facts = professionFactsFromRecords(records);
             return handleProfessionPath(args, facts.sightings, facts.prices);
           }, TOOL_KINDS.profession_path),
@@ -188,7 +213,7 @@ export function createKnowledgeServer(db: DB): McpServer {
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async (args) => ({
-      content: [{ type: "text" as const, text: await fromUploads((records) => handleItemPage(args, itemFactsFromRecords(records)), TOOL_KINDS.item_page) }],
+      content: [{ type: "text" as const, text: await read((records) => handleItemPage(args, itemFactsFromRecords(records)), TOOL_KINDS.item_page) }],
     }),
   );
   server.registerTool(
@@ -201,7 +226,7 @@ export function createKnowledgeServer(db: DB): McpServer {
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async (args) => ({
-      content: [{ type: "text" as const, text: await fromUploads((records) => handleNpcPage(args, worldFactsFromRecords(records)), TOOL_KINDS.npc_page) }],
+      content: [{ type: "text" as const, text: await read((records) => handleNpcPage(args, worldFactsFromRecords(records)), TOOL_KINDS.npc_page) }],
     }),
   );
   server.registerTool(
@@ -214,7 +239,7 @@ export function createKnowledgeServer(db: DB): McpServer {
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async (args) => ({
-      content: [{ type: "text" as const, text: await fromUploads((records) => handleQuestPage(args, worldFactsFromRecords(records)), TOOL_KINDS.quest_page) }],
+      content: [{ type: "text" as const, text: await read((records) => handleQuestPage(args, worldFactsFromRecords(records)), TOOL_KINDS.quest_page) }],
     }),
   );
   server.registerTool(
@@ -227,7 +252,7 @@ export function createKnowledgeServer(db: DB): McpServer {
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async (args) => ({
-      content: [{ type: "text" as const, text: await fromUploads((records) => handleVendorPage(args, worldFactsFromRecords(records)), TOOL_KINDS.vendor_page) }],
+      content: [{ type: "text" as const, text: await read((records) => handleVendorPage(args, worldFactsFromRecords(records)), TOOL_KINDS.vendor_page) }],
     }),
   );
   server.registerTool(
@@ -243,7 +268,7 @@ export function createKnowledgeServer(db: DB): McpServer {
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async (args) => ({
-      content: [{ type: "text" as const, text: await fromUploads((records) => handleCollectionGap(args, collectionFactsFromRecords(records)), TOOL_KINDS.collection_gap) }],
+      content: [{ type: "text" as const, text: await read((records) => handleCollectionGap(args, collectionFactsFromRecords(records)), TOOL_KINDS.collection_gap) }],
     }),
   );
   server.registerTool(
@@ -259,7 +284,7 @@ export function createKnowledgeServer(db: DB): McpServer {
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async (args) => ({
-      content: [{ type: "text" as const, text: await fromUploads((records) => handleGuildBoard(args, guildFactsFromRecords(records)), TOOL_KINDS.guild_board) }],
+      content: [{ type: "text" as const, text: await read((records) => handleGuildBoard(args, guildFactsFromRecords(records)), TOOL_KINDS.guild_board) }],
     }),
   );
   server.registerTool(
@@ -275,7 +300,7 @@ export function createKnowledgeServer(db: DB): McpServer {
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async (args) => ({
-      content: [{ type: "text" as const, text: await fromUploads((records) => handleAuctionHistory(args, auctionSightingsFromRecords(records)), TOOL_KINDS.auction_history) }],
+      content: [{ type: "text" as const, text: await read((records) => handleAuctionHistory(args, auctionSightingsFromRecords(records)), TOOL_KINDS.auction_history) }],
     }),
   );
   server.registerTool(
@@ -293,7 +318,7 @@ export function createKnowledgeServer(db: DB): McpServer {
     async (args) => ({
       content: [{
         type: "text" as const,
-        text: await fromUploads((records) => {
+        text: await read((records) => {
           const facts = goldFactsFromRecords(records);
           return handleGoldLedger(args, facts.snapshots, facts.events);
         }, TOOL_KINDS.gold_ledger),
