@@ -73,6 +73,22 @@ sign-in remain separate work.
 Owner steps: choose A or B; for B, name the AWS account and region; approve any spend above the
 included credit before launch traffic.
 
+## Update 2026-10-10: A chosen, trialed and merged
+
+Carlos chose A. The preview trial passed (#17) and the route is merged. In production `/mcp`
+answers 503 until the release is in the build. Steps to turn it on, all Carlos's:
+
+1. Upload the release once, create-only, with the production R2 variables in the environment:
+   `cd web && node scripts/upload-release.mjs ../kb/data/release/2026-10-05-everloot-public.sqlite`
+   (copy it out of `kb/data/release/` first if WAL sidecars sit next to it; the script refuses a
+   file whose hash does not match its manifest).
+2. In Vercel Production, set `EVERLOOT_KB_RELEASE_KEY=knowledge/2026-10-05-everloot-public.sqlite`,
+   `VERCEL_SUPPORT_LARGE_FUNCTIONS=1` and a generated `EVERLOOT_MCP_TOKEN`.
+3. Redeploy. `prebuild` (`web/scripts/fetch-release.mjs`) downloads the release and checks its
+   hash; any problem leaves no release and `/mcp` keeps answering 503.
+
+Gameplay tools on this route read the store in process (#24), so the 2 MB HTTP cap does not apply.
+
 ## Sources
 
 - [Vercel Functions limits](https://vercel.com/docs/functions/limitations)
