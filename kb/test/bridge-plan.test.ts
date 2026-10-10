@@ -15,7 +15,8 @@ test("every tracker row has a unique id", () => {
 });
 
 test("the markdown file is the plan, not a second list", () => {
-  const disk = readFileSync(new URL("../../docs/TRACKER.md", import.meta.url), "utf8");
+  // A Windows checkout with core.autocrlf writes CRLF; the content is what must match.
+  const disk = readFileSync(new URL("../../docs/TRACKER.md", import.meta.url), "utf8").replace(/\r\n/g, "\n");
   expect(disk.trim()).toBe(renderTracker().trim());
   expect(handlePlan()).toContain("Hakoovak");
   expect(handlePlan()).toContain("not the Forever beta character");
@@ -32,6 +33,25 @@ test("live, next, waiting, and shape rows are all present", () => {
   expect(counts.next).toBeGreaterThan(0);
   expect(counts.waiting).toBeGreaterThan(0);
   expect(counts.shape).toBeGreaterThan(0);
+});
+
+test("every live and next row says how far it is proven", () => {
+  for (const row of BRIDGE_PLAN.filter((r) => r.status === "live" || r.status === "next")) {
+    expect(row.proof, row.id).toBeDefined();
+  }
+  expect(renderTracker()).toContain("| Id | Name | Proven | Done when |");
+});
+
+test("rows match the code and the launch scope", () => {
+  const row = (id: string) => BRIDGE_PLAN.find((r) => r.id === id);
+  // The addon has never run in the Forever client, so it is not Live.
+  expect(row("addon.skeleton")?.status).not.toBe("live");
+  expect(row("site.home")?.done).toContain("https://everloot.app");
+  // MCP tools read the web's sanitized public corpus first, not a raw upload folder.
+  for (const r of BRIDGE_PLAN) expect(r.done, r.id).not.toContain("The tool reads EVERLOOT_UPLOADS when it is set");
+  for (const id of ["site.signin", "site.sharing", "ops.health", "ops.quotas", "app.uploader", "app.companion"]) {
+    expect(row(id), id).toBeDefined();
+  }
 });
 
 test("loopback HTTP MCP answers initialize and lists everloot_plan", async () => {

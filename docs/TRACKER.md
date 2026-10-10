@@ -11,47 +11,56 @@ subscription connects to the public HTTPS mount and uses its own model. Closed
 sites contribute a page shape. Their text and tables stay put. SimulationCraft's
 engine stays a separate GPL program.
 
-Rows: 63.
+Proven, furthest first: real uploads, public client, beta client, on everloot.app,
+code + tests, not built. Live means usable today, not proven with real data.
+
+Rows: 69.
 
 ## Live
 
-| Id | Name | Done when |
-|---|---|---|
-| `mcp.search_knowledge` | Search the knowledge base | stdio tool on everloot-knowledge |
-| `mcp.get_entity` | Fetch one record by id | stdio tool on everloot-knowledge |
-| `mcp.get_by_name` | Exact-name lookup | stdio tool on everloot-knowledge |
-| `mcp.everloot_plan` | This tracker, as a tool | a client can ask what is live, next, waiting, or shape-only |
-| `mcp.http_local` | Local HTTP MCP | POST /mcp on 127.0.0.1. Same server as stdio. Not reachable by ChatGPT yet. |
-| `site.home` | Public home | https://everloot-web-r21digital.vercel.app |
-| `site.upload` | Upload + intake | /upload and /api/intake. Persists when Supabase is connected. |
-| `site.drops` | Drop rollups | public when 3 independent installs agree |
-| `site.professions` | Profession hubs | hub pages exist. The leveling path is tool.profession_path. |
-| `site.waitlist` | Waitlist | signup path exists. Persists when Supabase is connected. |
-| `site.gap_marking` | Unrecorded is not zero | A missing fact reads unrecorded. A source 3 installs killed with no item dropped reads 0 drops in N kills. Guild item level names how many roster members were measured. A storage failure, an unset EVERLOOT_UPLOADS, and a guild-family row with no published count are not zeros. The profession form reads the server uploads. |
-| `addon.skeleton` | Collector skeleton | TOC 70058, SavedVariables, /upload import. In-client beta test is still waiting. |
-| `ops.stored_rollups` | Corpus snapshot | Vercel cron every 10 minutes extends snapshots/corpus.json in R2 with uploads it has not seen. Pages read that one object. ?rebuild=1 (with CRON_SECRET) rebuilds from empty after a deletion. |
-| `ops.dns` | everloot.app DNS | A @ 76.76.21.21 and CNAME www cname.vercel-dns.com in Cloudflare, both DNS only. https://everloot.app and www answer 200 with a Let's Encrypt certificate. |
-| `ops.vercel_git` | vercel git connect | CDVolvik/everloot is connected and the root directory is web. A push to main deploys production. |
-| `ops.supabase` | Supabase + R2 storage | Intake writes the raw upload to R2 bucket everloot-uploads and one index row to Supabase everloot (ref uinmowrmyckklpbwzqhn); the waitlist is a Supabase table. Pages read the indexed objects. Proven end to end on everloot.app 2026-10-04. |
+| Id | Name | Proven | Done when |
+|---|---|---|---|
+| `mcp.search_knowledge` | Search the knowledge base | code + tests | stdio tool on everloot-knowledge |
+| `mcp.get_entity` | Fetch one record by id | code + tests | stdio tool on everloot-knowledge |
+| `mcp.get_by_name` | Exact-name lookup | code + tests | stdio tool on everloot-knowledge |
+| `mcp.everloot_plan` | This tracker, as a tool | code + tests | a client can ask what is live, next, waiting, or shape-only |
+| `mcp.http_local` | Local HTTP MCP | code + tests | POST /mcp on 127.0.0.1. Same server as stdio. Not reachable by ChatGPT yet. |
+| `site.home` | Public home | on everloot.app | https://everloot.app |
+| `site.upload` | Upload + intake | on everloot.app | /upload and /api/intake. Persists when Supabase is connected. |
+| `site.drops` | Drop rollups | on everloot.app | public when 3 independent installs agree |
+| `site.professions` | Profession hubs | on everloot.app | hub pages exist. The leveling path is tool.profession_path. |
+| `site.waitlist` | Waitlist | on everloot.app | signup path exists. Persists when Supabase is connected. |
+| `site.gap_marking` | Unrecorded is not zero | on everloot.app | A missing fact reads unrecorded. A source 3 installs killed with no item dropped reads 0 drops in N kills. Guild item level names how many roster members were measured. A storage failure, an unset corpus source, and a guild-family row with no published count are not zeros. The profession form reads the server uploads. |
+| `site.signin` | Battle.net sign-in | on everloot.app | Sign in and Sign out on everloot.app. Hashed server sessions; logout revokes the session. Real login and logout verified 2026-10-08. |
+| `ops.health` | Snapshot health | on everloot.app | /api/health reports snapshot age from signed R2 metadata: fresh within 30 minutes, otherwise 503. Age is not proof of complete indexing. |
+| `ops.quotas` | Shared intake quotas | on everloot.app | Supabase counters: 20 uploads per install, 200 requests per IP and 10,000 globally per hour. Production fails closed. Install IDs still do not prove different people. |
+| `ops.stored_rollups` | Corpus snapshot | on everloot.app | Vercel cron every 10 minutes extends snapshots/corpus.json in R2 with uploads it has not seen. Pages read that one object. ?rebuild=1 (with CRON_SECRET) rebuilds from empty after a deletion. |
+| `ops.dns` | everloot.app DNS | on everloot.app | A @ 76.76.21.21 and CNAME www cname.vercel-dns.com in Cloudflare, both DNS only. https://everloot.app and www answer 200 with a Let's Encrypt certificate. |
+| `ops.vercel_git` | vercel git connect | on everloot.app | CDVolvik/everloot is connected and the root directory is web. A push to main deploys production. |
+| `ops.supabase` | Supabase + R2 storage | on everloot.app | Intake writes the raw upload to R2 bucket everloot-uploads and one index row to Supabase everloot (ref uinmowrmyckklpbwzqhn); the waitlist is a Supabase table. Pages read the indexed objects. Proven end to end on everloot.app 2026-10-04. |
 
 ## Next
 
-| Id | Name | Done when |
-|---|---|---|
-| `mcp.public_https` | Public HTTPS MCP | Bearer token is on the loopback handler (--token or EVERLOOT_MCP_TOKEN). Done when that same handler is on a public HTTPS URL and ChatGPT can connect. |
-| `tool.profession_path` | Profession leveling path | Engine and MCP tool profession_path. A step needs 3 agreeing uploads. Gold needs 3 prices per reagent. Intake accepts recipe_seen and price_seen. The tool reads EVERLOOT_UPLOADS when it is set. If EVERLOOT_UPLOADS is unset, the answer says uploads are not connected. Page: /tools/professions. |
-| `tool.item_page` | Item page for a drop row | Page /database/items/[id] and MCP tool item_page. Name and map pin need 3 agreeing sightings. The rate is the public rollup. The tool reads EVERLOOT_UPLOADS when it is set. If EVERLOOT_UPLOADS is unset, the answer says uploads are not connected. |
-| `tool.npc_page` | NPC spawn page | Page /database/npcs/[id] and MCP tool npc_page. A name or map pin needs 3 agreeing sightings. The tool reads EVERLOOT_UPLOADS when it is set. If EVERLOOT_UPLOADS is unset, the answer says uploads are not connected. |
-| `tool.quest_page` | Quest page | Page /database/quests/[id] and MCP tool quest_page. Title, level, giver, turn-in, and a reward each need 3 agreeing uploads. The tool reads EVERLOOT_UPLOADS when it is set. If EVERLOOT_UPLOADS is unset, the answer says uploads are not connected. |
-| `tool.vendor_page` | Vendor page | Page /database/vendors/[id] and MCP tool vendor_page. A price is public when 3 installs agree on the item and the copper. The tool reads EVERLOOT_UPLOADS when it is set. If EVERLOOT_UPLOADS is unset, the answer says uploads are not connected. |
-| `tool.collection` | Missing-collection view | Page /tools/collections and MCP tool collection_gap. A list item needs 3 installs agreeing on the collection, the source, and the item. Owned is that install's upload. Not a Blizzard profile read. The tool reads EVERLOOT_UPLOADS when it is set. If EVERLOOT_UPLOADS is unset, the answer says uploads are not connected. |
-| `tool.guild` | Guild tracker | Page /tools/guild-board and MCP tool guild_board. Roster, bosses, loot, and item level need 2 agreeing officer uploads. The average names how many roster members were measured. score_v1 has no published weights, so there is no single score. The tool reads EVERLOOT_UPLOADS when it is set. If EVERLOOT_UPLOADS is unset, the answer says uploads are not connected. |
-| `tool.guild_census` | Public guild-family page | Citation page is /guilds/olympus. Each figure has its source and date. Battle.net guild profile answers for retail and Classic Era in the local adapter. Forever namespaces were refused on 2026-09-30. Done when that namespace fills the same table. Spec: guild system, census section. |
-| `tool.auction` | Auction history | Page /tools/auctions and MCP tool auction_history. A day is public when 3 installs scanned that item on that realm. Intake accepts auction_scan. The tool reads EVERLOOT_UPLOADS when it is set. If EVERLOOT_UPLOADS is unset, the answer says uploads are not connected. |
-| `tool.gold_ledger` | Gold ledger | Page /tools/gold-ledger and MCP tool gold_ledger. The addon stores gold_snapshot (current and peak) and money_event for loot copper. The report names those and says quest rewards, vendor sales, auction sales, spending, and gameplay are unrecorded. Installs are not merged. The difference is unrecorded, never bought and never a ban. If EVERLOOT_UPLOADS is unset, the answer says uploads are not connected. Left: quest, vendor, auction, mail, and trade events, plus a trade note that only uses an uploaded ledger. The IRS addon is not copied. Gold-per-hour stays the calculator. |
-| `tool.simc` | SimulationCraft sidecar | run the GPL-3.0 forever branch as its own process once it can sim. Report comes back through MCP. Do not paste the C++ into this repo. |
-| `mcp.chatgpt_directory` | ChatGPT apps directory | submit the same MCP server the day submissions open |
-| `mcp.subscription_signin` | Subscription sign-in | ChatGPT or Claude subscription unlocks the companion. API keys stay the fallback. |
+| Id | Name | Proven | Done when |
+|---|---|---|---|
+| `site.sharing` | Named sharing | on everloot.app | Guild, character and gold names publish only through an operator-verified, scoped grant; revoke and character opt-out are on /upload. Done when a real owner or officer issues, uses and revokes a grant. |
+| `addon.skeleton` | Collector addon | on everloot.app | TOC 70058, SavedVariables, /upload import; the zip downloads from /upload. Done when it loads and collects in the Forever beta client per docs/2026-10-08-beta-client-checklist.md. |
+| `mcp.public_https` | Public HTTPS MCP | code + tests | Bearer token is on the loopback handler (--token or EVERLOOT_MCP_TOKEN). Done when that same handler is on a public HTTPS URL and ChatGPT can connect. |
+| `tool.profession_path` | Profession leveling path | on everloot.app | Engine and MCP tool profession_path. A step needs 3 agreeing uploads. Gold needs 3 prices per reagent. Intake accepts recipe_seen and price_seen. The tool reads the public corpus at EVERLOOT_PUBLIC_CORPUS_URL. With no corpus source set, the answer says uploads are not connected. Page: /tools/professions. |
+| `tool.item_page` | Item page for a drop row | on everloot.app | Page /database/items/[id] and MCP tool item_page. Name and map pin need 3 agreeing sightings. The rate is the public rollup. The tool reads the public corpus at EVERLOOT_PUBLIC_CORPUS_URL. With no corpus source set, the answer says uploads are not connected. |
+| `tool.npc_page` | NPC spawn page | on everloot.app | Page /database/npcs/[id] and MCP tool npc_page. A name or map pin needs 3 agreeing sightings. The tool reads the public corpus at EVERLOOT_PUBLIC_CORPUS_URL. With no corpus source set, the answer says uploads are not connected. |
+| `tool.quest_page` | Quest page | on everloot.app | Page /database/quests/[id] and MCP tool quest_page. Title, level, giver, turn-in, and a reward each need 3 agreeing uploads. The tool reads the public corpus at EVERLOOT_PUBLIC_CORPUS_URL. With no corpus source set, the answer says uploads are not connected. |
+| `tool.vendor_page` | Vendor page | on everloot.app | Page /database/vendors/[id] and MCP tool vendor_page. A price is public when 3 installs agree on the item and the copper. The tool reads the public corpus at EVERLOOT_PUBLIC_CORPUS_URL. With no corpus source set, the answer says uploads are not connected. |
+| `tool.collection` | Missing-collection view | on everloot.app | Page /tools/collections and MCP tool collection_gap. A list item needs 3 installs agreeing on the collection, the source, and the item. Owned is that install's upload. Not a Blizzard profile read. The tool reads the public corpus at EVERLOOT_PUBLIC_CORPUS_URL. With no corpus source set, the answer says uploads are not connected. |
+| `tool.guild` | Guild tracker | on everloot.app | Page /tools/guild-board and MCP tool guild_board. Roster, bosses, loot, and item level need 2 agreeing officer uploads. The average names how many roster members were measured. score_v1 has no published weights, so there is no single score. The tool reads the public corpus at EVERLOOT_PUBLIC_CORPUS_URL. With no corpus source set, the answer says uploads are not connected. |
+| `tool.guild_census` | Public guild-family page | on everloot.app | Citation page is /guilds/olympus. Each figure has its source and date. Battle.net guild profile answers for retail and Classic Era in the local adapter. Forever namespaces were refused on 2026-09-30. Done when that namespace fills the same table. Spec: guild system, census section. |
+| `tool.auction` | Auction history | on everloot.app | Page /tools/auctions and MCP tool auction_history. A day is public when 3 installs scanned that item on that realm. Intake accepts auction_scan. The tool reads the public corpus at EVERLOOT_PUBLIC_CORPUS_URL. With no corpus source set, the answer says uploads are not connected. |
+| `tool.gold_ledger` | Gold ledger | on everloot.app | Page /tools/gold-ledger and MCP tool gold_ledger. The addon stores gold_snapshot (current and peak) and money_event for loot copper. The report names those and says quest rewards, vendor sales, auction sales, spending, and gameplay are unrecorded. Installs are not merged. The difference is unrecorded, never bought and never a ban. With no corpus source set, the answer says uploads are not connected. Left: quest, vendor, auction, mail, and trade events, plus a trade note that only uses an uploaded ledger. The IRS addon is not copied. Gold-per-hour stays the calculator. |
+| `tool.simc` | SimulationCraft sidecar | not built | run the GPL-3.0 forever branch as its own process once it can sim. Report comes back through MCP. Do not paste the C++ into this repo. |
+| `app.uploader` | Desktop uploader | not built | Sends SavedVariables after logout without opening the site. Not started. Signing is ops.signing. |
+| `app.companion` | In-game companion | not built | Answers /ask in game from the same MCP server. Not started. The addon has /everloot status and auctions on|off only. |
+| `mcp.chatgpt_directory` | ChatGPT apps directory | not built | submit the same MCP server the day submissions open |
+| `mcp.subscription_signin` | Subscription sign-in | not built | ChatGPT or Claude subscription unlocks the companion. API keys stay the fallback. |
 
 ## Waiting on Carlos
 
@@ -95,3 +104,4 @@ Rows: 63.
 | `ref.wago_io` | wago.io | page shape: a snippet library. Not wago.tools. Those tables stay blocked. |
 | `ref.tbc_rtw` | tbc.rtw.dev | unread past the title. Open it in a browser before borrowing a layout. |
 | `ref.wow_pets` | wow-pets.com | unread. Cloudflare 522 on 2026-09-29. Do not substitute another pet site. |
+

@@ -7,47 +7,67 @@
 
 export type PlanStatus = "live" | "next" | "waiting" | "shape";
 
+/** The furthest a row is proven. Each step needs the one before it. */
+export type Proof = "none" | "code" | "deployed" | "client" | "public" | "real-data";
+
 export type PlanItem = {
   id: string;
   status: PlanStatus;
   name: string;
   /** What "done" means, or why this row is not a build. */
   done: string;
+  /** Required on live and next rows. */
+  proof?: Proof;
+};
+
+const PROOF_LABEL: Record<Proof, string> = {
+  none: "not built",
+  code: "code + tests",
+  deployed: "on everloot.app",
+  client: "beta client",
+  public: "public client",
+  "real-data": "real uploads",
 };
 
 export const BRIDGE_PLAN: readonly PlanItem[] = [
-  { id: "mcp.search_knowledge", status: "live", name: "Search the knowledge base", done: "stdio tool on everloot-knowledge" },
-  { id: "mcp.get_entity", status: "live", name: "Fetch one record by id", done: "stdio tool on everloot-knowledge" },
-  { id: "mcp.get_by_name", status: "live", name: "Exact-name lookup", done: "stdio tool on everloot-knowledge" },
-  { id: "mcp.everloot_plan", status: "live", name: "This tracker, as a tool", done: "a client can ask what is live, next, waiting, or shape-only" },
-  { id: "mcp.http_local", status: "live", name: "Local HTTP MCP", done: "POST /mcp on 127.0.0.1. Same server as stdio. Not reachable by ChatGPT yet." },
-  { id: "site.home", status: "live", name: "Public home", done: "https://everloot-web-r21digital.vercel.app" },
-  { id: "site.upload", status: "live", name: "Upload + intake", done: "/upload and /api/intake. Persists when Supabase is connected." },
-  { id: "site.drops", status: "live", name: "Drop rollups", done: "public when 3 independent installs agree" },
-  { id: "site.professions", status: "live", name: "Profession hubs", done: "hub pages exist. The leveling path is tool.profession_path." },
-  { id: "site.waitlist", status: "live", name: "Waitlist", done: "signup path exists. Persists when Supabase is connected." },
-  { id: "site.gap_marking", status: "live", name: "Unrecorded is not zero", done: "A missing fact reads unrecorded. A source 3 installs killed with no item dropped reads 0 drops in N kills. Guild item level names how many roster members were measured. A storage failure, an unset EVERLOOT_UPLOADS, and a guild-family row with no published count are not zeros. The profession form reads the server uploads." },
-  { id: "addon.skeleton", status: "live", name: "Collector skeleton", done: "TOC 70058, SavedVariables, /upload import. In-client beta test is still waiting." },
+  { id: "mcp.search_knowledge", status: "live", name: "Search the knowledge base", done: "stdio tool on everloot-knowledge", proof: "code" },
+  { id: "mcp.get_entity", status: "live", name: "Fetch one record by id", done: "stdio tool on everloot-knowledge", proof: "code" },
+  { id: "mcp.get_by_name", status: "live", name: "Exact-name lookup", done: "stdio tool on everloot-knowledge", proof: "code" },
+  { id: "mcp.everloot_plan", status: "live", name: "This tracker, as a tool", done: "a client can ask what is live, next, waiting, or shape-only", proof: "code" },
+  { id: "mcp.http_local", status: "live", name: "Local HTTP MCP", done: "POST /mcp on 127.0.0.1. Same server as stdio. Not reachable by ChatGPT yet.", proof: "code" },
+  { id: "site.home", status: "live", name: "Public home", done: "https://everloot.app", proof: "deployed" },
+  { id: "site.upload", status: "live", name: "Upload + intake", done: "/upload and /api/intake. Persists when Supabase is connected.", proof: "deployed" },
+  { id: "site.drops", status: "live", name: "Drop rollups", done: "public when 3 independent installs agree", proof: "deployed" },
+  { id: "site.professions", status: "live", name: "Profession hubs", done: "hub pages exist. The leveling path is tool.profession_path.", proof: "deployed" },
+  { id: "site.waitlist", status: "live", name: "Waitlist", done: "signup path exists. Persists when Supabase is connected.", proof: "deployed" },
+  { id: "site.gap_marking", status: "live", name: "Unrecorded is not zero", done: "A missing fact reads unrecorded. A source 3 installs killed with no item dropped reads 0 drops in N kills. Guild item level names how many roster members were measured. A storage failure, an unset corpus source, and a guild-family row with no published count are not zeros. The profession form reads the server uploads.", proof: "deployed" },
+  { id: "site.signin", status: "live", name: "Battle.net sign-in", done: "Sign in and Sign out on everloot.app. Hashed server sessions; logout revokes the session. Real login and logout verified 2026-10-08.", proof: "deployed" },
+  { id: "ops.health", status: "live", name: "Snapshot health", done: "/api/health reports snapshot age from signed R2 metadata: fresh within 30 minutes, otherwise 503. Age is not proof of complete indexing.", proof: "deployed" },
+  { id: "ops.quotas", status: "live", name: "Shared intake quotas", done: "Supabase counters: 20 uploads per install, 200 requests per IP and 10,000 globally per hour. Production fails closed. Install IDs still do not prove different people.", proof: "deployed" },
+  { id: "site.sharing", status: "next", name: "Named sharing", done: "Guild, character and gold names publish only through an operator-verified, scoped grant; revoke and character opt-out are on /upload. Done when a real owner or officer issues, uses and revokes a grant.", proof: "deployed" },
+  { id: "addon.skeleton", status: "next", name: "Collector addon", done: "TOC 70058, SavedVariables, /upload import; the zip downloads from /upload. Done when it loads and collects in the Forever beta client per docs/2026-10-08-beta-client-checklist.md.", proof: "deployed" },
 
-  { id: "mcp.public_https", status: "next", name: "Public HTTPS MCP", done: "Bearer token is on the loopback handler (--token or EVERLOOT_MCP_TOKEN). Done when that same handler is on a public HTTPS URL and ChatGPT can connect." },
-  { id: "tool.profession_path", status: "next", name: "Profession leveling path", done: "Engine and MCP tool profession_path. A step needs 3 agreeing uploads. Gold needs 3 prices per reagent. Intake accepts recipe_seen and price_seen. The tool reads EVERLOOT_UPLOADS when it is set. If EVERLOOT_UPLOADS is unset, the answer says uploads are not connected. Page: /tools/professions." },
-  { id: "tool.item_page", status: "next", name: "Item page for a drop row", done: "Page /database/items/[id] and MCP tool item_page. Name and map pin need 3 agreeing sightings. The rate is the public rollup. The tool reads EVERLOOT_UPLOADS when it is set. If EVERLOOT_UPLOADS is unset, the answer says uploads are not connected." },
-  { id: "tool.npc_page", status: "next", name: "NPC spawn page", done: "Page /database/npcs/[id] and MCP tool npc_page. A name or map pin needs 3 agreeing sightings. The tool reads EVERLOOT_UPLOADS when it is set. If EVERLOOT_UPLOADS is unset, the answer says uploads are not connected." },
-  { id: "tool.quest_page", status: "next", name: "Quest page", done: "Page /database/quests/[id] and MCP tool quest_page. Title, level, giver, turn-in, and a reward each need 3 agreeing uploads. The tool reads EVERLOOT_UPLOADS when it is set. If EVERLOOT_UPLOADS is unset, the answer says uploads are not connected." },
-  { id: "tool.vendor_page", status: "next", name: "Vendor page", done: "Page /database/vendors/[id] and MCP tool vendor_page. A price is public when 3 installs agree on the item and the copper. The tool reads EVERLOOT_UPLOADS when it is set. If EVERLOOT_UPLOADS is unset, the answer says uploads are not connected." },
-  { id: "tool.collection", status: "next", name: "Missing-collection view", done: "Page /tools/collections and MCP tool collection_gap. A list item needs 3 installs agreeing on the collection, the source, and the item. Owned is that install's upload. Not a Blizzard profile read. The tool reads EVERLOOT_UPLOADS when it is set. If EVERLOOT_UPLOADS is unset, the answer says uploads are not connected." },
-  { id: "tool.guild", status: "next", name: "Guild tracker", done: "Page /tools/guild-board and MCP tool guild_board. Roster, bosses, loot, and item level need 2 agreeing officer uploads. The average names how many roster members were measured. score_v1 has no published weights, so there is no single score. The tool reads EVERLOOT_UPLOADS when it is set. If EVERLOOT_UPLOADS is unset, the answer says uploads are not connected." },
-  { id: "tool.guild_census", status: "next", name: "Public guild-family page", done: "Citation page is /guilds/olympus. Each figure has its source and date. Battle.net guild profile answers for retail and Classic Era in the local adapter. Forever namespaces were refused on 2026-09-30. Done when that namespace fills the same table. Spec: guild system, census section." },
-  { id: "tool.auction", status: "next", name: "Auction history", done: "Page /tools/auctions and MCP tool auction_history. A day is public when 3 installs scanned that item on that realm. Intake accepts auction_scan. The tool reads EVERLOOT_UPLOADS when it is set. If EVERLOOT_UPLOADS is unset, the answer says uploads are not connected." },
-  { id: "tool.gold_ledger", status: "next", name: "Gold ledger", done: "Page /tools/gold-ledger and MCP tool gold_ledger. The addon stores gold_snapshot (current and peak) and money_event for loot copper. The report names those and says quest rewards, vendor sales, auction sales, spending, and gameplay are unrecorded. Installs are not merged. The difference is unrecorded, never bought and never a ban. If EVERLOOT_UPLOADS is unset, the answer says uploads are not connected. Left: quest, vendor, auction, mail, and trade events, plus a trade note that only uses an uploaded ledger. The IRS addon is not copied. Gold-per-hour stays the calculator." },
-  { id: "tool.simc", status: "next", name: "SimulationCraft sidecar", done: "run the GPL-3.0 forever branch as its own process once it can sim. Report comes back through MCP. Do not paste the C++ into this repo." },
-  { id: "ops.stored_rollups", status: "live", name: "Corpus snapshot", done: "Vercel cron every 10 minutes extends snapshots/corpus.json in R2 with uploads it has not seen. Pages read that one object. ?rebuild=1 (with CRON_SECRET) rebuilds from empty after a deletion." },
-  { id: "mcp.chatgpt_directory", status: "next", name: "ChatGPT apps directory", done: "submit the same MCP server the day submissions open" },
-  { id: "mcp.subscription_signin", status: "next", name: "Subscription sign-in", done: "ChatGPT or Claude subscription unlocks the companion. API keys stay the fallback." },
+  { id: "mcp.public_https", status: "next", name: "Public HTTPS MCP", done: "Bearer token is on the loopback handler (--token or EVERLOOT_MCP_TOKEN). Done when that same handler is on a public HTTPS URL and ChatGPT can connect.", proof: "code" },
+  { id: "tool.profession_path", status: "next", name: "Profession leveling path", done: "Engine and MCP tool profession_path. A step needs 3 agreeing uploads. Gold needs 3 prices per reagent. Intake accepts recipe_seen and price_seen. The tool reads the public corpus at EVERLOOT_PUBLIC_CORPUS_URL. With no corpus source set, the answer says uploads are not connected. Page: /tools/professions.", proof: "deployed" },
+  { id: "tool.item_page", status: "next", name: "Item page for a drop row", done: "Page /database/items/[id] and MCP tool item_page. Name and map pin need 3 agreeing sightings. The rate is the public rollup. The tool reads the public corpus at EVERLOOT_PUBLIC_CORPUS_URL. With no corpus source set, the answer says uploads are not connected.", proof: "deployed" },
+  { id: "tool.npc_page", status: "next", name: "NPC spawn page", done: "Page /database/npcs/[id] and MCP tool npc_page. A name or map pin needs 3 agreeing sightings. The tool reads the public corpus at EVERLOOT_PUBLIC_CORPUS_URL. With no corpus source set, the answer says uploads are not connected.", proof: "deployed" },
+  { id: "tool.quest_page", status: "next", name: "Quest page", done: "Page /database/quests/[id] and MCP tool quest_page. Title, level, giver, turn-in, and a reward each need 3 agreeing uploads. The tool reads the public corpus at EVERLOOT_PUBLIC_CORPUS_URL. With no corpus source set, the answer says uploads are not connected.", proof: "deployed" },
+  { id: "tool.vendor_page", status: "next", name: "Vendor page", done: "Page /database/vendors/[id] and MCP tool vendor_page. A price is public when 3 installs agree on the item and the copper. The tool reads the public corpus at EVERLOOT_PUBLIC_CORPUS_URL. With no corpus source set, the answer says uploads are not connected.", proof: "deployed" },
+  { id: "tool.collection", status: "next", name: "Missing-collection view", done: "Page /tools/collections and MCP tool collection_gap. A list item needs 3 installs agreeing on the collection, the source, and the item. Owned is that install's upload. Not a Blizzard profile read. The tool reads the public corpus at EVERLOOT_PUBLIC_CORPUS_URL. With no corpus source set, the answer says uploads are not connected.", proof: "deployed" },
+  { id: "tool.guild", status: "next", name: "Guild tracker", done: "Page /tools/guild-board and MCP tool guild_board. Roster, bosses, loot, and item level need 2 agreeing officer uploads. The average names how many roster members were measured. score_v1 has no published weights, so there is no single score. The tool reads the public corpus at EVERLOOT_PUBLIC_CORPUS_URL. With no corpus source set, the answer says uploads are not connected.", proof: "deployed" },
+  { id: "tool.guild_census", status: "next", name: "Public guild-family page", done: "Citation page is /guilds/olympus. Each figure has its source and date. Battle.net guild profile answers for retail and Classic Era in the local adapter. Forever namespaces were refused on 2026-09-30. Done when that namespace fills the same table. Spec: guild system, census section.", proof: "deployed" },
+  { id: "tool.auction", status: "next", name: "Auction history", done: "Page /tools/auctions and MCP tool auction_history. A day is public when 3 installs scanned that item on that realm. Intake accepts auction_scan. The tool reads the public corpus at EVERLOOT_PUBLIC_CORPUS_URL. With no corpus source set, the answer says uploads are not connected.", proof: "deployed" },
+  { id: "tool.gold_ledger", status: "next", name: "Gold ledger", done: "Page /tools/gold-ledger and MCP tool gold_ledger. The addon stores gold_snapshot (current and peak) and money_event for loot copper. The report names those and says quest rewards, vendor sales, auction sales, spending, and gameplay are unrecorded. Installs are not merged. The difference is unrecorded, never bought and never a ban. With no corpus source set, the answer says uploads are not connected. Left: quest, vendor, auction, mail, and trade events, plus a trade note that only uses an uploaded ledger. The IRS addon is not copied. Gold-per-hour stays the calculator.", proof: "deployed" },
+  { id: "tool.simc", status: "next", name: "SimulationCraft sidecar", done: "run the GPL-3.0 forever branch as its own process once it can sim. Report comes back through MCP. Do not paste the C++ into this repo.", proof: "none" },
+  { id: "ops.stored_rollups", status: "live", name: "Corpus snapshot", done: "Vercel cron every 10 minutes extends snapshots/corpus.json in R2 with uploads it has not seen. Pages read that one object. ?rebuild=1 (with CRON_SECRET) rebuilds from empty after a deletion.", proof: "deployed" },
+  { id: "app.uploader", status: "next", name: "Desktop uploader", done: "Sends SavedVariables after logout without opening the site. Not started. Signing is ops.signing.", proof: "none" },
+  { id: "app.companion", status: "next", name: "In-game companion", done: "Answers /ask in game from the same MCP server. Not started. The addon has /everloot status and auctions on|off only.", proof: "none" },
+  { id: "mcp.chatgpt_directory", status: "next", name: "ChatGPT apps directory", done: "submit the same MCP server the day submissions open", proof: "none" },
+  { id: "mcp.subscription_signin", status: "next", name: "Subscription sign-in", done: "ChatGPT or Claude subscription unlocks the companion. API keys stay the fallback.", proof: "none" },
 
-  { id: "ops.dns", status: "live", name: "everloot.app DNS", done: "A @ 76.76.21.21 and CNAME www cname.vercel-dns.com in Cloudflare, both DNS only. https://everloot.app and www answer 200 with a Let's Encrypt certificate." },
-  { id: "ops.vercel_git", status: "live", name: "vercel git connect", done: "CDVolvik/everloot is connected and the root directory is web. A push to main deploys production." },
-  { id: "ops.supabase", status: "live", name: "Supabase + R2 storage", done: "Intake writes the raw upload to R2 bucket everloot-uploads and one index row to Supabase everloot (ref uinmowrmyckklpbwzqhn); the waitlist is a Supabase table. Pages read the indexed objects. Proven end to end on everloot.app 2026-10-04." },
+  { id: "ops.dns", status: "live", name: "everloot.app DNS", done: "A @ 76.76.21.21 and CNAME www cname.vercel-dns.com in Cloudflare, both DNS only. https://everloot.app and www answer 200 with a Let's Encrypt certificate.", proof: "deployed" },
+  { id: "ops.vercel_git", status: "live", name: "vercel git connect", done: "CDVolvik/everloot is connected and the root directory is web. A push to main deploys production.", proof: "deployed" },
+  { id: "ops.supabase", status: "live", name: "Supabase + R2 storage", done: "Intake writes the raw upload to R2 bucket everloot-uploads and one index row to Supabase everloot (ref uinmowrmyckklpbwzqhn); the waitlist is a Supabase table. Pages read the indexed objects. Proven end to end on everloot.app 2026-10-04.", proof: "deployed" },
   { id: "ops.adsense", status: "waiting", name: "AdSense", done: "Carlos's account. Consent banner already on the site." },
   { id: "ops.beta_guild", status: "waiting", name: "Beta character in a guild", done: "two raid nights before 2026-10-21. Hakoovak is not this character." },
   { id: "ops.hero_shot", status: "waiting", name: "Hero screenshot", done: "a real beta screenshot replaces the empty hero" },
@@ -110,13 +130,23 @@ export function renderTracker(): string {
     "sites contribute a page shape. Their text and tables stay put. SimulationCraft's",
     "engine stays a separate GPL program.",
     "",
+    "Proven, furthest first: real uploads, public client, beta client, on everloot.app,",
+    "code + tests, not built. Live means usable today, not proven with real data.",
+    "",
     `Rows: ${BRIDGE_PLAN.length}.`,
     "",
   ];
   for (const status of ["live", "next", "waiting", "shape"] as const) {
-    lines.push(`## ${STATUS_LABEL[status]}`, "", "| Id | Name | Done when |", "|---|---|---|");
+    const proven = status === "live" || status === "next";
+    lines.push(
+      `## ${STATUS_LABEL[status]}`,
+      "",
+      proven ? "| Id | Name | Proven | Done when |" : "| Id | Name | Done when |",
+      proven ? "|---|---|---|---|" : "|---|---|---|",
+    );
     for (const item of BRIDGE_PLAN.filter((row) => row.status === status)) {
-      lines.push(`| \`${item.id}\` | ${item.name} | ${item.done} |`);
+      const proof = proven ? ` ${item.proof ? PROOF_LABEL[item.proof] : "unstated"} |` : "";
+      lines.push(`| \`${item.id}\` | ${item.name} |${proof} ${item.done} |`);
     }
     lines.push("");
   }
