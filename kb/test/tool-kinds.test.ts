@@ -5,8 +5,7 @@ import { itemFactsFromRecords } from "../src/drop-rollup.js";
 import { goldFactsFromRecords } from "../src/gold-ledger.js";
 import { guildFactsFromRecords } from "../src/guild-board.js";
 import { fromUploads, TOOL_KINDS, UPLOADS_UNSET } from "../src/mcp-server.js";
-import { professionFactsFromRecords } from "../src/profession-path.js";
-import { recipeFactsFromRecords } from "../src/recipe-thresholds.js";
+import { pathFactsFromRecords, recipeFactsFromRecords } from "../src/recipe-thresholds.js";
 import { worldFactsFromRecords } from "../src/world-pages.js";
 import { ALL_RECORD_KINDS, parseRecords } from "../../web/src/lib/intake.js";
 
@@ -33,10 +32,11 @@ const EVERY_KIND = parseRecords([
   { ...base, eventId: "e:16", kind: "gold_snapshot", character: "Thrall", realm: "Forever", currentCopper: 100, peakCopper: 100 },
   { ...base, eventId: "e:17", kind: "money_event", character: "Thrall", realm: "Forever", category: "loot", copper: 10 },
   { ...base, eventId: "e:18", kind: "recipe_observed", profession: "Alchemy", rank: 60, recipe: "Lesser Healing Potion", difficulty: "optimal", reagents: [] },
+  { ...base, eventId: "e:19", kind: "trainer_seen", profession: "Alchemy", recipe: "Lesser Healing Potion", requiredRank: 55, costCopper: 250 },
 ]);
 
 const FACTS: Record<keyof typeof TOOL_KINDS, (records: unknown[]) => unknown> = {
-  profession_path: professionFactsFromRecords,
+  profession_path: pathFactsFromRecords,
   recipe_thresholds: recipeFactsFromRecords,
   item_page: itemFactsFromRecords,
   npc_page: worldFactsFromRecords,

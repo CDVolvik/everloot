@@ -8,7 +8,7 @@
  * craft uses the profession path's agreed prices, and stays unrecorded while any reagent has none.
  */
 import { INDEPENDENT_INSTALLS } from "./drop-rollup.js";
-import { agreePrices, formatCopper, professionFactsFromRecords, reagentKey, type PriceSighting, type Reagent } from "./profession-path.js";
+import { agreePrices, formatCopper, professionFactsFromRecords, reagentKey, type AgreedRecipe, type PriceSighting, type Reagent } from "./profession-path.js";
 
 const ORDER = ["optimal", "medium", "easy", "trivial"] as const;
 type Colour = (typeof ORDER)[number];
@@ -38,6 +38,57 @@ export function recipeObservationsFromRecords(records: unknown[]): RecipeObserva
 /** Observations plus price reports (price_seen and per-unit auction scans) for ranges with reagent costs. */
 export function recipeFactsFromRecords(records: unknown[]): { observations: RecipeObservation[]; prices: PriceSighting[] } {
   return { observations: recipeObservationsFromRecords(records), prices: professionFactsFromRecords(records).prices };
+}
+
+export interface TrainerRow { installId: string; profession: string; recipe: string; requiredRank: number }
+
+export function trainerRowsFromRecords(records: unknown[]): TrainerRow[] {
+  const out: TrainerRow[] = [];
+  for (const raw of records) {
+    const r = raw as Record<string, unknown>;
+    if (r?.kind !== "trainer_seen" || typeof r.installId !== "string" || typeof r.profession !== "string" ||
+      typeof r.recipe !== "string" || !Number.isInteger(r.requiredRank) || (r.requiredRank as number) < 1) continue;
+    out.push({ installId: r.installId, profession: r.profession, recipe: r.recipe, requiredRank: r.requiredRank as number });
+  }
+  return out;
+}
+
+export type DerivedStep = AgreedRecipe & { profession: string };
+
+const recipeKey = (profession: string, recipe: string) => `${profession.trim().toLowerCase()}|${recipe.trim().toLowerCase()}`;
+
+/**
+ * Orange-only steps (design note 2026-10-10, option B): a published recipe with agreed reagents pays
+ * one point per craft from its learn rank up to yellow.min, the first rank not known to be orange.
+ * The learn rank is the trainer's, when three installs agree on one; else the lowest rank seen orange.
+ */
+export function derivedSteps(observations: RecipeObservation[], trainers: TrainerRow[]): DerivedStep[] {
+  const trained = new Map<string, Map<number, Set<string>>>();
+  for (const row of trainers) {
+    const ranks = trained.get(recipeKey(row.profession, row.recipe)) ?? new Map<number, Set<string>>();
+    ranks.set(row.requiredRank, (ranks.get(row.requiredRank) ?? new Set<string>()).add(row.installId));
+    trained.set(recipeKey(row.profession, row.recipe), ranks);
+  }
+  const out: DerivedStep[] = [];
+  for (const t of inferThresholds(observations)) {
+    if (!t.reagents || t.yellow.min === null) continue;
+    const key = recipeKey(t.profession, t.recipe);
+    const [best, next] = [...(trained.get(key) ?? [])].sort((a, b) => b[1].size - a[1].size);
+    const skillMin = best && best[1].size >= INDEPENDENT_INSTALLS && next?.[1].size !== best[1].size
+      ? best[0]
+      : Math.min(...observations.filter((o) => o.difficulty === "optimal" && recipeKey(o.profession, o.recipe) === key).map((o) => o.rank));
+    if (!(skillMin < t.yellow.min)) continue;
+    out.push({ profession: t.profession, recipe: t.recipe, skillMin, skillMax: t.yellow.min, points: 1, reagents: t.reagents, reporters: t.installs });
+  }
+  return out;
+}
+
+/** Everything the profession path reads: reported recipes, prices, and steps derived from colours and trainers. */
+export function pathFactsFromRecords(records: unknown[]) {
+  const { sightings, prices } = professionFactsFromRecords(records);
+  const observations = recipeObservationsFromRecords(records);
+  const trainers = trainerRowsFromRecords(records);
+  return { sightings, prices, observations, trainers, derived: derivedSteps(observations, trainers) };
 }
 
 /** The list the most installs saw, when at least three did and no other list ties it. */

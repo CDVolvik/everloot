@@ -53,3 +53,17 @@ test("agreed reagents priced by auction scans show a cost per craft", async () =
   });
   expect(await render()).toContain("Reagents: 2 Peacebloom. Estimated cost per craft: 60c.");
 });
+
+test("the path on the page routes through steps derived from colours and trainer ranks", async () => {
+  const ids = ["install-aaaa", "install-bbbb", "install-cccc"];
+  const reagents = [{ item: "Peacebloom", count: 1 }];
+  store.loadCorpus.mockResolvedValue({
+    uploads: 3, dataAsOf: "2026-10-10T00:00:00.000Z",
+    records: [
+      { ...obs(ids[0], 1, "optimal"), reagents }, { ...obs(ids[1], 10, "optimal"), reagents }, { ...obs(ids[2], 12, "medium"), reagents },
+      ...ids.map((id) => ({ kind: "trainer_seen", installId: id, profession: "Alchemy", recipe: "Lesser Healing Potion", requiredRank: 1 })),
+    ],
+  });
+  const html = renderToStaticMarkup(await ProfessionsPage({ searchParams: Promise.resolve({ profession: "Alchemy", from: "1", to: "11" }) }));
+  expect(html).toContain("1–11  Lesser Healing Potion  10 crafts × 1");
+});

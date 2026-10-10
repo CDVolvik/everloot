@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import EmailCapture from "@/components/EmailCapture";
-import { handleProfessionPath, professionFactsFromRecords } from "../../../../../kb/src/profession-path";
-import { handleRecipeThresholds, recipeObservationsFromRecords } from "../../../../../kb/src/recipe-thresholds";
+import { handleProfessionPath } from "../../../../../kb/src/profession-path";
+import { handleRecipeThresholds, pathFactsFromRecords } from "../../../../../kb/src/recipe-thresholds";
 import { STORAGE_UNREACHABLE, uploadStore } from "@/lib/upload-store";
 import { dataAgeLabel } from "@/lib/data-age";
 
@@ -52,15 +52,15 @@ export default async function ProfessionsPage(
   const toSkill = skill(one(searchParams.to), 75);
   const corpus = await uploadStore.loadCorpus();
   const facts = corpus.unreachable
-    ? { sightings: [], prices: [] }
-    : professionFactsFromRecords(corpus.records);
+    ? { sightings: [], prices: [], observations: [], derived: [] }
+    : pathFactsFromRecords(corpus.records);
   const answer = corpus.unreachable
     ? STORAGE_UNREACHABLE
-    : handleProfessionPath({ profession, fromSkill, toSkill }, facts.sightings, facts.prices);
+    : handleProfessionPath({ profession, fromSkill, toSkill }, facts.sightings, facts.prices, facts.derived);
   const ranges = corpus.unreachable
     ? STORAGE_UNREACHABLE
-    : handleRecipeThresholds({ profession }, recipeObservationsFromRecords(corpus.records), facts.prices);
-  const reports = facts.sightings.length;
+    : handleRecipeThresholds({ profession }, facts.observations, facts.prices);
+  const reports = facts.sightings.length + facts.observations.length;
   return (
     <article className="space-y-10 max-w-4xl">
       <header className="space-y-3">
@@ -134,9 +134,10 @@ export default async function ProfessionsPage(
       <div className="rounded-2xl border border-arcane/30 bg-parchment-900 p-6">
         <h2 className="font-display text-xl text-parchment-100">Feed your profession</h2>
         <p className="mt-1 text-sm text-parchment-100/75 max-w-xl">
-          With auction capture on, the addon&apos;s auction scans price reagents here. It does not yet
-          record the skill windows and points per craft a route needs, so routes stay gaps until that
-          collection is added. Material drops it records already reach the drop pages. Upload on the{" "}
+          With auction capture on, the addon&apos;s auction scans price reagents here. Opening profession
+          windows and trainers (addon 0.2.5) builds route steps: only the ranks where a recipe is known
+          orange, once 3 installs agree. Ranks past that stay gaps. Material drops it records already
+          reach the drop pages. Upload on the{" "}
           <Link href="/upload" className="text-gold-400 hover:underline underline-offset-4">upload page</Link>.
         </p>
       </div>

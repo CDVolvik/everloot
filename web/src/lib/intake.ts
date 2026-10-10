@@ -175,6 +175,15 @@ export const recipeObserved = base.extend({
   })).max(20),
 });
 
+/** What a trainer window listed: a profession recipe's required rank and training cost. */
+export const trainerSeen = base.extend({
+  kind: z.literal("trainer_seen"),
+  profession: z.string().min(1).max(40),
+  recipe: z.string().min(1).max(120),
+  requiredRank: z.number().int().min(1).max(500),
+  costCopper: z.number().int().nonnegative().max(2_000_000_000).optional(),
+});
+
 export const priceSeen = base.extend({
   kind: z.literal("price_seen"),
   item: z.string().min(1).max(80),
@@ -219,6 +228,7 @@ const recordSchemas = {
   recipe_seen: recipeSeen,
   price_seen: priceSeen,
   recipe_observed: recipeObserved,
+  trainer_seen: trainerSeen,
   gold_snapshot: goldSnapshot,
   money_event: moneyEvent,
 } as const;
@@ -229,7 +239,7 @@ export const ALL_RECORD_KINDS = Object.keys(recordSchemas) as RecordKind[];
 const anyRecord = z.discriminatedUnion("kind", [
   npcSighting, lootWindow, questEvent, vendorList, itemSeen,
   guildSnapshot, raidLockout, attendance, lootAward, gearSnapshot,
-  collectionCatalog, collectionOwned, auctionScan, recipeSeen, priceSeen, recipeObserved,
+  collectionCatalog, collectionOwned, auctionScan, recipeSeen, priceSeen, recipeObserved, trainerSeen,
   goldSnapshot, moneyEvent,
 ]);
 
