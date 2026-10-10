@@ -37,7 +37,7 @@ export default async function GoldLedgerPage(
         <h1 className="font-display text-3xl sm:text-4xl font-bold text-parchment-100 tracking-tight">Gold ledger</h1>
         <p className="text-sm text-parchment-100/70 max-w-2xl">
           Peak gold and the money events that character uploaded. Addon 0.2.4 records loot, quest
-          rewards, vendor sales, flight costs and auction sales taken from the mailbox. Other mail, other
+          rewards, vendor sales, flight costs, auction sales taken from the mailbox and postage. Other mail, other
           spending, and gameplay stay unrecorded until an event is seen. The difference is unrecorded. This is the same answer as the gold_ledger tool.
         </p>
       </header>

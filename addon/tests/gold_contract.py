@@ -20,6 +20,9 @@ money = 1000
 GetMoney = function() return money end
 TakeInboxMoney = function() end
 AutoLootMailItem = function() end
+SendMail = function() end
+sendPrice = 30
+GetSendMailPrice = function() return sendPrice end
 hooksecurefunc = function(name, after)
  local original = _G[name]
  _G[name] = function(...) original(...); after(...) end
@@ -94,8 +97,18 @@ event('MAIL_CLOSED')
 money = money + 900; event('PLAYER_MONEY')
 assert(#events('auction') == 1, 'non-invoice, unmatched or stale mail money unrecorded, got ' .. #events('auction'))
 assert(#events() == 4, 'only the auction sale was added, got ' .. #events())
+
+-- Postage is the price the send window quoted, stored once the server confirms the letter left.
+SendMail('Jaina', 'Hi', '')
+sendPrice = 0
+event('MAIL_SEND_SUCCESS')
+SendMail('Jaina', 'Again', '')
+event('MAIL_FAILED')
+event('MAIL_SEND_SUCCESS')
+assert(#events('postage') == 1 and events('postage')[1].copper == 30, 'one postage of 30; a failed send costs nothing')
+assert(#events() == 5, 'postage added once, got ' .. #events())
 for _, row in ipairs(events()) do
  for _, value in pairs(row) do assert(value ~= 'Jaina', 'the buyer is another player and is never stored') end
 end
 """)
-print("Lua 5.1 gold: vendor sales, flights, quest rewards and mailed auction sales attributed; purchases and unknown income unrecorded")
+print("Lua 5.1 gold: vendor sales, flights, quest rewards, mailed auction sales and postage attributed; purchases and unknown income unrecorded")
