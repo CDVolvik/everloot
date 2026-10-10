@@ -68,6 +68,21 @@ test("a tool asks the public corpus for its kinds only", async () => {
   } finally { vi.unstubAllEnvs(); vi.unstubAllGlobals(); }
 });
 
+test("an in-process corpus loader (the site's own /mcp route) wins over the URL and needs no HTTP", async () => {
+  vi.stubEnv("EVERLOOT_PUBLIC_CORPUS_URL", "https://everloot.example/api/corpus/public");
+  const send = vi.fn();
+  vi.stubGlobal("fetch", send);
+  try {
+    const loader = vi.fn(async () => ({ records: EVERY_KIND.records, dataAsOf: "2026-10-10T06:30:00.000Z" }));
+    const answer = await fromUploads((records) => `kinds:${[...new Set((records as { kind: string }[]).map((r) => r.kind))].join(",")}`,
+      TOOL_KINDS.gold_ledger, loader);
+    expect(answer).toBe("kinds:gold_snapshot,money_event\nData as of 2026-10-10 06:30 UTC.");
+    expect(send).not.toHaveBeenCalled();
+    const down = await fromUploads(() => "renderer must not run", TOOL_KINDS.auction_history, async () => null);
+    expect(down).toMatch(/unavailable/i);
+  } finally { vi.unstubAllEnvs(); vi.unstubAllGlobals(); }
+});
+
 test("with no corpus source the answer names both settings, and is not a zero", () => {
   expect(UPLOADS_UNSET).toContain("EVERLOOT_PUBLIC_CORPUS_URL");
   expect(UPLOADS_UNSET).toContain("not a measured zero");
