@@ -1,4 +1,4 @@
-# Everloot 0.2.2 — beta collection check
+# Everloot 0.2.3 — beta collection check
 
 Lua 5.1 stubs pass; the Forever beta client has not been tested. Keep the existing
 SavedVariables file before installing. No script here plays the character.
@@ -30,6 +30,10 @@ SavedVariables file before installing. No script here plays the character.
    For `/ask`, type `/ask Who is Thrall?`, then `/reload` with the companion's `bridge`
    running (companion/README.md). Expect the answer and its source in chat once, and an
    `EverlootAnswers` entry in the AddOns list. Check that `/everloot ask …` keeps capitals.
+   For recipes, open a profession window (and Enchanting's craft window), then log out. Expect
+   one `recipe_observed` row per recipe with the colour the window showed at your rank and its
+   reagents; headers produce none. Reopening at the same rank adds nothing; skill up once and
+   reopen to see new rows. Write down two colours by hand to compare.
 7. Log out so SavedVariables flush. Preview the file at `/upload` before sending.
    Keep named sharing off unless actual owner/officer authority is verified and
    the scoped grant has been issued. Upload, record receipts and repeat the same
