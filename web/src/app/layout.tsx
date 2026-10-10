@@ -30,7 +30,7 @@ export const metadata: Metadata = {
     url: siteUrl,
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "Everloot — WoW: Forever Database, Guild Tracker & Tools",
     description:
       "WoW: Forever observations from addon uploads, guild tools and a gold-per-hour calculator.",
