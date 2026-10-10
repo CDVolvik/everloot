@@ -1,5 +1,24 @@
 # Everloot — resume after 2026-10-05 assessment
 
+## Resume — 2026-10-09 loop, second round: PRs #14–#21 (still nothing merged or deployed)
+
+Carlos's decisions on 10/09: the companion is a **Node/TypeScript core**, and public MCP is **option A** (a route on the existing `everloot-web` Vercel project), trialed on a preview.
+
+| PR | Unit | Notes |
+|---|---|---|
+| #14 | `/api/corpus/public?kinds=`; each MCP tool fetches only its kinds | postpones the 2 MB cap; item/NPC answers still need pre-aggregation |
+| #15 | Memos: public MCP hosting options, recipe capture options | docs |
+| #16 | Render tests for unrecorded / empty / corroborated database pages | test-only |
+| #17 | **`/mcp` route on the site deployment, preview trial passed** | cold 4.7 s, warm ~0.3 s, 13 tools, official SDK client connected. Before prod: the release must reach git builds (R2 prebuild download, needs OK), production env vars |
+| #18 | Companion core: uploader (`companion/`) | smoke-tested against local dev |
+| #19 | Companion `/ask` file bridge (stacked on #18) | Lua-safe answers + Adler-32, proven in real Lua 5.1; live run against the #17 preview |
+| #20 | Addon `/ask` (stacked on #10 → #1) | answers show after `/reload` when the checksum verifies |
+| #21 | KB search: "Who is Thrall?" → Thrall, not "Find Thrall!" | found by the live bridge run |
+
+Trial resources to clean up after #17 review: three branch-scoped Preview env vars on `feat/mcp-vercel-route`, and the preview token in `D:\R21-Brain\_secrets\everloot\mcp-preview-token.txt`.
+
+Stacks: #1 → #10 → #20 (addon 0.2.2) and #18 → #19 (companion). Retarget each child to `main` after its parent merges.
+
 ## Resume — 2026-10-09 autonomous loop: 12 PRs open, nothing merged or deployed
 
 Every unit is its own PR into `main` (merging deploys everloot.app, so every merge is Carlos's). Free services only; no production data touched.
