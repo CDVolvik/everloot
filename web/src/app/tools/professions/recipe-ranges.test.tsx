@@ -37,3 +37,19 @@ test("three agreeing installs show the inferred range", async () => {
   });
   expect(await render()).toContain("Lesser Healing Potion (Alchemy), 3 installs: yellow from 51-55");
 });
+
+test("agreed reagents priced by auction scans show a cost per craft", async () => {
+  const ids = ["install-aaaa", "install-bbbb", "install-cccc"];
+  const reagents = [{ item: "Peacebloom", count: 2 }];
+  store.loadCorpus.mockResolvedValue({
+    uploads: 3, dataAsOf: "2026-10-10T00:00:00.000Z",
+    records: [
+      ...ids.map((id, i) => ({ ...obs(id, 50 + i, "optimal"), reagents })),
+      ...ids.flatMap((id) => [
+        { kind: "auction_scan", installId: id, capturedAt: "2026-10-10T00:00:00.000Z", realm: "Forever", itemId: 2447, copper: 30, priceBasis: "unit" },
+        { kind: "item_seen", installId: id, itemId: 2447, name: "Peacebloom" },
+      ]),
+    ],
+  });
+  expect(await render()).toContain("Reagents: 2 Peacebloom. Estimated cost per craft: 60c.");
+});
