@@ -4,6 +4,7 @@
 ## Author: Everloot
 ## Version: 0.2.2
 ## SavedVariables: EverlootDB
+## OptionalDeps: EverlootAnswers
 ## IconTexture: Interface\Icons\INV_Misc_Coin_02
 
 core.lua
@@ -12,3 +13,4 @@ modules\guild.lua
 modules\gear.lua
 modules\auctions.lua
 modules\gold.lua
+modules\ask.lua

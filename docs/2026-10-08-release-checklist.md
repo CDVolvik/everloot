@@ -7,7 +7,8 @@
 - From the repo root: `uv run --with lupa python addon/tests/event_identity.py`,
   `uv run --with lupa python addon/tests/collection_contract.py`,
   `uv run --with lupa python addon/tests/auction_contract.py` and
-  `uv run --with lupa python addon/tests/gold_contract.py`.
+  `uv run --with lupa python addon/tests/gold_contract.py` and
+  `uv run --with lupa python addon/tests/ask_contract.py`.
 - Review every changed file and independent review findings before release.
 - Check 390/768/1440px layout, keyboard menu, calculator and empty entity `noindex`.
 - With advertising intercepted, inspect absent/reject/accept/withdraw network
