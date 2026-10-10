@@ -78,6 +78,23 @@ test("pending asks are answered once and written into the slot addon", async () 
   expect(engine.answer).toHaveBeenCalledTimes(1);
 });
 
+test("an answered question still waiting in game gets its answer rewritten, with no new model call", async () => {
+  // The addon keeps a question queued when its checksum fails; rewriting the slot addon heals it.
+  const dir = mkdtempSync(join(tmpdir(), "everloot-bridge-"));
+  const sv = join(dir, "Everloot.lua");
+  writeFileSync(sv, `EverlootDB = {["version"] = "0.2.2", ["installId"] = "abcd-1234-ef56-7890", ["records"] = {},
+["asks"] = {{["id"] = "ask:7", ["question"] = "Thrall", ["askedAt"] = "2026-10-09T00:00:00Z"}}}`);
+  const engine = { answer: vi.fn(async () => ({ answer: "Warchief.", source: "wiki" })) };
+  const store = createAnswerStore(join(dir, "answers.json"));
+  const addons = join(dir, "AddOns");
+  await answerPending({ svFile: sv, addonsDir: addons, engine, store });
+  const file = join(addons, "EverlootAnswers", "EverlootAnswers.lua");
+  writeFileSync(file, readFileSync(file, "utf8").replace(`["sum"] = ${adler32("Warchief.")}`, `["sum"] = 1`));
+  await answerPending({ svFile: sv, addonsDir: addons, engine, store });
+  expect(readFileSync(file, "utf8")).toContain(`["sum"] = ${adler32("Warchief.")}`);
+  expect(engine.answer).toHaveBeenCalledTimes(1);
+});
+
 test("an engine failure is reported to the player, not hidden", async () => {
   const dir = mkdtempSync(join(tmpdir(), "everloot-bridge-"));
   const sv = join(dir, "Everloot.lua");
