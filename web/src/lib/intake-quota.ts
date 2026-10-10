@@ -17,7 +17,7 @@ export function createIntakeQuota(opts: {
   const secret = env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   const production = env.NODE_ENV === "production";
 
-  async function consume(scope: "request" | "install", value: string): Promise<QuotaResult> {
+  async function consume(scope: "request" | "install" | "mcp", value: string): Promise<QuotaResult> {
     if (url && secret) {
       const key = createHmac("sha256", secret).update(`${scope}:${value}`).digest("hex");
       const response = await doFetch(`${url.replace(/\/$/, "")}/rest/v1/rpc/consume_intake_quota`, {
@@ -36,7 +36,9 @@ export function createIntakeQuota(opts: {
     const time = now();
     // Expired development identities must not accumulate for the lifetime of the process.
     for (const [key, bucket] of local) if (bucket.resetAt <= time) local.delete(key);
-    const limits: [string, number][] = scope === "request" ? [["global", 10000], [`ip:${value}`, 200]] : [[`install:${value}`, 20]];
+    const limits: [string, number][] = scope === "request" ? [["global", 10000], [`ip:${value}`, 200]]
+      : scope === "mcp" ? [["mcp_global", 5000], [`mcp:${value}`, 200]]
+      : [[`install:${value}`, 20]];
     const retryAfter = Math.max(0, ...limits.map(([key, limit]) => {
       const bucket = local.get(key);
       return bucket && bucket.count >= limit ? Math.ceil((bucket.resetAt - time) / 1000) : 0;
@@ -64,11 +66,13 @@ export function createIntakeQuota(opts: {
       return consume("request", clientIp(req));
     },
     /**
-     * Public MCP: its own per-IP bucket (the "mcp:" prefix changes the hashed key), so AI clients
-     * cannot use up a player's upload allowance. The hourly global bucket is still shared with
-     * intake until a dedicated database scope exists.
+     * Public MCP: its own per-IP bucket, so AI clients cannot use up a player's upload allowance.
+     * With EVERLOOT_MCP_QUOTA_SCOPE=mcp (set only after 20261010120000_mcp_quota_scope.sql is
+     * applied) it also gets its own hourly global bucket; before that, the "mcp:" prefix changes
+     * the hashed key and the global bucket is shared with intake.
      */
     async mcp(req: Request) {
+      if (env.EVERLOOT_MCP_QUOTA_SCOPE === "mcp") return consume("mcp", clientIp(req));
       return consume("request", `mcp:${clientIp(req)}`);
     },
     install(installId: string) { return consume("install", installId); },
