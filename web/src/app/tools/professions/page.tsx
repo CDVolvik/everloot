@@ -59,7 +59,7 @@ export default async function ProfessionsPage(
     : handleProfessionPath({ profession, fromSkill, toSkill }, facts.sightings, facts.prices);
   const ranges = corpus.unreachable
     ? STORAGE_UNREACHABLE
-    : handleRecipeThresholds({ profession }, recipeObservationsFromRecords(corpus.records));
+    : handleRecipeThresholds({ profession }, recipeObservationsFromRecords(corpus.records), facts.prices);
   const reports = facts.sightings.length;
   return (
     <article className="space-y-10 max-w-4xl">
@@ -114,7 +114,8 @@ export default async function ProfessionsPage(
         <h2 className="font-display text-xl text-parchment-100">Recipe skill ranges</h2>
         <p className="text-sm text-parchment-100/75 max-w-2xl">
           Where {profession} recipes turn yellow, green and grey, from the colours players&apos; profession windows
-          showed (addon 0.2.3+). Shown as ranges once 3 installs agree.
+          showed (addon 0.2.3+). Shown as ranges once 3 installs agree, with the reagents 3 installs saw and an
+          estimated cost per craft when every reagent has an agreed price.
         </p>
         <pre className="whitespace-pre-wrap text-sm text-parchment-100/85 rounded-xl border border-parchment-100/10 bg-parchment-900 p-5">
           {ranges}

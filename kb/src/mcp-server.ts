@@ -11,7 +11,7 @@ import { handleItemPage } from "./item-page.js";
 import { loadUploadRecords } from "./load-uploads.js";
 import { parseRecords } from "../../web/src/lib/intake.js";
 import { handleProfessionPath, professionFactsFromRecords } from "./profession-path.js";
-import { handleRecipeThresholds, recipeObservationsFromRecords } from "./recipe-thresholds.js";
+import { handleRecipeThresholds, recipeFactsFromRecords } from "./recipe-thresholds.js";
 import { handleNpcPage, handleQuestPage, handleVendorPage, worldFactsFromRecords } from "./world-pages.js";
 import type { DB } from "./db.js";
 import { getByName, getEntity, search, type SearchHit } from "./search.js";
@@ -25,7 +25,7 @@ export const UPLOADS_UNSET =
 /** Record kinds each gameplay tool reads. tool-kinds.test.ts checks them against the fact functions. */
 export const TOOL_KINDS = {
   profession_path: ["recipe_seen", "price_seen", "auction_scan", "item_seen"],
-  recipe_thresholds: ["recipe_observed"],
+  recipe_thresholds: ["recipe_observed", "price_seen", "auction_scan", "item_seen"],
   item_page: ["loot", "item_seen", "npc_sighting"],
   npc_page: ["npc_sighting", "quest", "vendor"],
   quest_page: ["npc_sighting", "quest", "vendor"],
@@ -210,7 +210,7 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader }
     {
       title: "Recipe skill ranges",
       description:
-        "Where a Forever profession's recipes turn yellow, green and grey, inferred from the colours players' trade-skill windows showed. A recipe appears only after 3 installs agree, as ranges, never guessed exact numbers. Reads Everloot's current public corpus.",
+        "Where a Forever profession's recipes turn yellow, green and grey, inferred from the colours players' trade-skill windows showed. A recipe appears only after 3 installs agree, as ranges, never guessed exact numbers. Agreed reagents come with an estimated cost per craft when every reagent has an agreed price. Reads Everloot's current public corpus.",
       inputSchema: {
         profession: z.string().describe("Profession name, such as Alchemy."),
         recipe: z.string().optional().describe("Optional part of a recipe name to narrow the list."),
@@ -220,7 +220,10 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader }
     async (args) => ({
       content: [{
         type: "text" as const,
-        text: await read((records) => handleRecipeThresholds(args, recipeObservationsFromRecords(records)), TOOL_KINDS.recipe_thresholds),
+        text: await read((records) => {
+          const facts = recipeFactsFromRecords(records);
+          return handleRecipeThresholds(args, facts.observations, facts.prices);
+        }, TOOL_KINDS.recipe_thresholds),
       }],
     }),
   );

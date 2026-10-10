@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { formatThresholds, handleRecipeThresholds, inferThresholds, recipeObservationsFromRecords } from "../src/recipe-thresholds.js";
+import { formatThresholds, handleRecipeThresholds, inferThresholds, recipeFactsFromRecords, recipeObservationsFromRecords } from "../src/recipe-thresholds.js";
 
 const obs = (installId: string, rank: number, difficulty: string, recipe = "Lesser Healing Potion") =>
   ({ kind: "recipe_observed", installId, profession: "Alchemy", recipe, rank, difficulty, reagents: [] });
@@ -15,7 +15,7 @@ test("colours seen at different ranks narrow each threshold to a range once thre
   const [only] = inferThresholds(recipeObservationsFromRecords(records));
   expect(only).toEqual({
     profession: "Alchemy", recipe: "Lesser Healing Potion", installs: 3, observations: 5,
-    yellow: { min: 51, max: 55 }, green: { min: 61, max: 70 }, grey: { min: 71, max: 90 },
+    yellow: { min: 51, max: 55 }, green: { min: 61, max: 70 }, grey: { min: 71, max: 90 }, reagents: null,
   });
   expect(formatThresholds(only)).toBe(
     "Lesser Healing Potion (Alchemy), 3 installs: yellow from 51-55, green from 61-70, grey from 71-90.");
@@ -53,4 +53,51 @@ test("the tool answers per profession, filters by recipe, and says why it is emp
   expect(handleRecipeThresholds({ profession: "Alchemy", recipe: "minor" }, rows)).toMatch(/No recipe ranges/);
   expect(handleRecipeThresholds({ profession: "Tailoring" }, rows)).toMatch(/No recipe ranges for Tailoring yet.*3 installs.*unrecorded, not zero/s);
   expect(handleRecipeThresholds({ profession: " " }, rows)).toBe("Name a profession.");
+});
+
+const withMats = (installId: string, rank: number, difficulty: string, reagents: { item: string; count: number }[]) =>
+  ({ ...obs(installId, rank, difficulty), reagents });
+const herbs = [{ item: "Peacebloom", count: 2 }, { item: "Empty Vial", count: 1 }];
+const scan = (installId: string, itemId: number, copper: number) =>
+  ({ kind: "auction_scan", installId, capturedAt: "2026-10-10T00:00:00Z", realm: "Forever", itemId, copper, priceBasis: "unit" });
+const named = (installId: string, itemId: number, name: string) => ({ kind: "item_seen", installId, itemId, name });
+
+test("a range shows the reagents three installs agree on, and the cost per craft once every reagent has an agreed price", () => {
+  const records = [
+    withMats("install-a", 50, "optimal", herbs),
+    withMats("install-b", 60, "medium", [...herbs].reverse()),
+    withMats("install-c", 70, "easy", herbs),
+    ...["install-a", "install-b", "install-c"].flatMap((id, i) => [
+      scan(id, 2447, 40 + i * 10), named(id, 2447, "Peacebloom"),
+      scan(id, 3371, 4), named(id, 3371, "Empty Vial"),
+    ]),
+  ];
+  const facts = recipeFactsFromRecords(records);
+  expect(inferThresholds(facts.observations)[0]?.reagents).toEqual(herbs);
+  const text = handleRecipeThresholds({ profession: "Alchemy" }, facts.observations, facts.prices);
+  // Median Peacebloom 50c x 2 + Empty Vial 4c.
+  expect(text).toContain("Reagents: 2 Peacebloom, 1 Empty Vial. Estimated cost per craft: 1s 4c");
+});
+
+test("a reagent without an agreed price leaves the cost unrecorded and names it", () => {
+  const records = [
+    withMats("install-a", 50, "optimal", herbs),
+    withMats("install-b", 60, "medium", herbs),
+    withMats("install-c", 70, "easy", herbs),
+    ...["install-a", "install-b", "install-c"].flatMap((id) => [scan(id, 2447, 50), named(id, 2447, "Peacebloom")]),
+  ];
+  const facts = recipeFactsFromRecords(records);
+  expect(handleRecipeThresholds({ profession: "Alchemy" }, facts.observations, facts.prices))
+    .toContain("Cost per craft unrecorded: no agreed price for Empty Vial.");
+});
+
+test("reagent lists that fewer than three installs agree on are not shown", () => {
+  const records = [
+    withMats("install-a", 50, "optimal", herbs),
+    withMats("install-b", 60, "medium", herbs),
+    withMats("install-c", 70, "easy", [{ item: "Peacebloom", count: 3 }]),
+  ];
+  const facts = recipeFactsFromRecords(records);
+  expect(inferThresholds(facts.observations)[0]?.reagents).toBeNull();
+  expect(handleRecipeThresholds({ profession: "Alchemy" }, facts.observations, facts.prices)).toContain("Reagents unrecorded.");
 });
