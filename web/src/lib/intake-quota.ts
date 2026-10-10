@@ -50,17 +50,26 @@ export function createIntakeQuota(opts: {
     return { allowed: true, retryAfter: 0 };
   }
 
+  function clientIp(req: Request): string {
+    if (!production && env.VERCEL !== "1") return "local";
+    if (env.VERCEL !== "1") throw new Error("Trusted client IP is unavailable");
+    const ip = req.headers.get("x-vercel-forwarded-for")?.trim() ?? "";
+    if (!isIP(ip)) throw new Error("Trusted client IP is unavailable");
+    // Normalize equivalent IPv6 spellings before hashing.
+    return isIP(ip) === 6 ? new URL(`http://[${ip}]/`).hostname : ip;
+  }
+
   return {
     async request(req: Request) {
-      let ip = "local";
-      if (production || env.VERCEL === "1") {
-        if (env.VERCEL !== "1") throw new Error("Trusted client IP is unavailable");
-        ip = req.headers.get("x-vercel-forwarded-for")?.trim() ?? "";
-        if (!isIP(ip)) throw new Error("Trusted client IP is unavailable");
-        // Normalize equivalent IPv6 spellings before hashing.
-        ip = isIP(ip) === 6 ? new URL(`http://[${ip}]/`).hostname : ip;
-      }
-      return consume("request", ip);
+      return consume("request", clientIp(req));
+    },
+    /**
+     * Public MCP: its own per-IP bucket (the "mcp:" prefix changes the hashed key), so AI clients
+     * cannot use up a player's upload allowance. The hourly global bucket is still shared with
+     * intake until a dedicated database scope exists.
+     */
+    async mcp(req: Request) {
+      return consume("request", `mcp:${clientIp(req)}`);
     },
     install(installId: string) { return consume("install", installId); },
     async prune() {
