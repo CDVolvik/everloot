@@ -133,7 +133,8 @@ export default async function ProfessionsPage(
       <div className="rounded-2xl border border-arcane/30 bg-parchment-900 p-6">
         <h2 className="font-display text-xl text-parchment-100">Feed your profession</h2>
         <p className="mt-1 text-sm text-parchment-100/75 max-w-xl">
-          The addon does not record recipes or prices yet, so these routes fill in only as that
+          With auction capture on, the addon&apos;s auction scans price reagents here. It does not yet
+          record the skill windows and points per craft a route needs, so routes stay gaps until that
           collection is added. Material drops it records already reach the drop pages. Upload on the{" "}
           <Link href="/upload" className="text-gold-400 hover:underline underline-offset-4">upload page</Link>.
         </p>
