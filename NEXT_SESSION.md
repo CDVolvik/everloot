@@ -1,5 +1,25 @@
 # Everloot — resume after 2026-10-05 assessment
 
+## Resume — 2026-10-10 third round: PRs #31–#35 open (production at `e6fc5c6`)
+
+Every unit is its own PR into `main`; merging deploys everloot.app. Nothing below is merged or deployed.
+
+| PR | Unit | Notes |
+|---|---|---|
+| #31 | Public read-only MCP at `/mcp/public` | `EVERLOOT_MCP_PUBLIC=1` already in Production: live on merge. Then submit to the ChatGPT directory (auth: none) |
+| #32 | `recipe_thresholds` tool + "Recipe skill ranges" on `/tools/professions` | |
+| #33 | Profession path prices reagents from per-unit auction scans | **conflicts with #32 on one `TOOL_KINDS` line** in `kb/src/mcp-server.ts`: keep both (`profession_path` with `auction_scan`, `item_seen`, then `recipe_thresholds`) |
+| #34 | Tracker: `mcp.public_https` deployed, companion providers merged | |
+| #35 | Addon 0.2.4: mailed auction sales (invoice `seller`, matched money change) and postage | new zip; beta checklist mail steps |
+
+Merge order: #34, #31, #32, then update #33 from `main` (resolve the line above), then #35. #34 and #35 edit different tracker rows and merge cleanly together.
+
+Next agent-doable units:
+- `recipe_seen` has no emitter, so routes stay gaps even once prices fill (#33). Points per craft need their own capture (skill-up after a craft). In Classic, yellow and green skill-ups are probabilistic, so this needs a design note before code.
+- Auction deposits (`auction_spend`): the remaining ledger spend line.
+- A dedicated MCP quota scope (migration file plus code; Carlos applies the migration).
+- Per-craft reagent cost in the recipe ranges section (after #32 and #33).
+
 ## Resume — 2026-10-09 loop, second round: PRs #14–#21 (still nothing merged or deployed)
 
 Carlos's decisions on 10/09: the companion is a **Node/TypeScript core**, and public MCP is **option A** (a route on the existing `everloot-web` Vercel project), trialed on a preview.
