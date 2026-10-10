@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { computeRollups } from "@/lib/rollup-compute";
 import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
+import { dataAgeLabel } from "@/lib/data-age";
 
 export const metadata: Metadata = {
   title: "Forever loot observations",
@@ -19,7 +20,7 @@ export default async function DropsPage() {
     <article className="space-y-8 max-w-4xl">
       <header className="space-y-3">
         <p className="uppercase tracking-[0.2em] text-xs text-gold-500/80">
-          {stats.unreachable ? "Storage unreachable" : `${stats.lootWindows} windows · ${live.length + zeros.length} public frequencies`}
+          {stats.unreachable ? "Storage unreachable" : `${stats.lootWindows} windows · ${live.length + zeros.length} public frequencies · ${dataAgeLabel(stats.dataAsOf)}`}
         </p>
         <h1 className="font-display text-3xl sm:text-4xl font-bold text-parchment-100 tracking-tight">
           Forever loot observations
