@@ -1,5 +1,40 @@
 # Everloot — resume after 2026-10-05 assessment
 
+## START HERE — to-do after the 2026-10-10 session (production at `d3a0b33`, no open PRs)
+
+Everything agent-doable that doesn't depend on an owner step was merged and verified on
+everloot.app. PRs #1–#42 merged. Addon 0.2.5 is live (zip sha `3999cbd6…` matches the repo).
+Merging to `main` deploys production. Free services only.
+
+### Carlos (owner steps, in priority order)
+
+1. **In-game beta checklist for 0.2.5** (`docs/2026-10-08-beta-client-checklist.md`). Nothing since
+   0.2.2 has run in the Forever client: collection, auctions, gold (mail sales, postage, buyouts),
+   `/ask`, recipe colours, trainers, and one route step checked orange. This gates option C and the
+   CurseForge upload (~10/24; beta closes 10/21).
+2. **ChatGPT apps directory:** submit `https://everloot.app/mcp/public`, auth None. It needs your
+   OpenAI account, so an agent can't submit it.
+3. **MCP quota scope:** run `supabase/migrations/20261010120000_mcp_quota_scope.sql` in the Everloot
+   Supabase SQL editor (`uinmowrmyckklpbwzqhn`), set `EVERLOOT_MCP_QUOTA_SCOPE=mcp` in Vercel
+   Production, redeploy. Check: `/mcp/public` initialize returns 200 and an `mcp_global` row appears.
+4. **Backups:** create `%USERPROFILE%\.r21\everloot-backup.env` (`SUPABASE_URL`,
+   `SUPABASE_SECRET_KEY`) and `everloot-r2-backup.env` (read-only R2 token). The nightly runner
+   already handles both.
+5. Officer grant trial (issue, use, revoke); two raid nights; three-contributor loop; real phone.
+6. Signing for the companion build, AdSense with a certified consent platform, trademark check.
+
+### Agent (next session, no owner step needed)
+
+- **Vendor prices for vendor-sold reagents** (vials, thread). `vendor` rows already carry
+  `priceCopper` per item ID, and `item_seen` names them. Feed them into `agreePrices` so recipe
+  costs and routes stop showing "no agreed price" for vendor items. Tests first.
+- **Corpus size:** item/NPC answers read the whole public corpus (the 2 MB cap is postponed by
+  `?kinds=`). Pre-aggregate per tool before real beta traffic arrives.
+- **Option C (`craft_result`, yellow skill-up chance):** only after item 1 above proves the 0.2.3–0.2.5
+  captures in game. Design: `docs/2026-10-10-recipe-windows-design.md`.
+- Auction deposits stay unrecorded: there's no `money_event` category for them. Adding one is a
+  schema change, so do it only if the ledger needs it.
+
 ## Resume — 2026-10-10 fifth round: #37–#39 merged (live at `ba01307`); #40 open
 
 Carlos approved option B from the #39 design note and the merge of #37–#39 (and Brain #353).
