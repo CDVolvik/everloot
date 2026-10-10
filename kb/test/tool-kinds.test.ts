@@ -31,6 +31,7 @@ const EVERY_KIND = parseRecords([
   { ...base, eventId: "e:15", kind: "price_seen", item: "Peacebloom", copper: 100 },
   { ...base, eventId: "e:16", kind: "gold_snapshot", character: "Thrall", realm: "Forever", currentCopper: 100, peakCopper: 100 },
   { ...base, eventId: "e:17", kind: "money_event", character: "Thrall", realm: "Forever", category: "loot", copper: 10 },
+  { ...base, eventId: "e:18", kind: "recipe_observed", profession: "Alchemy", rank: 60, recipe: "Lesser Healing Potion", difficulty: "optimal", reagents: [] },
 ]);
 
 const FACTS: Record<keyof typeof TOOL_KINDS, (records: unknown[]) => unknown> = {
