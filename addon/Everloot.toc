@@ -2,7 +2,7 @@
 ## Title: Everloot
 ## Notes: WoW: Forever data collector — drops, spawns, vendors, guilds, auctions, recipes. Answers never play.
 ## Author: Everloot
-## Version: 0.2.4
+## Version: 0.2.5
 ## SavedVariables: EverlootDB
 ## OptionalDeps: EverlootAnswers
 ## IconTexture: Interface\Icons\INV_Misc_Coin_02
