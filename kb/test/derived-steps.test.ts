@@ -16,7 +16,7 @@ test("a published recipe becomes an orange-only step from the trainer's agreed r
   ];
   const facts = pathFactsFromRecords(records);
   expect(derivedSteps(facts.observations, facts.trainers)).toEqual([
-    { profession: "Alchemy", recipe: "Minor Healing Potion", skillMin: 1, skillMax: 21, points: 1, reagents: herbs, reporters: 3 },
+    { profession: "Alchemy", recipe: "Minor Healing Potion", skillMin: 1, skillMax: 21, points: 1, reagents: herbs, reporters: 3, trainingCopper: 50 },
   ]);
 });
 
@@ -60,4 +60,27 @@ test("ranks past the end of orange stay a gap rather than a guess", () => {
   const facts = pathFactsFromRecords(records);
   const text = handleProfessionPath({ profession: "Alchemy", fromSkill: 1, toSkill: 15 }, facts.sightings, facts.prices, facts.derived);
   expect(text).toContain("Gap 11–15");
+});
+
+test("a route names the training cost of its recipes: the median of three installs' trainers", () => {
+  const records = [
+    seen("install-a", 1, "optimal"), seen("install-b", 10, "optimal"), seen("install-c", 12, "medium"),
+    seen("install-a", 11, "optimal", "Elixir"), seen("install-b", 14, "optimal", "Elixir"), seen("install-c", 20, "medium", "Elixir"),
+    // Reputation discounts make trainer prices differ between installs.
+    { ...trained("install-a", 1), costCopper: 45 }, trained("install-b", 1), trained("install-c", 1),
+  ];
+  const facts = pathFactsFromRecords(records);
+  const text = handleProfessionPath({ profession: "Alchemy", fromSkill: 1, toSkill: 15 }, facts.sightings, facts.prices, facts.derived);
+  expect(text).toContain("Training, if not yet learned: 50c (Minor Healing Potion 50c). Training for Elixir unrecorded.");
+});
+
+test("fewer than three trainer prices leave the training cost unrecorded", () => {
+  const records = [
+    seen("install-a", 1, "optimal"), seen("install-b", 10, "optimal"), seen("install-c", 12, "medium"),
+    ...ids.map((id) => trained(id, 1)).map((row, i) => (i === 0 ? row : { ...row, costCopper: undefined })),
+  ];
+  const facts = pathFactsFromRecords(records);
+  expect(facts.derived[0]?.trainingCopper).toBeNull();
+  expect(handleProfessionPath({ profession: "Alchemy", fromSkill: 1, toSkill: 5 }, facts.sightings, facts.prices, facts.derived))
+    .toContain("Training for Minor Healing Potion unrecorded.");
 });
