@@ -5,7 +5,10 @@ import { createKnowledgeServer, type CorpusLoader } from "./mcp-server.js";
 
 export interface PublicMcpConfig {
   db: DB;
-  bearerToken: string;
+  /** Null means a public, read-only mount: no bearer, rate-limited by the caller before this handler. */
+  bearerToken: string | null;
+  /** The path this mount answers; anything else is 404. */
+  path?: string;
   maxRequestBodyBytes: number;
   rateLimitPerMinute: number;
   allowedOrigins: string[];
@@ -39,9 +42,9 @@ export function createMcpHttpHandler(config: PublicMcpConfig) {
     if (origin) headers.set("Access-Control-Allow-Origin", origin);
     headers.set("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
     headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization, MCP-Protocol-Version, MCP-Session-Id");
-    if (new URL(req.url).pathname !== "/mcp") return reply(404, "Not found");
+    if (new URL(req.url).pathname !== (config.path ?? "/mcp")) return reply(404, "Not found");
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers });
-    if (!bearerOk(req.headers.get("authorization"), config.bearerToken)) {
+    if (config.bearerToken !== null && !bearerOk(req.headers.get("authorization"), config.bearerToken)) {
       headers.set("WWW-Authenticate", "Bearer");
       return reply(401, "Unauthorized");
     }

@@ -18,6 +18,17 @@ test("uses only the platform IP and sends namespaced hashes to the server-only R
   expect(init.cache).toBe("no-store");
 });
 
+test("public MCP calls get their own per-IP bucket, never the upload one, and trust the same platform IP", async () => {
+  const fetch = vi.fn().mockImplementation(async () => new Response(JSON.stringify([{ allowed: true, retry_after: 0 }])));
+  const quota = createIntakeQuota({ env, fetch });
+  await quota.request(request());
+  expect(await quota.mcp(request())).toEqual({ allowed: true, retryAfter: 0 });
+  const [upload, mcp] = fetch.mock.calls.map(([, init]) => JSON.parse(init.body));
+  expect(mcp.p_scope).toBe("request");
+  expect(mcp.p_key).not.toBe(upload.p_key);
+  await expect(quota.mcp(request("spoofed"))).rejects.toThrow();
+});
+
 test("refuses missing, list or invalid platform IPs and does not trust a proxy header", async () => {
   const fetch = vi.fn();
   const quota = createIntakeQuota({ env, fetch });
