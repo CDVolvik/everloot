@@ -9,7 +9,7 @@
 export const PATH_AGREEMENT = 3;
 
 export const PATH_RULE =
-  "A recipe joins the path when 3 distinct install reports agree on its name, skill window, points per craft, and reagents. A recipe can also join from the colours players' profession windows showed: only the ranks where 3 installs' data shows it orange (a guaranteed skill-up, counted as 1 point per craft), starting at the trainer's required rank when 3 installs agree on it, else at the lowest rank it was seen orange, with the reagents 3 installs saw. Routes prioritize recipe coverage, then priced skill gains, then estimated reagent cost. Estimates use median reagent prices from at least 3 distinct install reports: unscoped observed prices without realm, build, or observation time, not a guaranteed current realm minimum. A price report is a reported price or an install's latest per-unit auction scan of that reagent, from any realm. Missing prices prevent comparison of all recipes; unpriced steps keep their cost unknown. A bracket with no agreed recipe is a gap, not a guess.";
+  "A recipe joins the path when 3 distinct install reports agree on its name, skill window, points per craft, and reagents. A recipe can also join from the colours players' profession windows showed: only the ranks where 3 installs' data shows it orange (a guaranteed skill-up, counted as 1 point per craft), starting at the trainer's required rank when 3 installs agree on it, else at the lowest rank it was seen orange, with the reagents 3 installs saw. Routes prioritize recipe coverage, then priced skill gains, then estimated reagent cost. Estimates use median reagent prices from at least 3 distinct install reports: unscoped observed prices without realm, build, or observation time, not a guaranteed current realm minimum. A price report is a reported price or an install's latest per-unit auction scan of that reagent, from any realm. Missing prices prevent comparison of all recipes; unpriced steps keep their cost unknown. Training costs are listed apart from reagent gold, as the median of 3 installs' trainer prices, and do not change the route. A bracket with no agreed recipe is a gap, not a guess.";
 
 export type Reagent = { item: string; count: number };
 
@@ -36,6 +36,8 @@ export type PathStep = {
   reagents: Reagent[];
   copper: number | null;
   reporters: number;
+  /** Derived steps only: agreed training cost, or null when unrecorded. */
+  trainingCopper?: number | null;
 };
 
 export type ProfessionPath = {
@@ -56,6 +58,8 @@ export type AgreedRecipe = {
   points: number;
   reagents: Reagent[];
   reporters: number;
+  /** Derived steps only: the median training cost of 3 installs' trainers, or null when unrecorded. */
+  trainingCopper?: number | null;
 };
 
 function clean(value: string): string {
@@ -106,7 +110,7 @@ function agreeRecipes(sightings: RecipeSighting[], profession: string): AgreedRe
     }));
 }
 
-function median(values: number[]): number {
+export function median(values: number[]): number {
   const sorted = [...values].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
   if (sorted.length % 2 === 1) return sorted[mid]!;
@@ -243,6 +247,7 @@ export function professionPath(
           reagents,
           copper: stepCost(reagents, priceByItem),
           reporters: chosen.reporters,
+          trainingCopper: chosen.trainingCopper,
         });
       }
       previousRecipe = chosen;
@@ -282,6 +287,18 @@ export function formatProfessionPath(path: ProfessionPath): string {
     );
   }
   for (const gap of path.gaps) lines.push(`Gap ${gap.fromSkill}–${gap.toSkill}. No agreed recipe.`);
+  const trainable = [...new Map(path.steps.filter((step) => step.trainingCopper !== undefined).map((step) => [clean(step.recipe), step])).values()];
+  if (trainable.length > 0) {
+    const known = trainable.filter((step): step is PathStep & { trainingCopper: number } => typeof step.trainingCopper === "number");
+    const unknown = trainable.filter((step) => step.trainingCopper === null).map((step) => step.recipe);
+    const parts: string[] = [];
+    if (known.length > 0) {
+      const total = known.reduce((sum, step) => sum + step.trainingCopper, 0);
+      parts.push(`Training, if not yet learned: ${formatCopper(total)} (${known.map((step) => `${step.recipe} ${formatCopper(step.trainingCopper)}`).join(", ")}).`);
+    }
+    if (unknown.length > 0) parts.push(`Training for ${unknown.join(", ")} unrecorded.`);
+    lines.push(parts.join(" "));
+  }
   if (path.reagents.length > 0) {
     const partial = path.gaps.length > 0;
     const mats = path.reagents.map((reagent) => `${reagent.count} ${reagent.item}`).join(", ");
