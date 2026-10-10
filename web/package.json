@@ -11,13 +11,16 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "1.31.0",
     "aws4fetch": "^1.0.20",
+    "better-sqlite3": "13.0.3",
     "next": "15.5.27",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "9.6.0",
     "@types/node": "^22.0.0",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
