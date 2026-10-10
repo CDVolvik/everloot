@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { formatThresholds, inferThresholds, recipeObservationsFromRecords } from "../src/recipe-thresholds.js";
+import { formatThresholds, handleRecipeThresholds, inferThresholds, recipeObservationsFromRecords } from "../src/recipe-thresholds.js";
 
 const obs = (installId: string, rank: number, difficulty: string, recipe = "Lesser Healing Potion") =>
   ({ kind: "recipe_observed", installId, profession: "Alchemy", recipe, rank, difficulty, reagents: [] });
@@ -40,4 +40,17 @@ test("an unbounded side stays unrecorded, never guessed", () => {
 
 test("only well-formed recipe observations are read", () => {
   expect(recipeObservationsFromRecords([{ kind: "loot" }, { ...obs("i", 5, "glowing") }, obs("install-a", 5, "easy")])).toHaveLength(1);
+});
+
+test("the tool answers per profession, filters by recipe, and says why it is empty", () => {
+  const rows = recipeObservationsFromRecords([
+    obs("install-a", 50, "optimal"), obs("install-b", 60, "medium"), obs("install-c", 55, "medium"),
+    obs("install-a", 10, "optimal", "Minor Healing Potion"),
+  ]);
+  const text = handleRecipeThresholds({ profession: "alchemy" }, rows);
+  expect(text).toContain("Lesser Healing Potion (Alchemy), 3 installs: yellow from 51-55");
+  expect(text).not.toContain("Minor Healing Potion (Alchemy)");
+  expect(handleRecipeThresholds({ profession: "Alchemy", recipe: "minor" }, rows)).toMatch(/No recipe ranges/);
+  expect(handleRecipeThresholds({ profession: "Tailoring" }, rows)).toMatch(/No recipe ranges for Tailoring yet.*3 installs.*unrecorded, not zero/s);
+  expect(handleRecipeThresholds({ profession: " " }, rows)).toBe("Name a profession.");
 });
