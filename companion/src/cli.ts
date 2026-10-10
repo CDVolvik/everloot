@@ -1,22 +1,29 @@
 #!/usr/bin/env -S npx tsx
 /**
  * everloot-companion upload|watch --file <Everloot.lua> | --game <World of Warcraft folder> [--endpoint URL] [--state FILE]
+ * everloot-companion bridge --game <World of Warcraft folder> --mcp <URL> --token-file <FILE>
+ *   answers /ask questions into the EverlootAnswers slot addon; they show after /reload.
  * Sends only events the site has not confirmed. Named data (guild, gear, gold, collection) stays on
  * this machine; share it on the website with a verified grant. Nothing here touches the game client.
  */
-import { watch } from "node:fs";
+import { readFileSync, watch } from "node:fs";
 import { homedir } from "node:os";
-import { join, win32, posix } from "node:path";
+import { dirname, join, posix, win32 } from "node:path";
 import { pathToFileURL } from "node:url";
+import { createAnswerStore, answerPending } from "./bridge/run";
+import { mcpEngine } from "./bridge/engine";
 import { findEverlootFiles } from "./savedvariables";
 import { createSentState } from "./sent-state";
 import { uploadFile } from "./uploader";
 
-export interface CliArgs { command: "upload" | "watch"; file?: string; game?: string; endpoint: string; state?: string }
+export interface CliArgs {
+  command: "upload" | "watch" | "bridge"; file?: string; game?: string; endpoint: string; state?: string;
+  mcp?: string; tokenFile?: string;
+}
 
 export function parseArgs(argv: string[]): CliArgs {
   const [command, ...rest] = argv;
-  if (command !== "upload" && command !== "watch") throw new Error("Use upload or watch.");
+  if (command !== "upload" && command !== "watch" && command !== "bridge") throw new Error("Use upload, watch or bridge.");
   const flags = new Map<string, string>();
   for (let i = 0; i < rest.length; i += 2) flags.set(rest[i].replace(/^--/, ""), rest[i + 1] ?? "");
   const endpoint = flags.get("endpoint") || "https://everloot.app";
@@ -24,6 +31,14 @@ export function parseArgs(argv: string[]): CliArgs {
   const file = flags.get("file"), game = flags.get("game");
   if (!file && !game) throw new Error("Name --file or --game.");
   const state = flags.get("state");
+  if (command === "bridge") {
+    // Answers are written under the game folder, so the bridge needs it, not a single file.
+    if (!game) throw new Error("bridge needs --game.");
+    const mcp = flags.get("mcp"), tokenFile = flags.get("token-file");
+    if (!mcp || !/^https?:\/\//.test(mcp)) throw new Error("bridge needs --mcp with an http(s) URL.");
+    if (!tokenFile) throw new Error("bridge needs --token-file (the token is never passed on the command line).");
+    return { command, game, endpoint, ...(state ? { state } : {}), mcp, tokenFile };
+  }
   return { command, ...(file ? { file } : {}), ...(game ? { game } : {}), endpoint, ...(state ? { state } : {}) };
 }
 
@@ -44,9 +59,29 @@ export function debounce(run: () => void, ms: number): () => void {
 
 async function main(argv: string[]): Promise<void> {
   const args = parseArgs(argv);
-  const state = createSentState(args.state ?? defaultStatePath({ platform: process.platform, env: process.env, home: homedir() }));
+  const statePath = args.state ?? defaultStatePath({ platform: process.platform, env: process.env, home: homedir() });
+  const state = createSentState(statePath);
   const files = args.file ? [args.file] : findEverlootFiles(args.game!);
   if (files.length === 0) throw new Error(`No Everloot.lua under ${join(args.game ?? "", "WTF", "Account")}. Log out once so the game writes it.`);
+  if (args.command === "bridge") {
+    const engine = mcpEngine({ url: args.mcp!, token: readFileSync(args.tokenFile!, "utf8").trim() });
+    const store = createAnswerStore(join(dirname(statePath), "answers.json"));
+    const addonsDir = join(args.game!, "Interface", "AddOns");
+    const answer = async (file: string) => {
+      try {
+        const r = await answerPending({ svFile: file, addonsDir, engine, store });
+        if (r.answered || r.failed) console.log(`${file}: answered ${r.answered}, failed ${r.failed}. /reload in game to read them.`);
+      } catch (err) {
+        console.error(`${file}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    };
+    for (const file of files) {
+      await answer(file);
+      watch(file, debounce(() => void answer(file), 2000));
+    }
+    console.log(`Answering /ask for ${files.length} account(s). Leave this running; Ctrl+C stops it.`);
+    return;
+  }
   const send = async (file: string) => {
     try {
       const r = await uploadFile(file, { endpoint: args.endpoint, state });

@@ -17,3 +17,21 @@ npx tsx src/cli.ts watch --game "<World of Warcraft folder>"
 - Reuses the site's parser and batching (`web/src/lib/sv-parse.ts`, `upload-batches.ts`), so
   `web` must be installed too. `--endpoint` targets another deployment; `--state` another state file.
 - It only reads the file the game writes. It never touches the game client.
+
+## /ask bridge (file bridge, per the design's public-build rule)
+
+```
+npx tsx src/cli.ts bridge --game "<World of Warcraft folder>" --mcp https://<host>/mcp --token-file <file>
+```
+
+The addon stores `/ask` questions in SavedVariables (written at logout or `/reload`). The bridge
+answers new ones from the Everloot MCP server's `search_knowledge` and writes them into the
+`EverlootAnswers` slot addon under `Interface/AddOns`; they show after the next `/reload`.
+
+- Every string is a Lua-escaped literal (`src/bridge/lua.ts`); `addon/tests/answers_contract.py`
+  loads the golden file in real Lua 5.1 and proves hostile text stays data.
+- Each answer carries an Adler-32 `sum` the addon can verify with Lua 5.1 arithmetic.
+- No source, no answer: an unsourced search result is reported as "No sourced answer found."
+- The token is read from a file, never passed on the command line.
+- Answers are raw top-1 search for now; LLM provider adapters (design section 6.4) come later.
+- The addon side (`/ask` command, reading `EverlootAnswersDB`) is not built yet.
