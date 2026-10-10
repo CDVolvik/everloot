@@ -40,17 +40,18 @@ response alone does not prove ChatGPT directory compatibility.
 | `/api/corpus/public` reachable; `?kinds=` filters; unknown kind 400 | agent | live responses | 2026-10-10: 200 / 200 / 400 |
 | `/upload` serves the 0.2.2 zip with the built hash | agent | download sha256 | 2026-10-10: `2b9c3ff7…` matches the build |
 | Pages show data age | agent | `/database` | 2026-10-10: "Data as of 2026-10-10 06:30 UTC" |
-| Sharing suppression and unauthorized cron rejection | agent | route tests + live 401 | tests pass; live cron check open |
+| Sharing suppression and unauthorized cron rejection | agent | route tests + live 401 | tests pass; 2026-10-10 live `/api/cron/snapshot` without the secret: 401 |
 | No synthetic fixtures in the public production corpus | agent | live corpus | 2026-10-10: 0 records |
 | Battle.net real sign-in, `/api/auth/me`, logout, revoked session | Carlos + agent | 10/08 browser evidence | passed 2026-10-08; expired-session trial open |
 | Owner/officer authority review, scoped publication, revoke, member suppression | Carlos | real grant trial | open (synthetic grants are not evidence) |
-| Public MCP: HTTPS, 401/403, tools, sourced answer, real client | agent | #17 preview trial | preview passed 2026-10-09; production 503 until the release reaches the build (Carlos: R2 upload) |
-| MCP restart recovery on production | agent | — | open |
+| Public MCP: HTTPS, 401/403, tools, sourced answer, real client | agent | production `everloot.app/mcp` | 2026-10-10 production (`9f3f665`, release fetched from R2 and hash-verified at build): no bearer 401; official MCP SDK client connected, 13 tools, `get_by_name` sourced answer; `gold_ledger` read in process with data age; "Who is Thrall?" → Thrall |
+| MCP restart recovery on production | agent | fresh deployment | 2026-10-10: a new production deployment cold-started in 4.7 s and served the same checks |
 
 ## Recovery and scale
 
 - Follow the [recovery runbook](2026-10-09-recovery-runbook.md) for stale snapshots,
-  orphans, upload removal and restore. Backup and restore are not configured or rehearsed.
+  orphans, upload removal and restore. Backups and the restore rehearsal are built but wait
+  on two read keys (see the runbook's Backup and restore section).
 - `cd web; npx tsx scripts/corpus-load.mts` measures merge, snapshot size, cold read and
   rollup on synthetic rows. Rerun it after storage changes.
 
@@ -65,6 +66,6 @@ response alone does not prove ChatGPT directory compatibility.
 | Companion uploader and `/ask` bridge on a real Forever install | Carlos | `WTF` path, answers shown after `/reload` | open (code tested 2026-10-09) |
 | Signed companion build | Carlos | signing credentials (`ops.signing`) | open |
 | ChatGPT directory / subscription sign-in | agent, after hosting | — | open |
-| Backup and restore rehearsal | Carlos decides, agent runs | [runbook](2026-10-09-recovery-runbook.md) | not configured |
+| Backup and restore rehearsal | Carlos (two read keys), nightly task runs it | [runbook](2026-10-09-recovery-runbook.md) | built (#27, Brain #349); inactive until `everloot-backup.env` and `everloot-r2-backup.env` exist |
 
 Do not declare full launch complete on this checklist.

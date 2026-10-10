@@ -4,22 +4,31 @@
 
 **Everloot:** a WoW: Forever data companion. It has four parts: an addon that collects what the player sees; everloot.app, which publishes only corroborated facts; an MCP knowledge server; and a desktop companion. Beta closes 10/21, CurseForge ~10/24, Forever launch 11/04. Free services only. Merging to `main` deploys production.
 
-**Live at `b5ab8ae` (Carlos merged PRs #1–#21 on 2026-10-10, production verified):**
+**Live at `9f3f665` (PRs #1–#26 merged by Carlos on 2026-10-10, production verified):**
 - Addon 0.2.2: per-unit auctions, quest/vendor/flight gold, and `/ask`.
 - Data age on pages and APIs; per-tool `?kinds=` corpus reads; batched snapshot replay (cold read 54 ms at 10k records).
 - Honest copy, the tracker's Proven column, waitlist on the shared quota, recovery runbook.
-- `/mcp` route: it serves 503 in production until the knowledge release reaches the build.
+- **Public MCP is on** at `everloot.app/mcp` (bearer token).
+  - The release was uploaded once to R2 (create-only) and is fetched and hash-verified at build.
+  - Production variables: `EVERLOOT_KB_RELEASE_KEY`, `VERCEL_SUPPORT_LARGE_FUNCTIONS`, `EVERLOOT_MCP_TOKEN`.
+  - The token is in `D:\R21-Brain\_secrets\everloot\mcp-production-token.txt`.
+  - Gameplay tools read the store in process.
 
-**In `companion/` (code, not packaged):** the uploader and the `/ask` file bridge.
+**In `companion/` (code, not packaged):** the uploader, the `/ask` file bridge, and LLM provider adapters with fallback.
+
+**Open PRs (2026-10-10):**
+- #27 backups (R2 mirror + restore rehearsal), with Brain #349 wiring it into the nightly runner
+- #28 addon 0.2.3 recipe capture (option A)
+- #29 social preview card
 
 **Waiting on Carlos:**
-- in-game 0.2.2 trial (beta checklist)
+- in-game trial (beta checklist: collection, auctions, gold, `/ask`, recipes after #28), two raid nights, three-contributor loop, real phone
 - officer grant trial
-- turning `/mcp` on in production: after #26, run `web/scripts/upload-release.mjs` once, then set `EVERLOOT_KB_RELEASE_KEY`, `VERCEL_SUPPORT_LARGE_FUNCTIONS=1` and `EVERLOOT_MCP_TOKEN` in Production (steps in the hosting memo)
-- review/merge open PRs: #22 this status pass, #23 companion LLM providers, #24 in-process gameplay reads on `/mcp`, #25 companion answer rewrite, #26 release prebuild fetch
-- backup/restore decision
-- recipe capture option (`docs/2026-10-09-recipe-capture-options.md`)
-- signing, AdSense with a certified consent platform
+- two backup read keys: `%USERPROFILE%\.r21\everloot-backup.env` (Supabase secret key) and `everloot-r2-backup.env` (read-only R2 token)
+- signing, AdSense with a certified consent platform, trademark check
+- decide ChatGPT access: ChatGPT's connector uses OAuth or no auth, not a static bearer token, so listing `/mcp` there means either a rate-limited public (no-auth) mode or OAuth sign-in (e.g. tied to Battle.net)
+
+Trial cleanup done 2026-10-10: both trial previews removed (the #17 one still answered `/mcp` with the preview token), the preview token deleted, the branch-scoped Preview variables removed.
 
 Release state per check: `docs/2026-10-08-release-checklist.md`. Build list: `docs/TRACKER.md`.
 
