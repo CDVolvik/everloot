@@ -108,6 +108,9 @@ end)
 
 SLASH_EVERLOOT1 = "/everloot"
 SlashCmdList["EVERLOOT"] = function(msg)
+  -- A question keeps its case, so it is routed before the command is lowercased.
+  local question = type(msg) == "string" and msg:match("^%s*[Aa][Ss][Kk]%s+(.+)$")
+  if question and E.Ask then return E:Ask(question) end
   msg = msg and msg:lower():gsub("^%s+", "") or ""
   if msg == "status" or msg == "" then
     print(E:Status())
@@ -117,6 +120,6 @@ SlashCmdList["EVERLOOT"] = function(msg)
     EverlootDB.toggles.auctions = (msg == "auctions on")
     print("Everloot: auction scans " .. (EverlootDB.toggles.auctions and "on" or "off") .. ". /reload to apply.")
   else
-    print("Everloot commands: /everloot status, /everloot auctions on|off")
+    print("Everloot commands: /everloot status, /everloot auctions on|off, /ask <question>")
   end
 end
