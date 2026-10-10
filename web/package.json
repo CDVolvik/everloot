@@ -5,6 +5,7 @@
   "description": "Everloot — WoW: Forever database, guild tracker and tools.",
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node scripts/fetch-release.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
