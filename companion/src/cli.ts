@@ -11,7 +11,9 @@ import { homedir } from "node:os";
 import { dirname, join, posix, win32 } from "node:path";
 import { pathToFileURL } from "node:url";
 import { createAnswerStore, answerPending } from "./bridge/run";
-import { mcpEngine } from "./bridge/engine";
+import { mcpEngine, mcpSearch } from "./bridge/engine";
+import { llmEngine } from "./bridge/llm-engine";
+import { loadProviders } from "./providers/config";
 import { findEverlootFiles } from "./savedvariables";
 import { createSentState } from "./sent-state";
 import { uploadFile } from "./uploader";
@@ -64,7 +66,13 @@ async function main(argv: string[]): Promise<void> {
   const files = args.file ? [args.file] : findEverlootFiles(args.game!);
   if (files.length === 0) throw new Error(`No Everloot.lua under ${join(args.game ?? "", "WTF", "Account")}. Log out once so the game writes it.`);
   if (args.command === "bridge") {
-    const engine = mcpEngine({ url: args.mcp!, token: readFileSync(args.tokenFile!, "utf8").trim() });
+    const mcp = { url: args.mcp!, token: readFileSync(args.tokenFile!, "utf8").trim() };
+    // Providers the user enabled in config.json beside the state file; none means plain search answers.
+    const providers = loadProviders(join(dirname(statePath), "config.json"));
+    const engine = providers.length
+      ? llmEngine({ search: (q) => mcpSearch(mcp, q, 3), providers })
+      : mcpEngine(mcp);
+    console.log(providers.length ? `Answering with ${providers.map((p) => p.name).join(" > ")}.` : "Answering with plain search (no providers in config.json).");
     const store = createAnswerStore(join(dirname(statePath), "answers.json"));
     const addonsDir = join(args.game!, "Interface", "AddOns");
     const answer = async (file: string) => {

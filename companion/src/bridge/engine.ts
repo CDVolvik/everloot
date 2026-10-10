@@ -14,22 +14,23 @@ export function answerFromSearch(text: string): { answer: string; source: string
   return { answer: (body || "No sourced answer found.").slice(0, MAX_ANSWER), source: lines[sourceAt].slice("Source: ".length).trim() };
 }
 
-/** Answers from the Everloot knowledge server's search tool. LLM provider adapters come later. */
+/** The knowledge server's search_knowledge text for one question: hits with their Source lines. */
+export async function mcpSearch(options: { url: string; token: string }, question: string, limit: number): Promise<string> {
+  const client = new Client({ name: "everloot-companion", version: "0.1.0" });
+  const transport = new StreamableHTTPClientTransport(new URL(options.url), {
+    requestInit: { headers: { Authorization: `Bearer ${options.token}` } },
+  });
+  await client.connect(transport);
+  try {
+    const result = await client.callTool({ name: "search_knowledge", arguments: { query: question, limit } });
+    const content = (result.content as { type: string; text?: string }[] | undefined) ?? [];
+    return content.find((c) => c.type === "text")?.text ?? "";
+  } finally {
+    await client.close();
+  }
+}
+
+/** Plain search answers: the top hit and its source. With providers configured, the CLI uses llmEngine instead. */
 export function mcpEngine(options: { url: string; token: string }): AnswerEngine {
-  return {
-    async answer(question) {
-      const client = new Client({ name: "everloot-companion", version: "0.1.0" });
-      const transport = new StreamableHTTPClientTransport(new URL(options.url), {
-        requestInit: { headers: { Authorization: `Bearer ${options.token}` } },
-      });
-      await client.connect(transport);
-      try {
-        const result = await client.callTool({ name: "search_knowledge", arguments: { query: question, limit: 1 } });
-        const content = (result.content as { type: string; text?: string }[] | undefined) ?? [];
-        return answerFromSearch(content.find((c) => c.type === "text")?.text ?? "");
-      } finally {
-        await client.close();
-      }
-    },
-  };
+  return { answer: async (question) => answerFromSearch(await mcpSearch(options, question, 1)) };
 }
