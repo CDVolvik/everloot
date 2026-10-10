@@ -56,6 +56,8 @@ test("rows match the code and the launch scope", () => {
   expect(row("app.uploader")?.proof).toBe("code");
   expect(row("app.companion")?.proof).toBe("code");
   expect(row("tool.gold_ledger")?.done).not.toMatch(/Left: quest, vendor/);
+  // Addon 0.2.4 records mailed auction sales.
+  expect(row("tool.gold_ledger")?.done).not.toMatch(/Left: auction,/);
   expect(row("mcp.public_https")?.done).toContain("/mcp");
 });
 
