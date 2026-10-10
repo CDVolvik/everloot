@@ -35,6 +35,24 @@ test("question words do not block the match", async () => {
   expect(hits.map((h) => h.name)).toContain("Thunderfury");
 });
 
+test("a question still puts the exact name first, not a page that repeats it", async () => {
+  // Found live: "Who is Thrall?" answered with "Dormant Thrall" because the boost compared the raw question.
+  const hits = search(await seed(), "Who is Thunderfury?");
+  expect(hits[0].name).toBe("Thunderfury");
+  const plural = search(await seed(), "tell me about the Blessed Blade of the Windseeker");
+  expect(plural[0].name).toBe("Blessed Blade of the Windseeker");
+});
+
+test("a name of exactly the asked words beats one that only matches after dropping stopwords", async () => {
+  // The real release answered "Who is Thrall?" with the quest page "Find Thrall!" ("find" is a stopword).
+  const db = openDb(":memory:");
+  await replaceSourceRows(db, "curated", ["lore_page"], [
+    row("1", "Find Thunderfury!", "Thunderfury Thunderfury Thunderfury, a quest."),
+    row("2", "Thunderfury", "A sword of legend, long and storied, held by many over the ages."),
+  ]);
+  expect(search(db, "Who is Thunderfury?", 1)[0].name).toBe("Thunderfury");
+});
+
 test("hits carry gameVersion and retrievedAt", async () => {
   const hits = search(await seed(), "Thunderfury");
   expect(hits[0]).toMatchObject({ gameVersion: "lore", retrievedAt: "2023-11-13" });
