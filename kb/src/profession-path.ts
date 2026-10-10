@@ -9,7 +9,7 @@
 export const PATH_AGREEMENT = 3;
 
 export const PATH_RULE =
-  "A recipe joins the path when 3 distinct install reports agree on its name, skill window, points per craft, and reagents. Routes prioritize recipe coverage, then priced skill gains, then estimated reagent cost. Estimates use median reagent prices from at least 3 distinct install reports: unscoped observed prices without realm, build, or observation time, not a guaranteed current realm minimum. Missing prices prevent comparison of all recipes; unpriced steps keep their cost unknown. A bracket with no agreed recipe is a gap, not a guess.";
+  "A recipe joins the path when 3 distinct install reports agree on its name, skill window, points per craft, and reagents. Routes prioritize recipe coverage, then priced skill gains, then estimated reagent cost. Estimates use median reagent prices from at least 3 distinct install reports: unscoped observed prices without realm, build, or observation time, not a guaranteed current realm minimum. A price report is a reported price or an install's latest per-unit auction scan of that reagent, from any realm. Missing prices prevent comparison of all recipes; unpriced steps keep their cost unknown. A bracket with no agreed recipe is a gap, not a guess.";
 
 export type Reagent = { item: string; count: number };
 
@@ -330,7 +330,40 @@ export function professionFactsFromRecords(records: unknown[]): { sightings: Rec
       prices.push({ installId: row.installId, item: row.item, copper: row.copper });
     }
   }
-  return { sightings, prices };
+  return { sightings, prices: [...prices, ...auctionPrices(records)] };
+}
+
+/**
+ * Per-unit auction scans as price reports. Recipes name reagents, scans carry item IDs, so the
+ * name is the one most installs' clients reported for that ID. Latest scan per install, any realm.
+ */
+function auctionPrices(records: unknown[]): PriceSighting[] {
+  const namers = new Map<number, Map<string, Set<string>>>();
+  const latest = new Map<string, { installId: string; itemId: number; copper: number; seenAt: string }>();
+  for (const raw of records) {
+    if (!raw || typeof raw !== "object") continue;
+    const row = raw as Record<string, unknown>;
+    if (typeof row.installId !== "string" || typeof row.itemId !== "number") continue;
+    if (row.kind === "item_seen" && typeof row.name === "string" && row.name.trim()) {
+      const names = namers.get(row.itemId) ?? new Map<string, Set<string>>();
+      names.set(row.name.trim(), (names.get(row.name.trim()) ?? new Set()).add(row.installId));
+      namers.set(row.itemId, names);
+    }
+    // 0.2.1 rows stored a whole stack's buyout; only per-unit rows price one reagent.
+    if (row.kind === "auction_scan" && row.priceBasis === "unit" && typeof row.copper === "number") {
+      const seenAt = typeof row.capturedAt === "string" ? row.capturedAt : "";
+      const key = `${row.installId}|${row.itemId}`;
+      const prev = latest.get(key);
+      if (!prev || seenAt > prev.seenAt) latest.set(key, { installId: row.installId, itemId: row.itemId, copper: row.copper, seenAt });
+    }
+  }
+  const out: PriceSighting[] = [];
+  for (const scan of latest.values()) {
+    const names = [...(namers.get(scan.itemId) ?? new Map<string, Set<string>>())]
+      .sort(([a, x], [b, y]) => y.size - x.size || a.localeCompare(b));
+    if (names.length > 0) out.push({ installId: scan.installId, item: names[0]![0], copper: scan.copper });
+  }
+  return out;
 }
 
 export function handleProfessionPath(
