@@ -15,7 +15,8 @@
 **Waiting on Carlos:**
 - in-game 0.2.2 trial (beta checklist)
 - officer grant trial
-- R2 upload of the knowledge release so `/mcp` works in production
+- turning `/mcp` on in production: after #26, run `web/scripts/upload-release.mjs` once, then set `EVERLOOT_KB_RELEASE_KEY`, `VERCEL_SUPPORT_LARGE_FUNCTIONS=1` and `EVERLOOT_MCP_TOKEN` in Production (steps in the hosting memo)
+- review/merge open PRs: #22 this status pass, #23 companion LLM providers, #24 in-process gameplay reads on `/mcp`, #25 companion answer rewrite, #26 release prebuild fetch
 - backup/restore decision
 - recipe capture option (`docs/2026-10-09-recipe-capture-options.md`)
 - signing, AdSense with a certified consent platform
