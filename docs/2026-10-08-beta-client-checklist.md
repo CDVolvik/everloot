@@ -1,4 +1,4 @@
-# Everloot 0.2.3 — beta collection check
+# Everloot 0.2.4 — beta collection check
 
 Lua 5.1 stubs pass; the Forever beta client has not been tested. Keep the existing
 SavedVariables file before installing. No script here plays the character.
@@ -27,6 +27,16 @@ SavedVariables file before installing. No script here plays the character.
    For gold, sell an item to a vendor, buy one back, take a paid flight and turn in a
    quest with a money reward. Expect one `vendor`, one `flight` and one `quest`
    money_event with the copper the client showed; the purchase produces none.
+   After one of your auctions sells, take the money from the "Auction successful" letter,
+   once by clicking the coins in the open letter and once by shift-clicking a letter in the
+   inbox list (auto loot, if Forever has it). Expect one `auction`
+   money_event per letter holding the sale price minus the house cut (write down the
+   letter's sale, deposit and cut lines), and no buyer name; a letter from a player
+   produces none. Send one letter to an alt: expect one `postage` money_event with the
+   price the send window showed and no recipient name. Buy one listing at its buyout and
+   place one plain bid: expect one `auction_spend` with the buyout and nothing for the bid.
+   This checks `GetInboxInvoiceInfo` (field order), `GetSendMailPrice`,
+   `GetAuctionItemInfo` (buyout is the 10th value) and the hooks exist in Forever.
    For `/ask`, type `/ask Who is Thrall?`, then `/reload` with the companion's `bridge`
    running (companion/README.md). Expect the answer and its source in chat once, and an
    `EverlootAnswers` entry in the AddOns list. Check that `/everloot ask …` keeps capitals.
