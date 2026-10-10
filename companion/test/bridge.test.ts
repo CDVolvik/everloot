@@ -48,7 +48,10 @@ test("the answers addon matches the golden file the Lua 5.1 test loads", () => {
   ]);
   expect(toc).toContain("## Title: Everloot Answers");
   expect(toc).toContain("EverlootAnswers.lua");
-  expect(lua).toBe(readFileSync(FIXTURE, "utf8"));
+  // A Windows checkout may hold the fixture with CRLF; the content is what must match.
+  expect(lua).toBe(readFileSync(FIXTURE, "utf8").replace(/
+/g, "
+"));
 });
 
 test("a search result becomes a short answer with its source line", () => {
