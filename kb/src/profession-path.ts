@@ -9,7 +9,7 @@
 export const PATH_AGREEMENT = 3;
 
 export const PATH_RULE =
-  "A recipe joins the path when 3 distinct install reports agree on its name, skill window, points per craft, and reagents. Routes prioritize recipe coverage, then priced skill gains, then estimated reagent cost. Estimates use median reagent prices from at least 3 distinct install reports: unscoped observed prices without realm, build, or observation time, not a guaranteed current realm minimum. A price report is a reported price or an install's latest per-unit auction scan of that reagent, from any realm. Missing prices prevent comparison of all recipes; unpriced steps keep their cost unknown. A bracket with no agreed recipe is a gap, not a guess.";
+  "A recipe joins the path when 3 distinct install reports agree on its name, skill window, points per craft, and reagents. A recipe can also join from the colours players' profession windows showed: only the ranks where 3 installs' data shows it orange (a guaranteed skill-up, counted as 1 point per craft), starting at the trainer's required rank when 3 installs agree on it, else at the lowest rank it was seen orange, with the reagents 3 installs saw. Routes prioritize recipe coverage, then priced skill gains, then estimated reagent cost. Estimates use median reagent prices from at least 3 distinct install reports: unscoped observed prices without realm, build, or observation time, not a guaranteed current realm minimum. A price report is a reported price or an install's latest per-unit auction scan of that reagent, from any realm. Missing prices prevent comparison of all recipes; unpriced steps keep their cost unknown. A bracket with no agreed recipe is a gap, not a guess.";
 
 export type Reagent = { item: string; count: number };
 
@@ -48,7 +48,8 @@ export type ProfessionPath = {
   copper: number | null;
 };
 
-type AgreedRecipe = {
+/** A recipe step the planner can use: agreed from recipe_seen rows, or derived (recipe-thresholds). */
+export type AgreedRecipe = {
   recipe: string;
   skillMin: number;
   skillMax: number;
@@ -167,8 +168,12 @@ export function professionPath(
   sightings: RecipeSighting[],
   prices: PriceSighting[],
   query: { profession: string; fromSkill: number; toSkill: number },
+  derived: (AgreedRecipe & { profession: string })[] = [],
 ): ProfessionPath {
-  const recipes = agreeRecipes(sightings, query.profession);
+  const recipes = [
+    ...agreeRecipes(sightings, query.profession),
+    ...derived.filter((step) => clean(step.profession) === clean(query.profession)).map(({ profession: _, ...step }) => step),
+  ];
   const priceByItem = agreePrices(prices);
   const steps: PathStep[] = [];
   const gaps: { fromSkill: number; toSkill: number }[] = [];
@@ -370,10 +375,11 @@ export function handleProfessionPath(
   args: { profession: string; fromSkill?: number; toSkill?: number },
   sightings: RecipeSighting[] = [],
   prices: PriceSighting[] = [],
+  derived: (AgreedRecipe & { profession: string })[] = [],
 ): string {
   const profession = args.profession.trim();
   if (!profession) return "Name a profession.";
   const fromSkill = args.fromSkill ?? 1;
   const toSkill = args.toSkill ?? fromSkill;
-  return formatProfessionPath(professionPath(sightings, prices, { profession, fromSkill, toSkill }));
+  return formatProfessionPath(professionPath(sightings, prices, { profession, fromSkill, toSkill }, derived));
 }

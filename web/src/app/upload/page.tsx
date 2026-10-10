@@ -26,8 +26,8 @@ export default function UploadPage() {
       </section>
       <section className="rounded-xl border border-gold-500/20 p-5 space-y-3">
         <h2 className="text-xl font-semibold text-parchment-100">Collect data in the beta</h2>
-        <p className="text-parchment-100/75">Extract the Everloot folder into Interface/AddOns, reload the client, and check /everloot status. Version 0.2.4 has passed automated checks; testing in the Forever client is still pending.</p>
-        <a className="inline-flex min-h-11 items-center text-gold-400 underline" href="/downloads/Everloot-0.2.4.zip" download>Download beta addon 0.2.4</a>
+        <p className="text-parchment-100/75">Extract the Everloot folder into Interface/AddOns, reload the client, and check /everloot status. Version 0.2.5 has passed automated checks; testing in the Forever client is still pending.</p>
+        <a className="inline-flex min-h-11 items-center text-gold-400 underline" href="/downloads/Everloot-0.2.5.zip" download>Download beta addon 0.2.5</a>
         <p className="text-sm text-parchment-100/75">Log out before selecting Everloot.lua from your account’s SavedVariables folder below. Keep a backup. Named records need your explicit sharing choice and verified authority.</p>
       </section>
       <UploadClient />

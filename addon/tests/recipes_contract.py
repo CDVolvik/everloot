@@ -33,6 +33,17 @@ GetCraftInfo = function(i) return 'Enchant Bracer - Minor Health', '', 'medium',
 GetCraftItemLink = function(i) return nil end
 GetCraftNumReagents = function(i) return 1 end
 GetCraftReagentInfo = function(i, j) return 'Strange Dust', 'icon', 1, 0 end
+-- Trainer window: a header, two Alchemy recipes and a class spell with no skill requirement.
+local services = {
+ {'Potions', '', 'header'},
+ {'Lesser Healing Potion', '', 'available', 'Alchemy', 55, 250},
+ {'Elixir of Minor Agility', '', 'unavailable', 'Alchemy', 50, 300},
+ {'Fireball', 'Rank 2', 'available', nil, nil, 100},
+}
+GetNumTrainerServices = function() return #services end
+GetTrainerServiceInfo = function(i) local s = services[i]; return s[1], s[2], s[3], false end
+GetTrainerServiceSkillReq = function(i) local s = services[i]; if s[4] then return s[4], s[5], true end end
+GetTrainerServiceCost = function(i) return services[i][6] or 0, 0, 0 end
 """)
 root = Path(__file__).parents[1]
 toc = (root / "Everloot.toc").read_text(encoding="utf-8")
@@ -67,5 +78,16 @@ assert(last.reagents[1].item == 'Strange Dust')
 -- A client without the craft API (or a broken window) never errors.
 GetCraftDisplaySkillLine = nil
 event('CRAFT_SHOW')
+
+-- A trainer lists each recipe's required rank and cost; headers and spells without a skill requirement are skipped.
+event('TRAINER_SHOW')
+local trained = EverlootDB.records.trainer_seen
+assert(trained and #trained == 2, 'two trainer recipes; got ' .. tostring(trained and #trained))
+assert(trained[1].profession == 'Alchemy' and trained[1].recipe == 'Lesser Healing Potion' and trained[1].requiredRank == 55 and trained[1].costCopper == 250)
+assert(trained[2].recipe == 'Elixir of Minor Agility' and trained[2].requiredRank == 50, 'a recipe not yet learnable is still listed with its rank')
+event('TRAINER_UPDATE'); event('TRAINER_SHOW')
+assert(#EverlootDB.records.trainer_seen == 2, 'reopening the trainer adds nothing')
+GetTrainerServiceSkillReq = nil
+event('TRAINER_SHOW')
 """)
-print("Lua 5.1 recipes: trade skill and craft windows, headers skipped, colour per rank, deduplicated")
+print("Lua 5.1 recipes: trade skill, craft and trainer windows, headers skipped, colour per rank, required rank, deduplicated")

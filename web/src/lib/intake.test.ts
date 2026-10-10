@@ -5,8 +5,9 @@ const base = { installId: "test-install-1234", capturedAt: "2026-09-29T12:00:00.
 
 describe("intake contract", () => {
   test("all record kinds exist", () => {
-    expect(ALL_RECORD_KINDS).toHaveLength(18);
+    expect(ALL_RECORD_KINDS).toHaveLength(19);
     expect(ALL_RECORD_KINDS).toContain("recipe_observed");
+    expect(ALL_RECORD_KINDS).toContain("trainer_seen");
     expect(ALL_RECORD_KINDS).toContain("gold_snapshot");
     expect(ALL_RECORD_KINDS).toContain("money_event");
     expect(ALL_RECORD_KINDS).toContain("loot_award");
@@ -86,6 +87,17 @@ describe("intake contract", () => {
     ]);
     expect(result.records).toHaveLength(2);
     expect(result.receipt.rejected.map((r) => r.index)).toEqual([2]);
+  });
+
+  test("a trainer row keeps the recipe's required rank and optional training cost", () => {
+    const result = parseRecords([
+      { ...base, kind: "trainer_seen", profession: "Alchemy", recipe: "Lesser Healing Potion", requiredRank: 55, costCopper: 250 },
+      { ...base, kind: "trainer_seen", profession: "Alchemy", recipe: "Elixir of Minor Agility", requiredRank: 50 },
+      { ...base, kind: "trainer_seen", profession: "Alchemy", recipe: "X", requiredRank: 0 },
+      { ...base, kind: "trainer_seen", profession: "Alchemy", recipe: "Y", requiredRank: 50, costCopper: -1 },
+    ]);
+    expect(result.records).toHaveLength(2);
+    expect(result.receipt.rejected.map((r) => r.index)).toEqual([2, 3]);
   });
 
   test("a loot window with no items is a kill when it names a source", () => {

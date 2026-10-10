@@ -5,7 +5,7 @@
 Everloot = Everloot or {}
 local E = Everloot
 
-E.VERSION = "0.2.4"
+E.VERSION = "0.2.5"
 E.MAX_ROWS_PER_KIND = 2000
 
 local defaults = {
@@ -87,7 +87,7 @@ function E:Status()
   end
   for _, kind in ipairs({ "npc_sighting", "loot", "quest", "vendor", "item_seen",
     "guild_snapshot", "raid_lockout", "attendance", "loot_award", "gear_snapshot",
-    "collection_catalog", "collection_owned", "auction_scan", "recipe_seen", "recipe_observed", "price_seen",
+    "collection_catalog", "collection_owned", "auction_scan", "recipe_seen", "recipe_observed", "trainer_seen", "price_seen",
     "gold_snapshot", "money_event" }) do
     lines[#lines + 1] = string.format("  rows %s: %d", kind, self:Count(kind))
   end
