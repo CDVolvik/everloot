@@ -5,7 +5,7 @@
 Everloot = Everloot or {}
 local E = Everloot
 
-E.VERSION = "0.2.3"
+E.VERSION = "0.2.4"
 E.MAX_ROWS_PER_KIND = 2000
 
 local defaults = {
