@@ -34,5 +34,5 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install lupa==2.6
-      - run: python addon/tests/event_identity.py && python addon/tests/collection_contract.py && python addon/tests/auction_contract.py && python addon/tests/gold_contract.py
+      - run: python addon/tests/event_identity.py && python addon/tests/collection_contract.py && python addon/tests/auction_contract.py && python addon/tests/gold_contract.py && python addon/tests/ask_contract.py
       - run: python scripts/package-addon.py && git diff --exit-code -- web/public/downloads

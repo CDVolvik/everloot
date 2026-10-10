@@ -16,7 +16,9 @@ addon/
     ├── openworld.lua   target/mouseover sightings, loot windows, item names when the client already knows them, merchant windows (quest levels stay uncaptured)
     ├── guild.lua       roster, attendance, saved lockouts (loot awards still wait on a raid test)
     ├── gear.lua        equipped ilvl sample, max 1/hour
-    └── auctions.lua    per-unit buyouts from a list the player opened; off until /everloot auctions on
+    ├── auctions.lua    per-unit buyouts from a list the player opened; off until /everloot auctions on
+    ├── gold.lua        own gold: peak, current, loot copper, quest rewards, vendor sales, flight costs
+    └── ask.lua         /ask stores a question; answers from the companion's EverlootAnswers addon show after /reload
 ```
 
 Test install: copy this folder to `Interface/AddOns/Everloot/` in the Forever client, `/reload`,
