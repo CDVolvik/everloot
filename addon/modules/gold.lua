@@ -1,10 +1,11 @@
 -- Own character only. Records current gold, the peak this install has seen,
 -- copper taken from a loot window, quest money rewards, sales at an open merchant,
--- flight costs paid at an open taxi map, auction sales taken from the mailbox, and
--- postage for letters the server confirmed sent. Purchases, repairs, other mail and
--- gameplay stay unrecorded: their source cannot be told apart. No other player's
--- name: an auction invoice names the buyer and a sent letter its recipient; neither
--- is read.
+-- flight costs paid at an open taxi map, auction sales taken from the mailbox (the
+-- sale minus the house cut; the returned deposit is the player's own money), postage
+-- for letters the server confirmed sent, and auction buyouts. Other purchases, bids,
+-- deposits, repairs, other mail and gameplay stay unrecorded: their source cannot be
+-- told apart, or the money can come back. No other player's name: invoices, letters
+-- and listings name other players; those fields are never read into a record.
 
 local E = Everloot
 
@@ -13,8 +14,9 @@ local lastSnapshot = 0
 local lastMoney = nil
 local merchantOpen = false
 local taxiOpen = false
-local auctionMail = nil -- copper an auction-sale letter is about to pay
+local auctionMail = nil -- { letter = copper the letter pays, sale = the sale minus the cut }
 local postage = nil -- price quoted for a letter the server has not confirmed yet
+local buyout = nil -- copper a buyout is about to take
 
 local function playerMoney()
   if not GetMoney then return nil end
@@ -67,16 +69,22 @@ local function storeMoney(category, copper)
   })
 end
 
---- Only a source that names itself attributes a change: an auction-sale letter whose
---- money arrives in full, a merchant sale or a paid flight.
+local function whole(copper)
+  return type(copper) == "number" and copper >= 1 and copper == math.floor(copper)
+end
+
+--- Only a source that names itself attributes a change: an auction-sale letter or a buyout
+--- whose money moves in full, a merchant sale or a paid flight.
 local function moneyChanged(copper)
   if lastMoney then
     local delta = copper - lastMoney
-    if auctionMail and delta == auctionMail then storeMoney("auction", delta)
+    if auctionMail and delta == auctionMail.letter then storeMoney("auction", auctionMail.sale)
+    elseif buyout and delta == -buyout then storeMoney("auction_spend", buyout)
     elseif merchantOpen and delta > 0 then storeMoney("vendor", delta)
     elseif taxiOpen and delta < 0 then storeMoney("flight", -delta) end
   end
   auctionMail = nil
+  buyout = nil
   lastMoney = copper
 end
 
@@ -84,11 +92,21 @@ end
 local function mailTaken(index)
   auctionMail = nil
   if not GetInboxInvoiceInfo or not GetInboxHeaderInfo then return end
-  local okInvoice, invoiceType = pcall(GetInboxInvoiceInfo, index)
-  if not okInvoice or invoiceType ~= "seller" then return end
+  -- invoiceType, itemName, playerName (not read), bid, buyout, deposit, consignment
+  local okInvoice, invoiceType, _, _, bid, _, _, cut = pcall(GetInboxInvoiceInfo, index)
+  if not okInvoice or invoiceType ~= "seller" or not whole(bid) or type(cut) ~= "number" then return end
   -- packageIcon, stationeryIcon, sender, subject, money
   local okHeader, _, _, _, _, copper = pcall(GetInboxHeaderInfo, index)
-  if okHeader and type(copper) == "number" and copper >= 1 and copper == math.floor(copper) then auctionMail = copper end
+  if okHeader and whole(copper) and whole(bid - cut) then auctionMail = { letter = copper, sale = bid - cut } end
+end
+
+--- Called after a bid on a listing. Only a bid at the buyout price is a purchase; a lower bid can be refunded.
+local function bidPlaced(listType, index, bid)
+  buyout = nil
+  if not GetAuctionItemInfo or not whole(bid) then return end
+  -- name, texture, count, quality, canUse, level, levelColHeader, minBid, minIncrement, buyoutPrice
+  local ok, _, _, _, _, _, _, _, _, _, price = pcall(GetAuctionItemInfo, listType, index)
+  if ok and whole(price) and bid == price then buyout = bid end
 end
 
 --- Called after SendMail: the send window's quoted price, before the fields clear. Recipient and text are not read.
@@ -123,7 +141,7 @@ E:RegisterModule("gold", function()
   f:RegisterEvent("PLAYER_ENTERING_WORLD")
   f:RegisterEvent("LOOT_OPENED")
   for _, name in ipairs({ "PLAYER_MONEY", "MERCHANT_SHOW", "MERCHANT_CLOSED", "TAXIMAP_OPENED", "TAXIMAP_CLOSED", "QUEST_TURNED_IN", "MAIL_CLOSED",
-    "MAIL_SEND_SUCCESS", "MAIL_FAILED" }) do
+    "MAIL_SEND_SUCCESS", "MAIL_FAILED", "AUCTION_HOUSE_CLOSED" }) do
     pcall(function() f:RegisterEvent(name) end)
   end
   if hooksecurefunc then
@@ -131,6 +149,7 @@ E:RegisterModule("gold", function()
       if _G[name] then pcall(hooksecurefunc, name, mailTaken) end
     end
     if SendMail then pcall(hooksecurefunc, "SendMail", mailSent) end
+    if PlaceAuctionBid then pcall(hooksecurefunc, "PlaceAuctionBid", bidPlaced) end
   end
   f:HookScript("OnEvent", function(_, event, ...)
     if event == "PLAYER_ENTERING_WORLD" then
@@ -147,11 +166,12 @@ E:RegisterModule("gold", function()
     elseif event == "MAIL_CLOSED" then auctionMail = nil
     elseif event == "MAIL_SEND_SUCCESS" then storeMoney("postage", postage); postage = nil
     elseif event == "MAIL_FAILED" then postage = nil
+    elseif event == "AUCTION_HOUSE_CLOSED" then buyout = nil
     elseif event == "QUEST_TURNED_IN" then
       -- questID, xpReward, moneyReward. The reward names itself; the PLAYER_MONEY that follows is not attributed.
       local _, _, reward = ...
       storeMoney("quest", reward)
     elseif event == "LOOT_OPENED" then lootMoney() end
   end)
-  return "ready (peak, current, loot copper, quest rewards, vendor sales, flights, mailed auction sales, postage)"
+  return "ready (peak, current, loot copper, quest rewards, vendor sales, flights, mailed auction sales, postage, buyouts)"
 end)
