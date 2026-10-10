@@ -1,11 +1,27 @@
 # Everloot — Status
 
-## Current cursor — 2026-10-09 autonomous loop (branches + PRs only, nothing deployed)
+## Scope now (2026-10-10)
 
-Working the agent-doable backlog from the 10/09 audit of F01–F20 and the tracker. Each unit lands on its own branch and PR into `main`; merging deploys production, so every merge is Carlos's. Free services only.
+**Everloot:** a WoW: Forever data companion. It has four parts: an addon that collects what the player sees; everloot.app, which publishes only corroborated facts; an MCP knowledge server; and a desktop companion. Beta closes 10/21, CurseForge ~10/24, Forever launch 11/04. Free services only. Merging to `main` deploys production.
 
-- `feat/auction-unit-price` — addon **0.2.2**: auction rows store stack `count` and per-unit `copper` (`priceBasis: "unit"`), bid-only listings are skipped, and `/everloot auctions on|off` turns on the toggle that previously had no in-game control. Intake keeps the new fields; auction history counts only per-unit rows, so 0.2.1 stack totals cannot skew a median. New `addon/tests/auction_contract.py` runs in CI. Beta checklist and upload page now name 0.2.2; the 0.2.1 zip is kept.
-- Owner-blocked: in-game beta trial (now with 0.2.2 + the auction step), officer publish/revoke evidence, Render/AdSense accounts. `recipe_seen` emitter needs a design call: the trade-skill API exposes difficulty colors, not the exact skill thresholds the schema requires.
+**Live at `b5ab8ae` (Carlos merged PRs #1–#21 on 2026-10-10, production verified):**
+- Addon 0.2.2: per-unit auctions, quest/vendor/flight gold, and `/ask`.
+- Data age on pages and APIs; per-tool `?kinds=` corpus reads; batched snapshot replay (cold read 54 ms at 10k records).
+- Honest copy, the tracker's Proven column, waitlist on the shared quota, recovery runbook.
+- `/mcp` route: it serves 503 in production until the knowledge release reaches the build.
+
+**In `companion/` (code, not packaged):** the uploader and the `/ask` file bridge.
+
+**Waiting on Carlos:**
+- in-game 0.2.2 trial (beta checklist)
+- officer grant trial
+- turning `/mcp` on in production: after #26, run `web/scripts/upload-release.mjs` once, then set `EVERLOOT_KB_RELEASE_KEY`, `VERCEL_SUPPORT_LARGE_FUNCTIONS=1` and `EVERLOOT_MCP_TOKEN` in Production (steps in the hosting memo)
+- review/merge open PRs: #22 this status pass, #23 companion LLM providers, #24 in-process gameplay reads on `/mcp`, #25 companion answer rewrite, #26 release prebuild fetch
+- backup/restore decision
+- recipe capture option (`docs/2026-10-09-recipe-capture-options.md`)
+- signing, AdSense with a certified consent platform
+
+Release state per check: `docs/2026-10-08-release-checklist.md`. Build list: `docs/TRACKER.md`.
 
 ## Current cursor — 2026-10-08 visible account controls verified
 
