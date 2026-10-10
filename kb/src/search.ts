@@ -64,16 +64,25 @@ export function search(db: DB, query: string, limit = 10, opts: SearchOptions = 
     conds.push(`e.game_version IN (${opts.versions.map(() => "?").join(",")})`);
     params.push(...opts.versions);
   }
-  params.push(raw, limit);
-  return db
+  // Rank from a pool, then cut: "Who is Thrall?" must put the page named Thrall first even at limit 1.
+  // The SQL boost matches the raw query or its meaningful words, so a long exact page enters the pool.
+  const wanted = contentTerms(raw).join(" ");
+  params.push(raw, wanted, Math.max(limit, 50));
+  const pool = db
     .prepare(
       `SELECT ${ROW}
        FROM entities_fts JOIN entities e ON e.id = entities_fts.rowid
        WHERE ${conds.join(" AND ")}
-       ORDER BY CASE WHEN e.name = ? COLLATE NOCASE THEN 0 ELSE 1 END, bm25(entities_fts, 10.0, 1.0)
+       ORDER BY CASE WHEN e.name = ? COLLATE NOCASE OR e.name = ? COLLATE NOCASE THEN 0 ELSE 1 END,
+         bm25(entities_fts, 10.0, 1.0)
        LIMIT ?`,
     )
     .all(...params) as SearchHit[];
+  // The page being asked about: first a name made of exactly the asked words ("Thrall"), then a name
+  // that matches only once its stopwords are dropped ("Find Thrall!"), then everything else.
+  const allTerms = (name: string) => (name.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []).join(" ");
+  const rank = (hit: SearchHit) => (allTerms(hit.name) === wanted ? 0 : contentTerms(hit.name).join(" ") === wanted ? 1 : 2);
+  return pool.sort((a, b) => rank(a) - rank(b)).slice(0, limit);
 }
 
 interface EntityRow {

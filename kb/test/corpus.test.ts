@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { mergeCorpus, publicRecords } from "../src/corpus.js";
+import { mergeCorpus, mergeCorpusBatches, publicRecords } from "../src/corpus.js";
 import { parseRecords } from "../../web/src/lib/intake.js";
 
 const loot = (eventId = "epoch:1", over = {}) => ({
@@ -38,4 +38,31 @@ test("named records are private when no live publication authorization is suppli
   const state = mergeCorpus(undefined, [{ ...loot(), kind: "gold_snapshot",
     character: "Thrall", realm: "Moon Guard", currentCopper: 100, peakCopper: 100 }]);
   expect(publicRecords(state)).toEqual([]);
+});
+
+test("batched merging equals one merge per upload, including grants, conflicts and replays", () => {
+  const changed = loot("epoch:1", { items: [{ itemId: 5, count: 9 }] });
+  const legacy = loot("epoch:9"); delete (legacy as { eventId?: string }).eventId;
+  const g1 = "a".repeat(64), g2 = "b".repeat(64);
+  const batches = [
+    { raw: [loot()], grants: [] },
+    { raw: [loot("epoch:2"), legacy], grants: [] },
+    { raw: [loot("epoch:3")], grants: [g1] },
+    { raw: [loot("epoch:3")], grants: [g2, g1] },
+    { raw: [changed], grants: [] },
+    { raw: [loot("epoch:4"), loot("epoch:2")], grants: [] },
+  ];
+  const sequential = batches.reduce<ReturnType<typeof mergeCorpus> | undefined>((state, b) => mergeCorpus(state, b.raw, b.grants), undefined);
+  expect(mergeCorpusBatches(undefined, batches)).toEqual(sequential);
+  const start = mergeCorpus(undefined, [loot("epoch:7")], [g2]);
+  expect(mergeCorpusBatches(start, batches)).toEqual(batches.reduce((s, b) => mergeCorpus(s, b.raw, b.grants), start));
+});
+
+test("replaying a large snapshot event by event stays linear", () => {
+  const batches = Array.from({ length: 20_000 }, (_, i) => ({ raw: [loot(`epoch:${i}`, { installId: `install-${i % 50}` })], grants: [] as string[] }));
+  const started = performance.now();
+  const state = mergeCorpusBatches(undefined, batches);
+  expect(state.events).toHaveLength(20_000);
+  // One merge per event was quadratic: about 15 s for 10,000 events on the dev machine.
+  expect(performance.now() - started).toBeLessThan(5_000);
 });

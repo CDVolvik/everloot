@@ -304,7 +304,8 @@ describe("corpus normalization", () => {
   });
 
   test("a corpus larger than the 2000-row request cap keeps every valid record", async () => {
-    const records = Array.from({ length: 2001 }, () => lootRow({ installId: `install-${String(Math.random()).slice(2, 10)}` }));
+    // Distinct installs, not random ones: two random ids collided about 2% of runs and deduplicated to 2000.
+    const records = Array.from({ length: 2001 }, (_, i) => lootRow({ installId: `install-${i}` }));
     const { fn } = fakeFetch([
       [SNAP, "GET", () => Response.json({ generatedAt: "x", uploads: 2001, records, lastReceivedAt: null, lastIds: [] })],
     ]);

@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Forever Profession Hubs",
   description:
-    "Leveling routes, material lists and perk tracking for WoW: Forever professions — built from player-collected data. Collecting now.",
+    "Leveling routes and material lists for WoW: Forever professions, built from player-collected recipes and prices. Collecting now.",
   keywords: ["wow forever professions", "wow forever profession leveling", "forever profession perks"],
   alternates: { canonical: "/tools/professions" },
 };
@@ -21,16 +21,12 @@ const CARDS = [
     body: "Routes compare estimated reagent costs from reported recipes. Missing recipes remain gaps, and missing prices remain unknown.",
   },
   {
-    title: "Forever perk tracking",
-    body: "Forever adds profession perks on top of the classic recipes. We track which perks players confirm in-game, with the exact wording as collected — flagged provisional until corroborated.",
-  },
-  {
     title: "Materials shopping lists",
     body: "Estimated materials and costs use reported recipes and prices. Prices are not scoped to a realm, build or time; three install reports per reagent do not guarantee today's cheapest route.",
   },
   {
-    title: "Gathering + crafting, together",
-    body: "Gatherers feed crafters: spawn maps from the farming routes plug straight into material lists, so a route tells you what to farm and the hub tells you what it's worth.",
+    title: "Gathering + crafting, planned",
+    body: "Farming routes are planned, not built. When they exist, a route will say where to farm and the hub what the materials cost.",
   },
 ];
 
@@ -122,8 +118,8 @@ export default async function ProfessionsPage(
       <div className="rounded-2xl border border-arcane/30 bg-parchment-900 p-6">
         <h2 className="font-display text-xl text-parchment-100">Feed your profession</h2>
         <p className="mt-1 text-sm text-parchment-100/75 max-w-xl">
-          Run the Everloot addon while you level — recipe sightings and material drops flow
-          into your profession&apos;s hub. Upload on the{" "}
+          The addon does not record recipes or prices yet, so these routes fill in only as that
+          collection is added. Material drops it records already reach the drop pages. Upload on the{" "}
           <Link href="/upload" className="text-gold-400 hover:underline underline-offset-4">upload page</Link>.
         </p>
       </div>
