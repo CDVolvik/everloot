@@ -7,7 +7,8 @@ const url = new URL(process.env.QUOTA_TEST_DATABASE_URL);
 assert.ok(['localhost', '127.0.0.1'].includes(url.hostname), 'Local test database required');
 assert.equal(url.pathname, '/intake_quota_test', 'Dedicated test database required');
 const pool = new pg.Pool({ connectionString: url.toString(), max: 24 });
-const sql = await readFile(new URL('../../supabase/migrations/20261007220000_intake_quotas.sql', import.meta.url), 'utf8');
+const sql = (await Promise.all(['20261007220000_intake_quotas.sql', '20261010120000_mcp_quota_scope.sql']
+  .map(file => readFile(new URL(`../../supabase/migrations/${file}`, import.meta.url), 'utf8')))).join('\n');
 const key = n => n.toString(16).padStart(64, '0');
 async function asRole(role, query, params = []) {
   assert.ok(['service_role', 'anon', 'authenticated'].includes(role));
@@ -48,6 +49,19 @@ try {
   assert.equal(requests.filter(r => r.allowed).length, 200);
   assert.equal((await pool.query("select count from public.intake_quota_buckets where bucket='global'")).rows[0].count, 200);
 
+  // Public MCP: 200 per IP, its own global bucket. A full intake quota does not block it, nor the reverse.
+  const mcp = await Promise.all(Array.from({ length: 220 }, () => consume('mcp', 5)));
+  assert.equal(mcp.filter(r => r.allowed).length, 200);
+  assert.equal((await pool.query("select count from public.intake_quota_buckets where bucket='global'")).rows[0].count, 200);
+  assert.equal((await pool.query("select count from public.intake_quota_buckets where bucket='mcp_global'")).rows[0].count, 200);
+  await pool.query("update public.intake_quota_buckets set count=10000 where bucket='global'");
+  assert.equal((await consume('mcp', 6)).allowed, true);
+  await pool.query("update public.intake_quota_buckets set count=4999 where bucket='mcp_global'");
+  assert.equal((await consume('mcp', 7)).allowed, true);
+  assert.equal((await consume('mcp', 8)).allowed, false);
+  assert.equal((await pool.query('select count(*)::int as count from public.intake_quota_buckets where bucket=$1', [`mcp:${key(8)}`])).rows[0].count, 0);
+  await pool.query("update public.intake_quota_buckets set count=200 where bucket='global'");
+
   await pool.query("update public.intake_quota_buckets set count=9999 where bucket='global'");
   assert.equal((await consume('request', 3)).allowed, true);
   assert.equal((await consume('request', 4)).allowed, false);
@@ -66,5 +80,5 @@ try {
   await pool.query("insert into public.intake_quota_buckets values ('expired-fixture',0,now()-interval '2 days')");
   await asRole('service_role', "delete from public.intake_quota_buckets where reset_at < now()-interval '1 day'");
   assert.equal((await pool.query("select count(*)::int as count from public.intake_quota_buckets where bucket='expired-fixture'")).rows[0].count, 0);
-  console.log('Quota integration passed: idempotent migration, private roles/RLS, 40 concurrent installs capped at 20, 220 requests capped at 200, atomic global denial, expiry and cleanup race.');
+  console.log('Quota integration passed: idempotent migrations, private roles/RLS, 40 concurrent installs capped at 20, 220 requests capped at 200, 220 MCP calls capped at 200 with a separate global bucket, atomic global denial, expiry and cleanup race.');
 } finally { await pool.end(); }
