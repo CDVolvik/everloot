@@ -6,6 +6,9 @@ import { openDb } from "../../../../kb/src/db";
 import { replaceSourceRows } from "../../../../kb/src/entities";
 import { snapshot } from "../../../../kb/src/snapshot";
 
+const store = vi.hoisted(() => ({ loadCorpus: vi.fn() }));
+vi.mock("@/lib/upload-store", () => ({ uploadStore: { loadCorpus: store.loadCorpus } }));
+
 let release = "";
 
 beforeAll(async () => {
@@ -66,4 +69,22 @@ test("bearer auth is required; with it the server initializes as everloot-knowle
   const ok = await POST(initialize("test-token"));
   expect(ok.status).toBe(200);
   expect((await ok.json()).result.serverInfo.name).toBe("everloot-knowledge");
+});
+
+test("gameplay tools read the site's store in process, with its data age, and no HTTP", async () => {
+  store.loadCorpus.mockResolvedValue({ uploads: 0, records: [], dataAsOf: "2026-10-10T06:30:00.000Z" });
+  const fetchSpy = vi.spyOn(globalThis, "fetch");
+  const { POST } = await route({ KB_SNAPSHOT_PATH: release, EVERLOOT_MCP_TOKEN: "test-token", EVERLOOT_PUBLIC_CORPUS_URL: "" });
+  const call = new Request("https://everloot.app/mcp", {
+    method: "POST",
+    headers: { "content-type": "application/json", accept: "application/json, text/event-stream", authorization: "Bearer test-token" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/call", params: { name: "gold_ledger", arguments: { character: "Nobody", realm: "Forever" } } }),
+  });
+  const body = await (await POST(call)).json();
+  const text = body.result.content[0].text as string;
+  expect(text).toContain("Gold unrecorded.");
+  expect(text).toContain("Data as of 2026-10-10 06:30 UTC.");
+  expect(store.loadCorpus).toHaveBeenCalled();
+  expect(fetchSpy).not.toHaveBeenCalled();
+  fetchSpy.mockRestore();
 });
