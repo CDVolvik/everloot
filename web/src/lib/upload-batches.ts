@@ -43,10 +43,10 @@ export function prepareUpload(payload: unknown, sharing: SharingChoices, grantTo
   return { batches, next: 0, receipts: [], counts, held };
 }
 /** Advance only after a confirmed durable receipt; retries send the identical batch. */
-export async function sendBatches(session: UploadSession, send: typeof fetch = fetch, onProgress: () => void = () => {}) {
+export async function sendBatches(session: UploadSession, send: typeof fetch = fetch, onProgress: () => void = () => {}, url = "/api/intake") {
   while (session.next < session.batches.length) {
     const body = session.batches[session.next];
-    const response = await send("/api/intake", { method: "POST", headers: { "Content-Type": "application/json" }, body });
+    const response = await send(url, { method: "POST", headers: { "Content-Type": "application/json" }, body });
     const receipt = await response.json() as BatchReceipt;
     if (!response.ok || !receipt.ok || receipt.persisted !== true || !receipt.uploadId || !Array.isArray(receipt.accepted) ||
       receipt.accepted.length + (receipt.rejected?.length ?? 0) !== JSON.parse(body).records.length) {
