@@ -8,7 +8,7 @@
  * craft uses the profession path's agreed prices, and stays unrecorded while any reagent has none.
  */
 import { INDEPENDENT_INSTALLS } from "./drop-rollup.js";
-import { agreePrices, formatCopper, professionFactsFromRecords, reagentKey, type AgreedRecipe, type PriceSighting, type Reagent } from "./profession-path.js";
+import { agreePrices, formatCopper, median, professionFactsFromRecords, reagentKey, type AgreedRecipe, type PriceSighting, type Reagent } from "./profession-path.js";
 
 const ORDER = ["optimal", "medium", "easy", "trivial"] as const;
 type Colour = (typeof ORDER)[number];
@@ -40,7 +40,7 @@ export function recipeFactsFromRecords(records: unknown[]): { observations: Reci
   return { observations: recipeObservationsFromRecords(records), prices: professionFactsFromRecords(records).prices };
 }
 
-export interface TrainerRow { installId: string; profession: string; recipe: string; requiredRank: number }
+export interface TrainerRow { installId: string; profession: string; recipe: string; requiredRank: number; costCopper?: number }
 
 export function trainerRowsFromRecords(records: unknown[]): TrainerRow[] {
   const out: TrainerRow[] = [];
@@ -48,7 +48,8 @@ export function trainerRowsFromRecords(records: unknown[]): TrainerRow[] {
     const r = raw as Record<string, unknown>;
     if (r?.kind !== "trainer_seen" || typeof r.installId !== "string" || typeof r.profession !== "string" ||
       typeof r.recipe !== "string" || !Number.isInteger(r.requiredRank) || (r.requiredRank as number) < 1) continue;
-    out.push({ installId: r.installId, profession: r.profession, recipe: r.recipe, requiredRank: r.requiredRank as number });
+    const cost = Number.isInteger(r.costCopper) && (r.costCopper as number) >= 0 ? (r.costCopper as number) : undefined;
+    out.push({ installId: r.installId, profession: r.profession, recipe: r.recipe, requiredRank: r.requiredRank as number, costCopper: cost });
   }
   return out;
 }
@@ -64,10 +65,14 @@ const recipeKey = (profession: string, recipe: string) => `${profession.trim().t
  */
 export function derivedSteps(observations: RecipeObservation[], trainers: TrainerRow[]): DerivedStep[] {
   const trained = new Map<string, Map<number, Set<string>>>();
+  // Reputation discounts make prices differ, so cost is the median of each install's last price.
+  const costs = new Map<string, Map<string, number>>();
   for (const row of trainers) {
-    const ranks = trained.get(recipeKey(row.profession, row.recipe)) ?? new Map<number, Set<string>>();
+    const key = recipeKey(row.profession, row.recipe);
+    const ranks = trained.get(key) ?? new Map<number, Set<string>>();
     ranks.set(row.requiredRank, (ranks.get(row.requiredRank) ?? new Set<string>()).add(row.installId));
-    trained.set(recipeKey(row.profession, row.recipe), ranks);
+    trained.set(key, ranks);
+    if (row.costCopper !== undefined) costs.set(key, (costs.get(key) ?? new Map<string, number>()).set(row.installId, row.costCopper));
   }
   const out: DerivedStep[] = [];
   for (const t of inferThresholds(observations)) {
@@ -78,7 +83,9 @@ export function derivedSteps(observations: RecipeObservation[], trainers: Traine
       ? best[0]
       : Math.min(...observations.filter((o) => o.difficulty === "optimal" && recipeKey(o.profession, o.recipe) === key).map((o) => o.rank));
     if (!(skillMin < t.yellow.min)) continue;
-    out.push({ profession: t.profession, recipe: t.recipe, skillMin, skillMax: t.yellow.min, points: 1, reagents: t.reagents, reporters: t.installs });
+    const prices = [...(costs.get(key)?.values() ?? [])];
+    const trainingCopper = prices.length >= INDEPENDENT_INSTALLS ? median(prices) : null;
+    out.push({ profession: t.profession, recipe: t.recipe, skillMin, skillMax: t.yellow.min, points: 1, reagents: t.reagents, reporters: t.installs, trainingCopper });
   }
   return out;
 }
