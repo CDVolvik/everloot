@@ -1,24 +1,24 @@
 # Everloot — resume after 2026-10-05 assessment
 
-## Resume — 2026-10-10 third round: PRs #31–#35 open (production at `e6fc5c6`)
+## Resume — 2026-10-10 fourth round: #31–#35 merged and live at `1e975c8`; #37–#39 open
 
-Every unit is its own PR into `main`; merging deploys everloot.app. Nothing below is merged or deployed.
+Merged on Carlos's say-so and verified on everloot.app: `/mcp/public` initializes with no token and
+lists 14 tools (#31); recipe ranges section live (#32); auction-priced profession path (#33); tracker
+rows (#34); addon 0.2.4 zip live, sha `6f031160…`, matching the repo (#35). #33's one-line
+`TOOL_KINDS` conflict with #32 was resolved by keeping both.
+
+#35 changed during review: `auction_spend` is **auction purchases** (buyouts only; plain bids can be
+refunded), not deposits. Auction sales are recorded **net**: invoice `bid − consignment`, because the
+letter also returns the deposit. Deposits stay unrecorded (no category).
 
 | PR | Unit | Notes |
 |---|---|---|
-| #31 | Public read-only MCP at `/mcp/public` | `EVERLOOT_MCP_PUBLIC=1` already in Production: live on merge. Then submit to the ChatGPT directory (auth: none) |
-| #32 | `recipe_thresholds` tool + "Recipe skill ranges" on `/tools/professions` | |
-| #33 | Profession path prices reagents from per-unit auction scans | **conflicts with #32 on one `TOOL_KINDS` line** in `kb/src/mcp-server.ts`: keep both (`profession_path` with `auction_scan`, `item_seen`, then `recipe_thresholds`) |
-| #34 | Tracker: `mcp.public_https` deployed, companion providers merged | |
-| #35 | Addon 0.2.4: mailed auction sales (invoice `seller`, matched money change) and postage | new zip; beta checklist mail steps |
+| #37 | Recipe ranges: reagents 3 installs agree on + estimated cost per craft | shares the path's `agreePrices`; tool reads price/auction/item kinds |
+| #38 | Public MCP quota scope (`mcp_global` 5,000/h, `mcp:<ip>` 200/h) | flag-gated by `EVERLOOT_MCP_QUOTA_SCOPE=mcp`; Carlos applies the migration first. Integration-tested on local Postgres 16 |
+| #39 | Design note: recipe windows and points | **Carlos picks A/B/C**; B (orange-only steps + `trainer_seen`) recommended |
 
-Merge order: #34, #31, #32, then update #33 from `main` (resolve the line above), then #35. #34 and #35 edit different tracker rows and merge cleanly together.
-
-Next agent-doable units:
-- `recipe_seen` has no emitter, so routes stay gaps even once prices fill (#33). Points per craft need their own capture (skill-up after a craft). In Classic, yellow and green skill-ups are probabilistic, so this needs a design note before code.
-- Auction deposits (`auction_spend`): the remaining ledger spend line.
-- A dedicated MCP quota scope (migration file plus code; Carlos applies the migration).
-- Per-craft reagent cost in the recipe ranges section (after #32 and #33).
+Next agent-doable unit: whichever option #39 settles on. Nothing else open is agent-doable without
+an owner step.
 
 ## Resume — 2026-10-09 loop, second round: PRs #14–#21 (still nothing merged or deployed)
 
