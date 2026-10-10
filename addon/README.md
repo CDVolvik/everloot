@@ -17,7 +17,7 @@ addon/
     ├── guild.lua       roster, attendance, saved lockouts (loot awards still wait on a raid test)
     ├── gear.lua        equipped ilvl sample, max 1/hour
     ├── auctions.lua    per-unit buyouts from a list the player opened; off until /everloot auctions on
-    ├── gold.lua        own gold: peak, current, loot copper, quest rewards, vendor sales, flight costs, mailed auction sales, postage
+    ├── gold.lua        own gold: peak, current, loot copper, quest rewards, vendor sales, flight costs, net mailed auction sales, postage, buyouts
     ├── professions.lua recipe colours at the player's rank from open trade-skill and craft windows (thresholds inferred server-side)
     └── ask.lua         /ask stores a question; answers from the companion's EverlootAnswers addon show after /reload
 ```
