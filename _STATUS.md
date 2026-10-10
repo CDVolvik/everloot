@@ -4,15 +4,18 @@
 
 **Everloot:** a WoW: Forever data companion. It has four parts: an addon that collects what the player sees; everloot.app, which publishes only corroborated facts; an MCP knowledge server; and a desktop companion. Beta closes 10/21, CurseForge ~10/24, Forever launch 11/04. Free services only. Merging to `main` deploys production.
 
-**Live at `ba01307` (PRs #1–#39 merged on Carlos's say-so on 2026-10-10, production verified):**
-- Addon 0.2.4 (live zip sha `6f031160…`): per-unit auctions; gold from loot, quests, vendors, flights,
-  net mailed auction sales, postage and buyouts; `/ask`; recipe colours (`recipe_observed`).
+**Live at `d3a0b33` (PRs #1–#42 merged on Carlos's say-so on 2026-10-10, production verified):**
+- Addon 0.2.5 (live zip sha `3999cbd6…`): per-unit auctions; gold from loot, quests, vendors, flights,
+  net mailed auction sales, postage and buyouts; `/ask`; recipe colours (`recipe_observed`);
+  trainer required ranks and costs (`trainer_seen`).
+- **Profession routes can fill from collected data** (#40, option B): orange-only steps derived from
+  recipe colours and trainer ranks, 1 point per craft; training cost listed per route (#42).
 - **Public read-only MCP** at `everloot.app/mcp/public` (#31): no sign-in, 14 tools, rate-limited.
 - Recipe skill ranges: `recipe_thresholds` tool and `/tools/professions` section (#32).
 - Profession path prices reagents from per-unit auction scans (#33); recipe ranges show agreed
   reagents and an estimated cost per craft (#37).
 - Public MCP quota scope code (#38), **off** until the migration is applied and the flag set.
-- Recipe windows design note (#39); Carlos chose option B.
+- Recipe windows design note (#39); Carlos chose option B, built in #40.
 - R2 backup mirror and restore rehearsal scripts (#27); generated social preview card (#29).
 - Data age on pages and APIs; per-tool `?kinds=` corpus reads; batched snapshot replay (cold read 54 ms at 10k records).
 - Honest copy, the tracker's Proven column, waitlist on the shared quota, recovery runbook.
@@ -24,13 +27,11 @@
 
 **In `companion/` (code, not packaged):** the uploader, the `/ask` file bridge, and LLM provider adapters with fallback.
 
-**Open PR (2026-10-10, fifth round), CI green:**
-- #40 option B: addon 0.2.5 `trainer_seen` capture, and orange-only route steps derived from recipe
-  colours and trainer ranks, so routes can fill from collected data. Awaiting Carlos's review/merge.
+**Open PRs:** none besides this handoff. The to-do list for the next session is at the top of
+`NEXT_SESSION.md`.
 
 **Waiting on Carlos:**
-- review and merge #40
-- in-game trial (beta checklist: collection, auctions, gold incl. mail and buyouts, `/ask`, recipes, trainers after #40; confirm a derived step is orange), two raid nights, three-contributor loop, real phone
+- in-game trial (beta checklist for 0.2.5: collection, auctions, gold incl. mail and buyouts, `/ask`, recipes, trainers; confirm a derived step is orange), two raid nights, three-contributor loop, real phone
 - officer grant trial
 - two backup read keys: `%USERPROFILE%\.r21\everloot-backup.env` (Supabase secret key) and `everloot-r2-backup.env` (read-only R2 token)
 - signing, AdSense with a certified consent platform, trademark check
