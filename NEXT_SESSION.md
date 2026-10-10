@@ -1,5 +1,20 @@
 # Everloot — resume after 2026-10-05 assessment
 
+## Resume — 2026-10-10 fifth round: #37–#39 merged (live at `ba01307`); #40 open
+
+Carlos approved option B from the #39 design note and the merge of #37–#39 (and Brain #353).
+Production checked after the merges: health 200, `/mcp/public` 200, the recipe cost copy is live.
+#38's quota scope is merged but **off**: it switches on only after Carlos applies its migration
+and sets `EVERLOOT_MCP_QUOTA_SCOPE=mcp`.
+
+| PR | Unit | Notes |
+|---|---|---|
+| #40 | Option B: addon 0.2.5 `trainer_seen` + orange-only steps derived from colours and trainer ranks | zip sha `3999cbd6…`; the planner takes derived steps; `TOOL_KINDS.profession_path` adds `recipe_observed`, `trainer_seen`. Not merged: new release, left for Carlos's review |
+
+Next agent-doable units after #40: training cost in the route's gold (rows already carry
+`costCopper`); then option C (`craft_result`, the yellow skill-up chance) only after the beta
+checklist proves 0.2.3–0.2.5 in the Forever client.
+
 ## Resume — 2026-10-10 fourth round: #31–#35 merged and live at `1e975c8`; #37–#39 open
 
 Merged on Carlos's say-so and verified on everloot.app: `/mcp/public` initializes with no token and
