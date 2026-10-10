@@ -33,8 +33,8 @@ const USAGE = `usage: npm run kb -- <command> --db <path>
 
   A source database and a public release are different artifacts. The serve commands accept only a
   release: an existing file plus its <release>.manifest.json, opened read-only and checked against
-  that manifest. Importers may still default to data/everloot-kb.sqlite; the read and serve
-  commands above never guess a path.
+  that manifest. Importers may still default to data/everloot-kb.sqlite; the read, validate,
+  snapshot and serve commands above never guess a path, and validate/snapshot refuse a missing file.
 
   Run through node directly if a wrapper eats the flag:
     node ./node_modules/tsx/dist/cli.mjs src/cli.ts stats --db data/wowvault-kb.sqlite`;
@@ -43,6 +43,13 @@ const USAGE = `usage: npm run kb -- <command> --db <path>
 function requireDbPath(flags: Map<string, string>, command: string): string {
   const path = flags.get("db")?.trim();
   if (!path) throw new Error(`${command} needs an explicit --db path; no default knowledge database is used`);
+  return path;
+}
+
+/** Diagnostic and export commands read a source database; opening a typo would create an empty one. */
+function requireExistingDbPath(flags: Map<string, string>, command: string): string {
+  const path = requireDbPath(flags, command);
+  if (!existsSync(path)) throw new Error(`${command}: ${path} does not exist; nothing was created`);
   return path;
 }
 
@@ -165,13 +172,16 @@ async function main(): Promise<number> {
     case "validate": {
       // Documented diagnostic, deliberately writable: validate rebuilds the fts5 index, so it must
       // never be pointed at a public release.
-      const problems = validate(openDb(requireDbPath(flags, "validate")));
+      const source = openDb(requireExistingDbPath(flags, "validate"));
+      const { rows } = source.prepare("SELECT count(*) AS rows FROM entities").get() as { rows: number };
+      // A structurally valid empty file is not a ready knowledge base.
+      const problems = rows === 0 ? ["no entities: the knowledge base is empty"] : validate(source);
       console.log(problems.length === 0 ? "ok" : problems.join("\n"));
       return problems.length === 0 ? 0 : 1;
     }
     case "snapshot":
       if (!args[0]) break;
-      console.log(JSON.stringify(snapshot(db(), args[0]), null, 2));
+      console.log(JSON.stringify(snapshot(openDb(requireExistingDbPath(flags, "snapshot")), args[0]), null, 2));
       return 0;
   }
   console.error(USAGE);
