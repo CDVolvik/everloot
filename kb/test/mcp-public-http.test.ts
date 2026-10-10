@@ -64,3 +64,21 @@ test("preflight permits MCP headers and GET is explicitly unsupported", async ()
   expect(preflight.headers.get("access-control-allow-headers")).toContain("MCP-Session-Id");
   expect((await handle(new Request("http://localhost/mcp", { headers: { authorization: "Bearer test-token" } }))).status).toBe(405);
 });
+
+test("a public mount serves its own path with no bearer, and only that path", async () => {
+  const handle = await handler({ bearerToken: null, path: "/mcp/public" });
+  const init = (url: string) => new Request(url, { method: "POST", headers: {
+    "content-type": "application/json", accept: "application/json, text/event-stream",
+  }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize",
+    params: { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "chatgpt", version: "1" } } }) });
+  const ok = await handle(init("http://localhost/mcp/public"));
+  expect(ok.status).toBe(200);
+  expect((await ok.json()).result.serverInfo.name).toBe("everloot-knowledge");
+  expect((await handle(init("http://localhost/mcp"))).status).toBe(404);
+});
+
+test("the bearer mount still refuses a request without the token", async () => {
+  const handle = await handler();
+  const res = await handle(new Request("http://localhost/mcp", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }));
+  expect(res.status).toBe(401);
+});
