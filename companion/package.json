@@ -4,8 +4,12 @@
   "private": true,
   "description": "Everloot desktop companion core: SavedVariables uploader (file bridge and providers come later).",
   "type": "module",
-  "engines": { "node": ">=22" },
-  "bin": { "everloot-companion": "src/cli.ts" },
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "everloot-companion": "src/cli.ts"
+  },
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
@@ -16,5 +20,8 @@
     "tsx": "4.23.15",
     "typescript": "^5.6.3",
     "vitest": "^5.0.3"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.31.0"
   }
 }
