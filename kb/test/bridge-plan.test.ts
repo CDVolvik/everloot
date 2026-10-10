@@ -56,6 +56,8 @@ test("rows match the code and the launch scope", () => {
   expect(row("app.uploader")?.proof).toBe("code");
   expect(row("app.companion")?.proof).toBe("code");
   expect(row("tool.gold_ledger")?.done).not.toMatch(/Left: quest, vendor/);
+  // Addon 0.2.4 records mailed auction sales.
+  expect(row("tool.gold_ledger")?.done).not.toMatch(/Left: auction,/);
   expect(row("mcp.public_https")?.done).toContain("/mcp");
   // Production /mcp answers since 2026-10-10 (#26 R2 release fetch); provider adapters merged in #23.
   expect(row("mcp.public_https")?.proof).toBe("deployed");
