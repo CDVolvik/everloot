@@ -1,8 +1,8 @@
 ## Interface: 70058
 ## Title: Everloot
-## Notes: WoW: Forever data collector — drops, spawns, vendors, guilds, auctions. Answers never play.
+## Notes: WoW: Forever data collector — drops, spawns, vendors, guilds, auctions, recipes. Answers never play.
 ## Author: Everloot
-## Version: 0.2.2
+## Version: 0.2.3
 ## SavedVariables: EverlootDB
 ## OptionalDeps: EverlootAnswers
 ## IconTexture: Interface\Icons\INV_Misc_Coin_02
@@ -13,4 +13,5 @@ modules\guild.lua
 modules\gear.lua
 modules\auctions.lua
 modules\gold.lua
+modules\professions.lua
 modules\ask.lua

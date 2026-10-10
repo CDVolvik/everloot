@@ -160,6 +160,21 @@ export const recipeSeen = base.extend({
   })).min(1).max(20),
 });
 
+/** What a trade-skill or craft window showed: a recipe's colour at the player's rank. Thresholds are inferred server-side. */
+export const recipeObserved = base.extend({
+  kind: z.literal("recipe_observed"),
+  profession: z.string().min(1).max(40),
+  rank: z.number().int().min(1).max(500),
+  maxRank: z.number().int().min(1).max(500).optional(),
+  recipe: z.string().min(1).max(120),
+  difficulty: z.enum(["optimal", "medium", "easy", "trivial"]),
+  productItemId: z.number().int().positive().optional(),
+  reagents: z.array(z.object({
+    item: z.string().min(1).max(80),
+    count: z.number().int().min(1).max(1000),
+  })).max(20),
+});
+
 export const priceSeen = base.extend({
   kind: z.literal("price_seen"),
   item: z.string().min(1).max(80),
@@ -203,6 +218,7 @@ const recordSchemas = {
   auction_scan: auctionScan,
   recipe_seen: recipeSeen,
   price_seen: priceSeen,
+  recipe_observed: recipeObserved,
   gold_snapshot: goldSnapshot,
   money_event: moneyEvent,
 } as const;
@@ -213,7 +229,7 @@ export const ALL_RECORD_KINDS = Object.keys(recordSchemas) as RecordKind[];
 const anyRecord = z.discriminatedUnion("kind", [
   npcSighting, lootWindow, questEvent, vendorList, itemSeen,
   guildSnapshot, raidLockout, attendance, lootAward, gearSnapshot,
-  collectionCatalog, collectionOwned, auctionScan, recipeSeen, priceSeen,
+  collectionCatalog, collectionOwned, auctionScan, recipeSeen, priceSeen, recipeObserved,
   goldSnapshot, moneyEvent,
 ]);
 
