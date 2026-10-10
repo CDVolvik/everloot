@@ -52,6 +52,11 @@ test("rows match the code and the launch scope", () => {
   for (const id of ["site.signin", "site.sharing", "ops.health", "ops.quotas", "app.uploader", "app.companion"]) {
     expect(row(id), id).toBeDefined();
   }
+  // Merged 2026-10-10: companion uploader and /ask bridge (#18-#20), gold quest/vendor/flight (#10), /mcp route (#17).
+  expect(row("app.uploader")?.proof).toBe("code");
+  expect(row("app.companion")?.proof).toBe("code");
+  expect(row("tool.gold_ledger")?.done).not.toMatch(/Left: quest, vendor/);
+  expect(row("mcp.public_https")?.done).toContain("/mcp");
 });
 
 test("loopback HTTP MCP answers initialize and lists everloot_plan", async () => {
