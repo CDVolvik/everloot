@@ -53,18 +53,22 @@ applied at read time and persists for later uploads.
 
 ## Backup and restore
 
-Not configured. There is no independent copy of the R2 bucket or the Supabase tables.
-The Supabase project is on the free plan, which has no point-in-time recovery. Whether
-R21's nightly Supabase dump covers `everloot` is unverified. Owner decision needed:
+Built 2026-10-10 on infrastructure R21 already runs: the nightly **R21 Supabase Backup** task
+(03:00, `D:\R21-Brain\scripts\supabase-backup-run.ps1`). **It is not active yet.** It needs two
+read keys that only Carlos can create, and until they exist the task logs `SKIP` and reports a
+failure every night. That is the truth: Everloot has no backup without them.
 
-- Back up R2 with any S3-compatible sync against
-  `https://<account>.r2.cloudflarestorage.com`, bucket `everloot-uploads`, to storage
-  that is not the same bucket.
-- Export the `uploads` index rows; the waitlist only if retention allows it.
+| Store | How | Key file Carlos creates |
+|---|---|---|
+| Supabase (upload index, waitlist, quotas, auth and publication tables) | the existing row exporter, with per-table completeness checks; `OnlyCopy` because the free plan has no managed backups | `%USERPROFILE%\.r21\everloot-backup.env`: `SUPABASE_URL`, `SUPABASE_SECRET_KEY` (`sb_secret_…`), like the other projects |
+| R2 (raw uploads, the record of truth; the snapshot; the knowledge release) | `web/scripts/backup-r2.mjs` mirrors the bucket into `D:\R21-Backups\everloot\r2`, incremental and MD5-checked, writing `_manifest.json` last | `%USERPROFILE%\.r21\everloot-r2-backup.env`: a **read-only** R2 API token (`R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET=everloot-uploads`) |
 
-Restore order: objects first, then index rows, then `?rebuild=1`. Confirm the
-snapshot's upload count matches the index and `/api/health` is fresh. Rehearse once
-before launch on a scratch bucket and database, never on production.
+After each mirror, `web/scripts/restore-rehearsal.ts` rebuilds the public corpus from the
+mirrored raw uploads in a scratch folder (the site's own local store code) and fails unless
+every event in the backed-up snapshot comes back. Nothing touches production.
+
+Restore order for a real incident: objects first, then index rows, then `?rebuild=1`. Confirm the
+snapshot's upload count matches the index and `/api/health` is fresh.
 
 ## Scale limits measured
 
