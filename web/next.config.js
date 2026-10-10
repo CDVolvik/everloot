@@ -8,6 +8,7 @@ const nextConfig = {
   // The approved knowledge release ships inside the /mcp function only (copied to web/.release, never committed).
   outputFileTracingIncludes: {
     "/mcp": ["./.release/*.sqlite", "./.release/*.manifest.json"],
+    "/mcp/public": ["./.release/*.sqlite", "./.release/*.manifest.json"],
   },
   webpack(config, { isServer }) {
     // kb/src/db.ts would otherwise resolve better-sqlite3 through kb/node_modules and bundle it.

@@ -64,6 +64,23 @@ function range(r: Range): string {
   return r.min === r.max ? `${r.min}` : `${r.min}-${r.max}`;
 }
 
+/** The recipe_thresholds tool and the profession page: published ranges for one profession, optionally one recipe. */
+export function handleRecipeThresholds(args: { profession: string; recipe?: string }, observations: RecipeObservation[]): string {
+  const profession = args.profession.trim();
+  if (!profession) return "Name a profession.";
+  const wanted = args.recipe?.trim().toLowerCase();
+  const rows = inferThresholds(observations).filter((t) =>
+    t.profession.toLowerCase() === profession.toLowerCase() && (!wanted || t.recipe.toLowerCase().includes(wanted)));
+  if (rows.length === 0) {
+    return `No recipe ranges for ${profession} yet. A range appears once ${INDEPENDENT_INSTALLS} installs have opened the ` +
+      "profession window with addon 0.2.3 or later and their colours agree. This is unrecorded, not zero.";
+  }
+  return [
+    `${profession} recipe skill ranges, from the colours players' windows showed. A range, never a guessed exact number.`,
+    ...rows.map(formatThresholds),
+  ].join("\n");
+}
+
 export function formatThresholds(t: RecipeThresholds): string {
   return `${t.recipe} (${t.profession}), ${t.installs} installs: yellow from ${range(t.yellow)}, ` +
     `green from ${range(t.green)}, grey from ${range(t.grey)}.`;
