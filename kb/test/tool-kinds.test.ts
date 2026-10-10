@@ -6,6 +6,7 @@ import { goldFactsFromRecords } from "../src/gold-ledger.js";
 import { guildFactsFromRecords } from "../src/guild-board.js";
 import { fromUploads, TOOL_KINDS, UPLOADS_UNSET } from "../src/mcp-server.js";
 import { professionFactsFromRecords } from "../src/profession-path.js";
+import { recipeObservationsFromRecords } from "../src/recipe-thresholds.js";
 import { worldFactsFromRecords } from "../src/world-pages.js";
 import { ALL_RECORD_KINDS, parseRecords } from "../../web/src/lib/intake.js";
 
@@ -36,6 +37,7 @@ const EVERY_KIND = parseRecords([
 
 const FACTS: Record<keyof typeof TOOL_KINDS, (records: unknown[]) => unknown> = {
   profession_path: professionFactsFromRecords,
+  recipe_thresholds: recipeObservationsFromRecords,
   item_page: itemFactsFromRecords,
   npc_page: worldFactsFromRecords,
   quest_page: worldFactsFromRecords,
