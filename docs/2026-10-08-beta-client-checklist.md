@@ -31,7 +31,9 @@ SavedVariables file before installing. No script here plays the character.
    once by clicking the coins in the open letter and once by shift-clicking a letter in the
    inbox list (auto loot, if Forever has it). Expect one `auction`
    money_event per letter with the letter's copper and no buyer name; a letter from a
-   player produces none. This checks `GetInboxInvoiceInfo` and the mail hooks exist in Forever.
+   player produces none. Send one letter to an alt: expect one `postage` money_event with
+   the price the send window showed and no recipient name. This checks `GetInboxInvoiceInfo`,
+   `GetSendMailPrice` and the mail hooks exist in Forever.
    For `/ask`, type `/ask Who is Thrall?`, then `/reload` with the companion's `bridge`
    running (companion/README.md). Expect the answer and its source in chat once, and an
    `EverlootAnswers` entry in the AddOns list. Check that `/everloot ask …` keeps capitals.
