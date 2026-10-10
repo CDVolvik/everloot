@@ -63,6 +63,18 @@ describe("intake contract", () => {
     expect(r.accepted).toHaveLength(5);
   });
 
+  test("auction scans keep the stack size and per-unit price basis", () => {
+    const result = parseRecords([
+      { ...base, kind: "auction_scan", realm: "Forever", itemId: 1, copper: 25, count: 4, priceBasis: "unit" },
+      { ...base, kind: "auction_scan", realm: "Forever", itemId: 1, copper: 25, count: 0, priceBasis: "unit" },
+      { ...base, kind: "auction_scan", realm: "Forever", itemId: 1, copper: 25, priceBasis: "stack" },
+    ]);
+    expect(result.records).toEqual([
+      expect.objectContaining({ kind: "auction_scan", copper: 25, count: 4, priceBasis: "unit" }),
+    ]);
+    expect(result.receipt.rejected.map((r) => r.index)).toEqual([1, 2]);
+  });
+
   test("a loot window with no items is a kill when it names a source", () => {
     const r = validateUpload({
       addonVersion: "0.1.0",
