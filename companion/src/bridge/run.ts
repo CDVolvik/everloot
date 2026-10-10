@@ -26,8 +26,14 @@ export async function answerPending(options: {
   svFile: string; addonsDir: string; engine: AnswerEngine; store: AnswerStore; now?: () => Date;
 }): Promise<{ answered: number; failed: number }> {
   const now = options.now ?? (() => new Date());
-  const pending = readAsks(readFileSync(options.svFile, "utf8")).filter((a) => !options.store.has(a.id));
-  if (pending.length === 0) return { answered: 0, failed: 0 };
+  const asks = readAsks(readFileSync(options.svFile, "utf8"));
+  const pending = asks.filter((a) => !options.store.has(a.id));
+  if (pending.length === 0) {
+    // An answered question is still queued in game: not read yet, or its checksum failed. Rewriting the
+    // slot addon from the store is safe to repeat and heals a damaged file without a new model call.
+    if (asks.length > 0) writeAnswersAddon(options.addonsDir, options.store.list());
+    return { answered: 0, failed: 0 };
+  }
   const failures: Answer[] = [];
   let answered = 0;
   for (const ask of pending) {
