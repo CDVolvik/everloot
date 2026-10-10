@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { tools } from "@/data/tools";
 import sitemap from "@/app/sitemap";
@@ -19,5 +20,18 @@ describe("working feature discovery", () => {
     expect(urls).not.toContain("/tools/guild-tracker");
     expect(urls).not.toContain("/tools/completionist");
     expect(urls).not.toContain("/tools/profession-planner");
+  });
+  it("claims no feature the addon or server does not have", () => {
+    const page = (path: string) => readFileSync(new URL(`../app/${path}`, import.meta.url), "utf8");
+    const professions = page("tools/professions/page.tsx");
+    // No recipe emitter or perk record kind exists, and farming routes are planned.
+    expect(professions).not.toMatch(/perk tracking|We track which perks|recipe sightings and material drops flow|plug straight into/);
+    expect(tools.find((tool) => tool.slug === "professions")?.description).not.toMatch(/perk/i);
+    // Opt-out needs a verified character grant; not any character.
+    expect(page("privacy/page.tsx")).not.toContain("any character can opt out");
+    // score_v1 has no published weights, and /tools/guild-tracker only redirects.
+    const guild = page("guilds/[slug]/page.tsx");
+    expect(guild).not.toContain("the score");
+    expect(guild).not.toContain('href="/tools/guild-tracker"');
   });
 });

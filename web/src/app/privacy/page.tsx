@@ -53,8 +53,9 @@ export default function PrivacyPage() {
           <strong>Uploads:</strong> files you send on the upload page
           (addon records plus a random install id — no account, no character
           login). Open-world facts publish only after matching install reports
-          agree. Install IDs are not proof of independent people. Guild data publishes only through an authorized officer upload and any
-          character can opt out. Uploads build the public database; we never
+          agree. Install IDs are not proof of independent people. Guild data publishes only through an authorized officer upload. A
+          character owner with a verified sharing grant can opt out on the upload
+          page; anyone else can ask us by email (below). Uploads build the public database; we never
           sell them.
         </li>
         <li>
