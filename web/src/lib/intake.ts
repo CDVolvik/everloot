@@ -142,6 +142,9 @@ export const auctionScan = base.extend({
   realm: z.string().min(2).max(60),
   itemId: z.number().int().positive(),
   copper: z.number().int().nonnegative(),
+  // Addon 0.2.2+: copper is per unit of a `count`-sized stack. 0.2.1 rows omit both and stored the stack total.
+  count: z.number().int().min(1).max(1000).optional(),
+  priceBasis: z.literal("unit").optional(),
 });
 
 export const recipeSeen = base.extend({

@@ -1,4 +1,4 @@
-# Everloot 0.2.1 — beta collection check
+# Everloot 0.2.2 — beta collection check
 
 Lua 5.1 stubs pass; the Forever beta client has not been tested. Keep the existing
 SavedVariables file before installing. No script here plays the character.
@@ -20,7 +20,10 @@ SavedVariables file before installing. No script here plays the character.
 6. Open a vendor; verify copper prices and limited stock. In a guild, request the
    roster and verify rank, level, class and online status locally. Test saved raid
    lockouts and attendance over two raid nights. Quest levels and raid loot awards
-   remain uncaptured; auctions require the explicit toggle.
+   remain uncaptured.
+   For auctions, run `/everloot auctions on`, `/reload`, and browse a search at the
+   auction house. Each row should hold the stack size and a per-unit copper price;
+   bid-only listings (no buyout) produce no row. Compare two listings by hand.
 7. Log out so SavedVariables flush. Preview the file at `/upload` before sending.
    Keep named sharing off unless actual owner/officer authority is verified and
    the scoped grant has been issued. Upload, record receipts and repeat the same

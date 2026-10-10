@@ -1,5 +1,6 @@
 -- Everloot auction collector. Off unless the player enables the auctions toggle.
 -- Records buyouts from the list the player already opened. No external price feed.
+-- Copper is per unit: a stack's buyout divided by its size. Bid-only listings have no price.
 
 local E = Everloot
 
@@ -15,12 +16,14 @@ local function scan()
   for i = 1, math.min(n, 50) do
     local link = GetAuctionItemLink("list", i)
     local itemId = link and tonumber(link:match("item:(%d+)"))
-    local buyout = select(10, GetAuctionItemInfo("list", i))
-    if itemId and type(buyout) == "number" and buyout >= 0 then
+    local _, _, count, _, _, _, _, _, _, buyout = GetAuctionItemInfo("list", i)
+    if itemId and type(count) == "number" and count >= 1 and type(buyout) == "number" and buyout > 0 then
+      count = math.floor(count)
       E:Store("auction_scan", {
         installId = EverlootDB.installId,
         capturedAt = date("!%Y-%m-%dT%H:%M:%SZ"),
-        realm = realm, itemId = itemId, copper = math.floor(buyout),
+        realm = realm, itemId = itemId, count = count,
+        copper = math.floor(buyout / count), priceBasis = "unit",
       })
       stored = stored + 1
     end
