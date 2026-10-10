@@ -19,11 +19,26 @@ export const SERVER_NAME = "everloot-knowledge";
 export const SERVER_VERSION = "0.7.2";
 
 export const UPLOADS_UNSET =
-  "Uploads are not connected. EVERLOOT_UPLOADS is unset, so this is not a measured zero.";
+  "Uploads are not connected. Neither EVERLOOT_PUBLIC_CORPUS_URL nor EVERLOOT_UPLOADS is set, so this is not a measured zero.";
+
+/** Record kinds each gameplay tool reads. tool-kinds.test.ts checks them against the fact functions. */
+export const TOOL_KINDS = {
+  profession_path: ["recipe_seen", "price_seen"],
+  item_page: ["loot", "item_seen", "npc_sighting"],
+  npc_page: ["npc_sighting", "quest", "vendor"],
+  quest_page: ["npc_sighting", "quest", "vendor"],
+  vendor_page: ["npc_sighting", "quest", "vendor"],
+  collection_gap: ["collection_catalog", "collection_owned"],
+  guild_board: ["guild_snapshot", "raid_lockout", "attendance", "loot_award", "gear_snapshot"],
+  auction_history: ["auction_scan"],
+  gold_ledger: ["gold_snapshot", "money_event"],
+} as const satisfies Record<string, readonly string[]>;
 
 /** Prefer the web's sanitized current view; raw local files can supply anonymous facts only. */
-export function fromUploads(render: (records: unknown[]) => string): string | Promise<string> {
-  const url = process.env.EVERLOOT_PUBLIC_CORPUS_URL?.trim();
+export function fromUploads(render: (records: unknown[]) => string, kinds?: readonly string[]): string | Promise<string> {
+  const base = process.env.EVERLOOT_PUBLIC_CORPUS_URL?.trim();
+  // Asking for only the kinds a tool reads keeps the body under the byte ceiling for longer.
+  const url = base && kinds ? `${base}${base.includes("?") ? "&" : "?"}kinds=${kinds.join(",")}` : base;
   if (url) return fromPublicCorpus(url, render);
   const dir = process.env.EVERLOOT_UPLOADS?.trim();
   if (!dir) return UPLOADS_UNSET;
@@ -158,7 +173,7 @@ export function createKnowledgeServer(db: DB): McpServer {
           text: await fromUploads((records) => {
             const facts = professionFactsFromRecords(records);
             return handleProfessionPath(args, facts.sightings, facts.prices);
-          }),
+          }, TOOL_KINDS.profession_path),
         }],
       };
     },
@@ -173,7 +188,7 @@ export function createKnowledgeServer(db: DB): McpServer {
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async (args) => ({
-      content: [{ type: "text" as const, text: await fromUploads((records) => handleItemPage(args, itemFactsFromRecords(records))) }],
+      content: [{ type: "text" as const, text: await fromUploads((records) => handleItemPage(args, itemFactsFromRecords(records)), TOOL_KINDS.item_page) }],
     }),
   );
   server.registerTool(
@@ -186,7 +201,7 @@ export function createKnowledgeServer(db: DB): McpServer {
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async (args) => ({
-      content: [{ type: "text" as const, text: await fromUploads((records) => handleNpcPage(args, worldFactsFromRecords(records))) }],
+      content: [{ type: "text" as const, text: await fromUploads((records) => handleNpcPage(args, worldFactsFromRecords(records)), TOOL_KINDS.npc_page) }],
     }),
   );
   server.registerTool(
@@ -199,7 +214,7 @@ export function createKnowledgeServer(db: DB): McpServer {
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async (args) => ({
-      content: [{ type: "text" as const, text: await fromUploads((records) => handleQuestPage(args, worldFactsFromRecords(records))) }],
+      content: [{ type: "text" as const, text: await fromUploads((records) => handleQuestPage(args, worldFactsFromRecords(records)), TOOL_KINDS.quest_page) }],
     }),
   );
   server.registerTool(
@@ -212,7 +227,7 @@ export function createKnowledgeServer(db: DB): McpServer {
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async (args) => ({
-      content: [{ type: "text" as const, text: await fromUploads((records) => handleVendorPage(args, worldFactsFromRecords(records))) }],
+      content: [{ type: "text" as const, text: await fromUploads((records) => handleVendorPage(args, worldFactsFromRecords(records)), TOOL_KINDS.vendor_page) }],
     }),
   );
   server.registerTool(
@@ -228,7 +243,7 @@ export function createKnowledgeServer(db: DB): McpServer {
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async (args) => ({
-      content: [{ type: "text" as const, text: await fromUploads((records) => handleCollectionGap(args, collectionFactsFromRecords(records))) }],
+      content: [{ type: "text" as const, text: await fromUploads((records) => handleCollectionGap(args, collectionFactsFromRecords(records)), TOOL_KINDS.collection_gap) }],
     }),
   );
   server.registerTool(
@@ -244,7 +259,7 @@ export function createKnowledgeServer(db: DB): McpServer {
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async (args) => ({
-      content: [{ type: "text" as const, text: await fromUploads((records) => handleGuildBoard(args, guildFactsFromRecords(records))) }],
+      content: [{ type: "text" as const, text: await fromUploads((records) => handleGuildBoard(args, guildFactsFromRecords(records)), TOOL_KINDS.guild_board) }],
     }),
   );
   server.registerTool(
@@ -260,7 +275,7 @@ export function createKnowledgeServer(db: DB): McpServer {
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async (args) => ({
-      content: [{ type: "text" as const, text: await fromUploads((records) => handleAuctionHistory(args, auctionSightingsFromRecords(records))) }],
+      content: [{ type: "text" as const, text: await fromUploads((records) => handleAuctionHistory(args, auctionSightingsFromRecords(records)), TOOL_KINDS.auction_history) }],
     }),
   );
   server.registerTool(
@@ -281,7 +296,7 @@ export function createKnowledgeServer(db: DB): McpServer {
         text: await fromUploads((records) => {
           const facts = goldFactsFromRecords(records);
           return handleGoldLedger(args, facts.snapshots, facts.events);
-        }),
+        }, TOOL_KINDS.gold_ledger),
       }],
     }),
   );
