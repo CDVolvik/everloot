@@ -30,9 +30,18 @@ export interface Corpus {
   /** Set when the read failed. An empty `records` array is then not a count of uploads. */
   unreachable?: boolean;
   legacyRecords?: number;
+  /**
+   * When these records were current: the snapshot's build time, or the read time for a live read.
+   * Null when a snapshot carries no valid time — its age is then unrecorded, never "now".
+   */
+  dataAsOf?: string | null;
 }
 
-interface RawCorpus { uploads: number; state: CorpusState; unreachable?: boolean }
+interface RawCorpus { uploads: number; state: CorpusState; unreachable?: boolean; dataAsOf: string | null }
+
+function validTime(value: string): string | null {
+  return value && Number.isFinite(Date.parse(value)) ? value : null;
+}
 
 export interface SnapshotHealth {
   status: "fresh" | "stale" | "missing" | "unavailable" | "local";
@@ -181,8 +190,8 @@ export function createUploadStore(opts: {
       files = (await readdir(dir)).filter((f) => f.endsWith(".json"));
     } catch (err) {
       const code = (err as NodeJS.ErrnoException).code;
-      if (code === "ENOENT") return { uploads: 0, state: mergeCorpus(undefined, []) };
-      return { uploads: 0, state: mergeCorpus(undefined, []), unreachable: true };
+      if (code === "ENOENT") return { uploads: 0, state: mergeCorpus(undefined, []), dataAsOf: now().toISOString() };
+      return { uploads: 0, state: mergeCorpus(undefined, []), unreachable: true, dataAsOf: null };
     }
     const batches: { raw: unknown[]; grants: string[] }[] = [];
     for (const f of files) {
@@ -194,7 +203,7 @@ export function createUploadStore(opts: {
       }
     }
     const state = mergeCorpusBatches(undefined, batches);
-    return { uploads: files.length, state };
+    return { uploads: files.length, state, dataAsOf: now().toISOString() };
   }
 
   async function listIndex(since?: string): Promise<IndexRow[]> {
@@ -290,11 +299,12 @@ export function createUploadStore(opts: {
 
   async function readCloud(): Promise<RawCorpus> {
     const snapshot = await readSnapshot();
-    if (snapshot) return { uploads: snapshot.uploads, state: stateOf(snapshot) };
+    if (snapshot) return { uploads: snapshot.uploads, state: stateOf(snapshot), dataAsOf: validTime(snapshot.generatedAt) };
+    const readAt = now().toISOString();
     const keys = (await listIndex()).map((r) => r.object_key);
     const read = await readObjects(keys);
     if (read.missed) throw new Error("upload object unreadable");
-    return { uploads: keys.length, state: read.state };
+    return { uploads: keys.length, state: read.state, dataAsOf: readAt };
   }
 
   /**
@@ -349,7 +359,12 @@ export function createUploadStore(opts: {
       if (corpus.unreachable) throw new Error("corpus unreachable");
       cached = { at: Date.now(), corpus };
       const records = opts.publication ? await opts.publication(corpus.state) : publicRecords(corpus.state);
-      return { uploads: corpus.uploads, records, ...(corpus.state.legacyRecords ? { legacyRecords: corpus.state.legacyRecords } : {}) };
+      return {
+        uploads: corpus.uploads,
+        records,
+        ...(corpus.state.legacyRecords ? { legacyRecords: corpus.state.legacyRecords } : {}),
+        dataAsOf: corpus.dataAsOf,
+      };
     } catch {
       return { uploads: 0, records: [], unreachable: true };
     }

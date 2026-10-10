@@ -125,7 +125,7 @@ describe("upload store, cloud mode", () => {
     ]);
     const store = createUploadStore({ cloud, localDir: "unused", fetch: fn, now, cacheMs: 60_000 });
     const corpus = await store.loadCorpus();
-    expect(corpus).toEqual({ uploads: 2, records: [lootRow(), questRow()] });
+    expect(corpus).toEqual({ uploads: 2, records: [lootRow(), questRow()], dataAsOf: "2026-10-04T12:00:00.000Z" });
 
     const before = calls.length;
     await store.loadCorpus();
@@ -228,8 +228,16 @@ describe("corpus snapshot", () => {
       [SNAP, "GET", () => Response.json({ generatedAt: "x", uploads: 5, records: [lootRow()], lastReceivedAt: null, lastIds: [] })],
     ]);
     const store = createUploadStore({ cloud, localDir: "unused", fetch: fn, now });
-    expect(await store.loadCorpus()).toEqual({ uploads: 5, records: [lootRow()] });
+    expect(await store.loadCorpus()).toEqual({ uploads: 5, records: [lootRow()], dataAsOf: null });
     expect(calls).toHaveLength(1);
+  });
+
+  test("a snapshot read reports when the snapshot was built, not when the page asked", async () => {
+    const { fn } = fakeFetch([
+      [SNAP, "GET", () => Response.json({ generatedAt: "2026-10-04T11:50:00.000Z", uploads: 1, records: [lootRow()], lastReceivedAt: null, lastIds: [] })],
+    ]);
+    const store = createUploadStore({ cloud, localDir: "unused", fetch: fn, now });
+    expect((await store.loadCorpus()).dataAsOf).toBe("2026-10-04T11:50:00.000Z");
   });
 });
 
@@ -249,7 +257,7 @@ describe("corpus normalization", () => {
     writeFileSync(join(dir, "uploads", "u-1.json"), JSON.stringify({ addonVersion: "0.1.0", records: [lootRow(), ...badRows] }));
     const store = createUploadStore({ cloud: null, localDir: dir, now, cacheMs: 0 });
 
-    expect(await store.loadCorpus()).toEqual({ uploads: 1, records: [lootRow()] });
+    expect(await store.loadCorpus()).toEqual({ uploads: 1, records: [lootRow()], dataAsOf: "2026-10-04T12:00:00.000Z" });
   });
 
   test("nested extra fields are stripped from a stored object", async () => {
@@ -259,7 +267,7 @@ describe("corpus normalization", () => {
     writeFileSync(join(dir, "uploads", "u-1.json"), JSON.stringify({ addonVersion: "0.1.0", records: [nested] }));
     const store = createUploadStore({ cloud: null, localDir: dir, now, cacheMs: 0 });
 
-    expect(await store.loadCorpus()).toEqual({ uploads: 1, records: [lootRow()] });
+    expect(await store.loadCorpus()).toEqual({ uploads: 1, records: [lootRow()], dataAsOf: "2026-10-04T12:00:00.000Z" });
   });
 
   test("an existing snapshot is normalized on read and stays normalized in the cache", async () => {
@@ -271,8 +279,8 @@ describe("corpus normalization", () => {
     ]);
     const store = createUploadStore({ cloud, localDir: "unused", fetch: fn, now, cacheMs: 60_000 });
 
-    expect(await store.loadCorpus()).toEqual({ uploads: 1, records: [lootRow()] });
-    expect(await store.loadCorpus()).toEqual({ uploads: 1, records: [lootRow()] });
+    expect(await store.loadCorpus()).toEqual({ uploads: 1, records: [lootRow()], dataAsOf: null });
+    expect(await store.loadCorpus()).toEqual({ uploads: 1, records: [lootRow()], dataAsOf: null });
     expect(calls).toHaveLength(1);
   });
 
@@ -344,12 +352,12 @@ describe("upload store, local mode", () => {
     const dir = mkdtempSync(join(tmpdir(), "everloot-store-"));
     const store = createUploadStore({ cloud: null, localDir: dir, now, cacheMs: 0 });
     expect(await store.putUpload("u-1", "install-1", payload)).toBe(true);
-    expect(await store.loadCorpus()).toEqual({ uploads: 1, records: payload.records });
+    expect(await store.loadCorpus()).toEqual({ uploads: 1, records: payload.records, dataAsOf: "2026-10-04T12:00:00.000Z" });
   });
 
   test("a missing local directory is empty, not unreachable", async () => {
     const dir = join(mkdtempSync(join(tmpdir(), "everloot-store-")), "missing");
     const store = createUploadStore({ cloud: null, localDir: dir, now, cacheMs: 0 });
-    expect(await store.loadCorpus()).toEqual({ uploads: 0, records: [] });
+    expect(await store.loadCorpus()).toEqual({ uploads: 0, records: [], dataAsOf: "2026-10-04T12:00:00.000Z" });
   });
 });

@@ -10,9 +10,11 @@ export interface CorpusStats {
   records: number;
   /** True when the store could not be read. The numbers beside it are not a count. */
   unreachable: boolean;
+  /** When the uploads behind these numbers were current; null when unrecorded. */
+  dataAsOf: string | null;
 }
 
-const UNREAD: CorpusStats = { uploads: 0, lootWindows: 0, records: 0, unreachable: true };
+const UNREAD: CorpusStats = { uploads: 0, lootWindows: 0, records: 0, unreachable: true, dataAsOf: null };
 
 /** Every stored upload, loot windows pulled out, rolled up. */
 export async function computeRollups(): Promise<RollupResult & { stats: CorpusStats }> {
@@ -24,7 +26,13 @@ export async function computeRollups(): Promise<RollupResult & { stats: CorpusSt
     rates,
     measuredZeros,
     rejected,
-    stats: { uploads: corpus.uploads, lootWindows: windows.length, records: corpus.records.length, unreachable: false },
+    stats: {
+      uploads: corpus.uploads,
+      lootWindows: windows.length,
+      records: corpus.records.length,
+      unreachable: false,
+      dataAsOf: corpus.dataAsOf ?? null,
+    },
   };
 }
 
