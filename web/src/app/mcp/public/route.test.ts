@@ -1,0 +1,62 @@
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
+import { openDb } from "../../../../../kb/src/db";
+import { replaceSourceRows } from "../../../../../kb/src/entities";
+import { snapshot } from "../../../../../kb/src/snapshot";
+
+const deps = vi.hoisted(() => ({ mcp: vi.fn(), loadCorpus: vi.fn() }));
+vi.mock("@/lib/intake-quota", () => ({ intakeQuota: { mcp: deps.mcp } }));
+vi.mock("@/lib/upload-store", () => ({ uploadStore: { loadCorpus: deps.loadCorpus } }));
+
+let release = "";
+beforeAll(async () => {
+  const dir = mkdtempSync(join(tmpdir(), "everloot-public-mcp-"));
+  const source = openDb(join(dir, "source.sqlite"));
+  await replaceSourceRows(source, "curated", ["lore_page"], [{ kind: "lore_page", extId: "1", name: "Thrall",
+    body: "Warchief of the Horde", gameVersion: "lore", sourceUrl: "https://example.test/thrall", retrievedAt: "2023-11-13" }]);
+  release = join(dir, "release", "release.sqlite");
+  snapshot(source, release, new Date("2026-10-10T00:00:00Z"));
+  source.close();
+});
+beforeEach(() => {
+  deps.mcp.mockReset().mockResolvedValue({ allowed: true, retryAfter: 0 });
+  deps.loadCorpus.mockReset().mockResolvedValue({ uploads: 0, records: [], dataAsOf: "2026-10-10T06:30:00.000Z" });
+});
+afterEach(() => { vi.unstubAllEnvs(); vi.resetModules(); });
+
+async function route(env: Record<string, string>) {
+  for (const [k, v] of Object.entries(env)) vi.stubEnv(k, v);
+  return import("./route");
+}
+const initialize = () => new Request("https://everloot.app/mcp/public", {
+  method: "POST",
+  headers: { "content-type": "application/json", accept: "application/json, text/event-stream" },
+  body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize",
+    params: { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "chatgpt", version: "1" } } }),
+});
+
+test("closed unless EVERLOOT_MCP_PUBLIC=1", async () => {
+  const { POST } = await route({ KB_SNAPSHOT_PATH: release, EVERLOOT_MCP_PUBLIC: "" });
+  expect((await POST(initialize())).status).toBe(404);
+  expect(deps.mcp).not.toHaveBeenCalled();
+});
+
+test("open: no bearer needed, the shared per-IP quota is consumed first", async () => {
+  const { POST } = await route({ KB_SNAPSHOT_PATH: release, EVERLOOT_MCP_PUBLIC: "1", EVERLOOT_MCP_TOKEN: "" });
+  const res = await POST(initialize());
+  expect(res.status).toBe(200);
+  expect((await res.json()).result.serverInfo.name).toBe("everloot-knowledge");
+  expect(deps.mcp).toHaveBeenCalledTimes(1);
+});
+
+test("a spent quota is 429 with retry-after; a quota outage fails closed", async () => {
+  deps.mcp.mockResolvedValueOnce({ allowed: false, retryAfter: 90 });
+  const { POST } = await route({ KB_SNAPSHOT_PATH: release, EVERLOOT_MCP_PUBLIC: "1" });
+  const limited = await POST(initialize());
+  expect(limited.status).toBe(429);
+  expect(limited.headers.get("retry-after")).toBe("90");
+  deps.mcp.mockRejectedValueOnce(new Error("Quota storage unavailable"));
+  expect((await POST(initialize())).status).toBe(503);
+});
