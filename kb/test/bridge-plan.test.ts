@@ -59,6 +59,10 @@ test("rows match the code and the launch scope", () => {
   // Addon 0.2.4 records mailed auction sales.
   expect(row("tool.gold_ledger")?.done).not.toMatch(/Left: auction,/);
   expect(row("mcp.public_https")?.done).toContain("/mcp");
+  // Production /mcp answers since 2026-10-10 (#26 R2 release fetch); provider adapters merged in #23.
+  expect(row("mcp.public_https")?.proof).toBe("deployed");
+  expect(row("mcp.public_https")?.done).not.toMatch(/answers 503/);
+  expect(row("app.companion")?.done).not.toMatch(/adapters are next/);
 });
 
 test("loopback HTTP MCP answers initialize and lists everloot_plan", async () => {
