@@ -4,12 +4,15 @@
 
 **Everloot:** a WoW: Forever data companion. It has four parts: an addon that collects what the player sees; everloot.app, which publishes only corroborated facts; an MCP knowledge server; and a desktop companion. Beta closes 10/21, CurseForge ~10/24, Forever launch 11/04. Free services only. Merging to `main` deploys production.
 
-**Live at `1e975c8` (PRs #1–#35 merged on Carlos's say-so on 2026-10-10, production verified):**
+**Live at `ba01307` (PRs #1–#39 merged on Carlos's say-so on 2026-10-10, production verified):**
 - Addon 0.2.4 (live zip sha `6f031160…`): per-unit auctions; gold from loot, quests, vendors, flights,
   net mailed auction sales, postage and buyouts; `/ask`; recipe colours (`recipe_observed`).
 - **Public read-only MCP** at `everloot.app/mcp/public` (#31): no sign-in, 14 tools, rate-limited.
 - Recipe skill ranges: `recipe_thresholds` tool and `/tools/professions` section (#32).
-- Profession path prices reagents from per-unit auction scans (#33).
+- Profession path prices reagents from per-unit auction scans (#33); recipe ranges show agreed
+  reagents and an estimated cost per craft (#37).
+- Public MCP quota scope code (#38), **off** until the migration is applied and the flag set.
+- Recipe windows design note (#39); Carlos chose option B.
 - R2 backup mirror and restore rehearsal scripts (#27); generated social preview card (#29).
 - Data age on pages and APIs; per-tool `?kinds=` corpus reads; batched snapshot replay (cold read 54 ms at 10k records).
 - Honest copy, the tracker's Proven column, waitlist on the shared quota, recovery runbook.
@@ -21,18 +24,18 @@
 
 **In `companion/` (code, not packaged):** the uploader, the `/ask` file bridge, and LLM provider adapters with fallback.
 
-**Open PRs (2026-10-10, fourth round):**
-- #37 recipe ranges show agreed reagents and an estimated cost per craft
-- #38 public MCP gets its own quota scope; safe to merge before the migration (flag-gated)
-- #39 design note: recipe windows and points. **Needs Carlos's pick (A/B/C)** before routes can fill.
+**Open PR (2026-10-10, fifth round), CI green:**
+- #40 option B: addon 0.2.5 `trainer_seen` capture, and orange-only route steps derived from recipe
+  colours and trainer ranks, so routes can fill from collected data. Awaiting Carlos's review/merge.
 
 **Waiting on Carlos:**
-- in-game trial (beta checklist for 0.2.4: collection, auctions, gold incl. mail and buyouts, `/ask`, recipes), two raid nights, three-contributor loop, real phone
+- review and merge #40
+- in-game trial (beta checklist: collection, auctions, gold incl. mail and buyouts, `/ask`, recipes, trainers after #40; confirm a derived step is orange), two raid nights, three-contributor loop, real phone
 - officer grant trial
 - two backup read keys: `%USERPROFILE%\.r21\everloot-backup.env` (Supabase secret key) and `everloot-r2-backup.env` (read-only R2 token)
 - signing, AdSense with a certified consent platform, trademark check
 - submit `https://everloot.app/mcp/public` (auth: none) to the ChatGPT apps directory
-- after #38: apply `20261010120000_mcp_quota_scope.sql`, then set `EVERLOOT_MCP_QUOTA_SCOPE=mcp` in Vercel Production
+- apply `20261010120000_mcp_quota_scope.sql` (merged in #38), then set `EVERLOOT_MCP_QUOTA_SCOPE=mcp` in Vercel Production
 
 Trial cleanup done 2026-10-10: both trial previews removed (the #17 one still answered `/mcp` with the preview token), the preview token deleted, the branch-scoped Preview variables removed.
 
