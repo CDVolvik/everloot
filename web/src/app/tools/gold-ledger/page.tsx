@@ -36,9 +36,9 @@ export default async function GoldLedgerPage(
         <p className="uppercase tracking-[0.2em] text-xs text-gold-500/80">WoW: Forever · gold</p>
         <h1 className="font-display text-3xl sm:text-4xl font-bold text-parchment-100 tracking-tight">Gold ledger</h1>
         <p className="text-sm text-parchment-100/70 max-w-2xl">
-          Peak gold and the money events that character uploaded. Loot is the line this addon records
-          today. Quest rewards, vendor sales, auction sales, spending, and gameplay stay unrecorded
-          until an event is seen. The difference is unrecorded. This is the same answer as the gold_ledger tool.
+          Peak gold and the money events that character uploaded. Addon 0.2.2 records loot, quest
+          rewards, vendor sales and flight costs. Auction sales, mail, other spending, and gameplay stay
+          unrecorded until an event is seen. The difference is unrecorded. This is the same answer as the gold_ledger tool.
         </p>
       </header>
 
