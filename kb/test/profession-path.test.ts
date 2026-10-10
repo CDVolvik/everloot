@@ -192,3 +192,39 @@ test("the last craft pays for all its reagents even when it exceeds the target s
   expect(path.reagents).toEqual([{ item: "Peacebloom", count: 4 }]);
   expect(path.copper).toBe(400);
 });
+
+test("per-unit auction scans price reagents by the item name players' clients reported", () => {
+  const scan = (installId: string, copper: number, capturedAt: string, extra: Record<string, unknown> = {}) =>
+    ({ kind: "auction_scan", installId, capturedAt, realm: "Forever", itemId: 2447, copper, count: 5, priceBasis: "unit", ...extra });
+  const facts = professionFactsFromRecords([
+    scan("a", 90, "2026-10-09T10:00:00Z"),
+    scan("a", 80, "2026-10-09T09:00:00Z"),
+    scan("b", 100, "2026-10-09T10:00:00Z"),
+    scan("c", 120, "2026-10-09T10:00:00Z", { realm: "Other" }),
+    { kind: "auction_scan", installId: "d", capturedAt: "2026-10-09T10:00:00Z", realm: "Forever", itemId: 2447, copper: 500 },
+    { kind: "auction_scan", installId: "e", capturedAt: "2026-10-09T10:00:00Z", realm: "Forever", itemId: 9999, copper: 7, priceBasis: "unit" },
+    { kind: "item_seen", installId: "a", itemId: 2447, name: "Peacebloom" },
+    { kind: "item_seen", installId: "b", itemId: 2447, name: "Peacebloom" },
+    { kind: "item_seen", installId: "c", itemId: 2447, name: "Pacebloom" },
+  ]);
+  // Latest scan per install; 0.2.1 stack totals and items no client named are left out.
+  expect(facts.prices).toEqual([
+    { installId: "a", item: "Peacebloom", copper: 90 },
+    { installId: "b", item: "Peacebloom", copper: 100 },
+    { installId: "c", item: "Peacebloom", copper: 120 },
+  ]);
+  const rows = ["a", "b", "c"].map((installId) => sight(installId, "Minor Healing Potion", [{ item: "Peacebloom", count: 2 }]));
+  const path = professionPath(rows, facts.prices, { profession: "Alchemy", fromSkill: 1, toSkill: 2 });
+  expect(path.copper).toBe(200);
+});
+
+test("an install's own price report and its auction scan of the same item count once", () => {
+  const facts = professionFactsFromRecords([
+    { kind: "price_seen", installId: "a", item: "Peacebloom", copper: 100 },
+    { kind: "auction_scan", installId: "a", capturedAt: "2026-10-09T10:00:00Z", realm: "Forever", itemId: 2447, copper: 90, priceBasis: "unit" },
+    { kind: "item_seen", installId: "a", itemId: 2447, name: "Peacebloom" },
+  ]);
+  const path = professionPath(["a", "b", "c"].map((id) => sight(id, "Minor Healing Potion", [{ item: "Peacebloom", count: 1 }])),
+    facts.prices, { profession: "Alchemy", fromSkill: 1, toSkill: 2 });
+  expect(path.copper).toBeNull();
+});
