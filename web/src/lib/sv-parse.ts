@@ -147,6 +147,12 @@ export interface EverlootFile {
   records: Array<Record<string, unknown>>;
 }
 
+/** The whole EverlootDB table as plain values, for readers that need more than the records (the /ask bridge). */
+export function parseEverlootTable(text: string): Record<string, unknown> {
+  const plain = toPlain(new Parser(text).parse());
+  return Array.isArray(plain) ? {} : (plain as Record<string, unknown>);
+}
+
 /** Parse Everloot.lua text into an intake-ready payload. Throws LuaParseError. */
 export function parseEverlootLua(text: string): EverlootFile {
   const root = new Parser(text).parse();
