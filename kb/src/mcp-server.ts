@@ -10,8 +10,8 @@ import { itemFactsFromRecords } from "./drop-rollup.js";
 import { handleItemPage } from "./item-page.js";
 import { loadUploadRecords } from "./load-uploads.js";
 import { parseRecords } from "../../web/src/lib/intake.js";
-import { handleProfessionPath, professionFactsFromRecords } from "./profession-path.js";
-import { handleRecipeThresholds, recipeFactsFromRecords } from "./recipe-thresholds.js";
+import { handleProfessionPath } from "./profession-path.js";
+import { handleRecipeThresholds, pathFactsFromRecords, recipeFactsFromRecords } from "./recipe-thresholds.js";
 import { handleNpcPage, handleQuestPage, handleVendorPage, worldFactsFromRecords } from "./world-pages.js";
 import type { DB } from "./db.js";
 import { getByName, getEntity, search, type SearchHit } from "./search.js";
@@ -24,7 +24,7 @@ export const UPLOADS_UNSET =
 
 /** Record kinds each gameplay tool reads. tool-kinds.test.ts checks them against the fact functions. */
 export const TOOL_KINDS = {
-  profession_path: ["recipe_seen", "price_seen", "auction_scan", "item_seen"],
+  profession_path: ["recipe_seen", "price_seen", "auction_scan", "item_seen", "recipe_observed", "trainer_seen"],
   recipe_thresholds: ["recipe_observed", "price_seen", "auction_scan", "item_seen"],
   item_page: ["loot", "item_seen", "npc_sighting"],
   npc_page: ["npc_sighting", "quest", "vendor"],
@@ -185,7 +185,7 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader }
     {
       title: "Profession leveling path",
       description:
-        "Leveling path for one Forever profession from Everloot uploads. A step exists only after 3 installs agree. Gold exists only after 3 price uploads agree. No copied guide. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.",
+        "Leveling path for one Forever profession from Everloot uploads. A step exists only after 3 installs agree: on a reported recipe, or on the recipe colours that make it orange (a guaranteed skill-up), starting at the trainer's required rank. Gold exists only after 3 price uploads agree. No copied guide. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.",
       inputSchema: {
         profession: z.string().describe("Profession name, such as Alchemy."),
         fromSkill: z.number().int().min(1).max(500).default(1).describe("Skill the character has now."),
@@ -198,8 +198,8 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader }
         content: [{
           type: "text" as const,
           text: await read((records) => {
-            const facts = professionFactsFromRecords(records);
-            return handleProfessionPath(args, facts.sightings, facts.prices);
+            const facts = pathFactsFromRecords(records);
+            return handleProfessionPath(args, facts.sightings, facts.prices, facts.derived);
           }, TOOL_KINDS.profession_path),
         }],
       };

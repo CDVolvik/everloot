@@ -1,4 +1,4 @@
-# Everloot 0.2.4 — beta collection check
+# Everloot 0.2.5 — beta collection check
 
 Lua 5.1 stubs pass; the Forever beta client has not been tested. Keep the existing
 SavedVariables file before installing. No script here plays the character.
@@ -44,6 +44,12 @@ SavedVariables file before installing. No script here plays the character.
    one `recipe_observed` row per recipe with the colour the window showed at your rank and its
    reagents; headers produce none. Reopening at the same rank adds nothing; skill up once and
    reopen to see new rows. Write down two colours by hand to compare.
+   For trainers, open your profession trainer. Expect one `trainer_seen` row per recipe it
+   lists, with the required rank and the training cost the window showed; class spells and
+   headers produce none, and reopening adds nothing. Write down two required ranks by hand.
+   Then open the profession window at a rank inside a route step `/tools/professions` shows
+   and confirm that recipe is orange. This checks `GetTrainerServiceSkillReq` and
+   `GetTrainerServiceCost` exist in Forever and that orange-only steps match the client.
 7. Log out so SavedVariables flush. Preview the file at `/upload` before sending.
    Keep named sharing off unless actual owner/officer authority is verified and
    the scoped grant has been issued. Upload, record receipts and repeat the same
