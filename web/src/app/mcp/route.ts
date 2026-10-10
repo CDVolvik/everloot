@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { createMcpHttpHandler } from "../../../../kb/src/mcp-http-server";
 import { openPublicSnapshot } from "../../../../kb/src/public-snapshot";
+import { uploadStore } from "@/lib/upload-store";
 
 /**
  * Public MCP on the site's own deployment (option A in docs/2026-10-09-public-mcp-hosting-options.md).
@@ -37,6 +38,11 @@ async function handle(req: Request): Promise<Response> {
         maxRequestBodyBytes: 1_048_576,
         rateLimitPerMinute: 60,
         allowedOrigins: process.env.ALLOWED_ORIGINS?.split(",").map((s) => s.trim()).filter(Boolean) ?? DEFAULT_ORIGINS,
+        // Same deployment as the store: read the public records in process, no HTTP self-fetch or byte ceiling.
+        corpus: async () => {
+          const corpus = await uploadStore.loadCorpus();
+          return corpus.unreachable ? null : { records: corpus.records, dataAsOf: corpus.dataAsOf ?? null };
+        },
       });
     } catch (err) {
       console.error("[mcp] knowledge release unavailable", err);
