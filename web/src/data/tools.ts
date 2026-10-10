@@ -105,9 +105,9 @@ export const tools: Tool[] = [
     slug: "professions",
     title: "Forever Profession Hubs",
     shortTitle: "Professions",
-    tagline: "Leveling routes and perks from player data.",
+    tagline: "Leveling routes from player data.",
     description:
-      "One hub per Forever profession: skill-up paths, materials lists and perk tracking, all drawn from in-game collection. Hubs open their numbers as reports arrive.",
+      "One hub per Forever profession: skill-up paths and materials lists drawn from in-game collection. Hubs open their numbers as reports arrive.",
     status: "collecting",
     icon: "⚒️",
     keywords: [

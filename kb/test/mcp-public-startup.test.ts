@@ -3,10 +3,13 @@ import { request } from "node:http";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { resolve, join } from "node:path";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { openDb } from "../src/db.js";
 import { replaceSourceRows } from "../src/entities.js";
 import { snapshot } from "../src/snapshot.js";
+
+// Startup imports through tsx; under a full parallel run that alone exceeded the old 3s wait.
+vi.setConfig({ testTimeout: 60_000 });
 
 test("the public service starts with an approved knowledge release without a gameplay table", async () => {
   const dir = mkdtempSync(join(tmpdir(), "everloot-startup-"));
@@ -23,7 +26,7 @@ test("the public service starts with an approved knowledge release without a gam
   try {
     const output = await new Promise<string>((done) => {
       let text = "";
-      const timeout = setTimeout(() => done(text), 3000);
+      const timeout = setTimeout(() => done(text), 30_000);
       child.stderr.on("data", (data) => {
         text += data.toString();
         if (text.includes("Public MCP server listening")) { clearTimeout(timeout); done(text); }

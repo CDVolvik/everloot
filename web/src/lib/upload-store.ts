@@ -2,7 +2,7 @@ import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { AwsClient } from "aws4fetch";
 import { parseRecords, type CanonicalUpload, type IntakeRecord } from "./intake";
-import { mergeCorpus, publicRecords, type CorpusState } from "../../../kb/src/corpus";
+import { mergeCorpus, mergeCorpusBatches, publicRecords, type CorpusState } from "../../../kb/src/corpus";
 import { createSharingStore } from "./sharing-store";
 
 /**
@@ -193,15 +193,16 @@ export function createUploadStore(opts: {
       if (code === "ENOENT") return { uploads: 0, state: mergeCorpus(undefined, []), dataAsOf: now().toISOString() };
       return { uploads: 0, state: mergeCorpus(undefined, []), unreachable: true, dataAsOf: null };
     }
-    let state = mergeCorpus(undefined, []);
+    const batches: { raw: unknown[]; grants: string[] }[] = [];
     for (const f of files) {
       try {
         const payload = JSON.parse(await readFile(join(dir, f), "utf8"));
-        state = mergeCorpus(state, rawRecordsOf(payload), grantsOf(payload));
+        batches.push({ raw: rawRecordsOf(payload), grants: grantsOf(payload) });
       } catch {
         continue; // a corrupt file never breaks a rollup
       }
     }
+    const state = mergeCorpusBatches(undefined, batches);
     return { uploads: files.length, state, dataAsOf: now().toISOString() };
   }
 
@@ -222,7 +223,7 @@ export function createUploadStore(opts: {
   }
 
   async function readObjects(keys: string[], previous?: CorpusState): Promise<{ state: CorpusState; missed: boolean }> {
-    let state = previous ?? mergeCorpus(undefined, []);
+    const batches: { raw: unknown[]; grants: string[] }[] = [];
     let missed = false;
     for (let i = 0; i < keys.length; i += PARALLEL_READS) {
       const batch = await Promise.all(keys.slice(i, i + PARALLEL_READS).map(async (key) => {
@@ -240,10 +241,10 @@ export function createUploadStore(opts: {
       }));
       for (const row of batch) {
         if (row.missed) missed = true;
-        else state = mergeCorpus(state, rawRecordsOf(row.payload), grantsOf(row.payload));
+        else batches.push({ raw: rawRecordsOf(row.payload), grants: grantsOf(row.payload) });
       }
     }
-    return { state, missed };
+    return { state: mergeCorpusBatches(previous ?? mergeCorpus(undefined, []), batches), missed };
   }
 
   async function readSnapshot(): Promise<Snapshot | null> {
@@ -288,12 +289,12 @@ export function createUploadStore(opts: {
         !state.conflicts.every((k) => typeof k === "string") || !Number.isSafeInteger(state.legacyRecords) || state.legacyRecords < 0) {
       throw new Error("snapshot replay state is invalid");
     }
-    let checked: CorpusState = { version: 1, events: [], conflicts: state.conflicts, legacyRecords: state.legacyRecords };
-    for (const event of state.events) {
+    const start: CorpusState = { version: 1, events: [], conflicts: state.conflicts, legacyRecords: state.legacyRecords };
+    const batches = state.events.map((event) => {
       if (!event?.record || !event.record.eventId || !Array.isArray(event.grants)) throw new Error("snapshot event is invalid");
-      checked = mergeCorpus(checked, [event.record], grantsOf({ publicationGrants: event.grants }));
-    }
-    return checked;
+      return { raw: [event.record], grants: grantsOf({ publicationGrants: event.grants }) };
+    });
+    return mergeCorpusBatches(start, batches);
   }
 
   async function readCloud(): Promise<RawCorpus> {
