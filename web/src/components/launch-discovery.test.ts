@@ -21,6 +21,16 @@ describe("working feature discovery", () => {
     expect(urls).not.toContain("/tools/completionist");
     expect(urls).not.toContain("/tools/profession-planner");
   });
+  it("exposes a contact page linked from the footer and sitemap", () => {
+    const urls = sitemap().map((entry) => new URL(entry.url).pathname);
+    expect(urls).toContain("/about");
+    expect(urls).toContain("/privacy");
+    expect(urls).toContain("/contact");
+    const footer = readFileSync(new URL("./Footer.tsx", import.meta.url), "utf8");
+    expect(footer).toContain('href="/contact"');
+    const contact = readFileSync(new URL("../app/contact/page.tsx", import.meta.url), "utf8");
+    expect(contact).toContain("mailto:hello@everloot.app");
+  });
   it("claims no feature the addon or server does not have", () => {
     const page = (path: string) => readFileSync(new URL(`../app/${path}`, import.meta.url), "utf8");
     const professions = page("tools/professions/page.tsx");
