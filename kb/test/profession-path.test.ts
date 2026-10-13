@@ -1,5 +1,12 @@
 import { expect, test } from "vitest";
-import { handleProfessionPath, professionFactsFromRecords, professionPath, type PriceSighting, type RecipeSighting } from "../src/profession-path.js";
+import {
+  handleProfessionPath,
+  mergeVendorPrices,
+  professionFactsFromRecords,
+  professionPath,
+  type PriceSighting,
+  type RecipeSighting,
+} from "../src/profession-path.js";
 
 const sight = (installId: string, recipe: string, reagents: RecipeSighting["reagents"], extra: Partial<RecipeSighting> = {}): RecipeSighting => ({
   installId,
@@ -227,4 +234,80 @@ test("an install's own price report and its auction scan of the same item count 
   const path = professionPath(["a", "b", "c"].map((id) => sight(id, "Minor Healing Potion", [{ item: "Peacebloom", count: 1 }])),
     facts.prices, { profession: "Alchemy", fromSkill: 1, toSkill: 2 });
   expect(path.copper).toBeNull();
+});
+
+const vendorOffer = (installId: string, vendorNpcId: number, itemId: number, priceCopper: number) => ({
+  kind: "vendor",
+  installId,
+  vendorNpcId,
+  items: [{ itemId, priceCopper }],
+});
+
+test("a vendor-sold reagent is priced from vendor + item_seen rows alone", () => {
+  const facts = professionFactsFromRecords([
+    vendorOffer("a", 80, 3371, 20),
+    vendorOffer("b", 80, 3371, 20),
+    vendorOffer("c", 80, 3371, 20),
+    { kind: "item_seen", installId: "a", itemId: 3371, name: "Empty Vial" },
+    { kind: "item_seen", installId: "b", itemId: 3371, name: "Empty Vial" },
+    { kind: "item_seen", installId: "c", itemId: 3371, name: "Empty Vial" },
+  ]);
+  expect(facts.prices).toEqual([]);
+  expect([...facts.vendorPrices.entries()]).toEqual([["empty vial", 20]]);
+  const rows = ["a", "b", "c"].map((id) =>
+    sight(id, "Minor Healing Potion", [{ item: "Empty Vial", count: 1 }], { skillMax: 2 }),
+  );
+  const path = professionPath(rows, facts.prices, { profession: "Alchemy", fromSkill: 1, toSkill: 2 }, [], facts.vendorPrices);
+  expect(path.steps[0]?.copper).toBe(20);
+  expect(path.copper).toBe(20);
+  const text = handleProfessionPath(
+    { profession: "Alchemy", fromSkill: 1, toSkill: 2 },
+    rows,
+    facts.prices,
+    [],
+    facts.vendorPrices,
+  );
+  expect(text).toContain("estimated 20c");
+  expect(text).toContain("NPC vendor price");
+});
+
+test("mergeVendorPrices keeps player and vendor maps separate and takes the lower when both agree", () => {
+  expect([...mergeVendorPrices(new Map([["empty vial", 100]]), new Map()).entries()]).toEqual([["empty vial", 100]]);
+  expect([...mergeVendorPrices(new Map(), new Map([["empty vial", 20]])).entries()]).toEqual([["empty vial", 20]]);
+  expect([...mergeVendorPrices(new Map([["empty vial", 100]]), new Map([["empty vial", 20]])).entries()]).toEqual([
+    ["empty vial", 20],
+  ]);
+  // A vendor row must not overwrite an install's player price in agreePrices' map.
+  const facts = professionFactsFromRecords([
+    { kind: "price_seen", installId: "a", item: "Empty Vial", copper: 50 },
+    { kind: "price_seen", installId: "b", item: "Empty Vial", copper: 50 },
+    { kind: "price_seen", installId: "c", item: "Empty Vial", copper: 50 },
+    vendorOffer("a", 80, 3371, 20),
+    vendorOffer("b", 80, 3371, 20),
+    vendorOffer("c", 80, 3371, 20),
+    { kind: "item_seen", installId: "a", itemId: 3371, name: "Empty Vial" },
+    { kind: "item_seen", installId: "b", itemId: 3371, name: "Empty Vial" },
+    { kind: "item_seen", installId: "c", itemId: 3371, name: "Empty Vial" },
+  ]);
+  expect(facts.prices).toEqual([
+    { installId: "a", item: "Empty Vial", copper: 50 },
+    { installId: "b", item: "Empty Vial", copper: 50 },
+    { installId: "c", item: "Empty Vial", copper: 50 },
+  ]);
+  expect([...facts.vendorPrices.entries()]).toEqual([["empty vial", 20]]);
+});
+
+test("when several vendors agree on different prices for one item, the route uses the lowest", () => {
+  const facts = professionFactsFromRecords([
+    vendorOffer("a", 80, 3371, 20),
+    vendorOffer("b", 80, 3371, 20),
+    vendorOffer("c", 80, 3371, 20),
+    vendorOffer("d", 81, 3371, 15),
+    vendorOffer("e", 81, 3371, 15),
+    vendorOffer("f", 81, 3371, 15),
+    { kind: "item_seen", installId: "a", itemId: 3371, name: "Empty Vial" },
+    { kind: "item_seen", installId: "b", itemId: 3371, name: "Empty Vial" },
+    { kind: "item_seen", installId: "c", itemId: 3371, name: "Empty Vial" },
+  ]);
+  expect([...facts.vendorPrices.entries()]).toEqual([["empty vial", 15]]);
 });

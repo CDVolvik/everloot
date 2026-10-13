@@ -8,7 +8,7 @@
  * craft uses the profession path's agreed prices, and stays unrecorded while any reagent has none.
  */
 import { INDEPENDENT_INSTALLS } from "./drop-rollup.js";
-import { agreePrices, formatCopper, median, professionFactsFromRecords, reagentKey, type AgreedRecipe, type PriceSighting, type Reagent } from "./profession-path.js";
+import { agreePrices, formatCopper, median, mergeVendorPrices, professionFactsFromRecords, reagentKey, type AgreedRecipe, type PriceSighting, type Reagent } from "./profession-path.js";
 
 const ORDER = ["optimal", "medium", "easy", "trivial"] as const;
 type Colour = (typeof ORDER)[number];
@@ -36,8 +36,9 @@ export function recipeObservationsFromRecords(records: unknown[]): RecipeObserva
 }
 
 /** Observations plus price reports (price_seen and per-unit auction scans) for ranges with reagent costs. */
-export function recipeFactsFromRecords(records: unknown[]): { observations: RecipeObservation[]; prices: PriceSighting[] } {
-  return { observations: recipeObservationsFromRecords(records), prices: professionFactsFromRecords(records).prices };
+export function recipeFactsFromRecords(records: unknown[]): { observations: RecipeObservation[]; prices: PriceSighting[]; vendorPrices: Map<string, number> } {
+  const facts = professionFactsFromRecords(records);
+  return { observations: recipeObservationsFromRecords(records), prices: facts.prices, vendorPrices: facts.vendorPrices };
 }
 
 export interface TrainerRow { installId: string; profession: string; recipe: string; requiredRank: number; costCopper?: number }
@@ -92,10 +93,10 @@ export function derivedSteps(observations: RecipeObservation[], trainers: Traine
 
 /** Everything the profession path reads: reported recipes, prices, and steps derived from colours and trainers. */
 export function pathFactsFromRecords(records: unknown[]) {
-  const { sightings, prices } = professionFactsFromRecords(records);
+  const { sightings, prices, vendorPrices } = professionFactsFromRecords(records);
   const observations = recipeObservationsFromRecords(records);
   const trainers = trainerRowsFromRecords(records);
-  return { sightings, prices, observations, trainers, derived: derivedSteps(observations, trainers) };
+  return { sightings, prices, vendorPrices, observations, trainers, derived: derivedSteps(observations, trainers) };
 }
 
 /** The list the most installs saw, when at least three did and no other list ties it. */
@@ -154,6 +155,7 @@ export function handleRecipeThresholds(
   args: { profession: string; recipe?: string },
   observations: RecipeObservation[],
   prices: PriceSighting[] = [],
+  vendorPrices: Map<string, number> = new Map(),
 ): string {
   const profession = args.profession.trim();
   if (!profession) return "Name a profession.";
@@ -164,10 +166,10 @@ export function handleRecipeThresholds(
     return `No recipe ranges for ${profession} yet. A range appears once ${INDEPENDENT_INSTALLS} installs have opened the ` +
       "profession window with addon 0.2.3 or later and their colours agree. This is unrecorded, not zero.";
   }
-  const agreed = agreePrices(prices);
+  const agreed = mergeVendorPrices(agreePrices(prices), vendorPrices);
   return [
     `${profession} recipe skill ranges, from the colours players' windows showed. A range, never a guessed exact number. ` +
-      `Costs use median reagent prices from at least ${INDEPENDENT_INSTALLS} installs, from any realm.`,
+      `Costs use median reagent prices from at least ${INDEPENDENT_INSTALLS} installs, from any realm, or an NPC vendor price ${INDEPENDENT_INSTALLS} installs agree on.`,
     ...rows.map((t) => `${formatThresholds(t)} ${costLine(t.reagents, agreed)}`),
   ].join("\n");
 }

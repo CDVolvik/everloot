@@ -101,3 +101,34 @@ test("reagent lists that fewer than three installs agree on are not shown", () =
   expect(inferThresholds(facts.observations)[0]?.reagents).toBeNull();
   expect(handleRecipeThresholds({ profession: "Alchemy" }, facts.observations, facts.prices)).toContain("Reagents unrecorded.");
 });
+
+const vendorOffer = (installId: string, itemId: number, priceCopper: number) => ({
+  kind: "vendor",
+  installId,
+  vendorNpcId: 80,
+  items: [{ itemId, priceCopper }],
+});
+
+test("a vendor-sold reagent gets a cost per craft from vendor + item_seen rows alone", () => {
+  const records = [
+    withMats("install-a", 50, "optimal", herbs),
+    withMats("install-b", 60, "medium", herbs),
+    withMats("install-c", 70, "easy", herbs),
+    ...["install-a", "install-b", "install-c"].flatMap((id, i) => [
+      scan(id, 2447, 40 + i * 10), named(id, 2447, "Peacebloom"),
+      vendorOffer(id, 3371, 4), named(id, 3371, "Empty Vial"),
+    ]),
+  ];
+  const facts = recipeFactsFromRecords(records);
+  expect(facts.prices.every((p) => p.item !== "Empty Vial")).toBe(true);
+  expect([...facts.vendorPrices.entries()]).toEqual([["empty vial", 4]]);
+  const text = handleRecipeThresholds(
+    { profession: "Alchemy" },
+    facts.observations,
+    facts.prices,
+    facts.vendorPrices,
+  );
+  // Median Peacebloom 50c x 2 + vendor Empty Vial 4c.
+  expect(text).toContain("Reagents: 2 Peacebloom, 1 Empty Vial. Estimated cost per craft: 1s 4c");
+  expect(text).toContain("NPC vendor price");
+});
