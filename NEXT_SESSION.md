@@ -27,7 +27,7 @@ Merging to `main` deploys production. Free services only.
 
 - **Vendor prices for vendor-sold reagents** (vials, thread). `vendor` rows already carry
   `priceCopper` per item ID, and `item_seen` names them. Feed them into `agreePrices` so recipe
-  costs and routes stop showing "no agreed price" for vendor items. Tests first.
+  costs and routes stop showing "no agreed price" for vendor items. Tests first. Done in this PR.
 - **Corpus size:** item/NPC answers read the whole public corpus (the 2 MB cap is postponed by
   `?kinds=`). Pre-aggregate per tool before real beta traffic arrives.
 - **Option C (`craft_result`, yellow skill-up chance):** only after item 1 above proves the 0.2.3–0.2.5

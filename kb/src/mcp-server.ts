@@ -24,8 +24,8 @@ export const UPLOADS_UNSET =
 
 /** Record kinds each gameplay tool reads. tool-kinds.test.ts checks them against the fact functions. */
 export const TOOL_KINDS = {
-  profession_path: ["recipe_seen", "price_seen", "auction_scan", "item_seen", "recipe_observed", "trainer_seen"],
-  recipe_thresholds: ["recipe_observed", "price_seen", "auction_scan", "item_seen"],
+  profession_path: ["recipe_seen", "price_seen", "auction_scan", "item_seen", "recipe_observed", "trainer_seen", "vendor"],
+  recipe_thresholds: ["recipe_observed", "price_seen", "auction_scan", "item_seen", "vendor"],
   item_page: ["loot", "item_seen", "npc_sighting"],
   npc_page: ["npc_sighting", "quest", "vendor"],
   quest_page: ["npc_sighting", "quest", "vendor"],
@@ -199,7 +199,7 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader }
           type: "text" as const,
           text: await read((records) => {
             const facts = pathFactsFromRecords(records);
-            return handleProfessionPath(args, facts.sightings, facts.prices, facts.derived);
+            return handleProfessionPath(args, facts.sightings, facts.prices, facts.derived, facts.vendorPrices);
           }, TOOL_KINDS.profession_path),
         }],
       };
@@ -222,7 +222,7 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader }
         type: "text" as const,
         text: await read((records) => {
           const facts = recipeFactsFromRecords(records);
-          return handleRecipeThresholds(args, facts.observations, facts.prices);
+          return handleRecipeThresholds(args, facts.observations, facts.prices, facts.vendorPrices);
         }, TOOL_KINDS.recipe_thresholds),
       }],
     }),
