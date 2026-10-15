@@ -24,8 +24,8 @@ export const UPLOADS_UNSET =
 
 /** Record kinds each gameplay tool reads. tool-kinds.test.ts checks them against the fact functions. */
 export const TOOL_KINDS = {
-  profession_path: ["recipe_seen", "price_seen", "auction_scan", "item_seen", "recipe_observed", "trainer_seen", "vendor"],
-  recipe_thresholds: ["recipe_observed", "price_seen", "auction_scan", "item_seen", "vendor"],
+  profession_path: ["recipe_seen", "price_seen", "auction_scan", "item_seen", "recipe_observed", "trainer_seen"],
+  recipe_thresholds: ["recipe_observed", "price_seen", "auction_scan", "item_seen"],
   item_page: ["loot", "item_seen", "npc_sighting"],
   npc_page: ["npc_sighting", "quest", "vendor"],
   quest_page: ["npc_sighting", "quest", "vendor"],
@@ -35,6 +35,66 @@ export const TOOL_KINDS = {
   auction_history: ["auction_scan"],
   gold_ledger: ["gold_snapshot", "money_event"],
 } as const satisfies Record<string, readonly string[]>;
+
+export type ToolName = keyof typeof TOOL_KINDS;
+
+/**
+ * Facts each gameplay tool aggregates from its kinds. tool-kinds.test.ts keeps an
+ * independent copy of this mapping and checks the kinds against the fact functions,
+ * so a wrong entry here still fails there.
+ */
+const TOOL_FACT_BUILDERS: Record<ToolName, (records: unknown[]) => unknown> = {
+  profession_path: pathFactsFromRecords,
+  recipe_thresholds: recipeFactsFromRecords,
+  item_page: itemFactsFromRecords,
+  npc_page: worldFactsFromRecords,
+  quest_page: worldFactsFromRecords,
+  vendor_page: worldFactsFromRecords,
+  collection_gap: collectionFactsFromRecords,
+  guild_board: guildFactsFromRecords,
+  auction_history: auctionSightingsFromRecords,
+  gold_ledger: goldFactsFromRecords,
+};
+
+interface TooledMemo {
+  key: string;
+  byTool: Map<string, unknown>;
+}
+
+/**
+ * One fact set per tool per corpus version, shared by every answer. Each gameplay
+ * tool used to filter and aggregate the whole corpus on every call; beta traffic
+ * would pay that scan ten times over. The shared references are read-only: handlers
+ * filter, map and copy over them, never sort or push in place.
+ */
+let tooledMemo: TooledMemo | null = null;
+
+/**
+ * Corpus version marker with its source. Snapshot time plus record count move
+ * whenever the store reloads, so a matching key means these facts are for this
+ * exact corpus. The source stays in the key so a remote corpus can never share a
+ * local one's facts at the same version marker.
+ */
+function tooledKey(source: string, corpus: { records: readonly unknown[]; dataAsOf?: string | null }): string {
+  return `${source}|${corpus.dataAsOf ?? ""}|${corpus.records.length}`;
+}
+
+function tooledFacts<T>(
+  source: string,
+  corpus: { records: readonly unknown[]; dataAsOf?: string | null },
+  tool: ToolName,
+  build: (records: unknown[]) => T,
+): T {
+  const key = tooledKey(source, corpus);
+  if (!tooledMemo || tooledMemo.key !== key) tooledMemo = { key, byTool: new Map() };
+  let facts = tooledMemo.byTool.get(tool) as T | undefined;
+  if (facts === undefined) {
+    const wanted = new Set<string>(TOOL_KINDS[tool]);
+    facts = build(corpus.records.filter((r) => wanted.has((r as { kind?: string }).kind ?? "")));
+    tooledMemo.byTool.set(tool, facts);
+  }
+  return facts;
+}
 
 /**
  * The site's own public records, read in process. The /mcp route on the web deployment passes one, so
@@ -71,9 +131,7 @@ async function fromLoader(loader: CorpusLoader, render: (records: unknown[]) => 
   return `${render(records)}\n${dataAgeLine(corpus.dataAsOf)}`;
 }
 
-async function fromPublicCorpus(url: string, render: (records: unknown[]) => string): Promise<string> {
-  let records;
-  let dataAsOf: unknown;
+async function fetchPublicCorpus(url: string): Promise<{ records: unknown[]; dataAsOf: unknown } | null> {
   try {
     const response = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(10_000) });
     if (!response.ok || Number(response.headers.get("content-length")) > 2_000_000) throw new Error("Public corpus too large or unavailable");
@@ -94,10 +152,57 @@ async function fromPublicCorpus(url: string, render: (records: unknown[]) => str
     if (!response.ok || corpus.ok !== true || !Array.isArray(corpus.records)) throw new Error("Invalid public corpus");
     const parsed = parseRecords(corpus.records);
     if (parsed.receipt.rejected.length) throw new Error("Invalid public records");
-    records = parsed.records;
-    dataAsOf = corpus.dataAsOf;
-  } catch { return UNAVAILABLE; }
-  return `${render(records)}\n${dataAgeLine(dataAsOf)}`;
+    return { records: parsed.records, dataAsOf: corpus.dataAsOf };
+  } catch { return null; }
+}
+
+async function fromPublicCorpus(url: string, render: (records: unknown[]) => string): Promise<string> {
+  const corpus = await fetchPublicCorpus(url);
+  if (!corpus) return UNAVAILABLE;
+  return `${render(corpus.records)}\n${dataAgeLine(corpus.dataAsOf)}`;
+}
+
+async function answerFromTooledLoader<T>(
+  loader: CorpusLoader, tool: ToolName, build: (records: unknown[]) => T, render: (facts: T) => string,
+): Promise<string> {
+  let corpus;
+  try {
+    corpus = await loader();
+  } catch {
+    return UNAVAILABLE;
+  }
+  if (!corpus) return UNAVAILABLE;
+  return `${render(tooledFacts("loader", corpus, tool, build))}\n${dataAgeLine(corpus.dataAsOf)}`;
+}
+
+async function answerFromTooledPublicCorpus<T>(
+  url: string, tool: ToolName, build: (records: unknown[]) => T, render: (facts: T) => string,
+): Promise<string> {
+  const corpus = await fetchPublicCorpus(url);
+  if (!corpus) return UNAVAILABLE;
+  const dataAsOf = typeof corpus.dataAsOf === "string" ? corpus.dataAsOf : null;
+  return `${render(tooledFacts("url", { records: corpus.records, dataAsOf }, tool, build))}\n${dataAgeLine(corpus.dataAsOf)}`;
+}
+
+/**
+ * Gameplay answers from pre-aggregated per-tool facts. Same sources as fromUploads
+ * (in-process loader first, then the public URL with the tool's kinds, then local
+ * files), but the facts build once per corpus version instead of on every call.
+ * The local-files path is a version-less dev fallback and stays unmemoized.
+ */
+export function fromTooledUploads<T>(
+  tool: ToolName, render: (facts: T) => string, loader?: CorpusLoader,
+): string | Promise<string> {
+  const kinds = TOOL_KINDS[tool];
+  const build = TOOL_FACT_BUILDERS[tool] as (records: unknown[]) => T;
+  if (loader) return answerFromTooledLoader(loader, tool, build, render);
+  const base = process.env.EVERLOOT_PUBLIC_CORPUS_URL?.trim();
+  // Asking for only the kinds a tool reads keeps the body under the byte ceiling for longer.
+  const url = base ? `${base}${base.includes("?") ? "&" : "?"}kinds=${kinds.join(",")}` : undefined;
+  if (url) return answerFromTooledPublicCorpus(url, tool, build, render);
+  const dir = process.env.EVERLOOT_UPLOADS?.trim();
+  if (!dir) return UPLOADS_UNSET;
+  return render(build(loadUploadRecords(dir)));
 }
 
 /** The web's snapshot time; a stalled snapshot must not read as current. */
@@ -145,7 +250,7 @@ export function handleGetByName(db: DB, args: { name: string; kind?: (typeof KIN
 
 export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader } = {}): McpServer {
   const server = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION });
-  const read = (render: (records: unknown[]) => string, kinds?: readonly string[]) => fromUploads(render, kinds, options.corpus);
+  const readFacts = <T>(tool: ToolName, render: (facts: T) => string) => fromTooledUploads(tool, render, options.corpus);
   server.registerTool(
     "search_knowledge",
     {
@@ -197,10 +302,8 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader }
       return {
         content: [{
           type: "text" as const,
-          text: await read((records) => {
-            const facts = pathFactsFromRecords(records);
-            return handleProfessionPath(args, facts.sightings, facts.prices, facts.derived, facts.vendorPrices);
-          }, TOOL_KINDS.profession_path),
+          text: await readFacts("profession_path", (facts: ReturnType<typeof pathFactsFromRecords>) =>
+            handleProfessionPath(args, facts.sightings, facts.prices, facts.derived)),
         }],
       };
     },
@@ -220,10 +323,8 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader }
     async (args) => ({
       content: [{
         type: "text" as const,
-        text: await read((records) => {
-          const facts = recipeFactsFromRecords(records);
-          return handleRecipeThresholds(args, facts.observations, facts.prices, facts.vendorPrices);
-        }, TOOL_KINDS.recipe_thresholds),
+        text: await readFacts("recipe_thresholds", (facts: ReturnType<typeof recipeFactsFromRecords>) =>
+          handleRecipeThresholds(args, facts.observations, facts.prices)),
       }],
     }),
   );
@@ -237,7 +338,7 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader }
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async (args) => ({
-      content: [{ type: "text" as const, text: await read((records) => handleItemPage(args, itemFactsFromRecords(records)), TOOL_KINDS.item_page) }],
+      content: [{ type: "text" as const, text: await readFacts("item_page", (facts: ReturnType<typeof itemFactsFromRecords>) => handleItemPage(args, facts)) }],
     }),
   );
   server.registerTool(
@@ -250,7 +351,7 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader }
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async (args) => ({
-      content: [{ type: "text" as const, text: await read((records) => handleNpcPage(args, worldFactsFromRecords(records)), TOOL_KINDS.npc_page) }],
+      content: [{ type: "text" as const, text: await readFacts("npc_page", (facts: ReturnType<typeof worldFactsFromRecords>) => handleNpcPage(args, facts)) }],
     }),
   );
   server.registerTool(
@@ -263,7 +364,7 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader }
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async (args) => ({
-      content: [{ type: "text" as const, text: await read((records) => handleQuestPage(args, worldFactsFromRecords(records)), TOOL_KINDS.quest_page) }],
+      content: [{ type: "text" as const, text: await readFacts("quest_page", (facts: ReturnType<typeof worldFactsFromRecords>) => handleQuestPage(args, facts)) }],
     }),
   );
   server.registerTool(
@@ -276,7 +377,7 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader }
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async (args) => ({
-      content: [{ type: "text" as const, text: await read((records) => handleVendorPage(args, worldFactsFromRecords(records)), TOOL_KINDS.vendor_page) }],
+      content: [{ type: "text" as const, text: await readFacts("vendor_page", (facts: ReturnType<typeof worldFactsFromRecords>) => handleVendorPage(args, facts)) }],
     }),
   );
   server.registerTool(
@@ -292,7 +393,7 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader }
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async (args) => ({
-      content: [{ type: "text" as const, text: await read((records) => handleCollectionGap(args, collectionFactsFromRecords(records)), TOOL_KINDS.collection_gap) }],
+      content: [{ type: "text" as const, text: await readFacts("collection_gap", (facts: ReturnType<typeof collectionFactsFromRecords>) => handleCollectionGap(args, facts)) }],
     }),
   );
   server.registerTool(
@@ -308,7 +409,7 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader }
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async (args) => ({
-      content: [{ type: "text" as const, text: await read((records) => handleGuildBoard(args, guildFactsFromRecords(records)), TOOL_KINDS.guild_board) }],
+      content: [{ type: "text" as const, text: await readFacts("guild_board", (facts: ReturnType<typeof guildFactsFromRecords>) => handleGuildBoard(args, facts)) }],
     }),
   );
   server.registerTool(
@@ -324,7 +425,7 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader }
       annotations: { readOnlyHint: true, openWorldHint: false },
     },
     async (args) => ({
-      content: [{ type: "text" as const, text: await read((records) => handleAuctionHistory(args, auctionSightingsFromRecords(records)), TOOL_KINDS.auction_history) }],
+      content: [{ type: "text" as const, text: await readFacts("auction_history", (facts: ReturnType<typeof auctionSightingsFromRecords>) => handleAuctionHistory(args, facts)) }],
     }),
   );
   server.registerTool(
@@ -342,10 +443,8 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader }
     async (args) => ({
       content: [{
         type: "text" as const,
-        text: await read((records) => {
-          const facts = goldFactsFromRecords(records);
-          return handleGoldLedger(args, facts.snapshots, facts.events);
-        }, TOOL_KINDS.gold_ledger),
+        text: await readFacts("gold_ledger", (facts: ReturnType<typeof goldFactsFromRecords>) =>
+          handleGoldLedger(args, facts.snapshots, facts.events)),
       }],
     }),
   );
