@@ -1,10 +1,13 @@
 # Everloot — resume after 2026-10-05 assessment
 
-## START HERE — to-do after the 2026-10-10 session (production at `d3a0b33`, no open PRs)
+## START HERE — to-do after the 2026-10-15 loop (production at `5276d46`, no open PRs)
 
 Everything agent-doable that doesn't depend on an owner step was merged and verified on
-everloot.app. PRs #1–#42 merged. Addon 0.2.5 is live (zip sha `3999cbd6…` matches the repo).
+everloot.app. PRs #1–#47 merged: #44 contact page, #45 vendor reagent prices,
+#46 shared corpus aggregates, #47 pre-aggregated per-tool MCP facts (all live:
+health 200, `/contact` 200, `/api/rollups/drops` 200 with fresh timestamps).
 Merging to `main` deploys production. Free services only.
+Addon 0.2.5 is live (zip sha `3999cbd6…` matches the repo).
 
 ### Carlos (owner steps, in priority order)
 
@@ -25,15 +28,14 @@ Merging to `main` deploys production. Free services only.
 
 ### Agent (next session, no owner step needed)
 
-- **Vendor prices for vendor-sold reagents** (vials, thread). `vendor` rows already carry
-  `priceCopper` per item ID, and `item_seen` names them. Feed them into `agreePrices` so recipe
-  costs and routes stop showing "no agreed price" for vendor items. Tests first. Done in this PR.
-- **Corpus size:** item/NPC answers read the whole public corpus (the 2 MB cap is postponed by
-  `?kinds=`). Pre-aggregate per tool before real beta traffic arrives.
-- **Option C (`craft_result`, yellow skill-up chance):** only after item 1 above proves the 0.2.3–0.2.5
-  captures in game. Design: `docs/2026-10-10-recipe-windows-design.md`.
+- **Option C (`craft_result`, yellow skill-up chance):** only after the in-game checklist
+  proves the 0.2.3–0.2.5 captures in game. Design: `docs/2026-10-10-recipe-windows-design.md`.
 - Auction deposits stay unrecorded: there's no `money_event` category for them. Adding one is a
   schema change, so do it only if the ledger needs it.
+- Done 2026-10-15: vendor prices (#45) and corpus pre-aggregation per tool — web shared
+  aggregates (#46) plus MCP per-tool fact memo (#47). Request-scoped load sharing
+  (one `loadCorpus` per render instead of per answer) is the remaining optional
+  follow-up; it saves duplicate store reads, not aggregations.
 
 ## Resume — 2026-10-10 fifth round: #37–#39 merged (live at `ba01307`); #40 open
 
