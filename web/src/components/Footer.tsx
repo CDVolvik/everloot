@@ -20,6 +20,9 @@ export default function Footer() {
           <Link href="/about" className="hover:text-gold-400 transition">
             About
           </Link>
+          <Link href="/contact" className="hover:text-gold-400 transition">
+            Contact
+          </Link>
         </div>
       </div>
       <div className="mx-auto max-w-6xl px-4 pb-8 text-[11px] text-parchment-100/40 leading-relaxed">
