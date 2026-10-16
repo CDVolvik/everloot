@@ -18,6 +18,7 @@ const SECTIONS = [
   { title: "Quests", href: "/database/quests", body: "Givers, turn-ins, and rewards. A row is public after 3 installs agree." },
   { title: "Vendors", href: "/database/vendors", body: "Merchant lists. A price is public after 3 installs agree on the item and the copper." },
   { title: "Guilds", href: "/tools/guild-board", body: "Officer-authorized progression and roster uploads. No aggregate guild score is published." },
+  { title: "Lore archive", href: "/lore", body: "Warcraft Wiki pages as of November 2023, CC BY-SA 4.0. Lore and history, not collected Forever data." },
 ];
 
 export default async function DatabasePage() {
