@@ -7,7 +7,7 @@ const REPO = "https://github.com/fitzforge/polestar";
 
 export const POLESTAR = {
   checked: "2026-10-16",
-  commit: "e1d24ac",
+  commit: "06c1c41", // v0.2.4
   repo: REPO,
   releases: `${REPO}/releases`,
   issues: `${REPO}/issues`,
@@ -53,7 +53,7 @@ export const POLESTAR_PACKS: PackListing[] = [
     id: "guides",
     title: "Polestar Guides",
     author: "Polestar",
-    version: "0.2.3",
+    version: "0.2.4",
     license: "GPL-3.0-only",
     folder: "Polestar_Guides",
     coverage: [

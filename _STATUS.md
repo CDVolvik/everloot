@@ -27,13 +27,20 @@
 
 **In `companion/` (code, not packaged):** the uploader, the `/ask` file bridge, and LLM provider adapters with fallback.
 
-**Lore archive (2026-10-15, PR #50 open):** the 257,110-page Warcraft Wiki 2023 release is on the site at
+**Lore archive (live since 2026-10-16, #50/#51/#52/#55):** the Warcraft Wiki 2023 release is on the site at
 `/lore`, `/search` and `/lore/<extId>-<slug>`, with CC BY-SA attribution, indexable-page rule (body ≥ 300
-chars, not a redirect; about 78k pages) and sitemap chunks. Preview cannot show it until the release
-variables exist in Vercel's Preview scope; see `NEXT_SESSION.md`.
+chars, not a redirect; about 78k pages) and sitemap chunks. Type browse pages (`/lore/npcs` … `/lore/spells`),
+search type chips and `/lore/coverage` are live in code and say "This release predates classification." until
+the 2026-10-16 release (types, facets, damaged pages down from 5,887 to 3,260) is published, after the
+manifest-facets task in `NEXT_SESSION.md`.
 
-**Open PRs:** #50 (lore archive). The to-do list for the next session is at the top of
-`NEXT_SESSION.md`.
+**Addons hub (live since 2026-10-16, #54):** `/addons`, `/addons/polestar` (install, commands, licence, live
+help-wanted issues from GitHub), `/addons/polestar/packs` (independent guide-pack list, Polestar Guides first)
+and `/addons/polestar/wanted` (sourced pack ideas). Polestar is `fitzforge/polestar`; Everloot links to its
+code and guides and never copies them.
+
+**Open PRs:** none (production at `309b600`, verified 2026-10-16). The to-do list for the next session is at
+the top of `NEXT_SESSION.md`.
 
 **Waiting on Carlos:**
 - in-game trial (beta checklist for 0.2.5: collection, auctions, gold incl. mail and buyouts, `/ask`, recipes, trainers; confirm a derived step is orange), two raid nights, three-contributor loop, real phone
