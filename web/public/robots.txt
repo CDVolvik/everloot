@@ -2,3 +2,4 @@ User-agent: *
 Allow: /
 
 Sitemap: https://everloot.app/sitemap.xml
+Sitemap: https://everloot.app/lore-sitemap.xml

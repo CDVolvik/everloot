@@ -3,6 +3,7 @@ import type { GameVersion, Kind } from "./entities.js";
 
 export interface SearchHit {
   id: number;
+  extId: string;
   kind: string;
   name: string;
   snippet: string;
@@ -42,7 +43,7 @@ function contentTerms(input: string): string[] {
   return kept.length > 0 ? kept : terms;
 }
 
-const ROW = `e.id, e.kind, e.name,
+const ROW = `e.id, e.ext_id AS extId, e.kind, e.name,
   snippet(entities_fts, 1, '', '', '…', 16) AS snippet,
   e.game_version AS gameVersion, e.source_url AS sourceUrl,
   e.source_id AS sourceId, e.licence, e.retrieved_at AS retrievedAt`;
@@ -87,6 +88,7 @@ export function search(db: DB, query: string, limit = 10, opts: SearchOptions = 
 
 interface EntityRow {
   id: number;
+  extId: string;
   kind: string;
   name: string;
   body: string;
@@ -97,12 +99,13 @@ interface EntityRow {
   retrievedAt: string;
 }
 
-const ROW_BY_ID = `id, kind, name, body, game_version AS gameVersion, source_url AS sourceUrl,
+const ROW_BY_ID = `id, ext_id AS extId, kind, name, body, game_version AS gameVersion, source_url AS sourceUrl,
   source_id AS sourceId, licence, retrieved_at AS retrievedAt`;
 
 function toHit(r: EntityRow): SearchHit {
   return {
     id: r.id,
+    extId: r.extId,
     kind: r.kind,
     name: r.name,
     snippet: r.body.length > 160 ? `${r.body.slice(0, 160)}…` : r.body,

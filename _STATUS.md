@@ -27,7 +27,12 @@
 
 **In `companion/` (code, not packaged):** the uploader, the `/ask` file bridge, and LLM provider adapters with fallback.
 
-**Open PRs:** none besides this handoff. The to-do list for the next session is at the top of
+**Lore archive (2026-10-15, PR #50 open):** the 257,110-page Warcraft Wiki 2023 release is on the site at
+`/lore`, `/search` and `/lore/<extId>-<slug>`, with CC BY-SA attribution, indexable-page rule (body ≥ 300
+chars, not a redirect; about 78k pages) and sitemap chunks. Preview cannot show it until the release
+variables exist in Vercel's Preview scope; see `NEXT_SESSION.md`.
+
+**Open PRs:** #50 (lore archive). The to-do list for the next session is at the top of
 `NEXT_SESSION.md`.
 
 **Waiting on Carlos:**
