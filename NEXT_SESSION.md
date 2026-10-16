@@ -40,6 +40,11 @@ Spec `docs/superpowers/specs/2026-10-15-lore-archive-web-design.md`, plan
 "Lore archive unavailable", which is the designed behaviour, but it means cold start, function size and
 a real search cannot be measured on a preview. Options: add those variables to Preview scoped to the
 `feat/lore-archive` branch (the #17 trial did this), or accept measuring on production after merge.
+Measured locally against the real release (`next start`): lore page 2.4 s cold / 15 ms warm, search 35 ms,
+`q=the` 0.31 s, sitemap chunks 2.6 s each (78,221 URLs in two files), 308 and 404 behave. A fresh review's
+two Important findings are fixed in `f13b52c`; five minors are deferred (listed in the PR thread's ledger
+summary: sitemap full-table count per cache miss, curated-id collisions, search re-rank paging, bad-release
+re-hash per request, double lookup per lore page).
 
 ### Agent (next session, no owner step needed)
 
