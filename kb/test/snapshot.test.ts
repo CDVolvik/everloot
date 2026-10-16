@@ -195,6 +195,18 @@ test("the manifest hash matches the published file", async () => {
   expect(written.sha256).toBe(recomputed);
 });
 
+test("a database with no typed rows gets no types or damaged keys in its manifest", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "kb-snap-"));
+  const db = openDb(join(dir, "kb.sqlite"));
+  await replaceSourceRows(db, "curated", ["lore_page"], [
+    { kind: "lore_page", extId: "1", name: "Thrall", body: "Warchief", gameVersion: "lore", sourceUrl: "https://example.test/1", retrievedAt: "2026-09-27", data: { categories: [] } },
+  ]);
+  const manifest = snapshot(db, join(dir, "release", "release.sqlite"), new Date("2026-10-15T12:00:00Z"));
+  expect(manifest.types).toBeUndefined();
+  expect(manifest.damaged).toBeUndefined();
+  expect(JSON.parse(readFileSync(join(dir, "release", "release.sqlite.manifest.json"), "utf8"))).not.toHaveProperty("types");
+});
+
 test("the manifest counts page types and damaged pages, and the release carries the type index", async () => {
   const dir = mkdtempSync(join(tmpdir(), "kb-snap-"));
   const db = openDb(join(dir, "kb.sqlite"));

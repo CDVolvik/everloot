@@ -286,9 +286,11 @@ export function checkPublishedDb(db: DB): Record<string, number> {
 }
 
 /** Rows per page type and the damaged-page count, read from the finished work file. */
-function typeCounts(file: string): { types: Record<string, number>; damaged: number } {
+function typeCounts(file: string): { types?: Record<string, number>; damaged?: number } {
   const out = new Database(file, { readonly: true });
   try {
+    const { n: typed } = out.prepare("SELECT count(*) AS n FROM entities WHERE json_extract(data, '$.type') IS NOT NULL").get() as { n: number };
+    if (typed === 0) return {}; // built from an unclassified database: say nothing rather than "all other"
     const types: Record<string, number> = {};
     for (const r of out.prepare("SELECT coalesce(json_extract(data, '$.type'), 'other') AS t, count(*) AS n FROM entities GROUP BY t").all() as { t: string; n: number }[]) {
       types[r.t] = r.n;

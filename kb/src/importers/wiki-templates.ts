@@ -2,6 +2,9 @@
  * Inline wiki templates that the generic converter would drop mid-sentence ("purchased for at
  * standing"), rendered to the words a reader would see. Everything not listed here is left for the
  * converter. Each handled template has a fixture test; the list grows only with one.
+ *
+ * One left-to-right pass: `{{` opens a buffer, `}}` closes the innermost one and renders it, so
+ * nesting resolves innermost-first and the cost is linear in the page size.
  */
 
 /** Template names (lower-case) this module renders or removes, for the coverage page. */
@@ -17,31 +20,23 @@ const QUALIFIERS = new Set([
   "alliance", "horde", "neutral", "poor", "common", "uncommon", "rare", "epic", "legendary", "artifact", "heirloom",
 ]);
 
-/** Splits template arguments on top-level `|`, ignoring pipes inside nested `{{ }}` or `[[ ]]`. */
+/** Stands in for a removed template until the line clean-up below; never appears in wikitext. */
+const REMOVED = "\u0000";
+
+/** Splits template arguments on top-level `|`, ignoring pipes inside nested `[[ ]]` (nested `{{ }}` are already rendered). */
 function splitArgs(inner: string): string[] {
   const out: string[] = [];
   let depth = 0;
   let cur = "";
   for (let i = 0; i < inner.length; i++) {
     const two = inner.slice(i, i + 2);
-    if (two === "{{" || two === "[[") { depth++; cur += two; i++; continue; }
-    if (two === "}}" || two === "]]") { depth--; cur += two; i++; continue; }
+    if (two === "[[") { depth++; cur += two; i++; continue; }
+    if (two === "]]") { depth--; cur += two; i++; continue; }
     if (inner[i] === "|" && depth === 0) { out.push(cur); cur = ""; continue; }
     cur += inner[i];
   }
   out.push(cur);
   return out;
-}
-
-/** Index just past the `}}` closing the template that opens at `start`, or -1. */
-function closeOf(text: string, start: number): number {
-  let depth = 0;
-  for (let i = start; i < text.length - 1; i++) {
-    const two = text.slice(i, i + 2);
-    if (two === "{{") { depth++; i++; }
-    else if (two === "}}") { depth--; i++; if (depth === 0) return i + 1; }
-  }
-  return -1;
 }
 
 function money(parts: string[]): string {
@@ -50,12 +45,12 @@ function money(parts: string[]): string {
   if (g && g !== "0") out.push(`${g}g`);
   if (s && s !== "0") out.push(`${s}s`);
   if (c && c !== "0") out.push(`${c}c`);
-  return out.join(" ");
+  return out.length > 0 ? out.join(" ") : (g || s || c ? "0c" : "");
 }
 
 const capitalise = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 
-/** The rendering for one template, or null when it is not ours. */
+/** The rendering for one template (its inner text, nested templates already rendered), or null when it is not ours. */
 function render(inner: string): string | null {
   const args = splitArgs(inner);
   const name = args[0].trim().toLowerCase();
@@ -76,42 +71,39 @@ function render(inner: string): string | null {
     }
     return positional[positional.length - 1];
   }
-  if (/^(horde|alliance|neutral) icon( small)?$/.test(name)) return "";
-  if (name === "ss" || name === "for" || name === "removed" || name.startsWith("stub")) return "";
+  if (/^(horde|alliance|neutral) icon( small)?$/.test(name)) return REMOVED;
+  if (name === "ss" || name === "for" || name === "removed" || name.startsWith("stub")) return REMOVED;
   return null;
 }
 
-/** Renders the handled templates to text, innermost first, leaving unknown templates untouched. */
+/** Renders the handled templates to text in one pass, leaving unknown templates and all line structure untouched. */
 export function repairTemplates(wikitext: string): string {
-  let s = wikitext;
-  for (let pass = 0; pass < 5; pass++) {
-    let changed = false;
-    let i = s.indexOf("{{");
-    while (i >= 0) {
-      const end = closeOf(s, i);
-      if (end < 0) break;
-      const inner = s.slice(i + 2, end - 2);
-      const nested = inner.indexOf("{{");
-      if (nested >= 0 && render(inner) !== null && inner.slice(nested).includes("}}")) {
-        // Resolve the inner template first so "{{Patch x|note=... {{NPC||Grex}}.}}" renders in one go.
-        const innerRendered = repairTemplates(inner);
-        if (innerRendered !== inner) { s = s.slice(0, i + 2) + innerRendered + s.slice(end - 2); changed = true; continue; }
-      }
+  const stack: string[] = [];
+  let cur = "";
+  for (let i = 0; i < wikitext.length; i++) {
+    const two = wikitext.slice(i, i + 2);
+    if (two === "{{") { stack.push(cur); cur = ""; i++; continue; }
+    if (two === "}}" && stack.length > 0) {
+      const inner = cur;
+      cur = stack.pop()!;
       const rendered = render(inner);
-      if (rendered === null) { i = s.indexOf("{{", i + 2); continue; }
-      s = s.slice(0, i) + rendered + s.slice(end);
-      changed = true;
-      i = s.indexOf("{{", i + rendered.length);
+      cur += rendered === null ? `{{${inner}}}` : rendered;
+      i++;
+      continue;
     }
-    if (!changed) break;
+    cur += wikitext[i];
   }
-  // A removed template leaves its spacing behind: collapse runs of spaces and blank-only lines.
-  return s
-    .replace(/[ \t]{2,}/g, " ")
-    .replace(/^[ \t]+(?=\S)/gm, (m, offset: number, str: string) => (str.lastIndexOf("\n", offset - 1) === offset - 1 || offset === 0 ? "" : m))
-    .replace(/^\s*\n/gm, "")
-    .replace(/^ /gm, "")
-    .trim();
+  // Unclosed `{{`: put the raw opening back and keep whatever was rendered inside it.
+  while (stack.length > 0) cur = `${stack.pop()!}{{${cur}`;
+  // A removed template leaves its spacing behind: drop lines that held only removed templates, and
+  // collapse the spaces around removed templates inside a line. Blank lines and indentation stay.
+  return cur
+    .split("\n")
+    .filter((line) => !(line.includes(REMOVED) && line.replace(new RegExp(REMOVED, "g"), "").trim() === ""))
+    .map((line) => (line.includes(REMOVED) ? line.replace(new RegExp(` *${REMOVED} *`, "g"), " ").replace(/^ (?=\S)/, "").replace(/ +$/, "") : line))
+    .join("\n")
+    .replace(/^\n+/, "")
+    .replace(/\n+$/, "");
 }
 
 const DAMAGE_PATTERNS = [/ for at /, / at standing/, / at {2}/, / {2}standing/, /\w {2}\w/];

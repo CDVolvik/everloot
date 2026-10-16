@@ -18,6 +18,13 @@ test.each([
   ["Infobox talent", [], "spell"],
   ["Infobox faction", ["Named mobs"], "npc"],
   ["Infobox faction", [], "other"],
+  ["#data:settip", [], "item"],
+  ["infobox town", [], "zone"],
+  ["#data:infobox talent", [], "spell"],
+  ["#data:infobox glyph", [], "spell"],
+  ["#data:infobox azerite trait", [], "spell"],
+  ["#data:infobox ability", [], "spell"],
+  ["#data:achievementtip", [], "other"],
 ])("rule 0: infobox %s with categories %j is %s", (template, categories, type) => {
   expect(classify(categories, template).type).toBe(type);
 });
@@ -91,4 +98,14 @@ test("the empty case has a type and empty facets", () => {
     type: "other",
     facets: { expansion: [], profession: [], class: [], race: [], zone: [], faction: [] },
   });
+});
+
+test("race and zone facets skip categories that are not races or zones", () => {
+  const { facets } = classify([
+    "Argent Crusade characters", "Hearthstone characters", "TCG characters", "Day of the Dragon characters",
+    "Arthas: Rise of the Lich King characters", "World of Warcraft: The Comic characters", "Orc characters",
+    "Battle for Azeroth rare mobs", "Battle for Azeroth rare elite mobs", "Eastern Kingdoms rare mobs", "Legion Invasion mobs", "Nazmir mobs",
+  ]);
+  expect(facets.race).toEqual(["Orc"]);
+  expect(facets.zone).toEqual(["Nazmir"]);
 });

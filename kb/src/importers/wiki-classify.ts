@@ -32,10 +32,11 @@ export const PROFESSIONS = [
 /** Rule 0: infobox template name (lower-cased) → type. */
 const INFOBOX_TYPES: Record<string, LoreType> = {
   npcbox: "npc",
-  "#data:itemtip": "item", itembox: "item", "infobox item": "item",
+  "#data:itemtip": "item", "#data:settip": "item", itembox: "item", "infobox item": "item",
   questbox: "quest", "infobox quest": "quest",
-  zonebox: "zone", "infobox zone": "zone", "infobox instance": "zone",
+  zonebox: "zone", "infobox zone": "zone", "infobox instance": "zone", "infobox town": "zone", "infobox city": "zone",
   "infobox ability": "spell", "infobox pet ability": "spell", "infobox spell": "spell", "infobox talent": "spell",
+  "#data:infobox ability": "spell", "#data:infobox talent": "spell", "#data:infobox glyph": "spell", "#data:infobox azerite trait": "spell",
 };
 
 const ends = (...suffixes: string[]) => (c: string) => suffixes.some((s) => c.endsWith(s));
@@ -58,6 +59,26 @@ const CATEGORY_RULES: [LoreType, (c: string) => boolean][] = [
 ];
 
 const uniqSorted = (xs: string[]) => [...new Set(xs)].sort((a, b) => a.localeCompare(b));
+
+/** "<X> characters" categories that are not races: media, organisations, states and groupings. */
+const NOT_RACES = new Set([
+  "deceased", "lore", "rpg", "oddly classified", "undead", "unique", "unknown", "major", "minor", "hearthstone", "tcg",
+  "legends", "argent crusade", "booty bay", "day of the dragon", "comic", "novel", "manga", "film", "warcraft", "world of warcraft",
+]);
+function looksLikeRace(value: string): boolean {
+  const v = value.toLowerCase();
+  if (v.includes(":") || NOT_RACES.has(v)) return false;
+  if (/^(world of warcraft|warcraft|hearthstone|the )\b/.test(v)) return false;
+  return v.split(" ").length <= 3;
+}
+
+/** "<X> NPCs"/"<X> mobs" categories that group by rarity, event or continent rather than a place. */
+function looksLikeZone(value: string): boolean {
+  const v = value.toLowerCase();
+  if (/^(named|boss related|mission|island expedition|faction assault|rare|rare elite)$/.test(v)) return false;
+  if (/\b(rare|rare elite|invasion|assault)$/.test(v)) return false;
+  return true;
+}
 
 /** The text before a suffix, with the original casing, or null. */
 function before(original: string, lower: string, suffix: string): string | null {
@@ -87,13 +108,13 @@ export function classify(categories: readonly string[], infoboxTemplate?: string
     if (character) {
       const cls = CLASSES.find((c) => c.toLowerCase() === character.toLowerCase());
       if (cls) facets.class.push(cls);
-      else if (!/^(deceased|lore|rpg|oddly classified|undead|unique|unknown|major|minor)$/i.test(character)) facets.race.push(character);
+      else if (looksLikeRace(character)) facets.race.push(character);
     }
     // Only "<Zone> NPCs" and "<Zone> mobs" name a zone; " quests" and " items" suffixes carry factions,
     // expansions and professions too often ("Horde quests", "Legion world quests").
     for (const suffix of [" npcs", " mobs"]) {
       const zone = before(original, lower, suffix);
-      if (zone && !/^(named|boss related|mission|island expedition|faction assault|rare|rare elite)$/i.test(zone)) facets.zone.push(zone);
+      if (zone && looksLikeZone(zone)) facets.zone.push(zone);
     }
     if (lower.startsWith("horde ")) facets.faction.push("Horde");
     if (lower.startsWith("alliance ")) facets.faction.push("Alliance");

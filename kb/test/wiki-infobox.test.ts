@@ -107,3 +107,7 @@ test("plainValue strips links, renders name templates, removes other templates a
   expect(plainValue("{{item|epic|Thunderfury}} and {{item|Fang|the fang}}")).toBe("Thunderfury and the fang");
   expect(plainValue("''[[Seabolt|The Seabolt]]'' and <b>bold</b> {{Unknown|x}} end")).toBe("The Seabolt and bold end");
 });
+
+test("a stray opening brace before the infobox does not hide it", () => {
+  expect(extractInfobox("{{ stray\n{{npcbox|name=Roach}}")?.fields).toEqual({ name: "Roach" });
+});
