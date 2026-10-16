@@ -94,6 +94,14 @@ export function renderBody(body: string): BodyBlock[] {
 }
 
 /**
+ * Cut `text` at `max` on a word boundary with an ellipsis; short text passes through.
+ */
+function truncate(text: string, max: number): string {
+  if (text.length <= max) return text;
+  return `${text.slice(0, max - 1).replace(/\s+\S*$/, "")}…`;
+}
+
+/**
  * The first sentence of the first block, or a word-boundary cut at `max` with an ellipsis.
  * A bullet-first body (disambiguation pages) reads as its items joined by "; ", never "* ".
  */
@@ -101,12 +109,10 @@ export function firstSentence(body: string, max = 160): string {
   const first = renderBody(body)[0];
   const text = !first ? "" : first.type === "p" ? first.text : first.items.join("; ");
   const flat = text.replace(/\s+/g, " ").trim();
-  if (first?.type === "ul") return flat.length <= max ? flat : `${flat.slice(0, max - 1).replace(/\s+\S*$/, "")}…`;
+  if (first?.type === "ul") return truncate(flat, max);
   const end = flat.search(/\.(\s|$)/);
   const sentence = end >= 0 ? flat.slice(0, end + 1) : flat;
-  if (sentence.length <= max) return sentence;
-  const cut = sentence.slice(0, max - 1);
-  return `${cut.slice(0, cut.lastIndexOf(" ")).trimEnd()}…`;
+  return truncate(sentence, max);
 }
 
 // ---- Release-backed lookups ----------------------------------------------------------------

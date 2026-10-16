@@ -41,6 +41,7 @@ test("the landing page is indexed with its canonical", async () => {
   const { metadata } = await import("./page");
   expect(metadata.alternates).toMatchObject({ canonical: "/lore" });
   expect(metadata.openGraph).toMatchObject({ title: "Lore archive", url: "/lore" });
+  expect(metadata.twitter).toMatchObject({ card: "summary", title: "Lore archive" });
   expect(metadata.robots ?? { index: true }).toMatchObject({ index: true });
 });
 
