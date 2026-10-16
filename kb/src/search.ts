@@ -17,6 +17,8 @@ export interface SearchHit {
 export interface SearchOptions {
   kinds?: Kind[];
   versions?: GameVersion[];
+  /** One extra AND clause with bound parameters, e.g. a JSON type filter. The SQL is the caller's; the values are bound. */
+  where?: { sql: string; params: unknown[] };
 }
 
 /** Every term is quoted, so user input can never be read as FTS syntax. Terms are ANDed. */
@@ -66,6 +68,10 @@ export function search(db: DB, query: string, limit = 10, opts: SearchOptions = 
   if (opts.versions?.length) {
     conds.push(`e.game_version IN (${opts.versions.map(() => "?").join(",")})`);
     params.push(...opts.versions);
+  }
+  if (opts.where) {
+    conds.push(`(${opts.where.sql})`);
+    params.push(...opts.where.params);
   }
   // Rank from a pool, then cut: "Who is Thrall?" must put the page named Thrall first even at limit 1.
   // The SQL boost matches the raw query or its meaningful words, so a long exact page enters the pool.
