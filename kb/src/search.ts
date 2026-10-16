@@ -50,6 +50,23 @@ const ROW = `e.id, e.ext_id AS extId, e.kind, e.name,
 
 const RERANK = 50;
 
+/**
+ * Approximates allTerms(name) in SQL: lowercase, common punctuation becomes a space,
+ * runs of spaces collapsed, ends trimmed. Used only as a pre-filter for the exact-name
+ * lookup below; the final rank still uses the exact JS allTerms equality.
+ */
+const NORM_PUNCT = ["'", "-", ":", ",", ".", "/", "(", ")", "[", "]", '"', "!", "?", ";", "_", "+", "*", "&", "@", "#", "%"];
+function normExpr(col: string): string {
+  let e = `lower(${col})`;
+  for (const p of NORM_PUNCT) {
+    const lit = p === "'" ? "''''" : `'${p}'`;
+    e = `replace(${e}, ${lit}, ' ')`;
+  }
+  return `trim(replace(replace(replace(${e}, '  ', ' '), '  ', ' '), '  ', ' '))`;
+}
+
+const NORM_SQL = normExpr("e.name");
+
 export function search(db: DB, query: string, limit = 10, opts: SearchOptions = {}): SearchHit[] {
   const raw = query.trim();
   if (!raw) return [];
@@ -84,11 +101,34 @@ export function search(db: DB, query: string, limit = 10, opts: SearchOptions = 
   // The page being asked about: first a name made of exactly the asked words ("Thrall"), then a name
   // that matches only once its stopwords are dropped ("Find Thrall!"), then everything else.
   const allTerms = (name: string) => (name.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []).join(" ");
+  // Names that match only after punctuation is stripped ("Kel'Thuzad" for "kel thuzad") get no SQL
+  // boost and can fall outside the re-rank window. Pull a few by normalized name so the re-rank sees them.
+  const exactConds = [`${NORM_SQL} = ?`];
+  const exactParams: unknown[] = [wanted];
+  if (opts.kinds?.length) {
+    exactConds.push(`e.kind IN (${opts.kinds.map(() => "?").join(",")})`);
+    exactParams.push(...opts.kinds);
+  }
+  if (opts.versions?.length) {
+    exactConds.push(`e.game_version IN (${opts.versions.map(() => "?").join(",")})`);
+    exactParams.push(...opts.versions);
+  }
+  const exact = db
+    .prepare(
+      `SELECT e.id, e.ext_id AS extId, e.kind, e.name,
+        CASE WHEN length(e.body) > 160 THEN substr(e.body, 1, 160) || '…' ELSE e.body END AS snippet,
+        e.game_version AS gameVersion, e.source_url AS sourceUrl,
+        e.source_id AS sourceId, e.licence, e.retrieved_at AS retrievedAt
+       FROM entities e WHERE ${exactConds.join(" AND ")} LIMIT 10`,
+    )
+    .all(...exactParams) as SearchHit[];
+  const seen = new Set(pool.map((h) => h.id));
+  const merged = [...exact.filter((h) => !seen.has(h.id) && allTerms(h.name) === wanted), ...pool];
   const rank = (hit: SearchHit) => (allTerms(hit.name) === wanted ? 0 : contentTerms(hit.name).join(" ") === wanted ? 1 : 2);
   // Re-rank only the first RERANK rows: they are the same rows whatever the limit, so page cuts at
   // different limits stay a stable prefix of one ordering. Rows after them keep the SQL order.
-  const head = pool.slice(0, RERANK).sort((a, b) => rank(a) - rank(b));
-  return [...head, ...pool.slice(RERANK)].slice(0, limit);
+  const head = merged.slice(0, RERANK).sort((a, b) => rank(a) - rank(b));
+  return [...head, ...merged.slice(RERANK)].slice(0, limit);
 }
 
 interface EntityRow {
