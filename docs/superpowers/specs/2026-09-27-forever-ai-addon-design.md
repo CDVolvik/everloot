@@ -159,7 +159,7 @@ Rules (Blizzard Developer API Terms, verified 2026-09-27):
 - **Public builds: file bridge only (decided 2026-09-27).** The addon stores the question in
   SavedVariables; the companion reads the file, answers, and writes the reply into a slot addon that
   shows after `/reload`. This stays inside what Blizzard tolerates: reading files the client writes.
-- **v1 private: live bridge** on Carlos's test account, built on
+- **v1 private: live bridge** (never built; dropped. See `docs/sources/LEDGER.md`, "History") on Carlos's test account, built on
   [chelinho139/wow-ai](https://github.com/chelinho139/wow-ai) (MIT, credited): pixel strip out, slot
   addons in. It runs against the Blizzard EULA clause barring "any unauthorized process or software
   that intercepts, collects, reads, or 'mines' information generated or stored by the Platform", so
