@@ -37,9 +37,11 @@ test("a query lists 20 hits linking to lore pages, with a next link", async () =
 
 test("the last page has no next link; a page past the end says nothing matched", async () => {
   expect(await render({ q: "grommash", page: "2" })).not.toContain("page=3");
-  const past = await render({ q: "grommash", page: "99" });
-  expect(past).toContain("No lore page matches that.");
-  expect(past).not.toContain("page=100");
+  const past = await render({ q: "grommash", page: "3" });
+  expect(past).toContain("No more results");
+  expect(past).not.toContain("No lore page matches that.");
+  expect(past).toContain('href="/search?q=grommash"');
+  expect(past).not.toContain("page=4");
 });
 
 test("page 0 and a non-numeric page behave as page 1", async () => {
@@ -51,7 +53,7 @@ test("page 0 and a non-numeric page behave as page 1", async () => {
 test("page numbers beyond the cap or beyond 64 bits render no hits, never a crash", async () => {
   for (const page of ["1000000000000000000", "51"]) {
     const html = await render({ q: "grommash", page });
-    expect(html).toContain("No lore page matches that.");
+    expect(html).toContain("No more results");
     expect(html).not.toContain("Next");
   }
 });

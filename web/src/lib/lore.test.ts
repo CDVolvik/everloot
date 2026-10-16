@@ -74,6 +74,10 @@ describe("firstSentence", () => {
     expect(firstSentence("One. Two.")).toBe("One.");
     expect(firstSentence("One.\nTwo.")).toBe("One.");
   });
+  test("a bullet-first body reads as a list of its items, never a leading asterisk", () => {
+    expect(firstSentence(" * Ras Frostwhisper - a boss lich\n * Frostwhisper Gorge - a subzone\n\nMore.")).toBe("Ras Frostwhisper - a boss lich; Frostwhisper Gorge - a subzone");
+    expect(firstSentence("* only one")).toBe("only one");
+  });
   test("cuts a long sentence on a word boundary with an ellipsis", () => {
     const out = firstSentence(`${"word ".repeat(100)}end`);
     expect(out.length).toBeLessThanOrEqual(160);
@@ -150,6 +154,15 @@ describe("with a release", () => {
     expect(all !== "unavailable" && all.map((r) => r.extId).slice(0, 4)).toEqual(["1", "4", "5", "6"]);
     expect(indexableChunk(5)).toEqual([]);
     expect(indexableChunk(1, 2)).toMatchObject([{ extId: "5" }, { extId: "6" }]);
+  });
+
+  test("indexableCount runs its scan once per opened release", async () => {
+    const { indexableCount } = await lore();
+    const { getRelease } = await import("./release");
+    const spy = vi.spyOn(getRelease()!.db, "prepare");
+    expect(indexableCount()).toBe(26);
+    expect(indexableCount()).toBe(26);
+    expect(spy.mock.calls.filter(([sql]) => /count\(\*\)/.test(String(sql)))).toHaveLength(1);
   });
 
   test("releaseCreatedAt comes from the manifest", async () => {
