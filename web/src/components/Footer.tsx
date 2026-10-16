@@ -13,6 +13,7 @@ export default function Footer() {
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <Link href="/database" className="inline-flex items-center min-h-11 hover:text-gold-400 transition">Database</Link>
           <Link href="/upload" className="inline-flex items-center min-h-11 hover:text-gold-400 transition">Upload</Link>
+          <Link href="/addons" className="inline-flex items-center min-h-11 hover:text-gold-400 transition">Addons</Link>
           <Link href="/privacy" className="hover:text-gold-400 transition">
             Privacy
           </Link>
