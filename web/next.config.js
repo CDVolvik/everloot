@@ -23,6 +23,11 @@ const nextConfig = {
   async rewrites() {
     return [{ source: "/lore/:type(npcs|items|quests|zones|spells)", destination: "/lore/browse/:type" }];
   },
+  // One page, one URL: the internal route name is never a second address. Redirects match the
+  // original URL, so this does not loop with the rewrite above.
+  async redirects() {
+    return [{ source: "/lore/browse/:type", destination: "/lore/:type", permanent: true }];
+  },
   webpack(config, { isServer }) {
     // kb/src/db.ts would otherwise resolve better-sqlite3 through kb/node_modules and bundle it.
     if (isServer) config.externals = [...[].concat(config.externals ?? []), { "better-sqlite3": "commonjs better-sqlite3" }];

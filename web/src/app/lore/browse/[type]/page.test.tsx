@@ -55,6 +55,30 @@ test("an empty filter result says so and keeps the form; a page past the end say
   expect(past).toContain('href="/lore/zones?letter=z"');
 });
 
+test("repeated query parameters take their first value instead of crashing", async () => {
+  const { default: BrowsePage, generateMetadata } = await page();
+  const html = renderToStaticMarkup(await BrowsePage({ params: Promise.resolve({ type: "zones" }), searchParams: Promise.resolve({ letter: ["z", "b"], expansion: ["Legion", "x"] } as unknown as Record<string, string>) }));
+  expect(html.match(/href="\/lore\/1\d\d-zone-\d+"/g)).toHaveLength(11);
+  const meta = await generateMetadata({ params: Promise.resolve({ type: "zones" }), searchParams: Promise.resolve({ letter: ["z", "b"] } as unknown as Record<string, string>) });
+  expect(meta.alternates).toMatchObject({ canonical: "/lore/zones?letter=z" });
+});
+
+test("a page number past 64 bits or past the cap says no more results", async () => {
+  for (const p of ["1000000000000000000", "51"]) {
+    const out = await html("zones", { letter: "z", page: p });
+    expect(out).toContain("No more results.");
+  }
+});
+
+test("a facet filter without a letter searches every letter", async () => {
+  const out = await html("npcs", { race: "Orc" });
+  expect(out).toContain('href="/lore/1-thrall"');
+  expect(out).not.toContain("No pages match these filters.");
+  const { generateMetadata } = await page();
+  const meta = await generateMetadata(props("npcs", { race: "Orc" }));
+  expect(meta.robots).toMatchObject({ index: false });
+});
+
 test("unknown types and letters are not found", async () => {
   const { default: BrowsePage } = await page();
   await expect(BrowsePage(props("mounts"))).rejects.toThrow("NOT_FOUND");

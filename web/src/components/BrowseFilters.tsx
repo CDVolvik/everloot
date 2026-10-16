@@ -17,7 +17,7 @@ export default function BrowseFilters({
   if (keys.length === 0) return null;
   return (
     <form action={action} method="get" className="flex flex-wrap items-end gap-3 text-sm">
-      <input type="hidden" name="letter" value={letter} />
+      {letter && <input type="hidden" name="letter" value={letter} />}
       {keys.map((key) => (
         <label key={key} className="flex flex-col gap-1 text-parchment-100/70">
           {LABELS[key]}

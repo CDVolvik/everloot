@@ -239,7 +239,11 @@ export function typeCounts(): Record<string, number> | null | Unavailable {
 
 const LORE_SQL = `kind = 'lore_page' AND source_id IN (${SOURCE_MARKS})`;
 
-function letterClause(letter: string): { sql: string; params: unknown[] } {
+/** Deepest browse page served (50 rows each); beyond it the answer is "no more results", never a 64-bit OFFSET. */
+export const BROWSE_MAX_PAGE = 200;
+
+function letterClause(letter: string | null): { sql: string; params: unknown[] } {
+  if (letter === null) return { sql: "1 = 1", params: [] };
   if (letter === "#") return { sql: "lower(substr(name, 1, 1)) NOT BETWEEN 'a' AND 'z'", params: [] };
   return { sql: "name LIKE ? ESCAPE '\\'", params: [`${letter}%`] };
 }
@@ -247,13 +251,14 @@ function letterClause(letter: string): { sql: string; params: unknown[] } {
 /** Pages of one type whose name starts with `letter`, filtered by exact facet values, ordered by name. */
 export function browse(
   type: LoreType,
-  letter: string,
+  letter: string | null,
   filters: Partial<Record<FacetKey, string>>,
   page: number,
 ): { rows: { extId: string; name: string }[]; hasNext: boolean } | Unavailable {
   const release = getRelease();
   if (!release) return UNAVAILABLE;
   const p = Number.isFinite(page) && page >= 1 ? Math.floor(page) : 1;
+  if (p > BROWSE_MAX_PAGE) return { rows: [], hasNext: false };
   const conds = [LORE_SQL, "json_extract(data, '$.type') = ?"];
   const params: unknown[] = [...PUBLISHABLE, type];
   const l = letterClause(letter);
@@ -312,6 +317,8 @@ export function coverage(): Coverage | Unavailable {
   if (indexable === UNAVAILABLE) return UNAVAILABLE;
   const facets = {} as Record<FacetKey, { value: string; n: number }[]>;
   for (const key of FACET_KEYS) {
+    // An untyped release has no facets: skip six full scans of the table.
+    if (release.manifest.types === undefined) { facets[key] = []; continue; }
     facets[key] = release.db
       .prepare(`SELECT j.value AS value, count(*) AS n FROM entities, json_each(json_extract(data, '$.facets.${key}')) AS j
                 WHERE ${LORE_SQL} GROUP BY j.value ORDER BY n DESC, value COLLATE NOCASE LIMIT 10`)

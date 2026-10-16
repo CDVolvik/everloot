@@ -41,10 +41,26 @@ test("a release without type data shows totals only and says it predates classif
   expect(html).toContain("not measured");
 });
 
-test("metadata is indexed with its canonical", async () => {
+test("metadata is indexed with its canonical, and noindex when the release is unavailable", async () => {
   vi.stubEnv("KB_SNAPSHOT_PATH", release);
-  const { metadata } = await import("./page");
-  expect(metadata.alternates).toMatchObject({ canonical: "/lore/coverage" });
+  const { generateMetadata } = await import("./page");
+  const meta = await generateMetadata();
+  expect(meta.alternates).toMatchObject({ canonical: "/lore/coverage" });
+  expect(meta.robots).toMatchObject({ index: true });
+  vi.resetModules();
+  vi.spyOn(console, "error").mockImplementation(() => {});
+  vi.stubEnv("KB_SNAPSHOT_PATH", join(tmpdir(), "missing.sqlite"));
+  const mod = await import("./page");
+  expect((await mod.generateMetadata()).robots).toMatchObject({ index: false, follow: true });
+});
+
+test("an untyped release runs no facet scans", async () => {
+  vi.stubEnv("KB_SNAPSHOT_PATH", await buildLoreRelease({ typed: false }));
+  const { getRelease } = await import("@/lib/release");
+  const spy = vi.spyOn(getRelease()!.db, "prepare");
+  const { default: CoveragePage } = await import("./page");
+  renderToStaticMarkup(await CoveragePage());
+  expect(spy.mock.calls.filter(([sql]) => /json_each/.test(String(sql)))).toHaveLength(0);
 });
 
 test("an unavailable release renders the unavailable copy", async () => {

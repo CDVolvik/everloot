@@ -6,11 +6,15 @@ import { getRelease } from "@/lib/release";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Lore archive coverage",
-  description: "What the Everloot lore archive covers: pages by type, facet, indexability and template damage, with the release date. The archive is the Warcraft Wiki as of November 2023, not WoW: Forever data.",
-  alternates: { canonical: "/lore/coverage" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const available = getRelease() !== null;
+  return {
+    title: available ? "Lore archive coverage" : "Lore archive unavailable",
+    description: "What the Everloot lore archive covers: pages by type, facet, indexability and template damage, with the release date. The archive is the Warcraft Wiki as of November 2023, not WoW: Forever data.",
+    alternates: { canonical: "/lore/coverage" },
+    robots: { index: available, follow: true },
+  };
+}
 
 const FACET_LABELS: Record<FacetKey, string> = {
   expansion: "Expansion", profession: "Profession", class: "Class", race: "Race", zone: "Zone", faction: "Faction",
