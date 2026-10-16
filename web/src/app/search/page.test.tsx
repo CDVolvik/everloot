@@ -91,3 +91,9 @@ test("type chips are hidden for a release without type data", async () => {
   const html = await render({ q: "grommash" }, await buildLoreRelease({ typed: false }));
   expect(html).not.toContain("type=npc");
 });
+
+test("a repeated parameter answers with its first value, never a crash", async () => {
+  const html = await render({ q: ["grommash", "thrall"], page: ["2", "9"] } as unknown as Record<string, string>);
+  expect(html).toContain('href="/search?q=grommash"');
+  expect(html).not.toContain("page=3");
+});
