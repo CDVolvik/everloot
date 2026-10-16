@@ -15,8 +15,8 @@ const EMPTY_FACETS: Record<"expansion" | "profession" | "class" | "race" | "zone
  * "100% Done" (8, quest), 22 "Zone n" pages mentioning grommash (100..121, type zone; odd ids Legion,
  * even ids Battle for Azeroth), and the curated forever launch date plus a curated item that must stay
  * out of lore search. `typed: false` builds the same rows with no type data, like the 2026-10-05
- * release; `facets: false` keeps the types but drops the manifest facet summaries, like a release
- * built before 2026-10-16.
+ * release; `facets: false` keeps the types but drops the manifest facet totals — an artifact the
+ * serving gate refuses, because a typed release without them would serve slow scan paths.
  */
 export async function buildLoreRelease(options: { typed?: boolean; facets?: boolean } = {}): Promise<string> {
   const typed = options.typed ?? true;

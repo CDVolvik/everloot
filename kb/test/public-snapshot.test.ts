@@ -210,6 +210,9 @@ test("a malformed facets key in the manifest is refused", async () => {
   expect(() => openPublicSnapshot(fresh.dbPath)).toThrow(/facets/);
   await editManifest(fresh.manifestPath, (m) => (m.facets = { top: { zone: [{ value: "Zul'Gurub", n: 1 }] }, byType: { npc: { race: ["Orc"] } } }));
   expect(() => openPublicSnapshot(fresh.dbPath)).not.toThrow();
+  // A typed release without facet totals would serve the slow scan paths: refuse it outright.
+  await editManifest(fresh.manifestPath, (m) => { m.types = { other: 1 }; delete m.facets; });
+  expect(() => openPublicSnapshot(fresh.dbPath)).toThrow(/facet totals/);
 });
 
 test("a release built before the type index existed still opens; a malformed types key is refused", async () => {
