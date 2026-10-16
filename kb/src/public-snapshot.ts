@@ -3,6 +3,7 @@ import { openExistingReadOnlyDb, type DB } from "./db.js";
 import {
   checkPublishedDb,
   NOTICE,
+  BROWSE_LETTERS,
   PUBLISHED_LICENCE,
   sha256File,
   type Manifest,
@@ -55,6 +56,12 @@ function facetsLookValid(f: unknown): f is ManifestFacets {
   return true;
 }
 
+/** Shape-check a manifest's optional browse letters: each type maps to letters from BROWSE_LETTERS. */
+function lettersLookValid(l: unknown): l is Record<string, string[]> {
+  if (!isObject(l)) return false;
+  return Object.values(l).every((v) => Array.isArray(v) && v.every((c) => typeof c === "string" && BROWSE_LETTERS.includes(c)));
+}
+
 /** Read and shape-check the manifest that must sit beside every public release. */
 function readManifest(dbPath: string): Manifest {
   const manifestPath = `${dbPath}.manifest.json`;
@@ -95,6 +102,12 @@ function readManifest(dbPath: string): Manifest {
   }
   if (m.facets !== undefined && !facetsLookValid(m.facets)) {
     throw new Error("public snapshot manifest facets must map each top value to its count and each type to value lists");
+  }
+  if (m.types !== undefined && m.letters === undefined) {
+    throw new Error("public snapshot manifest has types but no browse letters");
+  }
+  if (m.letters !== undefined && !lettersLookValid(m.letters)) {
+    throw new Error("public snapshot manifest letters must map each type to browse letters (a-z or #)");
   }
   const allowed = publishableIds();
   if (Object.keys(m.counts).length !== allowed.length || allowed.some((id) => !Object.hasOwn(m.counts as object, id))) {

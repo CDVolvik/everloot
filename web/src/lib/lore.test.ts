@@ -218,6 +218,14 @@ describe("types, facets and browsing", () => {
     expect(lettersWithRows("item")).toEqual([]);
   });
 
+  test("lettersWithRows reads the manifest without querying the release", async () => {
+    const { lettersWithRows } = await lore();
+    const { getRelease } = await import("./release");
+    const spy = vi.spyOn(getRelease()!.db, "prepare");
+    expect(lettersWithRows("npc")).toEqual(["r", "t", "z"]);
+    expect(spy).not.toHaveBeenCalled();
+  });
+
   test("browse filters by one facet value, bound exactly", async () => {
     const { browse } = await lore();
     const legion = browse("zone", "z", { expansion: "Legion" }, 1);
@@ -300,8 +308,9 @@ describe("types, facets and browsing", () => {
 
   test("a release without type data reports no types", async () => {
     const untyped = await buildLoreRelease({ typed: false });
-    const { hasTypes, typeCounts, browse, coverage } = await lore(untyped);
+    const { hasTypes, typeCounts, browse, coverage, lettersWithRows } = await lore(untyped);
     expect(hasTypes()).toBe(false);
+    expect(lettersWithRows("zone")).toEqual([]);
     expect(typeCounts()).toBeNull();
     expect(browse("zone", "z", {}, 1)).toEqual({ rows: [], hasNext: false });
     const c = coverage();

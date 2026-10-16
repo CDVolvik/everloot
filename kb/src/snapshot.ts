@@ -55,6 +55,8 @@ export interface Manifest {
   damaged?: number;
   /** Facet summaries for the lore archive. Absent in releases built before 2026-10-16. */
   facets?: ManifestFacets;
+  /** Per page type, the browse letters (a–z, then "#") it has lore pages under. Absent before 2026-10-16. */
+  letters?: Record<string, string[]>;
 }
 
 /** Schema entries a release may lack: added after the first release shipped, so old files still open. */
@@ -206,7 +208,7 @@ export function snapshot(db: DB, outPath: string, now = new Date()): Manifest {
       out.close();
     }
     const counts = verifyOutput(work);
-    const { types, damaged, facets } = releaseSummary(work);
+    const { types, damaged, facets, letters } = releaseSummary(work);
     const sha256 = sha256File(work);
     copyFileSync(work, targetPartial);
     rmSync(manifestPath, { force: true }); // delete the old manifest right before the DB swap below
@@ -220,6 +222,7 @@ export function snapshot(db: DB, outPath: string, now = new Date()): Manifest {
       types,
       damaged,
       facets,
+      letters,
     };
     writeFileSync(manifestPartial, `${JSON.stringify(manifest, null, 2)}\n`);
     renameSync(manifestPartial, manifestPath);
@@ -310,12 +313,20 @@ function byValueNoCase(a: string, b: string): number {
   return fa < fb ? -1 : fa > fb ? 1 : 0;
 }
 
+/** The browse letters, in the order the site lists them; "#" is every name not starting with a–z. */
+export const BROWSE_LETTERS = [..."abcdefghijklmnopqrstuvwxyz", "#"];
+
 /**
- * The finished work file's summary: rows per page type, the damaged-page count, and the lore
- * facet summaries (top ten values per key, plus every value per page type). Absent in releases
- * built before 2026-10-15/16 for types and facets respectively.
+ * The finished work file's summary: rows per page type, the damaged-page count, the lore facet
+ * summaries (top ten values per key, plus every value per page type) and the browse letters each
+ * page type has. Absent in releases built before 2026-10-15/16 for types and the rest respectively.
  */
-function releaseSummary(file: string): { types?: Record<string, number>; damaged?: number; facets?: ManifestFacets } {
+function releaseSummary(file: string): {
+  types?: Record<string, number>;
+  damaged?: number;
+  facets?: ManifestFacets;
+  letters?: Record<string, string[]>;
+} {
   const out = new Database(file, { readonly: true });
   try {
     const { n: typed } = out.prepare("SELECT count(*) AS n FROM entities WHERE json_extract(data, '$.type') IS NOT NULL").get() as { n: number };
@@ -350,7 +361,20 @@ function releaseSummary(file: string): { types?: Record<string, number>; damaged
     }
     // Every type that has any facet keeps all six keys, so site readers never branch on shape.
     for (const entry of Object.values(byType)) for (const key of FACET_KEYS) entry[key] ??= [];
-    return { types, damaged, facets: { top, byType } };
+    // lower() folds ASCII only, like the site's letter filter (LIKE 'x%' and NOT BETWEEN 'a' AND 'z').
+    const starts = new Map<string, Set<string>>();
+    for (const r of out
+      .prepare(
+        `SELECT coalesce(json_extract(data, '$.type'), 'other') AS t, lower(substr(name, 1, 1)) AS c
+         FROM entities WHERE kind = 'lore_page' GROUP BY t, c`,
+      )
+      .all() as { t: string; c: string }[]) {
+      if (!starts.has(r.t)) starts.set(r.t, new Set());
+      starts.get(r.t)!.add(r.c >= "a" && r.c <= "z" ? r.c : "#");
+    }
+    const letters: Record<string, string[]> = {};
+    for (const [t, seen] of starts) letters[t] = BROWSE_LETTERS.filter((l) => seen.has(l));
+    return { types, damaged, facets: { top, byType }, letters };
   } finally {
     out.close();
   }
