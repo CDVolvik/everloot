@@ -5,7 +5,7 @@ import { tools, toolHref } from "@/data/tools";
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://everloot.app";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const staticRoutes = ["/", "/about", "/privacy", "/contact", "/upload", "/database", "/database/drops", "/database/npcs", "/database/quests", "/database/vendors", "/tools/collections", "/tools/guild-board", "/tools/auctions", "/tools/gold-ledger"];
+  const staticRoutes = ["/", "/about", "/privacy", "/contact", "/upload", "/database", "/database/drops", "/database/npcs", "/database/quests", "/database/vendors", "/tools/collections", "/tools/guild-board", "/tools/auctions", "/tools/gold-ledger", "/addons", "/addons/polestar", "/addons/polestar/packs", "/addons/polestar/wanted"];
 
   const paths = [...new Set([...staticRoutes, ...tools.filter((tool) => tool.status !== "coming-soon").map(toolHref)])];
   return [
