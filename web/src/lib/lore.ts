@@ -19,9 +19,9 @@ export function slugify(name: string): string {
   return runs.join("-").slice(0, 80).replace(/-+$/, "");
 }
 
-/** `<extId>-<name-slug>`: the wiki page id, then a readable name. */
+/** `<extId>-<name-slug>` for a numeric wiki page id; a curated kebab id is the whole slug. */
 export function loreSlug(row: { extId: string; name: string }): string {
-  return `${row.extId}-${slugify(row.name)}`;
+  return /^[1-9]\d*$/.test(row.extId) ? `${row.extId}-${slugify(row.name)}` : row.extId;
 }
 
 /**
@@ -115,8 +115,11 @@ export function loreByExtId(extId: string): LorePage | null | Unavailable {
   let data: Record<string, unknown> = {};
   try { data = JSON.parse(row.data) as Record<string, unknown>; } catch { /* a row without usable data still renders */ }
   const categories = Array.isArray(data.categories) ? data.categories.filter((c): c is string => typeof c === "string") : [];
-  const { data: _data, ...rest } = row;
-  return { ...rest, categories, revisionTimestamp: typeof data.revisionTimestamp === "string" ? data.revisionTimestamp : null };
+  return {
+    extId: row.extId, name: row.name, body: row.body, sourceUrl: row.sourceUrl, sourceId: row.sourceId,
+    licence: row.licence, retrievedAt: row.retrievedAt, gameVersion: row.gameVersion, categories,
+    revisionTimestamp: typeof data.revisionTimestamp === "string" ? data.revisionTimestamp : null,
+  };
 }
 
 export function searchLore(q: string, page: number): { hits: SearchHit[]; hasNext: boolean } | Unavailable {
