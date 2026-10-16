@@ -61,3 +61,12 @@ test("whitespace-only required fields count as missing", async () => {
   const db = openDb(":memory:");
   await expect(importCurated(db, dirWith({ "w.yaml": GOOD.replace("name: WoW Forever launch date", 'name: "   "') }))).rejects.toThrow("w.yaml: entry 1 is missing name");
 });
+
+test("a curated id must be kebab-case and must not look like a wiki page id", async () => {
+  for (const id of ["12345", "2026-launch", "Forever Launch", "forever_launch"]) {
+    const db = openDb(":memory:");
+    await expect(importCurated(db, dirWith({ "a.yaml": GOOD.replace("id: forever-launch", `id: "${id}"`) }))).rejects.toThrow(/id/);
+  }
+  const db = openDb(":memory:");
+  expect(await importCurated(db, dirWith({ "a.yaml": GOOD.replace("id: forever-launch", "id: forever-launch-2") }))).toBe(1);
+});
