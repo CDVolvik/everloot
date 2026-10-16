@@ -20,8 +20,8 @@ export default function WantedPage() {
         <h1 className="font-display text-3xl sm:text-4xl font-bold text-parchment-100 tracking-tight">Routes and guides worth building</h1>
         <p className="text-parchment-100/80 max-w-2xl">
           Guide packs nobody has listed yet, each with the reason it is open. To start one, follow
-          Polestar&apos;s <a className={link} href={POLESTAR.handbook}>pack handbook</a>: <span className="font-mono">polestar new &lt;folder&gt;</span> sets
-          up a pack that already lints, plays and builds.
+          Polestar&apos;s <a className={link} href={POLESTAR.handbook}>pack handbook</a>: from a clone of Polestar (Node 24 and Lua 5.1),{" "}
+          <span className="font-mono">polestar new &lt;folder&gt;</span> sets up a pack that already lints, plays and builds.
         </p>
       </header>
 

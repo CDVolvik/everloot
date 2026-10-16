@@ -30,8 +30,8 @@ export default function AddonsPage() {
       <header className="space-y-3">
         <h1 className="font-display text-3xl sm:text-4xl font-bold text-parchment-100 tracking-tight">Addons</h1>
         <p className="text-parchment-100/80 max-w-2xl">
-          Addons we build or that work well with Everloot. Polestar is made by its own authors; Everloot lists it
-          and is not part of it.
+          The addon we build, and Polestar, which we list. Polestar is made by its own authors; Everloot is not part
+          of it.
         </p>
       </header>
       <ul className="grid sm:grid-cols-2 gap-4">

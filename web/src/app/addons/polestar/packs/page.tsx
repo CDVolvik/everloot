@@ -19,12 +19,13 @@ export default function PacksPage() {
         </p>
         <h1 className="font-display text-3xl sm:text-4xl font-bold text-parchment-100 tracking-tight">Guide packs for Polestar</h1>
         <p className="text-parchment-100/80 max-w-2xl">
-          Each pack is a separate addon made by its own author and appears in Polestar under &quot;Guide packs&quot;
+          Each pack is a separate addon and appears in Polestar under &quot;Guide packs&quot;
           (<span className="font-mono">/polestar packs</span>).
         </p>
         <p className="rounded-lg border border-gold-400/30 bg-gold-400/5 p-3 text-sm text-parchment-100/80">
-          This list is independent: neither Polestar nor Everloot tests or vouches for the packs on it. A pack is an
-          addon like any other, so install packs from authors you trust and report problems to the pack&apos;s author.
+          The first entry is Polestar&apos;s own guides, which ship with Polestar. Every other pack is made by its own
+          author, and neither Polestar nor Everloot tests or vouches for it: a pack is an addon like any other, so install
+          packs from authors you trust and report problems to the pack&apos;s author.
         </p>
       </header>
 

@@ -11,7 +11,7 @@ export const POLESTAR = {
   repo: REPO,
   releases: `${REPO}/releases`,
   issues: `${REPO}/issues`,
-  guideReports: `${REPO}/issues?q=is%3Aissue+is%3Aopen+label%3Abug`,
+  bugReports: `${REPO}/issues?q=is%3Aissue+is%3Aopen+label%3Abug`,
   curseforge: "https://www.curseforge.com/wow/addons/polestar-guides",
   discord: "https://discord.gg/vMbee6F2e9",
   license: `${REPO}/blob/next/LICENSE`,
@@ -114,9 +114,9 @@ export const POLESTAR_HELP: PolestarHelp[] = [
     url: `${REPO}/issues/10`,
   },
   {
-    title: "Confirm player guide reports in game",
+    title: "Confirm player bug reports in game",
     why: "Players report steps that point to the wrong NPC, trainer or place; a second player confirming one helps it get fixed.",
-    url: POLESTAR.guideReports,
+    url: POLESTAR.bugReports,
   },
   {
     title: "Record your sessions",
