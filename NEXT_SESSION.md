@@ -50,9 +50,29 @@ re-hash per request, double lookup per lore page).
 (count memo, bullet-first descriptions, Open Graph, stable paging, 60 s bad-release backoff, "No more results",
 curated-id rule). Web 241 + kb 223 tests. Retarget to `main` after #50 merges.
 
-**Slice 2 in design (`feat/lore-types`, stacked on #51):** category-driven types and facets, template repair,
-browse pages, `/lore/coverage`, new dated release built locally for Carlos to publish. Spec:
-`docs/superpowers/specs/2026-10-15-lore-types-and-coverage-design.md`.
+**Slice 2 built (`feat/lore-types`, stacked on #51):** infobox capture, category/infobox types and facets, template
+repair, browse pages (`/lore/npcs` … `/lore/spells`), search type chips, `/lore/coverage`, a sitemap chunk. Spec
+`docs/superpowers/specs/2026-10-15-lore-types-and-coverage-design.md`, plan
+`docs/superpowers/plans/2026-10-15-lore-types-and-coverage.md`. Against the current 2026-10-05 release the new pages
+say "This release predates classification." and link to search; nothing on production changes until a new release
+is published.
+
+**Carlos: publish the new knowledge release (after the PR merges)**
+1. The release and manifest are built locally at `kb/data/release/<YYYY-MM-DD>-everloot-public.sqlite(.manifest.json)`
+   (see the PR for the exact name and the `types`/`damaged` numbers in its manifest).
+2. Upload both to the R2 bucket the site uses under `knowledge/<name>` and `knowledge/<name>.manifest.json`
+   (create-only, like the first release).
+3. In Vercel Production set `EVERLOOT_KB_RELEASE_KEY=knowledge/<name>` and redeploy.
+4. Check: `/lore/coverage` shows type counts; `/lore/npcs` lists pages; `/mcp/public` still initializes.
+Measured on the trial and full builds: see the PR body (filled in before the PR opens).
+
+**Slice 3 redefined (Carlos, 2026-10-16): Addons and tools hub around Polestar.** `fitzforge/polestar` (GPL-3 leveling-guide
+addon with community guide packs; Carlos has a fork and merged PRs there) does not host or list packs, so Everloot adds
+`/addons`, `/addons/polestar` (details, links, needs from its open issues), `/addons/polestar/packs` (an independent pack
+registry on the `pack.json` fields plus coverage, PR-based listings first) and `/addons/polestar/wanted` (routes and guides
+people can build). A CC BY-SA export of corroborated NPC/quest/trainer/vendor facts for Polestar's `data build` is the
+follow-up once real collection runs. Outreach draft for Carlos to send: `docs/2026-10-16-polestar-outreach-draft.md`.
+Guardrail: link to Polestar's GPL code and guide text, never copy it into this repo.
 
 ### Agent (next session, no owner step needed)
 
