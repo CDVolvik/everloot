@@ -25,12 +25,15 @@ function sourceHost(url: string): string {
   try { return new URL(url).hostname; } catch { return "source"; }
 }
 
-export default async function SearchPage(props: { searchParams: Promise<{ q?: string; page?: string; type?: string }> }) {
+/** Next hands a repeated parameter over as an array; the first value is the one we answer. */
+const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+
+export default async function SearchPage(props: { searchParams: Promise<{ q?: string | string[]; page?: string | string[]; type?: string | string[] }> }) {
   const params = await props.searchParams;
-  const q = (params.q ?? "").trim().slice(0, MAX_QUERY);
-  const page = pageNumber(params.page);
+  const q = (first(params.q) ?? "").trim().slice(0, MAX_QUERY);
+  const page = pageNumber(first(params.page));
   const typed = hasTypes() === true;
-  const type = typed ? typeOf(params.type) : undefined;
+  const type = typed ? typeOf(first(params.type)) : undefined;
   const result = q ? searchLore(q, page, type) : null;
   const typeQuery = type ? `&type=${type}` : "";
   const chips: { label: string; href: string; active: boolean }[] = typed && q

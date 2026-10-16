@@ -273,7 +273,7 @@ export function browse(
   const rows = release.db
     .prepare(`SELECT ext_id AS extId, name FROM entities WHERE ${conds.join(" AND ")} ORDER BY name COLLATE NOCASE, id LIMIT ? OFFSET ?`)
     .all(...params, BROWSE_PAGE_SIZE + 1, (p - 1) * BROWSE_PAGE_SIZE) as { extId: string; name: string }[];
-  return { rows: rows.slice(0, BROWSE_PAGE_SIZE), hasNext: rows.length > BROWSE_PAGE_SIZE };
+  return { rows: rows.slice(0, BROWSE_PAGE_SIZE), hasNext: rows.length > BROWSE_PAGE_SIZE && p < BROWSE_MAX_PAGE };
 }
 
 const FACET_VALUES = new WeakMap<object, Map<string, Record<FacetKey, string[]>>>();
