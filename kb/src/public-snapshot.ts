@@ -90,6 +90,9 @@ function readManifest(dbPath: string): Manifest {
   if (m.damaged !== undefined && (typeof m.damaged !== "number" || !Number.isInteger(m.damaged) || m.damaged < 0)) {
     throw new Error("public snapshot manifest damaged must be a non-negative row count");
   }
+  if (m.types !== undefined && m.facets === undefined) {
+    throw new Error("public snapshot manifest has types but no facet totals");
+  }
   if (m.facets !== undefined && !facetsLookValid(m.facets)) {
     throw new Error("public snapshot manifest facets must map each top value to its count and each type to value lists");
   }
