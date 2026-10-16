@@ -254,25 +254,12 @@ function letterClause(letter: string | null): { sql: string; params: unknown[] }
   return { sql: "name LIKE ? ESCAPE '\\'", params: [`${letter}%`] };
 }
 
-const LETTERS_WITH_ROWS = new WeakMap<object, Map<string, string[]>>();
-
 /** The letters (and "#") this type actually has pages under, so empty letters stay out of the sitemap. */
 export function lettersWithRows(type: LoreType): string[] | Unavailable {
   const release = getRelease();
   if (!release) return UNAVAILABLE;
-  let perType = LETTERS_WITH_ROWS.get(release.db);
-  if (!perType) { perType = new Map(); LETTERS_WITH_ROWS.set(release.db, perType); }
-  const known = perType.get(type);
-  if (known) return known;
-  const rows = release.db
-    .prepare(`SELECT lower(substr(name, 1, 1)) AS c FROM entities WHERE ${LORE_SQL} AND json_extract(data, '$.type') = ? GROUP BY c`)
-    .all(...PUBLISHABLE, type) as { c: string }[];
-  const starts = rows.map((r) => r.c);
-  const out = LETTERS.filter((letter) =>
-    letter === "#" ? starts.some((c) => c < "a" || c > "z") : starts.includes(letter),
-  );
-  perType.set(type, out);
-  return out;
+  // A typed release without the letter lists is refused at open; an untyped release has none.
+  return release.manifest.letters?.[type] ?? [];
 }
 
 /** Pages of one type whose name starts with `letter`, filtered by exact facet values, ordered by name. */
