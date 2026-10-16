@@ -10,6 +10,7 @@
 - [Profession paths](https://everloot.app/tools/professions): Estimated recipe paths from uploaded recipes and prices; missing data remains unknown.
 - [Collection gap](https://everloot.app/tools/collections): Compare uploaded collection and ownership records.
 - [Guild board](https://everloot.app/tools/guild-board): Officer-authorized public uploads; no aggregate guild score is currently published.
+- [Lore archive](https://everloot.app/lore): Warcraft Wiki pages as of 2023-11-13, CC BY-SA 4.0, searchable at https://everloot.app/search. Not WoW: Forever data.
 
 ## Data limitations
 - Distinct addon install IDs are not proof of independent people.
@@ -17,6 +18,7 @@
 - Empty available storage and unavailable storage are different states.
 - No number, name or position should be invented for an unknown entity.
 - Farming routes and respawn optimization remain planned.
+- The lore archive is a 2023 snapshot and predates WoW: Forever.
 
 ## About
 - [About Everloot](https://everloot.app/about)
