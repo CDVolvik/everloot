@@ -1,13 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
-import { firstSentence, isIndexable, loreByExtId, loreSlug, parseLoreSlug, renderBody, UNAVAILABLE, type LorePage as Lore } from "@/lib/lore";
+import { CONVERSION_NOTE, firstSentence, isIndexable, loreByExtId, loreSlug, parseLoreSlug, renderBody, UNAVAILABLE, UNAVAILABLE_COPY, type LorePage as Lore } from "@/lib/lore";
 
 export const revalidate = 86400;
 
 const UNAVAILABLE_TITLE = "Lore archive unavailable";
-export const UNAVAILABLE_COPY = "The knowledge release could not be opened. Nothing here is a count or a page; try again later.";
-export const CONVERSION_NOTE = "Converted from wikitext with templates, tables and images removed, so some sentences may be missing values.";
 
 function label(page: Lore): string {
   return page.sourceId === "warcraft-wiki-2023" ? "Lore archive · Warcraft Wiki, 2023 dump" : `Lore archive · ${page.sourceId} · ${page.gameVersion}`;

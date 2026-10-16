@@ -10,6 +10,8 @@ const nextConfig = {
     "/mcp": ["./.release/*.sqlite", "./.release/*.manifest.json"],
     "/mcp/public": ["./.release/*.sqlite", "./.release/*.manifest.json"],
     "/lore/[slug]": ["./.release/*.sqlite", "./.release/*.manifest.json"],
+    "/lore": ["./.release/*.sqlite", "./.release/*.manifest.json"],
+    "/search": ["./.release/*.sqlite", "./.release/*.manifest.json"],
   },
   webpack(config, { isServer }) {
     // kb/src/db.ts would otherwise resolve better-sqlite3 through kb/node_modules and bundle it.
