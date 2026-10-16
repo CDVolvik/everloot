@@ -46,6 +46,14 @@ two Important findings are fixed in `f13b52c`; five minors are deferred (listed 
 summary: sitemap full-table count per cache miss, curated-id collisions, search re-rank paging, bad-release
 re-hash per request, double lookup per lore page).
 
+**Sharpening pass (PR #51, `feat/lore-sharpen`, stacked on #50):** the review's deferred minors fixed with tests
+(count memo, bullet-first descriptions, Open Graph, stable paging, 60 s bad-release backoff, "No more results",
+curated-id rule). Web 241 + kb 223 tests. Retarget to `main` after #50 merges.
+
+**Slice 2 in design (`feat/lore-types`, stacked on #51):** category-driven types and facets, template repair,
+browse pages, `/lore/coverage`, new dated release built locally for Carlos to publish. Spec:
+`docs/superpowers/specs/2026-10-15-lore-types-and-coverage-design.md`.
+
 ### Agent (next session, no owner step needed)
 
 - **Option C (`craft_result`, yellow skill-up chance):** only after the in-game checklist
