@@ -43,8 +43,16 @@ test("the last page has no next link; a page past the end says nothing matched",
 });
 
 test("page 0 and a non-numeric page behave as page 1", async () => {
-  for (const page of ["0", "abc", "-4"]) {
+  for (const page of ["0", "abc", "-4", "1e300"]) {
     expect(await render({ q: "grommash", page })).toContain("page=2");
+  }
+});
+
+test("page numbers beyond the cap or beyond 64 bits render no hits, never a crash", async () => {
+  for (const page of ["1000000000000000000", "51"]) {
+    const html = await render({ q: "grommash", page });
+    expect(html).toContain("No lore page matches that.");
+    expect(html).not.toContain("Next");
   }
 });
 

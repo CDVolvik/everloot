@@ -11,6 +11,8 @@ export const PAGE_SIZE = 20;
 export const INDEXABLE_MIN_BODY = 300;
 export const CHUNK_SIZE = 40_000;
 export const MAX_QUERY = 200;
+/** Deepest search page served; beyond it the answer is "no hits", never a 20 million row LIMIT. */
+export const MAX_PAGE = 50;
 export const UNAVAILABLE_COPY = "The knowledge release could not be opened. Nothing here is a count or a page; try again later.";
 export const CONVERSION_NOTE = "Converted from wikitext with templates, tables and images removed, so some sentences may be missing values.";
 
@@ -96,7 +98,7 @@ export interface LorePage {
 
 const PUBLISHABLE = Object.values(SOURCES).filter((s) => s.publishable).map((s) => s.id);
 const SOURCE_MARKS = PUBLISHABLE.map(() => "?").join(", ");
-const INDEXABLE_SQL = `kind = 'lore_page' AND source_id IN (${SOURCE_MARKS}) AND length(body) >= ${INDEXABLE_MIN_BODY} AND body NOT LIKE '%REDIRECT%'`;
+const INDEXABLE_SQL = `kind = 'lore_page' AND source_id IN (${SOURCE_MARKS}) AND length(body) >= ${INDEXABLE_MIN_BODY} AND instr(body, 'REDIRECT') = 0`;
 
 interface LoreRow {
   extId: string; name: string; body: string; data: string; sourceUrl: string; sourceId: string;
@@ -128,7 +130,8 @@ export function searchLore(q: string, page: number): { hits: SearchHit[]; hasNex
   const release = getRelease();
   if (!release) return UNAVAILABLE;
   const p = Number.isFinite(page) && page >= 1 ? Math.floor(page) : 1;
-  const results = search(release.db, q.slice(0, MAX_QUERY), p * PAGE_SIZE + 1);
+  if (p > MAX_PAGE) return { hits: [], hasNext: false };
+  const results = search(release.db, q.slice(0, MAX_QUERY), p * PAGE_SIZE + 1, { kinds: ["lore_page"] });
   return { hits: results.slice((p - 1) * PAGE_SIZE, p * PAGE_SIZE), hasNext: results.length > p * PAGE_SIZE };
 }
 

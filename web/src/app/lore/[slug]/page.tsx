@@ -3,7 +3,8 @@ import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 import { CONVERSION_NOTE, firstSentence, isIndexable, loreByExtId, loreSlug, parseLoreSlug, renderBody, UNAVAILABLE, UNAVAILABLE_COPY, type LorePage as Lore } from "@/lib/lore";
 
-export const revalidate = 86400;
+// Rendered per request: an ISR cache would keep a transient "unavailable" answer (and its noindex) for a day.
+export const dynamic = "force-dynamic";
 
 const UNAVAILABLE_TITLE = "Lore archive unavailable";
 
@@ -47,6 +48,7 @@ export default async function LorePage(props: { params: Promise<{ slug: string }
   if (slug !== loreSlug(page)) permanentRedirect(`/lore/${loreSlug(page)}`);
 
   const blocks = renderBody(page.body);
+  const wiki = page.sourceId === "warcraft-wiki-2023";
   const revised = page.revisionTimestamp ? page.revisionTimestamp.slice(0, 10) : null;
   return (
     <article className="space-y-8 max-w-4xl">
@@ -85,13 +87,13 @@ export default async function LorePage(props: { params: Promise<{ slug: string }
           <a href={page.sourceUrl} rel="noopener" className="text-gold-400 hover:underline underline-offset-4 break-all">{page.sourceUrl}</a>
           {" "}· retrieved {page.retrievedAt} · {page.licence.replace("CC-BY-SA-4.0", "CC BY-SA 4.0")}
         </p>
-        <p>{CONVERSION_NOTE}</p>
+        {wiki && <p>{CONVERSION_NOTE}</p>}
       </section>
 
       <p className="text-sm text-parchment-100/60">
-        This archive predates WoW: Forever. For collected gameplay facts see the{" "}
-        <Link href="/database" className="text-gold-400 hover:underline underline-offset-4">Forever database</Link>.
-        {" "}<Link href="/search" className="text-gold-400 hover:underline underline-offset-4">Search the archive</Link>.
+        {wiki && <>This archive predates WoW: Forever. For collected gameplay facts see the{" "}
+        <Link href="/database" className="text-gold-400 hover:underline underline-offset-4">Forever database</Link>.{" "}</>}
+        <Link href="/search" className="text-gold-400 hover:underline underline-offset-4">Search the archive</Link>.
       </p>
     </article>
   );

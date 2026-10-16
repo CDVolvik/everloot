@@ -17,7 +17,8 @@ const formatter = new Intl.NumberFormat("en-US");
 
 export default async function LoreLanding() {
   const release = getRelease();
-  const pages = release ? Object.values(release.manifest.counts).reduce((a, b) => a + b, 0) : null;
+  // The wiki count only: curated Forever rows are not part of the 2023 wiki.
+  const pages = release ? release.manifest.counts["warcraft-wiki-2023"] ?? null : null;
 
   return (
     <article className="space-y-10 max-w-4xl">
