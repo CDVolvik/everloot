@@ -197,3 +197,21 @@ test("a missing or empty database file is refused before any handle is returned"
   await editManifest(manifestPath, (m) => (m.sha256 = createHash("sha256").update("").digest("hex")));
   expect(() => openPublicSnapshot(dbPath)).toThrow();
 });
+
+test("a release built before the type index existed still opens; a malformed types key is refused", async () => {
+  const { dbPath } = await mutatedRelease((db) => {
+    db.exec("DROP INDEX entities_type_name; VACUUM;");
+  });
+  const release = openPublicSnapshot(dbPath);
+  expect(release.manifest.counts.curated).toBe(1);
+  release.db.close();
+
+  const fresh = await genuineRelease();
+  expect(readManifest(fresh.manifestPath).types).toEqual({ other: 1 });
+  await editManifest(fresh.manifestPath, (m) => (m.types = "x"));
+  expect(() => openPublicSnapshot(fresh.dbPath)).toThrow(/types/);
+  await editManifest(fresh.manifestPath, (m) => { m.types = { other: 1 }; m.damaged = -1; });
+  expect(() => openPublicSnapshot(fresh.dbPath)).toThrow(/damaged/);
+  await editManifest(fresh.manifestPath, (m) => { delete m.types; delete m.damaged; });
+  expect(() => openPublicSnapshot(fresh.dbPath)).not.toThrow();
+});

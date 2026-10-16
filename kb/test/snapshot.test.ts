@@ -194,3 +194,25 @@ test("the manifest hash matches the published file", async () => {
   const written = JSON.parse(readFileSync(`${out}.manifest.json`, "utf8"));
   expect(written.sha256).toBe(recomputed);
 });
+
+test("the manifest counts page types and damaged pages, and the release carries the type index", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "kb-snap-"));
+  const db = openDb(join(dir, "kb.sqlite"));
+  const row = (extId: string, data: Record<string, unknown>) => ({
+    kind: "lore_page" as const, extId, name: `Page ${extId}`, body: "Body text", gameVersion: "lore" as const,
+    sourceUrl: `https://example.test/${extId}`, retrievedAt: "2023-11-13", data,
+  });
+  await replaceSourceRows(db, "warcraft-wiki-2023", ["lore_page"], [
+    row("1", { type: "npc" }), row("2", { type: "npc", damaged: true }), row("3", { type: "item" }), row("4", {}),
+  ]);
+  const out = join(dir, "release", "release.sqlite");
+  const manifest = snapshot(db, out, new Date("2026-10-15T12:00:00Z"));
+  expect(manifest.types).toEqual({ npc: 2, item: 1, other: 1 });
+  expect(manifest.damaged).toBe(1);
+  const written = JSON.parse(readFileSync(`${out}.manifest.json`, "utf8"));
+  expect(written.types).toEqual({ npc: 2, item: 1, other: 1 });
+  expect(written.damaged).toBe(1);
+  const snap = new Database(out, { readonly: true });
+  expect(snap.prepare("SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'entities_type_name'").get()).toEqual({ name: "entities_type_name" });
+  snap.close();
+});
