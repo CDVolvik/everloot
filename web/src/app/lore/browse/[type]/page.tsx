@@ -9,8 +9,16 @@ import {
 
 export const dynamic = "force-dynamic";
 
+type RawQuery = Partial<Record<FacetKey | "letter" | "page", string | string[]>>;
 type Query = Partial<Record<FacetKey | "letter" | "page", string>>;
-type Props = { params: Promise<{ type: string }>; searchParams: Promise<Query> };
+type Props = { params: Promise<{ type: string }>; searchParams: Promise<RawQuery> };
+
+/** Next hands a repeated parameter over as an array; the first value is the one we answer. */
+function firstValues(raw: RawQuery): Query {
+  const out: Query = {};
+  for (const [k, v] of Object.entries(raw)) out[k as keyof Query] = Array.isArray(v) ? v[0] : v;
+  return out;
+}
 
 function slugOf(type: string): BrowseSlug | null {
   return Object.hasOwn(BROWSE_TYPES, type) ? (type as BrowseSlug) : null;
@@ -31,29 +39,35 @@ function letterUrl(slug: BrowseSlug, letter: string): string {
   return letter === "a" ? `/lore/${slug}` : `/lore/${slug}?letter=${encodeURIComponent(letter)}`;
 }
 
+/** The letter to list: the given one; none when a facet filter is set without a letter; "a" otherwise. */
+function letterOf(query: Query): string | null | undefined {
+  if (query.letter === undefined) return Object.keys(filtersOf(query)).length > 0 ? null : "a";
+  return parseLetter(query.letter) ?? undefined;
+}
+
 export async function generateMetadata(props: Props): Promise<Metadata> {
   const { type } = await props.params;
-  const query = await props.searchParams;
+  const query = firstValues(await props.searchParams);
   const slug = slugOf(type);
-  const letter = parseLetter(query.letter);
-  if (!slug || !letter) return { robots: { index: false, follow: true } };
+  const letter = letterOf(query);
+  if (!slug || letter === undefined) return { robots: { index: false, follow: true } };
   const typed = hasTypes();
   const clean = Object.keys(filtersOf(query)).length === 0 && !query.page;
   return {
-    title: `${BROWSE_HEADINGS[slug]} starting with ${letter.toUpperCase()} · Lore archive`,
+    title: `${BROWSE_HEADINGS[slug]}${letter ? ` starting with ${letter.toUpperCase()}` : ""} · Lore archive`,
     description: `${BROWSE_HEADINGS[slug]} from the Warcraft Wiki as of November 2023, CC BY-SA 4.0, by name. Not WoW: Forever data.`,
-    alternates: { canonical: letterUrl(slug, letter) },
+    alternates: { canonical: letterUrl(slug, letter ?? "a") },
     robots: { index: typed === true && clean, follow: true },
   };
 }
 
 export default async function BrowsePage(props: Props) {
   const { type } = await props.params;
-  const query = await props.searchParams;
+  const query = firstValues(await props.searchParams);
   const slug = slugOf(type);
   if (!slug) notFound();
-  const letter = parseLetter(query.letter);
-  if (!letter) notFound();
+  const letter = letterOf(query);
+  if (letter === undefined) notFound();
   const heading = BROWSE_HEADINGS[slug];
   const label = "Lore archive · Warcraft Wiki, 2023 dump";
   const typed = hasTypes();
@@ -94,7 +108,9 @@ export default async function BrowsePage(props: Props) {
     );
   }
   const filterQuery = Object.entries(filters).map(([k, v]) => `&${k}=${encodeURIComponent(v)}`).join("");
-  const pageUrl = (n: number) => `/lore/${slug}?letter=${encodeURIComponent(letter)}${filterQuery}${n > 1 ? `&page=${n}` : ""}`;
+  const letterQuery = letter ? `letter=${encodeURIComponent(letter)}` : "all=1";
+  const pageUrl = (n: number) => `/lore/${slug}?${letterQuery}${filterQuery}${n > 1 ? `&page=${n}` : ""}`;
+  const backUrl = letter ? letterUrl(slug, letter) : `/lore/${slug}`;
 
   return (
     <article className="space-y-8 max-w-4xl">
@@ -115,12 +131,12 @@ export default async function BrowsePage(props: Props) {
         ))}
       </nav>
 
-      <BrowseFilters action={`/lore/${slug}`} letter={letter} values={values} selected={filters} />
+      <BrowseFilters action={`/lore/${slug}`} letter={letter ?? ""} values={values} selected={filters} />
 
       {result.rows.length === 0 && page > 1 ? (
         <section className="space-y-2 text-sm text-parchment-100/75">
           <p>No more results.</p>
-          <p><Link href={letterUrl(slug, letter)} className="text-gold-400 hover:underline underline-offset-4">Back to the first page</Link></p>
+          <p><Link href={backUrl} className="text-gold-400 hover:underline underline-offset-4">Back to the first page</Link></p>
         </section>
       ) : result.rows.length === 0 ? (
         <p className="text-sm text-parchment-100/75">No pages match these filters.</p>

@@ -29,9 +29,9 @@ export default async function SearchPage(props: { searchParams: Promise<{ q?: st
   const params = await props.searchParams;
   const q = (params.q ?? "").trim().slice(0, MAX_QUERY);
   const page = pageNumber(params.page);
-  const type = typeOf(params.type);
-  const result = q ? searchLore(q, page, type) : null;
   const typed = hasTypes() === true;
+  const type = typed ? typeOf(params.type) : undefined;
+  const result = q ? searchLore(q, page, type) : null;
   const typeQuery = type ? `&type=${type}` : "";
   const chips: { label: string; href: string; active: boolean }[] = typed && q
     ? [
