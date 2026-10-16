@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import { auditSources } from "./audit-sources.js";
 import { BlizzardClient } from "./blizzard/client.js";
 import type { Game, NsKind, Region } from "./blizzard/namespaces.js";
 import { openDb, openExistingReadOnlyDb, type DB } from "./db.js";
@@ -30,6 +31,7 @@ const USAGE = `usage: npm run kb -- <command> --db <path>
     run it against a public release you are serving)
   snapshot <out.sqlite> --db <source knowledge base>   (writes a filtered public release + manifest,
     outside the database's own folder, e.g. data/release/kb.sqlite)
+  audit-sources <file.sqlite...>   (rows per source in each file; exits 1 if any source is not publishable)
 
   A source database and a public release are different artifacts. The serve commands accept only a
   release: an existing file plus its <release>.manifest.json, opened read-only and checked against
@@ -178,6 +180,17 @@ async function main(): Promise<number> {
       const problems = rows === 0 ? ["no entities: the knowledge base is empty"] : validate(source);
       console.log(problems.length === 0 ? "ok" : problems.join("\n"));
       return problems.length === 0 ? 0 : 1;
+    }
+    case "audit-sources": {
+      if (!args.length) break;
+      let clean = true;
+      for (const path of args) {
+        const audit = auditSources(path);
+        const counts = Object.entries(audit.sources).map(([id, n]) => `${id}=${n}`).join(" ");
+        console.log(`${path}: ${counts}${audit.unexpected.length ? `  NOT PUBLISHABLE: ${audit.unexpected.join(", ")}` : ""}`);
+        if (audit.unexpected.length) clean = false;
+      }
+      return clean ? 0 : 1;
     }
     case "snapshot":
       if (!args[0]) break;
