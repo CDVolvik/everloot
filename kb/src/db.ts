@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS entities (
   UNIQUE (source_id, kind, ext_id)
 );
 CREATE INDEX IF NOT EXISTS entities_name ON entities(name COLLATE NOCASE);
+CREATE INDEX IF NOT EXISTS entities_type_name ON entities(json_extract(data, '$.type'), name COLLATE NOCASE);
 CREATE VIRTUAL TABLE IF NOT EXISTS entities_fts
   USING fts5(name, body, content='entities', content_rowid='id');
 CREATE TRIGGER IF NOT EXISTS entities_ai AFTER INSERT ON entities BEGIN

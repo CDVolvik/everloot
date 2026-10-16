@@ -1,6 +1,11 @@
 import { SOURCES } from "../../../kb/src/sources";
 import { search, type SearchHit } from "../../../kb/src/search";
+import type { Facets, LoreType } from "../../../kb/src/importers/wiki-classify";
+import type { Infobox } from "../../../kb/src/importers/wiki-infobox";
 import { getRelease } from "./release";
+
+export type { Facets, LoreType } from "../../../kb/src/importers/wiki-classify";
+export type { Infobox } from "../../../kb/src/importers/wiki-infobox";
 
 /**
  * The lore archive: Warcraft Wiki pages from the approved knowledge release, served on the site.
@@ -15,6 +20,26 @@ export const MAX_QUERY = 200;
 export const MAX_PAGE = 50;
 export const UNAVAILABLE_COPY = "The knowledge release could not be opened. Nothing here is a count or a page; try again later.";
 export const CONVERSION_NOTE = "Converted from wikitext with templates, tables and images removed, so some sentences may be missing values.";
+export const PRE_CLASSIFICATION_COPY = "This release predates classification.";
+
+/** URL slug -> stored type, for the browse pages. */
+export const BROWSE_TYPES = { npcs: "npc", items: "item", quests: "quest", zones: "zone", spells: "spell" } as const;
+export type BrowseSlug = keyof typeof BROWSE_TYPES;
+export const BROWSE_HEADINGS: Record<BrowseSlug, string> = {
+  npcs: "NPCs and characters", items: "Items", quests: "Quests", zones: "Zones and locations", spells: "Spells and abilities",
+};
+export const FACET_KEYS = ["expansion", "profession", "class", "race", "zone", "faction"] as const;
+export type FacetKey = (typeof FACET_KEYS)[number];
+export const BROWSE_PAGE_SIZE = 50;
+export const LETTERS = [..."abcdefghijklmnopqrstuvwxyz", "#"];
+
+/** `undefined` -> "a"; a-z (any case) -> lower; "#" or "other" -> "#"; anything else -> null. */
+export function parseLetter(raw: string | undefined): string | null {
+  if (raw === undefined) return "a";
+  const l = raw.toLowerCase();
+  if (l === "#" || l === "other") return "#";
+  return /^[a-z]$/.test(l) ? l : null;
+}
 
 /** Lowercase ASCII letters and digits joined by hyphens; accents stripped, everything else dropped. */
 export function slugify(name: string): string {
@@ -106,6 +131,32 @@ export interface LorePage {
   licence: string;
   retrievedAt: string;
   gameVersion: string;
+  /** Null for rows from a release built before classification. */
+  type: LoreType | null;
+  facets: Facets | null;
+  infobox: Infobox | null;
+}
+
+const TYPE_VALUES = new Set(["npc", "item", "quest", "zone", "spell", "other"]);
+const EMPTY_FACETS: Facets = { expansion: [], profession: [], class: [], race: [], zone: [], faction: [] };
+
+function parseFacets(raw: unknown): Facets | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const out: Facets = { ...EMPTY_FACETS };
+  for (const key of FACET_KEYS) {
+    const v = (raw as Record<string, unknown>)[key];
+    out[key] = Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+  }
+  return out;
+}
+
+function parseInfobox(raw: unknown): Infobox | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const r = raw as Record<string, unknown>;
+  if (typeof r.template !== "string" || typeof r.fields !== "object" || r.fields === null) return null;
+  const fields: Record<string, string> = {};
+  for (const [k, v] of Object.entries(r.fields as Record<string, unknown>)) if (typeof v === "string") fields[k] = v;
+  return { template: r.template, fields };
 }
 
 const PUBLISHABLE = Object.values(SOURCES).filter((s) => s.publishable).map((s) => s.id);
@@ -135,15 +186,19 @@ export function loreByExtId(extId: string): LorePage | null | Unavailable {
     extId: row.extId, name: row.name, body: row.body, sourceUrl: row.sourceUrl, sourceId: row.sourceId,
     licence: row.licence, retrievedAt: row.retrievedAt, gameVersion: row.gameVersion, categories,
     revisionTimestamp: typeof data.revisionTimestamp === "string" ? data.revisionTimestamp : null,
+    type: typeof data.type === "string" && TYPE_VALUES.has(data.type) ? (data.type as LoreType) : null,
+    facets: parseFacets(data.facets),
+    infobox: parseInfobox(data.infobox),
   };
 }
 
-export function searchLore(q: string, page: number): { hits: SearchHit[]; hasNext: boolean } | Unavailable {
+export function searchLore(q: string, page: number, type?: LoreType): { hits: SearchHit[]; hasNext: boolean } | Unavailable {
   const release = getRelease();
   if (!release) return UNAVAILABLE;
   const p = Number.isFinite(page) && page >= 1 ? Math.floor(page) : 1;
   if (p > MAX_PAGE) return { hits: [], hasNext: false };
-  const results = search(release.db, q.slice(0, MAX_QUERY), p * PAGE_SIZE + 1, { kinds: ["lore_page"] });
+  const where = type ? { sql: "json_extract(e.data, '$.type') = ?", params: [type] } : undefined;
+  const results = search(release.db, q.slice(0, MAX_QUERY), p * PAGE_SIZE + 1, { kinds: ["lore_page"], where });
   return { hits: results.slice((p - 1) * PAGE_SIZE, p * PAGE_SIZE), hasNext: results.length > p * PAGE_SIZE };
 }
 
@@ -171,4 +226,117 @@ export function indexableChunk(n: number, size = CHUNK_SIZE): { extId: string; n
 export function releaseCreatedAt(): string | Unavailable {
   const release = getRelease();
   return release ? release.manifest.createdAt : UNAVAILABLE;
+}
+
+// ---- Types, facets and browsing ---------------------------------------------------------------
+
+/** The manifest says whether this release was built with type data. */
+export function hasTypes(): boolean | Unavailable {
+  const release = getRelease();
+  if (!release) return UNAVAILABLE;
+  return release.manifest.types !== undefined;
+}
+
+export function typeCounts(): Record<string, number> | null | Unavailable {
+  const release = getRelease();
+  if (!release) return UNAVAILABLE;
+  return release.manifest.types ?? null;
+}
+
+const LORE_SQL = `kind = 'lore_page' AND source_id IN (${SOURCE_MARKS})`;
+
+/** Deepest browse page served (50 rows each); beyond it the answer is "no more results", never a 64-bit OFFSET. */
+export const BROWSE_MAX_PAGE = 200;
+
+function letterClause(letter: string | null): { sql: string; params: unknown[] } {
+  if (letter === null) return { sql: "1 = 1", params: [] };
+  if (letter === "#") return { sql: "lower(substr(name, 1, 1)) NOT BETWEEN 'a' AND 'z'", params: [] };
+  return { sql: "name LIKE ? ESCAPE '\\'", params: [`${letter}%`] };
+}
+
+/** Pages of one type whose name starts with `letter`, filtered by exact facet values, ordered by name. */
+export function browse(
+  type: LoreType,
+  letter: string | null,
+  filters: Partial<Record<FacetKey, string>>,
+  page: number,
+): { rows: { extId: string; name: string }[]; hasNext: boolean } | Unavailable {
+  const release = getRelease();
+  if (!release) return UNAVAILABLE;
+  const p = Number.isFinite(page) && page >= 1 ? Math.floor(page) : 1;
+  if (p > BROWSE_MAX_PAGE) return { rows: [], hasNext: false };
+  const conds = [LORE_SQL, "json_extract(data, '$.type') = ?"];
+  const params: unknown[] = [...PUBLISHABLE, type];
+  const l = letterClause(letter);
+  conds.push(l.sql);
+  params.push(...l.params);
+  for (const key of FACET_KEYS) {
+    const value = filters[key];
+    if (value === undefined || value === "") continue;
+    conds.push(`EXISTS (SELECT 1 FROM json_each(json_extract(data, '$.facets.${key}')) WHERE value = ?)`);
+    params.push(value);
+  }
+  const rows = release.db
+    .prepare(`SELECT ext_id AS extId, name FROM entities WHERE ${conds.join(" AND ")} ORDER BY name COLLATE NOCASE, id LIMIT ? OFFSET ?`)
+    .all(...params, BROWSE_PAGE_SIZE + 1, (p - 1) * BROWSE_PAGE_SIZE) as { extId: string; name: string }[];
+  return { rows: rows.slice(0, BROWSE_PAGE_SIZE), hasNext: rows.length > BROWSE_PAGE_SIZE && p < BROWSE_MAX_PAGE };
+}
+
+const FACET_VALUES = new WeakMap<object, Map<string, Record<FacetKey, string[]>>>();
+
+/** Distinct facet values present for one type, computed once per opened release. */
+export function facetValues(type: LoreType): Record<FacetKey, string[]> | Unavailable {
+  const release = getRelease();
+  if (!release) return UNAVAILABLE;
+  let perType = FACET_VALUES.get(release.db);
+  if (!perType) { perType = new Map(); FACET_VALUES.set(release.db, perType); }
+  const known = perType.get(type);
+  if (known) return known;
+  const out = { ...EMPTY_FACETS } as Record<FacetKey, string[]>;
+  for (const key of FACET_KEYS) {
+    out[key] = (release.db
+      .prepare(`SELECT DISTINCT j.value AS v FROM entities, json_each(json_extract(data, '$.facets.${key}')) AS j
+                WHERE ${LORE_SQL} AND json_extract(data, '$.type') = ? ORDER BY v COLLATE NOCASE`)
+      .all(...PUBLISHABLE, type) as { v: string }[]).map((r) => r.v);
+  }
+  perType.set(type, out);
+  return out;
+}
+
+export interface Coverage {
+  types: Record<string, number> | null;
+  damaged: number | null;
+  indexable: number;
+  createdAt: string;
+  facets: Record<FacetKey, { value: string; n: number }[]>;
+}
+
+const COVERAGE = new WeakMap<object, Coverage>();
+
+/** What the release covers: counts by type and facet, indexable pages, damage, release date. */
+export function coverage(): Coverage | Unavailable {
+  const release = getRelease();
+  if (!release) return UNAVAILABLE;
+  const known = COVERAGE.get(release.db);
+  if (known) return known;
+  const indexable = indexableCount();
+  if (indexable === UNAVAILABLE) return UNAVAILABLE;
+  const facets = {} as Record<FacetKey, { value: string; n: number }[]>;
+  for (const key of FACET_KEYS) {
+    // An untyped release has no facets: skip six full scans of the table.
+    if (release.manifest.types === undefined) { facets[key] = []; continue; }
+    facets[key] = release.db
+      .prepare(`SELECT j.value AS value, count(*) AS n FROM entities, json_each(json_extract(data, '$.facets.${key}')) AS j
+                WHERE ${LORE_SQL} GROUP BY j.value ORDER BY n DESC, value COLLATE NOCASE LIMIT 10`)
+      .all(...PUBLISHABLE) as { value: string; n: number }[];
+  }
+  const out: Coverage = {
+    types: release.manifest.types ?? null,
+    damaged: release.manifest.damaged ?? null,
+    indexable,
+    createdAt: release.manifest.createdAt,
+    facets,
+  };
+  COVERAGE.set(release.db, out);
+  return out;
 }

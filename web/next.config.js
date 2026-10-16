@@ -14,6 +14,19 @@ const nextConfig = {
     "/search": ["./.release/*.sqlite", "./.release/*.manifest.json"],
     "/lore-sitemap.xml": ["./.release/*.sqlite", "./.release/*.manifest.json"],
     "/lore-sitemap/[n]": ["./.release/*.sqlite", "./.release/*.manifest.json"],
+    "/lore/browse/[type]": ["./.release/*.sqlite", "./.release/*.manifest.json"],
+    "/lore/coverage": ["./.release/*.sqlite", "./.release/*.manifest.json"],
+    "/lore-sitemap/pages.xml": ["./.release/*.sqlite", "./.release/*.manifest.json"],
+  },
+  // /lore/[slug] already owns one dynamic segment under /lore, so the browse pages live at
+  // /lore/browse/<type> and are served at the short URL. afterFiles rewrites run before dynamic routes.
+  async rewrites() {
+    return [{ source: "/lore/:type(npcs|items|quests|zones|spells)", destination: "/lore/browse/:type" }];
+  },
+  // One page, one URL: the internal route name is never a second address. Redirects match the
+  // original URL, so this does not loop with the rewrite above.
+  async redirects() {
+    return [{ source: "/lore/browse/:type", destination: "/lore/:type", permanent: true }];
   },
   webpack(config, { isServer }) {
     // kb/src/db.ts would otherwise resolve better-sqlite3 through kb/node_modules and bundle it.
