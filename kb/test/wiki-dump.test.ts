@@ -92,6 +92,7 @@ for (const [label, file] of [["xml", wikiteam], ["xml.zst", wikiteamZst]] as con
     expect(await importWikiDump(db, file)).toEqual({
       stored: 3,
       skipped: 0,
+      damaged: 0,
       dropped: { redirect: 1, namespace: 1, empty: 0 },
     });
     const rows = db.prepare("SELECT ext_id, name, body FROM entities ORDER BY CAST(ext_id AS INTEGER)").all() as {
@@ -146,4 +147,37 @@ test("wikitextToText strips markup and collects categories", () => {
 test("wikiUrl builds a readable wiki URL", () => {
   expect(wikiUrl("Thrall (lore)")).toBe("https://warcraft.wiki.gg/wiki/Thrall_(lore)");
   expect(wikiUrl("Ahn'Qiraj: The Fallen Kingdom")).toBe("https://warcraft.wiki.gg/wiki/Ahn'Qiraj:_The_Fallen_Kingdom");
+});
+
+const templatesFixture = fileURLToPath(new URL("./fixtures/wiki-templates.xml", import.meta.url));
+
+test("stores type, facets, infobox fields and repaired sentences; reports damage", async () => {
+  const db = openDb(":memory:");
+  const result = await importWikiDump(db, templatesFixture);
+  expect(result).toMatchObject({ stored: 2, skipped: 0, damaged: 0 });
+  const rows = db.prepare("SELECT name, body, data FROM entities ORDER BY name").all() as { name: string; body: string; data: string }[];
+  const cinch = rows.find((r) => r.name === "Cinch of the Vigil")!;
+  expect(cinch.body).toContain("300g");
+  expect(cinch.body).toContain("Honored standing");
+  expect(cinch.body).toContain("Hiren Loresong");
+  expect(cinch.body).toContain("Patch 5.2.0: Added.");
+  expect(cinch.body).not.toContain("for at");
+  const cinchData = JSON.parse(cinch.data);
+  expect(cinchData).toMatchObject({ type: "item", damaged: false, infobox: { template: "#data:itemtip", fields: { ilvl: "476", slot: "Waist" } } });
+  expect(cinchData.facets.expansion).toEqual(["Legion"]);
+  const saurid = rows.find((r) => r.name === "Nazmir Saurid")!;
+  const sauridData = JSON.parse(saurid.data);
+  expect(sauridData).toMatchObject({ type: "npc", infobox: { template: "npcbox", fields: { race: "Saurid", location: "Nazmir" } } });
+  expect(sauridData.facets.zone).toEqual(["Nazmir"]);
+  expect(sauridData.categories).toEqual(["Saurid", "Nazmir mobs"]);
+});
+
+test("the original sample is typed as an item from its category and carries no infobox", async () => {
+  const db = openDb(":memory:");
+  const result = await importWikiDump(db, fixture);
+  expect(result.damaged).toBe(0);
+  const data = JSON.parse((db.prepare("SELECT data FROM entities").get() as { data: string }).data);
+  expect(data.type).toBe("item");
+  expect(data).not.toHaveProperty("infobox");
+  expect(data.damaged).toBe(false);
 });

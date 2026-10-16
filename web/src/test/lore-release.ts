@@ -1,31 +1,45 @@
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { openDb } from "../../../kb/src/db";
 import { replaceSourceRows } from "../../../kb/src/entities";
 import { snapshot } from "../../../kb/src/snapshot";
 
+const EMPTY_FACETS: Record<"expansion" | "profession" | "class" | "race" | "zone" | "faction", string[]> = { expansion: [], profession: [], class: [], race: [], zone: [], faction: [] };
+
 /**
  * Test-only: an approved release in a temp dir with the fixture rows the lore tests share.
- * Rows: Thrall (1, indexable, categories), Stub (2), a redirect (3), two "Return to Sender" (4, 5), a page
- * saying "redirected" in lowercase (6, indexable),
- * 22 "Zone n" pages mentioning grommash (100..121), and the curated forever launch date.
+ * Rows: Thrall (1, indexable, categories, npc with race Orc / class Shaman and an npcbox), Stub (2,
+ * untyped), a redirect (3), two "Return to Sender" (4 npc, 5 quest with faction Horde), a page saying
+ * "redirected" in lowercase (6, indexable, zone, damaged), Zul'Gurub Eagle (7, npc in zone Zul'Gurub),
+ * "100% Done" (8, quest), 22 "Zone n" pages mentioning grommash (100..121, type zone; odd ids Legion,
+ * even ids Battle for Azeroth), and the curated forever launch date plus a curated item that must stay
+ * out of lore search. `typed: false` builds the same rows with no type data, like the 2026-10-05 release.
  */
-export async function buildLoreRelease(): Promise<string> {
+export async function buildLoreRelease(options: { typed?: boolean } = {}): Promise<string> {
+  const typed = options.typed ?? true;
   const dir = mkdtempSync(join(tmpdir(), "everloot-lore-"));
   const source = openDb(join(dir, "source.sqlite"));
   const wiki = (extId: string, name: string, body: string, data?: Record<string, unknown>) => ({
-    kind: "lore_page" as const, extId, name, body, data, gameVersion: "lore" as const,
+    kind: "lore_page" as const, extId, name, body, data: typed ? data : stripTypes(data), gameVersion: "lore" as const,
     sourceUrl: `https://warcraft.wiki.gg/wiki/${name.replace(/ /g, "_")}`, retrievedAt: "2023-11-13",
   });
+  const facets = (over: Partial<typeof EMPTY_FACETS>) => ({ ...EMPTY_FACETS, ...over });
   const rows = [
-    wiki("1", "Thrall", `Thrall is the former Warchief of the Horde. ${"He led his people. ".repeat(20)}\n\n * Son of Durotan\n * Friend of Jaina`, { categories: ["Orcs", "Warchiefs"], revisionTimestamp: "2023-01-14T21:40:10Z" }),
-    wiki("2", "Stub", "Short."),
+    wiki("1", "Thrall", `Thrall is the former Warchief of the Horde. ${"He led his people. ".repeat(20)}\n\n * Son of Durotan\n * Friend of Jaina`, {
+      categories: ["Orcs", "Warchiefs"], revisionTimestamp: "2023-01-14T21:40:10Z", type: "npc",
+      facets: facets({ race: ["Orc"], class: ["Shaman"] }), infobox: { template: "npcbox", fields: { race: "Orc", title: "Warchief" } }, damaged: false,
+    }),
+    wiki("2", "Stub", "Short.", { categories: [], revisionTimestamp: "2022-01-01T00:00:00Z" }),
     wiki("3", "Old Name", "#REDIRECT [[Thrall]]"),
-    wiki("4", "Return to Sender", `An animated letter. ${"It flies. ".repeat(40)}`),
-    wiki("5", "Return to Sender", `An achievement. ${"Defeat him. ".repeat(40)}`),
-    wiki("6", "Redirected Road", `A road that redirected travellers. ${"It wound on. ".repeat(30)}`),
-    ...Array.from({ length: 22 }, (_, i) => wiki(String(100 + i), `Zone ${i + 1}`, `Zone ${i + 1} is where grommash fought. ${"Battles raged here. ".repeat(20)}`)),
+    wiki("4", "Return to Sender", `An animated letter. ${"It flies. ".repeat(40)}`, { type: "npc", facets: EMPTY_FACETS, damaged: false }),
+    wiki("5", "Return to Sender", `An achievement. ${"Defeat him. ".repeat(40)}`, { type: "quest", facets: facets({ faction: ["Horde"] }), damaged: false }),
+    wiki("6", "Redirected Road", `A road that redirected travellers. ${"It wound on. ".repeat(30)}`, { type: "zone", facets: EMPTY_FACETS, damaged: true }),
+    wiki("7", "Zul'Gurub Eagle", `An eagle of the troll city. ${"It soars. ".repeat(40)}`, { type: "npc", facets: facets({ zone: ["Zul'Gurub"] }), damaged: false }),
+    wiki("8", "100% Done", `A quest about finishing. ${"Finish it. ".repeat(40)}`, { type: "quest", facets: EMPTY_FACETS, damaged: false }),
+    ...Array.from({ length: 22 }, (_, i) => wiki(String(100 + i), `Zone ${i + 1}`, `Zone ${i + 1} is where grommash fought. ${"Battles raged here. ".repeat(20)}`, {
+      type: "zone", facets: facets({ expansion: [(100 + i) % 2 ? "Legion" : "Battle for Azeroth"] }), damaged: false,
+    })),
   ];
   await replaceSourceRows(source, "warcraft-wiki-2023", ["lore_page"], rows);
   await replaceSourceRows(source, "curated", ["lore_page", "item"], [{
@@ -40,5 +54,20 @@ export async function buildLoreRelease(): Promise<string> {
   const release = join(dir, "release", "release.sqlite");
   snapshot(source, release, new Date("2026-10-15T00:00:00Z"));
   source.close();
+  if (!typed) {
+    // The 2026-10-05 release has no type data and no type counts in its manifest.
+    const manifestPath = `${release}.manifest.json`;
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    delete manifest.types;
+    delete manifest.damaged;
+    writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+  }
   return release;
+}
+
+function stripTypes(data?: Record<string, unknown>): Record<string, unknown> | undefined {
+  if (!data) return data;
+  const rest = { ...data };
+  for (const key of ["type", "facets", "infobox", "damaged"]) delete rest[key];
+  return rest;
 }

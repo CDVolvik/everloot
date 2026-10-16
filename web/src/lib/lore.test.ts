@@ -149,9 +149,9 @@ describe("with a release", () => {
 
   test("indexable count and chunks follow the 300-character, no-redirect rule", async () => {
     const { indexableCount, indexableChunk } = await lore();
-    expect(indexableCount()).toBe(26);
+    expect(indexableCount()).toBe(28);
     const all = indexableChunk(0);
-    expect(all !== "unavailable" && all.map((r) => r.extId).slice(0, 4)).toEqual(["1", "4", "5", "6"]);
+    expect(all !== "unavailable" && all.map((r) => r.extId).slice(0, 6)).toEqual(["1", "4", "5", "6", "7", "8"]);
     expect(indexableChunk(5)).toEqual([]);
     expect(indexableChunk(1, 2)).toMatchObject([{ extId: "5" }, { extId: "6" }]);
   });
@@ -160,8 +160,8 @@ describe("with a release", () => {
     const { indexableCount } = await lore();
     const { getRelease } = await import("./release");
     const spy = vi.spyOn(getRelease()!.db, "prepare");
-    expect(indexableCount()).toBe(26);
-    expect(indexableCount()).toBe(26);
+    expect(indexableCount()).toBe(28);
+    expect(indexableCount()).toBe(28);
     expect(spy.mock.calls.filter(([sql]) => /count\(\*\)/.test(String(sql)))).toHaveLength(1);
   });
 
@@ -178,5 +178,114 @@ describe("with a release", () => {
     expect(indexableCount()).toBe("unavailable");
     expect(indexableChunk(0)).toBe("unavailable");
     expect(releaseCreatedAt()).toBe("unavailable");
+  });
+});
+
+describe("types, facets and browsing", () => {
+  let release = "";
+  beforeAll(async () => { release = await buildLoreRelease(); });
+  afterEach(() => { vi.unstubAllEnvs(); vi.resetModules(); });
+  async function lore(path = release) { vi.stubEnv("KB_SNAPSHOT_PATH", path); return import("./lore"); }
+
+  test("parseLetter accepts a-z and # only", async () => {
+    const { parseLetter } = await lore();
+    expect(parseLetter(undefined)).toBe("a");
+    expect(parseLetter("A")).toBe("a");
+    expect(parseLetter("z")).toBe("z");
+    expect(parseLetter("#")).toBe("#");
+    expect(parseLetter("other")).toBe("#");
+    for (const bad of ["é", "ab", "1", ""]) expect(parseLetter(bad)).toBeNull();
+  });
+
+  test("browse lists a type by letter, ordered by name, 50 per page", async () => {
+    const { browse, BROWSE_PAGE_SIZE } = await lore();
+    expect(BROWSE_PAGE_SIZE).toBe(50);
+    const zones = browse("zone", "z", {}, 1);
+    expect(zones).not.toBe("unavailable");
+    if (zones === "unavailable") return;
+    expect(zones.rows).toHaveLength(22);
+    expect(zones.rows[0].name).toBe("Zone 1");
+    expect(zones.rows[1].name).toBe("Zone 10");
+    expect(zones.hasNext).toBe(false);
+    expect(browse("zone", "r", {}, 1)).toMatchObject({ rows: [{ extId: "6", name: "Redirected Road" }] });
+  });
+
+  test("browse filters by one facet value, bound exactly", async () => {
+    const { browse } = await lore();
+    const legion = browse("zone", "z", { expansion: "Legion" }, 1);
+    expect(legion !== "unavailable" && legion.rows).toHaveLength(11);
+    expect(browse("npc", "z", { zone: "Zul'Gurub" }, 1)).toMatchObject({ rows: [{ extId: "7" }] });
+    expect(browse("quest", "#", {}, 1)).toMatchObject({ rows: [{ extId: "8", name: "100% Done" }] });
+    expect(browse("npc", "t", { race: "Tauren" }, 1)).toEqual({ rows: [], hasNext: false });
+    expect(browse("npc", "t", { race: "Orc" }, 1)).toMatchObject({ rows: [{ extId: "1" }] });
+    expect(browse("zone", "z", {}, 2)).toEqual({ rows: [], hasNext: false });
+  });
+
+  test("facetValues lists the values present for a type, memoized per release", async () => {
+    const { facetValues } = await lore();
+    const { getRelease } = await import("./release");
+    const spy = vi.spyOn(getRelease()!.db, "prepare");
+    const zone = facetValues("zone");
+    expect(zone !== "unavailable" && zone.expansion).toEqual(["Battle for Azeroth", "Legion"]);
+    expect(zone !== "unavailable" && zone.race).toEqual([]);
+    const npc = facetValues("npc");
+    expect(npc !== "unavailable" && npc.zone).toEqual(["Zul'Gurub"]);
+    const before = spy.mock.calls.length;
+    facetValues("zone");
+    expect(spy.mock.calls.length).toBe(before);
+  });
+
+  test("hasTypes and typeCounts read the manifest", async () => {
+    const { hasTypes, typeCounts } = await lore();
+    expect(hasTypes()).toBe(true);
+    expect(typeCounts()).toEqual({ npc: 3, quest: 2, zone: 23, other: 4 });
+  });
+
+  test("searchLore can be limited to one type", async () => {
+    const { searchLore } = await lore();
+    const zones = searchLore("grommash", 1, "zone");
+    expect(zones !== "unavailable" && zones.hits.every((h) => /^1\d\d$/.test(h.extId))).toBe(true);
+    expect(searchLore("thrall", 1, "quest")).toEqual({ hits: [], hasNext: false });
+    const thrall = searchLore("thrall", 1, "npc");
+    expect(thrall !== "unavailable" && thrall.hits.map((h) => h.extId)).toContain("1");
+  });
+
+  test("coverage summarises the release", async () => {
+    const { coverage } = await lore();
+    const c = coverage();
+    expect(c).not.toBe("unavailable");
+    if (c === "unavailable") return;
+    expect(c.types?.zone).toBe(23);
+    expect(c.damaged).toBe(1);
+    expect(c.indexable).toBe(28);
+    expect(c.createdAt).toBe("2026-10-15T00:00:00.000Z");
+    expect(c.facets.expansion).toEqual([{ value: "Battle for Azeroth", n: 11 }, { value: "Legion", n: 11 }]);
+    expect(c.facets.race).toEqual([{ value: "Orc", n: 1 }]);
+  });
+
+  test("loreByExtId exposes type, facets and infobox", async () => {
+    const { loreByExtId } = await lore();
+    expect(loreByExtId("1")).toMatchObject({ type: "npc", facets: { race: ["Orc"], class: ["Shaman"] }, infobox: { template: "npcbox", fields: { title: "Warchief" } } });
+    expect(loreByExtId("2")).toMatchObject({ type: null, facets: null, infobox: null });
+  });
+
+  test("a release without type data reports no types", async () => {
+    const untyped = await buildLoreRelease({ typed: false });
+    const { hasTypes, typeCounts, browse, coverage } = await lore(untyped);
+    expect(hasTypes()).toBe(false);
+    expect(typeCounts()).toBeNull();
+    expect(browse("zone", "z", {}, 1)).toEqual({ rows: [], hasNext: false });
+    const c = coverage();
+    expect(c !== "unavailable" && c.types).toBeNull();
+  });
+
+  test("everything is unavailable without a release", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const { browse, facetValues, hasTypes, typeCounts, coverage } = await lore(join(tmpdir(), "missing.sqlite"));
+    expect(browse("zone", "a", {}, 1)).toBe("unavailable");
+    expect(facetValues("zone")).toBe("unavailable");
+    expect(hasTypes()).toBe("unavailable");
+    expect(typeCounts()).toBe("unavailable");
+    expect(coverage()).toBe("unavailable");
   });
 });

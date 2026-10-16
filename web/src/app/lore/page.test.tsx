@@ -23,15 +23,17 @@ async function render(path = release) {
 
 test("the landing page states the archive's size, date, licence and notice from the manifest", async () => {
   const html = await render();
-  expect(html).toContain("28 pages");
-  expect(html).not.toContain("29 pages");
-  expect(html).not.toContain("30 pages");
+  expect(html).toContain("30 pages");
+  expect(html).not.toContain("31 pages");
+  expect(html).not.toContain("32 pages");
   expect(html).toContain("13 November 2023");
   expect(html).toContain("CC BY-SA 4.0");
   expect(html).toContain("Data licensed CC BY-SA 4.0.");
   expect(html).toContain('name="q"');
   expect(html).toContain("predates WoW: Forever");
   expect(html).toContain('href="/database"');
+  expect(html).toContain('href="/lore/npcs"');
+  expect(html).toContain('href="/lore/coverage"');
 });
 
 test("the landing page is indexed with its canonical", async () => {
