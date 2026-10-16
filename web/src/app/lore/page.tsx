@@ -11,6 +11,7 @@ export const metadata: Metadata = {
   title: "Lore archive",
   description: "Warcraft Wiki pages as of 13 November 2023, searchable and attributed under CC BY-SA 4.0. Lore and history, not collected WoW: Forever data.",
   alternates: { canonical: "/lore" },
+  openGraph: { type: "website", title: "Lore archive", description: "Warcraft Wiki pages as of 13 November 2023, CC BY-SA 4.0. Lore and history, not collected WoW: Forever data.", url: "/lore", siteName: "Everloot" },
 };
 
 const formatter = new Intl.NumberFormat("en-US");

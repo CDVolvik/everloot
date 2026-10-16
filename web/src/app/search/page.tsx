@@ -43,7 +43,12 @@ export default async function SearchPage(props: { searchParams: Promise<{ q?: st
           <h2 className="font-display text-xl text-parchment-100">Lore archive unavailable</h2>
           <p className="text-sm text-parchment-100/75">{UNAVAILABLE_COPY}</p>
         </section>
-      ) : result === null ? null : result.hits.length === 0 ? (
+      ) : result === null ? null : result.hits.length === 0 && page > 1 ? (
+        <section className="space-y-2 text-sm text-parchment-100/75">
+          <p>No more results.</p>
+          <p><Link href={`/search?q=${encodeURIComponent(q)}`} className="text-gold-400 hover:underline underline-offset-4">Back to the first page</Link></p>
+        </section>
+      ) : result.hits.length === 0 ? (
         <section className="space-y-2 text-sm text-parchment-100/75">
           <p>No lore page matches that.</p>
           <p>

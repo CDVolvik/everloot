@@ -48,6 +48,8 @@ const ROW = `e.id, e.ext_id AS extId, e.kind, e.name,
   e.game_version AS gameVersion, e.source_url AS sourceUrl,
   e.source_id AS sourceId, e.licence, e.retrieved_at AS retrievedAt`;
 
+const RERANK = 50;
+
 export function search(db: DB, query: string, limit = 10, opts: SearchOptions = {}): SearchHit[] {
   const raw = query.trim();
   if (!raw) return [];
@@ -75,7 +77,7 @@ export function search(db: DB, query: string, limit = 10, opts: SearchOptions = 
        FROM entities_fts JOIN entities e ON e.id = entities_fts.rowid
        WHERE ${conds.join(" AND ")}
        ORDER BY CASE WHEN e.name = ? COLLATE NOCASE OR e.name = ? COLLATE NOCASE THEN 0 ELSE 1 END,
-         bm25(entities_fts, 10.0, 1.0)
+         bm25(entities_fts, 10.0, 1.0), e.id
        LIMIT ?`,
     )
     .all(...params) as SearchHit[];
@@ -83,7 +85,10 @@ export function search(db: DB, query: string, limit = 10, opts: SearchOptions = 
   // that matches only once its stopwords are dropped ("Find Thrall!"), then everything else.
   const allTerms = (name: string) => (name.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []).join(" ");
   const rank = (hit: SearchHit) => (allTerms(hit.name) === wanted ? 0 : contentTerms(hit.name).join(" ") === wanted ? 1 : 2);
-  return pool.sort((a, b) => rank(a) - rank(b)).slice(0, limit);
+  // Re-rank only the first RERANK rows: they are the same rows whatever the limit, so page cuts at
+  // different limits stay a stable prefix of one ordering. Rows after them keep the SQL order.
+  const head = pool.slice(0, RERANK).sort((a, b) => rank(a) - rank(b));
+  return [...head, ...pool.slice(RERANK)].slice(0, limit);
 }
 
 interface EntityRow {

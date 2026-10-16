@@ -32,6 +32,8 @@ test("a substantive page is indexed with its name, canonical slug and first sent
   expect(meta.robots).toMatchObject({ index: true, follow: true });
   expect(meta.alternates).toMatchObject({ canonical: "/lore/1-thrall" });
   expect(meta.description).toBe("Thrall is the former Warchief of the Horde.");
+  expect(meta.openGraph).toMatchObject({ type: "article", title: "Thrall", description: "Thrall is the former Warchief of the Horde.", url: "/lore/1-thrall" });
+  expect(meta.twitter).toMatchObject({ card: "summary", title: "Thrall" });
 });
 
 test("stubs and redirects are served but kept out of search engines", async () => {

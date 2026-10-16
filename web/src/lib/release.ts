@@ -12,12 +12,18 @@ export function releasePath(): string {
 }
 
 let handle: PublicSnapshot | null = null;
+let failedAt = 0;
+/** After a failed open (which hashes the whole file), wait this long before trying again. */
+export const RETRY_AFTER_MS = 60_000;
 
 export function getRelease(): PublicSnapshot | null {
   if (handle) return handle;
+  if (failedAt && Date.now() - failedAt < RETRY_AFTER_MS) return null;
   try {
     handle = openPublicSnapshot(releasePath());
+    failedAt = 0;
   } catch (err) {
+    failedAt = Date.now();
     console.error("[release] knowledge release unavailable", err);
     return null;
   }

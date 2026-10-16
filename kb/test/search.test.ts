@@ -80,3 +80,16 @@ test("getByName matches the full name case-insensitively", async () => {
   expect(getByName(db, "Thunderfury", "item")).toHaveLength(0);
   expect(getByName(db, "No Such Page")).toHaveLength(0);
 });
+
+test("paging is a stable prefix: page cuts at different limits never repeat or skip a hit", async () => {
+  const db = openDb(":memory:");
+  const rows: EntityInput[] = [];
+  for (let i = 1; i <= 70; i++) rows.push(row(String(100 + i), `Grommash Grommash Grommash Hold ${i}`, `Grommash fought here ${"again ".repeat(i % 7)}`));
+  rows.push(row("9", "Grommash!", ""));
+  await replaceSourceRows(db, "curated", ["lore_page"], rows);
+  const all = search(db, "the grommash", 80).map((h) => h.id);
+  expect(new Set(all).size).toBe(all.length);
+  expect(search(db, "the grommash", 20).map((h) => h.id)).toEqual(all.slice(0, 20));
+  expect(search(db, "the grommash", 60).map((h) => h.id)).toEqual(all.slice(0, 60));
+  expect(all[0]).toBe(search(db, "the grommash", 1)[0].id);
+});
