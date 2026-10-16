@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import LoreSearchForm from "@/components/LoreSearchForm";
-import { loreSlug, MAX_QUERY, searchLore, UNAVAILABLE, UNAVAILABLE_COPY } from "@/lib/lore";
+import { BROWSE_HEADINGS, BROWSE_TYPES, hasTypes, loreSlug, MAX_QUERY, searchLore, UNAVAILABLE, UNAVAILABLE_COPY, type BrowseSlug, type LoreType } from "@/lib/lore";
+
+/** A `type=` value is one of the stored types; anything else means All. */
+function typeOf(raw: string | undefined): LoreType | undefined {
+  return raw && (Object.values(BROWSE_TYPES) as string[]).includes(raw) ? (raw as LoreType) : undefined;
+}
 
 export const dynamic = "force-dynamic";
 
@@ -20,11 +25,25 @@ function sourceHost(url: string): string {
   try { return new URL(url).hostname; } catch { return "source"; }
 }
 
-export default async function SearchPage(props: { searchParams: Promise<{ q?: string; page?: string }> }) {
+/** Next hands a repeated parameter over as an array; the first value is the one we answer. */
+const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+
+export default async function SearchPage(props: { searchParams: Promise<{ q?: string | string[]; page?: string | string[]; type?: string | string[] }> }) {
   const params = await props.searchParams;
-  const q = (params.q ?? "").trim().slice(0, MAX_QUERY);
-  const page = pageNumber(params.page);
-  const result = q ? searchLore(q, page) : null;
+  const q = (first(params.q) ?? "").trim().slice(0, MAX_QUERY);
+  const page = pageNumber(first(params.page));
+  const typed = hasTypes() === true;
+  const type = typed ? typeOf(first(params.type)) : undefined;
+  const result = q ? searchLore(q, page, type) : null;
+  const typeQuery = type ? `&type=${type}` : "";
+  const chips: { label: string; href: string; active: boolean }[] = typed && q
+    ? [
+        { label: "All", href: `/search?q=${encodeURIComponent(q)}`, active: !type },
+        ...(Object.keys(BROWSE_TYPES) as BrowseSlug[]).map((slug) => ({
+          label: BROWSE_HEADINGS[slug], href: `/search?q=${encodeURIComponent(q)}&type=${BROWSE_TYPES[slug]}`, active: type === BROWSE_TYPES[slug],
+        })),
+      ]
+    : [];
 
   return (
     <article className="space-y-8 max-w-4xl">
@@ -37,6 +56,17 @@ export default async function SearchPage(props: { searchParams: Promise<{ q?: st
       </header>
 
       <LoreSearchForm query={q} />
+
+      {chips.length > 0 && (
+        <nav aria-label="Page type" className="flex flex-wrap gap-2 text-xs">
+          {chips.map((chip) => (
+            <Link key={chip.label} href={chip.href} aria-current={chip.active ? "page" : undefined}
+              className={`min-h-9 inline-flex items-center rounded-full border px-3 ${chip.active ? "border-gold-400 text-gold-400" : "border-parchment-100/15 text-parchment-100/70 hover:text-gold-400"}`}>
+              {chip.label}
+            </Link>
+          ))}
+        </nav>
+      )}
 
       {result === UNAVAILABLE ? (
         <section className="space-y-2">
@@ -73,11 +103,11 @@ export default async function SearchPage(props: { searchParams: Promise<{ q?: st
           </ol>
           <nav aria-label="Search pages" className="flex items-center gap-4 text-sm">
             {page > 1 && (
-              <Link href={`/search?q=${encodeURIComponent(q)}&page=${page - 1}`} className="text-gold-400 hover:underline underline-offset-4">Previous</Link>
+              <Link href={`/search?q=${encodeURIComponent(q)}${typeQuery}&page=${page - 1}`} className="text-gold-400 hover:underline underline-offset-4">Previous</Link>
             )}
             <span className="text-parchment-100/60">Page {page}</span>
             {result.hasNext && (
-              <Link href={`/search?q=${encodeURIComponent(q)}&page=${page + 1}`} className="text-gold-400 hover:underline underline-offset-4">Next</Link>
+              <Link href={`/search?q=${encodeURIComponent(q)}${typeQuery}&page=${page + 1}`} className="text-gold-400 hover:underline underline-offset-4">Next</Link>
             )}
           </nav>
         </section>

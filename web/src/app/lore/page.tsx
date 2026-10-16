@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import LoreSearchForm from "@/components/LoreSearchForm";
-import { UNAVAILABLE_COPY } from "@/lib/lore";
+import { BROWSE_HEADINGS, BROWSE_TYPES, hasTypes, UNAVAILABLE_COPY, type BrowseSlug } from "@/lib/lore";
 import { getRelease } from "@/lib/release";
 
 // Rendered per request: it only reads the manifest, and a static build without the release would bake "unavailable".
@@ -37,6 +37,18 @@ export default async function LoreLanding() {
       {release ? (
         <>
           <LoreSearchForm />
+          {hasTypes() === true && (
+            <nav aria-label="Browse by type" className="flex flex-wrap gap-2 text-sm">
+              {(Object.keys(BROWSE_TYPES) as BrowseSlug[]).map((slug) => (
+                <Link key={slug} href={`/lore/${slug}`} className="min-h-11 inline-flex items-center rounded-lg border border-parchment-100/15 px-3 text-parchment-100/80 hover:text-gold-400 hover:border-gold-400/40">
+                  {BROWSE_HEADINGS[slug]}
+                </Link>
+              ))}
+              <Link href="/lore/coverage" className="min-h-11 inline-flex items-center rounded-lg border border-parchment-100/15 px-3 text-parchment-100/80 hover:text-gold-400 hover:border-gold-400/40">
+                What the archive covers
+              </Link>
+            </nav>
+          )}
           <section className="rounded-2xl border border-parchment-100/10 bg-parchment-900 p-6 text-sm text-parchment-100/75 space-y-2">
             <h2 className="font-display text-xl text-parchment-100">Licence and attribution</h2>
             <p>{release.manifest.notice}</p>
