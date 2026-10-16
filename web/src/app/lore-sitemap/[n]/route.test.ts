@@ -19,7 +19,8 @@ test("chunk 0 lists only indexable pages as canonical lore URLs", async () => {
   expect(res.headers.get("content-type")).toContain("application/xml");
   const xml = await res.text();
   expect(xml).toContain("<urlset");
-  expect(xml.match(/<loc>/g)).toHaveLength(25);
+  expect(xml.match(/<loc>/g)).toHaveLength(26);
+  expect(xml).toContain("<loc>https://everloot.app/lore/6-redirected-road</loc>");
   expect(xml).toContain("<loc>https://everloot.app/lore/1-thrall</loc>");
   expect(xml).toContain("<loc>https://everloot.app/lore/100-zone-1</loc>");
   expect(xml).not.toContain("2-stub");

@@ -1,10 +1,7 @@
-import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeAll, describe, expect, test, vi } from "vitest";
-import { openDb } from "../../../kb/src/db";
-import { replaceSourceRows } from "../../../kb/src/entities";
-import { snapshot } from "../../../kb/src/snapshot";
+import { buildLoreRelease } from "@/test/lore-release";
 import { firstSentence, isIndexable, loreSlug, parseLoreSlug, renderBody, slugify } from "./lore";
 
 describe("slugify", () => {
@@ -52,6 +49,7 @@ describe("isIndexable", () => {
     expect(isIndexable("x".repeat(299))).toBe(false);
     expect(isIndexable("x".repeat(300))).toBe(true);
     expect(isIndexable(`#REDIRECT [[Thrall]] ${"x".repeat(300)}`)).toBe(false);
+    expect(isIndexable(`A road that redirected travellers. ${"x".repeat(300)}`)).toBe(true);
   });
 });
 
@@ -87,31 +85,7 @@ describe("firstSentence", () => {
 describe("with a release", () => {
   let release = "";
 
-  beforeAll(async () => {
-    const dir = mkdtempSync(join(tmpdir(), "everloot-lore-"));
-    const source = openDb(join(dir, "source.sqlite"));
-    const wiki = (extId: string, name: string, body: string, data?: Record<string, unknown>) => ({
-      kind: "lore_page" as const, extId, name, body, data, gameVersion: "lore" as const,
-      sourceUrl: `https://warcraft.wiki.gg/wiki/${name.replace(/ /g, "_")}`, retrievedAt: "2023-11-13",
-    });
-    const rows = [
-      wiki("1", "Thrall", `Thrall is the former Warchief of the Horde. ${"He led his people. ".repeat(20)}`, { categories: ["Orcs", "Warchiefs"], revisionTimestamp: "2023-01-14T21:40:10Z" }),
-      wiki("2", "Stub", "Short."),
-      wiki("3", "Old Name", "#REDIRECT [[Thrall]]"),
-      wiki("4", "Return to Sender", `An animated letter. ${"It flies. ".repeat(40)}`),
-      wiki("5", "Return to Sender", `An achievement. ${"Defeat him. ".repeat(40)}`),
-      ...Array.from({ length: 22 }, (_, i) => wiki(String(100 + i), `Zone ${i + 1}`, `Zone ${i + 1} is where grommash fought. ${"Battles raged here. ".repeat(20)}`)),
-    ];
-    await replaceSourceRows(source, "warcraft-wiki-2023", ["lore_page"], rows);
-    await replaceSourceRows(source, "curated", ["lore_page"], [{
-      kind: "lore_page", extId: "forever-launch-date", name: "WoW Forever launch date",
-      body: "World of Warcraft Forever launches globally on November 4, 2026.", gameVersion: "forever",
-      sourceUrl: "https://news.blizzard.com/example", retrievedAt: "2026-09-24",
-    }]);
-    release = join(dir, "release", "release.sqlite");
-    snapshot(source, release, new Date("2026-10-15T00:00:00Z"));
-    source.close();
-  });
+  beforeAll(async () => { release = await buildLoreRelease(); });
 
   afterEach(() => {
     vi.unstubAllEnvs();
@@ -155,13 +129,27 @@ describe("with a release", () => {
     expect(() => searchLore("grommash ".repeat(100), 1)).not.toThrow();
   });
 
+  test("searchLore caps the page number and never reaches huge LIMITs", async () => {
+    const { searchLore, MAX_PAGE } = await lore();
+    expect(MAX_PAGE).toBe(50);
+    expect(searchLore("grommash", 1e300)).toEqual({ hits: [], hasNext: false });
+    expect(searchLore("grommash", 51)).toEqual({ hits: [], hasNext: false });
+  });
+
+  test("searchLore returns lore pages only, never curated items", async () => {
+    const { searchLore } = await lore();
+    const result = searchLore("grommash", 2);
+    expect(result !== "unavailable" && result.hits.map((h) => h.kind)).not.toContain("item");
+    expect(result !== "unavailable" && result.hits).toHaveLength(2);
+  });
+
   test("indexable count and chunks follow the 300-character, no-redirect rule", async () => {
     const { indexableCount, indexableChunk } = await lore();
-    expect(indexableCount()).toBe(25);
+    expect(indexableCount()).toBe(26);
     const all = indexableChunk(0);
-    expect(all !== "unavailable" && all.map((r) => r.extId).slice(0, 3)).toEqual(["1", "4", "5"]);
+    expect(all !== "unavailable" && all.map((r) => r.extId).slice(0, 4)).toEqual(["1", "4", "5", "6"]);
     expect(indexableChunk(5)).toEqual([]);
-    expect(indexableChunk(1, 2)).toMatchObject([{ extId: "5" }, { extId: "100" }]);
+    expect(indexableChunk(1, 2)).toMatchObject([{ extId: "5" }, { extId: "6" }]);
   });
 
   test("releaseCreatedAt comes from the manifest", async () => {

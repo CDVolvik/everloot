@@ -75,6 +75,15 @@ test("a curated row is labelled with its source and game version", async () => {
   const html = renderToStaticMarkup(await LorePage(params("forever-launch-date")));
   expect(html).toContain("Lore archive · curated · forever");
   expect(html).toContain("November 4, 2026");
+  expect(html).not.toContain("Converted from wikitext");
+  expect(html).not.toContain("predates WoW: Forever");
+  expect(html).toContain("https://news.blizzard.com/example");
+});
+
+test("lore pages render per request so an unavailable answer is never cached for a day", async () => {
+  const mod = await page();
+  expect(mod.dynamic).toBe("force-dynamic");
+  expect((mod as Record<string, unknown>).revalidate).toBeUndefined();
 });
 
 test("an unavailable release renders the unavailable copy and is not indexed", async () => {

@@ -13,8 +13,11 @@ export const metadata: Metadata = {
 };
 
 function pageNumber(raw: string | undefined): number {
-  const n = Number(raw);
-  return Number.isInteger(n) && n >= 1 ? n : 1;
+  return raw && /^[1-9]\d*$/.test(raw) ? Number(raw) : 1;
+}
+
+function sourceHost(url: string): string {
+  try { return new URL(url).hostname; } catch { return "source"; }
 }
 
 export default async function SearchPage(props: { searchParams: Promise<{ q?: string; page?: string }> }) {
@@ -58,7 +61,7 @@ export default async function SearchPage(props: { searchParams: Promise<{ q?: st
                 <Link href={`/lore/${loreSlug(hit)}`} className="font-display text-lg text-gold-400 hover:underline underline-offset-4">{hit.name}</Link>
                 <p className="mt-1 text-sm text-parchment-100/80">{hit.snippet}</p>
                 <p className="mt-2 text-xs text-parchment-100/55">
-                  {hit.gameVersion === "lore" ? "lore · 2023" : `${hit.gameVersion} · ${hit.sourceId}`} · {new URL(hit.sourceUrl).hostname}
+                  {hit.gameVersion === "lore" ? "lore · 2023" : `${hit.gameVersion} · ${hit.sourceId}`} · {sourceHost(hit.sourceUrl)}
                 </p>
               </li>
             ))}
