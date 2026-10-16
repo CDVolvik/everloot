@@ -1,0 +1,49 @@
+<mediawiki xmlns="http://www.mediawiki.org/xml/export-0.11/" version="0.11" xml:lang="en">
+  <siteinfo><sitename>Warcraft Wiki</sitename></siteinfo>
+  <page>
+    <title>Cinch of the Vigil</title>
+    <ns>0</ns>
+    <id>201</id>
+    <revision>
+      <id>1</id>
+      <timestamp>2023-05-01T00:00:00Z</timestamp>
+      <text bytes="400" xml:space="preserve">{{#data:itemtip
+|name=Cinch of the Vigil
+|quality=epic
+|ilvl=476
+|slot=Waist
+|rfaction=Kirin Tor Offensive
+|rep=Honored
+}}
+
+'''Cinch of the Vigil''' is purchased for {{cost|300}} at {{rep|honored}} standing from the following vendors:
+*{{NPC|Alliance|Hiren Loresong}} at [[Violet Rise]]
+
+==Patch changes==
+* {{Patch 5.2.0|note=Added.}}
+
+[[Category:Sunreaver Onslaught rewards]]
+[[Category:Legion world drops]]</text>
+    </revision>
+  </page>
+  <page>
+    <title>Nazmir Saurid</title>
+    <ns>0</ns>
+    <id>202</id>
+    <revision>
+      <id>2</id>
+      <timestamp>2023-06-01T00:00:00Z</timestamp>
+      <text bytes="300" xml:space="preserve">{{Stub/NPC}}
+{{npcbox
+|name=Nazmir Saurid
+|race=Saurid
+|location=[[Nazmir]]
+}}
+
+'''Nazmir Saurids''' are saurid located in [[Nazmir]]. They drop feathers for the local hunters and have been seen near the shore.
+
+[[Category:Saurid]]
+[[Category:Nazmir mobs]]</text>
+    </revision>
+  </page>
+</mediawiki>

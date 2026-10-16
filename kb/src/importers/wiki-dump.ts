@@ -2,6 +2,9 @@ import { createReadStream } from "node:fs";
 import wtf from "wtf_wikipedia";
 import type { DB } from "../db.js";
 import { replaceSourceRows, type EntityInput } from "../entities.js";
+import { classify, type Facets, type LoreType } from "./wiki-classify.js";
+import { extractInfobox, type Infobox } from "./wiki-infobox.js";
+import { countDamage, repairTemplates } from "./wiki-templates.js";
 import { parsePages, type WikiPage } from "./wiki-xml.js";
 import { zstdDecompress } from "./zstd.js";
 
@@ -13,9 +16,34 @@ export function wikiUrl(title: string): string {
   return `https://warcraft.wiki.gg/wiki/${slug}`;
 }
 
-export function wikitextToText(wikitext: string): { text: string; categories: string[] } {
-  const doc = wtf(wikitext);
-  return { text: doc.text().trim(), categories: doc.categories() };
+export interface ConvertedPage {
+  text: string;
+  categories: string[];
+  /** The page's first infobox-style template, as plain fields; null when it has none. */
+  infobox: Infobox | null;
+  /** True when the converted text still shows a known template-breakage pattern. */
+  damaged: boolean;
+}
+
+/**
+ * Wikitext -> plain text. The infobox is read from the raw text (the converter would drop it), the
+ * inline templates we know are rendered to words, then the generic converter removes the rest.
+ */
+export function wikitextToText(wikitext: string): ConvertedPage {
+  const infobox = extractInfobox(wikitext);
+  const doc = wtf(repairTemplates(wikitext));
+  const text = doc.text().trim();
+  return { text, categories: doc.categories(), infobox, damaged: countDamage(text) > 0 };
+}
+
+/** What a stored row's `data` column holds. */
+export interface LorePageData {
+  categories: string[];
+  revisionTimestamp: string;
+  type: LoreType;
+  facets: Facets;
+  infobox?: Infobox;
+  damaged: boolean;
 }
 
 export interface WikiImportProgress {
@@ -83,7 +111,7 @@ async function* toRows(
   pages: AsyncIterable<WikiPage>,
   newestOrdinal: Map<number, number>,
   limit: number | undefined,
-  counts: { skipped: number; dropped: { redirect: number; namespace: number; empty: number } },
+  counts: { skipped: number; damaged: number; dropped: { redirect: number; namespace: number; empty: number } },
 ): AsyncGenerator<EntityInput> {
   let n = 0;
   let ordinal = 0;
@@ -104,7 +132,7 @@ async function* toRows(
       counts.dropped.empty++;
       continue;
     }
-    let converted: { text: string; categories: string[] };
+    let converted: ConvertedPage;
     try {
       converted = wikitextToText(p.text);
     } catch {
@@ -117,12 +145,16 @@ async function* toRows(
       counts.skipped++;
       continue;
     }
+    if (converted.damaged) counts.damaged++;
+    const { type, facets } = classify(converted.categories, converted.infobox?.template);
+    const data: LorePageData = { categories: converted.categories, revisionTimestamp: p.timestamp, type, facets, damaged: converted.damaged };
+    if (converted.infobox) data.infobox = converted.infobox;
     yield {
       kind: "lore_page",
       extId: p.id,
       name: p.title,
       body: converted.text.replace(/\n{3,}/g, "\n\n"),
-      data: { categories: converted.categories, revisionTimestamp: p.timestamp },
+      data: data as unknown as Record<string, unknown>,
       gameVersion: "lore",
       sourceUrl: wikiUrl(p.title),
       retrievedAt: WIKI_DUMP_DATE,
@@ -142,10 +174,10 @@ export async function importWikiDump(
   db: DB,
   file: string,
   opts: WikiImportOptions = {},
-): Promise<{ stored: number; skipped: number; dropped: { redirect: number; namespace: number; empty: number } }> {
+): Promise<{ stored: number; skipped: number; damaged: number; dropped: { redirect: number; namespace: number; empty: number } }> {
   const newestOrdinal = await newestBlockOrdinals(file, opts);
-  const counts = { skipped: 0, dropped: { redirect: 0, namespace: 0, empty: 0 } };
+  const counts = { skipped: 0, damaged: 0, dropped: { redirect: 0, namespace: 0, empty: 0 } };
   const rows = toRows(counted(openPages(file), 2, opts), newestOrdinal, opts.limit, counts);
   const stored = await replaceSourceRows(db, "warcraft-wiki-2023", ["lore_page"], rows);
-  return { stored, skipped: counts.skipped, dropped: counts.dropped };
+  return { stored, skipped: counts.skipped, damaged: counts.damaged, dropped: counts.dropped };
 }
