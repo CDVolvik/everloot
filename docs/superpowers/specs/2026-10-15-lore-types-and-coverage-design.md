@@ -9,9 +9,11 @@
 
 The archive is online but flat: 257,110 pages of one kind with no way to browse NPCs, items or quests,
 and about 7,400 pages read like "purchased for at standing" because the importer drops every wiki
-template. The wiki's own categories already sort more than half the archive, and the inline templates
-that break sentences are a short, repeatable list. This slice turns categories into browsable types
-and facets, repairs the sentences, and reports what the archive covers.
+template, and the infoboxes that hold item and NPC facts are discarded whole. The wiki's own categories
+already sort more than half the archive, infobox template names sort pages even more reliably, and the
+inline templates that break sentences are a short, repeatable list. This slice turns infoboxes and
+categories into browsable types, facets and stored facts, repairs the sentences, and reports what the
+archive covers.
 
 ## What was measured (2026-10-15, current release and raw dump)
 
@@ -25,7 +27,7 @@ and facets, repairs the sentences, and reports what the archive covers.
 | Pages no category rule catches | 114,174 |
 | Distinct categories | 7,307 |
 | Pages with visible template damage | about 7,400 |
-| Infobox-style templates recognised in the dump | none, so no structured stats are available |
+| Infobox-style templates in the raw dump (`{{npcbox}}`, `{{#data:itemtip}}`, `{{Infobox faction}}`, `{{Infobox pet ability}}`) | present on typed pages; the generic converter drops them, so their fields (item level, slot, armor, stats, sell price, required reputation; NPC race, creature type, location) are lost today |
 
 ## Guardrails
 
@@ -39,12 +41,27 @@ and facets, repairs the sentences, and reports what the archive covers.
 
 ## Part 1 — Importer
 
+### Infobox capture (`kb/src/importers/wiki-infobox.ts`)
+
+`extractInfobox(wikitext: string): { template: string; fields: Record<string, string> } | null` reads
+the first top-level infobox-style template: a name matching `/^(infobox\b.*|npcbox|questbox|zonebox|itembox|#data:itemtip|#data:.*)$/i`.
+Named `|key=value` fields are kept with the key lower-cased and the value reduced to plain text
+(links `[[a|b]]` → `b`, `{{Race|Human}}` → `Human`, `{{NPC||Name|icon=x}}` → `Name`, `<br />` → `, `,
+other templates removed, whitespace collapsed); positional fields and empty values are dropped; at
+most 40 fields, each value at most 200 characters. The row stores it as `data.infobox`. Nothing is
+interpreted: `ilvl=476` is stored as the string `"476"` under `ilvl`.
+
 ### Types (`kb/src/importers/wiki-classify.ts`)
 
-`classify(categories: string[]): { type: LoreType; facets: Facets }` where
+`classify(categories: string[], infoboxTemplate?: string): { type: LoreType; facets: Facets }` where
 `LoreType = "npc" | "item" | "quest" | "zone" | "spell" | "other"`.
 
-Type rules run in this order; the first match wins:
+Rule 0, by infobox template name (lower-cased): `npcbox` → `npc`; `#data:itemtip`, `itembox`,
+`infobox item` → `item`; `questbox`, `infobox quest` → `quest`; `zonebox`, `infobox zone`,
+`infobox instance` → `zone`; `infobox ability`, `infobox pet ability`, `infobox spell`, `infobox talent`
+→ `spell`. Any other infobox name falls through to the category rules.
+
+Category rules then run in this order; the first match wins:
 
 | Order | Type | A category matches (case-insensitive, whole category) |
 |---|---|---|
@@ -76,7 +93,8 @@ each sorted and de-duplicated, possibly empty:
 - `faction`: `Horde` for categories starting with `Horde `, `Alliance` for `Alliance `, `Neutral` for
   `Neutral `.
 
-The importer stores `data = { categories, revisionTimestamp, type, facets }`.
+The importer stores `data = { categories, revisionTimestamp, type, facets, infobox, damaged }`
+(`infobox` omitted when none; `damaged` a boolean from the counter below).
 
 ### Template repair (`kb/src/importers/wiki-templates.ts`)
 
@@ -85,12 +103,18 @@ whitelist of inline templates to their visible text and leaves everything else t
 converter (which removes it). Each template on the list has a fixture test; the list grows only with
 a test. Initial list, confirmed or corrected by the raw-dump probe before implementation:
 
+Forms confirmed in the raw dump on 2026-10-15 (`Cinch of the Dead Forest's Vigil`, `Kirin Tor Offensive`,
+`Resilient Roach`, `Soothing Kiss`):
+
 | Template | Rendered as |
 |---|---|
-| `{{g}}`, `{{s}}`, `{{c}}` and `{{cost|g|s|c}}` / `{{money|…}}` | `12g 34s 56c` with the digits given, omitting zero parts |
-| `{{item|Name}}`, `{{npc|Name}}`, `{{quest|Name}}`, `{{spell|Name}}`, `{{zone|Name}}`, `{{ability|Name}}` and their `|display text` variants | the display text, else the name |
-| `{{faction standing|Revered}}` / `{{rep|Revered}}` | `Revered` |
-| `{{Horde icon small}}`, `{{Alliance icon small}}`, `{{Neutral icon small}}` and the non-small forms | removed with their surrounding space collapsed |
+| `{{g}}`, `{{s}}`, `{{c}}` and `{{cost|g|s|c}}` / `{{money|…}}` (`{{cost|300}}` is 300 gold) | `12g 34s 56c` with the digits given, omitting zero parts |
+| `{{NPC|Faction|Name|icon=…}}` and `{{NPC||Name}}` (first positional is a faction or empty) | `Name` |
+| `{{item|Name}}`, `{{item|quality|Name}}`, `{{quest|Name}}`, `{{spell|Name}}`, `{{zone|Name}}`, `{{ability|Name}}` and `|display text` variants | the display text, else the name (a leading quality or faction word is skipped when a second positional exists) |
+| `{{rep|honored}}` / `{{faction standing|Revered}}` | the standing, capitalised (`Honored`) |
+| `{{Race|Human}}` | `Human` |
+| `{{Patch 5.2.0|note=Added.}}` | `Patch 5.2.0: Added.` |
+| `{{Horde icon small}}`, `{{Alliance icon small}}`, `{{Neutral icon small}}`, non-small forms, `{{ss|…}}`, `{{for|…}}`, `{{Stub/…}}`, `{{Removed|…}}` | removed with their surrounding space collapsed |
 
 ### Damage counter
 
@@ -171,8 +195,11 @@ canonical `/lore/coverage`, linked from `/lore`.
 
 ## Testing
 
-- `wiki-classify.test.ts`: one case per type rule in the table, priority cases (quest over npc, npc
-  over item), each facet family with two categories, and the empty-category case → `other`.
+- `wiki-infobox.test.ts`: the four confirmed infobox forms, field cleaning (links, `{{Race}}`, `{{NPC}}`,
+  `<br />`), positional and empty fields dropped, the 40-field and 200-character caps, no infobox → `null`.
+- `wiki-classify.test.ts`: rule 0 per infobox name, one case per category rule in the table, priority
+  cases (quest over npc, npc over item), each facet family with two categories, and the
+  empty-category case → `other`.
 - `wiki-templates.test.ts`: one fixture per template in the whitelist, nesting inside a sentence, an
   unknown template left for the converter, and the damage counter on before/after text.
 - `wiki-dump.test.ts`: the sample fixture gains categories and a money template; the import result
@@ -186,5 +213,5 @@ canonical `/lore/coverage`, linked from `/lore`.
 
 ## Out of scope
 
-Structured stats from infoboxes (none in the dump), images, new sources, changing `kind`, publishing
-the release to R2, guides.
+Interpreting infobox fields (stat tables, item tooltips, comparisons: the fields are stored as text for a
+later slice), images, new sources, changing `kind`, publishing the release to R2, guides.
