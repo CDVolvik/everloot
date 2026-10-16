@@ -68,9 +68,15 @@ export function renderBody(body: string): BodyBlock[] {
   return blocks;
 }
 
-/** The first sentence, or a word-boundary cut at `max` with an ellipsis. */
+/**
+ * The first sentence of the first block, or a word-boundary cut at `max` with an ellipsis.
+ * A bullet-first body (disambiguation pages) reads as its items joined by "; ", never "* ".
+ */
 export function firstSentence(body: string, max = 160): string {
-  const flat = body.replace(/\s+/g, " ").trim();
+  const first = renderBody(body)[0];
+  const text = !first ? "" : first.type === "p" ? first.text : first.items.join("; ");
+  const flat = text.replace(/\s+/g, " ").trim();
+  if (first?.type === "ul") return flat.length <= max ? flat : `${flat.slice(0, max - 1).replace(/\s+\S*$/, "")}…`;
   const end = flat.search(/\.(\s|$)/);
   const sentence = end >= 0 ? flat.slice(0, end + 1) : flat;
   if (sentence.length <= max) return sentence;
@@ -135,10 +141,16 @@ export function searchLore(q: string, page: number): { hits: SearchHit[]; hasNex
   return { hits: results.slice((p - 1) * PAGE_SIZE, p * PAGE_SIZE), hasNext: results.length > p * PAGE_SIZE };
 }
 
+/** The count scans every body (seconds on the real file); a read-only release cannot change, so count once per open. */
+const COUNTS = new WeakMap<object, number>();
+
 export function indexableCount(): number | Unavailable {
   const release = getRelease();
   if (!release) return UNAVAILABLE;
+  const known = COUNTS.get(release.db);
+  if (known !== undefined) return known;
   const row = release.db.prepare(`SELECT count(*) AS n FROM entities WHERE ${INDEXABLE_SQL}`).get(...PUBLISHABLE) as { n: number };
+  COUNTS.set(release.db, row.n);
   return row.n;
 }
 

@@ -36,6 +36,15 @@ test("a chunk past the end or a malformed name is 404", async () => {
   expect((await get("-1.xml")).status).toBe(404);
 });
 
+test("a chunk never scans the table for a count", async () => {
+  vi.stubEnv("KB_SNAPSHOT_PATH", release);
+  const { getRelease } = await import("@/lib/release");
+  const spy = vi.spyOn(getRelease()!.db, "prepare");
+  const { GET } = await import("./route");
+  expect((await GET(new Request("https://everloot.app/lore-sitemap/0.xml"), { params: Promise.resolve({ n: "0.xml" }) })).status).toBe(200);
+  expect(spy.mock.calls.filter(([sql]) => /count\(\*\)/.test(String(sql)))).toHaveLength(0);
+});
+
 test("an unavailable release is a 503", async () => {
   vi.spyOn(console, "error").mockImplementation(() => {});
   const res = await get("0.xml", join(tmpdir(), "missing.sqlite"));
