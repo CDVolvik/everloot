@@ -163,7 +163,7 @@ licence, retrievedAt, gameVersion`. `LoreHit` is the existing `SearchHit` plus `
 
 | Situation | Behaviour |
 |---|---|
-| Release missing, hash mismatch, active sidecar, empty, bad manifest | `/lore`, `/search`, `/lore/[slug]`, both sitemap routes answer 503 with "Lore archive unavailable"; pages are noindexed |
+| Release missing, hash mismatch, active sidecar, empty, bad manifest | Both sitemap routes answer 503 with "Lore archive unavailable". `/lore`, `/search` and `/lore/[slug]` render the same copy with `noindex, follow`; a Next page component cannot set an HTTP status, so they answer 200 with that copy and never a count or an empty list |
 | `slug` malformed or id unknown | 404 |
 | Name part of slug stale | 308 to canonical |
 | Query empty | form only |

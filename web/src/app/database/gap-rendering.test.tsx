@@ -35,6 +35,13 @@ test("unreadable storage reads unrecorded, never zero", async () => {
   expect(db).not.toMatch(/>0<\/div>/);
 });
 
+test("the database page points to the lore archive and says it is not collected Forever data", async () => {
+  store.loadCorpus.mockResolvedValue({ uploads: 0, records: [], dataAsOf: "2026-10-09T00:00:00.000Z" });
+  const db = await html(DatabasePage);
+  expect(db).toContain('href="/lore"');
+  expect(db).toContain("not collected Forever data");
+});
+
 test("an empty readable corpus says nothing is public yet", async () => {
   store.loadCorpus.mockResolvedValue({ uploads: 0, records: [], dataAsOf: "2026-10-09T00:00:00.000Z" });
   const drops = await html(DropsPage);

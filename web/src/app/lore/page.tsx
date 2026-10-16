@@ -4,7 +4,8 @@ import LoreSearchForm from "@/components/LoreSearchForm";
 import { UNAVAILABLE_COPY } from "@/lib/lore";
 import { getRelease } from "@/lib/release";
 
-export const revalidate = 86400;
+// Rendered per request: it only reads the manifest, and a static build without the release would bake "unavailable".
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Lore archive",
