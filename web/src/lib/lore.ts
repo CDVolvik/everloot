@@ -1,3 +1,7 @@
+import { SOURCES } from "../../../kb/src/sources";
+import { search, type SearchHit } from "../../../kb/src/search";
+import { getRelease } from "./release";
+
 /**
  * The lore archive: Warcraft Wiki pages from the approved knowledge release, served on the site.
  * Pure helpers (slugs, body rendering, indexing rule) live here with the release-backed lookups.
@@ -68,4 +72,77 @@ export function firstSentence(body: string, max = 160): string {
   if (sentence.length <= max) return sentence;
   const cut = sentence.slice(0, max - 1);
   return `${cut.slice(0, cut.lastIndexOf(" ")).trimEnd()}…`;
+}
+
+// ---- Release-backed lookups ----------------------------------------------------------------
+
+export type Unavailable = "unavailable";
+export const UNAVAILABLE: Unavailable = "unavailable";
+
+export interface LorePage {
+  extId: string;
+  name: string;
+  body: string;
+  categories: string[];
+  revisionTimestamp: string | null;
+  sourceUrl: string;
+  sourceId: string;
+  licence: string;
+  retrievedAt: string;
+  gameVersion: string;
+}
+
+const PUBLISHABLE = Object.values(SOURCES).filter((s) => s.publishable).map((s) => s.id);
+const SOURCE_MARKS = PUBLISHABLE.map(() => "?").join(", ");
+const INDEXABLE_SQL = `kind = 'lore_page' AND source_id IN (${SOURCE_MARKS}) AND length(body) >= ${INDEXABLE_MIN_BODY} AND body NOT LIKE '%REDIRECT%'`;
+
+interface LoreRow {
+  extId: string; name: string; body: string; data: string; sourceUrl: string; sourceId: string;
+  licence: string; retrievedAt: string; gameVersion: string;
+}
+
+export function loreByExtId(extId: string): LorePage | null | Unavailable {
+  const release = getRelease();
+  if (!release) return UNAVAILABLE;
+  const row = release.db
+    .prepare(
+      `SELECT ext_id AS extId, name, body, data, source_url AS sourceUrl, source_id AS sourceId, licence,
+         retrieved_at AS retrievedAt, game_version AS gameVersion
+       FROM entities WHERE kind = 'lore_page' AND source_id IN (${SOURCE_MARKS}) AND ext_id = ? LIMIT 1`,
+    )
+    .get(...PUBLISHABLE, extId) as LoreRow | undefined;
+  if (!row) return null;
+  let data: Record<string, unknown> = {};
+  try { data = JSON.parse(row.data) as Record<string, unknown>; } catch { /* a row without usable data still renders */ }
+  const categories = Array.isArray(data.categories) ? data.categories.filter((c): c is string => typeof c === "string") : [];
+  const { data: _data, ...rest } = row;
+  return { ...rest, categories, revisionTimestamp: typeof data.revisionTimestamp === "string" ? data.revisionTimestamp : null };
+}
+
+export function searchLore(q: string, page: number): { hits: SearchHit[]; hasNext: boolean } | Unavailable {
+  const release = getRelease();
+  if (!release) return UNAVAILABLE;
+  const p = Number.isFinite(page) && page >= 1 ? Math.floor(page) : 1;
+  const results = search(release.db, q.slice(0, MAX_QUERY), p * PAGE_SIZE + 1);
+  return { hits: results.slice((p - 1) * PAGE_SIZE, p * PAGE_SIZE), hasNext: results.length > p * PAGE_SIZE };
+}
+
+export function indexableCount(): number | Unavailable {
+  const release = getRelease();
+  if (!release) return UNAVAILABLE;
+  const row = release.db.prepare(`SELECT count(*) AS n FROM entities WHERE ${INDEXABLE_SQL}`).get(...PUBLISHABLE) as { n: number };
+  return row.n;
+}
+
+export function indexableChunk(n: number, size = CHUNK_SIZE): { extId: string; name: string }[] | Unavailable {
+  const release = getRelease();
+  if (!release) return UNAVAILABLE;
+  return release.db
+    .prepare(`SELECT ext_id AS extId, name FROM entities WHERE ${INDEXABLE_SQL} ORDER BY id LIMIT ? OFFSET ?`)
+    .all(...PUBLISHABLE, size, n * size) as { extId: string; name: string }[];
+}
+
+export function releaseCreatedAt(): string | Unavailable {
+  const release = getRelease();
+  return release ? release.manifest.createdAt : UNAVAILABLE;
 }
