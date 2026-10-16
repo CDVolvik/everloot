@@ -21,6 +21,7 @@ export default function Header() {
           <Link href="/lore" className="inline-flex items-center min-h-11 text-parchment-100/80 hover:text-gold-400">Lore</Link>
           <Link href="/upload" className="inline-flex items-center min-h-11 text-parchment-100/80 hover:text-gold-400">Upload</Link>
           <Link href="/tools/gold-per-hour" className="inline-flex items-center min-h-11 text-parchment-100/80 hover:text-gold-400">Gold/Hour</Link>
+          <Link href="/addons" className="inline-flex items-center min-h-11 text-parchment-100/80 hover:text-gold-400">Addons</Link>
         </nav>
         <div className="flex items-center gap-1 shrink-0">
           <AccountControls />
@@ -32,6 +33,10 @@ export default function Header() {
       {open && (
         <nav id="site-navigation" aria-label="All tools" className="absolute top-full inset-x-0 border-b border-parchment-100/20 bg-parchment-950 shadow-xl max-h-[70vh] overflow-y-auto">
           <div className="mx-auto max-w-6xl px-4 py-3 grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            <Link href="/addons" onClick={() => setOpen(false)} className="min-h-11 px-3 py-3 rounded-lg text-sm text-parchment-100/80 hover:bg-parchment-900 hover:text-gold-400">
+              Addons
+              <span className="ml-2 text-xs text-parchment-100/60">Everloot, Polestar and guide packs</span>
+            </Link>
             {tools.map((tool) => (
               <Link key={tool.slug} href={toolHref(tool)} onClick={() => setOpen(false)} className="min-h-11 px-3 py-3 rounded-lg text-sm text-parchment-100/80 hover:bg-parchment-900 hover:text-gold-400">
                 {tool.shortTitle}
