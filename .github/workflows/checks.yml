@@ -10,6 +10,21 @@ concurrency:
   group: checks-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  guards:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: No secrets in any commit (gitleaks 8.30.1, checksum-verified)
+        run: |
+          curl -fsSLo gitleaks.tar.gz https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz
+          echo '551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb  gitleaks.tar.gz' | sha256sum --check
+          tar -xzf gitleaks.tar.gz gitleaks
+          ./gitleaks git --redact --no-banner .
+      - name: No private workspace paths
+        run: python scripts/test_check_internal_paths.py && python scripts/check_internal_paths.py
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 10

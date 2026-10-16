@@ -55,4 +55,4 @@ Arrows after validation/authority describe the target controls; current ingestio
 - Restart, monitoring, restore and removal/suppression exercise succeeds.
 - Credentials, signing/companion/uploader and distribution remain their own checklist items.
 
-See [NEXT_SESSION.md](../NEXT_SESSION.md) for resume commands and [assessment](2026-10-05-full-assessment.md) for failure cases and acceptance checks.
+These acceptance checks came from the 2026-10-05 assessment.

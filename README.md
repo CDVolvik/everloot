@@ -2,15 +2,13 @@
 
 Mobile-first WoW companion. Tracks your collection, sends smart alerts, answers character-aware questions with AI.
 
-**Status**: pre-MVP. Folder structure consolidated 2026-05-16, code scaffolding pending (`BUILD_PLAN.md` Session 0).
+**Status**: in beta for WoW: Forever. This README is being rewritten for contributors.
 **Phase 1 scope**: collection tracker + character profile + Battle.net OAuth + push + basic AI chat.
 
 ## Repo layout
 
 ```
 everloot/
-├── _STATUS.md            Working state — read this first
-├── BUILD_PLAN.md         Session-by-session build sequence (Phase 1)
 ├── README.md             This file
 ├── docs/                 Historical strategy + future architecture.md
 ├── ios/                  Swift + SwiftUI iOS app (Sessions 5+)
@@ -31,13 +29,10 @@ Each subfolder has its own `README.md` explaining what lives there and when it g
 - **AI**: Anthropic Claude API (Haiku for batch, Sonnet for chat)
 - **Push**: OneSignal at MVP
 
-## Reading order
+## Maintainers
 
-1. `_STATUS.md` — what state we're in
-2. `BUILD_PLAN.md` — what session we're working on next
-3. The specific session's task in BUILD_PLAN → start coding
-
-The 35-page strategy doc and competitive matrix in `docs/` are historical reference, not load-bearing. Don't drag them into every session.
+Project status and handoff notes are kept outside this repository. Design specs and plans are in
+`docs/superpowers/`, and every external source is recorded in `docs/sources/LEDGER.md`.
 
 ## Local dev setup (once Sessions 0–2 are done)
 

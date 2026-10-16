@@ -17,7 +17,7 @@
 - Repository URL everywhere: `https://github.com/CDVolvik/everloot`.
 - Every commit from now on is signed off (`git commit -s`) and ends with the `Co-Authored-By` trailer.
 - Publishable sources are exactly `warcraft-wiki-2023` and `curated`. Anything else in a release is a failure.
-- No public file may contain `R21-Brain`, `_secrets`, or a personal machine path (`C:\Users\`, `D:\`), except where `docs/sources/LEDGER.md` quotes history.
+- No public file may name the maintainer's private workspace, secrets folder, user folder or agent worktrees. `scripts/check_internal_paths.py` holds the exact patterns.
 - Public prose passes the craft-ownership gate and the humanizer pass; plain words, no AI phrasing.
 - Branches: PR a `chore/oss-cleanup` (from `docs/open-source-spec`, so the spec and this plan ship in it), PR b `feat/oss-licensing` (from a), PR c `feat/oss-contributors` (from b). Carlos merges; merging `main` deploys production.
 - Nothing is posted, published or made public by an agent. Visibility, Discord, Discussions and announcements are Carlos's.
@@ -51,7 +51,7 @@
 - [ ] **Step 2: Run** `cd kb && npx vitest run test/audit-sources.test.ts`. Expected: FAIL, module not found.
 - [ ] **Step 3: Implement** `auditSources` in `kb/src/audit-sources.ts`: open read-only, `SELECT source_id, count(*) FROM entities GROUP BY source_id`, compare against the ids in `SOURCES` with `publishable: true`. Wire the CLI command next to `snapshot` in `kb/src/cli.ts`.
 - [ ] **Step 4: Run** the test file, then `npx vitest run && npx tsc --noEmit` in `kb`. Expected: all pass.
-- [ ] **Step 5: Run it on every built file:** `node ./node_modules/tsx/dist/cli.mjs src/cli.ts audit-sources <each .sqlite under D:\R21-Brain\projects\everloot\kb\data, including release\ and the working wowvault-kb.sqlite>`. Expected: exit 0. Paste the output into Task 2's ledger evidence. If anything is unexpected, stop and tell Carlos.
+- [ ] **Step 5: Run it on every built file:** `node ./node_modules/tsx/dist/cli.mjs src/cli.ts audit-sources <each .sqlite in the maintainer's kb data folder, including release/ and the working wowvault-kb.sqlite>`. Expected: exit 0. Paste the output into Task 2's ledger evidence. If anything is unexpected, stop and tell Carlos.
 - [ ] **Step 6: Commit** `git commit -s -m "kb: audit-sources reports any non-publishable source in a database"`.
 
 ### Task 2: Provenance ledger
@@ -66,7 +66,7 @@
 
 - [ ] **Step 1: Gather inputs** and keep the raw lists out of the repository (scratch in the Brain):
   - `docs/sources/source-catalog.md`, `docs/references.md`, every spec under `docs/superpowers/specs`.
-  - Everloot research notes in the Brain (`D:\R21-Brain\projects\everloot\` and `wiki/` pages that mention Everloot, Forever, Polestar or WoW data).
+  - Everloot research notes in the maintainer's notes (pages that mention Everloot, Forever, Polestar or WoW data).
   - Carlos's WoW-related GitHub stars: `gh api user/starred --paginate --jq '.[] | [.full_name, .license.spdx_id // "none", .description] | @tsv'`, filtered to WoW, Warcraft, addon or Forever.
   - Every URL in code: `git grep -hoIE "https?://[a-zA-Z0-9./_-]+" -- ':!docs' ':!*.md' ':!*/package-lock.json'`, deduplicated by host.
   - Importers and fetchers now and in history: `git log --all --diff-filter=A --name-only --format= | grep -iE "import|fetch|scrap|crawl|wago|wowhead"`.
@@ -79,8 +79,8 @@
 ### Task 4: Move internal files out, scrub paths, guard with CI
 
 **Files:**
-- Remove from the repository (copy to `D:\R21-Brain\projects\everloot\` first, each into the same relative path): the files the spec lists under "Moved to".
-- Modify: every kept file that matches `git grep -nIE "R21-Brain|_secrets|C:\\\\Users\\\\|D:\\\\"`. Expected at least `ios/README.md`, `web/README.md` and the kept plans and specs.
+- Remove from the repository (copy to the maintainer's notes, outside the repository, first, each into the same relative path): the files the spec lists under "Moved to".
+- Modify: every kept file that `scripts/check_internal_paths.py` flags.
 - Modify: `.github/workflows/checks.yml` (two new steps)
 - Modify: `README.md` (one maintainer line; the full rewrite is Task 13)
 
@@ -89,11 +89,11 @@
 - [ ] **Step 3: Rewrite each matching line** in kept files generically: "the maintainer's secrets store", "the maintainer's notes", "a local data folder". Keep the sentence's meaning.
 - [ ] **Step 4: Add to `checks.yml`:**
   - a gitleaks step (`gitleaks/gitleaks-action` pinned to a full commit SHA, or the gitleaks binary from its release with checksum verification) scanning the PR's commits;
-  - an `internal-paths` step: `! git grep -nIE "R21-Brain|_secrets|C:\\\\Users\\\\|D:\\\\" -- . ':!docs/sources/LEDGER.md' ':!docs/superpowers/specs/2026-10-16-open-source-everloot-design.md' ':!docs/superpowers/plans/2026-10-16-open-source-everloot.md'`.
+  - an `internal-paths` step: `python scripts/test_check_internal_paths.py && python scripts/check_internal_paths.py`.
 - [ ] **Step 5: Verify locally:** the `internal-paths` command exits 0, and `gitleaks git --redact --log-opts=--all .` reports no leaks.
 - [ ] **Step 6: Add to `README.md`** under a "Maintainers" line: "Project status and handoff notes are kept outside this repository."
 - [ ] **Step 7: Commit** `git commit -s -m "Move internal notes out of the repository; CI guards secrets and internal paths"`.
-- [ ] **Step 8: Write progress to the Brain** (`D:\R21-Brain\projects\everloot\_STATUS.md`, the moved file): PR a open, what moved, the ledger result. Then open PR a.
+- [ ] **Step 8: Write progress to the maintainer's status file** (the moved `_STATUS.md`): PR a open, what moved, the ledger result. Then open PR a.
 
 ---
 
@@ -232,7 +232,7 @@
 
 - [ ] **Step 1: Write `labels.sh`:** one `gh label create --force` per label: `good first issue`, `help wanted`, `data`, `addon`, `web`, `lore`, `kb`, `companion`.
 - [ ] **Step 2: Draft 8 to 10 starter issues** from real gaps (the deferred lore minors in the old handoff, the auction deposit, docs typos found in Task 10). Each one gets a title, body, labels and the files to look at.
-- [ ] **Step 3: Draft the Discord and the announcements in the Brain** (`D:\R21-Brain\projects\everloot\flip\`, not the repository): the channel layout, rules and welcome message from spec section 5; the CurseForge description, an update to the Polestar Discussion draft, a Reddit post and an X post. The message is open source, open data, observed in play, no spoilers. Run the humanizer on each. Nothing is posted.
+- [ ] **Step 3: Draft the Discord and the announcements in the maintainer's notes** (a `flip/` folder, not the repository): the channel layout, rules and welcome message from spec section 5; the CurseForge description, an update to the Polestar Discussion draft, a Reddit post and an X post. The message is open source, open data, observed in play, no spoilers. Run the humanizer on each. Nothing is posted.
 - [ ] **Step 4: Commit** `git commit -s -m "Flip kit: labels and starter issues"`, then open PR c.
 
 ---

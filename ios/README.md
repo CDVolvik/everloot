@@ -2,7 +2,7 @@
 
 Native Swift + SwiftUI iOS app — the primary mobile surface.
 
-**Status**: empty. Scaffolded in `BUILD_PLAN.md` Session 5 (Battle.net OAuth on iOS) onward.
+**Status**: not started.
 
 **Built on**: MacBook Air with Xcode 15+. Cannot be developed from Windows.
 
