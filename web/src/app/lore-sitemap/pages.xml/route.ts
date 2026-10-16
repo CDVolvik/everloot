@@ -1,9 +1,9 @@
-import { BROWSE_TYPES, hasTypes, LETTERS, releaseCreatedAt, UNAVAILABLE } from "@/lib/lore";
+import { BROWSE_TYPES, hasTypes, lettersWithRows, releaseCreatedAt, UNAVAILABLE } from "@/lib/lore";
 import { escapeXml, loreUnavailable, SITEMAP_HEADERS, siteUrl } from "@/lib/lore-sitemap";
 
 export const dynamic = "force-dynamic";
 
-/** The indexed browse pages (one per type and letter) plus the coverage page. Letter `a` is the bare type URL. */
+/** The indexed browse pages (one per type and letter with rows) plus the coverage page. Letter `a` is the bare type URL. */
 export async function GET(): Promise<Response> {
   const typed = hasTypes();
   const createdAt = releaseCreatedAt();
@@ -12,7 +12,9 @@ export async function GET(): Promise<Response> {
   const base = siteUrl();
   const urls: string[] = [];
   for (const slug of Object.keys(BROWSE_TYPES)) {
-    for (const letter of LETTERS) {
+    const letters = lettersWithRows(BROWSE_TYPES[slug as keyof typeof BROWSE_TYPES]);
+    if (letters === UNAVAILABLE) return loreUnavailable();
+    for (const letter of letters) {
       urls.push(letter === "a" ? `${base}/lore/${slug}` : `${base}/lore/${slug}?letter=${encodeURIComponent(letter)}`);
     }
   }

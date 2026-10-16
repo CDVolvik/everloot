@@ -197,8 +197,8 @@ export function searchLore(q: string, page: number, type?: LoreType): { hits: Se
   if (!release) return UNAVAILABLE;
   const p = Number.isFinite(page) && page >= 1 ? Math.floor(page) : 1;
   if (p > MAX_PAGE) return { hits: [], hasNext: false };
-  const where = type ? { sql: "json_extract(e.data, '$.type') = ?", params: [type] } : undefined;
-  const results = search(release.db, q.slice(0, MAX_QUERY), p * PAGE_SIZE + 1, { kinds: ["lore_page"], where });
+  const types = type ? [type] : undefined;
+  const results = search(release.db, q.slice(0, MAX_QUERY), p * PAGE_SIZE + 1, { kinds: ["lore_page"], types });
   return { hits: results.slice((p - 1) * PAGE_SIZE, p * PAGE_SIZE), hasNext: results.length > p * PAGE_SIZE };
 }
 
@@ -252,6 +252,27 @@ function letterClause(letter: string | null): { sql: string; params: unknown[] }
   if (letter === null) return { sql: "1 = 1", params: [] };
   if (letter === "#") return { sql: "lower(substr(name, 1, 1)) NOT BETWEEN 'a' AND 'z'", params: [] };
   return { sql: "name LIKE ? ESCAPE '\\'", params: [`${letter}%`] };
+}
+
+const LETTERS_WITH_ROWS = new WeakMap<object, Map<string, string[]>>();
+
+/** The letters (and "#") this type actually has pages under, so empty letters stay out of the sitemap. */
+export function lettersWithRows(type: LoreType): string[] | Unavailable {
+  const release = getRelease();
+  if (!release) return UNAVAILABLE;
+  let perType = LETTERS_WITH_ROWS.get(release.db);
+  if (!perType) { perType = new Map(); LETTERS_WITH_ROWS.set(release.db, perType); }
+  const known = perType.get(type);
+  if (known) return known;
+  const rows = release.db
+    .prepare(`SELECT lower(substr(name, 1, 1)) AS c FROM entities WHERE ${LORE_SQL} AND json_extract(data, '$.type') = ? GROUP BY c`)
+    .all(...PUBLISHABLE, type) as { c: string }[];
+  const starts = rows.map((r) => r.c);
+  const out = LETTERS.filter((letter) =>
+    letter === "#" ? starts.some((c) => c < "a" || c > "z") : starts.includes(letter),
+  );
+  perType.set(type, out);
+  return out;
 }
 
 /** Pages of one type whose name starts with `letter`, filtered by exact facet values, ordered by name. */
