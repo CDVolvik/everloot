@@ -3,25 +3,28 @@
 **Status:** draft for Carlos to review and send (GitHub Discussion on `fitzforge/polestar`, or the
 Polestar Discord). Nothing here has been sent. Written 2026-10-16 in Carlos's voice; edit freely.
 
-**Facts it relies on** (checked 2026-10-16): Polestar's README says it does not ship, host or
-recommend any pack and that players only see packs they install themselves; `docs/PACK_FORMAT.md`
-defines `pack.json` (id, title, author, version, license, website, source, folder); open issues ask
-for help mapping caves, climbs and chokepoints (#1), note that Forever quests have no prerequisites
-in the quest data (#10), and report wrong trainers and NPC positions. Everloot's addon records NPC
+**Facts it relies on** (checked 2026-10-16): Polestar's `docs/GUIDE_PACKS.md` says it does not ship,
+host or recommend any pack, that players only see packs they install themselves, and points authors
+with a pack to show to the Polestar Discord; `LICENSE-EXCEPTION.md` lets compiled packs use any licence;
+`docs/PACK_FORMAT.md` defines `pack.json` (id, title, author, version, license, website, source, notes,
+folder); open issues ask for help mapping caves, climbs and chokepoints (#10), note that Forever quests
+have no prerequisites in the quest data (#51), and report wrong trainers (#80) and NPC positions (#77, #84).
+Carlos's merged PRs there: #2, #4, #5, #7, #8, #9, #12, #23; the map button (#81), party quest progress
+(#24) and esMX translation (#11) are open. Everloot's addon records NPC
 sightings, quest givers and turn-ins, trainers and vendors, and publishes a fact only when three
 independent installs agree; published data is CC BY-SA 4.0. Everloot has not yet run a real in-game
 collection pass, so the export described below is a plan, not a live feed.
 
 ---
 
-Hi, Carlos here (the map button, the party quest progress and the esMX translation PRs).
+Hi, Carlos here (the class-trainer, buy-at-merchant and cave approach PRs, and the open map button
+and esMX translation ones).
 
 Two things I'm building on everloot.app that touch Polestar, and I'd rather ask before they exist
 than after.
 
-**1. A directory of guide packs.** The README says Polestar doesn't host or recommend packs, and
-there's no list of them anywhere, so authors have nowhere to be found and players have nowhere to
-look. I'm putting up an independent directory on everloot.app: one entry per pack, using exactly the
+**1. A directory of guide packs.** GUIDE_PACKS.md says Polestar doesn't host or recommend packs,
+and outside the Discord there's no list of them, so a player searching the web has nowhere to look. I'm putting up an independent directory on everloot.app: one entry per pack, using exactly the
 `pack.json` fields plus what the pack covers (zones, levels, races, classes) and where to download
 it. Polestar's own guides would be the first entry, credited to you. It will say plainly that it is
 not part of Polestar and that you don't vouch for the packs listed. If there's a line you'd want on
