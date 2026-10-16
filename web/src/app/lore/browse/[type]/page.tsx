@@ -1,0 +1,150 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import BrowseFilters from "@/components/BrowseFilters";
+import {
+  browse, BROWSE_HEADINGS, BROWSE_TYPES, FACET_KEYS, facetValues, hasTypes, LETTERS, loreSlug, parseLetter,
+  PRE_CLASSIFICATION_COPY, UNAVAILABLE, UNAVAILABLE_COPY, type BrowseSlug, type FacetKey,
+} from "@/lib/lore";
+
+export const dynamic = "force-dynamic";
+
+type Query = Partial<Record<FacetKey | "letter" | "page", string>>;
+type Props = { params: Promise<{ type: string }>; searchParams: Promise<Query> };
+
+function slugOf(type: string): BrowseSlug | null {
+  return Object.hasOwn(BROWSE_TYPES, type) ? (type as BrowseSlug) : null;
+}
+
+function filtersOf(query: Query): Partial<Record<FacetKey, string>> {
+  const out: Partial<Record<FacetKey, string>> = {};
+  for (const key of FACET_KEYS) if (query[key]) out[key] = query[key];
+  return out;
+}
+
+function pageNumber(raw: string | undefined): number {
+  return raw && /^[1-9]\d*$/.test(raw) ? Number(raw) : 1;
+}
+
+/** `/lore/<type>` for letter a, else `/lore/<type>?letter=<l>`: the only indexed form. */
+function letterUrl(slug: BrowseSlug, letter: string): string {
+  return letter === "a" ? `/lore/${slug}` : `/lore/${slug}?letter=${encodeURIComponent(letter)}`;
+}
+
+export async function generateMetadata(props: Props): Promise<Metadata> {
+  const { type } = await props.params;
+  const query = await props.searchParams;
+  const slug = slugOf(type);
+  const letter = parseLetter(query.letter);
+  if (!slug || !letter) return { robots: { index: false, follow: true } };
+  const typed = hasTypes();
+  const clean = Object.keys(filtersOf(query)).length === 0 && !query.page;
+  return {
+    title: `${BROWSE_HEADINGS[slug]} starting with ${letter.toUpperCase()} · Lore archive`,
+    description: `${BROWSE_HEADINGS[slug]} from the Warcraft Wiki as of November 2023, CC BY-SA 4.0, by name. Not WoW: Forever data.`,
+    alternates: { canonical: letterUrl(slug, letter) },
+    robots: { index: typed === true && clean, follow: true },
+  };
+}
+
+export default async function BrowsePage(props: Props) {
+  const { type } = await props.params;
+  const query = await props.searchParams;
+  const slug = slugOf(type);
+  if (!slug) notFound();
+  const letter = parseLetter(query.letter);
+  if (!letter) notFound();
+  const heading = BROWSE_HEADINGS[slug];
+  const label = "Lore archive · Warcraft Wiki, 2023 dump";
+  const typed = hasTypes();
+
+  if (typed === UNAVAILABLE) {
+    return (
+      <article className="space-y-4 max-w-4xl">
+        <p className="uppercase tracking-[0.2em] text-xs text-gold-500/80">{label}</p>
+        <h1 className="font-display text-3xl font-bold text-parchment-100">Lore archive unavailable</h1>
+        <p className="text-parchment-100/75">{UNAVAILABLE_COPY}</p>
+      </article>
+    );
+  }
+  if (!typed) {
+    return (
+      <article className="space-y-4 max-w-4xl">
+        <p className="uppercase tracking-[0.2em] text-xs text-gold-500/80">{label}</p>
+        <h1 className="font-display text-3xl font-bold text-parchment-100">{heading}</h1>
+        <p className="text-parchment-100/75">
+          {PRE_CLASSIFICATION_COPY} Browsing by type arrives with the next knowledge release. Until then,{" "}
+          <Link href="/search" className="text-gold-400 hover:underline underline-offset-4">search the archive</Link>.
+        </p>
+      </article>
+    );
+  }
+
+  const storedType = BROWSE_TYPES[slug];
+  const filters = filtersOf(query);
+  const page = pageNumber(query.page);
+  const result = browse(storedType, letter, filters, page);
+  const values = facetValues(storedType);
+  if (result === UNAVAILABLE || values === UNAVAILABLE) {
+    return (
+      <article className="space-y-4 max-w-4xl">
+        <h1 className="font-display text-3xl font-bold text-parchment-100">Lore archive unavailable</h1>
+        <p className="text-parchment-100/75">{UNAVAILABLE_COPY}</p>
+      </article>
+    );
+  }
+  const filterQuery = Object.entries(filters).map(([k, v]) => `&${k}=${encodeURIComponent(v)}`).join("");
+  const pageUrl = (n: number) => `/lore/${slug}?letter=${encodeURIComponent(letter)}${filterQuery}${n > 1 ? `&page=${n}` : ""}`;
+
+  return (
+    <article className="space-y-8 max-w-4xl">
+      <header className="space-y-3">
+        <p className="uppercase tracking-[0.2em] text-xs text-gold-500/80">{label}</p>
+        <h1 className="font-display text-3xl sm:text-4xl font-bold text-parchment-100 tracking-tight">{heading}</h1>
+        <p className="text-sm text-parchment-100/70 max-w-2xl">
+          Pages the wiki&apos;s own categories and infoboxes mark as {heading.toLowerCase()}, by name. This archive predates WoW: Forever.
+        </p>
+      </header>
+
+      <nav aria-label="First letter" className="flex flex-wrap gap-1 text-sm">
+        {LETTERS.map((l) => (
+          <Link key={l} href={letterUrl(slug, l)} aria-current={l === letter ? "page" : undefined}
+            className={`min-h-11 min-w-11 inline-flex items-center justify-center rounded-lg border ${l === letter ? "border-gold-400 text-gold-400" : "border-parchment-100/15 text-parchment-100/70 hover:text-gold-400"}`}>
+            {l.toUpperCase()}
+          </Link>
+        ))}
+      </nav>
+
+      <BrowseFilters action={`/lore/${slug}`} letter={letter} values={values} selected={filters} />
+
+      {result.rows.length === 0 && page > 1 ? (
+        <section className="space-y-2 text-sm text-parchment-100/75">
+          <p>No more results.</p>
+          <p><Link href={letterUrl(slug, letter)} className="text-gold-400 hover:underline underline-offset-4">Back to the first page</Link></p>
+        </section>
+      ) : result.rows.length === 0 ? (
+        <p className="text-sm text-parchment-100/75">No pages match these filters.</p>
+      ) : (
+        <section className="space-y-4">
+          <ul className="grid sm:grid-cols-2 gap-x-6 gap-y-1 text-sm">
+            {result.rows.map((row) => (
+              <li key={row.extId}>
+                <Link href={`/lore/${loreSlug(row)}`} className="inline-flex items-center min-h-9 text-gold-400 hover:underline underline-offset-4">{row.name}</Link>
+              </li>
+            ))}
+          </ul>
+          <nav aria-label="Pages" className="flex items-center gap-4 text-sm">
+            {page > 1 && <Link href={pageUrl(page - 1)} className="text-gold-400 hover:underline underline-offset-4">Previous</Link>}
+            <span className="text-parchment-100/60">Page {page}</span>
+            {result.hasNext && <Link href={pageUrl(page + 1)} className="text-gold-400 hover:underline underline-offset-4">Next</Link>}
+          </nav>
+        </section>
+      )}
+
+      <p className="text-sm text-parchment-100/60">
+        <Link href="/lore" className="text-gold-400 hover:underline underline-offset-4">About the lore archive</Link>
+        {" "}· <Link href="/search" className="text-gold-400 hover:underline underline-offset-4">Search</Link>
+      </p>
+    </article>
+  );
+}
