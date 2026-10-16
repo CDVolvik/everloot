@@ -66,6 +66,42 @@ credentials.
 **Handoffs:** agents read and write Everloot status in the Brain from now on. The repository README
 tells maintainers where it lives without naming private paths.
 
+### Provenance audit
+
+Nothing Everloot publishes may have come from scraping, and every external source we have touched is
+on record. The audit produces `docs/sources/LEDGER.md`, one row per source:
+
+| Column | Meaning |
+|---|---|
+| Source | Name and URL |
+| Terms | License, or the terms and robots.txt reading, with the date read |
+| Use | `published data`, `local only`, `link only` or `research only` |
+| Evidence | Commit, file or release that shows how it was used |
+| In releases | Whether any of its data is in a knowledge release or the public corpus |
+
+**Inputs to reconcile:** `docs/sources/source-catalog.md`, `docs/references.md`, the specs, the
+Everloot research notes in the Brain, Carlos's GitHub stars related to WoW, every URL cited in code
+and curated entries, and the importers and fetchers in code and in history.
+
+**Checks the audit runs and records:**
+
+- Every knowledge database and release built so far holds only `warcraft-wiki-2023` and `curated`
+  rows. A first look on 2026-10-16 confirmed this for the 09-27, 10-05 and 10-16 releases and the
+  10-16 source database; the audit repeats it for every file under `kb/data`, including the working
+  database and `raw/`.
+- The public corpus (Supabase) holds only addon uploads.
+- The downloadable addon zip contains only Everloot's own code.
+- The single curated row and every curated `source_url` are cited and allowed by the data policy.
+
+**Known history, disclosed rather than erased:** on 2026-09-27 a `wago.tools` importer
+(`kb/src/importers/wago.ts`) was written and removed the same morning in `ca185a6`, after a robots.txt
+check showed `/db2` is disallowed. It ran before the first real build and no wago data exists in any
+database. The ledger states this plainly.
+
+
+`THIRD_PARTY.md` (section 3) summarizes the ledger's `published data` rows. The flip waits until the
+ledger covers every source found.
+
 ## 2. Data sources and collection policy (PR b)
 
 Published as `docs/DATA_POLICY.md`, linked from the README, CONTRIBUTING and the site.
@@ -154,14 +190,15 @@ Every public document passes the craft-ownership gate and a humanizer pass befor
 
 | When | What | Who |
 |---|---|---|
-| 10/17 | PR a: cleanup | Agent; Carlos merges |
+| 10/17 | PR a: cleanup and provenance audit | Agent; Carlos merges |
 | 10/18–19 | PR b: data policy, licensing, footer Source link, consent sentence | Agent; Carlos merges |
 | 10/19–22 | PR c: contributor experience | Agent; Carlos merges |
 | 10/23 | Pre-flip check (below) | Agent |
 | ~10/24 | Flip public with the CurseForge upload | Carlos |
 | 10/24–11/03 | Starter issues, roadmap board, Discord, announcements | Both |
 
-**Pre-flip check (agent):** gitleaks across all branches is clean; searching HEAD for internal paths
+**Pre-flip check (agent):** the provenance ledger covers every source found, and every release's
+sources are `warcraft-wiki-2023` and `curated` only; gitleaks across all branches is clean; searching HEAD for internal paths
 (`R21-Brain`, `_secrets`, personal paths) finds nothing; a fresh clone in an empty folder, following
 only the README, runs the tests and shows lore pages from the sample release; no workflow uses
 `pull_request_target`, and no workflow exposes secrets to pull requests from forks (`mcp-image.yml`
