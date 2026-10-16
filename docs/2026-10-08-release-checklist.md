@@ -49,7 +49,7 @@ response alone does not prove ChatGPT directory compatibility.
 
 ## Recovery and scale
 
-- Follow the [recovery runbook](2026-10-09-recovery-runbook.md) for stale snapshots,
+- Follow the maintainer's recovery runbook for stale snapshots,
   orphans, upload removal and restore. Backups and the restore rehearsal are built but wait
   on two read keys (see the runbook's Backup and restore section).
 - `cd web; npx tsx scripts/corpus-load.mts` measures merge, snapshot size, cold read and
@@ -66,6 +66,6 @@ response alone does not prove ChatGPT directory compatibility.
 | Companion uploader and `/ask` bridge on a real Forever install | Carlos | `WTF` path, answers shown after `/reload` | open (code tested 2026-10-09) |
 | Signed companion build | Carlos | signing credentials (`ops.signing`) | open |
 | ChatGPT directory / subscription sign-in | agent, after hosting | — | open |
-| Backup and restore rehearsal | Carlos (two read keys), nightly task runs it | [runbook](2026-10-09-recovery-runbook.md) | built (#27, Brain #349); inactive until `everloot-backup.env` and `everloot-r2-backup.env` exist |
+| Backup and restore rehearsal | Carlos (two read keys), nightly task runs it | maintainer's runbook | built (#27, Brain #349); inactive until `everloot-backup.env` and `everloot-r2-backup.env` exist |
 
 Do not declare full launch complete on this checklist.

@@ -43,7 +43,7 @@ another name; a CLA would not prevent that either.
 skipped) found nothing. Before the flip, scan every branch (`gitleaks git --log-opts=--all`). A gitleaks
 step joins CI so every PR is scanned. Production secrets stay in Vercel; `.env.example` lists names only.
 
-**Moved to `D:\R21-Brain\projects\everloot\`** (removed at HEAD; they remain in history):
+**Moved to the maintainer's notes, outside the repository** (removed at HEAD; they remain in history):
 
 - Working notes: `_STATUS.md`, `NEXT_SESSION.md`, `BUILD_PLAN.md`, `design-run.md`, `docs/TRACKER.md`.
 - Dated status logs: `docs/2026-10-05-full-assessment.md`, `docs/2026-10-05-next-sprint.md`,
@@ -56,7 +56,7 @@ step joins CI so every PR is scanned. Production secrets stay in Vercel; `.env.e
 **Kept public:** `docs/superpowers/specs` and `plans`, `docs/architecture.md`,
 `docs/sources/source-catalog.md`, `docs/LEGACY_DATA_POLICY.md`, `docs/references.md`, the beta and
 release checklists, the MCP hosting options and the recipe design notes. In every kept file, lines
-naming `D:\R21-Brain`, `_secrets`, a secrets-file location or a personal machine path are rewritten
+naming the maintainer's private workspace, a secrets folder or file location, or a personal machine path are rewritten
 generically ("the maintainer's secrets store").
 
 **Known and accepted:** commit author emails become public with the history. Infrastructure
@@ -199,7 +199,7 @@ Every public document passes the craft-ownership gate and a humanizer pass befor
 
 **Pre-flip check (agent):** the provenance ledger covers every source found, and every release's
 sources are `warcraft-wiki-2023` and `curated` only; gitleaks across all branches is clean; searching HEAD for internal paths
-(`R21-Brain`, `_secrets`, personal paths) finds nothing; a fresh clone in an empty folder, following
+(`scripts/check_internal_paths.py`) finds nothing; a fresh clone in an empty folder, following
 only the README, runs the tests and shows lore pages from the sample release; no workflow uses
 `pull_request_target`, and no workflow exposes secrets to pull requests from forks (`mcp-image.yml`
 included).
