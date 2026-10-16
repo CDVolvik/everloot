@@ -293,11 +293,17 @@ export function facetValues(type: LoreType): Record<FacetKey, string[]> | Unavai
   const known = perType.get(type);
   if (known) return known;
   const out = { ...EMPTY_FACETS } as Record<FacetKey, string[]>;
-  for (const key of FACET_KEYS) {
-    out[key] = (release.db
-      .prepare(`SELECT DISTINCT j.value AS v FROM entities, json_each(json_extract(data, '$.facets.${key}')) AS j
-                WHERE ${LORE_SQL} AND json_extract(data, '$.type') = ? ORDER BY v COLLATE NOCASE`)
-      .all(...PUBLISHABLE, type) as { v: string }[]).map((r) => r.v);
+  const summaries = release.manifest.facets?.byType[type];
+  if (summaries) {
+    // The manifest already carries every value for this type: no scan needed.
+    for (const key of FACET_KEYS) out[key] = Array.isArray(summaries[key]) ? summaries[key] : [];
+  } else {
+    for (const key of FACET_KEYS) {
+      out[key] = (release.db
+        .prepare(`SELECT DISTINCT j.value AS v FROM entities, json_each(json_extract(data, '$.facets.${key}')) AS j
+                  WHERE ${LORE_SQL} AND json_extract(data, '$.type') = ? ORDER BY v COLLATE NOCASE`)
+        .all(...PUBLISHABLE, type) as { v: string }[]).map((r) => r.v);
+    }
   }
   perType.set(type, out);
   return out;
@@ -322,8 +328,15 @@ export function coverage(): Coverage | Unavailable {
   const indexable = indexableCount();
   if (indexable === UNAVAILABLE) return UNAVAILABLE;
   const facets = {} as Record<FacetKey, { value: string; n: number }[]>;
+  const summaries = release.manifest.facets?.top;
   for (const key of FACET_KEYS) {
-    // An untyped release has no facets: skip six full scans of the table.
+    if (summaries) {
+      // The manifest carries the top ten per key: no scan needed.
+      const entries = summaries[key];
+      facets[key] = Array.isArray(entries) ? entries.map((e) => ({ value: e.value, n: e.n })) : [];
+      continue;
+    }
+    // Older releases: an untyped one has no facets at all, so skip six full scans of the table.
     if (release.manifest.types === undefined) { facets[key] = []; continue; }
     facets[key] = release.db
       .prepare(`SELECT j.value AS value, count(*) AS n FROM entities, json_each(json_extract(data, '$.facets.${key}')) AS j

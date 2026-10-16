@@ -14,10 +14,13 @@ const EMPTY_FACETS: Record<"expansion" | "profession" | "class" | "race" | "zone
  * "redirected" in lowercase (6, indexable, zone, damaged), Zul'Gurub Eagle (7, npc in zone Zul'Gurub),
  * "100% Done" (8, quest), 22 "Zone n" pages mentioning grommash (100..121, type zone; odd ids Legion,
  * even ids Battle for Azeroth), and the curated forever launch date plus a curated item that must stay
- * out of lore search. `typed: false` builds the same rows with no type data, like the 2026-10-05 release.
+ * out of lore search. `typed: false` builds the same rows with no type data, like the 2026-10-05
+ * release; `facets: false` keeps the types but drops the manifest facet summaries, like a release
+ * built before 2026-10-16.
  */
-export async function buildLoreRelease(options: { typed?: boolean } = {}): Promise<string> {
+export async function buildLoreRelease(options: { typed?: boolean; facets?: boolean } = {}): Promise<string> {
   const typed = options.typed ?? true;
+  const withFacets = options.facets ?? true;
   const dir = mkdtempSync(join(tmpdir(), "everloot-lore-"));
   const source = openDb(join(dir, "source.sqlite"));
   const wiki = (extId: string, name: string, body: string, data?: Record<string, unknown>) => ({
@@ -60,6 +63,13 @@ export async function buildLoreRelease(options: { typed?: boolean } = {}): Promi
     const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
     delete manifest.types;
     delete manifest.damaged;
+    delete manifest.facets;
+    writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+  } else if (!withFacets) {
+    // A typed release from before the facet summaries existed: the manifest has types but no facets.
+    const manifestPath = `${release}.manifest.json`;
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    delete manifest.facets;
     writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
   }
   return release;
