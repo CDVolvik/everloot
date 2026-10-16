@@ -56,6 +56,14 @@ function readManifest(dbPath: string): Manifest {
   if (typeof m.counts !== "object" || m.counts === null) {
     throw new Error("public snapshot manifest has no counts");
   }
+  if (m.types !== undefined) {
+    if (typeof m.types !== "object" || m.types === null || Object.values(m.types).some((n) => typeof n !== "number" || !Number.isInteger(n) || n < 0)) {
+      throw new Error("public snapshot manifest types must map each type to a row count");
+    }
+  }
+  if (m.damaged !== undefined && (typeof m.damaged !== "number" || !Number.isInteger(m.damaged) || m.damaged < 0)) {
+    throw new Error("public snapshot manifest damaged must be a non-negative row count");
+  }
   const allowed = publishableIds();
   if (Object.keys(m.counts).length !== allowed.length || allowed.some((id) => !Object.hasOwn(m.counts as object, id))) {
     throw new Error("public snapshot manifest counts must name every publishable source exactly once");

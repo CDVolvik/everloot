@@ -34,7 +34,14 @@ export interface Manifest {
   notice: string;
   sha256: string;
   counts: Record<string, number>;
+  /** Rows per `data.type` (`other` when untyped). Absent in releases built before 2026-10-15. */
+  types?: Record<string, number>;
+  /** Rows whose converted text still shows template damage. Absent in older releases. */
+  damaged?: number;
 }
+
+/** Schema entries a release may lack: added after the first release shipped, so old files still open. */
+const OPTIONAL_SCHEMA_NAMES = new Set(["entities_type_name"]);
 
 /** Publishable sources, decided by the code registry — never by the database being exported. */
 function publishableIds(): SourceId[] {
@@ -182,6 +189,7 @@ export function snapshot(db: DB, outPath: string, now = new Date()): Manifest {
       out.close();
     }
     const counts = verifyOutput(work);
+    const { types, damaged } = typeCounts(work);
     const sha256 = sha256File(work);
     copyFileSync(work, targetPartial);
     rmSync(manifestPath, { force: true }); // delete the old manifest right before the DB swap below
@@ -192,6 +200,8 @@ export function snapshot(db: DB, outPath: string, now = new Date()): Manifest {
       notice: NOTICE,
       sha256,
       counts,
+      types,
+      damaged,
     };
     writeFileSync(manifestPartial, `${JSON.stringify(manifest, null, 2)}\n`);
     renameSync(manifestPartial, manifestPath);
@@ -246,7 +256,8 @@ export function checkPublishedDb(db: DB): Record<string, number> {
       }[]
     ).map((r) => `${r.type}:${r.name}:${normalizeSchemaSql(r.sql)}`),
   );
-  const missing = [...expected].filter((e) => !actual.has(e));
+  const optional = (entry: string) => OPTIONAL_SCHEMA_NAMES.has(entry.split(":")[1]);
+  const missing = [...expected].filter((e) => !actual.has(e) && !optional(e));
   const extra = [...actual].filter((e) => !expected.has(e));
   if (missing.length > 0 || extra.length > 0) {
     fail(`unexpected schema — missing: ${missing.join(", ") || "(none)"}; extra: ${extra.join(", ") || "(none)"}`);
@@ -272,6 +283,23 @@ export function checkPublishedDb(db: DB): Record<string, number> {
   const freelistCount = db.pragma("freelist_count", { simple: true }) as number;
   if (freelistCount !== 0) fail(`freelist_count is ${freelistCount} (VACUUM did not reclaim pages)`);
   return counts;
+}
+
+/** Rows per page type and the damaged-page count, read from the finished work file. */
+function typeCounts(file: string): { types?: Record<string, number>; damaged?: number } {
+  const out = new Database(file, { readonly: true });
+  try {
+    const { n: typed } = out.prepare("SELECT count(*) AS n FROM entities WHERE json_extract(data, '$.type') IS NOT NULL").get() as { n: number };
+    if (typed === 0) return {}; // built from an unclassified database: say nothing rather than "all other"
+    const types: Record<string, number> = {};
+    for (const r of out.prepare("SELECT coalesce(json_extract(data, '$.type'), 'other') AS t, count(*) AS n FROM entities GROUP BY t").all() as { t: string; n: number }[]) {
+      types[r.t] = r.n;
+    }
+    const { n: damaged } = out.prepare("SELECT count(*) AS n FROM entities WHERE json_extract(data, '$.damaged') = 1").get() as { n: number };
+    return { types, damaged };
+  } finally {
+    out.close();
+  }
 }
 
 /** Reopens the output read-only and proves it holds only publishable data. Returns rows per source. */

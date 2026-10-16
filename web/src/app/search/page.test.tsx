@@ -75,3 +75,25 @@ test("an unavailable release renders the unavailable copy", async () => {
   vi.spyOn(console, "error").mockImplementation(() => {});
   expect(await render({ q: "thrall" }, join(tmpdir(), "missing.sqlite"))).toContain("Lore archive unavailable");
 });
+
+test("type chips filter the results and keep the query; an unknown type behaves as All", async () => {
+  const zones = await render({ q: "grommash", type: "zone" });
+  expect(zones).toContain('href="/search?q=grommash&amp;type=npc"');
+  expect(zones).toContain('href="/search?q=grommash"');
+  expect(zones.match(/href="\/lore\/1\d\d-zone-\d+"/g)).toHaveLength(20);
+  const npcs = await render({ q: "grommash", type: "npc" });
+  expect(npcs).toContain("No lore page matches that.");
+  const mounts = await render({ q: "grommash", type: "mounts" });
+  expect(mounts.match(/href="\/lore\/1\d\d-zone-\d+"/g)).toHaveLength(20);
+});
+
+test("type chips are hidden for a release without type data", async () => {
+  const html = await render({ q: "grommash" }, await buildLoreRelease({ typed: false }));
+  expect(html).not.toContain("type=npc");
+});
+
+test("a repeated parameter answers with its first value, never a crash", async () => {
+  const html = await render({ q: ["grommash", "thrall"], page: ["2", "9"] } as unknown as Record<string, string>);
+  expect(html).toContain('href="/search?q=grommash"');
+  expect(html).not.toContain("page=3");
+});
