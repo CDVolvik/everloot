@@ -1,6 +1,6 @@
 # Everloot — resume after 2026-10-05 assessment
 
-## START HERE — to-do after the 2026-10-15 loop (production at `5276d46`, no open PRs)
+## START HERE — to-do after the 2026-10-15 loop (production at `ca95a61`; PR #50 lore archive open)
 
 Everything agent-doable that doesn't depend on an owner step was merged and verified on
 everloot.app. PRs #1–#47 merged: #44 contact page, #45 vendor reagent prices,
@@ -25,6 +25,21 @@ Addon 0.2.5 is live (zip sha `3999cbd6…` matches the repo).
    already handles both.
 5. Officer grant trial (issue, use, revoke); two raid nights; three-contributor loop; real phone.
 6. Signing for the companion build, AdSense with a certified consent platform, trademark check.
+
+### Lore archive (PR #50, branch `feat/lore-archive`, 2026-10-15) — program slice 1 of 4
+
+Carlos chose to build data and site structure before the addon push: (1) lore pages, (2) knowledge-base
+growth, (3) `/guides`, (4) sharpening pass. Slice 1 is built and reviewed: `/lore`, `/search`,
+`/lore/<extId>-<slug>`, `/lore-sitemap.xml` + chunks, shared `web/src/lib/release.ts`, Lore in the nav.
+Spec `docs/superpowers/specs/2026-10-15-lore-archive-web-design.md`, plan
+`docs/superpowers/plans/2026-10-15-lore-archive-web.md`. Web 233 + kb 221 tests, tsc clean, build green.
+
+**Blocked on Carlos before merge:** the preview build has no knowledge release
+(`[release] no knowledge release configured`), because `EVERLOOT_KB_RELEASE_KEY`, the `R2_*` variables and
+`VERCEL_SUPPORT_LARGE_FUNCTIONS` are Production-only in Vercel. Every lore route on the preview answers
+"Lore archive unavailable", which is the designed behaviour, but it means cold start, function size and
+a real search cannot be measured on a preview. Options: add those variables to Preview scoped to the
+`feat/lore-archive` branch (the #17 trial did this), or accept measuring on production after merge.
 
 ### Agent (next session, no owner step needed)
 
