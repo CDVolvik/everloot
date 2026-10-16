@@ -86,10 +86,13 @@ each sorted and de-duplicated, possibly empty:
 - `profession`: `<Profession> crafted …`, `<Profession> pattern/plan/recipe/design/schematic/technique
   items`, `<Profession> crafting reagent items`, `<Profession> vendors`; value is the profession word.
 - `class`: `<Class> characters` for the thirteen class names; value is the class.
-- `race`: `<Race> characters` for any other word before ` characters` (e.g. `Orc`, `Night elf`, `Zandalari
-  troll`); value is the race as written.
-- `zone`: `<Zone> NPCs`, `<Zone> mobs`, `<Zone> quests`, `<Zone> items` where `<Zone>` is the text before
-  the suffix; value is the zone as written (e.g. `Nazmir`, `Dalaran (Northrend)`).
+- `race`: `<Race> characters` when the text before ` characters` is at most three words and its last word
+  is a known race word (e.g. `Orc`, `Night elf`, `Zandalari troll`, `Kul Tiran`); value is the race as
+  written. The same suffix names books, factions and clans (`Wolfheart`, `Horde`, `Dark Iron clan`), which
+  the trial import showed a blocklist cannot keep up with.
+- `zone`: `<Zone> NPCs`, `<Zone> mobs` where `<Zone>` is the text before the suffix, minus a leading
+  `Removed `; value is the zone as written (e.g. `Nazmir`, `Dalaran (Northrend)`). Rarity, event and
+  grouping values (`Rare`, `Legion Invasion`, `Generic name`) are skipped.
 - `faction`: `Horde` for categories starting with `Horde `, `Alliance` for `Alliance `, `Neutral` for
   `Neutral `.
 

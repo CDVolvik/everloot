@@ -60,22 +60,27 @@ const CATEGORY_RULES: [LoreType, (c: string) => boolean][] = [
 
 const uniqSorted = (xs: string[]) => [...new Set(xs)].sort((a, b) => a.localeCompare(b));
 
-/** "<X> characters" categories that are not races: media, organisations, states and groupings. */
-const NOT_RACES = new Set([
-  "deceased", "lore", "rpg", "oddly classified", "undead", "unique", "unknown", "major", "minor", "hearthstone", "tcg",
-  "legends", "argent crusade", "booty bay", "day of the dragon", "comic", "novel", "manga", "film", "warcraft", "world of warcraft",
+/**
+ * "<X> characters" also names books, comics, factions and clans ("Wolfheart", "Horde", "Dark Iron clan"),
+ * so a race is a value whose last word is a race: "Orc", "Zandalari troll", "Wildhammer dwarf", "Kul Tiran".
+ */
+const RACE_WORDS = new Set([
+  "human", "orc", "dwarf", "elf", "gnome", "mechagnome", "goblin", "tauren", "troll", "draenei", "worgen", "pandaren",
+  "forsaken", "nightborne", "vulpera", "dracthyr", "earthen", "naga", "ogre", "vrykul", "eredar", "mogu", "mantid",
+  "ankoan", "jinyu", "hozen", "grummle", "saurok", "arakkoa", "ethereal", "gnoll", "kobold", "murloc", "centaur",
+  "harpy", "satyr", "furbolg", "quilboar", "kvaldir", "tuskarr", "taunka", "nerubian", "qiraji", "tol'vir", "sethrak",
+  "drust", "tiran", "broken", "dragon", "demon", "giant", "titan", "naaru", "gronn", "saberon", "botani", "half-elf",
+  "half-orc", "dragonkin", "drakonid", "dryad", "wolvar", "gorloc", "ogron", "ettin", "sporeling",
 ]);
 function looksLikeRace(value: string): boolean {
-  const v = value.toLowerCase();
-  if (v.includes(":") || NOT_RACES.has(v)) return false;
-  if (/^(world of warcraft|warcraft|hearthstone|the )\b/.test(v)) return false;
-  return v.split(" ").length <= 3;
+  const words = value.toLowerCase().split(" ");
+  return !value.includes(":") && words.length <= 3 && RACE_WORDS.has(words[words.length - 1]);
 }
 
 /** "<X> NPCs"/"<X> mobs" categories that group by rarity, event or continent rather than a place. */
 function looksLikeZone(value: string): boolean {
   const v = value.toLowerCase();
-  if (/^(named|boss related|mission|island expedition|faction assault|rare|rare elite)$/.test(v)) return false;
+  if (/^(named|boss related|mission|island expedition|faction assault|rare|rare elite|generic name|removed)$/.test(v)) return false;
   if (/\b(rare|rare elite|invasion|assault)$/.test(v)) return false;
   return true;
 }
@@ -113,7 +118,8 @@ export function classify(categories: readonly string[], infoboxTemplate?: string
     // Only "<Zone> NPCs" and "<Zone> mobs" name a zone; " quests" and " items" suffixes carry factions,
     // expansions and professions too often ("Horde quests", "Legion world quests").
     for (const suffix of [" npcs", " mobs"]) {
-      const zone = before(original, lower, suffix);
+      // "Removed Dun Morogh NPCs" are NPCs removed from Dun Morogh.
+      const zone = before(original, lower, suffix)?.replace(/^Removed /i, "");
       if (zone && looksLikeZone(zone)) facets.zone.push(zone);
     }
     if (lower.startsWith("horde ")) facets.faction.push("Horde");

@@ -109,3 +109,17 @@ test("race and zone facets skip categories that are not races or zones", () => {
   expect(facets.race).toEqual(["Orc"]);
   expect(facets.zone).toEqual(["Nazmir"]);
 });
+
+test("race facet keeps only race names: titles, factions and clans are not races", () => {
+  const { facets } = classify([
+    "Horde characters", "Alliance characters", "Traveler characters", "Wolfheart characters", "Night of the Dragon characters",
+    "Film universe characters", "Dark Iron clan characters", "Before the Storm characters",
+    "Zandalari troll characters", "Wildhammer dwarf characters", "Ankoan characters", "Mechagon mechagnome characters", "Kul Tiran characters",
+  ]);
+  expect(facets.race).toEqual(["Ankoan", "Kul Tiran", "Mechagon mechagnome", "Wildhammer dwarf", "Zandalari troll"]);
+});
+
+test("zone facet drops the 'Removed' prefix and skips 'Generic name'", () => {
+  const { facets } = classify(["Removed Dun Morogh NPCs", "Generic name NPCs", "Dun Morogh mobs"]);
+  expect(facets.zone).toEqual(["Dun Morogh"]);
+});
