@@ -37,6 +37,10 @@ export async function importCurated(db: DB, dir: string): Promise<number> {
         );
       }
       const extId = String(e.id);
+      // Kebab-case, starting with a letter: a curated id must never read as a wiki page id (digits) in a URL.
+      if (!/^[a-z][a-z0-9]*(-[a-z0-9]+)*$/.test(extId)) {
+        throw new Error(`${file}: entry ${i + 1} has id "${extId}"; use lowercase kebab-case starting with a letter`);
+      }
       const key = `${kind}\u0000${extId}`;
       const firstFile = seen.get(key);
       if (firstFile !== undefined) {

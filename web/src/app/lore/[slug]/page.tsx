@@ -22,11 +22,15 @@ export async function generateMetadata(props: { params: Promise<{ slug: string }
   const page = lookup(slug);
   if (page === UNAVAILABLE) return { title: UNAVAILABLE_TITLE, robots: { index: false, follow: true } };
   if (!page) return { robots: { index: false, follow: true } };
+  const description = firstSentence(page.body);
+  const url = `/lore/${loreSlug(page)}`;
   return {
     title: `${page.name} · Lore archive`,
-    description: firstSentence(page.body),
-    alternates: { canonical: `/lore/${loreSlug(page)}` },
+    description,
+    alternates: { canonical: url },
     robots: { index: isIndexable(page.body), follow: true },
+    openGraph: { type: "article", title: page.name, description, url, siteName: "Everloot" },
+    twitter: { card: "summary", title: page.name, description },
   };
 }
 

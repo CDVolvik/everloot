@@ -43,10 +43,76 @@ function contentTerms(input: string): string[] {
   return kept.length > 0 ? kept : terms;
 }
 
-const ROW = `e.id, e.ext_id AS extId, e.kind, e.name,
-  snippet(entities_fts, 1, '', '', '…', 16) AS snippet,
+const ROW_SNIPPET_FTS = `snippet(entities_fts, 1, '', '', '…', 16) AS snippet`;
+const ROW_SNIPPET_BODY = `CASE WHEN length(e.body) > 160 THEN substr(e.body, 1, 160) || '…' ELSE e.body END AS snippet`;
+function rowSelect(snippetExpr: string): string {
+  return `e.id, e.ext_id AS extId, e.kind, e.name,
+  ${snippetExpr},
   e.game_version AS gameVersion, e.source_url AS sourceUrl,
   e.source_id AS sourceId, e.licence, e.retrieved_at AS retrievedAt`;
+}
+
+const ROW = rowSelect(ROW_SNIPPET_FTS);
+const ROW_EXACT = rowSelect(ROW_SNIPPET_BODY);
+
+const RERANK = 50;
+
+/**
+ * Approximates allTerms(name) in SQL: lowercase, common punctuation becomes a space,
+ * runs of spaces collapsed, ends trimmed. Used only as a pre-filter for the exact-name
+ * lookup below; the final rank still uses the exact JS allTerms equality.
+ */
+const NORM_PUNCT = [
+  "'",
+  "-",
+  ":",
+  ",",
+  ".",
+  "/",
+  "(",
+  ")",
+  "[",
+  "]",
+  '"',
+  "!",
+  "?",
+  ";",
+  "_",
+  "+",
+  "*",
+  "&",
+  "@",
+  "#",
+  "%",
+  "’",
+  "‘",
+  "“",
+  "”",
+  "–",
+  "—",
+];
+function normExpr(col: string): string {
+  let e = `lower(${col})`;
+  for (const p of NORM_PUNCT) {
+    const lit = p === "'" ? "''''" : `'${p}'`;
+    e = `replace(${e}, ${lit}, ' ')`;
+  }
+  return `trim(replace(replace(replace(${e}, '  ', ' '), '  ', ' '), '  ', ' '))`;
+}
+
+const NORM_SQL = normExpr("e.name");
+
+/** SearchOptions currently exposes only kinds and versions: no sourceId/sources/excluded-kinds/publishable filters exist. */
+function pushOptionFilters(conds: string[], params: unknown[], opts: SearchOptions): void {
+  if (opts.kinds?.length) {
+    conds.push(`e.kind IN (${opts.kinds.map(() => "?").join(",")})`);
+    params.push(...opts.kinds);
+  }
+  if (opts.versions?.length) {
+    conds.push(`e.game_version IN (${opts.versions.map(() => "?").join(",")})`);
+    params.push(...opts.versions);
+  }
+}
 
 export function search(db: DB, query: string, limit = 10, opts: SearchOptions = {}): SearchHit[] {
   const raw = query.trim();
@@ -57,14 +123,7 @@ export function search(db: DB, query: string, limit = 10, opts: SearchOptions = 
   if (!q) return [];
   const conds = ["entities_fts MATCH ?"];
   const params: unknown[] = [q];
-  if (opts.kinds?.length) {
-    conds.push(`e.kind IN (${opts.kinds.map(() => "?").join(",")})`);
-    params.push(...opts.kinds);
-  }
-  if (opts.versions?.length) {
-    conds.push(`e.game_version IN (${opts.versions.map(() => "?").join(",")})`);
-    params.push(...opts.versions);
-  }
+  pushOptionFilters(conds, params, opts);
   // Rank from a pool, then cut: "Who is Thrall?" must put the page named Thrall first even at limit 1.
   // The SQL boost matches the raw query or its meaningful words, so a long exact page enters the pool.
   const wanted = contentTerms(raw).join(" ");
@@ -75,15 +134,35 @@ export function search(db: DB, query: string, limit = 10, opts: SearchOptions = 
        FROM entities_fts JOIN entities e ON e.id = entities_fts.rowid
        WHERE ${conds.join(" AND ")}
        ORDER BY CASE WHEN e.name = ? COLLATE NOCASE OR e.name = ? COLLATE NOCASE THEN 0 ELSE 1 END,
-         bm25(entities_fts, 10.0, 1.0)
+         bm25(entities_fts, 10.0, 1.0), e.id
        LIMIT ?`,
     )
     .all(...params) as SearchHit[];
   // The page being asked about: first a name made of exactly the asked words ("Thrall"), then a name
   // that matches only once its stopwords are dropped ("Find Thrall!"), then everything else.
+  // allTerms splits on anything that is not a letter/number, so ASCII and Unicode
+  // punctuation (', ’, ‘, “, ”, –, —, …) are all word separators in JS with no extra mapping.
   const allTerms = (name: string) => (name.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []).join(" ");
+  // Names that match only after punctuation is stripped ("Kel'Thuzad" for "kel thuzad") get no SQL
+  // boost and can fall outside the re-rank window. Pull a few by normalized name so the re-rank sees them.
+  // Skipped entirely when the pool already holds the exact row: one fewer query on the common path.
+  const exact: SearchHit[] = pool.some((h) => allTerms(h.name) === wanted)
+    ? []
+    : (() => {
+        const exactConds = [`${NORM_SQL} = ?`];
+        const exactParams: unknown[] = [wanted];
+        pushOptionFilters(exactConds, exactParams, opts);
+        return db
+          .prepare(`SELECT ${ROW_EXACT} FROM entities e WHERE ${exactConds.join(" AND ")} LIMIT 10`)
+          .all(...exactParams) as SearchHit[];
+      })();
+  const seen = new Set(pool.map((h) => h.id));
+  const merged = [...exact.filter((h) => !seen.has(h.id) && allTerms(h.name) === wanted), ...pool];
   const rank = (hit: SearchHit) => (allTerms(hit.name) === wanted ? 0 : contentTerms(hit.name).join(" ") === wanted ? 1 : 2);
-  return pool.sort((a, b) => rank(a) - rank(b)).slice(0, limit);
+  // Re-rank only the first RERANK rows: they are the same rows whatever the limit, so page cuts at
+  // different limits stay a stable prefix of one ordering. Rows after them keep the SQL order.
+  const head = merged.slice(0, RERANK).sort((a, b) => rank(a) - rank(b));
+  return [...head, ...merged.slice(RERANK)].slice(0, limit);
 }
 
 interface EntityRow {
