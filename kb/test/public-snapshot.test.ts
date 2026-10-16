@@ -198,6 +198,20 @@ test("a missing or empty database file is refused before any handle is returned"
   expect(() => openPublicSnapshot(dbPath)).toThrow();
 });
 
+test("a malformed facets key in the manifest is refused", async () => {
+  const fresh = await genuineRelease();
+  await editManifest(fresh.manifestPath, (m) => (m.facets = "x"));
+  expect(() => openPublicSnapshot(fresh.dbPath)).toThrow(/facets/);
+  await editManifest(fresh.manifestPath, (m) => (m.facets = { top: { zone: [{ value: 1, n: 2 }] }, byType: {} }));
+  expect(() => openPublicSnapshot(fresh.dbPath)).toThrow(/facets/);
+  await editManifest(fresh.manifestPath, (m) => (m.facets = { top: { zone: [{ value: "Zul'Gurub", n: -1 }] }, byType: {} }));
+  expect(() => openPublicSnapshot(fresh.dbPath)).toThrow(/facets/);
+  await editManifest(fresh.manifestPath, (m) => (m.facets = { top: {}, byType: { npc: { race: [1] } } }));
+  expect(() => openPublicSnapshot(fresh.dbPath)).toThrow(/facets/);
+  await editManifest(fresh.manifestPath, (m) => (m.facets = { top: { zone: [{ value: "Zul'Gurub", n: 1 }] }, byType: { npc: { race: ["Orc"] } } }));
+  expect(() => openPublicSnapshot(fresh.dbPath)).not.toThrow();
+});
+
 test("a release built before the type index existed still opens; a malformed types key is refused", async () => {
   const { dbPath } = await mutatedRelease((db) => {
     db.exec("DROP INDEX entities_type_name; VACUUM;");
