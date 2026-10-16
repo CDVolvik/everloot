@@ -1,0 +1,100 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound, permanentRedirect } from "next/navigation";
+import { firstSentence, isIndexable, loreByExtId, loreSlug, parseLoreSlug, renderBody, UNAVAILABLE, type LorePage as Lore } from "@/lib/lore";
+
+export const revalidate = 86400;
+
+const UNAVAILABLE_TITLE = "Lore archive unavailable";
+export const UNAVAILABLE_COPY = "The knowledge release could not be opened. Nothing here is a count or a page; try again later.";
+export const CONVERSION_NOTE = "Converted from wikitext with templates, tables and images removed, so some sentences may be missing values.";
+
+function label(page: Lore): string {
+  return page.sourceId === "warcraft-wiki-2023" ? "Lore archive · Warcraft Wiki, 2023 dump" : `Lore archive · ${page.sourceId} · ${page.gameVersion}`;
+}
+
+function lookup(slug: string): Lore | null | typeof UNAVAILABLE {
+  const parsed = parseLoreSlug(slug);
+  return parsed ? loreByExtId(parsed.extId) : null;
+}
+
+export async function generateMetadata(props: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await props.params;
+  const page = lookup(slug);
+  if (page === UNAVAILABLE) return { title: UNAVAILABLE_TITLE, robots: { index: false, follow: true } };
+  if (!page) return { robots: { index: false, follow: true } };
+  return {
+    title: `${page.name} · Lore archive`,
+    description: firstSentence(page.body),
+    alternates: { canonical: `/lore/${loreSlug(page)}` },
+    robots: { index: isIndexable(page.body), follow: true },
+  };
+}
+
+export default async function LorePage(props: { params: Promise<{ slug: string }> }) {
+  const { slug } = await props.params;
+  const parsed = parseLoreSlug(slug);
+  if (!parsed) notFound();
+  const page = loreByExtId(parsed.extId);
+  if (page === UNAVAILABLE) {
+    return (
+      <article className="space-y-4 max-w-4xl">
+        <p className="uppercase tracking-[0.2em] text-xs text-gold-500/80">Lore archive</p>
+        <h1 className="font-display text-3xl font-bold text-parchment-100">{UNAVAILABLE_TITLE}</h1>
+        <p className="text-parchment-100/75">{UNAVAILABLE_COPY}</p>
+      </article>
+    );
+  }
+  if (!page) notFound();
+  if (slug !== loreSlug(page)) permanentRedirect(`/lore/${loreSlug(page)}`);
+
+  const blocks = renderBody(page.body);
+  const revised = page.revisionTimestamp ? page.revisionTimestamp.slice(0, 10) : null;
+  return (
+    <article className="space-y-8 max-w-4xl">
+      <header className="space-y-3">
+        <p className="uppercase tracking-[0.2em] text-xs text-gold-500/80">{label(page)}</p>
+        <h1 className="font-display text-3xl sm:text-4xl font-bold text-parchment-100 tracking-tight">{page.name}</h1>
+        {revised && <p className="text-sm text-parchment-100/60">Last wiki revision {revised}</p>}
+      </header>
+
+      <section className="space-y-4 text-parchment-100/85 leading-relaxed">
+        {blocks.map((block, i) =>
+          block.type === "p" ? (
+            <p key={i}>{block.text}</p>
+          ) : (
+            <ul key={i} className="list-disc pl-6 space-y-1">
+              {block.items.map((item, j) => <li key={j}>{item}</li>)}
+            </ul>
+          ),
+        )}
+      </section>
+
+      {page.categories.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="font-display text-lg text-parchment-100">Categories</h2>
+          <ul className="flex flex-wrap gap-2 text-xs">
+            {page.categories.map((c) => (
+              <li key={c} className="rounded-full border border-parchment-100/15 px-3 py-1 text-parchment-100/70">{c}</li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <section className="rounded-2xl border border-parchment-100/10 bg-parchment-900 p-5 text-sm text-parchment-100/75 space-y-2">
+        <h2 className="font-display text-lg text-parchment-100">Source</h2>
+        <p>
+          <a href={page.sourceUrl} rel="noopener" className="text-gold-400 hover:underline underline-offset-4 break-all">{page.sourceUrl}</a>
+          {" "}· retrieved {page.retrievedAt} · {page.licence.replace("CC-BY-SA-4.0", "CC BY-SA 4.0")}
+        </p>
+        <p>{CONVERSION_NOTE}</p>
+      </section>
+
+      <p className="text-sm text-parchment-100/60">
+        This archive predates WoW: Forever. For collected gameplay facts see the{" "}
+        <Link href="/database" className="text-gold-400 hover:underline underline-offset-4">Forever database</Link>.
+        {" "}<Link href="/search" className="text-gold-400 hover:underline underline-offset-4">Search the archive</Link>.
+      </p>
+    </article>
+  );
+}

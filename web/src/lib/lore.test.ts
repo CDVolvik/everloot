@@ -36,6 +36,7 @@ describe("loreSlug and parseLoreSlug", () => {
     expect(parseLoreSlug("77")).toEqual({ extId: "77", nameSlug: "" });
   });
   test("a curated kebab id is the whole slug", () => {
+    expect(loreSlug({ extId: "forever-launch-date", name: "WoW Forever launch date" })).toBe("forever-launch-date");
     expect(parseLoreSlug("forever-launch-date")).toEqual({ extId: "forever-launch-date", nameSlug: "" });
   });
   test("rejects empty, leading zeros, uppercase and spaces", () => {
