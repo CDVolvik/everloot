@@ -11,6 +11,8 @@ export const PAGE_SIZE = 20;
 export const INDEXABLE_MIN_BODY = 300;
 export const CHUNK_SIZE = 40_000;
 export const MAX_QUERY = 200;
+export const UNAVAILABLE_COPY = "The knowledge release could not be opened. Nothing here is a count or a page; try again later.";
+export const CONVERSION_NOTE = "Converted from wikitext with templates, tables and images removed, so some sentences may be missing values.";
 
 /** Lowercase ASCII letters and digits joined by hyphens; accents stripped, everything else dropped. */
 export function slugify(name: string): string {
