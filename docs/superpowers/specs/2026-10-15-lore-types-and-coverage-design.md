@@ -178,9 +178,9 @@ the 2026-10-05 release and the new pages degrade as described below.
 ### `/lore/coverage`
 
 Counts by type (manifest), facet families with their top ten values, indexable pages, damaged pages
-in this release and in the previous one (both numbers written into the manifest by the snapshot
-step as `damaged` and `damagedPrevious` when a previous manifest path is given), release date and
-data age, and the standing statement that the archive is the 2023 wiki, not Forever data. Indexed,
+in this release (`damaged` in the manifest; "not measured" for a release built before the counter),
+release date and data age, and the standing statement that the archive is the 2023 wiki, not
+Forever data. The previous release's damage count is recorded in the PR, not on the page. Indexed,
 canonical `/lore/coverage`, linked from `/lore`.
 
 ## Failure behaviour

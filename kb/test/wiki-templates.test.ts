@@ -54,3 +54,27 @@ test("countDamage counts the known breakage patterns", () => {
   expect(countDamage("two  spaces")).toBe(1);
   expect(countDamage("sold at  the shop")).toBe(2);
 });
+
+test("repair keeps blank lines and leading spaces: paragraphs and preformatted text survive", () => {
+  const src = "First paragraph.\n\nSecond {{rep|honored}} paragraph.\n\n== History ==\nThird.\n\n Pre line";
+  expect(repairTemplates(src)).toBe("First paragraph.\n\nSecond Honored paragraph.\n\n== History ==\nThird.\n\n Pre line");
+  expect(repairTemplates("{{ss|Zone}}\n\nBody.\n\nMore.")).toBe("Body.\n\nMore.");
+});
+
+test("a stray opening brace does not stop repair for the rest of the page", () => {
+  expect(repairTemplates("{{ stray\nSold for {{cost|1}} at {{rep|honored}}.")).toBe("{{ stray\nSold for 1g at Honored.");
+});
+
+test("repair is linear: 20,000 templates in well under a second", () => {
+  const big = "Sold for {{cost|1|2|3}} by {{NPC||Grex}}. ".repeat(10_000);
+  const start = performance.now();
+  const out = repairTemplates(big);
+  expect(performance.now() - start).toBeLessThan(800);
+  expect(out).not.toContain("{{");
+  expect(out.startsWith("Sold for 1g 2s 3c by Grex.")).toBe(true);
+});
+
+test("zero money and empty standings leave no dangling words", () => {
+  expect(repairTemplates("Bought for {{cost|0|0|0}}.")).toBe("Bought for 0c.");
+  expect(countDamage(repairTemplates("Bought for {{cost|0|0|0}} at {{rep|honored}} standing."))).toBe(0);
+});

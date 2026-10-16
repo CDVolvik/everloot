@@ -207,7 +207,7 @@ test("a release built before the type index existed still opens; a malformed typ
   release.db.close();
 
   const fresh = await genuineRelease();
-  expect(readManifest(fresh.manifestPath).types).toEqual({ other: 1 });
+  expect(readManifest(fresh.manifestPath).types).toBeUndefined(); // nothing typed: say nothing
   await editManifest(fresh.manifestPath, (m) => (m.types = "x"));
   expect(() => openPublicSnapshot(fresh.dbPath)).toThrow(/types/);
   await editManifest(fresh.manifestPath, (m) => { m.types = { other: 1 }; m.damaged = -1; });

@@ -90,7 +90,7 @@ export function extractInfobox(wikitext: string): Infobox | null {
   let i = wikitext.indexOf("{{");
   while (i >= 0) {
     const end = closeOf(wikitext, i);
-    if (end < 0) return null;
+    if (end < 0) { i = wikitext.indexOf("{{", i + 2); continue; } // a stray `{{`: keep looking past it
     const inner = wikitext.slice(i + 2, end - 2);
     const nameEnd = inner.search(/[|\n]/);
     const template = (nameEnd < 0 ? inner : inner.slice(0, nameEnd)).trim().toLowerCase();
