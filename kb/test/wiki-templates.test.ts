@@ -78,3 +78,15 @@ test("zero money and empty standings leave no dangling words", () => {
   expect(repairTemplates("Bought for {{cost|0|0|0}}.")).toBe("Bought for 0c.");
   expect(countDamage(repairTemplates("Bought for {{cost|0|0|0}} at {{rep|honored}} standing."))).toBe(0);
 });
+
+test("deep nesting stays linear: past the depth cap, braces are kept as text", () => {
+  const deep = "{{a".repeat(20_000) + "}}".repeat(20_000);
+  const start = performance.now();
+  expect(repairTemplates(`x ${deep} {{cost|1}}`)).toBe(`x ${deep} 1g`);
+  expect(performance.now() - start).toBeLessThan(800);
+});
+
+test("a removed template mid-line keeps the line's own leading space", () => {
+  expect(repairTemplates(" pre {{stub}}")).toBe(" pre");
+  expect(repairTemplates("{{ss|Zone}} Text after")).toBe("Text after");
+});

@@ -4,7 +4,8 @@
  * converter. Each handled template has a fixture test; the list grows only with one.
  *
  * One left-to-right pass: `{{` opens a buffer, `}}` closes the innermost one and renders it, so
- * nesting resolves innermost-first and the cost is linear in the page size.
+ * nesting resolves innermost-first and the cost is linear in the page size. Past MAX_DEPTH the braces
+ * are kept as text, so a pathological nest cannot make each close re-copy the whole page.
  */
 
 /** Template names (lower-case) this module renders or removes, for the coverage page. */
@@ -22,6 +23,9 @@ const QUALIFIERS = new Set([
 
 /** Stands in for a removed template until the line clean-up below; never appears in wikitext. */
 const REMOVED = "\u0000";
+
+/** Deepest template nest rendered; real pages stay in single digits. */
+const MAX_DEPTH = 32;
 
 /** Splits template arguments on top-level `|`, ignoring pipes inside nested `[[ ]]` (nested `{{ }}` are already rendered). */
 function splitArgs(inner: string): string[] {
@@ -80,8 +84,11 @@ function render(inner: string): string | null {
 export function repairTemplates(wikitext: string): string {
   const stack: string[] = [];
   let cur = "";
+  let literal = 0; // opens past MAX_DEPTH, kept as text along with their closes
   for (let i = 0; i < wikitext.length; i++) {
     const two = wikitext.slice(i, i + 2);
+    if (two === "{{" && stack.length >= MAX_DEPTH) { literal++; cur += two; i++; continue; }
+    if (two === "}}" && literal > 0) { literal--; cur += two; i++; continue; }
     if (two === "{{") { stack.push(cur); cur = ""; i++; continue; }
     if (two === "}}" && stack.length > 0) {
       const inner = cur;
@@ -100,7 +107,7 @@ export function repairTemplates(wikitext: string): string {
   return cur
     .split("\n")
     .filter((line) => !(line.includes(REMOVED) && line.replace(new RegExp(REMOVED, "g"), "").trim() === ""))
-    .map((line) => (line.includes(REMOVED) ? line.replace(new RegExp(` *${REMOVED} *`, "g"), " ").replace(/^ (?=\S)/, "").replace(/ +$/, "") : line))
+    .map((line) => (line.includes(REMOVED) ? line.replace(new RegExp(`^(${REMOVED} *)+`), "").replace(new RegExp(` *${REMOVED} *`, "g"), " ").replace(/ +$/, "") : line))
     .join("\n")
     .replace(/^\n+/, "")
     .replace(/\n+$/, "");
