@@ -93,3 +93,17 @@ test("paging is a stable prefix: page cuts at different limits never repeat or s
   expect(search(db, "the grommash", 60).map((h) => h.id)).toEqual(all.slice(0, 60));
   expect(all[0]).toBe(search(db, "the grommash", 1)[0].id);
 });
+
+test("a punctuated exact name still ranks first when bm25 buries it past the window", async () => {
+  const db = openDb(":memory:");
+  const rows: EntityInput[] = [];
+  for (let i = 1; i <= 60; i++) {
+    rows.push(row(String(100 + i), `Kel Thuzad chronicle ${i}`, `${"kel thuzad ".repeat(20)}volume ${i}`));
+  }
+  rows.push(row("1", "Kel'Thuzad", "A lich of legend."));
+  await replaceSourceRows(db, "curated", ["lore_page"], rows);
+  expect(search(db, "kel thuzad", 10)[0].name).toBe("Kel'Thuzad");
+  expect(search(db, "kel thuzad", 1)[0].name).toBe("Kel'Thuzad");
+  expect(search(db, "kel thuzad", 10, { kinds: ["item"] }).some((h) => h.name === "Kel'Thuzad")).toBe(false);
+  expect(search(db, "kel thuzad", 10, { versions: ["retail"] }).some((h) => h.name === "Kel'Thuzad")).toBe(false);
+});
