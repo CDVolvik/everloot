@@ -107,3 +107,44 @@ test("a punctuated exact name still ranks first when bm25 buries it past the win
   expect(search(db, "kel thuzad", 10, { kinds: ["item"] }).some((h) => h.name === "Kel'Thuzad")).toBe(false);
   expect(search(db, "kel thuzad", 10, { versions: ["retail"] }).some((h) => h.name === "Kel'Thuzad")).toBe(false);
 });
+
+test("a curly-apostrophe exact name still ranks first when bm25 buries it", async () => {
+  const db = openDb(":memory:");
+  const rows: EntityInput[] = [];
+  for (let i = 1; i <= 60; i++) {
+    rows.push(row(String(100 + i), `Kel Thuzad chronicle ${i}`, `${"kel thuzad ".repeat(20)}volume ${i}`));
+  }
+  rows.push(row("1", "Kel’Thuzad", "A lich of legend."));
+  await replaceSourceRows(db, "curated", ["lore_page"], rows);
+  expect(search(db, "kel thuzad", 10)[0].name).toBe("Kel’Thuzad");
+  expect(search(db, "kel thuzad", 1)[0].name).toBe("Kel’Thuzad");
+  expect(search(db, "kel thuzad", 10, { kinds: ["item"] }).some((h) => h.name === "Kel’Thuzad")).toBe(false);
+});
+
+test("the normalized lookup is skipped when the pool already holds the exact name", async () => {
+  const countPrepares = (db: ReturnType<typeof openDb>): (() => number) => {
+    let n = 0;
+    const orig = db.prepare.bind(db);
+    (db as unknown as { prepare: unknown }).prepare = (...args: [string, ...unknown[]]) => {
+      n += 1;
+      return (orig as (...a: unknown[]) => unknown)(...args);
+    };
+    return () => n;
+  };
+
+  const direct = await seed();
+  const directCount = countPrepares(direct);
+  expect(search(direct, "Thunderfury")[0].name).toBe("Thunderfury");
+  expect(directCount()).toBe(1);
+
+  const buried = openDb(":memory:");
+  const rows: EntityInput[] = [];
+  for (let i = 1; i <= 60; i++) {
+    rows.push(row(String(100 + i), `Kel Thuzad chronicle ${i}`, `${"kel thuzad ".repeat(20)}volume ${i}`));
+  }
+  rows.push(row("1", "Kel'Thuzad", "A lich of legend."));
+  await replaceSourceRows(buried, "curated", ["lore_page"], rows);
+  const buriedCount = countPrepares(buried);
+  expect(search(buried, "kel thuzad", 10)[0].name).toBe("Kel'Thuzad");
+  expect(buriedCount()).toBe(2);
+});
