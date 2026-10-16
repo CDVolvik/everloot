@@ -1,6 +1,70 @@
 # Everloot — resume after 2026-10-05 assessment
 
-## START HERE — to-do after the 2026-10-15 loop (production at `ca95a61`; PR #50 lore archive open)
+## START HERE — 2026-10-16 close (production at `309b600`; no open PRs)
+
+Merged on 2026-10-16 at Carlos's request, production verified after the last merge:
+- #49: vendor-only reagent prices restored in `profession_path` and `recipe_thresholds`.
+- #50, #51, #52: lore archive, its sharpening pass, and punctuation-normalized exact names.
+- #55: lore types, facets, template repair and `/lore/coverage`.
+- #54: addons hub and the Polestar pages.
+
+Production check at `309b600`:
+- 200: `/`, `/lore` (3.0 s cold), `/search?q=thrall` (4.1 s cold), `/search?q=thrall&type=npc`, `/lore/npcs`, `/lore/coverage`.
+- 200: `/addons`, `/addons/polestar`, `/addons/polestar/packs`, `/addons/polestar/wanted`.
+- 200: `/sitemap.xml` (lists the four addons pages), `/lore-sitemap.xml`, `/api/health`, `/api/rollups/drops`.
+- `/lore/browse/npcs` → 308 to `/lore/npcs`.
+- `/mcp/public` initialize 200.
+- The lore browse pages say "This release predates classification." until the new release is published (by design).
+- The Polestar page shows live GitHub data (Polestar v0.2.4 came out on 2026-10-16).
+
+Program: slice 1 (lore pages) live. Slice 2 (types and coverage) is live in code; its release waits on A1
+below. Slice 3 (addons hub around Polestar) live. Slice 4 (sharpening pass) is next.
+
+### Carlos (owner steps, in priority order)
+
+1. **In-game beta checklist for 0.2.5** (`docs/2026-10-08-beta-client-checklist.md`), unchanged: gates
+   option C, the CurseForge upload (~10/24; beta closes 10/21) and the Polestar data export.
+2. **Polestar outreach:** review and send `docs/2026-10-16-polestar-outreach-draft.md` (GitHub Discussion on
+   `fitzforge/polestar` or the Polestar Discord). Its facts were re-checked and corrected on 2026-10-16.
+3. **Optional `GITHUB_TOKEN`** in Vercel Production: a fine-grained token with read access to public
+   repositories only. Without it the Polestar page's hourly refresh uses GitHub's anonymous 60 requests an
+   hour per IP, which Vercel's shared egress can exhaust; a failed refresh keeps the last good page, so
+   nothing breaks either way.
+4. **Publish the 2026-10-16 knowledge release, only after agent task A1 lands** (it rebuilds the snapshot).
+   Upload the rebuilt release and manifest to R2 under `knowledge/<name>` (create-only), set
+   `EVERLOOT_KB_RELEASE_KEY=knowledge/<name>` in Vercel Production, redeploy. Check `/lore/coverage` shows
+   type counts, `/lore/npcs` lists pages, `/mcp/public` initializes. If the deploy fails on function size,
+   Vercel keeps the previous deployment live; see A2.
+5. ChatGPT apps directory submission, MCP quota scope migration + flag, the two backup env files, officer
+   grant trial, raid nights, signing/AdSense/trademark: unchanged, details in the section below.
+
+### Agent (next session, in order)
+
+- **A1. Facets into the manifest (blocks publishing the new release).** Serving the 2026-10-16 release
+  locally: `/lore/coverage` takes 9.7 s on a cold process (six `json_each` facet scans over 260k rows) and
+  `/lore/npcs` 6.2 s (per-type `DISTINCT` scans in `facetValues`); both are milliseconds once cached. Have the
+  snapshot write `facets` (top ten per key) and per-type facet values into the manifest, have
+  `web/src/lib/lore.ts` read them when present and keep today's queries for older manifests. Tests first.
+  Then re-run only the snapshot (about 30 s) from the kept source database:
+  `node ./node_modules/tsx/dist/cli.mjs src/cli.ts snapshot data/release/<date>-everloot-public.sqlite --db D:\R21-Brain\projects\everloot\kb\data\wowvault-kb-2026-10-16.sqlite`
+  and re-time cold `/lore/coverage` and `/lore/npcs` with `KB_SNAPSHOT_PATH` set.
+- **A2. Release size (decide at publish).** The new release is 495 MB against 338 MB live; `data` grew
+  from 23 to 124 MB (infobox fields, types, facets). Whether the large-function deploy takes it is known only
+  at publish. If it does not, trim infobox fields to the ones the lore page shows (it renders some) rather
+  than dropping them all.
+- **A3. Slice 4, sharpening pass** across lore and addons once A1 is done.
+- **A4. Polestar:** re-check the Polestar Guides listing (`web/src/data/polestar.ts`, version and
+  counts) when Polestar releases; the CC BY-SA data export for Polestar's `data build` waits on real
+  collection (Carlos step 1).
+- **Option C (`craft_result`)**, auction deposits, request-scoped `loadCorpus`: unchanged, see below.
+
+Built artifacts kept (gitignored), `D:\R21-Brain\projects\everloot\kb\data\`:
+- `release/2026-10-16-everloot-public.sqlite` + `.manifest.json`: sha256 `13eb0b3d…`, 260,572 lore pages,
+  types item 104,308 / npc 72,073 / other 40,076 / quest 32,659 / spell 8,864 / zone 2,593, damaged 3,260
+  (the live 2026-10-05 release measures 5,887 with the same patterns).
+- `wowvault-kb-2026-10-16.sqlite`: the source database the release was built from.
+
+## Resume — 2026-10-15 loop (superseded by the 2026-10-16 close above)
 
 Everything agent-doable that doesn't depend on an owner step was merged and verified on
 everloot.app. PRs #1–#47 merged: #44 contact page, #45 vendor reagent prices,
