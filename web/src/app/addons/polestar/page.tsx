@@ -14,9 +14,13 @@ export const metadata: Metadata = {
 const link = "text-gold-400 hover:underline underline-offset-4";
 const button = "inline-flex items-center min-h-11 px-4 rounded-lg border border-gold-400/50 text-gold-400 hover:bg-gold-400/10";
 
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
 export default async function PolestarPage() {
   const live = await polestarLive();
-  const plus = live?.capped ? "+" : "";
+  // A failed refresh throws so the cache keeps serving the last good page; only the build, which has
+  // no earlier page, renders the fallback.
+  if (!live && process.env.NEXT_PHASE !== "phase-production-build") throw new Error("GitHub unavailable: keep the last good page");
   return (
     <article className="space-y-10 max-w-4xl">
       <header className="space-y-3">
@@ -24,8 +28,9 @@ export default async function PolestarPage() {
         <h1 className="font-display text-3xl sm:text-4xl font-bold text-parchment-100 tracking-tight">Polestar</h1>
         <p className="text-parchment-100/80 max-w-2xl">
           Polestar is a leveling-guide addon for WoW: Forever. A guide window tells you the next step, an arrow points
-          the way, and goals tick themselves off as you play. Its 1 to 60 routes come from a simulator that tries
-          millions of quest orders for each starting race, and the guides are then written by hand from the best one.
+          the way, and goals tick themselves off as you play. Its 1 to 60 routes come from a simulator that compares
+          millions of complete routes from each starting zone; the guides are written by hand from the route it settles
+          on for each faction.
         </p>
         <p className="text-parchment-100/80 max-w-2xl">
           It is free and open source, made by its own authors. Anyone can add guides of their own as a guide pack.
@@ -58,6 +63,7 @@ export default async function PolestarPage() {
       <section className="space-y-3" aria-labelledby="commands">
         <h2 id="commands" className="font-display text-xl text-parchment-100">Commands</h2>
         <table className="w-full text-sm">
+          <caption className="sr-only">Polestar slash commands</caption>
           <tbody>
             {POLESTAR.commands.map(([command, text]) => (
               <tr key={command} className="border-b border-parchment-100/10 align-top">
@@ -72,8 +78,8 @@ export default async function PolestarPage() {
       <section className="space-y-3" aria-labelledby="packs">
         <h2 id="packs" className="font-display text-xl text-parchment-100">Guide packs</h2>
         <p className="text-parchment-100/80">
-          A guide pack is someone else&apos;s guides for Polestar, published as its own addon. Polestar does not host or
-          recommend packs, so Everloot keeps an independent list.
+          A guide pack is someone else&apos;s guides for Polestar, published as its own addon. Polestar ships its own
+          guides as a pack too, but does not host or recommend anyone else&apos;s, so Everloot keeps an independent list.
         </p>
         <ul className="space-y-1">
           <li><Link className={link} href="/addons/polestar/packs">Guide packs you can install</Link></li>
@@ -94,8 +100,9 @@ export default async function PolestarPage() {
               </ul>
             )}
             <p className="text-sm text-parchment-100/70">
-              {live.guideReports}{plus} open guide reports from players and {live.openIssues}{plus} open issues in
-              all, <a className={link} href={POLESTAR.issues}>on GitHub</a>. Reports are welcome on the Discord too.
+              <a className={link} href={POLESTAR.bugReports}>{plural(live.bugReports, "open bug report", "open bug reports")}</a> from
+              players and {plural(live.openIssues, "open issue", "open issues")} in all, <a className={link} href={POLESTAR.issues}>on GitHub</a>.
+              Reports are welcome on the Discord too.
             </p>
           </>
         ) : (
@@ -109,8 +116,8 @@ export default async function PolestarPage() {
         <h2 id="licence" className="font-display text-xl text-parchment-100">Licence</h2>
         <p className="text-parchment-100/80">
           Polestar is GPL-3.0 (<a className={link} href={POLESTAR.license}>LICENSE</a>). An added permission
-          (<a className={link} href={POLESTAR.licenseException}>LICENSE-EXCEPTION.md</a>) lets authors publish packs built
-          with its tools under terms of their choice. It does not cover Polestar&apos;s code or text copied from its own
+          (<a className={link} href={POLESTAR.licenseException}>LICENSE-EXCEPTION.md</a>) lets authors publish packs produced
+          by its compiler under terms of their choice. It does not cover Polestar&apos;s code or text copied from its own
           guides.
         </p>
       </section>

@@ -51,7 +51,7 @@ lists it and is not part of it."
 - Commands table (the list above).
 - Licence summary, with links to `LICENSE` and `LICENSE-EXCEPTION.md`.
 - **Help Polestar** (live from GitHub): open issues labelled `help wanted` or `good first issue`, the count
-  of open player guide reports (`guide:*` labels) with a link to them, and the open-issue total.
+  of open bug reports (`label:bug`, the same query the link opens), and the open-issue total.
 - Links: guide packs (`/addons/polestar/packs`), pack ideas (`/addons/polestar/wanted`), GitHub, Discord,
   the pack handbook (`docs/PACKS.md`).
 - **Disclosure:** Everloot's maintainer contributes to Polestar; link to their pull requests on GitHub
@@ -85,17 +85,21 @@ Each idea ends with how to start: the pack handbook and `polestar new <folder>`.
 - `web/src/data/polestar.ts`: the static facts (links, commands, licence, checked date and commit),
   `POLESTAR_PACKS` (registry entries shaped on `pack.json` plus coverage, downloads, listed/checked
   dates) and `PACK_IDEAS`.
-- `web/src/lib/polestar-github.ts`: `polestarLive()` fetches `releases/latest` and one page of open
-  issues (100, pull requests removed) from the GitHub REST API with no token, a 5 s timeout and
-  `revalidate: 3600`; returns `null` on any failure. Two requests an hour at most.
+- `web/src/lib/polestar-github.ts`: `polestarLive()` fetches `releases/latest`, two search counts (open
+  issues; open `bug` issues) and the open issues per label (`help wanted`, `good first issue`; one request
+  each so an old issue never falls off a page of newer pull requests) from the GitHub REST API, with a 5 s
+  timeout and `revalidate: 3600`; returns `null` on any failure. Five requests an hour at most.
+  `GITHUB_TOKEN` is optional: without it GitHub allows 60 requests an hour per IP, which a shared host's
+  egress can exhaust.
 - A unit test validates every registry entry against the `pack.json` rules above (id pattern, lengths,
   http(s) website, unique ids, ISO dates).
 
 ## Failure behaviour
 
-GitHub unreachable or rate-limited: the pages render every static fact; the live parts say "Live
-details from GitHub are unavailable right now" and link to the repository. No page depends on GitHub to
-render.
+GitHub unreachable or rate-limited: at build time the Polestar page renders every static fact and the
+live parts say "Live details from GitHub are unavailable right now" with a link to the repository. After
+the build, a failed hourly refresh throws, so the cache keeps serving the last good page instead of
+replacing it with the fallback for an hour. The other pages do not call GitHub.
 
 ## Navigation
 

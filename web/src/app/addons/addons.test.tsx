@@ -21,7 +21,7 @@ import Header from "@/components/Header";
 
 const html = async (page: () => ReactNode | Promise<ReactNode>) => renderToStaticMarkup(await page());
 
-beforeEach(() => github.polestarLive.mockReset().mockResolvedValue(null));
+beforeEach(() => { github.polestarLive.mockReset().mockResolvedValue(null); vi.unstubAllEnvs(); });
 
 test("/addons lists Everloot's addon and Polestar, and says Polestar is independent", async () => {
   const page = await html(AddonsPage);
@@ -31,7 +31,8 @@ test("/addons lists Everloot's addon and Polestar, and says Polestar is independ
   expect(addonsMeta.alternates?.canonical).toBe("/addons");
 });
 
-test("the Polestar page renders every static fact with GitHub down", async () => {
+test("at build, the Polestar page renders every static fact with GitHub down", async () => {
+  vi.stubEnv("NEXT_PHASE", "phase-production-build");
   const page = await html(PolestarPage);
   for (const text of [
     "https://www.curseforge.com/wow/addons/polestar-guides", "https://github.com/fitzforge/polestar/releases",
@@ -45,15 +46,30 @@ test("the Polestar page renders every static fact with GitHub down", async () =>
 test("the Polestar page shows the live release and help-wanted issues when GitHub answers", async () => {
   github.polestarLive.mockResolvedValue({
     release: { tag: "v0.2.3", date: "2026-10-14", url: "https://github.com/fitzforge/polestar/releases/tag/v0.2.3" },
-    openIssues: 40, guideReports: 12, capped: false,
+    openIssues: 40, bugReports: 12,
     helpWanted: [{ number: 10, title: "Navigation: help us map caves", url: "https://github.com/fitzforge/polestar/issues/10" }],
   });
   const page = await html(PolestarPage);
   expect(page).toContain("v0.2.3");
   expect(page).toContain("2026-10-14");
   expect(page).toContain("Navigation: help us map caves");
-  expect(page).toContain("12 open guide reports");
+  expect(page).toContain("12 open bug reports");
+  expect(page).toContain("label%3Abug");
   expect(page).not.toContain("unavailable right now");
+});
+
+test("after the build, a failed GitHub refresh throws so the cache keeps the last good page", async () => {
+  await expect(PolestarPage()).rejects.toThrow("keep the last good page");
+});
+
+test("counts of one read in the singular", async () => {
+  github.polestarLive.mockResolvedValue({
+    release: { tag: "v0.2.3", date: "2026-10-14", url: "https://github.com/fitzforge/polestar/releases/tag/v0.2.3" },
+    openIssues: 1, bugReports: 1, helpWanted: [],
+  });
+  const page = await html(PolestarPage);
+  expect(page).toContain("1 open bug report</a>");
+  expect(page).toContain("1 open issue in all");
 });
 
 test("the packs page lists Polestar Guides with its manifest fields and the independence notice", async () => {
