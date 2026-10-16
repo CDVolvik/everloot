@@ -94,3 +94,20 @@ test("an unavailable release renders the unavailable copy and is not indexed", a
   expect(renderToStaticMarkup(await LorePage(params("1-thrall")))).toContain("Lore archive unavailable");
   expect((await generateMetadata(params("1-thrall"))).robots).toMatchObject({ index: false });
 });
+
+test("type and facets link to the browse views and the infobox renders as a definition list", async () => {
+  const { default: LorePage } = await page();
+  const html = renderToStaticMarkup(await LorePage(params("1-thrall")));
+  expect(html).toContain('href="/lore/npcs"');
+  expect(html).toContain('href="/lore/npcs?race=Orc"');
+  expect(html).toContain('href="/lore/npcs?class=Shaman"');
+  expect(html).toContain("Details from the wiki infobox");
+  expect(html).toMatch(/<dt[^>]*>title<\/dt><dd[^>]*>Warchief<\/dd>/);
+});
+
+test("an untyped page carries no type links and no infobox section", async () => {
+  const { default: LorePage } = await page();
+  const html = renderToStaticMarkup(await LorePage(params("2-stub")));
+  expect(html).not.toContain('href="/lore/npcs"');
+  expect(html).not.toContain("Details from the wiki infobox");
+});

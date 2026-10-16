@@ -15,6 +15,7 @@ const nextConfig = {
     "/lore-sitemap.xml": ["./.release/*.sqlite", "./.release/*.manifest.json"],
     "/lore-sitemap/[n]": ["./.release/*.sqlite", "./.release/*.manifest.json"],
     "/lore/browse/[type]": ["./.release/*.sqlite", "./.release/*.manifest.json"],
+    "/lore/coverage": ["./.release/*.sqlite", "./.release/*.manifest.json"],
   },
   // /lore/[slug] already owns one dynamic segment under /lore, so the browse pages live at
   // /lore/browse/<type> and are served at the short URL. afterFiles rewrites run before dynamic routes.

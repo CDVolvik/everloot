@@ -32,6 +32,8 @@ test("the landing page states the archive's size, date, licence and notice from 
   expect(html).toContain('name="q"');
   expect(html).toContain("predates WoW: Forever");
   expect(html).toContain('href="/database"');
+  expect(html).toContain('href="/lore/npcs"');
+  expect(html).toContain('href="/lore/coverage"');
 });
 
 test("the landing page is indexed with its canonical", async () => {
