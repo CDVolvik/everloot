@@ -18,6 +18,7 @@ export default function Header() {
         </Link>
         <nav aria-label="Primary" className="hidden sm:flex items-center gap-4 text-sm">
           <Link href="/database" className="inline-flex items-center min-h-11 text-parchment-100/80 hover:text-gold-400">Database</Link>
+          <Link href="/lore" className="inline-flex items-center min-h-11 text-parchment-100/80 hover:text-gold-400">Lore</Link>
           <Link href="/upload" className="inline-flex items-center min-h-11 text-parchment-100/80 hover:text-gold-400">Upload</Link>
           <Link href="/tools/gold-per-hour" className="inline-flex items-center min-h-11 text-parchment-100/80 hover:text-gold-400">Gold/Hour</Link>
           <Link href="/addons" className="inline-flex items-center min-h-11 text-parchment-100/80 hover:text-gold-400">Addons</Link>
@@ -42,6 +43,10 @@ export default function Header() {
                 <span className="ml-2 text-xs text-parchment-100/60">{tool.status === "coming-soon" ? "Planned" : tool.status === "collecting" ? "Collecting data" : "Available"}</span>
               </Link>
             ))}
+            <Link href="/lore" onClick={() => setOpen(false)} className="min-h-11 px-3 py-3 rounded-lg text-sm text-parchment-100/80 hover:text-gold-400">
+              Lore archive
+              <span className="ml-2 text-xs text-parchment-100/60">2023 wiki</span>
+            </Link>
             <Link href="/about" onClick={() => setOpen(false)} className="min-h-11 px-3 py-3 rounded-lg text-sm text-parchment-100/80 hover:text-gold-400">About</Link>
           </div>
         </nav>

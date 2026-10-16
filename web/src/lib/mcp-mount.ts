@@ -1,6 +1,5 @@
-import { join } from "node:path";
 import { createMcpHttpHandler } from "../../../kb/src/mcp-http-server";
-import { openPublicSnapshot } from "../../../kb/src/public-snapshot";
+import { getRelease } from "./release";
 import { uploadStore } from "./upload-store";
 
 /**
@@ -10,7 +9,6 @@ import { uploadStore } from "./upload-store";
  * `bearer: true` is /mcp (token); `bearer: false` is the public read-only mount.
  */
 const APPROVED_CORPUS = "https://everloot.app/api/corpus/public";
-const DEFAULT_RELEASE = join(process.cwd(), ".release", "2026-10-05-everloot-public.sqlite");
 const DEFAULT_ORIGINS = ["https://chatgpt.com", "https://chat.openai.com", "https://claude.ai", "https://perplexity.ai"];
 
 export function unavailable(error: string, status = 503): Response {
@@ -26,9 +24,10 @@ export function createMount(options: { path: string; bearer: boolean }) {
     const corpus = process.env.EVERLOOT_PUBLIC_CORPUS_URL?.trim();
     if (corpus && corpus !== APPROVED_CORPUS) return unavailable("MCP is not configured");
     if (!handler) {
+      // Opened once per instance and shared with the lore pages; a failed open is retried on the next request.
+      const release = getRelease();
+      if (!release) return unavailable("Knowledge release unavailable");
       try {
-        // Opened once per instance; a failed open is retried on the next request.
-        const release = openPublicSnapshot(process.env.KB_SNAPSHOT_PATH?.trim() || DEFAULT_RELEASE);
         handler = createMcpHttpHandler({
           db: release.db,
           bearerToken: options.bearer ? token! : null,
