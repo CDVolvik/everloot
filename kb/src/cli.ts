@@ -41,11 +41,13 @@ const USAGE = `usage: npm run kb -- <command> --db <path>
   builds-check [--product wow_classic_beta,wow_classic_era] [--registry data/builds.json]
     (asks Blizzard's public version service which builds exist; records new ones as queued.
     Reads build identifiers only, never game files)
-  blue-check [--store data/blue-posts.json] [--accounts curated/blue-accounts.json] [--min-minutes 25]
+  blue-check [--store changes/blue-posts.json] [--accounts curated/blue-accounts.json] [--min-minutes 25]
     (the blue post tracker: reads the tracked Blizzard staff accounts on the WoW forum and the official
     WoW Bluesky feed, politely: robots.txt first, 1.5 s apart, skips a source asked less than 25
     minutes ago, stops on 429 or a server error. Keeps title, author, time, link and a two-sentence
-    excerpt per post, never the full text. Run it every 30 minutes at most)
+    excerpt per post, never the full text. Run it every 30 minutes at most. The store is public and
+    committed under kb/changes; the same folder holds builds.json, the registry the /changes page shows,
+    written by the scheduled workflow with: builds-check --registry changes/builds.json)
   client-extract [--product wow_classic_beta] [--registry data/builds.json] [--out data/client]
     (reads items and spells of the product's current build from Blizzard's CDN into a snapshot
     <out>/<product>-<build>-<buildconfig, 8 chars>.sqlite + manifest, and marks the build processed.
@@ -173,8 +175,8 @@ async function main(): Promise<number> {
       closeOnExit(release.db);
       await serveStdio(release.db, () => {
         // The same files blue-check and builds-check write; absent files mean "not connected".
-        const posts = "data/blue-posts.json";
-        const builds = "data/builds.json";
+        const posts = "changes/blue-posts.json";
+        const builds = "changes/builds.json";
         return existsSync(posts) || existsSync(builds) ? buildTimeline(loadStore(posts).posts, loadRegistry(builds).builds) : null;
       });
       return 0;
@@ -224,7 +226,7 @@ async function main(): Promise<number> {
       return result.errors.length ? 1 : 0;
     }
     case "blue-check": {
-      const path = flags.get("store") || "data/blue-posts.json";
+      const path = flags.get("store") || "changes/blue-posts.json";
       const result = await ingestBluePosts({
         store: existsSync(path) ? loadStore(path) : emptyStore(),
         accounts: loadAccounts(flags.get("accounts") || "curated/blue-accounts.json"),

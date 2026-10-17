@@ -51,6 +51,17 @@ Publishing comes later, as a separate step. Once it ships, every entry from game
 When players later see the same thing in the game, the entry will show both: found in the files
 and observed in play.
 
+**Blizzard's own posts.** The "what changed" page lists posts by Blizzard staff on the WoW forum and by the
+official World of Warcraft account on Bluesky, and the game builds Blizzard's version service reports.
+For each post we keep the title, the author and role, the time, the category, an excerpt of at most two
+sentences, and a link to the original. The text is Blizzard's, so we never copy a post in full; a
+maintainer may add a one-line summary in our own words, and nothing writes one automatically. The
+reader checks robots.txt before every run, uses documented public JSON only, names itself
+(`Everloot/1.0`, with a contact address), asks at most every 30 minutes and stops when a server says
+to slow down. Blizzard's forum `.rss` routes are disallowed by its robots.txt, so we do not use them,
+and no third-party tracker is read or copied. A build's time on that page is when Everloot first saw
+it, not when Blizzard released it.
+
 **Open sources.** The lore archive is built from the Warcraft Wiki dump of 2023-11-13
 (CC BY-SA 4.0). We may add other openly licensed datasets later. Each one goes in the
 [source ledger](sources/LEDGER.md) with its licence and exact version before any of it ships.

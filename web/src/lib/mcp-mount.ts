@@ -1,4 +1,5 @@
 import { createMcpHttpHandler } from "../../../kb/src/mcp-http-server";
+import { loadTimeline } from "./changes";
 import { getRelease } from "./release";
 import { uploadStore } from "./upload-store";
 
@@ -33,6 +34,8 @@ export function createMount(options: { path: string; bearer: boolean }) {
           bearerToken: options.bearer ? token! : null,
           path: options.path,
           maxRequestBodyBytes: 1_048_576,
+          // The same timeline the /changes page shows, read from the files bundled with the site.
+          changes: () => loadTimeline(),
           // The public mount is limited per IP before it gets here; this is a per-instance backstop.
           rateLimitPerMinute: options.bearer ? 60 : 600,
           allowedOrigins: process.env.ALLOWED_ORIGINS?.split(",").map((s) => s.trim()).filter(Boolean) ?? DEFAULT_ORIGINS,

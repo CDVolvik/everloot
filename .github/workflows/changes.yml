@@ -1,0 +1,56 @@
+name: Refresh changes
+# The blue tracker and build registry behind /changes. Every 30 minutes, no faster: the ingester
+# reads robots.txt, skips sources asked less than 25 minutes ago and stops on 429 or a server error.
+# A run that finds something new commits kb/changes/*.json to main, which redeploys the site.
+on:
+  schedule:
+    - cron: '7,37 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: changes-refresh
+  cancel-in-progress: false
+jobs:
+  refresh:
+    if: github.repository == 'CDVolvik/everloot'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.23.2'
+          cache: npm
+          cache-dependency-path: kb/package-lock.json
+      - run: npm ci
+        working-directory: kb
+      - name: Blue posts (Blizzard forum staff accounts and the official WoW Bluesky feed)
+        id: blue
+        continue-on-error: true
+        run: npm run kb -- blue-check
+        working-directory: kb
+      - name: Builds (Blizzard's public version service)
+        id: builds
+        continue-on-error: true
+        run: npm run kb -- builds-check --registry changes/builds.json
+        working-directory: kb
+      - name: Commit what changed
+        run: |
+          git add kb/changes
+          # Every run moves the "last asked" and "last seen" times. Only a new or changed post or build
+          # is worth a commit, and a redeploy.
+          if ! git diff --cached -U0 | grep -E '^[+-] ' | grep -vE '^[+-]\s+"(at|lastSeen)":' | grep -q .; then
+            echo "nothing new"
+            exit 0
+          fi
+          git config user.name 'everloot-changes[bot]'
+          git config user.email 'hello@everloot.app'
+          git commit -s -m 'Changes: refresh blue posts and builds'
+          git pull --rebase origin main
+          git push origin HEAD:main
+      - name: Fail the run if a source failed, so it shows up
+        if: steps.blue.outcome == 'failure' || steps.builds.outcome == 'failure'
+        run: exit 1
