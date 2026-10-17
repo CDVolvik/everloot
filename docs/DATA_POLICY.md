@@ -235,3 +235,32 @@ of these holds:
   them from the local game client and uploads them to Everloot's asset storage with a
   build-stamped manifest.
 - If you are unsure whether a source is allowed, open an issue first.
+
+## Using our data: credit, limits and keys
+
+Everloot's data stays open. Anyone may read it, copy it and build on it under CC BY-SA 4.0. Two
+things are asked in return: credit it, and use a free key when you copy all of it.
+
+- **Credit.** Show this line, with the link, wherever the data appears: "Data from Everloot
+  (https://everloot.app), CC BY-SA 4.0." What you build from it stays under the same licence. Every
+  answer carries the line so it is hard to lose by accident: the JSON APIs return it in an
+  `attribution` field (licence, credit line, the page the data comes from) and in the
+  `X-Everloot-Licence`, `X-Everloot-Credit` and `Link` headers, and MCP answers built on player data
+  end with it. Republishing the data without credit breaks the licence.
+- **Asking questions is free and needs no key.** The MCP server and the market prices keep a
+  per-address limit that a person or an AI assistant answering questions does not reach.
+- **Copying in bulk takes a free key.** Once the limits are switched on, the corpus API and the drop
+  list answer a few requests an hour per address without a key, one page of records at a time. A
+  free key, made on [/connect](https://everloot.app/connect#keys) after signing in with Battle.net,
+  raises the limits far enough to copy everything. Each key belongs to one Battle.net account and its
+  requests are counted per key, so we know who copies the data in bulk and can ask what they are
+  building. Keys can be revoked by their owner at any time, and by us when a key is used to
+  republish the data without credit. The exact numbers are on /connect.
+- **Pages are not limited.** Search engines and AI assistants may read and quote the site's pages.
+  These limits apply only to the machine-readable endpoints.
+- **Not covered.** Game-file data and Blizzard's posts are Blizzard's, not ours; the credit line and
+  the licence above do not apply to them. The code is AGPL-3.0 and has its own terms.
+
+We record a key's requests per day and endpoint, and when it was last used. We do not record what
+was asked. Anonymous requests are counted per hour against a keyed hash of the address, which is
+deleted after about a day; the address itself is never stored.

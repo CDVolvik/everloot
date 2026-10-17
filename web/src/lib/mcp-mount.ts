@@ -1,5 +1,6 @@
 import { createMcpHttpHandler } from "../../../kb/src/mcp-http-server";
 import { loadTimeline } from "./changes";
+import { attributionHeaders } from "./data-guard";
 import { loadEcosystem } from "./ecosystem";
 import { getRelease } from "./release";
 import { uploadStore } from "./upload-store";
@@ -70,6 +71,8 @@ export function createMount(options: { path: string; bearer: boolean }) {
     if (body !== null && response.status >= 200 && response.status < 300) {
       recordUsage(mcpToolMetrics(body, options.bearer ? "mcp" : "mcp_public"));
     }
+    // The licence and credit line travel with every answer, for clients that log headers.
+    for (const [name, value] of Object.entries(attributionHeaders())) response.headers.set(name, value);
     return response;
   };
 }

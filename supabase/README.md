@@ -16,11 +16,15 @@ browser; every table has row-level security on.
 `tests/verified_publication.sql` checks the publication grant rules. Run it with `psql` against a
 disposable database that has the schema applied.
 
+`web/scripts/intake-quota.integration.mjs` and `web/scripts/data-guard.integration.mjs` check the
+quota and API key functions against a disposable local Postgres named `intake_quota_test`, set in
+`QUOTA_TEST_DATABASE_URL`. They refuse any other host or database name.
+
 ## Where things live
 
 | Path | What |
 |---|---|
 | `auth_schema.sql` | Users, sessions, profiles, characters, suppressions, revoked guilds and tokens |
-| `migrations/` | Uploads and waitlist, verified publication, intake quotas, MCP quota scope |
+| `migrations/` | Uploads and waitlist, verified publication, intake quotas, MCP quota scope, usage counters, API keys and bulk-read limits |
 | `tests/` | SQL tests |
 | `certs/` | The Supabase root certificate for maintenance connections |

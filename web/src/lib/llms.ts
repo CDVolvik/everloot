@@ -5,6 +5,8 @@ import { PUBLIC_RECORD_KINDS } from "@/lib/intake";
 import { latestBuildLine } from "@/lib/changes-facts";
 import { loadTimeline, type ChangeEntry } from "@/lib/changes";
 import { NON_AFFILIATION } from "@/lib/jsonld";
+import { ANON_PAGE, ANON_PER_HOUR, guardOn } from "@/lib/data-guard";
+import { CREDIT_LINE } from "../../../kb/src/attribution";
 import { SITE_URL } from "@/lib/seo";
 import { TALENT_CLASSES } from "@/lib/talents/catalogs";
 
@@ -43,6 +45,13 @@ const LIMITATIONS = [
 
 const bullet = (title: string, path: string, text: string) => `- [${title}](${url(path)}): ${text}`;
 
+/** The paging and key sentence for the corpus API; it names limits only once the data guard is on. */
+function corpusAccess(): string {
+  return guardOn()
+    ? `Pages with ?offset= and ?limit=. Without a key: ${ANON_PER_HOUR} requests per hour per IP, ${ANON_PAGE} records a page; a free key (${url("/connect#keys")}) lifts both.`
+    : "Optional ?offset= and ?limit= page it.";
+}
+
 /** Catalog tools by status. A page already described in PAGES, or listed twice in the catalog, appears once. */
 function toolLines(): { live: string[]; collecting: string[] } {
   const seen = new Set(PAGES.map((p) => p.path));
@@ -67,7 +76,7 @@ function head(): string[] {
 function connect(): string[] {
   return [
     "## For AI assistants and developers",
-    bullet("Public corpus API", "/api/corpus/public", `Anonymous addon observations as JSON, without install ids. Filter with ?kinds=${PUBLIC_RECORD_KINDS.slice(0, 2).join(",")}. CC BY-SA 4.0.`),
+    bullet("Public corpus API", "/api/corpus/public", `Anonymous addon observations as JSON, without install ids. Filter with ?kinds=${PUBLIC_RECORD_KINDS.slice(0, 2).join(",")}. ${corpusAccess()} Credit: ${CREDIT_LINE}`),
     `- [MCP server](${MCP_URL}): read-only, no sign-in, ${REQUESTS_PER_HOUR} requests per hour per IP. ${MCP_TOOLS.length} tools: ${MCP_TOOLS.map((t) => t.name).join(", ")}.`,
     bullet("Connect guide", "/connect", "Setup for Claude Code and other MCP clients, with examples."),
     bullet("Changes feed (RSS)", "/changes/feed.xml", "The newest 50 WoW: Forever builds and Blizzard posts."),
@@ -134,7 +143,7 @@ export function llmsFullTxt(entries: ChangeEntry[] = loadTimeline()): string {
     ...MCP_TOOLS.map((t) => `- ${t.name}: ${t.text}`),
     "",
     "## Public corpus API",
-    `GET ${CORPUS_URL}. Optional ?kinds= takes a comma-separated list of: ${PUBLIC_RECORD_KINDS.join(", ")}. Records carry no install id. Credit: Data from Everloot (${SITE_URL}), CC BY-SA 4.0.`,
+    `GET ${CORPUS_URL}. Optional ?kinds= takes a comma-separated list of: ${PUBLIC_RECORD_KINDS.join(", ")}. Records carry no install id. ${corpusAccess()} Each response carries the licence and credit line in an attribution field and in X-Everloot-Licence, X-Everloot-Credit and Link headers. Credit: ${CREDIT_LINE}`,
     "",
     "## Changes feed",
     `${url("/changes/feed.xml")} is RSS 2.0 with the newest 50 WoW: Forever entries.`,

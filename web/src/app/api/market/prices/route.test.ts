@@ -91,3 +91,12 @@ test("a realm's rows are capped at MAX_PRICE_ROWS, the items with the most units
   expect(body.items[0][0]).toBe(total);
   expect(JSON.stringify(body).length).toBeLessThan(MAX_PRICE_ROWS * 60);
 });
+
+test("every answer carries the licence and credit line, and stays cacheable for anonymous callers", async () => {
+  for (const query of ["", "?realm=Forever"]) {
+    const res = await GET(req(query));
+    expect((await res.json()).attribution).toMatchObject({ licence: "CC BY-SA 4.0", source: "https://everloot.app/tools/auctions" });
+    expect(res.headers.get("x-everloot-licence")).toBe("CC BY-SA 4.0");
+    expect(res.headers.get("cache-control")).toContain("s-maxage=300");
+  }
+});

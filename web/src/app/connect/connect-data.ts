@@ -1,4 +1,5 @@
-const SITE = "https://everloot.app";
+import { CREDIT_LINE, LICENCE, LICENCE_URL, SITE, TERMS_URL } from "../../../../kb/src/attribution";
+
 export const MCP_URL = `${SITE}/mcp/public`;
 export const CORPUS_URL = `${SITE}/api/corpus/public`;
 
@@ -75,7 +76,18 @@ npm run dev               # MCP at http://localhost:3000/mcp/public`,
     }
   ],
   "dataAsOf": "2026-10-17T08:50:28.003Z",
-  "kinds": ["loot"]
+  "kinds": ["loot"],
+  "offset": 0,
+  "limit": 1,
+  "total": 1,
+  "next": null,
+  "attribution": {
+    "licence": "${LICENCE}",
+    "licenceUrl": "${LICENCE_URL}",
+    "credit": "${CREDIT_LINE}",
+    "source": "${SITE}/database",
+    "terms": "${TERMS_URL}"
+  }
 }`,
-  credit: `Data from Everloot (https://everloot.app), CC BY-SA 4.0.`,
+  credit: CREDIT_LINE,
 } as const;

@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+import { CREDIT_LINE, LICENCE, MCP_CREDIT, SITE } from "./attribution.js";
 import { auctionSightingsFromRecords, handleAuctionHistory } from "./auction-history.js";
 import { handlePlan } from "./bridge-plan.js";
 import { CHANGE_FILTERS, handleRecentChanges, type ChangeEntry } from "./changes.js";
@@ -25,6 +26,12 @@ export const SERVER_NAME = "everloot-knowledge";
 export const SERVER_VERSION = "0.8.0";
 /** The source this server runs, offered to every client (AGPL section 13). */
 export const SOURCE_URL = "https://github.com/CDVolvik/everloot";
+
+/** Sent to every client on connect: how to credit what the tools return. */
+export const SERVER_INSTRUCTIONS =
+  `Everloot answers questions about WoW: Forever. Facts built on player uploads are Everloot's data under ${LICENCE}: ` +
+  `when you show them, credit "${CREDIT_LINE}" or link ${SITE}. Lore hits carry their own source and licence; keep them with the text. ` +
+  "Game-file facts and Blizzard's posts stay Blizzard's.";
 
 export const UPLOADS_UNSET =
   "Uploads are not connected. Neither EVERLOOT_PUBLIC_CORPUS_URL nor EVERLOOT_UPLOADS is set, so this is not a measured zero.";
@@ -129,7 +136,7 @@ export async function answerMarketValue(args: { realm: string; itemId: number },
     market = null;
   }
   if (!market) return "Market values unavailable. They are unrecorded, not zero.";
-  return `${handleMarketValue(args, market.state, new Date())}\n${dataAgeLine(market.dataAsOf)}`;
+  return `${handleMarketValue(args, market.state, new Date())}\n${answerFooter(market.dataAsOf)}`;
 }
 
 /** Prefer the web's sanitized current view; raw local files can supply anonymous facts only. */
@@ -156,38 +163,53 @@ async function fromLoader(loader: CorpusLoader, render: (records: unknown[]) => 
   if (!corpus) return UNAVAILABLE;
   const wanted = kinds ? new Set<string>(kinds) : null;
   const records = wanted ? corpus.records.filter((r) => wanted.has((r as { kind?: string }).kind ?? "")) : corpus.records;
-  return `${render(records)}\n${dataAgeLine(corpus.dataAsOf)}`;
+  return `${render(records)}\n${answerFooter(corpus.dataAsOf)}`;
 }
+
+/** Pages a self-hosted server follows at most; with a key (EVERLOOT_API_KEY) a page holds far more records. */
+const MAX_CORPUS_PAGES = 50;
 
 async function fetchPublicCorpus(url: string): Promise<{ records: unknown[]; dataAsOf: unknown } | null> {
   try {
-    const response = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(10_000) });
-    if (!response.ok || Number(response.headers.get("content-length")) > 2_000_000) throw new Error("Public corpus too large or unavailable");
-    const reader = response.body?.getReader();
-    if (!reader) throw new Error("Public corpus has no body");
-    const chunks: Uint8Array[] = [];
+    const key = process.env.EVERLOOT_API_KEY?.trim();
+    const init: RequestInit = { cache: "no-store", signal: AbortSignal.timeout(10_000), ...(key ? { headers: { authorization: `Bearer ${key}` } } : {}) };
+    const records: unknown[] = [];
+    let dataAsOf: unknown;
     let size = 0;
-    try {
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        size += value.byteLength;
-        if (size > 2_000_000) { await reader.cancel(); throw new Error("Public corpus too large"); }
-        chunks.push(value);
-      }
-    } finally { reader.releaseLock(); }
-    const corpus = JSON.parse(Buffer.concat(chunks).toString("utf8")) as { ok?: boolean; records?: unknown; dataAsOf?: unknown };
-    if (!response.ok || corpus.ok !== true || !Array.isArray(corpus.records)) throw new Error("Invalid public corpus");
-    const parsed = parseRecords(corpus.records);
+    let next: string | null = url;
+    // The site pages the feed when its data guard is on; follow `next` within the same byte ceiling.
+    for (let page = 0; next; page++) {
+      if (page >= MAX_CORPUS_PAGES) throw new Error("Public corpus has too many pages");
+      const response = await fetch(next, init);
+      if (!response.ok || Number(response.headers.get("content-length")) > 2_000_000) throw new Error("Public corpus too large or unavailable");
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error("Public corpus has no body");
+      const chunks: Uint8Array[] = [];
+      try {
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          size += value.byteLength;
+          if (size > 2_000_000) { await reader.cancel(); throw new Error("Public corpus too large"); }
+          chunks.push(value);
+        }
+      } finally { reader.releaseLock(); }
+      const corpus = JSON.parse(Buffer.concat(chunks).toString("utf8")) as { ok?: boolean; records?: unknown; dataAsOf?: unknown; next?: unknown };
+      if (corpus.ok !== true || !Array.isArray(corpus.records)) throw new Error("Invalid public corpus");
+      records.push(...corpus.records);
+      if (page === 0) dataAsOf = corpus.dataAsOf;
+      next = typeof corpus.next === "string" && new URL(corpus.next).origin === new URL(url).origin ? corpus.next : null;
+    }
+    const parsed = parseRecords(records);
     if (parsed.receipt.rejected.length) throw new Error("Invalid public records");
-    return { records: parsed.records, dataAsOf: corpus.dataAsOf };
+    return { records: parsed.records, dataAsOf };
   } catch { return null; }
 }
 
 async function fromPublicCorpus(url: string, render: (records: unknown[]) => string): Promise<string> {
   const corpus = await fetchPublicCorpus(url);
   if (!corpus) return UNAVAILABLE;
-  return `${render(corpus.records)}\n${dataAgeLine(corpus.dataAsOf)}`;
+  return `${render(corpus.records)}\n${answerFooter(corpus.dataAsOf)}`;
 }
 
 async function answerFromTooledLoader<T>(
@@ -200,7 +222,7 @@ async function answerFromTooledLoader<T>(
     return UNAVAILABLE;
   }
   if (!corpus) return UNAVAILABLE;
-  return `${render(tooledFacts("loader", corpus, tool, build))}\n${dataAgeLine(corpus.dataAsOf)}`;
+  return `${render(tooledFacts("loader", corpus, tool, build))}\n${answerFooter(corpus.dataAsOf)}`;
 }
 
 async function answerFromTooledPublicCorpus<T>(
@@ -209,7 +231,7 @@ async function answerFromTooledPublicCorpus<T>(
   const corpus = await fetchPublicCorpus(url);
   if (!corpus) return UNAVAILABLE;
   const dataAsOf = typeof corpus.dataAsOf === "string" ? corpus.dataAsOf : null;
-  return `${render(tooledFacts("url", { records: corpus.records, dataAsOf }, tool, build))}\n${dataAgeLine(corpus.dataAsOf)}`;
+  return `${render(tooledFacts("url", { records: corpus.records, dataAsOf }, tool, build))}\n${answerFooter(corpus.dataAsOf)}`;
 }
 
 /**
@@ -231,6 +253,11 @@ export function fromTooledUploads<T>(
   const dir = process.env.EVERLOOT_UPLOADS?.trim();
   if (!dir) return UPLOADS_UNSET;
   return render(build(loadUploadRecords(dir)));
+}
+
+/** What ends every answer built on player data: how old the data is, and the credit line it carries. */
+function answerFooter(dataAsOf: unknown): string {
+  return `${dataAgeLine(dataAsOf)}\n${MCP_CREDIT}`;
 }
 
 /** The web's snapshot time; a stalled snapshot must not read as current. */
@@ -283,7 +310,7 @@ export type ChangesLoader = () => ChangeEntry[] | null | Promise<ChangeEntry[] |
 export type EcosystemLoader = () => EcosystemView | null | Promise<EcosystemView | null>;
 
 export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; market?: MarketLoader; changes?: ChangesLoader; ecosystem?: EcosystemLoader } = {}): McpServer {
-  const server = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION, websiteUrl: SOURCE_URL });
+  const server = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION, websiteUrl: SOURCE_URL }, { instructions: SERVER_INSTRUCTIONS });
   const readFacts = <T>(tool: ToolName, render: (facts: T) => string) => fromTooledUploads(tool, render, options.corpus);
   server.registerTool(
     "search_knowledge",
