@@ -1,6 +1,7 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { auditSources } from "./audit-sources.js";
 import { BlizzardClient } from "./blizzard/client.js";
+import { checkBuilds, VERSION_SERVICE, type BuildRegistry } from "./builds.js";
 import type { Game, NsKind, Region } from "./blizzard/namespaces.js";
 import { openDb, openExistingReadOnlyDb, type DB } from "./db.js";
 import { importCurated } from "./importers/curated.js";
@@ -31,6 +32,9 @@ const USAGE = `usage: npm run kb -- <command> --db <path>
     run it against a public release you are serving)
   snapshot <out.sqlite> --db <source knowledge base>   (writes a filtered public release + manifest,
     outside the database's own folder, e.g. data/release/kb.sqlite)
+  builds-check [--product wow_classic_beta,wow_classic_era] [--registry data/builds.json]
+    (asks Blizzard's public version service which builds exist; records new ones as queued.
+    Reads build identifiers only, never game files)
   audit-sources <file.sqlite...>   (rows per source and cached API rows in each file; exits 1 if anything
     is not publishable)
 
@@ -181,6 +185,24 @@ async function main(): Promise<number> {
       const problems = rows === 0 ? ["no entities: the knowledge base is empty"] : validate(source);
       console.log(problems.length === 0 ? "ok" : problems.join("\n"));
       return problems.length === 0 ? 0 : 1;
+    }
+    case "builds-check": {
+      const products = (flags.get("product") || "wow_classic_beta,wow_classic_era").split(",").map((p) => p.trim()).filter(Boolean);
+      const path = flags.get("registry") || "data/builds.json";
+      const registry: BuildRegistry = existsSync(path) ? JSON.parse(readFileSync(path, "utf8")) : { builds: [] };
+      if (!Array.isArray(registry.builds)) throw new Error(`${path} is not a build registry`);
+      const result = await checkBuilds(registry, products, async (product) => {
+        const res = await fetch(`${VERSION_SERVICE}/${product}/versions`, { signal: AbortSignal.timeout(15_000) });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.text();
+      }, new Date());
+      writeFileSync(`${path}.tmp`, `${JSON.stringify(result.registry, null, 2)}
+`);
+      renameSync(`${path}.tmp`, path);
+      for (const b of result.added) console.log(`new build: ${b.product} ${b.version} (${b.buildConfig}) [${b.regions.join(" ")}]`);
+      for (const e of result.errors) console.error(`${e.product}: ${e.error}`);
+      console.log(`${result.added.length} new, ${result.registry.builds.length} known; registry ${path}`);
+      return result.errors.length ? 1 : 0;
     }
     case "audit-sources": {
       if (!args.length) break;
