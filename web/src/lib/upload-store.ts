@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { AwsClient } from "aws4fetch";
 import { parseRecords, type CanonicalUpload, type IntakeRecord } from "./intake";
 import { mergeCorpus, mergeCorpusBatches, publicRecords, type CorpusState } from "../../../kb/src/corpus";
-import { emptyMarket, foldMarket, type MarketState } from "../../../kb/src/market";
+import { HISTORY_DAYS, emptyMarket, foldMarket, type MarketState } from "../../../kb/src/market";
 import { createSharingStore } from "./sharing-store";
 
 /**
@@ -73,12 +73,17 @@ export interface Market {
 }
 
 interface MarketSnapshot {
-  version: 1;
+  version: 2;
   generatedAt: string;
   state: MarketState;
-  /** Every upload already folded in, so each upload is read once. */
+  /** Uploads in the read window already folded in, so each is read once. Older ids are forgotten. */
   seenUploadIds: string[];
 }
+
+/** An upload received before this can only hold days the 60-day history has pruned (one day of clock drift allowed). */
+const MARKET_READ_DAYS = HISTORY_DAYS + 2;
+/** Upload objects read and folded at a time, so a rebuild never holds every payload at once. */
+const MARKET_FOLD_BATCH = 64;
 
 interface IndexRow {
   id: string;
@@ -288,7 +293,7 @@ export function createUploadStore(opts: {
     if (!res.ok) throw new Error(`market read failed (${res.status})`);
     const parsed = JSON.parse(await res.text()) as Partial<MarketSnapshot>;
     const state = parsed.state;
-    if (parsed.version !== 1 || state?.version !== 1 || !state.realms || typeof state.realms !== "object" || !Array.isArray(parsed.seenUploadIds)) {
+    if (parsed.version !== 2 || state?.version !== 2 || !state.realms || typeof state.realms !== "object" || !Array.isArray(parsed.seenUploadIds)) {
       throw new Error("market rollup is invalid");
     }
     return { snapshot: parsed as MarketSnapshot, etag: res.headers.get("etag") ?? undefined };
@@ -304,16 +309,24 @@ export function createUploadStore(opts: {
     if (current && (!current.etag || current.etag.startsWith("W/"))) throw new Error("market rollup has no strong ETag: cannot safely update it");
     const prev = opts.rebuild ? null : current?.snapshot ?? null;
     const seen = new Set(prev?.seenUploadIds ?? []);
-    const rows = await listIndex();
+    const rows = await listIndex(new Date(now().getTime() - MARKET_READ_DAYS * 86_400_000).toISOString());
     const fresh = rows.filter((r) => !seen.has(r.id));
-    const { payloads, missed } = await readPayloads(fresh.map((r) => r.object_key));
-    if (missed) throw new Error("upload object unreadable");
-    const scans = marketScans(payloads);
+    let state = prev?.state ?? emptyMarket();
+    let scans = 0;
+    for (let i = 0; i < fresh.length; i += MARKET_FOLD_BATCH) {
+      const { payloads, missed } = await readPayloads(fresh.slice(i, i + MARKET_FOLD_BATCH).map((r) => r.object_key));
+      if (missed) throw new Error("upload object unreadable");
+      const batch = marketScans(payloads);
+      scans += batch.length;
+      state = foldMarket(state, batch, now());
+    }
     const snapshot: MarketSnapshot = {
-      version: 1,
+      version: 2,
       generatedAt: now().toISOString(),
-      state: foldMarket(prev?.state ?? emptyMarket(), scans, now()),
-      seenUploadIds: [...new Set([...seen, ...fresh.map((r) => r.id)])].sort(),
+      // With no new scans the fold still closes and prunes days as time passes.
+      state: fresh.length ? state : foldMarket(state, [], now()),
+      // Every listed upload is now folded in; ids outside the window drop out with it.
+      seenUploadIds: rows.map((r) => r.id).sort(),
     };
     const put = await r2Fetch(MARKET_KEY, {
       method: "PUT",
@@ -322,7 +335,7 @@ export function createUploadStore(opts: {
     });
     if (!put.ok) throw new Error(`market write failed (${put.status})`);
     marketCached = null;
-    return { added: fresh.length, scans: scans.length };
+    return { added: fresh.length, scans };
   }
 
   async function loadMarket(): Promise<Market> {
@@ -331,10 +344,10 @@ export function createUploadStore(opts: {
     try {
       if (unavailable) throw new Error("Production storage is not configured");
       if (cloud) {
+        // No rollup yet (before the first cron run) is unavailable, not "no scans uploaded".
         const read = await readMarketSnapshot();
-        market = read
-          ? { state: read.snapshot.state, dataAsOf: validTime(read.snapshot.generatedAt) }
-          : { state: emptyMarket(), dataAsOf: null };
+        if (!read) throw new Error("market rollup not built yet");
+        market = { state: read.snapshot.state, dataAsOf: validTime(read.snapshot.generatedAt) };
       } else {
         const local = await readLocalPayloads();
         if (!local) throw new Error("local uploads unreadable");

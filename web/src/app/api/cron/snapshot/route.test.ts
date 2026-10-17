@@ -32,8 +32,12 @@ test("the market rollup runs with the snapshot and rebuilds with it", async () =
   expect(store.writeMarket).toHaveBeenCalledWith({ rebuild: true });
 });
 test("a market failure is reported but does not block the corpus snapshot or cleanup", async () => {
-  store.writeMarket.mockRejectedValue(new Error("market down"));
+  // Cleanup runs before the market step, so a market that times out cannot starve it.
+  const order: string[] = [];
+  store.prune.mockImplementation(async () => { order.push("prune"); });
+  store.writeMarket.mockImplementation(async () => { order.push("market"); throw new Error("market down"); });
   const res = await GET(req());
+  expect(order).toEqual(["prune", "market"]);
   expect(res.status).toBe(500);
   expect(store.writeSnapshot).toHaveBeenCalledOnce();
   expect(store.prune).toHaveBeenCalledOnce();

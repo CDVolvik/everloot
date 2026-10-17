@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import {
-  emptyMarket, foldMarket, handleMarketValue, itemMarket, marketPrices, realmMarket,
+  emptyMarket, foldMarket, handleMarketValue, itemMarket, marketPrices, marketRealms, realmMarket,
 } from "../src/market.js";
 
 const NOW = new Date("2026-10-20T12:00:00Z");
@@ -80,6 +80,47 @@ test("other kinds and malformed snapshots are ignored", () => {
     snapshot("install-d", "not-a-day", [[2589, 1, 1, 5, 5]]),
   ];
   expect(foldMarket(emptyMarket(), bad, NOW)).toEqual(emptyMarket());
+});
+
+test("a day older than the open window keeps only its public medians, and a day that never reached 3 is dropped", () => {
+  const rows = [...three("2026-10-10", [100, 300, 500]), ...three("2026-10-11", [1, 1, 1]).slice(0, 2)];
+  const state = foldMarket(emptyMarket(), rows, NOW);
+  const text = JSON.stringify(state);
+  expect(text).not.toContain("install-");
+  expect(text).not.toContain("2026-10-11");
+  expect(itemMarket(state, "Forever", 2589, NOW).points).toEqual([{ day: "2026-10-10", min: 300, market: 310, quantity: 100, reporters: 3 }]);
+});
+
+test("a late scan for a closed day is ignored; open days still take scans", () => {
+  const closed = foldMarket(emptyMarket(), three("2026-10-10", [100, 300, 500]), NOW);
+  const late = snapshot("install-d", "2026-10-10", [[2589, 1, 1, 9999, 9999]]);
+  expect(foldMarket(closed, [late], NOW)).toEqual(closed);
+  const open = foldMarket(emptyMarket(), three("2026-10-19", [100, 300, 500]).slice(0, 2), NOW);
+  const third = foldMarket(open, three("2026-10-19", [100, 300, 500]).slice(2), NOW);
+  expect(itemMarket(third, "Forever", 2589, NOW).points).toHaveLength(1);
+});
+
+test("capture times with offsets or fractions land on their UTC day", () => {
+  const rows = three("2026-10-20", [100, 300, 500]).map((r, i) => ({
+    ...r, capturedAt: ["2026-10-19T22:00:00-05:00", "2026-10-20T03:00:00.500Z", "2026-10-20T08:00:00+02:00"][i],
+  }));
+  expect(itemMarket(foldMarket(emptyMarket(), rows, NOW), "Forever", 2589, NOW).points).toMatchObject([{ day: "2026-10-20", reporters: 3 }]);
+});
+
+test("a day one ahead of the server clock counts as today", () => {
+  const { value } = itemMarket(foldMarket(emptyMarket(), three("2026-10-21", [100, 100, 100]), NOW), "Forever", 2589, NOW);
+  expect(value).toMatchObject({ market: 110, ageDays: 0 });
+});
+
+test("realm names are listed only once a realm has a public value", () => {
+  const thin = foldMarket(emptyMarket(), three("2026-10-20", [1, 2, 3]).slice(0, 2).map((r) => ({ ...r, realm: "visit scam.example" })), NOW);
+  expect(marketRealms(thin, NOW)).toEqual([]);
+  expect(marketRealms(foldMarket(thin, three("2026-10-20", [1, 2, 3]), NOW), NOW)).toEqual(["Forever"]);
+});
+
+test("copper above 2 billion is kept: a 200k-gold listing is a real price", () => {
+  const rich = ["install-a", "install-b", "install-c"].map((id) => snapshot(id, "2026-10-20", [[19019, 1, 1, 99_999_999_999, 99_999_999_999]]));
+  expect(itemMarket(foldMarket(emptyMarket(), rich, NOW), "Forever", 19019, NOW).value).toMatchObject({ min: 99_999_999_999 });
 });
 
 test("realm view lists public items by quantity", () => {

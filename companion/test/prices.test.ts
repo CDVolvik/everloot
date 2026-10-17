@@ -55,6 +55,11 @@ test("the slot addon holds one checksummed string per realm and matches the gold
   expect(lua).toBe(readFileSync(FIXTURE, "utf8").replace(/\r\n/g, "\n"));
 });
 
+test("realm keys lower-case ASCII only, as Lua's string.lower does", () => {
+  const { lua } = renderPricesAddon([{ realm: "Ärden Forever", dataAsOf: null, items: [] }]);
+  expect(lua).toContain('["Ärden forever"]');
+});
+
 test("refresh writes the slot addon for the realms in the file, and keeps the old one on any failure", async () => {
   const dir = mkdtempSync(join(tmpdir(), "everloot-prices-"));
   const sv = join(dir, "Everloot.lua");

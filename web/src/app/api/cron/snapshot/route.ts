@@ -20,6 +20,7 @@ export async function GET(req: Request) {
   const rebuild = new URL(req.url).searchParams.get("rebuild") === "1";
   try {
     const result = await uploadStore.writeSnapshot({ rebuild });
+    await intakeQuota.prune();
     // The market has its own watermark, so a failure here leaves the corpus snapshot current
     // and the next run retries the same uploads.
     let market: { added: number; scans: number } | null = null;
@@ -28,7 +29,6 @@ export async function GET(req: Request) {
     } catch (err) {
       console.error("market rollup failed", err);
     }
-    await intakeQuota.prune();
     if (!market) return NextResponse.json({ ok: false, error: "market rollup failed", rebuild, ...result }, { status: 500 });
     return NextResponse.json({ ok: true, rebuild, ...result, market });
   } catch (err) {

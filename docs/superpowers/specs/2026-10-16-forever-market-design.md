@@ -123,9 +123,21 @@ integer in range). The upload's existing 1 MB / 2,000-record limits stay.
 and `/api/corpus/public` do not grow with scans. The raw upload stays in R2 as the record of truth,
 as for every kind.
 
-**Market rollup.** The ten-minute cron gains a second step that reads only uploads it has not seen
-(its own watermark) and folds their `auction_snapshot` records into `snapshots/market.json`:
-realm → item → day → install → that install's last scan that day. Days older than 60 are pruned.
+**Intake limits.** Every number in an item tuple only has to be a safe integer. The whole record is
+validated at once, so one out-of-range tuple would drop a part's 1,000 items, and listings far above
+200k gold are real auction-house prices.
+
+**Market rollup.** The ten-minute cron gains a second step, after quota cleanup, that reads only
+uploads it has not seen (its own watermark) and folds their `auction_snapshot` records into
+`snapshots/market.json`, 64 uploads at a time:
+- **Open days** (today and the two before) keep realm → item → day → install → that install's last
+  scan that day, by capture time parsed as UTC.
+- **Closed days** keep only their public medians `[min, market, quantity, reporters]`. A day that
+  never reached 3 installs is dropped when it closes, and a later upload for a closed day is ignored.
+  So the rollup grows with items and days, not with installs.
+- Days older than 60 are pruned. Uploads received more than 62 days ago are never read (they can only
+  hold pruned days), which also bounds the list of seen upload ids.
+- Before the first cron run there is no rollup; readers say "unavailable", not "no scans".
 
 **Public values.** Derived on read, with the existing corroboration rule:
 - A realm/item **day is public when 3 installs scanned it.** Its values are the medians of those
@@ -135,7 +147,10 @@ realm → item → day → install → that install's last scan that day. Days o
 - **Historical**: median of the public days in the last 60.
 - **Minimum buyout**: the newest public day's median minimum.
 - Every value carries its newest day, reporter count and age. Prices with no public day say so and
-  are never shown as zero.
+  are never shown as zero. A day up to one ahead of the server clock (client drift) counts as today.
+- A realm name is free text from an upload, so it is listed only once that realm has a public value.
+- Realm keys lower-case ASCII letters only, matching Lua's `string.lower`, so the site, the companion
+  and the addon agree on every realm name.
 
 **Reads.**
 - `GET /api/market/prices?realm=<realm>`: compact JSON for the companion (every item with a public
@@ -177,7 +192,7 @@ the player's own latest scan.
 3. Companion (stage 3): `prices` command, slot addon, addon reader.
 4. Web (stage 4): market page.
 
-Each is its own PR. Nothing merges without Carlos (merging to `main` deploys production).
+They share one branch and one pull request, one commit per stage, because each stage's tests depend on the one before (the addon test loads the file the companion renders). Nothing merges without Carlos (merging to `main` deploys production).
 
 ## 8. Out of scope
 
@@ -197,5 +212,9 @@ Each is its own PR. Nothing merges without Carlos (merging to `main` deploys pro
   → `OWNED_AUCTIONS_UPDATED` → `GetOwnedAuctions()`.
 - The 0.2.5 in-game beta checklist is still open with Carlos; 0.3.0 adds a full scan to it.
 - Market-data licence decision before the flip.
-- Rollup size at scale: about 10k items × 60 days × reporters per realm. Fine for beta; revisit if
-  `market.json` passes 20 MB.
+- Rollup size at scale: open days hold one scan per install for 3 days; closed days about 10k items ×
+  60 days × 4 numbers per realm. Revisit if `market.json` passes 20 MB.
+- If Forever lacks `TooltipDataProcessor`, the prices module turns itself off; there is no
+  `GameTooltip` fallback yet.
+- If `REPLICATE_ITEM_LIST_UPDATE` fires before every row has arrived, the scan reads a partial total.
+  Only an in-game run shows this.

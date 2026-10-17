@@ -99,6 +99,14 @@ describe("intake contract", () => {
     expect(result.receipt.rejected.map((r) => r.index)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
   });
 
+  test("one listing above 200k gold does not drop the other items of its scan part", () => {
+    const result = parseRecords([{
+      ...base, kind: "auction_snapshot", realm: "Forever", scanId: "scan-1", part: 1, parts: 1,
+      items: [[19019, 1, 1, 99_999_999_999, 99_999_999_999], [2589, 4, 2_000_000, 95, 100]],
+    }]);
+    expect(result.receipt.rejected).toEqual([]);
+  });
+
   test("a recipe observation keeps the colour the window showed at that rank", () => {
     const result = parseRecords([
       { ...base, kind: "recipe_observed", profession: "Alchemy", rank: 60, maxRank: 75, recipe: "Lesser Healing Potion",

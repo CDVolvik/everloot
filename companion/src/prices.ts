@@ -18,6 +18,9 @@ export interface RealmPrices { realm: string; dataAsOf: string | null; items: Pr
 
 const MAX_REALMS = 20;
 
+/** The addon looks realms up with GetRealmName():lower(); Lua 5.1 lower-cases ASCII letters only. */
+const realmKey = (realm: string) => realm.trim().replace(/[A-Z]/g, (c) => c.toLowerCase());
+
 /** Realm names the player's own file mentions: their scans first, then any record with a realm. */
 export function readRealms(savedVariables: string): string[] {
   const db = parseEverlootTable(savedVariables);
@@ -25,7 +28,7 @@ export function readRealms(savedVariables: string): string[] {
   const add = (value: unknown) => {
     if (typeof value !== "string") return;
     const name = value.trim();
-    if (name.length >= 2 && name.length <= 60 && !names.some((n) => n.toLowerCase() === name.toLowerCase())) names.push(name);
+    if (name.length >= 2 && name.length <= 60 && !names.some((n) => realmKey(n) === realmKey(name))) names.push(name);
   };
   if (db.lastScans && typeof db.lastScans === "object") Object.keys(db.lastScans).forEach(add);
   const records = db.records && typeof db.records === "object" ? Object.values(db.records as Record<string, unknown>) : [];
@@ -73,7 +76,7 @@ export function renderPricesAddon(realms: RealmPrices[]): { toc: string; lua: st
   ].join("\n");
   const rows = realms.map((r) => {
     const data = r.items.map((i) => [i[0], i[1] ?? "", i[2], i[3], i[4], i[5], i[6]].join(",")).join(";");
-    return `  [${luaString(r.realm.trim().toLowerCase())}] = { ["dataAsOf"] = ${luaString(r.dataAsOf ?? "")}, ` +
+    return `  [${luaString(realmKey(r.realm))}] = { ["dataAsOf"] = ${luaString(r.dataAsOf ?? "")}, ` +
       `["data"] = ${luaString(data)}, ["sum"] = ${adler32(data)} },`;
   });
   const lua = [
@@ -103,7 +106,7 @@ export async function refreshPrices(options: {
   const names: string[] = [];
   for (const file of options.svFiles) {
     for (const realm of readRealms(readFileSync(file, "utf8"))) {
-      if (!names.some((n) => n.toLowerCase() === realm.toLowerCase())) names.push(realm);
+      if (!names.some((n) => realmKey(n) === realmKey(realm))) names.push(realm);
     }
   }
   const realms: RealmPrices[] = [];

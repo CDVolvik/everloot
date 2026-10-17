@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { auctionSightingsFromRecords, handleAuctionHistory } from "../../../../../kb/src/auction-history";
 import {
-  HISTORY_DAYS, MARKET_RULE, formatCopper, itemMarket, marketPrices, marketRealms, realmMarket, type PublicDay,
+  HISTORY_DAYS, MARKET_RULE, formatCopper, itemMarket, marketRealms, realmMarket, realmName as nameOf, type PublicDay,
 } from "../../../../../kb/src/market";
 import { STORAGE_UNREACHABLE, uploadStore } from "@/lib/upload-store";
 import { dataAgeLabel } from "@/lib/data-age";
@@ -58,7 +58,7 @@ export default async function AuctionsPage(
   const now = new Date();
   const market = await uploadStore.loadMarket();
   const state = market.state;
-  const realmName = state && realm ? marketPrices(state, realm, now).realm : realm;
+  const realmName = state && realm ? nameOf(state, realm) : realm;
   const rows = state && realm && !itemId ? realmMarket(state, realm, now) : [];
   const item = state && realm && itemId ? itemMarket(state, realm, itemId, now) : null;
   const corpus = item ? await uploadStore.loadCorpus() : null;
@@ -96,9 +96,9 @@ export default async function AuctionsPage(
       {state && !realm && (
         <section className="space-y-2">
           <h2 className="font-display text-xl text-parchment-100">Realms with scans</h2>
-          {marketRealms(state).length === 0
-            ? <p className="text-sm text-parchment-100/70">No scans uploaded yet.</p>
-            : <ul className="text-sm space-y-1">{marketRealms(state).map((name) => (
+          {marketRealms(state, now).length === 0
+            ? <p className="text-sm text-parchment-100/70">No realm has public values yet. A realm is listed once 3 installs scanned the same item there.</p>
+            : <ul className="text-sm space-y-1">{marketRealms(state, now).map((name) => (
                 <li key={name}><Link href={`/tools/auctions?realm=${encodeURIComponent(name)}`} className="text-gold-400 hover:underline underline-offset-4">{name}</Link></li>
               ))}</ul>}
         </section>

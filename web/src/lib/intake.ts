@@ -147,8 +147,10 @@ export const auctionScan = base.extend({
   priceBasis: z.literal("unit").optional(),
 });
 
-const SCAN_COUNT = z.number().int().min(1).max(1_000_000);
-const SCAN_COPPER = z.number().int().nonnegative().max(2_000_000_000);
+// Whole-record validation: one out-of-range tuple would drop a part's 1,000 items, so any safe integer
+// passes. Troll listings far above 200k gold are real auction-house prices.
+const SCAN_COUNT = z.number().int().min(1).max(Number.MAX_SAFE_INTEGER);
+const SCAN_COPPER = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
 
 /**
  * One part of a full auction-house scan the player started (addon 0.3.0+). Each item is
