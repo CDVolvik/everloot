@@ -1,10 +1,4 @@
-Everloot
 Copyright (C) 2026 R21 Media Group, LLC and Everloot contributors
-
-Everloot is free software: you can redistribute it and/or modify it under the terms of the
-GNU Affero General Public License as published by the Free Software Foundation, version 3
-(AGPL-3.0-only). Data that Everloot publishes is licensed separately under CC BY-SA 4.0; see
-docs/DATA_POLICY.md. The Everloot name and logo are not covered; see TRADEMARKS.md.
 
                     GNU AFFERO GENERAL PUBLIC LICENSE
                        Version 3, 19 November 2007
@@ -667,3 +661,10 @@ specific requirements.
 if any, to sign a "copyright disclaimer" for the program, if necessary.
 For more information on this, and how to apply and follow the GNU AGPL, see
 <https://www.gnu.org/licenses/>.
+
+
+----------------------------------------------------------------------------------------------
+
+Everloot is licensed under the GNU Affero General Public License, version 3 only (AGPL-3.0-only).
+Data that Everloot publishes is licensed separately under CC BY-SA 4.0; see docs/DATA_POLICY.md.
+The Everloot name and logo are not covered by either licence; see TRADEMARKS.md.
