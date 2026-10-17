@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import ApiKeys from "@/components/ApiKeys";
 import Bracket from "@/components/Bracket";
+import { KEYS_MADE_PER_DAY, KEYS_PER_ACCOUNT, REVOKED_KEPT_DAYS, USAGE_KEPT_DAYS } from "@/lib/api-keys";
+import { ANON_PAGE, ANON_PER_HOUR, guardOn, KEY_PAGE, KEY_PER_HOUR } from "@/lib/data-guard";
 import { PUBLIC_RECORD_KINDS } from "@/lib/intake";
 import { CONNECT_EXAMPLES as ex, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR } from "./connect-data";
 
@@ -30,13 +33,15 @@ function Section({ id, title, children }: { id: string; title: string; children:
 const link = "text-accent hover:underline underline-offset-4";
 
 export default function ConnectPage() {
+  // Read at build time; turning the guard on in Vercel takes a redeploy, which rebuilds this page too.
+  const guard = guardOn();
   return (
     <article className="space-y-8 max-w-3xl">
       <header className="space-y-3">
         <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">Connect</h1>
         <p className="text-fg-2">
           Everloot&apos;s data is open. You don&apos;t need an account or a key to read it. There are rate limits, but no
-          sign-in wall. Build on it, and credit it.
+          sign-in wall. Build on it, and credit it.{guard && " Copying all of it in bulk takes a free key."}
         </p>
         <p className="text-sm text-muted">
           This page describes what is live today. Anything that is not built yet says so.
@@ -94,6 +99,7 @@ export default function ConnectPage() {
           </li>
           <li>Only POST requests count. GET and OPTIONS are not counted.</li>
           <li>Requests larger than 1 MiB are refused.</li>
+          {guard && <li>A <a href="#keys" className={link}>free key</a> raises the limit to {KEY_PER_HOUR.toLocaleString("en-US")} requests per hour.</li>}
           <li>
             Web pages in a browser can call it only from a short list of AI sites, such as chatgpt.com and claude.ai. Servers, scripts and desktop
             clients are not affected.
@@ -112,6 +118,7 @@ export default function ConnectPage() {
         <p className="text-fg-2">
           Or run the server over stdio, which clients such as Claude Desktop can launch themselves. Replace the paths
           with your clone&apos;s. The environment line lets the player-data tools read the public corpus below.
+          {guard && <> Add <code className="font-mono text-fg">EVERLOOT_API_KEY</code> with <a href="#keys" className={link}>your key</a> beside it, or the server stops at the anonymous limit.</>}
         </p>
         <Code label="MCP client config for a local stdio server">{ex.stdioConfig}</Code>
         <p className="text-sm text-muted">
@@ -125,10 +132,18 @@ export default function ConnectPage() {
           Everything players have uploaded that is public, as JSON. One URL, no key.
         </p>
         <Code label="Fetch loot and vendor records">{ex.corpusCurl}</Code>
-        <h3 className="font-semibold text-fg">Parameter</h3>
+        <h3 className="font-semibold text-fg">Parameters</h3>
         <p className="text-fg-2">
           <code className="font-mono text-fg">kinds</code> is optional: a comma-separated list of record kinds. Leave it
           out to get every kind. An unknown kind returns <code className="font-mono text-fg">400</code>.
+        </p>
+        <p className="text-fg-2">
+          <code className="font-mono text-fg">offset</code> and <code className="font-mono text-fg">limit</code> are
+          optional too, for paging. {guard
+            ? <>A page holds at most {ANON_PAGE} records without a key and {KEY_PAGE.toLocaleString("en-US")} with one. </>
+            : <>Leave them out to get every record in one response. </>}
+          When there are more records, <code className="font-mono text-fg">next</code> is the URL of the next page;
+          otherwise it is <code className="font-mono text-fg">null</code>.
         </p>
         <p className="text-fg-2 break-words">
           Kinds: <span className="font-mono text-sm text-fg">{PUBLIC_RECORD_KINDS.join(", ")}</span>.
@@ -153,17 +168,71 @@ export default function ConnectPage() {
             <code className="font-mono text-fg">ok: false</code>. That is not an empty corpus.
           </li>
         </ul>
+        {!guard && (
+          <p className="text-fg-2">
+            This endpoint has no limit of its own today. The response is not cached, but the snapshot behind it is updated about every
+            ten minutes, so asking more often gains nothing. If that changes, this page will say so.
+          </p>
+        )}
         <p className="text-fg-2">
-          This endpoint has no limit of its own today. The response is not cached, but the snapshot behind it is updated about every
-          ten minutes, so asking more often gains nothing. If that changes, this page will say so.
+          The public drop rates are at <code className="font-mono text-fg">/api/rollups/drops</code>, with the same
+          paging{guard ? " and limits" : ""}.
         </p>
+      </Section>
+
+      <Section id="keys" title="Limits and keys">
+        {guard ? (
+          <>
+            <ul className="list-disc pl-6 text-fg-2 space-y-1">
+              <li>
+                Asking questions needs no key. The MCP server and the market prices answer {REQUESTS_PER_HOUR} requests per
+                hour for each IP address, as before.
+              </li>
+              <li>
+                Copying in bulk does. Without a key, the corpus API and the drop list answer {ANON_PER_HOUR} requests per
+                hour for each IP address, {ANON_PAGE} records a page.
+              </li>
+              <li>
+                A free key raises that to {KEY_PER_HOUR.toLocaleString("en-US")} requests per hour for your account, across
+                all its keys and every endpoint, {KEY_PAGE.toLocaleString("en-US")} records a page. Send it as{" "}
+                <code className="font-mono text-fg">Authorization: Bearer &lt;key&gt;</code>.
+              </li>
+              <li>
+                Over a limit you get <code className="font-mono text-fg">429</code>, a{" "}
+                <code className="font-mono text-fg">retry-after</code> header and a message that points here.
+              </li>
+              <li>
+                A key belongs to your Battle.net account, and we count requests per key. That is how we know who copies the
+                data in bulk, so we can ask what they are building. You can hold {KEYS_PER_ACCOUNT} keys, make up
+                to {KEYS_MADE_PER_DAY} a day, and revoke or delete any of them here. We revoke a key that is used to
+                republish the data without credit.
+              </li>
+              <li>
+                We keep a key&apos;s daily request counts for {USAGE_KEPT_DAYS} days. A revoked key and its counts are deleted{" "}
+                {REVOKED_KEPT_DAYS} days after it was revoked, or at once when you delete it. To delete your account and
+                everything tied to it, write to{" "}
+                <a href="mailto:hello@everloot.app" className={link}>hello@everloot.app</a>.
+              </li>
+              <li>
+                The site&apos;s pages have none of these limits. Search engines and AI assistants are welcome to read and
+                quote them.
+              </li>
+            </ul>
+            <h3 className="font-semibold text-fg">Your keys</h3>
+            <ApiKeys />
+          </>
+        ) : (
+          <p className="text-fg-2">
+            Keys are not switched on yet, and nothing needs one. Before they are, this page will list the limits.
+          </p>
+        )}
       </Section>
 
       <Section id="files" title="Data files">
         <p className="text-fg-2">
           There is no bulk download yet. A full export of the published data is on the{" "}
           <a href={`${REPO}/blob/main/ROADMAP.md`} rel="noopener" className={link}>roadmap</a>, planned after launch. Until
-          then the corpus API is the way to get the data as files: save the response.
+          then the corpus API is the way to get the data as files: save the response{guard ? ", page by page, with a free key for the whole of it" : ""}.
         </p>
       </Section>
 
@@ -199,6 +268,14 @@ export default function ConnectPage() {
         <Code label="Credit line">{ex.credit}</Code>
         <p className="text-fg-2">
           Link it wherever the data appears. If you show lore text, credit the Warcraft Wiki as well, as each hit says.
+        </p>
+        <p className="text-fg-2">
+          Every answer carries the credit line, so it is hard to lose by accident. The JSON APIs have an{" "}
+          <code className="font-mono text-fg">attribution</code> field with the licence, the credit line and the page the
+          data comes from, and send the same in the <code className="font-mono text-fg">X-Everloot-Licence</code>,{" "}
+          <code className="font-mono text-fg">X-Everloot-Credit</code> and <code className="font-mono text-fg">Link</code>{" "}
+          headers. MCP answers built on player data end with the licence and credit. Republishing the data without it breaks the
+          licence.
         </p>
         <p className="text-sm text-muted">
           Where the data comes from and what we refuse to use:{" "}

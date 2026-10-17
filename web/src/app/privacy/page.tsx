@@ -57,6 +57,16 @@ export default function PrivacyPage() {
           addon records or establish guild officer authority.
         </li>
         <li>
+          <strong>API keys (optional):</strong> if you make a free API key on the
+          Connect page, we store a one-way hash of it, the last four characters,
+          your label, which account it belongs to, when it was made, last used
+          and revoked, and a daily count of its requests per endpoint. Not what
+          was asked. Revoking a key stops it at once. Daily counts are kept 90
+          days. A revoked key and its counts are deleted 30 days after it was
+          revoked, or at once when you delete it on the Connect page. To delete
+          your account and everything tied to it, email us (below).
+        </li>
+        <li>
           <strong>Uploads:</strong> files you send on the upload page
           (addon records plus a random install id — no account, no character
           login). Your anonymous observations are published as individual

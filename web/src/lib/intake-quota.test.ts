@@ -132,3 +132,25 @@ test("the reporter is a keyed 64-bit hash of the platform IP: stable, never the 
   // Without a trusted platform IP there is no reporter, never a guess from a spoofable header.
   expect(quota.reporter(request("spoofed"))).toBeUndefined();
 });
+
+test("an IPv6 caller is its /64: addresses in one /64 share every bucket, another /64 does not", async () => {
+  const fetch = vi.fn().mockImplementation(async () => new Response('[{"allowed":true,"retry_after":0}]'));
+  const quota = createIntakeQuota({ env, fetch });
+  await quota.request(request("2001:db8:1:2::1"));
+  await quota.request(request("2001:db8:1:2:ffff:abcd:1:9"));
+  await quota.request(request("2001:db8:1:3::1"));
+  const keys = fetch.mock.calls.map(([, init]) => JSON.parse(init.body).p_key);
+  expect(keys[0]).toBe(keys[1]);
+  expect(keys[2]).not.toBe(keys[0]);
+  // The market's one-voice-per-address rule counts the same /64 once.
+  expect(quota.reporter(request("2001:db8:1:2::1"))).toBe(quota.reporter(request("2001:db8:1:2:9::9")));
+});
+
+test("the /64 prefix is computed from any spelling, and IPv4-mapped addresses count as IPv4", async () => {
+  const { ipv6Subscriber } = await import("./intake-quota");
+  expect(ipv6Subscriber("2001:DB8:0:0:1::1")).toBe("2001:db8:0:0::/64");
+  expect(ipv6Subscriber("2001:db8::")).toBe("2001:db8:0:0::/64");
+  expect(ipv6Subscriber("::1")).toBe("0:0:0:0::/64");
+  expect(ipv6Subscriber("fe80:1:2:3:4:5:6:7")).toBe("fe80:1:2:3::/64");
+  expect(ipv6Subscriber("::ffff:203.0.113.5")).toBe("203.0.113.5");
+});

@@ -3,6 +3,25 @@ import { isIP } from "node:net";
 
 export interface QuotaResult { allowed: boolean; retryAfter: number }
 
+/**
+ * The identity of an IPv6 caller is its /64 prefix: one host or home is usually handed a whole /64,
+ * so counting full addresses would give it endless buckets (and votes). IPv4-mapped addresses count as
+ * their IPv4 address. Equivalent spellings give the same result.
+ */
+export function ipv6Subscriber(ip: string): string {
+  const host = new URL(`http://[${ip}]/`).hostname.slice(1, -1);
+  const mapped = /^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/.exec(host);
+  if (mapped) {
+    const [hi, lo] = [parseInt(mapped[1], 16), parseInt(mapped[2], 16)];
+    return [hi >> 8, hi & 255, lo >> 8, lo & 255].join(".");
+  }
+  const [head, tail = ""] = host.split("::");
+  const left = head ? head.split(":") : [];
+  const right = host.includes("::") ? (tail ? tail.split(":") : []) : [];
+  const groups = [...left, ...Array(8 - left.length - right.length).fill("0"), ...right];
+  return `${groups.slice(0, 4).map((g) => parseInt(g, 16).toString(16)).join(":")}::/64`;
+}
+
 /** Production admission is atomic in Postgres; the local adapter is only for development. */
 export function createIntakeQuota(opts: {
   env?: Record<string, string | undefined>;
@@ -17,7 +36,7 @@ export function createIntakeQuota(opts: {
   const secret = env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   const production = env.NODE_ENV === "production";
 
-  async function consume(scope: "request" | "install" | "mcp", value: string): Promise<QuotaResult> {
+  async function consume(scope: "request" | "install" | "mcp" | "api", value: string): Promise<QuotaResult> {
     if (url && secret) {
       const key = createHmac("sha256", secret).update(`${scope}:${value}`).digest("hex");
       const response = await doFetch(`${url.replace(/\/$/, "")}/rest/v1/rpc/consume_intake_quota`, {
@@ -38,6 +57,7 @@ export function createIntakeQuota(opts: {
     for (const [key, bucket] of local) if (bucket.resetAt <= time) local.delete(key);
     const limits: [string, number][] = scope === "request" ? [["global", 10000], [`ip:${value}`, 200]]
       : scope === "mcp" ? [["mcp_global", 5000], [`mcp:${value}`, 200]]
+      : scope === "api" ? [["api_global", 3000], [`api:${value}`, 30]]
       : [[`install:${value}`, 20]];
     const retryAfter = Math.max(0, ...limits.map(([key, limit]) => {
       const bucket = local.get(key);
@@ -57,8 +77,7 @@ export function createIntakeQuota(opts: {
     if (env.VERCEL !== "1") throw new Error("Trusted client IP is unavailable");
     const ip = req.headers.get("x-vercel-forwarded-for")?.trim() ?? "";
     if (!isIP(ip)) throw new Error("Trusted client IP is unavailable");
-    // Normalize equivalent IPv6 spellings before hashing.
-    return isIP(ip) === 6 ? new URL(`http://[${ip}]/`).hostname : ip;
+    return isIP(ip) === 6 ? ipv6Subscriber(ip) : ip;
   }
 
   return {
@@ -94,6 +113,13 @@ export function createIntakeQuota(opts: {
       } catch {
         return undefined;
       }
+    },
+    /**
+     * Anonymous bulk reads (the corpus feed and the drop list): their own hourly global and per-IP
+     * buckets, only used when EVERLOOT_DATA_GUARD=1, after 20261019120000_data_guard.sql is applied.
+     */
+    async api(req: Request) {
+      return consume("api", clientIp(req));
     },
     install(installId: string) { return consume("install", installId); },
     async prune() {

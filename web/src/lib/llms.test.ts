@@ -48,3 +48,18 @@ test("the routes answer as plain text", async () => {
     expect((await res.text()).startsWith("# Everloot")).toBe(true);
   }
 });
+
+test("AI assistants are pointed at the MCP server for questions, and the raw corpus is described as bulk data", () => {
+  const text = llmsTxt();
+  const section = text.slice(text.indexOf("## For AI assistants and developers"));
+  expect(section.indexOf("/mcp/public")).toBeLessThan(section.indexOf("/api/corpus/public"));
+  expect(section).toContain("the way for an AI assistant to answer a question");
+  expect(section).toContain("to answer a question, use the MCP server");
+});
+
+test("llms.txt and llms-full.txt carry the licence and credit headers", () => {
+  for (const res of [llms(), llmsFull()]) {
+    expect(res.headers.get("x-everloot-licence")).toBe("CC BY-SA 4.0");
+    expect(res.headers.get("x-everloot-credit")).toBe("Data from Everloot (https://everloot.app), CC BY-SA 4.0.");
+  }
+});
