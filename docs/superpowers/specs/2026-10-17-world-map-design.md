@@ -8,42 +8,42 @@
 
 Spawn pins today sit on one zone at a time. Players think in the whole world: where is that rare
 from here, which flight gets me closer, which dungeon is on the way. One continuous map, built from
-open data and our own observations, answers that, and nobody else has it for WoW: Forever on the web.
+the game files and our own observations, answers that, and nobody else has it for WoW: Forever on the web.
 
 ## Sources
 
+Other projects are reference and cross-checks only. Nothing third-party ships: no imported dataset and no
+third-party credit on the page. Everything on the map is read by us.
+
 | Data | From | Licence | Use |
 |---|---|---|---|
-| Dungeon and raid entrances, level ranges, bosses, boats and zeppelins | OpenMap `Data/Places.lua` | MIT (OpenMap contributors; the positions are game data used as facts) | Published, credited |
-| Flight masters and flight paths | OpenMap `Data/FlightData.lua` | MIT (same) | Published, credited |
-| Zone level ranges | OpenMap `Data/Levels.lua` | Taken from the Warcraft Wiki, CC BY-SA 4.0 | Published, credited to both |
-| Zone rectangles in world units | Our addon (`map_bounds`) | CC BY-SA 4.0 | Published |
+| Zone rectangles in world units, continents | Game files: `UiMap`, `UiMapAssignment` (our `client-extract` path) | Blizzard's data, found in game files, unconfirmed | Published as a marked layer (`web/src/data/game-data/map.json`), with the build |
+| Dungeon and raid entrances | Game files: `Map` (`Corpse` position: where a ghost returns) | Same | Same |
+| Zone rectangles seen in play | Our addon (`map_bounds`) | CC BY-SA 4.0 | Cross-check only: names zones where 3 agreeing installs differ from the files |
 | NPC pins | Our corroborated sightings | CC BY-SA 4.0 | Published, as today |
 
-OpenMap's map art, minimap tiles and dungeon map tiles are Blizzard's and are not used. The site
-draws its own map: zone rectangles as parchment-toned shapes with names, no game art.
-
-The importer reads the fitzforge mirror of OpenMap at a pinned commit (`849bac4`, v0.4.0-beta), parses the Lua tables, and
-records the source in `docs/sources/LEDGER.md` and `THIRD_PARTY.md` with the MIT notice.
+Not available in the tables of build 1.60.1.70450: level ranges (only a content tuning id), boat and
+zeppelin routes, flight paths. They stay off the map until a table gives them. Zones added after the
+original world (`UiMap` ids above 1458) are held back as possibly unreleased. The site draws its own
+map: zone rectangles as shapes with names, no game art.
 
 ## What gets built
 
-- `kb/src/importers/openmap.ts`: parses the three files at the pinned commit into rows of a new
-  publishable source `openmap` (kinds `instance_entrance`, `flight_node`, `flight_path`,
-  `transport`, `zone_levels`). Tests use small fixture copies of each file.
-- `kb/src/world-map.ts`: joins zone rectangles, OpenMap places and corroborated pins into one
-  payload per continent (Eastern Kingdoms, Kalimdor), with every item carrying its source.
+- `kb/src/world-map-data.ts`: reads the map tables out of a client snapshot into `web/src/data/game-data/map.json`
+  (`npm run kb -- client-map`), with the build stamp. Tests use synthetic rows.
+- `kb/src/world-coords.ts`: converts zone x/y to world yards and to the stitched continent map, and back;
+  later it joins corroborated pins to the same frame, with every item carrying its source.
 - `/map` on the site: a pan-and-zoom SVG of a continent with layers (zones, dungeons, flights,
   boats, NPC pins), a level filter, and a link from each NPC and dungeon to its page. It works
   with keyboard and screen readers (a list view of the same layer beside the map).
 - An MCP tool `world_map_near` for "what is near this place": the nearest dungeons, flight
   masters and corroborated NPCs to a zone and point.
 
-## Until zone bounds are corroborated
+## Zones from the files, installs as a check
 
-The map shows OpenMap's world-placed items (dungeons, flights, boats) from day one; zones and NPC
-pins appear as their bounds reach three agreeing installs. The page says which zones are still
-waiting.
+Every zone is placed from day one, exactly, from the game files. Our installs do not gate placement;
+where 3 agreeing installs report corners that differ from the files, the page names the zone and calls
+its outline unconfirmed. NPC pins appear as their sightings reach three agreeing installs.
 
 ## Out of scope
 
