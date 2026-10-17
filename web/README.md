@@ -25,7 +25,7 @@ Planned at the start (some of it is now built):
 ## Run locally
 
 ```bash
-cd projects/everloot/web
+cd web
 npm install
 npm run dev
 # http://localhost:3000

@@ -64,7 +64,7 @@
 - Consumes: Task 1 output.
 - Produces: the ledger's `published data` rows, which Task 9 summarizes in `THIRD_PARTY.md`.
 
-- [ ] **Step 1: Gather inputs** and keep the raw lists out of the repository (scratch in the Brain):
+- [ ] **Step 1: Gather inputs** and keep the raw lists out of the repository (scratch in the maintainer's notes):
   - `docs/sources/source-catalog.md`, `docs/references.md`, every spec under `docs/superpowers/specs`.
   - Everloot research notes in the maintainer's notes (pages that mention Everloot, Forever, Polestar or WoW data).
   - Carlos's WoW-related GitHub stars: `gh api user/starred --paginate --jq '.[] | [.full_name, .license.spdx_id // "none", .description] | @tsv'`, filtered to WoW, Warcraft, addon or Forever.
@@ -84,7 +84,7 @@
 - Modify: `.github/workflows/checks.yml` (two new steps)
 - Modify: `README.md` (one maintainer line; the full rewrite is Task 13)
 
-- [ ] **Step 1: Copy, then confirm the copies:** for each moved file, `cmp` the copy in the Brain against the repository version. Expected: identical.
+- [ ] **Step 1: Copy, then confirm the copies:** for each moved file, `cmp` the copy in the maintainer's notes against the repository version. Expected: identical.
 - [ ] **Step 2: Remove** them with `git rm`.
 - [ ] **Step 3: Rewrite each matching line** in kept files generically: "the maintainer's secrets store", "the maintainer's notes", "a local data folder". Keep the sentence's meaning.
 - [ ] **Step 4: Add to `checks.yml`:**
@@ -241,7 +241,7 @@
 
 ### Task 15: Pre-flip check
 
-Run after PRs a, b and c are merged and production is verified. Record the results in the Brain status file and report them to Carlos.
+Run after PRs a, b and c are merged and production is verified. Record the results in the maintainer's status file and report them to Carlos.
 
 - [ ] **Step 1:** `gitleaks git --redact --log-opts=--all .`. Expected: no leaks.
 - [ ] **Step 2:** `audit-sources` (Task 1) on every built release, plus the release named by `EVERLOOT_KB_RELEASE_KEY` if one was published since. Expected: exit 0.

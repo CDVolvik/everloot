@@ -63,7 +63,7 @@ generically ("the maintainer's secrets store").
 identifiers in history (the Supabase project ref, the R2 bucket name) become visible; they are not
 credentials.
 
-**Handoffs:** agents read and write Everloot status in the Brain from now on. The repository README
+**Handoffs:** agents read and write Everloot status in the maintainer's notes from now on. The repository README
 tells maintainers where it lives without naming private paths.
 
 ### Provenance audit
@@ -80,7 +80,7 @@ on record. The audit produces `docs/sources/LEDGER.md`, one row per source:
 | In releases | Whether any of its data is in a knowledge release or the public corpus |
 
 **Inputs to reconcile:** `docs/sources/source-catalog.md`, `docs/references.md`, the specs, the
-Everloot research notes in the Brain, Carlos's GitHub stars related to WoW, every URL cited in code
+Everloot research notes in the maintainer's notes, Carlos's GitHub stars related to WoW, every URL cited in code
 and curated entries, and the importers and fetchers in code and in history.
 
 **Checks the audit runs and records:**
