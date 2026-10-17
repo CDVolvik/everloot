@@ -50,7 +50,7 @@ export default async function DatabasePage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {counts.map((c) => (
           <div key={c.label} className="rounded-xl border border-line bg-panel p-5 text-center">
-            <div className="text-3xl font-bold text-accent">{stats.unreachable ? "unrecorded" : c.value}</div>
+            <div className={`${stats.unreachable ? "text-xl" : "text-3xl"} font-bold text-accent`}>{stats.unreachable ? "unrecorded" : c.value}</div>
             <div className="mt-1 text-xs font-mono text-muted">{c.label}</div>
           </div>
         ))}
