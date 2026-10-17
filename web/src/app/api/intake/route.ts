@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
-import { parseUpload, type CanonicalUpload } from "@/lib/intake";
+import { COMPLETION_CATALOG_KINDS, parseUpload, type CanonicalUpload } from "@/lib/intake";
 import { uploadStore, sharingStore } from "@/lib/upload-store";
 import { intakeQuota, type QuotaResult } from "@/lib/intake-quota";
 import { recordUsage } from "@/lib/usage-metrics";
@@ -108,8 +108,9 @@ export async function POST(req: Request) {
   const installDenied = await admission(() => intakeQuota.install(installId));
   if (installDenied) return installDenied;
   const uploadId = randomUUID();
-  // The market counts installs behind one address once; only a keyed hash of the address is kept.
-  if (upload.records.some((r) => r.kind === "auction_snapshot")) {
+  // The market and the completion lists count installs behind one address once; only a keyed hash of the
+  // address is kept, in the private upload object, and it is never published.
+  if (upload.records.some((r) => r.kind === "auction_snapshot" || COMPLETION_CATALOG_KINDS.includes(r.kind))) {
     const reporter = intakeQuota.reporter(req);
     if (reporter) upload.reporter = reporter;
   }

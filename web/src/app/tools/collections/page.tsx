@@ -33,7 +33,7 @@ export default async function CollectionsPage(
   const answer = corpus.unreachable
     ? STORAGE_UNREACHABLE
     : handleCollectionGap({ collection, ownerInstallId: install }, collectionFactsFromRecords(corpus.records));
-  const completion = install.trim() ? await loadCompletion() : null;
+  const completion = install.trim() ? await loadCompletion(install) : null;
   const progress = completion ? completionProgress(install, character, completion.facts) : null;
   const completionDown = install.trim() !== "" && completion === null;
 

@@ -120,3 +120,14 @@ test("without an install the page does not read the completion rollup", async ()
   await render({ collection: "Mounts" });
   expect(store.loadCompletion).not.toHaveBeenCalled();
 });
+
+test("when older characters gave way the page says so, instead of acting as if they never uploaded", async () => {
+  const keys = Array.from({ length: 9 }, (_, i) => `0000000${i}`);
+  const state = foldCompletion(emptyCompletion(), keys.map((characterKey, i) => ({
+    records: [{ ...mine({ kind: "title_owned", titleIds: [4] }), characterKey, capturedAt: `2026-10-0${i + 1}T00:00:00Z` }], grants: [hash],
+  })));
+  store.loadCompletion.mockResolvedValue({ state, dataAsOf: null });
+  const html = await render({ install: "owner-install" });
+  expect(html).toContain("1 older character is no longer kept for this install");
+  expect(html).not.toContain("key 00000000");
+});

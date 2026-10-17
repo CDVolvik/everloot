@@ -1,7 +1,8 @@
 import { expect, test } from "vitest";
 import { completionProgress, handleCompletionProgress } from "../src/completion.js";
 import {
-  agreedCatalog, authorizedOwners, completionFactsFromRecords, completionFactsOf, emptyCompletion, foldCompletion,
+  agreedCatalog, authorizedOwners, COMPLETION_LIMITS, completionFactsFromRecords, completionFactsOf, emptyCompletion, foldCompletion,
+  trimCompletion,
 } from "../src/completion-rollup.js";
 import { answerCompletionProgress, COMPLETION_UNSET } from "../src/mcp-server.js";
 import { sharingCategory, type PublicationGrant } from "../src/publication.js";
@@ -144,8 +145,9 @@ test("no completion row reaches the corpus or the public corpus API, granted or 
 
 // --- the rollup: agreement, who may see owned rows, and its size ------------------------------------
 
-const fold = (uploads: { records: unknown[]; grants?: string[] }[]) =>
-  foldCompletion(emptyCompletion(), uploads.map((u) => ({ records: u.records, grants: u.grants ?? [] })));
+type Upload = { records: unknown[]; grants?: string[]; reporter?: string; receivedAt?: string };
+const fold = (uploads: Upload[], state = emptyCompletion()) =>
+  foldCompletion(state, uploads.map((u) => ({ records: u.records, grants: u.grants ?? [], reporter: u.reporter, receivedAt: u.receivedAt })));
 
 test("a catalog entry is listed only once 3 different installs reported it identically", () => {
   const entry = { kind: "title_catalog", titleId: 6, name: "Sergeant" };
@@ -200,7 +202,7 @@ test("the rollup keeps the latest row per character and id: re-uploads do not gr
   expect(c.achievements.get(2)?.criteriaMet).toBe(9);
   expect(c.factions.get(69)?.standing).toBe(8009);
   expect([...c.quests]).toEqual([7, 8]);
-  for (const variants of Object.values(many.catalog.a)) for (const v of variants) expect(v.installs.length).toBeLessThanOrEqual(3);
+  for (const variants of Object.values(many.catalog.a)) for (const v of variants) expect(v.v.length).toBeLessThanOrEqual(COMPLETION_LIMITS.sample);
 });
 
 test("the MCP tool reads the rollup, never the corpus, and says when it is not connected", async () => {
@@ -212,7 +214,142 @@ test("the MCP tool reads the rollup, never the corpus, and says when it is not c
   const text = await answerCompletionProgress({ ownerInstallId: OWNER }, async () => ({ facts: completionFactsFromRecords(twoReporters), dataAsOf: null }));
   expect(text).toContain("Lists unrecorded");
   expect(text).not.toContain("Ten Quests");
-  const full = await answerCompletionProgress({ ownerInstallId: OWNER }, async () => ({ facts: facts(), dataAsOf: "2026-10-19T06:30:00.000Z" }));
+  const asked: string[] = [];
+  const full = await answerCompletionProgress({ ownerInstallId: ` ${OWNER} ` }, async (install) => { asked.push(install); return { facts: facts(), dataAsOf: "2026-10-19T06:30:00.000Z" }; });
+  expect(asked).toEqual([OWNER]);
   expect(full).toContain("Ten Quests (Quests): 8 of 10 criteria");
   expect(full).toContain("Data as of 2026-10-19 06:30 UTC");
+});
+
+// --- votes by address, support past 3, and junk that cannot block or freeze ----------------------------
+
+const sergeant = { kind: "title_catalog", titleId: 6, name: "Sergeant" };
+const vote = (install: string, reporter: string | undefined, fields: Record<string, unknown> = sergeant, receivedAt = at(5)): Upload =>
+  ({ records: [row(install, fields)], reporter, receivedAt });
+
+test("three installs behind one upload address are one voice; three addresses agree", () => {
+  const oneAddress = fold(["a-install", "b-install", "c-install"].map((id) => vote(id, "0000000000000001")));
+  expect(agreedCatalog(oneAddress).titles.size).toBe(0);
+  const three = fold(["a-install", "b-install", "c-install"].map((id, i) => vote(id, `000000000000000${i + 1}`)));
+  expect(agreedCatalog(three).titles.get(6)?.name).toBe("Sergeant");
+});
+
+test("the most supported content wins past 3, then the most recently seen, not the first alphabetically", () => {
+  const voters = (n: number, from: number) => Array.from({ length: n }, (_, i) => `voter-${String(from + i).padStart(4, "0")}`);
+  const state = fold([
+    ...voters(3, 0).map((id) => vote(id, undefined, { ...sergeant, name: "Aaa" })),
+    ...voters(5, 10).map((id) => vote(id, undefined, { ...sergeant, name: "Zzz" })),
+  ]);
+  expect(agreedCatalog(state).titles.get(6)?.name).toBe("Zzz");
+  const tie = fold([
+    ...voters(3, 0).map((id) => vote(id, undefined, { ...sergeant, name: "Aaa" }, at(1))),
+    ...voters(3, 10).map((id) => vote(id, undefined, { ...sergeant, name: "Zzz" }, at(4))),
+  ]);
+  expect(agreedCatalog(tie).titles.get(6)?.name).toBe("Zzz");
+  // Supporters are counted past 3, up to the sample.
+  const many = fold(voters(40, 100).map((id) => vote(id, undefined)));
+  expect(many.catalog.t["6"][0].v).toHaveLength(COMPLETION_LIMITS.sample);
+});
+
+test("junk contents cannot hold an entry's slots: 10 real voters arriving after them are listed", () => {
+  const junk = ["J1", "J2", "J3"].map((name, i) => vote(`junk-${i}-install`, `00000000000000a${i}`, { ...sergeant, name }, at(1)));
+  const real = Array.from({ length: 10 }, (_, i) => vote(`real-${i}-install`, `00000000000001${String(i).padStart(2, "0")}`, sergeant, at(2)));
+  const state = fold([...junk, ...real]);
+  expect(agreedCatalog(state).titles.get(6)?.name).toBe("Sergeant");
+  // More junk later evicts the least supported content, never the listed one.
+  fold(["J4", "J5", "J6"].map((name, i) => vote(`junk-${i + 3}-install`, `00000000000000b${i}`, { ...sergeant, name }, at(3))), state);
+  expect(agreedCatalog(state).titles.get(6)?.name).toBe("Sergeant");
+  expect(state.catalog.t["6"].length).toBeLessThanOrEqual(COMPLETION_LIMITS.variantsPerId);
+});
+
+test("one address flooding junk ids is capped, and the rollup stays small", () => {
+  const flood = (n: number): Upload => ({
+    reporter: "00000000000000ff", receivedAt: at(5),
+    records: Array.from({ length: 2000 }, (_, i) => row(`fake-${n}-install`, {
+      kind: "achievement_catalog", achievementId: 100000 + n * 2000 + i, name: `Junk ${n} ${i} ${"x".repeat(100)}`, categoryId: 1,
+      category: "Junk", points: 10, criteriaCount: 20, criteria: Array.from({ length: 20 }, (_, c) => ({ text: "y".repeat(120), required: c })),
+    })),
+  });
+  // 10 uploads of 2000 new ids from one address: five times what one voter may hold unconfirmed.
+  const state = fold(Array.from({ length: 10 }, (_, n) => flood(n)));
+  expect(Object.keys(state.catalog.a).length).toBeLessThanOrEqual(COMPLETION_LIMITS.openPerVoter);
+  // Criteria text is not part of what is agreed or kept.
+  expect(JSON.stringify(state).length).toBeLessThan(2_000_000);
+  // A real entry from three other addresses still gets in and is listed.
+  fold(["r1", "r2", "r3"].map((id, i) => vote(`${id}-install`, `000000000000010${i}`)), state);
+  expect(agreedCatalog(state).titles.get(6)?.name).toBe("Sergeant");
+}, 30_000);
+
+test("near its size limit the rollup trims unconfirmed contents, then ungranted progress, and never refuses", () => {
+  const state = fold([
+    ...["r1", "r2", "r3"].map((id, i) => vote(`${id}-install`, `000000000000020${i}`)),
+    { records: [...catalog, ...progress], grants: [hash], receivedAt: at(3) },
+    { records: [owned({ kind: "quest_owned", questIds: Array.from({ length: 200 }, (_, i) => i + 1) }, at(1), "eeeeeeee")].map((r) => ({ ...r, installId: "stale-install" })), receivedAt: at(1) },
+    ...Array.from({ length: 40 }, (_, n): Upload => ({
+      reporter: `0000000000003${String(n).padStart(3, "0")}`, receivedAt: at(1),
+      records: Array.from({ length: 50 }, (_, i) => row(`junk-${n}-install`, { kind: "title_catalog", titleId: 1000 + n * 50 + i, name: `Junk title ${n} ${i}` })),
+    })),
+  ]);
+  const size = JSON.stringify(state).length;
+  // First the contents nobody confirmed: all characters stay.
+  const first = trimCompletion(state, Math.floor(size / 2), new Set([OWNER]));
+  expect(first.size).toBeLessThanOrEqual(size / 2 * 0.9);
+  expect(first).toMatchObject({ characters: 0 });
+  expect(first.variants).toBeGreaterThan(0);
+  expect(agreedCatalog(state).titles.get(6)?.name).toBe("Sergeant");
+  expect(Object.keys(state.owned["stale-install"].characters)).toEqual(["eeeeeeee"]);
+  // With nothing unconfirmed left to drop, progress of installs without a live grant goes before the granted owner's.
+  const stale = ["e0000001", "e0000002", "e0000003", "e0000004"].map((key, i) =>
+    ({ ...owned({ kind: "quest_owned", questIds: Array.from({ length: 200 }, (_, q) => q + 1) }, at(i + 1), key), installId: "stale-install" }));
+  const lean = fold([
+    ...["r1", "r2", "r3"].map((id, i) => vote(`${id}-install`, `000000000000020${i}`)),
+    { records: [...catalog, ...progress], grants: [hash], receivedAt: at(3) },
+    { records: stale, receivedAt: at(5) },
+  ]);
+  const second = trimCompletion(lean, Math.floor(JSON.stringify(lean).length * 0.7), new Set([OWNER]));
+  expect(second).toMatchObject({ variants: 0 });
+  expect(second.characters).toBeGreaterThan(0);
+  expect(lean.owned["stale-install"].dropped).toBe(second.characters);
+  expect(Object.keys(lean.owned[OWNER].characters)).toEqual([KEY]);
+  expect(agreedCatalog(lean).titles.get(6)?.name).toBe("Sergeant");
+  // Under the threshold nothing is dropped.
+  expect(trimCompletion(state, 100_000_000, null)).toMatchObject({ variants: 0, characters: 0 });
+});
+
+// --- characters, grants, capture time, and reading one install ------------------------------------------
+
+test("a ninth character replaces the one seen longest ago, and the answer says characters were dropped", () => {
+  const keys = Array.from({ length: 9 }, (_, i) => `0000000${i}`);
+  const state = fold(keys.map((key, i) => ({ records: [owned({ kind: "title_owned", titleIds: [4] }, at(i + 1), key)], grants: [hash], receivedAt: at(20) })));
+  expect(Object.keys(state.owned[OWNER].characters).sort()).toEqual(keys.slice(1));
+  const facts = completionFactsOf(state, "all", OWNER);
+  const p = completionProgress(OWNER, undefined, facts);
+  expect(p.droppedCharacters).toBe(1);
+  expect(handleCompletionProgress({ ownerInstallId: OWNER }, facts)).toContain("1 older character is no longer kept");
+});
+
+test("grants are kept in upload order, the newest 8", () => {
+  const grants = Array.from({ length: 10 }, (_, i) => String(i).repeat(64).slice(0, 64));
+  const state = fold(grants.map((g, i) => ({ records: [owned({ kind: "title_owned", titleIds: [4] }, at(i + 1))], grants: [g] })));
+  expect(state.owned[OWNER].grants).toEqual(grants.slice(2));
+  // The grant used most recently stays even if it sorts first.
+  fold([{ records: [owned({ kind: "title_owned", titleIds: [5] }, at(15))], grants: [grants[2]] }], state);
+  expect(state.owned[OWNER].grants.at(-1)).toBe(grants[2]);
+});
+
+test("a capture time later than the upload's arrival is clamped, so a future clock cannot pin a row", () => {
+  const future = owned({ kind: "reputation_owned", factionId: 69, reaction: 5, standing: 9999, floor: 3000, ceiling: 9000 }, "2099-01-01T00:00:00Z");
+  const state = fold([{ records: [future], receivedAt: at(2) }]);
+  expect(state.owned[OWNER].characters[KEY].at).toBe(new Date(at(2)).toISOString());
+  fold([{ records: [owned({ kind: "reputation_owned", factionId: 69, reaction: 5, standing: 8600, floor: 3000, ceiling: 9000 }, at(3))], receivedAt: at(3) }], state);
+  expect(completionFactsOf(state, "all").owned[0].factions.get(69)?.standing).toBe(8600);
+});
+
+test("a page asking about one install checks and builds only that install", () => {
+  const other = progress.map((r) => ({ ...r, installId: "other-install", eventId: `o:${++seq}` }));
+  const state = fold([{ records: [...catalog, ...progress, ...other], grants: [hash] }]);
+  const authority = { grants: [grant, { ...grant, installId: "other-install" }], suppressions: [] };
+  expect([...authorizedOwners(state, authority, now, OWNER)]).toEqual([OWNER]);
+  expect([...authorizedOwners(state, authority, now, "missing-install")]).toEqual([]);
+  expect(completionFactsOf(state, "all", OWNER).owned.map((c) => c.installId)).toEqual([OWNER]);
 });

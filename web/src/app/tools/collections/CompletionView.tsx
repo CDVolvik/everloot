@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { ANOTHER_CHARACTER_NOTE, COMPLETION_AGREEMENT, completionEmptyState, type CharacterProgress, type CompletionProgress } from "../../../../../kb/src/completion";
+import { ANOTHER_CHARACTER_NOTE, COMPLETION_AGREEMENT, completionEmptyState, droppedCharactersNote, type CharacterProgress, type CompletionProgress } from "../../../../../kb/src/completion";
 
 const pct = (done: number, total: number) => (total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0);
 
@@ -85,9 +85,11 @@ export default function CompletionView({ progress }: { progress: CompletionProgr
     );
   }
   const empty = completionEmptyState(progress);
+  const dropped = droppedCharactersNote(progress);
   if (empty) {
     return (
       <div className="rounded-xl border border-line bg-panel p-5 space-y-2" role="status">
+        {dropped && <p className="text-sm text-fg-2">{dropped}</p>}
         <p className="text-sm text-fg">{empty}</p>
         <p className="text-xs text-muted">The addon&apos;s completion tracker is opt-in and its progress stays in your file until you upload it with the collection choice ticked.</p>
       </div>
@@ -99,10 +101,11 @@ export default function CompletionView({ progress }: { progress: CompletionProgr
     <div className="space-y-4">
       {nothingListed && (
         <p className="text-sm text-fg-2" role="status">
-          No list is public yet: an entry appears when {COMPLETION_AGREEMENT} installs report the same achievement, faction, title or chain.
+          No list is public yet: an entry appears when {COMPLETION_AGREEMENT} players (installs uploading from different addresses) report the same achievement, faction, title or chain.
           Totals read 0 until then, which is unrecorded, not a measured zero.
         </p>
       )}
+      {dropped && <p className="text-sm text-fg-2" role="status">{dropped}</p>}
       {progress.characters.map((c) => <Character key={c.characterKey} c={c} />)}
       <p className="text-xs text-muted">{ANOTHER_CHARACTER_NOTE}</p>
     </div>

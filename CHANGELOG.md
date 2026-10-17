@@ -23,8 +23,8 @@ tagged release.
   `C_QuestLine`), in chunks across frames, waits out combat and never acts: no tracking, no expanding
   headers, no window changes. A missing call records nothing for that part and `/everloot status` names it.
 - Eight intake kinds. Catalog rows (`achievement_catalog`, `reputation_catalog`, `title_catalog`,
-  `quest_chain_catalog`) are game facts with no player data, listed on the site after 3 installs report the
-  same entry. Owned rows (`achievement_owned`, `reputation_owned`, `title_owned`, `quest_owned`) are one
+  `quest_chain_catalog`) are game facts with no player data, listed on the site after 3 reporters (distinct
+  upload addresses) report the same entry. Owned rows (`achievement_owned`, `reputation_owned`, `title_owned`, `quest_owned`) are one
   character's progress under an opaque key, not the name. They are named data in the collection sharing
   category, like `collection_owned`. A changed achievement or standing replaces its earlier row, so the
   file does not grow with each point of reputation, and the module's rows have hard caps reported in

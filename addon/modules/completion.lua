@@ -4,7 +4,7 @@
 -- Two kinds of rows, both read from the game's own calls and never written back:
 --   catalog rows  achievement_catalog, reputation_catalog, title_catalog, quest_chain_catalog:
 --                 ids, names, criteria text, standing headers, quest ids. They reflect what this
---                 character's windows list, so the site shows an entry only after 3 installs report it
+--                 character's windows list, so the site shows an entry only after 3 upload addresses report it
 --                 identically and never serves the raw rows.
 --   owned rows    achievement_owned, reputation_owned, title_owned, quest_owned: this character's own
 --                 progress, under an opaque 8-digit key (not the name). Shown on the site only from the
@@ -40,7 +40,8 @@ local MAX_TITLES = 5000
 local MAX_FACTIONS = 600
 local MAX_IDS_PER_ROW = 200
 local MAX_CHAINS_PER_PASS = 400
-local MAX_PENDING = 4000
+local MAX_PENDING = 1000
+local FORGET_CHARACTER_SECONDS = 90 * 24 * 60 * 60  -- seen state of a character not seen for this long is dropped
 local MAX_ID = 2000000000
 
 --- Limits on what this module keeps in the file. A test lowers them.
@@ -205,6 +206,11 @@ local function weigh(value)
   return 8
 end
 
+-- What E:Store adds to every row: its event id and the time it was logged.
+local STORED_FIELDS = weigh({ eventId = string.rep("0", 48), kindLoggedAt = "2026-01-01T00:00:00Z" }) - 16
+-- One remembered title or quest id in the seen state ([id] = true).
+local SEEN_ID = 16
+
 local function newContext()
   return { dead = {}, index = {}, capped = {}, stats = {}, count = {}, bytes = 0, bytesCounted = false }
 end
@@ -233,12 +239,14 @@ local function indexOf(ctx, kind)
   return index
 end
 
+--- Everything this module keeps in the file: its rows and its seen state.
 local function countBytes(ctx)
   if ctx.bytesCounted then return end
   ctx.bytesCounted = true
   for _, kind in ipairs(KINDS) do
     for _, row in ipairs(EverlootDB.records[kind] or {}) do ctx.bytes = ctx.bytes + weigh(row) end
   end
+  if type(EverlootDB.completionSeen) == "table" then ctx.bytes = ctx.bytes + weigh(EverlootDB.completionSeen) end
 end
 
 --- Drop a row from the file now (a replacement made at capacity needs the room first).
@@ -262,10 +270,10 @@ local function put(ctx, kind, row)
     local count = (ctx.count[kind] or {})[row.characterKey] or 0
     if count >= C.Limits.perCharacter then ctx.capped[kind .. " (per character)"] = true; return false end
   end
-  local delta = weigh(row) - (old and weigh(old) or 0)
-  if delta > 0 and ctx.bytes + delta > C.Limits.bytes then ctx.full = true; return false end
   row.installId = EverlootDB.installId
   row.capturedAt = date("!%Y-%m-%dT%H:%M:%SZ")
+  local delta = weigh(row) + STORED_FIELDS - (old and weigh(old) or 0)
+  if delta > 0 and ctx.bytes + delta > C.Limits.bytes then ctx.full = true; return false end
   local store = EverlootDB.records[kind] or {}
   -- A replacement at capacity removes the old row first, so the room it needs is there.
   if old and #store >= C.Limits.rows then removeNow(kind, old); old = nil end
@@ -288,10 +296,11 @@ end
 local function putAddition(ctx, kind, row)
   if ctx.capped[kind] or ctx.full then return false end
   countBytes(ctx)
-  local delta = weigh(row)
-  if ctx.bytes + delta > C.Limits.bytes then ctx.full = true; return false end
   row.installId = EverlootDB.installId
   row.capturedAt = date("!%Y-%m-%dT%H:%M:%SZ")
+  -- The ids it carries are also remembered in the seen state.
+  local delta = weigh(row) + STORED_FIELDS + #(row.titleIds or row.questIds or {}) * SEEN_ID
+  if ctx.bytes + delta > C.Limits.bytes then ctx.full = true; return false end
   if not E:Store(kind, row, C.Limits.rows) then ctx.capped[kind] = true; return false end
   ctx.bytes = ctx.bytes + delta
   return true
@@ -340,7 +349,12 @@ local function readAchievements(ctx, own, identity, spend)
       local category, parentCategory = categoryNames(categoryId, names)
       spend(1)
       for index = 1, count do
-        if total >= C.Limits.achievements then stat(ctx, "achievement_stopped"); return end
+        if total >= C.Limits.achievements then
+          -- Stopped at the limit is as far as a read goes: it counts as done, so a login does not start it again.
+          stat(ctx, "achievement_stopped")
+          ctx.achievementsDone = true
+          return
+        end
         local id, name, points, completed, month, day, year, _, _, _, _, isGuild, byMe = call("GetAchievementInfo", categoryId, index)
         spend(1)
         name = plain(name, 120)
@@ -521,8 +535,30 @@ end
 -- ---------------------------------------------------------------------------------------------
 -- Scheduling
 
-local state = { running = false, again = false, pending = false, epoch = 0, combat = false, waiting = false, dirty = {}, ready = {}, missing = {}, last = nil }
+local state = { running = false, again = false, pending = false, epoch = 0, combat = false, waiting = false, started = false,
+  warned = {}, dirty = {}, ready = {}, missing = {}, last = nil }
 C.State = state
+
+--- Say in chat, once per session, that a limit stopped recording. The status note repeats it until the next /reload.
+local function warn(name, text)
+  if state.warned[name] then return end
+  state.warned[name] = true
+  print("Everloot: " .. text)
+end
+
+local function warnLimits(ctx)
+  if ctx.full then
+    warn("bytes", "completion data reached its size budget (about " .. math.floor(C.Limits.bytes / 1000) .. " KB); nothing more is recorded. Upload your file, then /everloot completion off clears it.")
+  end
+  for kind in pairs(ctx.capped) do
+    if kind:find("per character", 1, true) then
+      warn(kind, "this character reached " .. C.Limits.perCharacter .. " " .. kind:gsub(" %(per character%)", "") .. " rows; newer progress is not recorded.")
+    end
+  end
+  if ctx.stats.achievement_stopped then
+    warn("achievements", "completion read the first " .. C.Limits.achievements .. " achievements and stopped there.")
+  end
+end
 
 local function summary(ctx)
   local s = ctx.stats
@@ -593,11 +629,18 @@ local function body(domains, finish)
     end
   end
   return coroutine.create(function()
+    -- Withdrawn before it ever ran (off, then on again while it waited out combat): it writes nothing.
+    if state.epoch ~= epoch then return end
     local ctx = newContext()
     local seen = seenTable()
     local key, class, level = C.Identity()
     local identity = key and { key = key, class = class, level = level } or nil
     local own = identity and ownedSeen(seen, key) or { t = {}, q = {}, pending = {} }
+    -- A character not seen for months (deleted, most likely) stops costing file space in the seen state.
+    for other, entry in pairs(seen.own) do
+      if other ~= key and type(entry.seenAt) == "number" and time() - entry.seenAt >= FORGET_CHARACTER_SECONDS then seen.own[other] = nil end
+    end
+    if identity then own.seenAt = time() end
     -- A login asks for achievements only when due; that is decided here, out of combat, not in the event.
     if (domains.achievements or (domains.achievementsIfDue and C.AchievementsDue())) and state.ready.achievements then
       readAchievements(ctx, own, identity, spend)
@@ -637,6 +680,7 @@ local function startPass()
   state.running = true
   local failed
   local co = body(domains, function(ctx)
+    warnLimits(ctx)
     state.last = summary(ctx)
     E:SetNote("completion", state.last ~= "" and state.last or describe())
   end)
@@ -683,6 +727,8 @@ function C.ReadNow()
     print("Everloot: the completion module is off. /everloot completion on, then /reload.")
     return
   end
+  -- Turned on in this session: the module starts at the next /reload, not before.
+  if not state.started then print("Everloot: the completion tracker is on; /reload to start it.") return end
   if not state.ready.timer then print("Everloot: completion needs C_Timer.After, which this client lacks.") return end
   print("Everloot: reading achievements, reputation, titles and quests across the next few seconds.")
   C.Schedule(nil, 0)
@@ -700,6 +746,7 @@ function C.Withdraw()
 end
 
 E:RegisterModule("completion", function()
+  state.started = true
   for name, paths in pairs(API) do
     state.missing[name] = absent(paths)
     state.ready[name] = #state.missing[name] == 0

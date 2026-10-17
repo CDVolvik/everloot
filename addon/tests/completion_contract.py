@@ -406,6 +406,62 @@ lua.execute("""
 event('PLAYER_ENTERING_WORLD'); drain()
 assert(#rows('achievement_catalog') < 304 and #rows('achievement_catalog') > 0, #rows('achievement_catalog'))
 assert(status():find('reached its size budget', 1, true) and status():find('/everloot completion off', 1, true), status())
+-- The budget counts what the file really holds: the event id, the times and the install id of each row, and the seen state.
+local function sv(v)
+ if type(v) == 'string' then return string.format('%q', v) end
+ if type(v) ~= 'table' then return tostring(v) end
+ local out = { '{\\n' }
+ for k, x in pairs(v) do out[#out + 1] = '[' .. sv(k) .. '] = ' .. sv(x) .. ',\\n' end
+ out[#out + 1] = '}'
+ return table.concat(out)
+end
+local size = #sv(EverlootDB.completionSeen or {})
+for _, kind in ipairs({'achievement_catalog','reputation_catalog','title_catalog','quest_chain_catalog','achievement_owned','reputation_owned','title_owned','quest_owned'}) do
+ size = size + #sv(rows(kind))
+end
+assert(size <= 30000, 'the file holds no more than the budget: ' .. size)
+-- Said in chat once this session, however many reads hit it.
+SlashCmdList.EVERLOOT('completion'); drain()
+local said = 0
+for _, line in ipairs(printed) do if line:find('reached its size budget', 1, true) then said = said + 1 end end
+assert(said == 1, 'said once: ' .. said)
+""")
+
+# --- the seen state is pruned: a character not seen for months is forgotten, the current one kept -----
+lua = fresh(saved="{ toggles = { completion = true }, completionSeen = { own = { deadbeef = { t = {}, q = { [1] = true }, pending = { 5, 6 }, seenAt = 123456 - 91 * 24 * 60 * 60 }, cafecafe = { t = {}, q = {}, pending = {}, seenAt = 123456 - 10 * 24 * 60 * 60 } } } }")
+lua.execute("""
+event('PLAYER_ENTERING_WORLD'); drain()
+local own = EverlootDB.completionSeen.own
+assert(own.deadbeef == nil, 'a character not seen for 90 days is forgotten')
+assert(own.cafecafe ~= nil, 'one seen 10 days ago is kept')
+local key = rows('achievement_owned')[1].characterKey
+assert(own[key] and own[key].seenAt == 123456, 'the current character is stamped')
+""")
+
+# --- off then on while a pass waited out combat before its first frame: the withdrawn pass writes nothing --
+lua = fresh()
+lua.execute("""
+combat = true
+event('UPDATE_FACTION'); event('ACHIEVEMENT_EARNED')
+drain(1)
+assert(Everloot.Completion.State.waiting, 'the pass is waiting out combat')
+SlashCmdList.EVERLOOT('completion off')
+SlashCmdList.EVERLOOT('completion on')
+combat = false
+event('PLAYER_REGEN_ENABLED'); drain()
+for _, kind in ipairs({'achievement_catalog','reputation_catalog','title_catalog','quest_chain_catalog','achievement_owned','reputation_owned','title_owned','quest_owned'}) do
+ assert(#rows(kind) == 0, 'the withdrawn pass wrote ' .. kind .. ': ' .. #rows(kind))
+end
+""")
+
+# --- turned on in this session: /everloot completion says to /reload, not that the client lacks a call ----
+lua = fresh(saved="nil")
+lua.execute("""
+SlashCmdList.EVERLOOT('completion on')
+SlashCmdList.EVERLOOT('completion')
+assert(printed[#printed]:find('/reload to start it', 1, true), printed[#printed])
+assert(not printed[#printed]:find('C_Timer', 1, true))
+assert(#timers == 0, 'nothing is scheduled before the reload')
 """)
 
 # --- off stays off: the events are still registered, and none of them does anything --------------
@@ -525,6 +581,17 @@ assert(size < L.bytes, 'the completion rows stay inside the budget: ' .. size)
 local next0 = EverlootDB.nextEvent
 SlashCmdList.EVERLOOT('completion'); drain()
 assert(EverlootDB.nextEvent == next0, 'an unchanged read writes nothing: ' .. (EverlootDB.nextEvent - next0))
+-- Stopped at the limit counts as a whole read: the next login does not walk the list again.
+local before = frames
+event('PLAYER_ENTERING_WORLD'); drain()
+assert(frames - before < 10, 'a login after a capped read does not re-read the achievements: ' .. (frames - before) .. ' frames')
+-- Each limit is said in chat once this session, not once per read.
+local stopped, character = 0, 0
+for _, line in ipairs(printed) do
+ if line:find('stopped there', 1, true) then stopped = stopped + 1 end
+ if line:find('this character reached', 1, true) then character = character + 1 end
+end
+assert(stopped == 1 and character == 1, 'said once each: ' .. stopped .. ', ' .. character)
 """)
 
 # --- a login does not re-read the whole catalog; a request does ------------------------------------

@@ -1,6 +1,6 @@
 /**
  * Completion progress for one character: achievements, reputation, titles and quest chains.
- * A catalog entry is listed after 3 installs report the identical entry. Owned is what one install's
+ * A catalog entry is listed after 3 players (upload addresses) report the identical entry. Owned is what one install's
  * character uploaded, shown only when that install's current grant covers the collection category.
  * Missing is the agreed list minus what that character has. No Blizzard profile, no copied catalog.
  * The facts come from the completion rollup (kb/src/completion-rollup.ts).
@@ -32,6 +32,8 @@ export type CompletionFacts = {
   titles: Map<number, TitleEntry>;
   chains: Map<number, ChainEntry>;
   owned: OwnedCharacter[];
+  /** Per install, characters the rollup no longer holds (it keeps 8 per install, the oldest give way). */
+  dropped?: Map<string, number>;
 };
 
 const EMPTY_FACTS: CompletionFacts = { achievements: new Map(), factions: new Map(), titles: new Map(), chains: new Map(), owned: [] };
@@ -65,6 +67,8 @@ export type CompletionProgress = {
   characters: CharacterProgress[];
   /** The character key that was asked for and not found. */
   unknownCharacter?: string;
+  /** Characters of this install the site no longer holds: older ones give way past 8, or when storage is trimmed. */
+  droppedCharacters: number;
 };
 
 export function completionProgress(ownerInstallId: string, characterKey: string | undefined, facts: CompletionFacts): CompletionProgress {
@@ -145,6 +149,7 @@ export function completionProgress(ownerInstallId: string, characterKey: string 
     ownedRecorded: mine.length > 0,
     characters,
     unknownCharacter: wantedKey && mine.length > 0 && characters.length === 0 ? wantedKey : undefined,
+    droppedCharacters: facts.dropped?.get(owner) ?? 0,
   };
 }
 
@@ -161,17 +166,25 @@ export function completionEmptyState(p: CompletionProgress): string | null {
   return null;
 }
 
+/** Said when the site dropped older characters of this install, so a missing one is not read as never uploaded. */
+export function droppedCharactersNote(p: CompletionProgress): string | null {
+  if (p.droppedCharacters <= 0) return null;
+  return `${p.droppedCharacters} older character${p.droppedCharacters === 1 ? " is" : "s are"} no longer kept for this install. The site keeps the 8 most recently uploaded; upload from a character to bring it back.`;
+}
+
 export const ANOTHER_CHARACTER_NOTE = "An achievement earned on another character of the account counts as not done here: the game's window shows it the same way.";
 
 export function formatCompletionProgress(p: CompletionProgress): string {
   const lines = [
     `Completion progress for install ${p.ownerInstallId}`,
-    `A list entry is public after ${COMPLETION_AGREEMENT} installs report it identically. Owned is what one character uploaded. Closest to done means the largest share of an achievement's criteria or progress bar, the next standing nearest, or the fewest quests left in a chain. ${ANOTHER_CHARACTER_NOTE}`,
+    `A list entry is public after ${COMPLETION_AGREEMENT} players (installs uploading from different addresses) report it identically. Owned is what one character uploaded. Closest to done means the largest share of an achievement's criteria or progress bar, the next standing nearest, or the fewest quests left in a chain. ${ANOTHER_CHARACTER_NOTE}`,
   ];
+  const dropped = droppedCharactersNote(p);
+  if (dropped) lines.push(dropped);
   const empty = completionEmptyState(p);
   if (empty) return [...lines, empty].join("\n");
   if (listedNothing(p.listed)) {
-    lines.push(`Lists unrecorded: ${COMPLETION_AGREEMENT} installs have not yet reported the same achievements, factions, titles or quest chains, so totals below read 0.`);
+    lines.push(`Lists unrecorded: ${COMPLETION_AGREEMENT} players have not yet reported the same achievements, factions, titles or quest chains, so totals below read 0.`);
   }
   for (const c of p.characters) {
     lines.push("", `Character ${c.characterKey} (${c.class} ${c.level})`);

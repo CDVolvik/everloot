@@ -519,12 +519,12 @@ describe("completion rollup", () => {
       [`${R2}uploads/b.json`, "GET", () => Response.json({ records: [title("install-2", 1)] })],
       [COMPLETION, "PUT", () => new Response(null, { status: 200 })],
     ]);
-    expect(await createUploadStore({ cloud, localDir: "unused", fetch: first.fn, now }).writeCompletion()).toEqual({ added: 2 });
+    expect(await createUploadStore({ cloud, localDir: "unused", fetch: first.fn, now }).writeCompletion()).toEqual({ added: 2, remaining: 0, trimmed: 0 });
     const put = first.calls.find((c) => c.method === "PUT")!;
     expect(put.headers.get("if-none-match")).toBe("*");
     const stored = JSON.parse(put.body);
-    expect(stored).toMatchObject({ version: 1, lastReceivedAt: "2026-10-04T01:00:00+00:00", lastIds: ["b"] });
-    expect(stored.state.catalog.t["4"][0].installs).toEqual(["install-1", "install-2"]);
+    expect(stored).toMatchObject({ version: 2, lastReceivedAt: "2026-10-04T01:00:00+00:00", lastIds: ["b"] });
+    expect(stored.state.catalog.t["4"][0].v).toEqual(["i:install-1", "i:install-2"]);
 
     const second = fakeFetch([
       [COMPLETION, "GET", () => Response.json(stored)],
@@ -532,12 +532,12 @@ describe("completion rollup", () => {
       [`${R2}uploads/c.json`, "GET", () => Response.json({ records: [title("install-3", 1)] })],
       [COMPLETION, "PUT", () => new Response(null, { status: 200 })],
     ]);
-    expect(await createUploadStore({ cloud, localDir: "unused", fetch: second.fn, now }).writeCompletion()).toEqual({ added: 1 });
+    expect(await createUploadStore({ cloud, localDir: "unused", fetch: second.fn, now }).writeCompletion()).toEqual({ added: 1, remaining: 0, trimmed: 0 });
     expect(second.calls.find((c) => c.url.startsWith(INDEX))!.url).toContain("received_at=gte.2026-10-04T01%3A00%3A00%2B00%3A00");
     expect(second.calls.some((c) => c.url.endsWith("uploads/b.json"))).toBe(false);
     const put2 = second.calls.find((c) => c.method === "PUT")!;
     expect(put2.headers.get("if-match")).toBe('"fixture"');
-    expect(JSON.parse(put2.body).state.catalog.t["4"][0].installs).toHaveLength(3);
+    expect(JSON.parse(put2.body).state.catalog.t["4"][0].v).toHaveLength(3);
   });
 
   test("the corpus every page reads carries no completion row; only the completion read does", async () => {
@@ -550,15 +550,74 @@ describe("completion rollup", () => {
     expect(corpus.records.length).toBeGreaterThan(0);
     expect(corpus.records.some((r) => (r as { kind: string }).kind === "title_catalog")).toBe(false);
     const completion = await store.loadCompletion();
-    expect(completion.state!.catalog.t["4"][0].installs).toHaveLength(3);
+    expect(completion.state!.catalog.t["4"][0].v).toHaveLength(3);
   });
 
   test("a missing or failed rollup is unavailable, never an empty one", async () => {
     const missing = fakeFetch([[COMPLETION, "GET", () => new Response("missing", { status: 404 })]]);
     expect(await createUploadStore({ cloud, localDir: "unused", fetch: missing.fn, now }).loadCompletion())
       .toEqual({ state: null, dataAsOf: null, unreachable: true });
-    const odd = fakeFetch([[COMPLETION, "GET", () => Response.json({ version: 1, state: { version: 2 }, lastIds: [] })]]);
+    const odd = fakeFetch([[COMPLETION, "GET", () => Response.json({ version: 2, state: { version: 1 }, lastIds: [] })]]);
     expect(await createUploadStore({ cloud, localDir: "unused", fetch: odd.fn, now }).loadCompletion())
+      .toEqual({ state: null, dataAsOf: null, unreachable: true });
+  });
+
+  test("a run folds at most a batch of uploads and the next run continues after the last one folded", async () => {
+    const objects: Record<string, unknown> = { a: { records: [title("install-1", 1)] }, b: { records: [title("install-2", 1)] }, c: { records: [title("install-3", 1)] } };
+    let stored: string | null = null;
+    const routes = (): Parameters<typeof fakeFetch>[0] => [
+      [COMPLETION, "GET", () => (stored ? new Response(stored) : new Response("missing", { status: 404 }))],
+      // The index answers from the watermark on, as received_at=gte does.
+      [INDEX, "GET", () => Response.json(index(["a", "b", "c"]).filter((r) => !stored || r.received_at >= JSON.parse(stored).lastReceivedAt))],
+      ...Object.entries(objects).map(([id, body]): Parameters<typeof fakeFetch>[0][number] => [`${R2}uploads/${id}.json`, "GET", () => Response.json(body)]),
+      [COMPLETION, "PUT", () => new Response(null, { status: 200 })],
+    ];
+    const run = async (rebuild = false) => {
+      const f = fakeFetch(routes());
+      const result = await createUploadStore({ cloud, localDir: "unused", fetch: f.fn, now, completionBatch: 2 }).writeCompletion({ rebuild });
+      stored = f.calls.find((c) => c.method === "PUT")!.body;
+      return { result, read: f.calls.filter((c) => c.url.includes("/uploads/")).map((c) => c.url.split("/").pop()) };
+    };
+    expect(await run(true)).toEqual({ result: { added: 2, remaining: 1, trimmed: 0 }, read: ["a.json", "b.json"] });
+    expect(JSON.parse(stored!)).toMatchObject({ lastReceivedAt: "2026-10-04T01:00:00+00:00", lastIds: ["b"] });
+    expect(await run()).toEqual({ result: { added: 1, remaining: 0, trimmed: 0 }, read: ["c.json"] });
+    expect(JSON.parse(stored!).state.catalog.t["4"][0].v).toHaveLength(3);
+    expect(await run()).toEqual({ result: { added: 0, remaining: 0, trimmed: 0 }, read: [] });
+  });
+
+  test("installs behind one upload address vote once, and the address hash never reaches what is read", async () => {
+    const same = "0123456789abcdef";
+    const { fn, calls } = fakeFetch([
+      [COMPLETION, "GET", () => new Response("missing", { status: 404 })],
+      [INDEX, "GET", () => Response.json(index(["a", "b", "c"]))],
+      ...["a", "b", "c"].map((id, i): Parameters<typeof fakeFetch>[0][number] =>
+        [`${R2}uploads/${id}.json`, "GET", () => Response.json({ reporter: same, records: [title(`install-${i + 1}`, 1)] })]),
+      [COMPLETION, "PUT", () => new Response(null, { status: 200 })],
+    ]);
+    await createUploadStore({ cloud, localDir: "unused", fetch: fn, now }).writeCompletion();
+    const body = JSON.parse(calls.find((c) => c.method === "PUT")!.body);
+    expect(body.state.catalog.t["4"][0].v).toEqual([`r:${same}`]);
+    const { agreedCatalog } = await import("../../../kb/src/completion-rollup");
+    expect(agreedCatalog(body.state).titles.size).toBe(0);
+  });
+
+  test("a rollup heading past its size limit is trimmed and written, not refused; one past it on read is unavailable", async () => {
+    const junk = (id: string, n: number) => ({ records: Array.from({ length: 40 }, (_, i) => ({ ...title(id, n * 100 + i), titleId: 1000 + n * 100 + i, name: `Junk ${n} ${i}` })) });
+    const big = fakeFetch([
+      [COMPLETION, "GET", () => new Response("missing", { status: 404 })],
+      [INDEX, "GET", () => Response.json(index(["a", "b", "c", "d"]))],
+      ...["a", "b", "c", "d"].map((id, n): Parameters<typeof fakeFetch>[0][number] => [`${R2}uploads/${id}.json`, "GET", () => Response.json(junk(`install-${n + 1}`, n))]),
+      [COMPLETION, "PUT", () => new Response(null, { status: 200 })],
+    ]);
+    const result = await createUploadStore({ cloud, localDir: "unused", fetch: big.fn, now, completionMaxBytes: 6000 }).writeCompletion({
+      authority: async () => ({ grants: [], suppressions: [] }),
+    });
+    expect(result.added).toBe(4);
+    expect(result.trimmed).toBeGreaterThan(0);
+    const put = big.calls.find((c) => c.method === "PUT")!;
+    expect(Buffer.byteLength(put.body)).toBeLessThanOrEqual(6000);
+    const read = fakeFetch([[COMPLETION, "GET", () => new Response(put.body, { headers: { etag: '"fixture"' } })]]);
+    expect(await createUploadStore({ cloud, localDir: "unused", fetch: read.fn, now, completionMaxBytes: put.body.length - 1 }).loadCompletion())
       .toEqual({ state: null, dataAsOf: null, unreachable: true });
   });
 });

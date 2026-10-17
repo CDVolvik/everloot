@@ -1,13 +1,15 @@
 import { beforeEach, expect, test, vi } from "vitest";
 const store = vi.hoisted(() => ({ writeSnapshot: vi.fn(), writeMarket: vi.fn(), writeCompletion: vi.fn(), prune: vi.fn() }));
-vi.mock("@/lib/upload-store", () => ({ uploadStore: { writeSnapshot: store.writeSnapshot, writeMarket: store.writeMarket, writeCompletion: store.writeCompletion } }));
+vi.mock("@/lib/upload-store", () => ({ uploadStore: { writeSnapshot: store.writeSnapshot, writeMarket: store.writeMarket, writeCompletion: store.writeCompletion },
+  sharingStore: { loadState: async () => ({ grants: [], suppressions: [] }) },
+}));
 vi.mock("@/lib/intake-quota", () => ({ intakeQuota: { prune: store.prune } }));
 import { GET } from "./route";
 beforeEach(() => {
   vi.stubEnv("CRON_SECRET", "synthetic-cron-key");
   store.writeSnapshot.mockReset().mockResolvedValue({ uploads: 0 });
   store.writeMarket.mockReset().mockResolvedValue({ added: 0, scans: 0 });
-  store.writeCompletion.mockReset().mockResolvedValue({ added: 0 });
+  store.writeCompletion.mockReset().mockResolvedValue({ added: 0, remaining: 0, trimmed: 0 });
   store.prune.mockReset().mockResolvedValue(undefined);
 });
 const req = (auth = "Bearer synthetic-cron-key", query = "") =>
@@ -33,10 +35,10 @@ test("the market rollup runs with the snapshot and rebuilds with it", async () =
   expect(store.writeMarket).toHaveBeenCalledWith({ rebuild: true });
 });
 test("the completion rollup runs after the market, rebuilds with it, and a failure is reported", async () => {
-  store.writeCompletion.mockResolvedValue({ added: 3 });
+  store.writeCompletion.mockResolvedValue({ added: 3, remaining: 7, trimmed: 0 });
   const body = await (await GET(req(undefined, "?rebuild=1"))).json();
-  expect(body).toMatchObject({ ok: true, completion: { added: 3 } });
-  expect(store.writeCompletion).toHaveBeenCalledWith({ rebuild: true });
+  expect(body).toMatchObject({ ok: true, completion: { added: 3, remaining: 7 } });
+  expect(store.writeCompletion).toHaveBeenCalledWith({ rebuild: true, authority: expect.any(Function) });
   store.writeCompletion.mockRejectedValue(new Error("completion down"));
   const res = await GET(req());
   expect(res.status).toBe(500);

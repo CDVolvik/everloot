@@ -203,6 +203,16 @@ describe("auction scans in an upload", () => {
     expect(store.reporter).not.toHaveBeenCalled();
   });
 
+  test("a completion catalog upload carries the address hash too, so its votes count once per address", async () => {
+    const POST = await freshPost();
+    const title = { kind: "title_catalog", installId: "install-1234", eventId: "e:1", capturedAt, titleId: 4, name: "Private" };
+    const response = await POST(request({ addonVersion: "0.3.3", reporter: "ffffffffffffffff", records: [title] }));
+    expect(response.status).toBe(200);
+    const stored = store.putUpload.mock.calls[0]![2];
+    expect(stored.reporter).toBe("0123456789abcdef");
+    expect(JSON.stringify(stored)).not.toContain("ffffffffffffffff");
+  });
+
   test("one upload may carry scans from at most 3 realms; the rest are rejected with a reason", async () => {
     const POST = await freshPost();
     const realms = ["Aaa", "Bbb", "Ccc", "Ddd", "Aaa"];
