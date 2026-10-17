@@ -2,16 +2,19 @@ import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, expect, test, vi } from "vitest";
 
-const store = vi.hoisted(() => ({ loadCorpus: vi.fn() }));
+const store = vi.hoisted(() => ({ loadCorpus: vi.fn(), loadCompletion: vi.fn(), loadState: vi.fn() }));
 vi.mock("@/lib/upload-store", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/upload-store")>()),
-  uploadStore: { loadCorpus: store.loadCorpus },
+  uploadStore: { loadCorpus: store.loadCorpus, loadCompletion: store.loadCompletion },
+  sharingStore: { loadState: store.loadState },
 }));
 vi.mock("next/link", () => ({
   default: ({ href, children }: { href: string; children: ReactNode }) => <a href={href}>{children}</a>,
 }));
 
 import CollectionsPage from "./page";
+import { emptyCompletion, foldCompletion } from "../../../../../kb/src/completion-rollup";
+import type { PublicationGrant } from "../../../../../kb/src/publication";
 
 const at = "2026-10-19T00:00:00Z";
 let seq = 0;
@@ -33,8 +36,16 @@ const records = [
 const render = async (searchParams: Record<string, string>) =>
   renderToStaticMarkup(await CollectionsPage({ searchParams: Promise.resolve(searchParams) }));
 
+const hash = "a".repeat(64);
+const grant: PublicationGrant = { tokenHash: hash, installId: "owner-install", realm: "Forever", subjectType: "install", subject: "owner-install",
+  categories: ["collection"], expiresAt: "2099-01-01T00:00:00Z", verifiedBy: "operator", evidence: "test", revokedAt: null };
+/** The cron's completion rollup of these rows, uploaded with the owner's sharing token. */
+const rollup = (rows: Record<string, unknown>[]) => foldCompletion(emptyCompletion(), [{ records: rows, grants: [hash] }]);
+
 beforeEach(() => {
-  store.loadCorpus.mockReset().mockResolvedValue({ uploads: 1, records, dataAsOf: "2026-10-19T06:30:00.000Z" });
+  store.loadCorpus.mockReset().mockResolvedValue({ uploads: 1, records: [], dataAsOf: "2026-10-19T06:30:00.000Z" });
+  store.loadCompletion.mockReset().mockResolvedValue({ state: rollup(records), dataAsOf: "2026-10-19T06:30:00.000Z" });
+  store.loadState.mockReset().mockResolvedValue({ grants: [grant], suppressions: [] });
 });
 
 test("with no install the page asks for one and says nothing is measured", async () => {
@@ -75,7 +86,8 @@ test("a character key that is not in the upload is named, and the collection box
 });
 
 test("when the lists are not public yet the page says so instead of showing a measured zero", async () => {
-  store.loadCorpus.mockResolvedValue({ uploads: 1, records: records.filter((r) => String(r.kind).endsWith("_owned")), dataAsOf: null });
+  store.loadCompletion.mockResolvedValue({ state: rollup(records.filter((r) => String(r.kind).endsWith("_owned"))), dataAsOf: null });
+  store.loadCorpus.mockResolvedValue({ uploads: 1, records: [], dataAsOf: null });
   const html = await render({ install: "owner-install" });
   expect(html).toContain("No list is public yet");
   expect(html).toContain("Data age unrecorded");
@@ -83,7 +95,28 @@ test("when the lists are not public yet the page says so instead of showing a me
 
 test("an unreachable store is said to be unreachable", async () => {
   store.loadCorpus.mockResolvedValue({ unreachable: true, uploads: 0, records: [] });
+  store.loadCompletion.mockResolvedValue({ state: null, dataAsOf: null, unreachable: true });
   const html = await render({ install: "owner-install" });
   expect(html).not.toContain('role="progressbar"');
   expect(html).toMatch(/unreachable|unavailable|could not/i);
+});
+
+test("two installs agreeing is not enough: the lists stay unpublished", async () => {
+  store.loadCompletion.mockResolvedValue({ state: rollup(records.filter((r) => r.installId !== "reporter-three")), dataAsOf: null });
+  const html = await render({ install: "owner-install" });
+  expect(html).toContain("No list is public yet");
+  expect(html).not.toContain("Ten Quests");
+  expect(html).not.toContain("Darnassus");
+});
+
+test("without a live grant the owner's progress is not shown", async () => {
+  store.loadState.mockResolvedValue({ grants: [{ ...grant, revokedAt: "2026-10-18T00:00:00Z" }], suppressions: [] });
+  const html = await render({ install: "owner-install" });
+  expect(html).toContain("No completion data from this install");
+  expect(html).not.toContain("Friendly · 500 to go");
+});
+
+test("without an install the page does not read the completion rollup", async () => {
+  await render({ collection: "Mounts" });
+  expect(store.loadCompletion).not.toHaveBeenCalled();
 });

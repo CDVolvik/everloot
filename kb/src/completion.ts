@@ -1,96 +1,57 @@
 /**
  * Completion progress for one character: achievements, reputation, titles and quest chains.
- * A catalog entry is public after 3 installs report the identical entry. Owned is what one install's
- * character uploaded, and the corpus only serves it when that install granted the "collection" choice.
+ * A catalog entry is listed after 3 installs report the identical entry. Owned is what one install's
+ * character uploaded, shown only when that install's current grant covers the collection category.
  * Missing is the agreed list minus what that character has. No Blizzard profile, no copied catalog.
+ * The facts come from the completion rollup (kb/src/completion-rollup.ts).
  */
-import { parseRecords, type IntakeRecord } from "../../web/src/lib/intake.js";
-import { canonicalJson } from "./corpus.js";
+import { COMPLETION_AGREEMENT } from "./completion-rollup.js";
 
-export const COMPLETION_AGREEMENT = 3;
+export { COMPLETION_AGREEMENT };
 export const CLOSEST_LIMIT = 5;
 
-type Kind<K extends IntakeRecord["kind"]> = Extract<IntakeRecord, { kind: K }>;
-export type AchievementCatalogRow = Kind<"achievement_catalog">;
-export type ReputationCatalogRow = Kind<"reputation_catalog">;
-export type TitleCatalogRow = Kind<"title_catalog">;
-export type QuestChainCatalogRow = Kind<"quest_chain_catalog">;
-type OwnedRow = Kind<"achievement_owned"> | Kind<"reputation_owned"> | Kind<"title_owned"> | Kind<"quest_owned">;
+export type AchievementEntry = { achievementId: number; name: string; category: string; points: number; criteriaCount: number };
+export type FactionEntry = { factionId: number; name: string; header?: string; major: boolean };
+export type TitleEntry = { titleId: number; name: string };
+export type ChainEntry = { questLineId: number; name: string; questIds: number[]; truncated: boolean };
 
-export type CompletionFacts = {
-  achievements: AchievementCatalogRow[];
-  factions: ReputationCatalogRow[];
-  titles: TitleCatalogRow[];
-  chains: QuestChainCatalogRow[];
-  owned: OwnedRow[];
+export type OwnedCharacter = {
+  installId: string;
+  characterKey: string;
+  class: string;
+  level: number;
+  achievements: Map<number, { completed: boolean; earnedByMe?: boolean; criteriaMet: number; criteriaTotal: number; quantity?: number; required?: number }>;
+  factions: Map<number, { reaction: number; standing: number; floor: number; ceiling: number }>;
+  titles: Set<number>;
+  quests: Set<number>;
 };
 
-const OWNED_KINDS = new Set(["achievement_owned", "reputation_owned", "title_owned", "quest_owned"]);
-const KINDS = new Set(["achievement_catalog", "reputation_catalog", "title_catalog", "quest_chain_catalog", ...OWNED_KINDS]);
-const EMPTY_FACTS: CompletionFacts = { achievements: [], factions: [], titles: [], chains: [], owned: [] };
+export type CompletionFacts = {
+  achievements: Map<number, AchievementEntry>;
+  factions: Map<number, FactionEntry>;
+  titles: Map<number, TitleEntry>;
+  chains: Map<number, ChainEntry>;
+  owned: OwnedCharacter[];
+};
+
+const EMPTY_FACTS: CompletionFacts = { achievements: new Map(), factions: new Map(), titles: new Map(), chains: new Map(), owned: [] };
 
 /** The usual eight standings, by the client's reaction index. Index 8 is the top one. */
 export const STANDING_NAMES = ["Hated", "Hostile", "Unfriendly", "Neutral", "Friendly", "Honored", "Revered", "Exalted"] as const;
 const TOP_REACTION = STANDING_NAMES.length;
 
-export function completionFactsFromRecords(records: unknown[]): CompletionFacts {
-  const facts: CompletionFacts = { achievements: [], factions: [], titles: [], chains: [], owned: [] };
-  // The page and the tool pass the whole corpus: parse only the kinds this reads.
-  const mine = records.filter((r) => typeof r === "object" && r !== null && KINDS.has((r as { kind?: string }).kind ?? ""));
-  for (const row of parseRecords(mine).records) {
-    if (row.kind === "achievement_catalog") facts.achievements.push(row);
-    else if (row.kind === "reputation_catalog") facts.factions.push(row);
-    else if (row.kind === "title_catalog") facts.titles.push(row);
-    else if (row.kind === "quest_chain_catalog") facts.chains.push(row);
-    else if (OWNED_KINDS.has(row.kind)) facts.owned.push(row as OwnedRow);
-  }
-  return facts;
-}
-
-/** Everything a row says except who said it and when: two installs agree when this text is equal. */
-function content(row: { installId: string; capturedAt: string; eventId?: string }): string {
-  const { installId: _i, capturedAt: _c, eventId: _e, ...rest } = row;
-  return canonicalJson(rest);
-}
-
-/** One entry per id: the variant that at least 3 distinct installs reported identically (most installs wins). */
-function agreed<T extends { installId: string; capturedAt: string; eventId?: string }>(rows: T[], id: (row: T) => number): Map<number, T> {
-  const variants = new Map<number, Map<string, { row: T; installs: Set<string> }>>();
-  for (const row of rows) {
-    const key = id(row);
-    const byContent = variants.get(key) ?? new Map<string, { row: T; installs: Set<string> }>();
-    const text = content(row);
-    const entry = byContent.get(text) ?? { row, installs: new Set<string>() };
-    entry.installs.add(row.installId.trim());
-    byContent.set(text, entry);
-    variants.set(key, byContent);
-  }
-  const out = new Map<number, T>();
-  for (const [key, byContent] of variants) {
-    const best = [...byContent.entries()]
-      .filter(([, v]) => v.installs.size >= COMPLETION_AGREEMENT)
-      .sort(([ta, a], [tb, b]) => b.installs.size - a.installs.size || ta.localeCompare(tb))[0];
-    if (best) out.set(key, best[1].row);
-  }
-  return out;
-}
-
-/** The later of two rows by capture time; the larger event id breaks a tie. */
-function newer<T extends { capturedAt: string; eventId?: string }>(a: T, b: T): T {
-  const order = a.capturedAt.localeCompare(b.capturedAt) || (a.eventId ?? "").localeCompare(b.eventId ?? "");
-  return order > 0 ? a : b;
-}
-
-export type ClosestAchievement = { achievementId: number; name: string; category: string; met: number; total: number };
+export type ClosestAchievement = { achievementId: number; name: string; category: string; have: number; of: number; unit: "criteria" | "progress" };
 export type ClosestFaction = { factionId: number; name: string; standing: string; toNext: number; header?: string };
-export type ClosestChain = { questLineId: number; name: string; done: number; total: number };
+/** A reputation whose scale is not the eight standings (a friendship or renown style row): the raw value only. */
+export type UnscaledFaction = { factionId: number; name: string; standing: number };
+export type ClosestChain = { questLineId: number; name: string; done: number; total: number; truncated: boolean };
 
 export type CharacterProgress = {
   characterKey: string;
   class: string;
   level: number;
   achievements: { done: number; total: number; points: number; pointsTotal: number; closest: ClosestAchievement[]; unlisted: number };
-  reputation: { exalted: number; total: number; closest: ClosestFaction[]; unlisted: number };
+  reputation: { exalted: number; total: number; closest: ClosestFaction[]; unscaled: UnscaledFaction[]; unlisted: number };
   titles: { known: number; total: number; unlisted: number };
   quests: { completed: number; chainsDone: number; chainsTotal: number; closest: ClosestChain[] };
 };
@@ -99,7 +60,7 @@ export type CompletionProgress = {
   ownerInstallId: string;
   /** What the agreed lists hold. All zero means no list is public yet. */
   listed: { achievements: number; factions: number; titles: number; chains: number };
-  /** False when this install uploaded no completion rows: owned is unknown, not empty. */
+  /** False when this install has no shared completion data: owned is unknown, not empty. */
   ownedRecorded: boolean;
   characters: CharacterProgress[];
   /** The character key that was asked for and not found. */
@@ -109,90 +70,72 @@ export type CompletionProgress = {
 export function completionProgress(ownerInstallId: string, characterKey: string | undefined, facts: CompletionFacts): CompletionProgress {
   const owner = ownerInstallId.trim();
   const wantedKey = characterKey?.trim().toLowerCase() || undefined;
-  const achievements = agreed(facts.achievements, (r) => r.achievementId);
-  const factions = agreed(facts.factions, (r) => r.factionId);
-  const titles = agreed(facts.titles, (r) => r.titleId);
-  const chains = agreed(facts.chains, (r) => r.questLineId);
-
-  const mine = facts.owned.filter((r) => r.installId.trim() === owner);
-  const keys = [...new Set(mine.map((r) => r.characterKey))].sort();
+  const { achievements, factions, titles, chains } = facts;
+  const mine = facts.owned.filter((c) => c.installId.trim() === owner).sort((a, b) => a.characterKey.localeCompare(b.characterKey));
   const characters: CharacterProgress[] = [];
-  for (const key of keys) {
-    if (wantedKey && key !== wantedKey) continue;
-    const rows = mine.filter((r) => r.characterKey === key);
-    const latestOwned = new Map<string, OwnedRow>();
-    const titleIds = new Set<number>();
-    const questIds = new Set<number>();
-    let identity = rows[0];
-    for (const row of rows) {
-      identity = newer(identity, row);
-      if (row.kind === "title_owned") row.titleIds.forEach((id) => titleIds.add(id));
-      else if (row.kind === "quest_owned") row.questIds.forEach((id) => questIds.add(id));
-      else {
-        const id = row.kind === "achievement_owned" ? `a${row.achievementId}` : `f${row.factionId}`;
-        const old = latestOwned.get(id);
-        latestOwned.set(id, old ? newer(old, row) : row);
-      }
-    }
 
-    const doneAchievements = new Set<number>();
-    const closestAchievements: ClosestAchievement[] = [];
-    let unlistedAchievements = 0;
+  for (const c of mine) {
+    if (wantedKey && c.characterKey !== wantedKey) continue;
+    let done = 0;
     let earnedPoints = 0;
-    for (const row of latestOwned.values()) {
-      if (row.kind !== "achievement_owned") continue;
-      const entry = achievements.get(row.achievementId);
-      const done = row.completed && row.earnedByMe !== false;
-      if (done) doneAchievements.add(row.achievementId);
-      if (!entry) { if (done) unlistedAchievements++; continue; }
-      if (done) { earnedPoints += entry.points; continue; }
-      // Complete on the account but not earned by this character: nothing left to progress here.
-      if (!row.completed && row.criteriaTotal > 0 && row.criteriaMet > 0) {
-        closestAchievements.push({ achievementId: row.achievementId, name: entry.name, category: entry.category, met: row.criteriaMet, total: row.criteriaTotal });
+    let unlistedAchievements = 0;
+    const closestAchievements: ClosestAchievement[] = [];
+    for (const [id, a] of c.achievements) {
+      const entry = achievements.get(id);
+      // Complete on the account but earned by another character counts as not done here, as the game's window shows it.
+      const mineDone = a.completed && a.earnedByMe !== false;
+      if (!entry) { if (mineDone) unlistedAchievements++; continue; }
+      if (mineDone) { done++; earnedPoints += entry.points; continue; }
+      if (a.completed) continue;
+      if (a.required && a.quantity !== undefined && a.quantity < a.required) {
+        closestAchievements.push({ achievementId: id, name: entry.name, category: entry.category, have: a.quantity, of: a.required, unit: "progress" });
+      } else if (a.criteriaTotal > 0 && a.criteriaMet > 0 && a.criteriaMet < a.criteriaTotal) {
+        // Every criterion met but not complete is left out: nothing is left to do, and the game decides when it completes.
+        closestAchievements.push({ achievementId: id, name: entry.name, category: entry.category, have: a.criteriaMet, of: a.criteriaTotal, unit: "criteria" });
       }
     }
-    closestAchievements.sort((a, b) => b.met / b.total - a.met / a.total || (a.total - a.met) - (b.total - b.met) || a.achievementId - b.achievementId);
+    closestAchievements.sort((x, y) => y.have / y.of - x.have / x.of || (x.of - x.have) - (y.of - y.have) || x.achievementId - y.achievementId);
 
     const plainFactions = [...factions.values()].filter((f) => !f.major);
     const closestFactions: ClosestFaction[] = [];
+    const unscaled: UnscaledFaction[] = [];
     let exalted = 0;
     let unlistedFactions = 0;
-    for (const row of latestOwned.values()) {
-      if (row.kind !== "reputation_owned") continue;
-      const entry = factions.get(row.factionId);
-      if (!entry) { if (row.reaction >= TOP_REACTION) unlistedFactions++; continue; }
+    for (const [id, f] of c.factions) {
+      const entry = factions.get(id);
+      const scaled = f.reaction >= 1 && f.reaction <= TOP_REACTION;
+      if (!entry) { if (scaled && f.reaction === TOP_REACTION) unlistedFactions++; continue; }
       if (entry.major) continue;
-      if (row.reaction >= TOP_REACTION) { exalted++; continue; }
-      if (row.ceiling > row.standing) {
-        closestFactions.push({
-          factionId: row.factionId, name: entry.name, header: entry.header,
-          standing: STANDING_NAMES[row.reaction - 1] ?? `Standing ${row.reaction}`, toNext: row.ceiling - row.standing,
-        });
+      if (!scaled) { unscaled.push({ factionId: id, name: entry.name, standing: f.standing }); continue; }
+      if (f.reaction === TOP_REACTION) { exalted++; continue; }
+      if (f.ceiling > f.standing) {
+        closestFactions.push({ factionId: id, name: entry.name, header: entry.header, standing: STANDING_NAMES[f.reaction - 1], toNext: f.ceiling - f.standing });
       }
     }
-    closestFactions.sort((a, b) => a.toNext - b.toNext || a.factionId - b.factionId);
+    closestFactions.sort((x, y) => x.toNext - y.toNext || x.factionId - y.factionId);
+    unscaled.sort((x, y) => x.factionId - y.factionId);
 
-    const knownTitles = [...titleIds].filter((id) => titles.has(id)).length;
+    const knownTitles = [...c.titles].filter((id) => titles.has(id)).length;
 
     const closestChains: ClosestChain[] = [];
     let chainsDone = 0;
     for (const chain of chains.values()) {
-      const done = chain.questIds.filter((id) => questIds.has(id)).length;
-      if (done === chain.questIds.length) chainsDone++;
-      else if (done > 0) closestChains.push({ questLineId: chain.questLineId, name: chain.name, done, total: chain.questIds.length });
+      const have = chain.questIds.filter((id) => c.quests.has(id)).length;
+      // A chain cut at 80 quests is never called finished: its real length is not known.
+      if (!chain.truncated && have === chain.questIds.length) chainsDone++;
+      else if (have > 0) closestChains.push({ questLineId: chain.questLineId, name: chain.name, done: have, total: chain.questIds.length, truncated: chain.truncated });
     }
-    closestChains.sort((a, b) => (a.total - a.done) - (b.total - b.done) || b.total - a.total || a.questLineId - b.questLineId);
+    closestChains.sort((x, y) => Number(x.truncated) - Number(y.truncated) || (x.total - x.done) - (y.total - y.done) || y.total - x.total || x.questLineId - y.questLineId);
 
     characters.push({
-      characterKey: key, class: identity.class, level: identity.level,
+      characterKey: c.characterKey, class: c.class, level: c.level,
       achievements: {
-        done: [...doneAchievements].filter((id) => achievements.has(id)).length, total: achievements.size,
-        points: earnedPoints, pointsTotal: [...achievements.values()].reduce((sum, a) => sum + a.points, 0),
+        done, total: achievements.size, points: earnedPoints, pointsTotal: [...achievements.values()].reduce((sum, a) => sum + a.points, 0),
         closest: closestAchievements.slice(0, CLOSEST_LIMIT), unlisted: unlistedAchievements,
       },
-      reputation: { exalted, total: plainFactions.length, closest: closestFactions.slice(0, CLOSEST_LIMIT), unlisted: unlistedFactions },
-      titles: { known: knownTitles, total: titles.size, unlisted: titleIds.size - knownTitles },
-      quests: { completed: questIds.size, chainsDone, chainsTotal: chains.size, closest: closestChains.slice(0, CLOSEST_LIMIT) },
+      reputation: { exalted, total: plainFactions.length, closest: closestFactions.slice(0, CLOSEST_LIMIT), unscaled: unscaled.slice(0, CLOSEST_LIMIT), unlisted: unlistedFactions },
+      titles: { known: knownTitles, total: titles.size, unlisted: c.titles.size - knownTitles },
+      quests: { completed: c.quests.size, chainsDone, chainsTotal: chains.size, closest: closestChains.slice(0, CLOSEST_LIMIT) },
     });
   }
 
@@ -218,10 +161,12 @@ export function completionEmptyState(p: CompletionProgress): string | null {
   return null;
 }
 
+export const ANOTHER_CHARACTER_NOTE = "An achievement earned on another character of the account counts as not done here: the game's window shows it the same way.";
+
 export function formatCompletionProgress(p: CompletionProgress): string {
   const lines = [
     `Completion progress for install ${p.ownerInstallId}`,
-    `A list entry is public after ${COMPLETION_AGREEMENT} installs report it identically. Owned is what one character uploaded. Closest to done means the most criteria met, the next standing nearest, or the fewest quests left in a chain.`,
+    `A list entry is public after ${COMPLETION_AGREEMENT} installs report it identically. Owned is what one character uploaded. Closest to done means the largest share of an achievement's criteria or progress bar, the next standing nearest, or the fewest quests left in a chain. ${ANOTHER_CHARACTER_NOTE}`,
   ];
   const empty = completionEmptyState(p);
   if (empty) return [...lines, empty].join("\n");
@@ -231,12 +176,13 @@ export function formatCompletionProgress(p: CompletionProgress): string {
   for (const c of p.characters) {
     lines.push("", `Character ${c.characterKey} (${c.class} ${c.level})`);
     lines.push(`Achievements: ${c.achievements.done} of ${c.achievements.total} done, ${c.achievements.points} of ${c.achievements.pointsTotal} points`);
-    for (const a of c.achievements.closest) lines.push(`  ${a.name} (${a.category}): ${a.met} of ${a.total} criteria`);
+    for (const a of c.achievements.closest) lines.push(`  ${a.name} (${a.category}): ${a.have} of ${a.of} ${a.unit === "progress" ? "progress" : "criteria"}`);
     lines.push(`Reputation: ${c.reputation.exalted} of ${c.reputation.total} factions Exalted`);
     for (const f of c.reputation.closest) lines.push(`  ${f.name}: ${f.standing}, ${f.toNext} to the next standing`);
+    for (const f of c.reputation.unscaled) lines.push(`  ${f.name}: standing value ${f.standing}, scale unknown (not one of the eight standings)`);
     lines.push(`Titles: ${c.titles.known} of ${c.titles.total} known`);
     lines.push(`Quests: ${c.quests.completed} completed, ${c.quests.chainsDone} of ${c.quests.chainsTotal} listed chains finished`);
-    for (const q of c.quests.closest) lines.push(`  ${q.name}: ${q.done} of ${q.total} quests`);
+    for (const q of c.quests.closest) lines.push(`  ${q.name}: ${q.done} of ${q.truncated ? `at least ${q.total}` : q.total} quests`);
     const extra = c.achievements.unlisted + c.reputation.unlisted + c.titles.unlisted;
     if (extra > 0) lines.push(`Reported by this character and not yet on the agreed lists: ${extra}`);
   }

@@ -1,8 +1,12 @@
 import { expect, test } from "vitest";
-import { completionFactsFromRecords, completionProgress, handleCompletionProgress } from "../src/completion.js";
-import { authorizeRecord, sharingCategory, type PublicationGrant } from "../src/publication.js";
-import { mergeCorpus, namedRecord, publicRecords } from "../src/corpus.js";
-import { parseRecords } from "../../web/src/lib/intake.js";
+import { completionProgress, handleCompletionProgress } from "../src/completion.js";
+import {
+  agreedCatalog, authorizedOwners, completionFactsFromRecords, completionFactsOf, emptyCompletion, foldCompletion,
+} from "../src/completion-rollup.js";
+import { answerCompletionProgress, COMPLETION_UNSET } from "../src/mcp-server.js";
+import { sharingCategory, type PublicationGrant } from "../src/publication.js";
+import { mergeCorpus, publicRecords } from "../src/corpus.js";
+import { COMPLETION_KINDS, parseRecords, PUBLIC_RECORD_KINDS } from "../../web/src/lib/intake.js";
 
 const OWNER = "owner-install";
 const KEY = "0a1b2c3d";
@@ -56,7 +60,7 @@ test("what is done and what is closest to done, per character", () => {
   expect(c.titles).toMatchObject({ known: 1, total: 2 });
   expect(c.quests.completed).toBe(6);
   expect(c.quests.chainsDone).toBe(1);
-  expect(c.quests.closest).toEqual([{ questLineId: 900, name: "The Defias", done: 3, total: 4 }]);
+  expect(c.quests.closest).toEqual([{ questLineId: 900, name: "The Defias", done: 3, total: 4, truncated: false }]);
   expect(c.achievements.unlisted + c.titles.unlisted).toBe(0);
 });
 
@@ -123,26 +127,92 @@ const grant: PublicationGrant = { tokenHash: hash, installId: OWNER, realm: "For
   categories: ["collection"], expiresAt: "2026-11-30T00:00:00Z", verifiedBy: "operator", evidence: "test", revokedAt: null };
 const now = new Date("2026-10-15T00:00:00Z");
 
-test("owned progress is named data in the collection category, like collection_owned", () => {
+test("owned progress is in the collection sharing category, like collection_owned", () => {
   const parsed = parseRecords([...catalog, ...progress]);
   expect(parsed.receipt.rejected).toEqual([]);
-  for (const r of parsed.records) {
-    const isOwned = r.kind.endsWith("_owned");
-    expect(namedRecord(r), r.kind).toBe(isOwned);
-    expect(sharingCategory(r), r.kind).toBe(isOwned ? "collection" : null);
-  }
+  for (const r of parsed.records) expect(sharingCategory(r), r.kind).toBe(r.kind.endsWith("_owned") ? "collection" : null);
 });
 
-test("without a live install grant the corpus serves the catalogs and not the progress", () => {
-  const state = mergeCorpus(undefined, [...catalog, ...progress]);
-  const served = publicRecords(state, (r, grants) => authorizeRecord(r, grants, { grants: [grant], suppressions: [] }, now));
-  expect(served.filter((r) => r.kind.endsWith("_owned"))).toEqual([]);
-  expect(served.filter((r) => r.kind.endsWith("_catalog"))).toHaveLength(catalog.length);
-  const granted = mergeCorpus(undefined, progress, [hash]);
-  const own = publicRecords(granted, (r, grants) => authorizeRecord(r, grants, { grants: [grant], suppressions: [] }, now));
-  expect(own).toHaveLength(progress.length);
-  const wrongInstall = publicRecords(granted, (r, grants) => authorizeRecord(r, grants, { grants: [{ ...grant, installId: "other-install" }], suppressions: [] }, now));
-  expect(wrongInstall).toEqual([]);
-  const expired = publicRecords(granted, (r, grants) => authorizeRecord(r, grants, { grants: [{ ...grant, expiresAt: "2026-10-01T00:00:00Z" }], suppressions: [] }, now));
-  expect(expired).toEqual([]);
+test("no completion row reaches the corpus or the public corpus API, granted or not", () => {
+  for (const grants of [[], [hash]]) {
+    const state = mergeCorpus(undefined, [...catalog, ...progress], grants);
+    expect(state.events).toEqual([]);
+    expect(publicRecords(state, (r) => r)).toEqual([]);
+  }
+  for (const kind of COMPLETION_KINDS) expect(PUBLIC_RECORD_KINDS, kind).not.toContain(kind);
+});
+
+// --- the rollup: agreement, who may see owned rows, and its size ------------------------------------
+
+const fold = (uploads: { records: unknown[]; grants?: string[] }[]) =>
+  foldCompletion(emptyCompletion(), uploads.map((u) => ({ records: u.records, grants: u.grants ?? [] })));
+
+test("a catalog entry is listed only once 3 different installs reported it identically", () => {
+  const entry = { kind: "title_catalog", titleId: 6, name: "Sergeant" };
+  const two = fold([{ records: [row("reporter-one", entry), row("reporter-two", entry)] }]);
+  expect(agreedCatalog(two).titles.size).toBe(0);
+  // The same install three times, in three uploads, is still one install.
+  const repeated = fold([1, 2, 3].map(() => ({ records: [row("reporter-one", entry)] })));
+  expect(agreedCatalog(repeated).titles.size).toBe(0);
+  const differ = fold([{ records: [row("reporter-one", entry), row("reporter-two", entry), row("reporter-three", { ...entry, name: "Sergeant Major" })] }]);
+  expect(agreedCatalog(differ).titles.size).toBe(0);
+  const agreed = fold([{ records: [row("reporter-one", entry), row("reporter-two", entry)] }, { records: [row("reporter-three", entry)] }]);
+  expect([...agreedCatalog(agreed).titles.values()]).toEqual([{ titleId: 6, name: "Sergeant" }]);
+});
+
+test("one install cannot use up an entry's variants and keep the real one off the list", () => {
+  const entry = { kind: "title_catalog", titleId: 6, name: "Sergeant" };
+  const junk = ["A", "B", "C", "D"].map((name) => row("noisy-install", { ...entry, name }));
+  const state = fold([{ records: junk }, { records: ["reporter-one", "reporter-two", "reporter-three"].map((id) => row(id, entry)) }]);
+  expect(agreedCatalog(state).titles.get(6)?.name).toBe("Sergeant");
+  expect(state.catalog.t["6"].length).toBeLessThanOrEqual(3);
+});
+
+test("owned progress is shown only for an install whose grant is live now", () => {
+  const authority = (g: PublicationGrant) => ({ grants: [g], suppressions: [] });
+  const state = fold([{ records: [...catalog, ...progress], grants: [hash] }]);
+  const shown = (g: PublicationGrant) => completionFactsOf(state, authorizedOwners(state, authority(g), now)).owned.map((c) => c.installId);
+  expect(shown(grant)).toEqual([OWNER]);
+  expect(shown({ ...grant, installId: "other-install" })).toEqual([]);
+  expect(shown({ ...grant, expiresAt: "2026-10-01T00:00:00Z" })).toEqual([]);
+  expect(shown({ ...grant, revokedAt: "2026-10-14T00:00:00Z" })).toEqual([]);
+  const ungranted = fold([{ records: [...catalog, ...progress] }]);
+  expect(completionFactsOf(ungranted, authorizedOwners(ungranted, authority(grant), now)).owned).toEqual([]);
+  // The catalogs need no grant.
+  expect(completionFactsOf(ungranted, new Set()).achievements.size).toBe(3);
+});
+
+test("the rollup keeps the latest row per character and id: re-uploads do not grow it", () => {
+  const upload = (n: number) => ({
+    records: [
+      ...catalog.map((r) => ({ ...r, eventId: `e:${++seq}`, capturedAt: at(n) })),
+      owned({ kind: "achievement_owned", achievementId: 2, completed: false, criteriaMet: Math.min(9, n), criteriaTotal: 10 }, at(n)),
+      owned({ kind: "reputation_owned", factionId: 69, reaction: 5, standing: 8000 + n, floor: 3000, ceiling: 9000 }, at(n)),
+      owned({ kind: "title_owned", titleIds: [4] }, at(n)),
+      owned({ kind: "quest_owned", questIds: [7, 8] }, at(n)),
+    ],
+  });
+  const once = fold([upload(1)]);
+  const many = fold(Array.from({ length: 9 }, (_, i) => upload(i + 1)));
+  const size = (s: unknown) => JSON.stringify(s).length;
+  expect(Math.abs(size(many) - size(once))).toBeLessThan(200);
+  const [c] = completionFactsOf(many, "all").owned;
+  expect(c.achievements.get(2)?.criteriaMet).toBe(9);
+  expect(c.factions.get(69)?.standing).toBe(8009);
+  expect([...c.quests]).toEqual([7, 8]);
+  for (const variants of Object.values(many.catalog.a)) for (const v of variants) expect(v.installs.length).toBeLessThanOrEqual(3);
+});
+
+test("the MCP tool reads the rollup, never the corpus, and says when it is not connected", async () => {
+  expect(await answerCompletionProgress({ ownerInstallId: OWNER })).toBe(COMPLETION_UNSET);
+  expect(await answerCompletionProgress({ ownerInstallId: OWNER }, async () => null)).toContain("unrecorded, not zero");
+  expect(await answerCompletionProgress({ ownerInstallId: OWNER }, async () => { throw new Error("down"); })).toContain("unrecorded, not zero");
+  // Two reporters are not enough: the lists stay unrecorded even though the progress is there.
+  const twoReporters = [...catalog, ...progress].filter((r) => r.installId !== "reporter-three");
+  const text = await answerCompletionProgress({ ownerInstallId: OWNER }, async () => ({ facts: completionFactsFromRecords(twoReporters), dataAsOf: null }));
+  expect(text).toContain("Lists unrecorded");
+  expect(text).not.toContain("Ten Quests");
+  const full = await answerCompletionProgress({ ownerInstallId: OWNER }, async () => ({ facts: facts(), dataAsOf: "2026-10-19T06:30:00.000Z" }));
+  expect(full).toContain("Ten Quests (Quests): 8 of 10 criteria");
+  expect(full).toContain("Data as of 2026-10-19 06:30 UTC");
 });

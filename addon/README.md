@@ -44,6 +44,10 @@ expands, clicks or changes anything.
   progress under an 8-digit key made from your install id and the character's GUID, never the name. They
   leave this file only from the upload page, with the collection choice ticked and a verified grant.
 - A changed achievement or standing replaces its earlier row. Titles and completed quests are additions.
+- The file stays bounded: at most 1500 achievements read, 600 progress rows per character, and about 3 MB
+  of completion rows in all. A limit reached stops recording and `/everloot status` says which one.
+- Combat (`PLAYER_REGEN_DISABLED` or `InCombatLockdown`) pauses a read between frames; it picks up when
+  combat ends. `/everloot completion off` also stops a read that is under way.
 - The reputation list is the rows the reputation window shows now; a collapsed header hides its factions
   and the module never expands one. `/everloot status` says how many headers were collapsed.
 

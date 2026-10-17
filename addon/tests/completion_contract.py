@@ -28,7 +28,7 @@ CreateFrame = function() return {
 -- C_Timer runs nothing by itself: the test drains it, so chunking and debouncing are visible.
 timers = {}
 C_Timer = { After = function(seconds, f) table.insert(timers, { seconds = seconds, f = f }) end }
-calls, maxPerFrame, frames = 0, 0, 0
+calls, maxPerFrame, frames, totalCalls = 0, 0, 0, 0
 function drain(limit)
  local n = 0
  while #timers > 0 and n < (limit or 100000) do
@@ -39,14 +39,14 @@ function drain(limit)
  end
  return n
 end
-local function counted(fn) return function(...) calls = calls + 1; return fn(...) end end
+function counted(fn) return function(...) calls = calls + 1; totalCalls = totalCalls + 1; return fn(...) end end
 
 -- The player.
 combat = false
 guid = 'Player-4242-0ABCDEF1'
-UnitGUID = function(unit) assert(unit == 'player'); return guid end
-UnitClass = function() return 'Mage', 'MAGE', 8 end
-UnitLevel = function() return 42 end
+UnitGUID = counted(function(unit) assert(unit == 'player'); return guid end)
+UnitClass = counted(function() return 'Mage', 'MAGE', 8 end)
+UnitLevel = counted(function() return 42 end)
 UnitName = function() forbidden[#forbidden + 1] = 'UnitName'; return 'Thrall' end
 InCombatLockdown = function() return combat end
 forbidden = {}
@@ -82,7 +82,7 @@ API = {
  end,
  GetAchievementNumCriteria = function(id) for _, l in pairs(achievements) do for _, r in ipairs(l) do if r.id == id then return #r.crit end end end return 0 end,
  GetAchievementCriteriaInfo = function(id, i)
-  for _, l in pairs(achievements) do for _, r in ipairs(l) do if r.id == id then local c = r.crit[i]; return c[1], 0, c[2], 0, c[3], '', 0, 0, '', 1000 + i end end end
+  for _, l in pairs(achievements) do for _, r in ipairs(l) do if r.id == id then local c = r.crit[i]; return c[1], 0, c[2], c[4] or 0, c[3], '', 0, 0, '', 1000 + i end end end
  end,
 }
 for name, fn in pairs(API) do _G[name] = counted(fn) end
@@ -372,11 +372,219 @@ assert(s:find('completion: disabled', 1, true) and s:find('missing GetCategoryLi
 """)
 
 # --- the file's own cap is respected and reported -----------------------------------------------
-lua = fresh(core_tweak="Everloot.MAX_ROWS_PER_KIND = 3")
+lua = fresh(core_tweak="Everloot.Completion.Limits.rows = 3")
 lua.execute("""
 event('PLAYER_ENTERING_WORLD'); drain()
 assert(#rows('achievement_catalog') == 3 and EverlootDB.paused.achievement_catalog, 'capped, not discarded')
 assert(status():find('achievement_catalog paused at capacity', 1, true), status())
+""")
+
+# --- a replacement still works when the kind is full: the old row leaves first -------------------
+lua = fresh(core_tweak="Everloot.Completion.Limits.rows = 304")
+lua.execute("""
+event('PLAYER_ENTERING_WORLD'); drain()
+assert(#rows('achievement_catalog') == 304 and not (EverlootDB.paused or {}).achievement_catalog)
+achievements[10][1].name = 'Explore Elwynn Forest'
+SlashCmdList.EVERLOOT('completion'); drain()
+assert(#rows('achievement_catalog') == 304, 'the same number of rows')
+local found = 0
+for _, r in ipairs(rows('achievement_catalog')) do if r.achievementId == 101 then found = found + 1; assert(r.name == 'Explore Elwynn Forest') end end
+assert(found == 1, 'one row for the achievement, the new one')
+assert(not (EverlootDB.paused or {}).achievement_catalog, 'a replacement is not a capacity hit')
+""")
+
+# --- one character cannot take the whole file, and the data has a byte budget -----------------------
+lua = fresh(core_tweak="Everloot.Completion.Limits.perCharacter = 2")
+lua.execute("""
+event('PLAYER_ENTERING_WORLD'); drain()
+assert(#rows('achievement_owned') + #rows('reputation_owned') <= 4 and #rows('achievement_owned') == 2 and #rows('reputation_owned') == 2)
+assert(status():find('(per character) paused at capacity', 1, true), status())
+assert(#rows('achievement_catalog') == 304, 'the catalog is not limited per character')
+""")
+lua = fresh(core_tweak="Everloot.Completion.Limits.bytes = 30000")
+lua.execute("""
+event('PLAYER_ENTERING_WORLD'); drain()
+assert(#rows('achievement_catalog') < 304 and #rows('achievement_catalog') > 0, #rows('achievement_catalog'))
+assert(status():find('reached its size budget', 1, true) and status():find('/everloot completion off', 1, true), status())
+""")
+
+# --- off stays off: the events are still registered, and none of them does anything --------------
+lua = fresh()
+lua.execute("""
+event('PLAYER_ENTERING_WORLD'); drain()
+SlashCmdList.EVERLOOT('completion off')
+for _, name in ipairs({ 'UPDATE_FACTION', 'FACTION_STANDING_CHANGED', 'ACHIEVEMENT_EARNED', 'QUEST_TURNED_IN', 'KNOWN_TITLES_UPDATE', 'PLAYER_ENTERING_WORLD' }) do event(name) end
+assert(#timers == 0, 'an off module schedules nothing')
+drain()
+for _, kind in ipairs({'achievement_catalog','reputation_catalog','title_catalog','quest_chain_catalog','achievement_owned','reputation_owned','title_owned','quest_owned'}) do
+ assert(#rows(kind) == 0, 'off stays off: ' .. kind)
+end
+-- A read that was already scheduled when the player turned it off also writes nothing.
+SlashCmdList.EVERLOOT('completion on')
+event('UPDATE_FACTION')
+SlashCmdList.EVERLOOT('completion off')
+drain()
+assert(#rows('reputation_owned') == 0 and #rows('reputation_catalog') == 0, 'a pending read does not run after off')
+""")
+
+# --- combat in the middle of a read pauses it ----------------------------------------------------
+lua = fresh()
+lua.execute("""
+event('PLAYER_ENTERING_WORLD')
+drain(3)
+local partial = #rows('achievement_catalog')
+assert(partial > 0 and partial < 304, 'the read is under way: ' .. partial)
+combat = true
+drain(12)
+local during = #rows('achievement_catalog')
+assert(during == partial, 'no reads while in combat: ' .. partial .. ' then ' .. during)
+combat = false
+drain()
+assert(#rows('achievement_catalog') == 304 and #rows('title_owned') == 1, 'it finishes after combat')
+""")
+
+# --- PLAYER_REGEN_DISABLED alone pauses every game call, the login's included; the end of combat resumes at once
+lua = fresh()
+lua.execute("""
+event('PLAYER_REGEN_DISABLED')
+event('PLAYER_ENTERING_WORLD'); event('ACHIEVEMENT_EARNED'); event('UPDATE_FACTION')
+assert(totalCalls == 0, 'an event in combat calls nothing in the game: ' .. totalCalls)
+drain(20)
+assert(totalCalls == 0, 'no game call while in combat: ' .. totalCalls)
+assert(#rows('achievement_catalog') == 0)
+event('PLAYER_REGEN_ENABLED')
+assert(timers[#timers].seconds == 0, 'resumes on the next frame, not at the retry')
+drain()
+assert(#rows('achievement_catalog') == 304 and #rows('title_owned') == 1, 'the paused read finished')
+-- The retry timer that was also waiting does not start a second copy of the read.
+assert(#rows('quest_owned') == 1 and #rows('reputation_owned') == 3)
+-- Combat in the middle of a pass: the calls stop at the next frame.
+SlashCmdList.EVERLOOT('completion')
+drain(2)
+event('PLAYER_REGEN_DISABLED')
+local before = totalCalls
+drain(20)
+assert(totalCalls == before, 'mid-pass combat stops the calls: ' .. (totalCalls - before))
+event('PLAYER_REGEN_ENABLED'); drain()
+assert(totalCalls > before, 'and they continue after it')
+""")
+
+# --- off while a read is mid-way, and on again before it would have resumed: the old read writes nothing --
+lua = fresh()
+lua.execute("""
+event('PLAYER_ENTERING_WORLD')
+drain(3)
+assert(#rows('achievement_catalog') > 0, 'the read is under way')
+SlashCmdList.EVERLOOT('completion off')
+SlashCmdList.EVERLOOT('completion on')
+drain()
+for _, kind in ipairs({'achievement_catalog','reputation_catalog','title_catalog','quest_chain_catalog','achievement_owned','reputation_owned','title_owned','quest_owned'}) do
+ assert(#rows(kind) == 0, 'the withdrawn read wrote ' .. kind .. ': ' .. #rows(kind))
+end
+assert(EverlootDB.completionSeen == nil, 'nothing remembered from the withdrawn read')
+-- Off in combat with a read waiting: the end of combat does not resume it.
+SlashCmdList.EVERLOOT('completion')
+drain(2)
+event('PLAYER_REGEN_DISABLED'); drain(3)
+SlashCmdList.EVERLOOT('completion off')
+event('PLAYER_REGEN_ENABLED'); drain()
+assert(#rows('achievement_catalog') == 0 and #rows('quest_owned') == 0, 'off in combat stays off')
+""")
+
+# --- off survives a reload: the toggle is saved, no event is watched, nothing is read -----------------
+lua = fresh(saved="{ toggles = { completion = false } }")
+lua.execute("""
+assert(status():find('completion: off by toggle', 1, true), status())
+for _, name in ipairs({ 'PLAYER_ENTERING_WORLD', 'ACHIEVEMENT_EARNED', 'UPDATE_FACTION', 'QUEST_TURNED_IN', 'KNOWN_TITLES_UPDATE' }) do event(name) end
+assert(drain() == 0 and totalCalls == 0, 'an off module reads nothing after a reload')
+""")
+
+# --- thousands of achievements: the file keeps a bounded catalog and only changed rows ----------------
+lua = fresh(after_world="""
+-- Five categories of 1000 (the most one category may hold).
+for c = 20, 24 do categories[c] = { 'Big ' .. c, 1 }; categoryList[#categoryList + 1] = c; achievements[c] = {} end
+for i = 1, 5000 do
+ local list = achievements[20 + math.floor((i - 1) / 1000)]
+ list[#list + 1] = { id = 10000 + i, name = 'Long achievement name number ' .. i, points = 10, completed = i % 3 == 0,
+  month = 1, day = 1, year = 26, byMe = true, crit = { { 'First step of ' .. i, true, 1 }, { 'Second step of ' .. i, false, 1 }, { 'Third', false, 1 } } }
+end
+""")
+lua.execute("""
+event('PLAYER_ENTERING_WORLD'); drain()
+local L = Everloot.Completion.Limits
+assert(#rows('achievement_catalog') == L.achievements, 'the catalog stops at its limit: ' .. #rows('achievement_catalog'))
+assert(#rows('achievement_owned') <= L.perCharacter, 'one character keeps at most ' .. L.perCharacter .. ' progress rows')
+assert(status():find('achievements stopped at ' .. L.achievements, 1, true), status())
+assert(status():find('achievement_owned (per character) paused at capacity', 1, true), status())
+local size = 0
+for _, kind in ipairs({'achievement_catalog','reputation_catalog','title_catalog','quest_chain_catalog','achievement_owned','reputation_owned','title_owned','quest_owned'}) do
+ size = size + #dump(rows(kind))
+end
+assert(size < L.bytes, 'the completion rows stay inside the budget: ' .. size)
+-- Nothing changed: a second full read writes no row and allocates no event id.
+local next0 = EverlootDB.nextEvent
+SlashCmdList.EVERLOOT('completion'); drain()
+assert(EverlootDB.nextEvent == next0, 'an unchanged read writes nothing: ' .. (EverlootDB.nextEvent - next0))
+""")
+
+# --- a login does not re-read the whole catalog; a request does ------------------------------------
+lua = fresh()
+lua.execute("""
+event('PLAYER_ENTERING_WORLD'); drain()
+local first = #rows('achievement_catalog')
+achievements[10][1].name = 'Renamed'
+local before = frames
+event('PLAYER_ENTERING_WORLD'); drain()
+assert(frames - before < 6, 'a second login does not walk the achievement list: ' .. (frames - before) .. ' frames')
+local name
+for _, r in ipairs(rows('achievement_catalog')) do if r.achievementId == 101 then name = r.name end end
+assert(name == 'Explore Elwynn', 'not re-read at login')
+SlashCmdList.EVERLOOT('completion'); drain()
+for _, r in ipairs(rows('achievement_catalog')) do if r.achievementId == 101 then name = r.name end end
+assert(name == 'Renamed', 'read on request')
+-- A new game build re-reads the catalog at the next login.
+EverlootDB.clientBuild = '1.60.2.99999'
+achievements[10][1].name = 'Renamed Again'
+event('PLAYER_ENTERING_WORLD'); drain()
+for _, r in ipairs(rows('achievement_catalog')) do if r.achievementId == 101 then name = r.name end end
+assert(name == 'Renamed Again', 'a new build re-reads')
+""")
+
+# --- quest chains: a long chain is flagged, and quests past the per-pass limit stay eligible ---------
+lua = fresh(after_world="""
+completed = {}
+lines = {}; members = {}; lineNames = {}
+for i = 1, 450 do
+ completed[i] = i; lines[i] = 10000 + i; members[10000 + i] = { i, 500000 + i }; lineNames[10000 + i] = 'Line ' .. i
+end
+lines[1] = 20001; members[20001] = {}; for i = 1, 100 do members[20001][i] = 600000 + i end; members[20001][1] = 1; lineNames[20001] = 'Long Line'
+""")
+lua.execute("""
+event('PLAYER_ENTERING_WORLD'); drain()
+assert(#rows('quest_chain_catalog') == 400, 'at most 400 chains in one pass: ' .. #rows('quest_chain_catalog'))
+local long
+for _, r in ipairs(rows('quest_chain_catalog')) do if r.questLineId == 20001 then long = r end end
+assert(long and #long.questIds == 80 and long.truncated == true, 'a long chain is cut at 80 and flagged')
+local owned = 0
+for _, r in ipairs(rows('quest_owned')) do owned = owned + #r.questIds end
+assert(owned == 450, 'every completed quest is recorded')
+SlashCmdList.EVERLOOT('completion'); drain()
+assert(#rows('quest_chain_catalog') == 450, 'the quests left over were looked up next time: ' .. #rows('quest_chain_catalog'))
+""")
+
+# --- a date that does not exist is left out, and a progress bar keeps its amount -------------------
+lua = fresh(after_world="""
+achievements[10][3].month = 2; achievements[10][3].day = 30; achievements[10][3].year = 26
+achievements[11][#achievements[11] + 1] = { id = 301, name = 'Gold Hoarder', points = 10, completed = false, crit = { { 'Gold', false, 100, 45 } } }
+""")
+lua.execute("""
+event('PLAYER_ENTERING_WORLD'); drain()
+local owned = {}
+for _, r in ipairs(rows('achievement_owned')) do owned[r.achievementId] = r end
+assert(owned[103].completed == true and owned[103].earnedOn == nil, 'February 30th is not a date')
+assert(owned[301] and owned[301].quantity == 45 and owned[301].required == 100 and owned[301].criteriaMet == 0, 'a progress bar keeps its amount')
+assert(owned[102].quantity == nil, 'several criteria are counted, not measured')
+assert(Everloot.Completion.EarnedOn(2, 29, 24) == '2024-02-29' and Everloot.Completion.EarnedOn(2, 29, 25) == nil and Everloot.Completion.EarnedOn(4, 31, 26) == nil)
 """)
 
 # --- read only, and only the calls it declares ---------------------------------------------------

@@ -29,14 +29,16 @@ private storage and is never published.
 Completion tracking (addon 0.3.3, off until `/everloot completion on`) follows the same split.
 Four catalog kinds (`achievement_catalog`, `reputation_catalog`, `title_catalog`,
 `quest_chain_catalog`) hold only game facts the addon read from the game's own calls: ids, names,
-criteria text, standing headers and quest ids, with no player data. They are on the public allowlist
-and a reader lists an entry only after three installs report it identically; there is no copied
-catalog, and flavour text is not collected. Four owned kinds (`achievement_owned`, `reputation_owned`,
+criteria text, standing headers and quest ids, with no player data. They reflect what one character's
+windows list, so they are not on the public allowlist and never leave the site raw: the pages and the
+MCP tool list an entry only after three installs report it identically; there is no copied catalog,
+and flavour text is not collected. Four owned kinds (`achievement_owned`, `reputation_owned`,
 `title_owned`, `quest_owned`) hold one character's own progress under an opaque 8-digit key derived
 from the install id and the character's GUID, never the name. They are named data in the `collection`
-sharing category, exactly like `collection_owned`: they are on the allowlist only so a granted owner's
-own view can read them, and the corpus withholds them unless a verified install grant for that
-category is live. Turning the module off deletes every one of these rows from the file.
+sharing category, like `collection_owned`, and are shown only while a verified install grant for that
+category is live. All eight kinds are kept out of the public corpus and folded into a separate
+completion rollup (latest row per character and entry). Turning the module off deletes every one of
+these rows from the file.
 
 Blizzard hides some WoW: Forever item details until an item drops, and runs no public test realm.
 Game files show what exists; play shows what is real. Everloot keeps the two apart and says which

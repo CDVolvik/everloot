@@ -34,7 +34,15 @@ export async function GET(req: Request) {
       console.error("market rollup failed", err);
     }
     if (!market) return NextResponse.json({ ok: false, error: "market rollup failed", rebuild, ...result }, { status: 500 });
-    return NextResponse.json({ ok: true, rebuild, ...result, market });
+    // The completion rollup has its own watermark too, and runs after the market so it cannot starve it.
+    let completion: { added: number } | null = null;
+    try {
+      completion = await uploadStore.writeCompletion({ rebuild });
+    } catch (err) {
+      console.error("completion rollup failed", err);
+    }
+    if (!completion) return NextResponse.json({ ok: false, error: "completion rollup failed", rebuild, ...result, market }, { status: 500 });
+    return NextResponse.json({ ok: true, rebuild, ...result, market, completion });
   } catch (err) {
     console.error("snapshot failed", err);
     return NextResponse.json({ ok: false, error: "snapshot failed" }, { status: 500 });

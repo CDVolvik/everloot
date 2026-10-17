@@ -5,6 +5,7 @@ import { parseRecords, type CanonicalUpload, type IntakeRecord } from "./intake"
 import { mergeCorpus, mergeCorpusBatches, publicRecords, type CorpusState } from "../../../kb/src/corpus";
 import { HISTORY_DAYS, MARKET_MAX_BYTES, emptyMarket, foldMarket, uploadScans, type MarketState } from "../../../kb/src/market";
 import { createSharingStore } from "./sharing-store";
+import { COMPLETION_MAX_BYTES, emptyCompletion, foldCompletion, isCompletionState, type CompletionState } from "../../../kb/src/completion-rollup";
 
 /**
  * Where uploads and waitlist signups live.
@@ -72,6 +73,22 @@ export interface Market {
   unreachable?: boolean;
 }
 
+/** Null state means the read failed: completion is then unrecorded, never zero. */
+export interface CompletionRead {
+  state: CompletionState | null;
+  dataAsOf: string | null;
+  unreachable?: boolean;
+}
+
+interface CompletionSnapshot {
+  version: 1;
+  generatedAt: string;
+  state: CompletionState;
+  /** received_at of the newest upload folded in, and the ids sharing it, so ties are not read twice. */
+  lastReceivedAt: string | null;
+  lastIds: string[];
+}
+
 interface MarketSnapshot {
   version: 3;
   generatedAt: string;
@@ -115,6 +132,7 @@ const PAGE = 1000; // PostgREST's default row cap on Supabase
 const PARALLEL_READS = 16;
 const SNAPSHOT_KEY = "snapshots/corpus.json";
 const MARKET_KEY = "snapshots/market.json";
+const COMPLETION_KEY = "snapshots/completion.json";
 
 function rawRecordsOf(payload: unknown): unknown[] {
   const records = (payload as { records?: unknown })?.records;
@@ -142,6 +160,7 @@ export function createUploadStore(opts: {
   const cacheMs = opts.cacheMs ?? 5 * 60 * 1000;
   let cached: { at: number; corpus: RawCorpus } | null = null;
   let marketCached: { at: number; market: Market } | null = null;
+  let completionCached: { at: number; read: CompletionRead } | null = null;
   const marketMaxBytes = opts.marketMaxBytes ?? MARKET_MAX_BYTES;
 
   const cloud = opts.cloud;
@@ -173,7 +192,7 @@ export function createUploadStore(opts: {
         const dir = join(opts.localDir, "uploads");
         await mkdir(dir, { recursive: true });
         await writeFile(join(dir, `${uploadId}.json`), body);
-        cached = null;
+        cached = null; completionCached = null;
         return true;
       } catch {
         return false;
@@ -198,7 +217,7 @@ export function createUploadStore(opts: {
         console.error(`upload ${uploadId}: R2 object stored but index insert failed (${index.status})`);
         return false;
       }
-      cached = null;
+      cached = null; completionCached = null;
       return true;
     } catch (err) {
       console.error(`upload ${uploadId}: store failed`, err);
@@ -385,6 +404,84 @@ export function createUploadStore(opts: {
     return market;
   }
 
+  function completionUploads(payloads: unknown[]) {
+    return payloads.map((p) => ({ records: rawRecordsOf(p), grants: grantsOf(p) }));
+  }
+
+  /** The stored completion rollup and its ETag; `snapshot` is null when the object is unusable. */
+  async function readCompletionSnapshot(): Promise<{ snapshot: CompletionSnapshot | null; etag?: string } | null> {
+    const res = await r2Fetch(COMPLETION_KEY, { method: "GET", headers: { "accept-encoding": "identity" } });
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error(`completion read failed (${res.status})`);
+    const etag = res.headers.get("etag") ?? undefined;
+    const text = await res.text();
+    if (text.length > COMPLETION_MAX_BYTES) return { snapshot: null, etag };
+    let parsed: Partial<CompletionSnapshot>;
+    try { parsed = JSON.parse(text) as Partial<CompletionSnapshot>; } catch { return { snapshot: null, etag }; }
+    if (parsed.version !== 1 || !isCompletionState(parsed.state) || !Array.isArray(parsed.lastIds)) return { snapshot: null, etag };
+    return { snapshot: parsed as CompletionSnapshot, etag };
+  }
+
+  /**
+   * Fold uploads newer than the rollup's last one into the completion rollup (cron). `rebuild` starts from
+   * empty. A missed object writes nothing, so the next run reads it again.
+   */
+  async function writeCompletion(opts: { rebuild?: boolean } = {}): Promise<{ added: number }> {
+    if (!cloud) throw new Error("the completion rollup needs the cloud store");
+    const current = await readCompletionSnapshot();
+    if (current && (!current.etag || current.etag.startsWith("W/"))) throw new Error("completion rollup has no strong ETag: cannot safely update it");
+    if (current && !current.snapshot && !opts.rebuild) throw new Error("completion rollup is invalid: rebuild it with ?rebuild=1");
+    const prev = opts.rebuild ? null : current?.snapshot ?? null;
+    const rows = await listIndex(prev?.lastReceivedAt ?? undefined);
+    const fresh = rows.filter((r) => !(prev && r.received_at === prev.lastReceivedAt && prev.lastIds.includes(r.id)));
+    let state = prev?.state ?? emptyCompletion();
+    for (let i = 0; i < fresh.length; i += MARKET_FOLD_BATCH) {
+      const { payloads, missed } = await readPayloads(fresh.slice(i, i + MARKET_FOLD_BATCH).map((r) => r.object_key));
+      if (missed) throw new Error("upload object unreadable");
+      state = foldCompletion(state, completionUploads(payloads));
+    }
+    const lastReceivedAt = rows.length > 0 ? rows[rows.length - 1].received_at : prev?.lastReceivedAt ?? null;
+    const snapshot: CompletionSnapshot = {
+      version: 1,
+      generatedAt: now().toISOString(),
+      state,
+      lastReceivedAt,
+      lastIds: rows.length > 0 ? rows.filter((r) => r.received_at === lastReceivedAt).map((r) => r.id) : prev?.lastIds ?? [],
+    };
+    const body = JSON.stringify(snapshot);
+    if (Buffer.byteLength(body) > COMPLETION_MAX_BYTES) throw new Error("completion rollup would exceed its size limit; not written");
+    const put = await r2Fetch(COMPLETION_KEY, {
+      method: "PUT",
+      body,
+      headers: { "content-type": "application/json", ...(current ? { "if-match": current.etag! } : { "if-none-match": "*" }) },
+    });
+    if (!put.ok) throw new Error(`completion write failed (${put.status})`);
+    completionCached = null;
+    return { added: fresh.length };
+  }
+
+  /** The completion rollup. Cloud reads the cron's object; local folds the local uploads. */
+  async function loadCompletion(): Promise<CompletionRead> {
+    if (completionCached && Date.now() - completionCached.at < cacheMs) return completionCached.read;
+    let read: CompletionRead;
+    try {
+      if (unavailable) throw new Error("Production storage is not configured");
+      if (cloud) {
+        const stored = await readCompletionSnapshot();
+        if (!stored?.snapshot) throw new Error("completion rollup not built yet or unusable");
+        read = { state: stored.snapshot.state, dataAsOf: validTime(stored.snapshot.generatedAt) };
+      } else {
+        const local = await readLocalPayloads();
+        if (!local) throw new Error("local uploads unreadable");
+        read = { state: foldCompletion(emptyCompletion(), completionUploads(local.payloads)), dataAsOf: now().toISOString() };
+      }
+    } catch {
+      return { state: null, dataAsOf: null, unreachable: true };
+    }
+    completionCached = { at: Date.now(), read };
+    return read;
+  }
+
   async function readSnapshot(): Promise<Snapshot | null> {
     // Compression can turn the object's strong ETag into a weak response validator.
     const res = await r2Fetch(SNAPSHOT_KEY, { method: "GET", headers: { "accept-encoding": "identity" } });
@@ -485,7 +582,7 @@ export function createUploadStore(opts: {
       headers: { "content-type": "application/json", ...(current ? { "if-match": current.etag! } : { "if-none-match": "*" }) },
     });
     if (!put.ok) throw new Error(`snapshot write failed (${put.status})`);
-    cached = null;
+    cached = null; completionCached = null;
     return { uploads: snapshot.uploads, added: fresh.length };
   }
 
@@ -558,7 +655,7 @@ export function createUploadStore(opts: {
     } catch { return { status: "unavailable", ...unknown }; }
   }
 
-  return { putUpload, loadCorpus, putWaitlist, writeSnapshot, snapshotHealth, writeMarket, loadMarket };
+  return { putUpload, loadCorpus, putWaitlist, writeSnapshot, snapshotHealth, writeMarket, loadMarket, writeCompletion, loadCompletion };
 }
 
 /** The store the routes and pages use. */

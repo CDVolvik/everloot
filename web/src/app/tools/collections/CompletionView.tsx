@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { COMPLETION_AGREEMENT, completionEmptyState, type CharacterProgress, type CompletionProgress } from "../../../../../kb/src/completion";
+import { ANOTHER_CHARACTER_NOTE, COMPLETION_AGREEMENT, completionEmptyState, type CharacterProgress, type CompletionProgress } from "../../../../../kb/src/completion";
 
 const pct = (done: number, total: number) => (total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0);
 
@@ -52,17 +52,22 @@ function Character({ c }: { c: CharacterProgress }) {
       <div className="grid gap-5 sm:grid-cols-3">
         <Closest title="Achievements closest to done" empty="None started that the list covers.">
           {c.achievements.closest.map((a) => (
-            <li key={a.achievementId}>{a.name} <span className="block font-mono text-xs text-fg-2">{a.category} · {a.met} of {a.total} criteria</span></li>
+            <li key={a.achievementId}>{a.name} <span className="block font-mono text-xs text-fg-2">{a.category} · {a.have} of {a.of} {a.unit === "progress" ? "progress" : "criteria"}</span></li>
           ))}
         </Closest>
         <Closest title="Reputations nearest the next standing" empty="None below Exalted that the list covers.">
-          {c.reputation.closest.map((f) => (
-            <li key={f.factionId}>{f.name} <span className="block font-mono text-xs text-fg-2">{f.standing} · {f.toNext} to go</span></li>
-          ))}
+          {[
+            ...c.reputation.closest.map((f) => (
+              <li key={f.factionId}>{f.name} <span className="block font-mono text-xs text-fg-2">{f.standing} · {f.toNext} to go</span></li>
+            )),
+            ...c.reputation.unscaled.map((f) => (
+              <li key={`u${f.factionId}`}>{f.name} <span className="block font-mono text-xs text-fg-2">value {f.standing} · scale unknown</span></li>
+            )),
+          ]}
         </Closest>
         <Closest title="Quest chains closest to done" empty="No chain started that the list covers.">
           {c.quests.closest.map((q) => (
-            <li key={q.questLineId}>{q.name} <span className="block font-mono text-xs text-fg-2">{q.done} of {q.total} quests</span></li>
+            <li key={q.questLineId}>{q.name} <span className="block font-mono text-xs text-fg-2">{q.done} of {q.truncated ? `at least ${q.total}` : q.total} quests</span></li>
           ))}
         </Closest>
       </div>
@@ -99,6 +104,7 @@ export default function CompletionView({ progress }: { progress: CompletionProgr
         </p>
       )}
       {progress.characters.map((c) => <Character key={c.characterKey} c={c} />)}
+      <p className="text-xs text-muted">{ANOTHER_CHARACTER_NOTE}</p>
     </div>
   );
 }

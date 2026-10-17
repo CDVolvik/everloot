@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { collectionFactsFromRecords, handleCollectionGap } from "../../../../../kb/src/collection-gap";
-import { completionFactsFromRecords, completionProgress } from "../../../../../kb/src/completion";
+import { completionProgress } from "../../../../../kb/src/completion";
+import { loadCompletion } from "@/lib/completion-store";
 import { STORAGE_UNREACHABLE, uploadStore } from "@/lib/upload-store";
 import { dataAgeLabel } from "@/lib/data-age";
 import CompletionView from "./CompletionView";
@@ -32,9 +33,9 @@ export default async function CollectionsPage(
   const answer = corpus.unreachable
     ? STORAGE_UNREACHABLE
     : handleCollectionGap({ collection, ownerInstallId: install }, collectionFactsFromRecords(corpus.records));
-  const progress = corpus.unreachable || !install.trim()
-    ? null
-    : completionProgress(install, character, completionFactsFromRecords(corpus.records));
+  const completion = install.trim() ? await loadCompletion() : null;
+  const progress = completion ? completionProgress(install, character, completion.facts) : null;
+  const completionDown = install.trim() !== "" && completion === null;
 
   return (
     <article className="space-y-8 max-w-4xl">
@@ -78,10 +79,12 @@ export default async function CollectionsPage(
           Per character, from that install&apos;s own upload: what is done, and what is closest to done. Progress needs
           the addon&apos;s completion tracker (off until you turn it on) and an upload that shares your collection ownership.
         </p>
-        {corpus.unreachable ? <p className="text-sm text-fg-2">{STORAGE_UNREACHABLE}</p> : <CompletionView progress={progress} />}
+        {completionDown
+          ? <p className="text-sm text-fg-2">Completion data is unavailable right now. It is unrecorded, not zero.</p>
+          : <CompletionView progress={progress} />}
       </section>
 
-      {!corpus.unreachable && <p className="text-xs text-muted">{dataAgeLabel(corpus.dataAsOf)}</p>}
+      {!corpus.unreachable && <p className="text-xs text-muted">{dataAgeLabel(completion?.dataAsOf ?? corpus.dataAsOf)}</p>}
 
       <p className="text-sm text-muted">
         <Link href="/upload" className="text-accent hover:underline underline-offset-4">Upload addon data</Link>

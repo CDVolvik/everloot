@@ -186,7 +186,14 @@ export const questChainCatalog = base.extend({
   questLineId: GAME_ID,
   name: z.string().min(1).max(120),
   questIds: z.array(GAME_ID).min(1).max(80),
+  truncated: z.boolean().optional().describe("The chain has more quests than the 80 kept: it is never called finished."),
 });
+
+/** A real calendar date: 2026-02-30 is refused. */
+const CALENDAR_DATE = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((s) => {
+  const t = Date.parse(`${s}T00:00:00Z`);
+  return Number.isFinite(t) && new Date(t).toISOString().startsWith(s);
+}, { message: "not a calendar date" });
 
 const ownedBase = base.extend({
   characterKey: CHARACTER_KEY,
@@ -199,10 +206,14 @@ export const achievementOwned = ownedBase.extend({
   achievementId: GAME_ID,
   completed: z.boolean(),
   earnedByMe: z.boolean().optional().describe("False when the achievement is complete on the account but not by this character."),
-  earnedOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  earnedOn: CALENDAR_DATE.optional(),
   criteriaMet: COUNT,
   criteriaTotal: COUNT,
+  quantity: z.number().int().min(0).max(2_000_000_000).optional().describe("A progress-bar achievement's current amount."),
+  required: z.number().int().min(1).max(2_000_000_000).optional().describe("A progress-bar achievement's target amount."),
 }).superRefine((row, ctx) => {
+  if ((row.quantity === undefined) !== (row.required === undefined)) ctx.addIssue({ code: "custom", message: "quantity and required come together", path: ["quantity"] });
+  if (row.quantity !== undefined && row.required !== undefined && row.quantity > row.required) ctx.addIssue({ code: "custom", message: "quantity cannot exceed required", path: ["quantity"] });
   if (row.criteriaMet > row.criteriaTotal) ctx.addIssue({ code: "custom", message: "criteriaMet cannot exceed criteriaTotal", path: ["criteriaMet"] });
   if (row.earnedOn && !row.completed) ctx.addIssue({ code: "custom", message: "only a completed achievement has a date", path: ["earnedOn"] });
 });
@@ -229,6 +240,10 @@ export const questOwned = ownedBase.extend({
 
 /** The kinds that hold one character's own progress. Named data, like collection_owned. */
 export const COMPLETION_OWNED_KINDS: readonly string[] = ["achievement_owned", "reputation_owned", "title_owned", "quest_owned"];
+/** Catalog rows reflect one character's visible factions and quest lines and carry a per-install event id. */
+export const COMPLETION_CATALOG_KINDS: readonly string[] = ["achievement_catalog", "reputation_catalog", "title_catalog", "quest_chain_catalog"];
+/** None of these is a public record or part of the corpus: kb/src/completion-rollup.ts folds them. */
+export const COMPLETION_KINDS: readonly string[] = [...COMPLETION_CATALOG_KINDS, ...COMPLETION_OWNED_KINDS];
 
 export const auctionScan = base.extend({
   kind: z.literal("auction_scan"),
@@ -435,10 +450,10 @@ const PUBLIC_KIND_LIST = [
   "npc_sighting", "loot", "quest", "vendor", "item_seen", "guild_snapshot", "raid_lockout", "attendance",
   "loot_award", "gear_snapshot", "collection_catalog", "collection_owned", "auction_scan", "recipe_seen",
   "price_seen", "recipe_observed", "trainer_seen", "gold_snapshot", "money_event", "map_bounds",
-  // Completion tracker. The catalogs are anonymous game facts. The owned kinds are listed the way
-  // collection_owned is: the corpus withholds them unless a verified install grant covers them.
-  "achievement_catalog", "reputation_catalog", "title_catalog", "quest_chain_catalog",
-  "achievement_owned", "reputation_owned", "title_owned", "quest_owned",
+  // The eight completion kinds are deliberately absent. Catalog rows reflect one character's visible factions
+  // and quest lines under a per-install event id, so they are never served raw: pages and MCP show an entry
+  // only when 3 installs reported it identically. Owned rows are shown only to a granted owner. Both come
+  // from the completion rollup (kb/src/completion-rollup.ts), not from this corpus.
 ] as const satisfies readonly RecordKind[];
 export const PUBLIC_RECORD_KINDS: readonly string[] = PUBLIC_KIND_LIST;
 

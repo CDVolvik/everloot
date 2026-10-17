@@ -1,7 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import type { DB } from "./db.js";
-import { createKnowledgeServer, type ChangesLoader, type CorpusLoader, type EcosystemLoader, type MarketLoader } from "./mcp-server.js";
+import { createKnowledgeServer, type ChangesLoader, type CompletionLoader, type CorpusLoader, type EcosystemLoader, type MarketLoader } from "./mcp-server.js";
 
 export interface PublicMcpConfig {
   db: DB;
@@ -16,14 +16,16 @@ export interface PublicMcpConfig {
   corpus?: CorpusLoader;
   /** The web route's market rollup reader; without it market_value says it is not connected. */
   market?: MarketLoader;
+  /** The web route's completion rollup reader, owned progress already limited to granted installs. */
+  completion?: CompletionLoader;
   /** The merged changes timeline, when the host has one. */
   changes?: ChangesLoader;
   /** The ecosystem tracker's view with install counts joined, when the host has one. */
   ecosystem?: EcosystemLoader;
 }
 
-export function createPublicMcpServer(config: { db: DB; corpus?: CorpusLoader; market?: MarketLoader; changes?: ChangesLoader; ecosystem?: EcosystemLoader }) {
-  const server = createKnowledgeServer(config.db, { corpus: config.corpus, market: config.market, changes: config.changes, ecosystem: config.ecosystem });
+export function createPublicMcpServer(config: { db: DB; corpus?: CorpusLoader; market?: MarketLoader; completion?: CompletionLoader; changes?: ChangesLoader; ecosystem?: EcosystemLoader }) {
+  const server = createKnowledgeServer(config.db, { corpus: config.corpus, market: config.market, completion: config.completion, changes: config.changes, ecosystem: config.ecosystem });
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined, enableJsonResponse: true,
   });

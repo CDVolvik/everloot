@@ -505,3 +505,60 @@ describe("market rollup", () => {
   });
 });
 
+describe("completion rollup", () => {
+  const COMPLETION = `${R2}snapshots/completion.json`;
+  const INDEX = "https://sb.example/rest/v1/uploads";
+  const title = (installId: string, n: number) => ({ kind: "title_catalog", eventId: `t:${installId}:${n}`, installId, capturedAt, titleId: 4, name: "Private" });
+  const index = (ids: string[]) => ids.map((id, i) => ({ id, object_key: `uploads/${id}.json`, received_at: `2026-10-04T0${i}:00:00+00:00` }));
+
+  test("the cron folds uploads into its own object, and the next run starts after the last one it read", async () => {
+    const first = fakeFetch([
+      [COMPLETION, "GET", () => new Response("missing", { status: 404 })],
+      [INDEX, "GET", () => Response.json(index(["a", "b"]))],
+      [`${R2}uploads/a.json`, "GET", () => Response.json({ records: [title("install-1", 1), lootRow()] })],
+      [`${R2}uploads/b.json`, "GET", () => Response.json({ records: [title("install-2", 1)] })],
+      [COMPLETION, "PUT", () => new Response(null, { status: 200 })],
+    ]);
+    expect(await createUploadStore({ cloud, localDir: "unused", fetch: first.fn, now }).writeCompletion()).toEqual({ added: 2 });
+    const put = first.calls.find((c) => c.method === "PUT")!;
+    expect(put.headers.get("if-none-match")).toBe("*");
+    const stored = JSON.parse(put.body);
+    expect(stored).toMatchObject({ version: 1, lastReceivedAt: "2026-10-04T01:00:00+00:00", lastIds: ["b"] });
+    expect(stored.state.catalog.t["4"][0].installs).toEqual(["install-1", "install-2"]);
+
+    const second = fakeFetch([
+      [COMPLETION, "GET", () => Response.json(stored)],
+      [INDEX, "GET", () => Response.json([...index(["a", "b"]).slice(1), { id: "c", object_key: "uploads/c.json", received_at: "2026-10-04T02:00:00+00:00" }])],
+      [`${R2}uploads/c.json`, "GET", () => Response.json({ records: [title("install-3", 1)] })],
+      [COMPLETION, "PUT", () => new Response(null, { status: 200 })],
+    ]);
+    expect(await createUploadStore({ cloud, localDir: "unused", fetch: second.fn, now }).writeCompletion()).toEqual({ added: 1 });
+    expect(second.calls.find((c) => c.url.startsWith(INDEX))!.url).toContain("received_at=gte.2026-10-04T01%3A00%3A00%2B00%3A00");
+    expect(second.calls.some((c) => c.url.endsWith("uploads/b.json"))).toBe(false);
+    const put2 = second.calls.find((c) => c.method === "PUT")!;
+    expect(put2.headers.get("if-match")).toBe('"fixture"');
+    expect(JSON.parse(put2.body).state.catalog.t["4"][0].installs).toHaveLength(3);
+  });
+
+  test("the corpus every page reads carries no completion row; only the completion read does", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "everloot-completion-"));
+    mkdirSync(join(dir, "uploads"));
+    ["install-1", "install-2", "install-3"].forEach((id) =>
+      writeFileSync(join(dir, "uploads", `${id}.json`), JSON.stringify({ records: [title(id, 1), { ...lootRow(), installId: id, eventId: `l:${id}` }] })));
+    const store = createUploadStore({ cloud: null, localDir: dir, now, cacheMs: 0 });
+    const corpus = await store.loadCorpus();
+    expect(corpus.records.length).toBeGreaterThan(0);
+    expect(corpus.records.some((r) => (r as { kind: string }).kind === "title_catalog")).toBe(false);
+    const completion = await store.loadCompletion();
+    expect(completion.state!.catalog.t["4"][0].installs).toHaveLength(3);
+  });
+
+  test("a missing or failed rollup is unavailable, never an empty one", async () => {
+    const missing = fakeFetch([[COMPLETION, "GET", () => new Response("missing", { status: 404 })]]);
+    expect(await createUploadStore({ cloud, localDir: "unused", fetch: missing.fn, now }).loadCompletion())
+      .toEqual({ state: null, dataAsOf: null, unreachable: true });
+    const odd = fakeFetch([[COMPLETION, "GET", () => Response.json({ version: 1, state: { version: 2 }, lastIds: [] })]]);
+    expect(await createUploadStore({ cloud, localDir: "unused", fetch: odd.fn, now }).loadCompletion())
+      .toEqual({ state: null, dataAsOf: null, unreachable: true });
+  });
+});

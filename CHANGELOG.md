@@ -27,7 +27,9 @@ tagged release.
   same entry. Owned rows (`achievement_owned`, `reputation_owned`, `title_owned`, `quest_owned`) are one
   character's progress under an opaque key, not the name. They are named data in the collection sharing
   category, like `collection_owned`. A changed achievement or standing replaces its earlier row, so the
-  file does not grow with each point of reputation.
+  file does not grow with each point of reputation, and the module's rows have hard caps reported in
+  `/everloot status`. None of the eight kinds is in the public corpus: the site folds them into a separate
+  completion rollup, so pages that do not show completion never read them.
 - `/tools/collections` shows, per character, what is done and what is closest to done (achievements with
   the most criteria met, reputations nearest the next standing, quest chains with the fewest quests left),
   with an empty state that says when the data is unrecorded rather than zero.

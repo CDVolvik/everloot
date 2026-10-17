@@ -56,11 +56,12 @@ function E:IsEnabled(module)
 end
 
 --- Preserve retained rows. At capacity, pause this kind instead of silently discarding data.
-function E:Store(kind, row)
+function E:Store(kind, row, cap)
   if type(row) ~= "table" then return false end
   local store = EverlootDB.records[kind]
   if not store then store = {}; EverlootDB.records[kind] = store end
-  if #store >= E.MAX_ROWS_PER_KIND then
+  -- A module whose rows replace each other may state its own bound; the others keep the file-wide one.
+  if #store >= (cap or E.MAX_ROWS_PER_KIND) then
     EverlootDB.paused = EverlootDB.paused or {}
     if not EverlootDB.paused[kind] then
       print("Everloot: " .. kind .. " collection paused at capacity. Keep and upload your SavedVariables file.")

@@ -1,5 +1,6 @@
 import { createMcpHttpHandler } from "../../../kb/src/mcp-http-server";
 import { loadTimeline } from "./changes";
+import { loadCompletion } from "./completion-store";
 import { loadEcosystem } from "./ecosystem";
 import { getRelease } from "./release";
 import { uploadStore } from "./upload-store";
@@ -48,6 +49,7 @@ export function createMount(options: { path: string; bearer: boolean }) {
             const loaded = await uploadStore.loadCorpus();
             return loaded.unreachable ? null : { records: loaded.records, dataAsOf: loaded.dataAsOf ?? null };
           },
+          completion: () => loadCompletion(),
           market: async () => {
             const loaded = await uploadStore.loadMarket();
             return loaded.state ? { state: loaded.state, dataAsOf: loaded.dataAsOf } : null;
