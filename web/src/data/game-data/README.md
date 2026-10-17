@@ -1,30 +1,18 @@
 # Game data
 
-Everything in this folder is **Blizzard's data**, read from the WoW: Forever game files by our own
-extractor. It is not under Everloot's licence (CC BY-SA 4.0 for data, AGPL for code). It is labelled
-*found in game files, unconfirmed*: a record here does not mean it is, or will be, in the live game.
+Files in this folder are Blizzard's data, read from the WoW: Forever game files by `kb/src/client-extract.ts`
+and cut down to the fields a page needs. They are **not under our licence** (CC BY-SA 4.0 covers our own
+data, not these), and everything in them is **found in game files, unconfirmed**: being here does not mean
+it is, or will be, in the game. Each file names the build it came from. Encrypted blocks were skipped, never
+decrypted. Column names come from [WoWDBDefs](https://github.com/wowdev/WoWDBDefs) (CC BY-SA 4.0). See
+[docs/DATA_POLICY.md](../../../../docs/DATA_POLICY.md).
 
-`talents/<class>.json`: one file per class from game build **1.60.1.70450**
-(`wow_classic_beta`, build config `84bea4233331e390fda8724c6f91ffa5`, read 2026-10-17).
+| File | What | Made by | Build |
+|---|---|---|---|
+| `map.json` | Continents and zones with their rectangles in world yards, and dungeon and raid entrance positions | `npm run kb -- client-map <snapshot>` (tables `Map`, `UiMap`, `UiMapAssignment`) | in the file's `source` |
+| `talents/<class>.json` | One talent tree set per class (`everloot.talent-catalog/2`, see `docs/TALENT_CATALOG.md`): node ids, positions, ranks, prerequisites, unlock gates, point levels, spell ids and talent names. No descriptions, icons or tooltip text | `npm run kb -- client-catalog <snapshot>`, then `node scripts/trim-talent-catalog.mjs ../kb/data/catalog/<product>-<build>-<config>/talents` in `web/` | in each file's `build` |
 
-- Source: the trait tables of that build, read from the public Blizzard CDN files every player
-  downloads. Encrypted blocks are skipped, never decrypted. Column names come from
-  [WoWDBDefs](https://github.com/wowdev/WoWDBDefs) (CC BY-SA 4.0).
-- Shape: `everloot.talent-catalog/1`, defined in `kb/src/talents/catalog.ts`, documented in
-  `docs/TALENT_CATALOG.md`.
-- Kept: node ids, positions, ranks, prerequisites, unlock gates, point levels, spell ids and talent
-  names.
-- Not kept: spell descriptions, effect numbers and icon ids. No tooltip text and no icons are
-  published yet.
+Do not edit these files by hand. Regenerate them from a new snapshot (`client-extract`, then the commands
+above) and commit the result with the build in the message. Nothing from another project belongs here.
 
-Regenerate it, on a maintainer's machine:
-
-```
-cd kb
-npm run kb -- client-extract --product wow_classic_beta
-npm run kb -- client-catalog data/client/wow_classic_beta-<build>-<config>.sqlite
-cd ../web
-node scripts/trim-talent-catalog.mjs ../kb/data/catalog/<product>-<build>-<config>/talents
-```
-
-World of Warcraft and its talent names are trademarks and copyright of Blizzard Entertainment, Inc.
+World of Warcraft and its names are trademarks and copyright of Blizzard Entertainment, Inc.

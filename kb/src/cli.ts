@@ -1,11 +1,12 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { auditSources } from "./audit-sources.js";
 import { BlizzardClient } from "./blizzard/client.js";
 import { checkBuilds, loadRegistry, recordBuilds, saveRegistry, versionsUrl } from "./builds.js";
 import { diffSnapshots } from "./client-diff.js";
 import { CASC_LIBRARY, extractTables, iconIds, NOT_IN_BUILD, openCdn, pinDefinitions, probeFiles } from "./client-extract.js";
 import { writeCatalogs } from "./client-catalog.js";
+import { writeWorldMapData } from "./world-map-data.js";
 import { clientSnapshotName, writeClientSnapshot } from "./client-snapshot.js";
 import { diffRaidBuffs, RaidBuffTable } from "./raid-buffs.js";
 import type { Game, NsKind, Region } from "./blizzard/namespaces.js";
@@ -54,6 +55,9 @@ const USAGE = `usage: npm run kb -- <command> --db <path>
     docs/TALENT_CATALOG.md. Not for publication)
   raid-buffs-diff <old/raid-buffs.json> <new/raid-buffs.json>   (entries whose scope changed between builds)
   client-diff <old.sqlite> <new.sqlite> [--out diff.json]   (field-level diff of two snapshots)
+  client-map <snapshot.sqlite> [--out ../web/src/data/game-data/map.json]
+    (zone rectangles in world coordinates, continents and dungeon and raid entrances from a client
+    snapshot, for the world map page. Game file data, stamped with the build. See docs/DATA_POLICY.md)
   audit-sources <file.sqlite...>   (rows per source and cached API rows in each file; exits 1 if anything
     is not publishable)
 
@@ -273,6 +277,18 @@ async function main(): Promise<number> {
       for (const w of run.index.warnings) console.log(`warning: ${w}`);
       if (run.raidBuffs.notFound.length) console.log(`raid buffs not found: ${run.raidBuffs.notFound.join(", ")}`);
       console.log(`-> ${run.dir}`);
+      return 0;
+    }
+    case "client-map": {
+      if (!args[0]) break;
+      const data = writeWorldMapData(args[0]);
+      const out = flags.get("out") || "../web/src/data/game-data/map.json";
+      mkdirSync(dirname(out), { recursive: true });
+      writeFileSync(out, `${JSON.stringify(data, null, 2)}
+`);
+      for (const t of data.source.tables) console.log(`${t.table}: ${t.rows} rows${t.encryptedBlocks ? `, ${t.encryptedBlocks} encrypted blocks skipped` : ""}`);
+      for (const w of data.warnings) console.log(`warning: ${w}`);
+      console.log(`${data.continents.length} continents, ${data.zones.length} zones, ${data.entrances.length} entrances -> ${out}`);
       return 0;
     }
     case "raid-buffs-diff": {

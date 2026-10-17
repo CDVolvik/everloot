@@ -82,16 +82,17 @@ test("a curated row is labelled with its source and game version", async () => {
   expect(html).toContain("https://news.blizzard.com/example");
 });
 
-test("lore pages render per request so an unavailable answer is never cached for a day", async () => {
+test("lore pages are cached for a day and built on first request, not at build time", async () => {
   const mod = await page();
-  expect(mod.dynamic).toBe("force-dynamic");
-  expect((mod as Record<string, unknown>).revalidate).toBeUndefined();
+  expect((mod as Record<string, unknown>).dynamic).toBeUndefined();
+  expect(mod.revalidate).toBe(86400);
+  expect(mod.generateStaticParams()).toEqual([]);
 });
 
-test("an unavailable release renders the unavailable copy and is not indexed", async () => {
+test("an unavailable release fails the render, which Next never caches, and is not indexed", async () => {
   vi.spyOn(console, "error").mockImplementation(() => {});
   const { default: LorePage, generateMetadata } = await page(join(tmpdir(), "missing.sqlite"));
-  expect(renderToStaticMarkup(await LorePage(params("1-thrall")))).toContain("Lore archive unavailable");
+  await expect(LorePage(params("1-thrall"))).rejects.toThrow("Lore archive unavailable");
   expect((await generateMetadata(params("1-thrall"))).robots).toMatchObject({ index: false });
 });
 

@@ -28,6 +28,9 @@ export const CLIENT_TABLES = {
   SpellEffect: 1140088, SpellRadius: 1134584,
   // Tooltips and icons for the talent catalog: icon file id and duration of each spell.
   SpellMisc: 1003144, SpellDuration: 1137828,
+  // Maps: zone rectangles in world coordinates (UiMap names the maps, UiMapAssignment places them on a
+  // continent) and, in Map, the continents and the instances with their entrance position.
+  Map: 1349477, UiMap: 1957206, UiMapAssignment: 1957219,
 } as const;
 export type ClientTableName = keyof typeof CLIENT_TABLES;
 

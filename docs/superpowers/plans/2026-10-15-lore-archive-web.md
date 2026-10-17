@@ -19,7 +19,6 @@
 - Release path: `process.env.KB_SNAPSHOT_PATH?.trim() || join(process.cwd(), ".release", "2026-10-05-everloot-public.sqlite")`.
 - Unavailable release → HTTP 503 and the copy "Lore archive unavailable", `robots: noindex, follow`. Never an empty archive or a zero.
 - Free services only. No new dependency. Run `npm test` and `npx tsc --noEmit` in `web/` and `npm test` in `kb/` before each commit that touches them.
-- Commit messages end with `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`.
 - Tests that need a release build one in a temp dir with `openDb` + `replaceSourceRows` + `snapshot()` (pattern: `web/src/app/mcp/route.test.ts`), set `KB_SNAPSHOT_PATH` with `vi.stubEnv`, and call `vi.resetModules()` in `afterEach` so the cached handle re-opens.
 
 ## Review Focus
@@ -182,7 +181,7 @@ test("a missing release is null and retried", ...)       // stub to a non-existe
 **Files:**
 - Modify: `NEXT_SESSION.md` (START HERE: add the lore archive as live-on-preview/merged with its PR number and measurements), `_STATUS.md` (one paragraph under Scope now)
 
-- [ ] **Step 1: Push** `feat/lore-archive`; `gh pr create -R CDVolvik/everloot --base main --title "[Everloot] Lore archive: /lore, /search and lore pages from the knowledge release" --body` describing the slice, the spec path, test counts, and leaving a "Preview measurements" section to fill. End the body with `🤖 Generated with [Claude Code](https://claude.com/claude-code)`.
+- [ ] **Step 1: Push** `feat/lore-archive`; `gh pr create -R CDVolvik/everloot --base main --title "[Everloot] Lore archive: /lore, /search and lore pages from the knowledge release" --body` describing the slice, the spec path, test counts, and leaving a "Preview measurements" section to fill.
 - [ ] **Step 2: Link the PR** with `link_pull_request` and watch checks with `watch_pull_request` (T3 wakes on completion).
 - [ ] **Step 3: Measure on the preview URL** with `curl -s -o NUL -w "%{http_code} %{time_total}\n"` twice each for `/lore/291323-frostwhisper` and `/search?q=thrall` (first = cold, second = warm); open `/lore/291323-frostwhisper`, `/lore/291323-wrong` (expect 308 to canonical), `/lore/999999999-x` (404), `/lore-sitemap.xml`, `/lore-sitemap/0.xml` (count lines containing `<loc>`), `/search?q=the`; read the Vercel build log for the function sizes of the new routes. Run a Lighthouse pass on the lore page from the preview (Chrome DevTools or `npx lighthouse` if available; otherwise note it was skipped).
 - [ ] **Step 4: Write the numbers** into the PR's "Preview measurements" section and into `NEXT_SESSION.md`; commit the doc change.
