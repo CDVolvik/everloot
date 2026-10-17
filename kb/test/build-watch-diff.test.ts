@@ -1,36 +1,35 @@
 import { describe, expect, it } from "vitest";
-import { buildChangeEntry, diffTalents } from "../src/build-watch/diff.js";
+import { buildChangeEntry, diffMap, diffRaid, diffSpellValues, diffTalents } from "../src/build-watch/diff.js";
 import { ChangeEntry, hasChanges } from "../src/build-watch/changes.js";
-import { GameDataManifest, toCommitted } from "../src/build-watch/game-data.js";
+import type { SiteData } from "../src/build-watch/site-data.js";
 import { prBody, terminalSummary } from "../src/build-watch/render.js";
-import { catalog, CONFIG_A, node, raid, stamp } from "./build-watch-fixtures.js";
+import { CONFIG_A, node, raid, spellValues, trimmed, worldMap } from "./build-watch-fixtures.js";
 
-const committed = (nodes: ReturnType<typeof node>[], over = {}) => [toCommitted(catalog(1, nodes, over))];
+const classes = (nodes: ReturnType<typeof node>[], over = {}) => [trimmed(1, nodes, over)];
 
 describe("diffTalents", () => {
   const base = [node(1, "Mutilate"), node(2, "Evasion"), node(3, "Vigor")];
 
   it("reports nothing for identical catalogs", () => {
-    const d = diffTalents(committed(base), committed(base), false);
-    expect(Object.values(d).flat()).toEqual([]);
+    expect(Object.values(diffTalents(classes(base), classes(base), false)).flat()).toEqual([]);
   });
 
   it("finds added and removed talents", () => {
-    const d = diffTalents(committed(base), committed([base[0], base[1], node(4, "Riposte", { maxRanks: 3, kind: "tiered" })]), false);
+    const d = diffTalents(classes(base), classes([base[0], base[1], node(4, "Riposte", { maxRanks: 3, kind: "tiered" })]), false);
     expect(d.added.map((a) => [a.name, a.kind, a.maxRanks])).toEqual([["Riposte", "tiered", 3]]);
     expect(d.removed.map((r) => r.name)).toEqual(["Vigor"]);
   });
 
-  it("finds moved talents, including to another tree", () => {
+  it("finds moved talents", () => {
     const moved = [{ ...base[0], x: 5000, row: 2, col: 3 }, base[1], base[2]];
-    const d = diffTalents(committed(base), committed(moved), false);
+    const d = diffTalents(classes(base), classes(moved), false);
     expect(d.moved).toHaveLength(1);
     expect(d.moved[0]).toMatchObject({ name: "Mutilate", from: { x: 1001, row: 0 }, to: { x: 5000, row: 2, col: 3 } });
   });
 
   it("does not call a talent moved when only its derived row and column shifted", () => {
     const shifted = [{ ...base[0], row: 4, col: 4 }, base[1], base[2]];
-    expect(diffTalents(committed(base), committed(shifted), false).moved).toEqual([]);
+    expect(diffTalents(classes(base), classes(shifted), false).moved).toEqual([]);
   });
 
   it("finds rank, gate and prerequisite changes", () => {
@@ -39,7 +38,7 @@ describe("diffTalents", () => {
       { ...base[1], unlock: { spentRequired: { amount: 5, scope: "class" as const, gateGroupId: 1, currencyId: 2, traitTreeId: 3 } } },
       { ...base[2], prereqs: [{ nodeId: 1, rule: "all" as const }] },
     ];
-    const d = diffTalents(committed(base), committed(next), false);
+    const d = diffTalents(classes(base), classes(next), false);
     expect(d.ranks).toMatchObject([{ name: "Mutilate", before: 1, after: 2 }]);
     expect(d.gates).toMatchObject([{ name: "Evasion", before: {}, after: { spentRequired: { amount: 5, scope: "class" } } }]);
     expect(d.prereqs).toMatchObject([{ name: "Vigor", before: [], after: [{ nodeId: 1, rule: "all" }] }]);
@@ -48,111 +47,114 @@ describe("diffTalents", () => {
   it("ignores the order prerequisites are listed in", () => {
     const a = [{ ...base[0], prereqs: [{ nodeId: 2, rule: "any" as const }, { nodeId: 3, rule: "any" as const }] }];
     const b = [{ ...base[0], prereqs: [{ nodeId: 3, rule: "any" as const }, { nodeId: 2, rule: "any" as const }] }];
-    expect(diffTalents(committed(a), committed(b), false).prereqs).toEqual([]);
+    expect(diffTalents(classes(a), classes(b), false).prereqs).toEqual([]);
   });
 
-  it("reports a talent swapped for another spell, not as a value change", () => {
-    const swapped = node(1, "Mutilate 2", {});
+  it("reports a talent swapped for another spell", () => {
+    const swapped = node(1, "Mutilate 2");
     swapped.entries[0].spellId = 999;
-    const d = diffTalents(committed(base), committed([swapped, base[1], base[2]]), false);
+    const d = diffTalents(classes(base), classes([swapped, base[1], base[2]]), false);
     expect(d.replaced).toMatchObject([{ nodeId: 1, before: [101], after: [999] }]);
-    expect(d.spellValues).toEqual([]);
-  });
-
-  it("reports spell value changes and tooltip changes without storing tooltip text", () => {
-    const next = [node(1, "Mutilate"), node(2, "Evasion"), node(3, "Vigor")];
-    next[0].entries[0].effects[0].basePoints = 8;
-    next[0].entries[0].durationMs = 6000;
-    next[1].entries[0].description = "Evasion tooltip, reworded";
-    const d = diffTalents(committed(base), committed(next), false);
-    const byName = Object.fromEntries(d.spellValues.map((s) => [s.name, s.changes]));
-    expect(byName.Mutilate).toEqual([
-      { field: "durationMs", before: null, after: 6000 },
-      { field: "effect 1 basePoints", before: 5, after: 8 },
-    ]);
-    expect(byName.Evasion).toHaveLength(1);
-    expect(byName.Evasion[0].field).toBe("text");
-    expect(JSON.stringify(d)).not.toContain("reworded");
   });
 
   it("reports classes and talent point levels", () => {
-    const other = toCommitted(catalog(2, [node(9, "Bash")], { classId: 11, className: "Druid" }));
-    const d = diffTalents(committed(base), [...committed(base, { pointLevels: [10, 11] }), other], false);
+    const other = trimmed(2, [node(9, "Bash")], { classId: 11, className: "Druid" });
+    const d = diffTalents(classes(base), [...classes(base, { pointLevels: [10, 11] }), other], false);
     expect(d.classesAdded).toEqual([{ classId: 11, className: "Druid", spoiler: false }]);
     expect(d.pointLevels).toMatchObject([{ className: "Rogue", before: [10, 11, 12], after: [10, 11] }]);
-    expect(diffTalents([...committed(base), other], committed(base), false).classesRemoved.map((c) => c.className)).toEqual(["Druid"]);
-    expect(diffTalents(committed(base), [...committed(base), other], true).classesAdded[0].spoiler).toBe(true);
+    expect(diffTalents([...classes(base), other], classes(base), false).classesRemoved.map((c) => c.className)).toEqual(["Druid"]);
+    expect(diffTalents(classes(base), [...classes(base), other], true).classesAdded[0].spoiler).toBe(true);
   });
 
   it("flags every item as a spoiler for a build that is not live", () => {
     const next = [{ ...base[0], maxRanks: 3 }, node(4, "New")];
-    const d = diffTalents(committed(base), committed(next), true);
+    const d = diffTalents(classes(base), classes(next), true);
     expect([...d.added, ...d.ranks, ...d.removed].every((i) => i.spoiler)).toBe(true);
-    expect(diffTalents(committed(base), committed(next), false).added[0].spoiler).toBe(false);
+    expect(diffTalents(classes(base), classes(next), false).added[0].spoiler).toBe(false);
+  });
+});
+
+describe("diffSpellValues", () => {
+  const talents = classes([node(1, "Mutilate"), node(2, "Evasion")]);
+
+  it("reports changed numbers and tooltip hashes, placed at the talent", () => {
+    const before = spellValues(1, { 101: {}, 102: {} });
+    const after = spellValues(2, { 101: { basePoints: 8, durationMs: 6000 }, 102: { textHash: "bbbbbbbbbbbb" } });
+    const d = diffSpellValues(before, after, talents, true);
+    const byName = Object.fromEntries(d.map((s) => [s.name, s]));
+    expect(byName.Mutilate.changes).toEqual([
+      { field: "durationMs", before: null, after: 6000 },
+      { field: "effect 1 basePoints", before: 5, after: 8 },
+    ]);
+    expect(byName.Mutilate).toMatchObject({ spellId: 101, spoiler: true, className: "Rogue", tree: "Assassination" });
+    expect(byName.Evasion.changes).toEqual([{ field: "text", before: "aaaaaaaaaaaa", after: "bbbbbbbbbbbb" }]);
+  });
+
+  it("leaves unchanged spells and spells on one side only out", () => {
+    const d = diffSpellValues(spellValues(1, { 101: {}, 555: {} }), spellValues(2, { 101: {}, 102: {} }), talents, false);
+    expect(d).toEqual([]);
+  });
+});
+
+describe("diffRaid", () => {
+  it("reports scope, spell id and tree changes", () => {
+    const before = raid("1.60.1.1", "party", [1, 2]);
+    const after = raid("1.60.1.2", "raid", [2, 3]);
+    after.entries[0].tree = 2;
+    const d = diffRaid(before, after, true);
+    expect(d.scopeChanges).toMatchObject([{ id: "battle-shout", before: "party", after: "raid", spoiler: true }]);
+    expect(d.spellChanges.map((c) => `${c.spellId} ${c.change}`)).toEqual(["3 added", "1 removed", "null talent tree baseline -> 2"]);
+  });
+
+  it("reports a rank-level change while the overall scope stays mixed", () => {
+    const before = raid("1", "mixed");
+    before.entries[0].byRank = [{ rank: 1, spellIds: [1], scope: "party" }, { rank: 2, spellIds: [2], scope: "raid" }];
+    const after = raid("2", "mixed");
+    after.entries[0].byRank = [{ rank: 1, spellIds: [1], scope: "raid" }, { rank: 2, spellIds: [2], scope: "party" }];
+    expect(diffRaid(before, after, false).scopeChanges).toMatchObject([{ before: "mixed", after: "mixed", beforeRanks: "1:party 2:raid", afterRanks: "1:raid 2:party" }]);
+  });
+
+  it("is quiet when nothing differs", () => {
+    expect(diffRaid(raid("1"), raid("2"), false)).toEqual({ scopeChanges: [], spellChanges: [] });
+  });
+});
+
+describe("diffMap", () => {
+  it("reports zones and entrances that appeared, vanished or moved", () => {
+    const before = worldMap(1, [{ id: 1411, name: "Durotar" }, { id: 1412, name: "Mulgore" }]);
+    const after = worldMap(2, [{ id: 1411, name: "Durotar", left: 99 }, { id: 1413, name: "Barrens" }]);
+    after.entrances[0].worldX = 0;
+    const d = diffMap(before, after, true);
+    expect(d.map((c) => `${c.kind} ${c.id} ${c.change.split(" ")[0]}`)).toEqual(["zone 1411 bounds", "zone 1413 added", "zone 1412 removed", "entrance 33 position"]);
+    expect(d.every((c) => c.spoiler)).toBe(true);
   });
 });
 
 describe("buildChangeEntry", () => {
-  const manifest = (buildId: number, config = CONFIG_A) => GameDataManifest.parse({
-    schema: "everloot.game-data/1", label: "found in game files, unconfirmed", build: stamp(buildId, config),
-    classes: [{ classId: 4, className: "Rogue", file: "rogue.json" }], tables: [], warnings: [],
+  const site = (buildId: number, nodes: ReturnType<typeof node>[], raidScope = "party", config = CONFIG_A): SiteData => ({
+    talents: [trimmed(buildId, nodes, {}, config)], raid: raid(`1.60.1.${buildId}`, raidScope), map: worldMap(buildId), spellValues: spellValues(buildId, { 101: {} }, config),
   });
   const input = (over = {}) => ({
     product: "wow_classic_beta", live: false, detectedAt: "2026-10-17T10:00:00.000Z",
-    build: { version: "1.60.1.2", buildId: 2, buildConfig: CONFIG_A }, manifest: manifest(2),
-    classes: committed([node(1, "Mutilate")]), raidBuffs: raid(2, "raid"),
-    committed: { manifest: manifest(1), classes: committed([node(1, "Mutilate"), node(2, "Evasion")]), raidBuffs: raid(1, "party") },
+    before: site(1, [node(1, "Mutilate"), node(2, "Evasion")]), after: site(2, [node(1, "Mutilate")], "raid"),
     encryptedTables: [{ table: "Spell", blocks: 29 }, { table: "SpellName", blocks: 14 }, { table: "Item", blocks: 0 }],
-    warnings: [], ...over,
+    source: { definitions: "abc123abc123", library: "lib@1", extractedAt: "2026-10-17T10:00:00.000Z" }, warnings: [], ...over,
   });
 
-  it("builds a valid entry with talent and raid buff changes", () => {
+  it("builds a valid entry with talent, raid and map sections", () => {
     const entry = buildChangeEntry(input());
     expect(() => ChangeEntry.parse(entry)).not.toThrow();
-    expect(entry).toMatchObject({ id: "wow_classic_beta-2", initial: false, spoiler: true, previous: { buildId: 1 } });
+    expect(entry).toMatchObject({ id: "wow_classic_beta-2", initial: false, spoiler: true, previous: { buildId: 1 }, catalog: { classes: 1, nodes: 1 } });
     expect(entry.talents!.removed.map((r) => r.name)).toEqual(["Evasion"]);
-    expect(entry.raidBuffs).toMatchObject({ comparedTo: { buildId: 1 }, scopeChanges: [{ id: "battle-shout", before: "party", after: "raid", spoiler: true }] });
+    expect(entry.raidBuffs).toMatchObject({ comparedTo: "1.60.1.1", scopeChanges: [{ id: "battle-shout", before: "party", after: "raid", spoiler: true }] });
+    expect(entry.mapChanges).toEqual([]);
     expect(entry.encryptedBlocks).toEqual({ total: 43, tables: [{ table: "Spell", blocks: 29 }, { table: "SpellName", blocks: 14 }] });
     expect(hasChanges(entry)).toBe(true);
   });
 
-  it("reports a raid buff whose ranks changed while the overall scope stayed mixed", () => {
-    const before = raid(1, "party");
-    before.entries[0].scope = "mixed";
-    before.entries[0].byRank = [{ rank: 1, spellIds: [1], scope: "party" }, { rank: 2, spellIds: [2], scope: "raid" }];
-    const after = raid(2, "raid");
-    after.entries[0].scope = "mixed";
-    after.entries[0].byRank = [{ rank: 1, spellIds: [1], scope: "raid" }, { rank: 2, spellIds: [2], scope: "party" }];
-    const entry = buildChangeEntry(input({ committed: { manifest: manifest(1), classes: committed([node(1, "Mutilate")]), raidBuffs: before }, raidBuffs: after }));
-    expect(entry.raidBuffs!.scopeChanges).toMatchObject([{ before: "mixed", after: "mixed", beforeRanks: "1:party 2:raid", afterRanks: "1:raid 2:party" }]);
-    expect(prBody(entry, { supersedes: [], classes: 1, nodes: 1 })).toContain("by rank: 1:party 2:raid -> 1:raid 2:party");
-  });
-
-  it("lists raid buff changes below the scope: spells added or removed, targets, radius", () => {
-    const spell = (spellId: number, targets: [number, number], radiusYards: number | null) => ({
-      spellId, name: `Shout ${spellId}`, rank: 1, scope: "party" as const,
-      effects: [{ index: 0, effect: 6, aura: 29, targets, radiusYards, scope: "party" as const }],
-    });
-    const before = raid(1, "party");
-    before.entries[0].spells = [spell(1, [20, 0], 20), spell(2, [20, 0], 20)];
-    const after = raid(2, "party");
-    after.entries[0].spells = [spell(1, [56, 0], 30), spell(3, [20, 0], 20)];
-    const entry = buildChangeEntry(input({ committed: { manifest: manifest(1), classes: committed([node(1, "Mutilate")]), raidBuffs: before }, raidBuffs: after }));
-    const lines = entry.raidBuffs!.spellChanges.map((c) => `${c.spellId} ${c.change}`);
-    expect(lines).toEqual(["1 effect 1 targets 20,0 -> 56,0", "1 effect 1 radius 20 -> 30", "3 added", "2 removed"]);
-    expect(hasChanges(entry)).toBe(true);
-    expect(prBody(entry, { supersedes: [], classes: 1, nodes: 1 })).toContain("Battle Shout, spell 3 Shout 3: added");
-  });
-
-  it("marks added classes as spoilers in the body", () => {
-    const other = toCommitted(catalog(2, [node(9, "Bash")], { classId: 11, className: "Druid" }));
-    const entry = buildChangeEntry(input({ classes: [...committed([node(1, "Mutilate"), node(2, "Evasion")]), other] }));
-    expect(prBody(entry, { supersedes: [], classes: 2, nodes: 3 })).toContain("- [spoiler] Druid");
-  });
-
   it("records a baseline when nothing is committed yet", () => {
-    const entry = buildChangeEntry(input({ committed: null }));
-    expect(entry).toMatchObject({ initial: true, previous: null, talents: null, raidBuffs: { comparedTo: null, scopeChanges: [] } });
+    const entry = buildChangeEntry(input({ before: null }));
+    expect(entry).toMatchObject({ initial: true, previous: null, talents: null, mapChanges: null, raidBuffs: { comparedTo: null, scopeChanges: [] } });
     expect(hasChanges(entry)).toBe(false);
   });
 
@@ -163,29 +165,41 @@ describe("buildChangeEntry", () => {
   });
 
   it("warns when the table definitions changed between the two builds", () => {
-    const m = manifest(2);
-    m.build.definitions = "ffffffffffff";
-    expect(buildChangeEntry(input({ manifest: m })).warnings.join(" ")).toContain("definitions differ");
+    const after = site(2, [node(1, "Mutilate")]);
+    after.talents[0].build.definitions = "ffffffffffff";
+    expect(buildChangeEntry(input({ after })).warnings.join(" ")).toContain("definitions differ");
+  });
+
+  it("says so when there are no committed spell values to compare with", () => {
+    const before = site(1, [node(1, "Mutilate")]);
+    before.spellValues = null;
+    expect(buildChangeEntry(input({ before })).warnings.join(" ")).toContain("no committed spell values");
+  });
+
+  it("lists spell number changes", () => {
+    const before = site(1, [node(1, "Mutilate")]);
+    const after = site(2, [node(1, "Mutilate")]);
+    after.spellValues = spellValues(2, { 101: { basePoints: 9 } });
+    expect(buildChangeEntry(input({ before, after })).talents!.spellValues).toMatchObject([{ spellId: 101, changes: [{ field: "effect 1 basePoints", before: 5, after: 9 }] }]);
   });
 });
 
 describe("rendering", () => {
-  const manifest = GameDataManifest.parse({
-    schema: "everloot.game-data/1", label: "found in game files, unconfirmed", build: stamp(2),
-    classes: [{ classId: 4, className: "Rogue", file: "rogue.json" }], tables: [], warnings: [],
+  const site = (buildId: number, nodes: ReturnType<typeof node>[], extra: Partial<SiteData> = {}): SiteData => ({
+    talents: [trimmed(buildId, nodes)], raid: raid(`1.60.1.${buildId}`, buildId === 1 ? "party" : "raid"), map: worldMap(buildId), spellValues: spellValues(buildId, {}), ...extra,
   });
-  const make = (next: ReturnType<typeof node>[]) => buildChangeEntry({
+  const make = (next: ReturnType<typeof node>[], extra: Partial<SiteData> = {}) => buildChangeEntry({
     product: "wow_classic_beta", live: false, detectedAt: "2026-10-17T10:00:00.000Z",
-    build: { version: "1.60.1.2", buildId: 2, buildConfig: CONFIG_A }, manifest, classes: committed(next), raidBuffs: raid(2, "raid"),
-    committed: { manifest, classes: committed([node(1, "Mutilate")]), raidBuffs: raid(1, "party") },
-    encryptedTables: [{ table: "Spell", blocks: 29 }], warnings: [],
+    before: site(1, [node(1, "Mutilate")]), after: site(2, next, extra),
+    encryptedTables: [{ table: "Spell", blocks: 29 }], source: { definitions: null, library: "lib@1", extractedAt: "2026-10-17T10:00:00.000Z" }, warnings: [],
   });
 
   it("puts the build, spoiler notice, encrypted blocks and each change in the body", () => {
     const entry = make([{ ...node(1, "Mutilate"), maxRanks: 4 }, node(5, "Shadowstep")]);
-    const body = prBody(entry, { supersedes: [31], classes: 1, nodes: 2 });
+    const body = prBody(entry, { supersedes: [31] });
     expect(body).toContain("build=2");
     expect(body).toContain("**Spoiler.**");
+    expect(body).toContain("Catalog: 1 classes, 2 talent nodes");
     expect(body).toContain("Encrypted blocks skipped, never decrypted: 29 (Spell 29)");
     expect(body).toContain("[spoiler] Rogue / Assassination: Shadowstep (single, 1 rank)");
     expect(body).toContain("Mutilate: 1 -> 4 ranks");
@@ -194,14 +208,21 @@ describe("rendering", () => {
     expect(body).toContain("blue tracker");
   });
 
+  it("lists map changes and added classes as spoilers", () => {
+    const entry = make([node(1, "Mutilate")], { map: worldMap(2, [{ id: 1411, name: "Durotar" }, { id: 1500, name: "New Zone" }]) });
+    expect(prBody(entry, { supersedes: [] })).toContain("[spoiler] zone New Zone (1500): added");
+    const more = make([node(1, "Mutilate")], { talents: [trimmed(2, [node(1, "Mutilate")]), trimmed(2, [node(9, "Bash")], { classId: 11, className: "Druid" })] });
+    expect(prBody(more, { supersedes: [] })).toContain("- [spoiler] Druid");
+  });
+
   it("cannot be turned into a mention, link or html by a spell name", () => {
-    const body = prBody(make([node(1, "Mutilate"), node(7, "@everyone <img src=x> [a](http://b)")]), { supersedes: [], classes: 1, nodes: 2 });
+    const body = prBody(make([node(1, "Mutilate"), node(7, "@everyone <img src=x> [a](http://b)")]), { supersedes: [] });
     expect(body).not.toMatch(/@everyone|<img|\[a\]/);
   });
 
   it("caps long lists and stays under GitHub's body limit", () => {
     const many = Array.from({ length: 3000 }, (_, i) => node(100 + i, `Talent number ${i} with a fairly long name to use up room`));
-    const body = prBody(make([node(1, "Mutilate"), ...many]), { supersedes: [], classes: 1, nodes: 3001 });
+    const body = prBody(make([node(1, "Mutilate"), ...many]), { supersedes: [] });
     expect(body).toContain("and 2960 more in the JSON entry");
     expect(body.length).toBeLessThan(65_000);
   });
@@ -209,7 +230,7 @@ describe("rendering", () => {
   it("says plainly when nothing changed", () => {
     const entry = make([node(1, "Mutilate")]);
     entry.raidBuffs!.scopeChanges = [];
-    expect(prBody(entry, { supersedes: [], classes: 1, nodes: 1 })).toContain("No differences");
+    expect(prBody(entry, { supersedes: [] })).toContain("No differences");
   });
 
   it("gives a terminal summary with counts", () => {

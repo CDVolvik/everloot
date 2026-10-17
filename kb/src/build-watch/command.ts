@@ -1,6 +1,7 @@
 /** The `build-watch` command: reads the config and flags, wires the real network and GitHub lookups, prints the result. */
 import { execFileSync } from "node:child_process";
 import { appendFileSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { parse } from "yaml";
 import { versionsUrl } from "../builds.js";
 import { extractFromCdn } from "./cdn-extract.js";
@@ -34,12 +35,22 @@ export async function buildWatchCommand(flags: Map<string, string>): Promise<num
       return 1;
     }
   }
+  if (only && only.length > 1) {
+    console.error("--product takes one product: the site reads one set of files");
+    return 1;
+  }
   if (only?.length) {
     // A product named on the command line but missing from the config is treated as not live.
-    config.products = only.map((product) => config.products.find((p) => p.product === product) ?? { product, label: product, live: false });
+    config.products = [config.products.find((p) => p.product === only[0]) ?? { product: only[0], label: only[0], live: false }];
   }
   const dryRun = flags.has("dry-run");
   const checkOnly = flags.has("check");
+  const force = flags.has("force");
+  if (force && !dryRun) {
+    console.error("--force only works with --dry-run");
+    return 1;
+  }
+  const repoRoot = resolve(flags.get("root") || "..");
   const outDir = flags.get("out") || "data/build-watch/out";
   const deps: WatchDeps = {
     async fetchVersions(product) {
@@ -48,20 +59,19 @@ export async function buildWatchCommand(flags: Map<string, string>): Promise<num
       return res.text();
     },
     listPrs: async () => listPrs(),
-    extract: (product) => extractFromCdn(product, config.region, flags.get("list") || "lists/raid-buffs.yaml"),
+    extract: (product, opts) => extractFromCdn(product, config.region, flags.get("list") || "lists/raid-buffs.yaml", resolve("../web"), opts.definitions),
     now: () => new Date(),
   };
   const runUrl = process.env.GITHUB_RUN_ID && process.env.GITHUB_REPOSITORY
     ? `${process.env.GITHUB_SERVER_URL ?? "https://github.com"}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`
     : undefined;
   const results = await runWatch({
-    config, gameDataDir: flags.get("game-data") || "../web/src/data/game-data",
-    outDir, dryRun, checkOnly, redo: flags.has("redo"), runUrl,
+    config, repoRoot, outDir, dryRun, checkOnly, force, redo: flags.has("redo"), runUrl,
   }, deps);
 
   for (const r of results) {
     if (r.error) console.error(`${r.product}: ${r.error}`);
-    else if (r.summary) console.log(`${dryRun ? "[dry run] " : ""}${r.action === "update" ? "would update" : "would open"} ${r.title}${r.pr ? ` (PR #${r.pr})` : ""} on branch ${r.branch}\n${r.summary}\n`);
+    else if (r.summary) console.log(`${dryRun ? "[dry run] " : ""}${r.action === "update" ? "would update" : "would open"} ${r.title}${r.pr ? ` (PR #${r.pr})` : ""} on branch ${r.branch}\n${r.summary}${r.remove.length ? `\nremoves: ${r.remove.join(", ")}` : ""}\n`);
     else console.log(`${r.product} ${r.version ?? ""}: ${r.action}${r.pr ? ` (PR #${r.pr})` : ""}`);
   }
   if (process.env.GITHUB_OUTPUT) {

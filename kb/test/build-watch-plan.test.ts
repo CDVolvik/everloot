@@ -17,13 +17,16 @@ describe("branchFor", () => {
     expect(() => branchFor("wow", { buildId: -1, buildConfig: CONFIG_A })).toThrow();
   });
   it("titles the pull request after the version", () => {
-    expect(titleFor("1.60.1.70460")).toBe("Game build 1.60.1.70460: data update");
+    expect(titleFor("1.60.1.70460")).toBe("data(game-data): build 1.60.1.70460");
   });
 });
 
 describe("decide", () => {
   const known = { buildId: 70450, buildConfig: CONFIG_A };
 
+  it("with force, goes on even when the base branch already has the build", () => {
+    expect(decide("wow_classic_beta", { buildId: 70460, buildConfig: CONFIG_B }, latest, [], { force: true })).toEqual({ kind: "create" });
+  });
   it("does nothing when the base branch already has the build", () => {
     expect(decide("wow_classic_beta", { buildId: 70460, buildConfig: CONFIG_B }, latest, [])).toEqual({ kind: "up-to-date" });
   });

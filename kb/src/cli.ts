@@ -60,7 +60,7 @@ const USAGE = `usage: npm run kb -- <command> --db <path>
   client-map <snapshot.sqlite> [--out ../web/src/data/game-data/map.json]
     (zone rectangles in world coordinates, continents and dungeon and raid entrances from a client
     snapshot, for the world map page. Game file data, stamped with the build. See docs/DATA_POLICY.md)
-  build-watch [--product a,b] [--dry-run] [--check] [--redo] [--game-data ../web/src/data/game-data] [--out data/build-watch/out]
+  build-watch [--product id] [--dry-run] [--check] [--redo] [--force] [--root ..] [--out data/build-watch/out]
     (notices a new game build, regenerates the committed game data and prepares a pull request body and
     a changelog entry; the scheduled workflow opens the PR. --dry-run writes only under --out and changes
     nothing else. --check only says whether there is work. See docs/BUILD_WATCH.md)

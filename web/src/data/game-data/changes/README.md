@@ -11,16 +11,19 @@ counted, never decrypted. Column names come from [WoWDBDefs](https://github.com/
 
 ## Layout
 
+The build watch writes no folder of its own. A new build's pull request replaces the files the site reads
+(see [../README.md](../README.md)): `talents/<class>.json`, `raid-<build>.json` (and removes the old one),
+`map.json`, `addon/modules/raid_data.lua`, and the import in `raid.ts`. It also writes two files of its own:
+
 ```
 web/src/data/game-data/
-  <product>/manifest.json            build stamp, class list, rows read and encrypted blocks per table
-  <product>/talents/<class>.json     the talent catalog (kb/src/build-watch/game-data.ts, CommittedClass)
-  <product>/raid-buffs.json          the raid buff table (kb/src/raid-buffs.ts, everloot.raid-buffs/2)
+  spell-values.json                  numbers of the spells talents show: effects, duration, a hash of the tooltip
+                                     (everloot.spell-values/1; one spell per line; no tooltip text)
   changes/<product>-<buildId>.json   one changelog entry per build
 ```
 
-`<product>` is Blizzard's product id, for example `wow_classic_beta`. A pull request from the build
-watch replaces a product's `manifest.json`, `raid-buffs.json` and `talents/` and adds one file to `changes/`.
+`spell-values.json` is the comparison baseline for spell number changes, since the trimmed talent files
+leave those numbers out.
 
 ## Changelog entries
 
@@ -37,12 +40,16 @@ ChangeEntry {
   build, previous  { version, buildId, buildConfig }; previous is null for the first entry
   initial          first entry of a product: a baseline, no changes listed
   encryptedBlocks  { total, tables: [{ table, blocks }] }
+  source           { definitions (WoWDBDefs commit), library, extractedAt }
+  catalog          { classes, nodes } after this build
   talents          null when initial; otherwise lists of
                      classesAdded, classesRemoved (classId, className, spoiler), added, removed, moved, ranks, gates, prereqs,
                      replaced, spellValues, pointLevels
                    each item: classId, className, tree, nodeId, name, spoiler, and the before/after
-  raidBuffs        { comparedTo, scopeChanges: [{ id, label, before, after, beforeRanks, afterRanks, spoiler }],
+  raidBuffs        { comparedTo (version of the raid file compared with),
+                     scopeChanges: [{ id, label, before, after, beforeRanks, afterRanks, spoiler }],
                      spellChanges: [{ id, label, spellId, name, change, spoiler }] }
+  mapChanges       null when initial; [{ kind (continent|zone|entrance), id, name, change, spoiler }]
   warnings
 }
 ```

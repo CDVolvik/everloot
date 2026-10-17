@@ -1,18 +1,18 @@
 // Trims the raid buff table and talent catalog that `client-catalog` writes (kb/src/raid-buffs.ts,
 // everloot.raid-buffs/2) into the two files the site and the addon commit:
 //   web/src/data/game-data/raid-<build>.json   and   addon/modules/raid_data.lua
-// Usage, from web/:  npx tsx scripts/build-raid-game-data.ts <catalog dir> <snapshot.sqlite>
+// Usage, from web/:  npx tsx scripts/build-raid-game-data.ts <catalog dir> <snapshot.sqlite> [<repository root to write into>]
 // where <catalog dir> is data/catalog/<product>-<build>-<config> and the snapshot is the one it was made from
 // (its SpellEffect rows are needed to follow learn-spell and trigger-spell links). Reads game file data (Blizzard's); see
 // web/src/data/game-data/README.md. Keeps ids, names, scope and, where ranks disagree, the per-rank scope.
 // Drops tooltip text, effects and everything else.
-import { readFileSync, writeFileSync, readdirSync } from "node:fs";
+import { readFileSync, writeFileSync, readdirSync, mkdirSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { readClientRows } from "../../kb/src/client-snapshot.js";
 
 const dir = resolve(process.argv[2] ?? "");
 const snapshot = resolve(process.argv[3] ?? "");
-const root = resolve(__dirname, "..", "..");
+const root = process.argv[4] ? resolve(process.argv[4]) : resolve(__dirname, "..", "..");
 const table = JSON.parse(readFileSync(join(dir, "raid-buffs.json"), "utf8"));
 if (table.schema !== "everloot.raid-buffs/2") throw new Error(`expected everloot.raid-buffs/2, got ${table.schema}`);
 
@@ -122,6 +122,8 @@ const out = {
   notFound: table.notFound as string[],
   families, entries, trees,
 };
+mkdirSync(join(root, "web", "src", "data", "game-data"), { recursive: true });
+mkdirSync(join(root, "addon", "modules"), { recursive: true });
 writeFileSync(join(root, "web", "src", "data", "game-data", `raid-${out.build}.json`), JSON.stringify(out, null, 1) + "\n");
 
 const q = (s: string) => `"${s.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`;

@@ -35,10 +35,10 @@ export function branchFor(product: string, build: BuildIdent): string {
   return `${BRANCH_PREFIX}${product}-${build.buildId}-${build.buildConfig.slice(0, 8)}`;
 }
 
-export const titleFor = (version: string) => `Game build ${version}: data update`;
+export const titleFor = (version: string) => `data(game-data): build ${version}`;
 
-export function decide(product: string, committed: BuildIdent | null, latest: BuildIdent, prs: PrRef[], opts: { redo?: boolean } = {}): Action {
-  if (committed && committed.buildConfig === latest.buildConfig) return { kind: "up-to-date" };
+export function decide(product: string, committed: BuildIdent | null, latest: BuildIdent, prs: PrRef[], opts: { redo?: boolean; force?: boolean } = {}): Action {
+  if (!opts.force && committed && committed.buildConfig === latest.buildConfig) return { kind: "up-to-date" };
   const branch = branchFor(product, latest);
   const newestFirst = prs.filter((p) => p.headRefName === branch).sort((a, b) => b.number - a.number);
   const open = newestFirst.find((p) => p.state === "OPEN");

@@ -58,13 +58,19 @@ export const TalentChanges = z.object({
 export type TalentChanges = z.infer<typeof TalentChanges>;
 
 export const RaidBuffChanges = z.object({
-  /** The build the raid buff table was compared with; null when no earlier table was on hand. */
-  comparedTo: BuildRef.nullable(),
+  /** Version of the committed raid file this one was compared with; null when there was none. */
+  comparedTo: z.string().nullable(),
   scopeChanges: z.array(z.object({ id: z.string(), label: z.string(), before: ScopeOrMixed.nullable(), after: ScopeOrMixed.nullable(), beforeRanks: z.string(), afterRanks: z.string(), spoiler: z.boolean() })),
-  /** Changes below the entry's scope: a spell added or removed, or a rank, scope, aura, target or radius that changed. */
-  spellChanges: z.array(z.object({ id: z.string(), label: z.string(), spellId: z.number().int(), name: z.string().nullable(), change: z.string(), spoiler: z.boolean() })),
+  /** Changes below the entry's scope: a spell id added or removed, or the talent tree the effect needs. */
+  spellChanges: z.array(z.object({ id: z.string(), label: z.string(), spellId: z.number().int().nullable(), name: z.string().nullable(), change: z.string(), spoiler: z.boolean() })),
 });
 export type RaidBuffChanges = z.infer<typeof RaidBuffChanges>;
+
+/** A zone, continent or dungeon entrance on the world map that appeared, vanished or moved. */
+export const MapChanges = z.array(z.object({
+  kind: z.enum(["continent", "zone", "entrance"]), id: z.number().int(), name: z.string(), change: z.string(), spoiler: z.boolean(),
+}));
+export type MapChanges = z.infer<typeof MapChanges>;
 
 export const ChangeEntry = z.object({
   schema: z.literal(CHANGE_SCHEMA),
@@ -83,8 +89,13 @@ export const ChangeEntry = z.object({
   initial: z.boolean(),
   /** Blocks of the tables we read that Blizzard encrypts. They are skipped, never decrypted. */
   encryptedBlocks: z.object({ total: z.number().int(), tables: z.array(z.object({ table: z.string(), blocks: z.number().int() })) }),
+  /** Where the extraction came from, for the record. */
+  source: z.object({ definitions: z.string().nullable(), library: z.string(), extractedAt: z.string() }),
+  /** Size of the committed talent catalog after this build. */
+  catalog: z.object({ classes: z.number().int(), nodes: z.number().int() }),
   talents: TalentChanges.nullable(),
   raidBuffs: RaidBuffChanges.nullable(),
+  mapChanges: MapChanges.nullable(),
   warnings: z.array(z.string()),
 });
 export type ChangeEntry = z.infer<typeof ChangeEntry>;
@@ -96,5 +107,5 @@ export function hasChanges(entry: ChangeEntry): boolean {
   const t = entry.talents;
   const talentCount = t ? t.classesAdded.length + t.classesRemoved.length + t.added.length + t.removed.length + t.moved.length + t.ranks.length
     + t.gates.length + t.prereqs.length + t.replaced.length + t.spellValues.length + t.pointLevels.length : 0;
-  return talentCount + (entry.raidBuffs ? entry.raidBuffs.scopeChanges.length + entry.raidBuffs.spellChanges.length : 0) > 0;
+  return talentCount + (entry.raidBuffs ? entry.raidBuffs.scopeChanges.length + entry.raidBuffs.spellChanges.length : 0) + (entry.mapChanges?.length ?? 0) > 0;
 }

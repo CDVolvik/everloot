@@ -1,32 +1,32 @@
 /**
  * The production side of the build watch: read the product's current build from Blizzard's public CDN
- * and turn it into catalogs. It reuses the extractor and catalog code behind `client-extract` and
- * `client-catalog`; no decryption keys are loaded and encrypted blocks are counted, not read.
+ * and make the pieces the site's own generators need. It reuses the extractor behind `client-extract`;
+ * no decryption keys are loaded and encrypted blocks are counted, not read.
+ *
+ * `generate(root)` then runs the same generators a maintainer runs by hand, writing into `root`:
+ * `client-catalog` and `web/scripts/trim-talent-catalog.mjs` (talents), `web/scripts/build-raid-game-data.ts`
+ * (raid file and addon/modules/raid_data.lua) and `client-map` (map.json).
  */
-import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { writeCatalogs } from "../client-catalog.js";
-import { CASC_LIBRARY, extractTables, iconIds, NOT_IN_BUILD, openCdn, probeFiles } from "../client-extract.js";
-import { clientSnapshotName, writeClientSnapshot } from "../client-snapshot.js";
-import { RaidBuffTable } from "../raid-buffs.js";
-import { CatalogIndex, ClassCatalog } from "../talents/catalog.js";
+import { CASC_LIBRARY, extractTables, iconIds, NOT_IN_BUILD, openCdn, pinDefinitions, probeFiles } from "../client-extract.js";
+import { clientSnapshotName, readClientMeta, writeClientSnapshot } from "../client-snapshot.js";
+import { ClassCatalog } from "../talents/catalog.js";
+import { writeWorldMapData } from "../world-map-data.js";
+import { GAME_DATA_DIR, spellValuesOf } from "./site-data.js";
 import type { Extracted } from "./watch.js";
 
-/** WoWDBDefs commit the layouts come from, for the build stamp. Null when GitHub cannot be reached. */
-async function definitionsCommit(): Promise<string | null> {
-  try {
-    const res = await fetch("https://api.github.com/repos/wowdev/WoWDBDefs/commits/master", { signal: AbortSignal.timeout(10_000) });
-    return res.ok ? String((await res.json()).sha).slice(0, 12) : null;
-  } catch {
-    return null;
-  }
-}
-
-export async function extractFromCdn(product: string, region: string, curatedPath: string): Promise<Extracted> {
+export async function extractFromCdn(product: string, region: string, curatedPath: string, webDir: string, definitions: string | null): Promise<Extracted> {
+  const tsx = join(webDir, "node_modules", "tsx", "dist", "cli.mjs");
+  if (!existsSync(tsx)) throw new Error(`${tsx} is missing: run npm ci in web/ first`);
   const { build, source } = await openCdn(product, region);
+  // Every table layout this run reads comes from one WoWDBDefs commit: the newest, or the one asked for.
+  const pinned = await pinDefinitions(globalThis.fetch, definitions ?? "master");
   const { tables, missing } = await extractTables(source);
-  // A table that failed to read (not one the build simply lacks) would give a catalog with holes: fail instead.
+  // A table that failed to read (not one the build simply lacks) would give files with holes: fail instead.
   const failed = missing.filter((m) => m.reason !== NOT_IN_BUILD);
   if (failed.length) throw new Error(`could not read ${failed.map((m) => `${m.table} (${m.reason})`).join(", ")}`);
   const status = probeFiles(source, iconIds(tables));
@@ -35,20 +35,31 @@ export async function extractFromCdn(product: string, region: string, curatedPat
   const work = mkdtempSync(join(tmpdir(), "everloot-build-watch-"));
   try {
     const snapshot = join(work, clientSnapshotName(build));
-    const manifest = writeClientSnapshot(snapshot, { ...build, extractedAt: new Date().toISOString(), library: CASC_LIBRARY, definitions: await definitionsCommit() }, tables);
+    const extractedAt = new Date().toISOString();
+    const manifest = writeClientSnapshot(snapshot, { ...build, extractedAt, library: CASC_LIBRARY, definitions: pinned }, tables);
     const run = writeCatalogs(snapshot, join(work, "catalog"), curatedPath);
     const classes = readdirSync(join(run.dir, "talents"))
       .filter((f) => f !== "index.json")
       .map((f) => ClassCatalog.parse(JSON.parse(readFileSync(join(run.dir, "talents", f), "utf8"))));
+    const meta = readClientMeta(snapshot);
+    const web = (script: string, ...args: string[]) =>
+      execFileSync(process.execPath, [...(script.endsWith(".ts") ? [tsx] : []), join(webDir, "scripts", script), ...args], { cwd: webDir, stdio: ["ignore", "ignore", "inherit"], timeout: 300_000 });
     return {
-      build: run.index.build,
-      classes,
-      index: CatalogIndex.parse(run.index),
-      raidBuffs: RaidBuffTable.parse(run.raidBuffs),
+      build: { buildId: build.buildId, buildConfig: build.buildConfig, version: build.version },
+      spellValues: spellValuesOf({ product, buildId: build.buildId, version: build.version, buildConfig: build.buildConfig, definitions: pinned, extractedAt }, classes),
+      generate(root: string) {
+        web("trim-talent-catalog.mjs", join(run.dir, "talents"), join(root, GAME_DATA_DIR, "talents"));
+        mkdirSync(join(root, "addon", "modules"), { recursive: true });
+        web("build-raid-game-data.ts", run.dir, snapshot, root);
+        writeFileSync(join(root, GAME_DATA_DIR, "map.json"), `${JSON.stringify(writeWorldMapData(snapshot), null, 2)}\n`);
+      },
+      dispose: () => rmSync(work, { recursive: true, force: true }),
       encryptedTables: manifest.tables.map((t) => ({ table: t.table, blocks: t.encryptedBlocks })),
+      source: { definitions: meta.definitions, library: CASC_LIBRARY, extractedAt },
       warnings: [],
     };
-  } finally {
+  } catch (err) {
     rmSync(work, { recursive: true, force: true });
+    throw err;
   }
 }

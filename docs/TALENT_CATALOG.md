@@ -13,7 +13,7 @@ npm run kb -- raid-buffs-diff <old>/raid-buffs.json <new>/raid-buffs.json
 ```
 
 Output goes to `data/catalog/<product>-<build>-<config>/`: `talents/<class>.json`,
-`talents/index.json` and `raid-buffs.json`. It is not committed by hand; the build watch ([BUILD_WATCH](BUILD_WATCH.md)) commits a copy without tooltip text under `web/src/data/game-data/`, once the data policy allows it. Column names come from
+`talents/index.json` and `raid-buffs.json`. The site reads a trimmed copy (`web/src/data/game-data/talents/`, see that folder's README); the build watch ([BUILD_WATCH](BUILD_WATCH.md)) regenerates it for each new build. Column names come from
 [WoWDBDefs](https://github.com/wowdev/WoWDBDefs) (CC BY-SA 4.0), which also supplies the file data ids
 of the tables. `client-extract --refresh` re-reads a build already marked processed, which is how an
 older snapshot gets the newer tables.
