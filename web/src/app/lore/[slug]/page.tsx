@@ -11,8 +11,15 @@ function browseSlug(type: Lore["type"]): BrowseSlug | null {
   return entry ? entry[0] : null;
 }
 
-// Rendered per request: an ISR cache would keep a transient "unavailable" answer (and its noindex) for a day.
-export const dynamic = "force-dynamic";
+// The archive is a fixed 2023 dump that only changes with a new release, so each page is rendered once
+// on first request and then served from the cache, refreshed at most once a day. Building every page
+// up front is not worth it (about 78k indexable pages from a 338 MB file), hence no prerendered params.
+// Next does not cache a failed render, so when the release cannot be opened the page throws (a 500)
+// instead of rendering the "unavailable" copy: a cached 200 would keep that answer, and its noindex, for a day.
+export const revalidate = 86400;
+export function generateStaticParams() {
+  return [];
+}
 
 const UNAVAILABLE_TITLE = "Lore archive unavailable";
 
@@ -47,15 +54,7 @@ export default async function LorePage(props: { params: Promise<{ slug: string }
   const parsed = parseLoreSlug(slug);
   if (!parsed) notFound();
   const page = loreByExtId(parsed.extId);
-  if (page === UNAVAILABLE) {
-    return (
-      <article className="space-y-4 max-w-4xl">
-        <p className="font-mono text-xs text-muted">Lore archive</p>
-        <h1 className="text-3xl font-bold text-fg">{UNAVAILABLE_TITLE}</h1>
-        <p className="text-fg-2">{UNAVAILABLE_COPY}</p>
-      </article>
-    );
-  }
+  if (page === UNAVAILABLE) throw new Error(`${UNAVAILABLE_TITLE}: ${UNAVAILABLE_COPY}`);
   if (!page) notFound();
   if (slug !== loreSlug(page)) permanentRedirect(`/lore/${loreSlug(page)}`);
 

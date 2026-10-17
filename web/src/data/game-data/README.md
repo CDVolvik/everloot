@@ -1,37 +1,23 @@
-# game-data
+# Game data
 
-Files here are read from the game files of one build. They are Blizzard's data, not under our CC BY-SA
-licence, and `docs/DATA_POLICY.md` says that data is not published until a maintainer approves it. Do not
-merge a change here without that approval.
+Files in this folder are Blizzard's data, read from the WoW: Forever game files by `kb/src/client-extract.ts`
+and cut down to the fields a page needs. They are **not under Everloot's licence** (CC BY-SA 4.0 covers our own
+data, not these), and everything in them is **found in game files, unconfirmed**: being here does not mean
+it is, or will be, in the game. Each file names the build it came from. Encrypted blocks were skipped, never
+decrypted. Column names come from [WoWDBDefs](https://github.com/wowdev/WoWDBDefs) (CC BY-SA 4.0). See
+[docs/DATA_POLICY.md](../../../../docs/DATA_POLICY.md).
 
-Rules for every file:
+| File | What | Made by | Build |
+|---|---|---|---|
+| `map.json` | Continents and zones with their rectangles in world yards, and dungeon and raid entrance positions | `npm run kb -- client-map <snapshot>` (tables `Map`, `UiMap`, `UiMapAssignment`) | in the file's `source` |
+| `talents/<class>.json` | One talent tree set per class (`everloot.talent-catalog/2`, see `docs/TALENT_CATALOG.md`): node ids, positions, ranks, prerequisites, unlock gates, point levels, spell ids and talent names. No descriptions, icons or tooltip text | `npm run kb -- client-catalog <snapshot>`, then `node scripts/trim-talent-catalog.mjs ../kb/data/catalog/<product>-<build>-<config>/talents` in `web/` | in each file's `build` (1.60.1.70450 today) |
+| `raid-<build>.json` | Raid buffs and debuffs with their reach (`self`, `single`, `party`, `raid`, `area`, `enemy`, `mixed`, `unknown`), the talent tree each needs where the files prove it (`tree`, `treeProof`), and the class talent tree names. No tooltip text | `npx tsx scripts/build-raid-game-data.ts ../kb/data/catalog/<product>-<build>-<config> ../kb/data/client/<snapshot>.sqlite` in `web/`, which also writes `addon/modules/raid_data.lua`; `src/lib/raid.test.ts` fails if the two differ | in the file name and its `build` |
 
-- **Generated, never hand-edited.** Each file names the script that wrote it, and the script's command.
-- **Stamped with the build** it came from, and labelled "Found in game files, unconfirmed".
-- **Trimmed to what a page needs:** ids, names and the facts we compute (for example reach). No tooltip
-  text, no descriptions, no icons.
-- **Only unencrypted data** from our own extract (`npm run kb -- client-extract`, then `client-catalog`).
-  Nothing from another site or from patch notes. Where the file data does not settle a fact, the value is
-  `unknown` or `mixed`, and the page says so.
+Do not edit these files by hand. Regenerate them from a new snapshot (`client-extract`, then the commands
+above) and commit the result with the build in the message. Nothing from another project belongs here.
 
-## raid-1.60.1.70450.json
+In the raid file, the only thing that is ours is `family`, which groups a group cast (Gift of the Wild)
+with its single-target cast (Mark of the Wild) because they do not stack. Entries whose spells are not in
+the build are left out.
 
-Raid buffs and debuffs with their reach (`self`, `single`, `party`, `raid`, `area`, `enemy`, `mixed`,
-`unknown`), plus the talent tree names per class. Source: `raid-buffs.json` (`everloot.raid-buffs/2`) and
-`talents/<class>.json` from `client-catalog`, with the spell list in `kb/lists/raid-buffs.yaml`.
-
-    npm run kb -- client-extract --product wow_classic_beta
-    npm run kb -- client-catalog data/client/<snapshot>.sqlite
-    cd web && npx tsx scripts/build-raid-game-data.ts ../kb/data/catalog/<product>-<build>-<config> ../kb/data/client/<snapshot>.sqlite
-
-The script also writes `addon/modules/raid_data.lua` from the same data, and `src/lib/raid.test.ts` fails if
-the two differ.
-
-What the file leaves out: entries whose spells are not in the build (`notFound`, for example Blessing of
-Sanctuary). The only thing here that is ours is `family`, which groups a group cast (Gift of the Wild) with
-its single-target cast (Mark of the Wild) because they do not stack.
-
-Tree gates (`tree`, `treeProof`): the generator follows the snapshot SpellEffect rows (learn spell, trigger
-spell, and apply-aura effects that trigger a spell, to depth three) from every talent node spell. A talent
-that has the effect spell is "talent spell", one that leads to it is "spell chain", and one with the same name
-is "talent name". No match is `baseline`; matches in several trees are `unknown`.
+World of Warcraft and its names are trademarks and copyright of Blizzard Entertainment, Inc.

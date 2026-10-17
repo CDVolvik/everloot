@@ -1,6 +1,7 @@
 import { createMcpHttpHandler } from "../../../kb/src/mcp-http-server";
 import { getRelease } from "./release";
 import { uploadStore } from "./upload-store";
+import { mcpToolMetrics, recordUsage } from "./usage-metrics";
 
 /**
  * The MCP server mounted on the site's own deployment (hosting memo option A). Same handler and release
@@ -47,6 +48,18 @@ export function createMount(options: { path: string; bearer: boolean }) {
         return unavailable("Knowledge release unavailable");
       }
     }
-    return handler(req);
+    // Counting is opt-in. Only then is a clone of a small, declared-size body read, so the handler still
+    // gets the original and nothing changes for the default deployment.
+    const length = Number(req.headers.get("content-length"));
+    const counting = req.method === "POST" && process.env.EVERLOOT_USAGE_METRICS === "1" &&
+      req.headers.has("content-length") && Number.isFinite(length) && length <= 1_048_576;
+    let body: string | null = null;
+    if (counting) { try { body = await req.clone().text(); } catch {} }
+    const response = await handler(req);
+    // Only calls the handler accepted count: unauthenticated, invalid or rate-limited ones return non-2xx.
+    if (body !== null && response.status >= 200 && response.status < 300) {
+      recordUsage(mcpToolMetrics(body, options.bearer ? "mcp" : "mcp_public"));
+    }
+    return response;
   };
 }

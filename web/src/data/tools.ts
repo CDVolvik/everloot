@@ -32,6 +32,21 @@ export const tools: Tool[] = [
     ],
   },
   {
+    slug: "talents",
+    title: "Talent Calculator",
+    shortTitle: "Talents",
+    tagline: "Plan a build, share it with its game build attached.",
+    description:
+      "Plan WoW: Forever talents for any class: point rules, two talent sets, undo and reset, and a share link that names the game build. Trees and rules are unconfirmed beta data.",
+    status: "live",
+    keywords: [
+      "wow forever talent calculator",
+      "wow forever talents",
+      "wow forever builds",
+      "talent tree planner",
+    ],
+  },
+  {
     slug: "profession-planner",
     href: "/tools/professions",
     title: "Profession Leveling Planner",
@@ -122,6 +137,16 @@ export const tools: Tool[] = [
       "wow forever gold farm",
       "wow forever routes",
     ],
+  },
+  {
+    slug: "raid",
+    title: "Raid Group Builder",
+    shortTitle: "Raid Builder",
+    tagline: "Plan a raid and see which buffs it covers.",
+    description:
+      "Fill a 10, 20 or 40 player raid with classes and talent trees, and see which buffs and debuffs each group and the raid gets. Rules are stamped with a game build and marked unconfirmed. The plan lives in the link.",
+    status: "live",
+    keywords: ["wow forever raid composition", "raid builder", "raid buffs", "wow forever raid planner"],
   },
   {
     slug: "upload",

@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { computeRollups } from "@/lib/rollup-compute";
+import { recordUsage } from "@/lib/usage-metrics";
 
 /** GET /api/rollups/drops — public corroborated drop rates with kill counts. */
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  recordUsage("api.rollups_drops");
   const { rates, measuredZeros, stats } = await computeRollups();
   return NextResponse.json({
     // generatedAt is when this response was made; dataAsOf is when the uploads behind it were current.

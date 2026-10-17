@@ -58,9 +58,9 @@ export default function AboutPage() {
         How it stays free
       </h2>
       <p className="text-fg-2">
-        The site is supported by Google AdSense ads. We don&apos;t sell data, we
-        don&apos;t gate tools behind signups, and we don&apos;t show popups or
-        interstitials. If you want to support the project more directly, a
+        Everloot has no ads today, and it is run by its maintainer. We don&apos;t
+        sell data, we don&apos;t gate tools behind signups, and we don&apos;t show
+        popups or interstitials. If you want to support the project more directly, a
         future &ldquo;buy me a coffee&rdquo; link will appear here.
       </p>
 

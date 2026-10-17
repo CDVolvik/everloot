@@ -1,5 +1,6 @@
 "use client";
 import { useMemo, useRef, useState } from "react";
+import { track } from "@/lib/analytics/track";
 import { parseEverlootLua } from "@/lib/sv-parse";
 import { prepareUpload, sendBatches, type SharingChoices, type UploadSession } from "@/lib/upload-batches";
 import type { SharingCategory } from "../../../../kb/src/publication";
@@ -65,7 +66,10 @@ export default function UploadClient() {
     if (!prepared.value || busy) return;
     const active = saved.current ?? prepared.value;
     saved.current = active; setSession(active); setSending(true); setError(null);
-    try { await sendBatches(active, fetch, () => refresh((n) => n + 1)); }
+    try {
+      await sendBatches(active, fetch, () => refresh((n) => n + 1));
+      if (active.next === active.batches.length) track("upload_done", { batches: active.batches.length });
+    }
     catch (e) { setError(e instanceof Error ? e.message : "Network error. Keep your file and retry."); }
     finally { setSending(false); refresh((n) => n + 1); }
   }
