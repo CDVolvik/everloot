@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import IdLookup from "@/components/IdLookup";
 
 export const metadata: Metadata = {
-  title: "Quest lookup",
-  description: "Look up a WoW: Forever quest. Title, level, giver, turn-in, and rewards are public after 3 installs agree.",
-  alternates: { canonical: "/database/quests" },
+  ...pageMetadata({ title: "WoW Forever Quest Lookup", description: "Look up a WoW: Forever quest by id. Title, level, giver, turn-in and rewards become public after three installs agree on them.", path: "/database/quests" }),
 };
 
 export default function QuestLookupPage() {

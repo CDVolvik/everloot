@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FAMILIES, figureLabel, getFamily, type FamilyFact } from "@/data/families";
@@ -17,11 +18,7 @@ export async function generateMetadata(props: { params: Promise<{ slug: string }
   const params = await props.params;
   const family = getFamily(params.slug);
   if (!family) return { title: "Guild family" };
-  return {
-    title: `${family.name} family record`,
-    description: family.summary,
-    alternates: { canonical: `/guilds/${family.slug}` },
-  };
+  return pageMetadata({ title: `${family.name} family record`, description: family.summary, path: `/guilds/${family.slug}` });
 }
 
 export default async function GuildFamilyPage(props: { params: Promise<{ slug: string }> }) {

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { auctionSightingsFromRecords, handleAuctionHistory } from "../../../../../kb/src/auction-history";
@@ -11,9 +12,7 @@ import { dataAgeLabel } from "@/lib/data-age";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Forever market",
-  description: "WoW: Forever auction prices from full scans players started and uploaded. A day is public after 3 reporters scanned the item.",
-  alternates: { canonical: "/tools/auctions" },
+  ...pageMetadata({ title: "WoW Forever Market", description: "WoW: Forever auction prices from full scans players started and uploaded. A day is public after 3 reporters scanned the item.", path: "/tools/auctions" }),
 };
 
 const MAX_ROWS = 200;

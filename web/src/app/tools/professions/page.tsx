@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import EmailCapture from "@/components/EmailCapture";
 import { handleProfessionPath } from "../../../../../kb/src/profession-path";
@@ -9,11 +10,8 @@ import { dataAgeLabel } from "@/lib/data-age";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Forever Profession Hubs",
-  description:
-    "Leveling routes and material lists for WoW: Forever professions, built from player-collected recipes and prices. Collecting now.",
+  ...pageMetadata({ title: "WoW Forever Profession Hubs", description: "Leveling routes and material lists for WoW: Forever professions, built from player-collected recipes and prices. The numbers open as reports arrive.", path: "/tools/professions" }),
   keywords: ["wow forever professions", "wow forever profession leveling", "forever profession perks"],
-  alternates: { canonical: "/tools/professions" },
 };
 
 const CARDS = [

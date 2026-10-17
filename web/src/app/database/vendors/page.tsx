@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import IdLookup from "@/components/IdLookup";
 
 export const metadata: Metadata = {
-  title: "Vendor lookup",
-  description: "Look up a WoW: Forever vendor. A price is public after 3 installs agree on the item and the copper.",
-  alternates: { canonical: "/database/vendors" },
+  ...pageMetadata({ title: "WoW Forever Vendor Lookup", description: "Look up a WoW: Forever vendor by id. A price is shown only after three installs agree on the item and the price in copper.", path: "/database/vendors" }),
 };
 
 export default function VendorLookupPage() {

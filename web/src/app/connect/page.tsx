@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import Bracket from "@/components/Bracket";
@@ -6,9 +7,7 @@ import { PUBLIC_RECORD_KINDS } from "@/lib/intake";
 import { CONNECT_EXAMPLES as ex, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR } from "./connect-data";
 
 export const metadata: Metadata = {
-  title: "Connect",
-  description: "Use Everloot's open data: the public corpus API, the MCP server for AI assistants, and the licence and credit line.",
-  alternates: { canonical: "/connect" },
+  ...pageMetadata({ title: "WoW Forever Data API and MCP Server", description: "Use Everloot's open data for WoW: Forever: the public corpus API, an MCP server for AI assistants, and the licence and credit line to use.", path: "/connect" }),
 };
 
 const REPO = "https://github.com/CDVolvik/everloot";

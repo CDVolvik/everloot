@@ -1,20 +1,26 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
+import JsonLd from "@/components/JsonLd";
 import { tools } from "@/data/tools";
+import { aboutPageJsonLd } from "@/lib/jsonld";
+
+const TITLE = "About Everloot";
+const description = "Everloot offers free WoW: Forever tools and a database built from player addon uploads. It is run by its maintainer and not affiliated with Blizzard.";
 
 export const metadata: Metadata = {
-  title: "About",
-  description:
-    "Everloot is the free WoW: Forever database — drop rates, guild progression, professions and tools, built from player data.",
-  alternates: { canonical: "/about" },
+  ...pageMetadata({ title: TITLE, description, path: "/about" }),
 };
 
 export default function AboutPage() {
   return (
     <article className="prose prose-invert max-w-3xl">
+      <JsonLd data={aboutPageJsonLd({ name: TITLE, description, path: "/about" })} />
       <h1 className="text-3xl font-bold text-fg">
-        About Everloot
+        {TITLE}
       </h1>
+
+      <p className="text-lg text-fg-2">{description}</p>
 
       <p className="text-fg-2">
         Everloot is the WoW: Forever database, rebuilt Thottbot-style: drop

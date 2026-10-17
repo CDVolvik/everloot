@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { curatedAddon } from "@/data/addon-repos";
@@ -54,11 +55,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const found = await find(params);
   if (!found) return { title: "Addon not found" };
   const title = found.stats?.title ?? found.name;
-  return {
+  return pageMetadata({
     title: `${title}: addon for WoW: Forever`,
     description: `How many Everloot installs run ${title}, where its author publishes it and what its repository shows. Counts appear once three installs report the addon.`,
-    alternates: { canonical: `/addons/${encodeURIComponent(found.name)}` },
-  };
+    path: `/addons/${encodeURIComponent(found.name)}`,
+  });
 }
 
 function OptIn() {

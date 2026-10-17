@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { unstable_noStore as noStore } from "next/cache";
 import { dataAgeLabel } from "@/lib/data-age";
@@ -11,9 +12,11 @@ export const revalidate = 86400;
 export async function generateMetadata(): Promise<Metadata> {
   const available = getRelease() !== null;
   return {
-    title: available ? "Lore archive coverage" : "Lore archive unavailable",
-    description: "What the Everloot lore archive covers: pages by type, facet, indexability and template damage, with the release date. The archive is the Warcraft Wiki as of November 2023, not WoW: Forever data.",
-    alternates: { canonical: "/lore/coverage" },
+    ...pageMetadata({
+      title: available ? "Lore archive coverage" : "Lore archive unavailable",
+      description: "What the Everloot lore archive covers: pages by type, facet, indexability and template damage, with the release date. The archive is the Warcraft Wiki as of November 2023, not WoW: Forever data.",
+      path: "/lore/coverage",
+    }),
     robots: { index: available, follow: true },
   };
 }

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { goldFactsFromRecords, handleGoldLedger } from "../../../../../kb/src/gold-ledger";
 import { STORAGE_UNREACHABLE, uploadStore } from "@/lib/upload-store";
@@ -7,9 +8,7 @@ import { dataAgeLabel } from "@/lib/data-age";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Gold ledger",
-  description: "Peak gold and the money events a character uploaded. A missing line is unrecorded.",
-  alternates: { canonical: "/tools/gold-ledger" },
+  ...pageMetadata({ title: "WoW Forever Gold Ledger", description: "Peak gold and the money events a WoW: Forever character uploaded, from that player's own addon file. A missing line means unrecorded, not zero.", path: "/tools/gold-ledger" }),
 };
 
 function one(value: string | string[] | undefined): string {

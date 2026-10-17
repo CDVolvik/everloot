@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import LoreSearchForm from "@/components/LoreSearchForm";
 import { BROWSE_HEADINGS, BROWSE_TYPES, hasTypes, loreSlug, MAX_QUERY, searchLore, UNAVAILABLE, UNAVAILABLE_COPY, type BrowseSlug, type LoreType } from "@/lib/lore";
@@ -11,9 +12,7 @@ function typeOf(raw: string | undefined): LoreType | undefined {
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Search the lore archive",
-  description: "Search Warcraft Wiki pages as of November 2023 (CC BY-SA 4.0). Lore and history, not collected WoW: Forever data.",
-  alternates: { canonical: "/search" },
+  ...pageMetadata({ title: "Search the Lore Archive", description: "Search the Warcraft Wiki archive as of November 2023, licensed CC BY-SA 4.0. It is lore and history, not collected WoW: Forever data.", path: "/search" }),
   robots: { index: false, follow: true },
 };
 

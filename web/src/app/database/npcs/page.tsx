@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import IdLookup from "@/components/IdLookup";
 
 export const metadata: Metadata = {
-  title: "NPC lookup",
-  description: "Look up a WoW: Forever NPC. A name or map pin is public after 3 installs agree.",
-  alternates: { canonical: "/database/npcs" },
+  ...pageMetadata({ title: "WoW Forever NPC Lookup", description: "Look up a WoW: Forever NPC by id. A name or a map pin becomes public only after three installs agree, and single reports stay queued.", path: "/database/npcs" }),
 };
 
 export default function NpcLookupPage() {

@@ -80,6 +80,7 @@ test("a curated row is labelled with its source and game version", async () => {
   expect(html).not.toContain("Converted from wikitext");
   expect(html).not.toContain("predates WoW: Forever");
   expect(html).toContain("https://news.blizzard.com/example");
+  expect(html).toContain('href="/wow-forever"');
 });
 
 test("lore pages are cached for a day and built on first request, not at build time", async () => {

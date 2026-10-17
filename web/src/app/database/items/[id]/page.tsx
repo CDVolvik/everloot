@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { itemPage } from "../../../../../../kb/src/item-page";
@@ -14,9 +15,7 @@ export async function generateMetadata(props: { params: Promise<{ id: string }> 
   const facts = await loadItemFacts();
   const page = itemPage(Number(params.id), facts);
   return {
-    title: !facts.unreachable && page.name ? page.name : `Item ${params.id}`,
-    description: "A WoW: Forever item page from corroborated drops, names, and map pins.",
-    alternates: { canonical: `/database/items/${params.id}` },
+    ...pageMetadata({ title: !facts.unreachable && page.name ? page.name : `Item ${params.id}`, description: "A WoW: Forever item page from corroborated drops, names, and map pins.", path: `/database/items/${params.id}` }),
     robots: { index: !facts.unreachable && Boolean(page.name || page.drops.length || page.pins.length), follow: true },
   };
 }

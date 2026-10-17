@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { guildFactsFromRecords, handleGuildBoard } from "../../../../../kb/src/guild-board";
 import { STORAGE_UNREACHABLE, uploadStore } from "@/lib/upload-store";
@@ -7,9 +8,7 @@ import { dataAgeLabel } from "@/lib/data-age";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Guild board",
-  description: "Officer-published WoW: Forever guild roster, progression, loot, and item level. Two uploads have to agree.",
-  alternates: { canonical: "/tools/guild-board" },
+  ...pageMetadata({ title: "WoW Forever Guild Board", description: "Officer-published WoW: Forever guild roster, progression, loot and item level. A figure is public only when two uploads agree.", path: "/tools/guild-board" }),
 };
 
 function one(value: string | string[] | undefined): string {
