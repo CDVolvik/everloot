@@ -107,3 +107,6 @@ snapshot (`writeSnapshot`) only re-reads stored uploads. No script seeds the cor
   that would read pixels from the game window, built on wow-ai. It was never built: no screen- or
   memory-reading code exists in this repository or its history. Everloot uses only the file bridge,
   which reads the SavedVariables file the game writes.
+- **Uploads sent before the licence was stated.** Until the open-source licensing change reached
+  everloot.app, neither the upload page nor the companion said under what licence uploads are
+  published. Uploads received before then were sent without that statement.
