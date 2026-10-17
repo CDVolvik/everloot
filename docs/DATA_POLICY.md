@@ -25,14 +25,13 @@ Blizzard hides some WoW: Forever item details until an item drops, and runs no p
 Game files show what exists; play shows what is real. Everloot keeps the two apart and says which
 is which.
 
-**What the game files contain.** *Status: the table data is not published yet.* A maintainer can
+**What the game files contain.** *Status: the table data is not published yet, except the talent catalog described below.* A maintainer can
 read the item and spell tables (`ItemSparse`, `Item`, `SpellName`, `Spell`) of a game's current
 build from the files Blizzard's launcher downloads from its public CDN, the same files every
 player receives, and compare two builds field by field. Those snapshots and comparisons stay on the
 maintainer's machine. Encrypted blocks are skipped, never decrypted: no decryption keys are loaded.
 Nothing read from the game files is in the dataset, the API or the MCP server. On the site, only
-the icons, tooltip text and frame art covered further down may appear, and the talent tree layout
-described there.
+the talent catalog and the icons, tooltip text and frame art covered further down may appear.
 
 Publishing the table data comes later, as a separate step. Once it ships, every entry from game
 files will:
@@ -77,18 +76,21 @@ The rules:
   client yourself.
 - **Taken down on request.** If Blizzard asks us to remove any of it, a maintainer removes it
   promptly, from the site first and from later releases after that. Blizzard, or anyone speaking
-  for it, can write to us at [everloot.app/contact](https://everloot.app/contact).
+  for it, can write to us at hello@everloot.app or through
+  [everloot.app/contact](https://everloot.app/contact).
 - **Same labels and spoiler rules as other game file data.** Presentation does not change them:
   an entry found only in the files still says *found in game files, unconfirmed*, and anything
   that could spoil unreleased content stays hidden, icon and text included, until the reader turns
   spoilers on.
 
-**The talent calculator's tree layout.** The talent calculator at `/tools/talents` starts from the
-tree layouts published by [Talents Forever](https://talentsforever.com/) under CC BY 4.0. They are
-a third party's work, and they say it was read from the beta client; we have not checked that
-ourselves. It is credited to them in the [source ledger](sources/LEDGER.md) and on the page, which
-links the licence. The layout is labelled *found in game files, unconfirmed* and follows the
-spoiler rules above. Icons and tooltip text shown with it follow the Blizzard rules above.
+**The talent catalog.** The talent calculator at `/tools/talents` uses our own catalog, read from
+the public client by a maintainer, not taken from any other site. The catalog is the trait node
+ids, positions, ranks, gates, prerequisites, spell ids, talent names and the build stamp. This is
+the one table data exception to the status above: it may be published on the site, and it may be
+committed to the git repository as a clearly marked game-data file with a README that says it is
+Blizzard's and outside our licence. It is labelled *found in game files, unconfirmed* until
+someone has checked it in the game, and the spoiler rules above apply. Tooltip text, icons and
+frame art shown with it keep the rules above: asset storage, not git.
 
 *Fan permissions are narrower than this.* As we read Blizzard's
 [video policy](https://www.blizzard.com/en-us/legal/dd76b654-f2c4-4aaa-ba49-ca3122de2376/blizzard-video-policy),

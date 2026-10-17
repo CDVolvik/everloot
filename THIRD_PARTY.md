@@ -13,7 +13,6 @@ full record of every source we have used, linked or only read is
 | [Polestar](https://github.com/fitzforge/polestar) by fitzforge | Facts about Polestar on the addons pages; we copy no code or guide text | GPL-3.0-only with a guide-pack exception | `web/src/data/polestar.ts`, and live release and issue data from the GitHub API (`web/src/lib/polestar-github.ts`) |
 | Blizzard game files (client tables `ItemSparse`, `Item`, `SpellName`, `Spell`) from Blizzard's CDN | Per-build snapshots and diffs on a maintainer machine; published only after review, labelled unconfirmed | Game data © Blizzard Entertainment; facts, not under our CC BY-SA licence | `kb/src/client-extract.ts`, `kb/src/client-snapshot.ts`, `kb/src/client-diff.ts` |
 | [WoWDBDefs](https://github.com/wowdev/WoWDBDefs) by the wowdev contributors | Table layouts used to read the client tables | CC BY-SA 4.0 (definitions) | Fetched at extraction by `@rhyster/wow-casc-dbc`; the commit is in each snapshot manifest |
-| [Talents Forever](https://talentsforever.com/) talent tree layouts | Starting layouts for `/tools/talents`; they state it was read from the beta client (unverified by us) | CC BY 4.0, credited on the page; labelled unconfirmed | Arrives with the talent calculator |
 | Public pages cited for guild-family facts | One fact each, in our own words, with its link and date | Facts only; no text copied | `web/src/data/families.ts` |
 
 World of Warcraft, Warcraft and Blizzard Entertainment are trademarks of Blizzard Entertainment, Inc.
@@ -31,7 +30,10 @@ Blizzard's own icons, spell and talent tooltip text and interface frame textures
 our pages, extracted by a maintainer from unencrypted files in the local game client, stamped with
 their build in a manifest and kept in Everloot's asset storage, never in this repository. They are © Blizzard Entertainment, Inc., stay Blizzard's, and are outside our CC BY-SA
 and AGPL licences. Release files that include any of them say so in their licence notes. The data
-downloads, API and MCP server carry ids and facts only. Rules and takedown contact:
+downloads, API and MCP server carry ids and facts only. The talent catalog read from the client
+(trait node ids, positions, ranks, gates, prerequisites, spell ids, talent names, build stamp) may
+be committed as a marked game-data file with a README saying it is Blizzard's and outside our
+licence. Rules and takedown contact:
 [`docs/DATA_POLICY.md`](docs/DATA_POLICY.md).
 
 ## Dependencies
