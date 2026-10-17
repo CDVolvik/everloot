@@ -1,3 +1,5 @@
+import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+
 /**
  * Build registry from Blizzard's public version service (http://us.patch.battle.net:1119/<product>/versions):
  * which builds of each product exist, and when Everloot first saw them. It reads build identifiers only,
@@ -97,6 +99,21 @@ export function recordBuilds(
 }
 
 export const VERSION_SERVICE = "http://us.patch.battle.net:1119";
+
+/** The registry at `path`; a file that does not exist yet is an empty registry. */
+export function loadRegistry(path: string): BuildRegistry {
+  if (!existsSync(path)) return { builds: [] };
+  const parsed = JSON.parse(readFileSync(path, "utf8"));
+  if (!parsed || !Array.isArray(parsed.builds)) throw new Error(`${path} is not a build registry`);
+  return parsed as BuildRegistry;
+}
+
+/** Written beside the target and renamed into place, so a crash never leaves half a registry. */
+export function saveRegistry(path: string, registry: BuildRegistry): void {
+  writeFileSync(`${path}.tmp`, `${JSON.stringify(registry, null, 2)}
+`);
+  renameSync(`${path}.tmp`, path);
+}
 
 /**
  * Ask the version service about each product and record what it says. A product that fails (network,
