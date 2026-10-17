@@ -241,6 +241,7 @@
    "class": "warrior",
    "family": "battle-shout",
    "scope": "raid",
+   "tree": "baseline",
    "names": [
     "Battle Shout"
    ],
@@ -261,6 +262,7 @@
    "class": "warrior",
    "family": "demoralizing-shout",
    "scope": "enemy",
+   "tree": "baseline",
    "names": [
     "Demoralizing Shout"
    ],
@@ -279,6 +281,7 @@
    "class": "warrior",
    "family": "thunder-clap",
    "scope": "enemy",
+   "tree": "baseline",
    "names": [
     "Thunder Clap"
    ],
@@ -304,6 +307,7 @@
    "class": "warrior",
    "family": "sunder-armor",
    "scope": "enemy",
+   "tree": "baseline",
    "names": [
     "Sunder Armor"
    ],
@@ -322,6 +326,7 @@
    "class": "hunter",
    "family": "trueshot-aura",
    "scope": "raid",
+   "tree": 2,
    "names": [
     "Trueshot Aura"
    ],
@@ -340,6 +345,7 @@
    "class": "druid",
    "family": "leader-of-the-pack",
    "scope": "raid",
+   "tree": 2,
    "names": [
     "Leader of the Pack"
    ],
@@ -354,6 +360,7 @@
    "class": "druid",
    "family": "mark-of-the-wild",
    "scope": "single",
+   "tree": "baseline",
    "names": [
     "Mark of the Wild"
    ],
@@ -374,6 +381,7 @@
    "class": "druid",
    "family": "mark-of-the-wild",
    "scope": "raid",
+   "tree": "baseline",
    "names": [
     "Gift of the Wild"
    ],
@@ -389,6 +397,7 @@
    "class": "druid",
    "family": "thorns",
    "scope": "single",
+   "tree": "baseline",
    "names": [
     "Thorns"
    ],
@@ -408,6 +417,7 @@
    "class": "druid",
    "family": "faerie-fire",
    "scope": "enemy",
+   "tree": "baseline",
    "names": [
     "Faerie Fire"
    ],
@@ -427,6 +437,7 @@
    "class": "druid",
    "family": "demoralizing-roar",
    "scope": "enemy",
+   "tree": "baseline",
    "names": [
     "Demoralizing Roar"
    ],
@@ -445,6 +456,7 @@
    "class": "mage",
    "family": "arcane-intellect",
    "scope": "single",
+   "tree": "baseline",
    "names": [
     "Arcane Intellect"
    ],
@@ -463,6 +475,7 @@
    "class": "mage",
    "family": "arcane-intellect",
    "scope": "raid",
+   "tree": "baseline",
    "names": [
     "Arcane Brilliance"
    ],
@@ -477,6 +490,7 @@
    "class": "mage",
    "family": "winters-chill",
    "scope": "enemy",
+   "tree": 3,
    "names": [
     "Winter's Chill"
    ],
@@ -491,6 +505,7 @@
    "class": "priest",
    "family": "power-word-fortitude",
    "scope": "single",
+   "tree": "baseline",
    "names": [
     "Power Word: Fortitude"
    ],
@@ -510,6 +525,7 @@
    "class": "priest",
    "family": "power-word-fortitude",
    "scope": "raid",
+   "tree": "baseline",
    "names": [
     "Prayer of Fortitude"
    ],
@@ -525,6 +541,7 @@
    "class": "priest",
    "family": "divine-spirit",
    "scope": "single",
+   "tree": "baseline",
    "names": [
     "Divine Spirit"
    ],
@@ -542,6 +559,7 @@
    "class": "priest",
    "family": "divine-spirit",
    "scope": "raid",
+   "tree": "baseline",
    "names": [
     "Prayer of Spirit"
    ],
@@ -556,6 +574,7 @@
    "class": "priest",
    "family": "shadow-protection",
    "scope": "single",
+   "tree": "baseline",
    "names": [
     "Shadow Protection"
    ],
@@ -572,6 +591,7 @@
    "class": "priest",
    "family": "shadow-protection",
    "scope": "raid",
+   "tree": "baseline",
    "names": [
     "Prayer of Shadow Protection"
    ],
@@ -586,6 +606,7 @@
    "class": "paladin",
    "family": "blessing-of-might",
    "scope": "single",
+   "tree": "baseline",
    "names": [
     "Blessing of Might"
    ],
@@ -606,6 +627,7 @@
    "class": "paladin",
    "family": "blessing-of-kings",
    "scope": "single",
+   "tree": "baseline",
    "names": [
     "Blessing of Kings"
    ],
@@ -620,6 +642,7 @@
    "class": "paladin",
    "family": "blessing-of-wisdom",
    "scope": "single",
+   "tree": "baseline",
    "names": [
     "Blessing of Wisdom"
    ],
@@ -639,6 +662,7 @@
    "class": "paladin",
    "family": "blessing-of-salvation",
    "scope": "unknown",
+   "tree": "baseline",
    "names": [
     "Salvation"
    ],
@@ -653,6 +677,7 @@
    "class": "paladin",
    "family": "blessing-of-light",
    "scope": "single",
+   "tree": "baseline",
    "names": [
     "Blessing of Light"
    ],
@@ -669,6 +694,7 @@
    "class": "paladin",
    "family": "blessing-of-might",
    "scope": "unknown",
+   "tree": "baseline",
    "names": [
     "Greater Blessing of Might"
    ],
@@ -684,6 +710,7 @@
    "class": "paladin",
    "family": "blessing-of-kings",
    "scope": "unknown",
+   "tree": "baseline",
    "names": [
     "Greater Blessing of Kings"
    ],
@@ -698,6 +725,7 @@
    "class": "paladin",
    "family": "blessing-of-wisdom",
    "scope": "unknown",
+   "tree": "baseline",
    "names": [
     "Greater Blessing of Wisdom"
    ],
@@ -713,6 +741,7 @@
    "class": "paladin",
    "family": "blessing-of-salvation",
    "scope": "unknown",
+   "tree": "baseline",
    "names": [
     "Mass Salvation"
    ],
@@ -727,6 +756,7 @@
    "class": "paladin",
    "family": "devotion-aura",
    "scope": "party",
+   "tree": "baseline",
    "names": [
     "Devotion Aura"
    ],
@@ -747,6 +777,7 @@
    "class": "paladin",
    "family": "retribution-aura",
    "scope": "party",
+   "tree": "baseline",
    "names": [
     "Retribution Aura"
    ],
@@ -765,6 +796,7 @@
    "class": "paladin",
    "family": "concentration-aura",
    "scope": "party",
+   "tree": "baseline",
    "names": [
     "Concentration Aura"
    ],
@@ -779,6 +811,7 @@
    "class": "paladin",
    "family": "sanctity-aura",
    "scope": "party",
+   "tree": "baseline",
    "names": [
     "Sanctity Aura"
    ],
@@ -793,6 +826,7 @@
    "class": "paladin",
    "family": "fire-resistance-aura",
    "scope": "raid",
+   "tree": "baseline",
    "names": [
     "Fire Resistance Aura"
    ],
@@ -809,6 +843,7 @@
    "class": "paladin",
    "family": "frost-resistance-aura",
    "scope": "raid",
+   "tree": "baseline",
    "names": [
     "Frost Resistance Aura"
    ],
@@ -825,6 +860,7 @@
    "class": "paladin",
    "family": "shadow-resistance-aura",
    "scope": "raid",
+   "tree": "baseline",
    "names": [
     "Shadow Resistance Aura"
    ],
@@ -841,6 +877,7 @@
    "class": "paladin",
    "family": "judgement-of-wisdom",
    "scope": "enemy",
+   "tree": "baseline",
    "names": [
     "Judgement of Wisdom"
    ],
@@ -857,6 +894,7 @@
    "class": "paladin",
    "family": "judgement-of-light",
    "scope": "enemy",
+   "tree": "baseline",
    "names": [
     "Judgement of Light"
    ],
@@ -874,6 +912,7 @@
    "class": "shaman",
    "family": "strength-of-earth-totem",
    "scope": "raid",
+   "tree": "baseline",
    "names": [
     "Strength of Earth"
    ],
@@ -892,6 +931,7 @@
    "class": "shaman",
    "family": "grace-of-air-totem",
    "scope": "raid",
+   "tree": "baseline",
    "names": [
     "Grace of Air"
    ],
@@ -908,6 +948,7 @@
    "class": "shaman",
    "family": "windfury-totem",
    "scope": "raid",
+   "tree": "baseline",
    "names": [
     "Windfury Totem"
    ],
@@ -924,6 +965,7 @@
    "class": "shaman",
    "family": "mana-spring-totem",
    "scope": "party",
+   "tree": "baseline",
    "names": [
     "Mana Spring"
    ],
@@ -941,6 +983,7 @@
    "class": "shaman",
    "family": "tranquil-air-totem",
    "scope": "party",
+   "tree": "baseline",
    "names": [
     "Tranquil Air"
    ],
@@ -955,6 +998,7 @@
    "class": "shaman",
    "family": "flametongue-totem",
    "scope": "raid",
+   "tree": "baseline",
    "names": [
     "Flametongue Totem"
    ],
@@ -972,6 +1016,7 @@
    "class": "shaman",
    "family": "fire-resistance-totem",
    "scope": "raid",
+   "tree": "baseline",
    "names": [
     "Fire Resistance"
    ],
@@ -988,6 +1033,7 @@
    "class": "shaman",
    "family": "frost-resistance-totem",
    "scope": "raid",
+   "tree": "baseline",
    "names": [
     "Frost Resistance"
    ],
@@ -1004,6 +1050,7 @@
    "class": "shaman",
    "family": "nature-resistance-totem",
    "scope": "raid",
+   "tree": "baseline",
    "names": [
     "Nature Resistance"
    ],
@@ -1020,6 +1067,7 @@
    "class": "shaman",
    "family": "healing-stream-totem",
    "scope": "party",
+   "tree": "baseline",
    "names": [
     "Healing Stream"
    ],
@@ -1038,6 +1086,7 @@
    "class": "warlock",
    "family": "curse-of-the-elements",
    "scope": "enemy",
+   "tree": "baseline",
    "names": [
     "Curse of the Elements"
    ],
@@ -1055,6 +1104,7 @@
    "class": "warlock",
    "family": "curse-of-recklessness",
    "scope": "enemy",
+   "tree": "baseline",
    "names": [
     "Curse of Recklessness"
    ],
@@ -1072,6 +1122,7 @@
    "class": "warlock",
    "family": "curse-of-weakness",
    "scope": "enemy",
+   "tree": "baseline",
    "names": [
     "Curse of Weakness"
    ],
@@ -1091,6 +1142,7 @@
    "class": "warlock",
    "family": "curse-of-tongues",
    "scope": "enemy",
+   "tree": "baseline",
    "names": [
     "Curse of Tongues"
    ],
@@ -1106,6 +1158,7 @@
    "class": "warlock",
    "family": "blood-pact",
    "scope": "party",
+   "tree": "baseline",
    "names": [
     "Blood Pact"
    ],
@@ -1124,6 +1177,7 @@
    "class": "rogue",
    "family": "expose-armor",
    "scope": "enemy",
+   "tree": "baseline",
    "names": [
     "Expose Armor"
    ],

@@ -34,12 +34,41 @@ interface RawEntry {
 const raw: RawEntry[] = table.entries.filter((e: RawEntry) => e.byRank.length > 0 && e.scope !== null);
 const byId = new Map(raw.map((e) => [e.id, e]));
 
+interface Catalog { className: string; trees: { name: string; order: number; nodes: { entries: { spellId: number; name: string | null }[] }[] }[] }
+const catalogs: Catalog[] = readdirSync(join(dir, "talents")).filter((f) => f.endsWith(".json") && f !== "index.json")
+  .map((f) => JSON.parse(readFileSync(join(dir, "talents", f), "utf8")))
+  .map((c: Catalog) => ({ ...c, trees: [...c.trees].sort((x, y) => x.order - y.order) }));
+const trees: Record<string, string[]> = {};
+for (const c of catalogs) trees[c.className.toLowerCase()] = c.trees.map((t) => t.name);
+
+/**
+ * Which tree a class needs for an effect, from the talent catalog: the tree (1 to 3, client order) holding a
+ * talent whose spell is one of the effect's spell ids, or else a talent with the effect's own spell name.
+ * "baseline" when no talent node matches, "unknown" when the matches are in more than one tree.
+ */
+function gateOf(e: { class: string; spellIds: number[]; names: string[] }): "baseline" | "unknown" | number {
+  const catalog = catalogs.find((c) => c.className.toLowerCase() === e.class);
+  if (!catalog) return "unknown";
+  const ids = new Set(e.spellIds);
+  const names = new Set(e.names);
+  const byId = new Set<number>();
+  const byName = new Set<number>();
+  catalog.trees.forEach((t, i) => t.nodes.forEach((n) => n.entries.forEach((en) => {
+    if (ids.has(en.spellId)) byId.add(i + 1);
+    else if (en.name && names.has(en.name)) byName.add(i + 1);
+  })));
+  const hit = byId.size ? byId : byName;
+  if (hit.size === 0) return "baseline";
+  return hit.size === 1 ? [...hit][0] : "unknown";
+}
+
 const entries = raw.map((e) => {
   const spellIds = [...new Set(e.byRank.flatMap((r) => r.spellIds))].sort((a, b) => a - b);
   const names = [...new Set(e.spells.map((s) => s.name))];
+  const cls = (e.class ?? "").toLowerCase();
   return {
-    id: e.id, label: e.label, kind: e.kind, class: (e.class ?? "").toLowerCase(),
-    family: GROUP_CAST_OF[e.id] ?? e.id, scope: e.scope, names, spellIds,
+    id: e.id, label: e.label, kind: e.kind, class: cls,
+    family: GROUP_CAST_OF[e.id] ?? e.id, scope: e.scope, tree: gateOf({ class: cls, spellIds, names }), names, spellIds,
     ...(e.scope === "mixed" ? { byRank: e.byRank.map((r) => ({ rank: r.rank, spellIds: r.spellIds, scope: r.scope })) } : {}),
   };
 });
@@ -47,12 +76,6 @@ const families = [...new Set(entries.map((e) => e.family))].map((id) => {
   const e = byId.get(id)!;
   return { id, label: e.label, kind: e.kind };
 });
-
-const trees: Record<string, string[]> = {};
-for (const file of readdirSync(join(dir, "talents")).filter((f) => f.endsWith(".json") && f !== "index.json")) {
-  const c = JSON.parse(readFileSync(join(dir, "talents", file), "utf8"));
-  trees[c.className.toLowerCase()] = [...c.trees].sort((a: { order: number }, b: { order: number }) => a.order - b.order).map((t: { name: string }) => t.name);
-}
 
 const out = {
   schema: "everloot.web-raid-data/1",
@@ -85,4 +108,5 @@ const lua = [
   "",
 ].join("\n");
 writeFileSync(join(root, "addon", "modules", "raid_data.lua"), lua);
+for (const e of entries) if (e.tree !== "baseline") console.log(`${e.id}: tree ${e.tree}`);
 console.log(`${entries.length} entries, ${families.length} families, not found: ${out.notFound.join(", ") || "none"}`);

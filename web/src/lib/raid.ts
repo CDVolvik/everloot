@@ -44,17 +44,39 @@ export function groupsOf(slots: Slots): Slots[] {
  * unknown: someone brings it, but how far it reaches is not known for this build.
  * missing: no picked class brings it.
  */
-export type State = "covered" | "cast" | "unknown" | "missing";
+export type State = "covered" | "cast" | "possible" | "unknown" | "missing";
 
-const RANK: Record<State, number> = { covered: 3, cast: 2, unknown: 1, missing: 0 };
+const RANK: Record<State, number> = { covered: 4, cast: 3, possible: 2, unknown: 1, missing: 0 };
 const best = (a: State, b: State): State => (RANK[a] >= RANK[b] ? a : b);
 
-const brings = (slots: Slots, entry: BuffEntry) => slots.some((s) => s?.class === entry.class);
+type Provides = "yes" | "maybe" | "unsure" | "no";
+
+/** Whether a slot brings an effect: its class must match, and so must its tree when a talent gives it. */
+function provides(slot: Slot | null, entry: BuffEntry): Provides {
+  if (!slot || slot.class !== entry.class) return "no";
+  if (entry.tree === "baseline") return "yes";
+  if (entry.tree === "unknown") return "unsure";
+  if (slot.tree === entry.tree) return "yes";
+  return slot.tree === 0 ? "maybe" : "no";
+}
+
+function bestProvides(slots: Slots, entry: BuffEntry): Provides {
+  let result: Provides = "no";
+  for (const s of slots) {
+    const p = provides(s, entry);
+    if (p === "yes") return "yes";
+    if (p === "maybe" || (p === "unsure" && result === "no")) result = p;
+  }
+  return result;
+}
 
 /** How one entry stands for a set of slots it could reach. `group` is the slots of one group. */
 function entryState(entry: BuffEntry, everyone: Slots, group: Slots): State {
   // Who can bring it: a party effect needs a provider in the group, anything else needs one in the raid.
-  if (!brings(entry.scope === "party" ? group : everyone, entry)) return "missing";
+  const p = bestProvides(entry.scope === "party" ? group : everyone, entry);
+  if (p === "no") return "missing";
+  if (p === "maybe") return "possible";
+  if (p === "unsure") return "unknown";
   switch (entry.scope) {
     case "raid":
     case "party":
@@ -99,7 +121,7 @@ export function coverage(slots: Slots, table: BuffTable): Coverage {
   };
   const all = table.families.filter((f) => entriesIn(table, f.id).length > 0).map(compute);
   const buffs = all.filter((f) => f.family.kind === "buff");
-  const summary: Record<State, number> = { covered: 0, cast: 0, unknown: 0, missing: 0 };
+  const summary: Record<State, number> = { covered: 0, cast: 0, possible: 0, unknown: 0, missing: 0 };
   for (const b of buffs) summary[b.raid]++;
   return { buffs, debuffs: all.filter((f) => f.family.kind === "debuff"), summary };
 }
@@ -107,6 +129,7 @@ export function coverage(slots: Slots, table: BuffTable): Coverage {
 export const STATE_LABEL: Record<State, string> = {
   covered: "Yes",
   cast: "By cast",
+  possible: "If talented",
   unknown: "Unknown reach",
   missing: "Missing",
 };

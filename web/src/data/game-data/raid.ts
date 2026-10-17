@@ -12,6 +12,11 @@ export interface BuffEntry {
   /** Effects in one family do not stack, so the page counts the family once. */
   family: string;
   scope: Scope;
+  /**
+   * The tree (1 to 3, client order) whose talent gives the class this effect, "baseline" when no talent node
+   * matches, or "unknown" when the matches are in more than one tree.
+   */
+  tree: "baseline" | "unknown" | 1 | 2 | 3;
   /** Aura names and spell ids the addon looks for. */
   names: string[];
   spellIds: number[];

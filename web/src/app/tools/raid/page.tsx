@@ -40,8 +40,9 @@ export default function RaidPage() {
         <p>
           Everything here is read from the game files of build 1.60.1.70450 and is unconfirmed until it is
           seen in play. Where the files do not settle how far an effect reaches, or its ranks disagree, it reads
-          &ldquo;unknown&rdquo; and is not counted as covered. The files do not say which talent tree a class
-          needs for an effect, so coverage looks at the class only; the tree names are the game&apos;s own.
+          &ldquo;unknown&rdquo; and is not counted as covered. Where a talent gives a class an effect, the
+          tree comes from the game&apos;s talent data, and a slot set to the wrong tree does not count; an effect
+          with no talent behind it comes with the class.
           Rules stay in data, per build, so a change in a later build is a new row and not a code change.
         </p>
         <h2 className="text-2xl text-fg">In game</h2>

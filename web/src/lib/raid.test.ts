@@ -10,8 +10,9 @@ const table = TABLES[CURRENT_BUILD];
 const slot = (c: Slot["class"], tree: Slot["tree"] = 0): Slot => ({ class: c, tree });
 
 /** A table of our own, so the math is tested without depending on the generated data. */
-const entry = (id: string, family: string, cls: string, scope: BuffTable["entries"][number]["scope"]) =>
-  ({ id, label: id, family, class: cls, scope, names: [id], spellIds: [1] });
+type Entry = BuffTable["entries"][number];
+const entry = (id: string, family: string, cls: string, scope: Entry["scope"], tree: Entry["tree"] = "baseline"): Entry =>
+  ({ id, label: id, family, class: cls, scope, tree, names: [id], spellIds: [1] });
 const mini: BuffTable = {
   build: "1.0.1",
   label: "test",
@@ -23,6 +24,7 @@ const mini: BuffTable = {
     { id: "wild", label: "Wild", kind: "buff" },
     { id: "mystery", label: "Mystery", kind: "buff" },
     { id: "armor", label: "Armor", kind: "debuff" },
+    { id: "gated", label: "Gated", kind: "buff" },
   ],
   entries: [
     entry("shout", "shout", "warrior", "raid"),
@@ -30,7 +32,8 @@ const mini: BuffTable = {
     entry("wild", "wild", "druid", "single"),
     entry("gwild", "wild", "druid", "unknown"),
     entry("mystery", "mystery", "warlock", "mixed"),
-    entry("armor", "armor", "rogue", "enemy"),
+    entry("armor", "armor", "rogue", "enemy", 2),
+    entry("gated", "gated", "hunter", "raid", "unknown"),
   ],
 };
 
@@ -44,7 +47,7 @@ describe("coverage", () => {
   test("an empty raid is missing everything", () => {
     const c = coverage(emptySlots(10), mini);
     expect(c.buffs.every((b) => b.raid === "missing" && b.groups.every((g) => g === "missing"))).toBe(true);
-    expect(c.summary.missing).toBe(4);
+    expect(c.summary.missing).toBe(5);
   });
 
   test("a raid-scope buff reaches every group from any one provider", () => {
@@ -69,11 +72,24 @@ describe("coverage", () => {
     expect(wild.groups).toEqual(["cast", "cast"]);
   });
 
-  test("the tree does not change coverage: the game files do not gate effects by tree", () => {
-    const a = coverage(raid(10, { 0: slot("rogue", 0) }), mini);
-    const b = coverage(raid(10, { 0: slot("rogue", 3) }), mini);
-    expect(a).toEqual(b);
-    expect(a.debuffs[0].raid).toBe("covered");
+  test("a talent-gated effect needs the right tree; any tree is only possible", () => {
+    const right = coverage(raid(10, { 0: slot("rogue", 2) }), mini);
+    expect(right.debuffs[0].raid).toBe("covered");
+    expect(coverage(raid(10, { 0: slot("rogue", 0) }), mini).debuffs[0].raid).toBe("possible");
+    expect(coverage(raid(10, { 0: slot("rogue", 3) }), mini).debuffs[0].raid).toBe("missing");
+    expect(coverage(raid(10, { 0: slot("mage", 2) }), mini).debuffs[0].raid).toBe("missing");
+  });
+
+  test("a baseline effect ignores the tree", () => {
+    const a = coverage(raid(10, { 0: slot("warrior", 0) }), mini);
+    const b = coverage(raid(10, { 0: slot("warrior", 3) }), mini);
+    expect(a.buffs.find((x) => x.family.id === "shout")).toEqual(b.buffs.find((x) => x.family.id === "shout"));
+  });
+
+  test("an ambiguous tree reads unknown, whatever the slot's tree", () => {
+    for (const tree of [0, 1, 3] as const) {
+      expect(coverage(raid(10, { 0: slot("hunter", tree) }), mini).buffs.find((x) => x.family.id === "gated")!.raid).toBe("unknown");
+    }
   });
 
   test("a family counts once and takes its best member", () => {
@@ -88,19 +104,28 @@ describe("coverage", () => {
   });
 
   test("debuffs are raid-wide: every group shows the same state", () => {
-    const c = coverage(raid(20, { 19: slot("rogue", 1) }), mini);
+    const c = coverage(raid(20, { 19: slot("rogue", 2) }), mini);
     expect(c.debuffs[0].groups).toEqual(["covered", "covered", "covered", "covered"]);
   });
 
   test("the summary counts buff families by raid state", () => {
     const c = coverage(raid(10, { 0: slot("warrior"), 1: slot("druid"), 2: slot("warlock") }), mini);
-    expect(c.summary).toEqual({ covered: 1, cast: 1, unknown: 1, missing: 1 });
+    expect(c.summary).toEqual({ covered: 1, cast: 1, possible: 0, unknown: 1, missing: 2 });
   });
 
   test("the generated table: Battle Shout reaches the raid, and Gift of the Wild (raid in the files) covers the Mark of the Wild family", () => {
     const c = coverage(raid(20, { 0: slot("warrior"), 5: slot("druid", 2) }), table);
     expect(c.buffs.find((b) => b.family.id === "battle-shout")!.groups).toEqual(["covered", "covered", "covered", "covered"]);
     expect(c.buffs.find((b) => b.family.id === "mark-of-the-wild")!.raid).toBe("covered");
+  });
+
+  test("tree gates come from the talent catalog: Trueshot Aura, Leader of the Pack, Winter's Chill", () => {
+    const gate = (id: string) => table.entries.find((e) => e.id === id)!.tree;
+    expect([gate("trueshot-aura"), gate("leader-of-the-pack"), gate("winters-chill")]).toEqual([2, 2, 3]);
+    expect(gate("battle-shout")).toBe("baseline");
+    const hunter = (tree: Slot["tree"]) => coverage(raid(10, { 0: slot("hunter", tree) }), table).buffs.find((b) => b.family.id === "trueshot-aura")!.raid;
+    expect([hunter(2), hunter(0), hunter(1)]).toEqual(["covered", "possible", "missing"]);
+    expect(treeNames(table, "hunter")[1]).toBe("Marksmanship");
   });
 
   test("Greater Blessings and Salvation stay unknown, and Sanctuary is absent", () => {
@@ -123,6 +148,12 @@ describe("the generated table", () => {
       expect(e.names.length, e.id).toBeGreaterThan(0);
     }
     for (const f of table.families) expect(table.entries.some((e) => e.id === f.id), f.id).toBe(true);
+  });
+
+  test("every tree gate is a tree number the class has", () => {
+    for (const e of table.entries) {
+      if (typeof e.tree === "number") expect(e.tree, e.id).toBeLessThanOrEqual(table.trees[e.class].length);
+    }
   });
 
   test("keeps the per-rank scope only where ranks disagree, and holds no tooltip text", () => {

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CLASSES } from "@/design/tokens";
-import { CURRENT_BUILD, TABLES, type Scope } from "@/data/game-data/raid";
+import { CURRENT_BUILD, TABLES, type BuffTable, type Scope } from "@/data/game-data/raid";
 import {
   treeNames, SIZES, STATE_LABEL, coverage, decodeRaid, emptySlots, encodeRaid, findCode, groupsOf, resize,
   titleCase, GROUP_SIZE, type ClassName, type FamilyCoverage, type Size, type Slot, type Slots, type State,
@@ -18,9 +18,9 @@ const CLASS_TEXT: Record<ClassName, string> = {
 };
 
 const STATE_TEXT: Record<State, string> = {
-  covered: "text-accent", cast: "text-fg-2", unknown: "text-warning", missing: "text-danger",
+  covered: "text-accent", cast: "text-fg-2", possible: "text-warning", unknown: "text-warning", missing: "text-danger",
 };
-const STATE_SHORT: Record<State, string> = { covered: "Yes", cast: "Cast", unknown: "Unknown", missing: "No" };
+const STATE_SHORT: Record<State, string> = { covered: "Yes", cast: "Cast", possible: "Talent", unknown: "Unknown", missing: "No" };
 
 const SCOPE_TEXT: Record<Scope, string> = {
   self: "caster only", single: "one player per cast", party: "party", raid: "raid", area: "players nearby",
@@ -29,8 +29,14 @@ const SCOPE_TEXT: Record<Scope, string> = {
 interface Snapshot { size: Size; slots: Slots }
 const HISTORY_LIMIT = 100;
 
-function reach(f: FamilyCoverage): string {
-  return [...new Set(f.entries.map((e) => SCOPE_TEXT[e.scope]))].join(", ");
+function reach(f: FamilyCoverage, table: BuffTable): string {
+  const scopes = [...new Set(f.entries.map((e) => SCOPE_TEXT[e.scope]))].join(", ");
+  const needs = [...new Set(f.entries.flatMap((e) => {
+    if (e.tree === "baseline") return [];
+    if (e.tree === "unknown") return ["tree unknown"];
+    return [`needs a ${table.trees[e.class]?.[e.tree - 1] ?? `tree ${e.tree}`} talent`];
+  }))];
+  return [scopes, ...needs].join(", ");
 }
 
 export default function RaidBuilder() {
@@ -82,6 +88,11 @@ export default function RaidBuilder() {
   useEffect(() => {
     if (location.hash.startsWith("#raid=")) load(location.hash.slice(6), false);
     setReady(true);
+    // A link pasted into the address bar of this tab changes only the fragment. Our own updates use
+    // replaceState, which does not fire this.
+    const onHash = () => { if (location.hash.startsWith("#raid=")) load(location.hash.slice(6), false); };
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
     // Runs once, on first paint in the browser.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -152,7 +163,7 @@ export default function RaidBuilder() {
     <tr key={f.family.id} className="border-t border-line align-top">
       <th scope="row" className="sticky left-0 bg-canvas py-2 pr-4 text-left font-normal">
         <span className="text-fg">{f.family.label}</span>
-        <span className="block text-xs text-muted">{reach(f)}</span>
+        <span className="block text-xs text-muted">{reach(f, table)}</span>
       </th>
       <td className={`py-2 pr-4 ${STATE_TEXT[f.raid]}`}>{STATE_SHORT[f.raid]}</td>
       {perGroup &&
@@ -321,7 +332,7 @@ export default function RaidBuilder() {
       <section aria-labelledby="raid-coverage" className="space-y-4">
         <h2 id="raid-coverage" className="text-xl font-semibold text-fg">Coverage</h2>
         <p role="status" aria-live="polite" className="text-sm text-fg-2">
-          Buffs, for the raid: {cov.summary.covered} yes, {cov.summary.cast} by cast,{" "}
+          Buffs, for the raid: {cov.summary.covered} yes, {cov.summary.cast} by cast, {cov.summary.possible} if talented,{" "}
           {cov.summary.unknown} unknown reach, {cov.summary.missing} missing.
         </p>
         <div className="overflow-x-auto">
@@ -385,7 +396,8 @@ export default function RaidBuilder() {
 
 const LEGEND: Record<State, string> = {
   covered: "A class you picked brings it, and it reaches this group.",
+  possible: "A class you picked brings it with a talent in one tree, and the only slots of that class are set to any tree.",
   cast: "A class you picked brings it, but it is cast on one player or a few nearby, so someone has to cast it.",
-  unknown: "A class you picked brings it, but the game files do not settle how far it reaches (or its ranks disagree).",
+  unknown: "A class you picked brings it, but the game files do not settle how far it reaches, its ranks disagree, or the tree that gives it is not clear.",
   missing: "No class you picked brings it.",
 };
