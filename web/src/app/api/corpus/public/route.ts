@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { ALL_RECORD_KINDS } from "@/lib/intake";
+import { PUBLIC_RECORD_KINDS as PUBLIC_KINDS } from "@/lib/intake";
 import { uploadStore } from "@/lib/upload-store";
 import { recordUsage } from "@/lib/usage-metrics";
 export const dynamic = "force-dynamic";
@@ -13,9 +13,6 @@ function published<T extends object>(record: T): Omit<T, "installId"> {
   delete copy.installId;
   return copy as Omit<T, "installId">;
 }
-
-/** Addon lists are published only as the leaderboard's counts at three or more installs, never row by row. */
-const PUBLIC_KINDS: readonly string[] = ALL_RECORD_KINDS.filter((kind) => kind !== "addon_seen");
 
 /** `?kinds=a,b` returns only those record kinds, so an MCP tool fetches what it reads, not the whole corpus. */
 export async function GET(req: Request) {

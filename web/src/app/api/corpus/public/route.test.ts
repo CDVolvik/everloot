@@ -4,6 +4,7 @@ const store = vi.hoisted(() => ({ loadCorpus: vi.fn() }));
 vi.mock("@/lib/upload-store", () => ({ uploadStore: { loadCorpus: store.loadCorpus } }));
 
 import { GET } from "./route";
+import { ALL_RECORD_KINDS, PUBLIC_RECORD_KINDS } from "@/lib/intake";
 
 const base = { installId: "install-1", capturedAt: "2026-10-09T00:00:00.000Z" };
 const gold = { ...base, eventId: "e:1", kind: "gold_snapshot", character: "Thrall", realm: "Forever", currentCopper: 1, peakCopper: 1 };
@@ -46,4 +47,17 @@ test("installed addon lists never leave row by row; only the leaderboard's count
   expect(body.records).toEqual([published(gold), published(scan)]);
   const asked = await GET(req("?kinds=addon_seen"));
   expect(asked.status).toBe(400);
+});
+
+test("a kind that is not on the allowlist is never returned, filtered or not", async () => {
+  const unlisted = { ...base, eventId: "e:9", kind: "talent_snapshot", talents: [] };
+  store.loadCorpus.mockResolvedValue({ uploads: 1, records: [gold, unlisted, scan] });
+  const body = await (await GET(req())).json();
+  expect(body.records).toEqual([published(gold), published(scan)]);
+  expect((await GET(req("?kinds=talent_snapshot"))).status).toBe(400);
+});
+
+test("every record kind is either on the allowlist or named private here", () => {
+  const privateKinds = ["addon_seen"];
+  expect([...PUBLIC_RECORD_KINDS, ...privateKinds].sort()).toEqual([...ALL_RECORD_KINDS].sort());
 });

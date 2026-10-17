@@ -73,8 +73,9 @@ export default function PrivacyPage() {
         <li>
           <strong>Cookies:</strong> an essential login cookie if you sign in, and
           your cookie choice, which is saved in your browser. Optional analytics
-          cookies and advertising cookies are off unless you accept them. We do
-          not show ads today.
+          cookies are off unless you accept them. We do not show ads today; if
+          advertising is enabled in the future, its cookies (Google AdSense, see
+          below) also stay off unless you accept them.
         </li>
       </ul>
 
@@ -110,7 +111,8 @@ export default function PrivacyPage() {
         Advertising and Google AdSense
       </h2>
       <p className="text-fg-2">
-        If configured, Google AdSense loads only after you accept optional cookies. Google
+        Everloot does not currently show ads. If advertising is enabled later,
+        Google AdSense will load only after you accept optional cookies. Google
         and its partners may use cookies to serve ads based on your prior visits
         to this site or other sites. You can opt out of personalized advertising
         by visiting{" "}
