@@ -59,6 +59,12 @@ export function debounce(run: () => void, ms: number): () => void {
   };
 }
 
+/** Printed before anything is sent: how uploads are licensed and where the code is (AGPL section 13). */
+export function uploadNotice(): string {
+  return "Uploaded observations are published under CC BY-SA 4.0, credited to Everloot contributors.\n" +
+    "Source: https://github.com/CDVolvik/everloot";
+}
+
 async function main(argv: string[]): Promise<void> {
   const args = parseArgs(argv);
   const statePath = args.state ?? defaultStatePath({ platform: process.platform, env: process.env, home: homedir() });
@@ -98,6 +104,7 @@ async function main(argv: string[]): Promise<void> {
       console.error(`${file}: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
+  console.log(uploadNotice());
   for (const file of files) await send(file);
   if (args.command === "watch") {
     // The game writes SavedVariables at logout or /reload; wait for the write to settle.
