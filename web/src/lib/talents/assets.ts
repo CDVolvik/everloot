@@ -27,7 +27,8 @@ const manifest = z.object({
     passive: z.boolean().nullable(),
     description: z.object({ text: z.string(), unresolved: z.array(z.string()) }).nullable(),
   })),
-  icons: z.record(z.string(), file),
+  // Newer manifests leave the icon list out (each talent names its icon); older ones still carry it.
+  icons: z.record(z.string(), file).optional(),
   frames: z.record(z.string(), file),
   backgrounds: z.record(z.string(), z.object({ element: z.string(), nearest: z.boolean() })),
 });

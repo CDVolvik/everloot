@@ -261,7 +261,7 @@ export default function WorldMapView(props: {
           {art && showArt && (
             <g aria-hidden="true" pointerEvents="none" data-map-art>
               {art.continent && <image href={art.continent.url} x={art.continent.x} y={art.continent.y} width={art.continent.width} height={art.continent.height} preserveAspectRatio="none" />}
-              {zoneArtShown(art, camera).map((z) => <image key={z.uiMapId} href={z.url} x={z.x} y={z.y} width={z.width} height={z.height} preserveAspectRatio="none" />)}
+              {zoneArtShown(art, camera, view).map((z) => <image key={`${z.uiMapId}-${z.url}`} href={z.url} x={z.x} y={z.y} width={z.width} height={z.height} preserveAspectRatio="none" />)}
             </g>
           )}
           {zonesByArea.map((z) => (

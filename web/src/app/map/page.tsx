@@ -18,10 +18,15 @@ export const dynamic = "force-dynamic";
 
 const TITLE = "WoW Forever World Map";
 const description = "Zones, dungeon and raid entrances and player-observed NPCs on one map of WoW: Forever, drawn from positions read in the game files. No game art.";
+/** The same description when the game's map pictures are shown. */
+const withArt = (text: string) => text.replace(" No game art.", " The map pictures are the game's own.");
 
-export const metadata: Metadata = {
-  ...pageMetadata({ title: TITLE, description, path: "/map", image: "/map/opengraph-image" }),
-};
+/** "No game art" only while there is none: with the asset URL set and pictures uploaded, the description says so. */
+export async function generateMetadata(): Promise<Metadata> {
+  const assets = await loadSiteAssets();
+  const text = assets?.maps.length ? withArt(description) : description;
+  return pageMetadata({ title: TITLE, description: text, path: "/map", image: "/map/opengraph-image" });
+}
 
 type Query = { continent?: string | string[]; zone?: string | string[]; x?: string | string[]; y?: string | string[]; spoilers?: string | string[] };
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
@@ -48,7 +53,7 @@ export default async function MapPage(props: { searchParams: Promise<Query> }) {
   // A held-back zone's picture follows its outline: none unless spoilers are on.
   const assets = vb ? await loadSiteAssets() : null;
   const art = continentArt(assets, continentId, spoilers, WORLD_MAP.heldBackZones.some((z) => z.continentId === continentId));
-  const lead = art ? description.replace(" No game art.", " The map pictures are the game's own.") : description;
+  const lead = art ? withArt(description) : description;
 
   const items: MapItems = {
     zones: map.zones,

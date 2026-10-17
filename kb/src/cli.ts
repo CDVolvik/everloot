@@ -90,7 +90,9 @@ const USAGE = `usage: npm run kb -- <command> --db <path>
     (everything the site shows from the game files, from unencrypted files of the snapshot's build: talent icons,
     resolved tooltip text and talent-frame art; item icons and item tooltip facts (all named items, or only the ids
     in --items); class, talent tree, raid buff and profession icons; continent and zone map pictures. Into
-    <out>/<product>-<build>-<config>/ with manifest.json. Needs Python with Pillow. Never commit the output; see docs/ASSETS.md)
+    <out>/<product>-<build>-<config>/ with manifest.json and checksums.json (public bucket), and the item tooltip
+    facts into <out>/<product>-<build>-<config>-private/ (private bucket only). Needs Python with Pillow. Never
+    commit the output; see docs/ASSETS.md)
   client-diff <old.sqlite> <new.sqlite> [--out diff.json]   (field-level diff of two snapshots)
   client-map <snapshot.sqlite> [--out ../web/src/data/game-data/map.json]
     (zone rectangles in world coordinates, continents and dungeon and raid entrances from a client
@@ -373,6 +375,8 @@ async function main(): Promise<number> {
       const run = await buildClientAssets({ snapshotPath: args[0], outDir: flags.get("out") || "data/assets", source, buffSpells, items });
       for (const n of run.notes) console.log(n);
       for (const s of run.manifest.skippedMaps.slice(0, 10)) console.log(`map skipped: ${s}`);
+      // Printed before the public folder line: the upload script reads both.
+      if (run.privateDir) console.log(`private -> ${run.privateDir}`);
       if (run.manifest.missingFrames.length) console.log(`frame pieces not available: ${run.manifest.missingFrames.join(", ")}`);
       console.log(`-> ${run.dir}`);
       return 0;

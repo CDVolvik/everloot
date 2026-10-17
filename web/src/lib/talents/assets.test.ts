@@ -107,18 +107,18 @@ const SHOWS_ART = new Set([
   "web/src/app/page.tsx", "web/src/app/map/page.tsx", "web/src/app/tools/raid/page.tsx", "web/src/app/tools/auctions/page.tsx",
   "web/src/app/tools/professions/page.tsx", "web/src/app/database/drops/page.tsx", "web/src/app/database/items/[id]/page.tsx",
   "web/src/app/database/vendors/[id]/page.tsx",
-  "kb/src/cli.ts", "web/scripts/upload-game-assets.mjs",
+  "kb/src/cli.ts", "web/scripts/upload-game-assets.mjs", "web/scripts/game-assets-upload.mjs",
 ]);
 
 test("nothing outside the pages that show the art can read the asset URL or the manifest modules", () => {
   const offenders = [...sources(join(root, "web/src")), ...sources(join(root, "kb/src")), ...sources(join(root, "addon")), ...sources(join(root, "web/scripts"))]
     .map((p) => ({ p: relative(root, p).replaceAll("\\", "/"), text: readFileSync(p, "utf8") }))
-    .filter(({ p, text }) => /GAME_ASSETS_URL|talents\/assets|\.\/assets"|game-assets/.test(text) && !SHOWS_ART.has(p) && !p.startsWith("web/src/components/talents/") && !p.startsWith("web/src/components/game/") && !p.startsWith("kb/src/client-assets"))
+    .filter(({ p, text }) => /GAME_ASSETS_URL|GAME_DATA_(S3|BUCKET|ACCESS|SECRET|REGION)|talents\/assets|\.\/assets"|game-assets/.test(text) && !SHOWS_ART.has(p) && !p.startsWith("web/src/components/talents/") && !p.startsWith("web/src/components/game/") && !p.startsWith("kb/src/client-assets"))
     .map(({ p }) => p);
   expect(offenders).toEqual([]);
   // And the API and MCP code, specifically, never imports the talents folder or the site-wide reader at all.
   const api = [...sources(join(root, "web/src/app/api")), ...sources(join(root, "web/src/app/mcp")), join(root, "web/src/lib/mcp-mount.ts"), ...sources(join(root, "kb/src")).filter((p) => /mcp|exporters/.test(p))];
-  for (const p of api) expect(readFileSync(p, "utf8"), p).not.toMatch(/talents\/(assets|catalogs)|GAME_ASSETS|game-assets|components\/game\//);
+  for (const p of api) expect(readFileSync(p, "utf8"), p).not.toMatch(/talents\/(assets|catalogs)|GAME_ASSETS|GAME_DATA_(S3|BUCKET|ACCESS|SECRET|REGION)|game-assets|components\/game\//);
 });
 
 let release = "";

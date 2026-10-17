@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vitest";
-import { AssetManifest, buildAssetsFromTables, FRAME_ELEMENTS, type Converter } from "../src/client-assets.js";
+import { AssetChecksums, AssetManifest, buildAssetsFromTables, FRAME_ELEMENTS, ItemIndex, type Converter } from "../src/client-assets.js";
 import type { FileStatus, TableSource } from "../src/client-extract.js";
 import type { Row, Rows } from "../src/talents/build-catalog.js";
 import type { BuildStamp } from "../src/talents/catalog.js";
@@ -86,8 +86,12 @@ test("icons, tooltips and frame pieces come out with counts, and encrypted or mi
   expect(manifest.spells["103"]).toMatchObject({ icon: null, description: null });
   expect(manifest.counts).toMatchObject({ tooltipsResolved: 1, tooltipsUnresolved: 1, tooltipsEmpty: 1 });
   expect(manifest.backgrounds["warrior:Arms"]).toEqual({ element: "talents-background-warrior-arms", nearest: false });
-  expect(manifest.frames["talents-node-circle-green"]).toMatchObject({ file: "frames/talents-node-circle-green.webp", width: 10, height: 10 });
-  expect(manifest.frames["talents-node-circle-green"].sha256).toMatch(/^[0-9a-f]{64}$/);
+  expect(manifest.frames["talents-node-circle-green"]).toEqual({ file: "frames/talents-node-circle-green.webp", width: 10, height: 10 });
+  // Hashes are in checksums.json, for the upload script only, and cover exactly the files written.
+  const sums = AssetChecksums.parse(JSON.parse(readFileSync(join(dir, "checksums.json"), "utf8")));
+  expect(Object.keys(sums.files)).toEqual(["frames/talents-background-warrior-arms.webp", "frames/talents-node-circle-green.webp", "icons/5001.webp"]);
+  expect(sums.files["icons/5001.webp"].sha256).toMatch(/^[0-9a-f]{64}$/);
+  expect(JSON.stringify(manifest)).not.toMatch(/sha256/);
   // Everything else the window wants is reported, not invented.
   expect(manifest.missingFrames).toContain("talents-arrow-line-yellow");
   expect(manifest.missingFrames).not.toContain("talents-node-circle-green");
@@ -97,9 +101,9 @@ test("icons, tooltips and frame pieces come out with counts, and encrypted or mi
 test("a build that serves nothing for a file leaves it out and says so", async () => {
   const outDir = mkdtempSync(join(tmpdir(), "everloot-assets-"));
   const src: TableSource = { async read() { return null; }, fileStatus: () => "present", async readFile() { return { cKey: "k", buffer: Buffer.alloc(1), encryptedBlocks: 2 } } };
-  const { manifest } = await buildAssetsFromTables({ get: (n) => tables[n], build, outDir, source: src, convert: fakeConvert });
+  const { manifest, checksums } = await buildAssetsFromTables({ get: (n) => tables[n], build, outDir, source: src, convert: fakeConvert });
   expect(manifest.counts).toMatchObject({ iconsExtracted: 0, iconsEncrypted: 3, framesExtracted: 0 });
-  expect(Object.keys(manifest.icons)).toEqual([]);
+  expect(Object.keys(checksums.files)).toEqual([]);
 });
 
 test("a file the converter cannot read is counted as failed and has no entry", async () => {
@@ -114,8 +118,10 @@ test("the output holds only the manifest and converted files, and the working co
 });
 
 test("a talent-only snapshot gives no items or maps, and says so in the manifest", async () => {
-  const { manifest } = await run();
-  expect(manifest.items).toBeNull();
+  const { manifest, items, privateDir, dir } = await run();
+  expect(items).toBeNull();
+  expect(privateDir).toBeNull();
+  expect(existsSync(`${dir}-private`)).toBe(false);
   expect(manifest.maps).toEqual({});
   expect(manifest.classes.warrior).toEqual({ classId: 1, name: "Warrior", icon: null, trees: [{ name: "Arms", icon: null }] });
 });
@@ -159,7 +165,7 @@ test("the site's other art: class, tree, profession, buff and item icons, item s
   const jobs: Parameters<Converter>[0] = [];
   const convert: Converter = async (batch) => { jobs.push(...batch); return fakeConvert(batch); };
   const src: TableSource = { ...source([]), fileStatus: (id) => siteStatus[id] ?? "absent" };
-  const { manifest, dir } = await buildAssetsFromTables({ get: (n) => site[n], build, outDir, source: src, convert, buffSpells: [6673, 1] });
+  const { manifest, dir, privateDir, items, checksums } = await buildAssetsFromTables({ get: (n) => site[n], build, outDir, source: src, convert, buffSpells: [6673, 1] });
   expect(AssetManifest.parse(JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8")))).toEqual(manifest);
 
   expect(manifest.classes.warrior).toEqual({ classId: 1, name: "Warrior", icon: "6001.webp", trees: [{ name: "Arms", icon: "6002.webp" }] });
@@ -170,17 +176,28 @@ test("the site's other art: class, tree, profession, buff and item icons, item s
   // A listed spell with no icon row is left out, not given one.
   expect(manifest.spellIcons).toEqual({ "6673": "6004.webp" });
 
-  // Items: the record notes its icon only when the icon was extracted; the encrypted one has none.
-  expect(manifest.items).toMatchObject({ shardSize: 512, count: 2 });
-  const shard0 = JSON.parse(readFileSync(join(dir, "items", "0.json"), "utf8"));
-  const shard1 = JSON.parse(readFileSync(join(dir, "items", "1.json"), "utf8"));
+  // Items go to the private folder only: the public folder and its manifest never name an item.
+  expect(privateDir).toBe(`${dir}-private`);
+  expect(existsSync(join(dir, "items"))).toBe(false);
+  expect(readFileSync(join(dir, "manifest.json"), "utf8")).not.toMatch(/Worn Shortsword|Test Helm|items\//);
+  expect(Object.keys(checksums.files).some((f) => f.startsWith("items"))).toBe(false);
+  expect(ItemIndex.parse(JSON.parse(readFileSync(join(privateDir!, "items.json"), "utf8")))).toEqual(items);
+  expect(items).toMatchObject({ shardSize: 512, count: 2, build: { version: "1.60.1.70450" } });
+  // The record notes its icon only when the icon was extracted; the encrypted one has none.
+  const shard0 = JSON.parse(readFileSync(join(privateDir!, "items", "0.json"), "utf8"));
+  const shard1 = JSON.parse(readFileSync(join(privateDir!, "items", "1.json"), "utf8"));
   expect(shard0["25"]).toMatchObject({ n: "Worn Shortsword", i: 6005 });
   expect(shard1["600"].i).toBeUndefined();
-  expect(manifest.items!.shards["0"]).toMatchObject({ file: "items/0.json", sha256: expect.stringMatching(/^[0-9a-f]{64}$/) });
+  expect(items!.shards["0"]).toMatchObject({ file: "items/0.json", sha256: expect.stringMatching(/^[0-9a-f]{64}$/) });
   expect(manifest.counts).toMatchObject({ itemsRecorded: 2, itemsWithIcon: 1 });
 
-  // The zone map: its two tiles stitched and cut to the picture, with the rectangle it covers. The continent had no art.
-  expect(manifest.maps["1429"]).toMatchObject({ file: "maps/1429.webp", kind: "zone", name: "Elwynn Forest", heldBack: false, rect: { left: 1000, top: 500, right: 0, bottom: -500 }, width: 500, height: 256 });
+  // The zone map: its two tiles stitched and cut to the picture, with the rectangle it covers, and a small copy. The continent had no art.
+  expect(manifest.maps["1429"]).toMatchObject({
+    file: "maps/1429.webp", kind: "zone", name: "Elwynn Forest", heldBack: false, rect: { left: 1000, top: 500, right: 0, bottom: -500 }, width: 500, height: 256,
+    small: { file: "maps/1429-small.webp" },
+  });
+  expect(jobs.find((j) => j.dst.endsWith("1429-small.webp"))).toMatchObject({ max: 320, quality: 82 });
+  expect(Object.keys(checksums.files).filter((f) => f.startsWith("maps/"))).toEqual(["maps/1429-small.webp", "maps/1429.webp"]);
   expect(manifest.skippedMaps).toEqual(["Eastern Kingdoms (13): no art in this build"]);
   const mapJob = jobs.find((j) => j.dst.endsWith("1429.webp"))!;
   expect(mapJob).toMatchObject({ tile: [256, 256], crop: [0, 0, 500, 256], quality: 82 });

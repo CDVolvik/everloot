@@ -106,20 +106,22 @@ export function visibleItems(items: MapItems, layers: LayerState, spoilers: bool
 // --- Map pictures ---
 
 /** A picture placed in the same yards as the zones: the game's own continent or zone map. */
-export interface ArtImage { uiMapId: number; name: string; url: string; x: number; y: number; width: number; height: number }
+export interface ArtImage { uiMapId: number; name: string; url: string; smallUrl: string | null; x: number; y: number; width: number; height: number }
 export interface MapArtLayer { continent: ArtImage | null; zones: ArtImage[] }
 
-/** From this zoom in, the zone under the middle of the view shows its own, sharper picture over the continent's. */
+/** From this zoom in, zone pictures are drawn at full size. */
 export const ZONE_ART_ZOOM = 2.5;
 
 /**
- * The zone picture to lay over the continent: the smallest zone whose rectangle holds the middle of the
- * view, once the reader has zoomed in to ZONE_ART_ZOOM. Without a continent picture, every zone picture
- * shows at every zoom, smallest on top. Pure, so the choice is tested without a browser.
+ * Which zone pictures to draw, and at which size. Only pictures that reach into the view are drawn.
+ * With a continent picture, a zone's own picture is laid over it only once the reader has zoomed in to
+ * ZONE_ART_ZOOM, and only for the smallest zone under the middle of the view. Without one, every zone in
+ * view shows, largest first so the smaller sit on top, from its small copy until zoomed in. Pure, so the
+ * choice is tested without a browser.
  */
-export function zoneArtShown(art: MapArtLayer, camera: Camera): ArtImage[] {
-  const bySize = [...art.zones].sort((a, b) => b.width * b.height - a.width * a.height);
-  if (!art.continent) return bySize;
+export function zoneArtShown(art: MapArtLayer, camera: Camera, view: Box): ArtImage[] {
+  const bySize = [...art.zones].filter((z) => intersects(view, z)).sort((a, b) => b.width * b.height - a.width * a.height);
+  if (!art.continent) return camera.zoom < ZONE_ART_ZOOM ? bySize.map((z) => ({ ...z, url: z.smallUrl ?? z.url })) : bySize;
   if (camera.zoom < ZONE_ART_ZOOM) return [];
   const under = bySize.filter((z) => camera.cx >= z.x && camera.cx <= z.x + z.width && camera.cy >= z.y && camera.cy <= z.y + z.height);
   return under.length ? [under[under.length - 1]!] : [];

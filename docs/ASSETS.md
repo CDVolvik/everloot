@@ -8,9 +8,14 @@ build stamp, **never in git**; credited on every page that shows them; pages onl
 the MCP server or the data downloads. Blizzard's marketing art (key art, logos, press kit,
 wallpapers) is not part of this and is never used.
 
+The talent art is decided. Everything else on this page (item, class, buff and profession icons,
+item tooltip facts and map pictures) is a **proposed extension, pending approval** (DATA_POLICY,
+"Proposed extension"). The code is in place and stays off until the owner sets the variables below.
+
 The site works without any of this. With `NEXT_PUBLIC_GAME_ASSETS_URL` unset, or a manifest that
-cannot be read, every page shows the text it always had, with no error, no empty image box and no
-credit line (the credit is there only when the art is).
+cannot be read in 2.5 seconds, every page shows the text it always had, with no error, no empty
+image box and no credit line (the credit is there only when the art is). Without the private bucket
+variables (`GAME_DATA_*`), item links stay plain while the other art still shows.
 
 ## Where the art shows
 
@@ -27,10 +32,15 @@ credit line (the credit is there only when the art is).
 Every icon sits beside the name it already had, so it is marked decorative (`alt=""`,
 `aria-hidden`). An item's tooltip text is also its link's description for screen readers.
 
-Spoilers follow the same rule as everywhere else: an item's tooltip shows only for items players
-have reported (an id typed into a URL gets nothing from the files), a held-back zone's picture only
-with spoilers on, and a continent's own picture, which may show held-back zones painted in, also
-only with spoilers on when that continent has one. Without it the zone pictures still show.
+Spoilers follow the same rule as everywhere else:
+
+- **Items.** A page asks for an item's facts only when 3 installs have reported the item (a drop, a
+  vendor offer, an auction scan). An id typed into a URL gets nothing, and nothing is read for it.
+  The item facts live in a private bucket that only the site's server reads, because the extract
+  holds every named item in the build, released or not.
+- **Maps.** A held-back zone's picture shows only with spoilers on. A continent's own picture may
+  show a held-back zone painted in, so on a continent that has one (by the map file or by the
+  upload's own marks) it also waits for spoilers. Without it, the zone pictures show.
 
 ## What the extractor makes
 
@@ -41,22 +51,29 @@ npm run kb -- client-assets data/client/<product>-<build>-<config>.sqlite
 ```
 
 `client-assets` needs Python with [Pillow](https://pypi.org/project/pillow/) (`pip install pillow`).
-Output goes to `kb/data/assets/<product>-<build>-<config>/` (gitignored, like all of `kb/data/`):
+It writes two folders under `kb/data/assets/` (gitignored, like all of `kb/data/`):
 
 ```
-manifest.json            build stamp, label, counts, one entry per talent, class, profession, buff
-                         spell and map, item shard list, file names and sha256
-icons/<fileDataID>.webp  one icon per icon file (talents, items, classes, trees, professions, buffs),
-                         64 px as the game stores it
-frames/<name>.webp       node frames (round, square, choice; grey, green, gold), connector arrows,
-                         the row gate piece and one background per spec
-maps/<uiMapID>.webp      one picture per continent and zone, at the game's base zoom
-items/<n>.json           item tooltip facts, 512 item ids per file
+<product>-<build>-<config>/            -> the PUBLIC bucket
+  manifest.json            build stamp, label, counts, one entry per talent, class, profession,
+                           buff spell and map; file names and sizes, no hashes, no item data
+  icons/<fileDataID>.webp  one icon per icon file (talents, items, classes, trees, professions, buffs),
+                           64 px as the game stores it
+  frames/<name>.webp       node frames (round, square, choice; grey, green, gold), connector arrows,
+                           the row gate piece and one background per spec
+  maps/<uiMapID>.webp      one picture per continent and zone, at the game's base zoom,
+  maps/<uiMapID>-small.webp  and a copy at most 320 px for the zoomed-out view
+  checksums.json           size and sha256 of every file above; the upload script checks it, it is
+                           not uploaded
+
+<product>-<build>-<config>-private/    -> the PRIVATE bucket
+  items.json               build stamp, shard size, item count, each shard's size and sha256
+  items/<n>.json           item tooltip facts, 512 item ids per file
 ```
 
 Options: `--list lists/raid-buffs.yaml` (the default) names the raid buff spells whose icons the raid
 builder shows. `--items <file>` limits items to the ids in a file (a JSON array or one id per line);
-without it every named item in the build is written.
+without it every named item in the build is written to the private folder.
 
 How it works, and what it will not do:
 
@@ -65,7 +82,9 @@ How it works, and what it will not do:
 - **Item icons and tooltips.** `Item.IconFileDataID` for the icon; name, quality, item level,
   required level, binding, slot, armour or weapon kind, weapon speed, stat kinds, flavour text and
   sell price from `ItemSparse` and `Item`. Stat amounts, armour and damage are worked out by the
-  client from tables we do not read, so the tooltip shows `[?]` for them and says so.
+  client from tables we do not read, so the tooltip shows `[?]` for them and says so. Which stat
+  slots count is read from `StatPercentEditor` (a slot with a zero share is left out); that reading
+  still has to be checked against a real snapshot.
 - **Class, tree, profession and buff icons.** `ChrClasses.IconFileDataID`; each talent tree's
   `SkillLine.SpellIconFileID`; professions and secondary skills from `SkillLine` (categories 11 and
   9, top-level lines only); the raid buff list's spells from `SpellMisc`.
@@ -73,7 +92,8 @@ How it works, and what it will not do:
   `UiMapArtStyleLayer` the tile and picture size. The tiles of the base zoom layer are laid on their
   grid and cut to the picture, which covers exactly the rectangle `UiMapAssignment` gives the map, so
   it lines up with the zone outlines. Phased art is left out. A map with a missing, encrypted or
-  unreadable tile is skipped and listed in `skippedMaps`, never drawn with a hole.
+  unreadable tile is skipped and listed in `skippedMaps`, never drawn with a hole. The map page draws
+  only the pictures in view, from their small copies until the reader zooms in.
 - **Tooltip text.** `Spell.Description_lang` with its `$` variables resolved from `SpellEffect`,
   `SpellDuration`, `SpellAuraOptions` and other spells' rows: `$s1`-`$s3`, `$m`, `$M`, `$d`, `$t`,
   `$o`, `$a`, `$x`, `$h`, `$n`, `${...}` arithmetic, `$/1000;s1`, plural `$l`, `$@spellname`, and
@@ -94,30 +114,33 @@ How it works, and what it will not do:
 - **Sizes.** Icons and map pictures are lossy WebP (quality 90 and 82); frame pieces stay lossless.
 - Every record is labelled *found in game files, unconfirmed* and stamped with the build.
 
-## Owner steps for the bucket
+## Owner steps for the buckets
 
 Nothing below has been done. The code never creates a bucket, touches DNS or changes an account.
+Steps 2 to 4 and 8 are only for the proposed extension: wait for its approval.
 
-1. **Bucket.** In the Cloudflare dashboard, R2, create a bucket, for example `everloot-game-assets`.
-   Keep it separate from the uploads bucket.
-2. **Public URL.** Give the bucket a public address: either a custom domain (for example
-   `assets.everloot.app`, which needs a DNS record in the Everloot zone) or the free `r2.dev`
-   address while testing. Taking it down later means removing that address or the files.
-3. **CORS.** On the bucket, allow `GET` from `https://everloot.app` (and `http://localhost:3000` for
-   local work), header `*`. The talent calculator reads `manifest.json` in the browser with `fetch`,
-   which needs it. The other pages read the manifest and item files on the server, and images do not
-   need CORS.
-4. **Upload key.** Create an R2 API token with *Object Read & Write* on that bucket only. Keep the
-   key id and secret out of git and out of the Vercel project; they are only for the upload.
+1. **Public bucket.** In the Cloudflare dashboard, R2, create a bucket, for example
+   `everloot-game-assets`. Keep it separate from the uploads bucket. Give it a public address:
+   either a custom domain (for example `assets.everloot.app`, which needs a DNS record in the
+   Everloot zone) or the free `r2.dev` address while testing. On it, allow CORS `GET` from
+   `https://everloot.app` (and `http://localhost:3000` for local work), header `*`: the talent
+   calculator reads `manifest.json` in the browser. The other pages read it on the server.
+2. **Private bucket.** Create a second bucket, for example `everloot-game-data`, with **no** public
+   address and no CORS. It holds the item facts.
+3. **Upload key.** Create an R2 API token with *Object Read & Write* on those two buckets only. Keep
+   the key id and secret out of git and out of the Vercel project; they are only for the upload.
+4. **Server read key.** Create a second R2 API token with *Object Read only* on the private bucket
+   only. This one goes into the Vercel project (step 7).
 5. **Snapshot.** On a maintainer machine with the game's build available from the CDN, run
    `client-extract --refresh` (above) once for the build, so the snapshot has the item, map art and
    atlas tables.
-6. **Extract and upload, one command.** In `web/`, with the key in the environment (never on the
-   command line):
+6. **Extract and upload, one command.** In `web/`, with the upload key in the environment (never on
+   the command line):
 
    ```
    export ASSETS_S3_ENDPOINT=https://<account id>.r2.cloudflarestorage.com
    export ASSETS_BUCKET=everloot-game-assets
+   export ASSETS_PRIVATE_BUCKET=everloot-game-data
    export ASSETS_ACCESS_KEY_ID=...
    export ASSETS_SECRET_ACCESS_KEY=...
    node scripts/upload-game-assets.mjs --snapshot ../kb/data/client/<product>-<build>-<config>.sqlite --dry-run
@@ -126,25 +149,41 @@ Nothing below has been done. The code never creates a bucket, touches DNS or cha
 
    `--snapshot` runs `client-assets` first and prints its counts: icons extracted, encrypted
    skipped, tooltips resolved and unresolved, items recorded, map pictures made and skipped, and
-   any frame piece that was not available. Read them. To upload a folder you already extracted,
-   give the folder instead: `node scripts/upload-game-assets.mjs ../kb/data/assets/<product>-<build>-<config>`.
+   any frame piece that was not available. Read them. To upload folders you already extracted, give
+   the public folder instead (the private one is found beside it):
+   `node scripts/upload-game-assets.mjs ../kb/data/assets/<product>-<build>-<config>`.
+   `--skip-items` uploads without the item facts (item links then stay plain).
 
-   The script checks every file against the manifest (nothing missing, nothing extra, every hash,
-   only `.webp` images and `items/<n>.json`), uploads the files, and uploads `manifest.json` last.
-   It lands under `<product>-<build>-<config>/`, so each build has its own folder and an older page
+   The script checks each folder against its list (nothing missing, nothing extra, every hash, only
+   images and the manifest for the public bucket, only `items.json` and `items/<n>.json` for the
+   private one), refuses a private bucket that is the public one, uploads eight files at a time,
+   tries a failed file again up to four times, and uploads `manifest.json` and `items.json` last.
+   Both land under `<product>-<build>-<config>/`, so each build has its own folder and an older page
    keeps working.
-7. **Turn it on.** In the Vercel project for `web/`, set `NEXT_PUBLIC_GAME_ASSETS_URL` to the public
-   address plus the build folder, no trailing slash, for example
-   `https://assets.everloot.app/wow_classic_beta-70450-84bea423`, and redeploy (the value is read
-   at build time). Open `/tools/talents/hunter`, `/database/drops`, `/tools/raid` and `/map`: the
-   icons, pictures and the credit line appear. Pages read the manifest again at most once an hour.
-   To turn it off, clear the variable and redeploy.
+
+   **Re-uploading.** Files go up with a one-year `immutable` cache, and the script never deletes
+   anything. Uploading changed files into a folder that is already live does not refresh browsers or
+   the CDN, and files from an earlier run stay. A changed extract goes to a new build folder (a new
+   build gives one by itself); to change one in place, delete the folder in the dashboard and purge
+   the cache first. Removing anything is done in the dashboard.
+7. **Turn it on.** In the Vercel project for `web/`, set:
+   - `NEXT_PUBLIC_GAME_ASSETS_URL`: the public address plus the build folder, no trailing slash, for
+     example `https://assets.everloot.app/wow_classic_beta-70450-84bea423`. Read at build time.
+   - For item tooltips, server-only (never with a `NEXT_PUBLIC_` prefix): `GAME_DATA_S3_ENDPOINT`
+     (`https://<account id>.r2.cloudflarestorage.com`), `GAME_DATA_BUCKET` (`everloot-game-data`),
+     `GAME_DATA_ACCESS_KEY_ID` and `GAME_DATA_SECRET_ACCESS_KEY` (the read-only key from step 4).
+     The server reads `<GAME_DATA_BUCKET>/<build folder>/items.json`, where the build folder is the
+     last part of `NEXT_PUBLIC_GAME_ASSETS_URL`, and only for the same build as the manifest.
+
+   Redeploy. Open `/tools/talents/hunter`, `/database/drops`, `/tools/raid` and `/map`: the icons,
+   pictures and the credit line appear. Pages read the manifest and item files again at most once an
+   hour. To turn it off, clear the variables and redeploy.
 8. **Next build.** Repeat steps 5 to 7 with the new build. Check the counts against the last run
    before uploading; a jump in `iconsEncrypted`, `tooltipsUnresolved` or `mapsSkipped` means
    Blizzard changed something.
 
-If Blizzard asks for any of it to be removed, delete the build folders from the bucket and clear the
-variable. The pages fall back to text by themselves.
+If Blizzard asks for any of it to be removed, delete the build folders from both buckets and clear
+the variables. The pages fall back to text by themselves.
 
 ## What to check on the site
 
@@ -158,9 +197,10 @@ At 1440 and 390 px wide:
   text is read by a screen reader without hovering.
 - **Items.** On the drops, vendor and auction pages each item link has its icon in front; hovering
   or tabbing to the link opens the tooltip with the name in its quality colour; Escape closes it.
-  An item page shows the tooltip card under the title. The credit line is at the bottom.
+  An item page shows the tooltip card under the title. The credit line is at the bottom. No browser
+  request ever goes to the private bucket.
 - **Raid builder.** Class icons in the slots and the class picker, tree icons beside the tree names,
   buff icons in the coverage tables.
 - **Map.** The zone pictures sit exactly inside the zone outlines; "Game map art" turns them off and
-  "Zones" turns the outlines off. With spoilers on, the continent picture shows and a zone's own
-  picture appears once you zoom in over it.
+  "Zones" turns the outlines off. Zoomed out, the network tab shows only small copies. With spoilers
+  on, the continent picture shows and a zone's own picture appears once you zoom in over it.

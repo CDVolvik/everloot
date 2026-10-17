@@ -1,3 +1,4 @@
+import { AwsClient } from "aws4fetch";
 import { z } from "zod";
 import { CLASSES } from "@/design/tokens";
 import type { BuffTable } from "@/data/game-data/raid";
@@ -7,15 +8,23 @@ import type { ItemRecord } from "../../../kb/src/assets/items";
 import { worldToMap } from "../../../kb/src/world-coords";
 
 // Blizzard's icons, item tooltip facts and map pictures across the site (docs/DATA_POLICY.md,
-// "Blizzard's icons, tooltip text and window frame"; docs/ASSETS.md). It reads the same build-stamped
-// manifest as the talent calculator (lib/talents/assets.ts), from the same NEXT_PUBLIC_GAME_ASSETS_URL.
-// With the variable unset, or a manifest that cannot be read, every reader here returns null or an
-// empty map without fetching anything, and each page keeps its text-only look. Pages call it while
-// rendering on the server and pass ready URLs down. The API, MCP and data downloads never import it
+// "Blizzard's icons, tooltip text and window frame"; docs/ASSETS.md). Server-side only: pages call it
+// while rendering and pass ready URLs down. The API, MCP and data downloads never import it
 // (talents/assets.test.ts checks that).
+//
+// Two sources:
+// - The public asset folder at NEXT_PUBLIC_GAME_ASSETS_URL (the talent calculator's): manifest.json,
+//   icons and map pictures.
+// - A private bucket, read with a read-only key (GAME_DATA_*, server-only), for the item tooltip facts.
+//   They hold every named item in the build, released or not, so they are never public; a page asks for
+//   the items players have reported and nothing else.
+// With either unset, or anything that cannot be read in time, the readers here return null or an empty
+// map, and each page keeps its text-only look.
 
-/** How long a page keeps a manifest or an item shard before reading it again. Each build has its own folder. */
+/** How long a page keeps a manifest or an item file before reading it again. Each build has its own folder. */
 export const REVALIDATE_SECONDS = 3600;
+/** A slow bucket must not hold a page up: past this, the page renders without the art. */
+export const FETCH_TIMEOUT_MS = 2500;
 
 const Rect = z.object({ left: z.number(), top: z.number(), right: z.number(), bottom: z.number() });
 
@@ -31,12 +40,18 @@ const site = z.object({
   professions: z.record(z.string(), z.object({ name: z.string(), icon: assetPath.nullable() })).default({}),
   spellIcons: z.record(z.string(), assetPath).default({}),
   maps: z.record(z.string(), z.object({
-    file: assetPath, kind: z.enum(["continent", "zone"]), name: z.string(), continentId: z.number().int(), heldBack: z.boolean(), rect: Rect,
+    file: assetPath, small: z.object({ file: assetPath }).nullable().default(null),
+    kind: z.enum(["continent", "zone"]), name: z.string(), continentId: z.number().int(), heldBack: z.boolean(), rect: Rect,
   })).default({}),
-  items: z.object({ shardSize: z.number().int().positive(), shards: z.record(z.string(), z.object({ file: assetPath })) }).nullable().default(null),
 });
 
-export interface MapArt { uiMapId: number; kind: "continent" | "zone"; name: string; continentId: number; heldBack: boolean; url: string; rect: z.infer<typeof Rect> }
+export interface MapArt {
+  uiMapId: number; kind: "continent" | "zone"; name: string; continentId: number; heldBack: boolean;
+  url: string;
+  /** A small copy for the zoomed-out view; null in an upload that has none. */
+  smallUrl: string | null;
+  rect: z.infer<typeof Rect>;
+}
 
 export interface SiteAssets {
   base: string;
@@ -50,8 +65,6 @@ export interface SiteAssets {
   /** Spell id -> icon URL. */
   spellIcons: Map<number, string>;
   maps: MapArt[];
-  /** Item shard URLs by shard number; null when the upload has no items. */
-  items: { shardSize: number; shards: Map<number, string> } | null;
 }
 
 /** A file inside the asset folder. */
@@ -62,6 +75,15 @@ export const iconUrl = (base: string, name: string) => assetUrl(base, `icons/${n
 export const itemIconUrl = (base: string, fileId: number) => iconUrl(base, `${fileId}.webp`);
 /** The shard that holds an item. */
 export const itemShard = (itemId: number, shardSize: number) => Math.floor(itemId / shardSize);
+/** The build folder, the last part of the asset URL ("wow_classic_beta-70450-84bea423"); the private bucket uses the same name. */
+export function buildFolder(base: string): string | null {
+  try {
+    const last = new URL(base).pathname.split("/").filter(Boolean).pop();
+    return last && /^[A-Za-z0-9_.-]+$/.test(last) && last !== ".." ? last : null;
+  } catch {
+    return null;
+  }
+}
 
 /** Reads a manifest. Null for anything that is not a valid one, so a bad upload leaves the text-only pages. */
 export function parseSiteManifest(json: unknown, base: string): SiteAssets | null {
@@ -73,26 +95,24 @@ export function parseSiteManifest(json: unknown, base: string): SiteAssets | nul
   for (const [key, p] of Object.entries(m.professions)) if (p.icon) professions.set(key.toLowerCase(), { name: p.name, icon: iconUrl(base, p.icon) });
   const spellIcons = new Map<number, string>();
   for (const [id, name] of Object.entries(m.spellIcons)) if (/^\d+$/.test(id)) spellIcons.set(Number(id), iconUrl(base, name));
-  const shards = new Map<number, string>();
-  for (const [n, f] of Object.entries(m.items?.shards ?? {})) if (/^\d+$/.test(n)) shards.set(Number(n), assetUrl(base, f.file));
   return {
     base, version: m.build.version, label: m.label,
     classes: new Map(Object.entries(m.classes).map(([key, c]) => [key.toLowerCase(), { name: c.name, icon: icon(c.icon), trees: c.trees.map((t) => ({ name: t.name, icon: icon(t.icon) })) }])),
     professions, spellIcons,
     maps: Object.entries(m.maps).filter(([id]) => /^\d+$/.test(id)).map(([id, a]) => ({
-      uiMapId: Number(id), kind: a.kind, name: a.name, continentId: a.continentId, heldBack: a.heldBack, url: assetUrl(base, a.file), rect: a.rect,
+      uiMapId: Number(id), kind: a.kind, name: a.name, continentId: a.continentId, heldBack: a.heldBack,
+      url: assetUrl(base, a.file), smallUrl: a.small ? assetUrl(base, a.small.file) : null, rect: a.rect,
     })),
-    items: m.items ? { shardSize: m.items.shardSize, shards } : null,
   };
 }
 
-const READ = { headers: { accept: "application/json" }, next: { revalidate: REVALIDATE_SECONDS } };
-
-/** Fetches and reads the manifest. Never throws: any failure is null. Nothing is fetched when the URL is unset. */
+/** Fetches and reads the manifest. Never throws: any failure or a timeout is null. Nothing is fetched when the URL is unset. */
 export async function loadSiteAssets(base: string | null = assetsBaseUrl(), fetcher: typeof fetch = fetch): Promise<SiteAssets | null> {
   if (!base) return null;
   try {
-    const res = await fetcher(`${base}/manifest.json`, READ);
+    const res = await fetcher(`${base}/manifest.json`, {
+      headers: { accept: "application/json" }, next: { revalidate: REVALIDATE_SECONDS }, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
     if (!res.ok) return null;
     return parseSiteManifest(await res.json(), base);
   } catch {
@@ -100,7 +120,52 @@ export async function loadSiteAssets(base: string | null = assetsBaseUrl(), fetc
   }
 }
 
-/* ---------- Items ---------- */
+/* ---------- Items, from the private bucket ---------- */
+
+/** Reads one JSON file from the private bucket by its path, or null. */
+export interface PrivateStore { read(path: string): Promise<unknown | null> }
+
+// Signed requests differ every time, so the fetch cache cannot keep them; this does, per server instance.
+const kept = new Map<string, { at: number; value: unknown | null }>();
+/** For tests: forget what the private bucket returned. */
+export const forgetPrivateReads = () => kept.clear();
+
+/**
+ * The private bucket from GAME_DATA_S3_ENDPOINT, GAME_DATA_BUCKET, GAME_DATA_ACCESS_KEY_ID and
+ * GAME_DATA_SECRET_ACCESS_KEY (GAME_DATA_REGION optional). Null when any is unset: item tooltips then do not show.
+ */
+export function privateStoreFromEnv(env: Record<string, string | undefined> = process.env, fetcher?: typeof fetch): PrivateStore | null {
+  const endpoint = env.GAME_DATA_S3_ENDPOINT?.trim(), bucket = env.GAME_DATA_BUCKET?.trim();
+  const accessKeyId = env.GAME_DATA_ACCESS_KEY_ID?.trim(), secretAccessKey = env.GAME_DATA_SECRET_ACCESS_KEY?.trim();
+  if (!endpoint || !bucket || !accessKeyId || !secretAccessKey || !/^https?:\/\//.test(endpoint)) return null;
+  const client = new AwsClient({ accessKeyId, secretAccessKey, service: "s3", region: env.GAME_DATA_REGION?.trim() || "auto" });
+  const root = `${endpoint.replace(/\/+$/, "")}/${encodeURIComponent(bucket)}`;
+  return {
+    async read(path) {
+      const url = `${root}/${path}`;
+      const hit = kept.get(url);
+      // A miss is kept a minute, so a missing file is not asked for on every page view.
+      if (hit && Date.now() - hit.at < (hit.value === null ? 60_000 : REVALIDATE_SECONDS * 1000)) return hit.value;
+      let value: unknown | null = null;
+      try {
+        const signed = await client.sign(url, { method: "GET", headers: { accept: "application/json" } });
+        const res = await (fetcher ?? fetch)(signed, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS), cache: "no-store" });
+        value = res.ok ? await res.json() : null;
+      } catch {
+        value = null;
+      }
+      kept.set(url, { at: Date.now(), value });
+      return value;
+    },
+  };
+}
+
+const ItemIndexSchema = z.object({
+  schema: z.literal("everloot.game-items/1"),
+  build: z.object({ version: z.string() }),
+  shardSize: z.number().int().positive(),
+  shards: z.record(z.string(), z.object({ file: assetPath })),
+});
 
 const ItemRecordSchema = z.object({
   n: z.string(), q: z.number().int(), l: z.number(), r: z.number(), b: z.number(), s: z.number(),
@@ -126,31 +191,31 @@ export function itemTip(r: ItemRecord, assets: Pick<SiteAssets, "base" | "versio
   return { ...text, color: qualityColor(r.q), icon: r.i ? itemIconUrl(assets.base, r.i) : null, label: `${assets.label} · build ${assets.version}` };
 }
 
-/** Tooltips for the given items, reading only the shards they are in. Never throws: an item whose shard fails is just left out. */
-export async function loadItemTips(assets: SiteAssets | null, ids: readonly number[], fetcher: typeof fetch = fetch): Promise<Map<number, ItemTip>> {
+/**
+ * Tooltips for the given items: the caller passes only items players have reported (the 3-install rule),
+ * and only the shards they are in are read. Nothing is read without the public manifest (its build and
+ * icons) and the private bucket, and the private files must be for the same build. Never throws.
+ */
+export async function loadItemTips(assets: SiteAssets | null, ids: readonly number[], store: PrivateStore | null = privateStoreFromEnv()): Promise<Map<number, ItemTip>> {
   const out = new Map<number, ItemTip>();
-  const items = assets?.items;
-  if (!assets || !items) return out;
+  const wanted = [...new Set(ids)].filter((id) => Number.isInteger(id) && id > 0);
+  const folder = assets ? buildFolder(assets.base) : null;
+  if (!assets || !store || !folder || !wanted.length) return out;
+  const index = ItemIndexSchema.safeParse(await store.read(`${folder}/items.json`));
+  if (!index.success || index.data.build.version !== assets.version) return out;
   const byShard = new Map<number, number[]>();
-  for (const id of new Set(ids)) {
-    if (!Number.isInteger(id) || id <= 0) continue;
-    const s = itemShard(id, items.shardSize);
+  for (const id of wanted) {
+    const s = itemShard(id, index.data.shardSize);
     byShard.set(s, [...(byShard.get(s) ?? []), id]);
   }
-  await Promise.all([...byShard].map(async ([shard, wanted]) => {
-    const url = items.shards.get(shard);
-    if (!url) return;
-    try {
-      const res = await fetcher(url, READ);
-      if (!res.ok) return;
-      const body = z.record(z.string(), z.unknown()).safeParse(await res.json());
-      if (!body.success) return;
-      for (const id of wanted) {
-        const r = ItemRecordSchema.safeParse(body.data[String(id)]);
-        if (r.success) out.set(id, itemTip(r.data, assets));
-      }
-    } catch {
-      // A shard that cannot be read leaves its items as plain links.
+  await Promise.all([...byShard].map(async ([shard, ids]) => {
+    const file = index.data.shards[String(shard)]?.file;
+    if (!file) return;
+    const body = z.record(z.string(), z.unknown()).safeParse(await store.read(`${folder}/${file}`));
+    if (!body.success) return;
+    for (const id of ids) {
+      const r = ItemRecordSchema.safeParse(body.data[String(id)]);
+      if (r.success) out.set(id, itemTip(r.data, assets));
     }
   }));
   return out;
@@ -210,23 +275,25 @@ export function raidArt(assets: SiteAssets | null, table: BuffTable): RaidArt | 
 /* ---------- Map pictures ---------- */
 
 /** A map picture placed on the stitched map (yards, x east, y south), the frame the map page draws in. */
-export interface ArtBox { uiMapId: number; name: string; url: string; x: number; y: number; width: number; height: number }
+export interface ArtBox { uiMapId: number; name: string; url: string; smallUrl: string | null; x: number; y: number; width: number; height: number }
 
 /**
  * The pictures for one continent: the continent's own, and one per zone. A held-back zone's picture is
  * left out unless spoilers are on, like its outline. The continent's picture may show a held-back zone
- * painted in, so on a continent that has one it too waits for spoilers (`heldBackHere`); the zone
- * pictures still show. Null when there is none.
+ * painted in, so on a continent that has one it too waits for spoilers; the zone pictures still show.
+ * A continent has one when the map file says so (`heldBackHere`) or the upload marks a zone on it as
+ * held back. Null when there is none.
  */
 export function continentArt(assets: SiteAssets | null, continentId: number, spoilers: boolean, heldBackHere: boolean): { continent: ArtBox | null; zones: ArtBox[] } | null {
   if (!assets) return null;
   const box = (m: MapArt): ArtBox => {
     const a = worldToMap({ continentId, worldX: m.rect.top, worldY: m.rect.left });
     const c = worldToMap({ continentId, worldX: m.rect.bottom, worldY: m.rect.right });
-    return { uiMapId: m.uiMapId, name: m.name, url: m.url, x: a.x, y: a.y, width: c.x - a.x, height: c.y - a.y };
+    return { uiMapId: m.uiMapId, name: m.name, url: m.url, smallUrl: m.smallUrl, x: a.x, y: a.y, width: c.x - a.x, height: c.y - a.y };
   };
+  const held = heldBackHere || assets.maps.some((m) => m.heldBack && m.continentId === continentId);
   const here = assets.maps.filter((m) => m.continentId === continentId && (spoilers || !m.heldBack));
-  const continent = spoilers || !heldBackHere ? here.find((m) => m.kind === "continent") : undefined;
+  const continent = spoilers || !held ? here.find((m) => m.kind === "continent") : undefined;
   const zones = here.filter((m) => m.kind === "zone").map(box);
   if (!continent && !zones.length) return null;
   return { continent: continent ? box(continent) : null, zones };

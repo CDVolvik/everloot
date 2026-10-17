@@ -1,6 +1,6 @@
 "use client";
 
-import { cloneElement, isValidElement, useId, useState, type ReactElement } from "react";
+import { cloneElement, isValidElement, useEffect, useId, useState, type ReactElement } from "react";
 import type { ItemTip as Tip } from "@/lib/game-assets";
 import TalentTooltip from "@/components/talents/TalentTooltip";
 import GameIcon from "./GameIcon";
@@ -19,6 +19,13 @@ function Tipped({ tip, size, children }: { tip: Tip; size: number; children: Rea
   const anchorId = `item${id}`;
   const descId = `${anchorId}-desc`;
   const [open, setOpen] = useState(false);
+  // Escape closes it however it opened: a tooltip opened by hovering has no focus inside it to catch the key.
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("keydown", close);
+    return () => document.removeEventListener("keydown", close);
+  }, [open]);
   const link = isValidElement<{ "aria-describedby"?: string }>(children) ? cloneElement(children, { "aria-describedby": descId }) : children;
   return (
     <span
@@ -29,7 +36,6 @@ function Tipped({ tip, size, children }: { tip: Tip; size: number; children: Rea
       onPointerLeave={() => setOpen(false)}
       onFocus={() => setOpen(true)}
       onBlur={() => setOpen(false)}
-      onKeyDown={(e) => { if (e.key === "Escape") setOpen(false); }}
     >
       {tip.icon && <GameIcon src={tip.icon} size={size} />}
       {link}

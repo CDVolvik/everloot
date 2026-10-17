@@ -62,10 +62,8 @@ and observed in play.
 **Blizzard's icons, tooltip text and window frame.** Decided 2026-10-18: our tools may show
 Blizzard's own talent and spell icons, the spell and talent tooltip text, and interface frame
 textures that make a tool look like the in-game window. Wowhead and most calculators do the same.
-The same decision covers the rest of the site's in-game art: item icons and the item tooltip facts
-the item tables give, class, talent tree, buff and profession icons, and the game's own continent
-and zone map pictures. It does not cover Blizzard's marketing art (key art, logos, press kit,
-wallpapers), which the site does not use. The rules:
+Neither this decision nor the proposed extension below covers Blizzard's marketing art (key art,
+logos, press kit, wallpapers), which the site does not use. The rules:
 
 - **Only from unencrypted files** in the public client, read the same way as above. Nothing that
   needs a key.
@@ -92,6 +90,23 @@ wallpapers), which the site does not use. The rules:
   that could spoil unreleased content stays hidden, icon and text included, until the reader turns
   spoilers on.
 
+**Proposed extension: item, class and profession art, item tooltip facts and map pictures.** Not
+decided; pending Carlos's approval. The code for it ships switched off: nothing shows until the
+owner sets the asset variables (docs/ASSETS.md), and that waits for this approval. If approved, the
+rules above would also cover:
+
+- **Icons beyond talents and spells**: item icons, and class, talent tree, raid buff and profession
+  icons, read from the client's tables the same way.
+- **Item tooltip facts**: what the item tables (`ItemSparse`, `Item`) give for an item: name,
+  quality, item level, required level, binding, slot, armour or weapon kind, weapon speed, stat kinds
+  (not amounts), flavour text and sell price. Shown on a page only for an item that 3 installs have
+  reported (a drop, a vendor offer, an auction scan), never in bulk and never for an id someone types
+  into a URL. The extracted facts cover every named item in the build, released or not, so they are
+  kept in private storage that only the site's server reads, never in the public asset bucket.
+- **Map pictures**: the game's own continent and zone map art from the map art tables, laid under
+  our zone outlines. A held-back zone's picture shows only with spoilers on, and so does a continent's
+  picture when that continent has a held-back zone, since it may be painted in.
+
 **The talent catalog.** The talent calculator at `/tools/talents` uses our own catalog, read from
 the public client by a maintainer, not taken from any other site. The catalog is the trait node
 ids, positions, ranks, gates, prerequisites, spell ids, talent names and the build stamp. This is
@@ -110,7 +125,8 @@ a clearly marked game-data file in `web/src/data/game-data/`, with a README that
 Blizzard's and outside our licence. It is labelled *found in game files, unconfirmed* until
 checked in game. General rule: new zones or other content found only in the game files stay hidden
 unless the reader turns spoilers on. A zone that looks unreleased is held back until it is live: the file keeps it apart (`heldBackZones`), and `/map` draws it, dashed and labelled *found in game files, unconfirmed*, only when the reader turns the spoiler switch on (off by default). The public MCP tool leaves held-back zones out altogether.
-Maps carry no art here; map images would fall under the Blizzard rules above.
+The map layer itself carries no art. The game's map pictures are part of the proposed extension above:
+not decided yet, never committed, and if approved kept in asset storage like the other Blizzard art.
 
 **The raid buff table.** The raid builder at `/tools/raid` and its in-game view use our own table of
 group buffs and debuffs, read from the spell tables in the public client. For each effect it holds
