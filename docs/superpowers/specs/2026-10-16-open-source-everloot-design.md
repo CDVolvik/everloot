@@ -208,6 +208,8 @@ included).
 
 - GitHub: make the repository public; enable Discussions and private vulnerability reporting; protect
   `main` (required checks including DCO, no force pushes).
+- Install the DCO GitHub App (github.com/apps/dco) and make its check required. The repository's own
+  `check_dco.py` gives contributors the fix, but a pull request can edit it; the app cannot be edited.
 - Vercel: confirm Git Fork Protection is on, so pull requests from forks never build with production
   secrets without approval.
 - GitLab mirror: decide whether it goes public too or stays a private backup.

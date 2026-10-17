@@ -6,8 +6,9 @@ not here.
 
 ## Run it
 
-Apply `auth_schema.sql`, then the files in `migrations/` in name order, to a Supabase project or any
-Postgres 15+. The site talks to it only from the server, with a service key that never reaches the
+Apply `auth_schema.sql`, then the files in `migrations/` in name order, to a Supabase project (the
+schema references Supabase's `anon`, `authenticated` and `service_role` roles, so plain Postgres needs
+those roles created first). The site talks to it only from the server, with a service key that never reaches the
 browser; every table has row-level security on.
 
 ## Test it

@@ -4,8 +4,8 @@ Everloot is built from what players see, so you can help without touching any co
 
 ## Ways to help
 
-- **Play with the addon and upload.** Every upload adds to the data, and a fact only goes public
-  once three installs agree, so your upload can be the one that confirms it. Install the addon from
+- **Play with the addon and upload.** Every upload adds to the data, and the site states a fact
+  once three installs have reported it, so your upload can be the one that confirms it. Install the addon from
   [everloot.app/upload](https://everloot.app/upload), play, log out, upload your
   `SavedVariables/Everloot.lua`. You preview everything before it is sent.
 - **Report wrong data.** A drop that never drops, a vendor price that is off, a recipe colour that

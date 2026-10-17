@@ -1,39 +1,55 @@
-"""Fail when a commit in a range has no Developer Certificate of Origin sign-off.
+"""Fail when a commit in a range has no Developer Certificate of Origin sign-off by its author.
 Run from the repository root: python scripts/check_dco.py <base> <head>"""
 import re
 import subprocess
 import sys
 
-SIGNOFF = re.compile(r"^Signed-off-by: .+ <.+>$", re.MULTILINE)
+# A trailer on its own line, with a non-empty name and an email address.
+SIGNOFF = re.compile(r"^Signed-off-by: *([^<>\s][^<>]*?) *<([^<>\s@]+@[^<>\s@]+)>\s*$", re.MULTILINE)
 
 
-def missing_signoff(commits: list[tuple[str, str, int]]) -> list[str]:
-    """Shas of (sha, message, parent count) commits that need a sign-off. Merge commits are exempt."""
-    return [sha for sha, body, parents in commits if parents < 2 and not SIGNOFF.search(body)]
-
-
-def commits_between(base: str, head: str) -> list[tuple[str, str, int]]:
-    log = subprocess.run(
-        ["git", "log", "--format=%H%x00%P%x00%B%x1e", f"{base}..{head}"],
-        capture_output=True, text=True, encoding="utf-8", check=True,
-    ).stdout
-    out = []
-    for entry in log.split("\x1e"):
-        if not entry.strip():
+def missing_signoff(commits: list[tuple[str, str, int, str]]) -> list[str]:
+    """Shas of (sha, message, parent count, author email) commits that lack a sign-off by their
+    author. Merge commits are exempt."""
+    missing = []
+    for sha, body, parents, author_email in commits:
+        if parents >= 2:
             continue
-        sha, parents, body = entry.lstrip("\n").split("\x00", 2)
-        out.append((sha, body, len(parents.split())))
+        emails = {m.group(2).lower() for m in SIGNOFF.finditer(body)}
+        if author_email.lower() not in emails:
+            missing.append(sha)
+    return missing
+
+
+def fix_advice(missing: list[str], newest_first: list[str], base: str) -> str:
+    """Amend fixes only the newest commit; anything older needs a rebase."""
+    if missing == newest_first[:1]:
+        return "git commit --amend -s --no-edit"
+    return f"git rebase --signoff {base}"
+
+
+def _git(cwd: str | None, *args: str) -> str:
+    return subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True, encoding="utf-8", check=True).stdout
+
+
+def commits_between(base: str, head: str, cwd: str | None = None) -> list[tuple[str, str, int, str]]:
+    """Newest first. Each message is read on its own, so no byte in it can split the list."""
+    out = []
+    for line in _git(cwd, "rev-list", "--parents", f"{base}..{head}").splitlines():
+        sha, *parents = line.split()
+        out.append((sha, _git(cwd, "log", "-1", "--format=%B", sha), len(parents), _git(cwd, "log", "-1", "--format=%ae", sha).strip()))
     return out
 
 
 def main(base: str, head: str) -> int:
-    missing = missing_signoff(commits_between(base, head))
+    commits = commits_between(base, head)
+    missing = missing_signoff(commits)
     if not missing:
         return 0
     for sha in missing:
-        print(f"{sha[:12]}: no 'Signed-off-by:' line (Developer Certificate of Origin)")
-    fix = "git commit --amend -s --no-edit" if len(missing) == 1 else f"git rebase --signoff {base}"
-    print(f"\nSign off to certify you may contribute this code (see CONTRIBUTING.md), then force-push:\n  {fix}")
+        print(f"{sha[:12]}: no 'Signed-off-by:' line from the commit's author (Developer Certificate of Origin)")
+    print("\nSign off to certify you may contribute this code (see CONTRIBUTING.md), then force-push:")
+    print(f"  {fix_advice(missing, [c[0] for c in commits], base)}")
     return 1
 
 

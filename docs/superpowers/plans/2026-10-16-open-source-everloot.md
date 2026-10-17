@@ -254,6 +254,7 @@ Run after PRs a, b and c are merged and production is verified. Record the resul
 ### Task 16: Carlos's steps at the flip (owner only)
 
 - [ ] Make the repository public; enable Discussions and private vulnerability reporting; protect `main` (required checks including DCO, no force pushes).
+- [ ] Install the DCO GitHub App (github.com/apps/dco) and make its check required on `main`; a pull request can edit the in-repo `check_dco.py`, but not the app.
 - [ ] Vercel: confirm Git Fork Protection is on.
 - [ ] GitLab mirror: public, or a private backup.
 - [ ] `everloot-mcp` image visibility (from Task 15 Step 5).

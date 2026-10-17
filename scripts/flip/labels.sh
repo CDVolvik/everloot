@@ -2,6 +2,7 @@
 # Run once when the repository goes public: gh must be signed in with admin rights on the repo.
 set -euo pipefail
 repo=CDVolvik/everloot
+gh label create "bug"              --repo "$repo" --force --color d73a4a --description "Something does not work"
 gh label create "good first issue" --repo "$repo" --force --color 7057ff --description "A small, well-described first contribution"
 gh label create "help wanted"      --repo "$repo" --force --color 008672 --description "Open for anyone to pick up"
 gh label create "data"             --repo "$repo" --force --color fbca04 --description "Wrong or missing data, data sources, the data policy"
