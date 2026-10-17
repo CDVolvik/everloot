@@ -46,6 +46,16 @@ export default function AddonsPage() {
           </li>
         ))}
       </ul>
+      <section className="space-y-2" aria-labelledby="popular">
+        <h2 id="popular" className="text-xl font-semibold text-fg">What Forever players run</h2>
+        <p className="text-sm text-fg-2 max-w-2xl">
+          Players who turn on the addon list send it with their uploads. An addon is counted once three installs report
+          it.
+        </p>
+        <Link href="/addons/popular" className="inline-flex items-center min-h-11 text-accent hover:underline underline-offset-4">
+          Popular addons
+        </Link>
+      </section>
     </article>
   );
 }
