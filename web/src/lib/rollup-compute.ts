@@ -62,7 +62,8 @@ async function loadAggregates(): Promise<AggregateSet | null> {
       drops: rollupDrops(windows),
       items: itemFactsFromRecords(corpus.records),
       world: worldFactsFromRecords(corpus.records),
-      addons: popularAddonsFromRecords(corpus.records),
+      // Addon rows dated after the corpus was current are ignored, so one forged clock cannot set "last seen".
+      addons: popularAddonsFromRecords(corpus.records, corpus.dataAsOf ?? new Date()),
     };
   }
   return memoized;
