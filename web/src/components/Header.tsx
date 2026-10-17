@@ -36,14 +36,14 @@ export default function Header() {
         </div>
       </div>
       {open && (
-        <nav id="site-navigation" aria-label="All tools" className="absolute top-full inset-x-0 border-b border-line bg-canvas max-h-[70vh] overflow-y-auto">
+        <nav id="site-navigation" aria-label="All tools" className="absolute top-full inset-x-0 border-b border-edge bg-panel max-h-[70vh] overflow-y-auto">
           <div className="mx-auto max-w-6xl px-4 py-3 grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            <Link href="/addons" onClick={() => setOpen(false)} className="min-h-11 px-3 py-3 rounded-lg text-sm text-fg-2 hover:bg-panel hover:text-accent">
+            <Link href="/addons" onClick={() => setOpen(false)} className="min-h-11 px-3 py-3 rounded-lg text-sm text-fg-2 hover:bg-canvas hover:text-accent">
               Addons
               <span className="ml-2 text-xs text-muted">Everloot, Polestar and guide packs</span>
             </Link>
             {tools.map((tool) => (
-              <Link key={tool.slug} href={toolHref(tool)} onClick={() => setOpen(false)} className="min-h-11 px-3 py-3 rounded-lg text-sm text-fg-2 hover:bg-panel hover:text-accent">
+              <Link key={tool.slug} href={toolHref(tool)} onClick={() => setOpen(false)} className="min-h-11 px-3 py-3 rounded-lg text-sm text-fg-2 hover:bg-canvas hover:text-accent">
                 {tool.shortTitle}
                 <span className="ml-2 text-xs text-muted">{tool.status === "coming-soon" ? "Planned" : tool.status === "collecting" ? "Collecting data" : "Available"}</span>
               </Link>
