@@ -8,9 +8,11 @@ and the date beside it. It also hosts a lore archive and answers questions for A
 assistants over MCP.
 
 The code is open under the AGPL-3.0 and the published data under CC BY-SA 4.0. Everloot doesn't
-scrape other sites or touch the running game. It reads the game files Blizzard's CDN serves for each
-build and shows what changed, labelled unconfirmed, reviewed first, with spoilers hidden by default,
-and keeps that apart from what players have actually seen in the game. The rules are in [`docs/DATA_POLICY.md`](docs/DATA_POLICY.md).
+scrape other sites or touch the running game, and for now it publishes only what players have
+actually seen in the game. Maintainers can also read the game files Blizzard's CDN serves for a
+build and compare builds, but nothing from them is published yet. When that layer ships, changes
+will appear labelled unconfirmed, reviewed first, with spoilers hidden by default, and kept apart
+from what players have seen. The rules are in [`docs/DATA_POLICY.md`](docs/DATA_POLICY.md).
 
 **Status:** beta. WoW: Forever launches on 2026-11-04.
 
