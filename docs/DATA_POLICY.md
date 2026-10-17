@@ -29,12 +29,8 @@ is which.
 spell tables (`ItemSparse`, `Item`, `SpellName`, `Spell`) of a game's current build from the files
 Blizzard's launcher downloads from its public CDN, the same files every player receives, and
 compare two builds field by field. Those snapshots and comparisons stay on the maintainer's
-machine. Encrypted blocks are skipped, never decrypted: no decryption keys are loaded. Nothing we
-read from the game files is on the site, in the dataset or in the MCP server. The one thing on
-the site that began in the game files is the talent calculator's tree layout, which
-[Talents Forever](https://talentsforever.com/) read from the beta client and shares under CC BY 4.0.
-It is labelled unconfirmed, carries no tooltip text, and is credited in the
-[source ledger](sources/LEDGER.md).
+machine. Encrypted blocks are skipped, never decrypted: no decryption keys are loaded. Nothing from
+the game files is on the site, in the dataset or in the MCP server.
 
 Publishing comes later, as a separate step. Once it ships, every entry from game files will:
 

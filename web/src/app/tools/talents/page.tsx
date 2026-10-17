@@ -41,8 +41,8 @@ export default function TalentsIndexPage() {
       <section className="space-y-2 text-sm text-fg-2 max-w-2xl">
         <h2 className="text-fg font-semibold">What is confirmed and what is not</h2>
         <p>
-          The trees come from the beta client files, read by Talents Forever and shared under CC BY 4.0.
-          Everloot has not yet read them from the game itself, so every tree is unconfirmed and can lag
+          Per Talents Forever, the trees come from the beta client files. They share them under CC BY 4.0.
+          Everloot has not read them from the game itself, so every tree is unconfirmed and can lag
           the live game.
         </p>
         <p>

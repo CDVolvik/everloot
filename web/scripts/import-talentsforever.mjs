@@ -106,7 +106,7 @@ for (const [slug, name, classId, specId] of CLASSES) {
       licence: "CC BY 4.0",
       licenceUrl: "https://creativecommons.org/licenses/by/4.0/",
       retrieved,
-      kind: "talent layout read from the beta client files by Talents Forever",
+      kind: "talent layout, which Talents Forever says it read from the beta client files",
     },
     rules: {
       firstPointLevel: 10,

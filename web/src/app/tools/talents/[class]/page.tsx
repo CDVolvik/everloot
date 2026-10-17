@@ -43,7 +43,7 @@ export default async function TalentClassPage({ params }: Params) {
         </p>
         <h1 className={`text-3xl sm:text-4xl font-bold tracking-tight ${CLASS_TEXT[slug]}`}>{catalog.className} talent calculator</h1>
         <ul className="flex flex-wrap gap-2 font-mono text-xs text-muted">
-          <li className="rounded-full border border-dashed border-edge px-3 py-1">trees: beta client files via {source.name}, build {catalog.build} · unconfirmed</li>
+          <li className="rounded-full border border-dashed border-edge px-3 py-1">trees: from {source.name}, build {catalog.build}, unconfirmed</li>
           <li className="rounded-full border border-dashed border-edge px-3 py-1">point rules: assumed · unconfirmed</li>
         </ul>
       </header>
@@ -55,8 +55,8 @@ export default async function TalentClassPage({ params }: Params) {
         <p>
           Talent names, positions, ranks and prerequisites are from{" "}
           <a className="text-accent underline" href={source.url}>{source.name}</a>, licensed{" "}
-          <a className="text-accent underline" href={source.licenceUrl}>{source.licence}</a>. They read
-          the layout from the beta client files; we read their export on {source.retrieved}. We changed
+          <a className="text-accent underline" href={source.licenceUrl}>{source.licence}</a>. Per {source.name},
+          they read the layout from the beta client files; we read their export on {source.retrieved}. We changed
           it into our own format and added ids of our own.
         </p>
         <p>

@@ -5,10 +5,13 @@ import type { Ranks, TalentCatalog, TalentNode, TalentTree } from "@/lib/talents
 // Colour only names the class; state is also written out (rank, "locked", "full") for anyone who
 // cannot tell the colours apart.
 
-const W = 76; // talent width, px
-const H = 60;
-const GAP = 8;
-const LABEL = 24; // width of the row-gate column
+// Four columns plus the gate column fit a 390 px phone (358 px of content). Tiles are tall enough
+// for a four-line name; the names are never cut, and each tile also carries its full name as a
+// title and in its accessible label.
+const W = 78; // talent width, px
+const H = 88;
+const GAP = 6;
+const LABEL = 20; // width of the row-gate column
 
 // Written out in full so Tailwind can see each class name.
 export const CLASS_TEXT: Record<string, string> = {
@@ -124,15 +127,16 @@ export default function TalentTreeView({ catalog, tree, ranks, available, spent,
               type="button"
               id={`talent-${node.id}`}
               aria-label={nodeLabel(catalog, node, ranks, available)}
+              title={node.entries[0].name}
               tabIndex={tabIndex}
               {...common}
               data-selected={selected === node.id || undefined}
               style={style}
               onFocus={() => onSelect(node.id)}
               onClick={() => onAdd(node.id)}
-              className={`absolute flex flex-col items-center justify-between px-1 py-1 text-xs leading-tight text-center ${base}`}
+              className={`absolute flex flex-col items-center justify-between px-0.5 py-1 text-[11px] leading-tight text-center ${base}`}
             >
-              <span className="line-clamp-3 break-words">{node.entries[0].name}</span>
+              <span className="w-full min-w-0 [overflow-wrap:anywhere] hyphens-auto">{node.entries[0].name}</span>
               <span className={`font-mono tabular-nums ${rank > 0 ? CLASS_TEXT[slug] : ""}`}>
                 {rank}/{node.maxRanks}{full ? " full" : ""}
               </span>

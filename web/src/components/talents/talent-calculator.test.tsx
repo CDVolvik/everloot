@@ -101,3 +101,64 @@ test("a share link names the build and loads back", async () => {
   const link = container.querySelector<HTMLInputElement>("#talent-link")!.value;
   expect(link).toMatch(/#plan=EL1-mage-1482-1\.0\.0\.1-/);
 });
+
+const setLevel = (value: string) => act(async () => {
+  const slider = container.querySelector<HTMLInputElement>('input[type="range"]')!;
+  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(slider, value);
+  slider.dispatchEvent(new Event("input", { bubbles: true }));
+});
+const key = (el: Element, k: string) => act(async () => { el.dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true })); });
+
+test("redo cannot bring back more points than the level holds", async () => {
+  await render();
+  for (let i = 0; i < 5; i++) await click(node(11));
+  for (let i = 0; i < 3; i++) await click(node(12));
+  expect(container.textContent).toContain("8 of 51 points spent");
+  for (let i = 0; i < 3; i++) await click(button(/^Undo$/));
+  await setLevel("14");
+  expect(container.textContent).toContain("5 of 5 points spent");
+  for (let i = 0; i < 3; i++) await click(button(/^Redo$/));
+  expect(container.textContent).toMatch(/8 of 8 points spent, 0 left/);
+  expect(status()).toBe("Level raised to 17, the lowest that holds the points in this build.");
+});
+
+test("a locked talent says what it needs before it says the points ran out", async () => {
+  await render();
+  await setLevel("10");
+  await click(node(11));
+  expect(container.textContent).toContain("1 of 1 points spent, 0 left");
+  expect(node(21).getAttribute("aria-label")).toContain("Needs 5 points spent in Left on rows above");
+  expect(node(21).getAttribute("aria-label")).not.toContain("No points left");
+  expect(node(12).getAttribute("aria-label")).toContain("No points left at this level");
+});
+
+test("arrow keys stay on the row or column and do not jump rows sideways", async () => {
+  await render();
+  const focusAfter = async (from: number, k: string) => {
+    await act(async () => node(from).focus());
+    await key(node(from), k);
+    return document.activeElement?.id;
+  };
+  expect(await focusAfter(21, "ArrowRight")).toBe("talent-22");
+  expect(await focusAfter(22, "ArrowRight")).toBe("talent-22"); // nothing further right on row 2: stays
+  expect(await focusAfter(11, "ArrowDown")).toBe("talent-21");
+  expect(await focusAfter(12, "ArrowDown")).toBe("talent-22");
+  expect(await focusAfter(22, "ArrowDown")).toBe("talent-32-0"); // choice node, first entry
+  expect(await focusAfter(11, "ArrowLeft")).toBe("talent-11");
+  expect(await focusAfter(41, "ArrowUp")).toBe("talent-31"); // column 1: row 3 is the next one up
+});
+
+test("pasting a share link into an open tab loads it", async () => {
+  await render();
+  expect(node(11).textContent).toContain("0/5");
+  const code = encodeBuild({ classSlug: "mage", specId: 1482, build: "1.0.0.1", ranks: { 11: { rank: 3 } } });
+  await act(async () => {
+    // jsdom, like a browser, fires hashchange itself once the hash is set.
+    window.location.hash = `#plan=${code}`;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  });
+  expect(node(11).textContent).toContain("3/5");
+  expect(status()).toBe("Build loaded from the link.");
+  await click(button(/^Undo$/));
+  expect(node(11).textContent).toContain("0/5");
+});

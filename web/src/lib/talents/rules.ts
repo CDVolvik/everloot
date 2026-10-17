@@ -88,9 +88,10 @@ export function canAdd(catalog: TalentCatalog, ranks: Ranks, id: number, availab
   const node = nodes.get(id);
   if (!node) return no("unknown-node");
   if (rankOf(ranks, id) >= node.maxRanks) return no("max-rank");
-  if (pointsSpent(ranks) >= available) return no("no-points");
+  // What the talent itself needs comes before the budget, so a locked talent says why it is locked.
   if (!prereqsMet(nodes, node, ranks)) return no("prereq");
   if (!gateMet(catalog, node, ranks)) return no("gate");
+  if (pointsSpent(ranks) >= available) return no("no-points");
   return OK;
 }
 

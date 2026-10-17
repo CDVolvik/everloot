@@ -66,20 +66,41 @@ export default function TalentCalculator({ catalog }: { catalog: TalentCatalog }
   }
 
   // A share link carries its code after #plan=. The hash never reaches the server, so the page itself
-  // stays static and cached. Runs once, when the page opens.
+  // stays static and cached. Read when the page opens and whenever the hash changes, so pasting a
+  // link into a tab that is already open loads it.
   useEffect(() => {
-    const code = /[#&]plan=([A-Za-z0-9_.-]+)/.exec(window.location.hash)?.[1];
-    if (!code) return;
-    const result = importCode(catalog, code);
-    if (!result.ok) {
-      setMessage(result.message);
-      return;
+    function fromHash(opening: boolean) {
+      const code = /[#&]plan=([A-Za-z0-9_.-]+)/.exec(window.location.hash)?.[1];
+      if (!code) return;
+      const result = importCode(catalog, code);
+      if (!result.ok) {
+        setMessage(result.message);
+        return;
+      }
+      setHistory((h) => (opening ? startHistory<Sets>([result.ranks, {}]) : commit(h, [result.ranks, h.present[1]])));
+      setActive(0);
+      setLevel((current) => Math.min(rules.maxLevel, Math.max(opening ? rules.maxLevel : current, result.minLevel)));
+      setReport({ ...result.report, loaded: true });
+      setMessage(result.report.problems.length === 0 ? "Build loaded from the link." : "Build loaded from the link with changes. The list below says what.");
     }
-    setHistory(startHistory<Sets>([result.ranks, {}]));
-    setLevel(rules.maxLevel);
-    setReport({ ...result.report, loaded: true });
-    setMessage(result.report.problems.length === 0 ? "Build loaded from the link." : "Build loaded from the link with changes. The list below says what.");
+    fromHash(true);
+    const onHashChange = () => fromHash(false);
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
   }, [catalog, rules.maxLevel]);
+
+  // Undo and redo can bring back more points than the level now holds (spend 8, undo 3, lower the
+  // level, redo 3). Raise the level to fit rather than show more points spent than allowed.
+  function travel(step: (h: History<Sets>) => History<Sets>) {
+    const next = step(history);
+    if (next === history) return;
+    const needed = Math.max(...next.present.map((r) => levelFor(catalog, pointsSpent(r))));
+    setHistory(next);
+    if (needed > level) {
+      setLevel(needed);
+      setMessage(`Level raised to ${needed}, the lowest that holds the points in this build.`);
+    }
+  }
 
   function doAdd(id: number, choice?: number) {
     const node = nodes.get(id)!;
@@ -180,12 +201,12 @@ export default function TalentCalculator({ catalog }: { catalog: TalentCatalog }
     if ((e.target as HTMLElement).tagName === "INPUT") return;
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
       e.preventDefault();
-      setHistory((h) => (e.shiftKey ? redo(h) : undo(h)));
+      travel(e.shiftKey ? redo : undo);
       return;
     }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "y") {
       e.preventDefault();
-      setHistory((h) => redo(h));
+      travel(redo);
       return;
     }
     const id = nodeIdOf(e.target);
@@ -201,10 +222,26 @@ export default function TalentCalculator({ catalog }: { catalog: TalentCatalog }
     e.preventDefault();
     const from = nodes.get(id)!;
     const peers = catalog.nodes.filter((n) => n.treeId === from.treeId && n.id !== id);
-    const ahead = peers
-      .filter((n) => (dir[0] !== 0 ? Math.sign(n.row - from.row) === dir[0] : Math.sign(n.col - from.col) === dir[1]))
-      .sort((a, b) => Math.abs(a.row - from.row) + Math.abs(a.col - from.col) - (Math.abs(b.row - from.row) + Math.abs(b.col - from.col)));
-    const target = ahead[0];
+    let target;
+    if (dir[0] === 0) {
+      // Left and right stay on the row.
+      target = peers
+        .filter((n) => n.row === from.row && Math.sign(n.col - from.col) === dir[1])
+        .sort((a, b) => Math.abs(a.col - from.col) - Math.abs(b.col - from.col))[0];
+    } else {
+      // Up and down stay in the column if they can; otherwise they go to the next row that has
+      // anything, at the nearest column.
+      const below = peers.filter((n) => Math.sign(n.row - from.row) === dir[0]);
+      target = below
+        .filter((n) => n.col === from.col)
+        .sort((a, b) => Math.abs(a.row - from.row) - Math.abs(b.row - from.row))[0];
+      if (!target && below.length > 0) {
+        const nextRow = below.reduce((best, n) => (Math.abs(n.row - from.row) < Math.abs(best - from.row) ? n.row : best), below[0].row);
+        target = below
+          .filter((n) => n.row === nextRow)
+          .sort((a, b) => Math.abs(a.col - from.col) - Math.abs(b.col - from.col))[0];
+      }
+    }
     if (!target) return;
     setRovingByTree((r) => ({ ...r, [from.treeId]: target.id }));
     document.getElementById(target.kind === "choice" ? `talent-${target.id}-0` : `talent-${target.id}`)?.focus();
@@ -240,7 +277,7 @@ export default function TalentCalculator({ catalog }: { catalog: TalentCatalog }
           />
         </label>
         {level < rules.dualSpecLevel && (
-          <label className="flex items-center gap-2 text-sm text-fg-2">
+          <label className="flex min-h-11 items-center gap-3 text-sm text-fg-2">
             <input type="checkbox" checked={planAhead} onChange={(e) => { setPlanAhead(e.target.checked); if (!e.target.checked && active === 1) setActive(0); }} className="size-5" />
             Plan the second set before level {rules.dualSpecLevel}
           </label>
@@ -248,8 +285,8 @@ export default function TalentCalculator({ catalog }: { catalog: TalentCatalog }
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <button type="button" className="btn text-sm" onClick={() => setHistory(undo)} disabled={history.past.length === 0}>Undo</button>
-        <button type="button" className="btn text-sm" onClick={() => setHistory(redo)} disabled={history.future.length === 0}>Redo</button>
+        <button type="button" className="btn text-sm" onClick={() => travel(undo)} disabled={history.past.length === 0}>Undo</button>
+        <button type="button" className="btn text-sm" onClick={() => travel(redo)} disabled={history.future.length === 0}>Redo</button>
         <button type="button" className="btn text-sm" onClick={() => { setActiveRanks({}); setMessage("This set was reset. Undo brings it back."); }} disabled={spent === 0}>Reset this set</button>
         <button type="button" className="btn text-sm" aria-pressed={removeMode} onClick={() => setRemoveMode(!removeMode)}>
           Take points back: {removeMode ? "on" : "off"}
