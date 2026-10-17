@@ -41,6 +41,13 @@ interface Props extends TreeHandlers {
   selected: number | null;
 }
 
+// A name never splits inside a word: a long single word gets a smaller size so it fits the tile.
+// Sizes are measured against the 78 px tile (about 72 px of text).
+export function nameSize(name: string): string {
+  const longest = Math.max(...name.split(/\s+/).map((w) => w.length));
+  return longest >= 15 ? "text-[9px]" : longest >= 12 ? "text-[10px]" : "";
+}
+
 export function nodeLabel(catalog: TalentCatalog, node: TalentNode, ranks: Ranks, available: number): string {
   const rank = rankOf(ranks, node.id);
   const name = node.kind === "choice" ? node.entries.map((e) => e.name).join(" or ") : entryAtRank(node, rank).name;
@@ -136,7 +143,7 @@ export default function TalentTreeView({ catalog, tree, ranks, available, spent,
               onClick={() => onAdd(node.id)}
               className={`absolute flex flex-col items-center justify-between px-0.5 py-1 text-[11px] leading-tight text-center ${base}`}
             >
-              <span className="w-full min-w-0 [overflow-wrap:anywhere] hyphens-auto">{entryAtRank(node, rank).name}</span>
+              <span className={`w-full min-w-0 [overflow-wrap:anywhere] hyphens-auto ${nameSize(entryAtRank(node, rank).name)}`}>{entryAtRank(node, rank).name}</span>
               <span className={`font-mono tabular-nums ${rank > 0 ? CLASS_TEXT[slug] : ""}`}>
                 {rank}/{node.maxRanks}{full ? " full" : ""}
               </span>
