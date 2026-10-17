@@ -31,6 +31,8 @@ records what actually happened.
 |---|---|---|---|
 | [Blizzard Battle.net API](https://develop.battle.net/) (`us.api.blizzard.com`) | Blizzard Developer API terms: no redistribution, no monetising the data | `kb/src/blizzard/client.ts`; source id `blizzard-api`, `publishable: false` | No. The release build refuses it, and `audit-sources` found it in no file |
 | [Blizzard version service](http://us.patch.battle.net:1119/wow_classic_beta/versions) (`us.patch.battle.net`) | Public build metadata the game launcher reads: build numbers and config hashes, no game files | `kb/src/builds.ts`, `npm run kb -- builds-check` (since 2026-10-17) | No; a local build registry |
+| Blizzard game files from its CDN (tables `ItemSparse`, `Item`, `SpellName`, `Spell`) | Game data © Blizzard; read as facts, encrypted blocks skipped, never decrypted. Publication only through review, under `docs/DATA_POLICY.md` | `kb/src/client-extract.ts`, `npm run kb -- client-extract` and `client-diff` (since 2026-10-17) | No; per-build snapshots on a maintainer machine until the reviewed layer ships |
+| [WoWDBDefs](https://github.com/wowdev/WoWDBDefs) table definitions | CC BY-SA 4.0 (definitions), BSD-3-Clause (code) | Fetched by the extraction library to read each table; the commit is recorded in each snapshot manifest | No; definitions are not stored |
 | Wowhead facts (not built) | Gated: Wowhead's Terms of Use must allow it first | [`docs/DATA_POLICY.md`](../DATA_POLICY.md), "Wowhead" | No |
 
 ## Link only
