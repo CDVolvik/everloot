@@ -53,7 +53,8 @@ test("a realm lists its public items with market, minimum and historical values"
 
 test("an item shows its value, a 60-day chart and the day list", async () => {
   const html = await render({ realm: "Forever", item: "2589" });
-  expect(html).toContain("Market value: 1s 98c");
+  // Numbers sit in their own mono spans, so the sentence is checked as text.
+  expect(html.replace(/<[^>]*>/g, "")).toContain("Market value: 1s 98c");
   expect(html).toContain("<svg");
   expect(html).toContain("value 1s 90c");
   expect(html).toContain("Browse history");

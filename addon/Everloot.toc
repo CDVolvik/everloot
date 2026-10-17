@@ -3,6 +3,7 @@
 ## Notes: WoW: Forever data collector — drops, spawns, vendors, guilds, auctions, recipes. Answers never play.
 ## Author: Everloot
 ## Version: 0.3.0
+## X-License: AGPL-3.0
 ## SavedVariables: EverlootDB
 ## OptionalDeps: EverlootAnswers, EverlootPrices
 ## IconTexture: Interface\Icons\INV_Misc_Coin_02
@@ -15,4 +16,6 @@ modules\auctions.lua
 modules\gold.lua
 modules\professions.lua
 modules\ask.lua
+modules\addons.lua
+modules\mapbounds.lua
 modules\prices.lua

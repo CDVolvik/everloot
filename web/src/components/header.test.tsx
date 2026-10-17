@@ -11,8 +11,29 @@ vi.mock("./AccountControls", () => ({ default: () => null }));
 
 import Header from "./Header";
 
-test("the primary navigation links to the lore archive", () => {
-  const html = renderToStaticMarkup(<Header />);
-  expect(html).toContain('href="/lore"');
-  expect(html).toMatch(/href="\/database"[^>]*>Database<\/a><a href="\/lore"[^>]*>Lore<\/a>/);
+const html = renderToStaticMarkup(<Header />);
+
+test("the primary navigation keeps its order", () => {
+  const order = ["/database", "/lore", "/upload", "/tools/gold-per-hour", "/addons"].map((href) => html.indexOf(`href="${href}"`));
+  expect(order.every((at) => at >= 0)).toBe(true);
+  expect(order).toEqual([...order].sort((a, b) => a - b));
+});
+
+test.each(["Database", "Lore", "Upload", "Gold/Hour", "Addons"])("%s is a bracket label", (label) => {
+  const escaped = label.replace("/", "\\/");
+  expect(html).toMatch(new RegExp(`href="[^"]+"[^>]*><span class="font-mono"><span aria-hidden="true" class="text-muted">\\[<\\/span>${escaped}<`));
+});
+
+test("the database link is a bracket label", () => {
+  expect(html).toMatch(/href="\/database"[^>]*><span class="font-mono"><span aria-hidden="true" class="text-muted">\[<\/span>Database/);
+});
+
+test("the wordmark is the diamond and a lowercase everloot", () => {
+  const home = html.match(/<a href="\/"[^>]*>(.*?)<\/a>/)?.[1] ?? "";
+  expect(home).toContain("<svg aria-hidden=\"true\"");
+  expect(home).toContain("everloot");
+});
+
+test("no shadows", () => {
+  expect(html).not.toContain("shadow-");
 });

@@ -1,10 +1,11 @@
 # addon/: the Everloot collector
 
 The in-game addon for WoW: Forever. It records what you see while you play (sightings, loot
-windows, vendors, full auction-house scans you start, recipes, trainers, your own gold) into its
-SavedVariables file, shows `/ask` answers from the companion, and adds auction prices to item
-tooltips. It uses only the game's addon API and never plays the character. Records match the
-site's intake contract (`web/src/lib/intake.ts`) field for field.
+windows, vendors, full auction-house scans you start, recipes, trainers, your own gold, the world
+position of each zone you enter) into its SavedVariables file, shows `/ask` answers from the
+companion, and adds auction prices to item tooltips. It uses only the game's addon API and never
+plays the character. Records match the site's intake contract (`web/src/lib/intake.ts`) field for
+field.
 
 **Status:** 0.3.0 beta. The automated contract tests pass; the in-client checks in
 `docs/2026-10-08-beta-client-checklist.md` are still open, and the full scan
@@ -20,7 +21,9 @@ That writes `web/public/downloads/Everloot-<version>.zip`. Extract `Everloot/` i
 client's `Interface/AddOns/`, `/reload`, then run `/everloot status`. Auction capture is off until
 `/everloot auctions on`. Then, at the auction house, click **Everloot scan** (or type
 `/everloot scan`) for a full scan: at most one every 15 minutes, read in chunks, summarised per item,
-and the last three scans per realm kept. Nothing scans without that click.
+and the last three scans per realm kept. Nothing scans without that click. The list of your
+installed addons is off until `/everloot addons on`; it is sent only from the upload page, after
+its preview. `/everloot addons off` stops it and deletes every recorded addon row.
 
 ## Test it
 
@@ -34,6 +37,8 @@ The contract tests run the Lua in real Lua 5.1 through `lupa`:
     python addon/tests/ask_contract.py
     python addon/tests/recipes_contract.py
     python addon/tests/answers_contract.py
+    python addon/tests/addons_contract.py
+    python addon/tests/mapbounds_contract.py
     python addon/tests/market_contract.py
 
 Run them from the repository root. CI also rebuilds the zip and fails if it differs from the one
@@ -53,6 +58,8 @@ addon/
 │   ├── gold.lua        your own gold: loot, quests, vendors, flights, mailed auction sales, postage, buyouts
 │   ├── professions.lua recipe colours at your rank; required rank and cost from trainer windows
 │   ├── ask.lua         /ask stores a question; the companion's answers show after /reload
+│   ├── addons.lua      your installed addons' names, titles and versions; off until enabled
+│   ├── mapbounds.lua   each zone's corners in world coordinates, once per zone per build
 │   └── prices.lua      item tooltips: your latest scan and the companion's community prices
 └── tests/              Lua 5.1 contract tests and their fixtures
 ```

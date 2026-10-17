@@ -1,4 +1,10 @@
-import { expect, test } from "vitest";
+import { readFileSync } from "node:fs";
+import { expect, test, vi } from "vitest";
+import { tokens } from "@/design/tokens";
+
+// next/font only runs under Next's compiler.
+vi.mock("./fonts", () => ({ fontVariables: "" }));
+
 import OpenGraphImage, { alt, contentType, size } from "./opengraph-image";
 import TwitterImage from "./twitter-image";
 import { metadata } from "./layout";
@@ -16,4 +22,9 @@ test("the site has a large social preview image built from the brand palette", a
 
 test("shared links use the large card", () => {
   expect((metadata.twitter as { card?: string }).card).toBe("summary_large_image");
+});
+
+test("the favicon is the green diamond on the canvas", () => {
+  const svg = readFileSync(new URL("./icon.svg", import.meta.url), "utf8");
+  expect(new Set(svg.match(/#[0-9A-Fa-f]{6}/g))).toEqual(new Set([tokens.dark.canvas, tokens.dark.accent]));
 });

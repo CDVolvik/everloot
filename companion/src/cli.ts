@@ -115,7 +115,7 @@ async function main(argv: string[]): Promise<void> {
   const send = async (file: string) => {
     try {
       const r = await uploadFile(file, { endpoint: args.endpoint, state });
-      console.log(`${file}: sent ${r.sent} new events in ${r.batches} batch(es); kept ${r.heldNamed} named and ${r.heldLegacy} legacy rows here.`);
+      console.log(`${file}: sent ${r.sent} new events in ${r.batches} batch(es); kept ${r.heldNamed} named, ${r.heldAddons} installed-addon and ${r.heldLegacy} legacy rows here.`);
       if (args.command === "watch") await prices();
     } catch (err) {
       console.error(`${file}: ${err instanceof Error ? err.message : String(err)}`);
