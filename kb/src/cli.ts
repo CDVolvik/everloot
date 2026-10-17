@@ -8,6 +8,7 @@ import { CASC_LIBRARY, extractTables, iconIds, NOT_IN_BUILD, openCdn, probeFiles
 import { writeCatalogs } from "./client-catalog.js";
 import { clientSnapshotName, writeClientSnapshot } from "./client-snapshot.js";
 import { diffRaidBuffs, RaidBuffTable } from "./raid-buffs.js";
+import { buildWatchCommand } from "./build-watch/command.js";
 import type { Game, NsKind, Region } from "./blizzard/namespaces.js";
 import { openDb, openExistingReadOnlyDb, type DB } from "./db.js";
 import { importCurated } from "./importers/curated.js";
@@ -48,6 +49,10 @@ const USAGE = `usage: npm run kb -- <command> --db <path>
     the exit is 1. Encrypted blocks are skipped, never decrypted. Not for publication without
     review: see docs/DATA_POLICY.md)
   client-diff <old.sqlite> <new.sqlite> [--out diff.json]   (field-level diff of two snapshots)
+  build-watch [--product a,b] [--dry-run] [--check] [--redo] [--game-data ../game-data] [--out data/build-watch/out]
+    (notices a new game build, regenerates the committed game data and prepares a pull request body and
+    a changelog entry; the scheduled workflow opens the PR. --dry-run writes only under --out and changes
+    nothing else. --check only says whether there is work. See docs/BUILD_WATCH.md)
   audit-sources <file.sqlite...>   (rows per source and cached API rows in each file; exits 1 if anything
     is not publishable)
 
@@ -92,7 +97,7 @@ async function main(): Promise<number> {
   const flags = new Map<string, string>();
   const args: string[] = [];
   for (let i = 0; i < rest.length; i++) {
-    if (rest[i].startsWith("--")) flags.set(rest[i].slice(2), rest[++i] ?? "");
+    if (rest[i].startsWith("--")) flags.set(rest[i].slice(2), rest[i + 1] === undefined || rest[i + 1].startsWith("--") ? "" : rest[++i]);
     else args.push(rest[i]);
   }
   if (existsSync(".env")) process.loadEnvFile(".env");
@@ -280,6 +285,8 @@ async function main(): Promise<number> {
       console.log(`${changes.length} changed`);
       return 0;
     }
+    case "build-watch":
+      return buildWatchCommand(flags);
     case "audit-sources": {
       if (!args.length) break;
       let clean = true;

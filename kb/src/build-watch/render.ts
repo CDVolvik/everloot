@@ -1,0 +1,115 @@
+/** The reviewer-facing text of a changelog entry: the pull request body and the terminal summary. */
+import type { ChangeEntry } from "./changes.js";
+
+/** Names come from game files. Keep them from turning into links, mentions, HTML or table breaks. */
+const clean = (s: string) => s.replace(/[`@<>|\r\n[\]]/g, " ").replace(/\s+/g, " ").trim();
+const val = (v: unknown) => (v === null || v === undefined ? "none" : typeof v === "object" ? clean(JSON.stringify(v)) : clean(String(v)));
+const unlock = (u: { pointsInTree?: number; ranksInNode?: { nodeId: number; ranks: number } }) => {
+  const parts = [u.pointsInTree !== undefined ? `${u.pointsInTree} points in tree` : null, u.ranksInNode ? `${u.ranksInNode.ranks} ranks in node ${u.ranksInNode.nodeId}` : null].filter(Boolean);
+  return parts.length ? parts.join(", ") : "no gate";
+};
+const prereqs = (p: { nodeId: number; rule: string }[]) => (p.length ? p.map((x) => `${x.rule} ${x.nodeId}`).join(", ") : "none");
+const pos = (p: { tree: string | null; row: number; col: number }) => `${p.tree ? `${clean(p.tree)} ` : ""}row ${p.row} col ${p.col}`;
+
+
+function sections(entry: ChangeEntry): { title: string; items: string[] }[] {
+  const t = entry.talents;
+  const label = (w: { className: string | null; tree: string | null; name: string; spoiler: boolean }) =>
+    `${w.spoiler ? "[spoiler] " : ""}${clean(w.className ?? "?")}${w.tree ? ` / ${clean(w.tree)}` : ""}: ${clean(w.name)}`;
+  const out: { title: string; items: string[] }[] = [];
+  if (t) {
+    out.push({ title: "Classes added", items: t.classesAdded.map(clean) });
+    out.push({ title: "Classes removed", items: t.classesRemoved.map(clean) });
+    out.push({ title: "Talents added", items: t.added.map((w) => `${label(w)} (${w.kind}, ${w.maxRanks} rank${w.maxRanks === 1 ? "" : "s"})`) });
+    out.push({ title: "Talents removed", items: t.removed.map((w) => label(w)) });
+    out.push({ title: "Talents moved", items: t.moved.map((w) => `${label(w)}: ${pos(w.from)} -> ${pos(w.to)}`) });
+    out.push({ title: "Rank changes", items: t.ranks.map((w) => `${label(w)}: ${w.before} -> ${w.after} ranks`) });
+    out.push({ title: "Gate changes", items: t.gates.map((w) => `${label(w)}: ${unlock(w.before)} -> ${unlock(w.after)}`) });
+    out.push({ title: "Prerequisite changes", items: t.prereqs.map((w) => `${label(w)}: ${prereqs(w.before)} -> ${prereqs(w.after)}`) });
+    out.push({ title: "Talent swapped for another spell", items: t.replaced.map((w) => `${label(w)}: spells ${w.before.join(", ")} -> ${w.after.join(", ")}`) });
+    out.push({
+      title: "Spell values",
+      items: t.spellValues.map((w) => `${label(w)} (spell ${w.spellId}): ${w.changes.map((c) => `${clean(c.field)} ${val(c.before)} -> ${val(c.after)}`).join("; ")}`),
+    });
+    out.push({ title: "Talent points", items: t.pointLevels.map((p) => `${clean(p.className ?? `class ${p.classId}`)}: ${p.before.length} points (levels ${p.before[0] ?? "-"} to ${p.before.at(-1) ?? "-"}) -> ${p.after.length} points (levels ${p.after[0] ?? "-"} to ${p.after.at(-1) ?? "-"})`) });
+  }
+  const r = entry.raidBuffs;
+  if (r) out.push({ title: "Raid buff scope changes", items: r.scopeChanges.map((c) => `${c.spoiler ? "[spoiler] " : ""}${clean(c.label)}: ${val(c.before)} -> ${val(c.after)}`) });
+  return out;
+}
+
+/** Longest list shown before "and N more"; the full list is in the JSON entry. */
+const CAP = 40;
+
+function describe(entry: ChangeEntry): string[] {
+  const lines: string[] = [];
+  const found = sections(entry).filter((s) => s.items.length);
+  if (entry.initial) lines.push("First data for this product: nothing to compare with, so this entry records a baseline.");
+  else if (!found.length) lines.push("No differences in the talent catalog or the raid buff scopes.");
+  for (const s of found) {
+    lines.push("", `### ${s.title} (${s.items.length})`, "");
+    for (const item of s.items.slice(0, CAP)) lines.push(`- ${item}`);
+    if (s.items.length > CAP) lines.push(`- and ${s.items.length - CAP} more in the JSON entry`);
+  }
+  return lines;
+}
+
+export interface BodyContext {
+  /** Open pull requests for older builds of the same product, to be closed once this one is decided. */
+  supersedes: number[];
+  runUrl?: string;
+  classes: number;
+  nodes: number;
+}
+
+export const BODY_MARKER = (product: string, buildId: number) => `<!-- everloot:build-watch product=${product} build=${buildId} -->`;
+
+export function prBody(entry: ChangeEntry, ctx: BodyContext): string {
+  const b = entry.build;
+  const lines = [
+    BODY_MARKER(entry.product, b.buildId),
+    `Automated data update from the build watch. A maintainer reviews it; nothing here merges itself.`,
+    "",
+    `- Product: \`${entry.product}\`${entry.live ? "" : " (not live: beta or unreleased)"}`,
+    `- Build: ${clean(b.version)} (build id ${b.buildId}, config \`${b.buildConfig.slice(0, 8)}\`)`,
+    `- Compared with: ${entry.previous ? `${clean(entry.previous.version)} (the data now on the base branch)` : "nothing: first data for this product"}`,
+    `- Catalog: ${ctx.classes} classes, ${ctx.nodes} talent nodes`,
+    `- Encrypted blocks skipped, never decrypted: ${entry.encryptedBlocks.total}${entry.encryptedBlocks.tables.length ? ` (${entry.encryptedBlocks.tables.map((t) => `${t.table} ${t.blocks}`).join(", ")})` : ""}`,
+  ];
+  if (entry.raidBuffs) {
+    lines.push(`- Raid buffs compared with: ${entry.raidBuffs.comparedTo ? clean(entry.raidBuffs.comparedTo.version) : "no earlier table on hand, so no comparison"} (the table is not committed)`);
+  }
+  if (entry.spoiler) {
+    lines.push("", "**Spoiler.** This build is not live, so everything below is marked `spoiler` in the changelog entry and stays hidden on the site unless the reader turns spoilers on. Labelled *found in game files, unconfirmed*.");
+  }
+  if (entry.warnings.length) lines.push("", "**Warnings**", "", ...entry.warnings.map((w) => `- ${clean(w)}`));
+  lines.push("", ...describe(entry));
+  lines.push(
+    "",
+    "### Review",
+    "",
+    "- [ ] The changes above look like the game, not a parsing problem (check any mass removal or warning).",
+    "- [ ] Only `game-data/` changed: manifest, talent files without tooltip text, and one changelog entry.",
+    "- [ ] Spoiler flags are right for a build players cannot play yet.",
+    "",
+    "Hotfixes that change no build never show up here, because the game files do not change. The blue tracker covers those.",
+    "",
+    "Game data is Blizzard's and is not under Everloot's licence (see `game-data/README.md` and `docs/DATA_POLICY.md`).",
+  );
+  if (ctx.supersedes.length) lines.push("", `Older build PRs still open for this product: ${ctx.supersedes.map((n) => `#${n}`).join(", ")}. Close them once this one is decided.`);
+  if (ctx.runUrl) lines.push("", `Run: ${ctx.runUrl}`);
+  const body = lines.join("\n");
+  return body.length > 60_000 ? `${body.slice(0, 60_000)}\n\n(truncated; the JSON entry has the rest)` : body;
+}
+
+/** Plain text for the terminal and the dry run. */
+export function terminalSummary(entry: ChangeEntry): string {
+  const b = entry.build;
+  const head = [
+    `${entry.product} ${b.version} (build ${b.buildId})${entry.live ? "" : " [not live: everything is spoiler]"}`,
+    entry.previous ? `compared with ${entry.previous.version}` : "first data for this product (baseline)",
+    `encrypted blocks skipped: ${entry.encryptedBlocks.total}`,
+  ];
+  const counts = sections(entry).map((s) => `${s.title}: ${s.items.length}`);
+  return [...head, ...counts, ...entry.warnings.map((w) => `warning: ${w}`)].join("\n");
+}
