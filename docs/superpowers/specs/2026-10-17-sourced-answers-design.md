@@ -55,6 +55,14 @@ each one cited. Two ways to get there without scraping anyone:
    for Retail and Classic). The user's assistant then draws on all of them and cites each, while
    Everloot serves only its own data.
 
+## Open access is the product
+
+Big game databases keep their data behind heavy pages, with no API or MCP. Everloot does the
+opposite: its data is open (CC BY-SA 4.0), its MCP endpoint needs no sign-in, and its limits are
+rate limits, not walls. `/connect` documents this for developers as well as players: the public MCP
+endpoint and its tools, the public corpus API, the per-IP rate limits and how to ask for more, and
+the licence. Anyone can build on Everloot, as long as they credit it.
+
 ## Tests
 
 Fixture release and corpus; questions that hit lore only, observations only, both, and nothing
