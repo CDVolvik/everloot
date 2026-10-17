@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { unstable_noStore as noStore } from "next/cache";
 import LoreSearchForm from "@/components/LoreSearchForm";
 import { BROWSE_HEADINGS, BROWSE_TYPES, hasTypes, UNAVAILABLE_COPY, type BrowseSlug } from "@/lib/lore";
 import { getRelease } from "@/lib/release";
 
-// Rendered per request: it only reads the manifest, and a static build without the release would bake "unavailable".
-export const dynamic = "force-dynamic";
+// Cached for a day: it only reads the manifest. Without a release the page calls noStore(), so an
+// "unavailable" answer is rendered per request and never baked into a build or kept in the cache.
+export const revalidate = 86400;
 
 export const metadata: Metadata = {
   title: "Lore archive",
@@ -19,6 +21,7 @@ const formatter = new Intl.NumberFormat("en-US");
 
 export default async function LoreLanding() {
   const release = getRelease();
+  if (!release) noStore();
   // The wiki count only: curated Forever rows are not part of the 2023 wiki.
   const pages = release ? release.manifest.counts["warcraft-wiki-2023"] ?? null : null;
 
