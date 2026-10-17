@@ -231,7 +231,7 @@ export default function GoldCalculator() {
           </span>
           <input
             type="text"
-            placeholder="e.g. Revendreth cloth run"
+            placeholder="e.g. Cloth farm"
             value={state.farmName}
             onChange={(e) => patch({ farmName: e.target.value })}
             className="min-h-11 text-base w-full rounded-lg bg-panel border border-edge px-3 py-2 text-fg placeholder:text-muted focus:border-accent"
@@ -303,7 +303,7 @@ export default function GoldCalculator() {
                   <span className="sr-only">Item {idx + 1} name</span>
                   <input
                     type="text"
-                    placeholder="e.g. Shrouded Cloth"
+                    placeholder="Item name"
                     value={it.name}
                     onChange={(e) => updateItem(it.id, { name: e.target.value })}
                     className="min-h-11 w-full min-w-0 rounded-md bg-canvas/60 border border-edge px-3 py-2 text-base text-fg placeholder:text-muted focus:border-accent"
