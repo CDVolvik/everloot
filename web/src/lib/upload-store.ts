@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { AwsClient } from "aws4fetch";
 import { parseRecords, type CanonicalUpload, type IntakeRecord } from "./intake";
 import { mergeCorpus, mergeCorpusBatches, publicRecords, type CorpusState } from "../../../kb/src/corpus";
+import { emptyMarket, foldMarket, type MarketState } from "../../../kb/src/market";
 import { createSharingStore } from "./sharing-store";
 
 /**
@@ -11,6 +12,8 @@ import { createSharingStore } from "./sharing-store";
  * row per upload plus the waitlist. Every rollup can be rebuilt from the R2 objects.
  * Pages read one snapshot object (`snapshots/corpus.json`) that a cron job extends with only the
  * uploads it has not seen yet. With no snapshot they fall back to reading every indexed object.
+ * Full auction scans skip the corpus: the same cron folds them into `snapshots/market.json`
+ * (kb/src/market.ts), which the market page, API and MCP tool read.
  * Local (no cloud variables, i.e. dev): the same files under web/data, as before.
  */
 
@@ -62,6 +65,21 @@ interface Snapshot extends Corpus {
   lastIds: string[];
 }
 
+/** Null state means the read failed: market values are then unrecorded, never zero. */
+export interface Market {
+  state: MarketState | null;
+  dataAsOf: string | null;
+  unreachable?: boolean;
+}
+
+interface MarketSnapshot {
+  version: 1;
+  generatedAt: string;
+  state: MarketState;
+  /** Every upload already folded in, so each upload is read once. */
+  seenUploadIds: string[];
+}
+
 interface IndexRow {
   id: string;
   object_key: string;
@@ -91,6 +109,7 @@ export function cloudConfig(env: Record<string, string | undefined> = process.en
 const PAGE = 1000; // PostgREST's default row cap on Supabase
 const PARALLEL_READS = 16;
 const SNAPSHOT_KEY = "snapshots/corpus.json";
+const MARKET_KEY = "snapshots/market.json";
 
 function rawRecordsOf(payload: unknown): unknown[] {
   const records = (payload as { records?: unknown })?.records;
@@ -115,6 +134,7 @@ export function createUploadStore(opts: {
   const now = opts.now ?? (() => new Date());
   const cacheMs = opts.cacheMs ?? 5 * 60 * 1000;
   let cached: { at: number; corpus: RawCorpus } | null = null;
+  let marketCached: { at: number; market: Market } | null = null;
 
   const cloud = opts.cloud;
   const unavailable = !cloud && process.env.NODE_ENV === "production";
@@ -183,27 +203,31 @@ export function createUploadStore(opts: {
     return Array.isArray(grants) ? grants.filter((g) => typeof g === "string" && /^[a-f0-9]{64}$/.test(g)) : [];
   }
 
-  async function readLocal(): Promise<RawCorpus> {
+  /** Local upload files; null when the folder exists but cannot be read. */
+  async function readLocalPayloads(): Promise<{ files: number; payloads: unknown[] } | null> {
     const dir = join(opts.localDir, "uploads");
     let files: string[] = [];
     try {
       files = (await readdir(dir)).filter((f) => f.endsWith(".json"));
     } catch (err) {
-      const code = (err as NodeJS.ErrnoException).code;
-      if (code === "ENOENT") return { uploads: 0, state: mergeCorpus(undefined, []), dataAsOf: now().toISOString() };
-      return { uploads: 0, state: mergeCorpus(undefined, []), unreachable: true, dataAsOf: null };
+      return (err as NodeJS.ErrnoException).code === "ENOENT" ? { files: 0, payloads: [] } : null;
     }
-    const batches: { raw: unknown[]; grants: string[] }[] = [];
+    const payloads: unknown[] = [];
     for (const f of files) {
       try {
-        const payload = JSON.parse(await readFile(join(dir, f), "utf8"));
-        batches.push({ raw: rawRecordsOf(payload), grants: grantsOf(payload) });
+        payloads.push(JSON.parse(await readFile(join(dir, f), "utf8")));
       } catch {
         continue; // a corrupt file never breaks a rollup
       }
     }
-    const state = mergeCorpusBatches(undefined, batches);
-    return { uploads: files.length, state, dataAsOf: now().toISOString() };
+    return { files: files.length, payloads };
+  }
+
+  async function readLocal(): Promise<RawCorpus> {
+    const local = await readLocalPayloads();
+    if (!local) return { uploads: 0, state: mergeCorpus(undefined, []), unreachable: true, dataAsOf: null };
+    const state = mergeCorpusBatches(undefined, local.payloads.map((p) => ({ raw: rawRecordsOf(p), grants: grantsOf(p) })));
+    return { uploads: local.files, state, dataAsOf: now().toISOString() };
   }
 
   async function listIndex(since?: string): Promise<IndexRow[]> {
@@ -222,8 +246,9 @@ export function createUploadStore(opts: {
     return rows;
   }
 
-  async function readObjects(keys: string[], previous?: CorpusState): Promise<{ state: CorpusState; missed: boolean }> {
-    const batches: { raw: unknown[]; grants: string[] }[] = [];
+  /** Upload objects by key. A corrupt object reads as null; an unreachable one sets `missed`. */
+  async function readPayloads(keys: string[]): Promise<{ payloads: unknown[]; missed: boolean }> {
+    const payloads: unknown[] = [];
     let missed = false;
     for (let i = 0; i < keys.length; i += PARALLEL_READS) {
       const batch = await Promise.all(keys.slice(i, i + PARALLEL_READS).map(async (key) => {
@@ -241,10 +266,85 @@ export function createUploadStore(opts: {
       }));
       for (const row of batch) {
         if (row.missed) missed = true;
-        else batches.push({ raw: rawRecordsOf(row.payload), grants: grantsOf(row.payload) });
+        else payloads.push(row.payload);
       }
     }
+    return { payloads, missed };
+  }
+
+  async function readObjects(keys: string[], previous?: CorpusState): Promise<{ state: CorpusState; missed: boolean }> {
+    const { payloads, missed } = await readPayloads(keys);
+    const batches = payloads.map((p) => ({ raw: rawRecordsOf(p), grants: grantsOf(p) }));
     return { state: mergeCorpusBatches(previous ?? mergeCorpus(undefined, []), batches), missed };
+  }
+
+  function marketScans(payloads: unknown[]) {
+    return payloads.flatMap((p) => parseRecords(rawRecordsOf(p)).records.filter((r) => r.kind === "auction_snapshot"));
+  }
+
+  async function readMarketSnapshot(): Promise<{ snapshot: MarketSnapshot; etag?: string } | null> {
+    const res = await r2Fetch(MARKET_KEY, { method: "GET", headers: { "accept-encoding": "identity" } });
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error(`market read failed (${res.status})`);
+    const parsed = JSON.parse(await res.text()) as Partial<MarketSnapshot>;
+    const state = parsed.state;
+    if (parsed.version !== 1 || state?.version !== 1 || !state.realms || typeof state.realms !== "object" || !Array.isArray(parsed.seenUploadIds)) {
+      throw new Error("market rollup is invalid");
+    }
+    return { snapshot: parsed as MarketSnapshot, etag: res.headers.get("etag") ?? undefined };
+  }
+
+  /**
+   * Fold full scans from uploads not yet seen into the market rollup (cron). `rebuild` starts
+   * from empty. A missed object writes nothing, so the next run reads it again.
+   */
+  async function writeMarket(opts: { rebuild?: boolean } = {}): Promise<{ added: number; scans: number }> {
+    if (!cloud) throw new Error("the market rollup needs the cloud store");
+    const current = await readMarketSnapshot();
+    if (current && (!current.etag || current.etag.startsWith("W/"))) throw new Error("market rollup has no strong ETag: cannot safely update it");
+    const prev = opts.rebuild ? null : current?.snapshot ?? null;
+    const seen = new Set(prev?.seenUploadIds ?? []);
+    const rows = await listIndex();
+    const fresh = rows.filter((r) => !seen.has(r.id));
+    const { payloads, missed } = await readPayloads(fresh.map((r) => r.object_key));
+    if (missed) throw new Error("upload object unreadable");
+    const scans = marketScans(payloads);
+    const snapshot: MarketSnapshot = {
+      version: 1,
+      generatedAt: now().toISOString(),
+      state: foldMarket(prev?.state ?? emptyMarket(), scans, now()),
+      seenUploadIds: [...new Set([...seen, ...fresh.map((r) => r.id)])].sort(),
+    };
+    const put = await r2Fetch(MARKET_KEY, {
+      method: "PUT",
+      body: JSON.stringify(snapshot),
+      headers: { "content-type": "application/json", ...(current ? { "if-match": current.etag! } : { "if-none-match": "*" }) },
+    });
+    if (!put.ok) throw new Error(`market write failed (${put.status})`);
+    marketCached = null;
+    return { added: fresh.length, scans: scans.length };
+  }
+
+  async function loadMarket(): Promise<Market> {
+    if (marketCached && Date.now() - marketCached.at < cacheMs) return marketCached.market;
+    let market: Market;
+    try {
+      if (unavailable) throw new Error("Production storage is not configured");
+      if (cloud) {
+        const read = await readMarketSnapshot();
+        market = read
+          ? { state: read.snapshot.state, dataAsOf: validTime(read.snapshot.generatedAt) }
+          : { state: emptyMarket(), dataAsOf: null };
+      } else {
+        const local = await readLocalPayloads();
+        if (!local) throw new Error("local uploads unreadable");
+        market = { state: foldMarket(emptyMarket(), marketScans(local.payloads), now()), dataAsOf: now().toISOString() };
+      }
+    } catch {
+      return { state: null, dataAsOf: null, unreachable: true };
+    }
+    marketCached = { at: Date.now(), market };
+    return market;
   }
 
   async function readSnapshot(): Promise<Snapshot | null> {
@@ -420,7 +520,7 @@ export function createUploadStore(opts: {
     } catch { return { status: "unavailable", ...unknown }; }
   }
 
-  return { putUpload, loadCorpus, putWaitlist, writeSnapshot, snapshotHealth };
+  return { putUpload, loadCorpus, putWaitlist, writeSnapshot, snapshotHealth, writeMarket, loadMarket };
 }
 
 /** The store the routes and pages use. */

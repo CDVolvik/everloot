@@ -14,7 +14,7 @@ engine stays a separate GPL program.
 Proven, furthest first: real uploads, public client, beta client, on everloot.app,
 code + tests, not built. Live means usable today, not proven with real data.
 
-Rows: 69.
+Rows: 70.
 
 ## Live
 
@@ -55,6 +55,7 @@ Rows: 69.
 | `tool.guild` | Guild tracker | on everloot.app | Page /tools/guild-board and MCP tool guild_board. Roster, bosses, loot, and item level need 2 agreeing officer uploads. The average names how many roster members were measured. score_v1 has no published weights, so there is no single score. The tool reads the public corpus at EVERLOOT_PUBLIC_CORPUS_URL. With no corpus source set, the answer says uploads are not connected. |
 | `tool.guild_census` | Public guild-family page | on everloot.app | Citation page is /guilds/olympus. Each figure has its source and date. Battle.net guild profile answers for retail and Classic Era in the local adapter. Forever namespaces were refused on 2026-09-30. Done when that namespace fills the same table. Spec: guild system, census section. |
 | `tool.auction` | Auction history | on everloot.app | Page /tools/auctions and MCP tool auction_history. A day is public when 3 installs scanned that item on that realm. Intake accepts auction_scan. The tool reads the public corpus at EVERLOOT_PUBLIC_CORPUS_URL. With no corpus source set, the answer says uploads are not connected. |
+| `tool.market` | Forever market values | code + tests | Full auction scans a player starts with a click (addon 0.3.0, C_AuctionHouse.ReplicateItems) upload as auction_snapshot. The cron folds them into snapshots/market.json, outside the corpus. A realm/item day is public when 3 installs scanned it; market value weights 14 days, historical is the median of 60. Served by /api/market/prices, MCP tool market_value and /tools/auctions; the companion writes them into the EverlootPrices slot addon for tooltips. Spec: 2026-10-16-forever-market-design. Done when real Forever scans fill it. |
 | `tool.gold_ledger` | Gold ledger | on everloot.app | Page /tools/gold-ledger and MCP tool gold_ledger. The addon (0.2.4) stores gold_snapshot (current and peak) and money_event for loot copper, quest money rewards, sales at an open merchant, flight costs, auction sales taken from the mailbox (invoice type seller, matched to the money change, recorded as the sale minus the house cut; the buyer is not stored), postage for letters the server confirmed sent, and auction buyouts. The report names those and says bids, deposits, other mail, other spending, and gameplay are unrecorded. Installs are not merged. The difference is unrecorded, never bought and never a ban. With no corpus source set, the answer says uploads are not connected. Left: deposits (no category yet), other mail, and trade events, plus a trade note that only uses an uploaded ledger. The IRS addon is not copied. Gold-per-hour stays the calculator. |
 | `tool.simc` | SimulationCraft sidecar | not built | run the GPL-3.0 forever branch as its own process once it can sim. Report comes back through MCP. Do not paste the C++ into this repo. |
 | `app.uploader` | Desktop uploader | code + tests | companion/ upload and watch send only unconfirmed events after logout, named data held on the machine; tested against a local server. Done when it runs against a real Forever WTF folder and ships as a signed build (ops.signing). |
@@ -104,4 +105,3 @@ Rows: 69.
 | `ref.wago_io` | wago.io | page shape: a snippet library. Not wago.tools. Those tables stay blocked. |
 | `ref.tbc_rtw` | tbc.rtw.dev | unread past the title. Open it in a browser before borrowing a layout. |
 | `ref.wow_pets` | wow-pets.com | unread. Cloudflare 522 on 2026-09-29. Do not substitute another pet site. |
-

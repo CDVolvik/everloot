@@ -33,6 +33,8 @@ const EVERY_KIND = parseRecords([
   { ...base, eventId: "e:17", kind: "money_event", character: "Thrall", realm: "Forever", category: "loot", copper: 10 },
   { ...base, eventId: "e:18", kind: "recipe_observed", profession: "Alchemy", rank: 60, recipe: "Lesser Healing Potion", difficulty: "optimal", reagents: [] },
   { ...base, eventId: "e:19", kind: "trainer_seen", profession: "Alchemy", recipe: "Lesser Healing Potion", requiredRank: 55, costCopper: 250 },
+  // Read by the market rollup, never by a corpus tool: no TOOL_KINDS entry lists it.
+  { ...base, eventId: "e:20", kind: "auction_snapshot", realm: "Forever", scanId: "scan-1", part: 1, parts: 1, items: [[5, 1, 1, 10, 10]] },
 ]);
 
 const FACTS: Record<keyof typeof TOOL_KINDS, (records: unknown[]) => unknown> = {

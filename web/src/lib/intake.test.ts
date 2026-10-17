@@ -5,7 +5,8 @@ const base = { installId: "test-install-1234", capturedAt: "2026-09-29T12:00:00.
 
 describe("intake contract", () => {
   test("all record kinds exist", () => {
-    expect(ALL_RECORD_KINDS).toHaveLength(19);
+    expect(ALL_RECORD_KINDS).toHaveLength(20);
+    expect(ALL_RECORD_KINDS).toContain("auction_snapshot");
     expect(ALL_RECORD_KINDS).toContain("recipe_observed");
     expect(ALL_RECORD_KINDS).toContain("trainer_seen");
     expect(ALL_RECORD_KINDS).toContain("gold_snapshot");
@@ -75,6 +76,27 @@ describe("intake contract", () => {
       expect.objectContaining({ kind: "auction_scan", copper: 25, count: 4, priceBasis: "unit" }),
     ]);
     expect(result.receipt.rejected.map((r) => r.index)).toEqual([1, 2]);
+  });
+
+  test("a full-scan snapshot keeps whole-copper item summaries and rejects bad tuples", () => {
+    const snap = (items: unknown, over = {}) => ({
+      ...base, kind: "auction_snapshot", realm: "Forever", scanId: "scan-1", part: 1, parts: 2, items, ...over,
+    });
+    const result = parseRecords([
+      snap([[2589, 4, 80, 95, 100], [765, 1, 3, 33, 33]]),
+      snap([[2589, 4, 80, -1, 100]]),
+      snap([[2589, 4, 80, 95.5, 100]]),
+      snap([[0, 4, 80, 95, 100]]),
+      snap([[2589, 0, 80, 95, 100]]),
+      snap([[2589, 4, 80, 95]]),
+      snap([]),
+      snap(Array.from({ length: 1001 }, (_, i) => [i + 1, 1, 1, 1, 1])),
+      snap([[2589, 4, 80, 95, 100]], { part: 3, parts: 2 }),
+    ]);
+    expect(result.records).toEqual([
+      expect.objectContaining({ kind: "auction_snapshot", scanId: "scan-1", part: 1, parts: 2, items: [[2589, 4, 80, 95, 100], [765, 1, 3, 33, 33]] }),
+    ]);
+    expect(result.receipt.rejected.map((r) => r.index)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
   });
 
   test("a recipe observation keeps the colour the window showed at that rank", () => {

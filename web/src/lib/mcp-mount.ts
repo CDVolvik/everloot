@@ -41,6 +41,10 @@ export function createMount(options: { path: string; bearer: boolean }) {
             const loaded = await uploadStore.loadCorpus();
             return loaded.unreachable ? null : { records: loaded.records, dataAsOf: loaded.dataAsOf ?? null };
           },
+          market: async () => {
+            const loaded = await uploadStore.loadMarket();
+            return loaded.state ? { state: loaded.state, dataAsOf: loaded.dataAsOf } : null;
+          },
         });
       } catch (err) {
         console.error("[mcp] knowledge release unavailable", err);

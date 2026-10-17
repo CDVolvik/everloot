@@ -147,6 +147,23 @@ export const auctionScan = base.extend({
   priceBasis: z.literal("unit").optional(),
 });
 
+const SCAN_COUNT = z.number().int().min(1).max(1_000_000);
+const SCAN_COPPER = z.number().int().nonnegative().max(2_000_000_000);
+
+/**
+ * One part of a full auction-house scan the player started (addon 0.3.0+). Each item is
+ * [itemId, auctions, quantity, minUnit, marketUnit], copper per unit. A scan is split into parts of
+ * at most 1,000 items. These rows feed the market rollup, not the general corpus (kb/src/corpus.ts).
+ */
+export const auctionSnapshot = base.extend({
+  kind: z.literal("auction_snapshot"),
+  realm: z.string().min(2).max(60),
+  scanId: z.string().min(3).max(96).regex(/^[A-Za-z0-9:_-]+$/),
+  part: z.number().int().min(1).max(100),
+  parts: z.number().int().min(1).max(100),
+  items: z.array(z.tuple([z.number().int().positive(), SCAN_COUNT, SCAN_COUNT, SCAN_COPPER, SCAN_COPPER])).min(1).max(1000),
+}).refine((row) => row.part <= row.parts, { message: "part cannot exceed parts" });
+
 export const recipeSeen = base.extend({
   kind: z.literal("recipe_seen"),
   profession: z.string().min(1).max(40),
@@ -225,6 +242,7 @@ const recordSchemas = {
   collection_catalog: collectionCatalog,
   collection_owned: collectionOwned,
   auction_scan: auctionScan,
+  auction_snapshot: auctionSnapshot,
   recipe_seen: recipeSeen,
   price_seen: priceSeen,
   recipe_observed: recipeObserved,
@@ -239,7 +257,7 @@ export const ALL_RECORD_KINDS = Object.keys(recordSchemas) as RecordKind[];
 const anyRecord = z.discriminatedUnion("kind", [
   npcSighting, lootWindow, questEvent, vendorList, itemSeen,
   guildSnapshot, raidLockout, attendance, lootAward, gearSnapshot,
-  collectionCatalog, collectionOwned, auctionScan, recipeSeen, priceSeen, recipeObserved, trainerSeen,
+  collectionCatalog, collectionOwned, auctionScan, auctionSnapshot, recipeSeen, priceSeen, recipeObserved, trainerSeen,
   goldSnapshot, moneyEvent,
 ]);
 
