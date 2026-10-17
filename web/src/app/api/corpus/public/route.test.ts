@@ -47,3 +47,9 @@ test("installed addon lists never leave row by row; only the leaderboard's count
   const asked = await GET(req("?kinds=addon_seen"));
   expect(asked.status).toBe(400);
 });
+
+test("auction scans are not corpus records, so asking for them is refused", async () => {
+  const response = await GET(req("?kinds=auction_snapshot"));
+  expect(response.status).toBe(400);
+  expect(store.loadCorpus).not.toHaveBeenCalled();
+});
