@@ -49,6 +49,14 @@ test("installed addon lists never leave row by row; only the leaderboard's count
   expect(asked.status).toBe(400);
 });
 
+test("talent builds are held back from the public corpus", async () => {
+  const build = { ...base, eventId: "e:4", kind: "talent_snapshot", class: "MAGE", level: 30, group: 1, active: true, configId: 7, treeId: 786, exportStatus: "unavailable", points: 1, nodes: [{ nodeId: 1, ranks: 1 }] };
+  store.loadCorpus.mockResolvedValue({ uploads: 1, records: [gold, build] });
+  const body = await (await GET(req())).json();
+  expect(body.records).toEqual([published(gold)]);
+  expect((await GET(req("?kinds=talent_snapshot"))).status).toBe(400);
+});
+
 test("a kind that is not on the allowlist is never returned, filtered or not", async () => {
   const unlisted = { ...base, eventId: "e:9", kind: "talent_snapshot", talents: [] };
   store.loadCorpus.mockResolvedValue({ uploads: 1, records: [gold, unlisted, scan] });
@@ -58,6 +66,6 @@ test("a kind that is not on the allowlist is never returned, filtered or not", a
 });
 
 test("every record kind is either on the allowlist or named private here", () => {
-  const privateKinds = ["addon_seen"];
+  const privateKinds = ["addon_seen", "talent_snapshot"];
   expect([...PUBLIC_RECORD_KINDS, ...privateKinds].sort()).toEqual([...ALL_RECORD_KINDS].sort());
 });
