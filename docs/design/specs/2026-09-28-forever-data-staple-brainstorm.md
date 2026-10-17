@@ -1,7 +1,6 @@
 # WoWVault as a Forever data staple — brainstorm handoff (not yet a spec)
 
-**Date:** 2026-09-28 · **Status:** brainstorm paused mid-design, resume in a new session with
-`superpowers:brainstorming` · **Owner:** Carlos
+**Date:** 2026-09-28 · **Status:** brainstorm paused mid-design, resume the design from here · **Owner:** Carlos
 **Builds on:** `2026-09-27-forever-ai-addon-design.md` (Parts 1–4) and the finished Part 1 (`kb/`).
 
 ## Decided (Carlos, 2026-09-28)
@@ -59,7 +58,7 @@
 | 2 Intake + data | upload API, validation, independent-source counting, rollups (drops/spawns/vendors) | Oct 28 |
 | 3 Public site | item/NPC/quest/drop pages, lore search + **ranking fix**, upload page, privacy + attribution pages, AdSense | Nov 1 |
 | 4 Companion | one desktop app: auto-uploader + AI (MCP server, 4 adapters, fallback, memory, sessions) + file bridge; signed Windows build, Mac if signing is ready | Oct 31 |
-| 5 Launch ops | domain, CurseForge submission (~Oct 24, moderation lag), craft gates, Codex review, legal checks | Oct 24 → Nov 4 |
+| 5 Launch ops | domain, CurseForge submission (~Oct 24, moderation lag), review gates, legal checks | Oct 24 → Nov 4 |
 
 - **Stack:** Vercel (intake API + the existing Next.js `web/`) and Supabase Postgres, with the
   project's own keys.
@@ -101,7 +100,7 @@ WoW-related. Rejected: LootLedger (already a WoW Forever loot addon), Dropwise, 
 2. Write the approved design as a spec: amend the 9/27 design, or add a new
    `2026-09-xx-forever-data-staple-design.md`.
 3. Write one implementation plan per track, start with **Track 1** (the beta deadline), and run
-   the tracks in parallel with subagent-driven development.
+   the tracks in parallel.
 4. Known carry-overs from Part 1 (these also appear in `_STATUS.md` and `kb/README.md`):
    - search ranking: the exact-title article must rank first, and question words must not
      block matches;

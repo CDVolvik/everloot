@@ -1,6 +1,5 @@
 # Read-only KB Service Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. Delegation is not requested for this preparation.
 
 **Goal:** Refuse missing/unready KB artifacts and serve an explicit approved snapshot through a read-only DB handle.
 
@@ -8,7 +7,7 @@
 
 **Tech Stack:** Node >=22, TypeScript, better-sqlite3, MCP SDK, existing Vitest 5.
 
-**Spec:** `docs/superpowers/specs/2026-10-05-readonly-kb-service.md` (review before implementation).
+**Spec:** `docs/design/specs/2026-10-05-readonly-kb-service.md` (review before implementation).
 
 ## Global Constraints
 

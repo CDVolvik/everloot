@@ -83,4 +83,4 @@ Warcraft Wiki dump (CC BY-SA 4.0) + curated entries
   lore request after a cold start takes a few seconds.
 
 Every source is recorded in [`sources/LEDGER.md`](sources/LEDGER.md). Design history is in
-`superpowers/specs/` and `superpowers/plans/`.
+`design/specs/` and `design/plans/`.

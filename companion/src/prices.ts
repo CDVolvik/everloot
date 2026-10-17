@@ -7,7 +7,7 @@ import { adler32, luaString } from "./bridge/lua";
 /**
  * Community market prices into the game: the realms in the player's own SavedVariables are fetched from
  * everloot.app/api/market/prices and written into the EverlootPrices slot addon, which the addon's
- * tooltips read after the next /reload. Design: docs/superpowers/specs/2026-10-16-forever-market-design.md
+ * tooltips read after the next /reload. Design: docs/design/specs/2026-10-16-forever-market-design.md
  */
 
 export const PRICES_ADDON = "EverlootPrices";

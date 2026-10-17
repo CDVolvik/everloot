@@ -9,7 +9,7 @@ field.
 
 **Status:** 0.3.0 beta. The automated contract tests pass; the in-client checks in
 `docs/2026-10-08-beta-client-checklist.md` are still open, and the full scan
-(`docs/superpowers/specs/2026-10-16-forever-market-design.md`) has not run in the Forever client.
+(`docs/design/specs/2026-10-16-forever-market-design.md`) has not run in the Forever client.
 
 ## Run it
 

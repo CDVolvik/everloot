@@ -1,6 +1,5 @@
 # Lore Archive Web Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Put the approved knowledge release (257k Warcraft Wiki lore pages, CC BY-SA 4.0) on everloot.app as `/lore`, `/search` and `/lore/[slug]` pages with correct indexing, sitemaps and attribution.
 
@@ -8,7 +7,7 @@
 
 **Tech Stack:** Next.js 15.5 App Router, React 19, better-sqlite3 13 (read-only), `kb/src` search and snapshot modules, Vitest 5 with `renderToStaticMarkup`, Tailwind classes already used by the site.
 
-**Spec:** `docs/superpowers/specs/2026-10-15-lore-archive-web-design.md`
+**Spec:** `docs/design/specs/2026-10-15-lore-archive-web-design.md`
 
 ## Global Constraints
 
@@ -167,7 +166,7 @@ test("a missing release is null and retried", ...)       // stub to a non-existe
 **Files:**
 - Modify: `web/src/components/Header.tsx` (primary nav gains `<Link href="/lore">Lore</Link>` after Database; the open menu gains a Lore link beside About)
 - Modify: `web/src/app/database/page.tsx:20` (`SECTIONS` gains `{ title: "Lore archive", href: "/lore", body: "Warcraft Wiki pages as of November 2023, CC BY-SA 4.0. Lore and history, not collected Forever data." }`)
-- Modify: `docs/superpowers/specs/2026-10-15-lore-archive-web-design.md` (failure table: pages render the unavailable copy with noindex; route handlers return 503)
+- Modify: `docs/design/specs/2026-10-15-lore-archive-web-design.md` (failure table: pages render the unavailable copy with noindex; route handlers return 503)
 - Test: extend `web/src/app/database/gap-rendering.test.tsx` with one assertion that the database page html contains `href="/lore"`; add `web/src/components/header.test.tsx` asserting the rendered header contains `href="/lore"` (render `<Header />` with `renderToStaticMarkup`; it is a client component but renders statically).
 
 - [ ] **Step 1: Write the two failing assertions**
