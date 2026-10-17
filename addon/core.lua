@@ -129,6 +129,8 @@ SlashCmdList["EVERLOOT"] = function(msg)
     print(E:Status())
   elseif msg == "version" then
     print("Everloot " .. E.VERSION)
+  elseif (msg == "raid" or msg == "raid code") and E.RaidCommand then
+    E.RaidCommand(msg == "raid code" and "code" or nil)
   elseif msg == "auctions on" or msg == "auctions off" then
     EverlootDB.toggles.auctions = (msg == "auctions on")
     print("Everloot: auction scans " .. (EverlootDB.toggles.auctions and "on" or "off") .. ". /reload to apply.")
@@ -144,6 +146,6 @@ SlashCmdList["EVERLOOT"] = function(msg)
       print("Everloot: installed addon list off; all recorded addon rows were deleted from this file. /reload to apply.")
     end
   else
-    print("Everloot commands: /everloot status, /everloot auctions on|off, /everloot addons on|off, /ask <question>")
+    print("Everloot commands: /everloot status, /everloot auctions on|off, /everloot addons on|off, /everloot raid [code], /ask <question>")
   end
 end

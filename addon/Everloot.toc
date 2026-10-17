@@ -18,3 +18,5 @@ modules\professions.lua
 modules\ask.lua
 modules\addons.lua
 modules\mapbounds.lua
+modules\raid_data.lua
+modules\raid.lua
