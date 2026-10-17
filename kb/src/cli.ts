@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { auditSources } from "./audit-sources.js";
 import { BlizzardClient } from "./blizzard/client.js";
-import { checkBuilds, loadRegistry, recordBuilds, saveRegistry, VERSION_SERVICE } from "./builds.js";
+import { checkBuilds, loadRegistry, recordBuilds, saveRegistry, versionsUrl } from "./builds.js";
 import { diffSnapshots } from "./client-diff.js";
 import { CASC_LIBRARY, extractTables, openCdn } from "./client-extract.js";
 import { writeClientSnapshot } from "./client-snapshot.js";
@@ -199,7 +199,7 @@ async function main(): Promise<number> {
       const products = (flags.get("product") || "wow_classic_beta,wow_classic_era").split(",").map((p) => p.trim()).filter(Boolean);
       const path = flags.get("registry") || "data/builds.json";
       const result = await checkBuilds(loadRegistry(path), products, async (product) => {
-        const res = await fetch(`${VERSION_SERVICE}/${product}/versions`, { signal: AbortSignal.timeout(15_000) });
+        const res = await fetch(versionsUrl(product), { signal: AbortSignal.timeout(15_000) });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.text();
       }, new Date());

@@ -35,9 +35,9 @@ export default async function NpcPage(props: { params: Promise<{ id: string }> }
   return (
     <article className="space-y-8 max-w-4xl">
       <header className="space-y-3">
-        <p className="uppercase tracking-[0.2em] text-xs text-gold-500/80">WoW: Forever · npc</p>
-        <h1 className="font-display text-3xl sm:text-4xl font-bold text-parchment-100 tracking-tight">{title}</h1>
-        <p className="text-sm text-parchment-100/60">
+        <p className="font-mono text-xs text-muted">WoW: Forever · npc</p>
+        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">{title}</h1>
+        <p className="text-sm text-muted">
           {unreachable
             ? STORAGE_UNREACHABLE
             : page.name
@@ -48,16 +48,16 @@ export default async function NpcPage(props: { params: Promise<{ id: string }> }
 
       {unreachable ? null : (
       <section className="space-y-2">
-        <h2 className="font-display text-2xl text-parchment-100">Drops</h2>
+        <h2 className="text-2xl text-fg">Drops</h2>
         {zero ? (
-          <p className="text-sm text-parchment-100/85">No items observed in {zero.kills} recorded loot windows. {zero.reporters} install IDs.</p>
+          <p className="text-sm text-fg">No items observed in {zero.kills} recorded loot windows. {zero.reporters} install IDs.</p>
         ) : dropped.length === 0 ? (
-          <p className="text-sm text-parchment-100/70">Loot observations unrecorded. Public frequencies require source observations from 3 install IDs.</p>
+          <p className="text-sm text-fg-2">Loot observations unrecorded. Public frequencies require source observations from 3 install IDs.</p>
         ) : (
-          <ul className="text-sm text-parchment-100/85 space-y-1">
+          <ul className="text-sm text-fg space-y-1">
             {dropped.map((row) => (
               <li key={row.itemId}>
-                <Link href={`/database/items/${row.itemId}`} className="text-gold-400 hover:underline underline-offset-4">Item {row.itemId}</Link>
+                <Link href={`/database/items/${row.itemId}`} className="text-accent hover:underline underline-offset-4">Item {row.itemId}</Link>
                 {" "}· {row.drops} item observations in {row.kills} loot windows · {row.reporters} install IDs
               </li>
             ))}
@@ -66,15 +66,15 @@ export default async function NpcPage(props: { params: Promise<{ id: string }> }
       </section>
       )}
 
-      <p className="text-sm text-parchment-100/60">Loot windows are observations, not verified kills. Distinct install IDs do not prove independent players.</p>
+      <p className="text-sm text-muted">Loot windows are observations, not verified kills. Distinct install IDs do not prove independent players.</p>
 
       {unreachable ? null : (
       <section className="space-y-2">
-        <h2 className="font-display text-2xl text-parchment-100">Map</h2>
+        <h2 className="text-2xl text-fg">Map</h2>
         {page.pins.length === 0 ? (
-          <p className="text-sm text-parchment-100/70">No agreed position. A pin needs 3 installs on the same map.</p>
+          <p className="text-sm text-fg-2">No agreed position. A pin needs 3 installs on the same map.</p>
         ) : (
-          <ul className="text-sm text-parchment-100/85 space-y-1">
+          <ul className="text-sm text-fg space-y-1">
             {page.pins.map((pin) => (
               <li key={pin.mapId}>
                 Map {pin.mapId} at {pin.x}, {pin.y} · {pin.reporters} reporters
@@ -85,8 +85,8 @@ export default async function NpcPage(props: { params: Promise<{ id: string }> }
       </section>
       )}
 
-      <p className="text-sm text-parchment-100/60">
-        <Link href="/database/npcs" className="text-gold-400 hover:underline underline-offset-4">NPC lookup</Link>
+      <p className="text-sm text-muted">
+        <Link href="/database/npcs" className="text-accent hover:underline underline-offset-4">NPC lookup</Link>
       </p>
     </article>
   );

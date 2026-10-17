@@ -2,7 +2,7 @@ import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vitest";
-import { checkBuilds, loadRegistry, parseVersions, recordBuilds, saveRegistry, type BuildRegistry } from "../src/builds.js";
+import { checkBuilds, loadRegistry, parseVersions, recordBuilds, saveRegistry, versionsUrl, type BuildRegistry } from "../src/builds.js";
 
 const fixture = (name: string) => readFileSync(new URL(`./fixtures/versions/${name}`, import.meta.url), "utf8");
 const BETA = "84bea4233331e390fda8724c6f91ffa5";
@@ -100,12 +100,16 @@ test("a malformed answer for one product is reported as that product's error", a
   expect(result.errors[0].error).toMatch(/version list/);
 });
 
-test("a registry is saved and loaded back unchanged; a missing file is an empty registry", () => {
-  const dir = mkdtempSync(join(tmpdir(), "kb-builds-"));
-  expect(loadRegistry(join(dir, "none.json"))).toEqual({ builds: [] });
+test("the version list is asked for over HTTPS", () => {
+  expect(versionsUrl("wow_classic_beta")).toBe("https://us.version.battle.net/v2/products/wow_classic_beta/versions");
+});
+
+test("a registry is saved into a folder that does not exist yet, as on a fresh clone", () => {
+  const path = join(mkdtempSync(join(tmpdir(), "kb-builds-")), "data", "builds.json");
+  expect(loadRegistry(path)).toEqual({ builds: [] });
   const { registry } = recordBuilds(empty(), "wow_classic_beta", parseVersions(fixture("wow_classic_beta-70450.txt")), t0);
-  saveRegistry(join(dir, "builds.json"), registry);
-  expect(loadRegistry(join(dir, "builds.json"))).toEqual(registry);
+  saveRegistry(path, registry);
+  expect(loadRegistry(path)).toEqual(registry);
 });
 
 test("a file that is not a registry is refused", () => {

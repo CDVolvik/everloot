@@ -211,6 +211,32 @@ export const moneyEvent = base.extend({
   copper: COPPER.min(1),
 });
 
+// --- Addon 0.2.6: installed addons (only when the player turned it on) and zone bounds ---
+
+/** One installed addon as the AddOns list shows it. No settings, no other addon's SavedVariables. */
+export const addonSeen = base.extend({
+  kind: z.literal("addon_seen"),
+  name: z.string().min(1).max(100).describe("The addon's folder name."),
+  title: z.string().min(1).max(120),
+  version: z.string().min(1).max(40).optional().describe("The .toc Version field."),
+  loaded: z.boolean(),
+});
+
+const WORLD_UNITS = z.number().min(-100_000).max(100_000);
+
+/** A zone's corners in world coordinates, from C_Map.GetWorldPosFromMapPos at (0,0) and (1,1). */
+export const mapBounds = base.extend({
+  kind: z.literal("map_bounds"),
+  mapId: z.number().int().positive(),
+  continentId: z.number().int().nonnegative(),
+  left: WORLD_UNITS,
+  top: WORLD_UNITS,
+  right: WORLD_UNITS,
+  bottom: WORLD_UNITS,
+}).refine((row) => row.left !== row.right && row.top !== row.bottom, {
+  message: "map bounds need a width and a height",
+});
+
 const recordSchemas = {
   npc_sighting: npcSighting,
   loot: lootWindow,
@@ -231,6 +257,8 @@ const recordSchemas = {
   trainer_seen: trainerSeen,
   gold_snapshot: goldSnapshot,
   money_event: moneyEvent,
+  addon_seen: addonSeen,
+  map_bounds: mapBounds,
 } as const;
 
 export type RecordKind = keyof typeof recordSchemas;
@@ -240,13 +268,17 @@ const anyRecord = z.discriminatedUnion("kind", [
   npcSighting, lootWindow, questEvent, vendorList, itemSeen,
   guildSnapshot, raidLockout, attendance, lootAward, gearSnapshot,
   collectionCatalog, collectionOwned, auctionScan, recipeSeen, priceSeen, recipeObserved, trainerSeen,
-  goldSnapshot, moneyEvent,
+  goldSnapshot, moneyEvent, addonSeen, mapBounds,
 ]);
 
 export type IntakeRecord = z.infer<typeof anyRecord>;
 
+/** The game client's version and build from GetBuildInfo(), e.g. 1.60.1.70450. Addon 0.2.6+. */
+export const CLIENT_BUILD = z.string().max(32).regex(/^\d+(\.\d+)+$/);
+
 export const uploadPayload = z.object({
   addonVersion: z.string().min(1).max(20),
+  clientBuild: CLIENT_BUILD.optional(),
   records: z.array(z.unknown()).min(1).max(2000),
 });
 
@@ -268,6 +300,7 @@ export interface ValidationResult {
 /** An upload reduced to its accepted records: what a store may persist, what a corpus may serve. */
 export interface CanonicalUpload {
   addonVersion: string;
+  clientBuild?: string;
   records: IntakeRecord[];
 }
 
@@ -328,7 +361,8 @@ export function parseUpload(payload: unknown): ParsedUpload {
     };
   }
   const { records, receipt } = parseRecords(parsed.data.records);
-  return { ok: true, upload: { addonVersion: parsed.data.addonVersion, records }, receipt };
+  const { addonVersion, clientBuild } = parsed.data;
+  return { ok: true, upload: { addonVersion, ...(clientBuild ? { clientBuild } : {}), records }, receipt };
 }
 
 /**

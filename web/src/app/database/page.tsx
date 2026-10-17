@@ -34,13 +34,13 @@ export default async function DatabasePage() {
   return (
     <article className="space-y-10 max-w-4xl">
       <header className="space-y-3">
-        <p className="uppercase tracking-[0.2em] text-xs text-gold-500/80">
+        <p className="font-mono text-xs text-muted">
           Thottbot reborn · corroborated only
         </p>
-        <h1 className="font-display text-3xl sm:text-4xl font-bold text-parchment-100 tracking-tight">
+        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">
           Forever Database
         </h1>
-        <p className="text-lg text-parchment-100/75 max-w-2xl">
+        <p className="text-lg text-fg-2 max-w-2xl">
           Items, NPCs, quests and vendors for WoW: Forever — built from data players
           collect, with public facts gated by matching install reports. Distinct install IDs
           do not establish independent players. Actual beta-client collection remains unverified.
@@ -49,33 +49,33 @@ export default async function DatabasePage() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {counts.map((c) => (
-          <div key={c.label} className="rounded-xl border border-parchment-100/10 bg-parchment-900 p-5 text-center">
-            <div className="font-display text-3xl font-bold text-gold-400">{stats.unreachable ? "unrecorded" : c.value}</div>
-            <div className="mt-1 text-xs uppercase tracking-wider text-parchment-100/60">{c.label}</div>
+          <div key={c.label} className="rounded-xl border border-line bg-panel p-5 text-center">
+            <div className={`${stats.unreachable ? "text-xl" : "text-3xl"} font-bold text-accent`}>{stats.unreachable ? "unrecorded" : c.value}</div>
+            <div className="mt-1 text-xs font-mono text-muted">{c.label}</div>
           </div>
         ))}
       </div>
-      {!stats.unreachable && <p className="text-xs text-parchment-100/60">{dataAgeLabel(stats.dataAsOf)}</p>}
+      {!stats.unreachable && <p className="text-xs text-muted">{dataAgeLabel(stats.dataAsOf)}</p>}
 
       <div className="grid md:grid-cols-2 gap-4">
         {SECTIONS.map((s) => (
-          <Link key={s.title} href={s.href} className="rounded-xl border border-parchment-100/10 p-5 bg-parchment-900 hover:border-gold-400/40">
-            <h2 className="font-display text-lg font-semibold text-gold-400">{s.title}</h2>
-            <p className="mt-1 text-sm text-parchment-100/80">{s.body}</p>
+          <Link key={s.title} href={s.href} className="rounded-xl border border-line p-5 bg-panel hover:border-accent">
+            <h2 className="text-lg font-semibold text-accent">{s.title}</h2>
+            <p className="mt-1 text-sm text-fg-2">{s.body}</p>
           </Link>
         ))}
       </div>
 
-      <div className="rounded-2xl border border-arcane/30 bg-parchment-900 p-6">
-        <h2 className="font-display text-xl text-parchment-100">Be the first source</h2>
-        <p className="mt-1 text-sm text-parchment-100/75 max-w-xl">
+      <div className="rounded-2xl border border-line bg-panel p-6">
+        <h2 className="text-xl text-fg">Be the first source</h2>
+        <p className="mt-1 text-sm text-fg-2 max-w-xl">
           {stats.unreachable ? (
             STORAGE_UNREACHABLE
           ) : (
             <>
               A count above is what the store returned. Zero means that store was empty. Run the addon,
               send data on the{" "}
-              <Link href="/upload" className="text-gold-400 hover:underline underline-offset-4">upload page</Link>,
+              <Link href="/upload" className="text-accent hover:underline underline-offset-4">upload page</Link>,
               and watch your farms become the reference.
             </>
           )}

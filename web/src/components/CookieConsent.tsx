@@ -7,7 +7,7 @@ const OPEN_PREFERENCES = "everloot:cookie-preferences";
 
 export function CookiePreferencesButton() {
   return (
-    <button type="button" className="min-h-11 hover:text-gold-400 transition" onClick={() => window.dispatchEvent(new Event(OPEN_PREFERENCES))}>
+    <button type="button" className="min-h-11 hover:text-accent transition" onClick={() => window.dispatchEvent(new Event(OPEN_PREFERENCES))}>
       Cookie preferences
     </button>
   );
@@ -68,17 +68,17 @@ export default function CookieConsent({ adsenseClient }: { adsenseClient?: strin
 
   if (!visible) return null;
   return (
-    <section aria-labelledby="cookie-heading" className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[min(92%,640px)] z-50 rounded-xl border border-gold-500/30 bg-parchment-950 p-4 shadow-xl" onKeyDown={(event) => { if (event.key === "Escape" && choice) close(); }}>
-      <h2 ref={heading} tabIndex={-1} id="cookie-heading" className="font-semibold text-parchment-100">Cookie preferences</h2>
-      <p className="mt-1 text-sm text-parchment-100/90">
+    <section aria-labelledby="cookie-heading" className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[min(92%,640px)] z-50 rounded-xl border border-line bg-canvas p-4" onKeyDown={(event) => { if (event.key === "Escape" && choice) close(); }}>
+      <h2 ref={heading} tabIndex={-1} id="cookie-heading" className="font-semibold text-fg">Cookie preferences</h2>
+      <p className="mt-1 text-sm text-fg">
         Optional advertising loads only if you accept. No analytics service is currently enabled.
         Your choice is saved when browser storage is available. You can change it in the footer.
       </p>
-      {saveFailed && <p role="status" className="mt-2 text-sm text-parchment-100/90">Your browser could not save this choice permanently. {choice === "rejected" ? "Optional cookies remain rejected in this tab; if all storage is blocked, keep the current URL to preserve rejection when reloading." : "Acceptance applies to this page only. Recheck your preferences after reloading."}</p>}
+      {saveFailed && <p role="status" className="mt-2 text-sm text-fg">Your browser could not save this choice permanently. {choice === "rejected" ? "Optional cookies remain rejected in this tab; if all storage is blocked, keep the current URL to preserve rejection when reloading." : "Acceptance applies to this page only. Recheck your preferences after reloading."}</p>}
       <div className="mt-3 flex flex-wrap items-center gap-2 justify-end">
-        {choice && <button type="button" onClick={close} className="min-h-11 px-3 text-sm rounded-md border border-parchment-100/20">Close</button>}
-        <button type="button" onClick={() => decide("rejected")} className="min-h-11 px-3 text-sm rounded-md border border-parchment-100/20 hover:border-parchment-100/40 transition">Reject optional cookies</button>
-        <button type="button" onClick={() => decide("accepted")} className="min-h-11 px-3 text-sm rounded-md bg-gold-500 text-parchment-950 font-medium hover:bg-gold-400 transition">Accept optional cookies</button>
+        {choice && <button type="button" onClick={close} className="btn min-h-11 px-3 text-sm">Close</button>}
+        <button type="button" onClick={() => decide("rejected")} className="btn min-h-11 px-3 text-sm">Reject optional cookies</button>
+        <button type="button" onClick={() => decide("accepted")} className="btn btn-primary min-h-11 px-3 text-sm">Accept optional cookies</button>
       </div>
     </section>
   );

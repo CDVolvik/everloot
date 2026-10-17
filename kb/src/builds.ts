@@ -1,7 +1,8 @@
-import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
 
 /**
- * Build registry from Blizzard's public version service (http://us.patch.battle.net:1119/<product>/versions):
+ * Build registry from Blizzard's public version service (https://us.version.battle.net/v2/products/<product>/versions):
  * which builds of each product exist, and when Everloot first saw them. It reads build identifiers only,
  * never game files. A build is identified by product + BuildConfig, not by its version label.
  */
@@ -98,7 +99,10 @@ export function recordBuilds(
   return { registry: { builds }, added };
 }
 
-export const VERSION_SERVICE = "http://us.patch.battle.net:1119";
+/** The HTTPS front of the version service; it answers with the same table as the old port-1119 one. */
+export function versionsUrl(product: string): string {
+  return `https://us.version.battle.net/v2/products/${encodeURIComponent(product)}/versions`;
+}
 
 /** The registry at `path`; a file that does not exist yet is an empty registry. */
 export function loadRegistry(path: string): BuildRegistry {
@@ -110,6 +114,7 @@ export function loadRegistry(path: string): BuildRegistry {
 
 /** Written beside the target and renamed into place, so a crash never leaves half a registry. */
 export function saveRegistry(path: string, registry: BuildRegistry): void {
+  mkdirSync(dirname(path), { recursive: true });
   writeFileSync(`${path}.tmp`, `${JSON.stringify(registry, null, 2)}
 `);
   renameSync(`${path}.tmp`, path);
