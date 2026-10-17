@@ -1,9 +1,10 @@
 # Everloot
 
 An open data companion for **World of Warcraft: Forever**. The Everloot addon records what you
-see while you play: drops, vendors, auction prices, recipes, trainers, your own gold. When you
-upload, [everloot.app](https://everloot.app) publishes the facts that at least three installs agree
-on, with how many reported them and when. It also hosts a lore archive and answers questions for AI
+see while you play: drops, vendors, auction prices, recipes, trainers, your own gold. Uploads are
+public as anonymous observations, and [everloot.app](https://everloot.app) states a fact (a drop
+rate, a spawn point, a recipe range) once at least three installs have reported it, with the count
+and the date beside it. It also hosts a lore archive and answers questions for AI
 assistants over MCP.
 
 The code is open under the AGPL-3.0 and the published data under CC BY-SA 4.0. Everloot doesn't

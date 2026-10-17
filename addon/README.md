@@ -11,7 +11,7 @@ API and never plays the character. Records match the site's intake contract
 
 ## Run it
 
-Download the zip from everloot.app/upload, or build it from this folder:
+Download the zip from everloot.app/upload, or build it from the repository root:
 
     python scripts/package-addon.py
 

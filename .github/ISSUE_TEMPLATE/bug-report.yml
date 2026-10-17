@@ -28,7 +28,7 @@ body:
     id: status
     attributes:
       label: Addon status
-      description: For addon problems, paste the output of /everloot status (it includes the addon version and client build).
+      description: For addon problems, paste the output of /everloot status (it shows the addon version and which modules loaded), and say which client build you play on.
       render: text
   - type: input
     id: page

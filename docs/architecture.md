@@ -27,7 +27,8 @@ Player plays
   -> raw upload in R2, index row in Supabase
   -> cron snapshot merges new events into the corpus
   -> public read: named records only with a grant (kb/src/corpus.ts)
-  -> rollups: a fact is public once at least three installs agree (kb/src/drop-rollup.ts)
+  -> anonymous observations are public as records (/api/corpus/public)
+  -> rollups: the site states a fact once at least three installs reported it (kb/src/drop-rollup.ts)
   -> site pages and MCP gameplay tools
 
 Warcraft Wiki dump (CC BY-SA 4.0) + curated entries
@@ -41,8 +42,8 @@ Warcraft Wiki dump (CC BY-SA 4.0) + curated entries
 
 ## Boundaries
 
-- **Raw and named data stay private.** Raw uploads and the index are never served directly; only
-  the corroborated, sanitized corpus is public.
+- **Raw and named data stay private.** Raw uploads and the index are never served directly. The
+  public corpus holds sanitized anonymous observations, plus named records only with a grant.
 - **The knowledge release holds publishable sources only.** The build refuses Battle.net API rows
   and any cached API response, and the site refuses a release that does not match its manifest.
 - **Credentials stay in Vercel.** Nothing in the repository holds a key; `.env.example` lists names.
@@ -60,14 +61,17 @@ Warcraft Wiki dump (CC BY-SA 4.0) + curated entries
 - **A file bridge, never the game's memory or screen.** The addon writes its save file, and the
   companion reads it and writes answers back as an addon file. That stays inside what Blizzard
   tolerates for addons, and it is why answers appear only after `/reload`.
-- **Nothing public until three installs agree.** Every published fact carries how many installs
-  reported it and when. A wrong upload, or a lying one, cannot publish a fact on its own.
+- **The site states a fact only once three installs reported it.** Each one carries how many
+  installs reported it and when. One wrong upload cannot make the site state a fact; the anonymous
+  observations behind it stay public so anyone can check the count.
 
 ## Known limits
 
 - Three installs are not proof of three people. An install ID cannot show that two installs
   belong to different players.
-- Drop figures are shares of the loot windows players opened, not kill-based drop chances.
+- Drop figures are shares of the loot windows players opened, not kill-based drop chances. A drop
+  rate goes public once three installs have looted its source, even if only one of them saw the
+  item drop.
 - The lore archive is the Warcraft Wiki as of 2023-11-13, with no Forever-specific lore until a
   newer dump is allowed.
 - Blizzard's API has no WoW: Forever namespace yet, so character data comes only from the addon.
