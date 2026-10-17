@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { addonSource } from "@/data/addon-repos";
+import { notFound, redirect } from "next/navigation";
+import { curatedAddon } from "@/data/addon-repos";
 import { addonGithub, type AddonGithubResult } from "@/lib/addon-github";
 import { dataAgeLabel } from "@/lib/data-age";
 import { loadPopularAddons } from "@/lib/rollup-compute";
@@ -9,6 +10,8 @@ import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
 
 export const dynamic = "force-dynamic";
 
+/** Every link that leaves Everloot. */
+const EXT = "noopener noreferrer nofollow";
 const link = "text-accent hover:underline underline-offset-4";
 const button = "btn min-h-11";
 
@@ -18,20 +21,43 @@ const day = (iso: string) => new Date(iso).toISOString().slice(0, 10);
 
 type Props = { params: Promise<{ name: string }> };
 
-const folderName = async (params: Props["params"]) => decodeURIComponent((await params).name);
+type Found = {
+  /** The name as the site spells it, or as typed when storage is down and nothing can be checked. */
+  name: string;
+  stats: Awaited<ReturnType<typeof loadPopularAddons>>["addons"][number] | null;
+  source: NonNullable<ReturnType<typeof curatedAddon>>["source"] | null;
+  usage: Awaited<ReturnType<typeof loadPopularAddons>>;
+} | null;
+
+/**
+ * A page exists for an addon three installs report, or one on the curated list. Anything else is
+ * not found, so a made-up name and a one- or two-install addon answer alike. When storage is down
+ * nothing can be ruled out, so the page renders its outage sentence instead of a 404.
+ * Names match without regard to case; `null` also covers a name that is not valid percent-encoding.
+ */
+async function find(params: Props["params"]): Promise<Found> {
+  let typed: string;
+  try {
+    typed = decodeURIComponent((await params).name);
+  } catch {
+    return null;
+  }
+  const usage = await loadPopularAddons();
+  const lower = typed.toLowerCase();
+  const stats = usage.unreachable ? null : usage.addons.find((a) => a.name === typed) ?? usage.addons.find((a) => a.name.toLowerCase() === lower) ?? null;
+  const curated = curatedAddon(typed);
+  if (!stats && !curated && !usage.unreachable) return null;
+  return { name: stats?.name ?? curated?.name ?? typed, stats, source: curated?.source ?? null, usage };
+}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const name = await folderName(params);
-  const { addons } = await loadPopularAddons();
-  const listed = addons.find((addon) => addon.name === name);
-  const known = listed || addonSource(name);
-  const title = listed?.title ?? name;
+  const found = await find(params);
+  if (!found) return { title: "Addon not found" };
+  const title = found.stats?.title ?? found.name;
   return {
     title: `${title}: addon for WoW: Forever`,
     description: `How many Everloot installs run ${title}, where its author publishes it and what its repository shows. Counts appear once three installs report the addon.`,
-    alternates: { canonical: `/addons/${encodeURIComponent(name)}` },
-    // A name nobody has reported three times and nobody curated is not a page worth indexing.
-    ...(known ? {} : { robots: { index: false, follow: true } }),
+    alternates: { canonical: `/addons/${encodeURIComponent(found.name)}` },
   };
 }
 
@@ -70,7 +96,7 @@ function GithubFacts({ result, repo }: { result: AddonGithubResult; repo: string
         {result.rateLimited
           ? "GitHub is limiting how often Everloot can ask it, so the repository facts are missing for now. They return within the hour."
           : "GitHub did not answer, so the repository facts are missing for now."}{" "}
-        The <a className={link} href={`${repoUrl}/releases`} rel="noopener">releases page</a> has the newest version.
+        The <a className={link} href={`${repoUrl}/releases`} rel={EXT}>releases page</a> has the newest version.
       </p>
     );
   }
@@ -88,7 +114,7 @@ function GithubFacts({ result, repo }: { result: AddonGithubResult; repo: string
         <div className="space-y-2">
           <p className="text-sm text-fg-2">
             Latest release{" "}
-            <a className={link} href={g.release.url} rel="noopener">{g.release.name ?? g.release.tag}</a>
+            <a className={link} href={g.release.url} rel={EXT}>{g.release.name ?? g.release.tag}</a>
             {g.release.name && g.release.name !== g.release.tag ? ` (${g.release.tag})` : ""}, published {g.release.date}.
           </p>
           {g.release.notes && (
@@ -114,17 +140,18 @@ function GithubFacts({ result, repo }: { result: AddonGithubResult; repo: string
         </div>
       )}
       <p className="text-xs text-muted">
-        From GitHub&apos;s public API, refreshed hourly. <a className={link} href={g.url} rel="noopener">View on GitHub</a>
+        From GitHub&apos;s public API, refreshed hourly. <a className={link} href={g.url} rel={EXT}>View on GitHub</a>
       </p>
     </div>
   );
 }
 
 export default async function AddonProfilePage({ params }: Props) {
-  const name = await folderName(params);
-  const { addons, reportingInstalls, unreachable, dataAsOf } = await loadPopularAddons();
-  const stats = addons.find((addon) => addon.name === name) ?? null;
-  const source = addonSource(name);
+  const found = await find(params);
+  if (!found) notFound();
+  const { name, stats, source, usage } = found;
+  const { reportingInstalls, unreachable, dataAsOf } = usage;
+  if (name !== decodeURIComponent((await params).name)) redirect(`/addons/${encodeURIComponent(name)}`);
   const github = source ? await addonGithub(source.repo) : null;
   const title = stats?.title ?? name;
   const repoUrl = source ? `https://github.com/${source.repo}` : null;
@@ -181,8 +208,7 @@ export default async function AddonProfilePage({ params }: Props) {
         ) : (
           <div className="rounded-xl border border-line bg-panel p-6 space-y-2">
             <p className="text-fg">
-              Everloot shows numbers for an addon once three installs report it. This one has not reached three, or
-              no install has reported it.
+              Everloot shows numbers for an addon once three installs report it. This one has not reached three yet.
             </p>
             <OptIn />
           </div>
@@ -197,7 +223,7 @@ export default async function AddonProfilePage({ params }: Props) {
           <p className="text-sm text-fg-2">
             Everloot does not know where this addon&apos;s code is published, so there are no repository facts. If you
             know, <Link href="/contact" className={link}>tell us</Link> or open an issue on{" "}
-            <a className={link} href={`${REPO_URL}/issues`} rel="noopener">GitHub</a>.
+            <a className={link} href={`${REPO_URL}/issues`} rel={EXT}>GitHub</a>.
           </p>
         )}
       </section>
@@ -207,17 +233,17 @@ export default async function AddonProfilePage({ params }: Props) {
         {source ? (
           <>
             <div className="flex flex-wrap gap-3">
-              {repoUrl && <a className={button} href={`${repoUrl}/releases`} rel="noopener">GitHub releases</a>}
-              {source.curseforge && <a className={button} href={source.curseforge} rel="noopener">CurseForge</a>}
-              {source.wago && <a className={button} href={source.wago} rel="noopener">Wago</a>}
-              {source.wowinterface && <a className={button} href={source.wowinterface} rel="noopener">WoWInterface</a>}
+              {repoUrl && <a className={button} href={`${repoUrl}/releases`} rel={EXT}>GitHub releases</a>}
+              {source.curseforge && <a className={button} href={source.curseforge} rel={EXT}>CurseForge</a>}
+              {source.wago && <a className={button} href={source.wago} rel={EXT}>Wago</a>}
+              {source.wowinterface && <a className={button} href={source.wowinterface} rel={EXT}>WoWInterface</a>}
             </div>
             <p className="text-sm text-muted">These links leave Everloot. Everloot hosts no addon files.</p>
           </>
         ) : (
           <p className="text-sm text-fg-2">
             Everloot does not know where the author publishes this one.{" "}
-            <a className={link} rel="noopener" href={`https://www.curseforge.com/wow/search?search=${encodeURIComponent(title)}`}>
+            <a className={link} rel={EXT} href={`https://www.curseforge.com/wow/search?search=${encodeURIComponent(title)}`}>
               Search CurseForge for {title}
             </a>{" "}
             opens a search there; Everloot does not use CurseForge&apos;s data and hosts no addon files.
@@ -241,7 +267,7 @@ export default async function AddonProfilePage({ params }: Props) {
       <footer className="border-t border-line pt-4 text-sm text-muted">
         <p>
           Addon lists are never published row by row, only these counts. How Everloot collects and publishes data is in
-          the <a href={`${REPO_URL}/blob/main/docs/DATA_POLICY.md`} rel="noopener" className={link}>data policy</a>.
+          the <a href={`${REPO_URL}/blob/main/docs/DATA_POLICY.md`} rel={EXT} className={link}>data policy</a>.
         </p>
       </footer>
     </article>

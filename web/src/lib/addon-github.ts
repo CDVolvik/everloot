@@ -1,12 +1,18 @@
 // What GitHub's public REST API says about an addon's repository, cached for an hour per request.
 // GITHUB_TOKEN is optional; without it GitHub allows 60 requests an hour per IP, which a shared host
 // can exhaust, so a profile costs six requests and the answer says when the limit was the reason.
+// A failed answer is remembered for a few minutes, so an outage costs one short call per repo, not six per view.
 // Nothing here throws: a missing repo and an unreachable GitHub are different answers, and a page
 // that cannot be filled in still renders.
 
+import { plainNotes } from "./plain-notes";
+
 const API = "https://api.github.com";
-const REPO_NAME = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
-const NOTES_LIMIT = 1200;
+const SEGMENT = /^(?!\.+$)[A-Za-z0-9_.-]+$/;
+const validRepo = (repo: string) => repo.split("/").length === 2 && repo.split("/").every((part) => SEGMENT.test(part));
+const FAILURE_MS = 5 * 60_000;
+const TIMEOUT_MS = 3000;
+const GITHUB = "https://github.com/";
 const TREE_LIMIT = 40;
 
 export interface AddonGithub {
@@ -38,7 +44,7 @@ async function get(path: string): Promise<unknown> {
   const token = process.env.GITHUB_TOKEN;
   const response = await fetch(`${API}${path}`, {
     headers: { Accept: "application/vnd.github+json", "User-Agent": "everloot.app", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-    signal: AbortSignal.timeout(5000),
+    signal: AbortSignal.timeout(TIMEOUT_MS),
     next: { revalidate: 3600 },
   } as RequestInit);
   if (!response.ok) {
@@ -59,9 +65,22 @@ async function optional<T>(read: () => Promise<T>): Promise<T | null> {
 
 const day = (iso: unknown) => (typeof iso === "string" && /^\d{4}-\d{2}-\d{2}/.test(iso) ? iso.slice(0, 10) : null);
 const text = (value: unknown, max: number) => (typeof value === "string" && value.trim() ? value.trim().slice(0, max) : null);
+/** A GitHub link whole, or null: a URL is never cut, and one that leaves GitHub is not shown. */
+const githubUrl = (value: unknown) => (typeof value === "string" && value.startsWith(GITHUB) ? value : null);
+
+const failures = new Map<string, { until: number; result: AddonGithubResult }>();
 
 export async function addonGithub(repo: string): Promise<AddonGithubResult> {
-  if (!REPO_NAME.test(repo)) return { status: "missing" };
+  if (!validRepo(repo)) return { status: "missing" };
+  const remembered = failures.get(repo);
+  if (remembered && remembered.until > Date.now()) return remembered.result;
+  const result = await read(repo);
+  if (result.status !== "ok") failures.set(repo, { until: Date.now() + FAILURE_MS, result });
+  else failures.delete(repo);
+  return result;
+}
+
+async function read(repo: string): Promise<AddonGithubResult> {
   let info: { html_url?: string; license?: { spdx_id?: string } | null; archived?: boolean };
   try {
     info = (await get(`/repos/${repo}`)) as typeof info;
@@ -69,7 +88,7 @@ export async function addonGithub(repo: string): Promise<AddonGithubResult> {
     if (error instanceof GithubError && (error.code === 404 || error.code === 410)) return { status: "missing" };
     return { status: "unavailable", rateLimited: error instanceof GithubError && error.rateLimited };
   }
-  if (!info || typeof info.html_url !== "string") return { status: "unavailable", rateLimited: false };
+  if (!info || !githubUrl(info.html_url)) return { status: "unavailable", rateLimited: false };
 
   const [release, commits, contributors, contents, issues] = await Promise.all([
     optional(async () => {
@@ -93,7 +112,7 @@ export async function addonGithub(repo: string): Promise<AddonGithubResult> {
     status: "ok",
     data: {
       repo,
-      url: info.html_url,
+      url: info.html_url as string,
       license: spdx && spdx !== "NOASSERTION" ? spdx : null,
       archived: info.archived === true,
       openIssues: typeof issues?.total_count === "number" ? issues.total_count : null,
@@ -102,8 +121,8 @@ export async function addonGithub(repo: string): Promise<AddonGithubResult> {
             tag,
             date: published,
             name: text(release.name, 120),
-            url: text(release.html_url, 300) ?? `${info.html_url}/releases`,
-            notes: text(release.body, NOTES_LIMIT),
+            url: githubUrl(release.html_url) ?? `${info.html_url}/releases`,
+            notes: plainNotes(release.body),
           }
         : null,
       lastCommit: Array.isArray(commits) ? day(commits[0]?.commit?.committer?.date) : null,

@@ -17,5 +17,9 @@ export const ADDON_SOURCES: Readonly<Record<string, AddonSource>> = {
   Polestar: { repo: "fitzforge/polestar", curseforge: "https://www.curseforge.com/wow/addons/polestar-guides" },
 };
 
-export const addonSource = (name: string): AddonSource | null =>
-  Object.hasOwn(ADDON_SOURCES, name) ? ADDON_SOURCES[name] : null;
+/** The curated entry for a folder name, ignoring case, with the name as the map spells it. */
+export function curatedAddon(name: string): { name: string; source: AddonSource } | null {
+  const wanted = name.toLowerCase();
+  const key = Object.keys(ADDON_SOURCES).find((k) => k.toLowerCase() === wanted);
+  return key ? { name: key, source: ADDON_SOURCES[key] } : null;
+}

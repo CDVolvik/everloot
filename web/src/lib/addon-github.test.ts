@@ -1,9 +1,18 @@
-import { afterEach, expect, test, vi } from "vitest";
+import { beforeEach, afterEach, expect, test, vi } from "vitest";
 import { addonGithub } from "./addon-github";
+import { plainNotes } from "./plain-notes";
 
-const REPO = "someone/AwesomeAddon";
-const info = { html_url: `https://github.com/${REPO}`, license: { spdx_id: "MIT" }, archived: false };
-const release = { tag_name: "v1.2.0", name: "Spring update", published_at: "2026-10-14T16:50:15Z", html_url: `${info.html_url}/releases/tag/v1.2.0`, body: "Fixed the tooltip." };
+// A new repo per test: failed answers are remembered for a few minutes by repo name.
+let REPO = "someone/AwesomeAddon";
+let counter = 0;
+const info = { html_url: "", license: { spdx_id: "MIT" }, archived: false };
+const release = { tag_name: "v1.2.0", name: "Spring update", published_at: "2026-10-14T16:50:15Z", html_url: "", body: "Fixed the tooltip." };
+
+beforeEach(() => {
+  REPO = `someone/AwesomeAddon${++counter}`;
+  info.html_url = `https://github.com/${REPO}`;
+  release.html_url = `${info.html_url}/releases/tag/v1.2.0`;
+});
 
 function answer(url: string): Response {
   const u = new URL(url);
@@ -90,4 +99,53 @@ test("no stated licence is null, and a name that is not owner/name never reaches
   const fetch = stubFetch(answer);
   expect(await addonGithub("../../orgs/x")).toEqual({ status: "missing" });
   expect(fetch).not.toHaveBeenCalled();
+});
+
+test("a dot-only segment is not a repository", async () => {
+  const fetch = stubFetch(answer);
+  for (const repo of ["../x", "./x", "x/..", "x/.", "a/b/c", "x"]) expect(await addonGithub(repo)).toEqual({ status: "missing" });
+  expect(fetch).not.toHaveBeenCalled();
+});
+
+test("a failure is remembered for a few minutes, so an outage is one call per repo, not six per view", async () => {
+  const fetch = stubFetch(() => new Response("{}", { status: 502 }));
+  await addonGithub(REPO);
+  await addonGithub(REPO);
+  expect(fetch).toHaveBeenCalledTimes(1);
+  vi.useFakeTimers();
+  vi.advanceTimersByTime(6 * 60_000);
+  await addonGithub(REPO);
+  vi.useRealTimers();
+  expect(fetch).toHaveBeenCalledTimes(2);
+});
+
+test("calls give up after a short timeout", async () => {
+  const fetch = stubFetch(answer);
+  await addonGithub(REPO);
+  const [, init] = fetch.mock.calls[0] as unknown as [string, RequestInit];
+  expect(init.signal).toBeInstanceOf(AbortSignal);
+});
+
+test("a release link that leaves GitHub is replaced by the releases page, and links are never cut", async () => {
+  const long = `${info.html_url}/releases/tag/${"v".repeat(500)}`;
+  stubFetch((url) => (new URL(url).pathname.endsWith("/releases/latest") ? Response.json({ ...release, html_url: "https://evil.example/x" }) : answer(url)));
+  const off = await addonGithub(REPO);
+  expect(off.status === "ok" && off.data.release?.url).toBe(`${info.html_url}/releases`);
+  REPO = `someone/AwesomeAddon${++counter}`;
+  info.html_url = `https://github.com/${REPO}`;
+  stubFetch((url) => (new URL(url).pathname.endsWith("/releases/latest") ? Response.json({ ...release, html_url: long }) : answer(url)));
+  const kept = await addonGithub(REPO);
+  expect(kept.status === "ok" && kept.data.release?.url).toBe(long);
+});
+
+const NL = String.fromCharCode(10);
+
+test("release notes lose their markdown and get an ellipsis when cut", () => {
+  const input = ["## Fixes", "- **Bold** and _soft_ and `code`", "* [link](https://x.example) ![img](https://y.example/a.png)", "<b>tag</b>"].join(NL);
+  expect(plainNotes(input)).toBe(["Fixes", "- Bold and soft and code", "- link img", "tag"].join(NL));
+  const cut = plainNotes("word ".repeat(400), 100)!;
+  expect(cut.length).toBeLessThanOrEqual(100);
+  expect(cut.endsWith("…")).toBe(true);
+  expect(plainNotes("short")).toBe("short");
+  expect(plainNotes("   ")).toBeNull();
 });

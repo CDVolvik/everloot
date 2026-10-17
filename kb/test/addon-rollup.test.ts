@@ -122,13 +122,15 @@ test("the leaderboard's rows leave out addons fewer than three installs report, 
   expect(JSON.stringify(addons)).not.toContain("MyGuildTools");
 });
 
-test("a version is listed only when three installs report it, newest report first", () => {
+test("a version is listed only when three installs report it, highest version first", () => {
   const v = (installId: string, version: string, capturedAt: string): AddonSeenRow => ({ ...seen(installId, "Questie", capturedAt), version });
   const { addons } = popularAddonsFromRecords([
     v("a", "1.0", "2026-10-10T00:00:00Z"), v("b", "1.0", "2026-10-10T00:00:00Z"), v("c", "1.0", "2026-10-11T00:00:00Z"),
     v("a", "1.1", "2026-10-15T00:00:00Z"), v("b", "1.1", "2026-10-15T00:00:00Z"), v("c", "1.1", "2026-10-16T00:00:00Z"),
+    v("a", "1.9", "2026-10-16T00:00:00Z"), v("b", "1.9", "2026-10-16T00:00:00Z"), v("c", "1.9", "2026-10-16T00:00:00Z"),
+    v("a", "1.10", "2026-10-01T00:00:00Z"), v("b", "1.10", "2026-10-01T00:00:00Z"), v("c", "1.10", "2026-10-01T00:00:00Z"),
     v("a", "9.9-private", "2026-10-16T00:00:00Z"), v("b", "9.9-private", "2026-10-16T00:00:00Z"),
   ].map((row) => ({ kind: "addon_seen", ...row })), AS_OF);
-  expect(addons[0].versions).toEqual([{ version: "1.1", installs: 3 }, { version: "1.0", installs: 3 }]);
+  expect(addons[0].versions).toEqual(["1.10", "1.9", "1.1", "1.0"].map((version) => ({ version, installs: 3 })));
   expect(JSON.stringify(addons)).not.toContain("9.9-private");
 });

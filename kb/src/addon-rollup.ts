@@ -27,7 +27,7 @@ export interface AddonPopularity {
   installs: number;
   /** Installs that had it loaded in at least one report. */
   loadedInstalls: number;
-  /** Versions at least three installs reported, newest report first. A version fewer installs report is left out. */
+  /** Versions at least three installs reported, newest version first. A version fewer installs report is left out. */
   versions: { version: string; installs: number }[];
   /** loadedInstalls out of every install that reported its addons. */
   share: number;
@@ -120,7 +120,7 @@ export function rollupAllAddons(rows: AddonSeenRow[], asOf: string | Date = new 
       loadedInstalls: e.loaded.size,
       versions: [...e.versions]
         .filter(([, v]) => v.installs.size >= INDEPENDENT_INSTALLS)
-        .sort(([a, x], [b, y]) => y.last - x.last || a.localeCompare(b))
+        .sort(([a], [b]) => b.localeCompare(a, "en", { numeric: true }))
         .map(([version, v]) => ({ version, installs: v.installs.size })),
       share: e.loaded.size / reporting.size,
       firstSeen: new Date(firstSeen).toISOString(),
