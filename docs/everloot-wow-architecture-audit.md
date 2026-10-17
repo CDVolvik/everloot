@@ -26,7 +26,7 @@ Phase 0. It compares the brief with the repository as it is, and proposes a phas
 
 | Brief component | Status | Reuse | Gap |
 |---|---|---|---|
-| A. Build monitor | Missing | `kb` CLI pattern; R2 helpers in `web/src/lib/upload-store.ts`; the Vercel cron route pattern | A registry of builds from Blizzard's public version service (`us.patch.battle.net:1119/<product>/versions`), new-build detection, a queue state |
+| A. Build monitor | Missing | `kb` CLI pattern; R2 helpers in `web/src/lib/upload-store.ts`; the Vercel cron route pattern | A registry of builds from Blizzard's public version service (`https://us.version.battle.net/v2/products/<product>/versions`), new-build detection, a queue state |
 | B. Extractor | Missing | `kb` importers as the pattern; `@rhyster/wow-casc-dbc` (MIT, Node/TS) reads CASC from Blizzard's CDN and parses DB2 with WoWDBDefs definitions | Everything; runs on a maintainer machine or a manually triggered GitHub Action, never in a Vercel function |
 | C. Normalized, versioned store | Partly exists | The release pattern: immutable SQLite file, `.manifest.json`, sha256, `audit-sources`, the `sources` registry with `publishable` | A per-build snapshot of client tables |
 | D. Diff engine | Missing | Test style of `kb/test/snapshot.test.ts` | Field-level diff between two snapshots, noise filters, mass-deletion guard |
