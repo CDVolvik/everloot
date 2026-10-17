@@ -31,7 +31,8 @@ const USAGE = `usage: npm run kb -- <command> --db <path>
     run it against a public release you are serving)
   snapshot <out.sqlite> --db <source knowledge base>   (writes a filtered public release + manifest,
     outside the database's own folder, e.g. data/release/kb.sqlite)
-  audit-sources <file.sqlite...>   (rows per source in each file; exits 1 if any source is not publishable)
+  audit-sources <file.sqlite...>   (rows per source and cached API rows in each file; exits 1 if anything
+    is not publishable)
 
   A source database and a public release are different artifacts. The serve commands accept only a
   release: an existing file plus its <release>.manifest.json, opened read-only and checked against
@@ -186,7 +187,9 @@ async function main(): Promise<number> {
       let clean = true;
       for (const path of args) {
         const audit = auditSources(path);
-        const counts = Object.entries(audit.sources).map(([id, n]) => `${id}=${n}`).join(" ");
+        const counts = [...Object.entries(audit.sources), ["api_cache", audit.cachedApiRows] as const]
+          .map(([id, n]) => `${id}=${n}`)
+          .join(" ");
         console.log(`${path}: ${counts}${audit.unexpected.length ? `  NOT PUBLISHABLE: ${audit.unexpected.join(", ")}` : ""}`);
         if (audit.unexpected.length) clean = false;
       }

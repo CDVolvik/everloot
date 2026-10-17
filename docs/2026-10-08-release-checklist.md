@@ -66,6 +66,6 @@ response alone does not prove ChatGPT directory compatibility.
 | Companion uploader and `/ask` bridge on a real Forever install | Carlos | `WTF` path, answers shown after `/reload` | open (code tested 2026-10-09) |
 | Signed companion build | Carlos | signing credentials (`ops.signing`) | open |
 | ChatGPT directory / subscription sign-in | agent, after hosting | — | open |
-| Backup and restore rehearsal | Carlos (two read keys), nightly task runs it | maintainer's runbook | built (#27, Brain #349); inactive until `everloot-backup.env` and `everloot-r2-backup.env` exist |
+| Backup and restore rehearsal | Carlos (two read keys), nightly task runs it | maintainer's runbook | built (#27); inactive until the two backup env files exist |
 
 Do not declare full launch complete on this checklist.

@@ -20,7 +20,7 @@ records what actually happened.
 |---|---|---|---|
 | [Warcraft Wiki dump, 2023-11-13](https://archive.org/details/wiki-warcraft.wiki.gg-20231113) (Internet Archive) | CC BY-SA 4.0 | `kb/src/importers/wiki-*.ts`; source id `warcraft-wiki-2023` | Yes: 257,110 pages (2026-10-05 release), 260,572 (2026-10-16 build) |
 | Curated entries, our own words | CC BY-SA 4.0 | `kb/curated/forever.yaml`; one entry, citing [Blizzard's announcement](https://news.blizzard.com/en-us/article/24302498/updated-9-24-pre-purchase-the-world-of-warcraft-forever-collectors-edition) | Yes: 1 row |
-| Players' Everloot uploads | CC BY-SA 4.0, by the uploader's choice | Written only by `web/src/app/api/intake/route.ts`, through `putUpload` in `web/src/lib/upload-store.ts` | Public corpus only, after corroboration |
+| Players' Everloot uploads | CC BY-SA 4.0 once the upload consent sentence ships (open-source PR b); until then, the upload page's existing terms | Written only by `web/src/app/api/intake/route.ts`, through `putUpload` in `web/src/lib/upload-store.ts` | Public corpus only, after corroboration |
 | Guild-family facts: [olympus-viii.org](https://olympus-viii.org/), [olympus-viii.com](https://olympus-viii.com/), [Blizzard forums](https://us.forums.blizzard.com/en/wow/t/olympus-is-recruiting/2355270), [X / Prism](https://x.com/fwprism/status/2101809316382847172), [WoW Forever Outpost](https://wofwforever.com/en/guides/wow-forever-olympus-guild/), [Olympus Guild addon](https://github.com/dnl-gentile/olympus-addon), [YouTube](https://www.youtube.com/watch?v=fihRIfTwd5k), [Dexerto](https://www.dexerto.com/gaming/wow-forever-player-creates-mod-that-hides-asmongolds-entire-guild-3412321/) | Facts in our own words, each with its page and date; no text copied | `web/src/data/families.ts`; each page read once by hand | Site only |
 | [Polestar](https://github.com/fitzforge/polestar) facts | GPL-3.0-only with a pack exception; we state facts and link, and copy no code or guide text | `web/src/data/polestar.ts`, read from the repository at `06c1c41` (v0.2.4) | Site only |
 | GitHub REST API (`api.github.com`): Polestar's public releases and open issues | GitHub API terms; public metadata, shown with links | `web/src/lib/polestar-github.ts`, hourly, anonymous unless a read-only token is set | Site only |
@@ -73,22 +73,35 @@ Supabase (`uinmowrmyckklpbwzqhn.supabase.co`), Cloudflare R2 (`<account>.r2.clou
 `npm run kb -- audit-sources` on every database built so far, 2026-10-16:
 
 ```
-wowvault-kb.sqlite (working database): curated=1 warcraft-wiki-2023=257110
-wowvault-kb-2026-10-16.sqlite: curated=1 warcraft-wiki-2023=260572
-recovery-script-check.sqlite: curated=1 warcraft-wiki-2023=257110
-release/2026-10-05-everloot-public.sqlite: curated=1 warcraft-wiki-2023=257110
-release/2026-10-16-everloot-public.sqlite: curated=1 warcraft-wiki-2023=260572
-release/wowvault-kb-2026-09-27.sqlite: curated=1 warcraft-wiki-2023=257110
+wowvault-kb.sqlite (working database): curated=1 warcraft-wiki-2023=257110 api_cache=0
+wowvault-kb-2026-10-16.sqlite: curated=1 warcraft-wiki-2023=260572 api_cache=0
+recovery-script-check.sqlite: curated=1 warcraft-wiki-2023=257110 api_cache=0
+release/2026-10-05-everloot-public.sqlite: curated=1 warcraft-wiki-2023=257110 api_cache=0
+release/2026-10-16-everloot-public.sqlite: curated=1 warcraft-wiki-2023=260572 api_cache=0
+release/wowvault-kb-2026-09-27.sqlite: curated=1 warcraft-wiki-2023=257110 api_cache=0
 ```
 
-The raw input folder holds one file, the Warcraft Wiki dump `warcraft.wiki.gg-20231113-history.xml.zst`.
+Every file also has `api_cache=0`: no cached Battle.net responses. The raw input folder holds one
+file, the Warcraft Wiki dump `warcraft.wiki.gg-20231113-history.xml.zst`.
+
+**Public corpus writers.** Uploads are stored by one function, `putUpload` in
+`web/src/lib/upload-store.ts`, and it has one caller, `web/src/app/api/intake/route.ts`. The cron
+snapshot (`writeSnapshot`) only re-reads stored uploads. No script seeds the corpus:
+`web/scripts/corpus-load.mts` works on synthetic rows in memory and writes to no store.
+
+**Addon downloads.** Every zip in `web/public/downloads` contains only `Everloot/*.toc` and
+`Everloot/*.lua`, built from `addon/` by `scripts/package-addon.py`.
+
+**Secrets in history.** `gitleaks git --log-opts=--all` (8.30.1) over 250 commits on every branch,
+2026-10-16: no leaks.
 
 ## History
 
 - **wago.tools importer, 2026-09-27.** An importer for wago.tools' DB2 tables was written that
   morning. A robots.txt check then showed `/db2` is disallowed, and it was removed the same day in
-  `ca185a6`, before the first real build. It never ran against the site, and no wago.tools data
-  exists in any database (see "Release evidence").
+  `ca185a6`, before the first real build. robots.txt then read `Allow: /$` and `Disallow: /`, which
+  blocks everything but the home page. There is no record of the importer being run, and no
+  wago.tools data exists in any database (see "Release evidence").
 - **Live bridge, designed and dropped, 2026-09-27.** The first design
   (`docs/superpowers/specs/2026-09-27-forever-ai-addon-design.md`) described a private "live bridge"
   that would read pixels from the game window, built on wow-ai. It was never built: no screen- or

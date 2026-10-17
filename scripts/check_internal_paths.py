@@ -5,7 +5,10 @@ import subprocess
 import sys
 
 # This file is the one place the patterns are written down, so it is the one file not checked.
-PATTERN = re.compile(r"R21-Brain|_secrets|Users[\\/]+carli|\.t3[\\/]+worktrees")
+PATTERN = re.compile(
+    r"R21-Brain|_secrets|Users[\\/]+carli|\.t3[\\/]+worktrees|[\\/]\.r21[\\/]|projects[\\/]+everloot",
+    re.IGNORECASE,
+)
 SKIP = {"scripts/check_internal_paths.py", "scripts/test_check_internal_paths.py"}
 
 

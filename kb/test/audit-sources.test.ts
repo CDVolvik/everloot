@@ -24,12 +24,20 @@ async function dbWith(rows: Partial<Record<SourceId, number>>): Promise<string> 
 
 test("a database with only wiki and curated rows passes", async () => {
   const p = await dbWith({ "warcraft-wiki-2023": 2, curated: 1 });
-  expect(auditSources(p)).toEqual({ path: p, sources: { "warcraft-wiki-2023": 2, curated: 1 }, unexpected: [] });
+  expect(auditSources(p)).toEqual({ path: p, sources: { "warcraft-wiki-2023": 2, curated: 1 }, cachedApiRows: 0, unexpected: [] });
 });
 
 test("any other source is reported", async () => {
   const p = await dbWith({ "warcraft-wiki-2023": 1, "blizzard-api": 1 });
   expect(auditSources(p).unexpected).toEqual(["blizzard-api"]);
+});
+
+test("cached Blizzard API responses are reported even with no blizzard-api rows", async () => {
+  const p = await dbWith({ "warcraft-wiki-2023": 1 });
+  const db = openDb(p);
+  db.prepare("INSERT INTO api_cache (key, body, fetched_at, expires_at) VALUES ('k', '{}', 'x', 'y')").run();
+  db.close();
+  expect(auditSources(p)).toMatchObject({ cachedApiRows: 1, unexpected: ["api_cache"] });
 });
 
 test("a file that is not a database throws", () => {
