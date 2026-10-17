@@ -30,6 +30,7 @@ records what actually happened.
 | Source | Terms | Evidence | In releases |
 |---|---|---|---|
 | [Blizzard Battle.net API](https://develop.battle.net/) (`us.api.blizzard.com`) | Blizzard Developer API terms: no redistribution, no monetising the data | `kb/src/blizzard/client.ts`; source id `blizzard-api`, `publishable: false` | No. The release build refuses it, and `audit-sources` found it in no file |
+| [Blizzard version service](https://us.version.battle.net/v2/products/wow_classic_beta/versions) (`us.version.battle.net`) | Public build metadata the game launcher reads: build numbers and config hashes, no game files | `kb/src/builds.ts`, `npm run kb -- builds-check` (since 2026-10-17) | No; a local build registry |
 | Wowhead facts (not built) | Gated: Wowhead's Terms of Use must allow it first | [`docs/DATA_POLICY.md`](../DATA_POLICY.md), "Wowhead" | No |
 
 ## Link only
