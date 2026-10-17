@@ -1,0 +1,88 @@
+{
+ "classId": 7,
+ "classSlug": "shaman",
+ "className": "Shaman",
+ "specId": 1489,
+ "build": "1.60.1.70425",
+ "source": {
+  "name": "Talents Forever",
+  "url": "https://talentsforever.com/",
+  "licence": "CC BY 4.0",
+  "licenceUrl": "https://creativecommons.org/licenses/by/4.0/",
+  "retrieved": "2026-10-17",
+  "kind": "talent layout read from the beta client files by Talents Forever"
+ },
+ "rules": {
+  "firstPointLevel": 10,
+  "maxLevel": 60,
+  "dualSpecLevel": 40,
+  "status": "unconfirmed",
+  "note": "Assumed: one point per level from level 10, five points in a tree per row to open the next, a second talent set at level 40. Not read from the game by Everloot."
+ },
+ "trees": [
+  {
+   "id": 71,
+   "name": "Elemental"
+  },
+  {
+   "id": 72,
+   "name": "Enhancement"
+  },
+  {
+   "id": 73,
+   "name": "Restoration"
+  }
+ ],
+ "nodes": [
+  {"id":118450,"treeId":71,"row":1,"col":2,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Convection"}],"prereqs":[]},
+  {"id":415115,"treeId":71,"row":1,"col":3,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Concussion"}],"prereqs":[]},
+  {"id":894389,"treeId":71,"row":2,"col":1,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Elemental Devastation"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":498695,"treeId":71,"row":2,"col":2,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Reverberation"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":233662,"treeId":71,"row":2,"col":3,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Elemental Alacrity"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":117125,"treeId":71,"row":2,"col":4,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Call of Flame"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":958662,"treeId":71,"row":3,"col":1,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Elemental Focus"}],"prereqs":[],"unlock":{"pointsInTree":10}},
+  {"id":97686,"treeId":71,"row":3,"col":2,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Elemental Warding"}],"prereqs":[],"unlock":{"pointsInTree":10}},
+  {"id":642843,"treeId":71,"row":4,"col":1,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Trial by Fire"}],"prereqs":[],"unlock":{"pointsInTree":15}},
+  {"id":324357,"treeId":71,"row":4,"col":2,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Eye of the Storm"}],"prereqs":[],"unlock":{"pointsInTree":15}},
+  {"id":396756,"treeId":71,"row":4,"col":4,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Earthbound"}],"prereqs":[],"unlock":{"pointsInTree":15}},
+  {"id":964592,"treeId":71,"row":5,"col":1,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Elemental Reach"}],"prereqs":[],"unlock":{"pointsInTree":20}},
+  {"id":948663,"treeId":71,"row":5,"col":2,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":408490,"name":"Lava Burst"}],"prereqs":[],"unlock":{"pointsInTree":20}},
+  {"id":507975,"treeId":71,"row":5,"col":3,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Lightning Overload"}],"prereqs":[233662],"unlock":{"pointsInTree":20}},
+  {"id":852977,"treeId":71,"row":6,"col":3,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Elemental Fury"}],"prereqs":[507975],"unlock":{"pointsInTree":25}},
+  {"id":1015355,"treeId":71,"row":7,"col":2,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Elemental Mastery"}],"prereqs":[948663],"unlock":{"pointsInTree":30}},
+  {"id":138510,"treeId":72,"row":1,"col":1,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Earth's Grasp"}],"prereqs":[]},
+  {"id":467804,"treeId":72,"row":1,"col":2,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Thundering Strikes"}],"prereqs":[]},
+  {"id":921750,"treeId":72,"row":1,"col":3,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Ancestral Knowledge"}],"prereqs":[]},
+  {"id":834588,"treeId":72,"row":2,"col":1,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Guardian Totems"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":723654,"treeId":72,"row":2,"col":2,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Mental Dexterity"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":803673,"treeId":72,"row":2,"col":3,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Improved Ghost Wolf"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":917326,"treeId":72,"row":2,"col":4,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Improved Lightning Shield"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":346515,"treeId":72,"row":3,"col":1,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Elemental Weapons"}],"prereqs":[],"unlock":{"pointsInTree":10}},
+  {"id":378375,"treeId":72,"row":3,"col":3,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Shamanistic Focus"}],"prereqs":[],"unlock":{"pointsInTree":10}},
+  {"id":850924,"treeId":72,"row":3,"col":4,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Anticipation"}],"prereqs":[],"unlock":{"pointsInTree":10}},
+  {"id":319572,"treeId":72,"row":4,"col":1,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Toughness"}],"prereqs":[],"unlock":{"pointsInTree":15}},
+  {"id":615780,"treeId":72,"row":4,"col":2,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Flurry"}],"prereqs":[723654],"unlock":{"pointsInTree":15}},
+  {"id":914809,"treeId":72,"row":4,"col":3,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Stormstrike"}],"prereqs":[],"unlock":{"pointsInTree":15}},
+  {"id":162604,"treeId":72,"row":5,"col":1,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Spirit Weapons"}],"prereqs":[],"unlock":{"pointsInTree":20}},
+  {"id":597388,"treeId":72,"row":5,"col":2,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Mental Quickness"}],"prereqs":[],"unlock":{"pointsInTree":20}},
+  {"id":790062,"treeId":72,"row":5,"col":3,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Improved Stormstrike"}],"prereqs":[914809],"unlock":{"pointsInTree":20}},
+  {"id":628531,"treeId":72,"row":6,"col":3,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Maelstrom Weapon"}],"prereqs":[],"unlock":{"pointsInTree":25}},
+  {"id":207785,"treeId":72,"row":7,"col":2,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Rage of the Farseer"}],"prereqs":[597388],"unlock":{"pointsInTree":30}},
+  {"id":715178,"treeId":73,"row":1,"col":2,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Improved Healing Wave"}],"prereqs":[]},
+  {"id":122959,"treeId":73,"row":1,"col":3,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Tidal Focus"}],"prereqs":[]},
+  {"id":919942,"treeId":73,"row":2,"col":1,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Mindfulness"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":527755,"treeId":73,"row":2,"col":2,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Natural Grace"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":486890,"treeId":73,"row":2,"col":3,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Totemic Focus"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":978667,"treeId":73,"row":2,"col":4,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Improved Reincarnation"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":589852,"treeId":73,"row":3,"col":1,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Ancestral Healing"}],"prereqs":[],"unlock":{"pointsInTree":10}},
+  {"id":156985,"treeId":73,"row":3,"col":2,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Healing Focus"}],"prereqs":[],"unlock":{"pointsInTree":10}},
+  {"id":1042749,"treeId":73,"row":3,"col":3,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Water Shield"}],"prereqs":[],"unlock":{"pointsInTree":10}},
+  {"id":177882,"treeId":73,"row":4,"col":1,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Tidal Mastery"}],"prereqs":[],"unlock":{"pointsInTree":15}},
+  {"id":982155,"treeId":73,"row":4,"col":2,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Restorative Totems"}],"prereqs":[],"unlock":{"pointsInTree":15}},
+  {"id":989551,"treeId":73,"row":4,"col":3,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":16190,"name":"Mana Tide Totem"}],"prereqs":[],"unlock":{"pointsInTree":15}},
+  {"id":834230,"treeId":73,"row":5,"col":2,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Healing Way"}],"prereqs":[],"unlock":{"pointsInTree":20}},
+  {"id":205907,"treeId":73,"row":5,"col":3,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Nature's Swiftness"}],"prereqs":[],"unlock":{"pointsInTree":20}},
+  {"id":915590,"treeId":73,"row":6,"col":3,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Purification"}],"prereqs":[],"unlock":{"pointsInTree":25}},
+  {"id":759774,"treeId":73,"row":7,"col":2,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":408521,"name":"Riptide"}],"prereqs":[834230],"unlock":{"pointsInTree":30}}
+ ]
+}

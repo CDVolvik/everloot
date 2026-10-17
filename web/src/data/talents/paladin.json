@@ -1,0 +1,88 @@
+{
+ "classId": 2,
+ "classSlug": "paladin",
+ "className": "Paladin",
+ "specId": 1486,
+ "build": "1.60.1.70425",
+ "source": {
+  "name": "Talents Forever",
+  "url": "https://talentsforever.com/",
+  "licence": "CC BY 4.0",
+  "licenceUrl": "https://creativecommons.org/licenses/by/4.0/",
+  "retrieved": "2026-10-17",
+  "kind": "talent layout read from the beta client files by Talents Forever"
+ },
+ "rules": {
+  "firstPointLevel": 10,
+  "maxLevel": 60,
+  "dualSpecLevel": 40,
+  "status": "unconfirmed",
+  "note": "Assumed: one point per level from level 10, five points in a tree per row to open the next, a second talent set at level 40. Not read from the game by Everloot."
+ },
+ "trees": [
+  {
+   "id": 21,
+   "name": "Holy"
+  },
+  {
+   "id": 22,
+   "name": "Protection"
+  },
+  {
+   "id": 23,
+   "name": "Retribution"
+  }
+ ],
+ "nodes": [
+  {"id":589712,"treeId":21,"row":1,"col":2,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Divine Strength"}],"prereqs":[]},
+  {"id":174930,"treeId":21,"row":1,"col":3,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Divine Intellect"}],"prereqs":[]},
+  {"id":40261,"treeId":21,"row":2,"col":1,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Healing Light"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":1034763,"treeId":21,"row":2,"col":2,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Spiritual Focus"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":66573,"treeId":21,"row":2,"col":3,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Improved Seals"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":776857,"treeId":21,"row":2,"col":4,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Unyielding Faith"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":465436,"treeId":21,"row":3,"col":1,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Voice of Truth"}],"prereqs":[],"unlock":{"pointsInTree":10}},
+  {"id":535268,"treeId":21,"row":3,"col":2,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Reverence"}],"prereqs":[],"unlock":{"pointsInTree":10}},
+  {"id":682689,"treeId":21,"row":3,"col":3,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Purifying Power"}],"prereqs":[],"unlock":{"pointsInTree":10}},
+  {"id":256626,"treeId":21,"row":4,"col":1,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Infusion of Light"}],"prereqs":[],"unlock":{"pointsInTree":15}},
+  {"id":862969,"treeId":21,"row":4,"col":2,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Illumination"}],"prereqs":[535268],"unlock":{"pointsInTree":15}},
+  {"id":262005,"treeId":21,"row":4,"col":3,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Divine Favor"}],"prereqs":[],"unlock":{"pointsInTree":15}},
+  {"id":138308,"treeId":21,"row":5,"col":1,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Divine Precision"}],"prereqs":[198935],"unlock":{"pointsInTree":20}},
+  {"id":198935,"treeId":21,"row":5,"col":2,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":1311606,"name":"Holy Shock"}],"prereqs":[],"unlock":{"pointsInTree":20}},
+  {"id":1035188,"treeId":21,"row":5,"col":3,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Consecrated Ground"}],"prereqs":[],"unlock":{"pointsInTree":20}},
+  {"id":396322,"treeId":21,"row":6,"col":3,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Holy Power"}],"prereqs":[],"unlock":{"pointsInTree":25}},
+  {"id":535360,"treeId":21,"row":7,"col":2,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":1310911,"name":"Light's Vigil"}],"prereqs":[198935],"unlock":{"pointsInTree":30}},
+  {"id":475008,"treeId":22,"row":1,"col":2,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Toughness"}],"prereqs":[]},
+  {"id":227551,"treeId":22,"row":1,"col":3,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Redoubt"}],"prereqs":[]},
+  {"id":506765,"treeId":22,"row":2,"col":1,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Precision"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":354890,"treeId":22,"row":2,"col":2,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Guardian's Favor"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":1025215,"treeId":22,"row":2,"col":4,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Anticipation"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":45658,"treeId":22,"row":3,"col":1,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Improved Seal of Fury"}],"prereqs":[],"unlock":{"pointsInTree":10}},
+  {"id":627815,"treeId":22,"row":3,"col":2,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Improved Righteous Fury"}],"prereqs":[],"unlock":{"pointsInTree":10}},
+  {"id":304863,"treeId":22,"row":3,"col":3,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Shield Specialization"}],"prereqs":[227551],"unlock":{"pointsInTree":10}},
+  {"id":579295,"treeId":22,"row":3,"col":4,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Sacred Duty"}],"prereqs":[],"unlock":{"pointsInTree":10}},
+  {"id":270490,"treeId":22,"row":4,"col":1,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Swift Judgement"}],"prereqs":[45658],"unlock":{"pointsInTree":15}},
+  {"id":217664,"treeId":22,"row":4,"col":2,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"One-Handed Weapon Specialization"}],"prereqs":[],"unlock":{"pointsInTree":15}},
+  {"id":627962,"treeId":22,"row":4,"col":3,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Improved Hammer of Justice"}],"prereqs":[],"unlock":{"pointsInTree":15}},
+  {"id":948088,"treeId":22,"row":5,"col":2,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Templar's Bulwark"}],"prereqs":[],"unlock":{"pointsInTree":20}},
+  {"id":741122,"treeId":22,"row":5,"col":3,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Reckoning"}],"prereqs":[],"unlock":{"pointsInTree":20}},
+  {"id":340653,"treeId":22,"row":6,"col":3,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Iron Creed"}],"prereqs":[],"unlock":{"pointsInTree":25}},
+  {"id":391008,"treeId":22,"row":7,"col":2,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":20925,"name":"Holy Shield"}],"prereqs":[948088],"unlock":{"pointsInTree":30}},
+  {"id":221079,"treeId":23,"row":1,"col":2,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Deflection"}],"prereqs":[]},
+  {"id":209156,"treeId":23,"row":1,"col":3,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Benediction"}],"prereqs":[]},
+  {"id":679396,"treeId":23,"row":2,"col":1,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Improved Judgement"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":860558,"treeId":23,"row":2,"col":2,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Holy Conduit"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":684698,"treeId":23,"row":2,"col":3,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Conviction"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":121028,"treeId":23,"row":3,"col":1,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Vindication"}],"prereqs":[],"unlock":{"pointsInTree":10}},
+  {"id":812796,"treeId":23,"row":3,"col":2,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Sanctified Judgement"}],"prereqs":[],"unlock":{"pointsInTree":10}},
+  {"id":241163,"treeId":23,"row":3,"col":3,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":20375,"name":"Seal of Command"}],"prereqs":[],"unlock":{"pointsInTree":10}},
+  {"id":179787,"treeId":23,"row":3,"col":4,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Pursuit of Justice"}],"prereqs":[],"unlock":{"pointsInTree":10}},
+  {"id":721572,"treeId":23,"row":4,"col":1,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Eye for an Eye"}],"prereqs":[],"unlock":{"pointsInTree":15}},
+  {"id":771045,"treeId":23,"row":4,"col":3,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Sacred Arbiter"}],"prereqs":[],"unlock":{"pointsInTree":15}},
+  {"id":450520,"treeId":23,"row":5,"col":1,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Two-Handed Weapon Specialization"}],"prereqs":[],"unlock":{"pointsInTree":20}},
+  {"id":115863,"treeId":23,"row":5,"col":2,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Vengeance"}],"prereqs":[812796],"unlock":{"pointsInTree":20}},
+  {"id":937183,"treeId":23,"row":5,"col":3,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Repentance"}],"prereqs":[],"unlock":{"pointsInTree":20}},
+  {"id":398012,"treeId":23,"row":6,"col":2,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Champion of the Light"}],"prereqs":[],"unlock":{"pointsInTree":25}},
+  {"id":921043,"treeId":23,"row":6,"col":3,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Instrument of Law"}],"prereqs":[],"unlock":{"pointsInTree":25}},
+  {"id":714665,"treeId":23,"row":7,"col":2,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Twist of Light"}],"prereqs":[],"unlock":{"pointsInTree":30}}
+ ]
+}

@@ -1,0 +1,90 @@
+{
+ "classId": 9,
+ "classSlug": "warlock",
+ "className": "Warlock",
+ "specId": 1490,
+ "build": "1.60.1.70425",
+ "source": {
+  "name": "Talents Forever",
+  "url": "https://talentsforever.com/",
+  "licence": "CC BY 4.0",
+  "licenceUrl": "https://creativecommons.org/licenses/by/4.0/",
+  "retrieved": "2026-10-17",
+  "kind": "talent layout read from the beta client files by Talents Forever"
+ },
+ "rules": {
+  "firstPointLevel": 10,
+  "maxLevel": 60,
+  "dualSpecLevel": 40,
+  "status": "unconfirmed",
+  "note": "Assumed: one point per level from level 10, five points in a tree per row to open the next, a second talent set at level 40. Not read from the game by Everloot."
+ },
+ "trees": [
+  {
+   "id": 91,
+   "name": "Affliction"
+  },
+  {
+   "id": 92,
+   "name": "Demonology"
+  },
+  {
+   "id": 93,
+   "name": "Destruction"
+  }
+ ],
+ "nodes": [
+  {"id":686265,"treeId":91,"row":1,"col":1,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Improved Life Tap"}],"prereqs":[]},
+  {"id":553394,"treeId":91,"row":1,"col":2,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Suppression"}],"prereqs":[]},
+  {"id":876399,"treeId":91,"row":1,"col":3,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Improved Corruption"}],"prereqs":[]},
+  {"id":230531,"treeId":91,"row":2,"col":1,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Grim Reach"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":982661,"treeId":91,"row":2,"col":2,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Soul Harvest"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":180992,"treeId":91,"row":2,"col":3,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Improved Drains"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":415306,"treeId":91,"row":3,"col":1,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Improved Bane of Agony"}],"prereqs":[],"unlock":{"pointsInTree":10}},
+  {"id":139881,"treeId":91,"row":3,"col":2,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Fel Concentration"}],"prereqs":[],"unlock":{"pointsInTree":10}},
+  {"id":458591,"treeId":91,"row":3,"col":3,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Amplify Curse"}],"prereqs":[],"unlock":{"pointsInTree":10}},
+  {"id":87831,"treeId":91,"row":3,"col":4,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Pandemic"}],"prereqs":[],"unlock":{"pointsInTree":10}},
+  {"id":638964,"treeId":91,"row":4,"col":1,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Malevolence"}],"prereqs":[],"unlock":{"pointsInTree":15}},
+  {"id":83523,"treeId":91,"row":4,"col":2,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Nightfall"}],"prereqs":[],"unlock":{"pointsInTree":15}},
+  {"id":747353,"treeId":91,"row":4,"col":3,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Curse of Exhaustion"}],"prereqs":[458591],"unlock":{"pointsInTree":15}},
+  {"id":482828,"treeId":91,"row":5,"col":2,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":18265,"name":"Siphon Life"}],"prereqs":[],"unlock":{"pointsInTree":20}},
+  {"id":76238,"treeId":91,"row":5,"col":3,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Soul Siphon"}],"prereqs":[],"unlock":{"pointsInTree":20}},
+  {"id":463785,"treeId":91,"row":6,"col":3,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Shadow Mastery"}],"prereqs":[],"unlock":{"pointsInTree":25}},
+  {"id":283986,"treeId":91,"row":7,"col":2,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":1316697,"name":"Wrack"}],"prereqs":[482828],"unlock":{"pointsInTree":30}},
+  {"id":1036093,"treeId":92,"row":1,"col":1,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Improved Health Funnel"}],"prereqs":[]},
+  {"id":295926,"treeId":92,"row":1,"col":2,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Improved Imp"}],"prereqs":[]},
+  {"id":466209,"treeId":92,"row":1,"col":3,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Demonic Embrace"}],"prereqs":[]},
+  {"id":309629,"treeId":92,"row":1,"col":4,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Unholy Power"}],"prereqs":[]},
+  {"id":515911,"treeId":92,"row":2,"col":1,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Demonic Aegis"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":154702,"treeId":92,"row":2,"col":2,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Improved Voidwalker"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":465573,"treeId":92,"row":2,"col":3,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Fel Vitality"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":32254,"treeId":92,"row":2,"col":4,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Demonic Energies"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":1030743,"treeId":92,"row":3,"col":1,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Improved Sayaad"}],"prereqs":[],"unlock":{"pointsInTree":10}},
+  {"id":278867,"treeId":92,"row":3,"col":2,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Demonic Sacrifice"}],"prereqs":[],"unlock":{"pointsInTree":10}},
+  {"id":829684,"treeId":92,"row":3,"col":3,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Master Summoner"}],"prereqs":[],"unlock":{"pointsInTree":10}},
+  {"id":1040963,"treeId":92,"row":4,"col":1,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Decimation"}],"prereqs":[],"unlock":{"pointsInTree":15}},
+  {"id":526713,"treeId":92,"row":4,"col":3,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Fel Domination"}],"prereqs":[829684],"unlock":{"pointsInTree":15}},
+  {"id":948912,"treeId":92,"row":4,"col":4,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Demonic Brand"}],"prereqs":[],"unlock":{"pointsInTree":15}},
+  {"id":91635,"treeId":92,"row":5,"col":1,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Improved Felhunter"}],"prereqs":[],"unlock":{"pointsInTree":20}},
+  {"id":609106,"treeId":92,"row":5,"col":2,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Soul Link"}],"prereqs":[278867],"unlock":{"pointsInTree":20}},
+  {"id":488649,"treeId":92,"row":5,"col":3,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Demonic Knowledge"}],"prereqs":[],"unlock":{"pointsInTree":20}},
+  {"id":852573,"treeId":92,"row":6,"col":3,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Master Demonologist"}],"prereqs":[],"unlock":{"pointsInTree":25}},
+  {"id":29989,"treeId":92,"row":7,"col":2,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Demonic Pact"}],"prereqs":[609106],"unlock":{"pointsInTree":30}},
+  {"id":463082,"treeId":93,"row":1,"col":1,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Destructive Reach"}],"prereqs":[]},
+  {"id":795991,"treeId":93,"row":1,"col":2,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Improved Shadow Bolt"}],"prereqs":[]},
+  {"id":239292,"treeId":93,"row":1,"col":3,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Bane"}],"prereqs":[]},
+  {"id":233622,"treeId":93,"row":2,"col":1,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Molten Skin"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":500001,"treeId":93,"row":2,"col":2,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Cataclysm"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":68199,"treeId":93,"row":2,"col":3,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Aftermath"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":411716,"treeId":93,"row":3,"col":2,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Ruin"}],"prereqs":[],"unlock":{"pointsInTree":10}},
+  {"id":355809,"treeId":93,"row":3,"col":3,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":17877,"name":"Shadowburn"}],"prereqs":[],"unlock":{"pointsInTree":10}},
+  {"id":1012963,"treeId":93,"row":4,"col":1,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Intensity"}],"prereqs":[],"unlock":{"pointsInTree":15}},
+  {"id":349078,"treeId":93,"row":4,"col":2,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Agonizing Flames"}],"prereqs":[],"unlock":{"pointsInTree":15}},
+  {"id":626035,"treeId":93,"row":4,"col":3,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":1293817,"name":"Conflagrate"}],"prereqs":[],"unlock":{"pointsInTree":15}},
+  {"id":528647,"treeId":93,"row":5,"col":1,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Pyroclasm"}],"prereqs":[1012963],"unlock":{"pointsInTree":20}},
+  {"id":843208,"treeId":93,"row":5,"col":2,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Bane of Havoc"}],"prereqs":[],"unlock":{"pointsInTree":20}},
+  {"id":293398,"treeId":93,"row":5,"col":3,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Fire and Brimstone"}],"prereqs":[626035],"unlock":{"pointsInTree":20}},
+  {"id":677492,"treeId":93,"row":6,"col":3,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Shadow and Flame"}],"prereqs":[],"unlock":{"pointsInTree":25}},
+  {"id":413515,"treeId":93,"row":7,"col":2,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":412758,"name":"Incinerate"}],"prereqs":[843208],"unlock":{"pointsInTree":30}}
+ ]
+}

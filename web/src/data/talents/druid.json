@@ -1,0 +1,90 @@
+{
+ "classId": 11,
+ "classSlug": "druid",
+ "className": "Druid",
+ "specId": 1484,
+ "build": "1.60.1.70425",
+ "source": {
+  "name": "Talents Forever",
+  "url": "https://talentsforever.com/",
+  "licence": "CC BY 4.0",
+  "licenceUrl": "https://creativecommons.org/licenses/by/4.0/",
+  "retrieved": "2026-10-17",
+  "kind": "talent layout read from the beta client files by Talents Forever"
+ },
+ "rules": {
+  "firstPointLevel": 10,
+  "maxLevel": 60,
+  "dualSpecLevel": 40,
+  "status": "unconfirmed",
+  "note": "Assumed: one point per level from level 10, five points in a tree per row to open the next, a second talent set at level 40. Not read from the game by Everloot."
+ },
+ "trees": [
+  {
+   "id": 111,
+   "name": "Balance"
+  },
+  {
+   "id": 112,
+   "name": "Feral Combat"
+  },
+  {
+   "id": 113,
+   "name": "Restoration"
+  }
+ ],
+ "nodes": [
+  {"id":129732,"treeId":111,"row":1,"col":2,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Improved Wrath"}],"prereqs":[]},
+  {"id":589786,"treeId":111,"row":1,"col":3,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Genesis"}],"prereqs":[]},
+  {"id":670780,"treeId":111,"row":2,"col":1,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Moonglow"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":305861,"treeId":111,"row":2,"col":2,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Improved Moonfire"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":862123,"treeId":111,"row":2,"col":3,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Nature's Majesty"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":159786,"treeId":111,"row":2,"col":4,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Nature's Reach"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":69339,"treeId":111,"row":3,"col":1,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Improved Entangling Roots"}],"prereqs":[],"unlock":{"pointsInTree":10}},
+  {"id":309351,"treeId":111,"row":3,"col":3,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Nature's Splendor"}],"prereqs":[862123],"unlock":{"pointsInTree":10}},
+  {"id":504129,"treeId":111,"row":4,"col":1,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":5570,"name":"Insect Swarm"}],"prereqs":[],"unlock":{"pointsInTree":15}},
+  {"id":205455,"treeId":111,"row":4,"col":2,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Vengeance"}],"prereqs":[305861],"unlock":{"pointsInTree":15}},
+  {"id":151360,"treeId":111,"row":4,"col":3,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Improved Starfire"}],"prereqs":[],"unlock":{"pointsInTree":15}},
+  {"id":270574,"treeId":111,"row":5,"col":1,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Overgrowth"}],"prereqs":[],"unlock":{"pointsInTree":20}},
+  {"id":430761,"treeId":111,"row":5,"col":2,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Nature's Grace"}],"prereqs":[],"unlock":{"pointsInTree":20}},
+  {"id":313461,"treeId":111,"row":5,"col":3,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Eclipse"}],"prereqs":[],"unlock":{"pointsInTree":20}},
+  {"id":528996,"treeId":111,"row":6,"col":2,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Moonfury"}],"prereqs":[],"unlock":{"pointsInTree":25}},
+  {"id":461611,"treeId":111,"row":7,"col":2,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Moonkin Form"}],"prereqs":[],"unlock":{"pointsInTree":30}},
+  {"id":512579,"treeId":112,"row":1,"col":2,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Ferocity"}],"prereqs":[]},
+  {"id":894610,"treeId":112,"row":1,"col":3,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Heart of the Wild"}],"prereqs":[]},
+  {"id":1023237,"treeId":112,"row":2,"col":1,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Feral Swiftness"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":1031103,"treeId":112,"row":2,"col":2,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Feral Instinct"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":487346,"treeId":112,"row":2,"col":3,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Brutal Impact"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":730253,"treeId":112,"row":2,"col":4,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Thick Hide"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":388685,"treeId":112,"row":3,"col":1,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Shredding Attacks"}],"prereqs":[],"unlock":{"pointsInTree":10}},
+  {"id":109425,"treeId":112,"row":3,"col":2,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Savage Fury"}],"prereqs":[],"unlock":{"pointsInTree":10}},
+  {"id":789615,"treeId":112,"row":3,"col":3,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Feral Charge"}],"prereqs":[],"unlock":{"pointsInTree":10}},
+  {"id":971225,"treeId":112,"row":3,"col":4,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Sharpened Claws"}],"prereqs":[],"unlock":{"pointsInTree":10}},
+  {"id":354741,"treeId":112,"row":4,"col":1,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Shifting Power"}],"prereqs":[388685],"unlock":{"pointsInTree":15}},
+  {"id":360980,"treeId":112,"row":4,"col":2,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":407995,"name":"Primal Bite"}],"prereqs":[109425],"unlock":{"pointsInTree":15}},
+  {"id":368678,"treeId":112,"row":4,"col":3,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Predatory Strikes"}],"prereqs":[],"unlock":{"pointsInTree":15}},
+  {"id":182595,"treeId":112,"row":4,"col":4,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Blood Frenzy"}],"prereqs":[971225],"unlock":{"pointsInTree":15}},
+  {"id":5577,"treeId":112,"row":5,"col":1,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Improved Shifting Power"}],"prereqs":[354741],"unlock":{"pointsInTree":20}},
+  {"id":239936,"treeId":112,"row":5,"col":2,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Leader of the Pack"}],"prereqs":[],"unlock":{"pointsInTree":20}},
+  {"id":321873,"treeId":112,"row":5,"col":4,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Natural Instinct"}],"prereqs":[],"unlock":{"pointsInTree":20}},
+  {"id":432648,"treeId":112,"row":6,"col":1,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Natural Reaction"}],"prereqs":[],"unlock":{"pointsInTree":25}},
+  {"id":505806,"treeId":112,"row":6,"col":3,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Rend and Tear"}],"prereqs":[368678],"unlock":{"pointsInTree":25}},
+  {"id":348529,"treeId":112,"row":7,"col":2,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Berserk"}],"prereqs":[239936],"unlock":{"pointsInTree":30}},
+  {"id":133761,"treeId":113,"row":1,"col":2,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Nature's Focus"}],"prereqs":[]},
+  {"id":88243,"treeId":113,"row":1,"col":3,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Furor"}],"prereqs":[]},
+  {"id":583317,"treeId":113,"row":2,"col":1,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Naturalist"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":412450,"treeId":113,"row":2,"col":2,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Subtlety"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":757827,"treeId":113,"row":2,"col":3,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Natural Shapeshifter"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":46524,"treeId":113,"row":3,"col":2,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Reflection"}],"prereqs":[],"unlock":{"pointsInTree":10}},
+  {"id":480406,"treeId":113,"row":3,"col":3,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Gift of Nature"}],"prereqs":[],"unlock":{"pointsInTree":10}},
+  {"id":465874,"treeId":113,"row":3,"col":4,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Gift of the Earthmother"}],"prereqs":[],"unlock":{"pointsInTree":10}},
+  {"id":310365,"treeId":113,"row":4,"col":2,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Tranquil Spirit"}],"prereqs":[],"unlock":{"pointsInTree":15}},
+  {"id":24447,"treeId":113,"row":4,"col":3,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Improved Rejuvenation"}],"prereqs":[],"unlock":{"pointsInTree":15}},
+  {"id":254465,"treeId":113,"row":4,"col":4,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Swiftmend"}],"prereqs":[],"unlock":{"pointsInTree":15}},
+  {"id":690366,"treeId":113,"row":5,"col":1,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Nature's Swiftness"}],"prereqs":[583317],"unlock":{"pointsInTree":20}},
+  {"id":433534,"treeId":113,"row":5,"col":2,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Living Spirit"}],"prereqs":[],"unlock":{"pointsInTree":20}},
+  {"id":122943,"treeId":113,"row":5,"col":4,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Improved Tranquility"}],"prereqs":[],"unlock":{"pointsInTree":20}},
+  {"id":914829,"treeId":113,"row":6,"col":3,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Improved Regrowth"}],"prereqs":[24447],"unlock":{"pointsInTree":25}},
+  {"id":1028864,"treeId":113,"row":7,"col":2,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":408120,"name":"Wild Growth"}],"prereqs":[433534],"unlock":{"pointsInTree":30}}
+ ]
+}

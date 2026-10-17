@@ -1,0 +1,91 @@
+{
+ "classId": 4,
+ "classSlug": "rogue",
+ "className": "Rogue",
+ "specId": 1488,
+ "build": "1.60.1.70425",
+ "source": {
+  "name": "Talents Forever",
+  "url": "https://talentsforever.com/",
+  "licence": "CC BY 4.0",
+  "licenceUrl": "https://creativecommons.org/licenses/by/4.0/",
+  "retrieved": "2026-10-17",
+  "kind": "talent layout read from the beta client files by Talents Forever"
+ },
+ "rules": {
+  "firstPointLevel": 10,
+  "maxLevel": 60,
+  "dualSpecLevel": 40,
+  "status": "unconfirmed",
+  "note": "Assumed: one point per level from level 10, five points in a tree per row to open the next, a second talent set at level 40. Not read from the game by Everloot."
+ },
+ "trees": [
+  {
+   "id": 41,
+   "name": "Assassination"
+  },
+  {
+   "id": 42,
+   "name": "Combat"
+  },
+  {
+   "id": 43,
+   "name": "Subtlety"
+  }
+ ],
+ "nodes": [
+  {"id":811942,"treeId":41,"row":1,"col":1,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Improved Gouge"}],"prereqs":[]},
+  {"id":778955,"treeId":41,"row":1,"col":2,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Remorseless Attacks"}],"prereqs":[]},
+  {"id":239939,"treeId":41,"row":1,"col":3,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Malice"}],"prereqs":[]},
+  {"id":151417,"treeId":41,"row":2,"col":1,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Ruthlessness"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":671678,"treeId":41,"row":2,"col":2,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Murder"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":491188,"treeId":41,"row":2,"col":4,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Improved Slice and Dice"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":517269,"treeId":41,"row":3,"col":1,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Relentless Strikes"}],"prereqs":[],"unlock":{"pointsInTree":10}},
+  {"id":753906,"treeId":41,"row":3,"col":2,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Improved Expose Armor"}],"prereqs":[],"unlock":{"pointsInTree":10}},
+  {"id":221776,"treeId":41,"row":3,"col":3,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Lethality"}],"prereqs":[239939],"unlock":{"pointsInTree":10}},
+  {"id":432125,"treeId":41,"row":4,"col":1,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Vile Poisons"}],"prereqs":[],"unlock":{"pointsInTree":15}},
+  {"id":751835,"treeId":41,"row":4,"col":2,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Cold Blood"}],"prereqs":[],"unlock":{"pointsInTree":15}},
+  {"id":394797,"treeId":41,"row":4,"col":3,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Improved Poisons"}],"prereqs":[],"unlock":{"pointsInTree":15}},
+  {"id":946461,"treeId":41,"row":5,"col":1,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Vigor"}],"prereqs":[],"unlock":{"pointsInTree":20}},
+  {"id":818759,"treeId":41,"row":5,"col":2,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":1310707,"name":"Mutilate"}],"prereqs":[],"unlock":{"pointsInTree":20}},
+  {"id":141579,"treeId":41,"row":5,"col":3,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Improved Kidney Shot"}],"prereqs":[],"unlock":{"pointsInTree":20}},
+  {"id":386379,"treeId":41,"row":6,"col":3,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Seal Fate"}],"prereqs":[],"unlock":{"pointsInTree":25}},
+  {"id":475630,"treeId":41,"row":7,"col":2,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Venom"}],"prereqs":[818759],"unlock":{"pointsInTree":30}},
+  {"id":685323,"treeId":42,"row":1,"col":1,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Improved Eviscerate"}],"prereqs":[]},
+  {"id":413502,"treeId":42,"row":1,"col":2,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Improved Sinister Strike"}],"prereqs":[]},
+  {"id":353972,"treeId":42,"row":1,"col":3,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Lightning Reflexes"}],"prereqs":[]},
+  {"id":556467,"treeId":42,"row":2,"col":1,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Puncturing Wounds"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":489252,"treeId":42,"row":2,"col":2,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Deflection"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":707539,"treeId":42,"row":2,"col":3,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Precision"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":901277,"treeId":42,"row":3,"col":1,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Endurance"}],"prereqs":[],"unlock":{"pointsInTree":10}},
+  {"id":13732,"treeId":42,"row":3,"col":2,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Riposte"}],"prereqs":[489252],"unlock":{"pointsInTree":10}},
+  {"id":726743,"treeId":42,"row":3,"col":4,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Improved Sprint"}],"prereqs":[],"unlock":{"pointsInTree":10}},
+  {"id":929078,"treeId":42,"row":4,"col":1,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Improved Kick"}],"prereqs":[],"unlock":{"pointsInTree":15}},
+  {"id":808707,"treeId":42,"row":4,"col":2,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Flawless Execution"}],"prereqs":[],"unlock":{"pointsInTree":15}},
+  {"id":630438,"treeId":42,"row":4,"col":3,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Dual Wield Specialization"}],"prereqs":[707539],"unlock":{"pointsInTree":15}},
+  {"id":584889,"treeId":42,"row":5,"col":2,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Blade Flurry"}],"prereqs":[],"unlock":{"pointsInTree":20}},
+  {"id":52811,"treeId":42,"row":5,"col":3,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Hack and Slash"}],"prereqs":[],"unlock":{"pointsInTree":20}},
+  {"id":439123,"treeId":42,"row":6,"col":2,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Weapon Expertise"}],"prereqs":[584889],"unlock":{"pointsInTree":25}},
+  {"id":1034065,"treeId":42,"row":6,"col":3,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Aggression"}],"prereqs":[],"unlock":{"pointsInTree":25}},
+  {"id":647615,"treeId":42,"row":7,"col":2,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Adrenaline Rush"}],"prereqs":[],"unlock":{"pointsInTree":30}},
+  {"id":646512,"treeId":43,"row":1,"col":1,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Camouflage"}],"prereqs":[]},
+  {"id":436604,"treeId":43,"row":1,"col":2,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Master of Deception"}],"prereqs":[]},
+  {"id":939880,"treeId":43,"row":1,"col":3,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Opportunity"}],"prereqs":[]},
+  {"id":317640,"treeId":43,"row":2,"col":1,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Setup"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":422291,"treeId":43,"row":2,"col":2,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Elusiveness"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":221848,"treeId":43,"row":2,"col":3,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Dirty Tricks"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":46751,"treeId":43,"row":2,"col":4,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Improved Ambush"}],"prereqs":[],"unlock":{"pointsInTree":5}},
+  {"id":134312,"treeId":43,"row":3,"col":1,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Initiative"}],"prereqs":[],"unlock":{"pointsInTree":10}},
+  {"id":253430,"treeId":43,"row":3,"col":2,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Ghostly Strike"}],"prereqs":[],"unlock":{"pointsInTree":10}},
+  {"id":245916,"treeId":43,"row":3,"col":3,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Improved Distract"}],"prereqs":[],"unlock":{"pointsInTree":10}},
+  {"id":522313,"treeId":43,"row":4,"col":1,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Heightened Senses"}],"prereqs":[],"unlock":{"pointsInTree":15}},
+  {"id":487103,"treeId":43,"row":4,"col":2,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Premeditation"}],"prereqs":[],"unlock":{"pointsInTree":15}},
+  {"id":25371,"treeId":43,"row":4,"col":3,"maxRanks":3,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Serrated Blades"}],"prereqs":[],"unlock":{"pointsInTree":15}},
+  {"id":1040225,"treeId":43,"row":5,"col":1,"maxRanks":2,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Dirty Deeds"}],"prereqs":[],"unlock":{"pointsInTree":20}},
+  {"id":842402,"treeId":43,"row":5,"col":2,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Preparation"}],"prereqs":[],"unlock":{"pointsInTree":20}},
+  {"id":811034,"treeId":43,"row":5,"col":3,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Hemorrhage"}],"prereqs":[25371],"unlock":{"pointsInTree":20}},
+  {"id":775987,"treeId":43,"row":6,"col":1,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Quietus"}],"prereqs":[1040225],"unlock":{"pointsInTree":25}},
+  {"id":562424,"treeId":43,"row":6,"col":3,"maxRanks":5,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Cutthroat"}],"prereqs":[],"unlock":{"pointsInTree":25}},
+  {"id":484819,"treeId":43,"row":7,"col":2,"maxRanks":1,"kind":"single","entries":[{"definitionId":null,"spellId":null,"name":"Thousand Cuts"}],"prereqs":[842402],"unlock":{"pointsInTree":30}}
+ ]
+}
