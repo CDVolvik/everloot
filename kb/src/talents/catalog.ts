@@ -8,7 +8,7 @@
  */
 import { z } from "zod";
 
-export const SCHEMA = "everloot.talent-catalog/1";
+export const SCHEMA = "everloot.talent-catalog/2";
 /** Every record from the game files carries this label (docs/DATA_POLICY.md). */
 export const LABEL = "found in game files, unconfirmed";
 
@@ -56,21 +56,43 @@ export const Prereq = z.object({
   rule: z.enum(["any", "all"]),
 });
 
+export const SpentRequired = z.object({
+  /** Points that must be spent before the node can be bought. */
+  amount: z.number().int(),
+  /**
+   * Where the points are counted. "tree": inside this talent tree. "class": across the whole class tree.
+   * "unconfirmed": the tables do not say. The condition names the whole class tree and one currency shared
+   * by all three talent trees, which on its own points to class-wide spending, so "tree" is only set when
+   * the build also lists a group of exactly the nodes above the gated row (a companion group, see the docs).
+   */
+  scope: z.enum(["tree", "class", "unconfirmed"]),
+  /** The node group the condition sits on (the row's gate group). */
+  gateGroupId: z.number().int(),
+  /** TraitCond.TraitCurrencyID: the currency whose spending is counted. */
+  currencyId: z.number().int(),
+  /** TraitCond.TraitTreeID: the trait tree the condition names (the whole class tree). */
+  traitTreeId: z.number().int(),
+  /** The companion group that decided the scope, when there is one. */
+  companionGroupId: z.number().int().optional(),
+});
+
 export const Unlock = z.object({
-  /** Points spent in the same talent tree before this node can be bought (the row gate). Absent: no gate. */
-  pointsInTree: z.number().int().optional(),
-  /** The node needs `ranks` bought in another node. Rare: one such node in build 70450. */
-  ranksInNode: z.object({ nodeId: z.number().int(), ranks: z.number().int() }).optional(),
+  /** The row gate. Absent: no gate. When a node sits in several gated groups, the largest amount is kept. */
+  spentRequired: SpentRequired.optional(),
+  /** The node needs ranks bought in other nodes; one entry per condition. Absent: none. */
+  ranksInNodes: z.array(z.object({ nodeId: z.number().int(), ranks: z.number().int() })).optional(),
 });
 
 export const Node = z.object({
   id: z.number().int(),
-  /** Position as the client stores it. */
+  /** Position as the client stores it (a repaired node keeps its stored values). */
   x: z.number().int(),
   y: z.number().int(),
-  /** Rank of y and x among the distinct positions in this tree, from 0. Derived, for laying out a grid. */
+  /** Grid cell inside this tree, from 0: the stored position snapped to the tree's 600-unit grid. Derived. */
   row: z.number().int(),
   col: z.number().int(),
+  /** True when the stored position was off the grid by a factor of ten and row and col come from the corrected value. */
+  positionRepaired: z.boolean().optional(),
   /** single: one talent. tiered: several entries bought in order. choice: pick one of the entries. */
   kind: z.enum(["single", "tiered", "choice"]),
   /** Total ranks that can be bought: single, the entry's; tiered, the sum; choice, the largest. */
@@ -111,6 +133,8 @@ export const ClassCatalog = z.object({
   traitTreeId: z.number().int(),
   /** Talent points: the level each point arrives at, one per entry. Empty when the build lists none. */
   pointLevels: z.array(z.number().int()),
+  /** The trait currency those points are counted in: the class tree's first currency by Index; null when none is listed. */
+  pointCurrencyId: z.number().int().nullable(),
   trees: z.array(Tree),
   /** Things the extraction could not resolve for this class. */
   warnings: z.array(z.string()),

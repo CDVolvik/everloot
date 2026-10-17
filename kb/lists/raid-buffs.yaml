@@ -1,69 +1,76 @@
-# Raid buffs and debuffs to look up in the spell tables of a game build.
-# Names only: the scope of each one is read from the game files for the build being extracted, never written here.
-# A totem needs two names, the spell that drops it and the aura it gives off.
+# Raid buffs and debuffs to look up in the spell tables of a game build, by spell id.
+# Ids and labels only: the scope of each spell is read from the game files of the build being extracted, never written here.
+# How the ids were chosen (by hand, from build 1.60.1.70450, reading each spell's tooltip): the ranks of the
+# spell a player casts for the effect, and for a totem the ranks of the aura it gives off, not the spell that
+# drops it. Left out on purpose: same-named spells that are triggered helpers (the area cast a Gift or Prayer
+# fires, a self-only copy), NPC versions without a rank, and the rank duplicates below.
+#   27578 Battle Shout "Rank 6", party only, next to the raid-wide 11551 "Rank 6"
+#   364163, 24752 Mark of the Wild; 364161 Arcane Intellect; 8990 Retribution Aura; 27579 Demoralizing Shout
+# An id the build does not have is listed under missingSpells; an entry with none is listed in notFound.
 # Not in the knowledge base: `import-curated` reads kb/curated, not this folder.
 
 # Warrior
-- { id: battle-shout, label: Battle Shout, kind: buff, class: Warrior, names: [Battle Shout] }
-- { id: demoralizing-shout, label: Demoralizing Shout, kind: debuff, class: Warrior, names: [Demoralizing Shout] }
-- { id: thunder-clap, label: Thunder Clap, kind: debuff, class: Warrior, names: [Thunder Clap] }
-- { id: sunder-armor, label: Sunder Armor, kind: debuff, class: Warrior, names: [Sunder Armor] }
+- { id: battle-shout, label: Battle Shout, kind: buff, class: Warrior, spells: [6673, 5242, 6192, 11549, 11550, 11551, 25289] }
+- { id: demoralizing-shout, label: Demoralizing Shout, kind: debuff, class: Warrior, spells: [1160, 6190, 11554, 11555, 11556] }
+- { id: thunder-clap, label: Thunder Clap, kind: debuff, class: Warrior, spells: [6343, 8198, 8204, 8205, 11580, 11581, 461830, 461829, 461828, 461827, 461826, 461810] }
+- { id: sunder-armor, label: Sunder Armor, kind: debuff, class: Warrior, spells: [7386, 7405, 8380, 11596, 11597] }
 # Hunter
-- { id: trueshot-aura, label: Trueshot Aura, kind: buff, class: Hunter, names: [Trueshot Aura] }
+- { id: trueshot-aura, label: Trueshot Aura, kind: buff, class: Hunter, spells: [1299346, 1299348, 19506, 20905, 20906] }
 # Druid
-- { id: leader-of-the-pack, label: Leader of the Pack, kind: buff, class: Druid, names: [Leader of the Pack] }
-- { id: mark-of-the-wild, label: Mark of the Wild, kind: buff, class: Druid, names: [Mark of the Wild] }
-- { id: gift-of-the-wild, label: Gift of the Wild, kind: buff, class: Druid, names: [Gift of the Wild] }
-- { id: thorns, label: Thorns, kind: buff, class: Druid, names: [Thorns] }
-- { id: faerie-fire, label: Faerie Fire, kind: debuff, class: Druid, names: [Faerie Fire, Faerie Fire (Feral)] }
-- { id: demoralizing-roar, label: Demoralizing Roar, kind: debuff, class: Druid, names: [Demoralizing Roar] }
+- { id: leader-of-the-pack, label: Leader of the Pack, kind: buff, class: Druid, spells: [24932] }
+- { id: mark-of-the-wild, label: Mark of the Wild, kind: buff, class: Druid, spells: [1126, 5232, 6756, 5234, 8907, 9884, 9885] }
+- { id: gift-of-the-wild, label: Gift of the Wild, kind: buff, class: Druid, spells: [21849, 21850] }
+- { id: thorns, label: Thorns, kind: buff, class: Druid, spells: [467, 782, 1075, 8914, 9756, 9910] }
+- { id: faerie-fire, label: Faerie Fire, kind: debuff, class: Druid, spells: [770, 778, 9749, 9907, 13424, 13752] }
+- { id: demoralizing-roar, label: Demoralizing Roar, kind: debuff, class: Druid, spells: [99, 1735, 9490, 9747, 9898] }
 # Mage
-- { id: arcane-intellect, label: Arcane Intellect, kind: buff, class: Mage, names: [Arcane Intellect] }
-- { id: arcane-brilliance, label: Arcane Brilliance, kind: buff, class: Mage, names: [Arcane Brilliance] }
-- { id: winters-chill, label: Winter's Chill, kind: debuff, class: Mage, names: [Winter's Chill] }
+- { id: arcane-intellect, label: Arcane Intellect, kind: buff, class: Mage, spells: [1459, 1460, 1461, 10156, 10157] }
+- { id: arcane-brilliance, label: Arcane Brilliance, kind: buff, class: Mage, spells: [23028] }
+- { id: winters-chill, label: Winter's Chill, kind: debuff, class: Mage, spells: [12579] }
 # Priest
-- { id: power-word-fortitude, label: "Power Word: Fortitude", kind: buff, class: Priest, names: ["Power Word: Fortitude"] }
-- { id: prayer-of-fortitude, label: Prayer of Fortitude, kind: buff, class: Priest, names: [Prayer of Fortitude] }
-- { id: divine-spirit, label: Divine Spirit, kind: buff, class: Priest, names: [Divine Spirit] }
-- { id: prayer-of-spirit, label: Prayer of Spirit, kind: buff, class: Priest, names: [Prayer of Spirit] }
-- { id: shadow-protection, label: Shadow Protection, kind: buff, class: Priest, names: [Shadow Protection] }
-- { id: prayer-of-shadow-protection, label: Prayer of Shadow Protection, kind: buff, class: Priest, names: [Prayer of Shadow Protection] }
-# Paladin
-- { id: blessing-of-might, label: Blessing of Might, kind: buff, class: Paladin, names: [Blessing of Might] }
-- { id: blessing-of-kings, label: Blessing of Kings, kind: buff, class: Paladin, names: [Blessing of Kings] }
-- { id: blessing-of-wisdom, label: Blessing of Wisdom, kind: buff, class: Paladin, names: [Blessing of Wisdom] }
-- { id: blessing-of-salvation, label: Blessing of Salvation, kind: buff, class: Paladin, names: [Blessing of Salvation] }
-- { id: blessing-of-light, label: Blessing of Light, kind: buff, class: Paladin, names: [Blessing of Light] }
-- { id: blessing-of-sanctuary, label: Blessing of Sanctuary, kind: buff, class: Paladin, names: [Blessing of Sanctuary] }
-- { id: greater-blessing-of-might, label: Greater Blessing of Might, kind: buff, class: Paladin, names: [Greater Blessing of Might] }
-- { id: greater-blessing-of-kings, label: Greater Blessing of Kings, kind: buff, class: Paladin, names: [Greater Blessing of Kings] }
-- { id: greater-blessing-of-wisdom, label: Greater Blessing of Wisdom, kind: buff, class: Paladin, names: [Greater Blessing of Wisdom] }
-- { id: greater-blessing-of-salvation, label: Greater Blessing of Salvation, kind: buff, class: Paladin, names: [Greater Blessing of Salvation] }
-- { id: devotion-aura, label: Devotion Aura, kind: buff, class: Paladin, names: [Devotion Aura] }
-- { id: retribution-aura, label: Retribution Aura, kind: buff, class: Paladin, names: [Retribution Aura] }
-- { id: concentration-aura, label: Concentration Aura, kind: buff, class: Paladin, names: [Concentration Aura] }
-- { id: sanctity-aura, label: Sanctity Aura, kind: buff, class: Paladin, names: [Sanctity Aura] }
-- { id: fire-resistance-aura, label: Fire Resistance Aura, kind: buff, class: Paladin, names: [Fire Resistance Aura] }
-- { id: frost-resistance-aura, label: Frost Resistance Aura, kind: buff, class: Paladin, names: [Frost Resistance Aura] }
-- { id: shadow-resistance-aura, label: Shadow Resistance Aura, kind: buff, class: Paladin, names: [Shadow Resistance Aura] }
-- { id: judgement-of-wisdom, label: Judgement of Wisdom, kind: debuff, class: Paladin, names: [Judgement of Wisdom] }
-- { id: judgement-of-light, label: Judgement of Light, kind: buff, class: Paladin, names: [Judgement of Light] }
-# Shaman totems
-- { id: strength-of-earth-totem, label: Strength of Earth Totem, kind: buff, class: Shaman, names: [Strength of Earth Totem, Strength of Earth] }
-- { id: grace-of-air-totem, label: Grace of Air Totem, kind: buff, class: Shaman, names: [Grace of Air Totem, Grace of Air] }
-- { id: windfury-totem, label: Windfury Totem, kind: buff, class: Shaman, names: [Windfury Totem, Windfury] }
-- { id: mana-spring-totem, label: Mana Spring Totem, kind: buff, class: Shaman, names: [Mana Spring Totem, Mana Spring] }
-- { id: tranquil-air-totem, label: Tranquil Air Totem, kind: buff, class: Shaman, names: [Tranquil Air Totem, Tranquil Air] }
-- { id: flametongue-totem, label: Flametongue Totem, kind: buff, class: Shaman, names: [Flametongue Totem, Flametongue] }
-- { id: fire-resistance-totem, label: Fire Resistance Totem, kind: buff, class: Shaman, names: [Fire Resistance Totem, Fire Resistance] }
-- { id: frost-resistance-totem, label: Frost Resistance Totem, kind: buff, class: Shaman, names: [Frost Resistance Totem, Frost Resistance] }
-- { id: nature-resistance-totem, label: Nature Resistance Totem, kind: buff, class: Shaman, names: [Nature Resistance Totem, Nature Resistance] }
-- { id: healing-stream-totem, label: Healing Stream Totem, kind: buff, class: Shaman, names: [Healing Stream Totem, Healing Stream] }
+- { id: power-word-fortitude, label: "Power Word: Fortitude", kind: buff, class: Priest, spells: [1243, 1244, 1245, 2791, 10937, 10938] }
+- { id: prayer-of-fortitude, label: Prayer of Fortitude, kind: buff, class: Priest, spells: [21562, 21564] }
+- { id: divine-spirit, label: Divine Spirit, kind: buff, class: Priest, spells: [14752, 14818, 14819, 27841] }
+- { id: prayer-of-spirit, label: Prayer of Spirit, kind: buff, class: Priest, spells: [27681] }
+- { id: shadow-protection, label: Shadow Protection, kind: buff, class: Priest, spells: [976, 10957, 10958] }
+- { id: prayer-of-shadow-protection, label: Prayer of Shadow Protection, kind: buff, class: Priest, spells: [27683] }
+# Paladin (Salvation and Sanctuary ids are the Classic Era ones. In build 70450 Salvation is named "Salvation" and
+# "Mass Salvation" and has target ids 57 and 153, so it reads unknown; there is no aura spell for Sanctuary.)
+- { id: blessing-of-might, label: Blessing of Might, kind: buff, class: Paladin, spells: [19740, 19834, 19835, 19836, 19837, 19838, 25291] }
+- { id: blessing-of-kings, label: Blessing of Kings, kind: buff, class: Paladin, spells: [20217] }
+- { id: blessing-of-wisdom, label: Blessing of Wisdom, kind: buff, class: Paladin, spells: [19742, 19850, 19852, 19853, 19854, 25290] }
+- { id: blessing-of-salvation, label: Blessing of Salvation, kind: buff, class: Paladin, spells: [1038] }
+- { id: blessing-of-light, label: Blessing of Light, kind: buff, class: Paladin, spells: [19977, 19978, 19979] }
+- { id: blessing-of-sanctuary, label: Blessing of Sanctuary, kind: buff, class: Paladin, spells: [20911, 20912, 20913] }
+- { id: greater-blessing-of-might, label: Greater Blessing of Might, kind: buff, class: Paladin, spells: [25782, 25916] }
+- { id: greater-blessing-of-kings, label: Greater Blessing of Kings, kind: buff, class: Paladin, spells: [25898] }
+- { id: greater-blessing-of-wisdom, label: Greater Blessing of Wisdom, kind: buff, class: Paladin, spells: [25894, 25918] }
+- { id: greater-blessing-of-salvation, label: Greater Blessing of Salvation, kind: buff, class: Paladin, spells: [25895] }
+- { id: devotion-aura, label: Devotion Aura, kind: buff, class: Paladin, spells: [465, 10290, 643, 10291, 1032, 10292, 10293] }
+- { id: retribution-aura, label: Retribution Aura, kind: buff, class: Paladin, spells: [7294, 10298, 10299, 10300, 10301] }
+- { id: concentration-aura, label: Concentration Aura, kind: buff, class: Paladin, spells: [19746] }
+- { id: sanctity-aura, label: Sanctity Aura, kind: buff, class: Paladin, spells: [20218] }
+- { id: fire-resistance-aura, label: Fire Resistance Aura, kind: buff, class: Paladin, spells: [19891, 19899, 19900] }
+- { id: frost-resistance-aura, label: Frost Resistance Aura, kind: buff, class: Paladin, spells: [19888, 19897, 19898] }
+- { id: shadow-resistance-aura, label: Shadow Resistance Aura, kind: buff, class: Paladin, spells: [19876, 19895, 19896] }
+- { id: judgement-of-wisdom, label: Judgement of Wisdom, kind: debuff, class: Paladin, spells: [20186, 20354, 20355] }
+- { id: judgement-of-light, label: Judgement of Light, kind: debuff, class: Paladin, spells: [20185, 20344, 20345, 20346] }
+# Shaman totems (the aura spells)
+- { id: strength-of-earth-totem, label: Strength of Earth Totem, kind: buff, class: Shaman, spells: [8076, 8162, 8163, 10441, 25362] }
+- { id: grace-of-air-totem, label: Grace of Air Totem, kind: buff, class: Shaman, spells: [8836, 10626, 25360] }
+- { id: windfury-totem, label: Windfury Totem, kind: buff, class: Shaman, spells: [8515, 10609, 10612] }
+- { id: mana-spring-totem, label: Mana Spring Totem, kind: buff, class: Shaman, spells: [5677, 10491, 10493, 10494] }
+- { id: tranquil-air-totem, label: Tranquil Air Totem, kind: buff, class: Shaman, spells: [25909] }
+- { id: flametongue-totem, label: Flametongue Totem, kind: buff, class: Shaman, spells: [8230, 8250, 10521, 15036] }
+- { id: fire-resistance-totem, label: Fire Resistance Totem, kind: buff, class: Shaman, spells: [8185, 10534, 10535] }
+- { id: frost-resistance-totem, label: Frost Resistance Totem, kind: buff, class: Shaman, spells: [8182, 10476, 10477] }
+- { id: nature-resistance-totem, label: Nature Resistance Totem, kind: buff, class: Shaman, spells: [10596, 10598, 10599] }
+- { id: healing-stream-totem, label: Healing Stream Totem, kind: buff, class: Shaman, spells: [5672, 6371, 6372, 10460, 10461] }
 # Warlock
-- { id: curse-of-the-elements, label: Curse of the Elements, kind: debuff, class: Warlock, names: [Curse of the Elements, Curse of Elements] }
-- { id: curse-of-recklessness, label: Curse of Recklessness, kind: debuff, class: Warlock, names: [Curse of Recklessness] }
-- { id: curse-of-weakness, label: Curse of Weakness, kind: debuff, class: Warlock, names: [Curse of Weakness] }
-- { id: curse-of-tongues, label: Curse of Tongues, kind: debuff, class: Warlock, names: [Curse of Tongues] }
-- { id: blood-pact, label: Blood Pact, kind: buff, class: Warlock, names: [Blood Pact] }
+- { id: curse-of-the-elements, label: Curse of the Elements, kind: debuff, class: Warlock, spells: [440892, 1311676, 1311677, 1311680] }
+- { id: curse-of-recklessness, label: Curse of Recklessness, kind: debuff, class: Warlock, spells: [704, 7658, 7659, 11717] }
+- { id: curse-of-weakness, label: Curse of Weakness, kind: debuff, class: Warlock, spells: [702, 1108, 6205, 7646, 11707, 11708] }
+- { id: curse-of-tongues, label: Curse of Tongues, kind: debuff, class: Warlock, spells: [1714, 11719] }
+- { id: blood-pact, label: Blood Pact, kind: buff, class: Warlock, spells: [6307, 7804, 7805, 11766, 11767] }
 # Rogue
-- { id: expose-armor, label: Expose Armor, kind: debuff, class: Rogue, names: [Expose Armor] }
+- { id: expose-armor, label: Expose Armor, kind: debuff, class: Rogue, spells: [8647, 8649, 8650, 11197, 11198] }

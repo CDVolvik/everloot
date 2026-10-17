@@ -43,6 +43,34 @@ export function iconIds(tables: ExtractedTable[]): number[] {
   return [...(misc?.rows.values() ?? [])].map((r) => Number(r.SpellIconFileDataID)).filter((n) => Number.isFinite(n) && n > 0);
 }
 
+const DEFS_RAW = "https://raw.githubusercontent.com/wowdev/WoWDBDefs/master/";
+
+/** A fetch that reads WoWDBDefs files at commit `sha` instead of the moving master branch. Other URLs pass through. */
+export function pinnedFetch(real: typeof fetch, sha: string): typeof fetch {
+  return ((input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+    const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+    return real(url.startsWith(DEFS_RAW) ? url.replace("/WoWDBDefs/master/", `/WoWDBDefs/${sha}/`) : input, init);
+  }) as typeof fetch;
+}
+
+/**
+ * Resolves WoWDBDefs master to a commit once, then makes every layout the library fetches in this process
+ * come from that commit, so the recorded sha is the one actually used. Returns the first 12 characters, or
+ * null when GitHub cannot be reached (the library then reads master and the snapshot says "unknown").
+ */
+export async function pinDefinitions(real: typeof fetch = globalThis.fetch): Promise<string | null> {
+  try {
+    const res = await real("https://api.github.com/repos/wowdev/WoWDBDefs/commits/master", { signal: AbortSignal.timeout(10_000) });
+    if (!res.ok) return null;
+    const sha = String((await res.json() as { sha: unknown }).sha);
+    if (!/^[0-9a-f]{40}$/.test(sha)) return null;
+    globalThis.fetch = pinnedFetch(real, sha);
+    return sha.slice(0, 12);
+  } catch {
+    return null;
+  }
+}
+
 export interface MissingTable { table: string; reason: string }
 /** The reason given for a table the build does not have; any other reason is a failure. */
 export const NOT_IN_BUILD = "not in this build";
