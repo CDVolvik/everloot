@@ -25,11 +25,13 @@ const config: Config = {
     },
   },
   plugins: [
-    // Dark is the default; light follows the system setting.
+    // Dark is the default; light follows the system setting. Tooltip frames stay dark in both
+    // modes, as in the game, so they re-declare the dark variables for everything inside them.
     plugin(({ addBase }) => {
       addBase({
         ":root": cssVariables("dark"),
         "@media (prefers-color-scheme: light)": { ":root": cssVariables("light") },
+        ".bg-tooltip": cssVariables("dark"),
       });
     }),
   ],

@@ -127,7 +127,7 @@ export default async function BrowsePage(props: Props) {
       <nav aria-label="First letter" className="flex flex-wrap gap-1 text-sm">
         {LETTERS.map((l) => (
           <Link key={l} href={letterUrl(slug, l)} aria-current={l === letter ? "page" : undefined}
-            className={`min-h-11 min-w-11 inline-flex items-center justify-center rounded-lg border ${l === letter ? "border-accent text-accent" : "border-line text-fg-2 hover:text-accent"}`}>
+            className={`min-h-11 min-w-11 inline-flex items-center justify-center rounded-lg border ${l === letter ? "border-accent text-accent" : "border-edge text-fg-2 hover:text-accent"}`}>
             {l.toUpperCase()}
           </Link>
         ))}

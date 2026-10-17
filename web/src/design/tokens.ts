@@ -8,7 +8,7 @@ export const QUALITIES = ["poor", "common", "uncommon", "rare", "epic", "legenda
 export const CLASSES = ["warrior", "paladin", "hunter", "rogue", "priest", "shaman", "mage", "warlock", "druid"] as const;
 
 export type TokenName =
-  | "canvas" | "panel" | "line" | "fg" | "fg-2" | "muted" | "accent" | "danger" | "warning"
+  | "canvas" | "panel" | "line" | "edge" | "fg" | "fg-2" | "muted" | "accent" | "danger" | "warning"
   | "tooltip" | "tooltip-border" | "tooltip-inner" | "grad-from" | "grad-to"
   | `q-${(typeof QUALITIES)[number]}` | `class-${(typeof CLASSES)[number]}` | "chat-whisper" | "chat-guild";
 
@@ -20,6 +20,8 @@ export const tokens: Record<Mode, Record<TokenName, string>> = {
     canvas: "#0E0F0D",
     panel: "#15171A",
     line: "#3A3B35",
+    // Control edges (inputs, filter chips): at least 3:1 on canvas and panel, unlike the decorative line.
+    edge: "#6E6B60",
     fg: "#F4EFDD",
     "fg-2": "#C9C3B0",
     muted: "#8B8778",
@@ -51,6 +53,7 @@ export const tokens: Record<Mode, Record<TokenName, string>> = {
     canvas: "#FBF8EC",
     panel: "#FFFFFF",
     line: "#D9D3BF",
+    edge: "#8A8473",
     fg: "#12130F",
     "fg-2": "#3E3B32",
     muted: "#5F5B4E",

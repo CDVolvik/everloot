@@ -23,7 +23,7 @@ export default function IdLookup({ kind, label }: { kind: "npcs" | "quests" | "v
           value={value}
           inputMode="numeric"
           onChange={(event) => setValue(event.target.value.trim())}
-          className="w-40 rounded-lg border border-line bg-canvas px-3 py-2 text-fg"
+          className="w-40 rounded-lg border border-edge bg-canvas px-3 py-2 text-fg"
         />
       </label>
       <button

@@ -31,8 +31,32 @@ test.each(["dark", "light"] as const)("every text token reaches 4.5:1 on canvas 
     expect(contrast(tokens[m][t], tokens[m][bg]), `${t} on ${bg}`).toBeGreaterThanOrEqual(4.5);
 });
 
-test("dark text tokens read inside the tooltip frame", () => {
-  for (const t of TEXT_TOKENS) expect(contrast(tokens.dark[t], tokens.dark.tooltip), t).toBeGreaterThanOrEqual(4.5);
+// The variables Tailwind's plugin actually emits, so the checks below follow the real config.
+type Vars = Record<string, string>;
+function baseStyles(): Record<string, Vars | Record<string, Vars>> {
+  const styles: Record<string, Vars | Record<string, Vars>> = {};
+  const plugins = config.plugins as unknown as { handler: (api: { addBase: (s: object) => void }) => void }[];
+  for (const p of plugins) p.handler({ addBase: (s) => Object.assign(styles, s) });
+  return styles;
+}
+function rootVars(m: "dark" | "light"): Vars {
+  const base = baseStyles();
+  const light = (base["@media (prefers-color-scheme: light)"] as Record<string, Vars>)[":root"];
+  return m === "dark" ? (base[":root"] as Vars) : { ...(base[":root"] as Vars), ...light };
+}
+const hex = (rgb: string) => "#" + rgb.split(" ").map((n) => Number(n).toString(16).padStart(2, "0")).join("").toUpperCase();
+
+test.each(["dark", "light"] as const)("every text token reads inside the tooltip frame (%s)", (m) => {
+  // The frame stays dark in both modes, so it re-declares the dark variables for its contents.
+  const inside = { ...rootVars(m), ...(baseStyles()[".bg-tooltip"] as Vars) };
+  for (const t of TEXT_TOKENS)
+    expect(contrast(hex(inside[`--${t}`]), hex(inside["--tooltip"])), t).toBeGreaterThanOrEqual(4.5);
+});
+
+test.each(["dark", "light"] as const)("control edges reach 3:1 on canvas and panel (%s)", (m) => {
+  const vars = rootVars(m);
+  for (const bg of ["canvas", "panel"] as const)
+    expect(contrast(hex(vars["--edge"]), hex(vars[`--${bg}`])), `edge on ${bg}`).toBeGreaterThanOrEqual(3);
 });
 
 test.each(["dark", "light"] as const)("the primary outline stops reach 3:1 on the canvas (%s)", (m) => {

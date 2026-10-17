@@ -44,11 +44,11 @@ export default async function CollectionsPage(
         <div className="grid sm:grid-cols-2 gap-3">
           <label className="text-sm text-fg-2 space-y-1">
             <span className="block text-xs font-mono text-muted">Collection</span>
-            <input name="collection" defaultValue={collection} className="w-full rounded-lg border border-line bg-canvas px-3 py-2 text-fg" />
+            <input name="collection" defaultValue={collection} className="w-full rounded-lg border border-edge bg-canvas px-3 py-2 text-fg" />
           </label>
           <label className="text-sm text-fg-2 space-y-1">
             <span className="block text-xs font-mono text-muted">Install id</span>
-            <input name="install" defaultValue={install} className="w-full rounded-lg border border-line bg-canvas px-3 py-2 text-fg" />
+            <input name="install" defaultValue={install} className="w-full rounded-lg border border-edge bg-canvas px-3 py-2 text-fg" />
           </label>
         </div>
         <button type="submit" className="btn btn-primary text-sm">Show the gap</button>
