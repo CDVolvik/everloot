@@ -2,7 +2,7 @@
 
 Every external source Everloot has used, linked to or read while building it, and what we did with
 each one. Complete as of 2026-10-16. A source joins this file before its data, link or code joins
-the project.
+the project. The rules behind it are in the [data policy](../DATA_POLICY.md).
 
 `docs/sources/source-catalog.md` is the research list of candidates and their terms. This ledger
 records what actually happened.
@@ -30,7 +30,7 @@ records what actually happened.
 | Source | Terms | Evidence | In releases |
 |---|---|---|---|
 | [Blizzard Battle.net API](https://develop.battle.net/) (`us.api.blizzard.com`) | Blizzard Developer API terms: no redistribution, no monetising the data | `kb/src/blizzard/client.ts`; source id `blizzard-api`, `publishable: false` | No. The release build refuses it, and `audit-sources` found it in no file |
-| Wowhead facts (not built) | Gated: Wowhead's Terms of Use must allow it first | `docs/superpowers/specs/2026-10-16-open-source-everloot-design.md`, section 2 | No |
+| Wowhead facts (not built) | Gated: Wowhead's Terms of Use must allow it first | [`docs/DATA_POLICY.md`](../DATA_POLICY.md), "Wowhead" | No |
 
 ## Link only
 
