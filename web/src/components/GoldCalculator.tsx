@@ -428,7 +428,7 @@ export default function GoldCalculator() {
 
         {calc.best && calc.best.net > 0 && (
           <p className="mt-5 text-sm text-fg-2">
-            💡 Biggest earner:{" "}
+            Biggest earner:{" "}
             <span className="text-accent">{calc.best.name || "Unnamed item"}</span>{" "}
             &mdash; {formatGold(calc.best.net)} (
             {Math.round(calc.best.share * 100)}% of total)
@@ -447,13 +447,13 @@ export default function GoldCalculator() {
           onClick={shareLink}
           className="btn btn-primary min-h-11"
         >
-          {copied === "link" ? "✓ Link copied" : "Copy share link"}
+          {copied === "link" ? "Link copied" : "Copy share link"}
         </button>
         <button
           onClick={copySummary}
           className="btn min-h-11"
         >
-          {copied === "summary" ? "✓ Summary copied" : "Copy summary for Discord"}
+          {copied === "summary" ? "Summary copied" : "Copy summary for Discord"}
         </button>
         <button
           onClick={resetAll}
