@@ -8,13 +8,17 @@ This is our reading of the rules, not legal advice.
 ## What we publish
 
 **What players see in the game.** The Everloot addon records what happens around you while you
-play: drops, vendors, auction prices you browse, recipes, trainers, gold in and out. You choose
+play: drops, vendors, auction prices you browse, recipes, trainers, gold in and out. The list of
+your installed addons is recorded only if you turn it on with `/everloot addons on`, and it is
+sent only from the website's upload page, after the preview names each addon. You choose
 when to upload. On the website you preview everything before it is sent. The companion sends only
 anonymous open-world events and keeps named data (guild, gear, gold, collection) on your machine.
 
 Uploaded observations are public as individual, anonymous records, with no character names and
 without the addon's install id, so anyone can check our counts. The facts the site states itself, such as drop rates, spawn points and recipe
-ranges, appear only once at least three installs have reported them. Guild data is published only through an officer's
+ranges, appear only once at least three installs have reported them. Addon lists are the
+exception to public records: they are never published row by row, only as counts for addons that
+at least three installs report. Guild data is published only through an officer's
 upload, and named records only with that person's sharing choice.
 
 Blizzard hides some WoW: Forever item details until an item drops, and runs no public test realm.
