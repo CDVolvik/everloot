@@ -1,0 +1,59 @@
+{
+  "cursor": "synthetic-cursor",
+  "feed": [
+    {
+      "post": {
+        "uri": "at://did:plc:synthetic/app.bsky.feed.post/3synthetic6",
+        "author": { "handle": "worldofwarcraft.blizzard.com", "displayName": "World of Warcraft" },
+        "record": {
+          "createdAt": "2026-09-01T10:00:00.000Z", "text": "Synthetic pinned post. Read more.",
+          "facets": [{ "features": [{ "$type": "app.bsky.richtext.facet#link", "uri": "https://worldofwarcraft.blizzard.com/en-us/forever" }] }]
+        }
+      },
+      "reason": { "$type": "app.bsky.feed.defs#reasonPin" }
+    },
+    {
+      "post": {
+        "uri": "at://did:plc:synthetic/app.bsky.feed.post/3synthetic1",
+        "author": { "handle": "worldofwarcraft.blizzard.com", "displayName": "World of Warcraft" },
+        "record": { "createdAt": "2026-10-15T21:52:22.090Z", "text": "Synthetic: WoW: Forever server stream is coming. Join us on the day!\n\nMore text on a later line." }
+      }
+    },
+    {
+      "post": {
+        "uri": "at://did:plc:synthetic/app.bsky.feed.post/3synthetic2",
+        "author": { "handle": "worldofwarcraft.blizzard.com", "displayName": "World of Warcraft" },
+        "record": { "createdAt": "2026-10-13T22:10:38.320Z", "text": "Synthetic retail content update is here." }
+      }
+    },
+    {
+      "post": {
+        "uri": "at://did:plc:synthetic/app.bsky.feed.post/3synthetic3",
+        "author": { "handle": "someone.else.example", "displayName": "Else" },
+        "record": { "createdAt": "2026-10-13T20:00:00.000Z", "text": "A repost of a WoW: Forever post." }
+      },
+      "reason": { "$type": "app.bsky.feed.defs#reasonRepost" }
+    },
+    {
+      "post": {
+        "uri": "at://did:plc:synthetic/app.bsky.feed.post/3synthetic4",
+        "author": { "handle": "worldofwarcraft.blizzard.com", "displayName": "World of Warcraft" },
+        "record": { "createdAt": "2026-10-12T19:00:00.000Z", "text": "Synthetic WoW Classic hotfix notes are up.", "reply": { "parent": {} } }
+      }
+    },
+    {
+      "post": {
+        "uri": "at://did:plc:synthetic/app.bsky.feed.post/3synthetic5",
+        "author": { "handle": "worldofwarcraft.blizzard.com", "displayName": "World of Warcraft" },
+        "record": { "createdAt": "2026-10-11T19:00:00.000Z", "text": "Synthetic WoW Classic hotfix notes are up." }
+      }
+    },
+    {
+      "post": {
+        "uri": "at://did:plc:synthetic/app.bsky.feed.post/3synthetic7",
+        "author": { "handle": "worldofwarcraft.blizzard.com", "displayName": "World of Warcraft" },
+        "record": { "createdAt": "2026-10-10T19:00:00.000Z", "text": "Synthetic: a forever and ever kind of day, and a classic pose." }
+      }
+    }
+  ]
+}
