@@ -43,7 +43,7 @@ what is still open.
   "unverified". Carlos should open those tools by hand before we borrow any layout idea.
 
 Research files, all dated 2026-10-17, are cited as **landscape**, **builders study**, **data
-inventory** and **platform analysis** (in the R21 Brain wiki, `projects/everloot/`). The ops queue
+inventory** and **platform analysis** (in our internal research notes). The ops queue
 board is cited as **board**.
 
 ## What exists today
