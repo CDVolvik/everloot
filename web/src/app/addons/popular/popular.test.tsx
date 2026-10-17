@@ -33,9 +33,10 @@ beforeEach(() => store.loadCorpus.mockReset());
 
 test("an addon three installs report is listed with its counts, dates, share and a CurseForge search link", async () => {
   store.loadCorpus.mockResolvedValue(corpus([
-    seen("install-aaa", "DBM-Core", "Deadly Boss Mods", "2026-10-14T09:00:00.000Z"),
-    seen("install-bbb", "DBM-Core", "Deadly Boss Mods", "2026-10-15T10:00:00.000Z"),
-    seen("install-ccc", "DBM-Core", "Deadly Boss Mods", "2026-10-16T20:00:00.000Z"),
+    ...["install-aaa", "install-bbb", "install-ccc"].flatMap((id) => [
+      seen(id, "DBM-Core", "Deadly Boss Mods", "2026-10-14T09:00:00.000Z"),
+      seen(id, "DBM-Core", "Deadly Boss Mods", "2026-10-16T20:00:00.000Z"),
+    ]),
     seen("install-ddd", "Bagnon", "Bagnon"),
   ]));
   const page = await html();
@@ -59,6 +60,44 @@ test("an addon only two installs report never renders, by title or folder name",
   expect(page).toContain("Questie");
   expect(page).not.toContain("MyGuildTools");
   expect(page).not.toContain("My Guild Tools");
+});
+
+test("one install cannot name an addon: a title fewer than three installs share shows the folder name", async () => {
+  store.loadCorpus.mockResolvedValue(corpus([
+    seen("install-aaa", "DBM-Core", "Deadly Boss Mods"),
+    seen("install-bbb", "DBM-Core", "Deadly Boss Mods"),
+    seen("install-ccc", "DBM-Core", "Visit my gold shop", "2026-10-17T09:00:00.000Z"),
+  ]));
+  const page = await html();
+  expect(page).toContain(">DBM-Core<");
+  expect(page).toContain('href="https://www.curseforge.com/wow/search?search=DBM-Core"');
+  expect(page).not.toContain("gold shop");
+  expect(page).not.toContain("Deadly Boss Mods");
+});
+
+test("one install cannot set the dates: a row from the future never shows", async () => {
+  store.loadCorpus.mockResolvedValue(corpus([
+    ...["install-aaa", "install-bbb", "install-ccc"].map((id) => seen(id, "Questie", "Questie", "2026-10-15T08:00:00.000Z")),
+    seen("install-aaa", "Questie", "Questie", "2099-12-31T00:00:00.000Z"),
+  ]));
+  const page = await html();
+  expect(page).toContain("2026-10-15");
+  expect(page).not.toContain("2099");
+});
+
+test("dates show the UTC day, whatever offset the client wrote", async () => {
+  store.loadCorpus.mockResolvedValue(corpus(
+    ["install-aaa", "install-bbb", "install-ccc"].map((id) => seen(id, "Questie", "Questie", "2026-10-16T22:00:00-05:00")),
+  ));
+  const page = await html();
+  expect(page).not.toContain("2026-10-16");
+  expect(page).toMatch(/2026-10-17<\/td>/);
+});
+
+test("the CurseForge link is a full-size tap target", async () => {
+  store.loadCorpus.mockResolvedValue(corpus(["install-aaa", "install-bbb", "install-ccc"].map((id) => seen(id, "Questie", "Questie"))));
+  const link = /<a href="https:\/\/www\.curseforge\.com[^"]*"[^>]*class="([^"]*)"/.exec(await html());
+  expect(link?.[1].split(" ")).toContain("min-h-11");
 });
 
 test("Everloot and its answers addon are never ranked", async () => {
@@ -110,7 +149,7 @@ test("unreadable storage says so, never an empty leaderboard", async () => {
 });
 
 test("the page has its own title and canonical", () => {
-  expect(metadata.title).toBeTruthy();
+  expect(metadata.title).toBe("Popular addons for WoW: Forever");
   expect(metadata.description).toContain("three installs");
   expect(metadata.alternates?.canonical).toBe("/addons/popular");
 });

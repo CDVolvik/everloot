@@ -6,7 +6,7 @@ import { REPO_URL } from "@/lib/source";
 import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
 
 export const metadata: Metadata = {
-  title: "Addons WoW: Forever players run",
+  title: "Popular addons for WoW: Forever",
   description:
     "Which addons WoW: Forever players run, counted from Everloot uploads by players who turned the addon list on. An addon is listed once three installs report it.",
   alternates: { canonical: "/addons/popular" },
@@ -17,7 +17,8 @@ const link = "text-accent hover:underline underline-offset-4";
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 const percent = (share: number) => `${Number((share * 100).toFixed(1))}%`;
-const day = (iso: string) => iso.slice(0, 10);
+/** The UTC day, whatever offset the time was written with. */
+const day = (iso: string) => new Date(iso).toISOString().slice(0, 10);
 
 /** A search for the title on CurseForge. A link only: Everloot neither calls nor copies CurseForge. */
 const curseforgeSearch = (title: string) => `https://www.curseforge.com/wow/search?search=${encodeURIComponent(title)}`;
@@ -92,7 +93,7 @@ export default async function PopularAddonsPage() {
                         <span className="block">{plural(addon.installs, "install", "installs")}</span>
                         <span className="block whitespace-nowrap">{day(addon.firstSeen)} to {day(addon.lastSeen)}</span>
                       </span>
-                      <a href={curseforgeSearch(addon.title)} rel="noopener" className={`inline-flex items-center min-h-8 text-xs ${link}`}>
+                      <a href={curseforgeSearch(addon.title)} rel="noopener" className={`inline-flex items-center min-h-11 text-xs ${link}`}>
                         Search CurseForge<span className="sr-only"> for {addon.title}</span>
                       </a>
                     </th>
