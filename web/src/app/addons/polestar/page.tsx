@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { POLESTAR } from "@/data/polestar";
+import TrackedDownload from "@/components/TrackedDownload";
 import { polestarLive } from "@/lib/polestar-github";
 
 export const revalidate = 3600;
@@ -40,8 +41,8 @@ export default async function PolestarPage() {
       <section className="space-y-3" aria-labelledby="install">
         <h2 id="install" className="text-xl text-fg">Install</h2>
         <div className="flex flex-wrap gap-3">
-          <a className={button} href={POLESTAR.curseforge}>CurseForge</a>
-          <a className={button} href={POLESTAR.releases}>GitHub releases</a>
+          <TrackedDownload className={button} href={POLESTAR.curseforge} addon="polestar" to="curseforge">CurseForge</TrackedDownload>
+          <TrackedDownload className={button} href={POLESTAR.releases} addon="polestar" to="github">GitHub releases</TrackedDownload>
           <a className={button} href={POLESTAR.discord}>Discord</a>
         </div>
         {live ? (

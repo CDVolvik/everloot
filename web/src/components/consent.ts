@@ -1,40 +1,49 @@
 export type ConsentChoice = "accepted" | "rejected";
-const STORAGE_KEY = "gg-cookie-consent-v1";
+/** Optional categories. "advertising" keeps the original storage keys so earlier choices still count. */
+export type ConsentCategory = "advertising" | "analytics";
+const KEYS: Record<ConsentCategory, { storage: string; session: string; fragment: string }> = {
+  advertising: { storage: "gg-cookie-consent-v1", session: "everloot-cookie-rejection", fragment: "#everloot-cookie-rejected" },
+  analytics: { storage: "everloot-analytics-consent-v1", session: "everloot-analytics-rejection", fragment: "#everloot-analytics-rejected" },
+};
 const SCRIPT_ID = "everloot-optional-ads";
-export const REJECTION_SESSION_KEY = "everloot-cookie-rejection";
-export const REJECTION_FRAGMENT = "#everloot-cookie-rejected";
+export const REJECTION_SESSION_KEY = KEYS.advertising.session;
+export const REJECTION_FRAGMENT = KEYS.advertising.fragment;
+export const rejectionFragment = (category: ConsentCategory) => KEYS[category].fragment;
+export const rejectionSessionKey = (category: ConsentCategory) => KEYS[category].session;
 
-export function readConsent(storage: Pick<Storage, "getItem">, session?: Pick<Storage, "getItem">, hash = ""): ConsentChoice | null {
-  if (hash === REJECTION_FRAGMENT) return "rejected";
+export function readConsent(storage: Pick<Storage, "getItem">, session?: Pick<Storage, "getItem">, hash = "", category: ConsentCategory = "advertising"): ConsentChoice | null {
+  const keys = KEYS[category];
+  if (hash === keys.fragment) return "rejected";
   try {
-    if (session?.getItem(REJECTION_SESSION_KEY) === "rejected") return "rejected";
+    if (session?.getItem(keys.session) === "rejected") return "rejected";
   } catch { return null; }
   try {
-    const value = storage.getItem(STORAGE_KEY);
+    const value = storage.getItem(keys.storage);
     return value === "accepted" || value === "rejected" ? value : null;
   } catch { return null; }
 }
 
-export function writeConsent(choice: ConsentChoice, storage: Pick<Storage, "setItem" | "removeItem">, session: Pick<Storage, "setItem" | "removeItem">): { persisted: boolean; needsRejectionFragment: boolean } {
-  const persisted = saveConsent(choice, storage);
+export function writeConsent(choice: ConsentChoice, storage: Pick<Storage, "setItem" | "removeItem">, session: Pick<Storage, "setItem" | "removeItem">, category: ConsentCategory = "advertising"): { persisted: boolean; needsRejectionFragment: boolean } {
+  const keys = KEYS[category];
+  const persisted = saveConsent(choice, storage, category);
   if (persisted || choice === "accepted") {
-    try { session.removeItem(REJECTION_SESSION_KEY); } catch {}
+    try { session.removeItem(keys.session); } catch {}
     return { persisted, needsRejectionFragment: false };
   }
   // A failed overwrite can leave a readable "accepted" value behind. Remove it
   // where possible, and retain a rejection veto across this tab's navigations.
-  try { storage.removeItem(STORAGE_KEY); } catch {}
+  try { storage.removeItem(keys.storage); } catch {}
   try {
-    session.setItem(REJECTION_SESSION_KEY, "rejected");
+    session.setItem(keys.session, "rejected");
     return { persisted: false, needsRejectionFragment: false };
   } catch {
     return { persisted: false, needsRejectionFragment: true };
   }
 }
 
-export function saveConsent(choice: ConsentChoice, storage: Pick<Storage, "setItem">): boolean {
+export function saveConsent(choice: ConsentChoice, storage: Pick<Storage, "setItem">, category: ConsentCategory = "advertising"): boolean {
   try {
-    storage.setItem(STORAGE_KEY, choice);
+    storage.setItem(KEYS[category].storage, choice);
     return true;
   } catch { return false; }
 }
