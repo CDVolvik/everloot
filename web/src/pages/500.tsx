@@ -7,7 +7,7 @@ export default function ServerError() {
     <article className="space-y-4 max-w-4xl">
       <p className="font-mono text-xs text-muted">Lore archive</p>
       <h1 className="text-3xl font-bold text-fg">Lore archive unavailable</h1>
-      <p className="text-fg-2">The knowledge release could not be opened. Nothing here is a count or a page; try again later.</p>
+      <p className="text-fg-2">The lore archive couldn&apos;t load right now. Try again in a few minutes.</p>
       <p className="text-sm">
         <a href="" className="text-accent hover:underline underline-offset-4">Try again</a>
         {" · "}
