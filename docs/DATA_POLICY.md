@@ -25,14 +25,14 @@ Blizzard hides some WoW: Forever item details until an item drops, and runs no p
 Game files show what exists; play shows what is real. Everloot keeps the two apart and says which
 is which.
 
-**What the game files contain.** *Status: the table data is not published yet, except the talent catalog, the map layer and the
-raid buff table described below.* A maintainer can read tables of a game's current build from the files Blizzard's
+**What the game files contain.** *Status: the table data is not published yet, except the talent catalog, the map layer, the
+raid buff table and the build changes described below.* A maintainer can read tables of a game's current build from the files Blizzard's
 launcher downloads from its public CDN, the same files every player receives, and compare two
 builds field by field. The [source ledger](sources/LEDGER.md) lists the tables we read. Those
 snapshots and comparisons stay on the maintainer's machine. Encrypted blocks are skipped, never
 decrypted: no decryption keys are loaded. Nothing read from the game files is in the dataset, the
-API or the MCP server. On the site, only the talent catalog, the map layer, the raid buff table and the icons,
-tooltip text and frame art covered further down may appear.
+API or the MCP server. On the site, only the talent catalog, the map layer, the raid buff table, the build changes and
+the icons, tooltip text and frame art covered further down may appear.
 
 Publishing the table data comes later, as a separate step. Once it ships, every entry from game
 files will:
