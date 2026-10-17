@@ -2,6 +2,8 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { auditSources } from "./audit-sources.js";
 import { BlizzardClient } from "./blizzard/client.js";
+import { emptyStore, ingestBluePosts, loadAccounts, loadStore, saveStore } from "./blue-posts.js";
+import { buildTimeline } from "./changes.js";
 import { checkBuilds, loadRegistry, recordBuilds, saveRegistry, versionsUrl } from "./builds.js";
 import { diffSnapshots } from "./client-diff.js";
 import { CASC_LIBRARY, extractTables, NOT_IN_BUILD, openCdn } from "./client-extract.js";
@@ -39,6 +41,11 @@ const USAGE = `usage: npm run kb -- <command> --db <path>
   builds-check [--product wow_classic_beta,wow_classic_era] [--registry data/builds.json]
     (asks Blizzard's public version service which builds exist; records new ones as queued.
     Reads build identifiers only, never game files)
+  blue-check [--store data/blue-posts.json] [--accounts curated/blue-accounts.json] [--min-minutes 25]
+    (the blue post tracker: reads the tracked Blizzard staff accounts on the WoW forum and the official
+    WoW Bluesky feed, politely: robots.txt first, 1.5 s apart, skips a source asked less than 25
+    minutes ago, stops on 429 or a server error. Keeps title, author, time, link and a two-sentence
+    excerpt per post, never the full text. Run it every 30 minutes at most)
   client-extract [--product wow_classic_beta] [--registry data/builds.json] [--out data/client]
     (reads items and spells of the product's current build from Blizzard's CDN into a snapshot
     <out>/<product>-<build>-<buildconfig, 8 chars>.sqlite + manifest, and marks the build processed.
@@ -164,7 +171,12 @@ async function main(): Promise<number> {
     case "serve-mcp": {
       const release = openPublicSnapshot(requireDbPath(flags, "serve-mcp"));
       closeOnExit(release.db);
-      await serveStdio(release.db);
+      await serveStdio(release.db, () => {
+        // The same files blue-check and builds-check write; absent files mean "not connected".
+        const posts = "data/blue-posts.json";
+        const builds = "data/builds.json";
+        return existsSync(posts) || existsSync(builds) ? buildTimeline(loadStore(posts).posts, loadRegistry(builds).builds) : null;
+      });
       return 0;
     }
     case "serve-mcp-http": {
@@ -209,6 +221,22 @@ async function main(): Promise<number> {
       for (const b of result.added) console.log(`new build: ${b.product} ${b.version} (${b.buildConfig}) [${b.regions.join(" ")}]`);
       for (const e of result.errors) console.error(`${e.product}: ${e.error}`);
       console.log(`${result.added.length} new, ${result.registry.builds.length} known; registry ${path}`);
+      return result.errors.length ? 1 : 0;
+    }
+    case "blue-check": {
+      const path = flags.get("store") || "data/blue-posts.json";
+      const result = await ingestBluePosts({
+        store: existsSync(path) ? loadStore(path) : emptyStore(),
+        accounts: loadAccounts(flags.get("accounts") || "curated/blue-accounts.json"),
+        fetcher: (url, init) => fetch(url, { ...init, signal: AbortSignal.timeout(15_000) }),
+        now: new Date(),
+        minIntervalMs: Number(flags.get("min-minutes") ?? 25) * 60_000,
+      });
+      saveStore(path, result.store);
+      for (const p of result.added) console.log(`new post: [${p.game}] ${p.title} (${p.author}) ${p.url}`);
+      for (const s of result.skipped) console.log(`skipped ${s}`);
+      for (const e of result.errors) console.error(`${e.source}: ${e.error}`);
+      console.log(`${result.added.length} new, ${result.store.posts.length} kept; store ${path}`);
       return result.errors.length ? 1 : 0;
     }
     case "client-extract": {

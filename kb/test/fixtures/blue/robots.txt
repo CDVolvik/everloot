@@ -1,0 +1,11 @@
+# synthetic, shaped like the forum's file
+User-agent: *
+Disallow: /en/wow/admin/
+Disallow: /en/wow/*?*api_key*
+Disallow: /en/wow/search
+Disallow: /en/wow/g
+Disallow: /en/wow/t/*/*.rss
+Disallow: /en/wow/c/*.rss
+
+User-agent: Googlebot
+Disallow: /en/wow/admin/
