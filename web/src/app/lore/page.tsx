@@ -25,9 +25,9 @@ export default async function LoreLanding() {
   return (
     <article className="space-y-10 max-w-4xl">
       <header className="space-y-3">
-        <p className="uppercase tracking-[0.2em] text-xs text-gold-500/80">Lore archive · Warcraft Wiki, 2023 dump</p>
-        <h1 className="font-display text-3xl sm:text-4xl font-bold text-parchment-100 tracking-tight">Lore archive</h1>
-        <p className="text-lg text-parchment-100/75 max-w-2xl">
+        <p className="font-mono text-xs text-muted">Lore archive · Warcraft Wiki, 2023 dump</p>
+        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">Lore archive</h1>
+        <p className="text-lg text-fg-2 max-w-2xl">
           The Warcraft Wiki as it stood on 13 November 2023
           {pages !== null ? <>, {formatter.format(pages)} pages</> : null}, published under CC BY-SA 4.0 with a source link on every page.
           Lore, history, characters and places. Not collected WoW: Forever data.
@@ -40,30 +40,30 @@ export default async function LoreLanding() {
           {hasTypes() === true && (
             <nav aria-label="Browse by type" className="flex flex-wrap gap-2 text-sm">
               {(Object.keys(BROWSE_TYPES) as BrowseSlug[]).map((slug) => (
-                <Link key={slug} href={`/lore/${slug}`} className="min-h-11 inline-flex items-center rounded-lg border border-parchment-100/15 px-3 text-parchment-100/80 hover:text-gold-400 hover:border-gold-400/40">
+                <Link key={slug} href={`/lore/${slug}`} className="min-h-11 inline-flex items-center rounded-lg border border-line px-3 text-fg-2 hover:text-accent hover:border-accent">
                   {BROWSE_HEADINGS[slug]}
                 </Link>
               ))}
-              <Link href="/lore/coverage" className="min-h-11 inline-flex items-center rounded-lg border border-parchment-100/15 px-3 text-parchment-100/80 hover:text-gold-400 hover:border-gold-400/40">
+              <Link href="/lore/coverage" className="min-h-11 inline-flex items-center rounded-lg border border-line px-3 text-fg-2 hover:text-accent hover:border-accent">
                 What the archive covers
               </Link>
             </nav>
           )}
-          <section className="rounded-2xl border border-parchment-100/10 bg-parchment-900 p-6 text-sm text-parchment-100/75 space-y-2">
-            <h2 className="font-display text-xl text-parchment-100">Licence and attribution</h2>
+          <section className="rounded-2xl border border-line bg-panel p-6 text-sm text-fg-2 space-y-2">
+            <h2 className="text-xl text-fg">Licence and attribution</h2>
             <p>{release.manifest.notice}</p>
           </section>
         </>
       ) : (
         <section className="space-y-2">
-          <h2 className="font-display text-xl text-parchment-100">Lore archive unavailable</h2>
-          <p className="text-sm text-parchment-100/75">{UNAVAILABLE_COPY}</p>
+          <h2 className="text-xl text-fg">Lore archive unavailable</h2>
+          <p className="text-sm text-fg-2">{UNAVAILABLE_COPY}</p>
         </section>
       )}
 
-      <p className="text-sm text-parchment-100/60">
+      <p className="text-sm text-muted">
         This archive predates WoW: Forever. For collected gameplay facts see the{" "}
-        <Link href="/database" className="text-gold-400 hover:underline underline-offset-4">Forever database</Link>.
+        <Link href="/database" className="text-accent hover:underline underline-offset-4">Forever database</Link>.
       </p>
     </article>
   );

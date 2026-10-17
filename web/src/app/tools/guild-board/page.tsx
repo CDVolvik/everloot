@@ -32,33 +32,33 @@ export default async function GuildBoardPage(
   return (
     <article className="space-y-8 max-w-4xl">
       <header className="space-y-3">
-        <p className="uppercase tracking-[0.2em] text-xs text-gold-500/80">WoW: Forever · guild</p>
-        <h1 className="font-display text-3xl sm:text-4xl font-bold text-parchment-100 tracking-tight">Guild board</h1>
-        <p className="text-sm text-parchment-100/70 max-w-2xl">
+        <p className="font-mono text-xs text-muted">WoW: Forever · guild</p>
+        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">Guild board</h1>
+        <p className="text-sm text-fg-2 max-w-2xl">
           Roster, bosses, loot, and item level come from officer uploads. A figure is public when two of those uploads agree.
           A combined guild score is not available; each component is shown separately.
         </p>
       </header>
 
-      <form method="get" className="rounded-xl border border-parchment-100/10 bg-parchment-900 p-5 space-y-4">
+      <form method="get" className="rounded-xl border border-line bg-panel p-5 space-y-4">
         <div className="grid sm:grid-cols-2 gap-3">
-          <label className="text-sm text-parchment-100/80 space-y-1">
-            <span className="block text-xs uppercase tracking-wider text-parchment-100/50">Guild</span>
-            <input name="guild" defaultValue={guild} className="w-full rounded-lg border border-parchment-100/15 bg-parchment-950 px-3 py-2 text-parchment-100" />
+          <label className="text-sm text-fg-2 space-y-1">
+            <span className="block text-xs font-mono text-muted">Guild</span>
+            <input name="guild" defaultValue={guild} className="w-full rounded-lg border border-line bg-canvas px-3 py-2 text-fg" />
           </label>
-          <label className="text-sm text-parchment-100/80 space-y-1">
-            <span className="block text-xs uppercase tracking-wider text-parchment-100/50">Realm</span>
-            <input name="realm" defaultValue={realm} className="w-full rounded-lg border border-parchment-100/15 bg-parchment-950 px-3 py-2 text-parchment-100" />
+          <label className="text-sm text-fg-2 space-y-1">
+            <span className="block text-xs font-mono text-muted">Realm</span>
+            <input name="realm" defaultValue={realm} className="w-full rounded-lg border border-line bg-canvas px-3 py-2 text-fg" />
           </label>
         </div>
         <button type="submit" className="rounded-lg bg-gold-500 px-4 py-2 text-sm font-semibold text-parchment-950">Show the board</button>
       </form>
 
-      <pre className="whitespace-pre-wrap text-sm text-parchment-100/85 rounded-xl border border-parchment-100/10 bg-parchment-900 p-5">{answer}</pre>
-      {!corpus.unreachable && <p className="text-xs text-parchment-100/60">{dataAgeLabel(corpus.dataAsOf)}</p>}
+      <pre className="whitespace-pre-wrap text-sm text-fg rounded-xl border border-line bg-panel p-5">{answer}</pre>
+      {!corpus.unreachable && <p className="text-xs text-muted">{dataAgeLabel(corpus.dataAsOf)}</p>}
 
-      <p className="text-sm text-parchment-100/60">
-        <Link href="/guilds/olympus" className="text-gold-400 hover:underline underline-offset-4">Olympus family record</Link>
+      <p className="text-sm text-muted">
+        <Link href="/guilds/olympus" className="text-accent hover:underline underline-offset-4">Olympus family record</Link>
       </p>
     </article>
   );

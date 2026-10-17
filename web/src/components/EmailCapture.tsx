@@ -33,7 +33,7 @@ export default function EmailCapture({ toolSlug }: { toolSlug: string }) {
 
   if (state === "submitted") {
     return (
-      <div className="rounded-lg border border-uncommon/40 bg-uncommon/5 p-4 text-sm text-parchment-100/90">
+      <div className="rounded-lg border border-q-uncommon/40 bg-q-uncommon/5 p-4 text-sm text-fg">
         ✓ You&apos;re on the list. We&apos;ll email once it&apos;s live.
       </div>
     );
@@ -41,7 +41,7 @@ export default function EmailCapture({ toolSlug }: { toolSlug: string }) {
 
   return (
     <form onSubmit={submit} className="space-y-2">
-      <label className="block text-sm text-parchment-100/80">
+      <label className="block text-sm text-fg-2">
         Want a heads-up when this launches?
       </label>
       <div className="flex gap-2">
@@ -54,7 +54,7 @@ export default function EmailCapture({ toolSlug }: { toolSlug: string }) {
             setEmail(e.target.value);
             if (state === "error") setState("idle");
           }}
-          className="flex-1 rounded-lg bg-parchment-900 border border-parchment-100/10 px-3 py-2 text-parchment-100 placeholder:text-parchment-100/30 focus:border-gold-400 outline-none"
+          className="flex-1 rounded-lg bg-panel border border-line px-3 py-2 text-fg placeholder:text-muted focus:border-accent outline-none"
         />
         <button
           type="submit"
@@ -64,9 +64,9 @@ export default function EmailCapture({ toolSlug }: { toolSlug: string }) {
         </button>
       </div>
       {state === "error" && (
-        <p className="text-xs text-red-400">Please enter a valid email.</p>
+        <p className="text-xs text-danger">Please enter a valid email.</p>
       )}
-      <p className="text-xs text-parchment-100/40">
+      <p className="text-xs text-muted">
         One email when it launches. No spam.
       </p>
     </form>
