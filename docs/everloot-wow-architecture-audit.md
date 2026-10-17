@@ -79,7 +79,9 @@ is rewritten first.
 
 **Feasibility (2026-10-17):** `@rhyster/wow-casc-dbc` 2.16.15 read the WoW: Forever beta
 (1.60.1.70450) from Blizzard's CDN in 29 seconds with no decryption keys and no listfile:
-`ItemSparse` (19,231 rows) and `SpellName` (31,939 rows), no encrypted blocks in either.
+`ItemSparse` (19,231 rows) and `SpellName` (31,939 rows). Encrypted blocks are skipped, not
+decrypted: 31 in `ItemSparse` and 14 in `SpellName` in this build, which matches Blizzard hiding
+Forever items. Those rows stay out of Everloot.
 
 The options considered were:
 
