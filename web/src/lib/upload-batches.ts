@@ -6,7 +6,7 @@ export interface BatchReceipt { ok: boolean; persisted?: boolean; uploadId?: str
 export interface UploadSession {
   batches: string[]; next: number; receipts: BatchReceipt[];
   counts: Record<string, number>; held: { legacy: number; named: number; invalid: number };
-  /** Titles of the installed addons this upload sends, for the preview. */
+  /** The installed addons this upload sends, one "Title (FolderName)" per folder, for the preview. */
   addons: string[];
 }
 export function prepareUpload(payload: unknown, sharing: SharingChoices, grantTokens: string[], maxBytes = 600_000): UploadSession {
@@ -17,7 +17,7 @@ export function prepareUpload(payload: unknown, sharing: SharingChoices, grantTo
   const parsed = parseRecords(envelope.records);
   const held = { legacy: 0, named: 0, invalid: parsed.receipt.rejected.length };
   const counts: Record<string, number> = {};
-  const addons = new Set<string>();
+  const addons = new Map<string, string>();
   const rows: string[] = [];
   for (const record of parsed.records) {
     if (!record.eventId) { held.legacy++; continue; }
@@ -25,7 +25,7 @@ export function prepareUpload(payload: unknown, sharing: SharingChoices, grantTo
     if (category && !sharing[category]) { held.named++; continue; }
     if (category && !grantTokens.length) throw new Error("A verified grant is required for the named categories you selected.");
     if ("claimToken" in record) delete record.claimToken;
-    if (record.kind === "addon_seen") addons.add(record.title);
+    if (record.kind === "addon_seen") addons.set(record.name, `${record.title} (${record.name})`);
     counts[record.kind] = (counts[record.kind] ?? 0) + 1;
     rows.push(JSON.stringify(record));
   }
@@ -46,7 +46,7 @@ export function prepareUpload(payload: unknown, sharing: SharingChoices, grantTo
     size += length + (chunk.length ? 1 : 0); chunk.push(row);
   }
   if (chunk.length) batches.push(prefix + chunk.join(",") + suffix);
-  return { batches, next: 0, receipts: [], counts, held, addons: [...addons].sort() };
+  return { batches, next: 0, receipts: [], counts, held, addons: [...addons.values()].sort() };
 }
 /** Advance only after a confirmed durable receipt; retries send the identical batch. */
 export async function sendBatches(session: UploadSession, send: typeof fetch = fetch, onProgress: () => void = () => {}, url = "/api/intake") {
