@@ -69,8 +69,8 @@ export default async function GuildFamilyPage(props: { params: Promise<{ slug: s
             Blizzard&apos;s API forum
           </a>
           . When a namespace is published, it is one line in the local adapter. Those responses
-          stay off this page, because the site runs ads and Blizzard&apos;s terms keep API data
-          in a local cache.
+          stay off this page, because Blizzard&apos;s terms keep API data in a local
+          cache.
         </p>
         <dl className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <ApiStat label="Retail guild profile" value={api.retailProfile} />

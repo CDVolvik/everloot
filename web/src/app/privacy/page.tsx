@@ -63,7 +63,7 @@ export default function PrivacyPage() {
         </li>
         <li>
           <strong>Cookies:</strong> we use cookies for session preferences and,
-          where enabled, for advertising via Google AdSense (see below).
+          if advertising is enabled in the future, for Google AdSense (see below).
         </li>
       </ul>
 
@@ -71,7 +71,8 @@ export default function PrivacyPage() {
         Advertising and Google AdSense
       </h2>
       <p className="text-fg-2">
-        If configured, Google AdSense loads only after you accept optional cookies. Google
+        Everloot does not currently show ads. If advertising is enabled later,
+        Google AdSense will load only after you accept optional cookies. Google
         and its partners may use cookies to serve ads based on your prior visits
         to this site or other sites. You can opt out of personalized advertising
         by visiting{" "}
