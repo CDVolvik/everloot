@@ -56,6 +56,16 @@ export default function AddonsPage() {
           Popular addons
         </Link>
       </section>
+      <section className="space-y-2" aria-labelledby="ecosystem">
+        <h2 id="ecosystem" className="text-xl font-semibold text-fg">Forever addons and projects</h2>
+        <p className="text-sm text-fg-2 max-w-2xl">
+          A community list of addons and tools made for Forever, ranked on boards for installs, activity, releases and
+          upkeep, with a check of each addon&apos;s .toc.
+        </p>
+        <Link href="/addons/ecosystem" className="inline-flex items-center min-h-11 text-accent hover:underline underline-offset-4">
+          The ecosystem tracker
+        </Link>
+      </section>
     </article>
   );
 }

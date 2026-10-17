@@ -1,7 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import type { DB } from "./db.js";
-import { createKnowledgeServer, type ChangesLoader, type CorpusLoader, type MarketLoader } from "./mcp-server.js";
+import { createKnowledgeServer, type ChangesLoader, type CorpusLoader, type EcosystemLoader, type MarketLoader } from "./mcp-server.js";
 
 export interface PublicMcpConfig {
   db: DB;
@@ -18,10 +18,12 @@ export interface PublicMcpConfig {
   market?: MarketLoader;
   /** The merged changes timeline, when the host has one. */
   changes?: ChangesLoader;
+  /** The ecosystem tracker's view with install counts joined, when the host has one. */
+  ecosystem?: EcosystemLoader;
 }
 
-export function createPublicMcpServer(config: { db: DB; corpus?: CorpusLoader; market?: MarketLoader; changes?: ChangesLoader }) {
-  const server = createKnowledgeServer(config.db, { corpus: config.corpus, market: config.market, changes: config.changes });
+export function createPublicMcpServer(config: { db: DB; corpus?: CorpusLoader; market?: MarketLoader; changes?: ChangesLoader; ecosystem?: EcosystemLoader }) {
+  const server = createKnowledgeServer(config.db, { corpus: config.corpus, market: config.market, changes: config.changes, ecosystem: config.ecosystem });
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined, enableJsonResponse: true,
   });

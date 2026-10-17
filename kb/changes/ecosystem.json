@@ -1,0 +1,112 @@
+{
+  "schema": 1,
+  "refreshedAt": "2026-10-17T18:20:46.157Z",
+  "projects": {
+    "everloot": {
+      "status": "ok",
+      "fetchedAt": "2026-10-17T18:20:46.157Z",
+      "stars": 0,
+      "archived": false,
+      "license": "AGPL-3.0",
+      "lastCommit": "2026-10-17T18:03:40Z",
+      "release": null,
+      "commits4w": 482,
+      "contributors": 1,
+      "openIssues": 9,
+      "closedIssues": 1,
+      "medianFirstResponseHours": null,
+      "responseSample": 0,
+      "interfaces": [
+        16001
+      ]
+    },
+    "polestar": {
+      "status": "ok",
+      "fetchedAt": "2026-10-17T18:20:53.543Z",
+      "stars": 100,
+      "archived": false,
+      "license": null,
+      "lastCommit": "2026-10-17T14:47:52Z",
+      "release": {
+        "tag": "v0.2.5",
+        "date": "2026-10-17T12:32:11Z",
+        "url": "https://github.com/fitzforge/polestar/releases/tag/v0.2.5"
+      },
+      "commits4w": 920,
+      "contributors": 10,
+      "openIssues": 35,
+      "closedIssues": 78,
+      "medianFirstResponseHours": null,
+      "responseSample": 0,
+      "interfaces": [
+        16001
+      ]
+    },
+    "olympus": {
+      "status": "ok",
+      "fetchedAt": "2026-10-17T18:21:00.888Z",
+      "stars": 20,
+      "archived": false,
+      "license": "MIT",
+      "lastCommit": "2026-10-16T20:19:21Z",
+      "release": {
+        "tag": "v1.2.5.1",
+        "date": "2026-10-16T20:20:19Z",
+        "url": "https://github.com/dnl-gentile/olympus-addon/releases/tag/v1.2.5.1"
+      },
+      "commits4w": 651,
+      "contributors": 3,
+      "openIssues": 6,
+      "closedIssues": 13,
+      "medianFirstResponseHours": 101.7,
+      "responseSample": 12,
+      "interfaces": [
+        11509,
+        16001,
+        20506
+      ]
+    },
+    "forever-ref": {
+      "status": "ok",
+      "fetchedAt": "2026-10-17T18:21:11.443Z",
+      "stars": 0,
+      "archived": false,
+      "license": null,
+      "lastCommit": "2026-10-17T10:45:32Z",
+      "release": null,
+      "commits4w": 76,
+      "contributors": 2,
+      "openIssues": 0,
+      "closedIssues": 1,
+      "medianFirstResponseHours": null,
+      "responseSample": 1,
+      "interfaces": null
+    }
+  },
+  "history": {
+    "everloot": [
+      {
+        "at": "2026-10-17T18:20:46.157Z",
+        "stars": 0
+      }
+    ],
+    "polestar": [
+      {
+        "at": "2026-10-17T18:20:46.157Z",
+        "stars": 100
+      }
+    ],
+    "olympus": [
+      {
+        "at": "2026-10-17T18:20:46.157Z",
+        "stars": 20
+      }
+    ],
+    "forever-ref": [
+      {
+        "at": "2026-10-17T18:20:46.157Z",
+        "stars": 0
+      }
+    ]
+  }
+}

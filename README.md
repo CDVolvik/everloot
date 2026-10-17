@@ -154,7 +154,7 @@ limit and how to credit the data.
 
 ## Project status
 
-Beta. The addon is at 0.3.0 and passes its automated tests; the in-client checks in
+Beta. The addon is at 0.3.1 and passes its automated tests; the in-client checks in
 [`docs/2026-10-08-beta-client-checklist.md`](docs/2026-10-08-beta-client-checklist.md) are still open
 until the game is playable. The game-file layers (talents, raid buffs, map) are read from build
 `1.60.1.70450` and marked unconfirmed. A [build watch](docs/BUILD_WATCH.md) checks for new builds
