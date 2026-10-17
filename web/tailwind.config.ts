@@ -18,9 +18,9 @@ const config: Config = {
     extend: {
       colors: tokenColors,
       fontFamily: {
-        // Tight grotesk voice: system sans for both, display gets tracking via classes
-        sans: ["ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"],
-        display: ["ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"],
+        // Geist for reading, Geist Mono for anything precise (variables set in src/app/fonts.ts).
+        sans: ["var(--font-geist-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
+        mono: ["var(--font-geist-mono)", "ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
       },
     },
   },

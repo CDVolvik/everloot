@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 import { tools, toolHref } from "@/data/tools";
 import AccountControls from "./AccountControls";
+import Bracket from "./Bracket";
 
 export default function Header() {
   const [open, setOpen] = useState(false);
@@ -13,15 +14,19 @@ export default function Header() {
       if (event.key === "Escape" && open) { setOpen(false); toggle.current?.focus(); }
     }}>
       <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between gap-3">
-        <Link href="/" className="text-xl font-bold text-accent hover:text-accent transition shrink-0" onClick={() => setOpen(false)}>
-          Everloot<span className="text-fg">.app</span>
+        <Link href="/" className="inline-flex items-center gap-2 min-h-11 text-xl font-bold tracking-tight text-fg shrink-0" onClick={() => setOpen(false)}>
+          {/* The favicon's diamond, outlined in the accent green. */}
+          <svg aria-hidden="true" viewBox="8 8 48 48" width="16" height="16" className="text-accent">
+            <path d="M32 12 52 32 32 52 12 32Z" fill="none" stroke="currentColor" strokeWidth="5" strokeLinejoin="round" />
+          </svg>
+          everloot
         </Link>
         <nav aria-label="Primary" className="hidden sm:flex items-center gap-4 text-sm">
-          <Link href="/database" className="inline-flex items-center min-h-11 text-fg-2 hover:text-accent">Database</Link>
-          <Link href="/lore" className="inline-flex items-center min-h-11 text-fg-2 hover:text-accent">Lore</Link>
-          <Link href="/upload" className="inline-flex items-center min-h-11 text-fg-2 hover:text-accent">Upload</Link>
-          <Link href="/tools/gold-per-hour" className="inline-flex items-center min-h-11 text-fg-2 hover:text-accent">Gold/Hour</Link>
-          <Link href="/addons" className="inline-flex items-center min-h-11 text-fg-2 hover:text-accent">Addons</Link>
+          <Link href="/database" className="inline-flex items-center min-h-11 text-muted hover:text-fg"><Bracket>Database</Bracket></Link>
+          <Link href="/lore" className="inline-flex items-center min-h-11 text-muted hover:text-fg"><Bracket>Lore</Bracket></Link>
+          <Link href="/upload" className="inline-flex items-center min-h-11 text-muted hover:text-fg"><Bracket>Upload</Bracket></Link>
+          <Link href="/tools/gold-per-hour" className="inline-flex items-center min-h-11 text-muted hover:text-fg"><Bracket>Gold/Hour</Bracket></Link>
+          <Link href="/addons" className="inline-flex items-center min-h-11 text-muted hover:text-fg"><Bracket>Addons</Bracket></Link>
         </nav>
         <div className="flex items-center gap-1 shrink-0">
           <AccountControls />
@@ -31,7 +36,7 @@ export default function Header() {
         </div>
       </div>
       {open && (
-        <nav id="site-navigation" aria-label="All tools" className="absolute top-full inset-x-0 border-b border-line bg-canvas shadow-xl max-h-[70vh] overflow-y-auto">
+        <nav id="site-navigation" aria-label="All tools" className="absolute top-full inset-x-0 border-b border-line bg-canvas max-h-[70vh] overflow-y-auto">
           <div className="mx-auto max-w-6xl px-4 py-3 grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
             <Link href="/addons" onClick={() => setOpen(false)} className="min-h-11 px-3 py-3 rounded-lg text-sm text-fg-2 hover:bg-panel hover:text-accent">
               Addons
