@@ -1,4 +1,13 @@
 import type { Config } from "tailwindcss";
+import plugin from "tailwindcss/plugin";
+import { cssVariables, tokens, type TokenName } from "./src/design/tokens";
+
+// Every token except the gradient stops, which only the primary pill's outline uses.
+const tokenColors = Object.fromEntries(
+  (Object.keys(tokens.dark) as TokenName[])
+    .filter((name) => name !== "grad-from" && name !== "grad-to")
+    .map((name) => [name, `rgb(var(--${name}) / <alpha-value>)`]),
+);
 
 const config: Config = {
   content: [
@@ -8,6 +17,7 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        ...tokenColors,
         // WoW-flavored palette: deep parchment dark + quality colors
         gold: {
           50: "#fffbea",
@@ -42,6 +52,14 @@ const config: Config = {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    // Dark is the default; light follows the system setting.
+    plugin(({ addBase }) => {
+      addBase({
+        ":root": cssVariables("dark"),
+        "@media (prefers-color-scheme: light)": { ":root": cssVariables("light") },
+      });
+    }),
+  ],
 };
 export default config;
