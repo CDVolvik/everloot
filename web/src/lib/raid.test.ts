@@ -119,10 +119,18 @@ describe("coverage", () => {
     expect(c.buffs.find((b) => b.family.id === "mark-of-the-wild")!.raid).toBe("covered");
   });
 
-  test("tree gates come from the talent catalog: Trueshot Aura, Leader of the Pack, Winter's Chill", () => {
-    const gate = (id: string) => table.entries.find((e) => e.id === id)!.tree;
-    expect([gate("trueshot-aura"), gate("leader-of-the-pack"), gate("winters-chill")]).toEqual([2, 2, 3]);
-    expect(gate("battle-shout")).toBe("baseline");
+  test("tree gates come from the talent catalog and spell links, each with its proof", () => {
+    const entry = (id: string) => table.entries.find((e) => e.id === id)!;
+    const gate = (id: string) => [entry(id).tree, entry(id).treeProof];
+    expect(gate("trueshot-aura")).toEqual([2, "talent spell"]);
+    expect(gate("moonkin-aura")).toEqual([1, "spell chain"]);
+    expect(gate("winters-chill")).toEqual([3, "spell chain"]);
+    expect(gate("leader-of-the-pack")).toEqual([2, "talent name"]);
+    expect(table.entries.filter((e) => e.tree !== "baseline").map((e) => e.id).sort()).toEqual(
+      ["leader-of-the-pack", "moonkin-aura", "trueshot-aura", "winters-chill"],
+    );
+    expect(entry("blessing-of-kings").tree).toBe("baseline");
+    expect(entry("battle-shout").tree).toBe("baseline");
     const hunter = (tree: Slot["tree"]) => coverage(raid(10, { 0: slot("hunter", tree) }), table).buffs.find((b) => b.family.id === "trueshot-aura")!.raid;
     expect([hunter(2), hunter(0), hunter(1)]).toEqual(["covered", "possible", "missing"]);
     expect(treeNames(table, "hunter")[1]).toBe("Marksmanship");
@@ -148,6 +156,10 @@ describe("the generated table", () => {
       expect(e.names.length, e.id).toBeGreaterThan(0);
     }
     for (const f of table.families) expect(table.entries.some((e) => e.id === f.id), f.id).toBe(true);
+  });
+
+  test("a tree gate has a proof, and baseline has none", () => {
+    for (const e of table.entries) expect(e.treeProof !== undefined, e.id).toBe(e.tree !== "baseline");
   });
 
   test("every tree gate is a tree number the class has", () => {

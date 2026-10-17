@@ -9,6 +9,7 @@ Everloot.RaidData = {
   families = {
     { id = "battle-shout", label = "Battle Shout" },
     { id = "trueshot-aura", label = "Trueshot Aura" },
+    { id = "moonkin-aura", label = "Moonkin Aura" },
     { id = "leader-of-the-pack", label = "Leader of the Pack" },
     { id = "mark-of-the-wild", label = "Mark of the Wild" },
     { id = "thorns", label = "Thorns" },
@@ -43,6 +44,7 @@ Everloot.RaidData = {
   buffs = {
   { family = "battle-shout", id = "battle-shout", scope = "raid", names = {"Battle Shout"}, spellIds = {5242, 6192, 6673, 11549, 11550, 11551, 25289} },
   { family = "trueshot-aura", id = "trueshot-aura", scope = "raid", names = {"Trueshot Aura"}, spellIds = {19506, 20905, 20906, 1299346, 1299348} },
+  { family = "moonkin-aura", id = "moonkin-aura", scope = "raid", names = {"Moonkin Aura"}, spellIds = {24907} },
   { family = "leader-of-the-pack", id = "leader-of-the-pack", scope = "raid", names = {"Leader of the Pack"}, spellIds = {24932} },
   { family = "mark-of-the-wild", id = "mark-of-the-wild", scope = "single", names = {"Mark of the Wild"}, spellIds = {1126, 5232, 5234, 6756, 8907, 9884, 9885} },
   { family = "mark-of-the-wild", id = "gift-of-the-wild", scope = "raid", names = {"Gift of the Wild"}, spellIds = {21849, 21850} },

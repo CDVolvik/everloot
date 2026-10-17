@@ -22,7 +22,7 @@ Raid buffs and debuffs with their reach (`self`, `single`, `party`, `raid`, `are
 
     npm run kb -- client-extract --product wow_classic_beta
     npm run kb -- client-catalog data/client/<snapshot>.sqlite
-    cd web && npx tsx scripts/build-raid-game-data.ts ../kb/data/catalog/<product>-<build>-<config>
+    cd web && npx tsx scripts/build-raid-game-data.ts ../kb/data/catalog/<product>-<build>-<config> ../kb/data/client/<snapshot>.sqlite
 
 The script also writes `addon/modules/raid_data.lua` from the same data, and `src/lib/raid.test.ts` fails if
 the two differ.
@@ -30,3 +30,8 @@ the two differ.
 What the file leaves out: entries whose spells are not in the build (`notFound`, for example Blessing of
 Sanctuary). The only thing here that is ours is `family`, which groups a group cast (Gift of the Wild) with
 its single-target cast (Mark of the Wild) because they do not stack.
+
+Tree gates (`tree`, `treeProof`): the generator follows the snapshot SpellEffect rows (learn spell, trigger
+spell, and apply-aura effects that trigger a spell, to depth three) from every talent node spell. A talent
+that has the effect spell is "talent spell", one that leads to it is "spell chain", and one with the same name
+is "talent name". No match is `baseline`; matches in several trees are `unknown`.

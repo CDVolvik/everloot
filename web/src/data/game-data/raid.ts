@@ -17,6 +17,8 @@ export interface BuffEntry {
    * matches, or "unknown" when the matches are in more than one tree.
    */
   tree: "baseline" | "unknown" | 1 | 2 | 3;
+  /** How the tree was found: a talent with the effect's spell, a learn or trigger link from a talent spell, or a talent of the same name. */
+  treeProof?: "talent spell" | "spell chain" | "talent name";
   /** Aura names and spell ids the addon looks for. */
   names: string[];
   spellIds: number[];

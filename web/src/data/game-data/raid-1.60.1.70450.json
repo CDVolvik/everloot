@@ -33,6 +33,11 @@
    "kind": "buff"
   },
   {
+   "id": "moonkin-aura",
+   "label": "Moonkin Aura",
+   "kind": "buff"
+  },
+  {
    "id": "leader-of-the-pack",
    "label": "Leader of the Pack",
    "kind": "buff"
@@ -327,6 +332,7 @@
    "family": "trueshot-aura",
    "scope": "raid",
    "tree": 2,
+   "treeProof": "talent spell",
    "names": [
     "Trueshot Aura"
    ],
@@ -339,6 +345,22 @@
    ]
   },
   {
+   "id": "moonkin-aura",
+   "label": "Moonkin Aura",
+   "kind": "buff",
+   "class": "druid",
+   "family": "moonkin-aura",
+   "scope": "raid",
+   "tree": 1,
+   "treeProof": "spell chain",
+   "names": [
+    "Moonkin Aura"
+   ],
+   "spellIds": [
+    24907
+   ]
+  },
+  {
    "id": "leader-of-the-pack",
    "label": "Leader of the Pack",
    "kind": "buff",
@@ -346,6 +368,7 @@
    "family": "leader-of-the-pack",
    "scope": "raid",
    "tree": 2,
+   "treeProof": "talent name",
    "names": [
     "Leader of the Pack"
    ],
@@ -491,6 +514,7 @@
    "family": "winters-chill",
    "scope": "enemy",
    "tree": 3,
+   "treeProof": "spell chain",
    "names": [
     "Winter's Chill"
    ],
