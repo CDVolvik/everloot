@@ -138,6 +138,98 @@ export const collectionOwned = base.extend({
   itemId: z.number().int().positive(),
 });
 
+// --- Addon 0.3.3: completion tracker (achievements, reputation, titles, quest chains) ---
+// Catalog rows are game facts with no player data: readers list an entry once 3 installs agree on it.
+// Owned rows are one character's own progress. They follow collection_owned: named data, shared only with
+// the "collection" choice and a verified install grant (kb/src/publication.ts).
+
+/**
+ * Opaque per-install label for one character: 8 hex digits the addon derives from the install id and the
+ * character's GUID. It is not a name and is not meant to be turned back into one.
+ */
+export const CHARACTER_KEY = z.string().regex(/^[0-9a-f]{8}$/);
+
+const COUNT = z.number().int().min(0).max(5000);
+const GAME_ID = z.number().int().positive().max(2_000_000_000);
+
+export const achievementCatalog = base.extend({
+  kind: z.literal("achievement_catalog"),
+  achievementId: GAME_ID,
+  name: z.string().min(1).max(120),
+  categoryId: z.number().int().nonnegative().max(2_000_000_000),
+  category: z.string().min(1).max(80),
+  parentCategory: z.string().min(1).max(80).optional(),
+  points: z.number().int().min(0).max(1000),
+  criteriaCount: COUNT.describe("The achievement's real criteria count; `criteria` keeps the first 100."),
+  criteria: z.array(z.object({
+    text: z.string().max(120),
+    required: z.number().int().min(0).max(2_000_000_000),
+  })).max(100),
+}).refine((row) => row.criteria.length <= row.criteriaCount, { message: "criteria cannot outnumber criteriaCount", path: ["criteria"] });
+
+export const reputationCatalog = base.extend({
+  kind: z.literal("reputation_catalog"),
+  factionId: GAME_ID,
+  name: z.string().min(1).max(80),
+  header: z.string().min(1).max(80).optional(),
+  major: z.boolean().optional().describe("A renown faction: its ranks are not the eight standings."),
+});
+
+export const titleCatalog = base.extend({
+  kind: z.literal("title_catalog"),
+  titleId: z.number().int().positive().max(5000),
+  name: z.string().min(1).max(80),
+});
+
+export const questChainCatalog = base.extend({
+  kind: z.literal("quest_chain_catalog"),
+  questLineId: GAME_ID,
+  name: z.string().min(1).max(120),
+  questIds: z.array(GAME_ID).min(1).max(80),
+});
+
+const ownedBase = base.extend({
+  characterKey: CHARACTER_KEY,
+  class: z.string().min(2).max(20).regex(/^[A-Za-z]+$/).describe("Class token from UnitClass, e.g. MAGE."),
+  level: z.number().int().min(1).max(100),
+});
+
+export const achievementOwned = ownedBase.extend({
+  kind: z.literal("achievement_owned"),
+  achievementId: GAME_ID,
+  completed: z.boolean(),
+  earnedByMe: z.boolean().optional().describe("False when the achievement is complete on the account but not by this character."),
+  earnedOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  criteriaMet: COUNT,
+  criteriaTotal: COUNT,
+}).superRefine((row, ctx) => {
+  if (row.criteriaMet > row.criteriaTotal) ctx.addIssue({ code: "custom", message: "criteriaMet cannot exceed criteriaTotal", path: ["criteriaMet"] });
+  if (row.earnedOn && !row.completed) ctx.addIssue({ code: "custom", message: "only a completed achievement has a date", path: ["earnedOn"] });
+});
+
+export const reputationOwned = ownedBase.extend({
+  kind: z.literal("reputation_owned"),
+  factionId: GAME_ID,
+  reaction: z.number().int().min(1).max(20).describe("The client's standing index: 1 Hated up to 8 Exalted."),
+  standing: z.number().int().min(-1_000_000).max(10_000_000),
+  floor: z.number().int().min(-1_000_000).max(10_000_000),
+  ceiling: z.number().int().min(-1_000_000).max(10_000_000),
+}).refine((row) => row.floor <= row.ceiling, { message: "floor cannot exceed ceiling", path: ["floor"] });
+
+/** Titles and completed quests are sent as additions: the union of a character's rows is what it has. */
+export const titleOwned = ownedBase.extend({
+  kind: z.literal("title_owned"),
+  titleIds: z.array(z.number().int().positive().max(5000)).min(1).max(200),
+});
+
+export const questOwned = ownedBase.extend({
+  kind: z.literal("quest_owned"),
+  questIds: z.array(GAME_ID).min(1).max(200),
+});
+
+/** The kinds that hold one character's own progress. Named data, like collection_owned. */
+export const COMPLETION_OWNED_KINDS: readonly string[] = ["achievement_owned", "reputation_owned", "title_owned", "quest_owned"];
+
 export const auctionScan = base.extend({
   kind: z.literal("auction_scan"),
   realm: z.string().min(2).max(60),
@@ -311,6 +403,14 @@ const recordSchemas = {
   gear_snapshot: gearSnapshot,
   collection_catalog: collectionCatalog,
   collection_owned: collectionOwned,
+  achievement_catalog: achievementCatalog,
+  reputation_catalog: reputationCatalog,
+  title_catalog: titleCatalog,
+  quest_chain_catalog: questChainCatalog,
+  achievement_owned: achievementOwned,
+  reputation_owned: reputationOwned,
+  title_owned: titleOwned,
+  quest_owned: questOwned,
   auction_scan: auctionScan,
   auction_snapshot: auctionSnapshot,
   recipe_seen: recipeSeen,
@@ -335,13 +435,18 @@ const PUBLIC_KIND_LIST = [
   "npc_sighting", "loot", "quest", "vendor", "item_seen", "guild_snapshot", "raid_lockout", "attendance",
   "loot_award", "gear_snapshot", "collection_catalog", "collection_owned", "auction_scan", "recipe_seen",
   "price_seen", "recipe_observed", "trainer_seen", "gold_snapshot", "money_event", "map_bounds",
+  // Completion tracker. The catalogs are anonymous game facts. The owned kinds are listed the way
+  // collection_owned is: the corpus withholds them unless a verified install grant covers them.
+  "achievement_catalog", "reputation_catalog", "title_catalog", "quest_chain_catalog",
+  "achievement_owned", "reputation_owned", "title_owned", "quest_owned",
 ] as const satisfies readonly RecordKind[];
 export const PUBLIC_RECORD_KINDS: readonly string[] = PUBLIC_KIND_LIST;
 
 const anyRecord = z.discriminatedUnion("kind", [
   npcSighting, lootWindow, questEvent, vendorList, itemSeen,
   guildSnapshot, raidLockout, attendance, lootAward, gearSnapshot,
-  collectionCatalog, collectionOwned, auctionScan, auctionSnapshot, recipeSeen, priceSeen, recipeObserved, trainerSeen,
+  collectionCatalog, collectionOwned, achievementCatalog, reputationCatalog, titleCatalog, questChainCatalog,
+  achievementOwned, reputationOwned, titleOwned, questOwned, auctionScan, auctionSnapshot, recipeSeen, priceSeen, recipeObserved, trainerSeen,
   goldSnapshot, moneyEvent, addonSeen, mapBounds, talentSnapshot,
 ]);
 

@@ -1,4 +1,4 @@
-import { parseRecords, type IntakeRecord } from "../../web/src/lib/intake.js";
+import { COMPLETION_OWNED_KINDS, parseRecords, type IntakeRecord } from "../../web/src/lib/intake.js";
 
 export interface CorpusEvent { record: IntakeRecord; grants: string[] }
 export interface CorpusState {
@@ -13,7 +13,7 @@ export function eventKey(row: IntakeRecord): string {
 }
 
 export function namedRecord(row: IntakeRecord): boolean {
-  return "guildName" in row || "character" in row || row.kind === "collection_owned";
+  return "guildName" in row || "character" in row || row.kind === "collection_owned" || COMPLETION_OWNED_KINDS.includes(row.kind);
 }
 
 /** Stable object-key order; array order remains part of the observed event. */

@@ -13,6 +13,32 @@ that has a zip in the repository. Earlier builds have none.
 Nothing yet. Pull requests merged to `main` are listed in the nightly pre-releases until the next
 tagged release.
 
+## [0.3.3] - 2026-10-19
+
+### Added
+- A **completion tracker** module for achievements, reputation, titles and quest chains. It is off until
+  `/everloot completion on` (`/everloot completion` reads now, `/everloot completion off` deletes every
+  row it wrote). It reads with the calls Forever's own windows use (the achievement globals the Legacy
+  Challenges window calls, `C_Reputation`, the title functions, `C_QuestLog.GetAllCompletedQuestIDs`,
+  `C_QuestLine`), in chunks across frames, waits out combat and never acts: no tracking, no expanding
+  headers, no window changes. A missing call records nothing for that part and `/everloot status` names it.
+- Eight intake kinds. Catalog rows (`achievement_catalog`, `reputation_catalog`, `title_catalog`,
+  `quest_chain_catalog`) are game facts with no player data, listed on the site after 3 installs report the
+  same entry. Owned rows (`achievement_owned`, `reputation_owned`, `title_owned`, `quest_owned`) are one
+  character's progress under an opaque key, not the name. They are named data in the collection sharing
+  category, like `collection_owned`. A changed achievement or standing replaces its earlier row, so the
+  file does not grow with each point of reputation.
+- `/tools/collections` shows, per character, what is done and what is closest to done (achievements with
+  the most criteria met, reputations nearest the next standing, quest chains with the fewest quests left),
+  with an empty state that says when the data is unrecorded rather than zero.
+- MCP tool `completion_progress`, read-only, taking an install id and an optional character key.
+- [`docs/2026-10-19-addon-0.3.3-beta-checklist.md`](docs/2026-10-19-addon-0.3.3-beta-checklist.md): the
+  calls confirmed in the build's own files, and the in-client check to run.
+
+Forever opens achievements as Legacy Challenges, so the catalog is the list the game gives those calls.
+The module has passed the automated tests against a mock of the documented calls; it has not run in the
+Forever client.
+
 ## [0.3.2] - 2026-10-18
 
 ### Fixed

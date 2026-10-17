@@ -18,6 +18,7 @@ export const MCP_TOOLS: readonly { name: string; text: string }[] = [
   { name: "vendor_page", text: "What one vendor sells, with copper prices." },
   { name: "world_map_near", text: "What is near a spot: entrances, observed NPCs and vendors, with distances in yards." },
   { name: "collection_gap", text: "What one install is missing from a collection, such as Mounts." },
+  { name: "completion_progress", text: "What one install's characters finished in achievements, reputation, titles and quest chains, and what is closest to done." },
   { name: "guild_board", text: "A guild's roster, bosses, loot and attendance, from officer uploads." },
   { name: "auction_history", text: "Daily median auction price for one item on one realm." },
   { name: "market_value", text: "Market value, minimum buyout, historical value and units listed for one item on one realm, from full scans players started." },

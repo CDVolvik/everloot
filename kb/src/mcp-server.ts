@@ -6,6 +6,7 @@ import { handlePlan } from "./bridge-plan.js";
 import { CHANGE_FILTERS, handleRecentChanges, type ChangeEntry } from "./changes.js";
 import { ECOSYSTEM_BOARD_FILTERS, handleEcosystemProjects, type EcosystemView } from "./ecosystem.js";
 import { collectionFactsFromRecords, handleCollectionGap } from "./collection-gap.js";
+import { completionFactsFromRecords, handleCompletionProgress } from "./completion.js";
 import { goldFactsFromRecords, handleGoldLedger } from "./gold-ledger.js";
 import { guildFactsFromRecords, handleGuildBoard } from "./guild-board.js";
 import { itemFactsFromRecords } from "./drop-rollup.js";
@@ -39,6 +40,10 @@ export const TOOL_KINDS = {
   vendor_page: ["npc_sighting", "quest", "vendor"],
   world_map_near: ["npc_sighting", "vendor"],
   collection_gap: ["collection_catalog", "collection_owned"],
+  completion_progress: [
+    "achievement_catalog", "reputation_catalog", "title_catalog", "quest_chain_catalog",
+    "achievement_owned", "reputation_owned", "title_owned", "quest_owned",
+  ],
   guild_board: ["guild_snapshot", "raid_lockout", "attendance", "loot_award", "gear_snapshot"],
   auction_history: ["auction_scan"],
   gold_ledger: ["gold_snapshot", "money_event"],
@@ -60,6 +65,7 @@ const TOOL_FACT_BUILDERS: Record<ToolName, (records: unknown[]) => unknown> = {
   vendor_page: worldFactsFromRecords,
   world_map_near: mapFactsFromRecords,
   collection_gap: collectionFactsFromRecords,
+  completion_progress: completionFactsFromRecords,
   guild_board: guildFactsFromRecords,
   auction_history: auctionSightingsFromRecords,
   gold_ledger: goldFactsFromRecords,
@@ -448,6 +454,22 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; 
     },
     async (args) => ({
       content: [{ type: "text" as const, text: await readFacts("collection_gap", (facts: ReturnType<typeof collectionFactsFromRecords>) => handleCollectionGap(args, facts)) }],
+    }),
+  );
+  server.registerTool(
+    "completion_progress",
+    {
+      title: "Achievement, reputation, title and quest progress",
+      description:
+        "What one install's characters have finished, and what is closest to done: achievements with the most criteria met, reputations nearest the next standing, titles known, and quests finished in a chain. A list entry is public after 3 installs report it identically. Progress is what that install uploaded with the collection sharing choice; without it the answer says so. Not a Blizzard profile read and not a copied catalog. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.",
+      inputSchema: {
+        ownerInstallId: z.string().describe("Install id whose completion upload to read."),
+        characterKey: z.string().max(8).optional().describe("One character's 8-digit key from the upload, when the install has several."),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    async (args) => ({
+      content: [{ type: "text" as const, text: await readFacts("completion_progress", (facts: ReturnType<typeof completionFactsFromRecords>) => handleCompletionProgress(args, facts)) }],
     }),
   );
   server.registerTool(

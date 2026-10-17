@@ -9,7 +9,7 @@ const categories: { key: SharingCategory; label: string }[] = [
   { key: "guild", label: "Guild roster, attendance, progression and loot" },
   { key: "gear", label: "My character's gear" },
   { key: "gold", label: "My character's gold and money events" },
-  { key: "collection", label: "My collection ownership" },
+  { key: "collection", label: "My collection ownership and completion progress" },
 ];
 const button = "btn btn-primary disabled:opacity-50";
 const outlineButton = "btn";

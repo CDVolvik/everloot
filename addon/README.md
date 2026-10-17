@@ -7,9 +7,9 @@ companion, and adds auction prices to item tooltips. It uses only the game's add
 plays the character. Records match the site's intake contract (`web/src/lib/intake.ts`) field for
 field.
 
-**Status:** 0.3.2 beta. The automated contract tests pass; the in-client checks in
-`docs/2026-10-08-beta-client-checklist.md` and `docs/2026-10-18-addon-0.3.2-beta-checklist.md`
-are still open, and the full scan
+**Status:** 0.3.3 beta. The automated contract tests pass; the in-client checks in
+`docs/2026-10-08-beta-client-checklist.md`, `docs/2026-10-18-addon-0.3.2-beta-checklist.md` and
+`docs/2026-10-19-addon-0.3.3-beta-checklist.md` are still open, and the full scan
 (`docs/design/specs/2026-10-16-forever-market-design.md`) has not run in the Forever client.
 
 ## Run it
@@ -29,6 +29,23 @@ its preview. `/everloot addons off` stops it and deletes every recorded addon ro
 A scan that gets no answer from the auction house in 30 seconds stops and gives the cooldown back.
 Tooltip prices show the date the companion last fetched them and flag them as stale after two days.
 Nothing in the addon calls a buy, bid or post API; `addon/tests/market_contract.py` traps them.
+
+## Completion tracker
+
+Off until `/everloot completion on` (then `/reload`). It reads your achievements, reputation, titles and
+completed quests with the calls Forever's own windows use, in chunks across frames, and waits out combat.
+`/everloot completion` reads now; `/everloot completion off` deletes every row it wrote. It never tracks,
+expands, clicks or changes anything.
+
+- **Catalog rows** (`achievement_catalog`, `reputation_catalog`, `title_catalog`, `quest_chain_catalog`):
+  ids, names, criteria text, standing headers and quest ids. No player data. The site lists an entry after 3
+  installs report it identically.
+- **Owned rows** (`achievement_owned`, `reputation_owned`, `title_owned`, `quest_owned`): your character's
+  progress under an 8-digit key made from your install id and the character's GUID, never the name. They
+  leave this file only from the upload page, with the collection choice ticked and a verified grant.
+- A changed achievement or standing replaces its earlier row. Titles and completed quests are additions.
+- The reputation list is the rows the reputation window shows now; a collapsed header hides its factions
+  and the module never expands one. `/everloot status` says how many headers were collapsed.
 
 ## Talents, selftest and the plan panel
 
@@ -87,6 +104,7 @@ The contract tests run the Lua in real Lua 5.1 through `lupa`:
     python addon/tests/talents_contract.py
     python addon/tests/plan_contract.py
     python addon/tests/raid_contract.py
+    python addon/tests/completion_contract.py
 
 Run them from the repository root. CI also rebuilds the zip and fails if it differs from the one
 committed in `web/public/downloads/`, so commit the rebuilt zip with any addon change.
@@ -108,6 +126,7 @@ addon/
 │   ├── addons.lua      your installed addons' names, titles and versions; off until enabled
 │   ├── mapbounds.lua   each zone's corners in world coordinates, once per zone per build
 │   ├── talents.lua     your talent build per spec group, plus the game's own loadout string
+│   ├── completion.lua  achievements, reputation, titles, quest chains: catalogs and your progress; off until enabled
 │   ├── selftest.lua    /everloot selftest and /everloot talents
 │   ├── plan.lua        share code reader and the display-only plan panel
 │   ├── raid_data.lua   raid buff list generated from web/src/data/game-data/raid-*.json

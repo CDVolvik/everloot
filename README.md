@@ -154,9 +154,10 @@ limit and how to credit the data.
 
 ## Project status
 
-Beta. The addon is at 0.3.2 and passes its automated tests; the in-client checks in
+Beta. The addon is at 0.3.3 and passes its automated tests; the in-client checks in
 [`docs/2026-10-08-beta-client-checklist.md`](docs/2026-10-08-beta-client-checklist.md) and
-[`docs/2026-10-18-addon-0.3.2-beta-checklist.md`](docs/2026-10-18-addon-0.3.2-beta-checklist.md) are still open
+[`docs/2026-10-18-addon-0.3.2-beta-checklist.md`](docs/2026-10-18-addon-0.3.2-beta-checklist.md) and
+[`docs/2026-10-19-addon-0.3.3-beta-checklist.md`](docs/2026-10-19-addon-0.3.3-beta-checklist.md) are still open
 until the game is playable. The game-file layers (talents, raid buffs, map) are read from build
 `1.60.1.70450` and marked unconfirmed. A [build watch](docs/BUILD_WATCH.md) checks for new builds
 every half hour and opens a reviewed pull request when one appears. WoW: Forever launches on

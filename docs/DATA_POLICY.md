@@ -26,6 +26,18 @@ published when three distinct reporters scanned the item. For that count, an upl
 is stored with a keyed hash of the address it came from (never the address itself). The hash stays in
 private storage and is never published.
 
+Completion tracking (addon 0.3.3, off until `/everloot completion on`) follows the same split.
+Four catalog kinds (`achievement_catalog`, `reputation_catalog`, `title_catalog`,
+`quest_chain_catalog`) hold only game facts the addon read from the game's own calls: ids, names,
+criteria text, standing headers and quest ids, with no player data. They are on the public allowlist
+and a reader lists an entry only after three installs report it identically; there is no copied
+catalog, and flavour text is not collected. Four owned kinds (`achievement_owned`, `reputation_owned`,
+`title_owned`, `quest_owned`) hold one character's own progress under an opaque 8-digit key derived
+from the install id and the character's GUID, never the name. They are named data in the `collection`
+sharing category, exactly like `collection_owned`: they are on the allowlist only so a granted owner's
+own view can read them, and the corpus withholds them unless a verified install grant for that
+category is live. Turning the module off deletes every one of these rows from the file.
+
 Blizzard hides some WoW: Forever item details until an item drops, and runs no public test realm.
 Game files show what exists; play shows what is real. Everloot keeps the two apart and says which
 is which.
