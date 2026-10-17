@@ -16,9 +16,8 @@ import type { Ranks, TalentCatalog } from "./types";
 // replayed through the point rules on the way in. In links the code sits in the fragment:
 // #plan=EL1-...
 //
-// Node ids here are our catalog's. The seed data's ids are not Blizzard trait node ids (see
-// scripts/import-talentsforever.mjs), so a code from the game maps onto them only once the client
-// extract supplies the real ids.
+// Node ids are the game's trait node ids, as our catalog carries them, so a code from the addon
+// and a code from the site name the same nodes.
 
 export const SHARE_VERSION = 1;
 const PREFIX = `EL${SHARE_VERSION}`;
