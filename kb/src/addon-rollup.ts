@@ -38,7 +38,8 @@ export interface AddonRollup {
   reportingInstalls: number;
 }
 
-export function rollupAddons(rows: AddonSeenRow[]): AddonRollup {
+/** Every addon, including those below the three-install rule. Internal: publish popularAddonsFromRecords instead. */
+export function rollupAllAddons(rows: AddonSeenRow[]): AddonRollup {
   const reporting = new Set<string>();
   const byName = new Map<string, {
     title: string; titleAt: number; installs: Set<string>; loaded: Set<string>; first: string; last: string;
@@ -83,7 +84,8 @@ export function addonRowsFromRecords(records: unknown[]): AddonSeenRow[] {
   return rows;
 }
 
-/** The leaderboard's rows from one upload record list. */
-export function addonFactsFromRecords(records: unknown[]): AddonRollup {
-  return rollupAddons(addonRowsFromRecords(records));
+/** The leaderboard's rows from one upload record list: only addons at least three installs report. */
+export function popularAddonsFromRecords(records: unknown[]): AddonRollup {
+  const all = rollupAllAddons(addonRowsFromRecords(records));
+  return { ...all, addons: all.addons.filter((addon) => addon.public) };
 }
