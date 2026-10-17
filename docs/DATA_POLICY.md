@@ -11,7 +11,10 @@ This is our reading of the rules, not legal advice.
 play: drops, vendors, auction prices you browse, recipes, trainers, gold in and out. You choose
 when to upload. On the website you preview everything before it is sent. The companion sends only
 anonymous open-world events and keeps named data (guild, gear, gold, collection) on your machine.
-An open-world fact is published only after reports from at least three installs agree. Guild data is published only through an officer's
+
+Uploaded observations are public as individual, anonymous records (no character names), so anyone
+can check our counts. The facts the site states itself, such as drop rates, spawn points and recipe
+ranges, appear only once at least three installs have reported them. Guild data is published only through an officer's
 upload, and named records only with that person's sharing choice.
 
 Blizzard hides WoW: Forever item stats until an item drops, and runs no public test realm. So for
