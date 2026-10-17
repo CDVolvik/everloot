@@ -19,7 +19,7 @@ export interface UploadResult { sent: number; batches: number; heldNamed: number
 export async function uploadFile(file: string, options: UploadOptions): Promise<UploadResult> {
   const parsed = parseEverlootLua(readFileSync(file, "utf8"));
   const unsent = parsed.records.filter((r) => typeof r.eventId !== "string" || !options.state.has(parsed.installId, r.eventId));
-  const session = prepareUpload({ addonVersion: parsed.version, records: unsent }, {}, []);
+  const session = prepareUpload({ addonVersion: parsed.version, clientBuild: parsed.clientBuild, records: unsent }, {}, []);
   const result = { sent: 0, batches: session.batches.length, heldNamed: session.held.named, heldLegacy: session.held.legacy, invalid: session.held.invalid };
   if (session.batches.length === 0) return result;
   await sendBatches(session, options.fetch ?? fetch, () => {

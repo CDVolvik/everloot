@@ -30,3 +30,15 @@ test("byte limits apply to large valid rows and one oversized row is an actionab
   expect(session.batches.every((b) => new TextEncoder().encode(b).length <= 600_000)).toBe(true);
   expect(() => prepareUpload({ addonVersion: "0.2.0", records }, { guild: true }, ["a".repeat(64)], 200)).toThrow(/large/i);
 });
+test("every batch carries the client build, and the preview lists the addons being sent", () => {
+  const addon = (i: number, title: string) => ({ kind: "addon_seen", installId: "install-batches", eventId: `epoch:addon${i}`, capturedAt: row(1).capturedAt, name: title.replace(/ /g, ""), title, loaded: true });
+  const records = [...Array.from({ length: 2001 }, (_, i) => row(i)), addon(1, "Questie"), addon(2, "Bagnon"), addon(3, "Questie")];
+  const session = prepareUpload({ addonVersion: "0.2.6", clientBuild: "1.60.1.70450", records }, {}, []);
+  expect(session.batches.map((b) => JSON.parse(b).clientBuild)).toEqual(["1.60.1.70450", "1.60.1.70450"]);
+  expect(session.addons).toEqual(["Bagnon", "Questie"]);
+  const old = prepareUpload({ addonVersion: "0.2.5", records: [row(1)] }, {}, []);
+  expect(JSON.parse(old.batches[0])).not.toHaveProperty("clientBuild");
+  expect(old.addons).toEqual([]);
+  const unreadable = prepareUpload({ addonVersion: "0.2.6", clientBuild: "beta", records: [row(1)] }, {}, []);
+  expect(JSON.parse(unreadable.batches[0])).not.toHaveProperty("clientBuild");
+});
