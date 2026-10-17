@@ -31,11 +31,13 @@ test("byte limits apply to large valid rows and one oversized row is an actionab
   expect(() => prepareUpload({ addonVersion: "0.2.0", records }, { guild: true }, ["a".repeat(64)], 200)).toThrow(/large/i);
 });
 test("every batch carries the client build, and the preview lists the addons being sent", () => {
-  const addon = (i: number, title: string) => ({ kind: "addon_seen", installId: "install-batches", eventId: `epoch:addon${i}`, capturedAt: row(1).capturedAt, name: title.replace(/ /g, ""), title, loaded: true });
-  const records = [...Array.from({ length: 2001 }, (_, i) => row(i)), addon(1, "Questie"), addon(2, "Bagnon"), addon(3, "Questie")];
+  const addon = (i: number, name: string, title: string) => ({ kind: "addon_seen", installId: "install-batches", eventId: `epoch:addon${i}`, capturedAt: row(1).capturedAt, name, title, loaded: true });
+  const records = [...Array.from({ length: 2001 }, (_, i) => row(i)),
+    addon(1, "Questie", "Questie"), addon(2, "DBM-Core", "Deadly Boss Mods"), addon(3, "DBM-StatusBarTimers", "Deadly Boss Mods"), addon(4, "Questie", "Questie")];
   const session = prepareUpload({ addonVersion: "0.2.6", clientBuild: "1.60.1.70450", records }, {}, []);
   expect(session.batches.map((b) => JSON.parse(b).clientBuild)).toEqual(["1.60.1.70450", "1.60.1.70450"]);
-  expect(session.addons).toEqual(["Bagnon", "Questie"]);
+  // One entry per folder, since the folder name is what is uploaded; two folders can share a title.
+  expect(session.addons).toEqual(["Deadly Boss Mods (DBM-Core)", "Deadly Boss Mods (DBM-StatusBarTimers)", "Questie (Questie)"]);
   const old = prepareUpload({ addonVersion: "0.2.5", records: [row(1)] }, {}, []);
   expect(JSON.parse(old.batches[0])).not.toHaveProperty("clientBuild");
   expect(old.addons).toEqual([]);
