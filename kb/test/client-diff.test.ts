@@ -92,3 +92,18 @@ test("a column only one build has is one schema change, not a change on every ro
   expect(t.schema).toEqual({ addedFields: ["ItemSquish"], removedFields: ["MaxDurability"] });
   expect(t.changed).toEqual([{ id: 1, fields: [{ field: "ItemLevel", before: 10, after: 15 }] }]);
 });
+
+test("snapshots read with different table definitions or library versions say so", () => {
+  const rows = [tbl("Item", [[1, { ID: 1 }]])];
+  const a = snap({ ...meta(1), definitions: "abc123456789" }, rows);
+  const b = snap({ ...meta(2), definitions: "def987654321", library: "@rhyster/wow-casc-dbc@2.17.0" }, rows);
+  expect(diffSnapshots(a, b).warnings).toEqual([
+    "table definitions differ (WoWDBDefs abc123456789 vs def987654321): a change may come from the layouts, not the game",
+    "extraction library differs (@rhyster/wow-casc-dbc@2.16.15 vs @rhyster/wow-casc-dbc@2.17.0): a change may come from the reader, not the game",
+  ]);
+  const unknown = snap(meta(3), rows);
+  expect(diffSnapshots(a, unknown).warnings).toEqual([
+    "table definitions differ (WoWDBDefs abc123456789 vs unknown): a change may come from the layouts, not the game",
+  ]);
+  expect(diffSnapshots(snap({ ...meta(4), definitions: "abc123456789" }, rows), a).warnings).toEqual([]);
+});

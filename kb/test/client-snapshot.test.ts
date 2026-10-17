@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { expect, test } from "vitest";
 import { sha256File } from "../src/snapshot.js";
 import {
-  normalizeItem, normalizeSpell, readClientRows, readClientItems, writeClientSnapshot,
+  clientSnapshotName, normalizeItem, normalizeSpell, readClientRows, readClientItems, writeClientSnapshot,
   type ClientBuildMeta, type ExtractedTable,
 } from "../src/client-snapshot.js";
 
@@ -65,4 +65,9 @@ test("encrypted blocks that were skipped are recorded per table", () => {
   const path = join(mkdtempSync(join(tmpdir(), "kb-client-")), "client.sqlite");
   const manifest = writeClientSnapshot(path, meta, [table("ItemSparse", 1572924, [[1, { ID: 1 }]], 2)]);
   expect(manifest.tables[0].encryptedBlocks).toBe(2);
+});
+
+test("a snapshot's file name tells apart two builds that share a build number", () => {
+  expect(clientSnapshotName(meta)).toBe("wow_classic_beta-70450-84bea423.sqlite");
+  expect(clientSnapshotName({ ...meta, buildConfig: "fedcba9876543210fedcba9876543210" })).toBe("wow_classic_beta-70450-fedcba98.sqlite");
 });

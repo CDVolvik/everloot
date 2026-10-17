@@ -3,7 +3,7 @@
  * changed field's before and after value. Deterministic: tables, ids and fields come out sorted.
  */
 import { isDeepStrictEqual } from "node:util";
-import { readClientMeta, readClientRows, readClientTables } from "./client-snapshot.js";
+import { readClientMeta, readClientRows, readClientTables, type ClientBuildMeta } from "./client-snapshot.js";
 
 export interface FieldChange { field: string; before: unknown; after: unknown }
 export interface TableDiff {
@@ -17,19 +17,26 @@ export interface TableDiff {
 export interface BuildRef { product: string; version: string; buildConfig: string; buildId: number }
 export interface ClientDiff { from: BuildRef; to: BuildRef; crossProduct: boolean; tables: TableDiff[]; warnings: string[] }
 
-const ref = (path: string): BuildRef => {
-  const m = readClientMeta(path);
-  return { product: m.product, version: m.version, buildConfig: m.buildConfig, buildId: m.buildId };
-};
+const ref = (m: ClientBuildMeta): BuildRef => ({ product: m.product, version: m.version, buildConfig: m.buildConfig, buildId: m.buildId });
 
-/** A share of removed rows above `massDeletionShare` (default one half) is flagged as a likely parsing problem. */
+/**
+ * Snapshots read with different WoWDBDefs commits or library versions get a warning, since a field can
+ * change because its layout or reader changed rather than the game. A share of removed rows above `massDeletionShare` (default one half) is flagged as a likely parsing problem. */
 export function diffSnapshots(fromPath: string, toPath: string, opts: { massDeletionShare?: number } = {}): ClientDiff {
   const share = opts.massDeletionShare ?? 0.5;
-  const from = ref(fromPath);
-  const to = ref(toPath);
+  const fromMeta = readClientMeta(fromPath);
+  const toMeta = readClientMeta(toPath);
+  const from = ref(fromMeta);
+  const to = ref(toMeta);
   const fromTables = readClientTables(fromPath);
   const toTables = readClientTables(toPath);
   const warnings: string[] = [];
+  if (fromMeta.definitions !== toMeta.definitions) {
+    warnings.push(`table definitions differ (WoWDBDefs ${fromMeta.definitions ?? "unknown"} vs ${toMeta.definitions ?? "unknown"}): a change may come from the layouts, not the game`);
+  }
+  if (fromMeta.library !== toMeta.library) {
+    warnings.push(`extraction library differs (${fromMeta.library} vs ${toMeta.library}): a change may come from the reader, not the game`);
+  }
   for (const t of fromTables) if (!toTables.includes(t)) warnings.push(`${t}: only in ${from.version} (${from.product})`);
   for (const t of toTables) if (!fromTables.includes(t)) warnings.push(`${t}: only in ${to.version} (${to.product})`);
   const tables: TableDiff[] = [];
