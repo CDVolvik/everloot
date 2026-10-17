@@ -30,8 +30,6 @@ export interface RegistryProject {
 
 export interface Registry {
   schema: 1;
-  /** Interface numbers that count as Forever. See the note in the registry file. */
-  foreverInterfaces: number[];
   projects: RegistryProject[];
 }
 
@@ -52,10 +50,6 @@ const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "obj
 /** The registry, or an error naming the entry and field. Used by the refresh command, the site and the tests. */
 export function parseRegistry(raw: unknown): Registry {
   if (!isRecord(raw) || raw.schema !== 1) throw new Error("ecosystem registry: schema must be 1");
-  const interfaces = raw.foreverInterfaces;
-  if (!Array.isArray(interfaces) || interfaces.length === 0 || !interfaces.every((n) => Number.isInteger(n) && n > 0 && n < 10_000_000)) {
-    throw new Error("ecosystem registry: foreverInterfaces must be a non-empty list of whole numbers");
-  }
   if (!Array.isArray(raw.projects)) throw new Error("ecosystem registry: projects must be a list");
   if (raw.projects.length > MAX_PROJECTS) throw new Error(`ecosystem registry: at most ${MAX_PROJECTS} projects`);
   const seen = new Set<string>();
@@ -89,7 +83,7 @@ export function parseRegistry(raw: unknown): Registry {
       addonNames: names as string[], verifiedAt, evidence,
     };
   });
-  return { schema: 1, foreverInterfaces: [...(interfaces as number[])], projects };
+  return { schema: 1, projects };
 }
 
 // ---------------------------------------------------------------- metrics
@@ -256,10 +250,40 @@ export function parseTocInterfaces(toc: string): number[] {
   return [...new Set(out)];
 }
 
-/** yes when the .toc lists an accepted Forever number, no when it lists numbers and none match, unknown without a .toc. */
-export function foreverReady(interfaces: readonly number[] | null | undefined, accepted: readonly number[]): ForeverReady {
-  if (!interfaces || interfaces.length === 0) return "unknown";
-  return interfaces.some((n) => accepted.includes(n)) ? "yes" : "no";
+/**
+ * The Interface number of a Forever build, with the build it was derived from. Blizzard's Interface numbers
+ * follow the client version: 1.15.9 is 11509 (a number Olympus ships for the Classic Era build 1.15.9 in
+ * kb/changes/builds.json), so 1.60.1 is 16001. The number is not written in the game files we can read:
+ * Blizzard's own .toc files carry no `## Interface` line (checked on build 1.60.1.70450), because the client
+ * computes it. So it is derived from the version service's version string and stamped with that build. Still
+ * to be confirmed in the client with `/dump select(4, GetBuildInfo())`.
+ */
+export interface ForeverInterface { interface: number; version: string; build: number; derivedFrom: "version" }
+
+/** major * 10000 + minor * 100 + patch, or null for anything that is not a plain x.y.z version. */
+export function interfaceFromVersion(version: string): number | null {
+  const m = /^(\d{1,2})\.(\d{1,2})\.(\d{1,2})(?:\.\d+)?$/.exec(version.trim());
+  return m ? Number(m[1]) * 10_000 + Number(m[2]) * 100 + Number(m[3]) : null;
+}
+
+/** The Forever product in the version service (see PRODUCT_GAME in changes.ts). */
+export const FOREVER_PRODUCT = "wow_classic_beta";
+
+/** The Interface number of the newest known Forever build, or null when none is known. */
+export function currentForeverInterface(builds: readonly { product: string; version: string; buildId: number }[]): ForeverInterface | null {
+  const newest = builds.filter((b) => b.product === FOREVER_PRODUCT && interfaceFromVersion(b.version) !== null)
+    .sort((a, b) => b.buildId - a.buildId)[0];
+  if (!newest) return null;
+  return { interface: interfaceFromVersion(newest.version)!, version: newest.version, build: newest.buildId, derivedFrom: "version" };
+}
+
+/**
+ * yes when the .toc lists the current Forever number, no when it lists numbers and none match (the game would
+ * mark it out of date), unknown without a .toc or without a known Forever build.
+ */
+export function foreverReady(interfaces: readonly number[] | null | undefined, current: ForeverInterface | null): ForeverReady {
+  if (!current || !interfaces || interfaces.length === 0) return "unknown";
+  return interfaces.includes(current.interface) ? "yes" : "no";
 }
 
 // ---------------------------------------------------------------- badges and score
@@ -359,16 +383,17 @@ export interface ProjectView {
 
 export interface EcosystemView {
   refreshedAt: string | null;
-  foreverInterfaces: number[];
+  /** What Forever-ready is compared against, stamped with its build; null when no Forever build is known. */
+  forever: ForeverInterface | null;
   projects: ProjectView[];
   /** False when our install counts could not be read: "not counted" then means "unknown". */
   installsAvailable: boolean;
 }
 
-export function buildView(registry: Registry, snapshot: Snapshot, popular: readonly InstallCount[] | null, now: Date): EcosystemView {
+export function buildView(registry: Registry, snapshot: Snapshot, popular: readonly InstallCount[] | null, now: Date, forever: ForeverInterface | null): EcosystemView {
   const projects = registry.projects.map((p): ProjectView => {
     const metrics = snapshot.projects[p.id] ?? null;
-    const ready = foreverReady(metrics?.status === "ok" ? metrics.interfaces : null, registry.foreverInterfaces);
+    const ready = foreverReady(metrics?.status === "ok" ? metrics.interfaces : null, forever);
     return {
       id: p.id, name: p.name, kind: p.kind, summary: p.summary, repo: p.repo,
       url: `https://github.com/${p.repo}`,
@@ -381,7 +406,7 @@ export function buildView(registry: Registry, snapshot: Snapshot, popular: reado
       starGain7d: metrics?.status === "ok" ? starGain(snapshot.history[p.id] ?? [], metrics.stars, now) : null,
     };
   });
-  return { refreshedAt: snapshot.refreshedAt, foreverInterfaces: registry.foreverInterfaces, projects, installsAvailable: popular !== null };
+  return { refreshedAt: snapshot.refreshedAt, forever, projects, installsAvailable: popular !== null };
 }
 
 // ---------------------------------------------------------------- boards
@@ -478,6 +503,9 @@ export function handleEcosystemProjects(view: EcosystemView | null, args: Ecosys
   const notes = [
     age,
     "Stars, releases and commits are read from GitHub's public API; installs are Everloot upload counts, listed from 3 installs, and a missing count means not counted.",
+    view.forever
+      ? `Forever-ready compares each .toc with Interface ${view.forever.interface}, derived from Forever build ${view.forever.version} and not yet confirmed in the client.`
+      : "Forever-ready is not checked: no Forever build is known.",
     view.installsAvailable ? null : "Install counts are unavailable right now.",
   ].filter(Boolean);
   return `${lines.join("\n")}\n\n${notes.join(" ")}`;

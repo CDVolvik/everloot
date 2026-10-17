@@ -4,7 +4,7 @@ import { countFromLink, fetchProject, refreshSnapshot, type ApiResponse, type Fe
 
 const NOW = new Date("2026-10-20T12:00:00.000Z");
 const registry = parseRegistry({
-  schema: 1, foreverInterfaces: [16001],
+  schema: 1,
   projects: [
     { id: "a", name: "A", kind: "addon", summary: "An addon.", repo: "o/a", toc: "addon/A/A.toc", addonNames: ["A"], verifiedAt: "2026-10-18", evidence: "https://github.com/o/a" },
     { id: "b", name: "B", kind: "tool", summary: "A tool.", repo: "o/b", addonNames: [], verifiedAt: "2026-10-18", evidence: "https://github.com/o/b" },
@@ -164,7 +164,7 @@ describe("refreshing the snapshot", () => {
   });
   test("a project removed from the registry drops out of the snapshot", async () => {
     const first = await refreshSnapshot(registry, empty, options(server({ ...happy("o/a"), ...happy("o/b") })));
-    const onlyA = parseRegistry({ schema: 1, foreverInterfaces: [16001], projects: [{ id: "a", name: "A", kind: "addon", summary: "x", repo: "o/a", verifiedAt: "2026-10-18", evidence: "https://github.com/o/a" }] });
+    const onlyA = parseRegistry({ schema: 1, projects: [{ id: "a", name: "A", kind: "addon", summary: "x", repo: "o/a", verifiedAt: "2026-10-18", evidence: "https://github.com/o/a" }] });
     const r = await refreshSnapshot(onlyA, first.snapshot, options(server({})));
     expect(Object.keys(r.snapshot.projects)).toEqual(["a"]);
     expect(Object.keys(r.snapshot.history)).toEqual(["a"]);

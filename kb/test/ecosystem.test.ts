@@ -1,11 +1,12 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vitest";
 import {
-  badgesFor, buildBoards, buildView, foreverReady, handleEcosystemProjects, joinInstalls, maintenanceScore,
+  badgesFor, buildBoards, buildView, currentForeverInterface, foreverReady, interfaceFromVersion, handleEcosystemProjects, joinInstalls, maintenanceScore,
   median, medianFirstResponse, parseRegistry, parseSnapshot, parseTocInterfaces, starGain,
   type ProjectMetrics, type Registry, type Snapshot,
 } from "../src/ecosystem.js";
 
+const FOREVER = currentForeverInterface([{ product: "wow_classic_beta", version: "1.60.1.70450", buildId: 70450 }]);
 const NOW = new Date("2026-10-20T12:00:00.000Z");
 const daysAgo = (n: number) => new Date(NOW.getTime() - n * 86_400_000).toISOString();
 
@@ -21,7 +22,7 @@ const project = (id: string, over: Record<string, unknown> = {}) => ({
   verifiedAt: "2026-10-18", evidence: `https://github.com/o/${id}`, ...over,
 });
 const registry = (...projects: ReturnType<typeof project>[]): Registry =>
-  parseRegistry({ schema: 1, foreverInterfaces: [16001, 70058], projects });
+  parseRegistry({ schema: 1, projects });
 const snapshot = (projects: Record<string, ProjectMetrics>, history: Snapshot["history"] = {}): Snapshot =>
   ({ schema: 1, refreshedAt: daysAgo(0), projects, history });
 
@@ -36,9 +37,11 @@ describe("the committed registry", () => {
       expect(p.verifiedAt, p.id).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     }
   });
-  test("our own addon's .toc is Forever-ready by the registry's own list", () => {
+  const committedForever = () => currentForeverInterface(JSON.parse(readFileSync(new URL("../changes/builds.json", import.meta.url), "utf8")).builds);
+  test("our own addon's .toc is Forever-ready against the newest Forever build we know", () => {
+    expect(committedForever()?.interface).toBeGreaterThan(0);
     const toc = readFileSync(new URL("../../addon/Everloot.toc", import.meta.url), "utf8");
-    expect(foreverReady(parseTocInterfaces(toc), parseRegistry(raw).foreverInterfaces)).toBe("yes");
+    expect(foreverReady(parseTocInterfaces(toc), committedForever())).toBe("yes");
   });
   test("the committed snapshot parses and only names registered projects", () => {
     const snap = parseSnapshot(JSON.parse(readFileSync(new URL("../changes/ecosystem.json", import.meta.url), "utf8")));
@@ -110,10 +113,29 @@ describe("Forever-ready", () => {
     expect(parseTocInterfaces("## Notes: Interface: 16001\n## Interface: abc")).toEqual([]);
   });
   test("yes, no and unknown", () => {
-    expect(foreverReady([11509, 16001], [16001, 70058])).toBe("yes");
-    expect(foreverReady([11509], [16001, 70058])).toBe("no");
-    expect(foreverReady([], [16001])).toBe("unknown");
-    expect(foreverReady(null, [16001])).toBe("unknown");
+    expect(foreverReady([11509, 16001], FOREVER)).toBe("yes");
+    expect(foreverReady([11509], FOREVER)).toBe("no");
+    expect(foreverReady([70058], FOREVER)).toBe("no"); // a build number, not an interface
+    expect(foreverReady([], FOREVER)).toBe("unknown");
+    expect(foreverReady(null, FOREVER)).toBe("unknown");
+    expect(foreverReady([16001], null)).toBe("unknown");
+  });
+  test("the interface comes from the version: Blizzard's major*10000 + minor*100 + patch", () => {
+    expect(interfaceFromVersion("1.60.1.70450")).toBe(16001);
+    expect(interfaceFromVersion("1.15.9.70003")).toBe(11509); // Classic Era, the number Olympus ships for it
+    expect(interfaceFromVersion("1.60.12")).toBe(16012);
+    expect(interfaceFromVersion("nonsense")).toBeNull();
+    expect(interfaceFromVersion("1.600.1")).toBeNull();
+  });
+  test("it is taken from the newest Forever build and carries its stamp", () => {
+    const builds = [
+      { product: "wow_classic_beta", version: "1.60.1.70058", buildId: 70058 },
+      { product: "wow_classic_beta", version: "1.60.2.70611", buildId: 70611 },
+      { product: "wow_classic_era", version: "1.15.9.70003", buildId: 99999 },
+    ];
+    expect(currentForeverInterface(builds)).toEqual({ interface: 16002, version: "1.60.2.70611", build: 70611, derivedFrom: "version" });
+    expect(currentForeverInterface([builds[2]])).toBeNull();
+    expect(currentForeverInterface([])).toBeNull();
   });
 });
 
@@ -159,7 +181,7 @@ describe("the 3-install join", () => {
   });
   test("a view never carries a count the rule hides", () => {
     const reg = registry(project("a"), project("b"));
-    const view = buildView(reg, snapshot({}), [{ name: "a", installs: 2 }, { name: "b", installs: 7 }], NOW);
+    const view = buildView(reg, snapshot({}), [{ name: "a", installs: 2 }, { name: "b", installs: 7 }], NOW, FOREVER);
     expect(view.projects.map((p) => p.installs)).toEqual([null, 7]);
   });
 });
@@ -177,7 +199,7 @@ describe("boards", () => {
     { alpha: [{ at: daysAgo(8), stars: 9 }], beta: [{ at: daysAgo(8), stars: 4 }], gamma: [{ at: daysAgo(8), stars: 49 }], delta: [{ at: daysAgo(8), stars: 0 }] },
   );
   const popular = [{ name: "alpha", installs: 4 }, { name: "beta", installs: 12 }, { name: "gamma", installs: 3 }, { name: "delta", installs: 50 }];
-  const boards = Object.fromEntries(buildBoards(buildView(reg, snap, popular, NOW), NOW).map((b) => [b.id, b.rows.map((r) => r.project.id)]));
+  const boards = Object.fromEntries(buildBoards(buildView(reg, snap, popular, NOW, FOREVER), NOW).map((b) => [b.id, b.rows.map((r) => r.project.id)]));
 
   test("most installed: by count, archived and missing excluded", () => {
     expect(boards.installed).toEqual(["beta", "alpha", "gamma"]);
@@ -199,11 +221,11 @@ describe("boards", () => {
   test("ties break on the name, not on registry order", () => {
     const flipped = registry(project("beta"), project("alpha"));
     const tie = snapshot({ alpha: metrics({ commits4w: 7, lastCommit: daysAgo(2) }), beta: metrics({ commits4w: 7, lastCommit: daysAgo(2) }) });
-    const rows = buildBoards(buildView(flipped, tie, null, NOW), NOW).find((b) => b.id === "active")!.rows.map((r) => r.project.id);
+    const rows = buildBoards(buildView(flipped, tie, null, NOW, FOREVER), NOW).find((b) => b.id === "active")!.rows.map((r) => r.project.id);
     expect(rows).toEqual(["alpha", "beta"]);
   });
   test("with no history the rising board is empty, and with no counts so is installed", () => {
-    const view = buildView(reg, snapshot(snap.projects), null, NOW);
+    const view = buildView(reg, snapshot(snap.projects), null, NOW, FOREVER);
     const b = buildBoards(view, NOW);
     expect(b.find((x) => x.id === "rising")!.rows).toEqual([]);
     expect(b.find((x) => x.id === "installed")!.rows).toEqual([]);
@@ -212,7 +234,7 @@ describe("boards", () => {
 
 describe("handleEcosystemProjects", () => {
   const reg = registry(project("alpha", { summary: "Alpha does things." }), project("beta"));
-  const view = buildView(reg, snapshot({ alpha: metrics(), beta: metrics({ interfaces: [11509] }) }), [{ name: "alpha", installs: 5 }], NOW);
+  const view = buildView(reg, snapshot({ alpha: metrics(), beta: metrics({ interfaces: [11509] }) }), [{ name: "alpha", installs: 5 }], NOW, FOREVER);
   test("not connected is not an empty list", () => {
     expect(handleEcosystemProjects(null, { board: "all", limit: 10 })).toMatch(/not connected/);
   });

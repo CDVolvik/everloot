@@ -1,6 +1,7 @@
 import registryFile from "../../../kb/curated/ecosystem.json";
 import snapshotFile from "../../../kb/changes/ecosystem.json";
-import { buildView, parseRegistry, parseSnapshot, type EcosystemView } from "../../../kb/src/ecosystem";
+import buildsFile from "../../../kb/changes/builds.json";
+import { buildView, currentForeverInterface, parseRegistry, parseSnapshot, type EcosystemView } from "../../../kb/src/ecosystem";
 import { loadPopularAddons } from "./rollup-compute";
 
 export {
@@ -15,6 +16,9 @@ export {
  */
 const registry = parseRegistry(registryFile);
 const snapshot = parseSnapshot(snapshotFile);
+// The newest Forever build the version service reported (kb/changes/builds.json, kept fresh by the changes
+// workflow), so Forever-ready moves with the build instead of a number someone typed in.
+const forever = currentForeverInterface((buildsFile as unknown as { builds: { product: string; version: string; buildId: number }[] }).builds);
 
 export async function loadEcosystem(now: Date = new Date()): Promise<EcosystemView> {
   let popular: { name: string; installs: number }[] | null = null;
@@ -24,5 +28,5 @@ export async function loadEcosystem(now: Date = new Date()): Promise<EcosystemVi
   } catch {
     popular = null;
   }
-  return buildView(registry, snapshot, popular, now);
+  return buildView(registry, snapshot, popular, now, forever);
 }

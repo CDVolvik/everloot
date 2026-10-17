@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from "vitest";
 import { openDb, type DB } from "../src/db.js";
-import { buildView, parseRegistry, type ProjectMetrics } from "../src/ecosystem.js";
+import { buildView, currentForeverInterface, parseRegistry, type ProjectMetrics } from "../src/ecosystem.js";
 import { createMcpHttpHandler } from "../src/mcp-http-server.js";
 import type { EcosystemLoader } from "../src/mcp-server.js";
 
@@ -14,9 +14,9 @@ const metrics: ProjectMetrics = {
   openIssues: 0, closedIssues: 0, medianFirstResponseHours: null, responseSample: 0, interfaces: [16001],
 };
 const view = () => buildView(
-  parseRegistry({ schema: 1, foreverInterfaces: [16001], projects: [{ id: "a", name: "Synthetic", kind: "addon", summary: "A synthetic addon.", repo: "o/a", addonNames: ["Synth"], verifiedAt: "2026-10-18", evidence: "https://github.com/o/a" }] }),
+  parseRegistry({ schema: 1, projects: [{ id: "a", name: "Synthetic", kind: "addon", summary: "A synthetic addon.", repo: "o/a", addonNames: ["Synth"], verifiedAt: "2026-10-18", evidence: "https://github.com/o/a" }] }),
   { schema: 1, refreshedAt: NOW.toISOString(), projects: { a: metrics }, history: {} },
-  [{ name: "Synth", installs: 6 }], NOW,
+  [{ name: "Synth", installs: 6 }], NOW, currentForeverInterface([{ product: "wow_classic_beta", version: "1.60.1.70450", buildId: 70450 }]),
 );
 
 function handler(ecosystem?: EcosystemLoader) {

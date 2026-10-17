@@ -1,8 +1,7 @@
 # Ecosystem tracker: Forever addons and open-source projects
 
 Status: phase 1 built in the same pull request as this spec. Phases 2 and 3 are design only.
-Sources and terms: `wiki/projects/everloot/2026-10-18-ecosystem-tracker-sources.md` (kept in the shared
-Brain) and `docs/sources/LEDGER.md`. Data rules: `docs/DATA_POLICY.md`.
+Sources and terms: the research note of 2026-10-18 (kept outside this repository) and `docs/sources/LEDGER.md`. Data rules: `docs/DATA_POLICY.md`.
 
 ## What it is
 
@@ -62,9 +61,18 @@ names (never the sum, since one install reports several folders) and returns not
 (`INDEPENDENT_INSTALLS`). Everloot itself is not in `addon_seen` (the rollup leaves it out), so its card
 says "not counted". A reader cannot tell "2 installs" from "none".
 
-**Forever-ready.** A project is `yes` when its `.toc` lists an Interface number in `foreverInterfaces`,
-`no` when it lists numbers and none match, `unknown` when no `.toc` was read. The list is data in the
-registry, with a note. Open question 1 is that the right number is not settled.
+**Forever-ready.** A project is `yes` when its `.toc` lists the current Forever Interface number, `no` when
+it lists numbers and none match, `unknown` when no `.toc` was read or no Forever build is known. The number is
+not stored by hand. It is derived from the newest `wow_classic_beta` build in `kb/changes/builds.json` (which
+the changes workflow keeps fresh) by Blizzard's numbering, major * 10000 + minor * 100 + patch, so 1.60.1 is
+16001, and the page and the MCP answer name the build it came from. Why derived and not read: Blizzard's own
+`.toc` files carry no `## Interface` line. We checked build 1.60.1.70450 on the CDN by name hash (the
+SharedXML, ProjectConstants, UIParent, AuctionHouseUI, GameTooltip and APIDocumentation tocs read fine and
+none has one) and the Lua files listed by SharedXML (no mention of 16001 or 70058), and the Gethe mirror of the
+same files agrees. The client computes the number. Evidence for the formula: Classic Era 1.15.9 is 11509
+(Olympus ships it) and 1.15.8 is 11508 (TSM lists it); Polestar and Olympus ship 16001 for Forever. The old
+70058 in our own `.toc` was the earlier 1.60.1 build number (Gethe commit "1.60.1 (70058)"), and was changed to
+16001. Still to confirm in the client with `/dump select(4, GetBuildInfo())`, so the page calls the badge a hint.
 
 ### Snapshot and why it lives where it does
 
@@ -186,9 +194,9 @@ badge for rank or for speed.
 
 ## Open questions for the owner
 
-1. **Which interface number is Forever's?** Our addon ships 70058; Polestar and Olympus ship 16001 for the same
-   1.60.1 build. Phase 1 accepts both and says so on the page. Can you confirm in the client what
-   `select(4, GetBuildInfo())` returns, so we trim the list?
+1. **Confirm the Forever interface number in the client.** We derive 16001 from the build version (see
+   Forever-ready) and changed our `.toc` to it. When you are next in the beta, `/dump select(4, GetBuildInfo())`
+   should print 16001; if it does not, the one function `interfaceFromVersion` is what to change.
 2. **Everloot's own install count.** The rollup leaves Everloot out. Show it from the same `addon_seen` data
    (every reporting install has it, so it is a count of installs that turned the addon list on), or leave it as
    "not counted"?

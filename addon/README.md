@@ -94,7 +94,7 @@ committed in `web/public/downloads/`, so commit the rebuilt zip with any addon c
 
 ```
 addon/
-├── Everloot.toc        Interface 70058 (Forever 1.60.1), SavedVariables: EverlootDB
+├── Everloot.toc        Interface 16001 (Forever 1.60.1), SavedVariables: EverlootDB
 ├── core.lua            event dispatch, module registry, toggles, rolling store, /everloot
 ├── modules/
 │   ├── openworld.lua   target/mouseover sightings, loot windows, merchant windows

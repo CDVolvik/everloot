@@ -1,4 +1,4 @@
-## Interface: 70058
+## Interface: 16001
 ## Title: Everloot
 ## Notes: WoW: Forever data collector — drops, spawns, vendors, guilds, auctions, recipes. Answers never play.
 ## Author: Everloot

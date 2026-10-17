@@ -54,7 +54,9 @@ test("when install counts cannot be read, the installed board says so instead of
 test("Forever-ready is shown with its caveat, and the page offers the submission issue", async () => {
   const page = await html();
   expect(page).toContain("Forever-ready");
-  expect(page).toContain("not confirmed against the live client");
+  expect(page).toContain("Interface 16001");
+  expect(page).toContain("1.60.1.70450");
+  expect(page).toContain("not confirmed in the live client");
   expect(page).toContain("issues/new?template=ecosystem-project.yml");
 });
 

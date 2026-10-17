@@ -92,8 +92,15 @@ export default async function EcosystemPage() {
           uploads, and shown once three installs report the addon.
         </p>
         <p className="text-sm text-fg-2 max-w-2xl">
-          Forever-ready means the addon&apos;s .toc lists an Interface number we accept for Forever ({view.foreverInterfaces.join(", ")}).
-          That list is not confirmed against the live client yet, so treat the badge as a hint, not a promise it loads.
+          {view.forever ? (
+            <>
+              Forever-ready means the addon&apos;s .toc lists Interface {view.forever.interface}, the number for Forever build{" "}
+              {view.forever.version}. Blizzard&apos;s game files do not state it; we derive it from the version, the way
+              Classic Era 1.15.9 is 11509. It is not confirmed in the live client yet, so treat the badge as a hint, not a promise it loads.
+            </>
+          ) : (
+            "Forever-ready is not checked: no Forever build is known."
+          )}
         </p>
       </header>
 
