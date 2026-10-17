@@ -12,8 +12,8 @@ play: drops, vendors, auction prices you browse, recipes, trainers, gold in and 
 when to upload. On the website you preview everything before it is sent. The companion sends only
 anonymous open-world events and keeps named data (guild, gear, gold, collection) on your machine.
 
-Uploaded observations are public as individual, anonymous records (no character names), so anyone
-can check our counts. The facts the site states itself, such as drop rates, spawn points and recipe
+Uploaded observations are public as individual, anonymous records, with no character names and
+without the addon's install id, so anyone can check our counts. The facts the site states itself, such as drop rates, spawn points and recipe
 ranges, appear only once at least three installs have reported them. Guild data is published only through an officer's
 upload, and named records only with that person's sharing choice.
 
