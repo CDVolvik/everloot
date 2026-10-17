@@ -15,6 +15,7 @@ export default function Footer() {
           <Link href="/database" className="inline-flex items-center min-h-11 hover:text-accent transition">Database</Link>
           <Link href="/upload" className="inline-flex items-center min-h-11 hover:text-accent transition">Upload</Link>
           <Link href="/addons" className="inline-flex items-center min-h-11 hover:text-accent transition">Addons</Link>
+          <Link href="/connect" className="inline-flex items-center min-h-11 hover:text-accent transition">Connect</Link>
           <Link href="/privacy" className="hover:text-accent transition">
             Privacy
           </Link>
