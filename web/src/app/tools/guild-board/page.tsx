@@ -51,7 +51,7 @@ export default async function GuildBoardPage(
             <input name="realm" defaultValue={realm} className="w-full rounded-lg border border-line bg-canvas px-3 py-2 text-fg" />
           </label>
         </div>
-        <button type="submit" className="rounded-lg bg-gold-500 px-4 py-2 text-sm font-semibold text-parchment-950">Show the board</button>
+        <button type="submit" className="btn btn-primary text-sm">Show the board</button>
       </form>
 
       <pre className="whitespace-pre-wrap text-sm text-fg rounded-xl border border-line bg-panel p-5">{answer}</pre>

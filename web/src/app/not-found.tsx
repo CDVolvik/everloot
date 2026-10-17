@@ -9,10 +9,10 @@ export default function NotFound() {
         The URL doesn&apos;t exist — or the data hasn&apos;t been collected yet.
       </p>
       <div className="flex items-center justify-center gap-3 pt-2">
-        <Link href="/" className="px-5 py-3 rounded-lg bg-gold-500 text-parchment-950 font-semibold hover:bg-gold-400 transition">
+        <Link href="/" className="btn btn-primary">
           Home
         </Link>
-        <Link href="/database" className="px-5 py-3 rounded-lg border border-line hover:border-accent transition text-fg">
+        <Link href="/database" className="btn">
           The database
         </Link>
       </div>

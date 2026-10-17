@@ -47,14 +47,13 @@ export default function Home() {
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <Link
             href="/database"
-            className="cta-glow inline-flex items-center gap-2 px-5 py-3 rounded-lg bg-gold-500 text-parchment-950 font-semibold hover:bg-gold-400 transition"
+            className="btn btn-primary"
           >
-            <span aria-hidden="true">📖</span>
-            <span>Browse the database</span>
+            Browse the database
           </Link>
           <Link
             href="/upload"
-            className="px-5 py-3 rounded-lg border border-line hover:border-accent transition text-fg"
+            className="btn"
           >
             Upload addon data
           </Link>

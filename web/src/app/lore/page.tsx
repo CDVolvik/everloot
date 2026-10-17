@@ -40,11 +40,11 @@ export default async function LoreLanding() {
           {hasTypes() === true && (
             <nav aria-label="Browse by type" className="flex flex-wrap gap-2 text-sm">
               {(Object.keys(BROWSE_TYPES) as BrowseSlug[]).map((slug) => (
-                <Link key={slug} href={`/lore/${slug}`} className="min-h-11 inline-flex items-center rounded-lg border border-line px-3 text-fg-2 hover:text-accent hover:border-accent">
+                <Link key={slug} href={`/lore/${slug}`} className="btn min-h-11 px-3">
                   {BROWSE_HEADINGS[slug]}
                 </Link>
               ))}
-              <Link href="/lore/coverage" className="min-h-11 inline-flex items-center rounded-lg border border-line px-3 text-fg-2 hover:text-accent hover:border-accent">
+              <Link href="/lore/coverage" className="btn min-h-11 px-3">
                 What the archive covers
               </Link>
             </nav>

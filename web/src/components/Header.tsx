@@ -25,7 +25,7 @@ export default function Header() {
         </nav>
         <div className="flex items-center gap-1 shrink-0">
           <AccountControls />
-          <button ref={toggle} type="button" aria-label={open ? "Close menu" : "Menu"} aria-expanded={open} aria-controls="site-navigation" onClick={() => setOpen(!open)} className="min-h-11 px-3 rounded-lg border border-line text-sm text-fg hover:border-accent">
+          <button ref={toggle} type="button" aria-label={open ? "Close menu" : "Menu"} aria-expanded={open} aria-controls="site-navigation" onClick={() => setOpen(!open)} className="btn min-h-11 px-3 text-sm">
             {open ? "Close" : "Menu"}
           </button>
         </div>

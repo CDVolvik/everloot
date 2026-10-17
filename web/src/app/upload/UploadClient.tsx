@@ -10,7 +10,8 @@ const categories: { key: SharingCategory; label: string }[] = [
   { key: "gold", label: "My character's gold and money events" },
   { key: "collection", label: "My collection ownership" },
 ];
-const button = "px-4 py-3 rounded-lg bg-gold-500 text-parchment-950 font-semibold hover:bg-gold-400 transition disabled:opacity-50";
+const button = "btn btn-primary disabled:opacity-50";
+const outlineButton = "btn";
 const input = "w-full rounded-lg border border-line bg-canvas p-3 text-base text-fg";
 
 export default function UploadClient() {
@@ -92,7 +93,7 @@ export default function UploadClient() {
             <input aria-label="Choose Everloot file" type="file" accept="application/json,.json,.lua" className="sr-only" disabled={busy}
               onChange={(e) => { const file = e.target.files?.[0]; if (file) void loadFile(file); e.target.value = ""; }} />
           </label>
-          <button className={button} disabled={busy} onClick={sample}>Load sample</button>
+          <button className={outlineButton} disabled={busy} onClick={sample}>Load sample</button>
         </div>
         <p className="mt-4 text-sm text-muted">{loading ? "Reading your file…" : "Your original file stays on your computer. Reloading and reselecting it safely retries the same events."}</p>
       </div>
@@ -118,7 +119,7 @@ export default function UploadClient() {
         </ul>
         <p className="mt-3 text-sm text-fg-2">{prepared.value.held.legacy} legacy records without event IDs, {prepared.value.held.named} unchecked named records, and {prepared.value.held.invalid} invalid records stay out of this upload. Keep your original file.</p>
         <p className="mt-2 text-sm text-fg-2">{prepared.value.batches.length} batches. Only a confirmed storage receipt advances progress. Named choices are checked against the grant on the server.</p>
-        <button disabled={busy || !prepared.value.batches.length || complete} onClick={() => void send()} className={button + " mt-4"}>
+        <button disabled={busy || !prepared.value.batches.length || complete} onClick={() => void send()} className={outlineButton + " mt-4"}>
           {sending ? "Sending…" : complete ? "Upload complete" : session?.next ? "Resume upload" : "Send upload"}
         </button>
       </div>}
@@ -137,8 +138,8 @@ export default function UploadClient() {
           <input type="password" autoComplete="off" className={input + " mt-2"} value={withdrawToken} onChange={(e) => setWithdrawToken(e.target.value)} disabled={withdrawing} />
         </label>
         <div className="mt-3 flex flex-wrap gap-3">
-          <button className={button} disabled={withdrawing || !/^[a-f0-9]{64}$/.test(withdrawToken.trim())} onClick={() => void withdraw("revoke")}>Revoke grant</button>
-          <button className={button} disabled={withdrawing || !/^[a-f0-9]{64}$/.test(withdrawToken.trim())} onClick={() => void withdraw("opt-out")}>Opt out character</button>
+          <button className={outlineButton} disabled={withdrawing || !/^[a-f0-9]{64}$/.test(withdrawToken.trim())} onClick={() => void withdraw("revoke")}>Revoke grant</button>
+          <button className={outlineButton} disabled={withdrawing || !/^[a-f0-9]{64}$/.test(withdrawToken.trim())} onClick={() => void withdraw("opt-out")}>Opt out character</button>
         </div>
         {withdrawStatus && <p role="status" className="mt-3">{withdrawStatus}</p>}
       </details>
