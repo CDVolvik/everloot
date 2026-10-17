@@ -13,6 +13,8 @@ export const CREDIT =
 
 // A path inside the asset folder: letters, digits, dot, dash, underscore, slash; never `..` or a scheme.
 const path = z.string().regex(/^[A-Za-z0-9_-][A-Za-z0-9._/-]*$/).refine((p) => !p.split("/").some((s) => s === ".." || s === ""), "bad path");
+/** The same rule for the site-wide reader (lib/game-assets.ts). */
+export const assetPath = path;
 const file = z.object({ file: path, width: z.number().int().positive(), height: z.number().int().positive() });
 
 const manifest = z.object({

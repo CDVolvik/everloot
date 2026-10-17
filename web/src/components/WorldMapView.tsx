@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   DEFAULT_LAYERS, ZOOM_STEP, cameraBox, cameraForBox, cameraForKey, cameraOn, ensureZoneVisible, fitCamera, frameBox, homeCamera,
-  labelFontPx, mapHref, panBy, pinchFactor, placeLabels, visibleItems, zoomAt,
-  type Box, type Camera, type LabelCandidate, type LayerId, type LayerState, type MapItems,
+  labelFontPx, mapHref, panBy, pinchFactor, placeLabels, visibleItems, zoneArtShown, zoomAt,
+  type Box, type Camera, type LabelCandidate, type LayerId, type LayerState, type MapArtLayer, type MapItems,
 } from "@/lib/map-view";
 
 export interface MapMarker { x: number; y: number; label: string }
@@ -44,9 +44,13 @@ export default function WorldMapView(props: {
   marker: MapMarker | null;
   /** Whether held-back zones (and their pins, already in `items`) may show. */
   spoilers: boolean;
+  /** The game's own map pictures, already filtered for spoilers; null without the asset URL. */
+  art?: MapArtLayer | null;
 }) {
   const { base, items, marker, spoilers } = props;
+  const art = props.art ?? null;
   const [layers, setLayers] = useState<LayerState>(DEFAULT_LAYERS);
+  const [showArt, setShowArt] = useState(true);
   const [size, setSize] = useState({ w: FIRST_SIZE.w, h: FIRST_SIZE.h });
   const frame = useMemo(() => frameBox(base, size.w / size.h), [base, size.w, size.h]);
   const [camera, setCamera] = useState<Camera>(() => props.focus ? cameraOn(frameBox(base, FIRST_SIZE.w / FIRST_SIZE.h), props.focus.x, props.focus.y, props.focus.span) : homeCamera(frameBox(base, FIRST_SIZE.w / FIRST_SIZE.h)));
@@ -200,6 +204,12 @@ export default function WorldMapView(props: {
               {LAYER_LABELS[id]}
             </label>
           ))}
+          {art && (
+            <label className="inline-flex items-center gap-2 min-h-11 cursor-pointer">
+              <input type="checkbox" checked={showArt} onChange={() => setShowArt((s) => !s)} className="h-4 w-4 accent-accent" />
+              Game map art
+            </label>
+          )}
         </fieldset>
         <div className="flex flex-wrap items-center gap-2">
           <label className="flex items-center gap-2 text-sm text-fg-2 min-w-0 flex-1 basis-48">
@@ -247,6 +257,13 @@ export default function WorldMapView(props: {
           role="group"
           aria-label={`${props.name}: ${shown.zones.length} zone outlines, ${shown.entrances.length} entrances, ${shown.pins.length} player-observed points. The same items are listed below.`}
         >
+          {/* The game's map pictures, under everything; the zone outlines lie over them as their own layer. */}
+          {art && showArt && (
+            <g aria-hidden="true" pointerEvents="none" data-map-art>
+              {art.continent && <image href={art.continent.url} x={art.continent.x} y={art.continent.y} width={art.continent.width} height={art.continent.height} preserveAspectRatio="none" />}
+              {zoneArtShown(art, camera).map((z) => <image key={z.uiMapId} href={z.url} x={z.x} y={z.y} width={z.width} height={z.height} preserveAspectRatio="none" />)}
+            </g>
+          )}
           {zonesByArea.map((z) => (
             <rect
               key={z.mapId}

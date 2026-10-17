@@ -20,7 +20,8 @@ export interface TipContent {
 const WIDTH = 288; // px; the game's tooltip is about this wide
 const MARGIN = 8;
 
-export default function TalentTooltip({ anchorId, id, content }: { anchorId: string; id: string; content: TipContent }) {
+/** `titleColor`: the name's colour; gold for talents, the quality colour for items (components/game/ItemTip.tsx). */
+export default function TalentTooltip({ anchorId, id, content, titleColor = "#ffd100" }: { anchorId: string; id: string; content: TipContent; titleColor?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
 
@@ -47,7 +48,7 @@ export default function TalentTooltip({ anchorId, id, content }: { anchorId: str
       className="pointer-events-none fixed z-50 rounded-md border border-[#3d3a2e] bg-[#0a0a0f]/95 px-3 py-2 text-sm leading-snug text-[#e8e4d0]"
       style={{ width: Math.min(WIDTH, typeof window === "undefined" ? WIDTH : window.innerWidth - 2 * MARGIN), left: pos?.left ?? 0, top: pos?.top ?? 0, visibility: pos ? "visible" : "hidden" }}
     >
-      <p className="font-semibold text-[#ffd100]">{content.title}</p>
+      <p className="font-semibold" style={{ color: titleColor }}>{content.title}</p>
       {content.rank && <p className="font-mono text-xs tabular-nums text-[#c8c8c8]">{content.rank}</p>}
       {content.text ? (
         <p className="mt-1 whitespace-pre-line text-[#f0e6b4]">{content.text}</p>

@@ -62,7 +62,10 @@ and observed in play.
 **Blizzard's icons, tooltip text and window frame.** Decided 2026-10-18: our tools may show
 Blizzard's own talent and spell icons, the spell and talent tooltip text, and interface frame
 textures that make a tool look like the in-game window. Wowhead and most calculators do the same.
-The rules:
+The same decision covers the rest of the site's in-game art: item icons and the item tooltip facts
+the item tables give, class, talent tree, buff and profession icons, and the game's own continent
+and zone map pictures. It does not cover Blizzard's marketing art (key art, logos, press kit,
+wallpapers), which the site does not use. The rules:
 
 - **Only from unencrypted files** in the public client, read the same way as above. Nothing that
   needs a key.

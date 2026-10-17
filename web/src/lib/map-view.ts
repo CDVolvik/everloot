@@ -103,6 +103,28 @@ export function visibleItems(items: MapItems, layers: LayerState, spoilers: bool
   };
 }
 
+// --- Map pictures ---
+
+/** A picture placed in the same yards as the zones: the game's own continent or zone map. */
+export interface ArtImage { uiMapId: number; name: string; url: string; x: number; y: number; width: number; height: number }
+export interface MapArtLayer { continent: ArtImage | null; zones: ArtImage[] }
+
+/** From this zoom in, the zone under the middle of the view shows its own, sharper picture over the continent's. */
+export const ZONE_ART_ZOOM = 2.5;
+
+/**
+ * The zone picture to lay over the continent: the smallest zone whose rectangle holds the middle of the
+ * view, once the reader has zoomed in to ZONE_ART_ZOOM. Without a continent picture, every zone picture
+ * shows at every zoom, smallest on top. Pure, so the choice is tested without a browser.
+ */
+export function zoneArtShown(art: MapArtLayer, camera: Camera): ArtImage[] {
+  const bySize = [...art.zones].sort((a, b) => b.width * b.height - a.width * a.height);
+  if (!art.continent) return bySize;
+  if (camera.zoom < ZONE_ART_ZOOM) return [];
+  const under = bySize.filter((z) => camera.cx >= z.x && camera.cx <= z.x + z.width && camera.cy >= z.y && camera.cy <= z.y + z.height);
+  return under.length ? [under[under.length - 1]!] : [];
+}
+
 // --- Deep links ---
 
 export interface DeepLink { mapId: number; x: number; y: number }

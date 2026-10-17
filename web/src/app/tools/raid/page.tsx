@@ -6,6 +6,8 @@ import { getTool } from "@/data/tools";
 import { webApplicationJsonLd } from "@/lib/jsonld";
 import { raidTalentFacts } from "@/lib/raid-facts";
 import { pageMetadata } from "@/lib/seo";
+import { loadSiteAssets, raidArt } from "@/lib/game-assets";
+import GameCredit from "@/components/game/GameCredit";
 
 const tool = getTool("raid")!;
 const TITLE = "WoW Forever Raid Buff Planner";
@@ -22,8 +24,10 @@ const PROOF: Record<string, string> = {
   "talent name": "a talent has the same name",
 };
 
-export default function RaidPage() {
+export default async function RaidPage() {
   const facts = raidTalentFacts(TABLES[CURRENT_BUILD]);
+  // Class, tree and buff icons, only when the asset URL is set and the upload has them.
+  const art = raidArt(await loadSiteAssets(), TABLES[CURRENT_BUILD]);
   return (
     <article className="space-y-8">
       <JsonLd data={webApplicationJsonLd({ name: TITLE, path: "/tools/raid", description })} />
@@ -33,7 +37,8 @@ export default function RaidPage() {
         <p className="text-lg text-fg-2 max-w-2xl">{description}</p>
       </header>
 
-      <RaidBuilder />
+      <RaidBuilder art={art} />
+      {art && <GameCredit version={art.version} label={art.label} what="Icons" />}
 
       <section aria-labelledby="needs-talent" className="max-w-2xl space-y-3 border-t border-line pt-6 text-fg-2">
         <h2 id="needs-talent" className="text-2xl text-fg">Which raid buffs need a talent?</h2>

@@ -113,6 +113,92 @@ test("the output holds only the manifest and converted files, and the working co
   expect(existsSync(join(dir, "_work"))).toBe(false);
 });
 
+test("a talent-only snapshot gives no items or maps, and says so in the manifest", async () => {
+  const { manifest } = await run();
+  expect(manifest.items).toBeNull();
+  expect(manifest.maps).toEqual({});
+  expect(manifest.classes.warrior).toEqual({ classId: 1, name: "Warrior", icon: null, trees: [{ name: "Arms", icon: null }] });
+});
+
+// The rest of the site: a class and tree icon, two professions (one a child tier, left out), a raid
+// buff spell, two items (one with an encrypted icon) and a zone map of two tiles. Ids are invented.
+const region = (n: number, s: number, w: number, e: number) => [n, w, 0, s, e, 0];
+const site: Record<string, Rows> = {
+  ...tables,
+  ChrClasses: t([{ ID: 1, Name_lang: "Warrior", Filename: "WARRIOR", IconFileDataID: 6001 }]),
+  SkillLine: t([
+    { ID: 10, DisplayName_lang: "Arms", SpellIconFileID: 6002 },
+    { ID: 171, DisplayName_lang: "Alchemy", CategoryID: 11, ParentSkillLineID: 0, SpellIconFileID: 6003 },
+    { ID: 2485, DisplayName_lang: "Classic Alchemy", CategoryID: 11, ParentSkillLineID: 171, SpellIconFileID: 6003 },
+    { ID: 185, DisplayName_lang: "Cooking", CategoryID: 9, ParentSkillLineID: 0, SpellIconFileID: 0 },
+  ]),
+  SpellMisc: t([...tables.SpellMisc.values(), { ID: 4, SpellID: 6673, DifficultyID: 0, SpellIconFileDataID: 6004 }]),
+  ItemSparse: t([
+    { ID: 25, Display_lang: "Worn Shortsword", OverallQualityID: 1, ItemLevel: 2, InventoryType: 13 },
+    { ID: 600, Display_lang: "Test Helm", OverallQualityID: 3, ItemLevel: 30, InventoryType: 1 },
+  ]),
+  Item: t([{ ID: 25, IconFileDataID: 6005, ClassID: 2, SubclassID: 7 }, { ID: 600, IconFileDataID: 6006, ClassID: 4, SubclassID: 4 }]),
+  Map: t([{ ID: 0, MapName_lang: "Eastern Kingdoms" }]),
+  UiMap: t([
+    { ID: 13, Name_lang: "Eastern Kingdoms", Type: 2, ParentUiMapID: 947 },
+    { ID: 1429, Name_lang: "Elwynn Forest", Type: 3, ParentUiMapID: 13 },
+  ]),
+  UiMapAssignment: t([
+    { ID: 1, UiMapID: 13, MapID: 0, OrderIndex: 0, UiMin: [0, 0], UiMax: [1, 1], Region: region(4000, -4000, 4000, -4000) },
+    { ID: 2, UiMapID: 1429, MapID: 0, OrderIndex: 0, UiMin: [0, 0], UiMax: [1, 1], Region: region(500, -500, 1000, 0) },
+  ]),
+  UiMapXMapArt: t([{ ID: 1, UiMapID: 1429, UiMapArtID: 51, PhaseID: 0 }]),
+  UiMapArt: t([{ ID: 51, UiMapArtStyleID: 1 }]),
+  UiMapArtStyleLayer: t([{ ID: 1, UiMapArtStyleID: 1, LayerIndex: 0, LayerWidth: 500, LayerHeight: 256, TileWidth: 256, TileHeight: 256 }]),
+  UiMapArtTile: t([0, 1].map((col) => ({ UiMapArtID: 51, LayerIndex: 0, RowIndex: 0, ColIndex: col, FileDataID: 7000 + col }))),
+};
+const siteStatus: Record<number, FileStatus> = { ...status, 6001: "present", 6002: "present", 6003: "present", 6004: "present", 6005: "present", 6006: "encrypted", 7000: "present", 7001: "present" };
+
+test("the site's other art: class, tree, profession, buff and item icons, item shards and a zone map", async () => {
+  const outDir = mkdtempSync(join(tmpdir(), "everloot-assets-"));
+  const jobs: Parameters<Converter>[0] = [];
+  const convert: Converter = async (batch) => { jobs.push(...batch); return fakeConvert(batch); };
+  const src: TableSource = { ...source([]), fileStatus: (id) => siteStatus[id] ?? "absent" };
+  const { manifest, dir } = await buildAssetsFromTables({ get: (n) => site[n], build, outDir, source: src, convert, buffSpells: [6673, 1] });
+  expect(AssetManifest.parse(JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8")))).toEqual(manifest);
+
+  expect(manifest.classes.warrior).toEqual({ classId: 1, name: "Warrior", icon: "6001.webp", trees: [{ name: "Arms", icon: "6002.webp" }] });
+  expect(manifest.professions).toEqual({
+    alchemy: { skillLineId: 171, name: "Alchemy", icon: "6003.webp" },
+    cooking: { skillLineId: 185, name: "Cooking", icon: null },
+  });
+  // A listed spell with no icon row is left out, not given one.
+  expect(manifest.spellIcons).toEqual({ "6673": "6004.webp" });
+
+  // Items: the record notes its icon only when the icon was extracted; the encrypted one has none.
+  expect(manifest.items).toMatchObject({ shardSize: 512, count: 2 });
+  const shard0 = JSON.parse(readFileSync(join(dir, "items", "0.json"), "utf8"));
+  const shard1 = JSON.parse(readFileSync(join(dir, "items", "1.json"), "utf8"));
+  expect(shard0["25"]).toMatchObject({ n: "Worn Shortsword", i: 6005 });
+  expect(shard1["600"].i).toBeUndefined();
+  expect(manifest.items!.shards["0"]).toMatchObject({ file: "items/0.json", sha256: expect.stringMatching(/^[0-9a-f]{64}$/) });
+  expect(manifest.counts).toMatchObject({ itemsRecorded: 2, itemsWithIcon: 1 });
+
+  // The zone map: its two tiles stitched and cut to the picture, with the rectangle it covers. The continent had no art.
+  expect(manifest.maps["1429"]).toMatchObject({ file: "maps/1429.webp", kind: "zone", name: "Elwynn Forest", heldBack: false, rect: { left: 1000, top: 500, right: 0, bottom: -500 }, width: 500, height: 256 });
+  expect(manifest.skippedMaps).toEqual(["Eastern Kingdoms (13): no art in this build"]);
+  const mapJob = jobs.find((j) => j.dst.endsWith("1429.webp"))!;
+  expect(mapJob).toMatchObject({ tile: [256, 256], crop: [0, 0, 500, 256], quality: 82 });
+  expect(mapJob.tiles!.map((x) => [x.row, x.col])).toEqual([[0, 0], [0, 1]]);
+  // Icons are lossy and capped; frame pieces stay lossless.
+  expect(jobs.find((j) => j.dst.endsWith("icons/6001.webp") || j.dst.endsWith("icons\\6001.webp"))).toMatchObject({ max: 128, quality: 90 });
+  expect(jobs.find((j) => /talents-node-circle-green/.test(j.dst))?.quality).toBeUndefined();
+});
+
+test("a map with an encrypted tile is skipped with the reason, never drawn with a hole", async () => {
+  const outDir = mkdtempSync(join(tmpdir(), "everloot-assets-"));
+  const src: TableSource = { ...source([]), fileStatus: (id) => (id === 7001 ? "encrypted" : siteStatus[id] ?? "absent") };
+  const { manifest } = await buildAssetsFromTables({ get: (n) => site[n], build, outDir, source: src, convert: fakeConvert });
+  expect(manifest.maps).toEqual({});
+  expect(manifest.skippedMaps).toContain("Elwynn Forest (1429): tile file 7001 is encrypted");
+  expect(manifest.counts.mapsSkipped).toBe(2);
+});
+
 test("it refuses a snapshot that lacks the atlas tables", async () => {
   const outDir = mkdtempSync(join(tmpdir(), "everloot-assets-"));
   await expect(buildAssetsFromTables({ get: (n) => (n === "UiTextureAtlas" ? undefined : tables[n]), build, outDir, source: source([]), convert: fakeConvert }))

@@ -1,7 +1,10 @@
 """Convert Blizzard BLP textures to WebP with Pillow (which reads BLP). Used by `client-assets`.
 
 Usage: python -E blp_convert.py <jobs.json>
-jobs.json: [{"src": "in.blp", "dst": "out.webp", "crop": [l, t, r, b] | null, "max": 128 | null}]
+jobs.json: [{"src": "in.blp", "dst": "out.webp", "crop": [l, t, r, b] | null, "max": 128 | null, "quality": 90 | null}]
+  A job with "tiles" stitches map tiles instead of reading "src":
+  {"dst", "tiles": [{"src": "t.blp", "row": 0, "col": 0}], "tile": [256, 256], "crop": [0, 0, w, h], "max": 1024, "quality": 80}
+  "quality" absent or null: lossless WebP. A number: lossy WebP at that quality (icons and map art).
 Prints one JSON object per job on stdout: {"dst", "ok", "width", "height", "error"}.
 Reads only the files it is given. Pillow decodes palette and DXT BLPs; the newer interface atlases are
 BLP2 "encoding 3", plain 32-bit BGRA pixels that Pillow does not read, so those are unpacked here
@@ -42,19 +45,37 @@ def open_blp(path):
         return read_raw_bgra(path)
 
 
+def stitch(job):
+    """Lays map tiles on a canvas by row and column. Every tile of the grid must be given: a map with a hole is refused."""
+    tw, th = job["tile"]
+    tiles = job["tiles"]
+    cols = max(t["col"] for t in tiles) + 1
+    rows = max(t["row"] for t in tiles) + 1
+    if len(tiles) != cols * rows:
+        raise ValueError(f"{len(tiles)} tiles do not fill a {cols} x {rows} grid")
+    canvas = Image.new("RGBA", (cols * tw, rows * th))
+    for t in tiles:
+        canvas.paste(open_blp(t["src"]).convert("RGBA"), (t["col"] * tw, t["row"] * th))
+    return canvas
+
+
 def main() -> int:
     with open(sys.argv[1], encoding="utf-8") as f:
         jobs = json.load(f)
     for job in jobs:
         result = {"dst": job["dst"], "ok": False, "width": 0, "height": 0, "error": None}
         try:
-            im = open_blp(job["src"]).convert("RGBA")
+            im = stitch(job) if job.get("tiles") else open_blp(job["src"]).convert("RGBA")
             if job.get("crop"):
                 im = im.crop(tuple(job["crop"]))
             cap = job.get("max")
             if cap and max(im.size) > cap:
                 im.thumbnail((cap, cap), Image.LANCZOS)
-            im.save(job["dst"], "WEBP", lossless=True, quality=100, method=6)
+            quality = job.get("quality")
+            if quality:
+                im.save(job["dst"], "WEBP", lossless=False, quality=int(quality), method=6)
+            else:
+                im.save(job["dst"], "WEBP", lossless=True, quality=100, method=6)
             result.update(ok=True, width=im.width, height=im.height)
         except Exception as e:  # one bad file must not stop the rest
             result["error"] = f"{type(e).__name__}: {e}"
