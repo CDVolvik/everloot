@@ -61,7 +61,7 @@ export default async function SearchPage(props: { searchParams: Promise<{ q?: st
         <nav aria-label="Page type" className="flex flex-wrap gap-2 text-xs">
           {chips.map((chip) => (
             <Link key={chip.label} href={chip.href} aria-current={chip.active ? "page" : undefined}
-              className={`min-h-9 inline-flex items-center rounded-full border px-3 ${chip.active ? "border-accent text-accent" : "border-line text-fg-2 hover:text-accent"}`}>
+              className={`min-h-9 inline-flex items-center rounded-full border px-3 ${chip.active ? "border-accent text-accent" : "border-edge text-fg-2 hover:text-accent"}`}>
               {chip.label}
             </Link>
           ))}

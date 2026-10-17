@@ -12,7 +12,7 @@ const categories: { key: SharingCategory; label: string }[] = [
 ];
 const button = "btn btn-primary disabled:opacity-50";
 const outlineButton = "btn";
-const input = "w-full rounded-lg border border-line bg-canvas p-3 text-base text-fg";
+const input = "w-full rounded-lg border border-edge bg-canvas p-3 text-base text-fg";
 
 export default function UploadClient() {
   const [payload, setPayload] = useState<unknown>(null);

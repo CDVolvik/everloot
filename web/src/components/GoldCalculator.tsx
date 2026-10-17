@@ -234,7 +234,7 @@ export default function GoldCalculator() {
             placeholder="e.g. Revendreth cloth run"
             value={state.farmName}
             onChange={(e) => patch({ farmName: e.target.value })}
-            className="min-h-11 text-base w-full rounded-lg bg-panel border border-line px-3 py-2 text-fg placeholder:text-muted focus:border-accent"
+            className="min-h-11 text-base w-full rounded-lg bg-panel border border-edge px-3 py-2 text-fg placeholder:text-muted focus:border-accent"
           />
         </label>
         <label className="block">
@@ -248,7 +248,7 @@ export default function GoldCalculator() {
             onChange={(e) =>
               patch({ hours: Math.max(0, Number(e.target.value) || 0) })
             }
-            className="min-h-11 text-base w-24 rounded-lg bg-panel border border-line px-3 py-2 text-fg focus:border-accent"
+            className="min-h-11 text-base w-24 rounded-lg bg-panel border border-edge px-3 py-2 text-fg focus:border-accent"
           />
         </label>
         <label className="block">
@@ -265,7 +265,7 @@ export default function GoldCalculator() {
                 minutes: Math.min(59, Math.max(0, Number(e.target.value) || 0)),
               })
             }
-            className="min-h-11 text-base w-24 rounded-lg bg-panel border border-line px-3 py-2 text-fg focus:border-accent"
+            className="min-h-11 text-base w-24 rounded-lg bg-panel border border-edge px-3 py-2 text-fg focus:border-accent"
           />
         </label>
       </div>
@@ -306,7 +306,7 @@ export default function GoldCalculator() {
                     placeholder="e.g. Shrouded Cloth"
                     value={it.name}
                     onChange={(e) => updateItem(it.id, { name: e.target.value })}
-                    className="min-h-11 w-full min-w-0 rounded-md bg-canvas/60 border border-line px-3 py-2 text-base text-fg placeholder:text-muted focus:border-accent"
+                    className="min-h-11 w-full min-w-0 rounded-md bg-canvas/60 border border-edge px-3 py-2 text-base text-fg placeholder:text-muted focus:border-accent"
                   />
                   </label>
                   <label className="min-w-0">
@@ -319,7 +319,7 @@ export default function GoldCalculator() {
                     onChange={(e) =>
                       updateItem(it.id, { qty: Number(e.target.value) || 0 })
                     }
-                    className="min-h-11 w-full min-w-0 rounded-md bg-canvas/60 border border-line px-3 py-2 text-base text-fg focus:border-accent"
+                    className="min-h-11 w-full min-w-0 rounded-md bg-canvas/60 border border-edge px-3 py-2 text-base text-fg focus:border-accent"
                   />
                   </label>
                   <label className="min-w-0">
@@ -333,7 +333,7 @@ export default function GoldCalculator() {
                     onChange={(e) =>
                       updateItem(it.id, { price: Number(e.target.value) || 0 })
                     }
-                    className="min-h-11 w-full min-w-0 rounded-md bg-canvas/60 border border-line px-3 py-2 text-base text-fg focus:border-accent"
+                    className="min-h-11 w-full min-w-0 rounded-md bg-canvas/60 border border-edge px-3 py-2 text-base text-fg focus:border-accent"
                   />
                   </label>
                   <div className="text-sm text-accent tabular-nums">
@@ -369,11 +369,11 @@ export default function GoldCalculator() {
               patch({ vendorGold: Number(e.target.value) || 0 })
             }
             placeholder="Lump sum from trash / quests"
-            className="min-h-11 text-base w-full rounded-lg bg-panel border border-line px-3 py-2 text-fg placeholder:text-muted focus:border-accent"
+            className="min-h-11 text-base w-full rounded-lg bg-panel border border-edge px-3 py-2 text-fg placeholder:text-muted focus:border-accent"
           />
         </label>
 
-        <label className="min-h-11 flex items-center gap-3 rounded-lg border border-line px-3 py-2 cursor-pointer select-none">
+        <label className="min-h-11 flex items-center gap-3 rounded-lg border border-edge px-3 py-2 cursor-pointer select-none">
           <input
             type="checkbox"
             checked={state.ahCut}

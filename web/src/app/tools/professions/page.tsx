@@ -89,15 +89,15 @@ export default async function ProfessionsPage(
           <div className="grid sm:grid-cols-3 gap-3">
             <label className="text-sm text-fg-2 space-y-1">
               <span className="block text-xs font-mono text-muted">Profession</span>
-              <input name="profession" defaultValue={profession} className="w-full rounded-lg border border-line bg-canvas px-3 py-2 text-fg" />
+              <input name="profession" defaultValue={profession} className="w-full rounded-lg border border-edge bg-canvas px-3 py-2 text-fg" />
             </label>
             <label className="text-sm text-fg-2 space-y-1">
               <span className="block text-xs font-mono text-muted">From skill</span>
-              <input name="from" defaultValue={fromSkill} inputMode="numeric" className="w-full rounded-lg border border-line bg-canvas px-3 py-2 text-fg" />
+              <input name="from" defaultValue={fromSkill} inputMode="numeric" className="w-full rounded-lg border border-edge bg-canvas px-3 py-2 text-fg" />
             </label>
             <label className="text-sm text-fg-2 space-y-1">
               <span className="block text-xs font-mono text-muted">To skill</span>
-              <input name="to" defaultValue={toSkill} inputMode="numeric" className="w-full rounded-lg border border-line bg-canvas px-3 py-2 text-fg" />
+              <input name="to" defaultValue={toSkill} inputMode="numeric" className="w-full rounded-lg border border-edge bg-canvas px-3 py-2 text-fg" />
             </label>
           </div>
           <button type="submit" className="btn btn-primary">

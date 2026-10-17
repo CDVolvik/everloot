@@ -45,11 +45,11 @@ export default async function AuctionsPage(
         <div className="grid sm:grid-cols-2 gap-3">
           <label className="text-sm text-fg-2 space-y-1">
             <span className="block text-xs font-mono text-muted">Realm</span>
-            <input name="realm" defaultValue={realm} className="w-full rounded-lg border border-line bg-canvas px-3 py-2 text-fg" />
+            <input name="realm" defaultValue={realm} className="w-full rounded-lg border border-edge bg-canvas px-3 py-2 text-fg" />
           </label>
           <label className="text-sm text-fg-2 space-y-1">
             <span className="block text-xs font-mono text-muted">Item id</span>
-            <input name="item" defaultValue={itemText} inputMode="numeric" className="w-full rounded-lg border border-line bg-canvas px-3 py-2 text-fg" />
+            <input name="item" defaultValue={itemText} inputMode="numeric" className="w-full rounded-lg border border-edge bg-canvas px-3 py-2 text-fg" />
           </label>
         </div>
         <button type="submit" className="btn btn-primary text-sm">Show the history</button>

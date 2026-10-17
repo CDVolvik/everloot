@@ -75,10 +75,10 @@ export default async function LorePage(props: { params: Promise<{ slug: string }
         {revised && <p className="text-sm text-muted">Last wiki revision {revised}</p>}
         {typeSlug && (
           <ul className="flex flex-wrap gap-2 text-xs">
-            <li><Link href={`/lore/${typeSlug}`} className="rounded-full border border-line px-3 py-1 text-accent hover:underline underline-offset-4">{BROWSE_HEADINGS[typeSlug]}</Link></li>
+            <li><Link href={`/lore/${typeSlug}`} className="rounded-full border border-edge px-3 py-1 text-accent hover:underline underline-offset-4">{BROWSE_HEADINGS[typeSlug]}</Link></li>
             {facetLinks.map((f) => (
               <li key={`${f.key}:${f.value}`}>
-                <Link href={f.href} className="rounded-full border border-line px-3 py-1 text-fg-2 hover:text-accent">
+                <Link href={f.href} className="rounded-full border border-edge px-3 py-1 text-fg-2 hover:text-accent">
                   {FACET_LABELS[f.key]}: {f.value}
                 </Link>
               </li>
