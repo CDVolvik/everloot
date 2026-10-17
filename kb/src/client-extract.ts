@@ -20,13 +20,22 @@ export interface TableSource {
   read(fileDataID: number): Promise<TableRead | null>;
 }
 
-export async function extractTables(source: TableSource): Promise<{ tables: ExtractedTable[]; missing: string[] }> {
+export interface MissingTable { table: string; reason: string }
+/** The reason given for a table the build does not have; any other reason is a failure. */
+export const NOT_IN_BUILD = "not in this build";
+
+/** One table failing to read (say, no WoWDBDefs layout for this build) is recorded and the rest still run. */
+export async function extractTables(source: TableSource): Promise<{ tables: ExtractedTable[]; missing: MissingTable[] }> {
   const tables: ExtractedTable[] = [];
-  const missing: string[] = [];
+  const missing: MissingTable[] = [];
   for (const [table, fileDataID] of Object.entries(CLIENT_TABLES)) {
-    const read = await source.read(fileDataID);
-    if (read) tables.push({ table, fileDataID, ...read });
-    else missing.push(table);
+    try {
+      const read = await source.read(fileDataID);
+      if (read) tables.push({ table, fileDataID, ...read });
+      else missing.push({ table, reason: NOT_IN_BUILD });
+    } catch (err) {
+      missing.push({ table, reason: err instanceof Error ? err.message : String(err) });
+    }
   }
   return { tables, missing };
 }

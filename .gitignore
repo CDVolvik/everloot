@@ -55,8 +55,10 @@ scratch/
 
 # --- kb/ (knowledge base) ---
 kb/data/
-# CDN download cache written by @rhyster/wow-casc-dbc (npm run kb -- client-extract)
+# CDN download cache written by @rhyster/wow-casc-dbc (npm run kb -- client-extract). The library
+# puts it in ./cache under whatever folder the command runs from: kb/ through npm, the root otherwise.
 kb/cache/
+/cache/
 web/data/
 web/.data/
 .vercel

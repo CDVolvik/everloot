@@ -74,6 +74,14 @@ export function normalizeSpell(id: number, name?: Record<string, unknown>, spell
   return { id, name: str(name?.Name_lang), description: str(spell?.Description_lang), auraDescription: str(spell?.AuraDescription_lang) };
 }
 
+/**
+ * `<product>-<buildId>-<first 8 of BuildConfig>.sqlite`. Blizzard sometimes ships two builds under one
+ * build number, and a build is keyed on its BuildConfig, so the name carries part of it.
+ */
+export function clientSnapshotName(build: { product: string; buildId: number; buildConfig: string }): string {
+  return `${build.product}-${build.buildId}-${build.buildConfig.slice(0, 8)}.sqlite`;
+}
+
 /** Write the snapshot and its manifest. The file is built beside the target and renamed into place. */
 export function writeClientSnapshot(path: string, meta: ClientBuildMeta, tables: ExtractedTable[]): ClientManifest {
   const partial = `${path}.partial`;

@@ -4,8 +4,8 @@ import { auditSources } from "./audit-sources.js";
 import { BlizzardClient } from "./blizzard/client.js";
 import { checkBuilds, loadRegistry, recordBuilds, saveRegistry, versionsUrl } from "./builds.js";
 import { diffSnapshots } from "./client-diff.js";
-import { CASC_LIBRARY, extractTables, openCdn } from "./client-extract.js";
-import { writeClientSnapshot } from "./client-snapshot.js";
+import { CASC_LIBRARY, extractTables, NOT_IN_BUILD, openCdn } from "./client-extract.js";
+import { clientSnapshotName, writeClientSnapshot } from "./client-snapshot.js";
 import type { Game, NsKind, Region } from "./blizzard/namespaces.js";
 import { openDb, openExistingReadOnlyDb, type DB } from "./db.js";
 import { importCurated } from "./importers/curated.js";
@@ -41,8 +41,10 @@ const USAGE = `usage: npm run kb -- <command> --db <path>
     Reads build identifiers only, never game files)
   client-extract [--product wow_classic_beta] [--registry data/builds.json] [--out data/client]
     (reads items and spells of the product's current build from Blizzard's CDN into a snapshot
-    <out>/<product>-<build>.sqlite + manifest, and marks the build processed. Encrypted blocks are
-    skipped, never decrypted. Not for publication without review: see docs/DATA_POLICY.md)
+    <out>/<product>-<build>-<buildconfig, 8 chars>.sqlite + manifest, and marks the build processed.
+    A table that fails to read is reported, the rest are still written, the build stays queued and
+    the exit is 1. Encrypted blocks are skipped, never decrypted. Not for publication without
+    review: see docs/DATA_POLICY.md)
   client-diff <old.sqlite> <new.sqlite> [--out diff.json]   (field-level diff of two snapshots)
   audit-sources <file.sqlite...>   (rows per source and cached API rows in each file; exits 1 if anything
     is not publishable)
@@ -215,7 +217,7 @@ async function main(): Promise<number> {
       const outDir = flags.get("out") || "data/client";
       const now = new Date();
       const { build, source } = await openCdn(product);
-      const out = join(outDir, `${product}-${build.buildId}.sqlite`);
+      const out = join(outDir, clientSnapshotName(build));
       let registry = loadRegistry(path);
       const key = `${product}:${build.buildConfig}`;
       if (!registry.builds.some((b) => b.key === key)) {
@@ -233,12 +235,16 @@ async function main(): Promise<number> {
       const { tables, missing } = await extractTables(source);
       mkdirSync(outDir, { recursive: true });
       const manifest = writeClientSnapshot(out, { ...build, extractedAt: now.toISOString(), library: CASC_LIBRARY, definitions }, tables);
-      registry = { builds: registry.builds.map((b) => (b.key === key ? { ...b, status: "processed" as const } : b)) };
+      // A table that failed to read leaves the build queued, so the next run tries it again.
+      const failed = missing.filter((m) => m.reason !== NOT_IN_BUILD);
+      if (!failed.length) {
+        registry = { builds: registry.builds.map((b) => (b.key === key ? { ...b, status: "processed" as const } : b)) };
+      }
       saveRegistry(path, registry);
       for (const t of manifest.tables) console.log(`${t.table}: ${t.rows} rows${t.encryptedBlocks ? `, ${t.encryptedBlocks} encrypted blocks skipped` : ""}`);
-      if (missing.length) console.log(`not in this build: ${missing.join(", ")}`);
+      for (const m of missing) (m.reason === NOT_IN_BUILD ? console.log : console.error)(`${m.table}: ${m.reason}`);
       console.log(`${product} ${build.version} -> ${out} (sha256 ${manifest.sha256.slice(0, 12)})`);
-      return 0;
+      return failed.length ? 1 : 0;
     }
     case "client-diff": {
       if (args.length < 2) break;
