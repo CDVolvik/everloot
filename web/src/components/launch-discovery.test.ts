@@ -44,4 +44,9 @@ describe("working feature discovery", () => {
     expect(guild).not.toContain("the score");
     expect(guild).not.toContain('href="/tools/guild-tracker"');
   });
+  it("names no retail-only content in the gold calculator copy", () => {
+    const copy = readFileSync(new URL("../app/tools/gold-per-hour/page.tsx", import.meta.url), "utf8")
+      + readFileSync(new URL("./GoldCalculator.tsx", import.meta.url), "utf8");
+    expect(copy).not.toMatch(/Revendreth|Shrouded|Undermine|Draenor|garrison|Dragonflight|transmog/i);
+  });
 });
