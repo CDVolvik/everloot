@@ -59,6 +59,12 @@ describe("SavedVariables parser", () => {
     expect(f.records[0]).toMatchObject({ kind: "loot", sourceNpcId: 7, items: [] });
   });
 
+  test("the client build comes along when the addon wrote one (0.2.6+)", () => {
+    const text = `EverlootDB = { version = "0.2.6", installId = "abcd-1234", clientBuild = "1.60.1.70450", records = {} }`;
+    expect(parseEverlootLua(text).clientBuild).toBe("1.60.1.70450");
+    expect(parseEverlootLua(SV)).not.toHaveProperty("clientBuild");
+  });
+
   test("rejects non-exports and malformed tables", () => {
     expect(() => parseEverlootLua("x = 1")).toThrow(LuaParseError);
     expect(() => parseEverlootLua("EverlootDB = { version = ")).toThrow(LuaParseError);

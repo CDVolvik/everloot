@@ -18,7 +18,8 @@ Everloot is a fan project and is not affiliated with or endorsed by Blizzard.
 
 ## Media
 
-The site uses the visitor's system fonts and ships no third-party fonts. The favicon
+The site self-hosts the Geist and Geist Mono fonts by Vercel (SIL Open Font License 1.1) from the
+`geist` npm package. The favicon
 (`web/src/app/icon.svg`) and the social card (`web/src/app/opengraph-image.tsx`) are our own. The
 addon uses an icon from the game client (`Interface\Icons\INV_Misc_Coin_02`) by path; no game art
 is included in this repository.
@@ -31,7 +32,7 @@ on 2026-10-16 from a Windows install (each platform installs its own prebuilt bi
 | Package | Licences |
 |---|---|
 | `kb` | MIT 118, ISC 11, Apache-2.0 3, BSD-3-Clause 3, BSD-2-Clause 2, Python-2.0 1 (`argparse`), BlueOak-1.0.0 1 (`sax`), MIT OR WTFPL 1 (`expand-template`, used under MIT), MIT OR Apache-2.0 OR BSD-2-Clause 1 |
-| `web` | MIT 96, ISC 9, Apache-2.0 3, BSD-3-Clause 3, BSD-2-Clause 1, CC-BY-4.0 1 (`caniuse-lite` data), 0BSD 1 (`tslib`), Apache-2.0 AND LGPL-3.0-or-later 1 (`@img/sharp-win32-x64`: sharp's prebuilt libvips image library; every platform gets its own LGPL-3.0-or-later libvips binary, such as `@img/sharp-libvips-linux-x64` on Vercel) |
+| `web` | MIT 96, ISC 9, Apache-2.0 3, BSD-3-Clause 3, BSD-2-Clause 1, CC-BY-4.0 1 (`caniuse-lite` data), 0BSD 1 (`tslib`), OFL-1.1 1 (`geist`), Apache-2.0 AND LGPL-3.0-or-later 1 (`@img/sharp-win32-x64`: sharp's prebuilt libvips image library; every platform gets its own LGPL-3.0-or-later libvips binary, such as `@img/sharp-libvips-linux-x64` on Vercel) |
 | `companion` | MIT 88, ISC 7, BSD-3-Clause 2, BSD-2-Clause 1, Unlicense 1 (`fast-sha256`) |
 
 The checker lists each of our own three packages as `UNLICENSED` because they are marked

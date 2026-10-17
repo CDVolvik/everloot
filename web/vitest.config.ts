@@ -5,6 +5,9 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   // Next preserves JSX for its own compiler; component tests need a transform.
   oxc: { jsx: { runtime: "automatic" } },
+  // The first test in a file pays its cold imports (the MCP SDK, the social-card renderer), over a
+  // second even when warm. On a busy machine, e.g. during `next build`, that can pass the 5 s default.
+  test: { testTimeout: 15_000 },
   resolve: {
     alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
   },

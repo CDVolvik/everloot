@@ -28,19 +28,19 @@ export default function AddonsPage() {
   return (
     <article className="space-y-8 max-w-4xl">
       <header className="space-y-3">
-        <h1 className="font-display text-3xl sm:text-4xl font-bold text-parchment-100 tracking-tight">Addons</h1>
-        <p className="text-parchment-100/80 max-w-2xl">
+        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">Addons</h1>
+        <p className="text-fg-2 max-w-2xl">
           The addon we build, and Polestar, which we list. Polestar is made by its own authors; Everloot is not part
           of it.
         </p>
       </header>
       <ul className="grid sm:grid-cols-2 gap-4">
         {CARDS.map((card) => (
-          <li key={card.href} className="rounded-xl border border-parchment-100/15 bg-parchment-900/40 p-5 space-y-2">
-            <p className="uppercase tracking-[0.2em] text-xs text-gold-500/80">{card.by}</p>
-            <h2 className="font-display text-xl font-semibold text-parchment-100">{card.title}</h2>
-            <p className="text-sm text-parchment-100/75">{card.text}</p>
-            <Link href={card.href} className="inline-flex items-center min-h-11 text-gold-400 hover:underline underline-offset-4">
+          <li key={card.href} className="rounded-xl border border-line bg-panel/40 p-5 space-y-2">
+            <p className="font-mono text-xs text-muted">{card.by}</p>
+            <h2 className="text-xl font-semibold text-fg">{card.title}</h2>
+            <p className="text-sm text-fg-2">{card.text}</p>
+            <Link href={card.href} className="inline-flex items-center min-h-11 text-accent hover:underline underline-offset-4">
               {card.link}
             </Link>
           </li>

@@ -17,6 +17,7 @@
     "@modelcontextprotocol/sdk": "1.31.0",
     "aws4fetch": "^1.0.20",
     "better-sqlite3": "13.0.3",
+    "geist": "1.8.1",
     "next": "15.5.27",
     "react": "19.2.8",
     "react-dom": "19.2.8",
