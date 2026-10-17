@@ -235,6 +235,27 @@ describe("types, facets and browsing", () => {
     expect(spy.mock.calls.length).toBe(before);
   });
 
+  test("facetValues and coverage read the manifest summaries without scanning", async () => {
+    const { facetValues, coverage } = await lore();
+    const { getRelease } = await import("./release");
+    const spy = vi.spyOn(getRelease()!.db, "prepare");
+    const npc = facetValues("npc");
+    expect(npc !== "unavailable" && npc.race).toEqual(["Orc"]);
+    expect(npc !== "unavailable" && npc.zone).toEqual(["Zul'Gurub"]);
+    const c = coverage();
+    expect(c !== "unavailable" && c.facets.expansion).toEqual([{ value: "Battle for Azeroth", n: 11 }, { value: "Legion", n: 11 }]);
+    expect(spy.mock.calls.some(([sql]) => String(sql).includes("json_each"))).toBe(false);
+  });
+
+  test("a typed release whose manifest has no facet totals is refused", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const broken = await buildLoreRelease({ facets: false });
+    const { browse, facetValues, coverage } = await lore(broken);
+    expect(browse("zone", "z", {}, 1)).toBe("unavailable");
+    expect(facetValues("zone")).toBe("unavailable");
+    expect(coverage()).toBe("unavailable");
+  });
+
   test("hasTypes and typeCounts read the manifest", async () => {
     const { hasTypes, typeCounts } = await lore();
     expect(hasTypes()).toBe(true);
@@ -277,6 +298,7 @@ describe("types, facets and browsing", () => {
     expect(browse("zone", "z", {}, 1)).toEqual({ rows: [], hasNext: false });
     const c = coverage();
     expect(c !== "unavailable" && c.types).toBeNull();
+    expect(c !== "unavailable" && c.facets.expansion).toEqual([]);
   });
 
   test("everything is unavailable without a release", async () => {
