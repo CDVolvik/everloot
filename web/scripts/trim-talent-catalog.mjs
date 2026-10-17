@@ -1,7 +1,9 @@
 // Copies the fields the talent calculator needs out of the talent catalog that
 // `npm run kb -- client-catalog` writes, into web/src/data/game-data/talents/<class>.json.
 //
-//   node scripts/trim-talent-catalog.mjs <catalog-dir>/talents
+//   node scripts/trim-talent-catalog.mjs <catalog-dir>/talents [<output-dir>]
+//
+// The output directory defaults to src/data/game-data/talents; the build watch passes a scratch one.
 //
 // Kept: build stamp, class and tree names, node ids, positions, kind, ranks, prerequisites,
 // unlock gates, point levels, and per entry the definition id, spell id, name and ranks.
@@ -16,7 +18,7 @@ import { fileURLToPath } from "node:url";
 
 const dir = process.argv[2];
 if (!dir) throw new Error("usage: node scripts/trim-talent-catalog.mjs <catalog-dir>/talents");
-const out = join(dirname(fileURLToPath(import.meta.url)), "..", "src", "data", "game-data", "talents");
+const out = process.argv[3] ?? join(dirname(fileURLToPath(import.meta.url)), "..", "src", "data", "game-data", "talents");
 mkdirSync(out, { recursive: true });
 
 const SCHEMA = "everloot.talent-catalog/2";
