@@ -86,6 +86,15 @@ describe("uploading", () => {
     expect(api.bodies[0]).toMatchObject({ addonVersion: "0.2.6", clientBuild: "1.60.1.70450" });
   });
 
+  test("the installed addon list never leaves from here: it goes only through the upload page's preview", async () => {
+    const addon = { kind: "addon_seen", lua: `["eventId"] = "epoch:700", ["capturedAt"] = "2026-10-09T00:00:00Z", ["name"] = "Questie", ["title"] = "Questie", ["loaded"] = true` };
+    const { file, state } = workspace(luaFile([loot(1), addon]));
+    const api = intake();
+    const result = await uploadFile(file, { endpoint: "https://everloot.example", fetch: api.send, state });
+    expect(result).toMatchObject({ sent: 1, heldAddons: 1 });
+    expect(api.bodies[0].records.map((r) => r.kind)).toEqual(["loot"]);
+  });
+
   test("named records stay on this machine unless shared on purpose", async () => {
     const { file, state } = workspace(luaFile([loot(1), gold]));
     const api = intake();
