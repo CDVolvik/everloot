@@ -144,6 +144,8 @@ function toPlain(v: LuaValue): unknown {
 export interface EverlootFile {
   version: string;
   installId: string;
+  /** GetBuildInfo() version and build, written by addon 0.2.6+. */
+  clientBuild?: string;
   records: Array<Record<string, unknown>>;
 }
 
@@ -178,5 +180,6 @@ export function parseEverlootLua(text: string): EverlootFile {
       records.push({ kind, installId, ...(row as Record<string, unknown>) });
     }
   }
-  return { version, installId, records };
+  const clientBuild = get("clientBuild");
+  return { version, installId, ...(typeof clientBuild === "string" ? { clientBuild } : {}), records };
 }
