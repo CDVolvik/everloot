@@ -276,7 +276,7 @@ export default function GoldCalculator() {
           <h2 className="text-xl text-fg">Items looted</h2>
           <button
             onClick={addItem}
-            className="min-h-11 text-sm px-3 py-1.5 rounded-md border border-line hover:border-accent hover:text-accent transition"
+            className="btn min-h-11 text-sm px-3"
           >
             + Add item
           </button>
@@ -445,19 +445,19 @@ export default function GoldCalculator() {
       <div className="flex flex-wrap gap-2 text-sm">
         <button
           onClick={shareLink}
-          className="min-h-11 px-4 py-2 rounded-lg bg-gold-500 text-parchment-950 font-medium hover:bg-gold-400 transition"
+          className="btn btn-primary min-h-11"
         >
           {copied === "link" ? "✓ Link copied" : "Copy share link"}
         </button>
         <button
           onClick={copySummary}
-          className="min-h-11 px-4 py-2 rounded-lg border border-line hover:border-accent hover:text-accent transition"
+          className="btn min-h-11"
         >
           {copied === "summary" ? "✓ Summary copied" : "Copy summary for Discord"}
         </button>
         <button
           onClick={resetAll}
-          className="min-h-11 px-4 py-2 rounded-lg border border-line hover:border-danger hover:text-danger transition ml-auto"
+          className="btn min-h-11 hover:border-danger hover:text-danger ml-auto"
         >
           Reset
         </button>

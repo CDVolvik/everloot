@@ -49,7 +49,7 @@ export default function PacksPage() {
             </dl>
             <div className="flex flex-wrap gap-3">
               {pack.downloads.map((download) => (
-                <a key={download.url} href={download.url} className="inline-flex items-center min-h-11 px-4 rounded-lg border border-line text-accent hover:bg-accent/10">
+                <a key={download.url} href={download.url} className="btn min-h-11">
                   {download.label}
                 </a>
               ))}

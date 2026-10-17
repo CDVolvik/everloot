@@ -76,9 +76,9 @@ export default function CookieConsent({ adsenseClient }: { adsenseClient?: strin
       </p>
       {saveFailed && <p role="status" className="mt-2 text-sm text-fg">Your browser could not save this choice permanently. {choice === "rejected" ? "Optional cookies remain rejected in this tab; if all storage is blocked, keep the current URL to preserve rejection when reloading." : "Acceptance applies to this page only. Recheck your preferences after reloading."}</p>}
       <div className="mt-3 flex flex-wrap items-center gap-2 justify-end">
-        {choice && <button type="button" onClick={close} className="min-h-11 px-3 text-sm rounded-md border border-line">Close</button>}
-        <button type="button" onClick={() => decide("rejected")} className="min-h-11 px-3 text-sm rounded-md border border-line hover:border-muted transition">Reject optional cookies</button>
-        <button type="button" onClick={() => decide("accepted")} className="min-h-11 px-3 text-sm rounded-md bg-gold-500 text-parchment-950 font-medium hover:bg-gold-400 transition">Accept optional cookies</button>
+        {choice && <button type="button" onClick={close} className="btn min-h-11 px-3 text-sm">Close</button>}
+        <button type="button" onClick={() => decide("rejected")} className="btn min-h-11 px-3 text-sm">Reject optional cookies</button>
+        <button type="button" onClick={() => decide("accepted")} className="btn btn-primary min-h-11 px-3 text-sm">Accept optional cookies</button>
       </div>
     </section>
   );

@@ -29,7 +29,7 @@ export default function IdLookup({ kind, label }: { kind: "npcs" | "quests" | "v
       <button
         type="submit"
         disabled={!ok}
-        className="rounded-lg bg-gold-500 px-4 py-2 text-sm font-semibold text-parchment-950 disabled:opacity-40"
+        className="btn btn-primary text-sm disabled:opacity-40"
       >
         Open
       </button>

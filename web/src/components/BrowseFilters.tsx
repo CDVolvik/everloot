@@ -29,7 +29,7 @@ export default function BrowseFilters({
           </select>
         </label>
       ))}
-      <button type="submit" className="min-h-11 px-4 rounded-lg bg-gold-500 text-parchment-950 font-semibold hover:bg-gold-400">Apply</button>
+      <button type="submit" className="btn btn-primary min-h-11">Apply</button>
     </form>
   );
 }

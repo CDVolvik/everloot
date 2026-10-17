@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 };
 
 const link = "text-accent hover:underline underline-offset-4";
-const button = "inline-flex items-center min-h-11 px-4 rounded-lg border border-line text-accent hover:bg-accent/10";
+const button = "btn min-h-11";
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 

@@ -14,6 +14,56 @@ body {
   min-height: 100vh;
 }
 
+/* Buttons are outline pills. The primary action adds a green gradient outline, the only
+   gradient on the site. Plain declarations (no @apply) so src/design/buttons.test.ts can read them. */
+@layer components {
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding: 0 1.25rem;
+  border-radius: 9999px;
+  border: 1px solid rgb(var(--fg));
+  background: transparent;
+  color: rgb(var(--fg));
+  font-weight: 500;
+  transition: border-color 150ms, color 150ms;
+}
+.btn:hover,
+.btn:focus-visible {
+  border-color: rgb(var(--accent));
+  border-radius: 9999px;
+}
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+/* The transparent border is what forced-colours mode paints when the gradient ring is dropped. */
+.btn-primary {
+  position: relative;
+  border: 1.5px solid transparent;
+}
+.btn-primary:hover {
+  color: rgb(var(--accent));
+}
+.btn-primary::before {
+  content: "";
+  position: absolute;
+  inset: -1.5px;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: linear-gradient(90deg, rgb(var(--grad-from)), rgb(var(--grad-to)));
+  -webkit-mask: linear-gradient(black 0 0) content-box, linear-gradient(black 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(black 0 0) content-box, linear-gradient(black 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+}
+
 /* Keep form controls readable on phones and allow grid children to reflow. */
 input:not([type="checkbox"]):not([type="radio"]), select, textarea {
   font-size: 1rem;

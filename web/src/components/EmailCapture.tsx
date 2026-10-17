@@ -58,7 +58,7 @@ export default function EmailCapture({ toolSlug }: { toolSlug: string }) {
         />
         <button
           type="submit"
-          className="px-4 py-2 rounded-lg bg-gold-500 text-parchment-950 font-medium hover:bg-gold-400 transition"
+          className="btn btn-primary"
         >
           Notify me
         </button>
