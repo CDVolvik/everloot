@@ -1,8 +1,8 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
+﻿import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, test, vi } from "vitest";
-import { CASC_LIBRARY, extractTables, openCdn, type TableSource } from "../src/client-extract.js";
+import { CASC_LIBRARY, extractTables, iconIds, openCdn, pinDefinitions, pinnedFetch, probeFiles, type TableSource } from "../src/client-extract.js";
 import { CLIENT_TABLES } from "../src/client-snapshot.js";
 
 // A stand-in for the CDN library, so openCdn can be checked without the network. Every key-loading
@@ -61,7 +61,7 @@ test("reads each known table by file id, keeping its content key and skipped enc
     [CLIENT_TABLES.Spell]: { rows: [[133, { ID: 133 }]] },
   });
   const { tables, missing } = await extractTables(source);
-  expect(missing).toEqual([]);
+  expect(missing.every((m) => m.reason === "not in this build")).toBe(true);
   expect(tables.map((t) => [t.table, t.fileDataID, t.cKey, t.rows.size, t.encryptedBlocks])).toEqual([
     ["ItemSparse", 1572924, "k1572924", 1, 31],
     ["Item", 841626, "k841626", 1, 0],
@@ -70,14 +70,20 @@ test("reads each known table by file id, keeping its content key and skipped enc
   ]);
 });
 
+test("the talent and spell effect tables are read by the file data ids WoWDBDefs lists for them", () => {
+  expect(CLIENT_TABLES).toMatchObject({
+    TraitTree: 4420305, TraitNode: 4420297, TraitNodeEntry: 4420298, TraitDefinition: 4420327, TraitEdge: 4420308,
+    TraitCond: 4543085, TraitNodeGroup: 4420300, SkillLineXTraitTree: 4505477, ChrSpecialization: 1343390,
+    ChrClasses: 1361031, SpellEffect: 1140088,
+  });
+});
+
 test("a table the build does not have is reported as missing, not invented", async () => {
   const { tables, missing } = await extractTables(fake({ [CLIENT_TABLES.Item]: { rows: [[1, { ID: 1 }]] } }));
   expect(tables.map((t) => t.table)).toEqual(["Item"]);
-  expect(missing).toEqual([
-    { table: "ItemSparse", reason: "not in this build" },
-    { table: "SpellName", reason: "not in this build" },
-    { table: "Spell", reason: "not in this build" },
-  ]);
+  expect(missing).toEqual(
+    Object.keys(CLIENT_TABLES).filter((t) => t !== "Item").map((table) => ({ table, reason: "not in this build" })),
+  );
 });
 
 test("a table that cannot be read is reported with the reason, and the other tables are still extracted", async () => {
@@ -88,7 +94,7 @@ test("a table that cannot be read is reported with the reason, and the other tab
     },
   };
   const { tables, missing } = await extractTables(source);
-  expect(tables.map((t) => t.table)).toEqual(["ItemSparse", "Item", "Spell"]);
+  expect(tables.map((t) => t.table)).toEqual(Object.keys(CLIENT_TABLES).filter((t) => t !== "SpellName"));
   expect(missing).toEqual([{ table: "SpellName", reason: "No valid definition found for layout 1C2B3A4D" }]);
 });
 
@@ -123,4 +129,39 @@ test("no code in kb loads decryption keys or the unlicensed listfile", () => {
 test("the library recorded in each manifest is the version kb depends on", () => {
   const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
   expect(CASC_LIBRARY).toBe(`@rhyster/wow-casc-dbc@${pkg.dependencies["@rhyster/wow-casc-dbc"]}`);
+});
+
+test("icon file ids are looked up in the root listing and recorded as a table; nothing is downloaded", () => {
+  const source: TableSource = {
+    async read() { throw new Error("must not read content"); },
+    fileStatus: (id) => (id === 1 ? "present" : id === 2 ? "encrypted" : "absent"),
+  };
+  const spellMisc = { table: "SpellMisc", fileDataID: 1, cKey: null, encryptedBlocks: 0, rows: new Map([[1, { SpellIconFileDataID: 1 }], [2, { SpellIconFileDataID: 2 }], [3, { SpellIconFileDataID: 3 }], [4, { SpellIconFileDataID: 0 }], [5, { SpellIconFileDataID: 1 }]]) };
+  const ids = iconIds([spellMisc]);
+  expect(ids).toEqual([1, 2, 3, 1]);
+  const table = probeFiles(source, ids)!;
+  expect(table.table).toBe("FileStatus");
+  expect([...table.rows.values()]).toEqual([{ ID: 1, Status: "present" }, { ID: 2, Status: "encrypted" }, { ID: 3, Status: "absent" }]);
+  expect(probeFiles({ read: async () => null }, ids)).toBeNull();
+});
+
+test("WoWDBDefs files are fetched at the pinned commit; other URLs pass through untouched", async () => {
+  const seen: string[] = [];
+  const real = (async (input: unknown) => { seen.push(String(input)); return new Response("{}"); }) as typeof fetch;
+  const pinned = pinnedFetch(real, "a".repeat(40));
+  await pinned("https://raw.githubusercontent.com/wowdev/WoWDBDefs/master/manifest.json");
+  await pinned("https://raw.githubusercontent.com/wowdev/WoWDBDefs/master/definitions/TraitNode.dbd");
+  await pinned("https://example.com/WoWDBDefs/master/x");
+  expect(seen).toEqual([
+    `https://raw.githubusercontent.com/wowdev/WoWDBDefs/${"a".repeat(40)}/manifest.json`,
+    `https://raw.githubusercontent.com/wowdev/WoWDBDefs/${"a".repeat(40)}/definitions/TraitNode.dbd`,
+    "https://example.com/WoWDBDefs/master/x",
+  ]);
+});
+
+test("pinDefinitions returns null, and changes nothing, when the commit cannot be resolved", async () => {
+  const before = globalThis.fetch;
+  expect(await pinDefinitions((async () => new Response("no", { status: 403 })) as typeof fetch)).toBeNull();
+  expect(await pinDefinitions((async () => { throw new Error("offline"); }) as typeof fetch)).toBeNull();
+  expect(globalThis.fetch).toBe(before);
 });
