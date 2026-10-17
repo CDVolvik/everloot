@@ -77,20 +77,20 @@ export default async function BrowsePage(props: Props) {
   if (typed === UNAVAILABLE) {
     return (
       <article className="space-y-4 max-w-4xl">
-        <p className="uppercase tracking-[0.2em] text-xs text-gold-500/80">{label}</p>
-        <h1 className="font-display text-3xl font-bold text-parchment-100">Lore archive unavailable</h1>
-        <p className="text-parchment-100/75">{UNAVAILABLE_COPY}</p>
+        <p className="font-mono text-xs text-muted">{label}</p>
+        <h1 className="text-3xl font-bold text-fg">Lore archive unavailable</h1>
+        <p className="text-fg-2">{UNAVAILABLE_COPY}</p>
       </article>
     );
   }
   if (!typed) {
     return (
       <article className="space-y-4 max-w-4xl">
-        <p className="uppercase tracking-[0.2em] text-xs text-gold-500/80">{label}</p>
-        <h1 className="font-display text-3xl font-bold text-parchment-100">{heading}</h1>
-        <p className="text-parchment-100/75">
+        <p className="font-mono text-xs text-muted">{label}</p>
+        <h1 className="text-3xl font-bold text-fg">{heading}</h1>
+        <p className="text-fg-2">
           {PRE_CLASSIFICATION_COPY} Browsing by type arrives with the next knowledge release. Until then,{" "}
-          <Link href="/search" className="text-gold-400 hover:underline underline-offset-4">search the archive</Link>.
+          <Link href="/search" className="text-accent hover:underline underline-offset-4">search the archive</Link>.
         </p>
       </article>
     );
@@ -104,8 +104,8 @@ export default async function BrowsePage(props: Props) {
   if (result === UNAVAILABLE || values === UNAVAILABLE) {
     return (
       <article className="space-y-4 max-w-4xl">
-        <h1 className="font-display text-3xl font-bold text-parchment-100">Lore archive unavailable</h1>
-        <p className="text-parchment-100/75">{UNAVAILABLE_COPY}</p>
+        <h1 className="text-3xl font-bold text-fg">Lore archive unavailable</h1>
+        <p className="text-fg-2">{UNAVAILABLE_COPY}</p>
       </article>
     );
   }
@@ -117,9 +117,9 @@ export default async function BrowsePage(props: Props) {
   return (
     <article className="space-y-8 max-w-4xl">
       <header className="space-y-3">
-        <p className="uppercase tracking-[0.2em] text-xs text-gold-500/80">{label}</p>
-        <h1 className="font-display text-3xl sm:text-4xl font-bold text-parchment-100 tracking-tight">{heading}</h1>
-        <p className="text-sm text-parchment-100/70 max-w-2xl">
+        <p className="font-mono text-xs text-muted">{label}</p>
+        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">{heading}</h1>
+        <p className="text-sm text-fg-2 max-w-2xl">
           Pages the wiki&apos;s own categories and infoboxes mark as {heading.toLowerCase()}, by name. This archive predates WoW: Forever.
         </p>
       </header>
@@ -127,7 +127,7 @@ export default async function BrowsePage(props: Props) {
       <nav aria-label="First letter" className="flex flex-wrap gap-1 text-sm">
         {LETTERS.map((l) => (
           <Link key={l} href={letterUrl(slug, l)} aria-current={l === letter ? "page" : undefined}
-            className={`min-h-11 min-w-11 inline-flex items-center justify-center rounded-lg border ${l === letter ? "border-gold-400 text-gold-400" : "border-parchment-100/15 text-parchment-100/70 hover:text-gold-400"}`}>
+            className={`min-h-11 min-w-11 inline-flex items-center justify-center rounded-lg border ${l === letter ? "border-accent text-accent" : "border-line text-fg-2 hover:text-accent"}`}>
             {l.toUpperCase()}
           </Link>
         ))}
@@ -136,32 +136,32 @@ export default async function BrowsePage(props: Props) {
       <BrowseFilters action={`/lore/${slug}`} letter={letter ?? ""} values={values} selected={filters} />
 
       {result.rows.length === 0 && page > 1 ? (
-        <section className="space-y-2 text-sm text-parchment-100/75">
+        <section className="space-y-2 text-sm text-fg-2">
           <p>No more results.</p>
-          <p><Link href={backUrl} className="text-gold-400 hover:underline underline-offset-4">Back to the first page</Link></p>
+          <p><Link href={backUrl} className="text-accent hover:underline underline-offset-4">Back to the first page</Link></p>
         </section>
       ) : result.rows.length === 0 ? (
-        <p className="text-sm text-parchment-100/75">No pages match these filters.</p>
+        <p className="text-sm text-fg-2">No pages match these filters.</p>
       ) : (
         <section className="space-y-4">
           <ul className="grid sm:grid-cols-2 gap-x-6 gap-y-1 text-sm">
             {result.rows.map((row) => (
               <li key={row.extId}>
-                <Link href={`/lore/${loreSlug(row)}`} className="inline-flex items-center min-h-9 text-gold-400 hover:underline underline-offset-4">{row.name}</Link>
+                <Link href={`/lore/${loreSlug(row)}`} className="inline-flex items-center min-h-9 text-accent hover:underline underline-offset-4">{row.name}</Link>
               </li>
             ))}
           </ul>
           <nav aria-label="Pages" className="flex items-center gap-4 text-sm">
-            {page > 1 && <Link href={pageUrl(page - 1)} className="text-gold-400 hover:underline underline-offset-4">Previous</Link>}
-            <span className="text-parchment-100/60">Page {page}</span>
-            {result.hasNext && <Link href={pageUrl(page + 1)} className="text-gold-400 hover:underline underline-offset-4">Next</Link>}
+            {page > 1 && <Link href={pageUrl(page - 1)} className="text-accent hover:underline underline-offset-4">Previous</Link>}
+            <span className="text-muted">Page {page}</span>
+            {result.hasNext && <Link href={pageUrl(page + 1)} className="text-accent hover:underline underline-offset-4">Next</Link>}
           </nav>
         </section>
       )}
 
-      <p className="text-sm text-parchment-100/60">
-        <Link href="/lore" className="text-gold-400 hover:underline underline-offset-4">About the lore archive</Link>
-        {" "}· <Link href="/search" className="text-gold-400 hover:underline underline-offset-4">Search</Link>
+      <p className="text-sm text-muted">
+        <Link href="/lore" className="text-accent hover:underline underline-offset-4">About the lore archive</Link>
+        {" "}· <Link href="/search" className="text-accent hover:underline underline-offset-4">Search</Link>
       </p>
     </article>
   );

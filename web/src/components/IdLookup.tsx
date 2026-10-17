@@ -17,13 +17,13 @@ export default function IdLookup({ kind, label }: { kind: "npcs" | "quests" | "v
         router.push(`/database/${kind}/${value}`);
       }}
     >
-      <label className="text-sm text-parchment-100/80 space-y-1">
-        <span className="block text-xs uppercase tracking-wider text-parchment-100/50">{label}</span>
+      <label className="text-sm text-fg-2 space-y-1">
+        <span className="block text-xs font-mono text-muted">{label}</span>
         <input
           value={value}
           inputMode="numeric"
           onChange={(event) => setValue(event.target.value.trim())}
-          className="w-40 rounded-lg border border-parchment-100/15 bg-parchment-950 px-3 py-2 text-parchment-100"
+          className="w-40 rounded-lg border border-line bg-canvas px-3 py-2 text-fg"
         />
       </label>
       <button

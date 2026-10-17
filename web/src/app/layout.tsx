@@ -48,7 +48,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="flex flex-col min-h-screen">
-        <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:bg-parchment-950 focus:px-4 focus:py-3">Skip to content</a>
+        <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:bg-canvas focus:px-4 focus:py-3">Skip to content</a>
         <Header />
         <main id="main-content" className="flex-1 min-w-0 mx-auto w-full max-w-6xl px-4 py-8">
           {children}

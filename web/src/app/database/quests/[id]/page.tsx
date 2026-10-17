@@ -30,9 +30,9 @@ export default async function QuestPage(props: { params: Promise<{ id: string }>
   return (
     <article className="space-y-8 max-w-4xl">
       <header className="space-y-3">
-        <p className="uppercase tracking-[0.2em] text-xs text-gold-500/80">WoW: Forever · quest</p>
-        <h1 className="font-display text-3xl sm:text-4xl font-bold text-parchment-100 tracking-tight">{title}</h1>
-        <p className="text-sm text-parchment-100/60">
+        <p className="font-mono text-xs text-muted">WoW: Forever · quest</p>
+        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">{title}</h1>
+        <p className="text-sm text-muted">
           {facts.unreachable
             ? STORAGE_UNREACHABLE
             : page.title
@@ -43,21 +43,21 @@ export default async function QuestPage(props: { params: Promise<{ id: string }>
 
       {facts.unreachable ? null : (
       <>
-      <dl className="text-sm text-parchment-100/85 space-y-2">
+      <dl className="text-sm text-fg space-y-2">
         <div>{page.level === null ? "No agreed level. A level needs 3 installs reporting the same one." : `Level ${page.level}`}</div>
-        <div>{page.giverNpcId === null ? "No agreed giver." : <Link href={`/database/npcs/${page.giverNpcId}`} className="text-gold-400 hover:underline underline-offset-4">Giver NPC {page.giverNpcId}</Link>}</div>
-        <div>{page.turnInNpcId === null ? "No agreed turn-in." : <Link href={`/database/npcs/${page.turnInNpcId}`} className="text-gold-400 hover:underline underline-offset-4">Turn-in NPC {page.turnInNpcId}</Link>}</div>
+        <div>{page.giverNpcId === null ? "No agreed giver." : <Link href={`/database/npcs/${page.giverNpcId}`} className="text-accent hover:underline underline-offset-4">Giver NPC {page.giverNpcId}</Link>}</div>
+        <div>{page.turnInNpcId === null ? "No agreed turn-in." : <Link href={`/database/npcs/${page.turnInNpcId}`} className="text-accent hover:underline underline-offset-4">Turn-in NPC {page.turnInNpcId}</Link>}</div>
       </dl>
 
       <section className="space-y-2">
-        <h2 className="font-display text-2xl text-parchment-100">Rewards</h2>
+        <h2 className="text-2xl text-fg">Rewards</h2>
         {page.rewards.length === 0 ? (
-          <p className="text-sm text-parchment-100/70">No agreed rewards.</p>
+          <p className="text-sm text-fg-2">No agreed rewards.</p>
         ) : (
           <ul className="text-sm space-y-1">
             {page.rewards.map((itemId) => (
               <li key={itemId}>
-                <Link href={`/database/items/${itemId}`} className="text-gold-400 hover:underline underline-offset-4">Item {itemId}</Link>
+                <Link href={`/database/items/${itemId}`} className="text-accent hover:underline underline-offset-4">Item {itemId}</Link>
               </li>
             ))}
           </ul>
@@ -66,8 +66,8 @@ export default async function QuestPage(props: { params: Promise<{ id: string }>
       </>
       )}
 
-      <p className="text-sm text-parchment-100/60">
-        <Link href="/database/quests" className="text-gold-400 hover:underline underline-offset-4">Quest lookup</Link>
+      <p className="text-sm text-muted">
+        <Link href="/database/quests" className="text-accent hover:underline underline-offset-4">Quest lookup</Link>
       </p>
     </article>
   );

@@ -40,20 +40,20 @@ export default async function VendorPage(props: { params: Promise<{ id: string }
   return (
     <article className="space-y-8 max-w-4xl">
       <header className="space-y-3">
-        <p className="uppercase tracking-[0.2em] text-xs text-gold-500/80">WoW: Forever · vendor</p>
-        <h1 className="font-display text-3xl sm:text-4xl font-bold text-parchment-100 tracking-tight">Vendor NPC {page.vendorNpcId}</h1>
-        <p className="text-sm text-parchment-100/60">An item is listed when 3 installs agree on that item and its copper price.</p>
+        <p className="font-mono text-xs text-muted">WoW: Forever · vendor</p>
+        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">Vendor NPC {page.vendorNpcId}</h1>
+        <p className="text-sm text-muted">An item is listed when 3 installs agree on that item and its copper price.</p>
       </header>
 
       {facts.unreachable ? (
-        <p className="text-parchment-100/75">{STORAGE_UNREACHABLE}</p>
+        <p className="text-fg-2">{STORAGE_UNREACHABLE}</p>
       ) : page.offers.length === 0 ? (
-        <p className="text-parchment-100/75">Goods unrecorded. A price needs 3 installs agreeing.</p>
+        <p className="text-fg-2">Goods unrecorded. A price needs 3 installs agreeing.</p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-parchment-100/10">
+        <div className="overflow-x-auto rounded-xl border border-line">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-parchment-900 text-xs uppercase tracking-wider text-parchment-100/60 text-left">
+              <tr className="bg-panel text-xs font-mono text-muted text-left">
                 <th className="px-4 py-3">Item</th>
                 <th className="px-4 py-3 text-right">Price</th>
                 <th className="px-4 py-3 text-right">Stock</th>
@@ -62,9 +62,9 @@ export default async function VendorPage(props: { params: Promise<{ id: string }
             </thead>
             <tbody>
               {page.offers.map((offer) => (
-                <tr key={`${offer.itemId}-${offer.priceCopper}`} className="border-t border-parchment-100/10 bg-parchment-900 text-parchment-100/85">
+                <tr key={`${offer.itemId}-${offer.priceCopper}`} className="border-t border-line bg-panel text-fg">
                   <td className="px-4 py-3">
-                    <Link href={`/database/items/${offer.itemId}`} className="text-gold-400 hover:underline underline-offset-4">Item {offer.itemId}</Link>
+                    <Link href={`/database/items/${offer.itemId}`} className="text-accent hover:underline underline-offset-4">Item {offer.itemId}</Link>
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums">{formatCopper(offer.priceCopper)}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{stockLabel(offer)}</td>
@@ -76,10 +76,10 @@ export default async function VendorPage(props: { params: Promise<{ id: string }
         </div>
       )}
 
-      <p className="text-sm text-parchment-100/60">
-        <Link href={`/database/npcs/${page.vendorNpcId}`} className="text-gold-400 hover:underline underline-offset-4">NPC {page.vendorNpcId}</Link>
+      <p className="text-sm text-muted">
+        <Link href={`/database/npcs/${page.vendorNpcId}`} className="text-accent hover:underline underline-offset-4">NPC {page.vendorNpcId}</Link>
         {" · "}
-        <Link href="/database/vendors" className="text-gold-400 hover:underline underline-offset-4">Vendor lookup</Link>
+        <Link href="/database/vendors" className="text-accent hover:underline underline-offset-4">Vendor lookup</Link>
       </p>
     </article>
   );

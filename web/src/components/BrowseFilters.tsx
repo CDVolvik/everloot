@@ -19,9 +19,9 @@ export default function BrowseFilters({
     <form action={action} method="get" className="flex flex-wrap items-end gap-3 text-sm">
       {letter && <input type="hidden" name="letter" value={letter} />}
       {keys.map((key) => (
-        <label key={key} className="flex flex-col gap-1 text-parchment-100/70">
+        <label key={key} className="flex flex-col gap-1 text-fg-2">
           {LABELS[key]}
-          <select name={key} defaultValue={selected[key] ?? ""} className="min-h-11 rounded-lg border border-parchment-100/20 bg-parchment-950 px-2 text-parchment-100">
+          <select name={key} defaultValue={selected[key] ?? ""} className="min-h-11 rounded-lg border border-line bg-canvas px-2 text-fg">
             <option value="">Any</option>
             {values[key].map((v) => (
               <option key={v} value={v}>{v}</option>

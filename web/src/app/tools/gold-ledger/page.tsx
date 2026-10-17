@@ -33,9 +33,9 @@ export default async function GoldLedgerPage(
   return (
     <article className="space-y-8 max-w-4xl">
       <header className="space-y-3">
-        <p className="uppercase tracking-[0.2em] text-xs text-gold-500/80">WoW: Forever · gold</p>
-        <h1 className="font-display text-3xl sm:text-4xl font-bold text-parchment-100 tracking-tight">Gold ledger</h1>
-        <p className="text-sm text-parchment-100/70 max-w-2xl">
+        <p className="font-mono text-xs text-muted">WoW: Forever · gold</p>
+        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">Gold ledger</h1>
+        <p className="text-sm text-fg-2 max-w-2xl">
           Peak gold and the money events that character uploaded. Addon 0.2.4 records loot, quest
           rewards, vendor sales, flight costs, auction sales taken from the mailbox (after the house cut),
           postage and auction buyouts. Bids, deposits, other mail, other spending, and gameplay stay
@@ -43,27 +43,27 @@ export default async function GoldLedgerPage(
         </p>
       </header>
 
-      <form method="get" className="rounded-xl border border-parchment-100/10 bg-parchment-900 p-5 space-y-4">
+      <form method="get" className="rounded-xl border border-line bg-panel p-5 space-y-4">
         <div className="grid sm:grid-cols-2 gap-3">
-          <label className="text-sm text-parchment-100/80 space-y-1">
-            <span className="block text-xs uppercase tracking-wider text-parchment-100/50">Character</span>
-            <input name="character" defaultValue={character} className="w-full rounded-lg border border-parchment-100/15 bg-parchment-950 px-3 py-2 text-parchment-100" />
+          <label className="text-sm text-fg-2 space-y-1">
+            <span className="block text-xs font-mono text-muted">Character</span>
+            <input name="character" defaultValue={character} className="w-full rounded-lg border border-line bg-canvas px-3 py-2 text-fg" />
           </label>
-          <label className="text-sm text-parchment-100/80 space-y-1">
-            <span className="block text-xs uppercase tracking-wider text-parchment-100/50">Realm</span>
-            <input name="realm" defaultValue={realm} className="w-full rounded-lg border border-parchment-100/15 bg-parchment-950 px-3 py-2 text-parchment-100" />
+          <label className="text-sm text-fg-2 space-y-1">
+            <span className="block text-xs font-mono text-muted">Realm</span>
+            <input name="realm" defaultValue={realm} className="w-full rounded-lg border border-line bg-canvas px-3 py-2 text-fg" />
           </label>
         </div>
         <button type="submit" className="rounded-lg bg-gold-500 px-4 py-2 text-sm font-semibold text-parchment-950">Show the ledger</button>
       </form>
 
-      <pre className="whitespace-pre-wrap text-sm text-parchment-100/85 rounded-xl border border-parchment-100/10 bg-parchment-900 p-5">{answer}</pre>
-      {!corpus.unreachable && <p className="text-xs text-parchment-100/60">{dataAgeLabel(corpus.dataAsOf)}</p>}
+      <pre className="whitespace-pre-wrap text-sm text-fg rounded-xl border border-line bg-panel p-5">{answer}</pre>
+      {!corpus.unreachable && <p className="text-xs text-muted">{dataAgeLabel(corpus.dataAsOf)}</p>}
 
-      <p className="text-sm text-parchment-100/60">
-        <Link href="/tools/gold-per-hour" className="text-gold-400 hover:underline underline-offset-4">Gold per hour</Link>
+      <p className="text-sm text-muted">
+        <Link href="/tools/gold-per-hour" className="text-accent hover:underline underline-offset-4">Gold per hour</Link>
         {" · "}
-        <Link href="/tools/auctions" className="text-gold-400 hover:underline underline-offset-4">Auction history</Link>
+        <Link href="/tools/auctions" className="text-accent hover:underline underline-offset-4">Auction history</Link>
       </p>
     </article>
   );

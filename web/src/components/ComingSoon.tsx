@@ -12,37 +12,37 @@ export default function ComingSoon({
   return (
     <article className="space-y-10">
       <header className="space-y-3">
-        <p className="uppercase tracking-[0.2em] text-xs text-gold-500/80">
+        <p className="font-mono text-xs text-muted">
           Coming soon · {tool.shortTitle}
         </p>
-        <h1 className="font-display text-3xl sm:text-4xl font-bold text-parchment-100">
+        <h1 className="text-3xl sm:text-4xl font-bold text-fg">
           {tool.title}
         </h1>
-        <p className="text-lg text-parchment-100/75 max-w-2xl">{tool.description}</p>
+        <p className="text-lg text-fg-2 max-w-2xl">{tool.description}</p>
       </header>
 
-      <div className="rounded-2xl border border-gold-500/30 bg-parchment-900 p-6 max-w-xl">
+      <div className="rounded-2xl border border-line bg-panel p-6 max-w-xl">
         <EmailCapture toolSlug={tool.slug} />
       </div>
 
       <section className="space-y-6">
-        <h2 className="font-display text-2xl text-parchment-100">
+        <h2 className="text-2xl text-fg">
           What it will do
         </h2>
         <div className="grid md:grid-cols-2 gap-4">
           {previewSections.map((s) => (
             <div
               key={s.title}
-              className="rounded-xl border border-parchment-100/10 p-5 bg-parchment-900"
+              className="rounded-xl border border-line p-5 bg-panel"
             >
-              <h3 className="font-display text-lg font-semibold text-gold-400">
+              <h3 className="text-lg font-semibold text-accent">
                 {s.title}
               </h3>
-              <p className="mt-1 text-sm text-parchment-100/80">{s.body}</p>
+              <p className="mt-1 text-sm text-fg-2">{s.body}</p>
               {s.href && (
                 <Link
                   href={s.href}
-                  className="mt-3 inline-block text-sm text-gold-400 hover:underline underline-offset-4"
+                  className="mt-3 inline-block text-sm text-accent hover:underline underline-offset-4"
                 >
                   {s.hrefLabel ?? "Open"}
                 </Link>
@@ -52,12 +52,12 @@ export default function ComingSoon({
         </div>
       </section>
 
-      <section className="pt-4 border-t border-parchment-100/10">
-        <p className="text-sm text-parchment-100/70">
+      <section className="pt-4 border-t border-line">
+        <p className="text-sm text-fg-2">
           In the meantime, try the{" "}
           <Link
             href="/tools/gold-per-hour"
-            className="text-gold-400 hover:text-gold-300 underline-offset-4 hover:underline"
+            className="text-accent hover:text-accent underline-offset-4 hover:underline"
           >
             Gold per Hour Calculator
           </Link>{" "}
