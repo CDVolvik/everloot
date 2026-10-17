@@ -33,7 +33,7 @@ group = { inRaid = true, members = {
  { name = 'Ash', sub = 1, class = 'WARRIOR', auras = { 'Battle Shout' } },
  { name = 'Bri', sub = 1, class = 'DRUID', auras = { 'Mark of the Wild', 'Battle Shout' } },
  { name = 'Cal', sub = 1, class = 'MAGE', auras = { 'Arcane Intellect', 'Battle Shout' } },
- { name = 'Dee', sub = 2, class = 'SHAMAN', auras = { 'Strength of Earth Totem' } },
+ { name = 'Dee', sub = 2, class = 'SHAMAN', auras = { 'Strength of Earth' } },
  { name = 'Eli', sub = 2, class = 'PRIEST', auras = { 'Power Word: Fortitude' } },
  { name = 'Fay', sub = 2, class = 'PALADIN', auras = {} },
  { name = 'Gus', sub = 2, class = 'HUNTER', auras = {}, far = true },
@@ -67,7 +67,7 @@ C_UnitAuras = { GetAuraDataByIndex = function(unit, i, filter)
  local m = member(unit)
  local name = m and m.auras[i]
  if not name then return nil end
- return { name = name, spellId = 1000 + i }
+ return { name = name, spellId = 900000 + i }
 end }
 """
 
@@ -78,7 +78,7 @@ UnitAura = function(unit, i, filter)
  local m = member(unit)
  local name = m and m.auras[i]
  if not name then return nil end
- return name, 'icon', 1, nil, 0, 0, 'player', false, false, 2000 + i
+ return name, 'icon', 1, nil, 0, 0, 'player', false, false, 800000 + i
 end
 """
 
@@ -119,7 +119,7 @@ assert(not g1:find('Battle Shout', 1, true), 'group 1 has Battle Shout: ' .. tex
 assert(not g1:find('Mark of the Wild', 1, true) and not g1:find('Arcane Intellect', 1, true), 'group 1 has these')
 assert(g1:find('Power Word: Fortitude', 1, true), 'group 1 lacks Fortitude')
 assert(g2:find('Battle Shout', 1, true), 'group 2 lacks Battle Shout (Fay and Gus read nothing)')
-assert(not g2:find('Power Word: Fortitude', 1, true) and not g2:find('Strength of Earth Totem', 1, true), 'group 2 has these')
+assert(not g2:find('Power Word: Fortitude', 1, true) and not g2:find('Strength of Earth', 1, true), 'group 2 has these')
 assert(text:find('1 member(s) could not be read', 1, true), 'Gus is out of range and is not counted as lacking')
 """)
 

@@ -17,9 +17,9 @@ Both write and read this format, so `/everloot raid code` gives a link the site 
   warlock 8, druid 9. The second is the tree, 0 to 3, where 0 means any tree. `00` is an empty slot.
   Trailing empty slots are left out. Padding on the end is ignored on read, never written.
 
-The class order and the tree numbers are fixed for version 1. Tree numbers follow Classic Era's
-tree order (for example mage: Arcane 1, Fire 2, Frost 3) until Forever's own order is confirmed from the
-talent catalog; if it differs, that needs `ELR2`.
+The class order and the tree numbers are fixed for version 1. Tree numbers follow the client's tree order
+for the class (`order` in the talent catalog, for example druid: Balance 1, Feral Combat 2, Restoration 3).
+If a later build reorders them, that needs `ELR2`.
 
 Example: `ELR1-10-1.60.1.70450-NzMwMDEw` is: mage tree 3 (`73`), an empty slot (`00`), a
 warrior with any tree (`10`).

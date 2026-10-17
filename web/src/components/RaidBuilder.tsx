@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CLASSES } from "@/design/tokens";
-import { CURRENT_BUILD, TABLES, type Evidence, type Scope } from "@/data/raid-buffs";
+import { CURRENT_BUILD, TABLES, type Scope } from "@/data/game-data/raid";
 import {
-  CLASS_TREES, SIZES, STATE_LABEL, coverage, decodeRaid, emptySlots, encodeRaid, findCode, groupsOf, resize,
+  treeNames, SIZES, STATE_LABEL, coverage, decodeRaid, emptySlots, encodeRaid, findCode, groupsOf, resize,
   titleCase, GROUP_SIZE, type ClassName, type FamilyCoverage, type Size, type Slot, type Slots, type State,
 } from "@/lib/raid";
 
@@ -18,28 +18,19 @@ const CLASS_TEXT: Record<ClassName, string> = {
 };
 
 const STATE_TEXT: Record<State, string> = {
-  covered: "text-accent", cast: "text-fg-2", possible: "text-warning", unknown: "text-warning", missing: "text-danger",
+  covered: "text-accent", cast: "text-fg-2", unknown: "text-warning", missing: "text-danger",
 };
-const STATE_SHORT: Record<State, string> = { covered: "Yes", cast: "Cast", possible: "Talent", unknown: "Unknown", missing: "No" };
+const STATE_SHORT: Record<State, string> = { covered: "Yes", cast: "Cast", unknown: "Unknown", missing: "No" };
 
 const SCOPE_TEXT: Record<Scope, string> = {
   self: "caster only", single: "one player per cast", party: "party", raid: "raid", area: "players nearby",
-  enemy: "enemy", unknown: "reach unknown",
+  enemy: "enemy", mixed: "ranks differ", unknown: "reach unknown",
 };
-const EVIDENCE_TEXT: Record<Evidence, string> = {
-  "patch-notes": "from patch notes",
-  "classic-assumed": "assumed from Classic Era",
-  "client-table": "from game files",
-  "not-in-table": "not in the game file table",
-};
-
 interface Snapshot { size: Size; slots: Slots }
 const HISTORY_LIMIT = 100;
 
 function reach(f: FamilyCoverage): string {
-  const scopes = [...new Set(f.entries.map((e) => SCOPE_TEXT[e.scope]))].join(", ");
-  const evidence = [...new Set(f.entries.map((e) => EVIDENCE_TEXT[e.evidence]))].join(", ");
-  return `${scopes} (${evidence})`;
+  return [...new Set(f.entries.map((e) => SCOPE_TEXT[e.scope]))].join(", ");
 }
 
 export default function RaidBuilder() {
@@ -246,7 +237,7 @@ export default function RaidBuilder() {
               <ul className="space-y-2">
                 {group.map((slot, k) => {
                   const index = g * GROUP_SIZE + k;
-                  const treeName = slot && slot.tree ? CLASS_TREES[slot.class][slot.tree - 1] : "any tree";
+                  const treeName = slot && slot.tree ? treeNames(table, slot.class)[slot.tree - 1] : "any tree";
                   return (
                     <li key={k}>
                       <button
@@ -315,7 +306,7 @@ export default function RaidBuilder() {
                   }`}
                   onClick={() => current && setSlot(selected, { class: current.class, tree: t })}
                 >
-                  {t === 0 || !current ? (t === 0 ? "Any tree" : `Tree ${t}`) : CLASS_TREES[current.class][t - 1]}
+                  {t === 0 || !current ? (t === 0 ? "Any tree" : `Tree ${t}`) : treeNames(table, current.class)[t - 1]}
                 </button>
               ))}
             </div>
@@ -330,7 +321,7 @@ export default function RaidBuilder() {
       <section aria-labelledby="raid-coverage" className="space-y-4">
         <h2 id="raid-coverage" className="text-xl font-semibold text-fg">Coverage</h2>
         <p role="status" aria-live="polite" className="text-sm text-fg-2">
-          Buffs, for the raid: {cov.summary.covered} yes, {cov.summary.cast} by cast, {cov.summary.possible} if talented,{" "}
+          Buffs, for the raid: {cov.summary.covered} yes, {cov.summary.cast} by cast,{" "}
           {cov.summary.unknown} unknown reach, {cov.summary.missing} missing.
         </p>
         <div className="overflow-x-auto">
@@ -395,7 +386,6 @@ export default function RaidBuilder() {
 const LEGEND: Record<State, string> = {
   covered: "A class you picked brings it, and it reaches this group.",
   cast: "A class you picked brings it, but it is cast on one player or a few nearby, so someone has to cast it.",
-  possible: "It needs a talent tree, and the only slots of that class are set to any tree.",
-  unknown: "A class you picked brings it, but how far it reaches is not known for this build.",
+  unknown: "A class you picked brings it, but the game files do not settle how far it reaches (or its ranks disagree).",
   missing: "No class you picked brings it.",
 };

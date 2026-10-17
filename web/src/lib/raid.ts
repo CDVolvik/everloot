@@ -1,7 +1,7 @@
 // Raid builder logic: slots, coverage math and the share code. No React, no browser calls,
 // so the tests run it as plain functions. The rules come from a BuffTable (data/raid-buffs.ts).
 import { CLASSES } from "@/design/tokens";
-import type { BuffEntry, BuffTable, Family, Scope } from "@/data/raid-buffs";
+import type { BuffEntry, BuffTable, Family } from "@/data/game-data/raid";
 
 export const SIZES = [10, 20, 40] as const;
 export type Size = (typeof SIZES)[number];
@@ -9,22 +9,8 @@ export const GROUP_SIZE = 5;
 
 export type ClassName = (typeof CLASSES)[number];
 
-/**
- * Classic Era's three trees per class, in the client's order. Forever keeps three trees per class, but
- * its own names and order come from the talent catalog, which is not published, so treat these as
- * the working labels. Tree 0 in a slot means "any".
- */
-export const CLASS_TREES: Record<ClassName, [string, string, string]> = {
-  warrior: ["Arms", "Fury", "Protection"],
-  paladin: ["Holy", "Protection", "Retribution"],
-  hunter: ["Beast Mastery", "Marksmanship", "Survival"],
-  rogue: ["Assassination", "Combat", "Subtlety"],
-  priest: ["Discipline", "Holy", "Shadow"],
-  shaman: ["Elemental", "Enhancement", "Restoration"],
-  mage: ["Arcane", "Fire", "Frost"],
-  warlock: ["Affliction", "Demonology", "Destruction"],
-  druid: ["Balance", "Feral", "Restoration"],
-};
+/** Tree names for a class, in the client's order, from the build's game file extract. Tree 0 in a slot means "any". */
+export const treeNames = (table: BuffTable, c: ClassName): string[] => table.trees[c] ?? [];
 
 export interface Slot {
   class: ClassName;
@@ -55,44 +41,20 @@ export function groupsOf(slots: Slots): Slots[] {
 /**
  * covered: the scope reaches this group and a picked class brings it.
  * cast: a picked class brings it, but it is cast on one player at a time (or a group of nearby players).
- * possible: it needs a talent tree, and a slot of that class has "any tree".
  * unknown: someone brings it, but how far it reaches is not known for this build.
  * missing: no picked class brings it.
  */
-export type State = "covered" | "cast" | "possible" | "unknown" | "missing";
+export type State = "covered" | "cast" | "unknown" | "missing";
 
-const RANK: Record<State, number> = { covered: 4, cast: 3, possible: 2, unknown: 1, missing: 0 };
+const RANK: Record<State, number> = { covered: 3, cast: 2, unknown: 1, missing: 0 };
 const best = (a: State, b: State): State => (RANK[a] >= RANK[b] ? a : b);
 
-type Provides = "yes" | "maybe" | "no";
-
-function provides(slot: Slot | null, entry: BuffEntry): Provides {
-  if (!slot) return "no";
-  let result: Provides = "no";
-  for (const p of entry.providers) {
-    if (p.class !== slot.class) continue;
-    if (!p.tree || p.tree === slot.tree) return "yes";
-    if (slot.tree === 0) result = "maybe";
-  }
-  return result;
-}
-
-function bestProvides(slots: Slots, entry: BuffEntry): Provides {
-  let result: Provides = "no";
-  for (const s of slots) {
-    const p = provides(s, entry);
-    if (p === "yes") return "yes";
-    if (p === "maybe") result = "maybe";
-  }
-  return result;
-}
+const brings = (slots: Slots, entry: BuffEntry) => slots.some((s) => s?.class === entry.class);
 
 /** How one entry stands for a set of slots it could reach. `group` is the slots of one group. */
 function entryState(entry: BuffEntry, everyone: Slots, group: Slots): State {
   // Who can bring it: a party effect needs a provider in the group, anything else needs one in the raid.
-  const p = bestProvides(entry.scope === "party" ? group : everyone, entry);
-  if (p === "no") return "missing";
-  if (p === "maybe") return "possible";
+  if (!brings(entry.scope === "party" ? group : everyone, entry)) return "missing";
   switch (entry.scope) {
     case "raid":
     case "party":
@@ -137,7 +99,7 @@ export function coverage(slots: Slots, table: BuffTable): Coverage {
   };
   const all = table.families.filter((f) => entriesIn(table, f.id).length > 0).map(compute);
   const buffs = all.filter((f) => f.family.kind === "buff");
-  const summary: Record<State, number> = { covered: 0, cast: 0, possible: 0, unknown: 0, missing: 0 };
+  const summary: Record<State, number> = { covered: 0, cast: 0, unknown: 0, missing: 0 };
   for (const b of buffs) summary[b.raid]++;
   return { buffs, debuffs: all.filter((f) => f.family.kind === "debuff"), summary };
 }
@@ -145,7 +107,6 @@ export function coverage(slots: Slots, table: BuffTable): Coverage {
 export const STATE_LABEL: Record<State, string> = {
   covered: "Yes",
   cast: "By cast",
-  possible: "If talented",
   unknown: "Unknown reach",
   missing: "Missing",
 };
@@ -245,38 +206,4 @@ export function decodeRaid(input: string): Decoded {
     slots[i] = { class: CLASSES[c - 1], tree: t as Slot["tree"] };
   }
   return { ok: true, value: { size: size as Size, build: m[3], slots } };
-}
-
-/* ---------- Adapter for the generated table ---------- */
-
-/** The parts of kb/src/raid-buffs.ts's RaidBuffTable the adapter reads. */
-export interface GeneratedRaidBuffs {
-  build: { buildId?: string | number; version?: string };
-  entries: { id: string; scope: string | null; spells: { spellId: number }[] }[];
-  notFound?: string[];
-}
-
-const SCOPES: Scope[] = ["self", "single", "party", "raid", "area", "enemy", "unknown"];
-
-/**
- * Overlay a generated table on a hand-written one. Provider classes, trees, families and names stay ours
- * (the generated table has no stacking families or tree gates); scope and spell ids come from the
- * generated entry with the same id. An entry missing from the generated table keeps no scope: "unknown".
- */
-export function adaptGenerated(base: BuffTable, generated: GeneratedRaidBuffs, label: string): BuffTable {
-  const byId = new Map(generated.entries.map((e) => [e.id, e]));
-  const build = generated.build.version && generated.build.buildId !== undefined
-    ? `${generated.build.version}.${generated.build.buildId}`
-    : base.build;
-  return {
-    ...base,
-    build,
-    label,
-    entries: base.entries.map((entry) => {
-      const found = byId.get(entry.id);
-      if (!found || found.scope === null) return { ...entry, scope: "unknown", evidence: "not-in-table", spellIds: undefined };
-      const scope = (SCOPES as string[]).includes(found.scope) ? (found.scope as Scope) : "unknown";
-      return { ...entry, scope, evidence: "client-table", spellIds: found.spells.map((s) => s.spellId) };
-    }),
-  };
 }

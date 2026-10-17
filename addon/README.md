@@ -6,7 +6,7 @@ position of each zone you enter) into its SavedVariables file, and shows `/ask` 
 companion. It uses only the game's addon API and never plays the character. Records match the
 site's intake contract (`web/src/lib/intake.ts`) field for field.
 
-**Status:** 0.2.6 beta. The automated contract tests pass; the in-client checks in
+**Status:** 0.2.8 beta. The automated contract tests pass; the in-client checks in
 `docs/2026-10-08-beta-client-checklist.md` are still open.
 
 ## Run it

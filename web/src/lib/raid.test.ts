@@ -1,18 +1,22 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vitest";
-import { CURRENT_BUILD, TABLES, type BuffTable } from "@/data/raid-buffs";
+import { CURRENT_BUILD, TABLES, type BuffTable } from "@/data/game-data/raid";
 import {
-  adaptGenerated, coverage, decodeRaid, emptySlots, encodeRaid, findCode, groupsOf, resize, SIZES,
+  coverage, decodeRaid, emptySlots, encodeRaid, findCode, groupsOf, resize, SIZES, treeNames,
   type Slot, type Slots,
 } from "./raid";
 
 const table = TABLES[CURRENT_BUILD];
 const slot = (c: Slot["class"], tree: Slot["tree"] = 0): Slot => ({ class: c, tree });
 
-/** A table of our own, so the math is tested without depending on the shipped list. */
+/** A table of our own, so the math is tested without depending on the generated data. */
+const entry = (id: string, family: string, cls: string, scope: BuffTable["entries"][number]["scope"]) =>
+  ({ id, label: id, family, class: cls, scope, names: [id], spellIds: [1] });
 const mini: BuffTable = {
   build: "1.0.1",
   label: "test",
+  notFound: [],
+  trees: {},
   families: [
     { id: "shout", label: "Shout", kind: "buff" },
     { id: "aura", label: "Aura", kind: "buff" },
@@ -21,12 +25,12 @@ const mini: BuffTable = {
     { id: "armor", label: "Armor", kind: "debuff" },
   ],
   entries: [
-    { id: "shout", label: "Shout", family: "shout", scope: "raid", evidence: "patch-notes", providers: [{ class: "warrior" }], names: ["Shout"] },
-    { id: "aura", label: "Aura", family: "aura", scope: "party", evidence: "classic-assumed", providers: [{ class: "paladin" }], names: ["Aura"] },
-    { id: "wild", label: "Wild", family: "wild", scope: "single", evidence: "classic-assumed", providers: [{ class: "druid" }], names: ["Wild"] },
-    { id: "gwild", label: "Greater Wild", family: "wild", scope: "area", evidence: "classic-assumed", providers: [{ class: "druid", tree: 3 }], names: ["Greater Wild"] },
-    { id: "mystery", label: "Mystery", family: "mystery", scope: "unknown", evidence: "classic-assumed", providers: [{ class: "warlock" }], names: ["Mystery"] },
-    { id: "armor", label: "Armor", family: "armor", scope: "enemy", evidence: "classic-assumed", providers: [{ class: "rogue", tree: 1 }], names: ["Armor"] },
+    entry("shout", "shout", "warrior", "raid"),
+    entry("aura", "aura", "paladin", "party"),
+    entry("wild", "wild", "druid", "single"),
+    entry("gwild", "wild", "druid", "unknown"),
+    entry("mystery", "mystery", "warlock", "mixed"),
+    entry("armor", "armor", "rogue", "enemy"),
   ],
 };
 
@@ -44,15 +48,13 @@ describe("coverage", () => {
   });
 
   test("a raid-scope buff reaches every group from any one provider", () => {
-    const c = coverage(raid(20, { 17: slot("warrior") }), mini);
-    const shout = c.buffs.find((b) => b.family.id === "shout")!;
+    const shout = coverage(raid(20, { 17: slot("warrior") }), mini).buffs.find((b) => b.family.id === "shout")!;
     expect(shout.groups).toEqual(["covered", "covered", "covered", "covered"]);
     expect(shout.raid).toBe("covered");
   });
 
   test("a party-scope buff reaches only the group that holds the provider", () => {
-    const c = coverage(raid(20, { 0: slot("paladin"), 6: slot("paladin") }), mini);
-    const aura = c.buffs.find((b) => b.family.id === "aura")!;
+    const aura = coverage(raid(20, { 0: slot("paladin"), 6: slot("paladin") }), mini).buffs.find((b) => b.family.id === "aura")!;
     expect(aura.groups).toEqual(["covered", "covered", "missing", "missing"]);
     expect(aura.raid).toBe("missing");
   });
@@ -63,27 +65,24 @@ describe("coverage", () => {
   });
 
   test("a buff cast on players one at a time is 'cast', not 'covered'", () => {
-    const c = coverage(raid(10, { 7: slot("druid") }), mini);
-    const wild = c.buffs.find((b) => b.family.id === "wild")!;
+    const wild = coverage(raid(10, { 7: slot("druid") }), mini).buffs.find((b) => b.family.id === "wild")!;
     expect(wild.groups).toEqual(["cast", "cast"]);
   });
 
-  test("a talent-gated provider with 'any tree' is only possible", () => {
-    const any = coverage(raid(10, { 0: slot("rogue", 0) }), mini);
-    expect(any.debuffs[0].raid).toBe("possible");
-    const right = coverage(raid(10, { 0: slot("rogue", 1) }), mini);
-    expect(right.debuffs[0].raid).toBe("covered");
-    const wrong = coverage(raid(10, { 0: slot("rogue", 2) }), mini);
-    expect(wrong.debuffs[0].raid).toBe("missing");
+  test("the tree does not change coverage: the game files do not gate effects by tree", () => {
+    const a = coverage(raid(10, { 0: slot("rogue", 0) }), mini);
+    const b = coverage(raid(10, { 0: slot("rogue", 3) }), mini);
+    expect(a).toEqual(b);
+    expect(a.debuffs[0].raid).toBe("covered");
   });
 
   test("a family counts once and takes its best member", () => {
-    const wildOnly = coverage(raid(10, { 0: slot("druid", 1) }), mini);
-    expect(wildOnly.buffs.find((b) => b.family.id === "wild")!.raid).toBe("cast");
-    expect(wildOnly.buffs.filter((b) => b.family.id === "wild")).toHaveLength(1);
+    const c = coverage(raid(10, { 0: slot("druid", 1) }), mini);
+    expect(c.buffs.filter((b) => b.family.id === "wild")).toHaveLength(1);
+    expect(c.buffs.find((b) => b.family.id === "wild")!.raid).toBe("cast");
   });
 
-  test("unknown scope is shown as unknown when someone brings it, and missing when nobody does", () => {
+  test("unknown and mixed scope read as unknown when someone brings it, missing when nobody does", () => {
     expect(coverage(raid(10, { 1: slot("warlock") }), mini).buffs.find((b) => b.family.id === "mystery")!.raid).toBe("unknown");
     expect(coverage(raid(10, { 1: slot("mage") }), mini).buffs.find((b) => b.family.id === "mystery")!.raid).toBe("missing");
   });
@@ -95,44 +94,57 @@ describe("coverage", () => {
 
   test("the summary counts buff families by raid state", () => {
     const c = coverage(raid(10, { 0: slot("warrior"), 1: slot("druid"), 2: slot("warlock") }), mini);
-    expect(c.summary).toEqual({ covered: 1, cast: 1, possible: 0, unknown: 1, missing: 1 });
+    expect(c.summary).toEqual({ covered: 1, cast: 1, unknown: 1, missing: 1 });
   });
 
-  test("the shipped table: Battle Shout reaches the raid, Leader of the Pack stays in its party", () => {
-    const slots = raid(20, { 0: slot("warrior"), 5: slot("druid", 2) });
-    const c = coverage(slots, table);
+  test("the generated table: Battle Shout reaches the raid, and Gift of the Wild (raid in the files) covers the Mark of the Wild family", () => {
+    const c = coverage(raid(20, { 0: slot("warrior"), 5: slot("druid", 2) }), table);
     expect(c.buffs.find((b) => b.family.id === "battle-shout")!.groups).toEqual(["covered", "covered", "covered", "covered"]);
-    expect(c.buffs.find((b) => b.family.id === "leader-of-the-pack")!.groups).toEqual(["missing", "covered", "missing", "missing"]);
+    expect(c.buffs.find((b) => b.family.id === "mark-of-the-wild")!.raid).toBe("covered");
+  });
+
+  test("Greater Blessings and Salvation stay unknown, and Sanctuary is absent", () => {
+    const paladin = coverage(raid(10, { 0: slot("paladin") }), table);
+    expect(paladin.buffs.find((b) => b.family.id === "blessing-of-salvation")!.raid).toBe("unknown");
+    expect(table.entries.filter((e) => e.id.startsWith("greater-")).every((e) => e.scope === "unknown")).toBe(true);
+    expect(table.entries.some((e) => e.id === "blessing-of-sanctuary")).toBe(false);
+    expect(table.notFound).toContain("blessing-of-sanctuary");
   });
 });
 
-describe("the shipped table", () => {
-  test("is stamped with the current build and has unique ids", () => {
+describe("the generated table", () => {
+  test("is stamped with the build, has unique ids, and a family for every entry", () => {
     expect(table.build).toBe(CURRENT_BUILD);
     expect(new Set(table.entries.map((e) => e.id)).size).toBe(table.entries.length);
-  });
-
-  test("every entry belongs to a family and names an aura and a class that exist", () => {
     const families = new Set(table.families.map((f) => f.id));
     for (const e of table.entries) {
       expect(families.has(e.family), e.id).toBe(true);
+      expect(e.spellIds.length, e.id).toBeGreaterThan(0);
       expect(e.names.length, e.id).toBeGreaterThan(0);
-      expect(e.providers.length, e.id).toBeGreaterThan(0);
     }
-    for (const f of table.families) expect(table.entries.some((e) => e.family === f.id), f.id).toBe(true);
+    for (const f of table.families) expect(table.entries.some((e) => e.id === f.id), f.id).toBe(true);
   });
 
-  test("nothing claims to come from the client table before the table is published", () => {
-    expect(table.entries.every((e) => e.evidence !== "client-table" && e.spellIds === undefined)).toBe(true);
+  test("keeps the per-rank scope only where ranks disagree, and holds no tooltip text", () => {
+    for (const e of table.entries) expect(e.byRank !== undefined, e.id).toBe(e.scope === "mixed");
+    expect(JSON.stringify(table)).not.toMatch(/description|tooltip/i);
   });
 
-  test("the addon's data file lists the same buffs, scopes and aura names", () => {
+  test("has nine classes with three tree names each, from the game", () => {
+    expect(Object.keys(table.trees)).toHaveLength(9);
+    for (const names of Object.values(table.trees)) expect(names).toHaveLength(3);
+    expect(treeNames(table, "druid")).toEqual(["Balance", "Feral Combat", "Restoration"]);
+  });
+
+  test("the addon's data file lists the same buffs, scopes, aura names and spell ids", () => {
     const lua = readFileSync(new URL("../../../addon/modules/raid_data.lua", import.meta.url), "utf8");
     expect(lua).toContain(`build = "${table.build}"`);
-    const rows = [...lua.matchAll(/^\s*\{ family = "([^"]+)", id = "([^"]+)", scope = "([^"]+)", names = \{([^}]*)\} \},$/gm)];
+    const row = /^\s*\{ family = "([^"]+)", id = "([^"]+)", scope = "([^"]+)", names = \{([^}]*)\}, spellIds = \{([^}]*)\} \},$/gm;
+    const rows = [...lua.matchAll(row)];
     const buffs = table.entries.filter((e) => table.families.find((f) => f.id === e.family)!.kind === "buff");
-    expect(rows.map((r) => [r[2], r[1], r[3], [...r[4].matchAll(/"([^"]+)"/g)].map((n) => n[1])])).toEqual(
-      buffs.map((e) => [e.id, e.family, e.scope, e.names]),
+    const quoted = /"([^"]*)"/g;
+    expect(rows.map((r) => [r[2], r[1], r[3], [...r[4].matchAll(quoted)].map((n) => n[1]), r[5].split(", ").map(Number)])).toEqual(
+      buffs.map((e) => [e.id, e.family, e.scope, e.names, e.spellIds]),
     );
   });
 });
@@ -210,45 +222,5 @@ describe("layout helpers", () => {
     expect(small).toHaveLength(10);
     expect(small[0]).toEqual(slot("mage"));
     expect(resize(small, 40)).toHaveLength(40);
-  });
-});
-
-describe("generated table adapter", () => {
-  const generated = {
-    build: { buildId: 70450, version: "1.60.1" },
-    entries: [
-      { id: "battle-shout", scope: "raid", spells: [{ spellId: 1 }, { spellId: 2 }] },
-      { id: "windfury-totem", scope: "party", spells: [{ spellId: 3 }] },
-      { id: "thunder-clap", scope: null, spells: [] },
-      { id: "sunder-armor", scope: "something-new", spells: [{ spellId: 4 }] },
-    ],
-  };
-  const adapted = adaptGenerated(table, generated, "Found in game files, unconfirmed");
-
-  test("takes scope, spell ids and the build from the generated table", () => {
-    const shout = adapted.entries.find((e) => e.id === "battle-shout")!;
-    expect(shout).toMatchObject({ scope: "raid", evidence: "client-table", spellIds: [1, 2] });
-    expect(adapted.entries.find((e) => e.id === "windfury-totem")!.scope).toBe("party");
-    expect(adapted.build).toBe("1.60.1.70450");
-    expect(adapted.label).toBe("Found in game files, unconfirmed");
-  });
-
-  test("an entry the table lacks, has no scope for, or gives a scope we do not know becomes unknown", () => {
-    for (const id of ["thunder-clap", "sunder-armor", "faerie-fire"]) {
-      const e = adapted.entries.find((x) => x.id === id)!;
-      expect(e.scope, id).toBe("unknown");
-    }
-    expect(adapted.entries.find((e) => e.id === "thunder-clap")!.evidence).toBe("not-in-table");
-  });
-
-  test("keeps providers and families, and does not change the original", () => {
-    expect(adapted.entries.find((e) => e.id === "battle-shout")!.providers).toEqual([{ class: "warrior" }]);
-    expect(table.entries.find((e) => e.id === "windfury-totem")!.scope).toBe("raid");
-  });
-
-  test("changes the coverage: a party-only Windfury no longer reaches other groups", () => {
-    const slots = raid(10, { 0: slot("shaman") });
-    expect(coverage(slots, table).buffs.find((b) => b.family.id === "windfury")!.groups).toEqual(["covered", "covered"]);
-    expect(coverage(slots, adapted).buffs.find((b) => b.family.id === "windfury")!.groups).toEqual(["covered", "missing"]);
   });
 });

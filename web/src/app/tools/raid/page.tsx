@@ -33,16 +33,15 @@ export default function RaidPage() {
         <p>
           A party effect counts for the group that holds the provider. A raid effect counts for every group.
           Buffs cast on players one at a time are marked &ldquo;Cast&rdquo;, because someone has to cast them.
-          Effects in one family, such as Mark of the Wild and Gift of the Wild, count once. Build notes say the
-          Tranquil Air, Windfury and Grace of Air totems may not stack even from different shamans. That is not
-          modelled yet and is not confirmed.
+          Effects in one family, such as Mark of the Wild and Gift of the Wild, count once. Whether the Tranquil
+          Air, Windfury and Grace of Air totems stack across different shamans is not modelled.
         </p>
         <h2 className="text-2xl text-fg">Where the rules come from</h2>
         <p>
-          The list is hand-checked for build 1.60.1.70450 and unconfirmed. Seven effects that build notes say
-          now reach the whole raid are marked &ldquo;from patch notes&rdquo;. Others are assumed from Classic Era
-          and say so. Where the reach is not known it reads &ldquo;unknown&rdquo; and is not counted as covered.
-          Talent tree names follow Classic Era&apos;s three trees per class until Forever&apos;s own are confirmed.
+          Everything here is read from the game files of build 1.60.1.70450 and is unconfirmed until it is
+          seen in play. Where the files do not settle how far an effect reaches, or its ranks disagree, it reads
+          &ldquo;unknown&rdquo; and is not counted as covered. The files do not say which talent tree a class
+          needs for an effect, so coverage looks at the class only; the tree names are the game&apos;s own.
           Rules stay in data, per build, so a change in a later build is a new row and not a code change.
         </p>
         <h2 className="text-2xl text-fg">In game</h2>
