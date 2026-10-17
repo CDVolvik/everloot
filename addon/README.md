@@ -6,7 +6,7 @@ position of each zone you enter) into its SavedVariables file, and shows `/ask` 
 companion. It uses only the game's addon API and never plays the character. Records match the
 site's intake contract (`web/src/lib/intake.ts`) field for field.
 
-**Status:** 0.2.7 beta. The automated contract tests pass; the in-client checks in
+**Status:** 0.2.8 beta. The automated contract tests pass; the in-client checks in
 `docs/2026-10-08-beta-client-checklist.md` are still open.
 
 ## Run it
@@ -76,6 +76,7 @@ The contract tests run the Lua in real Lua 5.1 through `lupa`:
     python addon/tests/mapbounds_contract.py
     python addon/tests/talents_contract.py
     python addon/tests/plan_contract.py
+    python addon/tests/raid_contract.py
 
 Run them from the repository root. CI also rebuilds the zip and fails if it differs from the one
 committed in `web/public/downloads/`, so commit the rebuilt zip with any addon change.
@@ -98,7 +99,9 @@ addon/
 │   ├── mapbounds.lua   each zone's corners in world coordinates, once per zone per build
 │   ├── talents.lua     your talent build per spec group, plus the game's own loadout string
 │   ├── selftest.lua    /everloot selftest and /everloot talents
-│   └── plan.lua        share code reader and the display-only plan panel
+│   ├── plan.lua        share code reader and the display-only plan panel
+│   ├── raid_data.lua   raid buff list generated from web/src/data/game-data/raid-*.json
+│   └── raid.lua        /everloot raid: buffs missing per group, and a raid share code; display only
 └── tests/              Lua 5.1 contract tests and their fixtures
 ```
 

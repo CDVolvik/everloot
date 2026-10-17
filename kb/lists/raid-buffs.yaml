@@ -17,6 +17,7 @@
 # Hunter
 - { id: trueshot-aura, label: Trueshot Aura, kind: buff, class: Hunter, spells: [1299346, 1299348, 19506, 20905, 20906] }
 # Druid
+- { id: moonkin-aura, label: Moonkin Aura, kind: buff, class: Druid, spells: [24907] }
 - { id: leader-of-the-pack, label: Leader of the Pack, kind: buff, class: Druid, spells: [24932] }
 - { id: mark-of-the-wild, label: Mark of the Wild, kind: buff, class: Druid, spells: [1126, 5232, 6756, 5234, 8907, 9884, 9885] }
 - { id: gift-of-the-wild, label: Gift of the Wild, kind: buff, class: Druid, spells: [21849, 21850] }

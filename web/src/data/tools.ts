@@ -139,6 +139,16 @@ export const tools: Tool[] = [
     ],
   },
   {
+    slug: "raid",
+    title: "Raid Group Builder",
+    shortTitle: "Raid Builder",
+    tagline: "Plan a raid and see which buffs it covers.",
+    description:
+      "Fill a 10, 20 or 40 player raid with classes and talent trees, and see which buffs and debuffs each group and the raid gets. Rules are stamped with a game build and marked unconfirmed. The plan lives in the link.",
+    status: "live",
+    keywords: ["wow forever raid composition", "raid builder", "raid buffs", "wow forever raid planner"],
+  },
+  {
     slug: "upload",
     href: "/upload",
     title: "Upload Addon Data",
