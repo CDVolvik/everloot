@@ -24,10 +24,22 @@ SendMail = function() end
 PlaceAuctionBid = function() end
 sendPrice = 30
 GetSendMailPrice = function() return sendPrice end
-hooksecurefunc = function(name, after)
- local original = _G[name]
- _G[name] = function(...) original(...); after(...) end
+-- hooksecurefunc(name, after) or hooksecurefunc(table, name, after); the hook runs once the original has run.
+hooksecurefunc = function(a, b, c)
+ local target, name, after = _G, a, b
+ if type(a) == 'table' then target, name, after = a, b, c end
+ local original = target[name]
+ target[name] = function(...) original(...); after(...) end
 end
+-- Forever's auction house, with the signatures in the client's API documentation. Owner and bidder fields exist
+-- in the data and are never read.
+listings = { [901] = { buyoutAmount = 7000, bidAmount = 0, bidder = 'Player-1-AAAA' }, [902] = { buyoutAmount = nil } }
+C_AuctionHouse = {
+ PlaceBid = function(auctionID, bidAmount) end,
+ StartCommoditiesPurchase = function(itemID, quantity) end,
+ ConfirmCommoditiesPurchase = function(itemID, quantity) end,
+ GetAuctionInfoByID = function(auctionID) return listings[auctionID] end,
+}
 """)
 root = Path(__file__).parents[1]
 for file in ["core.lua", "modules/gold.lua"]:
@@ -130,8 +142,50 @@ PlaceAuctionBid('list', 1, 5000)
 event('AUCTION_HOUSE_CLOSED')
 money = money - 5000; event('PLAYER_MONEY')
 assert(#events('auction_spend') == 1 and events('auction_spend')[1].copper == 5000, 'one buyout of 5000; bids and stale buyouts unrecorded')
+
+-- Forever, items: a bid at the listing's buyout is a purchase once the money leaves; a lower bid, a bid on a
+-- listing without a buyout, and a listing the house no longer reports are not.
+money = money + 50000; event('PLAYER_MONEY')  -- unattributed income, so the purse can pay
+C_AuctionHouse.PlaceBid(901, 7000)
+money = money - 7000; event('PLAYER_MONEY')
+C_AuctionHouse.PlaceBid(901, 6000)
+money = money - 6000; event('PLAYER_MONEY')
+C_AuctionHouse.PlaceBid(902, 300)
+money = money - 300; event('PLAYER_MONEY')
+C_AuctionHouse.PlaceBid(999, 7000)
+money = money - 7000; event('PLAYER_MONEY')
+assert(#events('auction_spend') == 2 and events('auction_spend')[2].copper == 7000, 'one item buyout of 7000; got ' .. #events('auction_spend'))
+
+-- Forever, commodities: the purchase pays the total the house last quoted, and only when the money matches.
+C_AuctionHouse.StartCommoditiesPurchase(2589, 200)
+event('COMMODITY_PRICE_UPDATED', 10, 1900)
+event('COMMODITY_PRICE_UPDATED', 10, 2000)
+C_AuctionHouse.ConfirmCommoditiesPurchase(2589, 200)
+money = money - 2000; event('PLAYER_MONEY')
+assert(#events('auction_spend') == 3 and events('auction_spend')[3].copper == 2000, 'one commodity purchase at the last quote')
+-- A new purchase forgets the old quote: with no quote yet the confirm attributes nothing.
+C_AuctionHouse.StartCommoditiesPurchase(2589, 200)
+C_AuctionHouse.ConfirmCommoditiesPurchase(2589, 200)
+money = money - 2000; event('PLAYER_MONEY')
+-- A price that moved: the money that left is not the quote, so nothing is recorded.
+C_AuctionHouse.StartCommoditiesPurchase(2589, 200)
+event('COMMODITY_PRICE_UPDATED', 10, 2000)
+C_AuctionHouse.ConfirmCommoditiesPurchase(2589, 200)
+money = money - 2100; event('PLAYER_MONEY')
+-- A failed purchase and a closed house drop the quote.
+C_AuctionHouse.StartCommoditiesPurchase(2589, 200)
+event('COMMODITY_PRICE_UPDATED', 10, 2000)
+event('COMMODITY_PURCHASE_FAILED')
+C_AuctionHouse.ConfirmCommoditiesPurchase(2589, 200)
+money = money - 2000; event('PLAYER_MONEY')
+event('COMMODITY_PRICE_UPDATED', 10, 2000)
+event('AUCTION_HOUSE_CLOSED')
+C_AuctionHouse.ConfirmCommoditiesPurchase(2589, 200)
+money = money - 2000; event('PLAYER_MONEY')
+assert(#events('auction_spend') == 3, 'unquoted, mismatched, failed and stale purchases are unrecorded; got ' .. #events('auction_spend'))
+
 for _, row in ipairs(events()) do
- for _, value in pairs(row) do assert(value ~= 'Jaina', 'buyers, sellers and recipients are other players and are never stored') end
+ for _, value in pairs(row) do assert(value ~= 'Jaina' and value ~= 'Player-1-AAAA', 'buyers, sellers and recipients are other players and are never stored') end
 end
 """)
-print("Lua 5.1 gold: vendor sales, flights, quest rewards, net auction sales, postage and buyouts attributed; other purchases and unknown income unrecorded")
+print("Lua 5.1 gold: vendor sales, flights, quest rewards, net auction sales, postage and buyouts (legacy and C_AuctionHouse, items and commodities) attributed; other purchases and unknown income unrecorded")

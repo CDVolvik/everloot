@@ -13,6 +13,30 @@ that has a zip in the repository. Earlier builds have none.
 Nothing yet. Pull requests merged to `main` are listed in the nightly pre-releases until the next
 tagged release.
 
+## [0.3.2] - 2026-10-18
+
+### Fixed
+- Recipes now read from Forever's own profession window (`C_TradeSkillUI`). The old trade-skill and
+  craft calls the addon used are not in the client's API documentation for build 1.60.1.70450, so no
+  `recipe_observed` rows could be written. Each row keeps its shape: profession, rank, recipe, colour,
+  product item and reagents. The product and reagents come from the recipe schematic; a reagent slot
+  that accepts several items is written without reagents instead of a guess. The read is chunked across
+  frames and debounced.
+- Trainer rows read the trainer window's values in the order Forever returns them. The old addon read
+  the texture as a category, and now also skips the window's "next profession step" row.
+- Auction buyouts and commodity purchases are read with `C_AuctionHouse` (the item bid at its buyout,
+  and the total the house quoted for a commodity), watched from the player's own click and never called.
+  The old `GetAuctionItemInfo` and `PlaceAuctionBid` path stays for older clients.
+- `/everloot status` names any call this client lacks and says the module records nothing, and reports
+  what the last profession window held.
+
+### Added
+- [`docs/2026-10-18-addon-0.3.2-beta-checklist.md`](docs/2026-10-18-addon-0.3.2-beta-checklist.md): the
+  calls confirmed in the build's own files, and the in-client check to run.
+
+The profession and purchase paths have passed the automated tests against a mock of the documented API;
+they have not run in the Forever client. This release also contains everything in 0.3.1.
+
 ## [0.3.1] - 2026-10-18
 
 ### Fixed

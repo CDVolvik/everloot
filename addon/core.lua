@@ -5,7 +5,7 @@
 Everloot = Everloot or {}
 local E = Everloot
 
-E.VERSION = "0.3.1"
+E.VERSION = "0.3.2"
 E.MAX_ROWS_PER_KIND = 2000
 
 -- Same Adler-32 the companion writes into its slot addons; Lua 5.1 arithmetic only.
@@ -90,6 +90,13 @@ local modules = {}
 
 function E:RegisterModule(name, init)
   modules[#modules + 1] = { name = name, init = init, ok = false, note = "pending" }
+end
+
+--- A module reports what it found while running (an API this client lacks, what the last window held).
+function E:SetNote(name, note)
+  for _, m in ipairs(modules) do
+    if m.name == name and m.ok then m.note = note end
+  end
 end
 
 function E:InitModules()

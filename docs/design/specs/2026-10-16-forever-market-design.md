@@ -215,6 +215,9 @@ They share one branch and one pull request, one commit per stage, because each s
   legacy `GetAuctionItemInfo("owner", i)`, which Forever does not have. Its auction buyout and sale
   attribution likely records nothing on Forever. The modern calls are `C_AuctionHouse.QueryOwnedAuctions`
   → `OWNED_AUCTIONS_UPDATED` → `GetOwnedAuctions()`.
+  **Update, addon 0.3.2:** gold.lua never read the player's own listings; it read the listing being
+  bought. Buyouts now use `C_AuctionHouse.GetAuctionInfoByID` and the commodity quote. See
+  [the 0.3.2 checklist](../../2026-10-18-addon-0.3.2-beta-checklist.md).
 - The 0.2.5 in-game beta checklist is still open with Carlos; 0.3.0 adds a full scan to it.
 - Market-data licence decision before the flip.
 - Rollup size at scale: open days hold one scan per install for 7 days; closed days about 10k items ×

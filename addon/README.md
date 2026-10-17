@@ -7,8 +7,9 @@ companion, and adds auction prices to item tooltips. It uses only the game's add
 plays the character. Records match the site's intake contract (`web/src/lib/intake.ts`) field for
 field.
 
-**Status:** 0.3.1 beta. The automated contract tests pass; the in-client checks in
-`docs/2026-10-08-beta-client-checklist.md` are still open, and the full scan
+**Status:** 0.3.2 beta. The automated contract tests pass; the in-client checks in
+`docs/2026-10-08-beta-client-checklist.md` and `docs/2026-10-18-addon-0.3.2-beta-checklist.md`
+are still open, and the full scan
 (`docs/design/specs/2026-10-16-forever-market-design.md`) has not run in the Forever client.
 
 ## Run it
@@ -102,7 +103,7 @@ addon/
 │   ├── gear.lua        equipped item level sample, at most once an hour
 │   ├── auctions.lua    full auction-house scans you start (Forever); listed buyouts on older clients; off until enabled
 │   ├── gold.lua        your own gold: loot, quests, vendors, flights, mailed auction sales, postage, buyouts
-│   ├── professions.lua recipe colours at your rank; required rank and cost from trainer windows
+│   ├── professions.lua recipe colours at your rank (C_TradeSkillUI); required rank and cost from trainer windows
 │   ├── ask.lua         /ask stores a question; the companion's answers show after /reload
 │   ├── addons.lua      your installed addons' names, titles and versions; off until enabled
 │   ├── mapbounds.lua   each zone's corners in world coordinates, once per zone per build
