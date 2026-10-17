@@ -142,7 +142,11 @@ export default function PrivacyPage() {
         preferences from the footer on any page. The choice is stored locally.
         Analytics and advertising are separate choices, and rejecting either
         loads none of its scripts. If an optional script already loaded,
-        withdrawing consent reloads the page without it. You can
+        withdrawing consent reloads the page without it and deletes the
+        Google Analytics and PostHog cookies and stored keys it set on this
+        site where your browser allows. Cloudflare Web Analytics, which sets
+        no cookies, is the one tool that runs without a choice; it is skipped
+        when your browser sends Do Not Track or Global Privacy Control. You can
         also clear local storage through your browser settings.
       </p>
 

@@ -11,11 +11,14 @@ export const MCP_TOOLS = [
   "quest_page", "vendor_page", "collection_gap", "guild_board", "auction_history", "gold_ledger", "everloot_plan",
 ] as const;
 
+/** A batched JSON-RPC request counts at most this many calls. */
+export const MAX_BUMPS_PER_REQUEST = 5;
+
 /** Tool names from a JSON-RPC body. Unknown names collapse to "other" so a caller cannot invent metric names. */
 export function mcpToolMetrics(body: string, mount: "mcp" | "mcp_public"): string[] {
   let parsed: unknown;
   try { parsed = JSON.parse(body); } catch { return []; }
-  const messages = Array.isArray(parsed) ? parsed.slice(0, 20) : [parsed];
+  const messages = Array.isArray(parsed) ? parsed.slice(0, MAX_BUMPS_PER_REQUEST) : [parsed];
   const metrics: string[] = [];
   for (const message of messages) {
     const m = message as { method?: unknown; params?: { name?: unknown } } | null;
@@ -42,7 +45,7 @@ async function bump(metric: string, env: Record<string, string | undefined>, doF
 }
 
 export function recordUsage(metrics: string | string[], env: Record<string, string | undefined> = process.env, doFetch: typeof fetch = fetch): void {
-  const list = (Array.isArray(metrics) ? metrics : [metrics]).filter((m) => /^[a-z0-9_.]{1,64}$/.test(m));
+  const list = (Array.isArray(metrics) ? metrics : [metrics]).slice(0, MAX_BUMPS_PER_REQUEST).filter((m) => /^[a-z0-9_.]{1,64}$/.test(m));
   if (!list.length || env.EVERLOOT_USAGE_METRICS !== "1") return;
   const work = async () => { await Promise.all(list.map((m) => bump(m, env, doFetch))); };
   // after() lets the write finish once the response is sent; outside a request it throws, so run it directly.

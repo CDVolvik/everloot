@@ -48,10 +48,18 @@ export function createMount(options: { path: string; bearer: boolean }) {
         return unavailable("Knowledge release unavailable");
       }
     }
-    if (req.method === "POST") {
-      // Count tool calls by name only. The body is read from a clone so the handler still gets the original.
-      try { recordUsage(mcpToolMetrics(await req.clone().text(), options.bearer ? "mcp" : "mcp_public")); } catch {}
+    // Counting is opt-in. Only then is a clone of a small, declared-size body read, so the handler still
+    // gets the original and nothing changes for the default deployment.
+    const length = Number(req.headers.get("content-length"));
+    const counting = req.method === "POST" && process.env.EVERLOOT_USAGE_METRICS === "1" &&
+      req.headers.has("content-length") && Number.isFinite(length) && length <= 1_048_576;
+    let body: string | null = null;
+    if (counting) { try { body = await req.clone().text(); } catch {} }
+    const response = await handler(req);
+    // Only calls the handler accepted count: unauthenticated, invalid or rate-limited ones return non-2xx.
+    if (body !== null && response.status >= 200 && response.status < 300) {
+      recordUsage(mcpToolMetrics(body, options.bearer ? "mcp" : "mcp_public"));
     }
-    return handler(req);
+    return response;
   };
 }

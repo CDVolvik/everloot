@@ -60,4 +60,23 @@ describe("CookieConsent categories", () => {
     await act(async () => root.render(<CookieConsent analytics={{ gaId: GA }} />));
     expect(container.textContent).not.toContain("Google AdSense");
   });
+
+  it("does not read an old advertising choice as analytics consent, and asks only once", async () => {
+    localStorage.setItem("gg-cookie-consent-v1", "accepted");
+    await act(async () => root.render(<CookieConsent analytics={{ gaId: GA }} />));
+    expect(scripts()).toHaveLength(0);
+    expect(container.querySelector("section")).not.toBeNull();
+    await act(async () => button("Reject optional cookies").click());
+    await act(async () => root.unmount());
+    root = createRoot(container);
+    await act(async () => root.render(<CookieConsent analytics={{ gaId: GA }} />));
+    expect(container.querySelector("section")).toBeNull();
+  });
+
+  it("says there are no ads only when no AdSense client is set", async () => {
+    await act(async () => root.render(<CookieConsent analytics={{ gaId: GA }} />));
+    expect(container.textContent).toContain("does not run ads today");
+    await act(async () => root.render(<CookieConsent analytics={{ gaId: GA }} adsenseClient="ca-pub-1" />));
+    expect(container.textContent).not.toContain("does not run ads today");
+  });
 });

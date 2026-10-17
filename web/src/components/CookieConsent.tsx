@@ -58,7 +58,7 @@ export default function CookieConsent({ adsenseClient, analytics = {} }: { adsen
     loaded.current = saved;
     apply(saved);
     // The cookieless beacon needs no choice; it is skipped only for DNT or GPC.
-    loadCookieless(analytics, privacySignals(navigator), document);
+    loadCookieless(analytics, privacySignals(navigator, window), document);
     const reopen = () => {
       trigger.current = document.activeElement as HTMLElement;
       setVisible(true);
@@ -113,7 +113,7 @@ export default function CookieConsent({ adsenseClient, analytics = {} }: { adsen
       ) : (
         <>
           <p className="mt-1 text-sm text-fg">
-            Optional analytics loads only if you accept. Everloot does not run ads today.
+            Optional {categories.includes("advertising") ? "analytics and advertising load" : "analytics loads"} only if you accept.{!adsenseClient && " Everloot does not run ads today."}
             Your choice is saved when browser storage is available. You can change it in the footer.
           </p>
           <fieldset className="mt-3 space-y-2">

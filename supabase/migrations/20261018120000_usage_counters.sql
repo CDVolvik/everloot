@@ -26,3 +26,8 @@ $$;
 revoke all on function public.bump_usage_counter(text) from public, anon, authenticated;
 grant execute on function public.bump_usage_counter(text) to service_role;
 notify pgrst, 'reload schema';
+
+-- Rollback (run by hand; this discards the counts):
+--   drop function if exists public.bump_usage_counter(text);
+--   drop table if exists public.usage_counters;
+--   notify pgrst, 'reload schema';
