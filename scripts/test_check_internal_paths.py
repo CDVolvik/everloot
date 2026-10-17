@@ -17,4 +17,4 @@ assert offending_lines("cd projects/everloot/web") == [1]
 # Generic example paths in docs and tests are fine.
 assert offending_lines('{ "apiKeyFile": "C:/Users/<you>/keys/anthropic.txt" }') == []
 assert offending_lines('parseArgs(["watch", "--game", "C:/Games/WoW"]) and "C:\\\\Users\\\\p\\\\AppData"') == []
-print("check_internal_paths: 11 cases pass")
+print("check_internal_paths: 10 cases pass")
