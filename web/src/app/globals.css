@@ -2,14 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* The colour variables come from src/design/tokens.ts through the Tailwind plugin. */
 :root {
-  color-scheme: dark;
+  color-scheme: light dark;
 }
 
 html,
 body {
-  background: #0f0c08; /* parchment.950 */
-  color: #f1e6c8;       /* parchment.100 */
+  background: rgb(var(--canvas));
+  color: rgb(var(--fg));
   min-height: 100vh;
 }
 
@@ -27,18 +28,6 @@ pre {
 body {
   font-feature-settings: "cv11", "ss01";
   -webkit-font-smoothing: antialiased;
-}
-
-/* Subtle parchment-ish grain — pure CSS, no image. */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(1200px 600px at 10% -10%, rgba(240, 180, 41, 0.08), transparent 60%),
-    radial-gradient(900px 500px at 110% 20%, rgba(139, 92, 246, 0.07), transparent 60%);
-  z-index: -1;
 }
 
 /* Aurora drift — slow, ambient, transform-only. Paused under reduced motion. */
@@ -117,7 +106,7 @@ html.js .reveal.is-visible {
 
 /* Focus ring — AdSense-friendly accessibility */
 :focus-visible {
-  outline: 2px solid #f0b429;
+  outline: 2px solid rgb(var(--accent));
   outline-offset: 2px;
   border-radius: 4px;
 }
