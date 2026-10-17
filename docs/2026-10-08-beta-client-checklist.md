@@ -53,7 +53,8 @@ SavedVariables file before installing. No script here plays the character.
    For the addon list, `/everloot status` should say it is off. Run `/everloot addons on` and
    `/reload`. Expect one `addon_seen` row per addon in the AddOns list, with its folder name, a
    title without colour codes, the `.toc` version, and `loaded = false` for a disabled addon.
-   Another `/reload` the same day adds nothing. `/everloot addons off` deletes those rows. Note
+   Another `/reload` adds nothing; enabling a disabled addon adds one row. The companion must not
+   send these rows; the upload page lists them. `/everloot addons off` deletes them. Note
    whether Forever has `C_AddOns` or only the older `GetAddOnInfo` globals.
    For zone bounds, enter two zones. Expect one `map_bounds` row per zone and nothing more when
    you come back. Check that `top` is greater than `bottom` and `left` greater than `right`

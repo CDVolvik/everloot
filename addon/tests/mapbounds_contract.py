@@ -18,7 +18,8 @@ CreateFrame = function() return {
 } end
 BUILD = { '1.60.1', '70450', 'Oct 1 2026', 11508 }
 GetBuildInfo = function() return unpack(BUILD) end
-CreateVector2D = function(x, y) return { x = x, y = y } end
+-- Like Vector2DMixin: the API takes a vector, so a bare {x, y} table fails the stub below.
+CreateVector2D = function(x, y) return { x = x, y = y, GetXY = function(self) return self.x, self.y end } end
 -- World x runs north and y runs west: (0,0) is the north-west corner.
 zones = {
  [1429] = { continent = 0, [0] = { x = -7939.6, y = 1535.4 }, [1] = { x = -10254.2, y = -1599.6 } },
@@ -31,6 +32,7 @@ C_Map = {
  GetBestMapForUnit = function(unit) assert(unit == 'player'); return here end,
  GetWorldPosFromMapPos = function(mapId, pos)
   local zone = zones[mapId]
+  assert(type(pos.GetXY) == 'function', 'GetWorldPosFromMapPos takes a vector from CreateVector2D')
   if zone == 'broken' then error('bad map') end
   local corner = zone and zone[pos.x]
   if not corner or pos.x ~= pos.y then return nil end

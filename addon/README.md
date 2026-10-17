@@ -18,7 +18,8 @@ Download the zip from everloot.app/upload, or build it from the repository root:
 That writes `web/public/downloads/Everloot-<version>.zip`. Extract `Everloot/` into the Forever
 client's `Interface/AddOns/`, `/reload`, then run `/everloot status`. Auction capture is off until
 `/everloot auctions on`. The list of your installed addons is off until `/everloot addons on`;
-`/everloot addons off` stops it and deletes the addon rows not yet uploaded.
+it is sent only from the upload page, after its preview. `/everloot addons off` stops it and
+deletes every recorded addon row.
 
 ## Test it
 
