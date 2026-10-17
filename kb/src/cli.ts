@@ -1,7 +1,7 @@
-import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { auditSources } from "./audit-sources.js";
 import { BlizzardClient } from "./blizzard/client.js";
-import { checkBuilds, VERSION_SERVICE, type BuildRegistry } from "./builds.js";
+import { checkBuilds, loadRegistry, saveRegistry, versionsUrl } from "./builds.js";
 import type { Game, NsKind, Region } from "./blizzard/namespaces.js";
 import { openDb, openExistingReadOnlyDb, type DB } from "./db.js";
 import { importCurated } from "./importers/curated.js";
@@ -189,16 +189,12 @@ async function main(): Promise<number> {
     case "builds-check": {
       const products = (flags.get("product") || "wow_classic_beta,wow_classic_era").split(",").map((p) => p.trim()).filter(Boolean);
       const path = flags.get("registry") || "data/builds.json";
-      const registry: BuildRegistry = existsSync(path) ? JSON.parse(readFileSync(path, "utf8")) : { builds: [] };
-      if (!Array.isArray(registry.builds)) throw new Error(`${path} is not a build registry`);
-      const result = await checkBuilds(registry, products, async (product) => {
-        const res = await fetch(`${VERSION_SERVICE}/${product}/versions`, { signal: AbortSignal.timeout(15_000) });
+      const result = await checkBuilds(loadRegistry(path), products, async (product) => {
+        const res = await fetch(versionsUrl(product), { signal: AbortSignal.timeout(15_000) });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.text();
       }, new Date());
-      writeFileSync(`${path}.tmp`, `${JSON.stringify(result.registry, null, 2)}
-`);
-      renameSync(`${path}.tmp`, path);
+      saveRegistry(path, result.registry);
       for (const b of result.added) console.log(`new build: ${b.product} ${b.version} (${b.buildConfig}) [${b.regions.join(" ")}]`);
       for (const e of result.errors) console.error(`${e.product}: ${e.error}`);
       console.log(`${result.added.length} new, ${result.registry.builds.length} known; registry ${path}`);
