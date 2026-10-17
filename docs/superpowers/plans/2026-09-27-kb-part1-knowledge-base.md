@@ -62,7 +62,7 @@ registry that says whether they are publishable; the snapshot command uses that 
 - [ ] **Step 1: Create the working branch from the spec branch**
 
 ```bash
-cd D:/R21-Brain/projects/wowvault
+cd <repository root>
 git fetch origin
 git checkout -b feat/kb-part1 origin/docs/forever-ai-addon-spec
 ```
@@ -98,7 +98,7 @@ Expected: `Switched to a new branch 'feat/kb-part1'`.
 - [ ] **Step 2: Install dependencies**
 
 ```bash
-cd D:/R21-Brain/projects/wowvault/kb
+cd kb
 npm install better-sqlite3 fzstd sax wtf_wikipedia csv-parse yaml
 npm install -D typescript tsx vitest @types/node@22 @types/better-sqlite3 @types/sax
 ```
@@ -147,13 +147,13 @@ test("bundled SQLite has FTS5", () => {
 
 - [ ] **Step 6: Run it**
 
-Run: `cd D:/R21-Brain/projects/wowvault/kb && npx vitest run test/smoke.test.ts`
+Run: `cd kb && npx vitest run test/smoke.test.ts`
 Expected: `1 passed`.
 
 - [ ] **Step 7: Commit**
 
 ```bash
-cd D:/R21-Brain/projects/wowvault
+cd <repository root>
 git add .gitignore kb/package.json kb/package-lock.json kb/tsconfig.json kb/test/smoke.test.ts && git commit -m "[WoWVault] kb: scaffold package (better-sqlite3 with FTS5)"
 ```
 
@@ -1848,7 +1848,7 @@ Expected: `ok` from validate; the manifest's `counts` lists only `warcraft-wiki-
 
 - [ ] **Step 9: Blizzard API check (needs a fresh client)**
 
-The client stored in `_secrets/2026-05-16-wowvault/` is flagged for rotation. Create a new client
+The old client in the maintainer's secrets store is flagged for rotation. Create a new client
 at https://develop.battle.net/access/clients, then write `kb/.env` (gitignored by the repo's `.env`
 rule):
 ```
@@ -1915,7 +1915,7 @@ Replace every `<N>`/`<BUILD>` with the numbers printed by `npm run kb -- stats` 
 - [ ] **Step 12: Commit and push**
 
 ```bash
-cd D:/R21-Brain/projects/wowvault
+cd <repository root>
 git add kb/README.md _STATUS.md && git commit -m "[WoWVault] kb: first real build, README, status"
 git push -u origin feat/kb-part1
 git fetch origin && git show origin/feat/kb-part1:kb/README.md | head -3

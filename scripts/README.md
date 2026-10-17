@@ -2,7 +2,7 @@
 
 One-off + scheduled scripts. Node.js + TypeScript by default; Python where the ML ecosystem is needed.
 
-**Status**: empty. First inhabitant arrives in `BUILD_PLAN.md` Session 1 (`bnet-cli.ts`).
+**Status**: in use; see `scripts/` and `web/scripts/`.
 
 **Planned scripts**:
 

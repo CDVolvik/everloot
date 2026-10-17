@@ -2,7 +2,7 @@
 
 Backend — Postgres + Auth + Edge Functions + pgvector (for AI RAG, post-Phase-1).
 
-**Status**: empty. Scaffolded in `BUILD_PLAN.md` Session 2 (schema v1).
+**Status**: schema and migrations below.
 
 **Setup**:
 ```bash

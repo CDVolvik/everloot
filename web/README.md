@@ -1,8 +1,8 @@
 # web/
 
-Next.js 15 (App Router) + TypeScript + Tailwind. Public web surface for Everloot. Current production/auth setup and outstanding launch work: [launch recovery](../docs/2026-10-07-launch-recovery.md). Use `.env.example` for current server-side variables; the historical client-key setup below does not configure custom Battle.net sessions.
+Next.js 15 (App Router) + TypeScript + Tailwind. Public web surface for Everloot. Use `.env.example` for current server-side variables; the historical client-key setup below does not configure custom Battle.net sessions.
 
-**History**: this folder started life as **GoldGoblin.gg** — a standalone Next.js project for a WoW tools site with AdSense monetization. Merged into Everloot on 2026-05-16 as the public web surface (per the "everything under one brand" decision). The existing Gold/Hour calculator stays as a public tool; profile pages get added in `BUILD_PLAN.md` Session 8.
+**History**: this folder started life as **GoldGoblin.gg** — a standalone Next.js project for a WoW tools site with AdSense monetization. Merged into Everloot on 2026-05-16 as the public web surface (per the "everything under one brand" decision). The existing Gold/Hour calculator stays as a public tool.
 
 ## What's already built (from GoldGoblin)
 
@@ -17,7 +17,7 @@ Next.js 15 (App Router) + TypeScript + Tailwind. Public web surface for Everloot
 
 ## What gets added in Phase 1
 
-Session 8 of `../BUILD_PLAN.md`:
+Planned at the start (some of it is now built):
 - `/u/[character-slug]` — public character profile pages (server-rendered, OpenGraph share cards)
 - Auth-aware "Sign in" header (Battle.net OAuth, same flow as iOS)
 - Mobile-responsive: this is the public-share surface, mobile views drive viral acquisition
@@ -25,7 +25,7 @@ Session 8 of `../BUILD_PLAN.md`:
 ## Run locally
 
 ```bash
-cd projects/everloot/web
+cd web
 npm install
 npm run dev
 # http://localhost:3000
@@ -42,7 +42,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=...
 NEXT_PUBLIC_ADSENSE_CLIENT=     # empty until AdSense approves
 ```
 
-The old GoldGoblin deploy at "D:\Claude Cowork\Google Adsense Builds" referenced in old commits no longer exists — that path is gone since the 2026-05-07 Cowork-into-workspace merge. New canonical path: `D:\R21-Brain\projects\everloot\web\`.
+Older commits mention a separate GoldGoblin deploy folder. It no longer exists; this folder is the only copy.
 
 ## Rebrand TODO before first push
 
