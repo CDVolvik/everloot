@@ -263,6 +263,8 @@ const recordSchemas = {
 
 export type RecordKind = keyof typeof recordSchemas;
 export const ALL_RECORD_KINDS = Object.keys(recordSchemas) as RecordKind[];
+/** Addon lists are published only as the leaderboard's counts at three or more installs, never row by row. */
+export const PUBLIC_RECORD_KINDS: readonly string[] = ALL_RECORD_KINDS.filter((kind) => kind !== "addon_seen");
 
 const anyRecord = z.discriminatedUnion("kind", [
   npcSighting, lootWindow, questEvent, vendorList, itemSeen,
