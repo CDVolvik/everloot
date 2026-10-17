@@ -30,12 +30,8 @@ spell, talent (`Trait*`) and spell effect tables (`ItemSparse`, `Item`, `SpellNa
 `SpellEffect` and others, listed in `CLIENT_TABLES`) of a game's current build from the files
 Blizzard's launcher downloads from its public CDN, the same files every player receives, and
 compare two builds field by field. Those snapshots and comparisons stay on the maintainer's
-machine. Encrypted blocks are skipped, never decrypted: no decryption keys are loaded. One small
-layer is the exception: the world map page (`/map`) draws zone rectangles and dungeon and raid
-entrance positions from the map tables (`Map`, `UiMap`, `UiMapAssignment`). Only those fields are
-committed, in `web/src/data/game-data/map.json`, stamped with the build and labelled found in game
-files, unconfirmed, and zones added after the original world are held back as possibly unreleased.
-Nothing else from the game files is on the site, in the dataset or in the MCP server.
+machine. Encrypted blocks are skipped, never decrypted: no decryption keys are loaded. Nothing from
+the game files is on the site, in the dataset or in the MCP server.
 
 Publishing comes later, as a separate step. Once it ships, every entry from game files will:
 
