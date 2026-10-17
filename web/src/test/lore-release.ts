@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { openDb } from "../../../kb/src/db";
@@ -16,12 +16,14 @@ const EMPTY_FACETS: Record<"expansion" | "profession" | "class" | "race" | "zone
  * even ids Battle for Azeroth), and the curated forever launch date plus a curated item that must stay
  * out of lore search. `typed: false` builds the same rows with no type data, like the 2026-10-05
  * release; `facets: false` keeps the types but drops the manifest facet totals — an artifact the
- * serving gate refuses, because a typed release without them would serve slow scan paths.
+ * serving gate refuses, because a typed release without them would serve slow scan paths. `dir` writes
+ * into that folder instead of a new temp dir (used by `npm run sample-release`).
  */
-export async function buildLoreRelease(options: { typed?: boolean; facets?: boolean } = {}): Promise<string> {
+export async function buildLoreRelease(options: { typed?: boolean; facets?: boolean; dir?: string } = {}): Promise<string> {
   const typed = options.typed ?? true;
   const withFacets = options.facets ?? true;
-  const dir = mkdtempSync(join(tmpdir(), "everloot-lore-"));
+  const dir = options.dir ?? mkdtempSync(join(tmpdir(), "everloot-lore-"));
+  mkdirSync(dir, { recursive: true });
   const source = openDb(join(dir, "source.sqlite"));
   const wiki = (extId: string, name: string, body: string, data?: Record<string, unknown>) => ({
     kind: "lore_page" as const, extId, name, body, data: typed ? data : stripTypes(data), gameVersion: "lore" as const,
