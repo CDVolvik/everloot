@@ -263,6 +263,17 @@ const recordSchemas = {
 
 export type RecordKind = keyof typeof recordSchemas;
 export const ALL_RECORD_KINDS = Object.keys(recordSchemas) as RecordKind[];
+/**
+ * The kinds the public corpus API may return. An allowlist: a new kind is private until someone adds it
+ * here. Addon lists (`addon_seen`) are published only as the leaderboard's counts at three or more
+ * installs, never row by row.
+ */
+const PUBLIC_KIND_LIST = [
+  "npc_sighting", "loot", "quest", "vendor", "item_seen", "guild_snapshot", "raid_lockout", "attendance",
+  "loot_award", "gear_snapshot", "collection_catalog", "collection_owned", "auction_scan", "recipe_seen",
+  "price_seen", "recipe_observed", "trainer_seen", "gold_snapshot", "money_event", "map_bounds",
+] as const satisfies readonly RecordKind[];
+export const PUBLIC_RECORD_KINDS: readonly string[] = PUBLIC_KIND_LIST;
 
 const anyRecord = z.discriminatedUnion("kind", [
   npcSighting, lootWindow, questEvent, vendorList, itemSeen,
