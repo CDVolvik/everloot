@@ -34,7 +34,6 @@ body {
 .btn:hover,
 .btn:focus-visible {
   border-color: rgb(var(--accent));
-  border-radius: 9999px;
 }
 .btn:disabled,
 .btn[aria-disabled="true"] {
@@ -62,6 +61,17 @@ body {
   mask-composite: exclude;
   pointer-events: none;
 }
+}
+
+/* Forced colours paint both pills' borders the same colour, so the primary one gets a thicker
+   edge instead of the gradient ring. */
+@media (forced-colors: active) {
+  .btn-primary {
+    border-width: 3px;
+  }
+  .btn-primary::before {
+    display: none;
+  }
 }
 
 /* Keep form controls readable on phones and allow grid children to reflow. */
@@ -96,7 +106,6 @@ body {
 :focus-visible {
   outline: 2px solid rgb(var(--accent));
   outline-offset: 2px;
-  border-radius: 4px;
 }
 
 /* Number inputs: strip spinners for cleaner look */
