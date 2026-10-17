@@ -39,6 +39,15 @@ test(".btn-primary draws the gradient outline as a masked ring", () => {
   expect(ring).toContain("mask-composite: exclude");
 });
 
+test("in forced colours the primary pill has a thicker edge than the outline pill", () => {
+  const block = /@media \(forced-colors: active\)\s*\{([\s\S]*?)\n\}/.exec(css)?.[1] ?? "";
+  expect(block).toMatch(/\.btn-primary\s*\{[^}]*border-width:\s*3px/);
+});
+
+test("the focus ring follows each element's own corners", () => {
+  expect(rule(":focus-visible")).not.toContain("border-radius");
+});
+
 const PRIMARY = [
   "app/tools/auctions/page.tsx",
   "app/tools/collections/page.tsx",
