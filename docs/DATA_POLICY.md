@@ -25,14 +25,14 @@ Blizzard hides some WoW: Forever item details until an item drops, and runs no p
 Game files show what exists; play shows what is real. Everloot keeps the two apart and says which
 is which.
 
-**What the game files contain.** *Status: the table data is not published yet, except the talent catalog and the map layer
-described below.* A maintainer can read tables of a game's current build from the files Blizzard's
+**What the game files contain.** *Status: the table data is not published yet, except the talent catalog, the map layer and the
+raid buff table described below.* A maintainer can read tables of a game's current build from the files Blizzard's
 launcher downloads from its public CDN, the same files every player receives, and compare two
 builds field by field. The [source ledger](sources/LEDGER.md) lists the tables we read. Those
 snapshots and comparisons stay on the maintainer's machine. Encrypted blocks are skipped, never
 decrypted: no decryption keys are loaded. Nothing read from the game files is in the dataset, the
-API or the MCP server. On the site, only the talent catalog, the map layer and the icons, tooltip
-text and frame art covered further down may appear.
+API or the MCP server. On the site, only the talent catalog, the map layer, the raid buff table and the icons,
+tooltip text and frame art covered further down may appear.
 
 Publishing the table data comes later, as a separate step. Once it ships, every entry from game
 files will:
@@ -87,7 +87,8 @@ The rules:
 **The talent catalog.** The talent calculator at `/tools/talents` uses our own catalog, read from
 the public client by a maintainer, not taken from any other site. The catalog is the trait node
 ids, positions, ranks, gates, prerequisites, spell ids, talent names and the build stamp. This is
-one of two table data exceptions to the status above, the other being the map layer below. It may
+one of three table data exceptions to the status above, with the map layer and the raid buff
+table below. It may
 be published on the site, and it may be committed to the git repository as a clearly marked
 game-data file with a README that says it is Blizzard's and outside our licence. It is labelled
 *found in game files, unconfirmed* until someone has checked it in the game, and the spoiler rules
@@ -102,6 +103,36 @@ Blizzard's and outside our licence. It is labelled *found in game files, unconfi
 checked in game. General rule: new zones or other content found only in the game files stay hidden
 unless the reader turns spoilers on. A zone that looks unreleased is held back until it is live.
 Maps carry no art here; map images would fall under the Blizzard rules above.
+
+**The raid buff table.** The raid builder at `/tools/raid` and its in-game view use our own table of
+group buffs and debuffs, read from the spell tables in the public client. For each effect it holds
+the effect id, its name, the class, the spell ids, who it reaches (party, raid, target), per rank
+where ranks differ, and the talent tree it needs where the game files prove that link, each with
+the build stamp. It holds no tooltip text. Like the talent catalog, it may be shown on the site
+and committed as a clearly marked game-data file in `web/src/data/game-data/`, with a README that
+says it is Blizzard's and outside our licence, and the addon may carry the same facts. It is
+labelled *found in game files, unconfirmed* until checked in game, and the spoiler rules apply.
+
+**Blizzard's own posts.** The "what changed" page at `/changes` lists posts by Blizzard staff on
+the WoW forum and by the official World of Warcraft account on Bluesky, and the game builds
+Blizzard's version service reports.
+
+- *Excerpts only.* For each post we keep the title, the author and role, the time, the category,
+  an excerpt of at most two sentences (300 characters) and a link to the original. The text is
+  Blizzard's, so we never copy a post in full. A maintainer may add a one-line summary in our own
+  words; nothing writes one automatically.
+- *Sources.* Forum posts come only from a short list of named Blizzard staff accounts, and only
+  from the WoW: Forever and WoW Classic categories. Bluesky posts come only from the verified
+  official World of Warcraft account, and only when they are about Forever or Classic. No
+  third-party tracker is read or copied.
+- *Robots and manners.* The reader checks robots.txt before every run and uses public JSON only.
+  Blizzard's forum `.rss` routes are disallowed by its robots.txt, so we never use them. It names
+  itself (`Everloot/1.0`, with a contact address), never follows a redirect, and stops when a
+  server answers 429 or a server error, honouring Retry-After.
+- *Polling cap.* At most once every 30 minutes, at most 3 pages of 30 items per source per run,
+  stopping at what it already saw. A source asked less than 25 minutes ago is skipped.
+- *Build times.* A build's time on that page is when Everloot first saw it, not when Blizzard
+  released it.
 
 *Fan permissions are narrower than this.* As we read Blizzard's
 [video policy](https://www.blizzard.com/en-us/legal/dd76b654-f2c4-4aaa-ba49-ca3122de2376/blizzard-video-policy),
