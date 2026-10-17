@@ -459,7 +459,7 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; 
     {
       title: "Forever market value for one item",
       description:
-        "Market value, minimum buyout, historical value and units listed for one item on one WoW: Forever realm, from full auction scans players started and uploaded. A day is public after 3 installs scanned the item; values are medians. Market value weights the last 14 public days, historical is the median of 60. Missing or unavailable data is reported explicitly.",
+        "Market value, minimum buyout, historical value and units listed for one item on one WoW: Forever realm, from full auction scans players started and uploaded. A day is public after 3 reporters (distinct upload addresses) scanned the item; values are medians, thin days and outlier days are left out of the market value. Market value weights the last 14 public days, historical is the median of 60. Missing or unavailable data is reported explicitly.",
       inputSchema: {
         realm: z.string().describe("Realm name."),
         itemId: z.number().int().positive().describe("Item id."),

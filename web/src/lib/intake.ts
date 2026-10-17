@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { validRealm } from "../../../kb/src/market";
 
 /**
  * Everloot intake contract (Track 2, step 1).
@@ -159,7 +160,8 @@ const SCAN_COPPER = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
  */
 export const auctionSnapshot = base.extend({
   kind: z.literal("auction_snapshot"),
-  realm: z.string().min(2).max(60),
+  // Plain realm names only (kb/src/market.ts): the name is published once 3 reporters scanned there.
+  realm: z.string().min(2).max(60).refine(validRealm, { message: "not a realm name" }),
   scanId: z.string().min(3).max(96).regex(/^[A-Za-z0-9:_-]+$/),
   part: z.number().int().min(1).max(100),
   parts: z.number().int().min(1).max(100),
@@ -370,6 +372,11 @@ export interface ValidationResult {
 export interface CanonicalUpload {
   addonVersion: string;
   clientBuild?: string;
+  /**
+   * Keyed hash of the upload address (see `reporterHash`), added by the intake route, never read from
+   * the request body. The market counts installs behind one address once. Never published.
+   */
+  reporter?: string;
   records: IntakeRecord[];
 }
 

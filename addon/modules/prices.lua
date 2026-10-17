@@ -19,48 +19,117 @@ function E:OwnScan(realm)
   return E.ownScanCache
 end
 
--- Community prices per realm, parsed on first use: a table, or false after a failed checksum.
+E.THIN_UNITS = 5          -- as kb/src/market.ts: this many units listed or fewer is a thin market
+E.STALE_DAYS = 2          -- community prices older than this show a stale marker
+local VERIFY_SLICE = 20000 -- checksum characters per frame, so a large price file never stalls the client
+
+--- Days since 1970-01-01 for a "YYYY-MM-DD..." string, or nil. Civil-date arithmetic, no os library.
+function E.DayNumber(text)
+  local y, m, d = tostring(text):match("^(%d%d%d%d)-(%d%d)-(%d%d)")
+  if not y then return nil end
+  y, m, d = tonumber(y), tonumber(m), tonumber(d)
+  if m <= 2 then y = y - 1 end
+  local era = math.floor(y / 400)
+  local yoe = y - era * 400
+  local doy = math.floor((153 * ((m + 9) % 12) + 2) / 5) + d - 1
+  local doe = yoe * 365 + math.floor(yoe / 4) - math.floor(yoe / 100) + doy
+  return era * 146097 + doe - 719468
+end
+
+-- Community prices per realm: { status = "verifying" | "ready" | "bad", data, asOf }.
 local community = {}
 
 function E:ResetPrices()
   community = {}
 end
 
---- One realm's rows from EverlootPricesDB: "itemId,market,min,historical,quantity,day,reporters;..."
---- with an Adler-32 `sum` over that string. A blank market is unrecorded.
+--- Adler-32 of `data` in slices of VERIFY_SLICE characters, one per frame; `done(ok)` gets the verdict.
+--- Same arithmetic as E.Adler32 (the companion's checksum), split so it can pause between frames.
+local function verify(data, sum, done)
+  local a, b, i, n = 1, 0, 1, #data
+  local function slice()
+    local last = math.min(n, i + VERIFY_SLICE - 1)
+    for k = i, last do
+      a = (a + data:byte(k)) % 65521
+      b = (b + a) % 65521
+    end
+    i = last + 1
+    if i <= n and C_Timer and C_Timer.After then
+      C_Timer.After(0, slice)
+    elseif i <= n then
+      return slice()
+    else
+      done(b * 65536 + a == sum)
+    end
+  end
+  slice()
+end
+
+--- One realm's price file entry from EverlootPricesDB: "itemId,market,min,historical,quantity,day,reporters;..."
+--- with an Adler-32 `sum` over that string. A blank market is unrecorded. The string is searched, not
+--- parsed: a tooltip finds its one row, so a large file costs nothing until its checksum has passed.
 local function communityFor(realm)
   local key = realm:lower()
-  if community[key] ~= nil then return community[key] or nil end
-  local realms = type(EverlootPricesDB) == "table" and EverlootPricesDB.realms
-  local db = type(realms) == "table" and realms[key]
-  local parsed = false
-  if type(db) == "table" and type(db.data) == "string" and db.sum == E.Adler32(db.data) then
-    parsed = {}
-    for entry in db.data:gmatch("[^;]+") do
-      local id, market, min, historical, quantity, day, reporters =
-        entry:match("^(%d+),(%d*),(%d+),(%d+),(%d+),([%d%-]+),(%d+)$")
-      if id then
-        parsed[tonumber(id)] = {
-          market = tonumber(market), min = tonumber(min), historical = tonumber(historical),
-          quantity = tonumber(quantity), day = day, reporters = tonumber(reporters),
-        }
-      end
+  local entry = community[key]
+  if entry == nil then
+    local realms = type(EverlootPricesDB) == "table" and EverlootPricesDB.realms
+    local db = type(realms) == "table" and realms[key]
+    if type(db) ~= "table" then
+      entry = { status = "bad", silent = true }
+    elseif type(db.data) ~= "string" or type(db.sum) ~= "number" then
+      entry = { status = "bad" }
+      print("Everloot: community prices for " .. realm .. " failed their checksum and are not shown.")
+    else
+      entry = { status = "verifying", data = ";" .. db.data .. ";", asOf = db.dataAsOf }
+      community[key] = entry
+      verify(db.data, db.sum, function(ok)
+        if community[key] ~= entry then return end -- reset while checking
+        entry.status = ok and "ready" or "bad"
+        if not ok then
+          entry.data = nil
+          print("Everloot: community prices for " .. realm .. " failed their checksum and are not shown.")
+        end
+      end)
     end
-  elseif type(db) == "table" then
-    print("Everloot: community prices for " .. realm .. " failed their checksum and are not shown.")
+    community[key] = entry
   end
-  community[key] = parsed
-  return parsed or nil
+  return entry
+end
+
+local function communityRow(entry, itemId)
+  if entry.status ~= "ready" then return nil end
+  local from = entry.data:find(";" .. itemId .. ",", 1, true)
+  if not from then return nil end
+  local text = entry.data:match("^;([^;]+)", from)
+  local id, market, min, historical, quantity, day, reporters =
+    text:match("^(%d+),(%d*),(%d+),(%d+),(%d+),([%d%-]+),(%d+)$")
+  if not id then return nil end
+  return {
+    market = tonumber(market), min = tonumber(min), historical = tonumber(historical),
+    quantity = tonumber(quantity), day = day, reporters = tonumber(reporters),
+  }
 end
 
 local function addLines(tooltip, itemId)
   local realm = GetRealmName and GetRealmName()
   if type(realm) ~= "string" or realm == "" then return end
-  local row = (communityFor(realm) or {})[itemId]
+  local entry = communityFor(realm)
+  local row = communityRow(entry, itemId)
   if row then
+    local market = row.market and E.Coins(row.market)
+      or (row.quantity <= E.THIN_UNITS and "unrecorded (thin)" or "unrecorded")
     tooltip:AddLine(string.format("Everloot market %s · min %s · historical %s",
-      row.market and E.Coins(row.market) or "unrecorded", E.Coins(row.min), E.Coins(row.historical)), 0.9, 0.8, 0.5)
+      market, E.Coins(row.min), E.Coins(row.historical)), 0.9, 0.8, 0.5)
     tooltip:AddLine(string.format("  %d up · %d reporters · %s", row.quantity, row.reporters, row.day), 0.6, 0.6, 0.6)
+    -- The file is only as fresh as the companion's last run: show its date, and flag it when old.
+    local fetched, today = E.DayNumber(entry.asOf or ""), E.DayNumber(date("!%Y-%m-%d"))
+    if not fetched or not today then
+      tooltip:AddLine("  price data age unknown (stale?)", 1, 0.4, 0.4)
+    elseif today - fetched > E.STALE_DAYS then
+      tooltip:AddLine(string.format("  STALE: prices from %s; run the companion to refresh", entry.asOf:sub(1, 10)), 1, 0.4, 0.4)
+    else
+      tooltip:AddLine("  prices fetched " .. entry.asOf:sub(1, 10), 0.6, 0.6, 0.6)
+    end
   end
   local own = E:OwnScan(realm)
   local item = own and own.items[itemId]

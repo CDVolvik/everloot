@@ -18,9 +18,17 @@ const SV = `EverlootDB = {
 },
 }`;
 
-test("realms come from the player's own SavedVariables, once each", () => {
-  expect(readRealms(SV)).toEqual(["Forever", "Nightfall"]);
+test("realms come from the player's own auction scans, once each; guild and gold realms are never sent", () => {
+  expect(readRealms(SV)).toEqual(["Forever"]);
   expect(readRealms("EverlootDB = {}")).toEqual([]);
+  const more = SV.replace('["loot"]', '["auction_scan"] = { { ["realm"] = "Doomhowl" } }, ["price_seen"] = { { ["realm"] = "forever" } }, ["guild_snapshot"] = { { ["realm"] = "Secret" } }, ["loot"]');
+  expect(readRealms(more)).toEqual(["Forever", "Doomhowl"]);
+});
+
+test("a long answer is cut to the site's row cap", async () => {
+  const items = Array.from({ length: 2500 }, (_, i) => [i + 1, 5, 5, 5, 5, "2026-10-20", 3]);
+  const prices = await fetchRealmPrices("https://e.example", "Forever", vi.fn().mockResolvedValue(Response.json({ ...body, items })));
+  expect(prices.items).toHaveLength(2000);
 });
 
 const body = {
@@ -63,7 +71,7 @@ test("realm keys lower-case ASCII only, as Lua's string.lower does", () => {
 test("refresh writes the slot addon for the realms in the file, and keeps the old one on any failure", async () => {
   const dir = mkdtempSync(join(tmpdir(), "everloot-prices-"));
   const sv = join(dir, "Everloot.lua");
-  writeFileSync(sv, SV);
+  writeFileSync(sv, SV.replace("gold_snapshot", "auction_scan"));
   const addons = join(dir, "AddOns");
   const ok = vi.fn(async (url: string) => Response.json({ ...body, realm: url.includes("Nightfall") ? "Nightfall" : "Forever" }));
   expect(await refreshPrices({ svFiles: [sv], addonsDir: addons, endpoint: "https://e.example", fetch: ok as unknown as typeof fetch }))

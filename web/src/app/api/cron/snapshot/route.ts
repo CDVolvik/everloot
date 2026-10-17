@@ -4,9 +4,13 @@ import { intakeQuota } from "@/lib/intake-quota";
 
 /**
  * GET /api/cron/snapshot — Vercel Cron (vercel.json) extends the corpus snapshot with new uploads,
- * then folds new full auction scans into the market rollup.
+ * then folds new full auction scans into the market rollup. The market step runs only after the
+ * corpus step succeeded; if it fails the corpus snapshot is already current, the response is a 500
+ * and the next run retries the same uploads.
  * Vercel sends `Authorization: Bearer $CRON_SECRET`; without the secret configured it refuses to run.
- * `?rebuild=1` rebuilds both from empty, which is how a deleted upload leaves them.
+ * `?rebuild=1` rebuilds both from empty, which is how a deleted upload leaves them. The market
+ * rebuild reads only uploads from the last 62 days (older ones cannot hold a day it keeps), and
+ * is also how an unusable market.json is replaced.
  */
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;

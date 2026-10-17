@@ -33,7 +33,19 @@ function fire(event, arg1) for _, hook in ipairs(Everloot.frame.hooks or {}) do 
 -- C_Timer runs nothing by itself: the test drains it, so chunking is visible.
 timers = {}
 C_Timer = { After = function(seconds, f) table.insert(timers, { seconds = seconds, f = f }) end }
-function drain() local n = 0; while #timers > 0 do local t = table.remove(timers, 1); n = n + 1; t.f() end return n end
+-- Counts the chunk and retry steps; the scan's own give-up timer (30 s) fires too but is not a step.
+function drain() local n = 0; while #timers > 0 do local t = table.remove(timers, 1); if t.seconds < 30 then n = n + 1 end; t.f() end return n end
+function stepsPending() local n = 0; for _, t in ipairs(timers) do if t.seconds < 30 then n = n + 1 end end return n end
+
+-- Nothing may ever buy, bid or post: every such API is a trap that records the call.
+forbidden = {}
+local function trap(name) return function() forbidden[#forbidden + 1] = name end end
+for _, name in ipairs({ 'PostItem', 'PostCommodity', 'PlaceBid', 'StartCommoditiesPurchase', 'ConfirmCommoditiesPurchase', 'CancelAuction', 'CancelCommoditiesPurchase', 'BuyoutItem' }) do
+  _G['trapped_' .. name] = trap(name)
+end
+for _, name in ipairs({ 'PlaceAuctionBid', 'StartAuction', 'PostAuction', 'CancelAuction', 'ClickAuctionSellItemButton' }) do
+  _G[name] = trap(name)
+end
 
 GetRealmName = function() return 'Forever' end
 
@@ -45,12 +57,16 @@ function row(itemID, count, buyout, hasAllInfo) table.insert(rows, { itemID = it
 row(2589, 20, 2000, true); row(2589, 10, 1500, true); row(2589, 30, 6000, true); row(2589, 40, 12000, true)
 row(2592, 5, 0, true)        -- bid-only: no buyout
 row(765, 0, 100, true)       -- bad stack size
+row(777, 5, 3, true)         -- buyout below the stack size: under 1 copper a unit, not a price
 row(nil, nil, nil, true)     -- no item, complete: skipped
 row(nil, nil, nil, false)    -- not loaded yet: read again later
 for id = 10001, 11200 do row(id, 1, 50, true) end   -- 1,200 more items: two snapshot parts
 loadedLater = false
 replicateCalls = 0
 C_AuctionHouse = {
+  PostItem = trap('C_AuctionHouse.PostItem'), PostCommodity = trap('C_AuctionHouse.PostCommodity'),
+  PlaceBid = trap('C_AuctionHouse.PlaceBid'), StartCommoditiesPurchase = trap('C_AuctionHouse.StartCommoditiesPurchase'),
+  ConfirmCommoditiesPurchase = trap('C_AuctionHouse.ConfirmCommoditiesPurchase'), CancelAuction = trap('C_AuctionHouse.CancelAuction'),
   ReplicateItems = function() replicateCalls = replicateCalls + 1 end,
   GetNumReplicateItems = function() return #rows end,
   GetReplicateItemInfo = function(i)
@@ -101,7 +117,7 @@ button.scripts.OnClick()
 assert(replicateCalls == 1 and said('already running'), 'one scan at a time')
 
 fire('REPLICATE_ITEM_LIST_UPDATE')
-assert(#timers == 1 and timers[1].seconds == 0, 'rows are read in chunks across frames')
+assert(stepsPending() == 1, 'rows are read in chunks across frames')
 loadedLater = true
 local steps = drain()
 assert(steps == 2, 'two more steps (rows 1001-1208, then the retry of the unloaded row); got ' .. steps)
@@ -118,6 +134,7 @@ assert(linen[2] == 4 and linen[3] == 100 and linen[4] == 100 and linen[5] == 110
   'linen: 4 auctions, 100 units, min 100, value 110; got ' .. table.concat(linen, ','))
 assert(found[4306] and found[4306][4] == 450, 'the unloaded row is read on retry, per unit (900 / 2)')
 assert(not found[2592] and not found[765], 'bid-only and zero-count rows are skipped')
+assert(not found[777], 'a buyout below its stack size (0 copper a unit) is dropped, never stored')
 assert(said('1202 items'), 'the scan reports what it stored')
 
 -- The cooldown: no second scan until 15 minutes have passed.
@@ -126,12 +143,14 @@ assert(replicateCalls == 1 and said('next full scan in 15 min'), 'cooldown block
 
 -- Closing the auction house stops a scan in progress, and the next one can run after the cooldown.
 now = now + 901
+local lastBefore = EverlootDB.lastScanAt
 SlashCmdList.EVERLOOT('scan')
 assert(replicateCalls == 2)
 fire('AUCTION_HOUSE_CLOSED')
 assert(said('auction house closed'))
+assert(EverlootDB.lastScanAt == lastBefore, 'a scan that never got data gives the cooldown back')
 fire('REPLICATE_ITEM_LIST_UPDATE')
-assert(#timers == 0, 'a stopped scan reads nothing')
+assert(stepsPending() == 0, 'a stopped scan reads nothing')
 
 -- Only the last 3 scans per realm stay in SavedVariables.
 for k = 1, 3 do
@@ -176,4 +195,91 @@ local tampered = tooltipFor(2589)
 assert(not tampered:find('Everloot market') and tampered:find('Your scan'), 'a failed checksum hides community prices only')
 assert(said('checksum'), 'a failed checksum is reported')
 """)
-print("Lua 5.1 market: clicked full scan, chunked reads, retry, parts, cooldown, 3 scans kept, tooltips with checksums")
+# A scan whose REPLICATE_ITEM_LIST_UPDATE never fires does not stay stuck: it times out, clears, and
+# gives the cooldown back.
+lua.execute("""
+fire('AUCTION_HOUSE_SHOW')
+now = now + 901
+local before = replicateCalls
+local lastScanAt = EverlootDB.lastScanAt
+SlashCmdList.EVERLOOT('scan')
+assert(replicateCalls == before + 1)
+SlashCmdList.EVERLOOT('scan')
+assert(said('already running'), 'while waiting, a scan is running')
+local giveUp
+for _, t in ipairs(timers) do if t.seconds == Everloot.SCAN_WAIT_SECONDS then giveUp = t end end
+assert(giveUp and giveUp.seconds == 30, 'a give-up timer is set when the scan starts')
+printed = {}
+drain()
+assert(said('sent no data'), 'the timeout says what happened')
+assert(EverlootDB.lastScanAt == lastScanAt, 'the cooldown is refunded')
+SlashCmdList.EVERLOOT('scan')
+assert(replicateCalls == before + 2, 'the player can scan again at once')
+-- Data that arrives in time is not cut off by the old timer.
+fire('REPLICATE_ITEM_LIST_UPDATE')
+drain()
+assert(EverlootDB.lastScans.Forever.at == now, 'the second scan finished and was recorded')
+""")
+
+# Community prices: a stale file is marked, thin items say so, and a large file is checked a slice per frame.
+lua.execute((Path(__file__).parent / "fixtures" / "EverlootPrices.lua").read_text(encoding="utf-8"))
+lua.execute("""
+Everloot:ResetPrices()
+date = function() return '2026-10-30T10:00:00Z' end
+local stale = tooltipFor(2589)
+assert(stale:find('STALE') and stale:find('2026%-10%-20'), 'prices ten days old are marked stale: ' .. stale)
+date = function() return '2026-10-21T10:00:00Z' end
+local fresh = tooltipFor(2589)
+assert(fresh:find('prices fetched 2026%-10%-20') and not fresh:find('STALE'), 'prices from yesterday are not stale: ' .. fresh)
+date = function() return '2026-10-20T10:00:00Z' end
+assert(Everloot.DayNumber('1970-01-01') == 0 and Everloot.DayNumber('2000-03-01') == 11017 and Everloot.DayNumber('2026-10-20') - Everloot.DayNumber('2026-10-19') == 1)
+assert(Everloot.DayNumber('nope') == nil)
+
+-- A thin item with no market value says so.
+local rowsText = {}
+for id = 1, 3000 do rowsText[#rowsText + 1] = string.format('%d,%s,%d,%d,%d,2026-10-20,3', id, (id == 2 and '' or '500'), 400, 450, (id == 2 and 2 or 50)) end
+local data = table.concat(rowsText, ';')
+EverlootPricesDB.realms.bigrealm = { dataAsOf = '2026-10-20T06:30:00.000Z', data = data, sum = Everloot.Adler32(data) }
+GetRealmName = function() return 'Bigrealm' end
+Everloot:ResetPrices()
+timers = {}
+assert(#data > 40000, 'the file is large enough to need several frames: ' .. #data)
+local first = tooltipFor(7)
+assert(first == '', 'until the checksum has passed nothing is shown')
+assert(#timers >= 1 and timers[1].seconds == 0, 'the checksum continues on the next frame')
+local frames = drain()
+assert(frames == math.ceil(#data / 20000) - 1, 'one slice per frame: ' .. frames)
+local ready = tooltipFor(7)
+assert(ready:find('Everloot market 5s 0c') and ready:find('50 up'), ready)
+assert(tooltipFor(3001) == '', 'an id that is not in the file shows nothing, and 7 does not match 70 or 17')
+local thin = tooltipFor(2)
+assert(thin:find('unrecorded %(thin%)'), thin)
+
+-- A tampered large file never shows, and is reported once checked.
+EverlootPricesDB.realms.bigrealm.sum = 5
+Everloot:ResetPrices()
+printed = {}
+tooltipFor(7); drain()
+assert(said('checksum') and tooltipFor(7) == '', 'a large file with a bad checksum is refused')
+GetRealmName = function() return 'Forever' end
+Everloot:ResetPrices()
+""")
+
+# Nothing in this addon buys, bids or posts: no trapped API was called by a scan, a timeout, a
+# tooltip or any slash command above, and no source file names one.
+lua.execute("""
+SlashCmdList.EVERLOOT('status')
+SlashCmdList.EVERLOOT('scan')
+assert(#forbidden == 0, 'forbidden call: ' .. table.concat(forbidden, ','))
+""")
+import re
+names = r"PostItem|PostCommodity|PlaceBid|PlaceAuctionBid|StartAuction|PostAuction|StartCommoditiesPurchase|ConfirmCommoditiesPurchase|BuyoutItem|CancelAuction|CancelCommoditiesPurchase|ClickAuctionSellItemButton"
+for source in sorted(root.rglob("*.lua")):
+    if "tests" in source.parts:
+        continue
+    code = "\n".join(line.split("--")[0] for line in source.read_text(encoding="utf-8").splitlines())
+    # gold.lua only watches PlaceAuctionBid with hooksecurefunc to record the player's own spending;
+    # what must never appear is a call, directly or through pcall.
+    called = re.search(rf"\b({names})\s*\(|pcall\(\s*(?:C_AuctionHouse\.)?({names})\b", code)
+    assert not called, f"{source.name} calls a buy, bid or post API: {called.group(0)}"
+print("Lua 5.1 market: clicked full scan, chunked reads, retry, parts, cooldown, 3 scans kept, scan timeout, tooltips with sliced checksums, stale and thin labels, no buy or post call")

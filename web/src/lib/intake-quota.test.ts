@@ -100,3 +100,35 @@ test("cleanup deletes only counters expired more than a day ago and reports fail
   fetch.mockResolvedValue(new Response(null, { status: 503 }));
   await expect(quota.prune()).rejects.toThrow("Quota cleanup failed");
 });
+
+test("market price requests have their own per-IP bucket, apart from uploads and the MCP", async () => {
+  const fetch = vi.fn().mockImplementation(async () => new Response(JSON.stringify([{ allowed: true, retry_after: 0 }])));
+  const quota = createIntakeQuota({ env, fetch });
+  await quota.request(request());
+  await quota.mcp(request());
+  expect(await quota.market(request())).toEqual({ allowed: true, retryAfter: 0 });
+  const [upload, mcp, market] = fetch.mock.calls.map(([, init]) => JSON.parse(init.body));
+  expect(market.p_key).not.toBe(upload.p_key);
+  expect(market.p_key).not.toBe(mcp.p_key);
+  expect(fetch.mock.calls[2][1].body).not.toContain("203.0.113.5");
+  await expect(quota.market(request("spoofed"))).rejects.toThrow();
+});
+
+test("a market request past 200 an hour from one IP is refused in development", async () => {
+  const quota = createIntakeQuota({ env: { NODE_ENV: "test" }, now: () => 0 });
+  const local = new Request("http://localhost/api/market/prices");
+  for (let i = 0; i < 200; i++) expect((await quota.market(local)).allowed).toBe(true);
+  expect((await quota.market(local)).allowed).toBe(false);
+});
+
+test("the reporter is a keyed 64-bit hash of the platform IP: stable, never the address, and not guessable without the key", () => {
+  const quota = createIntakeQuota({ env });
+  const a = quota.reporter(request("203.0.113.5"));
+  expect(a).toMatch(/^[a-f0-9]{16}$/);
+  expect(quota.reporter(request("203.0.113.5"))).toBe(a);
+  expect(quota.reporter(request("203.0.113.6"))).not.toBe(a);
+  expect(createIntakeQuota({ env: { ...env, SUPABASE_SERVICE_ROLE_KEY: "another-key" } }).reporter(request("203.0.113.5"))).not.toBe(a);
+  expect(a).not.toContain("203");
+  // Without a trusted platform IP there is no reporter, never a guess from a spoofable header.
+  expect(quota.reporter(request("spoofed"))).toBeUndefined();
+});

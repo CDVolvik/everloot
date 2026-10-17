@@ -25,6 +25,10 @@ and the last three scans per realm kept. Nothing scans without that click. The l
 installed addons is off until `/everloot addons on`; it is sent only from the upload page, after
 its preview. `/everloot addons off` stops it and deletes every recorded addon row.
 
+A scan that gets no answer from the auction house in 30 seconds stops and gives the cooldown back.
+Tooltip prices show the date the companion last fetched them and flag them as stale after two days.
+Nothing in the addon calls a buy, bid or post API; `addon/tests/market_contract.py` traps them.
+
 ## Talents, selftest and the plan panel
 
 - **Talents** (on by default). Reads your build through `C_Traits` and `C_ClassTalents`: the active spec

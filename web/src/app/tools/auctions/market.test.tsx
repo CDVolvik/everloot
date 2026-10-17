@@ -38,7 +38,7 @@ test("with no realm the page lists the realms that have scans and says how value
   const html = await render({});
   expect(html).toContain("Forever market");
   expect(html).toContain('href="/tools/auctions?realm=Forever"');
-  expect(html).toContain("3 installs");
+  expect(html).toContain("3 reporters");
 });
 
 test("a realm lists its public items with market, minimum and historical values", async () => {

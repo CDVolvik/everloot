@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Forever market",
-  description: "WoW: Forever auction prices from full scans players started and uploaded. A day is public after 3 installs scanned the item.",
+  description: "WoW: Forever auction prices from full scans players started and uploaded. A day is public after 3 reporters scanned the item.",
   alternates: { canonical: "/tools/auctions" },
 };
 
@@ -109,7 +109,7 @@ export default async function AuctionsPage(
         <section className="space-y-2">
           <h2 className="text-xl text-fg">Realms with scans</h2>
           {marketRealms(state, now).length === 0
-            ? <p className="text-sm text-fg-2">No realm has public values yet. A realm is listed once 3 installs scanned the same item there.</p>
+            ? <p className="text-sm text-fg-2">No realm has public values yet. A realm is listed once 3 reporters scanned the same item there.</p>
             : <ul className="text-sm space-y-1">{marketRealms(state, now).map((name) => (
                 <li key={name}><Link href={`/tools/auctions?realm=${encodeURIComponent(name)}`} className="text-accent hover:underline underline-offset-4">{name}</Link></li>
               ))}</ul>}
@@ -118,7 +118,7 @@ export default async function AuctionsPage(
 
       {state && realm && !itemId && (
         rows.length === 0
-          ? <p className="text-sm text-fg-2">No public market values on {realmName} yet. A day becomes public when 3 installs scanned an item.</p>
+          ? <p className="text-sm text-fg-2">No public market values on {realmName} yet. A day becomes public when 3 reporters scanned an item.</p>
           : (
             <section className="space-y-2">
               <h2 className="text-xl text-fg">{realmName}</h2>
@@ -165,19 +165,19 @@ export default async function AuctionsPage(
         <section className="space-y-4">
           <h2 className="text-xl text-fg">{realmName} item <Link href={`/database/items/${itemId}`} className="font-mono tabular-nums text-accent hover:underline underline-offset-4">{itemId}</Link></h2>
           {!item.value
-            ? <p className="text-sm text-fg-2">No public market value yet. A day becomes public when 3 installs scanned this item.</p>
+            ? <p className="text-sm text-fg-2">No public market value yet. A day becomes public when 3 reporters scanned this item.</p>
             : (
               <>
                 <ul className="text-sm text-fg-2 space-y-1">
                   <li>Market value: <Num>{money(item.value.market)}</Num></li>
                   <li>Minimum buyout: <Num>{formatCopper(item.value.min)}</Num> (<Num>{item.value.day}</Num>, <Num>{item.value.reporters}</Num> reporters)</li>
                   <li>Historical: <Num>{formatCopper(item.value.historical)}</Num></li>
-                  <li>Units listed: <Num>{item.value.quantity}</Num></li>
+                  <li>Units listed: <Num>{item.value.quantity}</Num>{item.value.thin ? " (thin: left out of the market value)" : ""}</li>
                 </ul>
                 <HistoryChart points={item.points} />
                 <ul className="font-mono tabular-nums text-xs text-fg-2 space-y-0.5">
                   {[...item.points].reverse().map((p) => (
-                    <li key={p.day}>{p.day} · value {formatCopper(p.market)} · min {formatCopper(p.min)} · {p.quantity} units · {p.reporters} reporters</li>
+                    <li key={p.day}>{p.day} · value {formatCopper(p.market)} · min {formatCopper(p.min)} · {p.quantity} units{p.thin ? " (thin)" : ""} · {p.reporters} reporters</li>
                   ))}
                 </ul>
               </>

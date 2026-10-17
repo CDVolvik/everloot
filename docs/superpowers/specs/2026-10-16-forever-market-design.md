@@ -217,8 +217,30 @@ They share one branch and one pull request, one commit per stage, because each s
   → `OWNED_AUCTIONS_UPDATED` → `GetOwnedAuctions()`.
 - The 0.2.5 in-game beta checklist is still open with Carlos; 0.3.0 adds a full scan to it.
 - Market-data licence decision before the flip.
-- Rollup size at scale: open days hold one scan per install for 3 days; closed days about 10k items ×
-  60 days × 4 numbers per realm. Revisit if `market.json` passes 20 MB.
+- Rollup size at scale: open days hold one scan per install for 7 days; closed days about 10k items ×
+  60 days × 4 numbers per realm. The fold caps 40 realms, 20,000 items per realm, 25 installs per
+  item-day and 60,000 entries in all; `market.json` is refused above 10 MB (`MARKET_MAX_BYTES`).
+- Hardening (review of PR 15), all in `kb/src/market.ts` unless noted:
+  - **Reporters.** A day is public at 3 reporters, not 3 installs. A reporter is a keyed (HMAC) 64-bit
+    hash of the upload address that the intake route adds to the private upload object; the address is
+    never stored and the hash is never published. Installs behind one address vote once. Shared
+    addresses (a household, a school) collapse to one voice; that is the cost.
+  - **Install age** is not used as a weight: install ids are anonymous and an attacker can age one by
+    waiting. The reporter rule and the trim already bound what a new install can do.
+  - **Outliers.** With 5 or more solid days, a day further than 3x from the historical median (either
+    way) is trimmed from the market value, minimum and quantity. With fewer days there is no baseline;
+    the 3-reporter rule is the defence. Historical is a median, so forged days must be a majority.
+  - **Thin days** (5 units listed or fewer) show in history, labelled, but never feed the market value.
+    A unit price of 0 (buyout below the stack size) is dropped in the addon and again by the fold.
+  - **Late arrivals.** The last 7 days stay open and take late uploads; a day under 3 reporters is not
+    published. A scan for a day already closed is ignored.
+  - **Realm names** must be 2 to 40 letters, digits, spaces, apostrophes or hyphens, at most 3 realms
+    per upload, and only such names are listed on the site.
+  - **Price file.** `/api/market/prices` returns at most 2,000 items per realm (most units first), with
+    a per-IP quota on requests the CDN does not answer. The addon looks up its row in the string
+    instead of parsing it and checks the checksum a slice per frame.
+  - **Scan timeout.** A full scan that gets no `REPLICATE_ITEM_LIST_UPDATE` in 30 s clears itself and
+    refunds the cooldown.
 - If Forever lacks `TooltipDataProcessor`, the prices module turns itself off; there is no
   `GameTooltip` fallback yet.
 - If `REPLICATE_ITEM_LIST_UPDATE` fires before every row has arrived, the scan reads a partial total.

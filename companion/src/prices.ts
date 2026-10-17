@@ -17,11 +17,15 @@ export type PriceRow = [number, number | null, number, number, number, string, n
 export interface RealmPrices { realm: string; dataAsOf: string | null; items: PriceRow[] }
 
 const MAX_REALMS = 20;
+const MAX_ROWS = 2000;
 
 /** The addon looks realms up with GetRealmName():lower(); Lua 5.1 lower-cases ASCII letters only. */
 const realmKey = (realm: string) => realm.trim().replace(/[A-Z]/g, (c) => c.toLowerCase());
 
-/** Realm names the player's own file mentions: their scans first, then any record with a realm. */
+/** Record kinds whose realm is auction data the player chose to scan or upload; no other kind names a realm to the site. */
+const AUCTION_KINDS = ["auction_snapshot", "auction_scan", "price_seen"];
+
+/** Realm names from the player's own auction scans: `lastScans`, then auction records. Guild, gold and other realms are never sent. */
 export function readRealms(savedVariables: string): string[] {
   const db = parseEverlootTable(savedVariables);
   const names: string[] = [];
@@ -31,8 +35,9 @@ export function readRealms(savedVariables: string): string[] {
     if (name.length >= 2 && name.length <= 60 && !names.some((n) => realmKey(n) === realmKey(name))) names.push(name);
   };
   if (db.lastScans && typeof db.lastScans === "object") Object.keys(db.lastScans).forEach(add);
-  const records = db.records && typeof db.records === "object" ? Object.values(db.records as Record<string, unknown>) : [];
-  for (const rows of records) {
+  const records = db.records && typeof db.records === "object" ? (db.records as Record<string, unknown>) : {};
+  for (const kind of AUCTION_KINDS) {
+    const rows = records[kind];
     if (Array.isArray(rows)) for (const row of rows) add((row as { realm?: unknown })?.realm);
   }
   return names.slice(0, MAX_REALMS);
@@ -59,7 +64,8 @@ export async function fetchRealmPrices(endpoint: string, realm: string, send: ty
   return {
     realm: typeof body.realm === "string" ? body.realm : realm,
     dataAsOf: typeof body.dataAsOf === "string" ? body.dataAsOf : null,
-    items: body.items.map(priceRow).filter((r): r is PriceRow => r !== null),
+    // The site caps a realm at 2,000 rows; the file never carries more however the answer looks.
+    items: body.items.slice(0, MAX_ROWS).map(priceRow).filter((r): r is PriceRow => r !== null),
   };
 }
 

@@ -10,6 +10,7 @@ E.SCAN_CHUNK = 1000       -- replicate rows read per frame, so a large house doe
 E.SCAN_COOLDOWN = 900     -- seconds between full scans: Retail's limit; Forever's is unverified
 E.SCAN_PART_ITEMS = 1000  -- items per auction_snapshot record, the intake maximum
 E.SCANS_KEPT = 3          -- full scans kept per realm in SavedVariables
+E.SCAN_WAIT_SECONDS = 30  -- how long a scan waits for REPLICATE_ITEM_LIST_UPDATE before giving up
 local RETRY_SECONDS = 2   -- one more read for rows whose item data had not loaded
 
 local function say(msg)
@@ -64,6 +65,12 @@ end
 
 local scan -- the full scan in progress, or nil
 
+--- Clears a scan that never got its data and gives the cooldown back.
+local function refundWaitingScan()
+  EverlootDB.lastScanAt = scan.previousScanAt
+  scan = nil
+end
+
 --- One replicate row into the scan: "ok", "skip" (no price, bad size) or "incomplete" (data not loaded).
 local function readRow(i)
   local _, _, count, _, _, _, _, _, _, buyout, _, _, _, _, _, _, itemId, hasAllInfo = C_AuctionHouse.GetReplicateItemInfo(i)
@@ -72,9 +79,12 @@ local function readRow(i)
   end
   if count < 1 or buyout <= 0 then return "skip" end
   count = math.floor(count)
+  -- A buyout below its stack size is under 1 copper a unit: not a price.
+  local unitPrice = math.floor(buyout / count)
+  if unitPrice < 1 then return "skip" end
   local list = scan.byItem[itemId]
   if not list then list = {}; scan.byItem[itemId] = list end
-  list[#list + 1] = { math.floor(buyout / count), count }
+  list[#list + 1] = { unitPrice, count }
   return "ok"
 end
 
@@ -166,12 +176,21 @@ function E:StartScan()
   if wait > 0 then return say(string.format("next full scan in %d min.", math.ceil(wait / 60))) end
   local realm = GetRealmName and GetRealmName()
   if type(realm) ~= "string" or #realm < 2 then return say("no realm name.") end
-  EverlootDB.lastScanAt = time()
-  scan = {
+  local started = {
     realm = realm, startedAt = time(), at = date("!%Y-%m-%dT%H:%M:%SZ"), waiting = true,
     byItem = {}, retry = {}, skipped = 0, incomplete = 0, next = 1, total = 0,
+    previousScanAt = EverlootDB.lastScanAt,
   }
+  scan = started
+  EverlootDB.lastScanAt = time()
   C_AuctionHouse.ReplicateItems()
+  -- If the house never answers, the scan must not stay "running" and the cooldown is not spent.
+  C_Timer.After(E.SCAN_WAIT_SECONDS, function()
+    if scan == started and started.waiting then
+      refundWaitingScan()
+      say("the auction house sent no data. Try the scan again.")
+    end
+  end)
   return say("scanning the auction house. Keep it open until the scan reports.")
 end
 
@@ -193,7 +212,7 @@ local function onFullScanEvent(event, arg1)
   elseif event == "AUCTION_HOUSE_CLOSED" then
     E.auctionHouseOpen = false
     if scan then
-      scan = nil
+      if scan.waiting then refundWaitingScan() else scan = nil end
       say("scan stopped: the auction house closed.")
     end
   elseif event == "ADDON_LOADED" and arg1 == "Blizzard_AuctionHouseUI" then

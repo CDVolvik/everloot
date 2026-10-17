@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { AwsClient } from "aws4fetch";
 import { parseRecords, type CanonicalUpload, type IntakeRecord } from "./intake";
 import { mergeCorpus, mergeCorpusBatches, publicRecords, type CorpusState } from "../../../kb/src/corpus";
-import { HISTORY_DAYS, emptyMarket, foldMarket, type MarketState } from "../../../kb/src/market";
+import { HISTORY_DAYS, MARKET_MAX_BYTES, emptyMarket, foldMarket, uploadScans, type MarketState } from "../../../kb/src/market";
 import { createSharingStore } from "./sharing-store";
 
 /**
@@ -73,7 +73,7 @@ export interface Market {
 }
 
 interface MarketSnapshot {
-  version: 2;
+  version: 3;
   generatedAt: string;
   state: MarketState;
   /** Uploads in the read window already folded in, so each is read once. Older ids are forgotten. */
@@ -132,6 +132,8 @@ export function createUploadStore(opts: {
   fetch?: typeof fetch;
   now?: () => Date;
   cacheMs?: number;
+  /** Largest market.json the rollup may read or write; defaults to MARKET_MAX_BYTES. Tests lower it. */
+  marketMaxBytes?: number;
   /** Recheck current publication authority on EVERY read, including cache hits. */
   publication?: (state: CorpusState) => Promise<IntakeRecord[]>;
 }) {
@@ -140,6 +142,7 @@ export function createUploadStore(opts: {
   const cacheMs = opts.cacheMs ?? 5 * 60 * 1000;
   let cached: { at: number; corpus: RawCorpus } | null = null;
   let marketCached: { at: number; market: Market } | null = null;
+  const marketMaxBytes = opts.marketMaxBytes ?? MARKET_MAX_BYTES;
 
   const cloud = opts.cloud;
   const unavailable = !cloud && process.env.NODE_ENV === "production";
@@ -283,20 +286,38 @@ export function createUploadStore(opts: {
     return { state: mergeCorpusBatches(previous ?? mergeCorpus(undefined, []), batches), missed };
   }
 
+  /**
+   * The auction parts of each upload, read only through the market's own schema: at most a few realms
+   * per upload, each part carrying the upload's reporter (a keyed hash of the upload address, set by
+   * the intake route; never the address).
+   */
   function marketScans(payloads: unknown[]) {
-    return payloads.flatMap((p) => parseRecords(rawRecordsOf(p)).records.filter((r) => r.kind === "auction_snapshot"));
+    return payloads.flatMap((p) => {
+      const reporter = (p as { reporter?: unknown } | null)?.reporter;
+      const raw = rawRecordsOf(p).filter((r) => (r as { kind?: unknown } | null)?.kind === "auction_snapshot");
+      return uploadScans(raw, typeof reporter === "string" ? reporter : undefined);
+    });
   }
 
-  async function readMarketSnapshot(): Promise<{ snapshot: MarketSnapshot; etag?: string } | null> {
+  /**
+   * The stored rollup and its ETag. `snapshot` is null when the object is unusable (wrong version, a
+   * shape the code does not know, or over the size limit): a rebuild may then replace it, a normal
+   * run may not.
+   */
+  async function readMarketSnapshot(): Promise<{ snapshot: MarketSnapshot | null; etag?: string } | null> {
     const res = await r2Fetch(MARKET_KEY, { method: "GET", headers: { "accept-encoding": "identity" } });
     if (res.status === 404) return null;
     if (!res.ok) throw new Error(`market read failed (${res.status})`);
-    const parsed = JSON.parse(await res.text()) as Partial<MarketSnapshot>;
+    const etag = res.headers.get("etag") ?? undefined;
+    const text = await res.text();
+    if (text.length > marketMaxBytes) return { snapshot: null, etag };
+    let parsed: Partial<MarketSnapshot>;
+    try { parsed = JSON.parse(text) as Partial<MarketSnapshot>; } catch { return { snapshot: null, etag }; }
     const state = parsed.state;
-    if (parsed.version !== 2 || state?.version !== 2 || !state.realms || typeof state.realms !== "object" || !Array.isArray(parsed.seenUploadIds)) {
-      throw new Error("market rollup is invalid");
+    if (parsed.version !== 3 || state?.version !== 3 || !state.realms || typeof state.realms !== "object" || !Array.isArray(parsed.seenUploadIds)) {
+      return { snapshot: null, etag };
     }
-    return { snapshot: parsed as MarketSnapshot, etag: res.headers.get("etag") ?? undefined };
+    return { snapshot: parsed as MarketSnapshot, etag };
   }
 
   /**
@@ -307,6 +328,7 @@ export function createUploadStore(opts: {
     if (!cloud) throw new Error("the market rollup needs the cloud store");
     const current = await readMarketSnapshot();
     if (current && (!current.etag || current.etag.startsWith("W/"))) throw new Error("market rollup has no strong ETag: cannot safely update it");
+    if (current && !current.snapshot && !opts.rebuild) throw new Error("market rollup is invalid: rebuild it with ?rebuild=1");
     const prev = opts.rebuild ? null : current?.snapshot ?? null;
     const seen = new Set(prev?.seenUploadIds ?? []);
     const rows = await listIndex(new Date(now().getTime() - MARKET_READ_DAYS * 86_400_000).toISOString());
@@ -321,16 +343,19 @@ export function createUploadStore(opts: {
       state = foldMarket(state, batch, now());
     }
     const snapshot: MarketSnapshot = {
-      version: 2,
+      version: 3,
       generatedAt: now().toISOString(),
       // With no new scans the fold still closes and prunes days as time passes.
       state: fresh.length ? state : foldMarket(state, [], now()),
       // Every listed upload is now folded in; ids outside the window drop out with it.
       seenUploadIds: rows.map((r) => r.id).sort(),
     };
+    const body = JSON.stringify(snapshot);
+    // The fold's own caps keep this far below the limit; this refuses to store anything past it.
+    if (Buffer.byteLength(body) > marketMaxBytes) throw new Error("market rollup would exceed its size limit; not written");
     const put = await r2Fetch(MARKET_KEY, {
       method: "PUT",
-      body: JSON.stringify(snapshot),
+      body,
       headers: { "content-type": "application/json", ...(current ? { "if-match": current.etag! } : { "if-none-match": "*" }) },
     });
     if (!put.ok) throw new Error(`market write failed (${put.status})`);
@@ -346,7 +371,7 @@ export function createUploadStore(opts: {
       if (cloud) {
         // No rollup yet (before the first cron run) is unavailable, not "no scans uploaded".
         const read = await readMarketSnapshot();
-        if (!read) throw new Error("market rollup not built yet");
+        if (!read?.snapshot) throw new Error("market rollup not built yet or unusable");
         market = { state: read.snapshot.state, dataAsOf: validTime(read.snapshot.generatedAt) };
       } else {
         const local = await readLocalPayloads();
