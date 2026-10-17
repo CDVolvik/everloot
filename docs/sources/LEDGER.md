@@ -2,7 +2,7 @@
 
 Every external source Everloot has used, linked to or read while building it, and what we did with
 each one. Complete as of 2026-10-16. A source joins this file before its data, link or code joins
-the project.
+the project. The rules behind it are in the [data policy](../DATA_POLICY.md).
 
 `docs/sources/source-catalog.md` is the research list of candidates and their terms. This ledger
 records what actually happened.
@@ -20,7 +20,7 @@ records what actually happened.
 |---|---|---|---|
 | [Warcraft Wiki dump, 2023-11-13](https://archive.org/details/wiki-warcraft.wiki.gg-20231113) (Internet Archive) | CC BY-SA 4.0 | `kb/src/importers/wiki-*.ts`; source id `warcraft-wiki-2023` | Yes: 257,110 pages (2026-10-05 release), 260,572 (2026-10-16 build) |
 | Curated entries, our own words | CC BY-SA 4.0 | `kb/curated/forever.yaml`; one entry, citing [Blizzard's announcement](https://news.blizzard.com/en-us/article/24302498/updated-9-24-pre-purchase-the-world-of-warcraft-forever-collectors-edition) | Yes: 1 row |
-| Players' Everloot uploads | CC BY-SA 4.0 once the upload consent sentence ships (open-source PR b); until then, the upload page's existing terms | Written only by `web/src/app/api/intake/route.ts`, through `putUpload` in `web/src/lib/upload-store.ts` | Public corpus only, after corroboration |
+| Players' Everloot uploads | CC BY-SA 4.0, stated on the upload page and by the companion before it sends anything | Written only by `web/src/app/api/intake/route.ts`, through `putUpload` in `web/src/lib/upload-store.ts` | Public corpus only, after corroboration |
 | Guild-family facts: [olympus-viii.org](https://olympus-viii.org/), [olympus-viii.com](https://olympus-viii.com/), [Blizzard forums](https://us.forums.blizzard.com/en/wow/t/olympus-is-recruiting/2355270), [X / Prism](https://x.com/fwprism/status/2101809316382847172), [WoW Forever Outpost](https://wofwforever.com/en/guides/wow-forever-olympus-guild/), [Olympus Guild addon](https://github.com/dnl-gentile/olympus-addon), [YouTube](https://www.youtube.com/watch?v=fihRIfTwd5k), [Dexerto](https://www.dexerto.com/gaming/wow-forever-player-creates-mod-that-hides-asmongolds-entire-guild-3412321/) | Facts in our own words, each with its page and date; no text copied | `web/src/data/families.ts`; each page read once by hand | Site only |
 | [Polestar](https://github.com/fitzforge/polestar) facts | GPL-3.0-only with a pack exception; we state facts and link, and copy no code or guide text | `web/src/data/polestar.ts`, read from the repository at `06c1c41` (v0.2.4) | Site only |
 | GitHub REST API (`api.github.com`): Polestar's public releases and open issues | GitHub API terms; public metadata, shown with links | `web/src/lib/polestar-github.ts`, hourly, anonymous unless a read-only token is set | Site only |
@@ -30,7 +30,7 @@ records what actually happened.
 | Source | Terms | Evidence | In releases |
 |---|---|---|---|
 | [Blizzard Battle.net API](https://develop.battle.net/) (`us.api.blizzard.com`) | Blizzard Developer API terms: no redistribution, no monetising the data | `kb/src/blizzard/client.ts`; source id `blizzard-api`, `publishable: false` | No. The release build refuses it, and `audit-sources` found it in no file |
-| Wowhead facts (not built) | Gated: Wowhead's Terms of Use must allow it first | `docs/superpowers/specs/2026-10-16-open-source-everloot-design.md`, section 2 | No |
+| Wowhead facts (not built) | Gated: Wowhead's Terms of Use must allow it first | [`docs/DATA_POLICY.md`](../DATA_POLICY.md), "Wowhead" | No |
 
 ## Link only
 
@@ -107,3 +107,6 @@ snapshot (`writeSnapshot`) only re-reads stored uploads. No script seeds the cor
   that would read pixels from the game window, built on wow-ai. It was never built: no screen- or
   memory-reading code exists in this repository or its history. Everloot uses only the file bridge,
   which reads the SavedVariables file the game writes.
+- **Uploads sent before the licence was stated.** Until the open-source licensing change reached
+  everloot.app, neither the upload page nor the companion said under what licence uploads are
+  published. Uploads received before then were sent without that statement.

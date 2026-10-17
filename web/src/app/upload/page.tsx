@@ -22,6 +22,7 @@ export default function UploadPage() {
           Collected by the Everloot addon while you play. You preview exactly
           what goes out before anything is sent — open-world sightings stay
           anonymous, guild data publishes only through your officers.
+          Uploaded observations are published under CC BY-SA 4.0, credited to Everloot contributors.
         </p>
       </section>
       <section className="rounded-xl border border-gold-500/20 p-5 space-y-3">

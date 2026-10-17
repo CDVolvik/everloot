@@ -24,6 +24,12 @@ function request(method: string, params?: unknown, headers = {}) {
   }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }) });
 }
 
+test("the server info links the source code (AGPL section 13)", async () => {
+  const handle = await handler();
+  const init = await handle(request("initialize", { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "test", version: "1" } }));
+  expect((await init.json()).result.serverInfo.websiteUrl).toBe("https://github.com/CDVolvik/everloot");
+});
+
 test("independent clients initialize and receive sourced knowledge plus the tracker", async () => {
   const handle = await handler();
   for (let i = 0; i < 2; i++) {
