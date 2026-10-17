@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 export const metadata: Metadata = {
   title: "Privacy Policy",
   description:
-    "How Everloot handles your data, cookies, and information shared with advertising partners.",
+    "How Everloot handles your data, cookies and usage statistics.",
   alternates: { canonical: "/privacy" },
 };
 
@@ -33,7 +33,16 @@ export default function PrivacyPage() {
       </p>
       <ul className="list-disc pl-6 text-fg-2">
         <li>
-          <strong>Analytics:</strong> no analytics service is currently enabled.
+          <strong>Analytics:</strong> the tools listed under &ldquo;Analytics&rdquo;
+          below. Each one is switched on only when we configure it, and the
+          ones that use cookies or browser storage wait for your consent.
+        </li>
+        <li>
+          <strong>Our own counters:</strong> our servers keep a daily count of
+          calls to our API and to the public MCP endpoint, by endpoint or tool
+          name. These counts contain no IP address, install id, search text or
+          other detail about who made the call. Rate limiting separately keeps
+          a one-way hash of an address for a short time to enforce limits.
         </li>
         <li>
           <strong>Email (optional):</strong> if you sign up to be notified when
@@ -62,8 +71,38 @@ export default function PrivacyPage() {
           sell them.
         </li>
         <li>
-          <strong>Cookies:</strong> we use cookies for session preferences and,
-          where enabled, for advertising via Google AdSense (see below).
+          <strong>Cookies:</strong> an essential login cookie if you sign in, and
+          your cookie choice, which is saved in your browser. Optional analytics
+          cookies and advertising cookies are off unless you accept them. We do
+          not show ads today.
+        </li>
+      </ul>
+
+      <h2 className="text-xl text-fg mt-6">Analytics</h2>
+      <p className="text-fg-2">
+        We may use the following, and only while they are configured. Anything
+        that sets cookies or stores an identifier in your browser loads only
+        after you accept analytics in the cookie banner.
+      </p>
+      <ul className="list-disc pl-6 text-fg-2">
+        <li>
+          <strong>Google Search Console and Bing Webmaster Tools</strong> show us
+          how our pages appear in search. They place a verification tag in the
+          page and collect nothing from your visit.
+        </li>
+        <li>
+          <strong>Cloudflare Web Analytics</strong> counts page views and page
+          speed without cookies. It does not run if your browser sends Do Not
+          Track or Global Privacy Control.
+        </li>
+        <li>
+          <strong>PostHog</strong> (consent required) records which features are
+          used, such as a search or an upload finishing. We send no search text,
+          names or file contents, and session recording is off.
+        </li>
+        <li>
+          <strong>Google Analytics</strong> (consent required) measures page views
+          and visits using cookies.
         </li>
       </ul>
 
@@ -101,8 +140,9 @@ export default function PrivacyPage() {
       <p className="text-fg-2">
         You can accept or reject optional cookies in the banner and reopen Cookie
         preferences from the footer on any page. The choice is stored locally.
-        Rejecting does not load advertising scripts. If ads already loaded,
-        withdrawing consent reloads the page without optional scripts. You can
+        Analytics and advertising are separate choices, and rejecting either
+        loads none of its scripts. If an optional script already loaded,
+        withdrawing consent reloads the page without it. You can
         also clear local storage through your browser settings.
       </p>
 

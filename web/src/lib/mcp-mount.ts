@@ -1,6 +1,7 @@
 import { createMcpHttpHandler } from "../../../kb/src/mcp-http-server";
 import { getRelease } from "./release";
 import { uploadStore } from "./upload-store";
+import { mcpToolMetrics, recordUsage } from "./usage-metrics";
 
 /**
  * The MCP server mounted on the site's own deployment (hosting memo option A). Same handler and release
@@ -46,6 +47,10 @@ export function createMount(options: { path: string; bearer: boolean }) {
         console.error("[mcp] knowledge release unavailable", err);
         return unavailable("Knowledge release unavailable");
       }
+    }
+    if (req.method === "POST") {
+      // Count tool calls by name only. The body is read from a clone so the handler still gets the original.
+      try { recordUsage(mcpToolMetrics(await req.clone().text(), options.bearer ? "mcp" : "mcp_public")); } catch {}
     }
     return handler(req);
   };
