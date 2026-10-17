@@ -30,7 +30,8 @@ spell tables (`ItemSparse`, `Item`, `SpellName`, `Spell`) of a game's current bu
 Blizzard's launcher downloads from its public CDN, the same files every player receives, and
 compare two builds field by field. Those snapshots and comparisons stay on the maintainer's
 machine. Encrypted blocks are skipped, never decrypted: no decryption keys are loaded. Nothing from
-the game files is on the site, in the dataset or in the MCP server.
+the game files is on the site, in the dataset or in the MCP server yet. When it is, it follows the
+two sections below: facts in the data, Blizzard's own presentation on pages.
 
 Publishing comes later, as a separate step. Once it ships, every entry from game files will:
 
@@ -51,13 +52,48 @@ Publishing comes later, as a separate step. Once it ships, every entry from game
 When players later see the same thing in the game, the entry will show both: found in the files
 and observed in play.
 
+**Blizzard's icons, tooltip text and window frame.** Decided 2026-10-18: our tools may show
+Blizzard's own talent and spell icons, the spell and talent tooltip text, and interface frame
+textures that make a tool look like the in-game window. Wowhead and most calculators do the same.
+The rules:
+
+- **Only from unencrypted files** in the public client, read the same way as above. Nothing that
+  needs a key.
+- **Stamped with the build** they came from, on the page and in the file name or manifest.
+- **Still Blizzard's.** We do not relicense them. They sit outside our CC BY-SA 4.0 data and our
+  AGPL-3.0 code, and each page that shows them says so. The licence notes of every release file
+  that includes them say so too.
+- **Credited on every page that shows them**: "Icons, tooltip text and interface art are
+  © Blizzard Entertainment, Inc. Everloot is a fan project and is not affiliated with or
+  endorsed by Blizzard."
+- **Pages only.** The data downloads, the API and the MCP server carry ids and facts, plus a link
+  to the page where the icon and text are shown. They do not carry icon files, tooltip text or
+  frame textures in bulk. If you want Blizzard's art in your own project, take it from the game
+  client yourself.
+- **Taken down on request.** If Blizzard asks us to remove any of it, a maintainer removes it
+  promptly, from the site first and from later releases after that. Blizzard, or anyone speaking
+  for it, can write to us at [everloot.app/contact](https://everloot.app/contact).
+- **Same labels and spoiler rules as other game file data.** Presentation does not change them:
+  an entry found only in the files still says *found in game files, unconfirmed*, and anything
+  that could spoil unreleased content stays hidden, icon and text included, until the reader turns
+  spoilers on.
+
+*Fan permissions are narrower than this.* As we read Blizzard's
+[video policy](https://www.blizzard.com/en-us/legal/dd76b654-f2c4-4aaa-ba49-ca3122de2376/blizzard-video-policy),
+its permissions for fan use of game material are non-commercial and Blizzard can revoke them. The
+older Blizzard fan-site FAQ is only quoted secondhand to us, so we treat what it says as
+unverified and rely on nothing from it. Everloot has no ads today. Before any ad goes live on a
+page that shows Blizzard's assets, a legal review of Blizzard's current terms is required, and
+until it is done there are no ads on those pages.
+
 **Open sources.** The lore archive is built from the Warcraft Wiki dump of 2023-11-13
 (CC BY-SA 4.0). We may add other openly licensed datasets later. Each one goes in the
 [source ledger](sources/LEDGER.md) with its licence and exact version before any of it ships.
 
 **Facts we write ourselves**, in our own words, each with the page it came from and the date.
 
-Game file data stays Blizzard's and is not under our licence. Everything else Everloot publishes is
+Game file data, and the icons, text and art shown on our pages, stay Blizzard's and are not under
+our licence. Everything else Everloot publishes is
 under CC BY-SA 4.0: anyone may reuse it with credit, and what they build from it must stay under the
 same licence.
 
@@ -70,6 +106,8 @@ same licence.
   SavedVariables file the game writes, and writes `/ask` answers into a file the addon loads after
   `/reload`.
 - **Decrypting game data.** Content Blizzard encrypts stays encrypted.
+- **Bulk exports of Blizzard's art or text.** Icons, tooltip text and frame textures appear on
+  pages only, never in the downloads, API or MCP server.
 - **Unreviewed spoilers.** Nothing from game files will be published without review, and anything
   that could spoil unreleased content will stay hidden unless the reader turns spoilers on.
 
@@ -105,5 +143,6 @@ of these holds:
   else stays local and is marked not publishable; the release build refuses it.
 - The one exception is the game file layer described above. That data is Blizzard's, so it never
   enters the CC BY-SA release; once publishing ships, it reaches the site only as its own labelled
-  layer, after a maintainer has reviewed it.
+  layer, after a maintainer has reviewed it. Icons, tooltip text and frame textures never go into
+  a pull request's data files; they are read from the client at build time.
 - If you are unsure whether a source is allowed, open an issue first.

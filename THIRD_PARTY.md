@@ -26,6 +26,13 @@ The site self-hosts the Geist and Geist Mono fonts by Vercel (SIL Open Font Lice
 addon uses an icon from the game client (`Interface\Icons\INV_Misc_Coin_02`) by path; no game art
 is included in this repository.
 
+Blizzard's own icons, spell and talent tooltip text and interface frame textures may be shown on
+our pages, read at build time from unencrypted files in the public game client and stamped with
+their build. They are © Blizzard Entertainment, Inc., stay Blizzard's, and are outside our CC BY-SA
+and AGPL licences. Release files that include any of them say so in their licence notes. The data
+downloads, API and MCP server carry ids and facts only. Rules and takedown contact:
+[`docs/DATA_POLICY.md`](docs/DATA_POLICY.md).
+
 ## Dependencies
 
 npm packages, production dependencies only, checked with `license-checker-rseidelsohn --production`
