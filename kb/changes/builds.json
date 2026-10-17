@@ -1,0 +1,37 @@
+{
+  "builds": [
+    {
+      "key": "wow_classic_beta:84bea4233331e390fda8724c6f91ffa5",
+      "product": "wow_classic_beta",
+      "buildConfig": "84bea4233331e390fda8724c6f91ffa5",
+      "buildId": 70450,
+      "version": "1.60.1.70450",
+      "regions": [
+        "eu",
+        "kr",
+        "tw",
+        "us"
+      ],
+      "firstSeen": "2026-10-17T09:14:36.180Z",
+      "lastSeen": "2026-10-17T09:14:36.180Z",
+      "status": "queued"
+    },
+    {
+      "key": "wow_classic_era:2417084b8b041ee120d02d4adf31b0bc",
+      "product": "wow_classic_era",
+      "buildConfig": "2417084b8b041ee120d02d4adf31b0bc",
+      "buildId": 70003,
+      "version": "1.15.9.70003",
+      "regions": [
+        "cn",
+        "eu",
+        "kr",
+        "tw",
+        "us"
+      ],
+      "firstSeen": "2026-10-17T09:14:36.180Z",
+      "lastSeen": "2026-10-17T09:14:36.180Z",
+      "status": "queued"
+    }
+  ]
+}

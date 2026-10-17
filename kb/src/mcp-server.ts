@@ -3,6 +3,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { auctionSightingsFromRecords, handleAuctionHistory } from "./auction-history.js";
 import { handlePlan } from "./bridge-plan.js";
+import { CHANGE_FILTERS, handleRecentChanges, type ChangeEntry } from "./changes.js";
 import { collectionFactsFromRecords, handleCollectionGap } from "./collection-gap.js";
 import { goldFactsFromRecords, handleGoldLedger } from "./gold-ledger.js";
 import { guildFactsFromRecords, handleGuildBoard } from "./guild-board.js";
@@ -270,7 +271,10 @@ export function handleGetByName(db: DB, args: { name: string; kind?: (typeof KIN
   return hits.map(formatHit).join("\n\n");
 }
 
-export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; market?: MarketLoader } = {}): McpServer {
+/** The merged blue-post and build timeline. Null means it is not connected, which is not the same as empty. */
+export type ChangesLoader = () => ChangeEntry[] | null | Promise<ChangeEntry[] | null>;
+
+export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; market?: MarketLoader; changes?: ChangesLoader } = {}): McpServer {
   const server = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION, websiteUrl: SOURCE_URL });
   const readFacts = <T>(tool: ToolName, render: (facts: T) => string) => fromTooledUploads(tool, render, options.corpus);
   server.registerTool(
@@ -485,6 +489,25 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; 
     }),
   );
   server.registerTool(
+    "recent_changes",
+    {
+      title: "Recent official changes for WoW: Forever",
+      description:
+        "Newest first: Blizzard blue posts (title, author, time, a short excerpt and the link to the original), hotfix posts, and new game builds. Excerpts only: Blizzard's post text is Blizzard's, so open the link for the full post. A build's time is when Everloot first saw it, not Blizzard's release time.",
+      inputSchema: {
+        filter: z.enum(CHANGE_FILTERS as [string, ...string[]]).default("all").describe("posts (blue posts), hotfixes, builds, or all."),
+        game: z.enum(["forever", "classic"]).optional().describe("Narrow to one game."),
+        limit: z.number().int().min(1).max(25).default(10),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    async (args) => {
+      let entries: ChangeEntry[] | null = null;
+      try { entries = (await options.changes?.()) ?? null; } catch { entries = null; }
+      return { content: [{ type: "text" as const, text: handleRecentChanges(entries, { ...args, filter: args.filter as (typeof CHANGE_FILTERS)[number] }) }] };
+    },
+  );
+  server.registerTool(
     "everloot_plan",
     {
       title: "Everloot implementation tracker",
@@ -499,8 +522,8 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; 
 }
 
 /** stdio transport: Claude, ChatGPT dev mode, and the Everloot companion all speak this. Never returns. */
-export async function serveStdio(db: DB): Promise<never> {
-  const server = createKnowledgeServer(db);
+export async function serveStdio(db: DB, changes?: ChangesLoader): Promise<never> {
+  const server = createKnowledgeServer(db, { changes });
   await server.connect(new StdioServerTransport());
   return new Promise<never>(() => {});
 }

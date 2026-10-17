@@ -1,0 +1,160 @@
+// @vitest-environment jsdom
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { analyticsConfig, needsAnalyticsConsent } from "./config";
+import { loadConsented, loadCookieless, optedOutBySignal, privacySignals, unloadConsented } from "./load";
+
+const posthogMock = vi.hoisted(() => ({ init: vi.fn(), opt_in_capturing: vi.fn(), opt_out_capturing: vi.fn(), __loaded: false }));
+vi.mock("posthog-js", () => ({ default: posthogMock }));
+import { track } from "./track";
+
+const GA = "G-ABCD1234";
+const PH = "phc_abcdefghij1234567890";
+const CF = "0123456789abcdef0123456789abcdef";
+
+afterEach(() => {
+  vi.clearAllMocks();
+  posthogMock.__loaded = false;
+  for (const c of document.cookie.split(";")) document.cookie = `${c.split("=")[0].trim()}=; max-age=0; path=/`;
+  localStorage.clear();
+  document.head.innerHTML = "";
+  delete window.gtag;
+  delete window.posthog;
+});
+
+describe("analyticsConfig", () => {
+  it("has every tool off when no variable is set", () => {
+    const c = analyticsConfig({});
+    expect(c.gaId).toBeUndefined();
+    expect(c.posthogKey).toBeUndefined();
+    expect(c.cfBeaconToken).toBeUndefined();
+    expect(needsAnalyticsConsent(c)).toBe(false);
+  });
+
+  it("treats malformed values as unset", () => {
+    const c = analyticsConfig({ NEXT_PUBLIC_GA_ID: "<script>", NEXT_PUBLIC_POSTHOG_KEY: "nope", NEXT_PUBLIC_CF_BEACON_TOKEN: "x", NEXT_PUBLIC_POSTHOG_HOST: "https://evil.example" });
+    expect(c.gaId).toBeUndefined();
+    expect(c.posthogKey).toBeUndefined();
+    expect(c.cfBeaconToken).toBeUndefined();
+    expect(c.posthogHost).toBe("https://eu.i.posthog.com");
+  });
+
+  it("accepts well-formed values", () => {
+    const c = analyticsConfig({ NEXT_PUBLIC_GA_ID: GA, NEXT_PUBLIC_POSTHOG_KEY: PH, NEXT_PUBLIC_POSTHOG_HOST: "https://us.i.posthog.com/", NEXT_PUBLIC_CF_BEACON_TOKEN: CF });
+    expect(c).toEqual({ gaId: GA, posthogKey: PH, posthogHost: "https://us.i.posthog.com", cfBeaconToken: CF });
+    expect(needsAnalyticsConsent(c)).toBe(true);
+  });
+});
+
+describe("script loading", () => {
+  it("loads nothing without env vars, even after consent", () => {
+    loadCookieless({}, {}, document);
+    loadConsented({}, window, document);
+    expect(document.head.querySelectorAll("script")).toHaveLength(0);
+    expect(window.gtag).toBeUndefined();
+  });
+
+  it("loads the cookieless beacon without consent and only once", () => {
+    loadCookieless({ cfBeaconToken: CF }, {}, document);
+    loadCookieless({ cfBeaconToken: CF }, {}, document);
+    const scripts = document.head.querySelectorAll("script");
+    expect(scripts).toHaveLength(1);
+    expect(scripts[0].src).toBe("https://static.cloudflareinsights.com/beacon.min.js");
+    expect(JSON.parse(scripts[0].getAttribute("data-cf-beacon")!)).toEqual({ token: CF });
+  });
+
+  it.each([{ doNotTrack: "1" }, { globalPrivacyControl: true }])("skips the beacon for %o", (signals) => {
+    expect(optedOutBySignal(signals)).toBe(true);
+    loadCookieless({ cfBeaconToken: CF }, signals, document);
+    expect(document.head.querySelectorAll("script")).toHaveLength(0);
+  });
+
+  it("loads Google Analytics only when asked to, and removes it on withdrawal", () => {
+    expect(document.getElementById("everloot-ga")).toBeNull();
+    loadConsented({ gaId: GA }, window, document);
+    expect((document.getElementById("everloot-ga") as HTMLScriptElement).src).toContain(`googletagmanager.com/gtag/js?id=${GA}`);
+    unloadConsented(document, window);
+    expect(document.getElementById("everloot-ga")).toBeNull();
+    expect(window.gtag).toBeUndefined();
+  });
+});
+
+describe("track", () => {
+  it("does nothing when no tool is loaded", () => {
+    expect(() => track("search", { surface: "lore" })).not.toThrow();
+  });
+
+  it("sends to loaded tools and survives one that throws", () => {
+    const capture = vi.fn();
+    window.posthog = { capture };
+    window.gtag = vi.fn();
+    track("addon_download", { addon: "polestar", to: "github" });
+    expect(capture).toHaveBeenCalledWith("addon_download", { addon: "polestar", to: "github" });
+    expect(window.gtag).toHaveBeenCalledWith("event", "addon_download", { addon: "polestar", to: "github" });
+    window.posthog = { capture: () => { throw new Error("boom"); } };
+    expect(() => track("search", { surface: "lore" })).not.toThrow();
+  });
+});
+
+describe("DNT and GPC signals", () => {
+  const nav = (props: object) => props as Navigator;
+  it.each([
+    [nav({ doNotTrack: "yes" }), undefined],
+    [nav({ msDoNotTrack: "1" }), undefined],
+    [nav({}), { doNotTrack: "1" } as unknown as Window],
+    [nav({ globalPrivacyControl: true }), undefined],
+  ])("keeps the beacon off for %o", (n, w) => {
+    const signals = privacySignals(n, w);
+    expect(optedOutBySignal(signals)).toBe(true);
+    loadCookieless({ cfBeaconToken: CF }, signals, document);
+    expect(document.head.querySelectorAll("script")).toHaveLength(0);
+  });
+
+  it("does not treat DNT 0 or no signal as an opt-out", () => {
+    expect(optedOutBySignal(privacySignals(nav({ doNotTrack: "0" }), { doNotTrack: "0" } as unknown as Window))).toBe(false);
+    expect(optedOutBySignal(privacySignals(nav({})))).toBe(false);
+  });
+});
+
+describe("PostHog consent gating", () => {
+  const config = { posthogKey: PH, posthogHost: "https://eu.i.posthog.com" };
+
+  it("never starts without a key", async () => {
+    loadConsented({}, window, document);
+    await new Promise((r) => setTimeout(r, 10));
+    expect(posthogMock.init).not.toHaveBeenCalled();
+  });
+
+  it("starts after consent", async () => {
+    loadConsented(config, window, document);
+    await vi.waitFor(() => expect(posthogMock.init).toHaveBeenCalledOnce());
+    expect(posthogMock.init.mock.calls[0][1]).toMatchObject({ autocapture: false, disable_session_recording: true });
+  });
+
+  it("does not initialise if consent is withdrawn while the import is in flight", async () => {
+    loadConsented(config, window, document);
+    unloadConsented(document, window);
+    await new Promise((r) => setTimeout(r, 10));
+    expect(posthogMock.init).not.toHaveBeenCalled();
+    expect(window.posthog).toBeUndefined();
+  });
+});
+
+describe("withdrawal cleanup", () => {
+  it("expires analytics cookies, ph_ storage and the dataLayer but leaves other data", () => {
+    document.cookie = "_ga=1; path=/";
+    document.cookie = "_ga_ABC123=1; path=/";
+    document.cookie = "ph_phc_key_posthog=1; path=/";
+    document.cookie = "essential=1; path=/";
+    localStorage.setItem("ph_phc_key_posthog", "{}");
+    localStorage.setItem("gg-cookie-consent-v1", "accepted");
+    (window as Window & { dataLayer?: unknown[] }).dataLayer = [1];
+    posthogMock.opt_out_capturing.mockClear();
+    window.posthog = { opt_out_capturing: posthogMock.opt_out_capturing };
+    unloadConsented(document, window);
+    expect(document.cookie).toBe("essential=1");
+    expect(localStorage.getItem("ph_phc_key_posthog")).toBeNull();
+    expect(localStorage.getItem("gg-cookie-consent-v1")).toBe("accepted");
+    expect((window as Window & { dataLayer?: unknown }).dataLayer).toBeUndefined();
+    expect(posthogMock.opt_out_capturing).toHaveBeenCalled();
+  });
+});

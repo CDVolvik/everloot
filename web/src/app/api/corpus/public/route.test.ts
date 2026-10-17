@@ -4,6 +4,7 @@ const store = vi.hoisted(() => ({ loadCorpus: vi.fn() }));
 vi.mock("@/lib/upload-store", () => ({ uploadStore: { loadCorpus: store.loadCorpus } }));
 
 import { GET } from "./route";
+import { ALL_RECORD_KINDS, PUBLIC_RECORD_KINDS } from "@/lib/intake";
 
 const base = { installId: "install-1", capturedAt: "2026-10-09T00:00:00.000Z" };
 const gold = { ...base, eventId: "e:1", kind: "gold_snapshot", character: "Thrall", realm: "Forever", currentCopper: 1, peakCopper: 1 };
@@ -52,4 +53,25 @@ test("auction scans are not corpus records, so asking for them is refused", asyn
   const response = await GET(req("?kinds=auction_snapshot"));
   expect(response.status).toBe(400);
   expect(store.loadCorpus).not.toHaveBeenCalled();
+});
+
+test("talent builds are held back from the public corpus", async () => {
+  const build = { ...base, eventId: "e:4", kind: "talent_snapshot", class: "MAGE", level: 30, group: 1, active: true, configId: 7, treeId: 786, exportStatus: "unavailable", points: 1, nodes: [{ nodeId: 1, ranks: 1 }] };
+  store.loadCorpus.mockResolvedValue({ uploads: 1, records: [gold, build] });
+  const body = await (await GET(req())).json();
+  expect(body.records).toEqual([published(gold)]);
+  expect((await GET(req("?kinds=talent_snapshot"))).status).toBe(400);
+});
+
+test("a kind that is not on the allowlist is never returned, filtered or not", async () => {
+  const unlisted = { ...base, eventId: "e:9", kind: "talent_snapshot", talents: [] };
+  store.loadCorpus.mockResolvedValue({ uploads: 1, records: [gold, unlisted, scan] });
+  const body = await (await GET(req())).json();
+  expect(body.records).toEqual([published(gold), published(scan)]);
+  expect((await GET(req("?kinds=talent_snapshot"))).status).toBe(400);
+});
+
+test("every record kind is either on the allowlist or named private here", () => {
+  const privateKinds = ["addon_seen", "talent_snapshot", "auction_snapshot"];
+  expect([...PUBLIC_RECORD_KINDS, ...privateKinds].sort()).toEqual([...ALL_RECORD_KINDS].sort());
 });

@@ -18,4 +18,9 @@ modules\professions.lua
 modules\ask.lua
 modules\addons.lua
 modules\mapbounds.lua
+modules\talents.lua
+modules\selftest.lua
+modules\plan.lua
+modules\raid_data.lua
+modules\raid.lua
 modules\prices.lua

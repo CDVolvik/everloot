@@ -1,6 +1,17 @@
-import { existsSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { auditSources } from "./audit-sources.js";
 import { BlizzardClient } from "./blizzard/client.js";
+import { ingestBluePosts, loadAccounts, loadFetchState, loadStore, saveFetchState, saveStore } from "./blue-posts.js";
+import { buildTimeline } from "./changes.js";
+import { checkBuilds, loadRegistry, recordBuilds, saveRegistry, versionsUrl } from "./builds.js";
+import { diffSnapshots } from "./client-diff.js";
+import { CASC_LIBRARY, extractTables, iconIds, NOT_IN_BUILD, openCdn, pinDefinitions, probeFiles } from "./client-extract.js";
+import { writeCatalogs } from "./client-catalog.js";
+import { writeWorldMapData } from "./world-map-data.js";
+import { clientSnapshotName, writeClientSnapshot } from "./client-snapshot.js";
+import { diffRaidBuffs, RaidBuffTable } from "./raid-buffs.js";
 import type { Game, NsKind, Region } from "./blizzard/namespaces.js";
 import { openDb, openExistingReadOnlyDb, type DB } from "./db.js";
 import { importCurated } from "./importers/curated.js";
@@ -11,6 +22,10 @@ import { openPublicSnapshot } from "./public-snapshot.js";
 import { search } from "./search.js";
 import { snapshot } from "./snapshot.js";
 import { validate } from "./validate.js";
+
+/** The committed changes data and the tracked accounts, found from this file so the cwd does not matter. */
+const CHANGES_DIR = fileURLToPath(new URL("../changes/", import.meta.url));
+const ACCOUNTS_FILE = fileURLToPath(new URL("../curated/blue-accounts.json", import.meta.url));
 
 const GAMES: Game[] = ["retail", "classic", "classic1x", "forever"];
 const KINDS: NsKind[] = ["static", "dynamic", "profile"];
@@ -31,6 +46,35 @@ const USAGE = `usage: npm run kb -- <command> --db <path>
     run it against a public release you are serving)
   snapshot <out.sqlite> --db <source knowledge base>   (writes a filtered public release + manifest,
     outside the database's own folder, e.g. data/release/kb.sqlite)
+  builds-check [--product wow_classic_beta,wow_classic_era] [--registry data/builds.json]
+    (asks Blizzard's public version service which builds exist; records new ones as queued.
+    Reads build identifiers only, never game files)
+  blue-check [--store <kb>/changes/blue-posts.json] [--accounts <kb>/curated/blue-accounts.json]
+    [--state data/blue-fetch-state.json] [--min-minutes 25]
+    (the blue post tracker: reads the tracked Blizzard staff accounts on the WoW forum and the official
+    WoW Bluesky feed, politely: robots.txt first, 1.5 s apart, skips a source asked less than 25
+    minutes ago, never follows a redirect, stops on 429 or a server error, reads at most 3 pages of 30 per
+    source and stops paging at what it already saw. Keeps title, author, time, link and a two-sentence
+    excerpt per post, never the full text. Run it every 30 minutes at most. The posts file is public and
+    committed under kb/changes (the same folder holds builds.json, written by the scheduled workflow
+    with: builds-check --registry changes/builds.json). The politeness state (last asked, Retry-After,
+    validators) is a separate file that stays out of git)
+  client-extract [--product wow_classic_beta] [--registry data/builds.json] [--out data/client] [--refresh]
+    (reads items, spells, talent (Trait) and spell effect tables of the product's current build from Blizzard's CDN into a snapshot
+    <out>/<product>-<build>-<buildconfig, 8 chars>.sqlite + manifest, and marks the build processed.
+    A table that fails to read is reported, the rest are still written, the build stays queued and
+    the exit is 1. Encrypted blocks are skipped, never decrypted. A build already extracted is skipped
+    unless --refresh is given. Table layouts come from one pinned WoWDBDefs commit, recorded in the
+    snapshot. Not for publication without review: see docs/DATA_POLICY.md)
+  client-catalog <snapshot.sqlite> [--out data/catalog] [--list lists/raid-buffs.yaml]
+    (writes <out>/<product>-<build>-<config>/talents/<class>.json, talents/index.json and raid-buffs.json
+    from a snapshot, stamped with the build and labelled "found in game files, unconfirmed". See
+    docs/TALENT_CATALOG.md. Not for publication)
+  raid-buffs-diff <old/raid-buffs.json> <new/raid-buffs.json>   (entries whose scope changed between builds)
+  client-diff <old.sqlite> <new.sqlite> [--out diff.json]   (field-level diff of two snapshots)
+  client-map <snapshot.sqlite> [--out ../web/src/data/game-data/map.json]
+    (zone rectangles in world coordinates, continents and dungeon and raid entrances from a client
+    snapshot, for the world map page. Game file data, stamped with the build. See docs/DATA_POLICY.md)
   audit-sources <file.sqlite...>   (rows per source and cached API rows in each file; exits 1 if anything
     is not publishable)
 
@@ -75,7 +119,8 @@ async function main(): Promise<number> {
   const flags = new Map<string, string>();
   const args: string[] = [];
   for (let i = 0; i < rest.length; i++) {
-    if (rest[i].startsWith("--")) flags.set(rest[i].slice(2), rest[++i] ?? "");
+    if (rest[i] === "--refresh" && (rest[i + 1] === undefined || rest[i + 1].startsWith("--"))) flags.set("refresh", "");
+    else if (rest[i].startsWith("--")) flags.set(rest[i].slice(2), rest[++i] ?? "");
     else args.push(rest[i]);
   }
   if (existsSync(".env")) process.loadEnvFile(".env");
@@ -149,7 +194,12 @@ async function main(): Promise<number> {
     case "serve-mcp": {
       const release = openPublicSnapshot(requireDbPath(flags, "serve-mcp"));
       closeOnExit(release.db);
-      await serveStdio(release.db);
+      await serveStdio(release.db, () => {
+        // The same files blue-check and builds-check write; absent files mean "not connected".
+        const posts = join(CHANGES_DIR, "blue-posts.json");
+        const builds = join(CHANGES_DIR, "builds.json");
+        return existsSync(posts) || existsSync(builds) ? buildTimeline(loadStore(posts).posts, loadRegistry(builds).builds) : null;
+      });
       return 0;
     }
     case "serve-mcp-http": {
@@ -181,6 +231,118 @@ async function main(): Promise<number> {
       const problems = rows === 0 ? ["no entities: the knowledge base is empty"] : validate(source);
       console.log(problems.length === 0 ? "ok" : problems.join("\n"));
       return problems.length === 0 ? 0 : 1;
+    }
+    case "builds-check": {
+      const products = (flags.get("product") || "wow_classic_beta,wow_classic_era").split(",").map((p) => p.trim()).filter(Boolean);
+      const path = flags.get("registry") || "data/builds.json";
+      const result = await checkBuilds(loadRegistry(path), products, async (product) => {
+        const res = await fetch(versionsUrl(product), { signal: AbortSignal.timeout(15_000) });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.text();
+      }, new Date());
+      saveRegistry(path, result.registry);
+      for (const b of result.added) console.log(`new build: ${b.product} ${b.version} (${b.buildConfig}) [${b.regions.join(" ")}]`);
+      for (const e of result.errors) console.error(`${e.product}: ${e.error}`);
+      console.log(`${result.added.length} new, ${result.registry.builds.length} known; registry ${path}`);
+      return result.errors.length ? 1 : 0;
+    }
+    case "blue-check": {
+      const path = flags.get("store") || join(CHANGES_DIR, "blue-posts.json");
+      const statePath = flags.get("state") || "data/blue-fetch-state.json";
+      const result = await ingestBluePosts({
+        store: { ...loadStore(path), fetched: loadFetchState(statePath) },
+        accounts: loadAccounts(flags.get("accounts") || ACCOUNTS_FILE),
+        // Redirects are not followed: robots.txt was read for the host we asked, not for wherever it points.
+        fetcher: (url, init) => fetch(url, { ...init, redirect: "manual", signal: AbortSignal.timeout(15_000) }),
+        now: new Date(),
+        minIntervalMs: Number(flags.get("min-minutes") ?? 25) * 60_000,
+      });
+      saveStore(path, result.store);
+      saveFetchState(statePath, result.store.fetched);
+      for (const p of result.added) console.log(`new post: [${p.game}] ${p.title} (${p.author}) ${p.url}`);
+      for (const s of result.skipped) console.log(`skipped ${s}`);
+      for (const e of result.errors) console.error(`${e.source}: ${e.error}`);
+      console.log(`${result.added.length} new, ${result.store.posts.length} kept; store ${path}`);
+      return result.errors.length ? 1 : 0;
+    }
+    case "client-extract": {
+      const product = flags.get("product") || "wow_classic_beta";
+      const path = flags.get("registry") || "data/builds.json";
+      const outDir = flags.get("out") || "data/client";
+      const now = new Date();
+      const { build, source } = await openCdn(product);
+      const out = join(outDir, clientSnapshotName(build));
+      let registry = loadRegistry(path);
+      const key = `${product}:${build.buildConfig}`;
+      if (!registry.builds.some((b) => b.key === key)) {
+        registry = recordBuilds(registry, product, { seqn: null, rows: [{ region: "us", buildConfig: build.buildConfig, cdnConfig: "", buildId: build.buildId, version: build.version, productConfig: "" }] }, now).registry;
+      }
+      if (!["", "yes", "true"].includes(flags.get("refresh") ?? "no") &&registry.builds.find((b) => b.key === key)?.status === "processed" && existsSync(out)) {
+        console.log(`${product} ${build.version} is already extracted: ${out}`);
+        return 0;
+      }
+      // Every layout the library reads for this run comes from this one WoWDBDefs commit (null: GitHub was unreachable, so it reads master).
+      const definitions = await pinDefinitions();
+      const { tables, missing } = await extractTables(source);
+      const fileStatus = probeFiles(source, iconIds(tables));
+      if (fileStatus) tables.push(fileStatus);
+      mkdirSync(outDir, { recursive: true });
+      const manifest = writeClientSnapshot(out, { ...build, extractedAt: now.toISOString(), library: CASC_LIBRARY, definitions }, tables);
+      // A table that failed to read leaves the build queued, so the next run tries it again.
+      const failed = missing.filter((m) => m.reason !== NOT_IN_BUILD);
+      if (!failed.length) {
+        registry = { builds: registry.builds.map((b) => (b.key === key ? { ...b, status: "processed" as const } : b)) };
+      }
+      saveRegistry(path, registry);
+      for (const t of manifest.tables) console.log(`${t.table}: ${t.rows} rows${t.encryptedBlocks ? `, ${t.encryptedBlocks} encrypted blocks skipped` : ""}`);
+      for (const m of missing) (m.reason === NOT_IN_BUILD ? console.log : console.error)(`${m.table}: ${m.reason}`);
+      console.log(`${product} ${build.version} -> ${out} (sha256 ${manifest.sha256.slice(0, 12)})`);
+      return failed.length ? 1 : 0;
+    }
+    case "client-diff": {
+      if (args.length < 2) break;
+      const diff = diffSnapshots(args[0], args[1]);
+      const out = flags.get("out");
+      if (out) writeFileSync(out, `${JSON.stringify(diff, null, 2)}
+`);
+      console.log(`${diff.from.product} ${diff.from.version} -> ${diff.to.product} ${diff.to.version}${diff.crossProduct ? " (different products)" : ""}`);
+      for (const t of diff.tables) console.log(`${t.table}: ${t.added.length} added, ${t.removed.length} removed, ${t.changed.length} changed`);
+      for (const w of diff.warnings) console.log(`warning: ${w}`);
+      return 0;
+    }
+    case "client-catalog": {
+      if (!args[0]) break;
+      const run = writeCatalogs(args[0], flags.get("out") || "data/catalog", flags.get("list") || "lists/raid-buffs.yaml");
+      for (const c of run.index.classes) console.log(`${c.className ?? c.classId}: ${c.trees} trees, ${c.nodes} nodes`);
+      for (const t of run.index.tables) console.log(`${t.table}: ${t.rows} rows${t.encryptedBlocks ? `, ${t.encryptedBlocks} encrypted blocks skipped` : ""}`);
+      for (const w of run.index.warnings) console.log(`warning: ${w}`);
+      if (run.raidBuffs.notFound.length) console.log(`raid buffs not found: ${run.raidBuffs.notFound.join(", ")}`);
+      console.log(`-> ${run.dir}`);
+      return 0;
+    }
+    case "client-map": {
+      if (!args[0]) break;
+      const data = writeWorldMapData(args[0]);
+      const out = flags.get("out") || "../web/src/data/game-data/map.json";
+      mkdirSync(dirname(out), { recursive: true });
+      writeFileSync(out, `${JSON.stringify(data, null, 2)}
+`);
+      for (const t of data.source.tables) console.log(`${t.table}: ${t.rows} rows${t.encryptedBlocks ? `, ${t.encryptedBlocks} encrypted blocks skipped` : ""}`);
+      for (const w of data.warnings) console.log(`warning: ${w}`);
+      console.log(`${data.continents.length} continents, ${data.zones.length} zones, ${data.entrances.length} entrances -> ${out}`);
+      return 0;
+    }
+    case "raid-buffs-diff": {
+      if (args.length < 2) break;
+      const [a, b] = args.map((p) => RaidBuffTable.parse(JSON.parse(readFileSync(p, "utf8"))));
+      console.log(`${a.build.product} ${a.build.version} -> ${b.build.product} ${b.build.version}`);
+      const changes = diffRaidBuffs(a, b);
+      for (const c of changes) {
+        console.log(`${c.label}: ${c.before ?? "none"} -> ${c.after ?? "none"}`);
+        if (c.before === c.after) console.log(`  by rank: ${c.beforeRanks} -> ${c.afterRanks}`);
+      }
+      console.log(`${changes.length} changed`);
+      return 0;
     }
     case "audit-sources": {
       if (!args.length) break;

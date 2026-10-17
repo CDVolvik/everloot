@@ -256,6 +256,46 @@ export const mapBounds = base.extend({
   message: "map bounds need a width and a height",
 });
 
+/** The game client's version and build from GetBuildInfo(), e.g. 1.60.1.70450. Addon 0.2.6+. */
+export const CLIENT_BUILD = z.string().max(32).regex(/^\d+(\.\d+)+$/);
+
+// --- Addon 0.2.7: the player's own talent build, read through the game's trait API ---
+
+/** One spent talent node. `nodeId` is the client's trait node id; `choice` is the zero-based entry of a choice node. */
+const talentNode = z.object({
+  nodeId: z.number().int().positive(),
+  ranks: z.number().int().min(1).max(50),
+  choice: z.number().int().min(0).max(3).optional(),
+});
+
+/**
+ * One talent build: one spec group of one character, no name. `loadoutString` is Blizzard's own export from
+ * C_Traits.GenerateImportString when the client allowed it; `exportStatus` says how that went.
+ */
+export const talentSnapshot = base.extend({
+  kind: z.literal("talent_snapshot"),
+  class: z.string().min(2).max(20).regex(/^[A-Za-z]+$/).describe("Class token from UnitClass, e.g. MAGE."),
+  level: z.number().int().min(1).max(100),
+  group: z.number().int().min(1).max(2).describe("Spec group: 1 primary, 2 secondary (dual spec from level 40)."),
+  active: z.boolean(),
+  configId: z.number().int().nonnegative(),
+  treeId: z.number().int().positive(),
+  specId: z.number().int().positive().optional(),
+  clientBuild: CLIENT_BUILD.optional(),
+  serializationVersion: z.number().int().nonnegative().max(255).optional(),
+  loadoutString: z.string().min(1).max(2000).regex(/^[A-Za-z0-9+/]+$/).optional(),
+  exportStatus: z.enum(["ok", "unavailable", "failed", "empty", "unexpected"]),
+  points: z.number().int().nonnegative().max(500),
+  nodes: z.array(talentNode).max(600),
+}).superRefine((row, ctx) => {
+  if (row.points !== row.nodes.reduce((sum, node) => sum + node.ranks, 0)) {
+    ctx.addIssue({ code: "custom", message: "talent points must equal the sum of node ranks", path: ["points"] });
+  }
+  if (new Set(row.nodes.map((node) => node.nodeId)).size !== row.nodes.length) {
+    ctx.addIssue({ code: "custom", message: "talent node ids must be unique", path: ["nodes"] });
+  }
+});
+
 const recordSchemas = {
   npc_sighting: npcSighting,
   loot: lootWindow,
@@ -279,22 +319,31 @@ const recordSchemas = {
   money_event: moneyEvent,
   addon_seen: addonSeen,
   map_bounds: mapBounds,
+  talent_snapshot: talentSnapshot,
 } as const;
 
 export type RecordKind = keyof typeof recordSchemas;
 export const ALL_RECORD_KINDS = Object.keys(recordSchemas) as RecordKind[];
+/**
+ * The kinds the public corpus API may return. An allowlist: a new kind is private until someone adds it
+ * here. Addon lists (`addon_seen`) are published only as the leaderboard's counts at three or more
+ * installs, never row by row.
+ */
+const PUBLIC_KIND_LIST = [
+  "npc_sighting", "loot", "quest", "vendor", "item_seen", "guild_snapshot", "raid_lockout", "attendance",
+  "loot_award", "gear_snapshot", "collection_catalog", "collection_owned", "auction_scan", "recipe_seen",
+  "price_seen", "recipe_observed", "trainer_seen", "gold_snapshot", "money_event", "map_bounds",
+] as const satisfies readonly RecordKind[];
+export const PUBLIC_RECORD_KINDS: readonly string[] = PUBLIC_KIND_LIST;
 
 const anyRecord = z.discriminatedUnion("kind", [
   npcSighting, lootWindow, questEvent, vendorList, itemSeen,
   guildSnapshot, raidLockout, attendance, lootAward, gearSnapshot,
   collectionCatalog, collectionOwned, auctionScan, auctionSnapshot, recipeSeen, priceSeen, recipeObserved, trainerSeen,
-  goldSnapshot, moneyEvent, addonSeen, mapBounds,
+  goldSnapshot, moneyEvent, addonSeen, mapBounds, talentSnapshot,
 ]);
 
 export type IntakeRecord = z.infer<typeof anyRecord>;
-
-/** The game client's version and build from GetBuildInfo(), e.g. 1.60.1.70450. Addon 0.2.6+. */
-export const CLIENT_BUILD = z.string().max(32).regex(/^\d+(\.\d+)+$/);
 
 export const uploadPayload = z.object({
   addonVersion: z.string().min(1).max(20),

@@ -1,6 +1,8 @@
 import { createMcpHttpHandler } from "../../../kb/src/mcp-http-server";
+import { loadTimeline } from "./changes";
 import { getRelease } from "./release";
 import { uploadStore } from "./upload-store";
+import { mcpToolMetrics, recordUsage } from "./usage-metrics";
 
 /**
  * The MCP server mounted on the site's own deployment (hosting memo option A). Same handler and release
@@ -33,6 +35,8 @@ export function createMount(options: { path: string; bearer: boolean }) {
           bearerToken: options.bearer ? token! : null,
           path: options.path,
           maxRequestBodyBytes: 1_048_576,
+          // The same timeline the /changes page shows, read from the files bundled with the site.
+          changes: () => loadTimeline(),
           // The public mount is limited per IP before it gets here; this is a per-instance backstop.
           rateLimitPerMinute: options.bearer ? 60 : 600,
           allowedOrigins: process.env.ALLOWED_ORIGINS?.split(",").map((s) => s.trim()).filter(Boolean) ?? DEFAULT_ORIGINS,
@@ -51,6 +55,18 @@ export function createMount(options: { path: string; bearer: boolean }) {
         return unavailable("Knowledge release unavailable");
       }
     }
-    return handler(req);
+    // Counting is opt-in. Only then is a clone of a small, declared-size body read, so the handler still
+    // gets the original and nothing changes for the default deployment.
+    const length = Number(req.headers.get("content-length"));
+    const counting = req.method === "POST" && process.env.EVERLOOT_USAGE_METRICS === "1" &&
+      req.headers.has("content-length") && Number.isFinite(length) && length <= 1_048_576;
+    let body: string | null = null;
+    if (counting) { try { body = await req.clone().text(); } catch {} }
+    const response = await handler(req);
+    // Only calls the handler accepted count: unauthenticated, invalid or rate-limited ones return non-2xx.
+    if (body !== null && response.status >= 200 && response.status < 300) {
+      recordUsage(mcpToolMetrics(body, options.bearer ? "mcp" : "mcp_public"));
+    }
+    return response;
   };
 }

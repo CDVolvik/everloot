@@ -1,0 +1,11 @@
+{
+  "note": "Blizzard staff accounts on us.forums.blizzard.com/en/wow whose posts the blue tracker keeps. Usernames and titles come from the forum's /about.json. Each account is one request per run, so add them one at a time and only when they post about Forever. Customer Support and Forum Moderator accounts are left out on purpose.",
+  "accounts": [
+    { "username": "Linxy", "title": "Community Manager" },
+    { "username": "Rommax-244181", "title": "WoW Developer" },
+    { "username": "Zorbrix-83447", "title": "Game Producer" },
+    { "username": "Chimes", "title": "WoW Developer" },
+    { "username": "Aggrend", "title": "WoW Game Developer" },
+    { "username": "Fwoibles", "title": "WoW Developer" }
+  ]
+}

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { ALL_RECORD_KINDS } from "@/lib/intake";
+import { PUBLIC_RECORD_KINDS as PUBLIC_KINDS } from "@/lib/intake";
 import { uploadStore } from "@/lib/upload-store";
+import { recordUsage } from "@/lib/usage-metrics";
 export const dynamic = "force-dynamic";
 
 /**
@@ -13,14 +14,9 @@ function published<T extends object>(record: T): Omit<T, "installId"> {
   return copy as Omit<T, "installId">;
 }
 
-/**
- * Addon lists are published only as the leaderboard's counts at three or more installs, never row by row.
- * Auction scans never enter the corpus; the market rollup publishes them as prices.
- */
-const PUBLIC_KINDS: readonly string[] = ALL_RECORD_KINDS.filter((kind) => kind !== "addon_seen" && kind !== "auction_snapshot");
-
 /** `?kinds=a,b` returns only those record kinds, so an MCP tool fetches what it reads, not the whole corpus. */
 export async function GET(req: Request) {
+  recordUsage("api.corpus_public");
   const param = new URL(req.url).searchParams.get("kinds");
   const kinds = param === null ? null : [...new Set(param.split(",").map((k) => k.trim()).filter(Boolean))];
   if (kinds && (kinds.length === 0 || kinds.some((k) => !PUBLIC_KINDS.includes(k)))) {
