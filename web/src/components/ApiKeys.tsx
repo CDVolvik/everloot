@@ -13,7 +13,7 @@ type State =
 const button = "inline-flex items-center min-h-11 px-3 rounded-lg border border-line text-sm text-fg hover:text-accent disabled:opacity-60";
 const day = (iso: string | null) => (iso ? iso.slice(0, 10) : "never");
 
-/** The signed-in player's keys on /connect: make one, see when each was last used, revoke one. */
+/** The signed-in player's keys on /connect: make one, see when each was last used, revoke one, delete a revoked one. */
 export default function ApiKeys() {
   const [state, setState] = useState<State>({ status: "loading" });
   const [label, setLabel] = useState("");
@@ -61,8 +61,8 @@ export default function ApiKeys() {
     if (made) { setFresh(made.token); setLabel(""); setReload(reload + 1); }
   }
 
-  async function revoke(id: string) {
-    if (await send("DELETE", `/api/keys?id=${encodeURIComponent(id)}`)) setReload(reload + 1);
+  async function revoke(id: string, erase = false) {
+    if (await send("DELETE", `/api/keys?id=${encodeURIComponent(id)}${erase ? "&erase=1" : ""}`)) setReload(reload + 1);
   }
 
   if (state.status === "loading") return <p className="text-sm text-muted">Checking your account…</p>;
@@ -88,7 +88,9 @@ export default function ApiKeys() {
                 <code className="font-mono text-fg">evl_…{k.hint}</code> {k.label && <>· {k.label} </>}· made {day(k.created_at)} · last used {day(k.last_used_at)}
                 {k.revoked_at && <> · revoked {day(k.revoked_at)}</>}
               </span>
-              {!k.revoked_at && <button type="button" className={button} disabled={busy} onClick={() => revoke(k.id)}>Revoke</button>}
+              {k.revoked_at
+                ? <button type="button" className={button} disabled={busy} onClick={() => revoke(k.id, true)}>Delete</button>
+                : <button type="button" className={button} disabled={busy} onClick={() => revoke(k.id)}>Revoke</button>}
             </li>
           ))}
         </ul>

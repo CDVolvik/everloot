@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-import { cleanLabel, createKey, KEYS_PER_ACCOUNT, listKeys, revokeKey, validKeyId } from "@/lib/api-keys";
+import { cleanLabel, createKey, deleteKey, KEYS_MADE_PER_DAY, KEYS_PER_ACCOUNT, listKeys, revokeKey, validKeyId } from "@/lib/api-keys";
 import { guardOn } from "@/lib/data-guard";
 import { getUser, siteUrl } from "@/lib/supabase/server";
 
 /**
  * The signed-in player's free API keys: GET lists them, POST makes one (shown once), DELETE ?id= revokes
- * one. Battle.net sign-in is the identity; nothing works until EVERLOOT_DATA_GUARD=1.
+ * one, DELETE ?id=&erase=1 deletes a revoked one with its counts. Battle.net sign-in is the identity;
+ * nothing works until EVERLOOT_DATA_GUARD=1.
  */
 export const dynamic = "force-dynamic";
 
@@ -38,7 +39,10 @@ export async function POST(req: Request) {
     let body: unknown = {};
     try { body = await req.json(); } catch {}
     const made = await createKey(user.id, cleanLabel((body as { label?: unknown } | null)?.label));
-    if (!made) return fail(409, `You already have ${KEYS_PER_ACCOUNT} keys. Revoke one first.`);
+    if ("refused" in made) {
+      return made.refused === "live_limit" ? fail(409, `You already have ${KEYS_PER_ACCOUNT} keys. Revoke one first.`)
+        : fail(429, `You made ${KEYS_MADE_PER_DAY} keys in the last day. Try again tomorrow.`);
+    }
     return NextResponse.json({ ok: true, ...made }, { status: 201, headers });
   } catch {
     return fail(503, "Keys are temporarily unavailable.");
@@ -51,6 +55,10 @@ export async function DELETE(req: Request) {
     if (user instanceof Response) return user;
     const id = new URL(req.url).searchParams.get("id");
     if (!validKeyId(id)) return fail(400, "Give the id of the key to revoke.");
+    if (new URL(req.url).searchParams.get("erase") === "1") {
+      if (!(await deleteKey(user.id, id))) return fail(404, "No revoked key with that id on this account. Revoke it first.");
+      return NextResponse.json({ ok: true }, { headers });
+    }
     if (!(await revokeKey(user.id, id))) return fail(404, "No live key with that id on this account.");
     return NextResponse.json({ ok: true }, { headers });
   } catch {

@@ -103,7 +103,10 @@ test("with the data guard on it states the limits it enforces, how to send a key
     for (const text of [
       `${REQUESTS_PER_HOUR} requests per hour for each IP address`,
       `${ANON_PER_HOUR} requests per hour for each IP address, ${ANON_PAGE} records a page`,
-      `${KEY_PER_HOUR.toLocaleString("en-US")} requests per hour across every endpoint`,
+      `${KEY_PER_HOUR.toLocaleString("en-US")} requests per hour for your account, across all its keys and every endpoint`,
+      "make up to 10 a day",
+      "daily request counts for 90 days",
+      "deleted 30 days after it was revoked",
       `${KEY_PAGE.toLocaleString("en-US")} records a page`,
       "Authorization: Bearer <key>",
       "Battle.net account",

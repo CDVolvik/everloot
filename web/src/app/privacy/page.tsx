@@ -61,7 +61,10 @@ export default function PrivacyPage() {
           Connect page, we store a one-way hash of it, the last four characters,
           your label, which account it belongs to, when it was made, last used
           and revoked, and a daily count of its requests per endpoint. Not what
-          was asked. Revoking a key stops it at once.
+          was asked. Revoking a key stops it at once. Daily counts are kept 90
+          days. A revoked key and its counts are deleted 30 days after it was
+          revoked, or at once when you delete it on the Connect page. To delete
+          your account and everything tied to it, email us (below).
         </li>
         <li>
           <strong>Uploads:</strong> files you send on the upload page

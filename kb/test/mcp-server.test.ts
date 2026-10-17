@@ -7,6 +7,7 @@ import { replaceSourceRows, type EntityInput } from "../src/entities.js";
 import {
   SERVER_INSTRUCTIONS,
   SERVER_NAME,
+  cachePublicCorpus,
   SERVER_VERSION,
   UPLOADS_UNSET,
   createKnowledgeServer,
@@ -16,6 +17,8 @@ import {
   handleSearch,
 } from "../src/mcp-server.js";
 import { CREDIT_LINE, MCP_CREDIT } from "../src/attribution.js";
+
+const UNAVAILABLE_TEXT = "Public corpus unavailable. These figures are unrecorded, not zero.";
 
 const row = (extId: string, name: string, body = "", extra: Partial<EntityInput> = {}): EntityInput => ({
   kind: "lore_page",
@@ -135,7 +138,9 @@ test("the server tells every client how to credit player data", () => {
   expect(SERVER_INSTRUCTIONS).toContain(CREDIT_LINE);
   expect(SERVER_INSTRUCTIONS).toContain("CC BY-SA 4.0");
   expect(SERVER_INSTRUCTIONS).toContain("stay Blizzard's");
-  expect(MCP_CREDIT).toContain(CREDIT_LINE);
+  // The line that ends each answer states facts only: nothing in it reads as an instruction to a model.
+  expect(MCP_CREDIT).toBe("Licence: CC BY-SA 4.0. Credit: Everloot contributors, https://everloot.app");
+  expect(MCP_CREDIT).not.toMatch(/(keep|you|must|always|ignore|show)/i);
 });
 
 test("a paged public corpus is read to the end, with EVERLOOT_API_KEY sent as a bearer key", async () => {
@@ -145,7 +150,7 @@ test("a paged public corpus is read to the end, with EVERLOOT_API_KEY sent as a 
     realm: "Moon Guard", character: "Thrall", currentCopper: n, peakCopper: n });
   const send = vi.fn()
     .mockResolvedValueOnce(Response.json({ ok: true, records: [gold(1)], dataAsOf: "2026-10-09T10:05:00.000Z", next: "https://everloot.example/api/corpus/public?offset=1" }))
-    .mockResolvedValueOnce(Response.json({ ok: true, records: [gold(2)], dataAsOf: "2026-10-09T10:15:00.000Z", next: null }));
+    .mockResolvedValueOnce(Response.json({ ok: true, records: [gold(2)], dataAsOf: "2026-10-09T10:05:00.000Z", next: null }));
   vi.stubGlobal("fetch", send);
   try {
     expect(await fromUploads((records) => `records:${records.length}`)).toBe(`records:2\nData as of 2026-10-09 10:05 UTC.\n${MCP_CREDIT}`);
@@ -154,13 +159,62 @@ test("a paged public corpus is read to the end, with EVERLOOT_API_KEY sent as a 
   } finally { vi.unstubAllEnvs(); vi.unstubAllGlobals(); }
 });
 
-test("a next link to another site is not followed", async () => {
+test("a next link that cannot be followed makes the answer unavailable, never a short one", async () => {
   vi.stubEnv("EVERLOOT_PUBLIC_CORPUS_URL", "https://everloot.example/api/corpus/public");
-  const send = vi.fn().mockResolvedValueOnce(Response.json({ ok: true, records: [], next: "https://elsewhere.example/steal" }));
-  vi.stubGlobal("fetch", send);
-  try {
-    expect(await fromUploads((records) => `records:${records.length}`)).toContain("records:0");
+  for (const next of ["https://elsewhere.example/steal", "not a url", 42]) {
+    const send = vi.fn().mockResolvedValueOnce(Response.json({ ok: true, records: [], next }));
+    vi.stubGlobal("fetch", send);
+    expect(await fromUploads(() => "renderer must not run")).toBe(UNAVAILABLE_TEXT);
     expect(send).toHaveBeenCalledTimes(1);
     expect(send.mock.calls[0][1].headers).toBeUndefined();
+  }
+  vi.unstubAllEnvs(); vi.unstubAllGlobals();
+});
+
+const pageOf = (n: number, dataAsOf: string, next: string | null) => Response.json({ ok: true, dataAsOf, next,
+  records: [{ kind: "gold_snapshot", installId: "install-one", eventId: `snap:${n}`, capturedAt: "2026-10-07T00:00:00Z",
+    realm: "Moon Guard", character: "Thrall", currentCopper: n, peakCopper: n }] });
+const SECOND = "https://everloot.example/api/corpus/public?offset=1";
+
+test("a failed later page makes the answer unavailable", async () => {
+  vi.stubEnv("EVERLOOT_PUBLIC_CORPUS_URL", "https://everloot.example/api/corpus/public");
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(pageOf(1, "2026-10-09T10:00:00.000Z", SECOND))
+    .mockResolvedValueOnce(Response.json({ ok: false, error: "Rate limited" }, { status: 429 })));
+  try {
+    expect(await fromUploads(() => "renderer must not run")).toBe(UNAVAILABLE_TEXT);
   } finally { vi.unstubAllEnvs(); vi.unstubAllGlobals(); }
+});
+
+test("pages from two snapshots are never mixed: the read starts again once, then gives up", async () => {
+  vi.stubEnv("EVERLOOT_PUBLIC_CORPUS_URL", "https://everloot.example/api/corpus/public");
+  const [a, b, c] = ["2026-10-09T10:00:00.000Z", "2026-10-09T10:10:00.000Z", "2026-10-09T10:20:00.000Z"];
+  const send = vi.fn()
+    .mockResolvedValueOnce(pageOf(1, a, SECOND)).mockResolvedValueOnce(pageOf(2, b, null))
+    .mockResolvedValueOnce(pageOf(3, b, SECOND)).mockResolvedValueOnce(pageOf(4, b, null));
+  vi.stubGlobal("fetch", send);
+  try {
+    expect(await fromUploads((records) => records.map((r) => (r as { eventId: string }).eventId).join(","))).toBe(
+      `snap:3,snap:4\nData as of 2026-10-09 10:10 UTC.\n${MCP_CREDIT}`);
+    expect(send).toHaveBeenCalledTimes(4);
+    send.mockReset()
+      .mockResolvedValueOnce(pageOf(1, a, SECOND)).mockResolvedValueOnce(pageOf(2, b, null))
+      .mockResolvedValueOnce(pageOf(3, b, SECOND)).mockResolvedValueOnce(pageOf(4, c, null));
+    expect(await fromUploads(() => "renderer must not run")).toBe(UNAVAILABLE_TEXT);
+  } finally { vi.unstubAllEnvs(); vi.unstubAllGlobals(); }
+});
+
+test("the stdio server reuses a corpus read for the snapshot interval, then reads again", async () => {
+  vi.stubEnv("EVERLOOT_PUBLIC_CORPUS_URL", "https://everloot.example/api/corpus/public");
+  vi.useFakeTimers({ toFake: ["Date"] });
+  const send = vi.fn().mockImplementation(async () => pageOf(1, "2026-10-09T10:00:00.000Z", null));
+  vi.stubGlobal("fetch", send);
+  cachePublicCorpus(10 * 60_000);
+  try {
+    await fromUploads(() => "one");
+    await fromUploads(() => "two");
+    expect(send).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(10 * 60_000);
+    await fromUploads(() => "three");
+    expect(send).toHaveBeenCalledTimes(2);
+  } finally { cachePublicCorpus(0); vi.useRealTimers(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); }
 });

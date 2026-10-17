@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { expect, test, vi } from "vitest";
-import { hashKey, KEYS_PER_ACCOUNT, newKey } from "./api-keys";
+import { hashKey, KEYS_MADE_PER_DAY, KEYS_PER_ACCOUNT, newKey, presentedKey, REVOKED_KEPT_DAYS, USAGE_KEPT_DAYS } from "./api-keys";
 import {
   admit, ANON_PAGE, ANON_PER_HOUR, attribution, attributionHeaders, KEY_PAGE, KEY_PER_HOUR, KEY_URL, pageOf, pageRequest,
 } from "./data-guard";
@@ -31,6 +31,10 @@ test("guard off: the MCP and market keep their existing per-IP quota", async () 
   const limited = await admit(req(), "mcp", { env: OFF, quota }) as Response;
   expect(limited.status).toBe(429);
   expect(limited.headers.get("retry-after")).toBe("60");
+  // No keys exist while the guard is off, so the refusal does not point at one.
+  const body = await limited.json();
+  expect(body).not.toHaveProperty("getAKey");
+  expect(body.error).not.toContain("key");
   expect(await admit(req(), "market", { env: OFF, quota })).toEqual({ tier: "open", pageMax: null });
   expect(quota.market).toHaveBeenCalledTimes(1);
 });
@@ -76,6 +80,7 @@ test("a key raises the limits: its own allowance, the larger page, and the anony
 test("a revoked or unknown key is a 401; a malformed one never reaches the database", async () => {
   const revoked = await admit(req(undefined, newKey().token), "corpus", { env: ON, quota: quotaMock(), fetch: keyRow({ allowed: false, retry_after: 0, key_ref: null }) }) as Response;
   expect(revoked.status).toBe(401);
+  expect(revoked.headers.get("www-authenticate")).toMatch(/^Bearer error="invalid_token"/);
   expect((await revoked.json()).error).toContain("/connect#keys");
   const send = vi.fn();
   expect(((await admit(req(undefined, "evl_short"), "corpus", { env: ON, quota: quotaMock(), fetch: send })) as Response).status).toBe(401);
@@ -144,10 +149,27 @@ test("attribution carries the licence, the credit line and the source page", () 
 });
 
 test("the limits in code are the limits the migration enforces", () => {
-  const sql = readFileSync(new URL("../../../supabase/migrations/20261019120000_data_guard.sql", import.meta.url), "utf8");
-  expect(sql).toContain(`keys := array['api_global', 'api:' || p_key];\n    limits := array[3000, ${ANON_PER_HOUR}];`);
+  // Compare without line endings or indentation, so a CRLF checkout reads the same as LF.
+  const flat = (text: string) => text.replace(/\s+/g, " ");
+  const sql = flat(readFileSync(new URL("../../../supabase/migrations/20261019120000_data_guard.sql", import.meta.url), "utf8"));
+  expect(sql).toContain(`keys := array['api_global', 'api:' || p_key]; limits := array[3000, ${ANON_PER_HOUR}];`);
+  expect(sql).toContain(`bucket_name := 'user:' || found_key.user_id::text;`);
   expect(sql).toContain(`if current_bucket.count >= ${KEY_PER_HOUR} then`);
-  expect(sql).toContain(`if live >= ${KEYS_PER_ACCOUNT} then return null; end if;`);
-  const quota = readFileSync(new URL("./intake-quota.ts", import.meta.url), "utf8");
+  expect(sql).toContain(`if live >= ${KEYS_PER_ACCOUNT} then refusal := 'live_limit';`);
+  expect(sql).toContain(`if made.count >= ${KEYS_MADE_PER_DAY} then refusal := 'daily_limit';`);
+  expect(sql).toContain("and 'read:public' = any(k.scopes);");
+  expect(sql).toContain(`where day < (now() at time zone 'utc')::date - ${USAGE_KEPT_DAYS};`);
+  expect(sql).toContain(`where revoked_at < now() - interval '${REVOKED_KEPT_DAYS} days';`);
+  expect(sql).toContain("(last_used_at is null or last_used_at < now() - interval '1 minute')");
+  const quota = flat(readFileSync(new URL("./intake-quota.ts", import.meta.url), "utf8"));
   expect(quota).toContain(`[["api_global", 3000], [\`api:\${value}\`, ${ANON_PER_HOUR}]]`);
+});
+
+test("the Bearer scheme is matched in any case; other schemes and other tokens are not keys", () => {
+  const token = newKey().token;
+  const withAuth = (value: string) => new Request("https://everloot.app/x", { headers: { authorization: value } });
+  for (const scheme of ["Bearer", "bearer", "BEARER", "bEaReR"]) expect(presentedKey(withAuth(`${scheme} ${token}`))).toBe(token);
+  expect(presentedKey(withAuth(`Basic ${token}`))).toBeNull();
+  expect(presentedKey(withAuth("Bearer some-oauth-token"))).toBeNull();
+  expect(presentedKey(new Request("https://everloot.app/x"))).toBeNull();
 });

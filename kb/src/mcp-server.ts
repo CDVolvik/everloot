@@ -169,40 +169,82 @@ async function fromLoader(loader: CorpusLoader, render: (records: unknown[]) => 
 /** Pages a self-hosted server follows at most; with a key (EVERLOOT_API_KEY) a page holds far more records. */
 const MAX_CORPUS_PAGES = 50;
 
+/** A page from a newer snapshot than the first page: start again, the corpus moved on mid-read. */
+class SnapshotMoved extends Error {}
+
+/**
+ * Every page of the feed at `url`. The site pages it when its data guard is on: follow `next`
+ * within one byte ceiling. A `next` that cannot be followed (another origin, a bad URL), or a page
+ * that fails, fails the whole read, so an answer is never built on part of the corpus.
+ */
+async function readCorpusPages(url: string, key: string | undefined): Promise<{ records: unknown[]; dataAsOf: unknown }> {
+  const init: RequestInit = { cache: "no-store", ...(key ? { headers: { authorization: `Bearer ${key}` } } : {}) };
+  const origin = new URL(url).origin;
+  const records: unknown[] = [];
+  let dataAsOf: unknown;
+  let size = 0;
+  let next: string | null = url;
+  for (let page = 0; next; page++) {
+    if (page >= MAX_CORPUS_PAGES) throw new Error("Public corpus has too many pages");
+    const response = await fetch(next, { ...init, signal: AbortSignal.timeout(10_000) });
+    if (!response.ok || Number(response.headers.get("content-length")) > 2_000_000) throw new Error("Public corpus too large or unavailable");
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error("Public corpus has no body");
+    const chunks: Uint8Array[] = [];
+    try {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        size += value.byteLength;
+        if (size > 2_000_000) { await reader.cancel(); throw new Error("Public corpus too large"); }
+        chunks.push(value);
+      }
+    } finally { reader.releaseLock(); }
+    const corpus = JSON.parse(Buffer.concat(chunks).toString("utf8")) as { ok?: boolean; records?: unknown; dataAsOf?: unknown; next?: unknown };
+    if (corpus.ok !== true || !Array.isArray(corpus.records)) throw new Error("Invalid public corpus");
+    if (page === 0) dataAsOf = corpus.dataAsOf;
+    else if (corpus.dataAsOf !== dataAsOf) throw new SnapshotMoved("Public corpus changed while paging");
+    records.push(...corpus.records);
+    if (corpus.next === null || corpus.next === undefined) next = null;
+    else if (typeof corpus.next === "string" && URL.canParse(corpus.next) && new URL(corpus.next).origin === origin) next = corpus.next;
+    else throw new Error("Public corpus next link cannot be followed");
+  }
+  return { records, dataAsOf };
+}
+
+/** How long a read of the public corpus is reused. Zero (the default) reads it on every answer. */
+let corpusCacheMs = 0;
+const corpusCache = new Map<string, { at: number; corpus: { records: unknown[]; dataAsOf: unknown } }>();
+
+/**
+ * Reuse each public corpus read for `ms`. The stdio server sets this to the site's snapshot interval,
+ * so a local server without a key does not page through the whole feed on every tool call.
+ */
+export function cachePublicCorpus(ms: number): void {
+  corpusCacheMs = ms;
+  corpusCache.clear();
+}
+
 async function fetchPublicCorpus(url: string): Promise<{ records: unknown[]; dataAsOf: unknown } | null> {
+  const key = process.env.EVERLOOT_API_KEY?.trim();
+  const cacheKey = `${key ? "key" : "anon"} ${url}`;
+  const cached = corpusCache.get(cacheKey);
+  if (cached && Date.now() - cached.at < corpusCacheMs) return cached.corpus;
   try {
-    const key = process.env.EVERLOOT_API_KEY?.trim();
-    const init: RequestInit = { cache: "no-store", signal: AbortSignal.timeout(10_000), ...(key ? { headers: { authorization: `Bearer ${key}` } } : {}) };
-    const records: unknown[] = [];
-    let dataAsOf: unknown;
-    let size = 0;
-    let next: string | null = url;
-    // The site pages the feed when its data guard is on; follow `next` within the same byte ceiling.
-    for (let page = 0; next; page++) {
-      if (page >= MAX_CORPUS_PAGES) throw new Error("Public corpus has too many pages");
-      const response = await fetch(next, init);
-      if (!response.ok || Number(response.headers.get("content-length")) > 2_000_000) throw new Error("Public corpus too large or unavailable");
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error("Public corpus has no body");
-      const chunks: Uint8Array[] = [];
+    let read: { records: unknown[]; dataAsOf: unknown } | null = null;
+    // One retry when the snapshot moved on mid-read; a second move fails rather than mixing snapshots.
+    for (let attempt = 0; !read; attempt++) {
       try {
-        for (;;) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          size += value.byteLength;
-          if (size > 2_000_000) { await reader.cancel(); throw new Error("Public corpus too large"); }
-          chunks.push(value);
-        }
-      } finally { reader.releaseLock(); }
-      const corpus = JSON.parse(Buffer.concat(chunks).toString("utf8")) as { ok?: boolean; records?: unknown; dataAsOf?: unknown; next?: unknown };
-      if (corpus.ok !== true || !Array.isArray(corpus.records)) throw new Error("Invalid public corpus");
-      records.push(...corpus.records);
-      if (page === 0) dataAsOf = corpus.dataAsOf;
-      next = typeof corpus.next === "string" && new URL(corpus.next).origin === new URL(url).origin ? corpus.next : null;
+        read = await readCorpusPages(url, key);
+      } catch (err) {
+        if (!(err instanceof SnapshotMoved) || attempt >= 1) throw err;
+      }
     }
-    const parsed = parseRecords(records);
+    const parsed = parseRecords(read.records);
     if (parsed.receipt.rejected.length) throw new Error("Invalid public records");
-    return { records: parsed.records, dataAsOf };
+    const corpus = { records: parsed.records, dataAsOf: read.dataAsOf };
+    if (corpusCacheMs > 0) corpusCache.set(cacheKey, { at: Date.now(), corpus });
+    return corpus;
   } catch { return null; }
 }
 
@@ -597,6 +639,8 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; 
 
 /** stdio transport: Claude, ChatGPT dev mode, and the Everloot companion all speak this. Never returns. */
 export async function serveStdio(db: DB, changes?: ChangesLoader): Promise<never> {
+  // The site's snapshot changes about every ten minutes; reading it more often gains nothing.
+  cachePublicCorpus(10 * 60_000);
   const server = createKnowledgeServer(db, { changes });
   await server.connect(new StdioServerTransport());
   return new Promise<never>(() => {});

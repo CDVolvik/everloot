@@ -52,3 +52,15 @@ test("makes a key, shows it once, and revokes one", async () => {
   expect(calls.some(([url, init]) => init?.method === "DELETE" && url === `/api/keys?id=${KEY.id}`)).toBe(true);
   expect(buttonNamed("Revoke")).toBeUndefined();
 });
+
+test("a revoked key offers Delete, which erases it", async () => {
+  const calls: string[] = [];
+  vi.stubGlobal("fetch", async (url: string, init?: RequestInit) => {
+    if (init?.method === "DELETE") { calls.push(url); return Response.json({ ok: true }); }
+    return Response.json({ ok: true, keys: [{ ...KEY, revoked_at: "2026-10-19T01:00:00Z" }], limit: 5 });
+  });
+  await act(async () => root.render(<ApiKeys />));
+  expect(buttonNamed("Revoke")).toBeUndefined();
+  await act(async () => buttonNamed("Delete")!.click());
+  expect(calls).toEqual([`/api/keys?id=${KEY.id}&erase=1`]);
+});

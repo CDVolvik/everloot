@@ -9,6 +9,10 @@ import { authQuery } from "./supabase/server";
  */
 export const KEY_PATTERN = /^evl_[a-f0-9]{64}$/;
 export const KEYS_PER_ACCOUNT = 5;
+export const KEYS_MADE_PER_DAY = 10;
+/** Daily counts are kept this long; a revoked key is deleted this long after revocation. */
+export const USAGE_KEPT_DAYS = 90;
+export const REVOKED_KEPT_DAYS = 30;
 const ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 export type KeySurface = "corpus" | "drops" | "market" | "mcp";
@@ -33,14 +37,16 @@ export function newKey(): { token: string; hash: string; hint: string } {
   return { token, hash: hashKey(token), hint: token.slice(-4) };
 }
 
-/** The key a request presents. Any other Authorization header is not ours and is ignored. */
+/** The key a request presents. The scheme is case-insensitive (RFC 7235); any other credential is not ours and is ignored. */
 export function presentedKey(req: Request): string | null {
-  return /^Bearer (evl_\S*)$/.exec(req.headers.get("authorization")?.trim() ?? "")?.[1] ?? null;
+  const match = /^(\S+) +(evl_\S*)$/.exec(req.headers.get("authorization")?.trim() ?? "");
+  return match && match[1].toLowerCase() === "bearer" ? match[2] : null;
 }
 
-/** A label is for the owner's own list: printable, trimmed, 60 characters at most. */
+/** A label is for the owner's own list: printable, trimmed, 60 characters at most (whole characters, as Postgres counts them). */
 export function cleanLabel(value: unknown): string {
-  return typeof value === "string" ? value.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 60) : "";
+  if (typeof value !== "string") return "";
+  return Array.from(value.replace(/[\u0000-\u001f\u007f]/g, "").trim()).slice(0, 60).join("").trim();
 }
 
 export function validKeyId(id: string | null): id is string {
@@ -53,16 +59,19 @@ export async function listKeys(userId: string): Promise<KeyRow[]> {
   );
 }
 
-/** Null when the account already has its five live keys. */
-export async function createKey(userId: string, label: string): Promise<{ id: string; token: string; hint: string } | null> {
+export type Refusal = "live_limit" | "daily_limit";
+
+/** A refusal when the account already has its five live keys, or made its ten keys today. */
+export async function createKey(userId: string, label: string): Promise<{ id: string; token: string; hint: string } | { refused: Refusal }> {
   const key = newKey();
-  const id = await authQuery<string | null>("rpc/create_api_key", {
+  const rows = await authQuery<Array<{ key_ref: string | null; refusal: string | null }>>("rpc/create_api_key", {
     method: "POST",
     body: JSON.stringify({ p_user_id: userId, p_token_hash: key.hash, p_hint: key.hint, p_label: label }),
   });
-  if (id === null) return null;
-  if (typeof id !== "string" || !ID_PATTERN.test(id)) throw new Error("Key was not saved");
-  return { id, token: key.token, hint: key.hint };
+  const row = Array.isArray(rows) && rows.length === 1 ? rows[0] : null;
+  if (row && row.key_ref === null && (row.refusal === "live_limit" || row.refusal === "daily_limit")) return { refused: row.refusal };
+  if (!row || typeof row.key_ref !== "string" || !ID_PATTERN.test(row.key_ref)) throw new Error("Key was not saved");
+  return { id: row.key_ref, token: key.token, hint: key.hint };
 }
 
 /** False when the key is not this user's or is already revoked. */
@@ -74,9 +83,23 @@ export async function revokeKey(userId: string, id: string): Promise<boolean> {
   return rows.length === 1;
 }
 
+/** Deletes a revoked key of this user, with its counts, now rather than after 30 days. False when there is none. */
+export async function deleteKey(userId: string, id: string): Promise<boolean> {
+  const rows = await authQuery<Array<{ id: string }>>(
+    `api_keys?id=eq.${encodeURIComponent(id)}&user_id=eq.${encodeURIComponent(userId)}&revoked_at=not.is.null&select=id`,
+    { method: "DELETE", headers: { prefer: "return=representation" } },
+  );
+  return rows.length === 1;
+}
+
+/** Retention, from the snapshot cron: counts older than 90 days, and keys revoked over 30 days ago. */
+export async function pruneKeys(): Promise<void> {
+  await authQuery("rpc/prune_api_keys", { method: "POST", headers: { prefer: "return=minimal" }, body: "{}" });
+}
+
 export interface KeyAdmission { allowed: boolean; retryAfter: number; keyId: string | null }
 
-/** One atomic call: is the key live, is its hourly allowance left; counts the request against it. */
+/** One atomic call: is the key live, is its account's hourly allowance left; counts the request against it. */
 export async function consumeKey(
   token: string, surface: KeySurface,
   env: Record<string, string | undefined> = process.env, doFetch: typeof fetch = fetch,

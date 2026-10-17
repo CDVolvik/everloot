@@ -10,5 +10,5 @@ export const CREDIT_LINE = `Data from Everloot (${SITE}), ${LICENCE}.`;
 /** Where the rules for reuse are written out for people. */
 export const TERMS_URL = `${SITE}/connect#licence`;
 
-/** The line an MCP answer built on player data ends with. */
-export const MCP_CREDIT = `Credit: ${CREDIT_LINE} Keep this line, or link ${SITE}, wherever you show these facts.`;
+/** The line an MCP answer built on player data ends with: a plain statement of fact, no instruction. */
+export const MCP_CREDIT = `Licence: ${LICENCE}. Credit: Everloot contributors, ${SITE}`;

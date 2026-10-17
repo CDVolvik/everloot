@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import ApiKeys from "@/components/ApiKeys";
 import Bracket from "@/components/Bracket";
-import { KEYS_PER_ACCOUNT } from "@/lib/api-keys";
+import { KEYS_MADE_PER_DAY, KEYS_PER_ACCOUNT, REVOKED_KEPT_DAYS, USAGE_KEPT_DAYS } from "@/lib/api-keys";
 import { ANON_PAGE, ANON_PER_HOUR, guardOn, KEY_PAGE, KEY_PER_HOUR } from "@/lib/data-guard";
 import { PUBLIC_RECORD_KINDS } from "@/lib/intake";
 import { CONNECT_EXAMPLES as ex, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR } from "./connect-data";
@@ -193,8 +193,8 @@ export default function ConnectPage() {
                 hour for each IP address, {ANON_PAGE} records a page.
               </li>
               <li>
-                A free key raises that to {KEY_PER_HOUR.toLocaleString("en-US")} requests per hour across every endpoint,
-                {" "}{KEY_PAGE.toLocaleString("en-US")} records a page. Send it as{" "}
+                A free key raises that to {KEY_PER_HOUR.toLocaleString("en-US")} requests per hour for your account, across
+                all its keys and every endpoint, {KEY_PAGE.toLocaleString("en-US")} records a page. Send it as{" "}
                 <code className="font-mono text-fg">Authorization: Bearer &lt;key&gt;</code>.
               </li>
               <li>
@@ -203,8 +203,15 @@ export default function ConnectPage() {
               </li>
               <li>
                 A key belongs to your Battle.net account, and we count requests per key. That is how we know who copies the
-                data in bulk, so we can ask what they are building. You can hold {KEYS_PER_ACCOUNT} keys and revoke any of
-                them here. We revoke a key that is used to republish the data without credit.
+                data in bulk, so we can ask what they are building. You can hold {KEYS_PER_ACCOUNT} keys, make up
+                to {KEYS_MADE_PER_DAY} a day, and revoke or delete any of them here. We revoke a key that is used to
+                republish the data without credit.
+              </li>
+              <li>
+                We keep a key&apos;s daily request counts for {USAGE_KEPT_DAYS} days. A revoked key and its counts are deleted{" "}
+                {REVOKED_KEPT_DAYS} days after it was revoked, or at once when you delete it. To delete your account and
+                everything tied to it, write to{" "}
+                <a href="mailto:hello@everloot.app" className={link}>hello@everloot.app</a>.
               </li>
               <li>
                 The site&apos;s pages have none of these limits. Search engines and AI assistants are welcome to read and
@@ -267,7 +274,7 @@ export default function ConnectPage() {
           <code className="font-mono text-fg">attribution</code> field with the licence, the credit line and the page the
           data comes from, and send the same in the <code className="font-mono text-fg">X-Everloot-Licence</code>,{" "}
           <code className="font-mono text-fg">X-Everloot-Credit</code> and <code className="font-mono text-fg">Link</code>{" "}
-          headers. MCP answers built on player data end with the credit line. Republishing the data without it breaks the
+          headers. MCP answers built on player data end with the licence and credit. Republishing the data without it breaks the
           licence.
         </p>
         <p className="text-sm text-muted">

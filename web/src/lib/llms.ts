@@ -76,8 +76,8 @@ function head(): string[] {
 function connect(): string[] {
   return [
     "## For AI assistants and developers",
-    bullet("Public corpus API", "/api/corpus/public", `Anonymous addon observations as JSON, without install ids. Filter with ?kinds=${PUBLIC_RECORD_KINDS.slice(0, 2).join(",")}. ${corpusAccess()} Credit: ${CREDIT_LINE}`),
-    `- [MCP server](${MCP_URL}): read-only, no sign-in, ${REQUESTS_PER_HOUR} requests per hour per IP. ${MCP_TOOLS.length} tools: ${MCP_TOOLS.map((t) => t.name).join(", ")}.`,
+    `- [MCP server](${MCP_URL}): the way for an AI assistant to answer a question from Everloot's data. Read-only, no sign-in, ${REQUESTS_PER_HOUR} requests per hour per IP. ${MCP_TOOLS.length} tools: ${MCP_TOOLS.map((t) => t.name).join(", ")}.`,
+    bullet("Public corpus API", "/api/corpus/public", `Raw anonymous addon observations in bulk, for developers building their own datasets; to answer a question, use the MCP server. Filter with ?kinds=${PUBLIC_RECORD_KINDS.slice(0, 2).join(",")}. ${corpusAccess()} Credit: ${CREDIT_LINE}`),
     bullet("Connect guide", "/connect", "Setup for Claude Code and other MCP clients, with examples."),
     bullet("Changes feed (RSS)", "/changes/feed.xml", "The newest 50 WoW: Forever builds and Blizzard posts."),
     "",
@@ -143,7 +143,7 @@ export function llmsFullTxt(entries: ChangeEntry[] = loadTimeline()): string {
     ...MCP_TOOLS.map((t) => `- ${t.name}: ${t.text}`),
     "",
     "## Public corpus API",
-    `GET ${CORPUS_URL}. Optional ?kinds= takes a comma-separated list of: ${PUBLIC_RECORD_KINDS.join(", ")}. Records carry no install id. ${corpusAccess()} Each response carries the licence and credit line in an attribution field and in X-Everloot-Licence, X-Everloot-Credit and Link headers. Credit: ${CREDIT_LINE}`,
+    `GET ${CORPUS_URL}. Raw records in bulk; for answering questions the MCP server above is the right tool. Optional ?kinds= takes a comma-separated list of: ${PUBLIC_RECORD_KINDS.join(", ")}. Records carry no install id. ${corpusAccess()} Each response carries the licence and credit line in an attribution field and in X-Everloot-Licence, X-Everloot-Credit and Link headers. Credit: ${CREDIT_LINE}`,
     "",
     "## Changes feed",
     `${url("/changes/feed.xml")} is RSS 2.0 with the newest 50 WoW: Forever entries.`,

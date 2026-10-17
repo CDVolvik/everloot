@@ -9,8 +9,8 @@ import { intakeQuota } from "./intake-quota";
  * EVERLOOT_DATA_GUARD=1 (set after 20261019120000_data_guard.sql is applied):
  * - the bulk endpoints, the corpus feed and the drop list, allow ANON_PER_HOUR requests per IP address
  *   per hour and return at most ANON_PAGE records a page, with a `next` link;
- * - a free key (Authorization: Bearer evl_…) allows KEY_PER_HOUR requests per hour across every
- *   endpoint and KEY_PAGE records a page, and every keyed request is counted against that key;
+ * - a free key (Authorization: Bearer evl_…) allows KEY_PER_HOUR requests per hour per account, across
+ *   all its keys and every endpoint, and KEY_PAGE records a page; every keyed request is counted per key;
  * - the per-question endpoints (public MCP, market prices) keep their existing per-IP limits.
  */
 export const ANON_PER_HOUR = 30;
@@ -42,12 +42,13 @@ export function attribution(sourcePath: string) {
   return { licence: LICENCE, licenceUrl: LICENCE_URL, credit: CREDIT_LINE, source: `${SITE}${sourcePath}`, terms: TERMS_URL };
 }
 
-function refused(status: number, error: string, extra: Record<string, string> = {}): Response {
-  return Response.json({ ok: false, error, getAKey: KEY_URL }, { status, headers: { ...NO_STORE, ...extra } });
+/** `getAKey` is sent only while keys exist (the guard is on); before that it would point at nothing. */
+function refused(status: number, error: string, on: boolean, extra: Record<string, string> = {}): Response {
+  return Response.json({ ok: false, error, ...(on ? { getAKey: KEY_URL } : {}) }, { status, headers: { ...NO_STORE, ...extra } });
 }
 
-function limited(retryAfter: number, error: string): Response {
-  return refused(429, error, { "retry-after": String(retryAfter) });
+function limited(retryAfter: number, error: string, on: boolean): Response {
+  return refused(429, error, on, { "retry-after": String(retryAfter) });
 }
 
 const KEY_HOWTO = `get a free key at ${KEY_URL} and send it as "Authorization: Bearer <key>"`;
@@ -67,16 +68,19 @@ export async function admit(
     const token = on ? presentedKey(req) : null;
     if (token) {
       const result = await consumeKey(token, surface, env, deps.fetch ?? fetch);
-      if (!result.keyId) return refused(401, `This API key is not valid or was revoked. Make a new one at ${KEY_URL}.`);
+      if (!result.keyId) {
+        return refused(401, `This API key is not valid or was revoked. Make a new one at ${KEY_URL}.`, on,
+          { "WWW-Authenticate": 'Bearer error="invalid_token", error_description="The key is unknown, revoked or expired"' });
+      }
       if (!result.allowed) {
-        return limited(result.retryAfter, `This key has used its ${KEY_PER_HOUR} requests for this hour. Try again in ${result.retryAfter} seconds, or write to hello@everloot.app if you need more.`);
+        return limited(result.retryAfter, `This account's keys have used their ${KEY_PER_HOUR} requests for this hour. Try again in ${result.retryAfter} seconds, or write to hello@everloot.app if you need more.`, on);
       }
       return { tier: "key", pageMax: KEY_PAGE, keyId: result.keyId };
     }
     if (surface === "mcp" || surface === "market") {
       const result = surface === "mcp" ? await quota.mcp(req) : await quota.market(req);
       if (!result.allowed) {
-        return limited(result.retryAfter, `Too many requests from this address. Try again in ${result.retryAfter} seconds${on ? `, or ${KEY_HOWTO}` : ""}.`);
+        return limited(result.retryAfter, `Too many requests from this address. Try again in ${result.retryAfter} seconds${on ? `, or ${KEY_HOWTO}` : ""}.`, on);
       }
       return { tier: on ? "anonymous" : "open", pageMax: null };
     }
@@ -84,11 +88,11 @@ export async function admit(
     const result = await quota.api(req);
     if (!result.allowed) {
       return limited(result.retryAfter,
-        `Without a key this endpoint answers ${ANON_PER_HOUR} requests per hour per address. Try again in ${result.retryAfter} seconds, or ${KEY_HOWTO}.`);
+        `Without a key this endpoint answers ${ANON_PER_HOUR} requests per hour per address. Try again in ${result.retryAfter} seconds, or ${KEY_HOWTO}.`, on);
     }
     return { tier: "anonymous", pageMax: ANON_PAGE };
   } catch {
-    return refused(503, "Rate limit storage unavailable. Try again later.");
+    return refused(503, "Rate limit storage unavailable. Try again later.", on);
   }
 }
 

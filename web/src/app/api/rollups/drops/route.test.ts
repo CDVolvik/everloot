@@ -41,13 +41,24 @@ test("guard on: the drop list is paged for anonymous callers and limited per IP"
   vi.resetModules();
   const rate = (i: number) => ({ itemId: i, public: true });
   vi.doMock("@/lib/rollup-compute", () => ({
-    computeRollups: async () => ({ rates: Array.from({ length: 700 }, (_, i) => rate(i)), measuredZeros: [], stats: { unreachable: false, dataAsOf: null } }),
+    computeRollups: async () => ({
+      rates: Array.from({ length: 400 }, (_, i) => rate(i)),
+      measuredZeros: Array.from({ length: 400 }, (_, i) => ({ itemId: 1000 + i, public: true })),
+      stats: { unreachable: false, dataAsOf: null },
+    }),
   }));
   const { GET: paged } = await import("./route");
   const body = await (await paged(req())).json();
-  expect(body.rates).toHaveLength(ANON_PAGE);
-  expect(body).toMatchObject({ totalRates: 700, offset: 0, limit: ANON_PAGE });
+  // Rates and measured zeros share one page: together never more than the cap.
+  expect(body.rates).toHaveLength(400);
+  expect(body.measuredZeros).toHaveLength(ANON_PAGE - 400);
+  expect(body).toMatchObject({ total: 800, totalRates: 400, totalMeasuredZeros: 400, offset: 0, limit: ANON_PAGE });
   expect(body.next).toBe(`https://everloot.app/api/rollups/drops?offset=${ANON_PAGE}&limit=${ANON_PAGE}`);
+  const rest = await (await paged(req(`?offset=${ANON_PAGE}`))).json();
+  expect(rest.rates).toHaveLength(0);
+  expect(rest.measuredZeros).toHaveLength(800 - ANON_PAGE);
+  expect(rest.measuredZeros[0].itemId).toBe(1000 + ANON_PAGE - 400);
+  expect(rest.next).toBeNull();
   store.api.mockResolvedValue({ allowed: false, retryAfter: 60 });
   expect((await paged(req())).status).toBe(429);
 });
