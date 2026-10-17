@@ -27,6 +27,7 @@ function fixture(extra: Partial<Record<string, Rows>> = {}): TableReader {
       { TraitNodeGroupID: 500, TraitNodeID: 1 }, { TraitNodeGroupID: 500, TraitNodeID: 2 }, { TraitNodeGroupID: 500, TraitNodeID: 3 },
       { TraitNodeGroupID: 501, TraitNodeID: 4 },
       { TraitNodeGroupID: 502, TraitNodeID: 2 }, { TraitNodeGroupID: 502, TraitNodeID: 3 },
+      { TraitNodeGroupID: 503, TraitNodeID: 1 }, // companion: the nodes above the gated row
     ]),
     TraitNode: t([
       { ID: 1, TraitTreeID: 900, PosX: 1000, PosY: 2000, Type: 0 },
@@ -58,17 +59,18 @@ function fixture(extra: Partial<Record<string, Rows>> = {}): TableReader {
       { ID: 5, LeftTraitNodeID: 1, RightTraitNodeID: 3, Type: 1 }, // deprecated type: left out
     ]),
     TraitCond: t([
-      { ID: 70, CondType: 0, TraitTreeID: 900, TraitNodeGroupID: 502, TraitNodeID: 0, SpentAmountRequired: 5 },
+      { ID: 70, CondType: 0, TraitTreeID: 900, TraitNodeGroupID: 502, TraitNodeID: 0, TraitCurrencyID: 3000, SpentAmountRequired: 5 },
       { ID: 71, CondType: 0, TraitTreeID: 900, TraitNodeGroupID: 0, TraitNodeID: 1, SpentAmountRequired: 2 },
     ]),
     TraitNodeGroupXTraitCond: t([{ TraitCondID: 70, TraitNodeGroupID: 502 }]),
     TraitNodeXTraitCond: t([{ TraitCondID: 71, TraitNodeID: 3 }]),
-    TraitTreeXTraitCurrency: t([{ TraitTreeID: 900, TraitCurrencyID: 3000 }]),
+    TraitTreeXTraitCurrency: t([{ ID: 1, TraitTreeID: 900, TraitCurrencyID: 3000, Index: 0 }]),
     TraitCurrencySource: t([
       { TraitCurrencyID: 3000, PlayerLevel: 11, Amount: 1, TraitNodeEntryID: 0 },
       { TraitCurrencyID: 3000, PlayerLevel: 10, Amount: 1, TraitNodeEntryID: 0 },
       { TraitCurrencyID: 3000, PlayerLevel: 5, Amount: 1, TraitNodeEntryID: 11 }, // granted with a node, not a level point
       { TraitCurrencyID: 3001, PlayerLevel: 12, Amount: 1, TraitNodeEntryID: 0 }, // another currency
+      { TraitCurrencyID: 3000, PlayerLevel: 13, Amount: 0, TraitNodeEntryID: 0 }, // gives nothing
     ]),
     ...extra,
   };
@@ -106,11 +108,36 @@ test("a spell whose name is not in the table gets a null name, not an invented o
   expect(run().classes[0].trees[1].nodes[0].entries[0]).toMatchObject({ spellId: 1006, name: null });
 });
 
-test("a row gate comes from the smaller group a node also belongs to; the tree group itself is no gate", () => {
+const gate = { amount: 5, gateGroupId: 502, currencyId: 3000, traitTreeId: 900 };
+
+test("a row gate comes from the smaller group a node also belongs to, and names its currency and class tree; the tree group itself is no gate", () => {
   const nodes = run().classes[0].trees[0].nodes;
   expect(nodes[0].unlock).toEqual({});
-  expect(nodes[1].unlock).toEqual({ pointsInTree: 5 });
-  expect(nodes[2].unlock).toEqual({ pointsInTree: 5, ranksInNode: { nodeId: 1, ranks: 2 } });
+  expect(nodes[1].unlock).toEqual({ spentRequired: { ...gate, scope: "tree", companionGroupId: 503 } });
+  expect(nodes[2].unlock).toEqual({ spentRequired: { ...gate, scope: "tree", companionGroupId: 503 }, ranksInNodes: [{ nodeId: 1, ranks: 2 }] });
+});
+
+const withoutCompanion = (): Rows => t([
+  { TraitNodeGroupID: 500, TraitNodeID: 1 }, { TraitNodeGroupID: 500, TraitNodeID: 2 }, { TraitNodeGroupID: 500, TraitNodeID: 3 },
+  { TraitNodeGroupID: 501, TraitNodeID: 4 }, { TraitNodeGroupID: 502, TraitNodeID: 2 }, { TraitNodeGroupID: 502, TraitNodeID: 3 },
+]);
+
+test("the gate scope is unconfirmed when no group matches the nodes above the row, and class when the group spans every talent tree", () => {
+  expect(run({ TraitNodeGroupXTraitNode: withoutCompanion() }).classes[0].trees[0].nodes[1].unlock.spentRequired).toMatchObject({ amount: 5, scope: "unconfirmed" });
+  const spanning = t([...withoutCompanion().values(), { TraitNodeGroupID: 504, TraitNodeID: 1 }, { TraitNodeGroupID: 504, TraitNodeID: 4 }]);
+  expect(run({ TraitNodeGroupXTraitNode: spanning }).classes[0].trees[0].nodes[1].unlock.spentRequired).toMatchObject({ scope: "class", companionGroupId: 504 });
+});
+
+test("a node under several conditions on other nodes keeps every one of them", () => {
+  const nodes = run({
+    TraitCond: t([
+      { ID: 70, CondType: 0, TraitTreeID: 900, TraitNodeGroupID: 502, TraitNodeID: 0, TraitCurrencyID: 3000, SpentAmountRequired: 5 },
+      { ID: 71, CondType: 0, TraitTreeID: 900, TraitNodeGroupID: 0, TraitNodeID: 1, TraitCurrencyID: 3000, SpentAmountRequired: 2 },
+      { ID: 72, CondType: 0, TraitTreeID: 900, TraitNodeGroupID: 0, TraitNodeID: 2, TraitCurrencyID: 3000, SpentAmountRequired: 1 },
+    ]),
+    TraitNodeXTraitCond: t([{ TraitCondID: 71, TraitNodeID: 3 }, { TraitCondID: 72, TraitNodeID: 3 }]),
+  }).classes[0].trees[0].nodes;
+  expect(nodes[2].unlock.ranksInNodes).toEqual([{ nodeId: 1, ranks: 2 }, { nodeId: 2, ranks: 1 }]);
 });
 
 test("edges: required and sufficient ones become prereqs, visual ones do not, and stray edges are left out and counted", () => {
@@ -123,17 +150,28 @@ test("edges: required and sufficient ones become prereqs, visual ones do not, an
   ]);
   expect(tree.nodes[1].prereqs).toEqual([{ nodeId: 1, rule: "any" }]);
   expect(tree.nodes[2].prereqs).toEqual([{ nodeId: 1, rule: "all" }]);
-  expect(index.warnings).toEqual(["2 edges left out: a node outside the tree, or an edge type this extractor does not know"]);
+  expect(index.warnings).toEqual([
+    "1 edges left out: a type that is deprecated in WoWDBDefs or that this extractor does not know",
+    "1 edges left out: they lead to a node outside the tree",
+  ]);
 });
 
-test("rows and columns are ranks of the positions, so a small offset stays in the same row or column", () => {
+test("rows and columns are cells of the tree's grid, so a small offset stays in the same row or column", () => {
   const nodes = run().classes[0].trees[0].nodes;
   expect(nodes.map((n) => [n.id, n.row, n.col])).toEqual([[1, 0, 0], [2, 1, 0], [3, 1, 1]]);
   expect(nodes[2]).toMatchObject({ x: 1610, y: 2610 });
 });
 
-test("point levels list the level of each point, from level sources only", () => {
-  expect(run().classes[0].pointLevels).toEqual([10, 11]);
+test("point levels list the level of each point, from level sources that give points, in the class tree's first currency", () => {
+  const c = run().classes[0];
+  expect(c.pointLevels).toEqual([10, 11]);
+  expect(c.pointCurrencyId).toBe(3000);
+  const swapped = run({ TraitTreeXTraitCurrency: t([
+    { ID: 1, TraitTreeID: 900, TraitCurrencyID: 3001, Index: 1 },
+    { ID: 2, TraitTreeID: 900, TraitCurrencyID: 3000, Index: 0 },
+  ]) }).classes[0];
+  expect(swapped).toMatchObject({ pointCurrencyId: 3000, pointLevels: [10, 11] });
+  expect(swapped.warnings[0]).toContain("2 currencies are listed");
 });
 
 test("a skill line shared by several classes maps to no class and is reported, not guessed", () => {
@@ -142,10 +180,74 @@ test("a skill line shared by several classes maps to no class and is reported, n
   expect(index.warnings[0]).toContain("does not map to exactly one class");
 });
 
-test("a build with no talent tables gives an empty catalog and no errors (Classic Era)", () => {
+test("a build with no talent tables gives an empty catalog with a warning for every missing table, not a quiet one", () => {
   const { classes, index } = buildTalentCatalog({ get: (n) => (n === "ChrClasses" ? t([{ ID: 1, Name_lang: "Warrior" }]) : undefined), build, tables: [] });
   expect(classes).toEqual([]);
   expect(index.classes).toEqual([]);
+  expect(index.warnings).toContain("required table TraitNode is not in this snapshot");
+  expect(index.warnings).toContain("required table SkillLineXTraitTree is not in this snapshot");
+  expect(index.warnings).toContain("no class talent trees were found in this snapshot");
+});
+
+test("a required table with no rows is reported too", () => {
+  expect(run({ TraitEdge: t([]) }).index.warnings).toContain("required table TraitEdge has no rows");
+});
+
+/**
+ * One made-up class with one talent tree of nodes at the given positions, each with the given spell.
+ * Grid origin is offset (x 20 mod 600), as it is in the real tables.
+ */
+function gridClass(nodes: { id: number; x: number; y: number; spell: number }[]) {
+  const tables: Record<string, Rows> = {
+    ChrClasses: t([{ ID: 1, Name_lang: "Warrior" }]),
+    SkillLine: t([{ ID: 10, DisplayName_lang: "Alpha" }]),
+    SkillRaceClassInfo: t([{ ID: 1, SkillID: 10, ClassMask: 1 }]),
+    SkillLineXTraitTree: t([{ ID: 1, SkillLineID: 10, TraitTreeID: 900 }]),
+    TraitNodeGroupDisplayInfo: t([{ ID: 1, TraitNodeGroupID: 500, SkillLineID: 10, OrderIndex: 0, TraitTreeID: 900 }]),
+    TraitNodeGroupXTraitNode: t(nodes.map((n) => ({ TraitNodeGroupID: 500, TraitNodeID: n.id }))),
+    TraitNode: t(nodes.map((n) => ({ ID: n.id, TraitTreeID: 900, PosX: n.x, PosY: n.y, Type: 0 }))),
+    TraitNodeXTraitNodeEntry: t(nodes.map((n) => ({ TraitNodeID: n.id, TraitNodeEntryID: n.id + 1000, Index: 0 }))),
+    TraitNodeEntry: t(nodes.map((n) => ({ ID: n.id + 1000, TraitDefinitionID: n.id + 2000, MaxRanks: 1 }))),
+    TraitDefinition: t(nodes.map((n) => ({ ID: n.id + 2000, SpellID: n.spell }))),
+  };
+  return buildTalentCatalog({ get: (n) => tables[n], build, tables: [] }).classes[0];
+}
+
+/** A 3 by 3 block of nodes on a grid whose origin is x 420, y 330 (as in the real tables), spells 1 to 9. */
+const block = Array.from({ length: 9 }, (_, i) => ({ id: i + 1, x: 1020 + (i % 3) * 600, y: 2130 + Math.floor(i / 3) * 600, spell: i + 1 }));
+
+test("rows and columns start at 0 whatever the grid's offset, and the stored position is kept", () => {
+  const nodes = gridClass(block).trees[0].nodes;
+  expect(nodes.map((n) => [n.id, n.row, n.col])).toEqual([[1, 0, 0], [2, 0, 1], [3, 0, 2], [4, 1, 0], [5, 1, 1], [6, 1, 2], [7, 2, 0], [8, 2, 1], [9, 2, 2]]);
+  expect(nodes[4]).toMatchObject({ x: 1620, y: 2730 });
+});
+
+test("a stored position ten times too large on one axis is put on the grid, flagged, and reported", () => {
+  const c = gridClass([...block, { id: 10, x: 1620, y: 39_300, spell: 10 }, { id: 11, x: 34_200, y: 3330, spell: 11 }]);
+  const nodes = c.trees[0].nodes;
+  expect(nodes.find((n) => n.id === 10)).toMatchObject({ x: 1620, y: 39_300, row: 3, col: 1, positionRepaired: true });
+  expect(nodes.find((n) => n.id === 11)).toMatchObject({ row: 2, col: 4, positionRepaired: true });
+  expect(nodes.find((n) => n.id === 5)?.positionRepaired).toBeUndefined();
+  expect(c.warnings.filter((w) => w.includes("ten times too large"))).toHaveLength(2);
+});
+
+test("an off-grid node that repeats the spell of an on-grid node is a leftover: left out and reported", () => {
+  const c = gridClass([...block, { id: 12, x: 1620, y: 27_300, spell: 5 }]);
+  expect(c.trees[0].nodes.map((n) => n.id)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  expect(c.warnings).toEqual(["Alpha: node 12 repeats the spell of node 5 and sits off the grid; left out"]);
+});
+
+test("two on-grid nodes with the same spell are both kept, with a warning", () => {
+  const c = gridClass([...block, { id: 13, x: 3420, y: 2130, spell: 5 }]);
+  expect(c.trees[0].nodes).toHaveLength(10);
+  expect(c.warnings).toEqual(["Alpha: nodes 5, 13 carry the same spell and are all kept"]);
+});
+
+test("an off-grid node that cannot be corrected stays, and its cell is flagged as a guess", () => {
+  const c = gridClass([...block, { id: 14, x: 1620, y: 777_777, spell: 14 }]);
+  expect(c.trees[0].nodes).toHaveLength(10);
+  expect(c.warnings[0]).toContain("node 14 is off the grid");
+  expect(c.warnings[0]).toContain("could not be corrected");
 });
 
 test("each entry carries the icon file id with its file status, the raw text with its tokens, and the values the tokens use", () => {

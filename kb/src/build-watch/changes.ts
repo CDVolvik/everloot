@@ -10,6 +10,8 @@ import { z } from "zod";
 import { LABEL, Unlock } from "../talents/catalog.js";
 import { Scope } from "../raid-buffs.js";
 
+const ScopeOrMixed = z.union([Scope, z.literal("mixed")]);
+
 export const CHANGE_SCHEMA = "everloot.game-changes/1";
 
 export const BuildRef = z.object({ version: z.string(), buildId: z.number().int(), buildConfig: z.string() });
@@ -29,9 +31,11 @@ const Where = z.object({
 const Position = z.object({ tree: z.string().nullable(), x: z.number().int(), y: z.number().int(), row: z.number().int(), col: z.number().int() });
 const Prereqs = z.array(z.object({ nodeId: z.number().int(), rule: z.enum(["any", "all"]) }));
 
+const ClassRef = z.object({ classId: z.number().int(), className: z.string().nullable(), spoiler: z.boolean() });
+
 export const TalentChanges = z.object({
-  classesAdded: z.array(z.string()),
-  classesRemoved: z.array(z.string()),
+  classesAdded: z.array(ClassRef),
+  classesRemoved: z.array(ClassRef),
   added: z.array(Where.extend({ kind: z.enum(["single", "tiered", "choice"]), maxRanks: z.number().int() })),
   removed: z.array(Where.extend({ maxRanks: z.number().int() })),
   moved: z.array(Where.extend({ from: Position, to: Position })),
@@ -56,7 +60,7 @@ export type TalentChanges = z.infer<typeof TalentChanges>;
 export const RaidBuffChanges = z.object({
   /** The build the raid buff table was compared with; null when no earlier table was on hand. */
   comparedTo: BuildRef.nullable(),
-  scopeChanges: z.array(z.object({ id: z.string(), label: z.string(), before: Scope.nullable(), after: Scope.nullable(), spoiler: z.boolean() })),
+  scopeChanges: z.array(z.object({ id: z.string(), label: z.string(), before: ScopeOrMixed.nullable(), after: ScopeOrMixed.nullable(), beforeRanks: z.string(), afterRanks: z.string(), spoiler: z.boolean() })),
 });
 
 export const ChangeEntry = z.object({

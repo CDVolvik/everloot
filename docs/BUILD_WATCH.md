@@ -38,6 +38,14 @@ index is kept in the Actions cache (about 300 MB) so a second new build does not
 GitHub switches off scheduled runs in a repository with no activity for 60 days, which would only
 matter if the repository goes quiet.
 
+## Tokens
+
+The workflow has three jobs so that no secret shares a job with code that installs packages or parses
+downloaded files. `watch` has a read-only token and no credentials left in the checkout. `publish` runs
+no npm and no parser; it alone has write access, and `BUILD_WATCH_TOKEN` appears only in its push step,
+passed to git for that call. `report` can only write issues. The raid buff baseline is cached only after
+`publish` succeeds. Branches are replaced with `--force-with-lease`.
+
 ## Repeated failure
 
 A failed run is red and GitHub notifies the usual way. When two scheduled runs in a row fail, the

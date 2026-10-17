@@ -5,7 +5,7 @@ import { parse } from "yaml";
 import { versionsUrl } from "../builds.js";
 import { extractFromCdn } from "./cdn-extract.js";
 import { BRANCH_PREFIX, type PrRef } from "./plan.js";
-import { runWatch, WatchConfig, type WatchDeps } from "./watch.js";
+import { PRODUCT_ID, runWatch, WatchConfig, type WatchDeps } from "./watch.js";
 
 /** Pull requests of build branches, any state. Needs the `gh` CLI signed in (in Actions it is). */
 export function listPrsWithGh(): PrRef[] {
@@ -28,6 +28,12 @@ export async function buildWatchCommand(flags: Map<string, string>): Promise<num
   const configPath = flags.get("config") || "lists/build-watch.yaml";
   const config = WatchConfig.parse(parse(readFileSync(configPath, "utf8")));
   const only = flags.get("product")?.split(",").map((p) => p.trim()).filter(Boolean);
+  for (const p of only ?? []) {
+    if (!PRODUCT_ID.test(p)) {
+      console.error(`--product ${JSON.stringify(p.slice(0, 40))} is not a Blizzard product id (lowercase letters, digits and underscores)`);
+      return 1;
+    }
+  }
   if (only?.length) {
     // A product named on the command line but missing from the config is treated as not live.
     config.products = only.map((product) => config.products.find((p) => p.product === product) ?? { product, label: product, live: false });

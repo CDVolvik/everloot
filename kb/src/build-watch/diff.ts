@@ -30,11 +30,12 @@ export function diffTalents(before: CommittedClass[], after: CommittedClass[], s
   const out: TalentChanges = {
     classesAdded: [], classesRemoved: [], added: [], removed: [], moved: [], ranks: [], gates: [], prereqs: [], replaced: [], spellValues: [], pointLevels: [],
   };
-  const label = (c: CommittedClass) => c.className ?? `class ${c.classId}`;
+  const ref = (c: CommittedClass) => ({ classId: c.classId, className: c.className, spoiler });
+  const byId = (x: { classId: number }, y: { classId: number }) => x.classId - y.classId;
   const was = new Map(before.map((c) => [c.classId, c]));
   const now = new Map(after.map((c) => [c.classId, c]));
-  out.classesAdded = [...now.values()].filter((c) => !was.has(c.classId)).map(label).sort();
-  out.classesRemoved = [...was.values()].filter((c) => !now.has(c.classId)).map(label).sort();
+  out.classesAdded = [...now.values()].filter((c) => !was.has(c.classId)).map(ref).sort(byId);
+  out.classesRemoved = [...was.values()].filter((c) => !now.has(c.classId)).map(ref).sort(byId);
   for (const c of after) {
     const old = was.get(c.classId);
     if (old && !isDeepStrictEqual(old.pointLevels, c.pointLevels)) {

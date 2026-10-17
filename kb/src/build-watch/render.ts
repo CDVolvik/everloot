@@ -4,8 +4,11 @@ import type { ChangeEntry } from "./changes.js";
 /** Names come from game files. Keep them from turning into links, mentions, HTML or table breaks. */
 const clean = (s: string) => s.replace(/[`@<>|\r\n[\]]/g, " ").replace(/\s+/g, " ").trim();
 const val = (v: unknown) => (v === null || v === undefined ? "none" : typeof v === "object" ? clean(JSON.stringify(v)) : clean(String(v)));
-const unlock = (u: { pointsInTree?: number; ranksInNode?: { nodeId: number; ranks: number } }) => {
-  const parts = [u.pointsInTree !== undefined ? `${u.pointsInTree} points in tree` : null, u.ranksInNode ? `${u.ranksInNode.ranks} ranks in node ${u.ranksInNode.nodeId}` : null].filter(Boolean);
+const unlock = (u: { spentRequired?: { amount: number; scope: string }; ranksInNodes?: { nodeId: number; ranks: number }[] }) => {
+  const parts = [
+    u.spentRequired ? `${u.spentRequired.amount} points spent (${u.spentRequired.scope === "unconfirmed" ? "scope unconfirmed" : `counted ${u.spentRequired.scope}-wide`})` : null,
+    ...(u.ranksInNodes ?? []).map((r) => `${r.ranks} ranks in node ${r.nodeId}`),
+  ].filter(Boolean);
   return parts.length ? parts.join(", ") : "no gate";
 };
 const prereqs = (p: { nodeId: number; rule: string }[]) => (p.length ? p.map((x) => `${x.rule} ${x.nodeId}`).join(", ") : "none");
@@ -18,8 +21,9 @@ function sections(entry: ChangeEntry): { title: string; items: string[] }[] {
     `${w.spoiler ? "[spoiler] " : ""}${clean(w.className ?? "?")}${w.tree ? ` / ${clean(w.tree)}` : ""}: ${clean(w.name)}`;
   const out: { title: string; items: string[] }[] = [];
   if (t) {
-    out.push({ title: "Classes added", items: t.classesAdded.map(clean) });
-    out.push({ title: "Classes removed", items: t.classesRemoved.map(clean) });
+    const cls = (c: { className: string | null; classId: number; spoiler: boolean }) => `${c.spoiler ? "[spoiler] " : ""}${clean(c.className ?? `class ${c.classId}`)}`;
+    out.push({ title: "Classes added", items: t.classesAdded.map(cls) });
+    out.push({ title: "Classes removed", items: t.classesRemoved.map(cls) });
     out.push({ title: "Talents added", items: t.added.map((w) => `${label(w)} (${w.kind}, ${w.maxRanks} rank${w.maxRanks === 1 ? "" : "s"})`) });
     out.push({ title: "Talents removed", items: t.removed.map((w) => label(w)) });
     out.push({ title: "Talents moved", items: t.moved.map((w) => `${label(w)}: ${pos(w.from)} -> ${pos(w.to)}`) });
@@ -34,7 +38,7 @@ function sections(entry: ChangeEntry): { title: string; items: string[] }[] {
     out.push({ title: "Talent points", items: t.pointLevels.map((p) => `${clean(p.className ?? `class ${p.classId}`)}: ${p.before.length} points (levels ${p.before[0] ?? "-"} to ${p.before.at(-1) ?? "-"}) -> ${p.after.length} points (levels ${p.after[0] ?? "-"} to ${p.after.at(-1) ?? "-"})`) });
   }
   const r = entry.raidBuffs;
-  if (r) out.push({ title: "Raid buff scope changes", items: r.scopeChanges.map((c) => `${c.spoiler ? "[spoiler] " : ""}${clean(c.label)}: ${val(c.before)} -> ${val(c.after)}`) });
+  if (r) out.push({ title: "Raid buff scope changes", items: r.scopeChanges.map((c) => `${c.spoiler ? "[spoiler] " : ""}${clean(c.label)}: ${val(c.before)} -> ${val(c.after)}${c.before === c.after ? ` (by rank: ${clean(c.beforeRanks)} -> ${clean(c.afterRanks)})` : ""}`) });
   return out;
 }
 

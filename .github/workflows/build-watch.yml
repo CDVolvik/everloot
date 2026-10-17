@@ -1,6 +1,11 @@
-﻿name: Game build watch
+name: Game build watch
 # Looks for a new WoW: Forever build twice an hour and, when there is one, opens a pull request with the
 # regenerated game data. Never merges anything. See docs/BUILD_WATCH.md.
+#
+# Three jobs, so no secret is ever in the same job as code that installs packages or parses downloaded files:
+#   watch    read-only token; npm ci, version check, CDN read. Hands its files on as an artifact.
+#   publish  write token (and BUILD_WATCH_TOKEN, only in its push step); runs no npm, no parser.
+#   report   issues only.
 on:
   schedule:
     # :07 and :37 rather than :00 and :30, when GitHub's scheduler is busiest. Worst case a build is
@@ -16,32 +21,28 @@ on:
         description: "Refresh the open pull request, or reopen a build whose pull request was closed without merging"
         type: boolean
         default: false
-permissions:
-  actions: read
-  contents: write
-  pull-requests: write
-  issues: write
+permissions: {}
 # One run at a time: two runs must not push the same branch.
 concurrency:
   group: build-watch
   cancel-in-progress: false
-env:
-  # A token that is not the built-in one, if the repository has it, so the checks run on the pull request
-  # (pull requests opened with GITHUB_TOKEN do not start workflows).
-  PUSH_TOKEN: ${{ secrets.BUILD_WATCH_TOKEN || github.token }}
 jobs:
   watch:
     # Forks have no reason to run this.
     if: github.repository == 'CDVolvik/everloot'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      extracted: ${{ steps.watch.outputs.extracted }}
     steps:
-      # Always the default branch: the data is compared with what is on main, and the pull request is
-      # based on it, wherever this run was started from.
+      # Always the default branch: the data is compared with what is on main, wherever this run started.
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.repository.default_branch }}
-          token: ${{ env.PUSH_TOKEN }}
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: '22.23.2'
@@ -68,15 +69,20 @@ jobs:
           npm run kb -- build-watch "${args[@]}"
       # The CDN index and the earlier raid buff tables, kept between runs so a new build downloads only
       # what changed. Restored only when there is work, which is rare.
-      - name: Restore caches
+      - name: Restore the CDN index
         if: steps.check.outputs.needed == 'true'
         uses: actions/cache/restore@v4
         with:
-          path: |
-            kb/cache
-            kb/data/build-watch/baseline
-          key: build-watch-${{ github.run_id }}
-          restore-keys: build-watch-
+          path: kb/cache
+          key: build-watch-casc-${{ github.run_id }}
+          restore-keys: build-watch-casc-
+      - name: Restore earlier raid buff tables
+        if: steps.check.outputs.needed == 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: kb/data/build-watch/baseline
+          key: build-watch-baseline-${{ github.run_id }}
+          restore-keys: build-watch-baseline-
       - name: Read the new build and prepare the data
         if: steps.check.outputs.needed == 'true'
         id: watch
@@ -90,31 +96,67 @@ jobs:
           [ -n "$INPUT_PRODUCT" ] && args+=(--product "$INPUT_PRODUCT")
           [ "$INPUT_REDO" = "true" ] && args+=(--redo)
           npm run kb -- build-watch "${args[@]}"
-      - name: Save caches
+      # The index is only a download cache, so it is kept even when the run fails.
+      - name: Save the CDN index
         if: always() && steps.watch.outputs.extracted == 'true'
         uses: actions/cache/save@v4
         with:
+          path: kb/cache
+          key: build-watch-casc-${{ github.run_id }}
+      - name: Hand the files to the publish job
+        if: always() && steps.watch.outputs.extracted == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-watch
+          retention-days: 3
+          if-no-files-found: error
           path: |
-            kb/cache
+            game-data
+            kb/data/build-watch/out
             kb/data/build-watch/baseline
-          key: build-watch-${{ github.run_id }}
+
+  publish:
+    needs: watch
+    # Also when the watch step failed for one product: the others still have a plan to publish. The
+    # raid buff baseline is saved only after this job succeeds, so a failed publish leaves the next run
+    # comparing with the right earlier build.
+    if: always() && needs.watch.outputs.extracted == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: build-watch
       - name: Open or update the pull requests
-        if: steps.watch.outputs.extracted == 'true'
         env:
-          GH_TOKEN: ${{ env.PUSH_TOKEN }}
+          # BUILD_WATCH_TOKEN if the repository has it, so the checks run on the pull request (pull
+          # requests opened with the built-in token do not start workflows). Used by this step only.
+          PUSH_TOKEN: ${{ secrets.BUILD_WATCH_TOKEN || github.token }}
           BASE: ${{ github.event.repository.default_branch }}
+          REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
+          plan=kb/data/build-watch/out/plan.json
+          [ -f "$plan" ] || { echo "no plan.json: nothing to publish"; exit 0; }
+          export GH_TOKEN="$PUSH_TOKEN"
+          auth=$(printf 'x-access-token:%s' "$PUSH_TOKEN" | base64 -w0)
+          echo "::add-mask::$auth"
+          g() { git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" "$@"; }
           git config user.name "everloot-build-watch"
           git config user.email "build-watch@users.noreply.github.com"
           start=$(git rev-parse HEAD)
-          plan=kb/data/build-watch/out/plan.json
           jq -c '.[] | select(.action == "create" or .action == "update")' "$plan" | while read -r item; do
             product=$(jq -r .product <<<"$item")
             build=$(jq -r .buildId <<<"$item")
             branch=$(jq -r .branch <<<"$item")
             title=$(jq -r .title <<<"$item")
-            pr=$(jq -r '.pr // empty' <<<"$item")
             body="$GITHUB_WORKSPACE/kb/$(jq -r .bodyFile <<<"$item")"
             git switch -C "$branch" "$start"
             git add "game-data/$product" "game-data/changes/$product-$build.json"
@@ -124,10 +166,16 @@ jobs:
               git commit -s -m "$title" -m "Regenerated by the build watch workflow from Blizzard's public CDN. Encrypted blocks are skipped, never decrypted."
             fi
             # Push only when the branch would change, so a rerun leaves an open pull request alone.
-            if git fetch --quiet origin "$branch" 2>/dev/null && git diff --quiet FETCH_HEAD HEAD -- game-data; then
-              echo "$branch is already up to date"
+            # A branch that exists is replaced only if nobody has pushed to it since we looked.
+            if g fetch --quiet origin "$branch" 2>/dev/null; then
+              remote=$(git rev-parse FETCH_HEAD)
+              if git diff --quiet FETCH_HEAD HEAD -- game-data; then
+                echo "$branch is already up to date"
+              else
+                g push --force-with-lease="refs/heads/$branch:$remote" origin "$branch"
+              fi
             else
-              git push --force origin "$branch"
+              g push origin "$branch"
             fi
             existing=$(gh pr list --head "$branch" --state open --json number --jq '.[0].number // empty')
             if [ -n "$existing" ]; then
@@ -137,25 +185,41 @@ jobs:
             fi
             git switch --detach "$start"
           done
+      - name: Keep the raid buff tables for the next comparison
+        if: success()
+        uses: actions/cache/save@v4
+        with:
+          path: kb/data/build-watch/baseline
+          key: build-watch-baseline-${{ github.run_id }}
+
+  report:
+    needs: [watch, publish]
+    if: always() && github.event_name == 'schedule' && github.repository == 'CDVolvik/everloot'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      issues: write
+    steps:
       - name: Close the failure issue once the watch works again
-        if: success() && github.event_name == 'schedule'
+        if: ${{ !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          for n in $(gh issue list --state open --search "Game build watch is failing in:title" --json number --jq '.[].number'); do
-            gh issue close "$n" --comment "The build watch ran cleanly again: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          for n in $(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "Game build watch is failing in:title" --json number --jq '.[].number'); do
+            gh issue close "$n" --repo "$GITHUB_REPOSITORY" --comment "The build watch ran cleanly again: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
           done
       # One issue after two failed scheduled runs in a row, none while it stays open. The red run
       # already notifies; this is the record that does not scroll away.
       - name: Open one issue if it keeps failing
-        if: failure() && github.event_name == 'schedule'
+        if: ${{ contains(needs.*.result, 'failure') }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          previous=$(gh run list --workflow build-watch.yml --event schedule --status completed --limit 1 --json conclusion --jq '.[0].conclusion // empty')
-          open=$(gh issue list --state open --search "Game build watch is failing in:title" --json number --jq '.[0].number // empty')
+          previous=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow build-watch.yml --event schedule --status completed --limit 1 --json conclusion --jq '.[0].conclusion // empty')
+          open=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "Game build watch is failing in:title" --json number --jq '.[0].number // empty')
           if [ "$previous" = "failure" ] && [ -z "$open" ]; then
-            gh issue create --title "Game build watch is failing" --body "The scheduled build watch failed twice in a row. Latest run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "Game build watch is failing" --body "The scheduled build watch failed twice in a row. Latest run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
 
           See docs/BUILD_WATCH.md for what to check. This issue closes itself when a scheduled run succeeds, and no further issue is opened while it is open."
           fi

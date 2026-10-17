@@ -1,4 +1,4 @@
-﻿/** Small synthetic builds for the build watch tests. Nothing here comes from game files. */
+/** Small synthetic builds for the build watch tests. Nothing here comes from game files. */
 import { LABEL, type BuildStamp, type CatalogIndex, type ClassCatalog } from "../src/talents/catalog.js";
 import { RAID_BUFF_SCHEMA, type RaidBuffTable } from "../src/raid-buffs.js";
 import type { Extracted } from "../src/build-watch/watch.js";
@@ -27,7 +27,7 @@ export function node(id: number, name: string, over: Over = {}): ClassCatalog["t
 
 export function catalog(buildId: number, nodes: ReturnType<typeof node>[], over: Partial<ClassCatalog> = {}): ClassCatalog {
   return {
-    schema: "everloot.talent-catalog/1", label: LABEL, build: stamp(buildId), classId: 4, className: "Rogue", specId: 1, traitTreeId: 1,
+    schema: "everloot.talent-catalog/2", label: LABEL, build: stamp(buildId), pointCurrencyId: 1, classId: 4, className: "Rogue", specId: 1, traitTreeId: 1,
     pointLevels: [10, 11, 12],
     trees: [{ id: 1, name: "Assassination", skillLineId: 253, order: 0, nodes, edges: [] }],
     warnings: [], ...over,
@@ -37,7 +37,7 @@ export function catalog(buildId: number, nodes: ReturnType<typeof node>[], over:
 export function raid(buildId: number, scope: "party" | "raid"): RaidBuffTable {
   return {
     schema: RAID_BUFF_SCHEMA, label: LABEL, build: stamp(buildId),
-    entries: [{ id: "battle-shout", label: "Battle Shout", kind: "buff", class: "Warrior", scope, scopes: { [scope]: 1 }, spells: [] }],
+    entries: [{ id: "battle-shout", label: "Battle Shout", kind: "buff", class: "Warrior", scope, byRank: [{ rank: 1, spellIds: [1], scope }], spells: [], missingSpells: [] }],
     notFound: [],
   };
 }
@@ -46,7 +46,7 @@ export function extracted(buildId: number, nodes: ReturnType<typeof node>[], opt
   const build = stamp(buildId, opts.config ?? CONFIG_A);
   const classes = (opts.classes ?? [catalog(buildId, nodes)]).map((c) => ({ ...c, build }));
   const index: CatalogIndex = {
-    schema: "everloot.talent-catalog/1", label: LABEL, build,
+    schema: "everloot.talent-catalog/2", label: LABEL, build,
     classes: classes.map((c) => ({ classId: c.classId, className: c.className, file: `${(c.className ?? "x").toLowerCase()}.json`, trees: 1, nodes: nodes.length })),
     otherTraitTrees: [], tables: [{ table: "TraitNode", rows: nodes.length, encryptedBlocks: 0 }], warnings: [],
   };

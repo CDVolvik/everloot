@@ -36,12 +36,12 @@ describe("diffTalents", () => {
   it("finds rank, gate and prerequisite changes", () => {
     const next = [
       { ...base[0], maxRanks: 2 },
-      { ...base[1], unlock: { pointsInTree: 5 } },
+      { ...base[1], unlock: { spentRequired: { amount: 5, scope: "class" as const, gateGroupId: 1, currencyId: 2, traitTreeId: 3 } } },
       { ...base[2], prereqs: [{ nodeId: 1, rule: "all" as const }] },
     ];
     const d = diffTalents(committed(base), committed(next), false);
     expect(d.ranks).toMatchObject([{ name: "Mutilate", before: 1, after: 2 }]);
-    expect(d.gates).toMatchObject([{ name: "Evasion", before: {}, after: { pointsInTree: 5 } }]);
+    expect(d.gates).toMatchObject([{ name: "Evasion", before: {}, after: { spentRequired: { amount: 5, scope: "class" } } }]);
     expect(d.prereqs).toMatchObject([{ name: "Vigor", before: [], after: [{ nodeId: 1, rule: "all" }] }]);
   });
 
@@ -78,9 +78,10 @@ describe("diffTalents", () => {
   it("reports classes and talent point levels", () => {
     const other = toCommitted(catalog(2, [node(9, "Bash")], { classId: 11, className: "Druid" }));
     const d = diffTalents(committed(base), [...committed(base, { pointLevels: [10, 11] }), other], false);
-    expect(d.classesAdded).toEqual(["Druid"]);
+    expect(d.classesAdded).toEqual([{ classId: 11, className: "Druid", spoiler: false }]);
     expect(d.pointLevels).toMatchObject([{ className: "Rogue", before: [10, 11, 12], after: [10, 11] }]);
-    expect(diffTalents([...committed(base), other], committed(base), false).classesRemoved).toEqual(["Druid"]);
+    expect(diffTalents([...committed(base), other], committed(base), false).classesRemoved.map((c) => c.className)).toEqual(["Druid"]);
+    expect(diffTalents(committed(base), [...committed(base), other], true).classesAdded[0].spoiler).toBe(true);
   });
 
   it("flags every item as a spoiler for a build that is not live", () => {
@@ -114,6 +115,24 @@ describe("buildChangeEntry", () => {
     expect(entry.raidBuffs).toMatchObject({ comparedTo: { buildId: 1 }, scopeChanges: [{ id: "battle-shout", before: "party", after: "raid", spoiler: true }] });
     expect(entry.encryptedBlocks).toEqual({ total: 43, tables: [{ table: "Spell", blocks: 29 }, { table: "SpellName", blocks: 14 }] });
     expect(hasChanges(entry)).toBe(true);
+  });
+
+  it("reports a raid buff whose ranks changed while the overall scope stayed mixed", () => {
+    const before = raid(1, "party");
+    before.entries[0].scope = "mixed";
+    before.entries[0].byRank = [{ rank: 1, spellIds: [1], scope: "party" }, { rank: 2, spellIds: [2], scope: "raid" }];
+    const after = raid(2, "raid");
+    after.entries[0].scope = "mixed";
+    after.entries[0].byRank = [{ rank: 1, spellIds: [1], scope: "raid" }, { rank: 2, spellIds: [2], scope: "party" }];
+    const entry = buildChangeEntry(input({ raidBaseline: before, raidBuffs: after }));
+    expect(entry.raidBuffs!.scopeChanges).toMatchObject([{ before: "mixed", after: "mixed", beforeRanks: "1:party 2:raid", afterRanks: "1:raid 2:party" }]);
+    expect(prBody(entry, { supersedes: [], classes: 1, nodes: 1 })).toContain("by rank: 1:party 2:raid -> 1:raid 2:party");
+  });
+
+  it("marks added classes as spoilers in the body", () => {
+    const other = toCommitted(catalog(2, [node(9, "Bash")], { classId: 11, className: "Druid" }));
+    const entry = buildChangeEntry(input({ classes: [...committed([node(1, "Mutilate"), node(2, "Evasion")]), other] }));
+    expect(prBody(entry, { supersedes: [], classes: 2, nodes: 3 })).toContain("- [spoiler] Druid");
   });
 
   it("records a baseline when nothing is committed yet", () => {

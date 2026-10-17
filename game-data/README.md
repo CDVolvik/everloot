@@ -42,7 +42,7 @@ ChangeEntry {
   initial          first entry of a product: a baseline, no changes listed
   encryptedBlocks  { total, tables: [{ table, blocks }] }
   talents          null when initial; otherwise lists of
-                     classesAdded, classesRemoved, added, removed, moved, ranks, gates, prereqs,
+                     classesAdded, classesRemoved (classId, className, spoiler), added, removed, moved, ranks, gates, prereqs,
                      replaced, spellValues, pointLevels
                    each item: classId, className, tree, nodeId, name, spoiler, and the before/after
   raidBuffs        { comparedTo, scopeChanges: [{ id, label, before, after, spoiler }] }

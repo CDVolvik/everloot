@@ -19,10 +19,12 @@ import {
 import { branchFor, decide, olderOpen, titleFor, type Action, type PrRef } from "./plan.js";
 import { prBody, terminalSummary } from "./render.js";
 
+export const PRODUCT_ID = /^[a-z0-9_]+$/;
+
 export const WatchConfig = z.object({
   region: z.string().regex(/^[a-z]{2}$/).default("us"),
   products: z.array(z.object({
-    product: z.string().regex(/^[a-z0-9_]+$/),
+    product: z.string().regex(PRODUCT_ID),
     label: z.string(),
     /** True once players can play the product. Everything from a product that is not live is a spoiler. */
     live: z.boolean(),
