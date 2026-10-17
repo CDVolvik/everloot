@@ -75,7 +75,7 @@ Warcraft Wiki dump (CC BY-SA 4.0) + curated entries
 - The lore archive is the Warcraft Wiki as of 2023-11-13, with no Forever-specific lore until a
   newer dump is allowed.
 - Blizzard's API has no WoW: Forever namespace yet, so character data comes only from the addon.
-- Addon 0.2.5 passes its automated tests but has not yet been checked in the live client.
+- Addon 0.2.6 passes its automated tests but has not yet been checked in the live client.
 - The companion is an unsigned command-line tool.
 - The standalone MCP server (`kb/src/mcp-http-main.ts`) reads the public corpus URL, which has no
   install ids, so it cannot corroborate on its own. Only the MCP endpoints on the site are deployed.
