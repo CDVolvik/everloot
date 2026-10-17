@@ -13,6 +13,13 @@ that has a zip in the repository. Earlier builds have none.
 Nothing yet. Pull requests merged to `main` are listed in the nightly pre-releases until the next
 tagged release.
 
+## [0.3.1] - 2026-10-18
+
+### Fixed
+- The TOC declared interface 70058, an old build number, so the client listed the addon as out of
+  date. It now declares 16001, derived from build 1.60.1. The companion's `EverlootAnswers` addon
+  declares the same number.
+
 ## [0.3.0] - 2026-10-17
 
 ### Added
