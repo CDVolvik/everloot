@@ -80,4 +80,4 @@ the gaps backlog in `../docs/sources/source-catalog.md`, never into an importer.
 
 ## Code licence
 
-MIT. Data licence: CC BY-SA 4.0.
+AGPL-3.0-only, like the rest of Everloot (see `LICENSE` at the repository root). Data licence: CC BY-SA 4.0.
