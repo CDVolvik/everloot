@@ -4,11 +4,31 @@
  * Game file data is Blizzard's; it never goes into the CC BY-SA knowledge release.
  */
 import Database from "better-sqlite3";
-import { renameSync, rmSync, writeFileSync } from "node:fs";
+import { readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { sha256File } from "./snapshot.js";
 
-/** File data ids of the tables read so far (stable across builds). */
-export const CLIENT_TABLES = { ItemSparse: 1572924, Item: 841626, SpellName: 1990283, Spell: 1140089 } as const;
+/**
+ * File data ids of the tables read so far (stable across builds). The ids come from the `db2FileDataID`
+ * field of the WoWDBDefs manifest, not from a listfile. A table a build does not ship is recorded as
+ * missing; that is normal (Classic Era has almost no Trait tables).
+ */
+export const CLIENT_TABLES = {
+  ItemSparse: 1572924, Item: 841626, SpellName: 1990283, Spell: 1140089,
+  // Talents: the trait system, and what ties a tree to a class and its three talent groups.
+  TraitTree: 4420305, TraitNode: 4420297, TraitNodeEntry: 4420298, TraitDefinition: 4420327, TraitEdge: 4420308,
+  TraitCond: 4543085, TraitNodeGroup: 4420300, TraitNodeGroupXTraitNode: 4420302, TraitNodeXTraitNodeEntry: 4420304,
+  TraitNodeXTraitCond: 4543092, TraitNodeGroupXTraitCond: 4543090, TraitNodeEntryXTraitCond: 4543088,
+  TraitSubTree: 5534447, TraitSystem: 4635649, TraitTreeLoadout: 4669507, TraitNodeGroupDisplayInfo: 7935808,
+  TraitCurrency: 4524216, TraitCurrencySource: 4539393, TraitCost: 4420295, TraitTreeXTraitCost: 4420306,
+  TraitTreeXTraitCurrency: 4524218, TraitNodeXTraitCost: 4420303, TraitNodeGroupXTraitCost: 4420301,
+  TraitNodeEntryXTraitCost: 4420299,
+  SkillLineXTraitTree: 4505477, SkillLine: 1240935, SkillRaceClassInfo: 1240406,
+  ChrSpecialization: 1343390, ChrClasses: 1361031,
+  // Spell effects: aura type, targets and radius, for the raid buff table.
+  SpellEffect: 1140088, SpellRadius: 1134584,
+  // Tooltips and icons for the talent catalog: icon file id and duration of each spell.
+  SpellMisc: 1003144, SpellDuration: 1137828,
+} as const;
 export type ClientTableName = keyof typeof CLIENT_TABLES;
 
 export interface ExtractedTable {
@@ -137,6 +157,15 @@ export function readClientMeta(path: string): ClientBuildMeta {
     };
   } finally {
     db.close();
+  }
+}
+
+/** The manifest written beside a snapshot (it holds the per-table encrypted block counts); null when absent. */
+export function readClientManifest(path: string): ClientManifest | null {
+  try {
+    return JSON.parse(readFileSync(`${path}.manifest.json`, "utf8")) as ClientManifest;
+  } catch {
+    return null;
   }
 }
 

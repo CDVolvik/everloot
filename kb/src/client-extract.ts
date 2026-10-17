@@ -18,6 +18,29 @@ export interface TableRead {
 /** Where tables come from: Blizzard's CDN in production, a fake in tests. Null: not in this build. */
 export interface TableSource {
   read(fileDataID: number): Promise<TableRead | null>;
+  /** Whether a file is in the build's root listing, and whether its content is flagged encrypted. Reads no file content. */
+  fileStatus?(fileDataID: number): FileStatus;
+}
+
+export type FileStatus = "present" | "encrypted" | "absent";
+/** Name of the table that holds file statuses in a snapshot; its rows are keyed by file data id. */
+export const FILE_STATUS_TABLE = "FileStatus";
+
+/**
+ * Looks up each file data id in the build's root listing (no download) and returns the answers as a
+ * snapshot table. The files themselves are not read or exported. Null when the source cannot say.
+ */
+export function probeFiles(source: TableSource, ids: Iterable<number>): ExtractedTable | null {
+  if (!source.fileStatus) return null;
+  const rows = new Map<number, Record<string, unknown>>();
+  for (const id of new Set(ids)) if (id > 0) rows.set(id, { ID: id, Status: source.fileStatus(id) });
+  return { table: FILE_STATUS_TABLE, fileDataID: 0, cKey: null, encryptedBlocks: 0, rows };
+}
+
+/** The icon file ids that spells refer to (SpellMisc.SpellIconFileDataID) among the extracted tables. */
+export function iconIds(tables: ExtractedTable[]): number[] {
+  const misc = tables.find((t) => t.table === "SpellMisc");
+  return [...(misc?.rows.values() ?? [])].map((r) => Number(r.SpellIconFileDataID)).filter((n) => Number.isFinite(n) && n > 0);
 }
 
 export interface MissingTable { table: string; reason: string }
@@ -54,6 +77,12 @@ export async function openCdn(product: string, region = "us"): Promise<{ build: 
   const client = new CASCClient(region, product, version, 0);
   await client.init();
   const source: TableSource = {
+    fileStatus(fileDataID) {
+      const keys = client.getContentKeysByFileDataID(fileDataID);
+      if (!keys?.length) return "absent";
+      const chosen = keys.find((k) => k.localeFlags & CASCClient.LocaleFlags.enUS) ?? keys[0];
+      return chosen.contentFlags & CASCClient.ContentFlags.Encrypted ? "encrypted" : "present";
+    },
     async read(fileDataID) {
       const keys = client.getContentKeysByFileDataID(fileDataID);
       if (!keys?.length) return null;
