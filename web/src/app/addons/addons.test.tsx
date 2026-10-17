@@ -31,6 +31,10 @@ test("/addons lists Everloot's addon and Polestar, and says Polestar is independ
   expect(addonsMeta.alternates?.canonical).toBe("/addons");
 });
 
+test("/addons links to the leaderboard of addons players run", async () => {
+  expect(await html(AddonsPage)).toContain('href="/addons/popular"');
+});
+
 test("at build, the Polestar page renders every static fact with GitHub down", async () => {
   vi.stubEnv("NEXT_PHASE", "phase-production-build");
   const page = await html(PolestarPage);
@@ -91,7 +95,7 @@ test("the wanted page cites a reason for each idea and links the pack handbook",
 
 test("the sitemap, header and footer reach the addons pages", () => {
   const urls = sitemap().map((entry) => new URL(entry.url).pathname);
-  for (const path of ["/addons", "/addons/polestar", "/addons/polestar/packs", "/addons/polestar/wanted"]) expect(urls).toContain(path);
+  for (const path of ["/addons", "/addons/popular", "/addons/polestar", "/addons/polestar/packs", "/addons/polestar/wanted"]) expect(urls).toContain(path);
   expect(renderToStaticMarkup(<Header />)).toContain('href="/addons"');
   expect(renderToStaticMarkup(<Footer />)).toContain('href="/addons"');
 });
