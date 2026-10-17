@@ -42,7 +42,7 @@ records the source in `docs/sources/LEDGER.md` and `THIRD_PARTY.md` with the MIT
 ## Until zone bounds are corroborated
 
 The map shows OpenMap's world-placed items (dungeons, flights, boats) from day one; zones and NPC
-pins appear as their bounds reach two agreeing installs. The page says which zones are still
+pins appear as their bounds reach three agreeing installs. The page says which zones are still
 waiting.
 
 ## Out of scope
