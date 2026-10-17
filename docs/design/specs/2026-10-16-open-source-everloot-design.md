@@ -53,7 +53,7 @@ step joins CI so every PR is scanned. Production secrets stay in Vercel; `.env.e
 - Business files: `docs/WoWCollectorTracker_Architecture_and_Strategy.docx`,
   `docs/WoWCollectorTracker_Competitive_Matrix.xlsx`, `docs/2026-10-16-polestar-outreach-draft.md`.
 
-**Kept public:** `docs/superpowers/specs` and `plans`, `docs/architecture.md`,
+**Kept public:** `docs/design/specs` and `plans`, `docs/architecture.md`,
 `docs/sources/source-catalog.md`, `docs/LEGACY_DATA_POLICY.md`, `docs/references.md`, the beta and
 release checklists, the MCP hosting options and the recipe design notes. In every kept file, lines
 naming the maintainer's private workspace, a secrets folder or file location, or a personal machine path are rewritten
@@ -63,7 +63,7 @@ generically ("the maintainer's secrets store").
 identifiers in history (the Supabase project ref, the R2 bucket name) become visible; they are not
 credentials.
 
-**Handoffs:** agents read and write Everloot status in the maintainer's notes from now on. The repository README
+**Handoffs:** status is kept in the maintainer's notes from now on. The repository README
 tells maintainers where it lives without naming private paths.
 
 ### Provenance audit

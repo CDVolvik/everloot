@@ -1,6 +1,5 @@
 # Lore Types, Facets, Template Repair and Coverage Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Classify every wiki page into a type with facets from its categories, repair the inline templates that break sentences, and give the site browse pages, a search type filter and a coverage report, with a new dated release built locally for Carlos to publish.
 
@@ -8,7 +7,7 @@
 
 **Tech Stack:** TypeScript, better-sqlite3 (json_extract, expression index), wtf_wikipedia for conversion, Next.js 15 App Router, Vitest 5.
 
-**Spec:** `docs/superpowers/specs/2026-10-15-lore-types-and-coverage-design.md`
+**Spec:** `docs/design/specs/2026-10-15-lore-types-and-coverage-design.md`
 
 ## Global Constraints
 

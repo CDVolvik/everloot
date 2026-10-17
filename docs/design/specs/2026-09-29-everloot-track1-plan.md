@@ -31,7 +31,7 @@ capturing open-world + guild records into SavedVariables with an upload path tha
 7. Carlos playtest: beta character **in a guild**, two raid nights minimum. Open-world records verified
    against known spawns/drops; guild records read back against the guild's own knowledge.
 8. Lean audit: memory/CPU profiled in raid, over-budget modules off by default. Zero-error log required.
-9. CurseForge pack staged (submission ~10/24, Track 5) + craft gate + Codex review on the Lua.
+9. CurseForge pack staged (submission ~10/24, Track 5) + a review pass on the Lua.
 
 ## Gates (from 9/28 §3)
 

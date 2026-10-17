@@ -1,6 +1,5 @@
 # Accepted-only Web Corpus Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. Delegation is not requested for this preparation.
 
 **Goal:** Ensure web persistence and corpus readers use parsed accepted records, with truthful failure receipts.
 
@@ -8,7 +7,7 @@
 
 **Tech Stack:** Next.js 14/React 18, TypeScript, Zod 4, Vitest 3, existing R2/Supabase store.
 
-**Spec:** `docs/superpowers/specs/2026-10-05-accepted-only-web.md` (review before implementation).
+**Spec:** `docs/design/specs/2026-10-05-accepted-only-web.md` (review before implementation).
 
 ## Global Constraints
 

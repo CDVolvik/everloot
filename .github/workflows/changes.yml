@@ -123,7 +123,7 @@ jobs:
           git push --force-with-lease="data/changes:${lease}"             "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" data/changes
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           if [ -z "$(gh pr list --repo "$REPO" --head data/changes --state open --json number --jq '.[0].number')" ]; then
-            gh pr create --repo "$REPO" --base main --head data/changes               --title 'Changes: new blue posts and builds'               --body 'Automatic refresh of kb/changes: new or changed Blizzard posts and game builds. The Refresh changes workflow keeps this one pull request up to date and merges it itself, but only when it touches nothing except kb/changes/blue-posts.json and kb/changes/builds.json and every check on the head commit has passed. Every merge deploys the site, so at most one deploy per 30 minutes.'
+            gh pr create --repo "$REPO" --base main --head data/changes               --title 'data(kb): new blue posts and builds'               --body 'Automatic refresh of kb/changes: new or changed Blizzard posts and game builds. The Refresh changes workflow keeps this one pull request up to date and merges it itself, but only when it touches nothing except kb/changes/blue-posts.json and kb/changes/builds.json and every check on the head commit has passed. Every merge deploys the site, so at most one deploy per 30 minutes.'
           fi
       - name: Merge it, only if it is safe
         if: steps.news.outputs.news == 'yes'
