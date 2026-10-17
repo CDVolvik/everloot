@@ -46,8 +46,7 @@ export default function GoldPerHourPage() {
           </li>
           <li>
             Log your drops. For each stack or item, enter the item name, how many
-            you got, and the current AH price on your realm (check Undermine
-            Exchange or the in-game auction house).
+            you got, and the current price on your realm&apos;s auction house.
           </li>
           <li>
             Add any vendor gold from trash or quest rewards to the &ldquo;Vendor
@@ -66,9 +65,8 @@ export default function GoldPerHourPage() {
           &ldquo;GPH&rdquo; is the great equalizer in World of Warcraft gold
           making. A farm that drops rare gear can feel exciting but actually
           pay less per hour than a boring herbing route. Measuring gold per
-          hour turns vibes into numbers, so you can compare a Draenor garrison
-          run to herb farming in Dragonflight zones to running old raids for
-          transmog — all in the same units.
+          hour turns vibes into numbers, so you can compare a cloth farm, a
+          herbing route and a dungeon run in the same units.
         </p>
 
         <h2 className="text-2xl text-fg mt-8">
