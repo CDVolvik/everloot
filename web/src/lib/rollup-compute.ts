@@ -1,3 +1,4 @@
+import { popularAddonsFromRecords, type AddonRollup } from "../../../kb/src/addon-rollup";
 import { itemFactsFromRecords } from "../../../kb/src/drop-rollup";
 import type { ItemFacts } from "../../../kb/src/item-page";
 import { worldFactsFromRecords, type WorldFacts } from "../../../kb/src/world-pages";
@@ -25,6 +26,7 @@ interface AggregateSet {
   drops: { rates: RollupResult["rates"]; measuredZeros: RollupResult["measuredZeros"]; rejected: RollupResult["rejected"] };
   items: ItemFacts;
   world: WorldFacts;
+  addons: AddonRollup;
 }
 
 /**
@@ -60,6 +62,7 @@ async function loadAggregates(): Promise<AggregateSet | null> {
       drops: rollupDrops(windows),
       items: itemFactsFromRecords(corpus.records),
       world: worldFactsFromRecords(corpus.records),
+      addons: popularAddonsFromRecords(corpus.records),
     };
   }
   return memoized;
@@ -95,4 +98,11 @@ export async function loadWorldFacts(): Promise<WorldFacts & { unreachable: bool
   const agg = await loadAggregates();
   if (!agg) return { npcs: [], quests: [], vendors: [], unreachable: true };
   return { ...agg.world, unreachable: false };
+}
+
+/** The addon leaderboard: only addons three installs report, as counts with no install ids. */
+export async function loadPopularAddons(): Promise<AddonRollup & { unreachable: boolean; dataAsOf: string | null }> {
+  const agg = await loadAggregates();
+  if (!agg) return { addons: [], reportingInstalls: 0, unreachable: true, dataAsOf: null };
+  return { ...agg.addons, unreachable: false, dataAsOf: agg.dataAsOf };
 }
