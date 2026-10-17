@@ -49,6 +49,9 @@ Add it with `-s`:
 If CI says a commit is not signed off, fix the last commit with `git commit --amend -s --no-edit`,
 or several with `git rebase --signoff main`, then force-push your branch.
 
+Commits and pull requests name people only. Leave out co-author lines and "generated with"
+footers that credit an AI tool; CI rejects them.
+
 ### Before you open a pull request
 
 - The tests for the parts you touched pass (see `.github/workflows/checks.yml` for the exact commands
