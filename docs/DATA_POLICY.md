@@ -113,6 +113,16 @@ and committed as a clearly marked game-data file in `web/src/data/game-data/`, w
 says it is Blizzard's and outside our licence, and the addon may carry the same facts. It is
 labelled *found in game files, unconfirmed* until checked in game, and the spoiler rules apply.
 
+**Build changes, beta builds included.** Decided 2026-10-18, the same way Wowhead and other
+datamining sites work: when Blizzard ships a new build, a reviewed pull request records what
+changed in the tables we read, and that change list may be public in the PR text and committed in
+`web/src/data/game-data/changes/`. This includes builds that are not live yet, such as the beta,
+and the numbers in the files: spell effect values, durations and the like. Every entry carries
+its build and is labelled *found in game files, unconfirmed*. Anything that could spoil
+unreleased content is marked as a spoiler and hidden on the site unless the reader turns spoilers
+on; the repository itself is public, so the marking is a warning, not a lock. Encrypted content
+stays out, because we never decrypt. Description and tooltip text is not part of these files.
+
 **Blizzard's own posts.** The "what changed" page at `/changes` lists posts by Blizzard staff on
 the WoW forum and by the official World of Warcraft account on Bluesky, and the game builds
 Blizzard's version service reports.
