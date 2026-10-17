@@ -66,3 +66,12 @@ test("replaying a large snapshot event by event stays linear", () => {
   // One merge per event was quadratic: about 15 s for 10,000 events on the dev machine.
   expect(performance.now() - started).toBeLessThan(5_000);
 });
+test("full-scan snapshots stay out of the corpus; the market rollup reads them from the uploads", () => {
+  const snapshot = {
+    kind: "auction_snapshot", installId: "install-one", eventId: "epoch:9", capturedAt: "2026-10-07T00:00:00Z",
+    realm: "Forever", scanId: "scan-1", part: 1, parts: 1, items: [[2589, 4, 80, 95, 100]],
+  };
+  const state = mergeCorpus(undefined, [loot(), snapshot]);
+  expect(publicRecords(state).map((r) => r.kind)).toEqual(["loot"]);
+  expect(state.legacyRecords).toBe(0);
+});

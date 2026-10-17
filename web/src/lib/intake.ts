@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { validRealm } from "../../../kb/src/market";
 
 /**
  * Everloot intake contract (Track 2, step 1).
@@ -147,6 +148,26 @@ export const auctionScan = base.extend({
   priceBasis: z.literal("unit").optional(),
 });
 
+// Whole-record validation: one out-of-range tuple would drop a part's 1,000 items, so any safe integer
+// passes. Troll listings far above 200k gold are real auction-house prices.
+const SCAN_COUNT = z.number().int().min(1).max(Number.MAX_SAFE_INTEGER);
+const SCAN_COPPER = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
+
+/**
+ * One part of a full auction-house scan the player started (addon 0.3.0+). Each item is
+ * [itemId, auctions, quantity, minUnit, marketUnit], copper per unit. A scan is split into parts of
+ * at most 1,000 items. These rows feed the market rollup, not the general corpus (kb/src/corpus.ts).
+ */
+export const auctionSnapshot = base.extend({
+  kind: z.literal("auction_snapshot"),
+  // Plain realm names only (kb/src/market.ts): the name is published once 3 reporters scanned there.
+  realm: z.string().min(2).max(60).refine(validRealm, { message: "not a realm name" }),
+  scanId: z.string().min(3).max(96).regex(/^[A-Za-z0-9:_-]+$/),
+  part: z.number().int().min(1).max(100),
+  parts: z.number().int().min(1).max(100),
+  items: z.array(z.tuple([z.number().int().positive(), SCAN_COUNT, SCAN_COUNT, SCAN_COPPER, SCAN_COPPER])).min(1).max(1000),
+}).refine((row) => row.part <= row.parts, { message: "part cannot exceed parts" });
+
 export const recipeSeen = base.extend({
   kind: z.literal("recipe_seen"),
   profession: z.string().min(1).max(40),
@@ -291,6 +312,7 @@ const recordSchemas = {
   collection_catalog: collectionCatalog,
   collection_owned: collectionOwned,
   auction_scan: auctionScan,
+  auction_snapshot: auctionSnapshot,
   recipe_seen: recipeSeen,
   price_seen: priceSeen,
   recipe_observed: recipeObserved,
@@ -319,7 +341,7 @@ export const PUBLIC_RECORD_KINDS: readonly string[] = PUBLIC_KIND_LIST;
 const anyRecord = z.discriminatedUnion("kind", [
   npcSighting, lootWindow, questEvent, vendorList, itemSeen,
   guildSnapshot, raidLockout, attendance, lootAward, gearSnapshot,
-  collectionCatalog, collectionOwned, auctionScan, recipeSeen, priceSeen, recipeObserved, trainerSeen,
+  collectionCatalog, collectionOwned, auctionScan, auctionSnapshot, recipeSeen, priceSeen, recipeObserved, trainerSeen,
   goldSnapshot, moneyEvent, addonSeen, mapBounds, talentSnapshot,
 ]);
 
@@ -350,6 +372,11 @@ export interface ValidationResult {
 export interface CanonicalUpload {
   addonVersion: string;
   clientBuild?: string;
+  /**
+   * Keyed hash of the upload address (see `reporterHash`), added by the intake route, never read from
+   * the request body. The market counts installs behind one address once. Never published.
+   */
+  reporter?: string;
   records: IntakeRecord[];
 }
 

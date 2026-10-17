@@ -9,6 +9,7 @@ import { goldFactsFromRecords, handleGoldLedger } from "./gold-ledger.js";
 import { guildFactsFromRecords, handleGuildBoard } from "./guild-board.js";
 import { itemFactsFromRecords } from "./drop-rollup.js";
 import { handleItemPage } from "./item-page.js";
+import { handleMarketValue, type MarketState } from "./market.js";
 import { loadUploadRecords } from "./load-uploads.js";
 import { parseRecords } from "../../web/src/lib/intake.js";
 import { handleProfessionPath } from "./profession-path.js";
@@ -18,7 +19,7 @@ import type { DB } from "./db.js";
 import { getByName, getEntity, search, type SearchHit } from "./search.js";
 
 export const SERVER_NAME = "everloot-knowledge";
-export const SERVER_VERSION = "0.7.2";
+export const SERVER_VERSION = "0.8.0";
 /** The source this server runs, offered to every client (AGPL section 13). */
 export const SOURCE_URL = "https://github.com/CDVolvik/everloot";
 
@@ -106,6 +107,25 @@ function tooledFacts<T>(
 export type CorpusLoader = () => Promise<{ records: unknown[]; dataAsOf?: string | null } | null>;
 
 const UNAVAILABLE = "Public corpus unavailable. These figures are unrecorded, not zero.";
+
+/** The site's market rollup, read in process by the web /mcp routes. Null means it was unreadable. */
+export type MarketLoader = () => Promise<{ state: MarketState; dataAsOf: string | null } | null>;
+
+export const MARKET_UNSET =
+  "Market values are not connected to this server, so this is not a measured zero. They are on everloot.app/tools/auctions and its MCP.";
+
+/** market_value: Forever market values from full scans (kb/src/market.ts). */
+export async function answerMarketValue(args: { realm: string; itemId: number }, loader?: MarketLoader): Promise<string> {
+  if (!loader) return MARKET_UNSET;
+  let market: Awaited<ReturnType<MarketLoader>>;
+  try {
+    market = await loader();
+  } catch {
+    market = null;
+  }
+  if (!market) return "Market values unavailable. They are unrecorded, not zero.";
+  return `${handleMarketValue(args, market.state, new Date())}\n${dataAgeLine(market.dataAsOf)}`;
+}
 
 /** Prefer the web's sanitized current view; raw local files can supply anonymous facts only. */
 export function fromUploads(
@@ -254,7 +274,7 @@ export function handleGetByName(db: DB, args: { name: string; kind?: (typeof KIN
 /** The merged blue-post and build timeline. Null means it is not connected, which is not the same as empty. */
 export type ChangesLoader = () => ChangeEntry[] | null | Promise<ChangeEntry[] | null>;
 
-export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; changes?: ChangesLoader } = {}): McpServer {
+export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; market?: MarketLoader; changes?: ChangesLoader } = {}): McpServer {
   const server = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION, websiteUrl: SOURCE_URL });
   const readFacts = <T>(tool: ToolName, render: (facts: T) => string) => fromTooledUploads(tool, render, options.corpus);
   server.registerTool(
@@ -433,6 +453,20 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; 
     async (args) => ({
       content: [{ type: "text" as const, text: await readFacts("auction_history", (facts: ReturnType<typeof auctionSightingsFromRecords>) => handleAuctionHistory(args, facts)) }],
     }),
+  );
+  server.registerTool(
+    "market_value",
+    {
+      title: "Forever market value for one item",
+      description:
+        "Market value, minimum buyout, historical value and units listed for one item on one WoW: Forever realm, from full auction scans players started and uploaded. A day is public after 3 reporters (distinct upload addresses) scanned the item; values are medians, thin days and outlier days are left out of the market value. Market value weights the last 14 public days, historical is the median of 60. Missing or unavailable data is reported explicitly.",
+      inputSchema: {
+        realm: z.string().describe("Realm name."),
+        itemId: z.number().int().positive().describe("Item id."),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    async (args) => ({ content: [{ type: "text" as const, text: await answerMarketValue(args, options.market) }] }),
   );
   server.registerTool(
     "gold_ledger",

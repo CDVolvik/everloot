@@ -4,6 +4,7 @@ import { parseUpload, type CanonicalUpload } from "@/lib/intake";
 import { uploadStore, sharingStore } from "@/lib/upload-store";
 import { intakeQuota, type QuotaResult } from "@/lib/intake-quota";
 import { recordUsage } from "@/lib/usage-metrics";
+import { MARKET_LIMITS, realmKey } from "../../../../../kb/src/market";
 import { authorizeRecord, sharingCategory, type PublicationGrant } from "../../../../../kb/src/publication";
 
 /**
@@ -71,8 +72,18 @@ export async function POST(req: Request) {
   const authorized = [];
   const accepted = [];
   const grantHashes = new Set<string>();
+  const scanRealms = new Set<string>();
   for (let i = 0; i < upload.records.length; i++) {
     const row = upload.records[i];
+    if (row.kind === "auction_snapshot") {
+      // One file cannot name dozens of realms: the market keeps a handful per upload.
+      const key = realmKey(row.realm);
+      if (!scanRealms.has(key) && scanRealms.size >= MARKET_LIMITS.realmsPerUpload) {
+        receipt.rejected.push({ index: receipt.accepted[i].index, reason: `An upload may carry scans from at most ${MARKET_LIMITS.realmsPerUpload} realms.` });
+        continue;
+      }
+      scanRealms.add(key);
+    }
     const category = sharingCategory(row);
     const matching = category ? grants.filter((g) => authorizeRecord(row, [g.tokenHash], { grants: [g], suppressions: [] }, new Date())) : [];
     if (category && (options.sharing?.[category] !== true || matching.length === 0)) {
@@ -97,6 +108,11 @@ export async function POST(req: Request) {
   const installDenied = await admission(() => intakeQuota.install(installId));
   if (installDenied) return installDenied;
   const uploadId = randomUUID();
+  // The market counts installs behind one address once; only a keyed hash of the address is kept.
+  if (upload.records.some((r) => r.kind === "auction_snapshot")) {
+    const reporter = intakeQuota.reporter(req);
+    if (reporter) upload.reporter = reporter;
+  }
   let persisted = false;
   try {
     persisted = await uploadStore.putUpload(uploadId, installId, upload, [...grantHashes].sort());
