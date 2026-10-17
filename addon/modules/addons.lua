@@ -1,10 +1,12 @@
 -- Everloot installed-addons list. Off unless the player runs /everloot addons on.
 -- At login, records each installed addon's folder name, title, .toc version and whether it loaded,
 -- from the game's AddOns API (C_AddOns, or the older globals). Nothing else: no addon settings,
--- no other addon's SavedVariables, no character data. One row per addon a day, sooner when its
--- version or loaded state changes. The upload preview lists these addons before anything is sent.
+-- no other addon's SavedVariables, no character data. A row when an addon is new or its version or
+-- loaded state changes, plus one check-in a week so its last-seen date moves. Sent only from the
+-- upload page, whose preview lists these addons first; the companion never sends them.
 
 local E = Everloot
+local CHECK_IN_SECONDS = 7 * 24 * 60 * 60
 
 local function addonApi()
   local c = C_AddOns
@@ -35,6 +37,7 @@ local function record()
   if not okCount or type(count) ~= "number" then return "no addon count" end
   EverlootDB.addonsSeen = EverlootDB.addonsSeen or {}
   local at = date("!%Y-%m-%dT%H:%M:%SZ")
+  local now = time()
   local stored = 0
   for i = 1, math.min(count, 300) do
     local okInfo, name, title = pcall(api.info, i)
@@ -43,8 +46,9 @@ local function record()
       version = okVersion and plain(version, 40) or nil
       local okLoaded, isLoaded = pcall(api.loaded, name)
       local loaded = (okLoaded and isLoaded) and true or false
-      local key = at:sub(1, 10) .. "|" .. tostring(version) .. "|" .. tostring(loaded)
-      if EverlootDB.addonsSeen[name] ~= key then
+      local state = tostring(version) .. "|" .. tostring(loaded)
+      local seen = EverlootDB.addonsSeen[name]
+      if type(seen) ~= "table" or seen.state ~= state or type(seen.at) ~= "number" or now - seen.at >= CHECK_IN_SECONDS then
         local ok = E:Store("addon_seen", {
           installId = EverlootDB.installId,
           capturedAt = at,
@@ -53,7 +57,7 @@ local function record()
           version = version,
           loaded = loaded,
         })
-        if ok then EverlootDB.addonsSeen[name] = key; stored = stored + 1 end
+        if ok then EverlootDB.addonsSeen[name] = { state = state, at = now }; stored = stored + 1 end
       end
     end
   end

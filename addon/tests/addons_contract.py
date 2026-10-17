@@ -9,7 +9,9 @@ assert "modules\\addons.lua" in toc, "addons module must be in the TOC"
 STUBS = """
 NOW = '2026-10-17T00:00:00Z'
 date = function() return NOW end
-time = function() return 123456 end
+NOW_T = 123456
+time = function() return NOW_T end
+DAY = 86400
 printed = {}
 print = function(text) table.insert(printed, text) end
 SlashCmdList = {}
@@ -57,9 +59,13 @@ assert(EverlootDB.toggles.addons == false, 'the addon list is off by default')
 event('PLAYER_LOGIN')
 assert(Everloot:Count('addon_seen') == 0, 'nothing is recorded while the addon list is off')
 assert(string.find(Everloot:Status(), 'addons: off by toggle', 1, true), 'status shows the addon list is off')
+local _, mentions = Everloot:Status():gsub('addons', '')
+assert(mentions == 1, 'status shows the addon list state once; got ' .. mentions)
 
 SlashCmdList.EVERLOOT('addons on')
 assert(EverlootDB.toggles.addons == true, '/everloot addons on turns it on')
+assert(string.find(printed[#printed], 'upload page', 1, true) and string.find(printed[#printed], 'companion', 1, true),
+ 'turning it on says the list goes only through the upload page, never the companion')
 reload()
 local rows = EverlootDB.records.addon_seen
 assert(rows and #rows == 4, 'one row per installed addon; got ' .. tostring(rows and #rows))
@@ -77,20 +83,37 @@ for _, r in ipairs(rows) do
 end
 assert(string.find(Everloot:Status(), 'rows addon_seen: 4', 1, true))
 
--- Another login the same day adds nothing; a new version is a new row; a new day records each again.
+-- A row only when an addon is new or its version or loaded state changes, plus one check-in a week.
 reload()
-assert(Everloot:Count('addon_seen') == 4, 'the same day and version adds nothing')
+assert(Everloot:Count('addon_seen') == 4, 'another login adds nothing')
 addons[2][3] = '9.6.0'
 reload()
 assert(Everloot:Count('addon_seen') == 5 and EverlootDB.records.addon_seen[5].version == '9.6.0', 'a new version is recorded')
-NOW = '2026-10-18T00:00:00Z'
+NOW_T = NOW_T + 6 * DAY
 reload()
-assert(Everloot:Count('addon_seen') == 9, 'a new day records each addon again')
+assert(Everloot:Count('addon_seen') == 5, 'daily logins within a week add nothing')
+addons[4][4] = true
+reload()
+assert(Everloot:Count('addon_seen') == 6 and EverlootDB.records.addon_seen[6].loaded == true, 'a change in loaded state is recorded')
+NOW_T = NOW_T + DAY
+NOW = '2026-10-24T00:00:00Z'
+reload()
+assert(Everloot:Count('addon_seen') == 9, 'a week after its last row, each unchanged addon checks in once; got ' .. Everloot:Count('addon_seen'))
+assert(EverlootDB.records.addon_seen[9].capturedAt == NOW, 'the check-in carries the new date')
+reload()
+assert(Everloot:Count('addon_seen') == 9, 'the check-in is not repeated')
+addons[5] = {'Details', 'Details!', '1.0', true}
+reload()
+assert(Everloot:Count('addon_seen') == 10 and EverlootDB.records.addon_seen[10].name == 'Details', 'a new addon is recorded at once')
 
--- Off deletes the rows not yet uploaded and stops recording.
+-- Off deletes every recorded addon row, lifts a capacity pause and stops recording.
+EverlootDB.paused = { addon_seen = true, loot = true }
 SlashCmdList.EVERLOOT('addons off')
-assert(EverlootDB.toggles.addons == false and Everloot:Count('addon_seen') == 0, 'off deletes retained addon rows')
-NOW = '2026-10-19T00:00:00Z'
+assert(EverlootDB.toggles.addons == false and Everloot:Count('addon_seen') == 0, 'off deletes the recorded addon rows')
+assert(EverlootDB.paused.addon_seen == nil and EverlootDB.paused.loot == true, 'off clears the addon pause only')
+assert(string.find(printed[#printed], 'deleted', 1, true) and not string.find(printed[#printed], 'not yet uploaded', 1, true),
+ 'the off message says what was deleted, accurately')
+NOW_T = NOW_T + 30 * DAY
 reload()
 assert(Everloot:Count('addon_seen') == 0, 'nothing is recorded after off')
 """)
@@ -127,4 +150,4 @@ lua.execute("""
 event('PLAYER_LOGIN')
 assert(Everloot:Count('addon_seen') == 3, 'one failing addon is skipped')
 """)
-print("Lua 5.1 addons: off by default and after upgrade, C_AddOns and legacy API, plain titles, once a day per version, off deletes")
+print("Lua 5.1 addons: off by default and after upgrade, C_AddOns and legacy API, plain titles, rows on change plus a weekly check-in, off deletes and unpauses")

@@ -95,8 +95,6 @@ function E:Status()
   for _, m in ipairs(modules) do
     lines[#lines + 1] = string.format("  %s: %s", m.name, m.note)
   end
-  lines[#lines + 1] = "  installed addon list: " .. (EverlootDB and EverlootDB.toggles and EverlootDB.toggles.addons
-    and "on (/everloot addons off)" or "off (/everloot addons on to share it)")
   for _, kind in ipairs({ "npc_sighting", "loot", "quest", "vendor", "item_seen",
     "guild_snapshot", "raid_lockout", "attendance", "loot_award", "gear_snapshot",
     "collection_catalog", "collection_owned", "auction_scan", "recipe_seen", "recipe_observed", "trainer_seen", "price_seen",
@@ -137,13 +135,13 @@ SlashCmdList["EVERLOOT"] = function(msg)
   elseif msg == "addons on" or msg == "addons off" then
     EverlootDB.toggles.addons = (msg == "addons on")
     if EverlootDB.toggles.addons then
-      print("Everloot: installed addon list on. Your next upload lists the addons before sending. /reload to apply.")
+      print("Everloot: installed addon list on. It is sent only from the everloot.app upload page, which lists the addons first; the companion never sends it. /reload to apply.")
     else
-      -- Turning it off withdraws the list: rows not yet uploaded are deleted, not kept for later.
+      -- Turning it off withdraws the list: every recorded addon row is deleted from this file.
       EverlootDB.records.addon_seen = nil
       EverlootDB.addonsSeen = nil
       if EverlootDB.paused then EverlootDB.paused.addon_seen = nil end
-      print("Everloot: installed addon list off; addon rows not yet uploaded were deleted. /reload to apply.")
+      print("Everloot: installed addon list off; all recorded addon rows were deleted from this file. /reload to apply.")
     end
   else
     print("Everloot commands: /everloot status, /everloot auctions on|off, /everloot addons on|off, /ask <question>")
