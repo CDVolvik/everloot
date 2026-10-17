@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { PUBLIC_RECORD_KINDS as PUBLIC_KINDS } from "@/lib/intake";
 import { uploadStore } from "@/lib/upload-store";
+import { recordUsage } from "@/lib/usage-metrics";
 export const dynamic = "force-dynamic";
 
 /**
@@ -15,6 +16,7 @@ function published<T extends object>(record: T): Omit<T, "installId"> {
 
 /** `?kinds=a,b` returns only those record kinds, so an MCP tool fetches what it reads, not the whole corpus. */
 export async function GET(req: Request) {
+  recordUsage("api.corpus_public");
   const param = new URL(req.url).searchParams.get("kinds");
   const kinds = param === null ? null : [...new Set(param.split(",").map((k) => k.trim()).filter(Boolean))];
   if (kinds && (kinds.length === 0 || kinds.some((k) => !PUBLIC_KINDS.includes(k)))) {
