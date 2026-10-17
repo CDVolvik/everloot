@@ -17,8 +17,28 @@ without the addon's install id, so anyone can check our counts. The facts the si
 ranges, appear only once at least three installs have reported them. Guild data is published only through an officer's
 upload, and named records only with that person's sharing choice.
 
-Blizzard hides WoW: Forever item stats until an item drops, and runs no public test realm. So for
-Forever, play is the only honest source anyone has, Wowhead included.
+Blizzard hides some WoW: Forever item details until an item drops, and runs no public test realm.
+Game files show what exists; play shows what is real. Everloot keeps the two apart and says which
+is which.
+
+**What the game files contain.** For each build, Everloot reads tables such as items and spells
+from the files Blizzard's launcher downloads from its public CDN, the same files every player
+receives. It compares builds and shows what was added, removed or changed. Every entry from game
+files:
+
+- is labelled **found in game files, unconfirmed**: a record there does not mean it is, or will be,
+  in the game;
+- is **hidden by default** when it could spoil content that has not been released, behind a
+  spoiler switch;
+- is **reviewed by a maintainer** before it is shown as a discovery; nothing is published
+  automatically;
+- comes only from **unencrypted** data. Content Blizzard encrypts stays out: we do not use
+  decryption keys;
+- is **Blizzard's data**, shown as facts with the build it came from. It is not under our CC BY-SA
+  licence.
+
+When players later see the same thing in the game, the entry shows both: found in the files and
+observed in play.
 
 **Open sources.** The lore archive is built from the Warcraft Wiki dump of 2023-11-13
 (CC BY-SA 4.0). We may add other openly licensed datasets later. Each one goes in the
@@ -26,19 +46,25 @@ Forever, play is the only honest source anyone has, Wowhead included.
 
 **Facts we write ourselves**, in our own words, each with the page it came from and the date.
 
-Everything Everloot publishes is CC BY-SA 4.0: anyone may reuse it with credit, and what they
-build from it must stay under the same licence.
+Everything Everloot publishes is CC BY-SA 4.0, except the game file data above: anyone may reuse
+it with credit, and what they build from it must stay under the same licence.
 
 ## What we refuse
 
 - **Bulk scraping of any site.** No crawlers, no copying another database's rows, guides or text.
   If a site's terms or robots.txt say no, the answer is no.
-- **Reading the game client's files or memory.** Blizzard's EULA forbids software that "mines"
-  information from the game. The addon uses only the game's own addon API. The companion reads the
+- **Touching the running game.** No reading or changing the game's memory, no automation, no
+  bypassing protections. The addon uses only the game's own addon API. The companion reads the
   SavedVariables file the game writes, and writes `/ask` answers into a file the addon loads after
-  `/reload`; it never touches the running game.
-- **Spoilers.** We publish only what players have actually seen in the game: no datamined items,
-  quests, story or gear before they appear.
+  `/reload`.
+- **Decrypting game data.** Content Blizzard encrypts stays encrypted.
+- **Unreviewed spoilers.** Nothing from game files is published without review, and anything that
+  could spoil unreleased content stays hidden unless the reader turns spoilers on.
+
+Blizzard's EULA forbids unauthorized software that "intercepts, collects, reads, or 'mines'
+information generated or stored by the Platform." Studying released game files offline is a long
+community practice that Blizzard has tolerated, and we read only what its CDN serves to every
+player. If Blizzard asks us to stop, we will.
 
 ## Wowhead
 
