@@ -1,5 +1,6 @@
 import { canAdd, entryAtRank, rankOf, refusalText } from "@/lib/talents/rules";
-import type { Ranks, TalentCatalog, TalentNode, TalentTree } from "@/lib/talents/types";
+import type { GameAssets } from "@/lib/talents/assets";
+import type { Ranks, TalentCatalog, TalentEntry, TalentNode, TalentTree } from "@/lib/talents/types";
 
 // One tree: a grid of talents with the prerequisite lines behind it. Plain buttons, no pictures.
 // Colour only names the class; state is also written out (rank, "locked", "full") for anyone who
@@ -25,20 +26,35 @@ const CLASS_BORDER: Record<string, string> = {
   mage: "border-class-mage", warlock: "border-class-warlock", druid: "border-class-druid",
 };
 
+export type TipMode = "hover" | "focus" | "press";
+
 export interface TreeHandlers {
   onAdd(id: number, choice?: number): void;
   onSelect(id: number): void;
+  /** A tooltip opens or closes: hover and focus set it, long press too, their end clears it. */
+  onTip(id: number | null, mode: TipMode): void;
   /** The node that holds this tree's one tab stop. */
   roving: number;
 }
 
-interface Props extends TreeHandlers {
+export interface Props extends TreeHandlers {
   catalog: TalentCatalog;
   tree: TalentTree;
   ranks: Ranks;
   available: number;
   spent: number;
   selected: number | null;
+  /** The asset files, when the page has them; null shows the text tiles. */
+  assets: GameAssets | null;
+}
+
+/** What a node's entry says in the asset manifest. */
+export const assetOf = (assets: GameAssets | null, entry: TalentEntry) => (entry.definitionId === null ? undefined : assets?.spells.get(entry.definitionId));
+
+/** A node's name and tooltip text, for aria-describedby: a screen reader gets it without hover. */
+export function describeNode(assets: GameAssets | null, node: TalentNode, rank: number): string {
+  const entries = node.kind === "choice" ? node.entries : [entryAtRank(node, rank)];
+  return entries.map((e) => `${e.name}. ${assetOf(assets, e)?.text ?? ""}`.trim()).join(" ");
 }
 
 // A name never splits inside a word: a long single word gets a smaller size so it fits the tile.
@@ -56,7 +72,7 @@ export function nodeLabel(catalog: TalentCatalog, node: TalentNode, ranks: Ranks
   return `${name}, rank ${rank} of ${node.maxRanks}, row ${node.row}, ${state}`;
 }
 
-export default function TalentTreeView({ catalog, tree, ranks, available, spent, selected, roving, onAdd, onSelect }: Props) {
+export default function TalentTreeView({ catalog, tree, ranks, available, spent, selected, roving, assets, onAdd, onSelect, onTip }: Props) {
   const nodes = catalog.nodes.filter((n) => n.treeId === tree.id);
   const rows = Math.max(...nodes.map((n) => n.row));
   const cols = Math.max(...nodes.map((n) => n.col));
@@ -139,7 +155,11 @@ export default function TalentTreeView({ catalog, tree, ranks, available, spent,
               {...common}
               data-selected={selected === node.id || undefined}
               style={style}
-              onFocus={() => onSelect(node.id)}
+              aria-describedby={assets ? `talent-desc-${node.id}` : undefined}
+              onFocus={() => { onSelect(node.id); onTip(node.id, "focus"); }}
+              onBlur={() => onTip(null, "focus")}
+              onPointerEnter={(e) => { if (e.pointerType === "mouse") onTip(node.id, "hover"); }}
+              onPointerLeave={(e) => { if (e.pointerType === "mouse") onTip(null, "hover"); }}
               onClick={() => onAdd(node.id)}
               className={`absolute flex flex-col items-center justify-between px-0.5 py-1 text-[11px] leading-tight text-center ${base}`}
             >
@@ -147,6 +167,7 @@ export default function TalentTreeView({ catalog, tree, ranks, available, spent,
               <span className={`font-mono tabular-nums ${rank > 0 ? CLASS_TEXT[slug] : ""}`}>
                 {rank}/{node.maxRanks}{full ? " full" : ""}
               </span>
+              {assets && <span id={`talent-desc-${node.id}`} className="sr-only">{describeNode(assets, node, rank)}</span>}
             </button>
           );
         })}

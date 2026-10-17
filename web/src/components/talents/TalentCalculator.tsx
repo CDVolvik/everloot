@@ -3,12 +3,15 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { importCode, type ImportReport } from "@/lib/talents/import";
 import {
-  add, canAdd, canRemove, commit, nodeMap, pointsAtLevel, pointsByTree, pointsSpent, redo, refusalText,
+  add, canAdd, canRemove, commit, entryAtRank, nodeMap, pointsAtLevel, pointsByTree, pointsSpent, redo, refusalText,
   remove, startHistory, undo, levelFor, type History,
 } from "@/lib/talents/rules";
+import { CREDIT, hasNodeFrames, loadGameAssets, type GameAssets } from "@/lib/talents/assets";
 import { encodeBuild } from "@/lib/talents/share";
 import type { Ranks, TalentCatalog } from "@/lib/talents/types";
-import TalentTreeView, { CLASS_TEXT } from "./TalentTreeView";
+import GameTree from "./GameTree";
+import TalentTooltip, { type TipContent } from "./TalentTooltip";
+import TalentTreeView, { assetOf, CLASS_TEXT, type TipMode } from "./TalentTreeView";
 
 // Client side of the calculator: the point rules live in lib/talents/rules.ts, this file only holds
 // state and wires clicks, long presses and keys to them.
@@ -30,8 +33,23 @@ export default function TalentCalculator({ catalog }: { catalog: TalentCatalog }
   const [link, setLink] = useState("");
   const [pasted, setPasted] = useState("");
   const [report, setReport] = useState<(ImportReport & { loaded: boolean }) | null>(null);
+  const [assets, setAssets] = useState<GameAssets | null>(null);
+  const [tip, setTip] = useState<{ id: number; mode: TipMode } | null>(null);
   const press = useRef<ReturnType<typeof setTimeout> | null>(null);
   const suppressClick = useRef(false);
+
+  // The game's icons, tooltips and frame art, when the site has an asset folder. Anything wrong with
+  // it leaves assets null and the page as it was.
+  useEffect(() => {
+    let live = true;
+    void loadGameAssets().then((a) => { if (live) setAssets(a); });
+    return () => { live = false; };
+  }, []);
+  const game = assets !== null && hasNodeFrames(assets);
+
+  function onTip(id: number | null, mode: TipMode) {
+    setTip((cur) => (id === null ? (cur?.mode === mode ? null : cur) : { id, mode }));
+  }
 
   const ranks = history.present[active];
   const available = pointsAtLevel(catalog, level);
@@ -153,7 +171,9 @@ export default function TalentCalculator({ catalog }: { catalog: TalentCatalog }
   }
 
   // Taps add. A long press (touch or pen) takes a point back, as does a right click, the Delete or
-  // Backspace key, and the "Take points back" switch.
+  // Backspace key, and the "Take points back" switch. With the game's tooltips on the page, a long
+  // press shows the tooltip instead (a phone has no hover), and the switch is how a phone takes
+  // points back.
   function nodeIdOf(target: EventTarget): number | null {
     const el = (target as HTMLElement).closest?.("[data-node]");
     return el ? Number(el.getAttribute("data-node")) : null;
@@ -161,11 +181,13 @@ export default function TalentCalculator({ catalog }: { catalog: TalentCatalog }
   function onPointerDown(e: PointerEvent<HTMLElement>) {
     suppressClick.current = false;
     const id = nodeIdOf(e.target);
-    if (id === null || e.pointerType === "mouse") return;
+    if (id === null) { setTip((cur) => (cur?.mode === "press" ? null : cur)); return; }
+    if (e.pointerType === "mouse") return;
     endPress();
     press.current = setTimeout(() => {
       suppressClick.current = true;
-      doRemove(id);
+      if (assets) onTip(id, "press");
+      else doRemove(id);
     }, LONG_PRESS_MS);
   }
   // Touch browsers also send a context menu event on a long press. Whichever arrives first takes
@@ -178,6 +200,7 @@ export default function TalentCalculator({ catalog }: { catalog: TalentCatalog }
     if (press.current) {
       endPress();
       suppressClick.current = true;
+      if (assets) { onTip(id, "press"); return; }
     }
     doRemove(id);
   }
@@ -202,6 +225,7 @@ export default function TalentCalculator({ catalog }: { catalog: TalentCatalog }
   function onKeyDown(e: KeyboardEvent<HTMLElement>) {
     // Typing in the paste box keeps its own undo.
     if ((e.target as HTMLElement).tagName === "INPUT") return;
+    if (e.key === "Escape") setTip(null);
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
       e.preventDefault();
       travel(e.shiftKey ? redo : undo);
@@ -251,6 +275,26 @@ export default function TalentCalculator({ catalog }: { catalog: TalentCatalog }
   }
 
   const selectedNode = selected === null ? null : nodes.get(selected) ?? null;
+
+  // The tooltip of the node under the pointer, focus or long press.
+  let tipContent: TipContent | null = null;
+  let tipAnchor: string | null = null;
+  const tipNode = tip ? nodes.get(tip.id) ?? null : null;
+  if (assets && tipNode) {
+    const rank = ranks[tipNode.id]?.rank ?? 0;
+    const choice = tipNode.kind === "choice";
+    const entries = choice ? tipNode.entries : [entryAtRank(tipNode, rank)];
+    const verdict = canAdd(catalog, ranks, tipNode.id, available);
+    tipAnchor = choice ? `talent-${tipNode.id}-0` : `talent-${tipNode.id}`;
+    tipContent = {
+      title: entries.map((e) => e.name).join(" or "),
+      rank: `Rank ${rank}/${tipNode.maxRanks}`,
+      text: entries.map((e) => assetOf(assets, e)?.text).filter(Boolean).join("\n\n") || null,
+      partial: entries.some((e) => assetOf(assets, e)?.partial),
+      lock: verdict.ok || verdict.reason === "max-rank" ? null : refusalText(verdict.reason!, tipNode, catalog, ranks),
+      label: `${assets.label} · build ${assets.version}`,
+    };
+  }
   const classText = CLASS_TEXT[catalog.classSlug];
   const rovingFor = (treeId: number) => rovingByTree[treeId] ?? catalog.nodes.find((n) => n.treeId === treeId)!.id;
 
@@ -319,23 +363,27 @@ export default function TalentCalculator({ catalog }: { catalog: TalentCatalog }
         {catalog.trees.map((tree, i) => (
           <section key={tree.id} className={i === view ? "" : "hidden md:block"} aria-label={tree.name}>
             <h2 className={`mb-3 text-center font-mono text-sm ${classText}`}>{tree.name} · {perTree.get(tree.id)}</h2>
-            <TalentTreeView
-              catalog={catalog}
-              tree={tree}
-              ranks={ranks}
-              available={available}
-              spent={perTree.get(tree.id) ?? 0}
-              selected={selected}
-              roving={rovingFor(tree.id)}
-              onAdd={doAdd}
-              onSelect={(id) => { setSelected(id); setRovingByTree((r) => ({ ...r, [nodes.get(id)!.treeId]: id })); }}
-            />
+            {(() => {
+              const props = {
+                catalog, tree, ranks, available, spent: perTree.get(tree.id) ?? 0, selected, roving: rovingFor(tree.id), onAdd: doAdd, onTip,
+                onSelect: (id: number) => { setSelected(id); setRovingByTree((r) => ({ ...r, [nodes.get(id)!.treeId]: id })); },
+              };
+              return game ? <GameTree {...props} assets={assets} /> : <TalentTreeView {...props} assets={assets} />;
+            })()}
           </section>
         ))}
       </div>
+      {assets && tipContent && tip && <TalentTooltip anchorId={tipAnchor!} id="talent-tooltip" content={tipContent} />}
+      {assets && (
+        <p className="text-xs text-muted" data-game-credit>
+          {CREDIT} Icons and text from game build {assets.version}, {assets.label}.
+        </p>
+      )}
       <p className="text-xs text-muted">
         The small number at the left of each row is how many points must be spent in the tree, on the rows above, before that row opens (from the game tables; where some gates count is unconfirmed).
-        Tap or press Enter to add a point. Right click, long press, Delete or the switch above takes one back. Arrow keys move between talents.
+        Tap or press Enter to add a point. {assets
+          ? "Right click, Delete or the switch above takes one back; a long press shows the tooltip. Escape closes it."
+          : "Right click, long press, Delete or the switch above takes one back."} Arrow keys move between talents.
       </p>
 
       <section aria-label="Selected talent" className="rounded-lg border border-line bg-panel p-4 text-sm text-fg-2 space-y-1">
@@ -351,7 +399,9 @@ export default function TalentCalculator({ catalog }: { catalog: TalentCatalog }
             {selectedNode.unlock?.ranksInNodes?.map((r) => <p key={r.nodeId}>Needs {r.ranks} {r.ranks === 1 ? "rank" : "ranks"} in {nameOf(r.nodeId)}.</p>)}
             {selectedNode.prereqs.length > 0 && <p>Needs {selectedNode.prereqs.map(nameOf).join(", ")} at full rank.</p>}
             {(selectedNode.anyOf?.length ?? 0) > 0 && <p>Needs {selectedNode.anyOf!.map(nameOf).join(" or ")} at full rank.</p>}
-            <p className="text-muted">Description: not shown yet.</p>
+            {assets
+              ? <p className="whitespace-pre-line">{selectedNode.entries.map((e) => assetOf(assets, e)?.text).filter(Boolean).join("\n\n") || "No description in the game files."}</p>
+              : <p className="text-muted">Description: not shown yet.</p>}
           </>
         ) : (
           <p>Select a talent to see its row, prerequisites and spell id.</p>

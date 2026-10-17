@@ -20,6 +20,15 @@ export interface TableSource {
   read(fileDataID: number): Promise<TableRead | null>;
   /** Whether a file is in the build's root listing, and whether its content is flagged encrypted. Reads no file content. */
   fileStatus?(fileDataID: number): FileStatus;
+  /** The raw bytes of a non-table file (an icon, a texture). Encrypted blocks are left out and counted, never decrypted. Null: not in this build. */
+  readFile?(fileDataID: number): Promise<FileRead | null>;
+}
+
+export interface FileRead {
+  cKey: string;
+  buffer: Buffer;
+  /** Blocks that need a key we do not have. Above zero, the buffer is incomplete and must not be used. */
+  encryptedBlocks: number;
 }
 
 export type FileStatus = "present" | "encrypted" | "absent";
@@ -110,6 +119,13 @@ export async function openCdn(product: string, region = "us"): Promise<{ build: 
       if (!keys?.length) return "absent";
       const chosen = keys.find((k) => k.localeFlags & CASCClient.LocaleFlags.enUS) ?? keys[0];
       return chosen.contentFlags & CASCClient.ContentFlags.Encrypted ? "encrypted" : "present";
+    },
+    async readFile(fileDataID) {
+      const keys = client.getContentKeysByFileDataID(fileDataID);
+      if (!keys?.length) return null;
+      const chosen = keys.find((k) => k.localeFlags & CASCClient.LocaleFlags.enUS) ?? keys[0];
+      const result = await client.getFileByContentKey(chosen.cKey, true);
+      return { cKey: chosen.cKey, buffer: result.buffer, encryptedBlocks: result.blocks?.length ?? 0 };
     },
     async read(fileDataID) {
       const keys = client.getContentKeysByFileDataID(fileDataID);

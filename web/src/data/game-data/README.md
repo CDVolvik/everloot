@@ -15,6 +15,9 @@ decrypted. Column names come from [WoWDBDefs](https://github.com/wowdev/WoWDBDef
 | `spell-values.json` | Numbers of the spells that talents show (effect values, duration, a hash of the tooltip), the comparison baseline for spell number changes. No tooltip text | the build watch, `npm run kb -- build-watch` (docs/BUILD_WATCH.md) | in the file's `build` |
 | `changes/<product>-<buildId>.json` | What a new build changed in the files above: talents, spell numbers, raid buffs, map. One file per build, marked `spoiler` for a build that is not live | the build watch; shape and notes in `changes/README.md` | in the file name and its `build` |
 
+Icons, tooltip text and window art for the talent calculator are not in this folder and never go into git.
+They live in asset storage with a build-stamped manifest; see [docs/ASSETS.md](../../../../docs/ASSETS.md).
+
 Do not edit these files by hand. Regenerate them from a new snapshot (`client-extract`, then the commands
 above) and commit the result with the build in the message, or let the build watch do it. Nothing from another project belongs here.
 
