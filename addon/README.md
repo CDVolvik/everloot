@@ -1,29 +1,56 @@
-# addon/ — Everloot collector (WoW: Forever)
+# addon/: the Everloot collector
 
-In-game collector for the Forever database + guild tracker. Official Lua API only, own
-SavedVariables, nothing that plays the character. Records match the intake contract
+The in-game addon for WoW: Forever. It records what you see while you play (sightings, loot
+windows, vendors, auction listings you browse, recipes, trainers, your own gold) into its
+SavedVariables file, and shows `/ask` answers from the companion. It uses only the game's addon
+API and never plays the character. Records match the site's intake contract
 (`web/src/lib/intake.ts`) field for field.
 
-**Status**: skeleton (2026-09-30). Loads defensively — every Blizzard call is guarded, so missing
-beta systems disable their module instead of erroring. **Not yet loaded in a client**: needs the
-beta load test (`/everloot status` clean, two raid nights) before 10/21.
+**Status:** 0.2.5 beta. The automated contract tests pass; the in-client checks in
+`docs/2026-10-08-beta-client-checklist.md` are still open.
+
+## Run it
+
+Download the zip from everloot.app/upload, or build it from this folder:
+
+    python scripts/package-addon.py
+
+That writes `web/public/downloads/Everloot-<version>.zip`. Extract `Everloot/` into the Forever
+client's `Interface/AddOns/`, `/reload`, then run `/everloot status`. Auction capture is off until
+`/everloot auctions on`.
+
+## Test it
+
+The contract tests run the Lua in real Lua 5.1 through `lupa`:
+
+    python -m pip install lupa==2.6
+    python addon/tests/event_identity.py
+    python addon/tests/collection_contract.py
+    python addon/tests/auction_contract.py
+    python addon/tests/gold_contract.py
+    python addon/tests/ask_contract.py
+    python addon/tests/recipes_contract.py
+    python addon/tests/answers_contract.py
+
+Run them from the repository root. CI also rebuilds the zip and fails if it differs from the one
+committed in `web/public/downloads/`, so commit the rebuilt zip with any addon change.
+
+## Where things live
 
 ```
 addon/
-├── Everloot.toc        ## Interface: 70058 (Forever 1.60.1), SavedVariables: EverlootDB
+├── Everloot.toc        Interface 70058 (Forever 1.60.1), SavedVariables: EverlootDB
 ├── core.lua            event dispatch, module registry, toggles, rolling store, /everloot
-└── modules/
-    ├── openworld.lua   target/mouseover sightings, loot windows, item names when the client already knows them, merchant windows (quest levels stay uncaptured)
-    ├── guild.lua       roster, attendance, saved lockouts (loot awards still wait on a raid test)
-    ├── gear.lua        equipped ilvl sample, max 1/hour
-    ├── auctions.lua    per-unit buyouts from a list the player opened; off until /everloot auctions on
-    ├── gold.lua        own gold: peak, current, loot copper, quest rewards, vendor sales, flight costs, net mailed auction sales, postage, buyouts
-    ├── professions.lua recipe colours at the player's rank from open trade-skill and craft windows (thresholds inferred server-side); required rank and cost from trainer windows
-    └── ask.lua         /ask stores a question; answers from the companion's EverlootAnswers addon show after /reload
+├── modules/
+│   ├── openworld.lua   target/mouseover sightings, loot windows, merchant windows
+│   ├── guild.lua       roster, attendance, saved lockouts (published only through an officer)
+│   ├── gear.lua        equipped item level sample, at most once an hour
+│   ├── auctions.lua    per-unit buyouts from a list you opened; off until enabled
+│   ├── gold.lua        your own gold: loot, quests, vendors, flights, mailed auction sales, postage, buyouts
+│   ├── professions.lua recipe colours at your rank; required rank and cost from trainer windows
+│   └── ask.lua         /ask stores a question; the companion's answers show after /reload
+└── tests/              Lua 5.1 contract tests and their fixtures
 ```
 
-Test install: copy this folder to `Interface/AddOns/Everloot/` in the Forever client, `/reload`,
-run `/everloot status`. Upload path: SavedVariables file → desktop uploader / `/upload` page (Track 2/4).
-
-History: placeholder since Phase 4 planning; the 9/27 Forever pivot made it Track 1. The Arcane
-Companion archive (rotation HUD, different addon) stays in the docs archive, not salvaged here.
+Every Blizzard call is guarded, so a system missing from the client disables its module instead
+of raising an error.

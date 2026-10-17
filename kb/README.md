@@ -73,9 +73,33 @@ Then, in Git Bash or PowerShell (no leading slash — Git Bash rewrites paths th
 
 WoW: Forever has no API namespace yet; `--game forever` answers "not published yet".
 
+## Test it
+
+    npm test
+    npm run typecheck
+
+The tests build small databases in temporary folders; none of them needs the wiki dump.
+
+`npm run kb -- audit-sources <file.sqlite...>` lists the rows per source in any database or release
+and exits 1 if it holds anything that may not be published.
+
+## Where things live
+
+| Path | What |
+|---|---|
+| `src/importers/` | The Warcraft Wiki dump importer (XML, templates, infoboxes, page types) and curated entries |
+| `src/snapshot.ts`, `src/public-snapshot.ts` | Building a public release and checking one before it is served |
+| `src/search.ts`, `src/entities.ts`, `src/db.ts` | The database, its full-text search and row writes |
+| `src/mcp-server.ts`, `src/mcp-http-*.ts` | The MCP server and its HTTP transport (the site mounts the same handler) |
+| `src/*-rollup.ts`, `src/profession-path.ts`, `src/gold-ledger.ts`, … | The gameplay readers behind the MCP tools and site pages, built from player uploads |
+| `src/blizzard/` | The Battle.net API client; its cache stays local |
+| `curated/` | Facts written in our own words, each with its source URL |
+| `test/` | Vitest tests and fixtures |
+
 ## Rules
 
-Read the legal charter (spec §2) before adding a source. Blocked, paid or unlicensed sources go on
+Read [`../docs/DATA_POLICY.md`](../docs/DATA_POLICY.md) before adding a source, and record it in
+[`../docs/sources/LEDGER.md`](../docs/sources/LEDGER.md). Blocked, paid or unlicensed sources go on
 the gaps backlog in `../docs/sources/source-catalog.md`, never into an importer.
 
 ## Code licence

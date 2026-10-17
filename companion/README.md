@@ -1,14 +1,19 @@
-# Everloot companion
+# companion/: the Everloot desktop companion
 
-Desktop side of the addon, per the 2026-09-27 design (Part 3). Node/TypeScript core, chosen
-2026-10-09. This first slice is the **uploader**; the file bridge for `/ask`, provider adapters and
-memory come later. A signed installer is a separate owner step.
+A command-line helper that runs beside the game. It uploads the addon's SavedVariables file
+(`upload`, or `watch` while you play) and answers `/ask` questions through a file bridge
+(`bridge`). Node and TypeScript. There is no signed installer yet.
+
+## Run it
 
 ```
+cd web && npm install && cd ../companion   # the companion reuses the site's parser
 npm install
 npx tsx src/cli.ts upload --file "<WoW>/WTF/Account/<ACCOUNT>/SavedVariables/Everloot.lua"
 npx tsx src/cli.ts watch --game "<World of Warcraft folder>"
 ```
+
+Before it sends anything it prints how uploads are licensed (CC BY-SA 4.0) and where the source is.
 
 - Sends only events the site has not confirmed (`sent.json` in the app data folder:
   `%APPDATA%\Everloot`, `~/Library/Application Support/Everloot`, or `~/.config/everloot`).
@@ -53,4 +58,21 @@ answer quality. Keys are read from files (`apiKeyFile`); a key written inside th
 - `openai-compatible` covers DeepSeek, OpenRouter and a local Ollama (no key needed locally).
 - `anthropic` uses the official SDK, `claude-opus-5-5` unless `model` is set, at low effort,
   with server-side refusal fallback turned on. Calls bill the user's own key.
-- The addon side (`/ask` command, reading `EverlootAnswersDB`) is not built yet.
+- The addon side is `addon/modules/ask.lua` (since 0.2.5).
+
+## Test it
+
+```
+npm test
+npm run typecheck
+```
+
+## Where things live
+
+| Path | What |
+|---|---|
+| `src/cli.ts` | Commands and arguments |
+| `src/uploader.ts`, `src/sent-state.ts`, `src/savedvariables.ts` | Uploading and remembering what the site confirmed |
+| `src/bridge/` | The `/ask` file bridge: questions in, Lua-escaped answers out |
+| `src/providers/` | Optional model providers for answers |
+| `test/` | Vitest tests |
