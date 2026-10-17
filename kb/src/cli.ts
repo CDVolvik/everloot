@@ -1,11 +1,13 @@
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { auditSources } from "./audit-sources.js";
 import { BlizzardClient } from "./blizzard/client.js";
 import { checkBuilds, loadRegistry, recordBuilds, saveRegistry, versionsUrl } from "./builds.js";
 import { diffSnapshots } from "./client-diff.js";
-import { CASC_LIBRARY, extractTables, NOT_IN_BUILD, openCdn } from "./client-extract.js";
+import { CASC_LIBRARY, extractTables, iconIds, NOT_IN_BUILD, openCdn, probeFiles } from "./client-extract.js";
+import { writeCatalogs } from "./client-catalog.js";
 import { clientSnapshotName, writeClientSnapshot } from "./client-snapshot.js";
+import { diffRaidBuffs, RaidBuffTable } from "./raid-buffs.js";
 import type { Game, NsKind, Region } from "./blizzard/namespaces.js";
 import { openDb, openExistingReadOnlyDb, type DB } from "./db.js";
 import { importCurated } from "./importers/curated.js";
@@ -223,7 +225,7 @@ async function main(): Promise<number> {
       if (!registry.builds.some((b) => b.key === key)) {
         registry = recordBuilds(registry, product, { seqn: null, rows: [{ region: "us", buildConfig: build.buildConfig, cdnConfig: "", buildId: build.buildId, version: build.version, productConfig: "" }] }, now).registry;
       }
-      if (registry.builds.find((b) => b.key === key)?.status === "processed" && existsSync(out)) {
+      if (flags.get("refresh") !== "yes" && registry.builds.find((b) => b.key === key)?.status === "processed" && existsSync(out)) {
         console.log(`${product} ${build.version} is already extracted: ${out}`);
         return 0;
       }
@@ -233,6 +235,8 @@ async function main(): Promise<number> {
         if (res.ok) definitions = String((await res.json()).sha).slice(0, 12);
       } catch { /* provenance stays null when GitHub is unreachable */ }
       const { tables, missing } = await extractTables(source);
+      const fileStatus = probeFiles(source, iconIds(tables));
+      if (fileStatus) tables.push(fileStatus);
       mkdirSync(outDir, { recursive: true });
       const manifest = writeClientSnapshot(out, { ...build, extractedAt: now.toISOString(), library: CASC_LIBRARY, definitions }, tables);
       // A table that failed to read leaves the build queued, so the next run tries it again.
@@ -255,6 +259,25 @@ async function main(): Promise<number> {
       console.log(`${diff.from.product} ${diff.from.version} -> ${diff.to.product} ${diff.to.version}${diff.crossProduct ? " (different products)" : ""}`);
       for (const t of diff.tables) console.log(`${t.table}: ${t.added.length} added, ${t.removed.length} removed, ${t.changed.length} changed`);
       for (const w of diff.warnings) console.log(`warning: ${w}`);
+      return 0;
+    }
+    case "client-catalog": {
+      if (!args[0]) break;
+      const run = writeCatalogs(args[0], flags.get("out") || "data/catalog", flags.get("list") || "lists/raid-buffs.yaml");
+      for (const c of run.index.classes) console.log(`${c.className ?? c.classId}: ${c.trees} trees, ${c.nodes} nodes`);
+      for (const t of run.index.tables) console.log(`${t.table}: ${t.rows} rows${t.encryptedBlocks ? `, ${t.encryptedBlocks} encrypted blocks skipped` : ""}`);
+      for (const w of run.index.warnings) console.log(`warning: ${w}`);
+      if (run.raidBuffs.notFound.length) console.log(`raid buffs not found: ${run.raidBuffs.notFound.join(", ")}`);
+      console.log(`-> ${run.dir}`);
+      return 0;
+    }
+    case "raid-buffs-diff": {
+      if (args.length < 2) break;
+      const [a, b] = args.map((p) => RaidBuffTable.parse(JSON.parse(readFileSync(p, "utf8"))));
+      console.log(`${a.build.product} ${a.build.version} -> ${b.build.product} ${b.build.version}`);
+      const changes = diffRaidBuffs(a, b);
+      for (const c of changes) console.log(`${c.label}: ${c.before ?? "none"} -> ${c.after ?? "none"}`);
+      console.log(`${changes.length} changed`);
       return 0;
     }
     case "audit-sources": {

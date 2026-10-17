@@ -1,0 +1,69 @@
+# Raid buffs and debuffs to look up in the spell tables of a game build.
+# Names only: the scope of each one is read from the game files for the build being extracted, never written here.
+# A totem needs two names, the spell that drops it and the aura it gives off.
+# Not in the knowledge base: `import-curated` reads kb/curated, not this folder.
+
+# Warrior
+- { id: battle-shout, label: Battle Shout, kind: buff, class: Warrior, names: [Battle Shout] }
+- { id: demoralizing-shout, label: Demoralizing Shout, kind: debuff, class: Warrior, names: [Demoralizing Shout] }
+- { id: thunder-clap, label: Thunder Clap, kind: debuff, class: Warrior, names: [Thunder Clap] }
+- { id: sunder-armor, label: Sunder Armor, kind: debuff, class: Warrior, names: [Sunder Armor] }
+# Hunter
+- { id: trueshot-aura, label: Trueshot Aura, kind: buff, class: Hunter, names: [Trueshot Aura] }
+# Druid
+- { id: leader-of-the-pack, label: Leader of the Pack, kind: buff, class: Druid, names: [Leader of the Pack] }
+- { id: mark-of-the-wild, label: Mark of the Wild, kind: buff, class: Druid, names: [Mark of the Wild] }
+- { id: gift-of-the-wild, label: Gift of the Wild, kind: buff, class: Druid, names: [Gift of the Wild] }
+- { id: thorns, label: Thorns, kind: buff, class: Druid, names: [Thorns] }
+- { id: faerie-fire, label: Faerie Fire, kind: debuff, class: Druid, names: [Faerie Fire, Faerie Fire (Feral)] }
+- { id: demoralizing-roar, label: Demoralizing Roar, kind: debuff, class: Druid, names: [Demoralizing Roar] }
+# Mage
+- { id: arcane-intellect, label: Arcane Intellect, kind: buff, class: Mage, names: [Arcane Intellect] }
+- { id: arcane-brilliance, label: Arcane Brilliance, kind: buff, class: Mage, names: [Arcane Brilliance] }
+- { id: winters-chill, label: Winter's Chill, kind: debuff, class: Mage, names: [Winter's Chill] }
+# Priest
+- { id: power-word-fortitude, label: "Power Word: Fortitude", kind: buff, class: Priest, names: ["Power Word: Fortitude"] }
+- { id: prayer-of-fortitude, label: Prayer of Fortitude, kind: buff, class: Priest, names: [Prayer of Fortitude] }
+- { id: divine-spirit, label: Divine Spirit, kind: buff, class: Priest, names: [Divine Spirit] }
+- { id: prayer-of-spirit, label: Prayer of Spirit, kind: buff, class: Priest, names: [Prayer of Spirit] }
+- { id: shadow-protection, label: Shadow Protection, kind: buff, class: Priest, names: [Shadow Protection] }
+- { id: prayer-of-shadow-protection, label: Prayer of Shadow Protection, kind: buff, class: Priest, names: [Prayer of Shadow Protection] }
+# Paladin
+- { id: blessing-of-might, label: Blessing of Might, kind: buff, class: Paladin, names: [Blessing of Might] }
+- { id: blessing-of-kings, label: Blessing of Kings, kind: buff, class: Paladin, names: [Blessing of Kings] }
+- { id: blessing-of-wisdom, label: Blessing of Wisdom, kind: buff, class: Paladin, names: [Blessing of Wisdom] }
+- { id: blessing-of-salvation, label: Blessing of Salvation, kind: buff, class: Paladin, names: [Blessing of Salvation] }
+- { id: blessing-of-light, label: Blessing of Light, kind: buff, class: Paladin, names: [Blessing of Light] }
+- { id: blessing-of-sanctuary, label: Blessing of Sanctuary, kind: buff, class: Paladin, names: [Blessing of Sanctuary] }
+- { id: greater-blessing-of-might, label: Greater Blessing of Might, kind: buff, class: Paladin, names: [Greater Blessing of Might] }
+- { id: greater-blessing-of-kings, label: Greater Blessing of Kings, kind: buff, class: Paladin, names: [Greater Blessing of Kings] }
+- { id: greater-blessing-of-wisdom, label: Greater Blessing of Wisdom, kind: buff, class: Paladin, names: [Greater Blessing of Wisdom] }
+- { id: greater-blessing-of-salvation, label: Greater Blessing of Salvation, kind: buff, class: Paladin, names: [Greater Blessing of Salvation] }
+- { id: devotion-aura, label: Devotion Aura, kind: buff, class: Paladin, names: [Devotion Aura] }
+- { id: retribution-aura, label: Retribution Aura, kind: buff, class: Paladin, names: [Retribution Aura] }
+- { id: concentration-aura, label: Concentration Aura, kind: buff, class: Paladin, names: [Concentration Aura] }
+- { id: sanctity-aura, label: Sanctity Aura, kind: buff, class: Paladin, names: [Sanctity Aura] }
+- { id: fire-resistance-aura, label: Fire Resistance Aura, kind: buff, class: Paladin, names: [Fire Resistance Aura] }
+- { id: frost-resistance-aura, label: Frost Resistance Aura, kind: buff, class: Paladin, names: [Frost Resistance Aura] }
+- { id: shadow-resistance-aura, label: Shadow Resistance Aura, kind: buff, class: Paladin, names: [Shadow Resistance Aura] }
+- { id: judgement-of-wisdom, label: Judgement of Wisdom, kind: debuff, class: Paladin, names: [Judgement of Wisdom] }
+- { id: judgement-of-light, label: Judgement of Light, kind: buff, class: Paladin, names: [Judgement of Light] }
+# Shaman totems
+- { id: strength-of-earth-totem, label: Strength of Earth Totem, kind: buff, class: Shaman, names: [Strength of Earth Totem, Strength of Earth] }
+- { id: grace-of-air-totem, label: Grace of Air Totem, kind: buff, class: Shaman, names: [Grace of Air Totem, Grace of Air] }
+- { id: windfury-totem, label: Windfury Totem, kind: buff, class: Shaman, names: [Windfury Totem, Windfury] }
+- { id: mana-spring-totem, label: Mana Spring Totem, kind: buff, class: Shaman, names: [Mana Spring Totem, Mana Spring] }
+- { id: tranquil-air-totem, label: Tranquil Air Totem, kind: buff, class: Shaman, names: [Tranquil Air Totem, Tranquil Air] }
+- { id: flametongue-totem, label: Flametongue Totem, kind: buff, class: Shaman, names: [Flametongue Totem, Flametongue] }
+- { id: fire-resistance-totem, label: Fire Resistance Totem, kind: buff, class: Shaman, names: [Fire Resistance Totem, Fire Resistance] }
+- { id: frost-resistance-totem, label: Frost Resistance Totem, kind: buff, class: Shaman, names: [Frost Resistance Totem, Frost Resistance] }
+- { id: nature-resistance-totem, label: Nature Resistance Totem, kind: buff, class: Shaman, names: [Nature Resistance Totem, Nature Resistance] }
+- { id: healing-stream-totem, label: Healing Stream Totem, kind: buff, class: Shaman, names: [Healing Stream Totem, Healing Stream] }
+# Warlock
+- { id: curse-of-the-elements, label: Curse of the Elements, kind: debuff, class: Warlock, names: [Curse of the Elements, Curse of Elements] }
+- { id: curse-of-recklessness, label: Curse of Recklessness, kind: debuff, class: Warlock, names: [Curse of Recklessness] }
+- { id: curse-of-weakness, label: Curse of Weakness, kind: debuff, class: Warlock, names: [Curse of Weakness] }
+- { id: curse-of-tongues, label: Curse of Tongues, kind: debuff, class: Warlock, names: [Curse of Tongues] }
+- { id: blood-pact, label: Blood Pact, kind: buff, class: Warlock, names: [Blood Pact] }
+# Rogue
+- { id: expose-armor, label: Expose Armor, kind: debuff, class: Rogue, names: [Expose Armor] }
