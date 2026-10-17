@@ -19,6 +19,8 @@ Before it sends anything it prints how uploads are licensed (CC BY-SA 4.0) and w
   `%APPDATA%\Everloot`, `~/Library/Application Support/Everloot`, or `~/.config/everloot`).
 - Named data (guild, gear, gold, collection) never leaves the machine from here; share it on the
   website with a verified grant.
+- The installed addon list (`/everloot addons on`) never leaves from here either; it is sent only
+  from the upload page, which lists the addons first.
 - Reuses the site's parser and batching (`web/src/lib/sv-parse.ts`, `upload-batches.ts`), so
   `web` must be installed too. `--endpoint` targets another deployment; `--state` another state file.
 - It only reads the file the game writes. It never touches the game client.

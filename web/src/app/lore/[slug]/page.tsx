@@ -50,9 +50,9 @@ export default async function LorePage(props: { params: Promise<{ slug: string }
   if (page === UNAVAILABLE) {
     return (
       <article className="space-y-4 max-w-4xl">
-        <p className="uppercase tracking-[0.2em] text-xs text-gold-500/80">Lore archive</p>
-        <h1 className="font-display text-3xl font-bold text-parchment-100">{UNAVAILABLE_TITLE}</h1>
-        <p className="text-parchment-100/75">{UNAVAILABLE_COPY}</p>
+        <p className="font-mono text-xs text-muted">Lore archive</p>
+        <h1 className="text-3xl font-bold text-fg">{UNAVAILABLE_TITLE}</h1>
+        <p className="text-fg-2">{UNAVAILABLE_COPY}</p>
       </article>
     );
   }
@@ -70,15 +70,15 @@ export default async function LorePage(props: { params: Promise<{ slug: string }
   return (
     <article className="space-y-8 max-w-4xl">
       <header className="space-y-3">
-        <p className="uppercase tracking-[0.2em] text-xs text-gold-500/80">{label(page)}</p>
-        <h1 className="font-display text-3xl sm:text-4xl font-bold text-parchment-100 tracking-tight">{page.name}</h1>
-        {revised && <p className="text-sm text-parchment-100/60">Last wiki revision {revised}</p>}
+        <p className="font-mono text-xs text-muted">{label(page)}</p>
+        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">{page.name}</h1>
+        {revised && <p className="text-sm text-muted">Last wiki revision {revised}</p>}
         {typeSlug && (
           <ul className="flex flex-wrap gap-2 text-xs">
-            <li><Link href={`/lore/${typeSlug}`} className="rounded-full border border-gold-400/40 px-3 py-1 text-gold-400 hover:underline underline-offset-4">{BROWSE_HEADINGS[typeSlug]}</Link></li>
+            <li><Link href={`/lore/${typeSlug}`} className="rounded-full border border-edge px-3 py-1 text-accent hover:underline underline-offset-4">{BROWSE_HEADINGS[typeSlug]}</Link></li>
             {facetLinks.map((f) => (
               <li key={`${f.key}:${f.value}`}>
-                <Link href={f.href} className="rounded-full border border-parchment-100/15 px-3 py-1 text-parchment-100/70 hover:text-gold-400">
+                <Link href={f.href} className="rounded-full border border-edge px-3 py-1 text-fg-2 hover:text-accent">
                   {FACET_LABELS[f.key]}: {f.value}
                 </Link>
               </li>
@@ -87,7 +87,7 @@ export default async function LorePage(props: { params: Promise<{ slug: string }
         )}
       </header>
 
-      <section className="space-y-4 text-parchment-100/85 leading-relaxed">
+      <section className="space-y-4 text-fg leading-relaxed">
         {blocks.map((block, i) =>
           block.type === "p" ? (
             <p key={i}>{block.text}</p>
@@ -101,42 +101,42 @@ export default async function LorePage(props: { params: Promise<{ slug: string }
 
       {infoboxEntries.length > 0 && (
         <section className="space-y-2">
-          <h2 className="font-display text-lg text-parchment-100">Details from the wiki infobox</h2>
+          <h2 className="text-lg text-fg">Details from the wiki infobox</h2>
           <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-sm">
             {infoboxEntries.map(([key, value]) => (
               <div key={key} className="contents">
-                <dt className="text-parchment-100/60">{key}</dt><dd className="text-parchment-100/85">{value}</dd>
+                <dt className="text-muted">{key}</dt><dd className="text-fg">{value}</dd>
               </div>
             ))}
           </dl>
-          <p className="text-xs text-parchment-100/60">As written on the wiki in 2023; values are not interpreted and are not Forever data.</p>
+          <p className="text-xs text-muted">As written on the wiki in 2023; values are not interpreted and are not Forever data.</p>
         </section>
       )}
 
       {page.categories.length > 0 && (
         <section className="space-y-2">
-          <h2 className="font-display text-lg text-parchment-100">Categories</h2>
+          <h2 className="text-lg text-fg">Categories</h2>
           <ul className="flex flex-wrap gap-2 text-xs">
             {page.categories.map((c) => (
-              <li key={c} className="rounded-full border border-parchment-100/15 px-3 py-1 text-parchment-100/70">{c}</li>
+              <li key={c} className="rounded-full border border-line px-3 py-1 text-fg-2">{c}</li>
             ))}
           </ul>
         </section>
       )}
 
-      <section className="rounded-2xl border border-parchment-100/10 bg-parchment-900 p-5 text-sm text-parchment-100/75 space-y-2">
-        <h2 className="font-display text-lg text-parchment-100">Source</h2>
+      <section className="rounded-2xl border border-line bg-panel p-5 text-sm text-fg-2 space-y-2">
+        <h2 className="text-lg text-fg">Source</h2>
         <p>
-          <a href={page.sourceUrl} rel="noopener" className="text-gold-400 hover:underline underline-offset-4 break-all">{page.sourceUrl}</a>
+          <a href={page.sourceUrl} rel="noopener" className="text-accent hover:underline underline-offset-4 break-all">{page.sourceUrl}</a>
           {" "}· retrieved {page.retrievedAt} · {page.licence.replace("CC-BY-SA-4.0", "CC BY-SA 4.0")}
         </p>
         {wiki && <p>{CONVERSION_NOTE}</p>}
       </section>
 
-      <p className="text-sm text-parchment-100/60">
+      <p className="text-sm text-muted">
         {wiki && <>This archive predates WoW: Forever. For collected gameplay facts see the{" "}
-        <Link href="/database" className="text-gold-400 hover:underline underline-offset-4">Forever database</Link>.{" "}</>}
-        <Link href="/search" className="text-gold-400 hover:underline underline-offset-4">Search the archive</Link>.
+        <Link href="/database" className="text-accent hover:underline underline-offset-4">Forever database</Link>.{" "}</>}
+        <Link href="/search" className="text-accent hover:underline underline-offset-4">Search the archive</Link>.
       </p>
     </article>
   );
