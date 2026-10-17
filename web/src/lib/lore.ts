@@ -55,7 +55,7 @@ export function loreSlug(row: { extId: string; name: string }): string {
 
 /**
  * Wiki ids are digits (`291323-frostwhisper`); curated ids are kebab strings and carry no name
- * part (`forever-launch-date`). Leading zeros, uppercase and anything outside [a-z0-9-] are rejected
+ * part (`forever-launch-date`). Leading zeros, capital letters and anything outside [a-z0-9-] are rejected
  * so one page never answers at two URLs.
  */
 export function parseLoreSlug(slug: string): { extId: string; nameSlug: string } | null {
