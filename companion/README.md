@@ -25,6 +25,25 @@ Before it sends anything it prints how uploads are licensed (CC BY-SA 4.0) and w
   `web` must be installed too. `--endpoint` targets another deployment; `--state` another state file.
 - It only reads the file the game writes. It never touches the game client.
 
+## Market prices in game
+
+```
+npx tsx src/cli.ts prices --game "<World of Warcraft folder>"
+```
+
+Reads the realms of your own auction scans in `Everloot.lua` (`lastScans` and the auction record kinds
+only; the realm of a guild or gold record is never sent), fetches each one from `/api/market/prices`, and writes
+the `EverlootPrices` slot addon under `Interface/AddOns`. Item tooltips show the community market
+value, minimum and historical price after the next `/reload`. `watch --game` refreshes them after
+every upload.
+
+- Prices are public market values only: a day counts when 3 reporters (distinct upload addresses) scanned the item
+  (`kb/src/market.ts`). A realm's file holds at most 2,000 items, the ones with the most units listed. Your own latest scan shows in tooltips without the companion.
+- Each realm is one Lua-escaped string with an Adler-32 `sum`; the addon ignores a realm whose sum
+  fails. `addon/tests/market_contract.py` loads the golden file
+  (`companion/scripts/write-prices-fixture.ts`) in real Lua 5.1.
+- A failed fetch keeps the previous file; it is never replaced with an empty list.
+
 ## /ask bridge (file bridge, per the design's public-build rule)
 
 ```
@@ -76,5 +95,6 @@ npm run typecheck
 | `src/cli.ts` | Commands and arguments |
 | `src/uploader.ts`, `src/sent-state.ts`, `src/savedvariables.ts` | Uploading and remembering what the site confirmed |
 | `src/bridge/` | The `/ask` file bridge: questions in, Lua-escaped answers out |
+| `src/prices.ts` | Market prices: realms from your file, the site's prices, the `EverlootPrices` slot addon |
 | `src/providers/` | Optional model providers for answers |
 | `test/` | Vitest tests |

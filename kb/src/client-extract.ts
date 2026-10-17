@@ -58,9 +58,9 @@ export function pinnedFetch(real: typeof fetch, sha: string): typeof fetch {
  * come from that commit, so the recorded sha is the one actually used. Returns the first 12 characters, or
  * null when GitHub cannot be reached (the library then reads master and the snapshot says "unknown").
  */
-export async function pinDefinitions(real: typeof fetch = globalThis.fetch): Promise<string | null> {
+export async function pinDefinitions(real: typeof fetch = globalThis.fetch, ref = "master"): Promise<string | null> {
   try {
-    const res = await real("https://api.github.com/repos/wowdev/WoWDBDefs/commits/master", { signal: AbortSignal.timeout(10_000) });
+    const res = await real(`https://api.github.com/repos/wowdev/WoWDBDefs/commits/${encodeURIComponent(ref)}`, { signal: AbortSignal.timeout(10_000) });
     if (!res.ok) return null;
     const sha = String((await res.json() as { sha: unknown }).sha);
     if (!/^[0-9a-f]{40}$/.test(sha)) return null;

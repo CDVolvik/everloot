@@ -5,16 +5,6 @@
 local E = Everloot
 local MAX_QUESTION, MAX_PENDING = 500, 20
 
--- Same Adler-32 the companion writes; Lua 5.1 arithmetic only.
-local function adler32(s)
-  local a, b = 1, 0
-  for i = 1, #s do
-    a = (a + s:byte(i)) % 65521
-    b = (b + a) % 65521
-  end
-  return b * 65536 + a
-end
-
 function E:Ask(text)
   local question = type(text) == "string" and (text:gsub("^%s+", ""):gsub("%s+$", "")) or ""
   if question == "" then
@@ -42,7 +32,7 @@ local function showAnswers()
   local waiting = {}
   for _, ask in ipairs(EverlootDB.asks) do
     local a = EverlootAnswersDB[ask.id]
-    if type(a) == "table" and type(a.answer) == "string" and a.sum == adler32(a.answer) then
+    if type(a) == "table" and type(a.answer) == "string" and a.sum == E.Adler32(a.answer) then
       print("Everloot — " .. ask.question)
       local source = (type(a.source) == "string" and a.source ~= "none") and (" (Source: " .. a.source .. ")") or ""
       print("  " .. a.answer .. source)
