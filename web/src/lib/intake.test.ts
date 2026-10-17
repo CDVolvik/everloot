@@ -5,7 +5,8 @@ const base = { installId: "test-install-1234", capturedAt: "2026-09-29T12:00:00.
 
 describe("intake contract", () => {
   test("all record kinds exist", () => {
-    expect(ALL_RECORD_KINDS).toHaveLength(21);
+    expect(ALL_RECORD_KINDS).toHaveLength(22);
+    expect(ALL_RECORD_KINDS).toContain("talent_snapshot");
     expect(ALL_RECORD_KINDS).toContain("addon_seen");
     expect(ALL_RECORD_KINDS).toContain("map_bounds");
     expect(ALL_RECORD_KINDS).toContain("recipe_observed");
@@ -160,6 +161,25 @@ expect(low.rejected.map((row) => row.reason).join(" ")).toContain("peak gold can
     expect(result.records).toEqual([zone]);
     expect(result.receipt.rejected.map((r) => r.index)).toEqual([1, 2, 3, 4]);
     expect(result.receipt.rejected[0].reason).toBe("map bounds need a width and a height");
+  });
+
+  test("a talent build is spent nodes in one spec group, with Blizzard's string only when it is plain base64", () => {
+    const build = {
+      ...base, kind: "talent_snapshot", class: "MAGE", level: 30, group: 1, active: true, configId: 7, treeId: 786,
+      specId: 1482, clientBuild: "1.60.1.70450", serializationVersion: 2, exportStatus: "ok", points: 3,
+      loadoutString: "BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      nodes: [{ nodeId: 90001, ranks: 2 }, { nodeId: 90002, ranks: 1, choice: 1 }],
+    };
+    const result = parseRecords([
+      build,
+      { ...build, loadoutString: undefined, exportStatus: "unavailable" },
+      { ...build, group: 3 },
+      { ...build, loadoutString: "not base64!" },
+      { ...build, nodes: [{ nodeId: 90001, ranks: 0 }] },
+      { ...build, exportStatus: "maybe" },
+    ]);
+    expect(result.receipt.rejected.map((r) => r.index)).toEqual([2, 3, 4, 5]);
+    expect(result.records).toHaveLength(2);
   });
 
   test("rejects empty and oversized payloads", () => {

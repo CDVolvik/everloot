@@ -13,8 +13,12 @@ function published<T extends object>(record: T): Omit<T, "installId"> {
   return copy as Omit<T, "installId">;
 }
 
-/** Addon lists are published only as the leaderboard's counts at three or more installs, never row by row. */
-const PUBLIC_KINDS: readonly string[] = ALL_RECORD_KINDS.filter((kind) => kind !== "addon_seen");
+/**
+ * Addon lists are published only as the leaderboard's counts at three or more installs, never row by row.
+ * Talent builds stay out of the public corpus until the data policy says how they are published.
+ */
+const HELD_KINDS: readonly string[] = ["addon_seen", "talent_snapshot"];
+const PUBLIC_KINDS: readonly string[] = ALL_RECORD_KINDS.filter((kind) => !HELD_KINDS.includes(kind));
 
 /** `?kinds=a,b` returns only those record kinds, so an MCP tool fetches what it reads, not the whole corpus. */
 export async function GET(req: Request) {
