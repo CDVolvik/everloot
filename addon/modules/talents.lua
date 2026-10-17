@@ -167,8 +167,10 @@ function T.Snapshot(entry)
   for _, nodeId in ipairs(state.order) do
     local node = state.nodes[nodeId]
     if node.ranks > 0 then
-      nodes[#nodes + 1] = { nodeId = nodeId, ranks = math.min(node.ranks, 50), choice = node.choice }
-      points = points + node.ranks
+      -- Points are the sum of the stored ranks, which the intake checks.
+      local ranks = math.min(node.ranks, 50)
+      nodes[#nodes + 1] = { nodeId = nodeId, ranks = ranks, choice = node.choice }
+      points = points + ranks
     end
   end
   local loadout, status = T.Export(entry.configID)

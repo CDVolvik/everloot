@@ -177,8 +177,10 @@ expect(low.rejected.map((row) => row.reason).join(" ")).toContain("peak gold can
       { ...build, loadoutString: "not base64!" },
       { ...build, nodes: [{ nodeId: 90001, ranks: 0 }] },
       { ...build, exportStatus: "maybe" },
+      { ...build, points: 4 },
+      { ...build, nodes: [{ nodeId: 90001, ranks: 1 }, { nodeId: 90001, ranks: 2 }] },
     ]);
-    expect(result.receipt.rejected.map((r) => r.index)).toEqual([2, 3, 4, 5]);
+    expect(result.receipt.rejected.map((r) => r.index)).toEqual([2, 3, 4, 5, 6, 7]);
     expect(result.records).toHaveLength(2);
   });
 

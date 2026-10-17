@@ -65,19 +65,25 @@ end
 --- Decode a share code: plan table, or nil and the reason.
 function P.Decode(code)
   if type(code) ~= "string" then return nil, "no code" end
-  code = code:gsub("^%s+", ""):gsub("%s+$", "")
+  -- Padding is not part of the format, but a tool that adds it should not break the code.
+  code = code:gsub("^%s+", ""):gsub("%s+$", ""):gsub("=+$", "")
   local version, class, spec, build, payload = code:match("^EL(%d+)%-(%a+)%-(%d+)%-([%d%.]+)%-([%w_%-]*)$")
+  -- Same shape as the intake schema's build: digits in dot-separated groups, at least two.
+  if build and not (build:find("^%d+%.[%d%.]*%d$") and not build:find("%.%.")) then version = nil end
   if not version then return nil, "that is not an Everloot share code (EL1-class-spec-build-payload)" end
   if tonumber(version) ~= VERSION then return nil, "share code version " .. version .. " is not supported by this addon (it reads version " .. VERSION .. ")" end
   local text = decode64(payload)
   if not text then return nil, "the plan part of the code is damaged" end
   local entries = {}
+  local seen = {}
   for item in text:gmatch("[^,]+") do
     local node, rank, choice = item:match("^(%d+):(%d+):?(%d*)$")
     node, rank = tonumber(node), tonumber(rank)
     if not node or node < 1 or not rank or rank < 1 or rank > 50 then return nil, "the plan part of the code is damaged" end
     local pick = choice ~= "" and tonumber(choice) or nil
     if pick and pick > 3 then return nil, "the plan part of the code is damaged" end
+    if seen[node] then return nil, "the plan lists node " .. node .. " twice" end
+    seen[node] = true
     entries[#entries + 1] = { nodeId = node, rank = rank, choice = pick }
     if #entries > MAX_ENTRIES then return nil, "the plan has too many nodes" end
   end
@@ -187,6 +193,7 @@ P.Lines = lines
 local panel
 local nextMark
 local flagMarks = {}
+local userHidden = false
 
 --- A talent button in Blizzard's window, if it is open. Looked up only; never clicked.
 local function buttonFor(nodeId)
@@ -209,6 +216,9 @@ local function overlay(slot, button, r, g, b)
     mark.texture:SetAllPoints(mark)
     mark.texture:SetColorTexture(r, g, b, 0.4)
   end
+  -- A child of the talent button, so it goes away with the button when the window closes or the tab changes.
+  mark:SetParent(button)
+  mark:SetFrameStrata("HIGH")
   mark:ClearAllPoints()
   mark:SetAllPoints(button)
   mark:Show()
@@ -278,7 +288,8 @@ local function buildPanel()
       P.Load(text)
     end)
     box:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
-    frame:SetScript("OnHide", clearMarks)
+    -- The panel only hides when the player closes it, so the talent window must not bring it back.
+    frame:SetScript("OnHide", function() userHidden = true; clearMarks() end)
   end)
   if not built then return nil end
   panel = frame
@@ -302,6 +313,7 @@ end
 
 --- Show the panel, beside the talent window when it is open.
 function P.Show()
+  userHidden = false
   local frame = buildPanel()
   if not frame then
     P.Refresh()
@@ -331,6 +343,11 @@ function P.Load(code)
     print("Everloot: " .. reason)
     return false, reason
   end
+  if not class then print("Everloot: your class could not be read yet, so this plan was not checked against it.") end
+  local spec = T.SpecId()
+  if plan.spec and plan.spec > 0 and spec and spec ~= plan.spec then
+    print("Everloot: this plan was made for spec id " .. plan.spec .. " and the client reports " .. spec .. ". Check it is the right plan.")
+  end
   current = plan
   EverlootDB.plan = P.Encode(plan)
   P.Show()
@@ -351,7 +368,7 @@ function E.PlanCommand(arg)
   arg = (arg or ""):gsub("^%s+", ""):gsub("%s+$", "")
   local word = arg:lower()
   if word == "" or word == "show" then return P.Show() end
-  if word == "hide" then if panel then panel:Hide() end return end
+  if word == "hide" then userHidden = true; if panel then panel:Hide() end return end
   if word == "clear" then P.Clear(); print("Everloot: plan cleared."); return end
   P.Load(arg)
 end
@@ -359,7 +376,23 @@ end
 local function hookTalentFrame()
   local frame = PlayerSpellsFrame
   if not (frame and type(frame.HookScript) == "function") or P.hooked == frame then return end
-  if pcall(frame.HookScript, frame, "OnShow", function() if current then P.Show() end end) then P.hooked = frame end
+  local hooked = pcall(frame.HookScript, frame, "OnShow", function() if current and not userHidden then P.Show() end end)
+  -- Overlays belong to the talent window: take them off when it closes.
+  pcall(frame.HookScript, frame, "OnHide", clearMarks)
+  if hooked then P.hooked = frame end
+end
+
+local refreshPending = false
+--- Trait events come in bursts and the panel is usually closed: recompute only for a visible panel, after they settle.
+local function scheduleRefresh()
+  if not (current and panel and panel:IsShown()) then return end
+  if C_Timer and type(C_Timer.After) == "function" then
+    if refreshPending then return end
+    refreshPending = true
+    C_Timer.After(2, function() refreshPending = false; pcall(P.Refresh) end)
+  else
+    pcall(P.Refresh)
+  end
 end
 
 E:RegisterModule("plan", function()
@@ -375,7 +408,7 @@ E:RegisterModule("plan", function()
   end
   f:HookScript("OnEvent", function(_, event)
     if event == "ADDON_LOADED" or event == "PLAYER_ENTERING_WORLD" then hookTalentFrame() end
-    if event ~= "ADDON_LOADED" and current then pcall(P.Refresh) end
+    if event ~= "ADDON_LOADED" then scheduleRefresh() end
   end)
   hookTalentFrame()
   return "ready (/everloot plan <share code>; shows only, never spends points)"

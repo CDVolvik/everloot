@@ -268,6 +268,13 @@ export const talentSnapshot = base.extend({
   exportStatus: z.enum(["ok", "unavailable", "failed", "empty", "unexpected"]),
   points: z.number().int().nonnegative().max(500),
   nodes: z.array(talentNode).max(600),
+}).superRefine((row, ctx) => {
+  if (row.points !== row.nodes.reduce((sum, node) => sum + node.ranks, 0)) {
+    ctx.addIssue({ code: "custom", message: "talent points must equal the sum of node ranks", path: ["points"] });
+  }
+  if (new Set(row.nodes.map((node) => node.nodeId)).size !== row.nodes.length) {
+    ctx.addIssue({ code: "custom", message: "talent node ids must be unique", path: ["nodes"] });
+  }
 });
 
 const recordSchemas = {

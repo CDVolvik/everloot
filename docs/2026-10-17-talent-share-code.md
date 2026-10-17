@@ -10,8 +10,10 @@ addon's `/everloot talents` prints a code the site can open.
   versions it does not know.
 - `class`: lowercase class token (`mage`, `druid`, `hunter`, `paladin`, `priest`, `rogue`, `shaman`,
   `warlock`, `warrior`).
-- `spec`: the client's spec id for the class, or `0`. Forever has one spec id per class (1482 to 1491,
-  from Blizzard's UI files; confirm with `/everloot selftest`). The site may write `0`.
+- `spec`: the client's spec id for the class, or `0`. Forever has one spec id per class. The builders
+  study reads them from Blizzard's UI files as 1482 and 1484 to 1491 (nine ids, 1483 unused); that is
+  pending `/everloot selftest`, so do not hard-code the table yet. The site may write `0`. A reader that
+  knows both its own spec id and the plan's warns when they differ.
 - `build`: the client build the plan was made on (`1.60.1.70450`). It makes a stale link visible: node
   ids can move between builds, so a reader on another build shows a warning instead of silently
   applying the plan. The site can use it to show what changed since.
@@ -22,7 +24,10 @@ addon's `/everloot talents` prints a code the site can open.
   - `choice`: optional, the zero-based entry of a choice node (the same index Blizzard's loadout
     string uses).
   - Items are in spend order, which is what "next point to spend" follows. A node that is not listed
-    is planned at zero. At most 600 items.
+    is planned at zero. At most 600 items, and a node id may appear only once (a reader rejects
+    duplicates). Trailing `=` padding is ignored on read but never written.
+- `build` is digits in dot-separated groups with at least two groups, the same shape as the upload
+  `clientBuild`.
 
 The separator is `-`, which also appears in base64url, so split on the first four `-` only: class has
 letters, spec has digits and build has digits and dots, so none of them contains one.

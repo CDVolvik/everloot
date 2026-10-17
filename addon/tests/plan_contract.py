@@ -37,6 +37,7 @@ local function widget(name)
   if key == 'SetAllPoints' then return function(s, target) s.target = target end end
   if key == 'CreateFontString' or key == 'CreateTexture' then return function() return widget('child') end end
   if key == 'SetColorTexture' then return function(s, r, g, b) s.color = { r, g, b } end end
+  if key == 'SetParent' then return function(s, p) s.parent = p end end
   if key == 'EnableMouse' then return function(s, on) s.mouse = on end end
   if key == 'RegisterEvent' then return function(s, event) end end
   if key == 'SetScript' then return function(s, kind, f) s.scripts[kind] = f end end
@@ -70,7 +71,7 @@ C_SpecializationInfo = {
  GetActiveSpecGroup = function() return 1 end,
  GetCombatConfigIDForSpecGroup = function() return 10 end,
 }
-calls = { import = 0, purchase = 0, select = 0, click = 0 }
+calls = { import = 0, purchase = 0, select = 0, click = 0, commit = 0, view = 0 }
 -- ranksPurchased and canPurchaseRank change as the "player" spends points.
 NODES = {
  [90001] = { ranksPurchased = 1, maxRanks = 3, canPurchaseRank = true, entryIDs = { 1 } },
@@ -86,10 +87,13 @@ C_Traits = {
  GetDefinitionInfo = function(def) return { spellID = def } end,
  PurchaseRank = function() calls.purchase = calls.purchase + 1 end,
  SetSelection = function() calls.select = calls.select + 1 end,
+ CommitConfig = function() calls.commit = calls.commit + 1 end,
 }
 C_ClassTalents = {
  GetActiveConfigID = function() return 10 end,
  ImportLoadout = function() calls.import = calls.import + 1 end,
+ ViewLoadout = function() calls.view = calls.view + 1 end,
+ CommitConfig = function() calls.commit = calls.commit + 1 end,
 }
 SPELLS = { [1] = 'Arcane Power', [501] = 'Ice Lance', [502] = 'Frost Nova', [90001] = 'x' }
 C_Spell = { GetSpellName = function(id) return SPELLS[id] end }
@@ -146,12 +150,17 @@ bad = {
     share_code("mage", 1, "1.60.1.70450", "abc"): "damaged",
     "EL1-mage-1-1.60.1.70450-A": "damaged",
     "EL1-mage-1-1.60.1.70450-": "no talents",
+    share_code("mage", 1, "1.60.1.70450", "90001:1,90002:1,90001:2"): "twice",
+    share_code("mage", 1, "1", "90001:1"): "not an Everloot",
+    share_code("mage", 1, "1..2", "90001:1"): "not an Everloot",
+    share_code("mage", 1, "1.2.", "90001:1"): "not an Everloot",
 }
 for code, reason in bad.items():
     lua.execute(f"""
 local plan, why = Everloot.Plan.Decode('{code}')
 assert(plan == nil and string.find(why, '{reason}', 1, true), '{code}: ' .. tostring(why))
 """)
+lua.execute(f"assert(Everloot.Plan.Decode('{CODE}==') ~= nil, 'trailing padding is ignored')")
 lua.execute("assert(Everloot.Plan.Decode(nil) == nil and Everloot.Plan.Decode(42) == nil)")
 
 # --- Comparing a plan with the client ---
@@ -225,7 +234,7 @@ assert(string.find(p.body.text, 'Next point: Frost Nova (rank 1 of 1)', 1, true)
 NODES[90003].ranksPurchased = 1
 event('TRAIT_CONFIG_UPDATED')
 assert(string.find(p.body.text, 'Differences from the plan (1):', 1, true) and string.find(p.body.text, 'you have 1, the plan has 0', 1, true), p.body.text)
-assert(calls.purchase == 0 and calls.select == 0 and calls.import == 0, 'the plan never spends, selects or imports')
+assert(calls.purchase == 0 and calls.select == 0 and calls.import == 0 and calls.commit == 0 and calls.view == 0, 'the plan never spends, selects or imports')
 """)
 # Survives a reload; /everloot plan clear removes it.
 lua.execute(f"""
@@ -272,7 +281,7 @@ lua = fresh("""
 BUTTONS = { [90001] = { name = 'b1' }, [90003] = { name = 'b3' } }
 PlayerSpellsFrame = {
  IsShown = function() return true end,
- HookScript = function(self, kind, f) self.onShow = f end,
+ HookScript = function(self, kind, f) self[kind] = f end,
  TalentsFrame = { IsShown = function() return true end, GetTalentButtonByNodeID = function(self, id) return BUTTONS[id] end },
 }
 """)
@@ -283,11 +292,71 @@ local marks = {{}}
 for _, f in ipairs(frames) do if f.target then marks[f.target.name] = f end end
 assert(marks.b1 and marks.b1.shown and marks.b1.mouse == false, 'the next point is outlined, click-through')
 assert(marks.b3 and marks.b3.shown and marks.b3.mouse == false, 'the extra point is flagged, click-through')
-assert(PlayerSpellsFrame.onShow, 'opening the talent window brings the plan up')
+for _, m in pairs(marks) do
+ assert(m.mouse == false, 'every overlay has mouse disabled')
+ assert(m.parent == m.target, 'each overlay is a child of its talent button')
+end
+assert(PlayerSpellsFrame.OnShow and PlayerSpellsFrame.OnHide, 'the plan follows the talent window')
+-- Closing the talent window takes the overlays off.
+PlayerSpellsFrame.OnHide()
+for _, m in pairs(marks) do assert(not m.shown, 'overlays are hidden with the talent window') end
+-- Opening it brings the plan back, unless the player closed the panel.
 panel().shown = false
-PlayerSpellsFrame.onShow()
+PlayerSpellsFrame.OnShow()
 assert(panel().shown, 'the plan shows with the talent window')
-assert(calls.purchase == 0 and calls.select == 0 and calls.import == 0 and calls.click == 0)
+SlashCmdList.EVERLOOT('plan hide')
+PlayerSpellsFrame.OnShow()
+assert(not panel().shown, 'plan hide stays hidden when the talent window opens')
+panel().shown = true
+panel().scripts.OnHide(panel())
+panel().shown = false
+PlayerSpellsFrame.OnShow()
+assert(not panel().shown, 'closing the panel with its X stays closed too')
+SlashCmdList.EVERLOOT('plan show')
+assert(panel().shown, 'plan show opens it again')
+assert(calls.purchase == 0 and calls.select == 0 and calls.import == 0 and calls.commit == 0 and calls.view == 0 and calls.click == 0)
+""")
+
+# --- Trait events: nothing while the panel is hidden, one read per burst when it shows ---
+lua = fresh("""
+timers = {}
+C_Timer = { After = function(seconds, fn) table.insert(timers, fn) end }
+reads = 0
+local get = C_Traits.GetTreeNodes
+C_Traits.GetTreeNodes = function(t) reads = reads + 1; return get(t) end
+""", "{ installId = 'abcd-1234', toggles = { talents = false }, records = {} }")  # talents off: only the plan's timer counts
+lua.execute(f"""
+SlashCmdList.EVERLOOT('plan {CODE}')
+local base = reads
+SlashCmdList.EVERLOOT('plan hide')
+event('TRAIT_CONFIG_UPDATED'); event('TRAIT_NODE_CHANGED')
+assert(#timers == 0 and reads == base, 'a hidden panel schedules nothing and reads nothing')
+SlashCmdList.EVERLOOT('plan show')
+base = reads
+event('TRAIT_CONFIG_UPDATED'); event('TRAIT_NODE_CHANGED'); event('PLAYER_TALENT_UPDATE')
+assert(#timers == 1 and reads == base, 'a burst schedules one refresh')
+NODES[90001].ranksPurchased = 2
+timers[1]()
+assert(reads == base + 1 and string.find(panel().body.text, '2 of 5', 1, true), 'the refresh runs once after the burst')
+""")
+
+# --- Class and spec checks ---
+lua = fresh("UnitClass = nil")
+lua.execute(f"""
+SlashCmdList.EVERLOOT('plan {CODE}')
+assert(EverlootDB.plan == '{CODE}', 'an unreadable class does not block the plan')
+assert(string.find(table.concat(printed, '\\n'), 'class could not be read yet', 1, true), 'but it says the class was not checked')
+""")
+lua = fresh("SPEC = 1485")
+lua.execute(f"""
+SlashCmdList.EVERLOOT('plan {CODE}')
+assert(EverlootDB.plan == '{CODE}')
+assert(string.find(table.concat(printed, '\\n'), 'spec id 1482 and the client reports 1485', 1, true), 'a different spec id warns')
+""")
+lua = fresh("SPEC = 1485")
+lua.execute(f"""
+SlashCmdList.EVERLOOT('plan {share_code("mage", 0, "1.60.1.70450", PLAN_TEXT)}')
+assert(not string.find(table.concat(printed, '\\n'), 'spec id', 1, true), 'spec 0 means unknown: no warning')
 """)
 
 # --- No panel support, no trait API ---

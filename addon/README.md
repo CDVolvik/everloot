@@ -51,7 +51,7 @@ same format (see `docs/2026-10-17-talent-share-code.md`):
 |---|---|
 | `EL1` | Format version 1. A reader refuses a version it does not know. |
 | `class` | Lowercase class token, as `UnitClass` gives it, e.g. `mage`. |
-| `spec` | The client's spec id for the class (Forever has one per class, 1482 to 1491), or `0` when unknown. |
+| `spec` | The client's spec id for the class (Forever has one per class; the builders study reads 1482 and 1484 to 1491 from Blizzard's files, pending `/everloot selftest`), or `0` when unknown. A plan with a spec id that differs from yours loads with a warning. |
 | `build` | Client build the plan was made on, e.g. `1.60.1.70450`. A different build shows a warning because node ids can move. |
 | `payload` | base64url (RFC 4648 section 5, no `=` padding) of the ASCII text `node:rank,node:rank:choice,...`. |
 
