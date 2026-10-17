@@ -4,7 +4,7 @@
  * Every download is checked against its ETag MD5 (single-part objects); any mismatch fails the run and
  * no _manifest.json is written, so a partial mirror cannot pass for a complete one.
  * Credentials: a read-only R2 token in the environment (R2_ACCOUNT_ID, R2_ACCESS_KEY_ID,
- * R2_SECRET_ACCESS_KEY, R2_BUCKET), e.g. from %USERPROFILE%\.r21\everloot-r2-backup.env.
+ * R2_SECRET_ACCESS_KEY, R2_BUCKET), e.g. from an env file kept outside the repository.
  * Run: node scripts/backup-r2.mjs <destination folder>
  */
 import { createHash } from "node:crypto";
