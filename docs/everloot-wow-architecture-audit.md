@@ -72,7 +72,16 @@ the Supabase index, the corpus snapshot and the `kb` rollups. `discoveries` → 
 
 ## 5. Decisions
 
-**Owner decision needed (blocking Phase 2 onward):** how far client data goes.
+**Owner decision (2026-10-17): C, a public datamining layer**, to compete with Wowhead. The
+guardrails below still hold: no decryption, "unconfirmed" labels, spoilers hidden by default,
+review before publication, Blizzard's data kept apart from our CC BY-SA data. `docs/DATA_POLICY.md`
+is rewritten first.
+
+**Feasibility (2026-10-17):** `@rhyster/wow-casc-dbc` 2.16.15 read the WoW: Forever beta
+(1.60.1.70450) from Blizzard's CDN in 29 seconds with no decryption keys and no listfile:
+`ItemSparse` (19,231 rows) and `SpellName` (31,939 rows), no encrypted blocks in either.
+
+The options considered were:
 
 - **A. No client data.** Build monitoring only; new builds trigger re-checks of observed data.
 - **B. Local only.** Extract unencrypted tables to check and diff builds on a maintainer machine;
