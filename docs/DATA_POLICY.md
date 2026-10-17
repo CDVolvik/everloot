@@ -25,15 +25,17 @@ Blizzard hides some WoW: Forever item details until an item drops, and runs no p
 Game files show what exists; play shows what is real. Everloot keeps the two apart and says which
 is which.
 
-**What the game files contain.** *Status: not published yet.* A maintainer can read the item and
-spell tables (`ItemSparse`, `Item`, `SpellName`, `Spell`) of a game's current build from the files
-Blizzard's launcher downloads from its public CDN, the same files every player receives, and
-compare two builds field by field. Those snapshots and comparisons stay on the maintainer's
-machine. Encrypted blocks are skipped, never decrypted: no decryption keys are loaded. Nothing from
-the game files is on the site, in the dataset or in the MCP server yet. When it is, it follows the
-two sections below: facts in the data, Blizzard's own presentation on pages.
+**What the game files contain.** *Status: the table data is not published yet.* A maintainer can
+read the item and spell tables (`ItemSparse`, `Item`, `SpellName`, `Spell`) of a game's current
+build from the files Blizzard's launcher downloads from its public CDN, the same files every
+player receives, and compare two builds field by field. Those snapshots and comparisons stay on the
+maintainer's machine. Encrypted blocks are skipped, never decrypted: no decryption keys are loaded.
+Nothing read from the game files is in the dataset, the API or the MCP server. On the site, only
+the icons, tooltip text and frame art covered further down may appear, and the talent tree layout
+described there.
 
-Publishing comes later, as a separate step. Once it ships, every entry from game files will:
+Publishing the table data comes later, as a separate step. Once it ships, every entry from game
+files will:
 
 - be labelled **found in game files, unconfirmed**: a record there does not mean it is, or will be,
   in the game;
@@ -78,6 +80,13 @@ The rules:
   that could spoil unreleased content stays hidden, icon and text included, until the reader turns
   spoilers on.
 
+**The talent calculator's tree layout.** The talent calculator at `/tools/talents` starts from the
+tree layouts published by [Talents Forever](https://talentsforever.com/) under CC BY 4.0. They are
+a third party's work, and they say it was read from the beta client; we have not checked that
+ourselves. It is credited to them in the [source ledger](sources/LEDGER.md) and on the page, which
+links the licence. The layout is labelled *found in game files, unconfirmed* and follows the
+spoiler rules above. Icons and tooltip text shown with it follow the Blizzard rules above.
+
 *Fan permissions are narrower than this.* As we read Blizzard's
 [video policy](https://www.blizzard.com/en-us/legal/dd76b654-f2c4-4aaa-ba49-ca3122de2376/blizzard-video-policy),
 its permissions for fan use of game material are non-commercial and Blizzard can revoke them. The
@@ -108,8 +117,9 @@ same licence.
 - **Decrypting game data.** Content Blizzard encrypts stays encrypted.
 - **Bulk exports of Blizzard's art or text.** Icons, tooltip text and frame textures appear on
   pages only, never in the downloads, API or MCP server.
-- **Unreviewed spoilers.** Nothing from game files will be published without review, and anything
-  that could spoil unreleased content will stay hidden unless the reader turns spoilers on.
+- **Unreviewed spoilers.** No game file entry is shown as a discovery without review, and anything
+  that could spoil unreleased content stays hidden, icons and text included, unless the reader
+  turns spoilers on.
 
 Blizzard's EULA forbids unauthorized software that "intercepts, collects, reads, or 'mines'
 information generated or stored by the Platform." Studying released game files offline is a long
