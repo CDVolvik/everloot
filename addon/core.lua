@@ -5,8 +5,25 @@
 Everloot = Everloot or {}
 local E = Everloot
 
-E.VERSION = "0.2.5"
+E.VERSION = "0.3.0"
 E.MAX_ROWS_PER_KIND = 2000
+
+-- Same Adler-32 the companion writes into its slot addons; Lua 5.1 arithmetic only.
+function E.Adler32(s)
+  local a, b = 1, 0
+  for i = 1, #s do
+    a = (a + s:byte(i)) % 65521
+    b = (b + a) % 65521
+  end
+  return b * 65536 + a
+end
+
+--- Copper as the site writes it: "1g 2s 3c", silver and copper always shown below a gold.
+function E.Coins(copper)
+  local gold, silver, coins = math.floor(copper / 10000), math.floor(copper % 10000 / 100), copper % 100
+  local text = (gold > 0) and (gold .. "g " .. silver .. "s ") or ((silver > 0) and (silver .. "s ") or "")
+  return text .. coins .. "c"
+end
 
 local defaults = {
   version = E.VERSION,
@@ -87,7 +104,7 @@ function E:Status()
   end
   for _, kind in ipairs({ "npc_sighting", "loot", "quest", "vendor", "item_seen",
     "guild_snapshot", "raid_lockout", "attendance", "loot_award", "gear_snapshot",
-    "collection_catalog", "collection_owned", "auction_scan", "recipe_seen", "recipe_observed", "trainer_seen", "price_seen",
+    "collection_catalog", "collection_owned", "auction_scan", "auction_snapshot", "recipe_seen", "recipe_observed", "trainer_seen", "price_seen",
     "gold_snapshot", "money_event" }) do
     lines[#lines + 1] = string.format("  rows %s: %d", kind, self:Count(kind))
   end
@@ -119,7 +136,9 @@ SlashCmdList["EVERLOOT"] = function(msg)
   elseif msg == "auctions on" or msg == "auctions off" then
     EverlootDB.toggles.auctions = (msg == "auctions on")
     print("Everloot: auction scans " .. (EverlootDB.toggles.auctions and "on" or "off") .. ". /reload to apply.")
+  elseif msg == "scan" then
+    if E.StartScan then E:StartScan() else print("Everloot: full scans are not available in this client.") end
   else
-    print("Everloot commands: /everloot status, /everloot auctions on|off, /ask <question>")
+    print("Everloot commands: /everloot status, /everloot auctions on|off, /everloot scan, /ask <question>")
   end
 end

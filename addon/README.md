@@ -1,13 +1,14 @@
 # addon/: the Everloot collector
 
 The in-game addon for WoW: Forever. It records what you see while you play (sightings, loot
-windows, vendors, auction listings you browse, recipes, trainers, your own gold) into its
-SavedVariables file, and shows `/ask` answers from the companion. It uses only the game's addon
-API and never plays the character. Records match the site's intake contract
-(`web/src/lib/intake.ts`) field for field.
+windows, vendors, full auction-house scans you start, recipes, trainers, your own gold) into its
+SavedVariables file, shows `/ask` answers from the companion, and adds auction prices to item
+tooltips. It uses only the game's addon API and never plays the character. Records match the
+site's intake contract (`web/src/lib/intake.ts`) field for field.
 
-**Status:** 0.2.5 beta. The automated contract tests pass; the in-client checks in
-`docs/2026-10-08-beta-client-checklist.md` are still open.
+**Status:** 0.3.0 beta. The automated contract tests pass; the in-client checks in
+`docs/2026-10-08-beta-client-checklist.md` are still open, and the full scan
+(`docs/superpowers/specs/2026-10-16-forever-market-design.md`) has not run in the Forever client.
 
 ## Run it
 
@@ -17,7 +18,9 @@ Download the zip from everloot.app/upload, or build it from the repository root:
 
 That writes `web/public/downloads/Everloot-<version>.zip`. Extract `Everloot/` into the Forever
 client's `Interface/AddOns/`, `/reload`, then run `/everloot status`. Auction capture is off until
-`/everloot auctions on`.
+`/everloot auctions on`. Then, at the auction house, click **Everloot scan** (or type
+`/everloot scan`) for a full scan: at most one every 15 minutes, read in chunks, summarised per item,
+and the last three scans per realm kept. Nothing scans without that click.
 
 ## Test it
 
@@ -31,6 +34,7 @@ The contract tests run the Lua in real Lua 5.1 through `lupa`:
     python addon/tests/ask_contract.py
     python addon/tests/recipes_contract.py
     python addon/tests/answers_contract.py
+    python addon/tests/market_contract.py
 
 Run them from the repository root. CI also rebuilds the zip and fails if it differs from the one
 committed in `web/public/downloads/`, so commit the rebuilt zip with any addon change.
@@ -45,10 +49,11 @@ addon/
 │   ├── openworld.lua   target/mouseover sightings, loot windows, merchant windows
 │   ├── guild.lua       roster, attendance, saved lockouts (published only through an officer)
 │   ├── gear.lua        equipped item level sample, at most once an hour
-│   ├── auctions.lua    per-unit buyouts from a list you opened; off until enabled
+│   ├── auctions.lua    full auction-house scans you start (Forever); listed buyouts on older clients; off until enabled
 │   ├── gold.lua        your own gold: loot, quests, vendors, flights, mailed auction sales, postage, buyouts
 │   ├── professions.lua recipe colours at your rank; required rank and cost from trainer windows
-│   └── ask.lua         /ask stores a question; the companion's answers show after /reload
+│   ├── ask.lua         /ask stores a question; the companion's answers show after /reload
+│   └── prices.lua      item tooltips: your latest scan and the companion's community prices
 └── tests/              Lua 5.1 contract tests and their fixtures
 ```
 
