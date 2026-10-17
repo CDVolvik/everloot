@@ -1,5 +1,5 @@
 import { expect, test, vi } from "vitest";
-import { debounce, defaultStatePath, parseArgs } from "../src/cli";
+import { debounce, defaultStatePath, parseArgs, uploadNotice } from "../src/cli";
 
 test("arguments name a command, a file or a game folder, and an endpoint", () => {
   expect(parseArgs(["upload", "--file", "Everloot.lua"])).toEqual({ command: "upload", file: "Everloot.lua", endpoint: "https://everloot.app" });
@@ -37,4 +37,10 @@ test("bridge needs the game folder, an MCP URL and a token file", () => {
   expect(() => parseArgs(["bridge", "--file", "x.lua", "--mcp", "https://e/mcp", "--token-file", "t"])).toThrow(/--game/);
   expect(() => parseArgs(["bridge", "--game", "C:/WoW", "--token-file", "t"])).toThrow(/--mcp/);
   expect(() => parseArgs(["bridge", "--game", "C:/WoW", "--mcp", "https://e/mcp"])).toThrow(/--token-file/);
+});
+
+test("before sending, the companion says how uploads are licensed and where the source is", () => {
+  const notice = uploadNotice();
+  expect(notice).toContain("Uploaded observations are published under CC BY-SA 4.0, credited to Everloot contributors.");
+  expect(notice).toContain("Source: https://github.com/CDVolvik/everloot");
 });
