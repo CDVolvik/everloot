@@ -1,23 +1,18 @@
-# Game data
+# Build watch output
 
-Files read from World of Warcraft: Forever's game files, kept here by the build watch
-([docs/BUILD_WATCH.md](../docs/BUILD_WATCH.md)).
+What the build watch ([docs/BUILD_WATCH.md](../../../../../docs/BUILD_WATCH.md)) writes here and beside
+this folder. The rules for every file in `web/src/data/game-data/` (Blizzard's data, not under our
+licence, labelled unconfirmed, no tooltip text) are in [../README.md](../README.md) and
+[docs/DATA_POLICY.md](../../../../../docs/DATA_POLICY.md).
 
-**This data is Blizzard's. It is not under Everloot's licence** (not CC BY-SA 4.0, not AGPL-3.0). It is
-labelled *found in game files, unconfirmed*: a record here does not mean it is, or will be, in the game.
-Anything from a build players cannot play yet is marked `spoiler`. The files come from what Blizzard's
-launcher downloads from its public CDN for every player; encrypted blocks are skipped and counted,
-never decrypted. Column names come from [WoWDBDefs](https://github.com/wowdev/WoWDBDefs) by the
-WoWDBDefs contributors, CC BY-SA 4.0. See [docs/DATA_POLICY.md](../docs/DATA_POLICY.md). If Blizzard asks
-us to remove it, we will: hello@everloot.app.
-
-Tooltip text, icons and frame art are never committed. The talent files keep a short hash of each
-tooltip, so a change is visible without the text.
+Anything from a build players cannot play yet is marked `spoiler`. Encrypted blocks are skipped and
+counted, never decrypted. Column names come from [WoWDBDefs](https://github.com/wowdev/WoWDBDefs)
+(CC BY-SA 4.0).
 
 ## Layout
 
 ```
-game-data/
+web/src/data/game-data/
   <product>/manifest.json            build stamp, class list, rows read and encrypted blocks per table
   <product>/talents/<class>.json     the talent catalog (kb/src/build-watch/game-data.ts, CommittedClass)
   <product>/raid-buffs.json          the raid buff table (kb/src/raid-buffs.ts, everloot.raid-buffs/2)

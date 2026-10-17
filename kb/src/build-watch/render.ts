@@ -94,12 +94,12 @@ export function prBody(entry: ChangeEntry, ctx: BodyContext): string {
     "### Review",
     "",
     "- [ ] The changes above look like the game, not a parsing problem (check any mass removal or warning).",
-    "- [ ] Only `game-data/` changed: manifest, talent files without tooltip text, and one changelog entry.",
+    "- [ ] Only `web/src/data/game-data/` changed: manifest, talent files without tooltip text, and one changelog entry.",
     "- [ ] Spoiler flags are right for a build players cannot play yet.",
     "",
     "Hotfixes that change no build never show up here, because the game files do not change. The blue tracker covers those.",
     "",
-    "Game data is Blizzard's and is not under Everloot's licence (see `game-data/README.md` and `docs/DATA_POLICY.md`).",
+    "Game data is Blizzard's and is not under Everloot's licence (see `web/src/data/game-data/README.md` and `docs/DATA_POLICY.md`).",
   );
   if (ctx.supersedes.length) lines.push("", `Older build PRs still open for this product: ${ctx.supersedes.map((n) => `#${n}`).join(", ")}. Close them once this one is decided.`);
   if (ctx.runUrl) lines.push("", `Run: ${ctx.runUrl}`);

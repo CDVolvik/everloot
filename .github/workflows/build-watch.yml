@@ -104,7 +104,7 @@ jobs:
           retention-days: 3
           if-no-files-found: error
           path: |
-            game-data
+            web/src/data/game-data
             kb/data/build-watch/out
 
   publish:
@@ -149,7 +149,7 @@ jobs:
             title=$(jq -r .title <<<"$item")
             body="$GITHUB_WORKSPACE/kb/$(jq -r .bodyFile <<<"$item")"
             git switch -C "$branch" "$start"
-            git add "game-data/$product" "game-data/changes/$product-$build.json"
+            git add "web/src/data/game-data/$product" "web/src/data/game-data/changes/$product-$build.json"
             if git diff --cached --quiet; then
               echo "$product $build: the files already match $BASE"
             else
@@ -159,7 +159,7 @@ jobs:
             # A branch that exists is replaced only if nobody has pushed to it since we looked.
             if g fetch --quiet origin "$branch" 2>/dev/null; then
               remote=$(git rev-parse FETCH_HEAD)
-              if git diff --quiet FETCH_HEAD HEAD -- game-data; then
+              if git diff --quiet FETCH_HEAD HEAD -- "web/src/data/game-data/$product" "web/src/data/game-data/changes/$product-$build.json"; then
                 echo "$branch is already up to date"
               else
                 g push --force-with-lease="refs/heads/$branch:$remote" origin "$branch"

@@ -1,8 +1,8 @@
 /**
  * One entry per game build in the game-data changelog: what the new build changed compared with the
  * data already committed. The site's /changes timeline reads these files, so this file is the contract
- * and a change to the shape bumps `CHANGE_SCHEMA`. The files live in `game-data/changes/`, one per
- * build, named `<product>-<buildId>.json`. Documented in game-data/README.md.
+ * and a change to the shape bumps `CHANGE_SCHEMA`. The files live in `web/src/data/game-data/changes/`, one per
+ * build, named `<product>-<buildId>.json`. Documented in web/src/data/game-data/changes/README.md.
  *
  * The data is Blizzard's, read from files the launcher downloads, and labelled like all of it.
  */

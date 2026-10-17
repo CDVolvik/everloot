@@ -2,13 +2,13 @@
 
 When Blizzard ships a new WoW: Forever build, a GitHub Actions workflow
 (`.github/workflows/build-watch.yml`) notices within about half an hour, regenerates the game data in
-[`game-data/`](../game-data/README.md) and opens a pull request titled "Game build <version>: data update".
+[`web/src/data/game-data/`](../web/src/data/game-data/changes/README.md) and opens a pull request titled "Game build <version>: data update".
 A maintainer reviews it. Nothing merges itself.
 
 ## What it does
 
 1. Asks Blizzard's public version service for each product in `kb/lists/build-watch.yaml` (one small
-   request each). If the build's config hash matches `game-data/<product>/manifest.json` on `main`, it
+   request each). If the build's config hash matches `web/src/data/game-data/<product>/manifest.json` on `main`, it
    stops. Most runs end here.
 2. Looks at existing pull requests on `game-build/<product>-<buildId>-<config>` branches. One open
    already: nothing to do. Merged: nothing. Closed without merging: it is not reopened (see `--redo`).
@@ -18,7 +18,7 @@ A maintainer reviews it. Nothing merges itself.
    swapped for another spell, spell number changes (effect values, duration, a hash of the tooltip),
    talent point levels. It also compares the raid buff table with the committed one: scope changes
    (per rank too), and spells added or removed and changes to an effect's aura, targets or radius.
-4. Writes a changelog entry (`game-data/changes/<product>-<buildId>.json`, shape in
+4. Writes a changelog entry (`web/src/data/game-data/changes/<product>-<buildId>.json`, shape in
    `kb/src/build-watch/changes.ts`) and a pull request body. The workflow commits, pushes and opens or
    updates the pull request.
 
@@ -73,7 +73,7 @@ Reads the current build from the CDN and writes the files it would commit under
 needs no GitHub access (it assumes no pull requests exist if `gh` is not signed in).
 
 Other flags: `--product a,b` (instead of the config list), `--check` (only decide, read no game files),
-`--redo` (refresh an open pull request, or reopen a declined one), `--game-data <dir>`, `--out <dir>`.
+`--redo` (refresh an open pull request, or reopen a declined one), `--game-data <dir>` (default `../web/src/data/game-data`), `--out <dir>`.
 
 ## Politeness
 

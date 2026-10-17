@@ -56,7 +56,7 @@ const USAGE = `usage: npm run kb -- <command> --db <path>
     docs/TALENT_CATALOG.md. Not for publication)
   raid-buffs-diff <old/raid-buffs.json> <new/raid-buffs.json>   (entries whose scope changed between builds)
   client-diff <old.sqlite> <new.sqlite> [--out diff.json]   (field-level diff of two snapshots)
-  build-watch [--product a,b] [--dry-run] [--check] [--redo] [--game-data ../game-data] [--out data/build-watch/out]
+  build-watch [--product a,b] [--dry-run] [--check] [--redo] [--game-data ../web/src/data/game-data] [--out data/build-watch/out]
     (notices a new game build, regenerates the committed game data and prepares a pull request body and
     a changelog entry; the scheduled workflow opens the PR. --dry-run writes only under --out and changes
     nothing else. --check only says whether there is work. See docs/BUILD_WATCH.md)

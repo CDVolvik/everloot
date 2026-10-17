@@ -55,7 +55,7 @@ export async function buildWatchCommand(flags: Map<string, string>): Promise<num
     ? `${process.env.GITHUB_SERVER_URL ?? "https://github.com"}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`
     : undefined;
   const results = await runWatch({
-    config, gameDataDir: flags.get("game-data") || "../game-data",
+    config, gameDataDir: flags.get("game-data") || "../web/src/data/game-data",
     outDir, dryRun, checkOnly, redo: flags.has("redo"), runUrl,
   }, deps);
 

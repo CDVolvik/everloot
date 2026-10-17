@@ -1,10 +1,10 @@
 /**
  * The committed game-data files: what the repository keeps of a product's current build.
  *
- *   game-data/<product>/manifest.json        build stamp, class list, encrypted block counts
- *   game-data/<product>/talents/<class>.json the talent catalog without tooltip text
- *   game-data/<product>/raid-buffs.json      the raid buff table (spell ids, scope, effect ids; no text)
- *   game-data/changes/<product>-<buildId>.json  one changelog entry per build (see changes.ts)
+ *   web/src/data/game-data/<product>/manifest.json        build stamp, class list, encrypted block counts
+ *   web/src/data/game-data/<product>/talents/<class>.json the talent catalog without tooltip text
+ *   web/src/data/game-data/<product>/raid-buffs.json      the raid buff table (spell ids, scope, effect ids; no text)
+ *   web/src/data/game-data/changes/<product>-<buildId>.json  one changelog entry per build (see changes.ts)
  *
  * docs/DATA_POLICY.md allows the talent catalog in git: node ids, positions, ranks, gates,
  * prerequisites, spell ids, talent names and the build stamp. Tooltip text and icon files stay out, so

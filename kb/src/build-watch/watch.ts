@@ -72,7 +72,7 @@ export interface ProductResult {
   buildId?: number;
   branch?: string;
   title?: string;
-  /** Files to commit, relative to the repository root when gameDataDir is `game-data`. */
+  /** Files to commit, relative to the working directory. */
   paths: string[];
   bodyFile?: string;
   summary?: string;
