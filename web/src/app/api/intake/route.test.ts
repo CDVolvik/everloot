@@ -75,6 +75,18 @@ describe("POST /api/intake", () => {
     expect(body).not.toHaveProperty("upload");
   });
 
+  test("the stored upload keeps the client build the addon reported", async () => {
+    const POST = await freshPost();
+    const response = await POST(request({ addonVersion: "0.2.6", clientBuild: "1.60.1.70450", records: [loot("install-1234")] }));
+
+    expect(response.status).toBe(200);
+    expect(store.putUpload).toHaveBeenCalledWith(expect.any(String), "install-1234", {
+      addonVersion: "0.2.6",
+      clientBuild: "1.60.1.70450",
+      records: [canonicalLoot],
+    }, []);
+  });
+
   test("two accepted install ids reject the whole submission and write nothing", async () => {
     const POST = await freshPost();
     const response = await POST(request({ addonVersion: "0.1.0", records: [loot("install-aaaa"), loot("install-bbbb")] }));
