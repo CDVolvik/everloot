@@ -1,34 +1,25 @@
 # supabase/
 
-Backend — Postgres + Auth + Edge Functions + pgvector (for AI RAG, post-Phase-1).
+The site's Postgres database on Supabase: sign-in sessions, the private upload index, publication
+grants and suppressions, intake quotas and the waitlist. Players' raw uploads live in Cloudflare R2,
+not here.
 
-**Status**: schema and migrations below.
+## Run it
 
-**Setup**:
-```bash
-npm install -g supabase
-supabase init
-supabase login
-supabase link --project-ref <everloot-dev-ref>
-```
+Apply `auth_schema.sql`, then the files in `migrations/` in name order, to a Supabase project or any
+Postgres 15+. The site talks to it only from the server, with a service key that never reaches the
+browser; every table has row-level security on.
 
-**Layout (target)**:
-```
-supabase/
-├── config.toml
-├── migrations/
-│   ├── 001_users_and_characters.sql
-│   ├── 002_collection_libraries.sql
-│   └── ...
-├── functions/
-│   ├── sync-character/
-│   ├── get-missing-mounts/
-│   ├── send-push/
-│   └── chat-with-ai/
-└── seed.sql  (test data only — real seed data comes from scripts/)
-```
+## Test it
 
-**Key decisions**:
-- Row-Level Security on every user-owned table. Reference characters by their `bnet_id`, not `name+realm` (names change).
-- Collection sync uses upsert with `synced_at` timestamp — staleness is detectable, not destructive.
-- pgvector tables don't exist until AI module (Session 11).
+`tests/verified_publication.sql` checks the publication grant rules. Run it with `psql` against a
+disposable database that has the schema applied.
+
+## Where things live
+
+| Path | What |
+|---|---|
+| `auth_schema.sql` | Users, sessions, profiles, characters, suppressions, revoked guilds and tokens |
+| `migrations/` | Uploads and waitlist, verified publication, intake quotas, MCP quota scope |
+| `tests/` | SQL tests |
+| `certs/` | The Supabase root certificate for maintenance connections |
