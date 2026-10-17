@@ -14,7 +14,7 @@ beforeEach(() => { dir = mkdtempSync(join(tmpdir(), "everloot-watch-test-")); })
 afterEach(() => { rmSync(dir, { recursive: true, force: true }); });
 
 const options = (over: Partial<WatchOptions> = {}): WatchOptions => ({
-  config, gameDataDir: join(dir, "game-data"), baselineDir: join(dir, "baseline"), outDir: join(dir, "out"),
+  config, gameDataDir: join(dir, "game-data"), outDir: join(dir, "out"),
   dryRun: false, checkOnly: false, redo: false, ...over,
 });
 
@@ -108,11 +108,10 @@ describe("runWatch", () => {
     expect(existsSync(join(dir, "game-data"))).toBe(false);
   });
 
-  it("in a dry run writes only under the out directory and keeps no baseline", async () => {
+  it("in a dry run writes only under the out directory", async () => {
     const [r] = await runWatch(options({ dryRun: true }), fakes({ id: 70450 }, v1).deps);
     expect(r.summary).toContain("first data for this product");
     expect(existsSync(join(dir, "game-data"))).toBe(false);
-    expect(existsSync(join(dir, "baseline"))).toBe(false);
     expect(existsSync(join(dir, "out", "dry-run", "game-data", "wow_classic_beta", "manifest.json"))).toBe(true);
   });
 
@@ -144,15 +143,21 @@ describe("runWatch", () => {
     expect((await runWatch(options(), deps))[0].error).toContain("odd version");
   });
 
-  it("a rerun for the same new build compares with the same earlier raid table", async () => {
+  it("compares the raid buff table with the committed one, and commits the new one", async () => {
     await runWatch(options(), fakes({ id: 70450 }, v1).deps);
-    await runWatch(options({ dryRun: false }), fakes({ id: 70460, config: CONFIG_B }, v2).deps);
-    // The pull request was never merged: the next run starts from the committed v1 data again.
+    expect(readCommitted(join(dir, "game-data"), "wow_classic_beta")!.raidBuffs!.build.buildId).toBe(70450);
+    await runWatch(options(), fakes({ id: 70460, config: CONFIG_B }, v2).deps);
+    expect(readCommitted(join(dir, "game-data"), "wow_classic_beta")!.raidBuffs!.build.buildId).toBe(70460);
+  });
+
+  it("a rerun of a build whose pull request was not merged gives the same comparison", async () => {
+    await runWatch(options(), fakes({ id: 70450 }, v1).deps);
+    await runWatch(options(), fakes({ id: 70460, config: CONFIG_B }, v2).deps);
+    const first = readFileSync(changeFile(70460), "utf8");
+    // Main still has build 70450's data: put it back, then run the new build again.
     rmSync(join(dir, "game-data"), { recursive: true });
     await runWatch(options(), fakes({ id: 70450 }, v1).deps);
     await runWatch(options(), fakes({ id: 70460, config: CONFIG_B }, v2).deps);
-    const entry = ChangeEntry.parse(JSON.parse(readFileSync(changeFile(70460), "utf8")));
-    expect(entry.raidBuffs!.comparedTo!.buildId).toBe(70450);
-    expect(entry.raidBuffs!.scopeChanges).toHaveLength(1);
+    expect(readFileSync(changeFile(70460), "utf8")).toBe(first);
   });
 });

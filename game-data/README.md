@@ -20,11 +20,12 @@ tooltip, so a change is visible without the text.
 game-data/
   <product>/manifest.json            build stamp, class list, rows read and encrypted blocks per table
   <product>/talents/<class>.json     the talent catalog (kb/src/build-watch/game-data.ts, CommittedClass)
+  <product>/raid-buffs.json          the raid buff table (kb/src/raid-buffs.ts, everloot.raid-buffs/2)
   changes/<product>-<buildId>.json   one changelog entry per build
 ```
 
 `<product>` is Blizzard's product id, for example `wow_classic_beta`. A pull request from the build
-watch replaces a product's `manifest.json` and `talents/` and adds one file to `changes/`.
+watch replaces a product's `manifest.json`, `raid-buffs.json` and `talents/` and adds one file to `changes/`.
 
 ## Changelog entries
 
@@ -45,7 +46,8 @@ ChangeEntry {
                      classesAdded, classesRemoved (classId, className, spoiler), added, removed, moved, ranks, gates, prereqs,
                      replaced, spellValues, pointLevels
                    each item: classId, className, tree, nodeId, name, spoiler, and the before/after
-  raidBuffs        { comparedTo, scopeChanges: [{ id, label, before, after, spoiler }] }
+  raidBuffs        { comparedTo, scopeChanges: [{ id, label, before, after, beforeRanks, afterRanks, spoiler }],
+                     spellChanges: [{ id, label, spellId, name, change, spoiler }] }
   warnings
 }
 ```

@@ -61,7 +61,10 @@ export const RaidBuffChanges = z.object({
   /** The build the raid buff table was compared with; null when no earlier table was on hand. */
   comparedTo: BuildRef.nullable(),
   scopeChanges: z.array(z.object({ id: z.string(), label: z.string(), before: ScopeOrMixed.nullable(), after: ScopeOrMixed.nullable(), beforeRanks: z.string(), afterRanks: z.string(), spoiler: z.boolean() })),
+  /** Changes below the entry's scope: a spell added or removed, or a rank, scope, aura, target or radius that changed. */
+  spellChanges: z.array(z.object({ id: z.string(), label: z.string(), spellId: z.number().int(), name: z.string().nullable(), change: z.string(), spoiler: z.boolean() })),
 });
+export type RaidBuffChanges = z.infer<typeof RaidBuffChanges>;
 
 export const ChangeEntry = z.object({
   schema: z.literal(CHANGE_SCHEMA),
@@ -93,5 +96,5 @@ export function hasChanges(entry: ChangeEntry): boolean {
   const t = entry.talents;
   const talentCount = t ? t.classesAdded.length + t.classesRemoved.length + t.added.length + t.removed.length + t.moved.length + t.ranks.length
     + t.gates.length + t.prereqs.length + t.replaced.length + t.spellValues.length + t.pointLevels.length : 0;
-  return talentCount + (entry.raidBuffs?.scopeChanges.length ?? 0) > 0;
+  return talentCount + (entry.raidBuffs ? entry.raidBuffs.scopeChanges.length + entry.raidBuffs.spellChanges.length : 0) > 0;
 }

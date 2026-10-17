@@ -16,7 +16,8 @@ A maintainer reviews it. Nothing merges itself.
    `client-catalog`), writes the talent catalog without tooltip text, and compares it with what is on
    `main`: talents added, removed, moved, rank changes, row-gate and prerequisite changes, talents
    swapped for another spell, spell number changes (effect values, duration, a hash of the tooltip),
-   talent point levels. It also compares the raid buff table with the previous build's.
+   talent point levels. It also compares the raid buff table with the committed one: scope changes
+   (per rank too), and spells added or removed and changes to an effect's aura, targets or radius.
 4. Writes a changelog entry (`game-data/changes/<product>-<buildId>.json`, shape in
    `kb/src/build-watch/changes.ts`) and a pull request body. The workflow commits, pushes and opens or
    updates the pull request.
@@ -34,7 +35,7 @@ them.
 download; a half-hour poll finds it within the hour even when GitHub delays a scheduled run by
 10 to 15 minutes. Hourly would not guarantee that. The cost is tiny: the common run is one HTTP
 request plus installing dependencies. The CDN is read only when a build is new, and the downloaded
-index is kept in the Actions cache (about 300 MB) so a second new build does not fetch it again.
+index is kept in the Actions cache (about 300 MB; the only thing cached) so a second new build does not fetch it again.
 GitHub switches off scheduled runs in a repository with no activity for 60 days, which would only
 matter if the repository goes quiet.
 
@@ -43,8 +44,7 @@ matter if the repository goes quiet.
 The workflow has three jobs so that no secret shares a job with code that installs packages or parses
 downloaded files. `watch` has a read-only token and no credentials left in the checkout. `publish` runs
 no npm and no parser; it alone has write access, and `BUILD_WATCH_TOKEN` appears only in its push step,
-passed to git for that call. `report` can only write issues. The raid buff baseline is cached only after
-`publish` succeeds. Branches are replaced with `--force-with-lease`.
+passed to git for that call. `report` can only write issues. Branches are replaced with `--force-with-lease`.
 
 ## Repeated failure
 
@@ -58,8 +58,8 @@ next successful scheduled run closes it.
 - Optional but recommended: a repository secret `BUILD_WATCH_TOKEN` (a fine-grained token with
   contents and pull requests write on this repository). Pull requests opened with the built-in token
   do not start other workflows, so the release checks would not run on them.
-- The first run opens a baseline pull request (no comparison). Do not merge game data until
-  `docs/DATA_POLICY.md` allows the talent catalog in git (PR #29).
+- The first run opens a baseline pull request (no comparison). Merge game data only once PR #29 (which
+  allows build changes, beta included, the talent catalog and the raid buff table in git) is merged.
 - When Blizzard lists the live product, add it to `kb/lists/build-watch.yaml` with `live: true`.
 
 ## Running it locally

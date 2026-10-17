@@ -9,12 +9,12 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { z } from "zod";
 import { parseVersions, type VersionRow } from "../builds.js";
-import { RaidBuffTable } from "../raid-buffs.js";
+import type { RaidBuffTable } from "../raid-buffs.js";
 import type { BuildStamp, CatalogIndex, ClassCatalog } from "../talents/catalog.js";
 import { buildChangeEntry } from "./diff.js";
 import type { ChangeEntry } from "./changes.js";
 import {
-  GameDataManifest, loadBaselineBefore, readCommitted, saveBaseline, toCommitted, writeChangeEntry, writeCommitted,
+  GameDataManifest, readCommitted, toCommitted, writeChangeEntry, writeCommitted,
 } from "./game-data.js";
 import { branchFor, decide, olderOpen, titleFor, type Action, type PrRef } from "./plan.js";
 import { prBody, terminalSummary } from "./render.js";
@@ -54,8 +54,6 @@ export interface WatchOptions {
   config: WatchConfig;
   /** Committed game data (read for the comparison; written unless dry run). */
   gameDataDir: string;
-  /** Earlier raid buff tables, kept out of git. */
-  baselineDir: string;
   /** Plan, pull request bodies and dry-run files go here. */
   outDir: string;
   dryRun: boolean;
@@ -133,7 +131,6 @@ async function watchProduct(cfg: WatchConfig["products"][number], prs: PrRef[], 
     tables: got.index.tables,
     warnings: got.index.warnings,
   });
-  const baseline = loadBaselineBefore(opts.baselineDir, cfg.product, build.buildId);
   const entry: ChangeEntry = buildChangeEntry({
     product: cfg.product,
     live: cfg.live,
@@ -143,7 +140,6 @@ async function watchProduct(cfg: WatchConfig["products"][number], prs: PrRef[], 
     classes,
     raidBuffs: got.raidBuffs,
     committed,
-    raidBaseline: baseline ? RaidBuffTable.parse(baseline.table) : null,
     encryptedTables: got.encryptedTables,
     warnings: got.warnings,
   });
@@ -161,8 +157,7 @@ async function watchProduct(cfg: WatchConfig["products"][number], prs: PrRef[], 
 
   // A dry run writes the files it would commit into the out directory instead of the repository.
   const root = opts.dryRun ? join(opts.outDir, "dry-run", "game-data") : opts.gameDataDir;
-  const paths = [...writeCommitted(root, cfg.product, manifest, classes), writeChangeEntry(root, entry)];
-  if (!opts.dryRun) saveBaseline(opts.baselineDir, cfg.product, build.buildId, got.raidBuffs);
+  const paths = [...writeCommitted(root, cfg.product, manifest, classes, got.raidBuffs), writeChangeEntry(root, entry)];
 
   return {
     product: cfg.product,

@@ -3,6 +3,7 @@
  *
  *   game-data/<product>/manifest.json        build stamp, class list, encrypted block counts
  *   game-data/<product>/talents/<class>.json the talent catalog without tooltip text
+ *   game-data/<product>/raid-buffs.json      the raid buff table (spell ids, scope, effect ids; no text)
  *   game-data/changes/<product>-<buildId>.json  one changelog entry per build (see changes.ts)
  *
  * docs/DATA_POLICY.md allows the talent catalog in git: node ids, positions, ranks, gates,
@@ -10,10 +11,11 @@
  * `toCommitted` drops the text and keeps only a short hash, which is enough to see that a tooltip changed.
  */
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { z } from "zod";
 import { BuildStamp, ClassCatalog, Edge, Entry, LABEL, Node, Tree } from "../talents/catalog.js";
+import { RaidBuffTable } from "../raid-buffs.js";
 import { changeFileName, type ChangeEntry } from "./changes.js";
 
 export const GAME_DATA_SCHEMA = "everloot.game-data/1";
@@ -60,7 +62,7 @@ export function toCommitted(catalog: ClassCatalog): CommittedClass {
 const pretty = (value: unknown) => `${JSON.stringify(value, null, 2)}\n`;
 export const productDir = (root: string, product: string) => join(root, product);
 
-export interface Committed { manifest: GameDataManifest; classes: CommittedClass[] }
+export interface Committed { manifest: GameDataManifest; classes: CommittedClass[]; raidBuffs: RaidBuffTable | null }
 
 /** What is committed for a product; null when nothing is yet. */
 export function readCommitted(root: string, product: string): Committed | null {
@@ -69,16 +71,19 @@ export function readCommitted(root: string, product: string): Committed | null {
   if (!existsSync(path)) return null;
   const manifest = GameDataManifest.parse(JSON.parse(readFileSync(path, "utf8")));
   const classes = manifest.classes.map((c) => CommittedClass.parse(JSON.parse(readFileSync(join(dir, "talents", c.file), "utf8"))));
-  return { manifest, classes };
+  const raidPath = join(dir, "raid-buffs.json");
+  const raidBuffs = existsSync(raidPath) ? RaidBuffTable.parse(JSON.parse(readFileSync(raidPath, "utf8"))) : null;
+  return { manifest, classes, raidBuffs };
 }
 
 /** Replaces the product's files. A class that left the build leaves no stale file behind. */
-export function writeCommitted(root: string, product: string, manifest: GameDataManifest, classes: CommittedClass[]): string[] {
+export function writeCommitted(root: string, product: string, manifest: GameDataManifest, classes: CommittedClass[], raidBuffs: RaidBuffTable): string[] {
   const dir = productDir(root, product);
   rmSync(join(dir, "talents"), { recursive: true, force: true });
   mkdirSync(join(dir, "talents"), { recursive: true });
-  const files = [join(dir, "manifest.json")];
+  const files = [join(dir, "manifest.json"), join(dir, "raid-buffs.json")];
   writeFileSync(files[0], pretty(GameDataManifest.parse(manifest)));
+  writeFileSync(files[1], pretty(RaidBuffTable.parse(raidBuffs)));
   for (const c of classes) {
     const file = manifest.classes.find((m) => m.classId === c.classId)!.file;
     const path = join(dir, "talents", file);
@@ -93,27 +98,4 @@ export function writeChangeEntry(root: string, entry: ChangeEntry): string {
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, pretty(entry));
   return path;
-}
-
-/** The raid buff table of earlier builds is kept outside git (Actions cache), one file per build. */
-const baselineFile = (dir: string, product: string, buildId: number) => join(dir, product, `${buildId}.json`);
-
-export function saveBaseline(dir: string, product: string, buildId: number, table: unknown, keep = 4): void {
-  const path = baselineFile(dir, product, buildId);
-  mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, pretty(table));
-  const ids = baselineIds(dir, product).sort((a, b) => b - a);
-  for (const old of ids.slice(keep)) rmSync(baselineFile(dir, product, old), { force: true });
-}
-
-function baselineIds(dir: string, product: string): number[] {
-  const d = join(dir, product);
-  if (!existsSync(d)) return [];
-  return readdirSync(d).map((f) => /^(\d+)\.json$/.exec(f)?.[1]).filter((n): n is string => !!n).map(Number);
-}
-
-/** The newest saved table from a build older than `buildId`; null when none. Re-running the same build finds the same one. */
-export function loadBaselineBefore(dir: string, product: string, buildId: number): { buildId: number; table: unknown } | null {
-  const id = baselineIds(dir, product).filter((n) => n < buildId).sort((a, b) => b - a)[0];
-  return id === undefined ? null : { buildId: id, table: JSON.parse(readFileSync(baselineFile(dir, product, id), "utf8")) };
 }

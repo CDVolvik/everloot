@@ -101,8 +101,7 @@ describe("buildChangeEntry", () => {
     product: "wow_classic_beta", live: false, detectedAt: "2026-10-17T10:00:00.000Z",
     build: { version: "1.60.1.2", buildId: 2, buildConfig: CONFIG_A }, manifest: manifest(2),
     classes: committed([node(1, "Mutilate")]), raidBuffs: raid(2, "raid"),
-    committed: { manifest: manifest(1), classes: committed([node(1, "Mutilate"), node(2, "Evasion")]) },
-    raidBaseline: raid(1, "party"),
+    committed: { manifest: manifest(1), classes: committed([node(1, "Mutilate"), node(2, "Evasion")]), raidBuffs: raid(1, "party") },
     encryptedTables: [{ table: "Spell", blocks: 29 }, { table: "SpellName", blocks: 14 }, { table: "Item", blocks: 0 }],
     warnings: [], ...over,
   });
@@ -124,9 +123,25 @@ describe("buildChangeEntry", () => {
     const after = raid(2, "raid");
     after.entries[0].scope = "mixed";
     after.entries[0].byRank = [{ rank: 1, spellIds: [1], scope: "raid" }, { rank: 2, spellIds: [2], scope: "party" }];
-    const entry = buildChangeEntry(input({ raidBaseline: before, raidBuffs: after }));
+    const entry = buildChangeEntry(input({ committed: { manifest: manifest(1), classes: committed([node(1, "Mutilate")]), raidBuffs: before }, raidBuffs: after }));
     expect(entry.raidBuffs!.scopeChanges).toMatchObject([{ before: "mixed", after: "mixed", beforeRanks: "1:party 2:raid", afterRanks: "1:raid 2:party" }]);
     expect(prBody(entry, { supersedes: [], classes: 1, nodes: 1 })).toContain("by rank: 1:party 2:raid -> 1:raid 2:party");
+  });
+
+  it("lists raid buff changes below the scope: spells added or removed, targets, radius", () => {
+    const spell = (spellId: number, targets: [number, number], radiusYards: number | null) => ({
+      spellId, name: `Shout ${spellId}`, rank: 1, scope: "party" as const,
+      effects: [{ index: 0, effect: 6, aura: 29, targets, radiusYards, scope: "party" as const }],
+    });
+    const before = raid(1, "party");
+    before.entries[0].spells = [spell(1, [20, 0], 20), spell(2, [20, 0], 20)];
+    const after = raid(2, "party");
+    after.entries[0].spells = [spell(1, [56, 0], 30), spell(3, [20, 0], 20)];
+    const entry = buildChangeEntry(input({ committed: { manifest: manifest(1), classes: committed([node(1, "Mutilate")]), raidBuffs: before }, raidBuffs: after }));
+    const lines = entry.raidBuffs!.spellChanges.map((c) => `${c.spellId} ${c.change}`);
+    expect(lines).toEqual(["1 effect 1 targets 20,0 -> 56,0", "1 effect 1 radius 20 -> 30", "3 added", "2 removed"]);
+    expect(hasChanges(entry)).toBe(true);
+    expect(prBody(entry, { supersedes: [], classes: 1, nodes: 1 })).toContain("Battle Shout, spell 3 Shout 3: added");
   });
 
   it("marks added classes as spoilers in the body", () => {
@@ -136,7 +151,7 @@ describe("buildChangeEntry", () => {
   });
 
   it("records a baseline when nothing is committed yet", () => {
-    const entry = buildChangeEntry(input({ committed: null, raidBaseline: null }));
+    const entry = buildChangeEntry(input({ committed: null }));
     expect(entry).toMatchObject({ initial: true, previous: null, talents: null, raidBuffs: { comparedTo: null, scopeChanges: [] } });
     expect(hasChanges(entry)).toBe(false);
   });
@@ -162,7 +177,7 @@ describe("rendering", () => {
   const make = (next: ReturnType<typeof node>[]) => buildChangeEntry({
     product: "wow_classic_beta", live: false, detectedAt: "2026-10-17T10:00:00.000Z",
     build: { version: "1.60.1.2", buildId: 2, buildConfig: CONFIG_A }, manifest, classes: committed(next), raidBuffs: raid(2, "raid"),
-    committed: { manifest, classes: committed([node(1, "Mutilate")]) }, raidBaseline: raid(1, "party"),
+    committed: { manifest, classes: committed([node(1, "Mutilate")]), raidBuffs: raid(1, "party") },
     encryptedTables: [{ table: "Spell", blocks: 29 }], warnings: [],
   });
 

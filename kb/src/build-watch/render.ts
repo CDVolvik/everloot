@@ -38,6 +38,7 @@ function sections(entry: ChangeEntry): { title: string; items: string[] }[] {
     out.push({ title: "Talent points", items: t.pointLevels.map((p) => `${clean(p.className ?? `class ${p.classId}`)}: ${p.before.length} points (levels ${p.before[0] ?? "-"} to ${p.before.at(-1) ?? "-"}) -> ${p.after.length} points (levels ${p.after[0] ?? "-"} to ${p.after.at(-1) ?? "-"})`) });
   }
   const r = entry.raidBuffs;
+  if (r) out.push({ title: "Raid buff spell changes", items: r.spellChanges.map((c) => `${c.spoiler ? "[spoiler] " : ""}${clean(c.label)}, spell ${c.spellId}${c.name ? ` ${clean(c.name)}` : ""}: ${clean(c.change)}`) });
   if (r) out.push({ title: "Raid buff scope changes", items: r.scopeChanges.map((c) => `${c.spoiler ? "[spoiler] " : ""}${clean(c.label)}: ${val(c.before)} -> ${val(c.after)}${c.before === c.after ? ` (by rank: ${clean(c.beforeRanks)} -> ${clean(c.afterRanks)})` : ""}`) });
   return out;
 }
@@ -81,7 +82,7 @@ export function prBody(entry: ChangeEntry, ctx: BodyContext): string {
     `- Encrypted blocks skipped, never decrypted: ${entry.encryptedBlocks.total}${entry.encryptedBlocks.tables.length ? ` (${entry.encryptedBlocks.tables.map((t) => `${t.table} ${t.blocks}`).join(", ")})` : ""}`,
   ];
   if (entry.raidBuffs) {
-    lines.push(`- Raid buffs compared with: ${entry.raidBuffs.comparedTo ? clean(entry.raidBuffs.comparedTo.version) : "no earlier table on hand, so no comparison"} (the table is not committed)`);
+    lines.push(`- Raid buffs compared with: ${entry.raidBuffs.comparedTo ? clean(entry.raidBuffs.comparedTo.version) : "no earlier table on hand, so no comparison"} (the committed table)`);
   }
   if (entry.spoiler) {
     lines.push("", "**Spoiler.** This build is not live, so everything below is marked `spoiler` in the changelog entry and stays hidden on the site unless the reader turns spoilers on. Labelled *found in game files, unconfirmed*.");

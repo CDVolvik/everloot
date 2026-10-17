@@ -4,7 +4,7 @@
  */
 import { isDeepStrictEqual } from "node:util";
 import { diffRaidBuffs, type RaidBuffTable } from "../raid-buffs.js";
-import { CHANGE_SCHEMA, type BuildRef, type ChangeEntry, type TalentChanges } from "./changes.js";
+import { CHANGE_SCHEMA, type BuildRef, type ChangeEntry, type RaidBuffChanges, type TalentChanges } from "./changes.js";
 import { LABEL } from "../talents/catalog.js";
 import type { CommittedClass, GameDataManifest } from "./game-data.js";
 
@@ -87,6 +87,41 @@ export function diffTalents(before: CommittedClass[], after: CommittedClass[], s
   return out;
 }
 
+/**
+ * Changes to raid buff spells beyond the entry's overall scope: a spell added or removed, a rank or a
+ * spell's own scope changed, an effect's aura, targets or radius changed. Entries on one side only are
+ * already reported as scope changes.
+ */
+export function diffRaidSpells(before: RaidBuffTable, after: RaidBuffTable, spoiler: boolean): RaidBuffChanges["spellChanges"] {
+  const a = new Map(before.entries.map((e) => [e.id, e]));
+  const out: RaidBuffChanges["spellChanges"] = [];
+  for (const e of [...after.entries].sort((x, y) => x.id.localeCompare(y.id))) {
+    const old = a.get(e.id);
+    if (!old) continue;
+    const add = (spellId: number, name: string | null, change: string) => out.push({ id: e.id, label: e.label, spellId, name, change, spoiler });
+    const was = new Map(old.spells.map((s) => [s.spellId, s]));
+    const now = new Map(e.spells.map((s) => [s.spellId, s]));
+    for (const s of e.spells) {
+      const o = was.get(s.spellId);
+      if (!o) { add(s.spellId, s.name, "added"); continue; }
+      if (o.rank !== s.rank) add(s.spellId, s.name, `rank ${o.rank ?? "none"} -> ${s.rank ?? "none"}`);
+      if (o.scope !== s.scope) add(s.spellId, s.name, `scope ${o.scope} -> ${s.scope}`);
+      const idx = [...new Set([...o.effects, ...s.effects].map((x) => x.index))].sort((p, q) => p - q);
+      for (const i of idx) {
+        const x = o.effects.find((f) => f.index === i);
+        const y = s.effects.find((f) => f.index === i);
+        if (!x || !y) { add(s.spellId, s.name, `effect ${i + 1} ${x ? "removed" : "added"}`); continue; }
+        if (x.effect !== y.effect) add(s.spellId, s.name, `effect ${i + 1} type ${x.effect} -> ${y.effect}`);
+        if (x.aura !== y.aura) add(s.spellId, s.name, `effect ${i + 1} aura ${x.aura} -> ${y.aura}`);
+        if (x.targets.join(",") !== y.targets.join(",")) add(s.spellId, s.name, `effect ${i + 1} targets ${x.targets.join(",")} -> ${y.targets.join(",")}`);
+        if (x.radiusYards !== y.radiusYards) add(s.spellId, s.name, `effect ${i + 1} radius ${x.radiusYards ?? "none"} -> ${y.radiusYards ?? "none"}`);
+      }
+    }
+    for (const s of old.spells) if (!now.has(s.spellId)) add(s.spellId, s.name, "removed");
+  }
+  return out;
+}
+
 export interface DiffInput {
   product: string;
   live: boolean;
@@ -96,9 +131,7 @@ export interface DiffInput {
   classes: CommittedClass[];
   raidBuffs: RaidBuffTable;
   /** What is committed now; null for the first entry of a product. */
-  committed: { manifest: GameDataManifest; classes: CommittedClass[] } | null;
-  /** The newest earlier raid buff table that was on hand (not committed; it comes from the Actions cache). */
-  raidBaseline: RaidBuffTable | null;
+  committed: { manifest: GameDataManifest; classes: CommittedClass[]; raidBuffs: RaidBuffTable | null } | null;
   encryptedTables: { table: string; blocks: number }[];
   warnings: string[];
 }
@@ -111,6 +144,7 @@ export function buildChangeEntry(input: DiffInput): ChangeEntry {
   if (input.committed && input.committed.manifest.build.definitions !== input.manifest.build.definitions) {
     warnings.push(`table definitions differ (WoWDBDefs ${input.committed.manifest.build.definitions ?? "unknown"} vs ${input.manifest.build.definitions ?? "unknown"}): a change may come from the layouts, not the game`);
   }
+  const before = input.committed?.raidBuffs ?? null;
   return {
     schema: CHANGE_SCHEMA,
     label: LABEL,
@@ -125,8 +159,9 @@ export function buildChangeEntry(input: DiffInput): ChangeEntry {
     encryptedBlocks: { total: blocks.reduce((n, t) => n + t.blocks, 0), tables: blocks },
     talents: input.committed ? diffTalents(input.committed.classes, input.classes, spoiler) : null,
     raidBuffs: {
-      comparedTo: input.raidBaseline ? ref(input.raidBaseline.build) : null,
-      scopeChanges: input.raidBaseline ? diffRaidBuffs(input.raidBaseline, input.raidBuffs).map((c) => ({ ...c, spoiler })) : [],
+      comparedTo: before ? ref(before.build) : null,
+      scopeChanges: before ? diffRaidBuffs(before, input.raidBuffs).map((c) => ({ ...c, spoiler })) : [],
+      spellChanges: before ? diffRaidSpells(before, input.raidBuffs, spoiler) : [],
     },
     warnings,
   };

@@ -67,8 +67,8 @@ jobs:
           [ -n "$INPUT_PRODUCT" ] && args+=(--product "$INPUT_PRODUCT")
           [ "$INPUT_REDO" = "true" ] && args+=(--redo)
           npm run kb -- build-watch "${args[@]}"
-      # The CDN index and the earlier raid buff tables, kept between runs so a new build downloads only
-      # what changed. Restored only when there is work, which is rare.
+      # The CDN index, kept between runs so a new build downloads only what changed. Restored only when
+      # there is work, which is rare.
       - name: Restore the CDN index
         if: steps.check.outputs.needed == 'true'
         uses: actions/cache/restore@v4
@@ -76,13 +76,6 @@ jobs:
           path: kb/cache
           key: build-watch-casc-${{ github.run_id }}
           restore-keys: build-watch-casc-
-      - name: Restore earlier raid buff tables
-        if: steps.check.outputs.needed == 'true'
-        uses: actions/cache/restore@v4
-        with:
-          path: kb/data/build-watch/baseline
-          key: build-watch-baseline-${{ github.run_id }}
-          restore-keys: build-watch-baseline-
       - name: Read the new build and prepare the data
         if: steps.check.outputs.needed == 'true'
         id: watch
@@ -113,13 +106,10 @@ jobs:
           path: |
             game-data
             kb/data/build-watch/out
-            kb/data/build-watch/baseline
 
   publish:
     needs: watch
-    # Also when the watch step failed for one product: the others still have a plan to publish. The
-    # raid buff baseline is saved only after this job succeeds, so a failed publish leaves the next run
-    # comparing with the right earlier build.
+    # Also when the watch step failed for one product: the others still have a plan to publish.
     if: always() && needs.watch.outputs.extracted == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -185,12 +175,6 @@ jobs:
             fi
             git switch --detach "$start"
           done
-      - name: Keep the raid buff tables for the next comparison
-        if: success()
-        uses: actions/cache/save@v4
-        with:
-          path: kb/data/build-watch/baseline
-          key: build-watch-baseline-${{ github.run_id }}
 
   report:
     needs: [watch, publish]
