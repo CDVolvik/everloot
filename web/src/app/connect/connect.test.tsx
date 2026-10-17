@@ -10,11 +10,13 @@ vi.mock("next/link", () => ({
 }));
 vi.mock("@/components/AccountControls", () => ({ default: () => null }));
 vi.mock("@/components/CookieConsent", () => ({ CookiePreferencesButton: () => null }));
+vi.mock("@/components/ApiKeys", () => ({ default: () => <div data-testid="api-keys" /> }));
 
 import ConnectPage, { metadata } from "./page";
 import { CONNECT_EXAMPLES, CORPUS_URL, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR } from "./connect-data";
 import { PUBLIC_RECORD_KINDS } from "@/lib/intake";
 import { createIntakeQuota } from "@/lib/intake-quota";
+import { ANON_PAGE, ANON_PER_HOUR, attribution, KEY_PAGE, KEY_PER_HOUR } from "@/lib/data-guard";
 import sitemap from "../sitemap";
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
@@ -64,7 +66,8 @@ test("the examples point at the production URLs and parse", () => {
   const body = CONNECT_EXAMPLES.mcpCurl.match(/-d '(.*)'$/)?.[1] ?? "";
   expect(JSON.parse(body)).toMatchObject({ method: "tools/call", params: { name: "get_by_name" } });
   expect(CONNECT_EXAMPLES.mcpCurl).toContain("application/json, text/event-stream");
-  expect(Object.keys(JSON.parse(CONNECT_EXAMPLES.corpusShape))).toEqual(["ok", "uploads", "records", "dataAsOf", "kinds"]);
+  expect(Object.keys(JSON.parse(CONNECT_EXAMPLES.corpusShape))).toEqual(["ok", "uploads", "records", "dataAsOf", "kinds", "offset", "limit", "total", "next", "attribution"]);
+  expect(JSON.parse(CONNECT_EXAMPLES.corpusShape).attribution).toEqual(attribution("/database"));
   expect(decoded).toContain(CONNECT_EXAMPLES.corpusCurl);
 });
 
@@ -84,4 +87,38 @@ test("is in the sitemap, the header and the footer", () => {
   expect(renderToStaticMarkup(<Header />)).toContain('href="/connect"');
   expect(renderToStaticMarkup(<Footer />)).toContain('href="/connect"');
   expect(metadata.alternates?.canonical).toBe("/connect");
+});
+
+test("with the data guard off the page promises no limit and no key it does not enforce", () => {
+  expect(decoded).toContain("Keys are not switched on yet");
+  expect(decoded).toContain("This endpoint has no limit of its own today");
+  expect(page).not.toContain("api-keys");
+  expect(decoded).not.toContain(`${ANON_PER_HOUR} requests per hour for each IP address, ${ANON_PAGE} records a page`);
+});
+
+test("with the data guard on it states the limits it enforces, how to send a key, and shows the key list", () => {
+  vi.stubEnv("EVERLOOT_DATA_GUARD", "1");
+  try {
+    const on = renderToStaticMarkup(<ConnectPage />).replaceAll("&quot;", '"').replaceAll("&#x27;", "'").replaceAll("&amp;", "&").replaceAll("&lt;", "<").replaceAll("&gt;", ">");
+    for (const text of [
+      `${REQUESTS_PER_HOUR} requests per hour for each IP address`,
+      `${ANON_PER_HOUR} requests per hour for each IP address, ${ANON_PAGE} records a page`,
+      `${KEY_PER_HOUR.toLocaleString("en-US")} requests per hour for your account, across all its keys and every endpoint`,
+      "make up to 10 a day",
+      "daily request counts for 90 days",
+      "deleted 30 days after it was revoked",
+      `${KEY_PAGE.toLocaleString("en-US")} records a page`,
+      "Authorization: Bearer <key>",
+      "Battle.net account",
+      "Search engines and AI assistants are welcome",
+      'data-testid="api-keys"',
+      "no sign-in wall",
+    ]) expect(on).toContain(text);
+    expect(on).not.toContain("This endpoint has no limit of its own today");
+    expect(on).not.toMatch(/premium|paid|upgrade|subscribe|coming soon/i);
+  } finally { vi.unstubAllEnvs(); }
+});
+
+test("the credit rule names the attribution field and headers every answer carries", () => {
+  for (const text of ["attribution", "X-Everloot-Licence", "X-Everloot-Credit", "Link"]) expect(decoded).toContain(text);
 });

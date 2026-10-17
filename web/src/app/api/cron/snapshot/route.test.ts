@@ -4,6 +4,8 @@ vi.mock("@/lib/upload-store", () => ({ uploadStore: { writeSnapshot: store.write
   sharingStore: { loadState: async () => ({ grants: [], suppressions: [] }) },
 }));
 vi.mock("@/lib/intake-quota", () => ({ intakeQuota: { prune: store.prune } }));
+const keys = vi.hoisted(() => ({ pruneKeys: vi.fn() }));
+vi.mock("@/lib/api-keys", () => ({ pruneKeys: keys.pruneKeys }));
 import { GET } from "./route";
 beforeEach(() => {
   vi.stubEnv("CRON_SECRET", "synthetic-cron-key");
@@ -11,6 +13,7 @@ beforeEach(() => {
   store.writeMarket.mockReset().mockResolvedValue({ added: 0, scans: 0 });
   store.writeCompletion.mockReset().mockResolvedValue({ added: 0, remaining: 0, trimmed: 0, rebuilding: false });
   store.prune.mockReset().mockResolvedValue(undefined);
+  keys.pruneKeys.mockReset().mockResolvedValue(undefined);
 });
 const req = (auth = "Bearer synthetic-cron-key", query = "") =>
   new Request(`https://everloot.app/api/cron/snapshot${query}`, { headers: { authorization: auth } });
@@ -55,4 +58,17 @@ test("a market failure is reported but does not block the corpus snapshot or cle
   expect(store.writeSnapshot).toHaveBeenCalledOnce();
   expect(store.prune).toHaveBeenCalledOnce();
   expect(await res.json()).toMatchObject({ ok: false, error: "market rollup failed" });
+});
+
+test("key retention runs only once the data guard is on, and its failure does not fail the snapshot", async () => {
+  vi.stubEnv("EVERLOOT_DATA_GUARD", "");
+  expect((await GET(req())).status).toBe(200);
+  expect(keys.pruneKeys).not.toHaveBeenCalled();
+  vi.stubEnv("EVERLOOT_DATA_GUARD", "1");
+  expect((await GET(req())).status).toBe(200);
+  expect(keys.pruneKeys).toHaveBeenCalledOnce();
+  keys.pruneKeys.mockRejectedValue(new Error("down"));
+  vi.spyOn(console, "error").mockImplementation(() => {});
+  expect((await GET(req())).status).toBe(200);
+  vi.stubEnv("EVERLOOT_DATA_GUARD", "");
 });

@@ -60,3 +60,31 @@ test("a spent quota is 429 with retry-after; a quota outage fails closed", async
   deps.mcp.mockRejectedValueOnce(new Error("Quota storage unavailable"));
   expect((await POST(initialize())).status).toBe(503);
 });
+
+test("every answer carries the licence and credit line in its headers", async () => {
+  const { POST } = await route({ KB_SNAPSHOT_PATH: release, EVERLOOT_MCP_PUBLIC: "1" });
+  const res = await POST(initialize());
+  expect(res.status).toBe(200);
+  expect(res.headers.get("x-everloot-licence")).toBe("CC BY-SA 4.0");
+  expect(res.headers.get("x-everloot-credit")).toBe("Data from Everloot (https://everloot.app), CC BY-SA 4.0.");
+  expect((await res.json()).result.instructions).toContain("Data from Everloot (https://everloot.app), CC BY-SA 4.0.");
+});
+
+test("guard on: a free key spends its own allowance instead of the per-IP one; a refused caller is pointed at it", async () => {
+  const send = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) =>
+    Response.json([{ allowed: true, retry_after: 0, key_ref: crypto.randomUUID() }]));
+  vi.stubGlobal("fetch", send);
+  try {
+    const { POST } = await route({ KB_SNAPSHOT_PATH: release, EVERLOOT_MCP_PUBLIC: "1", EVERLOOT_DATA_GUARD: "1",
+      SUPABASE_URL: "https://db.example", SUPABASE_SERVICE_ROLE_KEY: "service" });
+    const keyed = initialize();
+    keyed.headers.set("authorization", `Bearer evl_${"a".repeat(64)}`);
+    expect((await POST(keyed)).status).toBe(200);
+    expect(deps.mcp).not.toHaveBeenCalled();
+    expect(String(send.mock.calls[0][0])).toContain("/rpc/consume_api_key");
+    deps.mcp.mockResolvedValueOnce({ allowed: false, retryAfter: 90 });
+    const limited = await POST(initialize());
+    expect(limited.status).toBe(429);
+    expect((await limited.json()).error).toContain("https://everloot.app/connect#keys");
+  } finally { vi.unstubAllGlobals(); }
+});

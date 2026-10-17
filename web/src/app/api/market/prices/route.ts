@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { MARKET_RULE, marketPrices, marketRealms, validRealm } from "../../../../../../kb/src/market";
-import { intakeQuota } from "@/lib/intake-quota";
+import { admit, attribution, attributionHeaders } from "@/lib/data-guard";
 import { uploadStore } from "@/lib/upload-store";
 export const dynamic = "force-dynamic";
 
@@ -14,18 +14,13 @@ const NO_STORE = { "Cache-Control": "no-store" };
  * public market value, as tuples (see `fields`), at most MAX_PRICE_ROWS of them. The companion writes
  * them into the EverlootPrices slot addon. Without `realm` it lists the realms that have public values.
  * Install ids and upload addresses stay on the site. Requests the CDN does not answer count against a
- * per-IP quota.
+ * per-IP quota, or against the caller's key (lib/data-guard.ts).
  */
 export async function GET(req: Request) {
-  try {
-    const quota = await intakeQuota.market(req);
-    if (!quota.allowed) {
-      return NextResponse.json({ ok: false, error: "Too many requests. Try again later." },
-        { status: 429, headers: { ...NO_STORE, "retry-after": String(quota.retryAfter) } });
-    }
-  } catch {
-    return NextResponse.json({ ok: false, error: "Rate limit storage unavailable. Try again later." }, { status: 503, headers: NO_STORE });
-  }
+  const admitted = await admit(req, "market");
+  if (admitted instanceof Response) return admitted;
+  // A keyed answer is counted against that key, so the CDN must not hand it to anyone else.
+  const cache = { ...(admitted.tier === "key" ? NO_STORE : CACHE), ...attributionHeaders() };
   const realm = new URL(req.url).searchParams.get("realm")?.trim() ?? "";
   if (realm && !validRealm(realm)) return NextResponse.json({ ok: false, error: "Not a realm name." }, { status: 400, headers: NO_STORE });
   const market = await uploadStore.loadMarket();
@@ -33,9 +28,10 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: "Market values unavailable. They are unrecorded, not zero." },
       { status: 503, headers: NO_STORE });
   }
-  if (!realm) return NextResponse.json({ ok: true, dataAsOf: market.dataAsOf, realms: marketRealms(market.state) }, { headers: CACHE });
+  const credit = attribution("/tools/auctions");
+  if (!realm) return NextResponse.json({ ok: true, dataAsOf: market.dataAsOf, realms: marketRealms(market.state), attribution: credit }, { headers: cache });
   return NextResponse.json(
-    { ok: true, dataAsOf: market.dataAsOf, rule: MARKET_RULE, fields: FIELDS, ...marketPrices(market.state, realm, new Date()) },
-    { headers: CACHE },
+    { ok: true, dataAsOf: market.dataAsOf, rule: MARKET_RULE, fields: FIELDS, ...marketPrices(market.state, realm, new Date()), attribution: credit },
+    { headers: cache },
   );
 }

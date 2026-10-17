@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { sharingStore, uploadStore } from "@/lib/upload-store";
 import { intakeQuota } from "@/lib/intake-quota";
+import { pruneKeys } from "@/lib/api-keys";
+import { guardOn } from "@/lib/data-guard";
 
 /**
  * GET /api/cron/snapshot — Vercel Cron (vercel.json) extends the corpus snapshot with new uploads,
@@ -28,6 +30,10 @@ export async function GET(req: Request) {
   try {
     const result = await uploadStore.writeSnapshot({ rebuild });
     await intakeQuota.prune();
+    // Key retention (lib/api-keys.ts) runs only once the data guard's tables exist; a failure is retried next run.
+    if (guardOn()) {
+      try { await pruneKeys(); } catch (err) { console.error("key retention failed", err); }
+    }
     // The market has its own watermark, so a failure here leaves the corpus snapshot current
     // and the next run retries the same uploads.
     let market: { added: number; scans: number } | null = null;

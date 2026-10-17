@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+import { CREDIT_LINE, LICENCE, MCP_CREDIT, SITE } from "./attribution.js";
 import { auctionSightingsFromRecords, handleAuctionHistory } from "./auction-history.js";
 import { handlePlan } from "./bridge-plan.js";
 import { CHANGE_FILTERS, handleRecentChanges, type ChangeEntry } from "./changes.js";
@@ -26,6 +27,12 @@ export const SERVER_NAME = "everloot-knowledge";
 export const SERVER_VERSION = "0.8.0";
 /** The source this server runs, offered to every client (AGPL section 13). */
 export const SOURCE_URL = "https://github.com/CDVolvik/everloot";
+
+/** Sent to every client on connect: how to credit what the tools return. */
+export const SERVER_INSTRUCTIONS =
+  `Everloot answers questions about WoW: Forever. Facts built on player uploads are Everloot's data under ${LICENCE}: ` +
+  `when you show them, credit "${CREDIT_LINE}" or link ${SITE}. Lore hits carry their own source and licence; keep them with the text. ` +
+  "Game-file facts and Blizzard's posts stay Blizzard's.";
 
 export const UPLOADS_UNSET =
   "Uploads are not connected. Neither EVERLOOT_PUBLIC_CORPUS_URL nor EVERLOOT_UPLOADS is set, so this is not a measured zero.";
@@ -149,7 +156,7 @@ export async function answerMarketValue(args: { realm: string; itemId: number },
     market = null;
   }
   if (!market) return "Market values unavailable. They are unrecorded, not zero.";
-  return `${handleMarketValue(args, market.state, new Date())}\n${dataAgeLine(market.dataAsOf)}`;
+  return `${handleMarketValue(args, market.state, new Date())}\n${answerFooter(market.dataAsOf)}`;
 }
 
 /** Prefer the web's sanitized current view; raw local files can supply anonymous facts only. */
@@ -176,17 +183,34 @@ async function fromLoader(loader: CorpusLoader, render: (records: unknown[]) => 
   if (!corpus) return UNAVAILABLE;
   const wanted = kinds ? new Set<string>(kinds) : null;
   const records = wanted ? corpus.records.filter((r) => wanted.has((r as { kind?: string }).kind ?? "")) : corpus.records;
-  return `${render(records)}\n${dataAgeLine(corpus.dataAsOf)}`;
+  return `${render(records)}\n${answerFooter(corpus.dataAsOf)}`;
 }
 
-async function fetchPublicCorpus(url: string): Promise<{ records: unknown[]; dataAsOf: unknown } | null> {
-  try {
-    const response = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(10_000) });
+/** Pages a self-hosted server follows at most; with a key (EVERLOOT_API_KEY) a page holds far more records. */
+const MAX_CORPUS_PAGES = 50;
+
+/** A page from a newer snapshot than the first page: start again, the corpus moved on mid-read. */
+class SnapshotMoved extends Error {}
+
+/**
+ * Every page of the feed at `url`. The site pages it when its data guard is on: follow `next`
+ * within one byte ceiling. A `next` that cannot be followed (another origin, a bad URL), or a page
+ * that fails, fails the whole read, so an answer is never built on part of the corpus.
+ */
+async function readCorpusPages(url: string, key: string | undefined): Promise<{ records: unknown[]; dataAsOf: unknown }> {
+  const init: RequestInit = { cache: "no-store", ...(key ? { headers: { authorization: `Bearer ${key}` } } : {}) };
+  const origin = new URL(url).origin;
+  const records: unknown[] = [];
+  let dataAsOf: unknown;
+  let size = 0;
+  let next: string | null = url;
+  for (let page = 0; next; page++) {
+    if (page >= MAX_CORPUS_PAGES) throw new Error("Public corpus has too many pages");
+    const response = await fetch(next, { ...init, signal: AbortSignal.timeout(10_000) });
     if (!response.ok || Number(response.headers.get("content-length")) > 2_000_000) throw new Error("Public corpus too large or unavailable");
     const reader = response.body?.getReader();
     if (!reader) throw new Error("Public corpus has no body");
     const chunks: Uint8Array[] = [];
-    let size = 0;
     try {
       for (;;) {
         const { done, value } = await reader.read();
@@ -196,18 +220,58 @@ async function fetchPublicCorpus(url: string): Promise<{ records: unknown[]; dat
         chunks.push(value);
       }
     } finally { reader.releaseLock(); }
-    const corpus = JSON.parse(Buffer.concat(chunks).toString("utf8")) as { ok?: boolean; records?: unknown; dataAsOf?: unknown };
-    if (!response.ok || corpus.ok !== true || !Array.isArray(corpus.records)) throw new Error("Invalid public corpus");
-    const parsed = parseRecords(corpus.records);
+    const corpus = JSON.parse(Buffer.concat(chunks).toString("utf8")) as { ok?: boolean; records?: unknown; dataAsOf?: unknown; next?: unknown };
+    if (corpus.ok !== true || !Array.isArray(corpus.records)) throw new Error("Invalid public corpus");
+    if (page === 0) dataAsOf = corpus.dataAsOf;
+    else if (corpus.dataAsOf !== dataAsOf) throw new SnapshotMoved("Public corpus changed while paging");
+    records.push(...corpus.records);
+    if (corpus.next === null || corpus.next === undefined) next = null;
+    else if (typeof corpus.next === "string" && URL.canParse(corpus.next) && new URL(corpus.next).origin === origin) next = corpus.next;
+    else throw new Error("Public corpus next link cannot be followed");
+  }
+  return { records, dataAsOf };
+}
+
+/** How long a read of the public corpus is reused. Zero (the default) reads it on every answer. */
+let corpusCacheMs = 0;
+const corpusCache = new Map<string, { at: number; corpus: { records: unknown[]; dataAsOf: unknown } }>();
+
+/**
+ * Reuse each public corpus read for `ms`. The stdio server sets this to the site's snapshot interval,
+ * so a local server without a key does not page through the whole feed on every tool call.
+ */
+export function cachePublicCorpus(ms: number): void {
+  corpusCacheMs = ms;
+  corpusCache.clear();
+}
+
+async function fetchPublicCorpus(url: string): Promise<{ records: unknown[]; dataAsOf: unknown } | null> {
+  const key = process.env.EVERLOOT_API_KEY?.trim();
+  const cacheKey = `${key ? "key" : "anon"} ${url}`;
+  const cached = corpusCache.get(cacheKey);
+  if (cached && Date.now() - cached.at < corpusCacheMs) return cached.corpus;
+  try {
+    let read: { records: unknown[]; dataAsOf: unknown } | null = null;
+    // One retry when the snapshot moved on mid-read; a second move fails rather than mixing snapshots.
+    for (let attempt = 0; !read; attempt++) {
+      try {
+        read = await readCorpusPages(url, key);
+      } catch (err) {
+        if (!(err instanceof SnapshotMoved) || attempt >= 1) throw err;
+      }
+    }
+    const parsed = parseRecords(read.records);
     if (parsed.receipt.rejected.length) throw new Error("Invalid public records");
-    return { records: parsed.records, dataAsOf: corpus.dataAsOf };
+    const corpus = { records: parsed.records, dataAsOf: read.dataAsOf };
+    if (corpusCacheMs > 0) corpusCache.set(cacheKey, { at: Date.now(), corpus });
+    return corpus;
   } catch { return null; }
 }
 
 async function fromPublicCorpus(url: string, render: (records: unknown[]) => string): Promise<string> {
   const corpus = await fetchPublicCorpus(url);
   if (!corpus) return UNAVAILABLE;
-  return `${render(corpus.records)}\n${dataAgeLine(corpus.dataAsOf)}`;
+  return `${render(corpus.records)}\n${answerFooter(corpus.dataAsOf)}`;
 }
 
 async function answerFromTooledLoader<T>(
@@ -220,7 +284,7 @@ async function answerFromTooledLoader<T>(
     return UNAVAILABLE;
   }
   if (!corpus) return UNAVAILABLE;
-  return `${render(tooledFacts("loader", corpus, tool, build))}\n${dataAgeLine(corpus.dataAsOf)}`;
+  return `${render(tooledFacts("loader", corpus, tool, build))}\n${answerFooter(corpus.dataAsOf)}`;
 }
 
 async function answerFromTooledPublicCorpus<T>(
@@ -229,7 +293,7 @@ async function answerFromTooledPublicCorpus<T>(
   const corpus = await fetchPublicCorpus(url);
   if (!corpus) return UNAVAILABLE;
   const dataAsOf = typeof corpus.dataAsOf === "string" ? corpus.dataAsOf : null;
-  return `${render(tooledFacts("url", { records: corpus.records, dataAsOf }, tool, build))}\n${dataAgeLine(corpus.dataAsOf)}`;
+  return `${render(tooledFacts("url", { records: corpus.records, dataAsOf }, tool, build))}\n${answerFooter(corpus.dataAsOf)}`;
 }
 
 /**
@@ -251,6 +315,11 @@ export function fromTooledUploads<T>(
   const dir = process.env.EVERLOOT_UPLOADS?.trim();
   if (!dir) return UPLOADS_UNSET;
   return render(build(loadUploadRecords(dir)));
+}
+
+/** What ends every answer built on player data: how old the data is, and the credit line it carries. */
+function answerFooter(dataAsOf: unknown): string {
+  return `${dataAgeLine(dataAsOf)}\n${MCP_CREDIT}`;
 }
 
 /** The web's snapshot time; a stalled snapshot must not read as current. */
@@ -303,7 +372,7 @@ export type ChangesLoader = () => ChangeEntry[] | null | Promise<ChangeEntry[] |
 export type EcosystemLoader = () => EcosystemView | null | Promise<EcosystemView | null>;
 
 export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; market?: MarketLoader; completion?: CompletionLoader; changes?: ChangesLoader; ecosystem?: EcosystemLoader } = {}): McpServer {
-  const server = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION, websiteUrl: SOURCE_URL });
+  const server = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION, websiteUrl: SOURCE_URL }, { instructions: SERVER_INSTRUCTIONS });
   const readFacts = <T>(tool: ToolName, render: (facts: T) => string) => fromTooledUploads(tool, render, options.corpus);
   server.registerTool(
     "search_knowledge",
@@ -606,6 +675,8 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; 
 
 /** stdio transport: Claude, ChatGPT dev mode, and the Everloot companion all speak this. Never returns. */
 export async function serveStdio(db: DB, changes?: ChangesLoader): Promise<never> {
+  // The site's snapshot changes about every ten minutes; reading it more often gains nothing.
+  cachePublicCorpus(10 * 60_000);
   const server = createKnowledgeServer(db, { changes });
   await server.connect(new StdioServerTransport());
   return new Promise<never>(() => {});

@@ -31,7 +31,7 @@ Four catalog kinds (`achievement_catalog`, `reputation_catalog`, `title_catalog`
 `quest_chain_catalog`) hold only game facts the addon read from the game's own calls: ids, names,
 criteria text, standing headers and quest ids, with no player data. They reflect what one character's
 windows list, so they are not on the public allowlist and never leave the site raw: the pages and the
-MCP tool list an entry only after three reporters (distinct upload addresses, counted like the market's)
+MCP tool list an entry only after three reporters (distinct upload addresses, an IPv6 address counted by its /64 block, as the market counts them)
 report it identically; there is no copied catalog, and flavour text is not collected. For that count an
 upload containing a catalog row is stored with the same keyed address hash as a scan, kept private and
 never published. Four owned kinds (`achievement_owned`, `reputation_owned`,
@@ -254,3 +254,38 @@ of these holds:
   them from the local game client and uploads them to Everloot's asset storage with a
   build-stamped manifest.
 - If you are unsure whether a source is allowed, open an issue first.
+
+## Using our data: credit, limits and keys
+
+Everloot's data stays open. Anyone may read it, copy it and build on it under CC BY-SA 4.0. Two
+things are asked in return: credit it, and use a free key when you copy all of it.
+
+- **Credit.** Show this line, with the link, wherever the data appears: "Data from Everloot
+  (https://everloot.app), CC BY-SA 4.0." What you build from it stays under the same licence. Every
+  answer carries it so it is hard to lose by accident: the JSON APIs return it in an `attribution`
+  field (licence, credit line, the page the data comes from) and in the `X-Everloot-Licence`,
+  `X-Everloot-Credit` and `Link` headers, and MCP answers built on player data end with the licence
+  and credit. Republishing the data without credit breaks the licence.
+- **Asking questions is free and needs no key.** The MCP server and the market prices keep a
+  per-address limit that a person or an AI assistant answering questions does not reach.
+- **Copying in bulk takes a free key.** Once the limits are switched on, the corpus API and the drop
+  list answer a few requests an hour per address without a key, one page of records at a time. An
+  IPv6 address counts by its /64 block. A free key, made on
+  [/connect](https://everloot.app/connect#keys) after signing in with Battle.net, raises the limits
+  far enough to copy everything. The allowance belongs to the account, across all its keys, and an
+  account can make only a few keys a day, so new keys do not bring new allowances. Requests are
+  counted per key, so we know who copies the data in bulk and can ask what they are building. Keys
+  can be revoked or deleted by their owner at any time, and revoked by us when a key is used to
+  republish the data without credit. The exact numbers are on /connect.
+- **Pages are not limited.** Search engines and AI assistants may read and quote the site's pages.
+  These limits apply only to the machine-readable endpoints.
+- **Not covered.** Game-file data and Blizzard's posts are Blizzard's, not ours; the credit line and
+  the licence above do not apply to them. The code is AGPL-3.0 and has its own terms.
+
+**What we keep about keys, and for how long.** For each key: a one-way hash of it, its last four
+characters, its label, its account, when it was made, last used and revoked, and a count of its
+requests per day and endpoint. Not what was asked. Daily counts are kept 90 days. A revoked key and
+its counts are deleted 30 days after it was revoked, or at once when its owner deletes it on
+/connect. Deleting an account (write to hello@everloot.app) deletes its keys and counts. Anonymous
+requests are counted per hour against a keyed hash of the address, which is deleted after about a
+day; the address itself is never stored.

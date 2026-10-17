@@ -1,10 +1,13 @@
-import { beforeEach, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
-const store = vi.hoisted(() => ({ loadCorpus: vi.fn() }));
+const store = vi.hoisted(() => ({ loadCorpus: vi.fn(), api: vi.fn() }));
 vi.mock("@/lib/upload-store", () => ({ uploadStore: { loadCorpus: store.loadCorpus } }));
+vi.mock("@/lib/intake-quota", () => ({ intakeQuota: { api: store.api } }));
 
 import { GET } from "./route";
 import { ALL_RECORD_KINDS, COMPLETION_KINDS, PUBLIC_RECORD_KINDS } from "@/lib/intake";
+import { ANON_PAGE, KEY_PAGE } from "@/lib/data-guard";
+import { newKey } from "@/lib/api-keys";
 
 const base = { installId: "install-1", capturedAt: "2026-10-09T00:00:00.000Z" };
 const gold = { ...base, eventId: "e:1", kind: "gold_snapshot", character: "Thrall", realm: "Forever", currentCopper: 1, peakCopper: 1 };
@@ -13,7 +16,11 @@ const req = (query = "") => new Request(`https://everloot.app/api/corpus/public$
 /** What leaves the site: the same record without the install id. */
 const published = ({ installId: _, ...rest }: Record<string, unknown>) => rest;
 
-beforeEach(() => store.loadCorpus.mockReset().mockResolvedValue({ uploads: 1, records: [gold, scan] }));
+beforeEach(() => {
+  store.loadCorpus.mockReset().mockResolvedValue({ uploads: 1, records: [gold, scan] });
+  store.api.mockReset().mockResolvedValue({ allowed: true, retryAfter: 0 });
+});
+afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
 test("without kinds the whole public corpus is returned", async () => {
   const body = await (await GET(req())).json();
@@ -82,4 +89,60 @@ test("every record kind is either on the allowlist or named private here", () =>
   // The completion kinds are served only through the completion rollup: 3-install agreement and live grants.
   const privateKinds = ["addon_seen", "talent_snapshot", "auction_snapshot", ...COMPLETION_KINDS];
   expect([...PUBLIC_RECORD_KINDS, ...privateKinds].sort()).toEqual([...ALL_RECORD_KINDS].sort());
+});
+
+test("every answer carries the licence, the credit line and the source page, in the body and the headers", async () => {
+  const res = await GET(req("?kinds=auction_scan"));
+  expect(await res.json()).toMatchObject({
+    attribution: { licence: "CC BY-SA 4.0", credit: "Data from Everloot (https://everloot.app), CC BY-SA 4.0.", source: "https://everloot.app/database" },
+  });
+  expect(res.headers.get("x-everloot-licence")).toBe("CC BY-SA 4.0");
+  expect(res.headers.get("x-everloot-credit")).toBe("Data from Everloot (https://everloot.app), CC BY-SA 4.0.");
+  expect(res.headers.get("link")).toContain('rel="license"');
+});
+
+test("guard off: no limit, the whole corpus in one page, as before", async () => {
+  const body = await (await GET(req())).json();
+  expect(body).toMatchObject({ offset: 0, limit: 2, total: 2, next: null });
+  expect(store.api).not.toHaveBeenCalled();
+});
+
+const many = Array.from({ length: 1200 }, (_, i) => ({ ...base, eventId: `e:${i}`, kind: "loot", sourceNpcId: 1, items: [] }));
+
+test("guard on: an anonymous caller gets a capped page and a next link, and spends the per-IP quota", async () => {
+  vi.stubEnv("EVERLOOT_DATA_GUARD", "1");
+  store.loadCorpus.mockResolvedValue({ uploads: 3, records: many });
+  const body = await (await GET(req("?kinds=loot&limit=5000"))).json();
+  expect(body.records).toHaveLength(ANON_PAGE);
+  expect(body).toMatchObject({ offset: 0, limit: ANON_PAGE, total: 1200 });
+  expect(body.next).toBe(`https://everloot.app/api/corpus/public?kinds=loot&limit=${ANON_PAGE}&offset=${ANON_PAGE}`);
+  expect(store.api).toHaveBeenCalledTimes(1);
+});
+
+test("guard on: past the anonymous limit the answer is a 429 that names the free key, and nothing is read", async () => {
+  vi.stubEnv("EVERLOOT_DATA_GUARD", "1");
+  store.api.mockResolvedValue({ allowed: false, retryAfter: 1800 });
+  const res = await GET(req());
+  expect(res.status).toBe(429);
+  expect(res.headers.get("retry-after")).toBe("1800");
+  expect((await res.json()).getAKey).toBe("https://everloot.app/connect#keys");
+  expect(store.loadCorpus).not.toHaveBeenCalled();
+});
+
+test("guard on: a key gets the larger page without touching the anonymous quota", async () => {
+  vi.stubEnv("EVERLOOT_DATA_GUARD", "1");
+  vi.stubEnv("SUPABASE_URL", "https://db.example");
+  vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "service");
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json([{ allowed: true, retry_after: 0, key_ref: crypto.randomUUID() }])));
+  store.loadCorpus.mockResolvedValue({ uploads: 3, records: [...many, ...many, ...many, ...many, ...many].map((r, i) => ({ ...r, eventId: `k:${i}` })) });
+  const res = await GET(new Request("https://everloot.app/api/corpus/public", { headers: { authorization: `Bearer ${newKey().token}` } }));
+  const body = await res.json();
+  expect(body.records).toHaveLength(KEY_PAGE);
+  expect(body.total).toBe(6000);
+  expect(store.api).not.toHaveBeenCalled();
+});
+
+test("a bad offset or limit is a 400", async () => {
+  expect((await GET(req("?offset=-5"))).status).toBe(400);
+  expect((await GET(req("?limit=0"))).status).toBe(400);
 });
