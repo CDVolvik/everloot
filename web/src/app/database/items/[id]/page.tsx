@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { itemPage } from "../../../../../../kb/src/item-page";
 import { loadItemFacts } from "@/lib/rollup-compute";
 import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
+import { pinLink } from "@/lib/world-map";
 
 export const dynamic = "force-dynamic";
 
@@ -84,6 +85,7 @@ export default async function ItemPage(props: { params: Promise<{ id: string }> 
               <li key={`${pin.npcId}-${pin.mapId}`}>
                 NPC {pin.npcId}
                 {pin.name ? ` ${pin.name}` : ""} on map {pin.mapId} at {pin.x}, {pin.y} · {pin.reporters} reporters
+                {pinLink(pin.mapId, pin.x, pin.y) && <>{" · "}<Link href={pinLink(pin.mapId, pin.x, pin.y)!} className="text-accent hover:underline underline-offset-4">Show on the map</Link></>}
               </li>
             ))}
           </ul>

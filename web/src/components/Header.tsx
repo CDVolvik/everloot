@@ -24,6 +24,7 @@ export default function Header() {
         <nav aria-label="Primary" className="hidden sm:flex items-center gap-4 text-sm">
           <Link href="/database" className="inline-flex items-center min-h-11 text-muted hover:text-fg"><Bracket>Database</Bracket></Link>
           <Link href="/lore" className="inline-flex items-center min-h-11 text-muted hover:text-fg"><Bracket>Lore</Bracket></Link>
+          <Link href="/map" className="inline-flex items-center min-h-11 text-muted hover:text-fg"><Bracket>Map</Bracket></Link>
           <Link href="/changes" className="inline-flex items-center min-h-11 text-muted hover:text-fg"><Bracket>Changes</Bracket></Link>
           <Link href="/upload" className="inline-flex items-center min-h-11 text-muted hover:text-fg"><Bracket>Upload</Bracket></Link>
           <Link href="/tools/gold-per-hour" className="inline-flex items-center min-h-11 text-muted hover:text-fg"><Bracket>Gold/Hour</Bracket></Link>
@@ -50,6 +51,10 @@ export default function Header() {
                 <span className="ml-2 text-xs text-muted">{tool.status === "coming-soon" ? "Planned" : tool.status === "collecting" ? "Collecting data" : "Available"}</span>
               </Link>
             ))}
+            <Link href="/map" onClick={() => setOpen(false)} className="min-h-11 px-3 py-3 rounded-lg text-sm text-fg-2 hover:bg-canvas hover:text-accent">
+              World map
+              <span className="ml-2 text-xs text-muted">Zones, entrances and NPCs</span>
+            </Link>
             <Link href="/changes" onClick={() => setOpen(false)} className="min-h-11 px-3 py-3 rounded-lg text-sm text-fg-2 hover:bg-canvas hover:text-accent">
               What changed
               <span className="ml-2 text-xs text-muted">Blue posts and builds</span>

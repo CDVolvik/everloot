@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { questPage } from "../../../../../../kb/src/world-pages";
+import { npcPage, questPage } from "../../../../../../kb/src/world-pages";
 import { loadWorldFacts } from "@/lib/rollup-compute";
 import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
+import { pinLink } from "@/lib/world-map";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,13 @@ export default async function QuestPage(props: { params: Promise<{ id: string }>
   if (!/^[1-9]\d*$/.test(params.id)) notFound();
   const facts = await loadWorldFacts();
   const page = questPage(Number(params.id), facts);
+  // Where players saw the giver and the turn-in NPC stand, as map links, when 3 installs agree.
+  const where = (npcId: number | null) => {
+    const pin = npcId === null || facts.unreachable ? undefined : npcPage(npcId, facts).pins.find((p) => pinLink(p.mapId, p.x, p.y));
+    return pin ? pinLink(pin.mapId, pin.x, pin.y) : null;
+  };
+  const giverOnMap = where(page.giverNpcId);
+  const turnInOnMap = where(page.turnInNpcId);
   const title = facts.unreachable ? `Quest ${page.questId}` : page.title ?? `Quest ${page.questId}`;
 
   return (
@@ -45,8 +53,10 @@ export default async function QuestPage(props: { params: Promise<{ id: string }>
       <>
       <dl className="text-sm text-fg space-y-2">
         <div>{page.level === null ? "No agreed level. A level needs 3 installs reporting the same one." : `Level ${page.level}`}</div>
-        <div>{page.giverNpcId === null ? "No agreed giver." : <Link href={`/database/npcs/${page.giverNpcId}`} className="text-accent hover:underline underline-offset-4">Giver NPC {page.giverNpcId}</Link>}</div>
-        <div>{page.turnInNpcId === null ? "No agreed turn-in." : <Link href={`/database/npcs/${page.turnInNpcId}`} className="text-accent hover:underline underline-offset-4">Turn-in NPC {page.turnInNpcId}</Link>}</div>
+        <div>{page.giverNpcId === null ? "No agreed giver." : <Link href={`/database/npcs/${page.giverNpcId}`} className="text-accent hover:underline underline-offset-4">Giver NPC {page.giverNpcId}</Link>}
+          {giverOnMap && <>{" · "}<Link href={giverOnMap} className="text-accent hover:underline underline-offset-4">Show on the map</Link></>}</div>
+        <div>{page.turnInNpcId === null ? "No agreed turn-in." : <Link href={`/database/npcs/${page.turnInNpcId}`} className="text-accent hover:underline underline-offset-4">Turn-in NPC {page.turnInNpcId}</Link>}
+          {turnInOnMap && <>{" · "}<Link href={turnInOnMap} className="text-accent hover:underline underline-offset-4">Show on the map</Link></>}</div>
       </dl>
 
       <section className="space-y-2">

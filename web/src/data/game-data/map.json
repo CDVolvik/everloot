@@ -10,7 +10,7 @@
     "version": "1.60.1.70450",
     "buildConfig": "84bea4233331e390fda8724c6f91ffa5",
     "definitions": "b9a63096cdd9",
-    "extractedAt": "2026-10-17T09:03:28.768Z",
+    "extractedAt": "2026-10-17T18:12:36.173Z",
     "tables": [
       {
         "table": "Map",
@@ -556,6 +556,41 @@
         "top": 1877.9,
         "right": -86.2,
         "bottom": 1237.8
+      }
+    }
+  ],
+  "heldBackZones": [
+    {
+      "uiMapId": 2482,
+      "name": "Mount Hyjal",
+      "continentId": 1,
+      "bounds": {
+        "left": -922.9,
+        "top": 6304.2,
+        "right": -4395.8,
+        "bottom": 3989.6
+      }
+    },
+    {
+      "uiMapId": 2548,
+      "name": "Riverglades",
+      "continentId": 0,
+      "bounds": {
+        "left": -1891.7,
+        "top": -6466.7,
+        "right": -6741.7,
+        "bottom": -9700
+      }
+    },
+    {
+      "uiMapId": 2652,
+      "name": "Shen'dralas",
+      "continentId": 1,
+      "bounds": {
+        "left": 2025,
+        "top": -1900,
+        "right": -25,
+        "bottom": -3266.7
       }
     }
   ],

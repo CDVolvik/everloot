@@ -70,6 +70,9 @@ describe("map data from client tables", () => {
   test("zones that are not on a continent, battlegrounds and later ids are left out, and the hold-back is reported", () => {
     expect(data.zones.map((z) => z.uiMapId)).toEqual([1411, 1429]);
     expect(data.warnings).toEqual(["1 zone(s) with later UiMap ids are held back as possibly unreleased"]);
+    // The held-back zone is kept apart, with its rectangle, for the spoiler switch.
+    expect(data.heldBackZones).toHaveLength(1);
+    expect(data.heldBackZones[0]!.uiMapId).toBeGreaterThan(1458);
   });
 
   test("entrances are the instances' ghost-return spots; unused, positionless and off-continent maps are dropped", () => {

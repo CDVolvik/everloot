@@ -7,6 +7,7 @@ import { guildFactsFromRecords } from "../src/guild-board.js";
 import { fromUploads, TOOL_KINDS, UPLOADS_UNSET } from "../src/mcp-server.js";
 import { pathFactsFromRecords, recipeFactsFromRecords } from "../src/recipe-thresholds.js";
 import { worldFactsFromRecords } from "../src/world-pages.js";
+import { mapFactsFromRecords } from "../src/world-map-near.js";
 import { ALL_RECORD_KINDS, parseRecords } from "../../web/src/lib/intake.js";
 
 const base = { installId: "install-one", capturedAt: "2026-10-09T00:00:00Z" };
@@ -47,6 +48,7 @@ const FACTS: Record<keyof typeof TOOL_KINDS, (records: unknown[]) => unknown> = 
   npc_page: worldFactsFromRecords,
   quest_page: worldFactsFromRecords,
   vendor_page: worldFactsFromRecords,
+  world_map_near: mapFactsFromRecords,
   collection_gap: collectionFactsFromRecords,
   guild_board: guildFactsFromRecords,
   auction_history: auctionSightingsFromRecords,

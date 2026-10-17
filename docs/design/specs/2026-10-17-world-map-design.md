@@ -33,6 +33,10 @@ map: zone rectangles as shapes with names, no game art.
   (`npm run kb -- client-map`), with the build stamp. Tests use synthetic rows.
 - `kb/src/world-coords.ts`: converts zone x/y to world yards and to the stitched continent map, and back;
   later it joins corroborated pins to the same frame, with every item carrying its source.
+- Phase 2 (built): pan and zoom with mouse, touch pinch and keyboard; toggleable layers for zones, entrances and player-observed
+  NPCs and vendors (3-install rule, public kinds only); a spoiler switch (off by default) for the held-back zones; deep links
+  `/map?zone=<UiMap id>&x=&y=` from the NPC, vendor, quest and item pages; and `world_map_near`. Game objects are not drawn:
+  no public record kind gives an object a position. Flights, boats and the level filter below still wait on data.
 - `/map` on the site: a pan-and-zoom SVG of a continent with layers (zones, dungeons, flights,
   boats, NPC pins), a level filter, and a link from each NPC and dungeon to its page. It works
   with keyboard and screen readers (a list view of the same layer beside the map).
