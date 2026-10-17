@@ -20,6 +20,16 @@ Everloot is built from what players see, so you can help without touching any co
 
 Questions and ideas go in [Discussions](https://github.com/CDVolvik/everloot/discussions).
 
+## Good first issues
+
+New here? Open the issues labelled
+[`good first issue`](https://github.com/CDVolvik/everloot/labels/good%20first%20issue). Each is small,
+says what done looks like, and names the files to start in. Comment on one to say you are taking it,
+and ask in [Discussions](https://github.com/CDVolvik/everloot/discussions) if anything is unclear.
+[`help wanted`](https://github.com/CDVolvik/everloot/labels/help%20wanted) marks larger work that is
+open to anyone. Area labels (`addon`, `web`, `kb`, `companion`, `mcp`, `tools`, `lore`, `game-data`)
+tell you which part an issue touches.
+
 ## Data rules
 
 Read [`docs/DATA_POLICY.md`](docs/DATA_POLICY.md) before adding any data. In short: no scraping, no
@@ -52,6 +62,18 @@ or several with `git rebase --signoff main`, then force-push your branch.
 Commits and pull requests name people only. Leave out co-author lines and "generated with"
 footers that credit an AI tool; CI rejects them.
 
+### Pull request titles
+
+Title a pull request `type(scope): plain sentence`. The title becomes the line in the release notes,
+so write it for someone reading them.
+
+- Types: `feat`, `fix`, `perf`, `refactor`, `docs`, `chore`, `data`
+- Scopes: `addon`, `web`, `kb`, `companion`, `mcp`, `game-data`, `infra`, `docs`
+- Example: `feat(web): the raid builder shows which tree each buff needs`
+
+A check on every pull request rejects a title that does not fit. No full stop at the end, 100
+characters at most.
+
 ### Before you open a pull request
 
 - The tests for the parts you touched pass (see `.github/workflows/checks.yml` for the exact commands
@@ -67,7 +89,9 @@ CI also scans every pull request for leaked secrets and for private file paths.
 
 - **The site** deploys from `main`: a merged pull request is live a few minutes later.
 - **The addon** gets a new version number in `addon/Everloot.toc` and `addon/core.lua`, a rebuilt zip
-  in `web/public/downloads/`, and an upload to CurseForge by a maintainer.
+  in `web/public/downloads/`, a tagged GitHub release and an upload to CurseForge by a maintainer.
+  A nightly pre-release is built from `main` when it has changed. [`docs/RELEASING.md`](docs/RELEASING.md)
+  has the steps.
 - **The knowledge release** (the lore archive) is rebuilt by a maintainer from the wiki dump with
   `npm run kb -- snapshot`, checked with `npm run kb -- audit-sources`, and published to the site's
   storage. The site refuses a release that does not match its manifest.

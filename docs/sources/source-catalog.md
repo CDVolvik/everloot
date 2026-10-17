@@ -1,7 +1,7 @@
 # Source catalogue — WoW knowledge sources
 
 **Researched:** 2026-09-27 (two web-research passes: an ecosystem catalogue and an access/terms check).
-**Spec:** `../superpowers/specs/2026-09-27-forever-ai-addon-design.md` §4.
+**Spec:** `../design/specs/2026-09-27-forever-ai-addon-design.md` §4.
 
 What Everloot actually used, linked or only read is recorded in [`LEDGER.md`](LEDGER.md).
 This is the **candidate** list. A source enters the live source map only when its row has an access

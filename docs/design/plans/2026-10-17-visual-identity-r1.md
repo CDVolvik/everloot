@@ -1,6 +1,5 @@
 # Visual identity R1 (foundation) Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Switch everloot.app from the gold and parchment look to the approved identity in one deploy. That means dark and light colour tokens, renamed classes, Geist, pill buttons, bracket navigation, and a new favicon and social card, plus tests that stop the old look from coming back.
 
@@ -12,7 +11,7 @@ A one-off codemod renames the ~800 old classes from a reviewed table. Buttons an
 
 **Tech Stack:** Next.js 15.5 App Router, React 19, Tailwind CSS 3.4, Vitest 5, `geist` 1.8.1 for the fonts, `next/og` for the social card.
 
-**Spec:** `docs/superpowers/specs/2026-10-17-visual-identity-design.md` (PR #17)
+**Spec:** `docs/design/specs/2026-10-17-visual-identity-design.md` (PR #17)
 
 **When:** after addon 0.2.6 ships. It has its own plan and goes out before the CurseForge upload around 10/24.
 - Branch: `feat/visual-identity-r1`, from `main` once #17 is merged.

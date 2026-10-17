@@ -1,6 +1,5 @@
 # Part 1 — Knowledge Base + Ingestion Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** A local SQLite knowledge base for WoW with provenance on every row, filled by importers
 (2023 Warcraft Wiki dump, wago.tools Forever tables, curated YAML), a Blizzard API client with a
@@ -16,7 +15,7 @@ registry that says whether they are publishable; the snapshot command uses that 
 · `fzstd` (pure-JS zstd) · `sax` (streaming XML) · `wtf_wikipedia` (wikitext → text) · `csv-parse` ·
 `yaml` · `vitest`.
 
-**Spec:** `docs/superpowers/specs/2026-09-27-forever-ai-addon-design.md` §2 (legal charter), §4.
+**Spec:** `docs/design/specs/2026-09-27-forever-ai-addon-design.md` §2 (legal charter), §4.
 
 > **As built (2026-09-27) — where the code departs from this plan, the code and its commits win:**
 > `fzstd` → `zstd-napi` (the dump's frame needs a 2 GB window); the wiki parser pulls through the
@@ -1865,7 +1864,7 @@ the cache. If Carlos hasn't created the client yet, skip this step and say so in
 # kb — the WoWVault knowledge base
 
 A local SQLite database of WoW knowledge in which every row carries its source, licence, retrieval
-date and URL. Design: `../docs/superpowers/specs/2026-09-27-forever-ai-addon-design.md` §2 and §4.
+date and URL. Design: `../docs/design/specs/2026-09-27-forever-ai-addon-design.md` §2 and §4.
 
 ## Build it
 

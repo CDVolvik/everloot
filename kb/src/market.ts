@@ -1,6 +1,6 @@
 /**
  * Forever market values from full auction scans players uploaded on purpose.
- * Design: docs/superpowers/specs/2026-10-16-forever-market-design.md
+ * Design: docs/design/specs/2026-10-16-forever-market-design.md
  *
  * A realm/item day is public when 3 reporters scanned it. A reporter is one upload address (the
  * intake route stores only a keyed hash of it, never the address), so many installs behind one

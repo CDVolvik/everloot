@@ -25,6 +25,8 @@ jobs:
           ./gitleaks git --redact --no-banner .
       - name: No private workspace paths
         run: python scripts/test_check_internal_paths.py && python scripts/check_internal_paths.py
+      - name: Relative links in Markdown files resolve
+        run: python scripts/check_md_links.py
       - name: The data pull request merges itself only for its two data files
         run: python scripts/test_check_changes_files.py
       - name: Every commit is signed off (DCO)

@@ -1,0 +1,20 @@
+name: PR title
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+permissions:
+  contents: read
+jobs:
+  title:
+    # Bots and the rolling data pull request are not held to the convention.
+    if: github.actor != 'dependabot[bot]' && github.head_ref != 'data/changes'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts
+      - name: Title reads type(scope) plain sentence
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: python scripts/test_check_pr_title.py && python scripts/check_pr_title.py

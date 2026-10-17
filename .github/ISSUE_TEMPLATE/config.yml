@@ -3,6 +3,9 @@ contact_links:
   - name: Questions and ideas
     url: https://github.com/CDVolvik/everloot/discussions
     about: Ask anything, or talk an idea through before opening an issue.
+  - name: Wrong fact on everloot.app
+    url: https://everloot.app/contact
+    about: Not sure it is a bug? Tell us on the site, or use the Wrong data form here.
   - name: Security problem
     url: https://github.com/CDVolvik/everloot/security/advisories/new
     about: Report privately, never in a public issue.

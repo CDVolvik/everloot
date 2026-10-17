@@ -1,0 +1,22 @@
+changelog:
+  exclude:
+    authors:
+      - dependabot
+      - github-actions
+  categories:
+    - title: Security and privacy
+      labels: [security, privacy]
+    - title: Addon
+      labels: [addon]
+    - title: Site and tools
+      labels: [web, tools]
+    - title: Knowledge base and MCP server
+      labels: [kb, mcp]
+    - title: Game data
+      labels: [game-data, data, lore]
+    - title: Companion
+      labels: [companion]
+    - title: Documentation and project setup
+      labels: [documentation, infra]
+    - title: Other changes
+      labels: ["*"]
