@@ -203,6 +203,11 @@ They share one branch and one pull request, one commit per stage, because each s
 
 ## 9. Open items
 
+- **Realm or ruleset?** Coverage of WoW: Forever (a vanilla level-60 "Classic Plus" game) describes it
+  as realmless: players pick a ruleset (Normal, PvP, RP, later Hardcore). Unverified. Market values are
+  keyed by `GetRealmName()`. If auction houses are shared per ruleset or region, the key must change
+  before release. Check `GetRealmName()` and the auction house's scope in game.
+
 - In-game checks for 0.3.0 (Carlos): `/dump select(4, GetBuildInfo())` for the real interface number;
   the Everloot scan button's place on the frame; one full scan (does it complete, how many rows,
   does a cooldown apply, any "script deprecated" popup); tooltips show "Your scan".
