@@ -197,8 +197,8 @@ export function searchLore(q: string, page: number, type?: LoreType): { hits: Se
   if (!release) return UNAVAILABLE;
   const p = Number.isFinite(page) && page >= 1 ? Math.floor(page) : 1;
   if (p > MAX_PAGE) return { hits: [], hasNext: false };
-  const where = type ? { sql: "json_extract(e.data, '$.type') = ?", params: [type] } : undefined;
-  const results = search(release.db, q.slice(0, MAX_QUERY), p * PAGE_SIZE + 1, { kinds: ["lore_page"], where });
+  const types = type ? [type] : undefined;
+  const results = search(release.db, q.slice(0, MAX_QUERY), p * PAGE_SIZE + 1, { kinds: ["lore_page"], types });
   return { hits: results.slice((p - 1) * PAGE_SIZE, p * PAGE_SIZE), hasNext: results.length > p * PAGE_SIZE };
 }
 
@@ -254,6 +254,14 @@ function letterClause(letter: string | null): { sql: string; params: unknown[] }
   return { sql: "name LIKE ? ESCAPE '\\'", params: [`${letter}%`] };
 }
 
+/** The letters (and "#") this type actually has pages under, so empty letters stay out of the sitemap. */
+export function lettersWithRows(type: LoreType): string[] | Unavailable {
+  const release = getRelease();
+  if (!release) return UNAVAILABLE;
+  // A typed release without the letter lists is refused at open; an untyped release has none.
+  return release.manifest.letters?.[type] ?? [];
+}
+
 /** Pages of one type whose name starts with `letter`, filtered by exact facet values, ordered by name. */
 export function browse(
   type: LoreType,
@@ -293,12 +301,10 @@ export function facetValues(type: LoreType): Record<FacetKey, string[]> | Unavai
   const known = perType.get(type);
   if (known) return known;
   const out = { ...EMPTY_FACETS } as Record<FacetKey, string[]>;
-  for (const key of FACET_KEYS) {
-    out[key] = (release.db
-      .prepare(`SELECT DISTINCT j.value AS v FROM entities, json_each(json_extract(data, '$.facets.${key}')) AS j
-                WHERE ${LORE_SQL} AND json_extract(data, '$.type') = ? ORDER BY v COLLATE NOCASE`)
-      .all(...PUBLISHABLE, type) as { v: string }[]).map((r) => r.v);
-  }
+  // The manifest carries every value per type (a typed release without them is refused at open),
+  // so the lists come from the manifest; an untyped release has no facet data at all.
+  const summaries = release.manifest.facets?.byType[type];
+  for (const key of FACET_KEYS) out[key] = Array.isArray(summaries?.[key]) ? summaries[key] : [];
   perType.set(type, out);
   return out;
 }
@@ -322,13 +328,12 @@ export function coverage(): Coverage | Unavailable {
   const indexable = indexableCount();
   if (indexable === UNAVAILABLE) return UNAVAILABLE;
   const facets = {} as Record<FacetKey, { value: string; n: number }[]>;
+  // The manifest carries the top ten per key (a typed release without them is refused at open);
+  // an untyped release has no facet data at all.
+  const summaries = release.manifest.facets?.top;
   for (const key of FACET_KEYS) {
-    // An untyped release has no facets: skip six full scans of the table.
-    if (release.manifest.types === undefined) { facets[key] = []; continue; }
-    facets[key] = release.db
-      .prepare(`SELECT j.value AS value, count(*) AS n FROM entities, json_each(json_extract(data, '$.facets.${key}')) AS j
-                WHERE ${LORE_SQL} GROUP BY j.value ORDER BY n DESC, value COLLATE NOCASE LIMIT 10`)
-      .all(...PUBLISHABLE) as { value: string; n: number }[];
+    const entries = summaries?.[key];
+    facets[key] = Array.isArray(entries) ? entries.map((e) => ({ value: e.value, n: e.n })) : [];
   }
   const out: Coverage = {
     types: release.manifest.types ?? null,

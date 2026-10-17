@@ -14,18 +14,22 @@ async function get(path = release) {
   return GET();
 }
 
-test("lists one URL per type and letter plus the coverage page, with escaped query strings", async () => {
+test("lists one URL per type and letter that has rows plus the coverage page, with escaped query strings", async () => {
   const res = await get();
   expect(res.status).toBe(200);
   expect(res.headers.get("content-type")).toContain("application/xml");
   expect(res.headers.get("cache-control")).toBe("public, s-maxage=86400, stale-while-revalidate=604800");
   const xml = await res.text();
-  expect(xml.match(/<loc>/g)).toHaveLength(5 * 27 + 1);
-  expect(xml).toContain("<loc>https://everloot.app/lore/npcs</loc>");
-  expect(xml).toContain("<loc>https://everloot.app/lore/npcs?letter=b</loc>");
-  expect(xml).toContain("<loc>https://everloot.app/lore/items?letter=%23</loc>");
+  // npcs r/t/z + quests r/# + zones r/z + the coverage page; items and spells have no rows in the fixture.
+  expect(xml.match(/<loc>/g)).toHaveLength(8);
+  expect(xml).toContain("<loc>https://everloot.app/lore/npcs?letter=r</loc>");
+  expect(xml).toContain("<loc>https://everloot.app/lore/npcs?letter=t</loc>");
+  expect(xml).toContain("<loc>https://everloot.app/lore/quests?letter=%23</loc>");
+  expect(xml).toContain("<loc>https://everloot.app/lore/zones?letter=z</loc>");
   expect(xml).toContain("<loc>https://everloot.app/lore/coverage</loc>");
   expect(xml).toContain("<lastmod>2026-10-15T00:00:00.000Z</lastmod>");
+  expect(xml).not.toContain("<loc>https://everloot.app/lore/npcs</loc>");
+  expect(xml).not.toContain("letter=q");
   expect(xml).not.toContain("letter=a<");
 });
 

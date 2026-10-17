@@ -204,7 +204,68 @@ test("a database with no typed rows gets no types or damaged keys in its manifes
   const manifest = snapshot(db, join(dir, "release", "release.sqlite"), new Date("2026-10-15T12:00:00Z"));
   expect(manifest.types).toBeUndefined();
   expect(manifest.damaged).toBeUndefined();
-  expect(JSON.parse(readFileSync(join(dir, "release", "release.sqlite.manifest.json"), "utf8"))).not.toHaveProperty("types");
+  expect(manifest.facets).toBeUndefined();
+  expect(manifest.letters).toBeUndefined();
+  const written = JSON.parse(readFileSync(join(dir, "release", "release.sqlite.manifest.json"), "utf8"));
+  expect(written).not.toHaveProperty("types");
+  expect(written).not.toHaveProperty("facets");
+  expect(written).not.toHaveProperty("letters");
+});
+
+test("the manifest lists the browse letters each page type has pages under", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "kb-snap-"));
+  const db = openDb(join(dir, "kb.sqlite"));
+  const row = (extId: string, name: string, data: Record<string, unknown>) => ({
+    kind: "lore_page" as const, extId, name, body: "Body text", gameVersion: "lore" as const,
+    sourceUrl: `https://example.test/${extId}`, retrievedAt: "2023-11-13", data,
+  });
+  await replaceSourceRows(db, "warcraft-wiki-2023", ["lore_page"], [
+    row("1", "Thrall", { type: "npc" }), row("2", "rexxar", { type: "npc" }), row("3", "'Ghost' Walker", { type: "npc" }),
+    row("4", "100 Gold", { type: "item" }), row("5", "Ashenvale", { type: "zone" }), row("6", "Zeppelin", {}),
+  ]);
+  const out = join(dir, "release", "release.sqlite");
+  const manifest = snapshot(db, out, new Date("2026-10-16T12:00:00Z"));
+  // a–z in order, then "#" for anything that does not start with a letter; case folds like the browse filter.
+  expect(manifest.letters).toEqual({ npc: ["r", "t", "#"], item: ["#"], zone: ["a"], other: ["z"] });
+  expect(JSON.parse(readFileSync(`${out}.manifest.json`, "utf8")).letters).toEqual(manifest.letters);
+});
+
+test("the manifest carries facet summaries for a typed release", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "kb-snap-"));
+  const db = openDb(join(dir, "kb.sqlite"));
+  const row = (extId: string, data: Record<string, unknown>) => ({
+    kind: "lore_page" as const, extId, name: `Page ${extId}`, body: "Body text", gameVersion: "lore" as const,
+    sourceUrl: `https://example.test/${extId}`, retrievedAt: "2023-11-13", data,
+  });
+  const facets = (over: Record<string, string[]>) => ({ expansion: [], profession: [], class: [], race: [], zone: [], faction: [], ...over });
+  const expansions = ["Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel", "India", "Juliet", "Kilo", "Lima", "Mike"];
+  await replaceSourceRows(db, "warcraft-wiki-2023", ["lore_page"], [
+    ...expansions.map((e, i) => row(String(i + 1), { type: "zone", facets: facets({ expansion: [e] }) })),
+    row("20", { type: "zone", facets: facets({ expansion: ["Legion"] }) }),
+    row("21", { type: "zone", facets: facets({ expansion: ["Legion"] }) }),
+    row("22", { type: "npc", facets: facets({ race: ["Orc"] }) }),
+    row("23", { type: "npc", facets: facets({ race: ["Orc", "Tauren"] }) }),
+    row("24", { type: "quest", facets: facets({ faction: ["Horde"] }) }),
+    row("25", { type: "item" }),
+  ]);
+  const out = join(dir, "release", "release.sqlite");
+  const manifest = snapshot(db, out, new Date("2026-10-16T12:00:00Z"));
+  // The top list is capped at ten, most common first, ties by value; extra values fall off it.
+  expect(manifest.facets?.top.expansion).toEqual([
+    { value: "Legion", n: 2 },
+    { value: "Alpha", n: 1 }, { value: "Bravo", n: 1 }, { value: "Charlie", n: 1 }, { value: "Delta", n: 1 },
+    { value: "Echo", n: 1 }, { value: "Foxtrot", n: 1 }, { value: "Golf", n: 1 }, { value: "Hotel", n: 1 }, { value: "India", n: 1 },
+  ]);
+  expect(manifest.facets?.top.race).toEqual([{ value: "Orc", n: 2 }, { value: "Tauren", n: 1 }]);
+  expect(manifest.facets?.top.class).toEqual([]);
+  // Per-type values are complete (no ten-value cap) and sorted case-insensitively.
+  expect(manifest.facets?.byType.zone.expansion).toEqual(["Alpha", "Bravo", "Charlie", "Delta", "Echo", "Foxtrot", "Golf", "Hotel", "India", "Juliet", "Kilo", "Legion", "Lima", "Mike"]);
+  expect(manifest.facets?.byType.npc.race).toEqual(["Orc", "Tauren"]);
+  expect(manifest.facets?.byType.npc.zone).toEqual([]);
+  expect(manifest.facets?.byType.quest.faction).toEqual(["Horde"]);
+  expect(manifest.facets?.byType.item).toBeUndefined();
+  const written = JSON.parse(readFileSync(`${out}.manifest.json`, "utf8"));
+  expect(written.facets).toEqual(manifest.facets);
 });
 
 test("the manifest counts page types and damaged pages, and the release carries the type index", async () => {

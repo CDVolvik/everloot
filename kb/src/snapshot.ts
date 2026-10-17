@@ -15,6 +15,7 @@ import {
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { openDb, type DB } from "./db.js";
+import { FACET_KEYS } from "./importers/wiki-classify.js";
 import { SOURCES, type SourceId } from "./sources.js";
 import { validate } from "./validate.js";
 
@@ -28,6 +29,20 @@ export const NOTICE =
   "in each user's local cache. World of Warcraft is a trademark of Blizzard " +
   "Entertainment; this project is not affiliated with Blizzard.";
 
+/** One facet value and how many lore pages carry it. */
+export interface ManifestFacetCount {
+  value: string;
+  n: number;
+}
+
+/** Build-time facet summaries, so the site never scans 260k rows for a filter list. */
+export interface ManifestFacets {
+  /** The ten most common values per key across every lore page, most common first. */
+  top: Record<string, ManifestFacetCount[]>;
+  /** Every distinct value per page type per key, for the browse filters. */
+  byType: Record<string, Record<string, string[]>>;
+}
+
 export interface Manifest {
   createdAt: string;
   licence: typeof PUBLISHED_LICENCE;
@@ -38,6 +53,10 @@ export interface Manifest {
   types?: Record<string, number>;
   /** Rows whose converted text still shows template damage. Absent in older releases. */
   damaged?: number;
+  /** Facet summaries for the lore archive. Absent in releases built before 2026-10-16. */
+  facets?: ManifestFacets;
+  /** Per page type, the browse letters (a–z, then "#") it has lore pages under. Absent before 2026-10-16. */
+  letters?: Record<string, string[]>;
 }
 
 /** Schema entries a release may lack: added after the first release shipped, so old files still open. */
@@ -189,7 +208,7 @@ export function snapshot(db: DB, outPath: string, now = new Date()): Manifest {
       out.close();
     }
     const counts = verifyOutput(work);
-    const { types, damaged } = typeCounts(work);
+    const { types, damaged, facets, letters } = releaseSummary(work);
     const sha256 = sha256File(work);
     copyFileSync(work, targetPartial);
     rmSync(manifestPath, { force: true }); // delete the old manifest right before the DB swap below
@@ -202,6 +221,8 @@ export function snapshot(db: DB, outPath: string, now = new Date()): Manifest {
       counts,
       types,
       damaged,
+      facets,
+      letters,
     };
     writeFileSync(manifestPartial, `${JSON.stringify(manifest, null, 2)}\n`);
     renameSync(manifestPartial, manifestPath);
@@ -285,8 +306,27 @@ export function checkPublishedDb(db: DB): Record<string, number> {
   return counts;
 }
 
-/** Rows per page type and the damaged-page count, read from the finished work file. */
-function typeCounts(file: string): { types?: Record<string, number>; damaged?: number } {
+/** SQLite's COLLATE NOCASE folds ASCII A–Z only; mirror that for facet value order. */
+function byValueNoCase(a: string, b: string): number {
+  const fa = a.replace(/[A-Z]/g, (c) => c.toLowerCase());
+  const fb = b.replace(/[A-Z]/g, (c) => c.toLowerCase());
+  return fa < fb ? -1 : fa > fb ? 1 : 0;
+}
+
+/** The browse letters, in the order the site lists them; "#" is every name not starting with a–z. */
+export const BROWSE_LETTERS = [..."abcdefghijklmnopqrstuvwxyz", "#"];
+
+/**
+ * The finished work file's summary: rows per page type, the damaged-page count, the lore facet
+ * summaries (top ten values per key, plus every value per page type) and the browse letters each
+ * page type has. Absent in releases built before 2026-10-15/16 for types and the rest respectively.
+ */
+function releaseSummary(file: string): {
+  types?: Record<string, number>;
+  damaged?: number;
+  facets?: ManifestFacets;
+  letters?: Record<string, string[]>;
+} {
   const out = new Database(file, { readonly: true });
   try {
     const { n: typed } = out.prepare("SELECT count(*) AS n FROM entities WHERE json_extract(data, '$.type') IS NOT NULL").get() as { n: number };
@@ -296,7 +336,45 @@ function typeCounts(file: string): { types?: Record<string, number>; damaged?: n
       types[r.t] = r.n;
     }
     const { n: damaged } = out.prepare("SELECT count(*) AS n FROM entities WHERE json_extract(data, '$.damaged') = 1").get() as { n: number };
-    return { types, damaged };
+    const top: Record<string, ManifestFacetCount[]> = {};
+    const byType: Record<string, Record<string, string[]>> = {};
+    for (const key of FACET_KEYS) {
+      // One scan per key: grouping by page type and value answers both the top list and the per-type lists.
+      const rows = out
+        .prepare(
+          `SELECT coalesce(json_extract(data, '$.type'), 'other') AS t, j.value AS v, count(*) AS n
+           FROM entities, json_each(json_extract(data, '$.facets.${key}')) AS j
+           GROUP BY t, v`,
+        )
+        .all() as { t: string; v: string; n: number }[];
+      const totals = new Map<string, number>();
+      const seen: Record<string, string[]> = {};
+      for (const r of rows) {
+        totals.set(r.v, (totals.get(r.v) ?? 0) + r.n);
+        (seen[r.t] ??= []).push(r.v);
+      }
+      top[key] = [...totals.entries()]
+        .sort((a, b) => b[1] - a[1] || byValueNoCase(a[0], b[0]))
+        .slice(0, 10)
+        .map(([value, n]) => ({ value, n }));
+      for (const [t, values] of Object.entries(seen)) (byType[t] ??= {})[key] = values.sort(byValueNoCase);
+    }
+    // Every type that has any facet keeps all six keys, so site readers never branch on shape.
+    for (const entry of Object.values(byType)) for (const key of FACET_KEYS) entry[key] ??= [];
+    // lower() folds ASCII only, like the site's letter filter (LIKE 'x%' and NOT BETWEEN 'a' AND 'z').
+    const starts = new Map<string, Set<string>>();
+    for (const r of out
+      .prepare(
+        `SELECT coalesce(json_extract(data, '$.type'), 'other') AS t, lower(substr(name, 1, 1)) AS c
+         FROM entities WHERE kind = 'lore_page' GROUP BY t, c`,
+      )
+      .all() as { t: string; c: string }[]) {
+      if (!starts.has(r.t)) starts.set(r.t, new Set());
+      starts.get(r.t)!.add(r.c >= "a" && r.c <= "z" ? r.c : "#");
+    }
+    const letters: Record<string, string[]> = {};
+    for (const [t, seen] of starts) letters[t] = BROWSE_LETTERS.filter((l) => seen.has(l));
+    return { types, damaged, facets: { top, byType }, letters };
   } finally {
     out.close();
   }

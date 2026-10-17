@@ -16,6 +16,9 @@ export interface Facets {
   faction: string[];
 }
 
+/** Every facet key, in the order the manifest and the site list them. */
+export const FACET_KEYS = ["expansion", "profession", "class", "race", "zone", "faction"] as const;
+
 export const EXPANSIONS = [
   "World of Warcraft", "The Burning Crusade", "Wrath of the Lich King", "Cataclysm", "Mists of Pandaria",
   "Warlords of Draenor", "Legion", "Battle for Azeroth", "Shadowlands", "Dragonflight", "The War Within",
