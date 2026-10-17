@@ -27,6 +27,9 @@ tagged release.
 - Auction buyouts and commodity purchases are read with `C_AuctionHouse` (the item bid at its buyout,
   and the total the house quoted for a commodity), watched from the player's own click and never called.
   The old `GetAuctionItemInfo` and `PlaceAuctionBid` path stays for older clients.
+- A pending buyout is dropped after 5 seconds, on `AUCTION_HOUSE_SHOW_ERROR`, on
+  `COMMODITY_PURCHASE_FAILED` and on `COMMODITY_PRICE_UNAVAILABLE`, so a rejected bid cannot later
+  label a same-sized money change (a repair) as a purchase. Ranks above 500 are not written.
 - `/everloot status` names any call this client lacks and says the module records nothing, and reports
   what the last profession window held.
 

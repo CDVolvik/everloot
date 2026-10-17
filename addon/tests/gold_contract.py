@@ -34,12 +34,24 @@ end
 -- Forever's auction house, with the signatures in the client's API documentation. Owner and bidder fields exist
 -- in the data and are never read.
 listings = { [901] = { buyoutAmount = 7000, bidAmount = 0, bidder = 'Player-1-AAAA' }, [902] = { buyoutAmount = nil } }
+-- The three action functions are recording traps: only the test, standing in for the player's click, may call
+-- them (inside click()). Any call from the addon is recorded and fails the test at the end.
+forbidden = {}
+playerClick = false
+function click(f, ...) playerClick = true; f(...); playerClick = false end
+local function action(name)
+ return function() if not playerClick then forbidden[#forbidden + 1] = 'C_AuctionHouse.' .. name end end
+end
 C_AuctionHouse = {
- PlaceBid = function(auctionID, bidAmount) end,
- StartCommoditiesPurchase = function(itemID, quantity) end,
- ConfirmCommoditiesPurchase = function(itemID, quantity) end,
+ PlaceBid = action('PlaceBid'),
+ StartCommoditiesPurchase = action('StartCommoditiesPurchase'),
+ ConfirmCommoditiesPurchase = action('ConfirmCommoditiesPurchase'),
  GetAuctionInfoByID = function(auctionID) return listings[auctionID] end,
 }
+-- Timers run only when the test says so.
+timers = {}
+C_Timer = { After = function(seconds, f) table.insert(timers, { seconds = seconds, f = f }) end }
+function runTimers() local list = timers; timers = {}; for _, t in ipairs(list) do t.f() end end
 """)
 root = Path(__file__).parents[1]
 for file in ["core.lua", "modules/gold.lua"]:
@@ -146,46 +158,95 @@ assert(#events('auction_spend') == 1 and events('auction_spend')[1].copper == 50
 -- Forever, items: a bid at the listing's buyout is a purchase once the money leaves; a lower bid, a bid on a
 -- listing without a buyout, and a listing the house no longer reports are not.
 money = money + 50000; event('PLAYER_MONEY')  -- unattributed income, so the purse can pay
-C_AuctionHouse.PlaceBid(901, 7000)
+click(C_AuctionHouse.PlaceBid, 901, 7000)
 money = money - 7000; event('PLAYER_MONEY')
-C_AuctionHouse.PlaceBid(901, 6000)
+click(C_AuctionHouse.PlaceBid, 901, 6000)
 money = money - 6000; event('PLAYER_MONEY')
-C_AuctionHouse.PlaceBid(902, 300)
+click(C_AuctionHouse.PlaceBid, 902, 300)
 money = money - 300; event('PLAYER_MONEY')
-C_AuctionHouse.PlaceBid(999, 7000)
+click(C_AuctionHouse.PlaceBid, 999, 7000)
 money = money - 7000; event('PLAYER_MONEY')
 assert(#events('auction_spend') == 2 and events('auction_spend')[2].copper == 7000, 'one item buyout of 7000; got ' .. #events('auction_spend'))
 
 -- Forever, commodities: the purchase pays the total the house last quoted, and only when the money matches.
-C_AuctionHouse.StartCommoditiesPurchase(2589, 200)
+click(C_AuctionHouse.StartCommoditiesPurchase, 2589, 200)
 event('COMMODITY_PRICE_UPDATED', 10, 1900)
 event('COMMODITY_PRICE_UPDATED', 10, 2000)
-C_AuctionHouse.ConfirmCommoditiesPurchase(2589, 200)
+click(C_AuctionHouse.ConfirmCommoditiesPurchase, 2589, 200)
 money = money - 2000; event('PLAYER_MONEY')
 assert(#events('auction_spend') == 3 and events('auction_spend')[3].copper == 2000, 'one commodity purchase at the last quote')
 -- A new purchase forgets the old quote: with no quote yet the confirm attributes nothing.
-C_AuctionHouse.StartCommoditiesPurchase(2589, 200)
-C_AuctionHouse.ConfirmCommoditiesPurchase(2589, 200)
+click(C_AuctionHouse.StartCommoditiesPurchase, 2589, 200)
+click(C_AuctionHouse.ConfirmCommoditiesPurchase, 2589, 200)
 money = money - 2000; event('PLAYER_MONEY')
 -- A price that moved: the money that left is not the quote, so nothing is recorded.
-C_AuctionHouse.StartCommoditiesPurchase(2589, 200)
+click(C_AuctionHouse.StartCommoditiesPurchase, 2589, 200)
 event('COMMODITY_PRICE_UPDATED', 10, 2000)
-C_AuctionHouse.ConfirmCommoditiesPurchase(2589, 200)
+click(C_AuctionHouse.ConfirmCommoditiesPurchase, 2589, 200)
 money = money - 2100; event('PLAYER_MONEY')
 -- A failed purchase and a closed house drop the quote.
-C_AuctionHouse.StartCommoditiesPurchase(2589, 200)
+click(C_AuctionHouse.StartCommoditiesPurchase, 2589, 200)
 event('COMMODITY_PRICE_UPDATED', 10, 2000)
 event('COMMODITY_PURCHASE_FAILED')
-C_AuctionHouse.ConfirmCommoditiesPurchase(2589, 200)
+click(C_AuctionHouse.ConfirmCommoditiesPurchase, 2589, 200)
 money = money - 2000; event('PLAYER_MONEY')
 event('COMMODITY_PRICE_UPDATED', 10, 2000)
 event('AUCTION_HOUSE_CLOSED')
-C_AuctionHouse.ConfirmCommoditiesPurchase(2589, 200)
+click(C_AuctionHouse.ConfirmCommoditiesPurchase, 2589, 200)
 money = money - 2000; event('PLAYER_MONEY')
 assert(#events('auction_spend') == 3, 'unquoted, mismatched, failed and stale purchases are unrecorded; got ' .. #events('auction_spend'))
 
+-- A bid the house rejects moves no money: the error clears the pending buyout, and so does a few seconds' wait,
+-- so a later change of the same amount (a repair) is not called a purchase.
+money = money + 50000; event('PLAYER_MONEY')
+click(C_AuctionHouse.PlaceBid, 901, 7000)
+event('AUCTION_HOUSE_SHOW_ERROR')
+money = money - 7000; event('PLAYER_MONEY')
+click(C_AuctionHouse.PlaceBid, 901, 7000)
+runTimers()
+money = money - 7000; event('PLAYER_MONEY')
+PlaceAuctionBid('list', 1, 5000)
+runTimers()
+money = money - 5000; event('PLAYER_MONEY')
+-- A newer purchase is not cleared by the older one's timer.
+click(C_AuctionHouse.PlaceBid, 901, 7000)
+local older = timers[#timers]
+timers = {}
+click(C_AuctionHouse.PlaceBid, 901, 7000)
+older.f()
+money = money - 7000; event('PLAYER_MONEY')
+assert(#events('auction_spend') == 4, 'rejected and expired buyouts unrecorded, a fresh one kept; got ' .. #events('auction_spend'))
+-- The house cannot price a commodity: the quote is dropped.
+click(C_AuctionHouse.StartCommoditiesPurchase, 2589, 200)
+event('COMMODITY_PRICE_UPDATED', 10, 2000)
+event('COMMODITY_PRICE_UNAVAILABLE')
+click(C_AuctionHouse.ConfirmCommoditiesPurchase, 2589, 200)
+money = money - 2000; event('PLAYER_MONEY')
+assert(#events('auction_spend') == 4, 'an unavailable price leaves no quote')
+
+assert(#forbidden == 0, 'the addon called a buy or bid function: ' .. table.concat(forbidden, ','))
 for _, row in ipairs(events()) do
  for _, value in pairs(row) do assert(value ~= 'Jaina' and value ~= 'Player-1-AAAA', 'buyers, sellers and recipients are other players and are never stored') end
 end
 """)
+# No addon source may call, index by string, or alias a buy, bid, post or craft function.
+import re
+names = (r"PostItem|PostCommodity|PlaceBid|PlaceAuctionBid|StartAuction|PostAuction|StartCommoditiesPurchase|"
+         r"ConfirmCommoditiesPurchase|BuyoutItem|CancelAuction|CancelCommoditiesPurchase|ClickAuctionSellItemButton|"
+         r"CraftRecipe|CraftEnchant|CraftSalvage|RecraftRecipe|BuyTrainerService|LearnTalent")
+for source in sorted(root.rglob("*.lua")):
+    if "tests" in source.parts:
+        continue
+    code = "\n".join(line.split("--")[0] for line in source.read_text(encoding="utf-8").splitlines())
+    checks = {
+        "a call": rf"\b({names})\s*\(|pcall\(\s*(?:[A-Za-z_]+\.)?({names})\b",
+        "a string index": rf"\[\s*[\"']({names})[\"']\s*\]",
+        "indexing C_AuctionHouse or C_TradeSkillUI by a name": r"\bC_(?:AuctionHouse|TradeSkillUI)\s*\[",
+        # C_TradeSkillUI is aliased on purpose in professions.lua; recipes_contract.py limits what that alias may name.
+        "an alias of the auction namespace": r"=\s*C_AuctionHouse\b(?!\s*[.\[])",
+        "an alias of an action": rf"=\s*(?:[A-Za-z_]+\.)?({names})\b(?!\s*[(=])",
+    }
+    for what, pattern in checks.items():
+        found = re.search(pattern, code)
+        assert not found, f"{source.name} has {what} of a buy, bid, post or craft API: {found.group(0)}"
 print("Lua 5.1 gold: vendor sales, flights, quest rewards, net auction sales, postage and buyouts (legacy and C_AuctionHouse, items and commodities) attributed; other purchases and unknown income unrecorded")

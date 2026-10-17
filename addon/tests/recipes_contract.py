@@ -196,6 +196,16 @@ fire('TRADE_SKILL_LIST_UPDATE')
 assert(#rows() == count, 'a rank that cannot be read records nothing')
 assert(Everloot:Status():find('nothing recorded: no skill level', 1, true), Everloot:Status())
 
+-- The intake allows ranks 1 to 500: a larger rank writes nothing, a larger maximum is left out.
+child = { professionID = 171, professionName = 'Alchemy', skillLevel = 501, maxSkillLevel = 600 }
+listed = { 1002 }
+count = #rows()
+fire('TRADE_SKILL_LIST_UPDATE')
+assert(#rows() == count, 'rank above 500 records nothing')
+child = { professionID = 171, professionName = 'Alchemy', skillLevel = 120, maxSkillLevel = 501 }
+fire('TRADE_SKILL_LIST_UPDATE')
+assert(rows()[#rows()].rank == 120 and rows()[#rows()].maxRank == nil, 'maxRank above 500 is left out')
+
 -- A child (expansion) profession names its parent; the parent is the profession written.
 child = { professionID = 2823, parentProfessionID = 171, parentProfessionName = 'Alchemy', professionName = 'Classic Alchemy',
  expansionName = 'Classic', skillLevel = 80, maxSkillLevel = 150, skillModifier = 0, isPrimaryProfession = true }

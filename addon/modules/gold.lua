@@ -17,6 +17,7 @@ local taxiOpen = false
 local auctionMail = nil -- { letter = copper the letter pays, sale = the sale minus the cut }
 local postage = nil -- price quoted for a letter the server has not confirmed yet
 local buyout = nil -- copper a buyout is about to take
+local buyoutGen = 0 -- which pending buyout an expiry timer belongs to
 local quote = nil -- total the auction house last quoted for a commodity purchase
 
 local function playerMoney()
@@ -101,13 +102,25 @@ local function mailTaken(index)
   if okHeader and whole(copper) and whole(bid - cut) then auctionMail = { letter = copper, sale = bid - cut } end
 end
 
+--- A pending buyout lasts a few seconds: a bid the house rejects never moves money, and a later change
+--- of the same amount (a repair) must not be called a purchase.
+local BUYOUT_SECONDS = 5
+local function setBuyout(copper)
+  buyout = copper
+  buyoutGen = buyoutGen + 1
+  if copper and C_Timer and C_Timer.After then
+    local mine = buyoutGen
+    pcall(C_Timer.After, BUYOUT_SECONDS, function() if buyoutGen == mine then buyout = nil end end)
+  end
+end
+
 --- Called after a bid on a listing. Only a bid at the buyout price is a purchase; a lower bid can be refunded.
 local function bidPlaced(listType, index, bid)
   buyout = nil
   if not GetAuctionItemInfo or not whole(bid) then return end
   -- name, texture, count, quality, canUse, level, levelColHeader, minBid, minIncrement, buyoutPrice
   local ok, _, _, _, _, _, _, _, _, _, price = pcall(GetAuctionItemInfo, listType, index)
-  if ok and whole(price) and bid == price then buyout = bid end
+  if ok and whole(price) and bid == price then setBuyout(bid) end
 end
 
 --- Forever: called after C_AuctionHouse.PlaceBid(auctionID, bidAmount). Only a bid at the listing's
@@ -116,13 +129,13 @@ local function itemBidPlaced(auctionID, bid)
   buyout = nil
   if not whole(bid) or not (C_AuctionHouse and C_AuctionHouse.GetAuctionInfoByID) then return end
   local ok, info = pcall(C_AuctionHouse.GetAuctionInfoByID, auctionID)
-  if ok and type(info) == "table" and whole(info.buyoutAmount) and bid == info.buyoutAmount then buyout = bid end
+  if ok and type(info) == "table" and whole(info.buyoutAmount) and bid == info.buyoutAmount then setBuyout(bid) end
 end
 
 --- Forever: a commodity purchase pays the total the house last quoted (COMMODITY_PRICE_UPDATED).
 --- Called after ConfirmCommoditiesPurchase. If the money that leaves differs, nothing is attributed.
 local function commodityConfirmed()
-  buyout = quote
+  setBuyout(quote)
   quote = nil
 end
 
@@ -158,7 +171,7 @@ E:RegisterModule("gold", function()
   f:RegisterEvent("PLAYER_ENTERING_WORLD")
   f:RegisterEvent("LOOT_OPENED")
   for _, name in ipairs({ "PLAYER_MONEY", "MERCHANT_SHOW", "MERCHANT_CLOSED", "TAXIMAP_OPENED", "TAXIMAP_CLOSED", "QUEST_TURNED_IN", "MAIL_CLOSED",
-    "MAIL_SEND_SUCCESS", "MAIL_FAILED", "AUCTION_HOUSE_CLOSED", "COMMODITY_PRICE_UPDATED", "COMMODITY_PURCHASE_FAILED" }) do
+    "MAIL_SEND_SUCCESS", "MAIL_FAILED", "AUCTION_HOUSE_CLOSED", "COMMODITY_PRICE_UPDATED", "COMMODITY_PRICE_UNAVAILABLE", "COMMODITY_PURCHASE_FAILED", "AUCTION_HOUSE_SHOW_ERROR" }) do
     pcall(function() f:RegisterEvent(name) end)
   end
   if hooksecurefunc then
@@ -194,7 +207,9 @@ E:RegisterModule("gold", function()
       -- updatedUnitPrice, updatedTotalPrice
       local _, total = ...
       quote = whole(total) and total or nil
-    elseif event == "COMMODITY_PURCHASE_FAILED" then buyout = nil; quote = nil
+    elseif event == "COMMODITY_PURCHASE_FAILED" or event == "COMMODITY_PRICE_UNAVAILABLE" or event == "AUCTION_HOUSE_SHOW_ERROR" then
+      -- The house refused or cannot price it: no purchase is pending.
+      buyout = nil; quote = nil
     elseif event == "QUEST_TURNED_IN" then
       -- questID, xpReward, moneyReward. The reward names itself; the PLAYER_MONEY that follows is not attributed.
       local _, _, reward = ...

@@ -23,6 +23,7 @@ local DIFFICULTY = { [0] = "optimal", [1] = "medium", [2] = "easy", [3] = "trivi
 -- Enum.CraftingReagentType.Basic and Enum.TradeskillSlotDataType.Reagent in the same documentation.
 local REAGENT_BASIC, SLOT_REAGENT = 1, 1
 
+local MAX_RANK = 500          -- web/src/lib/intake.ts
 local MAX_RECIPES = 500       -- per window, as before
 local CHUNK = 50              -- recipes read per frame, so a long list does not stall the client
 local DEBOUNCE_SECONDS = 0.5  -- TRADE_SKILL_LIST_UPDATE can fire in bursts
@@ -103,8 +104,9 @@ local function windowProfession()
       end
     end
   end
-  if not whole(rank) then return nil, "no skill level" end
-  return name, rank, whole(maxRank) and maxRank or nil
+  -- The intake accepts ranks 1 to 500: anything above is not written.
+  if not whole(rank) or rank > MAX_RANK then return nil, "no skill level" end
+  return name, rank, (whole(maxRank) and maxRank <= MAX_RANK) and maxRank or nil
 end
 
 --- One recipe into a row: "stored", "known" (already recorded), "pending" (reagent names not loaded),
