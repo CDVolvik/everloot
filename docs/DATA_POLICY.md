@@ -39,8 +39,11 @@ never published. Four owned kinds (`achievement_owned`, `reputation_owned`,
 from the install id and the character's GUID, never the name. They are named data in the `collection`
 sharing category, like `collection_owned`, and are shown only while a verified install grant for that
 category is live. All eight kinds are kept out of the public corpus and folded into a separate
-completion rollup (latest row per character and entry). Turning the module off deletes every one of
-these rows from the file.
+completion rollup (latest row per character and entry). That rollup is private storage, but it records
+which address hash and install created each catalog entry, so it links an address hash to an install
+id. The link lasts until the rollup is rebuilt (`?rebuild=1`), which drops everything from uploads that
+were deleted; deleting a player's uploads therefore takes a rebuild to remove the link. Turning the
+module off deletes every one of these rows from the file.
 
 Blizzard hides some WoW: Forever item details until an item drops, and runs no public test realm.
 Game files show what exists; play shows what is real. Everloot keeps the two apart and says which

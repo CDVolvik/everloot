@@ -638,7 +638,7 @@ local function body(domains, finish)
     local own = identity and ownedSeen(seen, key) or { t = {}, q = {}, pending = {} }
     -- A character not seen for months (deleted, most likely) stops costing file space in the seen state.
     for other, entry in pairs(seen.own) do
-      if other ~= key and type(entry.seenAt) == "number" and time() - entry.seenAt >= FORGET_CHARACTER_SECONDS then seen.own[other] = nil end
+      if other ~= key and type(entry) == "table" and type(entry.seenAt) == "number" and time() - entry.seenAt >= FORGET_CHARACTER_SECONDS then seen.own[other] = nil end
     end
     if identity then own.seenAt = time() end
     -- A login asks for achievements only when due; that is decided here, out of combat, not in the event.

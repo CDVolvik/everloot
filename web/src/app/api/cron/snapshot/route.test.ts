@@ -9,7 +9,7 @@ beforeEach(() => {
   vi.stubEnv("CRON_SECRET", "synthetic-cron-key");
   store.writeSnapshot.mockReset().mockResolvedValue({ uploads: 0 });
   store.writeMarket.mockReset().mockResolvedValue({ added: 0, scans: 0 });
-  store.writeCompletion.mockReset().mockResolvedValue({ added: 0, remaining: 0, trimmed: 0 });
+  store.writeCompletion.mockReset().mockResolvedValue({ added: 0, remaining: 0, trimmed: 0, rebuilding: false });
   store.prune.mockReset().mockResolvedValue(undefined);
 });
 const req = (auth = "Bearer synthetic-cron-key", query = "") =>
@@ -35,9 +35,9 @@ test("the market rollup runs with the snapshot and rebuilds with it", async () =
   expect(store.writeMarket).toHaveBeenCalledWith({ rebuild: true });
 });
 test("the completion rollup runs after the market, rebuilds with it, and a failure is reported", async () => {
-  store.writeCompletion.mockResolvedValue({ added: 3, remaining: 7, trimmed: 0 });
+  store.writeCompletion.mockResolvedValue({ added: 3, remaining: 7, trimmed: 0, rebuilding: true });
   const body = await (await GET(req(undefined, "?rebuild=1"))).json();
-  expect(body).toMatchObject({ ok: true, completion: { added: 3, remaining: 7 } });
+  expect(body).toMatchObject({ ok: true, completion: { added: 3, remaining: 7, rebuilding: true } });
   expect(store.writeCompletion).toHaveBeenCalledWith({ rebuild: true, authority: expect.any(Function) });
   store.writeCompletion.mockRejectedValue(new Error("completion down"));
   const res = await GET(req());

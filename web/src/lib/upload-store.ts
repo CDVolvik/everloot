@@ -6,7 +6,7 @@ import { mergeCorpus, mergeCorpusBatches, publicRecords, type CorpusState } from
 import { HISTORY_DAYS, MARKET_MAX_BYTES, emptyMarket, foldMarket, uploadScans, type MarketState } from "../../../kb/src/market";
 import { createSharingStore } from "./sharing-store";
 import {
-  COMPLETION_MAX_BYTES, authorizedOwners, emptyCompletion, foldCompletion, isCompletionState, trimCompletion, type CompletionState, type CompletionUpload,
+  COMPLETION_MAX_BYTES, authorizedOwners, emptyCompletion, foldCompletion, isCompletionState, normalizeCompletion, trimCompletion, type CompletionState, type CompletionUpload,
 } from "../../../kb/src/completion-rollup";
 import type { PublicationState } from "../../../kb/src/publication";
 
@@ -138,6 +138,8 @@ const PARALLEL_READS = 16;
 const SNAPSHOT_KEY = "snapshots/corpus.json";
 const MARKET_KEY = "snapshots/market.json";
 const COMPLETION_KEY = "snapshots/completion.json";
+/** A rebuild is folded here over several runs and swapped into COMPLETION_KEY when done, so pages never read a partial one. */
+const COMPLETION_REBUILD_KEY = "snapshots/completion-rebuild.json";
 
 function rawRecordsOf(payload: unknown): unknown[] {
   const records = (payload as { records?: unknown })?.records;
@@ -161,6 +163,9 @@ export function createUploadStore(opts: {
   completionMaxBytes?: number;
   /** Uploads one completion run folds at most; the next run continues from where it stopped. */
   completionBatch?: number;
+  /** Time and catalog/owned rows one completion run may spend before it saves and stops (checked between batches). */
+  completionBudgetMs?: number;
+  completionRowBudget?: number;
   /** Recheck current publication authority on EVERY read, including cache hits. */
   publication?: (state: CorpusState) => Promise<IntakeRecord[]>;
 }) {
@@ -173,6 +178,8 @@ export function createUploadStore(opts: {
   const marketMaxBytes = opts.marketMaxBytes ?? MARKET_MAX_BYTES;
   const completionMaxBytes = opts.completionMaxBytes ?? COMPLETION_MAX_BYTES;
   const completionBatch = opts.completionBatch ?? COMPLETION_UPLOADS_PER_RUN;
+  const completionBudgetMs = opts.completionBudgetMs ?? 150_000;
+  const completionRowBudget = opts.completionRowBudget ?? 500_000;
 
   const cloud = opts.cloud;
   const unavailable = !cloud && process.env.NODE_ENV === "production";
@@ -426,9 +433,9 @@ export function createUploadStore(opts: {
     });
   }
 
-  /** The stored completion rollup and its ETag; `snapshot` is null when the object is unusable. */
-  async function readCompletionSnapshot(): Promise<{ snapshot: CompletionSnapshot | null; etag?: string } | null> {
-    const res = await r2Fetch(COMPLETION_KEY, { method: "GET", headers: { "accept-encoding": "identity" } });
+  /** A stored completion rollup and its ETag; `snapshot` is null when the object is unusable. */
+  async function readCompletionSnapshot(key = COMPLETION_KEY): Promise<{ snapshot: CompletionSnapshot | null; etag?: string } | null> {
+    const res = await r2Fetch(key, { method: "GET", headers: { "accept-encoding": "identity" } });
     if (res.status === 404) return null;
     if (!res.ok) throw new Error(`completion read failed (${res.status})`);
     const etag = res.headers.get("etag") ?? undefined;
@@ -437,59 +444,90 @@ export function createUploadStore(opts: {
     let parsed: Partial<CompletionSnapshot>;
     try { parsed = JSON.parse(text) as Partial<CompletionSnapshot>; } catch { return { snapshot: null, etag }; }
     if (parsed.version !== 2 || !isCompletionState(parsed.state) || !Array.isArray(parsed.lastIds)) return { snapshot: null, etag };
-    return { snapshot: parsed as CompletionSnapshot, etag };
+    return { snapshot: { ...(parsed as CompletionSnapshot), state: normalizeCompletion(parsed.state) }, etag };
   }
 
+  const strong = (read: { etag?: string } | null) => {
+    if (read && (!read.etag || read.etag.startsWith("W/"))) throw new Error("completion rollup has no strong ETag: cannot safely update it");
+  };
+
   /**
-   * Fold up to `completionBatch` uploads newer than the rollup's last one into the completion rollup (cron), in
-   * arrival order, and move the watermark to the last one folded; the next run continues from there. `rebuild`
-   * starts from empty. Near its size limit the rollup is trimmed (kb/src/completion-rollup.ts), never refused:
-   * `authority` says which installs still have a live grant, so theirs is kept longest. A missed object writes
-   * nothing, so the next run reads it again.
+   * One cron run of the completion rollup. It folds uploads newer than the rollup's watermark in arrival order,
+   * in batches of 64, and stops between batches once it has folded `completionBatch` uploads or spent its time or
+   * row budget; the watermark moves to the last upload fully folded, so every run makes progress and the next
+   * one continues there. After each batch the rollup is trimmed to stay under its size limit (never refused);
+   * `authority` says which installs still have a live grant, and when it cannot be read no progress is trimmed.
+   * `rebuild` starts again from empty in a separate object, which later runs continue and which replaces the
+   * served rollup only once it has caught up. A missed upload object saves what was folded before it and fails,
+   * so the next run reads it again.
    */
-  async function writeCompletion(opts: { rebuild?: boolean; authority?: () => Promise<PublicationState> } = {}): Promise<{ added: number; remaining: number; trimmed: number }> {
+  async function writeCompletion(opts: { rebuild?: boolean; authority?: () => Promise<PublicationState> } = {}): Promise<{ added: number; remaining: number; trimmed: number; rebuilding: boolean }> {
     if (!cloud) throw new Error("the completion rollup needs the cloud store");
-    const current = await readCompletionSnapshot();
-    if (current && (!current.etag || current.etag.startsWith("W/"))) throw new Error("completion rollup has no strong ETag: cannot safely update it");
-    if (current && !current.snapshot && !opts.rebuild) throw new Error("completion rollup is invalid: rebuild it with ?rebuild=1");
-    const prev = opts.rebuild ? null : current?.snapshot ?? null;
+    const started = Date.now();
+    const served = await readCompletionSnapshot(COMPLETION_KEY);
+    const pending = await readCompletionSnapshot(COMPLETION_REBUILD_KEY);
+    strong(served); strong(pending);
+    const rebuilding = !!opts.rebuild || !!pending?.snapshot;
+    if (!rebuilding && served && !served.snapshot) throw new Error("completion rollup is invalid: rebuild it with ?rebuild=1");
+    const prev = opts.rebuild ? null : rebuilding ? pending!.snapshot : served?.snapshot ?? null;
     const rows = await listIndex(prev?.lastReceivedAt ?? undefined);
     const unseen = rows.filter((r) => !(prev && r.received_at === prev.lastReceivedAt && prev.lastIds.includes(r.id)));
-    const fresh = unseen.slice(0, completionBatch);
     let state = prev?.state ?? emptyCompletion();
-    for (let i = 0; i < fresh.length; i += MARKET_FOLD_BATCH) {
-      const slice = fresh.slice(i, i + MARKET_FOLD_BATCH);
-      const { payloads, missed } = await readPayloads(slice.map((r) => r.object_key));
-      if (missed) throw new Error("upload object unreadable");
-      state = foldCompletion(state, completionUploads(payloads, slice.map((r) => r.received_at)));
+    let authority: PublicationState | null = null;
+    try { authority = opts.authority ? await opts.authority() : null; } catch { authority = null; }
+    const liveOwners = () => (authority ? authorizedOwners(state, authority, now()) : null);
+    let folded = 0;
+    let rowsFolded = 0;
+    let trimmed = 0;
+    let missed = false;
+    while (folded < Math.min(unseen.length, completionBatch)) {
+      if (folded > 0 && (Date.now() - started > completionBudgetMs || rowsFolded > completionRowBudget)) break;
+      const slice = unseen.slice(folded, Math.min(folded + MARKET_FOLD_BATCH, completionBatch));
+      const read = await readPayloads(slice.map((r) => r.object_key));
+      if (read.missed) { missed = true; break; }
+      const uploads = completionUploads(read.payloads, slice.map((r) => r.received_at));
+      rowsFolded += uploads.reduce((n, u) => n + u.records.length, 0);
+      state = foldCompletion(state, uploads);
+      folded += slice.length;
+      // Checked after every batch, so the state never grows far past the limit before it is trimmed.
+      const trim = trimCompletion(state, completionMaxBytes, liveOwners());
+      trimmed += trim.variants + trim.characters;
     }
-    let live: Set<string> | null = null;
-    try {
-      if (opts.authority) live = authorizedOwners(state, await opts.authority(), now());
-    } catch {
-      live = null;
-    }
-    const trim = trimCompletion(state, completionMaxBytes, live);
-    const last = fresh.length > 0 ? fresh[fresh.length - 1].received_at : null;
-    const lastReceivedAt = last ?? prev?.lastReceivedAt ?? null;
+    if (missed && folded === 0) throw new Error("upload object unreadable");
+    const done = unseen.slice(0, folded);
+    const last = done.length > 0 ? done[done.length - 1].received_at : null;
     const sameTime = (ids: string[]) => (last !== null && prev?.lastReceivedAt === last ? [...new Set([...prev.lastIds, ...ids])] : ids);
     const snapshot: CompletionSnapshot = {
       version: 2,
       generatedAt: now().toISOString(),
       state,
-      lastReceivedAt,
-      lastIds: last !== null ? sameTime(fresh.filter((r) => r.received_at === last).map((r) => r.id)) : prev?.lastIds ?? [],
+      lastReceivedAt: last ?? prev?.lastReceivedAt ?? null,
+      lastIds: last !== null ? sameTime(done.filter((r) => r.received_at === last).map((r) => r.id)) : prev?.lastIds ?? [],
     };
     const body = JSON.stringify(snapshot);
     if (Buffer.byteLength(body) > completionMaxBytes) throw new Error("completion rollup would exceed its size limit after trimming; not written");
-    const put = await r2Fetch(COMPLETION_KEY, {
-      method: "PUT",
-      body,
-      headers: { "content-type": "application/json", ...(current ? { "if-match": current.etag! } : { "if-none-match": "*" }) },
-    });
-    if (!put.ok) throw new Error(`completion write failed (${put.status})`);
+    const remaining = unseen.length - folded;
+    const put = async (key: string, read: { etag?: string } | null) => {
+      const res = await r2Fetch(key, {
+        method: "PUT", body,
+        headers: { "content-type": "application/json", ...(read ? { "if-match": read.etag! } : { "if-none-match": "*" }) },
+      });
+      if (!res.ok) throw new Error(`completion write failed (${res.status})`);
+    };
+    let stillRebuilding = false;
+    if (rebuilding && (remaining > 0 || missed)) {
+      await put(COMPLETION_REBUILD_KEY, pending);
+      stillRebuilding = true;
+    } else {
+      await put(COMPLETION_KEY, served);
+      if (pending) {
+        const gone = await r2Fetch(COMPLETION_REBUILD_KEY, { method: "DELETE" });
+        if (!gone.ok && gone.status !== 404) throw new Error(`completion rebuild cleanup failed (${gone.status})`);
+      }
+    }
     completionCached = null;
-    return { added: fresh.length, remaining: unseen.length - fresh.length, trimmed: trim.variants + trim.characters };
+    if (missed) throw new Error("upload object unreadable; the uploads before it were saved");
+    return { added: folded, remaining, trimmed, rebuilding: stillRebuilding };
   }
 
   /** The completion rollup. Cloud reads the cron's object; local folds the local uploads. */
@@ -499,7 +537,7 @@ export function createUploadStore(opts: {
     try {
       if (unavailable) throw new Error("Production storage is not configured");
       if (cloud) {
-        const stored = await readCompletionSnapshot();
+        const stored = await readCompletionSnapshot(COMPLETION_KEY);
         if (!stored?.snapshot) throw new Error("completion rollup not built yet or unusable");
         read = { state: stored.snapshot.state, dataAsOf: validTime(stored.snapshot.generatedAt) };
       } else {

@@ -428,12 +428,13 @@ assert(said == 1, 'said once: ' .. said)
 """)
 
 # --- the seen state is pruned: a character not seen for months is forgotten, the current one kept -----
-lua = fresh(saved="{ toggles = { completion = true }, completionSeen = { own = { deadbeef = { t = {}, q = { [1] = true }, pending = { 5, 6 }, seenAt = 123456 - 91 * 24 * 60 * 60 }, cafecafe = { t = {}, q = {}, pending = {}, seenAt = 123456 - 10 * 24 * 60 * 60 } } } }")
+lua = fresh(saved="{ toggles = { completion = true }, completionSeen = { own = { deadbeef = { t = {}, q = { [1] = true }, pending = { 5, 6 }, seenAt = 123456 - 91 * 24 * 60 * 60 }, cafecafe = { t = {}, q = {}, pending = {}, seenAt = 123456 - 10 * 24 * 60 * 60 }, broken = 5 } } }")
 lua.execute("""
 event('PLAYER_ENTERING_WORLD'); drain()
 local own = EverlootDB.completionSeen.own
 assert(own.deadbeef == nil, 'a character not seen for 90 days is forgotten')
 assert(own.cafecafe ~= nil, 'one seen 10 days ago is kept')
+assert(own.broken == 5, 'an entry that is not a table is skipped, not an error')
 local key = rows('achievement_owned')[1].characterKey
 assert(own[key] and own[key].seenAt == 123456, 'the current character is stamped')
 """)

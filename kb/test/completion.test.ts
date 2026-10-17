@@ -234,7 +234,7 @@ test("three installs behind one upload address are one voice; three addresses ag
   expect(agreedCatalog(three).titles.get(6)?.name).toBe("Sergeant");
 });
 
-test("the most supported content wins past 3, then the most recently seen, not the first alphabetically", () => {
+test("the most supported content wins past 3, then the one confirmed first, not the first alphabetically", () => {
   const voters = (n: number, from: number) => Array.from({ length: n }, (_, i) => `voter-${String(from + i).padStart(4, "0")}`);
   const state = fold([
     ...voters(3, 0).map((id) => vote(id, undefined, { ...sergeant, name: "Aaa" })),
@@ -242,12 +242,13 @@ test("the most supported content wins past 3, then the most recently seen, not t
   ]);
   expect(agreedCatalog(state).titles.get(6)?.name).toBe("Zzz");
   const tie = fold([
-    ...voters(3, 0).map((id) => vote(id, undefined, { ...sergeant, name: "Aaa" }, at(1))),
-    ...voters(3, 10).map((id) => vote(id, undefined, { ...sergeant, name: "Zzz" }, at(4))),
+    ...voters(3, 0).map((id) => vote(id, undefined, { ...sergeant, name: "Zzz" }, at(1))),
+    ...voters(3, 10).map((id) => vote(id, undefined, { ...sergeant, name: "Aaa" }, at(4))),
   ]);
+  // Same support: the content confirmed first stays, so a later wave cannot take over by being newer.
   expect(agreedCatalog(tie).titles.get(6)?.name).toBe("Zzz");
   // Supporters are counted past 3, up to the sample.
-  const many = fold(voters(40, 100).map((id) => vote(id, undefined)));
+  const many = fold(voters(70, 100).map((id) => vote(id, undefined)));
   expect(many.catalog.t["6"][0].v).toHaveLength(COMPLETION_LIMITS.sample);
 });
 
@@ -272,7 +273,7 @@ test("one address flooding junk ids is capped, and the rollup stays small", () =
   });
   // 10 uploads of 2000 new ids from one address: five times what one voter may hold unconfirmed.
   const state = fold(Array.from({ length: 10 }, (_, n) => flood(n)));
-  expect(Object.keys(state.catalog.a).length).toBeLessThanOrEqual(COMPLETION_LIMITS.openPerVoter);
+  expect(Object.keys(state.catalog.a).length).toBeLessThanOrEqual(COMPLETION_LIMITS.createdPerVoter);
   // Criteria text is not part of what is agreed or kept.
   expect(JSON.stringify(state).length).toBeLessThan(2_000_000);
   // A real entry from three other addresses still gets in and is listed.
