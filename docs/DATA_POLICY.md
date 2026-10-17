@@ -25,9 +25,8 @@ Blizzard hides some WoW: Forever item details until an item drops, and runs no p
 Game files show what exists; play shows what is real. Everloot keeps the two apart and says which
 is which.
 
-**What the game files contain.** *Status: not published yet.* A maintainer can read the item,
-spell, talent (`Trait*`) and spell effect tables (`ItemSparse`, `Item`, `SpellName`, `Spell`,
-`SpellEffect` and others, listed in `CLIENT_TABLES`) of a game's current build from the files
+**What the game files contain.** *Status: not published yet.* A maintainer can read the item and
+spell tables (`ItemSparse`, `Item`, `SpellName`, `Spell`) of a game's current build from the files
 Blizzard's launcher downloads from its public CDN, the same files every player receives, and
 compare two builds field by field. Those snapshots and comparisons stay on the maintainer's
 machine. Encrypted blocks are skipped, never decrypted: no decryption keys are loaded. Nothing from

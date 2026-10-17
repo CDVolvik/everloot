@@ -2,7 +2,7 @@
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, test, vi } from "vitest";
-import { CASC_LIBRARY, extractTables, iconIds, openCdn, probeFiles, type TableSource } from "../src/client-extract.js";
+import { CASC_LIBRARY, extractTables, iconIds, openCdn, pinDefinitions, pinnedFetch, probeFiles, type TableSource } from "../src/client-extract.js";
 import { CLIENT_TABLES } from "../src/client-snapshot.js";
 
 // A stand-in for the CDN library, so openCdn can be checked without the network. Every key-loading
@@ -143,4 +143,25 @@ test("icon file ids are looked up in the root listing and recorded as a table; n
   expect(table.table).toBe("FileStatus");
   expect([...table.rows.values()]).toEqual([{ ID: 1, Status: "present" }, { ID: 2, Status: "encrypted" }, { ID: 3, Status: "absent" }]);
   expect(probeFiles({ read: async () => null }, ids)).toBeNull();
+});
+
+test("WoWDBDefs files are fetched at the pinned commit; other URLs pass through untouched", async () => {
+  const seen: string[] = [];
+  const real = (async (input: unknown) => { seen.push(String(input)); return new Response("{}"); }) as typeof fetch;
+  const pinned = pinnedFetch(real, "a".repeat(40));
+  await pinned("https://raw.githubusercontent.com/wowdev/WoWDBDefs/master/manifest.json");
+  await pinned("https://raw.githubusercontent.com/wowdev/WoWDBDefs/master/definitions/TraitNode.dbd");
+  await pinned("https://example.com/WoWDBDefs/master/x");
+  expect(seen).toEqual([
+    `https://raw.githubusercontent.com/wowdev/WoWDBDefs/${"a".repeat(40)}/manifest.json`,
+    `https://raw.githubusercontent.com/wowdev/WoWDBDefs/${"a".repeat(40)}/definitions/TraitNode.dbd`,
+    "https://example.com/WoWDBDefs/master/x",
+  ]);
+});
+
+test("pinDefinitions returns null, and changes nothing, when the commit cannot be resolved", async () => {
+  const before = globalThis.fetch;
+  expect(await pinDefinitions((async () => new Response("no", { status: 403 })) as typeof fetch)).toBeNull();
+  expect(await pinDefinitions((async () => { throw new Error("offline"); }) as typeof fetch)).toBeNull();
+  expect(globalThis.fetch).toBe(before);
 });
