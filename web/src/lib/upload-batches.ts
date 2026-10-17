@@ -1,4 +1,4 @@
-import { parseRecords } from "./intake";
+import { CLIENT_BUILD, parseRecords } from "./intake";
 import { sharingCategory, type SharingCategory } from "../../../kb/src/publication";
 
 export type SharingChoices = Partial<Record<SharingCategory, boolean>>;
@@ -6,15 +6,18 @@ export interface BatchReceipt { ok: boolean; persisted?: boolean; uploadId?: str
 export interface UploadSession {
   batches: string[]; next: number; receipts: BatchReceipt[];
   counts: Record<string, number>; held: { legacy: number; named: number; invalid: number };
+  /** Titles of the installed addons this upload sends, for the preview. */
+  addons: string[];
 }
 export function prepareUpload(payload: unknown, sharing: SharingChoices, grantTokens: string[], maxBytes = 600_000): UploadSession {
-  const envelope = payload as { addonVersion?: unknown; records?: unknown };
+  const envelope = payload as { addonVersion?: unknown; clientBuild?: unknown; records?: unknown };
   if (!envelope || typeof envelope.addonVersion !== "string" || envelope.addonVersion.length > 32 || !Array.isArray(envelope.records)) throw new Error("Choose an Everloot file with a version and records array.");
   if (envelope.records.length > 100_000) throw new Error("This file is too large. Keep the original and split it into files of at most 100,000 records.");
   if (grantTokens.length > 4 || grantTokens.some((token) => !/^[a-f0-9]{64}$/.test(token))) throw new Error("Verification grants must be 64 lowercase hexadecimal characters, one per line (at most four).");
   const parsed = parseRecords(envelope.records);
   const held = { legacy: 0, named: 0, invalid: parsed.receipt.rejected.length };
   const counts: Record<string, number> = {};
+  const addons = new Set<string>();
   const rows: string[] = [];
   for (const record of parsed.records) {
     if (!record.eventId) { held.legacy++; continue; }
@@ -22,10 +25,13 @@ export function prepareUpload(payload: unknown, sharing: SharingChoices, grantTo
     if (category && !sharing[category]) { held.named++; continue; }
     if (category && !grantTokens.length) throw new Error("A verified grant is required for the named categories you selected.");
     if ("claimToken" in record) delete record.claimToken;
+    if (record.kind === "addon_seen") addons.add(record.title);
     counts[record.kind] = (counts[record.kind] ?? 0) + 1;
     rows.push(JSON.stringify(record));
   }
-  const prefix = JSON.stringify({ addonVersion: envelope.addonVersion, sharing, grantTokens }).slice(0, -1) + ',"records":[';
+  // The build is optional metadata: an unreadable one is left out rather than failing every batch.
+  const clientBuild = CLIENT_BUILD.safeParse(envelope.clientBuild).success ? envelope.clientBuild : undefined;
+  const prefix = JSON.stringify({ addonVersion: envelope.addonVersion, clientBuild, sharing, grantTokens }).slice(0, -1) + ',"records":[';
   const suffix = "]}";
   const bytes = (value: string) => new TextEncoder().encode(value).length;
   const overhead = bytes(prefix + suffix);
@@ -40,7 +46,7 @@ export function prepareUpload(payload: unknown, sharing: SharingChoices, grantTo
     size += length + (chunk.length ? 1 : 0); chunk.push(row);
   }
   if (chunk.length) batches.push(prefix + chunk.join(",") + suffix);
-  return { batches, next: 0, receipts: [], counts, held };
+  return { batches, next: 0, receipts: [], counts, held, addons: [...addons].sort() };
 }
 /** Advance only after a confirmed durable receipt; retries send the identical batch. */
 export async function sendBatches(session: UploadSession, send: typeof fetch = fetch, onProgress: () => void = () => {}, url = "/api/intake") {

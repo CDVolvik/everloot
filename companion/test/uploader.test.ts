@@ -78,6 +78,14 @@ describe("uploading", () => {
     expect(api.bodies[1].records.map((r) => r.eventId)).toEqual(["epoch:2"]);
   });
 
+  test("the client build the addon wrote goes with every batch", async () => {
+    const text = luaFile([loot(1)]).replace('["version"] = "0.2.2",', '["version"] = "0.2.6",\n["clientBuild"] = "1.60.1.70450",');
+    const { file, state } = workspace(text);
+    const api = intake();
+    await uploadFile(file, { endpoint: "https://everloot.example", fetch: api.send, state });
+    expect(api.bodies[0]).toMatchObject({ addonVersion: "0.2.6", clientBuild: "1.60.1.70450" });
+  });
+
   test("named records stay on this machine unless shared on purpose", async () => {
     const { file, state } = workspace(luaFile([loot(1), gold]));
     const api = intake();
