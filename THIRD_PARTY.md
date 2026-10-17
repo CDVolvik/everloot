@@ -31,8 +31,9 @@ our pages, extracted by a maintainer from unencrypted files in the local game cl
 their build in a manifest and kept in Everloot's asset storage, never in this repository. They are © Blizzard Entertainment, Inc., stay Blizzard's, and are outside our CC BY-SA
 and AGPL licences. Release files that include any of them say so in their licence notes. The data
 downloads, API and MCP server carry ids and facts only. The talent catalog read from the client
-(trait node ids, positions, ranks, gates, prerequisites, spell ids, talent names, build stamp) may
-be committed as a marked game-data file with a README saying it is Blizzard's and outside our
+(trait node ids, positions, ranks, gates, prerequisites, spell ids, talent names, build stamp) and
+the map layer (zone rectangles, continents and instances, entrance points) may be committed as
+marked game-data files with a README saying it is Blizzard's and outside our
 licence. Rules and takedown contact:
 [`docs/DATA_POLICY.md`](docs/DATA_POLICY.md).
 

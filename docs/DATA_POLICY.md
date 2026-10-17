@@ -25,13 +25,14 @@ Blizzard hides some WoW: Forever item details until an item drops, and runs no p
 Game files show what exists; play shows what is real. Everloot keeps the two apart and says which
 is which.
 
-**What the game files contain.** *Status: the table data is not published yet, except the talent catalog described below.* A maintainer can
-read the item and spell tables (`ItemSparse`, `Item`, `SpellName`, `Spell`) of a game's current
-build from the files Blizzard's launcher downloads from its public CDN, the same files every
-player receives, and compare two builds field by field. Those snapshots and comparisons stay on the
-maintainer's machine. Encrypted blocks are skipped, never decrypted: no decryption keys are loaded.
-Nothing read from the game files is in the dataset, the API or the MCP server. On the site, only
-the talent catalog and the icons, tooltip text and frame art covered further down may appear.
+**What the game files contain.** *Status: the table data is not published yet, except the talent catalog and the map layer
+described below.* A maintainer can read tables of a game's current build from the files Blizzard's
+launcher downloads from its public CDN, the same files every player receives, and compare two
+builds field by field. The [source ledger](sources/LEDGER.md) lists the tables we read. Those
+snapshots and comparisons stay on the maintainer's machine. Encrypted blocks are skipped, never
+decrypted: no decryption keys are loaded. Nothing read from the game files is in the dataset, the
+API or the MCP server. On the site, only the talent catalog, the map layer and the icons, tooltip
+text and frame art covered further down may appear.
 
 Publishing the table data comes later, as a separate step. Once it ships, every entry from game
 files will:
@@ -86,11 +87,21 @@ The rules:
 **The talent catalog.** The talent calculator at `/tools/talents` uses our own catalog, read from
 the public client by a maintainer, not taken from any other site. The catalog is the trait node
 ids, positions, ranks, gates, prerequisites, spell ids, talent names and the build stamp. This is
-the one table data exception to the status above: it may be published on the site, and it may be
-committed to the git repository as a clearly marked game-data file with a README that says it is
+one of two table data exceptions to the status above, the other being the map layer below. It may
+be published on the site, and it may be committed to the git repository as a clearly marked
+game-data file with a README that says it is Blizzard's and outside our licence. It is labelled
+*found in game files, unconfirmed* until someone has checked it in the game, and the spoiler rules
+above apply. Tooltip text, icons and frame art shown with it keep the rules above: asset storage,
+not git.
+
+**The map layer.** From the map tables we publish zone rectangles (`UiMapAssignment`), continents
+and instances (`Map`, `UiMap`) and dungeon and raid entrance points (`Map.Corpse`), each stamped
+with the build it came from. Like the talent catalog, it may be shown on the site and committed as
+a clearly marked game-data file in `web/src/data/game-data/`, with a README that says it is
 Blizzard's and outside our licence. It is labelled *found in game files, unconfirmed* until
-someone has checked it in the game, and the spoiler rules above apply. Tooltip text, icons and
-frame art shown with it keep the rules above: asset storage, not git.
+checked in game. General rule: new zones or other content found only in the game files stay hidden
+unless the reader turns spoilers on. A zone that looks unreleased is held back until it is live.
+Maps carry no art here; map images would fall under the Blizzard rules above.
 
 *Fan permissions are narrower than this.* As we read Blizzard's
 [video policy](https://www.blizzard.com/en-us/legal/dd76b654-f2c4-4aaa-ba49-ca3122de2376/blizzard-video-policy),
