@@ -110,7 +110,7 @@ export default function TalentCalculator({ catalog }: { catalog: TalentCatalog }
     const next = add(catalog, ranks, id, available, choice);
     if (next === ranks) {
       const verdict = canAdd(catalog, ranks, id, available);
-      setMessage(verdict.ok ? "" : refusalText(verdict.reason!, node, catalog));
+      setMessage(verdict.ok ? "" : refusalText(verdict.reason!, node, catalog, ranks));
       return;
     }
     setActiveRanks(next);
@@ -123,7 +123,7 @@ export default function TalentCalculator({ catalog }: { catalog: TalentCatalog }
     const next = remove(catalog, ranks, id);
     if (next === ranks) {
       const verdict = canRemove(catalog, ranks, id);
-      setMessage(refusalText(verdict.reason!, node, catalog));
+      setMessage(refusalText(verdict.reason!, node, catalog, ranks));
       return;
     }
     setActiveRanks(next);
@@ -334,7 +334,7 @@ export default function TalentCalculator({ catalog }: { catalog: TalentCatalog }
         ))}
       </div>
       <p className="text-xs text-muted">
-        The small number at the left of each row is how many points must be spent in the tree, on the rows above, before that row opens (from the game tables, unconfirmed).
+        The small number at the left of each row is how many points must be spent in the tree, on the rows above, before that row opens (from the game tables; where some gates count is unconfirmed).
         Tap or press Enter to add a point. Right click, long press, Delete or the switch above takes one back. Arrow keys move between talents.
       </p>
 
@@ -347,7 +347,8 @@ export default function TalentCalculator({ catalog }: { catalog: TalentCatalog }
               {selectedNode.entries.map((e) => e.spellId).filter(Boolean).length > 0 && ` · spell id ${selectedNode.entries.map((e) => e.spellId).filter(Boolean).join(", ")}`}
             </p>
             {selectedNode.unlock?.pointsInTree ? <p>Opens after {selectedNode.unlock.pointsInTree} points in this tree, on the rows above.</p> : null}
-            {selectedNode.unlock?.ranksInNode ? <p>Needs {selectedNode.unlock.ranksInNode.ranks} {selectedNode.unlock.ranksInNode.ranks === 1 ? "rank" : "ranks"} in {nameOf(selectedNode.unlock.ranksInNode.nodeId)}.</p> : null}
+            {selectedNode.unlock?.pointsTotal ? <p>Opens after {selectedNode.unlock.pointsTotal} points spent in the class&apos;s trees.</p> : null}
+            {selectedNode.unlock?.ranksInNodes?.map((r) => <p key={r.nodeId}>Needs {r.ranks} {r.ranks === 1 ? "rank" : "ranks"} in {nameOf(r.nodeId)}.</p>)}
             {selectedNode.prereqs.length > 0 && <p>Needs {selectedNode.prereqs.map(nameOf).join(", ")} at full rank.</p>}
             {(selectedNode.anyOf?.length ?? 0) > 0 && <p>Needs {selectedNode.anyOf!.map(nameOf).join(" or ")} at full rank.</p>}
             <p className="text-muted">Description: not shown yet.</p>

@@ -157,5 +157,5 @@ export function resolveBuild(catalog: TalentCatalog, shared: SharedBuild): Resol
 
 function whyRefused(catalog: TalentCatalog, ranks: Ranks, id: number): string {
   const node = nodeMap(catalog).get(id)!;
-  return refusalText(canAdd(catalog, ranks, id, Infinity).reason ?? "gate", node, catalog);
+  return refusalText(canAdd(catalog, ranks, id, Infinity).reason ?? "gate", node, catalog, ranks);
 }

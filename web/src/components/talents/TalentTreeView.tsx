@@ -45,7 +45,7 @@ export function nodeLabel(catalog: TalentCatalog, node: TalentNode, ranks: Ranks
   const rank = rankOf(ranks, node.id);
   const name = node.kind === "choice" ? node.entries.map((e) => e.name).join(" or ") : entryAtRank(node, rank).name;
   const verdict = canAdd(catalog, ranks, node.id, available);
-  const state = rank >= node.maxRanks ? "full" : verdict.ok ? "can take a point" : `locked. ${refusalText(verdict.reason!, node, catalog)}`;
+  const state = rank >= node.maxRanks ? "full" : verdict.ok ? "can take a point" : `locked. ${refusalText(verdict.reason!, node, catalog, ranks)}`;
   return `${name}, rank ${rank} of ${node.maxRanks}, row ${node.row}, ${state}`;
 }
 

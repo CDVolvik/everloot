@@ -43,7 +43,7 @@ export default async function TalentClassPage({ params }: Params) {
         <h1 className={`text-3xl sm:text-4xl font-bold tracking-tight ${CLASS_TEXT[slug]}`}>{catalog.className} talent calculator</h1>
         <ul className="flex flex-wrap gap-2 font-mono text-xs text-muted">
           <li className="rounded-full border border-dashed border-edge px-3 py-1">{catalog.label} · build {catalog.build}</li>
-          <li className="rounded-full border border-dashed border-edge px-3 py-1">gate scope unconfirmed · second set at level {catalog.rules.dualSpecLevel} from beta notes</li>
+          <li className="rounded-full border border-dashed border-edge px-3 py-1">{catalog.rules.gateScope === "unconfirmed" ? "gate scope unconfirmed" : `row gates count points in the ${catalog.rules.gateScope}`} · second set at level {catalog.rules.dualSpecLevel} from beta notes</li>
         </ul>
       </header>
 

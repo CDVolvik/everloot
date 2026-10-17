@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { TalentCatalog, TalentNode } from "./types";
 
-// Turns one class file of our talent catalog (schema everloot.talent-catalog/1, written by
+// Turns one class file of our talent catalog (schema everloot.talent-catalog/2, written by
 // `npm run kb -- client-catalog`, trimmed by scripts/trim-talent-catalog.mjs) into the shape the
 // calculator reads, and refuses a file that is broken. Fields the calculator does not read, such as
 // the spell text in a full catalog file, are ignored if present.
@@ -22,15 +22,14 @@ const node = z.object({
   entries: z.array(entry).min(1),
   prereqs: z.array(z.object({ nodeId: z.number().int(), rule: z.enum(["any", "all"]) })),
   unlock: z.object({
-    // The row gate. The catalog may rename this field (spentRequired, with a scope); this file is
-    // the only place that reads it, through `rowGate` below.
-    pointsInTree: z.number().int().optional(),
-    ranksInNode: z.object({ nodeId: z.number().int(), ranks: z.number().int() }).optional(),
+    // The row gate, and where its points are counted.
+    spentRequired: z.object({ amount: z.number().int(), scope: z.enum(["tree", "class", "unconfirmed"]) }).optional(),
+    ranksInNodes: z.array(z.object({ nodeId: z.number().int(), ranks: z.number().int() })).optional(),
   }),
 });
 
 const classCatalog = z.object({
-  schema: z.literal("everloot.talent-catalog/1"),
+  schema: z.literal("everloot.talent-catalog/2"),
   label: z.string(),
   build: z.object({ version: z.string().min(1) }),
   classId: z.number().int(),
@@ -40,7 +39,19 @@ const classCatalog = z.object({
   trees: z.array(z.object({ id: z.number().int(), name: z.string().nullable(), order: z.number().int(), nodes: z.array(node) })).min(1),
 });
 
-const rowGate = (unlock: { pointsInTree?: number }): number | undefined => unlock.pointsInTree;
+// The only place the gate fields are read. "class" counts every other point in the build; "tree" and
+// "unconfirmed" count the points in the tree (the unconfirmed ones are labelled as such on the page).
+function gateOf(unlock: z.infer<typeof node>["unlock"]): TalentNode["unlock"] {
+  const gate = unlock.spentRequired;
+  const out: NonNullable<TalentNode["unlock"]> = {};
+  if (gate && gate.amount > 0) {
+    if (gate.scope === "class") out.pointsTotal = gate.amount;
+    else out.pointsInTree = gate.amount;
+    out.scope = gate.scope;
+  }
+  if (unlock.ranksInNodes && unlock.ranksInNodes.length > 0) out.ranksInNodes = unlock.ranksInNodes;
+  return Object.keys(out).length > 0 ? out : undefined;
+}
 
 /** The level the beta notes give for the second talent set. Not in the game files we read. */
 export const DUAL_SPEC_LEVEL = 40;
@@ -74,18 +85,18 @@ export function normalizeCatalog(input: unknown): TalentCatalog {
         entries: n.entries.map((e) => ({ definitionId: e.definitionId, spellId: e.spellId, name: e.name ?? `Talent ${e.spellId}`, maxRanks: e.maxRanks })),
         prereqs: n.prereqs.filter((p) => p.rule === "all").map((p) => p.nodeId),
         ...(anyOf.length > 0 ? { anyOf } : {}),
-        ...(rowGate(n.unlock) || n.unlock.ranksInNode
-          ? { unlock: { ...(rowGate(n.unlock) ? { pointsInTree: rowGate(n.unlock) } : {}), ...(n.unlock.ranksInNode ? { ranksInNode: n.unlock.ranksInNode } : {}) } }
-          : {}),
+        ...(gateOf(n.unlock) ? { unlock: gateOf(n.unlock) } : {}),
       });
     }
   }
   for (const n of nodes) {
-    for (const p of [...n.prereqs, ...(n.anyOf ?? []), ...(n.unlock?.ranksInNode ? [n.unlock.ranksInNode.nodeId] : [])]) {
+    for (const p of [...n.prereqs, ...(n.anyOf ?? []), ...(n.unlock?.ranksInNodes?.map((r) => r.nodeId) ?? [])]) {
       if (!ids.has(p)) throw new CatalogError(`Node ${n.id} needs ${p}, which is not in the catalog.`);
     }
   }
 
+  const scopes = new Set(nodes.map((n) => n.unlock?.scope).filter(Boolean));
+  const gateScope = scopes.has("unconfirmed") ? "unconfirmed" : scopes.has("class") ? "class" : "tree";
   const pointLevels = [...raw.pointLevels].sort((a, b) => a - b);
   return {
     classId: raw.classId,
@@ -99,8 +110,9 @@ export function normalizeCatalog(input: unknown): TalentCatalog {
       maxLevel: pointLevels[pointLevels.length - 1],
       pointLevels,
       dualSpecLevel: DUAL_SPEC_LEVEL,
+      gateScope,
       status: "unconfirmed",
-      note: "Points per level and row gates come from the game tables. Which points a gate counts is read as the points in the same tree. The second set at level 40 is from the beta notes.",
+      note: "Points per level and row gates come from the game tables. Where a gate counts its points is unconfirmed for some nodes, and those are read as the points in the same tree. The second set at level 40 is from the beta notes.",
     },
     trees: trees.map((t) => ({ id: t.id, name: t.name ?? `Tree ${t.order + 1}` })),
     nodes,

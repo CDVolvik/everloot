@@ -41,6 +41,6 @@ export const fixture: TalentCatalog = {
       { definitionId: null, spellId: null, name: "Tier two", maxRanks: 2 },
     ] },
     single(54, 2, 2, 2, 1, { anyOf: [51, 53] }),
-    single(55, 2, 3, 1, 1, { unlock: { ranksInNode: { nodeId: 51, ranks: 2 } } }),
+    single(55, 2, 3, 1, 1, { unlock: { ranksInNodes: [{ nodeId: 51, ranks: 2 }] } }),
   ],
 };

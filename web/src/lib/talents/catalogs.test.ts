@@ -74,7 +74,7 @@ test("a share code with real mage node ids round trips through the catalog", asy
   // Arcane Power (spell 12042) and the node it needs, by their trait node ids in build 70450.
   const power = mage.nodes.find((n) => n.entries[0].spellId === 12042)!;
   expect(power.id).toBe(105798);
-  expect(power.unlock).toEqual({ pointsInTree: 30 });
+  expect(power.unlock).toMatchObject({ pointsInTree: 30 });
   const ranks: Ranks = { [power.id]: { rank: 1 } };
   const code = encodeBuild({ classSlug: "mage", specId: mage.specId, build: mage.build, ranks });
   expect(code).toBe(`EL1-mage-1482-1.60.1.70450-${btoa("105798:1").replace(/=+$/, "")}`);
@@ -112,7 +112,7 @@ describe("adapter", () => {
     id, row: 0, col: 0, kind: "single", maxRanks: 1, entries: [entry("A")], prereqs: [], unlock: {}, ...extra,
   });
   const base = (nodes: object[]) => ({
-    schema: "everloot.talent-catalog/1", label: "found in game files, unconfirmed", build: { version: "1.2.3" },
+    schema: "everloot.talent-catalog/2", label: "found in game files, unconfirmed", build: { version: "1.2.3" },
     classId: 8, className: "Mage", specId: null, pointLevels: [12, 10, 11],
     trees: [{ id: 5, name: null, order: 0, nodes }],
   });
@@ -120,16 +120,26 @@ describe("adapter", () => {
   test("reads the catalog: 1-based positions, any and all prerequisites, gates, tiered entries, point levels", () => {
     const c = normalizeCatalog(base([
       node(1, { row: 0, col: 1 }),
-      node(2, { row: 1, col: 1, kind: "tiered", maxRanks: 3, entries: [entry("T1"), entry("T2", 2)], prereqs: [{ nodeId: 1, rule: "all" }, { nodeId: 3, rule: "any" }], unlock: { pointsInTree: 5, ranksInNode: { nodeId: 1, ranks: 1 } } }),
+      node(2, { row: 1, col: 1, kind: "tiered", maxRanks: 3, entries: [entry("T1"), entry("T2", 2)], prereqs: [{ nodeId: 1, rule: "all" }, { nodeId: 3, rule: "any" }], unlock: { spentRequired: { amount: 5, scope: "unconfirmed" }, ranksInNodes: [{ nodeId: 1, ranks: 1 }] } }),
       node(3, { row: 1, col: 2, entries: [entry(null)] }),
     ]));
     expect(c).toMatchObject({ classId: 8, classSlug: "mage", specId: 0, build: "1.2.3", label: "found in game files, unconfirmed" });
     expect(c.rules).toMatchObject({ pointLevels: [10, 11, 12], firstPointLevel: 10, maxLevel: 12, dualSpecLevel: 40, status: "unconfirmed" });
     expect(c.trees).toEqual([{ id: 5, name: "Tree 1" }]);
     expect(c.nodes.map((n) => [n.id, n.row, n.col])).toEqual([[1, 1, 2], [2, 2, 2], [3, 2, 3]]);
-    expect(c.nodes[1]).toMatchObject({ kind: "tiered", maxRanks: 3, prereqs: [1], anyOf: [3], unlock: { pointsInTree: 5, ranksInNode: { nodeId: 1, ranks: 1 } } });
+    expect(c.nodes[1]).toMatchObject({ kind: "tiered", maxRanks: 3, prereqs: [1], anyOf: [3], unlock: { pointsInTree: 5, scope: "unconfirmed", ranksInNodes: [{ nodeId: 1, ranks: 1 }] } });
     expect(c.nodes[1].entries.map((e) => e.name)).toEqual(["T1", "T2"]);
     expect(c.nodes[2].entries[0].name).toBe("Talent 2");
+  });
+
+  test("a class-wide gate counts points across the trees; the scope is kept and the page can say so", () => {
+    const gated = (scope: string) => base([node(1), node(2, { row: 1, unlock: { spentRequired: { amount: 10, scope } } })]);
+    const c = normalizeCatalog(gated("class"));
+    expect(c.nodes[1].unlock).toEqual({ pointsTotal: 10, scope: "class" });
+    expect(c.rules.gateScope).toBe("class");
+    expect(normalizeCatalog(gated("tree")).rules.gateScope).toBe("tree");
+    expect(normalizeCatalog(gated("unconfirmed")).nodes[1].unlock).toEqual({ pointsInTree: 10, scope: "unconfirmed" });
+    expect(normalizeCatalog(gated("unconfirmed")).rules.gateScope).toBe("unconfirmed");
   });
 
   test("refuses a broken catalog", () => {

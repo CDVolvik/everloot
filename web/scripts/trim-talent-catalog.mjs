@@ -19,7 +19,7 @@ if (!dir) throw new Error("usage: node scripts/trim-talent-catalog.mjs <catalog-
 const out = join(dirname(fileURLToPath(import.meta.url)), "..", "src", "data", "game-data", "talents");
 mkdirSync(out, { recursive: true });
 
-const SCHEMA = "everloot.talent-catalog/1";
+const SCHEMA = "everloot.talent-catalog/2";
 
 for (const file of readdirSync(dir).filter((f) => f.endsWith(".json") && f !== "index.json").sort()) {
   const src = JSON.parse(readFileSync(join(dir, file), "utf8"));
@@ -35,6 +35,7 @@ for (const file of readdirSync(dir).filter((f) => f.endsWith(".json") && f !== "
     specId: src.specId,
     traitTreeId: src.traitTreeId,
     pointLevels: src.pointLevels,
+    pointCurrencyId: src.pointCurrencyId,
     trees: src.trees.map((t) => ({
       id: t.id,
       name: t.name,
@@ -49,6 +50,7 @@ for (const file of readdirSync(dir).filter((f) => f.endsWith(".json") && f !== "
         maxRanks: n.maxRanks,
         entries: n.entries.map((e) => ({ definitionId: e.definitionId, spellId: e.spellId, name: e.name, maxRanks: e.maxRanks })),
         prereqs: n.prereqs,
+        ...(n.positionRepaired ? { positionRepaired: true } : {}),
         unlock: n.unlock,
       })),
     })),

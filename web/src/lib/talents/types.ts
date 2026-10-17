@@ -30,12 +30,14 @@ export interface TalentNode {
   anyOf?: number[];
   /** What must already be spent or bought before this node can take a point. */
   unlock?: {
-    /** Ranks bought in one other node. */
-    ranksInNode?: { nodeId: number; ranks: number };
+    /** Ranks bought in other nodes; every one must hold. */
+    ranksInNodes?: { nodeId: number; ranks: number }[];
     /** In nodes of this tree on rows above this one. */
     pointsInTree?: number;
     /** In every other node of the build, in any tree. */
     pointsTotal?: number;
+    /** What the game files say about where the gate counts: "tree", "class", or "unconfirmed" (read as the tree). */
+    scope?: "tree" | "class" | "unconfirmed";
   };
 }
 
@@ -50,6 +52,8 @@ export interface PointRules {
   maxLevel: number;
   /** The level each talent point arrives at, from the game tables. Absent: one point per level. */
   pointLevels?: number[];
+  /** Where row gates count their points: the widest doubt among the nodes. */
+  gateScope?: "tree" | "class" | "unconfirmed";
   /** Level at which the second talent set unlocks. From the beta notes, not the game files. */
   dualSpecLevel: number;
   /** "unconfirmed" until checked in the game. */

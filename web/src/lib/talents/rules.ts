@@ -70,7 +70,7 @@ export function entryAtRank(node: TalentNode, rank: number) {
 function gateMet(catalog: TalentCatalog, node: TalentNode, ranks: Ranks): boolean {
   const unlock = node.unlock;
   if (!unlock) return true;
-  if (unlock.ranksInNode && rankOf(ranks, unlock.ranksInNode.nodeId) < unlock.ranksInNode.ranks) return false;
+  if (unlock.ranksInNodes?.some((r) => rankOf(ranks, r.nodeId) < r.ranks)) return false;
   if (unlock.pointsInTree) {
     let above = 0;
     for (const other of catalog.nodes) {
@@ -154,20 +154,23 @@ export function remove(catalog: TalentCatalog, ranks: Ranks, id: number): Ranks 
 }
 
 /** Why a click was refused, in a sentence. */
-export function refusalText(reason: Refusal, node: TalentNode, catalog: TalentCatalog): string {
+export function refusalText(reason: Refusal, node: TalentNode, catalog: TalentCatalog, ranks: Ranks = {}): string {
   const tree = catalog.trees.find((t) => t.id === node.treeId)?.name ?? "this tree";
   switch (reason) {
     case "max-rank": return "Already at full rank.";
     case "no-points": return "No points left at this level.";
     case "prereq": return "Needs the talent above it at full rank.";
     case "gate":
-      if (node.unlock?.ranksInNode) {
-        const other = catalog.nodes.find((n) => n.id === node.unlock!.ranksInNode!.nodeId);
-        return `Needs ${node.unlock.ranksInNode.ranks} ${node.unlock.ranksInNode.ranks === 1 ? "rank" : "ranks"} in ${other?.entries[0].name ?? "another talent"}.`;
+      {
+        const short = node.unlock?.ranksInNodes?.find((r) => rankOf(ranks, r.nodeId) < r.ranks);
+        if (short) {
+          const other = catalog.nodes.find((n) => n.id === short.nodeId);
+          return `Needs ${short.ranks} ${short.ranks === 1 ? "rank" : "ranks"} in ${other?.entries[0].name ?? "another talent"}.`;
+        }
       }
       return node.unlock?.pointsInTree
         ? `Needs ${node.unlock.pointsInTree} points spent in ${tree} on rows above.`
-        : `Needs ${node.unlock?.pointsTotal ?? 0} points spent elsewhere in the build.`;
+        : `Needs ${node.unlock?.pointsTotal ?? 0} points spent in the class's trees.`;
     case "empty": return "No points here.";
     case "dependents": return "A talent further down depends on this point.";
     default: return "Not available.";
