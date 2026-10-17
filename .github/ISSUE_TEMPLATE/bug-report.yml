@@ -1,0 +1,37 @@
+name: Bug report
+description: Something in the addon, the site or the companion does not work.
+labels: ["bug"]
+body:
+  - type: dropdown
+    id: part
+    attributes:
+      label: Where
+      options:
+        - Addon (in game)
+        - everloot.app
+        - Companion
+        - MCP / AI assistant
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what you expected
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: How to make it happen again
+      placeholder: "1. Open a vendor\n2. ..."
+  - type: textarea
+    id: status
+    attributes:
+      label: Addon status
+      description: For addon problems, paste the output of /everloot status (it shows the addon version and which modules loaded), and say which client build you play on.
+      render: text
+  - type: input
+    id: page
+    attributes:
+      label: Page or version
+      description: The everloot.app page, or the companion version.

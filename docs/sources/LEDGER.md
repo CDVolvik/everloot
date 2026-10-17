@@ -55,7 +55,7 @@ Open-source projects read as references, none of their code in this repository:
 | [chelinho139/wow-ai](https://github.com/chelinho139/wow-ai) | MIT | The idea of a file bridge between the game and a local helper. See "History" for the live bridge |
 | [simulationcraft/simc](https://github.com/simulationcraft/simc) | GPL-3.0 (addon: Unlicense) | Nothing yet; a possible separate process once its `forever` branch sims |
 | [Marlamin/wow.tools.local](https://github.com/Marlamin/wow.tools.local) | MIT | Nothing; noted as a local tool, never an importer |
-| [alcaras/forever-ref](https://github.com/alcaras/forever-ref) | — | Nothing; an example of a wago.tools consumer |
+| [alcaras/forever-ref](https://github.com/alcaras/forever-ref) | None published | Nothing; an example of a wago.tools consumer |
 
 ## Infrastructure and placeholders, not data sources
 

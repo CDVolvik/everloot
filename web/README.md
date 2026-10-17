@@ -1,52 +1,39 @@
-# web/
+# web/: everloot.app
 
-Next.js 15 (App Router) + TypeScript + Tailwind. Public web surface for Everloot. Use `.env.example` for current server-side variables; the historical client-key setup below does not configure custom Battle.net sessions.
+The public site: the WoW: Forever database built from player uploads, the tools (professions,
+auctions, gold, collections, guild board), the lore archive, the addons hub, the upload page and
+the MCP endpoints (`/mcp`, `/mcp/public`). Next.js 15 (App Router), React 19, TypeScript, Tailwind.
+Deployed on Vercel; every merge to `main` deploys production.
 
-**History**: this folder started life as **GoldGoblin.gg** — a standalone Next.js project for a WoW tools site with AdSense monetization. Merged into Everloot on 2026-05-16 as the public web surface (per the "everything under one brand" decision). The existing Gold/Hour calculator stays as a public tool.
+## Run it
 
-## What's already built (from GoldGoblin)
+    cd web
+    npm install
+    npm run dev
 
-| Page | Status | Notes |
-|------|--------|-------|
-| `/` | Working | Landing with tool cards. Needs WoWVault rebrand. |
-| `/tools/gold-per-hour` | Working | Full calculator with URL share. Keep as-is. |
-| `/tools/profession-planner` | Stub | Email-capture coming-soon page. Phase 2 build. |
-| `/tools/completionist` | Stub | Email-capture coming-soon page. Folds into iOS profile, but keep as web entry point. |
-| `/about`, `/privacy` | Working | Rewrite for WoWVault when domain locks. |
-| `sitemap.xml`, `robots.txt`, `ads.txt` | Working | AdSense approval kit — reuse. |
+Open http://localhost:3000. Without a `.env.local` the site still runs: storage-backed pages say
+storage is unavailable, and the lore pages say the archive is unavailable. `.env.example` lists the
+server variables production uses; none are needed to work on most pages.
 
-## What gets added in Phase 1
+## Test it
 
-Planned at the start (some of it is now built):
-- `/u/[character-slug]` — public character profile pages (server-rendered, OpenGraph share cards)
-- Auth-aware "Sign in" header (Battle.net OAuth, same flow as iOS)
-- Mobile-responsive: this is the public-share surface, mobile views drive viral acquisition
+    npm test          # vitest
+    npm run lint
+    npm run build     # prebuild skips the knowledge release when none is configured
 
-## Run locally
+The tests build their own small lore release and use in-memory stores, so they need no
+credentials.
 
-```bash
-cd web
-npm install
-npm run dev
-# http://localhost:3000
-```
+## Where things live
 
-## Deploy
+| Path | What |
+|---|---|
+| `src/app/` | Pages and API routes: `database/`, `tools/`, `lore/`, `search/`, `addons/`, `upload/`, `api/` (intake, corpus, cron, health, auth, sharing, waitlist, rollups), `mcp/` |
+| `src/lib/` | The intake contract and parser (`intake.ts`, `sv-parse.ts`), upload storage (`upload-store.ts`), the knowledge release (`release.ts`, `lore.ts`), the MCP mount (`mcp-mount.ts`) |
+| `src/components/` | Shared UI |
+| `src/data/` | Hand-written facts with their sources (`polestar.ts`, `families.ts`) |
+| `scripts/` | Maintainer tools: fetch and upload the knowledge release, R2 backup and restore rehearsal, launch maintenance |
+| `public/downloads/` | The addon zips, rebuilt by `scripts/package-addon.py` at the repository root |
 
-Vercel auto-detects Next.js. Connect the GitHub repo, set env vars:
-
-```
-NEXT_PUBLIC_SITE_URL=https://everloot.app
-NEXT_PUBLIC_SUPABASE_URL=...
-NEXT_PUBLIC_SUPABASE_ANON_KEY=...
-NEXT_PUBLIC_ADSENSE_CLIENT=     # empty until AdSense approves
-```
-
-Older commits mention a separate GoldGoblin deploy folder. It no longer exists; this folder is the only copy.
-
-## Rebrand TODO before first push
-
-- [ ] Replace "GoldGoblin" references in `src/data/tools.ts` and metadata
-- [ ] Swap colors/logo when WoWVault branding exists
-- [ ] Update `/about` + `/privacy` for WoWVault
-- [ ] Decide: keep AdSense path (Gold/Hour calc earns ads) OR drop ads (monetize purely via Premium subs on the iOS side)
+The site imports the knowledge base and MCP server from `../kb`, so install `kb` too when you work
+on lore or `/mcp`.
