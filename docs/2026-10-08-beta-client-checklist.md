@@ -1,4 +1,4 @@
-# Everloot 0.2.5 — beta collection check
+# Everloot 0.2.6 — beta collection check
 
 Lua 5.1 stubs pass; the Forever beta client has not been tested. Keep the existing
 SavedVariables file before installing. No script here plays the character.
@@ -50,6 +50,16 @@ SavedVariables file before installing. No script here plays the character.
    Then open the profession window at a rank inside a route step `/tools/professions` shows
    and confirm that recipe is orange. This checks `GetTrainerServiceSkillReq` and
    `GetTrainerServiceCost` exist in Forever and that orange-only steps match the client.
+   For the addon list, `/everloot status` should say it is off. Run `/everloot addons on` and
+   `/reload`. Expect one `addon_seen` row per addon in the AddOns list, with its folder name, a
+   title without colour codes, the `.toc` version, and `loaded = false` for a disabled addon.
+   Another `/reload` the same day adds nothing. `/everloot addons off` deletes those rows. Note
+   whether Forever has `C_AddOns` or only the older `GetAddOnInfo` globals.
+   For zone bounds, enter two zones. Expect one `map_bounds` row per zone and nothing more when
+   you come back. Check that `top` is greater than `bottom` and `left` greater than `right`
+   (world x runs north, y runs west). If no row appears, note what
+   `C_Map.GetWorldPosFromMapPos` returns for (0,0) and (1,1) in that zone. Check that
+   `clientBuild` in the saved file matches the build on the login screen.
 7. Log out so SavedVariables flush. Preview the file at `/upload` before sending.
    Keep named sharing off unless actual owner/officer authority is verified and
    the scoped grant has been issued. Upload, record receipts and repeat the same

@@ -8,7 +8,8 @@ This is our reading of the rules, not legal advice.
 ## What we publish
 
 **What players see in the game.** The Everloot addon records what happens around you while you
-play: drops, vendors, auction prices you browse, recipes, trainers, gold in and out. You choose
+play: drops, vendors, auction prices you browse, recipes, trainers, gold in and out. The list of
+your installed addons is recorded only if you turn it on with `/everloot addons on`. You choose
 when to upload. On the website you preview everything before it is sent. The companion sends only
 anonymous open-world events and keeps named data (guild, gear, gold, collection) on your machine.
 
