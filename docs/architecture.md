@@ -49,5 +49,32 @@ Warcraft Wiki dump (CC BY-SA 4.0) + curated entries
 - **The addon and companion never touch the running game.** They use the addon API and the files
   the game writes. See [`DATA_POLICY.md`](DATA_POLICY.md).
 
+## Decisions, and why
+
+- **Free hosting only (Vercel, Supabase, Cloudflare R2).** A fan project before launch should cost
+  nothing to run. One Next.js app holds the pages, the APIs, the cron and the MCP endpoints, so
+  there is one deploy and one place to look when something breaks.
+- **Lore and MCP read one immutable SQLite file.** The knowledge release is built offline, hashed,
+  and read in process. No database server to run, and the site and the MCP server answer from the
+  same bytes. A new release is a new file, never an edit.
+- **A file bridge, never the game's memory or screen.** The addon writes its save file, and the
+  companion reads it and writes answers back as an addon file. That stays inside what Blizzard
+  tolerates for addons, and it is why answers appear only after `/reload`.
+- **Nothing public until three installs agree.** Every published fact carries how many installs
+  reported it and when. A wrong upload, or a lying one, cannot publish a fact on its own.
+
+## Known limits
+
+- Three installs are not proof of three people. An install ID cannot show that two installs
+  belong to different players.
+- Drop figures are shares of the loot windows players opened, not kill-based drop chances.
+- The lore archive is the Warcraft Wiki as of 2023-11-13, with no Forever-specific lore until a
+  newer dump is allowed.
+- Blizzard's API has no WoW: Forever namespace yet, so character data comes only from the addon.
+- Addon 0.2.5 passes its automated tests but has not yet been checked in the live client.
+- The companion is an unsigned command-line tool.
+- The knowledge release is several hundred megabytes inside a serverless function, so the first
+  lore request after a cold start takes a few seconds.
+
 Every source is recorded in [`sources/LEDGER.md`](sources/LEDGER.md). Design history is in
 `superpowers/specs/` and `superpowers/plans/`.

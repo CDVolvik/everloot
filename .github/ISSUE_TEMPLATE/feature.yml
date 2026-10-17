@@ -1,0 +1,16 @@
+name: Feature idea
+description: Something Everloot could do.
+labels: ["idea"]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: The idea
+      description: What would you use it for, in the game?
+    validations:
+      required: true
+  - type: textarea
+    id: data
+    attributes:
+      label: Where the data would come from
+      description: Optional. Everloot only publishes what players observe, open sources and facts we write ourselves.
