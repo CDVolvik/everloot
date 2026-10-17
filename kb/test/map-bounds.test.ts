@@ -5,9 +5,14 @@ const zone = { mapId: 1429, continentId: 0, left: 1535.4, top: -7939.6, right: -
 const report = (installId: string, change: Partial<MapBoundsRow> = {}, capturedAt = "2026-10-17T00:00:00Z"): MapBoundsRow =>
   ({ installId, capturedAt, ...zone, ...change });
 
-test("two installs that agree within one world unit give a zone its bounds", () => {
-  const [bounds] = rollupMapBounds([report("a"), report("b", { left: zone.left + 0.6, bottom: zone.bottom - 0.9 })]);
-  expect(bounds).toMatchObject({ ...zone, installs: 2, agreed: true });
+test("three installs that agree within one world unit give a zone its bounds", () => {
+  const [bounds] = rollupMapBounds([report("a"), report("b", { left: zone.left + 0.6, bottom: zone.bottom - 0.9 }), report("c")]);
+  expect(bounds).toMatchObject({ ...zone, installs: 3, agreed: true });
+});
+
+test("two installs that agree are not enough", () => {
+  const [bounds] = rollupMapBounds([report("a"), report("b")]);
+  expect(bounds).toMatchObject({ installs: 2, agreed: false });
 });
 
 test("one install, however often it reports, is not agreement", () => {
@@ -23,10 +28,10 @@ test("more than one world unit apart, or another continent, is a disagreement", 
 test("when a build moves a zone, the newest agreed bounds win", () => {
   const moved = { left: zone.left + 100, right: zone.right + 100 };
   const [bounds] = rollupMapBounds([
-    report("a", {}, "2026-10-10T00:00:00Z"), report("b", {}, "2026-10-10T00:00:00Z"),
-    report("c", moved, "2026-10-17T00:00:00Z"), report("d", moved, "2026-10-17T00:00:00Z"),
+    report("a", {}, "2026-10-10T00:00:00Z"), report("b", {}, "2026-10-10T00:00:00Z"), report("c", {}, "2026-10-10T00:00:00Z"),
+    report("d", moved, "2026-10-17T00:00:00Z"), report("e", moved, "2026-10-17T00:00:00Z"), report("f", moved, "2026-10-17T00:00:00Z"),
   ]);
-  expect(bounds).toMatchObject({ left: zone.left + 100, right: zone.right + 100, installs: 2, agreed: true });
+  expect(bounds).toMatchObject({ left: zone.left + 100, right: zone.right + 100, installs: 3, agreed: true });
 });
 
 test("each install's newest report is the one that counts", () => {
@@ -34,8 +39,9 @@ test("each install's newest report is the one that counts", () => {
     report("a", { top: zone.top + 50 }, "2026-10-10T00:00:00Z"),
     report("a", {}, "2026-10-17T00:00:00Z"),
     report("b", {}, "2026-10-17T00:00:00Z"),
+    report("c", {}, "2026-10-17T00:00:00Z"),
   ]);
-  expect(bounds).toMatchObject({ top: zone.top, installs: 2, agreed: true });
+  expect(bounds).toMatchObject({ top: zone.top, installs: 3, agreed: true });
 });
 
 test("zones come from map_bounds records only, and the result holds no install id", () => {

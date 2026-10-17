@@ -1,11 +1,11 @@
 /**
  * Zone rectangles in world coordinates, from map_bounds records, for drawing one continuous map.
- * Bounds are exact game data, so honest reports match: a zone's bounds are used once 2 installs
+ * Bounds are exact game data, so honest reports match: a zone's bounds are used once 3 installs
  * agree within one world unit on the continent and every edge. Each install counts with its
  * newest report, and when a build moves a zone the newest agreed bounds win. No install ids out.
  */
 
-export const AGREEING_INSTALLS = 2;
+export const AGREEING_INSTALLS = 3;
 export const WORLD_UNIT_TOLERANCE = 1;
 
 export interface MapBoundsRow {
