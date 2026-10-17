@@ -1,87 +1,239 @@
--- Everloot recipe observations. The trade-skill and craft windows report, per recipe, a difficulty
--- colour at the player's current rank, not the skill thresholds themselves. Each row records what
--- the window showed (profession, rank, recipe, colour, product, reagents); the server infers
--- threshold ranges from many installs. One row per recipe, rank and colour; reopening adds nothing.
+-- Everloot recipe observations for WoW: Forever (client 1.60.1, interface 16001). The profession
+-- window reports, per recipe, a difficulty colour at the player's current rank, not the skill
+-- thresholds themselves. Each row records what the window showed (profession, rank, recipe, colour,
+-- product, reagents); the server infers threshold ranges from many installs. One row per recipe,
+-- rank and colour; reopening adds nothing.
 -- A trainer window lists each profession recipe's required rank and training cost: one row per
 -- recipe, rank and cost. Reads windows the player opened. Never crafts, clicks, trains or plays.
+--
+-- Calls, all checked against the client's own files for build 1.60.1.70450 (see CHANGELOG 0.3.2):
+--   C_TradeSkillUI.GetBaseProfessionInfo / GetChildProfessionInfo   profession name, skill level
+--   C_TradeSkillUI.GetFilteredRecipeIDs                             the recipes the window lists
+--   C_TradeSkillUI.GetRecipeInfo                                    name, relativeDifficulty
+--   C_TradeSkillUI.GetRecipeSchematic                               product item, reagent slots
+--   C_Item.GetItemNameByID / RequestLoadItemDataByID                reagent names
+--   GetProfessions / GetProfessionInfo                              rank when the info reports 0/0
+--   GetNumTrainerServices, GetTrainerServiceInfo, GetTrainerServiceSkillReq, GetTrainerServiceCost
+-- A missing call records nothing and /everloot status says which one.
 
 local E = Everloot
-local COLOURS = { optimal = true, medium = true, easy = true, trivial = true }
 
-local function itemId(link)
-  return type(link) == "string" and tonumber(link:match("item:(%d+)")) or nil
+-- Enum.TradeskillRelativeDifficulty in the build's API documentation.
+local DIFFICULTY = { [0] = "optimal", [1] = "medium", [2] = "easy", [3] = "trivial" }
+-- Enum.CraftingReagentType.Basic and Enum.TradeskillSlotDataType.Reagent in the same documentation.
+local REAGENT_BASIC, SLOT_REAGENT = 1, 1
+
+local MAX_RANK = 500          -- web/src/lib/intake.ts
+local MAX_RECIPES = 500       -- per window, as before
+local CHUNK = 50              -- recipes read per frame, so a long list does not stall the client
+local DEBOUNCE_SECONDS = 0.5  -- TRADE_SKILL_LIST_UPDATE can fire in bursts
+local RETRY_SECONDS = 2       -- one more read for reagent names the client had not loaded
+local MAX_RETRIES = 3
+
+local windowOpen = false
+local pass = 0          -- a newer read, or closing the window, ends the one in progress
+local scheduled = false
+local retries = 0
+
+local function whole(n)
+  return type(n) == "number" and n >= 1 and n == math.floor(n)
 end
 
-local function observe(api)
-  local okLine, profession, rank, maxRank = pcall(api.line)
-  if not okLine or type(profession) ~= "string" or profession == "" or type(rank) ~= "number" then return end
-  local okCount, count = pcall(api.count)
-  if not okCount or type(count) ~= "number" then return end
-  EverlootDB.recipeSeen = EverlootDB.recipeSeen or {}
-  for i = 1, math.min(count, 500) do
-    local ok, name, colour = pcall(api.info, i)
-    if ok and type(name) == "string" and name ~= "" and COLOURS[colour] then
-      local key = profession .. "|" .. name .. "|" .. rank .. "|" .. colour
-      if not EverlootDB.recipeSeen[key] then
-        local reagents = {}
-        local okN, n = pcall(api.reagentCount, i)
-        for j = 1, (okN and type(n) == "number") and math.min(n, 20) or 0 do
-          local okR, reagent, _, needed = pcall(api.reagent, i, j)
-          if okR and type(reagent) == "string" and type(needed) == "number" and needed >= 1 then
-            reagents[#reagents + 1] = { item = reagent, count = needed }
-          end
-        end
-        local okL, link = pcall(api.link, i)
-        local stored = E:Store("recipe_observed", {
-          installId = EverlootDB.installId,
-          capturedAt = date("!%Y-%m-%dT%H:%M:%SZ"),
-          profession = profession,
-          rank = rank,
-          maxRank = type(maxRank) == "number" and maxRank or nil,
-          recipe = name,
-          difficulty = colour,
-          productItemId = okL and itemId(link) or nil,
-          reagents = reagents,
-        })
-        if stored then EverlootDB.recipeSeen[key] = true end
+local function text(value, max)
+  return type(value) == "string" and value ~= "" and #value <= max
+end
+
+--- Names of the calls the trade-skill reader needs that this client does not have.
+local function missingTradeSkillApi()
+  local missing = {}
+  local function need(name, present) if not present then missing[#missing + 1] = name end end
+  local T = C_TradeSkillUI
+  need("C_TradeSkillUI", type(T) == "table")
+  if type(T) == "table" then
+    for _, fn in ipairs({ "GetBaseProfessionInfo", "GetChildProfessionInfo", "GetFilteredRecipeIDs", "GetRecipeInfo", "GetRecipeSchematic" }) do
+      need("C_TradeSkillUI." .. fn, type(T[fn]) == "function")
+    end
+  end
+  need("C_Item.GetItemNameByID", type(C_Item) == "table" and type(C_Item.GetItemNameByID) == "function")
+  return missing
+end
+
+local function missingTrainerApi()
+  local missing = {}
+  for _, fn in ipairs({ "GetNumTrainerServices", "GetTrainerServiceInfo", "GetTrainerServiceSkillReq" }) do
+    if type(_G[fn]) ~= "function" then missing[#missing + 1] = fn end
+  end
+  return missing
+end
+
+local function describe(missing, what)
+  if #missing == 0 then return what end
+  return "unavailable, missing " .. table.concat(missing, ", ") .. " (records nothing)"
+end
+
+local function note(tradeSkill, trainerNote)
+  return "trade-skill window: " .. tradeSkill .. "; trainer window: " .. trainerNote
+end
+
+local lastWindow = "no window read yet"
+local function updateNote()
+  E:SetNote("professions", note(describe(missingTradeSkillApi(), lastWindow), describe(missingTrainerApi(), "ready")))
+end
+
+--- The profession the window shows, as Blizzard's own profession frame reads it: the child (expansion)
+--- profession, else the base one. Returns name, rank, maxRank, or nil and the reason.
+local function windowProfession()
+  local T = C_TradeSkillUI
+  local okChild, info = pcall(T.GetChildProfessionInfo)
+  if not okChild or type(info) ~= "table" or not info.professionID or info.professionID == 0 then
+    local okBase, base = pcall(T.GetBaseProfessionInfo)
+    info = okBase and base or nil
+  end
+  if type(info) ~= "table" then return nil, "no profession info" end
+  local name = info.parentProfessionName or info.professionName
+  local skillLine = info.parentProfessionID or info.professionID
+  if not text(name, 40) then return nil, "no profession name" end
+  local rank, maxRank = info.skillLevel, info.maxSkillLevel
+  if rank == 0 and maxRank == 0 and type(GetProfessions) == "function" and type(GetProfessionInfo) == "function" then
+    -- Blizzard's profession book does the same when the trade-skill info carries no levels.
+    for i = 1, 7 do
+      local okIndex, index = pcall(function() return (select(i, GetProfessions())) end)
+      if okIndex and index then
+        local okInfo, _, _, bookRank, bookMax, _, _, bookLine = pcall(GetProfessionInfo, index)
+        if okInfo and bookLine == skillLine then rank, maxRank = bookRank, bookMax; break end
       end
     end
   end
+  -- The intake accepts ranks 1 to 500: anything above is not written.
+  if not whole(rank) or rank > MAX_RANK then return nil, "no skill level" end
+  return name, rank, (whole(maxRank) and maxRank <= MAX_RANK) and maxRank or nil
 end
 
-local function tradeSkills()
-  if not (GetTradeSkillLine and GetNumTradeSkills and GetTradeSkillInfo) then return end
-  observe({
-    line = GetTradeSkillLine, count = GetNumTradeSkills, info = GetTradeSkillInfo,
-    link = GetTradeSkillItemLink or function() return nil end,
-    reagentCount = GetTradeSkillNumReagents or function() return 0 end,
-    reagent = GetTradeSkillReagentInfo or function() return nil end,
+--- One recipe into a row: "stored", "known" (already recorded), "pending" (reagent names not loaded),
+--- "alternatives" (stored without reagents) or "skipped".
+local function readRecipe(id, profession, rank, maxRank)
+  local T = C_TradeSkillUI
+  local okInfo, info = pcall(T.GetRecipeInfo, id)
+  if not okInfo or type(info) ~= "table" or info.isDummyRecipe or not text(info.name, 120) then return "skipped" end
+  local colour = DIFFICULTY[info.relativeDifficulty]
+  if not colour then return "skipped" end
+  local key = profession .. "|" .. info.name .. "|" .. rank .. "|" .. colour
+  if EverlootDB.recipeSeen[key] then return "known" end
+
+  local okSchematic, schematic = pcall(T.GetRecipeSchematic, id, false)
+  if not okSchematic or type(schematic) ~= "table" then return "skipped" end
+  local reagents, pending, ambiguous = {}, false, false
+  for _, slot in ipairs(type(schematic.reagentSlotSchematics) == "table" and schematic.reagentSlotSchematics or {}) do
+    -- Only the basic reagents a craft always uses. Optional, finishing and currency slots are not its cost.
+    if type(slot) == "table" and slot.reagentType == REAGENT_BASIC and slot.required ~= false
+      and (slot.dataSlotType == nil or slot.dataSlotType == SLOT_REAGENT) then
+      local options = type(slot.reagents) == "table" and slot.reagents or {}
+      local itemId = options[1] and options[1].itemID
+      if #options == 1 and whole(itemId) and whole(slot.quantityRequired) then
+        local okName, name = pcall(C_Item.GetItemNameByID, itemId)
+        if okName and text(name, 80) then
+          reagents[#reagents + 1] = { item = name, count = slot.quantityRequired }
+        else
+          pending = true
+          if C_Item.RequestLoadItemDataByID then pcall(C_Item.RequestLoadItemDataByID, itemId) end
+        end
+      else
+        -- Several items fit this slot: which one the player used is not known, so none is written.
+        ambiguous = true
+      end
+    end
+  end
+  if pending then return "pending" end
+  if ambiguous then reagents = {} end
+
+  local stored = E:Store("recipe_observed", {
+    installId = EverlootDB.installId,
+    capturedAt = date("!%Y-%m-%dT%H:%M:%SZ"),
+    profession = profession,
+    rank = rank,
+    maxRank = maxRank,
+    recipe = info.name,
+    difficulty = colour,
+    productItemId = whole(schematic.outputItemID) and schematic.outputItemID or nil,
+    reagents = reagents,
   })
+  if not stored then return "skipped" end
+  EverlootDB.recipeSeen[key] = true
+  return ambiguous and "alternatives" or "stored"
 end
 
-local function crafts()
-  if not (GetCraftDisplaySkillLine and GetNumCrafts and GetCraftInfo) then return end
-  observe({
-    line = GetCraftDisplaySkillLine, count = GetNumCrafts,
-    -- GetCraftInfo returns name, subSpellName, difficulty, ...
-    info = function(i) local name, _, colour = GetCraftInfo(i); return name, colour end,
-    link = GetCraftItemLink or function() return nil end,
-    reagentCount = GetCraftNumReagents or function() return 0 end,
-    reagent = GetCraftReagentInfo or function() return nil end,
-  })
+local readWindow
+
+local function finish(stats, profession, rank, maxRank)
+  lastWindow = string.format("%s %d%s, %d recipes listed, %d new rows, %d without a colour or schematic",
+    profession, rank, maxRank and ("/" .. maxRank) or "", stats.listed, stats.stored + stats.alternatives, stats.skipped)
+  if stats.alternatives > 0 then lastWindow = lastWindow .. string.format(", %d with alternative reagents stored without reagents", stats.alternatives) end
+  if stats.pending > 0 then lastWindow = lastWindow .. string.format(", %d waiting for reagent names", stats.pending) end
+  updateNote()
+  if stats.pending > 0 and windowOpen and retries < MAX_RETRIES and C_Timer and C_Timer.After then
+    retries = retries + 1
+    C_Timer.After(RETRY_SECONDS, function() if windowOpen then readWindow() end end)
+  end
+end
+
+--- Reads the open window. The list is read in chunks across frames; a newer read replaces this one.
+readWindow = function()
+  if #missingTradeSkillApi() > 0 then updateNote(); return end
+  local profession, rank, maxRank = windowProfession()
+  if not profession then lastWindow = "nothing recorded: " .. tostring(rank); updateNote(); return end
+  local okIds, ids = pcall(C_TradeSkillUI.GetFilteredRecipeIDs)
+  if not okIds or type(ids) ~= "table" then lastWindow = "nothing recorded: no recipe list"; updateNote(); return end
+  EverlootDB.recipeSeen = EverlootDB.recipeSeen or {}
+  pass = pass + 1
+  local mine = pass
+  local total = math.min(#ids, MAX_RECIPES)
+  local stats = { listed = total, stored = 0, alternatives = 0, pending = 0, skipped = 0 }
+  local nextIndex = 1
+  local function step()
+    if mine ~= pass then return end
+    local last = (C_Timer and C_Timer.After) and math.min(total, nextIndex + CHUNK - 1) or total
+    for i = nextIndex, last do
+      local ok, result = pcall(readRecipe, ids[i], profession, rank, maxRank)
+      result = ok and result or "skipped"
+      if result == "stored" then stats.stored = stats.stored + 1
+      elseif result == "alternatives" then stats.alternatives = stats.alternatives + 1
+      elseif result == "pending" then stats.pending = stats.pending + 1
+      elseif result == "skipped" then stats.skipped = stats.skipped + 1 end
+    end
+    nextIndex = last + 1
+    if nextIndex <= total then C_Timer.After(0, step) else finish(stats, profession, rank, maxRank) end
+  end
+  step()
+end
+
+local function scheduleRead()
+  if not (C_Timer and C_Timer.After) then pcall(readWindow); return end
+  if scheduled then return end
+  scheduled = true
+  C_Timer.After(DEBOUNCE_SECONDS, function()
+    scheduled = false
+    if windowOpen then pcall(readWindow) end
+  end)
 end
 
 --- Only services with a profession requirement are recipes; class spells and headers have none.
+--- GetTrainerServiceInfo returns name, serviceType, texture, reqLevel, subText, category.
 local function trainer()
-  if not (GetNumTrainerServices and GetTrainerServiceInfo and GetTrainerServiceSkillReq) then return end
+  if #missingTrainerApi() > 0 then updateNote(); return end
   local okCount, count = pcall(GetNumTrainerServices)
   if not okCount or type(count) ~= "number" then return end
+  -- The row Blizzard's trainer window adds for the next profession step is not a recipe.
+  local stepIndex
+  if GetTrainerServiceStepIndex then
+    local okStep, step = pcall(GetTrainerServiceStepIndex)
+    if okStep then stepIndex = step end
+  end
   EverlootDB.trainerSeen = EverlootDB.trainerSeen or {}
   for i = 1, math.min(count, 500) do
-    local okInfo, name, _, category = pcall(GetTrainerServiceInfo, i)
+    local okInfo, name, serviceType = pcall(GetTrainerServiceInfo, i)
     local okReq, profession, rank = pcall(GetTrainerServiceSkillReq, i)
-    if okInfo and okReq and category ~= "header" and type(name) == "string" and name ~= ""
-      and type(profession) == "string" and profession ~= "" and type(rank) == "number" and rank >= 1 then
+    if i ~= stepIndex and okInfo and okReq and serviceType ~= "header" and text(name, 120)
+      and text(profession, 40) and whole(rank) then
       local okCost, cost = false, nil
       if GetTrainerServiceCost then okCost, cost = pcall(GetTrainerServiceCost, i) end
       cost = (okCost and type(cost) == "number" and cost >= 0) and cost or nil
@@ -103,13 +255,22 @@ end
 
 E:RegisterModule("professions", function()
   local f = E.frame
-  for _, name in ipairs({ "TRADE_SKILL_SHOW", "TRADE_SKILL_UPDATE", "CRAFT_SHOW", "CRAFT_UPDATE", "TRAINER_SHOW", "TRAINER_UPDATE" }) do
+  for _, name in ipairs({ "TRADE_SKILL_SHOW", "TRADE_SKILL_LIST_UPDATE", "TRADE_SKILL_DATA_SOURCE_CHANGED", "TRADE_SKILL_CLOSE",
+    "TRAINER_SHOW", "TRAINER_UPDATE" }) do
     pcall(function() f:RegisterEvent(name) end)
   end
   f:HookScript("OnEvent", function(_, event)
-    if event == "TRADE_SKILL_SHOW" or event == "TRADE_SKILL_UPDATE" then pcall(tradeSkills)
-    elseif event == "CRAFT_SHOW" or event == "CRAFT_UPDATE" then pcall(crafts)
+    if event == "TRADE_SKILL_SHOW" then
+      windowOpen = true
+      retries = 0
+      scheduleRead()
+    elseif event == "TRADE_SKILL_LIST_UPDATE" or event == "TRADE_SKILL_DATA_SOURCE_CHANGED" then
+      if windowOpen then scheduleRead() end
+    elseif event == "TRADE_SKILL_CLOSE" then
+      windowOpen = false
+      pass = pass + 1
     elseif event == "TRAINER_SHOW" or event == "TRAINER_UPDATE" then pcall(trainer) end
   end)
-  return "ready (recipe colours from open trade-skill and craft windows, required ranks from trainers)"
+  return note(describe(missingTradeSkillApi(), "ready, recipe colours from the open profession window"),
+    describe(missingTrainerApi(), "ready, required ranks from trainers"))
 end)
