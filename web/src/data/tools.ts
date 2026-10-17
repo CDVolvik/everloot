@@ -32,6 +32,21 @@ export const tools: Tool[] = [
     ],
   },
   {
+    slug: "talents",
+    title: "Talent Calculator",
+    shortTitle: "Talents",
+    tagline: "Plan a build, share it with its game build attached.",
+    description:
+      "Plan WoW: Forever talents for any class: point rules, two talent sets, undo and reset, and a share link that names the game build. Trees and rules are unconfirmed beta data.",
+    status: "live",
+    keywords: [
+      "wow forever talent calculator",
+      "wow forever talents",
+      "wow forever builds",
+      "talent tree planner",
+    ],
+  },
+  {
     slug: "profession-planner",
     href: "/tools/professions",
     title: "Profession Leveling Planner",

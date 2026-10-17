@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { intakeQuota } from "@/lib/intake-quota";
 import { uploadStore } from "@/lib/upload-store";
+import { recordUsage } from "@/lib/usage-metrics";
 
 /**
  * POST /api/waitlist — launch notification signups per tool.
@@ -22,6 +23,7 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ ok: false, error: "signup unavailable, retry later" }, { status: 503 });
   }
+  recordUsage("api.waitlist");
   let body: unknown;
   try {
     body = await req.json();

@@ -11,7 +11,7 @@ E.MAX_ROWS_PER_KIND = 2000
 local defaults = {
   version = E.VERSION,
   installId = nil,
-  toggles = { openworld = true, guild = true, gear = true, auctions = false, gold = true, addons = false },
+  toggles = { openworld = true, guild = true, gear = true, auctions = false, gold = true, addons = false, talents = true },
   records = {},
 }
 
@@ -98,7 +98,7 @@ function E:Status()
   for _, kind in ipairs({ "npc_sighting", "loot", "quest", "vendor", "item_seen",
     "guild_snapshot", "raid_lockout", "attendance", "loot_award", "gear_snapshot",
     "collection_catalog", "collection_owned", "auction_scan", "recipe_seen", "recipe_observed", "trainer_seen", "price_seen",
-    "gold_snapshot", "money_event", "addon_seen", "map_bounds" }) do
+    "gold_snapshot", "money_event", "addon_seen", "map_bounds", "talent_snapshot" }) do
     lines[#lines + 1] = string.format("  rows %s: %d", kind, self:Count(kind))
   end
   return table.concat(lines, "\n")
@@ -124,11 +124,18 @@ SlashCmdList["EVERLOOT"] = function(msg)
   -- A question keeps its case, so it is routed before the command is lowercased.
   local question = type(msg) == "string" and msg:match("^%s*[Aa][Ss][Kk]%s+(.+)$")
   if question and E.Ask then return E:Ask(question) end
+  -- A share code is case-sensitive, so it is routed before the command is lowercased.
+  local plan = type(msg) == "string" and msg:match("^%s*[Pp][Ll][Aa][Nn]%s*(.-)%s*$")
+  if plan and E.PlanCommand and msg:lower():match("^%s*plan%f[%s%z]") then return E.PlanCommand(plan) end
   msg = msg and msg:lower():gsub("^%s+", "") or ""
   if msg == "status" or msg == "" then
     print(E:Status())
   elseif msg == "version" then
     print("Everloot " .. E.VERSION)
+  elseif msg == "selftest" and E.SelfTest then
+    E.SelfTest()
+  elseif msg == "talents" and E.PrintTalents then
+    E.PrintTalents()
   elseif (msg == "raid" or msg == "raid code") and E.RaidCommand then
     E.RaidCommand(msg == "raid code" and "code" or nil)
   elseif msg == "auctions on" or msg == "auctions off" then
@@ -146,6 +153,6 @@ SlashCmdList["EVERLOOT"] = function(msg)
       print("Everloot: installed addon list off; all recorded addon rows were deleted from this file. /reload to apply.")
     end
   else
-    print("Everloot commands: /everloot status, /everloot auctions on|off, /everloot addons on|off, /everloot raid [code], /ask <question>")
+    print("Everloot commands: /everloot status, /everloot auctions on|off, /everloot addons on|off, /everloot selftest, /everloot talents, /everloot plan <share code>, /everloot raid [code], /ask <question>")
   end
 end

@@ -44,7 +44,7 @@ export default function ContactPage() {
           )
         </li>
         <li>Bug reports</li>
-        <li>Advertising or partnership questions</li>
+        <li>Partnership questions</li>
       </ul>
 
       <h2 className="text-xl text-fg mt-8">

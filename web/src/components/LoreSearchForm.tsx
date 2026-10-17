@@ -1,7 +1,11 @@
+"use client";
+
+import { track } from "@/lib/analytics/track";
+
 /** Plain GET form to /search; works without JavaScript. */
 export default function LoreSearchForm({ query = "" }: { query?: string }) {
   return (
-    <form action="/search" method="get" role="search" className="flex flex-col sm:flex-row gap-2 max-w-xl">
+    <form action="/search" method="get" role="search" onSubmit={() => track("search", { surface: "lore" })} className="flex flex-col sm:flex-row gap-2 max-w-xl">
       <label htmlFor="lore-q" className="sr-only">Search the lore archive</label>
       <input
         id="lore-q"

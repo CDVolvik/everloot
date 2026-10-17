@@ -1,0 +1,767 @@
+{
+  "schema": "everloot.world-map/1",
+  "source": {
+    "name": "Everloot client extract",
+    "status": "found in game files, unconfirmed",
+    "licence": "Blizzard game data, not under our licence",
+    "licenceUrl": "https://github.com/CDVolvik/everloot/blob/main/docs/DATA_POLICY.md",
+    "product": "wow_classic_beta",
+    "buildId": 70450,
+    "version": "1.60.1.70450",
+    "buildConfig": "84bea4233331e390fda8724c6f91ffa5",
+    "definitions": "b9a63096cdd9",
+    "extractedAt": "2026-10-17T09:03:28.768Z",
+    "tables": [
+      {
+        "table": "Map",
+        "rows": 73,
+        "encryptedBlocks": 3
+      },
+      {
+        "table": "UiMap",
+        "rows": 60,
+        "encryptedBlocks": 0
+      },
+      {
+        "table": "UiMapAssignment",
+        "rows": 61,
+        "encryptedBlocks": 0
+      }
+    ]
+  },
+  "continents": [
+    {
+      "id": 0,
+      "name": "Eastern Kingdoms",
+      "bounds": {
+        "left": 16000,
+        "top": 7466.6,
+        "right": -19199.9,
+        "bottom": -16000
+      }
+    },
+    {
+      "id": 1,
+      "name": "Kalimdor",
+      "bounds": {
+        "left": 17066.6,
+        "top": 12799.9,
+        "right": -19733.2,
+        "bottom": -11733.3
+      }
+    }
+  ],
+  "zones": [
+    {
+      "uiMapId": 1411,
+      "name": "Durotar",
+      "continentId": 1,
+      "bounds": {
+        "left": -1962.5,
+        "top": 1808.3,
+        "right": -7250,
+        "bottom": -1716.7
+      }
+    },
+    {
+      "uiMapId": 1412,
+      "name": "Mulgore",
+      "continentId": 1,
+      "bounds": {
+        "left": 2479.2,
+        "top": 266.7,
+        "right": -3675,
+        "bottom": -3835.4
+      }
+    },
+    {
+      "uiMapId": 1413,
+      "name": "The Barrens",
+      "continentId": 1,
+      "bounds": {
+        "left": 2622.9,
+        "top": 1612.5,
+        "right": -7510.4,
+        "bottom": -5143.7
+      }
+    },
+    {
+      "uiMapId": 1416,
+      "name": "Alterac Mountains",
+      "continentId": 0,
+      "bounds": {
+        "left": 783.3,
+        "top": 1500,
+        "right": -2016.7,
+        "bottom": -366.7
+      }
+    },
+    {
+      "uiMapId": 1417,
+      "name": "Arathi Highlands",
+      "continentId": 0,
+      "bounds": {
+        "left": -866.7,
+        "top": -133.3,
+        "right": -4466.7,
+        "bottom": -2533.3
+      }
+    },
+    {
+      "uiMapId": 1418,
+      "name": "Badlands",
+      "continentId": 0,
+      "bounds": {
+        "left": -2079.2,
+        "top": -5889.6,
+        "right": -4566.7,
+        "bottom": -7547.9
+      }
+    },
+    {
+      "uiMapId": 1419,
+      "name": "Blasted Lands",
+      "continentId": 0,
+      "bounds": {
+        "left": -1241.7,
+        "top": -10566.7,
+        "right": -4591.7,
+        "bottom": -12800
+      }
+    },
+    {
+      "uiMapId": 1420,
+      "name": "Tirisfal Glades",
+      "continentId": 0,
+      "bounds": {
+        "left": 3033.3,
+        "top": 3837.5,
+        "right": -1485.4,
+        "bottom": 825
+      }
+    },
+    {
+      "uiMapId": 1421,
+      "name": "Silverpine Forest",
+      "continentId": 0,
+      "bounds": {
+        "left": 3450,
+        "top": 1666.7,
+        "right": -750,
+        "bottom": -1133.3
+      }
+    },
+    {
+      "uiMapId": 1422,
+      "name": "Western Plaguelands",
+      "continentId": 0,
+      "bounds": {
+        "left": 416.7,
+        "top": 3366.7,
+        "right": -3883.3,
+        "bottom": 500
+      }
+    },
+    {
+      "uiMapId": 1423,
+      "name": "Eastern Plaguelands",
+      "continentId": 0,
+      "bounds": {
+        "left": -2256.2,
+        "top": 3691.7,
+        "right": -6558.3,
+        "bottom": 825
+      }
+    },
+    {
+      "uiMapId": 1424,
+      "name": "Hillsbrad Foothills",
+      "continentId": 0,
+      "bounds": {
+        "left": 1066.7,
+        "top": 400,
+        "right": -2133.3,
+        "bottom": -1733.3
+      }
+    },
+    {
+      "uiMapId": 1425,
+      "name": "The Hinterlands",
+      "continentId": 0,
+      "bounds": {
+        "left": -1575,
+        "top": 1466.7,
+        "right": -5425,
+        "bottom": -1100
+      }
+    },
+    {
+      "uiMapId": 1426,
+      "name": "Dun Morogh",
+      "continentId": 0,
+      "bounds": {
+        "left": 1802.1,
+        "top": -3877.1,
+        "right": -3122.9,
+        "bottom": -7160.4
+      }
+    },
+    {
+      "uiMapId": 1427,
+      "name": "Searing Gorge",
+      "continentId": 0,
+      "bounds": {
+        "left": -322.9,
+        "top": -6100,
+        "right": -2554.2,
+        "bottom": -7587.5
+      }
+    },
+    {
+      "uiMapId": 1428,
+      "name": "Burning Steppes",
+      "continentId": 0,
+      "bounds": {
+        "left": -266.7,
+        "top": -7031.2,
+        "right": -3195.8,
+        "bottom": -8983.3
+      }
+    },
+    {
+      "uiMapId": 1429,
+      "name": "Elwynn Forest",
+      "continentId": 0,
+      "bounds": {
+        "left": 1535.4,
+        "top": -7939.6,
+        "right": -1935.4,
+        "bottom": -10254.2
+      }
+    },
+    {
+      "uiMapId": 1430,
+      "name": "Deadwind Pass",
+      "continentId": 0,
+      "bounds": {
+        "left": -833.3,
+        "top": -9866.7,
+        "right": -3333.3,
+        "bottom": -11533.3
+      }
+    },
+    {
+      "uiMapId": 1431,
+      "name": "Duskwood",
+      "continentId": 0,
+      "bounds": {
+        "left": 833.3,
+        "top": -9716.7,
+        "right": -1866.7,
+        "bottom": -11516.7
+      }
+    },
+    {
+      "uiMapId": 1432,
+      "name": "Loch Modan",
+      "continentId": 0,
+      "bounds": {
+        "left": -1993.7,
+        "top": -4487.5,
+        "right": -4752.1,
+        "bottom": -6327.1
+      }
+    },
+    {
+      "uiMapId": 1433,
+      "name": "Redridge Mountains",
+      "continentId": 0,
+      "bounds": {
+        "left": -1681.2,
+        "top": -8575,
+        "right": -3852.1,
+        "bottom": -10022.9
+      }
+    },
+    {
+      "uiMapId": 1434,
+      "name": "Stranglethorn Vale",
+      "continentId": 0,
+      "bounds": {
+        "left": 2220.8,
+        "top": -11168.7,
+        "right": -4160.4,
+        "bottom": -15422.9
+      }
+    },
+    {
+      "uiMapId": 1435,
+      "name": "Swamp of Sorrows",
+      "continentId": 0,
+      "bounds": {
+        "left": -2222.9,
+        "top": -9620.8,
+        "right": -4516.7,
+        "bottom": -11150
+      }
+    },
+    {
+      "uiMapId": 1436,
+      "name": "Westfall",
+      "continentId": 0,
+      "bounds": {
+        "left": 3016.7,
+        "top": -9400,
+        "right": -483.3,
+        "bottom": -11733.3
+      }
+    },
+    {
+      "uiMapId": 1437,
+      "name": "Wetlands",
+      "continentId": 0,
+      "bounds": {
+        "left": -389.6,
+        "top": -2147.9,
+        "right": -4525,
+        "bottom": -4904.2
+      }
+    },
+    {
+      "uiMapId": 1438,
+      "name": "Teldrassil",
+      "continentId": 1,
+      "bounds": {
+        "left": 3814.6,
+        "top": 11831.3,
+        "right": -1277.1,
+        "bottom": 8437.5
+      }
+    },
+    {
+      "uiMapId": 1439,
+      "name": "Darkshore",
+      "continentId": 1,
+      "bounds": {
+        "left": 2941.7,
+        "top": 8333.3,
+        "right": -3608.3,
+        "bottom": 3966.7
+      }
+    },
+    {
+      "uiMapId": 1440,
+      "name": "Ashenvale",
+      "continentId": 1,
+      "bounds": {
+        "left": 1700,
+        "top": 4672.9,
+        "right": -4066.7,
+        "bottom": 829.2
+      }
+    },
+    {
+      "uiMapId": 1441,
+      "name": "Thousand Needles",
+      "continentId": 1,
+      "bounds": {
+        "left": -433.3,
+        "top": -3966.7,
+        "right": -4833.3,
+        "bottom": -6900
+      }
+    },
+    {
+      "uiMapId": 1442,
+      "name": "Stonetalon Mountains",
+      "continentId": 1,
+      "bounds": {
+        "left": 3245.8,
+        "top": 2916.7,
+        "right": -1637.5,
+        "bottom": -339.6
+      }
+    },
+    {
+      "uiMapId": 1443,
+      "name": "Desolace",
+      "continentId": 1,
+      "bounds": {
+        "left": 4233.3,
+        "top": 452.1,
+        "right": -262.5,
+        "bottom": -2545.8
+      }
+    },
+    {
+      "uiMapId": 1444,
+      "name": "Feralas",
+      "continentId": 1,
+      "bounds": {
+        "left": 5441.7,
+        "top": -2366.7,
+        "right": -1508.3,
+        "bottom": -7000
+      }
+    },
+    {
+      "uiMapId": 1445,
+      "name": "Dustwallow Marsh",
+      "continentId": 1,
+      "bounds": {
+        "left": -975,
+        "top": -2033.3,
+        "right": -6225,
+        "bottom": -5533.3
+      }
+    },
+    {
+      "uiMapId": 1446,
+      "name": "Tanaris",
+      "continentId": 1,
+      "bounds": {
+        "left": -218.7,
+        "top": -5875,
+        "right": -7118.7,
+        "bottom": -10475
+      }
+    },
+    {
+      "uiMapId": 1447,
+      "name": "Azshara",
+      "continentId": 1,
+      "bounds": {
+        "left": -3277.1,
+        "top": 5341.7,
+        "right": -8347.9,
+        "bottom": 1960.4
+      }
+    },
+    {
+      "uiMapId": 1448,
+      "name": "Felwood",
+      "continentId": 1,
+      "bounds": {
+        "left": 1641.7,
+        "top": 7133.3,
+        "right": -4108.3,
+        "bottom": 3300
+      }
+    },
+    {
+      "uiMapId": 1449,
+      "name": "Un'Goro Crater",
+      "continentId": 1,
+      "bounds": {
+        "left": 533.3,
+        "top": -5966.7,
+        "right": -3166.7,
+        "bottom": -8433.3
+      }
+    },
+    {
+      "uiMapId": 1450,
+      "name": "Moonglade",
+      "continentId": 1,
+      "bounds": {
+        "left": -1381.2,
+        "top": 8491.7,
+        "right": -3689.6,
+        "bottom": 6952.1
+      }
+    },
+    {
+      "uiMapId": 1451,
+      "name": "Silithus",
+      "continentId": 1,
+      "bounds": {
+        "left": 2537.5,
+        "top": -5958.3,
+        "right": -945.8,
+        "bottom": -8281.2
+      }
+    },
+    {
+      "uiMapId": 1452,
+      "name": "Winterspring",
+      "continentId": 1,
+      "bounds": {
+        "left": -316.7,
+        "top": 8533.3,
+        "right": -7416.7,
+        "bottom": 3800
+      }
+    },
+    {
+      "uiMapId": 1453,
+      "name": "Stormwind City",
+      "continentId": 0,
+      "bounds": {
+        "left": 1722.9,
+        "top": -7995.8,
+        "right": -14.6,
+        "bottom": -9154.2
+      }
+    },
+    {
+      "uiMapId": 1454,
+      "name": "Orgrimmar",
+      "continentId": 1,
+      "bounds": {
+        "left": -3680.6,
+        "top": 2273.9,
+        "right": -5083.2,
+        "bottom": 1338.5
+      }
+    },
+    {
+      "uiMapId": 1455,
+      "name": "Ironforge",
+      "continentId": 0,
+      "bounds": {
+        "left": -713.6,
+        "top": -4569.2,
+        "right": -1504.2,
+        "bottom": -5096.8
+      }
+    },
+    {
+      "uiMapId": 1456,
+      "name": "Thunder Bluff",
+      "continentId": 1,
+      "bounds": {
+        "left": 516.7,
+        "top": -850,
+        "right": -527.1,
+        "bottom": -1545.8
+      }
+    },
+    {
+      "uiMapId": 1457,
+      "name": "Darnassus",
+      "continentId": 1,
+      "bounds": {
+        "left": 2938.4,
+        "top": 10238.3,
+        "right": 1880,
+        "bottom": 9532.6
+      }
+    },
+    {
+      "uiMapId": 1458,
+      "name": "Undercity",
+      "continentId": 0,
+      "bounds": {
+        "left": 873.2,
+        "top": 1877.9,
+        "right": -86.2,
+        "bottom": 1237.8
+      }
+    }
+  ],
+  "entrances": [
+    {
+      "mapId": 33,
+      "name": "Shadowfang Keep",
+      "raid": false,
+      "continentId": 0,
+      "worldX": -231,
+      "worldY": 1571.6
+    },
+    {
+      "mapId": 34,
+      "name": "Stormwind Stockade",
+      "raid": false,
+      "continentId": 0,
+      "worldX": -8762.4,
+      "worldY": 848
+    },
+    {
+      "mapId": 36,
+      "name": "Deadmines",
+      "raid": false,
+      "continentId": 0,
+      "worldX": -11207.8,
+      "worldY": 1681.2
+    },
+    {
+      "mapId": 43,
+      "name": "Wailing Caverns",
+      "raid": false,
+      "continentId": 1,
+      "worldX": -751.1,
+      "worldY": -2209.2
+    },
+    {
+      "mapId": 47,
+      "name": "Razorfen Kraul",
+      "raid": false,
+      "continentId": 1,
+      "worldX": -4459.4,
+      "worldY": -1660.2
+    },
+    {
+      "mapId": 48,
+      "name": "Blackfathom Deeps",
+      "raid": false,
+      "continentId": 1,
+      "worldX": 4249.1,
+      "worldY": 748.4
+    },
+    {
+      "mapId": 70,
+      "name": "Uldaman",
+      "raid": false,
+      "continentId": 0,
+      "worldX": -6060.2,
+      "worldY": -2955
+    },
+    {
+      "mapId": 90,
+      "name": "Gnomeregan",
+      "raid": false,
+      "continentId": 0,
+      "worldX": -5162.7,
+      "worldY": 931.6
+    },
+    {
+      "mapId": 109,
+      "name": "Sunken Temple",
+      "raid": false,
+      "continentId": 0,
+      "worldX": -10170.1,
+      "worldY": -3996
+    },
+    {
+      "mapId": 129,
+      "name": "Razorfen Downs",
+      "raid": false,
+      "continentId": 1,
+      "worldX": -4662.9,
+      "worldY": -2535.9
+    },
+    {
+      "mapId": 189,
+      "name": "Scarlet Monastery",
+      "raid": false,
+      "continentId": 0,
+      "worldX": 2892.2,
+      "worldY": -811.3
+    },
+    {
+      "mapId": 209,
+      "name": "Zul'Farrak",
+      "raid": false,
+      "continentId": 1,
+      "worldX": -6790.6,
+      "worldY": -2891.3
+    },
+    {
+      "mapId": 229,
+      "name": "Blackrock Spire",
+      "raid": false,
+      "continentId": 0,
+      "worldX": -7522.5,
+      "worldY": -1233
+    },
+    {
+      "mapId": 230,
+      "name": "Blackrock Depths",
+      "raid": false,
+      "continentId": 0,
+      "worldX": -7178.1,
+      "worldY": -928.6
+    },
+    {
+      "mapId": 249,
+      "name": "Onyxia's Lair",
+      "raid": true,
+      "continentId": 1,
+      "worldX": -4753.3,
+      "worldY": -3752.4
+    },
+    {
+      "mapId": 289,
+      "name": "Scholomance",
+      "raid": false,
+      "continentId": 0,
+      "worldX": 1274.8,
+      "worldY": -2552.6
+    },
+    {
+      "mapId": 309,
+      "name": "Zul'Gurub",
+      "raid": true,
+      "continentId": 0,
+      "worldX": -11916.1,
+      "worldY": -1224.6
+    },
+    {
+      "mapId": 329,
+      "name": "Stratholme",
+      "raid": false,
+      "continentId": 0,
+      "worldX": 3392.3,
+      "worldY": -3378.5
+    },
+    {
+      "mapId": 349,
+      "name": "Maraudon",
+      "raid": false,
+      "continentId": 1,
+      "worldX": -1432.7,
+      "worldY": 2925
+    },
+    {
+      "mapId": 389,
+      "name": "Ragefire Chasm",
+      "raid": false,
+      "continentId": 1,
+      "worldX": 1816.8,
+      "worldY": -4423.4
+    },
+    {
+      "mapId": 409,
+      "name": "Molten Core",
+      "raid": true,
+      "continentId": 0,
+      "worldX": -7510.6,
+      "worldY": -1036.7
+    },
+    {
+      "mapId": 429,
+      "name": "Dire Maul",
+      "raid": false,
+      "continentId": 1,
+      "worldX": -3908,
+      "worldY": 1130
+    },
+    {
+      "mapId": 469,
+      "name": "Blackwing Lair",
+      "raid": true,
+      "continentId": 0,
+      "worldX": -7663.4,
+      "worldY": -1218.7
+    },
+    {
+      "mapId": 509,
+      "name": "Ruins of Ahn'Qiraj",
+      "raid": true,
+      "continentId": 1,
+      "worldX": -8114.5,
+      "worldY": 1526.4
+    },
+    {
+      "mapId": 531,
+      "name": "Ahn'Qiraj Temple",
+      "raid": true,
+      "continentId": 1,
+      "worldX": -8111.7,
+      "worldY": 1526.8
+    }
+  ],
+  "warnings": [
+    "3 zone(s) with later UiMap ids are held back as possibly unreleased"
+  ]
+}

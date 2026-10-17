@@ -4,6 +4,7 @@ import { fontVariables } from "./fonts";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import CookieConsent from "@/components/CookieConsent";
+import { analyticsConfig } from "@/lib/analytics/config";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://everloot.app";
 
@@ -37,6 +38,11 @@ export const metadata: Metadata = {
       "WoW: Forever observations from addon uploads, guild tools and a gold-per-hour calculator.",
   },
   robots: { index: true, follow: true },
+  // Search Console and Bing Webmaster Tools ownership tags. Each is emitted only when its variable is set.
+  verification: {
+    google: process.env.GSC_VERIFICATION?.trim() || undefined,
+    other: process.env.BING_VERIFICATION?.trim() ? { "msvalidate.01": process.env.BING_VERIFICATION.trim() } : undefined,
+  },
 };
 
 export default function RootLayout({
@@ -55,7 +61,7 @@ export default function RootLayout({
           {children}
         </main>
         <Footer />
-        <CookieConsent adsenseClient={adsenseClient} />
+        <CookieConsent adsenseClient={adsenseClient} analytics={analyticsConfig()} />
       </body>
     </html>
   );

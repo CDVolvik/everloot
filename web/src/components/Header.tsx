@@ -27,6 +27,7 @@ export default function Header() {
           <Link href="/upload" className="inline-flex items-center min-h-11 text-muted hover:text-fg"><Bracket>Upload</Bracket></Link>
           <Link href="/tools/gold-per-hour" className="inline-flex items-center min-h-11 text-muted hover:text-fg"><Bracket>Gold/Hour</Bracket></Link>
           <Link href="/addons" className="inline-flex items-center min-h-11 text-muted hover:text-fg"><Bracket>Addons</Bracket></Link>
+          <Link href="/connect" className="hidden md:inline-flex items-center min-h-11 text-muted hover:text-fg"><Bracket>Connect</Bracket></Link>
         </nav>
         <div className="flex items-center gap-1 shrink-0">
           <AccountControls />
@@ -51,6 +52,10 @@ export default function Header() {
             <Link href="/lore" onClick={() => setOpen(false)} className="min-h-11 px-3 py-3 rounded-lg text-sm text-fg-2 hover:text-accent">
               Lore archive
               <span className="ml-2 text-xs text-muted">2023 wiki</span>
+            </Link>
+            <Link href="/connect" onClick={() => setOpen(false)} className="min-h-11 px-3 py-3 rounded-lg text-sm text-fg-2 hover:bg-canvas hover:text-accent">
+              Connect
+              <span className="ml-2 text-xs text-muted">Open data, API and MCP</span>
             </Link>
             <Link href="/about" onClick={() => setOpen(false)} className="min-h-11 px-3 py-3 rounded-lg text-sm text-fg-2 hover:text-accent">About</Link>
           </div>

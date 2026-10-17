@@ -21,7 +21,7 @@
 - Unavailable release → "Lore archive unavailable" copy (`UNAVAILABLE_COPY`) and noindex on pages, 503 JSON `{ error: "Lore archive unavailable" }` on route handlers.
 - Release without `type` data → pages say "This release predates classification." and link to `/search`.
 - Damage patterns: ` for at `, ` at  `, `  standing`, and two spaces between word characters.
-- Commits end with `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`. Run `npm test` and the typecheck in the package touched before each commit; run both suites before the PR.
+- Run `npm test` and the typecheck in the package touched before each commit; run both suites before the PR.
 - Tests needing a release build one with `buildLoreRelease()` from `web/src/test/lore-release.ts` (extend it, don't fork it) and `vi.stubEnv("KB_SNAPSHOT_PATH", …)` + `vi.resetModules()` in `afterEach`.
 
 ## Review Focus
@@ -204,4 +204,4 @@
 - [ ] **Step 3: Full build** (background, two passes): `import-wiki … --db data/wowvault-kb.sqlite`, `import-curated --db data/wowvault-kb.sqlite`, `snapshot data/release/<YYYY-MM-DD>-everloot-public.sqlite --db data/wowvault-kb.sqlite`, then `node … src/cli.ts validate --db data/wowvault-kb.sqlite`. Expected: manifest with `types` and `damaged`; `damaged` below the 2026-10-05 release's measured ~7,400 (measure the old one with the same patterns via a one-off query and record both).
 - [ ] **Step 4: Local serve** `next build` + `next start` with `KB_SNAPSHOT_PATH` at the new release: time `/lore/npcs`, `/lore/npcs?letter=t&race=Orc`, `/lore/coverage`, `/search?q=thrall&type=npc`; confirm the old release still serves `/lore/npcs` with the pre-classification copy.
 - [ ] **Step 5: Docs**: START HERE in `NEXT_SESSION.md` gains the publish steps for Carlos (R2 key name, env var, redeploy, expected manifest `types`), the measured numbers, and the branch/PR. `_STATUS.md` one paragraph.
-- [ ] **Step 6: PR** against `feat/lore-sharpen` (retarget after merges): title `[Everloot] Lore archive: types, facets, template repair and coverage`, body with spec/plan paths, test counts, trial and build numbers, the publish steps, and `🤖 Generated with [Claude Code](https://claude.com/claude-code)`. Link it with `link_pull_request`. Merging is Carlos's.
+- [ ] **Step 6: PR** against `feat/lore-sharpen` (retarget after merges): title `[Everloot] Lore archive: types, facets, template repair and coverage`, body with spec/plan paths, test counts, trial and build numbers, and the publish steps. Link it with `link_pull_request`. Merging is Carlos's.

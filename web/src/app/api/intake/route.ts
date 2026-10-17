@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { parseUpload, type CanonicalUpload } from "@/lib/intake";
 import { uploadStore, sharingStore } from "@/lib/upload-store";
 import { intakeQuota, type QuotaResult } from "@/lib/intake-quota";
+import { recordUsage } from "@/lib/usage-metrics";
 import { authorizeRecord, sharingCategory, type PublicationGrant } from "../../../../../kb/src/publication";
 
 /**
@@ -28,6 +29,7 @@ async function admission(check: () => Promise<QuotaResult>) {
 export async function POST(req: Request) {
   const requestDenied = await admission(() => intakeQuota.request(req));
   if (requestDenied) return requestDenied;
+  recordUsage("api.intake");
   let payload: unknown;
   try {
     const reader = req.body?.getReader();
