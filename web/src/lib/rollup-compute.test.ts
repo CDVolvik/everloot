@@ -35,6 +35,8 @@ test("the answers share one aggregation set per corpus version", async () => {
   expect(fns.itemFacts).toHaveBeenCalledTimes(1);
   expect(fns.worldFacts).toHaveBeenCalledTimes(1);
   expect(fns.addons).toHaveBeenCalledTimes(1);
+  // Addon rows dated after the corpus was current are not facts yet.
+  expect(fns.addons).toHaveBeenCalledWith(V1.records, V1.dataAsOf);
   // Same corpus version: repeated answers reuse the aggregates, no recompute.
   await computeRollups();
   await loadItemFacts();
