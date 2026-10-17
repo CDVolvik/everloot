@@ -82,7 +82,7 @@ export default async function AuctionsPage(
   return (
     <article className="space-y-8 max-w-4xl">
       <header className="space-y-3">
-        <p className="font-mono text-xs text-muted">WoW: Forever Â· auctions</p>
+        <p className="font-mono text-xs text-muted">WoW: Forever · auctions</p>
         <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">Forever market</h1>
         <p className="text-sm text-fg-2 max-w-2xl">
           Prices from full auction-house scans players started with the Everloot addon and uploaded. {MARKET_RULE}
@@ -143,7 +143,7 @@ export default async function AuctionsPage(
                       <tr key={v.itemId} className="border-t border-line bg-panel text-fg">
                         <td className="px-4 py-3 whitespace-nowrap">
                           <Link href={`/database/items/${v.itemId}`} className="font-mono tabular-nums text-accent hover:underline underline-offset-4">{v.itemId}</Link>
-                          <span className="text-muted">{" Â· "}</span>
+                          <span className="text-muted">{" · "}</span>
                           <Link href={itemHref(v.itemId)} className="text-muted hover:text-fg hover:underline underline-offset-4">history</Link>
                         </td>
                         <td className={`px-4 py-3 text-right whitespace-nowrap font-mono tabular-nums${v.market === null ? " text-muted" : ""}`}>{money(v.market)}</td>
@@ -177,7 +177,7 @@ export default async function AuctionsPage(
                 <HistoryChart points={item.points} />
                 <ul className="font-mono tabular-nums text-xs text-fg-2 space-y-0.5">
                   {[...item.points].reverse().map((p) => (
-                    <li key={p.day}>{p.day} Â· value {formatCopper(p.market)} Â· min {formatCopper(p.min)} Â· {p.quantity} units Â· {p.reporters} reporters</li>
+                    <li key={p.day}>{p.day} · value {formatCopper(p.market)} · min {formatCopper(p.min)} · {p.quantity} units · {p.reporters} reporters</li>
                   ))}
                 </ul>
               </>
@@ -196,7 +196,7 @@ export default async function AuctionsPage(
 
       <p className="text-sm text-muted">
         <Link href="/tools/gold-per-hour" className="text-accent hover:underline underline-offset-4">Gold per hour</Link>
-        {" Â· "}
+        {" · "}
         <Link href="/tools/gold-ledger" className="text-accent hover:underline underline-offset-4">Gold ledger</Link>
       </p>
     </article>
