@@ -2,14 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { curatedAddon } from "@/data/addon-repos";
 import { BADGES, buildBoards, loadEcosystem, type BadgeId, type ProjectView } from "@/lib/ecosystem";
+import { pageMetadata } from "@/lib/seo";
 import { REPO_URL } from "@/lib/source";
 
-export const metadata: Metadata = {
-  title: "WoW: Forever addons and open-source projects",
-  description:
-    "A community tracker of Forever addons and tools: five boards, a Forever-ready check against each addon's .toc, repository facts from GitHub and install counts from Everloot uploads.",
-  alternates: { canonical: "/addons/ecosystem" },
-};
+export const metadata: Metadata = pageMetadata({
+  title: "WoW Forever Addons and Open-Source Projects",
+  description: "A community tracker of WoW: Forever addons and tools: five boards, a Forever-ready check against each .toc, GitHub repo facts and Everloot install counts.",
+  path: "/addons/ecosystem",
+});
 export const dynamic = "force-dynamic";
 
 const EXT = "noopener noreferrer nofollow";

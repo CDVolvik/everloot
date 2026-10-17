@@ -3,19 +3,20 @@ import Link from "next/link";
 import { unstable_noStore as noStore } from "next/cache";
 import LoreSearchForm from "@/components/LoreSearchForm";
 import { BROWSE_HEADINGS, BROWSE_TYPES, hasTypes, UNAVAILABLE_COPY, type BrowseSlug } from "@/lib/lore";
+import JsonLd from "@/components/JsonLd";
+import { loreCollectionJsonLd } from "@/lib/jsonld";
 import { getRelease } from "@/lib/release";
+import { pageMetadata } from "@/lib/seo";
 
 // Cached for a day: it only reads the manifest. Without a release the page calls noStore(), so an
 // "unavailable" answer is rendered per request and never baked into a build or kept in the cache.
 export const revalidate = 86400;
 
-export const metadata: Metadata = {
-  title: "Lore archive",
-  description: "Warcraft Wiki pages as of 13 November 2023, searchable and attributed under CC BY-SA 4.0. Lore and history, not collected WoW: Forever data.",
-  alternates: { canonical: "/lore" },
-  openGraph: { type: "website", title: "Lore archive", description: "Warcraft Wiki pages as of 13 November 2023, CC BY-SA 4.0. Lore and history, not collected WoW: Forever data.", url: "/lore", siteName: "Everloot" },
-  twitter: { card: "summary", title: "Lore archive", description: "Warcraft Wiki pages as of 13 November 2023, CC BY-SA 4.0. Lore and history, not collected WoW: Forever data." },
-};
+const DESCRIPTION = "Warcraft Wiki pages as of 13 November 2023, searchable and attributed under CC BY-SA 4.0. Lore and history, not collected WoW: Forever data.";
+const LEAD = "Lore, history, characters and places. Not collected WoW: Forever data.";
+const CREDIT = "Warcraft Wiki contributors, CC BY-SA 4.0";
+
+export const metadata: Metadata = pageMetadata({ title: "Lore archive", description: DESCRIPTION, path: "/lore" });
 
 const formatter = new Intl.NumberFormat("en-US");
 
@@ -27,14 +28,16 @@ export default async function LoreLanding() {
 
   return (
     <article className="space-y-10 max-w-4xl">
+      <JsonLd data={loreCollectionJsonLd({ name: "Lore archive", description: LEAD, path: "/lore", creditText: CREDIT })} />
       <header className="space-y-3">
         <p className="font-mono text-xs text-muted">Lore archive · Warcraft Wiki, 2023 dump</p>
         <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">Lore archive</h1>
         <p className="text-lg text-fg-2 max-w-2xl">
           The Warcraft Wiki as it stood on 13 November 2023
           {pages !== null ? <>, {formatter.format(pages)} pages</> : null}, published under CC BY-SA 4.0 with a source link on every page.
-          Lore, history, characters and places. Not collected WoW: Forever data.
+          {LEAD}
         </p>
+        <p className="text-sm text-muted">Credit: {CREDIT}.</p>
       </header>
 
       {release ? (

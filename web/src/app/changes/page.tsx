@@ -1,17 +1,21 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import {
   CHANGE_FILTERS, GAME_LABEL, TYPE_LABEL, filterTimeline, loadTimeline, parseFilter,
   type ChangeEntry, type ChangeFilter,
 } from "@/lib/changes";
 import { REPO_URL } from "@/lib/source";
+import JsonLd from "@/components/JsonLd";
+import { latestBuildLine } from "@/lib/changes-facts";
+import { changesJsonLd } from "@/lib/jsonld";
 
 export const metadata: Metadata = {
-  title: "What changed in WoW: Forever",
-  description:
-    "Official Blizzard blue posts, hotfixes and new game builds for WoW: Forever, newest first. Each entry links to Blizzard's original.",
-  alternates: { canonical: "/changes", types: { "application/rss+xml": "/changes/feed.xml" } },
+  ...pageMetadata({ title: "WoW Forever Patch Notes and Blizzard Posts", description: "New WoW: Forever builds, hotfixes and Blizzard blue posts, newest first. Each links to Blizzard's original; builds are dated when Everloot first saw them.", path: "/changes", image: "/changes/opengraph-image" }),
 };
+
+const TITLE = "WoW Forever Patch Notes and Blizzard Posts";
+const LEAD = "Official posts from Blizzard staff and new game builds, newest first.";
 
 const link = "text-accent hover:underline underline-offset-4";
 const PAGE_SIZE = 60;
@@ -81,13 +85,15 @@ export default async function ChangesPage({ searchParams }: { searchParams: Prom
   const newest = all[0]?.at;
   return (
     <article className="space-y-8 max-w-3xl">
+      <JsonLd data={changesJsonLd({ name: TITLE, description: LEAD, path: "/changes", entries: shown })} />
       <header className="space-y-3">
         <p className="font-mono text-xs text-muted">
           {entries.length} {entries.length === 1 ? "entry" : "entries"} · {newest ? `Newest entry ${stamp(newest)}` : "Nothing recorded yet"}
         </p>
-        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">What changed in the game</h1>
+        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">{TITLE}</h1>
+        <p className="text-lg text-fg">{latestBuildLine(all)}</p>
         <p className="text-fg-2 max-w-2xl">
-          Official posts from Blizzard staff and new game builds, newest first. Everloot shows the title, who posted it,
+          {LEAD} Everloot shows the title, who posted it,
           when, and the first couple of sentences, with a link to the original. The full text is Blizzard&apos;s, so it
           stays on their site.
         </p>

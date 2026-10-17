@@ -149,7 +149,7 @@ test("unreadable storage says so, never an empty leaderboard", async () => {
 });
 
 test("the page has its own title and canonical", () => {
-  expect(metadata.title).toBe("Popular addons for WoW: Forever");
+  expect(metadata.title).toBe("Popular WoW Forever Addons");
   expect(metadata.description).toContain("three installs");
   expect(metadata.alternates?.canonical).toBe("/addons/popular");
 });

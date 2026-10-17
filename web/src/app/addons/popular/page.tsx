@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { dataAgeLabel } from "@/lib/data-age";
 import { loadPopularAddons } from "@/lib/rollup-compute";
@@ -6,10 +7,7 @@ import { REPO_URL } from "@/lib/source";
 import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
 
 export const metadata: Metadata = {
-  title: "Popular addons for WoW: Forever",
-  description:
-    "Which addons WoW: Forever players run, counted from Everloot uploads by players who turned the addon list on. An addon is listed once three installs report it.",
-  alternates: { canonical: "/addons/popular" },
+  ...pageMetadata({ title: "Popular WoW Forever Addons", description: "Which addons WoW: Forever players run, counted from Everloot uploads by players who share their addon list. An addon is listed once three installs report it.", path: "/addons/popular" }),
 };
 export const dynamic = "force-dynamic";
 

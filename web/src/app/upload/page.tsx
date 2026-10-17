@@ -1,16 +1,24 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
+import JsonLd from "@/components/JsonLd";
+import { latestAddonRelease } from "@/lib/addon-release";
+import { softwareApplicationJsonLd } from "@/lib/jsonld";
+import { REPO_URL } from "@/lib/source";
 import UploadClient from "./UploadClient";
 
 export const metadata: Metadata = {
-  title: "Upload data",
-  description:
-    "Send your Everloot addon data: drop reports, spawns, guild progression. Preview before sending, no account needed.",
-  alternates: { canonical: "/upload" },
+  ...pageMetadata({ title: "Upload WoW Forever Addon Data", description: "Download the Everloot addon for WoW: Forever and upload what it collected. You preview everything before it is sent, and no account is needed.", path: "/upload" }),
 };
 
+const ADDON_DESCRIPTION = "A beta addon that records what happens around you while you play, for upload to Everloot.";
+const LICENCE_NAME = "AGPL-3.0";
+const LICENCE_URL = "https://www.gnu.org/licenses/agpl-3.0.html";
+
 export default function UploadPage() {
+  const addon = latestAddonRelease();
   return (
     <div className="space-y-10 max-w-3xl mx-auto">
+      {addon && <JsonLd data={softwareApplicationJsonLd({ name: "Everloot addon", description: ADDON_DESCRIPTION, version: addon.version, downloadPath: addon.downloadPath, licenceUrl: LICENCE_URL, path: "/upload" })} />}
       <section className="pt-6 text-center">
         <p className="font-mono text-xs text-muted mb-4">
           Power the database
@@ -27,8 +35,16 @@ export default function UploadPage() {
       </section>
       <section className="rounded-xl border border-line p-5 space-y-3">
         <h2 className="text-xl font-semibold text-fg">Collect data in the beta</h2>
-        <p className="text-fg-2">Extract the Everloot folder into Interface/AddOns, reload the client, and check /everloot status. Version 0.3.1 has passed automated checks; testing in the Forever client is still pending.</p>
-        <a className="inline-flex min-h-11 items-center text-accent underline" href="/downloads/Everloot-0.3.1.zip" download>Download beta addon 0.3.1</a>
+        <p className="text-fg-2">{ADDON_DESCRIPTION}</p>
+        {addon ? (
+          <>
+            <p className="text-fg-2">Extract the Everloot folder into Interface/AddOns, reload the client, and check /everloot status. Version {addon.version} has passed automated checks; testing in the Forever client is still pending.</p>
+            <a className="inline-flex min-h-11 items-center text-accent underline" href={addon.downloadPath} download>Download beta addon {addon.version}</a>
+            <p className="text-sm text-fg-2">Licence: {LICENCE_NAME}. <a className="text-accent underline" href={REPO_URL} rel="noopener">Source code</a>.</p>
+          </>
+        ) : (
+          <p className="text-fg-2">The addon download is not available right now.</p>
+        )}
         <p className="text-sm text-fg-2">Log out before selecting Everloot.lua from your account’s SavedVariables folder below. Keep a backup. Named records need your explicit sharing choice and verified authority.</p>
       </section>
       <UploadClient />

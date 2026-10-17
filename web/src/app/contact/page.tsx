@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Contact",
-  description: "Contact the Everloot team by email for corrections, privacy requests, bug reports, and partnership questions.",
-  alternates: { canonical: "/contact" },
+  ...pageMetadata({ title: "Contact Everloot", description: "Contact the Everloot team by email at hello@everloot.app for corrections, privacy requests, bug reports and partnership questions about the WoW: Forever tools.", path: "/contact" }),
 };
 
 export default function ContactPage() {

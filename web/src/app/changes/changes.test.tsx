@@ -34,7 +34,8 @@ const page = async (params: { show?: string; game?: string } = {}) =>
 
 test("shows Forever entries newest first, each post with its excerpt and a prominent link to the original", async () => {
   const html = await page();
-  expect(html).toContain("What changed in the game");
+  expect(html).toContain("WoW Forever Patch Notes and Blizzard Posts");
+  expect(html).toContain("Latest build: WoW: Forever 1.60.1.70460, first seen by Everloot on 2026-10-17.");
   expect(html).toContain("Newest entry 2026-10-17 06:00 UTC");
   expect(html.indexOf("1.60.1.70460")).toBeLessThan(html.indexOf("Synthetic beta notice"));
   expect(html).toContain("A short excerpt. Second sentence.");
@@ -61,7 +62,7 @@ test("builds say they were first seen by Everloot, and leave a slot for the diff
 test("the filters narrow the list and the current one is marked", async () => {
   const hotfixes = await page({ show: "hotfixes" });
   expect(hotfixes).toContain("WoW: Forever Hotfixes");
-  expect(hotfixes).not.toContain("1.60.1.70460");
+  expect(hotfixes).not.toContain("build 1.60.1.70460");
   expect(hotfixes).toContain('aria-current="page"');
   const posts = await page({ show: "posts" });
   expect(posts).toContain("Synthetic beta notice");

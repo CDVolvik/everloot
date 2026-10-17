@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import BrowseFilters from "@/components/BrowseFilters";
@@ -56,9 +57,11 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   const letters = typed === true && letter !== null ? lettersWithRows(BROWSE_TYPES[slug]) : null;
   const emptyLetter = letter !== null && letters !== null && letters !== UNAVAILABLE && !letters.includes(letter);
   return {
-    title: `${BROWSE_HEADINGS[slug]}${letter ? ` starting with ${letter.toUpperCase()}` : ""} · Lore archive`,
-    description: `${BROWSE_HEADINGS[slug]} from the Warcraft Wiki as of November 2023, CC BY-SA 4.0, by name. Not WoW: Forever data.`,
-    alternates: { canonical: letterUrl(slug, letter ?? "a") },
+    ...pageMetadata({
+      title: `${BROWSE_HEADINGS[slug]}${letter ? ` starting with ${letter.toUpperCase()}` : ""} · Lore archive`,
+      description: `${BROWSE_HEADINGS[slug]} from the Warcraft Wiki as of November 2023, CC BY-SA 4.0, by name. Not WoW: Forever data.`,
+      path: letterUrl(slug, letter ?? "a"),
+    }),
     robots: { index: typed === true && clean && !emptyLetter, follow: true },
   };
 }

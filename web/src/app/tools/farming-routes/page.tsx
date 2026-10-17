@@ -1,13 +1,11 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import EmailCapture from "@/components/EmailCapture";
 
 export const metadata: Metadata = {
-  title: "Forever Farming Routes",
-  description:
-    "Planned WoW: Forever farming routes from uploaded sightings. Route optimization and respawn timing are not available yet.",
+  ...pageMetadata({ title: "WoW Forever Farming Routes", description: "Planned WoW: Forever farming routes built from uploaded sightings. Route optimization and respawn timing are not available yet.", path: "/tools/farming-routes" }),
   keywords: ["wow forever farming", "wow forever gold farm", "wow forever routes"],
-  alternates: { canonical: "/tools/farming-routes" },
 };
 
 const CARDS = [

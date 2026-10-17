@@ -1,14 +1,18 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { computeRollups } from "@/lib/rollup-compute";
 import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
 import { dataAgeLabel } from "@/lib/data-age";
+import JsonLd from "@/components/JsonLd";
+import { CC_BY_SA, datasetJsonLd } from "@/lib/jsonld";
+
+const TITLE = "WoW Forever Database";
+const description = "Loot-window observations, NPC sightings, quests and vendors for WoW: Forever, from addon uploads. Public facts need corroborated install reports.";
+const DATASET_NAME = "Everloot addon observations for WoW: Forever";
 
 export const metadata: Metadata = {
-  title: "Forever Database",
-  description:
-    "Loot-window observations, NPC sightings, quests and vendors for WoW: Forever. Public facts depend on corroborated install reports.",
-  alternates: { canonical: "/database" },
+  ...pageMetadata({ title: TITLE, description, path: "/database" }),
 };
 export const dynamic = "force-dynamic";
 
@@ -33,12 +37,13 @@ export default async function DatabasePage() {
   ];
   return (
     <article className="space-y-10 max-w-4xl">
+      <JsonLd data={datasetJsonLd({ uploads: stats.unreachable ? 0 : stats.uploads, name: DATASET_NAME, description, path: "/database", corpusPath: "/api/corpus/public", dataAsOf: stats.unreachable ? null : stats.dataAsOf })} />
       <header className="space-y-3">
         <p className="font-mono text-xs text-muted">
           Thottbot reborn · corroborated only
         </p>
         <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">
-          Forever Database
+          {TITLE}
         </h1>
         <p className="text-lg text-fg-2 max-w-2xl">
           Items, NPCs, quests and vendors for WoW: Forever — built from data players
@@ -65,6 +70,16 @@ export default async function DatabasePage() {
           </Link>
         ))}
       </div>
+
+      <section aria-labelledby="licence" className="space-y-2 text-sm text-fg-2 max-w-2xl">
+        <h2 id="licence" className="text-lg font-semibold text-fg">{DATASET_NAME}</h2>
+        <p>{description}</p>
+        <p>
+          Uploaded observations are published under <a href={CC_BY_SA.url} rel="noopener" className="text-accent hover:underline underline-offset-4">{CC_BY_SA.name}</a>,
+          credited to Everloot contributors. The records are open at{" "}
+          <a href="/api/corpus/public" className="text-accent hover:underline underline-offset-4">/api/corpus/public</a>.
+        </p>
+      </section>
 
       <div className="rounded-2xl border border-line bg-panel p-6">
         <h2 className="text-xl text-fg">Be the first source</h2>

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { npcPage } from "../../../../../../kb/src/world-pages";
@@ -14,9 +15,7 @@ export async function generateMetadata(props: { params: Promise<{ id: string }> 
   const facts = await loadWorldFacts();
   const page = npcPage(Number(params.id), facts);
   return {
-    title: !facts.unreachable && page.name ? page.name : `NPC ${params.id}`,
-    description: "A WoW: Forever NPC page from corroborated names and map pins.",
-    alternates: { canonical: `/database/npcs/${params.id}` },
+    ...pageMetadata({ title: !facts.unreachable && page.name ? page.name : `NPC ${params.id}`, description: "A WoW: Forever NPC page from corroborated names and map pins.", path: `/database/npcs/${params.id}` }),
     robots: { index: !facts.unreachable && Boolean(page.name || page.pins.length), follow: true },
   };
 }

@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { PACK_IDEAS, POLESTAR, POLESTAR_HELP } from "@/data/polestar";
 
 export const metadata: Metadata = {
-  title: "Polestar pack ideas: routes and guides worth building",
-  description: "Guide packs nobody has built yet for Polestar, why each is open, and how Polestar itself needs help.",
-  alternates: { canonical: "/addons/polestar/wanted" },
+  ...pageMetadata({ title: "Polestar Pack Ideas for WoW Forever", description: "Guide packs nobody has built yet for Polestar, the WoW: Forever leveling addon: why each one is still open, and how Polestar itself needs help.", path: "/addons/polestar/wanted" }),
 };
 
 const link = "text-accent hover:underline underline-offset-4";

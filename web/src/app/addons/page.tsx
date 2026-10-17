@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Addons for WoW: Forever",
-  description: "Everloot's own collection addon and Polestar, the leveling-guide addon, with its guide packs and pack ideas.",
-  alternates: { canonical: "/addons" },
+  ...pageMetadata({ title: "WoW Forever Addons", description: "Addons for WoW Forever: Everloot's collection addon, and Polestar, a leveling-guide addon with community guide packs. Licences and sources are listed.", path: "/addons" }),
 };
 
 const CARDS = [

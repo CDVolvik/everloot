@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { FEED, IMAGE, TWITTER_IMAGE } from "@/lib/seo";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 import { BROWSE_HEADINGS, BROWSE_TYPES, CONVERSION_NOTE, FACET_KEYS, firstSentence, isIndexable, loreByExtId, loreSlug, parseLoreSlug, renderBody, UNAVAILABLE, UNAVAILABLE_COPY, type BrowseSlug, type LorePage as Lore } from "@/lib/lore";
@@ -42,10 +43,10 @@ export async function generateMetadata(props: { params: Promise<{ slug: string }
   return {
     title: `${page.name} · Lore archive`,
     description,
-    alternates: { canonical: url },
+    alternates: { canonical: url, types: FEED },
     robots: { index: isIndexable(page.body), follow: true },
-    openGraph: { type: "article", title: page.name, description, url, siteName: "Everloot" },
-    twitter: { card: "summary", title: page.name, description },
+    openGraph: { type: "article", title: page.name, description, url, siteName: "Everloot", images: [IMAGE] },
+    twitter: { card: "summary", title: page.name, description, images: [TWITTER_IMAGE] },
   };
 }
 
@@ -131,6 +132,13 @@ export default async function LorePage(props: { params: Promise<{ slug: string }
         </p>
         {wiki && <p>{CONVERSION_NOTE}</p>}
       </section>
+
+      {slug === "forever-launch-date" && (
+        <p className="text-sm text-fg-2">
+          More on the game, with the launch date quoted from Blizzard&apos;s own post:{" "}
+          <Link href="/wow-forever" className="text-accent hover:underline underline-offset-4">What is WoW: Forever?</Link>
+        </p>
+      )}
 
       <p className="text-sm text-muted">
         {wiki && <>This archive predates WoW: Forever. For collected gameplay facts see the{" "}

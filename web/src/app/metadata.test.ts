@@ -1,0 +1,94 @@
+import { expect, test, vi } from "vitest";
+import type { Metadata } from "next";
+import { DESCRIPTION_MAX, DESCRIPTION_MIN } from "@/lib/seo";
+import { TALENT_CLASSES } from "@/lib/talents/catalogs";
+
+// Some pages open the upload store or the knowledge release only when they render, never on import.
+vi.mock("next/navigation", () => ({ notFound: () => { throw new Error("NOT_FOUND"); }, permanentRedirect: () => {}, usePathname: () => "/" }));
+
+/** Every static route that exports `metadata`, with whether its title must lead with "WoW Forever". */
+const routes: [string, () => Promise<{ metadata: Metadata }>, boolean][] = [
+  ["/about", () => import("./about/page"), false],
+  ["/addons", () => import("./addons/page"), true],
+  ["/addons/polestar", () => import("./addons/polestar/page"), false],
+  ["/addons/polestar/packs", () => import("./addons/polestar/packs/page"), true],
+  ["/addons/polestar/wanted", () => import("./addons/polestar/wanted/page"), true],
+  ["/addons/ecosystem", () => import("./addons/ecosystem/page"), true],
+  ["/addons/popular", () => import("./addons/popular/page"), true],
+  ["/changes", () => import("./changes/page"), true],
+  ["/connect", () => import("./connect/page"), true],
+  ["/contact", () => import("./contact/page"), false],
+  ["/database", () => import("./database/page"), true],
+  ["/database/drops", () => import("./database/drops/page"), true],
+  ["/database/npcs", () => import("./database/npcs/page"), true],
+  ["/database/quests", () => import("./database/quests/page"), true],
+  ["/database/vendors", () => import("./database/vendors/page"), true],
+  ["/lore", () => import("./lore/page"), false],
+  ["/map", () => import("./map/page"), true],
+  ["/privacy", () => import("./privacy/page"), false],
+  ["/search", () => import("./search/page"), false],
+  ["/tools/auctions", () => import("./tools/auctions/page"), true],
+  ["/tools/collections", () => import("./tools/collections/page"), true],
+  ["/tools/farming-routes", () => import("./tools/farming-routes/page"), true],
+  ["/tools/gold-ledger", () => import("./tools/gold-ledger/page"), true],
+  ["/tools/gold-per-hour", () => import("./tools/gold-per-hour/page"), true],
+  ["/tools/guild-board", () => import("./tools/guild-board/page"), true],
+  ["/tools/professions", () => import("./tools/professions/page"), true],
+  ["/tools/raid", () => import("./tools/raid/page"), true],
+  ["/tools/talents", () => import("./tools/talents/page"), true],
+  ["/upload", () => import("./upload/page"), true],
+  ["/wow-forever", () => import("./wow-forever/page"), true],
+];
+
+const text = (v: unknown) => (typeof v === "string" ? v : "");
+
+function checkComplete(path: string, m: Metadata, mustLead: boolean) {
+  const title = text(m.title);
+  expect(title, path).not.toBe("");
+  if (mustLead) expect(title, path).toContain("WoW Forever");
+  expect(text(m.description).length, `${path} description: ${m.description}`).toBeGreaterThanOrEqual(DESCRIPTION_MIN);
+  expect(text(m.description).length, `${path} description: ${m.description}`).toBeLessThanOrEqual(DESCRIPTION_MAX);
+  expect(m.alternates?.canonical, path).toBe(path);
+  expect(m.alternates?.types, path).toEqual({ "application/rss+xml": "/changes/feed.xml" });
+  const og = m.openGraph as { title?: string; description?: string; url?: string; images?: { url: string }[] } | undefined;
+  const tw = m.twitter as { card?: string; title?: string; description?: string; images?: { url: string }[] } | undefined;
+  expect(og?.title, path).toBe(`${title} · Everloot`);
+  expect(og?.description, path).toBe(m.description);
+  expect(og?.url, path).toBe(path);
+  expect(og?.images?.length, path).toBeGreaterThan(0);
+  expect(tw?.card, path).toBe("summary_large_image");
+  expect(tw?.title, path).toBe(`${title} · Everloot`);
+  expect(tw?.description, path).toBe(m.description);
+  expect(tw?.images?.length, path).toBeGreaterThan(0);
+}
+
+test.each(routes)("%s has a complete title, description, Open Graph and Twitter set", async (path, load, mustLead) => {
+  checkComplete(path, (await load()).metadata, mustLead);
+});
+
+test("the routes with their own social card point at it", async () => {
+  for (const [path, load] of routes.filter(([p]) => ["/tools/raid", "/map", "/changes"].includes(p))) {
+    const og = (await load()).metadata.openGraph as { images: { url: string }[] };
+    expect(og.images[0].url, path).toBe(`${path}/opengraph-image`);
+  }
+});
+
+test("every talent class page leads with WoW Forever and has its own card", async () => {
+  const { generateMetadata } = await import("./tools/talents/[class]/page");
+  for (const slug of TALENT_CLASSES) {
+    const m = await generateMetadata({ params: Promise.resolve({ class: slug }) });
+    checkComplete(`/tools/talents/${slug}`, m, true);
+    expect(text(m.title)).toMatch(/^WoW Forever \w+ Talent Calculator$/);
+    expect((m.openGraph as { images: { url: string }[] }).images[0].url).toBe(`/tools/talents/${slug}/opengraph-image`);
+  }
+});
+
+test("the titles asked for are the titles used", async () => {
+  expect((await routes.find(([p]) => p === "/tools/talents")![1]()).metadata.title).toBe("WoW Forever Talent Calculator");
+  expect((await routes.find(([p]) => p === "/tools/raid")![1]()).metadata.title).toBe("WoW Forever Raid Buff Planner");
+  expect((await routes.find(([p]) => p === "/map")![1]()).metadata.title).toBe("WoW Forever World Map");
+  expect((await routes.find(([p]) => p === "/addons")![1]()).metadata.title).toBe("WoW Forever Addons");
+  expect((await routes.find(([p]) => p === "/changes")![1]()).metadata.title).toBe("WoW Forever Patch Notes and Blizzard Posts");
+  const { generateMetadata } = await import("./tools/talents/[class]/page");
+  expect((await generateMetadata({ params: Promise.resolve({ class: "hunter" }) })).title).toBe("WoW Forever Hunter Talent Calculator");
+});

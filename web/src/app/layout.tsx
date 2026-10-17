@@ -4,7 +4,9 @@ import { fontVariables } from "./fonts";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import CookieConsent from "@/components/CookieConsent";
+import Breadcrumbs from "@/components/Breadcrumbs";
 import { analyticsConfig } from "@/lib/analytics/config";
+import { FEED } from "@/lib/seo";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://everloot.app";
 
@@ -37,6 +39,7 @@ export const metadata: Metadata = {
     description:
       "WoW: Forever observations from addon uploads, guild tools and a gold-per-hour calculator.",
   },
+  alternates: { types: FEED },
   robots: { index: true, follow: true },
   // Search Console and Bing Webmaster Tools ownership tags. Each is emitted only when its variable is set.
   verification: {
@@ -58,6 +61,7 @@ export default function RootLayout({
         <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:bg-canvas focus:px-4 focus:py-3">Skip to content</a>
         <Header />
         <main id="main-content" className="flex-1 min-w-0 mx-auto w-full max-w-6xl px-4 py-8">
+          <Breadcrumbs />
           {children}
         </main>
         <Footer />

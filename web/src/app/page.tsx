@@ -1,22 +1,20 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import JsonLd from "@/components/JsonLd";
+import LoreSearchForm from "@/components/LoreSearchForm";
 import { tools, toolHref } from "@/data/tools";
+import { LORE_SEARCH_LABEL, organizationJsonLd, websiteJsonLd } from "@/lib/jsonld";
+import { FEED } from "@/lib/seo";
 
 export const metadata: Metadata = {
-  alternates: { canonical: "/" },
+  alternates: { canonical: "/", types: FEED },
 };
 
 export default function Home() {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://everloot.app";
   return (
     <div className="space-y-16">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
-        "@context": "https://schema.org",
-        "@type": "WebSite",
-        name: "Everloot",
-        url: siteUrl,
-        description: "WoW: Forever addon observations and player tools. Public facts depend on available corroborated reports.",
-      }).replace(/</g, "\\u003c") }} />
+      <JsonLd data={organizationJsonLd()} />
+      <JsonLd data={websiteJsonLd()} />
       {/* Hero */}
       <section className="relative pt-6 pb-2 text-center overflow-hidden">
         <div className="relative">
@@ -90,6 +88,15 @@ export default function Home() {
             );
           })}
         </div>
+      </section>
+
+      {/* Lore search: the WebSite SearchAction points here */}
+      <section aria-labelledby="lore-search" className="space-y-3">
+        <h2 id="lore-search" className="text-xl font-semibold text-fg">{LORE_SEARCH_LABEL}</h2>
+        <p className="text-sm text-fg-2 max-w-2xl">
+          Warcraft Wiki pages as of 2023, for lore and history. It is not collected WoW: Forever data.
+        </p>
+        <LoreSearchForm />
       </section>
 
       {/* Why this site */}

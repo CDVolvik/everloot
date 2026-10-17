@@ -1,34 +1,32 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import GoldCalculator from "@/components/GoldCalculator";
+import JsonLd from "@/components/JsonLd";
+import { webApplicationJsonLd } from "@/lib/jsonld";
 import { getTool } from "@/data/tools";
 
 const tool = getTool("gold-per-hour")!;
+const TITLE = "WoW Forever Gold per Hour Calculator";
+const description = "Calculate gold per hour for a WoW: Forever farm from your own route, items looted and auction prices. Includes the 5% auction house cut and vendor trash.";
 
 export const metadata: Metadata = {
-  title: tool.title,
-  description: tool.description,
+  ...pageMetadata({ title: TITLE, description, path: "/tools/gold-per-hour" }),
   keywords: tool.keywords,
-  alternates: { canonical: "/tools/gold-per-hour" },
-  openGraph: {
-    title: tool.title,
-    description: tool.tagline,
-    url: "/tools/gold-per-hour",
-    type: "website",
-  },
 };
 
 export default function GoldPerHourPage() {
   return (
     <article className="space-y-8">
+      <JsonLd data={webApplicationJsonLd({ name: TITLE, path: "/tools/gold-per-hour", description })} />
       <header className="space-y-3">
         <p className="font-mono text-xs text-muted">
           Tool · Gold
         </p>
         <h1 className="text-3xl sm:text-4xl font-bold text-fg">
-          {tool.title}
+          {TITLE}
         </h1>
         <p className="text-lg text-fg-2 max-w-2xl">
-          {tool.description}
+          {description}
         </p>
       </header>
 

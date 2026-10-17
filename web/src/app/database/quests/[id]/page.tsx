@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { npcPage, questPage } from "../../../../../../kb/src/world-pages";
@@ -14,9 +15,7 @@ export async function generateMetadata(props: { params: Promise<{ id: string }> 
   const facts = await loadWorldFacts();
   const page = questPage(Number(params.id), facts);
   return {
-    title: !facts.unreachable && page.title ? page.title : `Quest ${params.id}`,
-    description: "A WoW: Forever quest page from corroborated titles, levels, givers, and rewards.",
-    alternates: { canonical: `/database/quests/${params.id}` },
+    ...pageMetadata({ title: !facts.unreachable && page.title ? page.title : `Quest ${params.id}`, description: "A WoW: Forever quest page from corroborated titles, levels, givers, and rewards.", path: `/database/quests/${params.id}` }),
     robots: { index: !facts.unreachable && Boolean(page.title || page.level !== null || page.giverNpcId !== null || page.turnInNpcId !== null || page.rewards.length), follow: true },
   };
 }

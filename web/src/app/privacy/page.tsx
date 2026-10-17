@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy",
-  description:
-    "How Everloot handles your data, cookies and usage statistics.",
-  alternates: { canonical: "/privacy" },
+  ...pageMetadata({ title: "Privacy Policy", description: "How Everloot handles your data, cookies and usage statistics, and what happens to the addon files you upload to the WoW: Forever database.", path: "/privacy" }),
 };
 
 export default function PrivacyPage() {

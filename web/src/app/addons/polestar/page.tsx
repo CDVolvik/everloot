@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { POLESTAR } from "@/data/polestar";
 import TrackedDownload from "@/components/TrackedDownload";
@@ -7,9 +8,7 @@ import { polestarLive } from "@/lib/polestar-github";
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
-  title: "Polestar: leveling guides for WoW: Forever",
-  description: "What Polestar is, how to install it, its commands and licence, where it needs help, and its guide packs.",
-  alternates: { canonical: "/addons/polestar" },
+  ...pageMetadata({ title: "Polestar: WoW Forever Leveling Guide Addon", description: "What Polestar is, how to install it, its commands and licence, where it needs help, and its guide packs for WoW: Forever leveling.", path: "/addons/polestar" }),
 };
 
 const link = "text-accent hover:underline underline-offset-4";

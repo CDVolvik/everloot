@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+import JsonLd from "@/components/JsonLd";
+import { webApplicationJsonLd } from "@/lib/jsonld";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { mapBoundsFromRecords } from "../../../../kb/src/map-bounds";
 import { allZones } from "../../../../kb/src/world-map-near";
@@ -11,10 +14,11 @@ import WorldMapView from "@/components/WorldMapView";
 
 export const dynamic = "force-dynamic";
 
+const TITLE = "WoW Forever World Map";
+const description = "Zones, dungeon and raid entrances and player-observed NPCs on one map of WoW: Forever, drawn from positions read in the game files. No game art.";
+
 export const metadata: Metadata = {
-  title: "World map",
-  description: "Zones, dungeon and raid entrances and player-observed NPCs on one map of WoW: Forever, drawn from positions read in the game files. No game art.",
-  alternates: { canonical: "/map" },
+  ...pageMetadata({ title: TITLE, description, path: "/map", image: "/map/opengraph-image" }),
 };
 
 type Query = { continent?: string | string[]; zone?: string | string[]; x?: string | string[]; y?: string | string[]; spoilers?: string | string[] };
@@ -59,11 +63,12 @@ export default async function MapPage(props: { searchParams: Promise<Query> }) {
 
   return (
     <article className="space-y-8 max-w-5xl">
+      <JsonLd data={webApplicationJsonLd({ name: TITLE, path: "/map", description })} />
       <header className="space-y-3">
-        <p className="font-mono text-xs text-muted">WoW: Forever · world map</p>
-        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">{map.name}</h1>
+        <p className="font-mono text-xs text-muted">WoW: Forever · {map.name}</p>
+        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">{TITLE}</h1>
         <p className="text-sm text-fg-2 max-w-2xl">
-          One map from game coordinates, drawn by us with no game art. Zone outlines and entrances are positions read from the
+          {description} Zone outlines and entrances are positions read from the
           game files. They are found in the files and unconfirmed until players see them in the game. Points for NPCs and vendors
           come from what players uploaded.
         </p>

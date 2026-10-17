@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { collectionFactsFromRecords, handleCollectionGap } from "../../../../../kb/src/collection-gap";
 import { STORAGE_UNREACHABLE, uploadStore } from "@/lib/upload-store";
@@ -7,9 +8,7 @@ import { dataAgeLabel } from "@/lib/data-age";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Collection gap",
-  description: "Owned versus missing in a WoW: Forever collection. The list is uploads that agree, not a Battle.net profile.",
-  alternates: { canonical: "/tools/collections" },
+  ...pageMetadata({ title: "WoW Forever Collection Gap", description: "Owned versus missing in a WoW: Forever collection such as mounts. The list comes from agreeing uploads, not from a Battle.net profile.", path: "/tools/collections" }),
 };
 
 function one(value: string | string[] | undefined): string {

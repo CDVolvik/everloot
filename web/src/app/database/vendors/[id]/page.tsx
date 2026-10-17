@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { npcPage, stockLabel, vendorPage } from "../../../../../../kb/src/world-pages";
@@ -14,9 +15,7 @@ export async function generateMetadata(props: { params: Promise<{ id: string }> 
   const facts = await loadWorldFacts();
   const page = vendorPage(Number(params.id), facts);
   return {
-    title: `Vendor ${params.id}`,
-    description: "A WoW: Forever vendor page. A price is public after 3 installs agree on the item and the copper.",
-    alternates: { canonical: `/database/vendors/${params.id}` },
+    ...pageMetadata({ title: `Vendor ${params.id}`, description: "A WoW: Forever vendor page. A price is public after 3 installs agree on the item and the copper.", path: `/database/vendors/${params.id}` }),
     robots: { index: !facts.unreachable && page.offers.length > 0, follow: true },
   };
 }

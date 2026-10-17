@@ -1,14 +1,12 @@
 import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { computeRollups } from "@/lib/rollup-compute";
 import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
 import { dataAgeLabel } from "@/lib/data-age";
 
 export const metadata: Metadata = {
-  title: "Forever loot observations",
-  description:
-    "Observed item frequency per recorded WoW: Forever loot window, with observation and install counts. Not kill-based drop probabilities.",
-  alternates: { canonical: "/database/drops" },
+  ...pageMetadata({ title: "WoW Forever Loot Observations", description: "Observed item frequency per recorded WoW: Forever loot window, with observation and install counts. These are not kill-based drop probabilities.", path: "/database/drops" }),
 };
 export const dynamic = "force-dynamic";
 
