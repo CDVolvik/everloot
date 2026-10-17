@@ -64,6 +64,7 @@ export async function buildLoreRelease(options: { typed?: boolean; facets?: bool
     delete manifest.types;
     delete manifest.damaged;
     delete manifest.facets;
+    delete manifest.letters;
     writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
   } else if (!withFacets) {
     // A typed release from before the facet summaries existed: the manifest has types but no facets.

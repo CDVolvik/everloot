@@ -210,6 +210,22 @@ describe("types, facets and browsing", () => {
     expect(browse("zone", "r", {}, 1)).toMatchObject({ rows: [{ extId: "6", name: "Redirected Road" }] });
   });
 
+  test("lettersWithRows lists only the letters a type has pages under", async () => {
+    const { lettersWithRows } = await lore();
+    expect(lettersWithRows("npc")).toEqual(["r", "t", "z"]);
+    expect(lettersWithRows("quest")).toEqual(["r", "#"]);
+    expect(lettersWithRows("zone")).toEqual(["r", "z"]);
+    expect(lettersWithRows("item")).toEqual([]);
+  });
+
+  test("lettersWithRows reads the manifest without querying the release", async () => {
+    const { lettersWithRows } = await lore();
+    const { getRelease } = await import("./release");
+    const spy = vi.spyOn(getRelease()!.db, "prepare");
+    expect(lettersWithRows("npc")).toEqual(["r", "t", "z"]);
+    expect(spy).not.toHaveBeenCalled();
+  });
+
   test("browse filters by one facet value, bound exactly", async () => {
     const { browse } = await lore();
     const legion = browse("zone", "z", { expansion: "Legion" }, 1);
@@ -292,8 +308,9 @@ describe("types, facets and browsing", () => {
 
   test("a release without type data reports no types", async () => {
     const untyped = await buildLoreRelease({ typed: false });
-    const { hasTypes, typeCounts, browse, coverage } = await lore(untyped);
+    const { hasTypes, typeCounts, browse, coverage, lettersWithRows } = await lore(untyped);
     expect(hasTypes()).toBe(false);
+    expect(lettersWithRows("zone")).toEqual([]);
     expect(typeCounts()).toBeNull();
     expect(browse("zone", "z", {}, 1)).toEqual({ rows: [], hasNext: false });
     const c = coverage();
@@ -303,10 +320,11 @@ describe("types, facets and browsing", () => {
 
   test("everything is unavailable without a release", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
-    const { browse, facetValues, hasTypes, typeCounts, coverage } = await lore(join(tmpdir(), "missing.sqlite"));
+    const { browse, facetValues, hasTypes, lettersWithRows, typeCounts, coverage } = await lore(join(tmpdir(), "missing.sqlite"));
     expect(browse("zone", "a", {}, 1)).toBe("unavailable");
     expect(facetValues("zone")).toBe("unavailable");
     expect(hasTypes()).toBe("unavailable");
+    expect(lettersWithRows("zone")).toBe("unavailable");
     expect(typeCounts()).toBe("unavailable");
     expect(coverage()).toBe("unavailable");
   });

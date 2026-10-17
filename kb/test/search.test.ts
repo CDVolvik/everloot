@@ -100,14 +100,15 @@ test("a punctuated exact name still ranks first when bm25 buries it past the win
   for (let i = 1; i <= 60; i++) {
     rows.push(row(String(100 + i), `Kel Thuzad chronicle ${i}`, `${"kel thuzad ".repeat(20)}volume ${i}`));
   }
-  rows.push(row("1", "Kel'Thuzad", "A lich of legend."));
+  rows.push(row("1", "Kel'Thuzad", "A lich of legend.", { data: { type: "npc" } }));
   await replaceSourceRows(db, "curated", ["lore_page"], rows);
   expect(search(db, "kel thuzad", 10)[0].name).toBe("Kel'Thuzad");
   expect(search(db, "kel thuzad", 1)[0].name).toBe("Kel'Thuzad");
   expect(search(db, "kel thuzad", 10, { kinds: ["item"] }).some((h) => h.name === "Kel'Thuzad")).toBe(false);
   expect(search(db, "kel thuzad", 10, { versions: ["retail"] }).some((h) => h.name === "Kel'Thuzad")).toBe(false);
-  // The typed-search filter applies to the exact-name lookup too.
-  expect(search(db, "kel thuzad", 10, { where: { sql: "e.ext_id <> ?", params: ["1"] } }).some((h) => h.name === "Kel'Thuzad")).toBe(false);
+  // The type filter applies to the exact-name lookup too.
+  expect(search(db, "kel thuzad", 10, { types: ["npc"] })[0].name).toBe("Kel'Thuzad");
+  expect(search(db, "kel thuzad", 10, { types: ["item"] }).some((h) => h.name === "Kel'Thuzad")).toBe(false);
 });
 
 test("a curly-apostrophe exact name still ranks first when bm25 buries it", async () => {
