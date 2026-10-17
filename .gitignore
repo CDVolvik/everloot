@@ -55,6 +55,8 @@ scratch/
 
 # --- kb/ (knowledge base) ---
 kb/data/
+# CDN download cache written by @rhyster/wow-casc-dbc (npm run kb -- client-extract)
+kb/cache/
 web/data/
 web/.data/
 .vercel
