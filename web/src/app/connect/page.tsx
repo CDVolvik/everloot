@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import Bracket from "@/components/Bracket";
 import { PUBLIC_RECORD_KINDS } from "@/lib/intake";
-import { CONNECT_EXAMPLES as ex, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR, GLOBAL_REQUESTS_PER_HOUR } from "./connect-data";
+import { CONNECT_EXAMPLES as ex, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR } from "./connect-data";
 
 export const metadata: Metadata = {
   title: "Connect",
@@ -90,7 +90,7 @@ export default function ConnectPage() {
             <code className="font-mono text-fg">retry-after</code> header, in seconds.
           </li>
           <li>
-            All callers together share {GLOBAL_REQUESTS_PER_HOUR} requests per hour. When that is used up, everyone gets the
+            All callers share one hourly cap, which uploads count against too. When it is used up, everyone gets the
             same <code className="font-mono text-fg">429</code>.
           </li>
           <li>Only POST requests count. GET and OPTIONS are not counted.</li>

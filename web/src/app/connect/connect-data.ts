@@ -4,8 +4,6 @@ export const CORPUS_URL = `${SITE}/api/corpus/public`;
 
 /** The public MCP's per-IP limit per hour. connect.test.ts checks it against intake-quota.ts. */
 export const REQUESTS_PER_HOUR = 200;
-/** The cap on all callers together. connect.test.ts checks it against intake-quota.ts. */
-export const GLOBAL_REQUESTS_PER_HOUR = 5000;
 
 /** Every tool kb/src/mcp-server.ts registers, in its order. connect.test.ts fails if the two drift apart. */
 export const MCP_TOOLS: readonly { name: string; text: string }[] = [

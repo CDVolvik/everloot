@@ -12,7 +12,7 @@ vi.mock("@/components/AccountControls", () => ({ default: () => null }));
 vi.mock("@/components/CookieConsent", () => ({ CookiePreferencesButton: () => null }));
 
 import ConnectPage, { metadata } from "./page";
-import { CONNECT_EXAMPLES, CORPUS_URL, GLOBAL_REQUESTS_PER_HOUR, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR } from "./connect-data";
+import { CONNECT_EXAMPLES, CORPUS_URL, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR } from "./connect-data";
 import { PUBLIC_RECORD_KINDS } from "@/lib/intake";
 import { createIntakeQuota } from "@/lib/intake-quota";
 import sitemap from "../sitemap";
@@ -46,12 +46,12 @@ test("the stated limit is the limit the public MCP quota enforces", async () => 
   expect(page).toContain(`${REQUESTS_PER_HOUR} requests per hour`);
 });
 
-test("the stated global cap is the one in the quota code and the migration", () => {
+test("without EVERLOOT_MCP_QUOTA_SCOPE the MCP shares the intake bucket, as the page says", () => {
+  // Production runs without the scope variable. If that changes, this fails and the page needs a new sentence.
   const quota = readFileSync(new URL("../../lib/intake-quota.ts", import.meta.url), "utf8");
-  const sql = readFileSync(new URL("../../../../supabase/migrations/20261010120000_mcp_quota_scope.sql", import.meta.url), "utf8");
-  expect(quota).toContain(`["mcp_global", ${GLOBAL_REQUESTS_PER_HOUR}]`);
-  expect(sql).toContain(`array[${GLOBAL_REQUESTS_PER_HOUR}, ${REQUESTS_PER_HOUR}]`);
-  expect(decoded).toContain(`${GLOBAL_REQUESTS_PER_HOUR} requests per hour`);
+  expect(quota).toMatch(/if \(env\.EVERLOOT_MCP_QUOTA_SCOPE === "mcp"\) return consume\("mcp", clientIp\(req\)\);\s*return consume\("request", `mcp:\$\{clientIp\(req\)\}`\);/);
+  expect(quota).toContain('[["global", 10000], [`ip:${value}`, ' + REQUESTS_PER_HOUR + "]]");
+  expect(decoded).toContain("share one hourly cap");
   expect(decoded).toContain("GET and OPTIONS are not counted");
 });
 
