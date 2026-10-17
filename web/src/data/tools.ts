@@ -11,7 +11,6 @@ export interface Tool {
   tagline: string;
   description: string;
   status: ToolStatus;
-  icon: string; // emoji for v1 — replace with SVGs later
   keywords: string[]; // for <meta>
 }
 
@@ -24,7 +23,6 @@ export const tools: Tool[] = [
     description:
       "Input your farm route, items looted, and AH prices. Get a precise gold-per-hour breakdown you can share with your guild. Factors in the 5% auction house cut and vendor trash.",
     status: "live",
-    icon: "🪙",
     keywords: [
       "wow gold per hour",
       "gold farming calculator",
@@ -42,7 +40,6 @@ export const tools: Tool[] = [
     description:
       "A Forever leveling path from recipe uploads. A step appears when 3 installs agree, and the gold cost appears when 3 price uploads agree. No copied guide and no retail auction price.",
     status: "collecting",
-    icon: "⚒️",
     keywords: [
       "wow profession leveling",
       "blacksmithing guide",
@@ -59,7 +56,6 @@ export const tools: Tool[] = [
     description:
       "Owned versus missing in a collection. The list appears when 3 installs agree on the item and its source. Owned is one install's upload. Not a Battle.net profile.",
     status: "collecting",
-    icon: "🏆",
     keywords: [
       "wow completionist",
       "mount tracker",
@@ -76,7 +72,6 @@ export const tools: Tool[] = [
     description:
       "Raid progression, roster, loot, and item level for WoW: Forever guilds from authorized officer uploads. A figure is public when two uploads agree. A combined guild score is not available.",
     status: "collecting",
-    icon: "🛡️",
     keywords: [
       "wow forever guild tracker",
       "wow forever guild progression",
@@ -93,7 +88,6 @@ export const tools: Tool[] = [
     description:
       "Loot-window observations, NPC sightings, quests and vendors from addon uploads. Install counts are not proof of independent players; observations are not kill-based drop probabilities.",
     status: "collecting",
-    icon: "📖",
     keywords: [
       "wow forever database",
       "wow forever drop rates",
@@ -109,7 +103,6 @@ export const tools: Tool[] = [
     description:
       "One hub per Forever profession: skill-up paths and materials lists drawn from in-game collection. Hubs open their numbers as reports arrive.",
     status: "collecting",
-    icon: "⚒️",
     keywords: [
       "wow forever professions",
       "wow forever profession leveling",
@@ -124,7 +117,6 @@ export const tools: Tool[] = [
     description:
       "Zone routes and respawn timing are planned. Upload sightings now, or calculate your own farm using the Gold/Hour Calculator.",
     status: "coming-soon",
-    icon: "🗺️",
     keywords: [
       "wow forever farming",
       "wow forever gold farm",
@@ -139,7 +131,6 @@ export const tools: Tool[] = [
     tagline: "Send addon records with explicit sharing choices.",
     description: "Upload Everloot addon files. Public observations require corroboration; named sharing requires a reviewed grant.",
     status: "live",
-    icon: "📤",
     keywords: ["everloot upload", "wow forever addon"],
   },
 ];

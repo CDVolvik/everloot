@@ -9,7 +9,7 @@ export default function AccountControls() {
   const [retry, setRetry] = useState(0);
   const [signingOut, setSigningOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const controlClass = "inline-flex items-center min-h-11 px-2 text-sm text-parchment-100/80 hover:text-gold-400 disabled:opacity-60";
+  const controlClass = "inline-flex items-center min-h-11 px-2 text-sm text-fg-2 hover:text-accent disabled:opacity-60";
 
   useEffect(() => {
     let active = true;
@@ -50,7 +50,7 @@ export default function AccountControls() {
         : status === "signed-in" ? <button type="button" disabled={signingOut} aria-busy={signingOut} onClick={signOut} className={controlClass}>Sign out</button>
         : status === "unavailable" ? <button type="button" aria-label="Retry account status" onClick={() => setRetry(retry + 1)} className={controlClass}>Retry</button>
         : <button type="button" disabled aria-busy="true" className={controlClass}>Account</button>}
-      {error && <p role="alert" className="absolute right-0 top-full mt-2 w-56 rounded-lg border border-parchment-100/20 bg-parchment-950 p-3 text-sm text-parchment-100">{error}</p>}
+      {error && <p role="alert" className="absolute right-0 top-full mt-2 w-56 rounded-lg border border-line bg-canvas p-3 text-sm text-fg">{error}</p>}
     </div>
   );
 }
