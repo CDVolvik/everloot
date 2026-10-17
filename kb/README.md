@@ -1,4 +1,4 @@
-# kb — the Everloot knowledge base
+# kb/: the Everloot knowledge base
 
 A local SQLite database of WoW knowledge in which every row carries its source, licence, retrieval
 date and URL. Design: `../docs/superpowers/specs/2026-09-27-forever-ai-addon-design.md` §2 and §4.
@@ -23,7 +23,7 @@ First build (2026-09-27): 257,110 lore pages, 18,713 skipped, 48,341 redirects d
 |---|---|---|
 | Warcraft Wiki, Internet Archive dump 2023-11-13 | CC BY-SA 4.0 | yes |
 | Curated entries (`curated/*.yaml`) | CC BY-SA 4.0 | yes |
-| Blizzard Battle.net API | Blizzard Developer API Terms | no — local cache only |
+| Blizzard Battle.net API | Blizzard Developer API Terms | no, local cache only |
 
 wago.tools is not used: its robots.txt disallows everything but its home page.
 
@@ -34,8 +34,8 @@ into place.
 
 ## Serve a public release
 
-The MCP service answers questions; it never builds a database. It takes a **public release** — the
-filtered file `snapshot` wrote, together with its `.manifest.json` — and nothing else. A source
+The MCP service answers questions; it never builds a database. It takes a **public release** (the
+filtered file `snapshot` wrote, together with its `.manifest.json`) and nothing else. A source
 database is not a release: it still holds non-publishable sources and API cache rows.
 
     node ./node_modules/tsx/dist/cli.mjs src/cli.ts snapshot data/release/kb.sqlite --db data/wowvault-kb.sqlite
@@ -54,7 +54,7 @@ being written to, so it is refused as well.
 `stats` and `search` read an existing knowledge base the same way, create nothing, and both need an
 explicit `--db`. The import commands still default to `data/everloot-kb.sqlite`.
 
-`validate` is the one command that writes to the file it opens — it rebuilds the fts5 index — so it
+`validate` is the one command that writes to the file it opens (it rebuilds the fts5 index), so it
 is a diagnostic for a source database and never part of a serving path.
 
 `serve-mcp-http` binds loopback only and takes `--token` or `EVERLOOT_MCP_TOKEN`. A bearer token is
@@ -67,7 +67,7 @@ Create a free client at https://develop.battle.net/access/clients and put it in 
     BLIZZARD_CLIENT_ID=...
     BLIZZARD_CLIENT_SECRET=...
 
-Then, in Git Bash or PowerShell (no leading slash — Git Bash rewrites paths that start with `/`):
+Then, in Git Bash or PowerShell (no leading slash: Git Bash rewrites paths that start with `/`):
 
     npm run kb -- blizzard-get data/wow/playable-class/index --game classic1x --kind static
 
