@@ -3,9 +3,11 @@ import { openExistingReadOnlyDb, type DB } from "./db.js";
 import {
   checkPublishedDb,
   NOTICE,
+  BROWSE_LETTERS,
   PUBLISHED_LICENCE,
   sha256File,
   type Manifest,
+  type ManifestFacets,
 } from "./snapshot.js";
 import { SOURCES } from "./sources.js";
 
@@ -27,6 +29,37 @@ const SIDECARS = ["-wal", "-shm", "-journal"] as const;
 
 function publishableIds(): string[] {
   return Object.values(SOURCES).filter((s) => s.publishable).map((s) => s.id);
+}
+
+/** True when `v` is a plain object: not null, not an array. */
+function isObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+/** Shape-check a manifest's optional facet summaries. */
+function facetsLookValid(f: unknown): f is ManifestFacets {
+  if (!isObject(f) || !isObject(f.top) || !isObject(f.byType)) return false;
+  for (const entries of Object.values(f.top)) {
+    if (!Array.isArray(entries)) return false;
+    for (const e of entries) {
+      if (!isObject(e) || typeof e.value !== "string" || typeof e.n !== "number" || !Number.isInteger(e.n) || e.n < 0) {
+        return false;
+      }
+    }
+  }
+  for (const keys of Object.values(f.byType)) {
+    if (!isObject(keys)) return false;
+    for (const values of Object.values(keys)) {
+      if (!Array.isArray(values) || values.some((v) => typeof v !== "string")) return false;
+    }
+  }
+  return true;
+}
+
+/** Shape-check a manifest's optional browse letters: each type maps to letters from BROWSE_LETTERS. */
+function lettersLookValid(l: unknown): l is Record<string, string[]> {
+  if (!isObject(l)) return false;
+  return Object.values(l).every((v) => Array.isArray(v) && v.every((c) => typeof c === "string" && BROWSE_LETTERS.includes(c)));
 }
 
 /** Read and shape-check the manifest that must sit beside every public release. */
@@ -63,6 +96,18 @@ function readManifest(dbPath: string): Manifest {
   }
   if (m.damaged !== undefined && (typeof m.damaged !== "number" || !Number.isInteger(m.damaged) || m.damaged < 0)) {
     throw new Error("public snapshot manifest damaged must be a non-negative row count");
+  }
+  if (m.types !== undefined && m.facets === undefined) {
+    throw new Error("public snapshot manifest has types but no facet totals");
+  }
+  if (m.facets !== undefined && !facetsLookValid(m.facets)) {
+    throw new Error("public snapshot manifest facets must map each top value to its count and each type to value lists");
+  }
+  if (m.types !== undefined && m.letters === undefined) {
+    throw new Error("public snapshot manifest has types but no browse letters");
+  }
+  if (m.letters !== undefined && !lettersLookValid(m.letters)) {
+    throw new Error("public snapshot manifest letters must map each type to browse letters (a-z or #)");
   }
   const allowed = publishableIds();
   if (Object.keys(m.counts).length !== allowed.length || allowed.some((id) => !Object.hasOwn(m.counts as object, id))) {

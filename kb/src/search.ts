@@ -1,5 +1,6 @@
 import type { DB } from "./db.js";
 import type { GameVersion, Kind } from "./entities.js";
+import type { LoreType } from "./importers/wiki-classify.js";
 
 export interface SearchHit {
   id: number;
@@ -17,8 +18,8 @@ export interface SearchHit {
 export interface SearchOptions {
   kinds?: Kind[];
   versions?: GameVersion[];
-  /** One extra AND clause with bound parameters, e.g. a JSON type filter. The SQL is the caller's; the values are bound. */
-  where?: { sql: string; params: unknown[] };
+  /** Restrict to `data.type` values (lore pages). The SQL is built here; every value is bound. */
+  types?: LoreType[];
 }
 
 /** Every term is quoted, so user input can never be read as FTS syntax. Terms are ANDed. */
@@ -104,7 +105,7 @@ function normExpr(col: string): string {
 
 const NORM_SQL = normExpr("e.name");
 
-/** SearchOptions currently exposes only kinds and versions: no sourceId/sources/excluded-kinds/publishable filters exist. */
+/** SearchOptions currently exposes only kinds, versions and types: no sourceId/sources/excluded-kinds/publishable filters exist. */
 function pushOptionFilters(conds: string[], params: unknown[], opts: SearchOptions): void {
   if (opts.kinds?.length) {
     conds.push(`e.kind IN (${opts.kinds.map(() => "?").join(",")})`);
@@ -114,9 +115,9 @@ function pushOptionFilters(conds: string[], params: unknown[], opts: SearchOptio
     conds.push(`e.game_version IN (${opts.versions.map(() => "?").join(",")})`);
     params.push(...opts.versions);
   }
-  if (opts.where) {
-    conds.push(`(${opts.where.sql})`);
-    params.push(...opts.where.params);
+  if (opts.types?.length) {
+    conds.push(`json_extract(e.data, '$.type') IN (${opts.types.map(() => "?").join(",")})`);
+    params.push(...opts.types);
   }
 }
 

@@ -85,15 +85,17 @@ test("unknown types and letters are not found", async () => {
   await expect(BrowsePage(props("zones", { letter: "ab" }))).rejects.toThrow("NOT_FOUND");
 });
 
-test("metadata: unfiltered letter pages are indexed with a short canonical; filters and paging are not", async () => {
+test("metadata: unfiltered letter pages with rows are indexed with a short canonical; empty letters, filters and paging are not", async () => {
   const { generateMetadata } = await page();
   const a = await generateMetadata(props("zones"));
   expect(a.title).toBe("Zones and locations starting with A · Lore archive");
   expect(a.alternates).toMatchObject({ canonical: "/lore/zones" });
-  expect(a.robots).toMatchObject({ index: true, follow: true });
+  expect(a.robots).toMatchObject({ index: false, follow: true }); // no zone in the fixture starts with "a"
   const z = await generateMetadata(props("zones", { letter: "z" }));
   expect(z.alternates).toMatchObject({ canonical: "/lore/zones?letter=z" });
   expect(z.robots).toMatchObject({ index: true });
+  const empty = await generateMetadata(props("quests", { letter: "q" }));
+  expect(empty.robots).toMatchObject({ index: false, follow: true });
   const paged = await generateMetadata(props("zones", { letter: "z", page: "2" }));
   expect(paged.robots).toMatchObject({ index: false, follow: true });
   expect(paged.alternates).toMatchObject({ canonical: "/lore/zones?letter=z" });
