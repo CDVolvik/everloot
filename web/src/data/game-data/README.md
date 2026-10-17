@@ -13,6 +13,9 @@ decrypted. Column names come from [WoWDBDefs](https://github.com/wowdev/WoWDBDef
 | `talents/<class>.json` | One talent tree set per class (`everloot.talent-catalog/2`, see `docs/TALENT_CATALOG.md`): node ids, positions, ranks, prerequisites, unlock gates, point levels, spell ids and talent names. No descriptions, icons or tooltip text | `npm run kb -- client-catalog <snapshot>`, then `node scripts/trim-talent-catalog.mjs ../kb/data/catalog/<product>-<build>-<config>/talents` in `web/` | in each file's `build` (1.60.1.70450 today) |
 | `raid-<build>.json` | Raid buffs and debuffs with their reach (`self`, `single`, `party`, `raid`, `area`, `enemy`, `mixed`, `unknown`), the talent tree each needs where the files prove it (`tree`, `treeProof`), and the class talent tree names. No tooltip text | `npx tsx scripts/build-raid-game-data.ts ../kb/data/catalog/<product>-<build>-<config> ../kb/data/client/<snapshot>.sqlite` in `web/`, which also writes `addon/modules/raid_data.lua`; `src/lib/raid.test.ts` fails if the two differ | in the file name and its `build` |
 
+Icons, tooltip text and window art for the talent calculator are not in this folder and never go into git.
+They live in asset storage with a build-stamped manifest; see [docs/ASSETS.md](../../../../docs/ASSETS.md).
+
 Do not edit these files by hand. Regenerate them from a new snapshot (`client-extract`, then the commands
 above) and commit the result with the build in the message. Nothing from another project belongs here.
 

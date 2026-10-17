@@ -28,6 +28,11 @@ export const CLIENT_TABLES = {
   SpellEffect: 1140088, SpellRadius: 1134584,
   // Tooltips and icons for the talent catalog: icon file id and duration of each spell.
   SpellMisc: 1003144, SpellDuration: 1137828,
+  // Proc chance and charges, for the $h and $n tooltip variables.
+  SpellAuraOptions: 1139952,
+  // Interface art: which texture file and rectangle each named piece of the talent frame is
+  // (atlas element name, member rectangle, atlas file). Read as table rows, no listfile.
+  UiTextureAtlas: 897470, UiTextureAtlasElement: 1989276, UiTextureAtlasMember: 897532,
   // Maps: zone rectangles in world coordinates (UiMap names the maps, UiMapAssignment places them on a
   // continent) and, in Map, the continents and the instances with their entrance position.
   Map: 1349477, UiMap: 1957206, UiMapAssignment: 1957219,

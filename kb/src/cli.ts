@@ -9,8 +9,9 @@ import { checkBuilds, loadRegistry, recordBuilds, saveRegistry, versionsUrl } fr
 import { diffSnapshots } from "./client-diff.js";
 import { CASC_LIBRARY, extractTables, iconIds, NOT_IN_BUILD, openCdn, pinDefinitions, probeFiles } from "./client-extract.js";
 import { writeCatalogs } from "./client-catalog.js";
+import { buildClientAssets } from "./client-assets.js";
 import { writeWorldMapData } from "./world-map-data.js";
-import { clientSnapshotName, writeClientSnapshot } from "./client-snapshot.js";
+import { clientSnapshotName, readClientMeta, writeClientSnapshot } from "./client-snapshot.js";
 import { diffRaidBuffs, RaidBuffTable } from "./raid-buffs.js";
 import type { Game, NsKind, Region } from "./blizzard/namespaces.js";
 import { openDb, openExistingReadOnlyDb, type DB } from "./db.js";
@@ -71,6 +72,9 @@ const USAGE = `usage: npm run kb -- <command> --db <path>
     from a snapshot, stamped with the build and labelled "found in game files, unconfirmed". See
     docs/TALENT_CATALOG.md. Not for publication)
   raid-buffs-diff <old/raid-buffs.json> <new/raid-buffs.json>   (entries whose scope changed between builds)
+  client-assets <snapshot.sqlite> [--out data/assets]
+    (icons, resolved tooltip text and talent-frame art of the talent catalog, from unencrypted files of the snapshot's build,
+    into <out>/<product>-<build>-<config>/ with manifest.json. Needs Python with Pillow. Never commit the output; see docs/ASSETS.md)
   client-diff <old.sqlite> <new.sqlite> [--out diff.json]   (field-level diff of two snapshots)
   client-map <snapshot.sqlite> [--out ../web/src/data/game-data/map.json]
     (zone rectangles in world coordinates, continents and dungeon and raid entrances from a client
@@ -317,6 +321,21 @@ async function main(): Promise<number> {
       for (const t of run.index.tables) console.log(`${t.table}: ${t.rows} rows${t.encryptedBlocks ? `, ${t.encryptedBlocks} encrypted blocks skipped` : ""}`);
       for (const w of run.index.warnings) console.log(`warning: ${w}`);
       if (run.raidBuffs.notFound.length) console.log(`raid buffs not found: ${run.raidBuffs.notFound.join(", ")}`);
+      console.log(`-> ${run.dir}`);
+      return 0;
+    }
+    case "client-assets": {
+      if (!args[0]) break;
+      const meta = readClientMeta(args[0]);
+      const { build, source } = await openCdn(meta.product);
+      if (build.buildConfig !== meta.buildConfig) {
+        console.error(`the snapshot is build ${meta.version} but the CDN now serves ${build.version}; run client-extract first, or the assets would not match the snapshot`);
+        return 1;
+      }
+      await pinDefinitions();
+      const run = await buildClientAssets({ snapshotPath: args[0], outDir: flags.get("out") || "data/assets", source });
+      for (const n of run.notes) console.log(n);
+      if (run.manifest.missingFrames.length) console.log(`frame pieces not available: ${run.manifest.missingFrames.join(", ")}`);
       console.log(`-> ${run.dir}`);
       return 0;
     }

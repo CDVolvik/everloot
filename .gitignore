@@ -67,3 +67,7 @@ web/.data/
 !web/.env.example
 !kb/.env.example
 kb/changes/*.tmp
+
+# Blizzard textures and the asset folders made from them live in asset storage, never in git (docs/ASSETS.md).
+*.blp
+kb/data/assets/
