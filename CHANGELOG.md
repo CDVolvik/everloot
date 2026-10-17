@@ -13,6 +13,26 @@ that has a zip in the repository. Earlier builds have none.
 Nothing yet. Pull requests merged to `main` are listed in the nightly pre-releases until the next
 tagged release.
 
+## [0.3.0] - 2026-10-17
+
+### Added
+- An **Everloot scan** button on the auction house, or `/everloot scan`, reads the full auction
+  listing with `C_AuctionHouse.ReplicateItems()`. It runs only when you click, with the auction house
+  open, at most once every 15 minutes, and never buys, bids or posts. The result is summarised per
+  item and stored as `auction_snapshot` records. The last three scans per realm are kept.
+- Item tooltips show your own latest scan and the community prices the companion wrote. The tooltip
+  shows the date the prices were fetched and marks them stale after two days.
+- The companion's `prices --game` (and `watch --game`) writes the checksummed `EverlootPrices` addon
+  the tooltips read, after the next `/reload`.
+- `auction_snapshot` records are accepted by the upload intake. They stay out of the public corpus.
+
+### Fixed
+- A scan that gets no answer from the game within 30 seconds clears itself and gives the cooldown
+  back. Closing the auction house while waiting does the same.
+
+This release also contains everything in 0.2.8. It has passed the automated tests; the in-client
+checks are still open.
+
 ## [0.2.8] - 2026-10-17
 
 ### Added
@@ -89,6 +109,14 @@ This release also contains everything in 0.2.7.
 Dated by the pull request or commit that landed them.
 
 ### 2026-10-17
+- Forever market (#15): scans players start are folded into daily prices. A day is published once
+  three reporters agree, and a thin or outlying day is labelled or trimmed instead of averaged in.
+  `/tools/auctions` shows a realm table and an item view with a 60-day chart, `/api/market/prices`
+  serves the prices without install ids, and the `market_value` MCP tool brings the server to 16 tools.
+- Build watch (#34): a scheduled workflow notices a new WoW: Forever build within about half an hour,
+  regenerates the talent, raid and map data with the site's own generators, and opens a reviewed pull
+  request titled `data(game-data): build <version>` with a list of what changed. Nothing merges itself.
+  See `docs/BUILD_WATCH.md`.
 - Talent calculator at `/tools/talents` (#27), reading our own catalog extracted from the game
   files (#30).
 - Raid group builder at `/tools/raid` (#32).
@@ -136,6 +164,6 @@ Dated by the pull request or commit that landed them.
   pages for items, NPCs, quests and vendors, profession and farming route pages, guild pages.
 - Uploads stored in object storage with a Supabase index; pages read one corpus snapshot, extended
   every ten minutes.
-- First MCP knowledge server over stdio (3 tools). The server now has 15.
+- First MCP knowledge server over stdio (3 tools). The server now has 16.
 - Knowledge base (`kb/`): lore import from the Warcraft Wiki dump, provenance on every row,
   publishable-only snapshots with a licence manifest.

@@ -60,9 +60,14 @@ share their list. A count appears only when three installs report it.
 **Connect.** How to use the open data from an AI assistant or your own code.
 [everloot.app/connect](https://everloot.app/connect)
 
-**MCP server.** 15 tools that let an AI assistant search the archive and read the same sourced
+**Market prices.** Blizzard has no auction API for Forever, so prices come from full auction scans
+that players start with the addon's **Everloot scan** button. The site shows a realm table and a
+60-day chart per item, a day is published once three reporters agree, and the same prices appear in
+item tooltips in game. [everloot.app/tools/auctions](https://everloot.app/tools/auctions)
+
+**MCP server.** 16 tools that let an AI assistant search the archive and read the same sourced
 facts the site shows: items, NPCs, quests, vendors, profession paths, recipe ranges, auction history,
-recent Blizzard changes and more. The public endpoint is read only and rate limited:
+market values, recent Blizzard changes and more. The public endpoint is read only and rate limited:
 `https://everloot.app/mcp/public`.
 
 ## How it fits together
@@ -80,8 +85,11 @@ flowchart LR
   intake --> store[("Raw uploads in R2<br/>index in Supabase")]
   store --> corpus["Corpus snapshot<br/>rebuilt every 10 minutes"]
   corpus --> rollups["Rollups<br/>a fact needs 3 installs"]
+  store --> market["Market prices<br/>3 reporters a day"]
+  market --> site
+  market --> companion
   rollups --> site["Site pages and tools"]
-  rollups --> mcp["MCP server<br/>15 tools"]
+  rollups --> mcp["MCP server<br/>16 tools"]
   wiki["Warcraft Wiki dump<br/>CC BY-SA 4.0"] --> kb["kb/<br/>import, provenance, snapshot"]
   files["Game files<br/>maintainer extraction"] --> gamedata["Reviewed game-data files<br/>unconfirmed"]
   kb --> site
@@ -111,7 +119,9 @@ flowchart LR
    everything before it is sent.
 
 Auction capture and the list of your installed addons are off until you turn them on
-(`/everloot auctions on`, `/everloot addons on`).
+(`/everloot auctions on`, `/everloot addons on`). To see market prices in item tooltips, the
+[companion](companion/README.md) writes them into the game folder (`prices --game`); the addon's scan
+button on the auction house adds your own scan.
 
 ### Developers
 
@@ -144,10 +154,12 @@ limit and how to credit the data.
 
 ## Project status
 
-Beta. The addon is at 0.2.8 and passes its automated tests; the in-client checks in
+Beta. The addon is at 0.3.0 and passes its automated tests; the in-client checks in
 [`docs/2026-10-08-beta-client-checklist.md`](docs/2026-10-08-beta-client-checklist.md) are still open
 until the game is playable. The game-file layers (talents, raid buffs, map) are read from build
-`1.60.1.70450` and marked unconfirmed. WoW: Forever launches on 2026-11-04.
+`1.60.1.70450` and marked unconfirmed. A [build watch](docs/BUILD_WATCH.md) checks for new builds
+every half hour and opens a reviewed pull request when one appears. WoW: Forever launches on
+2026-11-04.
 
 What is next is in [`ROADMAP.md`](ROADMAP.md). What has shipped is in [`CHANGELOG.md`](CHANGELOG.md).
 Nightly pre-releases of the addon are on the [releases page](https://github.com/CDVolvik/everloot/releases).

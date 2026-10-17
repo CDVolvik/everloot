@@ -9,7 +9,7 @@ addon = root / "addon"
 toc = (addon / "Everloot.toc").read_text(encoding="utf-8")
 version = re.search(r"^## Version: ([0-9][0-9A-Za-z.+-]*)\s*$", toc, re.M).group(1)
 core_version = re.search(r'^E\.VERSION = "([^"]+)"', (addon / "core.lua").read_text(encoding="utf-8"), re.M).group(1)
-# A nightly build stamps "0.2.9-nightly.<date>.<run>" into the TOC and "0.2.9-nightly" into core.lua
+# A nightly build stamps "0.3.1-nightly.<date>.<run>" into the TOC and "0.3.1-nightly" into core.lua
 # (the upload intake allows 20 characters), in the CI copy only. A release has the same text in both.
 assert core_version == version or ("-" in version and core_version.startswith(version.split("-")[0] + "-")), (version, core_version)
 paths = ["Everloot.toc"] + [line.strip().replace("\\", "/") for line in toc.splitlines() if line.strip() and not line.startswith("#")]

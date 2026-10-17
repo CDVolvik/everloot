@@ -3,6 +3,8 @@
  * everloot-companion upload|watch --file <Everloot.lua> | --game <World of Warcraft folder> [--endpoint URL] [--state FILE]
  * everloot-companion bridge --game <World of Warcraft folder> --mcp <URL> --token-file <FILE>
  *   answers /ask questions into the EverlootAnswers slot addon; they show after /reload.
+ * everloot-companion prices --game <World of Warcraft folder> [--endpoint URL]
+ *   writes community market prices into the EverlootPrices slot addon; `watch --game` refreshes them too.
  * Sends only events the site has not confirmed. Named data (guild, gear, gold, collection) stays on
  * this machine; share it on the website with a verified grant. Nothing here touches the game client.
  */
@@ -16,16 +18,17 @@ import { llmEngine } from "./bridge/llm-engine";
 import { loadProviders } from "./providers/config";
 import { findEverlootFiles } from "./savedvariables";
 import { createSentState } from "./sent-state";
+import { refreshPrices } from "./prices";
 import { uploadFile } from "./uploader";
 
 export interface CliArgs {
-  command: "upload" | "watch" | "bridge"; file?: string; game?: string; endpoint: string; state?: string;
+  command: "upload" | "watch" | "bridge" | "prices"; file?: string; game?: string; endpoint: string; state?: string;
   mcp?: string; tokenFile?: string;
 }
 
 export function parseArgs(argv: string[]): CliArgs {
   const [command, ...rest] = argv;
-  if (command !== "upload" && command !== "watch" && command !== "bridge") throw new Error("Use upload, watch or bridge.");
+  if (command !== "upload" && command !== "watch" && command !== "bridge" && command !== "prices") throw new Error("Use upload, watch, bridge or prices.");
   const flags = new Map<string, string>();
   for (let i = 0; i < rest.length; i += 2) flags.set(rest[i].replace(/^--/, ""), rest[i + 1] ?? "");
   const endpoint = flags.get("endpoint") || "https://everloot.app";
@@ -33,6 +36,8 @@ export function parseArgs(argv: string[]): CliArgs {
   const file = flags.get("file"), game = flags.get("game");
   if (!file && !game) throw new Error("Name --file or --game.");
   const state = flags.get("state");
+  // Prices are written under the game folder's Interface/AddOns, like the bridge's answers.
+  if (command === "prices" && !game) throw new Error("prices needs --game.");
   if (command === "bridge") {
     // Answers are written under the game folder, so the bridge needs it, not a single file.
     if (!game) throw new Error("bridge needs --game.");
@@ -96,10 +101,22 @@ async function main(argv: string[]): Promise<void> {
     console.log(`Answering /ask for ${files.length} account(s). Leave this running; Ctrl+C stops it.`);
     return;
   }
+  const addonsDir = args.game ? join(args.game, "Interface", "AddOns") : null;
+  const prices = async () => {
+    if (!addonsDir) return;
+    try {
+      const r = await refreshPrices({ svFiles: files, addonsDir, endpoint: args.endpoint });
+      console.log(`Prices: ${r.items} items on ${r.realms} realm(s) written to ${addonsDir}. /reload in game to see them.`);
+    } catch (err) {
+      console.error(`Prices not updated (the previous ones stay): ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+  if (args.command === "prices") return prices();
   const send = async (file: string) => {
     try {
       const r = await uploadFile(file, { endpoint: args.endpoint, state });
       console.log(`${file}: sent ${r.sent} new events in ${r.batches} batch(es); kept ${r.heldNamed} named, ${r.heldAddons} installed-addon and ${r.heldLegacy} legacy rows here.`);
+      if (args.command === "watch") await prices();
     } catch (err) {
       console.error(`${file}: ${err instanceof Error ? err.message : String(err)}`);
     }

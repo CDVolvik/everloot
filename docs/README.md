@@ -10,6 +10,7 @@ architecture map.
 | [`RELEASING.md`](RELEASING.md) | Stable and nightly releases, and the pull request title convention |
 | [`2026-10-08-beta-client-checklist.md`](2026-10-08-beta-client-checklist.md) | What gets checked in the live client before an addon release |
 | [`2026-10-08-release-checklist.md`](2026-10-08-release-checklist.md) | What gets checked before a site release |
+| [`BUILD_WATCH.md`](BUILD_WATCH.md) | How a new game build becomes a reviewed data pull request |
 | [`TRACKER.md`](TRACKER.md) | The build list, generated from `kb/src/bridge-plan.ts` (a test keeps it in sync) |
 | [`../CONTRIBUTING.md`](../CONTRIBUTING.md), [`../ROADMAP.md`](../ROADMAP.md), [`../CHANGELOG.md`](../CHANGELOG.md) | How to contribute, what is planned, what has shipped |
 
@@ -36,6 +37,7 @@ architecture map.
 [`design/specs/`](design/specs/) holds the design for each feature, and [`design/plans/`](design/plans/)
 the plans that built them, both named by date. Recent ones:
 
+- [Forever market](design/specs/2026-10-16-forever-market-design.md)
 - [Platform expansion](design/specs/2026-10-18-platform-expansion-design.md)
 - [Agent chat (site, companion, addon)](design/specs/2026-10-18-agent-chat-design.md)
 - [World map](design/specs/2026-10-17-world-map-design.md)

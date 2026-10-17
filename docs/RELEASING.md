@@ -5,8 +5,8 @@ Three things ship from this repository, each differently.
 | What | How it ships | Version |
 |---|---|---|
 | The site (`web/`) | Every merge to `main` deploys production on Vercel | none |
-| The addon, stable | A `addon-v*` tag runs `.github/workflows/release.yml` and creates a GitHub release | `0.2.x` |
-| The addon, nightly | `.github/workflows/nightly.yml` makes a pre-release from `main` when it has changed | `0.2.x-nightly.<date>.<run>` |
+| The addon, stable | A `addon-v*` tag runs `.github/workflows/release.yml` and creates a GitHub release | `0.3.x` |
+| The addon, nightly | `.github/workflows/nightly.yml` makes a pre-release from `main` when it has changed | `0.3.x-nightly.<date>.<run>` |
 
 The site's download link (`web/public/downloads/`) always points at the stable zip committed to the
 repository. A nightly never changes it.
@@ -63,12 +63,12 @@ The nightly workflow runs daily at 06:17 UTC and on demand (Actions, Nightly, Ru
 "force" to build with no new commits).
 
 - It skips the day when `main` has no commits since the last `nightly-*` tag.
-- The version is the next patch version with a suffix, for example `0.2.9-nightly.20261018.57`. The
+- The version is the next patch version with a suffix, for example `0.3.1-nightly.20261018.57`. The
   tag is `nightly-20261018.57` and the release is named `Everloot Nightly <version> (<short sha>)`,
   marked pre-release.
 - It runs the addon tests on `main` as committed, then stamps the version into the TOC and
   `core.lua` of the runner's copy only. Nothing is committed. `core.lua` gets the short form
-  (`0.2.9-nightly`) because the upload intake accepts at most 20 characters in `addonVersion`.
+  (`0.3.1-nightly`) because the upload intake accepts at most 20 characters in `addonVersion`.
 - Assets: the addon zip and `SHA256SUMS`. A knowledge-base release is not attached: building one
   needs the 600 MB wiki dump, which is not cheap in CI.
 - The notes are GitHub's generated list since the previous nightly (or the last stable tag).

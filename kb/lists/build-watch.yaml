@@ -1,0 +1,9 @@
+# Which Blizzard products the build watch follows (docs/BUILD_WATCH.md).
+# `live` is true once players can play the product; until then everything read from it is a spoiler
+# (docs/DATA_POLICY.md). Product ids are Blizzard's; find one with `npm run kb -- builds-check`.
+region: us
+products:
+  - product: wow_classic_beta
+    label: WoW Forever beta
+    live: false
+  # Add the live product here, with `live: true`, when Blizzard's version service lists it.

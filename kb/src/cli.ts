@@ -12,6 +12,8 @@ import { writeCatalogs } from "./client-catalog.js";
 import { writeWorldMapData } from "./world-map-data.js";
 import { clientSnapshotName, writeClientSnapshot } from "./client-snapshot.js";
 import { diffRaidBuffs, RaidBuffTable } from "./raid-buffs.js";
+import { parseArgs } from "./args.js";
+import { buildWatchCommand } from "./build-watch/command.js";
 import type { Game, NsKind, Region } from "./blizzard/namespaces.js";
 import { openDb, openExistingReadOnlyDb, type DB } from "./db.js";
 import { importCurated } from "./importers/curated.js";
@@ -75,6 +77,10 @@ const USAGE = `usage: npm run kb -- <command> --db <path>
   client-map <snapshot.sqlite> [--out ../web/src/data/game-data/map.json]
     (zone rectangles in world coordinates, continents and dungeon and raid entrances from a client
     snapshot, for the world map page. Game file data, stamped with the build. See docs/DATA_POLICY.md)
+  build-watch [--product id] [--dry-run] [--check] [--redo] [--force] [--root ..] [--out data/build-watch/out]
+    (notices a new game build, regenerates the committed game data and prepares a pull request body and
+    a changelog entry; the scheduled workflow opens the PR. --dry-run writes only under --out and changes
+    nothing else. --check only says whether there is work. See docs/BUILD_WATCH.md)
   audit-sources <file.sqlite...>   (rows per source and cached API rows in each file; exits 1 if anything
     is not publishable)
 
@@ -116,13 +122,7 @@ function closeOnExit(db: DB): void {
 
 async function main(): Promise<number> {
   const [cmd, ...rest] = process.argv.slice(2);
-  const flags = new Map<string, string>();
-  const args: string[] = [];
-  for (let i = 0; i < rest.length; i++) {
-    if (rest[i] === "--refresh" && (rest[i + 1] === undefined || rest[i + 1].startsWith("--"))) flags.set("refresh", "");
-    else if (rest[i].startsWith("--")) flags.set(rest[i].slice(2), rest[++i] ?? "");
-    else args.push(rest[i]);
-  }
+  const { flags, args } = parseArgs(rest);
   if (existsSync(".env")) process.loadEnvFile(".env");
   let opened: DB | undefined;
   const db = () => (opened ??= openDb(flags.get("db") ?? "data/everloot-kb.sqlite"));
@@ -344,6 +344,8 @@ async function main(): Promise<number> {
       console.log(`${changes.length} changed`);
       return 0;
     }
+    case "build-watch":
+      return buildWatchCommand(flags);
     case "audit-sources": {
       if (!args.length) break;
       let clean = true;

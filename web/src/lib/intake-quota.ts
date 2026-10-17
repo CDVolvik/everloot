@@ -75,6 +75,26 @@ export function createIntakeQuota(opts: {
       if (env.EVERLOOT_MCP_QUOTA_SCOPE === "mcp") return consume("mcp", clientIp(req));
       return consume("request", `mcp:${clientIp(req)}`);
     },
+    /**
+     * Market prices: its own per-IP bucket, on the same scope rules as the public MCP, so a price
+     * poller cannot use up an upload allowance. The CDN answers repeats; this counts the misses.
+     */
+    async market(req: Request) {
+      if (env.EVERLOOT_MCP_QUOTA_SCOPE === "mcp") return consume("mcp", `market:${clientIp(req)}`);
+      return consume("request", `market:${clientIp(req)}`);
+    },
+    /**
+     * A keyed hash of the upload address, for the market's one-voice-per-address rule. The address
+     * itself is never stored; the hash lives only in the private upload object and is never published.
+     * Undefined when no trusted address is available.
+     */
+    reporter(req: Request): string | undefined {
+      try {
+        return createHmac("sha256", secret || "everloot-dev-reporter").update(`reporter:${clientIp(req)}`).digest("hex").slice(0, 16);
+      } catch {
+        return undefined;
+      }
+    },
     install(installId: string) { return consume("install", installId); },
     async prune() {
       if (!url || !secret) {

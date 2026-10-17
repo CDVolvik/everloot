@@ -1,13 +1,15 @@
 # addon/: the Everloot collector
 
 The in-game addon for WoW: Forever. It records what you see while you play (sightings, loot
-windows, vendors, auction listings you browse, recipes, trainers, your own gold, the world
-position of each zone you enter) into its SavedVariables file, and shows `/ask` answers from the
-companion. It uses only the game's addon API and never plays the character. Records match the
-site's intake contract (`web/src/lib/intake.ts`) field for field.
+windows, vendors, full auction-house scans you start, recipes, trainers, your own gold, the world
+position of each zone you enter) into its SavedVariables file, shows `/ask` answers from the
+companion, and adds auction prices to item tooltips. It uses only the game's addon API and never
+plays the character. Records match the site's intake contract (`web/src/lib/intake.ts`) field for
+field.
 
-**Status:** 0.2.8 beta. The automated contract tests pass; the in-client checks in
-`docs/2026-10-08-beta-client-checklist.md` are still open.
+**Status:** 0.3.0 beta. The automated contract tests pass; the in-client checks in
+`docs/2026-10-08-beta-client-checklist.md` are still open, and the full scan
+(`docs/design/specs/2026-10-16-forever-market-design.md`) has not run in the Forever client.
 
 ## Run it
 
@@ -17,9 +19,15 @@ Download the zip from everloot.app/upload, or build it from the repository root:
 
 That writes `web/public/downloads/Everloot-<version>.zip`. Extract `Everloot/` into the Forever
 client's `Interface/AddOns/`, `/reload`, then run `/everloot status`. Auction capture is off until
-`/everloot auctions on`. The list of your installed addons is off until `/everloot addons on`;
-it is sent only from the upload page, after its preview. `/everloot addons off` stops it and
-deletes every recorded addon row.
+`/everloot auctions on`. Then, at the auction house, click **Everloot scan** (or type
+`/everloot scan`) for a full scan: at most one every 15 minutes, read in chunks, summarised per item,
+and the last three scans per realm kept. Nothing scans without that click. The list of your
+installed addons is off until `/everloot addons on`; it is sent only from the upload page, after
+its preview. `/everloot addons off` stops it and deletes every recorded addon row.
+
+A scan that gets no answer from the auction house in 30 seconds stops and gives the cooldown back.
+Tooltip prices show the date the companion last fetched them and flag them as stale after two days.
+Nothing in the addon calls a buy, bid or post API; `addon/tests/market_contract.py` traps them.
 
 ## Talents, selftest and the plan panel
 
@@ -74,6 +82,7 @@ The contract tests run the Lua in real Lua 5.1 through `lupa`:
     python addon/tests/answers_contract.py
     python addon/tests/addons_contract.py
     python addon/tests/mapbounds_contract.py
+    python addon/tests/market_contract.py
     python addon/tests/talents_contract.py
     python addon/tests/plan_contract.py
     python addon/tests/raid_contract.py
@@ -91,7 +100,7 @@ addon/
 │   ├── openworld.lua   target/mouseover sightings, loot windows, merchant windows
 │   ├── guild.lua       roster, attendance, saved lockouts (published only through an officer)
 │   ├── gear.lua        equipped item level sample, at most once an hour
-│   ├── auctions.lua    per-unit buyouts from a list you opened; off until enabled
+│   ├── auctions.lua    full auction-house scans you start (Forever); listed buyouts on older clients; off until enabled
 │   ├── gold.lua        your own gold: loot, quests, vendors, flights, mailed auction sales, postage, buyouts
 │   ├── professions.lua recipe colours at your rank; required rank and cost from trainer windows
 │   ├── ask.lua         /ask stores a question; the companion's answers show after /reload
@@ -101,7 +110,8 @@ addon/
 │   ├── selftest.lua    /everloot selftest and /everloot talents
 │   ├── plan.lua        share code reader and the display-only plan panel
 │   ├── raid_data.lua   raid buff list generated from web/src/data/game-data/raid-*.json
-│   └── raid.lua        /everloot raid: buffs missing per group, and a raid share code; display only
+│   ├── raid.lua        /everloot raid: buffs missing per group, and a raid share code; display only
+│   └── prices.lua      item tooltips: your latest scan and the companion's community prices
 └── tests/              Lua 5.1 contract tests and their fixtures
 ```
 

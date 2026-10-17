@@ -29,6 +29,9 @@ export function mergeCorpus(previous: CorpusState | undefined, raw: readonly unk
   let legacyRecords = previous?.legacyRecords ?? 0;
   for (const e of previous?.events ?? []) events.set(eventKey(e.record), e);
   for (const parsed of parseRecords(raw).records) {
+    // Full scans are thousands of items each; the market rollup (kb/src/market.ts) reads them from
+    // the uploads, so the corpus every page loads does not grow with them.
+    if (parsed.kind === "auction_snapshot") continue;
     const row = { ...parsed };
     // Old SavedVariables may contain a placeholder or secret. Neither is a public fact.
     if ("claimToken" in row) delete row.claimToken;

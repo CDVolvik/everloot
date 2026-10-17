@@ -49,6 +49,12 @@ test("installed addon lists never leave row by row; only the leaderboard's count
   expect(asked.status).toBe(400);
 });
 
+test("auction scans are not corpus records, so asking for them is refused", async () => {
+  const response = await GET(req("?kinds=auction_snapshot"));
+  expect(response.status).toBe(400);
+  expect(store.loadCorpus).not.toHaveBeenCalled();
+});
+
 test("talent builds are held back from the public corpus", async () => {
   const build = { ...base, eventId: "e:4", kind: "talent_snapshot", class: "MAGE", level: 30, group: 1, active: true, configId: 7, treeId: 786, exportStatus: "unavailable", points: 1, nodes: [{ nodeId: 1, ranks: 1 }] };
   store.loadCorpus.mockResolvedValue({ uploads: 1, records: [gold, build] });
@@ -66,6 +72,6 @@ test("a kind that is not on the allowlist is never returned, filtered or not", a
 });
 
 test("every record kind is either on the allowlist or named private here", () => {
-  const privateKinds = ["addon_seen", "talent_snapshot"];
+  const privateKinds = ["addon_seen", "talent_snapshot", "auction_snapshot"];
   expect([...PUBLIC_RECORD_KINDS, ...privateKinds].sort()).toEqual([...ALL_RECORD_KINDS].sort());
 });

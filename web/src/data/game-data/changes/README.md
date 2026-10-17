@@ -1,0 +1,58 @@
+# Build watch output
+
+What the build watch ([docs/BUILD_WATCH.md](../../../../../docs/BUILD_WATCH.md)) writes here and beside
+this folder. The rules for every file in `web/src/data/game-data/` (Blizzard's data, not under our
+licence, labelled unconfirmed, no tooltip text) are in [../README.md](../README.md) and
+[docs/DATA_POLICY.md](../../../../../docs/DATA_POLICY.md).
+
+Anything from a build players cannot play yet is marked `spoiler`. Encrypted blocks are skipped and
+counted, never decrypted. Column names come from [WoWDBDefs](https://github.com/wowdev/WoWDBDefs)
+(CC BY-SA 4.0).
+
+## Layout
+
+The build watch writes no folder of its own. A new build's pull request replaces the files the site reads
+(see [../README.md](../README.md)): `talents/<class>.json`, `raid-<build>.json` (and removes the old one),
+`map.json`, `addon/modules/raid_data.lua`, and the import in `raid.ts`. It also writes two files of its own:
+
+```
+web/src/data/game-data/
+  spell-values.json                  numbers of the spells talents show: effects, duration, a hash of the tooltip
+                                     (everloot.spell-values/1; one spell per line; no tooltip text)
+  changes/<product>-<buildId>.json   one changelog entry per build
+```
+
+`spell-values.json` is the comparison baseline for spell number changes, since the trimmed talent files
+leave those numbers out.
+
+## Changelog entries
+
+Shape: `ChangeEntry` in `kb/src/build-watch/changes.ts` (zod; schema string `everloot.game-changes/1`,
+bumped when the shape changes). The site's `/changes` timeline reads the files in `changes/`: sort by
+`detectedAt`, hide entries and items with `spoiler: true` unless the reader turned spoilers on.
+
+```
+ChangeEntry {
+  schema, label, id ("<product>-<buildId>"), product
+  live             false for a beta; then every item below is a spoiler
+  spoiler          same as !live
+  detectedAt       ISO time the build was read
+  build, previous  { version, buildId, buildConfig }; previous is null for the first entry
+  initial          first entry of a product: a baseline, no changes listed
+  encryptedBlocks  { total, tables: [{ table, blocks }] }
+  source           { definitions (WoWDBDefs commit), library, extractedAt }
+  catalog          { classes, nodes } after this build
+  talents          null when initial; otherwise lists of
+                     classesAdded, classesRemoved (classId, className, spoiler), added, removed, moved, ranks, gates, prereqs,
+                     replaced, spellValues, pointLevels
+                   each item: classId, className, tree, nodeId, name, spoiler, and the before/after
+  raidBuffs        { comparedTo (version of the raid file compared with),
+                     scopeChanges: [{ id, label, before, after, beforeRanks, afterRanks, spoiler }],
+                     spellChanges: [{ id, label, spellId, name, change, spoiler }] }
+  mapChanges       null when initial; [{ kind (continent|zone|entrance), id, name, change, spoiler }]
+  warnings
+}
+```
+
+A hotfix that changes no build does not change the game files, so it never appears here. The blue
+tracker covers hotfixes.

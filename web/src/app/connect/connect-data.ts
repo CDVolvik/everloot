@@ -19,6 +19,7 @@ export const MCP_TOOLS: readonly { name: string; text: string }[] = [
   { name: "collection_gap", text: "What one install is missing from a collection, such as Mounts." },
   { name: "guild_board", text: "A guild's roster, bosses, loot and attendance, from officer uploads." },
   { name: "auction_history", text: "Daily median auction price for one item on one realm." },
+  { name: "market_value", text: "Market value, minimum buyout, historical value and units listed for one item on one realm, from full scans players started." },
   { name: "gold_ledger", text: "Peak gold and money events for one character, from that player's own upload." },
   { name: "recent_changes", text: "Recent Blizzard staff posts, hotfixes and new game builds, newest first, with links to the originals." },
   { name: "everloot_plan", text: "What is built, what is next and what is waiting. Read it before assuming a tool exists." },
