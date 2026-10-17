@@ -61,6 +61,9 @@ The rules:
 
 - **Only from unencrypted files** in the public client, read the same way as above. Nothing that
   needs a key.
+- **Extracted by a maintainer, kept out of git.** A maintainer extracts them from the local game
+  client and uploads them to Everloot's asset storage with a build-stamped manifest. They are
+  never committed to the git repository.
 - **Stamped with the build** they came from, on the page and in the file name or manifest.
 - **Still Blizzard's.** We do not relicense them. They sit outside our CC BY-SA 4.0 data and our
   AGPL-3.0 code, and each page that shows them says so. The licence notes of every release file
@@ -153,6 +156,8 @@ of these holds:
   else stays local and is marked not publishable; the release build refuses it.
 - The one exception is the game file layer described above. That data is Blizzard's, so it never
   enters the CC BY-SA release; once publishing ships, it reaches the site only as its own labelled
-  layer, after a maintainer has reviewed it. Icons, tooltip text and frame textures never go into
-  a pull request's data files; they are read from the client at build time.
+  layer, after a maintainer has reviewed it. Icons, tooltip text and frame textures are never
+  committed to the git repository, so a pull request must not include them. A maintainer extracts
+  them from the local game client and uploads them to Everloot's asset storage with a
+  build-stamped manifest.
 - If you are unsure whether a source is allowed, open an issue first.
