@@ -19,13 +19,13 @@ export default async function DropsPage() {
   return (
     <article className="space-y-8 max-w-4xl">
       <header className="space-y-3">
-        <p className="uppercase tracking-[0.2em] text-xs text-gold-500/80">
+        <p className="font-mono text-xs text-muted">
           {stats.unreachable ? "Storage unreachable" : `${stats.lootWindows} windows · ${live.length + zeros.length} public frequencies · ${dataAgeLabel(stats.dataAsOf)}`}
         </p>
-        <h1 className="font-display text-3xl sm:text-4xl font-bold text-parchment-100 tracking-tight">
+        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">
           Forever loot observations
         </h1>
-        <p className="text-parchment-100/75 max-w-2xl">
+        <p className="text-fg-2 max-w-2xl">
           Frequency means item observations divided by recorded, source-attributed loot windows.
           A loot window is not a verified kill, so this is not kill-based drop probability.
           Public frequencies require source observations from 3 install IDs; those IDs do
@@ -34,20 +34,20 @@ export default async function DropsPage() {
       </header>
 
       {stats.unreachable ? (
-        <p className="text-parchment-100/75">{STORAGE_UNREACHABLE}</p>
+        <p className="text-fg-2">{STORAGE_UNREACHABLE}</p>
       ) : live.length + zeros.length === 0 ? (
-        <div className="rounded-xl border border-parchment-100/10 bg-parchment-900 p-8 text-center">
-          <p className="text-parchment-100/80">No public frequencies yet. Source observations from 3 install IDs are required.</p>
-          <p className="mt-1 text-sm text-parchment-100/60">
+        <div className="rounded-xl border border-line bg-panel p-8 text-center">
+          <p className="text-fg-2">No public frequencies yet. Source observations from 3 install IDs are required.</p>
+          <p className="mt-1 text-sm text-muted">
             Be the first source — run the addon and send data on the{" "}
-            <Link href="/upload" className="text-gold-400 hover:underline underline-offset-4">upload page</Link>.
+            <Link href="/upload" className="text-accent hover:underline underline-offset-4">upload page</Link>.
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-parchment-100/10">
+        <div className="overflow-x-auto rounded-xl border border-line">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-parchment-900 text-xs uppercase tracking-wider text-parchment-100/60 text-left">
+              <tr className="bg-panel text-xs font-mono text-muted text-left">
                 <th className="px-4 py-3">Item</th>
                 <th className="px-4 py-3">Source</th>
                 <th className="px-4 py-3 text-right">Loot windows</th>
@@ -58,9 +58,9 @@ export default async function DropsPage() {
             </thead>
             <tbody>
               {live.map((r) => (
-                <tr key={`${r.sourceNpcId ?? r.sourceObjectId}-${r.itemId}`} className="border-t border-parchment-100/10 bg-parchment-900 text-parchment-100/85">
+                <tr key={`${r.sourceNpcId ?? r.sourceObjectId}-${r.itemId}`} className="border-t border-line bg-panel text-fg">
                   <td className="px-4 py-3">
-                    <Link href={`/database/items/${r.itemId}`} className="text-gold-400 hover:underline underline-offset-4">
+                    <Link href={`/database/items/${r.itemId}`} className="text-accent hover:underline underline-offset-4">
                       Item #{r.itemId}
                     </Link>
                   </td>
@@ -74,7 +74,7 @@ export default async function DropsPage() {
                 </tr>
               ))}
               {zeros.map((z) => (
-                <tr key={`zero-${z.sourceNpcId ?? "o"}-${z.sourceObjectId ?? "n"}`} className="border-t border-parchment-100/10 bg-parchment-900 text-parchment-100/85">
+                <tr key={`zero-${z.sourceNpcId ?? "o"}-${z.sourceObjectId ?? "n"}`} className="border-t border-line bg-panel text-fg">
                   <td className="px-4 py-3">No items observed</td>
                   <td className="px-4 py-3">
                     {z.sourceNpcId !== undefined ? `NPC #${z.sourceNpcId}` : `Object #${z.sourceObjectId}`}

@@ -37,14 +37,14 @@ export default async function GuildFamilyPage(props: { params: Promise<{ slug: s
   return (
     <article className="space-y-10 max-w-4xl">
       <header className="space-y-3">
-        <p className="uppercase tracking-[0.2em] text-xs text-gold-500/80">
+        <p className="font-mono text-xs text-muted">
           WoW: Forever · guild family
         </p>
-        <h1 className="font-display text-3xl sm:text-4xl font-bold text-parchment-100 tracking-tight">
+        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">
           {family.name}
         </h1>
-        <p className="text-parchment-100/75 max-w-2xl">{family.summary}</p>
-        <p className="text-sm text-parchment-100/60 max-w-2xl">
+        <p className="text-fg-2 max-w-2xl">{family.summary}</p>
+        <p className="text-sm text-muted max-w-2xl">
           A guild hall can list its own members and say how it knows. This page does that
           for the whole family. Each row is someone else&apos;s published sentence, with the
           page and the date beside it.
@@ -56,15 +56,15 @@ export default async function GuildFamilyPage(props: { params: Promise<{ slug: s
       <FactTable title="Names sighted" caption="A public page named a guild. That is not a member list." rows={sightings} />
 
       <section className="space-y-3">
-        <h2 className="font-display text-2xl text-parchment-100">Battle.net guild profile</h2>
-        <p className="text-sm text-parchment-100/75 max-w-2xl">
+        <h2 className="text-2xl text-fg">Battle.net guild profile</h2>
+        <p className="text-sm text-fg-2 max-w-2xl">
           The same columns, filled by Blizzard&apos;s guild API the day Forever has a namespace.
           Checked {api.checked}: retail guild profile and Classic Era both answered from the
           client we already have. Guessed Forever namespaces were refused. The open question is
           on{" "}
           <a
             href={api.forumUrl}
-            className="text-gold-400 hover:underline underline-offset-4"
+            className="text-accent hover:underline underline-offset-4"
           >
             Blizzard&apos;s API forum
           </a>
@@ -79,9 +79,9 @@ export default async function GuildFamilyPage(props: { params: Promise<{ slug: s
         </dl>
       </section>
 
-      <p className="text-sm text-parchment-100/60">
+      <p className="text-sm text-muted">
         Progression, roster, and loot from officer uploads are on the{" "}
-        <Link href="/tools/guild-board" className="text-gold-400 hover:underline underline-offset-4">
+        <Link href="/tools/guild-board" className="text-accent hover:underline underline-offset-4">
           guild board
         </Link>
         . A guild the public web has not mentioned is left off this page.
@@ -92,9 +92,9 @@ export default async function GuildFamilyPage(props: { params: Promise<{ slug: s
 
 function ApiStat({ label, value }: { label: string; value: "answers" | "refused" }) {
   return (
-    <div className="rounded-xl border border-parchment-100/10 bg-parchment-900 p-4">
-      <dt className="text-xs uppercase tracking-wider text-parchment-100/50">{label}</dt>
-      <dd className="mt-1 font-display text-lg text-parchment-100">
+    <div className="rounded-xl border border-line bg-panel p-4">
+      <dt className="text-xs font-mono text-muted">{label}</dt>
+      <dd className="mt-1 text-lg text-fg">
         {value === "answers" ? "Answers" : "Refused"}
       </dd>
     </div>
@@ -105,13 +105,13 @@ function FactTable({ title, caption, rows }: { title: string; caption: string; r
   return (
     <section className="space-y-3">
       <div>
-        <h2 className="font-display text-2xl text-parchment-100">{title}</h2>
-        <p className="text-sm text-parchment-100/60">{caption}</p>
+        <h2 className="text-2xl text-fg">{title}</h2>
+        <p className="text-sm text-muted">{caption}</p>
       </div>
-      <div className="overflow-x-auto rounded-xl border border-parchment-100/10">
+      <div className="overflow-x-auto rounded-xl border border-line">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-parchment-900 text-xs uppercase tracking-wider text-parchment-100/60 text-left">
+            <tr className="bg-panel text-xs font-mono text-muted text-left">
               <th className="px-4 py-3">What was published</th>
               <th className="px-4 py-3">Figure</th>
               <th className="px-4 py-3">Source</th>
@@ -120,17 +120,17 @@ function FactTable({ title, caption, rows }: { title: string; caption: string; r
           </thead>
           <tbody>
             {rows.map((fact) => (
-              <tr key={fact.id} className="border-t border-parchment-100/10 bg-parchment-900 align-top text-parchment-100/85">
+              <tr key={fact.id} className="border-t border-line bg-panel align-top text-fg">
                 <td className="px-4 py-3 max-w-md">
-                  <span className="text-[10px] uppercase tracking-wider text-gold-500/80">
+                  <span className="text-[10px] font-mono text-muted">
                     {KIND_LABEL[fact.kind]}
                     {fact.guild ? ` · ${fact.guild}` : ""}
                   </span>
                   <p className="mt-1">{fact.statement}</p>
                 </td>
-                <td className="px-4 py-3 whitespace-nowrap tabular-nums text-gold-400">{figureLabel(fact)}</td>
+                <td className="px-4 py-3 whitespace-nowrap tabular-nums text-accent">{figureLabel(fact)}</td>
                 <td className="px-4 py-3">
-                  <a href={fact.url} className="text-gold-400 hover:underline underline-offset-4">
+                  <a href={fact.url} className="text-accent hover:underline underline-offset-4">
                     {fact.sourceName}
                   </a>
                 </td>
