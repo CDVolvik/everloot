@@ -6,7 +6,7 @@ export interface Answer { id: string; answer: string; source: string; answeredAt
 
 export const ANSWERS_ADDON = "EverlootAnswers";
 // Same interface number as addon/Everloot.toc, so the client loads both without "out of date".
-const INTERFACE = "70058";
+export const INTERFACE = "70058";
 
 /** The slot addon the client loads on /reload: a TOC and one data file the main addon reads. */
 export function renderAnswersAddon(answers: Answer[]): { toc: string; lua: string } {

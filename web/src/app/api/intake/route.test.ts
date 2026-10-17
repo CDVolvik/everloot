@@ -5,8 +5,8 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
  * accepted records, and it must never report a receipt the store did not write.
  */
 
-const store = vi.hoisted(() => ({ putUpload: vi.fn(), lookup: vi.fn(), requestQuota: vi.fn(), installQuota: vi.fn() }));
-vi.mock("@/lib/intake-quota", () => ({ intakeQuota: { request: store.requestQuota, install: store.installQuota } }));
+const store = vi.hoisted(() => ({ putUpload: vi.fn(), lookup: vi.fn(), requestQuota: vi.fn(), installQuota: vi.fn(), reporter: vi.fn() }));
+vi.mock("@/lib/intake-quota", () => ({ intakeQuota: { request: store.requestQuota, install: store.installQuota, reporter: store.reporter } }));
 
 vi.mock("@/lib/upload-store", () => ({
   sharingStore: { lookup: store.lookup },
@@ -53,6 +53,7 @@ async function freshPost() {
 beforeEach(() => {
   store.requestQuota.mockReset().mockResolvedValue({ allowed: true, retryAfter: 0 });
   store.installQuota.mockReset().mockResolvedValue({ allowed: true, retryAfter: 0 });
+  store.reporter.mockReset().mockReturnValue("0123456789abcdef");
   store.putUpload.mockReset();
   store.putUpload.mockResolvedValue(true);
   store.lookup.mockReset();
@@ -176,6 +177,46 @@ describe("POST /api/intake", () => {
       expect(response.status).toBe(503);
       expect(await response.json()).toMatchObject({ ok: false });
     }
+    expect(store.putUpload).not.toHaveBeenCalled();
+  });
+});
+
+describe("auction scans in an upload", () => {
+  const part = (realm: string, i = 0) => ({
+    kind: "auction_snapshot", installId: "install-1234", capturedAt, realm, scanId: `scan-${realm.length}-${i}`.replace(/\W/g, "-"),
+    part: 1, parts: 1, items: [[2589, 1, 10, 5, 5]],
+  });
+
+  test("the stored upload carries the keyed hash of the upload address, never one sent in the body", async () => {
+    const POST = await freshPost();
+    const response = await POST(request({ addonVersion: "0.3.0", reporter: "ffffffffffffffff", records: [part("Forever")] }));
+    expect(response.status).toBe(200);
+    const stored = store.putUpload.mock.calls[0]![2];
+    expect(stored.reporter).toBe("0123456789abcdef");
+    expect(JSON.stringify(stored)).not.toContain("ffffffffffffffff");
+  });
+
+  test("uploads without scans are not tagged with a reporter", async () => {
+    const POST = await freshPost();
+    await POST(request({ addonVersion: "0.3.0", records: [loot("install-1234")] }));
+    expect(store.putUpload.mock.calls[0]![2]).not.toHaveProperty("reporter");
+    expect(store.reporter).not.toHaveBeenCalled();
+  });
+
+  test("one upload may carry scans from at most 3 realms; the rest are rejected with a reason", async () => {
+    const POST = await freshPost();
+    const realms = ["Aaa", "Bbb", "Ccc", "Ddd", "Aaa"];
+    const response = await POST(request({ addonVersion: "0.3.0", records: realms.map((r, i) => part(r, i)) }));
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.accepted.map((a: { index: number }) => a.index)).toEqual([0, 1, 2, 4]);
+    expect(body.rejected).toEqual([{ index: 3, reason: expect.stringContaining("at most 3 realms") }]);
+  });
+
+  test("a realm that is not a plain name is rejected at intake", async () => {
+    const POST = await freshPost();
+    const response = await POST(request({ addonVersion: "0.3.0", records: [part("visit scam.example")] }));
+    expect(response.status).toBe(422);
     expect(store.putUpload).not.toHaveBeenCalled();
   });
 });

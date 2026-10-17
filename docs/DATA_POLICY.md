@@ -21,6 +21,11 @@ exception to public records: they are never published row by row, only as counts
 at least three installs report. Guild data is published only through an officer's
 upload, and named records only with that person's sharing choice.
 
+Full auction scans are not public records either. They feed market values only, and a value is
+published when three distinct reporters scanned the item. For that count, an upload containing a scan
+is stored with a keyed hash of the address it came from (never the address itself). The hash stays in
+private storage and is never published.
+
 Blizzard hides some WoW: Forever item details until an item drops, and runs no public test realm.
 Game files show what exists; play shows what is real. Everloot keeps the two apart and says which
 is which.

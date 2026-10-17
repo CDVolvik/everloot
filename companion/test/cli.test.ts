@@ -7,7 +7,7 @@ test("arguments name a command, a file or a game folder, and an endpoint", () =>
     .toEqual({ command: "watch", game: "C:/Games/WoW", endpoint: "http://localhost:3000" });
   expect(parseArgs(["upload", "--file", "x", "--state", "s.json"]).state).toBe("s.json");
   expect(() => parseArgs(["upload"])).toThrow(/--file or --game/);
-  expect(() => parseArgs(["dance", "--file", "x"])).toThrow(/upload, watch or bridge/);
+  expect(() => parseArgs(["dance", "--file", "x"])).toThrow(/upload, watch, bridge or prices/);
   expect(() => parseArgs(["upload", "--file", "x", "--endpoint", "ftp://nope"])).toThrow(/http/);
 });
 
@@ -43,4 +43,9 @@ test("before sending, the companion says how uploads are licensed and where the 
   const notice = uploadNotice();
   expect(notice).toContain("Uploaded observations are published under CC BY-SA 4.0, credited to Everloot contributors.");
   expect(notice).toContain("Source: https://github.com/CDVolvik/everloot");
+});
+
+test("prices needs the game folder, because it writes the slot addon there", () => {
+  expect(parseArgs(["prices", "--game", "C:/WoW"])).toEqual({ command: "prices", game: "C:/WoW", endpoint: "https://everloot.app" });
+  expect(() => parseArgs(["prices", "--file", "x.lua"])).toThrow(/prices needs --game/);
 });
