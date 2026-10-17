@@ -24,9 +24,11 @@ const nextConfig = {
     return [{ source: "/lore/:type(npcs|items|quests|zones|spells)", destination: "/lore/browse/:type" }];
   },
   // One page, one URL: the internal route name is never a second address. Redirects match the
-  // original URL, so this does not loop with the rewrite above.
+  // original URL, so this does not loop with the rewrite above. The source is constrained to the
+  // five real types so an unknown /lore/browse/<type> 404s directly instead of a permanent
+  // redirect out of the internal route.
   async redirects() {
-    return [{ source: "/lore/browse/:type", destination: "/lore/:type", permanent: true }];
+    return [{ source: "/lore/browse/:type(npcs|items|quests|zones|spells)", destination: "/lore/:type", permanent: true }];
   },
   webpack(config, { isServer }) {
     // kb/src/db.ts would otherwise resolve better-sqlite3 through kb/node_modules and bundle it.

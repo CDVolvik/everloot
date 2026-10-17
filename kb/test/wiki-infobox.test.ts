@@ -111,3 +111,14 @@ test("plainValue strips links, renders name templates, removes other templates a
 test("a stray opening brace before the infobox does not hide it", () => {
   expect(extractInfobox("{{ stray\n{{npcbox|name=Roach}}")?.fields).toEqual({ name: "Roach" });
 });
+
+test("an infobox nested inside a closed non-infobox template stays hidden", () => {
+  expect(extractInfobox("{{reflist|{{npcbox|name=Roach}}}}")).toBeNull();
+});
+
+test("a page full of stray opening braces stays linear", () => {
+  const pathological = "a{{b ".repeat(20_000);
+  const started = performance.now();
+  expect(extractInfobox(pathological)).toBeNull();
+  expect(performance.now() - started).toBeLessThan(2000);
+});

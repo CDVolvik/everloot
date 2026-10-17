@@ -46,6 +46,29 @@ function closeOf(text: string, start: number): number {
   return -1;
 }
 
+/**
+ * Every `{{` that has a matching `}}`, in text order, with the index just past its `}}`. Pairing is
+ * the same greedy left-to-right counting as `closeOf`, done once so a page full of stray `{{`
+ * cannot turn extraction quadratic; `{{` left open at the end are simply absent.
+ */
+function templateCloses(text: string): { start: number; end: number }[] {
+  const opens: number[] = [];
+  const pairs: { start: number; end: number }[] = [];
+  for (let i = 0; i < text.length - 1; i++) {
+    const c = text.charCodeAt(i);
+    if (c === 0x7b && text.charCodeAt(i + 1) === 0x7b) {
+      opens.push(i);
+      i++;
+    } else if (c === 0x7d && text.charCodeAt(i + 1) === 0x7d) {
+      const start = opens.pop();
+      if (start !== undefined) pairs.push({ start, end: i + 2 });
+      i++;
+    }
+  }
+  pairs.sort((a, b) => a.start - b.start);
+  return pairs;
+}
+
 /** `{{Race|Human}}` → `Human`; `{{NPC||Jaina|icon=x}}` → `Jaina`; `{{item|epic|Thunderfury}}` → `Thunderfury`. */
 function renderNameTemplate(inner: string): string | null {
   const args = splitArgs(inner);
@@ -87,27 +110,28 @@ export function plainValue(wikitext: string): string {
 }
 
 export function extractInfobox(wikitext: string): Infobox | null {
-  let i = wikitext.indexOf("{{");
-  while (i >= 0) {
-    const end = closeOf(wikitext, i);
-    if (end < 0) { i = wikitext.indexOf("{{", i + 2); continue; } // a stray `{{`: keep looking past it
-    const inner = wikitext.slice(i + 2, end - 2);
+  const pairs = templateCloses(wikitext);
+  for (let idx = 0; idx < pairs.length; idx++) {
+    const { start, end } = pairs[idx];
+    const inner = wikitext.slice(start + 2, end - 2);
     const nameEnd = inner.search(/[|\n]/);
     const template = (nameEnd < 0 ? inner : inner.slice(0, nameEnd)).trim().toLowerCase();
-    if (INFOBOX_NAME.test(template)) {
-      const fields: Record<string, string> = {};
-      for (const arg of splitArgs(inner).slice(1)) {
-        const eq = arg.indexOf("=");
-        if (eq < 0) continue; // positional
-        const key = arg.slice(0, eq).trim().toLowerCase();
-        const value = plainValue(arg.slice(eq + 1)).slice(0, MAX_VALUE);
-        if (!key || !value) continue;
-        if (Object.keys(fields).length >= MAX_FIELDS) break;
-        fields[key] = value;
-      }
-      return { template, fields };
+    if (!INFOBOX_NAME.test(template)) {
+      // As in the original scanner: a template that is not an infobox hides the templates nested in it.
+      while (idx + 1 < pairs.length && pairs[idx + 1].start < end) idx++;
+      continue;
     }
-    i = wikitext.indexOf("{{", end);
+    const fields: Record<string, string> = {};
+    for (const arg of splitArgs(inner).slice(1)) {
+      const eq = arg.indexOf("=");
+      if (eq < 0) continue; // positional
+      const key = arg.slice(0, eq).trim().toLowerCase();
+      const value = plainValue(arg.slice(eq + 1)).slice(0, MAX_VALUE);
+      if (!key || !value) continue;
+      if (Object.keys(fields).length >= MAX_FIELDS) break;
+      fields[key] = value;
+    }
+    return { template, fields };
   }
   return null;
 }

@@ -205,9 +205,29 @@ test("a database with no typed rows gets no types or damaged keys in its manifes
   expect(manifest.types).toBeUndefined();
   expect(manifest.damaged).toBeUndefined();
   expect(manifest.facets).toBeUndefined();
+  expect(manifest.letters).toBeUndefined();
   const written = JSON.parse(readFileSync(join(dir, "release", "release.sqlite.manifest.json"), "utf8"));
   expect(written).not.toHaveProperty("types");
   expect(written).not.toHaveProperty("facets");
+  expect(written).not.toHaveProperty("letters");
+});
+
+test("the manifest lists the browse letters each page type has pages under", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "kb-snap-"));
+  const db = openDb(join(dir, "kb.sqlite"));
+  const row = (extId: string, name: string, data: Record<string, unknown>) => ({
+    kind: "lore_page" as const, extId, name, body: "Body text", gameVersion: "lore" as const,
+    sourceUrl: `https://example.test/${extId}`, retrievedAt: "2023-11-13", data,
+  });
+  await replaceSourceRows(db, "warcraft-wiki-2023", ["lore_page"], [
+    row("1", "Thrall", { type: "npc" }), row("2", "rexxar", { type: "npc" }), row("3", "'Ghost' Walker", { type: "npc" }),
+    row("4", "100 Gold", { type: "item" }), row("5", "Ashenvale", { type: "zone" }), row("6", "Zeppelin", {}),
+  ]);
+  const out = join(dir, "release", "release.sqlite");
+  const manifest = snapshot(db, out, new Date("2026-10-16T12:00:00Z"));
+  // a–z in order, then "#" for anything that does not start with a letter; case folds like the browse filter.
+  expect(manifest.letters).toEqual({ npc: ["r", "t", "#"], item: ["#"], zone: ["a"], other: ["z"] });
+  expect(JSON.parse(readFileSync(`${out}.manifest.json`, "utf8")).letters).toEqual(manifest.letters);
 });
 
 test("the manifest carries facet summaries for a typed release", async () => {
