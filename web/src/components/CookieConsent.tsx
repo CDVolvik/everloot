@@ -68,7 +68,7 @@ export default function CookieConsent({ adsenseClient }: { adsenseClient?: strin
 
   if (!visible) return null;
   return (
-    <section aria-labelledby="cookie-heading" className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[min(92%,640px)] z-50 rounded-xl border border-line bg-canvas p-4 shadow-xl" onKeyDown={(event) => { if (event.key === "Escape" && choice) close(); }}>
+    <section aria-labelledby="cookie-heading" className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[min(92%,640px)] z-50 rounded-xl border border-line bg-canvas p-4" onKeyDown={(event) => { if (event.key === "Escape" && choice) close(); }}>
       <h2 ref={heading} tabIndex={-1} id="cookie-heading" className="font-semibold text-fg">Cookie preferences</h2>
       <p className="mt-1 text-sm text-fg">
         Optional advertising loads only if you accept. No analytics service is currently enabled.
