@@ -1,0 +1,29 @@
+name: Wrong data
+description: A drop, price, vendor, recipe or lore page on everloot.app does not match the game.
+labels: ["data"]
+body:
+  - type: input
+    id: link
+    attributes:
+      label: Everloot page
+      placeholder: https://everloot.app/database/items/...
+    validations:
+      required: true
+  - type: textarea
+    id: shows
+    attributes:
+      label: What the page shows
+    validations:
+      required: true
+  - type: textarea
+    id: saw
+    attributes:
+      label: What you saw in the game
+      description: Please describe what you saw yourself in the game. Data copied from other sites cannot be used (see docs/DATA_POLICY.md).
+    validations:
+      required: true
+  - type: input
+    id: where
+    attributes:
+      label: Where
+      description: Zone, and coordinates if you have them.

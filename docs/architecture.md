@@ -1,58 +1,86 @@
-# Everloot service and data map
+# How Everloot fits together
 
-**Checked:** 2026-10-05. Current implementation is distinguished from proposed setup below. This records preparation, not provisioning or a new stack decision.
+Four parts share one repository: the **addon** collects what players see, the **site** publishes
+only corroborated facts, the **knowledge base** holds the lore and answers questions over MCP, and
+the **companion** uploads and runs the `/ask` bridge on the player's computer.
 
-## Current services
+## Where each thing lives
 
-| Responsibility | Current home | Verified state | Boundary |
-|---|---|---|---|
-| Public website and intake/waitlist API | Next.js `web/`, Vercel `everloot-web`, everloot.app | Public routes/read API answer; earlier production persistence evidence in status | `main` push = production; changes need preview/review |
-| Raw player uploads | R2 `everloot-uploads`, `uploads/<date>/<uuid>.json` | Storage implementation and prior end-to-end evidence; not rewritten in this closeout | Raw/named data must not become an unrestricted public endpoint |
-| Upload index and waitlist | Supabase `everloot` | Migration enables RLS; web uses server key | Waitlist and index are private; no browser service-role key |
-| Public web corpus | R2 `snapshots/corpus.json`, cron every 10 minutes | Live API reads 1 upload/1 record; unauthorized cron request rejected | Accepted-row filtering, idempotency, freshness and named-publication controls remain open |
-| Imported/reference KB | Local SQLite `kb/data/wowvault-kb.sqlite` | 257,111 total rows, validation passes | 2023 lore and curated facts are not unobserved Forever mechanics |
-| Publishable KB build | Dated SQLite snapshot + manifest under `kb/data/release/` | 10/05 artifact built; independent SHA-256 matches | Export allowlist excludes Blizzard API cache; attribution/licence retained |
-| MCP tools | Node `kb/src/mcp-server.ts`, HTTP handler on loopback | 13 tools authenticated locally; public HTTPS unmounted | Gameplay reader is still local `EVERLOOT_UPLOADS`; not cloud-connected |
-| Collector | `addon/`, SavedVariables | Code exists, no in-client proof in this assessment | Runtime accuracy, caps, event identity, officer authority and sharing are launch gates |
-| In-game answer/desktop bridge | Required launch track | No completed companion/uploader release verified | File bridge; answers do not play the character |
-
-## Target organization — recommendation to implement
-
-1. **Keep web on Vercel and current R2/Supabase storage.** No migration or second independent fact store is needed for server preparation.
-2. **Separate the public read model from raw/private data.** Ingest accepted canonical records; retain raw audit material privately if required. Derive public facts only after authority, corroboration and opt-out checks. Private named views and waitlist stay behind their own authorization boundary.
-3. **A supervised Node MCP service on a verified persistent host.** Run a pinned build of the same engines as the web, a filtered SQLite KB snapshot and a shared sanitized gameplay reader. Bind Node to loopback behind HTTPS termination; use a scoped service identity. Candidate hostname `mcp.everloot.app` is a proposal, not configured DNS.
-4. **One provenance/freshness vocabulary.** Record source/version/date, corpus generation, build/hash, coverage and unreachable/stale status in both channels. Web and MCP must answer the same question from the same trusted dataset.
-5. **Separate environments and credentials.** Preview/staging fixtures cannot contaminate production corpus. MCP should read only public outputs and must not get the web's unrestricted R2 write or Supabase service-role access to waitlist/raw named data.
-6. **Restart and recovery are part of setup.** Supervision, request byte/time/concurrency limits, validated configuration, logs excluding secrets/names, monitoring of snapshot age and a tested restore. Select hosting only after current native-library compatibility, capacity, cost and auth requirements are checked.
+| What | Code | Runs on |
+|---|---|---|
+| Collector addon | `addon/` | The player's WoW: Forever client; writes `SavedVariables/Everloot.lua` |
+| Companion | `companion/` | The player's computer, beside the game |
+| Site and APIs | `web/` | Vercel, at everloot.app; every merge to `main` deploys production |
+| Raw uploads | `web/src/lib/upload-store.ts` | Cloudflare R2 (`uploads/<date>/<id>.json`), indexed in Supabase |
+| Public corpus | `web/src/app/api/cron/snapshot` | A Vercel cron every 10 minutes extends `snapshots/corpus.json` in R2; pages read that one object |
+| Sessions, grants, quotas, waitlist | `supabase/` | Supabase Postgres, server-side only, row-level security on every table |
+| Knowledge release (lore) | `kb/` | Built offline into a SQLite file plus a hashed manifest, kept in R2, downloaded and checked at build time, read in process |
+| MCP server | `kb/src/mcp-server.ts`, mounted by `web/src/app/mcp/` | `/mcp` (bearer token) and `/mcp/public` (no sign-in, per-IP quota) on the site |
 
 ## Data paths
 
 ```text
-Addon SavedVariables
-  -> user preview + explicit sharing
-  -> bounded intake + canonical schema + event deduplication
-  -> private raw/index storage
-  -> authorized/corroborated/suppressed public facts
-  -> shared public reader -> web views and MCP tools
+Player plays
+  -> addon records events into SavedVariables
+  -> upload page (preview, sharing choices) or companion (anonymous events only)
+  -> /api/intake: quotas, schema checks, event deduplication
+  -> raw upload in R2, index row in Supabase
+  -> cron snapshot merges new events into the corpus
+  -> public read: named records only with a grant (kb/src/corpus.ts)
+  -> anonymous observations are public as records, without install ids (/api/corpus/public)
+  -> rollups: the site states a fact once at least three installs reported it (kb/src/drop-rollup.ts)
+  -> site pages and MCP gameplay tools
 
-Approved archive / original curated entries
-  -> explicit source SQLite -> validation
-  -> allowlisted filtered snapshot + SHA-256 manifest
-  -> hosted KB search with sources, licence, date and version
+Warcraft Wiki dump (CC BY-SA 4.0) + curated entries
+  -> kb import -> source database -> validate
+  -> snapshot: publishable sources only, sha256 manifest
+  -> R2 -> site build -> /lore, /search, MCP lore answers
 
-User's Blizzard API cache -> local user context only
-Waitlist / named private data -> authorized private path only
+/ask in game -> SavedVariables -> companion bridge -> MCP search (and an optional model)
+  -> EverlootAnswers addon file -> shown after /reload
 ```
 
-Arrows after validation/authority describe the target controls; current ingestion still stores original payloads and permits placeholder claims. Do not present this diagram as a completed security design.
+## Boundaries
 
-## Server launch gate
+- **Raw and named data stay private.** Raw uploads and the index are never served directly. The
+  public corpus holds sanitized anonymous observations, plus named records only with a grant.
+- **The knowledge release holds publishable sources only.** The build refuses Battle.net API rows
+  and any cached API response, and the site refuses a release that does not match its manifest.
+- **Credentials stay in Vercel.** Nothing in the repository holds a key; `.env.example` lists names.
+- **The addon and companion never touch the running game.** They use the addon API and the files
+  the game writes. See [`DATA_POLICY.md`](DATA_POLICY.md).
 
-- F01–F04/F13/F14/F20 repaired or explicitly gated: accepted-only facts, replay safety, publication authority, abuse controls, privacy/freshness and correct fail-closed DB selection.
-- Public snapshot's expected source counts/hash validated; no empty DB fallback or private-source leakage.
-- Actual target-client HTTPS/auth connection succeeds; generic local bearer tests do not establish ChatGPT directory or subscription compatibility.
-- Shared public gameplay reader agrees with the web on representative real records. Unconnected uploads produce an explicit unavailable state.
-- Restart, monitoring, restore and removal/suppression exercise succeeds.
-- Credentials, signing/companion/uploader and distribution remain their own checklist items.
+## Decisions, and why
 
-These acceptance checks came from the 2026-10-05 assessment.
+- **Free hosting only (Vercel, Supabase, Cloudflare R2).** A fan project before launch should cost
+  nothing to run. One Next.js app holds the pages, the APIs, the cron and the MCP endpoints, so
+  there is one deploy and one place to look when something breaks.
+- **Lore and MCP read one immutable SQLite file.** The knowledge release is built offline, hashed,
+  and read in process. No database server to run, and the site and the MCP server answer from the
+  same bytes. A new release is a new file, never an edit.
+- **A file bridge, never the game's memory or screen.** The addon writes its save file, and the
+  companion reads it and writes answers back as an addon file. That stays inside what Blizzard
+  tolerates for addons, and it is why answers appear only after `/reload`.
+- **The site states a fact only once three installs reported it.** Each one carries how many
+  installs reported it and when. One wrong upload cannot make the site state a fact; the anonymous
+  observations behind it stay public so anyone can check the count.
+
+## Known limits
+
+- Three installs are not proof of three people. An install ID cannot show that two installs
+  belong to different players.
+- Drop figures are shares of the loot windows players opened, not kill-based drop chances. A drop
+  rate goes public once three installs have looted its source, even if only one of them saw the
+  item drop.
+- The lore archive is the Warcraft Wiki as of 2023-11-13, with no Forever-specific lore until a
+  newer dump is allowed.
+- Blizzard's API has no WoW: Forever namespace yet, so character data comes only from the addon.
+- Addon 0.2.5 passes its automated tests but has not yet been checked in the live client.
+- The companion is an unsigned command-line tool.
+- The standalone MCP server (`kb/src/mcp-http-main.ts`) reads the public corpus URL, which has no
+  install ids, so it cannot corroborate on its own. Only the MCP endpoints on the site are deployed.
+- The knowledge release is several hundred megabytes inside a serverless function, so the first
+  lore request after a cold start takes a few seconds.
+
+Every source is recorded in [`sources/LEDGER.md`](sources/LEDGER.md). Design history is in
+`superpowers/specs/` and `superpowers/plans/`.
