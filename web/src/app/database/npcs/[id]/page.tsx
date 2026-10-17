@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { npcPage } from "../../../../../../kb/src/world-pages";
 import { computeRollups, loadWorldFacts } from "@/lib/rollup-compute";
 import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
+import { pinLink } from "@/lib/world-map";
 
 export const dynamic = "force-dynamic";
 
@@ -78,6 +79,7 @@ export default async function NpcPage(props: { params: Promise<{ id: string }> }
             {page.pins.map((pin) => (
               <li key={pin.mapId}>
                 Map {pin.mapId} at {pin.x}, {pin.y} · {pin.reporters} reporters
+                {pinLink(pin.mapId, pin.x, pin.y) && <>{" · "}<Link href={pinLink(pin.mapId, pin.x, pin.y)!} className="text-accent hover:underline underline-offset-4">Show on the map</Link></>}
               </li>
             ))}
           </ul>

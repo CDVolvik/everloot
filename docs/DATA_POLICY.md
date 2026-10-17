@@ -101,7 +101,7 @@ with the build it came from. Like the talent catalog, it may be shown on the sit
 a clearly marked game-data file in `web/src/data/game-data/`, with a README that says it is
 Blizzard's and outside our licence. It is labelled *found in game files, unconfirmed* until
 checked in game. General rule: new zones or other content found only in the game files stay hidden
-unless the reader turns spoilers on. A zone that looks unreleased is held back until it is live.
+unless the reader turns spoilers on. A zone that looks unreleased is held back until it is live: the file keeps it apart (`heldBackZones`), and `/map` draws it, dashed and labelled *found in game files, unconfirmed*, only when the reader turns the spoiler switch on (off by default). The public MCP tool leaves held-back zones out altogether.
 Maps carry no art here; map images would fall under the Blizzard rules above.
 
 **The raid buff table.** The raid builder at `/tools/raid` and its in-game view use our own table of

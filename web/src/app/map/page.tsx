@@ -1,29 +1,61 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { mapBoundsFromRecords } from "../../../../kb/src/map-bounds";
+import { allZones } from "../../../../kb/src/world-map-near";
+import { zoneToMap } from "../../../../kb/src/world-coords";
 import { STORAGE_UNREACHABLE, uploadStore } from "@/lib/upload-store";
 import { dataAgeLabel } from "@/lib/data-age";
-import { CONTINENTS, continentMap, MAP_SOURCE } from "@/lib/world-map";
+import { cameraOn, homeCamera, parseDeepLink, type MapItems } from "@/lib/map-view";
+import { CONTINENTS, continentMap, continentPins, MAP_SOURCE, observedFacts, WORLD_MAP } from "@/lib/world-map";
+import WorldMapView from "@/components/WorldMapView";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "World map",
-  description: "Zones and dungeon and raid entrances on one map of WoW: Forever, drawn from positions read in the game files. No game art.",
+  description: "Zones, dungeon and raid entrances and player-observed NPCs on one map of WoW: Forever, drawn from positions read in the game files. No game art.",
   alternates: { canonical: "/map" },
 };
 
-export default async function MapPage(props: { searchParams: Promise<{ continent?: string | string[] }> }) {
+type Query = { continent?: string | string[]; zone?: string | string[]; x?: string | string[]; y?: string | string[]; spoilers?: string | string[] };
+const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+
+export default async function MapPage(props: { searchParams: Promise<Query> }) {
   const searchParams = await props.searchParams;
-  const asked = Number(Array.isArray(searchParams.continent) ? searchParams.continent[0] : searchParams.continent);
-  const continentId = CONTINENTS.some((c) => c.id === asked) ? asked : 0;
+  // Held-back zones are read from the file and sent to the browser only when the reader turns spoilers on.
+  const spoilers = one(searchParams.spoilers) === "1";
+  const { zones: everyZone, held } = allZones(WORLD_MAP);
+
+  const deep = parseDeepLink(searchParams);
+  const target = deep ? everyZone.find((z) => z.mapId === deep.mapId) : undefined;
+  const hiddenTarget = Boolean(target && held.has(target.mapId) && !spoilers);
+  const link = target && !hiddenTarget ? deep! : null;
+
+  const asked = Number(one(searchParams.continent));
+  const continentId = link && target ? target.continentId : CONTINENTS.some((c) => c.id === asked) ? asked : 0;
   const corpus = await uploadStore.loadCorpus();
-  const map = continentMap(continentId, corpus.unreachable ? [] : mapBoundsFromRecords(corpus.records));
+  const records = corpus.unreachable ? [] : corpus.records;
+  const map = continentMap(continentId, mapBoundsFromRecords(records), WORLD_MAP, spoilers);
+  const pins = continentPins(continentId, observedFacts(records), spoilers);
   const vb = map.viewBox;
-  // Sizes are in yards, so they are set from the view box width: text is about 11px or more wherever it
-  // shows (from 640px up), and pins are at least 5px. Below that the labels hide and the list carries the names.
-  const w = vb?.width ?? 1;
-  const pin = w * 0.014;
+
+  const items: MapItems = {
+    zones: map.zones,
+    entrances: map.entrances.map((p) => ({ id: `${p.world.worldX}-${p.world.worldY}`, names: p.names, raid: p.raid, x: p.map.x, y: p.map.y, worldX: p.world.worldX, worldY: p.world.worldY })),
+    pins,
+  };
+  const at = link ? zoneToMap(everyZone, link.mapId, link.x / 100, link.y / 100) : null;
+  const marker = link && target && at ? { x: at.x, y: at.y, label: `${target.name} ${link.x}, ${link.y}` } : null;
+  // A deep link opens on the spot, about 1,200 yards across; a plain visit opens on the whole continent.
+  const initial = vb && marker ? cameraOn(vb, marker.x, marker.y, 1200) : vb ? homeCamera(vb) : null;
+
+  const switchHref = (() => {
+    const q = new URLSearchParams();
+    if (!link) q.set("continent", String(continentId));
+    if (deep) { q.set("zone", String(deep.mapId)); q.set("x", String(deep.x)); q.set("y", String(deep.y)); }
+    if (!spoilers) q.set("spoilers", "1");
+    return `/map?${q.toString()}`;
+  })();
 
   return (
     <article className="space-y-8 max-w-5xl">
@@ -32,79 +64,59 @@ export default async function MapPage(props: { searchParams: Promise<{ continent
         <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">{map.name}</h1>
         <p className="text-sm text-fg-2 max-w-2xl">
           One map from game coordinates, drawn by us with no game art. Zone outlines and entrances are positions read from the
-          game files. They are found in the files and unconfirmed until players see them in the game.
+          game files. They are found in the files and unconfirmed until players see them in the game. Points for NPCs and vendors
+          come from what players uploaded.
         </p>
         <nav aria-label="Continent" className="flex gap-3 text-sm">
           {CONTINENTS.map((c) => (
             <Link
               key={c.id}
-              href={`/map?continent=${c.id}`}
+              href={`/map?continent=${c.id}${spoilers ? "&spoilers=1" : ""}`}
               aria-current={c.id === continentId ? "page" : undefined}
-              className={c.id === continentId ? "text-fg underline underline-offset-4" : "text-accent hover:underline underline-offset-4"}
+              className={c.id === continentId ? "inline-flex items-center min-h-11 text-fg underline underline-offset-4" : "inline-flex items-center min-h-11 text-accent hover:underline underline-offset-4"}
             >
               {c.name}
             </Link>
           ))}
         </nav>
+        <p className="text-sm text-fg-2 max-w-2xl">
+          <span className="text-fg">Spoilers: {spoilers ? "on" : "off"}.</span>{" "}
+          {spoilers
+            ? "Zones found only in the game files are drawn dashed and marked as unconfirmed. They may not be in the game."
+            : "Zones found only in the game files, which may not be released, are held back."}{" "}
+          <Link href={switchHref} className="inline-flex items-center min-h-11 text-accent hover:underline underline-offset-4">
+            {spoilers ? "Hide them" : "Show them"}
+          </Link>
+        </p>
+        {hiddenTarget && target && (
+          <p className="text-sm text-warning">{target.name} is held back as possibly unreleased. Turn spoilers on to see this spot.</p>
+        )}
       </header>
 
-      {corpus.unreachable && <p className="text-sm text-warning">{STORAGE_UNREACHABLE} The in-game cross-check is missing; the map itself does not depend on it.</p>}
+      {corpus.unreachable && <p className="text-sm text-warning">{STORAGE_UNREACHABLE} The in-game cross-check and player-observed points are missing; the map itself does not depend on them.</p>}
 
-      {vb ? (
-        <svg
-          viewBox={`${vb.x} ${vb.y} ${vb.width} ${vb.height}`}
-          role="img"
-          aria-label={`${map.name}: ${map.zones.length} zone outlines, ${map.entrances.length} entrances. The same items are listed below.`}
-          className="w-full rounded-xl border border-line bg-panel"
-        >
-          {map.zones.map((z) => (
-            <g key={z.mapId}>
-              <rect x={z.x} y={z.y} width={z.width} height={z.height} className="fill-canvas stroke-edge" strokeWidth={w * 0.002} />
-              {(z.width / w) * 600 >= z.name.length * 7 && (
-                <text x={z.x + z.width / 2} y={z.y + z.height / 2} textAnchor="middle" fontSize={w * 0.019} className="fill-muted hidden sm:inline">{z.name}</text>
-              )}
-            </g>
-          ))}
-          {map.entrances.map((p) => (
-            <g key={`${p.world.worldX}-${p.world.worldY}`}>
-              {p.raid
-                ? <rect x={p.map.x - pin} y={p.map.y - pin} width={pin * 2} height={pin * 2} className="fill-warning stroke-canvas" strokeWidth={pin * 0.2} />
-                : <circle cx={p.map.x} cy={p.map.y} r={pin} className="fill-accent stroke-canvas" strokeWidth={pin * 0.2} />}
-              <text x={p.map.x + pin * 1.6} y={p.map.y + w * 0.006} fontSize={w * 0.019} className="fill-fg hidden sm:inline">{p.names[0]}</text>
-            </g>
-          ))}
-        </svg>
+      {vb && initial ? (
+        <WorldMapView
+          key={`${continentId}-${spoilers}-${link ? `${link.mapId}-${link.x}-${link.y}` : ""}`}
+          name={map.name}
+          base={vb}
+          items={items}
+          initial={initial}
+          marker={marker}
+          spoilers={spoilers}
+        />
       ) : (
         <p className="rounded-xl border border-line bg-panel p-5 text-sm text-fg-2">Nothing is placed on this continent yet.</p>
       )}
 
-      {vb && (
-        <ul aria-label="Legend" className="flex flex-wrap gap-x-6 gap-y-2 text-xs text-fg-2">
-          <li className="flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="5.5" className="fill-accent" /></svg>Dungeon (circle)</li>
-          <li className="flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><rect x="1.5" y="1.5" width="11" height="11" className="fill-warning" /></svg>Raid (square)</li>
-          <li className="flex items-center gap-2"><svg width="18" height="14" viewBox="0 0 18 14" aria-hidden="true"><rect x="1" y="1" width="16" height="12" strokeWidth="1.5" className="fill-canvas stroke-edge" /></svg>Zone outline</li>
-          <li className="sm:hidden">Names show on wider screens; the lists below always carry them.</li>
-        </ul>
-      )}
-
-      <section aria-labelledby="entrances" className="space-y-3">
-        <h2 id="entrances" className="text-xl font-semibold text-fg">Dungeon and raid entrances</h2>
-        {map.entrances.length ? (
-          <ul className="space-y-2 text-sm text-fg-2">
-            {map.entrances.map((p) => (
-              <li key={`${p.world.worldX}-${p.world.worldY}`}>
-                <span className="text-fg">{p.names.join(", ")}</span>
-                {" · "}{p.raid ? "raid" : "dungeon"}
-                {" · "}<span className="font-mono text-xs text-muted">{Math.round(p.world.worldX)}, {Math.round(p.world.worldY)}</span>
-              </li>
-            ))}
-          </ul>
-        ) : <p className="text-sm text-muted">None placed on this continent.</p>}
-      </section>
-
       <section aria-labelledby="zones" className="space-y-3">
         <h2 id="zones" className="text-xl font-semibold text-fg">Zones</h2>
-        <p className="text-sm text-fg-2">{map.zones.map((z) => z.name).join(", ")}.</p>
+        <p className="text-sm text-fg-2">
+          {map.zones.filter((z) => !z.heldBack).map((z) => z.name).join(", ")}.
+          {map.zones.some((z) => z.heldBack) && (
+            <> Held back, {HELD_LABEL}: {map.zones.filter((z) => z.heldBack).map((z) => z.name).join(", ")}.</>
+          )}
+        </p>
       </section>
 
       {(map.confirmedZones > 0 || map.disagreements.length > 0) && (
@@ -124,8 +136,11 @@ export default async function MapPage(props: { searchParams: Promise<{ continent
           Map data read from the WoW: Forever game files, build {MAP_SOURCE.version}. It is Blizzard&apos;s data, found in the
           files and unconfirmed, and is not under our licence. See the{" "}
           <a className="text-accent hover:underline underline-offset-4" href={MAP_SOURCE.licenceUrl}>data policy</a>.
+          NPC and vendor points are from player uploads (CC BY-SA 4.0).
         </p>
       </footer>
     </article>
   );
 }
+
+const HELD_LABEL = "found in game files, unconfirmed";

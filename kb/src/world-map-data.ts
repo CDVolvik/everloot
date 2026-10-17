@@ -29,6 +29,7 @@ export const WORLD_MAP_TABLES = ["Map", "UiMap", "UiMapAssignment"] as const;
 export const ORIGINAL_ZONE_UI_MAP_IDS = { min: 1411, max: 1458 } as const;
 
 const Rect = z.object({ left: z.number(), top: z.number(), right: z.number(), bottom: z.number() });
+const ZoneRow = z.object({ uiMapId: z.number().int(), name: z.string(), continentId: z.number().int(), bounds: Rect });
 export const WorldMapData = z.object({
   schema: z.literal(WORLD_MAP_SCHEMA),
   source: z.object({
@@ -45,7 +46,9 @@ export const WorldMapData = z.object({
     tables: z.array(z.object({ table: z.string(), rows: z.number().int(), encryptedBlocks: z.number().int().nullable() })),
   }),
   continents: z.array(z.object({ id: z.number().int(), name: z.string(), bounds: Rect })),
-  zones: z.array(z.object({ uiMapId: z.number().int(), name: z.string(), continentId: z.number().int(), bounds: Rect })),
+  zones: z.array(ZoneRow),
+  /** Zones with later UiMap ids: Forever additions that may be unreleased. Shown only when the reader turns spoilers on. */
+  heldBackZones: z.array(ZoneRow).default([]),
   entrances: z.array(z.object({
     mapId: z.number().int(), name: z.string(), raid: z.boolean(), continentId: z.number().int(), worldX: z.number(), worldY: z.number(),
   })),
@@ -106,15 +109,17 @@ export function buildWorldMapData(
   if (!continents.length) warnings.push("no continents found");
 
   const zones: WorldMapData["zones"] = [];
-  let held = 0;
+  const heldBackZones: WorldMapData["zones"] = [];
   for (const u of uiMaps.values()) {
     const id = Number(u.ID), at = placed.get(id);
     if (u.Type !== UI_MAP_ZONE || !at || !continentIds.has(at.mapId) || typeof u.Name_lang !== "string") continue;
-    if (id < ORIGINAL_ZONE_UI_MAP_IDS.min || id > ORIGINAL_ZONE_UI_MAP_IDS.max) { held++; continue; }
-    zones.push({ uiMapId: id, name: u.Name_lang, continentId: at.mapId, bounds: at.rect });
+    const row = { uiMapId: id, name: u.Name_lang, continentId: at.mapId, bounds: at.rect };
+    if (id < ORIGINAL_ZONE_UI_MAP_IDS.min || id > ORIGINAL_ZONE_UI_MAP_IDS.max) heldBackZones.push(row);
+    else zones.push(row);
   }
   zones.sort((a, b) => a.uiMapId - b.uiMapId);
-  if (held) warnings.push(`${held} zone(s) with later UiMap ids are held back as possibly unreleased`);
+  heldBackZones.sort((a, b) => a.uiMapId - b.uiMapId);
+  if (heldBackZones.length) warnings.push(`${heldBackZones.length} zone(s) with later UiMap ids are held back as possibly unreleased`);
 
   const entrances: WorldMapData["entrances"] = [];
   for (const m of maps.values()) {
@@ -125,7 +130,7 @@ export function buildWorldMapData(
   }
   entrances.sort((a, b) => a.mapId - b.mapId);
 
-  return WorldMapData.parse({ schema: WORLD_MAP_SCHEMA, source, continents, zones, entrances, warnings });
+  return WorldMapData.parse({ schema: WORLD_MAP_SCHEMA, source, continents, zones, heldBackZones, entrances, warnings });
 }
 
 export function writeWorldMapData(snapshotPath: string): WorldMapData {

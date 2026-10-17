@@ -16,6 +16,7 @@ export const MCP_TOOLS: readonly { name: string; text: string }[] = [
   { name: "npc_page", text: "One NPC: agreed name and map pins." },
   { name: "quest_page", text: "One quest: title, level, giver, turn-in and rewards." },
   { name: "vendor_page", text: "What one vendor sells, with copper prices." },
+  { name: "world_map_near", text: "What is near a spot: entrances, observed NPCs and vendors, with distances in yards." },
   { name: "collection_gap", text: "What one install is missing from a collection, such as Mounts." },
   { name: "guild_board", text: "A guild's roster, bosses, loot and attendance, from officer uploads." },
   { name: "auction_history", text: "Daily median auction price for one item on one realm." },

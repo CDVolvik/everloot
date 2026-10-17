@@ -2,7 +2,8 @@ import { describe, expect, test } from "vitest";
 import type { MapBoundsRow } from "../../../kb/src/map-bounds";
 import type { WorldMapData } from "../../../kb/src/world-map-data";
 import { worldToZone, zoneAt, zoneTable } from "../../../kb/src/world-coords";
-import { continentMap, WORLD_MAP } from "./world-map";
+import { continentMap, continentPins, MAP_RECORD_KINDS, observedFacts, pinLink, WORLD_MAP } from "./world-map";
+import { PUBLIC_RECORD_KINDS } from "./intake";
 
 // SYNTHETIC data in the shape of the generated file; the numbers are made up.
 const data: WorldMapData = {
@@ -15,6 +16,9 @@ const data: WorldMapData = {
   zones: [
     { uiMapId: 1429, name: "Synthetic Forest", continentId: 0, bounds: { top: -7940, bottom: -10254, left: 1535, right: -1935 } },
     { uiMapId: 1411, name: "Synthetic Dunes", continentId: 1, bounds: { top: 1800, bottom: -1700, left: -2000, right: -7250 } },
+  ],
+  heldBackZones: [
+    { uiMapId: 2482, name: "Synthetic Peak", continentId: 1, bounds: { top: 6000, bottom: 4000, left: -900, right: -4400 } },
   ],
   entrances: [
     { mapId: 34, name: "Synthetic Stockade", raid: false, continentId: 0, worldX: -8762.4, worldY: 848 },
@@ -90,5 +94,80 @@ describe("the committed map data, loaded for the page", () => {
       expect(map.entrances.length).toBeGreaterThan(5);
       expect(map.viewBox).not.toBeNull();
     }
+  });
+});
+
+describe("held-back zones", () => {
+  test("are not in the data at all unless spoilers are on", () => {
+    expect(continentMap(1, [], data).zones.map((z) => z.name)).toEqual(["Synthetic Dunes"]);
+    const on = continentMap(1, [], data, true);
+    expect(on.zones.map((z) => [z.name, z.heldBack])).toEqual([["Synthetic Dunes", false], ["Synthetic Peak", true]]);
+  });
+
+  test("turning spoilers on does not move the frame", () => {
+    expect(continentMap(1, [], data, true).viewBox).toEqual(continentMap(1, [], data).viewBox);
+  });
+
+  test("the committed file holds the three zones back and shows them only on request", () => {
+    expect(WORLD_MAP.heldBackZones.map((z) => z.name).sort()).toEqual(["Mount Hyjal", "Riverglades", "Shen'dralas"]);
+    const names = (spoilers: boolean) => [0, 1].flatMap((id) => continentMap(id, [], WORLD_MAP, spoilers).zones.map((z) => z.name));
+    for (const name of WORLD_MAP.heldBackZones.map((z) => z.name)) {
+      expect(names(false)).not.toContain(name);
+      expect(names(true)).toContain(name);
+    }
+  });
+
+  test("a map link never points into one", () => {
+    expect(pinLink(1429, 10, 20)).toBe("/map?zone=1429&x=10&y=20");
+    expect(pinLink(2482, 10, 20)).toBeNull();
+    expect(pinLink(999999, 10, 20)).toBeNull();
+  });
+});
+
+describe("player-observed points", () => {
+  const sighting = (installId: string, npcId: number, mapId: number, x = 40, y = 60) => ({
+    kind: "npc_sighting", installId, npcId, name: "Guard", mapId, x, y, level: 5, reaction: "friendly", positionKind: "npc", capturedAt: "2026-10-17T00:00:00Z",
+  });
+  const vendor = (installId: string, vendorNpcId: number) => ({ kind: "vendor", installId, vendorNpcId, items: [{ itemId: 5, priceCopper: 10 }], capturedAt: "2026-10-17T00:00:00Z" });
+  const three = (npcId: number, mapId: number) => ["a", "b", "c"].map((i) => sighting(i, npcId, mapId));
+
+  test("a pin appears at 3 installs, not at 2, in the zone's place on the continent map", () => {
+    expect(continentPins(0, observedFacts(three(7, 1429).slice(0, 2)), false, data)).toEqual([]);
+    const [pin] = continentPins(0, observedFacts(three(7, 1429)), false, data);
+    expect(pin).toMatchObject({ kind: "npc", npcId: 7, name: "Guard", zoneName: "Synthetic Forest", reporters: 3, zoneX: 40, zoneY: 60 });
+    // 40% across a zone that runs from worldY 1535 to -1935, 60% down from worldX -7940 to -10254.
+    expect(pin!.x).toBeCloseTo(-(1535 - 0.4 * 3470), 5);
+    expect(pin!.y).toBeCloseTo(-(-7940 + 0.6 * -2314), 5);
+  });
+
+  test("a vendor is an NPC with 3 agreeing offers; with fewer it stays a plain NPC", () => {
+    const sights = three(8, 1429);
+    expect(continentPins(0, observedFacts([...sights, ...["a", "b", "c"].map((i) => vendor(i, 8))]), false, data)[0]!.kind).toBe("vendor");
+    expect(continentPins(0, observedFacts([...sights, vendor("a", 8)]), false, data)[0]!.kind).toBe("npc");
+  });
+
+  test("pins are per continent, and a pin in a zone the file does not know is dropped", () => {
+    const records = [...three(7, 1429), ...three(9, 1411), ...three(10, 5555)];
+    expect(continentPins(0, observedFacts(records), false, data).map((p) => p.npcId)).toEqual([7]);
+    expect(continentPins(1, observedFacts(records), false, data).map((p) => p.npcId)).toEqual([9]);
+  });
+
+  test("pins inside a held-back zone need spoilers", () => {
+    const records = three(11, 2482);
+    expect(continentPins(1, observedFacts(records), false, data)).toEqual([]);
+    expect(continentPins(1, observedFacts(records), true, data)).toMatchObject([{ npcId: 11, heldBack: true }]);
+  });
+
+  test("player positions never become pins, and no install id leaves", () => {
+    const player = three(12, 1429).map((r) => ({ ...r, positionKind: "player" }));
+    expect(continentPins(0, observedFacts(player), false, data)).toEqual([]);
+    expect(JSON.stringify(continentPins(0, observedFacts(three(7, 1429)), false, data))).not.toMatch(/"installId"|"a"/);
+  });
+
+  test("only allowlisted kinds are read, and the map's kinds are on the allowlist", () => {
+    for (const kind of MAP_RECORD_KINDS) expect(PUBLIC_RECORD_KINDS).toContain(kind);
+    expect(PUBLIC_RECORD_KINDS).not.toContain("addon_seen");
+    const facts = observedFacts([...three(7, 1429), { kind: "gold_snapshot", installId: "a" }, null, "text"]);
+    expect(facts.npcs).toHaveLength(3);
   });
 });

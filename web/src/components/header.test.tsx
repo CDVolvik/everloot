@@ -19,7 +19,13 @@ test("the primary navigation keeps its order", () => {
   expect(order).toEqual([...order].sort((a, b) => a - b));
 });
 
-test.each(["Database", "Lore", "Upload", "Gold/Hour", "Addons", "Connect"])("%s is a bracket label", (label) => {
+test("the map link sits between Lore and Changes", () => {
+  const at = ["/lore", "/map", "/changes"].map((href) => html.indexOf(`href="${href}"`));
+  expect(at.every((i) => i >= 0)).toBe(true);
+  expect(at).toEqual([...at].sort((a, b) => a - b));
+});
+
+test.each(["Database", "Lore", "Map", "Upload", "Gold/Hour", "Addons", "Connect"])("%s is a bracket label", (label) => {
   const escaped = label.replace("/", "\\/");
   expect(html).toMatch(new RegExp(`href="[^"]+"[^>]*><span class="font-mono"><span aria-hidden="true" class="text-muted">\\[<\\/span>${escaped}<`));
 });

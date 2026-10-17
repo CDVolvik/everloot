@@ -14,6 +14,8 @@ import { parseRecords } from "../../web/src/lib/intake.js";
 import { handleProfessionPath } from "./profession-path.js";
 import { handleRecipeThresholds, pathFactsFromRecords, recipeFactsFromRecords } from "./recipe-thresholds.js";
 import { handleNpcPage, handleQuestPage, handleVendorPage, worldFactsFromRecords } from "./world-pages.js";
+import { handleWorldMapNear, mapFactsFromRecords, NEAR_DEFAULT_LIMIT, NEAR_DEFAULT_RADIUS, NEAR_MAX_LIMIT, NEAR_MAX_RADIUS } from "./world-map-near.js";
+import { WORLD_MAP_DATA } from "./world-map-file.js";
 import type { DB } from "./db.js";
 import { getByName, getEntity, search, type SearchHit } from "./search.js";
 
@@ -33,6 +35,7 @@ export const TOOL_KINDS = {
   npc_page: ["npc_sighting", "quest", "vendor"],
   quest_page: ["npc_sighting", "quest", "vendor"],
   vendor_page: ["npc_sighting", "quest", "vendor"],
+  world_map_near: ["npc_sighting", "vendor"],
   collection_gap: ["collection_catalog", "collection_owned"],
   guild_board: ["guild_snapshot", "raid_lockout", "attendance", "loot_award", "gear_snapshot"],
   auction_history: ["auction_scan"],
@@ -53,6 +56,7 @@ const TOOL_FACT_BUILDERS: Record<ToolName, (records: unknown[]) => unknown> = {
   npc_page: worldFactsFromRecords,
   quest_page: worldFactsFromRecords,
   vendor_page: worldFactsFromRecords,
+  world_map_near: mapFactsFromRecords,
   collection_gap: collectionFactsFromRecords,
   guild_board: guildFactsFromRecords,
   auction_history: auctionSightingsFromRecords,
@@ -384,6 +388,26 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; 
     },
     async (args) => ({
       content: [{ type: "text" as const, text: await readFacts("vendor_page", (facts: ReturnType<typeof worldFactsFromRecords>) => handleVendorPage(args, facts)) }],
+    }),
+  );
+  server.registerTool(
+    "world_map_near",
+    {
+      title: "What is near a place on the map",
+      description:
+        `Entrances, NPCs and vendors near a spot, nearest first, with straight-line distances in yards. Give a zone (name or map id) with x and y from 0 to 100, or an NPC id to start from where that NPC stands. Entrances come from the game files and are unconfirmed. NPCs and vendors are player-observed and listed only where 3 installs agree on the position. Zones the files hold back as possibly unreleased are not offered. Game objects are not listed: no public record gives them a position. Reads Everloot's current authorized public corpus when connected.`,
+      inputSchema: {
+        zone: z.string().max(80).optional().describe("Zone name or map id, such as Elwynn Forest or 1429. Needs x and y."),
+        x: z.number().min(0).max(100).optional().describe("Across the zone map, 0 (west) to 100 (east)."),
+        y: z.number().min(0).max(100).optional().describe("Down the zone map, 0 (north) to 100 (south)."),
+        npcId: z.number().int().positive().optional().describe("Start from this NPC's agreed position instead of a zone and x, y."),
+        radius: z.number().positive().max(NEAR_MAX_RADIUS).default(NEAR_DEFAULT_RADIUS).describe("Search radius in yards."),
+        limit: z.number().int().min(1).max(NEAR_MAX_LIMIT).default(NEAR_DEFAULT_LIMIT).describe("Most results per list."),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    async (args) => ({
+      content: [{ type: "text" as const, text: await readFacts("world_map_near", (facts: ReturnType<typeof mapFactsFromRecords>) => handleWorldMapNear(args, WORLD_MAP_DATA, facts)) }],
     }),
   );
   server.registerTool(

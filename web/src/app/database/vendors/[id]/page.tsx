@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { stockLabel, vendorPage } from "../../../../../../kb/src/world-pages";
+import { npcPage, stockLabel, vendorPage } from "../../../../../../kb/src/world-pages";
 import { loadWorldFacts } from "@/lib/rollup-compute";
 import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
+import { pinLink } from "@/lib/world-map";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,11 @@ export default async function VendorPage(props: { params: Promise<{ id: string }
   if (!/^[1-9]\d*$/.test(params.id)) notFound();
   const facts = await loadWorldFacts();
   const page = vendorPage(Number(params.id), facts);
+  // Where players saw this vendor stand: the NPC pins that 3 installs agree on, as links to the map.
+  const places = facts.unreachable ? [] : npcPage(page.vendorNpcId, facts).pins.flatMap((pin) => {
+    const href = pinLink(pin.mapId, pin.x, pin.y);
+    return href ? [{ href, label: `Map ${pin.mapId} at ${pin.x}, ${pin.y}` }] : [];
+  });
 
   return (
     <article className="space-y-8 max-w-4xl">
@@ -78,6 +84,9 @@ export default async function VendorPage(props: { params: Promise<{ id: string }
 
       <p className="text-sm text-muted">
         <Link href={`/database/npcs/${page.vendorNpcId}`} className="text-accent hover:underline underline-offset-4">NPC {page.vendorNpcId}</Link>
+        {places.map((place) => (
+          <span key={place.href}>{" · "}<Link href={place.href} className="text-accent hover:underline underline-offset-4">Show on the map ({place.label})</Link></span>
+        ))}
         {" · "}
         <Link href="/database/vendors" className="text-accent hover:underline underline-offset-4">Vendor lookup</Link>
       </p>
