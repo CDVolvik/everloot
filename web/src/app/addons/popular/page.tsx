@@ -87,7 +87,7 @@ export default async function PopularAddonsPage() {
                   <tr key={addon.name} className="border-t border-line bg-panel text-fg align-top">
                     <td className="pl-4 pr-2 sm:px-4 py-3 text-right font-mono text-lg leading-6 tabular-nums text-fg-2">{i + 1}</td>
                     <th scope="row" className="px-2 sm:px-4 py-3 text-left font-normal">
-                      <span className="block font-medium leading-6">{addon.title}</span>
+                      <Link href={`/addons/${encodeURIComponent(addon.name)}`} className={`block font-medium leading-6 ${link}`}>{addon.title}</Link>
                       {/* On phones the count and dates columns are hidden, so they sit under the title. */}
                       <span className="md:hidden block font-mono text-xs text-muted tabular-nums">
                         <span className="block">{plural(addon.installs, "install", "installs")}</span>
