@@ -18,6 +18,8 @@ import { getByName, getEntity, search, type SearchHit } from "./search.js";
 
 export const SERVER_NAME = "everloot-knowledge";
 export const SERVER_VERSION = "0.7.2";
+/** The source this server runs, offered to every client (AGPL section 13). */
+export const SOURCE_URL = "https://github.com/CDVolvik/everloot";
 
 export const UPLOADS_UNSET =
   "Uploads are not connected. Neither EVERLOOT_PUBLIC_CORPUS_URL nor EVERLOOT_UPLOADS is set, so this is not a measured zero.";
@@ -249,7 +251,7 @@ export function handleGetByName(db: DB, args: { name: string; kind?: (typeof KIN
 }
 
 export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader } = {}): McpServer {
-  const server = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION });
+  const server = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION, websiteUrl: SOURCE_URL });
   const readFacts = <T>(tool: ToolName, render: (facts: T) => string) => fromTooledUploads(tool, render, options.corpus);
   server.registerTool(
     "search_knowledge",

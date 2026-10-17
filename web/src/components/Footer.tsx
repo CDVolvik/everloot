@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { sourceUrl } from "@/lib/source";
 import { CookiePreferencesButton } from "./CookieConsent";
 
 export default function Footer() {
@@ -24,11 +25,16 @@ export default function Footer() {
           <Link href="/contact" className="hover:text-gold-400 transition">
             Contact
           </Link>
+          <a href={sourceUrl()} rel="noopener" className="hover:text-gold-400 transition">
+            Source
+          </a>
         </div>
       </div>
       <div className="mx-auto max-w-6xl px-4 pb-8 text-[11px] text-parchment-100/40 leading-relaxed">
         Not affiliated with or endorsed by Blizzard Entertainment. World of Warcraft
         and related trademarks are property of Blizzard Entertainment, Inc.
+        <br />
+        Code AGPL-3.0, data CC BY-SA 4.0.
       </div>
     </footer>
   );
