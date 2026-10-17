@@ -38,12 +38,22 @@ built from the question's names. Links only: nothing is fetched from those sites
 3. Evidence is ordered observed first, then curated, reference and lore. Lore is marked "2023 wiki,
    may differ in WoW: Forever".
 
-## Other sites
+## Other sites: connectors and the assistant
 
-The tool talks only to sources that offer an official API or MCP, under their terms. Today none
-covers WoW: Forever (Blizzard's API has no Forever namespace yet), so the first version reads only
-Everloot's own data. A connector is added when such an API exists and its terms allow it; each one
-is recorded in the source ledger first.
+The aim is an answer engine in the style of Perplexity: one question, answered from many sources,
+each one cited. Two ways to get there without scraping anyone:
+
+1. **Connectors.** Everloot calls a site only through an official API or MCP server, under its
+   terms, and cites it like any other source. Each connector is recorded in
+   `docs/sources/LEDGER.md` before it ships. Candidates: Blizzard's Game Data API once it has a WoW:
+   Forever namespace; Warcraft Logs once it allows republishing (its terms ask first); Raider.IO
+   after its terms are read. None covers WoW: Forever today, so the first version reads only
+   Everloot's own data.
+2. **The assistant combines servers.** ChatGPT, Claude and other clients connect several MCP
+   servers at once. A `/connect` page on everloot.app explains how to add Everloot and lists
+   compatible WoW MCP servers beside it (for example the community servers that wrap Blizzard's API
+   for Retail and Classic). The user's assistant then draws on all of them and cites each, while
+   Everloot serves only its own data.
 
 ## Tests
 
