@@ -1,22 +1,10 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import Reveal from "@/components/Reveal";
 import { tools, toolHref } from "@/data/tools";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/" },
 };
-
-const TICKER = [
-  "Loot observations",
-  "Guild records",
-  "Spawn maps",
-  "Profession routes",
-  "Loot history",
-  "Farming routes",
-  "Raid progression",
-  "Vendor lists",
-];
 
 export default function Home() {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://everloot.app";
@@ -31,7 +19,6 @@ export default function Home() {
       }).replace(/</g, "\\u003c") }} />
       {/* Hero */}
       <section className="relative pt-6 pb-2 text-center overflow-hidden">
-        <div className="aurora" aria-hidden="true" />
         <div className="relative">
         <p className="font-mono text-xs text-muted mb-4">
           Free tools · Addon uploads · Collecting data
@@ -60,21 +47,9 @@ export default function Home() {
           <Link href="/tools/gold-per-hour" className="inline-flex min-h-11 items-center px-3 text-accent hover:underline">Gold/Hour Calculator</Link>
         </div>
         </div>
-
-        {/* Ticker */}
-        <div className="relative mt-10 overflow-hidden" aria-hidden="true">
-          <div className="ticker-track gap-8 text-xs font-mono text-muted">
-            {[...TICKER, ...TICKER].map((t, i) => (
-              <span key={i} className="flex items-center gap-8 whitespace-nowrap">
-                {t} <span className="text-muted">◆</span>
-              </span>
-            ))}
-          </div>
-        </div>
       </section>
 
       {/* Tools grid */}
-      <Reveal>
       <section id="tools" className="scroll-mt-20">
         <div className="flex flex-wrap items-end justify-between gap-3 mb-6">
           <h2 className="text-2xl sm:text-3xl font-semibold text-fg">
@@ -92,15 +67,14 @@ export default function Home() {
               <Link
                 key={tool.slug}
                 href={toolHref(tool)}
-                className="tool-card group relative rounded-xl border border-line bg-panel p-5 hover:border-accent transition"
+                className="tool-card group relative rounded-xl border border-line bg-panel p-5 hover:border-accent"
               >
                 <div className="flex items-start justify-between gap-3">
-                  <div className="text-3xl">{tool.icon}</div>
                   <span
                     className={`text-[10px] font-mono px-2 py-1 rounded-full border ${
                       isLive
                         ? "bg-canvas text-q-uncommon border-q-uncommon/40"
-                        : "bg-canvas text-accent border-line"
+                        : "bg-canvas text-muted border-line"
                     }`}
                   >
                     {isLive ? "Available" : tool.status === "collecting" ? "Collecting data" : "Planned"}
@@ -117,13 +91,10 @@ export default function Home() {
           })}
         </div>
       </section>
-      </Reveal>
 
       {/* Why this site */}
-      <Reveal delay={120}>
       <section className="grid md:grid-cols-3 gap-6 text-sm">
         <div className="rounded-lg border border-line p-5">
-          <div className="text-accent text-xl mb-2">⚡</div>
           <h3 className="font-semibold text-fg">Fast and focused</h3>
           <p className="mt-1 text-fg-2">
             Each tool does one thing well. No 47 tabs to click through before
@@ -131,7 +102,6 @@ export default function Home() {
           </p>
         </div>
         <div className="rounded-lg border border-line p-5">
-          <div className="text-accent text-xl mb-2">🔓</div>
           <h3 className="font-semibold text-fg">No account needed</h3>
           <p className="mt-1 text-fg-2">
             The calculator runs on your device. Addon files go to the server only
@@ -139,7 +109,6 @@ export default function Home() {
           </p>
         </div>
         <div className="rounded-lg border border-line p-5">
-          <div className="text-accent text-xl mb-2">🛠️</div>
           <h3 className="font-semibold text-fg">Built by a player</h3>
           <p className="mt-1 text-fg-2">
             Every tool here started as &ldquo;I wish something did X&rdquo;
@@ -147,7 +116,6 @@ export default function Home() {
           </p>
         </div>
       </section>
-      </Reveal>
     </div>
   );
 }
