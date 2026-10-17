@@ -8,7 +8,7 @@ export default function Footer() {
     <footer className="border-t border-line mt-24">
       <div className="mx-auto max-w-6xl px-4 py-8 text-sm text-muted flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <span className="text-accent font-semibold">Everloot</span>{" "}
+          <span className="font-semibold text-fg">everloot</span>{" "}
           &copy; {year}. The WoW: Forever database, built from player data.
         </div>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
