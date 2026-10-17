@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import {
   DEFAULT_LAYERS, DEFAULT_SPOILERS, MAX_ZOOM, MIN_ZOOM, ZOOM_STEP, cameraBox, cameraForKey, cameraOn, fitCamera, homeCamera, mapHref, panBy,
-  parseDeepLink, pinchFactor, visibleItems, zoomAt, type MapItems,
+  parseDeepLink, pinchFactor, visibleItems, zoomAt, ensureZoneVisible, frameBox, cameraForBox, labelFontPx, placeLabels, type MapItems,
 } from "./map-view";
 
 const base = { x: -1000, y: -500, width: 2000, height: 1000 };
@@ -122,5 +122,66 @@ describe("deep links", () => {
 
   test("a repeated parameter uses the first", () => {
     expect(parseDeepLink({ zone: ["1429", "1"], x: ["5", "6"], y: "7" })).toEqual({ mapId: 1429, x: 5, y: 7 });
+  });
+});
+describe("frame, zone visibility and labels", () => {
+  test("the frame grows the base to the screen's shape around the same centre, so the whole continent fits", () => {
+    const wide = frameBox(base, 3);
+    expect(wide.width / wide.height).toBeCloseTo(3);
+    expect(wide.x + wide.width / 2).toBeCloseTo(base.x + base.width / 2);
+    expect(wide.width).toBeGreaterThanOrEqual(base.width);
+    expect(wide.height).toBeGreaterThanOrEqual(base.height);
+    const tall = frameBox(base, 0.5);
+    expect(tall.width / tall.height).toBeCloseTo(0.5);
+    expect(tall.height).toBeGreaterThanOrEqual(base.height);
+    expect(frameBox(base, NaN)).toEqual(base);
+  });
+
+  test("a camera for a box shows the whole box", () => {
+    const box = { x: 0, y: 0, width: 200, height: 100 };
+    const v = cameraBox(base, cameraForBox(base, box));
+    expect(v.x).toBeLessThanOrEqual(box.x);
+    expect(v.x + v.width).toBeGreaterThanOrEqual(box.x + box.width);
+    expect(v.y + v.height).toBeGreaterThanOrEqual(box.y + box.height);
+  });
+
+  test("the view cannot drift to where no zone shows", () => {
+    const zones = [{ x: -900, y: -400, width: 300, height: 200 }];
+    const zoomed = fitCamera(base, { zoom: 10, cx: 800, cy: 400 });
+    const fixed = ensureZoneVisible(base, zoomed, zones);
+    const v = cameraBox(base, fixed);
+    expect(v.x).toBeLessThan(-600);
+    expect(v.y).toBeLessThan(-200);
+    expect(fixed.zoom).toBe(10);
+    // Already on a zone: untouched. No zones at all: untouched.
+    expect(ensureZoneVisible(base, home, zones)).toEqual(home);
+    expect(ensureZoneVisible(base, zoomed, [])).toEqual(zoomed);
+  });
+
+  test("label size is 11 to 14 pixels at every zoom", () => {
+    expect(labelFontPx(1)).toBe(11);
+    expect(labelFontPx(MAX_ZOOM)).toBeLessThanOrEqual(14);
+    expect(labelFontPx(8)).toBeGreaterThan(labelFontPx(2));
+    expect(labelFontPx(0)).toBe(11);
+  });
+
+  const view = { x: 0, y: 0, width: 1000, height: 500 };
+  const at = (id: string, x: number, y: number, priority: number, text = "Tirisfal Glades") => ({ id, text, x, y, priority, align: "middle" as const });
+
+  test("labels that collide give way to the higher priority; far apart ones all show", () => {
+    const placed = placeLabels([at("low", 500, 250, 1), at("high", 510, 252, 9)], view, 1000, 11);
+    expect(placed.map((l) => l.id)).toEqual(["high"]);
+    expect(placeLabels([at("a", 200, 100, 1), at("b", 800, 400, 1)], view, 1000, 11)).toHaveLength(2);
+  });
+
+  test("a label that would be clipped by the edge is hidden, one that is only close is kept", () => {
+    expect(placeLabels([at("edge", 5, 250, 1)], view, 1000, 11)).toEqual([]);
+    expect(placeLabels([at("edge", 500, 2, 1)], view, 1000, 11)).toEqual([]);
+    expect(placeLabels([at("ok", 500, 250, 1)], view, 1000, 11)).toHaveLength(1);
+  });
+
+  test("the same input always places the same labels, whatever the order it arrives in", () => {
+    const a = [at("a", 500, 250, 5), at("b", 505, 250, 5, "Silverpine Forest"), at("c", 100, 100, 1)];
+    expect(placeLabels(a, view, 1000, 11).map((l) => l.id)).toEqual(placeLabels([...a].reverse(), view, 1000, 11).map((l) => l.id));
   });
 });

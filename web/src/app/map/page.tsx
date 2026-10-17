@@ -5,7 +5,7 @@ import { allZones } from "../../../../kb/src/world-map-near";
 import { zoneToMap } from "../../../../kb/src/world-coords";
 import { STORAGE_UNREACHABLE, uploadStore } from "@/lib/upload-store";
 import { dataAgeLabel } from "@/lib/data-age";
-import { cameraOn, homeCamera, parseDeepLink, type MapItems } from "@/lib/map-view";
+import { parseDeepLink, type MapItems } from "@/lib/map-view";
 import { CONTINENTS, continentMap, continentPins, MAP_SOURCE, observedFacts, WORLD_MAP } from "@/lib/world-map";
 import WorldMapView from "@/components/WorldMapView";
 
@@ -47,7 +47,7 @@ export default async function MapPage(props: { searchParams: Promise<Query> }) {
   const at = link ? zoneToMap(everyZone, link.mapId, link.x / 100, link.y / 100) : null;
   const marker = link && target && at ? { x: at.x, y: at.y, label: `${target.name} ${link.x}, ${link.y}` } : null;
   // A deep link opens on the spot, about 1,200 yards across; a plain visit opens on the whole continent.
-  const initial = vb && marker ? cameraOn(vb, marker.x, marker.y, 1200) : vb ? homeCamera(vb) : null;
+  const focus = marker ? { x: marker.x, y: marker.y, span: 1200 } : null;
 
   const switchHref = (() => {
     const q = new URLSearchParams();
@@ -95,13 +95,13 @@ export default async function MapPage(props: { searchParams: Promise<Query> }) {
 
       {corpus.unreachable && <p className="text-sm text-warning">{STORAGE_UNREACHABLE} The in-game cross-check and player-observed points are missing; the map itself does not depend on them.</p>}
 
-      {vb && initial ? (
+      {vb ? (
         <WorldMapView
           key={`${continentId}-${spoilers}-${link ? `${link.mapId}-${link.x}-${link.y}` : ""}`}
           name={map.name}
           base={vb}
           items={items}
-          initial={initial}
+          focus={focus}
           marker={marker}
           spoilers={spoilers}
         />

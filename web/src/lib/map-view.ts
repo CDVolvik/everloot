@@ -122,3 +122,63 @@ export function parseDeepLink(query: { zone?: string | string[]; x?: string | st
   if (!Number.isInteger(mapId) || mapId < 1 || !(x >= 0 && x <= 100) || !(y >= 0 && y <= 100)) return null;
   return { mapId, x, y };
 }
+
+// --- Frame, zone visibility and labels ---
+
+/** The base box grown on one axis to the frame's aspect ratio (width / height), around the same centre: "fit the whole continent". */
+export function frameBox(base: Box, aspect: number): Box {
+  if (!(aspect > 0) || !Number.isFinite(aspect)) return base;
+  const width = Math.max(base.width, base.height * aspect), height = width / aspect;
+  return { x: base.x + base.width / 2 - width / 2, y: base.y + base.height / 2 - height / 2, width, height };
+}
+
+/** A camera that shows `box` with `margin` (1.2 is a fifth extra) inside the frame. */
+export function cameraForBox(frame: Box, box: Box, margin = 1.2): Camera {
+  const zoom = Math.min(frame.width / (box.width * margin), frame.height / (box.height * margin));
+  return fitCamera(frame, { zoom, cx: box.x + box.width / 2, cy: box.y + box.height / 2 });
+}
+
+const intersects = (a: Box, b: Box) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+
+/**
+ * Keeps part of a zone on screen: when the view shows none of the given zones, the camera moves to the
+ * nearest point of the nearest zone. Zoom is left alone.
+ */
+export function ensureZoneVisible(frame: Box, camera: Camera, zones: Box[]): Camera {
+  if (!zones.length) return camera;
+  const view = cameraBox(frame, camera);
+  if (zones.some((z) => intersects(view, z))) return camera;
+  let best: { x: number; y: number; d: number } | null = null;
+  for (const z of zones) {
+    const x = clamp(camera.cx, z.x, z.x + z.width), y = clamp(camera.cy, z.y, z.y + z.height);
+    const d = Math.hypot(x - camera.cx, y - camera.cy);
+    if (!best || d < best.d) best = { x, y, d };
+  }
+  return fitCamera(frame, { ...camera, cx: best!.x, cy: best!.y });
+}
+
+/** Label text size in pixels: 11 zoomed out, growing a little as the reader zooms in, never above 14. */
+export function labelFontPx(zoom: number): number {
+  return clamp(11 + Math.log2(Math.max(zoom, 1)) * 0.6, 11, 14);
+}
+
+export interface LabelCandidate { id: string; text: string; x: number; y: number; priority: number; align: "middle" | "start" }
+
+/**
+ * Which labels to draw. Greedy by priority: a label is drawn when it lies wholly inside the view and does
+ * not overlap one already drawn, so a lower-priority label gives way. (x, y) is the anchor in yards.
+ */
+export function placeLabels(candidates: LabelCandidate[], view: Box, widthPx: number, fontPx: number): LabelCandidate[] {
+  const k = widthPx / view.width, heightPx = view.height * k, h = fontPx * 1.4, pad = 2;
+  const taken: { l: number; r: number; t: number; b: number }[] = [];
+  const placed: LabelCandidate[] = [];
+  for (const c of [...candidates].sort((a, b) => b.priority - a.priority || a.text.length - b.text.length || a.id.localeCompare(b.id))) {
+    const sx = (c.x - view.x) * k, sy = (c.y - view.y) * k, w = c.text.length * fontPx * 0.58 + 6;
+    const l = c.align === "middle" ? sx - w / 2 : sx, r = l + w, t = sy - h / 2, b = sy + h / 2;
+    if (l < 0 || t < 0 || r > widthPx || b > heightPx) continue;
+    if (taken.some((o) => l < o.r + pad && o.l < r + pad && t < o.b + pad && o.t < b + pad)) continue;
+    taken.push({ l, r, t, b });
+    placed.push(c);
+  }
+  return placed;
+}
