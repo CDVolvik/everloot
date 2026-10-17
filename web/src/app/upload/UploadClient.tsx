@@ -119,6 +119,7 @@ export default function UploadClient() {
         {prepared.value.addons.length > 0 && <div className="mt-3 text-sm text-parchment-100/80">
           <p>Installed addons in this upload ({prepared.value.addons.length}), recorded because you ran <code>/everloot addons on</code>:</p>
           <p className="mt-1 text-parchment-100/70">{prepared.value.addons.join(", ")}</p>
+          <p className="mt-1 text-parchment-100/70">This list is never published row by row; the site shows only counts for addons that at least three installs report.</p>
         </div>}
         <p className="mt-3 text-sm text-parchment-100/70">{prepared.value.held.legacy} legacy records without event IDs, {prepared.value.held.named} unchecked named records, and {prepared.value.held.invalid} invalid records stay out of this upload. Keep your original file.</p>
         <p className="mt-2 text-sm text-parchment-100/70">{prepared.value.batches.length} batches. Only a confirmed storage receipt advances progress. Named choices are checked against the grant on the server.</p>
