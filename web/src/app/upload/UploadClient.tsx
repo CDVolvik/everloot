@@ -44,7 +44,7 @@ export default function UploadClient() {
       let value: unknown;
       if (/\.lua$/i.test(file.name) || /EverlootDB\s*=/.test(text.slice(0, 500))) {
         const parsed = parseEverlootLua(text);
-        value = { addonVersion: parsed.version, records: parsed.records };
+        value = { addonVersion: parsed.version, clientBuild: parsed.clientBuild, records: parsed.records };
       } else value = JSON.parse(text);
       prepareUpload(value, {}, []);
       if (loadId.current === id) setPayload(value);
@@ -116,6 +116,11 @@ export default function UploadClient() {
             <span className="text-parchment-100/80">{kind}</span><span className="text-gold-400 font-semibold">{count}</span>
           </li>)}
         </ul>
+        {prepared.value.addons.length > 0 && <div className="mt-3 text-sm text-parchment-100/80">
+          <p>Installed addons in this upload ({prepared.value.addons.length}), recorded because you ran <code>/everloot addons on</code>:</p>
+          <p className="mt-1 text-parchment-100/70">{prepared.value.addons.join(", ")}</p>
+          <p className="mt-1 text-parchment-100/70">This list is never published row by row; the site shows only counts for addons that at least three installs report.</p>
+        </div>}
         <p className="mt-3 text-sm text-parchment-100/70">{prepared.value.held.legacy} legacy records without event IDs, {prepared.value.held.named} unchecked named records, and {prepared.value.held.invalid} invalid records stay out of this upload. Keep your original file.</p>
         <p className="mt-2 text-sm text-parchment-100/70">{prepared.value.batches.length} batches. Only a confirmed storage receipt advances progress. Named choices are checked against the grant on the server.</p>
         <button disabled={busy || !prepared.value.batches.length || complete} onClick={() => void send()} className={button + " mt-4"}>

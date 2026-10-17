@@ -5,7 +5,9 @@ const base = { installId: "test-install-1234", capturedAt: "2026-09-29T12:00:00.
 
 describe("intake contract", () => {
   test("all record kinds exist", () => {
-    expect(ALL_RECORD_KINDS).toHaveLength(19);
+    expect(ALL_RECORD_KINDS).toHaveLength(21);
+    expect(ALL_RECORD_KINDS).toContain("addon_seen");
+    expect(ALL_RECORD_KINDS).toContain("map_bounds");
     expect(ALL_RECORD_KINDS).toContain("recipe_observed");
     expect(ALL_RECORD_KINDS).toContain("trainer_seen");
     expect(ALL_RECORD_KINDS).toContain("gold_snapshot");
@@ -132,6 +134,34 @@ describe("intake contract", () => {
 expect(low.rejected.map((row) => row.reason).join(" ")).toContain("peak gold cannot be below current gold");
   });
 
+  test("an installed addon keeps its folder name, title, .toc version and whether it loaded", () => {
+    const result = parseRecords([
+      { ...base, kind: "addon_seen", name: "Questie", title: "Questie", version: "9.5.1", loaded: true },
+      { ...base, kind: "addon_seen", name: "OldBags", title: "Old Bags", loaded: false },
+      { ...base, kind: "addon_seen", name: "", title: "Nameless", loaded: true },
+      { ...base, kind: "addon_seen", name: "Questie", title: "Questie", loaded: "yes" },
+    ]);
+    expect(result.records).toEqual([
+      { ...base, kind: "addon_seen", name: "Questie", title: "Questie", version: "9.5.1", loaded: true },
+      { ...base, kind: "addon_seen", name: "OldBags", title: "Old Bags", loaded: false },
+    ]);
+    expect(result.receipt.rejected.map((r) => r.index)).toEqual([2, 3]);
+  });
+
+  test("zone bounds are four world coordinates with a width and a height", () => {
+    const zone = { ...base, kind: "map_bounds", mapId: 1429, continentId: 0, left: 1535.4, top: -7939.6, right: -1599.6, bottom: -10254.2 };
+    const result = parseRecords([
+      zone,
+      { ...zone, right: zone.left },
+      { ...zone, top: zone.bottom },
+      { ...zone, mapId: 0 },
+      { ...zone, left: Number.POSITIVE_INFINITY },
+    ]);
+    expect(result.records).toEqual([zone]);
+    expect(result.receipt.rejected.map((r) => r.index)).toEqual([1, 2, 3, 4]);
+    expect(result.receipt.rejected[0].reason).toBe("map bounds need a width and a height");
+  });
+
   test("rejects empty and oversized payloads", () => {
     expect(validateUpload({ addonVersion: "0.1.0", records: [] }).rejected[0].index).toBe(-1);
     expect(validateUpload({}).rejected).toHaveLength(1);
@@ -195,6 +225,18 @@ describe("canonical parsing", () => {
       rewardItemIds: [],
     });
     expect(result.upload.records[1]).toEqual({ ...base, kind: "price_seen", item: "Peacebloom", copper: 100 });
+  });
+
+  test("the client build is kept when sent and optional for 0.2.5 uploads", () => {
+    const withBuild = parseUpload({ addonVersion: "0.2.6", clientBuild: "1.60.1.70450", records: [validLoot] });
+    expect(withBuild.ok).toBe(true);
+    if (!withBuild.ok) throw new Error("expected a parsed envelope");
+    expect(withBuild.upload).toEqual({ addonVersion: "0.2.6", clientBuild: "1.60.1.70450", records: [canonicalLoot] });
+    const without = parseUpload({ addonVersion: "0.2.5", records: [validLoot] });
+    expect(without.ok).toBe(true);
+    if (!without.ok) throw new Error("expected a parsed envelope");
+    expect(without.upload).not.toHaveProperty("clientBuild");
+    expect(parseUpload({ addonVersion: "0.2.6", clientBuild: "<script>", records: [validLoot] }).ok).toBe(false);
   });
 
   test("a valid envelope whose rows are all rejected still parses with no records", () => {
