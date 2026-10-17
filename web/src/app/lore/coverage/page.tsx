@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { unstable_noStore as noStore } from "next/cache";
 import { dataAgeLabel } from "@/lib/data-age";
 import { BROWSE_HEADINGS, BROWSE_TYPES, coverage, FACET_KEYS, PRE_CLASSIFICATION_COPY, UNAVAILABLE, UNAVAILABLE_COPY, type BrowseSlug, type FacetKey } from "@/lib/lore";
 import { getRelease } from "@/lib/release";
 
-export const dynamic = "force-dynamic";
+// Cached for a day (fixed release). The unavailable answer calls noStore() so it is never cached.
+export const revalidate = 86400;
 
 export async function generateMetadata(): Promise<Metadata> {
   const available = getRelease() !== null;
@@ -26,6 +28,7 @@ export default async function CoveragePage() {
   const release = getRelease();
   const summary = coverage();
   if (!release || summary === UNAVAILABLE) {
+    noStore();
     return (
       <article className="space-y-4 max-w-4xl">
         <p className="font-mono text-xs text-muted">Lore archive</p>

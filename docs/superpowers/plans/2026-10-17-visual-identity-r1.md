@@ -35,7 +35,7 @@ A one-off codemod renames the ~800 old classes from a reviewed table. Buttons an
   - tickers.
 - Every text colour pair passes 4.5:1 in both modes, and text colour classes carry no opacity modifier.
 - Motion: 150 ms colour and opacity transitions only, and none under `prefers-reduced-motion`.
-- Commits are signed off (`git commit -s`) and end with the `Co-Authored-By` trailer. Public text (PR body, `THIRD_PARTY.md`) is in plain words and never says how it was written.
+- Commits are signed off (`git commit -s`). Public text (PR body, `THIRD_PARTY.md`) is in plain words and never says how it was written.
 
 ## Decisions this plan makes (the spec leaves them open)
 

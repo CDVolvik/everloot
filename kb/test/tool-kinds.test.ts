@@ -35,6 +35,7 @@ const EVERY_KIND = parseRecords([
   { ...base, eventId: "e:19", kind: "trainer_seen", profession: "Alchemy", recipe: "Lesser Healing Potion", requiredRank: 55, costCopper: 250 },
   { ...base, eventId: "e:20", kind: "addon_seen", name: "Questie", title: "Questie", version: "9.5.1", loaded: true },
   { ...base, eventId: "e:21", kind: "map_bounds", mapId: 1429, continentId: 0, left: 1535.4, top: -7939.6, right: -1599.6, bottom: -10254.2 },
+  { ...base, eventId: "e:22", kind: "talent_snapshot", class: "MAGE", level: 30, group: 1, active: true, configId: 7, treeId: 786, exportStatus: "unavailable", points: 2, nodes: [{ nodeId: 90001, ranks: 2 }] },
 ]);
 
 const FACTS: Record<keyof typeof TOOL_KINDS, (records: unknown[]) => unknown> = {

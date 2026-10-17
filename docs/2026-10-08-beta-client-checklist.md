@@ -1,4 +1,4 @@
-# Everloot 0.2.6 — beta collection check
+# Everloot 0.2.7 — beta collection check
 
 Lua 5.1 stubs pass; the Forever beta client has not been tested. Keep the existing
 SavedVariables file before installing. No script here plays the character.
@@ -61,6 +61,21 @@ SavedVariables file before installing. No script here plays the character.
    (world x runs north, y runs west). If no row appears, note what
    `C_Map.GetWorldPosFromMapPos` returns for (0,0) and (1,1) in that zone. Check that
    `clientBuild` in the saved file matches the build on the login screen.
+   For talents (beta closes 10/22, so do this first), run `/everloot selftest` once with the talent
+   window closed and once with it open (press N). Every line is `PASS`, `FAIL`, `SKIP` or `INFO`; copy
+   the chat lines or keep the `selftest` block of the saved file. It settles four things:
+   whether `C_Traits.GenerateImportString` returns a string (and what its first bytes say: the version
+   and spec id should match `GetLoadoutSerializationVersion` and the spec id), whether
+   `C_ClassTalents.ImportLoadout` and `ViewLoadout` exist (they are never called), whether
+   `GetTreeNodes` is ascending, and whether the second spec reads after the level 40 trainer visit
+   (run it again once you have dual spec). Then `/everloot talents` prints each spec group's points
+   and a share code. Expect one `talent_snapshot` row per spec group that has points, more only when
+   a build changes. Respec once and expect one new row.
+   For the plan panel, run `/everloot plan <share code>` with a code from the web calculator, or from
+   `/everloot talents`. Expect a panel beside the talent window with the next point and any
+   differences; green and red overlays on talent buttons only if the window is open. Spend a point by
+   hand and watch the panel move on. It must never click or spend anything. Note whether the panel
+   sits well beside Forever's talent window and whether the overlays line up.
 7. Log out so SavedVariables flush. Preview the file at `/upload` before sending.
    Keep named sharing off unless actual owner/officer authority is verified and
    the scoped grant has been issued. Upload, record receipts and repeat the same

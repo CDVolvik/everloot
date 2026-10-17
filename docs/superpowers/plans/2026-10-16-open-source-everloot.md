@@ -15,7 +15,7 @@
 - Code license: `AGPL-3.0-only`. Copyright line: `© 2026 R21 Media Group, LLC and Everloot contributors`.
 - Data license: `CC BY-SA 4.0`, credited to "Everloot contributors"; lore keeps its Warcraft Wiki credit.
 - Repository URL everywhere: `https://github.com/CDVolvik/everloot`.
-- Every commit from now on is signed off (`git commit -s`) and ends with the `Co-Authored-By` trailer.
+- Every commit from now on is signed off (`git commit -s`).
 - Publishable sources are exactly `warcraft-wiki-2023` and `curated`. Anything else in a release is a failure.
 - No public file may name the maintainer's private workspace, secrets folder, user folder or agent worktrees. `scripts/check_internal_paths.py` holds the exact patterns.
 - Public prose passes the craft-ownership gate and the humanizer pass; plain words, no AI phrasing.
