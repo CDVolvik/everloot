@@ -14,6 +14,8 @@ export interface AddonSeenRow {
   capturedAt: string;
   name: string;
   title: string;
+  /** The .toc Version field, when the install reported one. */
+  version?: string;
   loaded: boolean;
 }
 
@@ -25,6 +27,8 @@ export interface AddonPopularity {
   installs: number;
   /** Installs that had it loaded in at least one report. */
   loadedInstalls: number;
+  /** Versions at least three installs reported, newest report first. A version fewer installs report is left out. */
+  versions: { version: string; installs: number }[];
   /** loadedInstalls out of every install that reported its addons. */
   share: number;
   /** UTC ISO time by which the third install had reported it. */
@@ -82,6 +86,8 @@ export function rollupAllAddons(rows: AddonSeenRow[], asOf: string | Date = new 
     loaded: Set<string>;
     /** Per plain title: the installs that reported it. */
     titles: Map<string, Set<string>>;
+    /** Per version: the installs that reported it, and its newest report. */
+    versions: Map<string, { installs: Set<string>; last: number }>;
   }>();
   for (const row of rows) {
     const at = Date.parse(row.capturedAt);
@@ -89,12 +95,19 @@ export function rollupAllAddons(rows: AddonSeenRow[], asOf: string | Date = new 
     if (!Number.isFinite(at) || at > until) continue;
     reporting.add(row.installId);
     if (OWN_ADDONS.has(row.name)) continue;
-    const entry = byName.get(row.name) ?? { installs: new Map(), loaded: new Set<string>(), titles: new Map() };
+    const entry = byName.get(row.name) ?? { installs: new Map(), loaded: new Set<string>(), titles: new Map(), versions: new Map() };
     const seen = entry.installs.get(row.installId);
     entry.installs.set(row.installId, seen ? { first: Math.min(seen.first, at), last: Math.max(seen.last, at) } : { first: at, last: at });
     if (row.loaded) entry.loaded.add(row.installId);
     const title = plainTitle(row.title);
     if (title) entry.titles.set(title, (entry.titles.get(title) ?? new Set<string>()).add(row.installId));
+    const version = row.version?.replace(/\s+/g, " ").trim();
+    if (version) {
+      const v = entry.versions.get(version) ?? { installs: new Set<string>(), last: at };
+      v.installs.add(row.installId);
+      v.last = Math.max(v.last, at);
+      entry.versions.set(version, v);
+    }
     byName.set(row.name, entry);
   }
   const addons: AddonPopularity[] = [...byName].map(([name, e]) => {
@@ -105,6 +118,10 @@ export function rollupAllAddons(rows: AddonSeenRow[], asOf: string | Date = new 
       title: agreedTitle(e.titles) ?? name,
       installs: e.installs.size,
       loadedInstalls: e.loaded.size,
+      versions: [...e.versions]
+        .filter(([, v]) => v.installs.size >= INDEPENDENT_INSTALLS)
+        .sort(([a, x], [b, y]) => y.last - x.last || a.localeCompare(b))
+        .map(([version, v]) => ({ version, installs: v.installs.size })),
       share: e.loaded.size / reporting.size,
       firstSeen: new Date(firstSeen).toISOString(),
       lastSeen: new Date(Math.max(firstSeen, nth(spans.map((s) => s.last), "desc"))).toISOString(),
@@ -122,7 +139,10 @@ export function addonRowsFromRecords(records: unknown[]): AddonSeenRow[] {
     const row = raw as Record<string, unknown>;
     if (row.kind !== "addon_seen" || typeof row.installId !== "string" || typeof row.capturedAt !== "string" ||
       typeof row.name !== "string" || typeof row.title !== "string" || typeof row.loaded !== "boolean") continue;
-    rows.push({ installId: row.installId, capturedAt: row.capturedAt, name: row.name, title: row.title, loaded: row.loaded });
+    rows.push({
+      installId: row.installId, capturedAt: row.capturedAt, name: row.name, title: row.title, loaded: row.loaded,
+      ...(typeof row.version === "string" ? { version: row.version } : {}),
+    });
   }
   return rows;
 }

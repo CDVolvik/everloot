@@ -50,7 +50,7 @@ test("the rollup holds no install id", () => {
   ], AS_OF);
   // Each install reported once, so the third install's report is both the first and the last date three installs back.
   expect(facts.addons).toEqual([{
-    name: "Questie", title: "Questie", installs: 3, loadedInstalls: 3, share: 1,
+    name: "Questie", title: "Questie", installs: 3, loadedInstalls: 3, share: 1, versions: [],
     firstSeen: "2026-10-17T00:00:00.000Z", lastSeen: "2026-10-17T00:00:00.000Z", public: true,
   }]);
   expect(JSON.stringify(facts)).not.toContain("install-");
@@ -120,4 +120,15 @@ test("the leaderboard's rows leave out addons fewer than three installs report, 
   expect(addons.map((a) => a.name)).toEqual(["Questie"]);
   expect(reportingInstalls).toBe(3);
   expect(JSON.stringify(addons)).not.toContain("MyGuildTools");
+});
+
+test("a version is listed only when three installs report it, newest report first", () => {
+  const v = (installId: string, version: string, capturedAt: string): AddonSeenRow => ({ ...seen(installId, "Questie", capturedAt), version });
+  const { addons } = popularAddonsFromRecords([
+    v("a", "1.0", "2026-10-10T00:00:00Z"), v("b", "1.0", "2026-10-10T00:00:00Z"), v("c", "1.0", "2026-10-11T00:00:00Z"),
+    v("a", "1.1", "2026-10-15T00:00:00Z"), v("b", "1.1", "2026-10-15T00:00:00Z"), v("c", "1.1", "2026-10-16T00:00:00Z"),
+    v("a", "9.9-private", "2026-10-16T00:00:00Z"), v("b", "9.9-private", "2026-10-16T00:00:00Z"),
+  ].map((row) => ({ kind: "addon_seen", ...row })), AS_OF);
+  expect(addons[0].versions).toEqual([{ version: "1.1", installs: 3 }, { version: "1.0", installs: 3 }]);
+  expect(JSON.stringify(addons)).not.toContain("9.9-private");
 });
