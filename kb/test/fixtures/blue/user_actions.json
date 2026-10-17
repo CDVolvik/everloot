@@ -17,6 +17,11 @@
       "category_id": 171, "excerpt": "Retail only."
     },
     {
+      "action_type": 5, "created_at": "2026-10-16T16:30:00.000Z", "slug": "synthetic-title-only", "topic_id": 9000009,
+      "post_id": 70000009, "post_number": 2, "username": "Linxy", "title": "Synthetic WoW Forever launch hours",
+      "category_id": 171, "excerpt": "Retail category, Forever in the title."
+    },
+    {
       "action_type": 5, "created_at": "2026-10-16T16:00:00.000Z", "slug": "classic-fix", "topic_id": 9000004,
       "post_id": 70000004, "post_number": 3, "username": "Rommax-244181", "title": "Synthetic Classic realm fix",
       "category_id": 172, "excerpt": "Fixed."
@@ -34,6 +39,11 @@
     {
       "action_type": 1, "created_at": "2026-10-16T13:00:00.000Z", "slug": "like", "topic_id": 9000007,
       "post_id": 70000007, "post_number": 2, "username": "Linxy", "title": "Synthetic Forever like", "category_id": 347
+    },
+    {
+      "action_type": 5, "created_at": "2026-10-16T12:00:00.000Z", "slug": "synthetic-lowercase", "topic_id": 9000010,
+      "post_id": 70000010, "post_number": 5, "username": "Linxy", "title": "Synthetic lowercase sentences", "category_id": 347,
+      "excerpt": "Fixed a bug. we also changed a thing. more words here that should never be kept."
     },
     {
       "action_type": 4, "created_at": "2026-10-15T12:00:00.000Z", "slug": "synthetic-launch-note", "topic_id": 9000008,

@@ -56,9 +56,13 @@ function Entry({ entry }: { entry: ChangeEntry }) {
           {entry.summary && <p className="text-fg"><span className="font-mono text-xs text-muted">Everloot summary </span>{entry.summary}</p>}
           {entry.excerpt && <p className="text-fg-2 border-l-2 border-line pl-3">{entry.excerpt}</p>}
           <p>
-            <a href={entry.url ?? "#"} rel="noopener" className={`inline-flex items-center min-h-11 font-medium ${link}`}>
-              Read the original on {ORIGIN_LABEL[entry.source ?? ""] ?? "Blizzard"}<span className="sr-only">: {entry.title}</span>
-            </a>
+            {entry.url ? (
+              <a href={entry.url} rel="noopener" className={`inline-flex items-center min-h-11 font-medium ${link}`}>
+                Read the original on {ORIGIN_LABEL[entry.source ?? ""] ?? "Blizzard"}<span className="sr-only">: {entry.title}</span>
+              </a>
+            ) : (
+              <span className="text-sm text-muted">The link to the original is unavailable.</span>
+            )}
           </p>
         </>
       )}

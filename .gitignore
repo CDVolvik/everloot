@@ -66,3 +66,4 @@ web/.data/
 !.env.example
 !web/.env.example
 !kb/.env.example
+kb/changes/*.tmp

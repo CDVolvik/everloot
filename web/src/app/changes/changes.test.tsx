@@ -98,3 +98,11 @@ test("the RSS feed is Forever only, is RSS, and links to Blizzard's originals", 
   expect(xml).not.toContain("Classic realm move");
   expect((xml.match(/<item>/g) ?? []).length).toBe(4);
 });
+
+test("a post whose stored link was not a web link shows no link, only a plain note", async () => {
+  timeline.entries = [{ ...entries[1], url: null }];
+  const html = await page();
+  expect(html).toContain("The link to the original is unavailable.");
+  expect(html).not.toContain("Read the original");
+  timeline.entries = entries;
+});

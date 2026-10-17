@@ -1,8 +1,9 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { auditSources } from "./audit-sources.js";
 import { BlizzardClient } from "./blizzard/client.js";
-import { emptyStore, ingestBluePosts, loadAccounts, loadStore, saveStore } from "./blue-posts.js";
+import { ingestBluePosts, loadAccounts, loadFetchState, loadStore, saveFetchState, saveStore } from "./blue-posts.js";
 import { buildTimeline } from "./changes.js";
 import { checkBuilds, loadRegistry, recordBuilds, saveRegistry, versionsUrl } from "./builds.js";
 import { diffSnapshots } from "./client-diff.js";
@@ -18,6 +19,10 @@ import { openPublicSnapshot } from "./public-snapshot.js";
 import { search } from "./search.js";
 import { snapshot } from "./snapshot.js";
 import { validate } from "./validate.js";
+
+/** The committed changes data and the tracked accounts, found from this file so the cwd does not matter. */
+const CHANGES_DIR = fileURLToPath(new URL("../changes/", import.meta.url));
+const ACCOUNTS_FILE = fileURLToPath(new URL("../curated/blue-accounts.json", import.meta.url));
 
 const GAMES: Game[] = ["retail", "classic", "classic1x", "forever"];
 const KINDS: NsKind[] = ["static", "dynamic", "profile"];
@@ -41,13 +46,16 @@ const USAGE = `usage: npm run kb -- <command> --db <path>
   builds-check [--product wow_classic_beta,wow_classic_era] [--registry data/builds.json]
     (asks Blizzard's public version service which builds exist; records new ones as queued.
     Reads build identifiers only, never game files)
-  blue-check [--store changes/blue-posts.json] [--accounts curated/blue-accounts.json] [--min-minutes 25]
+  blue-check [--store <kb>/changes/blue-posts.json] [--accounts <kb>/curated/blue-accounts.json]
+    [--state data/blue-fetch-state.json] [--min-minutes 25]
     (the blue post tracker: reads the tracked Blizzard staff accounts on the WoW forum and the official
     WoW Bluesky feed, politely: robots.txt first, 1.5 s apart, skips a source asked less than 25
-    minutes ago, stops on 429 or a server error. Keeps title, author, time, link and a two-sentence
-    excerpt per post, never the full text. Run it every 30 minutes at most. The store is public and
-    committed under kb/changes; the same folder holds builds.json, the registry the /changes page shows,
-    written by the scheduled workflow with: builds-check --registry changes/builds.json)
+    minutes ago, never follows a redirect, stops on 429 or a server error, reads at most 3 pages of 30 per
+    source and stops paging at what it already saw. Keeps title, author, time, link and a two-sentence
+    excerpt per post, never the full text. Run it every 30 minutes at most. The posts file is public and
+    committed under kb/changes (the same folder holds builds.json, written by the scheduled workflow
+    with: builds-check --registry changes/builds.json). The politeness state (last asked, Retry-After,
+    validators) is a separate file that stays out of git)
   client-extract [--product wow_classic_beta] [--registry data/builds.json] [--out data/client]
     (reads items and spells of the product's current build from Blizzard's CDN into a snapshot
     <out>/<product>-<build>-<buildconfig, 8 chars>.sqlite + manifest, and marks the build processed.
@@ -175,8 +183,8 @@ async function main(): Promise<number> {
       closeOnExit(release.db);
       await serveStdio(release.db, () => {
         // The same files blue-check and builds-check write; absent files mean "not connected".
-        const posts = "changes/blue-posts.json";
-        const builds = "changes/builds.json";
+        const posts = join(CHANGES_DIR, "blue-posts.json");
+        const builds = join(CHANGES_DIR, "builds.json");
         return existsSync(posts) || existsSync(builds) ? buildTimeline(loadStore(posts).posts, loadRegistry(builds).builds) : null;
       });
       return 0;
@@ -226,15 +234,18 @@ async function main(): Promise<number> {
       return result.errors.length ? 1 : 0;
     }
     case "blue-check": {
-      const path = flags.get("store") || "changes/blue-posts.json";
+      const path = flags.get("store") || join(CHANGES_DIR, "blue-posts.json");
+      const statePath = flags.get("state") || "data/blue-fetch-state.json";
       const result = await ingestBluePosts({
-        store: existsSync(path) ? loadStore(path) : emptyStore(),
-        accounts: loadAccounts(flags.get("accounts") || "curated/blue-accounts.json"),
-        fetcher: (url, init) => fetch(url, { ...init, signal: AbortSignal.timeout(15_000) }),
+        store: { ...loadStore(path), fetched: loadFetchState(statePath) },
+        accounts: loadAccounts(flags.get("accounts") || ACCOUNTS_FILE),
+        // Redirects are not followed: robots.txt was read for the host we asked, not for wherever it points.
+        fetcher: (url, init) => fetch(url, { ...init, redirect: "manual", signal: AbortSignal.timeout(15_000) }),
         now: new Date(),
         minIntervalMs: Number(flags.get("min-minutes") ?? 25) * 60_000,
       });
       saveStore(path, result.store);
+      saveFetchState(statePath, result.store.fetched);
       for (const p of result.added) console.log(`new post: [${p.game}] ${p.title} (${p.author}) ${p.url}`);
       for (const s of result.skipped) console.log(`skipped ${s}`);
       for (const e of result.errors) console.error(`${e.source}: ${e.error}`);

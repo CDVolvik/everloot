@@ -1,16 +1,23 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
+import { sanitizePost } from "./changes.js";
+import { clampExcerpt, clampText, isoTime, plainText } from "./text-safety.js";
+
+export { clampExcerpt as excerptOf, plainText } from "./text-safety.js";
 
 /**
  * Official Blizzard posts about WoW: Forever (and Classic), for the "what changed" page.
  *
  * What it reads, and nothing else:
- *  - the Blizzard WoW forum's public Discourse JSON, one request per tracked staff account
+ *  - the Blizzard WoW forum's public Discourse JSON, one request per tracked staff account and page
  *    (`user_actions.json`), after checking robots.txt;
  *  - the official World of Warcraft account's public Bluesky feed.
  * What it keeps per post: source, link, title, author, role, times, category, game and an excerpt of
  * at most two sentences. Blizzard's post text is Blizzard's, so there is never a full copy here. The
  * research behind these choices is in the Everloot wiki note 2026-10-18-blue-tracker-sources.
+ *
+ * Caps: at most MAX_PAGES pages (30 items each) per source per run, and a run stops paging as soon as a
+ * page reaches items it has already seen. A normal run is one page per source.
  */
 
 export type BlueSource = "forum" | "bluesky";
@@ -20,8 +27,8 @@ export interface BluePost {
   /** Stable across runs: `forum:<post id>` or `bluesky:<record key>`. */
   id: string;
   source: BlueSource;
-  /** The original, which every page shows prominently. */
-  url: string;
+  /** The original, which every page shows prominently. Null only if a stored link was not a web link. */
+  url: string | null;
   title: string;
   author: string;
   /** The author's published forum title, such as "Community Manager"; empty when unknown. */
@@ -32,7 +39,7 @@ export interface BluePost {
   category: string;
   game: BlueGame;
   kind: "post" | "hotfix";
-  /** At most two sentences of the original; see excerptOf. */
+  /** At most two sentences of the original; see clampExcerpt. */
   excerpt: string;
   /** One line a maintainer may write by hand. Never filled automatically, never overwritten by a fetch. */
   summary?: string;
@@ -41,11 +48,14 @@ export interface BluePost {
 
 export interface Validators { etag?: string; lastModified?: string }
 
+/** What the next run needs to stay polite. Kept in the Actions cache or on the maintainer's machine, not in git. */
 export interface FetchState extends Validators {
-  /** When we last asked this source, ISO. */
+  /** When this source was last read in full, ISO. */
   at: string;
   /** Do not ask again before this time (a Retry-After we were given), ISO. */
   notBefore?: string;
+  /** Time of the newest item the source showed at the last read; paging stops once it reaches this. */
+  newestSeen?: string;
 }
 
 export interface BlueStore {
@@ -56,10 +66,13 @@ export interface BlueStore {
 export interface TrackedAccount { username: string; title: string }
 
 /** Forum and feed constants. The category ids come from /en/wow/site.json (read 2026-10-17). */
-export const FORUM_BASE = "https://us.forums.blizzard.com/en/wow";
+export const FORUM_HOST = "https://us.forums.blizzard.com";
+export const FORUM_BASE = `${FORUM_HOST}/en/wow`;
 export const BLUESKY_ACTOR = "worldofwarcraft.blizzard.com";
 export const BLUESKY_FEED = `https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=${BLUESKY_ACTOR}&filter=posts_no_replies&limit=30`;
 export const USER_AGENT = "Everloot/1.0 (+https://everloot.app; hello@everloot.app)";
+export const MAX_PAGES = 3;
+const PAGE_SIZE = 30;
 
 /** "WoW: Forever" 346 with its General Discussion 347 and Community Connections 348, and "Forever Beta Discussion" 349. */
 const FOREVER_CATEGORIES = new Map<number, string>([
@@ -75,47 +88,12 @@ const CLASSIC_CATEGORIES = new Map<number, string>([
   [200, "Classic Connections"], [302, "Season of Discovery"], [296, "WoW Classic Hardcore"],
 ]);
 
-/** The game a post is about, or null when it is neither (retail threads are dropped). */
-export function gameOf(categoryId: number | undefined, title: string): { game: BlueGame; category: string } | null {
-  if (categoryId !== undefined && FOREVER_CATEGORIES.has(categoryId)) return { game: "forever", category: FOREVER_CATEGORIES.get(categoryId)! };
-  if (/\bforever\b/i.test(title)) return { game: "forever", category: categoryId === undefined ? "" : `Category ${categoryId}` };
-  if (categoryId !== undefined && CLASSIC_CATEGORIES.has(categoryId)) return { game: "classic", category: CLASSIC_CATEGORIES.get(categoryId)! };
+/** The game a forum post is about, by category alone, or null (retail threads and any other category are dropped). */
+export function gameOf(categoryId: number | undefined): { game: BlueGame; category: string } | null {
+  if (categoryId === undefined) return null;
+  if (FOREVER_CATEGORIES.has(categoryId)) return { game: "forever", category: FOREVER_CATEGORIES.get(categoryId)! };
+  if (CLASSIC_CATEGORIES.has(categoryId)) return { game: "classic", category: CLASSIC_CATEGORIES.get(categoryId)! };
   return null;
-}
-
-const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", hellip: "…", rsquo: "’", lsquo: "‘", rdquo: "”", ldquo: "“", ndash: "–", mdash: "—" };
-
-function decodeEntities(text: string): string {
-  return text.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (whole, body: string) => {
-    if (body[0] === "#") {
-      const code = body[1].toLowerCase() === "x" ? parseInt(body.slice(2), 16) : parseInt(body.slice(1), 10);
-      return Number.isInteger(code) && code > 0 && code < 0x110000 ? String.fromCodePoint(code) : whole;
-    }
-    return ENTITIES[body.toLowerCase()] ?? whole;
-  });
-}
-
-/** Plain text of an HTML-ish fragment: tags dropped, entities decoded, whitespace collapsed. */
-export function plainText(html: string): string {
-  return decodeEntities(html.replace(/<[^>]*>/g, " ")).replace(/\s+/g, " ").trim();
-}
-
-const MAX_EXCERPT_CHARS = 300;
-
-/**
- * The first two sentences of a post, never more than 300 characters (cut at a word, with an ellipsis).
- * This is the only part of Blizzard's text we keep.
- */
-export function excerptOf(raw: string): string {
-  const text = plainText(raw);
-  if (!text) return "";
-  const sentences = text.split(/(?<=[.!?])\s+(?=[A-Z0-9"“‘'(\[])/);
-  let out = sentences.slice(0, 2).join(" ");
-  // A source that already cut with an ellipsis stays cut.
-  if (out.length <= MAX_EXCERPT_CHARS) return out;
-  out = out.slice(0, MAX_EXCERPT_CHARS - 1);
-  const space = out.lastIndexOf(" ");
-  return `${(space > 120 ? out.slice(0, space) : out).replace(/[\s.,;:!?-]+$/, "")}…`;
 }
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -123,6 +101,15 @@ const str = (v: unknown): string => (typeof v === "string" ? v : "");
 
 /** Forum usernames carry a numeric suffix (`Rommax-244181`); the name shown to players does not. */
 const displayName = (username: string, name: string) => name || username.replace(/-\d+$/, "");
+
+export interface PageInfo { count: number; oldest: string | null; newest: string | null; next: string | null }
+
+/** Size and time span of one `user_actions.json` answer, kept or not, so paging knows when to stop. */
+export function forumPageInfo(json: unknown): PageInfo {
+  if (!isRecord(json) || !Array.isArray(json.user_actions)) throw new Error("not a Discourse user_actions answer");
+  const times = json.user_actions.map((a) => isoTime(isRecord(a) ? a.created_at : null)).filter((t): t is string => t !== null).sort();
+  return { count: json.user_actions.length, oldest: times[0] ?? null, newest: times.at(-1) ?? null, next: null };
+}
 
 /** Posts by tracked staff accounts from one `user_actions.json` answer. Anything about another game is dropped. */
 export function parseForumActions(json: unknown, accounts: TrackedAccount[], now: Date): BluePost[] {
@@ -134,13 +121,13 @@ export function parseForumActions(json: unknown, accounts: TrackedAccount[], now
     if (action.action_type !== 4 && action.action_type !== 5) continue;
     const username = str(action.acting_username) || str(action.username);
     const account = roster.get(username.toLowerCase());
-    const title = plainText(str(action.title));
+    const title = clampText(action.title, 200);
     const postId = action.post_id;
     const topicId = action.topic_id;
     const postNumber = action.post_number;
-    const postedAt = str(action.created_at);
-    if (!account || !title || !Number.isInteger(postId) || !Number.isInteger(topicId) || !Number.isInteger(postNumber) || !Number.isFinite(Date.parse(postedAt))) continue;
-    const game = gameOf(typeof action.category_id === "number" ? action.category_id : undefined, title);
+    const postedAt = isoTime(action.created_at);
+    if (!account || !title || !Number.isInteger(postId) || !Number.isInteger(topicId) || !Number.isInteger(postNumber) || !postedAt) continue;
+    const game = gameOf(typeof action.category_id === "number" ? action.category_id : undefined);
     if (!game) continue;
     const slug = /^[a-z0-9-]+$/i.test(str(action.slug)) ? str(action.slug) : "topic";
     posts.push({
@@ -150,48 +137,86 @@ export function parseForumActions(json: unknown, accounts: TrackedAccount[], now
       title,
       author: displayName(username, str(action.acting_name) || str(action.name)),
       role: account.title,
-      postedAt: new Date(postedAt).toISOString(),
+      postedAt,
       editedAt: null,
       category: game.category,
       game: game.game,
       kind: /hotfix/i.test(title) ? "hotfix" : "post",
-      excerpt: excerptOf(str(action.excerpt)),
+      excerpt: clampExcerpt(action.excerpt),
       firstSeen: now.toISOString(),
     });
   }
   return posts;
 }
 
-/** The official WoW account's own posts that mention Forever or Classic. Reposts and replies are skipped. */
+/** A Forever-specific signal: the game's name, its beta, its hashtag, or a link to its pages. Bare "forever" is not one. */
+const FOREVER_SIGNAL = /\b(?:wow|world of warcraft)\s*:?\s*forever\b|\bforever beta\b|#wowforever\b|worldofwarcraft\.blizzard\.com\/[a-z-]+\/forever|forums\.blizzard\.com\/[a-z]+\/wow\/c\/wow-forever/i;
+const CLASSIC_SIGNAL = /\b(?:wow|world of warcraft)\s+classic\b|\b(?:burning crusade|mists of pandaria|wrath of the lich king|cataclysm) classic\b|\bclassic (?:era|anniversary)\b|\bseason of discovery\b/i;
+
+/** Every link a Bluesky record carries: facets and an external-link embed. */
+function recordLinks(record: Record<string, unknown>): string[] {
+  const links: string[] = [];
+  if (Array.isArray(record.facets)) {
+    for (const facet of record.facets) {
+      if (!isRecord(facet) || !Array.isArray(facet.features)) continue;
+      for (const feature of facet.features) if (isRecord(feature) && typeof feature.uri === "string") links.push(feature.uri);
+    }
+  }
+  const embed = record.embed;
+  if (isRecord(embed) && isRecord(embed.external) && typeof embed.external.uri === "string") links.push(embed.external.uri);
+  return links;
+}
+
+/** Newest and oldest time of a Bluesky page, ignoring a pinned post (it sits first whatever its age). */
+export function blueskyPageInfo(json: unknown): PageInfo {
+  if (!isRecord(json) || !Array.isArray(json.feed)) throw new Error("not a Bluesky author feed");
+  const times = json.feed
+    .filter((i) => isRecord(i) && !(isRecord(i.reason) && /reasonPin/.test(str(i.reason.$type))))
+    .map((i) => (isRecord(i) && isRecord(i.post) && isRecord(i.post.record) ? isoTime(i.post.record.createdAt) : null))
+    .filter((t): t is string => t !== null)
+    .sort();
+  return { count: json.feed.length, oldest: times[0] ?? null, newest: times.at(-1) ?? null, next: typeof json.cursor === "string" && json.cursor ? json.cursor : null };
+}
+
+/**
+ * The official WoW account's own posts about Forever or Classic. Replies and reposts are skipped; a pinned
+ * post is kept when it matches. The title is the first line and the excerpt is what follows it, never the same words twice.
+ */
 export function parseBlueskyFeed(json: unknown, now: Date): BluePost[] {
   if (!isRecord(json) || !Array.isArray(json.feed)) throw new Error("not a Bluesky author feed");
   const posts: BluePost[] = [];
   for (const item of json.feed) {
-    if (!isRecord(item) || isRecord(item.reason) || !isRecord(item.post)) continue;
+    if (!isRecord(item) || !isRecord(item.post)) continue;
+    if (isRecord(item.reason) && /reasonRepost/.test(str(item.reason.$type))) continue;
     const post = item.post;
     const record = post.record;
     const author = post.author;
     if (!isRecord(record) || !isRecord(author) || str(author.handle) !== BLUESKY_ACTOR || isRecord(record.reply)) continue;
     const key = str(post.uri).split("/").pop() ?? "";
     const text = str(record.text).trim();
-    const postedAt = str(record.createdAt);
-    if (!/^[a-z0-9]+$/i.test(key) || !text || !Number.isFinite(Date.parse(postedAt))) continue;
-    const game = /\bforever\b/i.test(text) ? "forever" : /\bclassic\b/i.test(text) ? "classic" : null;
+    const postedAt = isoTime(record.createdAt);
+    if (!/^[a-z0-9]+$/i.test(key) || !text || !postedAt) continue;
+    const haystack = `${text}\n${recordLinks(record).join("\n")}`;
+    const game = FOREVER_SIGNAL.test(haystack) ? "forever" : CLASSIC_SIGNAL.test(haystack) ? "classic" : null;
     if (!game) continue;
     const firstLine = plainText(text.split(/\n/).find((l) => l.trim()) ?? text);
+    const title = firstLine.length > 100 ? `${firstLine.slice(0, 99).replace(/\s+\S*$/, "")}…` : firstLine;
+    const whole = plainText(text);
+    const core = title.replace(/…$/, "");
+    const rest = (whole.startsWith(core) ? whole.slice(core.length) : whole).replace(/^[\s.:;,\-–—]+/, "");
     posts.push({
       id: `bluesky:${key}`,
       source: "bluesky",
       url: `https://bsky.app/profile/${BLUESKY_ACTOR}/post/${key}`,
-      title: firstLine.length > 100 ? `${firstLine.slice(0, 99).replace(/\s+\S*$/, "")}…` : firstLine,
-      author: str(author.displayName) || "World of Warcraft",
+      title,
+      author: clampText(author.displayName, 100) || "World of Warcraft",
       role: "Official account",
-      postedAt: new Date(postedAt).toISOString(),
+      postedAt,
       editedAt: null,
       category: "Bluesky",
       game,
       kind: /hotfix/i.test(text) ? "hotfix" : "post",
-      excerpt: excerptOf(text),
+      excerpt: clampExcerpt(rest),
       firstSeen: now.toISOString(),
     });
   }
@@ -228,6 +253,7 @@ function ruleFor(path: string, allow: boolean): RobotsRule | null {
 /**
  * Whether robots.txt lets `agent` fetch `pathAndQuery`. The most specific group naming the agent wins,
  * otherwise `*`; within it the longest matching rule wins and Allow beats Disallow on a tie (RFC 9309).
+ * An empty `User-agent:` names nobody.
  */
 export function robotsAllows(robotsText: string, pathAndQuery: string, agent = "everloot"): boolean {
   const groups: { agents: string[]; rules: RobotsRule[] }[] = [];
@@ -241,7 +267,7 @@ export function robotsAllows(robotsText: string, pathAndQuery: string, agent = "
     const value = clean.slice(colon + 1).trim();
     if (field === "user-agent") {
       if (!current || !lastWasAgent) { current = { agents: [], rules: [] }; groups.push(current); }
-      current.agents.push(value.toLowerCase());
+      if (value) current.agents.push(value.toLowerCase());
       lastWasAgent = true;
     } else if ((field === "allow" || field === "disallow") && current) {
       const rule = ruleFor(value, field === "allow");
@@ -263,17 +289,36 @@ export function robotsAllows(robotsText: string, pathAndQuery: string, agent = "
 
 export const emptyStore = (): BlueStore => ({ posts: [], fetched: {} });
 
+/** The committed posts file. Every post is re-clamped on the way in, so a hand-edited file cannot widen a limit. */
 export function loadStore(path: string): BlueStore {
   if (!existsSync(path)) return emptyStore();
   const parsed = JSON.parse(readFileSync(path, "utf8"));
   if (!isRecord(parsed) || !Array.isArray(parsed.posts)) throw new Error(`${path} is not a blue post store`);
-  return { posts: parsed.posts as BluePost[], fetched: isRecord(parsed.fetched) ? (parsed.fetched as Record<string, FetchState>) : {} };
+  const posts = (parsed.posts as unknown[]).map(sanitizePost).filter((p): p is BluePost => p !== null);
+  return { posts, fetched: {} };
 }
 
-/** Written beside the target and renamed into place, so a crash never leaves half a store. */
+/** Written beside the target and renamed into place, so a crash never leaves half a store. Posts only: fetch state stays out of git. */
 export function saveStore(path: string, store: BlueStore): void {
   mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(`${path}.tmp`, `${JSON.stringify(store, null, 2)}\n`);
+  writeFileSync(`${path}.tmp`, `${JSON.stringify({ posts: store.posts }, null, 2)}\n`);
+  renameSync(`${path}.tmp`, path);
+}
+
+/** The politeness state (last asked, validators, Retry-After) of the previous run; empty if there was none. */
+export function loadFetchState(path: string): Record<string, FetchState> {
+  if (!existsSync(path)) return {};
+  try {
+    const parsed = JSON.parse(readFileSync(path, "utf8"));
+    return isRecord(parsed) && isRecord(parsed.fetched) ? (parsed.fetched as Record<string, FetchState>) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function saveFetchState(path: string, fetched: Record<string, FetchState>): void {
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(`${path}.tmp`, `${JSON.stringify({ fetched }, null, 2)}\n`);
   renameSync(`${path}.tmp`, path);
 }
 
@@ -314,7 +359,7 @@ class Backoff extends Error {
   constructor(message: string, readonly notBefore?: string) { super(message); }
 }
 
-const forumPath = (username: string) => `/en/wow/user_actions.json?username=${encodeURIComponent(username)}&filter=4,5&offset=0`;
+const forumPath = (username: string, offset: number) => `/en/wow/user_actions.json?username=${encodeURIComponent(username)}&filter=4,5&offset=${offset}`;
 
 function retryAfter(res: Response, now: Date): string | undefined {
   const value = res.headers.get("retry-after");
@@ -324,10 +369,15 @@ function retryAfter(res: Response, now: Date): string | undefined {
   return Number.isFinite(at) ? new Date(at).toISOString() : undefined;
 }
 
+const message = (err: unknown) => (err instanceof Error ? err.message : String(err));
+
 /**
  * One scheduled pass. For each tracked forum account, and the official Bluesky feed: obey robots.txt, skip
- * a source asked too recently, send the validators the server last gave us, treat 304 as "nothing new" and
- * stop at the first 429 or server error. A source that fails is reported and left as it was.
+ * a source asked too recently or told to wait, send the validators the server last gave us, treat 304 as
+ * "nothing new", never follow a redirect, and stop at the first 429 or server error. A source is read up to
+ * MAX_PAGES pages, stopping when a page reaches what the last read already showed. A source that fails is
+ * reported and left exactly as it was: its validators, last-asked time and newest-seen time only move after
+ * every page of the read parsed.
  */
 export async function ingestBluePosts(opts: IngestOptions): Promise<IngestResult> {
   const minInterval = opts.minIntervalMs ?? 25 * 60_000;
@@ -338,72 +388,113 @@ export async function ingestBluePosts(opts: IngestOptions): Promise<IngestResult
   const skipped: string[] = [];
   const errors: { source: string; error: string }[] = [];
   let backedOff = false;
-  let lastForumRequest = false;
+  const lastRequest = new Map<string, number>();
 
-  const fetchJson = async (key: string, url: string): Promise<unknown | null> => {
-    const state = store.fetched[key];
-    if (state?.notBefore && Date.parse(state.notBefore) > opts.now.getTime()) { skipped.push(`${key}: asked to wait until ${state.notBefore}`); return null; }
-    if (state && opts.now.getTime() - Date.parse(state.at) < minInterval) { skipped.push(`${key}: asked less than ${Math.round(minInterval / 60000)} minutes ago`); return null; }
-    const headers: Record<string, string> = { "User-Agent": USER_AGENT, Accept: "application/json" };
-    if (state?.etag) headers["If-None-Match"] = state.etag;
-    if (state?.lastModified) headers["If-Modified-Since"] = state.lastModified;
-    const res = await opts.fetcher(url, { headers });
+  const setState = (key: string, state: FetchState) => { store = { ...store, fetched: { ...store.fetched, [key]: state } }; };
+
+  /** One GET, with the politeness rules that apply to every request. */
+  const get = async (host: string, key: string, url: string, headers: Record<string, string>): Promise<Response> => {
+    if (lastRequest.has(host)) await sleep(delay);
+    lastRequest.set(host, 1);
+    const res = await opts.fetcher(url, { headers: { "User-Agent": USER_AGENT, ...headers } });
     if (res.status === 429 || res.status >= 500) {
       const notBefore = retryAfter(res, opts.now);
-      store = { ...store, fetched: { ...store.fetched, [key]: { ...(state ?? { at: opts.now.toISOString() }), ...(notBefore ? { notBefore } : {}) } } };
+      const previous = store.fetched[key];
+      setState(key, { ...(previous ?? { at: opts.now.toISOString() }), ...(notBefore ? { notBefore } : {}) });
       throw new Backoff(`HTTP ${res.status}`, notBefore);
     }
-    const next: FetchState = { at: opts.now.toISOString() };
-    const etag = res.headers.get("etag");
-    const lastModified = res.headers.get("last-modified");
-    if (etag) next.etag = etag;
-    if (lastModified) next.lastModified = lastModified;
-    store = { ...store, fetched: { ...store.fetched, [key]: next } };
-    if (res.status === 304) return null;
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.json();
+    // A redirect could lead somewhere robots.txt was never read for, so it is reported, not followed.
+    if (res.status >= 300 && res.status < 400 && res.status !== 304) throw new Error(`HTTP ${res.status} redirect not followed`);
+    return res;
   };
 
-  const take = (posts: BluePost[]) => {
-    const merged = mergePosts(store, posts);
+  /**
+   * Read one source, page by page. `urlFor(page, cursor)` builds each request, `info` measures a page and
+   * `parse` turns it into posts. Nothing is merged or remembered unless every page succeeded.
+   */
+  const readSource = async (
+    key: string, host: string, urlFor: (page: number, cursor: string | null) => string,
+    info: (json: unknown) => PageInfo, parse: (json: unknown) => BluePost[],
+  ): Promise<void> => {
+    const state = store.fetched[key];
+    if (state?.notBefore && Date.parse(state.notBefore) > opts.now.getTime()) { skipped.push(`${key}: asked to wait until ${state.notBefore}`); return; }
+    if (state && opts.now.getTime() - Date.parse(state.at) < minInterval) { skipped.push(`${key}: asked less than ${Math.round(minInterval / 60000)} minutes ago`); return; }
+    const found: BluePost[] = [];
+    let validators: Validators = {};
+    let newest: string | null = null;
+    let cursor: string | null = null;
+    for (let page = 0; page < MAX_PAGES; page++) {
+      const headers: Record<string, string> = { Accept: "application/json" };
+      if (page === 0 && state?.etag) headers["If-None-Match"] = state.etag;
+      if (page === 0 && state?.lastModified) headers["If-Modified-Since"] = state.lastModified;
+      const res = await get(host, key, urlFor(page, cursor), headers);
+      if (res.status === 304) {
+        // Nothing new. A 304 that omits a validator does not erase the one we hold.
+        const next: FetchState = { ...state, at: opts.now.toISOString() };
+        const etag = res.headers.get("etag");
+        const lastModified = res.headers.get("last-modified");
+        if (etag) next.etag = etag;
+        if (lastModified) next.lastModified = lastModified;
+        delete next.notBefore;
+        setState(key, next);
+        return;
+      }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      const measured = info(json);
+      found.push(...parse(json));
+      if (page === 0) {
+        validators = { ...(res.headers.get("etag") ? { etag: res.headers.get("etag")! } : {}), ...(res.headers.get("last-modified") ? { lastModified: res.headers.get("last-modified")! } : {}) };
+        newest = measured.newest;
+      }
+      cursor = measured.next;
+      const reachedKnown = state?.newestSeen !== undefined && measured.oldest !== null && measured.oldest <= state.newestSeen;
+      if (reachedKnown || measured.count < PAGE_SIZE || (key === "bluesky" && !cursor)) break;
+    }
+    const merged = mergePosts(store, found);
     store = merged.store;
     added.push(...merged.added);
+    const newestSeen = [newest, state?.newestSeen].filter((t): t is string => !!t).sort().at(-1);
+    setState(key, { at: opts.now.toISOString(), ...validators, ...(newestSeen ? { newestSeen } : {}) });
   };
 
-  // Forum: robots.txt first, then one request per account.
+  // Forum: robots.txt first, then each account.
   let robots: string | null = null;
   try {
-    const res = await opts.fetcher(`${FORUM_BASE.replace(/\/en\/wow$/, "")}/robots.txt`, { headers: { "User-Agent": USER_AGENT } });
+    const res = await opts.fetcher(`${FORUM_HOST}/robots.txt`, { headers: { "User-Agent": USER_AGENT } });
     if (res.status === 404) robots = "";
     else if (res.ok) robots = await res.text();
     else throw new Error(`robots.txt: HTTP ${res.status}`);
   } catch (err) {
-    errors.push({ source: "forum", error: err instanceof Error ? err.message : String(err) });
+    errors.push({ source: "forum", error: message(err) });
   }
   if (robots !== null) {
     for (const account of opts.accounts) {
       const key = `forum:${account.username}`;
-      const path = forumPath(account.username);
-      if (!robotsAllows(robots, path)) { errors.push({ source: key, error: "robots.txt disallows this path" }); continue; }
+      if (!robotsAllows(robots, forumPath(account.username, 0))) { errors.push({ source: key, error: "robots.txt disallows this path" }); continue; }
       if (backedOff) { skipped.push(`${key}: stopped after an earlier slow-down`); continue; }
       try {
-        if (lastForumRequest) await sleep(delay);
-        lastForumRequest = true;
-        const json = await fetchJson(key, `https://us.forums.blizzard.com${path}`);
-        if (json) take(parseForumActions(json, [account], opts.now));
+        await readSource(
+          key, "forum",
+          (page) => `${FORUM_HOST}${forumPath(account.username, page * PAGE_SIZE)}`,
+          forumPageInfo, (json) => parseForumActions(json, [account], opts.now),
+        );
       } catch (err) {
-        errors.push({ source: key, error: err instanceof Error ? err.message : String(err) });
+        errors.push({ source: key, error: message(err) });
         if (err instanceof Backoff) backedOff = true;
       }
     }
   }
 
-  // Bluesky: the public AppView API, one request.
+  // Bluesky: the public AppView API.
   try {
-    const json = await fetchJson("bluesky", BLUESKY_FEED);
-    if (json) take(parseBlueskyFeed(json, opts.now));
+    await readSource(
+      "bluesky", "bluesky",
+      (_page, cursor) => (cursor ? `${BLUESKY_FEED}&cursor=${encodeURIComponent(cursor)}` : BLUESKY_FEED),
+      blueskyPageInfo, (json) => parseBlueskyFeed(json, opts.now),
+    );
   } catch (err) {
-    errors.push({ source: "bluesky", error: err instanceof Error ? err.message : String(err) });
+    errors.push({ source: "bluesky", error: message(err) });
   }
   return { store, added, skipped, errors };
 }
