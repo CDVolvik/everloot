@@ -7,6 +7,8 @@ import { ingestBluePosts, loadAccounts, loadFetchState, loadStore, saveFetchStat
 import { buildTimeline } from "./changes.js";
 import { checkBuilds, loadRegistry, recordBuilds, saveRegistry, versionsUrl } from "./builds.js";
 import { diffSnapshots } from "./client-diff.js";
+import { parseRegistry } from "./ecosystem.js";
+import { loadSnapshotFile, refreshSnapshot, saveSnapshotFile } from "./ecosystem-fetch.js";
 import { CASC_LIBRARY, extractTables, iconIds, NOT_IN_BUILD, openCdn, pinDefinitions, probeFiles } from "./client-extract.js";
 import { writeCatalogs } from "./client-catalog.js";
 import { writeWorldMapData } from "./world-map-data.js";
@@ -25,6 +27,7 @@ import { validate } from "./validate.js";
 
 /** The committed changes data and the tracked accounts, found from this file so the cwd does not matter. */
 const CHANGES_DIR = fileURLToPath(new URL("../changes/", import.meta.url));
+const ECOSYSTEM_FILE = fileURLToPath(new URL("../curated/ecosystem.json", import.meta.url));
 const ACCOUNTS_FILE = fileURLToPath(new URL("../curated/blue-accounts.json", import.meta.url));
 
 const GAMES: Game[] = ["retail", "classic", "classic1x", "forever"];
@@ -59,6 +62,13 @@ const USAGE = `usage: npm run kb -- <command> --db <path>
     committed under kb/changes (the same folder holds builds.json, written by the scheduled workflow
     with: builds-check --registry changes/builds.json). The politeness state (last asked, Retry-After,
     validators) is a separate file that stays out of git)
+  ecosystem-check [--registry <kb>/curated/ecosystem.json] [--snapshot <kb>/changes/ecosystem.json]
+    [--min-hours 3] [--force]
+    (the ecosystem tracker: reads GitHub's public REST API for every project in the registry, one request at
+    a time, and writes the committed snapshot. GITHUB_TOKEN is optional: without it GitHub allows 60
+    requests an hour and the first-reply time is skipped; with it, 5,000. Honours retry-after and the
+    reset time, and stops instead of waiting more than 2 minutes. A project read less than 3 hours ago
+    is skipped unless --force. A project that fails keeps its last answer)
   client-extract [--product wow_classic_beta] [--registry data/builds.json] [--out data/client] [--refresh]
     (reads items, spells, talent (Trait) and spell effect tables of the product's current build from Blizzard's CDN into a snapshot
     <out>/<product>-<build>-<buildconfig, 8 chars>.sqlite + manifest, and marks the build processed.
@@ -119,7 +129,7 @@ async function main(): Promise<number> {
   const flags = new Map<string, string>();
   const args: string[] = [];
   for (let i = 0; i < rest.length; i++) {
-    if (rest[i] === "--refresh" && (rest[i + 1] === undefined || rest[i + 1].startsWith("--"))) flags.set("refresh", "");
+    if ((rest[i] === "--refresh" || rest[i] === "--force") && (rest[i + 1] === undefined || rest[i + 1].startsWith("--"))) flags.set(rest[i].slice(2), "");
     else if (rest[i].startsWith("--")) flags.set(rest[i].slice(2), rest[++i] ?? "");
     else args.push(rest[i]);
   }
@@ -264,6 +274,24 @@ async function main(): Promise<number> {
       for (const e of result.errors) console.error(`${e.source}: ${e.error}`);
       console.log(`${result.added.length} new, ${result.store.posts.length} kept; store ${path}`);
       return result.errors.length ? 1 : 0;
+    }
+    case "ecosystem-check": {
+      const registry = parseRegistry(JSON.parse(readFileSync(flags.get("registry") || ECOSYSTEM_FILE, "utf8")));
+      const path = flags.get("snapshot") || join(CHANGES_DIR, "ecosystem.json");
+      const report = await refreshSnapshot(registry, loadSnapshotFile(path), {
+        fetcher: (url, init) => fetch(url, init),
+        now: () => new Date(),
+        sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+        token: process.env.GITHUB_TOKEN?.trim() || undefined,
+        minIntervalMs: Number(flags.get("min-hours") ?? 3) * 3_600_000,
+        force: flags.has("force"),
+      });
+      saveSnapshotFile(path, report.snapshot);
+      for (const id of report.refreshed) console.log(`refreshed ${id}`);
+      for (const id of report.skipped) console.log(`skipped ${id}`);
+      for (const e of report.errors) console.error(`${e.id}: ${e.error}`);
+      console.log(`${report.refreshed.length} refreshed, ${report.skipped.length} skipped; snapshot ${path}`);
+      return report.errors.length ? 1 : 0;
     }
     case "client-extract": {
       const product = flags.get("product") || "wow_classic_beta";

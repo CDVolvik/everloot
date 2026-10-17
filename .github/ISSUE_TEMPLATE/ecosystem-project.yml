@@ -1,0 +1,56 @@
+name: Add or fix a project in the ecosystem tracker
+description: Suggest a WoW Forever addon or tool for the tracker at everloot.app/addons/ecosystem, or ask to change or remove one.
+title: "Ecosystem: "
+labels: ["ecosystem"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A maintainer reads every suggestion and adds the project by hand. Only public GitHub repositories are listed, and only projects made for WoW: Forever. Nothing is added automatically. See docs/design/specs/2026-10-18-ecosystem-tracker.md.
+  - type: dropdown
+    id: change
+    attributes:
+      label: What do you want?
+      options:
+        - Add a project
+        - Fix a listing
+        - Remove my project
+    validations:
+      required: true
+  - type: input
+    id: repo
+    attributes:
+      label: Public GitHub repository
+      description: The full link, for example https://github.com/owner/name.
+    validations:
+      required: true
+  - type: input
+    id: toc
+    attributes:
+      label: Path of the main .toc file in the repository
+      description: Optional. Used only to read its "## Interface" number, so the project can show "Forever-ready".
+  - type: input
+    id: folder
+    attributes:
+      label: AddOns folder name
+      description: Optional. The folder name as the in-game addon list shows it. It lets us show install counts once three Everloot installs report the addon.
+  - type: textarea
+    id: forever
+    attributes:
+      label: Where does it say the project is for WoW Forever?
+      description: A link to your README, release notes or addon page.
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: One or two sentences about it, in your own words
+    validations:
+      required: true
+  - type: checkboxes
+    id: who
+    attributes:
+      label: About you
+      options:
+        - label: I am an author or maintainer of this project, or I am suggesting someone else's public project and they have not asked me not to.
+          required: true

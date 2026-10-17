@@ -152,6 +152,21 @@ unverified and rely on nothing from it. Everloot has no ads today. Before any ad
 page that shows Blizzard's assets, a legal review of Blizzard's current terms is required, and
 until it is done there are no ads on those pages.
 
+**The addon and project tracker.** `/addons/ecosystem` lists WoW: Forever addons and tools that a
+maintainer has checked and added to `kb/curated/ecosystem.json`.
+
+- *GitHub facts only.* For each project we read public repository facts from GitHub's REST API: stars,
+  latest release, last commit, commit and issue counts, a contributor count, and the `## Interface` line
+  of the project's `.toc`. No usernames, emails or contributor lists are kept or shown, and no person is
+  ranked. The boards rank projects.
+- *Polite and slow.* Serial requests, at most every three hours per project, an optional token, and a stop
+  (never a retry storm) when GitHub says to wait.
+- *Installs.* A project's install count comes from our own addon-list uploads and appears from three
+  installs up, like `/addons/popular`. A project with fewer shows "not counted", never zero.
+- *Other hosts are link only.* CurseForge's API terms forbid caching its data, Wago documents no read API
+  for listings and WoWInterface's terms forbid automated access, so we read none of them.
+- *Opt-out.* An author can ask to be removed with the ecosystem issue form or at hello@everloot.app.
+
 **Open sources.** The lore archive is built from the Warcraft Wiki dump of 2023-11-13
 (CC BY-SA 4.0). We may add other openly licensed datasets later. Each one goes in the
 [source ledger](sources/LEDGER.md) with its licence and exact version before any of it ships.

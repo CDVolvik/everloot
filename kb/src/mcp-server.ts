@@ -4,6 +4,7 @@ import { z } from "zod";
 import { auctionSightingsFromRecords, handleAuctionHistory } from "./auction-history.js";
 import { handlePlan } from "./bridge-plan.js";
 import { CHANGE_FILTERS, handleRecentChanges, type ChangeEntry } from "./changes.js";
+import { ECOSYSTEM_BOARD_FILTERS, handleEcosystemProjects, type EcosystemView } from "./ecosystem.js";
 import { collectionFactsFromRecords, handleCollectionGap } from "./collection-gap.js";
 import { goldFactsFromRecords, handleGoldLedger } from "./gold-ledger.js";
 import { guildFactsFromRecords, handleGuildBoard } from "./guild-board.js";
@@ -254,7 +255,10 @@ export function handleGetByName(db: DB, args: { name: string; kind?: (typeof KIN
 /** The merged blue-post and build timeline. Null means it is not connected, which is not the same as empty. */
 export type ChangesLoader = () => ChangeEntry[] | null | Promise<ChangeEntry[] | null>;
 
-export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; changes?: ChangesLoader } = {}): McpServer {
+/** The ecosystem tracker with install counts joined. Null means it is not connected, which is not the same as empty. */
+export type EcosystemLoader = () => EcosystemView | null | Promise<EcosystemView | null>;
+
+export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; changes?: ChangesLoader; ecosystem?: EcosystemLoader } = {}): McpServer {
   const server = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION, websiteUrl: SOURCE_URL });
   const readFacts = <T>(tool: ToolName, render: (facts: T) => string) => fromTooledUploads(tool, render, options.corpus);
   server.registerTool(
@@ -471,6 +475,25 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; 
       let entries: ChangeEntry[] | null = null;
       try { entries = (await options.changes?.()) ?? null; } catch { entries = null; }
       return { content: [{ type: "text" as const, text: handleRecentChanges(entries, { ...args, filter: args.filter as (typeof CHANGE_FILTERS)[number] }) }] };
+    },
+  );
+  server.registerTool(
+    "ecosystem_projects",
+    {
+      title: "WoW: Forever addons and open-source projects",
+      description:
+        "Forever addons and tools from the community registry, with a board ranking: most installed, rising, most active, freshest release or best maintained. Each project shows its GitHub repository, stars, latest release, last commit, whether its .toc declares a Forever interface number, and installs from Everloot uploads (counted from 3 installs; a missing count means not counted, not zero). Projects are ranked, never people. GitHub facts carry the time they were refreshed.",
+      inputSchema: {
+        board: z.enum(ECOSYSTEM_BOARD_FILTERS).default("all").describe("installed, rising, active, release, maintained, or all (A to Z)."),
+        forever_ready_only: z.boolean().optional().describe("Only projects whose .toc lists a Forever interface number."),
+        limit: z.number().int().min(1).max(25).default(10),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    async (args) => {
+      let view: EcosystemView | null = null;
+      try { view = (await options.ecosystem?.()) ?? null; } catch { view = null; }
+      return { content: [{ type: "text" as const, text: handleEcosystemProjects(view, args) }] };
     },
   );
   server.registerTool(

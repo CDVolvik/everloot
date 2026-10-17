@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "foreverInterfaces": [16001, 70058],
+  "interfaceNotes": "UNCONFIRMED. 16001 is what Polestar and Olympus ship in their .toc files for Forever 1.60.1. 70058 is what the Everloot addon ships, chosen from Gethe/wow-ui-source (forever branch) and not yet proven in the client. Blizzard's version service reports only the build (1.60.1.70450), never an interface number. Trim this list once the number the client reports is confirmed. See wiki/projects/everloot/2026-10-18-ecosystem-tracker-sources.md.",
+  "projects": [
+    {
+      "id": "everloot",
+      "name": "Everloot",
+      "kind": "addon",
+      "summary": "Our own collector addon: drops, vendors, trainers, auctions and gold recorded in game, uploaded by the player.",
+      "repo": "CDVolvik/everloot",
+      "toc": "addon/Everloot.toc",
+      "addonNames": [],
+      "verifiedAt": "2026-10-18",
+      "evidence": "https://github.com/CDVolvik/everloot/blob/main/addon/README.md"
+    },
+    {
+      "id": "polestar",
+      "name": "Polestar",
+      "kind": "addon",
+      "summary": "Leveling guides for 1 to 60 with a waypoint arrow and travel planner, plus guide packs.",
+      "repo": "fitzforge/polestar",
+      "toc": "addon/Polestar/Polestar.toc",
+      "addonNames": ["Polestar"],
+      "verifiedAt": "2026-10-18",
+      "evidence": "https://github.com/fitzforge/polestar"
+    },
+    {
+      "id": "olympus",
+      "name": "Olympus",
+      "kind": "addon",
+      "summary": "A live census of the Olympus guilds: army size, leaders and where members are on the map.",
+      "repo": "dnl-gentile/olympus-addon",
+      "toc": "Olympus/Olympus.toc",
+      "addonNames": ["Olympus"],
+      "verifiedAt": "2026-10-18",
+      "evidence": "https://github.com/dnl-gentile/olympus-addon"
+    },
+    {
+      "id": "forever-ref",
+      "name": "forever-ref",
+      "kind": "tool",
+      "summary": "A reference built from the Forever client tables: items, recipes, class abilities, maps and patch diffs.",
+      "repo": "alcaras/forever-ref",
+      "addonNames": [],
+      "verifiedAt": "2026-10-18",
+      "evidence": "https://github.com/alcaras/forever-ref"
+    }
+  ]
+}
