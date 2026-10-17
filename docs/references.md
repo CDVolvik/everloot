@@ -67,7 +67,7 @@ so a ChatGPT subscription — connected directly — and any other MCP client pu
 server. Their model does the reasoning. Our server holds the rows and the tools.
 
 The build list is `kb/src/bridge-plan.ts`, printed as `docs/TRACKER.md` and served by the MCP
-tool `everloot_plan`. Spec: `docs/superpowers/specs/2026-09-29-everloot-distribution-openai.md`.
+tool `everloot_plan`. Spec: `docs/design/specs/2026-09-29-everloot-distribution-openai.md`.
 Each new tool joins that same server. Local HTTP is `POST /mcp` on 127.0.0.1. A ChatGPT
 subscription needs the public HTTPS row (`mcp.public_https`). Adopting a tool means running it
 or reimplementing its job on our server. It does not mean copying another site's text.

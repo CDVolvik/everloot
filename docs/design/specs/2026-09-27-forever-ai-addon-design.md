@@ -272,7 +272,7 @@ session.
 |---|---|---|
 | **v1** | Part 1 (wiki dump + curated + Blizzard Game Data adapter) · Part 2 · Part 3 with the live bridge, memory and session loop · golden set | Carlos |
 | **v2** | Collector + intake · auction house (§6.7) · Blizzard Profile incl. Battle.net sign-in · fresh wiki sync if permitted · more sources per the catalogue · creator registry with Twitch live status | Carlos + testers |
-| **v3** | Public: addon on CurseForge (file bridge), companion + data snapshot on GitHub · `craft-ownership-gate` + `oss-pr-safeguard` + Codex adversarial review | Everyone |
+| **v3** | Public: addon on CurseForge (file bridge), companion + data snapshot on GitHub · public-release review | Everyone |
 | **v4** | Part 4 website with AdSense | Everyone |
 
 **Not planned:** a general coding/terminal assistant on the game path (a separate front end on the

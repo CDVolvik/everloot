@@ -32,7 +32,7 @@ Phase 0. It compares the brief with the repository as it is, and proposes a phas
 | D. Diff engine | Missing | Test style of `kb/test/snapshot.test.ts` | Field-level diff between two snapshots, noise filters, mass-deletion guard |
 | E. Community ingestion | **Exists** | Addon, SavedVariables, companion, `/api/intake` (schema validation, size limits, quotas, event dedupe, replay safety), preview and consent, officer grants, corroboration rollups with denominators (loot windows), public corpus without install ids | `clientBuild` on each upload (addon 0.2.6); authenticated companion uploads are a deliberate non-goal today (anonymous by design) |
 | F. API and UX | Partly exists | `/database/items/[id]`, `/database/npcs/[id]`, MCP tools, the existing route and caching conventions | `/builds`, build history per item and spell, evidence badges, spoiler control |
-| G. AI analysis | MCP exists | The sourced-answers spec (`docs/superpowers/specs/2026-10-17-sourced-answers-design.md`) | A human review queue before anything is published |
+| G. AI analysis | MCP exists | The sourced-answers spec (`docs/design/specs/2026-10-17-sourced-answers-design.md`) | A human review queue before anything is published |
 | Data model (§5) | Mapped below | | |
 
 **Data model mapping.** `wow_builds` → a build registry (JSON in R2 for the site; the same shape

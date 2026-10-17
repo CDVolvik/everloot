@@ -7,8 +7,11 @@ from zipfile import ZipFile, ZipInfo, ZIP_STORED
 root = Path(__file__).resolve().parents[1]
 addon = root / "addon"
 toc = (addon / "Everloot.toc").read_text(encoding="utf-8")
-version = re.search(r"^## Version: ([0-9.]+)$", toc, re.M).group(1)
-assert f'E.VERSION = "{version}"' in (addon / "core.lua").read_text(encoding="utf-8")
+version = re.search(r"^## Version: ([0-9][0-9A-Za-z.+-]*)\s*$", toc, re.M).group(1)
+core_version = re.search(r'^E\.VERSION = "([^"]+)"', (addon / "core.lua").read_text(encoding="utf-8"), re.M).group(1)
+# A nightly build stamps "0.2.9-nightly.<date>.<run>" into the TOC and "0.2.9-nightly" into core.lua
+# (the upload intake allows 20 characters), in the CI copy only. A release has the same text in both.
+assert core_version == version or ("-" in version and core_version.startswith(version.split("-")[0] + "-")), (version, core_version)
 paths = ["Everloot.toc"] + [line.strip().replace("\\", "/") for line in toc.splitlines() if line.strip() and not line.startswith("#")]
 output = root / "web" / "public" / "downloads" / f"Everloot-{version}.zip"
 output.parent.mkdir(parents=True, exist_ok=True)

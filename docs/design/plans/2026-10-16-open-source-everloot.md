@@ -1,6 +1,5 @@
 # Open-sourcing Everloot Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Make `CDVolvik/everloot` ready to go public around 2026-10-24: no internal traces, every data source on record, correct licenses, and a repository a stranger can run and contribute to.
 
@@ -8,7 +7,7 @@
 
 **Tech Stack:** Next.js 15 / React 19 / Vitest (web), TypeScript + better-sqlite3 + Vitest (kb, companion), Lua 5.1 addon with Python contract tests, GitHub Actions, gitleaks.
 
-**Spec:** `docs/superpowers/specs/2026-10-16-open-source-everloot-design.md`
+**Spec:** `docs/design/specs/2026-10-16-open-source-everloot-design.md`
 
 ## Global Constraints
 
@@ -65,7 +64,7 @@
 - Produces: the ledger's `published data` rows, which Task 9 summarizes in `THIRD_PARTY.md`.
 
 - [ ] **Step 1: Gather inputs** and keep the raw lists out of the repository (scratch in the maintainer's notes):
-  - `docs/sources/source-catalog.md`, `docs/references.md`, every spec under `docs/superpowers/specs`.
+  - `docs/sources/source-catalog.md`, `docs/references.md`, every spec under `docs/design/specs`.
   - Everloot research notes in the maintainer's notes (pages that mention Everloot, Forever, Polestar or WoW data).
   - Carlos's WoW-related GitHub stars: `gh api user/starred --paginate --jq '.[] | [.full_name, .license.spdx_id // "none", .description] | @tsv'`, filtered to WoW, Warcraft, addon or Forever.
   - Every URL in code: `git grep -hoIE "https?://[a-zA-Z0-9./_-]+" -- ':!docs' ':!*.md' ':!*/package-lock.json'`, deduplicated by host.

@@ -1,7 +1,7 @@
 # kb/: the Everloot knowledge base
 
 A local SQLite database of WoW knowledge in which every row carries its source, licence, retrieval
-date and URL. Design: `../docs/superpowers/specs/2026-09-27-forever-ai-addon-design.md` §2 and §4.
+date and URL. Design: `../docs/design/specs/2026-09-27-forever-ai-addon-design.md` §2 and §4.
 
 ## Build it
 

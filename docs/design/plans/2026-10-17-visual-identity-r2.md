@@ -1,6 +1,5 @@
 # Visual identity R2 (components) Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Give the database, lore and addons pages the identity's components: tooltip frames for game things, bracket item links, bracket section labels, evidence tags, citation chips, stat blocks and plain state lines. Tests keep them in use. No route, API or behaviour change.
 
@@ -10,7 +9,7 @@
 
 **Tech Stack:** as R1: Next.js 15.5 App Router, React 19, Tailwind CSS 3.4, Vitest 5. Tests render with `renderToStaticMarkup`.
 
-**Spec:** `docs/superpowers/specs/2026-10-17-visual-identity-design.md` (Components 2, 4 to 8 and 11; Rollout, R2). The R1 plan is `docs/superpowers/plans/2026-10-17-visual-identity-r1.md`; R1 shipped as #19.
+**Spec:** `docs/design/specs/2026-10-17-visual-identity-design.md` (Components 2, 4 to 8 and 11; Rollout, R2). The R1 plan is `docs/design/plans/2026-10-17-visual-identity-r1.md`; R1 shipped as #19.
 
 **When:** now that R1 is live. R2, R3 and R4 all land before the WoW: Forever launch on 11/04.
 - Branch: `feat/visual-identity-r2`, from `main`.

@@ -1,0 +1,42 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(web)"
+    groups:
+      web-dependencies:
+        patterns: ["*"]
+  - package-ecosystem: npm
+    directory: /kb
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(kb)"
+    groups:
+      kb-dependencies:
+        patterns: ["*"]
+  - package-ecosystem: npm
+    directory: /companion
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "chore(companion)"
+    groups:
+      companion-dependencies:
+        patterns: ["*"]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 2
+    commit-message:
+      prefix: "chore(infra)"
+    groups:
+      actions:
+        patterns: ["*"]
