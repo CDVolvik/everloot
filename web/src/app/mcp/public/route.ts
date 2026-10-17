@@ -3,7 +3,7 @@ import { createMount, unavailable } from "@/lib/mcp-mount";
 
 /**
  * Public read-only MCP for ChatGPT and other AI clients that cannot send our bearer token (Carlos,
- * 2026-10-10: public, rate-limited). The same 13 read-only tools over the knowledge release and the
+ * 2026-10-10: public, rate-limited). The same 14 read-only tools over the knowledge release and the
  * already-public corpus. Closed unless EVERLOOT_MCP_PUBLIC=1. Each call spends the caller's shared
  * per-IP MCP quota first.
  */

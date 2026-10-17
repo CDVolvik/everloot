@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import Bracket from "@/components/Bracket";
 import { PUBLIC_RECORD_KINDS } from "@/lib/intake";
-import { CONNECT_EXAMPLES as ex, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR } from "./connect-data";
+import { CONNECT_EXAMPLES as ex, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR, GLOBAL_REQUESTS_PER_HOUR } from "./connect-data";
 
 export const metadata: Metadata = {
   title: "Connect",
@@ -89,6 +89,11 @@ export default function ConnectPage() {
             Over the limit you get <code className="font-mono text-fg">429</code> and a{" "}
             <code className="font-mono text-fg">retry-after</code> header, in seconds.
           </li>
+          <li>
+            All callers together share {GLOBAL_REQUESTS_PER_HOUR} requests per hour. When that is used up, everyone gets the
+            same <code className="font-mono text-fg">429</code>.
+          </li>
+          <li>Only POST requests count. GET and OPTIONS are not counted.</li>
           <li>Requests larger than 1 MiB are refused.</li>
           <li>
             Web pages in a browser can call it only from a short list of AI sites, such as chatgpt.com and claude.ai. Servers, scripts and desktop
@@ -150,7 +155,7 @@ export default function ConnectPage() {
           </li>
         </ul>
         <p className="text-fg-2">
-          This endpoint has no limit of its own today. The response is not cached, but the snapshot behind it is rebuilt about every
+          This endpoint has no limit of its own today. The response is not cached, but the snapshot behind it is updated about every
           ten minutes, so asking more often gains nothing. If that changes, this page will say so.
         </p>
       </Section>
@@ -175,7 +180,12 @@ export default function ConnectPage() {
           </li>
           <li>
             <span className="text-fg">Not ours:</span> World of Warcraft and Blizzard&apos;s game data belong to Blizzard.
-            Nothing from the game files is published yet.
+            Downloads, the API and the MCP server carry ids and facts. Blizzard&apos;s icons, tooltip text and art are never in them.
+          </li>
+          <li>
+            <span className="text-fg">Table names:</span> where a page or file shows column names from game tables, they come from{" "}
+            <a href="https://github.com/wowdev/WoWDBDefs" rel="noopener" className={link}>WoWDBDefs</a> by the wowdev
+            contributors, CC BY-SA 4.0.
           </li>
           <li>
             <span className="text-fg">Code:</span> AGPL-3.0-only.

@@ -4,6 +4,8 @@ export const CORPUS_URL = `${SITE}/api/corpus/public`;
 
 /** The public MCP's per-IP limit per hour. connect.test.ts checks it against intake-quota.ts. */
 export const REQUESTS_PER_HOUR = 200;
+/** The cap on all callers together. connect.test.ts checks it against intake-quota.ts. */
+export const GLOBAL_REQUESTS_PER_HOUR = 5000;
 
 /** Every tool kb/src/mcp-server.ts registers, in its order. connect.test.ts fails if the two drift apart. */
 export const MCP_TOOLS: readonly { name: string; text: string }[] = [
@@ -61,8 +63,6 @@ npm run dev               # MCP at http://localhost:3000/mcp/public`,
   corpusShape: `{
   "ok": true,
   "uploads": 1,
-  "dataAsOf": "2026-10-17T08:50:28.003Z",
-  "kinds": ["loot"],
   "records": [
     {
       "kind": "loot",
@@ -71,7 +71,9 @@ npm run dev               # MCP at http://localhost:3000/mcp/public`,
       "sourceNpcId": 1234,
       "items": [{ "itemId": 5678, "count": 1 }]
     }
-  ]
+  ],
+  "dataAsOf": "2026-10-17T08:50:28.003Z",
+  "kinds": ["loot"]
 }`,
   credit: `Data from Everloot (https://everloot.app), CC BY-SA 4.0.`,
 } as const;
