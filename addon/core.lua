@@ -5,13 +5,13 @@
 Everloot = Everloot or {}
 local E = Everloot
 
-E.VERSION = "0.2.5"
+E.VERSION = "0.2.6"
 E.MAX_ROWS_PER_KIND = 2000
 
 local defaults = {
   version = E.VERSION,
   installId = nil,
-  toggles = { openworld = true, guild = true, gear = true, auctions = false, gold = true },
+  toggles = { openworld = true, guild = true, gear = true, auctions = false, gold = true, addons = false },
   records = {},
 }
 
@@ -19,6 +19,16 @@ local function newInstallId()
   local t = {}
   for _ = 1, 4 do t[#t + 1] = string.format("%04x", math.random(0, 0xffff)) end
   return table.concat(t, "-")
+end
+
+--- GetBuildInfo's version and build, e.g. 1.60.1.70450. Anything the intake would refuse is left out.
+local function clientBuild()
+  if not GetBuildInfo then return nil end
+  local ok, version, build = pcall(GetBuildInfo)
+  if not ok or type(version) ~= "string" or (type(build) ~= "string" and type(build) ~= "number") then return nil end
+  local text = version .. "." .. tostring(build)
+  if #text > 32 or text:find("[^%d%.]") or text:find("%.%.") or not text:find("^%d") or not text:find("%d$") then return nil end
+  return text
 end
 
 local frame = CreateFrame("Frame")
@@ -88,7 +98,7 @@ function E:Status()
   for _, kind in ipairs({ "npc_sighting", "loot", "quest", "vendor", "item_seen",
     "guild_snapshot", "raid_lockout", "attendance", "loot_award", "gear_snapshot",
     "collection_catalog", "collection_owned", "auction_scan", "recipe_seen", "recipe_observed", "trainer_seen", "price_seen",
-    "gold_snapshot", "money_event" }) do
+    "gold_snapshot", "money_event", "addon_seen", "map_bounds" }) do
     lines[#lines + 1] = string.format("  rows %s: %d", kind, self:Count(kind))
   end
   return table.concat(lines, "\n")
@@ -99,8 +109,11 @@ frame:SetScript("OnEvent", function(_, event, arg1)
   if event == "ADDON_LOADED" and arg1 == "Everloot" then
     EverlootDB = EverlootDB or {}
     for k, v in pairs(defaults) do if EverlootDB[k] == nil then EverlootDB[k] = v end end
+    -- A toggle added after this file was created takes its default: off-by-default stays off.
+    for k, v in pairs(defaults.toggles) do if EverlootDB.toggles[k] == nil then EverlootDB.toggles[k] = v end end
     if not EverlootDB.installId then EverlootDB.installId = newInstallId() end
     EverlootDB.version = E.VERSION
+    EverlootDB.clientBuild = clientBuild()
     E:InitModules()
     print(E:Status())
   end
@@ -119,7 +132,18 @@ SlashCmdList["EVERLOOT"] = function(msg)
   elseif msg == "auctions on" or msg == "auctions off" then
     EverlootDB.toggles.auctions = (msg == "auctions on")
     print("Everloot: auction scans " .. (EverlootDB.toggles.auctions and "on" or "off") .. ". /reload to apply.")
+  elseif msg == "addons on" or msg == "addons off" then
+    EverlootDB.toggles.addons = (msg == "addons on")
+    if EverlootDB.toggles.addons then
+      print("Everloot: installed addon list on. It is sent only from the everloot.app upload page, which lists the addons first; the companion never sends it. /reload to apply.")
+    else
+      -- Turning it off withdraws the list: every recorded addon row is deleted from this file.
+      EverlootDB.records.addon_seen = nil
+      EverlootDB.addonsSeen = nil
+      if EverlootDB.paused then EverlootDB.paused.addon_seen = nil end
+      print("Everloot: installed addon list off; all recorded addon rows were deleted from this file. /reload to apply.")
+    end
   else
-    print("Everloot commands: /everloot status, /everloot auctions on|off, /ask <question>")
+    print("Everloot commands: /everloot status, /everloot auctions on|off, /everloot addons on|off, /ask <question>")
   end
 end
