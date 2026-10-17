@@ -23,7 +23,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const path = `/tools/talents/${slug}`;
   return {
     title: `${catalog.className} talent calculator`,
-    description: `Plan ${catalog.className} talents for WoW: Forever with point rules, two talent sets, undo and a share link that names the game build. Trees are unconfirmed beta data.`,
+    description: `Plan ${catalog.className} talents for WoW: Forever with point rules, two talent sets, undo and a share link that names the game build. Trees are unconfirmed.`,
     alternates: { canonical: path },
     openGraph: { title: `${catalog.className} talent calculator`, url: path, type: "website" },
   };
@@ -33,7 +33,6 @@ export default async function TalentClassPage({ params }: Params) {
   const { class: slug } = await params;
   if (!isTalentClass(slug)) notFound();
   const catalog = await loadCatalog(slug);
-  const { source, rules } = catalog;
 
   return (
     <article className="space-y-8">
@@ -43,33 +42,17 @@ export default async function TalentClassPage({ params }: Params) {
         </p>
         <h1 className={`text-3xl sm:text-4xl font-bold tracking-tight ${CLASS_TEXT[slug]}`}>{catalog.className} talent calculator</h1>
         <ul className="flex flex-wrap gap-2 font-mono text-xs text-muted">
-          <li className="rounded-full border border-dashed border-edge px-3 py-1">trees: from {source.name}, build {catalog.build}, unconfirmed</li>
-          <li className="rounded-full border border-dashed border-edge px-3 py-1">point rules: assumed · unconfirmed</li>
+          <li className="rounded-full border border-dashed border-edge px-3 py-1">{catalog.label} · build {catalog.build}</li>
+          <li className="rounded-full border border-dashed border-edge px-3 py-1">gate scope unconfirmed · second set at level {catalog.rules.dualSpecLevel} from beta notes</li>
         </ul>
       </header>
 
       <TalentCalculator catalog={catalog} />
 
-      <section className="space-y-3 border-t border-line pt-6 text-sm text-fg-2 max-w-2xl">
-        <h2 className="text-fg font-semibold">Where this comes from</h2>
-        <p>
-          Talent names, positions, ranks and prerequisites are from{" "}
-          <a className="text-accent underline" href={source.url}>{source.name}</a>, licensed{" "}
-          <a className="text-accent underline" href={source.licenceUrl}>{source.licence}</a>. Per {source.name},
-          they read the layout from the beta client files; we read their export on {source.retrieved}. We changed
-          it into our own format and added ids of our own.
-        </p>
-        <p>
-          Blizzard owns the talent names, tooltip text, icons and art. The licence does not cover them,
-          so this page shows no tooltip text and no icons. For what a talent does, check the game or{" "}
-          <a className="text-accent underline" href={`${source.url}${slug}`}>the {catalog.className} page on {source.name}</a>.
-        </p>
-        <p>
-          {rules.note} Nothing here has been read from the game by Everloot yet, so treat the trees and
-          rules as unconfirmed. If a tree is wrong, a share link made on an older build will list what
-          no longer fits instead of dropping it.
-        </p>
-      </section>
+      <p className="border-t border-line pt-6 text-sm text-fg-2 max-w-2xl">
+        Talent trees read from the WoW: Forever game files, build {catalog.build}. Unconfirmed until
+        checked in game. Talent names &copy; Blizzard Entertainment.
+      </p>
     </article>
   );
 }

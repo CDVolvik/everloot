@@ -39,7 +39,10 @@ export default function TalentCalculator({ catalog }: { catalog: TalentCatalog }
   const perTree = pointsByTree(catalog, ranks);
   const secondOpen = level >= rules.dualSpecLevel || planAhead;
   const nodes = nodeMap(catalog);
-  const nameOf = (id: number) => nodes.get(id)?.entries.map((e) => e.name).join(" or ") ?? "";
+  const nameOf = (id: number) => {
+    const n = nodes.get(id);
+    return n ? (n.kind === "choice" ? n.entries.map((e) => e.name).join(" or ") : n.entries[0].name) : "";
+  };
 
   function setSets(next: Sets) {
     setHistory((h) => commit(h, next));
@@ -331,21 +334,23 @@ export default function TalentCalculator({ catalog }: { catalog: TalentCatalog }
         ))}
       </div>
       <p className="text-xs text-muted">
-        The small number at the left of each row is how many points must be spent in the tree, on the rows above, before that row opens.
+        The small number at the left of each row is how many points must be spent in the tree, on the rows above, before that row opens (from the game tables, unconfirmed).
         Tap or press Enter to add a point. Right click, long press, Delete or the switch above takes one back. Arrow keys move between talents.
       </p>
 
       <section aria-label="Selected talent" className="rounded-lg border border-line bg-panel p-4 text-sm text-fg-2 space-y-1">
         {selectedNode ? (
           <>
-            <p className="text-fg font-semibold">{selectedNode.entries.map((e) => e.name).join(" or ")}</p>
+            <p className="text-fg font-semibold">{selectedNode.entries.map((e) => e.name).join(selectedNode.kind === "choice" ? " or " : ", then ")}</p>
             <p className="font-mono text-xs tabular-nums text-muted">
               Row {selectedNode.row}, max rank {selectedNode.maxRanks}
               {selectedNode.entries.map((e) => e.spellId).filter(Boolean).length > 0 && ` · spell id ${selectedNode.entries.map((e) => e.spellId).filter(Boolean).join(", ")}`}
             </p>
             {selectedNode.unlock?.pointsInTree ? <p>Opens after {selectedNode.unlock.pointsInTree} points in this tree, on the rows above.</p> : null}
+            {selectedNode.unlock?.ranksInNode ? <p>Needs {selectedNode.unlock.ranksInNode.ranks} {selectedNode.unlock.ranksInNode.ranks === 1 ? "rank" : "ranks"} in {nameOf(selectedNode.unlock.ranksInNode.nodeId)}.</p> : null}
             {selectedNode.prereqs.length > 0 && <p>Needs {selectedNode.prereqs.map(nameOf).join(", ")} at full rank.</p>}
-            <p className="text-muted">What it does: not shown here. The text is Blizzard&apos;s and is not covered by the licence of our talent data. Read it in the game.</p>
+            {(selectedNode.anyOf?.length ?? 0) > 0 && <p>Needs {selectedNode.anyOf!.map(nameOf).join(" or ")} at full rank.</p>}
+            <p className="text-muted">Description: not shown yet.</p>
           </>
         ) : (
           <p>Select a talent to see its row, prerequisites and spell id.</p>
@@ -363,7 +368,7 @@ export default function TalentCalculator({ catalog }: { catalog: TalentCatalog }
               <input id="talent-link" readOnly value={link} onFocus={(e) => e.currentTarget.select()} className="flex-1 min-w-0 rounded-lg border border-edge bg-panel px-3 font-mono text-xs text-fg" />
               <button type="button" className="btn text-sm" onClick={() => { void navigator.clipboard?.writeText(link).then(() => setMessage("Link copied."), () => setMessage("Copy failed. Select the link and copy it.")); }}>Copy</button>
             </div>
-            <p className="text-xs text-muted">The link holds the whole build, so anyone with it can read it. It names the game build it was made on; if the tree changes, opening it lists what moved.</p>
+            <p className="text-xs text-muted">The link holds the whole build and names the game build. If talents move, opening it lists what changed.</p>
           </div>
         )}
         <form className="flex flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); load(pasted); }}>

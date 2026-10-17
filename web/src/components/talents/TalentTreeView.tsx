@@ -1,4 +1,4 @@
-import { canAdd, rankOf, refusalText } from "@/lib/talents/rules";
+import { canAdd, entryAtRank, rankOf, refusalText } from "@/lib/talents/rules";
 import type { Ranks, TalentCatalog, TalentNode, TalentTree } from "@/lib/talents/types";
 
 // One tree: a grid of talents with the prerequisite lines behind it. Plain buttons, no pictures.
@@ -43,7 +43,7 @@ interface Props extends TreeHandlers {
 
 export function nodeLabel(catalog: TalentCatalog, node: TalentNode, ranks: Ranks, available: number): string {
   const rank = rankOf(ranks, node.id);
-  const name = node.kind === "choice" ? node.entries.map((e) => e.name).join(" or ") : node.entries[0].name;
+  const name = node.kind === "choice" ? node.entries.map((e) => e.name).join(" or ") : entryAtRank(node, rank).name;
   const verdict = canAdd(catalog, ranks, node.id, available);
   const state = rank >= node.maxRanks ? "full" : verdict.ok ? "can take a point" : `locked. ${refusalText(verdict.reason!, node, catalog)}`;
   return `${name}, rank ${rank} of ${node.maxRanks}, row ${node.row}, ${state}`;
@@ -70,7 +70,7 @@ export default function TalentTreeView({ catalog, tree, ranks, available, spent,
           </span>
         ))}
         <svg aria-hidden="true" className="absolute inset-0 pointer-events-none" width={LABEL + GAP + width} height={height}>
-          {nodes.flatMap((n) => n.prereqs.map((p) => {
+          {nodes.flatMap((n) => [...n.prereqs, ...(n.anyOf ?? [])].map((p) => {
             const from = byId.get(p);
             if (!from) return null;
             const met = rankOf(ranks, p) >= from.maxRanks;
@@ -127,7 +127,7 @@ export default function TalentTreeView({ catalog, tree, ranks, available, spent,
               type="button"
               id={`talent-${node.id}`}
               aria-label={nodeLabel(catalog, node, ranks, available)}
-              title={node.entries[0].name}
+              title={node.entries.map((e) => e.name).join(" / ")}
               tabIndex={tabIndex}
               {...common}
               data-selected={selected === node.id || undefined}
@@ -136,7 +136,7 @@ export default function TalentTreeView({ catalog, tree, ranks, available, spent,
               onClick={() => onAdd(node.id)}
               className={`absolute flex flex-col items-center justify-between px-0.5 py-1 text-[11px] leading-tight text-center ${base}`}
             >
-              <span className="w-full min-w-0 [overflow-wrap:anywhere] hyphens-auto">{node.entries[0].name}</span>
+              <span className="w-full min-w-0 [overflow-wrap:anywhere] hyphens-auto">{entryAtRank(node, rank).name}</span>
               <span className={`font-mono tabular-nums ${rank > 0 ? CLASS_TEXT[slug] : ""}`}>
                 {rank}/{node.maxRanks}{full ? " full" : ""}
               </span>

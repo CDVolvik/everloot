@@ -1,9 +1,8 @@
-// The talent catalog the calculator reads. The shape follows the catalog being defined in
-// kb/src/talents/catalog.ts (feat/client-extract-talents): trees, nodes with a position, max ranks,
-// entries, prerequisites and unlock gates. Until that lands, `src/data/talents/*.json` is built from
-// Talents Forever's export (scripts/import-talentsforever.mjs). `adapter.ts` accepts either source.
+// The talent catalog the calculator reads: what the page needs from our own catalog
+// (kb/src/talents/catalog.ts, schema everloot.talent-catalog/1), read from the game files.
+// `adapter.ts` turns that file into this shape. Positions are 1-based here.
 
-export type NodeKind = "single" | "choice";
+export type NodeKind = "single" | "tiered" | "choice";
 
 export interface TalentEntry {
   /** Blizzard's trait definition id. Null until the client extract supplies it. */
@@ -11,6 +10,8 @@ export interface TalentEntry {
   /** Spell id of the talent's spell, only where the source gives one. Null otherwise. */
   spellId: number | null;
   name: string;
+  /** Ranks this entry takes, for a tiered node. */
+  maxRanks?: number;
 }
 
 export interface TalentNode {
@@ -21,12 +22,16 @@ export interface TalentNode {
   col: number;
   maxRanks: number;
   kind: NodeKind;
-  /** One entry for a single node, two or more for a choice node. */
+  /** One entry for a single node. A tiered node buys its entries in order; a choice node picks one. */
   entries: TalentEntry[];
-  /** Node ids that must be at full rank before this node can take a point. */
+  /** Node ids that must all be at full rank before this node can take a point. */
   prereqs: number[];
-  /** Points that must already be spent before this node can take a point. */
+  /** If any are listed, at least one of these must be at full rank too. */
+  anyOf?: number[];
+  /** What must already be spent or bought before this node can take a point. */
   unlock?: {
+    /** Ranks bought in one other node. */
+    ranksInNode?: { nodeId: number; ranks: number };
     /** In nodes of this tree on rows above this one. */
     pointsInTree?: number;
     /** In every other node of the build, in any tree. */
@@ -40,12 +45,14 @@ export interface TalentTree {
 }
 
 export interface PointRules {
-  /** The first level that earns a talent point; one point per level from here. */
+  /** The first level that earns a talent point. */
   firstPointLevel: number;
   maxLevel: number;
-  /** Level at which the second talent set unlocks. */
+  /** The level each talent point arrives at, from the game tables. Absent: one point per level. */
+  pointLevels?: number[];
+  /** Level at which the second talent set unlocks. From the beta notes, not the game files. */
   dualSpecLevel: number;
-  /** "unconfirmed" until Everloot has read the rules from the game itself. */
+  /** "unconfirmed" until checked in the game. */
   status: "confirmed" | "unconfirmed";
   note: string;
 }
@@ -55,17 +62,10 @@ export interface TalentCatalog {
   classSlug: string;
   className: string;
   specId: number;
-  /** The game build the layout was read from, for example 1.60.1.70425. */
+  /** The game build the layout was read from, for example 1.60.1.70450. */
   build: string;
-  source: {
-    name: string;
-    url: string;
-    licence: string;
-    licenceUrl: string;
-    retrieved: string;
-    /** What this source is, in a phrase the page can show. */
-    kind: string;
-  };
+  /** "found in game files, unconfirmed" */
+  label: string;
   rules: PointRules;
   trees: TalentTree[];
   nodes: TalentNode[];

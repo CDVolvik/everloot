@@ -43,18 +43,34 @@ export function pointsByTree(catalog: TalentCatalog, ranks: Ranks): Map<number, 
 
 /** Points a character has at a level: one per level from the first point level. */
 export function pointsAtLevel(catalog: TalentCatalog, level: number): number {
-  const { firstPointLevel, maxLevel } = catalog.rules;
+  const { firstPointLevel, maxLevel, pointLevels } = catalog.rules;
+  if (pointLevels) return pointLevels.filter((l) => l <= level).length;
   return Math.max(0, Math.min(level, maxLevel) - firstPointLevel + 1);
 }
 
 /** The lowest level that can hold this many points. */
 export function levelFor(catalog: TalentCatalog, points: number): number {
-  return points <= 0 ? 1 : catalog.rules.firstPointLevel + points - 1;
+  if (points <= 0) return 1;
+  const { firstPointLevel, pointLevels } = catalog.rules;
+  if (pointLevels) return pointLevels[Math.min(points, pointLevels.length) - 1];
+  return firstPointLevel + points - 1;
+}
+
+/** Which entry of a node a rank falls in: a tiered node buys its entries in order. */
+export function entryAtRank(node: TalentNode, rank: number) {
+  if (node.kind !== "tiered") return node.entries[0];
+  let bought = 0;
+  for (const entry of node.entries) {
+    bought += entry.maxRanks ?? 1;
+    if (rank < bought) return entry;
+  }
+  return node.entries[node.entries.length - 1];
 }
 
 function gateMet(catalog: TalentCatalog, node: TalentNode, ranks: Ranks): boolean {
   const unlock = node.unlock;
   if (!unlock) return true;
+  if (unlock.ranksInNode && rankOf(ranks, unlock.ranksInNode.nodeId) < unlock.ranksInNode.ranks) return false;
   if (unlock.pointsInTree) {
     let above = 0;
     for (const other of catalog.nodes) {
@@ -68,11 +84,15 @@ function gateMet(catalog: TalentCatalog, node: TalentNode, ranks: Ranks): boolea
   return true;
 }
 
+// "Bought" means at full rank. Every listed prerequisite is needed; if "any of" nodes are listed,
+// at least one of those is needed as well. Full rank is our reading, not confirmed in the game.
 function prereqsMet(nodes: Map<number, TalentNode>, node: TalentNode, ranks: Ranks): boolean {
-  return node.prereqs.every((id) => {
+  const full = (id: number) => {
     const need = nodes.get(id);
     return need !== undefined && rankOf(ranks, id) >= need.maxRanks;
-  });
+  };
+  const any = node.anyOf ?? [];
+  return node.prereqs.every(full) && (any.length === 0 || any.some(full));
 }
 
 /** Is every node with points legal? Used to decide whether a point can be taken back. */
@@ -139,8 +159,12 @@ export function refusalText(reason: Refusal, node: TalentNode, catalog: TalentCa
   switch (reason) {
     case "max-rank": return "Already at full rank.";
     case "no-points": return "No points left at this level.";
-    case "prereq": return "Needs the talent it points from at full rank.";
+    case "prereq": return "Needs the talent above it at full rank.";
     case "gate":
+      if (node.unlock?.ranksInNode) {
+        const other = catalog.nodes.find((n) => n.id === node.unlock!.ranksInNode!.nodeId);
+        return `Needs ${node.unlock.ranksInNode.ranks} ${node.unlock.ranksInNode.ranks === 1 ? "rank" : "ranks"} in ${other?.entries[0].name ?? "another talent"}.`;
+      }
       return node.unlock?.pointsInTree
         ? `Needs ${node.unlock.pointsInTree} points spent in ${tree} on rows above.`
         : `Needs ${node.unlock?.pointsTotal ?? 0} points spent elsewhere in the build.`;

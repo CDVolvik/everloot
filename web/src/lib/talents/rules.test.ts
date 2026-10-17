@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import {
-  add, canAdd, canRemove, commit, levelFor, pointsAtLevel, pointsByTree, pointsSpent, redo, remove,
-  startHistory, undo,
+  add, canAdd, canRemove, commit, entryAtRank, levelFor, pointsAtLevel, pointsByTree, pointsSpent, redo, refusalText,
+  remove, startHistory, undo,
 } from "./rules";
 import { fixture } from "./fixture";
 import type { Ranks } from "./types";
@@ -160,7 +160,47 @@ describe("choice nodes", () => {
   });
 });
 
+describe("tiered nodes, any-of prerequisites and rank gates", () => {
+  test("a tiered node takes ranks up to the sum of its entries and shows the entry that rank is in", () => {
+    const three = take({}, 53, 3);
+    expect(three[53]).toEqual({ rank: 3 });
+    expect(canAdd(fixture, three, 53, ALL).reason).toBe("max-rank");
+    const node = fixture.nodes.find((n) => n.id === 53)!;
+    expect([0, 1, 2, 3].map((r) => entryAtRank(node, r).name)).toEqual(["Tier one", "Tier two", "Tier two", "Tier two"]);
+  });
+
+  test("any-of: one full parent opens the node, a half-bought one does not", () => {
+    expect(canAdd(fixture, {}, 54, ALL).reason).toBe("prereq");
+    expect(canAdd(fixture, take({}, 53, 2), 54, ALL).reason).toBe("prereq");
+    expect(canAdd(fixture, take({}, 53, 3), 54, ALL).ok).toBe(true);
+    expect(canAdd(fixture, take({}, 51, 5), 54, ALL).ok).toBe(true);
+  });
+
+  test("any-of: a point cannot be taken back from the only full parent, but can from one of two", () => {
+    const both = take(take({}, 53, 3), 51, 5);
+    const child = take(both, 54);
+    expect(canRemove(fixture, child, 53).ok).toBe(true);
+    expect(canRemove(fixture, child, 51).ok).toBe(true);
+    const onlyOne = take(take({}, 53, 3), 54);
+    expect(canRemove(fixture, onlyOne, 53)).toEqual({ ok: false, reason: "dependents" });
+  });
+
+  test("a rank gate needs that many ranks in another node, and holds them in place", () => {
+    expect(canAdd(fixture, take({}, 51, 1), 55, ALL).reason).toBe("gate");
+    const ok = take(take({}, 51, 2), 55);
+    expect(ok[55]).toEqual({ rank: 1 });
+    expect(canRemove(fixture, ok, 51).reason).toBe("dependents");
+    expect(refusalText("gate", fixture.nodes.find((n) => n.id === 55)!, fixture)).toBe("Needs 2 ranks in Talent 51.");
+  });
+});
+
 describe("points and levels", () => {
+  test("levels come from the game's point table when there is one", () => {
+    const table = { ...fixture, rules: { ...fixture.rules, pointLevels: [10, 12, 12, 20] } };
+    expect([9, 10, 11, 12, 19, 20, 60].map((l) => pointsAtLevel(table, l))).toEqual([0, 1, 1, 3, 3, 4, 4]);
+    expect([0, 1, 2, 3, 4, 9].map((p) => levelFor(table, p))).toEqual([1, 10, 12, 12, 20, 20]);
+  });
+
   test("one point per level from level 10", () => {
     expect(pointsAtLevel(fixture, 9)).toBe(0);
     expect(pointsAtLevel(fixture, 10)).toBe(1);

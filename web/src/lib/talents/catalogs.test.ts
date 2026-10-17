@@ -3,19 +3,19 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, test } from "vitest";
 import { CatalogError, normalizeCatalog } from "./adapter";
 import { TALENT_CLASSES, loadCatalog } from "./catalogs";
-import { fixture } from "./fixture";
-import { add, isLegal, pointsSpent, remove } from "./rules";
+import { add, isLegal, pointsAtLevel, pointsSpent, remove } from "./rules";
 import { decodeBuild, encodeBuild, resolveBuild } from "./share";
 import type { Ranks } from "./types";
 
-const dataDir = fileURLToPath(new URL("../../data/talents/", import.meta.url));
+const dataDir = fileURLToPath(new URL("../../data/game-data/talents/", import.meta.url));
 
-describe.each(TALENT_CLASSES)("%s seed data", (slug) => {
-  test("is a sound tree", async () => {
+describe.each(TALENT_CLASSES)("%s game data", (slug) => {
+  test("is a sound tree from build 1.60.1.70450", async () => {
     const c = await loadCatalog(slug);
     expect(c.classSlug).toBe(slug);
+    expect(c.build).toBe("1.60.1.70450");
+    expect(c.label).toBe("found in game files, unconfirmed");
     expect(c.trees).toHaveLength(3);
-    expect(c.source).toMatchObject({ name: "Talents Forever", licence: "CC BY 4.0" });
     expect(c.rules.status).toBe("unconfirmed");
     const ids = c.nodes.map((n) => n.id);
     expect(new Set(ids).size).toBe(ids.length);
@@ -24,31 +24,31 @@ describe.each(TALENT_CLASSES)("%s seed data", (slug) => {
       const pos = `${n.treeId}:${n.row}:${n.col}`;
       expect(seen.has(pos), pos).toBe(false);
       seen.add(pos);
-      expect(n.row).toBeGreaterThanOrEqual(1);
-      expect(n.row).toBeLessThanOrEqual(7);
       expect(n.maxRanks).toBeGreaterThanOrEqual(1);
-      expect(n.unlock?.pointsInTree ?? 0).toBe(5 * (n.row - 1));
-      for (const p of n.prereqs) {
+      expect([0, 5, 10, 15, 20, 25, 30]).toContain(n.unlock?.pointsInTree ?? 0);
+      for (const p of [...n.prereqs, ...(n.anyOf ?? [])]) {
         const need = c.nodes.find((x) => x.id === p)!;
         expect(need.treeId).toBe(n.treeId);
-        expect(need.row).toBeLessThanOrEqual(n.row);
       }
     }
+  });
+
+  test("has 51 points, one per level from 10 to 60", async () => {
+    const c = await loadCatalog(slug);
+    expect(c.rules.pointLevels).toHaveLength(51);
+    expect(pointsAtLevel(c, 9)).toBe(0);
+    expect(pointsAtLevel(c, 10)).toBe(1);
+    expect(pointsAtLevel(c, 60)).toBe(51);
   });
 
   test("a full legal build reaches 51 points, and every point can be given back", async () => {
     const c = await loadCatalog(slug);
     let ranks: Ranks = {};
-    // Greedy fill in reading order until the points run out.
     for (let pass = 0; pass < 60 && pointsSpent(ranks) < 51; pass++) {
-      for (const n of c.nodes) {
-        const next = add(c, ranks, n.id, 51);
-        if (next !== ranks) ranks = next;
-      }
+      for (const n of c.nodes) ranks = add(c, ranks, n.id, 51);
     }
     expect(pointsSpent(ranks)).toBe(51);
     expect(isLegal(c, ranks)).toBe(true);
-    // Give back from the last row first: every step must stay legal and end at nothing.
     const order = [...c.nodes].reverse();
     let guard = 0;
     while (pointsSpent(ranks) > 0 && guard++ < 200) {
@@ -69,50 +69,75 @@ describe.each(TALENT_CLASSES)("%s seed data", (slug) => {
   });
 });
 
+test("a share code with real mage node ids round trips through the catalog", async () => {
+  const mage = await loadCatalog("mage");
+  // Arcane Power (spell 12042) and the node it needs, by their trait node ids in build 70450.
+  const power = mage.nodes.find((n) => n.entries[0].spellId === 12042)!;
+  expect(power.id).toBe(105798);
+  expect(power.unlock).toEqual({ pointsInTree: 30 });
+  const ranks: Ranks = { [power.id]: { rank: 1 } };
+  const code = encodeBuild({ classSlug: "mage", specId: mage.specId, build: mage.build, ranks });
+  expect(code).toBe(`EL1-mage-1482-1.60.1.70450-${btoa("105798:1").replace(/=+$/, "")}`);
+  const decoded = decodeBuild(code);
+  expect(decoded).toMatchObject({ ok: true, build: { classSlug: "mage", specId: 1482, build: "1.60.1.70450", ranks } });
+  if (!decoded.ok) throw new Error("decode failed");
+  // Alone, the node cannot be placed: its row gate (30 points above) is not met. The report says why.
+  const resolved = resolveBuild(mage, decoded.build);
+  expect(resolved).toMatchObject({ ok: true, build: { unknown: [], ranks: {}, rejected: [{ id: 105798, name: "Arcane Power", rank: 1 }] } });
+});
+
 describe("licence boundary", () => {
-  test("no tooltip text, icon or cost field was imported", () => {
+  test("the game data folder holds no spell text, effect numbers or icon ids", () => {
     const files = readdirSync(dataDir).filter((f) => f.endsWith(".json"));
     expect(files).toHaveLength(9);
     for (const f of files) {
       const text = readFileSync(dataDir + f, "utf8");
-      for (const banned of ['"desc"', '"text"', '"icon"', '"cost"', '"classic"', '"ranks"']) {
+      for (const banned of ['"description"', '"auraDescription"', '"effects"', '"iconFileId"', '"iconFile"', '"durationMs"']) {
         expect(text.includes(banned), `${f} has ${banned}`).toBe(false);
       }
     }
   });
+
+  test("the folder says whose data it is", () => {
+    const readme = readFileSync(dataDir + "../README.md", "utf8");
+    expect(readme).toMatch(/Blizzard's data/);
+    expect(readme).toMatch(/not under Everloot's licence/);
+    expect(readme).toMatch(/1\.60\.1\.70450/);
+  });
 });
 
 describe("adapter", () => {
-  const base = { classId: 8, specId: 1482, build: "1", trees: [{ id: 1, name: "T" }] };
-  const entry = (name: string) => ({ name });
-
-  test("accepts the other source's shape: nodes by id, x/y from zero, max, edges", () => {
-    const c = normalizeCatalog({
-      ...base,
-      nodes: {
-        "10": { treeId: 1, x: 0, y: 0, max: 3, entries: [entry("A")] },
-        "20": { treeId: 1, x: 1, y: 1, max: 1, entries: [entry("B"), entry("C")], unlock: { pointsInTree: 5 } },
-      },
-      edges: [{ from: 10, to: 20 }],
-    });
-    expect(c.nodes).toEqual([
-      { id: 10, treeId: 1, row: 1, col: 1, maxRanks: 3, kind: "single", entries: [{ definitionId: null, spellId: null, name: "A" }], prereqs: [] },
-      { id: 20, treeId: 1, row: 2, col: 2, maxRanks: 1, kind: "choice", entries: [{ definitionId: null, spellId: null, name: "B" }, { definitionId: null, spellId: null, name: "C" }], prereqs: [10], unlock: { pointsInTree: 5 } },
-    ]);
-    expect(c.rules.status).toBe("unconfirmed");
+  const entry = (name: string | null, maxRanks = 1) => ({ definitionId: 1, spellId: 2, name, maxRanks });
+  const node = (id: number, extra: object = {}) => ({
+    id, row: 0, col: 0, kind: "single", maxRanks: 1, entries: [entry("A")], prereqs: [], unlock: {}, ...extra,
+  });
+  const base = (nodes: object[]) => ({
+    schema: "everloot.talent-catalog/1", label: "found in game files, unconfirmed", build: { version: "1.2.3" },
+    classId: 8, className: "Mage", specId: null, pointLevels: [12, 10, 11],
+    trees: [{ id: 5, name: null, order: 0, nodes }],
   });
 
-  test("passes our own shape through unchanged", () => {
-    expect(normalizeCatalog(fixture)).toEqual(fixture);
+  test("reads the catalog: 1-based positions, any and all prerequisites, gates, tiered entries, point levels", () => {
+    const c = normalizeCatalog(base([
+      node(1, { row: 0, col: 1 }),
+      node(2, { row: 1, col: 1, kind: "tiered", maxRanks: 3, entries: [entry("T1"), entry("T2", 2)], prereqs: [{ nodeId: 1, rule: "all" }, { nodeId: 3, rule: "any" }], unlock: { pointsInTree: 5, ranksInNode: { nodeId: 1, ranks: 1 } } }),
+      node(3, { row: 1, col: 2, entries: [entry(null)] }),
+    ]));
+    expect(c).toMatchObject({ classId: 8, classSlug: "mage", specId: 0, build: "1.2.3", label: "found in game files, unconfirmed" });
+    expect(c.rules).toMatchObject({ pointLevels: [10, 11, 12], firstPointLevel: 10, maxLevel: 12, dualSpecLevel: 40, status: "unconfirmed" });
+    expect(c.trees).toEqual([{ id: 5, name: "Tree 1" }]);
+    expect(c.nodes.map((n) => [n.id, n.row, n.col])).toEqual([[1, 1, 2], [2, 2, 2], [3, 2, 3]]);
+    expect(c.nodes[1]).toMatchObject({ kind: "tiered", maxRanks: 3, prereqs: [1], anyOf: [3], unlock: { pointsInTree: 5, ranksInNode: { nodeId: 1, ranks: 1 } } });
+    expect(c.nodes[1].entries.map((e) => e.name)).toEqual(["T1", "T2"]);
+    expect(c.nodes[2].entries[0].name).toBe("Talent 2");
   });
 
   test("refuses a broken catalog", () => {
-    const node = { treeId: 1, row: 1, col: 1, maxRanks: 1, entries: [entry("A")] };
-    expect(() => normalizeCatalog({ ...base, nodes: [{ ...node, id: 1 }, { ...node, id: 1, col: 2 }] })).toThrow(CatalogError);
-    expect(() => normalizeCatalog({ ...base, nodes: [{ ...node, id: 1, prereqs: [99] }] })).toThrow(/not in the catalog/);
-    expect(() => normalizeCatalog({ ...base, nodes: [{ ...node, id: 1, treeId: 7 }] })).toThrow(/no known tree/);
-    expect(() => normalizeCatalog({ ...base, nodes: [{ ...node, id: 1, kind: "choice" }] })).toThrow(/fewer than two/);
-    expect(() => normalizeCatalog({ ...base, nodes: [{ id: 1, treeId: 1, entries: [entry("A")] }] })).toThrow(/no position/);
+    expect(() => normalizeCatalog(base([node(1), node(1, { col: 1 })]))).toThrow(/repeated node id 1/);
+    expect(() => normalizeCatalog(base([node(1, { prereqs: [{ nodeId: 99, rule: "all" }] })]))).toThrow(/not in the catalog/);
+    expect(() => normalizeCatalog(base([node(1, { kind: "choice" })]))).toThrow(/fewer than two/);
+    expect(() => normalizeCatalog({ ...base([node(1)]), pointLevels: [] })).toThrow(CatalogError);
+    expect(() => normalizeCatalog({ ...base([node(1)]), schema: "other/2" })).toThrow(CatalogError);
     expect(() => normalizeCatalog({ nope: true })).toThrow(CatalogError);
   });
 });

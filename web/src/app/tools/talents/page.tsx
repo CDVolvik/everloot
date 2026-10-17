@@ -38,19 +38,10 @@ export default function TalentsIndexPage() {
         </ul>
       </nav>
 
-      <section className="space-y-2 text-sm text-fg-2 max-w-2xl">
-        <h2 className="text-fg font-semibold">What is confirmed and what is not</h2>
-        <p>
-          Per Talents Forever, the trees come from the beta client files. They share them under CC BY 4.0.
-          Everloot has not read them from the game itself, so every tree is unconfirmed and can lag
-          the live game.
-        </p>
-        <p>
-          The point rules are assumptions: one point per level from level 10, five points in a tree for
-          each row above before a row opens, and a second talent set at level 40. We will confirm them
-          against the game and change them if they are wrong.
-        </p>
-      </section>
+      <p className="text-sm text-fg-2 max-w-2xl">
+        Talent trees read from the WoW: Forever game files. Unconfirmed until checked in game. Talent
+        names &copy; Blizzard Entertainment.
+      </p>
     </article>
   );
 }
