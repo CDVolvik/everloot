@@ -11,27 +11,27 @@ export default function PrivacyPage() {
   const updated = "October 2026";
   return (
     <article className="prose prose-invert max-w-3xl">
-      <h1 className="font-display text-3xl font-bold text-parchment-100">
+      <h1 className="text-3xl font-bold text-fg">
         Privacy Policy
       </h1>
-      <p className="text-sm text-parchment-100/60">Last updated: {updated}</p>
+      <p className="text-sm text-muted">Last updated: {updated}</p>
 
-      <h2 className="font-display text-xl text-parchment-100 mt-6">Overview</h2>
-      <p className="text-parchment-100/80">
+      <h2 className="text-xl text-fg mt-6">Overview</h2>
+      <p className="text-fg-2">
         Everloot (&ldquo;we&rdquo;, &ldquo;us&rdquo;) provides free utility
         tools for World of Warcraft players. We value your privacy and try to
         collect the minimum information possible.
       </p>
 
-      <h2 className="font-display text-xl text-parchment-100 mt-6">
+      <h2 className="text-xl text-fg mt-6">
         Information we collect
       </h2>
-      <p className="text-parchment-100/80">
+      <p className="text-fg-2">
         Most of our tools run entirely in your browser. Data you enter into a
         calculator stays in your browser. A calculator share link encodes those
         values in the URL; anyone you give that link to can read them.
       </p>
-      <ul className="list-disc pl-6 text-parchment-100/80">
+      <ul className="list-disc pl-6 text-fg-2">
         <li>
           <strong>Analytics:</strong> no analytics service is currently enabled.
         </li>
@@ -67,16 +67,16 @@ export default function PrivacyPage() {
         </li>
       </ul>
 
-      <h2 className="font-display text-xl text-parchment-100 mt-6">
+      <h2 className="text-xl text-fg mt-6">
         Advertising and Google AdSense
       </h2>
-      <p className="text-parchment-100/80">
+      <p className="text-fg-2">
         If configured, Google AdSense loads only after you accept optional cookies. Google
         and its partners may use cookies to serve ads based on your prior visits
         to this site or other sites. You can opt out of personalized advertising
         by visiting{" "}
         <a
-          className="text-gold-400 hover:underline"
+          className="text-accent hover:underline"
           href="https://www.google.com/settings/ads"
           target="_blank"
           rel="noreferrer"
@@ -85,7 +85,7 @@ export default function PrivacyPage() {
         </a>
         . For more detail, see{" "}
         <a
-          className="text-gold-400 hover:underline"
+          className="text-accent hover:underline"
           href="https://policies.google.com/technologies/ads"
           target="_blank"
           rel="noreferrer"
@@ -95,10 +95,10 @@ export default function PrivacyPage() {
         .
       </p>
 
-      <h2 className="font-display text-xl text-parchment-100 mt-6">
+      <h2 className="text-xl text-fg mt-6">
         Your choices
       </h2>
-      <p className="text-parchment-100/80">
+      <p className="text-fg-2">
         You can accept or reject optional cookies in the banner and reopen Cookie
         preferences from the footer on any page. The choice is stored locally.
         Rejecting does not load advertising scripts. If ads already loaded,
@@ -106,10 +106,10 @@ export default function PrivacyPage() {
         also clear local storage through your browser settings.
       </p>
 
-      <h2 className="font-display text-xl text-parchment-100 mt-6">Contact</h2>
-      <p className="text-parchment-100/80">
+      <h2 className="text-xl text-fg mt-6">Contact</h2>
+      <p className="text-fg-2">
         Questions? Email{" "}
-        <a className="text-gold-400 hover:underline" href="mailto:hello@everloot.app">
+        <a className="text-accent hover:underline" href="mailto:hello@everloot.app">
           hello@everloot.app
         </a>
         .

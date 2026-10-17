@@ -8,17 +8,17 @@ export const metadata: Metadata = {
   alternates: { canonical: "/addons/polestar/wanted" },
 };
 
-const link = "text-gold-400 hover:underline underline-offset-4";
+const link = "text-accent hover:underline underline-offset-4";
 
 export default function WantedPage() {
   return (
     <article className="space-y-10 max-w-4xl">
       <header className="space-y-3">
-        <p className="uppercase tracking-[0.2em] text-xs text-gold-500/80">
-          <Link href="/addons/polestar" className="hover:text-gold-400">Polestar</Link> · pack ideas
+        <p className="font-mono text-xs text-muted">
+          <Link href="/addons/polestar" className="hover:text-accent">Polestar</Link> · pack ideas
         </p>
-        <h1 className="font-display text-3xl sm:text-4xl font-bold text-parchment-100 tracking-tight">Routes and guides worth building</h1>
-        <p className="text-parchment-100/80 max-w-2xl">
+        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">Routes and guides worth building</h1>
+        <p className="text-fg-2 max-w-2xl">
           Guide packs nobody has listed yet, each with the reason it is open. To start one, follow
           Polestar&apos;s <a className={link} href={POLESTAR.handbook}>pack handbook</a>: from a clone of Polestar (Node 24 and Lua 5.1),{" "}
           <span className="font-mono">polestar new &lt;folder&gt;</span> sets up a pack that already lints, plays and builds.
@@ -26,15 +26,15 @@ export default function WantedPage() {
       </header>
 
       <section className="space-y-4" aria-labelledby="ideas">
-        <h2 id="ideas" className="font-display text-xl text-parchment-100">Pack ideas</h2>
+        <h2 id="ideas" className="text-xl text-fg">Pack ideas</h2>
         <ul className="space-y-4">
           {PACK_IDEAS.map((idea) => (
-            <li key={idea.title} className="rounded-xl border border-parchment-100/15 bg-parchment-900/40 p-5 space-y-2">
-              <h3 className="font-display text-lg font-semibold text-parchment-100">{idea.title}</h3>
-              <p className="text-sm text-parchment-100/80">{idea.why}</p>
-              <p className="text-xs text-parchment-100/60">Source: <a className={link} href={idea.source.url}>{idea.source.label}</a></p>
+            <li key={idea.title} className="rounded-xl border border-line bg-panel/40 p-5 space-y-2">
+              <h3 className="text-lg font-semibold text-fg">{idea.title}</h3>
+              <p className="text-sm text-fg-2">{idea.why}</p>
+              <p className="text-xs text-muted">Source: <a className={link} href={idea.source.url}>{idea.source.label}</a></p>
               {idea.start.length > 0 && (
-                <p className="text-sm text-parchment-100/70">
+                <p className="text-sm text-fg-2">
                   On Everloot:{" "}
                   {idea.start.map((item, i) => (
                     <span key={item.href}>{i > 0 && " · "}<Link className={link} href={item.href}>{item.label}</Link></span>
@@ -47,18 +47,18 @@ export default function WantedPage() {
       </section>
 
       <section className="space-y-4" aria-labelledby="help">
-        <h2 id="help" className="font-display text-xl text-parchment-100">Help Polestar itself</h2>
+        <h2 id="help" className="text-xl text-fg">Help Polestar itself</h2>
         <ul className="space-y-3">
           {POLESTAR_HELP.map((item) => (
             <li key={item.title}>
               <a className={link} href={item.url}>{item.title}</a>
-              <p className="text-sm text-parchment-100/70">{item.why}</p>
+              <p className="text-sm text-fg-2">{item.why}</p>
             </li>
           ))}
         </ul>
       </section>
 
-      <p className="text-sm text-parchment-100/60">
+      <p className="text-sm text-muted">
         Built a pack? <Link className={link} href="/addons/polestar/packs">List it</Link>. Ideas checked against
         Polestar&apos;s repository on {POLESTAR.checked}.
       </p>

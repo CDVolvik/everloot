@@ -38,3 +38,12 @@ test("an unknown kind is a 400, never a silently empty answer", async () => {
   expect(response.status).toBe(400);
   expect(store.loadCorpus).not.toHaveBeenCalled();
 });
+
+test("installed addon lists never leave row by row; only the leaderboard's counts are published", async () => {
+  const addon = { ...base, eventId: "e:3", kind: "addon_seen", name: "Questie", title: "Questie", loaded: true };
+  store.loadCorpus.mockResolvedValue({ uploads: 1, records: [gold, addon, scan] });
+  const body = await (await GET(req())).json();
+  expect(body.records).toEqual([published(gold), published(scan)]);
+  const asked = await GET(req("?kinds=addon_seen"));
+  expect(asked.status).toBe(400);
+});

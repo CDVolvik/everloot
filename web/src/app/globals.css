@@ -2,15 +2,76 @@
 @tailwind components;
 @tailwind utilities;
 
+/* The colour variables come from src/design/tokens.ts through the Tailwind plugin. */
 :root {
-  color-scheme: dark;
+  color-scheme: light dark;
 }
 
 html,
 body {
-  background: #0f0c08; /* parchment.950 */
-  color: #f1e6c8;       /* parchment.100 */
+  background: rgb(var(--canvas));
+  color: rgb(var(--fg));
   min-height: 100vh;
+}
+
+/* Buttons are outline pills. The primary action adds a green gradient outline, the only
+   gradient on the site. Plain declarations (no @apply) so src/design/buttons.test.ts can read them. */
+@layer components {
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding: 0 1.25rem;
+  border-radius: 9999px;
+  border: 1px solid rgb(var(--fg));
+  background: transparent;
+  color: rgb(var(--fg));
+  font-weight: 500;
+  transition: border-color 150ms, color 150ms;
+}
+.btn:hover,
+.btn:focus-visible {
+  border-color: rgb(var(--accent));
+}
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+/* The transparent border is what forced-colours mode paints when the gradient ring is dropped. */
+.btn-primary {
+  position: relative;
+  border: 1.5px solid transparent;
+}
+.btn-primary:hover {
+  color: rgb(var(--accent));
+}
+.btn-primary::before {
+  content: "";
+  position: absolute;
+  inset: -1.5px;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: linear-gradient(90deg, rgb(var(--grad-from)), rgb(var(--grad-to)));
+  -webkit-mask: linear-gradient(black 0 0) content-box, linear-gradient(black 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(black 0 0) content-box, linear-gradient(black 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+}
+
+/* Forced colours paint both pills' borders the same colour, so the primary one gets a thicker
+   edge instead of the gradient ring. */
+@media (forced-colors: active) {
+  .btn-primary {
+    border-width: 3px;
+  }
+  .btn-primary::before {
+    display: none;
+  }
 }
 
 /* Keep form controls readable on phones and allow grid children to reflow. */
@@ -25,101 +86,26 @@ pre {
 }
 
 body {
-  font-feature-settings: "cv11", "ss01";
   -webkit-font-smoothing: antialiased;
 }
 
-/* Subtle parchment-ish grain — pure CSS, no image. */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(1200px 600px at 10% -10%, rgba(240, 180, 41, 0.08), transparent 60%),
-    radial-gradient(900px 500px at 110% 20%, rgba(139, 92, 246, 0.07), transparent 60%);
-  z-index: -1;
-}
-
-/* Aurora drift — slow, ambient, transform-only. Paused under reduced motion. */
-@keyframes aurora-drift {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-  50% { transform: translate3d(4%, -3%, 0) scale(1.08); }
-}
-
-.aurora {
-  position: absolute;
-  inset: -10%;
-  pointer-events: none;
-  overflow: hidden;
-  background:
-    radial-gradient(560px 380px at 18% 8%, rgba(242, 182, 50, 0.09), transparent 65%),
-    radial-gradient(640px 420px at 82% 12%, rgba(139, 92, 246, 0.12), transparent 65%),
-    radial-gradient(700px 500px at 50% 110%, rgba(242, 182, 50, 0.04), transparent 60%);
-  animation: aurora-drift 22s ease-in-out infinite;
-  mask-image: radial-gradient(120% 90% at 50% 0%, black 30%, transparent 100%);
-}
-
-/* Entrance reveals — fade + rise, staggered via --reveal-delay. */
-@keyframes rise-in {
-  from { opacity: 0; transform: translateY(18px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.reveal {
-  opacity: 1;
-}
-html.js .reveal {
-  opacity: 0;
-}
-html.js .reveal.is-visible {
-  animation: rise-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-  animation-delay: var(--reveal-delay, 0ms);
-}
-
-/* Ticker — one line of proof words under the hero. */
-@keyframes ticker-scroll {
-  from { transform: translateX(0); }
-  to { transform: translateX(-50%); }
-}
-
-.ticker-track {
-  display: flex;
-  width: max-content;
-  animation: ticker-scroll 36s linear infinite;
-}
-
-/* Card hover glow — border + lift, no layout shift. */
+/* Tool cards: the border answers the pointer. No lift, no shadow. */
 .tool-card {
-  transition: transform 0.25s ease-out, border-color 0.25s ease-out, box-shadow 0.25s ease-out, background-color 0.25s ease-out;
-}
-.tool-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 12px 40px -12px rgba(242, 182, 50, 0.25);
+  transition: border-color 150ms;
 }
 
-/* CTA glow pulse — once on load, then still. */
-@keyframes cta-settle {
-  0% { box-shadow: 0 0 0 0 rgba(242, 182, 50, 0.55); }
-  100% { box-shadow: 0 0 0 18px rgba(242, 182, 50, 0); }
-}
-
-.cta-glow {
-  animation: cta-settle 1.6s ease-out 0.4s both;
-}
-
+/* Motion is limited to 150 ms colour and opacity changes, and none at all when asked. */
 @media (prefers-reduced-motion: reduce) {
-  .aurora, .ticker-track, .cta-glow { animation: none; }
-  .reveal { opacity: 1; }
-  .reveal.is-visible { animation: none; opacity: 1; }
-  .tool-card:hover { transform: none; }
+  *, ::before, ::after {
+    animation: none !important;
+    transition: none !important;
+  }
 }
 
 /* Focus ring — AdSense-friendly accessibility */
 :focus-visible {
-  outline: 2px solid #f0b429;
+  outline: 2px solid rgb(var(--accent));
   outline-offset: 2px;
-  border-radius: 4px;
 }
 
 /* Number inputs: strip spinners for cleaner look */
