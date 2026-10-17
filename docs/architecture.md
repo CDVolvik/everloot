@@ -27,7 +27,7 @@ Player plays
   -> raw upload in R2, index row in Supabase
   -> cron snapshot merges new events into the corpus
   -> public read: named records only with a grant (kb/src/corpus.ts)
-  -> anonymous observations are public as records (/api/corpus/public)
+  -> anonymous observations are public as records, without install ids (/api/corpus/public)
   -> rollups: the site states a fact once at least three installs reported it (kb/src/drop-rollup.ts)
   -> site pages and MCP gameplay tools
 
@@ -77,6 +77,8 @@ Warcraft Wiki dump (CC BY-SA 4.0) + curated entries
 - Blizzard's API has no WoW: Forever namespace yet, so character data comes only from the addon.
 - Addon 0.2.5 passes its automated tests but has not yet been checked in the live client.
 - The companion is an unsigned command-line tool.
+- The standalone MCP server (`kb/src/mcp-http-main.ts`) reads the public corpus URL, which has no
+  install ids, so it cannot corroborate on its own. Only the MCP endpoints on the site are deployed.
 - The knowledge release is several hundred megabytes inside a serverless function, so the first
   lore request after a cold start takes a few seconds.
 
