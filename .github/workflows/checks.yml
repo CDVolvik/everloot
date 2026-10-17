@@ -25,6 +25,9 @@ jobs:
           ./gitleaks git --redact --no-banner .
       - name: No private workspace paths
         run: python scripts/test_check_internal_paths.py && python scripts/check_internal_paths.py
+      - name: Every commit is signed off (DCO)
+        if: github.event_name == 'pull_request'
+        run: python scripts/test_check_dco.py && python scripts/check_dco.py "origin/${{ github.base_ref }}" HEAD
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 10
