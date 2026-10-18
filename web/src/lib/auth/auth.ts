@@ -19,10 +19,9 @@ export function createAuth(options: {
   database: Pool | DBAdapterInstance;
   rateLimitStore: RateLimitStore;
   env?: NodeJS.ProcessEnv;
-  onBattlenetAccount?: (userId: string, accountId: string, name: string) => Promise<void>;
 }) {
   const env = options.env ?? process.env;
-  const { onBattlenetAccount, rateLimitStore } = options;
+  const { rateLimitStore } = options;
   const { BNET_CLIENT_ID, BNET_CLIENT_SECRET } = env;
   const battlenetConfigured = Boolean(BNET_CLIENT_ID?.trim() && BNET_CLIENT_SECRET?.trim());
   return betterAuth({
@@ -75,12 +74,8 @@ export function createAuth(options: {
     databaseHooks: {
       account: {
         create: {
+          // bnet_id and battletag are filled by the auth_account trigger, in the same transaction.
           before: async (account) => ({ data: { ...account, ...noProviderTokens } }),
-          after: async (account, ctx) => {
-            if (account.providerId !== "battlenet" || !onBattlenetAccount) return;
-            const user = await ctx?.context.internalAdapter.findUserById(account.userId);
-            if (user) await onBattlenetAccount(account.userId, account.accountId, user.name);
-          },
         },
         update: {
           before: async (account) => ({ data: { ...account, ...noProviderTokens } }),
@@ -104,12 +99,6 @@ let auth: ReturnType<typeof createAuth> | undefined;
 
 // Built on first use, never at import: the Next build imports route modules.
 export function getAuth() {
-  auth ??= createAuth({
-    database: authPool(),
-    rateLimitStore: pgRateLimitStore(authPool()),
-    onBattlenetAccount: async (userId, accountId, name) => {
-      await authPool().query("update public.users set bnet_id = $2, battletag = $3 where id = $1", [userId, accountId, name]);
-    },
-  });
+  auth ??= createAuth({ database: authPool(), rateLimitStore: pgRateLimitStore(authPool()) });
   return auth;
 }

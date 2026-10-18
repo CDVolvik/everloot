@@ -71,7 +71,6 @@ function cookieHeader(response: Response) {
 
 async function signInWithBattlenet(options: {
   seed?: { users?: Row[]; auth_account?: Row[] };
-  onBattlenetAccount?: (userId: string, accountId: string, name: string) => Promise<void>;
   userinfo?: Userinfo;
 } = {}) {
   stubBattlenet(options.userinfo ?? thrall);
@@ -82,7 +81,7 @@ async function signInWithBattlenet(options: {
     auth_verification: [],
   };
   const { store, rateLimitStore } = mapRateLimitStore();
-  const auth = createAuth({ database: memoryAdapter(db), rateLimitStore, env, onBattlenetAccount: options.onBattlenetAccount });
+  const auth = createAuth({ database: memoryAdapter(db), rateLimitStore, env });
   const start = await startSignIn(auth);
   const { url } = await start.json() as { url: string };
   const state = new URL(url).searchParams.get("state");
@@ -100,12 +99,6 @@ test("a Battle.net sign-in creates a session cookie and stores no provider token
   // The memory adapter keeps rows under their database column names, as Postgres will.
   expect(db.auth_account[0]).toMatchObject({ provider_id: "battlenet", account_id: "123", access_token: null, refresh_token: null, id_token: null });
   expect(db.auth_session[0]).toMatchObject({ ip_address: null, user_agent: null });
-});
-
-test("a new Battle.net account fills bnet_id and battletag", async () => {
-  const seen: unknown[] = [];
-  await signInWithBattlenet({ onBattlenetAccount: async (...args) => { seen.push(args); } });
-  expect(seen).toEqual([[expect.any(String), "123", "Thrall#1"]]);
 });
 
 const LEGACY_ID = "5f0c1f0e-6b7a-4c53-9a1e-0d4f4b2f9a11";
