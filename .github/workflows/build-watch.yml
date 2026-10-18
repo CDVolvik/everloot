@@ -29,7 +29,7 @@ concurrency:
 jobs:
   watch:
     # Forks have no reason to run this.
-    if: github.repository == 'CDVolvik/everloot'
+    if: github.repository == 'Everloot/everloot'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -196,7 +196,7 @@ jobs:
 
   report:
     needs: [watch, publish]
-    if: always() && github.event_name == 'schedule' && github.repository == 'CDVolvik/everloot'
+    if: always() && github.event_name == 'schedule' && github.repository == 'Everloot/everloot'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:

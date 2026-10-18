@@ -16,7 +16,7 @@ concurrency:
 jobs:
   collect:
     # Reads the public internet and writes files. No token, no write access.
-    if: github.repository == 'CDVolvik/everloot'
+    if: github.repository == 'Everloot/everloot'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -73,7 +73,7 @@ jobs:
   publish:
     # The only job with a write token, and only the steps that push, open or merge the pull request see it.
     needs: collect
-    if: github.repository == 'CDVolvik/everloot'
+    if: github.repository == 'Everloot/everloot'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:

@@ -14,7 +14,7 @@ concurrency:
 jobs:
   collect:
     # Reads GitHub's public API and writes one file. The read-only default token only lifts the rate limit.
-    if: github.repository == 'CDVolvik/everloot'
+    if: github.repository == 'Everloot/everloot'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -48,7 +48,7 @@ jobs:
   publish:
     # The only job with a write token, and only the step that pushes and opens the pull request sees it.
     needs: collect
-    if: github.repository == 'CDVolvik/everloot'
+    if: github.repository == 'Everloot/everloot'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
