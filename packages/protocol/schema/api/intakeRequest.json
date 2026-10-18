@@ -1,0 +1,2284 @@
+{
+  "$id": "https://everloot.app/schema/api/intakeRequest.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "addonVersion": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 20
+    },
+    "clientBuild": {
+      "type": "string"
+    },
+    "protocol": {
+      "type": "string"
+    },
+    "records": {
+      "minItems": 1,
+      "maxItems": 2000,
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "installId": {
+                "type": "string",
+                "minLength": 8,
+                "maxLength": 64,
+                "description": "Random install id, no account needed."
+              },
+              "eventId": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 96,
+                "pattern": "^[A-Za-z0-9:_-]+$"
+              },
+              "capturedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                "description": "ISO time the event happened in-game."
+              },
+              "kind": {
+                "type": "string",
+                "const": "npc_sighting"
+              },
+              "npcId": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              },
+              "mapId": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "x": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "y": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "level": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100
+              },
+              "reaction": {
+                "type": "string",
+                "enum": [
+                  "friendly",
+                  "neutral",
+                  "hostile"
+                ]
+              },
+              "positionKind": {
+                "description": "Whose coordinates were measured; legacy unknown positions never become spawn pins.",
+                "type": "string",
+                "enum": [
+                  "player",
+                  "npc"
+                ]
+              }
+            },
+            "required": [
+              "installId",
+              "capturedAt",
+              "kind",
+              "npcId",
+              "name",
+              "mapId",
+              "x",
+              "y",
+              "level",
+              "reaction"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "installId": {
+                "type": "string",
+                "minLength": 8,
+                "maxLength": 64,
+                "description": "Random install id, no account needed."
+              },
+              "eventId": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 96,
+                "pattern": "^[A-Za-z0-9:_-]+$"
+              },
+              "capturedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                "description": "ISO time the event happened in-game."
+              },
+              "kind": {
+                "type": "string",
+                "const": "loot"
+              },
+              "sourceNpcId": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "sourceObjectId": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "sourceEvidence": {
+                "description": "Legacy target guesses are withheld from public loot observations.",
+                "type": "string",
+                "const": "loot-api"
+              },
+              "items": {
+                "maxItems": 50,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "itemId": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "count": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 1000
+                    }
+                  },
+                  "required": [
+                    "itemId",
+                    "count"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "installId",
+              "capturedAt",
+              "kind",
+              "items"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "installId": {
+                "type": "string",
+                "minLength": 8,
+                "maxLength": 64,
+                "description": "Random install id, no account needed."
+              },
+              "eventId": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 96,
+                "pattern": "^[A-Za-z0-9:_-]+$"
+              },
+              "capturedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                "description": "ISO time the event happened in-game."
+              },
+              "kind": {
+                "type": "string",
+                "const": "quest"
+              },
+              "questId": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "level": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100
+              },
+              "giverNpcId": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "turnInNpcId": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "rewardItemIds": {
+                "default": [],
+                "maxItems": 20,
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                }
+              }
+            },
+            "required": [
+              "installId",
+              "capturedAt",
+              "kind",
+              "questId",
+              "title",
+              "level",
+              "rewardItemIds"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "installId": {
+                "type": "string",
+                "minLength": 8,
+                "maxLength": 64,
+                "description": "Random install id, no account needed."
+              },
+              "eventId": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 96,
+                "pattern": "^[A-Za-z0-9:_-]+$"
+              },
+              "capturedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                "description": "ISO time the event happened in-game."
+              },
+              "kind": {
+                "type": "string",
+                "const": "vendor"
+              },
+              "vendorNpcId": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "items": {
+                "minItems": 1,
+                "maxItems": 200,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "itemId": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "priceCopper": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "limitedStock": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "itemId",
+                    "priceCopper"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "installId",
+              "capturedAt",
+              "kind",
+              "vendorNpcId",
+              "items"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "installId": {
+                "type": "string",
+                "minLength": 8,
+                "maxLength": 64,
+                "description": "Random install id, no account needed."
+              },
+              "eventId": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 96,
+                "pattern": "^[A-Za-z0-9:_-]+$"
+              },
+              "capturedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                "description": "ISO time the event happened in-game."
+              },
+              "kind": {
+                "type": "string",
+                "const": "item_seen"
+              },
+              "itemId": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "quality": {
+                "type": "string",
+                "enum": [
+                  "poor",
+                  "common",
+                  "uncommon",
+                  "rare",
+                  "epic",
+                  "legendary",
+                  "artifact",
+                  "heirloom"
+                ]
+              },
+              "itemLevel": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 1000
+              }
+            },
+            "required": [
+              "installId",
+              "capturedAt",
+              "kind",
+              "itemId",
+              "name",
+              "quality"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "installId": {
+                "type": "string",
+                "minLength": 8,
+                "maxLength": 64,
+                "description": "Random install id, no account needed."
+              },
+              "eventId": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 96,
+                "pattern": "^[A-Za-z0-9:_-]+$"
+              },
+              "capturedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                "description": "ISO time the event happened in-game."
+              },
+              "kind": {
+                "type": "string",
+                "const": "guild_snapshot"
+              },
+              "guildName": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 60
+              },
+              "realm": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 60
+              },
+              "faction": {
+                "type": "string",
+                "enum": [
+                  "alliance",
+                  "horde"
+                ]
+              },
+              "claimToken": {
+                "description": "Legacy field; never proof of officer authority.",
+                "type": "string",
+                "minLength": 16
+              },
+              "members": {
+                "minItems": 1,
+                "maxItems": 2000,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "minLength": 2,
+                      "maxLength": 30
+                    },
+                    "rank": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 60
+                    },
+                    "level": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 100
+                    },
+                    "class": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 30
+                    },
+                    "lastOnlineDays": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 3650
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "rank",
+                    "level",
+                    "class",
+                    "lastOnlineDays"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "installId",
+              "capturedAt",
+              "kind",
+              "guildName",
+              "realm",
+              "faction",
+              "members"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "installId": {
+                "type": "string",
+                "minLength": 8,
+                "maxLength": 64,
+                "description": "Random install id, no account needed."
+              },
+              "eventId": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 96,
+                "pattern": "^[A-Za-z0-9:_-]+$"
+              },
+              "capturedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                "description": "ISO time the event happened in-game."
+              },
+              "kind": {
+                "type": "string",
+                "const": "raid_lockout"
+              },
+              "guildName": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 60
+              },
+              "realm": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 60
+              },
+              "instance": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              },
+              "difficulty": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 60
+              },
+              "bossesKilled": {
+                "maxItems": 60,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 120
+                }
+              },
+              "resetAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+              }
+            },
+            "required": [
+              "installId",
+              "capturedAt",
+              "kind",
+              "guildName",
+              "realm",
+              "instance",
+              "difficulty",
+              "bossesKilled",
+              "resetAt"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "installId": {
+                "type": "string",
+                "minLength": 8,
+                "maxLength": 64,
+                "description": "Random install id, no account needed."
+              },
+              "eventId": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 96,
+                "pattern": "^[A-Za-z0-9:_-]+$"
+              },
+              "capturedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                "description": "ISO time the event happened in-game."
+              },
+              "kind": {
+                "type": "string",
+                "const": "attendance"
+              },
+              "guildName": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 60
+              },
+              "realm": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 60
+              },
+              "instance": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              },
+              "present": {
+                "minItems": 1,
+                "maxItems": 100,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 2,
+                  "maxLength": 30
+                }
+              }
+            },
+            "required": [
+              "installId",
+              "capturedAt",
+              "kind",
+              "guildName",
+              "realm",
+              "instance",
+              "present"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "installId": {
+                "type": "string",
+                "minLength": 8,
+                "maxLength": 64,
+                "description": "Random install id, no account needed."
+              },
+              "eventId": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 96,
+                "pattern": "^[A-Za-z0-9:_-]+$"
+              },
+              "capturedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                "description": "ISO time the event happened in-game."
+              },
+              "kind": {
+                "type": "string",
+                "const": "loot_award"
+              },
+              "guildName": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 60
+              },
+              "realm": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 60
+              },
+              "itemId": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "itemName": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "recipient": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 30
+              },
+              "sourceBoss": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              }
+            },
+            "required": [
+              "installId",
+              "capturedAt",
+              "kind",
+              "guildName",
+              "realm",
+              "itemId",
+              "itemName",
+              "recipient",
+              "sourceBoss"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "installId": {
+                "type": "string",
+                "minLength": 8,
+                "maxLength": 64,
+                "description": "Random install id, no account needed."
+              },
+              "eventId": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 96,
+                "pattern": "^[A-Za-z0-9:_-]+$"
+              },
+              "capturedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                "description": "ISO time the event happened in-game."
+              },
+              "kind": {
+                "type": "string",
+                "const": "gear_snapshot"
+              },
+              "character": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 30
+              },
+              "realm": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 60
+              },
+              "equipped": {
+                "minItems": 1,
+                "maxItems": 30,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "slot": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 40
+                    },
+                    "itemId": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "itemLevel": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 1000
+                    }
+                  },
+                  "required": [
+                    "slot",
+                    "itemId",
+                    "itemLevel"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "installId",
+              "capturedAt",
+              "kind",
+              "character",
+              "realm",
+              "equipped"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "installId": {
+                "type": "string",
+                "minLength": 8,
+                "maxLength": 64,
+                "description": "Random install id, no account needed."
+              },
+              "eventId": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 96,
+                "pattern": "^[A-Za-z0-9:_-]+$"
+              },
+              "capturedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                "description": "ISO time the event happened in-game."
+              },
+              "kind": {
+                "type": "string",
+                "const": "collection_catalog"
+              },
+              "collection": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              },
+              "source": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              },
+              "itemId": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "installId",
+              "capturedAt",
+              "kind",
+              "collection",
+              "source",
+              "itemId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "installId": {
+                "type": "string",
+                "minLength": 8,
+                "maxLength": 64,
+                "description": "Random install id, no account needed."
+              },
+              "eventId": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 96,
+                "pattern": "^[A-Za-z0-9:_-]+$"
+              },
+              "capturedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                "description": "ISO time the event happened in-game."
+              },
+              "kind": {
+                "type": "string",
+                "const": "collection_owned"
+              },
+              "collection": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              },
+              "itemId": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "installId",
+              "capturedAt",
+              "kind",
+              "collection",
+              "itemId"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "installId": {
+                "type": "string",
+                "minLength": 8,
+                "maxLength": 64,
+                "description": "Random install id, no account needed."
+              },
+              "eventId": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 96,
+                "pattern": "^[A-Za-z0-9:_-]+$"
+              },
+              "capturedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                "description": "ISO time the event happened in-game."
+              },
+              "kind": {
+                "type": "string",
+                "const": "achievement_catalog"
+              },
+              "achievementId": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 2000000000
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              },
+              "categoryId": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2000000000
+              },
+              "category": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              },
+              "parentCategory": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              },
+              "points": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 1000
+              },
+              "criteriaCount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 5000,
+                "description": "The achievement's real criteria count; `criteria` keeps the first 100."
+              },
+              "criteria": {
+                "maxItems": 100,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "text": {
+                      "type": "string",
+                      "maxLength": 120
+                    },
+                    "required": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 2000000000
+                    }
+                  },
+                  "required": [
+                    "text",
+                    "required"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "installId",
+              "capturedAt",
+              "kind",
+              "achievementId",
+              "name",
+              "categoryId",
+              "category",
+              "points",
+              "criteriaCount",
+              "criteria"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "installId": {
+                "type": "string",
+                "minLength": 8,
+                "maxLength": 64,
+                "description": "Random install id, no account needed."
+              },
+              "eventId": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 96,
+                "pattern": "^[A-Za-z0-9:_-]+$"
+              },
+              "capturedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                "description": "ISO time the event happened in-game."
+              },
+              "kind": {
+                "type": "string",
+                "const": "reputation_catalog"
+              },
+              "factionId": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 2000000000
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              },
+              "header": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              },
+              "major": {
+                "description": "A renown faction: its ranks are not the eight standings.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "installId",
+              "capturedAt",
+              "kind",
+              "factionId",
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "installId": {
+                "type": "string",
+                "minLength": 8,
+                "maxLength": 64,
+                "description": "Random install id, no account needed."
+              },
+              "eventId": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 96,
+                "pattern": "^[A-Za-z0-9:_-]+$"
+              },
+              "capturedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                "description": "ISO time the event happened in-game."
+              },
+              "kind": {
+                "type": "string",
+                "const": "title_catalog"
+              },
+              "titleId": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 5000
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              }
+            },
+            "required": [
+              "installId",
+              "capturedAt",
+              "kind",
+              "titleId",
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "installId": {
+                "type": "string",
+                "minLength": 8,
+                "maxLength": 64,
+                "description": "Random install id, no account needed."
+              },
+              "eventId": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 96,
+                "pattern": "^[A-Za-z0-9:_-]+$"
+              },
+              "capturedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                "description": "ISO time the event happened in-game."
+              },
+              "kind": {
+                "type": "string",
+                "const": "quest_chain_catalog"
+              },
+              "questLineId": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 2000000000
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              },
+              "questIds": {
+                "minItems": 1,
+                "maxItems": 80,
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 2000000000
+                }
+              },
+              "truncated": {
+                "description": "The chain has more quests than the 80 kept: it is never called finished.",
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "installId",
+              "capturedAt",
+              "kind",
+              "questLineId",
+              "name",
+              "questIds"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "installId": {
+                "type": "string",
+                "minLength": 8,
+                "maxLength": 64,
+                "description": "Random install id, no account needed."
+              },
+              "eventId": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 96,
+                "pattern": "^[A-Za-z0-9:_-]+$"
+              },
+              "capturedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                "description": "ISO time the event happened in-game."
+              },
+              "characterKey": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}$"
+              },
+              "class": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 20,
+                "pattern": "^[A-Za-z]+$",
+                "description": "Class token from UnitClass, e.g. MAGE."
+              },
+              "level": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100
+              },
+              "kind": {
+                "type": "string",
+                "const": "achievement_owned"
+              },
+              "achievementId": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 2000000000
+              },
+              "completed": {
+                "type": "boolean"
+              },
+              "earnedByMe": {
+                "description": "False when the achievement is complete on the account but not by this character.",
+                "type": "boolean"
+              },
+              "earnedOn": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+              },
+              "criteriaMet": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 5000
+              },
+              "criteriaTotal": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 5000
+              },
+              "quantity": {
+                "description": "A progress-bar achievement's current amount.",
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2000000000
+              },
+              "required": {
+                "description": "A progress-bar achievement's target amount.",
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 2000000000
+              }
+            },
+            "required": [
+              "installId",
+              "capturedAt",
+              "characterKey",
+              "class",
+              "level",
+              "kind",
+              "achievementId",
+              "completed",
+              "criteriaMet",
+              "criteriaTotal"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "installId": {
+                "type": "string",
+                "minLength": 8,
+                "maxLength": 64,
+                "description": "Random install id, no account needed."
+              },
+              "eventId": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 96,
+                "pattern": "^[A-Za-z0-9:_-]+$"
+              },
+              "capturedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                "description": "ISO time the event happened in-game."
+              },
+              "characterKey": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}$"
+              },
+              "class": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 20,
+                "pattern": "^[A-Za-z]+$",
+                "description": "Class token from UnitClass, e.g. MAGE."
+              },
+              "level": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100
+              },
+              "kind": {
+                "type": "string",
+                "const": "reputation_owned"
+              },
+              "factionId": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 2000000000
+              },
+              "reaction": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 20,
+                "description": "The client's standing index: 1 Hated up to 8 Exalted."
+              },
+              "standing": {
+                "type": "integer",
+                "minimum": -1000000,
+                "maximum": 10000000
+              },
+              "floor": {
+                "type": "integer",
+                "minimum": -1000000,
+                "maximum": 10000000
+              },
+              "ceiling": {
+                "type": "integer",
+                "minimum": -1000000,
+                "maximum": 10000000
+              }
+            },
+            "required": [
+              "installId",
+              "capturedAt",
+              "characterKey",
+              "class",
+              "level",
+              "kind",
+              "factionId",
+              "reaction",
+              "standing",
+              "floor",
+              "ceiling"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "installId": {
+                "type": "string",
+                "minLength": 8,
+                "maxLength": 64,
+                "description": "Random install id, no account needed."
+              },
+              "eventId": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 96,
+                "pattern": "^[A-Za-z0-9:_-]+$"
+              },
+              "capturedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                "description": "ISO time the event happened in-game."
+              },
+              "characterKey": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}$"
+              },
+              "class": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 20,
+                "pattern": "^[A-Za-z]+$",
+                "description": "Class token from UnitClass, e.g. MAGE."
+              },
+              "level": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100
+              },
+              "kind": {
+                "type": "string",
+                "const": "title_owned"
+              },
+              "titleIds": {
+                "minItems": 1,
+                "maxItems": 200,
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 5000
+                }
+              }
+            },
+            "required": [
+              "installId",
+              "capturedAt",
+              "characterKey",
+              "class",
+              "level",
+              "kind",
+              "titleIds"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "installId": {
+                "type": "string",
+                "minLength": 8,
+                "maxLength": 64,
+                "description": "Random install id, no account needed."
+              },
+              "eventId": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 96,
+                "pattern": "^[A-Za-z0-9:_-]+$"
+              },
+              "capturedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                "description": "ISO time the event happened in-game."
+              },
+              "characterKey": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}$"
+              },
+              "class": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 20,
+                "pattern": "^[A-Za-z]+$",
+                "description": "Class token from UnitClass, e.g. MAGE."
+              },
+              "level": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100
+              },
+              "kind": {
+                "type": "string",
+                "const": "quest_owned"
+              },
+              "questIds": {
+                "minItems": 1,
+                "maxItems": 200,
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 2000000000
+                }
+              }
+            },
+            "required": [
+              "installId",
+              "capturedAt",
+              "characterKey",
+              "class",
+              "level",
+              "kind",
+              "questIds"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "installId": {
+                "type": "string",
+                "minLength": 8,
+                "maxLength": 64,
+                "description": "Random install id, no account needed."
+              },
+              "eventId": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 96,
+                "pattern": "^[A-Za-z0-9:_-]+$"
+              },
+              "capturedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                "description": "ISO time the event happened in-game."
+              },
+              "kind": {
+                "type": "string",
+                "const": "auction_scan"
+              },
+              "realm": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 60
+              },
+              "itemId": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "copper": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "count": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 1000
+              },
+              "priceBasis": {
+                "type": "string",
+                "const": "unit"
+              }
+            },
+            "required": [
+              "installId",
+              "capturedAt",
+              "kind",
+              "realm",
+              "itemId",
+              "copper"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "installId": {
+                "type": "string",
+                "minLength": 8,
+                "maxLength": 64,
+                "description": "Random install id, no account needed."
+              },
+              "eventId": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 96,
+                "pattern": "^[A-Za-z0-9:_-]+$"
+              },
+              "capturedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                "description": "ISO time the event happened in-game."
+              },
+              "kind": {
+                "type": "string",
+                "const": "auction_snapshot"
+              },
+              "realm": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 60
+              },
+              "scanId": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 96,
+                "pattern": "^[A-Za-z0-9:_-]+$"
+              },
+              "part": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100
+              },
+              "parts": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100
+              },
+              "items": {
+                "minItems": 1,
+                "maxItems": 1000,
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "prefixItems": [
+                    {
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    }
+                  ],
+                  "items": false,
+                  "minItems": 5,
+                  "maxItems": 5
+                }
+              }
+            },
+            "required": [
+              "installId",
+              "capturedAt",
+              "kind",
+              "realm",
+              "scanId",
+              "part",
+              "parts",
+              "items"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "installId": {
+                "type": "string",
+                "minLength": 8,
+                "maxLength": 64,
+                "description": "Random install id, no account needed."
+              },
+              "eventId": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 96,
+                "pattern": "^[A-Za-z0-9:_-]+$"
+              },
+              "capturedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                "description": "ISO time the event happened in-game."
+              },
+              "kind": {
+                "type": "string",
+                "const": "recipe_seen"
+              },
+              "profession": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              },
+              "recipe": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              },
+              "skillMin": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 500
+              },
+              "skillMax": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 500
+              },
+              "points": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 10
+              },
+              "reagents": {
+                "minItems": 1,
+                "maxItems": 20,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "item": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80
+                    },
+                    "count": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 1000
+                    }
+                  },
+                  "required": [
+                    "item",
+                    "count"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "installId",
+              "capturedAt",
+              "kind",
+              "profession",
+              "recipe",
+              "skillMin",
+              "skillMax",
+              "points",
+              "reagents"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "installId": {
+                "type": "string",
+                "minLength": 8,
+                "maxLength": 64,
+                "description": "Random install id, no account needed."
+              },
+              "eventId": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 96,
+                "pattern": "^[A-Za-z0-9:_-]+$"
+              },
+              "capturedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                "description": "ISO time the event happened in-game."
+              },
+              "kind": {
+                "type": "string",
+                "const": "price_seen"
+              },
+              "item": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 80
+              },
+              "copper": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "installId",
+              "capturedAt",
+              "kind",
+              "item",
+              "copper"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "installId": {
+                "type": "string",
+                "minLength": 8,
+                "maxLength": 64,
+                "description": "Random install id, no account needed."
+              },
+              "eventId": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 96,
+                "pattern": "^[A-Za-z0-9:_-]+$"
+              },
+              "capturedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                "description": "ISO time the event happened in-game."
+              },
+              "kind": {
+                "type": "string",
+                "const": "recipe_observed"
+              },
+              "profession": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              },
+              "rank": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 500
+              },
+              "maxRank": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 500
+              },
+              "recipe": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              },
+              "difficulty": {
+                "type": "string",
+                "enum": [
+                  "optimal",
+                  "medium",
+                  "easy",
+                  "trivial"
+                ]
+              },
+              "productItemId": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "reagents": {
+                "maxItems": 20,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "item": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80
+                    },
+                    "count": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 1000
+                    }
+                  },
+                  "required": [
+                    "item",
+                    "count"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "installId",
+              "capturedAt",
+              "kind",
+              "profession",
+              "rank",
+              "recipe",
+              "difficulty",
+              "reagents"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "installId": {
+                "type": "string",
+                "minLength": 8,
+                "maxLength": 64,
+                "description": "Random install id, no account needed."
+              },
+              "eventId": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 96,
+                "pattern": "^[A-Za-z0-9:_-]+$"
+              },
+              "capturedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                "description": "ISO time the event happened in-game."
+              },
+              "kind": {
+                "type": "string",
+                "const": "trainer_seen"
+              },
+              "profession": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              },
+              "recipe": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              },
+              "requiredRank": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 500
+              },
+              "costCopper": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2000000000
+              }
+            },
+            "required": [
+              "installId",
+              "capturedAt",
+              "kind",
+              "profession",
+              "recipe",
+              "requiredRank"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "installId": {
+                "type": "string",
+                "minLength": 8,
+                "maxLength": 64,
+                "description": "Random install id, no account needed."
+              },
+              "eventId": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 96,
+                "pattern": "^[A-Za-z0-9:_-]+$"
+              },
+              "capturedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                "description": "ISO time the event happened in-game."
+              },
+              "kind": {
+                "type": "string",
+                "const": "gold_snapshot"
+              },
+              "character": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 30
+              },
+              "realm": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 60
+              },
+              "currentCopper": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2000000000
+              },
+              "peakCopper": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 2000000000
+              }
+            },
+            "required": [
+              "installId",
+              "capturedAt",
+              "kind",
+              "character",
+              "realm",
+              "currentCopper",
+              "peakCopper"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "installId": {
+                "type": "string",
+                "minLength": 8,
+                "maxLength": 64,
+                "description": "Random install id, no account needed."
+              },
+              "eventId": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 96,
+                "pattern": "^[A-Za-z0-9:_-]+$"
+              },
+              "capturedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                "description": "ISO time the event happened in-game."
+              },
+              "kind": {
+                "type": "string",
+                "const": "money_event"
+              },
+              "character": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 30
+              },
+              "realm": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 60
+              },
+              "category": {
+                "type": "string",
+                "enum": [
+                  "loot",
+                  "quest",
+                  "vendor",
+                  "auction",
+                  "flight",
+                  "postage",
+                  "barber",
+                  "respec",
+                  "auction_spend"
+                ]
+              },
+              "copper": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 2000000000
+              }
+            },
+            "required": [
+              "installId",
+              "capturedAt",
+              "kind",
+              "character",
+              "realm",
+              "category",
+              "copper"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "installId": {
+                "type": "string",
+                "minLength": 8,
+                "maxLength": 64,
+                "description": "Random install id, no account needed."
+              },
+              "eventId": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 96,
+                "pattern": "^[A-Za-z0-9:_-]+$"
+              },
+              "capturedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                "description": "ISO time the event happened in-game."
+              },
+              "kind": {
+                "type": "string",
+                "const": "addon_seen"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100,
+                "description": "The addon's folder name."
+              },
+              "title": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
+              },
+              "version": {
+                "description": "The .toc Version field.",
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              },
+              "loaded": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "installId",
+              "capturedAt",
+              "kind",
+              "name",
+              "title",
+              "loaded"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "installId": {
+                "type": "string",
+                "minLength": 8,
+                "maxLength": 64,
+                "description": "Random install id, no account needed."
+              },
+              "eventId": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 96,
+                "pattern": "^[A-Za-z0-9:_-]+$"
+              },
+              "capturedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                "description": "ISO time the event happened in-game."
+              },
+              "kind": {
+                "type": "string",
+                "const": "map_bounds"
+              },
+              "mapId": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "continentId": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "left": {
+                "type": "number",
+                "minimum": -100000,
+                "maximum": 100000
+              },
+              "top": {
+                "type": "number",
+                "minimum": -100000,
+                "maximum": 100000
+              },
+              "right": {
+                "type": "number",
+                "minimum": -100000,
+                "maximum": 100000
+              },
+              "bottom": {
+                "type": "number",
+                "minimum": -100000,
+                "maximum": 100000
+              }
+            },
+            "required": [
+              "installId",
+              "capturedAt",
+              "kind",
+              "mapId",
+              "continentId",
+              "left",
+              "top",
+              "right",
+              "bottom"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "installId": {
+                "type": "string",
+                "minLength": 8,
+                "maxLength": 64,
+                "description": "Random install id, no account needed."
+              },
+              "eventId": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 96,
+                "pattern": "^[A-Za-z0-9:_-]+$"
+              },
+              "capturedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                "description": "ISO time the event happened in-game."
+              },
+              "kind": {
+                "type": "string",
+                "const": "talent_snapshot"
+              },
+              "class": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 20,
+                "pattern": "^[A-Za-z]+$",
+                "description": "Class token from UnitClass, e.g. MAGE."
+              },
+              "level": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100
+              },
+              "group": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 2,
+                "description": "Spec group: 1 primary, 2 secondary (dual spec from level 40)."
+              },
+              "active": {
+                "type": "boolean"
+              },
+              "configId": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "treeId": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "specId": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "clientBuild": {
+                "type": "string",
+                "maxLength": 32,
+                "pattern": "^\\d+(\\.\\d+)+$"
+              },
+              "serializationVersion": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 255
+              },
+              "loadoutString": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000,
+                "pattern": "^[A-Za-z0-9+/]+$"
+              },
+              "exportStatus": {
+                "type": "string",
+                "enum": [
+                  "ok",
+                  "unavailable",
+                  "failed",
+                  "empty",
+                  "unexpected"
+                ]
+              },
+              "points": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 500
+              },
+              "nodes": {
+                "maxItems": 600,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "nodeId": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "ranks": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 50
+                    },
+                    "choice": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 3
+                    }
+                  },
+                  "required": [
+                    "nodeId",
+                    "ranks"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "installId",
+              "capturedAt",
+              "kind",
+              "class",
+              "level",
+              "group",
+              "active",
+              "configId",
+              "treeId",
+              "exportStatus",
+              "points",
+              "nodes"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "sharing": {
+      "description": "Named categories the player chose to share: guild, gear, gold, collection.",
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "type": "boolean"
+      }
+    },
+    "grantTokens": {
+      "maxItems": 4,
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$"
+      }
+    }
+  },
+  "required": [
+    "addonVersion",
+    "records"
+  ],
+  "additionalProperties": false
+}

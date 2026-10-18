@@ -7,6 +7,7 @@ vi.mock("@/lib/intake-quota", () => ({ intakeQuota: { api: store.api } }));
 import { GET } from "./route";
 import { GET as layerGET } from "./client-layer/route";
 import { CLIENT_LAYER } from "@/lib/edges";
+import { edgesResponse } from "@everloot/protocol";
 
 const req = (query = "") => new Request(`https://everloot.app/api/edges${query}`);
 const vendor = (i: string) => ({ kind: "vendor", installId: `install-${i}`, capturedAt: "2026-10-09T00:00:00.000Z", vendorNpcId: 1250, items: [{ itemId: 159, priceCopper: 25 }] });
@@ -66,4 +67,9 @@ test("the client layer downloads whole, with the build in a header", async () =>
   expect(body.edges).toHaveLength(CLIENT_LAYER.edges.length);
   expect(res.headers.get("x-everloot-game-build")).toBe(CLIENT_LAYER.build.version);
   expect(res.headers.get("x-everloot-licence")).toBeNull();
+});
+
+test("the body is the protocol's edgesResponse", async () => {
+  const body = await (await GET(req())).json();
+  expect(() => edgesResponse.parse(body)).not.toThrow();
 });

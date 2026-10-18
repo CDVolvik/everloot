@@ -16,6 +16,10 @@ that has a zip in the repository. Earlier builds have none.
   `protocol`, the contract version; the server accepts the current major and the previous one. The
   addon's contract tests validate the rows it writes against the package's JSON Schema files. The
   addon's Lua comments still name the old file; they change with the next addon release.
+- The package also holds the licence and credit line, the JSON API's response shapes with a route
+  catalogue, and the MCP server's tool table (22 tools). The server registers its tools from that table,
+  the connect page and `llms.txt` list from it, and each API route's test parses a real response with the
+  protocol's schema, so none of the three can drift from the others.
 
 Pull requests merged to `main` are listed in the nightly pre-releases until the next tagged release.
 

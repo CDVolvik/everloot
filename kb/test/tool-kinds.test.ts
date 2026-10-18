@@ -11,7 +11,7 @@ import { pathFactsFromRecords, recipeFactsFromRecords } from "../src/recipe-thre
 import { worldFactsFromRecords } from "../src/world-pages.js";
 import { mapFactsFromRecords } from "../src/world-map-near.js";
 import { ALL_RECORD_KINDS, COMPLETION_KINDS, parseRecords } from "@everloot/protocol";
-import { MCP_CREDIT } from "../src/attribution.js";
+import { MCP_CREDIT } from "@everloot/protocol";
 
 const base = { installId: "install-one", capturedAt: "2026-10-09T00:00:00Z" };
 const guild = { guildName: "Olympus", realm: "Forever" };

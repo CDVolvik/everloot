@@ -2,7 +2,7 @@ import { beforeEach, expect, test, vi } from "vitest";
 import { auctionSightingsFromRecords } from "../src/auction-history.js";
 import { goldFactsFromRecords } from "../src/gold-ledger.js";
 import { fromTooledUploads } from "../src/mcp-server.js";
-import { MCP_CREDIT } from "../src/attribution.js";
+import { MCP_CREDIT } from "@everloot/protocol";
 
 const base = { installId: "install-one", capturedAt: "2026-10-09T00:00:00Z" };
 const snap = { ...base, eventId: "e:16", kind: "gold_snapshot", character: "Thrall", realm: "Forever", currentCopper: 100, peakCopper: 100 };

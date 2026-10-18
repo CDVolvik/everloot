@@ -1,0 +1,29 @@
+{
+  "$id": "https://everloot.app/schema/api/gameDataNotice.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "label": {
+      "type": "string",
+      "description": "The evidence label pages show, such as \"found in game files, unconfirmed\"."
+    },
+    "build": {
+      "type": "string",
+      "description": "The game build the rows were read from."
+    },
+    "extractedAt": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "credit": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "label",
+    "build"
+  ],
+  "additionalProperties": {}
+}

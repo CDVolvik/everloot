@@ -1,0 +1,33 @@
+{
+  "$id": "https://everloot.app/schema/api/attribution.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "licence": {
+      "type": "string"
+    },
+    "licenceUrl": {
+      "type": "string",
+      "format": "uri"
+    },
+    "credit": {
+      "type": "string"
+    },
+    "source": {
+      "type": "string",
+      "format": "uri"
+    },
+    "terms": {
+      "type": "string",
+      "format": "uri"
+    }
+  },
+  "required": [
+    "licence",
+    "licenceUrl",
+    "credit",
+    "source",
+    "terms"
+  ],
+  "additionalProperties": false
+}

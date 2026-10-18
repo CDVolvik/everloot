@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
-import { GAME_DATA_CREDIT } from "../../../../../kb/src/attribution";
+import { GAME_DATA_CREDIT } from "@everloot/protocol";
 import { CLIENT_LABEL } from "../../../../../kb/src/edges";
 import { itemPage } from "../../../../../kb/src/item-page";
 import { describe, filterItems, QUALITIES, resolveClass, resolveLegacyClass, resolveSubclass, slotOf, type ItemClass, type ItemSubclass } from "../../../../../kb/src/item-taxonomy";

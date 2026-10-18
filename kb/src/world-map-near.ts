@@ -82,10 +82,8 @@ export function distanceYards(a: WorldPoint, b: WorldPoint): number {
   return Math.hypot(a.worldX - b.worldX, a.worldY - b.worldY);
 }
 
-export const NEAR_DEFAULT_RADIUS = 500;
-export const NEAR_MAX_RADIUS = 5000;
-export const NEAR_DEFAULT_LIMIT = 5;
-export const NEAR_MAX_LIMIT = 20;
+import { NEAR_DEFAULT_LIMIT, NEAR_DEFAULT_RADIUS, NEAR_MAX_LIMIT, NEAR_MAX_RADIUS } from "@everloot/protocol";
+export { NEAR_DEFAULT_LIMIT, NEAR_DEFAULT_RADIUS, NEAR_MAX_LIMIT, NEAR_MAX_RADIUS };
 const NAME_MAX = 80;
 
 export interface NearArgs {

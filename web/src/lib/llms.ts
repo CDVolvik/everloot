@@ -6,7 +6,7 @@ import { latestBuildLine } from "@/lib/changes-facts";
 import { loadTimeline, type ChangeEntry } from "@/lib/changes";
 import { NON_AFFILIATION } from "@/lib/jsonld";
 import { ANON_PAGE, ANON_PER_HOUR, guardOn } from "@/lib/data-guard";
-import { CREDIT_LINE } from "../../../kb/src/attribution";
+import { CREDIT_LINE } from "@everloot/protocol";
 import { SITE_URL } from "@/lib/seo";
 import { TALENT_CLASSES } from "@/lib/talents/catalogs";
 

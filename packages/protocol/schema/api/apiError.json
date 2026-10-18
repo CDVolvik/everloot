@@ -1,0 +1,23 @@
+{
+  "$id": "https://everloot.app/schema/api/apiError.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "ok": {
+      "type": "boolean",
+      "const": false
+    },
+    "error": {
+      "type": "string"
+    },
+    "getAKey": {
+      "type": "string",
+      "format": "uri"
+    }
+  },
+  "required": [
+    "ok",
+    "error"
+  ],
+  "additionalProperties": false
+}

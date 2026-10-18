@@ -4,7 +4,7 @@
  * the key; slugs are made from the client's names and kept per build. Slot and quality are enums with
  * no table, so their English labels are ours, keyed on the game's numbers.
  */
-import { GAME_DATA_CREDIT } from "./attribution.js";
+import { GAME_DATA_CREDIT } from "@everloot/protocol";
 import { CLIENT_LABEL } from "./edges.js";
 
 /** `name` is the client's (singular, "Weapon"); `label` and `slug` are ours, plural as players browse them ("Weapons", "weapons"). */

@@ -1,0 +1,74 @@
+{
+  "$id": "https://everloot.app/schema/mcp/entity_relations.json",
+  "title": "How an item, NPC, spell or quest connects to others",
+  "description": "Every typed relation of one entity, both directions: dropped by, sold by, reward from, located in (player-observed, listed where 3 installs agree, with the install count and last seen), and created by, reagent for, part of set, same icon (found in game files, unconfirmed, with the build they came from). Ids are the game's own. Reads Everloot's current authorized public corpus and the committed client layer.",
+  "annotations": {
+    "readOnlyHint": true,
+    "openWorldHint": false
+  },
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "kind": {
+        "type": "string",
+        "enum": [
+          "item",
+          "spell",
+          "npc",
+          "object",
+          "quest",
+          "zone",
+          "item_set",
+          "icon"
+        ],
+        "description": "What the id names. A zone is a UiMap id, as on /map."
+      },
+      "id": {
+        "type": "integer",
+        "exclusiveMinimum": 0,
+        "maximum": 9007199254740991,
+        "description": "The game's id for it, such as item 19019."
+      },
+      "rel": {
+        "description": "Only this relation.",
+        "type": "string",
+        "enum": [
+          "dropped_by",
+          "sold_by",
+          "reward_from",
+          "located_in",
+          "created_by",
+          "reagent_for",
+          "part_of_set",
+          "same_icon"
+        ]
+      },
+      "direction": {
+        "default": "both",
+        "description": "from: what this entity points to (an item's sources). to: what points at it (what an NPC drops). Default both.",
+        "type": "string",
+        "enum": [
+          "from",
+          "to",
+          "both"
+        ]
+      },
+      "limit": {
+        "default": 25,
+        "description": "Most lines per relation.",
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 100
+      }
+    },
+    "required": [
+      "kind",
+      "id"
+    ]
+  },
+  "x-everloot-output": {
+    "type": "text",
+    "endsWith": "Licence: CC BY-SA 4.0. Credit: Everloot contributors, https://everloot.app"
+  }
+}

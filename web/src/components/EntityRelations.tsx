@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { GAME_DATA_CREDIT } from "../../../kb/src/attribution";
+import { GAME_DATA_CREDIT } from "@everloot/protocol";
 import { CLIENT_SKILLS } from "../../../kb/src/client-layer-file";
 import { CLIENT_LABEL, edgesFrom, entityLabel, evidenceLabel, groupByRel, type Edge, type EdgeKind, type Rel } from "../../../kb/src/edges";
 import GameIcon from "./game/GameIcon";

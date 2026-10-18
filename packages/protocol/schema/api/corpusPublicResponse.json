@@ -1,0 +1,142 @@
+{
+  "$id": "https://everloot.app/schema/api/corpusPublicResponse.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "ok": {
+      "type": "boolean",
+      "const": true
+    },
+    "uploads": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "propertyNames": {
+          "type": "string"
+        },
+        "additionalProperties": {}
+      },
+      "description": "Records of the public kinds, each without its installId. Shapes: schema/records/<kind>.json."
+    },
+    "dataAsOf": {
+      "description": "When these records were current. Null or absent when unrecorded, never \"now\".",
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "kinds": {
+      "description": "Present when the request asked for some kinds.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "npc_sighting",
+          "loot",
+          "quest",
+          "vendor",
+          "item_seen",
+          "guild_snapshot",
+          "raid_lockout",
+          "attendance",
+          "loot_award",
+          "gear_snapshot",
+          "collection_catalog",
+          "collection_owned",
+          "auction_scan",
+          "recipe_seen",
+          "price_seen",
+          "recipe_observed",
+          "trainer_seen",
+          "gold_snapshot",
+          "money_event",
+          "map_bounds"
+        ]
+      }
+    },
+    "legacyRecords": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "attribution": {
+      "type": "object",
+      "properties": {
+        "licence": {
+          "type": "string"
+        },
+        "licenceUrl": {
+          "type": "string",
+          "format": "uri"
+        },
+        "credit": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string",
+          "format": "uri"
+        },
+        "terms": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "licence",
+        "licenceUrl",
+        "credit",
+        "source",
+        "terms"
+      ],
+      "additionalProperties": false
+    },
+    "offset": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "limit": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "total": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "next": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "uri"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "ok",
+    "uploads",
+    "records",
+    "attribution",
+    "offset",
+    "limit",
+    "total",
+    "next"
+  ],
+  "additionalProperties": false
+}

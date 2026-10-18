@@ -6,6 +6,7 @@ vi.mock("@/lib/intake-quota", () => ({ intakeQuota: { api: store.api } }));
 import { GET } from "./route";
 import { GET as categoriesGET } from "./categories/route";
 import { CLIENT_LAYER, CLIENT_TAXONOMY } from "@/lib/items";
+import { itemsResponse } from "@everloot/protocol";
 
 const req = (query = "") => new Request(`https://everloot.app/api/items${query}`);
 
@@ -54,4 +55,9 @@ test("the category tree carries slugs, counts and the build", async () => {
   expect(body.slots.map((s: { slug: string }) => s.slug)).toContain("chest");
   expect(body.qualities[4]).toEqual({ id: 4, name: "Epic", slug: "epic" });
   expect(body.gameData.build).toBe(CLIENT_LAYER.build.version);
+});
+
+test("the body is the protocol's itemsResponse", async () => {
+  const body = await (await GET(req("?class=weapon"))).json();
+  expect(() => itemsResponse.parse(body)).not.toThrow();
 });

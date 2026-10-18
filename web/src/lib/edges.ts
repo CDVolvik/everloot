@@ -1,5 +1,5 @@
 import { CLIENT_EDGES, CLIENT_LAYER } from "../../../kb/src/client-layer-file";
-import { GAME_DATA_CREDIT } from "../../../kb/src/attribution";
+import { GAME_DATA_CREDIT } from "@everloot/protocol";
 import { CLIENT_LABEL, type Edge, type EdgeKind, type Evidence, type Rel } from "../../../kb/src/edges";
 import { loadObservedEdges } from "./rollup-compute";
 

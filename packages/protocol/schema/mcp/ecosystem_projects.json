@@ -1,0 +1,41 @@
+{
+  "$id": "https://everloot.app/schema/mcp/ecosystem_projects.json",
+  "title": "WoW: Forever addons and open-source projects",
+  "description": "Forever addons and tools from the community registry, with a board ranking: most installed, rising, most active, freshest release or best maintained. Each project shows its GitHub repository, stars, latest release, last commit, whether its .toc declares a Forever interface number, and installs from Everloot uploads (counted from 3 installs; a missing count means not counted, not zero). Projects are ranked, never people. GitHub facts carry the time they were refreshed.",
+  "annotations": {
+    "readOnlyHint": true,
+    "openWorldHint": false
+  },
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "board": {
+        "default": "all",
+        "description": "installed, rising, active, release, maintained, or all (A to Z).",
+        "type": "string",
+        "enum": [
+          "all",
+          "installed",
+          "rising",
+          "active",
+          "release",
+          "maintained"
+        ]
+      },
+      "forever_ready_only": {
+        "description": "Only projects whose .toc lists a Forever interface number.",
+        "type": "boolean"
+      },
+      "limit": {
+        "default": 10,
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 25
+      }
+    }
+  },
+  "x-everloot-output": {
+    "type": "text"
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "$id": "https://everloot.app/schema/mcp/search_knowledge.json",
+  "title": "Search the Everloot knowledge base",
+  "description": "Search WoW lore and Forever reference data. Exact-name matches rank first. Every hit carries its source and licence.",
+  "annotations": {
+    "readOnlyHint": true,
+    "openWorldHint": false
+  },
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "query": {
+        "type": "string",
+        "maxLength": 1000,
+        "description": "What to look up: names, questions, keywords. Question words are ignored."
+      },
+      "kind": {
+        "description": "Narrow to one record kind.",
+        "type": "string",
+        "enum": [
+          "item",
+          "npc",
+          "object",
+          "quest",
+          "zone",
+          "spell",
+          "lore_page",
+          "creator",
+          "realm"
+        ]
+      },
+      "version": {
+        "description": "Narrow to one game version.",
+        "type": "string",
+        "enum": [
+          "forever",
+          "classic",
+          "retail",
+          "lore"
+        ]
+      },
+      "limit": {
+        "default": 8,
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 25
+      }
+    },
+    "required": [
+      "query"
+    ]
+  },
+  "x-everloot-output": {
+    "type": "text"
+  }
+}

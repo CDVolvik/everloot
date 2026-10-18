@@ -1,0 +1,43 @@
+{
+  "$id": "https://everloot.app/schema/mcp/recent_changes.json",
+  "title": "Recent official changes for WoW: Forever",
+  "description": "Newest first: Blizzard blue posts (title, author, time, a short excerpt and the link to the original), hotfix posts, and new game builds. Excerpts only: Blizzard's post text is Blizzard's, so open the link for the full post. A build's time is when Everloot first saw it, not Blizzard's release time.",
+  "annotations": {
+    "readOnlyHint": true,
+    "openWorldHint": false
+  },
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "filter": {
+        "default": "all",
+        "description": "posts (blue posts), hotfixes, builds, or all.",
+        "type": "string",
+        "enum": [
+          "all",
+          "posts",
+          "hotfixes",
+          "builds"
+        ]
+      },
+      "game": {
+        "description": "Narrow to one game.",
+        "type": "string",
+        "enum": [
+          "forever",
+          "classic"
+        ]
+      },
+      "limit": {
+        "default": 10,
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 25
+      }
+    }
+  },
+  "x-everloot-output": {
+    "type": "text"
+  }
+}

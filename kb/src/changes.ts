@@ -8,8 +8,8 @@ import { clampExcerpt, clampText, isoTime, safeHttpUrl } from "./text-safety.js"
  */
 
 export type ChangeType = "post" | "hotfix" | "build";
-export type ChangeFilter = "all" | "posts" | "hotfixes" | "builds";
-export const CHANGE_FILTERS: readonly ChangeFilter[] = ["all", "posts", "hotfixes", "builds"];
+import { CHANGE_FILTERS, type ChangeFilter } from "@everloot/protocol";
+export { CHANGE_FILTERS, type ChangeFilter };
 
 /** What the timeline needs from a registry entry (kb/src/builds.ts). `diffUrl` is the slot for the auto-diff pipeline. */
 export interface BuildLike {

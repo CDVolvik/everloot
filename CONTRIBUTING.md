@@ -47,9 +47,10 @@ You need Node 22, Python 3.12 and Git. Each part's README says how to run and te
 - [`web/`](web/README.md): Next.js; `npm run sample-release` gives you local lore pages
 - [`kb/`](kb/README.md): the knowledge base and MCP server
 - [`companion/`](companion/README.md): needs `web` installed
-- [`packages/protocol/`](packages/protocol/README.md): the upload contract. After a change there, run
-  `npm run build` in `packages/protocol`, then `npm install` in each of `web`, `kb` and `companion`: they
-  install a packed copy, which does not follow edits. Commit the regenerated `dist/` and `schema/`.
+- [`packages/protocol/`](packages/protocol/README.md): the contract. After a change there, run
+  `npm run build` in `packages/protocol`, then in each of `web`, `kb` and `companion` delete
+  `node_modules/@everloot/protocol` and run `npm install`: they install a packed copy, and npm keeps the
+  old one while the version number is unchanged. Commit the regenerated `dist/` and `schema/`.
 
 ### Sign your commits (DCO)
 
