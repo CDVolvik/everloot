@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { loadProviders } from "../../../companion/src/providers/config";
 import type { ChatInfo, ChatMessage, Settings } from "../shared/types";
 import { answer, readProviderEntries } from "./agent";
+import { hasOwnAnthropicKey, removeAnthropicKey, setAnthropicKey } from "./providers";
 
 const MAX_MESSAGES = 100;
 
@@ -44,12 +45,14 @@ export function createChat(dataFolder: string, current: () => Settings) {
   };
   const info = (): ChatInfo => {
     const t = target();
-    return { messages: [...messages], mode: mode(), mcpUrl: t.url, withToken: t.token !== null, busy, error };
+    return { messages: [...messages], mode: mode(), mcpUrl: t.url, withToken: t.token !== null, ownKey: hasOwnAnthropicKey(dataFolder), busy, error };
   };
 
   return {
     info,
     clear(): ChatInfo { messages = []; error = null; save(); return info(); },
+    setKey(key: string, model?: string): ChatInfo { setAnthropicKey(dataFolder, key, model); error = null; return info(); },
+    removeKey(): ChatInfo { removeAnthropicKey(dataFolder); return info(); },
     async send(text: string): Promise<ChatInfo> {
       const question = text.trim().slice(0, 2000);
       if (!question || busy) return info();

@@ -133,7 +133,11 @@ function chat(): string {
   }).join("");
   return `<div class="page chat">
     <div class="head"><h1>Chat</h1><span class="sub">${c ? `${esc(c.mode)} · ${c.withToken ? "your MCP token" : "public MCP, rate limited"}` : ""} <button type="button" class="link" id="chatClear">clear</button></span></div>
-    <p class="muted small">Answers come only from Everloot's own MCP tools, with their sources. A model needs your key in <code>config.json</code> (${ext("https://everloot.app/connect", "how")}); without one you get the sourced search hits. Private: the transcript stays in your data folder.</p>
+    <p class="muted small">Answers come only from Everloot's own MCP tools, with their sources. With your Anthropic key the model works the tools itself; without one you get the sourced search hits. Private: the transcript stays in your data folder.</p>
+    ${c && !c.ownKey && c.mode === "plain search" ? `<form id="keyForm" class="row" autocomplete="off"><input type="password" name="key" placeholder="Paste your Anthropic API key (sk-ant-...)" spellcheck="false" style="flex:1"><select name="model"><option value="claude-sonnet-5-5">Sonnet 5.5</option><option value="claude-opus-5-5">Opus 5.5</option><option value="claude-haiku-5-5">Haiku 5.5</option></select><button type="submit" class="btn">Use my key</button></form>
+    <p class="muted small">The key is written to <code>anthropic.key</code> in your data folder and named from <code>config.json</code>, the way the command line reads it (${ext("https://everloot.app/connect", "details")}). It goes to Anthropic only, with your questions and the tool results.</p>` : ""}
+    ${c?.ownKey ? `<p class="muted small">Using the key saved from this page. <button type="button" class="link" id="removeKey">Remove it</button></p>` : ""}
+    ${flash ? `<p class="${flash.startsWith("!") ? "error" : "ok"} small">${esc(flash.replace(/^!/, ""))}</p>` : ""}
     <div class="thread" id="thread">${thread || '<span class="muted">Ask anything about WoW: Forever: a drop, a vendor, a recipe, a price, a quest.</span>'}${c?.busy ? '<div class="msg msg-assistant muted">Answering…</div>' : ""}${c?.error ? `<div class="msg msg-assistant error">${esc(c.error)}</div>` : ""}</div>
     <form id="chatForm"><textarea id="chatText" rows="2" placeholder="Ask about Forever. Enter sends, Shift+Enter is a new line." ${c?.busy ? "disabled" : ""}></textarea><button type="submit" class="btn btn-primary" ${c?.busy ? "disabled" : ""}>Send</button></form>
   </div>`;
@@ -455,6 +459,11 @@ document.body.addEventListener("click", async (ev) => {
     return;
   }
   if (t.id === "openBackups") { void api.openBackupsFolder(); return; }
+  if (t.id === "removeKey") {
+    try { data.chat = await api.chatRemoveKey(); flash = "Key removed. Chat is back to sourced search."; } catch (e) { flash = `!${msg(e)}`; }
+    render();
+    return;
+  }
   if (t.id === "copyDiag" && state) {
     try { await navigator.clipboard.writeText(diagnostics(state)); flash = "Copied. Paste it into the bug report."; }
     catch (e) { flash = `!Could not copy: ${msg(e)}`; }
@@ -496,9 +505,9 @@ main.addEventListener("change", async (ev) => {
     return;
   }
   if (el.name === "folder") { chosenFolder = el.value; render(); return; }
-  if (el.form && el.form.id !== "chatForm") draftDirty = true;
+  if (el.form && el.form.id !== "chatForm" && el.form.id !== "keyForm") draftDirty = true;
 });
-main.addEventListener("input", (ev) => { const f = (ev.target as HTMLElement).closest("form"); if (f && f.id !== "chatForm") draftDirty = true; });
+main.addEventListener("input", (ev) => { const f = (ev.target as HTMLElement).closest("form"); if (f && f.id !== "chatForm" && f.id !== "keyForm") draftDirty = true; });
 main.addEventListener("keydown", (ev) => {
   if ((ev.target as HTMLElement).id === "chatText" && ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); (main.querySelector("#chatForm") as HTMLFormElement).requestSubmit(); }
 });
@@ -508,12 +517,18 @@ main.addEventListener("submit", async (ev) => {
   ev.preventDefault();
   const f = new FormData(form);
   const text = (k: string) => String(f.get(k) ?? "").trim();
+  if (form.id === "keyForm") {
+    try { data.chat = await api.chatSetKey(text("key"), text("model")); flash = `Saved. Chat now runs ${data.chat.mode}.`; }
+    catch (e) { flash = `!${msg(e)}`; }
+    render();
+    return;
+  }
   if (form.id === "chatForm") {
     const box = main.querySelector("#chatText") as HTMLTextAreaElement;
     const question = box.value.trim();
     if (!question || data.chat?.busy) return;
     box.value = "";
-    data.chat = { ...(data.chat ?? { messages: [], mode: "", mcpUrl: "", withToken: false, error: null }), busy: true, messages: [...(data.chat?.messages ?? []), { role: "user", text: question, at: new Date().toISOString(), model: null, sources: [], steps: [] }] };
+    data.chat = { ...(data.chat ?? { messages: [], mode: "", mcpUrl: "", withToken: false, ownKey: false, error: null }), busy: true, messages: [...(data.chat?.messages ?? []), { role: "user", text: question, at: new Date().toISOString(), model: null, sources: [], steps: [] }] };
     render();
     data.chat = await api.chatSend(question);
     render();

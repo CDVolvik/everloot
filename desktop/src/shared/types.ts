@@ -112,6 +112,8 @@ export interface ChatInfo {
   /** The MCP endpoint in use and whether a token is set (the public one is rate limited per IP). */
   mcpUrl: string;
   withToken: boolean;
+  /** True when the key saved from the Chat page (anthropic.key in the data folder) is the one config.json uses. */
+  ownKey: boolean;
   busy: boolean;
   error: string | null;
 }
@@ -199,6 +201,9 @@ export interface EverlootApi {
   chatInfo(): Promise<ChatInfo>;
   chatSend(text: string): Promise<ChatInfo>;
   chatClear(): Promise<ChatInfo>;
+  /** Saves an Anthropic key to the data folder and points config.json at it; the key never comes back to the page. */
+  chatSetKey(key: string, model?: string): Promise<ChatInfo>;
+  chatRemoveKey(): Promise<ChatInfo>;
   /** Shows a site tool inside the window; returns the URL it opened. */
   siteShow(id: string): Promise<string | null>;
   siteHide(): Promise<void>;

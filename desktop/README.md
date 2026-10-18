@@ -37,7 +37,7 @@ The window is a sidebar with one page per thing to manage:
 | Page | What it shows and does |
 |---|---|
 | Overview | The four states at a glance (upload, prices, `/ask`, addon), recent activity, the latest Blizzard changes |
-| Chat | A chat over Everloot's own MCP tools, with sources under every answer. With an Anthropic key in `config.json` the model calls the tools itself; with another provider it phrases the search hits; with no provider you get the sourced hits as they are. The transcript stays in your data folder |
+| Chat | A chat over Everloot's own MCP tools, with sources under every answer. With an Anthropic key (pasted on the page, kept in `anthropic.key` in the data folder and named from `config.json`) the model calls the tools itself; with another provider it phrases the search hits; with no provider you get the sourced hits as they are. The transcript stays in your data folder |
 | Characters | Your own characters from the save file: gold, peak, item level, money earned and spent, and the completion tracker's progress per character key. Never uploaded from here |
 | Upload | Each account file: when it was written, addon and client build, records per kind, how many the site confirmed. Run now |
 | Market | Realm picks: your scanned realms are always carried; tick more from the realms the site has public values for (TSM-style realm picks, on Everloot's own scan data). When you last scanned each realm, with a reminder past a day. What the last refresh wrote |

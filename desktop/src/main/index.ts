@@ -229,6 +229,11 @@ if (!app.requestSingleInstanceLock()) {
   ipcMain.handle("chatInfo", () => chat.info());
   ipcMain.handle("chatSend", (_e, text: unknown) => (typeof text === "string" ? chat.send(text) : chat.info()));
   ipcMain.handle("chatClear", () => chat.clear());
+  ipcMain.handle("chatSetKey", (_e, key: unknown, model: unknown) => {
+    if (typeof key !== "string") throw new Error("Not a key");
+    return chat.setKey(key, typeof model === "string" && /^[a-z0-9.-]+$/.test(model) ? model : undefined);
+  });
+  ipcMain.handle("chatRemoveKey", () => chat.removeKey());
 
   ipcMain.handle("siteShow", (_e, id: unknown) => {
     const path = typeof id === "string" ? siteToolPath(id) : null;
