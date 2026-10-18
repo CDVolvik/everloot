@@ -95,7 +95,7 @@ After that, the rail lists the pages, with a status dot beside the three jobs:
 |---|---|---|
 | Overview | Four states at a glance (upload, prices, `/ask`, addon installed against latest), recent activity with Upload now and Refresh prices, the five latest changes | engine state, `addonInfo`, `changes` |
 | Chat | The agent on the player's computer (agent-chat spec, the companion surface, without accounts). Three modes from `config.json`: an Anthropic key runs a tool-use loop over every tool the MCP server lists, at most eight rounds, and the answer cites the `Source:` lines the tools returned; another provider gets the top five search hits and phrases a short answer; no provider shows the sourced hits verbatim. The MCP target is the token endpoint when a token file is set, else the site's public read-only mount. Tool results are treated as data; the system prompt says so. Transcript in `chat.json`, private, at most 100 messages | `chatInfo`, `chatSend`, `chatClear` (`agent.ts`, `chat.ts`) |
-| Characters | The Raider.IO-shaped view, local only: gold, peak, item level, money earned and spent per named character; achievements, reputations, titles and quests per opaque character key (the addon never writes a name on those rows). Nothing here is uploaded from the app | `charactersInfo` (`characters.ts`) |
+| Characters | The Raider.IO-shaped view, local only: gold with a sparkline of every dated snapshot (thinned to sixty points), peak, item level, the last seven days as earned, spent and net, money earned and spent per named character; achievements, reputations, titles and quests per opaque character key (the addon never writes a name on those rows). Nothing here is uploaded from the app | `charactersInfo` (`characters.ts`) |
 | Upload | The switch and Run now; each account file with its write time and size, addon and client build, records per kind, confirmed count from `sent.json`. Nothing here leaves the machine | `uploadInfo` (`inspect.ts`) |
 | Market | The switch and Refresh now; realm picks: the realms in the player's own scans are always carried, and the realms the site has public values for can be ticked (what TSM calls realm picks, on Everloot's own scan data; the clean-room decision of 2026-10-17 stands). A realm can also be typed. What the last refresh wrote, per realm | `marketInfo` (`market.ts`), `settings.market.realms` |
 | Ask | The switch and Answer now; MCP URL and token file; who answers (providers from `config.json`, or plain search); questions pending in game; the last answers | `askInfo` |
@@ -148,6 +148,8 @@ on the Node side for ten to fifteen minutes so opening a page twice does not ask
   the hour; an ask write runs the bridge; a failing job records the error and the others keep going;
   `restart` with the upload switch off stops watching.
 - `updates.test.ts`: picks the newest `desktop-v*` tag, ignores addon tags and pre-releases.
+- `characters.test.ts`: gold history in order and a seven-day window on money events; a long
+  history thins to sixty points keeping the first and the last.
 - `inspect.test.ts`: stale realms are the ones older than a day or undated, oldest first; the
   reminder names the oldest and counts the rest.
 - `backups.test.ts`: dated copies, ten per account; restore replaces the live file and keeps the
