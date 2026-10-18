@@ -143,6 +143,45 @@ test("the W2 tables are read by the file data ids the WoWDBDefs manifest lists f
   });
 });
 
+test("the W3 tables are read by the file data ids the WoWDBDefs manifest lists for them", () => {
+  // manifest.json at WoWDBDefs b9a63096cdd9, field db2FileDataID.
+  expect(CLIENT_TABLES).toMatchObject({
+    ChrCustomization: 1611874, ChrCustomizationBoneSet: 3460181, ChrCustomizationCategory: 3526439,
+    ChrCustomizationChoice: 3450554, ChrCustomizationCondModel: 3460182, ChrCustomizationConversion: 3463337,
+    ChrCustomizationDisplayInfo: 3593032, ChrCustomizationElement: 3512765, ChrCustomizationGeoset: 3456171,
+    ChrCustomizationGlyphPet: 5347591, ChrCustomizationMaterial: 3459652, ChrCustomizationOption: 3384247,
+    ChrCustomizationReq: 3450453, ChrCustomizationReqChoice: 3580359, ChrCustomizationSkinnedModel: 3460183,
+    ChrCustomizationVisReq: 4724136, ChrCustomizationVoice: 4672833,
+    ChrModel: 3384313, ChrModelMaterial: 3566562, ChrModelTextureLayer: 3548976,
+    ChrModelAltVariant: 8068383, ChrModelAltVariantChoice: 8068384, ChrModelAltVariantOption: 8068385,
+    ChrRacesCreateScreenIcon: 4566929, ChrRaceXChrModel: 3490304, ChrClassUIChrModelInfo: 3754770,
+    ChrClassUIDisplay: 1316515, ChrClassRaceSex: 1306188, ChrClassTitle: 1267497,
+    ChrSelectBackgroundCDI: 4195187, CharacterFacialHairStyles: 1369752,
+    CharacterLoadout: 1344281, CharacterLoadoutItem: 1302846, CharacterLoadoutPet: 3724843,
+    CreatureDisplayInfo: 1108759, CreatureDisplayInfoCond: 1332686, CreatureDisplayInfoCondXChoice: 3670439,
+    CreatureDisplayInfoEvt: 1586882, CreatureDisplayInfoExtra: 1264997, CreatureDisplayInfoGeosetData: 1720141,
+    CreatureDisplayInfoOption: 3692043, CreatureDisplayInfoTrn: 1146698, CreatureDisplayXUIModelScene: 5551196,
+    CreatureModelData: 1365368, HelmetAnimScaling: 1348283, HelmetGeosetData: 2821752,
+    AnimationData: 1375431, AnimKit: 1304323, AnimKitBoneSet: 1375433, AnimKitBoneSetAlias: 1266937,
+    AnimKitConfig: 1300872, AnimKitConfigBoneSet: 1300873, AnimKitPriority: 1266540,
+    AnimKitReplacement: 1559807, AnimKitSegment: 1304324, AnimReplacement: 1301100, AnimReplacementSet: 1284817,
+    BoneWindModifierModel: 1467254, BoneWindModifiers: 1416756,
+    CameraEffect: 1117695, CameraEffectEntry: 1117696, CameraMode: 1343308,
+    LiquidMaterial: 1132538, LiquidObject: 1308058, LiquidTypeXFFTTile: 7489861, LiquidTypeXTexture: 2261065, ModelAnimCloakDampening: 1465904, ModelFileData: 1337833,
+    ModelProperties: 2060639, ModelRibbonQuality: 1399953,
+    ModelSound: 5393273, ModelSoundAnimEntry: 5393274, ModelSoundEntry: 5393275, ModelSoundOverride: 5393276,
+    ModelSoundSettings: 5682517, ModelSoundTagEntry: 5393277,
+    AnimaCable: 3286805, AnimaCylinder: 3286804, AnimaMaterial: 3153990,
+    SoundKit: 1237434, SoundKitAdvanced: 1237436, SoundKitChild: 1307289, SoundKitEntry: 1237435,
+    SoundKitFallback: 1307288, SoundAmbience: 1310628, SoundAmbienceFlavor: 1267065, SoundBus: 1310246,
+    SoundBusOverride: 1598732, SoundEmitterPillPoints: 1092317, SoundEmitters: 1092316,
+    SoundEnvelope: 1693131, SoundFilter: 1271601, SoundFilterElem: 1267066, SoundMixGroup: 4618887,
+    SoundOverride: 1266542, SoundParameter: 3405441, SoundProviderPreferences: 1279417,
+    SoundWaterfallEmitter: 4756178, MusicOverride: 5161908,
+    TraitCondAccountElement: 5890759, TraitDefinitionEffectPoints: 4536895, TraitTreeLoadoutEntry: 4669509,
+  });
+});
+
 test("a table the build does not have is reported as missing, not invented", async () => {
   const { tables, missing } = await extractTables(fake({ [CLIENT_TABLES.Item]: { rows: [[1, { ID: 1 }]] } }));
   expect(tables.map((t) => t.table)).toEqual(["Item"]);

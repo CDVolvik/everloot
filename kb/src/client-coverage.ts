@@ -92,6 +92,19 @@ export const NEEDED_FIELDS: Partial<Record<keyof typeof CLIENT_TABLES, readonly 
   ChrRaceRacialAbility: ["ChrRacesID", "Name_lang", "Icon"],
   PetLoyalty: ["Name_lang"],
   MountCapability: ["ReqRidingSkill", "ReqSpellKnownID"],
+  CreatureDisplayInfo: ["ModelID", "TextureVariationFileDataID", "ExtendedDisplayInfoID"],
+  CreatureModelData: ["FileDataID"],
+  CreatureDisplayInfoExtra: ["DisplayRaceID", "BakeMaterialResourcesID"],
+  ChrCustomizationChoice: ["ChrCustomizationOptionID", "SoundKitID"],
+  ChrCustomizationOption: ["Name_lang", "ChrCustomizationCategoryID", "ChrModelID"],
+  ChrCustomizationCategory: ["CategoryName_lang"],
+  ChrModel: ["DisplayID", "SkeletonFileDataID", "Sex"],
+  ChrRaceXChrModel: ["ChrRacesID", "ChrModelID", "Sex"],
+  CharacterLoadout: ["ChrClassID", "Purpose"],
+  CharacterLoadoutItem: ["CharacterLoadoutID", "ItemID"],
+  SoundKit: ["SoundType", "VolumeFloat"],
+  SoundKitEntry: ["SoundKitID", "FileDataID"],
+  SoundKitChild: ["SoundKitID", "ParentSoundKitID"],
 };
 
 export interface FieldCoverage { name: string; present: boolean; filled: number }
