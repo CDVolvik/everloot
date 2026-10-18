@@ -210,4 +210,6 @@ export interface EverlootApi {
   siteBack(): Promise<void>;
   siteReload(): Promise<void>;
   onState(listener: (state: AppState) => void): () => void;
+  /** The main side asks the page to open a screen: a tray entry or a notification was clicked. */
+  onNavigate(listener: (page: string) => void): () => void;
 }

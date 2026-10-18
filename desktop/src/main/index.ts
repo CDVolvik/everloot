@@ -81,14 +81,19 @@ if (!app.requestSingleInstanceLock()) {
 
   // Two system notifications only: answers landed in the game (so the player knows to /reload),
   // and a newer addon exists (once per run). Nothing else interrupts.
-  const notify = (title: string, body: string) => { if (Notification.isSupported()) new Notification({ title, body, silent: true }).show(); };
+  const notify = (title: string, body: string, page: string) => {
+    if (!Notification.isSupported()) return;
+    const n = new Notification({ title, body, silent: true });
+    n.on("click", () => show(page));
+    n.show();
+  };
   let lastAskAt: string | null = null;
   engine.onChange((s) => {
     const ask = s.jobs.ask;
     if (ask.state !== "ok" || ask.at === lastAskAt) return;
     lastAskAt = ask.at;
     const m = /^answered (\d+)/.exec(ask.message);
-    if (m && Number(m[1]) > 0) notify("Everloot answered in game", `${m[1]} answer(s) written. Type /reload to read them.`);
+    if (m && Number(m[1]) > 0) notify("Everloot answered in game", `${m[1]} answer(s) written. Type /reload to read them.`, "ask");
   });
   // The desktop release check at start is a line on the Overview and in the tray, never a notification.
   const desktopUpdateLine = async () => {
@@ -104,7 +109,7 @@ if (!app.requestSingleInstanceLock()) {
     try {
       const installed = installedAddonVersion(dir);
       const latest = newestRelease(await releases(), "addon-v");
-      if (installed && latest && compareVersions(latest.version, installed) > 0) notify("Everloot addon update", `${latest.version} is out (you run ${installed}). Open the Addon page to update.`);
+      if (installed && latest && compareVersions(latest.version, installed) > 0) notify("Everloot addon update", `${latest.version} is out (you run ${installed}). Open the Addon page to update.`, "addon");
     } catch { /* offline; the Addon page will say so */ }
   };
 
@@ -117,9 +122,14 @@ if (!app.requestSingleInstanceLock()) {
     app.setLoginItemSettings({ openAtLogin: settings.launchAtLogin, args: ["--hidden"] });
   };
 
-  const show = () => {
+  const show = (page?: string) => {
     if (!win) createWindow();
     else { if (win.isMinimized()) win.restore(); win.show(); win.focus(); }
+    if (page && win) {
+      const w = win;
+      if (w.webContents.isLoading()) w.webContents.once("did-finish-load", () => w.webContents.send("navigate", page));
+      else w.webContents.send("navigate", page);
+    }
   };
 
   function createWindow(): void {
@@ -248,8 +258,8 @@ if (!app.requestSingleInstanceLock()) {
   ipcMain.handle("siteBack", () => site?.back());
   ipcMain.handle("siteReload", () => site?.reload());
 
-  app.on("second-instance", show);
-  app.on("activate", show);
+  app.on("second-instance", () => show());
+  app.on("activate", () => show());
   app.on("before-quit", () => { quitting = true; });
   app.on("window-all-closed", () => { /* stay in the tray */ });
 

@@ -3,7 +3,7 @@ import type { AppState, Job } from "../shared/types";
 import { scanReminder } from "./inspect";
 
 export interface TrayActions {
-  show(): void;
+  show(page?: string): void;
   runNow(job: Job): void;
   setPaused(paused: boolean): void;
   openExternal(url: string): void;
@@ -40,7 +40,7 @@ export function createTray(iconPath: string, actions: TrayActions): { update(sta
         { label: jobLine(state, "upload"), enabled: false },
         { label: jobLine(state, "prices"), enabled: false },
         { label: jobLine(state, "ask"), enabled: false },
-        ...(reminder ? [{ label: reminder, click: () => actions.show() }] : []),
+        ...(reminder ? [{ label: reminder, click: () => actions.show("market") }] : []),
         ...(state.update?.newer && state.update.url ? [{ label: `Update Everloot Desktop to ${state.update.latest}`, click: () => actions.openExternal(state.update!.url!) }] : []),
         { type: "separator" as const },
         { label: "Open Everloot Desktop", click: () => actions.show() },

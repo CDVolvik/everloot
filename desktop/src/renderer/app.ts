@@ -395,6 +395,10 @@ async function load(p: Page): Promise<void> {
 }
 
 let reload: ReturnType<typeof setTimeout> | undefined;
+const PAGE_IDS = new Set<string>(PAGES.map((p) => p.id));
+// A tray entry or a notification asks for a page. A settings draft in progress is not thrown away for it.
+api.onNavigate((p) => { if (PAGE_IDS.has(p) && !draftDirty && state?.settings.consentedAt) void go(p as Page); });
+
 api.onState((s) => {
   state = s;
   render();

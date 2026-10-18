@@ -34,6 +34,11 @@ const api: EverlootApi = {
   siteHide: () => ipcRenderer.invoke("siteHide"),
   siteBack: () => ipcRenderer.invoke("siteBack"),
   siteReload: () => ipcRenderer.invoke("siteReload"),
+  onNavigate: (listener) => {
+    const handler = (_event: unknown, page: string) => listener(page);
+    ipcRenderer.on("navigate", handler);
+    return () => { ipcRenderer.removeListener("navigate", handler); };
+  },
   onState: (listener) => {
     const handler = (_event: unknown, state: AppState) => listener(state);
     ipcRenderer.on("state", handler);
