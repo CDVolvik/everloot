@@ -1,0 +1,41 @@
+name: Discord bridge
+# Links the Everloot Discord and this repository (scripts/discord_bridge.py):
+#   every 10 min and on issue changes   #bug-reports posts <-> GitHub issues, #known-issues list
+#   release / discussion / push to main / new pull request   a post in the matching channel
+# pull_request_target runs the base branch's script and only reads the event as text; it never checks
+# out or runs code from the pull request.
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  issues:
+    types: [opened, edited, closed, reopened, labeled, unlabeled]
+  release:
+    types: [published]
+  discussion:
+    types: [created]
+  push:
+    branches: [main]
+  pull_request_target:
+    types: [opened]
+  workflow_dispatch:
+permissions:
+  contents: read
+  issues: write
+jobs:
+  bridge:
+    if: github.repository == 'Everloot/everloot'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # Sync runs queue behind each other; posts (releases, commits, pull requests) never wait or get dropped.
+    concurrency:
+      group: ${{ contains(fromJSON('["schedule", "workflow_dispatch", "issues"]'), github.event_name) && 'discord-bridge-sync' || format('discord-bridge-{0}', github.run_id) }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - run: python scripts/discord_bridge.py
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}

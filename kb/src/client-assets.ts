@@ -1,12 +1,15 @@
 /**
- * Icons, tooltip text and talent-frame art for the talent catalog, read from the public client and
- * written to a local directory with a build-stamped manifest. The directory is uploaded to asset
- * storage by a maintainer (docs/ASSETS.md). It is never committed (docs/DATA_POLICY.md, "Blizzard's
- * icons, tooltip text and window frame").
+ * Icons, tooltip text and interface art for the site, read from the public client and written to a
+ * local directory with a build-stamped manifest: the talent catalog's icons, tooltips and frame pieces;
+ * item icons and item tooltip facts; class, talent tree, raid buff and profession icons; and the game's
+ * own continent and zone map pictures. The directory is uploaded to asset storage by a maintainer
+ * (docs/ASSETS.md). It is never committed (docs/DATA_POLICY.md, "Blizzard's icons, tooltip text and
+ * window frame").
  *
  * Only unencrypted files are read. A file with an encrypted block, or one that is not in the build, is
- * counted and left out. No key is loaded and no listfile: icon ids come from the spell tables and frame
- * pieces from the interface atlas tables (UiTextureAtlas*), all by file data id.
+ * counted and left out. No key is loaded and no listfile: icon ids come from the spell, item, class and
+ * skill tables, frame pieces from the interface atlas tables (UiTextureAtlas*) and map tiles from the
+ * map art tables (UiMapArt*), all by file data id.
  */
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -16,6 +19,8 @@ import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import type { TableSource } from "./client-extract.js";
 import { readClientMeta, readClientRows, readClientTables } from "./client-snapshot.js";
+import { buildItemSet, shardRecords, ITEM_SHARD_SIZE } from "./assets/items.js";
+import { planMapArt, stitchPlan } from "./assets/map-art.js";
 import { resolveTooltip, type EffectFacts, type SpellFacts } from "./assets/tooltip.js";
 import { buildTalentCatalog, type Rows, type TableReader } from "./talents/build-catalog.js";
 import { LABEL, type BuildStamp } from "./talents/catalog.js";
@@ -66,8 +71,25 @@ export const BACKGROUND_FOR: Record<string, { element: string; nearest?: true }>
   "druid:Restoration": { element: "talents-background-druid-restoration" },
 };
 
-const File = z.object({ file: z.string(), width: z.number().int(), height: z.number().int(), bytes: z.number().int(), sha256: z.string() });
+// The public manifest names files and sizes only. Hashes are in checksums.json beside it, which only the
+// upload script reads (it is not uploaded), so the manifest the talent page fetches in the browser stays small.
+const File = z.object({ file: z.string(), width: z.number().int(), height: z.number().int() });
+const DataFile = z.object({ file: z.string(), bytes: z.number().int(), sha256: z.string() });
 const Text = z.object({ text: z.string(), unresolved: z.array(z.string()) });
+const Rect = z.object({ left: z.number(), top: z.number(), right: z.number(), bottom: z.number() });
+
+/** Icon size cap and WebP quality. Icons are small and many, so lossy; frame pieces stay lossless. */
+const ICON_MAX = 128;
+const ICON_QUALITY = 90;
+/** Map pictures: the base zoom layer, never scaled up, capped so a continent stays a few hundred kB. */
+const MAP_MAX = 2048;
+const MAP_QUALITY = 82;
+/** A small copy of each map picture, for the zoomed-out view where many zones show at once. */
+const MAP_SMALL_MAX = 320;
+export const CHECKSUM_SCHEMA = "everloot.game-assets-checksums/1";
+export const ITEM_INDEX_SCHEMA = "everloot.game-items/1";
+/** SkillLine.CategoryID of professions and of secondary skills (Cooking, First Aid, Fishing). */
+const PROFESSION_CATEGORIES = new Set([9, 11]);
 
 export const AssetManifest = z.object({
   schema: z.literal(ASSET_SCHEMA),
@@ -83,21 +105,74 @@ export const AssetManifest = z.object({
     passive: z.boolean().nullable(),
     description: Text.nullable(),
   })),
-  icons: z.record(z.string(), File),
   frames: z.record(z.string(), File),
   /** "class:Tree name" -> frame element. `nearest`: the client has no background for that Classic tree, this is the closest. */
   backgrounds: z.record(z.string(), z.object({ element: z.string(), nearest: z.boolean() })),
+  /**
+   * By class file name in lower case ("warrior"): the class icon (ChrClasses.IconFileDataID) and its talent
+   * trees in the client's order, each with its tree icon (SkillLine.SpellIconFileID). Icon names are inside `icons`.
+   */
+  classes: z.record(z.string(), z.object({
+    classId: z.number().int(), name: z.string(), icon: z.string().nullable(),
+    trees: z.array(z.object({ name: z.string().nullable(), icon: z.string().nullable() })),
+  })).default({}),
+  /** By profession name in lower case: SkillLine rows of the profession and secondary skill categories. */
+  professions: z.record(z.string(), z.object({ skillLineId: z.number().int(), name: z.string(), icon: z.string().nullable() })).default({}),
+  /** Spell id -> icon name, for the raid buff list's spells (SpellMisc.SpellIconFileDataID). */
+  spellIcons: z.record(z.string(), z.string()).default({}),
+  /** By UiMap id: the map's own picture and the world rectangle it covers, so the site lays it under the zone outlines. */
+  maps: z.record(z.string(), File.extend({
+    /** The same picture at most MAP_SMALL_MAX px, for the zoomed-out view; null if it could not be made. */
+    small: File.nullable(),
+    kind: z.enum(["continent", "zone"]), name: z.string(), continentId: z.number().int(),
+    /** Zones with UiMap ids outside the original world's: shown only behind the spoiler switch. */
+    heldBack: z.boolean(), rect: Rect,
+  })).default({}),
+  // Item tooltip facts are not listed here: they go to the private folder (ItemIndex), never to the public bucket.
   counts: z.object({
     iconsExtracted: z.number().int(), iconsEncrypted: z.number().int(), iconsAbsent: z.number().int(), iconsFailed: z.number().int(),
     framesExtracted: z.number().int(), framesEncrypted: z.number().int(), framesAbsent: z.number().int(), framesFailed: z.number().int(),
     tooltipsResolved: z.number().int(), tooltipsUnresolved: z.number().int(), tooltipsEmpty: z.number().int(),
+    itemsRecorded: z.number().int().default(0), itemsWithIcon: z.number().int().default(0),
+    mapsExtracted: z.number().int().default(0), mapsSkipped: z.number().int().default(0),
   }),
   /** Frame elements the build does not have or that could not be read; the site falls back for these. */
   missingFrames: z.array(z.string()),
+  /** Maps without a picture, and why (no art in the build, a tile encrypted or missing). */
+  skippedMaps: z.array(z.string()).default([]),
 });
 export type AssetManifest = z.infer<typeof AssetManifest>;
 
-export interface ConvertJob { src: string; dst: string; crop?: [number, number, number, number] | null; max?: number | null }
+/** Every public file with its size and hash, for the upload script's check. Stays on the maintainer's machine. */
+export const AssetChecksums = z.object({ schema: z.literal(CHECKSUM_SCHEMA), files: z.record(z.string(), DataFile.omit({ file: true })) });
+export type AssetChecksums = z.infer<typeof AssetChecksums>;
+
+/**
+ * The private folder's index: item tooltip facts in shards of `shardSize` ids (`items/<shard>.json`). The folder
+ * goes to a private bucket that only the site's server reads, so items found only in the files are never public.
+ */
+export const ItemIndex = z.object({
+  schema: z.literal(ITEM_INDEX_SCHEMA),
+  label: z.literal(LABEL),
+  build: z.object({ product: z.string(), buildId: z.number().int(), version: z.string(), buildConfig: z.string() }),
+  shardSize: z.number().int(),
+  count: z.number().int(),
+  shards: z.record(z.string(), DataFile),
+});
+export type ItemIndex = z.infer<typeof ItemIndex>;
+
+export interface ConvertJob {
+  /** The BLP to read; a job with `tiles` reads those instead. */
+  src?: string;
+  dst: string;
+  crop?: [number, number, number, number] | null;
+  max?: number | null;
+  /** Lossy WebP at this quality; absent for lossless. */
+  quality?: number | null;
+  /** Map tiles to lay on a grid of `tile`-sized cells, by row and column. */
+  tiles?: { src: string; row: number; col: number }[];
+  tile?: [number, number];
+}
 export interface ConvertResult { dst: string; ok: boolean; width: number; height: number; error: string | null }
 export type Converter = (jobs: ConvertJob[]) => Promise<ConvertResult[]>;
 
@@ -109,8 +184,12 @@ export type Converter = (jobs: ConvertJob[]) => Promise<ConvertResult[]>;
 export const pillowConverter: Converter = async (jobs) => {
   if (!jobs.length) return [];
   // The script runs from its own folder, so every path it is given is absolute.
-  const jobFile = resolve(dirname(jobs[0].src), "jobs.json");
-  writeFileSync(jobFile, JSON.stringify(jobs.map((j) => ({ ...j, src: resolve(j.src), dst: resolve(j.dst) }))));
+  const first = jobs[0].src ?? jobs[0].tiles?.[0]?.src;
+  if (!first) throw new Error("a convert job has neither a source nor tiles");
+  const jobFile = resolve(dirname(first), "jobs.json");
+  writeFileSync(jobFile, JSON.stringify(jobs.map((j) => ({
+    ...j, src: j.src ? resolve(j.src) : null, dst: resolve(j.dst), tiles: j.tiles?.map((t) => ({ ...t, src: resolve(t.src) })),
+  }))));
   const script = join(dirname(fileURLToPath(import.meta.url)), "..", "scripts", "blp_convert.py");
   const python = process.env.PYTHON || (process.platform === "win32" ? "python" : "python3");
   const out = await new Promise<string>((resolve, reject) => {
@@ -134,16 +213,24 @@ const sha = (b: Buffer) => createHash("sha256").update(b).digest("hex");
 const ATTR_PASSIVE = 0x40;
 
 export interface AssetRun {
+  /** The public folder: manifest.json, the images, and checksums.json (not uploaded). */
   dir: string;
+  /** The private folder (`<dir>-private`): items.json and the item shards; null when the snapshot has no item tables. */
+  privateDir: string | null;
   manifest: AssetManifest;
+  checksums: AssetChecksums;
+  items: ItemIndex | null;
   /** Plain-language lines for the console. */
   notes: string[];
 }
 
 interface Fetched { status: "ok" | "encrypted" | "absent" | "failed"; buffer?: Buffer }
 
+/** What to extract beyond the talent catalog: the raid buff list's spell ids (for their icons), and an item allowlist (all items when absent). */
+export interface AssetScope { buffSpells?: number[]; items?: ReadonlySet<number> }
+
 /** Reads the tables from a snapshot file, then builds the assets. */
-export async function buildClientAssets(opts: { snapshotPath: string; outDir: string; source: TableSource; convert?: Converter }): Promise<AssetRun> {
+export async function buildClientAssets(opts: { snapshotPath: string; outDir: string; source: TableSource; convert?: Converter } & AssetScope): Promise<AssetRun> {
   const meta = readClientMeta(opts.snapshotPath);
   const present = new Set(readClientTables(opts.snapshotPath));
   const cache = new Map<string, Rows>();
@@ -153,10 +240,10 @@ export async function buildClientAssets(opts: { snapshotPath: string; outDir: st
     return cache.get(table);
   };
   const build: BuildStamp = { product: meta.product, buildId: meta.buildId, version: meta.version, buildConfig: meta.buildConfig, definitions: meta.definitions, extractedAt: meta.extractedAt };
-  return buildAssetsFromTables({ get, build, outDir: opts.outDir, source: opts.source, convert: opts.convert });
+  return buildAssetsFromTables({ get, build, outDir: opts.outDir, source: opts.source, convert: opts.convert, buffSpells: opts.buffSpells, items: opts.items });
 }
 
-export async function buildAssetsFromTables(opts: { get: TableReader; build: BuildStamp; outDir: string; source: TableSource; convert?: Converter }): Promise<AssetRun> {
+export async function buildAssetsFromTables(opts: { get: TableReader; build: BuildStamp; outDir: string; source: TableSource; convert?: Converter } & AssetScope): Promise<AssetRun> {
   const { get, build, source } = opts;
   const meta = build;
   const convert = opts.convert ?? pillowConverter;
@@ -164,7 +251,7 @@ export async function buildAssetsFromTables(opts: { get: TableReader; build: Bui
   for (const t of ["UiTextureAtlas", "UiTextureAtlasElement", "UiTextureAtlasMember", "SpellMisc", "SpellEffect", "Spell", "TraitDefinition"]) {
     if (!get(t)) throw new Error(`the snapshot has no ${t} table; run \`client-extract --refresh\` first`);
   }
-  const { classes } = buildTalentCatalog({ get, build, tables: [] });
+  const { classes: catalogs } = buildTalentCatalog({ get, build, tables: [] });
 
   // Spell facts by id, from the tables, for tooltips.
   const radius = new Map(list(get("SpellRadius")).map((r) => [num(r.ID), num(r.Radius)]));
@@ -197,10 +284,19 @@ export async function buildAssetsFromTables(opts: { get: TableReader; build: Bui
   };
 
   const dir = join(opts.outDir, `${meta.product}-${meta.buildId}-${meta.buildConfig.slice(0, 8)}`);
+  const privateDir = `${dir}-private`;
   const work = join(dir, "_work");
   rmSync(dir, { recursive: true, force: true });
+  rmSync(privateDir, { recursive: true, force: true });
+  // Size and hash of every public file written, for checksums.json.
+  const checksums: AssetChecksums["files"] = {};
+  const track = (rel: string) => {
+    const bytes = readFileSync(join(dir, rel));
+    checksums[rel] = { bytes: bytes.length, sha256: sha(bytes) };
+  };
   mkdirSync(join(dir, "icons"), { recursive: true });
   mkdirSync(join(dir, "frames"), { recursive: true });
+  mkdirSync(join(dir, "maps"), { recursive: true });
   mkdirSync(work, { recursive: true });
 
   const fetched = new Map<number, Fetched>();
@@ -227,7 +323,7 @@ export async function buildAssetsFromTables(opts: { get: TableReader; build: Bui
   const spells: AssetManifest["spells"] = {};
   const iconIdOf = new Map<string, number>();
   let resolved = 0, unresolvedCount = 0, empty = 0;
-  for (const c of classes) {
+  for (const c of catalogs) {
     for (const tree of c.trees) {
       for (const node of tree.nodes) {
         for (const entry of node.entries) {
@@ -263,24 +359,163 @@ export async function buildAssetsFromTables(opts: { get: TableReader; build: Bui
     for (let i = 0; i < jobs.length; i++) {
       const r = results[i];
       if (!r?.ok) { count(kind, "failed"); failures.add(`${kind}: ${r?.error ?? "no answer"}`); continue; }
-      const bytes = readFileSync(jobs[i].dst);
-      into[jobs[i].key] = { file: `${folder}/${jobs[i].dst.split(/[\\/]/).pop()}`, width: r.width, height: r.height, bytes: bytes.length, sha256: sha(bytes) };
+      const file = `${folder}/${jobs[i].dst.split(/[\\/]/).pop()}`;
+      track(file);
+      into[jobs[i].key] = { file, width: r.width, height: r.height };
       count(kind, "extracted");
     }
   }
 
-  // Icons: one file per file data id.
-  const icons: AssetManifest["icons"] = {};
+  // Classes: the class icon, and the class's talent trees in the client's order with their tree icons.
+  const skillLines = new Map(list(get("SkillLine")).map((r) => [num(r.ID), r]));
+  const classes: AssetManifest["classes"] = {};
+  const classIcon = new Map<string, number>();
+  const treeIcons = new Map<string, number[]>();
+  for (const row of list(get("ChrClasses"))) {
+    const name = text(row.Name_lang);
+    const key = (text(row.Filename) ?? name)?.toLowerCase();
+    if (!key || !name) continue;
+    const trees = [...(catalogs.find((c) => c.classId === num(row.ID))?.trees ?? [])].sort((a, b) => a.order - b.order);
+    classes[key] = { classId: num(row.ID), name, icon: null, trees: trees.map((t) => ({ name: t.name, icon: null })) };
+    if (num(row.IconFileDataID) > 0) classIcon.set(key, num(row.IconFileDataID));
+    treeIcons.set(key, trees.map((t) => num(skillLines.get(t.skillLineId)?.SpellIconFileID)));
+  }
+
+  // Professions and secondary skills, by name; a child skill line (an expansion's tier) is left out.
+  const professions: AssetManifest["professions"] = {};
+  const professionIcon = new Map<string, number>();
+  for (const row of [...skillLines.values()].sort((a, b) => num(a.ID) - num(b.ID))) {
+    const name = text(row.DisplayName_lang);
+    if (!name || !PROFESSION_CATEGORIES.has(num(row.CategoryID)) || num(row.ParentSkillLineID) !== 0) continue;
+    const key = name.toLowerCase();
+    if (professions[key]) continue;
+    professions[key] = { skillLineId: num(row.ID), name, icon: null };
+    if (num(row.SpellIconFileID) > 0) professionIcon.set(key, num(row.SpellIconFileID));
+  }
+
+  // Raid buff spells: their icon, for the raid builder's rows.
+  const spellIconOf = new Map<number, number>();
+  for (const id of new Set(opts.buffSpells ?? [])) {
+    const file = num(misc.get(id)?.SpellIconFileDataID);
+    if (file > 0) spellIconOf.set(id, file);
+  }
+
+  // Items: tooltip facts for every named item (or the allowlist), and their icons.
+  const itemSet = get("ItemSparse") && get("Item") ? buildItemSet(get, opts.items) : null;
+
+  // Icons: one file per file data id, whoever asks for it.
+  const wantedIcons = new Set<number>([
+    ...iconIdOf.values(), ...classIcon.values(), ...[...treeIcons.values()].flat(), ...professionIcon.values(),
+    ...spellIconOf.values(), ...(itemSet?.iconOf.values() ?? []),
+  ].filter((id) => id > 0));
+  // Not listed in the manifest: pages find an icon by the name an entry gives, and the list would be thousands long.
+  const icons: Record<string, z.infer<typeof File>> = {};
   const iconJobs: (ConvertJob & { key: string })[] = [];
-  for (const id of new Set(iconIdOf.values())) {
+  for (const id of wantedIcons) {
     const f = await fetchFile(id);
     if (f.status !== "ok") { count("icons", f.status); continue; }
     const src = join(work, `icon-${id}.blp`);
     writeFileSync(src, f.buffer!);
-    iconJobs.push({ key: String(id), src, dst: join(dir, "icons", `${id}.webp`), max: 128 });
+    iconJobs.push({ key: String(id), src, dst: join(dir, "icons", `${id}.webp`), max: ICON_MAX, quality: ICON_QUALITY });
   }
   await convertAll(iconJobs, "icons", icons, "icons");
-  for (const [key, id] of iconIdOf) if (icons[String(id)]) spells[key].icon = icons[String(id)].file.replace(/^icons\//, "");
+  const iconName = (id: number | undefined) => (id && icons[String(id)] ? icons[String(id)].file.replace(/^icons\//, "") : null);
+  for (const [key, id] of iconIdOf) spells[key].icon = iconName(id);
+  for (const [key, c] of Object.entries(classes)) {
+    c.icon = iconName(classIcon.get(key));
+    const ids = treeIcons.get(key) ?? [];
+    c.trees.forEach((t, i) => { t.icon = iconName(ids[i]); });
+  }
+  for (const [key, p] of Object.entries(professions)) p.icon = iconName(professionIcon.get(key));
+  const spellIcons: AssetManifest["spellIcons"] = {};
+  for (const [id, file] of spellIconOf) {
+    const name = iconName(file);
+    if (name) spellIcons[String(id)] = name;
+  }
+
+  // Item shards, into the private folder: they hold every named item, released or not, so they never go to
+  // the public bucket. An item records its icon only when the icon file was extracted.
+  let items: ItemIndex | null = null;
+  let itemsWithIcon = 0;
+  if (itemSet) {
+    for (const [id, file] of itemSet.iconOf) {
+      if (!icons[String(file)]) continue;
+      itemSet.records.get(id)!.i = file;
+      itemsWithIcon += 1;
+    }
+    mkdirSync(join(privateDir, "items"), { recursive: true });
+    const shards: Record<string, z.infer<typeof DataFile>> = {};
+    for (const [shard, records] of shardRecords(itemSet.records)) {
+      const body = Buffer.from(JSON.stringify(records));
+      writeFileSync(join(privateDir, "items", `${shard}.json`), body);
+      shards[String(shard)] = { file: `items/${shard}.json`, bytes: body.length, sha256: sha(body) };
+    }
+    items = ItemIndex.parse({
+      schema: ITEM_INDEX_SCHEMA, label: LABEL,
+      build: { product: build.product, buildId: build.buildId, version: build.version, buildConfig: build.buildConfig },
+      shardSize: ITEM_SHARD_SIZE, count: itemSet.records.size, shards,
+    });
+    writeFileSync(join(privateDir, "items.json"), `${JSON.stringify(items, null, 1)}\n`);
+  }
+
+  // Map pictures: each continent's and zone's tiles laid on their grid and cut to the picture.
+  const maps: AssetManifest["maps"] = {};
+  const skippedMaps: string[] = [];
+  if (["UiMap", "UiMapAssignment", "UiMapXMapArt", "UiMapArt", "UiMapArtStyleLayer", "UiMapArtTile"].every((t) => get(t))) {
+    const plan = planMapArt(get);
+    skippedMaps.push(...plan.skipped);
+    const mapJobs: (ConvertJob & { target: (typeof plan.targets)[number]; small: boolean })[] = [];
+    for (const target of plan.targets) {
+      const label = `${target.name} (${target.uiMapId})`;
+      let grid: ReturnType<typeof stitchPlan>;
+      try {
+        grid = stitchPlan(target.layer, target.tiles);
+      } catch (e) {
+        skippedMaps.push(`${label}: ${(e as Error).message}`);
+        continue;
+      }
+      if (grid.missing.length) { skippedMaps.push(`${label}: ${grid.missing.length} tile(s) missing from the grid`); continue; }
+      const tiles: NonNullable<ConvertJob["tiles"]> = [];
+      let problem: string | null = null;
+      for (const tile of target.tiles) {
+        const f = await fetchFile(tile.fileId);
+        if (f.status !== "ok") { problem = `tile file ${tile.fileId} is ${f.status}`; break; }
+        const src = join(work, `tile-${tile.fileId}.blp`);
+        writeFileSync(src, f.buffer!);
+        tiles.push({ src, row: tile.row, col: tile.col });
+      }
+      if (problem) { skippedMaps.push(`${label}: ${problem}`); continue; }
+      const shared = { target, tiles, tile: [target.layer.tileWidth, target.layer.tileHeight] as [number, number], crop: grid.crop, quality: MAP_QUALITY };
+      mapJobs.push({ ...shared, small: false, dst: join(dir, "maps", `${target.uiMapId}.webp`), max: MAP_MAX });
+      mapJobs.push({ ...shared, small: true, dst: join(dir, "maps", `${target.uiMapId}-small.webp`), max: MAP_SMALL_MAX });
+    }
+    const results = mapJobs.length ? await convert(mapJobs.map(({ target: _t, small: _s, ...j }) => j)) : [];
+    const smallOf = new Map<number, z.infer<typeof File>>();
+    mapJobs.forEach((job, i) => {
+      const r = results[i];
+      if (!job.small || !r?.ok) return;
+      const file = `maps/${job.target.uiMapId}-small.webp`;
+      track(file);
+      smallOf.set(job.target.uiMapId, { file, width: r.width, height: r.height });
+    });
+    mapJobs.forEach((job, i) => {
+      const r = results[i];
+      const t = job.target;
+      if (job.small) return;
+      if (!r?.ok) {
+        skippedMaps.push(`${t.name} (${t.uiMapId}): could not convert (${r?.error ?? "no answer"})`);
+        // A small copy without its full picture is not shown; it must not be uploaded either.
+        if (smallOf.has(t.uiMapId)) { rmSync(join(dir, smallOf.get(t.uiMapId)!.file), { force: true }); delete checksums[smallOf.get(t.uiMapId)!.file]; }
+        return;
+      }
+      const file = `maps/${t.uiMapId}.webp`;
+      track(file);
+      maps[String(t.uiMapId)] = {
+        file, width: r.width, height: r.height, small: smallOf.get(t.uiMapId) ?? null,
+        kind: t.kind, name: t.name, continentId: t.continentId, heldBack: t.heldBack, rect: t.rect,
+      };
+    });
+  }
 
   // Frame pieces: the atlas element names the window needs, cut out of their atlas files.
   const atlases = new Map(list(get("UiTextureAtlas")).map((r) => [num(r.ID), r]));
@@ -313,17 +548,26 @@ export async function buildAssetsFromTables(opts: { get: TableReader; build: Bui
   const manifest = AssetManifest.parse({
     schema: ASSET_SCHEMA, label: LABEL,
     build: { product: build.product, buildId: build.buildId, version: build.version, buildConfig: build.buildConfig, extractedAt: new Date().toISOString() },
-    spells, icons, frames, backgrounds,
-    counts: { ...stats, tooltipsResolved: resolved, tooltipsUnresolved: unresolvedCount, tooltipsEmpty: empty },
+    spells, frames, backgrounds, classes, professions, spellIcons, maps,
+    counts: {
+      ...stats, tooltipsResolved: resolved, tooltipsUnresolved: unresolvedCount, tooltipsEmpty: empty,
+      itemsRecorded: items?.count ?? 0, itemsWithIcon, mapsExtracted: Object.keys(maps).length, mapsSkipped: skippedMaps.length,
+    },
     missingFrames: missingFrames.sort(),
+    skippedMaps,
   });
-  writeFileSync(join(dir, "manifest.json"), `${JSON.stringify(manifest, null, 1)}\n`);
+  writeFileSync(join(dir, "manifest.json"), `${JSON.stringify(manifest)}\n`);
+  const sums = AssetChecksums.parse({ schema: CHECKSUM_SCHEMA, files: Object.fromEntries(Object.entries(checksums).sort(([a], [b]) => a.localeCompare(b))) });
+  writeFileSync(join(dir, "checksums.json"), `${JSON.stringify(sums, null, 1)}\n`);
   const c = manifest.counts;
   const notes = [
     ...[...failures].slice(0, 5).map((f) => `could not convert (${f})`),
     `icons: ${c.iconsExtracted} extracted, ${c.iconsEncrypted} encrypted skipped, ${c.iconsAbsent} not in build, ${c.iconsFailed} failed`,
     `frame pieces: ${c.framesExtracted} extracted, ${c.framesEncrypted} encrypted skipped, ${c.framesAbsent} not in build, ${c.framesFailed} failed`,
     `tooltips: ${c.tooltipsResolved} fully resolved, ${c.tooltipsUnresolved} with placeholders, ${c.tooltipsEmpty} without text`,
+    `classes: ${Object.keys(classes).length}, professions: ${Object.keys(professions).length}, raid buff spell icons: ${Object.keys(spellIcons).length}`,
+    items ? `items: ${c.itemsRecorded} recorded in ${Object.keys(items.shards).length} shards (private folder), ${c.itemsWithIcon} with an icon` : "items: no item tables in the snapshot",
+    `maps: ${c.mapsExtracted} pictures, ${c.mapsSkipped} skipped`,
   ];
-  return { dir, manifest, notes };
+  return { dir, privateDir: items ? privateDir : null, manifest, checksums: sums, items, notes };
 }

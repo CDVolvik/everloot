@@ -11,15 +11,22 @@ import { dataAgeLabel } from "@/lib/data-age";
 import { parseDeepLink, type MapItems } from "@/lib/map-view";
 import { CONTINENTS, continentMap, continentPins, MAP_SOURCE, observedFacts, WORLD_MAP } from "@/lib/world-map";
 import WorldMapView from "@/components/WorldMapView";
+import { continentArt, loadSiteAssets } from "@/lib/game-assets";
+import GameCredit from "@/components/game/GameCredit";
 
 export const dynamic = "force-dynamic";
 
 const TITLE = "WoW Forever World Map";
 const description = "Zones, dungeon and raid entrances and player-observed NPCs on one map of WoW: Forever, drawn from positions read in the game files. No game art.";
+/** The same description when the game's map pictures are shown. */
+const withArt = (text: string) => text.replace(" No game art.", " The map pictures are the game's own.");
 
-export const metadata: Metadata = {
-  ...pageMetadata({ title: TITLE, description, path: "/map", image: "/map/opengraph-image" }),
-};
+/** "No game art" only while there is none: with the asset URL set and pictures uploaded, the description says so. */
+export async function generateMetadata(): Promise<Metadata> {
+  const assets = await loadSiteAssets();
+  const text = assets?.maps.length ? withArt(description) : description;
+  return pageMetadata({ title: TITLE, description: text, path: "/map", image: "/map/opengraph-image" });
+}
 
 type Query = { continent?: string | string[]; zone?: string | string[]; x?: string | string[]; y?: string | string[]; spoilers?: string | string[] };
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
@@ -42,6 +49,11 @@ export default async function MapPage(props: { searchParams: Promise<Query> }) {
   const map = continentMap(continentId, mapBoundsFromRecords(records), WORLD_MAP, spoilers);
   const pins = continentPins(continentId, observedFacts(records), spoilers);
   const vb = map.viewBox;
+  // The game's own map pictures under the outlines, only when the asset URL is set and the upload has them.
+  // A held-back zone's picture follows its outline: none unless spoilers are on.
+  const assets = vb ? await loadSiteAssets() : null;
+  const art = continentArt(assets, continentId, spoilers, WORLD_MAP.heldBackZones.some((z) => z.continentId === continentId));
+  const lead = art ? withArt(description) : description;
 
   const items: MapItems = {
     zones: map.zones,
@@ -63,12 +75,12 @@ export default async function MapPage(props: { searchParams: Promise<Query> }) {
 
   return (
     <article className="space-y-8 max-w-5xl">
-      <JsonLd data={webApplicationJsonLd({ name: TITLE, path: "/map", description })} />
+      <JsonLd data={webApplicationJsonLd({ name: TITLE, path: "/map", description: lead })} />
       <header className="space-y-3">
         <p className="font-mono text-xs text-muted">WoW: Forever · {map.name}</p>
         <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">{TITLE}</h1>
         <p className="text-sm text-fg-2 max-w-2xl">
-          {description} Zone outlines and entrances are positions read from the
+          {lead} Zone outlines and entrances are positions read from the
           game files. They are found in the files and unconfirmed until players see them in the game. Points for NPCs and vendors
           come from what players uploaded.
         </p>
@@ -109,6 +121,7 @@ export default async function MapPage(props: { searchParams: Promise<Query> }) {
           focus={focus}
           marker={marker}
           spoilers={spoilers}
+          art={art}
         />
       ) : (
         <p className="rounded-xl border border-line bg-panel p-5 text-sm text-fg-2">Nothing is placed on this continent yet.</p>
@@ -143,6 +156,7 @@ export default async function MapPage(props: { searchParams: Promise<Query> }) {
           <a className="text-accent hover:underline underline-offset-4" href={MAP_SOURCE.licenceUrl}>data policy</a>.
           NPC and vendor points are from player uploads (CC BY-SA 4.0).
         </p>
+        {assets && art && <GameCredit version={assets.version} label={assets.label} what="Map pictures" />}
       </footer>
     </article>
   );

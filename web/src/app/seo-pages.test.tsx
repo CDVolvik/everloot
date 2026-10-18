@@ -28,7 +28,7 @@ const h1 = (html: string) => visible(html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/)![1]
 
 test("the home page carries Organization and WebSite, and shows the lore search the action points at", async () => {
   const { default: Home } = await import("./page");
-  const html = renderToStaticMarkup(<Home />);
+  const html = renderToStaticMarkup(await Home());
   const [org, site] = blocks(html);
   expect(org["@type"]).toBe("Organization");
   expect(site["@type"]).toBe("WebSite");
@@ -82,7 +82,7 @@ test("the talent hub answers points and the two talent sets in visible text", as
 
 test("the raid page lists the talent-gated buffs from the raid data and its JSON-LD matches the H1", async () => {
   const { default: Page } = await import("./tools/raid/page");
-  const html = renderToStaticMarkup(<Page />);
+  const html = renderToStaticMarkup(await Page());
   const [app] = blocks(html);
   expect(app.name).toBe(h1(html));
   expect(visible(html)).toContain("Which raid buffs need a talent?");
@@ -166,4 +166,26 @@ test("the launch source and date agree with the curated lore row", () => {
     expect(yaml).toContain(longDate(LAUNCH.date));
     expect(LAUNCH.quote).toContain(longDate(LAUNCH.date));
   });
+});
+
+test("/wow-forever shows Blizzard's race and class tables with the new combinations marked and the source linked", async () => {
+  const { default: Page } = await import("./wow-forever/page");
+  const { RACES, NEW_COMBOS } = await import("@/data/wow-forever");
+  const html = renderToStaticMarkup(<Page />);
+  expect(visible(html)).toContain("Which races and classes can you play?");
+  expect(html).toContain(`href="${RACES.sourceUrl}"`);
+  expect(visible(html)).toContain("published September 22, 2026");
+  expect(html.match(/<table/g)).toHaveLength(2);
+  const tables = html.match(/<table[\s\S]*?<\/table>/g)!.join("");
+  expect(tables.match(/>New</g)).toHaveLength(NEW_COMBOS.length);
+});
+
+test("/methodology states the three-installs rule, unrecorded is not zero, and links the data policy", async () => {
+  const { default: Page } = await import("./methodology/page");
+  const html = renderToStaticMarkup(<Page />);
+  expect(h1(html)).toBe("How we count");
+  expect(visible(html)).toContain("at least three different installs");
+  expect(visible(html)).toContain("Unrecorded is not zero");
+  expect(html).toContain('/blob/main/docs/DATA_POLICY.md"');
+  expect(visible(html)).toContain("doesn't publish player counts yet");
 });

@@ -27,6 +27,7 @@ const PAGES: { title: string; path: string; text: string }[] = [
   { title: "Upload addon data", path: "/upload", text: "Download the Everloot addon (AGPL-3.0) and upload what it collected, with a preview and explicit sharing choices." },
   { title: "Lore archive", path: "/lore", text: "Warcraft Wiki pages as of 13 November 2023, CC BY-SA 4.0. Lore and history, not WoW: Forever data." },
   { title: "Connect", path: "/connect", text: "How to use the public corpus API and the MCP server, and the credit line." },
+  { title: "How we count", path: "/methodology", text: "How addon uploads become facts: three installs must agree, unrecorded is not zero, and what is never published." },
   { title: "About", path: "/about", text: "What Everloot is and is not." },
   { title: "Privacy", path: "/privacy", text: "How uploads, cookies and usage statistics are handled." },
 ];

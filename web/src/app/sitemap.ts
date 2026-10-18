@@ -14,7 +14,7 @@ const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://everloot.app";
  * /wow-forever. Every other page has none, because a made-up date teaches crawlers to ignore the field.
  */
 export default function sitemap(): MetadataRoute.Sitemap {
-  const staticRoutes = ["/", "/wow-forever", "/about", "/privacy", "/contact", "/upload", "/lore", "/changes", "/map", "/database", "/database/drops", "/database/npcs", "/database/quests", "/database/vendors", "/tools/collections", "/tools/guild-board", "/tools/auctions", "/tools/gold-ledger", "/addons", "/addons/popular", "/addons/ecosystem", "/addons/polestar", "/addons/polestar/packs", "/addons/polestar/wanted", "/connect"];
+  const staticRoutes = ["/", "/wow-forever", "/methodology", "/about", "/privacy", "/contact", "/upload", "/lore", "/changes", "/map", "/database", "/database/drops", "/database/npcs", "/database/quests", "/database/vendors", "/tools/collections", "/tools/guild-board", "/tools/auctions", "/tools/gold-ledger", "/addons", "/addons/popular", "/addons/ecosystem", "/addons/polestar", "/addons/polestar/packs", "/addons/polestar/wanted", "/connect"];
 
   const talentRoutes = TALENT_CLASSES.map((slug) => `/tools/talents/${slug}`);
   const paths = [...new Set([...staticRoutes, ...talentRoutes, ...tools.filter((tool) => tool.status !== "coming-soon").map(toolHref)])];

@@ -1,16 +1,47 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { LAUNCH, longDate } from "@/data/wow-forever";
+import { CLASSES, LAUNCH, longDate, NEW_COMBOS, RACES } from "@/data/wow-forever";
 import { latestBuildLine } from "@/lib/changes-facts";
 import { loadTimeline } from "@/lib/changes";
 import { pageMetadata } from "@/lib/seo";
 
 const description =
-  "WoW Forever is Blizzard's World of Warcraft: Forever release. The launch date from Blizzard's announcement, and the newest game build Everloot has seen.";
+  "WoW Forever is Blizzard's World of Warcraft: Forever: the launch date, every playable race and class combination, and the newest game build Everloot has seen.";
 
 export const metadata: Metadata = pageMetadata({ title: "What Is WoW Forever? Launch Date and Latest Build", description, path: "/wow-forever" });
 
 const link = "text-accent hover:underline underline-offset-4";
+const isNew = (race: string, cls: string) => NEW_COMBOS.some(([r, c]) => r === race && c === cls);
+
+function RaceTable({ faction, rows }: { faction: string; rows: Record<string, readonly string[]> }) {
+  return (
+    <div className="overflow-x-auto rounded-lg border border-line">
+      <table className="w-full text-sm">
+        <caption className="text-left px-3 py-2 font-semibold text-fg">{faction}</caption>
+        <thead>
+          <tr className="border-t border-line text-muted">
+            <th scope="col" className="text-left px-3 py-2 font-medium">Race</th>
+            {CLASSES.map((c) => <th key={c} scope="col" className="px-2 py-2 font-medium">{c}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {Object.entries(rows).map(([race, classes]) => (
+            <tr key={race} className="border-t border-line">
+              <th scope="row" className="text-left px-3 py-2 font-medium text-fg">{race}</th>
+              {CLASSES.map((c) => (
+                <td key={c} className="px-2 py-2 text-center">
+                  {!classes.includes(c) ? <span className="sr-only">Not playable</span>
+                    : isNew(race, c) ? <span className="text-accent font-semibold">New</span>
+                    : <><span className="sr-only">Playable</span><span aria-hidden="true" className="inline-block h-2 w-2 rounded-full bg-fg-2" /></>}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 export default function WowForeverPage() {
   return (
@@ -34,6 +65,21 @@ export default function WowForeverPage() {
           Source: <a href={LAUNCH.sourceUrl} rel="noopener" className={link}>{LAUNCH.sourceName}, {LAUNCH.sourceTitle}</a>.
           Checked on <time dateTime={LAUNCH.checkedOn}>{longDate(LAUNCH.checkedOn)}</time>. If Blizzard changes the date, their post is
           the one to trust.
+        </p>
+      </section>
+
+      <section aria-labelledby="races" className="space-y-3">
+        <h2 id="races" className="text-2xl font-semibold text-fg">Which races and classes can you play?</h2>
+        <p className="text-fg-2">
+          Ten race rows across the two factions. Skyborne, the new race, plays on both: Horde Skyborne can be Shamans and Alliance
+          Skyborne can be Mages. <span className="text-accent font-semibold">New</span> marks the combinations Blizzard names as new
+          in WoW: Forever.
+        </p>
+        {Object.entries(RACES.factions).map(([faction, rows]) => <RaceTable key={faction} faction={faction} rows={rows} />)}
+        <p className="text-sm text-fg-2">
+          Source: <a href={RACES.sourceUrl} rel="noopener" className={link}>{RACES.sourceName}, {RACES.sourceTitle}</a>, published{" "}
+          <time dateTime={RACES.published}>{longDate(RACES.published)}</time>. Checked on{" "}
+          <time dateTime={RACES.checkedOn}>{longDate(RACES.checkedOn)}</time>.
         </p>
       </section>
 

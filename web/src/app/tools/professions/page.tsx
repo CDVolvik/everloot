@@ -7,6 +7,9 @@ import { handleProfessionPath } from "../../../../../kb/src/profession-path";
 import { handleRecipeThresholds, pathFactsFromRecords } from "../../../../../kb/src/recipe-thresholds";
 import { STORAGE_UNREACHABLE, uploadStore } from "@/lib/upload-store";
 import { dataAgeLabel } from "@/lib/data-age";
+import { classAndProfessionIcons, loadSiteAssets } from "@/lib/game-assets";
+import GameIcon from "@/components/game/GameIcon";
+import GameCredit from "@/components/game/GameCredit";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +63,9 @@ export default async function ProfessionsPage(
     ? STORAGE_UNREACHABLE
     : handleRecipeThresholds({ profession }, facts.observations, facts.prices);
   const reports = facts.sightings.length + facts.observations.length;
+  // Profession icons as a picker, only when the asset URL is set and the upload has them.
+  const assets = await loadSiteAssets();
+  const icons = classAndProfessionIcons(assets).professions;
   return (
     <article className="space-y-10 max-w-4xl">
       <header className="space-y-3">
@@ -84,6 +90,24 @@ export default async function ProfessionsPage(
           Choose a profession and skill range to see a path from available recipe uploads.
           Estimated costs use reported prices without realm, build or time guarantees.
         </p>
+        {icons.length > 0 && (
+          <nav aria-label="Professions" className="flex flex-wrap gap-2">
+            {icons.map((p) => {
+              const current = p.key.toLowerCase() === profession.toLowerCase();
+              return (
+                <Link
+                  key={p.key}
+                  href={`/tools/professions?profession=${encodeURIComponent(p.key)}&from=${fromSkill}&to=${toSkill}`}
+                  aria-current={current ? "page" : undefined}
+                  className={`inline-flex min-h-11 items-center gap-2 rounded-lg border px-3 text-sm ${current ? "border-accent text-fg" : "border-line text-fg-2 hover:border-accent hover:text-fg"}`}
+                >
+                  <GameIcon src={p.icon} size={24} />
+                  {p.name}
+                </Link>
+              );
+            })}
+          </nav>
+        )}
         <form method="get" className="rounded-xl border border-line bg-panel p-5 space-y-4">
           <div className="grid sm:grid-cols-3 gap-3">
             <label className="text-sm text-fg-2 space-y-1">
@@ -107,6 +131,7 @@ export default async function ProfessionsPage(
           {answer}
         </pre>
         {!corpus.unreachable && <p className="text-xs text-muted">{dataAgeLabel(corpus.dataAsOf)}</p>}
+        {assets && icons.length > 0 && <GameCredit version={assets.version} label={assets.label} what="Icons" />}
       </section>
 
       <section className="space-y-3">

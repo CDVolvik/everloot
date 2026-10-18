@@ -2,16 +2,23 @@ import Link from "next/link";
 import AdSlot from "@/components/AdSlot";
 import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
+import LaunchCountdown from "@/components/LaunchCountdown";
 import LoreSearchForm from "@/components/LoreSearchForm";
 import { tools, toolHref } from "@/data/tools";
 import { LORE_SEARCH_LABEL, organizationJsonLd, websiteJsonLd } from "@/lib/jsonld";
 import { FEED } from "@/lib/seo";
+import { classAndProfessionIcons, loadSiteAssets } from "@/lib/game-assets";
+import GameIcon from "@/components/game/GameIcon";
+import GameCredit from "@/components/game/GameCredit";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/", types: FEED },
 };
 
-export default function Home() {
+export default async function Home() {
+  // Class and profession icons, only when the asset URL is set and the upload has them.
+  const assets = await loadSiteAssets();
+  const icons = classAndProfessionIcons(assets);
   return (
     <div className="space-y-16">
       <JsonLd data={organizationJsonLd()} />
@@ -30,7 +37,10 @@ export default function Home() {
           a farm&apos;s gold per hour. Database facts appear when enough install reports
           agree. Loot-window observations do not establish kill-based drop probabilities.
         </p>
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+        <div className="mt-6">
+          <LaunchCountdown />
+        </div>
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
           <Link
             href="/database"
             className="btn btn-primary"
@@ -90,6 +100,38 @@ export default function Home() {
           })}
         </div>
       </section>
+
+      {/* Classes and professions, in the game's own icons: shown only when the asset files are there */}
+      {assets && (icons.classes.length > 0 || icons.professions.length > 0) && (
+        <section aria-labelledby="classes-professions" className="space-y-4">
+          <h2 id="classes-professions" className="text-xl font-semibold text-fg">Classes and professions</h2>
+          {icons.classes.length > 0 && (
+            <ul aria-label="Talent calculator by class" className="flex flex-wrap gap-2">
+              {icons.classes.map((c) => (
+                <li key={c.key}>
+                  <Link href={`/tools/talents/${c.key}`} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-line bg-panel px-3 text-sm font-medium text-fg hover:border-accent">
+                    <GameIcon src={c.icon} size={28} />
+                    {c.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+          {icons.professions.length > 0 && (
+            <ul aria-label="Profession hubs" className="flex flex-wrap gap-2">
+              {icons.professions.map((p) => (
+                <li key={p.key}>
+                  <Link href={`/tools/professions?profession=${encodeURIComponent(p.key)}`} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-line bg-panel px-3 text-sm text-fg-2 hover:border-accent hover:text-fg">
+                    <GameIcon src={p.icon} size={28} />
+                    {p.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+          <GameCredit version={assets.version} label={assets.label} what="Icons" />
+        </section>
+      )}
 
       <AdSlot slot="inContent" />
 

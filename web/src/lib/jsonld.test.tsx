@@ -23,7 +23,7 @@ test("JsonLd renders nothing for null", () => {
 
 test("Organization carries the repository, the email and the non-affiliation line, and WebSite describes its search as lore search", () => {
   const org = organizationJsonLd() as Record<string, unknown>;
-  expect(org.sameAs).toEqual(["https://github.com/CDVolvik/everloot"]);
+  expect(org.sameAs).toEqual(["https://github.com/CDVolvik/everloot", "https://discord.gg/9CKsbHTRu3"]);
   expect(org.email).toBe("hello@everloot.app");
   expect(org.description).toContain("Not affiliated with or endorsed by Blizzard Entertainment.");
   const site = websiteJsonLd() as { potentialAction: { name: string; target: { urlTemplate: string } } };

@@ -7,6 +7,9 @@ import { itemPage } from "../../../../../../kb/src/item-page";
 import { loadItemFacts } from "@/lib/rollup-compute";
 import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
 import { pinLink } from "@/lib/world-map";
+import { loadItemTips, loadSiteAssets } from "@/lib/game-assets";
+import ItemCard from "@/components/game/ItemCard";
+import GameCredit from "@/components/game/GameCredit";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +31,11 @@ export default async function ItemPage(props: { params: Promise<{ id: string }> 
   const facts = await loadItemFacts();
   const page = itemPage(itemId, facts);
   const title = facts.unreachable ? `Item ${page.itemId}` : page.name ?? `Item ${page.itemId}`;
+  // The game file tooltip only for an item players have reported: any id can be typed into the URL, and
+  // an item found only in the files may be unreleased (the spoiler rule in docs/DATA_POLICY.md).
+  const seen = !facts.unreachable && Boolean(page.name || page.drops.length || page.pins.length);
+  const assets = seen ? await loadSiteAssets() : null;
+  const tip = (await loadItemTips(assets, [itemId])).get(itemId);
 
   return (
     <article className="space-y-8 max-w-4xl">
@@ -42,6 +50,8 @@ export default async function ItemPage(props: { params: Promise<{ id: string }> 
               : "No agreed name yet. A name needs 3 installs reporting the same one."}
         </p>
       </header>
+
+      {tip && <ItemCard tip={tip} />}
 
       {facts.unreachable ? null : page.drops.length === 0 ? (
         <p className="text-fg-2">Loot observations unrecorded. Public frequencies require source observations from 3 install IDs.</p>
@@ -98,6 +108,7 @@ export default async function ItemPage(props: { params: Promise<{ id: string }> 
           All public loot observations
         </Link>
       </p>
+      {assets && tip && <GameCredit version={assets.version} label={assets.label} />}
       {!facts.unreachable && (page.name !== null || page.drops.length > 0) && <AdSlot slot="inContent" />}
     </article>
   );

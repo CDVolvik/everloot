@@ -7,6 +7,9 @@ import { npcPage, stockLabel, vendorPage } from "../../../../../../kb/src/world-
 import { loadWorldFacts } from "@/lib/rollup-compute";
 import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
 import { pinLink } from "@/lib/world-map";
+import { loadItemTips, loadSiteAssets } from "@/lib/game-assets";
+import ItemTip from "@/components/game/ItemTip";
+import GameCredit from "@/components/game/GameCredit";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +45,8 @@ export default async function VendorPage(props: { params: Promise<{ id: string }
     const href = pinLink(pin.mapId, pin.x, pin.y);
     return href ? [{ href, label: `Map ${pin.mapId} at ${pin.x}, ${pin.y}` }] : [];
   });
+  const assets = await loadSiteAssets();
+  const tips = await loadItemTips(assets, facts.unreachable ? [] : page.offers.map((o) => o.itemId));
 
   return (
     <article className="space-y-8 max-w-4xl">
@@ -70,7 +75,9 @@ export default async function VendorPage(props: { params: Promise<{ id: string }
               {page.offers.map((offer) => (
                 <tr key={`${offer.itemId}-${offer.priceCopper}`} className="border-t border-line bg-panel text-fg">
                   <td className="px-4 py-3">
-                    <Link href={`/database/items/${offer.itemId}`} className="text-accent hover:underline underline-offset-4">Item {offer.itemId}</Link>
+                    <ItemTip tip={tips.get(offer.itemId)}>
+                      <Link href={`/database/items/${offer.itemId}`} className="text-accent hover:underline underline-offset-4">Item {offer.itemId}</Link>
+                    </ItemTip>
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums">{formatCopper(offer.priceCopper)}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{stockLabel(offer)}</td>
@@ -90,6 +97,7 @@ export default async function VendorPage(props: { params: Promise<{ id: string }
         {" · "}
         <Link href="/database/vendors" className="text-accent hover:underline underline-offset-4">Vendor lookup</Link>
       </p>
+      {assets && tips.size > 0 && <GameCredit version={assets.version} label={assets.label} />}
       {!facts.unreachable && page.offers.length > 0 && <AdSlot slot="inContent" />}
     </article>
   );

@@ -14,7 +14,9 @@ import { writeCatalogs } from "./client-catalog.js";
 import { buildClientAssets } from "./client-assets.js";
 import { writeWorldMapData } from "./world-map-data.js";
 import { clientSnapshotName, readClientMeta, writeClientSnapshot } from "./client-snapshot.js";
-import { diffRaidBuffs, RaidBuffTable } from "./raid-buffs.js";
+import { Curated, diffRaidBuffs, RaidBuffTable } from "./raid-buffs.js";
+import { parseItemIds } from "./assets/items.js";
+import { parse as parseYaml } from "yaml";
 import { parseArgs } from "./args.js";
 import { buildWatchCommand } from "./build-watch/command.js";
 import type { Game, NsKind, Region } from "./blizzard/namespaces.js";
@@ -84,9 +86,13 @@ const USAGE = `usage: npm run kb -- <command> --db <path>
     from a snapshot, stamped with the build and labelled "found in game files, unconfirmed". See
     docs/TALENT_CATALOG.md. Not for publication)
   raid-buffs-diff <old/raid-buffs.json> <new/raid-buffs.json>   (entries whose scope changed between builds)
-  client-assets <snapshot.sqlite> [--out data/assets]
-    (icons, resolved tooltip text and talent-frame art of the talent catalog, from unencrypted files of the snapshot's build,
-    into <out>/<product>-<build>-<config>/ with manifest.json. Needs Python with Pillow. Never commit the output; see docs/ASSETS.md)
+  client-assets <snapshot.sqlite> [--out data/assets] [--list lists/raid-buffs.yaml] [--items <id list>]
+    (everything the site shows from the game files, from unencrypted files of the snapshot's build: talent icons,
+    resolved tooltip text and talent-frame art; item icons and item tooltip facts (all named items, or only the ids
+    in --items); class, talent tree, raid buff and profession icons; continent and zone map pictures. Into
+    <out>/<product>-<build>-<config>/ with manifest.json and checksums.json (public bucket), and the item tooltip
+    facts into <out>/<product>-<build>-<config>-private/ (private bucket only). Needs Python with Pillow. Never
+    commit the output; see docs/ASSETS.md)
   client-diff <old.sqlite> <new.sqlite> [--out diff.json]   (field-level diff of two snapshots)
   client-map <snapshot.sqlite> [--out ../web/src/data/game-data/map.json]
     (zone rectangles in world coordinates, continents and dungeon and raid entrances from a client
@@ -361,8 +367,16 @@ async function main(): Promise<number> {
         return 1;
       }
       await pinDefinitions();
-      const run = await buildClientAssets({ snapshotPath: args[0], outDir: flags.get("out") || "data/assets", source });
+      // The raid buff list names the spells whose icons the raid builder shows.
+      const list = flags.get("list") || "lists/raid-buffs.yaml";
+      const buffSpells = existsSync(list) ? Curated.parse(parseYaml(readFileSync(list, "utf8"))).flatMap((c) => c.spells) : [];
+      const itemsFile = flags.get("items");
+      const items = itemsFile ? parseItemIds(readFileSync(itemsFile, "utf8")) : undefined;
+      const run = await buildClientAssets({ snapshotPath: args[0], outDir: flags.get("out") || "data/assets", source, buffSpells, items });
       for (const n of run.notes) console.log(n);
+      for (const s of run.manifest.skippedMaps.slice(0, 10)) console.log(`map skipped: ${s}`);
+      // Printed before the public folder line: the upload script reads both.
+      if (run.privateDir) console.log(`private -> ${run.privateDir}`);
       if (run.manifest.missingFrames.length) console.log(`frame pieces not available: ${run.manifest.missingFrames.join(", ")}`);
       console.log(`-> ${run.dir}`);
       return 0;

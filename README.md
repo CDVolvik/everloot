@@ -1,4 +1,9 @@
-# Everloot
+<h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/media/everloot-logo-dark.png">
+    <img alt="Everloot" src="docs/media/everloot-logo-light.png" width="280">
+  </picture>
+</h1>
 
 **An open, player-built database for World of Warcraft: Forever. An addon records what you see, and
 the site states a fact only once three installs agree.**
@@ -7,6 +12,7 @@ the site states a fact only once three installs agree.**
 [![Code: AGPL-3.0](https://img.shields.io/badge/code-AGPL--3.0-blue)](LICENSE)
 [![Data: CC BY-SA 4.0](https://img.shields.io/badge/data-CC%20BY--SA%204.0-lightgrey)](docs/DATA_POLICY.md)
 [![Site: everloot.app](https://img.shields.io/badge/site-everloot.app-2f7a0a)](https://everloot.app)
+[![Discord](https://img.shields.io/badge/chat-Discord-5865F2)](https://discord.gg/9CKsbHTRu3)
 [![Latest addon release](https://img.shields.io/github/v/release/CDVolvik/everloot?filter=addon-v*&label=addon)](https://github.com/CDVolvik/everloot/releases)
 
 ![The Everloot home page](docs/media/home.webp)
@@ -175,7 +181,7 @@ as much as a pull request.
 - Bugs and wrong data: [issues](https://github.com/CDVolvik/everloot/issues/new/choose)
 - A first code contribution: issues labelled
   [`good first issue`](https://github.com/CDVolvik/everloot/labels/good%20first%20issue)
-- Chat: the Everloot Discord opens at launch
+- Chat: the [Everloot Discord](https://discord.gg/9CKsbHTRu3)
 - Security problems: [`SECURITY.md`](SECURITY.md), never a public issue
 
 Read [`CONTRIBUTING.md`](CONTRIBUTING.md) first: it covers sign-off (`git commit -s`), pull request

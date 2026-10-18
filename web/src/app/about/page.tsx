@@ -3,7 +3,7 @@ import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import JsonLd from "@/components/JsonLd";
 import { tools } from "@/data/tools";
-import { aboutPageJsonLd } from "@/lib/jsonld";
+import { aboutPageJsonLd, DISCORD_INVITE } from "@/lib/jsonld";
 
 const TITLE = "About Everloot";
 const description = "Everloot offers free WoW: Forever tools and a database built from player addon uploads. It is run by its maintainer and not affiliated with Blizzard.";
@@ -27,6 +27,13 @@ export default function AboutPage() {
         rates, spawn maps, quest pages and guild progression collected by
         players running our lightweight addon — plus free tools that make the
         data usable. No account required to browse.
+      </p>
+
+      <p className="text-fg-2">
+        How uploads become facts, and what is never published, is on{" "}
+        <Link href="/methodology" className="text-accent hover:underline underline-offset-4">How we count</Link>.
+        Questions, bug reports and ideas are welcome on the{" "}
+        <a href={DISCORD_INVITE} rel="noopener" className="text-accent hover:underline underline-offset-4">Everloot Discord</a>.
       </p>
 
       <h2 className="text-xl text-fg mt-8">
