@@ -47,6 +47,11 @@ export const CLIENT_TABLES = {
   AreaTable: 1353545, ChrRaces: 1305311, Faction: 1361972, CharTitles: 1349054, Languages: 1135325,
   CurrencyTypes: 1095531, CreatureFamily: 1351351, CreatureType: 1131315, Holidays: 996357,
   Toy: 988200, BattlePetSpecies: 841622,
+  // W0 (docs/2026-10-18-client-data-placement.md): the holiday calendar's names and dates, the quest
+  // taxonomy the quest pages sort by, and the display model of chests, herbs and ore.
+  HolidayNames: 996359, HolidayDescriptions: 996360, HolidayXTimeEvent: 6905813,
+  QuestInfo: 1120960, QuestSort: 1134585,
+  GameObjectDisplayInfo: 1266277, GameObjectArtKit: 1266737,
   // Partial on the client: most of what these describe (spawns, quest text) lives on the server.
   Creature: 841631, GameObjects: 841620, QuestV2: 1139443,
   // Loading screens (Map.LoadingScreenID names a row; the row names its picture files), for the page

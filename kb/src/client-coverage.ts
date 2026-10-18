@@ -28,10 +28,16 @@ export const NEEDED_FIELDS: Partial<Record<keyof typeof CLIENT_TABLES, readonly 
   CreatureFamily: ["Name_lang", "IconFileID"],
   CreatureType: ["Name_lang"],
   Holidays: ["HolidayNameID"],
+  HolidayNames: ["Name_lang"],
+  HolidayDescriptions: ["Description_lang"],
+  QuestInfo: ["InfoName_lang", "Type"],
+  QuestSort: ["SortName_lang", "UiOrderIndex"],
   Toy: ["ItemID"],
   BattlePetSpecies: ["CreatureID"],
   Creature: ["Name_lang", "Classification", "CreatureType", "CreatureFamily"],
   GameObjects: ["Name_lang", "TypeID", "OwnerID", "Pos"],
+  GameObjectDisplayInfo: ["FileDataID"],
+  GameObjectArtKit: ["AttachModelFileID"],
   QuestV2: ["UniqueBitFlag"],
 };
 

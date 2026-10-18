@@ -89,6 +89,15 @@ test("the coverage tables are read by the file data ids the WoWDBDefs manifest l
   });
 });
 
+test("the W0 tables are read by the file data ids the WoWDBDefs manifest lists for them", () => {
+  // manifest.json at WoWDBDefs b9a63096cdd9, field db2FileDataID.
+  expect(CLIENT_TABLES).toMatchObject({
+    HolidayNames: 996359, HolidayDescriptions: 996360, HolidayXTimeEvent: 6905813,
+    QuestInfo: 1120960, QuestSort: 1134585,
+    GameObjectDisplayInfo: 1266277, GameObjectArtKit: 1266737,
+  });
+});
+
 test("a table the build does not have is reported as missing, not invented", async () => {
   const { tables, missing } = await extractTables(fake({ [CLIENT_TABLES.Item]: { rows: [[1, { ID: 1 }]] } }));
   expect(tables.map((t) => t.table)).toEqual(["Item"]);
