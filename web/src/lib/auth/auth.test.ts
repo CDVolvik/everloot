@@ -108,6 +108,37 @@ test("a new Battle.net account fills bnet_id and battletag", async () => {
   expect(seen).toEqual([[expect.any(String), "123", "Thrall#1"]]);
 });
 
+const LEGACY_ID = "5f0c1f0e-6b7a-4c53-9a1e-0d4f4b2f9a11";
+const legacyUser = {
+  id: LEGACY_ID, name: "Thrall#1", email: "bnet-123@users.everloot.invalid",
+  email_verified: false, created_at: new Date("2025-01-01"), updated_at: new Date("2025-01-01"),
+};
+// What the migration's backfill gives a Battle.net user, with provider tokens a legacy row could still hold.
+const legacyAccount = {
+  id: "a-legacy-account", user_id: LEGACY_ID, provider_id: "battlenet", account_id: "123",
+  access_token: "old-at", refresh_token: "old-rt", id_token: "old-it",
+  created_at: new Date("2025-01-01"), updated_at: new Date("2025-01-01"),
+};
+
+test("a legacy Battle.net account keeps its id on sign-in and its provider tokens are cleared", async () => {
+  const { db } = await signInWithBattlenet({ seed: { users: [legacyUser], auth_account: [{ ...legacyAccount }] } });
+  expect(db.auth_session).toHaveLength(1);
+  expect(db.auth_session[0].user_id).toBe(LEGACY_ID);
+  expect(db.users).toHaveLength(1);
+  expect(db.auth_account).toHaveLength(1);
+  expect(db.auth_account[0]).toMatchObject({ user_id: LEGACY_ID, access_token: null, refresh_token: null, id_token: null });
+});
+
+test("a legacy account is never linked by an unverified placeholder email", async () => {
+  // A users row with no auth_account row: the placeholder email must not be enough to claim it.
+  const { cookies, db, response } = await signInWithBattlenet({ seed: { users: [legacyUser] } });
+  expect(response.headers.get("location")).toContain("error=account_not_linked");
+  expect(cookies).not.toMatch(/session_token=/);
+  expect(db.auth_session).toEqual([]);
+  expect(db.users).toHaveLength(1);
+  expect(db.auth_account).toEqual([]);
+});
+
 test.each([
   ["answers 500", () => new Response("nope", { status: 500 })],
   ["is unreachable", () => { throw new TypeError("fetch failed"); }],
