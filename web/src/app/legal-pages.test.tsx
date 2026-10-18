@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, test, vi } from "vitest";
+import { REPO_URL } from "@/lib/source";
 
 vi.mock("next/link", () => ({
   default: ({ href, children, className }: { href: string; children: ReactNode; className?: string }) => <a href={href} className={className}>{children}</a>,
@@ -51,7 +52,7 @@ test("/security says how to report, what is in scope, and matches SECURITY.md on
   const policy = readFileSync(new URL("../../../SECURITY.md", import.meta.url), "utf8");
   expect(text).toContain("hello@everloot.app");
   expect(policy).toContain("hello@everloot.app");
-  expect(html).toContain("https://github.com/CDVolvik/everloot/security/advisories/new");
+  expect(html).toContain(`${REPO_URL}/security/advisories/new`);
   expect(html).toContain('href="/.well-known/security.txt"');
   expect(text).toContain("In scope");
 });
@@ -59,7 +60,7 @@ test("/security says how to report, what is in scope, and matches SECURITY.md on
 test("/.well-known/security.txt follows RFC 9116 and has not expired", () => {
   const file = readFileSync(new URL("../../public/.well-known/security.txt", import.meta.url), "utf8");
   expect(file).toContain("Contact: mailto:hello@everloot.app");
-  expect(file).toContain("Contact: https://github.com/CDVolvik/everloot/security/advisories/new");
+  expect(file).toContain("Contact: https://github.com/Everloot/everloot/security/advisories/new");
   expect(file).toContain("Policy: https://everloot.app/security");
   expect(file).toContain("Canonical: https://everloot.app/.well-known/security.txt");
   const expires = file.match(/^Expires: (.+)$/m)?.[1];

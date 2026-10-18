@@ -4,7 +4,8 @@ import { deployedSha, REPO_URL, sourceUrl } from "@/lib/source";
 import Bracket from "./Bracket";
 import { CookiePreferencesButton } from "./CookieConsent";
 
-type Item = { label: string; href: string; external?: boolean };
+/** `plain` marks a same-origin file the router should not prefetch, such as a feed. */
+type Item = { label: string; href: string; external?: boolean; plain?: boolean };
 
 const COLUMNS: { title: string; items: Item[] }[] = [
   {
@@ -26,7 +27,7 @@ const COLUMNS: { title: string; items: Item[] }[] = [
       { label: "API and MCP server", href: "/connect" },
       { label: "How we count", href: "/methodology" },
       { label: "Data policy", href: `${REPO_URL}/blob/main/docs/DATA_POLICY.md`, external: true },
-      { label: "Changes feed (RSS)", href: "/changes/feed.xml" },
+      { label: "Changes feed (RSS)", href: "/changes/feed.xml", plain: true },
     ],
   },
   {
@@ -56,6 +57,7 @@ const itemClass = "inline-flex items-center min-h-11 text-sm text-fg-2 hover:tex
 
 function FooterLink({ item }: { item: Item }) {
   if (item.external) return <a href={item.href} rel="noopener" className={itemClass}>{item.label}</a>;
+  if (item.plain) return <a href={item.href} className={itemClass}>{item.label}</a>;
   return <Link href={item.href} className={itemClass}>{item.label}</Link>;
 }
 

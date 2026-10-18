@@ -113,8 +113,8 @@ export default function TermsPage() {
             linked on every page.
           </li>
           <li>
-            <span className="text-fg">Everything else on the pages</span> (our words, layout and design): ours, under the
-            same {CC_BY_SA.name} licence as the data unless a page says otherwise.
+            <span className="text-fg">Our own words on the pages</span>: ours, under the same {CC_BY_SA.name} licence as
+            the data unless a page says otherwise. The layout and design are part of the code, under the AGPL.
           </li>
         </ul>
         <p className="text-fg-2">

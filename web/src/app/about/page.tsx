@@ -3,7 +3,7 @@ import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import JsonLd from "@/components/JsonLd";
 import { tools } from "@/data/tools";
-import { aboutPageJsonLd, DISCORD_INVITE } from "@/lib/jsonld";
+import { aboutPageJsonLd, DISCORD_INVITE, NON_AFFILIATION, TRADEMARK_LINE } from "@/lib/jsonld";
 
 const TITLE = "About Everloot";
 const description = "Everloot offers free WoW: Forever tools and a database built from player addon uploads. It is run by its maintainer and not affiliated with Blizzard.";
@@ -81,9 +81,7 @@ export default function AboutPage() {
         Not affiliated with Blizzard
       </h2>
       <p className="text-fg-2">
-        Everloot is an independent fan project. World of Warcraft, its
-        artwork, and related trademarks are property of Blizzard Entertainment,
-        Inc.
+        Everloot is an independent fan project. {NON_AFFILIATION} {TRADEMARK_LINE}
       </p>
     </article>
   );

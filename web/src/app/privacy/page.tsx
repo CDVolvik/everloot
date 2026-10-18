@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { pageMetadata } from "@/lib/seo";
 import { REVOKED_KEPT_DAYS, USAGE_KEPT_DAYS } from "@/lib/api-keys";
+import { SESSION_SECONDS } from "@/lib/supabase/server";
+
+const SESSION_DAYS = Math.round(SESSION_SECONDS / 86_400);
 
 export const metadata: Metadata = {
   ...pageMetadata({ title: "Privacy Policy", description: "How Everloot handles your data, cookies and usage statistics, and what happens to the addon files you upload to the WoW: Forever database.", path: "/privacy" }),
@@ -66,7 +69,7 @@ export default function PrivacyPage() {
           and BattleTag to manage your account and sharing choices. The current
           sign-in flow requests identity and World of Warcraft profile permissions,
           but reads only your identity and BattleTag. Provider access tokens are
-          not stored. The essential login cookie lasts up to 30 days; signing out
+          not stored. The essential login cookie lasts up to {SESSION_DAYS} days; signing out
           revokes that Everloot session. Signing in does not publish your named
           addon records or establish guild officer authority.
         </li>
@@ -75,8 +78,8 @@ export default function PrivacyPage() {
           Connect page, we store a one-way hash of it, the last four characters,
           your label, which account it belongs to, when it was made, last used
           and revoked, and a daily count of its requests per endpoint. Not what
-          was asked. Revoking a key stops it at once. Daily counts are kept 90
-          days. A revoked key and its counts are deleted 30 days after it was
+          was asked. Revoking a key stops it at once. Daily counts are kept {USAGE_KEPT_DAYS}{" "}
+          days. A revoked key and its counts are deleted {REVOKED_KEPT_DAYS} days after it was
           revoked, or at once when you delete it on the Connect page. To delete
           your account and everything tied to it, email us (below).
         </li>
@@ -87,7 +90,10 @@ export default function PrivacyPage() {
           records without the install id, so anyone can check our counts. The
           facts the site states, such as drop rates, spawn points and recipe
           ranges, appear only after at least three installs report them.
-          Install IDs are not proof of independent people. Guild data publishes only through an authorized officer upload. A
+          Install IDs are not proof of independent people. An upload that contains a scan is stored with a keyed
+          one-way hash of the address it came from, never the address, so we can count distinct reporters; the hash
+          stays in private storage with the upload and is never published. The private completion rollup records
+          which address hash and install produced each entry until it is rebuilt. Guild data publishes only through an authorized officer upload. A
           character owner with a verified sharing grant can opt out on the upload
           page; anyone else can ask us by email (below). Uploads build the public database; we never
           sell them.
@@ -207,12 +213,13 @@ export default function PrivacyPage() {
 
       <h2 id="retention" className="text-xl text-fg mt-6">How long we keep things</h2>
       <ul className="list-disc pl-6 text-fg-2">
-        <li><strong>Login cookie:</strong> up to 30 days, or until you sign out.</li>
+        <li><strong>Login cookie:</strong> up to {SESSION_DAYS} days, or until you sign out.</li>
         <li><strong>Cookie choice:</strong> in your browser until you clear it or change it.</li>
         <li><strong>Battle.net Account ID and BattleTag:</strong> until you ask us to delete your account.</li>
         <li><strong>API key usage counts:</strong> {USAGE_KEPT_DAYS} days. A revoked key and its counts: {REVOKED_KEPT_DAYS} days after revocation, or at once when you delete it.</li>
         <li><strong>Rate-limit hashes:</strong> a short time, long enough to enforce the limit, then discarded.</li>
         <li><strong>Uploads:</strong> until you ask us to remove them. They are the public database.</li>
+        <li><strong>Upload address hash:</strong> as long as the upload it belongs to. The completion rollup keeps its link between an address hash and an install until the rollup is next rebuilt.</li>
         <li><strong>Launch-notification email:</strong> until you ask us to remove it.</li>
       </ul>
 

@@ -40,6 +40,7 @@ export function organizationJsonLd(): JsonLd {
     email: CONTACT_EMAIL,
     description: `${SITE_BLURB} ${NON_AFFILIATION}`,
     sameAs: [REPO_URL, DISCORD_INVITE],
+    publishingPrinciples: `${SITE_URL}/methodology`,
   };
 }
 

@@ -46,8 +46,9 @@ export default function SecurityPage() {
 
       <h2 className="text-xl text-fg mt-8">What the site already does</h2>
       <p className="text-fg-2">
-        The code is open, so you can read what runs. Uploads are previewed before they are sent and published without names or
-        install ids, the way the <a href="/methodology" className={link}>methodology</a> describes. Passwords are never
+        The code is open, so you can read what runs. Uploads are previewed before they are sent and published without
+        install ids, and without names unless the player granted sharing, the way the{" "}
+        <a href="/methodology" className={link}>methodology</a> describes. Passwords are never
         handled here: sign-in goes through Battle.net, and Everloot stores no provider tokens.
       </p>
     </article>
