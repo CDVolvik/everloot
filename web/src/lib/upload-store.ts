@@ -521,8 +521,12 @@ export function createUploadStore(opts: {
     } else {
       await put(COMPLETION_KEY, served);
       if (pending) {
-        const gone = await r2Fetch(COMPLETION_REBUILD_KEY, { method: "DELETE" });
-        if (!gone.ok && gone.status !== 404) throw new Error(`completion rebuild cleanup failed (${gone.status})`);
+        // Delete only the rebuild object this run read: a ?rebuild=1 that started a new one since then keeps it.
+        const latest = await r2Fetch(COMPLETION_REBUILD_KEY, { method: "HEAD" });
+        if (latest.ok && latest.headers.get("etag") === pending.etag) {
+          const gone = await r2Fetch(COMPLETION_REBUILD_KEY, { method: "DELETE", headers: { "if-match": pending.etag! } });
+          if (!gone.ok && gone.status !== 404 && gone.status !== 412) throw new Error(`completion rebuild cleanup failed (${gone.status})`);
+        }
       }
     }
     completionCached = null;

@@ -6,8 +6,9 @@
  * counts it), or the install when an upload carries none. A voter backs one content per entry, the one
  * it reported last; an entry is listed once 3 voters back the identical content, and among such
  * contents the most supported wins, then the one confirmed first. Supporters are counted up to a sample
- * of 64. The contents one voter, one install or one upload may create are capped, and whatever has the
- * fewest supporters (then was seen least recently) is the first thing evicted or trimmed.
+ * of 64. The contents one voter, one install or one upload may create are capped, by count and, per voter,
+ * by bytes. Of the catalog, whatever has the fewest supporters (then was seen least recently) is the first
+ * thing evicted or trimmed, and all of it is trimmed before any progress an owner still shares.
  *
  * Owned rows keep only the latest row per (install, character, id), and titles and completed quests as
  * one sorted union. Owned data is shown only for installs whose current grant covers the collection
@@ -33,6 +34,8 @@ export const COMPLETION_LIMITS = {
   /** Contents one voter or one install may have created and still in the rollup, confirmed or not (a real install creates about 3000). */
   createdPerVoter: 5000,
   createdPerInstall: 5000,
+  /** Bytes of listed content one voter may have created and still in the rollup (a real install creates about 500 KB). */
+  createdBytesPerVoter: 1_000_000,
   /** New contents one upload may add. */
   newPerUpload: 4000,
   /** Canonical JSON of the listed fields of one entry. */
@@ -42,8 +45,6 @@ export const COMPLETION_LIMITS = {
   installs: 20_000,
   /** An id is evicted for a new one only while its best content has at most this many supporters. */
   evictableSupport: COMPLETION_AGREEMENT,
-  /** Contents with at most this many supporters are trimmed before any granted owner's progress. */
-  lowSupport: 2 * COMPLETION_AGREEMENT,
 };
 
 /**
@@ -126,11 +127,12 @@ const lastSeen = (vs: Variant[]) => vs.reduce((n, v) => Math.max(n, v.s), 0);
 type FoldIndex = {
   ids: Record<CatalogKey, number>;
   voter: Map<string, number>;
+  voterBytes: Map<string, number>;
   install: Map<string, number>;
   queue: Partial<Record<CatalogKey, { ids: string[]; next: number } | null>>;
 };
 function indexOf(state: CompletionState): FoldIndex {
-  const ix: FoldIndex = { ids: { a: 0, f: 0, t: 0, q: 0 }, voter: new Map(), install: new Map(), queue: {} };
+  const ix: FoldIndex = { ids: { a: 0, f: 0, t: 0, q: 0 }, voter: new Map(), voterBytes: new Map(), install: new Map(), queue: {} };
   for (const key of ["a", "f", "t", "q"] as const) {
     for (const variants of Object.values(state.catalog[key])) {
       ix.ids[key]++;
@@ -141,6 +143,7 @@ function indexOf(state: CompletionState): FoldIndex {
 }
 function credit(ix: FoldIndex, v: Variant, delta: number) {
   ix.voter.set(v.by[0], (ix.voter.get(v.by[0]) ?? 0) + delta);
+  ix.voterBytes.set(v.by[0], (ix.voterBytes.get(v.by[0]) ?? 0) + delta * v.c.length);
   ix.install.set(v.by[1], (ix.install.get(v.by[1]) ?? 0) + delta);
 }
 
@@ -184,6 +187,7 @@ function foldCatalog(state: CompletionState, row: IntakeRecord, ctx: UploadConte
   if (!variant) {
     if (ctx.added >= COMPLETION_LIMITS.newPerUpload) return;
     if ((ix.voter.get(ctx.voter) ?? 0) >= COMPLETION_LIMITS.createdPerVoter) return;
+    if ((ix.voterBytes.get(ctx.voter) ?? 0) + content.length > COMPLETION_LIMITS.createdBytesPerVoter) return;
     if ((ix.install.get(ctx.install) ?? 0) >= COMPLETION_LIMITS.createdPerInstall) return;
     if (!variants) {
       if (ix.ids[key] >= COMPLETION_LIMITS.idsPerKind && !evictOne(bucket, key, ix)) return;
@@ -305,22 +309,25 @@ export function foldCompletion(state: CompletionState, uploads: readonly Complet
 const bytes = (value: unknown) => Buffer.byteLength(JSON.stringify(value));
 
 /**
- * Keep the state under `maxBytes` by trimming instead of failing: past 90% of the limit it drops, until it is
- * under 80%, in this order, each ranked fewest supporters first and then least recently seen (characters
- * oldest first):
+ * Keep the state under `maxBytes` by trimming instead of failing. Past 90% of the limit it drops, in this order,
+ * catalog contents ranked fewest supporters first and then least recently seen, characters oldest first:
  *   1. contents nobody confirmed;
  *   2. characters of installs without a live grant;
- *   3. contents with few supporters (at most `lowSupport`);
- *   4. any character;
- *   5. any content.
- * `live` is the set of installs whose grant is live now. When it is null (the grant lookup failed) no
- * character is trimmed, since nobody can tell whose progress is still shared. Returns what was dropped.
+ *   3. every other catalog content;
+ *   4. only then characters of installs with a live grant, which happens only when owned progress alone is
+ *      over the target.
+ * `live` is the set of installs whose grant is live now; with it the target is 80% of the limit.
+ * When it is null (the grant lookup failed) nobody can tell whose progress is still shared: step 2 drops only
+ * installs that hold no grant at all, step 4 never runs, and the catalog is trimmed only as far as a write needs
+ * (85%), and not at all if the progress kept is already over that, since trimming could not make it fit; the
+ * caller's size check then fails the run and the next one, with the lookup working, trims properly.
+ * Returns what was dropped.
  */
 export function trimCompletion(state: CompletionState, maxBytes: number, live: ReadonlySet<string> | null): { size: number; variants: number; characters: number } {
   let size = bytes(state);
   const out = { size, variants: 0, characters: 0 };
   if (size <= maxBytes * 0.9) return out;
-  const target = maxBytes * 0.8;
+  const target = live ? maxBytes * 0.8 : maxBytes * 0.85;
   const dropVariants = (pick: (v: Variant) => boolean) => {
     const all: { bucket: Record<string, Variant[]>; id: string; v: Variant }[] = [];
     for (const bucket of Object.values(state.catalog)) for (const [id, vs] of Object.entries(bucket)) for (const v of vs) if (pick(v)) all.push({ bucket, id, v });
@@ -352,10 +359,9 @@ export function trimCompletion(state: CompletionState, maxBytes: number, live: R
     }
   };
   dropVariants((v) => !confirmed(v));
-  if (size > target && live) dropCharacters((installId) => !live.has(installId));
-  if (size > target) dropVariants((v) => v.v.length <= COMPLETION_LIMITS.lowSupport);
+  if (size > target) dropCharacters(live ? (installId) => !live.has(installId) : (installId) => state.owned[installId].grants.length === 0);
+  if (size > target && (live || bytes(state.owned) <= target)) dropVariants(() => true);
   if (size > target && live) dropCharacters(() => true);
-  if (size > target) dropVariants(() => true);
   out.size = bytes(state);
   return out;
 }

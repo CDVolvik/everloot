@@ -563,8 +563,10 @@ describe("completion rollup", () => {
   });
 
   /** R2 and the upload index in memory: objects are really stored, and the index honours received_at=gte. */
-  function memoryCloud(uploads: Record<string, unknown>, rows: { id: string; object_key: string; received_at: string }[]) {
+  function memoryCloud(uploads: Record<string, unknown>, rows: { id: string; object_key: string; received_at: string }[], onPut?: (key: string) => void) {
     const objects = new Map<string, string>();
+    const etags = new Map<string, string>();
+    let version = 0;
     const reads: string[] = [];
     const fn = (async (input: RequestInfo | URL, init?: RequestInit) => {
       const req = new Request(input, init);
@@ -577,12 +579,24 @@ describe("completion rollup", () => {
         reads.push(key);
         return key in uploads ? Response.json(uploads[key]) : new Response("gone", { status: 404 });
       }
-      if (req.method === "GET") return objects.has(key) ? new Response(objects.get(key), { headers: { etag: '"e"' } }) : new Response("missing", { status: 404 });
-      if (req.method === "PUT") { objects.set(key, await req.text()); return new Response(null, { status: 200 }); }
-      if (req.method === "DELETE") { objects.delete(key); return new Response(null, { status: 204 }); }
+      if (req.method === "GET") return objects.has(key) ? new Response(objects.get(key), { headers: { etag: etags.get(key)! } }) : new Response("missing", { status: 404 });
+      if (req.method === "HEAD") return objects.has(key) ? new Response(null, { headers: { etag: etags.get(key)! } }) : new Response(null, { status: 404 });
+      if (req.method === "PUT") {
+        objects.set(key, await req.text()); etags.set(key, `"v${++version}"`);
+        onPut?.(key);
+        return new Response(null, { status: 200 });
+      }
+      if (req.method === "DELETE") {
+        const match = req.headers.get("if-match");
+        if (match && match !== etags.get(key)) return new Response(null, { status: 412 });
+        objects.delete(key); etags.delete(key);
+        return new Response(null, { status: 204 });
+      }
       return new Response("no route", { status: 404 });
     }) as typeof fetch;
-    return { fn, objects, reads };
+    /** Another run writing an object directly (a concurrent ?rebuild=1). */
+    const write = (key: string, body: string) => { objects.set(key, body); etags.set(key, `"v${++version}"`); };
+    return { fn, objects, reads, write };
   }
   const SERVED = "snapshots/completion.json";
   const REBUILD = "snapshots/completion-rebuild.json";
@@ -613,6 +627,23 @@ describe("completion rollup", () => {
     expect(voters(SERVED)).toBe(3);
   });
 
+  test("a ?rebuild=1 that starts between a finished rebuild's swap and its cleanup is not deleted", async () => {
+    const { rows, uploads } = many(3);
+    let racing = false;
+    const mem = memoryCloud(uploads, rows, (key) => {
+      // The moment the finished rebuild is swapped in, another run starts a new rebuild.
+      if (racing && key === SERVED) { racing = false; mem.write(REBUILD, JSON.stringify({ version: 2, generatedAt: "x", state: { version: 2, catalog: { a: {}, f: {}, t: {}, q: {} }, owned: {} }, lastReceivedAt: null, lastIds: [] })); }
+    });
+    const store = () => createUploadStore({ cloud, localDir: "unused", fetch: mem.fn, now, completionBatch: 2 });
+    await store().writeCompletion({ rebuild: true });
+    expect(mem.objects.has(REBUILD)).toBe(true);
+    racing = true;
+    expect(await store().writeCompletion()).toMatchObject({ remaining: 0, rebuilding: false });
+    // The new rebuild survived, and the next run continues it.
+    expect(JSON.parse(mem.objects.get(REBUILD)!).lastReceivedAt).toBeNull();
+    expect(await store().writeCompletion()).toMatchObject({ added: 2, rebuilding: true });
+  });
+
   test("a run stops at its time budget after a whole batch and saves its place, so no input can stall the rollup", async () => {
     const { rows, uploads } = many(130);
     const mem = memoryCloud(uploads, rows);
@@ -636,9 +667,9 @@ describe("completion rollup", () => {
     expect(mem.reads[0]).toBe("uploads/u64.json");
   });
 
-  test("when the grant lookup fails, a trim keeps every character", async () => {
+  test("when the grant lookup fails, a trim keeps every character of an install that holds a grant", async () => {
     const rows = Array.from({ length: 4 }, (_, i) => ({ id: `u${i}`, object_key: `uploads/u${i}.json`, received_at: stamp(i) }));
-    const uploads = Object.fromEntries(rows.map((r, i) => [r.object_key, { records: [
+    const uploads = Object.fromEntries(rows.map((r, i) => [r.object_key, { publicationGrants: ["a".repeat(64)], records: [
       { kind: "quest_owned", installId: `install-${i}`, eventId: `q:${i}`, capturedAt, characterKey: "0a1b2c3d", class: "MAGE", level: 40, questIds: [1, 2, 3] },
       ...Array.from({ length: 40 }, (_, k) => ({ ...title(`install-${i}`, k), titleId: 100 + i * 40 + k, name: `Junk ${i} ${k}` })),
     ] }]));

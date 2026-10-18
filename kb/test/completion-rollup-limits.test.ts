@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import {
-  agreedCatalog, COMPLETION_LIMITS, completionFactsOf, emptyCompletion, foldCompletion, normalizeCompletion, trimCompletion,
+  agreedCatalog, COMPLETION_LIMITS, COMPLETION_MAX_BYTES, completionFactsOf, emptyCompletion, foldCompletion, normalizeCompletion, trimCompletion,
   type CompletionState, type CompletionUpload,
 } from "../src/completion-rollup.js";
 
@@ -78,15 +78,115 @@ test("the trim drops low-support entries, junk included, before any granted owne
   expect(Object.keys(state.catalog.a).filter((id) => Number(id) < 50_000).length).toBeLessThan(3000);
 });
 
-test("when the grant lookup failed, the trim leaves every character alone", () => {
+/** Characters with a few hundred achievements and quests each, injected straight into the state. */
+function character(n: number) {
+  return {
+    class: "MAGE", level: 60, at: day(1 + n), n: 1,
+    a: Object.fromEntries(Array.from({ length: 300 }, (_, i) => [String(1000 + i), { at: day(1), n: 1, c: i % 2 === 0, m: 1, t: 2 }])),
+    f: {}, t: [1, 2, 3], q: Array.from({ length: 2000 }, (_, i) => i + 1),
+  };
+}
+function addInstall(state: CompletionState, installId: string, grants: string[], characters: number) {
+  state.owned[installId] = {
+    grants, dropped: 0,
+    characters: Object.assign(Object.create(null), Object.fromEntries(Array.from({ length: characters }, (_, i) => [`0000000${i}`, character(i)]))),
+  };
+}
+
+/**
+ * The rollup at its real 32 MB limit: 20 real entries with 20 supporters each (seen long ago), one live owner
+ * with 8 characters, and junk backed by every one of `junk` colluding addresses (so each junk entry has more
+ * supporters than the old "low support" bar), recently seen, up to 95% of the limit.
+ */
+function atTheLimit(junk: number) {
   const state = emptyCompletion();
-  foldCompletion(state, [{ grants: [], receivedAt: day(1), records: Array.from({ length: 8 }, (_, i) => ({
-    kind: "quest_owned", installId: `install-${i}`, eventId: `q:${i}`, capturedAt: day(1), characterKey: "0a1b2c3d", class: "MAGE", level: 40,
-    questIds: Array.from({ length: 200 }, (_, q) => q + 1),
-  })) }]);
-  const out = trimCompletion(state, Math.floor(JSON.stringify(state).length / 2), null);
-  expect(out.characters).toBe(0);
-  expect(Object.values(state.owned).every((i) => Object.keys(i.characters).length === 1)).toBe(true);
+  const realVoters = Array.from({ length: 20 }, (_, i) => `r:${reporter(8000 + i)}`);
+  for (let i = 0; i < 20; i++) {
+    state.catalog.a[String(900_000 + i)] = [{ c: JSON.stringify({ category: "General", criteriaCount: 1, name: `Real ${i}`, points: 10 }), v: realVoters, s: 1, f: 1, by: [realVoters[0], "real-install"] }];
+  }
+  addInstall(state, "owner-install", ["a".repeat(64)], 8);
+  const junkVoters = Array.from({ length: junk }, (_, i) => `r:${reporter(7000 + i)}`);
+  const variant = (k: number) => ({ c: JSON.stringify({ name: `Junk ${k} ${"x".repeat(200)}` }), v: junkVoters, s: 2_000_000_000, f: 2_000_000_000, by: [junkVoters[k % junk], `junk-install-${k % junk}`] as [string, string] });
+  const base = JSON.stringify(state).length;
+  const each = JSON.stringify({ "100000": [variant(100000)] }).length;
+  const count = Math.ceil((COMPLETION_MAX_BYTES * 0.95 - base) / each);
+  const kinds = ["a", "f", "t", "q"] as const;
+  for (let k = 0; k < count; k++) state.catalog[kinds[k % 4]][String(100_000 + k)] = [variant(k)];
+  return { state, count };
+}
+
+for (const junk of [7, 10]) {
+  test(`at the real limit with ${junk} colluding junk addresses, the live owner keeps every character and 20-supporter entries survive`, () => {
+    const { state, count } = atTheLimit(junk);
+    expect(JSON.stringify(state).length).toBeGreaterThan(COMPLETION_MAX_BYTES * 0.9);
+    const out = trimCompletion(state, COMPLETION_MAX_BYTES, new Set(["owner-install"]));
+    expect(out.size).toBeLessThanOrEqual(COMPLETION_MAX_BYTES * 0.8);
+    expect(out.characters).toBe(0);
+    expect(Object.keys(state.owned["owner-install"].characters)).toHaveLength(8);
+    for (let i = 0; i < 20; i++) expect(agreedCatalog(state).achievements.get(900_000 + i)?.name).toBe(`Real ${i}`);
+    expect(out.variants).toBeGreaterThan(count / 10);
+  }, 120_000);
+}
+
+test("live progress is trimmed only when owned progress alone is over the target, and the catalog goes first", () => {
+  const state = emptyCompletion();
+  // 3000 confirmed entries with 4 supporters each, and 6 live owners with 8 characters each.
+  const voters = Array.from({ length: 4 }, (_, i) => `r:${reporter(6000 + i)}`);
+  for (let i = 0; i < 3000; i++) state.catalog.a[String(50_000 + i)] = [{ c: JSON.stringify({ name: `Entry ${i} ${"n".repeat(80)}` }), v: voters, s: i, f: i, by: [voters[0], "x-install"] }];
+  for (let i = 0; i < 6; i++) addInstall(state, `owner-${i}-install`, ["a".repeat(64)], 8);
+  const size = JSON.stringify(state).length;
+  const live = new Set(Object.keys(state.owned));
+  const owned = JSON.stringify(state.owned).length;
+  const catalog = size - owned;
+  // Owned alone fits the target: only catalog content goes.
+  const fits = normalizeCompletion(JSON.parse(JSON.stringify(state)) as CompletionState);
+  const a = trimCompletion(fits, Math.ceil((owned + catalog * 0.3) / 0.8), live);
+  expect(a.characters).toBe(0);
+  expect(a.variants).toBeGreaterThan(0);
+  // Owned alone is over the target: the whole catalog went first, then the oldest characters.
+  const b = trimCompletion(state, Math.floor(size / 2), live);
+  expect(Object.keys(state.catalog.a)).toEqual([]);
+  expect(b.characters).toBeGreaterThan(0);
+});
+
+test("when the grant lookup failed, only installs holding no grant lose progress, and the catalog is not wiped for nothing", () => {
+  const withGrants = () => {
+    const state = emptyCompletion();
+    for (let i = 0; i < 20; i++) real(state, 50_000 + i, 4);
+    for (let i = 0; i < 4; i++) addInstall(state, `granted-${i}-install`, ["a".repeat(64)], 1);
+    for (let i = 0; i < 4; i++) addInstall(state, `ungranted-${i}-install`, [], 1);
+    return state;
+  };
+  // The installs without a grant are enough: they go, and the granted ones and the catalog stay.
+  const one = withGrants();
+  const ungranted = JSON.stringify(Object.fromEntries(Object.entries(one.owned).filter(([id]) => id.startsWith("ungranted")))).length;
+  const out = trimCompletion(one, Math.floor((JSON.stringify(one).length - ungranted / 2) / 0.86), null);
+  expect(out.characters).toBeGreaterThan(0);
+  expect(Object.entries(one.owned).filter(([id]) => id.startsWith("ungranted")).some(([, i]) => i.dropped > 0)).toBe(true);
+  expect(Object.entries(one.owned).filter(([id]) => id.startsWith("granted")).every(([, i]) => Object.keys(i.characters).length === 1)).toBe(true);
+  expect(agreedCatalog(one).achievements.size).toBe(20);
+  // Progress kept is over what a write allows: trimming could not help, so the catalog is left whole.
+  const two = withGrants();
+  const out2 = trimCompletion(two, 20_000, null);
+  expect(out2.variants).toBe(0);
+  expect(agreedCatalog(two).achievements.size).toBe(20);
+  expect(Object.entries(two.owned).filter(([id]) => id.startsWith("granted")).every(([, i]) => Object.keys(i.characters).length === 1)).toBe(true);
+});
+
+test("one address can create only so many bytes of entries, so bloating the rollup takes many addresses", () => {
+  const state = emptyCompletion();
+  const long = (i: number) => `Long name ${i} ${"y".repeat(100)}`;
+  // Two uploads, so the per-upload limit of 4000 new entries is not what stops it.
+  for (const half of [0, 2500]) {
+    foldCompletion(state, [{ grants: [], reporter: reporter(1), receivedAt: day(1), records: Array.from({ length: 2500 }, (_, i) => ({
+      ...title("install-bytes", 10_000 + half + i, long(half + i)), category: "z".repeat(80),
+    })) }]);
+  }
+  const created = Object.values(state.catalog.a).flat().filter((v) => v.by[0] === `r:${reporter(1)}`);
+  const bytes = created.reduce((n, v) => n + v.c.length, 0);
+  expect(bytes).toBeLessThanOrEqual(COMPLETION_LIMITS.createdBytesPerVoter);
+  expect(bytes).toBeGreaterThan(COMPLETION_LIMITS.createdBytesPerVoter - 300);
+  expect(created.length).toBeLessThan(5000);
 });
 
 // --- supporters, ties and lost votes --------------------------------------------------------------------
