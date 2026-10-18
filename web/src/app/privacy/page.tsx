@@ -51,10 +51,12 @@ export default function PrivacyPage() {
           <strong>Battle.net sign-in:</strong> we store your Battle.net Account ID
           and BattleTag to manage your account and sharing choices. The current
           sign-in flow requests identity and World of Warcraft profile permissions,
-          but reads only your identity and BattleTag. Provider access tokens are
-          not stored. The essential login cookie lasts up to 30 days; signing out
-          revokes that Everloot session. Signing in does not publish your named
-          addon records or establish guild officer authority.
+          but reads only your identity and BattleTag. We don&apos;t keep your
+          Battle.net access token, or any other token Battle.net sends, after you
+          sign in. Your session is a random token in an essential cookie. It lasts
+          30 days and renews while you use the site. It is stored with no IP address
+          and no browser details, and signing out ends it. Signing in does not
+          publish your named addon records or establish guild officer authority.
         </li>
         <li>
           <strong>API keys (optional):</strong> if you make a free API key on the
@@ -79,8 +81,9 @@ export default function PrivacyPage() {
           sell them.
         </li>
         <li>
-          <strong>Cookies:</strong> an essential login cookie if you sign in, and
-          your cookie choice, which is saved in your browser. Optional analytics
+          <strong>Cookies:</strong> an essential login cookie if you sign in (plus a
+          short-lived one, 10 minutes, that holds the sign-in state while you are at
+          Battle.net), and your cookie choice, which is saved in your browser. Optional analytics
           cookies are off unless you accept them. Advertising cookies come from
           Google AdSense and are covered below.
         </li>
