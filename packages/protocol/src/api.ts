@@ -158,6 +158,29 @@ export const itemsResponse = z.object({
   gameData: gameDataNoticeSchema,
 }).extend(pageSchema.shape);
 
+/** GET /api/items/categories: the class and subclass tree of the current build, with the slot and quality slugs /api/items takes. */
+const itemSubclassSchema = z.object({
+  id: z.number().int(),
+  name: z.string().nullable().describe("The client's name; null when the client has none, then the slug is the id."),
+  slug: z.string().describe("The value /api/items takes as subclass."),
+  items: z.number().int().describe("Items of the build in this subclass."),
+});
+const itemClassSchema = z.object({
+  id: z.number().int(),
+  name: z.string().describe("The client's name."),
+  label: z.string().describe("The plural label pages use."),
+  slug: z.string().describe("The value /api/items takes as class."),
+  items: z.number().int().describe("Items of the build in this class."),
+  subclasses: z.array(itemSubclassSchema),
+});
+export const itemCategoriesResponse = z.object({
+  classes: z.array(itemClassSchema),
+  slots: z.array(z.object({ slug: z.string().describe("The value /api/items takes as slot."), name: z.string() })),
+  qualities: z.array(z.object({ id: z.number().int(), name: z.string(), slug: z.string().describe("The value /api/items takes as quality.") })),
+  gameData: gameDataNoticeSchema,
+});
+export type ItemCategoriesResponse = z.infer<typeof itemCategoriesResponse>;
+
 /** One accepted or rejected row in an intake receipt, by its index in the request. */
 const receiptEntry = z.object({ index: z.number().int(), kind: z.string().optional(), reason: z.string().optional() });
 
@@ -213,6 +236,7 @@ export const API_SCHEMAS = {
   dropsResponse,
   edgesResponse,
   itemsResponse,
+  itemCategoriesResponse,
   intakeRequest,
   intakeReceipt,
   intakeRefused,
@@ -313,6 +337,13 @@ export const API_ROUTES: readonly ApiRoute[] = [
       ...PAGING,
     ],
     responses: { "200": { description: "The page of items.", schema: "itemsResponse" }, ...ERROR_RESPONSES },
+  },
+  {
+    method: "GET", path: "/api/items/categories",
+    summary: "The item class and subclass tree of the current build, with the slot and quality slugs",
+    description: "Every class with its subclasses, each with the slug `/api/items` takes and the number of items in the build, plus the slot and quality slugs. From the game files. Public in the repository too, so it is neither paged nor limited. Cached for an hour.",
+    access: "open", data: "game-files",
+    responses: { "200": { description: "The tree.", schema: "itemCategoriesResponse" } },
   },
   {
     method: "GET", path: "/api/market/prices",

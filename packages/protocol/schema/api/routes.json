@@ -331,6 +331,20 @@
   },
   {
     "method": "GET",
+    "path": "/api/items/categories",
+    "summary": "The item class and subclass tree of the current build, with the slot and quality slugs",
+    "description": "Every class with its subclasses, each with the slug `/api/items` takes and the number of items in the build, plus the slot and quality slugs. From the game files. Public in the repository too, so it is neither paged nor limited. Cached for an hour.",
+    "access": "open",
+    "data": "game-files",
+    "responses": {
+      "200": {
+        "description": "The tree.",
+        "schema": "itemCategoriesResponse"
+      }
+    }
+  },
+  {
+    "method": "GET",
     "path": "/api/market/prices",
     "summary": "Forever market values from full auction scans players started",
     "description": "Without `realm`, the realms that have public values. With it, the items with the most units listed on that realm as tuples in `fields` order, copper per unit. A day is public when three reporters scanned the item.",

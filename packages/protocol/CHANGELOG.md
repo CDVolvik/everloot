@@ -48,6 +48,9 @@ required, or tightening a limit is a major release.
 - `outputSchema` for `gold_ledger` (`goldLedger`, with `INCOME_CATEGORIES` and `SPENDING_CATEGORIES`) and
   `world_map_near` (`mapNear`), the last two: every tool is structured now (`STRUCTURED_TOOLS` is the
   whole list).
+- `GET /api/items/categories` in `API_ROUTES` with its response shape `itemCategoriesResponse` (classes with
+  subclasses, slots, qualities, the game-data notice), so the OpenAPI document and the connect reference
+  describe the endpoint the site already served.
 - `values` on a prompt argument (`what_changed.game`: forever, classic) and on a resource template
   (`everloot://talents/{class}`: `TALENT_CLASSES`): the finite set the server completes from and, for a
   template, lists one resource per value. Written into `schema/mcp/prompts.json` and `resources.json`.

@@ -66,6 +66,7 @@
     "dropsResponse",
     "edgesResponse",
     "itemsResponse",
+    "itemCategoriesResponse",
     "intakeRequest",
     "intakeReceipt",
     "intakeRefused",
@@ -77,6 +78,7 @@
     "GET /api/edges",
     "GET /api/edges/client-layer",
     "GET /api/items",
+    "GET /api/items/categories",
     "GET /api/market/prices",
     "POST /api/intake",
     "GET /api/health"
