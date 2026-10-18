@@ -1,0 +1,83 @@
+# desktop/: Everloot Desktop
+
+The companion as an app. It sits in the system tray beside the game and does what the
+[command line](../companion/README.md) does, without a terminal: after every logout or `/reload`
+it uploads the addon's anonymous observations, keeps community market prices in your item tooltips,
+and, if you turn it on, answers `/ask` questions. Design:
+[`docs/design/specs/2026-10-18-desktop-app-design.md`](../docs/design/specs/2026-10-18-desktop-app-design.md).
+
+It sends nothing the command line does not send, and it follows the same rules
+([`docs/DATA_POLICY.md`](../docs/DATA_POLICY.md)): anonymous events only, named data stays on your
+computer, nothing touches the game client. The window never shows an ad.
+
+## Install
+
+Downloads are on the [releases page](https://github.com/Everloot/everloot/releases) under
+`desktop-v*`: a Windows installer and a portable exe, a macOS disk image, a Linux AppImage. The
+builds are not code-signed yet, so Windows shows a SmartScreen notice (More info, Run anyway) and
+macOS needs a right-click, Open the first time. The `SHA256SUMS` file on each release lets you check
+a download.
+
+On first run the app shows what leaves your computer, finds your World of Warcraft folder (or you
+browse to the product folder that holds `WTF`, for example `World of Warcraft\_classic_era_`), and
+runs nothing until you press **Start**.
+
+## What it does
+
+| Job | What | When |
+|---|---|---|
+| Upload | Sends events the site has not confirmed, from every account's `Everloot.lua` under the game folder | After the game writes the file (logout or `/reload`), once the write settles |
+| Market prices | Writes the `EverlootPrices` slot addon for the realms you scanned | After each upload and every hour |
+| `/ask` | Answers pending `/ask` questions into the `EverlootAnswers` slot addon | After the game writes the file; needs an MCP URL and a token file in Settings |
+
+The tray menu shows each job's last result, with Upload now, Refresh prices now, Pause and Quit.
+Closing the window keeps the app in the tray. Settings has launch-at-login and start-in-tray.
+
+The app shares its data folder with the command line (`%APPDATA%\Everloot`,
+`~/Library/Application Support/Everloot`, `~/.config/everloot`): `sent.json` for confirmed events,
+`answers.json`, `settings.json`, and the optional `config.json` for `/ask` model providers (same
+format and same rules as the [companion README](../companion/README.md#providers-design-sections-6465):
+keys come from a file named by `apiKeyFile`, never from the config itself).
+
+## Run it from source
+
+```
+cd web && npm install && cd ../companion && npm install && cd ../desktop
+npm install
+npm start
+```
+
+`npm start` bundles `src/` with esbuild into `dist/` and opens Electron. The bundle includes the
+companion's modules and the site's parser (`web/src/lib/sv-parse.ts`), so `web` and `companion`
+must be installed too.
+
+```
+npm test            # vitest: settings, game folder detection, the engine, update checks
+npm run typecheck
+npm run pack        # installers into release/ (electron-builder)
+npm run icons       # remake build/*.png from web/src/app/icon.svg
+```
+
+Set `EVERLOOT_DATA_DIR` to a scratch folder to keep a development run away from your real
+`sent.json` and settings. For a screenshot: `npx electron . --remote-debugging-port=9333`, then
+`node scripts/screenshot.mjs shot.png`.
+
+## Where things live
+
+| Path | What |
+|---|---|
+| `src/main/index.ts` | Electron: single instance, the window, the tray, IPC handlers |
+| `src/main/engine.ts` | Watches the account files and runs the jobs; every job is injected, so tests need no network |
+| `src/main/jobs.ts` | The jobs, built on `companion/src` (uploader, prices, bridge) |
+| `src/main/settings.ts`, `game-folder.ts`, `updates.ts`, `external.ts` | Settings file, where the game is, the release check, the browser allow-list |
+| `src/preload.ts` | The only bridge the page can call (`window.everloot`) |
+| `src/renderer/` | The window: one page, no framework, the site's colours |
+| `src/shared/types.ts` | Shapes both sides use |
+| `build/` | App and tray icons |
+| `scripts/` | The esbuild bundle, the icon maker, the screenshot helper |
+
+## Release
+
+Set the version in `package.json`, add a `desktop-vX.Y.Z` section to the root `CHANGELOG.md`, tag
+`desktop-vX.Y.Z` and push the tag. `.github/workflows/desktop-release.yml` builds on Windows, macOS
+and Ubuntu, runs the tests, and publishes the GitHub release with `SHA256SUMS`.

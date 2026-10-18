@@ -5,7 +5,7 @@ import re
 import sys
 
 TYPES = ["feat", "fix", "perf", "refactor", "docs", "chore", "data"]
-SCOPES = ["addon", "web", "kb", "companion", "mcp", "game-data", "infra", "docs"]
+SCOPES = ["addon", "web", "kb", "companion", "desktop", "mcp", "game-data", "infra", "docs"]
 TITLE = re.compile(rf"^({'|'.join(TYPES)})\(({'|'.join(SCOPES)})\): (\S.*)$")
 
 

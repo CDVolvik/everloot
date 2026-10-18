@@ -20,6 +20,9 @@ desktop.ini
 
 # --- Node / Next.js (web/) ---
 node_modules/
+# Everloot Desktop bundle and installers (desktop/)
+desktop/dist/
+desktop/release/
 .next/
 out/
 .turbo/

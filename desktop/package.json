@@ -1,0 +1,69 @@
+{
+  "name": "everloot-desktop",
+  "productName": "Everloot Desktop",
+  "license": "AGPL-3.0-only",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Everloot Desktop: uploads the addon's save file after every logout, keeps market prices in game and answers /ask, from the system tray.",
+  "homepage": "https://everloot.app",
+  "author": "Everloot contributors",
+  "main": "dist/main.cjs",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "start": "npm run build && electron .",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "icons": "node scripts/icons.mjs",
+    "pack": "npm run build && electron-builder --publish never"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "electron": "44.9.0",
+    "electron-builder": "26.15.3",
+    "esbuild": "0.28.2",
+    "typescript": "^5.6.3",
+    "vitest": "^5.0.3"
+  },
+  "build": {
+    "appId": "app.everloot.desktop",
+    "productName": "Everloot Desktop",
+    "copyright": "AGPL-3.0-only, Everloot contributors",
+    "asar": true,
+    "npmRebuild": false,
+    "files": [
+      "dist/**",
+      "package.json"
+    ],
+    "directories": {
+      "buildResources": "build",
+      "output": "release"
+    },
+    "artifactName": "Everloot-Desktop-${version}-${os}-${arch}.${ext}",
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": false
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.games"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Game"
+    }
+  }
+}

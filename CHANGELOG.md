@@ -10,8 +10,14 @@ that has a zip in the repository. Earlier builds have none.
 
 ## [Unreleased]
 
-Nothing yet. Pull requests merged to `main` are listed in the nightly pre-releases until the next
-tagged release.
+Pull requests merged to `main` are listed in the nightly pre-releases until the next tagged release.
+
+### Added
+- **Everloot Desktop** (`desktop/`): the companion as a tray app. First run shows what leaves the
+  computer and finds the game folder; then it uploads after every logout, refreshes market prices
+  after each upload and hourly, and answers `/ask` when turned on. Electron, built on
+  `companion/src`, same data folder as the command line. Tagged `desktop-vX.Y.Z`; the first
+  release is not code-signed.
 
 ## [0.3.3] - 2026-10-19
 

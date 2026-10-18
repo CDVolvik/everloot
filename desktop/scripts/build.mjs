@@ -1,0 +1,45 @@
+// Bundles the Node side, the preload and the page into dist/. The companion's modules and the
+// site's parser are bundled in, so the packaged app ships dist/ and nothing from node_modules.
+import { build } from "esbuild";
+import { cpSync, mkdirSync, rmSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const root = dirname(dirname(fileURLToPath(import.meta.url)));
+const dist = join(root, "dist");
+const watch = process.argv.includes("--watch");
+
+rmSync(dist, { recursive: true, force: true });
+mkdirSync(join(dist, "renderer"), { recursive: true });
+
+const node = {
+  bundle: true,
+  platform: "node",
+  format: "cjs",
+  target: "node22",
+  external: ["electron"],
+  sourcemap: true,
+  logLevel: "info",
+  // `zod` is only installed under web/; the companion resolves it the same way.
+  alias: { zod: join(root, "..", "web", "node_modules", "zod") },
+};
+
+await Promise.all([
+  build({ ...node, entryPoints: [join(root, "src/main/index.ts")], outfile: join(dist, "main.cjs") }),
+  build({ ...node, entryPoints: [join(root, "src/preload.ts")], outfile: join(dist, "preload.cjs") }),
+  build({
+    bundle: true,
+    platform: "browser",
+    format: "iife",
+    target: "chrome130",
+    sourcemap: true,
+    logLevel: "info",
+    entryPoints: [join(root, "src/renderer/app.ts")],
+    outfile: join(dist, "renderer", "app.js"),
+  }),
+]);
+cpSync(join(root, "src/renderer/index.html"), join(dist, "renderer", "index.html"));
+cpSync(join(root, "src/renderer/styles.css"), join(dist, "renderer", "styles.css"));
+// Tray icons travel with the bundle; build/ itself is only for electron-builder.
+for (const icon of ["tray.png", "trayTemplate.png", "trayTemplate@2x.png"]) cpSync(join(root, "build", icon), join(dist, icon));
+if (watch) console.log("--watch is not supported; run the build again after a change.");
