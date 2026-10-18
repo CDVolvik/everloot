@@ -14,10 +14,12 @@
    `email_is_missing` otherwise. Battle.net users get the placeholder `bnet-<accountId>@users.everloot.invalid`
    (`.invalid` is reserved by RFC 2606, so no inbox can exist), `email_verified = false`. Spec §2's "email
    (nullable, unique when set)" becomes "email not null, unique; Battle.net-only accounts hold a placeholder".
-2. **Battle.net's callback URL** is `/api/auth/oauth2/callback/battlenet` (generic OAuth plugin), not
-   `/api/auth/callback/battlenet`. Spec §10's list is right for GitHub, Google and Microsoft only.
+2. **Battle.net's callback URL** is `/api/auth/callback/battlenet`, as spec §10 says. (This plan first said
+   `/api/auth/oauth2/callback/battlenet`; that was the generic OAuth plugin's path before 1.7, and 1.7.10
+   serves `/api/auth/callback/<providerId>` for it too.)
 3. **Session tokens are stored as Better Auth issues them** (spec §2 already says "a random token, stored
-   server-side"), not as today's SHA-256. The `auth_session` table is reachable only by the server role.
+   server-side"), not as today's SHA-256. The `auth_session` table is reachable only by the server roles
+   (`service_role`, and `everloot_auth` through its RLS policies).
 
 ## Global Constraints
 
@@ -26,7 +28,7 @@
 - Cookie: prefix `everloot`, httpOnly, secure in production, `sameSite: lax`, 30-day expiry (`60 * 60 * 24 * 30`), rolling refresh once a day (`updateAge: 60 * 60 * 24`).
 - Provider tokens are never stored: `access_token`, `refresh_token`, `id_token` on `auth_account` are always null.
 - Sessions store no IP address and no user agent (spec §8 lists what is stored; neither is on it).
-- Rate-limit keys are SHA-256 hashed before they reach the database (same rule as the intake quota: never the address).
+- Rate-limit keys are an HMAC-SHA256 under `BETTER_AUTH_SECRET` before they reach the database (same rule as the intake quota: never the address, and keyed so it cannot be reversed by hashing every address).
 - Every new table: RLS on, `revoke all … from anon, authenticated`, `grant all … to service_role`, like `auth_schema.sql`.
 - Migrations are safe to apply twice (the integration scripts apply them twice).
 - New env vars: `EVERLOOT_AUTH_V2`, `BETTER_AUTH_SECRET` (≥ 32 chars), `BETTER_AUTH_URL`, `AUTH_DATABASE_URL`. `BNET_CLIENT_ID` / `BNET_CLIENT_SECRET` are reused.
@@ -36,7 +38,7 @@
 
 1. **Existing account signs in under v2** → lands on the same `users.id`, so API keys and entitlements still resolve. (Task 4 test `a legacy Battle.net account keeps its id`.)
 2. **A v1 sign-in happens after the migration but before the flag flips** → that user still has a placeholder email and still links under v2. (Task 1 integration assertion on the trigger; Task 3 `trustedProviders: ["battlenet"]`.)
-3. **Rolling the flag back to v1 after v2 created new users** → v1 finds them by `bnet_id` instead of making duplicates. (Task 3 test `a new Battle.net account fills bnet_id and battletag`.)
+3. **Rolling the flag back to v1 after v2 created new users** → v1 finds them by `bnet_id` instead of making duplicates. (An `auth_account` trigger fills `bnet_id` and `battletag` in the same transaction; `web/src/lib/auth/auth.pg.test.ts` and `accounts.integration.mjs` check it.)
 4. **Database down under v2** → `/api/auth/me` answers 503, never `{ user: null }` that would look like a sign-out. (Task 5 test `v2 fails closed when the database is down`.)
 5. **Someone registers the placeholder address on another login method** (step 3) → pre-hijack of the Battle.net account. Step 1 has no email sign-up, but `isPlaceholderEmail()` ships now and Task 2 tests it, so step 3's plan only has to call it.
 
@@ -287,9 +289,9 @@ test("with the flag off the catch-all route is 404", async () => { /* authV2Enab
 
 ## After merge (owner and agent, in order; not code)
 
-1. **Database role** (SQL editor, agent in Carlos's browser): `create role everloot_auth login password '<generated>'`; `grant usage on schema public`; `grant select, insert, update, delete on public.users, public.auth_session, public.auth_account, public.auth_verification, public.auth_rate_limit to everloot_auth`. The password goes straight into Vercel, never into chat or git.
-2. **Apply** `20261003000000_auth_schema.sql` (no-op on production, everything exists) and `20261020120000_accounts.sql`. The data-guard migration is still unapplied on production; this one doesn't depend on it.
-3. **Battle.net developer portal**: add `https://everloot.app/api/auth/oauth2/callback/battlenet` (keep the old callback until cutover is done).
+1. **Apply** `20261003000000_auth_schema.sql` (no-op on production, everything exists) and `20261020120000_accounts.sql`. The data-guard migration is still unapplied on production; this one doesn't depend on it. The accounts migration creates the `everloot_auth` role without a login, grants it `select, insert, update, delete` on `users` and the four `auth_*` tables, and gives it an RLS policy on each.
+2. **Database role login** (SQL editor, agent in Carlos's browser): `alter role everloot_auth login password '<generated>'`. The password goes straight into Vercel, never into chat or git.
+3. **Battle.net developer portal**: add `https://everloot.app/api/auth/callback/battlenet` (keep the old callback until cutover is done).
 4. **Vercel production env**: `BETTER_AUTH_SECRET` (`openssl rand -hex 32`), `BETTER_AUTH_URL=https://everloot.app`, `AUTH_DATABASE_URL` (pooler URI as `everloot_auth.uinmowrmyckklpbwzqhn`). Leave `EVERLOOT_AUTH_V2` unset; deploy; check nothing changed.
 5. **Cutover**: set `EVERLOOT_AUTH_V2=1`, redeploy, sign in with Battle.net on everloot.app, make and revoke an API key, sign out. Rollback = unset the flag and redeploy (Review Focus 3).
 6. **A week later**, a follow-up PR removes the v1 path and drops `public.sessions` (spec §2).

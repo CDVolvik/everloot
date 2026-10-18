@@ -15,7 +15,10 @@ browser; every table has row-level security on.
 
 With `EVERLOOT_AUTH_V2=1` the site signs people in through Better Auth, which reads and writes the
 `auth_*` tables and `users` as the `everloot_auth` database role (`AUTH_DATABASE_URL`, the
-transaction-pooler URI on port 6543, without `sslmode`). Register `https://everloot.app/api/auth/callback/battlenet`
+transaction-pooler URI on port 6543, without `sslmode` or any other TLS parameter: the site refuses
+one, since it would override the pinned CA). The accounts migration creates that role without a
+login, grants it those five tables and gives it an RLS policy on each; give it a login once with
+`alter role everloot_auth login password '<generated>'` and put the password only in Vercel. Register `https://everloot.app/api/auth/callback/battlenet`
 as the redirect URL in the Battle.net developer portal; `BNET_REDIRECT_URI` applies only to the old sign-in.
 Sessions store no IP address or user agent, and provider tokens are never kept. The variables are in
 `web/.env.example`.
