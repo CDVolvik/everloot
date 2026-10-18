@@ -1,12 +1,14 @@
 import { accountOf as account } from "../main/engine";
-import type { AddonInfo, AppState, AskInfo, ChangeItem, EverlootApi, FileSummary, GameFolderCandidate, Job, JobStatus, MarketInfo } from "../shared/types";
+import type { AddonInfo, AppState, AskInfo, ChangeItem, CharactersInfo, ChatInfo, EverlootApi, FileSummary, GameFolderCandidate, Job, JobStatus, MarketInfo } from "../shared/types";
 
 declare global { interface Window { everloot: EverlootApi } }
 const api = window.everloot;
 
-type Page = "overview" | "upload" | "market" | "ask" | "addon" | "changes" | "log" | "settings";
+type Page = "overview" | "chat" | "characters" | "upload" | "market" | "ask" | "addon" | "changes" | "log" | "settings" | `site:${string}`;
 const PAGES: { id: Page; label: string; job?: Job }[] = [
   { id: "overview", label: "Overview" },
+  { id: "chat", label: "Chat" },
+  { id: "characters", label: "Characters" },
   { id: "upload", label: "Upload", job: "upload" },
   { id: "market", label: "Market", job: "prices" },
   { id: "ask", label: "Ask", job: "ask" },
@@ -23,7 +25,8 @@ let chosenFolder: string | null = null;
 let draftDirty = false;
 let busy = "";
 let flash = "";
-const data: { upload?: FileSummary[]; market?: MarketInfo; ask?: AskInfo; addon?: AddonInfo; changes?: ChangeItem[]; changesError?: string } = {};
+let siteUrl: string | null = null;
+const data: { upload?: FileSummary[]; market?: MarketInfo; ask?: AskInfo; addon?: AddonInfo; changes?: ChangeItem[]; changesError?: string; characters?: CharactersInfo; chat?: ChatInfo } = {};
 
 const main = document.getElementById("app")!;
 const side = document.getElementById("side")!;
@@ -39,6 +42,11 @@ const ago = (iso: string | null) => {
   return m < 1 ? "just now" : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`;
 };
 const kb = (n: number) => (n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(0)} KB` : `${(n / 1048576).toFixed(1)} MB`);
+const gold = (copper: number | null) => {
+  if (copper === null) return "–";
+  const g = Math.floor(copper / 10000), s = Math.floor((copper % 10000) / 100), c = copper % 100;
+  return g ? `${g.toLocaleString()}g ${s}s` : s ? `${s}s ${c}c` : `${c}c`;
+};
 // IPC wraps a thrown error as "Error invoking remote method 'x': Error: ..."; the page shows only the reason.
 const msg = (e: unknown) => (e instanceof Error ? e.message : String(e)).replace(/^Error invoking remote method '[^']*': /, "").replace(/^(?:Type)?Error: /, "");
 const ext = (url: string, text: string) => `<button type="button" class="link" data-open="${esc(url)}">${esc(text)}</button>`;
@@ -69,7 +77,7 @@ function welcome(): string {
   const custom = chosenFolder && !candidates.some((c) => c.folder === chosenFolder) ? `<p class="mono fg2">${esc(chosenFolder)}</p>` : "";
   return `<div class="welcome">
     <div><h1>Set up Everloot Desktop</h1>
-      <p class="lead">It runs in the tray beside the game: uploads what the addon recorded after every logout, keeps market prices in your tooltips, installs addon updates and, if you turn it on, answers <code>/ask</code>.</p></div>
+      <p class="lead">It runs in the tray beside the game: uploads what the addon recorded after every logout, keeps market prices in your tooltips, installs addon updates, carries the site's tools and a chat over Everloot's data, and, if you turn it on, answers <code>/ask</code>.</p></div>
     <section class="panel">
       <h2>What leaves this computer</h2>
       <ul class="plain fg2">
@@ -113,6 +121,42 @@ function overview(s: AppState): string {
   </div>`;
 }
 
+function chat(): string {
+  const c = data.chat;
+  const thread = (c?.messages ?? []).map((m) => {
+    const meta = m.role === "assistant"
+      ? `<div class="meta">${m.model ? `<b>${esc(m.model)}</b>` : "<b>plain search</b>"}${m.steps.length ? ` · ${m.steps.length} tool call(s): ${esc(m.steps.map((st) => st.tool).join(", "))}` : ""}${m.sources.length ? `<br>Sources: ${m.sources.map((x) => esc(x)).join(" · ")}` : ""}</div>`
+      : `<div class="meta">${clock(m.at)}</div>`;
+    return `<div class="msg msg-${m.role}">${esc(m.text)}${meta}</div>`;
+  }).join("");
+  return `<div class="page chat">
+    <div class="head"><h1>Chat</h1><span class="sub">${c ? `${esc(c.mode)} · ${c.withToken ? "your MCP token" : "public MCP, rate limited"}` : ""} <button type="button" class="link" id="chatClear">clear</button></span></div>
+    <p class="muted small">Answers come only from Everloot's own MCP tools, with their sources. A model needs your key in <code>config.json</code> (${ext("https://everloot.app/connect", "how")}); without one you get the sourced search hits. Private: the transcript stays in your data folder.</p>
+    <div class="thread" id="thread">${thread || '<span class="muted">Ask anything about WoW: Forever: a drop, a vendor, a recipe, a price, a quest.</span>'}${c?.busy ? '<div class="msg msg-assistant muted">Answering…</div>' : ""}${c?.error ? `<div class="msg msg-assistant error">${esc(c.error)}</div>` : ""}</div>
+    <form id="chatForm"><textarea id="chatText" rows="2" placeholder="Ask about Forever. Enter sends, Shift+Enter is a new line." ${c?.busy ? "disabled" : ""}></textarea><button type="submit" class="btn btn-primary" ${c?.busy ? "disabled" : ""}>Send</button></form>
+  </div>`;
+}
+
+function characters(): string {
+  const c = data.characters;
+  const rows = (c?.characters ?? []).map((r) => {
+    const spent = Object.values(r.spent).reduce((a, b) => a + b, 0), earned = Object.values(r.earned).reduce((a, b) => a + b, 0);
+    return `<tr><td>${esc(r.character)}<div class="muted small">${esc(r.realm)}</div></td><td class="num">${gold(r.gold)}</td><td class="num muted">${gold(r.peakGold)}</td><td class="num">${r.itemLevel ?? "–"}<div class="muted small">${r.gearSlots ? `${r.gearSlots} slots` : ""}</div></td><td class="num">${earned ? gold(earned) : "–"}</td><td class="num">${spent ? gold(spent) : "–"}</td></tr>`;
+  }).join("");
+  const prog = (c?.progress ?? []).map((p) => `<tr><td><span class="mono">${esc(p.key)}</span></td><td>${esc(p.class.toLowerCase())} ${p.level}</td><td class="num">${p.achievements}${p.achievementsInProgress ? `<span class="muted"> +${p.achievementsInProgress} in progress</span>` : ""}</td><td class="num">${p.reputations}${p.exalted ? `<span class="muted"> · ${p.exalted} exalted</span>` : ""}</td><td class="num">${p.titles}</td><td class="num">${p.quests}</td></tr>`).join("");
+  return `<div class="page">
+    <div class="head"><h1>Characters</h1><span class="sub">from the addon's save file · never uploaded from here</span></div>
+    <p class="fg2">What the addon recorded about your own characters. Gold and gear carry the name; progress rows carry an opaque key the addon derives per character, so they are listed apart. Sharing any of this with the site is a choice you make on the upload page with a verified grant, never here.</p>
+    <section class="panel"><h2>Gold and gear</h2>
+      ${rows ? `<table><thead><tr><th>Character</th><th class="num">Gold</th><th class="num">Peak</th><th class="num">Item level</th><th class="num">Earned</th><th class="num">Spent</th></tr></thead><tbody>${rows}</tbody></table>` : `<p class="muted">${c ? "No gold or gear snapshot yet. The addon records them while you play." : "Loading…"}</p>`}
+    </section>
+    <section class="panel"><h2>Progress</h2>
+      ${prog ? `<table><thead><tr><th>Key</th><th>Class</th><th class="num">Achievements</th><th class="num">Reputations</th><th class="num">Titles</th><th class="num">Quests done</th></tr></thead><tbody>${prog}</tbody></table>` : `<p class="muted">${c ? "Nothing yet. The completion tracker is off until <code>/everloot completion on</code> in game." : "Loading…"}</p>`}
+      ${c?.talents.length ? `<p class="muted small">Active talent builds: ${c.talents.map((t) => `${esc(t.class.toLowerCase())} ${t.level} (${t.points} points)`).join(", ")}.</p>` : ""}
+    </section>
+  </div>`;
+}
+
 function upload(s: AppState): string {
   const j = s.engine.jobs.upload;
   const files = data.upload ?? [];
@@ -152,7 +196,7 @@ function market(s: AppState): string {
       ${checks}
       <div class="row"><input type="text" id="realmAdd" class="grow" placeholder="Add a realm by name" maxlength="60"><button type="button" class="btn" id="realmAddBtn">Follow</button></div>
       ${extra.length ? `<div class="chips">${extra.map((r) => `<span class="chip">${esc(r)} <button type="button" class="link" data-unfollow="${esc(r)}">remove</button></span>`).join("")}</div>` : ""}
-      <p class="muted small">At most 20 realms in one prices file; your scans come first.</p>
+      <p class="muted small">At most 20 realms in one prices file; your scans come first. The full tables and 60-day charts are on the Auction prices tool in the sidebar.</p>
     </section>
     <section class="panel"><div class="row between"><h2>Written into the game</h2><span class="muted small">${j.at ? when(j.at) : ""}</span></div>
       ${j.state === "error" ? `<p class="error">${esc(j.message)}</p>` : ""}
@@ -168,7 +212,7 @@ function ask(s: AppState): string {
   const pending = (a?.pending ?? []).flatMap((p) => p.asks.map((q) => ({ ...q, account: account(p.file) })));
   return `<div class="page">
     <div class="head"><h1>Ask</h1><div class="row">${jobSwitch("ask", s)}${runBtn("ask", s, "Answer now")}</div></div>
-    <p class="fg2"><code>/ask</code> questions from the game are answered from the Everloot MCP server and written into <code>EverlootAnswers</code>; they show after <code>/reload</code>. Every answer names its source; with no source there is no answer.</p>
+    <p class="fg2"><code>/ask</code> questions from the game are answered from the Everloot MCP server and written into <code>EverlootAnswers</code>; they show after <code>/reload</code>. Every answer names its source; with no source there is no answer. The same setup serves the Chat page.</p>
     <form id="askForm" class="panel" autocomplete="off">
       <div class="grid2">
         <div class="field"><label for="mcpUrl">MCP server</label><input type="url" id="mcpUrl" name="mcpUrl" value="${esc(st.mcpUrl)}"></div>
@@ -261,10 +305,25 @@ function settings(s: AppState): string {
   </div>`;
 }
 
+function siteTool(s: AppState, id: string): string {
+  const tool = s.siteTools.find((t) => t.id === id);
+  if (!tool) return `<div class="site-note">Unknown tool.</div>`;
+  return `<div class="site-head">
+    <strong>${esc(tool.label)}</strong>
+    <span class="url grow">${esc(siteUrl ?? new URL(tool.path, s.settings.endpoint).toString())}</span>
+    <button type="button" class="btn" id="siteBack">Back</button>
+    <button type="button" class="btn" id="siteReload">Reload</button>
+    ${ext(new URL(tool.path, "https://everloot.app").toString(), "open in browser")}
+  </div>
+  <div class="site-note">The page below is the site itself, inside the app. Share links from the talent and raid tools work as on the web.</div>`;
+}
+
 // ---------- render and data ----------
 
 function renderSide(s: AppState): void {
-  nav.innerHTML = PAGES.map((p) => `<button type="button" data-page="${p.id}" ${p.id === page ? 'aria-current="page"' : ""}>${p.label}${p.job ? dot(s.engine.jobs[p.job]) .replace('class="dot', 'class="dot') : ""}</button>`).join("");
+  const item = (id: string, label: string, job?: Job) => `<button type="button" data-page="${id}" ${id === page ? 'aria-current="page"' : ""}>${esc(label)}${job ? dot(s.engine.jobs[job]) : ""}</button>`;
+  nav.innerHTML = PAGES.map((p) => item(p.id, p.label, p.job)).join("")
+    + `<div class="section">Site tools</div>` + s.siteTools.map((t) => item(`site:${t.id}`, t.label)).join("");
   const e = s.engine;
   sideFoot.innerHTML = `<span>${e.files.length ? `Watching ${e.files.length} file(s)` : "Not watching"}${e.paused ? " · paused" : ""}</span><span>v${esc(s.version)}</span>`;
 }
@@ -277,13 +336,23 @@ function render(): void {
   renderSide(state);
   if ((page === "settings" || page === "ask") && draftDirty) return;
   const s = state;
-  main.innerHTML = page === "overview" ? overview(s) : page === "upload" ? upload(s) : page === "market" ? market(s) : page === "ask" ? ask(s)
+  if (page.startsWith("site:")) { main.innerHTML = siteTool(s, page.slice(5)); return; }
+  const draft = page === "chat" ? (main.querySelector("#chatText") as HTMLTextAreaElement | null)?.value : undefined;
+  main.innerHTML = page === "overview" ? overview(s) : page === "chat" ? chat() : page === "characters" ? characters() : page === "upload" ? upload(s) : page === "market" ? market(s) : page === "ask" ? ask(s)
     : page === "addon" ? addon(s) : page === "changes" ? changes() : page === "log" ? log(s) : settings(s);
+  if (page === "chat") {
+    const box = main.querySelector("#chatText") as HTMLTextAreaElement | null;
+    if (box && draft) box.value = draft;
+    const thread = main.querySelector("#thread");
+    if (thread) thread.scrollTop = thread.scrollHeight;
+  }
 }
 
 async function load(p: Page): Promise<void> {
   try {
     if (p === "overview") { [data.addon, data.changes] = await Promise.all([api.addonInfo(), api.changes().catch((e) => { data.changesError = msg(e); return undefined; })]); data.market = await api.marketInfo(); }
+    else if (p === "chat") data.chat = await api.chatInfo();
+    else if (p === "characters") data.characters = await api.charactersInfo();
     else if (p === "upload") data.upload = await api.uploadInfo();
     else if (p === "market") data.market = await api.marketInfo();
     else if (p === "ask") data.ask = await api.askInfo();
@@ -308,16 +377,25 @@ async function detect(): Promise<void> {
   render();
 }
 
-function go(p: Page): void { page = p; draftDirty = false; flash = ""; render(); void load(p); }
+async function go(p: Page): Promise<void> {
+  if (page.startsWith("site:") && !p.startsWith("site:")) await api.siteHide();
+  page = p; draftDirty = false; flash = "";
+  if (p.startsWith("site:")) { siteUrl = await api.siteShow(p.slice(5)); render(); return; }
+  render();
+  void load(p);
+}
 
 document.body.addEventListener("click", async (ev) => {
   const t = (ev.target as HTMLElement).closest<HTMLElement>("button");
   if (!t) return;
-  if (t.dataset.page) { go(t.dataset.page as Page); return; }
+  if (t.dataset.page) { void go(t.dataset.page as Page); return; }
   if (t.dataset.open) { void api.openExternal(t.dataset.open); return; }
   if (t.dataset.run) { void api.runNow(t.dataset.run as Job); return; }
   if (t.dataset.unfollow) { state = await api.saveSettings({ market: { realms: state!.settings.market.realms.filter((r) => r !== t.dataset.unfollow) } }); void load("market"); return; }
   if (t.id === "pause") { await api.setPaused(!state!.engine.paused); return; }
+  if (t.id === "siteBack") { void api.siteBack(); return; }
+  if (t.id === "siteReload") { void api.siteReload(); return; }
+  if (t.id === "chatClear") { data.chat = await api.chatClear(); render(); return; }
   if (t.id === "browse") {
     const folder = await api.pickGameFolder();
     if (!folder) return;
@@ -327,7 +405,7 @@ document.body.addEventListener("click", async (ev) => {
   }
   if (t.id === "pickToken") { const f = await api.pickTokenFile(); if (f) { (main.querySelector("#tokenFile") as HTMLInputElement).value = f; draftDirty = true; } return; }
   if (t.id === "redetect") { chosenFolder = null; await detect(); return; }
-  if (t.id === "start" && chosenFolder) { state = await api.saveSettings({ gameFolder: chosenFolder, consentedAt: new Date().toISOString() }); go("overview"); return; }
+  if (t.id === "start" && chosenFolder) { state = await api.saveSettings({ gameFolder: chosenFolder, consentedAt: new Date().toISOString() }); void go("overview"); return; }
   if (t.id === "openConfig") { void api.openConfig(); return; }
   if (t.id === "openData") { void api.openDataFolder(); return; }
   if (t.id === "openAddons") { void api.openAddonsFolder(); return; }
@@ -375,15 +453,29 @@ main.addEventListener("change", async (ev) => {
     return;
   }
   if (el.name === "folder") { chosenFolder = el.value; render(); return; }
-  if (el.form) draftDirty = true;
+  if (el.form && el.form.id !== "chatForm") draftDirty = true;
 });
-main.addEventListener("input", (ev) => { if ((ev.target as HTMLElement).closest("form")) draftDirty = true; });
+main.addEventListener("input", (ev) => { const f = (ev.target as HTMLElement).closest("form"); if (f && f.id !== "chatForm") draftDirty = true; });
+main.addEventListener("keydown", (ev) => {
+  if ((ev.target as HTMLElement).id === "chatText" && ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); (main.querySelector("#chatForm") as HTMLFormElement).requestSubmit(); }
+});
 
 main.addEventListener("submit", async (ev) => {
   const form = ev.target as HTMLFormElement;
   ev.preventDefault();
   const f = new FormData(form);
   const text = (k: string) => String(f.get(k) ?? "").trim();
+  if (form.id === "chatForm") {
+    const box = main.querySelector("#chatText") as HTMLTextAreaElement;
+    const question = box.value.trim();
+    if (!question || data.chat?.busy) return;
+    box.value = "";
+    data.chat = { ...(data.chat ?? { messages: [], mode: "", mcpUrl: "", withToken: false, error: null }), busy: true, messages: [...(data.chat?.messages ?? []), { role: "user", text: question, at: new Date().toISOString(), model: null, sources: [], steps: [] }] };
+    render();
+    data.chat = await api.chatSend(question);
+    render();
+    return;
+  }
   if (form.id === "settings") {
     state = await api.saveSettings({ gameFolder: text("gameFolder") || null, endpoint: text("endpoint"), launchAtLogin: f.get("launchAtLogin") === "on", startInTray: f.get("startInTray") === "on" });
   } else if (form.id === "askForm") {

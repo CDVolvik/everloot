@@ -85,6 +85,62 @@ export interface AddonInfo {
 
 export interface ChangeItem { title: string; link: string; date: string | null; summary: string }
 
+/** One tool call the agent made while answering. */
+export interface ChatStep { tool: string; input: string; chars: number }
+export interface ChatMessage {
+  role: "user" | "assistant";
+  text: string;
+  at: string;
+  /** The model that wrote an assistant message; null for plain search. */
+  model: string | null;
+  sources: string[];
+  steps: ChatStep[];
+}
+export interface ChatInfo {
+  messages: ChatMessage[];
+  /** "anthropic:<model>" with the tool loop, "<provider>" for a summary, or "plain search". */
+  mode: string;
+  /** The MCP endpoint in use and whether a token is set (the public one is rate limited per IP). */
+  mcpUrl: string;
+  withToken: boolean;
+  busy: boolean;
+  error: string | null;
+}
+
+/** One of the player's own characters, from the save file. Never uploaded from here. */
+export interface CharacterRow {
+  character: string;
+  realm: string;
+  /** Copper, latest snapshot. */
+  gold: number | null;
+  peakGold: number | null;
+  gearSlots: number;
+  itemLevel: number | null;
+  /** Copper by category, from money events this file holds. */
+  spent: Record<string, number>;
+  earned: Record<string, number>;
+}
+/** Progress rows carry an opaque per-install key instead of a name (intake.ts CHARACTER_KEY). */
+export interface ProgressRow {
+  key: string;
+  class: string;
+  level: number;
+  achievements: number;
+  achievementsInProgress: number;
+  reputations: number;
+  exalted: number;
+  titles: number;
+  quests: number;
+  talentPoints: number | null;
+}
+export interface CharactersInfo {
+  characters: CharacterRow[];
+  progress: ProgressRow[];
+  talents: { class: string; level: number; points: number }[];
+}
+
+export interface SiteTool { id: string; label: string; path: string }
+
 /** Everything the page knows. The main side sends a fresh one after every change. */
 export interface AppState {
   version: string;
@@ -94,6 +150,7 @@ export interface AppState {
   notice: string | null;
   settings: Settings;
   engine: EngineState;
+  siteTools: SiteTool[];
 }
 
 /** What `window.everloot` offers the page. Implemented in preload.ts over IPC. */
@@ -117,5 +174,14 @@ export interface EverlootApi {
   addonInfo(): Promise<AddonInfo>;
   installAddon(version: string): Promise<{ version: string; files: number }>;
   changes(): Promise<ChangeItem[]>;
+  charactersInfo(): Promise<CharactersInfo>;
+  chatInfo(): Promise<ChatInfo>;
+  chatSend(text: string): Promise<ChatInfo>;
+  chatClear(): Promise<ChatInfo>;
+  /** Shows a site tool inside the window; returns the URL it opened. */
+  siteShow(id: string): Promise<string | null>;
+  siteHide(): Promise<void>;
+  siteBack(): Promise<void>;
+  siteReload(): Promise<void>;
   onState(listener: (state: AppState) => void): () => void;
 }

@@ -8,6 +8,8 @@ import type { AddonInfo, AppState, AskInfo, Job, MarketInfo, Settings } from "..
 import { JOBS } from "../shared/types";
 import { compareVersions, installAddon, installedAddonVersion, newestRelease, slotAddons } from "./addon";
 import { fetchChanges } from "./changes";
+import { charactersFromFiles } from "./characters";
+import { createChat } from "./chat";
 import { createEngine } from "./engine";
 import { allowedExternal } from "./external";
 import { candidateRoots, detectGameFolders, realFs } from "./game-folder";
@@ -15,6 +17,7 @@ import { summarizeFiles } from "./inspect";
 import { companionJobs } from "./jobs";
 import { listRealms, ownRealms } from "./market";
 import { loadSettings, mergeSettings, saveSettings } from "./settings";
+import { SITE_TOOLS, createSiteViews, siteToolPath } from "./site-views";
 import { createTray } from "./tray";
 import { checkForUpdates, fetchReleases } from "./updates";
 
@@ -47,12 +50,14 @@ if (!app.requestSingleInstanceLock()) {
   let settings: Settings = loaded.settings;
   const jobs = companionJobs(data, () => settings);
   const engine = createEngine(jobs.deps);
+  const chat = createChat(data, () => settings);
   let win: BrowserWindow | null = null;
+  let site: ReturnType<typeof createSiteViews> | null = null;
   let tray: ReturnType<typeof createTray> | null = null;
   let quitting = false;
 
   const addonsDir = () => (settings.gameFolder ? join(settings.gameFolder, "Interface", "AddOns") : null);
-  const appState = (): AppState => ({ version: app.getVersion(), platform: process.platform, dataFolder: data, notice: loaded.error, settings, engine: engine.snapshot() });
+  const appState = (): AppState => ({ version: app.getVersion(), platform: process.platform, dataFolder: data, notice: loaded.error, settings, engine: engine.snapshot(), siteTools: SITE_TOOLS });
   const broadcast = () => {
     const s = appState();
     win?.webContents.send("state", s);
@@ -97,18 +102,19 @@ if (!app.requestSingleInstanceLock()) {
 
   function createWindow(): void {
     win = new BrowserWindow({
-      width: 960, height: 680, minWidth: 720, minHeight: 520,
+      width: 1040, height: 720, minWidth: 760, minHeight: 540,
       title: "Everloot Desktop",
       backgroundColor: "#0E0F0D",
       show: false,
       autoHideMenuBar: true,
       webPreferences: { preload: join(__dirname, "preload.cjs"), contextIsolation: true, nodeIntegration: false, sandbox: true },
     });
+    site = createSiteViews(win, () => settings.endpoint);
     win.loadFile(join(__dirname, "renderer", "index.html"));
     win.once("ready-to-show", () => { win?.show(); });
     // Close keeps the app in the tray; Quit in the tray menu ends it.
     win.on("close", (e) => { if (!quitting) { e.preventDefault(); win?.hide(); } });
-    win.on("closed", () => { win = null; });
+    win.on("closed", () => { site?.destroy(); site = null; win = null; });
     win.webContents.setWindowOpenHandler(({ url }) => { if (allowedExternal(url)) void shell.openExternal(url); return { action: "deny" }; });
     win.webContents.on("will-navigate", (e) => e.preventDefault());
   }
@@ -178,6 +184,19 @@ if (!app.requestSingleInstanceLock()) {
     return installAddon({ version, endpoint: settings.endpoint, addonsDir: dir });
   });
   ipcMain.handle("changes", () => changes());
+  ipcMain.handle("charactersInfo", () => charactersFromFiles(engine.snapshot().files));
+
+  ipcMain.handle("chatInfo", () => chat.info());
+  ipcMain.handle("chatSend", (_e, text: unknown) => (typeof text === "string" ? chat.send(text) : chat.info()));
+  ipcMain.handle("chatClear", () => chat.clear());
+
+  ipcMain.handle("siteShow", (_e, id: unknown) => {
+    const path = typeof id === "string" ? siteToolPath(id) : null;
+    return path && site ? site.show(path) : null;
+  });
+  ipcMain.handle("siteHide", () => site?.hide());
+  ipcMain.handle("siteBack", () => site?.back());
+  ipcMain.handle("siteReload", () => site?.reload());
 
   app.on("second-instance", show);
   app.on("activate", show);

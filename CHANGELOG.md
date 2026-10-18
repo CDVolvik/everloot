@@ -18,7 +18,9 @@ Pull requests merged to `main` are listed in the nightly pre-releases until the 
   refreshes market prices after each upload and hourly, and answers `/ask` when turned on. Pages
   for each thing to manage: what each account file holds, realm picks for the prices file (your
   scans plus the realms you follow), the `/ask` setup and recent answers, addon install and update
-  checked against the release's `SHA256SUMS`, the change tracker, the log. Electron, built on
+  checked against the release's `SHA256SUMS`, the change tracker, the log, a chat over Everloot's
+  MCP tools with sources (tool loop on the player's own Anthropic key, or plain sourced search), a
+  local characters view (gold, gear, progress), and the site's tools embedded. Electron, built on
   `companion/src`, same data folder as the command line. Tagged `desktop-vX.Y.Z`; the first
   release is not code-signed.
 

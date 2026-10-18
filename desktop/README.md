@@ -37,6 +37,8 @@ The window is a sidebar with one page per thing to manage:
 | Page | What it shows and does |
 |---|---|
 | Overview | The four states at a glance (upload, prices, `/ask`, addon), recent activity, the latest Blizzard changes |
+| Chat | A chat over Everloot's own MCP tools, with sources under every answer. With an Anthropic key in `config.json` the model calls the tools itself; with another provider it phrases the search hits; with no provider you get the sourced hits as they are. The transcript stays in your data folder |
+| Characters | Your own characters from the save file: gold, peak, item level, money earned and spent, and the completion tracker's progress per character key. Never uploaded from here |
 | Upload | Each account file: when it was written, addon and client build, records per kind, how many the site confirmed. Run now |
 | Market | Realm picks: your scanned realms are always carried; tick more from the realms the site has public values for (TSM-style realm picks, on Everloot's own scan data). What the last refresh wrote |
 | Ask | MCP server and token file, which provider answers (`config.json`), questions pending in game, recent answers |
@@ -44,6 +46,7 @@ The window is a sidebar with one page per thing to manage:
 | Changes | The site's change tracker feed: Blizzard posts, hotfixes and builds |
 | Log | Everything the engine did this session, with Pause |
 | Settings | Game folder, site, launch at login, start in tray, data folder, check for updates |
+| Site tools | The talent calculator, raid builder, database, auction prices, world map and lore archive, shown inside the window as the site itself. Links elsewhere open in your browser |
 
 The tray menu shows each job's last result, with Upload now, Refresh prices now, Pause and Quit.
 Closing the window keeps the app in the tray.
@@ -85,6 +88,9 @@ Set `EVERLOOT_DATA_DIR` to a scratch folder to keep a development run away from 
 | `src/main/engine.ts` | Watches the account files and runs the jobs; every job is injected, so tests need no network |
 | `src/main/jobs.ts` | The jobs, built on `companion/src` (uploader, prices, bridge) |
 | `src/main/market.ts`, `inspect.ts`, `addon.ts`, `changes.ts` | Realm picks and the prices file, what a save file holds, addon install with checksum, the changes feed |
+| `src/main/agent.ts`, `chat.ts` | The agent over the MCP server (tool loop, summary or plain search) and the Chat page's transcript |
+| `src/main/characters.ts` | Gold, gear and progress per character from the save file |
+| `src/main/site-views.ts` | The embedded site tools (one browser view, kept on the site's origin) |
 | `src/main/settings.ts`, `game-folder.ts`, `updates.ts`, `external.ts` | Settings file, where the game is, the release check, the browser allow-list |
 | `src/preload.ts` | The only bridge the page can call (`window.everloot`) |
 | `src/renderer/` | The window: one page, no framework, the site's colours |

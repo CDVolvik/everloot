@@ -7,7 +7,9 @@ import { writeFileSync } from "node:fs";
 const out = process.argv[2] ?? "screenshot.png";
 const port = process.argv[3] ?? "9333";
 const targets = await (await fetch(`http://127.0.0.1:${port}/json`)).json();
-const page = targets.find((t) => t.type === "page" && t.url.endsWith("index.html"));
+// The fifth argument picks another target by URL fragment, for example an embedded site tool's view.
+const want = process.argv[5];
+const page = targets.find((t) => t.type === "page" && (want ? t.url.includes(want) : t.url.endsWith("index.html")));
 if (!page) throw new Error("The app window was not found; is it running with --remote-debugging-port?");
 
 const ws = new WebSocket(page.webSocketDebuggerUrl);

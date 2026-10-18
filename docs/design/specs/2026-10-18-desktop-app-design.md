@@ -93,6 +93,8 @@ After that, the rail lists the pages, with a status dot beside the three jobs:
 | Page | What it shows and does | Reads |
 |---|---|---|
 | Overview | Four states at a glance (upload, prices, `/ask`, addon installed against latest), recent activity with Upload now and Refresh prices, the five latest changes | engine state, `addonInfo`, `changes` |
+| Chat | The agent on the player's computer (agent-chat spec, the companion surface, without accounts). Three modes from `config.json`: an Anthropic key runs a tool-use loop over every tool the MCP server lists, at most eight rounds, and the answer cites the `Source:` lines the tools returned; another provider gets the top five search hits and phrases a short answer; no provider shows the sourced hits verbatim. The MCP target is the token endpoint when a token file is set, else the site's public read-only mount. Tool results are treated as data; the system prompt says so. Transcript in `chat.json`, private, at most 100 messages | `chatInfo`, `chatSend`, `chatClear` (`agent.ts`, `chat.ts`) |
+| Characters | The Raider.IO-shaped view, local only: gold, peak, item level, money earned and spent per named character; achievements, reputations, titles and quests per opaque character key (the addon never writes a name on those rows). Nothing here is uploaded from the app | `charactersInfo` (`characters.ts`) |
 | Upload | The switch and Run now; each account file with its write time and size, addon and client build, records per kind, confirmed count from `sent.json`. Nothing here leaves the machine | `uploadInfo` (`inspect.ts`) |
 | Market | The switch and Refresh now; realm picks: the realms in the player's own scans are always carried, and the realms the site has public values for can be ticked (what TSM calls realm picks, on Everloot's own scan data; the clean-room decision of 2026-10-17 stands). A realm can also be typed. What the last refresh wrote, per realm | `marketInfo` (`market.ts`), `settings.market.realms` |
 | Ask | The switch and Answer now; MCP URL and token file; who answers (providers from `config.json`, or plain search); questions pending in game; the last answers | `askInfo` |
@@ -100,8 +102,11 @@ After that, the rail lists the pages, with a status dot beside the three jobs:
 | Changes | The site's change tracker, from its RSS feed | `changes` (`changes.ts`) |
 | Log | The session log, with Pause | engine state |
 | Settings | Game folder, site, launch at login, start in tray, data folder, check for updates, about | settings |
+| Site tools | Talent calculator, raid builder, database, auction prices, world map, lore archive: the site's own pages in one embedded browser view (`WebContentsView`, sandboxed, no preload) under the rail and a small header with Back, Reload and open-in-browser. Navigation stays on the site's origin; any other link opens outside. Nothing is re-implemented, so the tools stay one codebase with the web | `siteShow`, `siteHide`, `siteBack`, `siteReload` (`site-views.ts`) |
 
-The window never shows an ad, a plan or a donation request, as the addon does not.
+The app's own pages never show an ad, a plan or a donation request, as the addon does not. The
+embedded site tools are the site as it is, AdSense units included, exactly as in a browser; whether
+the app should ask the site for an ad-free view is a decision for Carlos (below).
 
 ### What the page can call
 
@@ -149,7 +154,9 @@ on the Node side for ten to fifteen minutes so opening a page twice does not ask
 ## Out of scope
 
 Accounts, the device-code link and chat sync (`2026-10-18-agent-chat-design.md`, phases 2 and 3):
-they need the account tables that are not built. The app is designed so the link flow is one more
+they need the account tables that are not built. The Chat page is that spec's companion surface
+without an account: local transcript, the player's own key or the public mount, no server-side
+allowance. The app is designed so the link flow is one more
 job in the engine and one more screen when that lands. Auto-install of updates. Code signing. A
 Linux package beyond AppImage. Any change to the addon.
 
@@ -162,3 +169,7 @@ Linux package beyond AppImage. Any change to the addon.
 3. **Signing:** unsigned for now, with the notice in the README and on the download page.
 4. **Where it is offered:** a card on `/upload` beside the addon download once the first release
    exists. Not built here; the site is another lane.
+5. **Ads inside the embedded tools:** leave the site as it is in the app (today), or have the site
+   drop ad units when the app's view asks for it (a site change, and an AdSense policy question).
+6. **Chat default model on an Anthropic key:** `claude-sonnet-5-5` in the app (the in-game `/ask`
+   bridge keeps `claude-opus-5-5` from the companion). Say if both should match.

@@ -151,3 +151,21 @@ ul.plain li { margin: 0.15rem 0; }
 .welcome > * + * { margin-top: 0.9rem; }
 .welcome h1 { font-size: 1.5rem; }
 .welcome .lead { color: rgb(var(--fg-2)); font-size: 0.95rem; }
+
+/* Sidebar sections and the embedded site tools. */
+.nav .section { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: rgb(var(--muted)); padding: 0.7rem 0.5rem 0.2rem; }
+.site-head { display: flex; align-items: center; gap: 0.6rem; height: 44px; padding: 0 0.9rem; border-bottom: 1px solid rgb(var(--line)); }
+.site-head .url { color: rgb(var(--muted)); font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.site-note { padding: 1rem 1.25rem; color: rgb(var(--muted)); }
+
+/* Chat. */
+.chat { display: flex; flex-direction: column; height: calc(100vh - 2rem); }
+.chat .thread { flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 0.6rem; padding: 0.2rem 0 0.6rem; }
+.msg { max-width: 72ch; padding: 0.5rem 0.75rem; border-radius: 10px; border: 1px solid rgb(var(--line)); white-space: pre-wrap; overflow-wrap: anywhere; }
+.msg-user { align-self: flex-end; background: rgb(var(--panel)); border-color: rgb(var(--edge)); }
+.msg-assistant { align-self: flex-start; background: rgb(var(--panel)); }
+.msg .meta { margin-top: 0.35rem; font-size: 0.78rem; color: rgb(var(--muted)); white-space: normal; }
+.msg .meta b { color: rgb(var(--fg-2)); font-weight: 500; }
+.chat form { display: flex; gap: 0.5rem; align-items: flex-end; margin-top: 0.5rem; }
+.chat textarea { flex: 1; min-height: 2.6rem; max-height: 8rem; resize: vertical; padding: 0.5rem 0.65rem; border-radius: 8px; border: 1px solid rgb(var(--edge)); background: rgb(var(--canvas)); color: rgb(var(--fg)); font: inherit; }
+.chat textarea:focus-visible { outline: 2px solid rgb(var(--accent)); outline-offset: 1px; }

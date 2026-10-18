@@ -21,6 +21,14 @@ const api: EverlootApi = {
   addonInfo: () => ipcRenderer.invoke("addonInfo"),
   installAddon: (version: string) => ipcRenderer.invoke("installAddon", version),
   changes: () => ipcRenderer.invoke("changes"),
+  charactersInfo: () => ipcRenderer.invoke("charactersInfo"),
+  chatInfo: () => ipcRenderer.invoke("chatInfo"),
+  chatSend: (text: string) => ipcRenderer.invoke("chatSend", text),
+  chatClear: () => ipcRenderer.invoke("chatClear"),
+  siteShow: (id: string) => ipcRenderer.invoke("siteShow", id),
+  siteHide: () => ipcRenderer.invoke("siteHide"),
+  siteBack: () => ipcRenderer.invoke("siteBack"),
+  siteReload: () => ipcRenderer.invoke("siteReload"),
   onState: (listener) => {
     const handler = (_event: unknown, state: AppState) => listener(state);
     ipcRenderer.on("state", handler);
