@@ -34,6 +34,8 @@ yarn-error.log*
 
 # --- Swift / Xcode (ios/) ---
 build/
+# The desktop icons live in a build/ folder and are committed (a later rule wins).
+!desktop/build/
 DerivedData/
 *.xcuserstate
 xcuserdata/
