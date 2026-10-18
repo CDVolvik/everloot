@@ -35,6 +35,10 @@ required, or tightening a limit is a major release.
   `everloot://data-policy`: name, title, description, MIME type), `buildEntry` and `buildsResource` for the
   JSON one, emitted as `schema/mcp/resources.json` and listed in `index.json` as `mcpResources`.
 
+### Changed
+- `TERMS_URL` points at the terms of use, `https://everloot.app/terms#licences`, now that the site has a
+  terms page; it was the licence section of `/connect`.
+
 ### Notes
 - The addon's Lua comments still name `web/src/lib/intake.ts`, the file this package replaced. They sit
   inside the zipped addon, so they change with the next addon release, not here.
