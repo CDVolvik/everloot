@@ -4,6 +4,9 @@ import { CLASSES, LAUNCH, longDate, NEW_COMBOS, RACES } from "@/data/wow-forever
 import { latestBuildLine } from "@/lib/changes-facts";
 import { loadTimeline } from "@/lib/changes";
 import { pageMetadata } from "@/lib/seo";
+import { emblems, loadSiteAssets } from "@/lib/game-assets";
+import GameIcon from "@/components/game/GameIcon";
+import GameCredit from "@/components/game/GameCredit";
 
 const description =
   "WoW Forever is Blizzard's World of Warcraft: Forever: the launch date, every playable race and class combination, and the newest game build Everloot has seen.";
@@ -13,11 +16,13 @@ export const metadata: Metadata = pageMetadata({ title: "What Is WoW Forever? La
 const link = "text-accent hover:underline underline-offset-4";
 const isNew = (race: string, cls: string) => NEW_COMBOS.some(([r, c]) => r === race && c === cls);
 
-function RaceTable({ faction, rows }: { faction: string; rows: Record<string, readonly string[]> }) {
+/** `icons`: the game's race and faction emblems by name (lib/game-assets.ts), empty without the asset URL. */
+function RaceTable({ faction, rows, icons }: { faction: string; rows: Record<string, readonly string[]>; icons: ReturnType<typeof emblems> }) {
+  const factionIcon = icons.factions.get(faction);
   return (
     <div className="overflow-x-auto rounded-lg border border-line">
       <table className="w-full text-sm">
-        <caption className="text-left px-3 py-2 font-semibold text-fg">{faction}</caption>
+        <caption className="text-left px-3 py-2 font-semibold text-fg">{factionIcon && <GameIcon src={factionIcon} size={24} className="mr-2" />}{faction}</caption>
         <thead>
           <tr className="border-t border-line text-muted">
             <th scope="col" className="text-left px-3 py-2 font-medium">Race</th>
@@ -27,7 +32,7 @@ function RaceTable({ faction, rows }: { faction: string; rows: Record<string, re
         <tbody>
           {Object.entries(rows).map(([race, classes]) => (
             <tr key={race} className="border-t border-line">
-              <th scope="row" className="text-left px-3 py-2 font-medium text-fg">{race}</th>
+              <th scope="row" className="text-left px-3 py-2 font-medium text-fg">{icons.races.get(race) && <GameIcon src={icons.races.get(race)!} size={24} className="mr-2" />}{race}</th>
               {CLASSES.map((c) => (
                 <td key={c} className="px-2 py-2 text-center">
                   {!classes.includes(c) ? <span className="sr-only">Not playable</span>
@@ -43,7 +48,11 @@ function RaceTable({ faction, rows }: { faction: string; rows: Record<string, re
   );
 }
 
-export default function WowForeverPage() {
+export default async function WowForeverPage() {
+  // The game's race and faction emblems beside the names, only when the asset URL is set and the upload has them.
+  const assets = await loadSiteAssets();
+  const icons = emblems(assets);
+  const shown = icons.races.size > 0 || icons.factions.size > 0;
   return (
     <article className="space-y-8 max-w-3xl">
       <header className="space-y-3">
@@ -75,12 +84,13 @@ export default function WowForeverPage() {
           Skyborne can be Mages. <span className="text-accent font-semibold">New</span> marks the combinations Blizzard names as new
           in WoW: Forever.
         </p>
-        {Object.entries(RACES.factions).map(([faction, rows]) => <RaceTable key={faction} faction={faction} rows={rows} />)}
+        {Object.entries(RACES.factions).map(([faction, rows]) => <RaceTable key={faction} faction={faction} rows={rows} icons={icons} />)}
         <p className="text-sm text-fg-2">
           Source: <a href={RACES.sourceUrl} rel="noopener" className={link}>{RACES.sourceName}, {RACES.sourceTitle}</a>, published{" "}
           <time dateTime={RACES.published}>{longDate(RACES.published)}</time>. Checked on{" "}
           <time dateTime={RACES.checkedOn}>{longDate(RACES.checkedOn)}</time>.
         </p>
+        {assets && shown && <GameCredit version={assets.version} label={assets.label} what="Race and faction emblems" />}
       </section>
 
       <section aria-labelledby="latest" className="space-y-3">

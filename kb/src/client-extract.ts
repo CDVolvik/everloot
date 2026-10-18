@@ -52,7 +52,7 @@ export function iconIds(tables: ExtractedTable[]): number[] {
   return [...(misc?.rows.values() ?? [])].map((r) => Number(r.SpellIconFileDataID)).filter((n) => Number.isFinite(n) && n > 0);
 }
 
-const DEFS_RAW = "https://raw.githubusercontent.com/wowdev/WoWDBDefs/master/";
+export const DEFS_RAW = "https://raw.githubusercontent.com/wowdev/WoWDBDefs/master/";
 
 /** A fetch that reads WoWDBDefs files at commit `sha` instead of the moving master branch. Other URLs pass through. */
 export function pinnedFetch(real: typeof fetch, sha: string): typeof fetch {

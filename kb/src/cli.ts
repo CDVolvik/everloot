@@ -7,6 +7,7 @@ import { ingestBluePosts, loadAccounts, loadFetchState, loadStore, saveFetchStat
 import { buildTimeline } from "./changes.js";
 import { checkBuilds, loadRegistry, recordBuilds, saveRegistry, versionsUrl } from "./builds.js";
 import { clientCoverage, formatCoverage } from "./client-coverage.js";
+import { formatScanReport, loadManifest, scanBuild } from "./client-scan.js";
 import { writeClientLayer } from "./client-layer.js";
 import { diffSnapshots } from "./client-diff.js";
 import { parseRegistry } from "./ecosystem.js";
@@ -14,6 +15,7 @@ import { loadSnapshotFile, refreshSnapshot, saveSnapshotFile } from "./ecosystem
 import { CASC_LIBRARY, extractTables, iconIds, NOT_IN_BUILD, openCdn, pinDefinitions, probeFiles } from "./client-extract.js";
 import { writeCatalogs } from "./client-catalog.js";
 import { buildClientAssets } from "./client-assets.js";
+import { CLIENT_EDGES } from "./client-layer-file.js";
 import { writeWorldMapData } from "./world-map-data.js";
 import { clientSnapshotName, readClientMeta, writeClientSnapshot } from "./client-snapshot.js";
 import { Curated, diffRaidBuffs, RaidBuffTable } from "./raid-buffs.js";
@@ -97,6 +99,11 @@ const USAGE = `usage: npm run kb -- <command> --db <path>
     commit the output; see docs/ASSETS.md)
   client-diff <old.sqlite> <new.sqlite> [--out diff.json]   (field-level diff of two snapshots)
   client-coverage <snapshot.sqlite> [--out coverage.md]   (rows, encrypted blocks and needed fields per client table)
+  client-scan [--product wow_classic_beta] [--manifest <path|url>] [--out data/client-scan]
+    (measures the product's current CDN build against every table WoWDBDefs knows: which exist in the
+    build, which the knowledge base already reads and which candidates remain, grouped by site domain.
+    Root-listing lookups only, no file content and no keys. Writes <out>/<product>-<build>-<config>-scan.json
+    and -scan.md; the report feeds the coverage backlog in docs/2026-10-18-database-taxonomy-research.md)
   client-layer <snapshot.sqlite> [--out ../web/src/data/game-data/client-layer.json]
     (relation edges derived from the game files, one build-stamped file for the database pages. Game file data,
     labelled found in game files, unconfirmed. See docs/DATA_POLICY.md)
@@ -351,6 +358,25 @@ async function main(): Promise<number> {
       process.stdout.write(md);
       return 0;
     }
+    case "client-scan": {
+      const product = flags.get("product") || "wow_classic_beta";
+      const outDir = flags.get("out") || "data/client-scan";
+      const { build, source } = await openCdn(product);
+      if (!source.fileStatus) throw new Error("this source cannot look up file data ids");
+      const statusOf = source.fileStatus.bind(source);
+      // The manifest default URL goes through the pinned fetch, so the reported sha is the one measured.
+      const definitions = await pinDefinitions();
+      const { entries, source: manifestSource } = await loadManifest(flags.get("manifest"));
+      const report = scanBuild({ build, definitions, manifest: manifestSource }, entries, statusOf);
+      const base = clientSnapshotName(build).replace(/\.sqlite$/, "");
+      mkdirSync(outDir, { recursive: true });
+      writeFileSync(join(outDir, `${base}-scan.json`), `${JSON.stringify(report, null, 2)}\n`);
+      const md = formatScanReport(report);
+      writeFileSync(join(outDir, `${base}-scan.md`), md);
+      process.stdout.write(md);
+      console.log(`${report.totals.present}/${report.totals.known} tables in build, ${report.candidates.length} unread candidates, ${report.totals.neverListed} never-list; -> ${outDir}`);
+      return 0;
+    }
     case "client-layer": {
       if (!args[0]) break;
       const path = flags.get("out") || "../web/src/data/game-data/client-layer.json";
@@ -394,9 +420,12 @@ async function main(): Promise<number> {
       const buffSpells = existsSync(list) ? Curated.parse(parseYaml(readFileSync(list, "utf8"))).flatMap((c) => c.spells) : [];
       const itemsFile = flags.get("items");
       const items = itemsFile ? parseItemIds(readFileSync(itemsFile, "utf8")) : undefined;
-      const run = await buildClientAssets({ snapshotPath: args[0], outDir: flags.get("out") || "data/assets", source, buffSpells, items });
+      // The spells the committed client layer says items are created by or used in, for the /database pages.
+      const relationSpells = CLIENT_EDGES.filter((e) => e.toKind === "spell").map((e) => e.toId);
+      const run = await buildClientAssets({ snapshotPath: args[0], outDir: flags.get("out") || "data/assets", source, buffSpells, relationSpells, items });
       for (const n of run.notes) console.log(n);
       for (const s of run.manifest.skippedMaps.slice(0, 10)) console.log(`map skipped: ${s}`);
+      for (const s of run.manifest.skippedBanners.slice(0, 10)) console.log(`banner art skipped: ${s}`);
       // Printed before the public folder line: the upload script reads both.
       if (run.privateDir) console.log(`private -> ${run.privateDir}`);
       if (run.manifest.missingFrames.length) console.log(`frame pieces not available: ${run.manifest.missingFrames.join(", ")}`);

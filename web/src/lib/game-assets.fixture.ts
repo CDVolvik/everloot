@@ -22,7 +22,28 @@ export const siteManifest = {
     "1426": { ...pic("1426"), kind: "zone", name: "Dun Morogh", continentId: 0, heldBack: false, rect: rect(-3000, -3500, -3000, -3500) },
     "2548": { ...pic("2548"), kind: "zone", name: "Riverglades", continentId: 0, heldBack: true, rect: rect(3000, 2000, 3000, 2000) },
   },
+  spellTips: { "6673": { name: "Battle Shout", description: { text: "Raises attack power by 20 for 2 min.", unresolved: [] } } },
+  loadingScreens: {
+    "0": loading(9000, "continent", "Eastern Kingdoms", false),
+    "1": loading(9001, "continent", "Kalimdor", false),
+    "36": loading(9036, "dungeon", "Deadmines", false),
+    "409": loading(9409, "raid", "Molten Core", false),
+    "2789": loading(9789, "raid", "The Tainted Scar", true),
+  },
+  races: {
+    human: { name: "Human", female: emblem("raceicon128-human-female"), male: emblem("raceicon128-human-male") },
+    "night elf": { name: "Night Elf", female: null, male: emblem("raceicon128-nightelf-male") },
+  },
+  factions: { alliance: emblem("AllianceEmblem"), horde: emblem("HordeEmblem") },
+  logo: { file: "logo/logo-wow-forever-2x.webp", width: 640, height: 640, element: "logo-wow-forever-2x", fileDataId: 7312237 },
 };
+
+function loading(file: number, kind: string, name: string, heldBack: boolean) {
+  return { file: `loading/${file}.webp`, width: 1600, height: 900, small: { file: `loading/${file}-small.webp`, width: 640, height: 360 }, kind, name, heldBack, loadingScreenId: file };
+}
+function emblem(element: string) {
+  return { file: `emblems/${element}.webp`, width: 128, height: 128 };
+}
 
 export const itemIndex = {
   schema: "everloot.game-items/1",

@@ -12,6 +12,7 @@ import { goldFactsFromRecords, handleGoldLedger } from "./gold-ledger.js";
 import { guildFactsFromRecords, handleGuildBoard } from "./guild-board.js";
 import { itemFactsFromRecords } from "./drop-rollup.js";
 import { handleItemPage } from "./item-page.js";
+import { handleObjectPage, objectFactsFromRecords, type ObjectFacts } from "./object-page.js";
 import { handleMarketValue, type MarketState } from "./market.js";
 import { loadUploadRecords } from "./load-uploads.js";
 import { parseRecords } from "../../web/src/lib/intake.js";
@@ -20,7 +21,8 @@ import { handleRecipeThresholds, pathFactsFromRecords, recipeFactsFromRecords } 
 import { handleNpcPage, handleQuestPage, handleVendorPage, worldFactsFromRecords } from "./world-pages.js";
 import { handleWorldMapNear, mapFactsFromRecords, NEAR_DEFAULT_LIMIT, NEAR_DEFAULT_RADIUS, NEAR_MAX_LIMIT, NEAR_MAX_RADIUS } from "./world-map-near.js";
 import { WORLD_MAP_DATA } from "./world-map-file.js";
-import { CLIENT_EDGES } from "./client-layer-file.js";
+import { CLIENT_EDGES, CLIENT_LAYER, CLIENT_TAXONOMY } from "./client-layer-file.js";
+import { handleItemCategories, QUALITIES } from "./item-taxonomy.js";
 import { handleEntityRelations, observedEdgesFromRecords, RELS, type Edge } from "./edges.js";
 import type { DB } from "./db.js";
 import { getByName, getEntity, search, type SearchHit } from "./search.js";
@@ -45,6 +47,7 @@ export const TOOL_KINDS = {
   recipe_thresholds: ["recipe_observed", "price_seen", "auction_scan", "item_seen", "vendor"],
   item_page: ["loot", "item_seen", "npc_sighting"],
   npc_page: ["npc_sighting", "quest", "vendor"],
+  object_page: ["loot", "item_seen"],
   quest_page: ["npc_sighting", "quest", "vendor"],
   vendor_page: ["npc_sighting", "quest", "vendor"],
   world_map_near: ["npc_sighting", "vendor"],
@@ -67,6 +70,7 @@ const TOOL_FACT_BUILDERS: Record<ToolName, (records: unknown[]) => unknown> = {
   recipe_thresholds: recipeFactsFromRecords,
   item_page: itemFactsFromRecords,
   npc_page: worldFactsFromRecords,
+  object_page: objectFactsFromRecords,
   quest_page: worldFactsFromRecords,
   vendor_page: worldFactsFromRecords,
   world_map_near: mapFactsFromRecords,
@@ -333,7 +337,7 @@ function dataAgeLine(dataAsOf: unknown): string {
   return `Data as of ${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC.`;
 }
 
-const KINDS = ["item", "npc", "quest", "zone", "spell", "lore_page", "creator", "realm"] as const;
+const KINDS = ["item", "npc", "object", "quest", "zone", "spell", "lore_page", "creator", "realm"] as const;
 const VERSIONS = ["forever", "classic", "retail", "lore"] as const;
 
 const searchArgs = {
@@ -482,6 +486,19 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; 
     }),
   );
   server.registerTool(
+    "object_page",
+    {
+      title: "Game object page",
+      description:
+        "One game object (a chest, herb, ore vein or fishing pool) by the id in its GUID: the items players looted from it, each with observed loot windows, windows with the item and distinct install reports. A frequency is public after 3 install reports; a public object with nothing in its windows reads as a measured zero. Objects have no names yet. Reads Everloot's current authorized public corpus when connected.",
+      inputSchema: { objectId: z.number().int().positive().describe("The object's entry id, as in /database/objects/1731.") },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    async (args) => ({
+      content: [{ type: "text" as const, text: await readFacts("object_page", (facts: ObjectFacts) => handleObjectPage(args, facts)) }],
+    }),
+  );
+  server.registerTool(
     "quest_page",
     {
       title: "Quest page",
@@ -545,6 +562,24 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; 
     async (args) => ({
       content: [{ type: "text" as const, text: await readFacts("entity_relations", (observed: Edge[]) => handleEntityRelations(args, observed, CLIENT_EDGES)) }],
     }),
+  );
+  server.registerTool(
+    "item_categories",
+    {
+      title: "Item categories: class, subclass, slot and quality",
+      description:
+        `Item categories from the game files (found in game files, unconfirmed, with the build): class and subclass with the client's English names and slugs, slot and quality. With no arguments, the whole tree with item counts. With item, that item's category path. With class (a slug such as weapon or armor), and optionally subclass, slot and quality slugs, the items in it. Ids only: item names come from player uploads (item_page).`,
+      inputSchema: {
+        item: z.number().int().positive().optional().describe("An item id: answers its class, subclass, slot and quality."),
+        class: z.string().max(40).optional().describe("Class slug, such as weapon, armor, consumable or trade-goods."),
+        subclass: z.string().max(40).optional().describe("Subclass slug or number within the class, such as one-handed-swords or cloth."),
+        slot: z.string().max(40).optional().describe("Slot slug, such as head, chest, one-hand or trinket."),
+        quality: z.enum(QUALITIES.map((q) => q.slug) as [string, ...string[]]).optional().describe("poor, common, uncommon, rare, epic, legendary, artifact or heirloom."),
+        limit: z.number().int().min(1).max(100).default(25).describe("Most items listed."),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    (args) => ({ content: [{ type: "text" as const, text: handleItemCategories(args, CLIENT_TAXONOMY, CLIENT_LAYER.build.version) }] }),
   );
   server.registerTool(
     "collection_gap",

@@ -10,8 +10,9 @@ import { z } from "zod";
 import { GAME_DATA_CREDIT } from "./attribution.js";
 import { readClientMeta, readClientRows, readClientTables } from "./client-snapshot.js";
 import { CLIENT_LABEL, clientEdges, RELS, type Edge, type EdgeKind, type Rel } from "./edges.js";
+import { buildTaxonomy, type Taxonomy } from "./item-taxonomy.js";
 
-export const LAYER_SCHEMA = "everloot.client-layer/1";
+export const LAYER_SCHEMA = "everloot.client-layer/2";
 
 const KINDS = ["item", "spell", "npc", "object", "quest", "zone", "item_set", "icon"] as const satisfies readonly EdgeKind[];
 
@@ -26,6 +27,13 @@ export const ClientLayer = z.object({
   counts: z.record(z.string(), z.number().int()),
   /** [fromKind, fromId, rel, toKind, toId]; every row shares the build above. */
   edges: z.array(z.tuple([z.enum(KINDS), z.number().int(), z.enum(RELS), z.enum(KINDS), z.number().int()])),
+  /** Item classes and subclasses with the client's English names, the slugs made from them, and item counts. */
+  categories: z.object({
+    classes: z.array(z.object({ id: z.number().int(), name: z.string(), slug: z.string(), items: z.number().int() })),
+    subclasses: z.array(z.object({ classId: z.number().int(), id: z.number().int(), name: z.string().nullable(), slug: z.string(), items: z.number().int() })),
+  }),
+  /** [itemId, classId, subclassId, inventoryType, quality or null], one per item in `Item`. */
+  items: z.array(z.tuple([z.number().int(), z.number().int(), z.number().int(), z.number().int(), z.number().int().nullable()])),
 });
 export type ClientLayer = z.infer<typeof ClientLayer>;
 
@@ -34,6 +42,7 @@ export function buildClientLayer(snapshotPath: string): ClientLayer {
   const present = new Set(readClientTables(snapshotPath));
   const get = (t: string) => (present.has(t) ? readClientRows(snapshotPath, t) : undefined);
   const edges = clientEdges(get, meta);
+  const taxonomy = buildTaxonomy(get);
   const counts: Record<string, number> = {};
   for (const e of edges) counts[e.rel] = (counts[e.rel] ?? 0) + 1;
   return ClientLayer.parse({
@@ -41,14 +50,17 @@ export function buildClientLayer(snapshotPath: string): ClientLayer {
     build: { product: meta.product, buildId: meta.buildId, version: meta.version, buildConfig: meta.buildConfig, definitions: meta.definitions, extractedAt: meta.extractedAt },
     counts,
     edges: edges.map((e) => [e.fromKind, e.fromId, e.rel, e.toKind, e.toId]),
+    categories: { classes: taxonomy.classes, subclasses: taxonomy.subclasses },
+    items: taxonomy.items,
   });
 }
 
-/** JSON with one edge per line, so a new build's file reads as a line diff in review. */
+/** JSON with one edge, category and item per line, so a new build's file reads as a line diff in review. */
 export function serializeClientLayer(layer: ClientLayer): string {
-  const { edges, ...head } = layer;
+  const { edges, categories, items, ...head } = layer;
   const top = JSON.stringify(head, null, 1).replace(/\n}$/, "");
-  return `${top},\n "edges": [\n${edges.map((e) => `  ${JSON.stringify(e)}`).join(",\n")}\n ]\n}\n`;
+  const rows = (list: unknown[]) => list.map((r) => `  ${JSON.stringify(r)}`).join(",\n");
+  return `${top},\n "edges": [\n${rows(edges)}\n ],\n "categories": {\n "classes": [\n${rows(categories.classes)}\n ],\n "subclasses": [\n${rows(categories.subclasses)}\n ]\n },\n "items": [\n${rows(items)}\n ]\n}\n`;
 }
 
 /** Writes the layer to `path` (the site's copy is web/src/data/game-data/client-layer.json). */
@@ -64,4 +76,8 @@ export function readLayerEdges(layer: ClientLayer): Edge[] {
     fromKind, fromId, rel: rel as Rel, toKind, toId, evidence: "client", build: layer.build.version, installs: null,
     firstSeen: layer.build.extractedAt, lastSeen: layer.build.extractedAt,
   }));
+}
+
+export function readLayerTaxonomy(layer: ClientLayer): Taxonomy {
+  return { classes: layer.categories.classes, subclasses: layer.categories.subclasses, items: layer.items };
 }

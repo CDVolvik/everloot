@@ -10,6 +10,11 @@ import { REPO_URL } from "@/lib/source";
 import JsonLd from "@/components/JsonLd";
 import { latestBuildLine } from "@/lib/changes-facts";
 import { changesJsonLd } from "@/lib/jsonld";
+import { BANNER_MAP, creditWhat, loadingArt, loadSiteAssets } from "@/lib/game-assets";
+import { mentionIndex, siteSpellNames, splitMentions, type MentionIndex } from "@/lib/spell-mentions";
+import GameCredit from "@/components/game/GameCredit";
+import PageBanner from "@/components/game/PageBanner";
+import SpellTip from "@/components/game/SpellTip";
 
 export const metadata: Metadata = {
   ...pageMetadata({ title: "WoW Forever Patch Notes and Blizzard Posts", description: "New WoW: Forever builds, hotfixes and Blizzard blue posts, newest first. Each links to Blizzard's original; builds are dated when Everloot first saw them.", path: "/changes", image: "/changes/opengraph-image" }),
@@ -33,7 +38,20 @@ const stamp = (iso: string) => `${new Date(iso).toISOString().slice(0, 16).repla
 
 const ORIGIN_LABEL: Record<string, string> = { forum: "Blizzard's forum", bluesky: "Bluesky" };
 
-function Entry({ entry }: { entry: ChangeEntry }) {
+/** Text with the spells it names given their icon and tooltip, linked to the page that shows them. Without the art, the text as it was. */
+function WithSpells({ text, index }: { text: string; index: MentionIndex }) {
+  return (
+    <>
+      {splitMentions(text, index).map((p, i) => (typeof p === "string" ? p : (
+        <SpellTip key={i} tip={p.mention.tip}>
+          <Link href={p.mention.href} className={link}>{p.text}</Link>
+        </SpellTip>
+      )))}
+    </>
+  );
+}
+
+function Entry({ entry, index }: { entry: ChangeEntry; index: MentionIndex }) {
   return (
     <li className="rounded-xl border border-line bg-panel p-4 sm:p-5 space-y-2">
       <p className="font-mono text-xs text-muted">
@@ -58,8 +76,8 @@ function Entry({ entry }: { entry: ChangeEntry }) {
           <p className="text-sm text-fg-2">
             {[entry.author, entry.role].filter(Boolean).join(", ")} · {entry.category}
           </p>
-          {entry.summary && <p className="text-fg"><span className="font-mono text-xs text-muted">Everloot summary </span>{entry.summary}</p>}
-          {entry.excerpt && <p className="text-fg-2 border-l-2 border-line pl-3">{entry.excerpt}</p>}
+          {entry.summary && <p className="text-fg"><span className="font-mono text-xs text-muted">Everloot summary </span><WithSpells text={entry.summary} index={index} /></p>}
+          {entry.excerpt && <p className="text-fg-2 border-l-2 border-line pl-3"><WithSpells text={entry.excerpt} index={index} /></p>}
           <p>
             {entry.url ? (
               <a href={entry.url} rel="noopener" className={`inline-flex items-center min-h-11 font-medium ${link}`}>
@@ -84,9 +102,16 @@ export default async function ChangesPage({ searchParams }: { searchParams: Prom
   const shown = entries.slice(0, PAGE_SIZE);
   // The newest thing we hold, not the time of the last check: a stalled schedule has to look stale.
   const newest = all[0]?.at;
+  // A loading screen above the title and the game's icon and tooltip on spells the posts name, only when
+  // the asset URL is set and the upload has them.
+  const assets = await loadSiteAssets();
+  const banner = loadingArt(assets, BANNER_MAP.changes);
+  const index = mentionIndex(assets, assets ? await siteSpellNames() : []);
+  const named = shown.some((e) => [e.summary, e.excerpt].some((t) => t && splitMentions(t, index).some((p) => typeof p !== "string")));
   return (
     <article className="space-y-8 max-w-3xl">
       <JsonLd data={changesJsonLd({ name: TITLE, description: LEAD, path: "/changes", entries: shown })} />
+      {banner && <PageBanner art={banner} eager />}
       <header className="space-y-3">
         <p className="font-mono text-xs text-muted">
           {entries.length} {entries.length === 1 ? "entry" : "entries"} · {newest ? `Newest entry ${stamp(newest)}` : "Nothing recorded yet"}
@@ -129,7 +154,7 @@ export default async function ChangesPage({ searchParams }: { searchParams: Prom
         </div>
       ) : (
         <ol className="space-y-4">
-          {shown.map((entry) => <Entry key={entry.id} entry={entry} />)}
+          {shown.map((entry) => <Entry key={entry.id} entry={entry} index={index} />)}
         </ol>
       )}
       {entries.length > shown.length && (
@@ -142,6 +167,9 @@ export default async function ChangesPage({ searchParams }: { searchParams: Prom
           politely and within their robots rules. How Everloot collects and publishes data is in the{" "}
           <a href={`${REPO_URL}/blob/main/docs/DATA_POLICY.md`} rel="noopener" className={link}>data policy</a>.
         </p>
+        {assets && (banner || named) && (
+          <GameCredit version={assets.version} label={assets.label} what={creditWhat(named && "icons", named && "tooltip text", banner && "loading screen art")} />
+        )}
       </footer>
       <AdSlot slot="inContent" />
     </article>

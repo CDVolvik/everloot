@@ -7,8 +7,8 @@ import { after } from "next/server";
  * migration is applied) and Supabase is configured. A failure here never affects a response.
  */
 export const MCP_TOOLS = [
-  "search_knowledge", "get_entity", "get_by_name", "profession_path", "recipe_thresholds", "item_page", "npc_page",
-  "quest_page", "vendor_page", "entity_relations", "collection_gap", "completion_progress", "guild_board", "auction_history", "gold_ledger", "everloot_plan",
+  "search_knowledge", "get_entity", "get_by_name", "profession_path", "recipe_thresholds", "item_page", "npc_page", "object_page",
+  "quest_page", "vendor_page", "entity_relations", "item_categories", "collection_gap", "completion_progress", "guild_board", "auction_history", "gold_ledger", "everloot_plan",
 ] as const;
 
 /** A batched JSON-RPC request counts at most this many calls. */

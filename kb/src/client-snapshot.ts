@@ -47,8 +47,97 @@ export const CLIENT_TABLES = {
   AreaTable: 1353545, ChrRaces: 1305311, Faction: 1361972, CharTitles: 1349054, Languages: 1135325,
   CurrencyTypes: 1095531, CreatureFamily: 1351351, CreatureType: 1131315, Holidays: 996357,
   Toy: 988200, BattlePetSpecies: 841622,
+  // W0 (docs/2026-10-18-client-data-placement.md): the holiday calendar's names and dates, the quest
+  // taxonomy the quest pages sort by, and the display model of chests, herbs and ore.
+  HolidayNames: 996359, HolidayDescriptions: 996360, HolidayXTimeEvent: 6905813,
+  QuestInfo: 1120960, QuestSort: 1134585,
+  GameObjectDisplayInfo: 1266277, GameObjectArtKit: 1266737,
+  // W1 (docs/2026-10-18-client-data-placement.md): group content and its journal, item meta (costs,
+  // limits, families, effects), the spell math behind tooltips and cooldowns, mounts, and the old
+  // profession specialisation tables.
+  LFGDungeons: 1361033, JournalInstance: 1237438, JournalEncounter: 1240336, JournalTier: 1349056,
+  DungeonEncounter: 1347279, MapDifficulty: 1367868, AreaGroupMember: 1093406,
+  ItemExtendedCost: 801681, ItemCurrencyCost: 801670, ItemLimitCategory: 1237440, ItemBagFamily: 1278179,
+  ItemNameDescription: 1332559, ItemEffect: 969941, ItemXItemEffect: 3177687,
+  SpellCastTimes: 1134089, SpellCooldowns: 1139924, SpellRange: 1146820, SpellLevels: 1140079,
+  Mount: 921760, MountXDisplay: 1576117, MountType: 1114674, MountTypeXCapability: 1114715,
+  MountXSpellVisualKitPicker: 3989477,
+  Profession: 4508544, ProfessionEffect: 4505297, ProfessionEffectType: 4556715, ProfessionTrait: 4505298,
+  ProfessionTraitXEffect: 4505494, ProfessionTraitXLabel: 4505299,
+  // W2 (docs/2026-10-18-client-data-placement.md): the item appearance and transmog cluster behind
+  // item pages and tooltips, quest POI points and lines, battle pets and heirlooms, factions, the map
+  // overlays and zone ambience, achievements, currencies, taxi routes, creature difficulty and
+  // display links, class and race facts, and the lore archive texts (pages-only review pass).
+  ItemAppearance: 982462, ItemAppearanceXUiCamera: 1248126, ItemDisplayInfo: 1266429,
+  ItemDisplayInfoMaterialRes: 1280614, ItemModifiedAppearance: 982457, ItemModifiedAppearanceExtra: 1278399,
+  ItemRangedDisplayInfo: 1270315, ItemVisuals: 1343605, ItemVisualsXEffect: 3043873,
+  ItemXBonusTree: 987133, ItemBonus: 959070, ItemBonusTreeNode: 987134, ItemDisenchantLoot: 1134087,
+  ItemSearchName: 1273408, ItemSetSpell: 1314689, ItemChildEquipment: 1247926,
+  TransmogSet: 1376213, TransmogSetGroup: 1576116, TransmogSetItem: 1376212, TransmogIllusion: 3580450,
+  QuestLine: 973430, QuestLineXQuest: 973441, QuestPOIBlob: 1251882, QuestPOIPoint: 1251883,
+  QuestMoneyReward: 1139047, QuestXP: 1139378, QuestFactionReward: 1282622,
+  BattlePetAbility: 841610, BattlePetAbilityEffect: 801575, BattlePetAbilityState: 801576,
+  BattlePetAbilityTurn: 801577, BattlePetBreedQuality: 801578, BattlePetBreedState: 801579,
+  BattlePetEffectProperties: 801580, BattlePetSpeciesState: 801581, BattlePetSpeciesXAbility: 801582,
+  BattlePetState: 801583, BattlePetVisual: 801584, Heirloom: 1097696, PetLoyalty: 2179604,
+  MountCapability: 1114709,
+  FactionGroup: 1343595, FactionTemplate: 1361579,
+  WorldMapOverlay: 1134579, WorldMapOverlayTile: 1957212, WMOAreaTable: 1355528,
+  ZoneIntroMusicTable: 1310251, ZoneMusic: 1310254, ZoneLight: 1310253, ZoneLightPoint: 1310256,
+  AreaPOI: 1000630, AreaPOIState: 1000631,
+  Achievement: 1260179, Achievement_Category: 1324299,
+  CurrencyCategory: 1125667, CurrencyContainer: 1934603,
+  TaxiNodes: 1068100, TaxiPath: 1067802, TaxiPathNode: 1000437,
+  CreatureDifficulty: 879282, CreatureImmunities: 1131322, CreatureMovementInfo: 1125666,
+  CreatureSoundData: 1344466, CreatureXDisplayInfo: 1864302,
+  ChrClassesXPowerTypes: 1121420, ChrRaceRacialAbility: 3507821,
+  LoreText: 3311370, LoreTextPublic: 3479846, ZoneStory: 1797864,
+  // W3 (docs/2026-10-18-client-data-placement.md): the character customization and model pipeline,
+  // the creature display chain, animation kits and liquids, the sound kit cluster, and the last three
+  // trait tables. Read for the local reservoir; each consumer still waits for its feature (model
+  // viewer, dressing room, sound surfacing) and none of it is published.
+  ChrCustomization: 1611874, ChrCustomizationBoneSet: 3460181, ChrCustomizationCategory: 3526439,
+  ChrCustomizationChoice: 3450554, ChrCustomizationCondModel: 3460182, ChrCustomizationConversion: 3463337,
+  ChrCustomizationDisplayInfo: 3593032, ChrCustomizationElement: 3512765, ChrCustomizationGeoset: 3456171,
+  ChrCustomizationGlyphPet: 5347591, ChrCustomizationMaterial: 3459652, ChrCustomizationOption: 3384247,
+  ChrCustomizationReq: 3450453, ChrCustomizationReqChoice: 3580359, ChrCustomizationSkinnedModel: 3460183,
+  ChrCustomizationVisReq: 4724136, ChrCustomizationVoice: 4672833,
+  ChrModel: 3384313, ChrModelMaterial: 3566562, ChrModelTextureLayer: 3548976,
+  ChrModelAltVariant: 8068383, ChrModelAltVariantChoice: 8068384, ChrModelAltVariantOption: 8068385,
+  ChrRacesCreateScreenIcon: 4566929, ChrRaceXChrModel: 3490304, ChrClassUIChrModelInfo: 3754770,
+  ChrClassUIDisplay: 1316515, ChrClassRaceSex: 1306188, ChrClassTitle: 1267497,
+  ChrSelectBackgroundCDI: 4195187, CharacterFacialHairStyles: 1369752,
+  CharacterLoadout: 1344281, CharacterLoadoutItem: 1302846, CharacterLoadoutPet: 3724843,
+  CreatureDisplayInfo: 1108759, CreatureDisplayInfoCond: 1332686, CreatureDisplayInfoCondXChoice: 3670439,
+  CreatureDisplayInfoEvt: 1586882, CreatureDisplayInfoExtra: 1264997, CreatureDisplayInfoGeosetData: 1720141,
+  CreatureDisplayInfoOption: 3692043, CreatureDisplayInfoTrn: 1146698, CreatureDisplayXUIModelScene: 5551196,
+  CreatureModelData: 1365368, HelmetAnimScaling: 1348283, HelmetGeosetData: 2821752,
+  AnimationData: 1375431, AnimKit: 1304323, AnimKitBoneSet: 1375433, AnimKitBoneSetAlias: 1266937,
+  AnimKitConfig: 1300872, AnimKitConfigBoneSet: 1300873, AnimKitPriority: 1266540,
+  AnimKitReplacement: 1559807, AnimKitSegment: 1304324, AnimReplacement: 1301100, AnimReplacementSet: 1284817,
+  BoneWindModifierModel: 1467254, BoneWindModifiers: 1416756,
+  CameraEffect: 1117695, CameraEffectEntry: 1117696, CameraMode: 1343308,
+  LiquidMaterial: 1132538, LiquidObject: 1308058, LiquidTypeXFFTTile: 7489861, LiquidTypeXTexture: 2261065,
+  // LiquidType (1371380) stays unread: its pinned WoWDBDefs layout marks Texture as a string without a
+  // string definition, so extraction fails on it ("Missing string for string column Texture"). Revisit
+  // when the pinned definitions fix the layout.
+  ModelAnimCloakDampening: 1465904, ModelFileData: 1337833,
+  ModelProperties: 2060639, ModelRibbonQuality: 1399953,
+  ModelSound: 5393273, ModelSoundAnimEntry: 5393274, ModelSoundEntry: 5393275, ModelSoundOverride: 5393276,
+  ModelSoundSettings: 5682517, ModelSoundTagEntry: 5393277,
+  AnimaCable: 3286805, AnimaCylinder: 3286804, AnimaMaterial: 3153990,
+  SoundKit: 1237434, SoundKitAdvanced: 1237436, SoundKitChild: 1307289, SoundKitEntry: 1237435,
+  SoundKitFallback: 1307288, SoundAmbience: 1310628, SoundAmbienceFlavor: 1267065, SoundBus: 1310246,
+  SoundBusOverride: 1598732, SoundEmitterPillPoints: 1092317, SoundEmitters: 1092316,
+  SoundEnvelope: 1693131, SoundFilter: 1271601, SoundFilterElem: 1267066, SoundMixGroup: 4618887,
+  SoundOverride: 1266542, SoundParameter: 3405441, SoundProviderPreferences: 1279417,
+  SoundWaterfallEmitter: 4756178, MusicOverride: 5161908,
+  TraitCondAccountElement: 5890759, TraitDefinitionEffectPoints: 4536895, TraitTreeLoadoutEntry: 4669509,
   // Partial on the client: most of what these describe (spawns, quest text) lives on the server.
   Creature: 841631, GameObjects: 841620, QuestV2: 1139443,
+  // Loading screens (Map.LoadingScreenID names a row; the row names its picture files), for the page
+  // banners. ChrRaces above also gives the race names for the race emblems.
+  LoadingScreens: 1266541,
 } as const;
 export type ClientTableName = keyof typeof CLIENT_TABLES;
 

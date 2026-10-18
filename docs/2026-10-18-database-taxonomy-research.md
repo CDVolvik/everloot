@@ -220,13 +220,51 @@ useful as a list of topics players need covered.
 - A CurseForge author group publishes an addon that exports the `ItemSubClass` table as a Lua
   library. Not needed if we read the table ourselves; noted in case an addon-side lookup helps.
 
+## Supplemental direct-check — 2026-10-18
+
+A later clean-room pass opened only the supplied public pages and a small number of linked policy/robots pages; it did not enumerate pages or call undocumented endpoints.
+
+### Wowhead observations (facts)
+
+- `https://www.wowhead.com/database` describes a broad database hub: items, NPCs, quests, zones, factions, instances, spells, professions/skills, objects, achievements, pets, mounts, titles, currencies, icons and sounds. It explicitly credits community uploads from the Wowhead Client, comments, guides and screenshots.
+- The Forever list pages expose human-readable filter URLs and structured list columns. On the observed items page: quality, slot, name, item level, required level, usable-by, match mode, stat weighting, group-by (none/slot/level/source), and columns including changes, versions, side, DPS, speed, source, type and popularity. The page showed 22,673 found with 1,000 displayed, so list output is capped/paginated.
+- Observed Forever entity list shapes: items carry ID, name, quality, level/required level, slot, source links, type/subtype and related spell/quest/NPC/zone links; NPCs carry ID, name, level/classification, location, faction/react and creature type; quests carry level/required level, side, rewards, XP, money and category; objects carry location and object type. These are observations of rendered columns, not a license to copy rows.
+- `https://www.wowhead.com/forever/latest-additions` groups additions by date and entity kind (items, NPCs, quests, objects, spells), exposes counts, IDs and entity links, and marks list changes such as New, Updated, Unchanged and field-specific changes. It is useful as a competitor UX pattern and manual coverage checklist, not as an ingestion feed.
+- Public icon URL patterns are visible in rendered pages (Wowhead/ZAM icon CDN and WoWDB icon CDN), but Everloot should not reuse competitor-hosted assets or treat texture names as a license.
+
+### WoWDB observations (facts)
+
+- `https://www.wowdb.com/items` renders a list with icon URL, item ID/name, item level, required level, inventory slot, armor/type/subtype, and occasional expansion/source labels. An item page also exposes icon, item level, bind status, equip location, required level, flavor text and sell price.
+- WoWDB’s public robots file allows ordinary search/reference use for `*` but declares `Content-Signal: search=yes,ai-train=no,use=reference`; it disallows named AI crawlers and disallows `/api/`, `/search`, and many sort/page/filter query variants. This is a strong reason not to build an automated data dependency.
+- The public WoWDB pages checked did not expose documented API/export terms. The housing subsite does advertise a user-facing JSON export for its floorplan tool; that is a tool export for user-authored layouts, not a general game-database export and not evidence of permission to reuse database rows.
+
+### API/export and contribution findings (facts)
+
+- Wowhead’s Fanbyte/ZAM EULA covers APIs and says the service license is personal, limited, revocable, non-transferable, non-commercial and non-sublicensable; it prohibits reproducing/distributing the service, commercial/third-party use, datamining, and access/download through spiders, robots, crawlers or data-mining tools rather than ordinary browsers or ZAM-provided agents.
+- The same EULA says contributors retain copyright in user content but grant ZAM a broad worldwide, perpetual, royalty-free license; it also grants other users only the access/use permitted by the EULA and site functionality. That does not create a CC BY-SA reuse license for Everloot.
+- Wowhead’s public robots file disallows many AI crawlers, including GPTBot, ClaudeBot, anthropic-ai and Scrapy, with a broad `Disallow: /` group. WoWDB’s robots/content signals likewise do not grant data-reuse permission.
+- No official public Wowhead bulk export or documented API suitable for Everloot was found in this pass. Search results mentioning third-party “Wowhead APIs” are not official authorization and should not be used.
+
+### Inferences for Everloot (clearly separated)
+
+1. Use the competitors’ **information architecture only**: entity kind, typed relations, filters, change badges, and latest-additions chronology. Rebuild it from Everloot’s own client files and opt-in player observations.
+2. Model a canonical entity key as `(build, kind, game_id)` and retain fields for `name`, `icon_file_data_id`, taxonomy path, level/quality/slot where available, source links, and provenance. Keep `observed` and `game-file/unconfirmed` evidence distinct.
+3. Add a manual “coverage/change review” view inspired by Latest Additions, but drive it from Everloot’s own first-seen/last-seen/build data. Do not poll Wowhead or WoWDB.
+4. Treat Wowhead/WoWDB as research-only link-outs until written permission or an official, compatible license is obtained. Do not store their rows, comments, screenshots, guides, icons, CDN URLs as assets, or undocumented API responses; do not distill their selections into Everloot data.
+5. Prefer the existing Everloot plan: game-file facts labeled unconfirmed, player-observed facts under the three-install rule, and Everloot-hosted icons only where the project’s asset policy permits. Keep icons out of API/MCP/bulk if that policy remains in force.
+
 ## Sources
 
-- [wowdb.com/robots.txt](https://www.wowdb.com/robots.txt), read 2026-10-18
-- [Warcraft Wiki: WoWDB](https://warcraft.wiki.gg/wiki/WoWDB) (search result summary only)
-- [Wowhead database hub](https://www.wowhead.com/database) (search result summary only, not fetched)
-- [Wowhead weapons list](https://www.wowhead.com/items/weapons) (search result summary only, not fetched)
+- [Wowhead database hub](https://www.wowhead.com/database), checked directly 2026-10-18
+- [Wowhead Forever items](https://www.wowhead.com/forever/items), checked directly 2026-10-18
+- [Wowhead Forever NPCs](https://www.wowhead.com/forever/npcs), checked directly 2026-10-18
+- [Wowhead Forever quests](https://www.wowhead.com/forever/quests), checked directly 2026-10-18
+- [Wowhead Forever objects](https://www.wowhead.com/forever/objects), checked directly 2026-10-18
+- [Wowhead Forever latest additions](https://www.wowhead.com/forever/latest-additions), checked directly 2026-10-18
+- [Wowhead/Fanbyte terms](https://corp.fanbyte.com/legal/terms), checked directly 2026-10-18
+- [Wowhead robots.txt](https://www.wowhead.com/robots.txt), checked directly 2026-10-18
+- [WoWDB](https://www.wowdb.com/), [items](https://www.wowdb.com/items), and [sample item](https://www.wowdb.com/items/38268-spare-hand), checked directly 2026-10-18
+- [WoWDB robots.txt](https://www.wowdb.com/robots.txt), checked directly 2026-10-18
+- [WoWDB Housing Hub changelog](https://housing.wowdb.com/changelog), checked directly 2026-10-18
 - [TSM help: filtering and importing items from Wowhead](https://tradeskillmaster.helpjuice.com/en_US/tsm-website/how-do-i-filter-and-import-items-from-wowhead)
-- [Warcraft Tavern: new Warcraft database](https://www.warcrafttavern.com/wow/news/new-warcraft-database-3d-models-talent-calculator-detailed-maps-more/)
-- [CurseForge: WoWDB](https://www.curseforge.com/wow/addons/wowdb)
-- [WoWDBDefs](https://github.com/wowdev/WoWDBDefs) for table and field names
+- [WoWDBDefs](https://github.com/wowdev/WoWDBDefs) for field-name background (not a source of competitor rows)
