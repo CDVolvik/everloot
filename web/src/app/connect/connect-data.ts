@@ -1,4 +1,4 @@
-import { CREDIT_LINE, LICENCE, LICENCE_URL, MCP_PROMPT_NAMES, MCP_RESOURCE_URIS, MCP_TOOL_NAMES, SITE, TERMS_URL, type McpPromptName, type McpResourceUri, type McpToolName } from "@everloot/protocol";
+import { CREDIT_LINE, LICENCE, LICENCE_URL, MCP_PROMPT_NAMES, MCP_RESOURCE_TEMPLATE_LIST, MCP_RESOURCE_URIS, MCP_TOOL_NAMES, SITE, TERMS_URL, type McpPromptName, type McpResourceUri, type McpToolName } from "@everloot/protocol";
 
 export const MCP_URL = `${SITE}/mcp/public`;
 export const CORPUS_URL = `${SITE}/api/corpus/public`;
@@ -47,6 +47,12 @@ const RESOURCE_TEXT: Record<McpResourceUri, string> = {
 
 /** Every resource the MCP server registers, in the protocol's order. A client reads one whole with resources/read. */
 export const MCP_RESOURCES: readonly { uri: McpResourceUri; text: string }[] = MCP_RESOURCE_URIS.map((uri) => ({ uri, text: RESOURCE_TEXT[uri] }));
+
+/** Every resource template, in the protocol's order: an entity URI that reads as the named tool's structured answer. */
+export const MCP_RESOURCE_TEMPLATES: readonly { uriTemplate: string; text: string }[] = MCP_RESOURCE_TEMPLATE_LIST.map((t) => ({
+  uriTemplate: t.uriTemplate,
+  text: `${t.description} The same JSON as ${t.tool}'s structured answer.`,
+}));
 
 /** One plain sentence per prompt, keyed by name so a new prompt in the protocol fails the type check here. */
 const PROMPT_TEXT: Record<McpPromptName, string> = {

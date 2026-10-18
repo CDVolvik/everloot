@@ -1,4 +1,4 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CREDIT_LINE, LICENCE, MCP_CREDIT, SITE } from "@everloot/protocol";
 import { answerSources, answerSourcesFactsFromRecords, formatAnswerSources, type AnswerSourcesFacts } from "./answer-sources.js";
@@ -15,7 +15,7 @@ import { formatItemPage, itemPage } from "./item-page.js";
 import { formatObjectPage, objectFactsFromRecords, objectPage, type ObjectFacts } from "./object-page.js";
 import { handleMarketValue, itemMarket, type MarketState } from "./market.js";
 import { loadUploadRecords } from "./load-uploads.js";
-import { KNOWLEDGE_KINDS, MCP_PROMPT_NAMES, MCP_PROMPTS, MCP_RESOURCE_URIS, MCP_RESOURCES, MCP_TOOL_NAMES, MCP_TOOLS, parseRecords, type McpToolArgs, type McpToolDef, type McpToolName } from "@everloot/protocol";
+import { KNOWLEDGE_KINDS, MCP_PROMPT_NAMES, MCP_PROMPTS, MCP_RESOURCE_TEMPLATE_URIS, MCP_RESOURCE_TEMPLATES, MCP_RESOURCE_URIS, MCP_RESOURCES, MCP_TOOL_NAMES, MCP_TOOLS, parseRecords, type McpToolArgs, type McpToolDef, type McpToolName } from "@everloot/protocol";
 import { z } from "zod";
 import { handleProfessionPath, professionPath } from "./profession-path.js";
 import { promptText } from "./prompts.js";
@@ -551,6 +551,19 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; 
     server.registerResource(def.name, uri, { title: def.title, description: def.description, mimeType: def.mimeType }, () => {
       const { mimeType, text } = readResource(uri, SOURCE_URL);
       return { contents: [{ uri, mimeType, text }] };
+    });
+  }
+  for (const uriTemplate of MCP_RESOURCE_TEMPLATE_URIS) {
+    const def = MCP_RESOURCE_TEMPLATES[uriTemplate];
+    const input = z.object(MCP_TOOLS[def.tool].inputSchema);
+    server.registerResource(def.name, new ResourceTemplate(uriTemplate, { list: undefined }), { title: def.title, description: def.description, mimeType: def.mimeType }, async (uri, variables) => {
+      const raw = String(variables[def.variable] ?? "");
+      // The tool's own input schema decides what the variable may be: a positive id, or a class slug.
+      const parsed = input.safeParse({ [def.argument]: /^\d+$/.test(raw) ? Number(raw) : raw });
+      if (!parsed.success) throw new Error(`${uri.href}: ${def.variable} must be ${def.argument === "class" ? "a class slug" : "a positive id"}, not "${raw}".`);
+      const answer = await (handlers[def.tool] as (a: unknown) => Answer | Promise<Answer>)(parsed.data);
+      const structured = typeof answer === "string" ? { text: answer } : answer.structured;
+      return { contents: [{ uri: uri.href, mimeType: def.mimeType, text: JSON.stringify(structured, null, 2) }] };
     });
   }
   for (const name of MCP_PROMPT_NAMES) {

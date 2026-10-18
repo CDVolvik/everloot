@@ -13,8 +13,8 @@ vi.mock("@/components/CookieConsent", () => ({ CookiePreferencesButton: () => nu
 vi.mock("@/components/ApiKeys", () => ({ default: () => <div data-testid="api-keys" /> }));
 
 import ConnectPage, { metadata } from "./page";
-import { CONNECT_EXAMPLES, CORPUS_URL, MCP_PROMPTS, MCP_RESOURCES, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR } from "./connect-data";
-import { API_ROUTES, MCP_PROMPT_NAMES, MCP_RESOURCE_URIS, MCP_TOOL_NAMES, PROTOCOL_VERSION, PUBLIC_RECORD_KINDS } from "@everloot/protocol";
+import { CONNECT_EXAMPLES, CORPUS_URL, MCP_PROMPTS, MCP_RESOURCE_TEMPLATES, MCP_RESOURCES, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR } from "./connect-data";
+import { API_ROUTES, MCP_PROMPT_NAMES, MCP_RESOURCE_TEMPLATE_URIS, MCP_RESOURCE_URIS, MCP_TOOL_NAMES, PROTOCOL_VERSION, PUBLIC_RECORD_KINDS } from "@everloot/protocol";
 import { createIntakeQuota } from "@/lib/intake-quota";
 import { ANON_PAGE, ANON_PER_HOUR, attribution, KEY_PAGE, KEY_PER_HOUR } from "@/lib/data-guard";
 import sitemap from "../sitemap";
@@ -34,6 +34,8 @@ test("the resource and prompt lists are exactly what the protocol declares, in o
   expect(MCP_RESOURCES.map((resource) => resource.uri)).toEqual(MCP_RESOURCE_URIS);
   for (const resource of MCP_RESOURCES) expect(page).toContain(`>${resource.uri}</code>`);
   expect(page).toContain("/schema/mcp/resources.json");
+  expect(MCP_RESOURCE_TEMPLATES.map((t) => t.uriTemplate)).toEqual(MCP_RESOURCE_TEMPLATE_URIS);
+  for (const t of MCP_RESOURCE_TEMPLATES) expect(decoded).toContain(`>${t.uriTemplate}</code>`);
   expect(MCP_PROMPTS.map((prompt) => prompt.name)).toEqual(MCP_PROMPT_NAMES);
   for (const prompt of MCP_PROMPTS) expect(page).toContain(`>${prompt.name}</code>`);
   expect(page).toContain("/schema/mcp/prompts.json");

@@ -7,7 +7,7 @@ import Bracket from "@/components/Bracket";
 import { KEYS_MADE_PER_DAY, KEYS_PER_ACCOUNT, REVOKED_KEPT_DAYS, USAGE_KEPT_DAYS } from "@/lib/api-keys";
 import { ANON_PAGE, ANON_PER_HOUR, guardOn, KEY_PAGE, KEY_PER_HOUR } from "@/lib/data-guard";
 import { PUBLIC_RECORD_KINDS } from "@everloot/protocol";
-import { CONNECT_EXAMPLES as ex, MCP_PROMPTS, MCP_RESOURCES, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR } from "./connect-data";
+import { CONNECT_EXAMPLES as ex, MCP_PROMPTS, MCP_RESOURCE_TEMPLATES, MCP_RESOURCES, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR } from "./connect-data";
 import { ApiReference, SchemaReference, ToolReference } from "./Reference";
 
 export const metadata: Metadata = {
@@ -113,6 +113,18 @@ export default function ConnectPage() {
             <li key={resource.uri} className="py-3 grid sm:grid-cols-[13rem_1fr] gap-x-4 gap-y-1">
               <code className="font-mono text-sm text-fg">{resource.uri}</code>
               <span className="text-sm text-fg-2">{resource.text}</span>
+            </li>
+          ))}
+        </ul>
+        <p className="text-fg-2">
+          Entity pages read as resources too, one URI per entity. Each answers with the same JSON as the named tool&apos;s
+          structured answer, so a client that prefers resources to tool calls gets the same page.
+        </p>
+        <ul className="divide-y divide-line border-y border-line">
+          {MCP_RESOURCE_TEMPLATES.map((t) => (
+            <li key={t.uriTemplate} className="py-3 grid sm:grid-cols-[13rem_1fr] gap-x-4 gap-y-1">
+              <code className="font-mono text-sm text-fg">{t.uriTemplate}</code>
+              <span className="text-sm text-fg-2">{t.text}</span>
             </li>
           ))}
         </ul>
