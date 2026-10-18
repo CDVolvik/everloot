@@ -35,7 +35,7 @@ export default function TermsPage() {
         are an agreement between you and us. By using any part of Everloot you agree to them. They are written to be read, not skimmed;
         if something is unclear, ask at <a href={`mailto:${CONTACT_EMAIL}`} className={link}>{CONTACT_EMAIL}</a>.
       </p>
-      <p className="text-fg-2">
+      <p className="text-fg-2 mt-3">
         Everloot is an independent fan project. {NON_AFFILIATION} How your data is handled is in the{" "}
         <Link href="/privacy" className={link}>Privacy Policy</Link>; how uploads become facts is on{" "}
         <Link href="/methodology" className={link}>How we count</Link>.

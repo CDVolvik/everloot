@@ -26,7 +26,7 @@ export default function SecurityPage() {
         <a href={`mailto:${CONTACT_EMAIL}?subject=Security`} className={link}>{CONTACT_EMAIL}</a> with &ldquo;Security&rdquo; in the
         subject. Include what you found, how to reproduce it, and what an attacker could do with it.
       </p>
-      <p className="text-fg-2">
+      <p className="text-fg-2 mt-3">
         The same contacts are published in the machine-readable{" "}
         <a href="/.well-known/security.txt" className={link}>security.txt</a> file.
       </p>
