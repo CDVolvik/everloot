@@ -75,7 +75,8 @@ Support/Everloot`, `~/.config/everloot`), so a player can switch between them wi
 | `changes.ts` | The change tracker's RSS feed as a list: title, https link, date, plain-text summary | `fetch` |
 | `backups.ts` | After each upload, a dated copy of the account's `Everloot.lua` under `backups/`, the newest ten per account. A failed backup never fails the upload. Restore copies one back over the watched file of the same account after a native confirm, backing up the current file first; only files inside `backups/` are accepted | `node:fs` |
 | `tray.ts` | The menu: status of each job, a scan reminder when a realm is stale (opens the Market page), the desktop update when one exists (opens the release page), Upload now, Refresh prices, Open window, Pause, Quit. The two notifications open Ask and Addon when clicked | Electron |
-| `index.ts` | Single instance, the window, the tray, IPC handlers, close-to-tray, launch at login | everything above |
+| `window-state.ts` | The window's last size and place in `window.json`, written a moment after the last drag and on close. On open the size is clamped to the minimum and the largest display, and the place is kept only when enough of the window would still be on a connected display; otherwise Electron centers it | `node:fs` |
+| `index.ts` | Single instance, the window, the tray, IPC handlers, close-to-tray, launch at login. The release checks run at start and once a day after that (the addon notice once per version). An unhandled rejection or exception becomes a line on the Log page instead of a dialog | everything above |
 
 ### The window
 
@@ -159,6 +160,14 @@ on the Node side for ten to fifteen minutes so opening a page twice does not ask
   reminder names the oldest and counts the rest.
 - `backups.test.ts`: dated copies, ten per account; restore replaces the live file and keeps the
   replaced one as the newest backup; refuses paths outside `backups/` and unwatched accounts.
+- `chat.test.ts` (the agent mocked): the transcript persists and keeps the newest hundred; an empty
+  question and a question while busy do nothing; a failed answer keeps the question and the error;
+  the public mount without a token and the token endpoint with one; the mode line per provider.
+- `jobs.test.ts`: the watcher reports a write and stops; a missing path does not throw; the ask
+  job refuses a missing, unreadable or empty token file.
+- `window-state.test.ts`: default size without a file; a place on a connected display is kept, one
+  on a display that is gone is dropped; size clamped to the minimum and the largest display;
+  `window.json` round-trips and survives junk.
 - `preload` allow-list: `openExternal` refuses anything but `https:` on named hosts.
 - Manual, before a release: install on Windows, first run, play, log out, see the upload in the log
   and the prices after `/reload`.

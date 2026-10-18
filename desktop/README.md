@@ -49,7 +49,9 @@ The window is a sidebar with one page per thing to manage:
 | Site tools | The talent calculator, raid builder, database, auction prices, world map and lore archive, shown inside the window as the site itself. Links elsewhere open in your browser |
 
 The tray menu shows each job's last result, with Upload now, Refresh prices now, Pause and Quit.
-Closing the window keeps the app in the tray.
+Closing the window keeps the app in the tray. The window opens where you left it, at the same
+size, unless that screen is gone. The release checks (app and addon) run at start and once a day
+after that.
 
 The app shares its data folder with the command line (`%APPDATA%\Everloot`,
 `~/Library/Application Support/Everloot`, `~/.config/everloot`): `sent.json` for confirmed events,

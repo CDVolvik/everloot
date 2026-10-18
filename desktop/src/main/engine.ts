@@ -27,6 +27,8 @@ export interface Engine {
   runNow(job: Job): Promise<void>;
   setPaused(paused: boolean): void;
   snapshot(): EngineState;
+  /** A line on the Log page from outside the jobs (the app's own errors). */
+  log(level: LogLine["level"], text: string): void;
   onChange(listener: (state: EngineState) => void): () => void;
 }
 
@@ -141,6 +143,7 @@ export function createEngine(deps: EngineDeps, options: EngineOptions = {}): Eng
     runNow: (job) => run(job),
     setPaused: (paused) => { state.paused = paused; log("info", paused ? "Paused" : "Resumed"); emit(); },
     snapshot,
+    log: (level, text) => { log(level, text); emit(); },
     onChange: (listener) => { listeners.add(listener); return () => { listeners.delete(listener); }; },
   };
 }

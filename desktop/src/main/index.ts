@@ -1,4 +1,4 @@
-import { BrowserWindow, Notification, app, dialog, ipcMain, shell } from "electron";
+import { BrowserWindow, Notification, app, dialog, ipcMain, screen, shell } from "electron";
 import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -21,6 +21,7 @@ import { loadSettings, mergeSettings, saveSettings } from "./settings";
 import { SITE_TOOLS, createSiteViews, siteToolPath } from "./site-views";
 import { createTray } from "./tray";
 import { checkForUpdates, fetchReleases, newestDesktopRelease } from "./updates";
+import { fitWindow, readWindowState, writeWindowState } from "./window-state";
 
 /** The same folder the command line uses (`companion/src/cli.ts` defaultStatePath), so both share sent.json. */
 function dataFolder(): string {
@@ -103,13 +104,17 @@ if (!app.requestSingleInstanceLock()) {
       if (update?.newer) broadcast();
     } catch { update = null; }
   };
+  let addonNoticed: string | null = null;
   const addonUpdateNotice = async () => {
     const dir = addonsDir();
     if (!dir) return;
     try {
       const installed = installedAddonVersion(dir);
       const latest = newestRelease(await releases(), "addon-v");
-      if (installed && latest && compareVersions(latest.version, installed) > 0) notify("Everloot addon update", `${latest.version} is out (you run ${installed}). Open the Addon page to update.`, "addon");
+      if (installed && latest && latest.version !== addonNoticed && compareVersions(latest.version, installed) > 0) {
+        addonNoticed = latest.version;
+        notify("Everloot addon update", `${latest.version} is out (you run ${installed}). Open the Addon page to update.`, "addon");
+      }
     } catch { /* offline; the Addon page will say so */ }
   };
 
@@ -132,9 +137,11 @@ if (!app.requestSingleInstanceLock()) {
     }
   };
 
+  const windowPath = join(data, "window.json");
   function createWindow(): void {
+    const bounds = fitWindow(readWindowState(windowPath), screen.getAllDisplays().map((d) => d.workArea));
     win = new BrowserWindow({
-      width: 1040, height: 720, minWidth: 760, minHeight: 540,
+      ...bounds, minWidth: 760, minHeight: 540,
       title: "Everloot Desktop",
       backgroundColor: "#0E0F0D",
       show: false,
@@ -144,8 +151,14 @@ if (!app.requestSingleInstanceLock()) {
     site = createSiteViews(win, () => settings.endpoint);
     win.loadFile(join(__dirname, "renderer", "index.html"));
     win.once("ready-to-show", () => { win?.show(); });
+    // The size and place come back next time; written a moment after the last drag, and on close.
+    let saveTimer: ReturnType<typeof setTimeout> | null = null;
+    const remember = () => { if (win && !win.isMinimized() && !win.isMaximized() && !win.isFullScreen()) { try { writeWindowState(windowPath, win.getBounds()); } catch { /* read-only data folder; nothing to remember */ } } };
+    const rememberSoon = () => { if (saveTimer) clearTimeout(saveTimer); saveTimer = setTimeout(remember, 500); };
+    win.on("resize", rememberSoon);
+    win.on("move", rememberSoon);
     // Close keeps the app in the tray; Quit in the tray menu ends it.
-    win.on("close", (e) => { if (!quitting) { e.preventDefault(); win?.hide(); } });
+    win.on("close", (e) => { if (saveTimer) clearTimeout(saveTimer); remember(); if (!quitting) { e.preventDefault(); win?.hide(); } });
     win.on("closed", () => { site?.destroy(); site = null; win = null; });
     win.webContents.setWindowOpenHandler(({ url }) => { if (allowedExternal(url)) void shell.openExternal(url); return { action: "deny" }; });
     win.webContents.on("will-navigate", (e) => e.preventDefault());
@@ -258,6 +271,11 @@ if (!app.requestSingleInstanceLock()) {
   ipcMain.handle("siteBack", () => site?.back());
   ipcMain.handle("siteReload", () => site?.reload());
 
+  // A stray rejection or exception becomes a line on the Log page instead of Electron's dialog; the jobs keep running.
+  const describe = (err: unknown) => (err instanceof Error ? err.stack ?? err.message : String(err));
+  process.on("unhandledRejection", (err) => engine.log("error", `Unhandled rejection: ${describe(err)}`));
+  process.on("uncaughtException", (err) => { console.error(err); engine.log("error", `Uncaught exception: ${describe(err)}`); });
+
   app.on("second-instance", () => show());
   app.on("activate", () => show());
   app.on("before-quit", () => { quitting = true; });
@@ -273,6 +291,9 @@ if (!app.requestSingleInstanceLock()) {
     const hidden = process.argv.includes("--hidden") || (process.platform === "darwin" && app.getLoginItemSettings().wasOpenedAtLogin);
     if (!settings.consentedAt || !(hidden && settings.startInTray)) createWindow();
     broadcast();
-    if (settings.consentedAt) { void addonUpdateNotice(); void desktopUpdateLine(); }
+    const checkReleases = () => { if (settings.consentedAt) { void addonUpdateNotice(); void desktopUpdateLine(); } };
+    checkReleases();
+    // The app sits in the tray for weeks; look again once a day.
+    setInterval(checkReleases, 24 * 60 * 60 * 1000);
   });
 }
