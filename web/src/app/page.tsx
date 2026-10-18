@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
+import LaunchCountdown from "@/components/LaunchCountdown";
 import LoreSearchForm from "@/components/LoreSearchForm";
 import { tools, toolHref } from "@/data/tools";
 import { LORE_SEARCH_LABEL, organizationJsonLd, websiteJsonLd } from "@/lib/jsonld";
@@ -29,7 +30,10 @@ export default function Home() {
           a farm&apos;s gold per hour. Database facts appear when enough install reports
           agree. Loot-window observations do not establish kill-based drop probabilities.
         </p>
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+        <div className="mt-6">
+          <LaunchCountdown />
+        </div>
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
           <Link
             href="/database"
             className="btn btn-primary"

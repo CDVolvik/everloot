@@ -18,6 +18,8 @@ export const ORG_ID = `${SITE_URL}/#organization`;
 export const WEBSITE_ID = `${SITE_URL}/#website`;
 
 export const CONTACT_EMAIL = "hello@everloot.app";
+/** The Everloot Discord server; a permanent invite. */
+export const DISCORD_INVITE = "https://discord.gg/9CKsbHTRu3";
 /** The footer shows both sentences, and the Organization description repeats them. */
 export const SITE_BLURB = "The WoW: Forever database, built from player data.";
 export const NON_AFFILIATION = "Not affiliated with or endorsed by Blizzard Entertainment.";
@@ -35,7 +37,7 @@ export function organizationJsonLd(): JsonLd {
     url: SITE_URL,
     email: CONTACT_EMAIL,
     description: `${SITE_BLURB} ${NON_AFFILIATION}`,
-    sameAs: [REPO_URL],
+    sameAs: [REPO_URL, DISCORD_INVITE],
   };
 }
 

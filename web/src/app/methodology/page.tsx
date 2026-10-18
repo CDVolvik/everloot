@@ -1,0 +1,78 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+import { pageMetadata } from "@/lib/seo";
+import { REPO_URL } from "@/lib/source";
+
+const description =
+  "How Everloot turns addon uploads into WoW Forever facts: three installs must agree, unrecorded never reads as zero, and names and addresses are never published.";
+
+export const metadata: Metadata = pageMetadata({ title: "How We Count WoW Forever Data", description, path: "/methodology" });
+
+const link = "text-accent hover:underline underline-offset-4";
+
+export default function MethodologyPage() {
+  return (
+    <article className="space-y-8 max-w-3xl">
+      <header className="space-y-3">
+        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">How we count</h1>
+        <p className="text-lg text-fg-2">
+          Every fact on Everloot comes from players running the Everloot addon and choosing to upload what it recorded. This page
+          says how those uploads become the numbers you see, and what we never publish. The full rules are in the{" "}
+          <a href={`${REPO_URL}/blob/main/docs/DATA_POLICY.md`} rel="noopener" className={link}>data policy</a>.
+        </p>
+      </header>
+
+      <section aria-labelledby="three" className="space-y-3">
+        <h2 id="three" className="text-2xl font-semibold text-fg">Three installs have to agree</h2>
+        <p className="text-fg-2">
+          A drop, a vendor item, a spawn point, a recipe range or a market price appears only once at least three different installs
+          have reported it the same way. For prices and catalog entries, &ldquo;different&rdquo; means different upload addresses,
+          with an IPv6 address counted by its /64 block, so one household can&apos;t make a fact true on its own. Until three agree,
+          the page says so instead of guessing.
+        </p>
+      </section>
+
+      <section aria-labelledby="zero" className="space-y-3">
+        <h2 id="zero" className="text-2xl font-semibold text-fg">Unrecorded is not zero</h2>
+        <p className="text-fg-2">
+          If nobody has recorded something, the page says <em>unrecorded</em>. A zero appears only when it was measured: for example,
+          &ldquo;0 drops in 40 kills&rdquo; once three installs killed that creature and none of them saw the item. A storage outage
+          or a missing source is never shown as zero either.
+        </p>
+        <p className="text-fg-2">
+          Loot windows show what dropped, not how many kills it took, so they don&apos;t make a drop rate on their own. A rate is
+          drops divided by recorded kills.
+        </p>
+      </section>
+
+      <section aria-labelledby="never" className="space-y-3">
+        <h2 id="never" className="text-2xl font-semibold text-fg">What we never publish</h2>
+        <ul className="list-disc pl-6 space-y-1 text-fg-2">
+          <li>Character names, unless that player shares them on purpose from the <Link href="/upload" className={link}>upload page</Link>. Guild data needs an officer&apos;s upload.</li>
+          <li>Your install id, or the address an upload came from. Where an address matters for counting, we keep a keyed hash in private storage.</li>
+          <li>Your list of addons, row by row. It is off unless you turn it on, and only counts that three installs share are shown.</li>
+        </ul>
+        <p className="text-fg-2">
+          Uploaded observations are public as anonymous records, so anyone can check our counts.
+        </p>
+      </section>
+
+      <section aria-labelledby="files" className="space-y-3">
+        <h2 id="files" className="text-2xl font-semibold text-fg">Game files and play are kept apart</h2>
+        <p className="text-fg-2">
+          Some pages, such as the <Link href="/tools/talents" className={link}>talent calculator</Link> and the{" "}
+          <Link href="/map" className={link}>map</Link>, use data read from the game&apos;s own files. It is labelled as found in the game
+          files and unconfirmed until players see it in play.
+        </p>
+      </section>
+
+      <section aria-labelledby="population" className="space-y-3">
+        <h2 id="population" className="text-2xl font-semibold text-fg">Population numbers</h2>
+        <p className="text-fg-2">
+          Everloot doesn&apos;t publish player counts yet. When it does, each character will be counted once however often it is seen,
+          and this page will say exactly how the count works before the first number goes up.
+        </p>
+      </section>
+    </article>
+  );
+}

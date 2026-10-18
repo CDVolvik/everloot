@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CONTACT_EMAIL, NON_AFFILIATION, SITE_BLURB } from "@/lib/jsonld";
+import { CONTACT_EMAIL, DISCORD_INVITE, NON_AFFILIATION, SITE_BLURB } from "@/lib/jsonld";
 import { sourceUrl } from "@/lib/source";
 import { CookiePreferencesButton } from "./CookieConsent";
 
@@ -24,6 +24,12 @@ export default function Footer() {
           <Link href="/about" className="hover:text-accent transition">
             About
           </Link>
+          <Link href="/methodology" className="hover:text-accent transition">
+            How we count
+          </Link>
+          <a href={DISCORD_INVITE} rel="noopener" className="hover:text-accent transition">
+            Discord
+          </a>
           <Link href="/contact" className="hover:text-accent transition">
             Contact
           </Link>

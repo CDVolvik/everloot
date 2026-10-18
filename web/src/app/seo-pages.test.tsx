@@ -167,3 +167,25 @@ test("the launch source and date agree with the curated lore row", () => {
     expect(LAUNCH.quote).toContain(longDate(LAUNCH.date));
   });
 });
+
+test("/wow-forever shows Blizzard's race and class tables with the new combinations marked and the source linked", async () => {
+  const { default: Page } = await import("./wow-forever/page");
+  const { RACES, NEW_COMBOS } = await import("@/data/wow-forever");
+  const html = renderToStaticMarkup(<Page />);
+  expect(visible(html)).toContain("Which races and classes can you play?");
+  expect(html).toContain(`href="${RACES.sourceUrl}"`);
+  expect(visible(html)).toContain("published September 22, 2026");
+  expect(html.match(/<table/g)).toHaveLength(2);
+  const tables = html.match(/<table[\s\S]*?<\/table>/g)!.join("");
+  expect(tables.match(/>New</g)).toHaveLength(NEW_COMBOS.length);
+});
+
+test("/methodology states the three-installs rule, unrecorded is not zero, and links the data policy", async () => {
+  const { default: Page } = await import("./methodology/page");
+  const html = renderToStaticMarkup(<Page />);
+  expect(h1(html)).toBe("How we count");
+  expect(visible(html)).toContain("at least three different installs");
+  expect(visible(html)).toContain("Unrecorded is not zero");
+  expect(html).toContain('/blob/main/docs/DATA_POLICY.md"');
+  expect(visible(html)).toContain("doesn't publish player counts yet");
+});

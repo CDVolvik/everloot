@@ -25,6 +25,7 @@ const routes: [string, () => Promise<{ metadata: Metadata }>, boolean][] = [
   ["/database/vendors", () => import("./database/vendors/page"), true],
   ["/lore", () => import("./lore/page"), false],
   ["/map", () => import("./map/page"), true],
+  ["/methodology", () => import("./methodology/page"), true],
   ["/privacy", () => import("./privacy/page"), false],
   ["/search", () => import("./search/page"), false],
   ["/tools/auctions", () => import("./tools/auctions/page"), true],

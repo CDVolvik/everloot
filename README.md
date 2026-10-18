@@ -175,7 +175,7 @@ as much as a pull request.
 - Bugs and wrong data: [issues](https://github.com/CDVolvik/everloot/issues/new/choose)
 - A first code contribution: issues labelled
   [`good first issue`](https://github.com/CDVolvik/everloot/labels/good%20first%20issue)
-- Chat: the Everloot Discord opens at launch
+- Chat: the [Everloot Discord](https://discord.gg/9CKsbHTRu3)
 - Security problems: [`SECURITY.md`](SECURITY.md), never a public issue
 
 Read [`CONTRIBUTING.md`](CONTRIBUTING.md) first: it covers sign-off (`git commit -s`), pull request
