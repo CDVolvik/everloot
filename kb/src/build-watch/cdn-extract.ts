@@ -36,7 +36,7 @@ export async function extractFromCdn(product: string, region: string, curatedPat
   try {
     const snapshot = join(work, clientSnapshotName(build));
     const extractedAt = new Date().toISOString();
-    const manifest = writeClientSnapshot(snapshot, { ...build, extractedAt, library: CASC_LIBRARY, definitions: pinned }, tables);
+    const manifest = writeClientSnapshot(snapshot, { ...build, extractedAt, library: CASC_LIBRARY, definitions: pinned }, tables, missing);
     const run = writeCatalogs(snapshot, join(work, "catalog"), curatedPath);
     const classes = readdirSync(join(run.dir, "talents"))
       .filter((f) => f !== "index.json")
