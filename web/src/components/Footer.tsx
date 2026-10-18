@@ -49,6 +49,7 @@ const COLUMNS: { title: string; items: Item[] }[] = [
       { label: "Your privacy choices", href: "/privacy#choices" },
       { label: "Copyright and takedown", href: "/terms#takedown" },
       { label: "Trademarks", href: "/terms#trademarks" },
+      { label: "Accessibility", href: "/accessibility" },
     ],
   },
 ];

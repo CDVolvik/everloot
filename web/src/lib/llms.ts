@@ -32,6 +32,7 @@ const PAGES: { title: string; path: string; text: string }[] = [
   { title: "Privacy", path: "/privacy", text: "How uploads, cookies and usage statistics are handled." },
   { title: "Terms of use", path: "/terms", text: "Uploads, API keys, licences, trademarks, takedown requests and warranty." },
   { title: "Security", path: "/security", text: "How to report a security problem privately, and what is in scope." },
+  { title: "Accessibility", path: "/accessibility", text: "What the site aims for, what is in place, what has been checked and what has not, and how to report a problem." },
 ];
 
 const LIMITATIONS = [

@@ -81,6 +81,20 @@ test("/about links every tool at the address it lives at, not a slug that redire
   expect(html).not.toContain('href="/tools/upload"');
 });
 
+test("/accessibility says what is in place, what was checked and when, what was not, and how to report", async () => {
+  const { default: Accessibility } = await import("./accessibility/page");
+  const html = renderToStaticMarkup(<Accessibility />);
+  for (const id of ["aim", "in-place", "checked", "not-checked", "report"]) expect(html, id).toContain(`id="${id}"`);
+  const text = visible(html);
+  expect(text).toContain("WCAG");
+  expect(text).toContain("do not claim full conformance");
+  expect(text).toMatch(/On \d{1,2} \w+ 20\d\d we ran an automated axe-core audit/);
+  expect(text).toContain("have not checked yet");
+  expect(text).toContain("hello@everloot.app");
+  expect(html).toContain(`${REPO_URL}/issues/new/choose`);
+  expect(html).not.toMatch(/TODO|TBD/i);
+});
+
 test("/contact points copyright and takedown requests at the terms", async () => {
   const { default: Contact } = await import("./contact/page");
   expect(renderToStaticMarkup(<Contact />)).toContain('href="/terms#takedown"');
