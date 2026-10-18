@@ -53,8 +53,8 @@ export default function PrivacyPage() {
           sign-in flow requests identity and World of Warcraft profile permissions,
           but reads only your identity and BattleTag. We don&apos;t keep your
           Battle.net access token, or any other token Battle.net sends, after you
-          sign in. Your session is a random token in an essential cookie. It lasts
-          up to 30 days. It is stored with no IP address
+          sign in. Your session is a random token in an essential cookie. It ends
+          at most 30 days after your last visit. It is stored with no IP address
           and no browser details, and signing out ends it. Signing in does not
           publish your named addon records or establish guild officer authority.
         </li>
