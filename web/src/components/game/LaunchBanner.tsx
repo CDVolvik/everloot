@@ -4,7 +4,7 @@ import GameCredit from "./GameCredit";
 
 // The launch banner at the top of the home page: the game's own WoW: Forever logo, read from its
 // interface files (never Blizzard's marketing art), over a loading screen. `children` is the launch
-// line: the countdown, once that component is on this branch. The game's name and the disclaimer are
+// line: the home page passes the countdown (components/LaunchCountdown.tsx). The game's name and the disclaimer are
 // real text on the banner itself; the logo and the picture are decorative. Rendered only when the
 // upload has the logo (lib/game-assets.ts, launchArt).
 export default function LaunchBanner({ art, children }: { art: LaunchArt; children?: ReactNode }) {

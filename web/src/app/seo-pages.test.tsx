@@ -150,7 +150,7 @@ test("/lore shows the credit text its CollectionPage carries; /about carries Abo
 test("/wow-forever quotes only the source, shows the checked-on date and links the source; the lore page points to it", async () => {
   const { default: Page } = await import("./wow-forever/page");
   const { LAUNCH } = await import("@/data/wow-forever");
-  const html = renderToStaticMarkup(<Page />);
+  const html = renderToStaticMarkup(await Page());
   expect(visible(html)).toContain(`“${LAUNCH.quote}”`);
   expect(visible(html)).toContain("Checked on October 17, 2026");
   expect(html).toContain(`href="${LAUNCH.sourceUrl}"`);
@@ -171,7 +171,7 @@ test("the launch source and date agree with the curated lore row", () => {
 test("/wow-forever shows Blizzard's race and class tables with the new combinations marked and the source linked", async () => {
   const { default: Page } = await import("./wow-forever/page");
   const { RACES, NEW_COMBOS } = await import("@/data/wow-forever");
-  const html = renderToStaticMarkup(<Page />);
+  const html = renderToStaticMarkup(await Page());
   expect(visible(html)).toContain("Which races and classes can you play?");
   expect(html).toContain(`href="${RACES.sourceUrl}"`);
   expect(visible(html)).toContain("published September 22, 2026");

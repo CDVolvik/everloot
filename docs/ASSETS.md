@@ -31,8 +31,8 @@ variables (`GAME_DATA_*`), item links stay plain while the other art still shows
 | `/tools/raid` | Class, talent tree and buff icons, each buff's tooltip on hover and keyboard focus, and Molten Core's loading screen as the banner |
 | `/map` | The game's own continent and zone pictures under the zone outlines, with a switch to hide them; the continent's loading screen as the banner; each dungeon's and raid's loading screen, small, beside its entrance |
 | `/changes` | Kalimdor's loading screen as the banner; a talent or raid buff a post names gets its icon, its tooltip and a link to the page that shows it |
-| `/` | The launch banner: the game's own WoW: Forever logo over Eastern Kingdoms' loading screen, the launch line, and "Not affiliated with or endorsed by Blizzard Entertainment" on the banner. Class and profession icons, linking to the talent calculator and the profession hubs |
-| `/wow-forever` | Race and faction emblems for the race and class table, once that table is merged (PR #59); `emblems()` in `web/src/lib/game-assets.ts` gives them by the names the table uses |
+| `/` | The launch banner: the game's own WoW: Forever logo over Eastern Kingdoms' loading screen, the launch countdown (moved from the hero onto the banner), and "Not affiliated with or endorsed by Blizzard Entertainment" on the banner. Class and profession icons, linking to the talent calculator and the profession hubs |
+| `/wow-forever` | Race and faction emblems beside the race and faction names in the race and class table |
 
 Every icon sits beside the name it already had, so it is marked decorative (`alt=""`,
 `aria-hidden`). An item's or spell's tooltip text is also its description for screen readers. Banners

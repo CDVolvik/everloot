@@ -25,6 +25,7 @@ import MapPage from "@/app/map/page";
 import ItemPage from "@/app/database/items/[id]/page";
 import VendorPage from "@/app/database/vendors/[id]/page";
 import ChangesPage from "@/app/changes/page";
+import WowForeverPage from "@/app/wow-forever/page";
 
 const BASE = "https://assets.example.test/wow_classic_beta-70450-84bea423";
 const PRIVATE = "https://r2.example.test/everloot-game-data/wow_classic_beta-70450-84bea423";
@@ -57,6 +58,7 @@ const pages: [string, () => Promise<ReactNode>][] = [
   ["item", () => ItemPage({ params: Promise.resolve({ id: "9" }) })],
   ["vendor", () => VendorPage({ params: Promise.resolve({ id: "1" }) })],
   ["changes", () => ChangesPage({ searchParams: Promise.resolve({}) })],
+  ["wow-forever", () => WowForeverPage()],
 ];
 const render = async (page: () => Promise<ReactNode>) => renderToStaticMarkup(await page());
 
@@ -187,7 +189,9 @@ test("home: the launch banner shows the game's own logo, the name and the discla
   expect(banner).toMatch(/<img[^>]*src="[^"]*loading\/9000\.webp"[^>]*alt=""[^>]*aria-hidden="true"/);
   expect(banner).toContain(">World of Warcraft: Forever</p>");
   expect(banner).toContain("Not affiliated with or endorsed by Blizzard Entertainment.");
-  expect(banner).toMatch(/href="\/wow-forever"[^>]*>Launches <time dateTime="2026-11-04"[^>]*>November 4, 2026<\/time>/);
+  // The countdown sits on the banner, and only there.
+  expect(banner).toMatch(/href="\/wow-forever"[^>]*>WoW: Forever launches <time/);
+  expect(html.match(/WoW: Forever launches/g)).toHaveLength(1);
   expect(banner).toContain("Logo and loading screen art from game build 1.60.1.70450");
   expect(html.indexOf("data-launch-banner")).toBeLessThan(html.indexOf("<h1"));
 });
@@ -198,6 +202,20 @@ test("home: without the game's logo in the upload there is no launch banner, and
   const html = await render(() => Home());
   expect(html).not.toMatch(/data-launch-banner|logo-wow|World of Warcraft: Forever<\/p>/);
   expect(html).not.toContain("loading/9000");
+  // The countdown stays in the hero.
+  expect(html).toContain("WoW: Forever launches");
+});
+
+test("wow-forever: race and faction emblems beside the names in the race and class table, and the credit", async () => {
+  vi.stubEnv("NEXT_PUBLIC_GAME_ASSETS_URL", BASE);
+  vi.stubGlobal("fetch", bucket());
+  const html = await render(() => WowForeverPage());
+  expect(html).toMatch(/<caption[^>]*><img[^>]*emblems\/HordeEmblem\.webp"[^>]*alt=""[^>]*aria-hidden="true"[^>]*\/?>Horde<\/caption>/);
+  expect(html).toMatch(/<th scope="row"[^>]*><img[^>]*emblems\/raceicon128-human-female\.webp"[^>]*\/?>Human<\/th>/);
+  expect(html).toMatch(/<th scope="row"[^>]*><img[^>]*emblems\/raceicon128-nightelf-male\.webp"[^>]*\/?>Night Elf<\/th>/);
+  // A race the upload has no icon for keeps its plain name.
+  expect(html).toMatch(/<th scope="row"[^>]*>Orc<\/th>/);
+  expect(html).toContain("Race and faction emblems from game build 1.60.1.70450");
 });
 
 test("map: the continent's loading screen above the map, and each dungeon's beside its entrance", async () => {

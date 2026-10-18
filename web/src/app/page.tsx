@@ -8,7 +8,6 @@ import { tools, toolHref } from "@/data/tools";
 import { LORE_SEARCH_LABEL, organizationJsonLd, websiteJsonLd } from "@/lib/jsonld";
 import { FEED } from "@/lib/seo";
 import { classAndProfessionIcons, launchArt, loadSiteAssets } from "@/lib/game-assets";
-import { LAUNCH, longDate } from "@/data/wow-forever";
 import GameIcon from "@/components/game/GameIcon";
 import GameCredit from "@/components/game/GameCredit";
 import LaunchBanner from "@/components/game/LaunchBanner";
@@ -29,12 +28,7 @@ export default async function Home() {
       <JsonLd data={websiteJsonLd()} />
       {launch && (
         <LaunchBanner art={launch}>
-          {/* The countdown (components/LaunchCountdown.tsx, PR #59) replaces this line once both are merged. */}
-          <p className="text-sm text-fg-2">
-            <Link href="/wow-forever" className="hover:text-accent transition">
-              Launches <time dateTime={LAUNCH.date} className="text-fg">{longDate(LAUNCH.date)}</time>
-            </Link>
-          </p>
+          <LaunchCountdown />
         </LaunchBanner>
       )}
       {/* Hero */}
@@ -51,9 +45,12 @@ export default async function Home() {
           a farm&apos;s gold per hour. Database facts appear when enough install reports
           agree. Loot-window observations do not establish kill-based drop probabilities.
         </p>
-        <div className="mt-6">
-          <LaunchCountdown />
-        </div>
+        {/* With the launch banner, the countdown is on the banner instead. */}
+        {!launch && (
+          <div className="mt-6">
+            <LaunchCountdown />
+          </div>
+        )}
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
           <Link
             href="/database"
