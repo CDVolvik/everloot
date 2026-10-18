@@ -8,9 +8,9 @@ build stamp, **never in git**; credited on every page that shows them; pages onl
 the MCP server or the data downloads. Blizzard's marketing art (key art, logos, press kit,
 wallpapers) is not part of this and is never used.
 
-The talent art is decided. Everything else on this page (item, class, buff and profession icons,
-item tooltip facts and map pictures) is a **proposed extension, pending approval** (DATA_POLICY,
-"Proposed extension"). The code is in place and stays off until the owner sets the variables below.
+The talent art was decided first; item, class, buff and profession icons, item tooltip facts and map
+pictures were approved on 2026-10-18 (DATA_POLICY, "Extension"). The code stays off on any deployment
+where the variables below are unset.
 
 The site works without any of this. With `NEXT_PUBLIC_GAME_ASSETS_URL` unset, or a manifest that
 cannot be read in 2.5 seconds, every page shows the text it always had, with no error, no empty
@@ -116,8 +116,11 @@ How it works, and what it will not do:
 
 ## Owner steps for the buckets
 
-Nothing below has been done. The code never creates a bucket, touches DNS or changes an account.
-Steps 2 to 4 and 8 are only for the proposed extension: wait for its approval.
+Done for production on 2026-10-18: public bucket `everloot-assets` at `https://assets.everloot.app`
+(CORS GET/HEAD from everloot.app and www), private bucket `everloot-game-data`, an upload token (read and
+write on both) and a site token (read-only, private bucket only), build 70450 uploaded, and the five
+variables set in Vercel production. The code never creates a bucket, touches DNS or changes an account;
+repeat these steps for a new build or another deployment.
 
 1. **Public bucket.** In the Cloudflare dashboard, R2, create a bucket, for example
    `everloot-game-assets`. Keep it separate from the uploads bucket. Give it a public address:

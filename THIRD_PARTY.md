@@ -11,7 +11,7 @@ full record of every source we have used, linked or only read is
 | [Warcraft Wiki dump, 2023-11-13](https://archive.org/details/wiki-warcraft.wiki.gg-20231113) (Internet Archive) | The lore archive: `/lore`, `/search` and the MCP lore answers | CC BY-SA 4.0; each page credits and links its source article | Imported by `kb/src/importers/wiki-*.ts` into the knowledge release |
 | Battle.net API (Blizzard) | Sign-in identity, and a local cache on a maintainer's machine | Blizzard Developer API terms: no redistribution | Sign-in: `web/src/app/api/auth/bnet/`. Cache: `kb/src/blizzard/`, marked not publishable; the release build refuses it |
 | [Polestar](https://github.com/fitzforge/polestar) by fitzforge | Facts about Polestar on the addons pages; we copy no code or guide text | GPL-3.0-only with a guide-pack exception | `web/src/data/polestar.ts`, and live release and issue data from the GitHub API (`web/src/lib/polestar-github.ts`) |
-| Blizzard game files (client tables `ItemSparse`, `Item`, `SpellName`, `Spell`, and for the asset extractor `ChrClasses`, `SkillLine`, `SpellMisc` and the `UiMapArt*` map art tables) from Blizzard's CDN | Per-build snapshots and diffs on a maintainer machine; published only after review, labelled unconfirmed. Item tooltip facts from `ItemSparse`/`Item` are a proposed use, pending approval (`docs/DATA_POLICY.md`): kept in private storage and shown on a page only for items 3 installs reported | Game data © Blizzard Entertainment; facts, not under our CC BY-SA licence | `kb/src/client-extract.ts`, `kb/src/client-snapshot.ts`, `kb/src/client-diff.ts` |
+| Blizzard game files (client tables `ItemSparse`, `Item`, `SpellName`, `Spell`, and for the asset extractor `ChrClasses`, `SkillLine`, `SpellMisc` and the `UiMapArt*` map art tables) from Blizzard's CDN | Per-build snapshots and diffs on a maintainer machine; published only after review, labelled unconfirmed. Item tooltip facts from `ItemSparse`/`Item` (approved 2026-10-18, `docs/DATA_POLICY.md`) are kept in private storage and shown on a page only for items 3 installs reported | Game data © Blizzard Entertainment; facts, not under our CC BY-SA licence | `kb/src/client-extract.ts`, `kb/src/client-snapshot.ts`, `kb/src/client-diff.ts` |
 | [WoWDBDefs](https://github.com/wowdev/WoWDBDefs) by the wowdev contributors | Table layouts used to read the client tables | CC BY-SA 4.0 (definitions) | Fetched at extraction by `@rhyster/wow-casc-dbc`; the commit is in each snapshot manifest |
 | Public pages cited for guild-family facts | One fact each, in our own words, with its link and date | Facts only; no text copied | `web/src/data/families.ts` |
 
@@ -31,9 +31,9 @@ our pages, extracted by a maintainer from unencrypted files in the local game cl
 their build in a manifest and kept in Everloot's asset storage, never in this repository. They are © Blizzard Entertainment, Inc., stay Blizzard's, and are outside our CC BY-SA
 and AGPL licences. Release files that include any of them say so in their licence notes. The data
 downloads, API and MCP server carry ids and facts only. Item, class, buff and profession icons, item
-tooltip facts and the game's map pictures are a proposed extension of that rule, pending approval
-([`docs/DATA_POLICY.md`](docs/DATA_POLICY.md)); the code for them is off until the owner turns it on,
-and item tooltip facts would stay in private storage that only the site's server reads. Blizzard's
+tooltip facts and the game's map pictures were added to that rule on 2026-10-18
+([`docs/DATA_POLICY.md`](docs/DATA_POLICY.md)); item tooltip facts stay in private storage that only the
+site's server reads. Blizzard's
 marketing art (key art, logos, press kit, wallpapers) is never used. The talent catalog read from the client
 (trait node ids, positions, ranks, gates, prerequisites, spell ids, talent names, build stamp) and
 the map layer (zone rectangles, continents and instances, entrance points) may be committed as
