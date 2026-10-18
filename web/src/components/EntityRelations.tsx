@@ -2,10 +2,11 @@ import Link from "next/link";
 import { GAME_DATA_CREDIT } from "../../../kb/src/attribution";
 import { CLIENT_LABEL, edgesFrom, entityLabel, evidenceLabel, groupByRel, type Edge, type EdgeKind, type Rel } from "../../../kb/src/edges";
 
-/** Where an entity has a page on this site; null where it has none yet (spells, sets, skills). */
+/** Where an entity has a page on this site; null where it has none yet (spells, sets, icons). */
 function hrefFor(kind: EdgeKind, id: number, rel: Rel): string | null {
   if (kind === "item") return `/database/items/${id}`;
   if (kind === "npc") return rel === "sold_by" ? `/database/vendors/${id}` : `/database/npcs/${id}`;
+  if (kind === "object") return `/database/objects/${id}`;
   if (kind === "quest") return `/database/quests/${id}`;
   if (kind === "zone") return `/map?zone=${id}`;
   return null;
