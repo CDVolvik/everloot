@@ -19,6 +19,7 @@ test("/terms covers uploads, keys, trademarks, takedown, warranty and governing 
   const text = visible(html);
   expect(text).toContain("CC BY-SA 4.0");
   expect(text).toContain("Arizona");
+  expect(text).toContain("run by R21 Media Group, LLC");
   expect(text).toContain("hello@everloot.app");
   expect(text).toContain("Not affiliated with or endorsed by Blizzard Entertainment.");
   expect(text).toContain("Last updated");
@@ -38,6 +39,7 @@ test("/privacy names who is responsible, lists your rights, keeps retention peri
   const html = renderToStaticMarkup(<Privacy />);
   for (const id of ["controller", "rights", "retention", "children", "choices"]) expect(html, id).toContain(`id="${id}"`);
   const text = visible(html);
+  expect(text).toContain("run by R21 Media Group, LLC");
   expect(text).toContain(`${USAGE_KEPT_DAYS} days`);
   expect(text).toContain(`${REVOKED_KEPT_DAYS} days`);
   expect(text).toContain("30 days");

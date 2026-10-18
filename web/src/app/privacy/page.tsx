@@ -3,6 +3,7 @@ import Link from "next/link";
 import { pageMetadata } from "@/lib/seo";
 import { REVOKED_KEPT_DAYS, USAGE_KEPT_DAYS } from "@/lib/api-keys";
 import { SESSION_SECONDS } from "@/lib/supabase/server";
+import { OPERATOR } from "@/lib/jsonld";
 
 const SESSION_DAYS = Math.round(SESSION_SECONDS / 86_400);
 
@@ -30,8 +31,9 @@ export default function PrivacyPage() {
 
       <h2 id="controller" className="text-xl text-fg mt-6">Who is responsible</h2>
       <p className="text-fg-2">
-        Everloot is an independent fan project. The team that runs it decides
-        what the site collects and is responsible for it under privacy law. You
+        Everloot is an independent fan project run by {OPERATOR}, which decides
+        what the site collects and is responsible for it under privacy law (the
+        &ldquo;controller&rdquo;, where that term applies). You
         reach us at{" "}
         <a className={link} href="mailto:hello@everloot.app">hello@everloot.app</a>.
         The <Link href="/terms" className={link}>Terms of Use</Link> cover the

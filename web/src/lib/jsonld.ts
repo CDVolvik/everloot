@@ -18,6 +18,8 @@ export const ORG_ID = `${SITE_URL}/#organization`;
 export const WEBSITE_ID = `${SITE_URL}/#website`;
 
 export const CONTACT_EMAIL = "hello@everloot.app";
+/** The company that runs Everloot; LICENSE, TRADEMARKS.md, the terms and the privacy policy name it. */
+export const OPERATOR = "R21 Media Group, LLC";
 /** The Everloot Discord server; a permanent invite. */
 export const DISCORD_INVITE = "https://discord.gg/9CKsbHTRu3";
 /** The footer shows both sentences, and the Organization description repeats them. */

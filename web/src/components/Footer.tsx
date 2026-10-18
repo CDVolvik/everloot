@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CONTACT_EMAIL, DISCORD_INVITE, NON_AFFILIATION, SITE_BLURB, TRADEMARK_LINE } from "@/lib/jsonld";
+import { CONTACT_EMAIL, DISCORD_INVITE, NON_AFFILIATION, OPERATOR, SITE_BLURB, TRADEMARK_LINE } from "@/lib/jsonld";
 import { deployedSha, REPO_URL, sourceUrl } from "@/lib/source";
 import Bracket from "./Bracket";
 import { CookiePreferencesButton } from "./CookieConsent";
@@ -83,7 +83,7 @@ export default function Footer() {
       <div className="border-t border-line">
         <div className="mx-auto max-w-6xl px-4 py-6 text-xs text-muted leading-relaxed space-y-2">
           <p>
-            <span className="font-semibold text-fg">everloot</span> &copy; {year}. {SITE_BLURB} Code AGPL-3.0, data CC BY-SA 4.0.
+            <span className="font-semibold text-fg">everloot</span> &copy; {year} {OPERATOR}. {SITE_BLURB} Code AGPL-3.0, data CC BY-SA 4.0.
             {sha && <> Build <a href={sourceUrl()} rel="noopener" className="font-mono hover:text-accent transition">{sha.slice(0, 7)}</a>.</>}
             {" "}Contact: <a href={`mailto:${CONTACT_EMAIL}`} className="hover:text-accent transition">{CONTACT_EMAIL}</a>
           </p>

@@ -44,6 +44,7 @@ test("names the deployed build only when one is known", () => {
 });
 
 test("states the code and data licences", () => {
+  expect(text()).toContain("R21 Media Group, LLC. ");
   expect(text()).toContain("Code AGPL-3.0, data CC BY-SA 4.0.");
 });
 

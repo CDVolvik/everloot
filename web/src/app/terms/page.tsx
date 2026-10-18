@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { pageMetadata } from "@/lib/seo";
 import { KEYS_PER_ACCOUNT } from "@/lib/api-keys";
-import { CC_BY_SA, CONTACT_EMAIL, NON_AFFILIATION, TRADEMARK_LINE } from "@/lib/jsonld";
+import { CC_BY_SA, CONTACT_EMAIL, NON_AFFILIATION, OPERATOR, TRADEMARK_LINE } from "@/lib/jsonld";
 import { REPO_URL } from "@/lib/source";
 
 const description = "The terms for using everloot.app, its API and MCP server, and the Everloot addon: your uploads, free API keys, licences, takedowns and warranty.";
@@ -31,7 +31,8 @@ export default function TermsPage() {
       <p className="text-sm text-muted">Last updated: {UPDATED}</p>
       <p className="text-fg-2">
         These terms cover everloot.app, its APIs and MCP server, the Everloot addon and the companion (together,
-        &ldquo;Everloot&rdquo;). By using any of them you agree to these terms. They are written to be read, not skimmed;
+        &ldquo;Everloot&rdquo;). Everloot is run by {OPERATOR} (&ldquo;we&rdquo;, &ldquo;us&rdquo;), and these terms
+        are an agreement between you and us. By using any part of Everloot you agree to them. They are written to be read, not skimmed;
         if something is unclear, ask at <a href={`mailto:${CONTACT_EMAIL}`} className={link}>{CONTACT_EMAIL}</a>.
       </p>
       <p className="text-fg-2">
