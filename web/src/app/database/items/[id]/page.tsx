@@ -91,7 +91,9 @@ export default async function ItemPage(props: Props) {
             <tbody>
               {page.drops.map((drop) => (
                 <tr key={drop.source} className="border-t border-line bg-panel text-fg">
-                  <td className="px-4 py-3">{drop.source}</td>
+                  <td className="px-4 py-3">
+                    <Link href={drop.sourceNpcId !== undefined ? `/database/npcs/${drop.sourceNpcId}` : `/database/objects/${drop.sourceObjectId}`} className="text-accent hover:underline underline-offset-4">{drop.source}</Link>
+                  </td>
                   <td className="px-4 py-3 text-right tabular-nums">{drop.kills}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{drop.drops}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{`${(drop.rate * 100).toFixed(1)}%`}</td>

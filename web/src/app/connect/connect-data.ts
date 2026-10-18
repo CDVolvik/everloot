@@ -15,6 +15,7 @@ export const MCP_TOOLS: readonly { name: string; text: string }[] = [
   { name: "recipe_thresholds", text: "The skill ranges where a recipe turns yellow, green and grey." },
   { name: "item_page", text: "One item: agreed name, drop rate with kill count, map pin." },
   { name: "npc_page", text: "One NPC: agreed name and map pins." },
+  { name: "object_page", text: "One game object (a chest, herb, ore vein or fishing pool): the items players looted from it, with loot windows and install counts." },
   { name: "quest_page", text: "One quest: title, level, giver, turn-in and rewards." },
   { name: "vendor_page", text: "What one vendor sells, with copper prices." },
   { name: "world_map_near", text: "What is near a spot: entrances, observed NPCs and vendors, with distances in yards." },

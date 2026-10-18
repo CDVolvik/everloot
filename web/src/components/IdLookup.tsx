@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-export default function IdLookup({ kind, label }: { kind: "items" | "npcs" | "quests" | "vendors"; label: string }) {
+export default function IdLookup({ kind, label }: { kind: "items" | "npcs" | "objects" | "quests" | "vendors"; label: string }) {
   const router = useRouter();
   const [value, setValue] = useState("");
   const ok = /^[1-9]\d*$/.test(value);

@@ -12,6 +12,7 @@ import { goldFactsFromRecords, handleGoldLedger } from "./gold-ledger.js";
 import { guildFactsFromRecords, handleGuildBoard } from "./guild-board.js";
 import { itemFactsFromRecords } from "./drop-rollup.js";
 import { handleItemPage } from "./item-page.js";
+import { handleObjectPage, objectFactsFromRecords, type ObjectFacts } from "./object-page.js";
 import { handleMarketValue, type MarketState } from "./market.js";
 import { loadUploadRecords } from "./load-uploads.js";
 import { parseRecords } from "../../web/src/lib/intake.js";
@@ -46,6 +47,7 @@ export const TOOL_KINDS = {
   recipe_thresholds: ["recipe_observed", "price_seen", "auction_scan", "item_seen", "vendor"],
   item_page: ["loot", "item_seen", "npc_sighting"],
   npc_page: ["npc_sighting", "quest", "vendor"],
+  object_page: ["loot", "item_seen"],
   quest_page: ["npc_sighting", "quest", "vendor"],
   vendor_page: ["npc_sighting", "quest", "vendor"],
   world_map_near: ["npc_sighting", "vendor"],
@@ -68,6 +70,7 @@ const TOOL_FACT_BUILDERS: Record<ToolName, (records: unknown[]) => unknown> = {
   recipe_thresholds: recipeFactsFromRecords,
   item_page: itemFactsFromRecords,
   npc_page: worldFactsFromRecords,
+  object_page: objectFactsFromRecords,
   quest_page: worldFactsFromRecords,
   vendor_page: worldFactsFromRecords,
   world_map_near: mapFactsFromRecords,
@@ -334,7 +337,7 @@ function dataAgeLine(dataAsOf: unknown): string {
   return `Data as of ${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC.`;
 }
 
-const KINDS = ["item", "npc", "quest", "zone", "spell", "lore_page", "creator", "realm"] as const;
+const KINDS = ["item", "npc", "object", "quest", "zone", "spell", "lore_page", "creator", "realm"] as const;
 const VERSIONS = ["forever", "classic", "retail", "lore"] as const;
 
 const searchArgs = {
@@ -480,6 +483,19 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; 
     },
     async (args) => ({
       content: [{ type: "text" as const, text: await readFacts("npc_page", (facts: ReturnType<typeof worldFactsFromRecords>) => handleNpcPage(args, facts)) }],
+    }),
+  );
+  server.registerTool(
+    "object_page",
+    {
+      title: "Game object page",
+      description:
+        "One game object (a chest, herb, ore vein or fishing pool) by the id in its GUID: the items players looted from it, each with observed loot windows, windows with the item and distinct install reports. A frequency is public after 3 install reports; a public object with nothing in its windows reads as a measured zero. Objects have no names yet. Reads Everloot's current authorized public corpus when connected.",
+      inputSchema: { objectId: z.number().int().positive().describe("The object's entry id, as in /database/objects/1731.") },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    async (args) => ({
+      content: [{ type: "text" as const, text: await readFacts("object_page", (facts: ObjectFacts) => handleObjectPage(args, facts)) }],
     }),
   );
   server.registerTool(
