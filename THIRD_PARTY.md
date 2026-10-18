@@ -15,7 +15,7 @@ full record of every source we have used, linked or only read is
 | [WoWDBDefs](https://github.com/wowdev/WoWDBDefs) by the wowdev contributors | Table layouts used to read the client tables | CC BY-SA 4.0 (definitions) | Fetched at extraction by `@rhyster/wow-casc-dbc`; the commit is in each snapshot manifest |
 | Public pages cited for guild-family facts | One fact each, in our own words, with its link and date | Facts only; no text copied | `web/src/data/families.ts` |
 
-World of Warcraft, Warcraft and Blizzard Entertainment are trademarks of Blizzard Entertainment, Inc.
+World of Warcraft, Warcraft and Blizzard Entertainment are trademarks or registered trademarks of Blizzard Entertainment, Inc. in the U.S. and/or other countries.
 Everloot is a fan project and is not affiliated with or endorsed by Blizzard.
 
 ## Media
