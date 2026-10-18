@@ -1,0 +1,148 @@
+import { afterEach, expect, test, vi } from "vitest";
+import { memoryAdapter } from "better-auth/adapters/memory";
+import { authV2Enabled, createAuth } from "./auth";
+import type { RateLimitStore } from "./db";
+
+afterEach(() => vi.unstubAllGlobals());
+
+const env = {
+  NODE_ENV: "test",
+  BETTER_AUTH_SECRET: "test-secret-that-is-at-least-32-characters",
+  BETTER_AUTH_URL: "https://everloot.app",
+  BNET_CLIENT_ID: "client",
+  BNET_CLIENT_SECRET: "secret",
+} as NodeJS.ProcessEnv;
+
+// Battle.net's discovery document advertises id-token signing, so the plugin treats it as OIDC.
+const discovery = {
+  issuer: "https://oauth.battle.net",
+  authorization_endpoint: "https://oauth.battle.net/authorize",
+  token_endpoint: "https://oauth.battle.net/token",
+  userinfo_endpoint: "https://oauth.battle.net/userinfo",
+  jwks_uri: "https://oauth.battle.net/jwks/certs",
+  id_token_signing_alg_values_supported: ["RS256"],
+};
+
+type Userinfo = () => Response | Promise<Response>;
+const thrall: Userinfo = () => Response.json({ sub: "123", id: 123, battletag: "Thrall#1" });
+
+function stubBattlenet(userinfo: Userinfo) {
+  vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+    const url = input instanceof Request ? input.url : String(input);
+    if (url === "https://oauth.battle.net/.well-known/openid-configuration") return Response.json(discovery);
+    // Only an access token: with no id_token there is nothing to verify against the JWKS.
+    if (url.startsWith(discovery.token_endpoint)) return Response.json({ access_token: "at", token_type: "bearer", expires_in: 86400 });
+    if (url.startsWith(discovery.userinfo_endpoint)) return userinfo();
+    throw new Error(`Unexpected fetch: ${url}`);
+  }));
+}
+
+// Same contract as pgRateLimitStore: a fixed window that starts at the first request.
+function mapRateLimitStore() {
+  const store = new Map<string, { count: number; lastRequest: number }>();
+  const rateLimitStore: RateLimitStore = {
+    async consume(key, { window, max }) {
+      const now = Date.now();
+      const row = store.get(key);
+      const next = !row || now - row.lastRequest >= window * 1000
+        ? { count: 1, lastRequest: now }
+        : { count: row.count + 1, lastRequest: row.lastRequest };
+      store.set(key, next);
+      if (next.count <= max) return { allowed: true, retryAfter: null };
+      return { allowed: false, retryAfter: Math.ceil((next.lastRequest + window * 1000 - now) / 1000) };
+    },
+  };
+  return { store, rateLimitStore };
+}
+
+type Row = Record<string, unknown>;
+
+function startSignIn(auth: ReturnType<typeof createAuth>, headers: Record<string, string> = {}) {
+  return auth.handler(new Request("https://everloot.app/api/auth/sign-in/social", {
+    method: "POST",
+    headers: { "content-type": "application/json", origin: "https://everloot.app", ...headers },
+    body: JSON.stringify({ provider: "battlenet", callbackURL: "/" }),
+  }));
+}
+
+function cookieHeader(response: Response) {
+  return response.headers.getSetCookie().map((c) => c.split(";")[0]).join("; ");
+}
+
+async function signInWithBattlenet(options: {
+  seed?: { users?: Row[]; auth_account?: Row[] };
+  onBattlenetAccount?: (userId: string, accountId: string, name: string) => Promise<void>;
+  userinfo?: Userinfo;
+} = {}) {
+  stubBattlenet(options.userinfo ?? thrall);
+  const db: Record<string, Row[]> = {
+    users: [...options.seed?.users ?? []],
+    auth_session: [],
+    auth_account: [...options.seed?.auth_account ?? []],
+    auth_verification: [],
+  };
+  const { store, rateLimitStore } = mapRateLimitStore();
+  const auth = createAuth({ database: memoryAdapter(db), rateLimitStore, env, onBattlenetAccount: options.onBattlenetAccount });
+  const start = await startSignIn(auth);
+  const { url } = await start.json() as { url: string };
+  const state = new URL(url).searchParams.get("state");
+  const response = await auth.handler(new Request(
+    `https://everloot.app/api/auth/callback/battlenet?code=c&state=${encodeURIComponent(state ?? "")}`,
+    { headers: { cookie: cookieHeader(start) } },
+  ));
+  const cookies = response.headers.getSetCookie().join("\n");
+  return { cookies, db, store, response };
+}
+
+test("a Battle.net sign-in creates a session cookie and stores no provider tokens", async () => {
+  const { cookies, db } = await signInWithBattlenet();
+  expect(cookies).toMatch(/everloot\.session_token=/);
+  // The memory adapter keeps rows under their database column names, as Postgres will.
+  expect(db.auth_account[0]).toMatchObject({ provider_id: "battlenet", account_id: "123", access_token: null, refresh_token: null, id_token: null });
+  expect(db.auth_session[0]).toMatchObject({ ip_address: null, user_agent: null });
+});
+
+test("a new Battle.net account fills bnet_id and battletag", async () => {
+  const seen: unknown[] = [];
+  await signInWithBattlenet({ onBattlenetAccount: async (...args) => { seen.push(args); } });
+  expect(seen).toEqual([[expect.any(String), "123", "Thrall#1"]]);
+});
+
+test.each([
+  ["answers 500", () => new Response("nope", { status: 500 })],
+  ["is unreachable", () => { throw new TypeError("fetch failed"); }],
+] as [string, Userinfo][])("when Battle.net userinfo %s, no user or session is created", async (_, userinfo) => {
+  const { cookies, db } = await signInWithBattlenet({ userinfo });
+  expect(cookies).not.toMatch(/session_token=/);
+  expect(db.users).toEqual([]);
+  expect(db.auth_account).toEqual([]);
+  expect(db.auth_session).toEqual([]);
+});
+
+test("rate-limit keys never contain the address", async () => {
+  stubBattlenet(thrall);
+  const { store, rateLimitStore } = mapRateLimitStore();
+  const db = { users: [], auth_session: [], auth_account: [], auth_verification: [] };
+  const auth = createAuth({ database: memoryAdapter(db), rateLimitStore, env });
+  const statuses: number[] = [];
+  for (let i = 0; i < 5; i++) statuses.push((await startSignIn(auth, { "x-forwarded-for": "203.0.113.9" })).status);
+  expect(statuses).toEqual([200, 200, 200, 429, 429]);
+  expect(store.size).toBeGreaterThan(0);
+  for (const key of store.keys()) expect(key).toMatch(/^[0-9a-f]{64}$/);
+  expect(JSON.stringify([...store])).not.toContain("203.0.113.9");
+});
+
+test("Battle.net is not offered unless both its client id and secret are set", async () => {
+  stubBattlenet(thrall);
+  const db = { users: [], auth_session: [], auth_account: [], auth_verification: [] };
+  const { rateLimitStore } = mapRateLimitStore();
+  const auth = createAuth({ database: memoryAdapter(db), rateLimitStore, env: { ...env, BNET_CLIENT_SECRET: " " } });
+  const response = await startSignIn(auth);
+  expect(response.status).toBe(404);
+});
+
+test("authV2Enabled is only on for exactly 1", () => {
+  expect(authV2Enabled({ EVERLOOT_AUTH_V2: "1" })).toBe(true);
+  expect(authV2Enabled({ EVERLOOT_AUTH_V2: "true" })).toBe(false);
+  expect(authV2Enabled({})).toBe(false);
+});
