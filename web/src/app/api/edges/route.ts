@@ -12,7 +12,7 @@ import { recordUsage } from "@/lib/usage-metrics";
  */
 export const dynamic = "force-dynamic";
 
-const KINDS: readonly EdgeKind[] = ["item", "spell", "npc", "object", "quest", "zone", "item_set", "icon"];
+const KINDS: readonly EdgeKind[] = ["item", "spell", "npc", "object", "quest", "zone", "item_set", "icon", "skill"];
 const EVIDENCE: readonly Evidence[] = ["observed", "client"];
 
 function bad(error: string): Response {
