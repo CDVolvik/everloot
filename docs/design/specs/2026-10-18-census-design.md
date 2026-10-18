@@ -1,6 +1,6 @@
 # Census: who plays what on WoW: Forever
 
-Date: 2026-10-18. Status: draft for Carlos's review. Owner decision: Carlos, 2026-10-18: "We need to build
+Date: 2026-10-18. Status: approved, decisions in §9. Owner decision: Carlos, 2026-10-18: "We need to build
 our own census… added to our logic… make sure we max out everything on our own." No partnerships and no
 outside census data.
 
@@ -118,11 +118,10 @@ census_self | census_seen
 Steps 1–3 fit before 2026-11-04 if the addon release goes out with step 2. The beta closes 2026-10-21, so
 step 2's in-game check has to happen before then or on launch day.
 
-## 9. Decisions for Carlos
+## 9. Decisions (Carlos, 2026-10-18: "Yes, all three defaults")
 
-1. **Players you see (source B): include it?** It's what makes the census big. Recommended yes, with §5's
-   protections. The players counted didn't install Everloot, but nothing about them is stored except
-   race, class, level and faction under a key nobody can reverse, and nothing is shown below 10.
-2. **Default.** Opt-in (`/everloot census on`, recommended, matches every other module) or on by default
-   with an off switch (bigger numbers, but a change to the privacy promise).
-3. **Small-cell threshold.** 10 characters (recommended) or another number.
+1. **Players you see (source B): included**, with §5's protections. Only race, class, level and faction
+   are kept, under a key nobody can reverse, and nothing is shown below 10.
+2. **Opt-in.** Census is off until the player runs `/everloot census on`, like every other module. The
+   privacy promise doesn't change.
+3. **Small-cell threshold: 10 characters**, reported by at least 3 installs.
