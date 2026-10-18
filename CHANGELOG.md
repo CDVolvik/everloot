@@ -38,6 +38,8 @@ that has a zip in the repository. Earlier builds have none.
 - Structured output for the five page tools (`item_page`, `npc_page`, `quest_page`, `vendor_page`,
   `object_page`): the same page object the text is written from, under one envelope for answers built on
   uploads (`connected`, `dataAsOf`, `reason`). With no corpus read the page is absent, not empty.
+- Structured output for `auction_history`, `collection_gap` and `guild_board`, the same result objects
+  their text is written from, under the same envelope.
 - The MCP server's first resources, documents an assistant reads whole: `everloot://builds` (the build the
   game-file facts come from and the build registry, JSON), `everloot://methodology` (how uploads become
   facts) and `everloot://data-policy` (the policy in short, with the link to the full one). The two texts
