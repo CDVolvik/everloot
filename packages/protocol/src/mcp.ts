@@ -153,6 +153,39 @@ export const objectPage = z.object({
   queued: z.boolean().describe("Observations exist but fewer than 3 installs reported them."),
 });
 
+export const auctionHistory = z.object({
+  realm: z.string(),
+  itemId: z.number().int(),
+  points: z.array(z.object({
+    day: z.string(),
+    copper: z.number().int().describe("The median of the last scan from each install that day."),
+    reporters: z.number().int(),
+  })).describe("Days 3 installs scanned the item on the realm, oldest first."),
+});
+export const collectionGap = z.object({
+  collection: z.string(),
+  ownerInstallId: z.string(),
+  groups: z.array(z.object({
+    source: z.string(),
+    owned: z.array(z.number().int()),
+    missing: z.array(z.number().int()),
+  })).describe("Catalog entries 3 installs agree on, grouped by source, split by the install's own upload."),
+  queued: z.array(z.number().int()).describe("Catalog entries fewer than 3 installs reported yet."),
+  ownedRecorded: z.boolean().describe("False when this install never uploaded this collection: owned is unknown, not empty."),
+});
+export const guildBoard = z.object({
+  guildName: z.string(),
+  realm: z.string(),
+  memberCount: z.number().int().nullable().describe("Null until officer uploads agree."),
+  roster: z.array(z.object({ name: z.string(), rank: z.string(), level: z.number().int(), className: z.string() })),
+  progression: z.array(z.object({ instance: z.string(), bosses: z.array(z.string()) })),
+  loot: z.array(z.object({ itemId: z.number().int(), recipient: z.string(), sourceBoss: z.string() })),
+  averageItemLevel: z.number().nullable(),
+  gearCoverage: z.object({ measured: z.number().int(), roster: z.number().int() }).describe("Roster members with one agreed item level, over the agreed roster."),
+  present: z.array(z.string()),
+  attendanceWaiting: z.boolean(),
+});
+
 /** One row of the implementation tracker as everloot_plan returns it. */
 export const planRow = z.object({
   id: z.string(),
@@ -443,6 +476,7 @@ export const MCP_TOOLS = {
       collection: z.string().describe("Collection name, such as Mounts."),
       ownerInstallId: z.string().describe("Install id whose owned upload to compare."),
     },
+    outputSchema: { ...uploadsAnswer, page: collectionGap.optional() },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
   completion_progress: {
@@ -463,6 +497,7 @@ export const MCP_TOOLS = {
       guildName: z.string().describe("Guild name."),
       realm: z.string().describe("Realm name."),
     },
+    outputSchema: { ...uploadsAnswer, page: guildBoard.optional() },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
   auction_history: {
@@ -473,6 +508,7 @@ export const MCP_TOOLS = {
       realm: z.string().describe("Realm name."),
       itemId: z.number().int().positive().describe("Item id."),
     },
+    outputSchema: { ...uploadsAnswer, page: auctionHistory.optional() },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
   market_value: {

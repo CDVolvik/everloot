@@ -2,14 +2,14 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CREDIT_LINE, LICENCE, MCP_CREDIT, SITE } from "@everloot/protocol";
 import { answerSources, answerSourcesFactsFromRecords, formatAnswerSources, type AnswerSourcesFacts } from "./answer-sources.js";
-import { auctionSightingsFromRecords, handleAuctionHistory } from "./auction-history.js";
+import { auctionHistory, auctionSightingsFromRecords, handleAuctionHistory } from "./auction-history.js";
 import { handlePlan, planStructured } from "./bridge-plan.js";
 import { handleRecentChanges, recentChangesStructured, type ChangeEntry } from "./changes.js";
 import { ecosystemProjectsStructured, handleEcosystemProjects, type EcosystemView } from "./ecosystem.js";
-import { collectionFactsFromRecords, handleCollectionGap } from "./collection-gap.js";
+import { collectionFactsFromRecords, collectionGap, handleCollectionGap } from "./collection-gap.js";
 import { handleCompletionProgress, type CompletionFacts } from "./completion.js";
 import { goldFactsFromRecords, handleGoldLedger } from "./gold-ledger.js";
-import { guildFactsFromRecords, handleGuildBoard } from "./guild-board.js";
+import { guildBoard, guildFactsFromRecords, handleGuildBoard } from "./guild-board.js";
 import { itemFactsFromRecords } from "./drop-rollup.js";
 import { formatItemPage, itemPage } from "./item-page.js";
 import { formatObjectPage, objectFactsFromRecords, objectPage, type ObjectFacts } from "./object-page.js";
@@ -471,10 +471,13 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; 
     }),
     talent_tree: (args) => handleTalentTree(args),
     talent_plan: (args) => handleTalentPlan(args),
-    collection_gap: (args) => readFacts("collection_gap", (facts: ReturnType<typeof collectionFactsFromRecords>) => handleCollectionGap(args, facts)),
+    collection_gap: (args) => readPage("collection_gap", options.corpus, (facts: ReturnType<typeof collectionFactsFromRecords>) =>
+      ({ text: handleCollectionGap(args, facts), page: collectionGap(args.collection, args.ownerInstallId, facts) })),
     completion_progress: (args) => answerCompletionProgress(args, options.completion),
-    guild_board: (args) => readFacts("guild_board", (facts: ReturnType<typeof guildFactsFromRecords>) => handleGuildBoard(args, facts)),
-    auction_history: (args) => readFacts("auction_history", (facts: ReturnType<typeof auctionSightingsFromRecords>) => handleAuctionHistory(args, facts)),
+    guild_board: (args) => readPage("guild_board", options.corpus, (facts: ReturnType<typeof guildFactsFromRecords>) =>
+      ({ text: handleGuildBoard(args, facts), page: guildBoard(args.guildName, args.realm, facts) })),
+    auction_history: (args) => readPage("auction_history", options.corpus, (facts: ReturnType<typeof auctionSightingsFromRecords>) =>
+      ({ text: handleAuctionHistory(args, facts), page: auctionHistory(args.realm, args.itemId, facts) })),
     market_value: (args) => answerMarketValue(args, options.market),
     gold_ledger: (args) => readFacts("gold_ledger", (facts: ReturnType<typeof goldFactsFromRecords>) => handleGoldLedger(args, facts.snapshots, facts.events)),
     recent_changes: async (args) => {

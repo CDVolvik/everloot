@@ -228,6 +228,53 @@ export declare const objectPage: z.ZodObject<{
     }, z.core.$strip>>;
     queued: z.ZodBoolean;
 }, z.core.$strip>;
+export declare const auctionHistory: z.ZodObject<{
+    realm: z.ZodString;
+    itemId: z.ZodNumber;
+    points: z.ZodArray<z.ZodObject<{
+        day: z.ZodString;
+        copper: z.ZodNumber;
+        reporters: z.ZodNumber;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+export declare const collectionGap: z.ZodObject<{
+    collection: z.ZodString;
+    ownerInstallId: z.ZodString;
+    groups: z.ZodArray<z.ZodObject<{
+        source: z.ZodString;
+        owned: z.ZodArray<z.ZodNumber>;
+        missing: z.ZodArray<z.ZodNumber>;
+    }, z.core.$strip>>;
+    queued: z.ZodArray<z.ZodNumber>;
+    ownedRecorded: z.ZodBoolean;
+}, z.core.$strip>;
+export declare const guildBoard: z.ZodObject<{
+    guildName: z.ZodString;
+    realm: z.ZodString;
+    memberCount: z.ZodNullable<z.ZodNumber>;
+    roster: z.ZodArray<z.ZodObject<{
+        name: z.ZodString;
+        rank: z.ZodString;
+        level: z.ZodNumber;
+        className: z.ZodString;
+    }, z.core.$strip>>;
+    progression: z.ZodArray<z.ZodObject<{
+        instance: z.ZodString;
+        bosses: z.ZodArray<z.ZodString>;
+    }, z.core.$strip>>;
+    loot: z.ZodArray<z.ZodObject<{
+        itemId: z.ZodNumber;
+        recipient: z.ZodString;
+        sourceBoss: z.ZodString;
+    }, z.core.$strip>>;
+    averageItemLevel: z.ZodNullable<z.ZodNumber>;
+    gearCoverage: z.ZodObject<{
+        measured: z.ZodNumber;
+        roster: z.ZodNumber;
+    }, z.core.$strip>;
+    present: z.ZodArray<z.ZodString>;
+    attendanceWaiting: z.ZodBoolean;
+}, z.core.$strip>;
 /** One row of the implementation tracker as everloot_plan returns it. */
 export declare const planRow: z.ZodObject<{
     id: z.ZodString;
@@ -969,6 +1016,22 @@ export declare const MCP_TOOLS: {
             readonly collection: z.ZodString;
             readonly ownerInstallId: z.ZodString;
         };
+        readonly outputSchema: {
+            readonly connected: z.ZodBoolean;
+            readonly dataAsOf: z.ZodNullable<z.ZodString>;
+            readonly reason: z.ZodOptional<z.ZodString>;
+            readonly page: z.ZodOptional<z.ZodObject<{
+                collection: z.ZodString;
+                ownerInstallId: z.ZodString;
+                groups: z.ZodArray<z.ZodObject<{
+                    source: z.ZodString;
+                    owned: z.ZodArray<z.ZodNumber>;
+                    missing: z.ZodArray<z.ZodNumber>;
+                }, z.core.$strip>>;
+                queued: z.ZodArray<z.ZodNumber>;
+                ownedRecorded: z.ZodBoolean;
+            }, z.core.$strip>>;
+        };
         readonly annotations: {
             readonly readOnlyHint: true;
             readonly openWorldHint: false;
@@ -993,6 +1056,38 @@ export declare const MCP_TOOLS: {
             readonly guildName: z.ZodString;
             readonly realm: z.ZodString;
         };
+        readonly outputSchema: {
+            readonly connected: z.ZodBoolean;
+            readonly dataAsOf: z.ZodNullable<z.ZodString>;
+            readonly reason: z.ZodOptional<z.ZodString>;
+            readonly page: z.ZodOptional<z.ZodObject<{
+                guildName: z.ZodString;
+                realm: z.ZodString;
+                memberCount: z.ZodNullable<z.ZodNumber>;
+                roster: z.ZodArray<z.ZodObject<{
+                    name: z.ZodString;
+                    rank: z.ZodString;
+                    level: z.ZodNumber;
+                    className: z.ZodString;
+                }, z.core.$strip>>;
+                progression: z.ZodArray<z.ZodObject<{
+                    instance: z.ZodString;
+                    bosses: z.ZodArray<z.ZodString>;
+                }, z.core.$strip>>;
+                loot: z.ZodArray<z.ZodObject<{
+                    itemId: z.ZodNumber;
+                    recipient: z.ZodString;
+                    sourceBoss: z.ZodString;
+                }, z.core.$strip>>;
+                averageItemLevel: z.ZodNullable<z.ZodNumber>;
+                gearCoverage: z.ZodObject<{
+                    measured: z.ZodNumber;
+                    roster: z.ZodNumber;
+                }, z.core.$strip>;
+                present: z.ZodArray<z.ZodString>;
+                attendanceWaiting: z.ZodBoolean;
+            }, z.core.$strip>>;
+        };
         readonly annotations: {
             readonly readOnlyHint: true;
             readonly openWorldHint: false;
@@ -1004,6 +1099,20 @@ export declare const MCP_TOOLS: {
         readonly inputSchema: {
             readonly realm: z.ZodString;
             readonly itemId: z.ZodNumber;
+        };
+        readonly outputSchema: {
+            readonly connected: z.ZodBoolean;
+            readonly dataAsOf: z.ZodNullable<z.ZodString>;
+            readonly reason: z.ZodOptional<z.ZodString>;
+            readonly page: z.ZodOptional<z.ZodObject<{
+                realm: z.ZodString;
+                itemId: z.ZodNumber;
+                points: z.ZodArray<z.ZodObject<{
+                    day: z.ZodString;
+                    copper: z.ZodNumber;
+                    reporters: z.ZodNumber;
+                }, z.core.$strip>>;
+            }, z.core.$strip>>;
         };
         readonly annotations: {
             readonly readOnlyHint: true;
@@ -1827,6 +1936,22 @@ export declare const MCP_TOOL_LIST: ({
         readonly collection: z.ZodString;
         readonly ownerInstallId: z.ZodString;
     };
+    outputSchema: {
+        readonly connected: z.ZodBoolean;
+        readonly dataAsOf: z.ZodNullable<z.ZodString>;
+        readonly reason: z.ZodOptional<z.ZodString>;
+        readonly page: z.ZodOptional<z.ZodObject<{
+            collection: z.ZodString;
+            ownerInstallId: z.ZodString;
+            groups: z.ZodArray<z.ZodObject<{
+                source: z.ZodString;
+                owned: z.ZodArray<z.ZodNumber>;
+                missing: z.ZodArray<z.ZodNumber>;
+            }, z.core.$strip>>;
+            queued: z.ZodArray<z.ZodNumber>;
+            ownedRecorded: z.ZodBoolean;
+        }, z.core.$strip>>;
+    };
     annotations: {
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
@@ -1851,6 +1976,38 @@ export declare const MCP_TOOL_LIST: ({
         readonly guildName: z.ZodString;
         readonly realm: z.ZodString;
     };
+    outputSchema: {
+        readonly connected: z.ZodBoolean;
+        readonly dataAsOf: z.ZodNullable<z.ZodString>;
+        readonly reason: z.ZodOptional<z.ZodString>;
+        readonly page: z.ZodOptional<z.ZodObject<{
+            guildName: z.ZodString;
+            realm: z.ZodString;
+            memberCount: z.ZodNullable<z.ZodNumber>;
+            roster: z.ZodArray<z.ZodObject<{
+                name: z.ZodString;
+                rank: z.ZodString;
+                level: z.ZodNumber;
+                className: z.ZodString;
+            }, z.core.$strip>>;
+            progression: z.ZodArray<z.ZodObject<{
+                instance: z.ZodString;
+                bosses: z.ZodArray<z.ZodString>;
+            }, z.core.$strip>>;
+            loot: z.ZodArray<z.ZodObject<{
+                itemId: z.ZodNumber;
+                recipient: z.ZodString;
+                sourceBoss: z.ZodString;
+            }, z.core.$strip>>;
+            averageItemLevel: z.ZodNullable<z.ZodNumber>;
+            gearCoverage: z.ZodObject<{
+                measured: z.ZodNumber;
+                roster: z.ZodNumber;
+            }, z.core.$strip>;
+            present: z.ZodArray<z.ZodString>;
+            attendanceWaiting: z.ZodBoolean;
+        }, z.core.$strip>>;
+    };
     annotations: {
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
@@ -1862,6 +2019,20 @@ export declare const MCP_TOOL_LIST: ({
     inputSchema: {
         readonly realm: z.ZodString;
         readonly itemId: z.ZodNumber;
+    };
+    outputSchema: {
+        readonly connected: z.ZodBoolean;
+        readonly dataAsOf: z.ZodNullable<z.ZodString>;
+        readonly reason: z.ZodOptional<z.ZodString>;
+        readonly page: z.ZodOptional<z.ZodObject<{
+            realm: z.ZodString;
+            itemId: z.ZodNumber;
+            points: z.ZodArray<z.ZodObject<{
+                day: z.ZodString;
+                copper: z.ZodNumber;
+                reporters: z.ZodNumber;
+            }, z.core.$strip>>;
+        }, z.core.$strip>>;
     };
     annotations: {
         readonly readOnlyHint: true;

@@ -40,6 +40,8 @@ required, or tightening a limit is a major release.
   `dataAsOf`, `reason`), and `outputSchema` for the five page tools: `item_page` (`itemPage`, `itemDrop`,
   `mapPin`), `npc_page` (`npcPage`), `quest_page` (`questPage`), `vendor_page` (`vendorPage`, `vendorOffer`)
   and `object_page` (`objectPage`). With no corpus read the page is absent, which is not a measured zero.
+- `outputSchema` for `auction_history` (`auctionHistory`), `collection_gap` (`collectionGap`) and `guild_board`
+  (`guildBoard`), under the same `uploadsAnswer` envelope.
 - The MCP server's resource table `MCP_RESOURCES` (`everloot://builds`, `everloot://methodology`,
   `everloot://data-policy`: name, title, description, MIME type), `buildEntry` and `buildsResource` for the
   JSON one, emitted as `schema/mcp/resources.json` and listed in `index.json` as `mcpResources`.
