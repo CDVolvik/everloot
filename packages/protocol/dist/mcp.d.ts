@@ -595,6 +595,58 @@ export declare const entityRelations: z.ZodObject<{
     }, z.core.$strip>>;
     notShown: z.ZodNumber;
 }, z.core.$strip>;
+export declare const INCOME_CATEGORIES: readonly ["loot", "quest", "vendor", "auction"];
+export declare const SPENDING_CATEGORIES: readonly ["flight", "postage", "barber", "respec", "auction_spend"];
+export declare const goldLedger: z.ZodObject<{
+    character: z.ZodString;
+    realm: z.ZodString;
+    recorded: z.ZodBoolean;
+    ledgers: z.ZodArray<z.ZodObject<{
+        installId: z.ZodString;
+        peakCopper: z.ZodNullable<z.ZodNumber>;
+        currentCopper: z.ZodNullable<z.ZodNumber>;
+        income: z.ZodObject<{
+            [x: string]: z.ZodOptional<z.ZodNumber>;
+        }, z.core.$strip>;
+        spending: z.ZodObject<{
+            [x: string]: z.ZodOptional<z.ZodNumber>;
+        }, z.core.$strip>;
+        incomeTotal: z.ZodNullable<z.ZodNumber>;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+export declare const mapNear: z.ZodObject<{
+    ok: z.ZodBoolean;
+    message: z.ZodOptional<z.ZodString>;
+    origin: z.ZodOptional<z.ZodString>;
+    radius: z.ZodOptional<z.ZodNumber>;
+    limit: z.ZodOptional<z.ZodNumber>;
+    entrances: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        names: z.ZodArray<z.ZodString>;
+        raid: z.ZodBoolean;
+        zone: z.ZodNullable<z.ZodString>;
+        yards: z.ZodNumber;
+    }, z.core.$strip>>>;
+    npcs: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        npcId: z.ZodNumber;
+        name: z.ZodNullable<z.ZodString>;
+        mapId: z.ZodNumber;
+        zoneName: z.ZodString;
+        x: z.ZodNumber;
+        y: z.ZodNumber;
+        yards: z.ZodNumber;
+        reporters: z.ZodNumber;
+    }, z.core.$strip>>>;
+    vendors: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        npcId: z.ZodNumber;
+        name: z.ZodNullable<z.ZodString>;
+        mapId: z.ZodNumber;
+        zoneName: z.ZodString;
+        x: z.ZodNumber;
+        y: z.ZodNumber;
+        yards: z.ZodNumber;
+        reporters: z.ZodNumber;
+    }, z.core.$strip>>>;
+}, z.core.$strip>;
 /** One row of the implementation tracker as everloot_plan returns it. */
 export declare const planRow: z.ZodObject<{
     id: z.ZodString;
@@ -1128,6 +1180,44 @@ export declare const MCP_TOOLS: {
             readonly npcId: z.ZodOptional<z.ZodNumber>;
             readonly radius: z.ZodDefault<z.ZodNumber>;
             readonly limit: z.ZodDefault<z.ZodNumber>;
+        };
+        readonly outputSchema: {
+            readonly connected: z.ZodBoolean;
+            readonly dataAsOf: z.ZodNullable<z.ZodString>;
+            readonly reason: z.ZodOptional<z.ZodString>;
+            readonly page: z.ZodOptional<z.ZodObject<{
+                ok: z.ZodBoolean;
+                message: z.ZodOptional<z.ZodString>;
+                origin: z.ZodOptional<z.ZodString>;
+                radius: z.ZodOptional<z.ZodNumber>;
+                limit: z.ZodOptional<z.ZodNumber>;
+                entrances: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                    names: z.ZodArray<z.ZodString>;
+                    raid: z.ZodBoolean;
+                    zone: z.ZodNullable<z.ZodString>;
+                    yards: z.ZodNumber;
+                }, z.core.$strip>>>;
+                npcs: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                    npcId: z.ZodNumber;
+                    name: z.ZodNullable<z.ZodString>;
+                    mapId: z.ZodNumber;
+                    zoneName: z.ZodString;
+                    x: z.ZodNumber;
+                    y: z.ZodNumber;
+                    yards: z.ZodNumber;
+                    reporters: z.ZodNumber;
+                }, z.core.$strip>>>;
+                vendors: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                    npcId: z.ZodNumber;
+                    name: z.ZodNullable<z.ZodString>;
+                    mapId: z.ZodNumber;
+                    zoneName: z.ZodString;
+                    x: z.ZodNumber;
+                    y: z.ZodNumber;
+                    yards: z.ZodNumber;
+                    reporters: z.ZodNumber;
+                }, z.core.$strip>>>;
+            }, z.core.$strip>>;
         };
         readonly annotations: {
             readonly readOnlyHint: true;
@@ -1689,6 +1779,28 @@ export declare const MCP_TOOLS: {
         readonly inputSchema: {
             readonly character: z.ZodString;
             readonly realm: z.ZodString;
+        };
+        readonly outputSchema: {
+            readonly connected: z.ZodBoolean;
+            readonly dataAsOf: z.ZodNullable<z.ZodString>;
+            readonly reason: z.ZodOptional<z.ZodString>;
+            readonly page: z.ZodOptional<z.ZodObject<{
+                character: z.ZodString;
+                realm: z.ZodString;
+                recorded: z.ZodBoolean;
+                ledgers: z.ZodArray<z.ZodObject<{
+                    installId: z.ZodString;
+                    peakCopper: z.ZodNullable<z.ZodNumber>;
+                    currentCopper: z.ZodNullable<z.ZodNumber>;
+                    income: z.ZodObject<{
+                        [x: string]: z.ZodOptional<z.ZodNumber>;
+                    }, z.core.$strip>;
+                    spending: z.ZodObject<{
+                        [x: string]: z.ZodOptional<z.ZodNumber>;
+                    }, z.core.$strip>;
+                    incomeTotal: z.ZodNullable<z.ZodNumber>;
+                }, z.core.$strip>>;
+            }, z.core.$strip>>;
         };
         readonly annotations: {
             readonly readOnlyHint: true;
@@ -2281,6 +2393,44 @@ export declare const MCP_TOOL_LIST: ({
         readonly radius: z.ZodDefault<z.ZodNumber>;
         readonly limit: z.ZodDefault<z.ZodNumber>;
     };
+    outputSchema: {
+        readonly connected: z.ZodBoolean;
+        readonly dataAsOf: z.ZodNullable<z.ZodString>;
+        readonly reason: z.ZodOptional<z.ZodString>;
+        readonly page: z.ZodOptional<z.ZodObject<{
+            ok: z.ZodBoolean;
+            message: z.ZodOptional<z.ZodString>;
+            origin: z.ZodOptional<z.ZodString>;
+            radius: z.ZodOptional<z.ZodNumber>;
+            limit: z.ZodOptional<z.ZodNumber>;
+            entrances: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                names: z.ZodArray<z.ZodString>;
+                raid: z.ZodBoolean;
+                zone: z.ZodNullable<z.ZodString>;
+                yards: z.ZodNumber;
+            }, z.core.$strip>>>;
+            npcs: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                npcId: z.ZodNumber;
+                name: z.ZodNullable<z.ZodString>;
+                mapId: z.ZodNumber;
+                zoneName: z.ZodString;
+                x: z.ZodNumber;
+                y: z.ZodNumber;
+                yards: z.ZodNumber;
+                reporters: z.ZodNumber;
+            }, z.core.$strip>>>;
+            vendors: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                npcId: z.ZodNumber;
+                name: z.ZodNullable<z.ZodString>;
+                mapId: z.ZodNumber;
+                zoneName: z.ZodString;
+                x: z.ZodNumber;
+                y: z.ZodNumber;
+                yards: z.ZodNumber;
+                reporters: z.ZodNumber;
+            }, z.core.$strip>>>;
+        }, z.core.$strip>>;
+    };
     annotations: {
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
@@ -2842,6 +2992,28 @@ export declare const MCP_TOOL_LIST: ({
         readonly character: z.ZodString;
         readonly realm: z.ZodString;
     };
+    outputSchema: {
+        readonly connected: z.ZodBoolean;
+        readonly dataAsOf: z.ZodNullable<z.ZodString>;
+        readonly reason: z.ZodOptional<z.ZodString>;
+        readonly page: z.ZodOptional<z.ZodObject<{
+            character: z.ZodString;
+            realm: z.ZodString;
+            recorded: z.ZodBoolean;
+            ledgers: z.ZodArray<z.ZodObject<{
+                installId: z.ZodString;
+                peakCopper: z.ZodNullable<z.ZodNumber>;
+                currentCopper: z.ZodNullable<z.ZodNumber>;
+                income: z.ZodObject<{
+                    [x: string]: z.ZodOptional<z.ZodNumber>;
+                }, z.core.$strip>;
+                spending: z.ZodObject<{
+                    [x: string]: z.ZodOptional<z.ZodNumber>;
+                }, z.core.$strip>;
+                incomeTotal: z.ZodNullable<z.ZodNumber>;
+            }, z.core.$strip>>;
+        }, z.core.$strip>>;
+    };
     annotations: {
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
@@ -3001,8 +3173,8 @@ export declare const MCP_TOOL_LIST: ({
 /**
  * What every tool returns: one text content block. Answers built on player data end with the
  * credit line, after a line stating how old the data is. Tools that read nothing from players carry
- * their sources inside the text instead. Tools with an outputSchema also return structuredContent of
- * that shape (STRUCTURED_TOOLS); the others gain it tool by tool in later minor releases.
+ * their sources inside the text instead. Every tool also declares an outputSchema and returns
+ * structuredContent of that shape (STRUCTURED_TOOLS lists them, and is every tool today).
  */
 export declare const TOOL_OUTPUT: {
     readonly type: "text";

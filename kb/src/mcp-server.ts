@@ -8,7 +8,7 @@ import { handleRecentChanges, recentChangesStructured, type ChangeEntry } from "
 import { ecosystemProjectsStructured, handleEcosystemProjects, type EcosystemView } from "./ecosystem.js";
 import { collectionFactsFromRecords, collectionGap, handleCollectionGap } from "./collection-gap.js";
 import { completionProgress, handleCompletionProgress, type CompletionFacts } from "./completion.js";
-import { goldFactsFromRecords, handleGoldLedger } from "./gold-ledger.js";
+import { goldFactsFromRecords, goldLedger, handleGoldLedger } from "./gold-ledger.js";
 import { guildBoard, guildFactsFromRecords, handleGuildBoard } from "./guild-board.js";
 import { itemFactsFromRecords } from "./drop-rollup.js";
 import { formatItemPage, itemPage } from "./item-page.js";
@@ -21,7 +21,7 @@ import { readResource } from "./resources.js";
 import { handleTalentPlan, handleTalentTree } from "./talent-tools.js";
 import { handleRecipeThresholds, pathFactsFromRecords, recipeFactsFromRecords, recipeThresholdsStructured } from "./recipe-thresholds.js";
 import { formatNpcPage, formatQuestPage, formatVendorPage, npcPage, questPage, vendorPage, worldFactsFromRecords } from "./world-pages.js";
-import { handleWorldMapNear, mapFactsFromRecords } from "./world-map-near.js";
+import { handleWorldMapNear, mapFactsFromRecords, nearResult } from "./world-map-near.js";
 import { WORLD_MAP_DATA } from "./world-map-file.js";
 import { CLIENT_EDGES, CLIENT_LAYER, CLIENT_TAXONOMY } from "./client-layer-file.js";
 import { handleItemCategories, itemCategoriesStructured } from "./item-taxonomy.js";
@@ -491,7 +491,10 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; 
       const page = vendorPage(args.vendorNpcId, facts);
       return { text: formatVendorPage(page), page };
     }),
-    world_map_near: (args) => readFacts("world_map_near", (facts: ReturnType<typeof mapFactsFromRecords>) => handleWorldMapNear(args, WORLD_MAP_DATA, facts)),
+    world_map_near: (args) => readPage("world_map_near", options.corpus, (facts: ReturnType<typeof mapFactsFromRecords>) => ({
+      text: handleWorldMapNear(args, WORLD_MAP_DATA, facts),
+      page: nearResult(args, WORLD_MAP_DATA, facts),
+    })),
     entity_relations: (args) => readPage("entity_relations", options.corpus, (observed: Edge[]) => ({
       text: handleEntityRelations(args, observed, CLIENT_EDGES),
       page: entityRelationsStructured(args, observed, CLIENT_EDGES),
@@ -510,7 +513,10 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; 
     auction_history: (args) => readPage("auction_history", options.corpus, (facts: ReturnType<typeof auctionSightingsFromRecords>) =>
       ({ text: handleAuctionHistory(args, facts), page: auctionHistory(args.realm, args.itemId, facts) })),
     market_value: (args) => marketValueAnswer(args, options.market),
-    gold_ledger: (args) => readFacts("gold_ledger", (facts: ReturnType<typeof goldFactsFromRecords>) => handleGoldLedger(args, facts.snapshots, facts.events)),
+    gold_ledger: (args) => readPage("gold_ledger", options.corpus, (facts: ReturnType<typeof goldFactsFromRecords>) => ({
+      text: handleGoldLedger(args, facts.snapshots, facts.events),
+      page: goldLedger(args.character, args.realm, facts.snapshots, facts.events),
+    })),
     recent_changes: async (args) => {
       let entries: ChangeEntry[] | null = null;
       try { entries = (await options.changes?.()) ?? null; } catch { entries = null; }

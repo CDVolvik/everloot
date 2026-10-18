@@ -258,6 +258,37 @@ export const entityRelations = z.object({
     edges: z.array(relationEdge).describe("Outgoing then incoming, grouped by relation, each group cut to the limit."),
     notShown: z.number().int().describe("Edges beyond the limit, over every group."),
 });
+const copperByCategory = (categories) => z.object(Object.fromEntries(categories.map((c) => [c, z.number().int().optional()])));
+export const INCOME_CATEGORIES = ["loot", "quest", "vendor", "auction"];
+export const SPENDING_CATEGORIES = ["flight", "postage", "barber", "respec", "auction_spend"];
+export const goldLedger = z.object({
+    character: z.string(),
+    realm: z.string(),
+    recorded: z.boolean().describe("False when no snapshot and no money event names this character: gold unrecorded."),
+    ledgers: z.array(z.object({
+        installId: z.string(),
+        peakCopper: z.number().int().nullable().describe("Null is unrecorded, never zero."),
+        currentCopper: z.number().int().nullable(),
+        income: copperByCategory(INCOME_CATEGORIES).describe("A category absent here was never seen: unrecorded."),
+        spending: copperByCategory(SPENDING_CATEGORIES),
+        incomeTotal: z.number().int().nullable().describe("The income lines seen, summed; the difference from the peak is unrecorded, never called bought."),
+    })).describe("One per install. Ledgers are not merged."),
+});
+const nearPin = z.object({
+    npcId: z.number().int(), name: z.string().nullable(), mapId: z.number().int(), zoneName: z.string(),
+    x: z.number(), y: z.number(), yards: z.number(), reporters: z.number().int(),
+});
+export const mapNear = z.object({
+    ok: z.boolean().describe("False when the query was refused; message says why."),
+    message: z.string().optional(),
+    origin: z.string().optional().describe("The spot in words."),
+    radius: z.number().optional(),
+    limit: z.number().int().optional(),
+    entrances: z.array(z.object({ names: z.array(z.string()), raid: z.boolean(), zone: z.string().nullable(), yards: z.number() })).optional()
+        .describe("From the game files, found in game files, unconfirmed. Nearest first."),
+    npcs: z.array(nearPin).optional().describe("Players saw them; a pin needs 3 installs on the same map."),
+    vendors: z.array(nearPin).optional(),
+});
 /** One row of the implementation tracker as everloot_plan returns it. */
 export const planRow = z.object({
     id: z.string(),
@@ -418,6 +449,7 @@ export const MCP_TOOLS = {
             radius: z.number().positive().max(NEAR_MAX_RADIUS).default(NEAR_DEFAULT_RADIUS).describe("Search radius in yards."),
             limit: z.number().int().min(1).max(NEAR_MAX_LIMIT).default(NEAR_DEFAULT_LIMIT).describe("Most results per list."),
         },
+        outputSchema: { ...uploadsAnswer, page: mapNear.optional() },
         annotations: { readOnlyHint: true, openWorldHint: false },
     },
     entity_relations: {
@@ -568,6 +600,7 @@ export const MCP_TOOLS = {
             character: z.string().describe("Character name."),
             realm: z.string().describe("Realm name."),
         },
+        outputSchema: { ...uploadsAnswer, page: goldLedger.optional() },
         annotations: { readOnlyHint: true, openWorldHint: false },
     },
     recent_changes: {
@@ -618,8 +651,8 @@ export const MCP_TOOL_LIST = MCP_TOOL_NAMES.map((name) => ({ name, ...MCP_TOOLS[
 /**
  * What every tool returns: one text content block. Answers built on player data end with the
  * credit line, after a line stating how old the data is. Tools that read nothing from players carry
- * their sources inside the text instead. Tools with an outputSchema also return structuredContent of
- * that shape (STRUCTURED_TOOLS); the others gain it tool by tool in later minor releases.
+ * their sources inside the text instead. Every tool also declares an outputSchema and returns
+ * structuredContent of that shape (STRUCTURED_TOOLS lists them, and is every tool today).
  */
 export const TOOL_OUTPUT = { type: "text", endsWith: MCP_CREDIT };
 /** The tools that answer with structuredContent beside the text. */

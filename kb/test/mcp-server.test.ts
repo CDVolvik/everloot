@@ -243,21 +243,17 @@ test("tools/list is exactly the protocol's tool table, in order, with its input 
   await client.close();
 });
 
-test("tools with an output schema answer with structured content beside the text; the others send text only", async () => {
+test("every tool declares an output schema and answers with structured content beside the text", async () => {
   const { Client } = await import("@modelcontextprotocol/sdk/client/index.js");
   const { InMemoryTransport } = await import("@modelcontextprotocol/sdk/inMemory.js");
-  const { STRUCTURED_TOOLS } = await import("@everloot/protocol");
+  const { MCP_TOOL_NAMES, STRUCTURED_TOOLS } = await import("@everloot/protocol");
   const changes = [{ id: "p1", type: "post" as const, game: "forever" as const, at: "2026-10-18T10:00:00Z", title: "Hotfixes", url: "https://example.test/post", author: "Kaivax", excerpt: "A fix." }];
   const server = createKnowledgeServer(await seed(), { changes: () => changes });
   const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
   await server.connect(serverSide);
   const client = new Client({ name: "test", version: "0" });
   await client.connect(clientSide);
-  expect(STRUCTURED_TOOLS).toEqual([
-    "search_knowledge", "get_entity", "get_by_name", "answer_sources", "profession_path", "recipe_thresholds", "item_page", "npc_page", "object_page",
-    "quest_page", "vendor_page", "entity_relations", "item_categories", "talent_tree", "talent_plan", "collection_gap", "completion_progress", "guild_board",
-    "auction_history", "market_value", "recent_changes", "ecosystem_projects", "everloot_plan",
-  ]);
+  expect(STRUCTURED_TOOLS).toEqual(MCP_TOOL_NAMES);
   const listed = (await client.listTools()).tools;
   for (const tool of listed) expect(tool.outputSchema !== undefined).toBe(STRUCTURED_TOOLS.includes(tool.name as (typeof STRUCTURED_TOOLS)[number]));
 
@@ -273,7 +269,5 @@ test("tools with an output schema answer with structured content beside the text
   const recent = await client.callTool({ name: "recent_changes", arguments: {} });
   expect(recent.structuredContent).toEqual({ connected: true, entries: changes });
 
-  const textOnly = await client.callTool({ name: "gold_ledger", arguments: { character: "Thrall", realm: "Nightslayer" } });
-  expect(textOnly.structuredContent).toBeUndefined();
   await client.close();
 });
