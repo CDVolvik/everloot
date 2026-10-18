@@ -39,12 +39,18 @@ export async function GET(req: Request) {
   return NextResponse.redirect(authUrl);
 }
 
-// Better Auth builds the authorize URL and its state cookie; this route only forwards both to the browser.
+// The start goes through Better Auth's router, not api.signInSocial: only the router applies the rate
+// limiter, and it keys on the caller's address, so that header travels with the request.
 async function startBetterAuthSignIn(req: Request) {
-  const start = await getAuth().api.signInSocial({
-    body: { provider: "battlenet", callbackURL: "/" }, headers: req.headers, asResponse: true,
-  });
-  const { url } = await start.json() as { url?: string };
+  const headers = new Headers({ "content-type": "application/json", origin: siteUrl() });
+  for (const name of ["x-forwarded-for", "x-real-ip", "cookie"]) {
+    const value = req.headers.get(name);
+    if (value) headers.set(name, value);
+  }
+  const start = await getAuth().handler(new Request(`${process.env.BETTER_AUTH_URL ?? siteUrl()}/api/auth/sign-in/social`, {
+    method: "POST", headers, body: JSON.stringify({ provider: "battlenet", callbackURL: "/" }),
+  }));
+  const { url } = await start.json().catch(() => ({})) as { url?: string };
   if (!start.ok || !url) return NextResponse.json({ error: "Battle.net sign-in is unavailable" }, { status: start.ok ? 503 : start.status });
   const response = NextResponse.redirect(url);
   for (const cookie of start.headers.getSetCookie()) response.headers.append("set-cookie", cookie);

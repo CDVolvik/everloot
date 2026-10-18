@@ -163,6 +163,16 @@ test("rate-limit keys never contain the address", async () => {
   expect(JSON.stringify([...store])).not.toContain("203.0.113.9");
 });
 
+test("a sign-in start keeps its state in a cookie and writes no database row", async () => {
+  stubBattlenet(thrall);
+  const db = { users: [], auth_session: [], auth_account: [], auth_verification: [] };
+  const auth = createAuth({ database: memoryAdapter(db), rateLimitStore: mapRateLimitStore().rateLimitStore, env });
+  const response = await startSignIn(auth);
+  expect(response.status).toBe(200);
+  expect(response.headers.getSetCookie().join(";")).toMatch(/everloot.oauth_state=/);
+  expect(db.auth_verification).toEqual([]);
+});
+
 test("Battle.net is not offered unless both its client id and secret are set", async () => {
   stubBattlenet(thrall);
   const db = { users: [], auth_session: [], auth_account: [], auth_verification: [] };

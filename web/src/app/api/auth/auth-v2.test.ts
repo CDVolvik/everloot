@@ -5,7 +5,7 @@ const v2 = vi.hoisted(() => ({
   enabled: true,
   fake: {
     handler: vi.fn(),
-    api: { getSession: vi.fn(), signInSocial: vi.fn(), signOut: vi.fn() },
+    api: { getSession: vi.fn(), signOut: vi.fn() },
   },
 }));
 vi.mock("@/lib/auth/auth", () => ({ authV2Enabled: () => v2.enabled, getAuth: () => v2.fake }));
@@ -46,27 +46,40 @@ test("v2 fails closed when the database is down", async () => {
   expect((await meGET()).status).toBe(503);
 });
 
-test("v2 bnet start redirects to Battle.net and keeps every Better Auth cookie", async () => {
+test("v2 bnet start goes through the router with the caller address, so the rate limiter sees it", async () => {
   const headers = new Headers({ "content-type": "application/json" });
-  headers.append("set-cookie", "everloot.state=s; Path=/; HttpOnly");
+  headers.append("set-cookie", "everloot.oauth_state=s; Path=/; HttpOnly");
   headers.append("set-cookie", "everloot.other=o; Path=/; HttpOnly");
-  v2.fake.api.signInSocial.mockResolvedValue(
+  v2.fake.handler.mockResolvedValue(
     new Response(JSON.stringify({ url: "https://oauth.battle.net/authorize?x=1", redirect: true }), { headers }),
   );
-  const request = new Request("https://everloot.app/api/auth/bnet");
-  const res = await bnetGET(request);
+  const res = await bnetGET(new Request("https://everloot.app/api/auth/bnet", {
+    headers: { "x-forwarded-for": "203.0.113.9", "x-real-ip": "203.0.113.9", cookie: "a=b", "x-ignored": "1" },
+  }));
   expect(res.headers.get("location")).toBe("https://oauth.battle.net/authorize?x=1");
-  expect(res.headers.getSetCookie()).toEqual(["everloot.state=s; Path=/; HttpOnly", "everloot.other=o; Path=/; HttpOnly"]);
-  expect(v2.fake.api.signInSocial).toHaveBeenCalledWith({
-    body: { provider: "battlenet", callbackURL: "/" }, headers: request.headers, asResponse: true,
+  expect(res.headers.getSetCookie()).toEqual(["everloot.oauth_state=s; Path=/; HttpOnly", "everloot.other=o; Path=/; HttpOnly"]);
+  const forwarded = v2.fake.handler.mock.calls[0][0] as Request;
+  expect(forwarded.method).toBe("POST");
+  expect(forwarded.url).toBe("https://everloot.app/api/auth/sign-in/social");
+  expect(Object.fromEntries(forwarded.headers)).toEqual({
+    "content-type": "application/json", origin: "https://everloot.app",
+    "x-forwarded-for": "203.0.113.9", "x-real-ip": "203.0.113.9", cookie: "a=b",
   });
+  expect(await forwarded.json()).toEqual({ provider: "battlenet", callbackURL: "/" });
+});
+
+test("v2 bnet start passes a refusal through instead of redirecting", async () => {
+  v2.fake.handler.mockResolvedValue(Response.json({ message: "Too many requests" }, { status: 429 }));
+  const res = await bnetGET(new Request("https://everloot.app/api/auth/bnet"));
+  expect(res.status).toBe(429);
+  expect(res.headers.get("location")).toBeNull();
 });
 
 test("v2 bnet start is 503 until Battle.net is configured", async () => {
   vi.stubEnv("BNET_CLIENT_SECRET", "");
   const res = await bnetGET(new Request("https://everloot.app/api/auth/bnet"));
   expect(res.status).toBe(503);
-  expect(v2.fake.api.signInSocial).not.toHaveBeenCalled();
+  expect(v2.fake.handler).not.toHaveBeenCalled();
 });
 
 test("v2 logout signs out through Better Auth and refuses other origins", async () => {

@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { betterAuth, type DBAdapterInstance } from "better-auth";
+import { nextCookies } from "better-auth/next-js";
 import { genericOAuth } from "better-auth/plugins";
 import type { Pool } from "pg";
 import { siteUrl } from "@/lib/supabase/server";
@@ -54,6 +55,8 @@ export function createAuth(options: {
       // Battle.net sign-ins are matched by their auth_account row, which the migration's backfill and
       // trigger give every Battle.net user. Linking by email stays off while the email is unverified.
       accountLinking: { enabled: true },
+      // The OAuth state lives in a signed cookie: a sign-in start writes no database row.
+      storeStateStrategy: "cookie",
     },
     verification: {
       modelName: "auth_verification",
@@ -89,7 +92,11 @@ export function createAuth(options: {
         },
       },
     },
-    plugins: [genericOAuth({ config: battlenetConfigured ? [battlenetProvider({ BNET_CLIENT_ID, BNET_CLIENT_SECRET })] : [] })],
+    plugins: [
+      genericOAuth({ config: battlenetConfigured ? [battlenetProvider({ BNET_CLIENT_ID, BNET_CLIENT_SECRET })] : [] }),
+      // Must stay last: it copies the cookies of direct getSession calls (the daily refresh) onto the response.
+      nextCookies(),
+    ],
   });
 }
 
