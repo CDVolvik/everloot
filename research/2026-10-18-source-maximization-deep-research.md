@@ -184,7 +184,7 @@ Requirements first: for each piece of the product, where Everloot's data actuall
 
 ## 7. Open questions for Carlos
 
-1. Commit these four research documents plus the taxonomy supplement (they are untracked / uncommitted in the repo)?
+1. ~~Commit these four research documents plus the taxonomy supplement (they are untracked / uncommitted in the repo)?~~ Committed 2026-10-18 (`6ae310f` and the scan/placement commits around it).
 2. Import the hunter pet data (MIT) as the first third-party data asset with attribution?
 3. CMaNGOS classic-db as a labelled Classic baseline — accepting GPL-3.0 obligations on derived data?
 4. Is the wiki.gg sync-permission request still pending, or should it be dropped in favour of the 2023 dump + manual reads?
