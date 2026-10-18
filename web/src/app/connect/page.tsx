@@ -65,6 +65,24 @@ export default function ConnectPage() {
           docs for the exact key names.
         </p>
         <Code label="MCP client config for the hosted endpoint">{ex.remoteConfig}</Code>
+        <h3 className="font-semibold text-fg">Claude.ai and Claude Desktop</h3>
+        <p className="text-fg-2">
+          Open <a href="https://claude.ai/customize/connectors" rel="noopener" className={link}>Customize, then Connectors</a>,
+          add a connector by URL and paste the endpoint above. It works on every Claude plan, including Free. Once it
+          shows <em>Connected</em>, turn it on in a chat from the plus menu under Connectors and ask about WoW: Forever.
+        </p>
+        <h3 className="font-semibold text-fg">Grok</h3>
+        <p className="text-fg-2">
+          Grok takes a remote server by URL as a custom connector; for the xAI API, pass the same URL to its{" "}
+          <a href="https://docs.x.ai/developers/tools/remote-mcp" rel="noopener" className={link}>remote MCP tools</a>.
+        </p>
+        <h3 className="font-semibold text-fg">ChatGPT and other assistants</h3>
+        <p className="text-fg-2">
+          Any assistant that takes a streamable HTTP MCP server by URL can use this one; it needs no sign-in and asks for
+          no key, so there is nothing to configure beyond the URL. Where an assistant has a directory of servers, Everloot
+          is listed there as it is accepted; the <a href={`${REPO}/blob/main/docs/2026-10-18-mcp-listings.md`} rel="noopener" className={link}>listing notes</a> in
+          the repository say where it stands.
+        </p>
         <h3 className="font-semibold text-fg">Try it with curl</h3>
         <p className="text-fg-2">
           The server keeps no session, so one call is enough. The <code className="font-mono text-fg">accept</code> header

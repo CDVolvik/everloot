@@ -44,6 +44,12 @@ test("the reference lists every tool with its arguments, every endpoint, the Ope
   expect(decoded).toContain('print(len(records), "vendor lists; credit:"');
 });
 
+test("tells users how to add the server in Claude, Grok and any other assistant that takes a URL", () => {
+  for (const text of ["https://claude.ai/customize/connectors", "including Free", "https://docs.x.ai/developers/tools/remote-mcp", "streamable HTTP MCP server by URL", "docs/2026-10-18-mcp-listings.md"]) {
+    expect(decoded).toContain(text);
+  }
+});
+
 test("the corpus kinds on the page are the kinds the API accepts, without addon lists", () => {
   expect(PUBLIC_RECORD_KINDS).not.toContain("addon_seen");
   for (const kind of PUBLIC_RECORD_KINDS) expect(page).toContain(kind);
