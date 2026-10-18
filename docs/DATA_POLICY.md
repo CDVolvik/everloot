@@ -171,6 +171,10 @@ between them, with no Blizzard text and no art. The rules:
   three-install rule. Where both exist, a page shows both, each with its evidence.
 - Forever has no live build yet, so every entry comes from a pre-release build. Entries are not
   marked one by one as spoilers: the layer holds ids and relations only, no names, text or art.
+- How it sits with the item tooltip facts above: class, subclass, slot and quality are public for
+  every item through this layer. The rest of an item's tooltip (name, item level, required level,
+  binding, weapon speed, stat kinds, flavour text, sell price) and its icon stay in private storage
+  and appear only for items 3 installs reported, as the extension says.
 
 **Build changes, beta builds included.** Decided 2026-10-18, the same way Wowhead and other
 datamining sites work: when Blizzard ships a new build, a reviewed pull request records what
