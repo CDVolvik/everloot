@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { GAME_DATA_CREDIT } from "../../../kb/src/attribution";
 import { CLIENT_LABEL, edgesFrom, entityLabel, evidenceLabel, groupByRel, type Edge, type EdgeKind, type Rel } from "../../../kb/src/edges";
+import GameIcon from "./game/GameIcon";
+
+/** A spell's icon URL, when the page has the asset manifest. Items get none here: their icons follow the reported-items rule. */
+export type SpellIconFor = (spellId: number) => string | undefined;
 
 /** Where an entity has a page on this site; null where it has none yet (spells, sets, icons). */
 function hrefFor(kind: EdgeKind, id: number, rel: Rel): string | null {
@@ -14,10 +18,16 @@ function hrefFor(kind: EdgeKind, id: number, rel: Rel): string | null {
 
 const SAME_ICON_SHOWN = 12;
 
-function Target({ edge, rel }: { edge: Edge; rel: Rel }) {
+function Target({ edge, rel, spellIcon }: { edge: Edge; rel: Rel; spellIcon?: SpellIconFor }) {
   const href = hrefFor(edge.toKind, edge.toId, rel);
   const text = entityLabel(edge.toKind, edge.toId);
-  return href ? <Link href={href} className="text-accent hover:underline underline-offset-4">{text}</Link> : <>{text}</>;
+  const icon = edge.toKind === "spell" ? spellIcon?.(edge.toId) : undefined;
+  return (
+    <>
+      {icon ? <><GameIcon src={icon} size={18} />{" "}</> : null}
+      {href ? <Link href={href} className="text-accent hover:underline underline-offset-4">{text}</Link> : text}
+    </>
+  );
 }
 
 /**
@@ -25,8 +35,8 @@ function Target({ edge, rel }: { edge: Edge; rel: Rel }) {
  * game-file groups carry the label and the build, and the section ends with Blizzard's notice when
  * any are shown. `skip` leaves out relations the page already shows in full (an item's drop table).
  */
-export function EntityRelations({ kind, id, observed, client, skip = [] }: {
-  kind: EdgeKind; id: number; observed: readonly Edge[]; client: readonly Edge[]; skip?: Rel[];
+export function EntityRelations({ kind, id, observed, client, skip = [], spellIcon }: {
+  kind: EdgeKind; id: number; observed: readonly Edge[]; client: readonly Edge[]; skip?: Rel[]; spellIcon?: SpellIconFor;
 }) {
   const groups = groupByRel(edgesFrom([...observed, ...client], kind, id)).filter((g) => !skip.includes(g.rel));
   const anyClient = groups.some((g) => g.edges.some((e) => e.evidence === "client"));
@@ -44,7 +54,7 @@ export function EntityRelations({ kind, id, observed, client, skip = [] }: {
                 <ul className="space-y-1 text-fg">
                   {g.edges.map((e) => (
                     <li key={`${e.evidence}-${e.toKind}-${e.toId}`}>
-                      {e.rel === "same_icon" ? <SameIcon edge={e} self={id} client={client} /> : <Target edge={e} rel={g.rel} />}
+                      {e.rel === "same_icon" ? <SameIcon edge={e} self={id} client={client} /> : <Target edge={e} rel={g.rel} spellIcon={spellIcon} />}
                       <span className="text-muted">{` · ${e.evidence === "client" ? `${CLIENT_LABEL.toLowerCase()}, build ${e.build}` : evidenceLabel(e)}`}</span>
                     </li>
                   ))}

@@ -14,7 +14,7 @@ engine stays a separate GPL program.
 Proven, furthest first: real uploads, public client, beta client, on everloot.app,
 code + tests, not built. Live means usable today, not proven with real data.
 
-Rows: 74.
+Rows: 75.
 
 ## Live
 
@@ -49,6 +49,7 @@ Rows: 74.
 | `tool.profession_path` | Profession leveling path | on everloot.app | Engine and MCP tool profession_path. A step needs 3 agreeing uploads: recipe_seen rows, or (addon 0.2.5) an orange-only step derived from recipe colours, starting at the trainer's required rank (trainer_seen) when 3 installs agree, at 1 point per craft. Gold needs 3 prices per reagent, from price reports or per-unit auction scans. Recipe ranges with reagents and cost per craft are the recipe_thresholds tool. Done when a derived step is confirmed orange in the Forever client. The tool reads the public corpus at EVERLOOT_PUBLIC_CORPUS_URL. With no corpus source set, the answer says uploads are not connected. Page: /tools/professions. |
 | `tool.item_page` | Item page for a drop row | on everloot.app | Page /database/items/[id] and MCP tool item_page. Name and map pin need 3 agreeing sightings. The rate is the public rollup. The tool reads the public corpus at EVERLOOT_PUBLIC_CORPUS_URL. With no corpus source set, the answer says uploads are not connected. |
 | `tool.npc_page` | NPC spawn page | on everloot.app | Page /database/npcs/[id] and MCP tool npc_page. A name or map pin needs 3 agreeing sightings. The tool reads the public corpus at EVERLOOT_PUBLIC_CORPUS_URL. With no corpus source set, the answer says uploads are not connected. |
+| `site.database_icons` | Icons on database pages | code + tests | Item pages show the icon of each spell that creates or uses the item (spellIcons now covers the client layer's relation spells) and the tooltip card for reported items; category pages show icons and game file names only for reported items; pet family icons (familyIcons) are in the manifest. Decided 2026-10-18 by the maintainer. Pages only; waits on the maintainer's upload and the asset URL setting (docs/ASSETS.md). |
 | `tool.object_page` | Object pages | code + tests | Kind object. Pages /database/objects and /database/objects/[id] and MCP tool object_page: chests, herbs, ore veins and fishing pools by the entry id in their GUID (sourceObjectId), with what players looted from them; a frequency is public after 3 install reports, a public object with empty windows reads as a measured zero. Item pages link each drop source. No names or positions yet: uploads carry neither, and the client's GameObjects table holds no lootable objects. |
 | `tool.quest_page` | Quest page | on everloot.app | Page /database/quests/[id] and MCP tool quest_page. Title, level, giver, turn-in, and a reward each need 3 agreeing uploads. The tool reads the public corpus at EVERLOOT_PUBLIC_CORPUS_URL. With no corpus source set, the answer says uploads are not connected. |
 | `tool.vendor_page` | Vendor page | on everloot.app | Page /database/vendors/[id] and MCP tool vendor_page. A price is public when 3 installs agree on the item and the copper. The tool reads the public corpus at EVERLOOT_PUBLIC_CORPUS_URL. With no corpus source set, the answer says uploads are not connected. |

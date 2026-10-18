@@ -8,6 +8,9 @@ import { describe, filterItems, QUALITIES, resolveClass, resolveSubclass, slotOf
 import { CLIENT_LAYER, CLIENT_TAXONOMY as T, categoryQuery, ITEMS_PER_PAGE, itemsHref, type CategoryQuery } from "@/lib/items";
 import { pageMetadata } from "@/lib/seo";
 import { loadItemFacts } from "@/lib/rollup-compute";
+import { loadItemTips, loadSiteAssets } from "@/lib/game-assets";
+import GameIcon from "@/components/game/GameIcon";
+import GameCredit from "@/components/game/GameCredit";
 
 type Search = Record<string, string | string[] | undefined>;
 
@@ -65,6 +68,11 @@ export async function CategoryPage({ classSlug, subclassKey, search }: { classSl
   if (q.page > pages) notFound();
   const shown = rows.slice((q.page - 1) * ITEMS_PER_PAGE, q.page * ITEMS_PER_PAGE);
   const facts = await loadItemFacts();
+  // The game file name and icon only for items players reported (3 installs), as on the item page: a list of
+  // every id in the files must not become a list of unreleased item names.
+  const reported = facts.unreachable ? [] : shown.map((row) => row[0]).filter((id) => { const p = itemPage(id, facts); return Boolean(p.name || p.drops.length || p.pins.length); });
+  const assets = reported.length ? await loadSiteAssets() : null;
+  const tips = await loadItemTips(assets, reported);
   const slots = [...new Map(inCategory.map((x) => slotOf(x[3])).filter((s) => s !== null).map((s) => [s!.slug, { slug: s!.slug, name: s!.name }])).values()];
   const qualities = QUALITIES.filter((qq) => inCategory.some((x) => x[4] === qq.id)).map((qq) => ({ slug: qq.slug, name: qq.name }));
   const subclasses = T.subclasses.filter((s) => s.classId === cls.id && s.items > 0);
@@ -112,10 +120,11 @@ export async function CategoryPage({ classSlug, subclassKey, search }: { classSl
             <tbody>
               {shown.map((row) => {
                 const c = describe(T, row);
-                const name = facts.unreachable ? null : itemPage(row[0], facts).name;
+                const tip = tips.get(row[0]);
+                const name = (facts.unreachable ? null : itemPage(row[0], facts).name) ?? tip?.name ?? null;
                 return (
                   <tr key={row[0]} className="border-t border-line bg-panel text-fg">
-                    <td className="px-4 py-2"><Link href={`/database/items/${row[0]}`} className="text-accent hover:underline underline-offset-4">{name ?? `Item ${row[0]}`}</Link></td>
+                    <td className="px-4 py-2"><span className="inline-flex items-center gap-2">{tip?.icon ? <GameIcon src={tip.icon} size={20} /> : null}<Link href={`/database/items/${row[0]}`} className="text-accent hover:underline underline-offset-4">{name ?? `Item ${row[0]}`}</Link></span></td>
                     {sub ? null : <td className="px-4 py-2">{c.subclass?.name ?? "—"}</td>}
                     <td className="px-4 py-2">{c.slot?.name ?? "—"}</td>
                     <td className="px-4 py-2">{c.quality?.name ?? "unrecorded"}</td>
@@ -134,6 +143,8 @@ export async function CategoryPage({ classSlug, subclassKey, search }: { classSl
           {q.page < pages ? <Link href={itemsHref(cls.slug, sub?.slug, { ...q, page: q.page + 1 })} className="text-accent hover:underline underline-offset-4">Next</Link> : null}
         </nav>
       ) : null}
+
+      {assets && [...tips.values()].some((t) => t.icon) ? <GameCredit version={assets.version} label={assets.label} /> : null}
 
       <p className="text-xs text-muted">
         Classes, subclasses, slots and qualities are {CLIENT_LABEL.toLowerCase()}: read from build {CLIENT_LAYER.build.version}, not yet seen in play.

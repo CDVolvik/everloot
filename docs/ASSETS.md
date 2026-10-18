@@ -23,7 +23,8 @@ variables (`GAME_DATA_*`), item links stay plain while the other art still shows
 | --- | --- |
 | `/tools/talents/<class>` | Talent icons, tooltips, node frames and spec backgrounds |
 | `/database/drops`, `/database/vendors/<id>`, `/tools/auctions` | Item icon beside each item link, the item's tooltip on hover and keyboard focus |
-| `/database/items/<id>` | The item's tooltip as a card, once players have reported the item |
+| `/database/items/<id>` | The item's tooltip as a card, once players have reported the item; the icon of each spell that creates or uses the item, beside that relation |
+| `/database/items/<class>/<subclass>` | Icon and game file name of each listed item players have reported; other rows stay plain |
 | `/tools/professions` | Profession icons as a picker |
 | `/tools/raid` | Class, talent tree and buff icons |
 | `/map` | The game's own continent and zone pictures under the zone outlines, with a switch to hide them |
@@ -88,6 +89,10 @@ How it works, and what it will not do:
 - **Class, tree, profession and buff icons.** `ChrClasses.IconFileDataID`; each talent tree's
   `SkillLine.SpellIconFileID`; professions and secondary skills from `SkillLine` (categories 11 and
   9, top-level lines only); the raid buff list's spells from `SpellMisc`.
+- **Relation spell and pet family icons.** `spellIcons` also holds the icon of every spell the
+  committed client layer (`web/src/data/game-data/client-layer.json`) says an item is created by or
+  used in, for the `/database` item pages; `familyIcons` holds `CreatureFamily.IconFileID` by pet
+  family id. Spells and families are not items, so these are not gated on reports.
 - **Map pictures.** `UiMapXMapArt` names each map's art, `UiMapArtTile` its tiles by row and column,
   `UiMapArtStyleLayer` the tile and picture size. The tiles of the base zoom layer are laid on their
   grid and cut to the picture, which covers exactly the rectangle `UiMapAssignment` gives the map, so
@@ -200,8 +205,10 @@ At 1440 and 390 px wide:
   text is read by a screen reader without hovering.
 - **Items.** On the drops, vendor and auction pages each item link has its icon in front; hovering
   or tabbing to the link opens the tooltip with the name in its quality colour; Escape closes it.
-  An item page shows the tooltip card under the title. The credit line is at the bottom. No browser
-  request ever goes to the private bucket.
+  An item page shows the tooltip card under the title, and a spell icon beside "Created by" and
+  "Reagent for" when the item has those relations. A category page such as
+  `/database/items/weapon/one-handed-swords` shows an icon only on rows players have reported. The
+  credit line is at the bottom. No browser request ever goes to the private bucket.
 - **Raid builder.** Class icons in the slots and the class picker, tree icons beside the tree names,
   buff icons in the coverage tables.
 - **Map.** The zone pictures sit exactly inside the zone outlines; "Game map art" turns them off and
