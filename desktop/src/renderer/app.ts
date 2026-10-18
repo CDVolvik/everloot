@@ -113,7 +113,7 @@ function overview(s: AppState): string {
       <div class="stat"><div class="k">Upload</div><div class="v">${dot(up)} ${up.state === "ok" ? "OK" : up.state === "error" ? "Failed" : up.state === "off" ? "Off" : "Waiting"}</div><div class="s">${up.at ? ago(up.at) : "never"}</div></div>
       <div class="stat"><div class="k">Market prices</div><div class="v">${dot(pr)} ${data.market ? `${data.market.last.length} realm(s)` : pr.state === "off" ? "Off" : "Waiting"}</div><div class="s">${data.market?.scans[0] ? `your last scan ${ago(data.market.scans[0].at)}` : pr.at ? ago(pr.at) : "never"}</div></div>
       <div class="stat"><div class="k">/ask</div><div class="v">${dot(ask)} ${ask.state === "off" ? "Off" : ask.state === "error" ? "Failed" : "On"}</div><div class="s">${ask.at ? ago(ask.at) : s.settings.ask.enabled ? "waiting" : "turn on in Ask"}</div></div>
-      <div class="stat"><div class="k">Addon</div><div class="v">${addonLine}</div><div class="s">${addon?.slots.prices ? "prices file in game" : "no prices file yet"}</div></div>
+      <div class="stat"><div class="k">Addon</div><div class="v">${addonLine}</div><div class="s">${addon?.slots.prices ? "prices file in game" : "no prices file yet"}${addon && (!addon.installed || (addon.latest && addon.latest.version !== addon.installed)) ? ` · <button type="button" class="link" data-page="addon">${addon.installed ? "update" : "install"}</button>` : ""}</div></div>
     </div>
     <div class="grid2">
       <section class="panel"><div class="row between"><h2>Recent activity</h2><div class="row">${runBtn("upload", s, "Upload now")}${runBtn("prices", s, "Refresh prices")}</div></div><div class="log">${logLines(s, 8)}</div></section>
