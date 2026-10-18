@@ -664,7 +664,10 @@ describe("completion rollup", () => {
     expect(JSON.parse(mem.objects.get(SERVED)!).lastReceivedAt).toBe(stamp(63));
     mem.reads.length = 0;
     await expect(run()).rejects.toThrow(/unreadable/);
-    expect(mem.reads[0]).toBe("uploads/u64.json");
+    // Reads of a batch run in parallel after each request is signed, so their order is not fixed: the run
+    // starts at u64 when no earlier upload is read and u64 is.
+    const read = mem.reads.map((key) => Number(/u(\d+)\.json$/.exec(key)![1]));
+    expect(Math.min(...read)).toBe(64);
   });
 
   test("when the grant lookup fails, a trim keeps every character of an install that holds a grant", async () => {
