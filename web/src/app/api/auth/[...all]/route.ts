@@ -16,6 +16,7 @@ export async function GET(request: Request) {
   return getAuth().handler(request);
 }
 
-export async function POST() {
+// Nothing a browser posts here is Better Auth's to answer.
+export async function POST(_request: Request) {
   return notFound();
 }
