@@ -38,13 +38,23 @@ try {
   // Match Supabase's permissive defaults: the migrations must revoke them.
   await pool.query("alter default privileges in schema public grant execute on functions to anon, authenticated, service_role");
   await pool.query("alter default privileges in schema public grant all on tables to anon, authenticated, service_role");
-  // Every migration in name order, then again: they must be safe to re-run. The uploads and
-  // waitlist migration predates that rule (plain create table), so only its first run is applied.
+  // Migrations must be safe to re-run. The uploads and waitlist migration predates that rule
+  // (plain create table), so only its first run is applied.
   assert.ok(files.includes("20261003000000_auth_schema.sql"), "auth schema is a migration");
   const once = new Set(["20261004000000_uploads_waitlist.sql"]);
-  await pool.query((await Promise.all(files.map(read))).join("\n"));
+  const accountsFile = "20261020120000_accounts.sql";
+  const accountsSql = await read(accountsFile);
+
+  // Production upgrade: users exist before the columns do. Apply everything up to the accounts
+  // migration, add a v1 user, then apply it; the backfill must fill name and email.
+  await pool.query((await Promise.all(files.filter((file) => file < accountsFile).map(read))).join("\n"));
+  const [{ id: existing }] = (await pool.query("insert into public.users (bnet_id, battletag) values ('456', 'Garrosh#1') returning id")).rows;
+  assert.ok(!Object.keys((await pool.query("select * from public.users")).rows[0]).includes("email"), "columns do not exist yet");
+  await pool.query(accountsSql);
+  assert.deepEqual((await pool.query("select name, email, email_verified from public.users where id=$1", [existing])).rows[0], { name: "Garrosh#1", email: "bnet-456@users.everloot.invalid", email_verified: false });
+  assert.deepEqual((await pool.query("select account_id, provider_id from public.auth_account where user_id=$1", [existing])).rows, [{ account_id: "456", provider_id: "battlenet" }]);
+  // Then every migration again, in name order: they must be safe to re-run.
   await pool.query((await Promise.all(files.filter((file) => !once.has(file)).map(read))).join("\n"));
-  const accountsSql = await read("20261020120000_accounts.sql");
 
   // A legacy row inserted the v1 way gets a name and a placeholder email from the trigger.
   const [{ id: legacy }] = (await pool.query("insert into public.users (bnet_id, battletag) values ('123', 'Thrall#1') returning id")).rows;
@@ -53,7 +63,8 @@ try {
   // Re-applying the migration copies the Battle.net id into auth_account exactly once.
   await pool.query(accountsSql); await pool.query(accountsSql);
   const acc = (await pool.query("select user_id, account_id, provider_id, access_token from public.auth_account")).rows;
-  assert.deepEqual(acc, [{ user_id: legacy, account_id: "123", provider_id: "battlenet", access_token: null }]);
+  assert.deepEqual(acc.filter((row) => row.user_id === legacy), [{ user_id: legacy, account_id: "123", provider_id: "battlenet", access_token: null }]);
+  assert.equal(acc.length, 2);
   // A Better Auth-style insert (no bnet_id) is accepted and left alone by the trigger.
   await pool.query("insert into public.users (id, name, email) values (gen_random_uuid(), 'A', 'a@example.com')");
   assert.deepEqual((await pool.query("select name, email, flags, bnet_id, battletag from public.users where email='a@example.com'")).rows, [{ name: "A", email: "a@example.com", flags: {}, bnet_id: null, battletag: null }]);
@@ -63,7 +74,7 @@ try {
   await pool.query("insert into public.auth_session (id, user_id, token, expires_at) values (gen_random_uuid(), $1, 't', now() + interval '1 day')", [legacy]);
   await pool.query("delete from public.users where id=$1", [legacy]);
   for (const t of ["auth_session", "auth_account"]) {
-    assert.equal((await pool.query(`select count(*)::int as n from public.${t}`)).rows[0].n, 0);
+    assert.equal((await pool.query(`select count(*)::int as n from public.${t} where user_id=$1`, [legacy])).rows[0].n, 0);
   }
   // Browser roles cannot read any auth table; the service role can.
   for (const role of ["anon", "authenticated"]) for (const t of tables) {
@@ -71,5 +82,5 @@ try {
   }
   for (const t of tables) await asRole("service_role", `select * from public.${t}`);
   await assert.rejects(asRole("anon", "select public.users_fill_identity()"), /permission denied/);
-  console.log("Accounts integration passed: re-runnable migrations in name order, legacy rows filled by the trigger, Battle.net ids copied once, Better Auth inserts accepted, unique emails, cascading deletes, private auth tables.");
+  console.log("Accounts integration passed: re-runnable migrations in name order, existing users backfilled on upgrade, legacy inserts filled by the trigger, Battle.net ids copied once, Better Auth inserts accepted, unique emails, cascading deletes, private auth tables.");
 } finally { await pool.end(); }
