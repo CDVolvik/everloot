@@ -70,6 +70,29 @@ npm run dev               # MCP at http://localhost:3000/mcp/public`,
     },
   }, null, 2),
   corpusCurl: `curl -s "${CORPUS_URL}?kinds=loot,vendor"`,
+  openapiCurl: `curl -s ${SITE}/api/openapi.json | jq '.paths | keys'`,
+  pagingJs: `// Every loot record, page by page. Stop when next is null.
+let url = "${CORPUS_URL}?kinds=loot&limit=500";
+const records = [];
+while (url) {
+  const body = await (await fetch(url)).json();
+  if (!body.ok) throw new Error(body.error);
+  records.push(...body.records);
+  url = body.next;
+}
+console.log(records.length, "loot windows as of", body.dataAsOf);
+// Show the credit line wherever these appear: body.attribution.credit`,
+  pagingPy: `import requests
+
+url = "${CORPUS_URL}?kinds=vendor&limit=500"
+records = []
+while url:
+    body = requests.get(url, timeout=30).json()
+    if not body["ok"]:
+        raise SystemExit(body["error"])
+    records.extend(body["records"])
+    url = body["next"]
+print(len(records), "vendor lists; credit:", body["attribution"]["credit"])`,
   corpusShape: `{
   "ok": true,
   "uploads": 1,

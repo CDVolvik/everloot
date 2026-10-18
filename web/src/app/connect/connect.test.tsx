@@ -14,7 +14,7 @@ vi.mock("@/components/ApiKeys", () => ({ default: () => <div data-testid="api-ke
 
 import ConnectPage, { metadata } from "./page";
 import { CONNECT_EXAMPLES, CORPUS_URL, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR } from "./connect-data";
-import { MCP_TOOL_NAMES, PUBLIC_RECORD_KINDS } from "@everloot/protocol";
+import { API_ROUTES, MCP_TOOL_NAMES, PROTOCOL_VERSION, PUBLIC_RECORD_KINDS } from "@everloot/protocol";
 import { createIntakeQuota } from "@/lib/intake-quota";
 import { ANON_PAGE, ANON_PER_HOUR, attribution, KEY_PAGE, KEY_PER_HOUR } from "@/lib/data-guard";
 import sitemap from "../sitemap";
@@ -28,6 +28,20 @@ test("the tool list is exactly the tools the protocol declares, in order", () =>
   expect(MCP_TOOL_NAMES.length).toBeGreaterThan(0);
   expect(MCP_TOOLS.map((tool) => tool.name)).toEqual(MCP_TOOL_NAMES);
   for (const tool of MCP_TOOLS) expect(page).toContain(`>${tool.name}</code>`);
+});
+
+test("the reference lists every tool with its arguments, every endpoint, the OpenAPI file and the schema index", () => {
+  for (const tool of MCP_TOOLS) {
+    expect(page).toContain(`id="tool-${tool.name}"`);
+    expect(page).toContain(`/schema/mcp/${tool.name}.json`);
+  }
+  for (const text of ["query", "itemId", "ownerInstallId", "required", "player data"]) expect(decoded).toContain(text);
+  for (const route of API_ROUTES) expect(decoded).toContain(`${route.method} ${route.path.replace(/^\/api/, "")}`);
+  for (const text of ["/api/openapi.json", "/schema/index.json", "/schema/upload.json", `@everloot/protocol`, PROTOCOL_VERSION, "offset, limit, next", "gameData"]) {
+    expect(decoded).toContain(text);
+  }
+  expect(decoded).toContain("// Every loot record, page by page. Stop when next is null.");
+  expect(decoded).toContain('print(len(records), "vendor lists; credit:"');
 });
 
 test("the corpus kinds on the page are the kinds the API accepts, without addon lists", () => {

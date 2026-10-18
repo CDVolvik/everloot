@@ -20,6 +20,10 @@ that has a zip in the repository. Earlier builds have none.
   catalogue, and the MCP server's tool table (22 tools). The server registers its tools from that table,
   the connect page and `llms.txt` list from it, and each API route's test parses a real response with the
   protocol's schema, so none of the three can drift from the others.
+- `/connect` gained a reference of every MCP tool with its arguments and of every JSON endpoint with its
+  parameters and responses, rendered from the protocol, plus paging examples in JavaScript and Python. The
+  site serves `/api/openapi.json` (OpenAPI 3.1, assembled from the same catalogue) and the protocol's JSON
+  Schema files under `/schema/`. `llms.txt` lists both.
 
 Pull requests merged to `main` are listed in the nightly pre-releases until the next tagged release.
 

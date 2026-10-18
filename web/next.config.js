@@ -29,6 +29,8 @@ const nextConfig = {
   serverExternalPackages: ["better-sqlite3"],
   // The approved knowledge release ships inside the /mcp function only (copied to web/.release, never committed).
   outputFileTracingIncludes: {
+    // The protocol's JSON Schema files, served by /schema/<file>.json from the installed package.
+    "/schema/[...path]": ["./node_modules/@everloot/protocol/schema/**"],
     "/mcp": ["./.release/*.sqlite", "./.release/*.manifest.json"],
     "/mcp/public": ["./.release/*.sqlite", "./.release/*.manifest.json"],
     "/lore/[slug]": ["./.release/*.sqlite", "./.release/*.manifest.json"],
