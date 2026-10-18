@@ -794,6 +794,41 @@ export const MCP_RESOURCES = {
   },
 } as const satisfies Record<string, McpResourceDef>;
 
+/**
+ * The server's prompts: a client offers them as commands, fills the arguments, and gets a user message
+ * that tells an assistant how to use the tools for that job. Argument values are strings, as MCP has them.
+ */
+export interface McpPromptDef {
+  title: string;
+  description: string;
+  arguments: Record<string, { description: string; required: boolean }>;
+}
+
+/** Every prompt, keyed by name, in the order the server lists them. kb/src/prompts.ts holds the messages. */
+export const MCP_PROMPTS = {
+  answer_with_sources: {
+    title: "Answer with Everloot's sources",
+    description: "Answer a question about WoW: Forever from answer_sources, citing each piece of evidence with its source, licence and date, and saying unrecorded where the evidence is.",
+    arguments: { question: { description: "The question, in the player's words.", required: true } },
+  },
+  review_talent_plan: {
+    title: "Review a talent share code",
+    description: "Read a share code with talent_plan and the class's trees with talent_tree, then describe the build, its level and every problem in plain words.",
+    arguments: { code: { description: "An EL1 share code, or a calculator link that carries one.", required: true } },
+  },
+  what_changed: {
+    title: "What changed in WoW: Forever",
+    description: "Summarize recent_changes, newest first: Blizzard posts, hotfixes and builds, each with its link, quoting only the excerpt the tool gives.",
+    arguments: { game: { description: "forever or classic. Without it, both.", required: false } },
+  },
+} as const satisfies Record<string, McpPromptDef>;
+
+export type McpPromptName = keyof typeof MCP_PROMPTS;
+/** The names in the order the server lists them. */
+export const MCP_PROMPT_NAMES = Object.keys(MCP_PROMPTS) as McpPromptName[];
+/** The list form, for clients that iterate. */
+export const MCP_PROMPT_LIST = MCP_PROMPT_NAMES.map((name) => ({ name, ...MCP_PROMPTS[name] }));
+
 export type McpResourceUri = keyof typeof MCP_RESOURCES;
 /** The URIs in the order the server lists them. */
 export const MCP_RESOURCE_URIS = Object.keys(MCP_RESOURCES) as McpResourceUri[];

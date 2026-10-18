@@ -47,6 +47,10 @@ that has a zip in the repository. Earlier builds have none.
   `world_map_near` (entrances and pins with distances, or the refused query with its reason). Both
   formatters now write their text from a result object, so every one of the 25 tools answers with
   structured content beside its text.
+- The MCP server's first prompts, commands a client offers and fills: `answer_with_sources` (a question,
+  answered from `answer_sources` with a source on every piece), `review_talent_plan` (a share code, read
+  with `talent_plan` and `talent_tree`) and `what_changed` (`recent_changes`, newest first, excerpts
+  only). Listed on `/connect`, in `llms.txt` and in `/schema/mcp/prompts.json`.
 - The tool reference on `/connect` shows each tool's answer: the top-level fields of its structured
   content with types and meanings, from the same schema the server validates against.
 - The protocol's publish path: `protocol-publish.yml` publishes `@everloot/protocol` to npm with

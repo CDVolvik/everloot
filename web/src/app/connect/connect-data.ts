@@ -1,4 +1,4 @@
-import { CREDIT_LINE, LICENCE, LICENCE_URL, MCP_RESOURCE_URIS, MCP_TOOL_NAMES, SITE, TERMS_URL, type McpResourceUri, type McpToolName } from "@everloot/protocol";
+import { CREDIT_LINE, LICENCE, LICENCE_URL, MCP_PROMPT_NAMES, MCP_RESOURCE_URIS, MCP_TOOL_NAMES, SITE, TERMS_URL, type McpPromptName, type McpResourceUri, type McpToolName } from "@everloot/protocol";
 
 export const MCP_URL = `${SITE}/mcp/public`;
 export const CORPUS_URL = `${SITE}/api/corpus/public`;
@@ -47,6 +47,16 @@ const RESOURCE_TEXT: Record<McpResourceUri, string> = {
 
 /** Every resource the MCP server registers, in the protocol's order. A client reads one whole with resources/read. */
 export const MCP_RESOURCES: readonly { uri: McpResourceUri; text: string }[] = MCP_RESOURCE_URIS.map((uri) => ({ uri, text: RESOURCE_TEXT[uri] }));
+
+/** One plain sentence per prompt, keyed by name so a new prompt in the protocol fails the type check here. */
+const PROMPT_TEXT: Record<McpPromptName, string> = {
+  answer_with_sources: "Answer a question from answer_sources, citing every piece with its source, licence and date. Takes the question.",
+  review_talent_plan: "Read a share code with talent_plan and the trees with talent_tree, then describe the build and every problem. Takes the code or a calculator link.",
+  what_changed: "Summarize recent_changes newest first, with links and only the excerpts the tool gives. Takes forever or classic, or nothing for both.",
+};
+
+/** Every prompt the MCP server registers, in the protocol's order. A client offers them as commands and fills the arguments. */
+export const MCP_PROMPTS: readonly { name: McpPromptName; text: string }[] = MCP_PROMPT_NAMES.map((name) => ({ name, text: PROMPT_TEXT[name] }));
 
 const curlBody = JSON.stringify({
   jsonrpc: "2.0", id: 1, method: "tools/call",

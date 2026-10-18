@@ -15,8 +15,10 @@ import { formatItemPage, itemPage } from "./item-page.js";
 import { formatObjectPage, objectFactsFromRecords, objectPage, type ObjectFacts } from "./object-page.js";
 import { handleMarketValue, itemMarket, type MarketState } from "./market.js";
 import { loadUploadRecords } from "./load-uploads.js";
-import { KNOWLEDGE_KINDS, MCP_RESOURCE_URIS, MCP_RESOURCES, MCP_TOOL_NAMES, MCP_TOOLS, parseRecords, type McpToolArgs, type McpToolDef, type McpToolName } from "@everloot/protocol";
+import { KNOWLEDGE_KINDS, MCP_PROMPT_NAMES, MCP_PROMPTS, MCP_RESOURCE_URIS, MCP_RESOURCES, MCP_TOOL_NAMES, MCP_TOOLS, parseRecords, type McpToolArgs, type McpToolDef, type McpToolName } from "@everloot/protocol";
+import { z } from "zod";
 import { handleProfessionPath, professionPath } from "./profession-path.js";
+import { promptText } from "./prompts.js";
 import { readResource } from "./resources.js";
 import { handleTalentPlan, handleTalentTree } from "./talent-tools.js";
 import { handleRecipeThresholds, pathFactsFromRecords, recipeFactsFromRecords, recipeThresholdsStructured } from "./recipe-thresholds.js";
@@ -550,6 +552,14 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; 
       const { mimeType, text } = readResource(uri, SOURCE_URL);
       return { contents: [{ uri, mimeType, text }] };
     });
+  }
+  for (const name of MCP_PROMPT_NAMES) {
+    const def = MCP_PROMPTS[name];
+    const argsSchema = Object.fromEntries(Object.entries(def.arguments).map(([arg, a]) => [arg, a.required ? z.string().describe(a.description) : z.string().optional().describe(a.description)]));
+    server.registerPrompt(name, { title: def.title, description: def.description, argsSchema }, (args) => ({
+      description: def.title,
+      messages: [{ role: "user" as const, content: { type: "text" as const, text: promptText(name, args as Record<string, string | undefined>) } }],
+    }));
   }
   return server;
 }
