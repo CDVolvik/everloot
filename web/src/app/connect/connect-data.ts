@@ -22,6 +22,8 @@ const TOOL_TEXT: Record<McpToolName, string> = {
   world_map_near: "What is near a spot: entrances, observed NPCs and vendors, with distances in yards.",
   entity_relations: "How an item, NPC, spell or quest connects to others: dropped by, sold by, created by, reagent for, set, same icon. Each relation says if players saw it (3 installs) or the game files hold it (unconfirmed, with the build).",
   item_categories: "Item classes, subclasses, slots and qualities from the game files, with item counts; one item's category path, or the items in a category. Found in game files, unconfirmed, with the build.",
+  talent_tree: "One class's talent trees from the game files: every node with its talents, ranks, position, prerequisites and row gate. Found in game files, unconfirmed, with the build.",
+  talent_plan: "Reads a talent share code or calculator link: the talents and ranks it holds, points per tree, the lowest level for it, and every problem in plain words.",
   collection_gap: "What one install is missing from a collection, such as Mounts.",
   completion_progress: "What one install's characters finished in achievements, reputation, titles and quest chains, and what is closest to done.",
   guild_board: "A guild's roster, bosses, loot and attendance, from officer uploads.",

@@ -30,6 +30,32 @@ export const NEAR_DEFAULT_LIMIT = 5;
 export const NEAR_MAX_LIMIT = 20;
 /** Item quality slugs in Enum.ItemQuality order. */
 export const ITEM_QUALITY_SLUGS = ["poor", "common", "uncommon", "rare", "epic", "legendary", "artifact", "heirloom"];
+/** The classes with a talent catalog, in the site's order (web/src/lib/talents/catalogs.ts). */
+export const TALENT_CLASSES = ["warrior", "paladin", "hunter", "rogue", "priest", "shaman", "mage", "warlock", "druid"];
+/** One talent node as talent_tree returns it: the calculator's own shape, positions 1-based. */
+export const talentNode = z.object({
+    id: z.number().int().describe("The client's trait node id, the id a share code names."),
+    treeId: z.number().int(),
+    row: z.number().int().describe("1-based, top row first."),
+    col: z.number().int().describe("1-based, left first."),
+    kind: z.enum(["single", "tiered", "choice"]).describe("A tiered node buys its entries in order; a choice node picks one."),
+    maxRanks: z.number().int(),
+    talents: z.array(z.object({
+        name: z.string(),
+        spellId: z.number().int().nullable(),
+        maxRanks: z.number().int().optional().describe("Ranks this entry takes, for a tiered node."),
+    })),
+    prereqs: z.array(z.number().int()).describe("Node ids that must all be at full rank first."),
+    anyOf: z.array(z.number().int()).optional().describe("If listed, at least one of these must be at full rank too."),
+    gate: z.object({
+        pointsInTree: z.number().int().optional().describe("Points needed in this tree on rows above."),
+        pointsTotal: z.number().int().optional().describe("Points needed in the build, any tree."),
+        scope: z.enum(["tree", "class", "unconfirmed"]).optional().describe("Where the files say the gate counts; unconfirmed is read as the tree."),
+        ranksInNodes: z.array(z.object({ nodeId: z.number().int(), ranks: z.number().int() })).optional(),
+    }).optional(),
+});
+/** One tree of a plan, with the points spent in it. */
+export const talentTreePoints = z.object({ id: z.number().int(), name: z.string(), points: z.number().int() });
 const searchArgs = {
     query: z.string().max(1000).describe("What to look up: names, questions, keywords. Question words are ignored."),
     kind: z.enum(KNOWLEDGE_KINDS).optional().describe("Narrow to one record kind."),
@@ -199,6 +225,58 @@ export const MCP_TOOLS = {
             slot: z.string().max(40).optional().describe("Slot slug, such as head, chest, one-hand or trinket."),
             quality: z.enum(ITEM_QUALITY_SLUGS).optional().describe("poor, common, uncommon, rare, epic, legendary, artifact or heirloom."),
             limit: z.number().int().min(1).max(100).default(25).describe("Most items listed."),
+        },
+        annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    talent_tree: {
+        title: "Talent trees for one class",
+        description: "The WoW: Forever talent trees of one class from the game files (found in game files, unconfirmed, with the build): every node with its talents, ranks, grid position, prerequisites and row gate, plus the levels talent points arrive at. Node ids are the ids a share code names. Narrow to one tree by name. The calculator is at /tools/talents/<class>.",
+        inputSchema: {
+            class: z.enum(TALENT_CLASSES).describe("Class slug."),
+            tree: z.string().max(40).optional().describe("One tree by name, such as Arcane. Without it, every tree."),
+        },
+        outputSchema: {
+            label: z.string(),
+            build: z.string().describe("The game build the trees were read from."),
+            class: z.enum(TALENT_CLASSES),
+            className: z.string(),
+            specId: z.number().int().describe("The client's spec id, or 0 when unknown."),
+            points: z.object({
+                firstPointLevel: z.number().int(),
+                maxLevel: z.number().int(),
+                total: z.number().int().describe("Talent points at the max level."),
+                pointLevels: z.array(z.number().int()).describe("The level each point arrives at."),
+            }),
+            trees: z.array(z.object({ id: z.number().int(), name: z.string(), nodes: z.number().int() })),
+            nodes: z.array(talentNode),
+            credit: z.string(),
+        },
+        annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    talent_plan: {
+        title: "Read a talent share code",
+        description: "Decodes an Everloot talent share code (EL1-<class>-<spec>-<build>-<payload>, or a calculator link carrying one after #plan=) against the class's trees: the talents and ranks it holds, points per tree, the lowest level that can hold it, and every problem in plain words: a code made on another build, nodes the tree does not have, ranks cut back, points the rules would not place. Nothing is dropped silently. Game-file data, found in game files, unconfirmed.",
+        inputSchema: {
+            code: z.string().max(2000).describe("The share code, or a link that carries one."),
+        },
+        outputSchema: {
+            ok: z.boolean().describe("False when the code could not be read at all; message says why."),
+            message: z.string().optional(),
+            class: z.enum(TALENT_CLASSES).optional(),
+            className: z.string().optional(),
+            codeBuild: z.string().optional().describe("The game build the code was made on."),
+            treeBuild: z.string().optional().describe("The build of the trees it was read against."),
+            pointsSpent: z.number().int().optional(),
+            minLevel: z.number().int().optional().describe("The lowest level that can hold this many points."),
+            byTree: z.array(talentTreePoints).optional(),
+            talents: z.array(z.object({
+                id: z.number().int(), treeId: z.number().int(), name: z.string(), rank: z.number().int(), maxRanks: z.number().int(),
+                choice: z.number().int().optional().describe("The chosen entry of a choice node, zero-based."),
+            })).optional(),
+            problems: z.array(z.string()).optional().describe("One sentence each. Empty means the code loaded exactly as made."),
+            link: z.string().optional().describe("The calculator with this plan loaded."),
+            label: z.string(),
+            credit: z.string(),
         },
         annotations: { readOnlyHint: true, openWorldHint: false },
     },
