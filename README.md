@@ -156,8 +156,10 @@ claude mcp add --transport http everloot https://everloot.app/mcp/public
 ```
 
 or put `{ "mcpServers": { "everloot": { "type": "http", "url": "https://everloot.app/mcp/public" } } }`
-in the client's config. The [connect page](https://everloot.app/connect) lists the tools, the rate
-limit and how to credit the data.
+in the client's config. The [connect page](https://everloot.app/connect) lists every tool with its
+arguments and every JSON endpoint, the rate limit and how to credit the data. The API is described in
+[`/api/openapi.json`](https://everloot.app/api/openapi.json) (OpenAPI 3.1) and the protocol's JSON Schema
+files are under [`/schema/`](https://everloot.app/schema/index.json).
 
 ## Project status
 
