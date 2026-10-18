@@ -11,6 +11,96 @@
     "type": "object",
     "properties": {}
   },
+  "outputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "rows": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "live",
+                "next",
+                "waiting",
+                "shape"
+              ]
+            },
+            "name": {
+              "type": "string"
+            },
+            "done": {
+              "type": "string",
+              "description": "What done means, or why this row is not a build."
+            },
+            "proof": {
+              "description": "The furthest the row is proven.",
+              "type": "string",
+              "enum": [
+                "none",
+                "code",
+                "deployed",
+                "client",
+                "public",
+                "real-data"
+              ]
+            }
+          },
+          "required": [
+            "id",
+            "status",
+            "name",
+            "done"
+          ],
+          "additionalProperties": false
+        },
+        "description": "Every row, in the tracker's order."
+      },
+      "counts": {
+        "type": "object",
+        "properties": {
+          "live": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "next": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "waiting": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "shape": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "live",
+          "next",
+          "waiting",
+          "shape"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "required": [
+      "rows",
+      "counts"
+    ],
+    "additionalProperties": false
+  },
   "x-everloot-output": {
     "type": "text"
   }

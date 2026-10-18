@@ -32,6 +32,9 @@ that has a zip in the repository. Earlier builds have none.
   prerequisites and row gate, with the build) and `talent_plan` (a share code or calculator link read
   against the trees: talents, points per tree, the lowest level, and every problem in plain words).
   The knowledge base now typechecks with bundler resolution so it can import the site's talent modules.
+- Structured output for `item_categories`, `ecosystem_projects` and `everloot_plan`, the three tools that
+  read no uploads: the same cases as the text (a tree, one item's path, a filtered list with its total;
+  a board's ranked rows with GitHub facts flattened, or not connected; every tracker row with its proof).
 - The MCP server's first resources, documents an assistant reads whole: `everloot://builds` (the build the
   game-file facts come from and the build registry, JSON), `everloot://methodology` (how uploads become
   facts) and `everloot://data-policy` (the policy in short, with the link to the full one). The two texts

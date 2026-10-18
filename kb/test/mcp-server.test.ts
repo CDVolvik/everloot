@@ -253,7 +253,7 @@ test("tools with an output schema answer with structured content beside the text
   await server.connect(serverSide);
   const client = new Client({ name: "test", version: "0" });
   await client.connect(clientSide);
-  expect(STRUCTURED_TOOLS).toEqual(["search_knowledge", "get_entity", "get_by_name", "answer_sources", "talent_tree", "talent_plan", "recent_changes"]);
+  expect(STRUCTURED_TOOLS).toEqual(["search_knowledge", "get_entity", "get_by_name", "answer_sources", "item_categories", "talent_tree", "talent_plan", "recent_changes", "ecosystem_projects", "everloot_plan"]);
   const listed = (await client.listTools()).tools;
   for (const tool of listed) expect(tool.outputSchema !== undefined).toBe(STRUCTURED_TOOLS.includes(tool.name as (typeof STRUCTURED_TOOLS)[number]));
 
@@ -269,7 +269,7 @@ test("tools with an output schema answer with structured content beside the text
   const recent = await client.callTool({ name: "recent_changes", arguments: {} });
   expect(recent.structuredContent).toEqual({ connected: true, entries: changes });
 
-  const plan = await client.callTool({ name: "everloot_plan", arguments: {} });
-  expect(plan.structuredContent).toBeUndefined();
+  const textOnly = await client.callTool({ name: "market_value", arguments: { realm: "Nightslayer", itemId: 1 } });
+  expect(textOnly.structuredContent).toBeUndefined();
   await client.close();
 });
