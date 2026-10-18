@@ -14,7 +14,7 @@ import { buildTaxonomy, type Taxonomy } from "./item-taxonomy.js";
 
 export const LAYER_SCHEMA = "everloot.client-layer/2";
 
-const KINDS = ["item", "spell", "npc", "object", "quest", "zone", "item_set", "icon"] as const satisfies readonly EdgeKind[];
+const KINDS = ["item", "spell", "npc", "object", "quest", "zone", "item_set", "icon", "skill"] as const satisfies readonly EdgeKind[];
 
 export const ClientLayer = z.object({
   schema: z.literal(LAYER_SCHEMA),
@@ -29,8 +29,10 @@ export const ClientLayer = z.object({
   edges: z.array(z.tuple([z.enum(KINDS), z.number().int(), z.enum(RELS), z.enum(KINDS), z.number().int()])),
   /** Item classes and subclasses with the client's English names, the slugs made from them, and item counts. */
   categories: z.object({
-    classes: z.array(z.object({ id: z.number().int(), name: z.string(), slug: z.string(), items: z.number().int() })),
+    classes: z.array(z.object({ id: z.number().int(), name: z.string(), label: z.string(), slug: z.string(), items: z.number().int() })),
     subclasses: z.array(z.object({ classId: z.number().int(), id: z.number().int(), name: z.string().nullable(), slug: z.string(), items: z.number().int() })),
+    /** The professions the `in_skill_line` relations point at, with the client's names (Blacksmithing, Cooking). */
+    skills: z.array(z.object({ id: z.number().int(), name: z.string() })),
   }),
   /** [itemId, classId, subclassId, inventoryType, quality or null], one per item in `Item`. */
   items: z.array(z.tuple([z.number().int(), z.number().int(), z.number().int(), z.number().int(), z.number().int().nullable()])),
@@ -50,7 +52,7 @@ export function buildClientLayer(snapshotPath: string): ClientLayer {
     build: { product: meta.product, buildId: meta.buildId, version: meta.version, buildConfig: meta.buildConfig, definitions: meta.definitions, extractedAt: meta.extractedAt },
     counts,
     edges: edges.map((e) => [e.fromKind, e.fromId, e.rel, e.toKind, e.toId]),
-    categories: { classes: taxonomy.classes, subclasses: taxonomy.subclasses },
+    categories: { classes: taxonomy.classes, subclasses: taxonomy.subclasses, skills: skillsOf(get, edges) },
     items: taxonomy.items,
   });
 }
@@ -60,7 +62,7 @@ export function serializeClientLayer(layer: ClientLayer): string {
   const { edges, categories, items, ...head } = layer;
   const top = JSON.stringify(head, null, 1).replace(/\n}$/, "");
   const rows = (list: unknown[]) => list.map((r) => `  ${JSON.stringify(r)}`).join(",\n");
-  return `${top},\n "edges": [\n${rows(edges)}\n ],\n "categories": {\n "classes": [\n${rows(categories.classes)}\n ],\n "subclasses": [\n${rows(categories.subclasses)}\n ]\n },\n "items": [\n${rows(items)}\n ]\n}\n`;
+  return `${top},\n "edges": [\n${rows(edges)}\n ],\n "categories": {\n "classes": [\n${rows(categories.classes)}\n ],\n "subclasses": [\n${rows(categories.subclasses)}\n ],\n "skills": [\n${rows(categories.skills)}\n ]\n },\n "items": [\n${rows(items)}\n ]\n}\n`;
 }
 
 /** Writes the layer to `path` (the site's copy is web/src/data/game-data/client-layer.json). */
@@ -76,6 +78,22 @@ export function readLayerEdges(layer: ClientLayer): Edge[] {
     fromKind, fromId, rel: rel as Rel, toKind, toId, evidence: "client", build: layer.build.version, installs: null,
     firstSeen: layer.build.extractedAt, lastSeen: layer.build.extractedAt,
   }));
+}
+
+/** The profession names the relations point at, from SkillLine. */
+function skillsOf(get: (t: string) => Map<number, Record<string, unknown>> | undefined, edges: Edge[]): { id: number; name: string }[] {
+  const used = new Set(edges.filter((e) => e.rel === "in_skill_line").map((e) => e.toId));
+  const out: { id: number; name: string }[] = [];
+  for (const r of get("SkillLine")?.values() ?? []) {
+    const name = typeof r.DisplayName_lang === "string" ? r.DisplayName_lang.trim() : "";
+    if (used.has(Number(r.ID)) && name) out.push({ id: Number(r.ID), name });
+  }
+  return out.sort((a, b) => a.id - b.id);
+}
+
+/** Profession id -> name. */
+export function readLayerSkills(layer: ClientLayer): Map<number, string> {
+  return new Map(layer.categories.skills.map((s) => [s.id, s.name]));
 }
 
 export function readLayerTaxonomy(layer: ClientLayer): Taxonomy {

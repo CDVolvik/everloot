@@ -17,7 +17,7 @@ import { CLIENT_LABEL } from "../../../../../../kb/src/edges";
 import { CLIENT_LAYER, CLIENT_TAXONOMY, itemsHref } from "@/lib/items";
 import { CategoryPage, categoryMetadata } from "../category-page";
 
-/** The segment is an item id, or a class slug (/database/items/weapon): numbers are items, words are classes. */
+/** The segment is an item id, or a class slug (/database/items/weapons): numbers are items, words are classes. */
 type Props = { params: Promise<{ id: string }>; searchParams?: Promise<Record<string, string | string[] | undefined>> };
 
 export const dynamic = "force-dynamic";
@@ -61,10 +61,9 @@ export default async function ItemPage(props: Props) {
         {category?.class ? (
           <nav aria-label="Category" className="font-mono text-xs text-muted">
             <Link href="/database/items" className="hover:underline underline-offset-4">Items</Link>
-            {" › "}<Link href={itemsHref(category.class.slug)} className="hover:underline underline-offset-4">{category.class.name}</Link>
+            {" › "}<Link href={itemsHref(category.class.slug)} className="hover:underline underline-offset-4">{category.class.label}</Link>
             {category.subclass ? <>{" › "}<Link href={itemsHref(category.class.slug, category.subclass.slug)} className="hover:underline underline-offset-4">{category.subclass.name ?? `Subclass ${category.subclass.id}`}</Link></> : null}
             {[category.slot?.name, category.quality?.name].filter(Boolean).map((w) => ` · ${w}`).join("")}
-            {` · ${CLIENT_LABEL.toLowerCase()}, build ${CLIENT_LAYER.build.version}`}
           </nav>
         ) : null}
         <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">{title}</h1>
@@ -132,6 +131,8 @@ export default async function ItemPage(props: Props) {
       )}
 
       <EntityRelations kind="item" id={itemId} observed={edges.observed} client={edges.client} skip={["dropped_by"]} spellIcon={spellIcon} />
+
+      {category?.class ? <p className="text-xs text-muted">The category line is {CLIENT_LABEL.toLowerCase()}: read from build {CLIENT_LAYER.build.version}, not yet seen in play.</p> : null}
 
       <p className="text-sm text-muted">
         <Link href="/database/drops" className="text-accent hover:underline underline-offset-4">

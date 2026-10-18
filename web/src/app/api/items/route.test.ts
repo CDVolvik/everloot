@@ -13,10 +13,13 @@ beforeEach(() => store.api.mockReset().mockResolvedValue({ allowed: true, retryA
 afterEach(() => vi.unstubAllEnvs());
 
 test("items in a category, with words for each id, the build and the game-data notice", async () => {
-  const body = await (await GET(req("?class=weapon&subclass=one-handed-swords&quality=epic"))).json();
+  const body = await (await GET(req("?class=weapons&subclass=one-handed-swords&quality=epic"))).json();
   expect(body.total).toBeGreaterThan(0);
   const first = body.items[0];
-  expect(first).toMatchObject({ class: { slug: "weapon" }, subclass: { slug: "one-handed-swords" }, quality: { slug: "epic" } });
+  expect(first).toMatchObject({ class: { slug: "weapons", label: "Weapons" }, subclass: { slug: "one-handed-swords" }, quality: { slug: "epic" } });
+  // The first slugs were the client's singular names; they still answer, with the plural slug in the rows.
+  const old = await (await GET(req("?class=weapon&subclass=one-handed-swords&quality=epic"))).json();
+  expect(old.items[0]).toEqual(first);
   expect(typeof first.itemId).toBe("number");
   expect(body.gameData).toMatchObject({ label: "Found in game files, unconfirmed", build: CLIENT_LAYER.build.version });
   expect(body.gameData.credit).toContain("Blizzard");
@@ -32,7 +35,7 @@ test("one item by id", async () => {
 });
 
 test("unknown slugs and bad numbers are a 400", async () => {
-  for (const q of ["?class=dragons", "?class=weapon&subclass=lances", "?slot=tail", "?quality=shiny", "?item=0", "?subclass=cloth"]) {
+  for (const q of ["?class=dragons", "?class=weapons&subclass=lances", "?slot=tail", "?quality=shiny", "?item=0", "?subclass=cloth"]) {
     expect((await GET(req(q))).status, q).toBe(400);
   }
 });

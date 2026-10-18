@@ -31,7 +31,7 @@ export default function ItemsPage() {
         {classes.map((c) => (
           <section key={c.id} className="rounded-xl border border-line bg-panel p-5 space-y-2">
             <h2 className="text-lg font-semibold">
-              <Link href={itemsHref(c.slug)} className="text-accent hover:underline underline-offset-4">{c.name}</Link>{" "}
+              <Link href={itemsHref(c.slug)} className="text-accent hover:underline underline-offset-4">{c.label}</Link>{" "}
               <span className="text-sm font-normal text-muted">{c.items.toLocaleString("en-US")}</span>
             </h2>
             <ul className="text-sm text-fg-2 space-y-0.5">
@@ -47,7 +47,7 @@ export default function ItemsPage() {
       </div>
 
       <p className="text-xs text-muted">
-        Class and subclass names are the game client&apos;s own English names; slot and quality labels are ours, for the game&apos;s numbers.
+        Subclass names are the game client&apos;s own English names; class names are the client&apos;s in the plural, as item databases list them; slot and quality labels are ours, for the game&apos;s numbers.
         The same categories are in the MCP tool item_categories, at /api/items and in /api/edges/client-layer. {GAME_DATA_CREDIT}
       </p>
     </article>

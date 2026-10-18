@@ -7,7 +7,18 @@
 import { GAME_DATA_CREDIT } from "./attribution.js";
 import { CLIENT_LABEL } from "./edges.js";
 
-export interface ItemClass { id: number; name: string; slug: string; items: number }
+/** `name` is the client's (singular, "Weapon"); `label` and `slug` are ours, plural as players browse them ("Weapons", "weapons"). */
+export interface ItemClass { id: number; name: string; label: string; slug: string; items: number }
+
+/**
+ * Plural labels for the client's item classes, in the words item databases have long used, so the URLs read
+ * /database/items/weapons/one-handed-swords. Keyed by ItemClass.ClassID; a class not listed keeps its client name.
+ */
+export const CLASS_LABELS: Record<number, string> = {
+  0: "Consumables", 1: "Containers", 2: "Weapons", 3: "Jewelry", 4: "Armor", 5: "Reagents", 6: "Projectiles",
+  7: "Trade Goods", 8: "Generic", 9: "Recipes", 10: "Money", 11: "Quivers", 12: "Quest", 13: "Keys", 14: "Permanent",
+  15: "Miscellaneous", 16: "Glyphs", 17: "Battle Pets", 18: "WoW Tokens",
+};
 export interface ItemSubclass { classId: number; id: number; name: string | null; slug: string; items: number }
 /** [itemId, classId, subclassId, inventoryType, quality or null]. */
 export type ItemRow = [number, number, number, number, number | null];
@@ -50,7 +61,11 @@ export function buildTaxonomy(get: (table: string) => Rows | undefined): Taxonom
   }
   const classes: ItemClass[] = list(get("ItemClass"))
     .filter((r) => int(r.ClassID) !== null && text(r.ClassName_lang))
-    .map((r) => ({ id: int(r.ClassID)!, name: text(r.ClassName_lang)!, slug: slugify(text(r.ClassName_lang)!), items: count.get(`${int(r.ClassID)}`) ?? 0 }))
+    .map((r) => {
+      const name = text(r.ClassName_lang)!;
+      const label = CLASS_LABELS[int(r.ClassID)!] ?? name;
+      return { id: int(r.ClassID)!, name, label, slug: slugify(label), items: count.get(`${int(r.ClassID)}`) ?? 0 };
+    })
     .sort((a, b) => a.id - b.id);
   const named = new Map<string, string | null>();
   for (const r of list(get("ItemSubClass"))) {
@@ -77,6 +92,11 @@ export function resolveClass(t: Taxonomy, slug: string): ItemClass | null {
   return t.classes.find((c) => c.slug === slug) ?? null;
 }
 
+/** A class by the slug of its client name ("weapon"), as the first item URLs used; pages redirect it to the plural one. */
+export function resolveLegacyClass(t: Taxonomy, slug: string): ItemClass | null {
+  return t.classes.find((c) => slugify(c.name) === slug && c.slug !== slug) ?? null;
+}
+
 /** A subclass by slug, or by its number. */
 export function resolveSubclass(t: Taxonomy, classId: number, key: string): ItemSubclass | null {
   const mine = t.subclasses.filter((s) => s.classId === classId);
@@ -85,7 +105,7 @@ export function resolveSubclass(t: Taxonomy, classId: number, key: string): Item
 
 export interface ItemCategory {
   itemId: number;
-  class: { id: number; name: string; slug: string } | null;
+  class: { id: number; name: string; label: string; slug: string } | null;
   subclass: { id: number; name: string | null; slug: string } | null;
   slot: Slot | null;
   quality: Quality | null;
@@ -101,7 +121,7 @@ export function describe(t: Taxonomy, [itemId, classId, subclassId, inventoryTyp
   const s = t.subclasses.find((x) => x.classId === classId && x.id === subclassId);
   return {
     itemId,
-    class: c ? { id: c.id, name: c.name, slug: c.slug } : null,
+    class: c ? { id: c.id, name: c.name, label: c.label, slug: c.slug } : null,
     subclass: s ? { id: s.id, name: s.name, slug: s.slug } : null,
     slot: slotOf(inventoryType),
     quality: quality === null ? null : QUALITIES[quality] ?? null,
@@ -130,25 +150,25 @@ export function handleItemCategories(
   if (args.item !== undefined) {
     const c = categoryOf(t, args.item);
     if (!c) return end([`Item ${args.item} is not in build ${build}.`]);
-    const path = [c.class?.name ?? `class ${c.class?.id}`, c.subclass?.name ?? `subclass ${c.subclass?.id}`].join(" > ");
+    const path = [c.class?.label ?? `class ${c.class?.id}`, c.subclass?.name ?? `subclass ${c.subclass?.id}`].join(" > ");
     return end([`Item ${args.item}: ${[path, c.slot?.name, c.quality?.name].filter(Boolean).join(", ")} (${stamp})`]);
   }
   if (args.class === undefined) {
     const lines = [`Item categories (${stamp})`];
     for (const c of t.classes.filter((x) => x.items > 0)) {
-      lines.push(`${c.name} (${c.slug}): ${plural(c.items)}`);
+      lines.push(`${c.label} (${c.slug}): ${plural(c.items)}`);
       for (const s of t.subclasses.filter((x) => x.classId === c.id && x.items > 0)) lines.push(`  ${s.name ?? `subclass ${s.id}`} (${s.slug}): ${plural(s.items)}`);
     }
     return end(lines);
   }
-  const cls = resolveClass(t, args.class);
+  const cls = resolveClass(t, args.class) ?? resolveLegacyClass(t, args.class);
   if (!cls) return end([`No item class ${args.class} in build ${build}. Ask with no class for the list.`]);
   const sub = args.subclass === undefined ? null : resolveSubclass(t, cls.id, args.subclass);
   if (args.subclass !== undefined && !sub) return end([`No subclass ${args.subclass} under ${cls.name} in build ${build}.`]);
   const rows = filterItems(t, { classId: cls.id, subclassId: sub?.id, slot: args.slot, quality: args.quality });
   const limit = args.limit ?? 25;
-  const title = [sub?.name ?? cls.name, args.slot, args.quality].filter(Boolean).join(", ");
-  const lines = [`${sub ? `${cls.name} > ` : ""}${title}: ${plural(rows.length)} (${stamp})`];
+  const title = [sub?.name ?? cls.label, args.slot, args.quality].filter(Boolean).join(", ");
+  const lines = [`${sub ? `${cls.label} > ` : ""}${title}: ${plural(rows.length)} (${stamp})`];
   for (const row of rows.slice(0, limit)) lines.push(`item ${row[0]} · ${words(describe(t, row))}`);
   if (rows.length > limit) lines.push(`${rows.length - limit} more not shown`);
   return end(lines);
