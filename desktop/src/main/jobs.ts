@@ -8,6 +8,7 @@ import { findEverlootFiles } from "../../../companion/src/savedvariables";
 import { createSentState } from "../../../companion/src/sent-state";
 import { uploadFile } from "../../../companion/src/uploader";
 import type { RealmSummary, Settings } from "../shared/types";
+import { backupSavedVariables } from "./backups";
 import type { EngineDeps } from "./engine";
 import { refreshMarket } from "./market";
 
@@ -25,7 +26,10 @@ export function companionJobs(dataFolder: string, current: () => Settings): { de
     findFiles: findEverlootFiles,
     async upload(file) {
       const r = await uploadFile(file, { endpoint: current().endpoint, state });
-      return `sent ${r.sent} new events in ${r.batches} batch(es); kept ${r.heldNamed} named, ${r.heldAddons} installed-addon and ${r.heldLegacy} legacy rows here`;
+      // A copy of the file as it was uploaded; a failed backup never fails the upload.
+      let backup = "";
+      try { backupSavedVariables(file, dataFolder); backup = "; backup kept"; } catch (err) { backup = `; backup failed: ${err instanceof Error ? err.message : String(err)}`; }
+      return `sent ${r.sent} new events in ${r.batches} batch(es); kept ${r.heldNamed} named, ${r.heldAddons} installed-addon and ${r.heldLegacy} legacy rows here${backup}`;
     },
     async prices(files) {
       const s = current();

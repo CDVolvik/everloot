@@ -40,7 +40,7 @@ The window is a sidebar with one page per thing to manage:
 | Chat | A chat over Everloot's own MCP tools, with sources under every answer. With an Anthropic key in `config.json` the model calls the tools itself; with another provider it phrases the search hits; with no provider you get the sourced hits as they are. The transcript stays in your data folder |
 | Characters | Your own characters from the save file: gold, peak, item level, money earned and spent, and the completion tracker's progress per character key. Never uploaded from here |
 | Upload | Each account file: when it was written, addon and client build, records per kind, how many the site confirmed. Run now |
-| Market | Realm picks: your scanned realms are always carried; tick more from the realms the site has public values for (TSM-style realm picks, on Everloot's own scan data). What the last refresh wrote |
+| Market | Realm picks: your scanned realms are always carried; tick more from the realms the site has public values for (TSM-style realm picks, on Everloot's own scan data). When you last scanned each realm, with a reminder past a day. What the last refresh wrote |
 | Ask | MCP server and token file, which provider answers (`config.json`), questions pending in game, recent answers |
 | Addon | Installed version against the latest `addon-v*` release, install or update in one click (the zip is checked against the release's `SHA256SUMS` before anything is written), the slot addons' state |
 | Changes | The site's change tracker feed: Blizzard posts, hotfixes and builds |
@@ -53,7 +53,8 @@ Closing the window keeps the app in the tray.
 
 The app shares its data folder with the command line (`%APPDATA%\Everloot`,
 `~/Library/Application Support/Everloot`, `~/.config/everloot`): `sent.json` for confirmed events,
-`answers.json`, `settings.json`, and the optional `config.json` for `/ask` model providers (same
+`answers.json`, `settings.json`, `chat.json`, a `backups/` folder with the newest ten copies of each
+account's `Everloot.lua` as uploaded, and the optional `config.json` for `/ask` model providers (same
 format and same rules as the [companion README](../companion/README.md#providers-design-sections-6465):
 keys come from a file named by `apiKeyFile`, never from the config itself).
 

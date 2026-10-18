@@ -1,8 +1,23 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { parseEverlootLua } from "../../../web/src/lib/sv-parse";
 import { readAsks } from "../../../companion/src/bridge/asks";
+import { parseEverlootTable } from "../../../web/src/lib/sv-parse";
 import { readRealms } from "../../../companion/src/prices";
-import type { FileSummary } from "../shared/types";
+import type { FileSummary, ScanAge } from "../shared/types";
+
+/** When the player last ran a full scan on each realm (`EverlootDB.lastScans`), newest first. */
+export function readScanAges(text: string): ScanAge[] {
+  let db: Record<string, unknown>;
+  try { db = parseEverlootTable(text); } catch { return []; }
+  const scans = db.lastScans;
+  if (!scans || typeof scans !== "object") return [];
+  const out: ScanAge[] = [];
+  for (const [realm, v] of Object.entries(scans as Record<string, unknown>)) {
+    const at = v && typeof v === "object" && typeof (v as { at?: unknown }).at === "string" ? (v as { at: string }).at : null;
+    if (realm.trim().length >= 2) out.push({ realm: realm.trim(), at });
+  }
+  return out.sort((a, b) => (b.at ?? "").localeCompare(a.at ?? ""));
+}
 
 export function summarizeSavedVariables(text: string, confirmedFor: (installId: string) => number): Omit<FileSummary, "file" | "writtenAt" | "bytes"> {
   try {
@@ -19,9 +34,10 @@ export function summarizeSavedVariables(text: string, confirmedFor: (installId: 
       confirmed: confirmedFor(parsed.installId),
       pendingAsks,
       scanRealms: readRealms(text),
+      scans: readScanAges(text),
     };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : String(err), addonVersion: null, clientBuild: null, kinds: [], records: 0, confirmed: 0, pendingAsks: 0, scanRealms: [] };
+    return { ok: false, error: err instanceof Error ? err.message : String(err), addonVersion: null, clientBuild: null, kinds: [], records: 0, confirmed: 0, pendingAsks: 0, scanRealms: [], scans: [] };
   }
 }
 

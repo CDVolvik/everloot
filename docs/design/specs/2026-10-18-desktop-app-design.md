@@ -73,6 +73,7 @@ Support/Everloot`, `~/.config/everloot`), so a player can switch between them wi
 | `inspect.ts` | What a save file holds, as counts: records per kind, pending asks, scanned realms, confirmed events from `sent.json`. Never the records themselves | `web/src/lib/sv-parse.ts` |
 | `addon.ts` | Installed version from the TOC, the newest release with a given tag prefix, and the install: only regular files under `Everloot/` from the zip (no `..`, no absolute paths), written to `Everloot.new` and swapped in whole after the sha256 matches the release's `SHA256SUMS` | `fflate` |
 | `changes.ts` | The change tracker's RSS feed as a list: title, https link, date, plain-text summary | `fetch` |
+| `backups.ts` | After each upload, a dated copy of the account's `Everloot.lua` under `backups/`, the newest ten per account. A failed backup never fails the upload | `node:fs` |
 | `tray.ts` | The menu: status of each job, Upload now, Refresh prices, Open window, Pause, Quit | Electron |
 | `index.ts` | Single instance, the window, the tray, IPC handlers, close-to-tray, launch at login | everything above |
 

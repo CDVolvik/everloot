@@ -15,7 +15,7 @@ const SV = `EverlootDB = { ["version"] = "0.3.3", ["installId"] = "inst-1", ["cl
 
 test("a file summary counts records per kind, asks, scan realms and confirmed events, and never includes the records", () => {
   const s = summarizeSavedVariables(SV, (id) => (id === "inst-1" ? 5 : 0));
-  expect(s).toMatchObject({ ok: true, addonVersion: "0.3.3", clientBuild: "1.60.1.70450", records: 3, confirmed: 5, pendingAsks: 1, scanRealms: ["Nightslayer"] });
+  expect(s).toMatchObject({ ok: true, addonVersion: "0.3.3", clientBuild: "1.60.1.70450", records: 3, confirmed: 5, pendingAsks: 1, scanRealms: ["Nightslayer"], scans: [{ realm: "Nightslayer", at: "2026-10-18T00:00:00Z" }] });
   expect(s.kinds).toEqual([{ kind: "loot", count: 2 }, { kind: "npc_sighting", count: 1 }]);
   expect(JSON.stringify(s)).not.toContain("sourceNpcId");
 });

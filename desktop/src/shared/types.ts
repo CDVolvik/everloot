@@ -50,7 +50,11 @@ export interface FileSummary {
   confirmed: number;
   pendingAsks: number;
   scanRealms: string[];
+  /** The player's last full scan per realm, newest first. */
+  scans: ScanAge[];
 }
+
+export interface ScanAge { realm: string; at: string | null }
 
 export interface RealmSummary { realm: string; items: number; dataAsOf: string | null; source: "scan" | "followed" }
 export interface MarketInfo {
@@ -62,6 +66,8 @@ export interface MarketInfo {
   dataAsOf: string | null;
   /** What the last refresh wrote into the game. */
   last: RealmSummary[];
+  /** The player's last full scan per realm across every account file, newest first. */
+  scans: ScanAge[];
   error: string | null;
 }
 

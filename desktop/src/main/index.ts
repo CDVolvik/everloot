@@ -13,7 +13,7 @@ import { createChat } from "./chat";
 import { createEngine } from "./engine";
 import { allowedExternal } from "./external";
 import { candidateRoots, detectGameFolders, realFs } from "./game-folder";
-import { summarizeFiles } from "./inspect";
+import { readScanAges, summarizeFiles } from "./inspect";
 import { companionJobs } from "./jobs";
 import { listRealms, ownRealms } from "./market";
 import { loadSettings, mergeSettings, saveSettings } from "./settings";
@@ -154,7 +154,9 @@ if (!app.requestSingleInstanceLock()) {
 
   ipcMain.handle("uploadInfo", () => summarizeFiles(engine.snapshot().files, join(data, "sent.json")));
   ipcMain.handle("marketInfo", async (): Promise<MarketInfo> => {
-    const base = { own: ownRealms(engine.snapshot().files), followed: settings.market.realms, last: jobs.lastMarket() };
+    const files = engine.snapshot().files;
+    const scans = files.flatMap((f) => { try { return readScanAges(readFileSync(f, "utf8")); } catch { return []; } }).sort((a, b) => (b.at ?? "").localeCompare(a.at ?? ""));
+    const base = { own: ownRealms(files), followed: settings.market.realms, last: jobs.lastMarket(), scans };
     try {
       const k = await knownRealms();
       return { ...base, known: k.realms, dataAsOf: k.dataAsOf, error: null };
