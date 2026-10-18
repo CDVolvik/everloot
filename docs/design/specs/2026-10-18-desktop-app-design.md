@@ -69,33 +69,49 @@ Support/Everloot`, `~/.config/everloot`), so a player can switch between them wi
 | `game-folder.ts` | Finds product folders (`_classic_era_`, `_anniversary_`, `_classic_beta_`, ...) under the usual install locations on each OS and ranks the ones that already hold an `Everloot.lua`. Pure: takes a small file-system interface so tests pass a fake one | `companion/src/savedvariables.ts` |
 | `engine.ts` | Runs the three jobs from settings: watch each `Everloot.lua`, upload after the write settles (5 s), refresh prices after each upload and every hour, answer asks after the file settles (2 s). Keeps the last 200 log lines and a status per job (`idle`, `running`, `ok`, `error`, with the message and time). `runNow(job)`, `restart(settings)`, `stop()`. Every job function is injected, so tests run it without the network | `companion/src/*` through injection |
 | `updates.ts` | "Check for updates" reads the newest `desktop-v*` release on GitHub and returns its version and page. It never downloads or installs; the player opens the page. Unsigned builds and auto-install do not mix | `fetch` |
+| `market.ts` | Realm picks: the player's scanned realms plus the followed ones, no duplicates, at most 20; fetches each from the site and writes the prices file through the companion's own writer | `companion/src/prices.ts` |
+| `inspect.ts` | What a save file holds, as counts: records per kind, pending asks, scanned realms, confirmed events from `sent.json`. Never the records themselves | `web/src/lib/sv-parse.ts` |
+| `addon.ts` | Installed version from the TOC, the newest release with a given tag prefix, and the install: only regular files under `Everloot/` from the zip (no `..`, no absolute paths), written to `Everloot.new` and swapped in whole after the sha256 matches the release's `SHA256SUMS` | `fflate` |
+| `changes.ts` | The change tracker's RSS feed as a list: title, https link, date, plain-text summary | `fetch` |
 | `tray.ts` | The menu: status of each job, Upload now, Refresh prices, Open window, Pause, Quit | Electron |
 | `index.ts` | Single instance, the window, the tray, IPC handlers, close-to-tray, launch at login | everything above |
 
 ### The window
 
-Three screens, one page, the site's tokens (`web/src/design/tokens.ts`) copied into the stylesheet
-with the same names, dark by default and light with the system setting, Geist where installed and the
-system font otherwise.
+One page with a sidebar, compact (13 px type, tight rows, one accent), the site's tokens
+(`web/src/design/tokens.ts`) copied into the stylesheet with the same names, dark by default and
+light with the system setting, Geist where installed and the system font otherwise. Carlos asked
+for the shape of Claude Code's desktop app: a left rail, sharp and dense, not bulky.
 
-1. **Welcome (first run).** The notice the command line prints (`uploadNotice()`: CC BY-SA 4.0,
-   source link), what the app sends (anonymous events only) and what stays (named data, installed
-   addons), the detected game folders to pick from or a Browse button, and one **Start** button.
-   Nothing runs before Start; it records the consent date.
-2. **Home.** Three cards: Upload, Market prices, `/ask`. Each shows its switch, its last result and a
-   Run now button. A status line: watching N account files in `<folder>`. The log below it.
-3. **Settings.** Game folder, endpoint (for a test deployment), the `/ask` MCP URL and token file,
-   a link that opens `config.json` for providers (the app does not hold keys; the file rules in the
-   companion README apply), launch at login, start in tray, check for updates, open data folder.
+**Welcome (first run)** takes the whole window: the notice the command line prints
+(`uploadNotice()`: CC BY-SA 4.0, source link), what the app sends (anonymous events only) and what
+stays (named data, installed addons), the detected game folders to pick from or a Browse button,
+and one **Start** button. Nothing runs before Start; it records the consent date.
+
+After that, the rail lists the pages, with a status dot beside the three jobs:
+
+| Page | What it shows and does | Reads |
+|---|---|---|
+| Overview | Four states at a glance (upload, prices, `/ask`, addon installed against latest), recent activity with Upload now and Refresh prices, the five latest changes | engine state, `addonInfo`, `changes` |
+| Upload | The switch and Run now; each account file with its write time and size, addon and client build, records per kind, confirmed count from `sent.json`. Nothing here leaves the machine | `uploadInfo` (`inspect.ts`) |
+| Market | The switch and Refresh now; realm picks: the realms in the player's own scans are always carried, and the realms the site has public values for can be ticked (what TSM calls realm picks, on Everloot's own scan data; the clean-room decision of 2026-10-17 stands). A realm can also be typed. What the last refresh wrote, per realm | `marketInfo` (`market.ts`), `settings.market.realms` |
+| Ask | The switch and Answer now; MCP URL and token file; who answers (providers from `config.json`, or plain search); questions pending in game; the last answers | `askInfo` |
+| Addon | Installed version from the TOC against the newest `addon-v*` release; Install, Update or Reinstall, which downloads the zip from the site, checks it against the release's `SHA256SUMS`, and swaps `Interface/AddOns/Everloot` whole; the slot addons' presence | `addonInfo`, `installAddon` (`addon.ts`) |
+| Changes | The site's change tracker, from its RSS feed | `changes` (`changes.ts`) |
+| Log | The session log, with Pause | engine state |
+| Settings | Game folder, site, launch at login, start in tray, data folder, check for updates, about | settings |
 
 The window never shows an ad, a plan or a donation request, as the addon does not.
 
 ### What the page can call
 
 `preload.ts` exposes one object, `window.everloot`: `state()`, `saveSettings(patch)`,
-`detectGameFolders()`, `pickGameFolder()`, `runNow(job)`, `openDataFolder()`, `openConfig()`,
-`openExternal(url)` (only `https:` and only hosts the app names), `checkForUpdates()`, and
-`onState(listener)`. Nothing else from Node reaches the page.
+`detectGameFolders()`, `pickGameFolder()`, `pickTokenFile()`, `runNow(job)`, `setPaused()`,
+`openDataFolder()`, `openConfig()`, `openExternal(url)` (only `https:` and only hosts the app
+names), `checkForUpdates()`, the page readers `uploadInfo()`, `marketInfo()`, `askInfo()`,
+`addonInfo()`, `changes()`, the one writer `installAddon(version)`, and `onState(listener)`.
+Nothing else from Node reaches the page. Network answers (releases, realms, the feed) are cached
+on the Node side for ten to fifteen minutes so opening a page twice does not ask the site twice.
 
 ### Error handling
 

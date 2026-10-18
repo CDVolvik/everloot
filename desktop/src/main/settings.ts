@@ -11,6 +11,7 @@ export function defaultSettings(): Settings {
     upload: true,
     prices: true,
     ask: { enabled: false, mcpUrl: `${DEFAULT_ENDPOINT}/mcp`, tokenFile: null },
+    market: { realms: [] },
     consentedAt: null,
     launchAtLogin: false,
     startInTray: true,
@@ -29,6 +30,10 @@ const bool = (b: unknown, fallback: boolean): boolean => (typeof b === "boolean"
 export function mergeSettings(base: Settings, patch: unknown): Settings {
   const p = (patch && typeof patch === "object" ? patch : {}) as Record<string, unknown>;
   const ask = (p.ask && typeof p.ask === "object" ? p.ask : {}) as Record<string, unknown>;
+  const market = (p.market && typeof p.market === "object" ? p.market : {}) as Record<string, unknown>;
+  const realms = Array.isArray(market.realms)
+    ? [...new Set(market.realms.filter((r): r is string => typeof r === "string").map((r) => r.trim()).filter((r) => r.length >= 2 && r.length <= 60))].slice(0, 20)
+    : base.market.realms;
   return {
     gameFolder: "gameFolder" in p ? (p.gameFolder === null ? null : str(p.gameFolder) ?? base.gameFolder) : base.gameFolder,
     endpoint: isHttp(p.endpoint) ? p.endpoint.replace(/\/+$/, "") : base.endpoint,
@@ -39,6 +44,7 @@ export function mergeSettings(base: Settings, patch: unknown): Settings {
       mcpUrl: isHttp(ask.mcpUrl) ? ask.mcpUrl : base.ask.mcpUrl,
       tokenFile: "tokenFile" in ask ? (ask.tokenFile === null ? null : str(ask.tokenFile) ?? base.ask.tokenFile) : base.ask.tokenFile,
     },
+    market: { realms },
     consentedAt: "consentedAt" in p ? (p.consentedAt === null ? null : str(p.consentedAt) ?? base.consentedAt) : base.consentedAt,
     launchAtLogin: bool(p.launchAtLogin, base.launchAtLogin),
     startInTray: bool(p.startInTray, base.startInTray),

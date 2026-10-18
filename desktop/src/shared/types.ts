@@ -10,6 +10,8 @@ export interface Settings {
   upload: boolean;
   prices: boolean;
   ask: { enabled: boolean; mcpUrl: string; tokenFile: string | null };
+  /** Realms to keep prices for beyond the ones in the player's own scans (TSM-style realm picks). */
+  market: { realms: string[] };
   /** ISO time the player pressed Start on the welcome screen; null until then. Nothing runs before. */
   consentedAt: string | null;
   launchAtLogin: boolean;
@@ -31,6 +33,57 @@ export interface EngineState {
 export interface GameFolderCandidate { folder: string; product: string; files: number; hasAccounts: boolean }
 
 export interface UpdateCheck { current: string; latest: string | null; url: string | null; newer: boolean }
+
+/** What one account's Everloot.lua holds, for the Upload page. Nothing here leaves the machine. */
+export interface FileSummary {
+  file: string;
+  ok: boolean;
+  error: string | null;
+  addonVersion: string | null;
+  clientBuild: string | null;
+  writtenAt: string | null;
+  bytes: number;
+  /** Records per kind, most first. */
+  kinds: { kind: string; count: number }[];
+  records: number;
+  /** Events the site has confirmed from this install (sent.json). */
+  confirmed: number;
+  pendingAsks: number;
+  scanRealms: string[];
+}
+
+export interface RealmSummary { realm: string; items: number; dataAsOf: string | null; source: "scan" | "followed" }
+export interface MarketInfo {
+  /** Realms named in the player's own scans. */
+  own: string[];
+  followed: string[];
+  /** Realms the site has public values for, when it answered. */
+  known: string[];
+  dataAsOf: string | null;
+  /** What the last refresh wrote into the game. */
+  last: RealmSummary[];
+  error: string | null;
+}
+
+export interface Ask { id: string; question: string; askedAt: string }
+export interface Answer { id: string; answer: string; source: string; answeredAt: string }
+export interface AskInfo {
+  pending: { file: string; asks: Ask[] }[];
+  answers: Answer[];
+  /** Provider names from config.json, in order; empty means plain search. */
+  providers: string[];
+  providerError: string | null;
+}
+
+export interface AddonInfo {
+  addonsDir: string | null;
+  installed: string | null;
+  latest: { version: string; url: string } | null;
+  slots: { prices: boolean; answers: boolean };
+  error: string | null;
+}
+
+export interface ChangeItem { title: string; link: string; date: string | null; summary: string }
 
 /** Everything the page knows. The main side sends a fresh one after every change. */
 export interface AppState {
@@ -56,5 +109,11 @@ export interface EverlootApi {
   openConfig(): Promise<void>;
   openExternal(url: string): Promise<boolean>;
   checkForUpdates(): Promise<UpdateCheck>;
+  uploadInfo(): Promise<FileSummary[]>;
+  marketInfo(): Promise<MarketInfo>;
+  askInfo(): Promise<AskInfo>;
+  addonInfo(): Promise<AddonInfo>;
+  installAddon(version: string): Promise<{ version: string; files: number }>;
+  changes(): Promise<ChangeItem[]>;
   onState(listener: (state: AppState) => void): () => void;
 }

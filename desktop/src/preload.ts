@@ -14,6 +14,12 @@ const api: EverlootApi = {
   openConfig: () => ipcRenderer.invoke("openConfig"),
   openExternal: (url: string) => ipcRenderer.invoke("openExternal", url),
   checkForUpdates: () => ipcRenderer.invoke("checkForUpdates"),
+  uploadInfo: () => ipcRenderer.invoke("uploadInfo"),
+  marketInfo: () => ipcRenderer.invoke("marketInfo"),
+  askInfo: () => ipcRenderer.invoke("askInfo"),
+  addonInfo: () => ipcRenderer.invoke("addonInfo"),
+  installAddon: (version: string) => ipcRenderer.invoke("installAddon", version),
+  changes: () => ipcRenderer.invoke("changes"),
   onState: (listener) => {
     const handler = (_event: unknown, state: AppState) => listener(state);
     ipcRenderer.on("state", handler);

@@ -30,6 +30,13 @@ export interface Engine {
   onChange(listener: (state: EngineState) => void): () => void;
 }
 
+/** "ACCOUNT" from ".../WTF/Account/ACCOUNT/SavedVariables/Everloot.lua", for log lines; the full path otherwise. */
+export const accountOf = (file: string): string => {
+  const parts = file.split(/[\\/]/);
+  const i = parts.lastIndexOf("SavedVariables");
+  return i > 0 ? parts[i - 1] : file;
+};
+
 const enabled = (s: Settings, job: Job) => (job === "upload" ? s.upload : job === "prices" ? s.prices : s.ask.enabled);
 
 export function createEngine(deps: EngineDeps, options: EngineOptions = {}): Engine {
@@ -71,8 +78,8 @@ export function createEngine(deps: EngineDeps, options: EngineOptions = {}): Eng
       try { const line = await work(); lines.push(line); log("info", `${label}: ${line}`); }
       catch (err) { const m = err instanceof Error ? err.message : String(err); failures.push(m); log("error", `${label}: ${m}`); }
     };
-    if (job === "upload") for (const file of state.files) await attempt(`upload ${file}`, () => deps.upload(file));
-    else if (job === "ask") for (const file of state.files) await attempt(`ask ${file}`, () => deps.ask(file));
+    if (job === "upload") for (const file of state.files) await attempt(`upload ${accountOf(file)}`, () => deps.upload(file));
+    else if (job === "ask") for (const file of state.files) await attempt(`ask ${accountOf(file)}`, () => deps.ask(file));
     else await attempt("prices", () => deps.prices(state.files));
     set(job, failures.length
       ? { state: "error", message: failures[failures.length - 1], at: now() }

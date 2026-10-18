@@ -13,9 +13,12 @@ that has a zip in the repository. Earlier builds have none.
 Pull requests merged to `main` are listed in the nightly pre-releases until the next tagged release.
 
 ### Added
-- **Everloot Desktop** (`desktop/`): the companion as a tray app. First run shows what leaves the
-  computer and finds the game folder; then it uploads after every logout, refreshes market prices
-  after each upload and hourly, and answers `/ask` when turned on. Electron, built on
+- **Everloot Desktop** (`desktop/`): the companion as a tray app with a sidebar window. First run
+  shows what leaves the computer and finds the game folder; then it uploads after every logout,
+  refreshes market prices after each upload and hourly, and answers `/ask` when turned on. Pages
+  for each thing to manage: what each account file holds, realm picks for the prices file (your
+  scans plus the realms you follow), the `/ask` setup and recent answers, addon install and update
+  checked against the release's `SHA256SUMS`, the change tracker, the log. Electron, built on
   `companion/src`, same data folder as the command line. Tagged `desktop-vX.Y.Z`; the first
   release is not code-signed.
 

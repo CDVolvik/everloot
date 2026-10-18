@@ -1,16 +1,22 @@
 import { BrowserWindow, app, dialog, ipcMain, shell } from "electron";
-import { existsSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import type { AppState, Job, Settings } from "../shared/types";
+import { readAsks } from "../../../companion/src/bridge/asks";
+import { loadProviders } from "../../../companion/src/providers/config";
+import type { AddonInfo, AppState, AskInfo, Job, MarketInfo, Settings } from "../shared/types";
 import { JOBS } from "../shared/types";
+import { installAddon, installedAddonVersion, newestRelease, slotAddons } from "./addon";
+import { fetchChanges } from "./changes";
 import { createEngine } from "./engine";
 import { allowedExternal } from "./external";
 import { candidateRoots, detectGameFolders, realFs } from "./game-folder";
+import { summarizeFiles } from "./inspect";
 import { companionJobs } from "./jobs";
+import { listRealms, ownRealms } from "./market";
 import { loadSettings, mergeSettings, saveSettings } from "./settings";
 import { createTray } from "./tray";
-import { checkForUpdates } from "./updates";
+import { checkForUpdates, fetchReleases } from "./updates";
 
 /** The same folder the command line uses (`companion/src/cli.ts` defaultStatePath), so both share sent.json. */
 function dataFolder(): string {
@@ -21,6 +27,17 @@ function dataFolder(): string {
   return join(process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config"), "everloot");
 }
 
+/** Remembers one network answer for a while, so opening a page twice does not ask the site twice. */
+function cached<T>(ms: number, load: () => Promise<T>): () => Promise<T> {
+  let value: { at: number; data: T } | null = null;
+  return async () => {
+    if (value && Date.now() - value.at < ms) return value.data;
+    const data = await load();
+    value = { at: Date.now(), data };
+    return data;
+  };
+}
+
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
@@ -28,11 +45,13 @@ if (!app.requestSingleInstanceLock()) {
   const settingsPath = join(data, "settings.json");
   const loaded = loadSettings(settingsPath);
   let settings: Settings = loaded.settings;
-  const engine = createEngine(companionJobs(data, () => settings));
+  const jobs = companionJobs(data, () => settings);
+  const engine = createEngine(jobs.deps);
   let win: BrowserWindow | null = null;
   let tray: ReturnType<typeof createTray> | null = null;
   let quitting = false;
 
+  const addonsDir = () => (settings.gameFolder ? join(settings.gameFolder, "Interface", "AddOns") : null);
   const appState = (): AppState => ({ version: app.getVersion(), platform: process.platform, dataFolder: data, notice: loaded.error, settings, engine: engine.snapshot() });
   const broadcast = () => {
     const s = appState();
@@ -40,6 +59,10 @@ if (!app.requestSingleInstanceLock()) {
     tray?.update(s);
   };
   engine.onChange(broadcast);
+
+  const releases = cached(10 * 60 * 1000, () => fetchReleases(fetch, `everloot-desktop/${app.getVersion()}`));
+  const knownRealms = cached(10 * 60 * 1000, () => listRealms(settings.endpoint));
+  const changes = cached(15 * 60 * 1000, () => fetchChanges(settings.endpoint));
 
   const applyLoginItem = () => {
     if (process.platform === "linux") return; // no login item API there; the AppImage can be added by hand
@@ -53,7 +76,7 @@ if (!app.requestSingleInstanceLock()) {
 
   function createWindow(): void {
     win = new BrowserWindow({
-      width: 820, height: 640, minWidth: 640, minHeight: 480,
+      width: 960, height: 680, minWidth: 720, minHeight: 520,
       title: "Everloot Desktop",
       backgroundColor: "#0E0F0D",
       show: false,
@@ -69,6 +92,11 @@ if (!app.requestSingleInstanceLock()) {
     win.webContents.on("will-navigate", (e) => e.preventDefault());
   }
 
+  const pick = async (options: Electron.OpenDialogOptions) => {
+    const r = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options);
+    return r.canceled ? null : r.filePaths[0] ?? null;
+  };
+
   ipcMain.handle("state", () => appState());
   ipcMain.handle("saveSettings", (_e, patch: unknown) => {
     settings = mergeSettings(settings, patch);
@@ -78,16 +106,8 @@ if (!app.requestSingleInstanceLock()) {
     return appState();
   });
   ipcMain.handle("detectGameFolders", () => detectGameFolders(candidateRoots({ platform: process.platform, env: process.env, home: homedir() }), realFs));
-  ipcMain.handle("pickGameFolder", async () => {
-    const opts = { title: "Pick the game folder that holds WTF", properties: ["openDirectory" as const] };
-    const r = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts);
-    return r.canceled ? null : r.filePaths[0] ?? null;
-  });
-  ipcMain.handle("pickTokenFile", async () => {
-    const opts = { title: "Pick the file that holds your MCP token", properties: ["openFile" as const] };
-    const r = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts);
-    return r.canceled ? null : r.filePaths[0] ?? null;
-  });
+  ipcMain.handle("pickGameFolder", () => pick({ title: "Pick the game folder that holds WTF", properties: ["openDirectory"] }));
+  ipcMain.handle("pickTokenFile", () => pick({ title: "Pick the file that holds your MCP token", properties: ["openFile"] }));
   ipcMain.handle("runNow", (_e, job: unknown) => { if (JOBS.includes(job as Job)) return engine.runNow(job as Job); });
   ipcMain.handle("setPaused", (_e, paused: unknown) => engine.setPaused(paused === true));
   ipcMain.handle("openDataFolder", () => shell.openPath(data).then(() => undefined));
@@ -103,6 +123,39 @@ if (!app.requestSingleInstanceLock()) {
     return true;
   });
   ipcMain.handle("checkForUpdates", () => checkForUpdates(app.getVersion()));
+
+  ipcMain.handle("uploadInfo", () => summarizeFiles(engine.snapshot().files, join(data, "sent.json")));
+  ipcMain.handle("marketInfo", async (): Promise<MarketInfo> => {
+    const base = { own: ownRealms(engine.snapshot().files), followed: settings.market.realms, last: jobs.lastMarket() };
+    try {
+      const k = await knownRealms();
+      return { ...base, known: k.realms, dataAsOf: k.dataAsOf, error: null };
+    } catch (err) {
+      return { ...base, known: [], dataAsOf: null, error: err instanceof Error ? err.message : String(err) };
+    }
+  });
+  ipcMain.handle("askInfo", (): AskInfo => {
+    const pending = engine.snapshot().files.map((file) => {
+      try { return { file, asks: readAsks(readFileSync(file, "utf8")) }; } catch { return { file, asks: [] }; }
+    });
+    let providers: string[] = [], providerError: string | null = null;
+    try { providers = loadProviders(join(data, "config.json")).map((p) => p.name); }
+    catch (err) { providerError = err instanceof Error ? err.message : String(err); }
+    return { pending, answers: jobs.answerStore.list().slice().reverse(), providers, providerError };
+  });
+  ipcMain.handle("addonInfo", async (): Promise<AddonInfo> => {
+    const dir = addonsDir();
+    const local = { addonsDir: dir, installed: dir ? installedAddonVersion(dir) : null, slots: dir ? slotAddons(dir) : { prices: false, answers: false } };
+    try { return { ...local, latest: newestRelease(await releases(), "addon-v"), error: null }; }
+    catch (err) { return { ...local, latest: null, error: err instanceof Error ? err.message : String(err) }; }
+  });
+  ipcMain.handle("installAddon", async (_e, version: unknown) => {
+    const dir = addonsDir();
+    if (!dir) throw new Error("Pick the game folder first");
+    if (typeof version !== "string" || !/^\d+\.\d+\.\d+$/.test(version)) throw new Error("Not a version");
+    return installAddon({ version, endpoint: settings.endpoint, addonsDir: dir });
+  });
+  ipcMain.handle("changes", () => changes());
 
   app.on("second-instance", show);
   app.on("activate", show);

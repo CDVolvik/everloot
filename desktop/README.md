@@ -27,11 +27,24 @@ runs nothing until you press **Start**.
 | Job | What | When |
 |---|---|---|
 | Upload | Sends events the site has not confirmed, from every account's `Everloot.lua` under the game folder | After the game writes the file (logout or `/reload`), once the write settles |
-| Market prices | Writes the `EverlootPrices` slot addon for the realms you scanned | After each upload and every hour |
-| `/ask` | Answers pending `/ask` questions into the `EverlootAnswers` slot addon | After the game writes the file; needs an MCP URL and a token file in Settings |
+| Market prices | Writes the `EverlootPrices` slot addon for the realms you scanned plus the realms you follow | After each upload and every hour |
+| `/ask` | Answers pending `/ask` questions into the `EverlootAnswers` slot addon | After the game writes the file; needs an MCP URL and a token file on the Ask page |
+
+The window is a sidebar with one page per thing to manage:
+
+| Page | What it shows and does |
+|---|---|
+| Overview | The four states at a glance (upload, prices, `/ask`, addon), recent activity, the latest Blizzard changes |
+| Upload | Each account file: when it was written, addon and client build, records per kind, how many the site confirmed. Run now |
+| Market | Realm picks: your scanned realms are always carried; tick more from the realms the site has public values for (TSM-style realm picks, on Everloot's own scan data). What the last refresh wrote |
+| Ask | MCP server and token file, which provider answers (`config.json`), questions pending in game, recent answers |
+| Addon | Installed version against the latest `addon-v*` release, install or update in one click (the zip is checked against the release's `SHA256SUMS` before anything is written), the slot addons' state |
+| Changes | The site's change tracker feed: Blizzard posts, hotfixes and builds |
+| Log | Everything the engine did this session, with Pause |
+| Settings | Game folder, site, launch at login, start in tray, data folder, check for updates |
 
 The tray menu shows each job's last result, with Upload now, Refresh prices now, Pause and Quit.
-Closing the window keeps the app in the tray. Settings has launch-at-login and start-in-tray.
+Closing the window keeps the app in the tray.
 
 The app shares its data folder with the command line (`%APPDATA%\Everloot`,
 `~/Library/Application Support/Everloot`, `~/.config/everloot`): `sent.json` for confirmed events,
@@ -69,6 +82,7 @@ Set `EVERLOOT_DATA_DIR` to a scratch folder to keep a development run away from 
 | `src/main/index.ts` | Electron: single instance, the window, the tray, IPC handlers |
 | `src/main/engine.ts` | Watches the account files and runs the jobs; every job is injected, so tests need no network |
 | `src/main/jobs.ts` | The jobs, built on `companion/src` (uploader, prices, bridge) |
+| `src/main/market.ts`, `inspect.ts`, `addon.ts`, `changes.ts` | Realm picks and the prices file, what a save file holds, addon install with checksum, the changes feed |
 | `src/main/settings.ts`, `game-folder.ts`, `updates.ts`, `external.ts` | Settings file, where the game is, the release check, the browser allow-list |
 | `src/preload.ts` | The only bridge the page can call (`window.everloot`) |
 | `src/renderer/` | The window: one page, no framework, the site's colours |

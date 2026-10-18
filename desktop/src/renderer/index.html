@@ -7,17 +7,17 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header class="top">
-    <div class="brand">
-      <svg class="mark" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" class="mark-bg"/><path d="M32 12 52 32 32 52 12 32Z" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"/></svg>
-      <span>Everloot Desktop</span>
-    </div>
-    <nav id="nav" class="nav" hidden>
-      <button type="button" data-screen="home" class="nav-link">Home</button>
-      <button type="button" data-screen="settings" class="nav-link">Settings</button>
-    </nav>
-  </header>
-  <main id="app" class="app" aria-live="polite"></main>
+  <div id="shell" class="shell">
+    <aside id="side" class="side" hidden>
+      <div class="brand">
+        <svg class="mark" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="14" class="mark-bg"/><path d="M32 12 52 32 32 52 12 32Z" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"/></svg>
+        <span>Everloot</span>
+      </div>
+      <nav id="nav" class="nav" aria-label="Pages"></nav>
+      <div id="side-foot" class="side-foot"></div>
+    </aside>
+    <main id="app" class="main" aria-live="polite"></main>
+  </div>
   <script src="app.js"></script>
 </body>
 </html>
