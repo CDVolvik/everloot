@@ -71,7 +71,7 @@ that players start with the addon's **Everloot scan** button. The site shows a r
 60-day chart per item, a day is published once three reporters agree, and the same prices appear in
 item tooltips in game. [everloot.app/tools/auctions](https://everloot.app/tools/auctions)
 
-**MCP server.** 22 tools that let an AI assistant search the archive and read the same sourced
+**MCP server.** 23 tools that let an AI assistant search the archive and read the same sourced
 facts the site shows: items, NPCs, quests, vendors, profession paths, recipe ranges, auction history,
 market values, recent Blizzard changes and more. The public endpoint is read only and rate limited:
 `https://everloot.app/mcp/public`.
@@ -95,7 +95,7 @@ flowchart LR
   market --> site
   market --> companion
   rollups --> site["Site pages and tools"]
-  rollups --> mcp["MCP server<br/>22 tools"]
+  rollups --> mcp["MCP server<br/>23 tools"]
   wiki["Warcraft Wiki dump<br/>CC BY-SA 4.0"] --> kb["kb/<br/>import, provenance, snapshot"]
   files["Game files<br/>maintainer extraction"] --> gamedata["Reviewed game-data files<br/>unconfirmed"]
   kb --> site

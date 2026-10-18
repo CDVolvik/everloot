@@ -11,6 +11,7 @@ const TOOL_TEXT: Record<McpToolName, string> = {
   search_knowledge: "Search lore and reference data. Every hit has its source and licence.",
   get_entity: "One record, by the id a search hit gives you.",
   get_by_name: "Records with exactly this name, for telling similar names apart.",
+  answer_sources: "The evidence behind a question, each piece with its source, licence and date, so an assistant can answer and cite.",
   profession_path: "A leveling path for one profession, from what players reported.",
   recipe_thresholds: "The skill ranges where a recipe turns yellow, green and grey.",
   item_page: "One item: agreed name, drop rate with kill count, map pin.",

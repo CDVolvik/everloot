@@ -85,6 +85,7 @@
     "search_knowledge",
     "get_entity",
     "get_by_name",
+    "answer_sources",
     "profession_path",
     "recipe_thresholds",
     "item_page",

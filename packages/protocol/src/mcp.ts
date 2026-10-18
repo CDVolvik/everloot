@@ -78,6 +78,17 @@ export const changeEntry = z.object({
 });
 export type ChangeEntryOut = z.infer<typeof changeEntry>;
 
+/** One piece of evidence from answer_sources. */
+export const evidence = z.object({
+  claim: z.string().describe("One short statement. Observed facts are in Everloot's words; lore is the source's own excerpt."),
+  kind: z.enum(["observed", "curated", "lore"]).describe("observed: players' uploads, public after three installs agree. curated: Everloot's own facts. lore: the 2023 Warcraft Wiki, which may differ in WoW: Forever."),
+  source: z.object({ title: z.string(), url: z.string() }),
+  licence: z.string(),
+  asOf: z.string().nullable().describe("When the source was read, or when the observations were current."),
+  support: z.number().int().optional().describe("Observed facts: how many installs reported it."),
+});
+export type Evidence = z.infer<typeof evidence>;
+
 export interface McpToolDef {
   title: string;
   description: string;
@@ -112,6 +123,21 @@ export const MCP_TOOLS = {
       kind: z.enum(KNOWLEDGE_KINDS).optional().describe("Narrow to one record kind."),
     },
     outputSchema: { hits: z.array(knowledgeHit) },
+    annotations: { readOnlyHint: true, openWorldHint: false },
+  },
+  answer_sources: {
+    title: "Evidence for a question, each piece with its source",
+    description:
+      "The evidence behind a question about WoW: Forever, for an answer that cites its sources: facts players observed (public after three installs agree, with the install count), curated facts, and the 2023 Warcraft Wiki (marked: may differ in Forever). Every piece carries a claim, its source URL, licence and date. Returns evidence, not prose: write the answer from it and cite the pieces. Further-reading links are search URLs on other sites; nothing is fetched from them. Reads Everloot's current authorized public corpus when connected; when it is not, the observed layer is unrecorded, not empty.",
+    inputSchema: {
+      question: z.string().min(1).max(500).describe("The question, with names spelled as in the game."),
+      limit: z.number().int().min(1).max(25).default(8).describe("Most lore and curated pieces."),
+    },
+    outputSchema: {
+      evidence: z.array(evidence).describe("Observed first, then curated, then lore."),
+      furtherReading: z.array(z.object({ site: z.string(), url: z.string() })).describe("Search links on other sites. Nothing was fetched."),
+      dataAsOf: z.string().nullable().describe("When the observed layer was current; null when it is not connected."),
+    },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
   profession_path: {
@@ -322,7 +348,7 @@ export const TOOL_OUTPUT = { type: "text", endsWith: MCP_CREDIT } as const;
 export const STRUCTURED_TOOLS: readonly McpToolName[] = MCP_TOOL_NAMES.filter((name) => "outputSchema" in MCP_TOOLS[name]);
 /** The tools whose answers are built on player uploads and therefore end with TOOL_OUTPUT.endsWith. */
 export const PLAYER_DATA_TOOLS: readonly McpToolName[] = [
-  "profession_path", "recipe_thresholds", "item_page", "npc_page", "object_page", "quest_page", "vendor_page",
+  "answer_sources", "profession_path", "recipe_thresholds", "item_page", "npc_page", "object_page", "quest_page", "vendor_page",
   "world_map_near", "entity_relations", "collection_gap", "completion_progress", "guild_board", "auction_history",
   "market_value", "gold_ledger",
 ];
