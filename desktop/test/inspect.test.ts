@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, test } from "vitest";
@@ -62,4 +62,18 @@ test("stale scans are the realms older than a day or undated, oldest first, and 
   expect(scanReminder(stale, now)).toBe("Scan Undated again: no dated scan (+2 more)");
   expect(scanReminder(stale.slice(1), now)).toBe("Scan Older again: last full scan 8 d ago (+1 more)");
   expect(scanReminder([], now)).toBeNull();
+});
+
+test("summarizeFiles parses a file once per write: a new confirmed count shows without a rewrite, a rewrite is re-read", () => {
+  const d = mkdtempSync(join(tmpdir(), "everloot-inspect-memo-")); dirs.push(d);
+  const sv = join(d, "Everloot.lua"), sent = join(d, "sent.json");
+  writeFileSync(sv, `EverlootDB = { ["version"] = "0.3.3", ["installId"] = "inst", ["records"] = { ["drop"] = { { ["a"] = 1 } } } }`);
+  writeFileSync(sent, JSON.stringify({ inst: ["e1"] }));
+  expect(summarizeFiles([sv], sent)[0]).toMatchObject({ ok: true, records: 1, confirmed: 1 });
+  writeFileSync(sent, JSON.stringify({ inst: ["e1", "e2", "e3"] }));
+  expect(summarizeFiles([sv], sent)[0].confirmed).toBe(3);
+  const later = new Date(Date.now() + 5000);
+  writeFileSync(sv, `EverlootDB = { ["version"] = "0.3.3", ["installId"] = "inst", ["records"] = { ["drop"] = { { ["a"] = 1 }, { ["a"] = 2 } } } }`);
+  utimesSync(sv, later, later);
+  expect(summarizeFiles([sv], sent)[0]).toMatchObject({ records: 2, confirmed: 3 });
 });

@@ -3,6 +3,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { existsSync, readFileSync } from "node:fs";
 import { completeWithFallback, type Provider } from "../../../companion/src/providers/chain";
+import { DEFAULT_MODEL } from "./providers";
 import type { ChatMessage, ChatStep } from "../shared/types";
 
 /**
@@ -107,7 +108,7 @@ async function toolLoop(o: AgentOptions, entry: ProviderEntry): Promise<AgentRep
   if (!entry.apiKeyFile) throw new Error("anthropic needs apiKeyFile in config.json");
   const apiKey = readFileSync(entry.apiKeyFile, "utf8").trim();
   if (!apiKey) throw new Error(`${entry.apiKeyFile} is empty`);
-  const model = entry.model ?? "claude-sonnet-5-5";
+  const model = entry.model ?? DEFAULT_MODEL;
   const client = o.anthropicClient ?? new Anthropic({ apiKey, timeout: 90_000, maxRetries: 1 });
   const maxRounds = o.maxRounds ?? 8;
   return (o.session ?? withMcp)(o.mcp, async (mcp) => {

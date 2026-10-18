@@ -67,6 +67,11 @@ export function createSiteViews(win: BrowserWindow, endpoint: () => string) {
     back(): void { if (view?.webContents.navigationHistory.canGoBack()) view.webContents.navigationHistory.goBack(); },
     reload(): void { view?.webContents.reload(); },
     currentUrl: () => view?.webContents.getURL() ?? null,
-    destroy(): void { this.hide(); view?.webContents.close(); view = null; },
+    destroy(): void {
+      // On quit the window is already destroyed when "closed" fires; touching its views then throws.
+      if (!win.isDestroyed()) this.hide(); else shown = false;
+      if (view && !view.webContents.isDestroyed()) view.webContents.close();
+      view = null;
+    },
   };
 }

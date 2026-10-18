@@ -134,7 +134,7 @@ function chat(): string {
   return `<div class="page chat">
     <div class="head"><h1>Chat</h1><span class="sub">${c ? `${esc(c.mode)} · ${c.withToken ? "your MCP token" : "public MCP, rate limited"}` : ""} <button type="button" class="link" id="chatClear">clear</button></span></div>
     <p class="muted small">Answers come only from Everloot's own MCP tools, with their sources. With your Anthropic key the model works the tools itself; without one you get the sourced search hits. Private: the transcript stays in your data folder.</p>
-    ${c && !c.ownKey && c.mode === "plain search" ? `<form id="keyForm" class="row" autocomplete="off"><input type="password" name="key" placeholder="Paste your Anthropic API key (sk-ant-...)" spellcheck="false" style="flex:1"><select name="model"><option value="claude-sonnet-5-5">Sonnet 5.5</option><option value="claude-opus-5-5">Opus 5.5</option><option value="claude-haiku-5-5">Haiku 5.5</option></select><button type="submit" class="btn">Use my key</button></form>
+    ${c && !c.ownKey && c.mode === "plain search" ? `<form id="keyForm" class="row" autocomplete="off"><input type="password" name="key" class="grow" placeholder="Paste your Anthropic API key (sk-ant-...)" spellcheck="false"><select name="model"><option value="claude-sonnet-5-5">Sonnet 5.5</option><option value="claude-opus-5-5">Opus 5.5</option><option value="claude-haiku-5-5">Haiku 5.5</option></select><button type="submit" class="btn">Use my key</button></form>
     <p class="muted small">The key is written to <code>anthropic.key</code> in your data folder and named from <code>config.json</code>, the way the command line reads it (${ext("https://everloot.app/connect", "details")}). It goes to Anthropic only, with your questions and the tool results.</p>` : ""}
     ${c?.ownKey ? `<p class="muted small">Using the key saved from this page. <button type="button" class="link" id="removeKey">Remove it</button></p>` : ""}
     ${flash ? `<p class="${flash.startsWith("!") ? "error" : "ok"} small">${esc(flash.replace(/^!/, ""))}</p>` : ""}
@@ -149,7 +149,7 @@ function sparkline(points: { at: string; copper: number }[]): string {
   const w = 96, h = 24, lo = Math.min(...points.map((p) => p.copper)), hi = Math.max(...points.map((p) => p.copper));
   const y = (v: number) => (hi === lo ? h / 2 : h - 1 - ((v - lo) / (hi - lo)) * (h - 2));
   const d = points.map((p, i) => `${i ? "L" : "M"}${((i / (points.length - 1)) * (w - 1)).toFixed(1)},${y(p.copper).toFixed(1)}`).join(" ");
-  const first = points[0].at.slice(0, 10), last = points[points.length - 1].at.slice(0, 10);
+  const first = esc(points[0].at.slice(0, 10)), last = esc(points[points.length - 1].at.slice(0, 10));
   return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="gold from ${first} to ${last}"><title>${points.length} snapshots, ${first} to ${last}</title><path d="${d}" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>`;
 }
 
@@ -423,7 +423,7 @@ document.body.addEventListener("click", async (ev) => {
   if (t.dataset.page) { void go(t.dataset.page as Page); return; }
   if (t.dataset.open) { void api.openExternal(t.dataset.open); return; }
   if (t.dataset.run) { void api.runNow(t.dataset.run as Job); return; }
-  if (t.dataset.unfollow) { state = await api.saveSettings({ market: { realms: state!.settings.market.realms.filter((r) => r !== t.dataset.unfollow) } }); void load("market"); return; }
+  if (t.dataset.unfollow) { const gone = t.dataset.unfollow.toLowerCase(); state = await api.saveSettings({ market: { realms: state!.settings.market.realms.filter((r) => r.toLowerCase() !== gone) } }); void load("market"); return; }
   if (t.id === "pause") { await api.setPaused(!state!.engine.paused); return; }
   if (t.id === "siteBack") { void api.siteBack(); return; }
   if (t.id === "siteReload") { void api.siteReload(); return; }

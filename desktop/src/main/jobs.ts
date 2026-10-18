@@ -53,8 +53,18 @@ export function companionJobs(dataFolder: string, current: () => Settings): { de
       return r.answered || r.failed ? `answered ${r.answered}, failed ${r.failed} (${how}); /reload in game to read them` : `nothing pending (${how})`;
     },
     watch(file, onChange) {
-      const w = fsWatch(file, onChange);
-      return () => w.close();
+      // fs.watch emits "error" when the folder vanishes (drive unplugged, WTF moved); with no listener
+      // that is an uncaught exception. Close and try again every few seconds until stopped.
+      let w: ReturnType<typeof fsWatch> | null = null;
+      let stopped = false;
+      let retry: ReturnType<typeof setTimeout> | null = null;
+      const arm = () => {
+        if (stopped) return;
+        try { w = fsWatch(file, onChange); } catch { retry = setTimeout(arm, 5000); return; }
+        w.on("error", () => { w?.close(); w = null; retry = setTimeout(arm, 5000); });
+      };
+      arm();
+      return () => { stopped = true; if (retry) clearTimeout(retry); w?.close(); w = null; };
     },
   };
   return { deps, lastMarket: () => lastMarket, answerStore };

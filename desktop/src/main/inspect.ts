@@ -48,13 +48,26 @@ export function confirmedCounts(sentPath: string): (installId: string) => number
   return (installId) => (Array.isArray(sent[installId]) ? sent[installId].length : 0);
 }
 
+/** One parse per file write: the summary is remembered by size and mtime, only the confirmed count is live. */
+const memo = new Map<string, { key: string; summary: Omit<FileSummary, "file" | "writtenAt" | "bytes" | "confirmed">; installId: string | null }>();
+
 export function summarizeFiles(files: string[], sentPath: string): FileSummary[] {
   const confirmedFor = confirmedCounts(sentPath);
   return files.map((file) => {
-    let text = "", writtenAt: string | null = null, bytes = 0;
-    try { const st = statSync(file); writtenAt = st.mtime.toISOString(); bytes = st.size; text = readFileSync(file, "utf8"); }
-    catch (err) { return { file, writtenAt, bytes, ...summarizeSavedVariables("", confirmedFor), ok: false, error: err instanceof Error ? err.message : String(err) }; }
-    return { file, writtenAt, bytes, ...summarizeSavedVariables(text, confirmedFor) };
+    let st: ReturnType<typeof statSync>;
+    try { st = statSync(file); }
+    catch (err) { return { file, writtenAt: null, bytes: 0, ...summarizeSavedVariables("", () => 0), ok: false, error: err instanceof Error ? err.message : String(err) }; }
+    const key = `${st.mtimeMs}:${st.size}`;
+    let hit = memo.get(file);
+    if (!hit || hit.key !== key) {
+      let text = "";
+      try { text = readFileSync(file, "utf8"); } catch (err) { return { file, writtenAt: st.mtime.toISOString(), bytes: st.size, ...summarizeSavedVariables("", () => 0), ok: false, error: err instanceof Error ? err.message : String(err) }; }
+      let installId: string | null = null;
+      const { confirmed: _confirmed, ...summary } = summarizeSavedVariables(text, (id) => { installId = id; return 0; });
+      hit = { key, summary, installId };
+      memo.set(file, hit);
+    }
+    return { file, writtenAt: st.mtime.toISOString(), bytes: st.size, ...hit.summary, confirmed: hit.installId ? confirmedFor(hit.installId) : 0 };
   });
 }
 

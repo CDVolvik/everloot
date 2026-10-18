@@ -49,13 +49,9 @@ export async function refreshMarket(options: {
   svFiles: string[]; followed: string[]; addonsDir: string; endpoint: string; send?: typeof fetch;
 }): Promise<{ realms: RealmSummary[]; items: number }> {
   const chosen = mergeRealms(ownRealms(options.svFiles), options.followed);
-  const fetched: RealmPrices[] = [];
-  const summaries: RealmSummary[] = [];
-  for (const { realm, source } of chosen) {
-    const prices = await fetchRealmPrices(options.endpoint, realm, options.send);
-    fetched.push(prices);
-    summaries.push({ realm: prices.realm, items: prices.items.length, dataAsOf: prices.dataAsOf, source });
-  }
+  // Independent GETs to the same site; together they take one round trip, not one per realm (at most 20).
+  const fetched: RealmPrices[] = await Promise.all(chosen.map(({ realm }) => fetchRealmPrices(options.endpoint, realm, options.send)));
+  const summaries: RealmSummary[] = fetched.map((prices, i) => ({ realm: prices.realm, items: prices.items.length, dataAsOf: prices.dataAsOf, source: chosen[i].source }));
   writePricesAddon(options.addonsDir, fetched);
   return { realms: summaries, items: summaries.reduce((n, r) => n + r.items, 0) };
 }

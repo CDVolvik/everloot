@@ -147,11 +147,16 @@ if (!app.requestSingleInstanceLock()) {
   };
 
   ipcMain.handle("state", () => appState());
+  /** The settings the engine reads at start; a change to any of them restarts it, anything else does not. */
+  const engineInputs = (s: Settings) => JSON.stringify([s.gameFolder, s.endpoint, s.upload, s.prices, s.ask, s.consentedAt]);
   ipcMain.handle("saveSettings", (_e, patch: unknown) => {
+    const before = settings;
     settings = mergeSettings(settings, patch);
     saveSettings(settingsPath, settings);
     applyLoginItem();
-    engine.start(settings);
+    if (engineInputs(before) !== engineInputs(settings)) engine.start(settings);
+    else if (JSON.stringify(before.market.realms) !== JSON.stringify(settings.market.realms) && settings.prices) void engine.runNow("prices");
+    else broadcast();
     return appState();
   });
   ipcMain.handle("detectGameFolders", () => detectGameFolders(candidateRoots({ platform: process.platform, env: process.env, home: homedir() }), realFs));
@@ -193,7 +198,7 @@ if (!app.requestSingleInstanceLock()) {
   });
   ipcMain.handle("marketInfo", async (): Promise<MarketInfo> => {
     const files = engine.snapshot().files;
-    const scans = files.flatMap((f) => { try { return readScanAges(readFileSync(f, "utf8")); } catch { return []; } }).sort((a, b) => (b.at ?? "").localeCompare(a.at ?? ""));
+    const scans = allScans().slice().sort((a, b) => (b.at ?? "").localeCompare(a.at ?? ""));
     const base = { own: ownRealms(files), followed: settings.market.realms, last: jobs.lastMarket(), scans };
     try {
       const k = await knownRealms();
@@ -254,7 +259,8 @@ if (!app.requestSingleInstanceLock()) {
     });
     applyLoginItem();
     engine.start(settings);
-    const hidden = process.argv.includes("--hidden");
+    // Windows passes the login item's args; macOS does not, but says whether this launch came from login.
+    const hidden = process.argv.includes("--hidden") || (process.platform === "darwin" && app.getLoginItemSettings().wasOpenedAtLogin);
     if (!settings.consentedAt || !(hidden && settings.startInTray)) createWindow();
     broadcast();
     if (settings.consentedAt) { void addonUpdateNotice(); void desktopUpdateLine(); }

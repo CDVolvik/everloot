@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { loadProviders } from "../../../companion/src/providers/config";
 import type { ChatInfo, ChatMessage, Settings } from "../shared/types";
 import { answer, readProviderEntries } from "./agent";
-import { hasOwnAnthropicKey, removeAnthropicKey, setAnthropicKey } from "./providers";
+import { DEFAULT_MODEL, hasOwnAnthropicKey, removeAnthropicKey, setAnthropicKey } from "./providers";
 
 const MAX_MESSAGES = 100;
 
@@ -38,7 +38,7 @@ export function createChat(dataFolder: string, current: () => Settings) {
     try {
       const entries = readProviderEntries(join(dataFolder, "config.json"));
       const a = entries.find((e) => e.type === "anthropic");
-      if (a) return `anthropic:${a.model ?? "claude-sonnet-5-5"} with tools`;
+      if (a) return `anthropic:${a.model ?? DEFAULT_MODEL} with tools`;
       if (entries.length) return `${entries[0].type}${entries[0].model ? `:${entries[0].model}` : ""} (summary of search hits)`;
     } catch (err) { return `config.json: ${err instanceof Error ? err.message : String(err)}`; }
     return "plain search";
