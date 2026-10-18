@@ -2,9 +2,9 @@ import { expect, test } from "vitest";
 import { summarizeCharacters } from "../src/main/characters";
 
 const SV = `EverlootDB = { ["version"] = "0.3.3", ["installId"] = "x", ["records"] = {
-  ["gold_snapshot"] = { { ["character"] = "Arthas", ["realm"] = "Nightslayer", ["currentCopper"] = 1500000, ["peakCopper"] = 2000000 }, { ["character"] = "Arthas", ["realm"] = "Nightslayer", ["currentCopper"] = 1700000, ["peakCopper"] = 2000000 } },
+  ["gold_snapshot"] = { { ["character"] = "Arthas", ["realm"] = "Nightslayer", ["capturedAt"] = "2026-10-17T10:00:00Z", ["currentCopper"] = 1500000, ["peakCopper"] = 2000000 }, { ["character"] = "Arthas", ["realm"] = "Nightslayer", ["capturedAt"] = "2026-10-18T10:00:00Z", ["currentCopper"] = 1700000, ["peakCopper"] = 2000000 } },
   ["gear_snapshot"] = { { ["character"] = "Arthas", ["realm"] = "Nightslayer", ["equipped"] = { { ["slot"] = "HeadSlot", ["itemId"] = 1, ["itemLevel"] = 60 }, { ["slot"] = "ChestSlot", ["itemId"] = 2, ["itemLevel"] = 70 } } } },
-  ["money_event"] = { { ["character"] = "Arthas", ["realm"] = "Nightslayer", ["category"] = "vendor", ["copper"] = 500 }, { ["character"] = "Arthas", ["realm"] = "Nightslayer", ["category"] = "loot", ["copper"] = 900 }, { ["character"] = "Arthas", ["realm"] = "Nightslayer", ["category"] = "loot", ["copper"] = 100 } },
+  ["money_event"] = { { ["character"] = "Arthas", ["realm"] = "Nightslayer", ["capturedAt"] = "2026-10-18T09:00:00Z", ["category"] = "vendor", ["copper"] = 500 }, { ["character"] = "Arthas", ["realm"] = "Nightslayer", ["capturedAt"] = "2026-10-18T09:30:00Z", ["category"] = "loot", ["copper"] = 900 }, { ["character"] = "Arthas", ["realm"] = "Nightslayer", ["capturedAt"] = "2026-09-01T09:00:00Z", ["category"] = "loot", ["copper"] = 100 } },
   ["achievement_owned"] = { { ["characterKey"] = "0a1b2c3d", ["class"] = "PALADIN", ["level"] = 58, ["achievementId"] = 10, ["completed"] = true, ["criteriaMet"] = 1, ["criteriaTotal"] = 1 }, { ["characterKey"] = "0a1b2c3d", ["class"] = "PALADIN", ["level"] = 60, ["achievementId"] = 11, ["completed"] = false, ["criteriaMet"] = 0, ["criteriaTotal"] = 3 } },
   ["reputation_owned"] = { { ["characterKey"] = "0a1b2c3d", ["class"] = "PALADIN", ["level"] = 60, ["factionId"] = 1, ["reaction"] = 8, ["standing"] = 1, ["floor"] = 0, ["ceiling"] = 1 }, { ["characterKey"] = "0a1b2c3d", ["class"] = "PALADIN", ["level"] = 60, ["factionId"] = 2, ["reaction"] = 5, ["standing"] = 1, ["floor"] = 0, ["ceiling"] = 1 } },
   ["title_owned"] = { { ["characterKey"] = "0a1b2c3d", ["class"] = "PALADIN", ["level"] = 60, ["titleIds"] = { 1, 2 } }, { ["characterKey"] = "0a1b2c3d", ["class"] = "PALADIN", ["level"] = 60, ["titleIds"] = { 2, 3 } } },
@@ -24,6 +24,21 @@ test("progress rows are per opaque character key: unions for titles and quests, 
   expect(info.progress[0]).toMatchObject({ class: "PALADIN", level: 60, achievements: 1, achievementsInProgress: 1, reputations: 2, exalted: 1, titles: 3, quests: 0 });
   expect(info.progress[1]).toMatchObject({ class: "MAGE", level: 12, quests: 2 });
   expect(info.talents).toEqual([{ class: "PALADIN", level: 60, points: 51 }]);
+});
+
+test("gold history is the dated snapshots in order, and the week counts only money events from the last seven days", () => {
+  const now = Date.parse("2026-10-18T12:00:00Z");
+  const [c] = summarizeCharacters(SV, now).characters;
+  expect(c.history).toEqual([{ at: "2026-10-17T10:00:00Z", copper: 1500000 }, { at: "2026-10-18T10:00:00Z", copper: 1700000 }]);
+  expect(c.week).toEqual({ earned: 900, spent: 500 });
+});
+
+test("a long gold history is thinned to at most sixty points, keeping the first and the last", () => {
+  const rows = Array.from({ length: 500 }, (_, i) => `{ ["character"] = "A", ["realm"] = "R", ["capturedAt"] = "2026-10-${String(1 + Math.floor(i / 20)).padStart(2, "0")}T${String(i % 20).padStart(2, "0")}:00:00Z", ["currentCopper"] = ${i}, ["peakCopper"] = ${i} }`).join(", ");
+  const [c] = summarizeCharacters(`EverlootDB = { ["version"] = "0.3.3", ["installId"] = "x", ["records"] = { ["gold_snapshot"] = { ${rows} } } }`).characters;
+  expect(c.history.length).toBeLessThanOrEqual(60);
+  expect(c.history[0].copper).toBe(0);
+  expect(c.history[c.history.length - 1].copper).toBe(499);
 });
 
 test("a file with no character data gives empty lists, not an error", () => {

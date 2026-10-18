@@ -138,18 +138,30 @@ function chat(): string {
   </div>`;
 }
 
+/** A 96x24 line of a character's gold over time; nothing for fewer than two points. */
+function sparkline(points: { at: string; copper: number }[]): string {
+  if (points.length < 2) return "";
+  const w = 96, h = 24, lo = Math.min(...points.map((p) => p.copper)), hi = Math.max(...points.map((p) => p.copper));
+  const y = (v: number) => (hi === lo ? h / 2 : h - 1 - ((v - lo) / (hi - lo)) * (h - 2));
+  const d = points.map((p, i) => `${i ? "L" : "M"}${((i / (points.length - 1)) * (w - 1)).toFixed(1)},${y(p.copper).toFixed(1)}`).join(" ");
+  const first = points[0].at.slice(0, 10), last = points[points.length - 1].at.slice(0, 10);
+  return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="gold from ${first} to ${last}"><title>${points.length} snapshots, ${first} to ${last}</title><path d="${d}" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>`;
+}
+
 function characters(): string {
   const c = data.characters;
   const rows = (c?.characters ?? []).map((r) => {
     const spent = Object.values(r.spent).reduce((a, b) => a + b, 0), earned = Object.values(r.earned).reduce((a, b) => a + b, 0);
-    return `<tr><td>${esc(r.character)}<div class="muted small">${esc(r.realm)}</div></td><td class="num">${gold(r.gold)}</td><td class="num muted">${gold(r.peakGold)}</td><td class="num">${r.itemLevel ?? "–"}<div class="muted small">${r.gearSlots ? `${r.gearSlots} slots` : ""}</div></td><td class="num">${earned ? gold(earned) : "–"}</td><td class="num">${spent ? gold(spent) : "–"}</td></tr>`;
+    const net = r.week.earned - r.week.spent;
+    const week = r.week.earned || r.week.spent ? `<span class="${net >= 0 ? "ok" : "warn"}">${net >= 0 ? "+" : "-"}${gold(Math.abs(net))}</span><div class="muted small">+${gold(r.week.earned)} / -${gold(r.week.spent)}</div>` : "–";
+    return `<tr><td>${esc(r.character)}<div class="muted small">${esc(r.realm)}</div></td><td class="num">${gold(r.gold)}${sparkline(r.history)}</td><td class="num muted">${gold(r.peakGold)}</td><td class="num">${week}</td><td class="num">${r.itemLevel ?? "–"}<div class="muted small">${r.gearSlots ? `${r.gearSlots} slots` : ""}</div></td><td class="num">${earned ? gold(earned) : "–"}</td><td class="num">${spent ? gold(spent) : "–"}</td></tr>`;
   }).join("");
   const prog = (c?.progress ?? []).map((p) => `<tr><td><span class="mono">${esc(p.key)}</span></td><td>${esc(p.class.toLowerCase())} ${p.level}</td><td class="num">${p.achievements}${p.achievementsInProgress ? `<span class="muted"> +${p.achievementsInProgress} in progress</span>` : ""}</td><td class="num">${p.reputations}${p.exalted ? `<span class="muted"> · ${p.exalted} exalted</span>` : ""}</td><td class="num">${p.titles}</td><td class="num">${p.quests}</td></tr>`).join("");
   return `<div class="page">
     <div class="head"><h1>Characters</h1><span class="sub">from the addon's save file · never uploaded from here</span></div>
     <p class="fg2">What the addon recorded about your own characters. Gold and gear carry the name; progress rows carry an opaque key the addon derives per character, so they are listed apart. Sharing any of this with the site is a choice you make on the upload page with a verified grant, never here.</p>
-    <section class="panel"><h2>Gold and gear</h2>
-      ${rows ? `<table><thead><tr><th>Character</th><th class="num">Gold</th><th class="num">Peak</th><th class="num">Item level</th><th class="num">Earned</th><th class="num">Spent</th></tr></thead><tbody>${rows}</tbody></table>` : `<p class="muted">${c ? "No gold or gear snapshot yet. The addon records them while you play." : "Loading…"}</p>`}
+    <section class="panel"><div class="row between"><h2>Gold and gear</h2><span class="muted small">the line under Gold is every snapshot the addon kept, oldest to newest</span></div>
+      ${rows ? `<table><thead><tr><th>Character</th><th class="num">Gold</th><th class="num">Peak</th><th class="num">7 days</th><th class="num">Item level</th><th class="num">Earned</th><th class="num">Spent</th></tr></thead><tbody>${rows}</tbody></table>` : `<p class="muted">${c ? "No gold or gear snapshot yet. The addon records them while you play." : "Loading…"}</p>`}
     </section>
     <section class="panel"><h2>Progress</h2>
       ${prog ? `<table><thead><tr><th>Key</th><th>Class</th><th class="num">Achievements</th><th class="num">Reputations</th><th class="num">Titles</th><th class="num">Quests done</th></tr></thead><tbody>${prog}</tbody></table>` : `<p class="muted">${c ? "Nothing yet. The completion tracker is off until <code>/everloot completion on</code> in game." : "Loading…"}</p>`}

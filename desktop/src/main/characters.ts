@@ -11,7 +11,18 @@ import type { CharacterRow, CharactersInfo, ProgressRow } from "../shared/types"
 const num = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) ? v : 0);
 const str = (v: unknown): string => (typeof v === "string" ? v : "");
 
-export function summarizeCharacters(text: string): CharactersInfo {
+export const HISTORY_POINTS = 60;
+const SPENT = ["vendor", "flight", "postage", "barber", "respec", "auction_spend"];
+const WEEK_MS = 7 * 24 * 3600 * 1000;
+
+/** Keeps at most `max` points of a series, always the first and the last. */
+export function thin<T>(points: T[], max = HISTORY_POINTS): T[] {
+  if (points.length <= max) return points;
+  const step = (points.length - 1) / (max - 1);
+  return Array.from({ length: max }, (_, i) => points[Math.round(i * step)]);
+}
+
+export function summarizeCharacters(text: string, now = Date.now()): CharactersInfo {
   const { records } = parseEverlootLua(text);
   const named = new Map<string, CharacterRow>();
   const keyed = new Map<string, ProgressRow>();
@@ -20,7 +31,7 @@ export function summarizeCharacters(text: string): CharactersInfo {
     if (!character || !realm) return null;
     const id = `${character}-${realm}`;
     let c = named.get(id);
-    if (!c) { c = { character, realm, gold: null, peakGold: null, gearSlots: 0, itemLevel: null, spent: {}, earned: {} }; named.set(id, c); }
+    if (!c) { c = { character, realm, gold: null, peakGold: null, gearSlots: 0, itemLevel: null, spent: {}, earned: {}, history: [], week: { earned: 0, spent: 0 } }; named.set(id, c); }
     return c;
   };
   const prog = (r: Record<string, unknown>): ProgressRow | null => {
@@ -35,7 +46,12 @@ export function summarizeCharacters(text: string): CharactersInfo {
   const titles = new Map<string, Set<number>>(), quests = new Map<string, Set<number>>(), achievements = new Map<string, Map<number, boolean>>(), reps = new Map<string, Map<number, number>>();
   for (const r of records) {
     switch (r.kind) {
-      case "gold_snapshot": { const c = row(r); if (c) { c.gold = num(r.currentCopper); c.peakGold = Math.max(c.peakGold ?? 0, num(r.peakCopper)); } break; }
+      case "gold_snapshot": {
+        const c = row(r); if (!c) break;
+        c.gold = num(r.currentCopper); c.peakGold = Math.max(c.peakGold ?? 0, num(r.peakCopper));
+        if (str(r.capturedAt)) c.history.push({ at: str(r.capturedAt), copper: num(r.currentCopper) });
+        break;
+      }
       case "gear_snapshot": {
         const c = row(r); if (!c) break;
         const eq = Array.isArray(r.equipped) ? (r.equipped as Record<string, unknown>[]) : [];
@@ -45,8 +61,11 @@ export function summarizeCharacters(text: string): CharactersInfo {
       case "money_event": {
         const c = row(r); if (!c) break;
         const cat = str(r.category), copper = num(r.copper);
-        const bucket = ["vendor", "flight", "postage", "barber", "respec", "auction_spend"].includes(cat) ? c.spent : c.earned;
+        const out = SPENT.includes(cat);
+        const bucket = out ? c.spent : c.earned;
         bucket[cat] = (bucket[cat] ?? 0) + copper;
+        const at = Date.parse(str(r.capturedAt));
+        if (Number.isFinite(at) && now - at <= WEEK_MS) c.week[out ? "spent" : "earned"] += copper;
         break;
       }
       case "achievement_owned": { const p = prog(r); if (!p) break; const m = achievements.get(p.key) ?? new Map<number, boolean>(); m.set(num(r.achievementId), r.completed === true); achievements.set(p.key, m); break; }
@@ -66,6 +85,7 @@ export function summarizeCharacters(text: string): CharactersInfo {
   }
   // Talent snapshots carry class and level but no key or name; count the active one per class as a hint.
   const talents = records.filter((r) => r.kind === "talent_snapshot" && r.active === true).map((r) => ({ class: str(r.class), level: num(r.level), points: num(r.points) }));
+  for (const c of named.values()) c.history = thin(c.history.sort((a, b) => a.at.localeCompare(b.at)));
   return {
     characters: [...named.values()].sort((a, b) => (b.gold ?? 0) - (a.gold ?? 0)),
     progress: [...keyed.values()].sort((a, b) => b.level - a.level),

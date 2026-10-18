@@ -128,6 +128,10 @@ export interface CharacterRow {
   /** Copper by category, from money events this file holds. */
   spent: Record<string, number>;
   earned: Record<string, number>;
+  /** Dated gold snapshots in time order, thinned to at most sixty points for a sparkline. */
+  history: { at: string; copper: number }[];
+  /** Money events from the last seven days. */
+  week: { earned: number; spent: number };
 }
 /** Progress rows carry an opaque per-install key instead of a name (intake.ts CHARACTER_KEY). */
 export interface ProgressRow {

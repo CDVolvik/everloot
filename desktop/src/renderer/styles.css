@@ -169,3 +169,4 @@ ul.plain li { margin: 0.15rem 0; }
 .chat form { display: flex; gap: 0.5rem; align-items: flex-end; margin-top: 0.5rem; }
 .chat textarea { flex: 1; min-height: 2.6rem; max-height: 8rem; resize: vertical; padding: 0.5rem 0.65rem; border-radius: 8px; border: 1px solid rgb(var(--edge)); background: rgb(var(--canvas)); color: rgb(var(--fg)); font: inherit; }
 .chat textarea:focus-visible { outline: 2px solid rgb(var(--accent)); outline-offset: 1px; }
+.spark { display: block; margin-left: auto; margin-top: 2px; color: rgb(var(--fg-2)); }
