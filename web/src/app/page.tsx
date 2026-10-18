@@ -1,4 +1,5 @@
 import Link from "next/link";
+import AdSlot from "@/components/AdSlot";
 import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
 import LaunchCountdown from "@/components/LaunchCountdown";
@@ -131,6 +132,8 @@ export default async function Home() {
           <GameCredit version={assets.version} label={assets.label} what="Icons" />
         </section>
       )}
+
+      <AdSlot slot="inContent" />
 
       {/* Lore search: the WebSite SearchAction points here */}
       <section aria-labelledby="lore-search" className="space-y-3">

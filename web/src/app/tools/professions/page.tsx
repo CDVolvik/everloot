@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import AdSlot from "@/components/AdSlot";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import EmailCapture from "@/components/EmailCapture";
@@ -168,6 +169,7 @@ export default async function ProfessionsPage(
       <div className="rounded-2xl border border-line bg-panel p-6 max-w-xl">
         <EmailCapture toolSlug="professions" />
       </div>
+      <AdSlot slot="belowTool" />
     </article>
   );
 }

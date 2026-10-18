@@ -113,7 +113,7 @@ export default function CookieConsent({ adsenseClient, analytics = {} }: { adsen
       ) : (
         <>
           <p className="mt-1 text-sm text-fg">
-            Optional {categories.includes("advertising") ? "analytics and advertising load" : "analytics loads"} only if you accept.{!adsenseClient && " Everloot does not run ads today."}
+            Optional {categories.includes("advertising") ? "analytics and advertising load" : "analytics loads"} only if you accept.
             Your choice is saved when browser storage is available. You can change it in the footer.
           </p>
           <fieldset className="mt-3 space-y-2">

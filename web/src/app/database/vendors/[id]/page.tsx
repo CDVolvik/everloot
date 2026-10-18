@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import AdSlot from "@/components/AdSlot";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -97,6 +98,7 @@ export default async function VendorPage(props: { params: Promise<{ id: string }
         <Link href="/database/vendors" className="text-accent hover:underline underline-offset-4">Vendor lookup</Link>
       </p>
       {assets && tips.size > 0 && <GameCredit version={assets.version} label={assets.label} />}
+      {!facts.unreachable && page.offers.length > 0 && <AdSlot slot="inContent" />}
     </article>
   );
 }

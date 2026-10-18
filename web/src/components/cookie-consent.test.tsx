@@ -73,10 +73,9 @@ describe("CookieConsent categories", () => {
     expect(container.querySelector("section")).toBeNull();
   });
 
-  it("says there are no ads only when no AdSense client is set", async () => {
+  it("never claims the site runs no ads: AdSense consent is Google's message, not this banner", async () => {
     await act(async () => root.render(<CookieConsent analytics={{ gaId: GA }} />));
-    expect(container.textContent).toContain("does not run ads today");
-    await act(async () => root.render(<CookieConsent analytics={{ gaId: GA }} adsenseClient="ca-pub-1" />));
-    expect(container.textContent).not.toContain("does not run ads today");
+    expect(container.textContent).not.toContain("does not run ads");
+    expect(container.textContent).not.toContain("Advertising.");
   });
 });

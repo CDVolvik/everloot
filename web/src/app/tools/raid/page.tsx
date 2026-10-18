@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import AdSlot from "@/components/AdSlot";
 import JsonLd from "@/components/JsonLd";
 import RaidBuilder from "@/components/RaidBuilder";
 import { CURRENT_BUILD, TABLES } from "@/data/game-data/raid";
@@ -39,6 +40,7 @@ export default async function RaidPage() {
 
       <RaidBuilder art={art} />
       {art && <GameCredit version={art.version} label={art.label} what="Icons" />}
+      <AdSlot slot="belowTool" />
 
       <section aria-labelledby="needs-talent" className="max-w-2xl space-y-3 border-t border-line pt-6 text-fg-2">
         <h2 id="needs-talent" className="text-2xl text-fg">Which raid buffs need a talent?</h2>

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import AdSlot from "@/components/AdSlot";
 import { pageMetadata } from "@/lib/seo";
 import GoldCalculator from "@/components/GoldCalculator";
 import JsonLd from "@/components/JsonLd";
@@ -31,6 +32,7 @@ export default function GoldPerHourPage() {
       </header>
 
       <GoldCalculator />
+      <AdSlot slot="belowTool" />
 
       {/* SEO content — AdSense wants real text below the fold */}
       <section className="prose prose-invert max-w-none pt-6 border-t border-line">
