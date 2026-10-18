@@ -1,4 +1,9 @@
-# Everloot
+<h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/media/everloot-logo-dark.png">
+    <img alt="Everloot" src="docs/media/everloot-logo-light.png" width="280">
+  </picture>
+</h1>
 
 **An open, player-built database for World of Warcraft: Forever. An addon records what you see, and
 the site states a fact only once three installs agree.**
@@ -7,6 +12,7 @@ the site states a fact only once three installs agree.**
 [![Code: AGPL-3.0](https://img.shields.io/badge/code-AGPL--3.0-blue)](LICENSE)
 [![Data: CC BY-SA 4.0](https://img.shields.io/badge/data-CC%20BY--SA%204.0-lightgrey)](docs/DATA_POLICY.md)
 [![Site: everloot.app](https://img.shields.io/badge/site-everloot.app-2f7a0a)](https://everloot.app)
+[![Discord](https://img.shields.io/badge/chat-Discord-5865F2)](https://discord.gg/9CKsbHTRu3)
 [![Latest addon release](https://img.shields.io/github/v/release/CDVolvik/everloot?filter=addon-v*&label=addon)](https://github.com/CDVolvik/everloot/releases)
 
 ![The Everloot home page](docs/media/home.webp)

@@ -28,7 +28,7 @@ const h1 = (html: string) => visible(html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/)![1]
 
 test("the home page carries Organization and WebSite, and shows the lore search the action points at", async () => {
   const { default: Home } = await import("./page");
-  const html = renderToStaticMarkup(<Home />);
+  const html = renderToStaticMarkup(await Home());
   const [org, site] = blocks(html);
   expect(org["@type"]).toBe("Organization");
   expect(site["@type"]).toBe("WebSite");
@@ -82,7 +82,7 @@ test("the talent hub answers points and the two talent sets in visible text", as
 
 test("the raid page lists the talent-gated buffs from the raid data and its JSON-LD matches the H1", async () => {
   const { default: Page } = await import("./tools/raid/page");
-  const html = renderToStaticMarkup(<Page />);
+  const html = renderToStaticMarkup(await Page());
   const [app] = blocks(html);
   expect(app.name).toBe(h1(html));
   expect(visible(html)).toContain("Which raid buffs need a talent?");

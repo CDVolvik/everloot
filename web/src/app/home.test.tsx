@@ -10,7 +10,7 @@ vi.mock("next/link", () => ({
 
 import Home from "./page";
 
-const html = renderToStaticMarkup(<Home />);
+const html = renderToStaticMarkup(await Home());
 
 test("no ticker, aurora, scroll reveal or glow", () => {
   expect(html).not.toMatch(/ticker|aurora|reveal|cta-glow/);
