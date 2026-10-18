@@ -65,6 +65,15 @@ try {
   const acc = (await pool.query("select user_id, account_id, provider_id, access_token from public.auth_account")).rows;
   assert.deepEqual(acc.filter((row) => row.user_id === legacy), [{ user_id: legacy, account_id: "123", provider_id: "battlenet", access_token: null }]);
   assert.equal(acc.length, 2);
+  // A v1 sign-in after the migration gets its Battle.net account row at once, so v2 never has to
+  // link by (unverified) email; v1's repeat upsert takes the update path and adds nothing.
+  const v1Upsert = "insert into public.users (bnet_id, battletag) values ('789', $1) on conflict (bnet_id) do update set battletag = excluded.battletag returning id";
+  // As service_role, like v1's PostgREST call: the trigger runs with the inserter's rights.
+  const [{ id: jaina }] = await asRole("service_role", v1Upsert, ["Jaina#2"]);
+  await asRole("service_role", v1Upsert, ["Jaina#3"]);
+  assert.deepEqual((await pool.query("select user_id, account_id, provider_id from public.auth_account where account_id='789'")).rows,
+    [{ user_id: jaina, account_id: "789", provider_id: "battlenet" }]);
+  await assert.rejects(asRole("anon", "select public.users_battlenet_account()"), /permission denied/);
   // A Better Auth-style insert (no bnet_id) is accepted and left alone by the trigger.
   await pool.query("insert into public.users (id, name, email) values (gen_random_uuid(), 'A', 'a@example.com')");
   assert.deepEqual((await pool.query("select name, email, flags, bnet_id, battletag from public.users where email='a@example.com'")).rows, [{ name: "A", email: "a@example.com", flags: {}, bnet_id: null, battletag: null }]);
@@ -82,5 +91,5 @@ try {
   }
   for (const t of tables) await asRole("service_role", `select * from public.${t}`);
   await assert.rejects(asRole("anon", "select public.users_fill_identity()"), /permission denied/);
-  console.log("Accounts integration passed: re-runnable migrations in name order, existing users backfilled on upgrade, legacy inserts filled by the trigger, Battle.net ids copied once, Better Auth inserts accepted, unique emails, cascading deletes, private auth tables.");
+  console.log("Accounts integration passed: re-runnable migrations in name order, existing users backfilled on upgrade, legacy inserts filled by the trigger, Battle.net ids copied once, v1 sign-ins get their account row once, Better Auth inserts accepted, unique emails, cascading deletes, private auth tables.");
 } finally { await pool.end(); }

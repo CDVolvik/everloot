@@ -51,8 +51,9 @@ export function createAuth(options: {
         accessTokenExpiresAt: "access_token_expires_at", refreshTokenExpiresAt: "refresh_token_expires_at",
         createdAt: "created_at", updatedAt: "updated_at",
       },
-      // Battle.net users all carry its own placeholder address, so trusting it can only link to itself.
-      accountLinking: { enabled: true, trustedProviders: ["battlenet"] },
+      // Battle.net sign-ins are matched by their auth_account row, which the migration's backfill and
+      // trigger give every Battle.net user. Linking by email stays off while the email is unverified.
+      accountLinking: { enabled: true },
     },
     verification: {
       modelName: "auth_verification",

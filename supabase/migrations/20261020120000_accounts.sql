@@ -109,3 +109,23 @@ grant all on public.auth_session, public.auth_account, public.auth_verification,
 insert into public.auth_account (id, user_id, account_id, provider_id)
 select gen_random_uuid(), id, bnet_id, 'battlenet' from public.users where bnet_id is not null
 on conflict (provider_id, account_id) do nothing;
+
+-- And so does every user the v1 sign-in creates from now on, so Better Auth finds them by this
+-- row and never has to link by their unverified placeholder email. Insert only: v1's repeat
+-- upsert takes the update path and must not restore a row that was later unlinked.
+-- Security invoker: whoever may insert users (service_role, the owner) may write auth_account.
+create or replace function public.users_battlenet_account()
+returns trigger language plpgsql set search_path = '' as $$
+begin
+  insert into public.auth_account (id, user_id, account_id, provider_id)
+  values (gen_random_uuid(), new.id, new.bnet_id, 'battlenet')
+  on conflict (provider_id, account_id) do nothing;
+  return null;
+end; $$;
+
+revoke all on function public.users_battlenet_account() from public, anon, authenticated;
+grant execute on function public.users_battlenet_account() to service_role;
+
+drop trigger if exists users_battlenet_account on public.users;
+create trigger users_battlenet_account after insert on public.users
+  for each row when (new.bnet_id is not null) execute function public.users_battlenet_account();
