@@ -7,6 +7,8 @@ import {
   treeNames, SIZES, STATE_LABEL, coverage, decodeRaid, emptySlots, encodeRaid, findCode, groupsOf, resize,
   titleCase, GROUP_SIZE, type ClassName, type FamilyCoverage, type Size, type Slot, type Slots, type State,
 } from "@/lib/raid";
+import type { RaidArt } from "@/lib/game-assets";
+import GameIcon from "@/components/game/GameIcon";
 
 const table = TABLES[CURRENT_BUILD];
 
@@ -39,7 +41,19 @@ function reach(f: FamilyCoverage, table: BuffTable): string {
   return [scopes, ...needs].join(", ");
 }
 
-export default function RaidBuilder() {
+/**
+ * `art`: the game's class, tree and buff icons (lib/game-assets.ts), or null without the asset URL. The
+ * icons sit beside the names, which stay; without them the builder is the text it always was.
+ */
+export default function RaidBuilder({ art = null }: { art?: RaidArt | null } = {}) {
+  const classIcon = (c: ClassName, size = 20) => {
+    const src = art?.classes[c];
+    return src ? <GameIcon src={src} size={size} className="mr-2" /> : null;
+  };
+  const treeIcon = (c: ClassName, tree: number, size = 20) => {
+    const src = tree > 0 ? art?.trees[c]?.[tree - 1] : null;
+    return src ? <GameIcon src={src} size={size} className="mr-2" /> : null;
+  };
   const [state, setState] = useState<Snapshot>({ size: 20, slots: emptySlots(20) });
   const [past, setPast] = useState<Snapshot[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
@@ -162,7 +176,10 @@ export default function RaidBuilder() {
   const row = (f: FamilyCoverage, perGroup: boolean) => (
     <tr key={f.family.id} className="border-t border-line align-top">
       <th scope="row" className="sticky left-0 bg-canvas py-2 pr-4 text-left font-normal">
-        <span className="text-fg">{f.family.label}</span>
+        <span className="text-fg">
+          {art?.families[f.family.id] && <GameIcon src={art.families[f.family.id]!} size={20} className="mr-2" />}
+          {f.family.label}
+        </span>
         <span className="block text-xs text-muted">{reach(f, table)}</span>
       </th>
       <td className={`py-2 pr-4 ${STATE_TEXT[f.raid]}`}>{STATE_SHORT[f.raid]}</td>
@@ -263,8 +280,8 @@ export default function RaidBuilder() {
                       >
                         {slot ? (
                           <>
-                            <span className={`font-medium ${CLASS_TEXT[slot.class]}`}>{titleCase(slot.class)}</span>
-                            <span className="text-sm text-fg-2">{treeName}</span>
+                            <span className={`font-medium ${CLASS_TEXT[slot.class]}`}>{classIcon(slot.class)}{titleCase(slot.class)}</span>
+                            <span className="text-sm text-fg-2">{treeIcon(slot.class, slot.tree, 18)}{treeName}</span>
                           </>
                         ) : (
                           <span className="text-sm text-muted">Empty</span>
@@ -301,6 +318,7 @@ export default function RaidBuilder() {
                   }`}
                   onClick={() => setSlot(selected, { class: c, tree: current?.class === c ? current.tree : 0 })}
                 >
+                  {classIcon(c, 24)}
                   {titleCase(c)}
                 </button>
               ))}
@@ -317,6 +335,7 @@ export default function RaidBuilder() {
                   }`}
                   onClick={() => current && setSlot(selected, { class: current.class, tree: t })}
                 >
+                  {current && treeIcon(current.class, t, 24)}
                   {t === 0 || !current ? (t === 0 ? "Any tree" : `Tree ${t}`) : treeNames(table, current.class)[t - 1]}
                 </button>
               ))}

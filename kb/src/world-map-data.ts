@@ -78,6 +78,16 @@ export function assignmentRect(row: Record<string, unknown>): WorldRect | null {
 
 type Rows = Map<number, Record<string, unknown>>;
 
+/** The first whole-map assignment of each UiMap (lowest OrderIndex): which game map it lies on and its rectangle. */
+export function placeUiMaps(assignments: Record<string, unknown>[]): Map<number, { mapId: number; rect: WorldRect }> {
+  const placed = new Map<number, { mapId: number; rect: WorldRect }>();
+  for (const a of [...assignments].sort((p, q) => Number(p.OrderIndex) - Number(q.OrderIndex))) {
+    const uiMapId = num(a.UiMapID), mapId = num(a.MapID), rect = assignmentRect(a);
+    if (uiMapId !== null && mapId !== null && rect && !placed.has(uiMapId)) placed.set(uiMapId, { mapId, rect });
+  }
+  return placed;
+}
+
 export function buildWorldMapData(
   get: (table: string) => Rows | undefined,
   source: WorldMapData["source"],
@@ -90,12 +100,8 @@ export function buildWorldMapData(
   };
   const maps = need("Map"), uiMaps = need("UiMap"), assignments = [...need("UiMapAssignment").values()];
 
-  // The first whole-map assignment of each UiMap (lowest OrderIndex) gives its continent and rectangle.
-  const placed = new Map<number, { mapId: number; rect: WorldRect }>();
-  for (const a of [...assignments].sort((p, q) => Number(p.OrderIndex) - Number(q.OrderIndex))) {
-    const uiMapId = num(a.UiMapID), mapId = num(a.MapID), rect = assignmentRect(a);
-    if (uiMapId !== null && mapId !== null && rect && !placed.has(uiMapId)) placed.set(uiMapId, { mapId, rect });
-  }
+  // The first whole-map assignment of each UiMap gives its continent and rectangle.
+  const placed = placeUiMaps(assignments);
 
   const continents: WorldMapData["continents"] = [];
   for (const u of uiMaps.values()) {

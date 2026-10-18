@@ -8,6 +8,9 @@ import {
 } from "../../../../../kb/src/market";
 import { STORAGE_UNREACHABLE, uploadStore } from "@/lib/upload-store";
 import { dataAgeLabel } from "@/lib/data-age";
+import { loadItemTips, loadSiteAssets } from "@/lib/game-assets";
+import ItemTip from "@/components/game/ItemTip";
+import GameCredit from "@/components/game/GameCredit";
 
 export const dynamic = "force-dynamic";
 
@@ -77,6 +80,10 @@ export default async function AuctionsPage(
     ? STORAGE_UNREACHABLE
     : handleAuctionHistory({ realm, itemId }, auctionSightingsFromRecords(corpus.records)));
   const itemHref = (id: number) => `/tools/auctions?realm=${encodeURIComponent(realmName)}&item=${id}`;
+  // Icons and tooltips for items players scanned; an item id typed into the form gets one only once it has scans.
+  const shownIds = [...rows.slice(0, MAX_ROWS).map((v) => v.itemId), ...(item && (item.value || item.points.length) ? [itemId] : [])];
+  const assets = shownIds.length ? await loadSiteAssets() : null;
+  const tips = await loadItemTips(assets, shownIds);
 
   return (
     <article className="space-y-8 max-w-4xl">
@@ -141,7 +148,9 @@ export default async function AuctionsPage(
                     {rows.slice(0, MAX_ROWS).map((v) => (
                       <tr key={v.itemId} className="border-t border-line bg-panel text-fg">
                         <td className="px-4 py-3 whitespace-nowrap">
-                          <Link href={`/database/items/${v.itemId}`} className="font-mono tabular-nums text-accent hover:underline underline-offset-4">{v.itemId}</Link>
+                          <ItemTip tip={tips.get(v.itemId)}>
+                            <Link href={`/database/items/${v.itemId}`} className="font-mono tabular-nums text-accent hover:underline underline-offset-4">{v.itemId}</Link>
+                          </ItemTip>
                           <span className="text-muted">{" · "}</span>
                           <Link href={itemHref(v.itemId)} className="text-muted hover:text-fg hover:underline underline-offset-4">history</Link>
                         </td>
@@ -162,7 +171,7 @@ export default async function AuctionsPage(
 
       {item && (
         <section className="space-y-4">
-          <h2 className="text-xl text-fg">{realmName} item <Link href={`/database/items/${itemId}`} className="font-mono tabular-nums text-accent hover:underline underline-offset-4">{itemId}</Link></h2>
+          <h2 className="text-xl text-fg">{realmName} item <ItemTip tip={tips.get(itemId)} size={24}><Link href={`/database/items/${itemId}`} className="font-mono tabular-nums text-accent hover:underline underline-offset-4">{itemId}</Link></ItemTip></h2>
           {!item.value
             ? <p className="text-sm text-fg-2">No public market value yet. A day becomes public when 3 reporters scanned this item.</p>
             : (
@@ -192,6 +201,7 @@ export default async function AuctionsPage(
       )}
 
       {state && <p className="text-xs text-muted">{dataAgeLabel(market.dataAsOf)}</p>}
+      {assets && tips.size > 0 && <GameCredit version={assets.version} label={assets.label} />}
 
       <p className="text-sm text-muted">
         <Link href="/tools/gold-per-hour" className="text-accent hover:underline underline-offset-4">Gold per hour</Link>

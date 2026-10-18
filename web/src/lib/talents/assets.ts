@@ -13,6 +13,8 @@ export const CREDIT =
 
 // A path inside the asset folder: letters, digits, dot, dash, underscore, slash; never `..` or a scheme.
 const path = z.string().regex(/^[A-Za-z0-9_-][A-Za-z0-9._/-]*$/).refine((p) => !p.split("/").some((s) => s === ".." || s === ""), "bad path");
+/** The same rule for the site-wide reader (lib/game-assets.ts). */
+export const assetPath = path;
 const file = z.object({ file: path, width: z.number().int().positive(), height: z.number().int().positive() });
 
 const manifest = z.object({
@@ -25,7 +27,8 @@ const manifest = z.object({
     passive: z.boolean().nullable(),
     description: z.object({ text: z.string(), unresolved: z.array(z.string()) }).nullable(),
   })),
-  icons: z.record(z.string(), file),
+  // Newer manifests leave the icon list out (each talent names its icon); older ones still carry it.
+  icons: z.record(z.string(), file).optional(),
   frames: z.record(z.string(), file),
   backgrounds: z.record(z.string(), z.object({ element: z.string(), nearest: z.boolean() })),
 });
