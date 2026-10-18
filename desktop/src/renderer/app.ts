@@ -210,6 +210,7 @@ function addon(s: AppState): string {
       <div class="row">
         <button type="button" class="btn btn-primary" id="installAddon" ${a?.latest && s.settings.gameFolder && !busy ? "" : "disabled"}>${busy === "install" ? "Installing…" : a?.installed ? (newer ? `Update to ${esc(a.latest!.version)}` : "Reinstall") : "Install"}</button>
         ${ext("https://everloot.app/upload", "manual install steps")}
+        ${a?.addonsDir ? '<button type="button" class="link" id="openAddons">open the AddOns folder</button>' : ""}
         <span class="${flash.startsWith("!") ? "error" : "ok"} small">${esc(flash.replace(/^!/, ""))}</span>
       </div>
     </section>
@@ -329,6 +330,7 @@ document.body.addEventListener("click", async (ev) => {
   if (t.id === "start" && chosenFolder) { state = await api.saveSettings({ gameFolder: chosenFolder, consentedAt: new Date().toISOString() }); go("overview"); return; }
   if (t.id === "openConfig") { void api.openConfig(); return; }
   if (t.id === "openData") { void api.openDataFolder(); return; }
+  if (t.id === "openAddons") { void api.openAddonsFolder(); return; }
   if (t.id === "realmAddBtn") {
     const input = main.querySelector("#realmAdd") as HTMLInputElement;
     const name = input.value.trim();

@@ -106,6 +106,8 @@ export interface EverlootApi {
   runNow(job: Job): Promise<void>;
   setPaused(paused: boolean): Promise<void>;
   openDataFolder(): Promise<void>;
+  /** Opens the game's Interface/AddOns folder in the file manager. */
+  openAddonsFolder(): Promise<void>;
   openConfig(): Promise<void>;
   openExternal(url: string): Promise<boolean>;
   checkForUpdates(): Promise<UpdateCheck>;

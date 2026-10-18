@@ -6,6 +6,8 @@ it uploads the addon's anonymous observations, keeps community market prices in 
 and, if you turn it on, answers `/ask` questions. Design:
 [`docs/design/specs/2026-10-18-desktop-app-design.md`](../docs/design/specs/2026-10-18-desktop-app-design.md).
 
+![The Overview page of Everloot Desktop](../docs/media/desktop.webp)
+
 It sends nothing the command line does not send, and it follows the same rules
 ([`docs/DATA_POLICY.md`](../docs/DATA_POLICY.md)): anonymous events only, named data stays on your
 computer, nothing touches the game client. The window never shows an ad.

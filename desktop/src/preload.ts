@@ -11,6 +11,7 @@ const api: EverlootApi = {
   runNow: (job: Job) => ipcRenderer.invoke("runNow", job),
   setPaused: (paused: boolean) => ipcRenderer.invoke("setPaused", paused),
   openDataFolder: () => ipcRenderer.invoke("openDataFolder"),
+  openAddonsFolder: () => ipcRenderer.invoke("openAddonsFolder"),
   openConfig: () => ipcRenderer.invoke("openConfig"),
   openExternal: (url: string) => ipcRenderer.invoke("openExternal", url),
   checkForUpdates: () => ipcRenderer.invoke("checkForUpdates"),

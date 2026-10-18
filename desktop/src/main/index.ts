@@ -1,4 +1,4 @@
-import { BrowserWindow, app, dialog, ipcMain, shell } from "electron";
+import { BrowserWindow, Notification, app, dialog, ipcMain, shell } from "electron";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -6,7 +6,7 @@ import { readAsks } from "../../../companion/src/bridge/asks";
 import { loadProviders } from "../../../companion/src/providers/config";
 import type { AddonInfo, AppState, AskInfo, Job, MarketInfo, Settings } from "../shared/types";
 import { JOBS } from "../shared/types";
-import { installAddon, installedAddonVersion, newestRelease, slotAddons } from "./addon";
+import { compareVersions, installAddon, installedAddonVersion, newestRelease, slotAddons } from "./addon";
 import { fetchChanges } from "./changes";
 import { createEngine } from "./engine";
 import { allowedExternal } from "./external";
@@ -60,6 +60,27 @@ if (!app.requestSingleInstanceLock()) {
   };
   engine.onChange(broadcast);
 
+  // Two system notifications only: answers landed in the game (so the player knows to /reload),
+  // and a newer addon exists (once per run). Nothing else interrupts.
+  const notify = (title: string, body: string) => { if (Notification.isSupported()) new Notification({ title, body, silent: true }).show(); };
+  let lastAskAt: string | null = null;
+  engine.onChange((s) => {
+    const ask = s.jobs.ask;
+    if (ask.state !== "ok" || ask.at === lastAskAt) return;
+    lastAskAt = ask.at;
+    const m = /^answered (\d+)/.exec(ask.message);
+    if (m && Number(m[1]) > 0) notify("Everloot answered in game", `${m[1]} answer(s) written. Type /reload to read them.`);
+  });
+  const addonUpdateNotice = async () => {
+    const dir = addonsDir();
+    if (!dir) return;
+    try {
+      const installed = installedAddonVersion(dir);
+      const latest = newestRelease(await releases(), "addon-v");
+      if (installed && latest && compareVersions(latest.version, installed) > 0) notify("Everloot addon update", `${latest.version} is out (you run ${installed}). Open the Addon page to update.`);
+    } catch { /* offline; the Addon page will say so */ }
+  };
+
   const releases = cached(10 * 60 * 1000, () => fetchReleases(fetch, `everloot-desktop/${app.getVersion()}`));
   const knownRealms = cached(10 * 60 * 1000, () => listRealms(settings.endpoint));
   const changes = cached(15 * 60 * 1000, () => fetchChanges(settings.endpoint));
@@ -111,6 +132,7 @@ if (!app.requestSingleInstanceLock()) {
   ipcMain.handle("runNow", (_e, job: unknown) => { if (JOBS.includes(job as Job)) return engine.runNow(job as Job); });
   ipcMain.handle("setPaused", (_e, paused: unknown) => engine.setPaused(paused === true));
   ipcMain.handle("openDataFolder", () => shell.openPath(data).then(() => undefined));
+  ipcMain.handle("openAddonsFolder", () => { const dir = addonsDir(); return dir && existsSync(dir) ? shell.openPath(dir).then(() => undefined) : undefined; });
   ipcMain.handle("openConfig", () => {
     const config = join(data, "config.json");
     // A starter file with no providers, so the editor opens on the documented shape.
@@ -171,5 +193,6 @@ if (!app.requestSingleInstanceLock()) {
     const hidden = process.argv.includes("--hidden");
     if (!settings.consentedAt || !(hidden && settings.startInTray)) createWindow();
     broadcast();
+    if (settings.consentedAt) void addonUpdateNotice();
   });
 }
