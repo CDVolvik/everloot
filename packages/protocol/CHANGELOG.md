@@ -7,6 +7,8 @@ required, or tightening a limit is a major release.
 ## [Unreleased]
 
 ### Added
+- `skill` as an entity kind and the `in_skill_line` relation (spell -> skill line), as the site's
+  profession edges from the game files carry since 2026-10-18.
 - The upload record contract, moved here from the site: 31 record kinds, the upload envelope, the
   parser the site runs, the sharing categories, `validRealm` and the upload limits in one `UPLOAD_LIMITS`.
 - `protocol` on the upload envelope. The uploaders stamp `PROTOCOL_VERSION`; the server accepts the
