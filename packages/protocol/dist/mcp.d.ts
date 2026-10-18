@@ -3260,6 +3260,86 @@ export declare const MCP_RESOURCES: {
         readonly mimeType: "text/markdown";
     };
 };
+/**
+ * The server's prompts: a client offers them as commands, fills the arguments, and gets a user message
+ * that tells an assistant how to use the tools for that job. Argument values are strings, as MCP has them.
+ */
+export interface McpPromptDef {
+    title: string;
+    description: string;
+    arguments: Record<string, {
+        description: string;
+        required: boolean;
+    }>;
+}
+/** Every prompt, keyed by name, in the order the server lists them. kb/src/prompts.ts holds the messages. */
+export declare const MCP_PROMPTS: {
+    readonly answer_with_sources: {
+        readonly title: "Answer with Everloot's sources";
+        readonly description: "Answer a question about WoW: Forever from answer_sources, citing each piece of evidence with its source, licence and date, and saying unrecorded where the evidence is.";
+        readonly arguments: {
+            readonly question: {
+                readonly description: "The question, in the player's words.";
+                readonly required: true;
+            };
+        };
+    };
+    readonly review_talent_plan: {
+        readonly title: "Review a talent share code";
+        readonly description: "Read a share code with talent_plan and the class's trees with talent_tree, then describe the build, its level and every problem in plain words.";
+        readonly arguments: {
+            readonly code: {
+                readonly description: "An EL1 share code, or a calculator link that carries one.";
+                readonly required: true;
+            };
+        };
+    };
+    readonly what_changed: {
+        readonly title: "What changed in WoW: Forever";
+        readonly description: "Summarize recent_changes, newest first: Blizzard posts, hotfixes and builds, each with its link, quoting only the excerpt the tool gives.";
+        readonly arguments: {
+            readonly game: {
+                readonly description: "forever or classic. Without it, both.";
+                readonly required: false;
+            };
+        };
+    };
+};
+export type McpPromptName = keyof typeof MCP_PROMPTS;
+/** The names in the order the server lists them. */
+export declare const MCP_PROMPT_NAMES: McpPromptName[];
+/** The list form, for clients that iterate. */
+export declare const MCP_PROMPT_LIST: ({
+    title: "Answer with Everloot's sources";
+    description: "Answer a question about WoW: Forever from answer_sources, citing each piece of evidence with its source, licence and date, and saying unrecorded where the evidence is.";
+    arguments: {
+        readonly question: {
+            readonly description: "The question, in the player's words.";
+            readonly required: true;
+        };
+    };
+    name: "answer_with_sources" | "review_talent_plan" | "what_changed";
+} | {
+    title: "Review a talent share code";
+    description: "Read a share code with talent_plan and the class's trees with talent_tree, then describe the build, its level and every problem in plain words.";
+    arguments: {
+        readonly code: {
+            readonly description: "An EL1 share code, or a calculator link that carries one.";
+            readonly required: true;
+        };
+    };
+    name: "answer_with_sources" | "review_talent_plan" | "what_changed";
+} | {
+    title: "What changed in WoW: Forever";
+    description: "Summarize recent_changes, newest first: Blizzard posts, hotfixes and builds, each with its link, quoting only the excerpt the tool gives.";
+    arguments: {
+        readonly game: {
+            readonly description: "forever or classic. Without it, both.";
+            readonly required: false;
+        };
+    };
+    name: "answer_with_sources" | "review_talent_plan" | "what_changed";
+})[];
 export type McpResourceUri = keyof typeof MCP_RESOURCES;
 /** The URIs in the order the server lists them. */
 export declare const MCP_RESOURCE_URIS: McpResourceUri[];

@@ -16,7 +16,7 @@ import { z } from "zod";
 import { ALL_RECORD_KINDS, PUBLIC_RECORD_KINDS, recordSchemas, RULES, uploadPayload, type RecordKind } from "../src/records.js";
 import { UPLOAD_LIMITS } from "../src/limits.js";
 import { API_ROUTES, API_SCHEMAS } from "../src/api.js";
-import { buildsResource, MCP_RESOURCE_LIST, MCP_RESOURCE_URIS, MCP_TOOL_NAMES, MCP_TOOLS, PLAYER_DATA_TOOLS, TOOL_OUTPUT } from "../src/mcp.js";
+import { buildsResource, MCP_PROMPT_LIST, MCP_PROMPT_NAMES, MCP_RESOURCE_LIST, MCP_RESOURCE_URIS, MCP_TOOL_NAMES, MCP_TOOLS, PLAYER_DATA_TOOLS, TOOL_OUTPUT } from "../src/mcp.js";
 import { PROTOCOL_VERSION } from "../src/version.js";
 
 const OUT = join(dirname(fileURLToPath(import.meta.url)), "..", "schema");
@@ -76,9 +76,17 @@ export function emit(out = OUT): void {
       ...(resource.uri === "everloot://builds" ? { contents: z.toJSONSchema(buildsResource, { io: "output", target: "draft-2020-12" }) } : {}),
     })),
   });
+  write(join(out, "mcp", "prompts.json"), {
+    $id: "https://everloot.app/schema/mcp/prompts.json",
+    description: "The MCP server's prompts: a client fills the arguments (strings) and gets a user message that says how to use the tools for that job.",
+    prompts: MCP_PROMPT_LIST.map((prompt) => ({
+      name: prompt.name, title: prompt.title, description: prompt.description,
+      arguments: Object.entries(prompt.arguments).map(([name, a]) => ({ name, description: a.description, required: a.required })),
+    })),
+  });
   write(join(out, "index.json"), {
     protocol: PROTOCOL_VERSION, kinds, publicKinds: [...PUBLIC_RECORD_KINDS].sort(),
-    api: Object.keys(API_SCHEMAS), routes: API_ROUTES.map((r) => `${r.method} ${r.path}`), mcpTools: MCP_TOOL_NAMES, mcpResources: MCP_RESOURCE_URIS,
+    api: Object.keys(API_SCHEMAS), routes: API_ROUTES.map((r) => `${r.method} ${r.path}`), mcpTools: MCP_TOOL_NAMES, mcpResources: MCP_RESOURCE_URIS, mcpPrompts: MCP_PROMPT_NAMES,
   });
 }
 

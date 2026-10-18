@@ -112,5 +112,10 @@
     "everloot://builds",
     "everloot://methodology",
     "everloot://data-policy"
+  ],
+  "mcpPrompts": [
+    "answer_with_sources",
+    "review_talent_plan",
+    "what_changed"
   ]
 }
