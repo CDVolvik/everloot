@@ -1,4 +1,8 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+
+/** The page already answers 404; the title names it in the tab and history, and robots keeps it out of the index. */
+export const metadata: Metadata = { title: "Page not found", robots: { index: false } };
 
 export default function NotFound() {
   return (
