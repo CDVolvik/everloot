@@ -206,6 +206,15 @@ test("rate-limit keys are an HMAC under the auth secret, never the address or it
   expect(JSON.stringify([...store])).not.toContain("203.0.113.9");
 });
 
+test("without BETTER_AUTH_SECRET there is no auth, so rate-limit keys are never an HMAC under an empty key", () => {
+  const db = { users: [], auth_session: [], auth_account: [], auth_verification: [] };
+  // AUTH_SECRET alone would satisfy Better Auth but not the limiter's key.
+  for (const secret of [undefined, "", " "]) {
+    expect(() => createAuth({ database: memoryAdapter(db), rateLimitStore: mapRateLimitStore().rateLimitStore, env: { ...env, BETTER_AUTH_SECRET: secret, AUTH_SECRET: "test-secret-that-is-at-least-32-characters" } }))
+      .toThrow("BETTER_AUTH_SECRET is not set");
+  }
+});
+
 test("the limiter keys on the Vercel client address first, so a forged or multi-valued X-Forwarded-For shares nothing", async () => {
   stubBattlenet(thrall);
   const { rateLimitStore } = mapRateLimitStore();

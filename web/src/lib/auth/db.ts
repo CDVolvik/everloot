@@ -9,8 +9,9 @@ export type RateLimitStore = {
 let pool: Pool | undefined;
 
 // pg lays these URL parameters over the `ssl` option, so any of them could swap the pinned CA or turn
-// verification off. AUTH_DATABASE_URL must not carry them.
-const SSL_PARAMS = new Set(["sslmode", "sslcert", "sslkey", "sslrootcert", "ssl", "uselibpqcompat"]);
+// verification off. `host` would send the connection somewhere other than the hostname checked below.
+// AUTH_DATABASE_URL must not carry them.
+const REFUSED_PARAMS = new Set(["sslmode", "sslcert", "sslkey", "sslrootcert", "ssl", "uselibpqcompat", "sslnegotiation", "host"]);
 
 // Never chained to the cause: a URL parse error holds the whole URL, password included.
 const notConfigured = () => new Error("Authentication storage is not configured");
@@ -26,7 +27,7 @@ export function authPool(): Pool {
   } catch {
     throw notConfigured();
   }
-  if ([...parsed.searchParams.keys()].some((name) => SSL_PARAMS.has(name.toLowerCase()))) throw notConfigured();
+  if ([...parsed.searchParams.keys()].some((name) => REFUSED_PARAMS.has(name.toLowerCase()))) throw notConfigured();
   const local = parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1";
   pool = new Pool({
     connectionString: url, max: 3, ssl: local ? undefined : { ca: supabaseCa },
@@ -34,7 +35,8 @@ export function authPool(): Pool {
     connectionTimeoutMillis: 5_000, query_timeout: 10_000,
   });
   // An idle client's error is emitted on the pool; unheard, it would crash the instance.
-  pool.on("error", () => console.error("Authentication storage connection failed"));
+  // Only the Postgres error code is logged: the message can carry the host.
+  pool.on("error", (error: Error & { code?: string }) => console.error("Authentication storage connection failed", error.code ?? "no code"));
   return pool;
 }
 

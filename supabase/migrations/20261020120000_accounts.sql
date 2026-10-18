@@ -170,6 +170,8 @@ do $$ begin
     create role everloot_auth nologin;
   end if;
 end $$;
+-- A stuck statement holds one of only three pool connections; the client gives up at 10 s too.
+alter role everloot_auth set statement_timeout = '10s';
 
 grant usage on schema public to everloot_auth;
 grant select, insert, update, delete

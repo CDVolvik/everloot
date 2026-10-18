@@ -94,6 +94,8 @@ try {
   // RLS policies that let it read and write its five tables, and nothing else.
   assert.deepEqual((await pool.query("select rolbypassrls, rolsuper from pg_roles where rolname='everloot_auth'")).rows,
     [{ rolbypassrls: false, rolsuper: false }]);
+  assert.deepEqual((await pool.query("select rolconfig from pg_roles where rolname='everloot_auth'")).rows,
+    [{ rolconfig: ["statement_timeout=10s"] }]);
   for (const t of tables) await asRole("everloot_auth", `select * from public.${t}`);
   await assert.rejects(asRole("everloot_auth", "select * from public.sessions"), /permission denied/);
   const [{ id: thrall }] = await asRole("everloot_auth", "insert into public.users (id, name, email) values (gen_random_uuid(), 'Thrall#9', 'bnet-999@users.everloot.invalid') returning id");

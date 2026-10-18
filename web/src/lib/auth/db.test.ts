@@ -24,8 +24,8 @@ test("a malformed AUTH_DATABASE_URL fails with a generic error that carries no p
   expect(inspect(error, { depth: 5 })).not.toContain("hunter2");
 });
 
-test.each(["sslmode=disable", "sslmode=no-verify", "sslrootcert=/tmp/ca.pem", "sslcert=c", "sslkey=k", "ssl=false", "uselibpqcompat=true", "SSLMode=disable"])(
-  "an AUTH_DATABASE_URL with %s is refused, so it cannot replace the pinned CA",
+test.each(["sslmode=disable", "sslmode=no-verify", "sslrootcert=/tmp/ca.pem", "sslcert=c", "sslkey=k", "ssl=false", "uselibpqcompat=true", "SSLMode=disable", "sslnegotiation=direct", "host=attacker.example.com", "HOST=attacker.example.com"])(
+  "an AUTH_DATABASE_URL with %s is refused, so it cannot replace the pinned CA or the host it is checked against",
   async (param) => {
     const authPool = await poolFor(`postgres://everloot_auth:hunter2-secret@db.example.supabase.co:6543/postgres?${param}`);
     const error = thrown(authPool) as Error;
@@ -40,8 +40,10 @@ test("the pool verifies the Supabase CA, gives up on slow connections and querie
   expect(pool.options).toMatchObject({ connectionTimeoutMillis: 5_000, query_timeout: 10_000, ssl: { ca: expect.stringContaining("BEGIN CERTIFICATE") } });
   const log = vi.spyOn(console, "error").mockImplementation(() => {});
   // Without a listener this emit would throw and take the instance down.
-  pool.emit("error", new Error("terminating connection due to administrator command"));
+  pool.emit("error", Object.assign(new Error("terminating connection due to administrator command"), { code: "57P01" }));
   expect(log).toHaveBeenCalledTimes(1);
+  // The Postgres error code says which failure it was without carrying the message text.
+  expect(inspect(log.mock.calls)).toContain("57P01");
   expect(inspect(log.mock.calls)).not.toContain("hunter2");
   expect(inspect(log.mock.calls)).not.toContain("supabase.co");
   await pool.end();

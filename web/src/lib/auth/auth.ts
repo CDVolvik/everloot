@@ -22,12 +22,14 @@ export function createAuth(options: {
   const { rateLimitStore } = options;
   const { BNET_CLIENT_ID, BNET_CLIENT_SECRET } = env;
   const battlenetConfigured = Boolean(BNET_CLIENT_ID?.trim() && BNET_CLIENT_SECRET?.trim());
-  // Keyed, so the stored digests cannot be matched by hashing every address. Production never runs
-  // without the secret: Better Auth refuses to start there on its default one.
-  const rateLimitKey = (key: string) => createHmac("sha256", env.BETTER_AUTH_SECRET ?? "").update(key).digest("hex");
+  // Better Auth would also start on AUTH_SECRET, which would leave the limiter's HMAC with an empty key.
+  const secret = env.BETTER_AUTH_SECRET?.trim();
+  if (!secret) throw new Error("BETTER_AUTH_SECRET is not set");
+  // Keyed, so the stored digests cannot be matched by hashing every address.
+  const rateLimitKey = (key: string) => createHmac("sha256", secret).update(key).digest("hex");
   return betterAuth({
     database: options.database,
-    secret: env.BETTER_AUTH_SECRET,
+    secret,
     baseURL: env.BETTER_AUTH_URL?.trim() || siteUrl(),
     basePath: "/api/auth",
     trustedOrigins: [siteUrl()],
