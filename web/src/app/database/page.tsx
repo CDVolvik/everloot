@@ -17,6 +17,7 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 const SECTIONS = [
+  { title: "Items by category", href: "/database/items", body: "Every item in the current build by class, subclass, slot and quality, read from the game files and labelled unconfirmed until players see it." },
   { title: "Loot observations", href: "/database/drops", body: "Observed frequency per source-attributed loot window. Source observations from 3 install IDs are required; these are not verified kills or drop probabilities." },
   { title: "Spawn maps", href: "/database/npcs", body: "NPC positions from corroborated sightings. Single reports stay queued, never published." },
   { title: "Quests", href: "/database/quests", body: "Givers, turn-ins, and rewards. A row is public after 3 installs agree." },

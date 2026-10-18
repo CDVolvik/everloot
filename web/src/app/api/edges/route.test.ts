@@ -62,7 +62,7 @@ test("unreadable storage still answers the game-file edges and says the observed
 test("the client layer downloads whole, with the build in a header", async () => {
   const res = await layerGET();
   const body = await res.json();
-  expect(body.schema).toBe("everloot.client-layer/1");
+  expect(body.schema).toBe("everloot.client-layer/2");
   expect(body.edges).toHaveLength(CLIENT_LAYER.edges.length);
   expect(res.headers.get("x-everloot-game-build")).toBe(CLIENT_LAYER.build.version);
   expect(res.headers.get("x-everloot-licence")).toBeNull();
