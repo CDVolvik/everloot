@@ -11,8 +11,10 @@ identified as gaps (object, item set, instances, faction, profession, collection
 changes the pipeline shape; it selects what enters `CLIENT_TABLES` next, one reviewed wave at a time.
 
 **Status at close of 2026-10-18:** W0, W1, W2 and W3 all executed on `wow_classic_beta` 1.60.1.70450.
-The read set grew 68 → 276 tables (of 1,159 the build ships); unread candidates 1,091 → 883. Snapshot and
-scan stay local and gitignored; no generator reads the new tables yet, so nothing is published.
+The read set grew 68 → 276 tables (of 1,159 the build ships); unread candidates 1,091 → 883, and the
+first triage pass moved 216 dead-system and plumbing tables to the never-list (`bcc4f02`), leaving
+**667 candidates**. Snapshot and scan stay local and gitignored; no generator reads the new tables yet,
+so nothing is published.
 
 ## What the scan measures
 
@@ -82,7 +84,7 @@ existing structures, and the wave column proposes when to read it (W0 = next, sm
 | travel 3/0/3 | `TaxiNodes`, `TaxiPath`, `TaxiPathNode` | `/map` overlay and route tools (`farming-routes`, `gold-per-hour`) | W2 |
 | interface 32/3/29 | texture atlases, widgets, cameras, chat, fonts | internal tooling and the asset pipeline; not a database kind | mostly never |
 | audio 21/0/21 | sound kits, ambience, zone music, weapon and weather sounds | page-only assets if a sound feature is ever approved, under the icon rules (credited, unencrypted, never in API, MCP or bulk) | W3, feature-dependent |
-| other 612/2/610 | the catch-all: legacy systems shipped in the client but not live in Forever (`Garrison*`, `Azerite*`, `Artifact*`, `Covenant`, housing), live support tables (`Criteria`, `Emotes`), and internal plumbing (`Light`, `Weather`, `Node*`) | triage queue: each table moves to a domain, or to "never", by hand | ongoing |
+| other 612/2/610 | the catch-all: legacy systems shipped in the client but not live in Forever (`Garrison*`, `Azerite*`, `Artifact*`, `Covenant`, housing), live support tables (`Criteria`, `Emotes`), and internal plumbing (`Light`, `Weather`, `Node*`) | triage queue: each table moves to a domain, or to "never", by hand (first pass applied: 216 to the never-list, `bcc4f02`) | ongoing |
 
 The "other" bucket is the honest state of the classifier, not a statement that 610 tables matter.
 Presence in the client is not relevance: the Forever realm ships many retail-era tables it never uses.
@@ -152,21 +154,24 @@ Findings the waves surfaced while reading:
 3. **"Other" triage appetite.** Draft below; a quick pass can move whole prefixes to a documented "never"
    list, the alternative is leaving them in the catch-all.
 
-## "Other"-bucket triage — draft for approval
+## "Other"-bucket triage — first pass applied, rest drafted
 
-The 609 unread "other" tables group more cleanly than their size suggests. Proposed split (counts exact,
-names representative; nothing is marked "never" until confirmed):
+The 609 unread "other" tables group more cleanly than their size suggests. First pass (groups A and B,
+applied 2026-10-18 in `bcc4f02` via `NEVER_TABLE_RULES` in `kb/src/client-scan.ts`): **216 tables**
+counted, named with a reason, and kept out of the candidate pool — unread candidates 883 → 667. The rest
+of the draft below still waits; per-table moves land in `DOMAIN_RULES` as they are confirmed.
 
-**A. Dead retail systems → proposed "never" (≈200 tables).** Shipped in the client, not live in Forever:
+**A. Dead retail systems → "never" ✅ applied (200 tables).** Shipped in the client, not live in Forever:
 `Garr*` garrison (55), `Artifact*` (12), `Azerite*` (12), the Shadowlands set `Soulbind*`, `MawPower*`,
 `Runeforge*`, `Covenant`, `CorruptionEffects` (12), `Perks*` Trading Post (14), `Warband*` (9), player
-housing `House*`, `Decor*`, `Room*`, `ExteriorComponent*`, `SuperDistrict*`, `Neighborhood*` (37),
+housing `House*`, `Decor*`, `Room*`, `ExteriorComponent*`, `SuperDistrict*`, `Neighborhood*` (38),
 `MythicPlus*` (5), `Delves*` (2), `AssistedCombat*` (3), dragon-riding `FlightCapability*`, `GlideEvent*`,
 `DriveCapability*` (6), `WeeklyRewardChest*` (2), esports `Commentator*` / `PVPScoreboard*` (6),
 `AdventureJournal*` (2), `Bounty*` (2), `Initiative*` (7), retail-PvP `PvpTalent*`, `PvpBrawl`,
-`PvpSeason*`, `PrestigeLevelInfo`, `PvpTier`, `PvpRating`, `PvpScalingEffect*` (14), `Relic*` (2).
+`PvpSeason*`, `PrestigeLevelInfo`, `PvpTier`, `PvpRating`, `PvpScalingEffect*` (11), `Relic*` (2).
+`PVPDifficulty`, `PVPStat` and `PVPBracketTypes` deliberately stay candidates pending the PvP review.
 
-**B. Client plumbing → proposed "never" (≈16).** `GlobalStrings`, `Cfg_*`, `Locale`, `Hotfixes`,
+**B. Client plumbing → "never" ✅ applied (16).** `GlobalStrings`, `Cfg_*`, `Locale`, `Hotfixes`,
 `StartupFiles`, `SharedString`, `SpamMessages`, `ServerMessages`, `BannedAddons`, `GameClockDebug`.
 
 **C. Live support tables → propose wave W4 (≈55).** Tables Forever's live realm plausibly uses today:
