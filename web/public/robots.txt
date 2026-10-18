@@ -1,5 +1,9 @@
 User-agent: *
 Allow: /
 
+# No ads run on the lore archive (Warcraft Wiki text); the AdSense crawler has no reason to read it.
+User-agent: Mediapartners-Google
+Disallow: /lore
+
 Sitemap: https://everloot.app/sitemap.xml
 Sitemap: https://everloot.app/lore-sitemap.xml

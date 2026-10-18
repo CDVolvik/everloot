@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import AdSlot from "@/components/AdSlot";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Bracket from "@/components/Bracket";
@@ -59,6 +60,7 @@ export default async function TalentClassPage({ params }: Params) {
       </header>
 
       <TalentCalculator catalog={catalog} />
+      <AdSlot slot="belowTool" />
 
       <section aria-labelledby="class-facts" className="max-w-2xl space-y-6 border-t border-line pt-6 text-fg-2">
         <div className="space-y-2">

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import AdSlot from "@/components/AdSlot";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -78,6 +79,7 @@ export default async function QuestPage(props: { params: Promise<{ id: string }>
       <p className="text-sm text-muted">
         <Link href="/database/quests" className="text-accent hover:underline underline-offset-4">Quest lookup</Link>
       </p>
+      {!facts.unreachable && page.title !== null && <AdSlot slot="inContent" />}
     </article>
   );
 }

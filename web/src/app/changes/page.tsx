@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import AdSlot from "@/components/AdSlot";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import {
@@ -142,6 +143,7 @@ export default async function ChangesPage({ searchParams }: { searchParams: Prom
           <a href={`${REPO_URL}/blob/main/docs/DATA_POLICY.md`} rel="noopener" className={link}>data policy</a>.
         </p>
       </footer>
+      <AdSlot slot="inContent" />
     </article>
   );
 }

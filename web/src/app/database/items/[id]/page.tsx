@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import AdSlot from "@/components/AdSlot";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -97,6 +98,7 @@ export default async function ItemPage(props: { params: Promise<{ id: string }> 
           All public loot observations
         </Link>
       </p>
+      {!facts.unreachable && (page.name !== null || page.drops.length > 0) && <AdSlot slot="inContent" />}
     </article>
   );
 }

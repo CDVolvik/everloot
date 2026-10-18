@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
 import { fontVariables } from "./fonts";
 import Header from "@/components/Header";
@@ -46,6 +47,8 @@ export const metadata: Metadata = {
     google: process.env.GSC_VERIFICATION?.trim() || undefined,
     other: process.env.BING_VERIFICATION?.trim() ? { "msvalidate.01": process.env.BING_VERIFICATION.trim() } : undefined,
   },
+  // AdSense site ownership. Emitted only when the AdSense client is configured.
+  other: process.env.NEXT_PUBLIC_ADSENSE_CLIENT?.trim() ? { "google-adsense-account": process.env.NEXT_PUBLIC_ADSENSE_CLIENT.trim() } : undefined,
 };
 
 export default function RootLayout({
@@ -65,7 +68,18 @@ export default function RootLayout({
           {children}
         </main>
         <Footer />
-        <CookieConsent adsenseClient={adsenseClient} analytics={analyticsConfig()} />
+        {/* AdSense loads on every page so Google's certified consent message can run where the law requires
+            it (EEA, UK, Switzerland, US states). Ads themselves appear only where a page places an AdSlot. */}
+        {adsenseClient && (
+          <Script
+            id="adsense"
+            async
+            strategy="afterInteractive"
+            crossOrigin="anonymous"
+            src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(adsenseClient)}`}
+          />
+        )}
+        <CookieConsent analytics={analyticsConfig()} />
       </body>
     </html>
   );

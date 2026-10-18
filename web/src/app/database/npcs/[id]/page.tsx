@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import AdSlot from "@/components/AdSlot";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -89,6 +90,7 @@ export default async function NpcPage(props: { params: Promise<{ id: string }> }
       <p className="text-sm text-muted">
         <Link href="/database/npcs" className="text-accent hover:underline underline-offset-4">NPC lookup</Link>
       </p>
+      {!unreachable && (page.name !== null || dropped.length > 0 || zero !== undefined) && <AdSlot slot="inContent" />}
     </article>
   );
 }

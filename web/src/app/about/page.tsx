@@ -64,10 +64,10 @@ export default function AboutPage() {
         How it stays free
       </h2>
       <p className="text-fg-2">
-        Everloot has no ads today, and it is run by its maintainer. We don&apos;t
+        Everloot is run by its maintainer and paid for by a few clearly labelled
+        Google ads on the tools, the patch notes and database pages. We don&apos;t
         sell data, we don&apos;t gate tools behind signups, and we don&apos;t show
-        popups or interstitials. If you want to support the project more directly, a
-        future &ldquo;buy me a coffee&rdquo; link will appear here.
+        popups or interstitials.
       </p>
 
       <h2 className="text-xl text-fg mt-8">

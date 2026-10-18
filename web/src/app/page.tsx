@@ -1,4 +1,5 @@
 import Link from "next/link";
+import AdSlot from "@/components/AdSlot";
 import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
 import LoreSearchForm from "@/components/LoreSearchForm";
@@ -89,6 +90,8 @@ export default function Home() {
           })}
         </div>
       </section>
+
+      <AdSlot slot="inContent" />
 
       {/* Lore search: the WebSite SearchAction points here */}
       <section aria-labelledby="lore-search" className="space-y-3">
