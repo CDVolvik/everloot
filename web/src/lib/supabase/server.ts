@@ -1,9 +1,11 @@
 import { createHash, randomBytes } from "node:crypto";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { authV2Enabled, getAuth } from "@/lib/auth/auth";
 
 // Battle.net uses our server-side sessions, not Supabase Auth JWTs. The browser
 // receives an opaque cookie; only its hash is stored in the private sessions table.
-export interface AccountUser { id: string; bnet_id: string; battletag: string }
+export interface AccountUser { id: string; name: string }
+interface UserRow { id: string; bnet_id: string; battletag: string }
 export const SESSION_SECONDS = 30 * 24 * 60 * 60;
 
 export function siteUrl(): string {
@@ -36,19 +38,23 @@ async function sessionHash(): Promise<string | null> {
 }
 
 export async function getUser(): Promise<AccountUser | null> {
+  if (authV2Enabled()) {
+    const session = await getAuth().api.getSession({ headers: await headers() });
+    return session ? { id: session.user.id, name: session.user.name } : null;
+  }
   const hash = await sessionHash();
   if (!hash) return null;
   const sessions = await authQuery<Array<{ user_id: string }>>(
     `sessions?select=user_id&token_hash=eq.${hash}&expires_at=gt.${encodeURIComponent(new Date().toISOString())}&limit=1`,
   );
   if (!sessions[0]) return null;
-  const users = await authQuery<AccountUser[]>(`users?select=id,bnet_id,battletag&id=eq.${encodeURIComponent(sessions[0].user_id)}&limit=1`);
+  const users = await authQuery<UserRow[]>(`users?select=id,bnet_id,battletag&id=eq.${encodeURIComponent(sessions[0].user_id)}&limit=1`);
   const user = users[0];
-  return user ? { id: user.id, bnet_id: user.bnet_id, battletag: user.battletag } : null;
+  return user ? { id: user.id, name: user.battletag } : null;
 }
 
 export async function createSession(profile: { id: string; battletag: string }): Promise<string> {
-  const users = await authQuery<AccountUser[]>("users?on_conflict=bnet_id&select=id,bnet_id,battletag", {
+  const users = await authQuery<UserRow[]>("users?on_conflict=bnet_id&select=id,bnet_id,battletag", {
     method: "POST", headers: { prefer: "resolution=merge-duplicates,return=representation" },
     body: JSON.stringify({ bnet_id: profile.id, battletag: profile.battletag, updated_at: new Date().toISOString() }),
   });
