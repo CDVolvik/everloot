@@ -1,4 +1,4 @@
-import { CREDIT_LINE, LICENCE, LICENCE_URL, MCP_TOOL_NAMES, SITE, TERMS_URL, type McpToolName } from "@everloot/protocol";
+import { CREDIT_LINE, LICENCE, LICENCE_URL, MCP_RESOURCE_URIS, MCP_TOOL_NAMES, SITE, TERMS_URL, type McpResourceUri, type McpToolName } from "@everloot/protocol";
 
 export const MCP_URL = `${SITE}/mcp/public`;
 export const CORPUS_URL = `${SITE}/api/corpus/public`;
@@ -35,6 +35,16 @@ const TOOL_TEXT: Record<McpToolName, string> = {
 
 /** Every tool the MCP server registers, in the protocol's order. */
 export const MCP_TOOLS: readonly { name: McpToolName; text: string }[] = MCP_TOOL_NAMES.map((name) => ({ name, text: TOOL_TEXT[name] }));
+
+/** One plain sentence per resource, keyed by URI so a new resource in the protocol fails the type check here. */
+const RESOURCE_TEXT: Record<McpResourceUri, string> = {
+  "everloot://builds": "The build the game-file facts come from, and every build Blizzard's version service has listed, with when Everloot first saw it. JSON.",
+  "everloot://methodology": "How uploads become facts: three installs must agree, unrecorded is never zero, game files and play are kept apart, and what is never published. Markdown.",
+  "everloot://data-policy": "The data policy in short: what is published, what is refused, the licence and credit line, and the limits on bulk copying. Markdown.",
+};
+
+/** Every resource the MCP server registers, in the protocol's order. A client reads one whole with resources/read. */
+export const MCP_RESOURCES: readonly { uri: McpResourceUri; text: string }[] = MCP_RESOURCE_URIS.map((uri) => ({ uri, text: RESOURCE_TEXT[uri] }));
 
 const curlBody = JSON.stringify({
   jsonrpc: "2.0", id: 1, method: "tools/call",

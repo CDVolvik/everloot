@@ -6,7 +6,8 @@
  * Input mode leaves extra properties allowed, as the server strips them. The cross-field rules zod
  * enforces are written into each description so a reader of the file knows the server checks them.
  * Also written: schema/api/<name>.json for each JSON response shape plus routes.json, and
- * schema/mcp/<tool>.json for each MCP tool's input, with the output stated as text.
+ * schema/mcp/<tool>.json for each MCP tool's input, with the output stated as text, and
+ * schema/mcp/resources.json for the server's resources.
  */
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -15,7 +16,7 @@ import { z } from "zod";
 import { ALL_RECORD_KINDS, PUBLIC_RECORD_KINDS, recordSchemas, RULES, uploadPayload, type RecordKind } from "../src/records.js";
 import { UPLOAD_LIMITS } from "../src/limits.js";
 import { API_ROUTES, API_SCHEMAS } from "../src/api.js";
-import { MCP_TOOL_NAMES, MCP_TOOLS, PLAYER_DATA_TOOLS, TOOL_OUTPUT } from "../src/mcp.js";
+import { buildsResource, MCP_RESOURCE_LIST, MCP_RESOURCE_URIS, MCP_TOOL_NAMES, MCP_TOOLS, PLAYER_DATA_TOOLS, TOOL_OUTPUT } from "../src/mcp.js";
 import { PROTOCOL_VERSION } from "../src/version.js";
 
 const OUT = join(dirname(fileURLToPath(import.meta.url)), "..", "schema");
@@ -67,9 +68,17 @@ export function emit(out = OUT): void {
       "x-everloot-output": PLAYER_DATA_TOOLS.includes(name) ? TOOL_OUTPUT : { type: TOOL_OUTPUT.type },
     });
   }
+  write(join(out, "mcp", "resources.json"), {
+    $id: "https://everloot.app/schema/mcp/resources.json",
+    description: "The MCP server's resources, read whole with resources/read. The JSON one carries the schema of its contents.",
+    resources: MCP_RESOURCE_LIST.map((resource) => ({
+      ...resource,
+      ...(resource.uri === "everloot://builds" ? { contents: z.toJSONSchema(buildsResource, { io: "output", target: "draft-2020-12" }) } : {}),
+    })),
+  });
   write(join(out, "index.json"), {
     protocol: PROTOCOL_VERSION, kinds, publicKinds: [...PUBLIC_RECORD_KINDS].sort(),
-    api: Object.keys(API_SCHEMAS), routes: API_ROUTES.map((r) => `${r.method} ${r.path}`), mcpTools: MCP_TOOL_NAMES,
+    api: Object.keys(API_SCHEMAS), routes: API_ROUTES.map((r) => `${r.method} ${r.path}`), mcpTools: MCP_TOOL_NAMES, mcpResources: MCP_RESOURCE_URIS,
   });
 }
 

@@ -1118,3 +1118,102 @@ export declare const TOOL_OUTPUT: {
 export declare const STRUCTURED_TOOLS: readonly McpToolName[];
 /** The tools whose answers are built on player uploads and therefore end with TOOL_OUTPUT.endsWith. */
 export declare const PLAYER_DATA_TOOLS: readonly McpToolName[];
+/**
+ * The server's resources: documents a client reads whole with resources/read, as opposed to tools it
+ * calls with arguments. Static URIs, no templates. kb/src/mcp-server.ts registers from this table and
+ * supplies the contents; the connect page and llms.txt list from it.
+ */
+export interface McpResourceDef {
+    /** The short name clients show in a picker. */
+    name: string;
+    title: string;
+    description: string;
+    mimeType: "application/json" | "text/markdown";
+}
+/** One game build as the version service listed it. Everloot records identifiers only, never game files. */
+export declare const buildEntry: z.ZodObject<{
+    key: z.ZodString;
+    product: z.ZodString;
+    buildConfig: z.ZodString;
+    buildId: z.ZodNumber;
+    version: z.ZodString;
+    regions: z.ZodArray<z.ZodString>;
+    firstSeen: z.ZodString;
+    lastSeen: z.ZodString;
+    status: z.ZodEnum<{
+        processed: "processed";
+        queued: "queued";
+    }>;
+}, z.core.$strip>;
+export type BuildEntryOut = z.infer<typeof buildEntry>;
+/** What everloot://builds holds. */
+export declare const buildsResource: z.ZodObject<{
+    gameFiles: z.ZodObject<{
+        product: z.ZodString;
+        buildId: z.ZodNumber;
+        version: z.ZodString;
+        buildConfig: z.ZodString;
+        definitions: z.ZodNullable<z.ZodString>;
+        extractedAt: z.ZodString;
+    }, z.core.$strip>;
+    registry: z.ZodArray<z.ZodObject<{
+        key: z.ZodString;
+        product: z.ZodString;
+        buildConfig: z.ZodString;
+        buildId: z.ZodNumber;
+        version: z.ZodString;
+        regions: z.ZodArray<z.ZodString>;
+        firstSeen: z.ZodString;
+        lastSeen: z.ZodString;
+        status: z.ZodEnum<{
+            processed: "processed";
+            queued: "queued";
+        }>;
+    }, z.core.$strip>>;
+    credit: z.ZodString;
+}, z.core.$strip>;
+export type BuildsResource = z.infer<typeof buildsResource>;
+/** Every resource, keyed by URI, in the order the server lists them. */
+export declare const MCP_RESOURCES: {
+    readonly "everloot://builds": {
+        readonly name: "builds";
+        readonly title: "Game builds Everloot knows";
+        readonly description: "The build the game-file facts come from, and every build Blizzard's version service has listed, with when Everloot first saw it. JSON of the shape in schema/mcp/resources.json.";
+        readonly mimeType: "application/json";
+    };
+    readonly "everloot://methodology": {
+        readonly name: "methodology";
+        readonly title: "How Everloot counts";
+        readonly description: "How player uploads become facts: three installs must agree, unrecorded is never zero, game files and play are kept apart, and what is never published. Read it before stating a number as certain.";
+        readonly mimeType: "text/markdown";
+    };
+    readonly "everloot://data-policy": {
+        readonly name: "data-policy";
+        readonly title: "Everloot data policy";
+        readonly description: "Where the data comes from, what is refused, the licence and credit line, and the limits on bulk copying, in short, with the link to the full policy.";
+        readonly mimeType: "text/markdown";
+    };
+};
+export type McpResourceUri = keyof typeof MCP_RESOURCES;
+/** The URIs in the order the server lists them. */
+export declare const MCP_RESOURCE_URIS: McpResourceUri[];
+/** The list form, for clients that iterate. */
+export declare const MCP_RESOURCE_LIST: ({
+    name: "builds";
+    title: "Game builds Everloot knows";
+    description: "The build the game-file facts come from, and every build Blizzard's version service has listed, with when Everloot first saw it. JSON of the shape in schema/mcp/resources.json.";
+    mimeType: "application/json";
+    uri: "everloot://builds" | "everloot://data-policy" | "everloot://methodology";
+} | {
+    name: "methodology";
+    title: "How Everloot counts";
+    description: "How player uploads become facts: three installs must agree, unrecorded is never zero, game files and play are kept apart, and what is never published. Read it before stating a number as certain.";
+    mimeType: "text/markdown";
+    uri: "everloot://builds" | "everloot://data-policy" | "everloot://methodology";
+} | {
+    name: "data-policy";
+    title: "Everloot data policy";
+    description: "Where the data comes from, what is refused, the licence and credit line, and the limits on bulk copying, in short, with the link to the full policy.";
+    mimeType: "text/markdown";
+    uri: "everloot://builds" | "everloot://data-policy" | "everloot://methodology";
+})[];
