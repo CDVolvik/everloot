@@ -24,6 +24,9 @@ that has a zip in the repository. Earlier builds have none.
   parameters and responses, rendered from the protocol, plus paging examples in JavaScript and Python. The
   site serves `/api/openapi.json` (OpenAPI 3.1, assembled from the same catalogue) and the protocol's JSON
   Schema files under `/schema/`. `llms.txt` lists both.
+- A 23rd MCP tool, `answer_sources`: the evidence behind a question, observed facts first (with install
+  counts), then curated facts and the 2023 wiki, every piece with its source URL, licence and date, plus
+  search links on other sites (links only). Structured output from the start.
 - Four MCP tools (`search_knowledge`, `get_entity`, `get_by_name`, `recent_changes`) declare an output schema
   and answer with structured content beside the text, so a client can read hits and timeline entries as
   objects instead of parsing prose. The schema files and `/connect` show which tools do.

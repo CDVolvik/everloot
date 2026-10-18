@@ -253,7 +253,7 @@ test("tools with an output schema answer with structured content beside the text
   await server.connect(serverSide);
   const client = new Client({ name: "test", version: "0" });
   await client.connect(clientSide);
-  expect(STRUCTURED_TOOLS).toEqual(["search_knowledge", "get_entity", "get_by_name", "recent_changes"]);
+  expect(STRUCTURED_TOOLS).toEqual(["search_knowledge", "get_entity", "get_by_name", "answer_sources", "recent_changes"]);
   const listed = (await client.listTools()).tools;
   for (const tool of listed) expect(tool.outputSchema !== undefined).toBe(STRUCTURED_TOOLS.includes(tool.name as (typeof STRUCTURED_TOOLS)[number]));
 
