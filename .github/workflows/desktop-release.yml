@@ -1,9 +1,12 @@
 name: Desktop release
 # Push a tag like desktop-v0.1.0 and this builds Everloot Desktop for Windows, macOS and Linux,
 # checks the tag against desktop/package.json, and publishes a GitHub release. See desktop/README.md.
+# Run it by hand (Actions > Desktop release > Run workflow, or `gh workflow run desktop-release.yml
+# --ref <branch>`) for a dry run: the same builds, kept as workflow artifacts, nothing published.
 on:
   push:
     tags: ['desktop-v*']
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
@@ -23,7 +26,11 @@ jobs:
         shell: bash
         run: |
           version="$(node -p "require('./desktop/package.json').version")"
-          test "${GITHUB_REF_NAME}" = "desktop-v${version}" || { echo "Tag ${GITHUB_REF_NAME} does not match desktop version ${version}"; exit 1; }
+          if [ "${GITHUB_REF_TYPE}" = tag ]; then
+            test "${GITHUB_REF_NAME}" = "desktop-v${version}" || { echo "Tag ${GITHUB_REF_NAME} does not match desktop version ${version}"; exit 1; }
+          else
+            echo "Dry run on ${GITHUB_REF_NAME}: building desktop ${version}, publishing nothing"
+          fi
           echo "VERSION=${version}" >> "$GITHUB_ENV"
       - uses: actions/setup-node@v4
         with:
@@ -56,6 +63,7 @@ jobs:
           if-no-files-found: error
   publish:
     needs: build
+    if: github.ref_type == 'tag'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

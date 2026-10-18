@@ -103,5 +103,7 @@ Set `EVERLOOT_DATA_DIR` to a scratch folder to keep a development run away from 
 ## Release
 
 Set the version in `package.json`, add a `desktop-vX.Y.Z` section to the root `CHANGELOG.md`, tag
-`desktop-vX.Y.Z` and push the tag. `.github/workflows/desktop-release.yml` builds on Windows, macOS
+`desktop-vX.Y.Z` and push the tag. Before the first tag of a version, run the same workflow by hand
+(`gh workflow run desktop-release.yml --ref <branch>`): it builds the three installers as workflow
+artifacts and publishes nothing. `.github/workflows/desktop-release.yml` builds on Windows, macOS
 and Ubuntu, runs the tests, and publishes the GitHub release with `SHA256SUMS`.
