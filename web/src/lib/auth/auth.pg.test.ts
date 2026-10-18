@@ -112,13 +112,22 @@ describe.skipIf(!databaseUrl)("Better Auth on Postgres as everloot_auth", () => 
     await expect(authDb.query("update public.auth_session set ip_address = '203.0.113.9' where user_id = $1", [id])).rejects.toThrow(/check constraint/);
   });
 
-  test("the rate-limit store counts per key in a window", async () => {
-    const store = pgRateLimitStore(authDb);
+  test("the rate-limit store counts per key in a window and prunes stale rows", async () => {
+    const store = pgRateLimitStore(authDb, () => 0.5);
     const results = [];
     for (let i = 0; i < 4; i++) results.push(await store.consume("key-a", { window: 60, max: 3 }));
     expect(results.map((r) => r.allowed)).toEqual([true, true, true, false]);
     expect(results[3].retryAfter).toBeGreaterThan(0);
     expect(results[3].retryAfter).toBeLessThanOrEqual(60);
     expect((await store.consume("key-b", { window: 60, max: 3 })).allowed).toBe(true);
+
+    await authDb.query("insert into public.auth_rate_limit (key, count, last_request) values ('stale', 1, $1)", [Date.now() - 2 * 60 * 60 * 1000]);
+    await store.consume("key-a", { window: 60, max: 3 });
+    expect((await admin.query("select count(*)::int as n from public.auth_rate_limit where key = 'stale'")).rows[0].n).toBe(1);
+
+    await pgRateLimitStore(authDb, () => 0).consume("key-c", { window: 60, max: 3 });
+    const keys = (await admin.query("select key from public.auth_rate_limit")).rows.map((r) => r.key);
+    expect(keys).not.toContain("stale");
+    expect(keys).toEqual(expect.arrayContaining(["key-a", "key-b", "key-c"]));
   });
 });

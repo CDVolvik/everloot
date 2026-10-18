@@ -8,20 +8,42 @@ export type RateLimitStore = {
 
 let pool: Pool | undefined;
 
+// pg lays these URL parameters over the `ssl` option, so any of them could swap the pinned CA or turn
+// verification off. AUTH_DATABASE_URL must not carry them.
+const SSL_PARAMS = new Set(["sslmode", "sslcert", "sslkey", "sslrootcert", "ssl", "uselibpqcompat"]);
+
+// Never chained to the cause: a URL parse error holds the whole URL, password included.
+const notConfigured = () => new Error("Authentication storage is not configured");
+
 // Created on first use, never at import: the Next build imports route modules.
 export function authPool(): Pool {
   if (pool) return pool;
   const url = process.env.AUTH_DATABASE_URL?.trim();
-  if (!url) throw new Error("Authentication storage is not configured");
-  const { hostname } = new URL(url);
-  const local = hostname === "localhost" || hostname === "127.0.0.1";
-  pool = new Pool({ connectionString: url, max: 3, ssl: local ? undefined : { ca: supabaseCa } });
+  if (!url) throw notConfigured();
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw notConfigured();
+  }
+  if ([...parsed.searchParams.keys()].some((name) => SSL_PARAMS.has(name.toLowerCase()))) throw notConfigured();
+  const local = parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1";
+  pool = new Pool({
+    connectionString: url, max: 3, ssl: local ? undefined : { ca: supabaseCa },
+    // Fail fast, so /api/auth/me answers 503 instead of hanging.
+    connectionTimeoutMillis: 5_000, query_timeout: 10_000,
+  });
+  // An idle client's error is emitted on the pool; unheard, it would crash the instance.
+  pool.on("error", () => console.error("Authentication storage connection failed"));
   return pool;
 }
 
+const PRUNE_AFTER_MS = 60 * 60 * 1000;
+
 // One statement, so concurrent requests cannot both pass a stale read. `last_request` holds the
 // start of the current window in ms: an expired window restarts at 1, otherwise the count grows.
-export function pgRateLimitStore(pool: Pool): RateLimitStore {
+// About one call in a hundred also deletes rows whose window started over an hour ago.
+export function pgRateLimitStore(pool: Pool, random: () => number = Math.random): RateLimitStore {
   return {
     async consume(key, { window, max }) {
       const now = Date.now();
@@ -34,6 +56,7 @@ export function pgRateLimitStore(pool: Pool): RateLimitStore {
          returning count, last_request`,
         [key, now, windowMs],
       );
+      if (random() < 0.01) await pool.query("delete from public.auth_rate_limit where last_request < $1", [now - PRUNE_AFTER_MS]);
       const { count, last_request } = rows[0];
       if (count <= max) return { allowed: true, retryAfter: null };
       return { allowed: false, retryAfter: Math.ceil((Number(last_request) + windowMs - now) / 1000) };
