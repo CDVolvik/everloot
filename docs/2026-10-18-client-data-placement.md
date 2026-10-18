@@ -10,11 +10,11 @@ The 1,091 unread candidates sort into site areas that already exist or that the 
 identified as gaps (object, item set, instances, faction, profession, collections). Nothing in the scan
 changes the pipeline shape; it selects what enters `CLIENT_TABLES` next, one reviewed wave at a time.
 
-**Status at close of 2026-10-18:** W0, W1, W2 and W3 all executed on `wow_classic_beta` 1.60.1.70450.
-The read set grew 68 → 276 tables (of 1,159 the build ships); unread candidates 1,091 → 883, and the
-first triage pass moved 216 dead-system and plumbing tables to the never-list (`bcc4f02`), leaving
-**667 candidates**. Snapshot and scan stay local and gitignored; no generator reads the new tables yet,
-so nothing is published.
+**Status at close of 2026-10-18:** W0, W1, W2, W3 and W4 all executed on `wow_classic_beta` 1.60.1.70450.
+The read set grew 68 → 321 tables (of 1,159 the build ships); unread candidates 1,091 → 883, the
+first triage pass moved 216 dead-system and plumbing tables to the never-list (`bcc4f02`), and W4
+read the live-support group (`3a1c007`), leaving **622 candidates**. Snapshot and scan stay local and
+gitignored; no generator reads the W4 tables yet, so nothing is published.
 
 ## What the scan measures
 
@@ -120,6 +120,9 @@ Extending `DOMAIN_RULES` in `kb/src/client-scan.ts` as tables are triaged keeps 
   factions; `WorldMapOverlay`, `WMOAreaTable`, zone music and light; achievements; currencies.
 - **W3 and feature-dependent:** character customization, creature models, taxi paths, audio, interface
   tooling. Each waits for the feature that needs it.
+- **W4 (executed):** the live-support group from the "other" triage (banks, creation pieces, guild
+  tabards, barber shop, progression, mail and auction house, emotes, world-object behaviour, creation
+  helpers), 45 tables read plus two the build does not ship.
 
 ### Wave log (2026-10-18)
 
@@ -129,6 +132,7 @@ Extending `DOMAIN_RULES` in `kb/src/client-scan.ts` as tables are triaged keeps 
 | W1 | `204e973` | 29 | added `ItemXItemEffect` beyond the plan to make `ItemEffect` joinable (no `ParentItemID` exists) |
 | W2 | `d589242` | 69 | no failures; all coverage pins verified in-layout |
 | W3 | `ef82618` | 102 | `LiquidType` dropped (see below); one concurrent edit from origin (PR #73) rebased in first, adding `LoadingScreens` |
+| W4 | `3a1c007` | 45 | the live-support group; `ObjectEffectGroup` and `ObjectEffectPackage` are not in this build, and `ObjectEffectModifier`, `DeclinedWord` and `DeclinedWordCases` read empty; candidates 667 → 622 |
 
 Findings the waves surfaced while reading:
 
@@ -143,23 +147,30 @@ Findings the waves surfaced while reading:
   `Texture` column as a string without a string definition, so extraction fails on it. The reason is
   recorded next to the table in `kb/src/client-snapshot.ts`; revisit when the pinned definitions fix the
   layout.
+- **W4:** `ObjectEffectGroup` and `ObjectEffectPackage` are not in this build, and `ObjectEffectModifier`,
+  `DeclinedWord` and `DeclinedWordCases` are present with 0 rows. Six tables carry encrypted blocks
+  (`Emotes`, `Lock`, `SummonProperties`, `TotemCategory`, `ObjectEffect`, `ObjectEffectPackageElem`);
+  the blocks are skipped, never decrypted.
 
 ## Decisions for Carlos
 
 1. ~~Which wave to approve first.~~ Resolved: W0 approved, then all four waves executed the same day
-   (see the wave log). Nothing read so far is published.
-2. **Push the local commits, or keep the read set local for now.** Seven commits on `main` (scan command,
-   this note, the research note, W0–W3) are unpushed. Pushing `main` deploys the site; none of the new
-   commits touch generated data, so a push would ship no visible change.
+   (see the wave log); W4 followed as the approved live-support group. Nothing read so far is published.
+2. ~~**Push the local commits, or keep the read set local for now.**~~ Resolved: pushed. `main` deploys
+   on push; none of the wave commits touch generated site data, so the pushes shipped no visible change.
 3. **"Other" triage appetite.** Draft below; a quick pass can move whole prefixes to a documented "never"
-   list, the alternative is leaving them in the catch-all.
+   list, the alternative is leaving them in the catch-all. Groups A and B applied; C ran as W4.
+4. **Next wave.** Nothing is queued: what remains is feature-tied (D with the spell work, E as a
+   reviewed pages-only pass, F with the sound feature, G on demand). The mining loop is at a natural
+   stop until one of those features is picked.
 
 ## "Other"-bucket triage — first pass applied, rest drafted
 
 The 609 unread "other" tables group more cleanly than their size suggests. First pass (groups A and B,
 applied 2026-10-18 in `bcc4f02` via `NEVER_TABLE_RULES` in `kb/src/client-scan.ts`): **216 tables**
-counted, named with a reason, and kept out of the candidate pool — unread candidates 883 → 667. The rest
-of the draft below still waits; per-table moves land in `DOMAIN_RULES` as they are confirmed.
+counted, named with a reason, and kept out of the candidate pool — unread candidates 883 → 667. Group C
+followed the same day as wave W4 (`3a1c007`), leaving **622 candidates**. The rest of the draft below
+still waits; per-table moves land in `DOMAIN_RULES` as they are confirmed.
 
 **A. Dead retail systems → "never" ✅ applied (200 tables).** Shipped in the client, not live in Forever:
 `Garr*` garrison (55), `Artifact*` (12), `Azerite*` (12), the Shadowlands set `Soulbind*`, `MawPower*`,
@@ -174,7 +185,7 @@ housing `House*`, `Decor*`, `Room*`, `ExteriorComponent*`, `SuperDistrict*`, `Ne
 **B. Client plumbing → "never" ✅ applied (16).** `GlobalStrings`, `Cfg_*`, `Locale`, `Hotfixes`,
 `StartupFiles`, `SharedString`, `SpamMessages`, `ServerMessages`, `BannedAddons`, `GameClockDebug`.
 
-**C. Live support tables → propose wave W4 (≈55).** Tables Forever's live realm plausibly uses today:
+**C. Live support tables → wave W4 ✅ executed (`3a1c007`, 45 of 47 read; the other two are not in this build).** Tables Forever's live realm plausibly uses today:
 banks and slots (`BankBagSlotPrices`, `BankTab`, `StableSlotPrices`), character creation pieces
 (`CharBaseInfo`, `CharBaseSection`, `CharHairGeosets`, `CharComponentTexture*`, `CharStartKit`,
 `Component*FileData`), guild tabards and emblems (`GuildEmblem`, `GuildTabard*`, `GuildShirt*`,
