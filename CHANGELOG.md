@@ -43,6 +43,10 @@ that has a zip in the repository. Earlier builds have none.
 - Structured output for `profession_path`, `recipe_thresholds`, `entity_relations`, `completion_progress`
   and `market_value`: the path, the ranges with each cost as numbers, the edges the text lists, one
   install's progress, and the market value with its history, under the same envelope.
+- Structured output for `gold_ledger` (one ledger per install, never merged, unrecorded as null) and
+  `world_map_near` (entrances and pins with distances, or the refused query with its reason). Both
+  formatters now write their text from a result object, so every one of the 25 tools answers with
+  structured content beside its text.
 - The MCP server's first resources, documents an assistant reads whole: `everloot://builds` (the build the
   game-file facts come from and the build registry, JSON), `everloot://methodology` (how uploads become
   facts) and `everloot://data-policy` (the policy in short, with the link to the full one). The two texts

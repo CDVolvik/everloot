@@ -13,7 +13,7 @@ test("every tool gets a parameter table in declaration order, with required flag
   expect(docs.find((d) => d.name === "item_page")!.playerData).toBe(true);
   expect(search.structured).toBe(true);
   expect(docs.find((d) => d.name === "item_page")!.structured).toBe(true);
-  expect(docs.find((d) => d.name === "gold_ledger")!.structured).toBe(false);
+  expect(docs.every((d) => d.structured)).toBe(true);
   expect(toolParams("everloot_plan")).toEqual([]);
 });
 

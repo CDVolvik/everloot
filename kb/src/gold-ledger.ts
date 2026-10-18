@@ -81,11 +81,33 @@ function matches(character: string, realm: string, rowCharacter: string, rowReal
   return clean(rowCharacter) === clean(character) && clean(rowRealm) === clean(realm);
 }
 
-export function formatGoldLedger(character: string, realm: string, snapshots: GoldSnapshot[], events: MoneyEvent[]): string {
+export type IncomeCategory = (typeof INCOME_CATEGORIES)[number];
+export type SpendingCategory = (typeof SPENDING_CATEGORIES)[number];
+
+/** One install's ledger. Null is unrecorded, never zero; a category absent from the map was never seen. */
+export type InstallLedger = {
+  installId: string;
+  peakCopper: number | null;
+  currentCopper: number | null;
+  income: Partial<Record<IncomeCategory, number>>;
+  spending: Partial<Record<SpendingCategory, number>>;
+  /** The sum of the income lines seen, or null when none was. */
+  incomeTotal: number | null;
+};
+
+export type GoldLedger = {
+  character: string;
+  realm: string;
+  /** False when no snapshot and no money event names this character: gold unrecorded. */
+  recorded: boolean;
+  ledgers: InstallLedger[];
+};
+
+/** The ledgers the text is written from: one per install, never merged. */
+export function goldLedger(character: string, realm: string, snapshots: GoldSnapshot[], events: MoneyEvent[]): GoldLedger {
   const name = character.trim();
   const where = realm.trim();
-  if (!name) return "Name a character.";
-  if (!where) return "Name a realm.";
+  if (!name || !where) return { character: name, realm: where, recorded: false, ledgers: [] };
 
   const snaps = snapshots.filter((row) =>
     row.installId.trim()
@@ -104,36 +126,57 @@ export function formatGoldLedger(character: string, realm: string, snapshots: Go
   );
   const displayCharacter = snaps[0]?.character ?? rows[0]?.character ?? name;
   const displayRealm = snaps[0]?.realm ?? rows[0]?.realm ?? where;
-  if (snaps.length === 0 && rows.length === 0) return `${displayCharacter} — ${displayRealm}\nGold unrecorded.`;
+  if (snaps.length === 0 && rows.length === 0) return { character: displayCharacter, realm: displayRealm, recorded: false, ledgers: [] };
 
   const installs = [...new Set([...snaps.map((row) => row.installId.trim()), ...rows.map((row) => row.installId.trim())])].sort();
-  const lines = [`${displayCharacter} — ${displayRealm}`, "Each install is its own ledger. Ledgers are not merged."];
-  for (const installId of installs) {
-    lines.push("", `Install ${installId}`);
+  const ledgers = installs.map((installId): InstallLedger => {
     const mine = snaps.filter((row) => row.installId.trim() === installId).sort((a, b) => b.seenAt.localeCompare(a.seenAt));
     const latest = mine[0];
     const peak = mine.reduce((max, row) => Math.max(max, row.peakCopper), 0);
-    if (!latest) lines.push("Peak gold unrecorded.");
-    else {
-      lines.push(`Peak gold: ${formatCopper(peak)}`);
-      lines.push(`Current gold: ${formatCopper(latest.currentCopper)}`);
-    }
-
     const sums = new Map<MoneyCategory, number>();
     for (const row of rows) {
       if (row.installId.trim() !== installId) continue;
       sums.set(row.category, (sums.get(row.category) ?? 0) + row.copper);
     }
-    const seenIncome: string[] = [];
-    const missedIncome: string[] = [];
-    let income = 0;
+    const income: Partial<Record<IncomeCategory, number>> = {};
+    let incomeTotal: number | null = null;
     for (const category of INCOME_CATEGORIES) {
       const amount = sums.get(category);
+      if (amount === undefined) continue;
+      income[category] = amount;
+      incomeTotal = (incomeTotal ?? 0) + amount;
+    }
+    const spending: Partial<Record<SpendingCategory, number>> = {};
+    for (const category of SPENDING_CATEGORIES) {
+      const amount = sums.get(category);
+      if (amount !== undefined) spending[category] = amount;
+    }
+    return { installId, peakCopper: latest ? peak : null, currentCopper: latest ? latest.currentCopper : null, income, spending, incomeTotal };
+  });
+  return { character: displayCharacter, realm: displayRealm, recorded: true, ledgers };
+}
+
+export function formatGoldLedger(character: string, realm: string, snapshots: GoldSnapshot[], events: MoneyEvent[]): string {
+  if (!character.trim()) return "Name a character.";
+  if (!realm.trim()) return "Name a realm.";
+  const ledger = goldLedger(character, realm, snapshots, events);
+  if (!ledger.recorded) return `${ledger.character} — ${ledger.realm}\nGold unrecorded.`;
+
+  const lines = [`${ledger.character} — ${ledger.realm}`, "Each install is its own ledger. Ledgers are not merged."];
+  for (const l of ledger.ledgers) {
+    lines.push("", `Install ${l.installId}`);
+    if (l.peakCopper === null || l.currentCopper === null) lines.push("Peak gold unrecorded.");
+    else {
+      lines.push(`Peak gold: ${formatCopper(l.peakCopper)}`);
+      lines.push(`Current gold: ${formatCopper(l.currentCopper)}`);
+    }
+
+    const seenIncome: string[] = [];
+    const missedIncome: string[] = [];
+    for (const category of INCOME_CATEGORIES) {
+      const amount = l.income[category];
       if (amount === undefined) missedIncome.push(INCOME_LABEL[category].toLowerCase());
-      else {
-        income += amount;
-        seenIncome.push(`${INCOME_LABEL[category]}: ${formatCopper(amount)}`);
-      }
+      else seenIncome.push(`${INCOME_LABEL[category]}: ${formatCopper(amount)}`);
     }
     if (seenIncome.length === 0) lines.push("Income is unrecorded.");
     else {
@@ -144,7 +187,7 @@ export function formatGoldLedger(character: string, realm: string, snapshots: Go
     const seenSpend: string[] = [];
     const missedSpend: string[] = [];
     for (const category of SPENDING_CATEGORIES) {
-      const amount = sums.get(category);
+      const amount = l.spending[category];
       if (amount === undefined) missedSpend.push(SPENDING_LABEL[category].toLowerCase());
       else seenSpend.push(`${SPENDING_LABEL[category]}: ${formatCopper(amount)}`);
     }
@@ -155,8 +198,8 @@ export function formatGoldLedger(character: string, realm: string, snapshots: Go
     }
 
     lines.push("Gameplay is unrecorded.");
-    if (latest && seenIncome.length > 0) {
-      lines.push(`Recorded income is ${formatCopper(income)}. Peak gold is ${formatCopper(peak)}. The difference is unrecorded.`);
+    if (l.peakCopper !== null && l.incomeTotal !== null) {
+      lines.push(`Recorded income is ${formatCopper(l.incomeTotal)}. Peak gold is ${formatCopper(l.peakCopper)}. The difference is unrecorded.`);
     }
   }
   return lines.join("\n");
