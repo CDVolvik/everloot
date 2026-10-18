@@ -123,6 +123,10 @@ logos, press kit, wallpapers), which the site does not use. The rules:
 - **Map pictures**: the game's own continent and zone map art from the map art tables, laid under
   our zone outlines. A held-back zone's picture shows only with spoilers on, and so does a continent's
   picture when that continent has a held-back zone, since it may be painted in.
+- **The `/database` pages** (decided 2026-10-18 by the maintainer): the icons of the spells an item is
+  created by or used in (from the client layer's relations) beside those relations, and pet family
+  icons (`CreatureFamily.IconFileID`) in the manifest. Item icons and names on these pages follow the
+  item tooltip rule above: only for items 3 installs reported, never in bulk and never for every id.
 
 **The talent catalog.** The talent calculator at `/tools/talents` uses our own catalog, read from
 the public client by a maintainer, not taken from any other site. The catalog is the trait node

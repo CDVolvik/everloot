@@ -14,6 +14,7 @@ import { loadSnapshotFile, refreshSnapshot, saveSnapshotFile } from "./ecosystem
 import { CASC_LIBRARY, extractTables, iconIds, NOT_IN_BUILD, openCdn, pinDefinitions, probeFiles } from "./client-extract.js";
 import { writeCatalogs } from "./client-catalog.js";
 import { buildClientAssets } from "./client-assets.js";
+import { CLIENT_EDGES } from "./client-layer-file.js";
 import { writeWorldMapData } from "./world-map-data.js";
 import { clientSnapshotName, readClientMeta, writeClientSnapshot } from "./client-snapshot.js";
 import { Curated, diffRaidBuffs, RaidBuffTable } from "./raid-buffs.js";
@@ -394,7 +395,9 @@ async function main(): Promise<number> {
       const buffSpells = existsSync(list) ? Curated.parse(parseYaml(readFileSync(list, "utf8"))).flatMap((c) => c.spells) : [];
       const itemsFile = flags.get("items");
       const items = itemsFile ? parseItemIds(readFileSync(itemsFile, "utf8")) : undefined;
-      const run = await buildClientAssets({ snapshotPath: args[0], outDir: flags.get("out") || "data/assets", source, buffSpells, items });
+      // The spells the committed client layer says items are created by or used in, for the /database pages.
+      const relationSpells = CLIENT_EDGES.filter((e) => e.toKind === "spell").map((e) => e.toId);
+      const run = await buildClientAssets({ snapshotPath: args[0], outDir: flags.get("out") || "data/assets", source, buffSpells, relationSpells, items });
       for (const n of run.notes) console.log(n);
       for (const s of run.manifest.skippedMaps.slice(0, 10)) console.log(`map skipped: ${s}`);
       // Printed before the public folder line: the upload script reads both.

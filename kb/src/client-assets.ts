@@ -118,8 +118,13 @@ export const AssetManifest = z.object({
   })).default({}),
   /** By profession name in lower case: SkillLine rows of the profession and secondary skill categories. */
   professions: z.record(z.string(), z.object({ skillLineId: z.number().int(), name: z.string(), icon: z.string().nullable() })).default({}),
-  /** Spell id -> icon name, for the raid buff list's spells (SpellMisc.SpellIconFileDataID). */
+  /**
+   * Spell id -> icon name (SpellMisc.SpellIconFileDataID): the raid buff list's spells, and the spells the client
+   * layer's relations point at (created by, reagent for) for the /database pages.
+   */
   spellIcons: z.record(z.string(), z.string()).default({}),
+  /** Pet family id -> icon name (CreatureFamily.IconFileID). */
+  familyIcons: z.record(z.string(), z.string()).default({}),
   /** By UiMap id: the map's own picture and the world rectangle it covers, so the site lays it under the zone outlines. */
   maps: z.record(z.string(), File.extend({
     /** The same picture at most MAP_SMALL_MAX px, for the zoomed-out view; null if it could not be made. */
@@ -226,8 +231,11 @@ export interface AssetRun {
 
 interface Fetched { status: "ok" | "encrypted" | "absent" | "failed"; buffer?: Buffer }
 
-/** What to extract beyond the talent catalog: the raid buff list's spell ids (for their icons), and an item allowlist (all items when absent). */
-export interface AssetScope { buffSpells?: number[]; items?: ReadonlySet<number> }
+/**
+ * What to extract beyond the talent catalog: the raid buff list's spell ids and the spells the client layer's
+ * relations point at (for their icons), and an item allowlist (all items when absent).
+ */
+export interface AssetScope { buffSpells?: number[]; relationSpells?: number[]; items?: ReadonlySet<number> }
 
 /** Reads the tables from a snapshot file, then builds the assets. */
 export async function buildClientAssets(opts: { snapshotPath: string; outDir: string; source: TableSource; convert?: Converter } & AssetScope): Promise<AssetRun> {
@@ -240,7 +248,7 @@ export async function buildClientAssets(opts: { snapshotPath: string; outDir: st
     return cache.get(table);
   };
   const build: BuildStamp = { product: meta.product, buildId: meta.buildId, version: meta.version, buildConfig: meta.buildConfig, definitions: meta.definitions, extractedAt: meta.extractedAt };
-  return buildAssetsFromTables({ get, build, outDir: opts.outDir, source: opts.source, convert: opts.convert, buffSpells: opts.buffSpells, items: opts.items });
+  return buildAssetsFromTables({ get, build, outDir: opts.outDir, source: opts.source, convert: opts.convert, buffSpells: opts.buffSpells, relationSpells: opts.relationSpells, items: opts.items });
 }
 
 export async function buildAssetsFromTables(opts: { get: TableReader; build: BuildStamp; outDir: string; source: TableSource; convert?: Converter } & AssetScope): Promise<AssetRun> {
@@ -393,12 +401,16 @@ export async function buildAssetsFromTables(opts: { get: TableReader; build: Bui
     if (num(row.SpellIconFileID) > 0) professionIcon.set(key, num(row.SpellIconFileID));
   }
 
-  // Raid buff spells: their icon, for the raid builder's rows.
+  // Spell icons: the raid builder's buff spells, and the spells items are created by or used in on the /database pages.
   const spellIconOf = new Map<number, number>();
-  for (const id of new Set(opts.buffSpells ?? [])) {
+  for (const id of new Set([...(opts.buffSpells ?? []), ...(opts.relationSpells ?? [])])) {
     const file = num(misc.get(id)?.SpellIconFileDataID);
     if (file > 0) spellIconOf.set(id, file);
   }
+
+  // Pet families: their icon.
+  const familyIconOf = new Map<number, number>();
+  for (const row of list(get("CreatureFamily"))) if (num(row.IconFileID) > 0) familyIconOf.set(num(row.ID), num(row.IconFileID));
 
   // Items: tooltip facts for every named item (or the allowlist), and their icons.
   const itemSet = get("ItemSparse") && get("Item") ? buildItemSet(get, opts.items) : null;
@@ -406,7 +418,7 @@ export async function buildAssetsFromTables(opts: { get: TableReader; build: Bui
   // Icons: one file per file data id, whoever asks for it.
   const wantedIcons = new Set<number>([
     ...iconIdOf.values(), ...classIcon.values(), ...[...treeIcons.values()].flat(), ...professionIcon.values(),
-    ...spellIconOf.values(), ...(itemSet?.iconOf.values() ?? []),
+    ...spellIconOf.values(), ...familyIconOf.values(), ...(itemSet?.iconOf.values() ?? []),
   ].filter((id) => id > 0));
   // Not listed in the manifest: pages find an icon by the name an entry gives, and the list would be thousands long.
   const icons: Record<string, z.infer<typeof File>> = {};
@@ -431,6 +443,11 @@ export async function buildAssetsFromTables(opts: { get: TableReader; build: Bui
   for (const [id, file] of spellIconOf) {
     const name = iconName(file);
     if (name) spellIcons[String(id)] = name;
+  }
+  const familyIcons: AssetManifest["familyIcons"] = {};
+  for (const [id, file] of familyIconOf) {
+    const name = iconName(file);
+    if (name) familyIcons[String(id)] = name;
   }
 
   // Item shards, into the private folder: they hold every named item, released or not, so they never go to
@@ -548,7 +565,7 @@ export async function buildAssetsFromTables(opts: { get: TableReader; build: Bui
   const manifest = AssetManifest.parse({
     schema: ASSET_SCHEMA, label: LABEL,
     build: { product: build.product, buildId: build.buildId, version: build.version, buildConfig: build.buildConfig, extractedAt: new Date().toISOString() },
-    spells, frames, backgrounds, classes, professions, spellIcons, maps,
+    spells, frames, backgrounds, classes, professions, spellIcons, familyIcons, maps,
     counts: {
       ...stats, tooltipsResolved: resolved, tooltipsUnresolved: unresolvedCount, tooltipsEmpty: empty,
       itemsRecorded: items?.count ?? 0, itemsWithIcon, mapsExtracted: Object.keys(maps).length, mapsSkipped: skippedMaps.length,
@@ -565,7 +582,7 @@ export async function buildAssetsFromTables(opts: { get: TableReader; build: Bui
     `icons: ${c.iconsExtracted} extracted, ${c.iconsEncrypted} encrypted skipped, ${c.iconsAbsent} not in build, ${c.iconsFailed} failed`,
     `frame pieces: ${c.framesExtracted} extracted, ${c.framesEncrypted} encrypted skipped, ${c.framesAbsent} not in build, ${c.framesFailed} failed`,
     `tooltips: ${c.tooltipsResolved} fully resolved, ${c.tooltipsUnresolved} with placeholders, ${c.tooltipsEmpty} without text`,
-    `classes: ${Object.keys(classes).length}, professions: ${Object.keys(professions).length}, raid buff spell icons: ${Object.keys(spellIcons).length}`,
+    `classes: ${Object.keys(classes).length}, professions: ${Object.keys(professions).length}, spell icons: ${Object.keys(spellIcons).length}, pet family icons: ${Object.keys(familyIcons).length}`,
     items ? `items: ${c.itemsRecorded} recorded in ${Object.keys(items.shards).length} shards (private folder), ${c.itemsWithIcon} with an icon` : "items: no item tables in the snapshot",
     `maps: ${c.mapsExtracted} pictures, ${c.mapsSkipped} skipped`,
   ];

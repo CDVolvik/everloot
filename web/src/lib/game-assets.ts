@@ -39,6 +39,7 @@ const site = z.object({
   })).default({}),
   professions: z.record(z.string(), z.object({ name: z.string(), icon: assetPath.nullable() })).default({}),
   spellIcons: z.record(z.string(), assetPath).default({}),
+  familyIcons: z.record(z.string(), assetPath).default({}),
   maps: z.record(z.string(), z.object({
     file: assetPath, small: z.object({ file: assetPath }).nullable().default(null),
     kind: z.enum(["continent", "zone"]), name: z.string(), continentId: z.number().int(), heldBack: z.boolean(), rect: Rect,
@@ -62,8 +63,10 @@ export interface SiteAssets {
   classes: Map<string, { name: string; icon: string | null; trees: { name: string | null; icon: string | null }[] }>;
   /** By profession name in lower case; only professions that have an icon. */
   professions: Map<string, { name: string; icon: string }>;
-  /** Spell id -> icon URL. */
+  /** Spell id -> icon URL: raid buff spells, and the spells items are created by or used in. */
   spellIcons: Map<number, string>;
+  /** Pet family id -> icon URL. */
+  familyIcons: Map<number, string>;
   maps: MapArt[];
 }
 
@@ -95,10 +98,12 @@ export function parseSiteManifest(json: unknown, base: string): SiteAssets | nul
   for (const [key, p] of Object.entries(m.professions)) if (p.icon) professions.set(key.toLowerCase(), { name: p.name, icon: iconUrl(base, p.icon) });
   const spellIcons = new Map<number, string>();
   for (const [id, name] of Object.entries(m.spellIcons)) if (/^\d+$/.test(id)) spellIcons.set(Number(id), iconUrl(base, name));
+  const familyIcons = new Map<number, string>();
+  for (const [id, name] of Object.entries(m.familyIcons)) if (/^\d+$/.test(id)) familyIcons.set(Number(id), iconUrl(base, name));
   return {
     base, version: m.build.version, label: m.label,
     classes: new Map(Object.entries(m.classes).map(([key, c]) => [key.toLowerCase(), { name: c.name, icon: icon(c.icon), trees: c.trees.map((t) => ({ name: t.name, icon: icon(t.icon) })) }])),
-    professions, spellIcons,
+    professions, spellIcons, familyIcons,
     maps: Object.entries(m.maps).filter(([id]) => /^\d+$/.test(id)).map(([id, a]) => ({
       uiMapId: Number(id), kind: a.kind, name: a.name, continentId: a.continentId, heldBack: a.heldBack,
       url: assetUrl(base, a.file), smallUrl: a.small ? assetUrl(base, a.small.file) : null, rect: a.rect,

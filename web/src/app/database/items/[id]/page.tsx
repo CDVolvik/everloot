@@ -45,8 +45,13 @@ export default async function ItemPage(props: Props) {
   // The game file tooltip only for an item players have reported: any id can be typed into the URL, and
   // an item found only in the files may be unreleased (the spoiler rule in docs/DATA_POLICY.md).
   const seen = !facts.unreachable && Boolean(page.name || page.drops.length || page.pins.length);
-  const assets = seen ? await loadSiteAssets() : null;
-  const tip = (await loadItemTips(assets, [itemId])).get(itemId);
+  // The manifest is read only when there is art to show: the item's tooltip (players reported it) or the icon of
+  // a spell the game files say makes or uses it. An id nobody reported and nothing links to reads nothing.
+  const spellLinked = edges.client.some((e) => e.fromKind === "item" && e.fromId === itemId && e.toKind === "spell");
+  const assets = seen || spellLinked ? await loadSiteAssets() : null;
+  const tip = seen ? (await loadItemTips(assets, [itemId])).get(itemId) : undefined;
+  const spellIcon = (spellId: number) => assets?.spellIcons.get(spellId);
+  const relationIcons = edges.client.some((e) => e.fromKind === "item" && e.fromId === itemId && e.toKind === "spell" && spellIcon(e.toId));
   const category = categoryOf(CLIENT_TAXONOMY, itemId);
 
   return (
@@ -126,14 +131,14 @@ export default async function ItemPage(props: Props) {
       </section>
       )}
 
-      <EntityRelations kind="item" id={itemId} observed={edges.observed} client={edges.client} skip={["dropped_by"]} />
+      <EntityRelations kind="item" id={itemId} observed={edges.observed} client={edges.client} skip={["dropped_by"]} spellIcon={spellIcon} />
 
       <p className="text-sm text-muted">
         <Link href="/database/drops" className="text-accent hover:underline underline-offset-4">
           All public loot observations
         </Link>
       </p>
-      {assets && tip && <GameCredit version={assets.version} label={assets.label} />}
+      {assets && (tip || relationIcons) && <GameCredit version={assets.version} label={assets.label} />}
       {!facts.unreachable && (page.name !== null || page.drops.length > 0) && <AdSlot slot="inContent" />}
     </article>
   );

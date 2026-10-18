@@ -207,6 +207,21 @@ test("the site's other art: class, tree, profession, buff and item icons, item s
   expect(jobs.find((j) => /talents-node-circle-green/.test(j.dst))?.quality).toBeUndefined();
 });
 
+test("database art: icons of the spells the relations point at and of pet families, by id", async () => {
+  const outDir = mkdtempSync(join(tmpdir(), "everloot-assets-"));
+  const withFamily: Record<string, Rows> = {
+    ...site,
+    CreatureFamily: t([{ ID: 1, Name_lang: "Wolf", IconFileID: 6007 }, { ID: 2, Name_lang: "Cat", IconFileID: 6008 }, { ID: 28, Name_lang: "Remote Control", IconFileID: 0 }]),
+  };
+  const src: TableSource = { ...source([]), fileStatus: (id) => ({ ...siteStatus, 6007: "present", 6008: "encrypted" } as Record<number, FileStatus>)[id] ?? "absent" };
+  // 1001 is a talent's spell with a readable icon; 6673 a buff spell; 9999 has no SpellMisc row.
+  const { manifest } = await buildAssetsFromTables({ get: (n) => withFamily[n], build, outDir, source: src, convert: fakeConvert, buffSpells: [6673], relationSpells: [1001, 1002, 9999] });
+  // 1002's icon is encrypted, so it gets none; a spell with no icon row is left out.
+  expect(manifest.spellIcons).toEqual({ "1001": "5001.webp", "6673": "6004.webp" });
+  // The cat's icon is encrypted and Remote Control has none.
+  expect(manifest.familyIcons).toEqual({ "1": "6007.webp" });
+});
+
 test("a map with an encrypted tile is skipped with the reason, never drawn with a hole", async () => {
   const outDir = mkdtempSync(join(tmpdir(), "everloot-assets-"));
   const src: TableSource = { ...source([]), fileStatus: (id) => (id === 7001 ? "encrypted" : siteStatus[id] ?? "absent") };
