@@ -107,3 +107,23 @@ test("a post whose stored link was not a web link shows no link, only a plain no
   expect(html).not.toContain("Read the original");
   timeline.entries = entries;
 });
+
+test("with the game art, a spell a post names gets its icon, its tooltip and a link to where the site shows it", async () => {
+  const { siteManifest } = await import("@/lib/game-assets.fixture");
+  const base = "https://assets.example.test/wow_classic_beta-70450-84bea423";
+  vi.stubEnv("NEXT_PUBLIC_GAME_ASSETS_URL", base);
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json(siteManifest)));
+  timeline.entries = [{ ...entries[1], excerpt: "Battle Shout now reaches the whole raid." }];
+  const html = await page();
+  expect(html).toMatch(/data-spell-tip[^>]*><img[^>]*icons\/8001\.webp[^>]*alt=""[^>]*\/?><a href="\/tools\/raid"[^>]*aria-describedby="[^"]+"[^>]*>Battle Shout<\/a>/);
+  expect(html).toContain("Battle Shout. Raises attack power by 20 for 2 min. found in game files, unconfirmed · build 1.60.1.70450.");
+  expect(html).toContain("</span></span> now reaches the whole raid.");
+  expect(html).toContain("Icons, tooltip text and loading screen art from game build 1.60.1.70450");
+  timeline.entries = entries;
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
+  // Without the asset URL the same excerpt is plain text.
+  timeline.entries = [{ ...entries[1], excerpt: "Battle Shout now reaches the whole raid." }];
+  expect(await page()).toContain(">Battle Shout now reaches the whole raid.</p>");
+  timeline.entries = entries;
+});

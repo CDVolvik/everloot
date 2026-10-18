@@ -231,6 +231,92 @@ test("a map with an encrypted tile is skipped with the reason, never drawn with 
   expect(manifest.counts.mapsSkipped).toBe(2);
 });
 
+// Banner art: a continent and a dungeon with loading screens (the dungeon's picture is encrypted), two
+// races (one unannounced, left out), one faction emblem, the 1x logo only, and a buff spell's tooltip.
+const banners: Record<string, Rows> = {
+  ...site,
+  Map: t([
+    { ID: 0, MapName_lang: "Eastern Kingdoms", InstanceType: 0, LoadingScreenID: 4 },
+    { ID: 36, MapName_lang: "Deadmines", InstanceType: 1, LoadingScreenID: 142, CorpseMapID: 0, Corpse: [-11000, 1500] },
+    { ID: 2789, MapName_lang: "New Raid", InstanceType: 2, LoadingScreenID: 4, CorpseMapID: 0, Corpse: [100, 200] },
+    { ID: 70, MapName_lang: "Uldaman", InstanceType: 1, LoadingScreenID: 144, CorpseMapID: 0, Corpse: [1, 1] },
+  ]),
+  LoadingScreens: t([{ ID: 4, MainImageFileDataID: 8000 }, { ID: 142, NarrowScreenFileDataID: 8001 }, { ID: 144, NarrowScreenFileDataID: 8002 }]),
+  ChrRaces: t([{ ID: 1, ClientFileString: "Human", Name_lang: "Human" }, { ID: 10, ClientFileString: "BloodElf", Name_lang: "Blood Elf" }]),
+  SpellName: t([...tables.SpellName.values(), { ID: 6673, Name_lang: "Battle Shout" }]),
+  Spell: t([...tables.Spell.values(), { ID: 6673, Description_lang: "Raises attack power by $s1." }]),
+  SpellEffect: t([...tables.SpellEffect.values(), { ID: 9, SpellID: 6673, DifficultyID: 0, EffectIndex: 0, EffectBasePoints: 20 }]),
+  UiTextureAtlas: t([{ ID: 1, FileDataID: 9000 }, { ID: 2, FileDataID: 9100 }]),
+  UiTextureAtlasElement: t([
+    ...tables.UiTextureAtlasElement.values(),
+    { ID: 20, Name: "raceicon128-human-female" }, { ID: 21, Name: "raceicon128-human-male" }, { ID: 22, Name: "raceicon128-bloodelf-male" },
+    { ID: 23, Name: "AllianceEmblem" }, { ID: 24, Name: "logo-wow-forever" },
+  ]),
+  UiTextureAtlasMember: t([
+    ...tables.UiTextureAtlasMember.values(),
+    ...[20, 21, 22, 23].map((el, i) => ({ ID: 10 + i, UiTextureAtlasID: 2, UiTextureAtlasElementID: el, CommittedLeft: i * 128, CommittedTop: 0, CommittedRight: i * 128 + 128, CommittedBottom: 128 })),
+    { ID: 20, UiTextureAtlasID: 2, UiTextureAtlasElementID: 24, CommittedLeft: 0, CommittedTop: 128, CommittedRight: 320, CommittedBottom: 448 },
+  ]),
+};
+const bannerStatus: Record<number, FileStatus> = { ...siteStatus, 8000: "present", 8001: "encrypted", 8002: "present", 9100: "present" };
+/** A classic loading screen's file: a BLP2 header saying 2048 x 2048. */
+const classic = Buffer.alloc(148);
+classic.write("BLP2", 0, "latin1");
+classic.writeUInt32LE(2048, 12);
+classic.writeUInt32LE(2048, 16);
+
+test("banner art: loading screens per map, race and faction emblems, the game's logo and buff tooltips", async () => {
+  const outDir = mkdtempSync(join(tmpdir(), "everloot-assets-"));
+  const jobs: Parameters<Converter>[0] = [];
+  const convert: Converter = async (batch) => { jobs.push(...batch); return fakeConvert(batch); };
+  const plain = source([]);
+  const src: TableSource = {
+    ...plain, fileStatus: (id) => bannerStatus[id] ?? "absent",
+    readFile: async (id) => (id === 8002 ? { cKey: "k", buffer: classic, encryptedBlocks: 0 } : plain.readFile!(id)),
+  };
+  const { manifest, dir, checksums } = await buildAssetsFromTables({ get: (n) => banners[n], build, outDir, source: src, convert, buffSpells: [6673] });
+  expect(AssetManifest.parse(JSON.parse(readFileSync(join(dir, "manifest.json"), "utf8")))).toEqual(manifest);
+
+  // Two maps share one picture, converted once; the later raid is held back; the encrypted picture is skipped.
+  expect(manifest.loadingScreens["0"]).toMatchObject({ file: "loading/8000.webp", small: { file: "loading/8000-small.webp" }, kind: "continent", name: "Eastern Kingdoms", heldBack: false, loadingScreenId: 4 });
+  expect(manifest.loadingScreens["2789"]).toMatchObject({ file: "loading/8000.webp", kind: "raid", heldBack: true });
+  expect(manifest.loadingScreens["36"]).toBeUndefined();
+  expect(manifest.skippedBanners).toContain("Deadmines (36): picture file 8001 is encrypted");
+  // The newer picture loses its empty bands; the classic one is cut to the scene below its logo and stretched back to 4:3.
+  expect(jobs.filter((j) => /loading/.test(j.dst)).map((j) => [j.dst.split(/[\\/]/).pop(), j.max, j.quality, j.trim, j.crop, j.scaleX])).toEqual([
+    ["8000.webp", 1600, 80, true, null, null], ["8000-small.webp", 640, 80, true, null, null],
+    ["8002.webp", 1600, 80, false, [0, 512, 2048, 1618], 4 / 3], ["8002-small.webp", 640, 80, false, [0, 512, 2048, 1618], 4 / 3],
+  ]);
+  expect(manifest.loadingScreens["70"]).toMatchObject({ file: "loading/8002.webp", kind: "dungeon", heldBack: false });
+
+  // Only the announced race; its icons and the faction emblem are cut out of their atlas; the missing emblem is reported.
+  expect(manifest.races).toEqual({
+    human: { name: "Human", female: { file: "emblems/raceicon128-human-female.webp", width: 128, height: 128 }, male: { file: "emblems/raceicon128-human-male.webp", width: 128, height: 128 } },
+  });
+  expect(manifest.factions).toEqual({ alliance: { file: "emblems/AllianceEmblem.webp", width: 128, height: 128 } });
+  expect(manifest.skippedBanners).toContain("HordeEmblem: not in this build's atlas tables");
+  expect(JSON.stringify(manifest)).not.toMatch(/bloodelf|Blood Elf/i);
+
+  // The sharper logo is not in the build, so the 1x piece is used, with the file it came from.
+  expect(manifest.logo).toEqual({ file: "logo/logo-wow-forever.webp", width: 320, height: 320, element: "logo-wow-forever", fileDataId: 9100 });
+  expect(jobs.find((j) => /logo-wow-forever/.test(j.dst))).toMatchObject({ crop: [0, 128, 320, 448], quality: 90 });
+  expect(manifest.counts).toMatchObject({ loadingScreensExtracted: 3, loadingScreensSkipped: 1, emblemsExtracted: 3, logoExtracted: 1 });
+
+  expect(manifest.spellTips["6673"]).toEqual({ name: "Battle Shout", description: { text: "Raises attack power by 20.", unresolved: [] } });
+  expect(Object.keys(checksums.files).filter((f) => /^(loading|emblems|logo)\//.test(f))).toEqual([
+    "emblems/AllianceEmblem.webp", "emblems/raceicon128-human-female.webp", "emblems/raceicon128-human-male.webp",
+    "loading/8000-small.webp", "loading/8000.webp", "loading/8002-small.webp", "loading/8002.webp", "logo/logo-wow-forever.webp",
+  ]);
+});
+
+test("a build without the logo has none, and nothing stands in for it", async () => {
+  const outDir = mkdtempSync(join(tmpdir(), "everloot-assets-"));
+  const { manifest, notes } = await buildAssetsFromTables({ get: (n) => site[n], build, outDir, source: { ...source([]), fileStatus: (id) => siteStatus[id] ?? "absent" }, convert: fakeConvert });
+  expect(manifest.logo).toBeNull();
+  expect(manifest.loadingScreens).toEqual({});
+  expect(notes).toContain("logo: none in this build's files (no stand-in is used)");
+});
+
 test("it refuses a snapshot that lacks the atlas tables", async () => {
   const outDir = mkdtempSync(join(tmpdir(), "everloot-assets-"));
   await expect(buildAssetsFromTables({ get: (n) => (n === "UiTextureAtlas" ? undefined : tables[n]), build, outDir, source: source([]), convert: fakeConvert }))

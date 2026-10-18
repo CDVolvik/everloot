@@ -81,8 +81,9 @@ and observed in play.
 **Blizzard's icons, tooltip text and window frame.** Decided 2026-10-18: our tools may show
 Blizzard's own talent and spell icons, the spell and talent tooltip text, and interface frame
 textures that make a tool look like the in-game window. Wowhead and most calculators do the same.
-Neither this decision nor the extension below covers Blizzard's marketing art (key art,
-logos, press kit, wallpapers), which the site does not use. The rules:
+Neither this decision nor the extensions below cover Blizzard's marketing art (key art, marketing
+logos, press kit, wallpapers), which the site does not use. The game's own logo, read from its
+interface files, is a different thing and is covered by the second extension. The rules:
 
 - **Only from unencrypted files** in the public client, read the same way as above. Nothing that
   needs a key.
@@ -127,6 +128,31 @@ logos, press kit, wallpapers), which the site does not use. The rules:
   created by or used in (from the client layer's relations) beside those relations, and pet family
   icons (`CreatureFamily.IconFileID`) in the manifest. Item icons and names on these pages follow the
   item tooltip rule above: only for items 3 installs reported, never in bulk and never for every id.
+
+**Second extension: loading screens, race and faction emblems, spell tooltips and the game's logo.**
+Decided 2026-10-18. Carlos: "Approved next: (1) loading-screen art as page banners (zones, dungeons,
+raids; e.g. map zone panels, raid builder, patch notes header), (2) race and faction emblems (the
+race x class table on /wow-forever, census later), (3) spell/ability icons with hover tooltips where
+spells are named (patch notes /changes, raid builder buffs, talent pages already have them), (4) a
+launch banner at the top of the home page: the game's WoW: Forever logo from the game's own files
+plus our existing countdown plus loading-screen art, with 'Not affiliated with or endorsed by
+Blizzard Entertainment' visible on the banner itself." And: "Glint (mascot) is NOT part of this
+batch." The rules above also cover:
+
+- **Loading screens**: the picture each continent, dungeon and raid shows while it loads (`Map`,
+  `LoadingScreens`), as page banners and beside dungeon and raid entrances on the map. A dungeon or
+  raid added after the original world (a later map id) has its picture shown only with spoilers on.
+- **Race and faction emblems**: the client's race icons and the Alliance and Horde emblems, named
+  pieces of its interface atlases. Only the races Blizzard has announced for WoW: Forever are
+  extracted.
+- **Spell tooltips where a spell is named**: the raid builder's buffs, and the talents and raid buffs
+  a patch note names, with the same icon and tooltip text as the talent calculator.
+- **The game's own WoW: Forever logo**: the logo piece in the client's interface atlas
+  (`logo-wow-forever`), read like the other pieces. It appears only on the home page's launch
+  banner, and only with "Not affiliated with or endorsed by Blizzard Entertainment" visible on the
+  banner itself; the game's name beside it is plain text. It is never used to suggest that Blizzard
+  made, approves or supports Everloot. No logo in the files means no banner: Blizzard's marketing
+  logos and art are still never used, not even as a stand-in.
 
 **The talent catalog.** The talent calculator at `/tools/talents` uses our own catalog, read from
 the public client by a maintainer, not taken from any other site. The catalog is the trait node

@@ -400,6 +400,7 @@ async function main(): Promise<number> {
       const run = await buildClientAssets({ snapshotPath: args[0], outDir: flags.get("out") || "data/assets", source, buffSpells, relationSpells, items });
       for (const n of run.notes) console.log(n);
       for (const s of run.manifest.skippedMaps.slice(0, 10)) console.log(`map skipped: ${s}`);
+      for (const s of run.manifest.skippedBanners.slice(0, 10)) console.log(`banner art skipped: ${s}`);
       // Printed before the public folder line: the upload script reads both.
       if (run.privateDir) console.log(`private -> ${run.privateDir}`);
       if (run.manifest.missingFrames.length) console.log(`frame pieces not available: ${run.manifest.missingFrames.join(", ")}`);

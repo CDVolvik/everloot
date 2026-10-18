@@ -5,12 +5,14 @@ maintainer does to put them on the site. The rules are in
 [DATA_POLICY](DATA_POLICY.md) ("Blizzard's icons, tooltip text and window frame"). In short: only
 from unencrypted files in the public client, read by our extractor; kept in asset storage with a
 build stamp, **never in git**; credited on every page that shows them; pages only, never the API,
-the MCP server or the data downloads. Blizzard's marketing art (key art, logos, press kit,
+the MCP server or the data downloads. Blizzard's marketing art (key art, marketing logos, press kit,
 wallpapers) is not part of this and is never used.
 
 The talent art was decided first; item, class, buff and profession icons, item tooltip facts and map
-pictures were approved on 2026-10-18 (DATA_POLICY, "Extension"). The code stays off on any deployment
-where the variables below are unset.
+pictures were approved on 2026-10-18 (DATA_POLICY, "Extension"). Loading screens, race and faction
+emblems, spell tooltips where a spell is named and the game's own WoW: Forever logo were approved the
+same day (DATA_POLICY, "Second extension", which quotes Carlos's decision). The code stays off on any
+deployment where the variables below are unset.
 
 The site works without any of this. With `NEXT_PUBLIC_GAME_ASSETS_URL` unset, or a manifest that
 cannot be read in 2.5 seconds, every page shows the text it always had, with no error, no empty
@@ -26,12 +28,21 @@ variables (`GAME_DATA_*`), item links stay plain while the other art still shows
 | `/database/items/<id>` | The item's tooltip as a card, once players have reported the item; the icon of each spell that creates or uses the item, beside that relation |
 | `/database/items/<class>/<subclass>` | Icon and game file name of each listed item players have reported; other rows stay plain |
 | `/tools/professions` | Profession icons as a picker |
-| `/tools/raid` | Class, talent tree and buff icons |
-| `/map` | The game's own continent and zone pictures under the zone outlines, with a switch to hide them |
-| `/` | Class and profession icons, linking to the talent calculator and the profession hubs |
+| `/tools/raid` | Class, talent tree and buff icons, each buff's tooltip on hover and keyboard focus, and Molten Core's loading screen as the banner |
+| `/map` | The game's own continent and zone pictures under the zone outlines, with a switch to hide them; the continent's loading screen as the banner; each dungeon's and raid's loading screen, small, beside its entrance |
+| `/changes` | Kalimdor's loading screen as the banner; a talent or raid buff a post names gets its icon, its tooltip and a link to the page that shows it |
+| `/` | The launch banner: the game's own WoW: Forever logo over Eastern Kingdoms' loading screen, the launch countdown (moved from the hero onto the banner), and "Not affiliated with or endorsed by Blizzard Entertainment" on the banner. Class and profession icons, linking to the talent calculator and the profession hubs |
+| `/wow-forever` | Race and faction emblems beside the race and faction names in the race and class table |
 
 Every icon sits beside the name it already had, so it is marked decorative (`alt=""`,
-`aria-hidden`). An item's tooltip text is also its link's description for screen readers.
+`aria-hidden`). An item's or spell's tooltip text is also its description for screen readers. Banners
+and the logo are decorative too: the page title, the game's name and the disclaimer are real text,
+never part of a picture.
+
+The launch banner is drawn only when the upload has the game's own logo. Without it there is no
+banner, and nothing stands in for it: Blizzard's marketing logos are not used. Spell names in patch
+notes are matched only for names of two words or more that stand for one spell the site shows
+(`web/src/lib/spell-mentions.ts`), so a plain word like "Precision" is never taken for a talent.
 
 Spoilers follow the same rule as everywhere else:
 
@@ -42,6 +53,9 @@ Spoilers follow the same rule as everywhere else:
 - **Maps.** A held-back zone's picture shows only with spoilers on. A continent's own picture may
   show a held-back zone painted in, so on a continent that has one (by the map file or by the
   upload's own marks) it also waits for spoilers. Without it, the zone pictures show.
+- **Loading screens.** A dungeon or raid with a map id after the original world's (above 533,
+  Naxxramas) is marked held back, and its picture shows only with spoilers on. The banners the pages
+  use (Eastern Kingdoms, Kalimdor, Molten Core) are all original maps.
 
 ## What the extractor makes
 
@@ -57,13 +71,18 @@ It writes two folders under `kb/data/assets/` (gitignored, like all of `kb/data/
 ```
 <product>-<build>-<config>/            -> the PUBLIC bucket
   manifest.json            build stamp, label, counts, one entry per talent, class, profession,
-                           buff spell and map; file names and sizes, no hashes, no item data
+                           buff spell (icon and tooltip), map, loading screen, race and faction, and the
+                           logo; file names and sizes, no hashes, no item data
   icons/<fileDataID>.webp  one icon per icon file (talents, items, classes, trees, professions, buffs),
                            64 px as the game stores it
   frames/<name>.webp       node frames (round, square, choice; grey, green, gold), connector arrows,
                            the row gate piece and one background per spec
   maps/<uiMapID>.webp      one picture per continent and zone, at the game's base zoom,
   maps/<uiMapID>-small.webp  and a copy at most 320 px for the zoomed-out view
+  loading/<fileDataID>.webp  one loading screen picture, at most 1600 px, whichever maps show it,
+  loading/<fileDataID>-small.webp  and a copy at most 640 px for phones and thumbnails
+  emblems/<name>.webp      race icons (raceicon128-<race>-<female|male>) and faction emblems, by their atlas name
+  logo/<name>.webp         the game's own WoW: Forever logo (logo-wow-forever-2x, or the 1x piece)
   checksums.json           size and sha256 of every file above; the upload script checks it, it is
                            not uploaded
 
@@ -99,6 +118,21 @@ How it works, and what it will not do:
   it lines up with the zone outlines. Phased art is left out. A map with a missing, encrypted or
   unreadable tile is skipped and listed in `skippedMaps`, never drawn with a hole. The map page draws
   only the pictures in view, from their small copies until the reader zooms in.
+- **Loading screens.** `Map.LoadingScreenID` names each map's row in `LoadingScreens`; the widest
+  picture the row names is used (`MainImageFileDataID`, else the 16:9, 16:10 and 4:3 files). Only
+  continents, and dungeons and raids entered somewhere on a continent (the map layer's rule for
+  entrances), are made. A picture shared by several maps is converted once. Lossy WebP, quality 80.
+- **Race and faction emblems.** The client's race icons are named pieces of its interface atlas
+  (`raceicon128-<race>-<female|male>`); the race name in the piece is ChrRaces' `ClientFileString`
+  in lower case, except Undead (`Scourge`, piece `undead`). Only the races Blizzard has announced for
+  WoW: Forever are extracted (`RACE_ATLAS` in `kb/src/assets/banners.ts`). The faction emblems are
+  `AllianceEmblem` and `HordeEmblem`. Lossless, like the frame pieces.
+- **The logo.** `logo-wow-forever-2x` (640 px), or `logo-wow-forever` (320 px) if the sharper piece
+  is missing or unreadable, cut out of its atlas file like a frame piece. The manifest records the
+  atlas element and file data id. If neither is in the build, the manifest's `logo` is null, the
+  console says so, and the home page shows no launch banner. Nothing stands in for it.
+- **Buff tooltips.** For the raid buff list's spells, `Spell.Description_lang` resolved the same way
+  as the talent tooltips, into `spellTips`.
 - **Tooltip text.** `Spell.Description_lang` with its `$` variables resolved from `SpellEffect`,
   `SpellDuration`, `SpellAuraOptions` and other spells' rows: `$s1`-`$s3`, `$m`, `$M`, `$d`, `$t`,
   `$o`, `$a`, `$x`, `$h`, `$n`, `${...}` arithmetic, `$/1000;s1`, plural `$l`, `$@spellname`, and
@@ -183,12 +217,12 @@ repeat these steps for a new build or another deployment.
      The server reads `<GAME_DATA_BUCKET>/<build folder>/items.json`, where the build folder is the
      last part of `NEXT_PUBLIC_GAME_ASSETS_URL`, and only for the same build as the manifest.
 
-   Redeploy. Open `/tools/talents/hunter`, `/database/drops`, `/tools/raid` and `/map`: the icons,
-   pictures and the credit line appear. Pages read the manifest and item files again at most once an
+   Redeploy. Open `/`, `/tools/talents/hunter`, `/database/drops`, `/tools/raid`, `/map` and
+   `/changes`: the icons, pictures, banners and the credit line appear. Pages read the manifest and item files again at most once an
    hour. To turn it off, clear the variables and redeploy.
 8. **Next build.** Repeat steps 5 to 7 with the new build. Check the counts against the last run
-   before uploading; a jump in `iconsEncrypted`, `tooltipsUnresolved` or `mapsSkipped` means
-   Blizzard changed something.
+   before uploading; a jump in `iconsEncrypted`, `tooltipsUnresolved`, `mapsSkipped` or
+   `loadingScreensSkipped`, or `logoExtracted` falling to 0, means Blizzard changed something.
 
 If Blizzard asks for any of it to be removed, delete the build folders from both buckets and clear
 the variables. The pages fall back to text by themselves.
@@ -213,4 +247,11 @@ At 1440 and 390 px wide:
   buff icons in the coverage tables.
 - **Map.** The zone pictures sit exactly inside the zone outlines; "Game map art" turns them off and
   "Zones" turns the outlines off. Zoomed out, the network tab shows only small copies. With spoilers
-  on, the continent picture shows and a zone's own picture appears once you zoom in over it.
+  on, the continent picture shows and a zone's own picture appears once you zoom in over it. The
+  continent's loading screen is above the map, and each entrance in the list has its small picture.
+- **Banners.** On `/`, `/tools/raid`, `/map` and `/changes` the loading screen fills its strip
+  without stretching, at 390 px too. On `/` the logo is crisp, the game's name, launch line and "Not
+  affiliated with or endorsed by Blizzard Entertainment" are readable over the picture, and the
+  credit line is under the banner.
+- **Spell tooltips.** In the raid builder, tabbing to a buff's name or hovering it opens its tooltip;
+  Escape closes it. On `/changes`, a talent or buff a post names is a link with its icon and tooltip.

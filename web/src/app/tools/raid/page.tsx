@@ -7,8 +7,9 @@ import { getTool } from "@/data/tools";
 import { webApplicationJsonLd } from "@/lib/jsonld";
 import { raidTalentFacts } from "@/lib/raid-facts";
 import { pageMetadata } from "@/lib/seo";
-import { loadSiteAssets, raidArt } from "@/lib/game-assets";
+import { BANNER_MAP, creditWhat, loadingArt, loadSiteAssets, raidArt } from "@/lib/game-assets";
 import GameCredit from "@/components/game/GameCredit";
+import PageBanner from "@/components/game/PageBanner";
 
 const tool = getTool("raid")!;
 const TITLE = "WoW Forever Raid Buff Planner";
@@ -27,11 +28,15 @@ const PROOF: Record<string, string> = {
 
 export default async function RaidPage() {
   const facts = raidTalentFacts(TABLES[CURRENT_BUILD]);
-  // Class, tree and buff icons, only when the asset URL is set and the upload has them.
-  const art = raidArt(await loadSiteAssets(), TABLES[CURRENT_BUILD]);
+  // Class, tree and buff icons and a raid's loading screen, only when the asset URL is set and the upload has them.
+  const assets = await loadSiteAssets();
+  const art = raidArt(assets, TABLES[CURRENT_BUILD]);
+  const banner = loadingArt(assets, BANNER_MAP.raid);
+  const credit = creditWhat(art && "icons", art && Object.keys(art.familyTips).length > 0 && "tooltip text", banner && "loading screen art");
   return (
     <article className="space-y-8">
       <JsonLd data={webApplicationJsonLd({ name: TITLE, path: "/tools/raid", description })} />
+      {banner && <PageBanner art={banner} eager />}
       <header className="space-y-3">
         <p className="font-mono text-xs text-muted">Tool · {tool.title}</p>
         <h1 className="text-3xl sm:text-4xl font-bold text-fg">{TITLE}</h1>
@@ -39,7 +44,7 @@ export default async function RaidPage() {
       </header>
 
       <RaidBuilder art={art} />
-      {art && <GameCredit version={art.version} label={art.label} what="Icons" />}
+      {assets && (art || banner) && <GameCredit version={assets.version} label={assets.label} what={credit} />}
       <AdSlot slot="belowTool" />
 
       <section aria-labelledby="needs-talent" className="max-w-2xl space-y-3 border-t border-line pt-6 text-fg-2">

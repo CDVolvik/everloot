@@ -11,8 +11,9 @@ import { dataAgeLabel } from "@/lib/data-age";
 import { parseDeepLink, type MapItems } from "@/lib/map-view";
 import { CONTINENTS, continentMap, continentPins, MAP_SOURCE, observedFacts, WORLD_MAP } from "@/lib/world-map";
 import WorldMapView from "@/components/WorldMapView";
-import { continentArt, loadSiteAssets } from "@/lib/game-assets";
+import { continentArt, creditWhat, instanceThumbs, loadingArt, loadSiteAssets } from "@/lib/game-assets";
 import GameCredit from "@/components/game/GameCredit";
+import PageBanner from "@/components/game/PageBanner";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +55,12 @@ export default async function MapPage(props: { searchParams: Promise<Query> }) {
   const assets = vb ? await loadSiteAssets() : null;
   const art = continentArt(assets, continentId, spoilers, WORLD_MAP.heldBackZones.some((z) => z.continentId === continentId));
   const lead = art ? withArt(description) : description;
+  // The continent's loading screen above the map, and each dungeon's and raid's beside its entrance;
+  // a later map's only with spoilers on.
+  const banner = loadingArt(assets, continentId, spoilers);
+  const allThumbs = instanceThumbs(assets, spoilers);
+  const thumbs = Object.fromEntries(map.entrances.flatMap((p) => p.names).filter((n) => allThumbs[n]).map((n) => [n, allThumbs[n]]));
+  const thumbShown = Object.keys(thumbs).length > 0;
 
   const items: MapItems = {
     zones: map.zones,
@@ -76,6 +83,7 @@ export default async function MapPage(props: { searchParams: Promise<Query> }) {
   return (
     <article className="space-y-8 max-w-5xl">
       <JsonLd data={webApplicationJsonLd({ name: TITLE, path: "/map", description: lead })} />
+      {banner && <PageBanner art={banner} eager />}
       <header className="space-y-3">
         <p className="font-mono text-xs text-muted">WoW: Forever · {map.name}</p>
         <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">{TITLE}</h1>
@@ -122,6 +130,7 @@ export default async function MapPage(props: { searchParams: Promise<Query> }) {
           marker={marker}
           spoilers={spoilers}
           art={art}
+          thumbs={thumbShown ? thumbs : undefined}
         />
       ) : (
         <p className="rounded-xl border border-line bg-panel p-5 text-sm text-fg-2">Nothing is placed on this continent yet.</p>
@@ -156,7 +165,9 @@ export default async function MapPage(props: { searchParams: Promise<Query> }) {
           <a className="text-accent hover:underline underline-offset-4" href={MAP_SOURCE.licenceUrl}>data policy</a>.
           NPC and vendor points are from player uploads (CC BY-SA 4.0).
         </p>
-        {assets && art && <GameCredit version={assets.version} label={assets.label} what="Map pictures" />}
+        {assets && (art || banner || thumbShown) && (
+          <GameCredit version={assets.version} label={assets.label} what={creditWhat(art && "map pictures", (banner || thumbShown) && "loading screen art")} />
+        )}
       </footer>
     </article>
   );
