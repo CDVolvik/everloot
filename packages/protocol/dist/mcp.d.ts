@@ -30,10 +30,66 @@ export declare const NEAR_DEFAULT_LIMIT = 5;
 export declare const NEAR_MAX_LIMIT = 20;
 /** Item quality slugs in Enum.ItemQuality order. */
 export declare const ITEM_QUALITY_SLUGS: readonly ["poor", "common", "uncommon", "rare", "epic", "legendary", "artifact", "heirloom"];
+/** One knowledge record as search_knowledge, get_entity and get_by_name return it. */
+export declare const knowledgeHit: z.ZodObject<{
+    id: z.ZodNumber;
+    extId: z.ZodString;
+    kind: z.ZodEnum<{
+        creator: "creator";
+        item: "item";
+        lore_page: "lore_page";
+        npc: "npc";
+        object: "object";
+        quest: "quest";
+        realm: "realm";
+        spell: "spell";
+        zone: "zone";
+    }>;
+    name: z.ZodString;
+    snippet: z.ZodString;
+    gameVersion: z.ZodEnum<{
+        classic: "classic";
+        forever: "forever";
+        lore: "lore";
+        retail: "retail";
+    }>;
+    sourceUrl: z.ZodString;
+    sourceId: z.ZodString;
+    licence: z.ZodString;
+    retrievedAt: z.ZodString;
+}, z.core.$strip>;
+export type KnowledgeHit = z.infer<typeof knowledgeHit>;
+/** One entry of the changes timeline as recent_changes returns it. Titles and excerpts are quoted source text. */
+export declare const changeEntry: z.ZodObject<{
+    id: z.ZodString;
+    type: z.ZodEnum<{
+        build: "build";
+        hotfix: "hotfix";
+        post: "post";
+    }>;
+    game: z.ZodEnum<{
+        classic: "classic";
+        forever: "forever";
+    }>;
+    at: z.ZodString;
+    title: z.ZodString;
+    url: z.ZodNullable<z.ZodString>;
+    author: z.ZodOptional<z.ZodString>;
+    role: z.ZodOptional<z.ZodString>;
+    category: z.ZodOptional<z.ZodString>;
+    source: z.ZodOptional<z.ZodString>;
+    excerpt: z.ZodOptional<z.ZodString>;
+    summary: z.ZodOptional<z.ZodString>;
+    version: z.ZodOptional<z.ZodString>;
+    diffUrl: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+}, z.core.$strip>;
+export type ChangeEntryOut = z.infer<typeof changeEntry>;
 export interface McpToolDef {
     title: string;
     description: string;
     inputSchema: z.ZodRawShape;
+    /** Present on tools that also answer with structuredContent of this shape; the text block stays. */
+    outputSchema?: z.ZodRawShape;
     annotations: {
         readOnlyHint: true;
         openWorldHint: false;
@@ -65,6 +121,35 @@ export declare const MCP_TOOLS: {
             }>>;
             limit: z.ZodDefault<z.ZodNumber>;
         };
+        readonly outputSchema: {
+            readonly hits: z.ZodArray<z.ZodObject<{
+                id: z.ZodNumber;
+                extId: z.ZodString;
+                kind: z.ZodEnum<{
+                    creator: "creator";
+                    item: "item";
+                    lore_page: "lore_page";
+                    npc: "npc";
+                    object: "object";
+                    quest: "quest";
+                    realm: "realm";
+                    spell: "spell";
+                    zone: "zone";
+                }>;
+                name: z.ZodString;
+                snippet: z.ZodString;
+                gameVersion: z.ZodEnum<{
+                    classic: "classic";
+                    forever: "forever";
+                    lore: "lore";
+                    retail: "retail";
+                }>;
+                sourceUrl: z.ZodString;
+                sourceId: z.ZodString;
+                licence: z.ZodString;
+                retrievedAt: z.ZodString;
+            }, z.core.$strip>>;
+        };
         readonly annotations: {
             readonly readOnlyHint: true;
             readonly openWorldHint: false;
@@ -75,6 +160,35 @@ export declare const MCP_TOOLS: {
         readonly description: "Fetch the full record behind a search hit id, for page rendering.";
         readonly inputSchema: {
             readonly id: z.ZodNumber;
+        };
+        readonly outputSchema: {
+            readonly hit: z.ZodNullable<z.ZodObject<{
+                id: z.ZodNumber;
+                extId: z.ZodString;
+                kind: z.ZodEnum<{
+                    creator: "creator";
+                    item: "item";
+                    lore_page: "lore_page";
+                    npc: "npc";
+                    object: "object";
+                    quest: "quest";
+                    realm: "realm";
+                    spell: "spell";
+                    zone: "zone";
+                }>;
+                name: z.ZodString;
+                snippet: z.ZodString;
+                gameVersion: z.ZodEnum<{
+                    classic: "classic";
+                    forever: "forever";
+                    lore: "lore";
+                    retail: "retail";
+                }>;
+                sourceUrl: z.ZodString;
+                sourceId: z.ZodString;
+                licence: z.ZodString;
+                retrievedAt: z.ZodString;
+            }, z.core.$strip>>;
         };
         readonly annotations: {
             readonly readOnlyHint: true;
@@ -97,6 +211,35 @@ export declare const MCP_TOOLS: {
                 spell: "spell";
                 zone: "zone";
             }>>;
+        };
+        readonly outputSchema: {
+            readonly hits: z.ZodArray<z.ZodObject<{
+                id: z.ZodNumber;
+                extId: z.ZodString;
+                kind: z.ZodEnum<{
+                    creator: "creator";
+                    item: "item";
+                    lore_page: "lore_page";
+                    npc: "npc";
+                    object: "object";
+                    quest: "quest";
+                    realm: "realm";
+                    spell: "spell";
+                    zone: "zone";
+                }>;
+                name: z.ZodString;
+                snippet: z.ZodString;
+                gameVersion: z.ZodEnum<{
+                    classic: "classic";
+                    forever: "forever";
+                    lore: "lore";
+                    retail: "retail";
+                }>;
+                sourceUrl: z.ZodString;
+                sourceId: z.ZodString;
+                licence: z.ZodString;
+                retrievedAt: z.ZodString;
+            }, z.core.$strip>>;
         };
         readonly annotations: {
             readonly readOnlyHint: true;
@@ -351,6 +494,32 @@ export declare const MCP_TOOLS: {
             }>>;
             readonly limit: z.ZodDefault<z.ZodNumber>;
         };
+        readonly outputSchema: {
+            readonly connected: z.ZodBoolean;
+            readonly entries: z.ZodArray<z.ZodObject<{
+                id: z.ZodString;
+                type: z.ZodEnum<{
+                    build: "build";
+                    hotfix: "hotfix";
+                    post: "post";
+                }>;
+                game: z.ZodEnum<{
+                    classic: "classic";
+                    forever: "forever";
+                }>;
+                at: z.ZodString;
+                title: z.ZodString;
+                url: z.ZodNullable<z.ZodString>;
+                author: z.ZodOptional<z.ZodString>;
+                role: z.ZodOptional<z.ZodString>;
+                category: z.ZodOptional<z.ZodString>;
+                source: z.ZodOptional<z.ZodString>;
+                excerpt: z.ZodOptional<z.ZodString>;
+                summary: z.ZodOptional<z.ZodString>;
+                version: z.ZodOptional<z.ZodString>;
+                diffUrl: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+            }, z.core.$strip>>;
+        };
         readonly annotations: {
             readonly readOnlyHint: true;
             readonly openWorldHint: false;
@@ -416,6 +585,35 @@ export declare const MCP_TOOL_LIST: ({
         }>>;
         limit: z.ZodDefault<z.ZodNumber>;
     };
+    outputSchema: {
+        readonly hits: z.ZodArray<z.ZodObject<{
+            id: z.ZodNumber;
+            extId: z.ZodString;
+            kind: z.ZodEnum<{
+                creator: "creator";
+                item: "item";
+                lore_page: "lore_page";
+                npc: "npc";
+                object: "object";
+                quest: "quest";
+                realm: "realm";
+                spell: "spell";
+                zone: "zone";
+            }>;
+            name: z.ZodString;
+            snippet: z.ZodString;
+            gameVersion: z.ZodEnum<{
+                classic: "classic";
+                forever: "forever";
+                lore: "lore";
+                retail: "retail";
+            }>;
+            sourceUrl: z.ZodString;
+            sourceId: z.ZodString;
+            licence: z.ZodString;
+            retrievedAt: z.ZodString;
+        }, z.core.$strip>>;
+    };
     annotations: {
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
@@ -426,6 +624,35 @@ export declare const MCP_TOOL_LIST: ({
     description: "Fetch the full record behind a search hit id, for page rendering.";
     inputSchema: {
         readonly id: z.ZodNumber;
+    };
+    outputSchema: {
+        readonly hit: z.ZodNullable<z.ZodObject<{
+            id: z.ZodNumber;
+            extId: z.ZodString;
+            kind: z.ZodEnum<{
+                creator: "creator";
+                item: "item";
+                lore_page: "lore_page";
+                npc: "npc";
+                object: "object";
+                quest: "quest";
+                realm: "realm";
+                spell: "spell";
+                zone: "zone";
+            }>;
+            name: z.ZodString;
+            snippet: z.ZodString;
+            gameVersion: z.ZodEnum<{
+                classic: "classic";
+                forever: "forever";
+                lore: "lore";
+                retail: "retail";
+            }>;
+            sourceUrl: z.ZodString;
+            sourceId: z.ZodString;
+            licence: z.ZodString;
+            retrievedAt: z.ZodString;
+        }, z.core.$strip>>;
     };
     annotations: {
         readonly readOnlyHint: true;
@@ -448,6 +675,35 @@ export declare const MCP_TOOL_LIST: ({
             spell: "spell";
             zone: "zone";
         }>>;
+    };
+    outputSchema: {
+        readonly hits: z.ZodArray<z.ZodObject<{
+            id: z.ZodNumber;
+            extId: z.ZodString;
+            kind: z.ZodEnum<{
+                creator: "creator";
+                item: "item";
+                lore_page: "lore_page";
+                npc: "npc";
+                object: "object";
+                quest: "quest";
+                realm: "realm";
+                spell: "spell";
+                zone: "zone";
+            }>;
+            name: z.ZodString;
+            snippet: z.ZodString;
+            gameVersion: z.ZodEnum<{
+                classic: "classic";
+                forever: "forever";
+                lore: "lore";
+                retail: "retail";
+            }>;
+            sourceUrl: z.ZodString;
+            sourceId: z.ZodString;
+            licence: z.ZodString;
+            retrievedAt: z.ZodString;
+        }, z.core.$strip>>;
     };
     annotations: {
         readonly readOnlyHint: true;
@@ -702,6 +958,32 @@ export declare const MCP_TOOL_LIST: ({
         }>>;
         readonly limit: z.ZodDefault<z.ZodNumber>;
     };
+    outputSchema: {
+        readonly connected: z.ZodBoolean;
+        readonly entries: z.ZodArray<z.ZodObject<{
+            id: z.ZodString;
+            type: z.ZodEnum<{
+                build: "build";
+                hotfix: "hotfix";
+                post: "post";
+            }>;
+            game: z.ZodEnum<{
+                classic: "classic";
+                forever: "forever";
+            }>;
+            at: z.ZodString;
+            title: z.ZodString;
+            url: z.ZodNullable<z.ZodString>;
+            author: z.ZodOptional<z.ZodString>;
+            role: z.ZodOptional<z.ZodString>;
+            category: z.ZodOptional<z.ZodString>;
+            source: z.ZodOptional<z.ZodString>;
+            excerpt: z.ZodOptional<z.ZodString>;
+            summary: z.ZodOptional<z.ZodString>;
+            version: z.ZodOptional<z.ZodString>;
+            diffUrl: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        }, z.core.$strip>>;
+    };
     annotations: {
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
@@ -738,13 +1020,16 @@ export declare const MCP_TOOL_LIST: ({
     name: "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search_knowledge" | "vendor_page" | "world_map_near";
 })[];
 /**
- * What every tool returns today: one text content block. Answers built on player data end with the
+ * What every tool returns: one text content block. Answers built on player data end with the
  * credit line, after a line stating how old the data is. Tools that read nothing from players carry
- * their sources inside the text instead.
+ * their sources inside the text instead. Tools with an outputSchema also return structuredContent of
+ * that shape (STRUCTURED_TOOLS); the others gain it tool by tool in later minor releases.
  */
 export declare const TOOL_OUTPUT: {
     readonly type: "text";
     readonly endsWith: "Licence: CC BY-SA 4.0. Credit: Everloot contributors, https://everloot.app";
 };
+/** The tools that answer with structuredContent beside the text. */
+export declare const STRUCTURED_TOOLS: readonly McpToolName[];
 /** The tools whose answers are built on player uploads and therefore end with TOOL_OUTPUT.endsWith. */
 export declare const PLAYER_DATA_TOOLS: readonly McpToolName[];

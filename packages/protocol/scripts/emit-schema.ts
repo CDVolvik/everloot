@@ -63,6 +63,7 @@ export function emit(out = OUT): void {
       description: tool.description,
       annotations: tool.annotations,
       inputSchema: z.toJSONSchema(z.object(tool.inputSchema), { io: "input", target: "draft-2020-12" }),
+      ...("outputSchema" in tool && tool.outputSchema ? { outputSchema: z.toJSONSchema(z.object(tool.outputSchema), { io: "output", target: "draft-2020-12" }) } : {}),
       "x-everloot-output": PLAYER_DATA_TOOLS.includes(name) ? TOOL_OUTPUT : { type: TOOL_OUTPUT.type },
     });
   }

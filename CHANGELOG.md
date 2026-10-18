@@ -24,6 +24,9 @@ that has a zip in the repository. Earlier builds have none.
   parameters and responses, rendered from the protocol, plus paging examples in JavaScript and Python. The
   site serves `/api/openapi.json` (OpenAPI 3.1, assembled from the same catalogue) and the protocol's JSON
   Schema files under `/schema/`. `llms.txt` lists both.
+- Four MCP tools (`search_knowledge`, `get_entity`, `get_by_name`, `recent_changes`) declare an output schema
+  and answer with structured content beside the text, so a client can read hits and timeline entries as
+  objects instead of parsing prose. The schema files and `/connect` show which tools do.
 
 Pull requests merged to `main` are listed in the nightly pre-releases until the next tagged release.
 

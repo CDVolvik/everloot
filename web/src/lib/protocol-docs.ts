@@ -1,4 +1,4 @@
-import { API_ROUTES, MCP_TOOL_NAMES, MCP_TOOLS, PLAYER_DATA_TOOLS, type ApiRoute, type McpToolName } from "@everloot/protocol";
+import { API_ROUTES, MCP_TOOL_NAMES, MCP_TOOLS, PLAYER_DATA_TOOLS, STRUCTURED_TOOLS, type ApiRoute, type McpToolName } from "@everloot/protocol";
 import { z } from "zod";
 
 /**
@@ -64,6 +64,8 @@ export interface ToolDoc {
   params: ParamRow[];
   /** Whether the answer is built on player uploads and ends with the data age and the credit line. */
   playerData: boolean;
+  /** Whether the tool also returns structuredContent of a declared shape, beside the text. */
+  structured: boolean;
 }
 
 export function toolDocs(): ToolDoc[] {
@@ -73,6 +75,7 @@ export function toolDocs(): ToolDoc[] {
     description: MCP_TOOLS[name].description,
     params: toolParams(name),
     playerData: PLAYER_DATA_TOOLS.includes(name),
+    structured: STRUCTURED_TOOLS.includes(name),
   }));
 }
 
