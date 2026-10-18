@@ -14,7 +14,7 @@ const read = (file) => readFile(new URL(file, dir), "utf8");
 const tables = ["users", "auth_session", "auth_account", "auth_verification", "auth_rate_limit"];
 
 async function asRole(role, query, params = []) {
-  assert.ok(["service_role", "anon", "authenticated"].includes(role));
+  assert.ok(["service_role", "anon", "authenticated", "everloot_auth"].includes(role));
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -90,6 +90,26 @@ try {
     await assert.rejects(asRole(role, `select * from public.${t}`), /permission denied/);
   }
   for (const t of tables) await asRole("service_role", `select * from public.${t}`);
+  // Better Auth's role (its login is the owner's step; roles outlive this schema): no BYPASSRLS, and
+  // RLS policies that let it read and write its five tables, and nothing else.
+  assert.deepEqual((await pool.query("select rolbypassrls, rolsuper from pg_roles where rolname='everloot_auth'")).rows,
+    [{ rolbypassrls: false, rolsuper: false }]);
+  for (const t of tables) await asRole("everloot_auth", `select * from public.${t}`);
+  await assert.rejects(asRole("everloot_auth", "select * from public.sessions"), /permission denied/);
+  const [{ id: thrall }] = await asRole("everloot_auth", "insert into public.users (id, name, email) values (gen_random_uuid(), 'Thrall#9', 'bnet-999@users.everloot.invalid') returning id");
+  assert.equal((await asRole("everloot_auth", "select count(*)::int as n from public.users")).at(0).n, (await pool.query("select count(*)::int as n from public.users")).rows[0].n);
+  // Its Battle.net account row fills bnet_id and battletag in the same statement, so v1 finds it.
+  await asRole("everloot_auth", "insert into public.auth_account (id, user_id, account_id, provider_id) values (gen_random_uuid(), $1, '999', 'battlenet')", [thrall]);
+  assert.deepEqual((await pool.query("select bnet_id, battletag from public.users where id=$1", [thrall])).rows, [{ bnet_id: "999", battletag: "Thrall#9" }]);
+  // ...and a v1 sign-in for that Battle.net id now updates the same user instead of adding one.
+  const [{ id: again }] = await asRole("service_role", v1Upsert.replace("'789'", "'999'"), ["Thrall#9"]);
+  assert.equal(again, thrall);
+  assert.equal((await pool.query("select count(*)::int as n from public.auth_account where account_id='999'")).rows[0].n, 1);
+  // Provider tokens, addresses and user agents are refused by the database itself.
+  await assert.rejects(asRole("everloot_auth", "update public.auth_account set refresh_token='rt' where user_id=$1", [thrall]), /auth_account_no_provider_tokens/);
+  await assert.rejects(asRole("everloot_auth", "insert into public.auth_session (id, user_id, token, expires_at, user_agent) values (gen_random_uuid(), $1, 'u', now() + interval '1 day', 'ua')", [thrall]), /auth_session_no_client_details/);
+  await asRole("everloot_auth", "insert into public.auth_rate_limit (key, count, last_request) values ('k', 1, 0)");
+  await asRole("everloot_auth", "delete from public.auth_rate_limit where key='k'");
   await assert.rejects(asRole("anon", "select public.users_fill_identity()"), /permission denied/);
-  console.log("Accounts integration passed: re-runnable migrations in name order, existing users backfilled on upgrade, legacy inserts filled by the trigger, Battle.net ids copied once, v1 sign-ins get their account row once, Better Auth inserts accepted, unique emails, cascading deletes, private auth tables.");
+  console.log("Accounts integration passed: re-runnable migrations in name order, existing users backfilled on upgrade, legacy inserts filled by the trigger, Battle.net ids copied once, v1 sign-ins get their account row once, Better Auth inserts accepted, unique emails, cascading deletes, private auth tables, everloot_auth reads and writes its tables under RLS, Better Auth users get their bnet_id, tokens and addresses refused.");
 } finally { await pool.end(); }
