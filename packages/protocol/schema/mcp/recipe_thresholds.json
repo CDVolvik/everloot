@@ -1,0 +1,30 @@
+{
+  "$id": "https://everloot.app/schema/mcp/recipe_thresholds.json",
+  "title": "Recipe skill ranges",
+  "description": "Where a Forever profession's recipes turn yellow, green and grey, inferred from the colours players' trade-skill windows showed. A recipe appears only after 3 installs agree, as ranges, never guessed exact numbers. Agreed reagents come with an estimated cost per craft when every reagent has an agreed price. Reads Everloot's current public corpus.",
+  "annotations": {
+    "readOnlyHint": true,
+    "openWorldHint": false
+  },
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "profession": {
+        "type": "string",
+        "description": "Profession name, such as Alchemy."
+      },
+      "recipe": {
+        "description": "Optional part of a recipe name to narrow the list.",
+        "type": "string"
+      }
+    },
+    "required": [
+      "profession"
+    ]
+  },
+  "x-everloot-output": {
+    "type": "text",
+    "endsWith": "Licence: CC BY-SA 4.0. Credit: Everloot contributors, https://everloot.app"
+  }
+}

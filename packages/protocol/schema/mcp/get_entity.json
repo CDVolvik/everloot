@@ -1,0 +1,27 @@
+{
+  "$id": "https://everloot.app/schema/mcp/get_entity.json",
+  "title": "Get one knowledge record by id",
+  "description": "Fetch the full record behind a search hit id, for page rendering.",
+  "annotations": {
+    "readOnlyHint": true,
+    "openWorldHint": false
+  },
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "id": {
+        "type": "integer",
+        "minimum": -9007199254740991,
+        "maximum": 9007199254740991,
+        "description": "Record id from a search_knowledge hit."
+      }
+    },
+    "required": [
+      "id"
+    ]
+  },
+  "x-everloot-output": {
+    "type": "text"
+  }
+}

@@ -7,7 +7,7 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { z } from "zod";
-import { GAME_DATA_CREDIT } from "./attribution.js";
+import { GAME_DATA_CREDIT } from "@everloot/protocol";
 import { readClientMeta, readClientRows, readClientTables } from "./client-snapshot.js";
 import { CLIENT_LABEL, clientEdges, RELS, type Edge, type EdgeKind, type Rel } from "./edges.js";
 import { buildTaxonomy, type Taxonomy } from "./item-taxonomy.js";

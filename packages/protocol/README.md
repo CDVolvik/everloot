@@ -1,14 +1,16 @@
 # @everloot/protocol
 
-The contract between the Everloot addon, its uploaders and [everloot.app](https://everloot.app): the
-record kinds the addon writes, the upload envelope, the parser the site runs, the sharing categories
-and the upload limits. One definition, used by the site, the knowledge base, the companion and the
-addon's contract tests.
+The contract between the Everloot addon, its uploaders, [everloot.app](https://everloot.app) and the
+clients that read it: the record kinds the addon writes, the upload envelope, the parser the site runs,
+the sharing categories, the upload limits, the licence and credit line, the JSON API's response shapes
+and route catalogue, and the MCP server's tool table. One definition, used by the site, the knowledge
+base, the companion, the addon's contract tests and anyone building on the data.
 
 ## Status
 
-1.0.0, used by everloot.app. Not yet published to npm; the parts of this repository install it from
-the folder.
+1.0.1, used by everloot.app. Not yet published to npm; the parts of this repository install it from
+the folder. After editing it, `npm run build` here, then in each consumer delete
+`node_modules/@everloot/protocol` and `npm install` (npm keeps the packed copy while the version is the same).
 
 ## Install
 
@@ -26,13 +28,23 @@ npm install @everloot/protocol zod
   with `protocol: PROTOCOL_VERSION`, inside `UPLOAD_LIMITS`.
 - **The site validates** every record with `parseRecords` and `parseUpload`, the same functions this
   package exports, and tells named data from anonymous data with `sharingCategory`.
-- **MCP and API clients read** the same definitions to know what a record holds.
+- **API clients read** `API_ROUTES` and the response schemas (`schema/api/*.json`) to know what each
+  endpoint answers; the site's route tests parse real responses with the same schemas.
+- **MCP clients read** `MCP_TOOLS` (`schema/mcp/<tool>.json`): every tool's input shape, with the
+  output stated as one text block ending in the credit line for answers built on player data.
 
 ```ts
 import { parseUpload, PROTOCOL_VERSION, UPLOAD_LIMITS } from "@everloot/protocol";
 
 const parsed = parseUpload({ addonVersion: "0.3.3", protocol: PROTOCOL_VERSION, records });
 if (parsed.ok) console.log(parsed.upload.records.length, "records accepted");
+```
+
+```ts
+import { API_ROUTES, MCP_TOOL_NAMES, corpusPublicResponse } from "@everloot/protocol";
+
+const body = corpusPublicResponse.parse(await (await fetch("https://everloot.app/api/corpus/public?kinds=loot")).json());
+console.log(body.total, "loot windows;", MCP_TOOL_NAMES.length, "MCP tools;", API_ROUTES.length, "endpoints");
 ```
 
 ## Versioning

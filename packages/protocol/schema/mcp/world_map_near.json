@@ -1,0 +1,56 @@
+{
+  "$id": "https://everloot.app/schema/mcp/world_map_near.json",
+  "title": "What is near a place on the map",
+  "description": "Entrances, NPCs and vendors near a spot, nearest first, with straight-line distances in yards. Give a zone (name or map id) with x and y from 0 to 100, or an NPC id to start from where that NPC stands. Entrances come from the game files and are unconfirmed. NPCs and vendors are player-observed and listed only where 3 installs agree on the position. Zones the files hold back as possibly unreleased are not offered. Game objects are not listed: no public record gives them a position. Reads Everloot's current authorized public corpus when connected.",
+  "annotations": {
+    "readOnlyHint": true,
+    "openWorldHint": false
+  },
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "zone": {
+        "description": "Zone name or map id, such as Elwynn Forest or 1429. Needs x and y.",
+        "type": "string",
+        "maxLength": 80
+      },
+      "x": {
+        "description": "Across the zone map, 0 (west) to 100 (east).",
+        "type": "number",
+        "minimum": 0,
+        "maximum": 100
+      },
+      "y": {
+        "description": "Down the zone map, 0 (north) to 100 (south).",
+        "type": "number",
+        "minimum": 0,
+        "maximum": 100
+      },
+      "npcId": {
+        "description": "Start from this NPC's agreed position instead of a zone and x, y.",
+        "type": "integer",
+        "exclusiveMinimum": 0,
+        "maximum": 9007199254740991
+      },
+      "radius": {
+        "default": 500,
+        "description": "Search radius in yards.",
+        "type": "number",
+        "exclusiveMinimum": 0,
+        "maximum": 5000
+      },
+      "limit": {
+        "default": 5,
+        "description": "Most results per list.",
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 20
+      }
+    }
+  },
+  "x-everloot-output": {
+    "type": "text",
+    "endsWith": "Licence: CC BY-SA 4.0. Credit: Everloot contributors, https://everloot.app"
+  }
+}

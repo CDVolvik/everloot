@@ -1,0 +1,41 @@
+{
+  "$id": "https://everloot.app/schema/mcp/get_by_name.json",
+  "title": "Get records by exact name",
+  "description": "Exact full-name match (case-insensitive) for disambiguation. Use search_knowledge for fuzzy matches.",
+  "annotations": {
+    "readOnlyHint": true,
+    "openWorldHint": false
+  },
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "name": {
+        "type": "string",
+        "maxLength": 200,
+        "description": "Full record name."
+      },
+      "kind": {
+        "description": "Narrow to one record kind.",
+        "type": "string",
+        "enum": [
+          "item",
+          "npc",
+          "object",
+          "quest",
+          "zone",
+          "spell",
+          "lore_page",
+          "creator",
+          "realm"
+        ]
+      }
+    },
+    "required": [
+      "name"
+    ]
+  },
+  "x-everloot-output": {
+    "type": "text"
+  }
+}

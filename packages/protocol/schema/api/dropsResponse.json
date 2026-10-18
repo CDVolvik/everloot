@@ -1,0 +1,264 @@
+{
+  "$id": "https://everloot.app/schema/api/dropsResponse.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+    },
+    "dataAsOf": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "stats": {
+      "type": "object",
+      "properties": {
+        "uploads": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "lootWindows": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "records": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "unreachable": {
+          "type": "boolean"
+        },
+        "dataAsOf": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "uploads",
+        "lootWindows",
+        "records",
+        "unreachable",
+        "dataAsOf"
+      ],
+      "additionalProperties": false
+    },
+    "unreachable": {
+      "type": "boolean",
+      "description": "True when storage could not be read: the lists are then empty, not zero."
+    },
+    "rates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "sourceNpcId": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "sourceObjectId": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "itemId": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "kills": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Loot windows players opened on this source, not kills counted by the game."
+          },
+          "drops": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "rate": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "reporters": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Distinct installs that looted the source."
+          },
+          "public": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "itemId",
+          "kills",
+          "drops",
+          "rate",
+          "reporters",
+          "public"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "measuredZeros": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "sourceNpcId": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "sourceObjectId": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "kills": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "reporters": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "public": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "kills",
+          "reporters",
+          "public"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "queued": {
+      "anyOf": [
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Rates and zeros waiting for their third install; null when unreachable."
+    },
+    "totalRates": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "totalMeasuredZeros": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "attribution": {
+      "type": "object",
+      "properties": {
+        "licence": {
+          "type": "string"
+        },
+        "licenceUrl": {
+          "type": "string",
+          "format": "uri"
+        },
+        "credit": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string",
+          "format": "uri"
+        },
+        "terms": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "licence",
+        "licenceUrl",
+        "credit",
+        "source",
+        "terms"
+      ],
+      "additionalProperties": false
+    },
+    "offset": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "limit": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "total": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "next": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "uri"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "generatedAt",
+    "dataAsOf",
+    "stats",
+    "unreachable",
+    "rates",
+    "measuredZeros",
+    "queued",
+    "totalRates",
+    "totalMeasuredZeros",
+    "attribution",
+    "offset",
+    "limit",
+    "total",
+    "next"
+  ],
+  "additionalProperties": false
+}

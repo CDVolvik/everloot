@@ -6,6 +6,7 @@ vi.mock("@/lib/upload-store", () => ({ uploadStore: { loadMarket: store.loadMark
 vi.mock("@/lib/intake-quota", () => ({ intakeQuota: { market: store.market } }));
 
 import { GET } from "./route";
+import { marketPricesResponse, marketRealmsResponse } from "@everloot/protocol";
 
 const NOW = new Date();
 const day = NOW.toISOString().slice(0, 10);
@@ -98,5 +99,15 @@ test("every answer carries the licence and credit line, and stays cacheable for 
     expect((await res.json()).attribution).toMatchObject({ licence: "CC BY-SA 4.0", source: "https://everloot.app/tools/auctions" });
     expect(res.headers.get("x-everloot-licence")).toBe("CC BY-SA 4.0");
     expect(res.headers.get("cache-control")).toContain("s-maxage=300");
+  }
+});
+
+test("the bodies are the protocol's market responses", async () => {
+  const realms = await (await GET(req())).json();
+  if (realms.ok) expect(() => marketRealmsResponse.parse(realms)).not.toThrow();
+  const first = realms.ok ? realms.realms[0] : undefined;
+  if (first) {
+    const prices = await (await GET(req(`?realm=${encodeURIComponent(first)}`))).json();
+    expect(() => marketPricesResponse.parse(prices)).not.toThrow();
   }
 });

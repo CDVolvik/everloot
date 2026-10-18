@@ -6,6 +6,7 @@ vi.mock("@/lib/intake-quota", () => ({ intakeQuota: { api: store.api } }));
 
 import { GET } from "./route";
 import { ANON_PAGE } from "@/lib/data-guard";
+import { dropsResponse } from "@everloot/protocol";
 
 const req = (query = "") => new Request(`https://everloot.app/api/rollups/drops${query}`);
 
@@ -61,4 +62,9 @@ test("guard on: the drop list is paged for anonymous callers and limited per IP"
   expect(rest.next).toBeNull();
   store.api.mockResolvedValue({ allowed: false, retryAfter: 60 });
   expect((await paged(req())).status).toBe(429);
+});
+
+test("the body is the protocol's dropsResponse", async () => {
+  const body = await (await GET(req())).json();
+  expect(() => dropsResponse.parse(body)).not.toThrow();
 });

@@ -1,0 +1,33 @@
+{
+  "$id": "https://everloot.app/schema/mcp/auction_history.json",
+  "title": "Auction history for one item",
+  "description": "Price history from auction scans players uploaded on purpose. A day is public after 3 installs scanned that item on that realm. Copper is the median. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.",
+  "annotations": {
+    "readOnlyHint": true,
+    "openWorldHint": false
+  },
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "realm": {
+        "type": "string",
+        "description": "Realm name."
+      },
+      "itemId": {
+        "type": "integer",
+        "exclusiveMinimum": 0,
+        "maximum": 9007199254740991,
+        "description": "Item id."
+      }
+    },
+    "required": [
+      "realm",
+      "itemId"
+    ]
+  },
+  "x-everloot-output": {
+    "type": "text",
+    "endsWith": "Licence: CC BY-SA 4.0. Credit: Everloot contributors, https://everloot.app"
+  }
+}

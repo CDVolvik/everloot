@@ -1,0 +1,28 @@
+{
+  "$id": "https://everloot.app/schema/mcp/npc_page.json",
+  "title": "NPC page",
+  "description": "One Forever NPC: agreed name and map pins. A name or pin needs 3 installs agreeing. The pin does not require a drop. No copied spawn list. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.",
+  "annotations": {
+    "readOnlyHint": true,
+    "openWorldHint": false
+  },
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "npcId": {
+        "type": "integer",
+        "exclusiveMinimum": 0,
+        "maximum": 9007199254740991,
+        "description": "NPC id."
+      }
+    },
+    "required": [
+      "npcId"
+    ]
+  },
+  "x-everloot-output": {
+    "type": "text",
+    "endsWith": "Licence: CC BY-SA 4.0. Credit: Everloot contributors, https://everloot.app"
+  }
+}

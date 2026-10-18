@@ -7,21 +7,17 @@
  * Every edge says where it came from, how many installs agree (observed) or which build (client), and
  * when it was first and last seen. Pages, the MCP tool, the API and the bulk file all read this shape.
  */
-import { GAME_DATA_CREDIT, MCP_CREDIT } from "./attribution.js";
+import { GAME_DATA_CREDIT, MCP_CREDIT, RELS, type EntityKind, type Rel } from "@everloot/protocol";
 import { INDEPENDENT_INSTALLS, lootWindowsFromRecords, rollupDrops } from "./drop-rollup.js";
 
 export const EDGE_SCHEMA = "everloot.edges/1";
 export const CLIENT_LABEL = "Found in game files, unconfirmed";
 
-export type EdgeKind = "item" | "spell" | "npc" | "object" | "quest" | "zone" | "item_set" | "icon" | "skill";
+export type EdgeKind = EntityKind;
 export type Evidence = "client" | "observed";
 
 /** In the order pages list them: what players saw first, then what the files say. */
-export const RELS = [
-  "dropped_by", "sold_by", "reward_from", "located_in",
-  "created_by", "reagent_for", "part_of_set", "same_icon", "in_skill_line",
-] as const;
-export type Rel = (typeof RELS)[number];
+export { RELS, type Rel };
 
 export const REL_LABELS: Record<Rel, string> = {
   dropped_by: "Dropped by", sold_by: "Sold by", reward_from: "Reward from", located_in: "Located in",

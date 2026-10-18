@@ -1,0 +1,244 @@
+{
+  "$id": "https://everloot.app/schema/api/edgesResponse.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+    },
+    "dataAsOf": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "unreachable": {
+      "type": "boolean"
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "fromKind": {
+            "type": "string",
+            "enum": [
+              "item",
+              "spell",
+              "npc",
+              "object",
+              "quest",
+              "zone",
+              "item_set",
+              "icon",
+              "skill"
+            ]
+          },
+          "fromId": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "rel": {
+            "type": "string",
+            "enum": [
+              "dropped_by",
+              "sold_by",
+              "reward_from",
+              "located_in",
+              "created_by",
+              "reagent_for",
+              "part_of_set",
+              "same_icon",
+              "in_skill_line"
+            ]
+          },
+          "toKind": {
+            "type": "string",
+            "enum": [
+              "item",
+              "spell",
+              "npc",
+              "object",
+              "quest",
+              "zone",
+              "item_set",
+              "icon",
+              "skill"
+            ]
+          },
+          "toId": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "evidence": {
+            "type": "string",
+            "enum": [
+              "observed",
+              "client"
+            ]
+          },
+          "build": {
+            "description": "Game build of a client edge; null for observed edges.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "installs": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Distinct installs behind an observed edge; null for client edges."
+          },
+          "firstSeen": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lastSeen": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "fromKind",
+          "fromId",
+          "rel",
+          "toKind",
+          "toId",
+          "evidence",
+          "build",
+          "installs",
+          "firstSeen",
+          "lastSeen"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "attribution": {
+      "type": "object",
+      "properties": {
+        "licence": {
+          "type": "string"
+        },
+        "licenceUrl": {
+          "type": "string",
+          "format": "uri"
+        },
+        "credit": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string",
+          "format": "uri"
+        },
+        "terms": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "licence",
+        "licenceUrl",
+        "credit",
+        "source",
+        "terms"
+      ],
+      "additionalProperties": false
+    },
+    "gameData": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "label": {
+              "type": "string",
+              "description": "The evidence label pages show, such as \"found in game files, unconfirmed\"."
+            },
+            "build": {
+              "type": "string",
+              "description": "The game build the rows were read from."
+            },
+            "extractedAt": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "credit": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "label",
+            "build"
+          ],
+          "additionalProperties": {}
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Present when the page holds at least one game-file edge."
+    },
+    "offset": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "limit": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "total": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "next": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "uri"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "generatedAt",
+    "dataAsOf",
+    "unreachable",
+    "edges",
+    "attribution",
+    "gameData",
+    "offset",
+    "limit",
+    "total",
+    "next"
+  ],
+  "additionalProperties": false
+}

@@ -1,7 +1,7 @@
 import { expect, test, vi } from "vitest";
 import { emptyMarket, foldMarket } from "../src/market.js";
 import { answerMarketValue, MARKET_UNSET } from "../src/mcp-server.js";
-import { MCP_CREDIT } from "../src/attribution.js";
+import { MCP_CREDIT } from "@everloot/protocol";
 
 const now = new Date();
 const scans = ["a-install", "b-install", "c-install"].map((installId, i) => ({

@@ -14,7 +14,7 @@ vi.mock("@/components/ApiKeys", () => ({ default: () => <div data-testid="api-ke
 
 import ConnectPage, { metadata } from "./page";
 import { CONNECT_EXAMPLES, CORPUS_URL, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR } from "./connect-data";
-import { PUBLIC_RECORD_KINDS } from "@everloot/protocol";
+import { MCP_TOOL_NAMES, PUBLIC_RECORD_KINDS } from "@everloot/protocol";
 import { createIntakeQuota } from "@/lib/intake-quota";
 import { ANON_PAGE, ANON_PER_HOUR, attribution, KEY_PAGE, KEY_PER_HOUR } from "@/lib/data-guard";
 import sitemap from "../sitemap";
@@ -24,11 +24,9 @@ import Header from "@/components/Header";
 const page = renderToStaticMarkup(<ConnectPage />);
 const decoded = page.replaceAll("&quot;", '"').replaceAll("&#x27;", "'").replaceAll("&amp;", "&");
 
-test("the tool list is exactly the tools the MCP server registers", () => {
-  const source = readFileSync(new URL("../../../../kb/src/mcp-server.ts", import.meta.url), "utf8");
-  const registered = [...source.matchAll(/registerTool\(\s*"([a-z_]+)"/g)].map((m) => m[1]);
-  expect(registered.length).toBeGreaterThan(0);
-  expect(MCP_TOOLS.map((tool) => tool.name)).toEqual(registered);
+test("the tool list is exactly the tools the protocol declares, in order", () => {
+  expect(MCP_TOOL_NAMES.length).toBeGreaterThan(0);
+  expect(MCP_TOOLS.map((tool) => tool.name)).toEqual(MCP_TOOL_NAMES);
   for (const tool of MCP_TOOLS) expect(page).toContain(`>${tool.name}</code>`);
 });
 

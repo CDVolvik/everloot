@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { GAME_DATA_CREDIT } from "../../../../../kb/src/attribution";
+import { GAME_DATA_CREDIT } from "@everloot/protocol";
 import { CLIENT_LABEL } from "../../../../../kb/src/edges";
 import IdLookup from "@/components/IdLookup";
 import { CLIENT_LAYER, CLIENT_TAXONOMY as T, itemsHref } from "@/lib/items";

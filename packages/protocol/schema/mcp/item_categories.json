@@ -1,0 +1,60 @@
+{
+  "$id": "https://everloot.app/schema/mcp/item_categories.json",
+  "title": "Item categories: class, subclass, slot and quality",
+  "description": "Item categories from the game files (found in game files, unconfirmed, with the build): class and subclass with the client's English names and slugs, slot and quality. With no arguments, the whole tree with item counts. With item, that item's category path. With class (a slug such as weapon or armor), and optionally subclass, slot and quality slugs, the items in it. Ids only: item names come from player uploads (item_page).",
+  "annotations": {
+    "readOnlyHint": true,
+    "openWorldHint": false
+  },
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "item": {
+        "description": "An item id: answers its class, subclass, slot and quality.",
+        "type": "integer",
+        "exclusiveMinimum": 0,
+        "maximum": 9007199254740991
+      },
+      "class": {
+        "description": "Class slug, such as weapon, armor, consumable or trade-goods.",
+        "type": "string",
+        "maxLength": 40
+      },
+      "subclass": {
+        "description": "Subclass slug or number within the class, such as one-handed-swords or cloth.",
+        "type": "string",
+        "maxLength": 40
+      },
+      "slot": {
+        "description": "Slot slug, such as head, chest, one-hand or trinket.",
+        "type": "string",
+        "maxLength": 40
+      },
+      "quality": {
+        "description": "poor, common, uncommon, rare, epic, legendary, artifact or heirloom.",
+        "type": "string",
+        "enum": [
+          "poor",
+          "common",
+          "uncommon",
+          "rare",
+          "epic",
+          "legendary",
+          "artifact",
+          "heirloom"
+        ]
+      },
+      "limit": {
+        "default": 25,
+        "description": "Most items listed.",
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 100
+      }
+    }
+  },
+  "x-everloot-output": {
+    "type": "text"
+  }
+}

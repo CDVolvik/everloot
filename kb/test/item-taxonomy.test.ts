@@ -109,3 +109,8 @@ test("the categories answer: the tree, one item's path, or a filtered list, each
   expect(handleItemCategories({ class: "dragons" }, t, build)).toContain("No item class dragons");
   expect(handleItemCategories({ class: "weapon" }, t, build)).toContain("Weapons: 1 item");
 });
+
+test("the quality slugs are the protocol's ITEM_QUALITY_SLUGS, in Enum.ItemQuality order", async () => {
+  const { ITEM_QUALITY_SLUGS } = await import("@everloot/protocol");
+  expect(QUALITIES.map((q) => q.slug)).toEqual([...ITEM_QUALITY_SLUGS]);
+});
