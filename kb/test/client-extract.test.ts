@@ -98,6 +98,21 @@ test("the W0 tables are read by the file data ids the WoWDBDefs manifest lists f
   });
 });
 
+test("the W1 tables are read by the file data ids the WoWDBDefs manifest lists for them", () => {
+  // manifest.json at WoWDBDefs b9a63096cdd9, field db2FileDataID.
+  expect(CLIENT_TABLES).toMatchObject({
+    LFGDungeons: 1361033, JournalInstance: 1237438, JournalEncounter: 1240336, JournalTier: 1349056,
+    DungeonEncounter: 1347279, MapDifficulty: 1367868, AreaGroupMember: 1093406,
+    ItemExtendedCost: 801681, ItemCurrencyCost: 801670, ItemLimitCategory: 1237440, ItemBagFamily: 1278179,
+    ItemNameDescription: 1332559, ItemEffect: 969941, ItemXItemEffect: 3177687,
+    SpellCastTimes: 1134089, SpellCooldowns: 1139924, SpellRange: 1146820, SpellLevels: 1140079,
+    Mount: 921760, MountXDisplay: 1576117, MountType: 1114674, MountTypeXCapability: 1114715,
+    MountXSpellVisualKitPicker: 3989477,
+    Profession: 4508544, ProfessionEffect: 4505297, ProfessionEffectType: 4556715, ProfessionTrait: 4505298,
+    ProfessionTraitXEffect: 4505494, ProfessionTraitXLabel: 4505299,
+  });
+});
+
 test("a table the build does not have is reported as missing, not invented", async () => {
   const { tables, missing } = await extractTables(fake({ [CLIENT_TABLES.Item]: { rows: [[1, { ID: 1 }]] } }));
   expect(tables.map((t) => t.table)).toEqual(["Item"]);

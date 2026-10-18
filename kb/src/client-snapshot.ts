@@ -52,6 +52,18 @@ export const CLIENT_TABLES = {
   HolidayNames: 996359, HolidayDescriptions: 996360, HolidayXTimeEvent: 6905813,
   QuestInfo: 1120960, QuestSort: 1134585,
   GameObjectDisplayInfo: 1266277, GameObjectArtKit: 1266737,
+  // W1 (docs/2026-10-18-client-data-placement.md): group content and its journal, item meta (costs,
+  // limits, families, effects), the spell math behind tooltips and cooldowns, mounts, and the old
+  // profession specialisation tables.
+  LFGDungeons: 1361033, JournalInstance: 1237438, JournalEncounter: 1240336, JournalTier: 1349056,
+  DungeonEncounter: 1347279, MapDifficulty: 1367868, AreaGroupMember: 1093406,
+  ItemExtendedCost: 801681, ItemCurrencyCost: 801670, ItemLimitCategory: 1237440, ItemBagFamily: 1278179,
+  ItemNameDescription: 1332559, ItemEffect: 969941, ItemXItemEffect: 3177687,
+  SpellCastTimes: 1134089, SpellCooldowns: 1139924, SpellRange: 1146820, SpellLevels: 1140079,
+  Mount: 921760, MountXDisplay: 1576117, MountType: 1114674, MountTypeXCapability: 1114715,
+  MountXSpellVisualKitPicker: 3989477,
+  Profession: 4508544, ProfessionEffect: 4505297, ProfessionEffectType: 4556715, ProfessionTrait: 4505298,
+  ProfessionTraitXEffect: 4505494, ProfessionTraitXLabel: 4505299,
   // Partial on the client: most of what these describe (spawns, quest text) lives on the server.
   Creature: 841631, GameObjects: 841620, QuestV2: 1139443,
   // Loading screens (Map.LoadingScreenID names a row; the row names its picture files), for the page

@@ -39,6 +39,23 @@ export const NEEDED_FIELDS: Partial<Record<keyof typeof CLIENT_TABLES, readonly 
   GameObjectDisplayInfo: ["FileDataID"],
   GameObjectArtKit: ["AttachModelFileID"],
   QuestV2: ["UniqueBitFlag"],
+  LFGDungeons: ["Name_lang", "TypeID", "MapID", "DifficultyID"],
+  DungeonEncounter: ["Name_lang", "MapID", "DifficultyID"],
+  MapDifficulty: ["MapID", "DifficultyID", "MaxPlayers"],
+  AreaGroupMember: ["AreaID", "AreaGroupID"],
+  ItemExtendedCost: ["Money", "ItemID", "ItemCount", "CurrencyID", "CurrencyCount"],
+  ItemLimitCategory: ["Name_lang", "Quantity"],
+  ItemBagFamily: ["Name_lang"],
+  ItemNameDescription: ["Description_lang", "Color"],
+  ItemEffect: ["SpellID"],
+  ItemXItemEffect: ["ItemID", "ItemEffectID"],
+  SpellCastTimes: ["Base", "Minimum"],
+  SpellCooldowns: ["SpellID", "RecoveryTime", "CategoryRecoveryTime", "StartRecoveryTime"],
+  SpellRange: ["DisplayName_lang", "RangeMin", "RangeMax"],
+  SpellLevels: ["SpellID", "BaseLevel", "SpellLevel", "MaxLevel"],
+  Mount: ["Name_lang", "SourceSpellID", "MountTypeID"],
+  MountXDisplay: ["MountID", "CreatureDisplayInfoID"],
+  Profession: ["SkillLineID"],
 };
 
 export interface FieldCoverage { name: string; present: boolean; filled: number }
