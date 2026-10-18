@@ -4,6 +4,8 @@
   "description": "Everloot's upload record kinds, API response shapes and MCP tool schemas.",
   "license": "AGPL-3.0-only",
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Everloot/everloot.git",
