@@ -15,24 +15,24 @@
     "serve:mcp": "tsx src/mcp-http-main.ts"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.31.0",
+    "@modelcontextprotocol/sdk": "^1.32.1",
     "@rhyster/wow-casc-dbc": "2.16.15",
     "better-sqlite3": "^13.0.3",
-    "js-yaml": "^4.1.0",
+    "js-yaml": "^5.4.3",
     "sax": "^1.6.1",
     "wtf_wikipedia": "^10.4.2",
     "yaml": "^2.9.1",
-    "zod": "^4.6.5",
+    "zod": "^4.6.7",
     "zstd-napi": "^0.0.13"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^9.6.0",
     "@types/js-yaml": "^4.0.9",
-    "@types/node": "^22.20.4",
+    "@types/node": "^26.6.5",
     "@types/sax": "^1.2.7",
     "luaparse": "^0.3.1",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.2"
+    "vitest": "^5.0.4"
   }
 }
