@@ -19,6 +19,19 @@ function tables(): (t: string) => Rows | undefined {
       { ID: 2835, IconFileDataID: 135232 }, // alone with its icon: no same-icon edge
       { ID: 16862, IconFileDataID: 0 },
     ]),
+    // Blacksmithing (164) and its child tier line (2477), a class skill (26, Arms) left out.
+    SkillLine: rows([
+      { ID: 164, DisplayName_lang: "Blacksmithing", CategoryID: 11, ParentSkillLineID: 0 },
+      { ID: 2477, DisplayName_lang: "Classic Blacksmithing", CategoryID: 11, ParentSkillLineID: 164 },
+      { ID: 26, DisplayName_lang: "Arms", CategoryID: 7, ParentSkillLineID: 0 },
+      // Cooking is a secondary skill players browse as a profession; Horse Riding shares its category and is not.
+      { ID: 185, DisplayName_lang: "Cooking", CategoryID: 9, ParentSkillLineID: 0 },
+      { ID: 148, DisplayName_lang: "Horse Riding", CategoryID: 9, ParentSkillLineID: 0 },
+    ]),
+    SkillLineAbility: rows([
+      { ID: 1, SkillLine: 2477, Spell: 2660 }, { ID: 2, SkillLine: 26, Spell: 12294 },
+      { ID: 3, SkillLine: 185, Spell: 2538 }, { ID: 4, SkillLine: 148, Spell: 33388 },
+    ]),
   };
   return (t) => all[t];
 }
@@ -34,6 +47,9 @@ test("client edges: created by, reagent for, part of set, same icon, each from t
     // One edge per item to the shared icon file, not one per pair: one icon is shared by 1,141 items in 1.60.1.
     ["item", 2862, "same_icon", "icon", 135249],
     ["item", 2863, "same_icon", "icon", 135249],
+    // The profession that teaches the spell, the tier line folded into Blacksmithing; Cooking counts, Arms and riding do not.
+    ["spell", 2660, "in_skill_line", "skill", 164],
+    ["spell", 2538, "in_skill_line", "skill", 185],
   ]);
   expect(edges.every((e) => e.evidence === "client" && e.build === "1.60.1.70450" && e.installs === null)).toBe(true);
   expect(edges[0]).toMatchObject({ firstSeen: build.extractedAt, lastSeen: build.extractedAt });

@@ -31,15 +31,19 @@ can be browsed the way players think about items.
 
 - `/database/items`: every class with its subclasses and counts, and an item id lookup.
 - `/database/items/<class>` and `/database/items/<class>/<subclass>`, for example
-  `/database/items/weapon/one-handed-swords`. Filters `?slot=`, `?quality=`, `?page=` (100 per
+  `/database/items/weapons/one-handed-swords`. Filters `?slot=`, `?quality=`, `?page=` (100 per
   page). An unknown slug or filter is a 404. Only the plain category page is indexed and in the
   sitemap; filtered and later pages are not.
 - The first segment is shared with item ids: a number is an item, a word is a class
-  (`/database/items/19019` vs `/database/items/weapon`).
+  (`/database/items/19019` vs `/database/items/weapons`).
 - Each item page shows its path (Items › Armor › Cloth · Chest · Epic) with the label and build.
 
-The class slugs are the client's names, so they are singular: `weapon`, not Wowhead's `weapons`.
-The research note's example used the plural; the rule it set (slugs from the client's names) wins.
+The class slugs were first the client's singular names (`weapon`). Changed 2026-10-18 by the
+maintainer: classes carry a `label` in the plural, as item databases have long listed them
+(`Weapons`, `Trade Goods`, `Recipes`; `CLASS_LABELS` in `kb/src/item-taxonomy.ts`, by class id), and
+the slug is made from the label (`weapons`), so the URLs read as players expect. The client's own
+`name` stays in the row. The old singular URLs redirect for good to the plural ones, filters kept,
+and `/api/items` and the MCP tool still answer the old slug. Subclass slugs were already plural.
 
 ## Open data
 

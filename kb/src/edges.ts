@@ -13,19 +13,19 @@ import { INDEPENDENT_INSTALLS, lootWindowsFromRecords, rollupDrops } from "./dro
 export const EDGE_SCHEMA = "everloot.edges/1";
 export const CLIENT_LABEL = "Found in game files, unconfirmed";
 
-export type EdgeKind = "item" | "spell" | "npc" | "object" | "quest" | "zone" | "item_set" | "icon";
+export type EdgeKind = "item" | "spell" | "npc" | "object" | "quest" | "zone" | "item_set" | "icon" | "skill";
 export type Evidence = "client" | "observed";
 
 /** In the order pages list them: what players saw first, then what the files say. */
 export const RELS = [
   "dropped_by", "sold_by", "reward_from", "located_in",
-  "created_by", "reagent_for", "part_of_set", "same_icon",
+  "created_by", "reagent_for", "part_of_set", "same_icon", "in_skill_line",
 ] as const;
 export type Rel = (typeof RELS)[number];
 
 export const REL_LABELS: Record<Rel, string> = {
   dropped_by: "Dropped by", sold_by: "Sold by", reward_from: "Reward from", located_in: "Located in",
-  created_by: "Created by", reagent_for: "Reagent for", part_of_set: "Part of set", same_icon: "Same icon",
+  created_by: "Created by", reagent_for: "Reagent for", part_of_set: "Part of set", same_icon: "Same icon", in_skill_line: "Profession",
 };
 
 export interface Edge {
@@ -73,6 +73,32 @@ export function clientEdges(get: (table: string) => Rows | undefined, build: { v
     if (icon) byIcon.set(icon, [...(byIcon.get(icon) ?? []), id(i.ID)]);
   }
   for (const [icon, items] of byIcon) if (items.length > 1) for (const item of items) add("item", item, "same_icon", "icon", icon);
+  // Which profession teaches a spell: SkillLineAbility, kept to professions and secondary skills, a child tier
+  // line (an expansion's) folded into its parent.
+  for (const [spell, skill] of professionOfSpells(get)) add("spell", spell, "in_skill_line", "skill", skill);
+  return out;
+}
+
+/** SkillLine.CategoryID of professions. */
+export const PROFESSION_CATEGORY = 11;
+/**
+ * The secondary skills players call professions: Cooking, First Aid and Fishing. They share CategoryID 9 with
+ * riding, racial lines, Poisons and Lockpicking, which nobody browses as professions, so these are named by id.
+ */
+export const SECONDARY_SKILLS = new Set([129, 185, 356]);
+export const isProfession = (row: Record<string, unknown>) => Number(row.CategoryID) === PROFESSION_CATEGORY || SECONDARY_SKILLS.has(Number(row.ID));
+
+/** spell id -> the top-level profession skill line that teaches it. */
+export function professionOfSpells(get: (table: string) => Rows | undefined): Map<number, number> {
+  const lines = new Map(list(get("SkillLine")).map((r) => [id(r.ID), r]));
+  const top = (skill: number) => { const r = lines.get(skill); const parent = id(r?.ParentSkillLineID); return parent && lines.has(parent) ? parent : skill; };
+  const out = new Map<number, number>();
+  for (const a of list(get("SkillLineAbility"))) {
+    const skill = top(id(a.SkillLine));
+    const row = lines.get(skill);
+    if (!row || !isProfession(row) || !id(a.Spell)) continue;
+    if (!out.has(id(a.Spell))) out.set(id(a.Spell), skill);
+  }
   return out;
 }
 
@@ -180,11 +206,11 @@ export function groupByRel(edges: readonly Edge[]): { rel: Rel; label: string; e
 /** The same relations read from the other end: what an NPC drops, what a spell creates. */
 export const REVERSE_LABELS: Record<Rel, string> = {
   dropped_by: "Drops", sold_by: "Sells", reward_from: "Rewards", located_in: "Seen here",
-  created_by: "Creates", reagent_for: "Uses reagent", part_of_set: "Set items", same_icon: "Items with this icon",
+  created_by: "Creates", reagent_for: "Uses reagent", part_of_set: "Set items", same_icon: "Items with this icon", in_skill_line: "Spells",
 };
 
 const NOUNS: Record<EdgeKind, string> = {
-  item: "item", spell: "spell", npc: "NPC", object: "object", quest: "quest", zone: "zone", item_set: "item set", icon: "icon file",
+  item: "item", spell: "spell", npc: "NPC", object: "object", quest: "quest", zone: "zone", item_set: "item set", icon: "icon file", skill: "profession",
 };
 export const entityLabel = (kind: EdgeKind, entityId: number) => `${NOUNS[kind]} ${entityId}`;
 

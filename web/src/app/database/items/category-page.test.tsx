@@ -9,7 +9,11 @@ vi.mock("@/lib/rollup-compute", () => ({
 }));
 vi.mock("@/lib/upload-store", () => ({ STORAGE_UNREACHABLE: "Storage unavailable" }));
 vi.mock("next/link", () => ({ default: ({ href, children }: { href: string; children: ReactNode }) => <a href={href}>{children}</a> }));
-vi.mock("next/navigation", () => ({ notFound: () => { throw new Error("NEXT_NOT_FOUND"); }, useRouter: () => ({ push: () => {} }) }));
+vi.mock("next/navigation", () => ({
+  notFound: () => { throw new Error("NEXT_NOT_FOUND"); },
+  permanentRedirect: (href: string) => { throw new Error(`NEXT_REDIRECT ${href}`); },
+  useRouter: () => ({ push: () => {} }),
+}));
 
 import ItemPage, { generateMetadata } from "./[id]/page";
 import SubclassPage, { generateMetadata as subclassMetadata } from "./[id]/[subclass]/page";
@@ -20,10 +24,11 @@ const props = (id: string, search: Record<string, string> = {}) => ({ params: Pr
 const sub = (id: string, subclass: string, search: Record<string, string> = {}) => ({ params: Promise.resolve({ id, subclass }), searchParams: Promise.resolve(search) });
 const html = async (el: Promise<ReactNode> | ReactNode) => renderToStaticMarkup(await el);
 
-test("the index lists classes and subclasses with counts and the build", async () => {
+test("the index lists classes and subclasses with counts and the build, classes in the plural", async () => {
   const page = await html(ItemsPage());
-  expect(page).toContain('href="/database/items/weapon"');
-  expect(page).toContain('href="/database/items/weapon/one-handed-swords"');
+  expect(page).toContain('href="/database/items/weapons"');
+  expect(page).toContain('href="/database/items/weapons/one-handed-swords"');
+  expect(page).toContain(">Weapons<");
   expect(page).toContain(CLIENT_LAYER.build.version);
   expect(page).toContain("Blizzard");
 });
@@ -34,10 +39,18 @@ test("a word in the item slot is a class page; a subclass page filters by slot a
   expect(cls).toContain("Armor");
   expect(cls).toContain('href="/database/items/armor/cloth"');
   const cloth = await html(SubclassPage(sub("armor", "cloth", { slot: "chest" })));
-  expect(cloth).toContain("found in game files, unconfirmed");
+  expect(cloth.match(/found in game files, unconfirmed/g)).toHaveLength(1);
   expect(cloth).toContain(">Chest<");
   expect(cloth).not.toContain(">Head<\/td>");
   expect(cloth).toContain("Page 1 of");
+});
+
+test("the first, singular class URLs move to the plural ones for good, filters kept", async () => {
+  await expect(html(ItemPage(props("weapon")))).rejects.toThrow("NEXT_REDIRECT /database/items/weapons");
+  await expect(html(SubclassPage(sub("weapon", "one-handed-swords", { quality: "epic" })))).rejects.toThrow("NEXT_REDIRECT /database/items/weapons/one-handed-swords?quality=epic");
+  expect((await generateMetadata(props("weapon"))).robots).toMatchObject({ index: false });
+  // A class whose plural is its own name (Armor) has no old URL to move.
+  await expect(html(ItemPage(props("armors")))).rejects.toThrow("NEXT_NOT_FOUND");
 });
 
 test("unknown categories and filters are a 404, not an empty page", async () => {
@@ -48,16 +61,17 @@ test("unknown categories and filters are a 404, not an empty page", async () => 
 });
 
 test("only the plain category page is indexed", async () => {
-  expect((await subclassMetadata(sub("weapon", "one-handed-swords"))).robots).toMatchObject({ index: true });
-  expect((await subclassMetadata(sub("weapon", "one-handed-swords", { quality: "epic" }))).robots).toMatchObject({ index: false });
-  expect((await generateMetadata(props("weapon"))).robots).toMatchObject({ index: true });
+  expect((await subclassMetadata(sub("weapons", "one-handed-swords"))).robots).toMatchObject({ index: true });
+  expect((await subclassMetadata(sub("weapons", "one-handed-swords", { quality: "epic" }))).robots).toMatchObject({ index: false });
+  expect((await generateMetadata(props("weapons"))).robots).toMatchObject({ index: true });
 });
 
-test("an item page shows its category path, slot and quality with the label and build", async () => {
+test("an item page shows its category path, slot and quality, with one note giving the label and build", async () => {
   const row = CLIENT_TAXONOMY.items.find((r) => r[1] === 4 && r[2] === 1 && r[4] === 4)!;
   const page = await html(ItemPage(props(String(row[0]))));
   expect(page).toContain('href="/database/items/armor"');
   expect(page).toContain('href="/database/items/armor/cloth"');
   expect(page).toContain("Epic");
-  expect(page).toContain(`found in game files, unconfirmed, build ${CLIENT_LAYER.build.version}`);
+  expect(page).toContain(`read from build ${CLIENT_LAYER.build.version}`);
+  expect(page).not.toContain("unconfirmed, build");
 });

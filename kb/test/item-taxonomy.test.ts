@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import {
-  buildTaxonomy, categoryOf, filterItems, handleItemCategories, QUALITIES, resolveClass, resolveSubclass, slotOf, slugify, type Taxonomy,
+  buildTaxonomy, categoryOf, filterItems, handleItemCategories, QUALITIES, resolveClass, resolveLegacyClass, resolveSubclass, slotOf, slugify, type Taxonomy,
 } from "../src/item-taxonomy.js";
 
 type Rows = Map<number, Record<string, unknown>>;
@@ -46,10 +46,11 @@ test("slugs come from the client's English names", () => {
 
 test("the taxonomy: classes and subclasses with slugs and counts, items with class, subclass, slot and quality", () => {
   const t = buildTaxonomy(tables());
+  // The client's names stay; labels and slugs are plural, as item databases have long used them.
   expect(t.classes).toEqual([
-    { id: 2, name: "Weapon", slug: "weapon", items: 1 },
-    { id: 4, name: "Armor", slug: "armor", items: 2 },
-    { id: 18, name: "WoW Token", slug: "wow-token", items: 1 },
+    { id: 2, name: "Weapon", label: "Weapons", slug: "weapons", items: 1 },
+    { id: 4, name: "Armor", label: "Armor", slug: "armor", items: 2 },
+    { id: 18, name: "WoW Token", label: "WoW Tokens", slug: "wow-tokens", items: 1 },
   ]);
   expect(t.subclasses.filter((s) => s.classId === 2)).toEqual([
     { classId: 2, id: 0, name: "One-Handed Axes", slug: "one-handed-axes", items: 0 },
@@ -67,7 +68,7 @@ test("an item's category path, slot and quality, in words", () => {
   const t = buildTaxonomy(tables());
   expect(categoryOf(t, 16916)).toEqual({
     itemId: 16916,
-    class: { id: 4, name: "Armor", slug: "armor" },
+    class: { id: 4, name: "Armor", label: "Armor", slug: "armor" },
     subclass: { id: 1, name: "Cloth", slug: "cloth" },
     slot: { inventoryType: 20, name: "Chest", slug: "chest" },
     quality: { id: 4, name: "Epic", slug: "epic" },
@@ -82,6 +83,9 @@ test("slugs and numeric ids both resolve; filters narrow by slot and quality", (
   const t: Taxonomy = buildTaxonomy(tables());
   expect(resolveClass(t, "armor")?.id).toBe(4);
   expect(resolveClass(t, "nope")).toBeNull();
+  // The first URLs used the client's singular name; those resolve to the class so pages can redirect.
+  expect(resolveLegacyClass(t, "weapon")?.slug).toBe("weapons");
+  expect(resolveLegacyClass(t, "armor")).toBeNull();
   expect(resolveSubclass(t, 4, "cloth")?.id).toBe(1);
   expect(resolveSubclass(t, 4, "1")?.slug).toBe("cloth");
   expect(filterItems(t, { classId: 4 }).map((r) => r[0])).toEqual([2589, 16916]);
@@ -103,4 +107,5 @@ test("the categories answer: the tree, one item's path, or a filtered list, each
   expect(list).toContain("Armor, chest: 1 item");
   expect(list).toContain("item 16916 · Cloth · Chest · Epic");
   expect(handleItemCategories({ class: "dragons" }, t, build)).toContain("No item class dragons");
+  expect(handleItemCategories({ class: "weapon" }, t, build)).toContain("Weapons: 1 item");
 });

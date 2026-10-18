@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { GAME_DATA_CREDIT } from "../../../../../kb/src/attribution";
 import { CLIENT_LABEL } from "../../../../../kb/src/edges";
 import { itemPage } from "../../../../../kb/src/item-page";
-import { describe, filterItems, QUALITIES, resolveClass, resolveSubclass, slotOf, type ItemClass, type ItemSubclass } from "../../../../../kb/src/item-taxonomy";
+import { describe, filterItems, QUALITIES, resolveClass, resolveLegacyClass, resolveSubclass, slotOf, type ItemClass, type ItemSubclass } from "../../../../../kb/src/item-taxonomy";
 import { CLIENT_LAYER, CLIENT_TAXONOMY as T, categoryQuery, ITEMS_PER_PAGE, itemsHref, type CategoryQuery } from "@/lib/items";
 import { pageMetadata } from "@/lib/seo";
 import { loadItemFacts } from "@/lib/rollup-compute";
@@ -13,6 +13,16 @@ import GameIcon from "@/components/game/GameIcon";
 import GameCredit from "@/components/game/GameCredit";
 
 type Search = Record<string, string | string[] | undefined>;
+
+/** The first category URLs used the client's singular names (/database/items/weapon); they move to the plural ones for good. */
+function legacyHref(classSlug: string, subclassKey: string | undefined, search: Search): string | null {
+  const cls = resolveLegacyClass(T, classSlug);
+  if (!cls) return null;
+  const sub = subclassKey === undefined ? null : resolveSubclass(T, cls.id, subclassKey);
+  if (subclassKey !== undefined && !sub) return null;
+  const q = categoryQuery(search);
+  return q ? itemsHref(cls.slug, sub?.slug, q) : null;
+}
 
 /** The class and subclass a path names, and the filters; null when any part is unknown. */
 function resolve(classSlug: string, subclassKey: string | undefined, search: Search): { cls: ItemClass; sub: ItemSubclass | null; q: CategoryQuery } | null {
@@ -29,13 +39,13 @@ const subName = (s: ItemSubclass) => s.name ?? `Subclass ${s.id}`;
 export function categoryMetadata(classSlug: string, subclassKey: string | undefined, search: Search): Metadata {
   const r = resolve(classSlug, subclassKey, search);
   if (!r) return { robots: { index: false, follow: true } };
-  const name = r.sub ? `${subName(r.sub)} (${r.cls.name})` : r.cls.name;
+  const name = r.sub ? `${subName(r.sub)} (${r.cls.label})` : r.cls.label;
   const count = r.sub ? r.sub.items : r.cls.items;
   // Only the plain category page is indexed; filtered and later pages repeat it.
   const plain = !r.q.slot && !r.q.quality && r.q.page === 1;
   return {
     ...pageMetadata({
-      title: `${name} items`,
+      title: r.sub ? `${name} items` : name,
       description: `${count} WoW: Forever items in ${name}, from the game files of build ${CLIENT_LAYER.build.version}, found in game files and unconfirmed.`,
       path: itemsHref(r.cls.slug, r.sub?.slug),
     }),
@@ -60,7 +70,11 @@ function FilterLinks({ label, options, current, href }: { label: string; options
 
 export async function CategoryPage({ classSlug, subclassKey, search }: { classSlug: string; subclassKey?: string; search: Search }) {
   const r = resolve(classSlug, subclassKey, search);
-  if (!r) notFound();
+  if (!r) {
+    const moved = legacyHref(classSlug, subclassKey, search);
+    if (moved) permanentRedirect(moved);
+    notFound();
+  }
   const { cls, sub, q } = r;
   const inCategory = filterItems(T, { classId: cls.id, subclassId: sub?.id });
   const rows = filterItems(T, { classId: cls.id, subclassId: sub?.id, slot: q.slot, quality: q.quality });
@@ -84,11 +98,11 @@ export async function CategoryPage({ classSlug, subclassKey, search }: { classSl
         <nav aria-label="Breadcrumb" className="font-mono text-xs text-muted">
           <Link href="/database/items" className="hover:underline underline-offset-4">Items</Link>
           {" › "}
-          {sub ? <Link href={itemsHref(cls.slug)} className="hover:underline underline-offset-4">{cls.name}</Link> : cls.name}
+          {sub ? <Link href={itemsHref(cls.slug)} className="hover:underline underline-offset-4">{cls.label}</Link> : cls.label}
           {sub ? <>{" › "}{subName(sub)}</> : null}
         </nav>
-        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">{sub ? subName(sub) : cls.name}</h1>
-        <p className="text-sm text-muted">{rows.length} items · {CLIENT_LABEL.toLowerCase()} · build {CLIENT_LAYER.build.version}</p>
+        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">{sub ? subName(sub) : cls.label}</h1>
+        <p className="text-sm text-muted">{rows.length.toLocaleString("en-US")} items · build {CLIENT_LAYER.build.version}</p>
       </header>
 
       {!sub && subclasses.length > 0 ? (

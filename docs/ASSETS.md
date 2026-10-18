@@ -241,7 +241,7 @@ At 1440 and 390 px wide:
   or tabbing to the link opens the tooltip with the name in its quality colour; Escape closes it.
   An item page shows the tooltip card under the title, and a spell icon beside "Created by" and
   "Reagent for" when the item has those relations. A category page such as
-  `/database/items/weapon/one-handed-swords` shows an icon only on rows players have reported. The
+  `/database/items/weapons/one-handed-swords` shows an icon only on rows players have reported. The
   credit line is at the bottom. No browser request ever goes to the private bucket.
 - **Raid builder.** Class icons in the slots and the class picker, tree icons beside the tree names,
   buff icons in the coverage tables.

@@ -29,6 +29,7 @@ evidence: 'observed' (players' uploads, 3 installs) | 'client' (found in game fi
 | reagent_for | item → spell | client | `SpellReagents.Reagent` |
 | part_of_set | item → item set | client | `ItemSet.ItemID` |
 | same_icon | item → icon file | client | `Item.IconFileDataID`, only icons two or more items share |
+| in_skill_line | spell → skill line | client | `SkillLineAbility.SkillLine`, professions (`SkillLine.CategoryID` 11) and Cooking, First Aid and Fishing (ids 129, 185, 356); an expansion's tier line folded into its parent (`ParentSkillLineID`) |
 
 - **Same icon is one row per item, not one per pair.** In build 1.60.1.70450 one icon is shared by
   1,141 items; pairs would be 3.2 million rows, against 29,010 this way. "Other items with this
@@ -39,6 +40,15 @@ evidence: 'observed' (players' uploads, 3 installs) | 'client' (found in game fi
   records behind them, ignoring times after the data was current. Client edges carry the
   extraction time and the build.
 - **Zones** use UiMap ids, the id space of sightings and `map.json`, not `AreaTable` ids.
+- **Profession (added 2026-10-18, maintainer's decision).** The first profession a spell is taught by.
+  Riding, racial lines, Poisons and Lockpicking share category 9 with the secondary skills, so the
+  three secondary skills are named by id rather than taking the category. The layer carries the
+  skill lines' names (`categories.skills`), so pages can write *Blacksmithing* beside a spell. On an
+  item page the profession shows beside the spell under *Created by* and *Reagent for*, as item
+  databases list recipes.
+- **One label per section (2026-10-18).** A game-file row no longer repeats *found in game files,
+  unconfirmed, build …*; the relations section ends with one line that says which rows those are,
+  the build, and Blizzard's notice. Observed rows keep their install count.
 
 ## Where it lives
 

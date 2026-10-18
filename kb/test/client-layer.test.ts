@@ -38,7 +38,8 @@ test("the client layer is one build-stamped, labelled file whose rows read back 
     edges: [["item", 2862, "created_by", "spell", 2660], ["item", 16862, "part_of_set", "item_set", 209]],
   });
   expect(file.credit).toContain("WoWDBDefs");
-  expect(file.categories.classes).toEqual([{ id: 4, name: "Armor", slug: "armor", items: 1 }]);
+  expect(file.categories.classes).toEqual([{ id: 4, name: "Armor", label: "Armor", slug: "armor", items: 1 }]);
+  expect(file.categories.skills).toEqual([]);
   expect(file.categories.subclasses).toEqual([{ classId: 4, id: 4, name: "Plate", slug: "plate", items: 1 }]);
   expect(file.items).toEqual([[16862, 4, 4, 5, 4]]);
   expect(text).toContain('\n  [16862,4,4,5,4]\n');
