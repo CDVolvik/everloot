@@ -1,7 +1,5 @@
 # Accounts step 1: Battle.net on Better Auth — Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Battle.net sign-in runs on Better Auth against our own Postgres, behind `EVERLOOT_AUTH_V2=1`, with every existing account (and its API keys) kept.
 
 **Architecture:** One Better Auth instance (`web/src/lib/auth/`) with a `pg` Pool on the Supabase transaction pooler, the generic OAuth plugin for Battle.net, and Better Auth's tables renamed `auth_*` beside our `users` table. The existing seam stays: `getUser()` / `revokeSession()` in `web/src/lib/supabase/server.ts` switch on the flag, and `/api/auth/bnet`, `/api/auth/me`, `/api/auth/logout` keep their URLs, so no page or component changes in this step. Flag off = today's code path, unchanged.
