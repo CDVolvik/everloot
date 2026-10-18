@@ -101,7 +101,7 @@ After that, the rail lists the pages, with a status dot beside the three jobs:
 | Ask | The switch and Answer now; MCP URL and token file; who answers (providers from `config.json`, or plain search); questions pending in game; the last answers | `askInfo` |
 | Addon | Installed version from the TOC against the newest `addon-v*` release; Install, Update or Reinstall, which downloads the zip from the site, checks it against the release's `SHA256SUMS`, and swaps `Interface/AddOns/Everloot` whole; the slot addons' presence | `addonInfo`, `installAddon` (`addon.ts`) |
 | Changes | The site's change tracker, from its RSS feed | `changes` (`changes.ts`) |
-| Log | The session log, with Pause | engine state |
+| Log | The session log, with Pause. Copy diagnostics puts version, platform, settings (the token file path, never the token), watched files, each job's last state and the last hundred lines on the clipboard with the user folder hidden (`shared/diagnostics.ts`) | engine state |
 | Settings | Game folder, site, launch at login, start in tray, data folder, check for updates, about | settings |
 | Site tools | Talent calculator, raid builder, database, auction prices, world map, lore archive: the site's own pages in one embedded browser view (`WebContentsView`, sandboxed, no preload) under the rail and a small header with Back, Reload and open-in-browser. Navigation stays on the site's origin; any other link opens outside. Nothing is re-implemented, so the tools stay one codebase with the web | `siteShow`, `siteHide`, `siteBack`, `siteReload` (`site-views.ts`) |
 
@@ -150,6 +150,8 @@ on the Node side for ten to fifteen minutes so opening a page twice does not ask
 - `updates.test.ts`: picks the newest `desktop-v*` tag, ignores addon tags and pre-releases.
 - `characters.test.ts`: gold history in order and a seven-day window on money events; a long
   history thins to sixty points keeping the first and the last.
+- `diagnostics.test.ts`: the report carries settings without the token and the last hundred lines;
+  home folders on Windows, macOS and Linux collapse to `~`.
 - `inspect.test.ts`: stale realms are the ones older than a day or undated, oldest first; the
   reminder names the oldest and counts the rest.
 - `backups.test.ts`: dated copies, ten per account; restore replaces the live file and keeps the

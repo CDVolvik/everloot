@@ -1,4 +1,5 @@
 import { accountOf as account } from "../main/engine";
+import { diagnostics } from "../shared/diagnostics";
 import type { AddonInfo, AppState, AskInfo, BackupInfo, ChangeItem, CharactersInfo, ChatInfo, EverlootApi, FileSummary, GameFolderCandidate, Job, JobStatus, MarketInfo } from "../shared/types";
 
 declare global { interface Window { everloot: EverlootApi } }
@@ -303,8 +304,10 @@ function changes(): string {
 
 function log(s: AppState): string {
   return `<div class="page">
-    <div class="head"><h1>Log</h1><button type="button" class="btn" id="pause">${s.engine.paused ? "Resume" : "Pause"}</button></div>
+    <div class="head"><h1>Log</h1><div class="row"><button type="button" class="btn" id="copyDiag">Copy diagnostics</button><button type="button" class="btn" id="pause">${s.engine.paused ? "Resume" : "Pause"}</button></div></div>
+    ${flash ? `<p class="${flash.startsWith("!") ? "error" : "ok"} small">${esc(flash.replace(/^!/, ""))}</p>` : ""}
     <section class="panel"><div class="log">${logLines(s, 200)}</div></section>
+    <p class="muted small">Copy diagnostics puts the version, your settings (where the token file is, never the token), the files watched, each job's last state and the last hundred lines on the clipboard, with your user folder hidden, for a bug report.</p>
   </div>`;
 }
 
@@ -452,6 +455,12 @@ document.body.addEventListener("click", async (ev) => {
     return;
   }
   if (t.id === "openBackups") { void api.openBackupsFolder(); return; }
+  if (t.id === "copyDiag" && state) {
+    try { await navigator.clipboard.writeText(diagnostics(state)); flash = "Copied. Paste it into the bug report."; }
+    catch (e) { flash = `!Could not copy: ${msg(e)}`; }
+    render();
+    return;
+  }
   if (t.dataset.restore) {
     busy = t.dataset.restore; flash = ""; render();
     try { const live = await api.restoreBackup(t.dataset.restore); flash = live ? `Restored ${account(live)}. Log in to see it.` : ""; }
