@@ -49,7 +49,9 @@ export function ToolReference() {
         <a href="/schema/index.json" className={link}><code className={code}>/schema/index.json</code></a> and{" "}
         <code className={code}>/schema/mcp/&lt;tool&gt;.json</code>. Tools marked <em>player data</em> state a fact only
         once three installs agree, say when something is unrecorded, and end their answer with the age of the data and the
-        credit line. The others carry their sources inside the answer.
+        credit line. The others carry their sources inside the answer. Tools marked <em>structured</em> also return{" "}
+        <code className={code}>structuredContent</code> of the shape in their schema file, beside the text; the rest gain it
+        tool by tool.
       </p>
       <ul className="divide-y divide-line border-y border-line">
         {docs.map((tool) => (
@@ -59,6 +61,7 @@ export function ToolReference() {
                 <span>
                   <code className={`${code} text-sm`}>{tool.name}</code>
                   {tool.playerData && <span className="ml-2 text-xs text-muted whitespace-nowrap">player data</span>}
+                  {tool.structured && <span className="ml-2 text-xs text-muted whitespace-nowrap">structured</span>}
                 </span>
                 <span className="text-sm text-fg-2">{tool.title}</span>
               </summary>

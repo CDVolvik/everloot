@@ -25,8 +25,10 @@ required, or tightening a limit is a major release.
 - The MCP server's tool table `MCP_TOOLS` (22 tools: name, title, description, input schema, annotations),
   with the input constants they use (`KNOWLEDGE_KINDS`, `GAME_VERSIONS`, `ENTITY_KINDS`, `RELS`,
   `CHANGE_FILTERS`, `BOARD_IDS`, `ECOSYSTEM_BOARD_FILTERS`, the `NEAR_*` limits, `ITEM_QUALITY_SLUGS`),
-  emitted as `schema/mcp/<tool>.json`. `TOOL_OUTPUT` states that every tool answers with one text block today;
-  structured output comes tool by tool in later minor releases.
+  emitted as `schema/mcp/<tool>.json`. `TOOL_OUTPUT` states that every tool answers with one text block;
+  `search_knowledge`, `get_entity`, `get_by_name` and `recent_changes` also declare an `outputSchema`
+  (`knowledgeHit`, `changeEntry`) and answer with `structuredContent` of that shape (`STRUCTURED_TOOLS`).
+  The other tools gain it tool by tool in later minor releases.
 
 ### Notes
 - The addon's Lua comments still name `web/src/lib/intake.ts`, the file this package replaced. They sit

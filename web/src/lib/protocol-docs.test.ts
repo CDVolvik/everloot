@@ -11,6 +11,8 @@ test("every tool gets a parameter table in declaration order, with required flag
   expect(search.params[3]).toMatchObject({ required: false, type: "integer, 1 to 25, default 8" });
   expect(search.playerData).toBe(false);
   expect(docs.find((d) => d.name === "item_page")!.playerData).toBe(true);
+  expect(search.structured).toBe(true);
+  expect(docs.find((d) => d.name === "item_page")!.structured).toBe(false);
   expect(toolParams("everloot_plan")).toEqual([]);
 });
 

@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 import { z } from "zod";
 import { emit } from "../scripts/emit-schema.js";
-import { ALL_RECORD_KINDS, PUBLIC_RECORD_KINDS, recordSchemas, RULES, UPLOAD_LIMITS, PROTOCOL_VERSION } from "../src/index.js";
+import { ALL_RECORD_KINDS, MCP_TOOL_NAMES, PUBLIC_RECORD_KINDS, recordSchemas, RULES, STRUCTURED_TOOLS, UPLOAD_LIMITS, PROTOCOL_VERSION } from "../src/index.js";
 
 const COMMITTED = join(import.meta.dirname, "..", "schema");
 
@@ -46,6 +46,16 @@ describe("schema files", () => {
     expect(index.protocol).toBe(PROTOCOL_VERSION);
     expect(index.kinds).toEqual([...ALL_RECORD_KINDS].sort());
     expect(index.publicKinds).toEqual([...PUBLIC_RECORD_KINDS].sort());
+  });
+
+  test("every MCP tool file has its input schema, and an output schema exactly where the tool declares one", () => {
+    for (const name of MCP_TOOL_NAMES) {
+      const file = JSON.parse(readFileSync(join(out, "mcp", `${name}.json`), "utf8")) as { inputSchema: { type: string }; outputSchema?: { properties: Record<string, unknown> } };
+      expect(file.inputSchema.type).toBe("object");
+      expect(file.outputSchema !== undefined).toBe(STRUCTURED_TOOLS.includes(name));
+    }
+    const search = JSON.parse(readFileSync(join(out, "mcp", "search_knowledge.json"), "utf8")) as { outputSchema: { properties: { hits: { items: { required: string[] } } } } };
+    expect(search.outputSchema.properties.hits.items.required).toContain("sourceUrl");
   });
 
   test("the committed schema/ folder is what the emitter writes today", () => {

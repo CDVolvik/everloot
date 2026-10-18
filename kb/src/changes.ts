@@ -173,6 +173,15 @@ export function renderFeed(entries: ChangeEntry[], site: { baseUrl: string; now:
 }
 
 /** Text answer for the `recent_changes` MCP tool. Excerpts are quoted source text from outside Everloot, so they are marked as such. */
+/** The same entries handleRecentChanges renders, for the tool's structuredContent. */
+export function recentChangesStructured(
+  entries: ChangeEntry[] | null,
+  args: { filter?: ChangeFilter; game?: BlueGame; limit?: number },
+): { connected: boolean; entries: ChangeEntry[] } {
+  if (entries === null) return { connected: false, entries: [] };
+  return { connected: true, entries: filterTimeline(entries, args.filter ?? "all", args.game).slice(0, args.limit ?? 10) };
+}
+
 export function handleRecentChanges(
   entries: ChangeEntry[] | null,
   args: { filter?: ChangeFilter; game?: BlueGame; limit?: number },

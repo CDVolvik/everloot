@@ -3,7 +3,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { CREDIT_LINE, LICENCE, MCP_CREDIT, SITE } from "@everloot/protocol";
 import { auctionSightingsFromRecords, handleAuctionHistory } from "./auction-history.js";
 import { handlePlan } from "./bridge-plan.js";
-import { handleRecentChanges, type ChangeEntry } from "./changes.js";
+import { handleRecentChanges, recentChangesStructured, type ChangeEntry } from "./changes.js";
 import { handleEcosystemProjects, type EcosystemView } from "./ecosystem.js";
 import { collectionFactsFromRecords, handleCollectionGap } from "./collection-gap.js";
 import { handleCompletionProgress, type CompletionFacts } from "./completion.js";
@@ -14,7 +14,7 @@ import { handleItemPage } from "./item-page.js";
 import { handleObjectPage, objectFactsFromRecords, type ObjectFacts } from "./object-page.js";
 import { handleMarketValue, type MarketState } from "./market.js";
 import { loadUploadRecords } from "./load-uploads.js";
-import { KNOWLEDGE_KINDS, MCP_TOOL_NAMES, MCP_TOOLS, parseRecords, type McpToolArgs, type McpToolName } from "@everloot/protocol";
+import { KNOWLEDGE_KINDS, MCP_TOOL_NAMES, MCP_TOOLS, parseRecords, type McpToolArgs, type McpToolDef, type McpToolName } from "@everloot/protocol";
 import { handleProfessionPath } from "./profession-path.js";
 import { handleRecipeThresholds, pathFactsFromRecords, recipeFactsFromRecords } from "./recipe-thresholds.js";
 import { handleNpcPage, handleQuestPage, handleVendorPage, worldFactsFromRecords } from "./world-pages.js";
@@ -343,14 +343,21 @@ function formatHit(h: SearchHit): string {
 }
 
 /** Pure handlers — tested directly; the MCP registration below is a thin wrapper. */
-export function handleSearch(db: DB, args: SearchArgs): string {
-  const hits = search(db, args.query, args.limit, {
+export function searchHits(db: DB, args: SearchArgs): SearchHit[] {
+  return search(db, args.query, args.limit, {
     kinds: args.kind ? [args.kind] : undefined,
     versions: args.version ? [args.version] : undefined,
   });
+}
+
+export function handleSearch(db: DB, args: SearchArgs): string {
+  const hits = searchHits(db, args);
   if (hits.length === 0) return "No matches. Try fewer or different words.";
   return hits.map(formatHit).join("\n\n");
 }
+
+/** A tool answer: the text every client gets, plus structured content for tools with an output schema. */
+type Answer = string | { text: string; structured: Record<string, unknown> };
 
 export function handleGetEntity(db: DB, args: { id: number }): string {
   const hit = getEntity(db, args.id);
@@ -373,10 +380,10 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; 
   const server = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION, websiteUrl: SOURCE_URL }, { instructions: SERVER_INSTRUCTIONS });
   const readFacts = <T>(tool: ToolName, render: (facts: T) => string) => fromTooledUploads(tool, render, options.corpus);
   /** One handler per tool, typed by the protocol's input shape; the MCP registration below is a thin wrapper. */
-  const handlers: { [K in McpToolName]: (args: McpToolArgs<K>) => string | Promise<string> } = {
-    search_knowledge: (args) => handleSearch(db, args),
-    get_entity: (args) => handleGetEntity(db, args),
-    get_by_name: (args) => handleGetByName(db, args),
+  const handlers: { [K in McpToolName]: (args: McpToolArgs<K>) => Answer | Promise<Answer> } = {
+    search_knowledge: (args) => ({ text: handleSearch(db, args), structured: { hits: searchHits(db, args) } }),
+    get_entity: (args) => ({ text: handleGetEntity(db, args), structured: { hit: getEntity(db, args.id) ?? null } }),
+    get_by_name: (args) => ({ text: handleGetByName(db, args), structured: { hits: getByName(db, args.name, args.kind) } }),
     profession_path: (args) => readFacts("profession_path", (facts: ReturnType<typeof pathFactsFromRecords>) =>
       handleProfessionPath(args, facts.sightings, facts.prices, facts.derived, facts.vendorPrices)),
     recipe_thresholds: (args) => readFacts("recipe_thresholds", (facts: ReturnType<typeof recipeFactsFromRecords>) =>
@@ -398,7 +405,7 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; 
     recent_changes: async (args) => {
       let entries: ChangeEntry[] | null = null;
       try { entries = (await options.changes?.()) ?? null; } catch { entries = null; }
-      return handleRecentChanges(entries, args);
+      return { text: handleRecentChanges(entries, args), structured: recentChangesStructured(entries, args) };
     },
     ecosystem_projects: async (args) => {
       let view: EcosystemView | null = null;
@@ -408,11 +415,17 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; 
     everloot_plan: () => handlePlan(),
   };
   for (const name of MCP_TOOL_NAMES) {
-    const def = MCP_TOOLS[name];
+    const def: McpToolDef = MCP_TOOLS[name];
     server.registerTool(
       name,
-      { title: def.title, description: def.description, inputSchema: def.inputSchema, annotations: def.annotations },
-      async (args: unknown) => ({ content: [{ type: "text" as const, text: await (handlers[name] as (a: unknown) => string | Promise<string>)(args) }] }),
+      { title: def.title, description: def.description, inputSchema: def.inputSchema, ...(def.outputSchema ? { outputSchema: def.outputSchema } : {}), annotations: def.annotations },
+      async (args: unknown) => {
+        const answer = await (handlers[name] as (a: unknown) => Answer | Promise<Answer>)(args);
+        const text = typeof answer === "string" ? answer : answer.text;
+        // Structured content goes only with a declared schema; a text-only tool never sends an unvalidated object.
+        const structuredContent = typeof answer === "string" || !def.outputSchema ? undefined : answer.structured;
+        return { content: [{ type: "text" as const, text }], ...(structuredContent ? { structuredContent } : {}) };
+      },
     );
   }
   return server;
