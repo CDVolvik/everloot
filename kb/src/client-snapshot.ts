@@ -64,6 +64,34 @@ export const CLIENT_TABLES = {
   MountXSpellVisualKitPicker: 3989477,
   Profession: 4508544, ProfessionEffect: 4505297, ProfessionEffectType: 4556715, ProfessionTrait: 4505298,
   ProfessionTraitXEffect: 4505494, ProfessionTraitXLabel: 4505299,
+  // W2 (docs/2026-10-18-client-data-placement.md): the item appearance and transmog cluster behind
+  // item pages and tooltips, quest POI points and lines, battle pets and heirlooms, factions, the map
+  // overlays and zone ambience, achievements, currencies, taxi routes, creature difficulty and
+  // display links, class and race facts, and the lore archive texts (pages-only review pass).
+  ItemAppearance: 982462, ItemAppearanceXUiCamera: 1248126, ItemDisplayInfo: 1266429,
+  ItemDisplayInfoMaterialRes: 1280614, ItemModifiedAppearance: 982457, ItemModifiedAppearanceExtra: 1278399,
+  ItemRangedDisplayInfo: 1270315, ItemVisuals: 1343605, ItemVisualsXEffect: 3043873,
+  ItemXBonusTree: 987133, ItemBonus: 959070, ItemBonusTreeNode: 987134, ItemDisenchantLoot: 1134087,
+  ItemSearchName: 1273408, ItemSetSpell: 1314689, ItemChildEquipment: 1247926,
+  TransmogSet: 1376213, TransmogSetGroup: 1576116, TransmogSetItem: 1376212, TransmogIllusion: 3580450,
+  QuestLine: 973430, QuestLineXQuest: 973441, QuestPOIBlob: 1251882, QuestPOIPoint: 1251883,
+  QuestMoneyReward: 1139047, QuestXP: 1139378, QuestFactionReward: 1282622,
+  BattlePetAbility: 841610, BattlePetAbilityEffect: 801575, BattlePetAbilityState: 801576,
+  BattlePetAbilityTurn: 801577, BattlePetBreedQuality: 801578, BattlePetBreedState: 801579,
+  BattlePetEffectProperties: 801580, BattlePetSpeciesState: 801581, BattlePetSpeciesXAbility: 801582,
+  BattlePetState: 801583, BattlePetVisual: 801584, Heirloom: 1097696, PetLoyalty: 2179604,
+  MountCapability: 1114709,
+  FactionGroup: 1343595, FactionTemplate: 1361579,
+  WorldMapOverlay: 1134579, WorldMapOverlayTile: 1957212, WMOAreaTable: 1355528,
+  ZoneIntroMusicTable: 1310251, ZoneMusic: 1310254, ZoneLight: 1310253, ZoneLightPoint: 1310256,
+  AreaPOI: 1000630, AreaPOIState: 1000631,
+  Achievement: 1260179, Achievement_Category: 1324299,
+  CurrencyCategory: 1125667, CurrencyContainer: 1934603,
+  TaxiNodes: 1068100, TaxiPath: 1067802, TaxiPathNode: 1000437,
+  CreatureDifficulty: 879282, CreatureImmunities: 1131322, CreatureMovementInfo: 1125666,
+  CreatureSoundData: 1344466, CreatureXDisplayInfo: 1864302,
+  ChrClassesXPowerTypes: 1121420, ChrRaceRacialAbility: 3507821,
+  LoreText: 3311370, LoreTextPublic: 3479846, ZoneStory: 1797864,
   // Partial on the client: most of what these describe (spawns, quest text) lives on the server.
   Creature: 841631, GameObjects: 841620, QuestV2: 1139443,
   // Loading screens (Map.LoadingScreenID names a row; the row names its picture files), for the page
