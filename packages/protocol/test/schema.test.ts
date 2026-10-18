@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 import { z } from "zod";
 import { emit } from "../scripts/emit-schema.js";
-import { ALL_RECORD_KINDS, MCP_PROMPT_NAMES, MCP_RESOURCE_URIS, MCP_TOOL_NAMES, PUBLIC_RECORD_KINDS, recordSchemas, RULES, STRUCTURED_TOOLS, UPLOAD_LIMITS, PROTOCOL_VERSION } from "../src/index.js";
+import { ALL_RECORD_KINDS, MCP_PROMPT_NAMES, MCP_RESOURCE_TEMPLATE_URIS, MCP_RESOURCE_URIS, MCP_TOOL_NAMES, PUBLIC_RECORD_KINDS, recordSchemas, RULES, STRUCTURED_TOOLS, UPLOAD_LIMITS, PROTOCOL_VERSION } from "../src/index.js";
 
 const COMMITTED = join(import.meta.dirname, "..", "schema");
 
@@ -66,6 +66,9 @@ describe("schema files", () => {
     const index = JSON.parse(readFileSync(join(out, "index.json"), "utf8")) as { mcpResources: string[]; mcpPrompts: string[] };
     expect(index.mcpResources).toEqual(MCP_RESOURCE_URIS);
     expect(index.mcpPrompts).toEqual(MCP_PROMPT_NAMES);
+    const withTemplates = JSON.parse(readFileSync(join(out, "mcp", "resources.json"), "utf8")) as { templates: { uriTemplate: string; tool: string; contents: string }[] };
+    expect(withTemplates.templates.map((t) => t.uriTemplate)).toEqual(MCP_RESOURCE_TEMPLATE_URIS);
+    expect(withTemplates.templates[0]).toMatchObject({ tool: "item_page", contents: "https://everloot.app/schema/mcp/item_page.json#/outputSchema" });
     const prompts = JSON.parse(readFileSync(join(out, "mcp", "prompts.json"), "utf8")) as { prompts: { name: string; arguments: { name: string; required: boolean }[] }[] };
     expect(prompts.prompts.map((p) => p.name)).toEqual(MCP_PROMPT_NAMES);
     expect(prompts.prompts[0].arguments).toEqual([{ name: "question", description: "The question, in the player's words.", required: true }]);

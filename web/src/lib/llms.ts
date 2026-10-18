@@ -1,4 +1,4 @@
-import { CORPUS_URL, MCP_PROMPTS, MCP_RESOURCES, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR } from "@/app/connect/connect-data";
+import { CORPUS_URL, MCP_PROMPTS, MCP_RESOURCE_TEMPLATES, MCP_RESOURCES, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR } from "@/app/connect/connect-data";
 import { LAUNCH, longDate } from "@/data/wow-forever";
 import { tools, toolHref } from "@/data/tools";
 import { PUBLIC_RECORD_KINDS } from "@everloot/protocol";
@@ -149,6 +149,8 @@ export function llmsFullTxt(entries: ChangeEntry[] = loadTimeline()): string {
     ...MCP_TOOLS.map((t) => `- ${t.name}: ${t.text}`),
     "Resources (read whole with resources/read):",
     ...MCP_RESOURCES.map((r) => `- ${r.uri}: ${r.text}`),
+    "Resource templates (one URI per entity, the same JSON as the tool's structured answer):",
+    ...MCP_RESOURCE_TEMPLATES.map((t) => `- ${t.uriTemplate}: ${t.text}`),
     "Prompts (prompts/get, arguments are strings):",
     ...MCP_PROMPTS.map((p) => `- ${p.name}: ${p.text}`),
     "",

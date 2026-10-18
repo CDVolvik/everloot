@@ -113,6 +113,14 @@
     "everloot://methodology",
     "everloot://data-policy"
   ],
+  "mcpResourceTemplates": [
+    "everloot://item/{id}",
+    "everloot://npc/{id}",
+    "everloot://quest/{id}",
+    "everloot://vendor/{id}",
+    "everloot://object/{id}",
+    "everloot://talents/{class}"
+  ],
   "mcpPrompts": [
     "answer_with_sources",
     "review_talent_plan",

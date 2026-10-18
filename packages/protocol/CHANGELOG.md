@@ -48,6 +48,9 @@ required, or tightening a limit is a major release.
 - `outputSchema` for `gold_ledger` (`goldLedger`, with `INCOME_CATEGORIES` and `SPENDING_CATEGORIES`) and
   `world_map_near` (`mapNear`), the last two: every tool is structured now (`STRUCTURED_TOOLS` is the
   whole list).
+- The MCP server's resource templates `MCP_RESOURCE_TEMPLATES` (`everloot://item/{id}`, `npc`, `quest`,
+  `vendor`, `object`, `talents/{class}`), each naming the tool whose structured answer it holds; in
+  `schema/mcp/resources.json` as `templates` and in `index.json` as `mcpResourceTemplates`.
 - The MCP server's prompt table `MCP_PROMPTS` (`answer_with_sources`, `review_talent_plan`, `what_changed`:
   title, description, string arguments), emitted as `schema/mcp/prompts.json` and listed in `index.json`
   as `mcpPrompts`.

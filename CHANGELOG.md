@@ -47,6 +47,9 @@ that has a zip in the repository. Earlier builds have none.
   `world_map_near` (entrances and pins with distances, or the refused query with its reason). Both
   formatters now write their text from a result object, so every one of the 25 tools answers with
   structured content beside its text.
+- Resource templates on the MCP server: `everloot://item/{id}`, `npc`, `quest`, `vendor`, `object` and
+  `talents/{class}` read as the same JSON the matching tool returns as structured content, so a client that
+  prefers resources to tool calls gets the same page. A variable the tool refuses is an error in words.
 - The MCP server's first prompts, commands a client offers and fills: `answer_with_sources` (a question,
   answered from `answer_sources` with a source on every piece), `review_talent_plan` (a share code, read
   with `talent_plan` and `talent_tree`) and `what_changed` (`recent_changes`, newest first, excerpts

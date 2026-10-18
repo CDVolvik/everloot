@@ -829,6 +829,35 @@ export const MCP_PROMPT_NAMES = Object.keys(MCP_PROMPTS) as McpPromptName[];
 /** The list form, for clients that iterate. */
 export const MCP_PROMPT_LIST = MCP_PROMPT_NAMES.map((name) => ({ name, ...MCP_PROMPTS[name] }));
 
+/**
+ * Resource templates: one URI per entity, read with resources/read, answering with the JSON a tool's
+ * structuredContent holds for that entity. The variable is passed to the tool as the named argument.
+ */
+export interface McpResourceTemplateDef {
+  name: string;
+  title: string;
+  description: string;
+  mimeType: "application/json";
+  /** The tool whose structured answer the resource holds. */
+  tool: McpToolName;
+  /** The template variable, and the tool argument it fills. */
+  variable: string;
+  argument: string;
+}
+
+export const MCP_RESOURCE_TEMPLATES = {
+  "everloot://item/{id}": { name: "item", title: "One item's page", description: "The item_page answer for an item id: agreed name, drop rates with loot-window counts, map pins.", mimeType: "application/json", tool: "item_page", variable: "id", argument: "itemId" },
+  "everloot://npc/{id}": { name: "npc", title: "One NPC's page", description: "The npc_page answer for an NPC id: agreed name and map pins.", mimeType: "application/json", tool: "npc_page", variable: "id", argument: "npcId" },
+  "everloot://quest/{id}": { name: "quest", title: "One quest's page", description: "The quest_page answer for a quest id: title, level, giver, turn-in and rewards.", mimeType: "application/json", tool: "quest_page", variable: "id", argument: "questId" },
+  "everloot://vendor/{id}": { name: "vendor", title: "One vendor's goods", description: "The vendor_page answer for a vendor NPC id: what it sells, with copper prices.", mimeType: "application/json", tool: "vendor_page", variable: "id", argument: "vendorNpcId" },
+  "everloot://object/{id}": { name: "object", title: "One game object's page", description: "The object_page answer for an object's entry id: what players looted from it.", mimeType: "application/json", tool: "object_page", variable: "id", argument: "objectId" },
+  "everloot://talents/{class}": { name: "talents", title: "One class's talent trees", description: "The talent_tree answer for a class slug: every node with its talents, ranks, position, prerequisites and gate.", mimeType: "application/json", tool: "talent_tree", variable: "class", argument: "class" },
+} as const satisfies Record<string, McpResourceTemplateDef>;
+
+export type McpResourceTemplateUri = keyof typeof MCP_RESOURCE_TEMPLATES;
+export const MCP_RESOURCE_TEMPLATE_URIS = Object.keys(MCP_RESOURCE_TEMPLATES) as McpResourceTemplateUri[];
+export const MCP_RESOURCE_TEMPLATE_LIST = MCP_RESOURCE_TEMPLATE_URIS.map((uriTemplate) => ({ uriTemplate, ...MCP_RESOURCE_TEMPLATES[uriTemplate] }));
+
 export type McpResourceUri = keyof typeof MCP_RESOURCES;
 /** The URIs in the order the server lists them. */
 export const MCP_RESOURCE_URIS = Object.keys(MCP_RESOURCES) as McpResourceUri[];
