@@ -49,6 +49,9 @@ export const CLIENT_TABLES = {
   Toy: 988200, BattlePetSpecies: 841622,
   // Partial on the client: most of what these describe (spawns, quest text) lives on the server.
   Creature: 841631, GameObjects: 841620, QuestV2: 1139443,
+  // Loading screens (Map.LoadingScreenID names a row; the row names its picture files), for the page
+  // banners. ChrRaces above also gives the race names for the race emblems.
+  LoadingScreens: 1266541,
 } as const;
 export type ClientTableName = keyof typeof CLIENT_TABLES;
 

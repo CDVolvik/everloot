@@ -1,8 +1,10 @@
 /**
  * Icons, tooltip text and interface art for the site, read from the public client and written to a
  * local directory with a build-stamped manifest: the talent catalog's icons, tooltips and frame pieces;
- * item icons and item tooltip facts; class, talent tree, raid buff and profession icons; and the game's
- * own continent and zone map pictures. The directory is uploaded to asset storage by a maintainer
+ * item icons and item tooltip facts; class, talent tree, raid buff and profession icons and the buff
+ * spells' tooltips; the game's own continent and zone map pictures; and, for page banners, the loading
+ * screens, race and faction emblems and the game's own WoW: Forever logo (assets/banners.ts). The
+ * directory is uploaded to asset storage by a maintainer
  * (docs/ASSETS.md). It is never committed (docs/DATA_POLICY.md, "Blizzard's icons, tooltip text and
  * window frame").
  *
@@ -19,6 +21,9 @@ import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import type { TableSource } from "./client-extract.js";
 import { readClientMeta, readClientRows, readClientTables } from "./client-snapshot.js";
+import {
+  atlasPieces, blpSize, FACTION_ELEMENTS, LOGO_ELEMENTS, narrowCrop, planLoadingScreens, RACE_ATLAS, RACE_SEXES, raceElement, racesInBuild,
+} from "./assets/banners.js";
 import { buildItemSet, shardRecords, ITEM_SHARD_SIZE } from "./assets/items.js";
 import { planMapArt, stitchPlan } from "./assets/map-art.js";
 import { resolveTooltip, type EffectFacts, type SpellFacts } from "./assets/tooltip.js";
@@ -86,6 +91,12 @@ const MAP_MAX = 2048;
 const MAP_QUALITY = 82;
 /** A small copy of each map picture, for the zoomed-out view where many zones show at once. */
 const MAP_SMALL_MAX = 320;
+/** Loading screens, for page banners: capped, lossy, with a small copy for phones and thumbnails. */
+const LOADING_MAX = 1600;
+const LOADING_QUALITY = 80;
+const LOADING_SMALL_MAX = 640;
+/** The logo has soft edges over transparency; lossy WebP keeps the alpha and stays small. */
+const LOGO_QUALITY = 90;
 export const CHECKSUM_SCHEMA = "everloot.game-assets-checksums/1";
 export const ITEM_INDEX_SCHEMA = "everloot.game-items/1";
 /** SkillLine.CategoryID of professions and of secondary skills (Cooking, First Aid, Fishing). */
@@ -133,6 +144,21 @@ export const AssetManifest = z.object({
     /** Zones with UiMap ids outside the original world's: shown only behind the spoiler switch. */
     heldBack: z.boolean(), rect: Rect,
   })).default({}),
+  /** Spell id -> name and tooltip text, for the raid buff list's spells (the raid builder's hover tooltips). */
+  spellTips: z.record(z.string(), z.object({ name: z.string().nullable(), description: Text.nullable() })).default({}),
+  /**
+   * By game map id: the loading screen of a continent, dungeon or raid, for page banners, with a small copy.
+   * Maps with ids after the original world's are held back: shown only behind the spoiler switch.
+   */
+  loadingScreens: z.record(z.string(), File.extend({
+    small: File.nullable(), kind: z.enum(["continent", "dungeon", "raid"]), name: z.string(), heldBack: z.boolean(), loadingScreenId: z.number().int(),
+  })).default({}),
+  /** By race name in lower case ("night elf"): the client's race icons, female and male; null where the build has none. */
+  races: z.record(z.string(), z.object({ name: z.string(), female: File.nullable(), male: File.nullable() })).default({}),
+  /** "alliance" and "horde": the faction emblems. */
+  factions: z.record(z.string(), File).default({}),
+  /** The game's own WoW: Forever logo from the interface atlas, or null when the build has none. Never marketing art. */
+  logo: File.extend({ element: z.string(), fileDataId: z.number().int() }).nullable().default(null),
   // Item tooltip facts are not listed here: they go to the private folder (ItemIndex), never to the public bucket.
   counts: z.object({
     iconsExtracted: z.number().int(), iconsEncrypted: z.number().int(), iconsAbsent: z.number().int(), iconsFailed: z.number().int(),
@@ -140,11 +166,15 @@ export const AssetManifest = z.object({
     tooltipsResolved: z.number().int(), tooltipsUnresolved: z.number().int(), tooltipsEmpty: z.number().int(),
     itemsRecorded: z.number().int().default(0), itemsWithIcon: z.number().int().default(0),
     mapsExtracted: z.number().int().default(0), mapsSkipped: z.number().int().default(0),
+    loadingScreensExtracted: z.number().int().default(0), loadingScreensSkipped: z.number().int().default(0),
+    emblemsExtracted: z.number().int().default(0), logoExtracted: z.number().int().default(0),
   }),
   /** Frame elements the build does not have or that could not be read; the site falls back for these. */
   missingFrames: z.array(z.string()),
   /** Maps without a picture, and why (no art in the build, a tile encrypted or missing). */
   skippedMaps: z.array(z.string()).default([]),
+  /** Loading screens, race and faction emblems and logo pieces that were not made, and why. */
+  skippedBanners: z.array(z.string()).default([]),
 });
 export type AssetManifest = z.infer<typeof AssetManifest>;
 
@@ -171,6 +201,10 @@ export interface ConvertJob {
   src?: string;
   dst: string;
   crop?: [number, number, number, number] | null;
+  /** After the crop, stretch the width by this factor (a classic loading screen back to 4:3). */
+  scaleX?: number | null;
+  /** Cut away transparent edges (a newer loading screen's empty bands above and below the scene). */
+  trim?: boolean;
   max?: number | null;
   /** Lossy WebP at this quality; absent for lossless. */
   quality?: number | null;
@@ -305,6 +339,7 @@ export async function buildAssetsFromTables(opts: { get: TableReader; build: Bui
   mkdirSync(join(dir, "icons"), { recursive: true });
   mkdirSync(join(dir, "frames"), { recursive: true });
   mkdirSync(join(dir, "maps"), { recursive: true });
+  for (const folder of ["loading", "emblems", "logo"]) mkdirSync(join(dir, folder), { recursive: true });
   mkdirSync(work, { recursive: true });
 
   const fetched = new Map<number, Fetched>();
@@ -406,6 +441,14 @@ export async function buildAssetsFromTables(opts: { get: TableReader; build: Bui
   for (const id of new Set([...(opts.buffSpells ?? []), ...(opts.relationSpells ?? [])])) {
     const file = num(misc.get(id)?.SpellIconFileDataID);
     if (file > 0) spellIconOf.set(id, file);
+  }
+  // ...and their names and tooltip text, for the raid builder's hover tooltips, resolved like the talents'.
+  const spellTips: AssetManifest["spellTips"] = {};
+  for (const id of new Set(opts.buffSpells ?? [])) {
+    const name = names.get(id) ?? null;
+    const raw = text(spellRows.get(id)?.Description_lang);
+    if (!name && !raw) continue;
+    spellTips[String(id)] = { name, description: raw ? resolveTooltip(raw, factsFor(id) ?? { effects: [], durationMs: null }, factsFor) : null };
   }
 
   // Pet families: their icon.
@@ -561,17 +604,106 @@ export async function buildAssetsFromTables(opts: { get: TableReader; build: Bui
   for (const name of wanted) if (!frames[name] && !missingFrames.includes(name)) missingFrames.push(name);
   for (const [k, v] of Object.entries(backgrounds)) if (!frames[v.element]) delete backgrounds[k];
 
+  // Loading screens: one picture per file, whichever maps show it, with a small copy.
+  const loadingScreens: AssetManifest["loadingScreens"] = {};
+  const skippedBanners: string[] = [];
+  let loadingSkipped = 0;
+  if (get("Map") && get("LoadingScreens")) {
+    const plan = planLoadingScreens(get);
+    skippedBanners.push(...plan.skipped);
+    loadingSkipped += plan.skipped.length;
+    const problem = new Map<number, string>();
+    const jobs: (ConvertJob & { fileId: number; small: boolean })[] = [];
+    const shapeOf = new Map(plan.targets.map((t) => [t.fileId, t.shape] as const));
+    for (const [fileId, shape] of shapeOf) {
+      const f = await fetchFile(fileId);
+      if (f.status !== "ok") { problem.set(fileId, `picture file ${fileId} is ${f.status}`); continue; }
+      // A classic picture is cut to the scene inside its frame, below the logo, and stretched back to 4:3.
+      const size = shape === "narrow" ? blpSize(f.buffer!) : null;
+      if (shape === "narrow" && !size) { problem.set(fileId, `picture file ${fileId} has no size the extractor can read`); continue; }
+      const cut = size ? narrowCrop(size.width, size.height) : null;
+      const src = join(work, `loading-${fileId}.blp`);
+      writeFileSync(src, f.buffer!);
+      // A newer picture has empty transparent bands above and below the scene; they are cut away.
+      const shared = { fileId, src, quality: LOADING_QUALITY, crop: cut?.crop ?? null, scaleX: cut?.scaleX ?? null, trim: shape === "main" };
+      jobs.push({ ...shared, small: false, dst: join(dir, "loading", `${fileId}.webp`), max: LOADING_MAX });
+      jobs.push({ ...shared, small: true, dst: join(dir, "loading", `${fileId}-small.webp`), max: LOADING_SMALL_MAX });
+    }
+    const results = jobs.length ? await convert(jobs.map(({ fileId: _f, small: _s, ...j }) => j)) : [];
+    const made = new Map<number, { full?: z.infer<typeof File>; small?: z.infer<typeof File> }>();
+    jobs.forEach((job, i) => {
+      const r = results[i];
+      if (!r?.ok) { if (!job.small) problem.set(job.fileId, `could not convert (${r?.error ?? "no answer"})`); return; }
+      made.set(job.fileId, { ...made.get(job.fileId), [job.small ? "small" : "full"]: { file: `loading/${job.fileId}${job.small ? "-small" : ""}.webp`, width: r.width, height: r.height } });
+    });
+    for (const m of made.values()) {
+      // A small copy without its full picture is not shown, so it is not uploaded either.
+      if (!m.full) { if (m.small) rmSync(join(dir, m.small.file), { force: true }); continue; }
+      track(m.full.file);
+      if (m.small) track(m.small.file);
+    }
+    for (const t of plan.targets) {
+      const m = made.get(t.fileId);
+      if (!m?.full) { skippedBanners.push(`${t.name} (${t.mapId}): ${problem.get(t.fileId) ?? "not made"}`); loadingSkipped += 1; continue; }
+      loadingScreens[String(t.mapId)] = { ...m.full, small: m.small ?? null, kind: t.kind, name: t.name, heldBack: t.heldBack, loadingScreenId: t.loadingScreenId };
+    }
+  }
+
+  // Race and faction emblems and the game's own logo: named pieces of interface atlases, cut out like the frame.
+  const races: AssetManifest["races"] = {};
+  const factions: AssetManifest["factions"] = {};
+  let logo: AssetManifest["logo"] = null;
+  let emblemsExtracted = 0;
+  const raceNames = get("ChrRaces") ? racesInBuild(get) : [];
+  const emblemElements = [...raceNames.flatMap((n) => RACE_SEXES.map((s) => raceElement(RACE_ATLAS[n].atlas, s))), ...Object.values(FACTION_ELEMENTS)];
+  const pieces = atlasPieces(get, [...emblemElements, ...LOGO_ELEMENTS]);
+  const emblems = new Map<string, z.infer<typeof File>>();
+  async function cutPiece(element: string, folder: string, quality?: number): Promise<z.infer<typeof File> | null> {
+    const p = pieces.get(element);
+    if (!p) { skippedBanners.push(`${element}: not in this build's atlas tables`); return null; }
+    const f = await fetchFile(p.fileId);
+    if (f.status !== "ok") { skippedBanners.push(`${element}: atlas file ${p.fileId} is ${f.status}`); return null; }
+    const src = join(work, `atlas-${p.fileId}.blp`);
+    writeFileSync(src, f.buffer!);
+    const [r] = await convert([{ src, dst: join(dir, folder, `${element}.webp`), crop: p.crop, ...(quality ? { quality } : {}) }]);
+    if (!r?.ok) { skippedBanners.push(`${element}: could not convert (${r?.error ?? "no answer"})`); return null; }
+    const file = `${folder}/${element}.webp`;
+    track(file);
+    return { file, width: r.width, height: r.height };
+  }
+  for (const element of emblemElements) {
+    const made = await cutPiece(element, "emblems");
+    if (made) { emblems.set(element, made); emblemsExtracted += 1; }
+  }
+  for (const name of raceNames) {
+    const [female, male] = RACE_SEXES.map((s) => emblems.get(raceElement(RACE_ATLAS[name].atlas, s)) ?? null);
+    if (female || male) races[name.toLowerCase()] = { name, female, male };
+  }
+  for (const [faction, element] of Object.entries(FACTION_ELEMENTS)) {
+    const made = emblems.get(element);
+    if (made) factions[faction] = made;
+  }
+  // The logo: the sharpest of the listed pieces that reads. None found means no logo, never a stand-in.
+  for (const element of LOGO_ELEMENTS) {
+    const made = await cutPiece(element, "logo", LOGO_QUALITY);
+    if (made) { logo = { ...made, element, fileDataId: pieces.get(element)!.fileId }; break; }
+  }
+
   rmSync(work, { recursive: true, force: true });
   const manifest = AssetManifest.parse({
     schema: ASSET_SCHEMA, label: LABEL,
     build: { product: build.product, buildId: build.buildId, version: build.version, buildConfig: build.buildConfig, extractedAt: new Date().toISOString() },
-    spells, frames, backgrounds, classes, professions, spellIcons, familyIcons, maps,
+    spells, frames, backgrounds, classes, professions, spellIcons, familyIcons, maps, spellTips, loadingScreens, races, factions, logo,
     counts: {
       ...stats, tooltipsResolved: resolved, tooltipsUnresolved: unresolvedCount, tooltipsEmpty: empty,
       itemsRecorded: items?.count ?? 0, itemsWithIcon, mapsExtracted: Object.keys(maps).length, mapsSkipped: skippedMaps.length,
+      loadingScreensExtracted: Object.keys(loadingScreens).length,
+      loadingScreensSkipped: loadingSkipped,
+      emblemsExtracted, logoExtracted: logo ? 1 : 0,
     },
     missingFrames: missingFrames.sort(),
     skippedMaps,
+    skippedBanners,
   });
   writeFileSync(join(dir, "manifest.json"), `${JSON.stringify(manifest)}\n`);
   const sums = AssetChecksums.parse({ schema: CHECKSUM_SCHEMA, files: Object.fromEntries(Object.entries(checksums).sort(([a], [b]) => a.localeCompare(b))) });
@@ -585,6 +717,9 @@ export async function buildAssetsFromTables(opts: { get: TableReader; build: Bui
     `classes: ${Object.keys(classes).length}, professions: ${Object.keys(professions).length}, spell icons: ${Object.keys(spellIcons).length}, pet family icons: ${Object.keys(familyIcons).length}`,
     items ? `items: ${c.itemsRecorded} recorded in ${Object.keys(items.shards).length} shards (private folder), ${c.itemsWithIcon} with an icon` : "items: no item tables in the snapshot",
     `maps: ${c.mapsExtracted} pictures, ${c.mapsSkipped} skipped`,
+    `loading screens: ${c.loadingScreensExtracted} maps with a picture (${new Set(Object.values(loadingScreens).map((l) => l.file)).size} files), ${c.loadingScreensSkipped} skipped; buff tooltips: ${Object.keys(spellTips).length}`,
+    `emblems: ${c.emblemsExtracted} (races: ${Object.keys(races).length}, factions: ${Object.keys(factions).length})`,
+    logo ? `logo: ${logo.element}, atlas file ${logo.fileDataId}, ${logo.width} x ${logo.height}` : "logo: none in this build's files (no stand-in is used)",
   ];
   return { dir, privateDir: items ? privateDir : null, manifest, checksums: sums, items, notes };
 }

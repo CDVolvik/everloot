@@ -27,6 +27,8 @@ export const REVALIDATE_SECONDS = 3600;
 export const FETCH_TIMEOUT_MS = 2500;
 
 const Rect = z.object({ left: z.number(), top: z.number(), right: z.number(), bottom: z.number() });
+const Pic = z.object({ file: assetPath, width: z.number().int().positive(), height: z.number().int().positive() });
+const Text = z.object({ text: z.string(), unresolved: z.array(z.string()) });
 
 // Every section is optional, so a manifest from before this reader (talent art only) still parses.
 const site = z.object({
@@ -44,6 +46,15 @@ const site = z.object({
     file: assetPath, small: z.object({ file: assetPath }).nullable().default(null),
     kind: z.enum(["continent", "zone"]), name: z.string(), continentId: z.number().int(), heldBack: z.boolean(), rect: Rect,
   })).default({}),
+  // Talent entries by trait definition id: their names, icons and tooltip text (the talent calculator's).
+  spells: z.record(z.string(), z.object({ name: z.string().nullable(), icon: assetPath.nullable(), description: Text.nullable() })).default({}),
+  spellTips: z.record(z.string(), z.object({ name: z.string().nullable(), description: Text.nullable() })).default({}),
+  loadingScreens: z.record(z.string(), Pic.extend({
+    small: Pic.nullable().default(null), kind: z.enum(["continent", "dungeon", "raid"]), name: z.string(), heldBack: z.boolean(),
+  })).default({}),
+  races: z.record(z.string(), z.object({ name: z.string(), female: Pic.nullable(), male: Pic.nullable() })).default({}),
+  factions: z.record(z.string(), Pic).default({}),
+  logo: Pic.nullable().default(null),
 });
 
 export interface MapArt {
@@ -68,6 +79,27 @@ export interface SiteAssets {
   /** Pet family id -> icon URL. */
   familyIcons: Map<number, string>;
   maps: MapArt[];
+  /** Raid buff spell id -> name and tooltip text. */
+  spellTips: Map<number, SpellText>;
+  /** Talent trait definition id -> name, icon URL and tooltip text. */
+  talents: Map<number, SpellText & { icon: string | null }>;
+  /** By game map id: the loading screen of a continent, dungeon or raid. */
+  loadingScreens: Map<number, LoadingArt>;
+  /** By race name in lower case: the race icons. */
+  races: Map<string, { name: string; female: string | null; male: string | null }>;
+  /** "alliance", "horde" -> emblem URL. */
+  factions: Map<string, string>;
+  /** The game's own WoW: Forever logo, from its interface files; null when the upload has none. */
+  logo: { url: string; width: number; height: number } | null;
+}
+
+export interface SpellText { name: string | null; text: string | null; partial: boolean }
+
+export interface LoadingArt {
+  mapId: number; name: string; kind: "continent" | "dungeon" | "raid"; heldBack: boolean;
+  url: string; width: number;
+  /** A small copy for phones and thumbnails; null in an upload that has none. */
+  small: { url: string; width: number } | null;
 }
 
 /** A file inside the asset folder. */
@@ -100,6 +132,11 @@ export function parseSiteManifest(json: unknown, base: string): SiteAssets | nul
   for (const [id, name] of Object.entries(m.spellIcons)) if (/^\d+$/.test(id)) spellIcons.set(Number(id), iconUrl(base, name));
   const familyIcons = new Map<number, string>();
   for (const [id, name] of Object.entries(m.familyIcons)) if (/^\d+$/.test(id)) familyIcons.set(Number(id), iconUrl(base, name));
+  const byId = <T, U>(record: Record<string, T>, f: (v: T, id: number) => U) =>
+    new Map(Object.entries(record).filter(([id]) => /^\d+$/.test(id)).map(([id, v]) => [Number(id), f(v, Number(id))] as const));
+  const tip = (s: { name: string | null; description: z.infer<typeof Text> | null }): SpellText =>
+    ({ name: s.name, text: s.description?.text ?? null, partial: (s.description?.unresolved.length ?? 0) > 0 });
+  const url = (p: z.infer<typeof Pic> | null) => (p ? assetUrl(base, p.file) : null);
   return {
     base, version: m.build.version, label: m.label,
     classes: new Map(Object.entries(m.classes).map(([key, c]) => [key.toLowerCase(), { name: c.name, icon: icon(c.icon), trees: c.trees.map((t) => ({ name: t.name, icon: icon(t.icon) })) }])),
@@ -108,6 +145,15 @@ export function parseSiteManifest(json: unknown, base: string): SiteAssets | nul
       uiMapId: Number(id), kind: a.kind, name: a.name, continentId: a.continentId, heldBack: a.heldBack,
       url: assetUrl(base, a.file), smallUrl: a.small ? assetUrl(base, a.small.file) : null, rect: a.rect,
     })),
+    spellTips: byId(m.spellTips, tip),
+    talents: byId(m.spells, (s) => ({ ...tip(s), icon: icon(s.icon) })),
+    loadingScreens: byId(m.loadingScreens, (l, mapId) => ({
+      mapId, name: l.name, kind: l.kind, heldBack: l.heldBack, url: assetUrl(base, l.file), width: l.width,
+      small: l.small ? { url: assetUrl(base, l.small.file), width: l.small.width } : null,
+    })),
+    races: new Map(Object.entries(m.races).map(([key, r]) => [key.toLowerCase(), { name: r.name, female: url(r.female), male: url(r.male) }])),
+    factions: new Map(Object.entries(m.factions).map(([key, f]) => [key.toLowerCase(), assetUrl(base, f.file)])),
+    logo: m.logo ? { url: assetUrl(base, m.logo.file), width: m.logo.width, height: m.logo.height } : null,
   };
 }
 
@@ -254,14 +300,29 @@ export interface RaidArt {
   trees: Partial<Record<string, (string | null)[]>>;
   /** Buff family id -> the icon of the first of its spells that has one. */
   families: Partial<Record<string, string>>;
+  /** Buff family id -> the tooltip of the first of its spells that has text. */
+  familyTips: Partial<Record<string, SpellTip>>;
   version: string;
   label: string;
 }
 
+/** What a spell name shows on hover and focus: plain, serialisable data for the tooltip. */
+export interface SpellTip {
+  name: string;
+  icon: string | null;
+  text: string | null;
+  /** The text holds a placeholder for a value the tables do not give. */
+  partial: boolean;
+  /** "found in game files, unconfirmed · build x". */
+  label: string;
+}
+
+export const tipLabel = (assets: Pick<SiteAssets, "label" | "version">) => `${assets.label} · build ${assets.version}`;
+
 /** The raid builder's icons, matched to the buff table: trees by name, families by their spells. Null when there are none. */
 export function raidArt(assets: SiteAssets | null, table: BuffTable): RaidArt | null {
   if (!assets) return null;
-  const art: RaidArt = { classes: {}, trees: {}, families: {}, version: assets.version, label: assets.label };
+  const art: RaidArt = { classes: {}, trees: {}, families: {}, familyTips: {}, version: assets.version, label: assets.label };
   let any = false;
   for (const slug of CLASSES) {
     const c = assets.classes.get(slug);
@@ -271,8 +332,15 @@ export function raidArt(assets: SiteAssets | null, table: BuffTable): RaidArt | 
     if (icons.some(Boolean)) { art.trees[slug] = icons; any = true; }
   }
   for (const f of table.families) {
-    const icon = table.entries.filter((e) => e.family === f.id).flatMap((e) => e.spellIds).map((id) => assets.spellIcons.get(id)).find(Boolean);
+    const spellIds = table.entries.filter((e) => e.family === f.id).flatMap((e) => e.spellIds);
+    const icon = spellIds.map((id) => assets.spellIcons.get(id)).find(Boolean);
     if (icon) { art.families[f.id] = icon; any = true; }
+    const withText = spellIds.find((id) => assets.spellTips.get(id)?.text);
+    if (withText !== undefined) {
+      const s = assets.spellTips.get(withText)!;
+      art.familyTips[f.id] = { name: s.name ?? f.label, icon: assets.spellIcons.get(withText) ?? icon ?? null, text: s.text, partial: s.partial, label: tipLabel(assets) };
+      any = true;
+    }
   }
   return any ? art : null;
 }
@@ -302,4 +370,71 @@ export function continentArt(assets: SiteAssets | null, continentId: number, spo
   const zones = here.filter((m) => m.kind === "zone").map(box);
   if (!continent && !zones.length) return null;
   return { continent: continent ? box(continent) : null, zones };
+}
+
+/* ---------- Loading screens, emblems and the launch banner ---------- */
+
+/**
+ * Which game map's loading screen a page shows as its banner: Eastern Kingdoms on the home page, Kalimdor
+ * on the patch notes, Molten Core on the raid builder. All are maps of the original world, so no banner
+ * can spoil anything. The world map shows the continent on view.
+ */
+export const BANNER_MAP = { home: 0, changes: 1, raid: 409 } as const;
+
+/** A map's loading screen, or null: none in the upload, or held back with spoilers off. */
+export function loadingArt(assets: SiteAssets | null, mapId: number, spoilers = false): LoadingArt | null {
+  const art = assets?.loadingScreens.get(mapId);
+  return art && (spoilers || !art.heldBack) ? art : null;
+}
+
+/**
+ * Small loading screens by dungeon or raid name, for the world map's entrance list. A held-back map's
+ * picture is left out unless spoilers are on; when two maps share a name, the released one is used.
+ */
+export function instanceThumbs(assets: SiteAssets | null, spoilers: boolean): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const art of [...(assets?.loadingScreens.values() ?? [])].sort((a, b) => Number(a.heldBack) - Number(b.heldBack) || a.mapId - b.mapId)) {
+    if (art.kind === "continent" || (art.heldBack && !spoilers) || out[art.name]) continue;
+    out[art.name] = art.small?.url ?? art.url;
+  }
+  return out;
+}
+
+export interface LaunchArt {
+  logo: { url: string; width: number; height: number };
+  background: LoadingArt | null;
+  version: string;
+  label: string;
+}
+
+/** The home page's launch banner: only with the game's own logo. No logo in the upload, no banner, and nothing stands in for it. */
+export function launchArt(assets: SiteAssets | null): LaunchArt | null {
+  if (!assets?.logo) return null;
+  return { logo: assets.logo, background: loadingArt(assets, BANNER_MAP.home), version: assets.version, label: assets.label };
+}
+
+/** Which of the client's two race icons the site shows. */
+export const RACE_ICON_SEX: "female" | "male" = "female";
+
+/**
+ * Race emblems by race name as the site writes it ("Night Elf"), and faction emblems by faction name
+ * ("Alliance", "Horde"), for the race and class table. Only those the upload has.
+ */
+export function emblems(assets: SiteAssets | null): { races: Map<string, string>; factions: Map<string, string> } {
+  const races = new Map<string, string>();
+  const factions = new Map<string, string>();
+  if (!assets) return { races, factions };
+  for (const r of assets.races.values()) {
+    const icon = r[RACE_ICON_SEX] ?? r.female ?? r.male;
+    if (icon) races.set(r.name, icon);
+  }
+  for (const [key, icon] of assets.factions) factions.set(key.charAt(0).toUpperCase() + key.slice(1), icon);
+  return { races, factions };
+}
+
+/** What a credit line names, from the kinds of art a page shows: ("icons", false, "loading screen art") -> "Icons and loading screen art". */
+export function creditWhat(...parts: (string | false | null | undefined)[]): string {
+  const shown = parts.filter((p): p is string => Boolean(p));
+  const text = shown.length > 1 ? `${shown.slice(0, -1).join(", ")} and ${shown[shown.length - 1]}` : shown[0] ?? "";
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }

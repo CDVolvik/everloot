@@ -9,6 +9,7 @@ import {
 } from "@/lib/raid";
 import type { RaidArt } from "@/lib/game-assets";
 import GameIcon from "@/components/game/GameIcon";
+import SpellTip from "@/components/game/SpellTip";
 
 const table = TABLES[CURRENT_BUILD];
 
@@ -42,8 +43,9 @@ function reach(f: FamilyCoverage, table: BuffTable): string {
 }
 
 /**
- * `art`: the game's class, tree and buff icons (lib/game-assets.ts), or null without the asset URL. The
- * icons sit beside the names, which stay; without them the builder is the text it always was.
+ * `art`: the game's class, tree and buff icons and the buffs' tooltips (lib/game-assets.ts), or null
+ * without the asset URL. The icons sit beside the names, which stay; without them the builder is the
+ * text it always was.
  */
 export default function RaidBuilder({ art = null }: { art?: RaidArt | null } = {}) {
   const classIcon = (c: ClassName, size = 20) => {
@@ -176,10 +178,17 @@ export default function RaidBuilder({ art = null }: { art?: RaidArt | null } = {
   const row = (f: FamilyCoverage, perGroup: boolean) => (
     <tr key={f.family.id} className="border-t border-line align-top">
       <th scope="row" className="sticky left-0 bg-canvas py-2 pr-4 text-left font-normal">
-        <span className="text-fg">
-          {art?.families[f.family.id] && <GameIcon src={art.families[f.family.id]!} size={20} className="mr-2" />}
-          {f.family.label}
-        </span>
+        {art?.familyTips[f.family.id] ? (
+          // The buff's tooltip on hover and keyboard focus, with its icon in front.
+          <SpellTip tip={art.familyTips[f.family.id]} size={20}>
+            <span tabIndex={0} className="text-fg">{f.family.label}</span>
+          </SpellTip>
+        ) : (
+          <span className="text-fg">
+            {art?.families[f.family.id] && <GameIcon src={art.families[f.family.id]!} size={20} className="mr-2" />}
+            {f.family.label}
+          </span>
+        )}
         <span className="block text-xs text-muted">{reach(f, table)}</span>
       </th>
       <td className={`py-2 pr-4 ${STATE_TEXT[f.raid]}`}>{STATE_SHORT[f.raid]}</td>

@@ -46,6 +46,8 @@ export default function WorldMapView(props: {
   spoilers: boolean;
   /** The game's own map pictures, already filtered for spoilers; null without the asset URL. */
   art?: MapArtLayer | null;
+  /** Small loading screens by dungeon or raid name, already filtered for spoilers; absent without the asset URL. */
+  thumbs?: Record<string, string>;
 }) {
   const { base, items, marker, spoilers } = props;
   const art = props.art ?? null;
@@ -315,13 +317,24 @@ export default function WorldMapView(props: {
         <h2 id="entrances" className="text-xl font-semibold text-fg">Dungeon and raid entrances</h2>
         {shown.entrances.length ? (
           <ul className="space-y-2 text-sm text-fg-2">
-            {shown.entrances.map((p) => (
-              <li key={p.id}>
-                <span className="text-fg">{p.names.join(", ")}</span>
-                {" · "}{p.raid ? "raid" : "dungeon"}
-                {" · "}<span className="font-mono text-xs text-muted">{Math.round(p.worldX)}, {Math.round(p.worldY)}</span>
-              </li>
-            ))}
+            {shown.entrances.map((p) => {
+              const text = (
+                <>
+                  <span className="text-fg">{p.names.join(", ")}</span>
+                  {" · "}{p.raid ? "raid" : "dungeon"}
+                  {" · "}<span className="font-mono text-xs text-muted">{Math.round(p.worldX)}, {Math.round(p.worldY)}</span>
+                </>
+              );
+              const thumb = p.names.map((n) => props.thumbs?.[n]).find(Boolean);
+              return thumb ? (
+                <li key={p.id} className="flex items-center gap-3">
+                  {/* The dungeon's or raid's loading screen, small; decorative, the name is beside it. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={thumb} alt="" aria-hidden="true" width={96} height={54} loading="lazy" decoding="async" data-entrance-art className="h-[54px] w-24 shrink-0 rounded-md border border-line object-cover" />
+                  <span>{text}</span>
+                </li>
+              ) : <li key={p.id}>{text}</li>;
+            })}
           </ul>
         ) : <p className="text-sm text-muted">{layers.entrances ? "None placed on this continent." : "This layer is off."}</p>}
       </section>

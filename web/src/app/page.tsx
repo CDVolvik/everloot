@@ -7,9 +7,11 @@ import LoreSearchForm from "@/components/LoreSearchForm";
 import { tools, toolHref } from "@/data/tools";
 import { LORE_SEARCH_LABEL, organizationJsonLd, websiteJsonLd } from "@/lib/jsonld";
 import { FEED } from "@/lib/seo";
-import { classAndProfessionIcons, loadSiteAssets } from "@/lib/game-assets";
+import { classAndProfessionIcons, launchArt, loadSiteAssets } from "@/lib/game-assets";
+import { LAUNCH, longDate } from "@/data/wow-forever";
 import GameIcon from "@/components/game/GameIcon";
 import GameCredit from "@/components/game/GameCredit";
+import LaunchBanner from "@/components/game/LaunchBanner";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/", types: FEED },
@@ -19,10 +21,22 @@ export default async function Home() {
   // Class and profession icons, only when the asset URL is set and the upload has them.
   const assets = await loadSiteAssets();
   const icons = classAndProfessionIcons(assets);
+  // The launch banner, only with the game's own logo from the asset files.
+  const launch = launchArt(assets);
   return (
     <div className="space-y-16">
       <JsonLd data={organizationJsonLd()} />
       <JsonLd data={websiteJsonLd()} />
+      {launch && (
+        <LaunchBanner art={launch}>
+          {/* The countdown (components/LaunchCountdown.tsx, PR #59) replaces this line once both are merged. */}
+          <p className="text-sm text-fg-2">
+            <Link href="/wow-forever" className="hover:text-accent transition">
+              Launches <time dateTime={LAUNCH.date} className="text-fg">{longDate(LAUNCH.date)}</time>
+            </Link>
+          </p>
+        </LaunchBanner>
+      )}
       {/* Hero */}
       <section className="relative pt-6 pb-2 text-center overflow-hidden">
         <div className="relative">

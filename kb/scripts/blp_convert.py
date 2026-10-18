@@ -1,7 +1,10 @@
 """Convert Blizzard BLP textures to WebP with Pillow (which reads BLP). Used by `client-assets`.
 
 Usage: python -E blp_convert.py <jobs.json>
-jobs.json: [{"src": "in.blp", "dst": "out.webp", "crop": [l, t, r, b] | null, "max": 128 | null, "quality": 90 | null}]
+jobs.json: [{"src": "in.blp", "dst": "out.webp", "crop": [l, t, r, b] | null, "scaleX": 1.33 | null, "max": 128 | null, "quality": 90 | null}]
+  "scaleX" stretches the width after the crop (a classic loading screen, stored square, back to 4:3).
+  "trim": true cuts away the transparent rows and columns at the edges (a newer loading screen's empty
+  bands, which fade out): the picture keeps the box of its near-opaque pixels.
   A job with "tiles" stitches map tiles instead of reading "src":
   {"dst", "tiles": [{"src": "t.blp", "row": 0, "col": 0}], "tile": [256, 256], "crop": [0, 0, w, h], "max": 1024, "quality": 80}
   "quality" absent or null: lossless WebP. A number: lossy WebP at that quality (icons and map art).
@@ -68,6 +71,14 @@ def main() -> int:
             im = stitch(job) if job.get("tiles") else open_blp(job["src"]).convert("RGBA")
             if job.get("crop"):
                 im = im.crop(tuple(job["crop"]))
+            if job.get("trim"):
+                # The bands fade out with a little noise, so only near-opaque rows and columns count.
+                box = im.getchannel("A").point(lambda v: 255 if v >= 250 else 0).getbbox()
+                if box:
+                    im = im.crop(box)
+            scale_x = job.get("scaleX")
+            if scale_x and abs(scale_x - 1) > 1e-6:
+                im = im.resize((max(1, round(im.width * scale_x)), im.height), Image.LANCZOS)
             cap = job.get("max")
             if cap and max(im.size) > cap:
                 im.thumbnail((cap, cap), Image.LANCZOS)

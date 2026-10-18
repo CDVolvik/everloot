@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { CURRENT_BUILD, TABLES } from "@/data/game-data/raid";
 import {
-  assetUrl, buildFolder, classAndProfessionIcons, continentArt, FETCH_TIMEOUT_MS, forgetPrivateReads, iconUrl, itemIconUrl, itemShard, itemTip,
-  loadItemTips, loadSiteAssets, parseSiteManifest, privateStoreFromEnv, raidArt,
+  assetUrl, BANNER_MAP, buildFolder, classAndProfessionIcons, continentArt, creditWhat, emblems, FETCH_TIMEOUT_MS, forgetPrivateReads, iconUrl,
+  instanceThumbs, itemIconUrl, itemShard, itemTip, launchArt, loadingArt, loadItemTips, loadSiteAssets, parseSiteManifest, privateStoreFromEnv, raidArt,
 } from "./game-assets";
 import { itemTipText, qualityColor } from "./item-names";
 import { cameraBox, zoneArtShown, ZONE_ART_ZOOM, type Box, type Camera } from "./map-view";
@@ -38,10 +38,13 @@ test("a full manifest becomes ready URLs: classes, professions with icons, buff 
 });
 
 test("a manifest from before the site-wide art (talent art only, with its icon list) still reads, with nothing to show", () => {
-  const later = ["classes", "professions", "spellIcons", "maps"];
+  const later = ["classes", "professions", "spellIcons", "maps", "spellTips", "loadingScreens", "races", "factions", "logo"];
   const talentsOnly = { ...Object.fromEntries(Object.entries(siteManifest).filter(([k]) => !later.includes(k))), icons: {} };
   const a = parseSiteManifest(talentsOnly, BASE)!;
   expect(a.classes.size + a.professions.size + a.spellIcons.size + a.maps.length).toBe(0);
+  expect(a.spellTips.size + a.loadingScreens.size + a.races.size + a.factions.size).toBe(0);
+  expect(a.logo).toBeNull();
+  expect(launchArt(a)).toBeNull();
   expect(classAndProfessionIcons(a)).toEqual({ classes: [], professions: [] });
 });
 
@@ -49,6 +52,8 @@ test.each([
   ["another schema", { ...siteManifest, schema: "everloot.game-assets/2" }],
   ["a map path that climbs out of the folder", { ...siteManifest, maps: { "13": { ...siteManifest.maps["13"], file: "../x.webp" } } }],
   ["an icon that is a URL", { ...siteManifest, spellIcons: { "1": "https://evil.test/x.webp" } }],
+  ["a logo path that climbs out of the folder", { ...siteManifest, logo: { ...siteManifest.logo, file: "../logo.webp" } }],
+  ["a loading screen that is a URL", { ...siteManifest, loadingScreens: { "0": { ...siteManifest.loadingScreens["0"], file: "https://evil.test/x.webp" } } }],
   ["not an object", "<html>"],
 ])("%s is refused", (_name, bad) => {
   expect(parseSiteManifest(bad, BASE)).toBeNull();
@@ -65,6 +70,10 @@ test("unset: nothing is fetched and every reader gives nothing to draw", async (
   expect(raidArt(null, TABLES[CURRENT_BUILD])).toBeNull();
   expect(continentArt(null, 0, true, false)).toBeNull();
   expect(classAndProfessionIcons(null)).toEqual({ classes: [], professions: [] });
+  expect(loadingArt(null, 0)).toBeNull();
+  expect(instanceThumbs(null, true)).toEqual({});
+  expect(launchArt(null)).toBeNull();
+  expect(emblems(null)).toEqual({ races: new Map(), factions: new Map() });
 });
 
 test("a failing, non-OK, garbled or slow manifest is null and never throws", async () => {
@@ -187,4 +196,51 @@ test("without one, only the zones in view are drawn, from their small copies unt
   // An upload without small copies falls back to the full picture.
   const noSmall = { ...art, zones: art.zones.map((z) => ({ ...z, smallUrl: null })) };
   expect(zoneArtShown(noSmall, ...at(1, 0, 0)).map((z) => z.url)).toEqual([`${BASE}/maps/1429.webp`, `${BASE}/maps/1426.webp`]);
+});
+
+test("loading screens: banners for original maps, a later map's picture only with spoilers", () => {
+  const a = parseSiteManifest(siteManifest, BASE)!;
+  expect(loadingArt(a, BANNER_MAP.raid)).toEqual({
+    mapId: 409, name: "Molten Core", kind: "raid", heldBack: false, url: `${BASE}/loading/9409.webp`, width: 1600,
+    small: { url: `${BASE}/loading/9409-small.webp`, width: 640 },
+  });
+  expect(loadingArt(a, 2789)).toBeNull();
+  expect(loadingArt(a, 2789, true)?.name).toBe("The Tainted Scar");
+  expect(loadingArt(a, 9999, true)).toBeNull();
+  // Thumbnails for dungeons and raids by name, small copies, never a continent; the held-back raid waits for spoilers.
+  expect(instanceThumbs(a, false)).toEqual({ Deadmines: `${BASE}/loading/9036-small.webp`, "Molten Core": `${BASE}/loading/9409-small.webp` });
+  expect(instanceThumbs(a, true)["The Tainted Scar"]).toBe(`${BASE}/loading/9789-small.webp`);
+});
+
+test("the launch banner needs the game's own logo: without it there is no banner and nothing in its place", () => {
+  const a = parseSiteManifest(siteManifest, BASE)!;
+  expect(launchArt(a)).toEqual({
+    logo: { url: `${BASE}/logo/logo-wow-forever-2x.webp`, width: 640, height: 640 },
+    background: loadingArt(a, BANNER_MAP.home), version: "1.60.1.70450", label: "found in game files, unconfirmed",
+  });
+  expect(launchArt(parseSiteManifest({ ...siteManifest, logo: null }, BASE))).toBeNull();
+  // A logo with no loading screen still makes a banner, on the plain panel.
+  const rest = Object.fromEntries(Object.entries(siteManifest.loadingScreens).filter(([id]) => id !== "0"));
+  expect(launchArt(parseSiteManifest({ ...siteManifest, loadingScreens: rest }, BASE))?.background).toBeNull();
+});
+
+test("race and faction emblems by the names the site writes, one icon per race", () => {
+  const { races, factions } = emblems(parseSiteManifest(siteManifest, BASE));
+  expect(races).toEqual(new Map([["Human", `${BASE}/emblems/raceicon128-human-female.webp`], ["Night Elf", `${BASE}/emblems/raceicon128-nightelf-male.webp`]]));
+  expect(factions).toEqual(new Map([["Alliance", `${BASE}/emblems/AllianceEmblem.webp`], ["Horde", `${BASE}/emblems/HordeEmblem.webp`]]));
+});
+
+test("the raid builder's buffs carry their tooltip, with the build label", () => {
+  const art = raidArt(parseSiteManifest(siteManifest, BASE), TABLES[CURRENT_BUILD])!;
+  expect(art.familyTips["battle-shout"]).toEqual({
+    name: "Battle Shout", icon: `${BASE}/icons/8001.webp`, text: "Raises attack power by 20 for 2 min.", partial: false,
+    label: "found in game files, unconfirmed · build 1.60.1.70450",
+  });
+  expect(Object.keys(art.familyTips)).toEqual(["battle-shout"]);
+});
+
+test("a credit line names what the page shows", () => {
+  expect(creditWhat("icons", false, "loading screen art")).toBe("Icons and loading screen art");
+  expect(creditWhat("icons", "tooltip text", "loading screen art")).toBe("Icons, tooltip text and loading screen art");
+  expect(creditWhat(null, "loading screen art")).toBe("Loading screen art");
 });
