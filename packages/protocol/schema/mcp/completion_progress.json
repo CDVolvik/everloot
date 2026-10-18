@@ -24,6 +24,384 @@
       "ownerInstallId"
     ]
   },
+  "outputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "connected": {
+        "type": "boolean",
+        "description": "False when no corpus was read; the page is then absent, which is not a measured zero."
+      },
+      "dataAsOf": {
+        "description": "The corpus snapshot time, or null when unrecorded.",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "reason": {
+        "description": "Why nothing was read, when connected is false.",
+        "type": "string"
+      },
+      "page": {
+        "type": "object",
+        "properties": {
+          "ownerInstallId": {
+            "type": "string"
+          },
+          "listed": {
+            "type": "object",
+            "properties": {
+              "achievements": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "factions": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "titles": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "chains": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "achievements",
+              "factions",
+              "titles",
+              "chains"
+            ],
+            "additionalProperties": false,
+            "description": "What the agreed lists hold. All zero means no list is public yet."
+          },
+          "ownedRecorded": {
+            "type": "boolean",
+            "description": "False when this install has no shared completion data: owned is unknown, not empty."
+          },
+          "characters": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "characterKey": {
+                  "type": "string",
+                  "description": "An opaque key derived from the install and the character, never the name."
+                },
+                "class": {
+                  "type": "string"
+                },
+                "level": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "achievements": {
+                  "type": "object",
+                  "properties": {
+                    "done": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "total": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "points": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "pointsTotal": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "closest": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "achievementId": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "category": {
+                            "type": "string"
+                          },
+                          "have": {
+                            "type": "number"
+                          },
+                          "of": {
+                            "type": "number"
+                          },
+                          "unit": {
+                            "type": "string",
+                            "enum": [
+                              "criteria",
+                              "progress"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "achievementId",
+                          "name",
+                          "category",
+                          "have",
+                          "of",
+                          "unit"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "unlisted": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "done",
+                    "total",
+                    "points",
+                    "pointsTotal",
+                    "closest",
+                    "unlisted"
+                  ],
+                  "additionalProperties": false
+                },
+                "reputation": {
+                  "type": "object",
+                  "properties": {
+                    "exalted": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "total": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "closest": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "factionId": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "standing": {
+                            "type": "string"
+                          },
+                          "toNext": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "header": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "factionId",
+                          "name",
+                          "standing",
+                          "toNext"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "unscaled": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "factionId": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "standing": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": [
+                          "factionId",
+                          "name",
+                          "standing"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "unlisted": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "exalted",
+                    "total",
+                    "closest",
+                    "unscaled",
+                    "unlisted"
+                  ],
+                  "additionalProperties": false
+                },
+                "titles": {
+                  "type": "object",
+                  "properties": {
+                    "known": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "total": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "unlisted": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "known",
+                    "total",
+                    "unlisted"
+                  ],
+                  "additionalProperties": false
+                },
+                "quests": {
+                  "type": "object",
+                  "properties": {
+                    "completed": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "chainsDone": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "chainsTotal": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "closest": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "questLineId": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "done": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "total": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "truncated": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "questLineId",
+                          "name",
+                          "done",
+                          "total",
+                          "truncated"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "completed",
+                    "chainsDone",
+                    "chainsTotal",
+                    "closest"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "characterKey",
+                "class",
+                "level",
+                "achievements",
+                "reputation",
+                "titles",
+                "quests"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "unknownCharacter": {
+            "description": "The character key that was asked for and not found.",
+            "type": "string"
+          },
+          "droppedCharacters": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Characters of this install the site no longer holds."
+          }
+        },
+        "required": [
+          "ownerInstallId",
+          "listed",
+          "ownedRecorded",
+          "characters",
+          "droppedCharacters"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "required": [
+      "connected",
+      "dataAsOf"
+    ],
+    "additionalProperties": false
+  },
   "x-everloot-output": {
     "type": "text",
     "endsWith": "Licence: CC BY-SA 4.0. Credit: Everloot contributors, https://everloot.app"

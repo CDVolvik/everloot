@@ -69,6 +69,181 @@
       "id"
     ]
   },
+  "outputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "connected": {
+        "type": "boolean",
+        "description": "False when no corpus was read; the page is then absent, which is not a measured zero."
+      },
+      "dataAsOf": {
+        "description": "The corpus snapshot time, or null when unrecorded.",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "reason": {
+        "description": "Why nothing was read, when connected is false.",
+        "type": "string"
+      },
+      "page": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "item",
+              "spell",
+              "npc",
+              "object",
+              "quest",
+              "zone",
+              "item_set",
+              "icon",
+              "skill"
+            ]
+          },
+          "id": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "edges": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "fromKind": {
+                  "type": "string",
+                  "enum": [
+                    "item",
+                    "spell",
+                    "npc",
+                    "object",
+                    "quest",
+                    "zone",
+                    "item_set",
+                    "icon",
+                    "skill"
+                  ]
+                },
+                "fromId": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "rel": {
+                  "type": "string",
+                  "enum": [
+                    "dropped_by",
+                    "sold_by",
+                    "reward_from",
+                    "located_in",
+                    "created_by",
+                    "reagent_for",
+                    "part_of_set",
+                    "same_icon",
+                    "in_skill_line"
+                  ]
+                },
+                "toKind": {
+                  "type": "string",
+                  "enum": [
+                    "item",
+                    "spell",
+                    "npc",
+                    "object",
+                    "quest",
+                    "zone",
+                    "item_set",
+                    "icon",
+                    "skill"
+                  ]
+                },
+                "toId": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "evidence": {
+                  "type": "string",
+                  "enum": [
+                    "observed",
+                    "client"
+                  ],
+                  "description": "observed: players saw it, 3 installs. client: the game files, unconfirmed."
+                },
+                "build": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "installs": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "firstSeen": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "lastSeen": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "fromKind",
+                "fromId",
+                "rel",
+                "toKind",
+                "toId",
+                "evidence",
+                "build",
+                "installs",
+                "firstSeen",
+                "lastSeen"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Outgoing then incoming, grouped by relation, each group cut to the limit."
+          },
+          "notShown": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Edges beyond the limit, over every group."
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "edges",
+          "notShown"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "required": [
+      "connected",
+      "dataAsOf"
+    ],
+    "additionalProperties": false
+  },
   "x-everloot-output": {
     "type": "text",
     "endsWith": "Licence: CC BY-SA 4.0. Credit: Everloot contributors, https://everloot.app"

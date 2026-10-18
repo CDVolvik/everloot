@@ -42,6 +42,9 @@ required, or tightening a limit is a major release.
   and `object_page` (`objectPage`). With no corpus read the page is absent, which is not a measured zero.
 - `outputSchema` for `auction_history` (`auctionHistory`), `collection_gap` (`collectionGap`) and `guild_board`
   (`guildBoard`), under the same `uploadsAnswer` envelope.
+- `outputSchema` for `profession_path` (`professionPath`), `recipe_thresholds` (`recipeThresholds`),
+  `entity_relations` (`entityRelations`, `relationEdge`), `completion_progress` (`completionProgress`,
+  `characterProgress`) and `market_value` (`marketPage`, `marketValue`), under the same envelope.
 - The MCP server's resource table `MCP_RESOURCES` (`everloot://builds`, `everloot://methodology`,
   `everloot://data-policy`: name, title, description, MIME type), `buildEntry` and `buildsResource` for the
   JSON one, emitted as `schema/mcp/resources.json` and listed in `index.json` as `mcpResources`.
