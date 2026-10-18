@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { uploadStore } from "@/lib/upload-store";
+import { sharingStore, uploadStore } from "@/lib/upload-store";
 import { intakeQuota } from "@/lib/intake-quota";
 import { pruneKeys } from "@/lib/api-keys";
 import { guardOn } from "@/lib/data-guard";
@@ -12,7 +12,10 @@ import { guardOn } from "@/lib/data-guard";
  * Vercel sends `Authorization: Bearer $CRON_SECRET`; without the secret configured it refuses to run.
  * `?rebuild=1` rebuilds both from empty, which is how a deleted upload leaves them. The market
  * rebuild reads only uploads from the last 62 days (older ones cannot hold a day it keeps), and
- * is also how an unusable market.json is replaced.
+ * is also how an unusable market.json is replaced. The completion rollup folds at most a batch of uploads per
+ * run (and stops early at its time budget) and saves its place; `remaining` says how many are left. A
+ * rebuild is folded into a separate object over several runs and replaces the served rollup only when it
+ * has caught up, so pages never read a partial one; `rebuilding` says one is under way.
  */
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -40,7 +43,15 @@ export async function GET(req: Request) {
       console.error("market rollup failed", err);
     }
     if (!market) return NextResponse.json({ ok: false, error: "market rollup failed", rebuild, ...result }, { status: 500 });
-    return NextResponse.json({ ok: true, rebuild, ...result, market });
+    // The completion rollup has its own watermark too, and runs after the market so it cannot starve it.
+    let completion: { added: number; remaining: number; trimmed: number; rebuilding: boolean } | null = null;
+    try {
+      completion = await uploadStore.writeCompletion({ rebuild, authority: () => sharingStore.loadState() });
+    } catch (err) {
+      console.error("completion rollup failed", err);
+    }
+    if (!completion) return NextResponse.json({ ok: false, error: "completion rollup failed", rebuild, ...result, market }, { status: 500 });
+    return NextResponse.json({ ok: true, rebuild, ...result, market, completion });
   } catch (err) {
     console.error("snapshot failed", err);
     return NextResponse.json({ ok: false, error: "snapshot failed" }, { status: 500 });

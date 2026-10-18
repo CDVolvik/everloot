@@ -67,15 +67,16 @@ export const tools: Tool[] = [
     href: "/tools/collections",
     title: "Completionist Tracker",
     shortTitle: "Completionist",
-    tagline: "Compare uploaded collections and ownership.",
+    tagline: "Collections, achievements, reputation and quests from uploads.",
     description:
-      "Owned versus missing in a collection. The list appears when 3 installs agree on the item and its source. Owned is one install's upload. Not a Battle.net profile.",
+      "Owned versus missing in a collection, and per character what is done and closest to done in achievements, reputation, titles and quest chains. A list appears when 3 installs agree. Owned is one install's upload. Not a Battle.net profile.",
     status: "collecting",
     keywords: [
       "wow completionist",
       "mount tracker",
       "pet collection",
       "achievement tracker",
+      "reputation tracker",
     ],
   },
   {

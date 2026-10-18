@@ -5,7 +5,7 @@
 Everloot = Everloot or {}
 local E = Everloot
 
-E.VERSION = "0.3.2"
+E.VERSION = "0.3.3"
 E.MAX_ROWS_PER_KIND = 2000
 
 -- Same Adler-32 the companion writes into its slot addons; Lua 5.1 arithmetic only.
@@ -28,7 +28,7 @@ end
 local defaults = {
   version = E.VERSION,
   installId = nil,
-  toggles = { openworld = true, guild = true, gear = true, auctions = false, gold = true, addons = false, talents = true },
+  toggles = { openworld = true, guild = true, gear = true, auctions = false, gold = true, addons = false, talents = true, completion = false },
   records = {},
 }
 
@@ -56,11 +56,12 @@ function E:IsEnabled(module)
 end
 
 --- Preserve retained rows. At capacity, pause this kind instead of silently discarding data.
-function E:Store(kind, row)
+function E:Store(kind, row, cap)
   if type(row) ~= "table" then return false end
   local store = EverlootDB.records[kind]
   if not store then store = {}; EverlootDB.records[kind] = store end
-  if #store >= E.MAX_ROWS_PER_KIND then
+  -- A module whose rows replace each other may state its own bound; the others keep the file-wide one.
+  if #store >= (cap or E.MAX_ROWS_PER_KIND) then
     EverlootDB.paused = EverlootDB.paused or {}
     if not EverlootDB.paused[kind] then
       print("Everloot: " .. kind .. " collection paused at capacity. Keep and upload your SavedVariables file.")
@@ -122,7 +123,9 @@ function E:Status()
   for _, kind in ipairs({ "npc_sighting", "loot", "quest", "vendor", "item_seen",
     "guild_snapshot", "raid_lockout", "attendance", "loot_award", "gear_snapshot",
     "collection_catalog", "collection_owned", "auction_scan", "auction_snapshot", "recipe_seen", "recipe_observed", "trainer_seen", "price_seen",
-    "gold_snapshot", "money_event", "addon_seen", "map_bounds", "talent_snapshot" }) do
+    "gold_snapshot", "money_event", "addon_seen", "map_bounds", "talent_snapshot",
+    "achievement_catalog", "reputation_catalog", "title_catalog", "quest_chain_catalog",
+    "achievement_owned", "reputation_owned", "title_owned", "quest_owned" }) do
     lines[#lines + 1] = string.format("  rows %s: %d", kind, self:Count(kind))
   end
   return table.concat(lines, "\n")
@@ -165,6 +168,17 @@ SlashCmdList["EVERLOOT"] = function(msg)
   elseif msg == "auctions on" or msg == "auctions off" then
     EverlootDB.toggles.auctions = (msg == "auctions on")
     print("Everloot: auction scans " .. (EverlootDB.toggles.auctions and "on" or "off") .. ". /reload to apply.")
+  elseif msg == "completion on" or msg == "completion off" then
+    EverlootDB.toggles.completion = (msg == "completion on")
+    if EverlootDB.toggles.completion then
+      print("Everloot: completion tracker on. It reads your achievements, reputation, titles and completed quests, and never changes them. Your own progress is sent only from the everloot.app upload page, with the collection choice ticked. /reload to apply.")
+    else
+      -- Turning it off withdraws what it wrote: every completion row is deleted from this file.
+      if E.Completion then E.Completion.Withdraw() end
+      print("Everloot: completion tracker off; all recorded completion rows were deleted from this file. /reload to apply.")
+    end
+  elseif msg == "completion" and E.Completion then
+    E.Completion.ReadNow()
   elseif msg == "scan" then
     if E.StartScan then E:StartScan() else print("Everloot: full scans are not available in this client.") end
   elseif msg == "addons on" or msg == "addons off" then
@@ -179,6 +193,6 @@ SlashCmdList["EVERLOOT"] = function(msg)
       print("Everloot: installed addon list off; all recorded addon rows were deleted from this file. /reload to apply.")
     end
   else
-    print("Everloot commands: /everloot status, /everloot auctions on|off, /everloot scan, /everloot addons on|off, /everloot selftest, /everloot talents, /everloot plan <share code>, /everloot raid [code], /ask <question>")
+    print("Everloot commands: /everloot status, /everloot auctions on|off, /everloot scan, /everloot addons on|off, /everloot completion [on|off], /everloot selftest, /everloot talents, /everloot plan <share code>, /everloot raid [code], /ask <question>")
   end
 end

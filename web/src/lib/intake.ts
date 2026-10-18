@@ -138,6 +138,113 @@ export const collectionOwned = base.extend({
   itemId: z.number().int().positive(),
 });
 
+// --- Addon 0.3.3: completion tracker (achievements, reputation, titles, quest chains) ---
+// Catalog rows are game facts with no player data: readers list an entry once 3 installs agree on it.
+// Owned rows are one character's own progress. They follow collection_owned: named data, shared only with
+// the "collection" choice and a verified install grant (kb/src/publication.ts).
+
+/**
+ * Opaque per-install label for one character: 8 hex digits the addon derives from the install id and the
+ * character's GUID. It is not a name and is not meant to be turned back into one.
+ */
+export const CHARACTER_KEY = z.string().regex(/^[0-9a-f]{8}$/);
+
+const COUNT = z.number().int().min(0).max(5000);
+const GAME_ID = z.number().int().positive().max(2_000_000_000);
+
+export const achievementCatalog = base.extend({
+  kind: z.literal("achievement_catalog"),
+  achievementId: GAME_ID,
+  name: z.string().min(1).max(120),
+  categoryId: z.number().int().nonnegative().max(2_000_000_000),
+  category: z.string().min(1).max(80),
+  parentCategory: z.string().min(1).max(80).optional(),
+  points: z.number().int().min(0).max(1000),
+  criteriaCount: COUNT.describe("The achievement's real criteria count; `criteria` keeps the first 100."),
+  criteria: z.array(z.object({
+    text: z.string().max(120),
+    required: z.number().int().min(0).max(2_000_000_000),
+  })).max(100),
+}).refine((row) => row.criteria.length <= row.criteriaCount, { message: "criteria cannot outnumber criteriaCount", path: ["criteria"] });
+
+export const reputationCatalog = base.extend({
+  kind: z.literal("reputation_catalog"),
+  factionId: GAME_ID,
+  name: z.string().min(1).max(80),
+  header: z.string().min(1).max(80).optional(),
+  major: z.boolean().optional().describe("A renown faction: its ranks are not the eight standings."),
+});
+
+export const titleCatalog = base.extend({
+  kind: z.literal("title_catalog"),
+  titleId: z.number().int().positive().max(5000),
+  name: z.string().min(1).max(80),
+});
+
+export const questChainCatalog = base.extend({
+  kind: z.literal("quest_chain_catalog"),
+  questLineId: GAME_ID,
+  name: z.string().min(1).max(120),
+  questIds: z.array(GAME_ID).min(1).max(80),
+  truncated: z.boolean().optional().describe("The chain has more quests than the 80 kept: it is never called finished."),
+});
+
+/** A real calendar date: 2026-02-30 is refused. */
+const CALENDAR_DATE = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((s) => {
+  const t = Date.parse(`${s}T00:00:00Z`);
+  return Number.isFinite(t) && new Date(t).toISOString().startsWith(s);
+}, { message: "not a calendar date" });
+
+const ownedBase = base.extend({
+  characterKey: CHARACTER_KEY,
+  class: z.string().min(2).max(20).regex(/^[A-Za-z]+$/).describe("Class token from UnitClass, e.g. MAGE."),
+  level: z.number().int().min(1).max(100),
+});
+
+export const achievementOwned = ownedBase.extend({
+  kind: z.literal("achievement_owned"),
+  achievementId: GAME_ID,
+  completed: z.boolean(),
+  earnedByMe: z.boolean().optional().describe("False when the achievement is complete on the account but not by this character."),
+  earnedOn: CALENDAR_DATE.optional(),
+  criteriaMet: COUNT,
+  criteriaTotal: COUNT,
+  quantity: z.number().int().min(0).max(2_000_000_000).optional().describe("A progress-bar achievement's current amount."),
+  required: z.number().int().min(1).max(2_000_000_000).optional().describe("A progress-bar achievement's target amount."),
+}).superRefine((row, ctx) => {
+  if ((row.quantity === undefined) !== (row.required === undefined)) ctx.addIssue({ code: "custom", message: "quantity and required come together", path: ["quantity"] });
+  if (row.quantity !== undefined && row.required !== undefined && row.quantity > row.required) ctx.addIssue({ code: "custom", message: "quantity cannot exceed required", path: ["quantity"] });
+  if (row.criteriaMet > row.criteriaTotal) ctx.addIssue({ code: "custom", message: "criteriaMet cannot exceed criteriaTotal", path: ["criteriaMet"] });
+  if (row.earnedOn && !row.completed) ctx.addIssue({ code: "custom", message: "only a completed achievement has a date", path: ["earnedOn"] });
+});
+
+export const reputationOwned = ownedBase.extend({
+  kind: z.literal("reputation_owned"),
+  factionId: GAME_ID,
+  reaction: z.number().int().min(1).max(20).describe("The client's standing index: 1 Hated up to 8 Exalted."),
+  standing: z.number().int().min(-1_000_000).max(10_000_000),
+  floor: z.number().int().min(-1_000_000).max(10_000_000),
+  ceiling: z.number().int().min(-1_000_000).max(10_000_000),
+}).refine((row) => row.floor <= row.ceiling, { message: "floor cannot exceed ceiling", path: ["floor"] });
+
+/** Titles and completed quests are sent as additions: the union of a character's rows is what it has. */
+export const titleOwned = ownedBase.extend({
+  kind: z.literal("title_owned"),
+  titleIds: z.array(z.number().int().positive().max(5000)).min(1).max(200),
+});
+
+export const questOwned = ownedBase.extend({
+  kind: z.literal("quest_owned"),
+  questIds: z.array(GAME_ID).min(1).max(200),
+});
+
+/** The kinds that hold one character's own progress. Named data, like collection_owned. */
+export const COMPLETION_OWNED_KINDS: readonly string[] = ["achievement_owned", "reputation_owned", "title_owned", "quest_owned"];
+/** Catalog rows reflect one character's visible factions and quest lines and carry a per-install event id. */
+export const COMPLETION_CATALOG_KINDS: readonly string[] = ["achievement_catalog", "reputation_catalog", "title_catalog", "quest_chain_catalog"];
+/** None of these is a public record or part of the corpus: kb/src/completion-rollup.ts folds them. */
+export const COMPLETION_KINDS: readonly string[] = [...COMPLETION_CATALOG_KINDS, ...COMPLETION_OWNED_KINDS];
+
 export const auctionScan = base.extend({
   kind: z.literal("auction_scan"),
   realm: z.string().min(2).max(60),
@@ -311,6 +418,14 @@ const recordSchemas = {
   gear_snapshot: gearSnapshot,
   collection_catalog: collectionCatalog,
   collection_owned: collectionOwned,
+  achievement_catalog: achievementCatalog,
+  reputation_catalog: reputationCatalog,
+  title_catalog: titleCatalog,
+  quest_chain_catalog: questChainCatalog,
+  achievement_owned: achievementOwned,
+  reputation_owned: reputationOwned,
+  title_owned: titleOwned,
+  quest_owned: questOwned,
   auction_scan: auctionScan,
   auction_snapshot: auctionSnapshot,
   recipe_seen: recipeSeen,
@@ -335,13 +450,18 @@ const PUBLIC_KIND_LIST = [
   "npc_sighting", "loot", "quest", "vendor", "item_seen", "guild_snapshot", "raid_lockout", "attendance",
   "loot_award", "gear_snapshot", "collection_catalog", "collection_owned", "auction_scan", "recipe_seen",
   "price_seen", "recipe_observed", "trainer_seen", "gold_snapshot", "money_event", "map_bounds",
+  // The eight completion kinds are deliberately absent. Catalog rows reflect one character's visible factions
+  // and quest lines under a per-install event id, so they are never served raw: pages and MCP show an entry
+  // only when 3 installs reported it identically. Owned rows are shown only to a granted owner. Both come
+  // from the completion rollup (kb/src/completion-rollup.ts), not from this corpus.
 ] as const satisfies readonly RecordKind[];
 export const PUBLIC_RECORD_KINDS: readonly string[] = PUBLIC_KIND_LIST;
 
 const anyRecord = z.discriminatedUnion("kind", [
   npcSighting, lootWindow, questEvent, vendorList, itemSeen,
   guildSnapshot, raidLockout, attendance, lootAward, gearSnapshot,
-  collectionCatalog, collectionOwned, auctionScan, auctionSnapshot, recipeSeen, priceSeen, recipeObserved, trainerSeen,
+  collectionCatalog, collectionOwned, achievementCatalog, reputationCatalog, titleCatalog, questChainCatalog,
+  achievementOwned, reputationOwned, titleOwned, questOwned, auctionScan, auctionSnapshot, recipeSeen, priceSeen, recipeObserved, trainerSeen,
   goldSnapshot, moneyEvent, addonSeen, mapBounds, talentSnapshot,
 ]);
 

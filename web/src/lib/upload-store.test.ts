@@ -505,3 +505,227 @@ describe("market rollup", () => {
   });
 });
 
+describe("completion rollup", () => {
+  const COMPLETION = `${R2}snapshots/completion.json`;
+  const INDEX = "https://sb.example/rest/v1/uploads";
+  const title = (installId: string, n: number) => ({ kind: "title_catalog", eventId: `t:${installId}:${n}`, installId, capturedAt, titleId: 4, name: "Private" });
+  const index = (ids: string[]) => ids.map((id, i) => ({ id, object_key: `uploads/${id}.json`, received_at: `2026-10-04T0${i}:00:00+00:00` }));
+
+  test("the cron folds uploads into its own object, and the next run starts after the last one it read", async () => {
+    const first = fakeFetch([
+      [COMPLETION, "GET", () => new Response("missing", { status: 404 })],
+      [INDEX, "GET", () => Response.json(index(["a", "b"]))],
+      [`${R2}uploads/a.json`, "GET", () => Response.json({ records: [title("install-1", 1), lootRow()] })],
+      [`${R2}uploads/b.json`, "GET", () => Response.json({ records: [title("install-2", 1)] })],
+      [COMPLETION, "PUT", () => new Response(null, { status: 200 })],
+    ]);
+    expect(await createUploadStore({ cloud, localDir: "unused", fetch: first.fn, now }).writeCompletion()).toEqual({ added: 2, remaining: 0, trimmed: 0, rebuilding: false });
+    const put = first.calls.find((c) => c.method === "PUT")!;
+    expect(put.headers.get("if-none-match")).toBe("*");
+    const stored = JSON.parse(put.body);
+    expect(stored).toMatchObject({ version: 2, lastReceivedAt: "2026-10-04T01:00:00+00:00", lastIds: ["b"] });
+    expect(stored.state.catalog.t["4"][0].v).toEqual(["i:install-1", "i:install-2"]);
+
+    const second = fakeFetch([
+      [COMPLETION, "GET", () => Response.json(stored)],
+      [INDEX, "GET", () => Response.json([...index(["a", "b"]).slice(1), { id: "c", object_key: "uploads/c.json", received_at: "2026-10-04T02:00:00+00:00" }])],
+      [`${R2}uploads/c.json`, "GET", () => Response.json({ records: [title("install-3", 1)] })],
+      [COMPLETION, "PUT", () => new Response(null, { status: 200 })],
+    ]);
+    expect(await createUploadStore({ cloud, localDir: "unused", fetch: second.fn, now }).writeCompletion()).toEqual({ added: 1, remaining: 0, trimmed: 0, rebuilding: false });
+    expect(second.calls.find((c) => c.url.startsWith(INDEX))!.url).toContain("received_at=gte.2026-10-04T01%3A00%3A00%2B00%3A00");
+    expect(second.calls.some((c) => c.url.endsWith("uploads/b.json"))).toBe(false);
+    const put2 = second.calls.find((c) => c.method === "PUT")!;
+    expect(put2.headers.get("if-match")).toBe('"fixture"');
+    expect(JSON.parse(put2.body).state.catalog.t["4"][0].v).toHaveLength(3);
+  });
+
+  test("the corpus every page reads carries no completion row; only the completion read does", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "everloot-completion-"));
+    mkdirSync(join(dir, "uploads"));
+    ["install-1", "install-2", "install-3"].forEach((id) =>
+      writeFileSync(join(dir, "uploads", `${id}.json`), JSON.stringify({ records: [title(id, 1), { ...lootRow(), installId: id, eventId: `l:${id}` }] })));
+    const store = createUploadStore({ cloud: null, localDir: dir, now, cacheMs: 0 });
+    const corpus = await store.loadCorpus();
+    expect(corpus.records.length).toBeGreaterThan(0);
+    expect(corpus.records.some((r) => (r as { kind: string }).kind === "title_catalog")).toBe(false);
+    const completion = await store.loadCompletion();
+    expect(completion.state!.catalog.t["4"][0].v).toHaveLength(3);
+  });
+
+  test("a missing or failed rollup is unavailable, never an empty one", async () => {
+    const missing = fakeFetch([[COMPLETION, "GET", () => new Response("missing", { status: 404 })]]);
+    expect(await createUploadStore({ cloud, localDir: "unused", fetch: missing.fn, now }).loadCompletion())
+      .toEqual({ state: null, dataAsOf: null, unreachable: true });
+    const odd = fakeFetch([[COMPLETION, "GET", () => Response.json({ version: 2, state: { version: 1 }, lastIds: [] })]]);
+    expect(await createUploadStore({ cloud, localDir: "unused", fetch: odd.fn, now }).loadCompletion())
+      .toEqual({ state: null, dataAsOf: null, unreachable: true });
+  });
+
+  /** R2 and the upload index in memory: objects are really stored, and the index honours received_at=gte. */
+  function memoryCloud(uploads: Record<string, unknown>, rows: { id: string; object_key: string; received_at: string }[], onPut?: (key: string) => void) {
+    const objects = new Map<string, string>();
+    const etags = new Map<string, string>();
+    let version = 0;
+    const reads: string[] = [];
+    const fn = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const req = new Request(input, init);
+      if (req.url.startsWith(INDEX)) {
+        const since = /received_at=gte\.([^&]+)/.exec(req.url);
+        return Response.json(rows.filter((r) => !since || r.received_at >= decodeURIComponent(since[1])));
+      }
+      const key = decodeURIComponent(new URL(req.url).pathname.split("/everloot-uploads/")[1]);
+      if (key.startsWith("uploads/")) {
+        reads.push(key);
+        return key in uploads ? Response.json(uploads[key]) : new Response("gone", { status: 404 });
+      }
+      if (req.method === "GET") return objects.has(key) ? new Response(objects.get(key), { headers: { etag: etags.get(key)! } }) : new Response("missing", { status: 404 });
+      if (req.method === "HEAD") return objects.has(key) ? new Response(null, { headers: { etag: etags.get(key)! } }) : new Response(null, { status: 404 });
+      if (req.method === "PUT") {
+        objects.set(key, await req.text()); etags.set(key, `"v${++version}"`);
+        onPut?.(key);
+        return new Response(null, { status: 200 });
+      }
+      if (req.method === "DELETE") {
+        const match = req.headers.get("if-match");
+        if (match && match !== etags.get(key)) return new Response(null, { status: 412 });
+        objects.delete(key); etags.delete(key);
+        return new Response(null, { status: 204 });
+      }
+      return new Response("no route", { status: 404 });
+    }) as typeof fetch;
+    /** Another run writing an object directly (a concurrent ?rebuild=1). */
+    const write = (key: string, body: string) => { objects.set(key, body); etags.set(key, `"v${++version}"`); };
+    return { fn, objects, reads, write };
+  }
+  const SERVED = "snapshots/completion.json";
+  const REBUILD = "snapshots/completion-rebuild.json";
+  const stamp = (i: number) => `2026-10-04T0${Math.floor(i / 3600)}:${String(Math.floor(i / 60) % 60).padStart(2, "0")}:${String(i % 60).padStart(2, "0")}+00:00`;
+  const many = (n: number) => {
+    const rows = Array.from({ length: n }, (_, i) => ({ id: `u${i}`, object_key: `uploads/u${i}.json`, received_at: stamp(i) }));
+    const uploads: Record<string, unknown> = Object.fromEntries(rows.map((r, i) => [r.object_key, { records: [title(`install-${i}`, 1)] }]));
+    return { rows, uploads };
+  };
+
+  test("a run folds at most a batch; a rebuild is folded aside and replaces the served rollup only when complete", async () => {
+    const { rows, uploads } = many(3);
+    const mem = memoryCloud(uploads, rows);
+    const store = () => createUploadStore({ cloud, localDir: "unused", fetch: mem.fn, now, completionBatch: 2 });
+    const voters = (key: string) => JSON.parse(mem.objects.get(key)!).state.catalog.t["4"][0].v.length;
+    expect(await store().writeCompletion()).toEqual({ added: 2, remaining: 1, trimmed: 0, rebuilding: false });
+    expect(JSON.parse(mem.objects.get(SERVED)!)).toMatchObject({ lastReceivedAt: stamp(1), lastIds: ["u1"] });
+    expect(await store().writeCompletion()).toEqual({ added: 1, remaining: 0, trimmed: 0, rebuilding: false });
+    expect(voters(SERVED)).toBe(3);
+    expect(await store().writeCompletion()).toEqual({ added: 0, remaining: 0, trimmed: 0, rebuilding: false });
+    // A rebuild starts aside: the served rollup keeps its complete lists meanwhile.
+    expect(await store().writeCompletion({ rebuild: true })).toEqual({ added: 2, remaining: 1, trimmed: 0, rebuilding: true });
+    expect(voters(SERVED)).toBe(3);
+    expect(voters(REBUILD)).toBe(2);
+    // The next ordinary run continues the rebuild, swaps it in and removes it.
+    expect(await store().writeCompletion()).toEqual({ added: 1, remaining: 0, trimmed: 0, rebuilding: false });
+    expect(mem.objects.has(REBUILD)).toBe(false);
+    expect(voters(SERVED)).toBe(3);
+  });
+
+  test("a ?rebuild=1 that starts between a finished rebuild's swap and its cleanup is not deleted", async () => {
+    const { rows, uploads } = many(3);
+    let racing = false;
+    const mem = memoryCloud(uploads, rows, (key) => {
+      // The moment the finished rebuild is swapped in, another run starts a new rebuild.
+      if (racing && key === SERVED) { racing = false; mem.write(REBUILD, JSON.stringify({ version: 2, generatedAt: "x", state: { version: 2, catalog: { a: {}, f: {}, t: {}, q: {} }, owned: {} }, lastReceivedAt: null, lastIds: [] })); }
+    });
+    const store = () => createUploadStore({ cloud, localDir: "unused", fetch: mem.fn, now, completionBatch: 2 });
+    await store().writeCompletion({ rebuild: true });
+    expect(mem.objects.has(REBUILD)).toBe(true);
+    racing = true;
+    expect(await store().writeCompletion()).toMatchObject({ remaining: 0, rebuilding: false });
+    // The new rebuild survived, and the next run continues it.
+    expect(JSON.parse(mem.objects.get(REBUILD)!).lastReceivedAt).toBeNull();
+    expect(await store().writeCompletion()).toMatchObject({ added: 2, rebuilding: true });
+  });
+
+  test("a run stops at its time budget after a whole batch and saves its place, so no input can stall the rollup", async () => {
+    const { rows, uploads } = many(130);
+    const mem = memoryCloud(uploads, rows);
+    const run = () => createUploadStore({ cloud, localDir: "unused", fetch: mem.fn, now, completionBudgetMs: 0 }).writeCompletion();
+    expect(await run()).toMatchObject({ added: 64, remaining: 66 });
+    expect(JSON.parse(mem.objects.get(SERVED)!).lastReceivedAt).toBe(stamp(63));
+    expect(await run()).toMatchObject({ added: 64, remaining: 2 });
+    expect(await run()).toMatchObject({ added: 2, remaining: 0 });
+    expect(JSON.parse(mem.objects.get(SERVED)!).state.catalog.t["4"][0].v).toHaveLength(64);
+  });
+
+  test("an unreadable upload keeps the batches before it and fails, so the next run starts at it", async () => {
+    const { rows, uploads } = many(100);
+    delete uploads["uploads/u70.json"];
+    const mem = memoryCloud(uploads, rows);
+    const run = () => createUploadStore({ cloud, localDir: "unused", fetch: mem.fn, now }).writeCompletion();
+    await expect(run()).rejects.toThrow(/unreadable; the uploads before it were saved/);
+    expect(JSON.parse(mem.objects.get(SERVED)!).lastReceivedAt).toBe(stamp(63));
+    mem.reads.length = 0;
+    await expect(run()).rejects.toThrow(/unreadable/);
+    expect(mem.reads[0]).toBe("uploads/u64.json");
+  });
+
+  test("when the grant lookup fails, a trim keeps every character of an install that holds a grant", async () => {
+    const rows = Array.from({ length: 4 }, (_, i) => ({ id: `u${i}`, object_key: `uploads/u${i}.json`, received_at: stamp(i) }));
+    const uploads = Object.fromEntries(rows.map((r, i) => [r.object_key, { publicationGrants: ["a".repeat(64)], records: [
+      { kind: "quest_owned", installId: `install-${i}`, eventId: `q:${i}`, capturedAt, characterKey: "0a1b2c3d", class: "MAGE", level: 40, questIds: [1, 2, 3] },
+      ...Array.from({ length: 40 }, (_, k) => ({ ...title(`install-${i}`, k), titleId: 100 + i * 40 + k, name: `Junk ${i} ${k}` })),
+    ] }]));
+    const mem = memoryCloud(uploads, rows);
+    const result = await createUploadStore({ cloud, localDir: "unused", fetch: mem.fn, now, completionMaxBytes: 9000 })
+      .writeCompletion({ authority: async () => { throw new Error("sharing store down"); } });
+    expect(result.trimmed).toBeGreaterThan(0);
+    const owned = JSON.parse(mem.objects.get(SERVED)!).state.owned;
+    expect(Object.values(owned).map((i) => Object.keys((i as { characters: object }).characters).length)).toEqual([1, 1, 1, 1]);
+  });
+
+  test("a stored rollup with an install called __proto__ reads back as an ordinary install", async () => {
+    const records = [{ kind: "title_owned", installId: "__proto__", eventId: "p:1", capturedAt, characterKey: "0a1b2c3d", class: "MAGE", level: 40, titleIds: [4] }];
+    const mem = memoryCloud({ "uploads/u0.json": { records } }, [{ id: "u0", object_key: "uploads/u0.json", received_at: stamp(0) }]);
+    const store = createUploadStore({ cloud, localDir: "unused", fetch: mem.fn, now, cacheMs: 0 });
+    await store.writeCompletion();
+    expect(mem.objects.get(SERVED)).toContain('"__proto__":{');
+    const read = await store.loadCompletion();
+    expect(Object.keys(read.state!.owned)).toEqual(["__proto__"]);
+    expect(read.state!.owned["__proto__"].characters["0a1b2c3d"].t).toEqual([4]);
+    expect(read.state!.owned["constructor"]).toBeUndefined();
+  });
+
+  test("installs behind one upload address vote once, and the address hash never reaches what is read", async () => {
+    const same = "0123456789abcdef";
+    const { fn, calls } = fakeFetch([
+      [COMPLETION, "GET", () => new Response("missing", { status: 404 })],
+      [INDEX, "GET", () => Response.json(index(["a", "b", "c"]))],
+      ...["a", "b", "c"].map((id, i): Parameters<typeof fakeFetch>[0][number] =>
+        [`${R2}uploads/${id}.json`, "GET", () => Response.json({ reporter: same, records: [title(`install-${i + 1}`, 1)] })]),
+      [COMPLETION, "PUT", () => new Response(null, { status: 200 })],
+    ]);
+    await createUploadStore({ cloud, localDir: "unused", fetch: fn, now }).writeCompletion();
+    const body = JSON.parse(calls.find((c) => c.method === "PUT")!.body);
+    expect(body.state.catalog.t["4"][0].v).toEqual([`r:${same}`]);
+    const { agreedCatalog } = await import("../../../kb/src/completion-rollup");
+    expect(agreedCatalog(body.state).titles.size).toBe(0);
+  });
+
+  test("a rollup heading past its size limit is trimmed and written, not refused; one past it on read is unavailable", async () => {
+    const junk = (id: string, n: number) => ({ records: Array.from({ length: 40 }, (_, i) => ({ ...title(id, n * 100 + i), titleId: 1000 + n * 100 + i, name: `Junk ${n} ${i}` })) });
+    const big = fakeFetch([
+      [COMPLETION, "GET", () => new Response("missing", { status: 404 })],
+      [INDEX, "GET", () => Response.json(index(["a", "b", "c", "d"]))],
+      ...["a", "b", "c", "d"].map((id, n): Parameters<typeof fakeFetch>[0][number] => [`${R2}uploads/${id}.json`, "GET", () => Response.json(junk(`install-${n + 1}`, n))]),
+      [COMPLETION, "PUT", () => new Response(null, { status: 200 })],
+    ]);
+    const result = await createUploadStore({ cloud, localDir: "unused", fetch: big.fn, now, completionMaxBytes: 6000 }).writeCompletion({
+      authority: async () => ({ grants: [], suppressions: [] }),
+    });
+    expect(result.added).toBe(4);
+    expect(result.trimmed).toBeGreaterThan(0);
+    const put = big.calls.find((c) => c.method === "PUT")!;
+    expect(Buffer.byteLength(put.body)).toBeLessThanOrEqual(6000);
+    const read = fakeFetch([[COMPLETION, "GET", () => new Response(put.body, { headers: { etag: '"fixture"' } })]]);
+    expect(await createUploadStore({ cloud, localDir: "unused", fetch: read.fn, now, completionMaxBytes: put.body.length - 1 }).loadCompletion())
+      .toEqual({ state: null, dataAsOf: null, unreachable: true });
+  });
+});

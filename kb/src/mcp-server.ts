@@ -7,6 +7,7 @@ import { handlePlan } from "./bridge-plan.js";
 import { CHANGE_FILTERS, handleRecentChanges, type ChangeEntry } from "./changes.js";
 import { ECOSYSTEM_BOARD_FILTERS, handleEcosystemProjects, type EcosystemView } from "./ecosystem.js";
 import { collectionFactsFromRecords, handleCollectionGap } from "./collection-gap.js";
+import { handleCompletionProgress, type CompletionFacts } from "./completion.js";
 import { goldFactsFromRecords, handleGoldLedger } from "./gold-ledger.js";
 import { guildFactsFromRecords, handleGuildBoard } from "./guild-board.js";
 import { itemFactsFromRecords } from "./drop-rollup.js";
@@ -125,6 +126,25 @@ export type MarketLoader = () => Promise<{ state: MarketState; dataAsOf: string 
 
 export const MARKET_UNSET =
   "Market values are not connected to this server, so this is not a measured zero. They are on everloot.app/tools/auctions and its MCP.";
+
+/** The site's completion rollup with owned progress already limited to granted installs. Null means it was unreadable. */
+export type CompletionLoader = (ownerInstallId: string) => Promise<{ facts: CompletionFacts; dataAsOf: string | null } | null>;
+
+export const COMPLETION_UNSET =
+  "Completion progress is not connected to this server, so this is not a measured zero. It is on everloot.app/tools/collections and its MCP.";
+
+/** completion_progress: the agreed lists and one install's own progress (kb/src/completion-rollup.ts). */
+export async function answerCompletionProgress(args: { ownerInstallId: string; characterKey?: string }, loader?: CompletionLoader): Promise<string> {
+  if (!loader) return COMPLETION_UNSET;
+  let loaded: Awaited<ReturnType<CompletionLoader>>;
+  try {
+    loaded = await loader(args.ownerInstallId.trim());
+  } catch {
+    loaded = null;
+  }
+  if (!loaded) return "Completion progress unavailable. It is unrecorded, not zero.";
+  return `${handleCompletionProgress(args, loaded.facts)}\n${dataAgeLine(loaded.dataAsOf)}`;
+}
 
 /** market_value: Forever market values from full scans (kb/src/market.ts). */
 export async function answerMarketValue(args: { realm: string; itemId: number }, loader?: MarketLoader): Promise<string> {
@@ -351,7 +371,7 @@ export type ChangesLoader = () => ChangeEntry[] | null | Promise<ChangeEntry[] |
 /** The ecosystem tracker with install counts joined. Null means it is not connected, which is not the same as empty. */
 export type EcosystemLoader = () => EcosystemView | null | Promise<EcosystemView | null>;
 
-export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; market?: MarketLoader; changes?: ChangesLoader; ecosystem?: EcosystemLoader } = {}): McpServer {
+export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; market?: MarketLoader; completion?: CompletionLoader; changes?: ChangesLoader; ecosystem?: EcosystemLoader } = {}): McpServer {
   const server = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION, websiteUrl: SOURCE_URL }, { instructions: SERVER_INSTRUCTIONS });
   const readFacts = <T>(tool: ToolName, render: (facts: T) => string) => fromTooledUploads(tool, render, options.corpus);
   server.registerTool(
@@ -517,6 +537,22 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; 
     },
     async (args) => ({
       content: [{ type: "text" as const, text: await readFacts("collection_gap", (facts: ReturnType<typeof collectionFactsFromRecords>) => handleCollectionGap(args, facts)) }],
+    }),
+  );
+  server.registerTool(
+    "completion_progress",
+    {
+      title: "Achievement, reputation, title and quest progress",
+      description:
+        "What one install's characters have finished, and what is closest to done: achievements with the largest share of criteria or progress met, reputations nearest the next standing, titles known, and quests finished in a chain. A list entry is public after 3 players (installs uploading from different addresses) report it identically. Progress is shown only when that install uploaded it with the collection sharing choice and a verified grant; without it the answer says so. Not a Blizzard profile read and not a copied catalog. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.",
+      inputSchema: {
+        ownerInstallId: z.string().describe("Install id whose completion upload to read."),
+        characterKey: z.string().max(8).optional().describe("One character's 8-digit key from the upload, when the install has several."),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    async (args) => ({
+      content: [{ type: "text" as const, text: await answerCompletionProgress(args, options.completion) }],
     }),
   );
   server.registerTool(

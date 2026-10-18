@@ -5,7 +5,7 @@ vi.mock("@/lib/upload-store", () => ({ uploadStore: { loadCorpus: store.loadCorp
 vi.mock("@/lib/intake-quota", () => ({ intakeQuota: { api: store.api } }));
 
 import { GET } from "./route";
-import { ALL_RECORD_KINDS, PUBLIC_RECORD_KINDS } from "@/lib/intake";
+import { ALL_RECORD_KINDS, COMPLETION_KINDS, PUBLIC_RECORD_KINDS } from "@/lib/intake";
 import { ANON_PAGE, KEY_PAGE } from "@/lib/data-guard";
 import { newKey } from "@/lib/api-keys";
 
@@ -78,8 +78,16 @@ test("a kind that is not on the allowlist is never returned, filtered or not", a
   expect((await GET(req("?kinds=talent_snapshot"))).status).toBe(400);
 });
 
+test("a completion catalog row is never served raw, even if one reached the corpus", async () => {
+  const title = { ...base, eventId: "e:7", kind: "title_catalog", titleId: 4, name: "Private" };
+  store.loadCorpus.mockResolvedValue({ uploads: 1, records: [gold, title] });
+  expect((await (await GET(req())).json()).records).toEqual([published(gold)]);
+  expect((await GET(req("?kinds=title_catalog"))).status).toBe(400);
+});
+
 test("every record kind is either on the allowlist or named private here", () => {
-  const privateKinds = ["addon_seen", "talent_snapshot", "auction_snapshot"];
+  // The completion kinds are served only through the completion rollup: 3-install agreement and live grants.
+  const privateKinds = ["addon_seen", "talent_snapshot", "auction_snapshot", ...COMPLETION_KINDS];
   expect([...PUBLIC_RECORD_KINDS, ...privateKinds].sort()).toEqual([...ALL_RECORD_KINDS].sort());
 });
 

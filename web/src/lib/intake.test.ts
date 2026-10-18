@@ -5,7 +5,9 @@ const base = { installId: "test-install-1234", capturedAt: "2026-09-29T12:00:00.
 
 describe("intake contract", () => {
   test("all record kinds exist", () => {
-    expect(ALL_RECORD_KINDS).toHaveLength(23);
+    expect(ALL_RECORD_KINDS).toHaveLength(31);
+    expect(ALL_RECORD_KINDS).toContain("achievement_catalog");
+    expect(ALL_RECORD_KINDS).toContain("quest_owned");
     expect(ALL_RECORD_KINDS).toContain("auction_snapshot");
     expect(ALL_RECORD_KINDS).toContain("talent_snapshot");
     expect(ALL_RECORD_KINDS).toContain("addon_seen");
@@ -212,6 +214,75 @@ expect(low.rejected.map((row) => row.reason).join(" ")).toContain("peak gold can
     ]);
     expect(result.receipt.rejected.map((r) => r.index)).toEqual([2, 3, 4, 5, 6, 7]);
     expect(result.records).toHaveLength(2);
+  });
+
+  describe("completion tracker", () => {
+    const achievement = {
+      ...base, kind: "achievement_catalog", achievementId: 11, name: "Explorer", categoryId: 3, category: "Exploration",
+      parentCategory: "General", points: 10, criteriaCount: 2, criteria: [{ text: "Elwynn Forest", required: 1 }, { text: "", required: 1 }],
+    };
+    const owned = { ...base, characterKey: "0a1b2c3d", class: "MAGE", level: 30 };
+
+    test("an achievement catalog row keeps names and counts, and refuses what does not add up", () => {
+      const result = parseRecords([
+        achievement,
+        { ...achievement, name: "" },
+        { ...achievement, name: "x".repeat(121) },
+        { ...achievement, points: 1001 },
+        { ...achievement, criteriaCount: 1 },
+        { ...achievement, criteria: Array.from({ length: 101 }, () => ({ text: "a", required: 1 })), criteriaCount: 101 },
+        { ...achievement, criteria: [{ text: "x".repeat(121), required: 1 }] },
+        { ...achievement, achievementId: 0 },
+      ]);
+      expect(result.receipt.rejected.map((r) => r.index)).toEqual([1, 2, 3, 4, 5, 6, 7]);
+      expect(result.records).toHaveLength(1);
+    });
+
+    test("faction, title and quest chain catalog rows are bounded", () => {
+      const result = parseRecords([
+        { ...base, kind: "reputation_catalog", factionId: 72, name: "Stormwind", header: "Alliance", major: false },
+        { ...base, kind: "reputation_catalog", factionId: 72, name: "" },
+        { ...base, kind: "title_catalog", titleId: 4, name: "Private" },
+        { ...base, kind: "title_catalog", titleId: 5001, name: "Too far" },
+        { ...base, kind: "quest_chain_catalog", questLineId: 9, name: "The Defias", questIds: [1, 2] },
+        { ...base, kind: "quest_chain_catalog", questLineId: 9, name: "Empty", questIds: [] },
+        { ...base, kind: "quest_chain_catalog", questLineId: 9, name: "Long", questIds: Array.from({ length: 81 }, (_, i) => i + 1) },
+      ]);
+      expect(result.receipt.rejected.map((r) => r.index)).toEqual([1, 3, 5, 6]);
+    });
+
+    test("owned rows need an opaque character key, never a name", () => {
+      const row = { ...owned, kind: "achievement_owned", achievementId: 11, completed: true, earnedByMe: true, earnedOn: "2026-10-01", criteriaMet: 2, criteriaTotal: 2 };
+      const result = parseRecords([
+        row,
+        { ...row, characterKey: "Thrall" },
+        { ...row, characterKey: "0A1B2C3D" },
+        { ...row, characterKey: undefined },
+        { ...row, criteriaMet: 3 },
+        { ...row, completed: false },
+        { ...row, earnedOn: "1 Oct 2026" },
+        { ...row, character: "Thrall", realm: "Forever" },
+      ]);
+      expect(result.receipt.rejected.map((r) => r.index)).toEqual([1, 2, 3, 4, 5, 6]);
+      // An unknown field is stripped, not kept: the name cannot ride along.
+      expect(result.records[1]).not.toHaveProperty("character");
+    });
+
+    test("reputation, title and quest rows", () => {
+      const rep = { ...owned, kind: "reputation_owned", factionId: 72, reaction: 5, standing: 3100, floor: 3000, ceiling: 9000 };
+      const result = parseRecords([
+        rep,
+        { ...rep, standing: -42000, floor: -42000, ceiling: -6000, reaction: 1 },
+        { ...rep, floor: 9001 },
+        { ...rep, reaction: 0 },
+        { ...owned, kind: "title_owned", titleIds: [4, 5] },
+        { ...owned, kind: "title_owned", titleIds: [] },
+        { ...owned, kind: "quest_owned", questIds: [7] },
+        { ...owned, kind: "quest_owned", questIds: Array.from({ length: 201 }, (_, i) => i + 1) },
+        { ...owned, level: 101, kind: "quest_owned", questIds: [7] },
+      ]);
+      expect(result.receipt.rejected.map((r) => r.index)).toEqual([2, 3, 5, 7, 8]);
+    });
   });
 
   test("rejects empty and oversized payloads", () => {

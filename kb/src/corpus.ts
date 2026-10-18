@@ -1,4 +1,4 @@
-import { parseRecords, type IntakeRecord } from "../../web/src/lib/intake.js";
+import { COMPLETION_KINDS, parseRecords, type IntakeRecord } from "../../web/src/lib/intake.js";
 
 export interface CorpusEvent { record: IntakeRecord; grants: string[] }
 export interface CorpusState {
@@ -32,6 +32,9 @@ export function mergeCorpus(previous: CorpusState | undefined, raw: readonly unk
     // Full scans are thousands of items each; the market rollup (kb/src/market.ts) reads them from
     // the uploads, so the corpus every page loads does not grow with them.
     if (parsed.kind === "auction_snapshot") continue;
+    // The completion kinds are folded into their own rollup (kb/src/completion-rollup.ts), latest row per
+    // character and id, so this corpus, which every page loads, does not carry them.
+    if (COMPLETION_KINDS.includes(parsed.kind)) continue;
     const row = { ...parsed };
     // Old SavedVariables may contain a placeholder or secret. Neither is a public fact.
     if ("claimToken" in row) delete row.claimToken;

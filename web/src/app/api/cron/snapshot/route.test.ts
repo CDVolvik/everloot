@@ -1,6 +1,8 @@
 import { beforeEach, expect, test, vi } from "vitest";
-const store = vi.hoisted(() => ({ writeSnapshot: vi.fn(), writeMarket: vi.fn(), prune: vi.fn() }));
-vi.mock("@/lib/upload-store", () => ({ uploadStore: { writeSnapshot: store.writeSnapshot, writeMarket: store.writeMarket } }));
+const store = vi.hoisted(() => ({ writeSnapshot: vi.fn(), writeMarket: vi.fn(), writeCompletion: vi.fn(), prune: vi.fn() }));
+vi.mock("@/lib/upload-store", () => ({ uploadStore: { writeSnapshot: store.writeSnapshot, writeMarket: store.writeMarket, writeCompletion: store.writeCompletion },
+  sharingStore: { loadState: async () => ({ grants: [], suppressions: [] }) },
+}));
 vi.mock("@/lib/intake-quota", () => ({ intakeQuota: { prune: store.prune } }));
 const keys = vi.hoisted(() => ({ pruneKeys: vi.fn() }));
 vi.mock("@/lib/api-keys", () => ({ pruneKeys: keys.pruneKeys }));
@@ -9,6 +11,7 @@ beforeEach(() => {
   vi.stubEnv("CRON_SECRET", "synthetic-cron-key");
   store.writeSnapshot.mockReset().mockResolvedValue({ uploads: 0 });
   store.writeMarket.mockReset().mockResolvedValue({ added: 0, scans: 0 });
+  store.writeCompletion.mockReset().mockResolvedValue({ added: 0, remaining: 0, trimmed: 0, rebuilding: false });
   store.prune.mockReset().mockResolvedValue(undefined);
   keys.pruneKeys.mockReset().mockResolvedValue(undefined);
 });
@@ -33,6 +36,16 @@ test("the market rollup runs with the snapshot and rebuilds with it", async () =
   const body = await (await GET(req(undefined, "?rebuild=1"))).json();
   expect(body).toMatchObject({ ok: true, market: { added: 2, scans: 5 } });
   expect(store.writeMarket).toHaveBeenCalledWith({ rebuild: true });
+});
+test("the completion rollup runs after the market, rebuilds with it, and a failure is reported", async () => {
+  store.writeCompletion.mockResolvedValue({ added: 3, remaining: 7, trimmed: 0, rebuilding: true });
+  const body = await (await GET(req(undefined, "?rebuild=1"))).json();
+  expect(body).toMatchObject({ ok: true, completion: { added: 3, remaining: 7, rebuilding: true } });
+  expect(store.writeCompletion).toHaveBeenCalledWith({ rebuild: true, authority: expect.any(Function) });
+  store.writeCompletion.mockRejectedValue(new Error("completion down"));
+  const res = await GET(req());
+  expect(res.status).toBe(500);
+  expect(await res.json()).toMatchObject({ ok: false, error: "completion rollup failed" });
 });
 test("a market failure is reported but does not block the corpus snapshot or cleanup", async () => {
   // Cleanup runs before the market step, so a market that times out cannot starve it.
