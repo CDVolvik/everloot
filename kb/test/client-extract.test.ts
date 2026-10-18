@@ -182,6 +182,29 @@ test("the W3 tables are read by the file data ids the WoWDBDefs manifest lists f
   });
 });
 
+test("the W4 tables are read by the file data ids the WoWDBDefs manifest lists for them", () => {
+  // manifest.json at WoWDBDefs b9a63096cdd9, field db2FileDataID.
+  expect(CLIENT_TABLES).toMatchObject({
+    BankBagSlotPrices: 1284819, BankTab: 5242411, StableSlotPrices: 2179613,
+    CharBaseInfo: 1343386, CharBaseSection: 1375798, CharHairGeosets: 1256914,
+    CharComponentTextureLayouts: 1360262, CharComponentTextureSections: 1360263,
+    CharStartKit: 3055696, ComponentTextureFileData: 1278239, ComponentModelFileData: 1349053,
+    GuildEmblem: 2734754, GuildTabardBackground: 2909769, GuildTabardBorder: 2920485, GuildTabardEmblem: 2910470,
+    GuildShirtBackground: 2921008, GuildShirtBorder: 2921475,
+    GuildColorBackground: 1286526, GuildColorBorder: 1286527, GuildColorEmblem: 1286525,
+    BarberShopStyle: 1237437, LevelExperience: 7880197, Exhaustion: 1343313,
+    DurabilityCosts: 1283019, DurabilityQuality: 1130268,
+    MailTemplate: 1240344, AuctionHouse: 1237439,
+    Emotes: 1343602, EmotesText: 1347273, EmotesTextSound: 1286524, EmotesTextData: 1283024,
+    Lock: 1343608, LockType: 1284823, SummonProperties: 1345276, TotemCategory: 1134586,
+    PowerDisplay: 1332557,
+    ObjectEffect: 1090577, ObjectEffectGroup: 1090581, ObjectEffectModifier: 1090575,
+    ObjectEffectPackage: 1090574, ObjectEffectPackageElem: 1090578,
+    ParticleColor: 1284820, DeclinedWord: 1279100, DeclinedWordCases: 1279099, NameGen: 1122117,
+    Resistances: 1135072, RaceStat: 7722633,
+  });
+});
+
 test("a table the build does not have is reported as missing, not invented", async () => {
   const { tables, missing } = await extractTables(fake({ [CLIENT_TABLES.Item]: { rows: [[1, { ID: 1 }]] } }));
   expect(tables.map((t) => t.table)).toEqual(["Item"]);
