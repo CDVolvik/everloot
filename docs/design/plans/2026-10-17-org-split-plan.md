@@ -37,6 +37,10 @@ Local clones still point at the old URL. Redirects work, but update them:
 
 ### Task 1.4: Re-enable the bot workflows (do first)
 
+**Partly done:** the six guards are fixed in PR #54
+(`fix(infra): scheduled workflows run again after the move to the Everloot org`, open on
+2026-10-17). Merging it and the verification below remain.
+
 Since the transfer, `github.repository` is `Everloot/everloot`, so every job guarded by
 `github.repository == 'CDVolvik/everloot'` is skipped: build watch, change refresh and ecosystem
 refresh have stopped.
@@ -44,15 +48,17 @@ refresh have stopped.
 **Files:** `.github/workflows/build-watch.yml:32,199`, `.github/workflows/changes.yml:19,76`,
 `.github/workflows/ecosystem.yml:17,51`.
 
-- [ ] Replace `'CDVolvik/everloot'` with `'Everloot/everloot'` on those six lines. This ships in the
-  same pull request as Task 1.6 if that one is ready the same day; otherwise on its own as
-  `fix(infra): the bot workflows run again in the organization`.
+- [x] Replace `'CDVolvik/everloot'` with `'Everloot/everloot'` on those six lines: PR #54.
+- [ ] **[OWNER]** Merge PR #54.
 - [ ] **Verify** after merge: `gh workflow run changes.yml -R Everloot/everloot`, then
   `gh run view <id> -R Everloot/everloot --json jobs --jq '.jobs[] | "\(.name) \(.conclusion)"'`
   shows `collect` with a conclusion other than `skipped`. Same for `build-watch.yml` and
   `ecosystem.yml`.
 
 ### Task 1.5: A token for the bots [OWNER]
+
+**Partly done:** the bots' guard half is fixed in PR #54 (Task 1.4). The Actions secrets item below
+is still open.
 
 The repository has no Actions secrets (`gh api repos/Everloot/everloot/actions/secrets` returns
 `total_count: 0` on 2026-10-17). The three bots fall back to `github.token`, so the pull requests they
@@ -78,7 +84,8 @@ Phase 3 replaces this token with a GitHub App (Task 3.6).
     | xargs sed -i 's#CDVolvik/everloot#Everloot/everloot#g'
   ```
 
-  That touches 28 files (44 lines) as of `079c96e`:
+  That touches 28 files (44 lines) as of `079c96e`; once PR #54 is merged, the three workflow files
+  are already done and it touches 25 files (38 lines):
 
   | Area | Files |
   |---|---|
