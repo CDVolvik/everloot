@@ -73,7 +73,7 @@ Support/Everloot`, `~/.config/everloot`), so a player can switch between them wi
 | `inspect.ts` | What a save file holds, as counts: records per kind, pending asks, scanned realms, confirmed events from `sent.json`. Never the records themselves | `web/src/lib/sv-parse.ts` |
 | `addon.ts` | Installed version from the TOC, the newest release with a given tag prefix, and the install: only regular files under `Everloot/` from the zip (no `..`, no absolute paths), written to `Everloot.new` and swapped in whole after the sha256 matches the release's `SHA256SUMS` | `fflate` |
 | `changes.ts` | The change tracker's RSS feed as a list: title, https link, date, plain-text summary | `fetch` |
-| `backups.ts` | After each upload, a dated copy of the account's `Everloot.lua` under `backups/`, the newest ten per account. A failed backup never fails the upload | `node:fs` |
+| `backups.ts` | After each upload, a dated copy of the account's `Everloot.lua` under `backups/`, the newest ten per account. A failed backup never fails the upload. Restore copies one back over the watched file of the same account after a native confirm, backing up the current file first; only files inside `backups/` are accepted | `node:fs` |
 | `tray.ts` | The menu: status of each job, Upload now, Refresh prices, Open window, Pause, Quit | Electron |
 | `index.ts` | Single instance, the window, the tray, IPC handlers, close-to-tray, launch at login | everything above |
 
@@ -148,6 +148,8 @@ on the Node side for ten to fifteen minutes so opening a page twice does not ask
   the hour; an ask write runs the bridge; a failing job records the error and the others keep going;
   `restart` with the upload switch off stops watching.
 - `updates.test.ts`: picks the newest `desktop-v*` tag, ignores addon tags and pre-releases.
+- `backups.test.ts`: dated copies, ten per account; restore replaces the live file and keeps the
+  replaced one as the newest backup; refuses paths outside `backups/` and unwatched accounts.
 - `preload` allow-list: `openExternal` refuses anything but `https:` on named hosts.
 - Manual, before a release: install on Windows, first run, play, log out, see the upload in the log
   and the prices after `/reload`.

@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, test } from "vitest";
-import { backupSavedVariables, listBackups } from "../src/main/backups";
+import { backupSavedVariables, listBackups, restoreBackup } from "../src/main/backups";
 
 const dirs: string[] = [];
 const dir = () => { const d = mkdtempSync(join(tmpdir(), "everloot-backups-")); dirs.push(d); return d; };
@@ -38,4 +38,35 @@ test("the list is newest first with the account and time parsed from the name", 
   const list = listBackups(d);
   expect(list.map((b) => [b.account, b.at, b.bytes])).toEqual([["ACC", "2026-10-18T04:00:00Z", 2], ["ACC", "2026-10-18T03:04:05Z", 1]]);
   expect(listBackups(join(d, "none"))).toEqual([]);
+});
+
+test("restore puts a backup back over the matching account file and keeps a copy of what it replaced", () => {
+  const d = dir();
+  const sv = join(d, "WTF", "Account", "MYACC", "SavedVariables", "Everloot.lua");
+  mkdirSync(join(sv, ".."), { recursive: true });
+  writeFileSync(sv, "EverlootDB = { old = 1 }");
+  const data = join(d, "data");
+  const backup = backupSavedVariables(sv, data, 10, new Date("2026-10-18T03:00:00Z"));
+  writeFileSync(sv, "EverlootDB = { broken = 1 }");
+  const restored = restoreBackup(backup, data, [sv], new Date("2026-10-18T09:00:00Z"));
+  expect(restored).toBe(sv);
+  expect(readFileSync(sv, "utf8")).toBe("EverlootDB = { old = 1 }");
+  // The file as it was before the restore is now the newest backup, so a restore is itself undoable.
+  const list = listBackups(data);
+  expect(list[0].at).toBe("2026-10-18T09:00:00Z");
+  expect(readFileSync(list[0].file, "utf8")).toBe("EverlootDB = { broken = 1 }");
+});
+
+test("restore refuses files outside the backups folder and accounts that are not watched", () => {
+  const d = dir();
+  const data = join(d, "data");
+  mkdirSync(join(data, "backups"), { recursive: true });
+  const stray = join(d, "MYACC-20261018T030000Z.lua");
+  writeFileSync(stray, "x");
+  const sv = join(d, "WTF", "Account", "MYACC", "SavedVariables", "Everloot.lua");
+  expect(() => restoreBackup(stray, data, [sv])).toThrow(/backups folder/);
+  const other = join(data, "backups", "OTHER-20261018T030000Z.lua");
+  writeFileSync(other, "x");
+  expect(() => restoreBackup(other, data, [sv])).toThrow(/OTHER/);
+  expect(existsSync(sv)).toBe(false);
 });

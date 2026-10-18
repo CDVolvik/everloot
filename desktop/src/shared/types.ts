@@ -34,6 +34,9 @@ export interface GameFolderCandidate { folder: string; product: string; files: n
 
 export interface UpdateCheck { current: string; latest: string | null; url: string | null; newer: boolean }
 
+/** One dated copy of an account's Everloot.lua in the data folder, kept after each upload. */
+export interface BackupInfo { file: string; account: string; at: string; bytes: number }
+
 /** What one account's Everloot.lua holds, for the Upload page. Nothing here leaves the machine. */
 export interface FileSummary {
   file: string;
@@ -175,6 +178,10 @@ export interface EverlootApi {
   openExternal(url: string): Promise<boolean>;
   checkForUpdates(): Promise<UpdateCheck>;
   uploadInfo(): Promise<FileSummary[]>;
+  backups(): Promise<BackupInfo[]>;
+  /** Asks the player to confirm, then copies the backup over the live file; returns the restored path or null when cancelled. */
+  restoreBackup(file: string): Promise<string | null>;
+  openBackupsFolder(): Promise<void>;
   marketInfo(): Promise<MarketInfo>;
   askInfo(): Promise<AskInfo>;
   addonInfo(): Promise<AddonInfo>;

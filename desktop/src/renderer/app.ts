@@ -1,5 +1,5 @@
 import { accountOf as account } from "../main/engine";
-import type { AddonInfo, AppState, AskInfo, ChangeItem, CharactersInfo, ChatInfo, EverlootApi, FileSummary, GameFolderCandidate, Job, JobStatus, MarketInfo } from "../shared/types";
+import type { AddonInfo, AppState, AskInfo, BackupInfo, ChangeItem, CharactersInfo, ChatInfo, EverlootApi, FileSummary, GameFolderCandidate, Job, JobStatus, MarketInfo } from "../shared/types";
 
 declare global { interface Window { everloot: EverlootApi } }
 const api = window.everloot;
@@ -26,7 +26,7 @@ let draftDirty = false;
 let busy = "";
 let flash = "";
 let siteUrl: string | null = null;
-const data: { upload?: FileSummary[]; market?: MarketInfo; ask?: AskInfo; addon?: AddonInfo; changes?: ChangeItem[]; changesError?: string; characters?: CharactersInfo; chat?: ChatInfo } = {};
+const data: { upload?: FileSummary[]; backups?: BackupInfo[]; market?: MarketInfo; ask?: AskInfo; addon?: AddonInfo; changes?: ChangeItem[]; changesError?: string; characters?: CharactersInfo; chat?: ChatInfo } = {};
 
 const main = document.getElementById("app")!;
 const side = document.getElementById("side")!;
@@ -167,6 +167,7 @@ function upload(s: AppState): string {
       <td class="num">${f.records}</td><td class="num">${f.confirmed}</td>
       <td><div class="chips">${f.kinds.slice(0, 12).map((k) => `<span class="chip"><b>${k.count}</b> ${esc(k.kind)}</span>`).join("")}${f.kinds.length > 12 ? `<span class="chip">+${f.kinds.length - 12} more</span>` : ""}</div></td>
     </tr>`).join("");
+  const backups = (data.backups ?? []).map((b) => `<tr><td><span class="mono">${esc(b.account)}</span></td><td>${when(b.at)}</td><td class="num">${kb(b.bytes)}</td><td><button type="button" class="btn small" data-restore="${esc(b.file)}" ${busy ? "disabled" : ""}>${busy === b.file ? "Restoring…" : "Restore"}</button></td></tr>`).join("");
   return `<div class="page">
     <div class="head"><h1>Upload</h1><div class="row">${jobSwitch("upload", s)}${runBtn("upload", s)}</div></div>
     <p class="fg2">After every logout or <code>/reload</code> the game rewrites <code>Everloot.lua</code>; once the write settles, the events the site has not confirmed are sent. Named data (guild, gear, gold, collection) and your installed addon list stay here.</p>
@@ -174,6 +175,11 @@ function upload(s: AppState): string {
     <section class="panel"><h2>Account files</h2>
       ${files.length ? `<table><thead><tr><th>Account</th><th>Written</th><th>Addon</th><th class="num">Records</th><th class="num">Confirmed</th><th>What it holds</th></tr></thead><tbody>${rows}</tbody></table>` : '<p class="muted">No account file yet.</p>'}
       <p class="muted small">Records are what the addon has on disk; confirmed is how many of them the site has accepted from this install. The site states a fact once three installs agree.</p>
+    </section>
+    <section class="panel"><div class="row between"><h2>Backups</h2><button type="button" class="btn" id="openBackups" ${(data.backups ?? []).length ? "" : "disabled"}>Open folder</button></div>
+      ${backups.length ? `<table><thead><tr><th>Account</th><th>Taken</th><th class="num">Size</th><th></th></tr></thead><tbody>${backups}</tbody></table>` : '<p class="muted">No backup yet. One is kept after each upload.</p>'}
+      <p class="muted small">A copy of <code>Everloot.lua</code> as it was uploaded, the newest ten per account. Restore while logged out; the file you replace is backed up first.</p>
+      ${flash ? `<p class="${flash.startsWith("!") ? "error" : "ok"} small">${esc(flash.replace(/^!/, ""))}</p>` : ""}
     </section>
   </div>`;
 }
@@ -359,7 +365,7 @@ async function load(p: Page): Promise<void> {
     if (p === "overview") { [data.addon, data.changes] = await Promise.all([api.addonInfo(), api.changes().catch((e) => { data.changesError = msg(e); return undefined; })]); data.market = await api.marketInfo(); }
     else if (p === "chat") data.chat = await api.chatInfo();
     else if (p === "characters") data.characters = await api.charactersInfo();
-    else if (p === "upload") data.upload = await api.uploadInfo();
+    else if (p === "upload") [data.upload, data.backups] = await Promise.all([api.uploadInfo(), api.backups()]);
     else if (p === "market") data.market = await api.marketInfo();
     else if (p === "ask") data.ask = await api.askInfo();
     else if (p === "addon") data.addon = await api.addonInfo();
@@ -430,6 +436,15 @@ document.body.addEventListener("click", async (ev) => {
     catch (e) { flash = `!${msg(e)}`; }
     busy = "";
     await load("addon");
+    return;
+  }
+  if (t.id === "openBackups") { void api.openBackupsFolder(); return; }
+  if (t.dataset.restore) {
+    busy = t.dataset.restore; flash = ""; render();
+    try { const live = await api.restoreBackup(t.dataset.restore); flash = live ? `Restored ${account(live)}. Log in to see it.` : ""; }
+    catch (e) { flash = `!${msg(e)}`; }
+    busy = "";
+    await load("upload");
     return;
   }
   if (t.id === "updates") {

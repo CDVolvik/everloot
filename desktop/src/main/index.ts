@@ -6,6 +6,7 @@ import { readAsks } from "../../../companion/src/bridge/asks";
 import { loadProviders } from "../../../companion/src/providers/config";
 import type { AddonInfo, AppState, AskInfo, Job, MarketInfo, Settings } from "../shared/types";
 import { JOBS } from "../shared/types";
+import { listBackups, restoreBackup } from "./backups";
 import { compareVersions, installAddon, installedAddonVersion, newestRelease, slotAddons } from "./addon";
 import { fetchChanges } from "./changes";
 import { charactersFromFiles } from "./characters";
@@ -153,6 +154,22 @@ if (!app.requestSingleInstanceLock()) {
   ipcMain.handle("checkForUpdates", () => checkForUpdates(app.getVersion()));
 
   ipcMain.handle("uploadInfo", () => summarizeFiles(engine.snapshot().files, join(data, "sent.json")));
+  ipcMain.handle("backups", () => listBackups(data));
+  ipcMain.handle("openBackupsFolder", () => { const dir = join(data, "backups"); return existsSync(dir) ? shell.openPath(dir).then(() => undefined) : undefined; });
+  ipcMain.handle("restoreBackup", async (_e, file: unknown) => {
+    if (typeof file !== "string") throw new Error("Not a backup");
+    const entry = listBackups(data).find((b) => b.file === file);
+    if (!entry) throw new Error("That backup is gone");
+    const options: Electron.MessageBoxOptions = {
+      type: "warning", buttons: ["Restore", "Cancel"], defaultId: 1, cancelId: 1,
+      title: "Restore a backup",
+      message: `Put the ${entry.account} save file back to ${new Date(entry.at).toLocaleString()}?`,
+      detail: "Do this while logged out: the game rewrites the file on logout and would undo the restore. The file as it is now is backed up first, so you can go back.",
+    };
+    const r = win ? await dialog.showMessageBox(win, options) : await dialog.showMessageBox(options);
+    if (r.response !== 0) return null;
+    return restoreBackup(file, data, engine.snapshot().files);
+  });
   ipcMain.handle("marketInfo", async (): Promise<MarketInfo> => {
     const files = engine.snapshot().files;
     const scans = files.flatMap((f) => { try { return readScanAges(readFileSync(f, "utf8")); } catch { return []; } }).sort((a, b) => (b.at ?? "").localeCompare(a.at ?? ""));
