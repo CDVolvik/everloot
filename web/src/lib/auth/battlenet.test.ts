@@ -37,3 +37,9 @@ test("the provider fetches userinfo with the access token and maps the profile",
   expect(init.headers.Authorization).toBe("Bearer tok");
   expect(await provider.getUserInfo?.(tokens)).toBeNull();
 });
+
+test("the account id is the mapped Battle.net id, not the OIDC sub the plugin defaults to", async () => {
+  const provider = battlenetProvider({ BNET_CLIENT_ID: "id", BNET_CLIENT_SECRET: "secret" });
+  const profile = battlenetUser({ sub: "123", battletag: "Thrall#1" })!;
+  expect(await provider.accountSubject?.({ tokens: { accessToken: "tok" }, profile })).toBe("123");
+});

@@ -26,6 +26,8 @@ export function battlenetProvider(env: { BNET_CLIENT_ID?: string; BNET_CLIENT_SE
     clientSecret: env.BNET_CLIENT_SECRET?.trim(),
     scopes: ["openid", "wow.profile"],
     pkce: true,
+    // The discovery document is OIDC, so the plugin would read `sub`; getUserInfo maps it to `id`.
+    accountSubject: ({ profile }) => String(profile.id ?? ""),
     async getUserInfo(tokens) {
       const res = await fetch("https://oauth.battle.net/userinfo", {
         cache: "no-store", signal: AbortSignal.timeout(10_000),
