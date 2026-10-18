@@ -38,6 +38,14 @@ test("game-file edges carry the label, the build and Blizzard's notice, not our 
   expect(body.gameData.credit).toContain("WoWDBDefs");
 });
 
+test("a profession is an entity: the skill kind filters both ends of the spell -> skill line relation", async () => {
+  const from = await (await GET(req("?from_kind=spell&from_id=2660&rel=in_skill_line"))).json();
+  expect(from.edges).toEqual([expect.objectContaining({ fromKind: "spell", fromId: 2660, rel: "in_skill_line", toKind: "skill", toId: 164, evidence: "client" })]);
+  const to = await (await GET(req("?to_kind=skill&to_id=164&limit=5"))).json();
+  expect(to.edges.length).toBeGreaterThan(0);
+  expect(to.edges.every((e: { toKind: string; rel: string }) => e.toKind === "skill" && e.rel === "in_skill_line")).toBe(true);
+});
+
 test("bad parameters are a 400, not an empty list", async () => {
   for (const q of ["?from_kind=dragon", "?from_id=abc", "?rel=eaten_by", "?evidence=rumour", "?to_id=-1"]) {
     expect((await GET(req(q))).status, q).toBe(400);
