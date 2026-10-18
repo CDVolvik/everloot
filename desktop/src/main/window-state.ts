@@ -1,5 +1,6 @@
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, renameSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
+import { readJsonFile } from "./json-file";
 
 export interface Bounds { x: number; y: number; width: number; height: number }
 export interface Area { x: number; y: number; width: number; height: number }
@@ -13,7 +14,7 @@ const VISIBLE = { width: 120, height: 40 };
 export function readWindowState(path: string): Partial<Bounds> | null {
   if (!existsSync(path)) return null;
   try {
-    const raw = JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
+    const raw = readJsonFile(path) as Record<string, unknown>;
     const out: Partial<Bounds> = {};
     for (const k of ["x", "y", "width", "height"] as const) {
       const v = raw[k];

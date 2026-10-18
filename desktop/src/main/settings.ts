@@ -1,5 +1,6 @@
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, renameSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
+import { readJsonFile } from "./json-file";
 import type { Settings } from "../shared/types";
 
 export const DEFAULT_ENDPOINT = "https://everloot.app";
@@ -57,7 +58,7 @@ export interface LoadedSettings { settings: Settings; error: string | null }
 export function loadSettings(path: string): LoadedSettings {
   if (!existsSync(path)) return { settings: defaultSettings(), error: null };
   try {
-    const parsed: unknown = JSON.parse(readFileSync(path, "utf8"));
+    const parsed: unknown = readJsonFile(path);
     if (!parsed || typeof parsed !== "object") throw new Error("not an object");
     return { settings: mergeSettings(defaultSettings(), parsed), error: null };
   } catch (err) {

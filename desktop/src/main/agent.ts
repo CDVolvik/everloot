@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { existsSync, readFileSync } from "node:fs";
+import { readJsonFile } from "./json-file";
 import { completeWithFallback, type Provider } from "../../../companion/src/providers/chain";
 import { DEFAULT_MODEL } from "./providers";
 import type { ChatMessage, ChatStep } from "../shared/types";
@@ -20,7 +21,7 @@ export interface ProviderEntry { type: string; model?: string; baseUrl?: string;
 
 export function readProviderEntries(configPath: string): ProviderEntry[] {
   if (!existsSync(configPath)) return [];
-  const config = JSON.parse(readFileSync(configPath, "utf8")) as { providers?: unknown };
+  const config = readJsonFile(configPath) as { providers?: unknown };
   if (!Array.isArray(config.providers)) return [];
   return config.providers.flatMap((raw, i) => {
     const p = raw as Record<string, unknown>;

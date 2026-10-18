@@ -93,6 +93,9 @@ test("the mode names the provider: plain search, another provider's summary, or 
   expect(JSON.parse(readFileSync(join(d, "config.json"), "utf8")).providers.map((p: { type: string }) => p.type)).toEqual(["anthropic", "openai"]);
   chat.removeKey();
   expect(chat.info()).toMatchObject({ mode: "openai:gpt-5 (summary of search hits)", ownKey: false });
+  // Saved by hand with a byte order mark: still read.
+  writeFileSync(join(d, "config.json"), "\uFEFF" + JSON.stringify({ providers: [{ type: "openai", model: "gpt-5", apiKeyFile: "k.txt" }] }));
+  expect(chat.info().mode).toBe("openai:gpt-5 (summary of search hits)");
   writeFileSync(join(d, "config.json"), JSON.stringify({ providers: [{ type: "openai", apiKey: "inline" }] }));
   expect(chat.info().mode).toMatch(/^config.json: providers\[0\]/);
 });

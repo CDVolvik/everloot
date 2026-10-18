@@ -1,5 +1,6 @@
 import { accountOf as account } from "../main/engine";
 import { diagnostics } from "../shared/diagnostics";
+import { ago, clock, esc, gold, kb, msg, sparkline, statusText, when } from "./format";
 import type { AddonInfo, AppState, AskInfo, BackupInfo, ChangeItem, CharactersInfo, ChatInfo, EverlootApi, FileSummary, GameFolderCandidate, Job, JobStatus, MarketInfo } from "../shared/types";
 
 declare global { interface Window { everloot: EverlootApi } }
@@ -34,33 +35,8 @@ const side = document.getElementById("side")!;
 const nav = document.getElementById("nav")!;
 const sideFoot = document.getElementById("side-foot")!;
 
-const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
-const clock = (iso: string | null) => (iso ? new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "");
-const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "never");
-const ago = (iso: string | null) => {
-  if (!iso) return "never";
-  const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
-  return m < 1 ? "just now" : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`;
-};
-const kb = (n: number) => (n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(0)} KB` : `${(n / 1048576).toFixed(1)} MB`);
-const gold = (copper: number | null) => {
-  if (copper === null) return "–";
-  const g = Math.floor(copper / 10000), s = Math.floor((copper % 10000) / 100), c = copper % 100;
-  return g ? `${g.toLocaleString()}g ${s}s` : s ? `${s}s ${c}c` : `${c}c`;
-};
-// IPC wraps a thrown error as "Error invoking remote method 'x': Error: ..."; the page shows only the reason.
-const msg = (e: unknown) => (e instanceof Error ? e.message : String(e)).replace(/^Error invoking remote method '[^']*': /, "").replace(/^(?:Type)?Error: /, "");
 const ext = (url: string, text: string) => `<button type="button" class="link" data-open="${esc(url)}">${esc(text)}</button>`;
 
-function statusText(j: JobStatus): string {
-  switch (j.state) {
-    case "off": return "Off";
-    case "idle": return "Waiting for the next write";
-    case "running": return "Running";
-    case "ok": return j.message || "Done";
-    case "error": return j.message;
-  }
-}
 const dot = (j: JobStatus) => `<span class="dot dot-${j.state}" aria-hidden="true"></span>`;
 const onOff = (job: Job, s: AppState) => (job === "ask" ? s.settings.ask.enabled : s.settings[job]);
 const jobSwitch = (job: Job, s: AppState) => `<label class="switch"><input type="checkbox" data-toggle="${job}" ${onOff(job, s) ? "checked" : ""}><span>${onOff(job, s) ? "On" : "Off"}</span></label>`;
@@ -141,16 +117,6 @@ function chat(): string {
     <div class="thread" id="thread">${thread || '<span class="muted">Ask anything about WoW: Forever: a drop, a vendor, a recipe, a price, a quest.</span>'}${c?.busy ? '<div class="msg msg-assistant muted">Answering…</div>' : ""}${c?.error ? `<div class="msg msg-assistant error">${esc(c.error)}</div>` : ""}</div>
     <form id="chatForm"><textarea id="chatText" rows="2" placeholder="Ask about Forever. Enter sends, Shift+Enter is a new line." ${c?.busy ? "disabled" : ""}></textarea><button type="submit" class="btn btn-primary" ${c?.busy ? "disabled" : ""}>Send</button></form>
   </div>`;
-}
-
-/** A 96x24 line of a character's gold over time; nothing for fewer than two points. */
-function sparkline(points: { at: string; copper: number }[]): string {
-  if (points.length < 2) return "";
-  const w = 96, h = 24, lo = Math.min(...points.map((p) => p.copper)), hi = Math.max(...points.map((p) => p.copper));
-  const y = (v: number) => (hi === lo ? h / 2 : h - 1 - ((v - lo) / (hi - lo)) * (h - 2));
-  const d = points.map((p, i) => `${i ? "L" : "M"}${((i / (points.length - 1)) * (w - 1)).toFixed(1)},${y(p.copper).toFixed(1)}`).join(" ");
-  const first = esc(points[0].at.slice(0, 10)), last = esc(points[points.length - 1].at.slice(0, 10));
-  return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="gold from ${first} to ${last}"><title>${points.length} snapshots, ${first} to ${last}</title><path d="${d}" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>`;
 }
 
 function characters(): string {

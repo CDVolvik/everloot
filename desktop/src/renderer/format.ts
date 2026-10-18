@@ -1,0 +1,40 @@
+import type { JobStatus } from "../shared/types";
+
+/** The renderer's text helpers; no DOM, so they are tested on their own. */
+
+export const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+export const clock = (iso: string | null) => (iso ? new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "");
+export const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "never");
+export const ago = (iso: string | null, now = Date.now()) => {
+  if (!iso) return "never";
+  const m = Math.round((now - new Date(iso).getTime()) / 60000);
+  return m < 1 ? "just now" : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`;
+};
+export const kb = (n: number) => (n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(0)} KB` : `${(n / 1048576).toFixed(1)} MB`);
+export const gold = (copper: number | null) => {
+  if (copper === null) return "–";
+  const g = Math.floor(copper / 10000), s = Math.floor((copper % 10000) / 100), c = copper % 100;
+  return g ? `${g.toLocaleString()}g ${s}s` : s ? `${s}s ${c}c` : `${c}c`;
+};
+// IPC wraps a thrown error as "Error invoking remote method 'x': Error: ..."; the page shows only the reason.
+export const msg = (e: unknown) => (e instanceof Error ? e.message : String(e)).replace(/^Error invoking remote method '[^']*': /, "").replace(/^(?:Type)?Error: /, "");
+
+export function statusText(j: JobStatus): string {
+  switch (j.state) {
+    case "off": return "Off";
+    case "idle": return "Waiting for the next write";
+    case "running": return "Running";
+    case "ok": return j.message || "Done";
+    case "error": return j.message;
+  }
+}
+
+/** A 96x24 line of a character's gold over time; nothing for fewer than two points. */
+export function sparkline(points: { at: string; copper: number }[]): string {
+  if (points.length < 2) return "";
+  const w = 96, h = 24, lo = Math.min(...points.map((p) => p.copper)), hi = Math.max(...points.map((p) => p.copper));
+  const y = (v: number) => (hi === lo ? h / 2 : h - 1 - ((v - lo) / (hi - lo)) * (h - 2));
+  const d = points.map((p, i) => `${i ? "L" : "M"}${((i / (points.length - 1)) * (w - 1)).toFixed(1)},${y(p.copper).toFixed(1)}`).join(" ");
+  const first = esc(points[0].at.slice(0, 10)), last = esc(points[points.length - 1].at.slice(0, 10));
+  return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="gold from ${first} to ${last}"><title>${points.length} snapshots, ${first} to ${last}</title><path d="${d}" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>`;
+}

@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { readJsonFile } from "./json-file";
 import { loadProviders } from "../../../companion/src/providers/config";
 import type { ChatInfo, ChatMessage, Settings } from "../shared/types";
 import { answer, readProviderEntries } from "./agent";
@@ -14,7 +15,7 @@ const MAX_MESSAGES = 100;
 export function createChat(dataFolder: string, current: () => Settings) {
   const path = join(dataFolder, "chat.json");
   let messages: ChatMessage[] = [];
-  try { if (existsSync(path)) messages = (JSON.parse(readFileSync(path, "utf8")) as ChatMessage[]).slice(-MAX_MESSAGES); } catch { messages = []; }
+  try { if (existsSync(path)) messages = (readJsonFile(path) as ChatMessage[]).slice(-MAX_MESSAGES); } catch { messages = []; }
   let busy = false;
   let error: string | null = null;
 

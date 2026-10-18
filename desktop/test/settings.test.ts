@@ -14,6 +14,14 @@ test("a fresh install uploads and refreshes prices, asks nothing until set up, a
   expect(s.ask).toEqual({ enabled: false, mcpUrl: "https://everloot.app/mcp", tokenFile: null });
 });
 
+test("a settings file saved with a byte order mark still loads", () => {
+  const path = join(dir(), "settings.json");
+  writeFileSync(path, "\uFEFF" + JSON.stringify({ gameFolder: "C:/WoW/_classic_era_", consentedAt: "2026-10-18T00:00:00Z" }));
+  const r = loadSettings(path);
+  expect(r.error).toBeNull();
+  expect(r.settings).toMatchObject({ gameFolder: "C:/WoW/_classic_era_", consentedAt: "2026-10-18T00:00:00Z" });
+});
+
 test("a patch changes only known keys and keeps the old value for a bad one", () => {
   const base = defaultSettings();
   const merged = mergeSettings(base, {

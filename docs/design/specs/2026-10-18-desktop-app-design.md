@@ -75,6 +75,8 @@ Support/Everloot`, `~/.config/everloot`), so a player can switch between them wi
 | `changes.ts` | The change tracker's RSS feed as a list: title, https link, date, plain-text summary | `fetch` |
 | `backups.ts` | After each upload, a dated copy of the account's `Everloot.lua` under `backups/`, the newest ten per account. A failed backup never fails the upload. Restore copies one back over the watched file of the same account after a native confirm, backing up the current file first; only files inside `backups/` are accepted | `node:fs` |
 | `tray.ts` | The menu: status of each job, a scan reminder when a realm is stale (opens the Market page), the desktop update when one exists (opens the release page), Upload now, Refresh prices, Open window, Pause, Quit. The two notifications open Ask and Addon when clicked | Electron |
+| `json-file.ts` | JSON from a file the player may edit by hand (`settings.json`, `config.json`, `chat.json`, `window.json`), with the byte order mark Notepad and some editors add dropped first; without this a hand-edited `settings.json` fell back to the defaults and `config.json` to an error | `node:fs` |
+| `renderer/format.ts` | The renderer's text helpers without the DOM: escaping, gold from copper, sizes, ages, the IPC error reason, job status text, the gold sparkline | none |
 | `window-state.ts` | The window's last size and place in `window.json`, written a moment after the last drag and on close. On open the size is clamped to the minimum and the largest display, and the place is kept only when enough of the window would still be on a connected display; otherwise Electron centers it | `node:fs` |
 | `index.ts` | Single instance, the window, the tray, IPC handlers, close-to-tray, launch at login. The release checks run at start and once a day after that (the addon notice once per version). An unhandled rejection or exception becomes a line on the Log page instead of a dialog | everything above |
 
@@ -165,6 +167,10 @@ on the Node side for ten to fifteen minutes so opening a page twice does not ask
   the public mount without a token and the token endpoint with one; the mode line per provider.
 - `jobs.test.ts`: the watcher reports a write and stops; a missing path does not throw; the ask
   job refuses a missing, unreadable or empty token file.
+- `format.test.ts`: gold, sizes and ages; the IPC error's reason; status text per state; the
+  sparkline needs two points, spans the box, escapes its dates and sits mid-box when flat.
+- `settings.test.ts` and `chat.test.ts` also load a `settings.json` and a `config.json` saved with a
+  byte order mark.
 - `window-state.test.ts`: default size without a file; a place on a connected display is kept, one
   on a display that is gone is dropped; size clamped to the minimum and the largest display;
   `window.json` round-trips and survives junk.
