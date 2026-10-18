@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 import { z } from "zod";
 import { emit } from "../scripts/emit-schema.js";
-import { ALL_RECORD_KINDS, MCP_TOOL_NAMES, PUBLIC_RECORD_KINDS, recordSchemas, RULES, STRUCTURED_TOOLS, UPLOAD_LIMITS, PROTOCOL_VERSION } from "../src/index.js";
+import { ALL_RECORD_KINDS, MCP_RESOURCE_URIS, MCP_TOOL_NAMES, PUBLIC_RECORD_KINDS, recordSchemas, RULES, STRUCTURED_TOOLS, UPLOAD_LIMITS, PROTOCOL_VERSION } from "../src/index.js";
 
 const COMMITTED = join(import.meta.dirname, "..", "schema");
 
@@ -56,6 +56,15 @@ describe("schema files", () => {
     }
     const search = JSON.parse(readFileSync(join(out, "mcp", "search_knowledge.json"), "utf8")) as { outputSchema: { properties: { hits: { items: { required: string[] } } } } };
     expect(search.outputSchema.properties.hits.items.required).toContain("sourceUrl");
+  });
+
+  test("the resources file lists every resource, and the JSON one carries the schema of its contents", () => {
+    const file = JSON.parse(readFileSync(join(out, "mcp", "resources.json"), "utf8")) as { resources: { uri: string; mimeType: string; contents?: { required: string[] } }[] };
+    expect(file.resources.map((r) => r.uri)).toEqual(MCP_RESOURCE_URIS);
+    for (const resource of file.resources) expect(resource.contents !== undefined).toBe(resource.mimeType === "application/json");
+    expect(file.resources[0].contents?.required).toEqual(["gameFiles", "registry", "credit"]);
+    const index = JSON.parse(readFileSync(join(out, "index.json"), "utf8")) as { mcpResources: string[] };
+    expect(index.mcpResources).toEqual(MCP_RESOURCE_URIS);
   });
 
   test("the committed schema/ folder is what the emitter writes today", () => {

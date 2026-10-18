@@ -1,4 +1,4 @@
-import { MCP_TOOL_NAMES } from "@everloot/protocol";
+import { MCP_RESOURCE_URIS, MCP_TOOL_NAMES } from "@everloot/protocol";
 import { expect, test } from "vitest";
 import { GET as llmsFull } from "@/app/llms-full.txt/route";
 import { GET as llms } from "@/app/llms.txt/route";
@@ -12,6 +12,14 @@ test("both files list every MCP tool the protocol declares", () => {
   for (const name of registered) {
     expect(llmsTxt()).toContain(name);
     expect(llmsFullTxt()).toContain(`- ${name}: `);
+  }
+});
+
+test("both files list every MCP resource the protocol declares", () => {
+  expect(MCP_RESOURCE_URIS.length).toBeGreaterThan(0);
+  for (const uri of MCP_RESOURCE_URIS) {
+    expect(llmsTxt()).toContain(uri);
+    expect(llmsFullTxt()).toContain(`- ${uri}: `);
   }
 });
 

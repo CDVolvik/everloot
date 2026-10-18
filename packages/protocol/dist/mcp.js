@@ -66,6 +66,15 @@ export const changeEntry = z.object({
     version: z.string().optional(),
     diffUrl: z.string().nullable().optional(),
 });
+/** One piece of evidence from answer_sources. */
+export const evidence = z.object({
+    claim: z.string().describe("One short statement. Observed facts are in Everloot's words; lore is the source's own excerpt."),
+    kind: z.enum(["observed", "curated", "lore"]).describe("observed: players' uploads, public after three installs agree. curated: Everloot's own facts. lore: the 2023 Warcraft Wiki, which may differ in WoW: Forever."),
+    source: z.object({ title: z.string(), url: z.string() }),
+    licence: z.string(),
+    asOf: z.string().nullable().describe("When the source was read, or when the observations were current."),
+    support: z.number().int().optional().describe("Observed facts: how many installs reported it."),
+});
 /** Every tool, keyed by name, in the order the server lists them. */
 export const MCP_TOOLS = {
     search_knowledge: {
@@ -90,6 +99,20 @@ export const MCP_TOOLS = {
             kind: z.enum(KNOWLEDGE_KINDS).optional().describe("Narrow to one record kind."),
         },
         outputSchema: { hits: z.array(knowledgeHit) },
+        annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    answer_sources: {
+        title: "Evidence for a question, each piece with its source",
+        description: "The evidence behind a question about WoW: Forever, for an answer that cites its sources: facts players observed (public after three installs agree, with the install count), curated facts, and the 2023 Warcraft Wiki (marked: may differ in Forever). Every piece carries a claim, its source URL, licence and date. Returns evidence, not prose: write the answer from it and cite the pieces. Further-reading links are search URLs on other sites; nothing is fetched from them. Reads Everloot's current authorized public corpus when connected; when it is not, the observed layer is unrecorded, not empty.",
+        inputSchema: {
+            question: z.string().min(1).max(500).describe("The question, with names spelled as in the game."),
+            limit: z.number().int().min(1).max(25).default(8).describe("Most lore and curated pieces."),
+        },
+        outputSchema: {
+            evidence: z.array(evidence).describe("Observed first, then curated, then lore."),
+            furtherReading: z.array(z.object({ site: z.string(), url: z.string() })).describe("Search links on other sites. Nothing was fetched."),
+            dataAsOf: z.string().nullable().describe("When the observed layer was current; null when it is not connected."),
+        },
         annotations: { readOnlyHint: true, openWorldHint: false },
     },
     profession_path: {
@@ -276,7 +299,54 @@ export const TOOL_OUTPUT = { type: "text", endsWith: MCP_CREDIT };
 export const STRUCTURED_TOOLS = MCP_TOOL_NAMES.filter((name) => "outputSchema" in MCP_TOOLS[name]);
 /** The tools whose answers are built on player uploads and therefore end with TOOL_OUTPUT.endsWith. */
 export const PLAYER_DATA_TOOLS = [
-    "profession_path", "recipe_thresholds", "item_page", "npc_page", "object_page", "quest_page", "vendor_page",
+    "answer_sources", "profession_path", "recipe_thresholds", "item_page", "npc_page", "object_page", "quest_page", "vendor_page",
     "world_map_near", "entity_relations", "collection_gap", "completion_progress", "guild_board", "auction_history",
     "market_value", "gold_ledger",
 ];
+/** One game build as the version service listed it. Everloot records identifiers only, never game files. */
+export const buildEntry = z.object({
+    key: z.string().describe("product:buildConfig, the build's identity."),
+    product: z.string().describe("Blizzard's product id, such as wow_classic_beta."),
+    buildConfig: z.string(),
+    buildId: z.number().int(),
+    version: z.string().describe("The version label, such as 1.60.1.70450."),
+    regions: z.array(z.string()),
+    firstSeen: z.string().describe("When Everloot first saw the build, not Blizzard's release time."),
+    lastSeen: z.string(),
+    status: z.enum(["queued", "processed"]),
+});
+/** What everloot://builds holds. */
+export const buildsResource = z.object({
+    gameFiles: z.object({
+        product: z.string(), buildId: z.number().int(), version: z.string(), buildConfig: z.string(),
+        definitions: z.string().nullable().describe("The WoWDBDefs commit the column names came from."),
+        extractedAt: z.string(),
+    }).describe("The build the game-file facts (entity_relations, item_categories) were read from."),
+    registry: z.array(buildEntry).describe("Every build the version service has listed, newest first."),
+    credit: z.string().describe("Game-file facts are Blizzard's, not under Everloot's licence."),
+});
+/** Every resource, keyed by URI, in the order the server lists them. */
+export const MCP_RESOURCES = {
+    "everloot://builds": {
+        name: "builds",
+        title: "Game builds Everloot knows",
+        description: "The build the game-file facts come from, and every build Blizzard's version service has listed, with when Everloot first saw it. JSON of the shape in schema/mcp/resources.json.",
+        mimeType: "application/json",
+    },
+    "everloot://methodology": {
+        name: "methodology",
+        title: "How Everloot counts",
+        description: "How player uploads become facts: three installs must agree, unrecorded is never zero, game files and play are kept apart, and what is never published. Read it before stating a number as certain.",
+        mimeType: "text/markdown",
+    },
+    "everloot://data-policy": {
+        name: "data-policy",
+        title: "Everloot data policy",
+        description: "Where the data comes from, what is refused, the licence and credit line, and the limits on bulk copying, in short, with the link to the full policy.",
+        mimeType: "text/markdown",
+    },
+};
+/** The URIs in the order the server lists them. */
+export const MCP_RESOURCE_URIS = Object.keys(MCP_RESOURCES);
+/** The list form, for clients that iterate. */
+export const MCP_RESOURCE_LIST = MCP_RESOURCE_URIS.map((uri) => ({ uri, ...MCP_RESOURCES[uri] }));

@@ -1,4 +1,4 @@
-import { CORPUS_URL, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR } from "@/app/connect/connect-data";
+import { CORPUS_URL, MCP_RESOURCES, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR } from "@/app/connect/connect-data";
 import { LAUNCH, longDate } from "@/data/wow-forever";
 import { tools, toolHref } from "@/data/tools";
 import { PUBLIC_RECORD_KINDS } from "@everloot/protocol";
@@ -77,7 +77,7 @@ function head(): string[] {
 function connect(): string[] {
   return [
     "## For AI assistants and developers",
-    `- [MCP server](${MCP_URL}): the way for an AI assistant to answer a question from Everloot's data. Read-only, no sign-in, ${REQUESTS_PER_HOUR} requests per hour per IP. ${MCP_TOOLS.length} tools: ${MCP_TOOLS.map((t) => t.name).join(", ")}.`,
+    `- [MCP server](${MCP_URL}): the way for an AI assistant to answer a question from Everloot's data. Read-only, no sign-in, ${REQUESTS_PER_HOUR} requests per hour per IP. ${MCP_TOOLS.length} tools: ${MCP_TOOLS.map((t) => t.name).join(", ")}. ${MCP_RESOURCES.length} resources, read whole: ${MCP_RESOURCES.map((r) => r.uri).join(", ")}.`,
     bullet("Public corpus API", "/api/corpus/public", `Raw anonymous addon observations in bulk, for developers building their own datasets; to answer a question, use the MCP server. Filter with ?kinds=${PUBLIC_RECORD_KINDS.slice(0, 2).join(",")}. ${corpusAccess()} Credit: ${CREDIT_LINE}`),
     bullet("Relations API", "/api/edges", "Typed relations between items, NPCs, spells, professions and quests (dropped by, sold by, created by, reagent for, set, same icon, profession), paged, filterable by entity, relation and evidence. Player-observed rows need 3 installs; game-file rows are labelled found in game files, unconfirmed, with their build, and are Blizzard's, not under our licence. The whole game-file layer: /api/edges/client-layer."),
     bullet("Objects", "/database/objects", "Chests, herbs, ore veins and fishing pools players looted, by the id in their GUID, with what came out of them; public after 3 install reports."),
@@ -147,6 +147,8 @@ export function llmsFullTxt(entries: ChangeEntry[] = loadTimeline()): string {
     "## MCP server",
     `Endpoint: ${MCP_URL} (streamable HTTP, read-only, no sign-in, ${REQUESTS_PER_HOUR} requests per hour per IP). Tools:`,
     ...MCP_TOOLS.map((t) => `- ${t.name}: ${t.text}`),
+    "Resources (read whole with resources/read):",
+    ...MCP_RESOURCES.map((r) => `- ${r.uri}: ${r.text}`),
     "",
     "## Public corpus API",
     `GET ${CORPUS_URL}. Raw records in bulk; for answering questions the MCP server above is the right tool. Optional ?kinds= takes a comma-separated list of: ${PUBLIC_RECORD_KINDS.join(", ")}. Records carry no install id. ${corpusAccess()} Each response carries the licence and credit line in an attribution field and in X-Everloot-Licence, X-Everloot-Credit and Link headers. Credit: ${CREDIT_LINE}`,

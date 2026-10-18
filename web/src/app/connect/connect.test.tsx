@@ -13,8 +13,8 @@ vi.mock("@/components/CookieConsent", () => ({ CookiePreferencesButton: () => nu
 vi.mock("@/components/ApiKeys", () => ({ default: () => <div data-testid="api-keys" /> }));
 
 import ConnectPage, { metadata } from "./page";
-import { CONNECT_EXAMPLES, CORPUS_URL, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR } from "./connect-data";
-import { API_ROUTES, MCP_TOOL_NAMES, PROTOCOL_VERSION, PUBLIC_RECORD_KINDS } from "@everloot/protocol";
+import { CONNECT_EXAMPLES, CORPUS_URL, MCP_RESOURCES, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR } from "./connect-data";
+import { API_ROUTES, MCP_RESOURCE_URIS, MCP_TOOL_NAMES, PROTOCOL_VERSION, PUBLIC_RECORD_KINDS } from "@everloot/protocol";
 import { createIntakeQuota } from "@/lib/intake-quota";
 import { ANON_PAGE, ANON_PER_HOUR, attribution, KEY_PAGE, KEY_PER_HOUR } from "@/lib/data-guard";
 import sitemap from "../sitemap";
@@ -28,6 +28,12 @@ test("the tool list is exactly the tools the protocol declares, in order", () =>
   expect(MCP_TOOL_NAMES.length).toBeGreaterThan(0);
   expect(MCP_TOOLS.map((tool) => tool.name)).toEqual(MCP_TOOL_NAMES);
   for (const tool of MCP_TOOLS) expect(page).toContain(`>${tool.name}</code>`);
+});
+
+test("the resource list is exactly the resources the protocol declares, in order, with their schema file", () => {
+  expect(MCP_RESOURCES.map((resource) => resource.uri)).toEqual(MCP_RESOURCE_URIS);
+  for (const resource of MCP_RESOURCES) expect(page).toContain(`>${resource.uri}</code>`);
+  expect(page).toContain("/schema/mcp/resources.json");
 });
 
 test("the reference lists every tool with its arguments, every endpoint, the OpenAPI file and the schema index", () => {

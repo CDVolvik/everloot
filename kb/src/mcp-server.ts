@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CREDIT_LINE, LICENCE, MCP_CREDIT, SITE } from "@everloot/protocol";
+import { answerSources, answerSourcesFactsFromRecords, formatAnswerSources, type AnswerSourcesFacts } from "./answer-sources.js";
 import { auctionSightingsFromRecords, handleAuctionHistory } from "./auction-history.js";
 import { handlePlan } from "./bridge-plan.js";
 import { handleRecentChanges, recentChangesStructured, type ChangeEntry } from "./changes.js";
@@ -14,8 +15,9 @@ import { handleItemPage } from "./item-page.js";
 import { handleObjectPage, objectFactsFromRecords, type ObjectFacts } from "./object-page.js";
 import { handleMarketValue, type MarketState } from "./market.js";
 import { loadUploadRecords } from "./load-uploads.js";
-import { KNOWLEDGE_KINDS, MCP_TOOL_NAMES, MCP_TOOLS, parseRecords, type McpToolArgs, type McpToolDef, type McpToolName } from "@everloot/protocol";
+import { KNOWLEDGE_KINDS, MCP_RESOURCE_URIS, MCP_RESOURCES, MCP_TOOL_NAMES, MCP_TOOLS, parseRecords, type McpToolArgs, type McpToolDef, type McpToolName } from "@everloot/protocol";
 import { handleProfessionPath } from "./profession-path.js";
+import { readResource } from "./resources.js";
 import { handleRecipeThresholds, pathFactsFromRecords, recipeFactsFromRecords } from "./recipe-thresholds.js";
 import { handleNpcPage, handleQuestPage, handleVendorPage, worldFactsFromRecords } from "./world-pages.js";
 import { handleWorldMapNear, mapFactsFromRecords } from "./world-map-near.js";
@@ -42,6 +44,7 @@ export const UPLOADS_UNSET =
 
 /** Record kinds each gameplay tool reads. tool-kinds.test.ts checks them against the fact functions. */
 export const TOOL_KINDS = {
+  answer_sources: ["loot", "item_seen", "npc_sighting", "quest", "vendor"],
   profession_path: ["recipe_seen", "price_seen", "auction_scan", "item_seen", "recipe_observed", "trainer_seen", "vendor"],
   recipe_thresholds: ["recipe_observed", "price_seen", "auction_scan", "item_seen", "vendor"],
   item_page: ["loot", "item_seen", "npc_sighting"],
@@ -65,6 +68,7 @@ export type ToolName = keyof typeof TOOL_KINDS;
  * so a wrong entry here still fails there.
  */
 const TOOL_FACT_BUILDERS: Record<ToolName, (records: unknown[]) => unknown> = {
+  answer_sources: answerSourcesFactsFromRecords,
   profession_path: pathFactsFromRecords,
   recipe_thresholds: recipeFactsFromRecords,
   item_page: itemFactsFromRecords,
@@ -324,6 +328,31 @@ export function fromTooledUploads<T>(
   return render(build(loadUploadRecords(dir)));
 }
 
+/**
+ * The facts one tool reads, with the corpus time, for a handler that renders more than text. Same
+ * sources and memo as fromTooledUploads; null when no source is connected or readable.
+ */
+export async function readTooledFacts<T>(tool: ToolName, loader?: CorpusLoader): Promise<{ facts: T; dataAsOf: string | null } | null> {
+  const build = TOOL_FACT_BUILDERS[tool] as (records: unknown[]) => T;
+  if (loader) {
+    let corpus;
+    try { corpus = await loader(); } catch { return null; }
+    if (!corpus) return null;
+    return { facts: tooledFacts("loader", corpus, tool, build), dataAsOf: typeof corpus.dataAsOf === "string" ? corpus.dataAsOf : null };
+  }
+  const base = process.env.EVERLOOT_PUBLIC_CORPUS_URL?.trim();
+  const url = base ? `${base}${base.includes("?") ? "&" : "?"}kinds=${TOOL_KINDS[tool].join(",")}` : undefined;
+  if (url) {
+    const corpus = await fetchPublicCorpus(url);
+    if (!corpus) return null;
+    const dataAsOf = typeof corpus.dataAsOf === "string" ? corpus.dataAsOf : null;
+    return { facts: tooledFacts("url", { records: corpus.records, dataAsOf }, tool, build), dataAsOf };
+  }
+  const dir = process.env.EVERLOOT_UPLOADS?.trim();
+  if (!dir) return null;
+  return { facts: build(loadUploadRecords(dir)), dataAsOf: null };
+}
+
 /** What ends every answer built on player data: how old the data is, and the credit line it carries. */
 function answerFooter(dataAsOf: unknown): string {
   return `${dataAgeLine(dataAsOf)}\n${MCP_CREDIT}`;
@@ -357,7 +386,7 @@ export function handleSearch(db: DB, args: SearchArgs): string {
 }
 
 /** A tool answer: the text every client gets, plus structured content for tools with an output schema. */
-type Answer = string | { text: string; structured: Record<string, unknown> };
+type Answer = string | { text: string; structured: object };
 
 export function handleGetEntity(db: DB, args: { id: number }): string {
   const hit = getEntity(db, args.id);
@@ -384,6 +413,11 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; 
     search_knowledge: (args) => ({ text: handleSearch(db, args), structured: { hits: searchHits(db, args) } }),
     get_entity: (args) => ({ text: handleGetEntity(db, args), structured: { hit: getEntity(db, args.id) ?? null } }),
     get_by_name: (args) => ({ text: handleGetByName(db, args), structured: { hits: getByName(db, args.name, args.kind) } }),
+    answer_sources: async (args) => {
+      const read = await readTooledFacts<AnswerSourcesFacts>("answer_sources", options.corpus);
+      const result = answerSources(db, args, read?.facts ?? null, read?.dataAsOf ?? null);
+      return { text: `${formatAnswerSources(result, read !== null)}\n${read ? answerFooter(read.dataAsOf) : MCP_CREDIT}`, structured: result };
+    },
     profession_path: (args) => readFacts("profession_path", (facts: ReturnType<typeof pathFactsFromRecords>) =>
       handleProfessionPath(args, facts.sightings, facts.prices, facts.derived, facts.vendorPrices)),
     recipe_thresholds: (args) => readFacts("recipe_thresholds", (facts: ReturnType<typeof recipeFactsFromRecords>) =>
@@ -423,10 +457,17 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; 
         const answer = await (handlers[name] as (a: unknown) => Answer | Promise<Answer>)(args);
         const text = typeof answer === "string" ? answer : answer.text;
         // Structured content goes only with a declared schema; a text-only tool never sends an unvalidated object.
-        const structuredContent = typeof answer === "string" || !def.outputSchema ? undefined : answer.structured;
+        const structuredContent = typeof answer === "string" || !def.outputSchema ? undefined : (answer.structured as Record<string, unknown>);
         return { content: [{ type: "text" as const, text }], ...(structuredContent ? { structuredContent } : {}) };
       },
     );
+  }
+  for (const uri of MCP_RESOURCE_URIS) {
+    const def = MCP_RESOURCES[uri];
+    server.registerResource(def.name, uri, { title: def.title, description: def.description, mimeType: def.mimeType }, () => {
+      const { mimeType, text } = readResource(uri, SOURCE_URL);
+      return { contents: [{ uri, mimeType, text }] };
+    });
   }
   return server;
 }

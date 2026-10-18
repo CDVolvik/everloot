@@ -1,4 +1,5 @@
 import { expect, test, vi } from "vitest";
+import { answerSourcesFactsFromRecords } from "../src/answer-sources.js";
 import { auctionSightingsFromRecords } from "../src/auction-history.js";
 import { collectionFactsFromRecords } from "../src/collection-gap.js";
 import { itemFactsFromRecords } from "../src/drop-rollup.js";
@@ -54,6 +55,7 @@ const EVERY_KIND = parseRecords([
 ]);
 
 const FACTS: Record<keyof typeof TOOL_KINDS, (records: unknown[]) => unknown> = {
+  answer_sources: answerSourcesFactsFromRecords,
   profession_path: pathFactsFromRecords,
   recipe_thresholds: recipeFactsFromRecords,
   item_page: itemFactsFromRecords,

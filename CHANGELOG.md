@@ -29,6 +29,14 @@ that has a zip in the repository. Earlier builds have none.
   parameters and responses, rendered from the protocol, plus paging examples in JavaScript and Python. The
   site serves `/api/openapi.json` (OpenAPI 3.1, assembled from the same catalogue) and the protocol's JSON
   Schema files under `/schema/`. `llms.txt` lists both.
+- A 23rd MCP tool, `answer_sources`: the evidence behind a question, observed facts first (with install
+  counts), then curated facts and the 2023 wiki, every piece with its source URL, licence and date, plus
+  search links on other sites (links only). Structured output from the start.
+- The MCP server's first resources, documents an assistant reads whole: `everloot://builds` (the build the
+  game-file facts come from and the build registry, JSON), `everloot://methodology` (how uploads become
+  facts) and `everloot://data-policy` (the policy in short, with the link to the full one). The two texts
+  are held to the methodology page and `docs/DATA_POLICY.md` by tests. Listed on `/connect`, in `llms.txt`
+  and in `/schema/mcp/resources.json`.
 - Four MCP tools (`search_knowledge`, `get_entity`, `get_by_name`, `recent_changes`) declare an output schema
   and answer with structured content beside the text, so a client can read hits and timeline entries as
   objects instead of parsing prose. The schema files and `/connect` show which tools do.
