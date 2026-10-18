@@ -40,7 +40,9 @@ test("the reference lists every tool with its arguments, every endpoint, the Ope
   for (const tool of MCP_TOOLS) {
     expect(page).toContain(`id="tool-${tool.name}"`);
     expect(page).toContain(`/schema/mcp/${tool.name}.json`);
+    expect(page).toContain(`Answer of ${tool.name}, as structuredContent`);
   }
+  for (const text of ["connected", "dataAsOf", "an absent page is not a measured zero"]) expect(decoded).toContain(text);
   for (const text of ["query", "itemId", "ownerInstallId", "required", "player data"]) expect(decoded).toContain(text);
   for (const route of API_ROUTES) expect(decoded).toContain(`${route.method} ${route.path.replace(/^\/api/, "")}`);
   for (const text of ["/api/openapi.json", "/schema/index.json", "/schema/upload.json", `@everloot/protocol`, PROTOCOL_VERSION, "offset, limit, next", "gameData"]) {

@@ -47,6 +47,8 @@ that has a zip in the repository. Earlier builds have none.
   `world_map_near` (entrances and pins with distances, or the refused query with its reason). Both
   formatters now write their text from a result object, so every one of the 25 tools answers with
   structured content beside its text.
+- The tool reference on `/connect` shows each tool's answer: the top-level fields of its structured
+  content with types and meanings, from the same schema the server validates against.
 - The protocol's publish path: `protocol-publish.yml` publishes `@everloot/protocol` to npm with
   provenance on a `protocol-v<version>` tag, after checking the tag, `package.json` and the changelog
   agree; and `scripts/check-semver.ts` holds every pull request to the package's semver rule by comparing
