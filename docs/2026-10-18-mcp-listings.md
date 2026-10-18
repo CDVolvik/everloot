@@ -74,11 +74,12 @@ may reset.
   `mcp-publisher validate` passes.
 - **Namespace proof** is the HTTP method: `web/public/.well-known/mcp-registry-auth` holds the public
   key record (`v=MCPv1; k=ed25519; p=…`). The matching private key is on the maintainer machine only,
-  under the user's `.r21` folder, never in the repository.
+  outside the repository, never committed.
 - **Publish**, after the file is live at `https://everloot.app/.well-known/mcp-registry-auth`:
 
   ```sh
-  mcp-publisher login http --domain everloot.app --private-key "$(openssl pkey -in ~/.r21/everloot-mcp-registry-key.pem -noout -text | grep -A3 "priv:" | tail -n +2 | tr -d ' :\n')"
+  # KEY is the path of the private key on the maintainer machine, outside the repository
+  mcp-publisher login http --domain everloot.app --private-key "$(openssl pkey -in "$KEY" -noout -text | grep -A3 "priv:" | tail -n +2 | tr -d ' :\n')"
   mcp-publisher publish
   curl "https://registry.modelcontextprotocol.io/v0.1/servers?search=app.everloot"
   ```
