@@ -41,17 +41,8 @@ export function parseLetter(raw: string | undefined): string | null {
   return /^[a-z]$/.test(l) ? l : null;
 }
 
-/** Lowercase ASCII letters and digits joined by hyphens; accents stripped, everything else dropped. */
-export function slugify(name: string): string {
-  const ascii = name.normalize("NFKD").replace(/[̀-ͯ]/g, "");
-  const runs = ascii.toLowerCase().match(/[a-z0-9]+/g) ?? [];
-  return runs.join("-").slice(0, 80).replace(/-+$/, "");
-}
-
-/** `<extId>-<name-slug>` for a numeric wiki page id; a curated kebab id is the whole slug. */
-export function loreSlug(row: { extId: string; name: string }): string {
-  return /^[1-9]\d*$/.test(row.extId) ? `${row.extId}-${slugify(row.name)}` : row.extId;
-}
+// The slug helpers live with the knowledge base, so the MCP server's search and fetch name the same pages.
+export { loreSlug, slugify } from "../../../kb/src/lore-slug";
 
 /**
  * Wiki ids are digits (`291323-frostwhisper`); curated ids are kebab strings and carry no name

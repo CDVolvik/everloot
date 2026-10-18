@@ -1,0 +1,63 @@
+{
+  "$id": "https://everloot.app/schema/mcp/search.json",
+  "title": "Search (ChatGPT connector contract)",
+  "description": "The same search as search_knowledge, in the shape ChatGPT connectors and deep research call by name: up to 10 results, each with an id for fetch, a title and a URL to cite. The text block is the same JSON as a string.",
+  "annotations": {
+    "readOnlyHint": true,
+    "openWorldHint": false
+  },
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "query": {
+        "type": "string",
+        "maxLength": 1000,
+        "description": "What to look up: names, questions, keywords. Question words are ignored."
+      }
+    },
+    "required": [
+      "query"
+    ]
+  },
+  "outputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "results": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "description": "The record id as a string. Pass it to fetch."
+            },
+            "title": {
+              "type": "string",
+              "description": "The record's name."
+            },
+            "url": {
+              "type": "string",
+              "description": "Where the record is read: its page on everloot.app for a lore page, else the source's own page. ChatGPT cites it."
+            }
+          },
+          "required": [
+            "id",
+            "title",
+            "url"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "results"
+    ],
+    "additionalProperties": false
+  },
+  "x-everloot-output": {
+    "type": "json",
+    "note": "The text block is the structured answer as a JSON string, as OpenAI's connector contract asks."
+  }
+}

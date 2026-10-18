@@ -11,6 +11,8 @@ const TOOL_TEXT: Record<McpToolName, string> = {
   search_knowledge: "Search lore and reference data. Every hit has its source and licence.",
   get_entity: "One record, by the id a search hit gives you.",
   get_by_name: "Records with exactly this name, for telling similar names apart.",
+  search: "The same search in the shape ChatGPT connectors and deep research call by name: results with an id, a title and a URL to cite.",
+  fetch: "One record by a search result's id, whole, with its URL and the source, licence and date as metadata. ChatGPT's second tool.",
   answer_sources: "The evidence behind a question, each piece with its source, licence and date, so an assistant can answer and cite.",
   profession_path: "A leveling path for one profession, from what players reported.",
   recipe_thresholds: "The skill ranges where a recipe turns yellow, green and grey.",

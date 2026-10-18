@@ -79,7 +79,9 @@ export default function ConnectPage() {
         <h3 className="font-semibold text-fg">ChatGPT and other assistants</h3>
         <p className="text-fg-2">
           Any assistant that takes a streamable HTTP MCP server by URL can use this one; it needs no sign-in and asks for
-          no key, so there is nothing to configure beyond the URL. Where an assistant has a directory of servers, Everloot
+          no key, so there is nothing to configure beyond the URL. ChatGPT&apos;s connectors and deep research call two tools by
+          name, <code className="font-mono text-fg">search</code> and <code className="font-mono text-fg">fetch</code>; both are here,
+          answering in the shape OpenAI&apos;s contract asks for. Where an assistant has a directory of servers, Everloot
           is listed there as it is accepted; the <a href={`${REPO}/blob/main/docs/2026-10-18-mcp-listings.md`} rel="noopener" className={link}>listing notes</a> in
           the repository say where it stands.
         </p>
