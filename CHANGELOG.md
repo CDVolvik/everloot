@@ -47,6 +47,11 @@ that has a zip in the repository. Earlier builds have none.
   `world_map_near` (entrances and pins with distances, or the refused query with its reason). Both
   formatters now write their text from a result object, so every one of the 25 tools answers with
   structured content beside its text.
+- The protocol's publish path: `protocol-publish.yml` publishes `@everloot/protocol` to npm with
+  provenance on a `protocol-v<version>` tag, after checking the tag, `package.json` and the changelog
+  agree; and `scripts/check-semver.ts` holds every pull request to the package's semver rule by comparing
+  the committed `schema/` with the latest published tarball (it passes with a notice until the first
+  publish). The steps are in `docs/RELEASING.md`, "Protocol".
 - The MCP server's first resources, documents an assistant reads whole: `everloot://builds` (the build the
   game-file facts come from and the build registry, JSON), `everloot://methodology` (how uploads become
   facts) and `everloot://data-policy` (the policy in short, with the link to the full one). The two texts

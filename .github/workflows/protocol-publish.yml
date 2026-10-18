@@ -1,0 +1,52 @@
+name: Protocol release
+# Push a tag like protocol-v1.1.0 and this publishes @everloot/protocol to npm with provenance and opens
+# a GitHub release. The first version (1.0.0) goes out by hand, because npm's trusted publishing is set
+# up on an existing package; after that the owner sets the trusted publisher to this workflow. See
+# docs/RELEASING.md, "Protocol".
+on:
+  push:
+    tags: ['protocol-v*']
+permissions:
+  contents: read
+concurrency:
+  group: protocol-release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write   # the GitHub release
+      id-token: write   # npm trusted publishing and provenance
+    defaults:
+      run:
+        working-directory: packages/protocol
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.23.2'
+          registry-url: 'https://registry.npmjs.org'
+          cache: npm
+          cache-dependency-path: packages/protocol/package-lock.json
+      - run: npm install -g npm@11
+      - name: The tag matches package.json and the changelog has its section
+        run: |
+          VERSION="${GITHUB_REF_NAME#protocol-v}"
+          test "$VERSION" = "$(node -p "require('./package.json').version")" || { echo "Tag ${GITHUB_REF_NAME} does not match package.json version $(node -p "require('./package.json').version")"; exit 1; }
+          grep -q "^## \[$VERSION\]" CHANGELOG.md || { echo "CHANGELOG.md has no ## [$VERSION] section"; exit 1; }
+      - run: npm ci && npm test && npm run typecheck && npm run build && git diff --exit-code -- dist schema
+      - name: The version follows the package's semver rule against what is published
+        run: npx tsx scripts/check-semver.ts
+      - name: Publish, unless this version is already on npm (the hand-published first release)
+        run: |
+          VERSION="${GITHUB_REF_NAME#protocol-v}"
+          if npm view "@everloot/protocol@$VERSION" version >/dev/null 2>&1; then
+            echo "@everloot/protocol@$VERSION is already published"
+          else
+            npm publish --provenance --access public
+          fi
+      - name: GitHub release
+        run: gh release create "$GITHUB_REF_NAME" --title "Everloot protocol ${GITHUB_REF_NAME#protocol-v}" --generate-notes --verify-tag
+        env:
+          GH_TOKEN: ${{ github.token }}
