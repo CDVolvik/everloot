@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
-import { COMPLETION_CATALOG_KINDS, parseUpload, type CanonicalUpload } from "@/lib/intake";
+import { COMPLETION_CATALOG_KINDS, parseUpload, UPLOAD_LIMITS, type CanonicalUpload } from "@everloot/protocol";
 import { uploadStore, sharingStore } from "@/lib/upload-store";
 import { intakeQuota, type QuotaResult } from "@/lib/intake-quota";
 import { recordUsage } from "@/lib/usage-metrics";
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
       const chunk = await reader.read();
       if (chunk.done) break;
       size += chunk.value.byteLength;
-      if (size > 1_000_000) {
+      if (size > UPLOAD_LIMITS.maxBodyBytes) {
         await reader.cancel();
         return NextResponse.json({ ok: false, error: "Upload batch exceeds 1 MB. Split the file and retry." }, { status: 413 });
       }
@@ -59,7 +59,7 @@ export async function POST(req: Request) {
   const upload: CanonicalUpload = parsed.upload;
   const options = payload as { sharing?: Record<string, unknown>; grantTokens?: unknown };
   const tokens = options.grantTokens ?? [];
-  if (!Array.isArray(tokens) || tokens.length > 4 || tokens.some((t) => typeof t !== "string" || !/^[a-f0-9]{64}$/.test(t))) {
+  if (!Array.isArray(tokens) || tokens.length > UPLOAD_LIMITS.grantTokensMax || tokens.some((t) => typeof t !== "string" || !/^[a-f0-9]{64}$/.test(t))) {
     return NextResponse.json({ ok: false, error: "Invalid verification grants" }, { status: 400 });
   }
   const needsAuthority = upload.records.some((row) => sharingCategory(row) !== null);

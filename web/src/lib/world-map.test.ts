@@ -3,7 +3,7 @@ import type { MapBoundsRow } from "../../../kb/src/map-bounds";
 import type { WorldMapData } from "../../../kb/src/world-map-data";
 import { worldToZone, zoneAt, zoneTable } from "../../../kb/src/world-coords";
 import { continentMap, continentPins, MAP_RECORD_KINDS, observedFacts, pinLink, WORLD_MAP } from "./world-map";
-import { PUBLIC_RECORD_KINDS } from "./intake";
+import { PUBLIC_RECORD_KINDS } from "@everloot/protocol";
 
 // SYNTHETIC data in the shape of the generated file; the numbers are made up.
 const data: WorldMapData = {

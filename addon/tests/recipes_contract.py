@@ -1,4 +1,4 @@
-"""Run with: uv run --with lupa python addon/tests/recipes_contract.py
+"""Run with: uv run --with lupa --with jsonschema python addon/tests/recipes_contract.py
 
 The mock follows the signatures in Blizzard's own API documentation for build 1.60.1.70450
 (C_TradeSkillUI, C_Item, ProfessionInfo, TradeSkillRecipeInfo, CraftingRecipeSchematic) and the
@@ -311,5 +311,8 @@ for source in sorted(root.rglob("*.lua")):
     text = "\n".join(line.split("--")[0] for line in source.read_text(encoding="utf-8").splitlines())
     called = re.search(rf"\b({actions})\s*\(|pcall\(\s*(?:[A-Za-z_]+\.)?({actions})\b", text)
     assert not called, f"{source.name} calls a craft, learn, train, buy or post API: {called.group(0)}"
+# Every row the addon wrote is a record the site would accept (packages/protocol/schema).
+from protocol_schema import check_all  # noqa: E402
+check_all(lua)
 print("Lua 5.1 recipes: modern C_TradeSkillUI profession window, schematic reagents, chunked reads, rank fallback, trainer window, "
       "missing APIs reported, no craft, learn, train, buy or post call")

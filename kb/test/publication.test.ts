@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { authorizeRecord, type PublicationGrant, type PublicationState } from "../src/publication.js";
-import { parseRecords } from "../../web/src/lib/intake.js";
+import { parseRecords } from "@everloot/protocol";
 
 const hash = "a".repeat(64);
 const grant: PublicationGrant = { tokenHash: hash, installId: "install-one", realm: "Moon Guard",

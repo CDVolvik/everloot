@@ -4,7 +4,7 @@ The in-game addon for WoW: Forever. It records what you see while you play (sigh
 windows, vendors, full auction-house scans you start, recipes, trainers, your own gold, the world
 position of each zone you enter) into its SavedVariables file, shows `/ask` answers from the
 companion, and adds auction prices to item tooltips. It uses only the game's addon API and never
-plays the character. Records match the site's intake contract (`web/src/lib/intake.ts`) field for
+plays the character. Records match the upload contract (`packages/protocol`, see its `schema/records/`) field for
 field.
 
 **Status:** 0.3.3 beta. The automated contract tests pass; the in-client checks in

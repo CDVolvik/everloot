@@ -1,6 +1,6 @@
-import { COMPLETION_OWNED_KINDS, type IntakeRecord } from "../../web/src/lib/intake.js";
+import { sharingCategory, type IntakeRecord, type SharingCategory } from "@everloot/protocol";
 
-export type SharingCategory = "guild" | "gear" | "gold" | "collection";
+export { sharingCategory, type SharingCategory };
 export interface PublicationGrant {
   tokenHash: string;
   installId: string;
@@ -17,13 +17,6 @@ export interface Suppression { realm: string; character: string }
 export interface PublicationState { grants: PublicationGrant[]; suppressions: Suppression[] }
 
 const clean = (s: string) => s.trim().toLowerCase();
-export function sharingCategory(row: IntakeRecord): SharingCategory | null {
-  if ("guildName" in row) return "guild";
-  if (row.kind === "gear_snapshot") return "gear";
-  if (row.kind === "gold_snapshot" || row.kind === "money_event") return "gold";
-  if (row.kind === "collection_owned" || COMPLETION_OWNED_KINDS.includes(row.kind)) return "collection";
-  return null;
-}
 
 /** Schema-valid names and install strings never confer authority. Grants are server-issued. */
 export function authorizeRecord(row: IntakeRecord, hashes: string[], state: PublicationState, now: Date): IntakeRecord | null {

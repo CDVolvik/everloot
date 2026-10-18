@@ -7,7 +7,7 @@ import {
 import { answerCompletionProgress, COMPLETION_UNSET } from "../src/mcp-server.js";
 import { sharingCategory, type PublicationGrant } from "../src/publication.js";
 import { mergeCorpus, publicRecords } from "../src/corpus.js";
-import { COMPLETION_KINDS, parseRecords, PUBLIC_RECORD_KINDS } from "../../web/src/lib/intake.js";
+import { COMPLETION_KINDS, parseRecords, PUBLIC_RECORD_KINDS } from "@everloot/protocol";
 
 const OWNER = "owner-install";
 const KEY = "0a1b2c3d";

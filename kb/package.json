@@ -15,6 +15,7 @@
     "serve:mcp": "tsx src/mcp-http-main.ts"
   },
   "dependencies": {
+    "@everloot/protocol": "file:../packages/protocol",
     "@modelcontextprotocol/sdk": "^1.31.0",
     "@rhyster/wow-casc-dbc": "2.16.15",
     "better-sqlite3": "^13.0.3",

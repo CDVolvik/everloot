@@ -14,7 +14,7 @@ vi.mock("@/components/ApiKeys", () => ({ default: () => <div data-testid="api-ke
 
 import ConnectPage, { metadata } from "./page";
 import { CONNECT_EXAMPLES, CORPUS_URL, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR } from "./connect-data";
-import { PUBLIC_RECORD_KINDS } from "@/lib/intake";
+import { PUBLIC_RECORD_KINDS } from "@everloot/protocol";
 import { createIntakeQuota } from "@/lib/intake-quota";
 import { ANON_PAGE, ANON_PER_HOUR, attribution, KEY_PAGE, KEY_PER_HOUR } from "@/lib/data-guard";
 import sitemap from "../sitemap";

@@ -1,4 +1,4 @@
-"""Run with: uv run --with lupa python addon/tests/talents_contract.py"""
+"""Run with: uv run --with lupa --with jsonschema python addon/tests/talents_contract.py"""
 from pathlib import Path
 from lupa.lua51 import LuaRuntime
 
@@ -265,4 +265,7 @@ assert(string.find(text, 'spec group 1 (active): 3 points, export ok', 1, true),
 assert(string.find(text, 'share code: EL1-mage-1482-1.60.1.70450-', 1, true), text)
 """)
 
+# Every row the addon wrote is a record the site would accept (packages/protocol/schema).
+from protocol_schema import check_all  # noqa: E402
+check_all(lua)
 print("Lua 5.1 talents: both spec groups, spent nodes, game export and status, guarded calls, selftest pass/fail lines")
