@@ -2,6 +2,7 @@ import { expect, test, vi } from "vitest";
 import { auctionSightingsFromRecords } from "../src/auction-history.js";
 import { collectionFactsFromRecords } from "../src/collection-gap.js";
 import { itemFactsFromRecords } from "../src/drop-rollup.js";
+import { observedEdgesFromRecords } from "../src/edges.js";
 import { goldFactsFromRecords } from "../src/gold-ledger.js";
 import { guildFactsFromRecords } from "../src/guild-board.js";
 import { fromUploads, TOOL_KINDS, UPLOADS_UNSET } from "../src/mcp-server.js";
@@ -59,6 +60,7 @@ const FACTS: Record<keyof typeof TOOL_KINDS, (records: unknown[]) => unknown> = 
   quest_page: worldFactsFromRecords,
   vendor_page: worldFactsFromRecords,
   world_map_near: mapFactsFromRecords,
+  entity_relations: observedEdgesFromRecords,
   collection_gap: collectionFactsFromRecords,
   guild_board: guildFactsFromRecords,
   auction_history: auctionSightingsFromRecords,

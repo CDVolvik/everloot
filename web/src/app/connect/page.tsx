@@ -178,6 +178,16 @@ export default function ConnectPage() {
           The public drop rates are at <code className="font-mono text-fg">/api/rollups/drops</code>, with the same
           paging{guard ? " and limits" : ""}.
         </p>
+        <p className="text-fg-2">
+          Relations between entities are at <code className="font-mono text-fg">/api/edges</code>, also paged
+          {guard ? " and limited" : ""}: filter with <code className="font-mono text-fg">from_kind</code>,{" "}
+          <code className="font-mono text-fg">from_id</code>, <code className="font-mono text-fg">to_kind</code>,{" "}
+          <code className="font-mono text-fg">to_id</code>, <code className="font-mono text-fg">rel</code> and{" "}
+          <code className="font-mono text-fg">evidence</code>. Relations players saw (3 installs) are ours under the licence above.
+          Relations read from the game files are Blizzard&apos;s, found in game files and unconfirmed: they come with their build
+          and a <code className="font-mono text-fg">gameData</code> notice instead of our licence. The whole game-file layer of the
+          current build downloads in one file from <code className="font-mono text-fg">/api/edges/client-layer</code>.
+        </p>
       </Section>
 
       <Section id="keys" title="Limits and keys">

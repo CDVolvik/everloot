@@ -20,6 +20,8 @@ import { handleRecipeThresholds, pathFactsFromRecords, recipeFactsFromRecords } 
 import { handleNpcPage, handleQuestPage, handleVendorPage, worldFactsFromRecords } from "./world-pages.js";
 import { handleWorldMapNear, mapFactsFromRecords, NEAR_DEFAULT_LIMIT, NEAR_DEFAULT_RADIUS, NEAR_MAX_LIMIT, NEAR_MAX_RADIUS } from "./world-map-near.js";
 import { WORLD_MAP_DATA } from "./world-map-file.js";
+import { CLIENT_EDGES } from "./client-layer-file.js";
+import { handleEntityRelations, observedEdgesFromRecords, RELS, type Edge } from "./edges.js";
 import type { DB } from "./db.js";
 import { getByName, getEntity, search, type SearchHit } from "./search.js";
 
@@ -46,6 +48,7 @@ export const TOOL_KINDS = {
   quest_page: ["npc_sighting", "quest", "vendor"],
   vendor_page: ["npc_sighting", "quest", "vendor"],
   world_map_near: ["npc_sighting", "vendor"],
+  entity_relations: ["loot", "vendor", "quest", "npc_sighting"],
   collection_gap: ["collection_catalog", "collection_owned"],
   guild_board: ["guild_snapshot", "raid_lockout", "attendance", "loot_award", "gear_snapshot"],
   auction_history: ["auction_scan"],
@@ -67,6 +70,7 @@ const TOOL_FACT_BUILDERS: Record<ToolName, (records: unknown[]) => unknown> = {
   quest_page: worldFactsFromRecords,
   vendor_page: worldFactsFromRecords,
   world_map_near: mapFactsFromRecords,
+  entity_relations: observedEdgesFromRecords,
   collection_gap: collectionFactsFromRecords,
   guild_board: guildFactsFromRecords,
   auction_history: auctionSightingsFromRecords,
@@ -521,6 +525,25 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; 
     },
     async (args) => ({
       content: [{ type: "text" as const, text: await readFacts("world_map_near", (facts: ReturnType<typeof mapFactsFromRecords>) => handleWorldMapNear(args, WORLD_MAP_DATA, facts)) }],
+    }),
+  );
+  server.registerTool(
+    "entity_relations",
+    {
+      title: "How an item, NPC, spell or quest connects to others",
+      description:
+        `Every typed relation of one entity, both directions: dropped by, sold by, reward from, located in (player-observed, listed where 3 installs agree, with the install count and last seen), and created by, reagent for, part of set, same icon (found in game files, unconfirmed, with the build they came from). Ids are the game's own. Reads Everloot's current authorized public corpus and the committed client layer.`,
+      inputSchema: {
+        kind: z.enum(["item", "spell", "npc", "object", "quest", "zone", "item_set", "icon"]).describe("What the id names. A zone is a UiMap id, as on /map."),
+        id: z.number().int().positive().describe("The game's id for it, such as item 19019."),
+        rel: z.enum(RELS).optional().describe("Only this relation."),
+        direction: z.enum(["from", "to", "both"]).default("both").describe("from: what this entity points to (an item's sources). to: what points at it (what an NPC drops). Default both."),
+        limit: z.number().int().min(1).max(100).default(25).describe("Most lines per relation."),
+      },
+      annotations: { readOnlyHint: true, openWorldHint: false },
+    },
+    async (args) => ({
+      content: [{ type: "text" as const, text: await readFacts("entity_relations", (observed: Edge[]) => handleEntityRelations(args, observed, CLIENT_EDGES)) }],
     }),
   );
   server.registerTool(

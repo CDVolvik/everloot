@@ -1,0 +1,240 @@
+/**
+ * One table of typed relations between entities, from two kinds of evidence:
+ *
+ * - client: read from the game files of one build (labelled "found in game files, unconfirmed");
+ * - observed: from players' uploads, public once 3 installs agree, the same rule the pages use.
+ *
+ * Every edge says where it came from, how many installs agree (observed) or which build (client), and
+ * when it was first and last seen. Pages, the MCP tool, the API and the bulk file all read this shape.
+ */
+import { GAME_DATA_CREDIT, MCP_CREDIT } from "./attribution.js";
+import { INDEPENDENT_INSTALLS, lootWindowsFromRecords, rollupDrops } from "./drop-rollup.js";
+
+export const EDGE_SCHEMA = "everloot.edges/1";
+export const CLIENT_LABEL = "Found in game files, unconfirmed";
+
+export type EdgeKind = "item" | "spell" | "npc" | "object" | "quest" | "zone" | "item_set" | "icon";
+export type Evidence = "client" | "observed";
+
+/** In the order pages list them: what players saw first, then what the files say. */
+export const RELS = [
+  "dropped_by", "sold_by", "reward_from", "located_in",
+  "created_by", "reagent_for", "part_of_set", "same_icon",
+] as const;
+export type Rel = (typeof RELS)[number];
+
+export const REL_LABELS: Record<Rel, string> = {
+  dropped_by: "Dropped by", sold_by: "Sold by", reward_from: "Reward from", located_in: "Located in",
+  created_by: "Created by", reagent_for: "Reagent for", part_of_set: "Part of set", same_icon: "Same icon",
+};
+
+export interface Edge {
+  fromKind: EdgeKind;
+  fromId: number;
+  rel: Rel;
+  toKind: EdgeKind;
+  toId: number;
+  evidence: Evidence;
+  /** Game build of a client edge; null for observed edges. */
+  build: string | null;
+  /** Distinct installs behind an observed edge; null for client edges. */
+  installs: number | null;
+  firstSeen: string | null;
+  lastSeen: string | null;
+}
+
+type Rows = Map<number, Record<string, unknown>>;
+const list = (r: Rows | undefined) => [...(r?.values() ?? [])];
+const id = (v: unknown): number => (typeof v === "number" && Number.isInteger(v) && v > 0 ? v : 0);
+const ids = (v: unknown): number[] => (Array.isArray(v) ? v.map(id).filter(Boolean) : []);
+
+/**
+ * Edges from the client tables of one build. A table the build does not have adds nothing.
+ * `same_icon` links each item to its icon file when at least two items share it, rather than every pair
+ * (in 1.60.1.70450 one icon is shared by 1,141 items, and pairs would be 3.2 million rows).
+ */
+export function clientEdges(get: (table: string) => Rows | undefined, build: { version: string; extractedAt: string }): Edge[] {
+  const seen = new Set<string>();
+  const out: Edge[] = [];
+  const add = (fromKind: EdgeKind, fromId: number, rel: Rel, toKind: EdgeKind, toId: number) => {
+    if (!fromId || !toId) return;
+    const key = `${fromKind}:${fromId}|${rel}|${toKind}:${toId}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push({ fromKind, fromId, rel, toKind, toId, evidence: "client", build: build.version, installs: null, firstSeen: build.extractedAt, lastSeen: build.extractedAt });
+  };
+  // SPELL_EFFECT_CREATE_ITEM is effect 24; EffectItemType is the item it makes.
+  for (const e of list(get("SpellEffect"))) if (e.Effect === 24) add("item", id(e.EffectItemType), "created_by", "spell", id(e.SpellID));
+  for (const r of list(get("SpellReagents"))) for (const item of ids(r.Reagent)) add("item", item, "reagent_for", "spell", id(r.SpellID));
+  for (const s of list(get("ItemSet"))) for (const item of ids(s.ItemID)) add("item", item, "part_of_set", "item_set", id(s.ID));
+  const byIcon = new Map<number, number[]>();
+  for (const i of list(get("Item"))) {
+    const icon = id(i.IconFileDataID);
+    if (icon) byIcon.set(icon, [...(byIcon.get(icon) ?? []), id(i.ID)]);
+  }
+  for (const [icon, items] of byIcon) if (items.length > 1) for (const item of items) add("item", item, "same_icon", "icon", icon);
+  return out;
+}
+
+/** Earliest and latest capture time, ignoring times after the data was current (one bad clock cannot set them). */
+class Span {
+  private min = Infinity;
+  private max = -Infinity;
+  constructor(private readonly ceiling: number) {}
+  add(capturedAt: unknown) {
+    const t = typeof capturedAt === "string" ? Date.parse(capturedAt) : NaN;
+    if (!Number.isFinite(t) || t > this.ceiling) return;
+    this.min = Math.min(this.min, t);
+    this.max = Math.max(this.max, t);
+  }
+  get first() { return Number.isFinite(this.min) ? new Date(this.min).toISOString() : null; }
+  get last() { return Number.isFinite(this.max) ? new Date(this.max).toISOString() : null; }
+}
+
+interface Group { installs: Set<string>; span: Span }
+
+/**
+ * Edges from upload records, each public under the rule its page already uses: a drop once 3 installs
+ * reported loot windows from the source, a vendor item once 3 agree on its price, a quest reward once 3
+ * report it, an NPC's zone once 3 measured it there (NPC positions only, never the player's).
+ */
+export function observedEdges(records: unknown[], dataAsOf: string | Date): Edge[] {
+  const ceiling = new Date(dataAsOf).getTime();
+  const groups = new Map<string, Group>();
+  const touch = (key: string, installId: string, capturedAt: unknown) => {
+    const g = groups.get(key) ?? { installs: new Set<string>(), span: new Span(ceiling) };
+    g.installs.add(installId.trim());
+    g.span.add(capturedAt);
+    groups.set(key, g);
+  };
+  for (const raw of records) {
+    if (!raw || typeof raw !== "object") continue;
+    const r = raw as Record<string, unknown>;
+    if (typeof r.installId !== "string" || !r.installId.trim()) continue;
+    if (r.kind === "loot" && r.sourceEvidence === "loot-api" && Array.isArray(r.items)) {
+      const source = id(r.sourceNpcId) ? `npc:${id(r.sourceNpcId)}` : id(r.sourceObjectId) ? `object:${id(r.sourceObjectId)}` : null;
+      if (source) for (const it of r.items as { itemId?: unknown }[]) if (id(it?.itemId)) touch(`drop|${source}|${id(it.itemId)}`, r.installId, r.capturedAt);
+    }
+    if (r.kind === "vendor" && id(r.vendorNpcId) && Array.isArray(r.items)) {
+      for (const o of r.items as { itemId?: unknown; priceCopper?: unknown }[]) {
+        if (id(o?.itemId) && typeof o.priceCopper === "number" && Number.isInteger(o.priceCopper) && o.priceCopper >= 0) {
+          touch(`sold|${id(r.vendorNpcId)}|${id(o.itemId)}|${o.priceCopper}`, r.installId, r.capturedAt);
+        }
+      }
+    }
+    if (r.kind === "quest" && id(r.questId)) for (const item of ids(r.rewardItemIds)) touch(`reward|${id(r.questId)}|${item}`, r.installId, r.capturedAt);
+    if (r.kind === "npc_sighting" && r.positionKind === "npc" && id(r.npcId) && typeof r.mapId === "number" && Number.isInteger(r.mapId) && r.mapId >= 0) {
+      touch(`zone|${id(r.npcId)}|${r.mapId}`, r.installId, r.capturedAt);
+    }
+  }
+  const edge = (fromKind: EdgeKind, fromId: number, rel: Rel, toKind: EdgeKind, toId: number, installs: number, span: Span): Edge =>
+    ({ fromKind, fromId, rel, toKind, toId, evidence: "observed", build: null, installs, firstSeen: span.first, lastSeen: span.last });
+  const out: Edge[] = [];
+
+  // Drops: exactly the public rates of the drop table, so the edge and the item page agree.
+  for (const rate of rollupDrops(lootWindowsFromRecords(records)).rates) {
+    if (!rate.public || rate.drops === 0) continue;
+    const toKind: EdgeKind = rate.sourceNpcId !== undefined ? "npc" : "object";
+    const toId = rate.sourceNpcId ?? rate.sourceObjectId!;
+    const g = groups.get(`drop|${toKind}:${toId}|${rate.itemId}`);
+    out.push(edge("item", rate.itemId, "dropped_by", toKind, toId, rate.reporters, g?.span ?? new Span(ceiling)));
+  }
+  // Vendors: the price most installs agree on, at 3 or more; ties keep the lower price.
+  const sold = new Map<string, { vendor: number; item: number; g: Group }>();
+  for (const [key, g] of groups) {
+    const [kind, vendor, item] = key.split("|");
+    if (kind !== "sold" || g.installs.size < INDEPENDENT_INSTALLS) continue;
+    const k = `${vendor}|${item}`;
+    const best = sold.get(k);
+    if (!best || g.installs.size > best.g.installs.size) sold.set(k, { vendor: Number(vendor), item: Number(item), g });
+  }
+  for (const s of sold.values()) out.push(edge("item", s.item, "sold_by", "npc", s.vendor, s.g.installs.size, s.g.span));
+  for (const [key, g] of groups) {
+    if (g.installs.size < INDEPENDENT_INSTALLS) continue;
+    const [kind, a, b] = key.split("|");
+    if (kind === "reward") out.push(edge("item", Number(b), "reward_from", "quest", Number(a), g.installs.size, g.span));
+  }
+  for (const [key, g] of groups) {
+    if (g.installs.size < INDEPENDENT_INSTALLS) continue;
+    const [kind, a, b] = key.split("|");
+    if (kind === "zone") out.push(edge("npc", Number(a), "located_in", "zone", Number(b), g.installs.size, g.span));
+  }
+  return out;
+}
+
+/** The corpus fact builder for the MCP tool: times after now are ignored. */
+export const observedEdgesFromRecords = (records: unknown[]): Edge[] => observedEdges(records, new Date());
+
+export function edgesFrom(edges: readonly Edge[], kind: EdgeKind, entityId: number): Edge[] {
+  return edges.filter((e) => e.fromKind === kind && e.fromId === entityId);
+}
+
+export function edgesTo(edges: readonly Edge[], kind: EdgeKind, entityId: number): Edge[] {
+  return edges.filter((e) => e.toKind === kind && e.toId === entityId);
+}
+
+export function groupByRel(edges: readonly Edge[]): { rel: Rel; label: string; edges: Edge[] }[] {
+  return RELS.map((rel) => ({ rel, label: REL_LABELS[rel], edges: edges.filter((e) => e.rel === rel) })).filter((g) => g.edges.length > 0);
+}
+
+/** The same relations read from the other end: what an NPC drops, what a spell creates. */
+export const REVERSE_LABELS: Record<Rel, string> = {
+  dropped_by: "Drops", sold_by: "Sells", reward_from: "Rewards", located_in: "Seen here",
+  created_by: "Creates", reagent_for: "Uses reagent", part_of_set: "Set items", same_icon: "Items with this icon",
+};
+
+const NOUNS: Record<EdgeKind, string> = {
+  item: "item", spell: "spell", npc: "NPC", object: "object", quest: "quest", zone: "zone", item_set: "item set", icon: "icon file",
+};
+export const entityLabel = (kind: EdgeKind, entityId: number) => `${NOUNS[kind]} ${entityId}`;
+
+/** How sure an edge is, in words: installs and last seen, or the build it was read from. */
+export function evidenceLabel(e: Edge): string {
+  if (e.evidence === "client") return `found in game files, unconfirmed; build ${e.build}`;
+  return `${e.installs} installs${e.lastSeen ? `, last seen ${e.lastSeen.slice(0, 10)}` : ""}`;
+}
+
+export const RELATIONS_LIMIT = 25;
+
+/**
+ * Text answer for the MCP tool: every relation of one entity, both directions unless asked, grouped by
+ * relation. Observed edges carry our licence; file edges carry Blizzard's notice and their build.
+ */
+export function handleEntityRelations(
+  args: { kind: EdgeKind; id: number; rel?: Rel; direction?: "from" | "to" | "both"; limit?: number },
+  observed: readonly Edge[], client: readonly Edge[],
+): string {
+  if (!Number.isInteger(args.id) || args.id < 1) return "Name an entity id.";
+  const all = [...observed, ...client].filter((e) => !args.rel || e.rel === args.rel);
+  const direction = args.direction ?? "both";
+  const limit = args.limit ?? RELATIONS_LIMIT;
+  const title = entityLabel(args.kind, args.id);
+  const lines = [title.charAt(0).toUpperCase() + title.slice(1)];
+  const used = new Set<Evidence>();
+  const section = (label: string, edges: Edge[], other: (e: Edge) => string) => {
+    if (!edges.length) return;
+    for (const e of edges.slice(0, limit)) {
+      used.add(e.evidence);
+      lines.push(`${label}: ${other(e)} (${evidenceLabel(e)})`);
+    }
+    if (edges.length > limit) lines.push(`${label}: ${edges.length - limit} more not shown`);
+  };
+  if (direction !== "to") {
+    for (const g of groupByRel(edgesFrom(all, args.kind, args.id))) {
+      section(g.label, g.edges, (e) => {
+        if (e.rel !== "same_icon") return entityLabel(e.toKind, e.toId);
+        const others = client.filter((o) => o.rel === "same_icon" && o.toId === e.toId && o.fromId !== args.id).map((o) => `item ${o.fromId}`);
+        const shown = others.slice(0, 10).join(", ");
+        return `icon file ${e.toId}, shared with ${shown}${others.length > 10 ? ` and ${others.length - 10} more` : ""}`;
+      });
+    }
+  }
+  if (direction !== "from" && args.kind !== "icon") {
+    const incoming = edgesTo(all, args.kind, args.id);
+    for (const rel of RELS) section(REVERSE_LABELS[rel], incoming.filter((e) => e.rel === rel), (e) => entityLabel(e.fromKind, e.fromId));
+  }
+  if (lines.length === 1) lines.push(`No relations recorded for ${title}. Player-observed relations need 3 installs; game-file relations come from the current build.`);
+  if (used.has("observed")) lines.push(MCP_CREDIT);
+  if (used.has("client")) lines.push(GAME_DATA_CREDIT);
+  return lines.join("\n");
+}

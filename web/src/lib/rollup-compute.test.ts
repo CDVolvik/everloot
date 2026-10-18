@@ -9,13 +9,15 @@ const fns = vi.hoisted(() => ({
   itemFacts: vi.fn(() => ({ rates: [], names: [], npcs: [] })),
   worldFacts: vi.fn(() => ({ npcs: [], quests: [], vendors: [] })),
   addons: vi.fn(() => ({ addons: [], reportingInstalls: 0 })),
+  edges: vi.fn(() => []),
 }));
 vi.mock("../../../kb/src/drop-rollup", () => ({ itemFactsFromRecords: fns.itemFacts }));
 vi.mock("../../../kb/src/world-pages", () => ({ worldFactsFromRecords: fns.worldFacts }));
 vi.mock("../../../kb/src/addon-rollup", () => ({ popularAddonsFromRecords: fns.addons }));
+vi.mock("../../../kb/src/edges", () => ({ observedEdges: fns.edges }));
 vi.mock("./rollups", () => ({ lootWindowsFromRecords: fns.windows, rollupDrops: fns.rollup }));
 
-import { computeRollups, loadItemFacts, loadPopularAddons, loadWorldFacts } from "./rollup-compute";
+import { computeRollups, loadItemFacts, loadObservedEdges, loadPopularAddons, loadWorldFacts } from "./rollup-compute";
 
 const V1 = { uploads: 2, records: [{ kind: "loot" }, { kind: "quest" }], dataAsOf: "2026-10-10T10:00:00.000Z" };
 const V2 = { ...V1, dataAsOf: "2026-10-10T10:05:00.000Z" };
@@ -35,6 +37,8 @@ test("the answers share one aggregation set per corpus version", async () => {
   expect(fns.itemFacts).toHaveBeenCalledTimes(1);
   expect(fns.worldFacts).toHaveBeenCalledTimes(1);
   expect(fns.addons).toHaveBeenCalledTimes(1);
+  expect(fns.edges).toHaveBeenCalledTimes(1);
+  expect(fns.edges).toHaveBeenCalledWith(V1.records, V1.dataAsOf);
   // Addon rows dated after the corpus was current are not facts yet.
   expect(fns.addons).toHaveBeenCalledWith(V1.records, V1.dataAsOf);
   // Same corpus version: repeated answers reuse the aggregates, no recompute.
@@ -53,7 +57,9 @@ test("the answers share one aggregation set per corpus version", async () => {
   await loadItemFacts();
   await loadWorldFacts();
   await loadPopularAddons();
+  await loadObservedEdges();
   expect(fns.windows).toHaveBeenCalledTimes(2);
+  expect(fns.edges).toHaveBeenCalledTimes(2);
   expect(fns.rollup).toHaveBeenCalledTimes(2);
   expect(fns.itemFacts).toHaveBeenCalledTimes(2);
   expect(fns.worldFacts).toHaveBeenCalledTimes(2);
@@ -67,6 +73,7 @@ test("answer shapes are unchanged", async () => {
   expect(await loadItemFacts()).toEqual({ rates: [], names: [], npcs: [], unreachable: false });
   expect(await loadWorldFacts()).toEqual({ npcs: [], quests: [], vendors: [], unreachable: false });
   expect(await loadPopularAddons()).toEqual({ addons: [], reportingInstalls: 0, unreachable: false, dataAsOf: "2026-10-10T11:00:00.000Z" });
+  expect(await loadObservedEdges()).toEqual({ edges: [], unreachable: false, dataAsOf: "2026-10-10T11:00:00.000Z" });
 });
 
 test("an unreadable store stays unreadable and never serves stale aggregates", async () => {
@@ -75,6 +82,7 @@ test("an unreadable store stays unreadable and never serves stale aggregates", a
   expect((await loadItemFacts()).unreachable).toBe(true);
   expect((await loadWorldFacts()).unreachable).toBe(true);
   expect(await loadPopularAddons()).toEqual({ addons: [], reportingInstalls: 0, unreachable: true, dataAsOf: null });
+  expect(await loadObservedEdges()).toEqual({ edges: [], unreachable: true, dataAsOf: null });
   expect(fns.windows).not.toHaveBeenCalled();
   // A readable corpus afterwards still aggregates fresh.
   store.loadCorpus.mockResolvedValue({ ...V1, dataAsOf: "2026-10-10T12:00:00.000Z" });
