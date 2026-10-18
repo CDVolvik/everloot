@@ -160,6 +160,10 @@ export interface AppState {
   settings: Settings;
   engine: EngineState;
   siteTools: SiteTool[];
+  /** The desktop release check made once at start; null until it ran or when it could not reach GitHub. */
+  update: UpdateCheck | null;
+  /** Realms whose last full scan is older than a day (or never dated), for the tray reminder. */
+  staleScans: ScanAge[];
 }
 
 /** What `window.everloot` offers the page. Implemented in preload.ts over IPC. */

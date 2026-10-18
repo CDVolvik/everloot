@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, test } from "vitest";
-import { confirmedCounts, summarizeFiles, summarizeSavedVariables } from "../src/main/inspect";
+import { confirmedCounts, scanReminder, staleScans, summarizeFiles, summarizeSavedVariables } from "../src/main/inspect";
 
 const dirs: string[] = [];
 const dir = () => { const d = mkdtempSync(join(tmpdir(), "everloot-inspect-")); dirs.push(d); return d; };
@@ -47,4 +47,19 @@ test("summaries carry the file's size and write time, and a missing file is an e
   expect(ok.writtenAt).toMatch(/^\d{4}-/);
   expect(missing).toMatchObject({ ok: false, bytes: 0 });
   expect(missing.error).toBeTruthy();
+});
+
+test("stale scans are the realms older than a day or undated, oldest first, and the reminder names the oldest", () => {
+  const now = Date.parse("2026-10-18T12:00:00Z");
+  const scans = [
+    { realm: "Fresh", at: "2026-10-18T10:00:00Z" },
+    { realm: "Old", at: "2026-10-15T12:00:00Z" },
+    { realm: "Undated", at: null },
+    { realm: "Older", at: "2026-10-10T12:00:00Z" },
+  ];
+  const stale = staleScans(scans, now);
+  expect(stale.map((s) => s.realm)).toEqual(["Undated", "Older", "Old"]);
+  expect(scanReminder(stale, now)).toBe("Scan Undated again: no dated scan (+2 more)");
+  expect(scanReminder(stale.slice(1), now)).toBe("Scan Older again: last full scan 8 d ago (+1 more)");
+  expect(scanReminder([], now)).toBeNull();
 });

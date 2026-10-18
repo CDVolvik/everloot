@@ -57,3 +57,19 @@ export function summarizeFiles(files: string[], sentPath: string): FileSummary[]
     return { file, writtenAt, bytes, ...summarizeSavedVariables(text, confirmedFor) };
   });
 }
+
+export const SCAN_STALE_MS = 24 * 3600 * 1000;
+
+/** Realms whose last full scan is older than `maxAge` or has no date, oldest first; a softer reminder than scanning for the player. */
+export function staleScans(scans: ScanAge[], now = Date.now(), maxAge = SCAN_STALE_MS): ScanAge[] {
+  return scans.filter((s) => !s.at || now - new Date(s.at).getTime() > maxAge).sort((a, b) => (a.at ?? "").localeCompare(b.at ?? ""));
+}
+
+/** "Scan Firemaw again: last full scan 3 d ago (+1 more)", or null when every realm is fresh. */
+export function scanReminder(stale: ScanAge[], now = Date.now()): string | null {
+  const s = stale[0];
+  if (!s) return null;
+  const more = stale.length > 1 ? ` (+${stale.length - 1} more)` : "";
+  if (!s.at) return `Scan ${s.realm} again: no dated scan${more}`;
+  return `Scan ${s.realm} again: last full scan ${Math.round((now - new Date(s.at).getTime()) / 86400000)} d ago${more}`;
+}

@@ -1,5 +1,5 @@
 import { BrowserWindow, Notification, app, dialog, ipcMain, shell } from "electron";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { readAsks } from "../../../companion/src/bridge/asks";
@@ -14,13 +14,13 @@ import { createChat } from "./chat";
 import { createEngine } from "./engine";
 import { allowedExternal } from "./external";
 import { candidateRoots, detectGameFolders, realFs } from "./game-folder";
-import { readScanAges, summarizeFiles } from "./inspect";
+import { readScanAges, staleScans, summarizeFiles } from "./inspect";
 import { companionJobs } from "./jobs";
 import { listRealms, ownRealms } from "./market";
 import { loadSettings, mergeSettings, saveSettings } from "./settings";
 import { SITE_TOOLS, createSiteViews, siteToolPath } from "./site-views";
 import { createTray } from "./tray";
-import { checkForUpdates, fetchReleases } from "./updates";
+import { checkForUpdates, fetchReleases, newestDesktopRelease } from "./updates";
 
 /** The same folder the command line uses (`companion/src/cli.ts` defaultStatePath), so both share sent.json. */
 function dataFolder(): string {
@@ -58,7 +58,20 @@ if (!app.requestSingleInstanceLock()) {
   let quitting = false;
 
   const addonsDir = () => (settings.gameFolder ? join(settings.gameFolder, "Interface", "AddOns") : null);
-  const appState = (): AppState => ({ version: app.getVersion(), platform: process.platform, dataFolder: data, notice: loaded.error, settings, engine: engine.snapshot(), siteTools: SITE_TOOLS });
+  let update: AppState["update"] = null;
+  // Scan ages come from parsing each account file; remembered per file size and write time so a broadcast stays cheap.
+  const scanMemo = new Map<string, { key: string; scans: ReturnType<typeof readScanAges> }>();
+  const allScans = () => engine.snapshot().files.flatMap((f) => {
+    try {
+      const st = statSync(f), key = `${st.mtimeMs}:${st.size}`;
+      const hit = scanMemo.get(f);
+      if (hit && hit.key === key) return hit.scans;
+      const scans = readScanAges(readFileSync(f, "utf8"));
+      scanMemo.set(f, { key, scans });
+      return scans;
+    } catch { return []; }
+  });
+  const appState = (): AppState => ({ version: app.getVersion(), platform: process.platform, dataFolder: data, notice: loaded.error, settings, engine: engine.snapshot(), siteTools: SITE_TOOLS, update, staleScans: staleScans(allScans()) });
   const broadcast = () => {
     const s = appState();
     win?.webContents.send("state", s);
@@ -77,6 +90,14 @@ if (!app.requestSingleInstanceLock()) {
     const m = /^answered (\d+)/.exec(ask.message);
     if (m && Number(m[1]) > 0) notify("Everloot answered in game", `${m[1]} answer(s) written. Type /reload to read them.`);
   });
+  // The desktop release check at start is a line on the Overview and in the tray, never a notification.
+  const desktopUpdateLine = async () => {
+    try {
+      const newest = newestDesktopRelease(await releases());
+      update = newest ? { current: app.getVersion(), latest: newest.version, url: newest.url, newer: compareVersions(newest.version, app.getVersion()) > 0 } : null;
+      if (update?.newer) broadcast();
+    } catch { update = null; }
+  };
   const addonUpdateNotice = async () => {
     const dir = addonsDir();
     if (!dir) return;
@@ -224,13 +245,13 @@ if (!app.requestSingleInstanceLock()) {
 
   void app.whenReady().then(() => {
     tray = createTray(join(__dirname, process.platform === "darwin" ? "trayTemplate.png" : "tray.png"), {
-      show, runNow: (job) => void engine.runNow(job), setPaused: (p) => engine.setPaused(p), quit: () => { quitting = true; app.quit(); },
+      show, runNow: (job) => void engine.runNow(job), setPaused: (p) => engine.setPaused(p), openExternal: (url) => { if (allowedExternal(url)) void shell.openExternal(url); }, quit: () => { quitting = true; app.quit(); },
     });
     applyLoginItem();
     engine.start(settings);
     const hidden = process.argv.includes("--hidden");
     if (!settings.consentedAt || !(hidden && settings.startInTray)) createWindow();
     broadcast();
-    if (settings.consentedAt) void addonUpdateNotice();
+    if (settings.consentedAt) { void addonUpdateNotice(); void desktopUpdateLine(); }
   });
 }

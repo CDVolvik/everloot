@@ -68,13 +68,13 @@ Support/Everloot`, `~/.config/everloot`), so a player can switch between them wi
 | `settings.ts` | `settings.json` in the data folder: game folder, endpoint, the three switches (upload, prices, ask), the `/ask` MCP URL and token file path, consent date, launch at login, start in tray. Atomic write (temp file and rename). Unknown keys are dropped; a bad file is reported and defaults are used | `node:fs` |
 | `game-folder.ts` | Finds product folders (`_classic_era_`, `_anniversary_`, `_classic_beta_`, ...) under the usual install locations on each OS and ranks the ones that already hold an `Everloot.lua`. Pure: takes a small file-system interface so tests pass a fake one | `companion/src/savedvariables.ts` |
 | `engine.ts` | Runs the three jobs from settings: watch each `Everloot.lua`, upload after the write settles (5 s), refresh prices after each upload and every hour, answer asks after the file settles (2 s). Keeps the last 200 log lines and a status per job (`idle`, `running`, `ok`, `error`, with the message and time). `runNow(job)`, `restart(settings)`, `stop()`. Every job function is injected, so tests run it without the network | `companion/src/*` through injection |
-| `updates.ts` | "Check for updates" reads the newest `desktop-v*` release on GitHub and returns its version and page. It never downloads or installs; the player opens the page. Unsigned builds and auto-install do not mix | `fetch` |
+| `updates.ts` | "Check for updates" reads the newest `desktop-v*` release on GitHub and returns its version and page. The same check runs once at start and, when a newer release exists, is a line on the Overview and an entry in the tray menu, never a notification. It never downloads or installs; the player opens the page. Unsigned builds and auto-install do not mix | `fetch` |
 | `market.ts` | Realm picks: the player's scanned realms plus the followed ones, no duplicates, at most 20; fetches each from the site and writes the prices file through the companion's own writer | `companion/src/prices.ts` |
-| `inspect.ts` | What a save file holds, as counts: records per kind, pending asks, scanned realms, confirmed events from `sent.json`. Never the records themselves | `web/src/lib/sv-parse.ts` |
+| `inspect.ts` | What a save file holds, as counts: records per kind, pending asks, scanned realms, confirmed events from `sent.json`. Never the records themselves. Also which realms have a full scan older than a day, and the one-line reminder the tray shows for them | `web/src/lib/sv-parse.ts` |
 | `addon.ts` | Installed version from the TOC, the newest release with a given tag prefix, and the install: only regular files under `Everloot/` from the zip (no `..`, no absolute paths), written to `Everloot.new` and swapped in whole after the sha256 matches the release's `SHA256SUMS` | `fflate` |
 | `changes.ts` | The change tracker's RSS feed as a list: title, https link, date, plain-text summary | `fetch` |
 | `backups.ts` | After each upload, a dated copy of the account's `Everloot.lua` under `backups/`, the newest ten per account. A failed backup never fails the upload. Restore copies one back over the watched file of the same account after a native confirm, backing up the current file first; only files inside `backups/` are accepted | `node:fs` |
-| `tray.ts` | The menu: status of each job, Upload now, Refresh prices, Open window, Pause, Quit | Electron |
+| `tray.ts` | The menu: status of each job, a scan reminder when a realm is stale, the desktop update when one exists, Upload now, Refresh prices, Open window, Pause, Quit | Electron |
 | `index.ts` | Single instance, the window, the tray, IPC handlers, close-to-tray, launch at login | everything above |
 
 ### The window
@@ -148,6 +148,8 @@ on the Node side for ten to fifteen minutes so opening a page twice does not ask
   the hour; an ask write runs the bridge; a failing job records the error and the others keep going;
   `restart` with the upload switch off stops watching.
 - `updates.test.ts`: picks the newest `desktop-v*` tag, ignores addon tags and pre-releases.
+- `inspect.test.ts`: stale realms are the ones older than a day or undated, oldest first; the
+  reminder names the oldest and counts the rest.
 - `backups.test.ts`: dated copies, ten per account; restore replaces the live file and keeps the
   replaced one as the newest backup; refuses paths outside `backups/` and unwatched accounts.
 - `preload` allow-list: `openExternal` refuses anything but `https:` on named hosts.
