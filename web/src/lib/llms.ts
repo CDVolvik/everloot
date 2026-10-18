@@ -30,6 +30,8 @@ const PAGES: { title: string; path: string; text: string }[] = [
   { title: "How we count", path: "/methodology", text: "How addon uploads become facts: three installs must agree, unrecorded is not zero, and what is never published." },
   { title: "About", path: "/about", text: "What Everloot is and is not." },
   { title: "Privacy", path: "/privacy", text: "How uploads, cookies and usage statistics are handled." },
+  { title: "Terms of use", path: "/terms", text: "Uploads, API keys, licences, trademarks, takedown requests and warranty." },
+  { title: "Security", path: "/security", text: "How to report a security problem privately, and what is in scope." },
 ];
 
 const LIMITATIONS = [

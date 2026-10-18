@@ -27,7 +27,7 @@ describe("working feature discovery", () => {
     expect(urls).toContain("/privacy");
     expect(urls).toContain("/contact");
     const footer = readFileSync(new URL("./Footer.tsx", import.meta.url), "utf8");
-    expect(footer).toContain('href="/contact"');
+    expect(footer).toMatch(/href(?:=|: )"\/contact"/);
     const contact = readFileSync(new URL("../app/contact/page.tsx", import.meta.url), "utf8");
     expect(contact).toContain("mailto:hello@everloot.app");
   });

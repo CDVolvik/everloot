@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { pageMetadata } from "@/lib/seo";
+import { REVOKED_KEPT_DAYS, USAGE_KEPT_DAYS } from "@/lib/api-keys";
 
 export const metadata: Metadata = {
   ...pageMetadata({ title: "Privacy Policy", description: "How Everloot handles your data, cookies and usage statistics, and what happens to the addon files you upload to the WoW: Forever database.", path: "/privacy" }),
 };
 
+const link = "text-accent hover:underline";
+
 export default function PrivacyPage() {
-  const updated = "October 2026";
+  const updated = "18 October 2026";
   return (
     <article className="prose prose-invert max-w-3xl">
       <h1 className="text-3xl font-bold text-fg">
@@ -19,6 +23,16 @@ export default function PrivacyPage() {
         Everloot (&ldquo;we&rdquo;, &ldquo;us&rdquo;) provides free utility
         tools for World of Warcraft players. We value your privacy and try to
         collect the minimum information possible.
+      </p>
+
+      <h2 id="controller" className="text-xl text-fg mt-6">Who is responsible</h2>
+      <p className="text-fg-2">
+        Everloot is an independent fan project. The team that runs it decides
+        what the site collects and is responsible for it under privacy law. You
+        reach us at{" "}
+        <a className={link} href="mailto:hello@everloot.app">hello@everloot.app</a>.
+        The <Link href="/terms" className={link}>Terms of Use</Link> cover the
+        service itself; this page covers your data.
       </p>
 
       <h2 className="text-xl text-fg mt-6">
@@ -148,8 +162,8 @@ export default function PrivacyPage() {
         .
       </p>
 
-      <h2 className="text-xl text-fg mt-6">
-        Your choices
+      <h2 id="choices" className="text-xl text-fg mt-6">
+        Your privacy choices
       </h2>
       <p className="text-fg-2">
         You can accept or reject optional cookies in the banner and reopen Cookie
@@ -163,6 +177,50 @@ export default function PrivacyPage() {
         no cookies, is the one tool that runs without a choice; it is skipped
         when your browser sends Do Not Track or Global Privacy Control. You can
         also clear local storage through your browser settings.
+      </p>
+
+      <h2 id="rights" className="text-xl text-fg mt-6">Your rights</h2>
+      <p className="text-fg-2">
+        Wherever you live, you can ask us what we hold about you, have it
+        corrected or deleted, object to or restrict how we use it, and withdraw
+        a consent you gave. Email{" "}
+        <a className={link} href="mailto:hello@everloot.app">hello@everloot.app</a>{" "}
+        and say which of these you want. Where we need to be sure the request
+        is yours, we may ask you to send it from the address tied to your
+        request or to prove the sharing grant or install id involved. We answer
+        within a month. If you are in the EEA or the UK you can also complain
+        to your data protection authority.
+      </p>
+      <ul className="list-disc pl-6 text-fg-2">
+        <li>
+          <strong>Sharing grants</strong> for named records can be withdrawn
+          on the upload page at any time, without emailing us.
+        </li>
+        <li>
+          <strong>API keys</strong> are revoked and deleted on the Connect page.
+        </li>
+        <li>
+          <strong>Uploads</strong> you ask us to remove are deleted, and the
+          next rollup rebuild removes anything derived from them.
+        </li>
+      </ul>
+
+      <h2 id="retention" className="text-xl text-fg mt-6">How long we keep things</h2>
+      <ul className="list-disc pl-6 text-fg-2">
+        <li><strong>Login cookie:</strong> up to 30 days, or until you sign out.</li>
+        <li><strong>Cookie choice:</strong> in your browser until you clear it or change it.</li>
+        <li><strong>Battle.net Account ID and BattleTag:</strong> until you ask us to delete your account.</li>
+        <li><strong>API key usage counts:</strong> {USAGE_KEPT_DAYS} days. A revoked key and its counts: {REVOKED_KEPT_DAYS} days after revocation, or at once when you delete it.</li>
+        <li><strong>Rate-limit hashes:</strong> a short time, long enough to enforce the limit, then discarded.</li>
+        <li><strong>Uploads:</strong> until you ask us to remove them. They are the public database.</li>
+        <li><strong>Launch-notification email:</strong> until you ask us to remove it.</li>
+      </ul>
+
+      <h2 id="children" className="text-xl text-fg mt-6">Children</h2>
+      <p className="text-fg-2">
+        Everloot is not directed at children under 13 and we do not knowingly
+        collect personal information from them. If you believe a child has
+        given us some, email us and we will delete it.
       </p>
 
       <h2 className="text-xl text-fg mt-6">Contact</h2>

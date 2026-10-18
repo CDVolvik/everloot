@@ -23,6 +23,8 @@ export const DISCORD_INVITE = "https://discord.gg/9CKsbHTRu3";
 /** The footer shows both sentences, and the Organization description repeats them. */
 export const SITE_BLURB = "The WoW: Forever database, built from player data.";
 export const NON_AFFILIATION = "Not affiliated with or endorsed by Blizzard Entertainment.";
+/** The trademark sentence the footer and the terms carry, in the form the other WoW fan sites use. */
+export const TRADEMARK_LINE = "World of Warcraft, Warcraft and Blizzard Entertainment are trademarks or registered trademarks of Blizzard Entertainment, Inc. in the U.S. and/or other countries.";
 export const CC_BY_SA = { name: "CC BY-SA 4.0", url: "https://creativecommons.org/licenses/by-sa/4.0/" } as const;
 export const LORE_SEARCH_LABEL = "Search the lore archive";
 

@@ -42,6 +42,16 @@ export default function ContactPage() {
           </Link>
           )
         </li>
+        <li>
+          Copyright or takedown requests (how to, in the{" "}
+          <Link
+            href="/terms#takedown"
+            className="text-accent hover:underline underline-offset-4"
+          >
+            Terms of Use
+          </Link>
+          )
+        </li>
         <li>Bug reports</li>
         <li>Partnership questions</li>
       </ul>
