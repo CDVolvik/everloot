@@ -98,6 +98,61 @@ export const ecosystemProject = z.object({
 });
 export type EcosystemProjectOut = z.infer<typeof ecosystemProject>;
 
+/**
+ * What every structured answer built on player uploads starts with. connected false means no corpus
+ * was read (not connected, or unavailable): the page is then absent, and that is not a measured zero.
+ */
+export const uploadsAnswer = {
+  connected: z.boolean().describe("False when no corpus was read; the page is then absent, which is not a measured zero."),
+  dataAsOf: z.string().nullable().describe("The corpus snapshot time, or null when unrecorded."),
+  reason: z.string().optional().describe("Why nothing was read, when connected is false."),
+};
+
+/** One source of an item with its observed loot-window frequency; public after 3 distinct install reports. */
+export const itemDrop = z.object({
+  sourceNpcId: z.number().int().optional(),
+  sourceObjectId: z.number().int().optional(),
+  source: z.string().describe("The source in words, with its agreed name when it has one."),
+  kills: z.number().int().describe("Observed loot windows, not a census of kills."),
+  drops: z.number().int().describe("Windows with this item; 0 is a measured zero."),
+  rate: z.number(),
+  reporters: z.number().int(),
+});
+export const mapPin = z.object({ npcId: z.number().int(), name: z.string().nullable(), mapId: z.number().int(), x: z.number(), y: z.number(), reporters: z.number().int() });
+export const itemPage = z.object({
+  itemId: z.number().int(),
+  name: z.string().nullable().describe("Null until 3 installs report the same name."),
+  drops: z.array(itemDrop),
+  pins: z.array(mapPin).describe("Agreed positions of the NPCs it drops from; a pin needs 3 installs on the same map."),
+});
+export const npcPage = z.object({
+  npcId: z.number().int(),
+  name: z.string().nullable(),
+  pins: z.array(z.object({ mapId: z.number().int(), x: z.number(), y: z.number(), reporters: z.number().int() })),
+});
+export const questPage = z.object({
+  questId: z.number().int(),
+  title: z.string().nullable(),
+  level: z.number().int().nullable(),
+  giverNpcId: z.number().int().nullable(),
+  turnInNpcId: z.number().int().nullable(),
+  rewards: z.array(z.number().int()).describe("Reward item ids 3 installs agree on."),
+});
+export const vendorOffer = z.object({
+  itemId: z.number().int(),
+  priceCopper: z.number().int(),
+  limitedStock: z.number().int().nullable().describe("Null with unlimited false means the stock is unrecorded, not unlimited."),
+  unlimited: z.boolean(),
+  reporters: z.number().int(),
+});
+export const vendorPage = z.object({ vendorNpcId: z.number().int(), offers: z.array(vendorOffer) });
+export const objectPage = z.object({
+  objectId: z.number().int(),
+  drops: z.array(z.object({ itemId: z.number().int(), itemName: z.string().nullable(), kills: z.number().int(), drops: z.number().int(), rate: z.number(), reporters: z.number().int() })),
+  zero: z.object({ kills: z.number().int(), reporters: z.number().int() }).nullable().describe("Public windows with no item at all: a measured zero."),
+  queued: z.boolean().describe("Observations exist but fewer than 3 installs reported them."),
+});
+
 /** One row of the implementation tracker as everloot_plan returns it. */
 export const planRow = z.object({
   id: z.string(),
@@ -237,6 +292,7 @@ export const MCP_TOOLS = {
     description:
       "One Forever item: agreed name, public drop rate with kill count, and an agreed map pin. A rate is public after 3 installs kill the source. A name or pin needs 3 installs agreeing. No Wowhead rows. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.",
     inputSchema: { itemId: z.number().int().positive().describe("Item id from a drop row.") },
+    outputSchema: { ...uploadsAnswer, page: itemPage.optional() },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
   npc_page: {
@@ -244,6 +300,7 @@ export const MCP_TOOLS = {
     description:
       "One Forever NPC: agreed name and map pins. A name or pin needs 3 installs agreeing. The pin does not require a drop. No copied spawn list. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.",
     inputSchema: { npcId: z.number().int().positive().describe("NPC id.") },
+    outputSchema: { ...uploadsAnswer, page: npcPage.optional() },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
   object_page: {
@@ -251,6 +308,7 @@ export const MCP_TOOLS = {
     description:
       "One game object (a chest, herb, ore vein or fishing pool) by the id in its GUID: the items players looted from it, each with observed loot windows, windows with the item and distinct install reports. A frequency is public after 3 install reports; a public object with nothing in its windows reads as a measured zero. Objects have no names yet. Reads Everloot's current authorized public corpus when connected.",
     inputSchema: { objectId: z.number().int().positive().describe("The object's entry id, as in /database/objects/1731.") },
+    outputSchema: { ...uploadsAnswer, page: objectPage.optional() },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
   quest_page: {
@@ -258,6 +316,7 @@ export const MCP_TOOLS = {
     description:
       "One Forever quest: agreed title, level, giver, turn-in, and rewards. Each fact needs 3 installs agreeing. No copied quest text. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.",
     inputSchema: { questId: z.number().int().positive().describe("Quest id.") },
+    outputSchema: { ...uploadsAnswer, page: questPage.optional() },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
   vendor_page: {
@@ -265,6 +324,7 @@ export const MCP_TOOLS = {
     description:
       "Goods one Forever vendor sells. An item is listed when 3 installs agree on that item and its copper price. Two agreed prices both stay listed. No copied catalog. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.",
     inputSchema: { vendorNpcId: z.number().int().positive().describe("Vendor NPC id.") },
+    outputSchema: { ...uploadsAnswer, page: vendorPage.optional() },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
   world_map_near: {

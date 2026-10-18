@@ -11,8 +11,8 @@ import { handleCompletionProgress, type CompletionFacts } from "./completion.js"
 import { goldFactsFromRecords, handleGoldLedger } from "./gold-ledger.js";
 import { guildFactsFromRecords, handleGuildBoard } from "./guild-board.js";
 import { itemFactsFromRecords } from "./drop-rollup.js";
-import { handleItemPage } from "./item-page.js";
-import { handleObjectPage, objectFactsFromRecords, type ObjectFacts } from "./object-page.js";
+import { formatItemPage, itemPage } from "./item-page.js";
+import { formatObjectPage, objectFactsFromRecords, objectPage, type ObjectFacts } from "./object-page.js";
 import { handleMarketValue, type MarketState } from "./market.js";
 import { loadUploadRecords } from "./load-uploads.js";
 import { KNOWLEDGE_KINDS, MCP_RESOURCE_URIS, MCP_RESOURCES, MCP_TOOL_NAMES, MCP_TOOLS, parseRecords, type McpToolArgs, type McpToolDef, type McpToolName } from "@everloot/protocol";
@@ -20,7 +20,7 @@ import { handleProfessionPath } from "./profession-path.js";
 import { readResource } from "./resources.js";
 import { handleTalentPlan, handleTalentTree } from "./talent-tools.js";
 import { handleRecipeThresholds, pathFactsFromRecords, recipeFactsFromRecords } from "./recipe-thresholds.js";
-import { handleNpcPage, handleQuestPage, handleVendorPage, worldFactsFromRecords } from "./world-pages.js";
+import { formatNpcPage, formatQuestPage, formatVendorPage, npcPage, questPage, vendorPage, worldFactsFromRecords } from "./world-pages.js";
 import { handleWorldMapNear, mapFactsFromRecords } from "./world-map-near.js";
 import { WORLD_MAP_DATA } from "./world-map-file.js";
 import { CLIENT_EDGES, CLIENT_LAYER, CLIENT_TAXONOMY } from "./client-layer-file.js";
@@ -406,6 +406,26 @@ export type ChangesLoader = () => ChangeEntry[] | null | Promise<ChangeEntry[] |
 /** The ecosystem tracker with install counts joined. Null means it is not connected, which is not the same as empty. */
 export type EcosystemLoader = () => EcosystemView | null | Promise<EcosystemView | null>;
 
+/** Whether any upload source is set at all: the difference between not connected and unavailable. */
+function uploadsConfigured(loader?: CorpusLoader): boolean {
+  return Boolean(loader || process.env.EVERLOOT_PUBLIC_CORPUS_URL?.trim() || process.env.EVERLOOT_UPLOADS?.trim());
+}
+
+/**
+ * A page tool's answer: the text the tool always gave, with the data's age and the credit, plus the page
+ * as structured content under the protocol's uploadsAnswer envelope. With no corpus read, the text says
+ * so as before and the structure carries connected false and the reason, never an empty page.
+ */
+export async function readPage<T>(tool: ToolName, loader: CorpusLoader | undefined, page: (facts: T) => { text: string; page: object }): Promise<Answer> {
+  const read = await readTooledFacts<T>(tool, loader);
+  if (!read) {
+    const reason = uploadsConfigured(loader) ? UNAVAILABLE : UPLOADS_UNSET;
+    return { text: reason, structured: { connected: false, dataAsOf: null, reason } };
+  }
+  const built = page(read.facts);
+  return { text: `${built.text}\n${answerFooter(read.dataAsOf)}`, structured: { connected: true, dataAsOf: read.dataAsOf, page: built.page } };
+}
+
 export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; market?: MarketLoader; completion?: CompletionLoader; changes?: ChangesLoader; ecosystem?: EcosystemLoader } = {}): McpServer {
   const server = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION, websiteUrl: SOURCE_URL }, { instructions: SERVER_INSTRUCTIONS });
   const readFacts = <T>(tool: ToolName, render: (facts: T) => string) => fromTooledUploads(tool, render, options.corpus);
@@ -423,11 +443,26 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; 
       handleProfessionPath(args, facts.sightings, facts.prices, facts.derived, facts.vendorPrices)),
     recipe_thresholds: (args) => readFacts("recipe_thresholds", (facts: ReturnType<typeof recipeFactsFromRecords>) =>
       handleRecipeThresholds(args, facts.observations, facts.prices, facts.vendorPrices)),
-    item_page: (args) => readFacts("item_page", (facts: ReturnType<typeof itemFactsFromRecords>) => handleItemPage(args, facts)),
-    npc_page: (args) => readFacts("npc_page", (facts: ReturnType<typeof worldFactsFromRecords>) => handleNpcPage(args, facts)),
-    object_page: (args) => readFacts("object_page", (facts: ObjectFacts) => handleObjectPage(args, facts)),
-    quest_page: (args) => readFacts("quest_page", (facts: ReturnType<typeof worldFactsFromRecords>) => handleQuestPage(args, facts)),
-    vendor_page: (args) => readFacts("vendor_page", (facts: ReturnType<typeof worldFactsFromRecords>) => handleVendorPage(args, facts)),
+    item_page: (args) => readPage("item_page", options.corpus, (facts: ReturnType<typeof itemFactsFromRecords>) => {
+      const page = itemPage(args.itemId, facts);
+      return { text: formatItemPage(page), page };
+    }),
+    npc_page: (args) => readPage("npc_page", options.corpus, (facts: ReturnType<typeof worldFactsFromRecords>) => {
+      const page = npcPage(args.npcId, facts);
+      return { text: formatNpcPage(page), page };
+    }),
+    object_page: (args) => readPage("object_page", options.corpus, (facts: ObjectFacts) => {
+      const page = objectPage(args.objectId, facts);
+      return { text: formatObjectPage(page), page };
+    }),
+    quest_page: (args) => readPage("quest_page", options.corpus, (facts: ReturnType<typeof worldFactsFromRecords>) => {
+      const page = questPage(args.questId, facts);
+      return { text: formatQuestPage(page), page };
+    }),
+    vendor_page: (args) => readPage("vendor_page", options.corpus, (facts: ReturnType<typeof worldFactsFromRecords>) => {
+      const page = vendorPage(args.vendorNpcId, facts);
+      return { text: formatVendorPage(page), page };
+    }),
     world_map_near: (args) => readFacts("world_map_near", (facts: ReturnType<typeof mapFactsFromRecords>) => handleWorldMapNear(args, WORLD_MAP_DATA, facts)),
     entity_relations: (args) => readFacts("entity_relations", (observed: Edge[]) => handleEntityRelations(args, observed, CLIENT_EDGES)),
     item_categories: (args) => ({

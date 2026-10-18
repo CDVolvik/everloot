@@ -129,6 +129,105 @@ export declare const ecosystemProject: z.ZodObject<{
     maintenanceScore: z.ZodNullable<z.ZodNumber>;
 }, z.core.$strip>;
 export type EcosystemProjectOut = z.infer<typeof ecosystemProject>;
+/**
+ * What every structured answer built on player uploads starts with. connected false means no corpus
+ * was read (not connected, or unavailable): the page is then absent, and that is not a measured zero.
+ */
+export declare const uploadsAnswer: {
+    connected: z.ZodBoolean;
+    dataAsOf: z.ZodNullable<z.ZodString>;
+    reason: z.ZodOptional<z.ZodString>;
+};
+/** One source of an item with its observed loot-window frequency; public after 3 distinct install reports. */
+export declare const itemDrop: z.ZodObject<{
+    sourceNpcId: z.ZodOptional<z.ZodNumber>;
+    sourceObjectId: z.ZodOptional<z.ZodNumber>;
+    source: z.ZodString;
+    kills: z.ZodNumber;
+    drops: z.ZodNumber;
+    rate: z.ZodNumber;
+    reporters: z.ZodNumber;
+}, z.core.$strip>;
+export declare const mapPin: z.ZodObject<{
+    npcId: z.ZodNumber;
+    name: z.ZodNullable<z.ZodString>;
+    mapId: z.ZodNumber;
+    x: z.ZodNumber;
+    y: z.ZodNumber;
+    reporters: z.ZodNumber;
+}, z.core.$strip>;
+export declare const itemPage: z.ZodObject<{
+    itemId: z.ZodNumber;
+    name: z.ZodNullable<z.ZodString>;
+    drops: z.ZodArray<z.ZodObject<{
+        sourceNpcId: z.ZodOptional<z.ZodNumber>;
+        sourceObjectId: z.ZodOptional<z.ZodNumber>;
+        source: z.ZodString;
+        kills: z.ZodNumber;
+        drops: z.ZodNumber;
+        rate: z.ZodNumber;
+        reporters: z.ZodNumber;
+    }, z.core.$strip>>;
+    pins: z.ZodArray<z.ZodObject<{
+        npcId: z.ZodNumber;
+        name: z.ZodNullable<z.ZodString>;
+        mapId: z.ZodNumber;
+        x: z.ZodNumber;
+        y: z.ZodNumber;
+        reporters: z.ZodNumber;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+export declare const npcPage: z.ZodObject<{
+    npcId: z.ZodNumber;
+    name: z.ZodNullable<z.ZodString>;
+    pins: z.ZodArray<z.ZodObject<{
+        mapId: z.ZodNumber;
+        x: z.ZodNumber;
+        y: z.ZodNumber;
+        reporters: z.ZodNumber;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+export declare const questPage: z.ZodObject<{
+    questId: z.ZodNumber;
+    title: z.ZodNullable<z.ZodString>;
+    level: z.ZodNullable<z.ZodNumber>;
+    giverNpcId: z.ZodNullable<z.ZodNumber>;
+    turnInNpcId: z.ZodNullable<z.ZodNumber>;
+    rewards: z.ZodArray<z.ZodNumber>;
+}, z.core.$strip>;
+export declare const vendorOffer: z.ZodObject<{
+    itemId: z.ZodNumber;
+    priceCopper: z.ZodNumber;
+    limitedStock: z.ZodNullable<z.ZodNumber>;
+    unlimited: z.ZodBoolean;
+    reporters: z.ZodNumber;
+}, z.core.$strip>;
+export declare const vendorPage: z.ZodObject<{
+    vendorNpcId: z.ZodNumber;
+    offers: z.ZodArray<z.ZodObject<{
+        itemId: z.ZodNumber;
+        priceCopper: z.ZodNumber;
+        limitedStock: z.ZodNullable<z.ZodNumber>;
+        unlimited: z.ZodBoolean;
+        reporters: z.ZodNumber;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+export declare const objectPage: z.ZodObject<{
+    objectId: z.ZodNumber;
+    drops: z.ZodArray<z.ZodObject<{
+        itemId: z.ZodNumber;
+        itemName: z.ZodNullable<z.ZodString>;
+        kills: z.ZodNumber;
+        drops: z.ZodNumber;
+        rate: z.ZodNumber;
+        reporters: z.ZodNumber;
+    }, z.core.$strip>>;
+    zero: z.ZodNullable<z.ZodObject<{
+        kills: z.ZodNumber;
+        reporters: z.ZodNumber;
+    }, z.core.$strip>>;
+    queued: z.ZodBoolean;
+}, z.core.$strip>;
 /** One row of the implementation tracker as everloot_plan returns it. */
 export declare const planRow: z.ZodObject<{
     id: z.ZodString;
@@ -448,6 +547,32 @@ export declare const MCP_TOOLS: {
         readonly inputSchema: {
             readonly itemId: z.ZodNumber;
         };
+        readonly outputSchema: {
+            readonly connected: z.ZodBoolean;
+            readonly dataAsOf: z.ZodNullable<z.ZodString>;
+            readonly reason: z.ZodOptional<z.ZodString>;
+            readonly page: z.ZodOptional<z.ZodObject<{
+                itemId: z.ZodNumber;
+                name: z.ZodNullable<z.ZodString>;
+                drops: z.ZodArray<z.ZodObject<{
+                    sourceNpcId: z.ZodOptional<z.ZodNumber>;
+                    sourceObjectId: z.ZodOptional<z.ZodNumber>;
+                    source: z.ZodString;
+                    kills: z.ZodNumber;
+                    drops: z.ZodNumber;
+                    rate: z.ZodNumber;
+                    reporters: z.ZodNumber;
+                }, z.core.$strip>>;
+                pins: z.ZodArray<z.ZodObject<{
+                    npcId: z.ZodNumber;
+                    name: z.ZodNullable<z.ZodString>;
+                    mapId: z.ZodNumber;
+                    x: z.ZodNumber;
+                    y: z.ZodNumber;
+                    reporters: z.ZodNumber;
+                }, z.core.$strip>>;
+            }, z.core.$strip>>;
+        };
         readonly annotations: {
             readonly readOnlyHint: true;
             readonly openWorldHint: false;
@@ -458,6 +583,21 @@ export declare const MCP_TOOLS: {
         readonly description: "One Forever NPC: agreed name and map pins. A name or pin needs 3 installs agreeing. The pin does not require a drop. No copied spawn list. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.";
         readonly inputSchema: {
             readonly npcId: z.ZodNumber;
+        };
+        readonly outputSchema: {
+            readonly connected: z.ZodBoolean;
+            readonly dataAsOf: z.ZodNullable<z.ZodString>;
+            readonly reason: z.ZodOptional<z.ZodString>;
+            readonly page: z.ZodOptional<z.ZodObject<{
+                npcId: z.ZodNumber;
+                name: z.ZodNullable<z.ZodString>;
+                pins: z.ZodArray<z.ZodObject<{
+                    mapId: z.ZodNumber;
+                    x: z.ZodNumber;
+                    y: z.ZodNumber;
+                    reporters: z.ZodNumber;
+                }, z.core.$strip>>;
+            }, z.core.$strip>>;
         };
         readonly annotations: {
             readonly readOnlyHint: true;
@@ -470,6 +610,27 @@ export declare const MCP_TOOLS: {
         readonly inputSchema: {
             readonly objectId: z.ZodNumber;
         };
+        readonly outputSchema: {
+            readonly connected: z.ZodBoolean;
+            readonly dataAsOf: z.ZodNullable<z.ZodString>;
+            readonly reason: z.ZodOptional<z.ZodString>;
+            readonly page: z.ZodOptional<z.ZodObject<{
+                objectId: z.ZodNumber;
+                drops: z.ZodArray<z.ZodObject<{
+                    itemId: z.ZodNumber;
+                    itemName: z.ZodNullable<z.ZodString>;
+                    kills: z.ZodNumber;
+                    drops: z.ZodNumber;
+                    rate: z.ZodNumber;
+                    reporters: z.ZodNumber;
+                }, z.core.$strip>>;
+                zero: z.ZodNullable<z.ZodObject<{
+                    kills: z.ZodNumber;
+                    reporters: z.ZodNumber;
+                }, z.core.$strip>>;
+                queued: z.ZodBoolean;
+            }, z.core.$strip>>;
+        };
         readonly annotations: {
             readonly readOnlyHint: true;
             readonly openWorldHint: false;
@@ -481,6 +642,19 @@ export declare const MCP_TOOLS: {
         readonly inputSchema: {
             readonly questId: z.ZodNumber;
         };
+        readonly outputSchema: {
+            readonly connected: z.ZodBoolean;
+            readonly dataAsOf: z.ZodNullable<z.ZodString>;
+            readonly reason: z.ZodOptional<z.ZodString>;
+            readonly page: z.ZodOptional<z.ZodObject<{
+                questId: z.ZodNumber;
+                title: z.ZodNullable<z.ZodString>;
+                level: z.ZodNullable<z.ZodNumber>;
+                giverNpcId: z.ZodNullable<z.ZodNumber>;
+                turnInNpcId: z.ZodNullable<z.ZodNumber>;
+                rewards: z.ZodArray<z.ZodNumber>;
+            }, z.core.$strip>>;
+        };
         readonly annotations: {
             readonly readOnlyHint: true;
             readonly openWorldHint: false;
@@ -491,6 +665,21 @@ export declare const MCP_TOOLS: {
         readonly description: "Goods one Forever vendor sells. An item is listed when 3 installs agree on that item and its copper price. Two agreed prices both stay listed. No copied catalog. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.";
         readonly inputSchema: {
             readonly vendorNpcId: z.ZodNumber;
+        };
+        readonly outputSchema: {
+            readonly connected: z.ZodBoolean;
+            readonly dataAsOf: z.ZodNullable<z.ZodString>;
+            readonly reason: z.ZodOptional<z.ZodString>;
+            readonly page: z.ZodOptional<z.ZodObject<{
+                vendorNpcId: z.ZodNumber;
+                offers: z.ZodArray<z.ZodObject<{
+                    itemId: z.ZodNumber;
+                    priceCopper: z.ZodNumber;
+                    limitedStock: z.ZodNullable<z.ZodNumber>;
+                    unlimited: z.ZodBoolean;
+                    reporters: z.ZodNumber;
+                }, z.core.$strip>>;
+            }, z.core.$strip>>;
         };
         readonly annotations: {
             readonly readOnlyHint: true;
@@ -1216,6 +1405,32 @@ export declare const MCP_TOOL_LIST: ({
     inputSchema: {
         readonly itemId: z.ZodNumber;
     };
+    outputSchema: {
+        readonly connected: z.ZodBoolean;
+        readonly dataAsOf: z.ZodNullable<z.ZodString>;
+        readonly reason: z.ZodOptional<z.ZodString>;
+        readonly page: z.ZodOptional<z.ZodObject<{
+            itemId: z.ZodNumber;
+            name: z.ZodNullable<z.ZodString>;
+            drops: z.ZodArray<z.ZodObject<{
+                sourceNpcId: z.ZodOptional<z.ZodNumber>;
+                sourceObjectId: z.ZodOptional<z.ZodNumber>;
+                source: z.ZodString;
+                kills: z.ZodNumber;
+                drops: z.ZodNumber;
+                rate: z.ZodNumber;
+                reporters: z.ZodNumber;
+            }, z.core.$strip>>;
+            pins: z.ZodArray<z.ZodObject<{
+                npcId: z.ZodNumber;
+                name: z.ZodNullable<z.ZodString>;
+                mapId: z.ZodNumber;
+                x: z.ZodNumber;
+                y: z.ZodNumber;
+                reporters: z.ZodNumber;
+            }, z.core.$strip>>;
+        }, z.core.$strip>>;
+    };
     annotations: {
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
@@ -1226,6 +1441,21 @@ export declare const MCP_TOOL_LIST: ({
     description: "One Forever NPC: agreed name and map pins. A name or pin needs 3 installs agreeing. The pin does not require a drop. No copied spawn list. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.";
     inputSchema: {
         readonly npcId: z.ZodNumber;
+    };
+    outputSchema: {
+        readonly connected: z.ZodBoolean;
+        readonly dataAsOf: z.ZodNullable<z.ZodString>;
+        readonly reason: z.ZodOptional<z.ZodString>;
+        readonly page: z.ZodOptional<z.ZodObject<{
+            npcId: z.ZodNumber;
+            name: z.ZodNullable<z.ZodString>;
+            pins: z.ZodArray<z.ZodObject<{
+                mapId: z.ZodNumber;
+                x: z.ZodNumber;
+                y: z.ZodNumber;
+                reporters: z.ZodNumber;
+            }, z.core.$strip>>;
+        }, z.core.$strip>>;
     };
     annotations: {
         readonly readOnlyHint: true;
@@ -1238,6 +1468,27 @@ export declare const MCP_TOOL_LIST: ({
     inputSchema: {
         readonly objectId: z.ZodNumber;
     };
+    outputSchema: {
+        readonly connected: z.ZodBoolean;
+        readonly dataAsOf: z.ZodNullable<z.ZodString>;
+        readonly reason: z.ZodOptional<z.ZodString>;
+        readonly page: z.ZodOptional<z.ZodObject<{
+            objectId: z.ZodNumber;
+            drops: z.ZodArray<z.ZodObject<{
+                itemId: z.ZodNumber;
+                itemName: z.ZodNullable<z.ZodString>;
+                kills: z.ZodNumber;
+                drops: z.ZodNumber;
+                rate: z.ZodNumber;
+                reporters: z.ZodNumber;
+            }, z.core.$strip>>;
+            zero: z.ZodNullable<z.ZodObject<{
+                kills: z.ZodNumber;
+                reporters: z.ZodNumber;
+            }, z.core.$strip>>;
+            queued: z.ZodBoolean;
+        }, z.core.$strip>>;
+    };
     annotations: {
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
@@ -1249,6 +1500,19 @@ export declare const MCP_TOOL_LIST: ({
     inputSchema: {
         readonly questId: z.ZodNumber;
     };
+    outputSchema: {
+        readonly connected: z.ZodBoolean;
+        readonly dataAsOf: z.ZodNullable<z.ZodString>;
+        readonly reason: z.ZodOptional<z.ZodString>;
+        readonly page: z.ZodOptional<z.ZodObject<{
+            questId: z.ZodNumber;
+            title: z.ZodNullable<z.ZodString>;
+            level: z.ZodNullable<z.ZodNumber>;
+            giverNpcId: z.ZodNullable<z.ZodNumber>;
+            turnInNpcId: z.ZodNullable<z.ZodNumber>;
+            rewards: z.ZodArray<z.ZodNumber>;
+        }, z.core.$strip>>;
+    };
     annotations: {
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
@@ -1259,6 +1523,21 @@ export declare const MCP_TOOL_LIST: ({
     description: "Goods one Forever vendor sells. An item is listed when 3 installs agree on that item and its copper price. Two agreed prices both stay listed. No copied catalog. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.";
     inputSchema: {
         readonly vendorNpcId: z.ZodNumber;
+    };
+    outputSchema: {
+        readonly connected: z.ZodBoolean;
+        readonly dataAsOf: z.ZodNullable<z.ZodString>;
+        readonly reason: z.ZodOptional<z.ZodString>;
+        readonly page: z.ZodOptional<z.ZodObject<{
+            vendorNpcId: z.ZodNumber;
+            offers: z.ZodArray<z.ZodObject<{
+                itemId: z.ZodNumber;
+                priceCopper: z.ZodNumber;
+                limitedStock: z.ZodNullable<z.ZodNumber>;
+                unlimited: z.ZodBoolean;
+                reporters: z.ZodNumber;
+            }, z.core.$strip>>;
+        }, z.core.$strip>>;
     };
     annotations: {
         readonly readOnlyHint: true;
