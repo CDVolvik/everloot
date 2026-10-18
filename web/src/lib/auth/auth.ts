@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHmac } from "node:crypto";
 import { betterAuth, type DBAdapterInstance } from "better-auth";
 import { nextCookies } from "better-auth/next-js";
 import { genericOAuth } from "better-auth/plugins";
@@ -13,8 +13,6 @@ export function authV2Enabled(env: Record<string, string | undefined> = process.
 
 const noProviderTokens = { accessToken: null, refreshToken: null, idToken: null };
 
-const sha256 = (value: string) => createHash("sha256").update(value).digest("hex");
-
 export function createAuth(options: {
   database: Pool | DBAdapterInstance;
   rateLimitStore: RateLimitStore;
@@ -24,10 +22,13 @@ export function createAuth(options: {
   const { rateLimitStore } = options;
   const { BNET_CLIENT_ID, BNET_CLIENT_SECRET } = env;
   const battlenetConfigured = Boolean(BNET_CLIENT_ID?.trim() && BNET_CLIENT_SECRET?.trim());
+  // Keyed, so the stored digests cannot be matched by hashing every address. Production never runs
+  // without the secret: Better Auth refuses to start there on its default one.
+  const rateLimitKey = (key: string) => createHmac("sha256", env.BETTER_AUTH_SECRET ?? "").update(key).digest("hex");
   return betterAuth({
     database: options.database,
     secret: env.BETTER_AUTH_SECRET,
-    baseURL: env.BETTER_AUTH_URL ?? siteUrl(),
+    baseURL: env.BETTER_AUTH_URL?.trim() || siteUrl(),
     basePath: "/api/auth",
     trustedOrigins: [siteUrl()],
     user: {
@@ -65,11 +66,14 @@ export function createAuth(options: {
       cookiePrefix: "everloot",
       useSecureCookies: env.NODE_ENV === "production",
       database: { generateId: "uuid" },
+      // Vercel sets x-vercel-forwarded-for to the one client address; x-forwarded-for is a fallback
+      // (Better Auth ignores it when it holds a chain).
+      ipAddress: { ipAddressHeaders: ["x-vercel-forwarded-for", "x-forwarded-for"] },
     },
     rateLimit: {
       enabled: true,
-      // The key is "<address>|<path>"; only its digest reaches storage.
-      customStorage: { consume: (key, rule) => rateLimitStore.consume(sha256(key), rule) },
+      // The key is "<address>|<path>"; only its HMAC reaches storage.
+      customStorage: { consume: (key, rule) => rateLimitStore.consume(rateLimitKey(key), rule) },
     },
     databaseHooks: {
       account: {

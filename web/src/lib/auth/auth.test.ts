@@ -1,3 +1,4 @@
+import { createHash, createHmac } from "node:crypto";
 import { afterEach, expect, test, vi } from "vitest";
 import { memoryAdapter } from "better-auth/adapters/memory";
 import { authV2Enabled, createAuth } from "./auth";
@@ -143,7 +144,7 @@ test.each([
   expect(db.auth_session).toEqual([]);
 });
 
-test("rate-limit keys never contain the address", async () => {
+test("rate-limit keys are an HMAC under the auth secret, never the address or its plain hash", async () => {
   stubBattlenet(thrall);
   const { store, rateLimitStore } = mapRateLimitStore();
   const db = { users: [], auth_session: [], auth_account: [], auth_verification: [] };
@@ -151,9 +152,36 @@ test("rate-limit keys never contain the address", async () => {
   const statuses: number[] = [];
   for (let i = 0; i < 5; i++) statuses.push((await startSignIn(auth, { "x-forwarded-for": "203.0.113.9" })).status);
   expect(statuses).toEqual([200, 200, 200, 429, 429]);
-  expect(store.size).toBeGreaterThan(0);
-  for (const key of store.keys()) expect(key).toMatch(/^[0-9a-f]{64}$/);
+  const raw = "203.0.113.9|/sign-in/social";
+  // Without the secret, anyone could hash every IPv4 address and read the table back.
+  expect([...store.keys()]).toEqual([createHmac("sha256", env.BETTER_AUTH_SECRET ?? "").update(raw).digest("hex")]);
+  expect(store.has(createHash("sha256").update(raw).digest("hex"))).toBe(false);
   expect(JSON.stringify([...store])).not.toContain("203.0.113.9");
+});
+
+test("the limiter keys on the Vercel client address first, so a forged or multi-valued X-Forwarded-For shares nothing", async () => {
+  stubBattlenet(thrall);
+  const { rateLimitStore } = mapRateLimitStore();
+  const db = { users: [], auth_session: [], auth_account: [], auth_verification: [] };
+  const auth = createAuth({ database: memoryAdapter(db), rateLimitStore, env });
+  const statuses: number[] = [];
+  // One caller rotating X-Forwarded-For (sometimes a chain) is still one caller.
+  for (const xff of ["198.51.100.1", "198.51.100.2", "198.51.100.3, 10.0.0.1", "198.51.100.4"]) {
+    statuses.push((await startSignIn(auth, { "x-vercel-forwarded-for": "203.0.113.9", "x-forwarded-for": xff })).status);
+  }
+  expect(statuses).toEqual([200, 200, 200, 429]);
+  // A different caller behind the same proxy chain gets its own bucket.
+  expect((await startSignIn(auth, { "x-vercel-forwarded-for": "203.0.113.10", "x-forwarded-for": "198.51.100.3, 10.0.0.1" })).status).toBe(200);
+});
+
+test("an empty BETTER_AUTH_URL falls back to the site URL", async () => {
+  stubBattlenet(thrall);
+  const db = { users: [], auth_session: [], auth_account: [], auth_verification: [] };
+  const auth = createAuth({ database: memoryAdapter(db), rateLimitStore: mapRateLimitStore().rateLimitStore, env: { ...env, BETTER_AUTH_URL: " " } });
+  const response = await startSignIn(auth);
+  expect(response.status).toBe(200);
+  const { url } = await response.json() as { url: string };
+  expect(new URL(url).searchParams.get("redirect_uri")).toBe("https://everloot.app/api/auth/callback/battlenet");
 });
 
 test("a sign-in start keeps its state in a cookie and writes no database row", async () => {

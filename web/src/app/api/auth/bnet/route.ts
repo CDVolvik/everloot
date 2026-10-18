@@ -43,11 +43,11 @@ export async function GET(req: Request) {
 // limiter, and it keys on the caller's address, so that header travels with the request.
 async function startBetterAuthSignIn(req: Request) {
   const headers = new Headers({ "content-type": "application/json", origin: siteUrl() });
-  for (const name of ["x-forwarded-for", "x-real-ip", "cookie"]) {
+  for (const name of ["x-vercel-forwarded-for", "x-forwarded-for", "x-real-ip", "cookie"]) {
     const value = req.headers.get(name);
     if (value) headers.set(name, value);
   }
-  const start = await getAuth().handler(new Request(`${process.env.BETTER_AUTH_URL ?? siteUrl()}/api/auth/sign-in/social`, {
+  const start = await getAuth().handler(new Request(`${process.env.BETTER_AUTH_URL?.trim() || siteUrl()}/api/auth/sign-in/social`, {
     method: "POST", headers, body: JSON.stringify({ provider: "battlenet", callbackURL: "/" }),
   }));
   const { url } = await start.json().catch(() => ({})) as { url?: string };

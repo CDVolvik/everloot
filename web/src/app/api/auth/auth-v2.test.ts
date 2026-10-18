@@ -54,7 +54,10 @@ test("v2 bnet start goes through the router with the caller address, so the rate
     new Response(JSON.stringify({ url: "https://oauth.battle.net/authorize?x=1", redirect: true }), { headers }),
   );
   const res = await bnetGET(new Request("https://everloot.app/api/auth/bnet", {
-    headers: { "x-forwarded-for": "203.0.113.9", "x-real-ip": "203.0.113.9", cookie: "a=b", "x-ignored": "1" },
+    headers: {
+      "x-vercel-forwarded-for": "203.0.113.9", "x-forwarded-for": "203.0.113.9", "x-real-ip": "203.0.113.9",
+      cookie: "a=b", "x-ignored": "1",
+    },
   }));
   expect(res.headers.get("location")).toBe("https://oauth.battle.net/authorize?x=1");
   expect(res.headers.getSetCookie()).toEqual(["everloot.oauth_state=s; Path=/; HttpOnly", "everloot.other=o; Path=/; HttpOnly"]);
@@ -63,9 +66,16 @@ test("v2 bnet start goes through the router with the caller address, so the rate
   expect(forwarded.url).toBe("https://everloot.app/api/auth/sign-in/social");
   expect(Object.fromEntries(forwarded.headers)).toEqual({
     "content-type": "application/json", origin: "https://everloot.app",
-    "x-forwarded-for": "203.0.113.9", "x-real-ip": "203.0.113.9", cookie: "a=b",
+    "x-vercel-forwarded-for": "203.0.113.9", "x-forwarded-for": "203.0.113.9", "x-real-ip": "203.0.113.9", cookie: "a=b",
   });
   expect(await forwarded.json()).toEqual({ provider: "battlenet", callbackURL: "/" });
+});
+
+test("v2 bnet start ignores an empty BETTER_AUTH_URL and uses the site URL", async () => {
+  vi.stubEnv("BETTER_AUTH_URL", " ");
+  v2.fake.handler.mockResolvedValue(Response.json({ url: "https://oauth.battle.net/authorize?x=1", redirect: true }));
+  await bnetGET(new Request("https://everloot.app/api/auth/bnet"));
+  expect((v2.fake.handler.mock.calls[0][0] as Request).url).toBe("https://everloot.app/api/auth/sign-in/social");
 });
 
 test("v2 bnet start passes a refusal through instead of redirecting", async () => {
