@@ -1,0 +1,136 @@
+{
+  "$id": "https://everloot.app/schema/mcp/answer_sources.json",
+  "title": "Evidence for a question, each piece with its source",
+  "description": "The evidence behind a question about WoW: Forever, for an answer that cites its sources: facts players observed (public after three installs agree, with the install count), curated facts, and the 2023 Warcraft Wiki (marked: may differ in Forever). Every piece carries a claim, its source URL, licence and date. Returns evidence, not prose: write the answer from it and cite the pieces. Further-reading links are search URLs on other sites; nothing is fetched from them. Reads Everloot's current authorized public corpus when connected; when it is not, the observed layer is unrecorded, not empty.",
+  "annotations": {
+    "readOnlyHint": true,
+    "openWorldHint": false
+  },
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "question": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 500,
+        "description": "The question, with names spelled as in the game."
+      },
+      "limit": {
+        "default": 8,
+        "description": "Most lore and curated pieces.",
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 25
+      }
+    },
+    "required": [
+      "question"
+    ]
+  },
+  "outputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "evidence": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "claim": {
+              "type": "string",
+              "description": "One short statement. Observed facts are in Everloot's words; lore is the source's own excerpt."
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "observed",
+                "curated",
+                "lore"
+              ],
+              "description": "observed: players' uploads, public after three installs agree. curated: Everloot's own facts. lore: the 2023 Warcraft Wiki, which may differ in WoW: Forever."
+            },
+            "source": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "title",
+                "url"
+              ],
+              "additionalProperties": false
+            },
+            "licence": {
+              "type": "string"
+            },
+            "asOf": {
+              "description": "When the source was read, or when the observations were current.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "support": {
+              "description": "Observed facts: how many installs reported it.",
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "claim",
+            "kind",
+            "source",
+            "licence",
+            "asOf"
+          ],
+          "additionalProperties": false
+        },
+        "description": "Observed first, then curated, then lore."
+      },
+      "furtherReading": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "site": {
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "site",
+            "url"
+          ],
+          "additionalProperties": false
+        },
+        "description": "Search links on other sites. Nothing was fetched."
+      },
+      "dataAsOf": {
+        "description": "When the observed layer was current; null when it is not connected.",
+        "type": [
+          "string",
+          "null"
+        ]
+      }
+    },
+    "required": [
+      "evidence",
+      "furtherReading",
+      "dataAsOf"
+    ],
+    "additionalProperties": false
+  },
+  "x-everloot-output": {
+    "type": "text",
+    "endsWith": "Licence: CC BY-SA 4.0. Credit: Everloot contributors, https://everloot.app"
+  }
+}

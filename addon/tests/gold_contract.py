@@ -1,4 +1,4 @@
-"""Run with: uv run --with lupa python addon/tests/gold_contract.py"""
+"""Run with: uv run --with lupa --with jsonschema python addon/tests/gold_contract.py"""
 from pathlib import Path
 from lupa.lua51 import LuaRuntime
 
@@ -249,4 +249,7 @@ for source in sorted(root.rglob("*.lua")):
     for what, pattern in checks.items():
         found = re.search(pattern, code)
         assert not found, f"{source.name} has {what} of a buy, bid, post or craft API: {found.group(0)}"
+# Every row the addon wrote is a record the site would accept (packages/protocol/schema).
+from protocol_schema import check_all  # noqa: E402
+check_all(lua)
 print("Lua 5.1 gold: vendor sales, flights, quest rewards, net auction sales, postage and buyouts (legacy and C_AuctionHouse, items and commodities) attributed; other purchases and unknown income unrecorded")

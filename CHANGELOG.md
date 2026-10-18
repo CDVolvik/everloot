@@ -10,8 +10,6 @@ that has a zip in the repository. Earlier builds have none.
 
 ## [Unreleased]
 
-Pull requests merged to `main` are listed in the nightly pre-releases until the next tagged release.
-
 ### Added
 - **Everloot Desktop** (`desktop/`): the companion as a tray app with a sidebar window. First run
   shows what leaves the computer and finds the game folder; then it uploads after every logout,
@@ -23,6 +21,34 @@ Pull requests merged to `main` are listed in the nightly pre-releases until the 
   local characters view (gold, gear, progress), and the site's tools embedded. Electron, built on
   `companion/src`, same data folder as the command line. Tagged `desktop-vX.Y.Z`; the first
   release is not code-signed.
+
+### Changed
+- The upload record contract moved from `web/src/lib/intake.ts` into one package, `packages/protocol`
+  (`@everloot/protocol`), that the site, the knowledge base and the companion install. Uploads now carry
+  `protocol`, the contract version; the server accepts the current major and the previous one. The
+  addon's contract tests validate the rows it writes against the package's JSON Schema files. The
+  addon's Lua comments still name the old file; they change with the next addon release.
+- The package also holds the licence and credit line, the JSON API's response shapes with a route
+  catalogue, and the MCP server's tool table (22 tools). The server registers its tools from that table,
+  the connect page and `llms.txt` list from it, and each API route's test parses a real response with the
+  protocol's schema, so none of the three can drift from the others.
+- `/connect` gained a reference of every MCP tool with its arguments and of every JSON endpoint with its
+  parameters and responses, rendered from the protocol, plus paging examples in JavaScript and Python. The
+  site serves `/api/openapi.json` (OpenAPI 3.1, assembled from the same catalogue) and the protocol's JSON
+  Schema files under `/schema/`. `llms.txt` lists both.
+- A 23rd MCP tool, `answer_sources`: the evidence behind a question, observed facts first (with install
+  counts), then curated facts and the 2023 wiki, every piece with its source URL, licence and date, plus
+  search links on other sites (links only). Structured output from the start.
+- The MCP server's first resources, documents an assistant reads whole: `everloot://builds` (the build the
+  game-file facts come from and the build registry, JSON), `everloot://methodology` (how uploads become
+  facts) and `everloot://data-policy` (the policy in short, with the link to the full one). The two texts
+  are held to the methodology page and `docs/DATA_POLICY.md` by tests. Listed on `/connect`, in `llms.txt`
+  and in `/schema/mcp/resources.json`.
+- Four MCP tools (`search_knowledge`, `get_entity`, `get_by_name`, `recent_changes`) declare an output schema
+  and answer with structured content beside the text, so a client can read hits and timeline entries as
+  objects instead of parsing prose. The schema files and `/connect` show which tools do.
+
+Pull requests merged to `main` are listed in the nightly pre-releases until the next tagged release.
 
 ## [0.3.3] - 2026-10-19
 

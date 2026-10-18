@@ -1,0 +1,143 @@
+{
+  "$id": "https://everloot.app/schema/mcp/search_knowledge.json",
+  "title": "Search the Everloot knowledge base",
+  "description": "Search WoW lore and Forever reference data. Exact-name matches rank first. Every hit carries its source and licence.",
+  "annotations": {
+    "readOnlyHint": true,
+    "openWorldHint": false
+  },
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "query": {
+        "type": "string",
+        "maxLength": 1000,
+        "description": "What to look up: names, questions, keywords. Question words are ignored."
+      },
+      "kind": {
+        "description": "Narrow to one record kind.",
+        "type": "string",
+        "enum": [
+          "item",
+          "npc",
+          "object",
+          "quest",
+          "zone",
+          "spell",
+          "lore_page",
+          "creator",
+          "realm"
+        ]
+      },
+      "version": {
+        "description": "Narrow to one game version.",
+        "type": "string",
+        "enum": [
+          "forever",
+          "classic",
+          "retail",
+          "lore"
+        ]
+      },
+      "limit": {
+        "default": 8,
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 25
+      }
+    },
+    "required": [
+      "query"
+    ]
+  },
+  "outputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "hits": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991,
+              "description": "The record id, for get_entity."
+            },
+            "extId": {
+              "type": "string",
+              "description": "The source's own id, such as a wiki page title."
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "item",
+                "npc",
+                "object",
+                "quest",
+                "zone",
+                "spell",
+                "lore_page",
+                "creator",
+                "realm"
+              ]
+            },
+            "name": {
+              "type": "string"
+            },
+            "snippet": {
+              "type": "string",
+              "description": "A short excerpt, in the source's words."
+            },
+            "gameVersion": {
+              "type": "string",
+              "enum": [
+                "forever",
+                "classic",
+                "retail",
+                "lore"
+              ]
+            },
+            "sourceUrl": {
+              "type": "string",
+              "description": "Where the record came from. Keep it with the text."
+            },
+            "sourceId": {
+              "type": "string"
+            },
+            "licence": {
+              "type": "string",
+              "description": "The source's licence, such as CC-BY-SA-4.0."
+            },
+            "retrievedAt": {
+              "type": "string",
+              "description": "When the source was read."
+            }
+          },
+          "required": [
+            "id",
+            "extId",
+            "kind",
+            "name",
+            "snippet",
+            "gameVersion",
+            "sourceUrl",
+            "sourceId",
+            "licence",
+            "retrievedAt"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "hits"
+    ],
+    "additionalProperties": false
+  },
+  "x-everloot-output": {
+    "type": "text"
+  }
+}

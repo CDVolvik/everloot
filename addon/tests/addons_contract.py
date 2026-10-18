@@ -1,4 +1,4 @@
-"""Run with: uv run --with lupa python addon/tests/addons_contract.py"""
+"""Run with: uv run --with lupa --with jsonschema python addon/tests/addons_contract.py"""
 from pathlib import Path
 from lupa.lua51 import LuaRuntime
 
@@ -150,4 +150,7 @@ lua.execute("""
 event('PLAYER_LOGIN')
 assert(Everloot:Count('addon_seen') == 3, 'one failing addon is skipped')
 """)
+# Every row the addon wrote is a record the site would accept (packages/protocol/schema).
+from protocol_schema import check_all  # noqa: E402
+check_all(lua)
 print("Lua 5.1 addons: off by default and after upgrade, C_AddOns and legacy API, plain titles, rows on change plus a weekly check-in, off deletes and unpauses")

@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { mergeCorpus, mergeCorpusBatches, publicRecords } from "../src/corpus.js";
-import { parseRecords } from "../../web/src/lib/intake.js";
+import { parseRecords } from "@everloot/protocol";
 
 const loot = (eventId = "epoch:1", over = {}) => ({
   kind: "loot", installId: "install-one", eventId,

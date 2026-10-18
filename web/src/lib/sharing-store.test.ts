@@ -6,7 +6,7 @@ import { createSharingStore } from "./sharing-store";
 import { createUploadStore } from "./upload-store";
 import type { CloudConfig } from "./upload-store";
 import { authorizeRecord } from "../../../kb/src/publication";
-import { parseRecords } from "./intake";
+import { parseRecords } from "@everloot/protocol";
 const now = () => new Date("2026-10-07T00:00:00Z");
 const grantInput = { installId: "install-one", realm: "Moon Guard", subjectType: "character" as const,
   subject: "Thrall", categories: ["gold" as const], expiresAt: "2026-11-01T00:00:00Z",

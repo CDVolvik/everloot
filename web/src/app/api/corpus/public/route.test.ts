@@ -5,9 +5,10 @@ vi.mock("@/lib/upload-store", () => ({ uploadStore: { loadCorpus: store.loadCorp
 vi.mock("@/lib/intake-quota", () => ({ intakeQuota: { api: store.api } }));
 
 import { GET } from "./route";
-import { ALL_RECORD_KINDS, COMPLETION_KINDS, PUBLIC_RECORD_KINDS } from "@/lib/intake";
+import { ALL_RECORD_KINDS, COMPLETION_KINDS, PUBLIC_RECORD_KINDS } from "@everloot/protocol";
 import { ANON_PAGE, KEY_PAGE } from "@/lib/data-guard";
 import { newKey } from "@/lib/api-keys";
+import { corpusPublicResponse } from "@everloot/protocol";
 
 const base = { installId: "install-1", capturedAt: "2026-10-09T00:00:00.000Z" };
 const gold = { ...base, eventId: "e:1", kind: "gold_snapshot", character: "Thrall", realm: "Forever", currentCopper: 1, peakCopper: 1 };
@@ -145,4 +146,10 @@ test("guard on: a key gets the larger page without touching the anonymous quota"
 test("a bad offset or limit is a 400", async () => {
   expect((await GET(req("?offset=-5"))).status).toBe(400);
   expect((await GET(req("?limit=0"))).status).toBe(400);
+});
+
+test("the body is the protocol's corpusPublicResponse", async () => {
+  const body = await (await GET(req("?kinds=loot,vendor"))).json();
+  const parsed = corpusPublicResponse.safeParse(body);
+  expect(parsed.success ? null : parsed.error.issues).toBeNull();
 });

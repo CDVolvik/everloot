@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import type { RecordKind } from "@everloot/protocol";
 import { parseEverlootLua } from "../../web/src/lib/sv-parse";
 import { prepareUpload, sendBatches } from "../../web/src/lib/upload-batches";
 import type { SentState } from "./sent-state";
@@ -10,6 +11,9 @@ export interface UploadOptions {
   state: SentState;
 }
 
+/** The one kind the companion never sends: installed addon lists go only from the upload page, after its preview. */
+const ADDON_LIST: RecordKind = "addon_seen";
+
 export interface UploadResult { sent: number; batches: number; heldNamed: number; heldLegacy: number; heldAddons: number; invalid: number }
 
 /**
@@ -20,7 +24,7 @@ export interface UploadResult { sent: number; batches: number; heldNamed: number
 export async function uploadFile(file: string, options: UploadOptions): Promise<UploadResult> {
   const parsed = parseEverlootLua(readFileSync(file, "utf8"));
   const unsent = parsed.records.filter((r) => typeof r.eventId !== "string" || !options.state.has(parsed.installId, r.eventId));
-  const records = unsent.filter((r) => r.kind !== "addon_seen");
+  const records = unsent.filter((r) => r.kind !== ADDON_LIST);
   const session = prepareUpload({ addonVersion: parsed.version, clientBuild: parsed.clientBuild, records }, {}, []);
   const result = { sent: 0, batches: session.batches.length, heldNamed: session.held.named, heldLegacy: session.held.legacy,
     heldAddons: unsent.length - records.length, invalid: session.held.invalid };

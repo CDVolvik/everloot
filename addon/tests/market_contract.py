@@ -1,4 +1,4 @@
-"""Run with: uv run --with lupa python addon/tests/market_contract.py
+"""Run with: uv run --with lupa --with jsonschema python addon/tests/market_contract.py
 
 The Forever auction house (C_AuctionHouse): a full scan the player starts, read in chunks, summarised
 per item, stored as auction_snapshot parts; prices in tooltips from the player's own scan and from
@@ -282,4 +282,7 @@ for source in sorted(root.rglob("*.lua")):
     # what must never appear is a call, directly or through pcall.
     called = re.search(rf"\b({names})\s*\(|pcall\(\s*(?:C_AuctionHouse\.)?({names})\b", code)
     assert not called, f"{source.name} calls a buy, bid or post API: {called.group(0)}"
+# Every row the addon wrote is a record the site would accept (packages/protocol/schema).
+from protocol_schema import check_all  # noqa: E402
+check_all(lua)
 print("Lua 5.1 market: clicked full scan, chunked reads, retry, parts, cooldown, 3 scans kept, scan timeout, tooltips with sliced checksums, stale and thin labels, no buy or post call")

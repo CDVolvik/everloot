@@ -1,0 +1,9 @@
+{
+  "maxBodyBytes": 1000000,
+  "batchBytes": 600000,
+  "recordsPerBatch": 2000,
+  "recordsPerFile": 100000,
+  "addonVersionMax": 20,
+  "grantTokensMax": 4,
+  "realmsPerUpload": 3
+}

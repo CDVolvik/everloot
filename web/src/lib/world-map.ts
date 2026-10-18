@@ -3,7 +3,7 @@ import { rollupMapBounds, type MapBoundsRow } from "../../../kb/src/map-bounds";
 import { checkReportedBounds, placeEntrances, worldToMap, zoneTable, type BoundsCheck, type EntrancePin } from "../../../kb/src/world-coords";
 import { WorldMapData } from "../../../kb/src/world-map-data";
 import { observedPins } from "../../../kb/src/world-map-near";
-import { PUBLIC_RECORD_KINDS } from "./intake";
+import { PUBLIC_RECORD_KINDS } from "@everloot/protocol";
 import { mapHref, type MapPin } from "./map-view";
 import { worldFactsFromRecords, type WorldFacts } from "../../../kb/src/world-pages";
 

@@ -20,5 +20,9 @@ What we are working on, and what you can pick up. The live board is the
 
 ## Later
 
+- **Mobile apps.** An Android app on Google Play first, then iOS on the App Store: the database, the talent
+  calculator and the raid builder in your pocket, and uploads from the desktop companion without a PC
+  nearby. Free like the site; an account only adds sync. Code will live in its own repositories
+  (`Everloot/android`, `Everloot/ios`).
 - Recipe windows from real crafts, auction deposits, and the gaps listed in
   [`docs/sources/source-catalog.md`](docs/sources/source-catalog.md).

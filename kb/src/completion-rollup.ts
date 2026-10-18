@@ -17,8 +17,8 @@
  * The voter of each content's creator is stored with the install it came from (`by`), so the stored
  * rollup links an address hash to an install id until a rebuild drops uploads that were deleted.
  */
-import { COMPLETION_KINDS, parseRecords } from "../../web/src/lib/intake.js";
-import type { IntakeRecord } from "../../web/src/lib/intake.js";
+import { COMPLETION_KINDS, parseRecords } from "@everloot/protocol";
+import type { IntakeRecord } from "@everloot/protocol";
 import { canonicalJson } from "./corpus.js";
 import { authorizeRecord, type PublicationState } from "./publication.js";
 import type { CompletionFacts, OwnedCharacter } from "./completion.js";

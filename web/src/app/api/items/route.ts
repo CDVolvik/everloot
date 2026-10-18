@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { describe, filterItems, resolveClass, resolveSubclass, type ItemFilter } from "../../../../../kb/src/item-taxonomy";
+import { describe, filterItems, resolveClass, resolveLegacyClass, resolveSubclass, type ItemFilter } from "../../../../../kb/src/item-taxonomy";
 import { admit, badPage, pageOf, pageRequest } from "@/lib/data-guard";
 import { gameDataNotice } from "@/lib/edges";
 import { CLIENT_TAXONOMY as T, QUALITY_SLUGS, SLOT_SLUGS } from "@/lib/items";
@@ -27,7 +27,7 @@ export async function GET(req: Request) {
   const sub = params.get("subclass");
   if (sub !== null && cls === null) return bad("subclass needs class.");
   if (cls !== null) {
-    const c = resolveClass(T, cls);
+    const c = resolveClass(T, cls) ?? resolveLegacyClass(T, cls);
     if (!c) return bad(`class must be one of ${T.classes.map((x) => x.slug).join(", ")}.`);
     f.classId = c.id;
     if (sub !== null) {

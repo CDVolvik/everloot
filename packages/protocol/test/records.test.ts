@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { ALL_RECORD_KINDS, parseRecords, parseUpload, validateUpload } from "./intake.js";
+import { ALL_RECORD_KINDS, parseRecords, parseUpload, validateUpload } from "../src/index.js";
 
 const base = { installId: "test-install-1234", capturedAt: "2026-09-29T12:00:00.000Z", eventId: "evt-1" };
 
@@ -420,5 +420,33 @@ describe("canonical parsing", () => {
     const result = parseRecords(rows);
     expect(result.receipt.accepted).toEqual([{ index: 1500, kind: "price_seen" }]);
     expect(result.records).toHaveLength(1);
+  });
+});
+
+describe("protocol version on the envelope", () => {
+  const payload = (protocol?: string) => ({
+    addonVersion: "0.3.3",
+    ...(protocol ? { protocol } : {}),
+    records: [{ ...base, kind: "price_seen", item: "Silk", copper: 10 }],
+  });
+
+  test("a missing protocol means major 1 and is accepted", () => {
+    const parsed = parseUpload(payload());
+    expect(parsed.ok).toBe(true);
+    expect(parsed.receipt.accepted).toHaveLength(1);
+  });
+
+  test("a newer minor of the current major is accepted", () => {
+    expect(parseUpload(payload("1.4.0")).ok).toBe(true);
+  });
+
+  test("a major the server does not speak is refused whole, with the reason", () => {
+    const parsed = parseUpload(payload("2.0.0"));
+    expect(parsed.ok).toBe(false);
+    expect(parsed.receipt.rejected).toEqual([{ index: -1, reason: "protocol 2.0.0 is not supported; update the addon or uploader" }]);
+  });
+
+  test("a protocol that is not x.y.z fails the envelope", () => {
+    expect(parseUpload(payload("one")).ok).toBe(false);
   });
 });

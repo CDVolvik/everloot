@@ -1,0 +1,96 @@
+{
+  "$id": "https://everloot.app/schema/records/achievement_owned.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "installId": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 64,
+      "description": "Random install id, no account needed."
+    },
+    "eventId": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 96,
+      "pattern": "^[A-Za-z0-9:_-]+$"
+    },
+    "capturedAt": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+      "description": "ISO time the event happened in-game."
+    },
+    "characterKey": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}$"
+    },
+    "class": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 20,
+      "pattern": "^[A-Za-z]+$",
+      "description": "Class token from UnitClass, e.g. MAGE."
+    },
+    "level": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100
+    },
+    "kind": {
+      "type": "string",
+      "const": "achievement_owned"
+    },
+    "achievementId": {
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 2000000000
+    },
+    "completed": {
+      "type": "boolean"
+    },
+    "earnedByMe": {
+      "description": "False when the achievement is complete on the account but not by this character.",
+      "type": "boolean"
+    },
+    "earnedOn": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    },
+    "criteriaMet": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 5000
+    },
+    "criteriaTotal": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 5000
+    },
+    "quantity": {
+      "description": "A progress-bar achievement's current amount.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2000000000
+    },
+    "required": {
+      "description": "A progress-bar achievement's target amount.",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 2000000000
+    }
+  },
+  "required": [
+    "installId",
+    "capturedAt",
+    "characterKey",
+    "class",
+    "level",
+    "kind",
+    "achievementId",
+    "completed",
+    "criteriaMet",
+    "criteriaTotal"
+  ],
+  "description": "Everloot upload record: achievement_owned. The server also checks: quantity and required come together; quantity cannot exceed required; criteriaMet cannot exceed criteriaTotal; only a completed achievement has a date; earnedOn is a real calendar date."
+}

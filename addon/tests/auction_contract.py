@@ -1,4 +1,4 @@
-"""Run with: uv run --with lupa python addon/tests/auction_contract.py"""
+"""Run with: uv run --with lupa --with jsonschema python addon/tests/auction_contract.py"""
 from pathlib import Path
 from lupa.lua51 import LuaRuntime
 
@@ -49,4 +49,7 @@ assert(EverlootDB.toggles.auctions == true, '/everloot auctions on must enable t
 SlashCmdList.EVERLOOT('auctions off')
 assert(EverlootDB.toggles.auctions == false, '/everloot auctions off must disable the toggle')
 """)
+# Every row the addon wrote is a record the site would accept (packages/protocol/schema).
+from protocol_schema import check_all  # noqa: E402
+check_all(lua)
 print("Lua 5.1 auctions: bid-only skipped, per-unit price, stack size kept")

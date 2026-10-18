@@ -1,18 +1,25 @@
-import { readFileSync } from "node:fs";
+import { MCP_RESOURCE_URIS, MCP_TOOL_NAMES } from "@everloot/protocol";
 import { expect, test } from "vitest";
 import { GET as llmsFull } from "@/app/llms-full.txt/route";
 import { GET as llms } from "@/app/llms.txt/route";
 import { tools, toolHref } from "@/data/tools";
 import { llmsFullTxt, llmsTxt } from "./llms";
 
-const source = readFileSync(new URL("../../../kb/src/mcp-server.ts", import.meta.url), "utf8");
-const registered = [...source.matchAll(/registerTool\(\s*"([a-z_]+)"/g)].map((m) => m[1]);
+const registered = MCP_TOOL_NAMES;
 
-test("both files list every MCP tool the server registers", () => {
+test("both files list every MCP tool the protocol declares", () => {
   expect(registered.length).toBeGreaterThan(0);
   for (const name of registered) {
     expect(llmsTxt()).toContain(name);
     expect(llmsFullTxt()).toContain(`- ${name}: `);
+  }
+});
+
+test("both files list every MCP resource the protocol declares", () => {
+  expect(MCP_RESOURCE_URIS.length).toBeGreaterThan(0);
+  for (const uri of MCP_RESOURCE_URIS) {
+    expect(llmsTxt()).toContain(uri);
+    expect(llmsFullTxt()).toContain(`- ${uri}: `);
   }
 });
 

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { PUBLIC_RECORD_KINDS as PUBLIC_KINDS } from "@/lib/intake";
+import { PUBLIC_RECORD_KINDS as PUBLIC_KINDS } from "@everloot/protocol";
 import { admit, attribution, attributionHeaders, badPage, pageOf, pageRequest } from "@/lib/data-guard";
 import { uploadStore } from "@/lib/upload-store";
 import { recordUsage } from "@/lib/usage-metrics";

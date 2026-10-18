@@ -1,0 +1,32 @@
+{
+  "$id": "https://everloot.app/schema/upload.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "addonVersion": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 20
+    },
+    "clientBuild": {
+      "type": "string",
+      "maxLength": 32,
+      "pattern": "^\\d+(\\.\\d+)+$"
+    },
+    "protocol": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "records": {
+      "minItems": 1,
+      "maxItems": 2000,
+      "type": "array",
+      "items": {}
+    }
+  },
+  "required": [
+    "addonVersion",
+    "records"
+  ],
+  "description": "The request envelope POSTed to /api/intake. Each entry of records is one record kind from records/*.json. A missing protocol means major 1; the server accepts the current major and the previous one."
+}

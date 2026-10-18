@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { GAME_DATA_CREDIT } from "../../../kb/src/attribution";
+import { GAME_DATA_CREDIT } from "@everloot/protocol";
+import { CLIENT_SKILLS } from "../../../kb/src/client-layer-file";
 import { CLIENT_LABEL, edgesFrom, entityLabel, evidenceLabel, groupByRel, type Edge, type EdgeKind, type Rel } from "../../../kb/src/edges";
 import GameIcon from "./game/GameIcon";
 
@@ -13,33 +14,47 @@ function hrefFor(kind: EdgeKind, id: number, rel: Rel): string | null {
   if (kind === "object") return `/database/objects/${id}`;
   if (kind === "quest") return `/database/quests/${id}`;
   if (kind === "zone") return `/map?zone=${id}`;
+  if (kind === "skill") return "/tools/professions";
   return null;
 }
 
 const SAME_ICON_SHOWN = 12;
 
-function Target({ edge, rel, spellIcon }: { edge: Edge; rel: Rel; spellIcon?: SpellIconFor }) {
+/** A profession by its skill line id, with the client's name where the layer has it. */
+const professionName = (skill: number) => CLIENT_SKILLS.get(skill) ?? entityLabel("skill", skill);
+
+/** The profession that teaches a spell, from the game-file relation spell -> skill line; undefined when none. */
+function professionOf(spellId: number, client: readonly Edge[]): string | undefined {
+  const e = client.find((o) => o.fromKind === "spell" && o.fromId === spellId && o.rel === "in_skill_line");
+  return e ? professionName(e.toId) : undefined;
+}
+
+function Target({ edge, rel, client, spellIcon }: { edge: Edge; rel: Rel; client: readonly Edge[]; spellIcon?: SpellIconFor }) {
   const href = hrefFor(edge.toKind, edge.toId, rel);
-  const text = entityLabel(edge.toKind, edge.toId);
+  const text = edge.toKind === "skill" ? professionName(edge.toId) : entityLabel(edge.toKind, edge.toId);
   const icon = edge.toKind === "spell" ? spellIcon?.(edge.toId) : undefined;
+  // A spell's profession beside it (Created by: spell 2660 · Blacksmithing), as item databases list recipes.
+  const profession = edge.toKind === "spell" ? professionOf(edge.toId, client) : undefined;
   return (
     <>
       {icon ? <><GameIcon src={icon} size={18} />{" "}</> : null}
       {href ? <Link href={href} className="text-accent hover:underline underline-offset-4">{text}</Link> : text}
+      {profession ? <span className="text-fg-2">{` · ${profession}`}</span> : null}
     </>
   );
 }
 
 /**
- * Relations of one entity grouped by relation. Player-observed groups say how many installs agree;
- * game-file groups carry the label and the build, and the section ends with Blizzard's notice when
- * any are shown. `skip` leaves out relations the page already shows in full (an item's drop table).
+ * Relations of one entity grouped by relation. A player-observed row says how many installs agree; the
+ * game-file rows carry no mark of their own, and the section ends with one line that says they were read
+ * from the files, which build, and Blizzard's notice. `skip` leaves out relations the page already shows
+ * in full (an item's drop table).
  */
 export function EntityRelations({ kind, id, observed, client, skip = [], spellIcon }: {
   kind: EdgeKind; id: number; observed: readonly Edge[]; client: readonly Edge[]; skip?: Rel[]; spellIcon?: SpellIconFor;
 }) {
   const groups = groupByRel(edgesFrom([...observed, ...client], kind, id)).filter((g) => !skip.includes(g.rel));
-  const anyClient = groups.some((g) => g.edges.some((e) => e.evidence === "client"));
+  const clientBuild = groups.flatMap((g) => g.edges).find((e) => e.evidence === "client")?.build;
   return (
     <section className="space-y-3" aria-labelledby="relations">
       <h2 id="relations" className="text-2xl text-fg">Relations</h2>
@@ -54,8 +69,8 @@ export function EntityRelations({ kind, id, observed, client, skip = [], spellIc
                 <ul className="space-y-1 text-fg">
                   {g.edges.map((e) => (
                     <li key={`${e.evidence}-${e.toKind}-${e.toId}`}>
-                      {e.rel === "same_icon" ? <SameIcon edge={e} self={id} client={client} /> : <Target edge={e} rel={g.rel} spellIcon={spellIcon} />}
-                      <span className="text-muted">{` · ${e.evidence === "client" ? `${CLIENT_LABEL.toLowerCase()}, build ${e.build}` : evidenceLabel(e)}`}</span>
+                      {e.rel === "same_icon" ? <SameIcon edge={e} self={id} client={client} /> : <Target edge={e} rel={g.rel} client={client} spellIcon={spellIcon} />}
+                      {e.evidence === "observed" ? <span className="text-muted">{` · ${evidenceLabel(e)}`}</span> : null}
                     </li>
                   ))}
                 </ul>
@@ -64,7 +79,7 @@ export function EntityRelations({ kind, id, observed, client, skip = [], spellIc
           ))}
         </dl>
       )}
-      {anyClient ? <p className="text-xs text-muted">{CLIENT_LABEL}: read from the game files, not yet seen in play. {GAME_DATA_CREDIT}</p> : null}
+      {clientBuild ? <p className="text-xs text-muted">Rows without an install count are {CLIENT_LABEL.toLowerCase()}: read from build {clientBuild}, not yet seen in play. {GAME_DATA_CREDIT}</p> : null}
     </section>
   );
 }

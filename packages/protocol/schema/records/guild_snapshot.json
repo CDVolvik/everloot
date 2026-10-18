@@ -1,0 +1,103 @@
+{
+  "$id": "https://everloot.app/schema/records/guild_snapshot.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "installId": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 64,
+      "description": "Random install id, no account needed."
+    },
+    "eventId": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 96,
+      "pattern": "^[A-Za-z0-9:_-]+$"
+    },
+    "capturedAt": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+      "description": "ISO time the event happened in-game."
+    },
+    "kind": {
+      "type": "string",
+      "const": "guild_snapshot"
+    },
+    "guildName": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 60
+    },
+    "realm": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 60
+    },
+    "faction": {
+      "type": "string",
+      "enum": [
+        "alliance",
+        "horde"
+      ]
+    },
+    "claimToken": {
+      "description": "Legacy field; never proof of officer authority.",
+      "type": "string",
+      "minLength": 16
+    },
+    "members": {
+      "minItems": 1,
+      "maxItems": 2000,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 30
+          },
+          "rank": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "level": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "class": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 30
+          },
+          "lastOnlineDays": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 3650
+          }
+        },
+        "required": [
+          "name",
+          "rank",
+          "level",
+          "class",
+          "lastOnlineDays"
+        ]
+      }
+    }
+  },
+  "required": [
+    "installId",
+    "capturedAt",
+    "kind",
+    "guildName",
+    "realm",
+    "faction",
+    "members"
+  ],
+  "description": "Everloot upload record: guild_snapshot."
+}

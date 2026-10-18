@@ -1,12 +1,12 @@
-import { CORPUS_URL, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR } from "@/app/connect/connect-data";
+import { CORPUS_URL, MCP_RESOURCES, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR } from "@/app/connect/connect-data";
 import { LAUNCH, longDate } from "@/data/wow-forever";
 import { tools, toolHref } from "@/data/tools";
-import { PUBLIC_RECORD_KINDS } from "@/lib/intake";
+import { PUBLIC_RECORD_KINDS } from "@everloot/protocol";
 import { latestBuildLine } from "@/lib/changes-facts";
 import { loadTimeline, type ChangeEntry } from "@/lib/changes";
 import { NON_AFFILIATION } from "@/lib/jsonld";
 import { ANON_PAGE, ANON_PER_HOUR, guardOn } from "@/lib/data-guard";
-import { CREDIT_LINE } from "../../../kb/src/attribution";
+import { CREDIT_LINE } from "@everloot/protocol";
 import { SITE_URL } from "@/lib/seo";
 import { TALENT_CLASSES } from "@/lib/talents/catalogs";
 
@@ -77,12 +77,14 @@ function head(): string[] {
 function connect(): string[] {
   return [
     "## For AI assistants and developers",
-    `- [MCP server](${MCP_URL}): the way for an AI assistant to answer a question from Everloot's data. Read-only, no sign-in, ${REQUESTS_PER_HOUR} requests per hour per IP. ${MCP_TOOLS.length} tools: ${MCP_TOOLS.map((t) => t.name).join(", ")}.`,
+    `- [MCP server](${MCP_URL}): the way for an AI assistant to answer a question from Everloot's data. Read-only, no sign-in, ${REQUESTS_PER_HOUR} requests per hour per IP. ${MCP_TOOLS.length} tools: ${MCP_TOOLS.map((t) => t.name).join(", ")}. ${MCP_RESOURCES.length} resources, read whole: ${MCP_RESOURCES.map((r) => r.uri).join(", ")}.`,
     bullet("Public corpus API", "/api/corpus/public", `Raw anonymous addon observations in bulk, for developers building their own datasets; to answer a question, use the MCP server. Filter with ?kinds=${PUBLIC_RECORD_KINDS.slice(0, 2).join(",")}. ${corpusAccess()} Credit: ${CREDIT_LINE}`),
-    bullet("Relations API", "/api/edges", "Typed relations between items, NPCs, spells and quests (dropped by, sold by, created by, reagent for, set, same icon), paged, filterable by entity, relation and evidence. Player-observed rows need 3 installs; game-file rows are labelled found in game files, unconfirmed, with their build, and are Blizzard's, not under our licence. The whole game-file layer: /api/edges/client-layer."),
+    bullet("Relations API", "/api/edges", "Typed relations between items, NPCs, spells, professions and quests (dropped by, sold by, created by, reagent for, set, same icon, profession), paged, filterable by entity, relation and evidence. Player-observed rows need 3 installs; game-file rows are labelled found in game files, unconfirmed, with their build, and are Blizzard's, not under our licence. The whole game-file layer: /api/edges/client-layer."),
     bullet("Objects", "/database/objects", "Chests, herbs, ore veins and fishing pools players looted, by the id in their GUID, with what came out of them; public after 3 install reports."),
     bullet("Items by category", "/database/items", "Every item in the current build by class and subclass, with slot and quality filters, from the game files (found in game files, unconfirmed). As JSON: /api/items and /api/items/categories."),
-    bullet("Connect guide", "/connect", "Setup for Claude Code and other MCP clients, with examples."),
+    bullet("OpenAPI document", "/api/openapi.json", "OpenAPI 3.1 for every JSON endpoint, assembled from the same protocol the routes are tested against."),
+    bullet("JSON Schema", "/schema/index.json", "The protocol: one JSON Schema per upload record kind, the API response shapes (/schema/api/<name>.json) and the MCP tool inputs (/schema/mcp/<tool>.json)."),
+    bullet("Connect guide", "/connect", "Setup for Claude Code and other MCP clients, a reference of every tool and endpoint, with examples."),
     bullet("Changes feed (RSS)", "/changes/feed.xml", "The newest 50 WoW: Forever builds and Blizzard posts."),
     "",
   ];
@@ -145,6 +147,8 @@ export function llmsFullTxt(entries: ChangeEntry[] = loadTimeline()): string {
     "## MCP server",
     `Endpoint: ${MCP_URL} (streamable HTTP, read-only, no sign-in, ${REQUESTS_PER_HOUR} requests per hour per IP). Tools:`,
     ...MCP_TOOLS.map((t) => `- ${t.name}: ${t.text}`),
+    "Resources (read whole with resources/read):",
+    ...MCP_RESOURCES.map((r) => `- ${r.uri}: ${r.text}`),
     "",
     "## Public corpus API",
     `GET ${CORPUS_URL}. Raw records in bulk; for answering questions the MCP server above is the right tool. Optional ?kinds= takes a comma-separated list of: ${PUBLIC_RECORD_KINDS.join(", ")}. Records carry no install id. ${corpusAccess()} Each response carries the licence and credit line in an attribution field and in X-Everloot-Licence, X-Everloot-Credit and Link headers. Credit: ${CREDIT_LINE}`,
@@ -154,6 +158,9 @@ export function llmsFullTxt(entries: ChangeEntry[] = loadTimeline()): string {
     "",
     "## Items API",
     `GET ${url("/api/items")}: every item in the current build with its class, subclass, slot and quality, from the game files. Filters: item, class and subclass (slugs, as in ${url("/database/items")}), slot, quality; paged like the corpus API. ${url("/api/items/categories")} lists the class and subclass tree with slugs and counts. Found in game files, unconfirmed, stamped with the build; Blizzard's data, not under Everloot's licence, so these answers carry a gameData notice instead of the credit line.`,
+    "",
+    "## OpenAPI and schemas",
+    `${url("/api/openapi.json")} describes every endpoint above (OpenAPI 3.1). ${url("/schema/index.json")} lists the protocol's JSON Schema files: records/<kind>.json for each upload record kind, api/<name>.json for each response shape, mcp/<tool>.json for each MCP tool's input. The same definitions are the npm package @everloot/protocol in the repository.`,
     "",
     "## Changes feed",
     `${url("/changes/feed.xml")} is RSS 2.0 with the newest 50 WoW: Forever entries.`,

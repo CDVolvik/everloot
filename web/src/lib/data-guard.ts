@@ -1,4 +1,4 @@
-import { CREDIT_LINE, LICENCE, LICENCE_URL, SITE, TERMS_URL } from "../../../kb/src/attribution";
+import { CREDIT_LINE, LICENCE, LICENCE_URL, SITE, TERMS_URL } from "@everloot/protocol";
 import { consumeKey, presentedKey, type KeySurface } from "./api-keys";
 import { intakeQuota } from "./intake-quota";
 

@@ -16,7 +16,7 @@ import {
   handleGetEntity,
   handleSearch,
 } from "../src/mcp-server.js";
-import { CREDIT_LINE, MCP_CREDIT } from "../src/attribution.js";
+import { CREDIT_LINE, MCP_CREDIT } from "@everloot/protocol";
 
 const UNAVAILABLE_TEXT = "Public corpus unavailable. These figures are unrecorded, not zero.";
 
@@ -217,4 +217,59 @@ test("the stdio server reuses a corpus read for the snapshot interval, then read
     await fromUploads(() => "three");
     expect(send).toHaveBeenCalledTimes(2);
   } finally { cachePublicCorpus(0); vi.useRealTimers(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); }
+});
+
+test("tools/list is exactly the protocol's tool table, in order, with its input shapes", async () => {
+  const { Client } = await import("@modelcontextprotocol/sdk/client/index.js");
+  const { InMemoryTransport } = await import("@modelcontextprotocol/sdk/inMemory.js");
+  const { MCP_TOOL_NAMES, MCP_TOOLS } = await import("@everloot/protocol");
+  const { z } = await import("zod");
+  const server = createKnowledgeServer(await seed());
+  const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
+  await server.connect(serverSide);
+  const client = new Client({ name: "test", version: "0" });
+  await client.connect(clientSide);
+  const listed = (await client.listTools()).tools;
+  expect(listed.map((t) => t.name)).toEqual(MCP_TOOL_NAMES);
+  for (const tool of listed) {
+    const expected = z.toJSONSchema(z.object(MCP_TOOLS[tool.name as keyof typeof MCP_TOOLS].inputSchema), { io: "input" }) as { properties?: Record<string, unknown>; required?: string[] };
+    expect(Object.keys(tool.inputSchema.properties ?? {}).sort()).toEqual(Object.keys(expected.properties ?? {}).sort());
+    expect([...(tool.inputSchema.required ?? [])].sort()).toEqual([...(expected.required ?? [])].sort());
+    expect(tool.title).toBe(MCP_TOOLS[tool.name as keyof typeof MCP_TOOLS].title);
+    expect(tool.annotations?.readOnlyHint).toBe(true);
+  }
+  const hit = await client.callTool({ name: "get_by_name", arguments: { name: "Thunderfury" } });
+  expect(JSON.stringify(hit.content)).toContain("Thunderfury");
+  await client.close();
+});
+
+test("tools with an output schema answer with structured content beside the text; the others send text only", async () => {
+  const { Client } = await import("@modelcontextprotocol/sdk/client/index.js");
+  const { InMemoryTransport } = await import("@modelcontextprotocol/sdk/inMemory.js");
+  const { STRUCTURED_TOOLS } = await import("@everloot/protocol");
+  const changes = [{ id: "p1", type: "post" as const, game: "forever" as const, at: "2026-10-18T10:00:00Z", title: "Hotfixes", url: "https://example.test/post", author: "Kaivax", excerpt: "A fix." }];
+  const server = createKnowledgeServer(await seed(), { changes: () => changes });
+  const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
+  await server.connect(serverSide);
+  const client = new Client({ name: "test", version: "0" });
+  await client.connect(clientSide);
+  expect(STRUCTURED_TOOLS).toEqual(["search_knowledge", "get_entity", "get_by_name", "answer_sources", "recent_changes"]);
+  const listed = (await client.listTools()).tools;
+  for (const tool of listed) expect(tool.outputSchema !== undefined).toBe(STRUCTURED_TOOLS.includes(tool.name as (typeof STRUCTURED_TOOLS)[number]));
+
+  const search = await client.callTool({ name: "search_knowledge", arguments: { query: "Thunderfury" } });
+  const hits = (search.structuredContent as { hits: { name: string; sourceUrl: string; licence: string }[] }).hits;
+  expect(hits.length).toBeGreaterThan(0);
+  expect(hits[0]).toMatchObject({ sourceUrl: expect.stringContaining("https://example.test/"), licence: "CC-BY-SA-4.0" });
+  expect(JSON.stringify(search.content)).toContain(hits[0].name);
+
+  const one = await client.callTool({ name: "get_entity", arguments: { id: -1 } });
+  expect(one.structuredContent).toEqual({ hit: null });
+
+  const recent = await client.callTool({ name: "recent_changes", arguments: {} });
+  expect(recent.structuredContent).toEqual({ connected: true, entries: changes });
+
+  const plan = await client.callTool({ name: "everloot_plan", arguments: {} });
+  expect(plan.structuredContent).toBeUndefined();
+  await client.close();
 });

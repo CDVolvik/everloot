@@ -1,4 +1,4 @@
-import { COMPLETION_KINDS, parseRecords, type IntakeRecord } from "../../web/src/lib/intake.js";
+import { COMPLETION_KINDS, parseRecords, type IntakeRecord } from "@everloot/protocol";
 
 export interface CorpusEvent { record: IntakeRecord; grants: string[] }
 export interface CorpusState {

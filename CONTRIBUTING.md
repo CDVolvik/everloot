@@ -48,6 +48,10 @@ You need Node 22, Python 3.12 and Git. Each part's README says how to run and te
 - [`kb/`](kb/README.md): the knowledge base and MCP server
 - [`companion/`](companion/README.md): needs `web` installed
 - [`desktop/`](desktop/README.md): Electron; needs `web` and `companion` installed
+- [`packages/protocol/`](packages/protocol/README.md): the contract. After a change there, run
+  `npm run build` in `packages/protocol`, then in each of `web`, `kb` and `companion` delete
+  `node_modules/@everloot/protocol` and run `npm install`: they install a packed copy, and npm keeps the
+  old one while the version number is unchanged. Commit the regenerated `dist/` and `schema/`.
 
 ### Sign your commits (DCO)
 
@@ -69,7 +73,7 @@ Title a pull request `type(scope): plain sentence`. The title becomes the line i
 so write it for someone reading them.
 
 - Types: `feat`, `fix`, `perf`, `refactor`, `docs`, `chore`, `data`
-- Scopes: `addon`, `web`, `kb`, `companion`, `desktop`, `mcp`, `game-data`, `infra`, `docs`
+- Scopes: `addon`, `web`, `kb`, `companion`, `desktop`, `protocol`, `mcp`, `game-data`, `infra`, `docs`
 - Example: `feat(web): the raid builder shows which tree each buff needs`
 
 A check on every pull request rejects a title that does not fit. No full stop at the end, 100

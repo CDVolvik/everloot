@@ -1,5 +1,4 @@
-import { CLIENT_BUILD, parseRecords } from "./intake";
-import { sharingCategory, type SharingCategory } from "../../../kb/src/publication";
+import { CLIENT_BUILD, parseRecords, PROTOCOL_VERSION, sharingCategory, UPLOAD_LIMITS, type SharingCategory } from "@everloot/protocol";
 
 export type SharingChoices = Partial<Record<SharingCategory, boolean>>;
 export interface BatchReceipt { ok: boolean; persisted?: boolean; uploadId?: string; accepted?: { index: number; kind: string }[]; rejected?: { index: number; reason: string }[]; error?: string }
@@ -9,11 +8,11 @@ export interface UploadSession {
   /** The installed addons this upload sends, one "Title (FolderName)" per folder, for the preview. */
   addons: string[];
 }
-export function prepareUpload(payload: unknown, sharing: SharingChoices, grantTokens: string[], maxBytes = 600_000): UploadSession {
+export function prepareUpload(payload: unknown, sharing: SharingChoices, grantTokens: string[], maxBytes: number = UPLOAD_LIMITS.batchBytes): UploadSession {
   const envelope = payload as { addonVersion?: unknown; clientBuild?: unknown; records?: unknown };
-  if (!envelope || typeof envelope.addonVersion !== "string" || envelope.addonVersion.length > 32 || !Array.isArray(envelope.records)) throw new Error("Choose an Everloot file with a version and records array.");
-  if (envelope.records.length > 100_000) throw new Error("This file is too large. Keep the original and split it into files of at most 100,000 records.");
-  if (grantTokens.length > 4 || grantTokens.some((token) => !/^[a-f0-9]{64}$/.test(token))) throw new Error("Verification grants must be 64 lowercase hexadecimal characters, one per line (at most four).");
+  if (!envelope || typeof envelope.addonVersion !== "string" || envelope.addonVersion.length > UPLOAD_LIMITS.addonVersionMax || !Array.isArray(envelope.records)) throw new Error("Choose an Everloot file with a version and records array.");
+  if (envelope.records.length > UPLOAD_LIMITS.recordsPerFile) throw new Error(`This file is too large. Keep the original and split it into files of at most ${UPLOAD_LIMITS.recordsPerFile.toLocaleString("en-US")} records.`);
+  if (grantTokens.length > UPLOAD_LIMITS.grantTokensMax || grantTokens.some((token) => !/^[a-f0-9]{64}$/.test(token))) throw new Error("Verification grants must be 64 lowercase hexadecimal characters, one per line (at most four).");
   const parsed = parseRecords(envelope.records);
   const held = { legacy: 0, named: 0, invalid: parsed.receipt.rejected.length };
   const counts: Record<string, number> = {};
@@ -31,7 +30,7 @@ export function prepareUpload(payload: unknown, sharing: SharingChoices, grantTo
   }
   // The build is optional metadata: an unreadable one is left out rather than failing every batch.
   const clientBuild = CLIENT_BUILD.safeParse(envelope.clientBuild).success ? envelope.clientBuild : undefined;
-  const prefix = JSON.stringify({ addonVersion: envelope.addonVersion, clientBuild, sharing, grantTokens }).slice(0, -1) + ',"records":[';
+  const prefix = JSON.stringify({ addonVersion: envelope.addonVersion, clientBuild, protocol: PROTOCOL_VERSION, sharing, grantTokens }).slice(0, -1) + ',"records":[';
   const suffix = "]}";
   const bytes = (value: string) => new TextEncoder().encode(value).length;
   const overhead = bytes(prefix + suffix);
@@ -40,7 +39,7 @@ export function prepareUpload(payload: unknown, sharing: SharingChoices, grantTo
   for (const row of rows) {
     const length = bytes(row);
     if (length + overhead > maxBytes) throw new Error("One record is too large to upload. Keep your file and contact Everloot.");
-    if (chunk.length === 2000 || size + length + (chunk.length ? 1 : 0) > maxBytes) {
+    if (chunk.length === UPLOAD_LIMITS.recordsPerBatch || size + length + (chunk.length ? 1 : 0) > maxBytes) {
       batches.push(prefix + chunk.join(",") + suffix); chunk = []; size = overhead;
     }
     size += length + (chunk.length ? 1 : 0); chunk.push(row);

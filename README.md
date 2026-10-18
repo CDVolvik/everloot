@@ -71,7 +71,7 @@ that players start with the addon's **Everloot scan** button. The site shows a r
 60-day chart per item, a day is published once three reporters agree, and the same prices appear in
 item tooltips in game. [everloot.app/tools/auctions](https://everloot.app/tools/auctions)
 
-**MCP server.** 16 tools that let an AI assistant search the archive and read the same sourced
+**MCP server.** 23 tools that let an AI assistant search the archive and read the same sourced
 facts the site shows: items, NPCs, quests, vendors, profession paths, recipe ranges, auction history,
 market values, recent Blizzard changes and more. The public endpoint is read only and rate limited:
 `https://everloot.app/mcp/public`.
@@ -95,7 +95,7 @@ flowchart LR
   market --> site
   market --> companion
   rollups --> site["Site pages and tools"]
-  rollups --> mcp["MCP server<br/>16 tools"]
+  rollups --> mcp["MCP server<br/>23 tools"]
   wiki["Warcraft Wiki dump<br/>CC BY-SA 4.0"] --> kb["kb/<br/>import, provenance, snapshot"]
   files["Game files<br/>maintainer extraction"] --> gamedata["Reviewed game-data files<br/>unconfirmed"]
   kb --> site
@@ -109,8 +109,9 @@ flowchart LR
 | [`addon/`](addon/) | The in-game collector (Lua) and the `/ask` command |
 | [`web/`](web/) | everloot.app: the database, tools, map, change tracker, lore archive, upload page and MCP endpoints (Next.js on Vercel) |
 | [`kb/`](kb/) | The knowledge base: lore import, public releases, the game-file extractor and the MCP server (TypeScript, SQLite) |
-| [`companion/`](companion/) | A command line that uploads your file and answers `/ask` in game |
+| [`companion/`](companion/) | A desktop helper that uploads your file and answers `/ask` in game |
 | [`desktop/`](desktop/) | Everloot Desktop: the same, as a tray app with an installer |
+| [`packages/protocol/`](packages/protocol/) | The upload contract: record kinds, envelope, limits and their JSON Schema, shared by the site, the knowledge base, the companion and the addon tests |
 | [`supabase/`](supabase/) | The site's database schema |
 
 [`docs/architecture.md`](docs/architecture.md) goes into the boundaries and the decisions behind them.
@@ -156,8 +157,10 @@ claude mcp add --transport http everloot https://everloot.app/mcp/public
 ```
 
 or put `{ "mcpServers": { "everloot": { "type": "http", "url": "https://everloot.app/mcp/public" } } }`
-in the client's config. The [connect page](https://everloot.app/connect) lists the tools, the rate
-limit and how to credit the data.
+in the client's config. The [connect page](https://everloot.app/connect) lists every tool with its
+arguments and every JSON endpoint, the rate limit and how to credit the data. The API is described in
+[`/api/openapi.json`](https://everloot.app/api/openapi.json) (OpenAPI 3.1) and the protocol's JSON Schema
+files are under [`/schema/`](https://everloot.app/schema/index.json).
 
 ## Project status
 

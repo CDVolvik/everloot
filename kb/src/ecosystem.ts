@@ -411,8 +411,8 @@ export function buildView(registry: Registry, snapshot: Snapshot, popular: reado
 
 // ---------------------------------------------------------------- boards
 
-export const BOARD_IDS = ["installed", "rising", "active", "release", "maintained"] as const;
-export type BoardId = (typeof BOARD_IDS)[number];
+import { BOARD_IDS, ECOSYSTEM_BOARD_FILTERS, type BoardId } from "@everloot/protocol";
+export { BOARD_IDS, ECOSYSTEM_BOARD_FILTERS, type BoardId };
 
 export interface BoardRow { project: ProjectView; display: string }
 export interface Board { id: BoardId; title: string; rule: string; rows: BoardRow[] }
@@ -462,8 +462,6 @@ export function buildBoards(view: EcosystemView, now: Date): Board[] {
 }
 
 // ---------------------------------------------------------------- MCP answer
-
-export const ECOSYSTEM_BOARD_FILTERS = ["all", ...BOARD_IDS] as const;
 
 export interface EcosystemArgs {
   board: (typeof ECOSYSTEM_BOARD_FILTERS)[number];

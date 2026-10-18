@@ -31,6 +31,7 @@ architecture map.
 | [`2026-10-09-public-mcp-hosting-options.md`](2026-10-09-public-mcp-hosting-options.md) | Where the public MCP endpoint can run |
 | [`2026-10-09-recipe-capture-options.md`](2026-10-09-recipe-capture-options.md), [`2026-10-10-recipe-windows-design.md`](2026-10-10-recipe-windows-design.md) | How recipe difficulty is captured |
 | [`2026-10-17-talent-share-code.md`](2026-10-17-talent-share-code.md), [`2026-10-18-raid-share-code.md`](2026-10-18-raid-share-code.md) | The talent and raid share link formats |
+| [`2026-10-18-mcp-listings.md`](2026-10-18-mcp-listings.md) | Listing the MCP server: the registry, the Claude and ChatGPT directories, the words every listing uses |
 
 ## Design specs and plans
 

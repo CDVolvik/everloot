@@ -1,4 +1,5 @@
 import { expect, test, vi } from "vitest";
+import { answerSourcesFactsFromRecords } from "../src/answer-sources.js";
 import { auctionSightingsFromRecords } from "../src/auction-history.js";
 import { collectionFactsFromRecords } from "../src/collection-gap.js";
 import { itemFactsFromRecords } from "../src/drop-rollup.js";
@@ -10,8 +11,8 @@ import { fromUploads, TOOL_KINDS, UPLOADS_UNSET } from "../src/mcp-server.js";
 import { pathFactsFromRecords, recipeFactsFromRecords } from "../src/recipe-thresholds.js";
 import { worldFactsFromRecords } from "../src/world-pages.js";
 import { mapFactsFromRecords } from "../src/world-map-near.js";
-import { ALL_RECORD_KINDS, COMPLETION_KINDS, parseRecords } from "../../web/src/lib/intake.js";
-import { MCP_CREDIT } from "../src/attribution.js";
+import { ALL_RECORD_KINDS, COMPLETION_KINDS, parseRecords } from "@everloot/protocol";
+import { MCP_CREDIT } from "@everloot/protocol";
 
 const base = { installId: "install-one", capturedAt: "2026-10-09T00:00:00Z" };
 const guild = { guildName: "Olympus", realm: "Forever" };
@@ -54,6 +55,7 @@ const EVERY_KIND = parseRecords([
 ]);
 
 const FACTS: Record<keyof typeof TOOL_KINDS, (records: unknown[]) => unknown> = {
+  answer_sources: answerSourcesFactsFromRecords,
   profession_path: pathFactsFromRecords,
   recipe_thresholds: recipeFactsFromRecords,
   item_page: itemFactsFromRecords,

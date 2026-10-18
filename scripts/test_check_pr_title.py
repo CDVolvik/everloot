@@ -11,6 +11,7 @@ for ok in [
     "data(kb): new blue posts and builds",
     "chore(infra): weekly dependency updates",
     "docs(docs): index the design specs",
+    "feat(protocol): one package holds the upload record contract",
 ]:
     assert problem(ok) is None, ok
 for bad, why in [

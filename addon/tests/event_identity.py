@@ -31,4 +31,6 @@ assert(#EverlootDB.records.loot == 4)
 assert(first == EverlootDB.records.loot[1].eventId)
 assert(string.find(Everloot:Status(), 'paused') ~= nil)
 """)
+# The loot rows above are stand-ins with no fields: this test checks ids, so the protocol schema check
+# (protocol_schema.check_all) runs in the module tests, not here.
 print("Lua 5.1 event identity: same-second events, reload, reset and retained IDs passed")
