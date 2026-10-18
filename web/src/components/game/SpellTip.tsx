@@ -1,6 +1,7 @@
 "use client";
 
 import { cloneElement, isValidElement, useEffect, useId, useState, type ReactElement } from "react";
+import { createPortal } from "react-dom";
 import type { SpellTip as Tip } from "@/lib/game-assets";
 import TalentTooltip from "@/components/talents/TalentTooltip";
 import GameIcon from "./GameIcon";
@@ -39,12 +40,14 @@ function Tipped({ tip, size, children }: { tip: Tip; size: number; children: Rea
       {tip.icon && <GameIcon src={tip.icon} size={size} />}
       {named}
       <span id={descId} hidden>{`${[tip.name, tip.text ?? "No description in the game files", tip.label].map((s) => s.replace(/\.$/, "")).join(". ")}.`}</span>
-      {open && (
+      {/* In the body, so a sticky table cell (the raid builder's effect column) cannot paint over it. */}
+      {open && createPortal(
         <TalentTooltip
           anchorId={anchorId}
           id={`${anchorId}-tip`}
           content={{ title: tip.name, rank: null, text: tip.text, partial: tip.partial, lock: null, label: tip.label }}
-        />
+        />,
+        document.body,
       )}
     </span>
   );
