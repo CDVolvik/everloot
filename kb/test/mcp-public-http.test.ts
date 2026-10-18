@@ -27,7 +27,7 @@ function request(method: string, params?: unknown, headers = {}) {
 test("the server info links the source code (AGPL section 13)", async () => {
   const handle = await handler();
   const init = await handle(request("initialize", { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "test", version: "1" } }));
-  expect((await init.json()).result.serverInfo.websiteUrl).toBe("https://github.com/CDVolvik/everloot");
+  expect((await init.json()).result.serverInfo.websiteUrl).toBe("https://github.com/Everloot/everloot");
 });
 
 test("independent clients initialize and receive sourced knowledge plus the tracker", async () => {

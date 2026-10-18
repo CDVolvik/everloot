@@ -30,7 +30,7 @@ import { getByName, getEntity, search, type SearchHit } from "./search.js";
 export const SERVER_NAME = "everloot-knowledge";
 export const SERVER_VERSION = "0.8.0";
 /** The source this server runs, offered to every client (AGPL section 13). */
-export const SOURCE_URL = "https://github.com/CDVolvik/everloot";
+export const SOURCE_URL = "https://github.com/Everloot/everloot";
 
 /** Sent to every client on connect: how to credit what the tools return. */
 export const SERVER_INSTRUCTIONS =

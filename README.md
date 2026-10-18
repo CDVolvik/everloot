@@ -8,12 +8,12 @@
 **An open, player-built database for World of Warcraft: Forever. An addon records what you see, and
 the site states a fact only once three installs agree.**
 
-[![Checks](https://github.com/CDVolvik/everloot/actions/workflows/checks.yml/badge.svg)](https://github.com/CDVolvik/everloot/actions/workflows/checks.yml)
+[![Checks](https://github.com/Everloot/everloot/actions/workflows/checks.yml/badge.svg)](https://github.com/Everloot/everloot/actions/workflows/checks.yml)
 [![Code: AGPL-3.0](https://img.shields.io/badge/code-AGPL--3.0-blue)](LICENSE)
 [![Data: CC BY-SA 4.0](https://img.shields.io/badge/data-CC%20BY--SA%204.0-lightgrey)](docs/DATA_POLICY.md)
 [![Site: everloot.app](https://img.shields.io/badge/site-everloot.app-2f7a0a)](https://everloot.app)
 [![Discord](https://img.shields.io/badge/chat-Discord-5865F2)](https://discord.gg/9CKsbHTRu3)
-[![Latest addon release](https://img.shields.io/github/v/release/CDVolvik/everloot?filter=addon-v*&label=addon)](https://github.com/CDVolvik/everloot/releases)
+[![Latest addon release](https://img.shields.io/github/v/release/Everloot/everloot?filter=addon-v*&label=addon)](https://github.com/Everloot/everloot/releases)
 
 ![The Everloot home page](docs/media/home.webp)
 
@@ -134,7 +134,7 @@ button on the auction house adds your own scan.
 You need Node 22 and Python 3.12 (for the addon tests).
 
 ```bash
-git clone https://github.com/CDVolvik/everloot.git
+git clone https://github.com/Everloot/everloot.git
 cd everloot
 (cd kb && npm install)
 cd web && npm install
@@ -170,17 +170,17 @@ every half hour and opens a reviewed pull request when one appears. WoW: Forever
 2026-11-04.
 
 What is next is in [`ROADMAP.md`](ROADMAP.md). What has shipped is in [`CHANGELOG.md`](CHANGELOG.md).
-Nightly pre-releases of the addon are on the [releases page](https://github.com/CDVolvik/everloot/releases).
+Nightly pre-releases of the addon are on the [releases page](https://github.com/Everloot/everloot/releases).
 
 ## How to help
 
 You don't need to write code. Playing with the addon and uploading, or reporting a wrong fact, helps
 as much as a pull request.
 
-- Questions and ideas: [GitHub Discussions](https://github.com/CDVolvik/everloot/discussions)
-- Bugs and wrong data: [issues](https://github.com/CDVolvik/everloot/issues/new/choose)
+- Questions and ideas: [GitHub Discussions](https://github.com/Everloot/everloot/discussions)
+- Bugs and wrong data: [issues](https://github.com/Everloot/everloot/issues/new/choose)
 - A first code contribution: issues labelled
-  [`good first issue`](https://github.com/CDVolvik/everloot/labels/good%20first%20issue)
+  [`good first issue`](https://github.com/Everloot/everloot/labels/good%20first%20issue)
 - Chat: the [Everloot Discord](https://discord.gg/9CKsbHTRu3)
 - Security problems: [`SECURITY.md`](SECURITY.md), never a public issue
 

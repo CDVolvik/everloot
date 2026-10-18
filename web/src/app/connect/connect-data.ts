@@ -44,7 +44,7 @@ export const CONNECT_EXAMPLES = {
   -H "content-type: application/json" \\
   -H "accept: application/json, text/event-stream" \\
   -d '${curlBody}'`,
-  localSite: `git clone https://github.com/CDVolvik/everloot.git
+  localSite: `git clone https://github.com/Everloot/everloot.git
 cd everloot
 (cd kb && npm install)
 cd web && npm install

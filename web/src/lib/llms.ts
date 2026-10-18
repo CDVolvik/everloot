@@ -160,7 +160,7 @@ export function llmsFullTxt(entries: ChangeEntry[] = loadTimeline()): string {
     "",
     ...limitations(),
     "## Licences",
-    "- Code: AGPL-3.0. Source: https://github.com/CDVolvik/everloot",
+    "- Code: AGPL-3.0. Source: https://github.com/Everloot/everloot",
     "- Everloot's own data and uploaded observations: CC BY-SA 4.0, credited to Everloot contributors.",
     "- Game-file data (talents, raid buffs, map, build changes): Blizzard's, not under Everloot's licence.",
     "- Lore archive: Warcraft Wiki contributors, CC BY-SA 4.0.",

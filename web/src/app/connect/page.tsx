@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   ...pageMetadata({ title: "WoW Forever Data API and MCP Server", description: "Use Everloot's open data for WoW: Forever: the public corpus API, an MCP server for AI assistants, and the licence and credit line to use.", path: "/connect" }),
 };
 
-const REPO = "https://github.com/CDVolvik/everloot";
+const REPO = "https://github.com/Everloot/everloot";
 
 function Code({ children, label }: { children: string; label: string }) {
   return (

@@ -42,7 +42,7 @@ test("bridge needs the game folder, an MCP URL and a token file", () => {
 test("before sending, the companion says how uploads are licensed and where the source is", () => {
   const notice = uploadNotice();
   expect(notice).toContain("Uploaded observations are published under CC BY-SA 4.0, credited to Everloot contributors.");
-  expect(notice).toContain("Source: https://github.com/CDVolvik/everloot");
+  expect(notice).toContain("Source: https://github.com/Everloot/everloot");
 });
 
 test("prices needs the game folder, because it writes the slot addon there", () => {
