@@ -1,0 +1,143 @@
+{
+  "$id": "https://everloot.app/schema/mcp/resources.json",
+  "description": "The MCP server's resources, read whole with resources/read. The JSON one carries the schema of its contents.",
+  "resources": [
+    {
+      "uri": "everloot://builds",
+      "name": "builds",
+      "title": "Game builds Everloot knows",
+      "description": "The build the game-file facts come from, and every build Blizzard's version service has listed, with when Everloot first saw it. JSON of the shape in schema/mcp/resources.json.",
+      "mimeType": "application/json",
+      "contents": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "gameFiles": {
+            "type": "object",
+            "properties": {
+              "product": {
+                "type": "string"
+              },
+              "buildId": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "version": {
+                "type": "string"
+              },
+              "buildConfig": {
+                "type": "string"
+              },
+              "definitions": {
+                "description": "The WoWDBDefs commit the column names came from.",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "extractedAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "product",
+              "buildId",
+              "version",
+              "buildConfig",
+              "definitions",
+              "extractedAt"
+            ],
+            "additionalProperties": false,
+            "description": "The build the game-file facts (entity_relations, item_categories) were read from."
+          },
+          "registry": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string",
+                  "description": "product:buildConfig, the build's identity."
+                },
+                "product": {
+                  "type": "string",
+                  "description": "Blizzard's product id, such as wow_classic_beta."
+                },
+                "buildConfig": {
+                  "type": "string"
+                },
+                "buildId": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "version": {
+                  "type": "string",
+                  "description": "The version label, such as 1.60.1.70450."
+                },
+                "regions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "firstSeen": {
+                  "type": "string",
+                  "description": "When Everloot first saw the build, not Blizzard's release time."
+                },
+                "lastSeen": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "queued",
+                    "processed"
+                  ]
+                }
+              },
+              "required": [
+                "key",
+                "product",
+                "buildConfig",
+                "buildId",
+                "version",
+                "regions",
+                "firstSeen",
+                "lastSeen",
+                "status"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Every build the version service has listed, newest first."
+          },
+          "credit": {
+            "type": "string",
+            "description": "Game-file facts are Blizzard's, not under Everloot's licence."
+          }
+        },
+        "required": [
+          "gameFiles",
+          "registry",
+          "credit"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "uri": "everloot://methodology",
+      "name": "methodology",
+      "title": "How Everloot counts",
+      "description": "How player uploads become facts: three installs must agree, unrecorded is never zero, game files and play are kept apart, and what is never published. Read it before stating a number as certain.",
+      "mimeType": "text/markdown"
+    },
+    {
+      "uri": "everloot://data-policy",
+      "name": "data-policy",
+      "title": "Everloot data policy",
+      "description": "Where the data comes from, what is refused, the licence and credit line, and the limits on bulk copying, in short, with the link to the full policy.",
+      "mimeType": "text/markdown"
+    }
+  ]
+}

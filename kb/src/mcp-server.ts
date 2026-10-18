@@ -15,8 +15,9 @@ import { handleItemPage } from "./item-page.js";
 import { handleObjectPage, objectFactsFromRecords, type ObjectFacts } from "./object-page.js";
 import { handleMarketValue, type MarketState } from "./market.js";
 import { loadUploadRecords } from "./load-uploads.js";
-import { KNOWLEDGE_KINDS, MCP_TOOL_NAMES, MCP_TOOLS, parseRecords, type McpToolArgs, type McpToolDef, type McpToolName } from "@everloot/protocol";
+import { KNOWLEDGE_KINDS, MCP_RESOURCE_URIS, MCP_RESOURCES, MCP_TOOL_NAMES, MCP_TOOLS, parseRecords, type McpToolArgs, type McpToolDef, type McpToolName } from "@everloot/protocol";
 import { handleProfessionPath } from "./profession-path.js";
+import { readResource } from "./resources.js";
 import { handleRecipeThresholds, pathFactsFromRecords, recipeFactsFromRecords } from "./recipe-thresholds.js";
 import { handleNpcPage, handleQuestPage, handleVendorPage, worldFactsFromRecords } from "./world-pages.js";
 import { handleWorldMapNear, mapFactsFromRecords } from "./world-map-near.js";
@@ -460,6 +461,13 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; 
         return { content: [{ type: "text" as const, text }], ...(structuredContent ? { structuredContent } : {}) };
       },
     );
+  }
+  for (const uri of MCP_RESOURCE_URIS) {
+    const def = MCP_RESOURCES[uri];
+    server.registerResource(def.name, uri, { title: def.title, description: def.description, mimeType: def.mimeType }, () => {
+      const { mimeType, text } = readResource(uri, SOURCE_URL);
+      return { contents: [{ uri, mimeType, text }] };
+    });
   }
   return server;
 }

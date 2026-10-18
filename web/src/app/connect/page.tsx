@@ -7,7 +7,7 @@ import Bracket from "@/components/Bracket";
 import { KEYS_MADE_PER_DAY, KEYS_PER_ACCOUNT, REVOKED_KEPT_DAYS, USAGE_KEPT_DAYS } from "@/lib/api-keys";
 import { ANON_PAGE, ANON_PER_HOUR, guardOn, KEY_PAGE, KEY_PER_HOUR } from "@/lib/data-guard";
 import { PUBLIC_RECORD_KINDS } from "@everloot/protocol";
-import { CONNECT_EXAMPLES as ex, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR } from "./connect-data";
+import { CONNECT_EXAMPLES as ex, MCP_RESOURCES, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR } from "./connect-data";
 import { ApiReference, SchemaReference, ToolReference } from "./Reference";
 
 export const metadata: Metadata = {
@@ -102,6 +102,20 @@ export default function ConnectPage() {
           Tools built on player data show a fact only after enough installs agree on it, and say when it is not
           recorded yet. Answers from player data end with the age of the data.
         </p>
+        <h3 className="font-semibold text-fg">Resources</h3>
+        <p className="text-fg-2">
+          Documents an assistant reads whole, with <code className="font-mono text-fg">resources/read</code>, instead of
+          calling a tool with arguments. Their shapes are in{" "}
+          <a href="/schema/mcp/resources.json" className={link}>/schema/mcp/resources.json</a>.
+        </p>
+        <ul className="divide-y divide-line border-y border-line">
+          {MCP_RESOURCES.map((resource) => (
+            <li key={resource.uri} className="py-3 grid sm:grid-cols-[13rem_1fr] gap-x-4 gap-y-1">
+              <code className="font-mono text-sm text-fg">{resource.uri}</code>
+              <span className="text-sm text-fg-2">{resource.text}</span>
+            </li>
+          ))}
+        </ul>
         <h3 className="font-semibold text-fg">Limits</h3>
         <ul className="list-disc pl-6 text-fg-2 space-y-1">
           <li>

@@ -31,6 +31,9 @@ required, or tightening a limit is a major release.
   The other tools gain it tool by tool in later minor releases.
 - `answer_sources` (the 23rd tool) and its `evidence` shape: claim, kind (observed, curated, lore), source,
   licence, asOf, support.
+- The MCP server's resource table `MCP_RESOURCES` (`everloot://builds`, `everloot://methodology`,
+  `everloot://data-policy`: name, title, description, MIME type), `buildEntry` and `buildsResource` for the
+  JSON one, emitted as `schema/mcp/resources.json` and listed in `index.json` as `mcpResources`.
 
 ### Notes
 - The addon's Lua comments still name `web/src/lib/intake.ts`, the file this package replaced. They sit

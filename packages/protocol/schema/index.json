@@ -105,5 +105,10 @@
     "recent_changes",
     "ecosystem_projects",
     "everloot_plan"
+  ],
+  "mcpResources": [
+    "everloot://builds",
+    "everloot://methodology",
+    "everloot://data-policy"
   ]
 }
