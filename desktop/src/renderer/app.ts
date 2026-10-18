@@ -254,7 +254,7 @@ function ask(s: AppState): string {
     <div class="grid2">
       <section class="panel"><h2>Who answers</h2>
         ${a?.providerError ? `<p class="error">${esc(a.providerError)}</p>` : a?.providers.length ? `<p>Model: <b>${esc(a.providers.join(" > "))}</b>, writing at most two sentences from the top three sourced hits.</p>` : "<p>Plain search: the top sourced hit, no model.</p>"}
-        <p class="muted small">Optional providers go in <code>config.json</code> in the data folder (Anthropic or any OpenAI-compatible server, keys from a file). <button type="button" class="link" id="openConfig">Open config.json</button></p>
+        <p class="muted small">An Anthropic key pasted on the <button type="button" class="link" data-page="chat">Chat page</button> answers here too. Other providers go in <code>config.json</code> in the data folder (any OpenAI-compatible server, keys from a file). <button type="button" class="link" id="openConfig">Open config.json</button></p>
         <p class="${j.state === "error" ? "error" : "fg2"} small">${esc(statusText(j))}</p>
       </section>
       <section class="panel"><h2>Pending in game</h2>
