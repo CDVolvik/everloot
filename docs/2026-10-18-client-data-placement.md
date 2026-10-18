@@ -10,6 +10,10 @@ The 1,091 unread candidates sort into site areas that already exist or that the 
 identified as gaps (object, item set, instances, faction, profession, collections). Nothing in the scan
 changes the pipeline shape; it selects what enters `CLIENT_TABLES` next, one reviewed wave at a time.
 
+**Status at close of 2026-10-18:** W0, W1, W2 and W3 all executed on `wow_classic_beta` 1.60.1.70450.
+The read set grew 68 → 276 tables (of 1,159 the build ships); unread candidates 1,091 → 883. Snapshot and
+scan stay local and gitignored; no generator reads the new tables yet, so nothing is published.
+
 ## What the scan measures
 
 - The WoWDBDefs manifest (pinned commit `b9a63096cdd9`) against the build's root listing, by file data id.
@@ -115,13 +119,79 @@ Extending `DOMAIN_RULES` in `kb/src/client-scan.ts` as tables are triaged keeps 
 - **W3 and feature-dependent:** character customization, creature models, taxi paths, audio, interface
   tooling. Each waits for the feature that needs it.
 
+### Wave log (2026-10-18)
+
+| Wave | Committed | Tables | Notes |
+|---|---|---|---|
+| W0 | `1142ba1` | 7 | HolidayXTimeEvent ships empty; `Holidays` name ids now resolve |
+| W1 | `204e973` | 29 | added `ItemXItemEffect` beyond the plan to make `ItemEffect` joinable (no `ParentItemID` exists) |
+| W2 | `d589242` | 69 | no failures; all coverage pins verified in-layout |
+| W3 | `ef82618` | 102 | `LiquidType` dropped (see below); one concurrent edit from origin (PR #73) rebased in first, adding `LoadingScreens` |
+
+Findings the waves surfaced while reading:
+
+- **Ships empty in this build, read so the snapshot stops asking:** the Journal tables
+  (`JournalInstance`, `JournalEncounter`, `JournalTier`), `ItemCurrencyCost`, the whole BattlePet
+  cluster, `Heirloom`, the lore texts (`LoreText`, `LoreTextPublic`, `ZoneStory`), the Profession trait
+  and effect tables (plain `Profession` carries 12 rows), `MountXSpellVisualKitPicker`,
+  `ItemAppearanceXUiCamera`, `TransmogIllusion`, `ChrClassUIDisplay` and the `ModelSound` cluster.
+- `LFGDungeons.MapID` is zero in every row; the dungeon-to-map link lives on `DungeonEncounter`.
+- `QuestMoneyReward` and `QuestXP` carry ids and difficulty only — amounts are server-side.
+- **Upstream gap:** `LiquidType` (1371380) cannot be read at all. The pinned WoWDBDefs layout marks its
+  `Texture` column as a string without a string definition, so extraction fails on it. The reason is
+  recorded next to the table in `kb/src/client-snapshot.ts`; revisit when the pinned definitions fix the
+  layout.
+
 ## Decisions for Carlos
 
-1. **Which wave to approve first.** W0 is three table groups, roughly a day with generator updates;
-   nothing in it is published.
-2. **Commit the scan command and this note** with the taxonomy supplement, or keep them local for now.
-3. **"Other" triage appetite.** A quick pass can move whole prefixes (hundreds of dead-system tables) to
-   a documented "never" list; the alternative is leaving them in the catch-all.
+1. ~~Which wave to approve first.~~ Resolved: W0 approved, then all four waves executed the same day
+   (see the wave log). Nothing read so far is published.
+2. **Push the local commits, or keep the read set local for now.** Seven commits on `main` (scan command,
+   this note, the research note, W0–W3) are unpushed. Pushing `main` deploys the site; none of the new
+   commits touch generated data, so a push would ship no visible change.
+3. **"Other" triage appetite.** Draft below; a quick pass can move whole prefixes to a documented "never"
+   list, the alternative is leaving them in the catch-all.
+
+## "Other"-bucket triage — draft for approval
+
+The 609 unread "other" tables group more cleanly than their size suggests. Proposed split (counts exact,
+names representative; nothing is marked "never" until confirmed):
+
+**A. Dead retail systems → proposed "never" (≈200 tables).** Shipped in the client, not live in Forever:
+`Garr*` garrison (55), `Artifact*` (12), `Azerite*` (12), the Shadowlands set `Soulbind*`, `MawPower*`,
+`Runeforge*`, `Covenant`, `CorruptionEffects` (12), `Perks*` Trading Post (14), `Warband*` (9), player
+housing `House*`, `Decor*`, `Room*`, `ExteriorComponent*`, `SuperDistrict*`, `Neighborhood*` (37),
+`MythicPlus*` (5), `Delves*` (2), `AssistedCombat*` (3), dragon-riding `FlightCapability*`, `GlideEvent*`,
+`DriveCapability*` (6), `WeeklyRewardChest*` (2), esports `Commentator*` / `PVPScoreboard*` (6),
+`AdventureJournal*` (2), `Bounty*` (2), `Initiative*` (7), retail-PvP `PvpTalent*`, `PvpBrawl`,
+`PvpSeason*`, `PrestigeLevelInfo`, `PvpTier`, `PvpRating`, `PvpScalingEffect*` (14), `Relic*` (2).
+
+**B. Client plumbing → proposed "never" (≈16).** `GlobalStrings`, `Cfg_*`, `Locale`, `Hotfixes`,
+`StartupFiles`, `SharedString`, `SpamMessages`, `ServerMessages`, `BannedAddons`, `GameClockDebug`.
+
+**C. Live support tables → propose wave W4 (≈55).** Tables Forever's live realm plausibly uses today:
+banks and slots (`BankBagSlotPrices`, `BankTab`, `StableSlotPrices`), character creation pieces
+(`CharBaseInfo`, `CharBaseSection`, `CharHairGeosets`, `CharComponentTexture*`, `CharStartKit`,
+`Component*FileData`), guild tabards and emblems (`GuildEmblem`, `GuildTabard*`, `GuildShirt*`,
+`GuildColor*`), `BarberShopStyle`, progression (`LevelExperience`, `Exhaustion`, `DurabilityCosts`,
+`DurabilityQuality`), `MailTemplate`, `AuctionHouse*`, chat emotes (`Emotes*`), world objects
+(`Lock`, `LockType`, `SummonProperties`, `TotemCategory`, `PowerDisplay`, `ObjectEffect*`,
+`ParticleColor`), and creation helpers (`DeclinedWord*`, `NameGen`, `Resistances`, `RaceStat`).
+These would land across characters, world and item domains.
+
+**D. Classic talent trees → talents domain, with the spell work.** `Talent`, `TalentTab`,
+`TalentTreePrimarySpells`, `SpecializationSpells*`, `SpecSetMember`, `MinorTalent`, `NumTalentsAtLevel`
+(≈8). The W2/W3 talent reads took the retail `Trait*` family; these are the classic trees `/tools/talents`
+would actually render.
+
+**E. Text-bearing, pages-only.** `BroadcastText*`, `ConversationLine`, `GossipNPCOption*`, `SceneScript*`
+(≈20) — same rule as lore text: pages may show reviewed game text; API, MCP and bulk stay clean.
+
+**F. Ambience and lighting → defer with the sound feature.** `Light*`, `LightData*`, `LightShaft*`,
+`SkyScene*`, `VolumeFog*`, `Weather*`, `WindSettings`, `Terrain*`, `WaterfallData`, `WorldShadow` (≈30).
+
+**G. Long tail stays "other"** until a feature or a page needs it. Per-table moves can be added to
+`DOMAIN_RULES` in `kb/src/client-scan.ts` incrementally, so the report shrinks without a bulk edit.
 
 ## Pointers
 
