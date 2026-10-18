@@ -38,7 +38,7 @@ try {
   // Match Supabase's permissive defaults: the migration must revoke them.
   await pool.query("alter default privileges in schema public grant execute on functions to anon, authenticated, service_role");
   await pool.query("alter default privileges in schema public grant all on tables to anon, authenticated, service_role");
-  await pool.query(await read("auth_schema.sql"));
+  await pool.query(await read("migrations/20261003000000_auth_schema.sql"));
   const sql = (await Promise.all(migrations.map((file) => read(`migrations/${file}`)))).join("\n");
   // Applied twice: the migration must be safe to re-run.
   await pool.query(sql);
