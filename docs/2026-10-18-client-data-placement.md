@@ -203,7 +203,7 @@ would actually render.
 - Command: `npm run kb -- client-scan [--product wow_classic_beta] [--manifest <path|url>] [--out data/client-scan]`
 - Raw report (runtime): `kb/data/client-scan/<product>-<buildId>-<config8>-scan.{json,md}`
 - Coverage spec pattern: `docs/design/specs/2026-10-18-client-coverage-tables-design.md`
-- Procedure as an agent skill: `.agents/skills/everloot-client-mining/SKILL.md` in the R21-Brain workspace
+- Procedure as an agent skill: `everloot-client-mining` in the operator's private agent workspace
   (scan → choose wave → CLIENT_TABLES → extract → coverage → regenerate; preflight and guardrails included)
 - Follow-on specs: relation edges, item taxonomy, object pages, entity icon manifest (`docs/design/specs/`)
 - Taxonomy and competitor context: `docs/2026-10-18-database-taxonomy-research.md`

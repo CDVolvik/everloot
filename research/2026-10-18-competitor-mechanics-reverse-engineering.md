@@ -146,4 +146,4 @@ Caveat: manifest IDs are cross-product; a build that does not ship a table recor
 - `wp-alchemy.html` — wow-professions.com (robots: allow reads)
 - `tf-home.html` — talentsforever.com (robots: allow)
 - Raw docs: TylerAkins/wow-database `docs/INGESTION.md` and `docs/CLIENT_EXTRACTION.md`; Jazzman1976/Forever-Hunter-Pets `docs/technik/quellen.md` (raw.githubusercontent)
-- All under `C:\Users\carli\AppData\Local\Temp\opencode\reverse\`
+- All fetched into a scratch folder on the operator's machine, not committed
