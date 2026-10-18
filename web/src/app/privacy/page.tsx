@@ -1,14 +1,22 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { pageMetadata } from "@/lib/seo";
+import { REVOKED_KEPT_DAYS, USAGE_KEPT_DAYS } from "@/lib/api-keys";
+import { SESSION_SECONDS } from "@/lib/supabase/server";
+import { OPERATOR } from "@/lib/jsonld";
+
+const SESSION_DAYS = Math.round(SESSION_SECONDS / 86_400);
 
 export const metadata: Metadata = {
   ...pageMetadata({ title: "Privacy Policy", description: "How Everloot handles your data, cookies and usage statistics, and what happens to the addon files you upload to the WoW: Forever database.", path: "/privacy" }),
 };
 
+const link = "text-accent hover:underline";
+
 export default function PrivacyPage() {
-  const updated = "October 2026";
+  const updated = "18 October 2026";
   return (
-    <article className="prose prose-invert max-w-3xl">
+    <article className="max-w-3xl">
       <h1 className="text-3xl font-bold text-fg">
         Privacy Policy
       </h1>
@@ -19,6 +27,17 @@ export default function PrivacyPage() {
         Everloot (&ldquo;we&rdquo;, &ldquo;us&rdquo;) provides free utility
         tools for World of Warcraft players. We value your privacy and try to
         collect the minimum information possible.
+      </p>
+
+      <h2 id="controller" className="text-xl text-fg mt-6">Who is responsible</h2>
+      <p className="text-fg-2">
+        Everloot is an independent fan project run by {OPERATOR}, which decides
+        what the site collects and is responsible for it under privacy law (the
+        &ldquo;controller&rdquo;, where that term applies). You
+        reach us at{" "}
+        <a className={link} href="mailto:hello@everloot.app">hello@everloot.app</a>.
+        The <Link href="/terms" className={link}>Terms of Use</Link> cover the
+        service itself; this page covers your data.
       </p>
 
       <h2 className="text-xl text-fg mt-6">
@@ -52,7 +71,7 @@ export default function PrivacyPage() {
           and BattleTag to manage your account and sharing choices. The current
           sign-in flow requests identity and World of Warcraft profile permissions,
           but reads only your identity and BattleTag. Provider access tokens are
-          not stored. The essential login cookie lasts up to 30 days; signing out
+          not stored. The essential login cookie lasts up to {SESSION_DAYS} days; signing out
           revokes that Everloot session. Signing in does not publish your named
           addon records or establish guild officer authority.
         </li>
@@ -61,8 +80,8 @@ export default function PrivacyPage() {
           Connect page, we store a one-way hash of it, the last four characters,
           your label, which account it belongs to, when it was made, last used
           and revoked, and a daily count of its requests per endpoint. Not what
-          was asked. Revoking a key stops it at once. Daily counts are kept 90
-          days. A revoked key and its counts are deleted 30 days after it was
+          was asked. Revoking a key stops it at once. Daily counts are kept {USAGE_KEPT_DAYS}{" "}
+          days. A revoked key and its counts are deleted {REVOKED_KEPT_DAYS} days after it was
           revoked, or at once when you delete it on the Connect page. To delete
           your account and everything tied to it, email us (below).
         </li>
@@ -73,7 +92,10 @@ export default function PrivacyPage() {
           records without the install id, so anyone can check our counts. The
           facts the site states, such as drop rates, spawn points and recipe
           ranges, appear only after at least three installs report them.
-          Install IDs are not proof of independent people. Guild data publishes only through an authorized officer upload. A
+          Install IDs are not proof of independent people. An upload that contains a scan is stored with a keyed
+          one-way hash of the address it came from, never the address, so we can count distinct reporters; the hash
+          stays in private storage with the upload and is never published. The private completion rollup records
+          which address hash and install produced each entry until it is rebuilt. Guild data publishes only through an authorized officer upload. A
           character owner with a verified sharing grant can opt out on the upload
           page; anyone else can ask us by email (below). Uploads build the public database; we never
           sell them.
@@ -148,8 +170,8 @@ export default function PrivacyPage() {
         .
       </p>
 
-      <h2 className="text-xl text-fg mt-6">
-        Your choices
+      <h2 id="choices" className="text-xl text-fg mt-6">
+        Your privacy choices
       </h2>
       <p className="text-fg-2">
         You can accept or reject optional cookies in the banner and reopen Cookie
@@ -163,6 +185,51 @@ export default function PrivacyPage() {
         no cookies, is the one tool that runs without a choice; it is skipped
         when your browser sends Do Not Track or Global Privacy Control. You can
         also clear local storage through your browser settings.
+      </p>
+
+      <h2 id="rights" className="text-xl text-fg mt-6">Your rights</h2>
+      <p className="text-fg-2">
+        Wherever you live, you can ask us what we hold about you, have it
+        corrected or deleted, object to or restrict how we use it, and withdraw
+        a consent you gave. Email{" "}
+        <a className={link} href="mailto:hello@everloot.app">hello@everloot.app</a>{" "}
+        and say which of these you want. Where we need to be sure the request
+        is yours, we may ask you to send it from the address tied to your
+        request or to prove the sharing grant or install id involved. We answer
+        within a month. If you are in the EEA or the UK you can also complain
+        to your data protection authority.
+      </p>
+      <ul className="list-disc pl-6 text-fg-2">
+        <li>
+          <strong>Sharing grants</strong> for named records can be withdrawn
+          on the upload page at any time, without emailing us.
+        </li>
+        <li>
+          <strong>API keys</strong> are revoked and deleted on the Connect page.
+        </li>
+        <li>
+          <strong>Uploads</strong> you ask us to remove are deleted, and the
+          next rollup rebuild removes anything derived from them.
+        </li>
+      </ul>
+
+      <h2 id="retention" className="text-xl text-fg mt-6">How long we keep things</h2>
+      <ul className="list-disc pl-6 text-fg-2">
+        <li><strong>Login cookie:</strong> up to {SESSION_DAYS} days, or until you sign out.</li>
+        <li><strong>Cookie choice:</strong> in your browser until you clear it or change it.</li>
+        <li><strong>Battle.net Account ID and BattleTag:</strong> until you ask us to delete your account.</li>
+        <li><strong>API key usage counts:</strong> {USAGE_KEPT_DAYS} days. A revoked key and its counts: {REVOKED_KEPT_DAYS} days after revocation, or at once when you delete it.</li>
+        <li><strong>Rate-limit hashes:</strong> a short time, long enough to enforce the limit, then discarded.</li>
+        <li><strong>Uploads:</strong> until you ask us to remove them. They are the public database.</li>
+        <li><strong>Upload address hash:</strong> as long as the upload it belongs to. The completion rollup keeps its link between an address hash and an install until the rollup is next rebuilt.</li>
+        <li><strong>Launch-notification email:</strong> until you ask us to remove it.</li>
+      </ul>
+
+      <h2 id="children" className="text-xl text-fg mt-6">Children</h2>
+      <p className="text-fg-2">
+        Everloot is not directed at children under 13 and we do not knowingly
+        collect personal information from them. If you believe a child has
+        given us some, email us and we will delete it.
       </p>
 
       <h2 className="text-xl text-fg mt-6">Contact</h2>

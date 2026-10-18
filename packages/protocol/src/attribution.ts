@@ -8,7 +8,7 @@ export const LICENCE = "CC BY-SA 4.0";
 export const LICENCE_URL = "https://creativecommons.org/licenses/by-sa/4.0/";
 export const CREDIT_LINE = `Data from Everloot (${SITE}), ${LICENCE}.`;
 /** Where the rules for reuse are written out for people. */
-export const TERMS_URL = `${SITE}/connect#licence`;
+export const TERMS_URL = `${SITE}/terms#licences`;
 
 /** What game-file facts carry instead of our licence (docs/DATA_POLICY.md, "The client layer"). */
 export const GAME_DATA_CREDIT = "Game data © Blizzard Entertainment, Inc., read from the public client; not under Everloot's licence. "

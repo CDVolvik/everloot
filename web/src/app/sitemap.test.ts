@@ -26,7 +26,7 @@ test("/wow-forever is listed and dated by the day its source was read", () => {
 });
 
 test("a page with no known modification time has none, instead of today's date", () => {
-  for (const path of ["/about", "/privacy", "/connect"]) expect(byPath.get(path)?.lastModified, path).toBeUndefined();
+  for (const path of ["/about", "/privacy", "/terms", "/security", "/connect"]) expect(byPath.get(path)?.lastModified, path).toBeUndefined();
 });
 
 test("changefreq and priority are gone", () => {
