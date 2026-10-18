@@ -49,9 +49,12 @@ jobs:
           node-version: '22.23.2'
           cache: npm
           cache-dependency-path: |
+            packages/protocol/package-lock.json
             kb/package-lock.json
             web/package-lock.json
             companion/package-lock.json
+      - run: npm ci && npm test && npm run typecheck && npm run build && git diff --exit-code -- dist schema
+        working-directory: packages/protocol
       - run: npm ci
         working-directory: kb
       - run: npm ci
@@ -65,7 +68,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: python -m pip install lupa==2.6
-      - run: python addon/tests/event_identity.py && python addon/tests/collection_contract.py && python addon/tests/auction_contract.py && python addon/tests/gold_contract.py && python addon/tests/ask_contract.py && python addon/tests/recipes_contract.py && python addon/tests/addons_contract.py && python addon/tests/mapbounds_contract.py && python addon/tests/market_contract.py && python addon/tests/talents_contract.py && python addon/tests/plan_contract.py && python addon/tests/raid_contract.py && python addon/tests/completion_contract.py
+      - run: python -m pip install lupa==2.6 jsonschema==4.25.1
+      - run: python addon/tests/event_identity.py && python addon/tests/collection_contract.py && python addon/tests/auction_contract.py && python addon/tests/gold_contract.py && python addon/tests/ask_contract.py && python addon/tests/recipes_contract.py && python addon/tests/addons_contract.py && python addon/tests/mapbounds_contract.py && python addon/tests/market_contract.py && python addon/tests/talents_contract.py && python addon/tests/plan_contract.py && python addon/tests/raid_contract.py && python addon/tests/completion_contract.py && python addon/tests/protocol_contract.py
       - run: python scripts/package-addon.py && git diff --exit-code -- web/public/downloads
       - run: python addon/tests/answers_contract.py

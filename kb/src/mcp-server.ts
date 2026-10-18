@@ -15,7 +15,7 @@ import { handleItemPage } from "./item-page.js";
 import { handleObjectPage, objectFactsFromRecords, type ObjectFacts } from "./object-page.js";
 import { handleMarketValue, type MarketState } from "./market.js";
 import { loadUploadRecords } from "./load-uploads.js";
-import { parseRecords } from "../../web/src/lib/intake.js";
+import { parseRecords } from "@everloot/protocol";
 import { handleProfessionPath } from "./profession-path.js";
 import { handleRecipeThresholds, pathFactsFromRecords, recipeFactsFromRecords } from "./recipe-thresholds.js";
 import { handleNpcPage, handleQuestPage, handleVendorPage, worldFactsFromRecords } from "./world-pages.js";

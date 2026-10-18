@@ -1,4 +1,4 @@
-"""Run with: uv run --with lupa python addon/tests/mapbounds_contract.py"""
+"""Run with: uv run --with lupa --with jsonschema python addon/tests/mapbounds_contract.py"""
 from pathlib import Path
 from lupa.lua51 import LuaRuntime
 
@@ -109,4 +109,7 @@ event('PLAYER_ENTERING_WORLD')
 assert(Everloot:Count('map_bounds') == 0)
 assert(string.find(Everloot:Status(), 'mapbounds: disabled', 1, true), 'a client without C_Map disables the module')
 """)
+# Every row the addon wrote is a record the site would accept (packages/protocol/schema).
+from protocol_schema import check_all  # noqa: E402
+check_all(lua)
 print("Lua 5.1 map bounds: corners from (0,0) and (1,1), once per zone per build, client build, guarded calls")

@@ -6,7 +6,7 @@ import ApiKeys from "@/components/ApiKeys";
 import Bracket from "@/components/Bracket";
 import { KEYS_MADE_PER_DAY, KEYS_PER_ACCOUNT, REVOKED_KEPT_DAYS, USAGE_KEPT_DAYS } from "@/lib/api-keys";
 import { ANON_PAGE, ANON_PER_HOUR, guardOn, KEY_PAGE, KEY_PER_HOUR } from "@/lib/data-guard";
-import { PUBLIC_RECORD_KINDS } from "@/lib/intake";
+import { PUBLIC_RECORD_KINDS } from "@everloot/protocol";
 import { CONNECT_EXAMPLES as ex, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR } from "./connect-data";
 
 export const metadata: Metadata = {

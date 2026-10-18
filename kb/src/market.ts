@@ -22,6 +22,7 @@
  * so the rollup cannot grow with what a stranger uploads; MARKET_MAX_BYTES is the last guard.
  * Days past the open window collapse to their public medians (or are dropped if they never were).
  */
+import { UPLOAD_LIMITS, validRealm } from "@everloot/protocol";
 import { z } from "zod";
 import { AUCTION_AGREEMENT } from "./auction-history.js";
 
@@ -42,19 +43,15 @@ export const MARKET_LIMITS = {
   installsPerItemDay: 25,
   /** Open install scans plus closed days, across every realm. About 100 bytes each. */
   entries: 60_000,
-  /** Distinct realms read from one upload. */
-  realmsPerUpload: 3,
+  /** Distinct realms read from one upload (the protocol's limit). */
+  realmsPerUpload: UPLOAD_LIMITS.realmsPerUpload as number,
 };
 /** market.json is refused above this size, whatever the other caps allow. */
 export const MARKET_MAX_BYTES = 10 * 1024 * 1024;
 const DAY_MS = 86_400_000;
 
-/** A realm name: letters, digits, spaces, apostrophes and hyphens, 2 to 40 characters once trimmed. */
-export function validRealm(name: unknown): name is string {
-  if (typeof name !== "string") return false;
-  const realm = name.trim();
-  return realm.length >= 2 && realm.length <= 40 && /^[\p{L}\p{N}][\p{L}\p{N} '’-]*$/u.test(realm);
-}
+/** A realm name, as the protocol defines it: letters, digits, spaces, apostrophes and hyphens, 2 to 40 characters once trimmed. */
+export { validRealm };
 
 /** One install's last scan of an item on an open day: [minUnit, marketUnit, quantity, auctions, capturedAt epoch ms, reporter]. */
 export type InstallScan = [number, number, number, number, number, string];

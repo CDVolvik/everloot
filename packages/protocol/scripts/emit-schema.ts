@@ -1,0 +1,53 @@
+/**
+ * Writes the language-neutral copy of the contract into schema/: one JSON Schema (draft 2020-12) per
+ * record kind, the upload envelope, the limits and an index. The addon's contract tests validate the
+ * rows the addon writes against these files, because Lua cannot import an npm package.
+ *
+ * Input mode leaves extra properties allowed, as the server strips them. The cross-field rules zod
+ * enforces are written into each description so a reader of the file knows the server checks them.
+ */
+import { mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { z } from "zod";
+import { ALL_RECORD_KINDS, PUBLIC_RECORD_KINDS, recordSchemas, RULES, uploadPayload, type RecordKind } from "../src/records.js";
+import { UPLOAD_LIMITS } from "../src/limits.js";
+import { PROTOCOL_VERSION } from "../src/version.js";
+
+const OUT = join(dirname(fileURLToPath(import.meta.url)), "..", "schema");
+
+type JsonSchema = Record<string, unknown> & { description?: string };
+
+function rulesFor(kind: string): readonly string[] {
+  return (RULES as Record<string, readonly string[] | undefined>)[kind] ?? [];
+}
+
+/** The JSON Schema of one kind, with the server's cross-field rules written into its description. */
+export function recordSchema(kind: RecordKind): JsonSchema {
+  const schema = z.toJSONSchema(recordSchemas[kind], { io: "input", target: "draft-2020-12" }) as JsonSchema;
+  const rules = rulesFor(kind);
+  const lines = [`Everloot upload record: ${kind}.`];
+  if (rules.length) lines.push(`The server also checks: ${rules.join("; ")}.`);
+  schema.description = schema.description ? `${schema.description} ${lines.join(" ")}` : lines.join(" ");
+  return { $id: `https://everloot.app/schema/records/${kind}.json`, ...schema };
+}
+
+function write(path: string, value: unknown): void {
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+export function emit(out = OUT): void {
+  rmSync(out, { recursive: true, force: true });
+  const kinds = [...ALL_RECORD_KINDS].sort();
+  for (const kind of kinds) write(join(out, "records", `${kind}.json`), recordSchema(kind));
+  write(join(out, "upload.json"), {
+    $id: "https://everloot.app/schema/upload.json",
+    ...z.toJSONSchema(uploadPayload, { io: "input", target: "draft-2020-12" }),
+    description: `The request envelope POSTed to /api/intake. Each entry of records is one record kind from records/*.json. A missing protocol means major 1; the server accepts the current major and the previous one.`,
+  });
+  write(join(out, "limits.json"), UPLOAD_LIMITS);
+  write(join(out, "index.json"), { protocol: PROTOCOL_VERSION, kinds, publicKinds: [...PUBLIC_RECORD_KINDS].sort() });
+}
+
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) emit();

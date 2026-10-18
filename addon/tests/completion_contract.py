@@ -1,4 +1,4 @@
-"""Run with: uv run --with lupa python addon/tests/completion_contract.py
+"""Run with: uv run --with lupa --with jsonschema python addon/tests/completion_contract.py
 
 The mock follows what Blizzard's own files for build 1.60.1.70450 say: C_Reputation (FactionData), the title
 functions, C_QuestLog.GetAllCompletedQuestIDs and C_QuestLine from the API documentation, and the achievement
@@ -676,5 +676,8 @@ for source_file in sorted(root.rglob("*.lua")):
     called = re.search(rf"\b({actions})\s*\(|pcall\(\s*(?:[A-Za-z_]+\.)?({actions})\b|call\(\s*\"[\w.]*\b({actions})\"", text)
     assert not called, f"{source_file.name} calls an API that changes the game: {called.group(0)}"
 
+# Every row the addon wrote is a record the site would accept (packages/protocol/schema).
+from protocol_schema import check_all  # noqa: E402
+check_all(lua)
 print("Lua 5.1 completion: opt-in, chunked reads that skip combat, achievements/reputation/titles/quest chains, replaced rows, "
       "opaque character key, missing calls named, cap respected, off withdraws, no call that changes the game")

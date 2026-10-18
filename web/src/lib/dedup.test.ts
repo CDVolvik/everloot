@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { mergeCorpus, publicRecords, eventKey } from "../../../kb/src/corpus";
-import { parseRecords } from "./intake";
+import { parseRecords } from "@everloot/protocol";
 
 function deduplicateRecords(rows: unknown[]) {
   const state = mergeCorpus(undefined, rows);

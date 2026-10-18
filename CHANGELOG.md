@@ -10,8 +10,14 @@ that has a zip in the repository. Earlier builds have none.
 
 ## [Unreleased]
 
-Nothing yet. Pull requests merged to `main` are listed in the nightly pre-releases until the next
-tagged release.
+### Changed
+- The upload record contract moved from `web/src/lib/intake.ts` into one package, `packages/protocol`
+  (`@everloot/protocol`), that the site, the knowledge base and the companion install. Uploads now carry
+  `protocol`, the contract version; the server accepts the current major and the previous one. The
+  addon's contract tests validate the rows it writes against the package's JSON Schema files. The
+  addon's Lua comments still name the old file; they change with the next addon release.
+
+Pull requests merged to `main` are listed in the nightly pre-releases until the next tagged release.
 
 ## [0.3.3] - 2026-10-19
 

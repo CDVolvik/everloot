@@ -1,7 +1,7 @@
 import { CORPUS_URL, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR } from "@/app/connect/connect-data";
 import { LAUNCH, longDate } from "@/data/wow-forever";
 import { tools, toolHref } from "@/data/tools";
-import { PUBLIC_RECORD_KINDS } from "@/lib/intake";
+import { PUBLIC_RECORD_KINDS } from "@everloot/protocol";
 import { latestBuildLine } from "@/lib/changes-facts";
 import { loadTimeline, type ChangeEntry } from "@/lib/changes";
 import { NON_AFFILIATION } from "@/lib/jsonld";

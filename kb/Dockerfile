@@ -1,17 +1,23 @@
 FROM node:22.23.2-bookworm-slim AS builder
 RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ && rm -rf /var/lib/apt/lists/*
+# The record contract is the built @everloot/protocol package, installed from the folder (kb/.npmrc).
+COPY packages/protocol/package.json packages/protocol/package-lock.json /app/packages/protocol/
+COPY packages/protocol/dist /app/packages/protocol/dist
+COPY packages/protocol/schema /app/packages/protocol/schema
 WORKDIR /app/kb
-COPY kb/package.json kb/package-lock.json ./
+COPY kb/package.json kb/package-lock.json kb/.npmrc ./
 RUN npm ci
 COPY kb/src ./src
 COPY kb/tsconfig.json ./
-COPY web/src/lib/intake.ts /app/web/src/lib/intake.ts
+# The committed game-file layer kb/src/{client-layer,world-map}-file.ts import from the site.
+COPY web/src/data/game-data/map.json web/src/data/game-data/client-layer.json /app/web/src/data/game-data/
 RUN ln -s /app/kb/node_modules /app/node_modules
 RUN npm run typecheck
 
 FROM node:22.23.2-bookworm-slim
 WORKDIR /app/kb
 COPY --from=builder /app/kb ./
+COPY --from=builder /app/packages /app/packages
 COPY --from=builder /app/web /app/web
 RUN ln -s /app/kb/node_modules /app/node_modules
 # Only the approved knowledge release is included, never contributor uploads.

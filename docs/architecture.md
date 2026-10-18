@@ -10,6 +10,7 @@ the **companion** uploads and runs the `/ask` bridge on the player's computer.
 |---|---|---|
 | Collector addon | `addon/` | The player's WoW: Forever client; writes `SavedVariables/Everloot.lua` |
 | Companion | `companion/` | The player's computer, beside the game |
+| Upload contract | `packages/protocol/` | Installed into `web/`, `kb/` and `companion/` from the folder; its `schema/` is read by the addon's contract tests |
 | Site and APIs | `web/` | Vercel, at everloot.app; every merge to `main` deploys production |
 | Raw uploads | `web/src/lib/upload-store.ts` | Cloudflare R2 (`uploads/<date>/<id>.json`), indexed in Supabase |
 | Public corpus | `web/src/app/api/cron/snapshot` | A Vercel cron every 10 minutes extends `snapshots/corpus.json` in R2; pages read that one object |

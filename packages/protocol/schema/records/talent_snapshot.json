@@ -1,0 +1,139 @@
+{
+  "$id": "https://everloot.app/schema/records/talent_snapshot.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "installId": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 64,
+      "description": "Random install id, no account needed."
+    },
+    "eventId": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 96,
+      "pattern": "^[A-Za-z0-9:_-]+$"
+    },
+    "capturedAt": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+      "description": "ISO time the event happened in-game."
+    },
+    "kind": {
+      "type": "string",
+      "const": "talent_snapshot"
+    },
+    "class": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 20,
+      "pattern": "^[A-Za-z]+$",
+      "description": "Class token from UnitClass, e.g. MAGE."
+    },
+    "level": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100
+    },
+    "group": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 2,
+      "description": "Spec group: 1 primary, 2 secondary (dual spec from level 40)."
+    },
+    "active": {
+      "type": "boolean"
+    },
+    "configId": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "treeId": {
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740991
+    },
+    "specId": {
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740991
+    },
+    "clientBuild": {
+      "type": "string",
+      "maxLength": 32,
+      "pattern": "^\\d+(\\.\\d+)+$"
+    },
+    "serializationVersion": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 255
+    },
+    "loadoutString": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000,
+      "pattern": "^[A-Za-z0-9+/]+$"
+    },
+    "exportStatus": {
+      "type": "string",
+      "enum": [
+        "ok",
+        "unavailable",
+        "failed",
+        "empty",
+        "unexpected"
+      ]
+    },
+    "points": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 500
+    },
+    "nodes": {
+      "maxItems": 600,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "nodeId": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "ranks": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          },
+          "choice": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3
+          }
+        },
+        "required": [
+          "nodeId",
+          "ranks"
+        ]
+      }
+    }
+  },
+  "required": [
+    "installId",
+    "capturedAt",
+    "kind",
+    "class",
+    "level",
+    "group",
+    "active",
+    "configId",
+    "treeId",
+    "exportStatus",
+    "points",
+    "nodes"
+  ],
+  "description": "Everloot upload record: talent_snapshot. The server also checks: talent points must equal the sum of node ranks; talent node ids must be unique."
+}

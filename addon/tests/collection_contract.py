@@ -1,4 +1,4 @@
-"""Run with: uv run --with lupa python addon/tests/collection_contract.py"""
+"""Run with: uv run --with lupa --with jsonschema python addon/tests/collection_contract.py"""
 from pathlib import Path
 from lupa.lua51 import LuaRuntime
 
@@ -74,4 +74,7 @@ local member = EverlootDB.records.guild_snapshot[1].members[1]
 assert(member.rank == 'Officer' and member.level == 60 and member.class == 'MAGE')
 assert(member.lastOnlineDays == 0)
 """)
+# Every row the addon wrote is a record the site would accept (packages/protocol/schema).
+from protocol_schema import check_all  # noqa: E402
+check_all(lua)
 print("Lua 5.1 collection: physical sources, quantities, reopen/reload, missing APIs, position provenance and roster passed")

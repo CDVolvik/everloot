@@ -5,7 +5,7 @@ vi.mock("@/lib/upload-store", () => ({ uploadStore: { loadCorpus: store.loadCorp
 vi.mock("@/lib/intake-quota", () => ({ intakeQuota: { api: store.api } }));
 
 import { GET } from "./route";
-import { ALL_RECORD_KINDS, COMPLETION_KINDS, PUBLIC_RECORD_KINDS } from "@/lib/intake";
+import { ALL_RECORD_KINDS, COMPLETION_KINDS, PUBLIC_RECORD_KINDS } from "@everloot/protocol";
 import { ANON_PAGE, KEY_PAGE } from "@/lib/data-guard";
 import { newKey } from "@/lib/api-keys";
 

@@ -18,5 +18,7 @@ changelog:
       labels: [companion]
     - title: Documentation and project setup
       labels: [documentation, infra]
+    - title: Protocol
+      labels: [protocol]
     - title: Other changes
       labels: ["*"]

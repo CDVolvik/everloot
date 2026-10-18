@@ -1,12 +1,34 @@
 import { z } from "zod";
-import { validRealm } from "../../../kb/src/market";
+import { UPLOAD_LIMITS } from "./limits.js";
+import { validRealm } from "./realm.js";
 
 /**
- * Everloot intake contract (Track 2, step 1).
- * The addon (Track 1) writes these records to SavedVariables; the uploader POSTs them here.
- * Validation only — storage sits behind the `Store` interface so local file storage swaps
- * for Supabase without touching the contract. Rollups (drop rates, spawns, scores) are step 2.
+ * Everloot upload record contract.
+ * The addon writes these records to SavedVariables; the uploaders POST them to the site, which
+ * validates every record against its kind's schema. Nothing here stores or publishes anything.
  */
+
+/**
+ * The cross-field rules zod enforces that JSON Schema cannot express. Each schema below uses its
+ * sentence as the refinement message, and `scripts/emit-schema.ts` writes the same sentences into
+ * the generated JSON Schema's description, so a reader of the schema files knows the server checks them.
+ */
+export const RULES = {
+  loot: ["loot needs a source: npc or object"],
+  achievement_catalog: ["criteria cannot outnumber criteriaCount"],
+  achievement_owned: [
+    "quantity and required come together",
+    "quantity cannot exceed required",
+    "criteriaMet cannot exceed criteriaTotal",
+    "only a completed achievement has a date",
+    "earnedOn is a real calendar date",
+  ],
+  reputation_owned: ["floor cannot exceed ceiling"],
+  auction_snapshot: ["realm is a realm name: letters, digits, spaces, apostrophes and hyphens, 2 to 40 characters", "part cannot exceed parts"],
+  gold_snapshot: ["peak gold cannot be below current gold"],
+  map_bounds: ["map bounds need a width and a height"],
+  talent_snapshot: ["talent points must equal the sum of node ranks", "talent node ids must be unique"],
+} as const satisfies Record<string, readonly string[]>;
 
 export const INSTALL_ID = z.string().min(8).max(64).describe("Random install id, no account needed.");
 
@@ -38,7 +60,7 @@ export const lootWindow = base.extend({
   sourceEvidence: z.literal("loot-api").optional().describe("Legacy target guesses are withheld from public loot observations."),
   items: z.array(z.object({ itemId: z.number().int().positive(), count: z.number().int().min(1).max(1000) })).max(50),
 }).refine((r) => r.sourceNpcId !== undefined || r.sourceObjectId !== undefined, {
-  message: "loot needs a source: npc or object",
+  message: RULES.loot[0],
 });
 
 export const questEvent = base.extend({
@@ -141,7 +163,7 @@ export const collectionOwned = base.extend({
 // --- Addon 0.3.3: completion tracker (achievements, reputation, titles, quest chains) ---
 // Catalog rows are game facts with no player data: readers list an entry once 3 installs agree on it.
 // Owned rows are one character's own progress. They follow collection_owned: named data, shared only with
-// the "collection" choice and a verified install grant (kb/src/publication.ts).
+// the "collection" choice and a verified install grant.
 
 /**
  * Opaque per-install label for one character: 8 hex digits the addon derives from the install id and the
@@ -165,7 +187,7 @@ export const achievementCatalog = base.extend({
     text: z.string().max(120),
     required: z.number().int().min(0).max(2_000_000_000),
   })).max(100),
-}).refine((row) => row.criteria.length <= row.criteriaCount, { message: "criteria cannot outnumber criteriaCount", path: ["criteria"] });
+}).refine((row) => row.criteria.length <= row.criteriaCount, { message: RULES.achievement_catalog[0], path: ["criteria"] });
 
 export const reputationCatalog = base.extend({
   kind: z.literal("reputation_catalog"),
@@ -212,10 +234,10 @@ export const achievementOwned = ownedBase.extend({
   quantity: z.number().int().min(0).max(2_000_000_000).optional().describe("A progress-bar achievement's current amount."),
   required: z.number().int().min(1).max(2_000_000_000).optional().describe("A progress-bar achievement's target amount."),
 }).superRefine((row, ctx) => {
-  if ((row.quantity === undefined) !== (row.required === undefined)) ctx.addIssue({ code: "custom", message: "quantity and required come together", path: ["quantity"] });
-  if (row.quantity !== undefined && row.required !== undefined && row.quantity > row.required) ctx.addIssue({ code: "custom", message: "quantity cannot exceed required", path: ["quantity"] });
-  if (row.criteriaMet > row.criteriaTotal) ctx.addIssue({ code: "custom", message: "criteriaMet cannot exceed criteriaTotal", path: ["criteriaMet"] });
-  if (row.earnedOn && !row.completed) ctx.addIssue({ code: "custom", message: "only a completed achievement has a date", path: ["earnedOn"] });
+  if ((row.quantity === undefined) !== (row.required === undefined)) ctx.addIssue({ code: "custom", message: RULES.achievement_owned[0], path: ["quantity"] });
+  if (row.quantity !== undefined && row.required !== undefined && row.quantity > row.required) ctx.addIssue({ code: "custom", message: RULES.achievement_owned[1], path: ["quantity"] });
+  if (row.criteriaMet > row.criteriaTotal) ctx.addIssue({ code: "custom", message: RULES.achievement_owned[2], path: ["criteriaMet"] });
+  if (row.earnedOn && !row.completed) ctx.addIssue({ code: "custom", message: RULES.achievement_owned[3], path: ["earnedOn"] });
 });
 
 export const reputationOwned = ownedBase.extend({
@@ -225,7 +247,7 @@ export const reputationOwned = ownedBase.extend({
   standing: z.number().int().min(-1_000_000).max(10_000_000),
   floor: z.number().int().min(-1_000_000).max(10_000_000),
   ceiling: z.number().int().min(-1_000_000).max(10_000_000),
-}).refine((row) => row.floor <= row.ceiling, { message: "floor cannot exceed ceiling", path: ["floor"] });
+}).refine((row) => row.floor <= row.ceiling, { message: RULES.reputation_owned[0], path: ["floor"] });
 
 /** Titles and completed quests are sent as additions: the union of a character's rows is what it has. */
 export const titleOwned = ownedBase.extend({
@@ -242,7 +264,7 @@ export const questOwned = ownedBase.extend({
 export const COMPLETION_OWNED_KINDS: readonly string[] = ["achievement_owned", "reputation_owned", "title_owned", "quest_owned"];
 /** Catalog rows reflect one character's visible factions and quest lines and carry a per-install event id. */
 export const COMPLETION_CATALOG_KINDS: readonly string[] = ["achievement_catalog", "reputation_catalog", "title_catalog", "quest_chain_catalog"];
-/** None of these is a public record or part of the corpus: kb/src/completion-rollup.ts folds them. */
+/** None of these is a public record or part of the corpus: the completion rollup folds them. */
 export const COMPLETION_KINDS: readonly string[] = [...COMPLETION_CATALOG_KINDS, ...COMPLETION_OWNED_KINDS];
 
 export const auctionScan = base.extend({
@@ -263,17 +285,17 @@ const SCAN_COPPER = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
 /**
  * One part of a full auction-house scan the player started (addon 0.3.0+). Each item is
  * [itemId, auctions, quantity, minUnit, marketUnit], copper per unit. A scan is split into parts of
- * at most 1,000 items. These rows feed the market rollup, not the general corpus (kb/src/corpus.ts).
+ * at most 1,000 items. These rows feed the market rollup, not the general corpus.
  */
 export const auctionSnapshot = base.extend({
   kind: z.literal("auction_snapshot"),
-  // Plain realm names only (kb/src/market.ts): the name is published once 3 reporters scanned there.
+  // Plain realm names only: the name is published once 3 reporters scanned there.
   realm: z.string().min(2).max(60).refine(validRealm, { message: "not a realm name" }),
   scanId: z.string().min(3).max(96).regex(/^[A-Za-z0-9:_-]+$/),
   part: z.number().int().min(1).max(100),
   parts: z.number().int().min(1).max(100),
   items: z.array(z.tuple([z.number().int().positive(), SCAN_COUNT, SCAN_COUNT, SCAN_COPPER, SCAN_COPPER])).min(1).max(1000),
-}).refine((row) => row.part <= row.parts, { message: "part cannot exceed parts" });
+}).refine((row) => row.part <= row.parts, { message: RULES.auction_snapshot[1] });
 
 export const recipeSeen = base.extend({
   kind: z.literal("recipe_seen"),
@@ -328,7 +350,7 @@ export const goldSnapshot = base.extend({
   currentCopper: COPPER,
   peakCopper: COPPER,
 }).refine((row) => row.peakCopper >= row.currentCopper, {
-  message: "peak gold cannot be below current gold",
+  message: RULES.gold_snapshot[0],
 });
 
 export const moneyEvent = base.extend({
@@ -362,7 +384,7 @@ export const mapBounds = base.extend({
   right: WORLD_UNITS,
   bottom: WORLD_UNITS,
 }).refine((row) => row.left !== row.right && row.top !== row.bottom, {
-  message: "map bounds need a width and a height",
+  message: RULES.map_bounds[0],
 });
 
 /** The game client's version and build from GetBuildInfo(), e.g. 1.60.1.70450. Addon 0.2.6+. */
@@ -398,14 +420,15 @@ export const talentSnapshot = base.extend({
   nodes: z.array(talentNode).max(600),
 }).superRefine((row, ctx) => {
   if (row.points !== row.nodes.reduce((sum, node) => sum + node.ranks, 0)) {
-    ctx.addIssue({ code: "custom", message: "talent points must equal the sum of node ranks", path: ["points"] });
+    ctx.addIssue({ code: "custom", message: RULES.talent_snapshot[0], path: ["points"] });
   }
   if (new Set(row.nodes.map((node) => node.nodeId)).size !== row.nodes.length) {
-    ctx.addIssue({ code: "custom", message: "talent node ids must be unique", path: ["nodes"] });
+    ctx.addIssue({ code: "custom", message: RULES.talent_snapshot[1], path: ["nodes"] });
   }
 });
 
-const recordSchemas = {
+/** Every record kind and its schema, in the order the contract lists them. */
+export const recordSchemas = {
   npc_sighting: npcSighting,
   loot: lootWindow,
   quest: questEvent,
@@ -453,11 +476,11 @@ const PUBLIC_KIND_LIST = [
   // The eight completion kinds are deliberately absent. Catalog rows reflect one character's visible factions
   // and quest lines under a per-install event id, so they are never served raw: pages and MCP show an entry
   // only when 3 installs reported it identically. Owned rows are shown only to a granted owner. Both come
-  // from the completion rollup (kb/src/completion-rollup.ts), not from this corpus.
+  // from the completion rollup, not from this corpus.
 ] as const satisfies readonly RecordKind[];
 export const PUBLIC_RECORD_KINDS: readonly string[] = PUBLIC_KIND_LIST;
 
-const anyRecord = z.discriminatedUnion("kind", [
+export const anyRecord = z.discriminatedUnion("kind", [
   npcSighting, lootWindow, questEvent, vendorList, itemSeen,
   guildSnapshot, raidLockout, attendance, lootAward, gearSnapshot,
   collectionCatalog, collectionOwned, achievementCatalog, reputationCatalog, titleCatalog, questChainCatalog,
@@ -467,112 +490,10 @@ const anyRecord = z.discriminatedUnion("kind", [
 
 export type IntakeRecord = z.infer<typeof anyRecord>;
 
+/** The request envelope. `protocol` is the uploader's protocol version; a missing one means major 1. */
 export const uploadPayload = z.object({
-  addonVersion: z.string().min(1).max(20),
+  addonVersion: z.string().min(1).max(UPLOAD_LIMITS.addonVersionMax),
   clientBuild: CLIENT_BUILD.optional(),
-  records: z.array(z.unknown()).min(1).max(2000),
+  protocol: z.string().regex(/^\d+\.\d+\.\d+$/).optional(),
+  records: z.array(z.unknown()).min(1).max(UPLOAD_LIMITS.recordsPerBatch),
 });
-
-export interface AcceptedRecord {
-  index: number;
-  kind: RecordKind;
-}
-
-export interface RejectedRecord {
-  index: number;
-  reason: string;
-}
-
-export interface ValidationResult {
-  accepted: AcceptedRecord[];
-  rejected: RejectedRecord[];
-}
-
-/** An upload reduced to its accepted records: what a store may persist, what a corpus may serve. */
-export interface CanonicalUpload {
-  addonVersion: string;
-  clientBuild?: string;
-  /**
-   * Keyed hash of the upload address (see `reporterHash`), added by the intake route, never read from
-   * the request body. The market counts installs behind one address once. Never published.
-   */
-  reporter?: string;
-  records: IntakeRecord[];
-}
-
-export interface ParsedRecords {
-  records: IntakeRecord[];
-  receipt: ValidationResult;
-}
-
-export type ParsedUpload =
-  | { ok: true; upload: CanonicalUpload; receipt: ValidationResult }
-  | { ok: false; receipt: ValidationResult };
-
-/** The record's own `kind`; a prototype or inherited key never names a schema. */
-function ownKindOf(raw: unknown): unknown {
-  if (typeof raw !== "object" || raw === null || !Object.hasOwn(raw, "kind")) return undefined;
-  return (raw as { kind: unknown }).kind;
-}
-
-/**
- * Parse every record against its own kind schema, keeping the parsed value and the original
- * index. Only own `kind` keys name a schema: inherited or prototype keys are unknown kinds.
- */
-export function parseRecords(records: readonly unknown[]): ParsedRecords {
-  const parsed: IntakeRecord[] = [];
-  const accepted: AcceptedRecord[] = [];
-  const rejected: RejectedRecord[] = [];
-  records.forEach((raw, index) => {
-    const kind = ownKindOf(raw);
-    const schema =
-      typeof kind === "string" && Object.hasOwn(recordSchemas, kind)
-        ? recordSchemas[kind as RecordKind]
-        : undefined;
-    if (!schema) {
-      rejected.push({ index, reason: `unknown kind: ${String(kind)}` });
-      return;
-    }
-    const r = schema.safeParse(raw);
-    if (r.success) {
-      parsed.push(r.data as IntakeRecord);
-      accepted.push({ index, kind: kind as RecordKind });
-    } else {
-      rejected.push({ index, reason: r.error.issues[0]?.message ?? "invalid record" });
-    }
-  });
-  return { records: parsed, receipt: { accepted, rejected } };
-}
-
-/**
- * Parse an upload envelope. `ok` means the envelope itself parsed, so a valid envelope whose
- * rows were all rejected still returns an upload with zero records — callers decide what that means.
- */
-export function parseUpload(payload: unknown): ParsedUpload {
-  const parsed = uploadPayload.safeParse(payload);
-  if (!parsed.success) {
-    return {
-      ok: false,
-      receipt: { accepted: [], rejected: [{ index: -1, reason: "payload needs addonVersion + records[1..2000]" }] },
-    };
-  }
-  const { records, receipt } = parseRecords(parsed.data.records);
-  const { addonVersion, clientBuild } = parsed.data;
-  return { ok: true, upload: { addonVersion, ...(clientBuild ? { clientBuild } : {}), records }, receipt };
-}
-
-/**
- * Validate an upload: every record is checked against its kind schema.
- * Implausible data is rejected with a reason; nothing is stored here.
- * Rate limits (per install / per IP) are enforced at the route layer.
- */
-export function validateUpload(payload: unknown): ValidationResult {
-  return parseUpload(payload).receipt;
-}
-
-/** Summarize accepted records for the pre-send preview: counts per kind, never names. */
-export function summarizeKinds(records: IntakeRecord[]): Partial<Record<string, number>> {
-  const counts: Partial<Record<string, number>> = {};
-  for (const r of records) counts[r.kind] = (counts[r.kind] ?? 0) + 1;
-  return counts;
-}
