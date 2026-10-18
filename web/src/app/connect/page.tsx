@@ -188,6 +188,14 @@ export default function ConnectPage() {
           and a <code className="font-mono text-fg">gameData</code> notice instead of our licence. The whole game-file layer of the
           current build downloads in one file from <code className="font-mono text-fg">/api/edges/client-layer</code>.
         </p>
+        <p className="text-fg-2">
+          Item categories (class, subclass, slot and quality, from the game files) are at{" "}
+          <code className="font-mono text-fg">/api/items</code>, filtered by <code className="font-mono text-fg">class</code>,{" "}
+          <code className="font-mono text-fg">subclass</code>, <code className="font-mono text-fg">slot</code>,{" "}
+          <code className="font-mono text-fg">quality</code> or <code className="font-mono text-fg">item</code> and paged the same way;
+          the tree with slugs and counts is at <code className="font-mono text-fg">/api/items/categories</code>. They carry the same{" "}
+          <code className="font-mono text-fg">gameData</code> notice.
+        </p>
       </Section>
 
       <Section id="keys" title="Limits and keys">

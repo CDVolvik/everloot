@@ -12,11 +12,19 @@ import { pinLink } from "@/lib/world-map";
 import { loadItemTips, loadSiteAssets } from "@/lib/game-assets";
 import ItemCard from "@/components/game/ItemCard";
 import GameCredit from "@/components/game/GameCredit";
+import { categoryOf } from "../../../../../../kb/src/item-taxonomy";
+import { CLIENT_LABEL } from "../../../../../../kb/src/edges";
+import { CLIENT_LAYER, CLIENT_TAXONOMY, itemsHref } from "@/lib/items";
+import { CategoryPage, categoryMetadata } from "../category-page";
+
+/** The segment is an item id, or a class slug (/database/items/weapon): numbers are items, words are classes. */
+type Props = { params: Promise<{ id: string }>; searchParams?: Promise<Record<string, string | string[] | undefined>> };
 
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata(props: { params: Promise<{ id: string }> }): Promise<Metadata> {
+export async function generateMetadata(props: Props): Promise<Metadata> {
   const params = await props.params;
+  if (/^[a-z][a-z0-9-]*$/.test(params.id)) return categoryMetadata(params.id, undefined, (await props.searchParams) ?? {});
   if (!/^[1-9]\d*$/.test(params.id)) return { robots: { index: false, follow: true } };
   const facts = await loadItemFacts();
   const page = itemPage(Number(params.id), facts);
@@ -26,8 +34,9 @@ export async function generateMetadata(props: { params: Promise<{ id: string }> 
   };
 }
 
-export default async function ItemPage(props: { params: Promise<{ id: string }> }) {
+export default async function ItemPage(props: Props) {
   const params = await props.params;
+  if (/^[a-z][a-z0-9-]*$/.test(params.id)) return CategoryPage({ classSlug: params.id, search: (await props.searchParams) ?? {} });
   if (!/^[1-9]\d*$/.test(params.id)) notFound();
   const itemId = Number(params.id);
   const [facts, edges] = await Promise.all([loadItemFacts(), loadEdges()]);
@@ -38,11 +47,21 @@ export default async function ItemPage(props: { params: Promise<{ id: string }> 
   const seen = !facts.unreachable && Boolean(page.name || page.drops.length || page.pins.length);
   const assets = seen ? await loadSiteAssets() : null;
   const tip = (await loadItemTips(assets, [itemId])).get(itemId);
+  const category = categoryOf(CLIENT_TAXONOMY, itemId);
 
   return (
     <article className="space-y-8 max-w-4xl">
       <header className="space-y-3">
         <p className="font-mono text-xs text-muted">WoW: Forever · item</p>
+        {category?.class ? (
+          <nav aria-label="Category" className="font-mono text-xs text-muted">
+            <Link href="/database/items" className="hover:underline underline-offset-4">Items</Link>
+            {" › "}<Link href={itemsHref(category.class.slug)} className="hover:underline underline-offset-4">{category.class.name}</Link>
+            {category.subclass ? <>{" › "}<Link href={itemsHref(category.class.slug, category.subclass.slug)} className="hover:underline underline-offset-4">{category.subclass.name ?? `Subclass ${category.subclass.id}`}</Link></> : null}
+            {[category.slot?.name, category.quality?.name].filter(Boolean).map((w) => ` · ${w}`).join("")}
+            {` · ${CLIENT_LABEL.toLowerCase()}, build ${CLIENT_LAYER.build.version}`}
+          </nav>
+        ) : null}
         <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">{title}</h1>
         <p className="text-sm text-muted">
           {facts.unreachable
