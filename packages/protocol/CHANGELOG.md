@@ -34,6 +34,8 @@ required, or tightening a limit is a major release.
 - `talent_tree` and `talent_plan` (tools 24 and 25), both with structured output: `TALENT_CLASSES`,
   `talentNode` and `talentTreePoints`. The trees of one class from the game files, and a share code read
   against them.
+- `outputSchema` for `item_categories` (`itemCategory`), `ecosystem_projects` (`ecosystemProject`) and
+  `everloot_plan` (`planRow`): the three tools that read no uploads now answer with `structuredContent`.
 - The MCP server's resource table `MCP_RESOURCES` (`everloot://builds`, `everloot://methodology`,
   `everloot://data-policy`: name, title, description, MIME type), `buildEntry` and `buildsResource` for the
   JSON one, emitted as `schema/mcp/resources.json` and listed in `index.json` as `mcpResources`.

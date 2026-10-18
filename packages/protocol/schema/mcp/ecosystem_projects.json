@@ -35,6 +35,233 @@
       }
     }
   },
+  "outputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "connected": {
+        "type": "boolean",
+        "description": "False when the tracker is not connected: the list is then not a measured zero."
+      },
+      "refreshedAt": {
+        "description": "When the GitHub facts were last refreshed.",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "installsAvailable": {
+        "type": "boolean",
+        "description": "False when install counts could not be read: a null count then means unknown."
+      },
+      "forever": {
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "interface": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "version": {
+                "type": "string"
+              },
+              "build": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "interface",
+              "version",
+              "build"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "null"
+          }
+        ],
+        "description": "What Forever-ready compares each .toc with, derived from the build's version and not yet confirmed in the client."
+      },
+      "board": {
+        "type": "string",
+        "enum": [
+          "all",
+          "installed",
+          "rising",
+          "active",
+          "release",
+          "maintained"
+        ]
+      },
+      "projects": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "rank": {
+              "description": "Position on the board; absent for the A to Z list.",
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "display": {
+              "description": "The board's own figure for this project, such as 6 installs.",
+              "type": "string"
+            },
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "addon",
+                "tool"
+              ]
+            },
+            "summary": {
+              "type": "string",
+              "description": "Everloot's own words."
+            },
+            "repo": {
+              "type": "string"
+            },
+            "url": {
+              "type": "string"
+            },
+            "installs": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "From Everloot uploads, counted from 3 installs; null means not counted, not zero."
+            },
+            "stars": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "release": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "tag": {
+                      "type": "string"
+                    },
+                    "date": {
+                      "type": "string"
+                    },
+                    "url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "tag",
+                    "date",
+                    "url"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "lastCommit": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "commits4w": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "foreverReady": {
+              "type": "string",
+              "enum": [
+                "yes",
+                "no",
+                "unknown"
+              ]
+            },
+            "badges": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "maintenanceScore": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "kind",
+            "summary",
+            "repo",
+            "url",
+            "installs",
+            "stars",
+            "release",
+            "lastCommit",
+            "commits4w",
+            "foreverReady",
+            "badges",
+            "maintenanceScore"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    "required": [
+      "connected",
+      "refreshedAt",
+      "installsAvailable",
+      "forever",
+      "board",
+      "projects"
+    ],
+    "additionalProperties": false
+  },
   "x-everloot-output": {
     "type": "text"
   }

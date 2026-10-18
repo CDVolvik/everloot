@@ -73,6 +73,83 @@ export declare const talentTreePoints: z.ZodObject<{
     name: z.ZodString;
     points: z.ZodNumber;
 }, z.core.$strip>;
+/** One item's category path as item_categories returns it. Null parts are not in the build's tables. */
+export declare const itemCategory: z.ZodObject<{
+    itemId: z.ZodNumber;
+    class: z.ZodNullable<z.ZodObject<{
+        id: z.ZodNumber;
+        name: z.ZodString;
+        slug: z.ZodString;
+    }, z.core.$strip>>;
+    subclass: z.ZodNullable<z.ZodObject<{
+        id: z.ZodNumber;
+        name: z.ZodNullable<z.ZodString>;
+        slug: z.ZodString;
+    }, z.core.$strip>>;
+    slot: z.ZodNullable<z.ZodObject<{
+        inventoryType: z.ZodNumber;
+        name: z.ZodString;
+        slug: z.ZodString;
+    }, z.core.$strip>>;
+    quality: z.ZodNullable<z.ZodObject<{
+        id: z.ZodNumber;
+        name: z.ZodString;
+        slug: z.ZodString;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+export type ItemCategoryOut = z.infer<typeof itemCategory>;
+/** One project as ecosystem_projects returns it. GitHub facts carry the time they were refreshed in the answer. */
+export declare const ecosystemProject: z.ZodObject<{
+    rank: z.ZodOptional<z.ZodNumber>;
+    display: z.ZodOptional<z.ZodString>;
+    id: z.ZodString;
+    name: z.ZodString;
+    kind: z.ZodEnum<{
+        addon: "addon";
+        tool: "tool";
+    }>;
+    summary: z.ZodString;
+    repo: z.ZodString;
+    url: z.ZodString;
+    installs: z.ZodNullable<z.ZodNumber>;
+    stars: z.ZodNullable<z.ZodNumber>;
+    release: z.ZodNullable<z.ZodObject<{
+        tag: z.ZodString;
+        date: z.ZodString;
+        url: z.ZodString;
+    }, z.core.$strip>>;
+    lastCommit: z.ZodNullable<z.ZodString>;
+    commits4w: z.ZodNullable<z.ZodNumber>;
+    foreverReady: z.ZodEnum<{
+        no: "no";
+        unknown: "unknown";
+        yes: "yes";
+    }>;
+    badges: z.ZodArray<z.ZodString>;
+    maintenanceScore: z.ZodNullable<z.ZodNumber>;
+}, z.core.$strip>;
+export type EcosystemProjectOut = z.infer<typeof ecosystemProject>;
+/** One row of the implementation tracker as everloot_plan returns it. */
+export declare const planRow: z.ZodObject<{
+    id: z.ZodString;
+    status: z.ZodEnum<{
+        live: "live";
+        next: "next";
+        shape: "shape";
+        waiting: "waiting";
+    }>;
+    name: z.ZodString;
+    done: z.ZodString;
+    proof: z.ZodOptional<z.ZodEnum<{
+        client: "client";
+        code: "code";
+        deployed: "deployed";
+        none: "none";
+        public: "public";
+        "real-data": "real-data";
+    }>>;
+}, z.core.$strip>;
+export type PlanRowOut = z.infer<typeof planRow>;
 /** One knowledge record as search_knowledge, get_entity and get_by_name return it. */
 export declare const knowledgeHit: z.ZodObject<{
     id: z.ZodNumber;
@@ -495,6 +572,71 @@ export declare const MCP_TOOLS: {
             }>>;
             readonly limit: z.ZodDefault<z.ZodNumber>;
         };
+        readonly outputSchema: {
+            readonly label: z.ZodString;
+            readonly build: z.ZodString;
+            readonly item: z.ZodOptional<z.ZodNullable<z.ZodObject<{
+                itemId: z.ZodNumber;
+                class: z.ZodNullable<z.ZodObject<{
+                    id: z.ZodNumber;
+                    name: z.ZodString;
+                    slug: z.ZodString;
+                }, z.core.$strip>>;
+                subclass: z.ZodNullable<z.ZodObject<{
+                    id: z.ZodNumber;
+                    name: z.ZodNullable<z.ZodString>;
+                    slug: z.ZodString;
+                }, z.core.$strip>>;
+                slot: z.ZodNullable<z.ZodObject<{
+                    inventoryType: z.ZodNumber;
+                    name: z.ZodString;
+                    slug: z.ZodString;
+                }, z.core.$strip>>;
+                quality: z.ZodNullable<z.ZodObject<{
+                    id: z.ZodNumber;
+                    name: z.ZodString;
+                    slug: z.ZodString;
+                }, z.core.$strip>>;
+            }, z.core.$strip>>>;
+            readonly classes: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                id: z.ZodNumber;
+                name: z.ZodString;
+                slug: z.ZodString;
+                items: z.ZodNumber;
+                subclasses: z.ZodArray<z.ZodObject<{
+                    id: z.ZodNumber;
+                    name: z.ZodNullable<z.ZodString>;
+                    slug: z.ZodString;
+                    items: z.ZodNumber;
+                }, z.core.$strip>>;
+            }, z.core.$strip>>>;
+            readonly items: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                itemId: z.ZodNumber;
+                class: z.ZodNullable<z.ZodObject<{
+                    id: z.ZodNumber;
+                    name: z.ZodString;
+                    slug: z.ZodString;
+                }, z.core.$strip>>;
+                subclass: z.ZodNullable<z.ZodObject<{
+                    id: z.ZodNumber;
+                    name: z.ZodNullable<z.ZodString>;
+                    slug: z.ZodString;
+                }, z.core.$strip>>;
+                slot: z.ZodNullable<z.ZodObject<{
+                    inventoryType: z.ZodNumber;
+                    name: z.ZodString;
+                    slug: z.ZodString;
+                }, z.core.$strip>>;
+                quality: z.ZodNullable<z.ZodObject<{
+                    id: z.ZodNumber;
+                    name: z.ZodString;
+                    slug: z.ZodString;
+                }, z.core.$strip>>;
+            }, z.core.$strip>>>;
+            readonly total: z.ZodOptional<z.ZodNumber>;
+            readonly error: z.ZodOptional<z.ZodString>;
+            readonly credit: z.ZodString;
+        };
         readonly annotations: {
             readonly readOnlyHint: true;
             readonly openWorldHint: false;
@@ -765,6 +907,53 @@ export declare const MCP_TOOLS: {
             readonly forever_ready_only: z.ZodOptional<z.ZodBoolean>;
             readonly limit: z.ZodDefault<z.ZodNumber>;
         };
+        readonly outputSchema: {
+            readonly connected: z.ZodBoolean;
+            readonly refreshedAt: z.ZodNullable<z.ZodString>;
+            readonly installsAvailable: z.ZodBoolean;
+            readonly forever: z.ZodNullable<z.ZodObject<{
+                interface: z.ZodNumber;
+                version: z.ZodString;
+                build: z.ZodNumber;
+            }, z.core.$strip>>;
+            readonly board: z.ZodEnum<{
+                active: "active";
+                all: "all";
+                installed: "installed";
+                maintained: "maintained";
+                release: "release";
+                rising: "rising";
+            }>;
+            readonly projects: z.ZodArray<z.ZodObject<{
+                rank: z.ZodOptional<z.ZodNumber>;
+                display: z.ZodOptional<z.ZodString>;
+                id: z.ZodString;
+                name: z.ZodString;
+                kind: z.ZodEnum<{
+                    addon: "addon";
+                    tool: "tool";
+                }>;
+                summary: z.ZodString;
+                repo: z.ZodString;
+                url: z.ZodString;
+                installs: z.ZodNullable<z.ZodNumber>;
+                stars: z.ZodNullable<z.ZodNumber>;
+                release: z.ZodNullable<z.ZodObject<{
+                    tag: z.ZodString;
+                    date: z.ZodString;
+                    url: z.ZodString;
+                }, z.core.$strip>>;
+                lastCommit: z.ZodNullable<z.ZodString>;
+                commits4w: z.ZodNullable<z.ZodNumber>;
+                foreverReady: z.ZodEnum<{
+                    no: "no";
+                    unknown: "unknown";
+                    yes: "yes";
+                }>;
+                badges: z.ZodArray<z.ZodString>;
+                maintenanceScore: z.ZodNullable<z.ZodNumber>;
+            }, z.core.$strip>>;
+        };
         readonly annotations: {
             readonly readOnlyHint: true;
             readonly openWorldHint: false;
@@ -774,6 +963,33 @@ export declare const MCP_TOOLS: {
         readonly title: "Everloot implementation tracker";
         readonly description: "The full Everloot build list: what is live, what is next, what is waiting on Carlos, and which reference sites are page shapes only. Read this before assuming a tool exists.";
         readonly inputSchema: {};
+        readonly outputSchema: {
+            readonly rows: z.ZodArray<z.ZodObject<{
+                id: z.ZodString;
+                status: z.ZodEnum<{
+                    live: "live";
+                    next: "next";
+                    shape: "shape";
+                    waiting: "waiting";
+                }>;
+                name: z.ZodString;
+                done: z.ZodString;
+                proof: z.ZodOptional<z.ZodEnum<{
+                    client: "client";
+                    code: "code";
+                    deployed: "deployed";
+                    none: "none";
+                    public: "public";
+                    "real-data": "real-data";
+                }>>;
+            }, z.core.$strip>>;
+            readonly counts: z.ZodObject<{
+                live: z.ZodNumber;
+                next: z.ZodNumber;
+                waiting: z.ZodNumber;
+                shape: z.ZodNumber;
+            }, z.core.$strip>;
+        };
         readonly annotations: {
             readonly readOnlyHint: true;
             readonly openWorldHint: false;
@@ -1124,6 +1340,71 @@ export declare const MCP_TOOL_LIST: ({
         }>>;
         readonly limit: z.ZodDefault<z.ZodNumber>;
     };
+    outputSchema: {
+        readonly label: z.ZodString;
+        readonly build: z.ZodString;
+        readonly item: z.ZodOptional<z.ZodNullable<z.ZodObject<{
+            itemId: z.ZodNumber;
+            class: z.ZodNullable<z.ZodObject<{
+                id: z.ZodNumber;
+                name: z.ZodString;
+                slug: z.ZodString;
+            }, z.core.$strip>>;
+            subclass: z.ZodNullable<z.ZodObject<{
+                id: z.ZodNumber;
+                name: z.ZodNullable<z.ZodString>;
+                slug: z.ZodString;
+            }, z.core.$strip>>;
+            slot: z.ZodNullable<z.ZodObject<{
+                inventoryType: z.ZodNumber;
+                name: z.ZodString;
+                slug: z.ZodString;
+            }, z.core.$strip>>;
+            quality: z.ZodNullable<z.ZodObject<{
+                id: z.ZodNumber;
+                name: z.ZodString;
+                slug: z.ZodString;
+            }, z.core.$strip>>;
+        }, z.core.$strip>>>;
+        readonly classes: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            id: z.ZodNumber;
+            name: z.ZodString;
+            slug: z.ZodString;
+            items: z.ZodNumber;
+            subclasses: z.ZodArray<z.ZodObject<{
+                id: z.ZodNumber;
+                name: z.ZodNullable<z.ZodString>;
+                slug: z.ZodString;
+                items: z.ZodNumber;
+            }, z.core.$strip>>;
+        }, z.core.$strip>>>;
+        readonly items: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            itemId: z.ZodNumber;
+            class: z.ZodNullable<z.ZodObject<{
+                id: z.ZodNumber;
+                name: z.ZodString;
+                slug: z.ZodString;
+            }, z.core.$strip>>;
+            subclass: z.ZodNullable<z.ZodObject<{
+                id: z.ZodNumber;
+                name: z.ZodNullable<z.ZodString>;
+                slug: z.ZodString;
+            }, z.core.$strip>>;
+            slot: z.ZodNullable<z.ZodObject<{
+                inventoryType: z.ZodNumber;
+                name: z.ZodString;
+                slug: z.ZodString;
+            }, z.core.$strip>>;
+            quality: z.ZodNullable<z.ZodObject<{
+                id: z.ZodNumber;
+                name: z.ZodString;
+                slug: z.ZodString;
+            }, z.core.$strip>>;
+        }, z.core.$strip>>>;
+        readonly total: z.ZodOptional<z.ZodNumber>;
+        readonly error: z.ZodOptional<z.ZodString>;
+        readonly credit: z.ZodString;
+    };
     annotations: {
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
@@ -1394,6 +1675,53 @@ export declare const MCP_TOOL_LIST: ({
         readonly forever_ready_only: z.ZodOptional<z.ZodBoolean>;
         readonly limit: z.ZodDefault<z.ZodNumber>;
     };
+    outputSchema: {
+        readonly connected: z.ZodBoolean;
+        readonly refreshedAt: z.ZodNullable<z.ZodString>;
+        readonly installsAvailable: z.ZodBoolean;
+        readonly forever: z.ZodNullable<z.ZodObject<{
+            interface: z.ZodNumber;
+            version: z.ZodString;
+            build: z.ZodNumber;
+        }, z.core.$strip>>;
+        readonly board: z.ZodEnum<{
+            active: "active";
+            all: "all";
+            installed: "installed";
+            maintained: "maintained";
+            release: "release";
+            rising: "rising";
+        }>;
+        readonly projects: z.ZodArray<z.ZodObject<{
+            rank: z.ZodOptional<z.ZodNumber>;
+            display: z.ZodOptional<z.ZodString>;
+            id: z.ZodString;
+            name: z.ZodString;
+            kind: z.ZodEnum<{
+                addon: "addon";
+                tool: "tool";
+            }>;
+            summary: z.ZodString;
+            repo: z.ZodString;
+            url: z.ZodString;
+            installs: z.ZodNullable<z.ZodNumber>;
+            stars: z.ZodNullable<z.ZodNumber>;
+            release: z.ZodNullable<z.ZodObject<{
+                tag: z.ZodString;
+                date: z.ZodString;
+                url: z.ZodString;
+            }, z.core.$strip>>;
+            lastCommit: z.ZodNullable<z.ZodString>;
+            commits4w: z.ZodNullable<z.ZodNumber>;
+            foreverReady: z.ZodEnum<{
+                no: "no";
+                unknown: "unknown";
+                yes: "yes";
+            }>;
+            badges: z.ZodArray<z.ZodString>;
+            maintenanceScore: z.ZodNullable<z.ZodNumber>;
+        }, z.core.$strip>>;
+    };
     annotations: {
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
@@ -1403,6 +1731,33 @@ export declare const MCP_TOOL_LIST: ({
     title: "Everloot implementation tracker";
     description: "The full Everloot build list: what is live, what is next, what is waiting on Carlos, and which reference sites are page shapes only. Read this before assuming a tool exists.";
     inputSchema: {};
+    outputSchema: {
+        readonly rows: z.ZodArray<z.ZodObject<{
+            id: z.ZodString;
+            status: z.ZodEnum<{
+                live: "live";
+                next: "next";
+                shape: "shape";
+                waiting: "waiting";
+            }>;
+            name: z.ZodString;
+            done: z.ZodString;
+            proof: z.ZodOptional<z.ZodEnum<{
+                client: "client";
+                code: "code";
+                deployed: "deployed";
+                none: "none";
+                public: "public";
+                "real-data": "real-data";
+            }>>;
+        }, z.core.$strip>>;
+        readonly counts: z.ZodObject<{
+            live: z.ZodNumber;
+            next: z.ZodNumber;
+            waiting: z.ZodNumber;
+            shape: z.ZodNumber;
+        }, z.core.$strip>;
+    };
     annotations: {
         readonly readOnlyHint: true;
         readonly openWorldHint: false;

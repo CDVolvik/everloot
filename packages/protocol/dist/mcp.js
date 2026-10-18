@@ -56,6 +56,41 @@ export const talentNode = z.object({
 });
 /** One tree of a plan, with the points spent in it. */
 export const talentTreePoints = z.object({ id: z.number().int(), name: z.string(), points: z.number().int() });
+/** One item's category path as item_categories returns it. Null parts are not in the build's tables. */
+export const itemCategory = z.object({
+    itemId: z.number().int(),
+    class: z.object({ id: z.number().int(), name: z.string(), slug: z.string() }).nullable(),
+    subclass: z.object({ id: z.number().int(), name: z.string().nullable(), slug: z.string() }).nullable(),
+    slot: z.object({ inventoryType: z.number().int(), name: z.string(), slug: z.string() }).nullable(),
+    quality: z.object({ id: z.number().int(), name: z.string(), slug: z.string() }).nullable(),
+});
+/** One project as ecosystem_projects returns it. GitHub facts carry the time they were refreshed in the answer. */
+export const ecosystemProject = z.object({
+    rank: z.number().int().optional().describe("Position on the board; absent for the A to Z list."),
+    display: z.string().optional().describe("The board's own figure for this project, such as 6 installs."),
+    id: z.string(),
+    name: z.string(),
+    kind: z.enum(["addon", "tool"]),
+    summary: z.string().describe("Everloot's own words."),
+    repo: z.string(),
+    url: z.string(),
+    installs: z.number().int().nullable().describe("From Everloot uploads, counted from 3 installs; null means not counted, not zero."),
+    stars: z.number().int().nullable(),
+    release: z.object({ tag: z.string(), date: z.string(), url: z.string() }).nullable(),
+    lastCommit: z.string().nullable(),
+    commits4w: z.number().int().nullable(),
+    foreverReady: z.enum(["yes", "no", "unknown"]),
+    badges: z.array(z.string()),
+    maintenanceScore: z.number().int().nullable(),
+});
+/** One row of the implementation tracker as everloot_plan returns it. */
+export const planRow = z.object({
+    id: z.string(),
+    status: z.enum(["live", "next", "waiting", "shape"]),
+    name: z.string(),
+    done: z.string().describe("What done means, or why this row is not a build."),
+    proof: z.enum(["none", "code", "deployed", "client", "public", "real-data"]).optional().describe("The furthest the row is proven."),
+});
 const searchArgs = {
     query: z.string().max(1000).describe("What to look up: names, questions, keywords. Question words are ignored."),
     kind: z.enum(KNOWLEDGE_KINDS).optional().describe("Narrow to one record kind."),
@@ -226,6 +261,19 @@ export const MCP_TOOLS = {
             quality: z.enum(ITEM_QUALITY_SLUGS).optional().describe("poor, common, uncommon, rare, epic, legendary, artifact or heirloom."),
             limit: z.number().int().min(1).max(100).default(25).describe("Most items listed."),
         },
+        outputSchema: {
+            label: z.string(),
+            build: z.string(),
+            item: itemCategory.nullable().optional().describe("With item: its path, or null when the item is not in the build."),
+            classes: z.array(z.object({
+                id: z.number().int(), name: z.string(), slug: z.string(), items: z.number().int(),
+                subclasses: z.array(z.object({ id: z.number().int(), name: z.string().nullable(), slug: z.string(), items: z.number().int() })),
+            })).optional().describe("With no arguments: the whole tree, classes with items only."),
+            items: z.array(itemCategory).optional().describe("With class: the items in the category, up to limit."),
+            total: z.number().int().optional().describe("With class: how many items match, listed or not."),
+            error: z.string().optional().describe("A class or subclass that is not in the build."),
+            credit: z.string(),
+        },
         annotations: { readOnlyHint: true, openWorldHint: false },
     },
     talent_tree: {
@@ -353,12 +401,25 @@ export const MCP_TOOLS = {
             forever_ready_only: z.boolean().optional().describe("Only projects whose .toc lists a Forever interface number."),
             limit: z.number().int().min(1).max(25).default(10),
         },
+        outputSchema: {
+            connected: z.boolean().describe("False when the tracker is not connected: the list is then not a measured zero."),
+            refreshedAt: z.string().nullable().describe("When the GitHub facts were last refreshed."),
+            installsAvailable: z.boolean().describe("False when install counts could not be read: a null count then means unknown."),
+            forever: z.object({ interface: z.number().int(), version: z.string(), build: z.number().int() }).nullable()
+                .describe("What Forever-ready compares each .toc with, derived from the build's version and not yet confirmed in the client."),
+            board: z.enum(ECOSYSTEM_BOARD_FILTERS),
+            projects: z.array(ecosystemProject),
+        },
         annotations: { readOnlyHint: true, openWorldHint: false },
     },
     everloot_plan: {
         title: "Everloot implementation tracker",
         description: "The full Everloot build list: what is live, what is next, what is waiting on Carlos, and which reference sites are page shapes only. Read this before assuming a tool exists.",
         inputSchema: {},
+        outputSchema: {
+            rows: z.array(planRow).describe("Every row, in the tracker's order."),
+            counts: z.object({ live: z.number().int(), next: z.number().int(), waiting: z.number().int(), shape: z.number().int() }),
+        },
         annotations: { readOnlyHint: true, openWorldHint: false },
     },
 };

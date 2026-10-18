@@ -3,9 +3,9 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { CREDIT_LINE, LICENCE, MCP_CREDIT, SITE } from "@everloot/protocol";
 import { answerSources, answerSourcesFactsFromRecords, formatAnswerSources, type AnswerSourcesFacts } from "./answer-sources.js";
 import { auctionSightingsFromRecords, handleAuctionHistory } from "./auction-history.js";
-import { handlePlan } from "./bridge-plan.js";
+import { handlePlan, planStructured } from "./bridge-plan.js";
 import { handleRecentChanges, recentChangesStructured, type ChangeEntry } from "./changes.js";
-import { handleEcosystemProjects, type EcosystemView } from "./ecosystem.js";
+import { ecosystemProjectsStructured, handleEcosystemProjects, type EcosystemView } from "./ecosystem.js";
 import { collectionFactsFromRecords, handleCollectionGap } from "./collection-gap.js";
 import { handleCompletionProgress, type CompletionFacts } from "./completion.js";
 import { goldFactsFromRecords, handleGoldLedger } from "./gold-ledger.js";
@@ -24,7 +24,7 @@ import { handleNpcPage, handleQuestPage, handleVendorPage, worldFactsFromRecords
 import { handleWorldMapNear, mapFactsFromRecords } from "./world-map-near.js";
 import { WORLD_MAP_DATA } from "./world-map-file.js";
 import { CLIENT_EDGES, CLIENT_LAYER, CLIENT_TAXONOMY } from "./client-layer-file.js";
-import { handleItemCategories } from "./item-taxonomy.js";
+import { handleItemCategories, itemCategoriesStructured } from "./item-taxonomy.js";
 import { handleEntityRelations, observedEdgesFromRecords, type Edge } from "./edges.js";
 import type { DB } from "./db.js";
 import { getByName, getEntity, search, type SearchHit } from "./search.js";
@@ -430,7 +430,10 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; 
     vendor_page: (args) => readFacts("vendor_page", (facts: ReturnType<typeof worldFactsFromRecords>) => handleVendorPage(args, facts)),
     world_map_near: (args) => readFacts("world_map_near", (facts: ReturnType<typeof mapFactsFromRecords>) => handleWorldMapNear(args, WORLD_MAP_DATA, facts)),
     entity_relations: (args) => readFacts("entity_relations", (observed: Edge[]) => handleEntityRelations(args, observed, CLIENT_EDGES)),
-    item_categories: (args) => handleItemCategories(args, CLIENT_TAXONOMY, CLIENT_LAYER.build.version),
+    item_categories: (args) => ({
+      text: handleItemCategories(args, CLIENT_TAXONOMY, CLIENT_LAYER.build.version),
+      structured: itemCategoriesStructured(args, CLIENT_TAXONOMY, CLIENT_LAYER.build.version),
+    }),
     talent_tree: (args) => handleTalentTree(args),
     talent_plan: (args) => handleTalentPlan(args),
     collection_gap: (args) => readFacts("collection_gap", (facts: ReturnType<typeof collectionFactsFromRecords>) => handleCollectionGap(args, facts)),
@@ -447,9 +450,10 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; 
     ecosystem_projects: async (args) => {
       let view: EcosystemView | null = null;
       try { view = (await options.ecosystem?.()) ?? null; } catch { view = null; }
-      return handleEcosystemProjects(view, args);
+      const now = new Date();
+      return { text: handleEcosystemProjects(view, args, now), structured: ecosystemProjectsStructured(view, args, now) };
     },
-    everloot_plan: () => handlePlan(),
+    everloot_plan: () => ({ text: handlePlan(), structured: planStructured() }),
   };
   for (const name of MCP_TOOL_NAMES) {
     const def: McpToolDef = MCP_TOOLS[name];
