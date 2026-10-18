@@ -19,17 +19,17 @@ function sourceHref(): string | undefined {
 
 test("links Source to the deployed commit", () => {
   vi.stubEnv("VERCEL_GIT_COMMIT_SHA", "abc1234");
-  expect(sourceHref()).toBe("https://github.com/CDVolvik/everloot/tree/abc1234");
+  expect(sourceHref()).toBe("https://github.com/Everloot/everloot/tree/abc1234");
 });
 
 test("links Source to the repository when no commit is known", () => {
   vi.stubEnv("VERCEL_GIT_COMMIT_SHA", "");
-  expect(sourceHref()).toBe("https://github.com/CDVolvik/everloot");
+  expect(sourceHref()).toBe("https://github.com/Everloot/everloot");
 });
 
 test("ignores a malformed sha", () => {
   vi.stubEnv("VERCEL_GIT_COMMIT_SHA", "../x");
-  expect(sourceHref()).toBe("https://github.com/CDVolvik/everloot");
+  expect(sourceHref()).toBe("https://github.com/Everloot/everloot");
 });
 
 test("states the code and data licences", () => {

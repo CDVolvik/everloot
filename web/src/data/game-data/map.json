@@ -4,7 +4,7 @@
     "name": "Everloot client extract",
     "status": "found in game files, unconfirmed",
     "licence": "Blizzard game data, not under our licence",
-    "licenceUrl": "https://github.com/CDVolvik/everloot/blob/main/docs/DATA_POLICY.md",
+    "licenceUrl": "https://github.com/Everloot/everloot/blob/main/docs/DATA_POLICY.md",
     "product": "wow_classic_beta",
     "buildId": 70450,
     "version": "1.60.1.70450",
