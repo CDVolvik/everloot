@@ -47,6 +47,10 @@ that has a zip in the repository. Earlier builds have none.
   `world_map_near` (entrances and pins with distances, or the refused query with its reason). Both
   formatters now write their text from a result object, so every one of the 25 tools answers with
   structured content beside its text.
+- Completions on the MCP server (`completion/complete`): a client typing the `what_changed` prompt's game
+  or the class in `everloot://talents/{class}` is offered the values the protocol knows, by prefix. The
+  nine class resources are now listed under `resources/list` beside the three static ones, so a client
+  that browses resources finds every class's trees without knowing the slugs.
 - `search` and `fetch` on the MCP server, the two tools ChatGPT's connectors, deep research and company
   knowledge call by name, after OpenAI's contract: results with an id, a title and a URL to cite, then one
   record whole with its source, licence and date as metadata. A lore page's URL is its page on the site;
