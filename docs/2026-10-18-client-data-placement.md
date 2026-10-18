@@ -1,0 +1,134 @@
+# The readable client, positioned
+
+Planning note, 2026-10-18. Companion to the [database taxonomy research](2026-10-18-database-taxonomy-research.md)
+and to the scan command it feeds (`npm run kb -- client-scan`). It takes the complete map of tables the
+Forever client ships, cross-references it with everything Everloot already holds, and places each domain
+where it belongs so the site's database can be built from the right structure.
+
+**Short version:** the build holds 1,159 readable tables and we read 68. All 68 are present and correct.
+The 1,091 unread candidates sort into site areas that already exist or that the taxonomy note already
+identified as gaps (object, item set, instances, faction, profession, collections). Nothing in the scan
+changes the pipeline shape; it selects what enters `CLIENT_TABLES` next, one reviewed wave at a time.
+
+## What the scan measures
+
+- The WoWDBDefs manifest (pinned commit `b9a63096cdd9`) against the build's root listing, by file data id.
+  Root-listing lookups only: no file content is downloaded and no keys are loaded.
+- Build scanned: `wow_classic_beta` **1.60.1.70450** (config `84bea423`), the same build a local install of
+  the game carries, so what the scan says about the build matches the install.
+- **1,346** tables known → **1,159 in this build**, **140 not in this build**, **0 encrypted**,
+  **45 with no file data id in the manifest**, **1,091 unread candidates**. Two key-material tables
+  (`TactKey`, `TactKeyLookup`) are counted, named and never candidates; the command hard-codes that.
+- The 68 tables the knowledge base reads today are all present, with no mismatches (no absent table, no
+  moved id, no curated id the manifest disagrees with).
+- Raw report: `kb/data/client-scan/wow_classic_beta-70450-84bea423-scan.json` and `-scan.md`
+  (gitignored runtime output; re-run any time, do not edit by hand).
+
+## What Everloot holds today (the cross-reference baseline)
+
+The 68 read tables, by area:
+
+| Area | Tables |
+|---|---|
+| Items | `Item`, `ItemSparse`, `ItemClass`, `ItemSubClass`, `ItemSet` |
+| Spells | `Spell`, `SpellName`, `SpellEffect`, `SpellRadius`, `SpellMisc`, `SpellDuration`, `SpellAuraOptions`, `SpellItemEnchantment`, `SpellReagents` |
+| Talents | the 24 `Trait*` tables of trees, nodes, costs, currencies and loadouts |
+| Classes and professions | `ChrClasses`, `ChrSpecialization`, `SkillLine`, `SkillLineAbility`, `SkillRaceClassInfo`, `SkillLineXTraitTree` |
+| Maps | `Map`, `UiMap`, `UiMapAssignment`, `UiMapArt`, `UiMapArtTile`, `UiMapArtStyleLayer`, `UiMapXMapArt` |
+| Interface art | `UiTextureAtlas`, `UiTextureAtlasElement`, `UiTextureAtlasMember` |
+| Entity lists | `AreaTable`, `ChrRaces`, `Faction`, `CharTitles`, `Languages`, `CurrencyTypes`, `CreatureFamily`, `CreatureType`, `Holidays`, `Toy`, `BattlePetSpecies` |
+| Partial on the client | `Creature`, `GameObjects`, `QuestV2` (spawns and text live on the server) |
+
+What those produce, and where it lands:
+
+| Structure | Fed by | Read by |
+|---|---|---|
+| `web/src/data/game-data/client-layer.json` | snapshot tables | item pages, `/database/items`, MCP `entity_relations` and `item_categories`, `/api/edges`, `/api/items` |
+| `web/src/data/game-data/map.json` | `Map`, `UiMap`, `UiMapAssignment` | `/map` |
+| `talents/<class>.json`, `raid-<build>.json`, `spell-values.json` | snapshot tables | `/tools/talents`, `/tools/raid`, build watch diffs |
+| Icons and tooltip facts | unencrypted files of the snapshot build | asset bucket (pages only); tooltip facts stay in the private bucket |
+| Observed layer: `entities` (9 kinds: item, npc, object, quest, zone, spell, lore_page, creator, realm) + rollups | addon uploads under the 3-install rule | `/database/{items,npcs,objects,quests,vendors,drops}`, `/tools/*`, `/lore`, `/search` |
+| Edges (`kb/src/edges.ts`): kinds `item, spell, npc, object, quest, zone, item_set, icon`; rels `dropped_by, sold_by, reward_from, located_in, created_by, reagent_for, part_of_set, same_icon` | client snapshot + uploads | pages, MCP, API, bulk |
+
+## Scan versus read set, by domain
+
+Candidates are the unread tables; the destination column says where each domain's data belongs in the
+existing structures, and the wave column proposes when to read it (W0 = next, small fixes first).
+
+| Domain (present / read / unread) | What it holds | Destination | Wave |
+|---|---|---|---|
+| items 95/5/90 | display and appearance refs, bonus trees, extended costs, limits, names, disenchant loot, transmog sets and outfits | `/database/items` pages and the taxonomy path; item tooltips; edges (`part_of_set` exists, disenchant is new) | W1 meta (costs, limits, names, effects), W2 appearance/transmog |
+| spells 87/9/78 | cast times, cooldowns, range, levels, power cost, categories, mechanics, shapeshift and totem refs, visuals | spell pages (no route yet) and item tooltips; edge labels (`created_by`, `reagent_for`) | W1 tooltip math subset, the rest with spell pages |
+| talents 27/24/3 | loadout entries, effect points, account conditions | `/tools/talents` completion | W3 |
+| characters 51/4/47 | customization clusters (`ChrCustomization*`), models, racial abilities, power types | class and race pages (a taxonomy-note gap); a dressing-room style tool later if approved | W2 class and race facts, W3 customization |
+| creatures 15/3/12 | difficulty scaling, immunities, movement, sounds, display links | NPC page enrichment; `Creature` is near-empty on the client, so NPCs stay addon-observed (coverage finding) | W2 |
+| models 46/0/46 | `CreatureDisplayInfo*`, `CreatureModelData`, animation kits, liquid and camera tables | model and render pipeline; a model viewer or dressing room only if that feature is approved | W3, feature-dependent |
+| objects 8/1/7 | display info, art kits, labels | object pages (see `docs/design/specs/2026-10-18-object-pages-design.md`), which lean on the addon's `sourceObjectId` | W0 display info |
+| quests 20/1/19 | log info and sort, POI points, money and XP rewards, quest lines | `/database/quests`, `/map` for POIs; quest-chain edge is new | W0 info and sort, W2 POI and chains |
+| world 44/8/36 | area groups, map difficulty, overlays, zone music and light, phases, area triggers | `/map` and zone pages; extends the `map.json` generator | W1 groups and difficulty, W2 overlays and ambience |
+| lore 3/0/3 | `LoreText`, `LoreTextPublic`, `ZoneStory` | `/lore` archive pages only; game text stays out of API, MCP and bulk (decision B) | W1 review pass |
+| factions 3/1/2 | `FactionGroup`, `FactionTemplate` | faction pages (a taxonomy-note gap); NPC reaction fields | W2 |
+| collections 27/2/25 | mounts and their displays, battle pets, heirlooms, pet loyalty | `/tools/collections` and mount and pet pages; the census can count ownership later | W1 mounts, W2 pets |
+| professions 30/3/27 | the profession system and traits, skill categories, trade items, crafting | `/tools/professions` and `/tools/profession-planner` | W1 |
+| achievements 2/0/2 | `Achievement`, `Achievement_Category` | completionist tool | W2 |
+| currencies 3/1/2 | `CurrencyCategory`, `CurrencyContainer` | currency facts on vendor and tooltip surfaces; currency pages are a gap | W2 |
+| holidays 4/1/3 | `HolidayNames`, `HolidayDescriptions`, `HolidayXTimeEvent` | fixes the documented gap: `Holidays` holds name ids, the names are in a table we do not read | W0 |
+| pvp 1/0/1 | `ArenaTrackedItem` | internal tracking only | never |
+| group content 25/0/25 | `LFGDungeons`, `JournalInstance`, `JournalEncounter`, `JournalTier`, `DungeonEncounter`, scenarios, keystone affixes | instance pages (a new route and kind); entrances already sit in `map.json` | W1 |
+| travel 3/0/3 | `TaxiNodes`, `TaxiPath`, `TaxiPathNode` | `/map` overlay and route tools (`farming-routes`, `gold-per-hour`) | W2 |
+| interface 32/3/29 | texture atlases, widgets, cameras, chat, fonts | internal tooling and the asset pipeline; not a database kind | mostly never |
+| audio 21/0/21 | sound kits, ambience, zone music, weapon and weather sounds | page-only assets if a sound feature is ever approved, under the icon rules (credited, unencrypted, never in API, MCP or bulk) | W3, feature-dependent |
+| other 612/2/610 | the catch-all: legacy systems shipped in the client but not live in Forever (`Garrison*`, `Azerite*`, `Artifact*`, `Covenant`, housing), live support tables (`Criteria`, `Emotes`), and internal plumbing (`Light`, `Weather`, `Node*`) | triage queue: each table moves to a domain, or to "never", by hand | ongoing |
+
+The "other" bucket is the honest state of the classifier, not a statement that 610 tables matter.
+Presence in the client is not relevance: the Forever realm ships many retail-era tables it never uses.
+Extending `DOMAIN_RULES` in `kb/src/client-scan.ts` as tables are triaged keeps the report shrinking.
+
+## Structure recommendation
+
+1. **The pipeline shape stands.** Snapshot (gitignored) → generated, build-stamped files in
+   `web/src/data/game-data/` → pages, MCP, API, bulk. Observed facts stay in the database; client facts
+   stay labeled *found in game files, unconfirmed*. Nothing from this scan is published by itself.
+2. **Each wave is one coverage spec + `CLIENT_TABLES` additions + generator changes + tests**, following
+   the client-coverage-tables pattern (ids pinned by test to the manifest commit, needed fields checked
+   against the Forever layout, coverage report regenerated).
+3. **New structures the scan justifies**, in the taxonomy note's gap order: object kind (spec exists),
+   item set (edge kind exists; the item-set page is new), instances and group content, faction,
+   profession pages, collections. Class and race pages come almost free from tables already read.
+4. **Text-bearing tables** (lore text, holiday names, item names beyond the ones already read) follow the
+   pages-only rule: page reads may show reviewed game text, and the generators must keep it out of API,
+   MCP and bulk artifacts, the same way tooltip facts are kept in the private bucket.
+5. **Two tables are never read**: `TactKey` and `TactKeyLookup`. The scan excludes them explicitly;
+   extraction already has no key code and the forbidden-import test guards it.
+
+## Proposed waves
+
+- **W0 (small, fixes documented gaps):** `HolidayNames`, `HolidayDescriptions`, `HolidayXTimeEvent`;
+  `QuestInfo`, `QuestSort`; `GameObjectDisplayInfo`, `GameObjectArtKit`.
+- **W1 (extends existing pages):** `LFGDungeons`, `JournalInstance`, `JournalEncounter`, `JournalTier`,
+  `DungeonEncounter`; `MapDifficulty`, `AreaGroupMember`; `ItemExtendedCost`, `ItemCurrencyCost`,
+  `ItemLimitCategory`, `ItemBagFamily`, `ItemNameDescription`, `ItemEffect`; `SpellCastTimes`,
+  `SpellCooldowns`, `SpellRange`, `SpellLevels`; `Mount`, `MountXDisplay`, `MountType`,
+  `MountTypeXCapability`, `MountXSpellVisualKitPicker`; `Profession` and its trait and effect tables.
+- **W2:** appearance and transmog cluster; quest POI and quest lines; battle pets and heirlooms;
+  factions; `WorldMapOverlay`, `WMOAreaTable`, zone music and light; achievements; currencies.
+- **W3 and feature-dependent:** character customization, creature models, taxi paths, audio, interface
+  tooling. Each waits for the feature that needs it.
+
+## Decisions for Carlos
+
+1. **Which wave to approve first.** W0 is three table groups, roughly a day with generator updates;
+   nothing in it is published.
+2. **Commit the scan command and this note** with the taxonomy supplement, or keep them local for now.
+3. **"Other" triage appetite.** A quick pass can move whole prefixes (hundreds of dead-system tables) to
+   a documented "never" list; the alternative is leaving them in the catch-all.
+
+## Pointers
+
+- Command: `npm run kb -- client-scan [--product wow_classic_beta] [--manifest <path|url>] [--out data/client-scan]`
+- Raw report (runtime): `kb/data/client-scan/<product>-<buildId>-<config8>-scan.{json,md}`
+- Coverage spec pattern: `docs/design/specs/2026-10-18-client-coverage-tables-design.md`
+- Procedure as an agent skill: `.agents/skills/everloot-client-mining/SKILL.md` in the R21-Brain workspace
+  (scan → choose wave → CLIENT_TABLES → extract → coverage → regenerate; preflight and guardrails included)
+- Follow-on specs: relation edges, item taxonomy, object pages, entity icon manifest (`docs/design/specs/`)
+- Taxonomy and competitor context: `docs/2026-10-18-database-taxonomy-research.md`
