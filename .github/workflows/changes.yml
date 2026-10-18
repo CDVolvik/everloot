@@ -23,6 +23,8 @@ jobs:
       contents: read
     outputs:
       failed: ${{ steps.blue.outcome == 'failure' || steps.builds.outcome == 'failure' }}
+      blue: ${{ steps.blue.outcome }}
+      builds: ${{ steps.builds.outcome }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -36,9 +38,14 @@ jobs:
         with:
           node-version: '22.23.2'
           cache: npm
-          cache-dependency-path: kb/package-lock.json
+          cache-dependency-path: |
+            kb/package-lock.json
+            web/package-lock.json
       - run: npm ci
         working-directory: kb
+      # The knowledge-base CLI imports a few helpers from web/.
+      - run: npm ci
+        working-directory: web
       # The politeness state (last asked, Retry-After, validators, newest seen) lives in the Actions cache,
       # never in git: a 429 with a long Retry-After must still be honoured by the next run.
       - name: Restore the fetch state
@@ -161,4 +168,9 @@ jobs:
           gh pr merge "$pr" --repo "$REPO" --squash --match-head-commit "$PUSHED" --delete-branch             --subject 'Changes: refresh blue posts and builds' --body 'Automatic data refresh. Only kb/changes data files; all checks passed.'
       - name: Fail the run if a source failed, so it shows up
         if: needs.collect.outputs.failed == 'true'
-        run: exit 1
+        env:
+          BLUE: ${{ needs.collect.outputs.blue }}
+          BUILDS: ${{ needs.collect.outputs.builds }}
+        run: |
+          echo "::error::A source failed in the collect job (blue posts: $BLUE, builds: $BUILDS). That step's log in collect says why."
+          exit 1
