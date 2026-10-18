@@ -35,6 +35,9 @@ that has a zip in the repository. Earlier builds have none.
 - Structured output for `item_categories`, `ecosystem_projects` and `everloot_plan`, the three tools that
   read no uploads: the same cases as the text (a tree, one item's path, a filtered list with its total;
   a board's ranked rows with GitHub facts flattened, or not connected; every tracker row with its proof).
+- Structured output for the five page tools (`item_page`, `npc_page`, `quest_page`, `vendor_page`,
+  `object_page`): the same page object the text is written from, under one envelope for answers built on
+  uploads (`connected`, `dataAsOf`, `reason`). With no corpus read the page is absent, not empty.
 - The MCP server's first resources, documents an assistant reads whole: `everloot://builds` (the build the
   game-file facts come from and the build registry, JSON), `everloot://methodology` (how uploads become
   facts) and `everloot://data-policy` (the policy in short, with the link to the full one). The two texts
