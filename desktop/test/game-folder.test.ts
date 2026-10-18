@@ -51,7 +51,7 @@ test("each OS looks where Battle.net and Wine put the game", () => {
   expect(win).toContain("D:\\Games\\World of Warcraft");
   expect(new Set(win).size).toBe(win.length);
   expect(candidateRoots({ platform: "darwin", env: {}, home: "/Users/p" })[0]).toBe("/Applications/World of Warcraft");
-  const linux = candidateRoots({ platform: "linux", env: {}, home: "/home/p" }).map((r) => r.replace(/\\/g, "/"));
+  const linux = candidateRoots({ platform: "linux", env: {}, home: "/home/p" });
   expect(linux.some((r) => r.includes(".wine"))).toBe(true);
   expect(linux.some((r) => r.includes("Games/battlenet"))).toBe(true);
 });

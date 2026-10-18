@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { join, posix, win32 } from "node:path";
 import type { GameFolderCandidate } from "../shared/types";
 
 /** The little of the file system detection needs, so tests pass a fake tree. */
@@ -26,17 +26,18 @@ export function candidateRoots(os: OsInfo): string[] {
       env.ProgramFiles ?? "C:\\Program Files",
       "C:\\", "D:\\", "E:\\",
       "C:\\Games", "D:\\Games", "E:\\Games",
-      env.PUBLIC ? join(env.PUBLIC, "Games") : "C:\\Users\\Public\\Games",
+      env.PUBLIC ? win32.join(env.PUBLIC, "Games") : "C:\\Users\\Public\\Games",
     ];
-    return [...new Set(roots.map((r) => join(r, "World of Warcraft")))];
+    // Explicit Windows joins, so the list is the same when the tests run on a Linux runner.
+    return [...new Set(roots.map((r) => win32.join(r, "World of Warcraft")))];
   }
-  if (os.platform === "darwin") return ["/Applications/World of Warcraft", join(home, "Applications", "World of Warcraft")];
+  if (os.platform === "darwin") return ["/Applications/World of Warcraft", posix.join(home, "Applications", "World of Warcraft")];
   const wine = "drive_c/Program Files (x86)/World of Warcraft";
   return [
-    join(home, "Games", "battlenet", wine),
-    join(home, "Games", "world-of-warcraft", wine),
-    join(home, ".wine", wine),
-    join(home, "Games", "World of Warcraft"),
+    posix.join(home, "Games", "battlenet", wine),
+    posix.join(home, "Games", "world-of-warcraft", wine),
+    posix.join(home, ".wine", wine),
+    posix.join(home, "Games", "World of Warcraft"),
   ];
 }
 
