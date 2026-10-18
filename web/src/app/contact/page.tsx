@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function ContactPage() {
   return (
-    <article className="prose prose-invert max-w-3xl">
+    <article className="max-w-3xl">
       <h1 className="text-3xl font-bold text-fg">
         Contact Everloot
       </h1>

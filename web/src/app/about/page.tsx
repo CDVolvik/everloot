@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 
 export default function AboutPage() {
   return (
-    <article className="prose prose-invert max-w-3xl">
+    <article className="max-w-3xl">
       <JsonLd data={aboutPageJsonLd({ name: TITLE, description, path: "/about" })} />
       <h1 className="text-3xl font-bold text-fg">
         {TITLE}

@@ -16,7 +16,7 @@ const link = "text-accent hover:underline";
 export default function PrivacyPage() {
   const updated = "18 October 2026";
   return (
-    <article className="prose prose-invert max-w-3xl">
+    <article className="max-w-3xl">
       <h1 className="text-3xl font-bold text-fg">
         Privacy Policy
       </h1>

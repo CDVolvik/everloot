@@ -26,7 +26,7 @@ function Section({ id, title, children }: { id: string; title: string; children:
 
 export default function TermsPage() {
   return (
-    <article className="prose prose-invert max-w-3xl">
+    <article className="max-w-3xl">
       <h1 className="text-3xl font-bold text-fg">Terms of Use</h1>
       <p className="text-sm text-muted">Last updated: {UPDATED}</p>
       <p className="text-fg-2">

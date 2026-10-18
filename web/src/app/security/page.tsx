@@ -15,7 +15,7 @@ const ADVISORY_URL = `${REPO_URL}/security/advisories/new`;
 // The same policy as SECURITY.md in the repository, for people who find the site first.
 export default function SecurityPage() {
   return (
-    <article className="prose prose-invert max-w-3xl">
+    <article className="max-w-3xl">
       <h1 className="text-3xl font-bold text-fg">Security</h1>
       <p className="text-lg text-fg-2">{description}</p>
 
