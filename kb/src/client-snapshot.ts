@@ -39,6 +39,16 @@ export const CLIENT_TABLES = {
   // Map art: which tile files make up each map's picture (UiMapXMapArt names the art of a UiMap, UiMapArtTile
   // lists its tiles by row and column, UiMapArtStyleLayer gives the tile and layer sizes).
   UiMapArt: 1957202, UiMapArtTile: 1957210, UiMapArtStyleLayer: 1957208, UiMapXMapArt: 1957217,
+  // Coverage (docs/2026-10-18-database-taxonomy-research.md): item categories and sets, how spells
+  // make and use items, zones, races, factions and the other entity lists a game database carries.
+  // Ids from the WoWDBDefs manifest at b9a63096cdd9; every one has a 1.60.1 layout there.
+  ItemClass: 1140189, ItemSubClass: 1261604, ItemSet: 1343609,
+  SkillLineAbility: 1266278, SpellItemEnchantment: 1362771, SpellReagents: 841946,
+  AreaTable: 1353545, ChrRaces: 1305311, Faction: 1361972, CharTitles: 1349054, Languages: 1135325,
+  CurrencyTypes: 1095531, CreatureFamily: 1351351, CreatureType: 1131315, Holidays: 996357,
+  Toy: 988200, BattlePetSpecies: 841622,
+  // Partial on the client: most of what these describe (spawns, quest text) lives on the server.
+  Creature: 841631, GameObjects: 841620, QuestV2: 1139443,
 } as const;
 export type ClientTableName = keyof typeof CLIENT_TABLES;
 
@@ -66,6 +76,8 @@ export interface ClientBuildMeta {
 
 export interface ClientManifest extends ClientBuildMeta {
   tables: { table: string; fileDataID: number; cKey: string | null; rows: number; encryptedBlocks: number }[];
+  /** Tables that were asked for and not read, with the reason. Absent in snapshots written before 2026-10-18. */
+  missing?: { table: string; reason: string }[];
   sha256: string;
 }
 
@@ -114,7 +126,7 @@ export function clientSnapshotName(build: { product: string; buildId: number; bu
 }
 
 /** Write the snapshot and its manifest. The file is built beside the target and renamed into place. */
-export function writeClientSnapshot(path: string, meta: ClientBuildMeta, tables: ExtractedTable[]): ClientManifest {
+export function writeClientSnapshot(path: string, meta: ClientBuildMeta, tables: ExtractedTable[], missing: { table: string; reason: string }[] = []): ClientManifest {
   const partial = `${path}.partial`;
   rmSync(partial, { force: true });
   const db = new Database(partial);
@@ -148,6 +160,7 @@ export function writeClientSnapshot(path: string, meta: ClientBuildMeta, tables:
   const manifest: ClientManifest = {
     ...meta,
     tables: tables.map((t) => ({ table: t.table, fileDataID: t.fileDataID, cKey: t.cKey, rows: t.rows.size, encryptedBlocks: t.encryptedBlocks })),
+    missing,
     sha256: sha256File(path),
   };
   writeFileSync(`${path}.manifest.json`, `${JSON.stringify(manifest, null, 2)}\n`);

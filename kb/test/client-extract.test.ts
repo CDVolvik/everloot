@@ -78,6 +78,17 @@ test("the talent and spell effect tables are read by the file data ids WoWDBDefs
   });
 });
 
+test("the coverage tables are read by the file data ids the WoWDBDefs manifest lists for them", () => {
+  // manifest.json at WoWDBDefs b9a63096cdd9, field db2FileDataID.
+  expect(CLIENT_TABLES).toMatchObject({
+    ItemClass: 1140189, ItemSubClass: 1261604, ItemSet: 1343609, SkillLineAbility: 1266278,
+    SpellItemEnchantment: 1362771, SpellReagents: 841946, AreaTable: 1353545, ChrRaces: 1305311,
+    Faction: 1361972, CharTitles: 1349054, Languages: 1135325, CurrencyTypes: 1095531,
+    CreatureFamily: 1351351, CreatureType: 1131315, Holidays: 996357, Toy: 988200,
+    BattlePetSpecies: 841622, Creature: 841631, GameObjects: 841620, QuestV2: 1139443,
+  });
+});
+
 test("a table the build does not have is reported as missing, not invented", async () => {
   const { tables, missing } = await extractTables(fake({ [CLIENT_TABLES.Item]: { rows: [[1, { ID: 1 }]] } }));
   expect(tables.map((t) => t.table)).toEqual(["Item"]);

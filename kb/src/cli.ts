@@ -6,6 +6,7 @@ import { BlizzardClient } from "./blizzard/client.js";
 import { ingestBluePosts, loadAccounts, loadFetchState, loadStore, saveFetchState, saveStore } from "./blue-posts.js";
 import { buildTimeline } from "./changes.js";
 import { checkBuilds, loadRegistry, recordBuilds, saveRegistry, versionsUrl } from "./builds.js";
+import { clientCoverage, formatCoverage } from "./client-coverage.js";
 import { diffSnapshots } from "./client-diff.js";
 import { parseRegistry } from "./ecosystem.js";
 import { loadSnapshotFile, refreshSnapshot, saveSnapshotFile } from "./ecosystem-fetch.js";
@@ -94,6 +95,7 @@ const USAGE = `usage: npm run kb -- <command> --db <path>
     facts into <out>/<product>-<build>-<config>-private/ (private bucket only). Needs Python with Pillow. Never
     commit the output; see docs/ASSETS.md)
   client-diff <old.sqlite> <new.sqlite> [--out diff.json]   (field-level diff of two snapshots)
+  client-coverage <snapshot.sqlite> [--out coverage.md]   (rows, encrypted blocks and needed fields per client table)
   client-map <snapshot.sqlite> [--out ../web/src/data/game-data/map.json]
     (zone rectangles in world coordinates, continents and dungeon and raid entrances from a client
     snapshot, for the world map page. Game file data, stamped with the build. See docs/DATA_POLICY.md)
@@ -325,7 +327,7 @@ async function main(): Promise<number> {
       const fileStatus = probeFiles(source, iconIds(tables));
       if (fileStatus) tables.push(fileStatus);
       mkdirSync(outDir, { recursive: true });
-      const manifest = writeClientSnapshot(out, { ...build, extractedAt: now.toISOString(), library: CASC_LIBRARY, definitions }, tables);
+      const manifest = writeClientSnapshot(out, { ...build, extractedAt: now.toISOString(), library: CASC_LIBRARY, definitions }, tables, missing);
       // A table that failed to read leaves the build queued, so the next run tries it again.
       const failed = missing.filter((m) => m.reason !== NOT_IN_BUILD);
       if (!failed.length) {
@@ -336,6 +338,14 @@ async function main(): Promise<number> {
       for (const m of missing) (m.reason === NOT_IN_BUILD ? console.log : console.error)(`${m.table}: ${m.reason}`);
       console.log(`${product} ${build.version} -> ${out} (sha256 ${manifest.sha256.slice(0, 12)})`);
       return failed.length ? 1 : 0;
+    }
+    case "client-coverage": {
+      if (!args[0]) break;
+      const md = formatCoverage(clientCoverage(args[0]));
+      const out = flags.get("out");
+      if (out) writeFileSync(out, md);
+      process.stdout.write(md);
+      return 0;
     }
     case "client-diff": {
       if (args.length < 2) break;
