@@ -26,6 +26,7 @@ const routes: [string, () => Promise<{ metadata: Metadata }>, boolean][] = [
   ["/lore", () => import("./lore/page"), false],
   // The map's description depends on whether the game's map pictures are on, so it is generated.
   ["/map", async () => ({ metadata: await (await import("./map/page")).generateMetadata() }), true],
+  ["/methodology", () => import("./methodology/page"), true],
   ["/privacy", () => import("./privacy/page"), false],
   ["/search", () => import("./search/page"), false],
   ["/tools/auctions", () => import("./tools/auctions/page"), true],

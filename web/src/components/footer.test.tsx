@@ -35,3 +35,9 @@ test("ignores a malformed sha", () => {
 test("states the code and data licences", () => {
   expect(renderToStaticMarkup(<Footer />)).toContain("Code AGPL-3.0, data CC BY-SA 4.0.");
 });
+
+test("links How we count and the Discord invite", () => {
+  const html = renderToStaticMarkup(<Footer />);
+  expect(html).toContain('href="/methodology"');
+  expect(html).toContain('href="https://discord.gg/9CKsbHTRu3"');
+});
