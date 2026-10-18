@@ -96,6 +96,8 @@
     "world_map_near",
     "entity_relations",
     "item_categories",
+    "talent_tree",
+    "talent_plan",
     "collection_gap",
     "completion_progress",
     "guild_board",

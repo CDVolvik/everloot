@@ -18,6 +18,7 @@ import { loadUploadRecords } from "./load-uploads.js";
 import { KNOWLEDGE_KINDS, MCP_RESOURCE_URIS, MCP_RESOURCES, MCP_TOOL_NAMES, MCP_TOOLS, parseRecords, type McpToolArgs, type McpToolDef, type McpToolName } from "@everloot/protocol";
 import { handleProfessionPath } from "./profession-path.js";
 import { readResource } from "./resources.js";
+import { handleTalentPlan, handleTalentTree } from "./talent-tools.js";
 import { handleRecipeThresholds, pathFactsFromRecords, recipeFactsFromRecords } from "./recipe-thresholds.js";
 import { handleNpcPage, handleQuestPage, handleVendorPage, worldFactsFromRecords } from "./world-pages.js";
 import { handleWorldMapNear, mapFactsFromRecords } from "./world-map-near.js";
@@ -430,6 +431,8 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; 
     world_map_near: (args) => readFacts("world_map_near", (facts: ReturnType<typeof mapFactsFromRecords>) => handleWorldMapNear(args, WORLD_MAP_DATA, facts)),
     entity_relations: (args) => readFacts("entity_relations", (observed: Edge[]) => handleEntityRelations(args, observed, CLIENT_EDGES)),
     item_categories: (args) => handleItemCategories(args, CLIENT_TAXONOMY, CLIENT_LAYER.build.version),
+    talent_tree: (args) => handleTalentTree(args),
+    talent_plan: (args) => handleTalentPlan(args),
     collection_gap: (args) => readFacts("collection_gap", (facts: ReturnType<typeof collectionFactsFromRecords>) => handleCollectionGap(args, facts)),
     completion_progress: (args) => answerCompletionProgress(args, options.completion),
     guild_board: (args) => readFacts("guild_board", (facts: ReturnType<typeof guildFactsFromRecords>) => handleGuildBoard(args, facts)),

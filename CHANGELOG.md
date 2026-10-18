@@ -27,6 +27,11 @@ that has a zip in the repository. Earlier builds have none.
 - A 23rd MCP tool, `answer_sources`: the evidence behind a question, observed facts first (with install
   counts), then curated facts and the 2023 wiki, every piece with its source URL, licence and date, plus
   search links on other sites (links only). Structured output from the start.
+- Two talent tools on the MCP server, answered from the same catalogs and rules as the calculator:
+  `talent_tree` (one class's trees from the game files, every node with its talents, ranks, position,
+  prerequisites and row gate, with the build) and `talent_plan` (a share code or calculator link read
+  against the trees: talents, points per tree, the lowest level, and every problem in plain words).
+  The knowledge base now typechecks with bundler resolution so it can import the site's talent modules.
 - The MCP server's first resources, documents an assistant reads whole: `everloot://builds` (the build the
   game-file facts come from and the build registry, JSON), `everloot://methodology` (how uploads become
   facts) and `everloot://data-policy` (the policy in short, with the link to the full one). The two texts
