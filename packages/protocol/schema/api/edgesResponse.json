@@ -38,7 +38,8 @@
               "quest",
               "zone",
               "item_set",
-              "icon"
+              "icon",
+              "skill"
             ]
           },
           "fromId": {
@@ -56,7 +57,8 @@
               "created_by",
               "reagent_for",
               "part_of_set",
-              "same_icon"
+              "same_icon",
+              "in_skill_line"
             ]
           },
           "toKind": {
@@ -69,7 +71,8 @@
               "quest",
               "zone",
               "item_set",
-              "icon"
+              "icon",
+              "skill"
             ]
           },
           "toId": {

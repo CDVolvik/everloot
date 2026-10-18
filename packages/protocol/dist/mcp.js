@@ -12,11 +12,11 @@ export const KNOWLEDGE_KINDS = ["item", "npc", "object", "quest", "zone", "spell
 /** Game versions a knowledge record can belong to. */
 export const GAME_VERSIONS = ["forever", "classic", "retail", "lore"];
 /** Entities relation edges connect. A zone is a UiMap id. */
-export const ENTITY_KINDS = ["item", "spell", "npc", "object", "quest", "zone", "item_set", "icon"];
+export const ENTITY_KINDS = ["item", "spell", "npc", "object", "quest", "zone", "item_set", "icon", "skill"];
 /** Typed relations between entities, in the order pages list them: what players saw first, then what the files say. */
 export const RELS = [
     "dropped_by", "sold_by", "reward_from", "located_in",
-    "created_by", "reagent_for", "part_of_set", "same_icon",
+    "created_by", "reagent_for", "part_of_set", "same_icon", "in_skill_line",
 ];
 /** recent_changes filters. */
 export const CHANGE_FILTERS = ["all", "posts", "hotfixes", "builds"];

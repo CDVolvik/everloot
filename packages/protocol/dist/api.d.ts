@@ -137,6 +137,7 @@ declare const edge: z.ZodObject<{
         npc: "npc";
         object: "object";
         quest: "quest";
+        skill: "skill";
         spell: "spell";
         zone: "zone";
     }>;
@@ -144,6 +145,7 @@ declare const edge: z.ZodObject<{
     rel: z.ZodEnum<{
         created_by: "created_by";
         dropped_by: "dropped_by";
+        in_skill_line: "in_skill_line";
         located_in: "located_in";
         part_of_set: "part_of_set";
         reagent_for: "reagent_for";
@@ -158,6 +160,7 @@ declare const edge: z.ZodObject<{
         npc: "npc";
         object: "object";
         quest: "quest";
+        skill: "skill";
         spell: "spell";
         zone: "zone";
     }>;
@@ -189,6 +192,7 @@ export declare const edgesResponse: z.ZodObject<{
             npc: "npc";
             object: "object";
             quest: "quest";
+            skill: "skill";
             spell: "spell";
             zone: "zone";
         }>;
@@ -196,6 +200,7 @@ export declare const edgesResponse: z.ZodObject<{
         rel: z.ZodEnum<{
             created_by: "created_by";
             dropped_by: "dropped_by";
+            in_skill_line: "in_skill_line";
             located_in: "located_in";
             part_of_set: "part_of_set";
             reagent_for: "reagent_for";
@@ -210,6 +215,7 @@ export declare const edgesResponse: z.ZodObject<{
             npc: "npc";
             object: "object";
             quest: "quest";
+            skill: "skill";
             spell: "spell";
             zone: "zone";
         }>;
@@ -827,6 +833,7 @@ export declare const API_SCHEMAS: {
                 npc: "npc";
                 object: "object";
                 quest: "quest";
+                skill: "skill";
                 spell: "spell";
                 zone: "zone";
             }>;
@@ -834,6 +841,7 @@ export declare const API_SCHEMAS: {
             rel: z.ZodEnum<{
                 created_by: "created_by";
                 dropped_by: "dropped_by";
+                in_skill_line: "in_skill_line";
                 located_in: "located_in";
                 part_of_set: "part_of_set";
                 reagent_for: "reagent_for";
@@ -848,6 +856,7 @@ export declare const API_SCHEMAS: {
                 npc: "npc";
                 object: "object";
                 quest: "quest";
+                skill: "skill";
                 spell: "spell";
                 zone: "zone";
             }>;

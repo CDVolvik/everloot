@@ -11,10 +11,10 @@ export declare const KNOWLEDGE_KINDS: readonly ["item", "npc", "object", "quest"
 /** Game versions a knowledge record can belong to. */
 export declare const GAME_VERSIONS: readonly ["forever", "classic", "retail", "lore"];
 /** Entities relation edges connect. A zone is a UiMap id. */
-export declare const ENTITY_KINDS: readonly ["item", "spell", "npc", "object", "quest", "zone", "item_set", "icon"];
+export declare const ENTITY_KINDS: readonly ["item", "spell", "npc", "object", "quest", "zone", "item_set", "icon", "skill"];
 export type EntityKind = (typeof ENTITY_KINDS)[number];
 /** Typed relations between entities, in the order pages list them: what players saw first, then what the files say. */
-export declare const RELS: readonly ["dropped_by", "sold_by", "reward_from", "located_in", "created_by", "reagent_for", "part_of_set", "same_icon"];
+export declare const RELS: readonly ["dropped_by", "sold_by", "reward_from", "located_in", "created_by", "reagent_for", "part_of_set", "same_icon", "in_skill_line"];
 export type Rel = (typeof RELS)[number];
 /** recent_changes filters. */
 export declare const CHANGE_FILTERS: readonly ["all", "posts", "hotfixes", "builds"];
@@ -210,6 +210,7 @@ export declare const MCP_TOOLS: {
                 npc: "npc";
                 object: "object";
                 quest: "quest";
+                skill: "skill";
                 spell: "spell";
                 zone: "zone";
             }>;
@@ -217,6 +218,7 @@ export declare const MCP_TOOLS: {
             readonly rel: z.ZodOptional<z.ZodEnum<{
                 created_by: "created_by";
                 dropped_by: "dropped_by";
+                in_skill_line: "in_skill_line";
                 located_in: "located_in";
                 part_of_set: "part_of_set";
                 reagent_for: "reagent_for";
@@ -559,6 +561,7 @@ export declare const MCP_TOOL_LIST: ({
             npc: "npc";
             object: "object";
             quest: "quest";
+            skill: "skill";
             spell: "spell";
             zone: "zone";
         }>;
@@ -566,6 +569,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly rel: z.ZodOptional<z.ZodEnum<{
             created_by: "created_by";
             dropped_by: "dropped_by";
+            in_skill_line: "in_skill_line";
             located_in: "located_in";
             part_of_set: "part_of_set";
             reagent_for: "reagent_for";
