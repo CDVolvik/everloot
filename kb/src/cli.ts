@@ -374,7 +374,7 @@ async function main(): Promise<number> {
       const md = formatScanReport(report);
       writeFileSync(join(outDir, `${base}-scan.md`), md);
       process.stdout.write(md);
-      console.log(`${report.totals.present}/${report.totals.known} tables in build, ${report.candidates.length} unread candidates; -> ${outDir}`);
+      console.log(`${report.totals.present}/${report.totals.known} tables in build, ${report.candidates.length} unread candidates, ${report.totals.neverListed} never-list; -> ${outDir}`);
       return 0;
     }
     case "client-layer": {

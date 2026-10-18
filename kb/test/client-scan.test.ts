@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { classifyDomain, DOMAINS, formatScanReport, loadManifest, parseManifest, scanBuild, type ManifestEntry } from "../src/client-scan.js";
+import { classifyDomain, DOMAINS, formatScanReport, loadManifest, neverReason, parseManifest, scanBuild, type ManifestEntry } from "../src/client-scan.js";
 import type { FileStatus } from "../src/client-extract.js";
 
 test("domains are classified by the site area each table serves", () => {
@@ -69,11 +69,12 @@ const meta = { build: { product: "wow_classic_beta", version: "1.60.1.70450", bu
 
 test("scanBuild counts the build, keeps the candidates and notes every curated mismatch", () => {
   const report = scanBuild(meta, entries, statusOf, read);
-  expect(report.totals).toEqual({ known: 8, present: 4, absent: 2, encrypted: 1, noFileDataID: 1, read: 4, readPresent: 2, excluded: 0 });
+  expect(report.totals).toEqual({ known: 8, present: 4, absent: 2, encrypted: 1, noFileDataID: 1, read: 4, readPresent: 2, excluded: 0, neverListed: 0 });
   expect(report.candidates).toEqual([
     { table: "LFGDungeons", fileDataID: 3, via: "db2", domain: "group content" },
     { table: "OldOnly", fileDataID: 6, via: "dbc", domain: "other" },
   ]);
+  expect(report.neverList).toEqual([]);
   expect(report.notes).toEqual([
     { table: "Stale", note: "not in the build" },
     { table: "Moved", note: "read from file data id 5; the manifest lists 7" },
@@ -94,10 +95,52 @@ test("key-material tables are counted and named, never candidates", () => {
     { tableName: "TactKeyLookup", db2FileDataID: 11 },
   ];
   const report = scanBuild(meta, withKeys, (id) => (id === 1 || id === 10 || id === 11 ? "present" : "absent"), { Item: 1 });
-  expect(report.totals).toEqual({ known: 3, present: 1, absent: 0, encrypted: 0, noFileDataID: 0, read: 1, readPresent: 1, excluded: 2 });
+  expect(report.totals).toEqual({ known: 3, present: 1, absent: 0, encrypted: 0, noFileDataID: 0, read: 1, readPresent: 1, excluded: 2, neverListed: 0 });
   expect(report.candidates).toEqual([]);
   expect(report.domains).toEqual([{ domain: "items", present: 1, read: 1, unread: 0 }]);
   expect(formatScanReport(report)).toContain("| excluded (key material, never read) | 2 |");
+});
+
+test("never-list tables are counted, named and kept out of the candidates", () => {
+  expect(neverReason("GarrBuilding")).toBe("retail-only system, not live in Forever");
+  expect(neverReason("MythicPlusSeason")).toBe("retail-only system, not live in Forever");
+  expect(neverReason("AvailableSuperDistrict")).toBe("retail-only system, not live in Forever");
+  expect(neverReason("GlobalStrings")).toBe("client plumbing, not game data");
+  expect(neverReason("ContentTuning")).toBeNull();
+  expect(neverReason("PVPDifficulty")).toBeNull();
+  const withNever: ManifestEntry[] = [
+    { tableName: "Item", db2FileDataID: 1 },
+    { tableName: "GarrBuilding", db2FileDataID: 20 },
+    { tableName: "MythicPlusSeason", db2FileDataID: 21 },
+    { tableName: "GlobalStrings", db2FileDataID: 22 },
+    { tableName: "ContentTuning", db2FileDataID: 23 },
+  ];
+  const report = scanBuild(meta, withNever, () => "present", { Item: 1 });
+  expect(report.totals.neverListed).toBe(3);
+  expect(report.neverList).toEqual([
+    { table: "GarrBuilding", reason: "retail-only system, not live in Forever" },
+    { table: "MythicPlusSeason", reason: "retail-only system, not live in Forever" },
+    { table: "GlobalStrings", reason: "client plumbing, not game data" },
+  ]);
+  expect(report.candidates.map((c) => c.table)).toEqual(["ContentTuning"]);
+  expect(report.domains).toEqual([
+    { domain: "items", present: 1, read: 1, unread: 0 },
+    { domain: "other", present: 4, read: 0, unread: 1 },
+  ]);
+  const md = formatScanReport(report);
+  expect(md).toContain("| never-list (decided never, not candidates) | 3 |");
+  expect(md).toContain("| GarrBuilding | retail-only system, not live in Forever |");
+  expect(md).toContain("### other — 4 present, 0 read, 1 unread");
+  expect(md).not.toContain("| GarrBuilding | 20 | db2 |");
+});
+
+test("a never-list table the knowledge base reads flows through the read path", () => {
+  const withRead: ManifestEntry[] = [
+    { tableName: "GlobalStrings", db2FileDataID: 1 },
+  ];
+  const report = scanBuild(meta, withRead, () => "present", { GlobalStrings: 1 });
+  expect(report.totals.neverListed).toBe(0);
+  expect(report.totals.readPresent).toBe(1);
 });
 
 test("the markdown report carries the totals, the notes and each domain's candidates", () => {

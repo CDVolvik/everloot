@@ -87,10 +87,34 @@ export function classifyDomain(table: string): Domain {
 export interface ScanBuild { product: string; version: string; buildId: number; buildConfig: string }
 export interface ScanCandidate { table: string; fileDataID: number; via: "db2" | "dbc"; domain: Domain }
 export interface ScanNote { table: string; note: string }
+export interface ScanNeverListed { table: string; reason: string }
 export interface DomainSummary { domain: Domain; present: number; read: number; unread: number }
 
 /** Tables that hold CASC encryption key material: counted and named, never candidates, never read. */
 export const KEY_TABLES: ReadonlySet<string> = new Set(["TactKey", "TactKeyLookup"]);
+
+/**
+ * Tables present in the build but decided never to read: retail-only systems the Forever realm does
+ * not run (first triage pass of the "other" bucket, 2026-10-18) and client plumbing that is not game
+ * data. Counted and named in the report, never candidates. The check runs only for tables the
+ * knowledge base does not read, so a table that ever enters CLIENT_TABLES flows through the read
+ * path first and can never be shadowed by this list.
+ */
+export const NEVER_TABLE_RULES: [string, RegExp][] = [
+  [
+    "retail-only system, not live in Forever",
+    /^(Garr|Artifact|Azerite|Soulbind|MawPower|Runeforge|CorruptionEffects|Covenant|Perks|Warband|House|Decor|Room|ExteriorComponent|AvailableSuperDistrict|SuperDistrict|Neighborhood|RetroactiveDecor|DataTagXHouseDecor|MythicPlus|Delves|AssistedCombat|FlightCapability|GlideEvent|DriveCapability|WeeklyRewardChest|Commentator|PVPScoreboard|AdventureJournal|Bounty|Initiative|PvpTalent|PvpBrawl|PvpSeason|PrestigeLevelInfo|PvpTier|PvpRating|PvpScalingEffect|Relic)/,
+  ],
+  [
+    "client plumbing, not game data",
+    /^(GlobalStrings|Cfg_|Locale|Hotfixes|StartupFiles|SharedString|SpamMessages|ServerMessages|BannedAddons|GameClockDebug)/,
+  ],
+];
+
+export function neverReason(table: string): string | null {
+  for (const [reason, re] of NEVER_TABLE_RULES) if (re.test(table)) return reason;
+  return null;
+}
 
 export interface ScanReport {
   build: ScanBuild;
@@ -99,10 +123,11 @@ export interface ScanReport {
   scannedAt: string;
   totals: {
     known: number; present: number; absent: number; encrypted: number; noFileDataID: number;
-    read: number; readPresent: number; excluded: number;
+    read: number; readPresent: number; excluded: number; neverListed: number;
   };
   domains: DomainSummary[];
   candidates: ScanCandidate[];
+  neverList: ScanNeverListed[];
   notes: ScanNote[];
 }
 
@@ -112,8 +137,9 @@ export function scanBuild(
   statusOf: (fileDataID: number) => FileStatus,
   read: Record<string, number> = CLIENT_TABLES,
 ): ScanReport {
-  const totals = { known: entries.length, present: 0, absent: 0, encrypted: 0, noFileDataID: 0, read: Object.keys(read).length, readPresent: 0, excluded: 0 };
+  const totals = { known: entries.length, present: 0, absent: 0, encrypted: 0, noFileDataID: 0, read: Object.keys(read).length, readPresent: 0, excluded: 0, neverListed: 0 };
   const candidates: ScanCandidate[] = [];
+  const neverList: ScanNeverListed[] = [];
   const notes: ScanNote[] = [];
   const byName = new Map(entries.map((e) => [e.tableName, e]));
   const perDomain = new Map<Domain, DomainSummary>();
@@ -150,6 +176,12 @@ export function scanBuild(
     const domain = domainOf(entry.tableName);
     domain.present++;
     if (entry.tableName in read) continue;
+    const reason = neverReason(entry.tableName);
+    if (reason) {
+      totals.neverListed++;
+      neverList.push({ table: entry.tableName, reason });
+      continue;
+    }
     domain.unread++;
     candidates.push({ table: entry.tableName, fileDataID: id, via: entry.db2FileDataID ? "db2" : "dbc", domain: classifyDomain(entry.tableName) });
   }
@@ -180,7 +212,7 @@ export function scanBuild(
     .filter((d) => d.present > 0)
     .sort((a, b) => DOMAINS.indexOf(a.domain) - DOMAINS.indexOf(b.domain));
 
-  return { ...meta, scannedAt: new Date().toISOString(), totals, domains, candidates, notes };
+  return { ...meta, scannedAt: new Date().toISOString(), totals, domains, candidates, neverList, notes };
 }
 
 export function formatScanReport(report: ScanReport): string {
@@ -198,6 +230,7 @@ export function formatScanReport(report: ScanReport): string {
     `| in this build | ${t.present} |`,
     `| encrypted (counted, not read) | ${t.encrypted} |`,
     `| excluded (key material, never read) | ${t.excluded} |`,
+    `| never-list (decided never, not candidates) | ${t.neverListed} |`,
     `| not in this build | ${t.absent} |`,
     `| no file data id in the manifest | ${t.noFileDataID} |`,
     `| read by the knowledge base today | ${t.read} (${t.readPresent} in this build) |`,
@@ -207,6 +240,12 @@ export function formatScanReport(report: ScanReport): string {
   if (report.notes.length) {
     lines.push("## Notes on tables the knowledge base reads", "");
     for (const n of report.notes) lines.push(`- ${n.table}: ${n.note}`);
+    lines.push("");
+  }
+  if (report.neverList.length) {
+    lines.push("## Never list (decided never, not candidates)", "");
+    lines.push("| Table | Reason |", "|---|---|");
+    for (const n of report.neverList) lines.push(`| ${n.table} | ${n.reason} |`);
     lines.push("");
   }
   lines.push("## Candidates by domain", "");
