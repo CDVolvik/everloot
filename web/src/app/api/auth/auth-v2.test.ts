@@ -1,15 +1,20 @@
+import { createHash } from "node:crypto";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 const USER_ID = "00000000-0000-4000-8000-000000000001";
 const v2 = vi.hoisted(() => ({
   enabled: true,
+  v1Token: undefined as string | undefined,
   fake: {
     handler: vi.fn(),
     api: { getSession: vi.fn(), signOut: vi.fn() },
   },
 }));
 vi.mock("@/lib/auth/auth", () => ({ authV2Enabled: () => v2.enabled, getAuth: () => v2.fake }));
-vi.mock("next/headers", () => ({ headers: async () => new Headers({ cookie: "everloot.session_token=t" }) }));
+vi.mock("next/headers", () => ({
+  headers: async () => new Headers({ cookie: "everloot.session_token=t" }),
+  cookies: async () => ({ get: (name: string) => (name === "everloot_session" && v2.v1Token ? { value: v2.v1Token } : undefined) }),
+}));
 
 import { GET as meGET } from "./me/route";
 import { GET as bnetGET } from "./bnet/route";
@@ -18,6 +23,7 @@ import { GET as allGET, POST as allPOST } from "./[...all]/route";
 
 beforeEach(() => {
   v2.enabled = true;
+  v2.v1Token = undefined;
   v2.fake.handler.mockReset();
   Object.values(v2.fake.api).forEach((fn) => fn.mockReset());
   vi.stubEnv("SUPABASE_URL", "https://example.supabase.co");
@@ -104,7 +110,38 @@ test("v2 logout signs out through Better Auth and refuses other origins", async 
 
   const res = await send("https://everloot.app");
   expect(await res.json()).toEqual({ ok: true });
-  expect(res.headers.getSetCookie()).toEqual(["everloot.session_token=; Max-Age=0; Path=/"]);
+  expect(res.headers.getSetCookie()).toEqual([
+    "everloot_session=; Path=/; Max-Age=0; HttpOnly; SameSite=lax",
+    "everloot.session_token=; Max-Age=0; Path=/",
+  ]);
+});
+
+test("v2 logout also ends a v1 session, so rolling the flag back cannot revive it", async () => {
+  v2.v1Token = "a".repeat(64);
+  v2.fake.api.signOut.mockResolvedValue(Response.json({ success: true }));
+  const calls: Array<[string, RequestInit | undefined]> = [];
+  vi.stubGlobal("fetch", async (input: RequestInfo | URL, init?: RequestInit) => {
+    calls.push([String(input), init]);
+    return new Response(null, { status: 204 });
+  });
+  const res = await logoutPOST(new Request("https://everloot.app/api/auth/logout", { method: "POST", headers: { origin: "https://everloot.app" } }));
+  expect(await res.json()).toEqual({ ok: true });
+  const hash = createHash("sha256").update(v2.v1Token).digest("hex");
+  expect(calls).toHaveLength(1);
+  expect(calls[0][0]).toBe(`https://example.supabase.co/rest/v1/sessions?token_hash=eq.${hash}`);
+  expect(calls[0][1]?.method).toBe("DELETE");
+  expect(res.headers.getSetCookie()).toContain("everloot_session=; Path=/; Max-Age=0; HttpOnly; SameSite=lax");
+});
+
+test("v2 logout still signs out when the v1 session cannot be revoked", async () => {
+  v2.v1Token = "b".repeat(64);
+  v2.fake.api.signOut.mockResolvedValue(Response.json({ success: true }));
+  vi.stubGlobal("fetch", async () => { throw new TypeError("fetch failed"); });
+  const res = await logoutPOST(new Request("https://everloot.app/api/auth/logout", { method: "POST", headers: { origin: "https://everloot.app" } }));
+  expect(res.status).toBe(200);
+  expect(await res.json()).toEqual({ ok: true });
+  expect(v2.fake.api.signOut).toHaveBeenCalledTimes(1);
+  expect(res.headers.getSetCookie()).toContain("everloot_session=; Path=/; Max-Age=0; HttpOnly; SameSite=lax");
 });
 
 test("v2 logout fails closed when sign-out errors", async () => {
