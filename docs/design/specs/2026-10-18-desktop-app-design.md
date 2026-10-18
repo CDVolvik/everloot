@@ -74,7 +74,7 @@ Support/Everloot`, `~/.config/everloot`), so a player can switch between them wi
 | `addon.ts` | Installed version from the TOC, the newest release with a given tag prefix, and the install: only regular files under `Everloot/` from the zip (no `..`, no absolute paths), written to `Everloot.new` and swapped in whole after the sha256 matches the release's `SHA256SUMS` | `fflate` |
 | `changes.ts` | The change tracker's RSS feed as a list: title, https link, date, plain-text summary | `fetch` |
 | `backups.ts` | After each upload, a dated copy of the account's `Everloot.lua` under `backups/`, the newest ten per account. A failed backup never fails the upload. Restore copies one back over the watched file of the same account after a native confirm, backing up the current file first; only files inside `backups/` are accepted | `node:fs` |
-| `tray.ts` | The menu: status of each job, a scan reminder when a realm is stale, the desktop update when one exists, Upload now, Refresh prices, Open window, Pause, Quit | Electron |
+| `tray.ts` | The menu: status of each job, a scan reminder when a realm is stale (opens the Market page), the desktop update when one exists (opens the release page), Upload now, Refresh prices, Open window, Pause, Quit. The two notifications open Ask and Addon when clicked | Electron |
 | `index.ts` | Single instance, the window, the tray, IPC handlers, close-to-tray, launch at login | everything above |
 
 ### The window
