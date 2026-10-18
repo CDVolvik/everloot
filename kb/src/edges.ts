@@ -219,6 +219,31 @@ export function evidenceLabel(e: Edge): string {
 export const RELATIONS_LIMIT = 25;
 
 /**
+ * The edges the text lists, as data: outgoing groups by relation, then incoming by relation, each group
+ * cut to the limit, with how many were left out. The MCP tool's structured answer.
+ */
+export function entityRelationsStructured(
+  args: { kind: EdgeKind; id: number; rel?: Rel; direction?: "from" | "to" | "both"; limit?: number },
+  observed: readonly Edge[], client: readonly Edge[],
+): { kind: EdgeKind; id: number; edges: Edge[]; notShown: number } {
+  const all = [...observed, ...client].filter((e) => !args.rel || e.rel === args.rel);
+  const direction = args.direction ?? "both";
+  const limit = args.limit ?? RELATIONS_LIMIT;
+  const edges: Edge[] = [];
+  let notShown = 0;
+  const take = (group: Edge[]) => {
+    edges.push(...group.slice(0, limit));
+    notShown += Math.max(0, group.length - limit);
+  };
+  if (direction !== "to") for (const g of groupByRel(edgesFrom(all, args.kind, args.id))) take(g.edges);
+  if (direction !== "from" && args.kind !== "icon") {
+    const incoming = edgesTo(all, args.kind, args.id);
+    for (const rel of RELS) take(incoming.filter((e) => e.rel === rel));
+  }
+  return { kind: args.kind, id: args.id, edges, notShown };
+}
+
+/**
  * Text answer for the MCP tool: every relation of one entity, both directions unless asked, grouped by
  * relation. Observed edges carry our licence; file edges carry Blizzard's notice and their build.
  */

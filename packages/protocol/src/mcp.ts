@@ -186,6 +186,97 @@ export const guildBoard = z.object({
   attendanceWaiting: z.boolean(),
 });
 
+const reagent = z.object({ item: z.string(), count: z.number().int() });
+export const professionPath = z.object({
+  profession: z.string(),
+  fromSkill: z.number().int(),
+  toSkill: z.number().int(),
+  steps: z.array(z.object({
+    recipe: z.string(),
+    fromSkill: z.number().int(),
+    toSkill: z.number().int(),
+    crafts: z.number().int(),
+    points: z.number().int(),
+    reagents: z.array(reagent),
+    copper: z.number().int().nullable().describe("Reagent cost of the step; null when a price is unrecorded."),
+    reporters: z.number().int(),
+    trainingCopper: z.number().int().nullable().optional().describe("Derived steps only: agreed training cost, or null when unrecorded."),
+  })),
+  gaps: z.array(z.object({ fromSkill: z.number().int(), toSkill: z.number().int() })).describe("Skill ranges no agreed recipe covers; a gap is left, never invented."),
+  reagents: z.array(reagent).describe("Every reagent the path needs, summed."),
+  copper: z.number().int().nullable().describe("The whole path's reagent cost; null when any price is unrecorded."),
+});
+const skillRange = z.object({ min: z.number().int().nullable(), max: z.number().int().nullable() });
+export const recipeThresholds = z.object({
+  profession: z.string(),
+  ranges: z.array(z.object({
+    profession: z.string(),
+    recipe: z.string(),
+    installs: z.number().int(),
+    observations: z.number().int(),
+    yellow: skillRange, green: skillRange, grey: skillRange,
+    reagents: z.array(reagent).nullable().describe("The reagent list three installs agree on, or null."),
+    costCopper: z.number().int().nullable().describe("Estimated cost per craft from agreed prices; null when a price is unrecorded or the reagents are."),
+    missingPrices: z.array(z.string()).describe("Reagents with no agreed price."),
+  })).describe("A range, never a guessed exact number; empty is unrecorded, not zero."),
+});
+const closestAchievement = z.object({ achievementId: z.number().int(), name: z.string(), category: z.string(), have: z.number(), of: z.number(), unit: z.enum(["criteria", "progress"]) });
+const closestFaction = z.object({ factionId: z.number().int(), name: z.string(), standing: z.string(), toNext: z.number().int(), header: z.string().optional() });
+export const characterProgress = z.object({
+  characterKey: z.string().describe("An opaque key derived from the install and the character, never the name."),
+  class: z.string(),
+  level: z.number().int(),
+  achievements: z.object({ done: z.number().int(), total: z.number().int(), points: z.number().int(), pointsTotal: z.number().int(), closest: z.array(closestAchievement), unlisted: z.number().int() }),
+  reputation: z.object({
+    exalted: z.number().int(), total: z.number().int(), closest: z.array(closestFaction),
+    unscaled: z.array(z.object({ factionId: z.number().int(), name: z.string(), standing: z.number().int() })), unlisted: z.number().int(),
+  }),
+  titles: z.object({ known: z.number().int(), total: z.number().int(), unlisted: z.number().int() }),
+  quests: z.object({
+    completed: z.number().int(), chainsDone: z.number().int(), chainsTotal: z.number().int(),
+    closest: z.array(z.object({ questLineId: z.number().int(), name: z.string(), done: z.number().int(), total: z.number().int(), truncated: z.boolean() })),
+  }),
+});
+export const completionProgress = z.object({
+  ownerInstallId: z.string(),
+  listed: z.object({ achievements: z.number().int(), factions: z.number().int(), titles: z.number().int(), chains: z.number().int() }).describe("What the agreed lists hold. All zero means no list is public yet."),
+  ownedRecorded: z.boolean().describe("False when this install has no shared completion data: owned is unknown, not empty."),
+  characters: z.array(characterProgress),
+  unknownCharacter: z.string().optional().describe("The character key that was asked for and not found."),
+  droppedCharacters: z.number().int().describe("Characters of this install the site no longer holds."),
+});
+export const marketValue = z.object({
+  itemId: z.number().int(),
+  market: z.number().int().nullable().describe("Null when no solid public day falls in the last 14: unrecorded, not zero."),
+  min: z.number().int(),
+  historical: z.number().int(),
+  quantity: z.number().int(),
+  day: z.string(),
+  ageDays: z.number().int(),
+  reporters: z.number().int(),
+  thin: z.boolean(),
+});
+export const marketPage = z.object({
+  realm: z.string(),
+  itemId: z.number().int(),
+  value: marketValue.nullable().describe("Null until 3 reporters scanned the item on the realm."),
+  history: z.array(z.object({ day: z.string(), min: z.number().int(), market: z.number().int(), quantity: z.number().int(), reporters: z.number().int(), thin: z.boolean() })),
+});
+export const relationEdge = z.object({
+  fromKind: z.enum(ENTITY_KINDS), fromId: z.number().int(), rel: z.enum(RELS), toKind: z.enum(ENTITY_KINDS), toId: z.number().int(),
+  evidence: z.enum(["observed", "client"]).describe("observed: players saw it, 3 installs. client: the game files, unconfirmed."),
+  build: z.string().nullable(),
+  installs: z.number().int().nullable(),
+  firstSeen: z.string().nullable(),
+  lastSeen: z.string().nullable(),
+});
+export const entityRelations = z.object({
+  kind: z.enum(ENTITY_KINDS),
+  id: z.number().int(),
+  edges: z.array(relationEdge).describe("Outgoing then incoming, grouped by relation, each group cut to the limit."),
+  notShown: z.number().int().describe("Edges beyond the limit, over every group."),
+});
+
 /** One row of the implementation tracker as everloot_plan returns it. */
 export const planRow = z.object({
   id: z.string(),
@@ -308,6 +399,7 @@ export const MCP_TOOLS = {
       fromSkill: z.number().int().min(1).max(500).default(1).describe("Skill the character has now."),
       toSkill: z.number().int().min(1).max(500).describe("Skill to stop at. Must be above fromSkill."),
     },
+    outputSchema: { ...uploadsAnswer, page: professionPath.optional() },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
   recipe_thresholds: {
@@ -318,6 +410,7 @@ export const MCP_TOOLS = {
       profession: z.string().describe("Profession name, such as Alchemy."),
       recipe: z.string().optional().describe("Optional part of a recipe name to narrow the list."),
     },
+    outputSchema: { ...uploadsAnswer, page: recipeThresholds.optional() },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
   item_page: {
@@ -385,6 +478,7 @@ export const MCP_TOOLS = {
       direction: z.enum(["from", "to", "both"]).default("both").describe("from: what this entity points to (an item's sources). to: what points at it (what an NPC drops). Default both."),
       limit: z.number().int().min(1).max(100).default(25).describe("Most lines per relation."),
     },
+    outputSchema: { ...uploadsAnswer, page: entityRelations.optional() },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
   item_categories: {
@@ -487,6 +581,7 @@ export const MCP_TOOLS = {
       ownerInstallId: z.string().describe("Install id whose completion upload to read."),
       characterKey: z.string().max(8).optional().describe("One character's 8-digit key from the upload, when the install has several."),
     },
+    outputSchema: { ...uploadsAnswer, page: completionProgress.optional() },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
   guild_board: {
@@ -519,6 +614,7 @@ export const MCP_TOOLS = {
       realm: z.string().describe("Realm name."),
       itemId: z.number().int().positive().describe("Item id."),
     },
+    outputSchema: { ...uploadsAnswer, page: marketPage.optional() },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
   gold_ledger: {

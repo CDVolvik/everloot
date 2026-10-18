@@ -275,6 +275,326 @@ export declare const guildBoard: z.ZodObject<{
     present: z.ZodArray<z.ZodString>;
     attendanceWaiting: z.ZodBoolean;
 }, z.core.$strip>;
+export declare const professionPath: z.ZodObject<{
+    profession: z.ZodString;
+    fromSkill: z.ZodNumber;
+    toSkill: z.ZodNumber;
+    steps: z.ZodArray<z.ZodObject<{
+        recipe: z.ZodString;
+        fromSkill: z.ZodNumber;
+        toSkill: z.ZodNumber;
+        crafts: z.ZodNumber;
+        points: z.ZodNumber;
+        reagents: z.ZodArray<z.ZodObject<{
+            item: z.ZodString;
+            count: z.ZodNumber;
+        }, z.core.$strip>>;
+        copper: z.ZodNullable<z.ZodNumber>;
+        reporters: z.ZodNumber;
+        trainingCopper: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+    }, z.core.$strip>>;
+    gaps: z.ZodArray<z.ZodObject<{
+        fromSkill: z.ZodNumber;
+        toSkill: z.ZodNumber;
+    }, z.core.$strip>>;
+    reagents: z.ZodArray<z.ZodObject<{
+        item: z.ZodString;
+        count: z.ZodNumber;
+    }, z.core.$strip>>;
+    copper: z.ZodNullable<z.ZodNumber>;
+}, z.core.$strip>;
+export declare const recipeThresholds: z.ZodObject<{
+    profession: z.ZodString;
+    ranges: z.ZodArray<z.ZodObject<{
+        profession: z.ZodString;
+        recipe: z.ZodString;
+        installs: z.ZodNumber;
+        observations: z.ZodNumber;
+        yellow: z.ZodObject<{
+            min: z.ZodNullable<z.ZodNumber>;
+            max: z.ZodNullable<z.ZodNumber>;
+        }, z.core.$strip>;
+        green: z.ZodObject<{
+            min: z.ZodNullable<z.ZodNumber>;
+            max: z.ZodNullable<z.ZodNumber>;
+        }, z.core.$strip>;
+        grey: z.ZodObject<{
+            min: z.ZodNullable<z.ZodNumber>;
+            max: z.ZodNullable<z.ZodNumber>;
+        }, z.core.$strip>;
+        reagents: z.ZodNullable<z.ZodArray<z.ZodObject<{
+            item: z.ZodString;
+            count: z.ZodNumber;
+        }, z.core.$strip>>>;
+        costCopper: z.ZodNullable<z.ZodNumber>;
+        missingPrices: z.ZodArray<z.ZodString>;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+export declare const characterProgress: z.ZodObject<{
+    characterKey: z.ZodString;
+    class: z.ZodString;
+    level: z.ZodNumber;
+    achievements: z.ZodObject<{
+        done: z.ZodNumber;
+        total: z.ZodNumber;
+        points: z.ZodNumber;
+        pointsTotal: z.ZodNumber;
+        closest: z.ZodArray<z.ZodObject<{
+            achievementId: z.ZodNumber;
+            name: z.ZodString;
+            category: z.ZodString;
+            have: z.ZodNumber;
+            of: z.ZodNumber;
+            unit: z.ZodEnum<{
+                criteria: "criteria";
+                progress: "progress";
+            }>;
+        }, z.core.$strip>>;
+        unlisted: z.ZodNumber;
+    }, z.core.$strip>;
+    reputation: z.ZodObject<{
+        exalted: z.ZodNumber;
+        total: z.ZodNumber;
+        closest: z.ZodArray<z.ZodObject<{
+            factionId: z.ZodNumber;
+            name: z.ZodString;
+            standing: z.ZodString;
+            toNext: z.ZodNumber;
+            header: z.ZodOptional<z.ZodString>;
+        }, z.core.$strip>>;
+        unscaled: z.ZodArray<z.ZodObject<{
+            factionId: z.ZodNumber;
+            name: z.ZodString;
+            standing: z.ZodNumber;
+        }, z.core.$strip>>;
+        unlisted: z.ZodNumber;
+    }, z.core.$strip>;
+    titles: z.ZodObject<{
+        known: z.ZodNumber;
+        total: z.ZodNumber;
+        unlisted: z.ZodNumber;
+    }, z.core.$strip>;
+    quests: z.ZodObject<{
+        completed: z.ZodNumber;
+        chainsDone: z.ZodNumber;
+        chainsTotal: z.ZodNumber;
+        closest: z.ZodArray<z.ZodObject<{
+            questLineId: z.ZodNumber;
+            name: z.ZodString;
+            done: z.ZodNumber;
+            total: z.ZodNumber;
+            truncated: z.ZodBoolean;
+        }, z.core.$strip>>;
+    }, z.core.$strip>;
+}, z.core.$strip>;
+export declare const completionProgress: z.ZodObject<{
+    ownerInstallId: z.ZodString;
+    listed: z.ZodObject<{
+        achievements: z.ZodNumber;
+        factions: z.ZodNumber;
+        titles: z.ZodNumber;
+        chains: z.ZodNumber;
+    }, z.core.$strip>;
+    ownedRecorded: z.ZodBoolean;
+    characters: z.ZodArray<z.ZodObject<{
+        characterKey: z.ZodString;
+        class: z.ZodString;
+        level: z.ZodNumber;
+        achievements: z.ZodObject<{
+            done: z.ZodNumber;
+            total: z.ZodNumber;
+            points: z.ZodNumber;
+            pointsTotal: z.ZodNumber;
+            closest: z.ZodArray<z.ZodObject<{
+                achievementId: z.ZodNumber;
+                name: z.ZodString;
+                category: z.ZodString;
+                have: z.ZodNumber;
+                of: z.ZodNumber;
+                unit: z.ZodEnum<{
+                    criteria: "criteria";
+                    progress: "progress";
+                }>;
+            }, z.core.$strip>>;
+            unlisted: z.ZodNumber;
+        }, z.core.$strip>;
+        reputation: z.ZodObject<{
+            exalted: z.ZodNumber;
+            total: z.ZodNumber;
+            closest: z.ZodArray<z.ZodObject<{
+                factionId: z.ZodNumber;
+                name: z.ZodString;
+                standing: z.ZodString;
+                toNext: z.ZodNumber;
+                header: z.ZodOptional<z.ZodString>;
+            }, z.core.$strip>>;
+            unscaled: z.ZodArray<z.ZodObject<{
+                factionId: z.ZodNumber;
+                name: z.ZodString;
+                standing: z.ZodNumber;
+            }, z.core.$strip>>;
+            unlisted: z.ZodNumber;
+        }, z.core.$strip>;
+        titles: z.ZodObject<{
+            known: z.ZodNumber;
+            total: z.ZodNumber;
+            unlisted: z.ZodNumber;
+        }, z.core.$strip>;
+        quests: z.ZodObject<{
+            completed: z.ZodNumber;
+            chainsDone: z.ZodNumber;
+            chainsTotal: z.ZodNumber;
+            closest: z.ZodArray<z.ZodObject<{
+                questLineId: z.ZodNumber;
+                name: z.ZodString;
+                done: z.ZodNumber;
+                total: z.ZodNumber;
+                truncated: z.ZodBoolean;
+            }, z.core.$strip>>;
+        }, z.core.$strip>;
+    }, z.core.$strip>>;
+    unknownCharacter: z.ZodOptional<z.ZodString>;
+    droppedCharacters: z.ZodNumber;
+}, z.core.$strip>;
+export declare const marketValue: z.ZodObject<{
+    itemId: z.ZodNumber;
+    market: z.ZodNullable<z.ZodNumber>;
+    min: z.ZodNumber;
+    historical: z.ZodNumber;
+    quantity: z.ZodNumber;
+    day: z.ZodString;
+    ageDays: z.ZodNumber;
+    reporters: z.ZodNumber;
+    thin: z.ZodBoolean;
+}, z.core.$strip>;
+export declare const marketPage: z.ZodObject<{
+    realm: z.ZodString;
+    itemId: z.ZodNumber;
+    value: z.ZodNullable<z.ZodObject<{
+        itemId: z.ZodNumber;
+        market: z.ZodNullable<z.ZodNumber>;
+        min: z.ZodNumber;
+        historical: z.ZodNumber;
+        quantity: z.ZodNumber;
+        day: z.ZodString;
+        ageDays: z.ZodNumber;
+        reporters: z.ZodNumber;
+        thin: z.ZodBoolean;
+    }, z.core.$strip>>;
+    history: z.ZodArray<z.ZodObject<{
+        day: z.ZodString;
+        min: z.ZodNumber;
+        market: z.ZodNumber;
+        quantity: z.ZodNumber;
+        reporters: z.ZodNumber;
+        thin: z.ZodBoolean;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+export declare const relationEdge: z.ZodObject<{
+    fromKind: z.ZodEnum<{
+        icon: "icon";
+        item: "item";
+        item_set: "item_set";
+        npc: "npc";
+        object: "object";
+        quest: "quest";
+        skill: "skill";
+        spell: "spell";
+        zone: "zone";
+    }>;
+    fromId: z.ZodNumber;
+    rel: z.ZodEnum<{
+        created_by: "created_by";
+        dropped_by: "dropped_by";
+        in_skill_line: "in_skill_line";
+        located_in: "located_in";
+        part_of_set: "part_of_set";
+        reagent_for: "reagent_for";
+        reward_from: "reward_from";
+        same_icon: "same_icon";
+        sold_by: "sold_by";
+    }>;
+    toKind: z.ZodEnum<{
+        icon: "icon";
+        item: "item";
+        item_set: "item_set";
+        npc: "npc";
+        object: "object";
+        quest: "quest";
+        skill: "skill";
+        spell: "spell";
+        zone: "zone";
+    }>;
+    toId: z.ZodNumber;
+    evidence: z.ZodEnum<{
+        client: "client";
+        observed: "observed";
+    }>;
+    build: z.ZodNullable<z.ZodString>;
+    installs: z.ZodNullable<z.ZodNumber>;
+    firstSeen: z.ZodNullable<z.ZodString>;
+    lastSeen: z.ZodNullable<z.ZodString>;
+}, z.core.$strip>;
+export declare const entityRelations: z.ZodObject<{
+    kind: z.ZodEnum<{
+        icon: "icon";
+        item: "item";
+        item_set: "item_set";
+        npc: "npc";
+        object: "object";
+        quest: "quest";
+        skill: "skill";
+        spell: "spell";
+        zone: "zone";
+    }>;
+    id: z.ZodNumber;
+    edges: z.ZodArray<z.ZodObject<{
+        fromKind: z.ZodEnum<{
+            icon: "icon";
+            item: "item";
+            item_set: "item_set";
+            npc: "npc";
+            object: "object";
+            quest: "quest";
+            skill: "skill";
+            spell: "spell";
+            zone: "zone";
+        }>;
+        fromId: z.ZodNumber;
+        rel: z.ZodEnum<{
+            created_by: "created_by";
+            dropped_by: "dropped_by";
+            in_skill_line: "in_skill_line";
+            located_in: "located_in";
+            part_of_set: "part_of_set";
+            reagent_for: "reagent_for";
+            reward_from: "reward_from";
+            same_icon: "same_icon";
+            sold_by: "sold_by";
+        }>;
+        toKind: z.ZodEnum<{
+            icon: "icon";
+            item: "item";
+            item_set: "item_set";
+            npc: "npc";
+            object: "object";
+            quest: "quest";
+            skill: "skill";
+            spell: "spell";
+            zone: "zone";
+        }>;
+        toId: z.ZodNumber;
+        evidence: z.ZodEnum<{
+            client: "client";
+            observed: "observed";
+        }>;
+        build: z.ZodNullable<z.ZodString>;
+        installs: z.ZodNullable<z.ZodNumber>;
+        firstSeen: z.ZodNullable<z.ZodString>;
+        lastSeen: z.ZodNullable<z.ZodString>;
+    }, z.core.$strip>>;
+    notShown: z.ZodNumber;
+}, z.core.$strip>;
 /** One row of the implementation tracker as everloot_plan returns it. */
 export declare const planRow: z.ZodObject<{
     id: z.ZodString;
@@ -571,6 +891,39 @@ export declare const MCP_TOOLS: {
             readonly fromSkill: z.ZodDefault<z.ZodNumber>;
             readonly toSkill: z.ZodNumber;
         };
+        readonly outputSchema: {
+            readonly connected: z.ZodBoolean;
+            readonly dataAsOf: z.ZodNullable<z.ZodString>;
+            readonly reason: z.ZodOptional<z.ZodString>;
+            readonly page: z.ZodOptional<z.ZodObject<{
+                profession: z.ZodString;
+                fromSkill: z.ZodNumber;
+                toSkill: z.ZodNumber;
+                steps: z.ZodArray<z.ZodObject<{
+                    recipe: z.ZodString;
+                    fromSkill: z.ZodNumber;
+                    toSkill: z.ZodNumber;
+                    crafts: z.ZodNumber;
+                    points: z.ZodNumber;
+                    reagents: z.ZodArray<z.ZodObject<{
+                        item: z.ZodString;
+                        count: z.ZodNumber;
+                    }, z.core.$strip>>;
+                    copper: z.ZodNullable<z.ZodNumber>;
+                    reporters: z.ZodNumber;
+                    trainingCopper: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+                }, z.core.$strip>>;
+                gaps: z.ZodArray<z.ZodObject<{
+                    fromSkill: z.ZodNumber;
+                    toSkill: z.ZodNumber;
+                }, z.core.$strip>>;
+                reagents: z.ZodArray<z.ZodObject<{
+                    item: z.ZodString;
+                    count: z.ZodNumber;
+                }, z.core.$strip>>;
+                copper: z.ZodNullable<z.ZodNumber>;
+            }, z.core.$strip>>;
+        };
         readonly annotations: {
             readonly readOnlyHint: true;
             readonly openWorldHint: false;
@@ -582,6 +935,38 @@ export declare const MCP_TOOLS: {
         readonly inputSchema: {
             readonly profession: z.ZodString;
             readonly recipe: z.ZodOptional<z.ZodString>;
+        };
+        readonly outputSchema: {
+            readonly connected: z.ZodBoolean;
+            readonly dataAsOf: z.ZodNullable<z.ZodString>;
+            readonly reason: z.ZodOptional<z.ZodString>;
+            readonly page: z.ZodOptional<z.ZodObject<{
+                profession: z.ZodString;
+                ranges: z.ZodArray<z.ZodObject<{
+                    profession: z.ZodString;
+                    recipe: z.ZodString;
+                    installs: z.ZodNumber;
+                    observations: z.ZodNumber;
+                    yellow: z.ZodObject<{
+                        min: z.ZodNullable<z.ZodNumber>;
+                        max: z.ZodNullable<z.ZodNumber>;
+                    }, z.core.$strip>;
+                    green: z.ZodObject<{
+                        min: z.ZodNullable<z.ZodNumber>;
+                        max: z.ZodNullable<z.ZodNumber>;
+                    }, z.core.$strip>;
+                    grey: z.ZodObject<{
+                        min: z.ZodNullable<z.ZodNumber>;
+                        max: z.ZodNullable<z.ZodNumber>;
+                    }, z.core.$strip>;
+                    reagents: z.ZodNullable<z.ZodArray<z.ZodObject<{
+                        item: z.ZodString;
+                        count: z.ZodNumber;
+                    }, z.core.$strip>>>;
+                    costCopper: z.ZodNullable<z.ZodNumber>;
+                    missingPrices: z.ZodArray<z.ZodString>;
+                }, z.core.$strip>>;
+            }, z.core.$strip>>;
         };
         readonly annotations: {
             readonly readOnlyHint: true;
@@ -782,6 +1167,71 @@ export declare const MCP_TOOLS: {
                 to: "to";
             }>>;
             readonly limit: z.ZodDefault<z.ZodNumber>;
+        };
+        readonly outputSchema: {
+            readonly connected: z.ZodBoolean;
+            readonly dataAsOf: z.ZodNullable<z.ZodString>;
+            readonly reason: z.ZodOptional<z.ZodString>;
+            readonly page: z.ZodOptional<z.ZodObject<{
+                kind: z.ZodEnum<{
+                    icon: "icon";
+                    item: "item";
+                    item_set: "item_set";
+                    npc: "npc";
+                    object: "object";
+                    quest: "quest";
+                    skill: "skill";
+                    spell: "spell";
+                    zone: "zone";
+                }>;
+                id: z.ZodNumber;
+                edges: z.ZodArray<z.ZodObject<{
+                    fromKind: z.ZodEnum<{
+                        icon: "icon";
+                        item: "item";
+                        item_set: "item_set";
+                        npc: "npc";
+                        object: "object";
+                        quest: "quest";
+                        skill: "skill";
+                        spell: "spell";
+                        zone: "zone";
+                    }>;
+                    fromId: z.ZodNumber;
+                    rel: z.ZodEnum<{
+                        created_by: "created_by";
+                        dropped_by: "dropped_by";
+                        in_skill_line: "in_skill_line";
+                        located_in: "located_in";
+                        part_of_set: "part_of_set";
+                        reagent_for: "reagent_for";
+                        reward_from: "reward_from";
+                        same_icon: "same_icon";
+                        sold_by: "sold_by";
+                    }>;
+                    toKind: z.ZodEnum<{
+                        icon: "icon";
+                        item: "item";
+                        item_set: "item_set";
+                        npc: "npc";
+                        object: "object";
+                        quest: "quest";
+                        skill: "skill";
+                        spell: "spell";
+                        zone: "zone";
+                    }>;
+                    toId: z.ZodNumber;
+                    evidence: z.ZodEnum<{
+                        client: "client";
+                        observed: "observed";
+                    }>;
+                    build: z.ZodNullable<z.ZodString>;
+                    installs: z.ZodNullable<z.ZodNumber>;
+                    firstSeen: z.ZodNullable<z.ZodString>;
+                    lastSeen: z.ZodNullable<z.ZodString>;
+                }, z.core.$strip>>;
+                notShown: z.ZodNumber;
+            }, z.core.$strip>>;
         };
         readonly annotations: {
             readonly readOnlyHint: true;
@@ -1044,6 +1494,80 @@ export declare const MCP_TOOLS: {
             readonly ownerInstallId: z.ZodString;
             readonly characterKey: z.ZodOptional<z.ZodString>;
         };
+        readonly outputSchema: {
+            readonly connected: z.ZodBoolean;
+            readonly dataAsOf: z.ZodNullable<z.ZodString>;
+            readonly reason: z.ZodOptional<z.ZodString>;
+            readonly page: z.ZodOptional<z.ZodObject<{
+                ownerInstallId: z.ZodString;
+                listed: z.ZodObject<{
+                    achievements: z.ZodNumber;
+                    factions: z.ZodNumber;
+                    titles: z.ZodNumber;
+                    chains: z.ZodNumber;
+                }, z.core.$strip>;
+                ownedRecorded: z.ZodBoolean;
+                characters: z.ZodArray<z.ZodObject<{
+                    characterKey: z.ZodString;
+                    class: z.ZodString;
+                    level: z.ZodNumber;
+                    achievements: z.ZodObject<{
+                        done: z.ZodNumber;
+                        total: z.ZodNumber;
+                        points: z.ZodNumber;
+                        pointsTotal: z.ZodNumber;
+                        closest: z.ZodArray<z.ZodObject<{
+                            achievementId: z.ZodNumber;
+                            name: z.ZodString;
+                            category: z.ZodString;
+                            have: z.ZodNumber;
+                            of: z.ZodNumber;
+                            unit: z.ZodEnum<{
+                                criteria: "criteria";
+                                progress: "progress";
+                            }>;
+                        }, z.core.$strip>>;
+                        unlisted: z.ZodNumber;
+                    }, z.core.$strip>;
+                    reputation: z.ZodObject<{
+                        exalted: z.ZodNumber;
+                        total: z.ZodNumber;
+                        closest: z.ZodArray<z.ZodObject<{
+                            factionId: z.ZodNumber;
+                            name: z.ZodString;
+                            standing: z.ZodString;
+                            toNext: z.ZodNumber;
+                            header: z.ZodOptional<z.ZodString>;
+                        }, z.core.$strip>>;
+                        unscaled: z.ZodArray<z.ZodObject<{
+                            factionId: z.ZodNumber;
+                            name: z.ZodString;
+                            standing: z.ZodNumber;
+                        }, z.core.$strip>>;
+                        unlisted: z.ZodNumber;
+                    }, z.core.$strip>;
+                    titles: z.ZodObject<{
+                        known: z.ZodNumber;
+                        total: z.ZodNumber;
+                        unlisted: z.ZodNumber;
+                    }, z.core.$strip>;
+                    quests: z.ZodObject<{
+                        completed: z.ZodNumber;
+                        chainsDone: z.ZodNumber;
+                        chainsTotal: z.ZodNumber;
+                        closest: z.ZodArray<z.ZodObject<{
+                            questLineId: z.ZodNumber;
+                            name: z.ZodString;
+                            done: z.ZodNumber;
+                            total: z.ZodNumber;
+                            truncated: z.ZodBoolean;
+                        }, z.core.$strip>>;
+                    }, z.core.$strip>;
+                }, z.core.$strip>>;
+                unknownCharacter: z.ZodOptional<z.ZodString>;
+                droppedCharacters: z.ZodNumber;
+            }, z.core.$strip>>;
+        };
         readonly annotations: {
             readonly readOnlyHint: true;
             readonly openWorldHint: false;
@@ -1125,6 +1649,34 @@ export declare const MCP_TOOLS: {
         readonly inputSchema: {
             readonly realm: z.ZodString;
             readonly itemId: z.ZodNumber;
+        };
+        readonly outputSchema: {
+            readonly connected: z.ZodBoolean;
+            readonly dataAsOf: z.ZodNullable<z.ZodString>;
+            readonly reason: z.ZodOptional<z.ZodString>;
+            readonly page: z.ZodOptional<z.ZodObject<{
+                realm: z.ZodString;
+                itemId: z.ZodNumber;
+                value: z.ZodNullable<z.ZodObject<{
+                    itemId: z.ZodNumber;
+                    market: z.ZodNullable<z.ZodNumber>;
+                    min: z.ZodNumber;
+                    historical: z.ZodNumber;
+                    quantity: z.ZodNumber;
+                    day: z.ZodString;
+                    ageDays: z.ZodNumber;
+                    reporters: z.ZodNumber;
+                    thin: z.ZodBoolean;
+                }, z.core.$strip>>;
+                history: z.ZodArray<z.ZodObject<{
+                    day: z.ZodString;
+                    min: z.ZodNumber;
+                    market: z.ZodNumber;
+                    quantity: z.ZodNumber;
+                    reporters: z.ZodNumber;
+                    thin: z.ZodBoolean;
+                }, z.core.$strip>>;
+            }, z.core.$strip>>;
         };
         readonly annotations: {
             readonly readOnlyHint: true;
@@ -1491,6 +2043,39 @@ export declare const MCP_TOOL_LIST: ({
         readonly fromSkill: z.ZodDefault<z.ZodNumber>;
         readonly toSkill: z.ZodNumber;
     };
+    outputSchema: {
+        readonly connected: z.ZodBoolean;
+        readonly dataAsOf: z.ZodNullable<z.ZodString>;
+        readonly reason: z.ZodOptional<z.ZodString>;
+        readonly page: z.ZodOptional<z.ZodObject<{
+            profession: z.ZodString;
+            fromSkill: z.ZodNumber;
+            toSkill: z.ZodNumber;
+            steps: z.ZodArray<z.ZodObject<{
+                recipe: z.ZodString;
+                fromSkill: z.ZodNumber;
+                toSkill: z.ZodNumber;
+                crafts: z.ZodNumber;
+                points: z.ZodNumber;
+                reagents: z.ZodArray<z.ZodObject<{
+                    item: z.ZodString;
+                    count: z.ZodNumber;
+                }, z.core.$strip>>;
+                copper: z.ZodNullable<z.ZodNumber>;
+                reporters: z.ZodNumber;
+                trainingCopper: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+            }, z.core.$strip>>;
+            gaps: z.ZodArray<z.ZodObject<{
+                fromSkill: z.ZodNumber;
+                toSkill: z.ZodNumber;
+            }, z.core.$strip>>;
+            reagents: z.ZodArray<z.ZodObject<{
+                item: z.ZodString;
+                count: z.ZodNumber;
+            }, z.core.$strip>>;
+            copper: z.ZodNullable<z.ZodNumber>;
+        }, z.core.$strip>>;
+    };
     annotations: {
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
@@ -1502,6 +2087,38 @@ export declare const MCP_TOOL_LIST: ({
     inputSchema: {
         readonly profession: z.ZodString;
         readonly recipe: z.ZodOptional<z.ZodString>;
+    };
+    outputSchema: {
+        readonly connected: z.ZodBoolean;
+        readonly dataAsOf: z.ZodNullable<z.ZodString>;
+        readonly reason: z.ZodOptional<z.ZodString>;
+        readonly page: z.ZodOptional<z.ZodObject<{
+            profession: z.ZodString;
+            ranges: z.ZodArray<z.ZodObject<{
+                profession: z.ZodString;
+                recipe: z.ZodString;
+                installs: z.ZodNumber;
+                observations: z.ZodNumber;
+                yellow: z.ZodObject<{
+                    min: z.ZodNullable<z.ZodNumber>;
+                    max: z.ZodNullable<z.ZodNumber>;
+                }, z.core.$strip>;
+                green: z.ZodObject<{
+                    min: z.ZodNullable<z.ZodNumber>;
+                    max: z.ZodNullable<z.ZodNumber>;
+                }, z.core.$strip>;
+                grey: z.ZodObject<{
+                    min: z.ZodNullable<z.ZodNumber>;
+                    max: z.ZodNullable<z.ZodNumber>;
+                }, z.core.$strip>;
+                reagents: z.ZodNullable<z.ZodArray<z.ZodObject<{
+                    item: z.ZodString;
+                    count: z.ZodNumber;
+                }, z.core.$strip>>>;
+                costCopper: z.ZodNullable<z.ZodNumber>;
+                missingPrices: z.ZodArray<z.ZodString>;
+            }, z.core.$strip>>;
+        }, z.core.$strip>>;
     };
     annotations: {
         readonly readOnlyHint: true;
@@ -1702,6 +2319,71 @@ export declare const MCP_TOOL_LIST: ({
             to: "to";
         }>>;
         readonly limit: z.ZodDefault<z.ZodNumber>;
+    };
+    outputSchema: {
+        readonly connected: z.ZodBoolean;
+        readonly dataAsOf: z.ZodNullable<z.ZodString>;
+        readonly reason: z.ZodOptional<z.ZodString>;
+        readonly page: z.ZodOptional<z.ZodObject<{
+            kind: z.ZodEnum<{
+                icon: "icon";
+                item: "item";
+                item_set: "item_set";
+                npc: "npc";
+                object: "object";
+                quest: "quest";
+                skill: "skill";
+                spell: "spell";
+                zone: "zone";
+            }>;
+            id: z.ZodNumber;
+            edges: z.ZodArray<z.ZodObject<{
+                fromKind: z.ZodEnum<{
+                    icon: "icon";
+                    item: "item";
+                    item_set: "item_set";
+                    npc: "npc";
+                    object: "object";
+                    quest: "quest";
+                    skill: "skill";
+                    spell: "spell";
+                    zone: "zone";
+                }>;
+                fromId: z.ZodNumber;
+                rel: z.ZodEnum<{
+                    created_by: "created_by";
+                    dropped_by: "dropped_by";
+                    in_skill_line: "in_skill_line";
+                    located_in: "located_in";
+                    part_of_set: "part_of_set";
+                    reagent_for: "reagent_for";
+                    reward_from: "reward_from";
+                    same_icon: "same_icon";
+                    sold_by: "sold_by";
+                }>;
+                toKind: z.ZodEnum<{
+                    icon: "icon";
+                    item: "item";
+                    item_set: "item_set";
+                    npc: "npc";
+                    object: "object";
+                    quest: "quest";
+                    skill: "skill";
+                    spell: "spell";
+                    zone: "zone";
+                }>;
+                toId: z.ZodNumber;
+                evidence: z.ZodEnum<{
+                    client: "client";
+                    observed: "observed";
+                }>;
+                build: z.ZodNullable<z.ZodString>;
+                installs: z.ZodNullable<z.ZodNumber>;
+                firstSeen: z.ZodNullable<z.ZodString>;
+                lastSeen: z.ZodNullable<z.ZodString>;
+            }, z.core.$strip>>;
+            notShown: z.ZodNumber;
+        }, z.core.$strip>>;
     };
     annotations: {
         readonly readOnlyHint: true;
@@ -1964,6 +2646,80 @@ export declare const MCP_TOOL_LIST: ({
         readonly ownerInstallId: z.ZodString;
         readonly characterKey: z.ZodOptional<z.ZodString>;
     };
+    outputSchema: {
+        readonly connected: z.ZodBoolean;
+        readonly dataAsOf: z.ZodNullable<z.ZodString>;
+        readonly reason: z.ZodOptional<z.ZodString>;
+        readonly page: z.ZodOptional<z.ZodObject<{
+            ownerInstallId: z.ZodString;
+            listed: z.ZodObject<{
+                achievements: z.ZodNumber;
+                factions: z.ZodNumber;
+                titles: z.ZodNumber;
+                chains: z.ZodNumber;
+            }, z.core.$strip>;
+            ownedRecorded: z.ZodBoolean;
+            characters: z.ZodArray<z.ZodObject<{
+                characterKey: z.ZodString;
+                class: z.ZodString;
+                level: z.ZodNumber;
+                achievements: z.ZodObject<{
+                    done: z.ZodNumber;
+                    total: z.ZodNumber;
+                    points: z.ZodNumber;
+                    pointsTotal: z.ZodNumber;
+                    closest: z.ZodArray<z.ZodObject<{
+                        achievementId: z.ZodNumber;
+                        name: z.ZodString;
+                        category: z.ZodString;
+                        have: z.ZodNumber;
+                        of: z.ZodNumber;
+                        unit: z.ZodEnum<{
+                            criteria: "criteria";
+                            progress: "progress";
+                        }>;
+                    }, z.core.$strip>>;
+                    unlisted: z.ZodNumber;
+                }, z.core.$strip>;
+                reputation: z.ZodObject<{
+                    exalted: z.ZodNumber;
+                    total: z.ZodNumber;
+                    closest: z.ZodArray<z.ZodObject<{
+                        factionId: z.ZodNumber;
+                        name: z.ZodString;
+                        standing: z.ZodString;
+                        toNext: z.ZodNumber;
+                        header: z.ZodOptional<z.ZodString>;
+                    }, z.core.$strip>>;
+                    unscaled: z.ZodArray<z.ZodObject<{
+                        factionId: z.ZodNumber;
+                        name: z.ZodString;
+                        standing: z.ZodNumber;
+                    }, z.core.$strip>>;
+                    unlisted: z.ZodNumber;
+                }, z.core.$strip>;
+                titles: z.ZodObject<{
+                    known: z.ZodNumber;
+                    total: z.ZodNumber;
+                    unlisted: z.ZodNumber;
+                }, z.core.$strip>;
+                quests: z.ZodObject<{
+                    completed: z.ZodNumber;
+                    chainsDone: z.ZodNumber;
+                    chainsTotal: z.ZodNumber;
+                    closest: z.ZodArray<z.ZodObject<{
+                        questLineId: z.ZodNumber;
+                        name: z.ZodString;
+                        done: z.ZodNumber;
+                        total: z.ZodNumber;
+                        truncated: z.ZodBoolean;
+                    }, z.core.$strip>>;
+                }, z.core.$strip>;
+            }, z.core.$strip>>;
+            unknownCharacter: z.ZodOptional<z.ZodString>;
+            droppedCharacters: z.ZodNumber;
+        }, z.core.$strip>>;
+    };
     annotations: {
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
@@ -2045,6 +2801,34 @@ export declare const MCP_TOOL_LIST: ({
     inputSchema: {
         readonly realm: z.ZodString;
         readonly itemId: z.ZodNumber;
+    };
+    outputSchema: {
+        readonly connected: z.ZodBoolean;
+        readonly dataAsOf: z.ZodNullable<z.ZodString>;
+        readonly reason: z.ZodOptional<z.ZodString>;
+        readonly page: z.ZodOptional<z.ZodObject<{
+            realm: z.ZodString;
+            itemId: z.ZodNumber;
+            value: z.ZodNullable<z.ZodObject<{
+                itemId: z.ZodNumber;
+                market: z.ZodNullable<z.ZodNumber>;
+                min: z.ZodNumber;
+                historical: z.ZodNumber;
+                quantity: z.ZodNumber;
+                day: z.ZodString;
+                ageDays: z.ZodNumber;
+                reporters: z.ZodNumber;
+                thin: z.ZodBoolean;
+            }, z.core.$strip>>;
+            history: z.ZodArray<z.ZodObject<{
+                day: z.ZodString;
+                min: z.ZodNumber;
+                market: z.ZodNumber;
+                quantity: z.ZodNumber;
+                reporters: z.ZodNumber;
+                thin: z.ZodBoolean;
+            }, z.core.$strip>>;
+        }, z.core.$strip>>;
     };
     annotations: {
         readonly readOnlyHint: true;

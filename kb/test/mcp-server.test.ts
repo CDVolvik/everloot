@@ -254,8 +254,9 @@ test("tools with an output schema answer with structured content beside the text
   const client = new Client({ name: "test", version: "0" });
   await client.connect(clientSide);
   expect(STRUCTURED_TOOLS).toEqual([
-    "search_knowledge", "get_entity", "get_by_name", "answer_sources", "item_page", "npc_page", "object_page", "quest_page", "vendor_page",
-    "item_categories", "talent_tree", "talent_plan", "collection_gap", "guild_board", "auction_history", "recent_changes", "ecosystem_projects", "everloot_plan",
+    "search_knowledge", "get_entity", "get_by_name", "answer_sources", "profession_path", "recipe_thresholds", "item_page", "npc_page", "object_page",
+    "quest_page", "vendor_page", "entity_relations", "item_categories", "talent_tree", "talent_plan", "collection_gap", "completion_progress", "guild_board",
+    "auction_history", "market_value", "recent_changes", "ecosystem_projects", "everloot_plan",
   ]);
   const listed = (await client.listTools()).tools;
   for (const tool of listed) expect(tool.outputSchema !== undefined).toBe(STRUCTURED_TOOLS.includes(tool.name as (typeof STRUCTURED_TOOLS)[number]));
@@ -272,7 +273,7 @@ test("tools with an output schema answer with structured content beside the text
   const recent = await client.callTool({ name: "recent_changes", arguments: {} });
   expect(recent.structuredContent).toEqual({ connected: true, entries: changes });
 
-  const textOnly = await client.callTool({ name: "market_value", arguments: { realm: "Nightslayer", itemId: 1 } });
+  const textOnly = await client.callTool({ name: "gold_ledger", arguments: { character: "Thrall", realm: "Nightslayer" } });
   expect(textOnly.structuredContent).toBeUndefined();
   await client.close();
 });

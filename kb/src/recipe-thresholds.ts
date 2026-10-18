@@ -174,13 +174,41 @@ export function handleRecipeThresholds(
   ].join("\n");
 }
 
+/** Cost per craft from agreed prices: null with the reagents that have none, or the copper with none missing. */
+export function craftCost(reagents: Reagent[] | null, prices: Map<string, number>): { copper: number | null; missing: string[] } {
+  if (!reagents) return { copper: null, missing: [] };
+  const missing = reagents.filter((r) => !prices.has(r.item.toLowerCase())).map((r) => r.item);
+  if (missing.length > 0) return { copper: null, missing };
+  return { copper: reagents.reduce((sum, r) => sum + prices.get(r.item.toLowerCase())! * r.count, 0), missing };
+}
+
 function costLine(reagents: Reagent[] | null, prices: Map<string, number>): string {
   if (!reagents) return "Reagents unrecorded.";
   const mats = `Reagents: ${reagents.map((r) => `${r.count} ${r.item}`).join(", ")}.`;
-  const missing = reagents.filter((r) => !prices.has(r.item.toLowerCase())).map((r) => r.item);
-  if (missing.length > 0) return `${mats} Cost per craft unrecorded: no agreed price for ${missing.join(", ")}.`;
-  const copper = reagents.reduce((sum, r) => sum + prices.get(r.item.toLowerCase())! * r.count, 0);
+  const { copper, missing } = craftCost(reagents, prices);
+  if (copper === null) return `${mats} Cost per craft unrecorded: no agreed price for ${missing.join(", ")}.`;
   return `${mats} Estimated cost per craft: ${formatCopper(copper)}.`;
+}
+
+/** The rows the text lists, with each cost as numbers: the MCP tool's structured answer. */
+export function recipeThresholdsStructured(
+  args: { profession: string; recipe?: string },
+  observations: RecipeObservation[],
+  prices: PriceSighting[] = [],
+  vendorPrices: Map<string, number> = new Map(),
+): { profession: string; ranges: (RecipeThresholds & { costCopper: number | null; missingPrices: string[] })[] } {
+  const profession = args.profession.trim();
+  const wanted = args.recipe?.trim().toLowerCase();
+  const rows = profession ? inferThresholds(observations).filter((t) =>
+    t.profession.toLowerCase() === profession.toLowerCase() && (!wanted || t.recipe.toLowerCase().includes(wanted))) : [];
+  const agreed = mergeVendorPrices(agreePrices(prices), vendorPrices);
+  return {
+    profession,
+    ranges: rows.map((t) => {
+      const { copper, missing } = craftCost(t.reagents, agreed);
+      return { ...t, costCopper: copper, missingPrices: missing };
+    }),
+  };
 }
 
 export function formatThresholds(t: RecipeThresholds): string {

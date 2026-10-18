@@ -40,6 +40,9 @@ that has a zip in the repository. Earlier builds have none.
   uploads (`connected`, `dataAsOf`, `reason`). With no corpus read the page is absent, not empty.
 - Structured output for `auction_history`, `collection_gap` and `guild_board`, the same result objects
   their text is written from, under the same envelope.
+- Structured output for `profession_path`, `recipe_thresholds`, `entity_relations`, `completion_progress`
+  and `market_value`: the path, the ranges with each cost as numbers, the edges the text lists, one
+  install's progress, and the market value with its history, under the same envelope.
 - The MCP server's first resources, documents an assistant reads whole: `everloot://builds` (the build the
   game-file facts come from and the build registry, JSON), `everloot://methodology` (how uploads become
   facts) and `everloot://data-policy` (the policy in short, with the link to the full one). The two texts
