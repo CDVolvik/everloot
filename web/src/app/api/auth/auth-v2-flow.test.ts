@@ -11,11 +11,13 @@ const state = vi.hoisted(() => ({
 vi.mock("@/lib/auth/auth", () => ({ authV2Enabled: () => true, getAuth: () => state.auth }));
 vi.mock("next/headers", () => ({
   headers: async () => new Headers({ cookie: state.requestCookie }),
-  cookies: async () => ({ set: state.setCookie }),
+  cookies: async () => ({ set: state.setCookie, get: () => undefined }),
 }));
 
 import { GET as bnetGET } from "./bnet/route";
 import { GET as meGET } from "./me/route";
+import { POST as logoutPOST } from "./logout/route";
+import { GET as allGET, POST as allPOST } from "./[...all]/route";
 
 const env = {
   NODE_ENV: "test",
@@ -37,9 +39,12 @@ const discovery = {
 type Row = Record<string, unknown>;
 let db: Record<string, Row[]>;
 
+let rateLimitRows: Map<string, { count: number; start: number }>;
+
 // Same contract as pgRateLimitStore: a fixed window that starts at the first request.
 function windowStore(): RateLimitStore {
   const rows = new Map<string, { count: number; start: number }>();
+  rateLimitRows = rows;
   return {
     async consume(key, { window, max }) {
       const now = Date.now();
@@ -94,16 +99,49 @@ test("the Battle.net start is rate limited per caller address and writes no data
   expect(db.auth_verification).toEqual([]);
 });
 
-test("a session past its daily refresh gets a fresh 30-day cookie through me", async () => {
+// Start at /api/auth/bnet, come back through the catch-all's callback, as a browser would.
+async function signIn() {
   const first = await start("203.0.113.9");
   const authorize = new URL(first.headers.get("location") ?? "");
-  const callback = await (state.auth as { handler: (request: Request) => Promise<Response> }).handler(new Request(
+  const callback = await allGET(new Request(
     `https://everloot.app/api/auth/callback/battlenet?code=c&state=${encodeURIComponent(authorize.searchParams.get("state") ?? "")}`,
     { headers: { cookie: cookieHeader(first) } },
   ));
   const sessionCookie = callback.headers.getSetCookie().find((c) => c.startsWith("everloot.session_token="));
   expect(sessionCookie).toBeDefined();
-  state.requestCookie = (sessionCookie ?? "").split(";")[0];
+  return (sessionCookie ?? "").split(";")[0];
+}
+
+test("sign-in through the allow-listed callback and sign-out through /api/auth/logout both work", async () => {
+  const cookie = await signIn();
+  state.requestCookie = cookie;
+  expect((await (await meGET()).json()).user).toMatchObject({ name: "Thrall#1" });
+  expect(db.auth_session).toHaveLength(1);
+
+  const out = await logoutPOST(new Request("https://everloot.app/api/auth/logout", {
+    method: "POST", headers: { origin: "https://everloot.app", cookie },
+  }));
+  expect(await out.json()).toEqual({ ok: true });
+  expect(db.auth_session).toEqual([]);
+  expect((await (await meGET()).json()).user).toBeNull();
+});
+
+test("Better Auth endpoints off the allow-list are 404 and do not touch the rate limiter", async () => {
+  const cookie = await signIn();
+  const before = new Map(rateLimitRows);
+  const update = await allPOST(new Request("https://everloot.app/api/auth/update-user", {
+    method: "POST", headers: { "content-type": "application/json", origin: "https://everloot.app", cookie },
+    body: JSON.stringify({ name: "Hijacked#1" }),
+  }));
+  expect(update.status).toBe(404);
+  expect((await allGET(new Request("https://everloot.app/api/auth/get-session", { headers: { cookie } }))).status).toBe(404);
+  expect((await allGET(new Request("https://everloot.app/api/auth/no-such-path", { headers: { "x-forwarded-for": "198.51.100.99" } }))).status).toBe(404);
+  expect(db.users[0].name).toBe("Thrall#1");
+  expect(rateLimitRows).toEqual(before);
+});
+
+test("a session past its daily refresh gets a fresh 30-day cookie through me", async () => {
+  state.requestCookie = await signIn();
 
   // Fresh session: nothing to refresh, so no cookie is written.
   expect((await (await meGET()).json()).user).toMatchObject({ name: "Thrall#1" });

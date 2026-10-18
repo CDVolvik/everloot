@@ -1,15 +1,21 @@
-import { toNextJsHandler } from "better-auth/next-js";
 import { authV2Enabled, getAuth } from "@/lib/auth/auth";
 
 export const dynamic = "force-dynamic";
 
-// Better Auth serves /api/auth/callback/battlenet and its other paths here. The static routes next
-// to this folder (bnet, bnet/callback, me, logout) win over a catch-all, so they are unaffected.
+// Only the two Better Auth paths a browser has to reach. Everything else it serves (update-user,
+// get-session, sign-out, …) stays unreachable, and its rate limiter never runs for them. The sign-in
+// start and sign-out reach Better Auth from /api/auth/bnet and /api/auth/logout, server side. The
+// static routes next to this folder (bnet, bnet/callback, me, logout) win over a catch-all.
 // The auth instance is built per request, never at import: the build imports this module without env.
-function serve(method: "GET" | "POST") {
-  return (request: Request) =>
-    authV2Enabled() ? toNextJsHandler(getAuth())[method](request) : Promise.resolve(new Response(null, { status: 404 }));
+const PUBLIC_PATHS = new Set(["/api/auth/callback/battlenet", "/api/auth/error"]);
+
+const notFound = () => new Response(null, { status: 404 });
+
+export async function GET(request: Request) {
+  if (!authV2Enabled() || !PUBLIC_PATHS.has(new URL(request.url).pathname)) return notFound();
+  return getAuth().handler(request);
 }
 
-export const GET = serve("GET");
-export const POST = serve("POST");
+export async function POST() {
+  return notFound();
+}

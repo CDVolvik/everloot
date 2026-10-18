@@ -113,12 +113,28 @@ test("v2 logout fails closed when sign-out errors", async () => {
   expect(res.status).toBe(503);
 });
 
-test("the catch-all route hands Better Auth paths to its handler", async () => {
+test("the catch-all route hands only the Battle.net callback and the error page to Better Auth", async () => {
   v2.fake.handler.mockImplementation(async () => new Response("handled"));
-  const request = new Request("https://everloot.app/api/auth/callback/battlenet?code=c");
-  expect(await (await allGET(request)).text()).toBe("handled");
-  expect(await (await allPOST(request)).text()).toBe("handled");
+  for (const path of ["/api/auth/callback/battlenet?code=c&state=s", "/api/auth/error?error=state_mismatch"]) {
+    expect(await (await allGET(new Request(`https://everloot.app${path}`))).text()).toBe("handled");
+  }
   expect(v2.fake.handler).toHaveBeenCalledTimes(2);
+});
+
+test.each([
+  ["GET", "/api/auth/get-session"],
+  ["POST", "/api/auth/update-user"],
+  ["POST", "/api/auth/sign-in/social"],
+  ["POST", "/api/auth/sign-out"],
+  ["GET", "/api/auth/list-accounts"],
+  ["POST", "/api/auth/callback/battlenet"],
+  ["GET", "/api/auth/callback/github"],
+  ["GET", "/api/auth/anything-at-all"],
+])("the catch-all route answers %s %s with 404 and never reaches Better Auth", async (method, path) => {
+  const request = new Request(`https://everloot.app${path}`, { method });
+  const response = await (method === "GET" ? allGET : allPOST)(request);
+  expect(response.status).toBe(404);
+  expect(v2.fake.handler).not.toHaveBeenCalled();
 });
 
 test("with the flag off the catch-all route is 404", async () => {
