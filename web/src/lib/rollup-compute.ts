@@ -1,5 +1,6 @@
 import { popularAddonsFromRecords, type AddonRollup } from "../../../kb/src/addon-rollup";
 import { itemFactsFromRecords } from "../../../kb/src/drop-rollup";
+import { observedEdges, type Edge } from "../../../kb/src/edges";
 import type { ItemFacts } from "../../../kb/src/item-page";
 import { worldFactsFromRecords, type WorldFacts } from "../../../kb/src/world-pages";
 import { lootWindowsFromRecords, rollupDrops, type RollupResult } from "./rollups";
@@ -27,6 +28,7 @@ interface AggregateSet {
   items: ItemFacts;
   world: WorldFacts;
   addons: AddonRollup;
+  edges: Edge[];
 }
 
 /**
@@ -64,6 +66,7 @@ async function loadAggregates(): Promise<AggregateSet | null> {
       world: worldFactsFromRecords(corpus.records),
       // Addon rows dated after the corpus was current are ignored, so one forged clock cannot set "last seen".
       addons: popularAddonsFromRecords(corpus.records, corpus.dataAsOf ?? new Date()),
+      edges: observedEdges(corpus.records, corpus.dataAsOf ?? new Date()),
     };
   }
   return memoized;
@@ -99,6 +102,13 @@ export async function loadWorldFacts(): Promise<WorldFacts & { unreachable: bool
   const agg = await loadAggregates();
   if (!agg) return { npcs: [], quests: [], vendors: [], unreachable: true };
   return { ...agg.world, unreachable: false };
+}
+
+/** Relations seen in play, each public under the 3-install rule its page uses (kb/src/edges.ts). */
+export async function loadObservedEdges(): Promise<{ edges: Edge[]; unreachable: boolean; dataAsOf: string | null }> {
+  const agg = await loadAggregates();
+  if (!agg) return { edges: [], unreachable: true, dataAsOf: null };
+  return { edges: agg.edges, unreachable: false, dataAsOf: agg.dataAsOf };
 }
 
 /** The addon leaderboard: only addons three installs report, as counts with no install ids. */

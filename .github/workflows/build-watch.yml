@@ -162,7 +162,7 @@ jobs:
             done
             git add -A -- web/src/data/game-data addon/modules/raid_data.lua
             # Only the files the generators write may change.
-            allowed='^(web/src/data/game-data/(talents/[a-z]+\.json|raid-[0-9.]+\.json|raid\.ts|map\.json|spell-values\.json|changes/[a-z0-9_]+-[0-9]+\.json)|addon/modules/raid_data\.lua)$'
+            allowed='^(web/src/data/game-data/(talents/[a-z]+\.json|raid-[0-9.]+\.json|raid\.ts|map\.json|client-layer\.json|spell-values\.json|changes/[a-z0-9_]+-[0-9]+\.json)|addon/modules/raid_data\.lua)$'
             unexpected=$(git diff --cached --name-only | grep -Ev "$allowed" || true)
             [ -z "$unexpected" ] || { echo "unexpected files in the change:"; echo "$unexpected"; exit 1; }
             # raid.ts may change its import line and nothing else.

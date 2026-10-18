@@ -8,6 +8,7 @@ vi.mock("@/lib/rollup-compute", () => ({
   loadItemFacts: async () => itemFacts,
   loadWorldFacts: async () => worldFacts,
   computeRollups: vi.fn(),
+  loadObservedEdges: async () => ({ edges: [], unreachable: false, dataAsOf: null }),
 }));
 vi.mock("@/lib/upload-store", () => ({ STORAGE_UNREACHABLE: "Storage unavailable" }));
 import { generateMetadata as itemMetadata } from "@/app/database/items/[id]/page";

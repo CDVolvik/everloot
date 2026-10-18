@@ -18,6 +18,7 @@ export const MCP_TOOLS: readonly { name: string; text: string }[] = [
   { name: "quest_page", text: "One quest: title, level, giver, turn-in and rewards." },
   { name: "vendor_page", text: "What one vendor sells, with copper prices." },
   { name: "world_map_near", text: "What is near a spot: entrances, observed NPCs and vendors, with distances in yards." },
+  { name: "entity_relations", text: "How an item, NPC, spell or quest connects to others: dropped by, sold by, created by, reagent for, set, same icon. Each relation says if players saw it (3 installs) or the game files hold it (unconfirmed, with the build)." },
   { name: "collection_gap", text: "What one install is missing from a collection, such as Mounts." },
   { name: "completion_progress", text: "What one install's characters finished in achievements, reputation, titles and quest chains, and what is closest to done." },
   { name: "guild_board", text: "A guild's roster, bosses, loot and attendance, from officer uploads." },

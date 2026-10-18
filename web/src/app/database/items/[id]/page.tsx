@@ -4,6 +4,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { itemPage } from "../../../../../../kb/src/item-page";
 import { loadItemFacts } from "@/lib/rollup-compute";
+import { loadEdges } from "@/lib/edges";
+import { EntityRelations } from "@/components/EntityRelations";
 import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
 import { pinLink } from "@/lib/world-map";
 import { loadItemTips, loadSiteAssets } from "@/lib/game-assets";
@@ -27,7 +29,7 @@ export default async function ItemPage(props: { params: Promise<{ id: string }> 
   const params = await props.params;
   if (!/^[1-9]\d*$/.test(params.id)) notFound();
   const itemId = Number(params.id);
-  const facts = await loadItemFacts();
+  const [facts, edges] = await Promise.all([loadItemFacts(), loadEdges()]);
   const page = itemPage(itemId, facts);
   const title = facts.unreachable ? `Item ${page.itemId}` : page.name ?? `Item ${page.itemId}`;
   // The game file tooltip only for an item players have reported: any id can be typed into the URL, and
@@ -101,6 +103,8 @@ export default async function ItemPage(props: { params: Promise<{ id: string }> 
         )}
       </section>
       )}
+
+      <EntityRelations kind="item" id={itemId} observed={edges.observed} client={edges.client} skip={["dropped_by"]} />
 
       <p className="text-sm text-muted">
         <Link href="/database/drops" className="text-accent hover:underline underline-offset-4">

@@ -7,6 +7,7 @@ import { ingestBluePosts, loadAccounts, loadFetchState, loadStore, saveFetchStat
 import { buildTimeline } from "./changes.js";
 import { checkBuilds, loadRegistry, recordBuilds, saveRegistry, versionsUrl } from "./builds.js";
 import { clientCoverage, formatCoverage } from "./client-coverage.js";
+import { writeClientLayer } from "./client-layer.js";
 import { diffSnapshots } from "./client-diff.js";
 import { parseRegistry } from "./ecosystem.js";
 import { loadSnapshotFile, refreshSnapshot, saveSnapshotFile } from "./ecosystem-fetch.js";
@@ -96,6 +97,9 @@ const USAGE = `usage: npm run kb -- <command> --db <path>
     commit the output; see docs/ASSETS.md)
   client-diff <old.sqlite> <new.sqlite> [--out diff.json]   (field-level diff of two snapshots)
   client-coverage <snapshot.sqlite> [--out coverage.md]   (rows, encrypted blocks and needed fields per client table)
+  client-layer <snapshot.sqlite> [--out ../web/src/data/game-data/client-layer.json]
+    (relation edges derived from the game files, one build-stamped file for the database pages. Game file data,
+    labelled found in game files, unconfirmed. See docs/DATA_POLICY.md)
   client-map <snapshot.sqlite> [--out ../web/src/data/game-data/map.json]
     (zone rectangles in world coordinates, continents and dungeon and raid entrances from a client
     snapshot, for the world map page. Game file data, stamped with the build. See docs/DATA_POLICY.md)
@@ -345,6 +349,14 @@ async function main(): Promise<number> {
       const out = flags.get("out");
       if (out) writeFileSync(out, md);
       process.stdout.write(md);
+      return 0;
+    }
+    case "client-layer": {
+      if (!args[0]) break;
+      const path = flags.get("out") || "../web/src/data/game-data/client-layer.json";
+      const layer = writeClientLayer(args[0], path);
+      for (const [rel, n] of Object.entries(layer.counts)) console.log(`${rel}: ${n} edges`);
+      console.log(`-> ${path}`);
       return 0;
     }
     case "client-diff": {

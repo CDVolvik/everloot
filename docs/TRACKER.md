@@ -14,7 +14,7 @@ engine stays a separate GPL program.
 Proven, furthest first: real uploads, public client, beta client, on everloot.app,
 code + tests, not built. Live means usable today, not proven with real data.
 
-Rows: 71.
+Rows: 72.
 
 ## Live
 
@@ -51,6 +51,7 @@ Rows: 71.
 | `tool.npc_page` | NPC spawn page | on everloot.app | Page /database/npcs/[id] and MCP tool npc_page. A name or map pin needs 3 agreeing sightings. The tool reads the public corpus at EVERLOOT_PUBLIC_CORPUS_URL. With no corpus source set, the answer says uploads are not connected. |
 | `tool.quest_page` | Quest page | on everloot.app | Page /database/quests/[id] and MCP tool quest_page. Title, level, giver, turn-in, and a reward each need 3 agreeing uploads. The tool reads the public corpus at EVERLOOT_PUBLIC_CORPUS_URL. With no corpus source set, the answer says uploads are not connected. |
 | `tool.vendor_page` | Vendor page | on everloot.app | Page /database/vendors/[id] and MCP tool vendor_page. A price is public when 3 installs agree on the item and the copper. The tool reads the public corpus at EVERLOOT_PUBLIC_CORPUS_URL. With no corpus source set, the answer says uploads are not connected. |
+| `tool.relations` | Entity relations | code + tests | One edge table (kb/src/edges.ts): dropped by, sold by, reward from, located in from uploads (3 installs, with first and last seen), and created by, reagent for, part of set, same icon from the committed client layer (found in game files, unconfirmed, with the build). Item pages list them grouped by relation; MCP tool entity_relations; /api/edges (paged) and /api/edges/client-layer. Reward from and located in stay empty until the addon sends quest records and NPC positions. |
 | `tool.collection` | Missing-collection view | on everloot.app | Page /tools/collections and MCP tool collection_gap. A list item needs 3 installs agreeing on the collection, the source, and the item. Owned is that install's upload. Not a Blizzard profile read. The tool reads the public corpus at EVERLOOT_PUBLIC_CORPUS_URL. With no corpus source set, the answer says uploads are not connected. |
 | `tool.completion` | Completion tracker | code + tests | Addon 0.3.3 module (off until /everloot completion on) reads achievements, reputation, titles and completed quests with the game's own calls, in chunks, and never acts. Catalog rows (achievement_catalog, reputation_catalog, title_catalog, quest_chain_catalog) are anonymous game facts: an entry is listed when 3 installs report it identically. Owned rows are one character's progress under an opaque key and, like collection_owned, are served only with the collection sharing choice and a verified install grant. Page /tools/collections shows what is done and what is closest to done; MCP tool completion_progress. Not yet run in the Forever client: docs/2026-10-19-addon-0.3.3-beta-checklist.md settles it. |
 | `tool.guild` | Guild tracker | on everloot.app | Page /tools/guild-board and MCP tool guild_board. Roster, bosses, loot, and item level need 2 agreeing officer uploads. The average names how many roster members were measured. score_v1 has no published weights, so there is no single score. The tool reads the public corpus at EVERLOOT_PUBLIC_CORPUS_URL. With no corpus source set, the answer says uploads are not connected. |
