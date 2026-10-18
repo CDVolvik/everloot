@@ -1,6 +1,7 @@
 import { createHash, createHmac } from "node:crypto";
-import { afterEach, expect, test, vi } from "vitest";
+import { afterEach, beforeAll, expect, test, vi } from "vitest";
 import { memoryAdapter } from "better-auth/adapters/memory";
+import { exportJWK, generateKeyPair, SignJWT, type CryptoKey } from "jose";
 import { authV2Enabled, createAuth } from "./auth";
 import type { RateLimitStore } from "./db";
 
@@ -27,12 +28,33 @@ const discovery = {
 type Userinfo = () => Response | Promise<Response>;
 const thrall: Userinfo = () => Response.json({ sub: "123", id: 123, battletag: "Thrall#1" });
 
-function stubBattlenet(userinfo: Userinfo) {
+// Battle.net's signing key, served from the discovery document's jwks_uri.
+const signing = vi.hoisted(() => ({ jwks: { keys: [] as unknown[] }, privateKey: undefined as unknown, otherKey: undefined as unknown }));
+beforeAll(async () => {
+  const battlenet = await generateKeyPair("RS256");
+  signing.privateKey = battlenet.privateKey;
+  signing.jwks = { keys: [{ ...await exportJWK(battlenet.publicKey), kid: "bnet-1", alg: "RS256", use: "sig" }] };
+  signing.otherKey = (await generateKeyPair("RS256")).privateKey;
+});
+
+type IdTokenClaims = { nonce?: string; iss?: string; aud?: string; key?: "battlenet" | "other" };
+function signIdToken({ nonce, iss = discovery.issuer, aud = "client", key = "battlenet" }: IdTokenClaims) {
+  return new SignJWT(nonce === undefined ? {} : { nonce })
+    .setProtectedHeader({ alg: "RS256", kid: "bnet-1" })
+    .setIssuer(iss).setAudience(aud).setSubject("123").setIssuedAt().setExpirationTime("5m")
+    .sign((key === "battlenet" ? signing.privateKey : signing.otherKey) as CryptoKey);
+}
+
+// idToken gets the nonce Better Auth put in the authorize URL; without it the token response
+// carries only an access token, and there is nothing to verify against the JWKS.
+function stubBattlenet(userinfo: Userinfo, idToken?: () => Promise<string>) {
   vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
     const url = input instanceof Request ? input.url : String(input);
     if (url === "https://oauth.battle.net/.well-known/openid-configuration") return Response.json(discovery);
-    // Only an access token: with no id_token there is nothing to verify against the JWKS.
-    if (url.startsWith(discovery.token_endpoint)) return Response.json({ access_token: "at", token_type: "bearer", expires_in: 86400 });
+    if (url === discovery.jwks_uri) return Response.json(signing.jwks);
+    if (url.startsWith(discovery.token_endpoint)) {
+      return Response.json({ access_token: "at", token_type: "bearer", expires_in: 86400, ...idToken ? { id_token: await idToken() } : {} });
+    }
     if (url.startsWith(discovery.userinfo_endpoint)) return userinfo();
     throw new Error(`Unexpected fetch: ${url}`);
   }));
@@ -73,8 +95,11 @@ function cookieHeader(response: Response) {
 async function signInWithBattlenet(options: {
   seed?: { users?: Row[]; auth_account?: Row[] };
   userinfo?: Userinfo;
+  idToken?: (authorizeNonce: string) => Promise<string>;
 } = {}) {
-  stubBattlenet(options.userinfo ?? thrall);
+  let authorizeNonce = "";
+  const { idToken } = options;
+  stubBattlenet(options.userinfo ?? thrall, idToken && (() => idToken(authorizeNonce)));
   const db: Record<string, Row[]> = {
     users: [...options.seed?.users ?? []],
     auth_session: [],
@@ -86,6 +111,7 @@ async function signInWithBattlenet(options: {
   const start = await startSignIn(auth);
   const { url } = await start.json() as { url: string };
   const state = new URL(url).searchParams.get("state");
+  authorizeNonce = new URL(url).searchParams.get("nonce") ?? "";
   const response = await auth.handler(new Request(
     `https://everloot.app/api/auth/callback/battlenet?code=c&state=${encodeURIComponent(state ?? "")}`,
     { headers: { cookie: cookieHeader(start) } },
@@ -100,6 +126,27 @@ test("a Battle.net sign-in creates a session cookie and stores no provider token
   // The memory adapter keeps rows under their database column names, as Postgres will.
   expect(db.auth_account[0]).toMatchObject({ provider_id: "battlenet", account_id: "123", access_token: null, refresh_token: null, id_token: null });
   expect(db.auth_session[0]).toMatchObject({ ip_address: null, user_agent: null });
+});
+
+test("a Battle.net id_token signed by the discovery JWKS, for our client and nonce, signs in", async () => {
+  let sentNonce = "";
+  const { cookies, db } = await signInWithBattlenet({ idToken: (nonce) => { sentNonce = nonce; return signIdToken({ nonce }); } });
+  expect(sentNonce).toMatch(/.{16,}/);
+  expect(cookies).toMatch(/everloot\.session_token=/);
+  expect(db.auth_account[0]).toMatchObject({ provider_id: "battlenet", account_id: "123", id_token: null });
+});
+
+test.each([
+  ["a different nonce", (nonce: string) => signIdToken({ nonce: `${nonce}x` })],
+  ["no nonce", () => signIdToken({})],
+  ["another audience", (nonce: string) => signIdToken({ nonce, aud: "someone-else" })],
+  ["another issuer", (nonce: string) => signIdToken({ nonce, iss: "https://evil.example" })],
+  ["a key not in the JWKS", (nonce: string) => signIdToken({ nonce, key: "other" })],
+] as [string, (nonce: string) => Promise<string>][])("an id_token with %s fails the sign-in", async (_, idToken) => {
+  const { cookies, db } = await signInWithBattlenet({ idToken });
+  expect(cookies).not.toMatch(/session_token=/);
+  expect(db.users).toEqual([]);
+  expect(db.auth_session).toEqual([]);
 });
 
 const LEGACY_ID = "5f0c1f0e-6b7a-4c53-9a1e-0d4f4b2f9a11";
