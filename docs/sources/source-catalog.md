@@ -47,12 +47,12 @@ name the exact domain in the map.
 | Source | URL | Good for | Forever | Access |
 |---|---|---|---|---|
 | Wowhead (retail / classic / forever) | wowhead.com | Standard item/NPC/quest DB. `/forever` is a full vertical: database, talent calc, item tooltips. Other catalogues read its XML tooltip endpoints; we do not | yes (/forever) | `link`. A person may open a page in a browser to confirm an item exists or to check one of our rows by hand. No bulk reads, no XML endpoint, no stored rows (terms, robots.txt, beta churn). Research pass 2026-10-04 |
-| Warcraft DB — Forever | forever.warcraftdb.com | Forever items/quests/dungeons (wowdb successor) | yes | `fetch?` |
+| Warcraft DB — Forever | forever.warcraftdb.com | Forever items/quests/dungeons; 21 entity types in its sitemap | yes | **research only**. Checked 2026-10-18: robots.txt `Allow: /` for all agents, but no terms page, "© 2026 Lexicon Gaming, LLC. All Rights Reserved.", no API or licence. Not a data source without written permission. Notes in `docs/2026-10-18-database-taxonomy-research.md` |
 | WoW Eternity | woweternity.com/forever | Loot, sets, BiS, build planner | yes | `fetch?` |
-| Warcraft Tavern | warcrafttavern.com/forever | Guide-style reference pages | yes | `fetch?` |
+| Warcraft Tavern | warcrafttavern.com/forever | Guide-style reference pages | yes | **research only**. Checked 2026-10-18: robots.txt allows `/forever/`, but the [terms](https://www.warcrafttavern.com/terms-of-use/) grant "personal, non-commercial transitory viewing only" and forbid copying, modifying, public display and mirroring (Michigan law). Same Lexicon Gaming network as forever.warcraftdb.com |
 | WoW Classic DB | wowclassicdb.com | Classic-era DB | unknown | `fetch?` |
 | EVOWOW | evowow.com | Private-server-era DB | no evidence | skip |
-| ClassicDB / WoWDB (legacy) | classicdb.ch, wowdb.com | Stale (expired cert / frozen ~2022) | no | skip |
+| ClassicDB / WoWDB (legacy) | classicdb.ch, wowdb.com | Stale (expired cert / frozen ~2022) | no | skip. wowdb.com robots.txt (read 2026-10-18): `ai-train=no,use=reference`; `ClaudeBot`, `GPTBot`, `anthropic-ai` and other AI agents disallowed entirely. Structure notes in `docs/2026-10-18-database-taxonomy-research.md` |
 
 ## Wikis & lore
 
@@ -133,7 +133,7 @@ name the exact domain in the map.
 |---|---|---|---|
 | Wowhead news | wowhead.com/forever | yes | `link` |
 | MMO-Champion | mmo-champion.com | active; depth unverified | `link?` |
-| Warcraft Tavern | warcrafttavern.com/forever | yes (tracks beta window 9/17–10/22) | `fetch?` |
+| Warcraft Tavern | warcrafttavern.com/forever | yes (tracks beta window 9/17–10/22) | `link`; terms forbid copying (see v2 row) |
 | wowforevertools.com | wowforevertools.com | yes (talents, racials, builds, map, checklist; no item database) | `link?` |
 | wowforevertalent.com | wowforevertalent.com | yes (~146 recorded dungeon and quest items) | `link`. Copy the standard, not the rows: an item nobody recorded reads "unrecorded", never zero. Research pass 2026-10-04 |
 | Reddit r/wow, r/classicwow | reddit.com | partial | `api` is **paid** since 2023 (~$0.24/1,000 calls) — `link` for v1 |
