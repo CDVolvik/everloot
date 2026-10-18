@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import JsonLd from "@/components/JsonLd";
-import { tools } from "@/data/tools";
+import { toolHref, tools } from "@/data/tools";
 import { aboutPageJsonLd, DISCORD_INVITE, NON_AFFILIATION, OPERATOR, TRADEMARK_LINE } from "@/lib/jsonld";
 
 const TITLE = "About Everloot";
@@ -53,7 +53,7 @@ export default function AboutPage() {
         {tools.map((t) => (
           <li key={t.slug}>
             <Link
-              href={`/tools/${t.slug}`}
+              href={toolHref(t)}
               className="text-accent hover:underline underline-offset-4"
             >
               {t.title}

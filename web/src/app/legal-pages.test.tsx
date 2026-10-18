@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, test, vi } from "vitest";
 import { REPO_URL } from "@/lib/source";
+import { toolHref, tools } from "@/data/tools";
 
 vi.mock("next/link", () => ({
   default: ({ href, children, className }: { href: string; children: ReactNode; className?: string }) => <a href={href} className={className}>{children}</a>,
@@ -71,6 +72,13 @@ test("/.well-known/security.txt follows RFC 9116 and has not expired", () => {
   // An expired file is a defect; this fails before that happens so the date gets renewed.
   expect(when, "renew the Expires date in public/.well-known/security.txt").toBeGreaterThan(Date.now() + 14 * 86_400_000);
   expect(when).toBeLessThanOrEqual(Date.now() + 366 * 86_400_000);
+});
+
+test("/about links every tool at the address it lives at, not a slug that redirects or 404s", async () => {
+  const { default: About } = await import("./about/page");
+  const html = renderToStaticMarkup(<About />);
+  for (const t of tools) expect(html, t.slug).toContain(`href="${toolHref(t)}"`);
+  expect(html).not.toContain('href="/tools/upload"');
 });
 
 test("/contact points copyright and takedown requests at the terms", async () => {
