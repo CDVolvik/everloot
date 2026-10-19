@@ -7,6 +7,28 @@ export interface UploadSession {
   counts: Record<string, number>; held: { legacy: number; named: number; invalid: number };
   /** The installed addons this upload sends, one "Title (FolderName)" per folder, for the preview. */
   addons: string[];
+  /** Distinct characters in the census rows this upload sends: players seen, and your own. */
+  census: { seen: number; self: number };
+}
+// census_self and census_seen are being added to @everloot/protocol by the census intake change, so the
+// kinds are plain strings here. Until the protocol has them, parseRecords rejects these rows as invalid.
+const CENSUS_SEEN = "census_seen", CENSUS_SELF = "census_self";
+
+/** Distinct characters per census kind. A row without a guid is not a character and is not counted. */
+export function censusCharacters(records: readonly { kind: string; guid?: unknown }[]): UploadSession["census"] {
+  const seen = new Set<string>(), self = new Set<string>();
+  for (const { kind, guid } of records) {
+    if (typeof guid !== "string" || !guid) continue;
+    if (kind === CENSUS_SEEN) seen.add(guid);
+    else if (kind === CENSUS_SELF) self.add(guid);
+  }
+  return { seen: seen.size, self: self.size };
+}
+
+/** "312 characters seen, 2 of your own", or null when the upload has no census rows. */
+export function censusSummary(census: UploadSession["census"]): string | null {
+  if (!census.seen && !census.self) return null;
+  return `${census.seen.toLocaleString("en-US")} ${census.seen === 1 ? "character" : "characters"} seen, ${census.self.toLocaleString("en-US")} of your own`;
 }
 export function prepareUpload(payload: unknown, sharing: SharingChoices, grantTokens: string[], maxBytes: number = UPLOAD_LIMITS.batchBytes): UploadSession {
   const envelope = payload as { addonVersion?: unknown; clientBuild?: unknown; records?: unknown };
@@ -17,6 +39,7 @@ export function prepareUpload(payload: unknown, sharing: SharingChoices, grantTo
   const held = { legacy: 0, named: 0, invalid: parsed.receipt.rejected.length };
   const counts: Record<string, number> = {};
   const addons = new Map<string, string>();
+  const census: { kind: string; guid?: unknown }[] = [];
   const rows: string[] = [];
   for (const record of parsed.records) {
     if (!record.eventId) { held.legacy++; continue; }
@@ -25,6 +48,7 @@ export function prepareUpload(payload: unknown, sharing: SharingChoices, grantTo
     if (category && !grantTokens.length) throw new Error("A verified grant is required for the named categories you selected.");
     if ("claimToken" in record) delete record.claimToken;
     if (record.kind === "addon_seen") addons.set(record.name, `${record.title} (${record.name})`);
+    if (record.kind.startsWith("census_")) census.push(record as { kind: string; guid?: unknown });
     counts[record.kind] = (counts[record.kind] ?? 0) + 1;
     rows.push(JSON.stringify(record));
   }
@@ -45,7 +69,7 @@ export function prepareUpload(payload: unknown, sharing: SharingChoices, grantTo
     size += length + (chunk.length ? 1 : 0); chunk.push(row);
   }
   if (chunk.length) batches.push(prefix + chunk.join(",") + suffix);
-  return { batches, next: 0, receipts: [], counts, held, addons: [...addons.values()].sort() };
+  return { batches, next: 0, receipts: [], counts, held, addons: [...addons.values()].sort(), census: censusCharacters(census) };
 }
 /** Advance only after a confirmed durable receipt; retries send the identical batch. */
 export async function sendBatches(session: UploadSession, send: typeof fetch = fetch, onProgress: () => void = () => {}, url = "/api/intake") {

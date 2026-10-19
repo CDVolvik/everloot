@@ -28,7 +28,7 @@ end
 local defaults = {
   version = E.VERSION,
   installId = nil,
-  toggles = { openworld = true, guild = true, gear = true, auctions = false, gold = true, addons = false, talents = true, completion = false },
+  toggles = { openworld = true, guild = true, gear = true, auctions = false, gold = true, addons = false, talents = true, completion = false, census = false },
   records = {},
 }
 
@@ -125,7 +125,7 @@ function E:Status()
     "collection_catalog", "collection_owned", "auction_scan", "auction_snapshot", "recipe_seen", "recipe_observed", "trainer_seen", "price_seen",
     "gold_snapshot", "money_event", "addon_seen", "map_bounds", "talent_snapshot",
     "achievement_catalog", "reputation_catalog", "title_catalog", "quest_chain_catalog",
-    "achievement_owned", "reputation_owned", "title_owned", "quest_owned" }) do
+    "achievement_owned", "reputation_owned", "title_owned", "quest_owned", "census_self", "census_seen" }) do
     lines[#lines + 1] = string.format("  rows %s: %d", kind, self:Count(kind))
   end
   return table.concat(lines, "\n")
@@ -179,6 +179,17 @@ SlashCmdList["EVERLOOT"] = function(msg)
     end
   elseif msg == "completion" and E.Completion then
     E.Completion.ReadNow()
+  elseif msg == "census on" or msg == "census off" then
+    EverlootDB.toggles.census = (msg == "census on")
+    if EverlootDB.toggles.census then
+      print("Everloot: census on. It records the race, class, level and faction of your characters and of players you target, mouse over or group with. Never their names, guilds, gear or where they are. It is sent only from the everloot.app upload page, after its preview. /reload to apply.")
+    else
+      -- Turning it off withdraws what it wrote: every census row is deleted from this file.
+      if E.Census then E.Census.Withdraw() end
+      print("Everloot: census off; all census rows were deleted from this file.")
+    end
+  elseif msg == "census" and E.Census then
+    print(E.Census.StatusLine())
   elseif msg == "scan" then
     if E.StartScan then E:StartScan() else print("Everloot: full scans are not available in this client.") end
   elseif msg == "addons on" or msg == "addons off" then
@@ -193,6 +204,6 @@ SlashCmdList["EVERLOOT"] = function(msg)
       print("Everloot: installed addon list off; all recorded addon rows were deleted from this file. /reload to apply.")
     end
   else
-    print("Everloot commands: /everloot status, /everloot auctions on|off, /everloot scan, /everloot addons on|off, /everloot completion [on|off], /everloot selftest, /everloot talents, /everloot plan <share code>, /everloot raid [code], /ask <question>")
+    print("Everloot commands: /everloot status, /everloot auctions on|off, /everloot scan, /everloot addons on|off, /everloot completion [on|off], /everloot census [on|off], /everloot selftest, /everloot talents, /everloot plan <share code>, /everloot raid [code], /ask <question>")
   end
 end

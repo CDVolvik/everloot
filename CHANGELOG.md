@@ -11,6 +11,11 @@ that has a zip in the repository. Earlier builds have none.
 ## [Unreleased]
 
 ### Added
+- Census in the addon, off until `/everloot census on`. It records the race, class, level and faction of
+  your own characters and of players you target, mouse over or group with: one row per character per UTC
+  day, at most 2,000 rows of each kind. It never reads another player's name, guild, gear or position.
+  `/everloot census off` deletes every census row. The rows go only from the upload page, which counts
+  them first; the companion keeps them. `/everloot selftest` prints your race token.
 - Census intake: two kinds, `census_self` (your own characters) and `census_seen` (players you target, mouse
   over or group with), holding race, class, level and faction, plus the realm name for your own characters.
   The site replaces each character's GUID with a keyed hash (`EVERLOOT_CHARACTER_KEY`) and keeps only the
