@@ -93,8 +93,8 @@ test("the wanted page cites a reason for each idea and links the pack handbook",
   expect(wantedMeta.alternates?.canonical).toBe("/addons/polestar/wanted");
 });
 
-test("the sitemap, header and footer reach the addons pages", () => {
-  const urls = sitemap().map((entry) => new URL(entry.url).pathname);
+test("the sitemap, header and footer reach the addons pages", async () => {
+  const urls = (await sitemap()).map((entry) => new URL(entry.url).pathname);
   for (const path of ["/addons", "/addons/popular", "/addons/polestar", "/addons/polestar/packs", "/addons/polestar/wanted"]) expect(urls).toContain(path);
   expect(renderToStaticMarkup(<Header />)).toContain('href="/addons"');
   expect(renderToStaticMarkup(<Footer />)).toContain('href="/addons"');

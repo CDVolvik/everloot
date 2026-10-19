@@ -9,7 +9,8 @@ const TITLE = "About Everloot";
 const description = `Everloot offers free WoW: Forever tools and a database built from player addon uploads. It is run by ${OPERATOR} and not affiliated with Blizzard.`;
 
 export const metadata: Metadata = {
-  ...pageMetadata({ title: TITLE, description, path: "/about" }),
+  // The layout adds "· Everloot", so the tab reads "About · Everloot" rather than naming Everloot twice.
+  ...pageMetadata({ title: "About", description, path: "/about" }),
 };
 
 export default function AboutPage() {
@@ -47,7 +48,7 @@ export default function AboutPage() {
       </p>
 
       <h2 className="text-xl text-fg mt-8">
-        What&apos;s available now
+        The tools
       </h2>
       <ul className="list-disc pl-6 text-fg-2">
         {tools.map((t) => (
@@ -59,7 +60,7 @@ export default function AboutPage() {
               {t.title}
             </Link>
             {t.status === "coming-soon" && (
-              <span className="text-muted"> — coming soon</span>
+              <span className="text-muted"> (planned)</span>
             )}
             <br />
             <span className="text-sm text-muted">{t.tagline}</span>

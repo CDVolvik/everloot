@@ -47,22 +47,6 @@ export const tools: Tool[] = [
     ],
   },
   {
-    slug: "profession-planner",
-    href: "/tools/professions",
-    title: "Profession Leveling Planner",
-    shortTitle: "Profession Planner",
-    tagline: "Recipe paths when enough uploads agree.",
-    description:
-      "A Forever leveling path from recipe uploads. A step appears when 3 installs agree, and the gold cost appears when 3 price uploads agree. No copied guide and no retail auction price.",
-    status: "collecting",
-    keywords: [
-      "wow profession leveling",
-      "blacksmithing guide",
-      "alchemy leveling",
-      "profession planner",
-    ],
-  },
-  {
     slug: "completionist",
     href: "/tools/collections",
     title: "Completionist Tracker",

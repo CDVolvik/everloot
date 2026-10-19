@@ -1,9 +1,21 @@
 import { CLIENT_LAYER, CLIENT_TAXONOMY } from "../../../kb/src/client-layer-file";
-import { QUALITIES, slotOf } from "../../../kb/src/item-taxonomy";
+import { filterItems, QUALITIES, slotOf } from "../../../kb/src/item-taxonomy";
 
 export { CLIENT_LAYER, CLIENT_TAXONOMY };
 
 export const ITEMS_PER_PAGE = 100;
+
+/**
+ * A category page stays out of search (noindex, and out of the sitemap) until at least this share of its
+ * first page has a name. A page of "Item 1234" rows is thin, and search engines judge the whole site by it.
+ */
+export const MIN_NAMED_SHARE = 0.5;
+
+/** Whether the plain first page of a category has enough named rows to be indexed. */
+export function categoryNamedEnough(classId: number, subclassId: number | undefined, named: { has(id: number): boolean }): boolean {
+  const ids = filterItems(CLIENT_TAXONOMY, { classId, subclassId }).slice(0, ITEMS_PER_PAGE).map((row) => row[0]);
+  return ids.length > 0 && ids.filter((id) => named.has(id)).length / ids.length >= MIN_NAMED_SHARE;
+}
 
 /** Slot slugs any item in the build uses, in inventory type order (robes and chest pieces share "chest"). */
 export const SLOT_SLUGS: string[] = [...new Set(CLIENT_TAXONOMY.items.map((r) => slotOf(r[3])?.slug).filter((s): s is string => Boolean(s)))];
