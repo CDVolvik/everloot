@@ -45,7 +45,9 @@ jobs:
             web/package-lock.json
             companion/package-lock.json
             desktop/package-lock.json
-      - run: npm ci
+      # The desktop bundle takes only JavaScript modules from web/ (zod, the save-file parser); its
+      # native better-sqlite3 is never loaded, and compiling it fails on the Windows runner.
+      - run: npm ci --ignore-scripts
         working-directory: web
       - run: npm ci
         working-directory: companion

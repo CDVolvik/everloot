@@ -22,8 +22,13 @@ test("the watcher reports a write to the account file and stops cleanly", async 
   const { deps } = companionJobs(join(d, "data"), () => defaultSettings());
   let changes = 0;
   const stop = deps.watch(file, () => { changes += 1; });
-  writeFileSync(file, "EverlootDB = { v = 2 }\n");
-  await until(() => changes > 0);
+  // macOS starts delivering events a moment after the watcher is armed, so a single write
+  // right away can go unseen; keep writing until the watcher reports one.
+  let v = 1;
+  await until(() => {
+    if (changes === 0) writeFileSync(file, `EverlootDB = { v = ${++v} }\n`);
+    return changes > 0;
+  });
   stop();
   const seen = changes;
   writeFileSync(file, "EverlootDB = { v = 3 }\n");
