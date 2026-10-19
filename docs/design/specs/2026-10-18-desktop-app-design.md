@@ -78,7 +78,7 @@ Support/Everloot`, `~/.config/everloot`), so a player can switch between them wi
 | `json-file.ts` | JSON from a file the player may edit by hand (`settings.json`, `config.json`, `chat.json`, `window.json`), with the byte order mark Notepad and some editors add dropped first; without this a hand-edited `settings.json` fell back to the defaults and `config.json` to an error | `node:fs` |
 | `renderer/format.ts` | The renderer's text helpers without the DOM: escaping, gold from copper, sizes, ages, the IPC error reason, job status text, the gold sparkline | none |
 | `window-state.ts` | The window's last size and place in `window.json`, written a moment after the last drag and on close. On open the size is clamped to the minimum and the largest display, and the place is kept only when enough of the window would still be on a connected display; otherwise Electron centers it | `node:fs` |
-| `index.ts` | Single instance, the window, the tray, IPC handlers, close-to-tray, launch at login. The release checks run at start and once a day after that (the addon notice once per version). An unhandled rejection or exception becomes a line on the Log page instead of a dialog | everything above |
+| `index.ts` | Single instance, the window, the tray, IPC handlers, close-to-tray, launch at login. The release checks run at start, after the first Start, and once a day after that (the addon notice once per version). An unhandled rejection or exception becomes a line on the Log page instead of a dialog | everything above |
 
 ### The window
 

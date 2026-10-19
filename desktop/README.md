@@ -51,7 +51,7 @@ The window is a sidebar with one page per thing to manage:
 The tray menu shows each job's last result, a reminder when a realm's last full scan is older
 than a day, the newer app release when there is one, and Upload now, Refresh prices now, Pause and Quit.
 Closing the window keeps the app in the tray. The window opens where you left it, at the same
-size, unless that screen is gone. The release checks (app and addon) run at start and once a day
+size, unless that screen is gone. The release checks (app and addon) run at start, after the first Start, and once a day
 after that.
 
 The app shares its data folder with the command line (`%APPDATA%\Everloot`,

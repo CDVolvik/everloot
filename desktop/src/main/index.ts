@@ -117,6 +117,8 @@ if (!app.requestSingleInstanceLock()) {
       }
     } catch { /* offline; the Addon page will say so */ }
   };
+  /** Both release checks; at start, after the first Start, and once a day. */
+  const checkReleases = () => { if (settings.consentedAt) { void addonUpdateNotice(); void desktopUpdateLine(); } };
 
   const releases = cached(10 * 60 * 1000, () => fetchReleases(fetch, `everloot-desktop/${app.getVersion()}`));
   const knownRealms = cached(10 * 60 * 1000, () => listRealms(settings.endpoint));
@@ -177,6 +179,7 @@ if (!app.requestSingleInstanceLock()) {
     settings = mergeSettings(settings, patch);
     saveSettings(settingsPath, settings);
     applyLoginItem();
+    if (!before.consentedAt && settings.consentedAt) checkReleases();
     if (engineInputs(before) !== engineInputs(settings)) engine.start(settings);
     else if (JSON.stringify(before.market.realms) !== JSON.stringify(settings.market.realms) && settings.prices) void engine.runNow("prices");
     else broadcast();
@@ -293,7 +296,6 @@ if (!app.requestSingleInstanceLock()) {
     const hidden = process.argv.includes("--hidden") || (process.platform === "darwin" && app.getLoginItemSettings().wasOpenedAtLogin);
     if (!settings.consentedAt || !(hidden && settings.startInTray)) createWindow();
     broadcast();
-    const checkReleases = () => { if (settings.consentedAt) { void addonUpdateNotice(); void desktopUpdateLine(); } };
     checkReleases();
     // The app sits in the tray for weeks; look again once a day.
     setInterval(checkReleases, 24 * 60 * 60 * 1000);
