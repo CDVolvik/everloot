@@ -1,7 +1,7 @@
 # Roadmap
 
 What we are working on, and what you can pick up. The live board is the
-[Everloot project](https://github.com/CDVolvik/everloot/projects) on GitHub; issues labelled
+[Everloot project](https://github.com/Everloot/everloot/projects) on GitHub; issues labelled
 `good first issue` and `help wanted` are open for anyone.
 
 ## Now: launch (WoW: Forever, 2026-11-04)

@@ -470,19 +470,41 @@ export interface EcosystemArgs {
 }
 
 /** The text the `ecosystem_projects` tool returns. Null view means the tracker is not connected. */
-export function handleEcosystemProjects(view: EcosystemView | null, args: EcosystemArgs, now: Date = new Date()): string {
-  if (!view) return "The ecosystem tracker is not connected here. This is not an empty list.";
+/** The rows the tool shows for these arguments: a board's ranking or the A to Z list, filtered and cut to the limit. */
+export function pickEcosystemRows(view: EcosystemView, args: EcosystemArgs, now: Date): BoardRow[] {
   const limit = Math.min(Math.max(Math.trunc(args.limit), 1), 25);
-  const age = view.refreshedAt ? `GitHub data refreshed ${view.refreshedAt.slice(0, 16).replace("T", " ")} UTC.` : "GitHub data not refreshed yet.";
-  const lines: string[] = [];
-  let rows: { project: ProjectView; display: string }[];
+  let rows: BoardRow[];
   if (args.board === "all") {
     rows = [...view.projects].sort(byName).map((project) => ({ project, display: "" }));
   } else {
     rows = buildBoards(view, now).find((b) => b.id === args.board)!.rows;
   }
   if (args.forever_ready_only) rows = rows.filter((r) => r.project.foreverReady === "yes");
-  const shown = rows.slice(0, limit);
+  return rows.slice(0, limit);
+}
+
+/** The structured answer beside the text: the same rows, with GitHub facts flattened and the data's state stated. */
+export function ecosystemProjectsStructured(view: EcosystemView | null, args: EcosystemArgs, now: Date = new Date()): object {
+  if (!view) return { connected: false, refreshedAt: null, installsAvailable: false, forever: null, board: args.board, projects: [] };
+  const projects = pickEcosystemRows(view, args, now).map(({ project: p, display }, i) => {
+    const m = p.metrics?.status === "ok" ? p.metrics : null;
+    return {
+      ...(args.board === "all" ? {} : { rank: i + 1 }),
+      ...(display ? { display } : {}),
+      id: p.id, name: p.name, kind: p.kind, summary: p.summary, repo: p.repo, url: p.url,
+      installs: p.installs, stars: m?.stars ?? null, release: m?.release ?? null, lastCommit: m?.lastCommit ?? null, commits4w: m?.commits4w ?? null,
+      foreverReady: p.foreverReady, badges: p.badges, maintenanceScore: p.maintenanceScore,
+    };
+  });
+  const forever = view.forever ? { interface: view.forever.interface, version: view.forever.version, build: view.forever.build } : null;
+  return { connected: true, refreshedAt: view.refreshedAt, installsAvailable: view.installsAvailable, forever, board: args.board, projects };
+}
+
+export function handleEcosystemProjects(view: EcosystemView | null, args: EcosystemArgs, now: Date = new Date()): string {
+  if (!view) return "The ecosystem tracker is not connected here. This is not an empty list.";
+  const age = view.refreshedAt ? `GitHub data refreshed ${view.refreshedAt.slice(0, 16).replace("T", " ")} UTC.` : "GitHub data not refreshed yet.";
+  const lines: string[] = [];
+  const shown = pickEcosystemRows(view, args, now);
   if (shown.length === 0) {
     return `No projects match. ${age}${view.installsAvailable ? "" : " Install counts are unavailable right now."}`;
   }

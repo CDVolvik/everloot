@@ -1,0 +1,314 @@
+{
+  "$id": "https://everloot.app/schema/mcp/talent_tree.json",
+  "title": "Talent trees for one class",
+  "description": "The WoW: Forever talent trees of one class from the game files (found in game files, unconfirmed, with the build): every node with its talents, ranks, grid position, prerequisites and row gate, plus the levels talent points arrive at. Node ids are the ids a share code names. Narrow to one tree by name. The calculator is at /tools/talents/<class>.",
+  "annotations": {
+    "readOnlyHint": true,
+    "openWorldHint": false
+  },
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "class": {
+        "type": "string",
+        "enum": [
+          "warrior",
+          "paladin",
+          "hunter",
+          "rogue",
+          "priest",
+          "shaman",
+          "mage",
+          "warlock",
+          "druid"
+        ],
+        "description": "Class slug."
+      },
+      "tree": {
+        "description": "One tree by name, such as Arcane. Without it, every tree.",
+        "type": "string",
+        "maxLength": 40
+      }
+    },
+    "required": [
+      "class"
+    ]
+  },
+  "outputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "label": {
+        "type": "string"
+      },
+      "build": {
+        "type": "string",
+        "description": "The game build the trees were read from."
+      },
+      "class": {
+        "type": "string",
+        "enum": [
+          "warrior",
+          "paladin",
+          "hunter",
+          "rogue",
+          "priest",
+          "shaman",
+          "mage",
+          "warlock",
+          "druid"
+        ]
+      },
+      "className": {
+        "type": "string"
+      },
+      "specId": {
+        "type": "integer",
+        "minimum": -9007199254740991,
+        "maximum": 9007199254740991,
+        "description": "The client's spec id, or 0 when unknown."
+      },
+      "points": {
+        "type": "object",
+        "properties": {
+          "firstPointLevel": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "maxLevel": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "total": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Talent points at the max level."
+          },
+          "pointLevels": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "description": "The level each point arrives at."
+          }
+        },
+        "required": [
+          "firstPointLevel",
+          "maxLevel",
+          "total",
+          "pointLevels"
+        ],
+        "additionalProperties": false
+      },
+      "trees": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "name": {
+              "type": "string"
+            },
+            "nodes": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "nodes"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "nodes": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991,
+              "description": "The client's trait node id, the id a share code names."
+            },
+            "treeId": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "row": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991,
+              "description": "1-based, top row first."
+            },
+            "col": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991,
+              "description": "1-based, left first."
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "single",
+                "tiered",
+                "choice"
+              ],
+              "description": "A tiered node buys its entries in order; a choice node picks one."
+            },
+            "maxRanks": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "talents": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "spellId": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "maxRanks": {
+                    "description": "Ranks this entry takes, for a tiered node.",
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "name",
+                  "spellId"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "prereqs": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "description": "Node ids that must all be at full rank first."
+            },
+            "anyOf": {
+              "description": "If listed, at least one of these must be at full rank too.",
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "gate": {
+              "type": "object",
+              "properties": {
+                "pointsInTree": {
+                  "description": "Points needed in this tree on rows above.",
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "pointsTotal": {
+                  "description": "Points needed in the build, any tree.",
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "scope": {
+                  "description": "Where the files say the gate counts; unconfirmed is read as the tree.",
+                  "type": "string",
+                  "enum": [
+                    "tree",
+                    "class",
+                    "unconfirmed"
+                  ]
+                },
+                "ranksInNodes": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "nodeId": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "ranks": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "nodeId",
+                      "ranks"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "id",
+            "treeId",
+            "row",
+            "col",
+            "kind",
+            "maxRanks",
+            "talents",
+            "prereqs"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "credit": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "label",
+      "build",
+      "class",
+      "className",
+      "specId",
+      "points",
+      "trees",
+      "nodes",
+      "credit"
+    ],
+    "additionalProperties": false
+  },
+  "x-everloot-output": {
+    "type": "text"
+  }
+}

@@ -1,6 +1,6 @@
 import { API_ROUTES, MCP_TOOL_NAMES } from "@everloot/protocol";
 import { expect, test } from "vitest";
-import { routeDocs, toolDocs, toolParams, typeLabel } from "./protocol-docs";
+import { routeDocs, toolDocs, toolOutput, toolParams, typeLabel } from "./protocol-docs";
 
 test("every tool gets a parameter table in declaration order, with required flags and descriptions", () => {
   const docs = toolDocs();
@@ -12,7 +12,17 @@ test("every tool gets a parameter table in declaration order, with required flag
   expect(search.playerData).toBe(false);
   expect(docs.find((d) => d.name === "item_page")!.playerData).toBe(true);
   expect(search.structured).toBe(true);
-  expect(docs.find((d) => d.name === "item_page")!.structured).toBe(false);
+  expect(docs.find((d) => d.name === "item_page")!.structured).toBe(true);
+  expect(docs.every((d) => d.structured)).toBe(true);
+  // The answer table: every tool has fields, and upload answers start with the envelope.
+  for (const d of docs) expect(d.output.length, d.name).toBeGreaterThan(0);
+  const item = toolOutput("item_page");
+  expect(item.map((f) => f.name)).toEqual(["connected", "dataAsOf", "reason", "page"]);
+  expect(item[0]).toMatchObject({ type: "boolean", required: true });
+  expect(item[1]).toMatchObject({ type: "string, or null", required: true });
+  expect(item[3]).toMatchObject({ type: "object", required: false });
+  expect(toolOutput("search_knowledge")[0]).toMatchObject({ name: "hits", type: "array of objects", required: true });
+  expect(toolOutput("everloot_plan").map((f) => f.name)).toEqual(["rows", "counts"]);
   expect(toolParams("everloot_plan")).toEqual([]);
 });
 

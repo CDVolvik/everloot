@@ -57,11 +57,43 @@ export function toolParams(name: McpToolName): ParamRow[] {
   }));
 }
 
+/** A short type for one answer field: scalars as for parameters, `object`, `array of objects`, `... or null`. */
+function outputTypeLabel(node: JsonSchemaNode & { properties?: unknown }): string {
+  // zod writes a nullable scalar as type ["string", "null"] and a nullable object as anyOf [..., { type: "null" }].
+  if (Array.isArray(node.type) && node.type.includes("null")) {
+    const rest = node.type.filter((t) => t !== "null");
+    return `${outputTypeLabel({ ...node, type: rest.length === 1 ? rest[0] : rest })}, or null`;
+  }
+  const options = node.anyOf ?? [];
+  const nullable = options.some((o) => o.type === "null");
+  const inner = nullable ? options.filter((o) => o.type !== "null") : [];
+  const base = nullable && inner.length === 1 ? inner[0] : node;
+  let label: string;
+  if (base.type === "array") label = base.items?.type === "object" ? "array of objects" : `array of ${base.items ? outputTypeLabel(base.items) : "values"}`;
+  else if (base.type === "object") label = "object";
+  else label = typeLabel(base);
+  return nullable ? `${label}, or null` : label;
+}
+
+/** The top-level fields of one tool's structuredContent, in declaration order. */
+export function toolOutput(name: McpToolName): ParamRow[] {
+  const json = z.toJSONSchema(z.object(MCP_TOOLS[name].outputSchema), { io: "output" }) as { properties?: Record<string, JsonSchemaNode>; required?: string[] };
+  const required = new Set(json.required ?? []);
+  return Object.entries(json.properties ?? {}).map(([field, node]) => ({
+    name: field,
+    type: outputTypeLabel(node),
+    required: required.has(field),
+    description: node.description ?? "",
+  }));
+}
+
 export interface ToolDoc {
   name: McpToolName;
   title: string;
   description: string;
   params: ParamRow[];
+  /** The top-level fields of the structured answer. */
+  output: ParamRow[];
   /** Whether the answer is built on player uploads and ends with the data age and the credit line. */
   playerData: boolean;
   /** Whether the tool also returns structuredContent of a declared shape, beside the text. */
@@ -74,6 +106,7 @@ export function toolDocs(): ToolDoc[] {
     title: MCP_TOOLS[name].title,
     description: MCP_TOOLS[name].description,
     params: toolParams(name),
+    output: toolOutput(name),
     playerData: PLAYER_DATA_TOOLS.includes(name),
     structured: STRUCTURED_TOOLS.includes(name),
   }));

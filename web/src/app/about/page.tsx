@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import JsonLd from "@/components/JsonLd";
-import { tools } from "@/data/tools";
-import { aboutPageJsonLd, DISCORD_INVITE } from "@/lib/jsonld";
+import { toolHref, tools } from "@/data/tools";
+import { aboutPageJsonLd, DISCORD_INVITE, NON_AFFILIATION, OPERATOR, TRADEMARK_LINE } from "@/lib/jsonld";
 
 const TITLE = "About Everloot";
-const description = "Everloot offers free WoW: Forever tools and a database built from player addon uploads. It is run by its maintainer and not affiliated with Blizzard.";
+const description = `Everloot offers free WoW: Forever tools and a database built from player addon uploads. It is run by ${OPERATOR} and not affiliated with Blizzard.`;
 
 export const metadata: Metadata = {
   ...pageMetadata({ title: TITLE, description, path: "/about" }),
@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 
 export default function AboutPage() {
   return (
-    <article className="prose prose-invert max-w-3xl">
+    <article className="max-w-3xl">
       <JsonLd data={aboutPageJsonLd({ name: TITLE, description, path: "/about" })} />
       <h1 className="text-3xl font-bold text-fg">
         {TITLE}
@@ -22,14 +22,14 @@ export default function AboutPage() {
 
       <p className="text-lg text-fg-2">{description}</p>
 
-      <p className="text-fg-2">
+      <p className="text-fg-2 mt-3">
         Everloot is the WoW: Forever database, rebuilt Thottbot-style: drop
         rates, spawn maps, quest pages and guild progression collected by
         players running our lightweight addon — plus free tools that make the
         data usable. No account required to browse.
       </p>
 
-      <p className="text-fg-2">
+      <p className="text-fg-2 mt-3">
         How uploads become facts, and what is never published, is on{" "}
         <Link href="/methodology" className="text-accent hover:underline underline-offset-4">How we count</Link>.
         Questions, bug reports and ideas are welcome on the{" "}
@@ -53,7 +53,7 @@ export default function AboutPage() {
         {tools.map((t) => (
           <li key={t.slug}>
             <Link
-              href={`/tools/${t.slug}`}
+              href={toolHref(t)}
               className="text-accent hover:underline underline-offset-4"
             >
               {t.title}
@@ -71,7 +71,7 @@ export default function AboutPage() {
         How it stays free
       </h2>
       <p className="text-fg-2">
-        Everloot is run by its maintainer and paid for by a few clearly labelled
+        Everloot is run by {OPERATOR} and paid for by a few clearly labelled
         Google ads on the tools, the patch notes and database pages. We don&apos;t
         sell data, we don&apos;t gate tools behind signups, and we don&apos;t show
         popups or interstitials.
@@ -81,9 +81,7 @@ export default function AboutPage() {
         Not affiliated with Blizzard
       </h2>
       <p className="text-fg-2">
-        Everloot is an independent fan project. World of Warcraft, its
-        artwork, and related trademarks are property of Blizzard Entertainment,
-        Inc.
+        Everloot is an independent fan project. {NON_AFFILIATION} {TRADEMARK_LINE}
       </p>
     </article>
   );

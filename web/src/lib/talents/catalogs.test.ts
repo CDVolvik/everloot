@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { TALENT_CLASSES as PROTOCOL_TALENT_CLASSES } from "@everloot/protocol";
 import { describe, expect, test } from "vitest";
 import { CatalogError, normalizeCatalog } from "./adapter";
 import { TALENT_CLASSES, loadCatalog } from "./catalogs";
@@ -8,6 +9,10 @@ import { decodeBuild, encodeBuild, resolveBuild } from "./share";
 import type { Ranks } from "./types";
 
 const dataDir = fileURLToPath(new URL("../../data/game-data/talents/", import.meta.url));
+
+test("the protocol's class list is the site's, in the same order, so the MCP talent tools and the pages agree", () => {
+  expect([...PROTOCOL_TALENT_CLASSES]).toEqual(TALENT_CLASSES);
+});
 
 describe.each(TALENT_CLASSES)("%s game data", (slug) => {
   test("is a sound tree from build 1.60.1.70450", async () => {

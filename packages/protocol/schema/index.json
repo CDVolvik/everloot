@@ -96,6 +96,8 @@
     "world_map_near",
     "entity_relations",
     "item_categories",
+    "talent_tree",
+    "talent_plan",
     "collection_gap",
     "completion_progress",
     "guild_board",
@@ -110,5 +112,18 @@
     "everloot://builds",
     "everloot://methodology",
     "everloot://data-policy"
+  ],
+  "mcpResourceTemplates": [
+    "everloot://item/{id}",
+    "everloot://npc/{id}",
+    "everloot://quest/{id}",
+    "everloot://vendor/{id}",
+    "everloot://object/{id}",
+    "everloot://talents/{class}"
+  ],
+  "mcpPrompts": [
+    "answer_with_sources",
+    "review_talent_plan",
+    "what_changed"
   ]
 }

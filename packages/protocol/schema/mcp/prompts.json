@@ -1,0 +1,42 @@
+{
+  "$id": "https://everloot.app/schema/mcp/prompts.json",
+  "description": "The MCP server's prompts: a client fills the arguments (strings) and gets a user message that says how to use the tools for that job.",
+  "prompts": [
+    {
+      "name": "answer_with_sources",
+      "title": "Answer with Everloot's sources",
+      "description": "Answer a question about WoW: Forever from answer_sources, citing each piece of evidence with its source, licence and date, and saying unrecorded where the evidence is.",
+      "arguments": [
+        {
+          "name": "question",
+          "description": "The question, in the player's words.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "review_talent_plan",
+      "title": "Review a talent share code",
+      "description": "Read a share code with talent_plan and the class's trees with talent_tree, then describe the build, its level and every problem in plain words.",
+      "arguments": [
+        {
+          "name": "code",
+          "description": "An EL1 share code, or a calculator link that carries one.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "what_changed",
+      "title": "What changed in WoW: Forever",
+      "description": "Summarize recent_changes, newest first: Blizzard posts, hotfixes and builds, each with its link, quoting only the excerpt the tool gives.",
+      "arguments": [
+        {
+          "name": "game",
+          "description": "forever or classic. Without it, both.",
+          "required": false
+        }
+      ]
+    }
+  ]
+}

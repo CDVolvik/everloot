@@ -1,0 +1,170 @@
+{
+  "$id": "https://everloot.app/schema/mcp/talent_plan.json",
+  "title": "Read a talent share code",
+  "description": "Decodes an Everloot talent share code (EL1-<class>-<spec>-<build>-<payload>, or a calculator link carrying one after #plan=) against the class's trees: the talents and ranks it holds, points per tree, the lowest level that can hold it, and every problem in plain words: a code made on another build, nodes the tree does not have, ranks cut back, points the rules would not place. Nothing is dropped silently. Game-file data, found in game files, unconfirmed.",
+  "annotations": {
+    "readOnlyHint": true,
+    "openWorldHint": false
+  },
+  "inputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "code": {
+        "type": "string",
+        "maxLength": 2000,
+        "description": "The share code, or a link that carries one."
+      }
+    },
+    "required": [
+      "code"
+    ]
+  },
+  "outputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+        "description": "False when the code could not be read at all; message says why."
+      },
+      "message": {
+        "type": "string"
+      },
+      "class": {
+        "type": "string",
+        "enum": [
+          "warrior",
+          "paladin",
+          "hunter",
+          "rogue",
+          "priest",
+          "shaman",
+          "mage",
+          "warlock",
+          "druid"
+        ]
+      },
+      "className": {
+        "type": "string"
+      },
+      "codeBuild": {
+        "description": "The game build the code was made on.",
+        "type": "string"
+      },
+      "treeBuild": {
+        "description": "The build of the trees it was read against.",
+        "type": "string"
+      },
+      "pointsSpent": {
+        "type": "integer",
+        "minimum": -9007199254740991,
+        "maximum": 9007199254740991
+      },
+      "minLevel": {
+        "description": "The lowest level that can hold this many points.",
+        "type": "integer",
+        "minimum": -9007199254740991,
+        "maximum": 9007199254740991
+      },
+      "byTree": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "name": {
+              "type": "string"
+            },
+            "points": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "id",
+            "name",
+            "points"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "talents": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "treeId": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "name": {
+              "type": "string"
+            },
+            "rank": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "maxRanks": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "choice": {
+              "description": "The chosen entry of a choice node, zero-based.",
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "id",
+            "treeId",
+            "name",
+            "rank",
+            "maxRanks"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "problems": {
+        "description": "One sentence each. Empty means the code loaded exactly as made.",
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "link": {
+        "description": "The calculator with this plan loaded.",
+        "type": "string"
+      },
+      "label": {
+        "type": "string"
+      },
+      "credit": {
+        "type": "string"
+      }
+    },
+    "required": [
+      "ok",
+      "label",
+      "credit"
+    ],
+    "additionalProperties": false
+  },
+  "x-everloot-output": {
+    "type": "text"
+  }
+}
