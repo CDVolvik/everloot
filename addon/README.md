@@ -62,8 +62,9 @@ stops it at once and deletes every row it wrote.
   (GUID), race and class tokens (`UnitRace` and `UnitClass` second return, e.g. `Scourge`, `HUNTER`),
   level, faction and realm.
 - **Players you see** (`census_seen`): the same fields, without the realm, for players you target, mouse
-  over or group with, plus how you saw them (`target`, `mouseover` or `group`). Units with a hidden
-  level, no race, class or faction, or a GUID that is not a player's are skipped, and so are you.
+  over or group with, plus how you first saw them that day (`target`, `mouseover` or `group`). Units
+  with a hidden level, no race, class or faction, or a GUID that is not a player's are skipped, and so
+  are you.
 - Nothing else is read about another player: no name, guild, gear or position.
   `addon/tests/census_contract.py` fails if `census.lua` names a call that could read them, and lists
   every call the module may make.

@@ -182,7 +182,9 @@ for _, u in ipairs({
  me,
  player(10, { level = -1 }), player(11, { level = 0 }), player(12, { level = 61 }),
  player(13, { race = false }), player(14, { class = '' }), player(15, { faction = 'Neutral' }), player(16, { faction = false }),
- player(17, { guid = 'Pet-0-4242-0-1-1-0102030405' }),
+ player(17, { guid = 'Pet-0-4242-0-1-1-0102030405' }), player(18, { guid = 'Player-4242-00abcdef' }),
+ player(19, { class = 'Warrior' }), player(20, { class = 'XY' }), player(21, { class = 'ABCDEFGHIJKLMNOPQ' }),
+ player(22, { race = 'X' }), player(23, { race = 'Night Elf' }),
 }) do
  units.mouseover = u
  event('UPDATE_MOUSEOVER_UNIT')
@@ -198,18 +200,26 @@ local count = #seen
 units.mouseover = player(1, { level = 30 })
 for _ = 1, 500 do NOW_T = NOW_T + 1; event('UPDATE_MOUSEOVER_UNIT') end
 assert(#seen == count, 'the same player all day is one row')
-assert(seen[1].via == 'mouseover' and seen[1].level == 30 and seen[1].capturedAt == '2026-10-18T00:01:00Z', 'same level: only the way seen moves')
+assert(seen[1].via == 'target' and seen[1].level == 30 and seen[1].capturedAt == '2026-10-18T00:01:00Z', 'same level: the row keeps its first way seen and time')
+-- Seen again another way at the same level: the row is exactly as it was.
+local snapshot = {}
+for k, v in pairs(seen[1]) do snapshot[k] = v end
+units.party1 = player(1, { level = 30 }); inRaid = false
+event('GROUP_ROSTER_UPDATE')
+for k, v in pairs(seen[1]) do assert(snapshot[k] == v, 'a different via changed ' .. k) end
+for k in pairs(snapshot) do assert(seen[1][k] ~= nil, 'a different via removed ' .. k) end
+assert(#seen == count, 'and adds no row')
 
 NOW_T = 1792281600 + 3660
 units.target = player(1, { level = 31 })
 event('PLAYER_TARGET_CHANGED')
-assert(#seen == count and seen[1].level == 31 and seen[1].via == 'target' and seen[1].capturedAt == '2026-10-18T01:01:00Z', 'a new level updates the row')
+assert(#seen == count and seen[1].level == 31 and seen[1].via == 'target' and seen[1].capturedAt == '2026-10-18T01:01:00Z', 'a new level updates level and time only')
 assert(seen[1].eventId == 'census_seen:2026-10-18:1', 'the row keeps its event id')
 """)
 
 # A reload the same day (a new Lua state from the saved file) finds today's rows again.
 count = len(to_plain(lua.globals().EverlootDB.records.census_seen))
-lua = fresh(lua_literal(to_plain(lua.globals().EverlootDB)), f"NOW_T = {1792281600 + 3660}")
+lua = fresh(lua_literal(to_plain(lua.globals().EverlootDB)), f"NOW_T = {1792281600 + 3660}; me.level = 13")
 lua.execute(f"""
 local count = {count}
 units.mouseover = player(1, {{ level = 31 }})
@@ -217,7 +227,8 @@ event('UPDATE_MOUSEOVER_UNIT')
 units.target = player(2, {{ race = 'Scourge', class = 'PRIEST', level = 25 }})
 event('PLAYER_TARGET_CHANGED')
 assert(#rows('census_seen') == count and #rows('census_self') == 1, 'a reload adds no duplicates')
-assert(rows('census_seen')[2].level == 25 and rows('census_seen')[2].via == 'target', 'and still updates them')
+assert(rows('census_self')[1].capturedAt == '2026-10-18T00:01:00Z' and rows('census_self')[1].level == 13, 'logging in again at the same level leaves your row as it was')
+assert(rows('census_seen')[2].level == 25 and rows('census_seen')[2].via == 'mouseover', 'and still takes a new level, keeping the first via')
 
 -- The next UTC day is a new row, with a new id.
 NOW_T = 1792281600 + 86400 + 5
@@ -261,9 +272,9 @@ def wire(kind, extra):
         "eventId": {"type": "string", "pattern": f"^{kind}:[0-9]{{4}}-[0-9]{{2}}-[0-9]{{2}}:[0-9]+$", "maxLength": 96},
         "capturedAt": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"},
         "kind": {"const": kind},
-        "guid": {"type": "string", "pattern": "^Player-[0-9]+-[0-9A-Fa-f]+$"},
+        "guid": {"type": "string", "pattern": r"^Player-\d+-[0-9A-F]+$"},
         "race": {"type": "string", "pattern": "^[A-Za-z]{2,24}$"},
-        "class": {"type": "string", "pattern": "^[A-Za-z]{2,24}$"},
+        "class": {"type": "string", "pattern": "^[A-Z]{3,16}$"},
         "level": {"type": "integer", "minimum": 1, "maximum": 60},
         "faction": {"enum": ["Alliance", "Horde"]},
     }

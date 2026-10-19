@@ -10,9 +10,11 @@
 -- The guid leaves this file only from the upload page; the server swaps it for a keyed hash before
 -- anything is stored (docs/design/specs/2026-10-18-census-design.md, section 5).
 --
--- One row per guid per UTC day and kind, keeping the latest level and the latest way you saw them.
--- At most 2,000 rows per kind; the oldest days go first. Mouseover fires constantly, so a player
--- already recorded today at the same level costs a few table reads and no new strings or tables.
+-- One row per guid per UTC day and kind. A row keeps the first way you saw the player that day; only a
+-- new level changes it (level and capturedAt), because the upload page sends the file again and the
+-- server keys the row by character and day. At most 2,000 rows per kind; the oldest days go first.
+-- Mouseover fires constantly, so a player already recorded today at the same level costs a few table
+-- reads and no new strings or tables.
 
 local E = Everloot
 local C = {}
@@ -22,8 +24,9 @@ local MAX_ROWS = 2000
 local MAX_LEVEL = 60
 local DAY_SECONDS = 86400
 local KINDS = { "census_self", "census_seen" }
-local GUID = "^Player%-%d+%-%x+$"
-local TOKEN = "^%a+$"
+local GUID = "^Player%-%d+%-[%dA-F]+$"   -- upper-case hex only, as the intake requires
+local RACE = "^%a+$"                       -- 2 to 24 letters, e.g. Scourge, Skyborne
+local CLASS = "^%u+$"                      -- 3 to 16 capitals, e.g. HUNTER
 
 -- Every call this module makes to the game. A test scans the source against this list.
 C.API = { "UnitIsPlayer", "UnitGUID", "UnitLevel", "UnitRace", "UnitClass", "UnitFactionGroup", "GetRealmName", "IsInRaid" }
@@ -86,8 +89,8 @@ local function append(kind, row)
   end
 end
 
-local function token(value)
-  return type(value) == "string" and #value >= 2 and #value <= 24 and value:find(TOKEN) ~= nil
+local function token(value, pattern, min, max)
+  return type(value) == "string" and #value >= min and #value <= max and value:find(pattern) ~= nil
 end
 
 local function factionOf(value)
@@ -116,14 +119,13 @@ local function seen(unit, via)
   local row = today.census_seen[guid]
   if row then
     if row.level ~= level then row.level = level; row.capturedAt = stamp() end
-    row.via = via
     return
   end
   if type(guid) ~= "string" or not guid:find(GUID) then return end
   local _, race = UnitRace(unit)
   local _, class = UnitClass(unit)
   local faction = factionOf(UnitFactionGroup(unit))
-  if not token(race) or not token(class) or not faction then return end
+  if not token(race, RACE, 2, 24) or not token(class, CLASS, 3, 16) or not faction then return end
   append("census_seen", {
     installId = EverlootDB.installId,
     eventId = eventId("census_seen", on),
@@ -149,12 +151,11 @@ local function recordSelf(newLevel)
   local faction = factionOf(UnitFactionGroup("player"))
   local realm = realmOf(GetRealmName())
   if type(level) ~= "number" or level < 1 or level > MAX_LEVEL then return end
-  if not token(race) or not token(class) or not faction or not realm then return end
+  if not token(race, RACE, 2, 24) or not token(class, CLASS, 3, 16) or not faction or not realm then return end
   local on = currentDay()
   local row = today.census_self[guid]
   if row then
-    row.level, row.race, row.class, row.faction, row.realm = math.floor(level), race, class, faction, realm
-    row.capturedAt = stamp()
+    if row.level ~= math.floor(level) then row.level = math.floor(level); row.capturedAt = stamp() end
     return
   end
   append("census_self", {
