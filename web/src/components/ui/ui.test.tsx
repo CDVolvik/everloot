@@ -48,10 +48,11 @@ describe("PageHeader", () => {
   });
 
   test("no bracket eyebrow above the title", () => {
-    const html = render(<PageHeader title="Talent calculator" trail={trail} />);
-    const visible = html.replace(/<script[\s\S]*?<\/script>/g, "");
-    expect(text(visible)).not.toMatch(/[[\]]/);
-    expect(text(visible)).toBe("Home / Database / Linen Cloth Talent calculator");
+    // A route the layout knows, so the header emits no JSON-LD and all of its text is visible text.
+    const html = render(<PageHeader title="Talent calculator" trail={[{ name: "Home", path: "/" }, { name: "Talent calculator", path: "/tools/talents" }]} />);
+    expect(html).not.toContain("BreadcrumbList");
+    expect(text(html)).not.toMatch(/[[\]]/);
+    expect(text(html)).toBe("Home / Talent calculator Talent calculator");
   });
 
   test("an entity page's trail is drawn and gets its BreadcrumbList", () => {
