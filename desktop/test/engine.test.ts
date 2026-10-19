@@ -128,8 +128,51 @@ test("paused skips scheduled work and a run during a run queues one more", async
   await engine.runNow("upload");
   expect(deps.upload).not.toHaveBeenCalled();
   expect(engine.snapshot().paused).toBe(true);
-  const seen: number[] = [];
-  engine.onChange((s) => seen.push(s.log.length));
+  // A logout while paused was skipped; resuming catches up on it once.
   engine.setPaused(false);
-  expect(seen.length).toBe(1);
+  await flush();
+  expect(deps.upload).toHaveBeenCalledTimes(1);
+  expect(engine.snapshot().log.map((l) => l.text)).toContain("Resumed");
+  // Resuming when not paused does nothing.
+  engine.setPaused(false);
+  await flush();
+  expect(deps.upload).toHaveBeenCalledTimes(1);
+});
+
+test("an account file written after start is found on the next rescan and uploaded", async () => {
+  const { deps, settings, engine, changes, flush } = harness([]);
+  engine.start(settings);
+  await flush();
+  expect(deps.upload).not.toHaveBeenCalled();
+  // The first logout writes the file.
+  deps.findFiles.mockReturnValue(["A/Everloot.lua"]);
+  await vi.advanceTimersByTimeAsync(30_000);
+  expect(deps.upload.mock.calls.map((c) => c[0])).toEqual(["A/Everloot.lua"]);
+  expect(changes.has("A/Everloot.lua")).toBe(true);
+  expect(engine.snapshot().log.map((l) => l.text)).toContain("Found 1 new account file(s)");
+  // Nothing new: no restart, no second upload.
+  await vi.advanceTimersByTimeAsync(30_000);
+  expect(deps.upload).toHaveBeenCalledTimes(1);
+});
+
+test("a failed upload is tried again a few times, then waits for the next write", async () => {
+  const { deps, settings, engine, flush } = harness(["A/Everloot.lua"]);
+  deps.upload.mockRejectedValue(new Error("fetch failed"));
+  engine.start({ ...settings, prices: false });
+  await flush();
+  expect(deps.upload).toHaveBeenCalledTimes(1);
+  await vi.advanceTimersByTimeAsync(60_000);
+  expect(deps.upload).toHaveBeenCalledTimes(2);
+  await vi.advanceTimersByTimeAsync(5 * 60_000);
+  expect(deps.upload).toHaveBeenCalledTimes(3);
+  await vi.advanceTimersByTimeAsync(15 * 60_000);
+  expect(deps.upload).toHaveBeenCalledTimes(4);
+  await vi.advanceTimersByTimeAsync(60 * 60_000);
+  expect(deps.upload).toHaveBeenCalledTimes(4);
+  // Back online: a success clears the count, so a later failure gets its retries again.
+  deps.upload.mockResolvedValueOnce("sent 3").mockRejectedValueOnce(new Error("fetch failed"));
+  await engine.runNow("upload");
+  await engine.runNow("upload");
+  await vi.advanceTimersByTimeAsync(60_000);
+  expect(deps.upload).toHaveBeenCalledTimes(7);
 });

@@ -127,6 +127,13 @@ that has a zip in the repository. Earlier builds have none.
   machine's own filesystem path (a Windows drive path, `/Users/`, `/home/` or `AppData`) before anything is
   sent, like the sha256 check, so a bug in the export cannot publish a local path alongside the data.
 
+### Fixed
+- Desktop App: an `Everloot.lua` written after the app started (the first logout, a second account) is
+  found within 30 seconds and uploaded; before, the app kept saying there was no file until it was
+  restarted. Resuming after Pause catches up on a logout that was skipped. A failed upload or `/ask`
+  run is tried again after 1, 5 and 15 minutes. On Linux and macOS the file watch is armed again after
+  the game replaces the file at logout, so later logouts are not missed.
+
 Pull requests merged to `main` are listed in the nightly pre-releases until the next tagged release.
 
 ## [desktop-v0.1.0] - 2026-10-19
