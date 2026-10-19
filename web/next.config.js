@@ -32,6 +32,8 @@ const nextConfig = {
     // The protocol's JSON Schema files, served by /schema/<file>.json from the installed package.
     // Brackets are glob characters in these keys, so the segment is escaped (as the Next docs show).
     "/schema/\\[\\.\\.\\.path\\]": ["./node_modules/@everloot/protocol/schema/**"],
+    // /addon hashes the zip it serves when it is rebuilt each hour (the key also matches /addons, which costs ~1 MB).
+    "/addon": ["./public/downloads/*.zip"],
     "/mcp": ["./.release/*.sqlite", "./.release/*.manifest.json"],
     "/mcp/public": ["./.release/*.sqlite", "./.release/*.manifest.json"],
     // Keys match by substring, so this one covers /api/tools/[tool], the tools' plain-HTTP route.
