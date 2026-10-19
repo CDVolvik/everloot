@@ -113,7 +113,7 @@ version line, separate from the addon. Builds are not code-signed yet.
   zero-retention free models, a local Ollama or any OpenAI-compatible server, picked on the page and
   shared with the in-game `/ask`; plain sourced search without one; three local tools let the model
   read the player's own characters, scan ages and the app's own job status, sourced as this
-  computer), a
+  computer; starter questions on an empty thread and an "ask why" link from a failed job), a
   local characters view (gold history, gear, progress), and the site's tools embedded. A dated
   backup of each account file after every upload, with restore; a tray reminder when a realm's
   scan is older than a day; the window remembers its place. Electron, built on

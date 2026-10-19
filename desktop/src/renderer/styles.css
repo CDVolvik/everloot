@@ -118,6 +118,9 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .chips { display: flex; flex-wrap: wrap; gap: 0.3rem; }
 .chip { font-size: 0.78rem; padding: 0.1rem 0.5rem; border: 1px solid rgb(var(--line)); border-radius: 9999px; color: rgb(var(--fg-2)); }
 .chip b { color: rgb(var(--fg)); font-weight: 600; }
+.chip.ask { background: none; font: inherit; font-size: 0.78rem; cursor: pointer; }
+.chip.ask:hover, .chip.ask:focus-visible { border-color: rgb(var(--accent)); color: rgb(var(--fg)); }
+.thread .chips { margin-top: 0.6rem; }
 
 label { display: block; font-weight: 500; }
 .field { display: flex; flex-direction: column; gap: 0.25rem; }

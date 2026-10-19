@@ -45,6 +45,13 @@ const dot = (j: JobStatus) => `<span class="dot dot-${j.state}" aria-hidden="tru
 const onOff = (job: Job, s: AppState) => (job === "ask" ? s.settings.ask.enabled : s.settings[job]);
 const jobSwitch = (job: Job, s: AppState) => `<label class="switch"><input type="checkbox" data-toggle="${job}" ${onOff(job, s) ? "checked" : ""}><span>${onOff(job, s) ? "On" : "Off"}</span></label>`;
 const runBtn = (job: Job, s: AppState, label = "Run now") => `<button type="button" class="btn" data-run="${job}" ${onOff(job, s) && s.engine.files.length && !s.engine.paused && s.engine.jobs[job].state !== "running" ? "" : "disabled"}>${label}</button>`;
+/** A button that opens Chat with a question ready; the click handler sends it. */
+const askChip = (question: string, label = question) => `<button type="button" class="chip ask" data-ask="${esc(question)}">${esc(label)}</button>`;
+/** The question to put to the chat about a job that failed; null when none did. */
+const whyFailed = (s: AppState): string | null => {
+  const failed = (["upload", "prices", "ask"] as Job[]).find((j) => s.engine.jobs[j].state === "error");
+  return failed ? `Why did ${failed === "ask" ? "the /ask answers" : failed} fail? The app says: ${s.engine.jobs[failed].message}` : null;
+};
 const logLines = (s: AppState, n: number) => s.engine.log.slice(-n).reverse().map((l) => `<div><time>${clock(l.at)}</time><span class="${l.level}">${esc(l.text)}</span></div>`).join("") || '<span class="muted">Nothing yet.</span>';
 
 // ---------- screens ----------
@@ -90,7 +97,7 @@ function overview(s: AppState): string {
     ${s.update?.newer && s.update.url ? `<p class="fg2">Everloot Desktop App ${esc(s.update.latest ?? "")} is out; you run ${esc(s.version)}. ${ext(s.update.url, "Download it")} and install over this one; your settings stay.</p>` : ""}
     ${!e.files.length && s.settings.gameFolder ? `<p class="fg2">No <code>Everloot.lua</code> under <span class="mono">${esc(s.settings.gameFolder)}</span> yet. Log out once in the game so it writes the file.</p>` : ""}
     <div class="stats">
-      <div class="stat"><div class="k">Upload</div><div class="v">${dot(up)} ${up.state === "ok" ? "OK" : up.state === "error" ? "Failed" : up.state === "off" ? "Off" : "Waiting"}</div><div class="s">${up.at ? ago(up.at) : "never"}</div></div>
+      <div class="stat"><div class="k">Upload</div><div class="v">${dot(up)} ${up.state === "ok" ? "OK" : up.state === "error" ? "Failed" : up.state === "off" ? "Off" : "Waiting"}</div><div class="s">${up.at ? ago(up.at) : "never"}${up.state === "error" ? ` · <button type="button" class="link" data-ask="${esc(`Why did upload fail? The app says: ${up.message}`)}">ask why</button>` : ""}</div></div>
       <div class="stat"><div class="k">Market prices</div><div class="v">${dot(pr)} ${data.market ? `${data.market.last.length} realm(s)` : pr.state === "off" ? "Off" : "Waiting"}</div><div class="s">${data.market?.scans[0] ? `your last scan ${ago(data.market.scans[0].at)}` : pr.at ? ago(pr.at) : "never"}</div></div>
       <div class="stat"><div class="k">/ask</div><div class="v">${dot(ask)} ${ask.state === "off" ? "Off" : ask.state === "error" ? "Failed" : "On"}</div><div class="s">${ask.at ? ago(ask.at) : s.settings.ask.enabled ? "waiting" : "turn on in Ask"}</div></div>
       <div class="stat"><div class="k">Addon</div><div class="v">${addonLine}</div><div class="s">${addon?.slots.prices ? "prices file in game" : "no prices file yet"}${addon && (!addon.installed || (addon.latest && addon.latest.version !== addon.installed)) ? ` · <button type="button" class="link" data-page="addon">${addon.installed ? "update" : "install"}</button>` : ""}</div></div>
@@ -118,9 +125,16 @@ function chat(): string {
     ${c && !c.provider && !pickOpen ? `<p class="muted small">${c.mode === "plain search" ? "Without a provider you get the sourced search hits only." : "That provider comes from config.json, written by hand."} <button type="button" class="link" id="changeProvider">Use your own key or a free model</button></p>` : ""}
     ${c && pickOpen ? providerForm() : ""}
     ${flash ? `<p class="${flash.startsWith("!") ? "error" : "ok"} small">${esc(flash.replace(/^!/, ""))}</p>` : ""}
-    <div class="thread" id="thread">${thread || '<span class="muted">Ask anything about WoW: Forever: a drop, a vendor, a recipe, a price, a quest.</span>'}${c?.busy ? '<div class="msg msg-assistant muted">Answering…</div>' : ""}${c?.error ? `<div class="msg msg-assistant error">${esc(c.error)}</div>` : ""}</div>
+    <div class="thread" id="thread">${thread || `<span class="muted">Ask anything about WoW: Forever: a drop, a vendor, a recipe, a price, a quest.</span><div class="chips">${starters(c).map((q) => askChip(q)).join("")}</div>`}${c?.busy ? '<div class="msg msg-assistant muted">Answering…</div>' : ""}${c?.error ? `<div class="msg msg-assistant error">${esc(c.error)}</div>` : ""}</div>
     <form id="chatForm"><textarea id="chatText" rows="2" placeholder="Ask about Forever. Enter sends, Shift+Enter is a new line." ${c?.busy ? "disabled" : ""}></textarea><button type="submit" class="btn btn-primary" ${c?.busy ? "disabled" : ""}>Send</button></form>
   </div>`;
+}
+
+/** Questions to start with: about the game always; about the player's own data when a model can call the local tools. */
+function starters(c: ChatInfo | null | undefined): string[] {
+  const game = ["What drops the Bindings of the Windseeker?", "Where do I learn Enchanting past 225?"];
+  if (!c || c.mode === "plain search") return game;
+  return ["How much gold do my characters have?", "When did I last scan my realms?", "Is my data uploading?", ...game];
 }
 
 /** The provider picker: one preset, its key, a model from the list or typed, and a custom server address. */
@@ -295,7 +309,7 @@ function changes(): string {
 
 function log(s: AppState): string {
   return `<div class="page">
-    <div class="head"><h1>Log</h1><div class="row"><button type="button" class="btn" id="copyDiag">Copy diagnostics</button><button type="button" class="btn" id="pause">${s.engine.paused ? "Resume" : "Pause"}</button></div></div>
+    <div class="head"><h1>Log</h1><div class="row">${whyFailed(s) ? askChip(whyFailed(s)!, "Ask the assistant why it failed") : ""}<button type="button" class="btn" id="copyDiag">Copy diagnostics</button><button type="button" class="btn" id="pause">${s.engine.paused ? "Resume" : "Pause"}</button></div></div>
     ${flash ? `<p class="${flash.startsWith("!") ? "error" : "ok"} small">${esc(flash.replace(/^!/, ""))}</p>` : ""}
     <section class="panel"><div class="log">${logLines(s, 200)}</div></section>
     <p class="muted small">Copy diagnostics puts the version, your settings (where the token file is, never the token), the files watched, each job's last state and the last hundred lines on the clipboard, with your user folder hidden, for a bug report.</p>
@@ -408,10 +422,25 @@ async function go(p: Page): Promise<void> {
   void load(p);
 }
 
+/** Shows the question in the thread at once, then the answer when it comes. */
+async function sendChat(question: string): Promise<void> {
+  if (!question || data.chat?.busy) return;
+  data.chat = { ...(data.chat ?? { messages: [], mode: "", mcpUrl: "", withToken: false, provider: null, error: null }), busy: true, messages: [...(data.chat?.messages ?? []), { role: "user", text: question, at: new Date().toISOString(), model: null, sources: [], steps: [] }] };
+  render();
+  data.chat = await api.chatSend(question);
+  render();
+}
+
 document.body.addEventListener("click", async (ev) => {
   const t = (ev.target as HTMLElement).closest<HTMLElement>("button");
   if (!t) return;
   if (t.dataset.page) { void go(t.dataset.page as Page); return; }
+  if (t.dataset.ask) {
+    const question = t.dataset.ask;
+    if (page !== "chat") { await go("chat"); if (!data.chat) data.chat = await api.chatInfo(); }
+    void sendChat(question);
+    return;
+  }
   if (t.dataset.open) { void api.openExternal(t.dataset.open); return; }
   if (t.dataset.run) { void api.runNow(t.dataset.run as Job); return; }
   if (t.dataset.unfollow) { const gone = t.dataset.unfollow.toLowerCase(); state = await api.saveSettings({ market: { realms: state!.settings.market.realms.filter((r) => r.toLowerCase() !== gone) } }); void load("market"); return; }
@@ -524,12 +553,8 @@ main.addEventListener("submit", async (ev) => {
   if (form.id === "chatForm") {
     const box = main.querySelector("#chatText") as HTMLTextAreaElement;
     const question = box.value.trim();
-    if (!question || data.chat?.busy) return;
     box.value = "";
-    data.chat = { ...(data.chat ?? { messages: [], mode: "", mcpUrl: "", withToken: false, provider: null, error: null }), busy: true, messages: [...(data.chat?.messages ?? []), { role: "user", text: question, at: new Date().toISOString(), model: null, sources: [], steps: [] }] };
-    render();
-    data.chat = await api.chatSend(question);
-    render();
+    await sendChat(question);
     return;
   }
   if (form.id === "settings") {
