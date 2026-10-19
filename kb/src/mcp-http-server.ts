@@ -2,6 +2,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import type { DB } from "./db.js";
 import { createKnowledgeServer, type ChangesLoader, type CompletionLoader, type CorpusLoader, type EcosystemLoader, type MarketLoader } from "./mcp-server.js";
+import type { CensusLoader } from "./population.js";
 
 export interface PublicMcpConfig {
   db: DB;
@@ -22,10 +23,12 @@ export interface PublicMcpConfig {
   changes?: ChangesLoader;
   /** The ecosystem tracker's view with install counts joined, when the host has one. */
   ecosystem?: EcosystemLoader;
+  /** The web route's census rollup reader, aggregate only; without it population says it is not connected. */
+  census?: CensusLoader;
 }
 
-export function createPublicMcpServer(config: { db: DB; corpus?: CorpusLoader; market?: MarketLoader; completion?: CompletionLoader; changes?: ChangesLoader; ecosystem?: EcosystemLoader }) {
-  const server = createKnowledgeServer(config.db, { corpus: config.corpus, market: config.market, completion: config.completion, changes: config.changes, ecosystem: config.ecosystem });
+export function createPublicMcpServer(config: { db: DB; corpus?: CorpusLoader; market?: MarketLoader; completion?: CompletionLoader; changes?: ChangesLoader; ecosystem?: EcosystemLoader; census?: CensusLoader }) {
+  const server = createKnowledgeServer(config.db, { corpus: config.corpus, market: config.market, completion: config.completion, changes: config.changes, ecosystem: config.ecosystem, census: config.census });
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined, enableJsonResponse: true,
   });

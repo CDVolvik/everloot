@@ -219,7 +219,7 @@ test("the stdio server reuses a corpus read for the snapshot interval, then read
   } finally { cachePublicCorpus(0); vi.useRealTimers(); vi.unstubAllEnvs(); vi.unstubAllGlobals(); }
 });
 
-test("tools/list is exactly the protocol's tool table, in order, with its input shapes", async () => {
+test("tools/list is the protocol's tool table, in order, with its input shapes, then population", async () => {
   const { Client } = await import("@modelcontextprotocol/sdk/client/index.js");
   const { InMemoryTransport } = await import("@modelcontextprotocol/sdk/inMemory.js");
   const { MCP_TOOL_NAMES, MCP_TOOLS } = await import("@everloot/protocol");
@@ -230,8 +230,9 @@ test("tools/list is exactly the protocol's tool table, in order, with its input 
   const client = new Client({ name: "test", version: "0" });
   await client.connect(clientSide);
   const listed = (await client.listTools()).tools;
-  expect(listed.map((t) => t.name)).toEqual(MCP_TOOL_NAMES);
-  for (const tool of listed) {
+  // population is defined in kb/src/population.ts until it joins the protocol's table (test/population.test.ts).
+  expect(listed.map((t) => t.name)).toEqual([...MCP_TOOL_NAMES, "population"]);
+  for (const tool of listed.filter((t) => t.name !== "population")) {
     const expected = z.toJSONSchema(z.object(MCP_TOOLS[tool.name as keyof typeof MCP_TOOLS].inputSchema), { io: "input" }) as { properties?: Record<string, unknown>; required?: string[] };
     expect(Object.keys(tool.inputSchema.properties ?? {}).sort()).toEqual(Object.keys(expected.properties ?? {}).sort());
     expect([...(tool.inputSchema.required ?? [])].sort()).toEqual([...(expected.required ?? [])].sort());
@@ -255,7 +256,7 @@ test("tools with an output schema answer with structured content beside the text
   await client.connect(clientSide);
   expect(STRUCTURED_TOOLS).toEqual(["search_knowledge", "get_entity", "get_by_name", "answer_sources", "recent_changes"]);
   const listed = (await client.listTools()).tools;
-  for (const tool of listed) expect(tool.outputSchema !== undefined).toBe(STRUCTURED_TOOLS.includes(tool.name as (typeof STRUCTURED_TOOLS)[number]));
+  for (const tool of listed) expect(tool.outputSchema !== undefined).toBe(tool.name === "population" || STRUCTURED_TOOLS.includes(tool.name as (typeof STRUCTURED_TOOLS)[number]));
 
   const search = await client.callTool({ name: "search_knowledge", arguments: { query: "Thunderfury" } });
   const hits = (search.structuredContent as { hits: { name: string; sourceUrl: string; licence: string }[] }).hits;

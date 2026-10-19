@@ -16,6 +16,7 @@ import { handleObjectPage, objectFactsFromRecords, type ObjectFacts } from "./ob
 import { handleMarketValue, type MarketState } from "./market.js";
 import { loadUploadRecords } from "./load-uploads.js";
 import { KNOWLEDGE_KINDS, MCP_RESOURCE_URIS, MCP_RESOURCES, MCP_TOOL_NAMES, MCP_TOOLS, parseRecords, type McpToolArgs, type McpToolDef, type McpToolName } from "@everloot/protocol";
+import { answerPopulation, POPULATION_TOOL, type CensusLoader, type PopulationArgs } from "./population.js";
 import { handleProfessionPath } from "./profession-path.js";
 import { readResource } from "./resources.js";
 import { handleRecipeThresholds, pathFactsFromRecords, recipeFactsFromRecords } from "./recipe-thresholds.js";
@@ -405,7 +406,7 @@ export type ChangesLoader = () => ChangeEntry[] | null | Promise<ChangeEntry[] |
 /** The ecosystem tracker with install counts joined. Null means it is not connected, which is not the same as empty. */
 export type EcosystemLoader = () => EcosystemView | null | Promise<EcosystemView | null>;
 
-export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; market?: MarketLoader; completion?: CompletionLoader; changes?: ChangesLoader; ecosystem?: EcosystemLoader } = {}): McpServer {
+export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; market?: MarketLoader; completion?: CompletionLoader; changes?: ChangesLoader; ecosystem?: EcosystemLoader; census?: CensusLoader } = {}): McpServer {
   const server = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION, websiteUrl: SOURCE_URL }, { instructions: SERVER_INSTRUCTIONS });
   const readFacts = <T>(tool: ToolName, render: (facts: T) => string) => fromTooledUploads(tool, render, options.corpus);
   /** One handler per tool, typed by the protocol's input shape; the MCP registration below is a thin wrapper. */
@@ -462,6 +463,11 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; 
       },
     );
   }
+  // population is not in the protocol's tool table yet (kb/src/population.ts), so it is listed after it.
+  server.registerTool("population", POPULATION_TOOL, async (args: unknown) => {
+    const answer = await answerPopulation(args as PopulationArgs, options.census, answerFooter);
+    return { content: [{ type: "text" as const, text: answer.text }], structuredContent: answer.structured };
+  });
   for (const uri of MCP_RESOURCE_URIS) {
     const def = MCP_RESOURCES[uri];
     server.registerResource(def.name, uri, { title: def.title, description: def.description, mimeType: def.mimeType }, () => {
