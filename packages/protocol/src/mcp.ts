@@ -695,9 +695,9 @@ export const MCP_TOOLS = {
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
   guild_board: {
-    title: "Officer guild board",
+    title: "Guild board its officers published",
     description:
-      "Roster, bosses, loot, attendance, and average item level from officer uploads. A figure is public after 2 uploads agree. The average names how many roster members were measured. There is no single score because score_v1 weights are not published. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.",
+      "One guild's roster, bosses killed, loot awarded, raid attendance and average item level, as that guild's own officers chose to publish them. Only uploads from officers holding a verified grant for the guild count, and a figure is public after 2 of them agree. Names are in-game character names, never accounts or real-world identities. A character's owner can opt out, and an opted-out character is left out of the roster, loot and attendance. A guild whose officers have not published gets an empty board; the tool does not look up other players or guilds. The average names how many roster members were measured; there is no combined score. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.",
     inputSchema: {
       guildName: z.string().describe("Guild name."),
       realm: z.string().describe("Realm name."),
