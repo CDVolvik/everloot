@@ -14,9 +14,10 @@ import { join } from "node:path";
 import { writeCatalogs } from "../client-catalog.js";
 import { writeClientLayer } from "../client-layer.js";
 import { CASC_LIBRARY, extractTables, iconIds, NOT_IN_BUILD, openCdn, pinDefinitions, probeFiles } from "../client-extract.js";
-import { clientSnapshotName, readClientMeta, writeClientSnapshot } from "../client-snapshot.js";
+import { CLIENT_TABLES, clientSnapshotName, readClientMeta, writeClientSnapshot } from "../client-snapshot.js";
 import { ClassCatalog } from "../talents/catalog.js";
 import { writeWorldMapData } from "../world-map-data.js";
+import { clientDigestsOf } from "./client-digests.js";
 import { GAME_DATA_DIR, spellValuesOf } from "./site-data.js";
 import type { Extracted } from "./watch.js";
 
@@ -48,6 +49,13 @@ export async function extractFromCdn(product: string, region: string, curatedPat
     return {
       build: { buildId: build.buildId, buildConfig: build.buildConfig, version: build.version },
       spellValues: spellValuesOf({ product, buildId: build.buildId, version: build.version, buildConfig: build.buildConfig, definitions: pinned, extractedAt }, classes),
+      // The read set, not the probe: FileStatus records which icon files the CDN serves and changes with
+      // the spells, so it would show up as a table change on every build.
+      clientDigests: clientDigestsOf(
+        { product, buildId: build.buildId, version: build.version, buildConfig: build.buildConfig, definitions: pinned, extractedAt },
+        tables.filter((t) => t.table in CLIENT_TABLES),
+      ),
+      missingTables: missing,
       generate(root: string) {
         web("trim-talent-catalog.mjs", join(run.dir, "talents"), join(root, GAME_DATA_DIR, "talents"));
         mkdirSync(join(root, "addon", "modules"), { recursive: true });

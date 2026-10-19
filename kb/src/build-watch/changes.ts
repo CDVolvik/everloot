@@ -12,7 +12,9 @@ import { Scope } from "../raid-buffs.js";
 
 const ScopeOrMixed = z.union([Scope, z.literal("mixed")]);
 
-export const CHANGE_SCHEMA = "everloot.game-changes/1";
+export const CHANGE_SCHEMA = "everloot.game-changes/2";
+/** Entries written before the read-set section; they stay valid as committed. */
+export const LEGACY_CHANGE_SCHEMA = "everloot.game-changes/1";
 
 export const BuildRef = z.object({ version: z.string(), buildId: z.number().int(), buildConfig: z.string() });
 export type BuildRef = z.infer<typeof BuildRef>;
@@ -72,8 +74,24 @@ export const MapChanges = z.array(z.object({
 }));
 export type MapChanges = z.infer<typeof MapChanges>;
 
+/**
+ * What changed in the client tables the extractor reads. Counts, booleans and table names only; the
+ * per-table hash difference is in `changed`, and the values themselves are never in the entry.
+ */
+export const ReadSet = z.object({
+  tables: z.object({ before: z.number().int(), after: z.number().int() }),
+  rows: z.object({ before: z.number().int(), after: z.number().int() }),
+  addedTables: z.array(z.object({ table: z.string(), fileDataID: z.number().int().nullable(), rows: z.number().int() })),
+  removedTables: z.array(z.object({ table: z.string(), fileDataID: z.number().int().nullable() })),
+  /** Tables whose content hash changed; `changed` is that hash difference, never a row diff. */
+  changedTables: z.array(z.object({ table: z.string(), rowsBefore: z.number().int(), rowsAfter: z.number().int(), changed: z.boolean() })),
+  /** The pinned WoWDBDefs commit differs, so a layout change may read as a table change. */
+  layoutChanged: z.boolean(),
+});
+export type ReadSet = z.infer<typeof ReadSet>;
+
 export const ChangeEntry = z.object({
-  schema: z.literal(CHANGE_SCHEMA),
+  schema: z.union([z.literal(LEGACY_CHANGE_SCHEMA), z.literal(CHANGE_SCHEMA)]),
   label: z.literal(LABEL),
   /** `<product>-<buildId>`; also the file name. */
   id: z.string(),
@@ -96,7 +114,12 @@ export const ChangeEntry = z.object({
   talents: TalentChanges.nullable(),
   raidBuffs: RaidBuffChanges.nullable(),
   mapChanges: MapChanges.nullable(),
+  /** The client read set; null for a baseline or when there is no committed digest file to compare with. */
+  readSet: ReadSet.nullable().optional(),
   warnings: z.array(z.string()),
+}).refine((e) => e.schema !== CHANGE_SCHEMA || e.readSet !== undefined, {
+  message: "a /2 entry carries readSet (null when there is nothing to compare with)",
+  path: ["readSet"],
 });
 export type ChangeEntry = z.infer<typeof ChangeEntry>;
 
@@ -107,5 +130,7 @@ export function hasChanges(entry: ChangeEntry): boolean {
   const t = entry.talents;
   const talentCount = t ? t.classesAdded.length + t.classesRemoved.length + t.added.length + t.removed.length + t.moved.length + t.ranks.length
     + t.gates.length + t.prereqs.length + t.replaced.length + t.spellValues.length + t.pointLevels.length : 0;
-  return talentCount + (entry.raidBuffs ? entry.raidBuffs.scopeChanges.length + entry.raidBuffs.spellChanges.length : 0) + (entry.mapChanges?.length ?? 0) > 0;
+  const r = entry.readSet;
+  const readSetCount = r ? r.addedTables.length + r.removedTables.length + r.changedTables.length : 0;
+  return talentCount + (entry.raidBuffs ? entry.raidBuffs.scopeChanges.length + entry.raidBuffs.spellChanges.length : 0) + (entry.mapChanges?.length ?? 0) + readSetCount > 0;
 }

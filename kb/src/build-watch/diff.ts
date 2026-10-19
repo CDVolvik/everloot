@@ -5,7 +5,8 @@
 import { isDeepStrictEqual } from "node:util";
 import type { WorldMapData } from "../world-map-data.js";
 import { LABEL } from "../talents/catalog.js";
-import { CHANGE_SCHEMA, type BuildRef, type ChangeEntry, type MapChanges, type RaidBuffChanges, type TalentChanges } from "./changes.js";
+import { CHANGE_SCHEMA, ReadSet, type BuildRef, type ChangeEntry, type MapChanges, type RaidBuffChanges, type TalentChanges } from "./changes.js";
+import { diffClientDigests, type ClientDigests } from "./client-digests.js";
 import { siteBuild, type SiteData, type SpellValueTable, type TrimmedClass, type WebRaid } from "./site-data.js";
 
 type Node = TrimmedClass["trees"][number]["nodes"][number];
@@ -155,6 +156,11 @@ export interface DiffInput {
   before: SiteData | null;
   /** The newly generated files. */
   after: SiteData;
+  /** Digests committed with the current data; null when the file is absent (entries before the read set). */
+  beforeDigests?: ClientDigests | null;
+  afterDigests?: ClientDigests | null;
+  /** Tables the extractor asked for and did not read, with the reason; an absence is a warning, not a removal. */
+  missingTables?: { table: string; reason: string }[];
   encryptedTables: { table: string; blocks: number }[];
   source: { definitions: string | null; library: string; extractedAt: string };
   warnings: string[];
@@ -173,6 +179,15 @@ export function buildChangeEntry(input: DiffInput): ChangeEntry {
   const talents = before ? diffTalents(before.talents, after.talents, spoiler) : null;
   if (talents && before?.spellValues && after.spellValues) talents.spellValues = diffSpellValues(before.spellValues, after.spellValues, after.talents, spoiler);
   else if (before && !before.spellValues) warnings.push("no committed spell values to compare with, so spell number changes are not listed");
+
+  let readSet: ReadSet | null = null;
+  if (before && input.beforeDigests && input.afterDigests) {
+    const diff = diffClientDigests(input.beforeDigests, input.afterDigests, input.missingTables ?? []);
+    readSet = diff.readSet;
+    warnings.push(...diff.warnings);
+  } else if (before && !input.beforeDigests) {
+    warnings.push("no committed client digests to compare with, so client table changes are not listed");
+  }
   return {
     schema: CHANGE_SCHEMA,
     label: LABEL,
@@ -193,6 +208,7 @@ export function buildChangeEntry(input: DiffInput): ChangeEntry {
       ...(before?.raid ? diffRaid(before.raid, after.raid, spoiler) : { scopeChanges: [], spellChanges: [] }),
     } : null,
     mapChanges: before?.map && after.map ? diffMap(before.map, after.map, spoiler) : null,
+    readSet,
     warnings,
   };
 }
