@@ -1,7 +1,8 @@
+import { createHash } from "node:crypto";
 import { expect, test } from "vitest";
 import {
-  CENSUS_CLASSES, CENSUS_LAUNCH, CENSUS_MIN_CHARACTERS, CENSUS_MIN_INSTALLS, CENSUS_RACES, CENSUS_ROUND_TO, FACTIONS, LEVEL_BANDS,
-  censusFromRecords, censusRowsFromRecords, roundCount, rollupCensus, type CensusCount, type CensusRow, type CensusView, type CensusWindow,
+  CENSUS_CLASSES, CENSUS_LAUNCH, CENSUS_MIN_CHARACTERS, CENSUS_MIN_INSTALLS, CENSUS_MIN_REPORTERS, CENSUS_RACES, CENSUS_ROUND_TO, FACTIONS, LEVEL_BANDS,
+  censusFromRows, roundCount, rollupCensus, type CensusCount, type CensusRow, type CensusView, type CensusWindow,
 } from "../src/census.js";
 
 /** When the corpus was current: a Monday, twelve days after launch. */
@@ -9,10 +10,13 @@ const AS_OF = "2026-11-16T12:00:00Z";
 const LAUNCH = CENSUS_LAUNCH;
 const INSTALLS = ["install-a", "install-b", "install-c"];
 
+/** The keyed address hash intake stamps (16 hex): one address per install here, unless a test says otherwise. */
+const addr = (installId: string) => createHash("sha256").update(installId).digest("hex").slice(0, 16);
+
 let seq = 0;
 const row = (over: Partial<CensusRow> & Pick<CensusRow, "installId" | "characterKey">): CensusRow => ({
   kind: "census_seen", eventId: `census_seen:2026-11-15:${(++seq).toString(16)}`, capturedAt: "2026-11-15T10:00:00.000Z",
-  serverId: 4, race: "Gnome", class: "PRIEST", level: 20, faction: "Alliance", via: "target", ...over,
+  serverId: 4, race: "Gnome", class: "PRIEST", level: 20, faction: "Alliance", via: "target", reporter: addr(over.installId), ...over,
 });
 
 /** `n` different characters, each reported once, spread over `installs` in turn. */
@@ -332,21 +336,54 @@ test("no character key, install id or event id reaches the output", () => {
 test("one global view for now, labelled so a ruleset or region view can sit beside it", () => {
   const view = census(crowd(10, "v1"));
   expect(view.scope).toEqual({ id: "all", label: "All of WoW: Forever" });
-  expect(view.rule).toEqual({ minCharacters: CENSUS_MIN_CHARACTERS, minInstalls: CENSUS_MIN_INSTALLS, roundTo: CENSUS_ROUND_TO });
+  expect(view.rule).toEqual({ minCharacters: CENSUS_MIN_CHARACTERS, minInstalls: CENSUS_MIN_INSTALLS, minReporters: CENSUS_MIN_REPORTERS, roundTo: CENSUS_ROUND_TO });
   expect(rollupCensus(crowd(10, "v1"), { asOf: AS_OF, launch: LAUNCH, scope: { id: "pvp-us", label: "PvP, Americas" } }).scope.id).toBe("pvp-us");
 });
 
-test("records from the store: census kinds are read, everything else and malformed rows are skipped", () => {
-  const good = crowd(10, "w1").map((r) => ({ ...r }));
-  const records: unknown[] = [
-    ...good,
-    { kind: "addon_seen", installId: "install-a", capturedAt: AS_OF, name: "Questie", title: "Questie", loaded: true },
-    { ...good[0], characterKey: 42 },
-    { ...good[0], level: "60" },
-    { ...good[0], faction: "Neutral" },
-    { ...good[0], capturedAt: "yesterday" },
-    null, "census_seen",
-  ];
-  expect(censusRowsFromRecords(records)).toHaveLength(10);
-  expect(censusFromRecords(records, AS_OF).windows.week.characters).toBe(10);
+test("a cell needs 3 distinct addresses as well as 3 installs: many install ids behind one address do not clear it", () => {
+  const oneAddress = addr("home");
+  const w = week(crowd(20, "r1", { reporter: oneAddress }, ["install-a", "install-b", "install-c", "install-d"]));
+  expect(w.installs).toBe(4);
+  expect(w.collecting).toBe(true);
+  expect(w.characters).toBeNull();
+  // The same crowd from three addresses shows.
+  expect(week(crowd(20, "r2")).characters).toBe(20);
+  expect(CENSUS_MIN_REPORTERS).toBe(3);
+});
+
+test("two addresses are not enough, three are; the addresses of a cell are those that reported any of its characters", () => {
+  const two = [...crowd(10, "r3", { reporter: addr("x") }, ["install-a", "install-b"]), ...crowd(10, "r4", { reporter: addr("y") }, ["install-c"])];
+  expect(week(two).characters).toBeNull();
+  // A third address that saw only one of the characters is enough: it reported one of the cell's characters.
+  const three = [...two, row({ installId: "install-d", characterKey: "r3" + "0000", reporter: addr("z") })];
+  expect(week(three).characters).toBe(20);
+});
+
+test("a row without a reporter counts toward installs but not toward addresses", () => {
+  const rows = crowd(20, "r5", { reporter: undefined });
+  const w = week(rows);
+  expect(w.installs).toBe(3);
+  expect(w.characters).toBeNull();
+  // Two addresses plus unaddressed rows still fall short of 3 addresses.
+  expect(week([...crowd(10, "r6", { reporter: addr("p") }, ["install-a"]), ...crowd(10, "r7", { reporter: addr("q") }, ["install-b"]), ...crowd(10, "r8", { reporter: undefined }, ["install-c"])]).characters).toBeNull();
+});
+
+test("a cell with enough characters and installs but one address is hidden, and its totals still show", () => {
+  const w = week([
+    ...everyone(20, "Horde/Orc/HUNTER"),
+    ...crowd(30, "q1", { race: "Orc", class: "HUNTER", faction: "Horde", reporter: addr("solo") }),
+  ]);
+  expect(w.characters).not.toBeNull();
+  expect(cell(w, "Orc", "HUNTER", "Horde")).toBeNull();
+  // A lone hidden cell takes another in its row with it, so it can't be worked out from the race total.
+  expect(w.raceClass.filter((c) => c.race === "Orc" && c.count === null).length).toBeGreaterThanOrEqual(2);
+});
+
+test("the output carries no reporter", () => {
+  expect(JSON.stringify(census(everyone()))).not.toMatch(/[0-9a-f]{16}/);
+  expect(JSON.stringify(census(everyone()))).not.toContain("reporter");
+});
+
+test("rows from the store are rolled up as they are", () => {
+  expect(censusFromRows(crowd(10, "w1"), AS_OF).windows.week.characters).toBe(10);
 });

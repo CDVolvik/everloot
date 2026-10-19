@@ -81,11 +81,12 @@ export default function MethodologyPage() {
         <ul className="list-disc pl-6 space-y-1 text-fg-2">
           <li>Two windows: active in the last 7 days (the last seven UTC days, today included), and seen since launch. Reports from
             before launch, in the beta, are not counted.</li>
-          <li>A count shows only when it covers at least 10 characters reported by at least 3 installs. Below that it reads
+          <li>A count shows only when it covers at least 10 characters reported by at least 3 installs from at least 3 different
+            addresses (each address is kept only as a keyed hash, so it can be counted but not read back). Below that it reads
             &ldquo;not enough reports&rdquo;, and until a whole window gets there the page says it is still collecting. Before launch it says so.</li>
           <li>A hidden count could otherwise be worked out by taking the shown counts away from their total. So wherever one is
             hidden, more are hidden with it: in every total, at least two counts are hidden and together they cover at least
-            10 characters. &ldquo;Not enough reports&rdquo; therefore means fewer than 10 characters or fewer than 3 installs, or hidden to
+            10 characters. &ldquo;Not enough reports&rdquo; therefore means fewer than 10 characters, fewer than 3 installs or fewer than 3 addresses, or hidden to
             protect a small count.</li>
           <li>Every count that shows is rounded to the nearest 5, each from its own true number, so the shown counts don&apos;t
             add up exactly to their total either.</li>

@@ -122,7 +122,7 @@ const WINDOWS = [
 
 function Headline({ view, window: w }: { view: CensusView; window: CensusWindow }) {
   const span = `(${day(w.from)} to ${day(w.to)}, UTC)`;
-  const rule = `Each character counts once, and a number shows only when it covers at least ${view.rule.minCharacters} characters reported by at least ${view.rule.minInstalls} installs, rounded to the nearest ${view.rule.roundTo}.`;
+  const rule = `Each character counts once, and a number shows only when it covers at least ${view.rule.minCharacters} characters reported by at least ${view.rule.minInstalls} installs from at least ${view.rule.minReporters} addresses, rounded to the nearest ${view.rule.roundTo}.`;
   const how = <Link href="/methodology#population" className={link}>How we count</Link>;
   if (!view.launched) {
     return (
@@ -141,7 +141,7 @@ function Headline({ view, window: w }: { view: CensusView; window: CensusWindow 
       <div className="rounded-xl border border-line bg-panel p-6 sm:p-8 space-y-2">
         <p className="text-fg">
           Still collecting. The census shows numbers once the window {span} has at least {view.rule.minCharacters} characters
-          reported by at least {view.rule.minInstalls} installs.
+          reported by at least {view.rule.minInstalls} installs from at least {view.rule.minReporters} addresses.
         </p>
         <p className="text-sm text-muted">
           {w.installs === 0 ? "No install has reported census data in this window so far." : `${plural(w.installs, "install has", "installs have")} reported census data in this window so far.`}{" "}

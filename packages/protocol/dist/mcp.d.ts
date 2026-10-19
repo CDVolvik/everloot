@@ -692,6 +692,7 @@ export declare const populationPage: z.ZodObject<{
     rule: z.ZodObject<{
         minCharacters: z.ZodNumber;
         minInstalls: z.ZodNumber;
+        minReporters: z.ZodNumber;
         roundTo: z.ZodNumber;
     }, z.core.$strip>;
     cells: z.ZodArray<z.ZodObject<{
@@ -1991,7 +1992,7 @@ export declare const MCP_TOOLS: {
     };
     readonly population: {
         readonly title: "Who plays what: population by race, class, faction and level";
-        readonly description: "How many characters play each race, class, race and class, faction and level band on WoW: Forever, from the census of players who turned it on in the Everloot addon. Each character counts once. A count shows only when it covers at least 10 characters reported by at least 3 installs, rounded to the nearest 5, and a count that could be worked out from the others is hidden too. Every answer states its window: active in the last 7 days (default) or since launch. With no arguments, the overview: most played class first. No names, ever. Missing or unavailable data is reported explicitly.";
+        readonly description: "How many characters play each race, class, race and class, faction and level band on WoW: Forever, from the census of players who turned it on in the Everloot addon. Each character counts once. A count shows only when it covers at least 10 characters reported by at least 3 installs from at least 3 addresses, rounded to the nearest 5, and a count that could be worked out from the others is hidden too. Every answer states its window: active in the last 7 days (default) or since launch. With no arguments, the overview: most played class first. No names, ever. Missing or unavailable data is reported explicitly.";
         readonly inputSchema: {
             readonly race: z.ZodOptional<z.ZodString>;
             readonly class: z.ZodOptional<z.ZodString>;
@@ -2029,6 +2030,7 @@ export declare const MCP_TOOLS: {
                 rule: z.ZodObject<{
                     minCharacters: z.ZodNumber;
                     minInstalls: z.ZodNumber;
+                    minReporters: z.ZodNumber;
                     roundTo: z.ZodNumber;
                 }, z.core.$strip>;
                 cells: z.ZodArray<z.ZodObject<{
@@ -3342,7 +3344,7 @@ export declare const MCP_TOOL_LIST: ({
     name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Who plays what: population by race, class, faction and level";
-    description: "How many characters play each race, class, race and class, faction and level band on WoW: Forever, from the census of players who turned it on in the Everloot addon. Each character counts once. A count shows only when it covers at least 10 characters reported by at least 3 installs, rounded to the nearest 5, and a count that could be worked out from the others is hidden too. Every answer states its window: active in the last 7 days (default) or since launch. With no arguments, the overview: most played class first. No names, ever. Missing or unavailable data is reported explicitly.";
+    description: "How many characters play each race, class, race and class, faction and level band on WoW: Forever, from the census of players who turned it on in the Everloot addon. Each character counts once. A count shows only when it covers at least 10 characters reported by at least 3 installs from at least 3 addresses, rounded to the nearest 5, and a count that could be worked out from the others is hidden too. Every answer states its window: active in the last 7 days (default) or since launch. With no arguments, the overview: most played class first. No names, ever. Missing or unavailable data is reported explicitly.";
     inputSchema: {
         readonly race: z.ZodOptional<z.ZodString>;
         readonly class: z.ZodOptional<z.ZodString>;
@@ -3380,6 +3382,7 @@ export declare const MCP_TOOL_LIST: ({
             rule: z.ZodObject<{
                 minCharacters: z.ZodNumber;
                 minInstalls: z.ZodNumber;
+                minReporters: z.ZodNumber;
                 roundTo: z.ZodNumber;
             }, z.core.$strip>;
             cells: z.ZodArray<z.ZodObject<{

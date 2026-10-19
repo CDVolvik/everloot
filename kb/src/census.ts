@@ -6,7 +6,10 @@
  * - Two windows: the last 7 UTC days, today included (the headline), and since launch. Rows from
  *   before launch (the beta) and rows dated after the corpus was current are not counted. Before
  *   launch the view says so (`launched: false`) and both windows are empty.
- * - A count shows only when it covers at least 10 characters reported by at least 3 installs.
+ * - A count shows only when it covers at least 10 characters reported by at least 3 installs and from at
+ *   least 3 distinct addresses (`reporter`, the keyed hash of the sender's address that intake stamps). A row
+ *   without a reporter counts toward installs but not toward addresses, so many install ids from one address
+ *   still don't clear it.
  * - Complementary suppression: in every published sum (total = factions = classes = level bands =
  *   own + seen; faction = its races; race = its row of the race × class grid; class = its column), a
  *   relation with anything hidden has at least two hidden parts whose true counts add up to at least
@@ -15,7 +18,7 @@
  * - Every count that shows is rounded to the nearest 5, each from its own true number, so a total is
  *   not the sum of its rounded parts either.
  * - A hidden count is null: the page and the MCP tool read it as "not enough reports" (fewer than 10 characters,
- *   fewer than 3 installs, or hidden so a small count can't be worked out).
+ *   fewer than 3 installs or addresses, or hidden so a small count can't be worked out).
  * - The output carries counts only: no characterKey, install id, event id, server id or realm.
  *
  * One global view for now. Step 4 of the spec maps realms to ruleset and region; it will group the
@@ -24,6 +27,8 @@
 
 export const CENSUS_MIN_CHARACTERS = 10;
 export const CENSUS_MIN_INSTALLS = 3;
+/** Distinct keyed address hashes (`reporter`) a count needs, besides the installs. */
+export const CENSUS_MIN_REPORTERS = 3;
 export const CENSUS_ROUND_TO = 5;
 /** Days in the headline window, today (UTC) included. */
 export const CENSUS_WEEK_DAYS = 7;
@@ -45,6 +50,8 @@ export interface CensusRow {
   /** HMAC of the GUID under a server key, hex. The GUID itself is never stored. */
   characterKey: string;
   serverId: number;
+  /** Keyed hash of the sender's address (16 hex), set by intake. Rows without one count toward installs only. */
+  reporter?: string;
   /** UnitRace's file token, such as "Scourge" or "NightElf". */
   race: string;
   /** UnitClass's file token, such as "HUNTER". */
@@ -100,7 +107,7 @@ export type CensusCount = number | null;
 
 /** What a hidden count means, in the words the page, /methodology and the MCP tool use. */
 export const HIDDEN_LABEL = "not enough reports";
-export const HIDDEN_MEANING = "fewer than 10 characters or fewer than 3 installs, or hidden so that a small count can't be worked out from the others";
+export const HIDDEN_MEANING = "fewer than 10 characters, fewer than 3 installs or fewer than 3 addresses, or hidden so that a small count can't be worked out from the others";
 
 export interface CensusWindow {
   id: "week" | "launch";
@@ -129,7 +136,7 @@ export interface CensusView {
   launch: string;
   /** False before launch: nothing is counted yet, which is not the same as collecting. */
   launched: boolean;
-  rule: { minCharacters: number; minInstalls: number; roundTo: number };
+  rule: { minCharacters: number; minInstalls: number; minReporters: number; roundTo: number };
   windows: { week: CensusWindow; launch: CensusWindow };
   /**
    * Characters active each UTC day of the 7-day window, oldest first, under the same thresholds. Days
@@ -147,8 +154,8 @@ export function roundCount(n: number): number {
 }
 
 /** Whether a count clears the thresholds on its own. */
-function clears(characters: number, installs: number): boolean {
-  return characters >= CENSUS_MIN_CHARACTERS && installs >= CENSUS_MIN_INSTALLS;
+function clears(characters: number, installs: number, reporters: number): boolean {
+  return characters >= CENSUS_MIN_CHARACTERS && installs >= CENSUS_MIN_INSTALLS && reporters >= CENSUS_MIN_REPORTERS;
 }
 
 const RACE_BY_FACTION = new Map<string, (typeof CENSUS_RACES)[number]>(CENSUS_RACES.map((r) => [`${r.faction}/${r.token}`, r]));
@@ -179,16 +186,18 @@ function keeps(a: Dated, b: Dated): boolean {
   return a.row.installId < b.row.installId;
 }
 
-type Character = { latest: Dated; installs: Set<string>; own: boolean };
+type Character = { latest: Dated; installs: Set<string>; reporters: Set<string>; own: boolean };
 
 /** One published cell before rounding: its characters, the installs that reported any of them, and whether it is hidden. */
 class Cell {
   characters = 0;
   installs = new Set<string>();
+  reporters = new Set<string>();
   hidden = false;
   add(c: Character) {
     this.characters++;
     for (const id of c.installs) this.installs.add(id);
+    for (const id of c.reporters) this.reporters.add(id);
   }
 }
 
@@ -204,7 +213,7 @@ type Relation = { margin: Cell | null; parts: Cell[] };
  * parts are fewer than two or add up to fewer than 10 characters, until no relation needs it.
  */
 function suppress(all: Cell[], relations: Relation[]): void {
-  for (const c of all) c.hidden = !clears(c.characters, c.installs.size);
+  for (const c of all) c.hidden = !clears(c.characters, c.installs.size, c.reporters.size);
   for (let changed = true; changed;) {
     changed = false;
     for (const { margin, parts } of relations) {
@@ -223,15 +232,18 @@ function suppress(all: Cell[], relations: Relation[]): void {
 function windowOf(id: CensusWindow["id"], rows: readonly Dated[], from: number, to: number): CensusWindow {
   const characters = new Map<string, Character>();
   const installs = new Set<string>();
+  const reporters = new Set<string>();
   for (const d of rows) {
     if (d.at < from || d.at > to) continue;
     installs.add(d.row.installId);
+    if (d.row.reporter) reporters.add(d.row.reporter);
     const c = characters.get(d.row.characterKey);
     if (!c) {
-      characters.set(d.row.characterKey, { latest: d, installs: new Set([d.row.installId]), own: d.row.kind === "census_self" });
+      characters.set(d.row.characterKey, { latest: d, installs: new Set([d.row.installId]), reporters: new Set(d.row.reporter ? [d.row.reporter] : []), own: d.row.kind === "census_self" });
       continue;
     }
     c.installs.add(d.row.installId);
+    if (d.row.reporter) c.reporters.add(d.row.reporter);
     if (d.row.kind === "census_self") c.own = true;
     if (keeps(d, c.latest)) c.latest = d;
   }
@@ -255,7 +267,7 @@ function windowOf(id: CensusWindow["id"], rows: readonly Dated[], from: number, 
     levels.get(bandOf(r.level))!.add(c);
   }
 
-  const collecting = !clears(total.characters, total.installs.size);
+  const collecting = !clears(total.characters, total.installs.size, total.reporters.size);
   const relations: Relation[] = [
     { margin: null, parts: [...factions.values()] },
     { margin: null, parts: [own, seen] },
@@ -291,7 +303,7 @@ function windowOf(id: CensusWindow["id"], rows: readonly Dated[], from: number, 
 
 /** Characters active on each UTC day of the week window that ends after launch, each day under the same thresholds. */
 function trendOf(rows: readonly Dated[], firstDay: number, from: number, to: number, launch: number): CensusView["trend"] {
-  const days = Array.from({ length: CENSUS_WEEK_DAYS }, (_, i) => ({ start: firstDay + i * DAY_MS, characters: new Set<string>(), installs: new Set<string>() }))
+  const days = Array.from({ length: CENSUS_WEEK_DAYS }, (_, i) => ({ start: firstDay + i * DAY_MS, characters: new Set<string>(), installs: new Set<string>(), reporters: new Set<string>() }))
     .filter((d) => d.start + DAY_MS > launch && d.start <= to);
   for (const d of rows) {
     if (d.at < from || d.at > to) continue;
@@ -299,10 +311,11 @@ function trendOf(rows: readonly Dated[], firstDay: number, from: number, to: num
     if (!day) continue;
     day.characters.add(d.row.characterKey);
     day.installs.add(d.row.installId);
+    if (d.row.reporter) day.reporters.add(d.row.reporter);
   }
   return days.map((d) => ({
     day: new Date(d.start).toISOString().slice(0, 10),
-    count: clears(d.characters.size, d.installs.size) ? roundCount(d.characters.size) : null,
+    count: clears(d.characters.size, d.installs.size, d.reporters.size) ? roundCount(d.characters.size) : null,
   }));
 }
 
@@ -333,38 +346,13 @@ export function rollupCensus(rows: readonly CensusRow[], options: CensusOptions)
     asOf: new Date(to).toISOString(),
     launch: new Date(launch).toISOString(),
     launched,
-    rule: { minCharacters: CENSUS_MIN_CHARACTERS, minInstalls: CENSUS_MIN_INSTALLS, roundTo: CENSUS_ROUND_TO },
+    rule: { minCharacters: CENSUS_MIN_CHARACTERS, minInstalls: CENSUS_MIN_INSTALLS, minReporters: CENSUS_MIN_REPORTERS, roundTo: CENSUS_ROUND_TO },
     windows: { week: windowOf("week", dated, weekFrom, to), launch: windowOf("launch", dated, launchFrom, to) },
     trend: launched ? trendOf(dated, firstDay, weekFrom, to, launch) : [],
   };
 }
 
-const KINDS = new Set(["census_self", "census_seen"]);
-const VIAS = new Set(["target", "mouseover", "group"]);
-
-/** The census rows in a record list. Anything else, or a row missing a field the rollup reads, is skipped. */
-export function censusRowsFromRecords(records: readonly unknown[]): CensusRow[] {
-  const rows: CensusRow[] = [];
-  for (const raw of records) {
-    if (!raw || typeof raw !== "object") continue;
-    const r = raw as Record<string, unknown>;
-    if (typeof r.kind !== "string" || !KINDS.has(r.kind) || typeof r.installId !== "string" || !r.installId ||
-      typeof r.capturedAt !== "string" || !Number.isFinite(Date.parse(r.capturedAt)) ||
-      typeof r.characterKey !== "string" || !r.characterKey || typeof r.serverId !== "number" ||
-      typeof r.race !== "string" || typeof r.class !== "string" || typeof r.level !== "number" ||
-      (r.faction !== "Alliance" && r.faction !== "Horde")) continue;
-    rows.push({
-      kind: r.kind as CensusRow["kind"], installId: r.installId, capturedAt: r.capturedAt, characterKey: r.characterKey,
-      serverId: r.serverId, race: r.race, class: r.class, level: r.level, faction: r.faction,
-      ...(typeof r.eventId === "string" ? { eventId: r.eventId } : {}),
-      ...(typeof r.realm === "string" ? { realm: r.realm } : {}),
-      ...(typeof r.via === "string" && VIAS.has(r.via) ? { via: r.via as CensusRow["via"] } : {}),
-    });
-  }
-  return rows;
-}
-
-/** The published census from one record list. `asOf` is when the corpus was current (its dataAsOf). */
-export function censusFromRecords(records: readonly unknown[], asOf: string | Date = new Date(), launch: string = CENSUS_LAUNCH): CensusView {
-  return rollupCensus(censusRowsFromRecords(records), { asOf, launch });
+/** The published census from stored census rows (what uploadStore.loadCensus reads). `asOf` is when the data was current. */
+export function censusFromRows(rows: readonly CensusRow[], asOf: string | Date = new Date(), launch: string = CENSUS_LAUNCH): CensusView {
+  return rollupCensus(rows, { asOf, launch });
 }

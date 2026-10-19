@@ -46,8 +46,8 @@ function windowLine(view: CensusView, w: CensusWindow): string {
 }
 
 function ruleLine(view: CensusView): string {
-  const { minCharacters, minInstalls, roundTo } = view.rule;
-  return `Each character counts once. A count shows when it covers at least ${minCharacters} characters reported by at least ${minInstalls} installs, rounded to the nearest ${roundTo}. "${HIDDEN_LABEL}" means ${HIDDEN_MEANING}. Method: ${METHOD_URL}`;
+  const { minCharacters, minInstalls, minReporters, roundTo } = view.rule;
+  return `Each character counts once. A count shows when it covers at least ${minCharacters} characters reported by at least ${minInstalls} installs from at least ${minReporters} addresses, rounded to the nearest ${roundTo}. "${HIDDEN_LABEL}" means ${HIDDEN_MEANING}. Method: ${METHOD_URL}`;
 }
 
 function cellOf(w: CensusWindow, base: Omit<PopulationCellOut, "count" | "share">, count: CensusCount): PopulationCellOut {
@@ -111,7 +111,7 @@ export function populationAnswer(args: PopulationArgs, view: CensusView): { text
   if (!view.launched) {
     // Nothing to say yet: the not-launched line above is the answer.
   } else if (w.collecting) {
-    lines.push(`Still collecting: no count shows until this window has at least ${view.rule.minCharacters} characters reported by at least ${view.rule.minInstalls} installs. ${w.installs} ${w.installs === 1 ? "install has" : "installs have"} reported in it so far.`);
+    lines.push(`Still collecting: no count shows until this window has at least ${view.rule.minCharacters} characters reported by at least ${view.rule.minInstalls} installs from at least ${view.rule.minReporters} addresses. ${w.installs} ${w.installs === 1 ? "install has" : "installs have"} reported in it so far.`);
   } else {
     lines.push(`${about(w.characters!)} characters, from ${w.installs} installs.`);
     if (!asked) {

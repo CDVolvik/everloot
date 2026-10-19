@@ -2,12 +2,12 @@ import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, expect, test, vi } from "vitest";
 
-// The page reads the stored corpus through the same aggregates as the other upload pages, so these tests
-// feed raw census rows in and check what reaches the HTML.
-const store = vi.hoisted(() => ({ loadCorpus: vi.fn() }));
+// The page reads the store's census rows, so these tests feed stored census rows in and check what reaches the HTML.
+// The end-to-end path through the real store is in census-end-to-end.test.tsx.
+const store = vi.hoisted(() => ({ loadCensus: vi.fn() }));
 vi.mock("@/lib/upload-store", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/upload-store")>()),
-  uploadStore: { loadCorpus: store.loadCorpus },
+  uploadStore: { loadCensus: store.loadCensus },
 }));
 vi.mock("next/link", () => ({
   default: ({ href, children, className, ...rest }: { href: string; children: ReactNode; className?: string; "aria-current"?: "page" }) => (
@@ -24,7 +24,7 @@ let n = 0;
 /** `count` characters of one race and class, reported by three installs in turn. */
 const crowd = (count: number, prefix: string, over: Record<string, unknown> = {}) =>
   Array.from({ length: count }, (_, i) => ({
-    kind: "census_seen", installId: `install-${"abc"[i % 3]}`, eventId: `install-x:census:${++n}`,
+    kind: "census_seen", installId: `install-${"abc"[i % 3]}`, reporter: `${"abc"[i % 3].charCodeAt(0).toString(16)}`.padStart(16, "0"), eventId: `install-x:census:${++n}`,
     capturedAt: "2026-11-15T10:00:00.000Z", characterKey: `${prefix}${i.toString(16).padStart(4, "0")}`, serverId: 4,
     race: "Gnome", class: "PRIEST", level: 20, faction: "Alliance", via: "target", ...over,
   }));
@@ -36,18 +36,18 @@ const RECORDS = [
   ...crowd(4, "a5", { race: "Gnome", class: "MAGE" }),
   ...crowd(30, "a6", { kind: "census_self", realm: "Forever", via: undefined, race: "Troll", class: "PRIEST", faction: "Horde", capturedAt: "2026-11-06T10:00:00.000Z" }),
 ];
-// Each corpus gets its own data time: the aggregates are cached per corpus version.
+// Each read gets its own data time and is a new object, so the page's rollup memo never serves an earlier test's rows.
 let version = 0;
-const corpus = (records: unknown[]) => ({
-  uploads: records.length, records, dataAsOf: new Date(Date.UTC(2026, 10, 16, 12, version++)).toISOString(),
+const corpus = (rows: unknown[]) => ({
+  rows, dataAsOf: new Date(Date.UTC(2026, 10, 16, 12, version++)).toISOString(),
 });
 const html = async (window?: string) => renderToStaticMarkup(await CensusPage({ searchParams: Promise.resolve(window ? { window } : {}) }));
 const text = (page: string) => page.replace(/<[^>]+>/g, " ").replace(/&#x27;|&apos;/g, "'").replace(/\s+/g, " ");
 
-beforeEach(() => store.loadCorpus.mockReset());
+beforeEach(() => store.loadCensus.mockReset());
 
 test("at launch, with nothing reported, the page is collecting: no table, no number, how to take part", async () => {
-  store.loadCorpus.mockResolvedValue(corpus([]));
+  store.loadCensus.mockResolvedValue(corpus([]));
   const page = await html();
   expect(page).not.toContain("<table");
   expect(text(page)).toContain("Still collecting");
@@ -58,14 +58,14 @@ test("at launch, with nothing reported, the page is collecting: no table, no num
 });
 
 test("the top sentence says how many characters, from how many installs, in which window, and links how we count", async () => {
-  store.loadCorpus.mockResolvedValue(corpus(RECORDS));
+  store.loadCensus.mockResolvedValue(corpus(RECORDS));
   const page = text(await html());
   expect(page).toContain("About 110 characters were active in the last 7 days (2026-11-10 to 2026-11-16, UTC), counted from 3 installs");
   expect(page).toContain("How we count");
 });
 
 test("factions, classes, races and level bands show rounded counts; a hidden count reads not enough reports, explained", async () => {
-  store.loadCorpus.mockResolvedValue(corpus(RECORDS));
+  store.loadCensus.mockResolvedValue(corpus(RECORDS));
   const page = await html();
   const words = text(page);
   expect(words).toMatch(/Hunter 65 /);
@@ -74,14 +74,14 @@ test("factions, classes, races and level bands show rounded counts; a hidden cou
   expect(words).toMatch(/20–29 85 /);
   // A lone band at 60 would be the total minus the others: it is hidden along with the hidden ones.
   expect(words).toMatch(/At 60 not enough reports/);
-  expect(words).toContain("“not enough reports” means fewer than 10 characters or fewer than 3 installs, or hidden so that a small count can't be worked out from the others");
+  expect(words).toContain("“not enough reports” means fewer than 10 characters, fewer than 3 installs or fewer than 3 addresses, or hidden so that a small count can't be worked out from the others");
   expect(page).toContain('<th scope="col" class="px-4 py-3">Class</th>');
   expect(page).toContain("Factions");
   expect(page).toContain("Level bands");
 });
 
 test("the race and class grid is Blizzard's table per faction, with counts in the playable cells", async () => {
-  store.loadCorpus.mockResolvedValue(corpus(RECORDS));
+  store.loadCensus.mockResolvedValue(corpus(RECORDS));
   const page = await html();
   const grids = page.match(/<table[^>]*>\s*<caption[^>]*>[^<]*(Horde|Alliance) races and classes[\s\S]*?<\/table>/g)!;
   expect(grids).toHaveLength(2);
@@ -92,7 +92,7 @@ test("the race and class grid is Blizzard's table per faction, with counts in th
 });
 
 test("since launch is a second window, linked from the first and marked as the current one", async () => {
-  store.loadCorpus.mockResolvedValue(corpus(RECORDS));
+  store.loadCensus.mockResolvedValue(corpus(RECORDS));
   const week = await html();
   expect(week).toMatch(/<a href="\/census" [^>]*aria-current="page"/);
   const launch = await html("launch");
@@ -101,7 +101,7 @@ test("since launch is a second window, linked from the first and marked as the c
 });
 
 test("the 7-day trend lists each day, and the bias line says how many were seen and how many are uploaders' own", async () => {
-  store.loadCorpus.mockResolvedValue(corpus(RECORDS));
+  store.loadCensus.mockResolvedValue(corpus(RECORDS));
   const words = text(await html("launch"));
   expect(words).toContain("2026-11-15 110");
   expect(words).toMatch(/2026-11-10 not enough reports/);
@@ -109,7 +109,7 @@ test("the 7-day trend lists each day, and the bias line says how many were seen 
 });
 
 test("no character key, install id or event id reaches the page", async () => {
-  store.loadCorpus.mockResolvedValue(corpus(RECORDS));
+  store.loadCensus.mockResolvedValue(corpus(RECORDS));
   const page = (await html()) + (await html("launch"));
   expect(page).not.toContain("install-");
   expect(page).not.toMatch(/a[1-6]00[0-9a-f]{2}/);
@@ -117,7 +117,7 @@ test("no character key, install id or event id reaches the page", async () => {
 });
 
 test("before launch the page says the game has not launched: no window, no dates, no collecting", async () => {
-  store.loadCorpus.mockResolvedValue({ uploads: 1, records: crowd(30, "z1", { capturedAt: "2026-10-18T10:00:00.000Z" }), dataAsOf: "2026-10-18T12:00:00.000Z" });
+  store.loadCensus.mockResolvedValue({ rows: crowd(30, "z1", { capturedAt: "2026-10-18T10:00:00.000Z" }), dataAsOf: "2026-10-18T12:00:00.000Z" });
   const page = await html();
   expect(text(page)).toContain("WoW: Forever hasn't launched yet. The census starts counting at launch, 2026-11-04 at 23:00 UTC");
   expect(text(page)).toContain("Not launched yet");
@@ -129,7 +129,7 @@ test("before launch the page says the game has not launched: no window, no dates
 });
 
 test("unreadable storage says so, never a collecting page or a zero", async () => {
-  store.loadCorpus.mockResolvedValue({ uploads: 0, records: [], unreachable: true });
+  store.loadCensus.mockResolvedValue({ rows: [], dataAsOf: null, unreachable: true });
   const page = await html();
   expect(page).toContain(STORAGE_UNREACHABLE);
   expect(page).not.toContain("Still collecting");

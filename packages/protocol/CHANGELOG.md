@@ -7,6 +7,7 @@ required, or tightening a limit is a major release.
 ## [Unreleased]
 
 ### Added
+- 1.3.0: a census count also needs 3 distinct addresses (`reporter`, the keyed address hash intake stamps), so `population`'s `rule` gains `minReporters` and a hidden count is null for fewer than 10 characters, 3 installs or 3 addresses, or when held back so it can't be worked out.
 - 1.2.0: the MCP tool `population` (who plays what, from the census) with its output shape `populationPage`
   (`populationCell`, `CENSUS_FACTIONS`, `CENSUS_WINDOWS`), emitted as `schema/mcp/population.json`, and in
   `PLAYER_DATA_TOOLS`. A hidden count is null; the page says whether the game has launched and whether the

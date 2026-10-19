@@ -1,7 +1,7 @@
 import { beforeEach, expect, test, vi } from "vitest";
 
-const store = vi.hoisted(() => ({ loadCorpus: vi.fn() }));
-vi.mock("@/lib/upload-store", () => ({ uploadStore: { loadCorpus: store.loadCorpus } }));
+const store = vi.hoisted(() => ({ loadCorpus: vi.fn(), loadCensus: vi.fn() }));
+vi.mock("@/lib/upload-store", () => ({ uploadStore: { loadCorpus: store.loadCorpus, loadCensus: store.loadCensus } }));
 
 const fns = vi.hoisted(() => ({
   windows: vi.fn((records: unknown[]) => records.map((_, i) => ({ i }))),
@@ -83,6 +83,7 @@ test("an unreadable store stays unreadable and never serves stale aggregates", a
   expect((await loadWorldFacts()).unreachable).toBe(true);
   expect(await loadPopularAddons()).toEqual({ addons: [], reportingInstalls: 0, unreachable: true, dataAsOf: null });
   expect(await loadObservedEdges()).toEqual({ edges: [], unreachable: true, dataAsOf: null });
+  store.loadCensus.mockResolvedValue({ rows: [], dataAsOf: null, unreachable: true });
   expect(await loadCensus()).toEqual({ view: null, unreachable: true, dataAsOf: null });
   expect(fns.windows).not.toHaveBeenCalled();
   // A readable corpus afterwards still aggregates fresh.

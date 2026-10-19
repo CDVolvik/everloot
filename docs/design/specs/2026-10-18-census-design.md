@@ -77,7 +77,10 @@ census_self | census_seen
 2. **No record-level census rows are public.** Like addon lists, `census_*` rows stay out of the public
    corpus and feed a private rollup. Only aggregates are published.
 3. **Small cells are hidden.** A count for any slice (ruleset × region × faction × race × class × level
-   band) shows only when it covers at least 10 characters reported by at least 3 installs. Below that it
+   band) shows only when it covers at least 10 characters reported by at least 3 installs from at least 3
+   distinct addresses. Intake stamps each stored row with `reporter`, a keyed hash of the sender's address;
+   a row without one counts toward installs but not toward addresses, so many install ids behind one
+   address don't clear the bar. Below that it
    reads "not enough reports", never a number that could point at one person. A cell with 40 characters
    from 2 installs is hidden too, so the label doesn't say "fewer than 10".
    Hiding a cell is not enough on its own: a hidden part could be worked out from its total and the
@@ -103,7 +106,7 @@ census_self | census_seen
   over-represent the zones uploaders play in. The page shows both shares ("62% seen, 38% own") so readers
   can judge.
 
-- **Known risk: forged uploads.** Someone who fakes uploads from 3 installs can make a small cell clear
+- **Known risk: forged uploads.** Someone who fakes uploads from 3 installs and 3 addresses can make a small cell clear
   the 3-install threshold. By adding rows one at a time and watching the published counts move, they can
   still narrow down hidden numbers. Rounding and complementary suppression don't help against someone who
   controls the rows. The per-install daily cap slows this down but doesn't stop it. It is stated on
@@ -138,4 +141,4 @@ step 2's in-game check has to happen before then or on launch day.
    are kept, under a key nobody can reverse, and nothing is shown below 10.
 2. **Opt-in.** Census is off until the player runs `/everloot census on`, like every other module. The
    privacy promise doesn't change.
-3. **Small-cell threshold: 10 characters**, reported by at least 3 installs.
+3. **Small-cell threshold: 10 characters**, reported by at least 3 installs from at least 3 addresses.
