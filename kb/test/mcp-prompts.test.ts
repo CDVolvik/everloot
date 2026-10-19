@@ -61,3 +61,12 @@ test("a missing required argument is refused, and an unknown prompt is an error"
   await expect(c.getPrompt({ name: "review_talent_plan", arguments: { code: "  " } })).rejects.toThrow(/needs code/);
   await expect(c.getPrompt({ name: "no_such_prompt", arguments: {} })).rejects.toThrow();
 });
+
+test("what_changed takes forever or classic in any case, and refuses any other game instead of reading it as both", async () => {
+  const c = await client();
+  const classic = (await c.getPrompt({ name: "what_changed", arguments: { game: " Classic " } })).messages[0].content as { text: string };
+  expect(classic.text).toContain("WoW Classic with recent_changes (game classic, filter all, limit 25)");
+  await expect(c.getPrompt({ name: "what_changed", arguments: { game: "retail" } })).rejects.toThrow(/what_changed takes game forever or classic/);
+  const blank = (await c.getPrompt({ name: "what_changed", arguments: { game: " " } })).messages[0].content as { text: string };
+  expect(blank.text).toContain("WoW: Forever and WoW Classic");
+});

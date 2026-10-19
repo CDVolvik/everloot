@@ -63,6 +63,21 @@ test("profession_path and recipe_thresholds answer with the path and the ranges 
   expect(none.page).toEqual({ profession: "Tailoring", ranges: [] });
 });
 
+test("a blank profession is refused as an error, not answered as a connected empty page", async () => {
+  const c = await client({ corpus });
+  const blank = { profession_path: { profession: "  ", fromSkill: 1, toSkill: 10 }, recipe_thresholds: { profession: "  " } };
+  for (const [name, args] of Object.entries(blank)) {
+    const result = await c.callTool({ name, arguments: args });
+    expect(result.isError, name).toBe(true);
+    expect(result.structuredContent, name).toBeUndefined();
+    expect(JSON.stringify(result.content), name).toContain("Name a profession.");
+  }
+  // Refused before any read: the same answer when no corpus is connected.
+  const offline = await (await client()).callTool({ name: "profession_path", arguments: { profession: "", fromSkill: 1, toSkill: 10 } });
+  expect(offline.isError).toBe(true);
+  expect(JSON.stringify(offline.content)).toContain("Name a profession.");
+});
+
 test("entity_relations answers with the observed and game-file edges the text lists, cut per group", async () => {
   const c = await client({ corpus });
   const observed = observedEdgesFromRecords(records);
