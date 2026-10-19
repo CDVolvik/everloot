@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { handleItemPage, itemPage, type DropRateRow, type ItemFacts, type NpcSighting } from "../src/item-page.js";
+import { agreedItemNames, handleItemPage, itemPage, type DropRateRow, type ItemFacts, type NpcSighting } from "../src/item-page.js";
 
 const rate = (extra: Partial<DropRateRow> = {}): DropRateRow => ({
   sourceNpcId: 456,
@@ -58,4 +58,19 @@ test("zero drops in a public sample names the kills", () => {
   expect(text).toContain("0 items in 9 observed loot windows");
   expect(text).not.toContain("Drop rate unrecorded");
   expect(text).not.toContain("0.0%");
+});
+
+test("agreedItemNames gives the names itemPage would, for every item at once", () => {
+  const seen = (installId: string, itemId: number, name: string) => ({ installId, itemId, name });
+  const facts: ItemFacts = {
+    rates: [], npcs: [],
+    names: [
+      seen("a", 1, "Linen Cloth"), seen("b", 1, "linen cloth "), seen("c", 1, "Linen Cloth"),
+      seen("a", 2, "Copper Ore"), seen("b", 2, "Copper Ore"),
+      seen("a", 3, "Tin Ore"), seen("b", 3, "Tin Ore"), seen("c", 3, "Tin Ore"), seen("a", 3, "Iron Ore"), seen("b", 3, "Iron Ore"), seen("c", 3, "Iron Ore"),
+    ],
+  };
+  const names = agreedItemNames(facts);
+  expect([...names]).toEqual([[1, "Linen Cloth"]]);
+  for (const id of [1, 2, 3]) expect(names.get(id) ?? null).toBe(itemPage(id, facts).name);
 });

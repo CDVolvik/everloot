@@ -3,9 +3,9 @@ import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 import { GAME_DATA_CREDIT } from "@everloot/protocol";
 import { CLIENT_LABEL } from "../../../../../kb/src/edges";
-import { itemPage } from "../../../../../kb/src/item-page";
+import { agreedItemNames, itemPage } from "../../../../../kb/src/item-page";
 import { describe, filterItems, QUALITIES, resolveClass, resolveLegacyClass, resolveSubclass, slotOf, type ItemClass, type ItemSubclass } from "../../../../../kb/src/item-taxonomy";
-import { CLIENT_LAYER, CLIENT_TAXONOMY as T, categoryQuery, ITEMS_PER_PAGE, itemsHref, type CategoryQuery } from "@/lib/items";
+import { CLIENT_LAYER, CLIENT_TAXONOMY as T, categoryNamedEnough, categoryQuery, ITEMS_PER_PAGE, itemsHref, type CategoryQuery } from "@/lib/items";
 import { pageMetadata } from "@/lib/seo";
 import { loadItemFacts } from "@/lib/rollup-compute";
 import { loadItemTips, loadSiteAssets } from "@/lib/game-assets";
@@ -36,20 +36,23 @@ function resolve(classSlug: string, subclassKey: string | undefined, search: Sea
 
 const subName = (s: ItemSubclass) => s.name ?? `Subclass ${s.id}`;
 
-export function categoryMetadata(classSlug: string, subclassKey: string | undefined, search: Search): Metadata {
+export async function categoryMetadata(classSlug: string, subclassKey: string | undefined, search: Search): Promise<Metadata> {
   const r = resolve(classSlug, subclassKey, search);
   if (!r) return { robots: { index: false, follow: true } };
   const name = r.sub ? `${subName(r.sub)} (${r.cls.label})` : r.cls.label;
   const count = r.sub ? r.sub.items : r.cls.items;
-  // Only the plain category page is indexed; filtered and later pages repeat it.
+  // Only the plain category page is indexed; filtered and later pages repeat it. And only once half its
+  // rows have a name: until then it is a list of "Item N" (the sitemap leaves it out for the same reason).
   const plain = !r.q.slot && !r.q.quality && r.q.page === 1;
+  const facts = plain ? await loadItemFacts() : null;
+  const named = facts && !facts.unreachable ? agreedItemNames(facts) : new Map<number, string>();
   return {
     ...pageMetadata({
       title: r.sub ? `${name} items` : name,
       description: `${count} WoW: Forever items in ${name}, from the game files of build ${CLIENT_LAYER.build.version}, found in game files and unconfirmed.`,
       path: itemsHref(r.cls.slug, r.sub?.slug),
     }),
-    robots: { index: plain, follow: true },
+    robots: { index: plain && categoryNamedEnough(r.cls.id, r.sub?.id, named), follow: true },
   };
 }
 

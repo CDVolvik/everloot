@@ -115,8 +115,8 @@ test("links the repository's policy files", () => {
   for (const file of ["DATA_POLICY.md", "THIRD_PARTY.md", "TRADEMARKS.md", "kb/README.md"]) expect(page).toContain(file);
 });
 
-test("is in the sitemap, the header and the footer", () => {
-  expect(sitemap().map((entry) => new URL(entry.url).pathname)).toContain("/connect");
+test("is in the sitemap, the header and the footer", async () => {
+  expect((await sitemap()).map((entry) => new URL(entry.url).pathname)).toContain("/connect");
   expect(renderToStaticMarkup(<Header />)).toContain('href="/connect"');
   expect(renderToStaticMarkup(<Footer />)).toContain('href="/connect"');
   expect(metadata.alternates?.canonical).toBe("/connect");

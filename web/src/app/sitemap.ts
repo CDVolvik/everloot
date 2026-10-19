@@ -5,7 +5,9 @@ import { tools, toolHref } from "@/data/tools";
 import { MAP_DATA_EXTRACTED_AT, TALENT_DATA_EXTRACTED_AT } from "@/lib/build-stamp";
 import { loadTimeline } from "@/lib/changes";
 import { TALENT_CLASSES } from "@/lib/talents/catalogs";
-import { CLIENT_LAYER, CLIENT_TAXONOMY, itemsHref } from "@/lib/items";
+import { CLIENT_LAYER, CLIENT_TAXONOMY, categoryNamedEnough, itemsHref } from "@/lib/items";
+import { loadItemFacts } from "@/lib/rollup-compute";
+import { agreedItemNames } from "../../../kb/src/item-page";
 
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://everloot.app";
 
@@ -14,14 +16,17 @@ const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://everloot.app";
  * extraction date for the pages drawn from the game files, the day the launch sentence was read for
  * /wow-forever. Every other page has none, because a made-up date teaches crawlers to ignore the field.
  */
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticRoutes = ["/", "/wow-forever", "/methodology", "/about", "/privacy", "/terms", "/security", "/accessibility", "/contact", "/upload", "/lore", "/changes", "/map", "/database", "/database/items", "/database/drops", "/database/npcs", "/database/objects", "/database/quests", "/database/vendors", "/tools/collections", "/tools/guild-board", "/tools/auctions", "/tools/gold-ledger", "/addons", "/addons/popular", "/census", "/addons/ecosystem", "/addons/polestar", "/addons/polestar/packs", "/addons/polestar/wanted", "/connect"];
 
   const talentRoutes = TALENT_CLASSES.map((slug) => `/tools/talents/${slug}`);
-  // Item categories from the client layer: each class and subclass that holds items, first page only.
+  // Item categories from the client layer: each class and subclass that holds items, first page only, and only
+  // once half that page has a name (the page itself says noindex until then).
+  const facts = await loadItemFacts();
+  const named = facts.unreachable ? new Map<number, string>() : agreedItemNames(facts);
   const itemRoutes = CLIENT_TAXONOMY.classes.filter((c) => c.items > 0).flatMap((c) => [
-    itemsHref(c.slug),
-    ...CLIENT_TAXONOMY.subclasses.filter((s) => s.classId === c.id && s.items > 0).map((s) => itemsHref(c.slug, s.slug)),
+    ...(categoryNamedEnough(c.id, undefined, named) ? [itemsHref(c.slug)] : []),
+    ...CLIENT_TAXONOMY.subclasses.filter((s) => s.classId === c.id && s.items > 0 && categoryNamedEnough(c.id, s.id, named)).map((s) => itemsHref(c.slug, s.slug)),
   ]);
   const paths = [...new Set([...staticRoutes, ...talentRoutes, ...itemRoutes, ...tools.filter((tool) => tool.status !== "coming-soon").map(toolHref)])];
 
