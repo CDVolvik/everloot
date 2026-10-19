@@ -45,6 +45,21 @@ id. The link lasts until the rollup is rebuilt (`?rebuild=1`), which drops every
 were deleted; deleting a player's uploads therefore takes a rebuild to remove the link. Turning the
 module off deletes every one of these rows from the file.
 
+The census (from the next addon release, off until `/everloot census on`) counts who plays what. It
+records race, class, level and faction for your own characters as you log in, plus the realm name, and
+for players you target, mouse over or group with. For other players it reads those four things only,
+never their name, guild, gear or position. The addon keeps one row per character per day. Each row
+carries the character's GUID, the game's id for it, only on the way to us: before anything is stored,
+the site replaces it with a keyed hash (HMAC-SHA256 under a server secret) and keeps the server id, the
+number inside the GUID that says which server the character is on. Without the secret nobody can turn a
+GUID seen in game into our hash. If the secret is not set, census rows are dropped and nothing from them
+is stored. So what is kept per character is the hash, the server id, race, class, level, faction, and
+the realm name for your own characters, stored with the upload's install id like every other row.
+Census rows (`census_self`, `census_seen`) are never published row by row and are kept out of the public
+corpus, like addon lists. One install counts at most 500 players seen and 50 own characters a day, so
+no one install can invent a crowd. Only counts are shown, and a count appears only when it covers at least 10
+characters reported by at least 3 installs. Below that it reads "fewer than 10".
+
 Blizzard hides some WoW: Forever item details until an item drops, and runs no public test realm.
 Game files show what exists; play shows what is real. Everloot keeps the two apart and says which
 is which.
