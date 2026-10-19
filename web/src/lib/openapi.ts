@@ -31,13 +31,16 @@ function componentSchema(schema: z.ZodType): Json {
 }
 
 function operationId(route: ApiRoute): string {
-  return `${route.method.toLowerCase()}${route.path.replace(/^\/api/, "").split("/").filter(Boolean).map((p) => p[0].toUpperCase() + p.slice(1).replace(/-([a-z])/g, (_, c: string) => c.toUpperCase())).join("")}`;
+  // A path parameter `{tool}` reads as `ByTool`, so the id stays a plain identifier.
+  const segments = route.path.replace(/^\/api/, "").split("/").filter(Boolean).map((p) => (/^\{.+\}$/.test(p) ? `by-${p.slice(1, -1)}` : p));
+  return `${route.method.toLowerCase()}${segments.map((p) => p[0].toUpperCase() + p.slice(1).replace(/-([a-z])/g, (_, c: string) => c.toUpperCase())).join("")}`;
 }
 
 function operation(route: ApiRoute): Json {
-  const parameters = (route.query ?? []).map((q) => ({
-    name: q.name, in: "query", required: q.required ?? false, description: q.description, schema: q.schema,
-  }));
+  const parameters = [
+    ...(route.pathParams ?? []).map((p) => ({ name: p.name, in: "path", required: true, description: p.description, schema: p.schema })),
+    ...(route.query ?? []).map((q) => ({ name: q.name, in: "query", required: q.required ?? false, description: q.description, schema: q.schema })),
+  ];
   const responses: Json = {};
   for (const [code, response] of Object.entries(route.responses)) {
     responses[code] = {

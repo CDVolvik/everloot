@@ -268,6 +268,12 @@ export default function ConnectPage() {
           the tree with slugs and counts is at <code className="font-mono text-fg">/api/items/categories</code>. They carry the same{" "}
           <code className="font-mono text-fg">gameData</code> notice.
         </p>
+        <p className="text-fg-2">
+          Every MCP tool also answers a plain GET at <code className="font-mono text-fg">/api/tools/&#123;tool&#125;</code>, with the
+          tool&apos;s arguments as query parameters, named and typed as in its schema file (for example{" "}
+          <code className="font-mono text-fg">/api/tools/item_page?itemId=19019</code>). The <code className="font-mono text-fg">answer</code>{" "}
+          field is the same structured content an MCP client gets, and <code className="font-mono text-fg">text</code> the same words.
+        </p>
       </Section>
 
       <Section id="api" title="API reference">

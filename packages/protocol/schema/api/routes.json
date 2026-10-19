@@ -417,6 +417,75 @@
   },
   {
     "method": "GET",
+    "path": "/api/tools/{tool}",
+    "summary": "One MCP tool's answer over plain HTTP",
+    "description": "Every tool of the MCP server, callable with a GET: the tool's arguments go in the query string (numbers and booleans as plain text), named and typed as in /schema/mcp/{tool}.json. The answer is the tool's structured content, with the same text an MCP client gets. A wrong argument is a 400 that says which; an unknown tool is a 404 that lists the tools. Answers built on player uploads say how old the data is and carry the credit line; game-file answers are labelled unconfirmed with their build.",
+    "access": "key-or-rate-limited",
+    "data": "mixed",
+    "pathParams": [
+      {
+        "name": "tool",
+        "description": "A tool name from the MCP tool list.",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "search_knowledge",
+            "get_entity",
+            "get_by_name",
+            "search",
+            "fetch",
+            "answer_sources",
+            "profession_path",
+            "recipe_thresholds",
+            "item_page",
+            "npc_page",
+            "object_page",
+            "quest_page",
+            "vendor_page",
+            "world_map_near",
+            "entity_relations",
+            "item_categories",
+            "talent_tree",
+            "talent_plan",
+            "collection_gap",
+            "completion_progress",
+            "guild_board",
+            "auction_history",
+            "market_value",
+            "gold_ledger",
+            "recent_changes",
+            "ecosystem_projects",
+            "everloot_plan"
+          ]
+        },
+        "required": true
+      }
+    ],
+    "responses": {
+      "200": {
+        "description": "The tool's answer.",
+        "schema": "toolAnswerResponse"
+      },
+      "400": {
+        "description": "A parameter is wrong; `error` says which.",
+        "schema": "apiError"
+      },
+      "404": {
+        "description": "No such tool; `error` lists them.",
+        "schema": "apiError"
+      },
+      "429": {
+        "description": "Rate limited. `Retry-After` says when to try again.",
+        "schema": "apiError"
+      },
+      "503": {
+        "description": "A dependency is unavailable. The answer is unrecorded, not zero.",
+        "schema": "apiError"
+      }
+    }
+  },
+  {
+    "method": "GET",
     "path": "/api/health",
     "summary": "Whether the public snapshot is fresh",
     "description": "200 when the corpus snapshot was written recently, 503 otherwise. Metadata only.",

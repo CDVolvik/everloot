@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ENTITY_KINDS, RELS } from "./mcp.js";
+import { ENTITY_KINDS, MCP_TOOL_NAMES, RELS } from "./mcp.js";
 import { anyRecord, PUBLIC_RECORD_KINDS } from "./records.js";
 
 /**
@@ -181,6 +181,19 @@ export const itemCategoriesResponse = z.object({
 });
 export type ItemCategoriesResponse = z.infer<typeof itemCategoriesResponse>;
 
+/**
+ * GET /api/tools/{tool}: one MCP tool's answer over plain HTTP. `answer` is the tool's structured content,
+ * of the shape its schema file declares under outputSchema; `text` is the same answer as the MCP text block.
+ */
+export const toolAnswerResponse = z.object({
+  tool: z.string().describe("The tool's name, as in the MCP tool list."),
+  arguments: z.record(z.string(), z.unknown()).describe("The arguments as the tool read them, defaults applied."),
+  answer: z.record(z.string(), z.unknown()).describe("The tool's structured answer. Its schema: /schema/mcp/{tool}.json#/outputSchema."),
+  text: z.string().describe("The same answer as the MCP text block, for a reader."),
+  schema: z.string().describe("The URL of the tool's schema file."),
+});
+export type ToolAnswerResponse = z.infer<typeof toolAnswerResponse>;
+
 /** One accepted or rejected row in an intake receipt, by its index in the request. */
 const receiptEntry = z.object({ index: z.number().int(), kind: z.string().optional(), reason: z.string().optional() });
 
@@ -237,6 +250,7 @@ export const API_SCHEMAS = {
   edgesResponse,
   itemsResponse,
   itemCategoriesResponse,
+  toolAnswerResponse,
   intakeRequest,
   intakeReceipt,
   intakeRefused,
@@ -261,6 +275,8 @@ export interface ApiRoute {
   access: "open" | "rate-limited" | "key-or-rate-limited" | "cron";
   /** Which data layer the answer carries. */
   data: "observed" | "game-files" | "mixed" | "none";
+  /** Parameters in the path, written as `{name}` in `path`. */
+  pathParams?: ApiQueryParam[];
   query?: ApiQueryParam[];
   requestBody?: ApiSchemaName;
   responses: Record<string, { description: string; schema?: ApiSchemaName }>;
@@ -369,6 +385,18 @@ export const API_ROUTES: readonly ApiRoute[] = [
       "422": { description: "The envelope or every record was refused; the receipt says why.", schema: "intakeRefused" },
       "429": { description: "Rate limited; keep the file and retry after `Retry-After`.", schema: "intakeRefused" },
       "503": { description: "Storage could not confirm the write; keep the file and retry.", schema: "intakeRefused" },
+    },
+  },
+  {
+    method: "GET", path: "/api/tools/{tool}",
+    summary: "One MCP tool's answer over plain HTTP",
+    description: "Every tool of the MCP server, callable with a GET: the tool's arguments go in the query string (numbers and booleans as plain text), named and typed as in /schema/mcp/{tool}.json. The answer is the tool's structured content, with the same text an MCP client gets. A wrong argument is a 400 that says which; an unknown tool is a 404 that lists the tools. Answers built on player uploads say how old the data is and carry the credit line; game-file answers are labelled unconfirmed with their build.",
+    access: "key-or-rate-limited", data: "mixed",
+    pathParams: [{ name: "tool", description: "A tool name from the MCP tool list.", schema: { type: "string", enum: [...MCP_TOOL_NAMES] }, required: true }],
+    responses: {
+      "200": { description: "The tool's answer.", schema: "toolAnswerResponse" },
+      "404": { description: "No such tool; `error` lists them.", schema: "apiError" },
+      ...ERROR_RESPONSES,
     },
   },
   {

@@ -48,6 +48,8 @@ required, or tightening a limit is a major release.
 - `outputSchema` for `gold_ledger` (`goldLedger`, with `INCOME_CATEGORIES` and `SPENDING_CATEGORIES`) and
   `world_map_near` (`mapNear`), the last two: every tool is structured now (`STRUCTURED_TOOLS` is the
   whole list).
+- `GET /api/tools/{tool}` in `API_ROUTES` with its response shape `toolAnswerResponse` (tool, arguments,
+  answer, text, schema); `pathParams` on `ApiRoute` for parameters written as `{name}` in the path.
 - `GET /api/items/categories` in `API_ROUTES` with its response shape `itemCategoriesResponse` (classes with
   subclasses, slots, qualities, the game-data notice), so the OpenAPI document and the connect reference
   describe the endpoint the site already served.

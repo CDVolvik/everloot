@@ -461,11 +461,21 @@ export async function readPage<T>(tool: ToolName, loader: CorpusLoader | undefin
   return { text: `${built.text}\n${answerFooter(read.dataAsOf)}`, structured: { connected: true, dataAsOf: read.dataAsOf, page: built.page } };
 }
 
-export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; market?: MarketLoader; completion?: CompletionLoader; changes?: ChangesLoader; ecosystem?: EcosystemLoader } = {}): McpServer {
-  const server = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION, websiteUrl: SOURCE_URL }, { instructions: SERVER_INSTRUCTIONS });
+/** The readers a host lends the tools: the site's store in process, or nothing for a standalone server. */
+export interface ToolOptions { corpus?: CorpusLoader; market?: MarketLoader; completion?: CompletionLoader; changes?: ChangesLoader; ecosystem?: EcosystemLoader }
+
+/** A tool's answer: the text every client gets, and the structured content of the tool's output schema. */
+export type ToolAnswer = Answer;
+export type ToolHandlers = { [K in McpToolName]: (args: McpToolArgs<K>) => ToolAnswer | Promise<ToolAnswer> };
+
+/**
+ * One handler per tool, typed by the protocol's input shape. The MCP registration in
+ * createKnowledgeServer and the site's GET /api/tools/{tool} are both thin wrappers over these, so
+ * a tool answers the same over MCP and over plain HTTP.
+ */
+export function createToolHandlers(db: DB, options: ToolOptions = {}): ToolHandlers {
   const readFacts = <T>(tool: ToolName, render: (facts: T) => string) => fromTooledUploads(tool, render, options.corpus);
-  /** One handler per tool, typed by the protocol's input shape; the MCP registration below is a thin wrapper. */
-  const handlers: { [K in McpToolName]: (args: McpToolArgs<K>) => Answer | Promise<Answer> } = {
+  const handlers: ToolHandlers = {
     search_knowledge: (args) => ({ text: handleSearch(db, args), structured: { hits: searchHits(db, args) } }),
     get_entity: (args) => ({ text: handleGetEntity(db, args), structured: { hit: getEntity(db, args.id) ?? null } }),
     get_by_name: (args) => ({ text: handleGetByName(db, args), structured: { hits: getByName(db, args.name, args.kind) } }),
@@ -556,6 +566,13 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; 
     },
     everloot_plan: () => ({ text: handlePlan(), structured: planStructured() }),
   };
+  void readFacts;
+  return handlers;
+}
+
+export function createKnowledgeServer(db: DB, options: ToolOptions = {}): McpServer {
+  const server = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION, websiteUrl: SOURCE_URL }, { instructions: SERVER_INSTRUCTIONS });
+  const handlers = createToolHandlers(db, options);
   for (const name of MCP_TOOL_NAMES) {
     const def: McpToolDef = MCP_TOOLS[name];
     server.registerTool(
