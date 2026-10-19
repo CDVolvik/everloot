@@ -123,6 +123,22 @@ export interface ChatInfo {
 }
 
 /** One of the player's own characters, from the save file. Never uploaded from here. */
+export interface GearSlot {
+  slot: string;
+  itemLevel: number;
+}
+export interface MoneyRow {
+  at: string;
+  category: string;
+  copper: number;
+  direction: "in" | "out";
+}
+export interface MoneyDay {
+  /** UTC day, YYYY-MM-DD. */
+  date: string;
+  earned: number;
+  spent: number;
+}
 export interface CharacterRow {
   character: string;
   realm: string;
@@ -131,6 +147,8 @@ export interface CharacterRow {
   peakGold: number | null;
   gearSlots: number;
   itemLevel: number | null;
+  /** The latest gear snapshot's slots, in the game's order. */
+  equipped: GearSlot[];
   /** Copper by category, from money events this file holds. */
   spent: Record<string, number>;
   earned: Record<string, number>;
@@ -138,6 +156,10 @@ export interface CharacterRow {
   history: { at: string; copper: number }[];
   /** Money events from the last seven days. */
   week: { earned: number; spent: number };
+  /** The last thirty UTC days of money events, oldest first. */
+  days: MoneyDay[];
+  /** The newest money events, at most twelve. */
+  receipts: MoneyRow[];
 }
 /** Progress rows carry an opaque per-install key instead of a name (intake.ts CHARACTER_KEY). */
 export interface ProgressRow {
