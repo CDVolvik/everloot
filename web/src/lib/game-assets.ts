@@ -6,6 +6,7 @@ import { itemTipText, qualityColor } from "@/lib/item-names";
 import { assetPath, assetsBaseUrl, MANIFEST_SCHEMA } from "@/lib/talents/assets";
 import type { ItemRecord } from "../../../kb/src/assets/items";
 import { worldToMap } from "../../../kb/src/world-coords";
+import { mayShowName } from "../../../kb/src/item-name-rule";
 
 // Blizzard's icons, item tooltip facts and map pictures across the site (docs/DATA_POLICY.md,
 // "Blizzard's icons, tooltip text and window frame"; docs/ASSETS.md). Server-side only: pages call it
@@ -318,7 +319,8 @@ export async function loadItemNames(version: string, base: string | null = asset
     parsedNames.set(raw, f.success ? {
       version: f.data.build.version,
       wiki: { name: f.data.wiki.name, url: f.data.wiki.url },
-      names: new Map(Object.entries(f.data.names).map(([id, x]) => [Number(id), { name: x.n, color: qualityColor(x.q), wikiPage: `${WIKI_PAGE_PREFIX}${x.w}` }])),
+      // The rule is applied again here, so a file written before a change to it cannot show what it now holds back.
+      names: new Map(Object.entries(f.data.names).filter(([id, x]) => mayShowName(Number(id), x.n)).map(([id, x]) => [Number(id), { name: x.n, color: qualityColor(x.q), wikiPage: `${WIKI_PAGE_PREFIX}${x.w}` }])),
     } : null);
   }
   const names = parsedNames.get(raw) ?? null;

@@ -260,6 +260,12 @@ test("the shown item names come from one private file for the client layer's bui
   expect(names?.names.has(9)).toBe(false);
 });
 
+test("the reader applies the id cap and the placeholder rule again, whatever the file holds", async () => {
+  const file = { ...namesFile, count: 4, names: { ...namesFile.names, 191666: { n: "Skeletal Steed", q: 4, w: "Skeletal_Steed" }, 883: { n: "Deprecated Fire Eyed Skull", q: 1, w: "Deprecated_Fire_Eyed_Skull" } } };
+  const names = await loadItemNames("1.60.1.70450", BASE, memoryStore({ [`${FOLDER}/item-names.json`]: file }));
+  expect([...names!.names.keys()].sort((a, b) => a - b)).toEqual([2589, 19019]);
+});
+
 test("without the file, the bucket or the asset URL, or with a file for another build or of another kind, no names show", async () => {
   const store = (file: unknown) => memoryStore({ [`${FOLDER}/item-names.json`]: file });
   expect(await loadItemNames("1.60.1.70450", BASE, memoryStore({}))).toBeNull();

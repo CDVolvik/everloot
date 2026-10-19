@@ -19,6 +19,7 @@ import Database from "better-sqlite3";
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { readClientMeta, readClientRows } from "./client-snapshot.js";
+import { mayShowName, SHOWN_MAX_ITEM_ID } from "./item-name-rule.js";
 import type { TableReader } from "./talents/build-catalog.js";
 
 export const LEDGER_SCHEMA = "everloot.item-name-ledger/1";
@@ -104,25 +105,33 @@ export function parseLedger(json: unknown): Ledger {
   return l as Ledger;
 }
 
-/** How many of `ids` fall in each tier for the build, and the mismatches (id, game file name, wiki names). */
+/**
+ * How many of `ids` fall in each tier for the build, how many matches are held back (id at or above
+ * SHOWN_MAX_ITEM_ID, or a placeholder name), and the mismatches (id, game file name, wiki names).
+ */
 export function coverage(ledger: Ledger, build: string, ids: Iterable<number>) {
   const counts = Object.fromEntries(TIERS.map((t) => [t, 0])) as Record<Tier, number>;
+  const held = { highId: 0, internalName: 0 };
   const mismatches: { id: number; files: string; wiki: string[] }[] = [];
   for (const id of ids) {
     const entry = ledger.items[String(id)];
     const { tier, file } = tierOf(entry, build);
     counts[tier] += 1;
+    if (tier === "match" && !mayShowName(id, file!.name)) held[id >= SHOWN_MAX_ITEM_ID ? "highId" : "internalName"] += 1;
     if (tier === "mismatch") mismatches.push({ id, files: file!.name, wiki: [...new Set(entry!.wiki.map((w) => w.name))] });
   }
-  return { counts, mismatches };
+  return { counts, held, shownCount: counts.match - held.highId - held.internalName, mismatches };
 }
 
-/** The names the site may show for a build: only the `match` tier, and only for ids in `ids` (the build's items). */
+/**
+ * The names the site may show for a build: the `match` tier, for ids in `ids` (the build's items), below
+ * SHOWN_MAX_ITEM_ID and without a placeholder name (kb/src/item-name-rule.ts). The ledger keeps the rest.
+ */
 export function shownNames(ledger: Ledger, build: string, ids: Iterable<number>, wiki: ShownNames["wiki"]): ShownNames {
   const names: ShownNames["names"] = {};
   for (const id of [...ids].sort((a, b) => a - b)) {
     const t = tierOf(ledger.items[String(id)], build);
-    if (t.tier === "match") names[String(id)] = { n: t.file!.name, q: t.file!.quality, w: t.wiki!.page.slice(WIKI_PAGE_PREFIX.length) };
+    if (t.tier === "match" && mayShowName(id, t.file!.name)) names[String(id)] = { n: t.file!.name, q: t.file!.quality, w: t.wiki!.page.slice(WIKI_PAGE_PREFIX.length) };
   }
   return { schema: SHOWN_SCHEMA, build: { version: build }, wiki, count: Object.keys(names).length, names };
 }

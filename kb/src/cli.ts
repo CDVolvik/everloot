@@ -21,6 +21,7 @@ import { clientSnapshotName, readClientMeta, writeClientSnapshot } from "./clien
 import { Curated, diffRaidBuffs, RaidBuffTable } from "./raid-buffs.js";
 import { parseItemIds } from "./assets/items.js";
 import { runItemNames } from "./item-names.js";
+import { SHOWN_MAX_ITEM_ID } from "./item-name-rule.js";
 import { parse as parseYaml } from "yaml";
 import { parseArgs } from "./args.js";
 import { buildWatchCommand } from "./build-watch/command.js";
@@ -444,6 +445,7 @@ async function main(): Promise<number> {
       const run = runItemNames({ snapshotPath: args[0], kbPath, ledgerPath: flags.get("ledger") || "data/item-names/ledger.json", outDir: flags.get("out") || "data/assets" });
       console.log(`build ${run.build}: ${run.items} items`);
       for (const [tier, n] of Object.entries(run.counts)) console.log(`  ${tier}: ${n}`);
+      console.log(`shown: ${run.shownCount} of the ${run.counts.match} matches; held back: ${run.held.highId} with an id from ${SHOWN_MAX_ITEM_ID}, ${run.held.internalName} with a placeholder name`);
       console.log(`mismatches (kept in the ledger, not shown), first 25 of ${run.mismatches.length}:`);
       for (const m of run.mismatches.slice(0, 25)) console.log(`  ${m.id}: files "${m.files}", wiki "${m.wiki.join('" | "')}"`);
       console.log(`ledger: ${run.ledger.runs.length} runs, ${Object.keys(run.ledger.items).length} items; this run added ${run.ledger.runs.at(-1)!.added.files} game file and ${run.ledger.runs.at(-1)!.added.wiki} wiki names`);

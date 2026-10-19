@@ -7,6 +7,7 @@ import {
   coverage, emptyLedger, infoboxItemIds, mergeLedger, normName, parseLedger, runItemNames, shownNames, tierOf,
   WIKI_PAGE_PREFIX, type Ledger,
 } from "../src/item-names.js";
+import { looksInternal, mayShowName, SHOWN_MAX_ITEM_ID } from "../src/item-name-rule.js";
 
 const B1 = "1.60.1.70450", B2 = "1.60.1.70999";
 const page = (title: string) => `${WIKI_PAGE_PREFIX}${title}`;
@@ -47,6 +48,34 @@ test("the shown file holds only the match tier, with the game file name, its qua
   expect(shown.names).toEqual({ 1: { n: "Linen Cloth", q: 2, w: "Linen_Cloth" } });
   // Only the build's own items: an id the build does not list is left out even when it matches.
   expect(shownNames(l, B1, [2, 3], wiki).count).toBe(0);
+});
+
+test("a match is shown only below the id cap and without a placeholder name; the ledger keeps the rest", () => {
+  const names: [number, string][] = [
+    [1, "Linen Cloth"], [SHOWN_MAX_ITEM_ID - 1, "Last Classic Item"], [SHOWN_MAX_ITEM_ID, "Book of Deathstones: Mask of Death"], [191666, "Skeletal Steed"],
+    [2, "Deprecated Calico Shoulderpads"], [3, "DEP Old Sword"], [4, "[PH] Naxxramas Sword"], [5, "PH Leggings"], [6, "Test Mace"], [7, "QA Ring"],
+    [8, "Monster - Sword, Scimitar Basic"], [9, "OLD Gloves"], [10, "Unused Staff"], [11, "zzOLD Cloak"], [12, "Robe (old)"],
+  ];
+  const l = ledgerOf(names, names);
+  const shown = shownNames(l, B1, names.map(([id]) => id), wiki);
+  expect(Object.keys(shown.names).map(Number)).toEqual([1, SHOWN_MAX_ITEM_ID - 1]);
+  const c = coverage(l, B1, names.map(([id]) => id));
+  expect(c.counts.match).toBe(names.length);
+  expect(c.held).toEqual({ highId: 2, internalName: 11 });
+  expect(c.shownCount).toBe(2);
+  for (const [id, name] of names) expect(l.items[String(id)]!.files[0]!.name).toBe(name);
+});
+
+test("placeholder names are told apart from real ones that merely start alike", () => {
+  for (const n of ["Deprecated Maiden's Anguish", "deprecated thing", "DEP Item", "[PH] Sword", "PH Shield", "Test Item", "QA Gloves", "Monster - Mace", "OLD Belt", "Old Belt", "Item UNUSED", "zzOLD Robe", "Cloak (Old)"]) {
+    expect(looksInternal(n), n).toBe(true);
+  }
+  for (const n of ["Depleted Crystal Heart", "Testament of Hope", "Phial of Scrying", "Golden Pearl", "Monstrous Spider Fang", "Bold Old Hat"]) {
+    expect(looksInternal(n), n).toBe(false);
+  }
+  expect(mayShowName(24_999, "Linen Cloth")).toBe(true);
+  expect(mayShowName(25_000, "Linen Cloth")).toBe(false);
+  expect(mayShowName(0, "Linen Cloth")).toBe(false);
 });
 
 test("the ledger only grows: a new build adds beside the old one, a repeat adds nothing, nothing is removed", () => {
