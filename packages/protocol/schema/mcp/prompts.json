@@ -34,7 +34,11 @@
         {
           "name": "game",
           "description": "forever or classic. Without it, both.",
-          "required": false
+          "required": false,
+          "values": [
+            "forever",
+            "classic"
+          ]
         }
       ]
     }

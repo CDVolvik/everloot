@@ -326,6 +326,34 @@ const searchArgs = {
   limit: z.number().int().min(1).max(25).default(8),
 };
 
+/**
+ * search and fetch answer in the shape OpenAI's connector contract asks for (ChatGPT connectors, deep
+ * research and company knowledge call exactly these two tools by name): a result list, then one document
+ * by id. Ids are knowledge record ids as strings. The text block carries the same JSON as a string.
+ */
+export const searchResult = z.object({
+  id: z.string().describe("The record id as a string. Pass it to fetch."),
+  title: z.string().describe("The record's name."),
+  url: z.string().describe("Where the record is read: its page on everloot.app for a lore page, else the source's own page. ChatGPT cites it."),
+});
+export type SearchResultOut = z.infer<typeof searchResult>;
+export const fetchedDocument = z.object({
+  id: z.string().describe("The record id as a string."),
+  title: z.string().describe("The record's name."),
+  text: z.string().describe("The whole record, in the source's words."),
+  url: z.string().describe("Where the record is read, as in search."),
+  metadata: z.object({
+    kind: z.enum(KNOWLEDGE_KINDS),
+    gameVersion: z.enum(GAME_VERSIONS),
+    sourceUrl: z.string().describe("Where the record came from. Keep it with the text."),
+    sourceId: z.string(),
+    licence: z.string().describe("The source's licence, such as CC-BY-SA-4.0."),
+    retrievedAt: z.string().describe("When the source was read."),
+    credit: z.string().describe("The credit line to show with the text."),
+  }),
+});
+export type FetchedDocumentOut = z.infer<typeof fetchedDocument>;
+
 /** One knowledge record as search_knowledge, get_entity and get_by_name return it. */
 export const knowledgeHit = z.object({
   id: z.number().int().describe("The record id, for get_entity."),
@@ -405,6 +433,22 @@ export const MCP_TOOLS = {
       kind: z.enum(KNOWLEDGE_KINDS).optional().describe("Narrow to one record kind."),
     },
     outputSchema: { hits: z.array(knowledgeHit) },
+    annotations: { readOnlyHint: true, openWorldHint: false },
+  },
+  search: {
+    title: "Search (ChatGPT connector contract)",
+    description:
+      "The same search as search_knowledge, in the shape ChatGPT connectors and deep research call by name: up to 10 results, each with an id for fetch, a title and a URL to cite. The text block is the same JSON as a string.",
+    inputSchema: { query: z.string().max(1000).describe("What to look up: names, questions, keywords. Question words are ignored.") },
+    outputSchema: { results: z.array(searchResult) },
+    annotations: { readOnlyHint: true, openWorldHint: false },
+  },
+  fetch: {
+    title: "Fetch one document (ChatGPT connector contract)",
+    description:
+      "One knowledge record by the id a search result gave, whole: title, the full text in the source's words, the URL to cite, and metadata with the source, licence and date. The text block is the same JSON as a string.",
+    inputSchema: { id: z.string().max(20).describe("An id from a search result.") },
+    outputSchema: fetchedDocument.shape,
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
   answer_sources: {
@@ -723,6 +767,8 @@ export const MCP_TOOL_LIST = MCP_TOOL_NAMES.map((name) => ({ name, ...MCP_TOOLS[
 export const TOOL_OUTPUT = { type: "text", endsWith: MCP_CREDIT } as const;
 /** The tools that answer with structuredContent beside the text. */
 export const STRUCTURED_TOOLS: readonly McpToolName[] = MCP_TOOL_NAMES.filter((name) => "outputSchema" in MCP_TOOLS[name]);
+/** The two tools of OpenAI's connector contract: their text block is the structured answer as a JSON string, not prose. */
+export const CHATGPT_TOOLS: readonly McpToolName[] = ["search", "fetch"];
 /** The tools whose answers are built on player uploads and therefore end with TOOL_OUTPUT.endsWith. */
 export const PLAYER_DATA_TOOLS: readonly McpToolName[] = [
   "answer_sources", "profession_path", "recipe_thresholds", "item_page", "npc_page", "object_page", "quest_page", "vendor_page",
@@ -801,7 +847,8 @@ export const MCP_RESOURCES = {
 export interface McpPromptDef {
   title: string;
   description: string;
-  arguments: Record<string, { description: string; required: boolean }>;
+  /** `values`, when present, are the only values the argument takes; the server offers them through completion/complete. */
+  arguments: Record<string, { description: string; required: boolean; values?: readonly string[] }>;
 }
 
 /** Every prompt, keyed by name, in the order the server lists them. kb/src/prompts.ts holds the messages. */
@@ -819,7 +866,7 @@ export const MCP_PROMPTS = {
   what_changed: {
     title: "What changed in WoW: Forever",
     description: "Summarize recent_changes, newest first: Blizzard posts, hotfixes and builds, each with its link, quoting only the excerpt the tool gives.",
-    arguments: { game: { description: "forever or classic. Without it, both.", required: false } },
+    arguments: { game: { description: "forever or classic. Without it, both.", required: false, values: ["forever", "classic"] } },
   },
 } as const satisfies Record<string, McpPromptDef>;
 
@@ -843,6 +890,8 @@ export interface McpResourceTemplateDef {
   /** The template variable, and the tool argument it fills. */
   variable: string;
   argument: string;
+  /** When the variable has a known finite set of values, the server lists one resource per value and completes the variable from them. */
+  values?: readonly string[];
 }
 
 export const MCP_RESOURCE_TEMPLATES = {
@@ -851,7 +900,7 @@ export const MCP_RESOURCE_TEMPLATES = {
   "everloot://quest/{id}": { name: "quest", title: "One quest's page", description: "The quest_page answer for a quest id: title, level, giver, turn-in and rewards.", mimeType: "application/json", tool: "quest_page", variable: "id", argument: "questId" },
   "everloot://vendor/{id}": { name: "vendor", title: "One vendor's goods", description: "The vendor_page answer for a vendor NPC id: what it sells, with copper prices.", mimeType: "application/json", tool: "vendor_page", variable: "id", argument: "vendorNpcId" },
   "everloot://object/{id}": { name: "object", title: "One game object's page", description: "The object_page answer for an object's entry id: what players looted from it.", mimeType: "application/json", tool: "object_page", variable: "id", argument: "objectId" },
-  "everloot://talents/{class}": { name: "talents", title: "One class's talent trees", description: "The talent_tree answer for a class slug: every node with its talents, ranks, position, prerequisites and gate.", mimeType: "application/json", tool: "talent_tree", variable: "class", argument: "class" },
+  "everloot://talents/{class}": { name: "talents", title: "One class's talent trees", description: "The talent_tree answer for a class slug: every node with its talents, ranks, position, prerequisites and gate.", mimeType: "application/json", tool: "talent_tree", variable: "class", argument: "class", values: TALENT_CLASSES },
 } as const satisfies Record<string, McpResourceTemplateDef>;
 
 export type McpResourceTemplateUri = keyof typeof MCP_RESOURCE_TEMPLATES;

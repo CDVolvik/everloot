@@ -36,7 +36,8 @@ async function read(uri: string) {
 }
 
 test("resources/list is exactly the protocol's resource table, in order", async () => {
-  const listed = (await (await client()).listResources()).resources;
+  // The static resources come first; the class resources a template lists follow (mcp-completions.test.ts checks them).
+  const listed = (await (await client()).listResources()).resources.slice(0, MCP_RESOURCE_URIS.length);
   expect(listed.map((r) => ({ uri: r.uri, name: r.name, title: r.title, description: r.description, mimeType: r.mimeType }))).toEqual(MCP_RESOURCE_LIST);
   expect(MCP_RESOURCE_URIS.length).toBe(3);
 });
@@ -98,7 +99,7 @@ test("the public HTTP mount serves resources without a bearer", async () => {
     body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
   });
   const list = await (await handle(request("resources/list"))).json();
-  expect(list.result.resources.map((r: { uri: string }) => r.uri)).toEqual(MCP_RESOURCE_URIS);
+  expect(list.result.resources.map((r: { uri: string }) => r.uri).slice(0, MCP_RESOURCE_URIS.length)).toEqual(MCP_RESOURCE_URIS);
   const policy = await (await handle(request("resources/read", { uri: "everloot://data-policy" }))).json();
   expect(policy.result.contents[0].mimeType).toBe("text/markdown");
   expect(policy.result.contents[0].text).toContain(CREDIT_LINE);

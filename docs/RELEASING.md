@@ -111,6 +111,26 @@ Unchanged: a maintainer builds it with `npm run kb -- snapshot`, checks it with
 `npm run kb -- audit-sources` and publishes it to the site's storage. See
 [`kb/README.md`](../kb/README.md).
 
+## Bulk export
+
+The published data as files (ROADMAP: "an open data export"), built from the same loaders the JSON
+API uses, so every row is one the API serves: the public corpus without install ids, drop rates and
+measured zeros under the three-install rule, relations (observed and game-file, each labelled) and the
+items of the build. One NDJSON file per dataset plus `index.json`, whose shape is `bulkIndex` in the
+protocol (`/schema/api/bulkIndex.json`).
+
+1. In `web/`, with the production R2 read variables in the environment (or `EVERLOOT_UPLOADS` for a
+   local store): `npm run export-bulk -- ../bulk-out`. It prints each file's rows, bytes and data class.
+   A file whose storage was unreachable is left out and `dataAsOf` is null; absent is not empty.
+2. Upload it: `node scripts/upload-bulk.mjs ../bulk-out` with `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`,
+   `R2_SECRET_ACCESS_KEY` and `BULK_BUCKET`. Every object is written create-only under a folder named
+   by the export's `generatedAt`, data files first and the index last; then `latest.json` (the one
+   object the script overwrites) points at that folder. A hash mismatch stops it before anything is sent.
+3. Once (owner): a public R2 bucket of its own (for example `everloot-bulk`, never the uploads bucket)
+   with a public address such as `data.everloot.app`, a write token scoped to that bucket, and
+   `NEXT_PUBLIC_BULK_URL` set in Vercel. Until it is set, `/connect` says there is no bulk download yet.
+   Add the bucket to the nightly backup mirror's read-only token.
+
 ## One-time repository settings
 
 These are not in the repository:

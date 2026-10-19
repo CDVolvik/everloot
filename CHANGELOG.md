@@ -63,6 +63,31 @@ that has a zip in the repository. Earlier builds have none.
   `world_map_near` (entrances and pins with distances, or the refused query with its reason). Both
   formatters now write their text from a result object, so every one of the 25 tools answers with
   structured content beside its text.
+- Every MCP tool answers a plain `GET /api/tools/{tool}` too, for developers without an MCP client: the
+  tool's arguments as query parameters, read with the tool's own schema after the text-to-number coercion a
+  URL needs; the answer is the same structured content and the same text an MCP client gets, from the same
+  handlers, release and store. A wrong argument is a 400 that names it, an unknown tool a 404 that lists
+  them. In the route catalogue, OpenAPI, the `/connect` reference and `llms.txt`.
+- The bulk export: `npm run export-bulk` in `web/` writes the published data as files, one NDJSON
+  file per dataset (public corpus, drop rates and measured zeros, relations, items) and an `index.json`
+  (`bulkIndex` in the protocol) listing each file's rows, bytes, SHA-256, data class and the API response
+  whose rows it holds. Rows come through the API's own loaders, so a file can never hold a row the API
+  would not. `scripts/upload-bulk.mjs` uploads a folder create-only, index last, and points `latest.json`
+  at it. `/connect` and `llms.txt` link the export once `NEXT_PUBLIC_BULK_URL` is set (docs/RELEASING.md).
+- The MCP server's implementation info carries a title, a one-line description and the site's icon (64 and
+  512 px), so clients that draw a server list show Everloot by name and picture. `/connect` shows a curl
+  call of `/api/tools/get_by_name` beside the MCP one.
+- `/api/items/categories` joins the protocol's route catalogue with its response shape, so it appears in
+  `/api/openapi.json`, the endpoint reference on `/connect` and `/schema/api/itemCategoriesResponse.json`,
+  and its route test parses a real body with the shape. The endpoint itself is unchanged.
+- Completions on the MCP server (`completion/complete`): a client typing the `what_changed` prompt's game
+  or the class in `everloot://talents/{class}` is offered the values the protocol knows, by prefix. The
+  nine class resources are now listed under `resources/list` beside the three static ones, so a client
+  that browses resources finds every class's trees without knowing the slugs.
+- `search` and `fetch` on the MCP server, the two tools ChatGPT's connectors, deep research and company
+  knowledge call by name, after OpenAI's contract: results with an id, a title and a URL to cite, then one
+  record whole with its source, licence and date as metadata. A lore page's URL is its page on the site;
+  any other record points at its source. Both answer as structured content with the same JSON as text.
 - Resource templates on the MCP server: `everloot://item/{id}`, `npc`, `quest`, `vendor`, `object` and
   `talents/{class}` read as the same JSON the matching tool returns as structured content, so a client that
   prefers resources to tool calls gets the same page. A variable the tool refuses is an error in words.

@@ -13,22 +13,26 @@ counted, never decrypted. Column names come from [WoWDBDefs](https://github.com/
 
 The build watch writes no folder of its own. A new build's pull request replaces the files the site reads
 (see [../README.md](../README.md)): `talents/<class>.json`, `raid-<build>.json` (and removes the old one),
-`map.json`, `addon/modules/raid_data.lua`, and the import in `raid.ts`. It also writes two files of its own:
+`map.json`, `addon/modules/raid_data.lua`, and the import in `raid.ts`. It also writes three files of its own:
 
 ```
 web/src/data/game-data/
   spell-values.json                  numbers of the spells talents show: effects, duration, a hash of the tooltip
                                      (everloot.spell-values/1; one spell per line; no tooltip text)
+  client-digests.json                rows and a content hash per client table the extractor reads
+                                     (everloot.client-digests/1; one table per line; counts and hashes only)
   changes/<product>-<buildId>.json   one changelog entry per build
 ```
 
 `spell-values.json` is the comparison baseline for spell number changes, since the trimmed talent files
-leave those numbers out.
+leave those numbers out. `client-digests.json` is the same idea for the read set: the watch diffs the new
+build's digests against it and the entry's `readSet` section reports added, removed and changed tables by
+name, row count and hash difference (never rows or values).
 
 ## Changelog entries
 
-Shape: `ChangeEntry` in `kb/src/build-watch/changes.ts` (zod; schema string `everloot.game-changes/1`,
-bumped when the shape changes). The site's `/changes` timeline reads the files in `changes/`: sort by
+Shape: `ChangeEntry` in `kb/src/build-watch/changes.ts` (zod; schema string `everloot.game-changes/2`,
+bumped when the shape changes; entries from before `readSet` are `/1` and still parse). The site's `/changes` timeline reads the files in `changes/`: sort by
 `detectedAt`, hide entries and items with `spoiler: true` unless the reader turned spoilers on.
 
 ```
@@ -50,6 +54,12 @@ ChangeEntry {
                      scopeChanges: [{ id, label, before, after, beforeRanks, afterRanks, spoiler }],
                      spellChanges: [{ id, label, spellId, name, change, spoiler }] }
   mapChanges       null when initial; [{ kind (continent|zone|entrance), id, name, change, spoiler }]
+  readSet          null when initial or when no digests are committed; otherwise
+                     tables { before, after }, rows { before, after },
+                     addedTables [{ table, fileDataID, rows }], removedTables [{ table, fileDataID }],
+                     changedTables [{ table, rowsBefore, rowsAfter, changed }],
+                     layoutChanged (the WoWDBDefs commit differs, so a layout change may read as a table change)
+                   counts, names and hash differences only; never rows or values
   warnings
 }
 ```

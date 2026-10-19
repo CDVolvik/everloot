@@ -331,6 +331,20 @@
   },
   {
     "method": "GET",
+    "path": "/api/items/categories",
+    "summary": "The item class and subclass tree of the current build, with the slot and quality slugs",
+    "description": "Every class with its subclasses, each with the slug `/api/items` takes and the number of items in the build, plus the slot and quality slugs. From the game files. Public in the repository too, so it is neither paged nor limited. Cached for an hour.",
+    "access": "open",
+    "data": "game-files",
+    "responses": {
+      "200": {
+        "description": "The tree.",
+        "schema": "itemCategoriesResponse"
+      }
+    }
+  },
+  {
+    "method": "GET",
     "path": "/api/market/prices",
     "summary": "Forever market values from full auction scans players started",
     "description": "Without `realm`, the realms that have public values. With it, the items with the most units listed on that realm as tuples in `fields` order, copper per unit. A day is public when three reporters scanned the item.",
@@ -398,6 +412,75 @@
       "503": {
         "description": "Storage could not confirm the write; keep the file and retry.",
         "schema": "intakeRefused"
+      }
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/tools/{tool}",
+    "summary": "One MCP tool's answer over plain HTTP",
+    "description": "Every tool of the MCP server, callable with a GET: the tool's arguments go in the query string (numbers and booleans as plain text), named and typed as in /schema/mcp/{tool}.json. The answer is the tool's structured content, with the same text an MCP client gets. A wrong argument is a 400 that says which; an unknown tool is a 404 that lists the tools. Answers built on player uploads say how old the data is and carry the credit line; game-file answers are labelled unconfirmed with their build.",
+    "access": "key-or-rate-limited",
+    "data": "mixed",
+    "pathParams": [
+      {
+        "name": "tool",
+        "description": "A tool name from the MCP tool list.",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "search_knowledge",
+            "get_entity",
+            "get_by_name",
+            "search",
+            "fetch",
+            "answer_sources",
+            "profession_path",
+            "recipe_thresholds",
+            "item_page",
+            "npc_page",
+            "object_page",
+            "quest_page",
+            "vendor_page",
+            "world_map_near",
+            "entity_relations",
+            "item_categories",
+            "talent_tree",
+            "talent_plan",
+            "collection_gap",
+            "completion_progress",
+            "guild_board",
+            "auction_history",
+            "market_value",
+            "gold_ledger",
+            "recent_changes",
+            "ecosystem_projects",
+            "everloot_plan"
+          ]
+        },
+        "required": true
+      }
+    ],
+    "responses": {
+      "200": {
+        "description": "The tool's answer.",
+        "schema": "toolAnswerResponse"
+      },
+      "400": {
+        "description": "A parameter is wrong; `error` says which.",
+        "schema": "apiError"
+      },
+      "404": {
+        "description": "No such tool; `error` lists them.",
+        "schema": "apiError"
+      },
+      "429": {
+        "description": "Rate limited. `Retry-After` says when to try again.",
+        "schema": "apiError"
+      },
+      "503": {
+        "description": "A dependency is unavailable. The answer is unrecorded, not zero.",
+        "schema": "apiError"
       }
     }
   },

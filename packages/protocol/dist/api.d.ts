@@ -259,6 +259,49 @@ export declare const itemsResponse: z.ZodObject<{
         credit: z.ZodOptional<z.ZodString>;
     }, z.core.$loose>;
 }, z.core.$strip>;
+export declare const itemCategoriesResponse: z.ZodObject<{
+    classes: z.ZodArray<z.ZodObject<{
+        id: z.ZodNumber;
+        name: z.ZodString;
+        label: z.ZodString;
+        slug: z.ZodString;
+        items: z.ZodNumber;
+        subclasses: z.ZodArray<z.ZodObject<{
+            id: z.ZodNumber;
+            name: z.ZodNullable<z.ZodString>;
+            slug: z.ZodString;
+            items: z.ZodNumber;
+        }, z.core.$strip>>;
+    }, z.core.$strip>>;
+    slots: z.ZodArray<z.ZodObject<{
+        slug: z.ZodString;
+        name: z.ZodString;
+    }, z.core.$strip>>;
+    qualities: z.ZodArray<z.ZodObject<{
+        id: z.ZodNumber;
+        name: z.ZodString;
+        slug: z.ZodString;
+    }, z.core.$strip>>;
+    gameData: z.ZodObject<{
+        label: z.ZodString;
+        build: z.ZodString;
+        extractedAt: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        credit: z.ZodOptional<z.ZodString>;
+    }, z.core.$loose>;
+}, z.core.$strip>;
+export type ItemCategoriesResponse = z.infer<typeof itemCategoriesResponse>;
+/**
+ * GET /api/tools/{tool}: one MCP tool's answer over plain HTTP. `answer` is the tool's structured content,
+ * of the shape its schema file declares under outputSchema; `text` is the same answer as the MCP text block.
+ */
+export declare const toolAnswerResponse: z.ZodObject<{
+    tool: z.ZodString;
+    arguments: z.ZodRecord<z.ZodString, z.ZodUnknown>;
+    answer: z.ZodRecord<z.ZodString, z.ZodUnknown>;
+    text: z.ZodString;
+    schema: z.ZodString;
+}, z.core.$strip>;
+export type ToolAnswerResponse = z.infer<typeof toolAnswerResponse>;
 /** POST /api/intake, 200: stored. */
 export declare const intakeReceipt: z.ZodObject<{
     ok: z.ZodLiteral<true>;
@@ -701,6 +744,89 @@ export declare const healthResponse: z.ZodObject<{
 }, z.core.$strip>;
 export type HealthResponse = z.infer<typeof healthResponse>;
 /** The response schemas by name, the names schema/api/<name>.json uses. */
+/** The datasets the bulk export writes, one NDJSON file each; the rows are the same the JSON API serves. */
+export declare const BULK_DATASETS: readonly ["corpus", "edges", "drops", "items"];
+export type BulkDataset = (typeof BULK_DATASETS)[number];
+/** One file of a bulk export: a newline-delimited JSON file whose rows are the `rowsOf` response's `field` elements. */
+export declare const bulkFile: z.ZodObject<{
+    name: z.ZodString;
+    dataset: z.ZodEnum<{
+        corpus: "corpus";
+        drops: "drops";
+        edges: "edges";
+        items: "items";
+    }>;
+    format: z.ZodLiteral<"ndjson">;
+    rowsOf: z.ZodString;
+    field: z.ZodString;
+    rows: z.ZodNumber;
+    bytes: z.ZodNumber;
+    sha256: z.ZodString;
+    data: z.ZodEnum<{
+        "game-files": "game-files";
+        mixed: "mixed";
+        observed: "observed";
+    }>;
+    attribution: z.ZodNullable<z.ZodObject<{
+        licence: z.ZodString;
+        licenceUrl: z.ZodString;
+        credit: z.ZodString;
+        source: z.ZodString;
+        terms: z.ZodString;
+    }, z.core.$strip>>;
+    gameData: z.ZodNullable<z.ZodObject<{
+        label: z.ZodString;
+        build: z.ZodString;
+        extractedAt: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        credit: z.ZodOptional<z.ZodString>;
+    }, z.core.$loose>>;
+}, z.core.$strip>;
+export type BulkFile = z.infer<typeof bulkFile>;
+/** index.json of a bulk export folder: what the folder holds, when the data was current, how to credit it. */
+export declare const bulkIndex: z.ZodObject<{
+    protocol: z.ZodString;
+    generatedAt: z.ZodString;
+    dataAsOf: z.ZodNullable<z.ZodString>;
+    build: z.ZodNullable<z.ZodString>;
+    site: z.ZodString;
+    licence: z.ZodString;
+    licenceUrl: z.ZodString;
+    credit: z.ZodString;
+    files: z.ZodArray<z.ZodObject<{
+        name: z.ZodString;
+        dataset: z.ZodEnum<{
+            corpus: "corpus";
+            drops: "drops";
+            edges: "edges";
+            items: "items";
+        }>;
+        format: z.ZodLiteral<"ndjson">;
+        rowsOf: z.ZodString;
+        field: z.ZodString;
+        rows: z.ZodNumber;
+        bytes: z.ZodNumber;
+        sha256: z.ZodString;
+        data: z.ZodEnum<{
+            "game-files": "game-files";
+            mixed: "mixed";
+            observed: "observed";
+        }>;
+        attribution: z.ZodNullable<z.ZodObject<{
+            licence: z.ZodString;
+            licenceUrl: z.ZodString;
+            credit: z.ZodString;
+            source: z.ZodString;
+            terms: z.ZodString;
+        }, z.core.$strip>>;
+        gameData: z.ZodNullable<z.ZodObject<{
+            label: z.ZodString;
+            build: z.ZodString;
+            extractedAt: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+            credit: z.ZodOptional<z.ZodString>;
+        }, z.core.$loose>>;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+export type BulkIndex = z.infer<typeof bulkIndex>;
 export declare const API_SCHEMAS: {
     readonly attribution: z.ZodObject<{
         licence: z.ZodString;
@@ -897,6 +1023,86 @@ export declare const API_SCHEMAS: {
             extractedAt: z.ZodOptional<z.ZodNullable<z.ZodString>>;
             credit: z.ZodOptional<z.ZodString>;
         }, z.core.$loose>;
+    }, z.core.$strip>;
+    readonly itemCategoriesResponse: z.ZodObject<{
+        classes: z.ZodArray<z.ZodObject<{
+            id: z.ZodNumber;
+            name: z.ZodString;
+            label: z.ZodString;
+            slug: z.ZodString;
+            items: z.ZodNumber;
+            subclasses: z.ZodArray<z.ZodObject<{
+                id: z.ZodNumber;
+                name: z.ZodNullable<z.ZodString>;
+                slug: z.ZodString;
+                items: z.ZodNumber;
+            }, z.core.$strip>>;
+        }, z.core.$strip>>;
+        slots: z.ZodArray<z.ZodObject<{
+            slug: z.ZodString;
+            name: z.ZodString;
+        }, z.core.$strip>>;
+        qualities: z.ZodArray<z.ZodObject<{
+            id: z.ZodNumber;
+            name: z.ZodString;
+            slug: z.ZodString;
+        }, z.core.$strip>>;
+        gameData: z.ZodObject<{
+            label: z.ZodString;
+            build: z.ZodString;
+            extractedAt: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+            credit: z.ZodOptional<z.ZodString>;
+        }, z.core.$loose>;
+    }, z.core.$strip>;
+    readonly toolAnswerResponse: z.ZodObject<{
+        tool: z.ZodString;
+        arguments: z.ZodRecord<z.ZodString, z.ZodUnknown>;
+        answer: z.ZodRecord<z.ZodString, z.ZodUnknown>;
+        text: z.ZodString;
+        schema: z.ZodString;
+    }, z.core.$strip>;
+    readonly bulkIndex: z.ZodObject<{
+        protocol: z.ZodString;
+        generatedAt: z.ZodString;
+        dataAsOf: z.ZodNullable<z.ZodString>;
+        build: z.ZodNullable<z.ZodString>;
+        site: z.ZodString;
+        licence: z.ZodString;
+        licenceUrl: z.ZodString;
+        credit: z.ZodString;
+        files: z.ZodArray<z.ZodObject<{
+            name: z.ZodString;
+            dataset: z.ZodEnum<{
+                corpus: "corpus";
+                drops: "drops";
+                edges: "edges";
+                items: "items";
+            }>;
+            format: z.ZodLiteral<"ndjson">;
+            rowsOf: z.ZodString;
+            field: z.ZodString;
+            rows: z.ZodNumber;
+            bytes: z.ZodNumber;
+            sha256: z.ZodString;
+            data: z.ZodEnum<{
+                "game-files": "game-files";
+                mixed: "mixed";
+                observed: "observed";
+            }>;
+            attribution: z.ZodNullable<z.ZodObject<{
+                licence: z.ZodString;
+                licenceUrl: z.ZodString;
+                credit: z.ZodString;
+                source: z.ZodString;
+                terms: z.ZodString;
+            }, z.core.$strip>>;
+            gameData: z.ZodNullable<z.ZodObject<{
+                label: z.ZodString;
+                build: z.ZodString;
+                extractedAt: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+                credit: z.ZodOptional<z.ZodString>;
+            }, z.core.$loose>>;
+        }, z.core.$strip>>;
     }, z.core.$strip>;
     readonly intakeRequest: z.ZodObject<{
         addonVersion: z.ZodString;
@@ -1352,6 +1558,8 @@ export interface ApiRoute {
     access: "open" | "rate-limited" | "key-or-rate-limited" | "cron";
     /** Which data layer the answer carries. */
     data: "observed" | "game-files" | "mixed" | "none";
+    /** Parameters in the path, written as `{name}` in `path`. */
+    pathParams?: ApiQueryParam[];
     query?: ApiQueryParam[];
     requestBody?: ApiSchemaName;
     responses: Record<string, {

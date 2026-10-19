@@ -16,7 +16,7 @@ import { z } from "zod";
 import { ALL_RECORD_KINDS, PUBLIC_RECORD_KINDS, recordSchemas, RULES, uploadPayload, type RecordKind } from "../src/records.js";
 import { UPLOAD_LIMITS } from "../src/limits.js";
 import { API_ROUTES, API_SCHEMAS } from "../src/api.js";
-import { buildsResource, MCP_PROMPT_LIST, MCP_PROMPT_NAMES, MCP_RESOURCE_LIST, MCP_RESOURCE_TEMPLATE_LIST, MCP_RESOURCE_TEMPLATE_URIS, MCP_RESOURCE_URIS, MCP_TOOL_NAMES, MCP_TOOLS, PLAYER_DATA_TOOLS, TOOL_OUTPUT } from "../src/mcp.js";
+import { buildsResource, CHATGPT_TOOLS, MCP_PROMPT_LIST, MCP_PROMPT_NAMES, MCP_RESOURCE_LIST, MCP_RESOURCE_TEMPLATE_LIST, MCP_RESOURCE_TEMPLATE_URIS, MCP_RESOURCE_URIS, MCP_TOOL_NAMES, MCP_TOOLS, PLAYER_DATA_TOOLS, TOOL_OUTPUT } from "../src/mcp.js";
 import { PROTOCOL_VERSION } from "../src/version.js";
 
 const OUT = join(dirname(fileURLToPath(import.meta.url)), "..", "schema");
@@ -65,7 +65,9 @@ export function emit(out = OUT): void {
       annotations: tool.annotations,
       inputSchema: z.toJSONSchema(z.object(tool.inputSchema), { io: "input", target: "draft-2020-12" }),
       ...("outputSchema" in tool && tool.outputSchema ? { outputSchema: z.toJSONSchema(z.object(tool.outputSchema), { io: "output", target: "draft-2020-12" }) } : {}),
-      "x-everloot-output": PLAYER_DATA_TOOLS.includes(name) ? TOOL_OUTPUT : { type: TOOL_OUTPUT.type },
+      "x-everloot-output": PLAYER_DATA_TOOLS.includes(name) ? TOOL_OUTPUT
+        : CHATGPT_TOOLS.includes(name) ? { type: "json", note: "The text block is the structured answer as a JSON string, as OpenAI's connector contract asks." }
+        : { type: TOOL_OUTPUT.type },
     });
   }
   write(join(out, "mcp", "resources.json"), {
@@ -82,7 +84,7 @@ export function emit(out = OUT): void {
     description: "The MCP server's prompts: a client fills the arguments (strings) and gets a user message that says how to use the tools for that job.",
     prompts: MCP_PROMPT_LIST.map((prompt) => ({
       name: prompt.name, title: prompt.title, description: prompt.description,
-      arguments: Object.entries(prompt.arguments).map(([name, a]) => ({ name, description: a.description, required: a.required })),
+      arguments: Object.entries(prompt.arguments).map(([name, a]) => ({ name, description: a.description, required: a.required, ...("values" in a ? { values: a.values } : {}) })),
     })),
   });
   write(join(out, "index.json"), {
