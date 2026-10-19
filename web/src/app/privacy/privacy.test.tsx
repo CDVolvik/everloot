@@ -3,8 +3,35 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { expect, test } from "vitest";
 import PrivacyPage from "./page";
 
-const text = renderToStaticMarkup(<PrivacyPage />).replace(/<[^>]+>/g, "").replaceAll("&#x27;", "'").replace(/\s+/g, " ");
+const html = renderToStaticMarkup(<PrivacyPage />).replace(/&#x27;|&apos;/g, "'");
+const text = html.replace(/<[^>]+>/g, "").replace(/\s+/g, " ");
 const policy = readFileSync(new URL("../../../../docs/DATA_POLICY.md", import.meta.url), "utf8").replace(/\s+/g, " ");
+
+test("says what Battle.net sign-in stores", () => {
+  expect(html).toContain("Battle.net Account ID");
+  expect(html).toContain("BattleTag");
+});
+
+test("says provider tokens are not kept", () => {
+  expect(html).toContain("We don't keep your Battle.net access token");
+});
+
+test("says sessions carry no IP address", () => {
+  expect(html).toContain("stored with no IP address and no browser details");
+});
+
+test("says a session ends at most 30 days after the last visit", () => {
+  expect(html).toContain("It ends at most 30 days after your last visit.");
+  expect(html).not.toContain("up to 30 days");
+});
+
+test("no emoji or pictographs", () => {
+  expect(html).not.toMatch(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{25A0}-\u{25FF}]/u);
+});
+
+test("the cookie line mentions the short-lived sign-in state cookie", () => {
+  expect(text).toContain("short-lived one, 10 minutes, that holds the sign-in state while you are at Battle.net");
+});
 
 test("the census paragraph says it is opt-in, what is kept, what is never read and when counts show", () => {
   for (const claim of [

@@ -2,10 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { pageMetadata } from "@/lib/seo";
 import { REVOKED_KEPT_DAYS, USAGE_KEPT_DAYS } from "@/lib/api-keys";
-import { SESSION_SECONDS } from "@/lib/supabase/server";
 import { OPERATOR } from "@/lib/jsonld";
-
-const SESSION_DAYS = Math.round(SESSION_SECONDS / 86_400);
 
 export const metadata: Metadata = {
   ...pageMetadata({ title: "Privacy Policy", description: "How Everloot handles your data, cookies and usage statistics, and what happens to the addon files you upload to the WoW: Forever database.", path: "/privacy" }),
@@ -70,10 +67,12 @@ export default function PrivacyPage() {
           <strong>Battle.net sign-in:</strong> we store your Battle.net Account ID
           and BattleTag to manage your account and sharing choices. The current
           sign-in flow requests identity and World of Warcraft profile permissions,
-          but reads only your identity and BattleTag. Provider access tokens are
-          not stored. The essential login cookie lasts up to {SESSION_DAYS} days; signing out
-          revokes that Everloot session. Signing in does not publish your named
-          addon records or establish guild officer authority.
+          but reads only your identity and BattleTag. We don&apos;t keep your
+          Battle.net access token, or any other token Battle.net sends, after you
+          sign in. Your session is a random token in an essential cookie. It ends
+          at most 30 days after your last visit. It is stored with no IP address
+          and no browser details, and signing out ends it. Signing in does not
+          publish your named addon records or establish guild officer authority.
         </li>
         <li>
           <strong>API keys (optional):</strong> if you make a free API key on the
@@ -113,8 +112,9 @@ export default function PrivacyPage() {
           at least 3 installs.
         </li>
         <li>
-          <strong>Cookies:</strong> an essential login cookie if you sign in, and
-          your cookie choice, which is saved in your browser. Optional analytics
+          <strong>Cookies:</strong> an essential login cookie if you sign in (plus a
+          short-lived one, 10 minutes, that holds the sign-in state while you are at
+          Battle.net), and your cookie choice, which is saved in your browser. Optional analytics
           cookies are off unless you accept them. Advertising cookies come from
           Google AdSense and are covered below.
         </li>
@@ -227,7 +227,7 @@ export default function PrivacyPage() {
 
       <h2 id="retention" className="text-xl text-fg mt-6">How long we keep things</h2>
       <ul className="list-disc pl-6 text-fg-2">
-        <li><strong>Login cookie:</strong> up to {SESSION_DAYS} days, or until you sign out.</li>
+        <li><strong>Login cookie:</strong> at most 30 days after your last visit, or until you sign out.</li>
         <li><strong>Cookie choice:</strong> in your browser until you clear it or change it.</li>
         <li><strong>Battle.net Account ID and BattleTag:</strong> until you ask us to delete your account.</li>
         <li><strong>API key usage counts:</strong> {USAGE_KEPT_DAYS} days. A revoked key and its counts: {REVOKED_KEPT_DAYS} days after revocation, or at once when you delete it.</li>

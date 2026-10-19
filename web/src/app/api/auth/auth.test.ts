@@ -36,7 +36,7 @@ test("me reads the custom session, checks expiry, and returns only public accoun
   const { GET } = await import("./me/route");
   const response = await GET();
   expect(response.status).toBe(200);
-  expect(await response.json()).toEqual({ user: { ...user, entitlements: [{ plan: "free", status: "active" }] } });
+  expect(await response.json()).toEqual({ user: { id: user.id, name: user.battletag, entitlements: [{ plan: "free", status: "active" }] } });
   expect(response.headers.get("cache-control")).toContain("no-store");
 });
 

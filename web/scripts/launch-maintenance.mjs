@@ -89,7 +89,7 @@ async function main() {
     if (before.rows.some(r => r.table_name === 'sessions') && !before.rows.some(r => r.table_name === 'sessions' && r.column_name === 'token_hash')) {
       throw new Error("Existing session schema requires a reviewed migration");
     }
-    const schema = await readFile(new URL("../../supabase/auth_schema.sql", import.meta.url), "utf8");
+    const schema = await readFile(new URL("../../supabase/migrations/20261003000000_auth_schema.sql", import.meta.url), "utf8");
     const publication = await readFile(new URL("../../supabase/migrations/20261007070647_verified_publication.sql", import.meta.url), "utf8");
     await client.query('BEGIN');
     try { await client.query(schema); await client.query(publication); await client.query('COMMIT'); }
