@@ -123,6 +123,9 @@ that has a zip in the repository. Earlier builds have none.
 - Four MCP tools (`search_knowledge`, `get_entity`, `get_by_name`, `recent_changes`) declare an output schema
   and answer with structured content beside the text, so a client can read hits and timeline entries as
   objects instead of parsing prose. The schema files and `/connect` show which tools do.
+- `scripts/upload-bulk.mjs` refuses a folder whose `index.json` or any data file carries what looks like a
+  machine's own filesystem path (a Windows drive path, `/Users/`, `/home/` or `AppData`) before anything is
+  sent, like the sha256 check, so a bug in the export cannot publish a local path alongside the data.
 
 Pull requests merged to `main` are listed in the nightly pre-releases until the next tagged release.
 
