@@ -78,6 +78,22 @@ function agreedLabel(rows: { installId: string; label: string }[]): string | nul
   return winners.length === 1 ? winners[0]!.label : null;
 }
 
+/** Every item with an agreed name, by id: the same names `itemPage` gives, in one pass over the sightings. */
+export function agreedItemNames(facts: Pick<ItemFacts, "names">): Map<number, string> {
+  const byItem = new Map<number, { installId: string; label: string }[]>();
+  for (const row of facts.names) {
+    const rows = byItem.get(row.itemId) ?? [];
+    rows.push({ installId: row.installId, label: row.name });
+    byItem.set(row.itemId, rows);
+  }
+  const out = new Map<number, string>();
+  for (const [itemId, rows] of byItem) {
+    const name = agreedLabel(rows);
+    if (name) out.set(itemId, name);
+  }
+  return out;
+}
+
 function median(values: number[]): number {
   const sorted = [...values].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
