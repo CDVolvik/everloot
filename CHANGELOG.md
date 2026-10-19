@@ -52,6 +52,9 @@ that has a zip in the repository. Earlier builds have none.
   URL needs; the answer is the same structured content and the same text an MCP client gets, from the same
   handlers, release and store. A wrong argument is a 400 that names it, an unknown tool a 404 that lists
   them. In the route catalogue, OpenAPI, the `/connect` reference and `llms.txt`.
+- The MCP server's implementation info carries a title, a one-line description and the site's icon (64 and
+  512 px), so clients that draw a server list show Everloot by name and picture. `/connect` shows a curl
+  call of `/api/tools/get_by_name` beside the MCP one.
 - `/api/items/categories` joins the protocol's route catalogue with its response shape, so it appears in
   `/api/openapi.json`, the endpoint reference on `/connect` and `/schema/api/itemCategoriesResponse.json`,
   and its route test parses a real body with the shape. The endpoint itself is unchanged.

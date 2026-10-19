@@ -100,6 +100,7 @@ npm run dev               # MCP at http://localhost:3000/mcp/public`,
       },
     },
   }, null, 2),
+  toolsCurl: `curl -s "${SITE}/api/tools/get_by_name?name=Thrall" | jq .answer`,
   corpusCurl: `curl -s "${CORPUS_URL}?kinds=loot,vendor"`,
   openapiCurl: `curl -s ${SITE}/api/openapi.json | jq '.paths | keys'`,
   pagingJs: `// Every loot record, page by page. Stop when next is null.
