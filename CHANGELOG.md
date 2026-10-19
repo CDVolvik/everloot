@@ -47,6 +47,10 @@ that has a zip in the repository. Earlier builds have none.
   `world_map_near` (entrances and pins with distances, or the refused query with its reason). Both
   formatters now write their text from a result object, so every one of the 25 tools answers with
   structured content beside its text.
+- `search` and `fetch` on the MCP server, the two tools ChatGPT's connectors, deep research and company
+  knowledge call by name, after OpenAI's contract: results with an id, a title and a URL to cite, then one
+  record whole with its source, licence and date as metadata. A lore page's URL is its page on the site;
+  any other record points at its source. Both answer as structured content with the same JSON as text.
 - Resource templates on the MCP server: `everloot://item/{id}`, `npc`, `quest`, `vendor`, `object` and
   `talents/{class}` read as the same JSON the matching tool returns as structured content, so a client that
   prefers resources to tool calls gets the same page. A variable the tool refuses is an error in words.

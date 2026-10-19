@@ -29,7 +29,8 @@ import { CLIENT_EDGES, CLIENT_LAYER, CLIENT_TAXONOMY } from "./client-layer-file
 import { handleItemCategories, itemCategoriesStructured } from "./item-taxonomy.js";
 import { entityRelationsStructured, handleEntityRelations, observedEdgesFromRecords, type Edge } from "./edges.js";
 import type { DB } from "./db.js";
-import { getByName, getEntity, search, type SearchHit } from "./search.js";
+import { recordUrl } from "./lore-slug.js";
+import { getByName, getDocument, getEntity, search, type SearchHit } from "./search.js";
 
 export const SERVER_NAME = "everloot-knowledge";
 export const SERVER_VERSION = "0.8.0";
@@ -411,6 +412,11 @@ export function handleSearch(db: DB, args: SearchArgs): string {
 type Answer = string | StructuredAnswer;
 type StructuredAnswer = { text: string; structured: object };
 
+/** The answer of a connector-contract tool (search, fetch): the structure, with the same JSON as the text block. */
+function jsonAnswer(structured: object): StructuredAnswer {
+  return { text: JSON.stringify(structured), structured };
+}
+
 export function handleGetEntity(db: DB, args: { id: number }): string {
   const hit = getEntity(db, args.id);
   return hit ? formatHit(hit) : `No record with id ${args.id}.`;
@@ -456,6 +462,17 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; 
     search_knowledge: (args) => ({ text: handleSearch(db, args), structured: { hits: searchHits(db, args) } }),
     get_entity: (args) => ({ text: handleGetEntity(db, args), structured: { hit: getEntity(db, args.id) ?? null } }),
     get_by_name: (args) => ({ text: handleGetByName(db, args), structured: { hits: getByName(db, args.name, args.kind) } }),
+    search: (args) => jsonAnswer({
+      results: searchHits(db, { query: args.query, limit: 10 }).map((h) => ({ id: String(h.id), title: h.name, url: recordUrl(h, SITE) })),
+    }),
+    fetch: (args) => {
+      const doc = /^\d{1,15}$/.test(args.id) ? getDocument(db, Number(args.id)) : undefined;
+      if (!doc) throw new Error(`No record with id "${args.id}". Ids come from search results.`);
+      return jsonAnswer({
+        id: String(doc.id), title: doc.name, text: doc.body, url: recordUrl(doc, SITE),
+        metadata: { kind: doc.kind, gameVersion: doc.gameVersion, sourceUrl: doc.sourceUrl, sourceId: doc.sourceId, licence: doc.licence, retrievedAt: doc.retrievedAt, credit: CREDIT_LINE },
+      });
+    },
     answer_sources: async (args) => {
       const read = await readTooledFacts<AnswerSourcesFacts>("answer_sources", options.corpus);
       const result = answerSources(db, args, read?.facts ?? null, read?.dataAsOf ?? null);
