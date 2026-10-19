@@ -111,8 +111,9 @@ version line, separate from the addon. Builds are not code-signed yet.
   checked against the release's `SHA256SUMS`, the change tracker, the log, a chat over Everloot's
   MCP tools with sources (a tool loop on the player's own key: Anthropic, OpenRouter, OpenCode Zen's
   zero-retention free models, a local Ollama or any OpenAI-compatible server, picked on the page and
-  shared with the in-game `/ask`; plain sourced search without one; two local tools let the model
-  read the player's own characters and scan ages from the save files, sourced as this computer), a
+  shared with the in-game `/ask`; plain sourced search without one; three local tools let the model
+  read the player's own characters, scan ages and the app's own job status, sourced as this
+  computer), a
   local characters view (gold history, gear, progress), and the site's tools embedded. A dated
   backup of each account file after every upload, with restore; a tray reminder when a realm's
   scan is older than a day; the window remembers its place. Electron, built on

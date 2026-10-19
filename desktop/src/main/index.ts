@@ -77,6 +77,16 @@ if (!app.requestSingleInstanceLock()) {
     characters: () => charactersFromFiles(engine.snapshot().files),
     scans: () => allScans().slice().sort((a, b) => (b.at ?? "").localeCompare(a.at ?? "")),
     followed: () => settings.market.realms,
+    status: () => {
+      const e = engine.snapshot();
+      const dir = addonsDir();
+      return {
+        version: app.getVersion(), gameFolder: settings.gameFolder, files: e.files.length, paused: e.paused,
+        switches: { upload: settings.upload, prices: settings.prices, ask: settings.ask.enabled }, jobs: e.jobs,
+        addonInstalled: dir ? installedAddonVersion(dir) : null, update,
+        errors: e.log.filter((l) => l.level === "error").slice(-5),
+      };
+    },
   }));
   const appState = (): AppState => ({ version: app.getVersion(), platform: process.platform, dataFolder: data, notice: loaded.error, settings, engine: engine.snapshot(), siteTools: SITE_TOOLS, update, staleScans: staleScans(allScans()) });
   const broadcast = () => {

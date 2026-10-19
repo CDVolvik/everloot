@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { LOCAL_SOURCE, gold, localTools } from "../src/main/local-tools";
+import { LOCAL_SOURCE, STATUS_SOURCE, gold, localTools, type AppStatus } from "../src/main/local-tools";
 import type { CharactersInfo } from "../src/shared/types";
 
 const NOW = Date.parse("2026-10-19T08:00:00Z");
@@ -10,12 +10,21 @@ const info: CharactersInfo = {
     spent: { repairs: 50_00_00, auction: 100_00_00 }, earned: { loot: 300_00_00 },
     history: [], week: { earned: 20_00_00, spent: 35_00_00 },
   }],
-  progress: [{ key: "Volvik-Nightslayer", class: "Warrior", level: 60, achievements: 12, achievementsInProgress: 3, reputations: 20, exalted: 2, titles: 1 }],
+  progress: [{ key: "Volvik-Nightslayer", class: "Warrior", level: 60, achievements: 12, achievementsInProgress: 3, reputations: 20, exalted: 2, titles: 1, quests: 40, talentPoints: 51 }],
   talents: [],
 };
 
+const ok = { state: "ok" as const, message: "3 records sent", at: "2026-10-19T07:00:00Z" };
+const status: AppStatus = {
+  version: "0.1.0", gameFolder: "C:\\Games\\_classic_era_", files: 1, paused: false,
+  switches: { upload: true, prices: true, ask: false },
+  jobs: { upload: ok, prices: { state: "error", message: "HTTP 503 from everloot.app", at: "2026-10-19T07:01:00Z" }, ask: { state: "off", message: "", at: null } },
+  addonInstalled: "0.3.3", update: { current: "0.1.0", latest: "0.2.0", url: "https://example.test/r", newer: true },
+  errors: [{ at: "2026-10-19T07:01:00Z", level: "error", text: "prices: HTTP 503 from everloot.app" }],
+};
+
 const tools = (data: Partial<Parameters<typeof localTools>[0]> = {}) =>
-  localTools({ characters: () => info, scans: () => [], followed: () => [], ...data }, () => NOW);
+  localTools({ characters: () => info, scans: () => [], followed: () => [], status: () => status, ...data }, () => NOW);
 
 const run = (name: string, data?: Partial<Parameters<typeof localTools>[0]>) => tools(data).find((t) => t.name === name)!.run({});
 
@@ -52,6 +61,27 @@ test("my_realm_scans gives each realm's last scan as a date and an age, plus the
     `Source: ${LOCAL_SOURCE}`,
   ]);
   expect(run("my_realm_scans")).toMatch(/No auction scans in the account files yet/);
+});
+
+test("my_app_status says what runs, what failed and why, the addon and app versions, with the app's own source", () => {
+  expect(run("my_app_status").split("\n")).toEqual([
+    "Everloot Desktop App 0.1.0",
+    "Game folder: C:\\Games\\_classic_era_, watching 1 account file",
+    "Upload: ok at 2026-10-19T07:00:00Z, 3 records sent",
+    "Prices: FAILED at 2026-10-19T07:01:00Z: HTTP 503 from everloot.app",
+    "/ask answers: turned off in Settings",
+    "Addon installed: 0.3.3",
+    "A newer app release exists: 0.2.0 (current 0.1.0); the Overview links to it",
+    "Latest errors in the log:",
+    "  2026-10-19T07:01:00Z prices: HTTP 503 from everloot.app",
+    `Source: ${STATUS_SOURCE}`,
+  ]);
+  const bare = run("my_app_status", { status: () => ({ ...status, gameFolder: null, files: 0, paused: true, addonInstalled: null, update: null, errors: [] }) });
+  expect(bare).toContain("Everloot Desktop App 0.1.0, paused from the tray");
+  expect(bare).toContain("Game folder: not set");
+  expect(bare).toContain("Addon: not installed");
+  expect(bare).toContain("App release check: not run yet or GitHub unreachable");
+  expect(bare).toContain("No errors in the log.");
 });
 
 test("the tools take no arguments and their names carry the my_ prefix the system prompt names", () => {

@@ -1,4 +1,4 @@
-import type { CharactersInfo, ScanAge } from "../shared/types";
+import type { CharactersInfo, Job, JobStatus, LogLine, ScanAge, UpdateCheck } from "../shared/types";
 
 /**
  * Tools the chat model can call that read the player's own save files on this computer, beside
@@ -20,9 +20,25 @@ export interface LocalData {
   scans(): ScanAge[];
   /** The realms the player follows for the prices file. */
   followed(): string[];
+  status(): AppStatus;
+}
+
+/** What the app knows about itself, for the status tool: the same facts the Overview shows. */
+export interface AppStatus {
+  version: string;
+  gameFolder: string | null;
+  files: number;
+  paused: boolean;
+  switches: Record<Job, boolean>;
+  jobs: Record<Job, JobStatus>;
+  addonInstalled: string | null;
+  update: UpdateCheck | null;
+  /** The newest error lines from the log, newest last. */
+  errors: LogLine[];
 }
 
 export const LOCAL_SOURCE = "this computer (your Everloot.lua, not uploaded)";
+export const STATUS_SOURCE = "this computer (the Everloot Desktop App's own status)";
 
 const NO_ARGS = { type: "object", properties: {}, additionalProperties: false };
 
@@ -41,6 +57,20 @@ const age = (iso: string | null, now: number): string => {
 };
 
 const sum = (r: Record<string, number>) => Object.values(r).reduce((a, b) => a + b, 0);
+
+const JOB_LABEL: Record<Job, string> = { upload: "Upload", prices: "Prices", ask: "/ask answers" };
+
+const jobLine = (job: Job, on: boolean, j: JobStatus): string => {
+  if (!on) return `${JOB_LABEL[job]}: turned off in Settings`;
+  const when = j.at ? ` at ${j.at}` : "";
+  switch (j.state) {
+    case "off": return `${JOB_LABEL[job]}: off`;
+    case "idle": return `${JOB_LABEL[job]}: on, waiting for the next write to the save file`;
+    case "running": return `${JOB_LABEL[job]}: running now`;
+    case "ok": return `${JOB_LABEL[job]}: ok${when}${j.message ? `, ${j.message}` : ""}`;
+    case "error": return `${JOB_LABEL[job]}: FAILED${when}: ${j.message}`;
+  }
+};
 
 export function localTools(data: LocalData, now: () => number = Date.now): LocalTool[] {
   return [
@@ -78,6 +108,24 @@ export function localTools(data: LocalData, now: () => number = Date.now): Local
         if (!lines.length) lines.push("No auction scans in the account files yet. A scan is started in game with the addon's scan button.");
         lines.push(followed.length ? `Realms followed for the prices file: ${followed.join(", ")}` : "No realms followed for the prices file beyond the scanned ones.");
         return `${lines.join("\n")}\nSource: ${LOCAL_SOURCE}`;
+      },
+    },
+    {
+      name: "my_app_status",
+      description: "What the Everloot Desktop App is doing on this computer: the game folder and account files it watches, whether upload, prices and /ask answers are on and their last result or error, the installed addon version, whether a newer app release exists, and the latest error lines from its log. Use when the player asks whether their data is uploading, why something failed, or what version they run.",
+      inputSchema: NO_ARGS,
+      run: () => {
+        const s = data.status();
+        const lines = [
+          `Everloot Desktop App ${s.version}${s.paused ? ", paused from the tray" : ""}`,
+          s.gameFolder ? `Game folder: ${s.gameFolder}, watching ${s.files} account file${s.files === 1 ? "" : "s"}${s.files ? "" : " (no Everloot.lua found; log in once with the addon enabled)"}` : "Game folder: not set; the app does nothing until Settings points at the product folder",
+          ...(["upload", "prices", "ask"] as Job[]).map((job) => jobLine(job, s.switches[job], s.jobs[job])),
+          s.addonInstalled ? `Addon installed: ${s.addonInstalled}` : "Addon: not installed in that game folder; the Addon page installs it",
+          s.update ? (s.update.newer ? `A newer app release exists: ${s.update.latest} (current ${s.update.current}); the Overview links to it` : `App release: current (${s.update.current})`) : "App release check: not run yet or GitHub unreachable",
+        ];
+        if (s.errors.length) lines.push("Latest errors in the log:", ...s.errors.map((l) => `  ${l.at} ${l.text}`));
+        else lines.push("No errors in the log.");
+        return `${lines.join("\n")}\nSource: ${STATUS_SOURCE}`;
       },
     },
   ];
