@@ -1,23 +1,23 @@
 {
   "schema": 1,
-  "refreshedAt": "2026-10-18T20:53:52.580Z",
+  "refreshedAt": "2026-10-19T04:53:22.600Z",
   "projects": {
     "everloot": {
       "status": "ok",
-      "fetchedAt": "2026-10-18T20:53:52.580Z",
+      "fetchedAt": "2026-10-19T04:53:22.600Z",
       "stars": 0,
       "archived": false,
       "license": "AGPL-3.0",
-      "lastCommit": "2026-10-18T20:50:35Z",
+      "lastCommit": "2026-10-18T23:46:59Z",
       "release": {
         "tag": "addon-v0.3.3",
         "date": "2026-10-18T00:05:47Z",
         "url": "https://github.com/Everloot/everloot/releases/tag/addon-v0.3.3"
       },
-      "commits4w": 622,
+      "commits4w": 674,
       "contributors": 1,
-      "openIssues": null,
-      "closedIssues": null,
+      "openIssues": 10,
+      "closedIssues": 1,
       "medianFirstResponseHours": null,
       "responseSample": 0,
       "interfaces": [
@@ -26,8 +26,8 @@
     },
     "polestar": {
       "status": "ok",
-      "fetchedAt": "2026-10-18T20:54:00.565Z",
-      "stars": 118,
+      "fetchedAt": "2026-10-19T04:53:29.373Z",
+      "stars": 119,
       "archived": false,
       "license": null,
       "lastCommit": "2026-10-17T21:02:33Z",
@@ -38,7 +38,7 @@
       },
       "commits4w": 927,
       "contributors": 10,
-      "openIssues": 86,
+      "openIssues": 95,
       "closedIssues": 79,
       "medianFirstResponseHours": null,
       "responseSample": 0,
@@ -48,7 +48,7 @@
     },
     "olympus": {
       "status": "ok",
-      "fetchedAt": "2026-10-18T20:54:08.047Z",
+      "fetchedAt": "2026-10-19T04:53:35.886Z",
       "stars": 20,
       "archived": false,
       "license": "MIT",
@@ -72,7 +72,7 @@
     },
     "forever-ref": {
       "status": "ok",
-      "fetchedAt": "2026-10-18T20:54:17.581Z",
+      "fetchedAt": "2026-10-19T04:53:44.634Z",
       "stars": 0,
       "archived": false,
       "license": null,
@@ -96,6 +96,10 @@
       {
         "at": "2026-10-18T20:53:52.580Z",
         "stars": 0
+      },
+      {
+        "at": "2026-10-19T04:53:22.600Z",
+        "stars": 0
       }
     ],
     "polestar": [
@@ -106,6 +110,10 @@
       {
         "at": "2026-10-18T20:53:52.580Z",
         "stars": 118
+      },
+      {
+        "at": "2026-10-19T04:53:22.600Z",
+        "stars": 119
       }
     ],
     "olympus": [
@@ -116,6 +124,10 @@
       {
         "at": "2026-10-18T20:53:52.580Z",
         "stars": 20
+      },
+      {
+        "at": "2026-10-19T04:53:22.600Z",
+        "stars": 20
       }
     ],
     "forever-ref": [
@@ -125,6 +137,10 @@
       },
       {
         "at": "2026-10-18T20:53:52.580Z",
+        "stars": 0
+      },
+      {
+        "at": "2026-10-19T04:53:22.600Z",
         "stars": 0
       }
     ]
