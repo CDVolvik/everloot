@@ -47,6 +47,11 @@ that has a zip in the repository. Earlier builds have none.
   `world_map_near` (entrances and pins with distances, or the refused query with its reason). Both
   formatters now write their text from a result object, so every one of the 25 tools answers with
   structured content beside its text.
+- Every MCP tool answers a plain `GET /api/tools/{tool}` too, for developers without an MCP client: the
+  tool's arguments as query parameters, read with the tool's own schema after the text-to-number coercion a
+  URL needs; the answer is the same structured content and the same text an MCP client gets, from the same
+  handlers, release and store. A wrong argument is a 400 that names it, an unknown tool a 404 that lists
+  them. In the route catalogue, OpenAPI, the `/connect` reference and `llms.txt`.
 - `/api/items/categories` joins the protocol's route catalogue with its response shape, so it appears in
   `/api/openapi.json`, the endpoint reference on `/connect` and `/schema/api/itemCategoriesResponse.json`,
   and its route test parses a real body with the shape. The endpoint itself is unchanged.

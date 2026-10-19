@@ -43,7 +43,7 @@ test("query parameters, operation ids and tags are well formed", () => {
       ids.add(op.operationId);
       expect(op.summary.length).toBeGreaterThan(10);
       expect(op.tags).toHaveLength(1);
-      for (const p of op.parameters ?? []) expect(p.in).toBe("query");
+      for (const p of op.parameters ?? []) expect(["query", "path"]).toContain(p.in);
     }
   }
   const corpus = doc.paths["/api/corpus/public"].get;

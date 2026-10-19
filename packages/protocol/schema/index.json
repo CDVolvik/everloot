@@ -67,6 +67,7 @@
     "edgesResponse",
     "itemsResponse",
     "itemCategoriesResponse",
+    "toolAnswerResponse",
     "intakeRequest",
     "intakeReceipt",
     "intakeRefused",
@@ -81,6 +82,7 @@
     "GET /api/items/categories",
     "GET /api/market/prices",
     "POST /api/intake",
+    "GET /api/tools/{tool}",
     "GET /api/health"
   ],
   "mcpTools": [

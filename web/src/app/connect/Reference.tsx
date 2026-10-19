@@ -127,7 +127,7 @@ export function ApiReference() {
                     </>
                   )}
                 </dl>
-                <Params rows={(route.query ?? []).map((q) => ({ name: q.name, type: typeText(q.schema), required: q.required ?? false, description: q.description }))} caption={`Query parameters of ${route.path}`} />
+                <Params rows={[...(route.pathParams ?? []).map((p) => ({ name: `{${p.name}}`, type: typeText(p.schema), required: true, description: p.description })), ...(route.query ?? []).map((q) => ({ name: q.name, type: typeText(q.schema), required: q.required ?? false, description: q.description }))]} caption={`Parameters of ${route.path}`} />
               </div>
             </details>
           </li>
