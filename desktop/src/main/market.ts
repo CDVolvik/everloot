@@ -9,7 +9,7 @@ const realmKey = (realm: string) => realm.trim().replace(/[A-Z]/g, (c) => c.toLo
 
 /** The realms the site has public values for, from `GET /api/market/prices` without a realm. */
 export async function listRealms(endpoint: string, send: typeof fetch = fetch): Promise<{ realms: string[]; dataAsOf: string | null }> {
-  const res = await send(`${endpoint}/api/market/prices`, { headers: { accept: "application/json" } });
+  const res = await send(`${endpoint}/api/market/prices`, { headers: { accept: "application/json" }, signal: AbortSignal.timeout(15_000) });
   if (!res.ok) throw new Error(`market realms: ${res.status}`);
   const body = (await res.json()) as { ok?: boolean; realms?: unknown; dataAsOf?: unknown };
   if (!body.ok || !Array.isArray(body.realms)) throw new Error("market realms: unexpected answer");

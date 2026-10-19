@@ -104,11 +104,11 @@ export function checksumFor(sums: string, fileName: string): string | null {
 export async function installAddon(options: { version: string; endpoint: string; addonsDir: string; send?: typeof fetch }): Promise<{ version: string; files: number }> {
   const send = options.send ?? fetch;
   const file = `Everloot-${options.version}.zip`;
-  const sumsRes = await send(`${RELEASE_DOWNLOADS}/addon-v${options.version}/SHA256SUMS`);
+  const sumsRes = await send(`${RELEASE_DOWNLOADS}/addon-v${options.version}/SHA256SUMS`, { signal: AbortSignal.timeout(15_000) });
   if (!sumsRes.ok) throw new Error(`release checksums: ${sumsRes.status}`);
   const expected = checksumFor(await sumsRes.text(), file);
   if (!expected) throw new Error(`${file} is not listed in the release checksums`);
-  const zipRes = await send(`${options.endpoint}/downloads/${file}`);
+  const zipRes = await send(`${options.endpoint}/downloads/${file}`, { signal: AbortSignal.timeout(120_000) });
   if (!zipRes.ok) throw new Error(`addon download: ${zipRes.status}`);
   const bytes = new Uint8Array(await zipRes.arrayBuffer());
   const actual = createHash("sha256").update(bytes).digest("hex");
