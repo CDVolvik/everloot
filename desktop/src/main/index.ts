@@ -6,6 +6,7 @@ import { readAsks } from "../../../companion/src/bridge/asks";
 import { loadProviders } from "../../../companion/src/providers/config";
 import type { AddonInfo, AppState, AskInfo, Job, MarketInfo, Settings } from "../shared/types";
 import { JOBS } from "../shared/types";
+import { presetFor, type ProviderKind } from "../shared/providers";
 import { listBackups, restoreBackup } from "./backups";
 import { compareVersions, installAddon, installedAddonVersion, newestRelease, slotAddons } from "./addon";
 import { fetchChanges } from "./changes";
@@ -260,11 +261,13 @@ if (!app.requestSingleInstanceLock()) {
   ipcMain.handle("chatInfo", () => chat.info());
   ipcMain.handle("chatSend", (_e, text: unknown) => (typeof text === "string" ? chat.send(text) : chat.info()));
   ipcMain.handle("chatClear", () => chat.clear());
-  ipcMain.handle("chatSetKey", (_e, key: unknown, model: unknown) => {
-    if (typeof key !== "string") throw new Error("Not a key");
-    return chat.setKey(key, typeof model === "string" && /^[a-z0-9.-]+$/.test(model) ? model : undefined);
+  ipcMain.handle("chatSetProvider", (_e, raw: unknown) => {
+    const c = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+    if (!presetFor(String(c.kind))) throw new Error("Pick a provider");
+    const str = (v: unknown) => (typeof v === "string" ? v.slice(0, 2000) : undefined);
+    return chat.setProvider({ kind: c.kind as ProviderKind, key: str(c.key), model: str(c.model), baseUrl: str(c.baseUrl) });
   });
-  ipcMain.handle("chatRemoveKey", () => chat.removeKey());
+  ipcMain.handle("chatRemoveProvider", () => chat.removeProvider());
 
   ipcMain.handle("siteShow", (_e, id: unknown) => {
     const path = typeof id === "string" ? siteToolPath(id) : null;

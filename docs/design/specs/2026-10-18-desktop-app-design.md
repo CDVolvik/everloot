@@ -97,7 +97,7 @@ After that, the rail lists the pages, with a status dot beside the three jobs:
 | Page | What it shows and does | Reads |
 |---|---|---|
 | Overview | Four states at a glance (upload, prices, `/ask`, addon installed against latest), recent activity with Upload now and Refresh prices, the five latest changes | engine state, `addonInfo`, `changes` |
-| Chat | The agent on the player's computer (agent-chat spec, the companion surface, without accounts). Three modes from `config.json`: an Anthropic key runs a tool-use loop over every tool the MCP server lists, at most eight rounds, and the answer cites the `Source:` lines the tools returned; another provider gets the top five search hits and phrases a short answer; no provider shows the sourced hits verbatim. The MCP target is the token endpoint when a token file is set, else the site's public read-only mount. Tool results are treated as data; the system prompt says so. Transcript in `chat.json`, private, at most 100 messages. "Use my key" writes an Anthropic key to `anthropic.key` in the data folder and one anthropic entry in `config.json` (`providers.ts`); the key never returns to the page, a paste that is not `sk-ant-…` is refused, Remove deletes both | `chatInfo`, `chatSend`, `chatClear` (`agent.ts`, `chat.ts`) |
+| Chat | The agent on the player's computer (agent-chat spec, the companion surface, without accounts). The first provider in `config.json` runs a tool-use loop over every tool the MCP server lists, at most eight rounds: Anthropic's API through its SDK, or any OpenAI-compatible endpoint with function calling (OpenRouter, OpenCode Zen, a local Ollama, a server of the player's own), the same loop in that API's shape (`agent.ts`). The answer cites the `Source:` lines the tools returned; when the tools have nothing the model may answer from its own knowledge, prefixed "From general knowledge, not Everloot's data:", and the page marks it as unsourced. No provider shows the sourced hits verbatim. The MCP target is the token endpoint when a token file is set, else the site's public read-only mount. Tool results are treated as data; the system prompt says so. Transcript in `chat.json`, private, at most 100 messages. The provider picker (`shared/providers.ts` for the presets, `providers.ts` for the writes) offers Anthropic, OpenRouter, OpenCode Zen (only its zero-retention free models), Ollama and a custom server, each with a curated model list or a typed id; the key goes into its own file in the data folder and one marked entry goes to the front of `config.json`, so the in-game `/ask` bridge uses the same pick. The key never returns to the page, a paste of the wrong shape is refused, Remove deletes the marked entry and its file and leaves hand-written entries alone. Consumer sign-ins (Claude.ai, ChatGPT) are not offered: both companies permit API keys in third-party apps and forbid their subscription credentials there | `chatInfo`, `chatSend`, `chatClear`, `chatSetProvider`, `chatRemoveProvider` (`agent.ts`, `chat.ts`) |
 | Characters | The Raider.IO-shaped view, local only: gold with a sparkline of every dated snapshot (thinned to sixty points), peak, item level, the last seven days as earned, spent and net, money earned and spent per named character; achievements, reputations, titles and quests per opaque character key (the addon never writes a name on those rows). Nothing here is uploaded from the app | `charactersInfo` (`characters.ts`) |
 | Upload | The switch and Run now; each account file with its write time and size, addon and client build, records per kind, confirmed count from `sent.json`. Nothing here leaves the machine | `uploadInfo` (`inspect.ts`) |
 | Market | The switch and Refresh now; realm picks: the realms in the player's own scans are always carried, and the realms the site has public values for can be ticked (what TSM calls realm picks, on Everloot's own scan data; the clean-room decision of 2026-10-17 stands). A realm can also be typed. What the last refresh wrote, per realm | `marketInfo` (`market.ts`), `settings.market.realms` |
@@ -157,9 +157,13 @@ on the Node side for ten to fifteen minutes so opening a page twice does not ask
   history thins to sixty points keeping the first and the last.
 - `diagnostics.test.ts`: the report carries settings without the token and the last hundred lines;
   home folders on Windows, macOS and Linux collapse to `~`.
-- `providers.test.ts`: the key file and the config entry the companion loads; other entries and
-  settings survive; a second save replaces; remove deletes only its own entry; a bad paste writes
-  nothing.
+- `providers.test.ts`: each preset's key file and the config entry the companion loads; switching
+  providers replaces the entry and drops the old key file; a custom server; other entries and
+  settings survive; the pre-marker Anthropic entry still counts as the app's; remove deletes only
+  its own entry; bad pastes write nothing; the OpenCode list is zero-retention only.
+- `agent.test.ts`: sources from tool text; config entries without keys; plain search; the Anthropic
+  loop with a fake client; the OpenAI-compatible loop with a fake fetch (tool schema, bearer key,
+  the tool-call and tool messages, the error with the server's message).
 - `inspect.test.ts`: stale realms are the ones older than a day or undated, oldest first; the
   reminder names the oldest and counts the rest.
 - `backups.test.ts`: dated copies, ten per account; restore replaces the live file and keeps the
@@ -207,7 +211,12 @@ Carlos decided on 2026-10-18; the two open ones are marked.
 5. **Ads:** the site drops ad units when the user agent carries `EverlootDesktopApp/`; the app
    already sends it. Where ads go on the site itself (header leaderboard, right rail, below tools,
    as Wowhead, Raider.IO and Icy Veins place them) is the site lane's call, not the app's.
-6. **Open: chat default model on an Anthropic key.** `claude-sonnet-5-5` in the app; the in-game
-   `/ask` bridge keeps `claude-opus-5-5` from the companion. Say if both should match.
+6. **Providers:** bring your own key from any provider on the market, with free models where a
+   provider offers them, and the same pick serving the in-game `/ask`. Built as the provider picker
+   above. Consumer sign-ins are out (Anthropic's and OpenAI's terms); a hosted free allowance paid
+   by Everloot is the agent-chat spec's phase 2, needing accounts, not the app. With an Anthropic
+   key the app defaults to `claude-sonnet-5-5` and writes the model into the entry, so the bridge
+   uses the same one. Which cheap model answers well with the tools is the agent-chat spec's
+   50-question eval, still to run; until then the lists are priced and tool-capable, not ranked.
 7. **Open: the sale-rate figure** on the Characters page is an estimate from scan history; keep it,
    or wait for an in-addon price API.

@@ -32,21 +32,48 @@ test("config entries come without keys, and an inline key is refused", () => {
 
 test("with no provider the answer is the sourced hits themselves; no source means no answer", async () => {
   const calls: { name: string; args: unknown }[] = [];
-  const r = await answer({ mcp: { url: "https://everloot.app/mcp/public", token: null }, entries: [], providers: [], history: [], question: "what drops bindings", session: fakeSession(calls) });
+  const r = await answer({ mcp: { url: "https://everloot.app/mcp/public", token: null }, entries: [], history: [], question: "what drops bindings", session: fakeSession(calls) });
   expect(calls).toEqual([{ name: "search_knowledge", args: { query: "what drops bindings", limit: 3 } }]);
   expect(r.model).toBeNull();
   expect(r.sources).toHaveLength(2);
   expect(r.text).toContain("Baron Geddon");
-  const none = await answer({ mcp: { url: "u", token: null }, entries: [], providers: [], history: [], question: "q", session: fakeSession([], "nothing here") });
+  const none = await answer({ mcp: { url: "u", token: null }, entries: [], history: [], question: "q", session: fakeSession([], "nothing here") });
   expect(none.text).toMatch(/No sourced answer/);
   expect(none.sources).toEqual([]);
 });
 
-test("another provider phrases the answer from the hits and is named", async () => {
-  const provider = { name: "openai-compatible:gemma", complete: vi.fn(async (_s: string, u: string) => { expect(u).toContain("Baron Geddon"); return { text: "Baron Geddon drops them.", model: "gemma4" }; }) };
-  const r = await answer({ mcp: { url: "u", token: null }, entries: [{ type: "openai-compatible" }], providers: [provider], history: [{ role: "user", text: "hi", at: "", model: null, sources: [], steps: [] }], question: "bindings?", session: fakeSession([]) });
-  expect(r).toMatchObject({ text: "Baron Geddon drops them.", model: "gemma4" });
+test("an OpenAI-compatible provider runs the same tool loop in that API's shape", async () => {
+  const d = dir();
+  writeFileSync(join(d, "k.txt"), "sk-or-test\n");
+  const calls: { name: string; args: unknown }[] = [];
+  const requests: { url: string; headers: Record<string, string>; body: { model: string; messages: { role: string; tool_call_id?: string }[]; tools: { type: string; function: { name: string } }[] } }[] = [];
+  const send = vi.fn(async (url: string, init: { headers: Record<string, string>; body: string }) => {
+    const body = JSON.parse(init.body);
+    requests.push({ url, headers: init.headers, body });
+    const reply = requests.length === 1
+      ? { model: "deepseek/deepseek-v4.1-flash", choices: [{ finish_reason: "tool_calls", message: { role: "assistant", content: null, tool_calls: [{ id: "c1", type: "function", function: { name: "search_knowledge", arguments: "{\"query\":\"bindings\"}" } }] } }] }
+      : { model: "deepseek/deepseek-v4.1-flash", choices: [{ finish_reason: "stop", message: { role: "assistant", content: "Baron Geddon in Molten Core. Source: Everloot uploads." } }] };
+    return new Response(JSON.stringify(reply), { status: 200, headers: { "content-type": "application/json" } });
+  });
+  const entry = { type: "openai-compatible", baseUrl: "https://openrouter.ai/api/v1/", model: "deepseek/deepseek-v4.1-flash", apiKeyFile: join(d, "k.txt") };
+  const r = await answer({ mcp: { url: "u", token: null }, entries: [entry], history: [{ role: "user", text: "hi", at: "", model: null, sources: [], steps: [] }], question: "bindings?", session: fakeSession(calls), send: send as never });
+  expect(requests[0].url).toBe("https://openrouter.ai/api/v1/chat/completions");
+  expect(requests[0].headers.authorization).toBe("Bearer sk-or-test");
+  expect(requests[0].body.tools).toEqual([{ type: "function", function: { name: "search_knowledge", description: "search", parameters: { type: "object", properties: { query: { type: "string" } } } } }]);
+  expect(requests[0].body.messages.map((m) => m.role)).toEqual(["system", "user", "user"]);
+  expect(calls).toEqual([{ name: "search_knowledge", args: { query: "bindings" } }]);
+  // The second request carries the assistant's tool call and the tool's result.
+  expect(requests[1].body.messages.slice(-2).map((m) => [m.role, m.tool_call_id])).toEqual([["assistant", undefined], ["tool", "c1"]]);
+  expect(r).toMatchObject({ model: "deepseek/deepseek-v4.1-flash", text: "Baron Geddon in Molten Core. Source: Everloot uploads." });
+  expect(r.steps).toEqual([{ tool: "search_knowledge", input: '{"query":"bindings"}', chars: HIT.length }]);
   expect(r.sources).toHaveLength(2);
+});
+
+test("an OpenAI-compatible error names the server and the message", async () => {
+  const send = vi.fn(async () => new Response(JSON.stringify({ error: { message: "Insufficient credits" } }), { status: 402 }));
+  const entry = { type: "openai-compatible", baseUrl: "https://openrouter.ai/api/v1", model: "x" };
+  await expect(answer({ mcp: { url: "u", token: null }, entries: [entry], history: [], question: "q", session: fakeSession([]), send: send as never }))
+    .rejects.toThrow("https://openrouter.ai/api/v1: HTTP 402, Insufficient credits");
 });
 
 test("with Anthropic the model calls the MCP tools itself and the steps and sources are recorded", async () => {
@@ -61,7 +88,7 @@ test("with Anthropic the model calls the MCP tools itself and the steps and sour
     expect(req.messages).toHaveLength(3);
     return { model: "claude-sonnet-5-5", stop_reason: "end_turn", content: [{ type: "text", text: "Baron Geddon in Molten Core. Source: Everloot uploads." }] };
   }) } };
-  const r = await answer({ mcp: { url: "u", token: null }, entries: [{ type: "anthropic", apiKeyFile: join(d, "k.txt") }], providers: [], history: [], question: "bindings?", session: fakeSession(calls), anthropicClient: client as never });
+  const r = await answer({ mcp: { url: "u", token: null }, entries: [{ type: "anthropic", apiKeyFile: join(d, "k.txt") }], history: [], question: "bindings?", session: fakeSession(calls), anthropicClient: client as never });
   expect(calls).toEqual([{ name: "search_knowledge", args: { query: "bindings" } }]);
   expect(r.model).toBe("claude-sonnet-5-5");
   expect(r.steps).toEqual([{ tool: "search_knowledge", input: '{"query":"bindings"}', chars: HIT.length }]);

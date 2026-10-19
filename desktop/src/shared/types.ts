@@ -1,4 +1,5 @@
 /** Shapes shared by the Node side and the page. No Node or Electron imports here. */
+import type { ProviderChoice, ProviderInUse } from "./providers";
 
 export type Job = "upload" | "prices" | "ask";
 export const JOBS: Job[] = ["upload", "prices", "ask"];
@@ -107,13 +108,13 @@ export interface ChatMessage {
 }
 export interface ChatInfo {
   messages: ChatMessage[];
-  /** "anthropic:<model>" with the tool loop, "<provider>" for a summary, or "plain search". */
+  /** "<provider>:<model> with tools", or "plain search" with no provider. */
   mode: string;
   /** The MCP endpoint in use and whether a token is set (the public one is rate limited per IP). */
   mcpUrl: string;
   withToken: boolean;
-  /** True when the key saved from the Chat page (anthropic.key in the data folder) is the one config.json uses. */
-  ownKey: boolean;
+  /** The provider saved from the Chat page, if config.json still names it; null when none or hand-written only. */
+  provider: ProviderInUse | null;
   busy: boolean;
   error: string | null;
 }
@@ -202,8 +203,8 @@ export interface EverlootApi {
   chatSend(text: string): Promise<ChatInfo>;
   chatClear(): Promise<ChatInfo>;
   /** Saves an Anthropic key to the data folder and points config.json at it; the key never comes back to the page. */
-  chatSetKey(key: string, model?: string): Promise<ChatInfo>;
-  chatRemoveKey(): Promise<ChatInfo>;
+  chatSetProvider(choice: ProviderChoice): Promise<ChatInfo>;
+  chatRemoveProvider(): Promise<ChatInfo>;
   /** Shows a site tool inside the window; returns the URL it opened. */
   siteShow(id: string): Promise<string | null>;
   siteHide(): Promise<void>;

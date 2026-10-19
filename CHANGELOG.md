@@ -17,7 +17,9 @@ that has a zip in the repository. Earlier builds have none.
   for each thing to manage: what each account file holds, realm picks for the prices file (your
   scans plus the realms you follow), the `/ask` setup and recent answers, addon install and update
   checked against the release's `SHA256SUMS`, the change tracker, the log, a chat over Everloot's
-  MCP tools with sources (tool loop on the player's own Anthropic key, or plain sourced search), a
+  MCP tools with sources (a tool loop on the player's own key: Anthropic, OpenRouter, OpenCode Zen's
+  zero-retention free models, a local Ollama or any OpenAI-compatible server, picked on the page and
+  shared with the in-game `/ask`; plain sourced search without one), a
   local characters view (gold history, gear, progress), and the site's tools embedded. A dated
   backup of each account file after every upload, with restore; a tray reminder when a realm's
   scan is older than a day; the window remembers its place. Electron, built on

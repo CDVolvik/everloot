@@ -2,6 +2,7 @@ import { accountOf as account } from "../main/engine";
 import { diagnostics } from "../shared/diagnostics";
 import { ago, clock, esc, gold, kb, msg, sparkline, statusText, when } from "./format";
 import type { AddonInfo, AppState, AskInfo, BackupInfo, ChangeItem, CharactersInfo, ChatInfo, EverlootApi, FileSummary, GameFolderCandidate, Job, JobStatus, MarketInfo } from "../shared/types";
+import { PROVIDER_PRESETS, presetFor, type ProviderKind } from "../shared/providers";
 
 declare global { interface Window { everloot: EverlootApi } }
 const api = window.everloot;
@@ -28,6 +29,9 @@ let draftDirty = false;
 let busy = "";
 let flash = "";
 let siteUrl: string | null = null;
+/** The provider picked in the Chat page's form before it is saved; the form re-renders around it. */
+let pickKind: ProviderKind = "anthropic";
+let pickOpen = false;
 const data: { upload?: FileSummary[]; backups?: BackupInfo[]; market?: MarketInfo; ask?: AskInfo; addon?: AddonInfo; changes?: ChangeItem[]; changesError?: string; characters?: CharactersInfo; chat?: ChatInfo } = {};
 
 const main = document.getElementById("app")!;
@@ -103,20 +107,37 @@ function chat(): string {
   const c = data.chat;
   const thread = (c?.messages ?? []).map((m) => {
     const meta = m.role === "assistant"
-      ? `<div class="meta">${m.model ? `<b>${esc(m.model)}</b>` : "<b>plain search</b>"}${m.steps.length ? ` · ${m.steps.length} tool call(s): ${esc(m.steps.map((st) => st.tool).join(", "))}` : ""}${m.sources.length ? `<br>Sources: ${m.sources.map((x) => esc(x)).join(" · ")}` : ""}</div>`
+      ? `<div class="meta">${m.model ? `<b>${esc(m.model)}</b>` : "<b>plain search</b>"}${m.steps.length ? ` · ${m.steps.length} tool call(s): ${esc(m.steps.map((st) => st.tool).join(", "))}` : ""}${m.sources.length ? `<br>Sources: ${m.sources.map((x) => esc(x)).join(" · ")}` : m.model ? "<br>No source in Everloot's data; the model's own knowledge" : ""}</div>`
       : `<div class="meta">${clock(m.at)}</div>`;
     return `<div class="msg msg-${m.role}">${esc(m.text)}${meta}</div>`;
   }).join("");
   return `<div class="page chat">
     <div class="head"><h1>Chat</h1><span class="sub">${c ? `${esc(c.mode)} · ${c.withToken ? "your MCP token" : "public MCP, rate limited"}` : ""} <button type="button" class="link" id="chatClear">clear</button></span></div>
-    <p class="muted small">Answers come only from Everloot's own MCP tools, with their sources. With your Anthropic key the model works the tools itself; without one you get the sourced search hits. Private: the transcript stays in your data folder.</p>
-    ${c && !c.ownKey && c.mode === "plain search" ? `<form id="keyForm" class="row" autocomplete="off"><input type="password" name="key" class="grow" placeholder="Paste your Anthropic API key (sk-ant-...)" spellcheck="false"><select name="model"><option value="claude-sonnet-5-5">Sonnet 5.5</option><option value="claude-opus-5-5">Opus 5.5</option><option value="claude-haiku-5-5">Haiku 5.5</option></select><button type="submit" class="btn">Use my key</button></form>
-    <p class="muted small">The key is written to <code>anthropic.key</code> in your data folder and named from <code>config.json</code>, the way the command line reads it (${ext("https://everloot.app/connect", "details")}). It goes to Anthropic only, with your questions and the tool results.</p>` : ""}
-    ${c?.ownKey ? `<p class="muted small">Using the key saved from this page. <button type="button" class="link" id="removeKey">Remove it</button></p>` : ""}
+    <p class="muted small">Ask anything about the game. The model looks it up in Everloot's own MCP tools first and names the sources; when they have nothing it says the answer is its own knowledge. Private: the transcript stays in your data folder.</p>
+    ${c?.provider && !pickOpen ? `<p class="muted small">Using <b>${esc(c.provider.kind)}:${esc(c.provider.model)}</b> from this page, for Chat and the in-game /ask. <button type="button" class="link" id="changeProvider">Change</button> · <button type="button" class="link" id="removeProvider">Remove</button></p>` : ""}
+    ${c && !c.provider && !pickOpen && c.mode === "plain search" ? `<p class="muted small">Without a provider you get the sourced search hits only. <button type="button" class="link" id="changeProvider">Use your own key or a free model</button></p>` : ""}
+    ${c && pickOpen ? providerForm() : ""}
     ${flash ? `<p class="${flash.startsWith("!") ? "error" : "ok"} small">${esc(flash.replace(/^!/, ""))}</p>` : ""}
     <div class="thread" id="thread">${thread || '<span class="muted">Ask anything about WoW: Forever: a drop, a vendor, a recipe, a price, a quest.</span>'}${c?.busy ? '<div class="msg msg-assistant muted">Answering…</div>' : ""}${c?.error ? `<div class="msg msg-assistant error">${esc(c.error)}</div>` : ""}</div>
     <form id="chatForm"><textarea id="chatText" rows="2" placeholder="Ask about Forever. Enter sends, Shift+Enter is a new line." ${c?.busy ? "disabled" : ""}></textarea><button type="submit" class="btn btn-primary" ${c?.busy ? "disabled" : ""}>Send</button></form>
   </div>`;
+}
+
+/** The provider picker: one preset, its key, a model from the list or typed, and a custom server address. */
+function providerForm(): string {
+  const preset = presetFor(pickKind) ?? PROVIDER_PRESETS[0];
+  const kinds = PROVIDER_PRESETS.map((p) => `<option value="${p.kind}" ${p.kind === preset.kind ? "selected" : ""}>${esc(p.label)}</option>`).join("");
+  const models = preset.models.length
+    ? `<select name="model" class="grow">${preset.models.map((m, i) => `<option value="${esc(m.id)}" ${i === 0 ? "selected" : ""}>${esc(m.label)} · ${esc(m.note)}</option>`).join("")}<option value="">Another model id…</option></select>`
+    : "";
+  return `<form id="providerForm" class="panel" autocomplete="off">
+    <div class="field"><label for="providerKind">Provider</label><select name="kind" id="providerKind">${kinds}</select></div>
+    ${preset.kind === "custom" ? `<div class="field"><label for="providerUrl">Server</label><input name="baseUrl" id="providerUrl" placeholder="https://host/v1" spellcheck="false"></div>` : ""}
+    ${preset.keyFile ? `<div class="field"><label for="providerKey">Key</label><input type="password" name="key" id="providerKey" placeholder="${preset.kind === "custom" ? "optional" : "paste the key"}" spellcheck="false"><span class="hint">${esc(preset.keyHint)}</span></div>` : ""}
+    <div class="field"><label for="providerModel">Model</label>${models}<input name="modelText" id="providerModel" placeholder="${preset.models.length ? "only if you picked Another model id" : preset.kind === "ollama" ? "the model you pulled, like qwen3:8b" : "model id"}" spellcheck="false"></div>
+    <p class="muted small">${esc(preset.dataNote)} The key is written to a file in your data folder and named from <code>config.json</code>; it goes to that provider only, with your questions and the tool results.</p>
+    <div class="row"><button type="submit" class="btn btn-primary">Save</button><button type="button" class="btn" id="cancelProvider">Cancel</button></div>
+  </form>`;
 }
 
 function characters(): string {
@@ -429,11 +450,13 @@ document.body.addEventListener("click", async (ev) => {
     return;
   }
   if (t.id === "openBackups") { void api.openBackupsFolder(); return; }
-  if (t.id === "removeKey") {
-    try { data.chat = await api.chatRemoveKey(); flash = "Key removed. Chat is back to sourced search."; } catch (e) { flash = `!${msg(e)}`; }
+  if (t.id === "removeProvider") {
+    try { data.chat = await api.chatRemoveProvider(); flash = "Provider removed. Chat is back to sourced search."; } catch (e) { flash = `!${msg(e)}`; }
     render();
     return;
   }
+  if (t.id === "changeProvider") { pickKind = data.chat?.provider?.kind ?? "anthropic"; pickOpen = true; flash = ""; render(); return; }
+  if (t.id === "cancelProvider") { pickOpen = false; render(); return; }
   if (t.id === "copyDiag" && state) {
     try { await navigator.clipboard.writeText(diagnostics(state)); flash = "Copied. Paste it into the bug report."; }
     catch (e) { flash = `!Could not copy: ${msg(e)}`; }
@@ -461,6 +484,7 @@ document.body.addEventListener("click", async (ev) => {
 
 main.addEventListener("change", async (ev) => {
   const el = ev.target as HTMLInputElement;
+  if (el.id === "providerKind") { pickKind = el.value as ProviderKind; render(); return; }
   if (el.dataset.toggle) {
     const job = el.dataset.toggle as Job;
     state = await api.saveSettings(job === "ask" ? { ask: { ...state!.settings.ask, enabled: el.checked } } : { [job]: el.checked });
@@ -475,9 +499,9 @@ main.addEventListener("change", async (ev) => {
     return;
   }
   if (el.name === "folder") { chosenFolder = el.value; render(); return; }
-  if (el.form && el.form.id !== "chatForm" && el.form.id !== "keyForm") draftDirty = true;
+  if (el.form && el.form.id !== "chatForm" && el.form.id !== "providerForm") draftDirty = true;
 });
-main.addEventListener("input", (ev) => { const f = (ev.target as HTMLElement).closest("form"); if (f && f.id !== "chatForm" && f.id !== "keyForm") draftDirty = true; });
+main.addEventListener("input", (ev) => { const f = (ev.target as HTMLElement).closest("form"); if (f && f.id !== "chatForm" && f.id !== "providerForm") draftDirty = true; });
 main.addEventListener("keydown", (ev) => {
   if ((ev.target as HTMLElement).id === "chatText" && ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); (main.querySelector("#chatForm") as HTMLFormElement).requestSubmit(); }
 });
@@ -487,9 +511,11 @@ main.addEventListener("submit", async (ev) => {
   ev.preventDefault();
   const f = new FormData(form);
   const text = (k: string) => String(f.get(k) ?? "").trim();
-  if (form.id === "keyForm") {
-    try { data.chat = await api.chatSetKey(text("key"), text("model")); flash = `Saved. Chat now runs ${data.chat.mode}.`; }
-    catch (e) { flash = `!${msg(e)}`; }
+  if (form.id === "providerForm") {
+    try {
+      data.chat = await api.chatSetProvider({ kind: pickKind, key: text("key"), model: text("model") || text("modelText"), baseUrl: text("baseUrl") });
+      pickOpen = false; flash = `Saved. Chat now runs ${data.chat.mode}.`;
+    } catch (e) { flash = `!${msg(e)}`; }
     render();
     return;
   }
@@ -498,7 +524,7 @@ main.addEventListener("submit", async (ev) => {
     const question = box.value.trim();
     if (!question || data.chat?.busy) return;
     box.value = "";
-    data.chat = { ...(data.chat ?? { messages: [], mode: "", mcpUrl: "", withToken: false, ownKey: false, error: null }), busy: true, messages: [...(data.chat?.messages ?? []), { role: "user", text: question, at: new Date().toISOString(), model: null, sources: [], steps: [] }] };
+    data.chat = { ...(data.chat ?? { messages: [], mode: "", mcpUrl: "", withToken: false, provider: null, error: null }), busy: true, messages: [...(data.chat?.messages ?? []), { role: "user", text: question, at: new Date().toISOString(), model: null, sources: [], steps: [] }] };
     render();
     data.chat = await api.chatSend(question);
     render();

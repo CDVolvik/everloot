@@ -1,16 +1,17 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { readJsonFile } from "./json-file";
-import { loadProviders } from "../../../companion/src/providers/config";
 import type { ChatInfo, ChatMessage, Settings } from "../shared/types";
 import { answer, readProviderEntries } from "./agent";
-import { DEFAULT_MODEL, hasOwnAnthropicKey, removeAnthropicKey, setAnthropicKey } from "./providers";
+import { DEFAULT_MODEL, ownProvider, removeProvider, setProvider } from "./providers";
+import type { ProviderChoice } from "../shared/providers";
 
 const MAX_MESSAGES = 100;
 
 /**
  * The Chat page's state: a transcript kept in chat.json in the data folder (private, never
- * uploaded), one question at a time, answered by the agent over Everloot's MCP server.
+ * uploaded), one question at a time, answered by the agent over Everloot's MCP server, and the
+ * provider picker's writes to config.json.
  */
 export function createChat(dataFolder: string, current: () => Settings) {
   const path = join(dataFolder, "chat.json");
@@ -37,23 +38,21 @@ export function createChat(dataFolder: string, current: () => Settings) {
   };
   const mode = (): string => {
     try {
-      const entries = readProviderEntries(join(dataFolder, "config.json"));
-      const a = entries.find((e) => e.type === "anthropic");
-      if (a) return `anthropic:${a.model ?? DEFAULT_MODEL} with tools`;
-      if (entries.length) return `${entries[0].type}${entries[0].model ? `:${entries[0].model}` : ""} (summary of search hits)`;
+      const first = readProviderEntries(join(dataFolder, "config.json"))[0];
+      if (!first) return "plain search";
+      return `${first.type === "anthropic" ? "anthropic" : new URL(first.baseUrl ?? "http://unknown").hostname}:${first.model ?? DEFAULT_MODEL} with tools`;
     } catch (err) { return `config.json: ${err instanceof Error ? err.message : String(err)}`; }
-    return "plain search";
   };
   const info = (): ChatInfo => {
     const t = target();
-    return { messages: [...messages], mode: mode(), mcpUrl: t.url, withToken: t.token !== null, ownKey: hasOwnAnthropicKey(dataFolder), busy, error };
+    return { messages: [...messages], mode: mode(), mcpUrl: t.url, withToken: t.token !== null, provider: ownProvider(dataFolder), busy, error };
   };
 
   return {
     info,
     clear(): ChatInfo { messages = []; error = null; save(); return info(); },
-    setKey(key: string, model?: string): ChatInfo { setAnthropicKey(dataFolder, key, model); error = null; return info(); },
-    removeKey(): ChatInfo { removeAnthropicKey(dataFolder); return info(); },
+    setProvider(choice: ProviderChoice): ChatInfo { setProvider(dataFolder, choice); error = null; return info(); },
+    removeProvider(): ChatInfo { removeProvider(dataFolder); return info(); },
     async send(text: string): Promise<ChatInfo> {
       const question = text.trim().slice(0, 2000);
       if (!question || busy) return info();
@@ -61,10 +60,8 @@ export function createChat(dataFolder: string, current: () => Settings) {
       const history = [...messages];
       messages.push({ role: "user", text: question, at: new Date().toISOString(), model: null, sources: [], steps: [] });
       try {
-        const config = join(dataFolder, "config.json");
-        const entries = readProviderEntries(config);
-        const providers = entries.some((e) => e.type === "anthropic") ? [] : loadProviders(config);
-        const r = await answer({ mcp: target(), entries, providers, history, question });
+        const entries = readProviderEntries(join(dataFolder, "config.json"));
+        const r = await answer({ mcp: target(), entries, history, question });
         messages.push({ role: "assistant", text: r.text, at: new Date().toISOString(), model: r.model, sources: r.sources, steps: r.steps });
       } catch (err) {
         error = err instanceof Error ? err.message : String(err);

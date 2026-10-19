@@ -81,21 +81,21 @@ test("the target is the public mount without a token and the token endpoint with
   expect(withToken.info()).toMatchObject({ mcpUrl: "https://example.test/mcp/public", withToken: false });
 });
 
-test("the mode names the provider: plain search, another provider's summary, or Anthropic with tools", () => {
+test("the mode names the first provider with its model, and the picker's entry goes in front of hand-written ones", () => {
   const d = dir();
   const chat = createChat(d, () => settings());
-  expect(chat.info()).toMatchObject({ mode: "plain search", ownKey: false });
-  writeFileSync(join(d, "config.json"), JSON.stringify({ providers: [{ type: "openai", model: "gpt-5", apiKeyFile: "k.txt" }] }));
-  expect(chat.info().mode).toBe("openai:gpt-5 (summary of search hits)");
-  chat.setKey(`sk-ant-${"a".repeat(30)}`, "claude-haiku-5-5");
-  expect(chat.info()).toMatchObject({ mode: "anthropic:claude-haiku-5-5 with tools", ownKey: true });
-  // The other provider stays behind Anthropic rather than being dropped.
-  expect(JSON.parse(readFileSync(join(d, "config.json"), "utf8")).providers.map((p: { type: string }) => p.type)).toEqual(["anthropic", "openai"]);
-  chat.removeKey();
-  expect(chat.info()).toMatchObject({ mode: "openai:gpt-5 (summary of search hits)", ownKey: false });
+  expect(chat.info()).toMatchObject({ mode: "plain search", provider: null });
+  writeFileSync(join(d, "config.json"), JSON.stringify({ providers: [{ type: "openai-compatible", baseUrl: "https://api.deepseek.com/v1", model: "deepseek-chat", apiKeyFile: "k.txt" }] }));
+  expect(chat.info()).toMatchObject({ mode: "api.deepseek.com:deepseek-chat with tools", provider: null });
+  chat.setProvider({ kind: "anthropic", key: `sk-ant-${"a".repeat(30)}`, model: "claude-haiku-5-5" });
+  expect(chat.info()).toMatchObject({ mode: "anthropic:claude-haiku-5-5 with tools", provider: { kind: "anthropic", model: "claude-haiku-5-5", baseUrl: null } });
+  // The hand-written provider stays behind the picked one rather than being dropped.
+  expect(JSON.parse(readFileSync(join(d, "config.json"), "utf8")).providers.map((p: { type: string }) => p.type)).toEqual(["anthropic", "openai-compatible"]);
+  chat.removeProvider();
+  expect(chat.info()).toMatchObject({ mode: "api.deepseek.com:deepseek-chat with tools", provider: null });
   // Saved by hand with a byte order mark: still read.
-  writeFileSync(join(d, "config.json"), "\uFEFF" + JSON.stringify({ providers: [{ type: "openai", model: "gpt-5", apiKeyFile: "k.txt" }] }));
-  expect(chat.info().mode).toBe("openai:gpt-5 (summary of search hits)");
+  writeFileSync(join(d, "config.json"), "\uFEFF" + JSON.stringify({ providers: [{ type: "openai-compatible", baseUrl: "http://localhost:11434/v1", model: "qwen3" }] }));
+  expect(chat.info().mode).toBe("localhost:qwen3 with tools");
   writeFileSync(join(d, "config.json"), JSON.stringify({ providers: [{ type: "openai", apiKey: "inline" }] }));
   expect(chat.info().mode).toMatch(/^config.json: providers\[0\]/);
 });

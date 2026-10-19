@@ -37,7 +37,7 @@ The window is a sidebar with one page per thing to manage:
 | Page | What it shows and does |
 |---|---|
 | Overview | The four states at a glance (upload, prices, `/ask`, addon), recent activity, the latest Blizzard changes |
-| Chat | A chat over Everloot's own MCP tools, with sources under every answer. With an Anthropic key (pasted on the page, kept in `anthropic.key` in the data folder and named from `config.json`) the model calls the tools itself; with another provider it phrases the search hits; with no provider you get the sourced hits as they are. The transcript stays in your data folder |
+| Chat | Ask anything about the game. With a provider the model works Everloot's own MCP tools itself and names the sources; when they have nothing it answers from its own knowledge and says so. Providers are your own account, picked on the page: an Anthropic key, an OpenRouter key (cheap or free models), an OpenCode Zen key (its zero-retention free models), an Ollama on this computer, or any OpenAI-compatible server. The key goes into a file in the data folder and `config.json` names it, so the in-game `/ask` uses the same pick. With no provider you get the sourced search hits as they are. Claude.ai and ChatGPT subscriptions cannot be used: both companies allow API keys in other apps, not their consumer sign-ins. The transcript stays in your data folder |
 | Characters | Your own characters from the save file: gold with a line of every snapshot the addon kept and the last seven days as earned, spent and net, peak, item level, and the completion tracker's progress per character key. Never uploaded from here |
 | Upload | Each account file: when it was written, addon and client build, records per kind, how many the site confirmed. Run now |
 | Market | Realm picks: your scanned realms are always carried; tick more from the realms the site has public values for (TSM-style realm picks, on Everloot's own scan data). When you last scanned each realm, with a reminder past a day. What the last refresh wrote |
@@ -93,9 +93,10 @@ Set `EVERLOOT_DATA_DIR` to a scratch folder to keep a development run away from 
 | `src/main/engine.ts` | Watches the account files and runs the jobs; every job is injected, so tests need no network |
 | `src/main/jobs.ts` | The jobs, built on `companion/src` (uploader, prices, bridge) |
 | `src/main/market.ts`, `inspect.ts`, `addon.ts`, `changes.ts` | Realm picks and the prices file, what a save file holds, addon install with checksum, the changes feed |
-| `src/main/agent.ts`, `chat.ts` | The agent over the MCP server (tool loop, summary or plain search) and the Chat page's transcript |
+| `src/main/agent.ts`, `chat.ts` | The agent over the MCP server (the tool loop on Anthropic's API or any OpenAI-compatible one, or plain search) and the Chat page's transcript |
 | `src/main/characters.ts` | Gold, gear and progress per character from the save file |
-| `src/main/backups.ts`, `providers.ts` | The dated copies of each account file and their restore; the Anthropic key file and its `config.json` entry |
+| `src/main/backups.ts`, `providers.ts` | The dated copies of each account file and their restore; the picked provider's key file and its `config.json` entry |
+| `src/shared/providers.ts` | The provider presets the Chat page offers: base URLs, key shapes, the curated models and their data notes |
 | `src/main/window-state.ts`, `json-file.ts` | The window's remembered size and place; JSON files read with a byte order mark allowed |
 | `src/main/site-views.ts` | The embedded site tools (one browser view, kept on the site's origin) |
 | `src/main/settings.ts`, `game-folder.ts`, `updates.ts`, `external.ts` | Settings file, where the game is, the release check, the browser allow-list |
