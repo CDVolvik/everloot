@@ -3,7 +3,7 @@ const path = require("node:path");
 const reportOnlyCsp = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://www.googletagmanager.com https://eu.i.posthog.com https://us.i.posthog.com https://eu-assets.i.posthog.com https://us-assets.i.posthog.com https://pagead2.googlesyndication.com https://fundingchoicesmessages.google.com https://*.adtrafficquality.google",
-  "connect-src 'self' https://cloudflareinsights.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com https://eu.i.posthog.com https://us.i.posthog.com https://pagead2.googlesyndication.com https://fundingchoicesmessages.google.com https://*.adtrafficquality.google https://googleads.g.doubleclick.net",
+  "connect-src 'self' https://assets.everloot.app https://cloudflareinsights.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com https://eu.i.posthog.com https://us.i.posthog.com https://pagead2.googlesyndication.com https://fundingchoicesmessages.google.com https://*.adtrafficquality.google https://googleads.g.doubleclick.net",
   "img-src 'self' data: blob: https:",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self' data:",
@@ -13,12 +13,17 @@ const reportOnlyCsp = [
   "object-src 'none'",
 ].join("; ");
 
+// Enforced: only directives that block nothing the site or AdSense uses. AdSense supports a nonce-based
+// CSP only (support.google.com/adsense/answer/16283098), so script, connect and frame sources stay report-only.
+const enforcedCsp = ["object-src 'none'", "base-uri 'self'", "frame-ancestors 'self'"].join("; ");
+
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "SAMEORIGIN" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()" },
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
+  { key: "Content-Security-Policy", value: enforcedCsp },
   { key: "Content-Security-Policy-Report-Only", value: reportOnlyCsp },
 ];
 
@@ -57,10 +62,11 @@ const nextConfig = {
   async redirects() {
     return [{ source: "/lore/browse/:type(npcs|items|quests|zones|spells)", destination: "/lore/:type", permanent: true }];
   },
-  // Security headers on every route. The CSP is report-only: it lists what the site loads (the analytics and ads
-  // scripts only start after consent) and enforces nothing, so a missed host shows in the console, not as a
-  // broken page. Access-Control-Allow-Origin is not set here: the `*` seen on pages is added by Vercel for
-  // prerendered responses, and a header set here could not remove it.
+  // Security headers on every route. The full CSP is report-only: it lists what the site loads (the analytics
+  // scripts only start after consent), so a missed host shows in the console, not as a broken page. The
+  // enforced CSP holds only the plugin, base-tag and framing rules. Access-Control-Allow-Origin is not set
+  // here: the `*` seen on pages is added by Vercel for prerendered responses, and a header set here could not
+  // remove it.
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
