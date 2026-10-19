@@ -153,7 +153,7 @@ if (!app.requestSingleInstanceLock()) {
     win.once("ready-to-show", () => { win?.show(); });
     // The size and place come back next time; written a moment after the last drag, and on close.
     let saveTimer: ReturnType<typeof setTimeout> | null = null;
-    const remember = () => { if (win && !win.isMinimized() && !win.isMaximized() && !win.isFullScreen()) { try { writeWindowState(windowPath, win.getBounds()); } catch { /* read-only data folder; nothing to remember */ } } };
+    const remember = () => { if (win && !win.isDestroyed() && !win.isMinimized() && !win.isMaximized() && !win.isFullScreen()) { try { writeWindowState(windowPath, win.getBounds()); } catch { /* read-only data folder; nothing to remember */ } } };
     const rememberSoon = () => { if (saveTimer) clearTimeout(saveTimer); saveTimer = setTimeout(remember, 500); };
     win.on("resize", rememberSoon);
     win.on("move", rememberSoon);
