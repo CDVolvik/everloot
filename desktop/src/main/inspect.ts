@@ -74,6 +74,16 @@ export function summarizeFiles(files: string[], sentPath: string): FileSummary[]
 export const SCAN_STALE_MS = 24 * 3600 * 1000;
 
 /** Realms whose last full scan is older than `maxAge` or has no date, oldest first; a softer reminder than scanning for the player. */
+/** One entry per realm across every account file, the newest scan winning, newest first. */
+export function newestScans(all: ScanAge[]): ScanAge[] {
+  const best = new Map<string, ScanAge>();
+  for (const s of all) {
+    const b = best.get(s.realm);
+    if (!b || (s.at ?? "") > (b.at ?? "")) best.set(s.realm, s);
+  }
+  return [...best.values()].sort((a, b) => (b.at ?? "").localeCompare(a.at ?? ""));
+}
+
 export function staleScans(scans: ScanAge[], now = Date.now(), maxAge = SCAN_STALE_MS): ScanAge[] {
   return scans.filter((s) => !s.at || now - new Date(s.at).getTime() > maxAge).sort((a, b) => (a.at ?? "").localeCompare(b.at ?? ""));
 }

@@ -8,6 +8,7 @@ export const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString(
 export const ago = (iso: string | null, now = Date.now()) => {
   if (!iso) return "never";
   const m = Math.round((now - new Date(iso).getTime()) / 60000);
+  if (Number.isNaN(m)) return "unknown time";
   return m < 1 ? "just now" : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`;
 };
 export const kb = (n: number) => (n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(0)} KB` : `${(n / 1048576).toFixed(1)} MB`);

@@ -16,7 +16,7 @@ import { localTools } from "./local-tools";
 import { createEngine } from "./engine";
 import { allowedExternal } from "./external";
 import { candidateRoots, detectGameFolders, realFs } from "./game-folder";
-import { readScanAges, staleScans, summarizeFiles } from "./inspect";
+import { newestScans, readScanAges, staleScans, summarizeFiles } from "./inspect";
 import { companionJobs } from "./jobs";
 import { listRealms, ownRealms } from "./market";
 import { loadSettings, mergeSettings, saveSettings } from "./settings";
@@ -75,7 +75,7 @@ if (!app.requestSingleInstanceLock()) {
   });
   const chat = createChat(data, () => settings, localTools({
     characters: () => charactersFromFiles(engine.snapshot().files),
-    scans: () => allScans().slice().sort((a, b) => (b.at ?? "").localeCompare(a.at ?? "")),
+    scans: () => newestScans(allScans()),
     followed: () => settings.market.realms,
     status: () => {
       const e = engine.snapshot();
@@ -240,7 +240,7 @@ if (!app.requestSingleInstanceLock()) {
   });
   ipcMain.handle("marketInfo", async (): Promise<MarketInfo> => {
     const files = engine.snapshot().files;
-    const scans = allScans().slice().sort((a, b) => (b.at ?? "").localeCompare(a.at ?? ""));
+    const scans = newestScans(allScans());
     const base = { own: ownRealms(files), followed: settings.market.realms, last: jobs.lastMarket(), scans };
     try {
       const k = await knownRealms();

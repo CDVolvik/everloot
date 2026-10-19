@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, test } from "vitest";
-import { confirmedCounts, scanReminder, staleScans, summarizeFiles, summarizeSavedVariables } from "../src/main/inspect";
+import { confirmedCounts, newestScans, scanReminder, staleScans, summarizeFiles, summarizeSavedVariables } from "../src/main/inspect";
 
 const dirs: string[] = [];
 const dir = () => { const d = mkdtempSync(join(tmpdir(), "everloot-inspect-")); dirs.push(d); return d; };
@@ -76,4 +76,14 @@ test("summarizeFiles parses a file once per write: a new confirmed count shows w
   writeFileSync(sv, `EverlootDB = { ["version"] = "0.3.3", ["installId"] = "inst", ["records"] = { ["drop"] = { { ["a"] = 1 }, { ["a"] = 2 } } } }`);
   utimesSync(sv, later, later);
   expect(summarizeFiles([sv], sent)[0]).toMatchObject({ records: 2, confirmed: 3 });
+});
+
+test("a realm scanned from two account files is listed once, with its newest scan, newest first", () => {
+  const all = [
+    { realm: "Nightslayer", at: "2026-10-15T08:00:00Z" }, { realm: "Doomhowl", at: null },
+    { realm: "Nightslayer", at: "2026-10-19T05:00:00Z" }, { realm: "Dreamscythe", at: "2026-10-18T00:00:00Z" },
+  ];
+  expect(newestScans(all)).toEqual([
+    { realm: "Nightslayer", at: "2026-10-19T05:00:00Z" }, { realm: "Dreamscythe", at: "2026-10-18T00:00:00Z" }, { realm: "Doomhowl", at: null },
+  ]);
 });

@@ -1,10 +1,13 @@
+import { hideHome } from "../shared/diagnostics";
+import { ago, gold as goldOrDash } from "../renderer/format";
 import type { CharactersInfo, Job, JobStatus, LogLine, ScanAge, UpdateCheck } from "../shared/types";
 
 /**
  * Tools the chat model can call that read the player's own save files on this computer, beside
  * the MCP server's tools over Everloot's public data. They return text only, nothing leaves the
  * machine through them, and each result ends with a Source line so the page lists it like any
- * other. The reads go through the same functions the Characters and Market pages use.
+ * other. The reads go through the same functions the Characters and Market pages use. Paths are
+ * shown with the user folder hidden, as Copy diagnostics does, since the text goes to the provider.
  */
 
 export interface LocalTool {
@@ -42,19 +45,8 @@ export const STATUS_SOURCE = "this computer (the Everloot Desktop App's own stat
 
 const NO_ARGS = { type: "object", properties: {}, additionalProperties: false };
 
-export const gold = (copper: number | null): string => {
-  if (copper === null) return "unknown";
-  const g = Math.floor(copper / 10000), s = Math.floor((copper % 10000) / 100), c = copper % 100;
-  return g ? `${g.toLocaleString("en-US")}g ${s}s` : s ? `${s}s ${c}c` : `${c}c`;
-};
-
-const age = (iso: string | null, now: number): string => {
-  if (!iso) return "never";
-  const h = Math.max(0, Math.round((now - Date.parse(iso)) / 3_600_000));
-  if (h < 1) return "under an hour ago";
-  if (h < 48) return `${h} hour${h === 1 ? "" : "s"} ago`;
-  return `${Math.round(h / 24)} days ago`;
-};
+/** The page's gold text, with "unknown" rather than a dash for the model. */
+export const gold = (copper: number | null): string => (copper === null ? "unknown" : goldOrDash(copper));
 
 const sum = (r: Record<string, number>) => Object.values(r).reduce((a, b) => a + b, 0);
 
@@ -104,7 +96,7 @@ export function localTools(data: LocalData, now: () => number = Date.now): Local
         const t = now();
         const scans = data.scans();
         const followed = data.followed();
-        const lines = scans.map((s) => `${s.realm}: last full scan ${s.at ? `${s.at} (${age(s.at, t)})` : "never"}`);
+        const lines = scans.map((s) => `${s.realm}: last full scan ${s.at ? `${s.at} (${ago(s.at, t)})` : "never"}`);
         if (!lines.length) lines.push("No auction scans in the account files yet. A scan is started in game with the addon's scan button.");
         lines.push(followed.length ? `Realms followed for the prices file: ${followed.join(", ")}` : "No realms followed for the prices file beyond the scanned ones.");
         return `${lines.join("\n")}\nSource: ${LOCAL_SOURCE}`;
@@ -118,12 +110,12 @@ export function localTools(data: LocalData, now: () => number = Date.now): Local
         const s = data.status();
         const lines = [
           `Everloot Desktop App ${s.version}${s.paused ? ", paused from the tray" : ""}`,
-          s.gameFolder ? `Game folder: ${s.gameFolder}, watching ${s.files} account file${s.files === 1 ? "" : "s"}${s.files ? "" : " (no Everloot.lua found; log in once with the addon enabled)"}` : "Game folder: not set; the app does nothing until Settings points at the product folder",
+          s.gameFolder ? `Game folder: ${hideHome(s.gameFolder)}, watching ${s.files} account file${s.files === 1 ? "" : "s"}${s.files ? "" : " (no Everloot.lua found; log in once with the addon enabled)"}` : "Game folder: not set; the app does nothing until Settings points at the product folder",
           ...(["upload", "prices", "ask"] as Job[]).map((job) => jobLine(job, s.switches[job], s.jobs[job])),
           s.addonInstalled ? `Addon installed: ${s.addonInstalled}` : "Addon: not installed in that game folder; the Addon page installs it",
           s.update ? (s.update.newer ? `A newer app release exists: ${s.update.latest} (current ${s.update.current}); the Overview links to it` : `App release: current (${s.update.current})`) : "App release check: not run yet or GitHub unreachable",
         ];
-        if (s.errors.length) lines.push("Latest errors in the log:", ...s.errors.map((l) => `  ${l.at} ${l.text}`));
+        if (s.errors.length) lines.push("Latest errors in the log:", ...s.errors.map((l) => `  ${l.at} ${hideHome(l.text)}`));
         else lines.push("No errors in the log.");
         return `${lines.join("\n")}\nSource: ${STATUS_SOURCE}`;
       },

@@ -47,11 +47,12 @@ const jobSwitch = (job: Job, s: AppState) => `<label class="switch"><input type=
 const runBtn = (job: Job, s: AppState, label = "Run now") => `<button type="button" class="btn" data-run="${job}" ${onOff(job, s) && s.engine.files.length && !s.engine.paused && s.engine.jobs[job].state !== "running" ? "" : "disabled"}>${label}</button>`;
 /** A button that opens Chat with a question ready; the click handler sends it. */
 const askChip = (question: string, label = question) => `<button type="button" class="chip ask" data-ask="${esc(question)}">${esc(label)}</button>`;
-/** The question to put to the chat about a job that failed; null when none did. */
-const whyFailed = (s: AppState): string | null => {
-  const failed = (["upload", "prices", "ask"] as Job[]).find((j) => s.engine.jobs[j].state === "error");
-  return failed ? `Why did ${failed === "ask" ? "the /ask answers" : failed} fail? The app says: ${s.engine.jobs[failed].message}` : null;
-};
+/** The question to put to the chat about a job that failed. */
+const whyQuestion = (job: Job, s: AppState) => `Why did ${job === "ask" ? "the /ask answers" : job} fail? The app says: ${s.engine.jobs[job].message}`;
+/** One question per failed job, in job order. */
+const whyFailed = (s: AppState): string[] => (["upload", "prices", "ask"] as Job[]).filter((j) => s.engine.jobs[j].state === "error").map((j) => whyQuestion(j, s));
+/** The "ask why" link under a stat whose job failed; nothing otherwise. */
+const askWhy = (job: Job, s: AppState) => (s.engine.jobs[job].state === "error" ? ` · <button type="button" class="link" data-ask="${esc(whyQuestion(job, s))}">ask why</button>` : "");
 const logLines = (s: AppState, n: number) => s.engine.log.slice(-n).reverse().map((l) => `<div><time>${clock(l.at)}</time><span class="${l.level}">${esc(l.text)}</span></div>`).join("") || '<span class="muted">Nothing yet.</span>';
 
 // ---------- screens ----------
@@ -97,9 +98,9 @@ function overview(s: AppState): string {
     ${s.update?.newer && s.update.url ? `<p class="fg2">Everloot Desktop App ${esc(s.update.latest ?? "")} is out; you run ${esc(s.version)}. ${ext(s.update.url, "Download it")} and install over this one; your settings stay.</p>` : ""}
     ${!e.files.length && s.settings.gameFolder ? `<p class="fg2">No <code>Everloot.lua</code> under <span class="mono">${esc(s.settings.gameFolder)}</span> yet. Log out once in the game so it writes the file.</p>` : ""}
     <div class="stats">
-      <div class="stat"><div class="k">Upload</div><div class="v">${dot(up)} ${up.state === "ok" ? "OK" : up.state === "error" ? "Failed" : up.state === "off" ? "Off" : "Waiting"}</div><div class="s">${up.at ? ago(up.at) : "never"}${up.state === "error" ? ` · <button type="button" class="link" data-ask="${esc(`Why did upload fail? The app says: ${up.message}`)}">ask why</button>` : ""}</div></div>
-      <div class="stat"><div class="k">Market prices</div><div class="v">${dot(pr)} ${data.market ? `${data.market.last.length} realm(s)` : pr.state === "off" ? "Off" : "Waiting"}</div><div class="s">${data.market?.scans[0] ? `your last scan ${ago(data.market.scans[0].at)}` : pr.at ? ago(pr.at) : "never"}</div></div>
-      <div class="stat"><div class="k">/ask</div><div class="v">${dot(ask)} ${ask.state === "off" ? "Off" : ask.state === "error" ? "Failed" : "On"}</div><div class="s">${ask.at ? ago(ask.at) : s.settings.ask.enabled ? "waiting" : "turn on in Ask"}</div></div>
+      <div class="stat"><div class="k">Upload</div><div class="v">${dot(up)} ${up.state === "ok" ? "OK" : up.state === "error" ? "Failed" : up.state === "off" ? "Off" : "Waiting"}</div><div class="s">${up.at ? ago(up.at) : "never"}${askWhy("upload", s)}</div></div>
+      <div class="stat"><div class="k">Market prices</div><div class="v">${dot(pr)} ${data.market ? `${data.market.last.length} realm(s)` : pr.state === "off" ? "Off" : "Waiting"}</div><div class="s">${data.market?.scans[0] ? `your last scan ${ago(data.market.scans[0].at)}` : pr.at ? ago(pr.at) : "never"}${askWhy("prices", s)}</div></div>
+      <div class="stat"><div class="k">/ask</div><div class="v">${dot(ask)} ${ask.state === "off" ? "Off" : ask.state === "error" ? "Failed" : "On"}</div><div class="s">${ask.at ? ago(ask.at) : s.settings.ask.enabled ? "waiting" : "turn on in Ask"}${askWhy("ask", s)}</div></div>
       <div class="stat"><div class="k">Addon</div><div class="v">${addonLine}</div><div class="s">${addon?.slots.prices ? "prices file in game" : "no prices file yet"}${addon && (!addon.installed || (addon.latest && addon.latest.version !== addon.installed)) ? ` · <button type="button" class="link" data-page="addon">${addon.installed ? "update" : "install"}</button>` : ""}</div></div>
     </div>
     <div class="grid2">
@@ -309,7 +310,7 @@ function changes(): string {
 
 function log(s: AppState): string {
   return `<div class="page">
-    <div class="head"><h1>Log</h1><div class="row">${whyFailed(s) ? askChip(whyFailed(s)!, "Ask the assistant why it failed") : ""}<button type="button" class="btn" id="copyDiag">Copy diagnostics</button><button type="button" class="btn" id="pause">${s.engine.paused ? "Resume" : "Pause"}</button></div></div>
+    <div class="head"><h1>Log</h1><div class="row">${whyFailed(s).map((q) => askChip(q, "Ask the assistant why it failed")).join("")}<button type="button" class="btn" id="copyDiag">Copy diagnostics</button><button type="button" class="btn" id="pause">${s.engine.paused ? "Resume" : "Pause"}</button></div></div>
     ${flash ? `<p class="${flash.startsWith("!") ? "error" : "ok"} small">${esc(flash.replace(/^!/, ""))}</p>` : ""}
     <section class="panel"><div class="log">${logLines(s, 200)}</div></section>
     <p class="muted small">Copy diagnostics puts the version, your settings (where the token file is, never the token), the files watched, each job's last state and the last hundred lines on the clipboard, with your user folder hidden, for a bug report.</p>
@@ -436,8 +437,10 @@ document.body.addEventListener("click", async (ev) => {
   if (!t) return;
   if (t.dataset.page) { void go(t.dataset.page as Page); return; }
   if (t.dataset.ask) {
+    // Not go(): its load("chat") would answer after the send and overwrite the busy thread.
     const question = t.dataset.ask;
-    if (page !== "chat") { await go("chat"); if (!data.chat) data.chat = await api.chatInfo(); }
+    if (page !== "chat") { if (page.startsWith("site:")) await api.siteHide(); page = "chat"; draftDirty = false; flash = ""; }
+    if (!data.chat) data.chat = await api.chatInfo();
     void sendChat(question);
     return;
   }
@@ -553,8 +556,9 @@ main.addEventListener("submit", async (ev) => {
   if (form.id === "chatForm") {
     const box = main.querySelector("#chatText") as HTMLTextAreaElement;
     const question = box.value.trim();
+    if (!question || data.chat?.busy) return;
     box.value = "";
-    await sendChat(question);
+    void sendChat(question);
     return;
   }
   if (form.id === "settings") {

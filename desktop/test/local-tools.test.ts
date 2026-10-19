@@ -16,11 +16,11 @@ const info: CharactersInfo = {
 
 const ok = { state: "ok" as const, message: "3 records sent", at: "2026-10-19T07:00:00Z" };
 const status: AppStatus = {
-  version: "0.1.0", gameFolder: "C:\\Games\\_classic_era_", files: 1, paused: false,
+  version: "0.1.0", gameFolder: "C:\\Users\\carlos\\Games\\_classic_era_", files: 1, paused: false,
   switches: { upload: true, prices: true, ask: false },
   jobs: { upload: ok, prices: { state: "error", message: "HTTP 503 from everloot.app", at: "2026-10-19T07:01:00Z" }, ask: { state: "off", message: "", at: null } },
   addonInstalled: "0.3.3", update: { current: "0.1.0", latest: "0.2.0", url: "https://example.test/r", newer: true },
-  errors: [{ at: "2026-10-19T07:01:00Z", level: "error", text: "prices: HTTP 503 from everloot.app" }],
+  errors: [{ at: "2026-10-19T07:01:00Z", level: "error", text: "prices: HTTP 503 from everloot.app writing C:\\Users\\carlos\\x" }],
 };
 
 const tools = (data: Partial<Parameters<typeof localTools>[0]> = {}) =>
@@ -54,8 +54,8 @@ test("my_realm_scans gives each realm's last scan as a date and an age, plus the
     followed: () => ["Doomhowl", "Maladath"],
   });
   expect(out.split("\n")).toEqual([
-    "Nightslayer: last full scan 2026-10-19T05:30:00Z (3 hours ago)",
-    "Doomhowl: last full scan 2026-10-15T08:00:00Z (4 days ago)",
+    "Nightslayer: last full scan 2026-10-19T05:30:00Z (3 h ago)",
+    "Doomhowl: last full scan 2026-10-15T08:00:00Z (4 d ago)",
     "Dreamscythe: last full scan never",
     "Realms followed for the prices file: Doomhowl, Maladath",
     `Source: ${LOCAL_SOURCE}`,
@@ -66,14 +66,14 @@ test("my_realm_scans gives each realm's last scan as a date and an age, plus the
 test("my_app_status says what runs, what failed and why, the addon and app versions, with the app's own source", () => {
   expect(run("my_app_status").split("\n")).toEqual([
     "Everloot Desktop App 0.1.0",
-    "Game folder: C:\\Games\\_classic_era_, watching 1 account file",
+    "Game folder: ~\\Games\\_classic_era_, watching 1 account file",
     "Upload: ok at 2026-10-19T07:00:00Z, 3 records sent",
     "Prices: FAILED at 2026-10-19T07:01:00Z: HTTP 503 from everloot.app",
     "/ask answers: turned off in Settings",
     "Addon installed: 0.3.3",
     "A newer app release exists: 0.2.0 (current 0.1.0); the Overview links to it",
     "Latest errors in the log:",
-    "  2026-10-19T07:01:00Z prices: HTTP 503 from everloot.app",
+    "  2026-10-19T07:01:00Z prices: HTTP 503 from everloot.app writing ~\\x",
     `Source: ${STATUS_SOURCE}`,
   ]);
   const bare = run("my_app_status", { status: () => ({ ...status, gameFolder: null, files: 0, paused: true, addonInstalled: null, update: null, errors: [] }) });
