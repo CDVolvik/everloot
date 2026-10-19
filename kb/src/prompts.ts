@@ -1,4 +1,4 @@
-import { MCP_PROMPTS, SITE, type McpPromptName } from "@everloot/protocol";
+import { MCP_PROMPTS, SITE, type McpPromptDef, type McpPromptName } from "@everloot/protocol";
 
 /**
  * The MCP server's prompts, listed in the protocol's MCP_PROMPTS: one user message each, telling an
@@ -32,10 +32,18 @@ const TEXT: Record<McpPromptName, (args: Record<string, string | undefined>) => 
   ].join("\n"),
 };
 
-/** The prompt's user message for these arguments. A required argument that is missing is refused in words. */
+/**
+ * The prompt's user message for these arguments. A required argument that is missing is refused in words,
+ * and so is a value outside an argument's listed values (matched in any case), rather than read as no value.
+ */
 export function promptText(name: McpPromptName, args: Record<string, string | undefined>): string {
-  for (const [arg, def] of Object.entries(MCP_PROMPTS[name].arguments)) {
+  const given = { ...args };
+  for (const [arg, def] of Object.entries(MCP_PROMPTS[name].arguments as McpPromptDef["arguments"])) {
     if (def.required && !args[arg]?.trim()) throw new Error(`${name} needs ${arg}: ${def.description}`);
+    const value = args[arg]?.trim().toLowerCase();
+    if (!def.values || !value) continue;
+    if (!def.values.includes(value)) throw new Error(`${name} takes ${arg} ${def.values.join(" or ")}, not "${args[arg]?.trim()}": ${def.description}`);
+    given[arg] = value;
   }
-  return TEXT[name](args);
+  return TEXT[name](given);
 }
