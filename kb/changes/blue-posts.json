@@ -1,6 +1,21 @@
 {
   "posts": [
     {
+      "id": "bluesky:3myam4zl5dn2l",
+      "source": "bluesky",
+      "url": "https://bsky.app/profile/worldofwarcraft.blizzard.com/post/3myam4zl5dn2l",
+      "title": "Your journey from 30-60 will take you to parts of Azeroth previously unknown 🗺️",
+      "author": "World of Warcraft",
+      "role": "Official account",
+      "postedAt": "2026-10-19T17:05:39.208Z",
+      "editedAt": null,
+      "category": "Bluesky",
+      "game": "forever",
+      "kind": "post",
+      "excerpt": "Watch the full WoW: Forever post-level 30 breakdown: blizz.ly/4yTwPmx",
+      "firstSeen": "2026-10-19T17:43:38.268Z"
+    },
+    {
       "id": "forum:30509320",
       "source": "forum",
       "url": "https://us.forums.blizzard.com/en/wow/t/topic/2354050/658",
