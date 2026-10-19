@@ -44,6 +44,7 @@ export function createTray(iconPath: string, actions: TrayActions): { update(sta
         ...(state.update?.newer && state.update.url ? [{ label: `Update Everloot Desktop App to ${state.update.latest}`, click: () => actions.openExternal(state.update!.url!) }] : []),
         { type: "separator" as const },
         { label: "Open Everloot Desktop App", click: () => actions.show() },
+        { label: "Ask Everloot…", click: () => actions.show("chat") },
         { label: "Upload now", enabled: state.settings.upload && watching > 0 && !paused, click: () => actions.runNow("upload") },
         { label: "Refresh prices now", enabled: state.settings.prices && watching > 0 && !paused, click: () => actions.runNow("prices") },
         { label: paused ? "Resume" : "Pause", click: () => actions.setPaused(!paused) },
