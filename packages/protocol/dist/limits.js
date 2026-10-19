@@ -14,4 +14,10 @@ export const UPLOAD_LIMITS = {
     grantTokensMax: 4,
     /** Auction scans from more realms than this in one upload are refused. */
     realmsPerUpload: 3,
+    /**
+     * Census rows one install may report per UTC day, players seen and own characters. The rest are refused,
+     * so one install cannot invent a crowd of character keys. A repeat of a row already counted is not a new one.
+     */
+    censusSeenPerDay: 500,
+    censusSelfPerDay: 50,
 };

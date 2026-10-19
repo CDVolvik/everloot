@@ -380,6 +380,61 @@ export const talentSnapshot = base.extend({
         ctx.addIssue({ code: "custom", message: RULES.talent_snapshot[1], path: ["nodes"] });
     }
 });
+// --- Census: who plays what (docs/design/specs/2026-10-18-census-design.md) ---
+// Race, class, level and faction of your own characters and of players you see. Never a name, guild, gear
+// or position. The GUID is in transit only: intake swaps it for a keyed hash before anything is stored.
+/** A player GUID as UnitGUID returns it: Player-<server id>-<player id>. */
+export const PLAYER_GUID = z.string().regex(/^Player-\d+-[0-9A-F]+$/)
+    .describe("The player GUID, in transit only: the server replaces it with a keyed hash before anything is stored.");
+const censusBase = base.extend({
+    guid: PLAYER_GUID,
+    // Not a list: Forever adds Skyborne, whose token is not confirmed yet.
+    race: z.string().regex(/^[A-Za-z]{2,24}$/).describe("Race file token, UnitRace's second return, e.g. Scourge."),
+    class: z.string().regex(/^[A-Z]{3,16}$/).describe("Class token, UnitClass's second return, e.g. HUNTER."),
+    level: z.number().int().min(1).max(60),
+    faction: z.enum(["Alliance", "Horde"]),
+});
+const CENSUS_REALM = z.string().min(1).max(64).describe("GetRealmName() for your own character.");
+const CENSUS_VIA = z.enum(["target", "mouseover", "group"]).describe("How the addon saw the player.");
+const NO_REALM = z.never({ error: "realm is sent only for your own characters" }).optional()
+    .describe("Absent: the server id in the GUID says where a player you see is from.");
+const NO_VIA = z.never({ error: "via is sent only for players you see" }).optional().describe("Absent on your own characters.");
+/** One of your own characters, as you log in. */
+export const censusSelf = censusBase.extend({
+    kind: z.literal("census_self"),
+    realm: CENSUS_REALM,
+    via: NO_VIA,
+});
+/** A player you targeted, moused over or grouped with. */
+export const censusSeen = censusBase.extend({
+    kind: z.literal("census_seen"),
+    via: CENSUS_VIA,
+    realm: NO_REALM,
+});
+/** The census kinds. Never public row by row: a private rollup publishes counts only. */
+export const CENSUS_KINDS = ["census_self", "census_seen"];
+/** HMAC-SHA256 of the GUID under the server's character key, in hex. */
+export const CENSUS_CHARACTER_KEY = z.string().regex(/^[0-9a-f]{64}$/);
+/**
+ * A census row as intake stores it: the GUID is gone, replaced by `characterKey` and the server id read from
+ * it, and `eventId` is the server's own `<kind>:<UTC day>:<first 24 hex of characterKey>`. Parsing through
+ * these schemas is what drops the GUID and anything else the client sent. Not a record kind: nobody sends these.
+ */
+const storedCensusBase = censusBase.omit({ guid: true }).extend({
+    characterKey: CENSUS_CHARACTER_KEY,
+    serverId: z.number().int().nonnegative(),
+});
+export const censusSelfStored = storedCensusBase.extend({
+    kind: z.literal("census_self"),
+    eventId: z.string().regex(/^census_self:\d{4}-\d{2}-\d{2}:[0-9a-f]{24}$/),
+    realm: CENSUS_REALM,
+});
+export const censusSeenStored = storedCensusBase.extend({
+    kind: z.literal("census_seen"),
+    eventId: z.string().regex(/^census_seen:\d{4}-\d{2}-\d{2}:[0-9a-f]{24}$/),
+    via: CENSUS_VIA,
+});
+export const storedCensusSchemas = { census_self: censusSelfStored, census_seen: censusSeenStored };
 /** Every record kind and its schema, in the order the contract lists them. */
 export const recordSchemas = {
     npc_sighting: npcSighting,
@@ -413,6 +468,8 @@ export const recordSchemas = {
     addon_seen: addonSeen,
     map_bounds: mapBounds,
     talent_snapshot: talentSnapshot,
+    census_self: censusSelf,
+    census_seen: censusSeen,
 };
 export const ALL_RECORD_KINDS = Object.keys(recordSchemas);
 /**
@@ -428,6 +485,7 @@ const PUBLIC_KIND_LIST = [
     // and quest lines under a per-install event id, so they are never served raw: pages and MCP show an entry
     // only when 3 installs reported it identically. Owned rows are shown only to a granted owner. Both come
     // from the completion rollup, not from this corpus.
+    // The census kinds are absent too: like addon lists, they are published only as counts.
 ];
 export const PUBLIC_RECORD_KINDS = PUBLIC_KIND_LIST;
 export const anyRecord = z.discriminatedUnion("kind", [
@@ -435,7 +493,7 @@ export const anyRecord = z.discriminatedUnion("kind", [
     guildSnapshot, raidLockout, attendance, lootAward, gearSnapshot,
     collectionCatalog, collectionOwned, achievementCatalog, reputationCatalog, titleCatalog, questChainCatalog,
     achievementOwned, reputationOwned, titleOwned, questOwned, auctionScan, auctionSnapshot, recipeSeen, priceSeen, recipeObserved, trainerSeen,
-    goldSnapshot, moneyEvent, addonSeen, mapBounds, talentSnapshot,
+    goldSnapshot, moneyEvent, addonSeen, mapBounds, talentSnapshot, censusSelf, censusSeen,
 ]);
 /** The request envelope. `protocol` is the uploader's protocol version; a missing one means major 1. */
 export const uploadPayload = z.object({

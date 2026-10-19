@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import { createUploadStore, type CloudConfig } from "./upload-store.js";
 import { lootWindowsFromRecords } from "./rollups.js";
+import { mergeCensusRows } from "../../../kb/src/census-rows";
 
 /**
  * One mixed submission, all the way through: route parsing, the real store, the corpus readers and
@@ -79,6 +80,32 @@ describe("intake through the store into published facts", () => {
     expect(lootWindowsFromRecords(corpus.records)).toEqual([
       { installId: "install-1234", sourceNpcId: 123, items: [{ itemId: 456, count: 1 }] },
     ]);
+  });
+
+  test("local: census rows are written without their GUID and never reach the corpus", async () => {
+    vi.stubEnv("EVERLOOT_CHARACTER_KEY", "test-character-key");
+    const dir = mkdtempSync(join(tmpdir(), "everloot-intake-"));
+    const store = createUploadStore({ cloud: null, localDir: dir, now, cacheMs: 0 });
+    const POST = await postWith(store);
+    const seen = {
+      kind: "census_seen", installId: "install-1234", eventId: "census:Player-4395-0A1B2C3D", capturedAt,
+      guid: "Player-4395-0A1B2C3D", race: "Scourge", class: "PRIEST", level: 24, faction: "Horde", via: "target",
+    };
+    try {
+      expect((await POST(jsonRequest({ addonVersion: "0.4.0", records: [seen, goodLoot] }))).status).toBe(200);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+
+    const [file] = readdirSync(join(dir, "uploads"));
+    const text = readFileSync(join(dir, "uploads", file), "utf8");
+    expect(text).toContain("census_seen");
+    expect(text).not.toMatch(/Player|0A1B2C3D/i);
+    expect((await store.loadCorpus()).records).toEqual([goodLoot]);
+    // The census rollup reads them back from the upload objects, in the shape it counts.
+    const [row] = mergeCensusRows([], JSON.parse(text).records);
+    expect(Object.keys(row).sort()).toEqual(["capturedAt", "characterKey", "class", "eventId", "faction", "installId", "kind", "level", "race", "serverId", "via"]);
+    expect(row).toMatchObject({ kind: "census_seen", installId: "install-1234", serverId: 4395, race: "Scourge", class: "PRIEST", level: 24, faction: "Horde", via: "target", capturedAt });
   });
 
   test("cloud: the snapshot the cron writes holds only the accepted row, and serves it back", async () => {

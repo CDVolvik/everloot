@@ -1,7 +1,7 @@
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { AwsClient } from "aws4fetch";
-import { parseRecords, type CanonicalUpload, type IntakeRecord } from "@everloot/protocol";
+import { parseRecords, type IntakeRecord, type StoredUpload } from "@everloot/protocol";
 import { mergeCorpus, mergeCorpusBatches, publicRecords, type CorpusState } from "../../../kb/src/corpus";
 import { HISTORY_DAYS, MARKET_MAX_BYTES, emptyMarket, foldMarket, uploadScans, type MarketState } from "../../../kb/src/market";
 import { createSharingStore } from "./sharing-store";
@@ -202,7 +202,7 @@ export function createUploadStore(opts: {
     return doFetch(await r2!.sign(objectUrl(key), init));
   }
 
-  async function putUpload(uploadId: string, installId: string, payload: CanonicalUpload, publicationGrants: string[] = []): Promise<boolean> {
+  async function putUpload(uploadId: string, installId: string, payload: StoredUpload, publicationGrants: string[] = []): Promise<boolean> {
     if (unavailable) return false;
     const body = JSON.stringify(publicationGrants.length ? { ...payload, publicationGrants } : payload);
     if (!cloud) {

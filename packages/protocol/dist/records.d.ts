@@ -461,6 +461,125 @@ export declare const talentSnapshot: z.ZodObject<{
         choice: z.ZodOptional<z.ZodNumber>;
     }, z.core.$strip>>;
 }, z.core.$strip>;
+/** A player GUID as UnitGUID returns it: Player-<server id>-<player id>. */
+export declare const PLAYER_GUID: z.ZodString;
+/** One of your own characters, as you log in. */
+export declare const censusSelf: z.ZodObject<{
+    installId: z.ZodString;
+    eventId: z.ZodOptional<z.ZodString>;
+    capturedAt: z.ZodString;
+    guid: z.ZodString;
+    race: z.ZodString;
+    class: z.ZodString;
+    level: z.ZodNumber;
+    faction: z.ZodEnum<{
+        Alliance: "Alliance";
+        Horde: "Horde";
+    }>;
+    kind: z.ZodLiteral<"census_self">;
+    realm: z.ZodString;
+    via: z.ZodOptional<z.ZodNever>;
+}, z.core.$strip>;
+/** A player you targeted, moused over or grouped with. */
+export declare const censusSeen: z.ZodObject<{
+    installId: z.ZodString;
+    eventId: z.ZodOptional<z.ZodString>;
+    capturedAt: z.ZodString;
+    guid: z.ZodString;
+    race: z.ZodString;
+    class: z.ZodString;
+    level: z.ZodNumber;
+    faction: z.ZodEnum<{
+        Alliance: "Alliance";
+        Horde: "Horde";
+    }>;
+    kind: z.ZodLiteral<"census_seen">;
+    via: z.ZodEnum<{
+        group: "group";
+        mouseover: "mouseover";
+        target: "target";
+    }>;
+    realm: z.ZodOptional<z.ZodNever>;
+}, z.core.$strip>;
+/** The census kinds. Never public row by row: a private rollup publishes counts only. */
+export declare const CENSUS_KINDS: readonly string[];
+/** HMAC-SHA256 of the GUID under the server's character key, in hex. */
+export declare const CENSUS_CHARACTER_KEY: z.ZodString;
+export declare const censusSelfStored: z.ZodObject<{
+    installId: z.ZodString;
+    capturedAt: z.ZodString;
+    race: z.ZodString;
+    class: z.ZodString;
+    level: z.ZodNumber;
+    faction: z.ZodEnum<{
+        Alliance: "Alliance";
+        Horde: "Horde";
+    }>;
+    characterKey: z.ZodString;
+    serverId: z.ZodNumber;
+    kind: z.ZodLiteral<"census_self">;
+    eventId: z.ZodString;
+    realm: z.ZodString;
+}, z.core.$strip>;
+export declare const censusSeenStored: z.ZodObject<{
+    installId: z.ZodString;
+    capturedAt: z.ZodString;
+    race: z.ZodString;
+    class: z.ZodString;
+    level: z.ZodNumber;
+    faction: z.ZodEnum<{
+        Alliance: "Alliance";
+        Horde: "Horde";
+    }>;
+    characterKey: z.ZodString;
+    serverId: z.ZodNumber;
+    kind: z.ZodLiteral<"census_seen">;
+    eventId: z.ZodString;
+    via: z.ZodEnum<{
+        group: "group";
+        mouseover: "mouseover";
+        target: "target";
+    }>;
+}, z.core.$strip>;
+export declare const storedCensusSchemas: {
+    readonly census_self: z.ZodObject<{
+        installId: z.ZodString;
+        capturedAt: z.ZodString;
+        race: z.ZodString;
+        class: z.ZodString;
+        level: z.ZodNumber;
+        faction: z.ZodEnum<{
+            Alliance: "Alliance";
+            Horde: "Horde";
+        }>;
+        characterKey: z.ZodString;
+        serverId: z.ZodNumber;
+        kind: z.ZodLiteral<"census_self">;
+        eventId: z.ZodString;
+        realm: z.ZodString;
+    }, z.core.$strip>;
+    readonly census_seen: z.ZodObject<{
+        installId: z.ZodString;
+        capturedAt: z.ZodString;
+        race: z.ZodString;
+        class: z.ZodString;
+        level: z.ZodNumber;
+        faction: z.ZodEnum<{
+            Alliance: "Alliance";
+            Horde: "Horde";
+        }>;
+        characterKey: z.ZodString;
+        serverId: z.ZodNumber;
+        kind: z.ZodLiteral<"census_seen">;
+        eventId: z.ZodString;
+        via: z.ZodEnum<{
+            group: "group";
+            mouseover: "mouseover";
+            target: "target";
+        }>;
+    }, z.core.$strip>;
+};
+export type StoredCensusRecord = z.infer<typeof censusSelfStored> | z.infer<typeof censusSeenStored>;
 /** Every record kind and its schema, in the order the contract lists them. */
 export declare const recordSchemas: {
     readonly npc_sighting: z.ZodObject<{
@@ -877,6 +996,42 @@ export declare const recordSchemas: {
             choice: z.ZodOptional<z.ZodNumber>;
         }, z.core.$strip>>;
     }, z.core.$strip>;
+    readonly census_self: z.ZodObject<{
+        installId: z.ZodString;
+        eventId: z.ZodOptional<z.ZodString>;
+        capturedAt: z.ZodString;
+        guid: z.ZodString;
+        race: z.ZodString;
+        class: z.ZodString;
+        level: z.ZodNumber;
+        faction: z.ZodEnum<{
+            Alliance: "Alliance";
+            Horde: "Horde";
+        }>;
+        kind: z.ZodLiteral<"census_self">;
+        realm: z.ZodString;
+        via: z.ZodOptional<z.ZodNever>;
+    }, z.core.$strip>;
+    readonly census_seen: z.ZodObject<{
+        installId: z.ZodString;
+        eventId: z.ZodOptional<z.ZodString>;
+        capturedAt: z.ZodString;
+        guid: z.ZodString;
+        race: z.ZodString;
+        class: z.ZodString;
+        level: z.ZodNumber;
+        faction: z.ZodEnum<{
+            Alliance: "Alliance";
+            Horde: "Horde";
+        }>;
+        kind: z.ZodLiteral<"census_seen">;
+        via: z.ZodEnum<{
+            group: "group";
+            mouseover: "mouseover";
+            target: "target";
+        }>;
+        realm: z.ZodOptional<z.ZodNever>;
+    }, z.core.$strip>;
 };
 export type RecordKind = keyof typeof recordSchemas;
 export declare const ALL_RECORD_KINDS: RecordKind[];
@@ -1264,8 +1419,46 @@ export declare const anyRecord: z.ZodDiscriminatedUnion<[z.ZodObject<{
         ranks: z.ZodNumber;
         choice: z.ZodOptional<z.ZodNumber>;
     }, z.core.$strip>>;
+}, z.core.$strip>, z.ZodObject<{
+    installId: z.ZodString;
+    eventId: z.ZodOptional<z.ZodString>;
+    capturedAt: z.ZodString;
+    guid: z.ZodString;
+    race: z.ZodString;
+    class: z.ZodString;
+    level: z.ZodNumber;
+    faction: z.ZodEnum<{
+        Alliance: "Alliance";
+        Horde: "Horde";
+    }>;
+    kind: z.ZodLiteral<"census_self">;
+    realm: z.ZodString;
+    via: z.ZodOptional<z.ZodNever>;
+}, z.core.$strip>, z.ZodObject<{
+    installId: z.ZodString;
+    eventId: z.ZodOptional<z.ZodString>;
+    capturedAt: z.ZodString;
+    guid: z.ZodString;
+    race: z.ZodString;
+    class: z.ZodString;
+    level: z.ZodNumber;
+    faction: z.ZodEnum<{
+        Alliance: "Alliance";
+        Horde: "Horde";
+    }>;
+    kind: z.ZodLiteral<"census_seen">;
+    via: z.ZodEnum<{
+        group: "group";
+        mouseover: "mouseover";
+        target: "target";
+    }>;
+    realm: z.ZodOptional<z.ZodNever>;
 }, z.core.$strip>], "kind">;
 export type IntakeRecord = z.infer<typeof anyRecord>;
+/** A record as intake stores it: census rows have their GUID swapped for a key, every other kind is as parsed. */
+export type StoredRecord = Exclude<IntakeRecord, {
+    kind: "census_self" | "census_seen";
+}> | StoredCensusRecord;
 /** The request envelope. `protocol` is the uploader's protocol version; a missing one means major 1. */
 export declare const uploadPayload: z.ZodObject<{
     addonVersion: z.ZodString;

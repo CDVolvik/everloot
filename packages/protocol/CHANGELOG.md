@@ -7,6 +7,13 @@ required, or tightening a limit is a major release.
 ## [Unreleased]
 
 ### Added
+- Two census kinds, `census_self` (your own character: race, class, level, faction, realm) and `census_seen`
+  (a player you target, mouse over or group with: the same without realm, plus `via`). Each carries the
+  player GUID in transit only. `censusSelfStored` and `censusSeenStored` are what the site stores instead:
+  `characterKey` (an HMAC of the GUID) and `serverId` in place of the GUID, and the server's own `eventId`.
+  `CENSUS_KINDS`, `StoredRecord` and `StoredUpload` name them. Neither kind is a public corpus kind.
+  `UPLOAD_LIMITS` gains `censusSeenPerDay` (500) and `censusSelfPerDay` (50), census rows one install may
+  report per UTC day. Version 1.1.0, protocol 1.1.0.
 - `skill` as an entity kind and the `in_skill_line` relation (spell -> skill line), as the site's
   profession edges from the game files carry since 2026-10-18.
 - The upload record contract, moved here from the site: 31 record kinds, the upload envelope, the
