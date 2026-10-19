@@ -238,6 +238,7 @@ test("tools/list is exactly the protocol's tool table, in order, with its input 
     expect(tool.title).toBe(MCP_TOOLS[tool.name as keyof typeof MCP_TOOLS].title);
     expect(tool.annotations?.title).toBe(tool.title);
     expect(tool.annotations?.readOnlyHint).toBe(true);
+    expect(tool.annotations?.destructiveHint).toBe(false);
   }
   const hit = await client.callTool({ name: "get_by_name", arguments: { name: "Thunderfury" } });
   expect(JSON.stringify(hit.content)).toContain("Thunderfury");
