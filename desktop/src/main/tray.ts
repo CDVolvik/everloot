@@ -27,7 +27,7 @@ export function jobLine(state: AppState, job: Job): string {
 
 export function createTray(iconPath: string, actions: TrayActions): { update(state: AppState): void; destroy(): void } {
   const tray = new Tray(nativeImage.createFromPath(iconPath));
-  tray.setToolTip("Everloot Desktop");
+  tray.setToolTip("Everloot Desktop App");
   tray.on("click", () => actions.show());
   tray.on("double-click", () => actions.show());
   return {
@@ -41,16 +41,16 @@ export function createTray(iconPath: string, actions: TrayActions): { update(sta
         { label: jobLine(state, "prices"), enabled: false },
         { label: jobLine(state, "ask"), enabled: false },
         ...(reminder ? [{ label: reminder, click: () => actions.show("market") }] : []),
-        ...(state.update?.newer && state.update.url ? [{ label: `Update Everloot Desktop to ${state.update.latest}`, click: () => actions.openExternal(state.update!.url!) }] : []),
+        ...(state.update?.newer && state.update.url ? [{ label: `Update Everloot Desktop App to ${state.update.latest}`, click: () => actions.openExternal(state.update!.url!) }] : []),
         { type: "separator" as const },
-        { label: "Open Everloot Desktop", click: () => actions.show() },
+        { label: "Open Everloot Desktop App", click: () => actions.show() },
         { label: "Upload now", enabled: state.settings.upload && watching > 0 && !paused, click: () => actions.runNow("upload") },
         { label: "Refresh prices now", enabled: state.settings.prices && watching > 0 && !paused, click: () => actions.runNow("prices") },
         { label: paused ? "Resume" : "Pause", click: () => actions.setPaused(!paused) },
         { type: "separator" },
         { label: "Quit", click: () => actions.quit() },
       ]));
-      tray.setToolTip(paused ? "Everloot Desktop (paused)" : "Everloot Desktop");
+      tray.setToolTip(paused ? "Everloot Desktop App (paused)" : "Everloot Desktop App");
     },
     destroy: () => tray.destroy(),
   };

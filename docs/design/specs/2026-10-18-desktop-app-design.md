@@ -1,4 +1,4 @@
-# Everloot Desktop: the companion as an installable app
+# Everloot Desktop App: the companion as an installable app
 
 **Date:** 2026-10-18
 **Status:** built overnight on branch `t3/everloot-desktop-app` for Carlos's review. Decisions he
@@ -10,7 +10,7 @@ hard to change.
 The companion is a Node command line (`companion/`). It works, but a player has to install Node,
 install two packages, find the `Everloot.lua` path and keep a terminal open while playing. Raider.IO
 ships a desktop client for exactly this job (keep the addon's data fresh without the player doing
-anything), and that is what players expect. Everloot Desktop is that client: install it, point it at
+anything), and that is what players expect. Everloot Desktop App is that client: install it, point it at
 the game once, and it uploads after every logout, keeps market prices in the tooltips and answers
 `/ask`, from the system tray.
 
@@ -109,8 +109,10 @@ After that, the rail lists the pages, with a status dot beside the three jobs:
 | Site tools | Talent calculator, raid builder, database, auction prices, world map, lore archive: the site's own pages in one embedded browser view (`WebContentsView`, sandboxed, no preload) under the rail and a small header with Back, Reload and open-in-browser. Navigation stays on the site's origin; any other link opens outside. Nothing is re-implemented, so the tools stay one codebase with the web | `siteShow`, `siteHide`, `siteBack`, `siteReload` (`site-views.ts`) |
 
 The app's own pages never show an ad, a plan or a donation request, as the addon does not. The
-embedded site tools are the site as it is, AdSense units included, exactly as in a browser; whether
-the app should ask the site for an ad-free view is a decision for Carlos (below).
+embedded view sends Chromium's user agent plus an `EverlootDesktopApp/<version>` token
+(`site-views.ts`), so the site can leave its ad units out when it is inside the app: AdSense does
+not allow its ads inside a desktop application, and that keeps the account clean. Until the site
+reads the token (a site-lane change in `AdSlot`), the embedded pages are the site as it is.
 
 ### What the page can call
 
@@ -138,8 +140,8 @@ on the Node side for ten to fifteen minutes so opening a page twice does not ask
   macOS and Ubuntu runners, runs the tests, packs with electron-builder, writes `SHA256SUMS`, and
   publishes a GitHub release with the artifacts, like `release.yml` does for the addon.
 - Windows: NSIS installer and a portable exe. macOS: disk image. Linux: AppImage. All unsigned
-  until Carlos decides on signing (an open ask in `_ACTIVE_WORK.md`); Windows shows the SmartScreen
-  notice and macOS needs a right-click Open. The README says so.
+  for the first releases (decided 2026-10-18); Windows shows the SmartScreen notice and macOS
+  needs a right-click Open. The README says so.
 - `checks.yml` gains the desktop package: `npm ci`, tests, typecheck and the esbuild build. It does
   not pack an installer on every pull request.
 
@@ -187,16 +189,25 @@ allowance. The app is designed so the link flow is one more
 job in the engine and one more screen when that lands. Auto-install of updates. Code signing. A
 Linux package beyond AppImage. Any change to the addon.
 
-## Decisions for Carlos
+## Decisions
 
-1. **Electron** over Tauri, for reuse of the existing TypeScript (above). Say if the install size
-   matters more.
-2. **Name and folder:** "Everloot Desktop", repository folder `desktop/`, releases tagged
-   `desktop-v*`, data folder shared with the command line.
-3. **Signing:** unsigned for now, with the notice in the README and on the download page.
-4. **Where it is offered:** a card on `/upload` beside the addon download once the first release
-   exists. Not built here; the site is another lane.
-5. **Ads inside the embedded tools:** leave the site as it is in the app (today), or have the site
-   drop ad units when the app's view asks for it (a site change, and an AdSense policy question).
-6. **Chat default model on an Anthropic key:** `claude-sonnet-5-5` in the app (the in-game `/ask`
-   bridge keeps `claude-opus-5-5` from the companion). Say if both should match.
+Carlos decided on 2026-10-18; the two open ones are marked.
+
+1. **Electron** stays. The parser, batching and Lua escaping are one TypeScript codebase shared
+   with the site; Tauri would mean a second parser in Rust to keep in step, or a Node sidecar that
+   gives most of the size back. The Node side is behind `engine.ts`, so a smaller shell later does
+   not touch the jobs. Revisit if players complain about the 108 MB install or idle memory.
+2. **Name:** "Everloot Desktop App" (window, tray, installer, release titles); artifacts
+   `Everloot-DesktopApp-<version>-<os>-<arch>`. Folder `desktop/`, tags `desktop-v*`, app id
+   `app.everloot.desktop` and the shared data folder stay.
+3. **Signing:** unsigned for the first releases; the README says what Windows and macOS show.
+4. **Where it is offered:** like Raider.IO, a button in the site's header ("Get App & AddOn") to
+   one page, `/addon`, with the addon zip and the app downloads side by side. Site lane, after the
+   first `desktop-v*` release exists.
+5. **Ads:** the site drops ad units when the user agent carries `EverlootDesktopApp/`; the app
+   already sends it. Where ads go on the site itself (header leaderboard, right rail, below tools,
+   as Wowhead, Raider.IO and Icy Veins place them) is the site lane's call, not the app's.
+6. **Open: chat default model on an Anthropic key.** `claude-sonnet-5-5` in the app; the in-game
+   `/ask` bridge keeps `claude-opus-5-5` from the companion. Say if both should match.
+7. **Open: the sale-rate figure** on the Characters page is an estimate from scan history; keep it,
+   or wait for an in-addon price API.

@@ -7,7 +7,7 @@ What we are working on, and what you can pick up. The live board is the
 ## Now: launch (WoW: Forever, 2026-11-04)
 
 - The addon on CurseForge, checked in the live client.
-- Everloot Desktop: a first `desktop-v0.1.0` release, tried on Windows with the live client.
+- Everloot Desktop App: a first `desktop-v0.1.0` release, tried on Windows with the live client.
 - Enough uploads at launch that the first drops, vendors and prices reach three agreeing installs.
 
 ## Next

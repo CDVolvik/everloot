@@ -1,10 +1,10 @@
 {
   "name": "everloot-desktop",
-  "productName": "Everloot Desktop",
+  "productName": "Everloot Desktop App",
   "license": "AGPL-3.0-only",
   "version": "0.1.0",
   "private": true,
-  "description": "Everloot Desktop: uploads the addon's save file after every logout, keeps market prices in game and answers /ask, from the system tray.",
+  "description": "Everloot Desktop App: uploads the addon's save file after every logout, keeps market prices in game and answers /ask, from the system tray.",
   "homepage": "https://everloot.app",
   "author": "Everloot contributors",
   "main": "dist/main.cjs",
@@ -32,7 +32,7 @@
   },
   "build": {
     "appId": "app.everloot.desktop",
-    "productName": "Everloot Desktop",
+    "productName": "Everloot Desktop App",
     "copyright": "AGPL-3.0-only, Everloot contributors",
     "asar": true,
     "npmRebuild": false,
@@ -44,7 +44,7 @@
       "buildResources": "build",
       "output": "release"
     },
-    "artifactName": "Everloot-Desktop-${version}-${os}-${arch}.${ext}",
+    "artifactName": "Everloot-DesktopApp-${version}-${os}-${arch}.${ext}",
     "win": {
       "target": [
         "nsis",
@@ -52,10 +52,10 @@
       ]
     },
     "portable": {
-      "artifactName": "Everloot-Desktop-${version}-win-${arch}-portable.${ext}"
+      "artifactName": "Everloot-DesktopApp-${version}-win-${arch}-portable.${ext}"
     },
     "nsis": {
-      "artifactName": "Everloot-Desktop-${version}-win-${arch}-setup.${ext}",
+      "artifactName": "Everloot-DesktopApp-${version}-win-${arch}-setup.${ext}",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "deleteAppDataOnUninstall": false

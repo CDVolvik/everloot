@@ -20,7 +20,7 @@ const state: AppState = {
 
 test("the report has version, settings without the token, jobs and the last hundred log lines, with home folders hidden", () => {
   const text = diagnostics(state, 100, new Date("2026-10-18T12:00:00Z"));
-  expect(text).toContain("Everloot Desktop 0.1.0 on win32, 2026-10-18T12:00:00.000Z");
+  expect(text).toContain("Everloot Desktop App 0.1.0 on win32, 2026-10-18T12:00:00.000Z");
   expect(text).toContain("data folder: ~\\AppData\\Roaming\\Everloot");
   expect(text).toContain("token file ~\\secret\\token.txt");
   expect(text).not.toContain("carlos");

@@ -144,7 +144,7 @@ if (!app.requestSingleInstanceLock()) {
     const bounds = fitWindow(readWindowState(windowPath), screen.getAllDisplays().map((d) => d.workArea));
     win = new BrowserWindow({
       ...bounds, minWidth: 760, minHeight: 540,
-      title: "Everloot Desktop",
+      title: "Everloot Desktop App",
       backgroundColor: "#0E0F0D",
       show: false,
       autoHideMenuBar: true,

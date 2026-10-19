@@ -12,7 +12,7 @@ export function diagnostics(s: AppState, lines = 100, now = new Date()): string 
   const st = s.settings;
   const job = (name: "upload" | "prices" | "ask") => { const j = s.engine.jobs[name]; return `${name}: ${j.state}${j.message ? `, ${j.message}` : ""}${j.at ? ` (${j.at})` : ""}`; };
   const out = [
-    `Everloot Desktop ${s.version} on ${s.platform}, ${now.toISOString()}`,
+    `Everloot Desktop App ${s.version} on ${s.platform}, ${now.toISOString()}`,
     `data folder: ${s.dataFolder}`,
     `game folder: ${st.gameFolder ?? "(none)"}`,
     `endpoint: ${st.endpoint}`,

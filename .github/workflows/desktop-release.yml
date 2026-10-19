@@ -1,5 +1,5 @@
 name: Desktop release
-# Push a tag like desktop-v0.1.0 and this builds Everloot Desktop for Windows, macOS and Linux,
+# Push a tag like desktop-v0.1.0 and this builds Everloot Desktop App for Windows, macOS and Linux,
 # checks the tag against desktop/package.json, and publishes a GitHub release. See desktop/README.md.
 # Run it by hand (Actions > Desktop release > Run workflow, or `gh workflow run desktop-release.yml
 # --ref <branch>`) for a dry run: the same builds, kept as workflow artifacts, nothing published.
@@ -94,4 +94,4 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${GITHUB_REF_NAME}" out/* --title "Everloot Desktop ${GITHUB_REF_NAME#desktop-v}" --notes-file release-notes.md
+          gh release create "${GITHUB_REF_NAME}" out/* --title "Everloot Desktop App ${GITHUB_REF_NAME#desktop-v}" --notes-file release-notes.md

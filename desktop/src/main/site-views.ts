@@ -1,4 +1,4 @@
-import { BrowserWindow, WebContentsView, shell } from "electron";
+import { BrowserWindow, WebContentsView, app, shell } from "electron";
 import { allowedExternal } from "./external";
 
 /** The site pages the app shows inside its own window, under the sidebar. Paths only; the host is the configured site. */
@@ -21,8 +21,16 @@ export function siteToolPath(id: string): string | null {
 /**
  * One embedded browser view for the site's tools (talents, raid builder, database, map...). The
  * view stays on the configured site: a link elsewhere opens in the system browser instead. It has
- * no preload and no Node, so the page is just the public site, inside the app's frame.
+ * no preload and no Node, so the page is just the public site, inside the app's frame. The view's
+ * user agent carries an `EverlootDesktopApp/<version>` token so the site can tell it is inside the
+ * app and leave its ad units out (AdSense does not allow ads inside a desktop application).
  */
+export const USER_AGENT_TOKEN = "EverlootDesktopApp";
+
+export function appUserAgent(base: string, version: string): string {
+  return `${base} ${USER_AGENT_TOKEN}/${version}`;
+}
+
 export function createSiteViews(win: BrowserWindow, endpoint: () => string) {
   let view: WebContentsView | null = null;
   let shown = false;
@@ -39,6 +47,7 @@ export function createSiteViews(win: BrowserWindow, endpoint: () => string) {
   const ensure = () => {
     if (view) return view;
     view = new WebContentsView({ webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false } });
+    view.webContents.setUserAgent(appUserAgent(view.webContents.getUserAgent(), app.getVersion()));
     view.webContents.setWindowOpenHandler(({ url }) => {
       if (sameSite(url)) void view?.webContents.loadURL(url);
       else if (allowedExternal(url)) void shell.openExternal(url);

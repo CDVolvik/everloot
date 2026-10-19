@@ -11,7 +11,7 @@ that has a zip in the repository. Earlier builds have none.
 ## [Unreleased]
 
 ### Added
-- **Everloot Desktop** (`desktop/`): the companion as a tray app with a sidebar window. First run
+- **Everloot Desktop App** (`desktop/`): the companion as a tray app with a sidebar window. First run
   shows what leaves the computer and finds the game folder; then it uploads after every logout,
   refreshes market prices after each upload and hourly, and answers `/ask` when turned on. Pages
   for each thing to manage: what each account file holds, realm picks for the prices file (your

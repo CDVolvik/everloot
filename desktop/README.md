@@ -1,4 +1,4 @@
-# desktop/: Everloot Desktop
+# desktop/: Everloot Desktop App
 
 The companion as an app. It sits in the system tray beside the game and does what the
 [command line](../companion/README.md) does, without a terminal: after every logout or `/reload`
@@ -6,7 +6,7 @@ it uploads the addon's anonymous observations, keeps community market prices in 
 and, if you turn it on, answers `/ask` questions. Design:
 [`docs/design/specs/2026-10-18-desktop-app-design.md`](../docs/design/specs/2026-10-18-desktop-app-design.md).
 
-![The Overview page of Everloot Desktop](../docs/media/desktop.webp)
+![The Overview page of Everloot Desktop App](../docs/media/desktop.webp)
 
 It sends nothing the command line does not send, and it follows the same rules
 ([`docs/DATA_POLICY.md`](../docs/DATA_POLICY.md)): anonymous events only, named data stays on your
@@ -46,7 +46,7 @@ The window is a sidebar with one page per thing to manage:
 | Changes | The site's change tracker feed: Blizzard posts, hotfixes and builds |
 | Log | Everything the engine did this session, with Pause |
 | Settings | Game folder, site, launch at login, start in tray, data folder, check for updates |
-| Site tools | The talent calculator, raid builder, database, auction prices, world map and lore archive, shown inside the window as the site itself. Links elsewhere open in your browser |
+| Site tools | The talent calculator, raid builder, database, auction prices, world map and lore archive, shown inside the window as the site itself. The view tells the site it is inside the app (an `EverlootDesktopApp/<version>` user-agent token), so the site can leave its ads out. Links elsewhere open in your browser |
 
 The tray menu shows each job's last result, a reminder when a realm's last full scan is older
 than a day, the newer app release when there is one, and Upload now, Refresh prices now, Pause and Quit.
