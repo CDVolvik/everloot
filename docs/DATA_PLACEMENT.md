@@ -23,8 +23,8 @@ laptop is where game files are read; what it produces goes to R2, never to git.
 
 Ask these in order. The first yes decides.
 
-1. **Is it a credential or a token?** Vercel environment (production), a GitHub Actions secret, or a
-   file under `%USERPROFILE%\.r21\` on the maintainer's machine. Never a tier, never git, never a doc.
+1. **Is it a credential or a token?** Vercel environment (production), a GitHub Actions secret, or an
+   environment file outside any repository on the maintainer's machine. Never a tier, never git, never a doc.
    Names may appear in `.env.example`; values nowhere in the repository.
 2. **Is it Blizzard's, read from game files?** The private bucket `everloot-game-data` for facts and
    tooltips, the public bucket `everloot-assets` for art shown on pages. Keyed by product, build and
