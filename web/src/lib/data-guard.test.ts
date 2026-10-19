@@ -140,7 +140,7 @@ test("attribution carries the licence, the credit line and the source page", () 
     licenceUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
     credit: "Data from Everloot (https://everloot.app), CC BY-SA 4.0.",
     source: "https://everloot.app/database",
-    terms: "https://everloot.app/connect#licence",
+    terms: "https://everloot.app/terms#licences",
   });
   const headers = new Headers(attributionHeaders());
   expect(headers.get("x-everloot-licence")).toBe("CC BY-SA 4.0");

@@ -56,6 +56,9 @@ jobs:
             desktop/package-lock.json
       - run: npm ci && npm test && npm run typecheck && npm run build && git diff --exit-code -- dist schema
         working-directory: packages/protocol
+      - name: The protocol version follows its semver rule against what is published
+        run: npx tsx scripts/check-semver.ts
+        working-directory: packages/protocol
       - run: npm ci
         working-directory: kb
       - run: npm ci

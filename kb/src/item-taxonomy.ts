@@ -140,6 +140,30 @@ export function filterItems(t: Taxonomy, f: ItemFilter): ItemRow[] {
 const plural = (n: number) => `${n} item${n === 1 ? "" : "s"}`;
 const words = (c: ItemCategory) => [c.subclass?.name ?? `subclass ${c.subclass?.id ?? "?"}`, c.slot?.name, c.quality?.name].filter(Boolean).join(" · ");
 
+/** The MCP tool's structured answer: the same cases as the text, with the same limit. */
+export function itemCategoriesStructured(
+  args: { item?: number; class?: string; subclass?: string; slot?: string; quality?: string; limit?: number },
+  t: Taxonomy, build: string,
+): object {
+  const base = { label: CLIENT_LABEL.toLowerCase(), build, credit: GAME_DATA_CREDIT };
+  if (args.item !== undefined) return { ...base, item: categoryOf(t, args.item) };
+  if (args.class === undefined) {
+    return {
+      ...base,
+      classes: t.classes.filter((x) => x.items > 0).map((c) => ({
+        id: c.id, name: c.name, slug: c.slug, items: c.items,
+        subclasses: t.subclasses.filter((x) => x.classId === c.id && x.items > 0).map((s) => ({ id: s.id, name: s.name, slug: s.slug, items: s.items })),
+      })),
+    };
+  }
+  const cls = resolveClass(t, args.class);
+  if (!cls) return { ...base, error: `No item class ${args.class} in build ${build}.` };
+  const sub = args.subclass === undefined ? null : resolveSubclass(t, cls.id, args.subclass);
+  if (args.subclass !== undefined && !sub) return { ...base, error: `No subclass ${args.subclass} under ${cls.name} in build ${build}.` };
+  const rows = filterItems(t, { classId: cls.id, subclassId: sub?.id, slot: args.slot, quality: args.quality });
+  return { ...base, items: rows.slice(0, args.limit ?? 25).map((row) => describe(t, row)), total: rows.length };
+}
+
 /** Text answer for the MCP tool: the whole tree, one item's path, or a filtered list. */
 export function handleItemCategories(
   args: { item?: number; class?: string; subclass?: string; slot?: string; quality?: string; limit?: number },

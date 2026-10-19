@@ -13,5 +13,5 @@ that makes it look like the official project. Forks are welcome; give yours its 
 
 Questions: [everloot.app/contact](https://everloot.app/contact).
 
-World of Warcraft and Blizzard Entertainment are trademarks of Blizzard Entertainment, Inc.
+World of Warcraft, Warcraft and Blizzard Entertainment are trademarks or registered trademarks of Blizzard Entertainment, Inc. in the U.S. and/or other countries.
 Everloot is a fan project and is not affiliated with or endorsed by Blizzard.

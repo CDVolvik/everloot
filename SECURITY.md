@@ -3,7 +3,7 @@
 Please do not report security problems in public issues, discussions or Discord.
 
 Report them privately through
-[GitHub's private vulnerability reporting](https://github.com/CDVolvik/everloot/security/advisories/new),
+[GitHub's private vulnerability reporting](https://github.com/Everloot/everloot/security/advisories/new),
 or by email to hello@everloot.app with "Security" in the subject. Include what you found, how to
 reproduce it, and what an attacker could do with it.
 

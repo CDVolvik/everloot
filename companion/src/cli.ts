@@ -67,7 +67,7 @@ export function debounce(run: () => void, ms: number): () => void {
 /** Printed before anything is sent: how uploads are licensed and where the code is (AGPL section 13). */
 export function uploadNotice(): string {
   return "Uploaded observations are published under CC BY-SA 4.0, credited to Everloot contributors.\n" +
-    "Source: https://github.com/CDVolvik/everloot";
+    "Source: https://github.com/Everloot/everloot";
 }
 
 async function main(argv: string[]): Promise<void> {

@@ -18,15 +18,15 @@ Everloot is built from what players see, so you can help without touching any co
   fix the importer for every page like it.
 - **Write code.** See below.
 
-Questions and ideas go in [Discussions](https://github.com/CDVolvik/everloot/discussions).
+Questions and ideas go in [Discussions](https://github.com/Everloot/everloot/discussions).
 
 ## Good first issues
 
 New here? Open the issues labelled
-[`good first issue`](https://github.com/CDVolvik/everloot/labels/good%20first%20issue). Each is small,
+[`good first issue`](https://github.com/Everloot/everloot/labels/good%20first%20issue). Each is small,
 says what done looks like, and names the files to start in. Comment on one to say you are taking it,
-and ask in [Discussions](https://github.com/CDVolvik/everloot/discussions) if anything is unclear.
-[`help wanted`](https://github.com/CDVolvik/everloot/labels/help%20wanted) marks larger work that is
+and ask in [Discussions](https://github.com/Everloot/everloot/discussions) if anything is unclear.
+[`help wanted`](https://github.com/Everloot/everloot/labels/help%20wanted) marks larger work that is
 open to anyone. Area labels (`addon`, `web`, `kb`, `companion`, `desktop`, `mcp`, `tools`, `lore`, `game-data`)
 tell you which part an issue touches.
 

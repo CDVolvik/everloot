@@ -49,6 +49,199 @@
       }
     }
   },
+  "outputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "connected": {
+        "type": "boolean",
+        "description": "False when no corpus was read; the page is then absent, which is not a measured zero."
+      },
+      "dataAsOf": {
+        "description": "The corpus snapshot time, or null when unrecorded.",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "reason": {
+        "description": "Why nothing was read, when connected is false.",
+        "type": "string"
+      },
+      "page": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "description": "False when the query was refused; message says why."
+          },
+          "message": {
+            "type": "string"
+          },
+          "origin": {
+            "description": "The spot in words.",
+            "type": "string"
+          },
+          "radius": {
+            "type": "number"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "entrances": {
+            "description": "From the game files, found in game files, unconfirmed. Nearest first.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "names": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "raid": {
+                  "type": "boolean"
+                },
+                "zone": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "yards": {
+                  "type": "number"
+                }
+              },
+              "required": [
+                "names",
+                "raid",
+                "zone",
+                "yards"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "npcs": {
+            "description": "Players saw them; a pin needs 3 installs on the same map.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "npcId": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "mapId": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "zoneName": {
+                  "type": "string"
+                },
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                },
+                "yards": {
+                  "type": "number"
+                },
+                "reporters": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "npcId",
+                "name",
+                "mapId",
+                "zoneName",
+                "x",
+                "y",
+                "yards",
+                "reporters"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "vendors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "npcId": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "name": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "mapId": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "zoneName": {
+                  "type": "string"
+                },
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                },
+                "yards": {
+                  "type": "number"
+                },
+                "reporters": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "npcId",
+                "name",
+                "mapId",
+                "zoneName",
+                "x",
+                "y",
+                "yards",
+                "reporters"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "required": [
+      "connected",
+      "dataAsOf"
+    ],
+    "additionalProperties": false
+  },
   "x-everloot-output": {
     "type": "text",
     "endsWith": "Licence: CC BY-SA 4.0. Credit: Everloot contributors, https://everloot.app"

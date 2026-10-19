@@ -33,6 +33,213 @@
       "toSkill"
     ]
   },
+  "outputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "connected": {
+        "type": "boolean",
+        "description": "False when no corpus was read; the page is then absent, which is not a measured zero."
+      },
+      "dataAsOf": {
+        "description": "The corpus snapshot time, or null when unrecorded.",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "reason": {
+        "description": "Why nothing was read, when connected is false.",
+        "type": "string"
+      },
+      "page": {
+        "type": "object",
+        "properties": {
+          "profession": {
+            "type": "string"
+          },
+          "fromSkill": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "toSkill": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "recipe": {
+                  "type": "string"
+                },
+                "fromSkill": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "toSkill": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "crafts": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "points": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "reagents": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "item": {
+                        "type": "string"
+                      },
+                      "count": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "item",
+                      "count"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "copper": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Reagent cost of the step; null when a price is unrecorded."
+                },
+                "reporters": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "trainingCopper": {
+                  "description": "Derived steps only: agreed training cost, or null when unrecorded.",
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "recipe",
+                "fromSkill",
+                "toSkill",
+                "crafts",
+                "points",
+                "reagents",
+                "copper",
+                "reporters"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "gaps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "fromSkill": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "toSkill": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "fromSkill",
+                "toSkill"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Skill ranges no agreed recipe covers; a gap is left, never invented."
+          },
+          "reagents": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "item": {
+                  "type": "string"
+                },
+                "count": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "item",
+                "count"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Every reagent the path needs, summed."
+          },
+          "copper": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The whole path's reagent cost; null when any price is unrecorded."
+          }
+        },
+        "required": [
+          "profession",
+          "fromSkill",
+          "toSkill",
+          "steps",
+          "gaps",
+          "reagents",
+          "copper"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "required": [
+      "connected",
+      "dataAsOf"
+    ],
+    "additionalProperties": false
+  },
   "x-everloot-output": {
     "type": "text",
     "endsWith": "Licence: CC BY-SA 4.0. Credit: Everloot contributors, https://everloot.app"

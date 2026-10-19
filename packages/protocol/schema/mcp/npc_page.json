@@ -21,6 +21,85 @@
       "npcId"
     ]
   },
+  "outputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "connected": {
+        "type": "boolean",
+        "description": "False when no corpus was read; the page is then absent, which is not a measured zero."
+      },
+      "dataAsOf": {
+        "description": "The corpus snapshot time, or null when unrecorded.",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "reason": {
+        "description": "Why nothing was read, when connected is false.",
+        "type": "string"
+      },
+      "page": {
+        "type": "object",
+        "properties": {
+          "npcId": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pins": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "mapId": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                },
+                "reporters": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "mapId",
+                "x",
+                "y",
+                "reporters"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "npcId",
+          "name",
+          "pins"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "required": [
+      "connected",
+      "dataAsOf"
+    ],
+    "additionalProperties": false
+  },
   "x-everloot-output": {
     "type": "text",
     "endsWith": "Licence: CC BY-SA 4.0. Credit: Everloot contributors, https://everloot.app"

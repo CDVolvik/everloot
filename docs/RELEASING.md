@@ -77,6 +77,34 @@ The nightly workflow runs daily at 06:17 UTC and on demand (Actions, Nightly, Ru
 A nightly is untested in the live client. Treat it as a way to try what is merged, and report problems
 with the version from `/everloot version`.
 
+## Protocol (`@everloot/protocol`)
+
+The package in `packages/protocol` is versioned on its own (semver: a new kind, field or tool is a
+minor release; removing or renaming anything, making a field required or tightening a limit is a major
+release). `scripts/check-semver.ts` holds every pull request to that rule by comparing the committed
+`schema/` folder with the latest published tarball; until the first publish it only says so and passes.
+
+To release:
+
+1. Bump `version` in `packages/protocol/package.json`.
+2. In `packages/protocol/CHANGELOG.md`, move the `[Unreleased]` entries under `## [<version>] - <date>`.
+3. Merge. Then, on `main`:
+
+   ```
+   git tag -a protocol-v<version> -m "Everloot protocol <version>"
+   git push origin protocol-v<version>
+   ```
+
+`protocol-publish.yml` checks that the tag, `package.json` and the changelog agree, runs the tests, the
+build, the committed-files check and the semver check, publishes to npm with provenance (skipped when
+that version is already there) and opens a GitHub release named after the tag.
+
+The first version goes out by hand, because npm's trusted publishing is configured on an existing
+package: on a clean checkout of `main`, `cd packages/protocol && npm ci && npm run build && git diff
+--exit-code && npm publish --access public`. Then, on npmjs.com, set the package's trusted publisher to
+GitHub Actions, organization `Everloot`, repository `everloot`, workflow `protocol-publish.yml`. From then
+on a tag is enough.
+
 ## Knowledge release (lore archive)
 
 Unchanged: a maintainer builds it with `npm run kb -- snapshot`, checks it with

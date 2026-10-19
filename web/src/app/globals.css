@@ -14,6 +14,15 @@ body {
   min-height: 100vh;
 }
 
+/* Links in running text are underlined at rest, so colour is not their only cue (WCAG 1.4.1).
+   Bulleted lists are running text too; link lists, nav and pill buttons are not and keep their own styling. */
+@layer base {
+main p a, main .list-disc a {
+  text-decoration-line: underline;
+  text-underline-offset: 4px;
+}
+}
+
 /* Buttons are outline pills. The primary action adds a green gradient outline, the only
    gradient on the site. Plain declarations (no @apply) so src/design/buttons.test.ts can read them. */
 @layer components {

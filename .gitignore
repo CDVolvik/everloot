@@ -76,3 +76,7 @@ kb/changes/*.tmp
 # Blizzard textures and the asset folders made from them live in asset storage, never in git (docs/ASSETS.md).
 *.blp
 kb/data/assets/
+
+# In-game saved variables are never committed; players upload them at everloot.app/upload
+WTF/
+**/SavedVariables/

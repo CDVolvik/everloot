@@ -243,9 +243,12 @@ Blizzard's version service reports.
 [video policy](https://www.blizzard.com/en-us/legal/dd76b654-f2c4-4aaa-ba49-ca3122de2376/blizzard-video-policy),
 its permissions for fan use of game material are non-commercial and Blizzard can revoke them. The
 older Blizzard fan-site FAQ is only quoted secondhand to us, so we treat what it says as
-unverified and rely on nothing from it. Everloot has no ads today. Before any ad goes live on a
-page that shows Blizzard's assets, a legal review of Blizzard's current terms is required, and
-until it is done there are no ads on those pages.
+unverified and rely on nothing from it. Since PR #62 (2026-10-17) Everloot shows clearly labelled
+Google ads on the tools, the patch notes, the home page and database pages that have content, and
+none on the upload page, the privacy page, account pages or the lore archive; the privacy policy and
+the terms describe them. Some of those pages show Blizzard's icons and tooltip text. Whether that
+sits within Blizzard's current terms is the operator's call to review; if the review says no, the
+ad slots come off those pages, not the assets.
 
 **The addon and project tracker.** `/addons/ecosystem` lists WoW: Forever addons and tools that a
 maintainer has checked and added to `kb/curated/ecosystem.json`.

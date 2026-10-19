@@ -139,5 +139,73 @@
       "description": "Where the data comes from, what is refused, the licence and credit line, and the limits on bulk copying, in short, with the link to the full policy.",
       "mimeType": "text/markdown"
     }
+  ],
+  "templates": [
+    {
+      "uriTemplate": "everloot://item/{id}",
+      "name": "item",
+      "title": "One item's page",
+      "description": "The item_page answer for an item id: agreed name, drop rates with loot-window counts, map pins.",
+      "mimeType": "application/json",
+      "tool": "item_page",
+      "variable": "id",
+      "argument": "itemId",
+      "contents": "https://everloot.app/schema/mcp/item_page.json#/outputSchema"
+    },
+    {
+      "uriTemplate": "everloot://npc/{id}",
+      "name": "npc",
+      "title": "One NPC's page",
+      "description": "The npc_page answer for an NPC id: agreed name and map pins.",
+      "mimeType": "application/json",
+      "tool": "npc_page",
+      "variable": "id",
+      "argument": "npcId",
+      "contents": "https://everloot.app/schema/mcp/npc_page.json#/outputSchema"
+    },
+    {
+      "uriTemplate": "everloot://quest/{id}",
+      "name": "quest",
+      "title": "One quest's page",
+      "description": "The quest_page answer for a quest id: title, level, giver, turn-in and rewards.",
+      "mimeType": "application/json",
+      "tool": "quest_page",
+      "variable": "id",
+      "argument": "questId",
+      "contents": "https://everloot.app/schema/mcp/quest_page.json#/outputSchema"
+    },
+    {
+      "uriTemplate": "everloot://vendor/{id}",
+      "name": "vendor",
+      "title": "One vendor's goods",
+      "description": "The vendor_page answer for a vendor NPC id: what it sells, with copper prices.",
+      "mimeType": "application/json",
+      "tool": "vendor_page",
+      "variable": "id",
+      "argument": "vendorNpcId",
+      "contents": "https://everloot.app/schema/mcp/vendor_page.json#/outputSchema"
+    },
+    {
+      "uriTemplate": "everloot://object/{id}",
+      "name": "object",
+      "title": "One game object's page",
+      "description": "The object_page answer for an object's entry id: what players looted from it.",
+      "mimeType": "application/json",
+      "tool": "object_page",
+      "variable": "id",
+      "argument": "objectId",
+      "contents": "https://everloot.app/schema/mcp/object_page.json#/outputSchema"
+    },
+    {
+      "uriTemplate": "everloot://talents/{class}",
+      "name": "talents",
+      "title": "One class's talent trees",
+      "description": "The talent_tree answer for a class slug: every node with its talents, ranks, position, prerequisites and gate.",
+      "mimeType": "application/json",
+      "tool": "talent_tree",
+      "variable": "class",
+      "argument": "class",
+      "contents": "https://everloot.app/schema/mcp/talent_tree.json#/outputSchema"
+    }
   ]
 }
