@@ -24,7 +24,7 @@ export function authorizeRecord(row: IntakeRecord, hashes: string[], state: Publ
   if (!category) return row;
   const allowed = state.grants.some((g) => hashes.includes(g.tokenHash) && !g.revokedAt &&
     Date.parse(g.expiresAt) > now.getTime() && g.installId === row.installId && g.categories.includes(category) &&
-    ("realm" in row ? clean(g.realm) === clean(row.realm) : true) &&
+    ("realm" in row && row.realm !== undefined ? clean(g.realm) === clean(row.realm) : true) &&
     ("guildName" in row ? g.subjectType === "guild" && clean(g.subject) === clean(row.guildName) :
       "character" in row ? g.subjectType === "character" && clean(g.subject) === clean(row.character) : g.subjectType === "install"));
   if (!allowed) return null;

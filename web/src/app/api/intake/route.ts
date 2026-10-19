@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
-import { COMPLETION_CATALOG_KINDS, parseUpload, UPLOAD_LIMITS, type CanonicalUpload } from "@everloot/protocol";
+import { COMPLETION_CATALOG_KINDS, parseUpload, UPLOAD_LIMITS, type CanonicalUpload, type StoredRecord, type StoredUpload } from "@everloot/protocol";
 import { uploadStore, sharingStore } from "@/lib/upload-store";
 import { intakeQuota, type QuotaResult } from "@/lib/intake-quota";
 import { recordUsage } from "@/lib/usage-metrics";
+import { censusDateProblem, characterSecret, isCensusRow, storedCensusRow } from "@/lib/census-intake";
 import { MARKET_LIMITS, realmKey } from "../../../../../kb/src/market";
 import { authorizeRecord, sharingCategory, type PublicationGrant } from "../../../../../kb/src/publication";
+import { censusDailyCap } from "../../../../../kb/src/census-rows";
 
 /**
  * POST /api/intake — step 1: parse + store the accepted records, return a receipt.
@@ -69,8 +71,15 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ ok: false, error: "Verification storage unavailable. Keep your file and retry." }, { status: 503 });
   }
-  const authorized = [];
+  const authorized: StoredRecord[] = [];
   const accepted = [];
+  // Census rows are stored only under the server's character key; without it they are dropped, GUID and all.
+  const censusSecret = characterSecret();
+  // Event ids kept per install, kind and UTC day, seeded from what the install already stored in earlier uploads:
+  // past the daily cap a new character is refused, a repeat is not.
+  const censusDays = new Map<string, Set<string>>();
+  const censusSeeded = new Set<string>();
+  const censusReporter = upload.records.some(isCensusRow) ? intakeQuota.reporter(req) : undefined;
   const grantHashes = new Set<string>();
   const scanRealms = new Set<string>();
   for (let i = 0; i < upload.records.length; i++) {
@@ -91,32 +100,69 @@ export async function POST(req: Request) {
       continue;
     }
     if ("claimToken" in row) delete row.claimToken;
+    if (isCensusRow(row)) {
+      // The GUID never reaches storage: it becomes a keyed hash and the server's own event id here.
+      const dateProblem = censusDateProblem(row.capturedAt, new Date());
+      if (dateProblem) {
+        receipt.rejected.push({ index: receipt.accepted[i].index, reason: dateProblem });
+        continue;
+      }
+      const kept = censusSecret ? storedCensusRow(row, censusSecret, censusReporter) : null;
+      if (!kept) {
+        receipt.rejected.push({ index: receipt.accepted[i].index, reason: censusSecret ? "This census row could not be read." : "Census rows are not collected yet." });
+        continue;
+      }
+      if (!censusSeeded.has(kept.installId)) {
+        const before = await uploadStore.installCensus(kept.installId);
+        if (!before) {
+          receipt.rejected.push({ index: receipt.accepted[i].index, reason: "Census rows could not be checked against this install's earlier uploads. Send them again later." });
+          continue;
+        }
+        censusSeeded.add(kept.installId);
+        for (const old of before) {
+          const oldDay = JSON.stringify([old.installId, old.kind, old.eventId.split(":")[1]]);
+          censusDays.set(oldDay, (censusDays.get(oldDay) ?? new Set<string>()).add(old.eventId));
+        }
+      }
+      const day = JSON.stringify([kept.installId, kept.kind, kept.eventId.split(":")[1]]);
+      const ids = censusDays.get(day) ?? new Set<string>();
+      censusDays.set(day, ids);
+      const cap = censusDailyCap(kept.kind);
+      if (!ids.has(kept.eventId) && ids.size >= cap) {
+        const what = kept.kind === "census_self" ? "own characters" : "players seen";
+        receipt.rejected.push({ index: receipt.accepted[i].index, reason: `An install may report at most ${cap} ${what} a day; the rest are not counted.` });
+        continue;
+      }
+      ids.add(kept.eventId);
+      authorized.push(kept); accepted.push(receipt.accepted[i]);
+      continue;
+    }
     matching.forEach((g) => grantHashes.add(g.tokenHash));
     authorized.push(row); accepted.push(receipt.accepted[i]);
   }
-  upload.records = authorized; receipt.accepted = accepted;
+  const stored: StoredUpload = { ...upload, records: authorized }; receipt.accepted = accepted;
   if (!authorized.length) return NextResponse.json({ ok: false, ...receipt }, { status: 422 });
   // Attribution comes from the accepted records, never from the first raw row.
-  const installs = new Set(upload.records.map((r) => r.installId));
+  const installs = new Set(stored.records.map((r) => r.installId));
   if (installs.size !== 1) {
     return NextResponse.json(
       { ok: false, error: "every record in one upload must come from the same install", ...receipt },
       { status: 422 },
     );
   }
-  const installId = upload.records[0].installId;
+  const installId = stored.records[0].installId;
   const installDenied = await admission(() => intakeQuota.install(installId));
   if (installDenied) return installDenied;
   const uploadId = randomUUID();
   // The market and the completion lists count installs behind one address once; only a keyed hash of the
   // address is kept, in the private upload object, and it is never published.
-  if (upload.records.some((r) => r.kind === "auction_snapshot" || COMPLETION_CATALOG_KINDS.includes(r.kind))) {
+  if (stored.records.some((r) => r.kind === "auction_snapshot" || COMPLETION_CATALOG_KINDS.includes(r.kind))) {
     const reporter = intakeQuota.reporter(req);
-    if (reporter) upload.reporter = reporter;
+    if (reporter) stored.reporter = reporter;
   }
   let persisted = false;
   try {
-    persisted = await uploadStore.putUpload(uploadId, installId, upload, [...grantHashes].sort());
+    persisted = await uploadStore.putUpload(uploadId, installId, stored, [...grantHashes].sort());
   } catch (err) {
     console.error(`upload ${uploadId}: store threw`, err);
   }

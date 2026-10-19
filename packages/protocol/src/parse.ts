@@ -1,4 +1,4 @@
-import { recordSchemas, uploadPayload, type IntakeRecord, type RecordKind } from "./records.js";
+import { recordSchemas, uploadPayload, type IntakeRecord, type RecordKind, type StoredRecord } from "./records.js";
 import { ACCEPTED_MAJORS, protocolMajor } from "./version.js";
 
 export interface AcceptedRecord {
@@ -26,6 +26,11 @@ export interface CanonicalUpload {
    */
   reporter?: string;
   records: IntakeRecord[];
+}
+
+/** What the intake route stores: the canonical upload with every census GUID already swapped for a key. */
+export interface StoredUpload extends Omit<CanonicalUpload, "records"> {
+  records: StoredRecord[];
 }
 
 export interface ParsedRecords {
