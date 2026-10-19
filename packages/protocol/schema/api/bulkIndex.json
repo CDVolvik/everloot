@@ -1,0 +1,205 @@
+{
+  "$id": "https://everloot.app/schema/api/bulkIndex.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "protocol": {
+      "type": "string",
+      "description": "The protocol version the rows follow."
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+    },
+    "dataAsOf": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "When the uploads behind the observed rows were current; null when storage was unreachable, then those files are absent, not empty."
+    },
+    "build": {
+      "description": "Game build of the game-file rows.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "site": {
+      "type": "string"
+    },
+    "licence": {
+      "type": "string"
+    },
+    "licenceUrl": {
+      "type": "string"
+    },
+    "credit": {
+      "type": "string"
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "File name inside the export folder, for example edges.ndjson."
+          },
+          "dataset": {
+            "type": "string",
+            "enum": [
+              "corpus",
+              "edges",
+              "drops",
+              "items"
+            ]
+          },
+          "format": {
+            "type": "string",
+            "const": "ndjson",
+            "description": "One JSON object per line."
+          },
+          "rowsOf": {
+            "type": "string",
+            "description": "The API response schema whose array these rows are, for example edgesResponse; its JSON Schema is at /schema/api/<rowsOf>.json."
+          },
+          "field": {
+            "type": "string",
+            "description": "The array field of that response the rows come from, for example edges."
+          },
+          "rows": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "data": {
+            "type": "string",
+            "enum": [
+              "observed",
+              "game-files",
+              "mixed"
+            ],
+            "description": "observed: Everloot's data under its licence; game-files: Blizzard's, with the gameData notice; mixed: both, each row labelled by evidence."
+          },
+          "attribution": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "licence": {
+                    "type": "string"
+                  },
+                  "licenceUrl": {
+                    "type": "string",
+                    "format": "uri"
+                  },
+                  "credit": {
+                    "type": "string"
+                  },
+                  "source": {
+                    "type": "string",
+                    "format": "uri"
+                  },
+                  "terms": {
+                    "type": "string",
+                    "format": "uri"
+                  }
+                },
+                "required": [
+                  "licence",
+                  "licenceUrl",
+                  "credit",
+                  "source",
+                  "terms"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Present when the file holds observed rows."
+          },
+          "gameData": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "label": {
+                    "type": "string",
+                    "description": "The evidence label pages show, such as \"found in game files, unconfirmed\"."
+                  },
+                  "build": {
+                    "type": "string",
+                    "description": "The game build the rows were read from."
+                  },
+                  "extractedAt": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "credit": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "label",
+                  "build"
+                ],
+                "additionalProperties": {}
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Present when the file holds game-file rows."
+          }
+        },
+        "required": [
+          "name",
+          "dataset",
+          "format",
+          "rowsOf",
+          "field",
+          "rows",
+          "bytes",
+          "sha256",
+          "data",
+          "attribution",
+          "gameData"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "protocol",
+    "generatedAt",
+    "dataAsOf",
+    "build",
+    "site",
+    "licence",
+    "licenceUrl",
+    "credit",
+    "files"
+  ],
+  "additionalProperties": false
+}

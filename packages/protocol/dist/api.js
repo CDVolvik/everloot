@@ -203,6 +203,34 @@ export const healthResponse = z.object({
     }),
 });
 /** The response schemas by name, the names schema/api/<name>.json uses. */
+/** The datasets the bulk export writes, one NDJSON file each; the rows are the same the JSON API serves. */
+export const BULK_DATASETS = ["corpus", "edges", "drops", "items"];
+/** One file of a bulk export: a newline-delimited JSON file whose rows are the `rowsOf` response's `field` elements. */
+export const bulkFile = z.object({
+    name: z.string().describe("File name inside the export folder, for example edges.ndjson."),
+    dataset: z.enum(BULK_DATASETS),
+    format: z.literal("ndjson").describe("One JSON object per line."),
+    rowsOf: z.string().describe("The API response schema whose array these rows are, for example edgesResponse; its JSON Schema is at /schema/api/<rowsOf>.json."),
+    field: z.string().describe("The array field of that response the rows come from, for example edges."),
+    rows: z.number().int().nonnegative(),
+    bytes: z.number().int().nonnegative(),
+    sha256: z.string().regex(/^[0-9a-f]{64}$/),
+    data: z.enum(["observed", "game-files", "mixed"]).describe("observed: Everloot's data under its licence; game-files: Blizzard's, with the gameData notice; mixed: both, each row labelled by evidence."),
+    attribution: attributionSchema.nullable().describe("Present when the file holds observed rows."),
+    gameData: gameDataNoticeSchema.nullable().describe("Present when the file holds game-file rows."),
+});
+/** index.json of a bulk export folder: what the folder holds, when the data was current, how to credit it. */
+export const bulkIndex = z.object({
+    protocol: z.string().describe("The protocol version the rows follow."),
+    generatedAt: ISO_TIME,
+    dataAsOf: ISO_TIME.nullable().describe("When the uploads behind the observed rows were current; null when storage was unreachable, then those files are absent, not empty."),
+    build: z.string().nullable().describe("Game build of the game-file rows."),
+    site: z.string(),
+    licence: z.string(),
+    licenceUrl: z.string(),
+    credit: z.string(),
+    files: z.array(bulkFile),
+});
 export const API_SCHEMAS = {
     attribution: attributionSchema,
     gameDataNotice: gameDataNoticeSchema,
@@ -216,6 +244,7 @@ export const API_SCHEMAS = {
     itemsResponse,
     itemCategoriesResponse,
     toolAnswerResponse,
+    bulkIndex,
     intakeRequest,
     intakeReceipt,
     intakeRefused,

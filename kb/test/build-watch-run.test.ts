@@ -28,7 +28,13 @@ function fakes(build: { id: number; config?: string }, got: () => Extracted, prs
 }
 
 const v1: Build = { nodes: [node(1, "Mutilate"), node(2, "Evasion")], raid: raid("1.60.1.70450", "party"), map: worldMap(70450), spells: { 101: {}, 102: {} } };
-const v2: Build = { nodes: [node(1, "Mutilate"), node(3, "Vigor")], raid: raid("1.60.1.70460", "raid"), map: worldMap(70460), spells: { 101: { basePoints: 9 } }, config: CONFIG_B };
+const v2: Build = {
+  nodes: [node(1, "Mutilate"), node(3, "Vigor")], raid: raid("1.60.1.70460", "raid"), map: worldMap(70460), spells: { 101: { basePoints: 9 } }, config: CONFIG_B,
+  digests: [
+    { table: "ItemSparse", rows: new Map([[1, { Name_lang: "A", ItemLevel: 1 }], [3, { Name_lang: "C", ItemLevel: 3 }]]) },
+    { table: "SpellName", rows: new Map([[1, { Name_lang: "Spell" }]]) },
+  ],
+};
 const site = (rel: string) => join(root, GAME_DATA_DIR, rel);
 const changeFile = (id: number) => site(`changes/wow_classic_beta-${id}.json`);
 
@@ -40,9 +46,10 @@ describe("runWatch", () => {
     expect(existsSync(site("raid-1.60.1.70450.json"))).toBe(true);
     expect(existsSync(join(root, RAID_LUA))).toBe(true);
     expect(existsSync(site("spell-values.json"))).toBe(true);
+    expect(existsSync(site("client-digests.json"))).toBe(true);
     expect(existsSync(site("map.json"))).toBe(true);
-    expect(r.paths).toEqual(expect.arrayContaining([`${GAME_DATA_DIR}/talents/rogue.json`, `${GAME_DATA_DIR}/changes/wow_classic_beta-70450.json`, RAID_LUA]));
-    expect(ChangeEntry.parse(JSON.parse(readFileSync(changeFile(70450), "utf8")))).toMatchObject({ initial: true, spoiler: true });
+    expect(r.paths).toEqual(expect.arrayContaining([`${GAME_DATA_DIR}/talents/rogue.json`, `${GAME_DATA_DIR}/changes/wow_classic_beta-70450.json`, `${GAME_DATA_DIR}/client-digests.json`, RAID_LUA]));
+    expect(ChangeEntry.parse(JSON.parse(readFileSync(changeFile(70450), "utf8")))).toMatchObject({ initial: true, spoiler: true, readSet: null });
     expect(JSON.parse(readFileSync(join(out, "plan.json"), "utf8"))[0].branch).toBe(r.branch);
     expect(readFileSync(r.bodyFile!, "utf8")).toContain("First data for this product");
   });
@@ -70,6 +77,12 @@ describe("runWatch", () => {
     expect(entry.talents!.removed.map((a) => a.name)).toEqual(["Evasion"]);
     expect(entry.talents!.spellValues).toMatchObject([{ spellId: 101, changes: [{ field: "effect 1 basePoints", before: 5, after: 9 }] }]);
     expect(entry.raidBuffs).toMatchObject({ comparedTo: "1.60.1.70450", scopeChanges: [{ id: "battle-shout", before: "party", after: "raid" }] });
+    expect(entry.readSet).toMatchObject({
+      tables: { before: 2, after: 2 },
+      changedTables: [{ table: "ItemSparse", rowsBefore: 2, rowsAfter: 2, changed: true }],
+      addedTables: [], removedTables: [], layoutChanged: false,
+    });
+    expect(readFileSync(r.bodyFile!, "utf8")).toContain("Client data");
     expect(siteBuild(readSiteData(root)!).buildId).toBe(70460);
     expect(calls.disposed).toBe(1);
     expect(calls.definitions).toEqual([null]);

@@ -137,8 +137,10 @@ The contract tests run the Lua in real Lua 5.1 through `lupa`:
     python addon/tests/completion_contract.py
     python addon/tests/census_contract.py
 
-Run them from the repository root. CI also rebuilds the zip and fails if it differs from the one
-committed in `web/public/downloads/`, so commit the rebuilt zip with any addon change.
+Run them from the repository root. CI also rebuilds the zip. For a version that is not released yet it
+fails if the zip differs from the one committed in `web/public/downloads/`, so commit the rebuilt zip
+with the change. For a version that is already tagged, the published zip stays as it is and the next
+release builds a new one.
 
 ## Where things live
 

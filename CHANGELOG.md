@@ -59,6 +59,12 @@ that has a zip in the repository. Earlier builds have none.
   URL needs; the answer is the same structured content and the same text an MCP client gets, from the same
   handlers, release and store. A wrong argument is a 400 that names it, an unknown tool a 404 that lists
   them. In the route catalogue, OpenAPI, the `/connect` reference and `llms.txt`.
+- The bulk export: `npm run export-bulk` in `web/` writes the published data as files, one NDJSON
+  file per dataset (public corpus, drop rates and measured zeros, relations, items) and an `index.json`
+  (`bulkIndex` in the protocol) listing each file's rows, bytes, SHA-256, data class and the API response
+  whose rows it holds. Rows come through the API's own loaders, so a file can never hold a row the API
+  would not. `scripts/upload-bulk.mjs` uploads a folder create-only, index last, and points `latest.json`
+  at it. `/connect` and `llms.txt` link the export once `NEXT_PUBLIC_BULK_URL` is set (docs/RELEASING.md).
 - The MCP server's implementation info carries a title, a one-line description and the site's icon (64 and
   512 px), so clients that draw a server list show Everloot by name and picture. `/connect` shows a curl
   call of `/api/tools/get_by_name` beside the MCP one.
