@@ -196,6 +196,16 @@ test("two-part splits: when one faction is hidden, so is the other", () => {
   expect(w.factions.map((f) => f.count)).toEqual([null, null]);
 });
 
+test("a total and one faction both show 10 only when the other faction is hidden too, so it can't be read as 0 to 2", () => {
+  const w = week([
+    ...crowd(10, "a1", { race: "Human", class: "WARRIOR", faction: "Alliance" }),
+    ...crowd(2, "h1", { race: "Orc", class: "WARRIOR", faction: "Horde" }),
+  ]);
+  // 12 characters round to 10, and so do the 10 Alliance characters: shown alone the Horde would be 0 to 2.
+  expect(w.characters).toBe(10);
+  expect(w.factions.map((f) => f.count)).toEqual([null, null]);
+});
+
 test("two-part splits: when own characters are hidden, so are the seen ones", () => {
   const seenOnly = everyone().map((r) => ({ ...r, kind: "census_seen" as const, realm: undefined, via: "target" as const }));
   const w = week([...seenOnly, ...crowd(4, "p2", { kind: "census_self", realm: "Forever", via: undefined })]);

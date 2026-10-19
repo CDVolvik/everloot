@@ -54,10 +54,10 @@ test("how rare are Gnome Priests: the race and class cell with its share", () =>
   expect(page.cells).toEqual([{ slice: "raceClass", faction: "Alliance", race: "Gnome", class: "PRIEST", label: "Gnome Priest (Alliance)", count: 20, share: 0.017 }]);
 });
 
-test("a hidden count reads hidden, with what that means, never a number", () => {
+test("a hidden count reads not enough reports, with what that means, never a number", () => {
   const { text, page } = ask({ race: "Undead", class: "Paladin" });
-  expect(text).toContain("Undead Paladin (Horde): hidden");
-  expect(text).toContain('"hidden" means fewer than 10 characters or fewer than 3 installs, or hidden so that a small count');
+  expect(text).toContain("Undead Paladin (Horde): not enough reports");
+  expect(text).toContain('"not enough reports" means fewer than 10 characters or fewer than 3 installs, or hidden so that a small count');
   expect(text).not.toMatch(/Undead Paladin \(Horde\): about/);
   expect(text).not.toContain("fewer than 10 characters,");
   expect(page.cells[0]).toMatchObject({ count: null, share: null });

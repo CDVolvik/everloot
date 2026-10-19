@@ -64,17 +64,17 @@ test("the top sentence says how many characters, from how many installs, in whic
   expect(page).toContain("How we count");
 });
 
-test("factions, classes, races and level bands show rounded counts; a hidden count reads hidden, explained", async () => {
+test("factions, classes, races and level bands show rounded counts; a hidden count reads not enough reports, explained", async () => {
   store.loadCorpus.mockResolvedValue(corpus(RECORDS));
   const page = await html();
   const words = text(page);
   expect(words).toMatch(/Hunter 65 /);
-  expect(words).toMatch(/Mage hidden/);
+  expect(words).toMatch(/Mage not enough reports/);
   expect(words).toMatch(/Alliance 90 /);
   expect(words).toMatch(/20–29 85 /);
   // A lone band at 60 would be the total minus the others: it is hidden along with the hidden ones.
-  expect(words).toMatch(/At 60 hidden/);
-  expect(words).toContain("“hidden” means fewer than 10 characters or fewer than 3 installs, or hidden so that a small count can't be worked out from the others");
+  expect(words).toMatch(/At 60 not enough reports/);
+  expect(words).toContain("“not enough reports” means fewer than 10 characters or fewer than 3 installs, or hidden so that a small count can't be worked out from the others");
   expect(page).toContain('<th scope="col" class="px-4 py-3">Class</th>');
   expect(page).toContain("Factions");
   expect(page).toContain("Level bands");
@@ -88,7 +88,7 @@ test("the race and class grid is Blizzard's table per faction, with counts in th
   const alliance = grids.find((g) => g.includes("Alliance races"))!;
   expect(text(alliance)).toMatch(/Human Not playable 40 /);
   expect(alliance).toContain("Not playable");
-  expect(alliance).toContain('<span class="sr-only">hidden</span>');
+  expect(alliance).toContain('<span class="sr-only">not enough reports</span>');
 });
 
 test("since launch is a second window, linked from the first and marked as the current one", async () => {
@@ -104,7 +104,7 @@ test("the 7-day trend lists each day, and the bias line says how many were seen 
   store.loadCorpus.mockResolvedValue(corpus(RECORDS));
   const words = text(await html("launch"));
   expect(words).toContain("2026-11-15 110");
-  expect(words).toMatch(/2026-11-10 hidden/);
+  expect(words).toMatch(/2026-11-10 not enough reports/);
   expect(words).toContain("79% players seen by uploaders, 21% uploaders' own characters");
 });
 

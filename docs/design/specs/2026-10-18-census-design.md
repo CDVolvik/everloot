@@ -78,7 +78,15 @@ census_self | census_seen
    corpus and feed a private rollup. Only aggregates are published.
 3. **Small cells are hidden.** A count for any slice (ruleset × region × faction × race × class × level
    band) shows only when it covers at least 10 characters reported by at least 3 installs. Below that it
-   reads "fewer than 10", never a number that could point at one person.
+   reads "not enough reports", never a number that could point at one person. A cell with 40 characters
+   from 2 installs is hidden too, so the label doesn't say "fewer than 10".
+   Hiding a cell is not enough on its own: a hidden part could be worked out from its total and the
+   shown parts. So in every published sum, a relation with anything hidden has at least two hidden
+   parts whose true counts add up to at least 10; where it wouldn't, the smallest shown part is hidden
+   too (complementary suppression). Shown counts are also rounded to the nearest 5, each from its own
+   true number.
+   Before launch the census says the game has not launched yet and shows no window, not a date range
+   that runs backwards.
 4. **Data policy and privacy page** gain a census paragraph in the same PR as the intake change, before
    any upload can carry these kinds.
 
@@ -94,6 +102,12 @@ census_self | census_seen
 - **Bias, stated on the page.** Self rows over-represent people who install addons; seen rows
   over-represent the zones uploaders play in. The page shows both shares ("62% seen, 38% own") so readers
   can judge.
+
+- **Known risk: forged uploads.** Someone who fakes uploads from 3 installs can make a small cell clear
+  the 3-install threshold. By adding rows one at a time and watching the published counts move, they can
+  still narrow down hidden numbers. Rounding and complementary suppression don't help against someone who
+  controls the rows. The per-install daily cap slows this down but doesn't stop it. It is stated on
+  `/methodology`, and the census doesn't claim more than that.
 
 ## 7. What players get
 

@@ -14,7 +14,7 @@
  *   a hidden part could be anything from 0 to at least 10.
  * - Every count that shows is rounded to the nearest 5, each from its own true number, so a total is
  *   not the sum of its rounded parts either.
- * - A hidden count is null: the page and the MCP tool read it as "hidden" (fewer than 10 characters,
+ * - A hidden count is null: the page and the MCP tool read it as "not enough reports" (fewer than 10 characters,
  *   fewer than 3 installs, or hidden so a small count can't be worked out).
  * - The output carries counts only: no characterKey, install id, event id, server id or realm.
  *
@@ -99,7 +99,7 @@ export type LevelBand = (typeof LEVEL_BANDS)[number]["id"];
 export type CensusCount = number | null;
 
 /** What a hidden count means, in the words the page, /methodology and the MCP tool use. */
-export const HIDDEN_LABEL = "hidden";
+export const HIDDEN_LABEL = "not enough reports";
 export const HIDDEN_MEANING = "fewer than 10 characters or fewer than 3 installs, or hidden so that a small count can't be worked out from the others";
 
 export interface CensusWindow {
