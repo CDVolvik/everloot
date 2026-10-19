@@ -95,6 +95,16 @@ describe("uploading", () => {
     expect(api.bodies[0].records.map((r) => r.kind)).toEqual(["loot"]);
   });
 
+  test("the census never leaves from here: the upload page counts it first", async () => {
+    const seen = { kind: "census_seen", lua: `["eventId"] = "census_seen:2026-10-18:1", ["capturedAt"] = "2026-10-18T00:00:00Z", ["guid"] = "Player-4242-00000001", ["race"] = "Orc", ["class"] = "WARRIOR", ["level"] = 20, ["faction"] = "Horde", ["via"] = "target"` };
+    const own = { kind: "census_self", lua: `["eventId"] = "census_self:2026-10-18:1", ["capturedAt"] = "2026-10-18T00:00:00Z", ["guid"] = "Player-4242-00AABBCC", ["race"] = "Orc", ["class"] = "WARRIOR", ["level"] = 20, ["faction"] = "Horde", ["realm"] = "Forever"` };
+    const { file, state } = workspace(luaFile([loot(1), seen, own]));
+    const api = intake();
+    const result = await uploadFile(file, { endpoint: "https://everloot.example", fetch: api.send, state });
+    expect(result).toMatchObject({ sent: 1, heldCensus: 2, heldAddons: 0, invalid: 0 });
+    expect(api.bodies[0].records.map((r) => r.kind)).toEqual(["loot"]);
+  });
+
   test("named records stay on this machine unless shared on purpose", async () => {
     const { file, state } = workspace(luaFile([loot(1), gold]));
     const api = intake();

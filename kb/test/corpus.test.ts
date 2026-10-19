@@ -75,3 +75,12 @@ test("full-scan snapshots stay out of the corpus; the market rollup reads them f
   expect(publicRecords(state).map((r) => r.kind)).toEqual(["loot"]);
   expect(state.legacyRecords).toBe(0);
 });
+test("census rows never enter the corpus, as sent or as stored", () => {
+  const census = { installId: "install-one", capturedAt: "2026-10-18T21:30:00Z", race: "Scourge", class: "PRIEST", level: 24, faction: "Horde" };
+  const sent = { ...census, kind: "census_seen", eventId: "epoch:9", guid: "Player-4395-0A1B2C3D", via: "target" };
+  const stored = { ...census, kind: "census_self", eventId: `census_self:2026-10-18:${"a".repeat(24)}`, characterKey: "a".repeat(64), serverId: 4395, realm: "Forever" };
+  expect(parseRecords([sent]).records).toHaveLength(1);
+  const state = mergeCorpus(undefined, [sent, stored, loot()]);
+  expect(state.events.map((e) => e.record.kind)).toEqual(["loot"]);
+  expect(state.legacyRecords).toBe(0);
+});
