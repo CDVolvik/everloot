@@ -2,7 +2,7 @@
 import { useMemo, useRef, useState } from "react";
 import { track } from "@/lib/analytics/track";
 import { parseEverlootLua } from "@/lib/sv-parse";
-import { prepareUpload, sendBatches, type SharingChoices, type UploadSession } from "@/lib/upload-batches";
+import { censusSummary, prepareUpload, sendBatches, type SharingChoices, type UploadSession } from "@/lib/upload-batches";
 import type { SharingCategory } from "../../../../kb/src/publication";
 
 const categories: { key: SharingCategory; label: string }[] = [
@@ -125,6 +125,10 @@ export default function UploadClient() {
           <p>Installed addons in this upload ({prepared.value.addons.length}), recorded because you ran <code>/everloot addons on</code>:</p>
           <p className="mt-1 text-fg-2">{prepared.value.addons.join(", ")}</p>
           <p className="mt-1 text-fg-2">This list is never published row by row; the site shows only counts for addons that at least three installs report.</p>
+        </div>}
+        {censusSummary(prepared.value.census) && <div className="mt-3 text-sm text-fg-2">
+          <p>Census in this upload: {censusSummary(prepared.value.census)}, recorded because you ran <code>/everloot census on</code>.</p>
+          <p className="mt-1 text-fg-2">Each row holds a character&apos;s game id, race, class, level and faction, never a name. The server replaces the id with a key before anything is stored, and the site shows only counts that cover at least 10 characters from at least three installs.</p>
         </div>}
         <p className="mt-3 text-sm text-fg-2">{prepared.value.held.legacy} legacy records without event IDs, {prepared.value.held.named} unchecked named records, and {prepared.value.held.invalid} invalid records stay out of this upload. Keep your original file.</p>
         <p className="mt-2 text-sm text-fg-2">{prepared.value.batches.length} batches. Only a confirmed storage receipt advances progress. Named choices are checked against the grant on the server.</p>

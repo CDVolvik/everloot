@@ -5,5 +5,7 @@
   "recordsPerFile": 100000,
   "addonVersionMax": 20,
   "grantTokensMax": 4,
-  "realmsPerUpload": 3
+  "realmsPerUpload": 3,
+  "censusSeenPerDay": 500,
+  "censusSelfPerDay": 50
 }

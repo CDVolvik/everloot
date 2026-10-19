@@ -11,7 +11,7 @@ import { fromUploads, TOOL_KINDS, UPLOADS_UNSET } from "../src/mcp-server.js";
 import { pathFactsFromRecords, recipeFactsFromRecords } from "../src/recipe-thresholds.js";
 import { worldFactsFromRecords } from "../src/world-pages.js";
 import { mapFactsFromRecords } from "../src/world-map-near.js";
-import { ALL_RECORD_KINDS, COMPLETION_KINDS, parseRecords } from "@everloot/protocol";
+import { ALL_RECORD_KINDS, CENSUS_KINDS, COMPLETION_KINDS, parseRecords } from "@everloot/protocol";
 import { MCP_CREDIT } from "@everloot/protocol";
 
 const base = { installId: "install-one", capturedAt: "2026-10-09T00:00:00Z" };
@@ -51,6 +51,9 @@ const EVERY_KIND = parseRecords([
   { ...base, eventId: "e:31", kind: "quest_owned", characterKey: "0a1b2c3d", class: "MAGE", level: 30, questIds: [7] },
   // Read by the market rollup, never by a corpus tool: no TOOL_KINDS entry lists it.
   { ...base, eventId: "e:23", kind: "auction_snapshot", realm: "Forever", scanId: "scan-1", part: 1, parts: 1, items: [[5, 1, 1, 10, 10]] },
+  // Census rows are published only as counts, never read by a corpus tool.
+  { ...base, eventId: "e:32", kind: "census_self", guid: "Player-4395-0A1B2C3D", race: "Orc", class: "WARRIOR", level: 30, faction: "Horde", realm: "Forever" },
+  { ...base, eventId: "e:33", kind: "census_seen", guid: "Player-4395-0F00BA44", race: "Human", class: "MAGE", level: 60, faction: "Alliance", via: "target" },
   { ...base, eventId: "e:22", kind: "talent_snapshot", class: "MAGE", level: 30, group: 1, active: true, configId: 7, treeId: 786, exportStatus: "unavailable", points: 2, nodes: [{ nodeId: 90001, ranks: 2 }] },
 ]);
 
@@ -86,6 +89,10 @@ test("each tool's kinds give the same facts as the whole corpus", () => {
 
 test("no corpus tool reads a completion kind: completion_progress reads the rollup", () => {
   for (const [tool, kinds] of Object.entries(TOOL_KINDS)) for (const kind of COMPLETION_KINDS) expect(kinds, tool).not.toContain(kind);
+});
+
+test("no corpus tool reads a census kind: the census is published as counts only", () => {
+  for (const [tool, kinds] of Object.entries(TOOL_KINDS)) for (const kind of CENSUS_KINDS) expect(kinds, tool).not.toContain(kind);
 });
 
 test("a tool asks the public corpus for its kinds only", async () => {

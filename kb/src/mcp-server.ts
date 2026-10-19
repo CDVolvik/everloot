@@ -18,7 +18,7 @@ import { handleMarketValue, itemMarket, type MarketState } from "./market.js";
 import { loadUploadRecords } from "./load-uploads.js";
 import { KNOWLEDGE_KINDS, MCP_PROMPT_NAMES, MCP_PROMPTS, MCP_RESOURCE_TEMPLATE_URIS, MCP_RESOURCE_TEMPLATES, MCP_RESOURCE_URIS, MCP_RESOURCES, MCP_TOOL_NAMES, MCP_TOOLS, parseRecords, type McpToolArgs, type McpToolDef, type McpToolName } from "@everloot/protocol";
 import { z } from "zod";
-import { handleProfessionPath, professionPath } from "./profession-path.js";
+import { formatProfessionPath, professionPath } from "./profession-path.js";
 import { promptText } from "./prompts.js";
 import { answerPopulation, type CensusLoader } from "./population.js";
 import { readResource } from "./resources.js";
@@ -469,6 +469,13 @@ export async function readPage<T>(tool: ToolName, loader: CorpusLoader | undefin
   return { text: `${built.text}\n${answerFooter(read.dataAsOf)}`, structured: { connected: true, dataAsOf: read.dataAsOf, page: built.page } };
 }
 
+/** A blank profession is refused before any read: an error, not a connected page about no profession. */
+function professionArg(profession: string): string {
+  const trimmed = profession.trim();
+  if (!trimmed) throw new Error("Name a profession.");
+  return trimmed;
+}
+
 /** The readers a host lends the tools: the site's store in process, or nothing for a standalone server. */
 export interface ToolOptions { corpus?: CorpusLoader; market?: MarketLoader; completion?: CompletionLoader; changes?: ChangesLoader; ecosystem?: EcosystemLoader; census?: CensusLoader }
 
@@ -503,18 +510,21 @@ export function createToolHandlers(db: DB, options: ToolOptions = {}): ToolHandl
       const result = answerSources(db, args, read?.facts ?? null, read?.dataAsOf ?? null);
       return { text: `${formatAnswerSources(result, read !== null)}\n${read ? answerFooter(read.dataAsOf) : MCP_CREDIT}`, structured: result };
     },
-    profession_path: (args) => readPage("profession_path", options.corpus, (facts: ReturnType<typeof pathFactsFromRecords>) => {
+    profession_path: (args) => {
       // The same defaults the text handler applies: from 1, to the start when no end is given.
-      const query = { profession: args.profession.trim(), fromSkill: args.fromSkill ?? 1, toSkill: args.toSkill ?? args.fromSkill ?? 1 };
-      return {
-        text: handleProfessionPath(args, facts.sightings, facts.prices, facts.derived, facts.vendorPrices),
-        page: professionPath(facts.sightings, facts.prices, query, facts.derived, facts.vendorPrices),
-      };
-    }),
-    recipe_thresholds: (args) => readPage("recipe_thresholds", options.corpus, (facts: ReturnType<typeof recipeFactsFromRecords>) => ({
-      text: handleRecipeThresholds(args, facts.observations, facts.prices, facts.vendorPrices),
-      page: recipeThresholdsStructured(args, facts.observations, facts.prices, facts.vendorPrices),
-    })),
+      const query = { profession: professionArg(args.profession), fromSkill: args.fromSkill ?? 1, toSkill: args.toSkill ?? args.fromSkill ?? 1 };
+      return readPage("profession_path", options.corpus, (facts: ReturnType<typeof pathFactsFromRecords>) => {
+        const page = professionPath(facts.sightings, facts.prices, query, facts.derived, facts.vendorPrices);
+        return { text: formatProfessionPath(page), page };
+      });
+    },
+    recipe_thresholds: (args) => {
+      professionArg(args.profession);
+      return readPage("recipe_thresholds", options.corpus, (facts: ReturnType<typeof recipeFactsFromRecords>) => ({
+        text: handleRecipeThresholds(args, facts.observations, facts.prices, facts.vendorPrices),
+        page: recipeThresholdsStructured(args, facts.observations, facts.prices, facts.vendorPrices),
+      }));
+    },
     item_page: (args) => readPage("item_page", options.corpus, (facts: ReturnType<typeof itemFactsFromRecords>) => {
       const page = itemPage(args.itemId, facts);
       return { text: formatItemPage(page), page };

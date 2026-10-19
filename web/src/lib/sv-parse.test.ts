@@ -80,3 +80,22 @@ test("the whole table is readable for fields beyond records, such as /ask questi
   expect(table.asks).toEqual([{ id: "ask:1", question: "Who is Thrall?", askedAt: "2026-10-09T00:00:00Z" }]);
   expect(() => parseEverlootTable("not lua")).toThrow(LuaParseError);
 });
+
+test("census rows become intake records in the census wire shape, field for field", () => {
+  // As the game writes addon/modules/census.lua's rows back to the file.
+  const text = `EverlootDB = {
+["version"] = "0.3.3", ["installId"] = "abcd-1234",
+["records"] = {
+["census_self"] = { { ["installId"] = "abcd-1234", ["eventId"] = "census_self:2026-10-18:1", ["capturedAt"] = "2026-10-18T00:00:00Z",
+  ["guid"] = "Player-4242-00AABBCC", ["race"] = "Skyborne", ["class"] = "HUNTER", ["level"] = 12, ["faction"] = "Alliance", ["realm"] = "Forever" } },
+["census_seen"] = { { ["installId"] = "abcd-1234", ["eventId"] = "census_seen:2026-10-18:1", ["capturedAt"] = "2026-10-18T00:01:00Z",
+  ["guid"] = "Player-4242-00000001", ["race"] = "Scourge", ["class"] = "PRIEST", ["level"] = 30, ["faction"] = "Horde", ["via"] = "mouseover" } },
+},
+}`;
+  expect(parseEverlootLua(text).records).toEqual([
+    { kind: "census_self", installId: "abcd-1234", eventId: "census_self:2026-10-18:1", capturedAt: "2026-10-18T00:00:00Z",
+      guid: "Player-4242-00AABBCC", race: "Skyborne", class: "HUNTER", level: 12, faction: "Alliance", realm: "Forever" },
+    { kind: "census_seen", installId: "abcd-1234", eventId: "census_seen:2026-10-18:1", capturedAt: "2026-10-18T00:01:00Z",
+      guid: "Player-4242-00000001", race: "Scourge", class: "PRIEST", level: 30, faction: "Horde", via: "mouseover" },
+  ]);
+});

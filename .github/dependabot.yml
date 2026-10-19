@@ -10,6 +10,10 @@ updates:
     groups:
       web-dependencies:
         patterns: ["*"]
+    ignore:
+      # Major versions are planned upgrades (Next, ESLint, Tailwind, Node types), done by hand.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: npm
     directory: /kb
     schedule:
@@ -20,6 +24,10 @@ updates:
     groups:
       kb-dependencies:
         patterns: ["*"]
+    ignore:
+      # Major versions are planned upgrades (Next, ESLint, Tailwind, Node types), done by hand.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: npm
     directory: /companion
     schedule:
@@ -30,6 +38,10 @@ updates:
     groups:
       companion-dependencies:
         patterns: ["*"]
+    ignore:
+      # Major versions are planned upgrades (Next, ESLint, Tailwind, Node types), done by hand.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: npm
     directory: /packages/protocol
     schedule:
@@ -40,6 +52,10 @@ updates:
     groups:
       protocol-dependencies:
         patterns: ["*"]
+    ignore:
+      # Major versions are planned upgrades (Next, ESLint, Tailwind, Node types), done by hand.
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
