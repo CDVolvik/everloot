@@ -34,6 +34,8 @@ const nextConfig = {
     "/schema/\\[\\.\\.\\.path\\]": ["./node_modules/@everloot/protocol/schema/**"],
     "/mcp": ["./.release/*.sqlite", "./.release/*.manifest.json"],
     "/mcp/public": ["./.release/*.sqlite", "./.release/*.manifest.json"],
+    // Keys match by substring, so this one covers /api/tools/[tool], the tools' plain-HTTP route.
+    "/api/tools": ["./.release/*.sqlite", "./.release/*.manifest.json"],
     "/lore/[slug]": ["./.release/*.sqlite", "./.release/*.manifest.json"],
     "/lore": ["./.release/*.sqlite", "./.release/*.manifest.json"],
     "/search": ["./.release/*.sqlite", "./.release/*.manifest.json"],
