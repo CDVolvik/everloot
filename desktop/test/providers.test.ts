@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, test } from "vitest";
 import { loadProviders } from "../../companion/src/providers/config";
-import { looksLikeAnthropicKey, ownProvider, removeProvider, setProvider } from "../src/main/providers";
+import { ownProvider, removeProvider, setProvider } from "../src/main/providers";
 import { PROVIDER_PRESETS } from "../src/shared/providers";
 
 const dirs: string[] = [];
@@ -94,8 +94,6 @@ test("bad pastes are refused before anything is written", () => {
   expect(() => setProvider(d, { kind: "ollama", model: "not a model id" })).toThrow(/model id/);
   expect(() => setProvider(d, { kind: "nope" as never })).toThrow(/Unknown provider/);
   expect(existsSync(join(d, "config.json"))).toBe(false);
-  expect(looksLikeAnthropicKey("sk-ant-short")).toBe(false);
-  expect(looksLikeAnthropicKey(ANT)).toBe(true);
 });
 
 test("every preset's first model is a valid id and every OpenCode model listed is zero-retention free", () => {

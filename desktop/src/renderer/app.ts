@@ -1,7 +1,7 @@
 import { accountOf as account } from "../main/engine";
 import { diagnostics } from "../shared/diagnostics";
 import { ago, clock, esc, gold, kb, msg, sparkline, statusText, when } from "./format";
-import type { AddonInfo, AppState, AskInfo, BackupInfo, ChangeItem, CharactersInfo, ChatInfo, EverlootApi, FileSummary, GameFolderCandidate, Job, JobStatus, MarketInfo } from "../shared/types";
+import { NO_SOURCED_ANSWER, type AddonInfo, type AppState, type AskInfo, type BackupInfo, type ChangeItem, type CharactersInfo, type ChatInfo, type EverlootApi, type FileSummary, type GameFolderCandidate, type Job, type JobStatus, type MarketInfo } from "../shared/types";
 import { PROVIDER_PRESETS, presetFor, type ProviderKind } from "../shared/providers";
 
 declare global { interface Window { everloot: EverlootApi } }
@@ -107,7 +107,7 @@ function chat(): string {
   const c = data.chat;
   const thread = (c?.messages ?? []).map((m) => {
     const meta = m.role === "assistant"
-      ? `<div class="meta">${m.model ? `<b>${esc(m.model)}</b>` : "<b>plain search</b>"}${m.steps.length ? ` · ${m.steps.length} tool call(s): ${esc(m.steps.map((st) => st.tool).join(", "))}` : ""}${m.sources.length ? `<br>Sources: ${m.sources.map((x) => esc(x)).join(" · ")}` : m.model ? "<br>No source in Everloot's data; the model's own knowledge" : ""}</div>`
+      ? `<div class="meta">${m.model ? `<b>${esc(m.model)}</b>` : "<b>plain search</b>"}${m.steps.length ? ` · ${m.steps.length} tool call(s): ${esc(m.steps.map((st) => st.tool).join(", "))}` : ""}${m.sources.length ? `<br>Sources: ${m.sources.map((x) => esc(x)).join(" · ")}` : m.model && m.text !== NO_SOURCED_ANSWER ? "<br>No source in Everloot's data; the model's own knowledge" : ""}</div>`
       : `<div class="meta">${clock(m.at)}</div>`;
     return `<div class="msg msg-${m.role}">${esc(m.text)}${meta}</div>`;
   }).join("");
@@ -115,7 +115,7 @@ function chat(): string {
     <div class="head"><h1>Chat</h1><span class="sub">${c ? `${esc(c.mode)} · ${c.withToken ? "your MCP token" : "public MCP, rate limited"}` : ""} <button type="button" class="link" id="chatClear">clear</button></span></div>
     <p class="muted small">Ask anything about the game. The model looks it up in Everloot's own MCP tools first and names the sources; when they have nothing it says the answer is its own knowledge. Private: the transcript stays in your data folder.</p>
     ${c?.provider && !pickOpen ? `<p class="muted small">Using <b>${esc(c.provider.kind)}:${esc(c.provider.model)}</b> from this page, for Chat and the in-game /ask. <button type="button" class="link" id="changeProvider">Change</button> · <button type="button" class="link" id="removeProvider">Remove</button></p>` : ""}
-    ${c && !c.provider && !pickOpen && c.mode === "plain search" ? `<p class="muted small">Without a provider you get the sourced search hits only. <button type="button" class="link" id="changeProvider">Use your own key or a free model</button></p>` : ""}
+    ${c && !c.provider && !pickOpen ? `<p class="muted small">${c.mode === "plain search" ? "Without a provider you get the sourced search hits only." : "That provider comes from config.json, written by hand."} <button type="button" class="link" id="changeProvider">Use your own key or a free model</button></p>` : ""}
     ${c && pickOpen ? providerForm() : ""}
     ${flash ? `<p class="${flash.startsWith("!") ? "error" : "ok"} small">${esc(flash.replace(/^!/, ""))}</p>` : ""}
     <div class="thread" id="thread">${thread || '<span class="muted">Ask anything about WoW: Forever: a drop, a vendor, a recipe, a price, a quest.</span>'}${c?.busy ? '<div class="msg msg-assistant muted">Answering…</div>' : ""}${c?.error ? `<div class="msg msg-assistant error">${esc(c.error)}</div>` : ""}</div>
@@ -512,8 +512,10 @@ main.addEventListener("submit", async (ev) => {
   const f = new FormData(form);
   const text = (k: string) => String(f.get(k) ?? "").trim();
   if (form.id === "providerForm") {
+    const model = text("model") || text("modelText");
+    if (!model && f.has("model")) { flash = "!Type the model id, or pick one from the list"; render(); return; }
     try {
-      data.chat = await api.chatSetProvider({ kind: pickKind, key: text("key"), model: text("model") || text("modelText"), baseUrl: text("baseUrl") });
+      data.chat = await api.chatSetProvider({ kind: pickKind, key: text("key"), model, baseUrl: text("baseUrl") });
       pickOpen = false; flash = `Saved. Chat now runs ${data.chat.mode}.`;
     } catch (e) { flash = `!${msg(e)}`; }
     render();

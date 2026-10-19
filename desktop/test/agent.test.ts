@@ -76,6 +76,30 @@ test("an OpenAI-compatible error names the server and the message", async () => 
     .rejects.toThrow("https://openrouter.ai/api/v1: HTTP 402, Insufficient credits");
 });
 
+test("a 200 whose body is an error and no choices is an error, not a blank answer", async () => {
+  const send = vi.fn(async () => new Response(JSON.stringify({ error: { message: "No endpoints found that support tool use" } }), { status: 200 }));
+  const entry = { type: "openai-compatible", baseUrl: "https://openrouter.ai/api/v1", model: "x" };
+  await expect(answer({ mcp: { url: "u", token: null }, entries: [entry], history: [], question: "q", session: fakeSession([]), send: send as never }))
+    .rejects.toThrow("https://openrouter.ai/api/v1: No endpoints found that support tool use");
+});
+
+test("tool arguments that are not JSON go back to the model as a tool result; the tool does not run on nothing", async () => {
+  const calls: { name: string; args: unknown }[] = [];
+  const bodies: { messages: { role: string; content: unknown; tool_call_id?: string }[] }[] = [];
+  const send = vi.fn(async (_url: string, init: { body: string }) => {
+    bodies.push(JSON.parse(init.body));
+    const reply = bodies.length === 1
+      ? { choices: [{ message: { role: "assistant", content: null, tool_calls: [{ id: "c1", type: "function", function: { name: "search_knowledge", arguments: "{\"query\": " } }] } }] }
+      : { choices: [{ message: { role: "assistant", content: "Nothing on that." } }] };
+    return new Response(JSON.stringify(reply), { status: 200 });
+  });
+  const entry = { type: "openai-compatible", baseUrl: "http://localhost:11434/v1", model: "qwen3" };
+  const r = await answer({ mcp: { url: "u", token: null }, entries: [entry], history: [], question: "q", session: fakeSession(calls), send: send as never });
+  expect(calls).toEqual([]);
+  expect(bodies[1].messages.at(-1)).toMatchObject({ role: "tool", tool_call_id: "c1", content: expect.stringMatching(/not valid JSON/) });
+  expect(r.text).toBe("Nothing on that.");
+});
+
 test("with Anthropic the model calls the MCP tools itself and the steps and sources are recorded", async () => {
   const d = dir();
   writeFileSync(join(d, "k.txt"), "sk-test\n");

@@ -58,9 +58,8 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
       { id: "google/gemini-3.5-flash-lite", label: "Gemini 3.5 Flash Lite", note: "$0.30 / $2.50" },
       { id: "anthropic/claude-haiku-5.5", label: "Claude Haiku 5.5", note: "$0.10 / $0.50" },
       { id: "nvidia/nemotron-3.5-lightning:free", label: "Nemotron 3.5 Lightning (free)", note: "free, 50 requests a day until you buy $10 of credits" },
-      { id: "google/gemma-4-31b-it:free", label: "Gemma 4 31B (free)", note: "free, 50 requests a day until you buy $10 of credits" },
     ],
-    dataNote: "OpenRouter skips providers that log prompts unless you allow it in your account settings.",
+    dataNote: "OpenRouter skips providers that log prompts unless you allow it in your account settings. Another model id must support tool calling (openrouter.ai/models?supported_parameters=tools).",
   },
   {
     kind: "opencode",

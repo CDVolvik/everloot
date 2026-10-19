@@ -33,11 +33,6 @@ function isOwn(p: Entry, dataFolder: string): boolean {
   return p.source === OWNER || (p.type === "anthropic" && p.apiKeyFile === join(dataFolder, "anthropic.key"));
 }
 
-/** Anthropic keys start with sk-ant-; anything else is most likely a paste of the wrong thing. */
-export function looksLikeAnthropicKey(key: string): boolean {
-  return /^sk-ant-[A-Za-z0-9_-]{20,}$/.test(key);
-}
-
 /** Writes the key file (if any) and the config entry; returns what is now in use. */
 export function setProvider(dataFolder: string, choice: ProviderChoice): ProviderInUse {
   const preset = presetFor(choice.kind);
@@ -55,7 +50,6 @@ export function setProvider(dataFolder: string, choice: ProviderChoice): Provide
   const config = join(dataFolder, "config.json");
   const { providers, rest } = readConfig(config);
   const old = providers.find((p) => p && isOwn(p, dataFolder));
-  removeKeyFile(dataFolder, old);
 
   let keyFile: string | undefined;
   if (preset.keyFile && key) {
@@ -68,6 +62,8 @@ export function setProvider(dataFolder: string, choice: ProviderChoice): Provide
     : { type: "openai-compatible", baseUrl, model, ...(keyFile ? { apiKeyFile: keyFile } : {}), source: OWNER, kind: preset.kind };
   const kept = providers.filter((p) => !(p && isOwn(p, dataFolder)));
   writeConfig(config, [entry, ...kept], rest);
+  // The old key file goes last, so a failed write above leaves the previous pick working.
+  if (old?.apiKeyFile !== keyFile) removeKeyFile(dataFolder, old);
   return { kind: preset.kind, model, baseUrl: baseUrl ?? null };
 }
 

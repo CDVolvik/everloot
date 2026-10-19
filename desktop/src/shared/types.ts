@@ -97,6 +97,9 @@ export interface ChangeItem { title: string; link: string; date: string | null; 
 
 /** One tool call the agent made while answering. */
 export interface ChatStep { tool: string; input: string; chars: number }
+/** The assistant's text when the tools had nothing and no model answered on its own. */
+export const NO_SOURCED_ANSWER = "No sourced answer found in Everloot's data for that.";
+
 export interface ChatMessage {
   role: "user" | "assistant";
   text: string;
@@ -202,7 +205,7 @@ export interface EverlootApi {
   chatInfo(): Promise<ChatInfo>;
   chatSend(text: string): Promise<ChatInfo>;
   chatClear(): Promise<ChatInfo>;
-  /** Saves an Anthropic key to the data folder and points config.json at it; the key never comes back to the page. */
+  /** Saves a provider pick (its key, if any, to a file in the data folder) and points config.json at it; the key never comes back to the page. */
   chatSetProvider(choice: ProviderChoice): Promise<ChatInfo>;
   chatRemoveProvider(): Promise<ChatInfo>;
   /** Shows a site tool inside the window; returns the URL it opened. */
