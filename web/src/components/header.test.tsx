@@ -40,6 +40,10 @@ test("the wordmark is the diamond and a lowercase everloot", () => {
   expect(home).toContain("everloot");
 });
 
+test("the Get App & AddOn button leads to /addon", () => {
+  expect(html).toMatch(/<a href="\/addon" class="btn btn-primary[^"]*">Get App &amp; AddOn<\/a>/);
+});
+
 test("no shadows", () => {
   expect(html).not.toContain("shadow-");
 });
