@@ -35,3 +35,24 @@ test("quota storage failure fails closed and stores nothing", async () => {
   expect(response.status).toBe(503);
   expect(deps.putWaitlist).not.toHaveBeenCalled();
 });
+
+test("an address with a multi-part domain is accepted", async () => {
+  const response = await POST(signup("raider@mail.example.co.uk"));
+  expect(response.status).toBe(200);
+});
+
+test("a long run of dots is rejected at once, without backtracking through it", async () => {
+  // The old pattern took quadratic time on this shape (seconds here), so one large body could hold the handler for hours.
+  const started = performance.now();
+  const response = await POST(signup(`!@!.${"!.".repeat(50_000)}@`));
+  expect(performance.now() - started).toBeLessThan(500);
+  expect(response.status).toBe(422);
+  expect(deps.putWaitlist).not.toHaveBeenCalled();
+});
+
+test("a domain with an empty label is rejected", async () => {
+  for (const email of ["a@b..c", "a@.b.c", "a@b.c."]) {
+    expect((await POST(signup(email))).status).toBe(422);
+  }
+  expect(deps.putWaitlist).not.toHaveBeenCalled();
+});

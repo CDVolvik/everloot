@@ -13,7 +13,8 @@ import { dirname, join, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { AwsClient } from "aws4fetch";
 
-const xml = (s) => s.replace(/&quot;/g, '"').replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+// &amp; last, so an escaped entity such as &amp;lt; decodes once, to the text &lt;.
+const xml = (s) => s.replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
 
 /**
  * @param {{ dest: string, env?: Record<string, string | undefined>, fetch?: (req: Request) => Promise<Response>, log?: (msg: string) => void, now?: () => Date }} options
