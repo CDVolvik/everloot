@@ -52,22 +52,24 @@ function compareArrays(path: string, key: string, a: unknown[], b: unknown[], di
   for (const v of added) diff.additions.push(`${path}: ${show(v)} was added`);
 }
 
-function compareValues(path: string, key: string, a: unknown, b: unknown, diff: Diff): void {
-  if (IGNORED_KEYS.has(key)) return;
+/** `isName` is true when `key` names a field inside properties/$defs/definitions: a field called
+ * title or description is data the client reads, not a keyword that only describes. */
+function compareValues(path: string, key: string, a: unknown, b: unknown, diff: Diff, isName = false): void {
+  if (!isName && IGNORED_KEYS.has(key)) return;
   if (isObject(a) && isObject(b)) {
-    const underProperties = key === "properties" || key === "$defs" || key === "definitions";
+    const underProperties = !isName && (key === "properties" || key === "$defs" || key === "definitions");
     for (const k of Object.keys(a)) {
-      if (IGNORED_KEYS.has(k)) continue;
+      if (!underProperties && IGNORED_KEYS.has(k)) continue;
       const child = `${path}/${k}`;
       if (!(k in b)) {
         if (underProperties || !LOOSENING_ON_REMOVAL.has(k)) diff.breaking.push(`${child} was removed`);
         else diff.additions.push(`${child} was dropped, so more is accepted`);
         continue;
       }
-      compareValues(child, k, a[k], b[k], diff);
+      compareValues(child, k, a[k], b[k], diff, underProperties);
     }
     for (const k of Object.keys(b)) {
-      if (k in a || IGNORED_KEYS.has(k)) continue;
+      if (k in a || (!underProperties && IGNORED_KEYS.has(k))) continue;
       const child = `${path}/${k}`;
       if (underProperties) diff.additions.push(`${child} was added`);
       else if (NARROWING.has(k)) diff.breaking.push(`${child} was added, so less is accepted`);
