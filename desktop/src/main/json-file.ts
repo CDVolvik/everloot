@@ -5,5 +5,5 @@ import { readFileSync } from "node:fs";
  * byte order mark, which JSON.parse refuses; the mark is dropped first.
  */
 export function readJsonFile(path: string): unknown {
-  return JSON.parse(readFileSync(path, "utf8").replace(/^﻿/, ""));
+  return JSON.parse(readFileSync(path, "utf8").replace(/^\uFEFF/, ""));
 }
