@@ -16,10 +16,10 @@
   },
   "dependencies": {
     "@everloot/protocol": "file:../packages/protocol",
-    "@modelcontextprotocol/sdk": "^1.31.0",
+    "@modelcontextprotocol/sdk": "^1.32.1",
     "@rhyster/wow-casc-dbc": "2.16.15",
     "better-sqlite3": "^13.0.3",
-    "js-yaml": "^4.1.0",
+    "js-yaml": "^5.5.0",
     "sax": "^1.6.1",
     "wtf_wikipedia": "^10.4.2",
     "yaml": "^2.9.1",
