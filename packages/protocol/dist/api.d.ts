@@ -723,6 +723,40 @@ export declare const intakeRequest: z.ZodObject<{
             ranks: z.ZodNumber;
             choice: z.ZodOptional<z.ZodNumber>;
         }, z.core.$strip>>;
+    }, z.core.$strip>, z.ZodObject<{
+        installId: z.ZodString;
+        eventId: z.ZodOptional<z.ZodString>;
+        capturedAt: z.ZodString;
+        guid: z.ZodString;
+        race: z.ZodString;
+        class: z.ZodString;
+        level: z.ZodNumber;
+        faction: z.ZodEnum<{
+            Alliance: "Alliance";
+            Horde: "Horde";
+        }>;
+        kind: z.ZodLiteral<"census_self">;
+        realm: z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>;
+        via: z.ZodOptional<z.ZodNever>;
+    }, z.core.$strip>, z.ZodObject<{
+        installId: z.ZodString;
+        eventId: z.ZodOptional<z.ZodString>;
+        capturedAt: z.ZodString;
+        guid: z.ZodString;
+        race: z.ZodString;
+        class: z.ZodString;
+        level: z.ZodNumber;
+        faction: z.ZodEnum<{
+            Alliance: "Alliance";
+            Horde: "Horde";
+        }>;
+        kind: z.ZodLiteral<"census_seen">;
+        via: z.ZodEnum<{
+            group: "group";
+            mouseover: "mouseover";
+            target: "target";
+        }>;
+        realm: z.ZodOptional<z.ZodNever>;
     }, z.core.$strip>], "kind">>;
     sharing: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodBoolean>>;
     grantTokens: z.ZodOptional<z.ZodArray<z.ZodString>>;
@@ -1491,6 +1525,40 @@ export declare const API_SCHEMAS: {
                 ranks: z.ZodNumber;
                 choice: z.ZodOptional<z.ZodNumber>;
             }, z.core.$strip>>;
+        }, z.core.$strip>, z.ZodObject<{
+            installId: z.ZodString;
+            eventId: z.ZodOptional<z.ZodString>;
+            capturedAt: z.ZodString;
+            guid: z.ZodString;
+            race: z.ZodString;
+            class: z.ZodString;
+            level: z.ZodNumber;
+            faction: z.ZodEnum<{
+                Alliance: "Alliance";
+                Horde: "Horde";
+            }>;
+            kind: z.ZodLiteral<"census_self">;
+            realm: z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>;
+            via: z.ZodOptional<z.ZodNever>;
+        }, z.core.$strip>, z.ZodObject<{
+            installId: z.ZodString;
+            eventId: z.ZodOptional<z.ZodString>;
+            capturedAt: z.ZodString;
+            guid: z.ZodString;
+            race: z.ZodString;
+            class: z.ZodString;
+            level: z.ZodNumber;
+            faction: z.ZodEnum<{
+                Alliance: "Alliance";
+                Horde: "Horde";
+            }>;
+            kind: z.ZodLiteral<"census_seen">;
+            via: z.ZodEnum<{
+                group: "group";
+                mouseover: "mouseover";
+                target: "target";
+            }>;
+            realm: z.ZodOptional<z.ZodNever>;
         }, z.core.$strip>], "kind">>;
         sharing: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodBoolean>>;
         grantTokens: z.ZodOptional<z.ZodArray<z.ZodString>>;

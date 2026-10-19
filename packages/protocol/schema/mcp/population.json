@@ -1,7 +1,7 @@
 {
   "$id": "https://everloot.app/schema/mcp/population.json",
   "title": "Who plays what: population by race, class, faction and level",
-  "description": "How many characters play each race, class, race and class, faction and level band on WoW: Forever, from the census of players who turned it on in the Everloot addon. Each character counts once. A count shows only when it covers at least 10 characters reported by at least 3 installs, rounded to the nearest 5, and a count that could be worked out from the others is hidden too. Every answer states its window: active in the last 7 days (default) or since launch. With no arguments, the overview: most played class first. No names, ever. Missing or unavailable data is reported explicitly.",
+  "description": "How many characters play each race, class, race and class, faction and level band on WoW: Forever, from the census of players who turned it on in the Everloot addon. Each character counts once. A count shows only when it covers at least 10 characters reported by at least 3 installs from at least 3 addresses, rounded to the nearest 5, and a count that could be worked out from the others is hidden too. Every answer states its window: active in the last 7 days (default) or since launch. With no arguments, the overview: most played class first. No names, ever. Missing or unavailable data is reported explicitly.",
   "annotations": {
     "readOnlyHint": true,
     "openWorldHint": false
@@ -111,7 +111,7 @@
           },
           "collecting": {
             "type": "boolean",
-            "description": "True until the window has 10 characters from 3 installs; no count shows until then."
+            "description": "True until the window has 10 characters from 3 installs and 3 addresses; no count shows until then."
           },
           "characters": {
             "anyOf": [
@@ -144,6 +144,11 @@
                 "minimum": -9007199254740991,
                 "maximum": 9007199254740991
               },
+              "minReporters": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
               "roundTo": {
                 "type": "integer",
                 "minimum": -9007199254740991,
@@ -153,6 +158,7 @@
             "required": [
               "minCharacters",
               "minInstalls",
+              "minReporters",
               "roundTo"
             ],
             "additionalProperties": false
@@ -205,7 +211,7 @@
                       "type": "null"
                     }
                   ],
-                  "description": "Characters, rounded to the nearest 5. Null is hidden: fewer than 10 characters or fewer than 3 installs, or hidden so a small count can't be worked out from the others."
+                  "description": "Characters, rounded to the nearest 5. Null is hidden: fewer than 10 characters, fewer than 3 installs or fewer than 3 addresses, or hidden so a small count can't be worked out from the others."
                 },
                 "share": {
                   "description": "count out of the window's characters, both as shown.",

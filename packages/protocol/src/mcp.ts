@@ -321,7 +321,7 @@ export const populationCell = z.object({
   class: z.string().optional().describe("UnitClass's token, such as PRIEST."),
   band: z.string().optional().describe("Level band: 1-9, 10-19 ... 50-59, or 60."),
   label: z.string(),
-  count: z.number().int().nullable().describe("Characters, rounded to the nearest 5. Null is hidden: fewer than 10 characters or fewer than 3 installs, or hidden so a small count can't be worked out from the others."),
+  count: z.number().int().nullable().describe("Characters, rounded to the nearest 5. Null is hidden: fewer than 10 characters, fewer than 3 installs or fewer than 3 addresses, or hidden so a small count can't be worked out from the others."),
   share: z.number().nullable().describe("count out of the window's characters, both as shown."),
 });
 export const populationPage = z.object({
@@ -329,10 +329,10 @@ export const populationPage = z.object({
   launched: z.boolean().describe("False before launch: nothing is counted yet."),
   launch: z.string().describe("When counting starts."),
   window: z.object({ id: z.enum(CENSUS_WINDOWS), from: z.string(), to: z.string() }),
-  collecting: z.boolean().describe("True until the window has 10 characters from 3 installs; no count shows until then."),
+  collecting: z.boolean().describe("True until the window has 10 characters from 3 installs and 3 addresses; no count shows until then."),
   characters: z.number().int().nullable(),
   installs: z.number().int().describe("Installs that reported in the window: a count of installs, not of people."),
-  rule: z.object({ minCharacters: z.number().int(), minInstalls: z.number().int(), roundTo: z.number().int() }),
+  rule: z.object({ minCharacters: z.number().int(), minInstalls: z.number().int(), minReporters: z.number().int(), roundTo: z.number().int() }),
   cells: z.array(populationCell),
   note: z.string().optional().describe("Why there are no cells: a name the game does not have, or a combination it does not allow."),
   source: z.object({ title: z.string(), url: z.string() }),
@@ -741,7 +741,7 @@ export const MCP_TOOLS = {
   population: {
     title: "Who plays what: population by race, class, faction and level",
     description:
-      "How many characters play each race, class, race and class, faction and level band on WoW: Forever, from the census of players who turned it on in the Everloot addon. Each character counts once. A count shows only when it covers at least 10 characters reported by at least 3 installs, rounded to the nearest 5, and a count that could be worked out from the others is hidden too. Every answer states its window: active in the last 7 days (default) or since launch. With no arguments, the overview: most played class first. No names, ever. Missing or unavailable data is reported explicitly.",
+      "How many characters play each race, class, race and class, faction and level band on WoW: Forever, from the census of players who turned it on in the Everloot addon. Each character counts once. A count shows only when it covers at least 10 characters reported by at least 3 installs from at least 3 addresses, rounded to the nearest 5, and a count that could be worked out from the others is hidden too. Every answer states its window: active in the last 7 days (default) or since launch. With no arguments, the overview: most played class first. No names, ever. Missing or unavailable data is reported explicitly.",
     inputSchema: {
       race: z.string().max(40).optional().describe("A race, such as Gnome, Night Elf or Undead."),
       class: z.string().max(40).optional().describe("A class, such as Priest."),

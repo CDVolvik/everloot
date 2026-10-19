@@ -16,6 +16,7 @@ const crowd = (n: number, prefix: string, over: Partial<CensusRow> = {}): Census
   Array.from({ length: n }, (_, i) => ({
     kind: "census_seen", installId: `install-${"abc"[i % 3]}`, eventId: `census_seen:2026-11-15:${(++seq).toString(16)}`,
     capturedAt: "2026-11-15T10:00:00.000Z", characterKey: `${prefix}${i.toString(16).padStart(4, "0")}`, serverId: 4,
+    reporter: `${"abc"[i % 3].charCodeAt(0).toString(16)}`.padStart(16, "0"),
     race: "Gnome", class: "PRIEST", level: 20 + (i % 40), faction: "Alliance", via: "target", ...over,
   }) as CensusRow);
 
@@ -57,9 +58,9 @@ test("how rare are Gnome Priests: the race and class cell with its share", () =>
 test("a hidden count reads not enough reports, with what that means, never a number", () => {
   const { text, page } = ask({ race: "Undead", class: "Paladin" });
   expect(text).toContain("Undead Paladin (Horde): not enough reports");
-  expect(text).toContain('"not enough reports" means fewer than 10 characters or fewer than 3 installs, or hidden so that a small count');
+  expect(text).toContain('"not enough reports" means fewer than 10 characters, fewer than 3 installs or fewer than 3 addresses, or hidden so that a small count');
   expect(text).not.toMatch(/Undead Paladin \(Horde\): about/);
-  expect(text).not.toContain("fewer than 10 characters,");
+  expect(text).not.toContain("Undead Paladin (Horde): fewer than 10");
   expect(page.cells[0]).toMatchObject({ count: null, share: null });
 });
 
