@@ -1,0 +1,164 @@
+{
+  "$id": "https://everloot.app/schema/api/itemCategoriesResponse.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "classes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "name": {
+            "type": "string",
+            "description": "The client's name."
+          },
+          "label": {
+            "type": "string",
+            "description": "The plural label pages use."
+          },
+          "slug": {
+            "type": "string",
+            "description": "The value /api/items takes as class."
+          },
+          "items": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Items of the build in this class."
+          },
+          "subclasses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "name": {
+                  "description": "The client's name; null when the client has none, then the slug is the id.",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "slug": {
+                  "type": "string",
+                  "description": "The value /api/items takes as subclass."
+                },
+                "items": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "description": "Items of the build in this subclass."
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "slug",
+                "items"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "label",
+          "slug",
+          "items",
+          "subclasses"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "slots": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "slug": {
+            "type": "string",
+            "description": "The value /api/items takes as slot."
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "slug",
+          "name"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "qualities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string",
+            "description": "The value /api/items takes as quality."
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "slug"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "gameData": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "The evidence label pages show, such as \"found in game files, unconfirmed\"."
+        },
+        "build": {
+          "type": "string",
+          "description": "The game build the rows were read from."
+        },
+        "extractedAt": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "credit": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "build"
+      ],
+      "additionalProperties": {}
+    }
+  },
+  "required": [
+    "classes",
+    "slots",
+    "qualities",
+    "gameData"
+  ],
+  "additionalProperties": false
+}

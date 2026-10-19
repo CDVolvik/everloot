@@ -47,6 +47,9 @@ that has a zip in the repository. Earlier builds have none.
   `world_map_near` (entrances and pins with distances, or the refused query with its reason). Both
   formatters now write their text from a result object, so every one of the 25 tools answers with
   structured content beside its text.
+- `/api/items/categories` joins the protocol's route catalogue with its response shape, so it appears in
+  `/api/openapi.json`, the endpoint reference on `/connect` and `/schema/api/itemCategoriesResponse.json`,
+  and its route test parses a real body with the shape. The endpoint itself is unchanged.
 - Completions on the MCP server (`completion/complete`): a client typing the `what_changed` prompt's game
   or the class in `everloot://talents/{class}` is offered the values the protocol knows, by prefix. The
   nine class resources are now listed under `resources/list` beside the three static ones, so a client
