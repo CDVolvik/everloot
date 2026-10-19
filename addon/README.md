@@ -52,6 +52,29 @@ expands, clicks or changes anything.
 - The reputation list is the rows the reputation window shows now; a collapsed header hides its factions
   and the module never expands one. `/everloot status` says how many headers were collapsed.
 
+## Census
+
+Off until `/everloot census on` (then `/reload`). It counts who plays what: race, class, level and faction,
+never a name. `/everloot census` says whether it is on and how many rows it holds; `/everloot census off`
+stops it at once and deletes every row it wrote.
+
+- **Your own characters** (`census_self`): at login and at each level-up, your character's game id
+  (GUID), race and class tokens (`UnitRace` and `UnitClass` second return, e.g. `Scourge`, `HUNTER`),
+  level, faction and realm.
+- **Players you see** (`census_seen`): the same fields, without the realm, for players you target, mouse
+  over or group with, plus how you saw them (`target`, `mouseover` or `group`). Units with a hidden
+  level, no race, class or faction, or a GUID that is not a player's are skipped, and so are you.
+- Nothing else is read about another player: no name, guild, gear or position.
+  `addon/tests/census_contract.py` fails if `census.lua` names a call that could read them, and lists
+  every call the module may make.
+- One row per character per UTC day, with the latest level that day. At most 2,000 rows of each kind;
+  the oldest days go first. A player already recorded today at the same level costs no new memory, so
+  mouseover in a busy city stays cheap.
+- The rows are sent only from the upload page, which counts them first ("312 characters seen, 2 of your
+  own"). The companion never sends them. The server replaces each GUID with a keyed hash before it
+  stores anything, and the site publishes only counts that cover at least 10 characters from at least
+  3 installs (`docs/design/specs/2026-10-18-census-design.md`).
+
 ## Talents, selftest and the plan panel
 
 - **Talents** (on by default). Reads your build through `C_Traits` and `C_ClassTalents`: the active spec
@@ -64,7 +87,8 @@ expands, clicks or changes anything.
 - **Selftest.** `/everloot selftest` checks each talent API, that it returns sane data, and that the
   loadout export and import functions exist (`ImportLoadout` and `ViewLoadout` are never called). It
   prints `PASS`, `FAIL`, `SKIP` and `INFO` lines and saves them under `selftest` in the SavedVariables file.
-  Run it once with the talent window closed and once open.
+  Run it once with the talent window closed and once open. It also prints your race token (`INFO player
+  race`), the value the census stores.
 - **Plan panel (display only).** `/everloot plan <share code>` loads an Everloot talent plan and shows,
   beside the talent window, the next point to spend and where your build differs. `/everloot plan` reopens
   it (it also has a paste box), `plan hide` closes it, `plan clear` forgets it. When the talent window is
@@ -110,6 +134,7 @@ The contract tests run the Lua in real Lua 5.1 through `lupa`:
     python addon/tests/plan_contract.py
     python addon/tests/raid_contract.py
     python addon/tests/completion_contract.py
+    python addon/tests/census_contract.py
 
 Run them from the repository root. CI also rebuilds the zip and fails if it differs from the one
 committed in `web/public/downloads/`, so commit the rebuilt zip with any addon change.
@@ -132,6 +157,7 @@ addon/
 │   ├── mapbounds.lua   each zone's corners in world coordinates, once per zone per build
 │   ├── talents.lua     your talent build per spec group, plus the game's own loadout string
 │   ├── completion.lua  achievements, reputation, titles, quest chains: catalogs and your progress; off until enabled
+│   ├── census.lua      race, class, level and faction of your characters and players you see; off until enabled
 │   ├── selftest.lua    /everloot selftest and /everloot talents
 │   ├── plan.lua        share code reader and the display-only plan panel
 │   ├── raid_data.lua   raid buff list generated from web/src/data/game-data/raid-*.json

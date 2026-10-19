@@ -1,7 +1,8 @@
 -- Everloot selftest: /everloot selftest
 -- One run on the beta client checks each talent API the addon relies on, whether it returns sane
 -- data, and whether the loadout export and import functions exist. Pass, fail and info lines go to
--- chat and to EverlootDB.selftest, so one session settles the open items.
+-- chat and to EverlootDB.selftest, so one session settles the open items. It also prints your race
+-- token, the value the census stores.
 -- Read only. The import and view functions are checked for existence and never called.
 
 local E = Everloot
@@ -97,6 +98,17 @@ local function checkWindow()
   end
 end
 
+--- The census stores the race token, the second value of UnitRace. A beta login confirms Skyborne's.
+local function checkRace()
+  local ok, name, raceToken, raceId = pcall(UnitRace or error, "player")
+  local factionOk, faction = pcall(UnitFactionGroup or error, "player")
+  if not ok or type(raceToken) ~= "string" then
+    add("INFO", "player race", "UnitRace gave nothing: the census cannot record your character")
+    return
+  end
+  add("INFO", "player race", string.format("token %s, name %s, id %s, faction %s", raceToken, tostring(name), tostring(raceId), factionOk and tostring(faction) or "?"))
+end
+
 local function run()
   results = {}
   local core = checkApi()
@@ -110,6 +122,7 @@ local function run()
     add("INFO", "snapshot", tostring(note))
   end
   checkWindow()
+  checkRace()
   local passed, failed = 0, 0
   local text = {}
   for _, r in ipairs(results) do

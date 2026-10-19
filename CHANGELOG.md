@@ -10,6 +10,13 @@ that has a zip in the repository. Earlier builds have none.
 
 ## [Unreleased]
 
+### Added
+- Census in the addon, off until `/everloot census on`. It records the race, class, level and faction of
+  your own characters and of players you target, mouse over or group with: one row per character per UTC
+  day, at most 2,000 rows of each kind. It never reads another player's name, guild, gear or position.
+  `/everloot census off` deletes every census row. The rows go only from the upload page, which counts
+  them first; the companion keeps them. `/everloot selftest` prints your race token.
+
 ### Changed
 - The upload record contract moved from `web/src/lib/intake.ts` into one package, `packages/protocol`
   (`@everloot/protocol`), that the site, the knowledge base and the companion install. Uploads now carry
