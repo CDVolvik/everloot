@@ -1,0 +1,62 @@
+import { expect, test } from "vitest";
+import { LOCAL_SOURCE, gold, localTools } from "../src/main/local-tools";
+import type { CharactersInfo } from "../src/shared/types";
+
+const NOW = Date.parse("2026-10-19T08:00:00Z");
+
+const info: CharactersInfo = {
+  characters: [{
+    character: "Volvik", realm: "Nightslayer", gold: 1234_56_78, peakGold: 2000_00_00, gearSlots: 15, itemLevel: 61,
+    spent: { repairs: 50_00_00, auction: 100_00_00 }, earned: { loot: 300_00_00 },
+    history: [], week: { earned: 20_00_00, spent: 35_00_00 },
+  }],
+  progress: [{ key: "Volvik-Nightslayer", class: "Warrior", level: 60, achievements: 12, achievementsInProgress: 3, reputations: 20, exalted: 2, titles: 1 }],
+  talents: [],
+};
+
+const tools = (data: Partial<Parameters<typeof localTools>[0]> = {}) =>
+  localTools({ characters: () => info, scans: () => [], followed: () => [], ...data }, () => NOW);
+
+const run = (name: string, data?: Partial<Parameters<typeof localTools>[0]>) => tools(data).find((t) => t.name === name)!.run({});
+
+test("gold reads as gold, silver and copper", () => {
+  expect(gold(1234_56_78)).toBe("1,234g 56s");
+  expect(gold(56_78)).toBe("56s 78c");
+  expect(gold(78)).toBe("78c");
+  expect(gold(null)).toBe("unknown");
+});
+
+test("my_characters lists gold, the week, gear and progress with the local source", () => {
+  const out = run("my_characters");
+  expect(out).toContain("Volvik-Nightslayer: 1,234g 56s; peak 2,000g 0s; last 7 days earned 20g 0s, spent 35g 0s, net -15g 0s; item level 61 over 15 slots; spent by category all time: repairs 50g 0s, auction 100g 0s");
+  expect(out).toContain("Volvik-Nightslayer: level 60 Warrior, 12 achievements (3 in progress), 2 of 20 reputations exalted, 1 titles");
+  expect(out.trim().split("\n").at(-1)).toBe(`Source: ${LOCAL_SOURCE}`);
+});
+
+test("with no characters the tool says so instead of an empty result", () => {
+  const out = run("my_characters", { characters: () => ({ characters: [], progress: [], talents: [] }) });
+  expect(out).toMatch(/No characters in the account files yet/);
+  expect(out).toContain(`Source: ${LOCAL_SOURCE}`);
+});
+
+test("my_realm_scans gives each realm's last scan as a date and an age, plus the followed realms", () => {
+  const out = run("my_realm_scans", {
+    scans: () => [{ realm: "Nightslayer", at: "2026-10-19T05:30:00Z" }, { realm: "Doomhowl", at: "2026-10-15T08:00:00Z" }, { realm: "Dreamscythe", at: null }],
+    followed: () => ["Doomhowl", "Maladath"],
+  });
+  expect(out.split("\n")).toEqual([
+    "Nightslayer: last full scan 2026-10-19T05:30:00Z (3 hours ago)",
+    "Doomhowl: last full scan 2026-10-15T08:00:00Z (4 days ago)",
+    "Dreamscythe: last full scan never",
+    "Realms followed for the prices file: Doomhowl, Maladath",
+    `Source: ${LOCAL_SOURCE}`,
+  ]);
+  expect(run("my_realm_scans")).toMatch(/No auction scans in the account files yet/);
+});
+
+test("the tools take no arguments and their names carry the my_ prefix the system prompt names", () => {
+  for (const t of tools()) {
+    expect(t.name).toMatch(/^my_/);
+    expect(t.inputSchema).toEqual({ type: "object", properties: {}, additionalProperties: false });
+  }
+});

@@ -12,6 +12,7 @@ import { compareVersions, installAddon, installedAddonVersion, newestRelease, sl
 import { fetchChanges } from "./changes";
 import { charactersFromFiles } from "./characters";
 import { createChat } from "./chat";
+import { localTools } from "./local-tools";
 import { createEngine } from "./engine";
 import { allowedExternal } from "./external";
 import { candidateRoots, detectGameFolders, realFs } from "./game-folder";
@@ -53,7 +54,6 @@ if (!app.requestSingleInstanceLock()) {
   let settings: Settings = loaded.settings;
   const jobs = companionJobs(data, () => settings);
   const engine = createEngine(jobs.deps);
-  const chat = createChat(data, () => settings);
   let win: BrowserWindow | null = null;
   let site: ReturnType<typeof createSiteViews> | null = null;
   let tray: ReturnType<typeof createTray> | null = null;
@@ -73,6 +73,11 @@ if (!app.requestSingleInstanceLock()) {
       return scans;
     } catch { return []; }
   });
+  const chat = createChat(data, () => settings, localTools({
+    characters: () => charactersFromFiles(engine.snapshot().files),
+    scans: () => allScans().slice().sort((a, b) => (b.at ?? "").localeCompare(a.at ?? "")),
+    followed: () => settings.market.realms,
+  }));
   const appState = (): AppState => ({ version: app.getVersion(), platform: process.platform, dataFolder: data, notice: loaded.error, settings, engine: engine.snapshot(), siteTools: SITE_TOOLS, update, staleScans: staleScans(allScans()) });
   const broadcast = () => {
     const s = appState();

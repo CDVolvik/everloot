@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { readJsonFile } from "./json-file";
 import type { ChatInfo, ChatMessage, Settings } from "../shared/types";
 import { answer, readProviderEntries } from "./agent";
+import type { LocalTool } from "./local-tools";
 import { DEFAULT_MODEL, ownProvider, removeProvider, setProvider } from "./providers";
 import type { ProviderChoice } from "../shared/providers";
 
@@ -11,9 +12,10 @@ const MAX_MESSAGES = 100;
 /**
  * The Chat page's state: a transcript kept in chat.json in the data folder (private, never
  * uploaded), one question at a time, answered by the agent over Everloot's MCP server, and the
- * provider picker's writes to config.json.
+ * provider picker's writes to config.json. The local tools, when given, let the model read the
+ * player's own characters and scans beside Everloot's data.
  */
-export function createChat(dataFolder: string, current: () => Settings) {
+export function createChat(dataFolder: string, current: () => Settings, local: LocalTool[] = []) {
   const path = join(dataFolder, "chat.json");
   let messages: ChatMessage[] = [];
   try { if (existsSync(path)) messages = (readJsonFile(path) as ChatMessage[]).slice(-MAX_MESSAGES); } catch { messages = []; }
@@ -61,7 +63,7 @@ export function createChat(dataFolder: string, current: () => Settings) {
       messages.push({ role: "user", text: question, at: new Date().toISOString(), model: null, sources: [], steps: [] });
       try {
         const entries = readProviderEntries(join(dataFolder, "config.json"));
-        const r = await answer({ mcp: target(), entries, history, question });
+        const r = await answer({ mcp: target(), entries, history, question, local });
         messages.push({ role: "assistant", text: r.text, at: new Date().toISOString(), model: r.model, sources: r.sources, steps: r.steps });
       } catch (err) {
         error = err instanceof Error ? err.message : String(err);

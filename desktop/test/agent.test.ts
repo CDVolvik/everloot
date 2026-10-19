@@ -100,6 +100,25 @@ test("tool arguments that are not JSON go back to the model as a tool result; th
   expect(r.text).toBe("Nothing on that.");
 });
 
+test("a local tool is offered beside the MCP tools and runs on this computer, its source on the answer", async () => {
+  const calls: { name: string; args: unknown }[] = [];
+  const bodies: { tools: { function: { name: string } }[]; messages: { role: string; content: unknown }[] }[] = [];
+  const send = vi.fn(async (_url: string, init: { body: string }) => {
+    bodies.push(JSON.parse(init.body));
+    const reply = bodies.length === 1
+      ? { choices: [{ message: { role: "assistant", content: null, tool_calls: [{ id: "c1", type: "function", function: { name: "my_characters", arguments: "{}" } }] } }] }
+      : { choices: [{ message: { role: "assistant", content: "You hold 12g on Volvik." } }] };
+    return new Response(JSON.stringify(reply), { status: 200 });
+  });
+  const local = [{ name: "my_characters", description: "the player's characters", inputSchema: { type: "object", properties: {} }, run: () => "Volvik-Nightslayer: 12g 0s\nSource: this computer" }];
+  const entry = { type: "openai-compatible", baseUrl: "http://localhost:11434/v1", model: "qwen3" };
+  const r = await answer({ mcp: { url: "u", token: null }, entries: [entry], history: [], question: "my gold?", session: fakeSession(calls), send: send as never, local });
+  expect(bodies[0].tools.map((t) => t.function.name)).toEqual(["my_characters", "search_knowledge"]);
+  expect(calls).toEqual([]);
+  expect(bodies[1].messages.at(-1)).toMatchObject({ role: "tool", content: "Volvik-Nightslayer: 12g 0s\nSource: this computer" });
+  expect(r).toMatchObject({ text: "You hold 12g on Volvik.", sources: ["this computer"], steps: [{ tool: "my_characters", input: "{}", chars: 48 }] });
+});
+
 test("with Anthropic the model calls the MCP tools itself and the steps and sources are recorded", async () => {
   const d = dir();
   writeFileSync(join(d, "k.txt"), "sk-test\n");
