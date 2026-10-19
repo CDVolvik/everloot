@@ -11,6 +11,33 @@ export const ITEMS_PER_PAGE = 100;
  */
 export const MIN_NAMED_SHARE = 0.5;
 
+/** Where a shown item name comes from, in the words each page writes beside it. */
+export const NAME_SOURCE = {
+  players: "Confirmed by players",
+  wiki: "Game files + Warcraft Wiki",
+  files: "Game files, unconfirmed",
+} as const;
+export type NameSource = keyof typeof NAME_SOURCE;
+export interface ShownItemName { name: string; source: NameSource; color: string | null; wikiPage: string | null }
+
+/**
+ * The name a page shows for an item, best source first: the name 3 installs agree on; then the game file name
+ * where the Warcraft Wiki gives the same one; then, for an item players reported, its game file name from the
+ * tooltip facts. Null when there is none: the page writes "Item N".
+ */
+export function shownItemName(
+  id: number,
+  agreed: { get(id: number): string | undefined },
+  matched?: { get(id: number): { name: string; color: string; wikiPage: string } | undefined } | null,
+  tip?: { name: string; color: string } | null,
+): ShownItemName | null {
+  const players = agreed.get(id), wiki = matched?.get(id);
+  if (players) return { name: players, source: "players", color: tip?.color ?? wiki?.color ?? null, wikiPage: null };
+  if (wiki) return { name: wiki.name, source: "wiki", color: wiki.color, wikiPage: wiki.wikiPage };
+  if (tip) return { name: tip.name, source: "files", color: tip.color, wikiPage: null };
+  return null;
+}
+
 /** Whether the plain first page of a category has enough named rows to be indexed. */
 export function categoryNamedEnough(classId: number, subclassId: number | undefined, named: { has(id: number): boolean }): boolean {
   const ids = filterItems(CLIENT_TAXONOMY, { classId, subclassId }).slice(0, ITEMS_PER_PAGE).map((row) => row[0]);

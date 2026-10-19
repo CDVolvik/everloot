@@ -70,8 +70,8 @@ launcher downloads from its public CDN, the same files every player receives, an
 builds field by field. The [source ledger](sources/LEDGER.md) lists the tables we read. Those
 snapshots and comparisons stay on the maintainer's machine. Encrypted blocks are skipped, never
 decrypted: no decryption keys are loaded. Nothing else read from the game files is in the dataset, the
-API or the MCP server; the client layer below is the one game-file layer they carry. On the site, only the talent catalog, the map layer, the raid buff table, the client layer, the build changes and
-the icons, tooltip text and frame art covered further down may appear.
+API or the MCP server; the client layer below is the one game-file layer they carry. On the site, only the talent catalog, the map layer, the raid buff table, the client layer, the build changes,
+the icons, tooltip text and frame art covered further down, and the item names covered further down may appear.
 
 Publishing the table data comes later, as a separate step. Once it ships, every entry from game
 files will:
@@ -134,7 +134,7 @@ interface files, is a different thing and is covered by the second extension. Th
   quality, item level, required level, binding, slot, armour or weapon kind, weapon speed, stat kinds
   (not amounts), flavour text and sell price. Shown on a page only for an item that 3 installs have
   reported (a drop, a vendor offer, an auction scan), never in bulk and never for an id someone types
-  into a URL. The extracted facts cover every named item in the build, released or not, so they are
+  into a URL. The one exception is an item's name, quality and icon under the item name rule below. The extracted facts cover every named item in the build, released or not, so they are
   kept in private storage that only the site's server reads, never in the public asset bucket.
 - **Map pictures**: the game's own continent and zone map art from the map art tables, laid under
   our zone outlines. A held-back zone's picture shows only with spoilers on, and so does a continent's
@@ -142,7 +142,8 @@ interface files, is a different thing and is covered by the second extension. Th
 - **The `/database` pages** (decided 2026-10-18 by the maintainer): the icons of the spells an item is
   created by or used in (from the client layer's relations) beside those relations, and pet family
   icons (`CreatureFamily.IconFileID`) in the manifest. Item icons and names on these pages follow the
-  item tooltip rule above: only for items 3 installs reported, never in bulk and never for every id.
+  item tooltip rule above: only for items 3 installs reported, never in bulk and never for every id,
+  except where the item name rule below allows them.
 
 **Second extension: loading screens, race and faction emblems, spell tooltips and the game's logo.**
 Decided 2026-10-18. Carlos: "Approved next: (1) loading-screen art as page banners (zones, dungeons,
@@ -168,6 +169,32 @@ batch." The rules above also cover:
   banner itself; the game's name beside it is plain text. It is never used to suggest that Blizzard
   made, approves or supports Everloot. No logo in the files means no banner: Blizzard's marketing
   logos and art are still never used, not even as a stand-in.
+
+**Item names from the game files and the Warcraft Wiki.** Decided 2026-10-19 by Carlos: "Wiki match
+only". An item's name, quality and icon may be shown on the item page and the category lists before
+players confirm it, when the name in the game files of the current build (`ItemSparse`) and the item's
+page in the Warcraft Wiki dump of 2023-11-13 give the same name, apart from case, spacing and the kind
+of apostrophe. The wiki page predates WoW: Forever, so a match says the item is released content in
+another version of the game, not something Forever has yet to reveal. The game files cannot say that on
+their own: in build 1.60.1.70450, 19,219 of the 19,231 named items, new ones included, list the base game
+as their expansion (`ItemSparse.ExpansionID` 0), so the expansion is not used. The rules:
+
+- Each such name says where it comes from: *Game files + Warcraft Wiki*, linked to its wiki page, and
+  the page credits the Warcraft Wiki contributors under CC BY-SA 4.0 beside Blizzard's credit. A name
+  3 installs agree on comes first and reads *Confirmed by players*.
+- Every other item keeps "Item N": a name only the game files give (it may be unreleased), a name only
+  the wiki gives (it may not be in Forever), and an item whose two names differ. A category page where
+  fewer than half the rows have a name stays out of search.
+- Pages only. The data downloads, the API and the MCP server carry no item names, as before; a test
+  checks that their code does not read them.
+- The names come from a ledger a maintainer builds with `npm run kb -- item-names`. It records every name
+  each source gives for each item id, mismatches and single-source names included, and it only grows: a
+  new build, dump or source adds to it and removes nothing. It holds every name in the build, released or
+  not, so it stays on the maintainer's machine like the snapshots. Only the matched names go to the
+  private storage the site's server reads, never to git or the public asset bucket.
+- The maintainer review is the pull request that sets or changes the rule or adds a source. The first
+  one (2026-10-19) listed the count per tier, a sample of the shown names, the highest item ids among
+  them and the mismatches. A file for a new build is checked the same way before it is uploaded.
 
 **The talent catalog.** The talent calculator at `/tools/talents` uses our own catalog, read from
 the public client by a maintainer, not taken from any other site. The catalog is the trait node
@@ -217,11 +244,13 @@ They are facts: ids and the relation between them, with no Blizzard text and no 
 - Relations players see in the game (dropped by, sold by, reward from, located in) keep the
   three-install rule. Where both exist, a page shows both, each with its evidence.
 - Forever has no live build yet, so every entry comes from a pre-release build. Entries are not
-  marked one by one as spoilers: the layer holds ids and relations only, no names, text or art.
+  marked one by one as spoilers: the layer holds ids and relations only, no names, text or art. The
+  item names a page may show beside it follow the item name rule above and are not part of the layer.
 - How it sits with the item tooltip facts above: class, subclass, slot and quality are public for
   every item through this layer. The rest of an item's tooltip (name, item level, required level,
   binding, weapon speed, stat kinds, flavour text, sell price) and its icon stay in private storage
-  and appear only for items 3 installs reported, as the extension says.
+  and appear only for items 3 installs reported, as the extension says, or, for the name and icon,
+  under the item name rule above.
 
 **Build changes, beta builds included.** Decided 2026-10-18, the same way Wowhead and other
 datamining sites work: when Blizzard ships a new build, a reviewed pull request records what

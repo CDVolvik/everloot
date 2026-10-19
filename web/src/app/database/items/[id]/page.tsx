@@ -4,7 +4,7 @@ import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { itemPage } from "../../../../../../kb/src/item-page";
-import { loadItemFacts } from "@/lib/rollup-compute";
+import { loadShownNames } from "@/lib/shown-item-names";
 import { loadEdges } from "@/lib/edges";
 import { EntityRelations } from "@/components/EntityRelations";
 import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
@@ -12,9 +12,11 @@ import { pinLink } from "@/lib/world-map";
 import { loadItemTips, loadSiteAssets } from "@/lib/game-assets";
 import ItemCard from "@/components/game/ItemCard";
 import GameCredit from "@/components/game/GameCredit";
+import GameIcon from "@/components/game/GameIcon";
+import { CC_BY_SA } from "@/lib/jsonld";
 import { categoryOf } from "../../../../../../kb/src/item-taxonomy";
 import { CLIENT_LABEL } from "../../../../../../kb/src/edges";
-import { CLIENT_LAYER, CLIENT_TAXONOMY, itemsHref } from "@/lib/items";
+import { CLIENT_LAYER, CLIENT_TAXONOMY, itemsHref, NAME_SOURCE, shownItemName } from "@/lib/items";
 import { CategoryPage, categoryMetadata } from "../category-page";
 
 /** The segment is an item id, or a class slug (/database/items/weapons): numbers are items, words are classes. */
@@ -26,11 +28,16 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   const params = await props.params;
   if (/^[a-z][a-z0-9-]*$/.test(params.id)) return categoryMetadata(params.id, undefined, (await props.searchParams) ?? {});
   if (!/^[1-9]\d*$/.test(params.id)) return { robots: { index: false, follow: true } };
-  const facts = await loadItemFacts();
+  const { facts, agreed, matched } = await loadShownNames();
   const page = itemPage(Number(params.id), facts);
+  const name = shownItemName(Number(params.id), agreed, matched?.names);
+  const description = name?.source === "wiki"
+    ? `${name.name}, a WoW: Forever item. The name is read from the game files of build ${CLIENT_LAYER.build.version}, where the Warcraft Wiki gives the same one; not yet confirmed in play.`
+    : "A WoW: Forever item page from corroborated drops, names, and map pins.";
   return {
-    ...pageMetadata({ title: !facts.unreachable && page.name ? page.name : `Item ${params.id}`, description: "A WoW: Forever item page from corroborated drops, names, and map pins.", path: `/database/items/${params.id}` }),
-    robots: { index: !facts.unreachable && Boolean(page.name || page.drops.length || page.pins.length), follow: true },
+    ...pageMetadata({ title: name?.name ?? `Item ${params.id}`, description, path: `/database/items/${params.id}` }),
+    // Indexed once players have reported the item, or once its name is shown from the game files and the wiki.
+    robots: { index: (!facts.unreachable && Boolean(page.name || page.drops.length || page.pins.length)) || name?.source === "wiki", follow: true },
   };
 }
 
@@ -39,17 +46,23 @@ export default async function ItemPage(props: Props) {
   if (/^[a-z][a-z0-9-]*$/.test(params.id)) return CategoryPage({ classSlug: params.id, search: (await props.searchParams) ?? {} });
   if (!/^[1-9]\d*$/.test(params.id)) notFound();
   const itemId = Number(params.id);
-  const [facts, edges] = await Promise.all([loadItemFacts(), loadEdges()]);
+  const [{ facts, agreed, matched }, edges] = await Promise.all([loadShownNames(), loadEdges()]);
   const page = itemPage(itemId, facts);
-  const title = facts.unreachable ? `Item ${page.itemId}` : page.name ?? `Item ${page.itemId}`;
+  // The name players agree on; else the game file name where the Warcraft Wiki gives the same one; else "Item N".
+  const name = shownItemName(itemId, agreed, matched?.names);
+  const wikiName = name?.source === "wiki" ? name : null;
+  const title = name?.name ?? `Item ${page.itemId}`;
   // The game file tooltip only for an item players have reported: any id can be typed into the URL, and
   // an item found only in the files may be unreleased (the spoiler rule in docs/DATA_POLICY.md).
   const seen = !facts.unreachable && Boolean(page.name || page.drops.length || page.pins.length);
   // The manifest is read only when there is art to show: the item's tooltip (players reported it) or the icon of
   // a spell the game files say makes or uses it. An id nobody reported and nothing links to reads nothing.
   const spellLinked = edges.client.some((e) => e.fromKind === "item" && e.fromId === itemId && e.toKind === "spell");
-  const assets = seen || spellLinked ? await loadSiteAssets() : null;
-  const tip = seen ? (await loadItemTips(assets, [itemId])).get(itemId) : undefined;
+  const assets = seen || spellLinked || wikiName ? await loadSiteAssets() : null;
+  const loaded = seen || wikiName ? (await loadItemTips(assets, [itemId])).get(itemId) : undefined;
+  // The full tooltip only for an item players reported; for a name from the files and the wiki, its icon only.
+  const tip = seen ? loaded : undefined;
+  const icon = !tip && wikiName ? loaded?.icon ?? null : null;
   const spellIcon = (spellId: number) => assets?.spellIcons.get(spellId);
   const relationIcons = edges.client.some((e) => e.fromKind === "item" && e.fromId === itemId && e.toKind === "spell" && spellIcon(e.toId));
   const category = categoryOf(CLIENT_TAXONOMY, itemId);
@@ -66,13 +79,15 @@ export default async function ItemPage(props: Props) {
             {[category.slot?.name, category.quality?.name].filter(Boolean).map((w) => ` · ${w}`).join("")}
           </nav>
         ) : null}
-        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">{title}</h1>
+        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight" style={wikiName ? { color: wikiName.color ?? undefined } : undefined}>{icon ? <GameIcon src={icon} size={32} className="mr-3" /> : null}{title}</h1>
         <p className="text-sm text-muted">
           {facts.unreachable
             ? STORAGE_UNREACHABLE
             : page.name
               ? `Item ${page.itemId}`
-              : "No agreed name yet. A name needs 3 installs reporting the same one."}
+              : wikiName
+                ? <>Item {page.itemId} · <a href={wikiName.wikiPage!} className="text-accent hover:underline underline-offset-4">{NAME_SOURCE.wiki}</a>. Not yet confirmed in play: a name 3 installs report replaces it.</>
+                : "No agreed name yet. A name needs 3 installs reporting the same one."}
         </p>
       </header>
 
@@ -139,7 +154,15 @@ export default async function ItemPage(props: Props) {
           All public loot observations
         </Link>
       </p>
-      {assets && (tip || relationIcons) && <GameCredit version={assets.version} label={assets.label} />}
+      {wikiName && matched ? (
+        <p className="text-xs text-muted">
+          {NAME_SOURCE.wiki}: the game files of build {CLIENT_LAYER.build.version} and the{" "}
+          <a href={matched.wiki.url} className="text-accent hover:underline underline-offset-4">{matched.wiki.name}</a> give the same name.
+          The name from the wiki: Warcraft Wiki contributors,{" "}
+          <a href={CC_BY_SA.url} className="text-accent hover:underline underline-offset-4">{CC_BY_SA.name}</a>.
+        </p>
+      ) : null}
+      {assets && (tip || icon || relationIcons) && <GameCredit version={assets.version} label={assets.label} />}
       {!facts.unreachable && (page.name !== null || page.drops.length > 0) && <AdSlot slot="inContent" />}
     </article>
   );
