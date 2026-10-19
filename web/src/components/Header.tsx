@@ -23,6 +23,7 @@ export default function Header() {
         </Link>
         <nav aria-label="Primary" className="hidden sm:flex items-center gap-4 text-sm">
           <Link href="/database" className="inline-flex items-center min-h-11 text-muted hover:text-fg"><Bracket>Database</Bracket></Link>
+          <Link href="/chat" className="inline-flex items-center min-h-11 text-muted hover:text-fg"><Bracket>Chat</Bracket></Link>
           <Link href="/lore" className="inline-flex items-center min-h-11 text-muted hover:text-fg"><Bracket>Lore</Bracket></Link>
           <Link href="/map" className="inline-flex items-center min-h-11 text-muted hover:text-fg"><Bracket>Map</Bracket></Link>
           <Link href="/changes" className="inline-flex items-center min-h-11 text-muted hover:text-fg"><Bracket>Changes</Bracket></Link>
@@ -41,6 +42,10 @@ export default function Header() {
       {open && (
         <nav id="site-navigation" aria-label="All tools" className="absolute top-full inset-x-0 border-b border-edge bg-panel max-h-[70vh] overflow-y-auto">
           <div className="mx-auto max-w-6xl px-4 py-3 grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            <Link href="/chat" onClick={() => setOpen(false)} className="min-h-11 px-3 py-3 rounded-lg text-sm text-fg-2 hover:bg-canvas hover:text-accent">
+              Chat
+              <span className="ml-2 text-xs text-muted">Ask with your own AI key</span>
+            </Link>
             <Link href="/addons" onClick={() => setOpen(false)} className="min-h-11 px-3 py-3 rounded-lg text-sm text-fg-2 hover:bg-canvas hover:text-accent">
               Addons
               <span className="ml-2 text-xs text-muted">Everloot, Polestar and guide packs</span>
