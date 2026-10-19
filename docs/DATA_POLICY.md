@@ -185,8 +185,9 @@ as their expansion (`ItemSparse.ExpansionID` 0), so the expansion is not used. T
 - For the lowest spoiler risk, only items below id 25,000, the original game's range, are named this
   way (`SHOWN_MAX_ITEM_ID` in `kb/src/item-name-rule.ts`). Higher ids belong to later versions, such as
   Wrath Classic's Scourge event. A name that reads like a placeholder or an internal entry is never
-  shown either: one starting with "Deprecated", "DEP", "[PH]", "PH ", "Test", "QA", "Monster -" or
-  "OLD", or containing "UNUSED", "zzOLD" or "(old)", in any case.
+  shown either: one starting with "Deprecated", "DEP", "[PH]", "PH ", "Test", "QA" or "Monster -", or
+  containing "UNUSED", "zzOLD" or "(old)", in any case, or starting with "OLD" in capitals ("Old
+  Greatsword" is a real item and shows).
 - Every other item keeps "Item N": a name only the game files give (it may be unreleased), a name only
   the wiki gives (it may not be in Forever), an item whose two names differ, and a match the two rules
   above hold back. A category page where

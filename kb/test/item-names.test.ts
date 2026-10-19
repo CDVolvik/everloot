@@ -67,10 +67,13 @@ test("a match is shown only below the id cap and without a placeholder name; the
 });
 
 test("placeholder names are told apart from real ones that merely start alike", () => {
-  for (const n of ["Deprecated Maiden's Anguish", "deprecated thing", "DEP Item", "[PH] Sword", "PH Shield", "Test Item", "QA Gloves", "Monster - Mace", "OLD Belt", "Old Belt", "Item UNUSED", "zzOLD Robe", "Cloak (Old)"]) {
+  for (const n of ["Deprecated Maiden's Anguish", "deprecated thing", "DEP Item", "[PH] Sword", "PH Shield", "Test Item", "QA Gloves", "Monster - Mace", "OLD Belt", "Item UNUSED", "zzOLD Robe", "zzold robe", "Cloak (Old)"]) {
     expect(looksInternal(n), n).toBe(true);
   }
-  for (const n of ["Depleted Crystal Heart", "Testament of Hope", "Phial of Scrying", "Golden Pearl", "Monstrous Spider Fang", "Bold Old Hat"]) {
+  for (const n of [
+    "Depleted Crystal Heart", "Testament of Hope", "Phial of Scrying", "Golden Pearl", "Monstrous Spider Fang", "Bold Old Hat",
+    "Old Greatsword", "Old Blanchy's Feed Pouch", "Old Wagonwheel",
+  ]) {
     expect(looksInternal(n), n).toBe(false);
   }
   expect(mayShowName(24_999, "Linen Cloth")).toBe(true);

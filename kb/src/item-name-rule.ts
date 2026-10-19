@@ -10,9 +10,11 @@
 export const SHOWN_MAX_ITEM_ID = 25_000;
 
 /** A name that reads like a placeholder or an internal entry: never shown, even when both sources agree. */
-const INTERNAL_NAME = /^(deprecated|dep\b|\[ph\]|ph |test\b|qa\b|monster -|old\b)|unused|zzold|\(old\)/i;
+const INTERNAL_NAME = /^(deprecated|dep\b|\[ph\]|ph |test\b|qa\b|monster -)|unused|zzold|\(old\)/i;
+/** "OLD" only in capitals: "Old Greatsword" is a real item. */
+const OLD_MARK = /^OLD\b/;
 
-export const looksInternal = (name: string) => INTERNAL_NAME.test(name.trim());
+export const looksInternal = (name: string) => INTERNAL_NAME.test(name.trim()) || OLD_MARK.test(name.trim());
 
 /** Whether a matched name may be shown for this item id. */
 export const mayShowName = (itemId: number, name: string) => itemId > 0 && itemId < SHOWN_MAX_ITEM_ID && !looksInternal(name);
