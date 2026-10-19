@@ -28,8 +28,10 @@ the owner can do. Written after the 2026-10-17 audit.
   date for the talent, raid and map pages, the checked-on date for /wow-forever.
 - **RSS.** Every page advertises `/changes/feed.xml`.
 - **Security headers** in `web/next.config.js`: nosniff, `X-Frame-Options: SAMEORIGIN`, Referrer-Policy,
-  Permissions-Policy, HSTS with `includeSubDomains`, and a report-only CSP that lists the analytics and ads
-  hosts. The CSP enforces nothing and has no report endpoint yet; violations show in the browser console.
+  Permissions-Policy, HSTS with `includeSubDomains`, an enforced CSP with only `object-src 'none'`,
+  `base-uri 'self'` and `frame-ancestors 'self'`, and a report-only CSP that lists the analytics and ads
+  hosts. AdSense supports only a nonce-based CSP, so script, connect and frame sources are not enforced. The
+  report-only CSP has no report endpoint yet; violations show in the browser console.
   The `Access-Control-Allow-Origin: *` seen on pages is added by Vercel for prerendered responses; it is not set in
   this repo and a header set here could not remove it. Check a preview deployment before trying to narrow it.
 
