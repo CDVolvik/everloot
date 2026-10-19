@@ -27,7 +27,11 @@ function request(method: string, params?: unknown, headers = {}) {
 test("the server info links the source code (AGPL section 13)", async () => {
   const handle = await handler();
   const init = await handle(request("initialize", { protocolVersion: "2025-03-26", capabilities: {}, clientInfo: { name: "test", version: "1" } }));
-  expect((await init.json()).result.serverInfo.websiteUrl).toBe("https://github.com/Everloot/everloot");
+  const info = (await init.json()).result.serverInfo;
+  expect(info.websiteUrl).toBe("https://github.com/Everloot/everloot");
+  expect(info.title).toBe("Everloot");
+  expect(info.description).toContain("CC BY-SA 4.0");
+  expect(info.icons.map((i: { src: string }) => i.src)).toEqual(["https://everloot.app/icon-64.png", "https://everloot.app/icon-512.png"]);
 });
 
 test("independent clients initialize and receive sourced knowledge plus the tracker", async () => {

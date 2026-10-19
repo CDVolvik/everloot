@@ -274,6 +274,7 @@ export default function ConnectPage() {
           <code className="font-mono text-fg">/api/tools/item_page?itemId=19019</code>). The <code className="font-mono text-fg">answer</code>{" "}
           field is the same structured content an MCP client gets, and <code className="font-mono text-fg">text</code> the same words.
         </p>
+        <Code label="Call get_by_name over HTTP">{ex.toolsCurl}</Code>
       </Section>
 
       <Section id="api" title="API reference">

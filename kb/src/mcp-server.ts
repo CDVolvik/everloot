@@ -37,6 +37,13 @@ export const SERVER_NAME = "everloot-knowledge";
 export const SERVER_VERSION = "0.8.0";
 /** The source this server runs, offered to every client (AGPL section 13). */
 export const SOURCE_URL = "https://github.com/Everloot/everloot";
+/** One line a client shows beside the server's name in its list of servers. */
+export const SERVER_DESCRIPTION = "WoW: Forever knowledge from player reports and game files, with sources, under CC BY-SA 4.0.";
+/** The site's icon, for clients that draw one beside the server. */
+export const SERVER_ICONS = [
+  { src: `${SITE}/icon-64.png`, mimeType: "image/png", sizes: ["64x64"] },
+  { src: `${SITE}/icon-512.png`, mimeType: "image/png", sizes: ["512x512"] },
+];
 
 /** Sent to every client on connect: how to credit what the tools return. */
 export const SERVER_INSTRUCTIONS =
@@ -571,7 +578,10 @@ export function createToolHandlers(db: DB, options: ToolOptions = {}): ToolHandl
 }
 
 export function createKnowledgeServer(db: DB, options: ToolOptions = {}): McpServer {
-  const server = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION, websiteUrl: SOURCE_URL }, { instructions: SERVER_INSTRUCTIONS });
+  const server = new McpServer(
+    { name: SERVER_NAME, title: "Everloot", version: SERVER_VERSION, description: SERVER_DESCRIPTION, websiteUrl: SOURCE_URL, icons: SERVER_ICONS },
+    { instructions: SERVER_INSTRUCTIONS },
+  );
   const handlers = createToolHandlers(db, options);
   for (const name of MCP_TOOL_NAMES) {
     const def: McpToolDef = MCP_TOOLS[name];

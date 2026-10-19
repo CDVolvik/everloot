@@ -97,6 +97,8 @@ test("the examples point at the production URLs and parse", () => {
   const body = CONNECT_EXAMPLES.mcpCurl.match(/-d '(.*)'$/)?.[1] ?? "";
   expect(JSON.parse(body)).toMatchObject({ method: "tools/call", params: { name: "get_by_name" } });
   expect(CONNECT_EXAMPLES.mcpCurl).toContain("application/json, text/event-stream");
+  expect(CONNECT_EXAMPLES.toolsCurl).toContain("https://everloot.app/api/tools/get_by_name?name=Thrall");
+  expect(decoded).toContain(CONNECT_EXAMPLES.toolsCurl);
   expect(Object.keys(JSON.parse(CONNECT_EXAMPLES.corpusShape))).toEqual(["ok", "uploads", "records", "dataAsOf", "kinds", "offset", "limit", "total", "next", "attribution"]);
   expect(JSON.parse(CONNECT_EXAMPLES.corpusShape).attribution).toEqual(attribution("/database"));
   expect(decoded).toContain(CONNECT_EXAMPLES.corpusCurl);
