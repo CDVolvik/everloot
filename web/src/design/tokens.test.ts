@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import config from "../../tailwind.config";
-import { channels, cssVariables, TEXT_TOKENS, tokens } from "./tokens";
+import { channels, cssVariables, RADIUS, SITE_MODE, SPACE, TEXT_TOKENS, tokens, WIDTH } from "./tokens";
 
 // WCAG 2.x relative luminance and contrast ratio.
 function luminance(hex: string): number {
@@ -39,10 +39,9 @@ function baseStyles(): Record<string, Vars | Record<string, Vars>> {
   for (const p of plugins) p.handler({ addBase: (s) => Object.assign(styles, s) });
   return styles;
 }
+/** The variables a page gets: the emitted :root for the site's mode, the kept token values for the other. */
 function rootVars(m: "dark" | "light"): Vars {
-  const base = baseStyles();
-  const light = (base["@media (prefers-color-scheme: light)"] as Record<string, Vars>)[":root"];
-  return m === "dark" ? (base[":root"] as Vars) : { ...(base[":root"] as Vars), ...light };
+  return m === SITE_MODE ? (baseStyles()[":root"] as Vars) : cssVariables(m);
 }
 const hex = (rgb: string) => "#" + rgb.split(" ").map((n) => Number(n).toString(16).padStart(2, "0")).join("").toUpperCase();
 
@@ -69,6 +68,25 @@ test("channels", () => expect(channels("#0E0F0D")).toBe("14 15 13"));
 test("css variables cover every token in both modes", () => {
   expect(cssVariables("dark")["--canvas"]).toBe("14 15 13");
   expect(Object.keys(cssVariables("light"))).toHaveLength(Object.keys(tokens.light).length);
+});
+
+test("the site is dark-only: no system setting switches it to the light values", () => {
+  expect(SITE_MODE).toBe("dark");
+  const base = baseStyles();
+  expect(Object.keys(base).some((k) => k.includes("prefers-color-scheme"))).toBe(false);
+  expect(base[":root"]).toEqual(cssVariables("dark"));
+  // The light values stay in tokens.ts, complete, for a light theme to come back to.
+  expect(Object.keys(tokens.light)).toEqual(Object.keys(tokens.dark));
+});
+
+test("one spacing scale, one card radius, two content widths", () => {
+  expect(SPACE).toEqual([4, 8, 12, 16, 24, 32, 48, 72]);
+  expect(RADIUS).toEqual({ control: 6, card: 12 });
+  expect(WIDTH).toEqual({ reading: 768, wide: 1152 });
+  const extend = config.theme!.extend!;
+  expect(extend.maxWidth).toEqual({ reading: "768px", wide: "1152px" });
+  expect(extend.borderRadius).toEqual({ control: "6px", card: "12px" });
+  expect(extend.spacing).toEqual({ 18: "4.5rem" });
 });
 
 test("Tailwind exposes the tokens as variables", () => {

@@ -2,9 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
-/* The colour variables come from src/design/tokens.ts through the Tailwind plugin. */
+/* The colour variables come from src/design/tokens.ts through the Tailwind plugin. Dark-only. */
 :root {
-  color-scheme: light dark;
+  color-scheme: dark;
+}
+
+/* A page whose PageHeader draws its own breadcrumb hides the layout's copy of it, so the trail is
+   drawn once. The layout still emits the BreadcrumbList for the routes it knows. */
+main:has([data-page-crumbs]) [data-layout-crumbs] {
+  display: none;
 }
 
 html,

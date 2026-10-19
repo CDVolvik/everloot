@@ -3,7 +3,8 @@
 **Date:** 2026-10-17 (revised the same day)
 **Status:** designed with Carlos section by section; revised after he chose a reference (the
 principles of GSAP's design system, taken closer to World of Warcraft). For his review before the
-implementation plan.
+implementation plan. The light theme and the bracket navigation are superseded by
+`2026-10-19-design-system.md` (dark only, plain navigation labels).
 
 ## Why
 

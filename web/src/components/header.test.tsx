@@ -3,45 +3,77 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { expect, test, vi } from "vitest";
 
 vi.mock("next/link", () => ({
-  default: ({ href, children, className }: { href: string; children: ReactNode; className?: string }) => (
-    <a href={href} className={className}>{children}</a>
+  default: ({ href, children, className, "aria-current": current }: { href: string; children: ReactNode; className?: string; "aria-current"?: "page" }) => (
+    <a href={href} aria-current={current} className={className}>{children}</a>
   ),
 }));
+vi.mock("next/navigation", () => ({ usePathname: () => "/database/items/2589" }));
 vi.mock("./AccountControls", () => ({ default: () => null }));
+vi.mock("./CookieConsent", () => ({ CookiePreferencesButton: () => <button type="button">Cookie preferences</button> }));
 
-import Header from "./Header";
+import Header, { PRIMARY, TOOL_GROUPS } from "./Header";
+import Footer from "./Footer";
+import { toolHref, tools } from "@/data/tools";
 
 const html = renderToStaticMarkup(<Header />);
+const primary = html.match(/<nav aria-label="Primary"[^>]*>([\s\S]*?)<\/nav>/)?.[1] ?? "";
+// The bar's own items carry the underline class; the Tools menu's links do not.
+const topItems = () => [...primary.matchAll(/<(?:a|button) [^>]*class="[^"]*border-b-2[^"]*"[^>]*>([^<]+)/g)].map((m) => m[1].trim());
 
-test("the primary navigation keeps its order", () => {
-  const order = ["/database", "/lore", "/upload", "/tools/gold-per-hour", "/addons", "/connect"].map((href) => html.indexOf(`href="${href}"`));
-  expect(order.every((at) => at >= 0)).toBe(true);
-  expect(order).toEqual([...order].sort((a, b) => a - b));
+test("the top bar has six items in the spec's order", () => {
+  expect(topItems()).toEqual(["Database", "Tools", "Map", "Changes", "Lore", "Open data"]);
+  expect(PRIMARY.map((l) => l.href)).toEqual(["/database", "/map", "/changes", "/lore", "/connect"]);
 });
 
-test("the map link sits between Lore and Changes", () => {
-  const at = ["/lore", "/map", "/changes"].map((href) => html.indexOf(`href="${href}"`));
-  expect(at.every((i) => i >= 0)).toBe(true);
-  expect(at).toEqual([...at].sort((a, b) => a - b));
+test("no bracket labels", () => {
+  expect(html).not.toMatch(/>\[</);
+  expect(html).not.toMatch(/>\]</);
 });
 
-test.each(["Database", "Lore", "Map", "Upload", "Gold/Hour", "Addons", "Connect"])("%s is a bracket label", (label) => {
-  const escaped = label.replace("/", "\\/");
-  expect(html).toMatch(new RegExp(`href="[^"]+"[^>]*><span class="font-mono"><span aria-hidden="true" class="text-muted">\\[<\\/span>${escaped}<`));
+test("Tools is a disclosure button; its links are in the HTML, hidden until opened", () => {
+  expect(primary).toMatch(/<button type="button" aria-expanded="false" aria-controls="tools-menu"/);
+  expect(html).toMatch(/<div id="tools-menu" hidden="" class="[^"]*\bhidden\b/);
+  for (const href of TOOL_GROUPS.flatMap((g) => g.links.map((l) => l.href))) expect(html, href).toContain(`href="${href}"`);
 });
 
-test("the database link is a bracket label", () => {
-  expect(html).toMatch(/href="\/database"[^>]*><span class="font-mono"><span aria-hidden="true" class="text-muted">\[<\/span>Database/);
+test("the current section is marked", () => {
+  expect(primary).toMatch(/<a href="\/database" aria-current="page"/);
+});
+
+test("Get the addon is the primary pill and leads to /addon", () => {
+  expect(html).toMatch(/<a href="\/addon" class="btn btn-primary[^"]*">Get the addon<\/a>/);
+});
+
+test("search is in the bar: a GET form to the archive search", () => {
+  const form = html.match(/<form [^>]*>/)?.[0] ?? "";
+  expect(form).toContain('role="search"');
+  expect(form).toContain('action="/search"');
+  expect(form).toContain('method="get"');
+  expect(html).toContain('name="q"');
+});
+
+test("every tool in the catalogue is in the Tools menu", () => {
+  const menu = TOOL_GROUPS.flatMap((g) => g.links.map((l) => l.href));
+  const topLevel = PRIMARY.map((l) => l.href);
+  for (const tool of tools) expect([...menu, ...topLevel], tool.slug).toContain(toolHref(tool));
+  expect(new Set(menu).size).toBe(menu.length);
+});
+
+test("every destination the old header linked is still one click from the header or footer", () => {
+  const footer = renderToStaticMarkup(<Footer />);
+  const reachable = new Set([
+    ...PRIMARY.map((l) => l.href),
+    ...TOOL_GROUPS.flatMap((g) => g.links.map((l) => l.href)),
+    ...[...footer.matchAll(/href="([^"]+)"/g)].map((m) => m[1]),
+  ]);
+  const old = ["/database", "/lore", "/map", "/changes", "/upload", "/tools/gold-per-hour", "/addons", "/connect", "/census", "/about", ...tools.map(toolHref)];
+  for (const href of old) expect(reachable.has(href), href).toBe(true);
 });
 
 test("the wordmark is the diamond and a lowercase everloot", () => {
   const home = html.match(/<a href="\/"[^>]*>(.*?)<\/a>/)?.[1] ?? "";
   expect(home).toContain("<svg aria-hidden=\"true\"");
   expect(home).toContain("everloot");
-});
-
-test("the Get App & AddOn button leads to /addon", () => {
-  expect(html).toMatch(/<a href="\/addon" class="btn btn-primary[^"]*">Get App &amp; AddOn<\/a>/);
 });
 
 test("no shadows", () => {
