@@ -22,7 +22,7 @@ describe("census records", () => {
   test("the schema the addon reads holds exactly the contract's patterns", () => {
     for (const kind of CENSUS_KINDS) {
       const { properties } = recordSchema(kind as "census_self" | "census_seen") as { properties: Record<string, { pattern?: string; maxLength?: number }> };
-      expect(properties.guid).toMatchObject({ pattern: "^Player-\\d+-[0-9A-F]+$" });
+      expect(properties.guid).toMatchObject({ pattern: "^Player-[1-9]\\d*-[0-9A-F]+$" });
       expect(properties.guid.maxLength).toBeUndefined();
       expect(properties.race.pattern).toBe("^[A-Za-z]{2,24}$");
       expect(properties.class.pattern).toBe("^[A-Z]{3,16}$");
@@ -59,7 +59,7 @@ describe("census records", () => {
   });
 
   test("a GUID must be a player GUID", () => {
-    for (const guid of ["Creature-0-4395-0-12-1234-0000ABCD", "Player-4395-0a1b2c3d", "Player--0A1B", "Thrall", ""]) {
+    for (const guid of ["Creature-0-4395-0-12-1234-0000ABCD", "Player-4395-0a1b2c3d", "Player--0A1B", "Player-04395-0A1B", "Player-0-0A1B", "Thrall", ""]) {
       expect(reasons([{ ...seen, guid }]), guid).toHaveLength(1);
     }
     const { guid: _, ...noGuid } = seen;
@@ -74,6 +74,11 @@ describe("census records", () => {
     const { via: __, ...seenNoVia } = seen;
     expect(reasons([seenNoVia])).toHaveLength(1);
     expect(reasons([{ ...seen, via: "inspect" }])).toHaveLength(1);
+  });
+
+  test("a realm is a realm name, as in the other realm fields", () => {
+    for (const realm of ["visit scam.example/<b>", "a", "x".repeat(41), "  ", "Forever\nGuild"]) expect(reasons([{ ...self, realm }]), realm).toHaveLength(1);
+    expect(reasons([{ ...self, realm: "Mal'Ganis" }, { ...self, realm: "Azjol-Nerub" }])).toEqual([]);
   });
 
   test("a name, guild or position sent along is dropped, never kept", () => {
@@ -91,6 +96,12 @@ describe("stored census rows", () => {
   test("a stored row has a character key and server id in place of the GUID", () => {
     expect(censusSeenStored.parse(stored)).toEqual(stored);
     expect(censusSeenStored.parse({ ...stored, guid: "Player-4395-0F00BA44" })).not.toHaveProperty("guid");
+  });
+
+  test("a stored row may carry the keyed address hash, 16 hex and nothing else", () => {
+    expect(censusSeenStored.parse({ ...stored, reporter: "0123456789abcdef" })).toMatchObject({ reporter: "0123456789abcdef" });
+    for (const reporter of ["203.0.113.9", "0123456789ABCDEF", "abc"]) expect(censusSeenStored.safeParse({ ...stored, reporter }).success, reporter).toBe(false);
+    expect(censusSeenStored.safeParse(stored).success).toBe(true);
   });
 
   test("a stored row needs the server's event id and a full-length key", () => {

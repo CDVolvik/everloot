@@ -736,7 +736,7 @@ export declare const intakeRequest: z.ZodObject<{
             Horde: "Horde";
         }>;
         kind: z.ZodLiteral<"census_self">;
-        realm: z.ZodString;
+        realm: z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>;
         via: z.ZodOptional<z.ZodNever>;
     }, z.core.$strip>, z.ZodObject<{
         installId: z.ZodString;
@@ -1538,7 +1538,7 @@ export declare const API_SCHEMAS: {
                 Horde: "Horde";
             }>;
             kind: z.ZodLiteral<"census_self">;
-            realm: z.ZodString;
+            realm: z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>;
             via: z.ZodOptional<z.ZodNever>;
         }, z.core.$strip>, z.ZodObject<{
             installId: z.ZodString;

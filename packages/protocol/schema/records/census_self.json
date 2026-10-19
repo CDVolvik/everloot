@@ -23,7 +23,7 @@
     },
     "guid": {
       "type": "string",
-      "pattern": "^Player-\\d+-[0-9A-F]+$",
+      "pattern": "^Player-[1-9]\\d*-[0-9A-F]+$",
       "description": "The player GUID, in transit only: the server replaces it with a keyed hash before anything is stored."
     },
     "race": {
@@ -54,8 +54,8 @@
     },
     "realm": {
       "type": "string",
-      "minLength": 1,
-      "maxLength": 64,
+      "minLength": 2,
+      "maxLength": 60,
       "description": "GetRealmName() for your own character."
     },
     "via": {

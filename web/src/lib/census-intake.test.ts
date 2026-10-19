@@ -1,10 +1,10 @@
 import { createHmac } from "node:crypto";
 import { describe, expect, test } from "vitest";
 import { parseRecords } from "@everloot/protocol";
-import { characterSecret, isCensusRow, storedCensusRow } from "./census-intake";
+import { censusDateProblem, characterSecret, isCensusRow, storedCensusRow } from "./census-intake";
 
 const GUID = "Player-4395-0A1B2C3D";
-const SECRET = "test-character-key";
+const SECRET = "test-character-key".repeat(2);
 
 const self = {
   kind: "census_self", installId: "install-1234", eventId: `census_self:${GUID}`, capturedAt: "2026-10-18T21:30:00.000Z",
@@ -59,17 +59,34 @@ describe("census rows before storage", () => {
     const a = storedCensusRow(parsed(seen), SECRET);
     const b = storedCensusRow(parsed({ ...seen, installId: "install-5678" }), SECRET);
     expect(a?.characterKey).toBe(b?.characterKey);
-    expect(storedCensusRow(parsed(seen), "rotated-key")?.characterKey).not.toBe(a?.characterKey);
+    expect(storedCensusRow(parsed(seen), "rotated-key".repeat(3))?.characterKey).not.toBe(a?.characterKey);
   });
 
   test("a server id too long to be a safe integer is not stored", () => {
     expect(storedCensusRow(parsed({ ...seen, guid: `Player-${"9".repeat(20)}-0A1B` }), SECRET)).toBeNull();
   });
 
-  test("the key comes from EVERLOOT_CHARACTER_KEY; unset or blank means no census", () => {
-    expect(characterSecret({ EVERLOOT_CHARACTER_KEY: "k" })).toBe("k");
+  test("the key comes from EVERLOOT_CHARACTER_KEY; unset, blank or under 32 characters means no census", () => {
+    expect(characterSecret({ EVERLOOT_CHARACTER_KEY: SECRET })).toBe(SECRET);
+    expect(characterSecret({ EVERLOOT_CHARACTER_KEY: `  ${"k".repeat(32)}  ` })).toBe("k".repeat(32));
+    expect(characterSecret({ EVERLOOT_CHARACTER_KEY: "k".repeat(31) })).toBeNull();
     expect(characterSecret({ EVERLOOT_CHARACTER_KEY: "" })).toBeNull();
     expect(characterSecret({ EVERLOOT_CHARACTER_KEY: "   " })).toBeNull();
     expect(characterSecret({})).toBeNull();
+  });
+
+  test("the sender's address hash is kept on the row, and only when there is one", () => {
+    const reporter = "ab12".repeat(4);
+    expect(storedCensusRow(parsed(seen), SECRET, reporter)).toMatchObject({ reporter });
+    expect(storedCensusRow(parsed(seen), SECRET)).not.toHaveProperty("reporter");
+  });
+
+  test("a row date is held to the server's clock: one day ahead, thirty days back", () => {
+    const now = new Date("2026-10-18T12:00:00Z");
+    expect(censusDateProblem("2026-10-19T12:00:00Z", now)).toBeNull();
+    expect(censusDateProblem("2026-10-19T12:00:01Z", now)).not.toBeNull();
+    expect(censusDateProblem("2026-09-18T12:00:00Z", now)).toBeNull();
+    expect(censusDateProblem("2026-09-18T11:59:59Z", now)).not.toBeNull();
+    expect(censusDateProblem("not a date", now)).not.toBeNull();
   });
 });

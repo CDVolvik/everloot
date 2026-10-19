@@ -4,7 +4,7 @@ import { COMPLETION_CATALOG_KINDS, parseUpload, UPLOAD_LIMITS, type CanonicalUpl
 import { uploadStore, sharingStore } from "@/lib/upload-store";
 import { intakeQuota, type QuotaResult } from "@/lib/intake-quota";
 import { recordUsage } from "@/lib/usage-metrics";
-import { characterSecret, isCensusRow, storedCensusRow } from "@/lib/census-intake";
+import { censusDateProblem, characterSecret, isCensusRow, storedCensusRow } from "@/lib/census-intake";
 import { MARKET_LIMITS, realmKey } from "../../../../../kb/src/market";
 import { authorizeRecord, sharingCategory, type PublicationGrant } from "../../../../../kb/src/publication";
 import { censusDailyCap } from "../../../../../kb/src/census-rows";
@@ -75,8 +75,11 @@ export async function POST(req: Request) {
   const accepted = [];
   // Census rows are stored only under the server's character key; without it they are dropped, GUID and all.
   const censusSecret = characterSecret();
-  // Event ids kept per install, kind and UTC day: past the daily cap a new character is refused, a repeat is not.
+  // Event ids kept per install, kind and UTC day, seeded from what the install already stored in earlier uploads:
+  // past the daily cap a new character is refused, a repeat is not.
   const censusDays = new Map<string, Set<string>>();
+  const censusSeeded = new Set<string>();
+  const censusReporter = upload.records.some(isCensusRow) ? intakeQuota.reporter(req) : undefined;
   const grantHashes = new Set<string>();
   const scanRealms = new Set<string>();
   for (let i = 0; i < upload.records.length; i++) {
@@ -99,10 +102,27 @@ export async function POST(req: Request) {
     if ("claimToken" in row) delete row.claimToken;
     if (isCensusRow(row)) {
       // The GUID never reaches storage: it becomes a keyed hash and the server's own event id here.
-      const kept = censusSecret ? storedCensusRow(row, censusSecret) : null;
+      const dateProblem = censusDateProblem(row.capturedAt, new Date());
+      if (dateProblem) {
+        receipt.rejected.push({ index: receipt.accepted[i].index, reason: dateProblem });
+        continue;
+      }
+      const kept = censusSecret ? storedCensusRow(row, censusSecret, censusReporter) : null;
       if (!kept) {
         receipt.rejected.push({ index: receipt.accepted[i].index, reason: censusSecret ? "This census row could not be read." : "Census rows are not collected yet." });
         continue;
+      }
+      if (!censusSeeded.has(kept.installId)) {
+        const before = await uploadStore.installCensus(kept.installId);
+        if (!before) {
+          receipt.rejected.push({ index: receipt.accepted[i].index, reason: "Census rows could not be checked against this install's earlier uploads. Send them again later." });
+          continue;
+        }
+        censusSeeded.add(kept.installId);
+        for (const old of before) {
+          const oldDay = JSON.stringify([old.installId, old.kind, old.eventId.split(":")[1]]);
+          censusDays.set(oldDay, (censusDays.get(oldDay) ?? new Set<string>()).add(old.eventId));
+        }
       }
       const day = JSON.stringify([kept.installId, kept.kind, kept.eventId.split(":")[1]]);
       const ids = censusDays.get(day) ?? new Set<string>();

@@ -1,9 +1,10 @@
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { AwsClient } from "aws4fetch";
-import { parseRecords, type IntakeRecord, type StoredUpload } from "@everloot/protocol";
+import { CENSUS_KINDS, parseRecords, type IntakeRecord, type StoredCensusRecord, type StoredUpload } from "@everloot/protocol";
 import { mergeCorpus, mergeCorpusBatches, publicRecords, type CorpusState } from "../../../kb/src/corpus";
 import { HISTORY_DAYS, MARKET_MAX_BYTES, emptyMarket, foldMarket, uploadScans, type MarketState } from "../../../kb/src/market";
+import { mergeCensusRows } from "../../../kb/src/census-rows";
 import { createSharingStore } from "./sharing-store";
 import {
   COMPLETION_MAX_BYTES, authorizedOwners, emptyCompletion, foldCompletion, isCompletionState, normalizeCompletion, trimCompletion, type CompletionState, type CompletionUpload,
@@ -82,6 +83,18 @@ export interface CompletionRead {
   dataAsOf: string | null;
   unreachable?: boolean;
 }
+
+/** Stored census rows, folded: one per install and event, the daily caps applied. Null rows mean the read failed. */
+export interface CensusRead {
+  rows: StoredCensusRecord[];
+  dataAsOf: string | null;
+  unreachable?: boolean;
+}
+
+/** An install's uploads read back for its census cap; past this many the cap cannot be checked, so census rows wait. */
+const CENSUS_INSTALL_UPLOADS_MAX = 500;
+/** Rows are dated at most 30 days back, so older uploads cannot hold a day that still accepts rows. */
+const CENSUS_READ_DAYS = 32;
 
 interface CompletionSnapshot {
   version: 2;
@@ -175,6 +188,7 @@ export function createUploadStore(opts: {
   let cached: { at: number; corpus: RawCorpus } | null = null;
   let marketCached: { at: number; market: Market } | null = null;
   let completionCached: { at: number; read: CompletionRead } | null = null;
+  let censusCached: { at: number; read: CensusRead } | null = null;
   const marketMaxBytes = opts.marketMaxBytes ?? MARKET_MAX_BYTES;
   const completionMaxBytes = opts.completionMaxBytes ?? COMPLETION_MAX_BYTES;
   const completionBatch = opts.completionBatch ?? COMPLETION_UPLOADS_PER_RUN;
@@ -210,7 +224,7 @@ export function createUploadStore(opts: {
         const dir = join(opts.localDir, "uploads");
         await mkdir(dir, { recursive: true });
         await writeFile(join(dir, `${uploadId}.json`), body);
-        cached = null; completionCached = null;
+        cached = null; completionCached = null; censusCached = null;
         return true;
       } catch {
         return false;
@@ -235,7 +249,7 @@ export function createUploadStore(opts: {
         console.error(`upload ${uploadId}: R2 object stored but index insert failed (${index.status})`);
         return false;
       }
-      cached = null; completionCached = null;
+      cached = null; completionCached = null; censusCached = null;
       return true;
     } catch (err) {
       console.error(`upload ${uploadId}: store failed`, err);
@@ -275,8 +289,8 @@ export function createUploadStore(opts: {
     return { uploads: local.files, state, dataAsOf: now().toISOString() };
   }
 
-  async function listIndex(since?: string): Promise<IndexRow[]> {
-    const filter = since ? `&received_at=gte.${encodeURIComponent(since)}` : "";
+  async function listIndex(since?: string, installId?: string, max = Infinity): Promise<IndexRow[]> {
+    const filter = (since ? `&received_at=gte.${encodeURIComponent(since)}` : "") + (installId ? `&install_id=eq.${encodeURIComponent(installId)}` : "");
     const rows: IndexRow[] = [];
     for (let offset = 0; ; offset += PAGE) {
       const res = await doFetch(
@@ -286,6 +300,7 @@ export function createUploadStore(opts: {
       if (!res.ok) throw new Error(`upload index read failed (${res.status})`);
       const page = (await res.json()) as IndexRow[];
       rows.push(...page);
+      if (rows.length > max) throw new Error("upload index read is over its limit");
       if (page.length < PAGE) break;
     }
     return rows;
@@ -420,6 +435,70 @@ export function createUploadStore(opts: {
     }
     marketCached = { at: Date.now(), market };
     return market;
+  }
+
+  /** Census rows of some upload payloads, folded into `previous` (the daily caps and last-write rule live in mergeCensusRows). */
+  function foldCensus(previous: StoredCensusRecord[], payloads: unknown[]): StoredCensusRecord[] {
+    const raw = payloads.flatMap((p) => rawRecordsOf(p).filter((r) => CENSUS_KINDS.includes(String((r as { kind?: unknown } | null)?.kind))));
+    return mergeCensusRows(previous, raw);
+  }
+
+  /**
+   * Every stored census row, folded. This is the reader the census summary uses: census rows are never in the
+   * public corpus, so they come from the private upload objects, through the stored schemas only. A row still
+   * carrying a GUID and no key is skipped, so no GUID can come out of here. Without a rollup snapshot this reads
+   * every upload object (cached for `cacheMs`); a census snapshot is the next step if that gets slow.
+   */
+  async function loadCensus(): Promise<CensusRead> {
+    try {
+      if (unavailable) throw new Error("Production storage is not configured");
+      if (censusCached && Date.now() - censusCached.at < cacheMs) return censusCached.read;
+      let rows: StoredCensusRecord[] = [];
+      const dataAsOf = now().toISOString();
+      if (cloud) {
+        const keys = (await listIndex()).map((r) => r.object_key);
+        for (let i = 0; i < keys.length; i += MARKET_FOLD_BATCH) {
+          const read = await readPayloads(keys.slice(i, i + MARKET_FOLD_BATCH));
+          if (read.missed) throw new Error("upload object unreadable");
+          rows = foldCensus(rows, read.payloads);
+        }
+      } else {
+        const local = await readLocalPayloads();
+        if (!local) throw new Error("local uploads unreadable");
+        rows = foldCensus([], local.payloads);
+      }
+      const read = { rows, dataAsOf };
+      censusCached = { at: Date.now(), read };
+      return read;
+    } catch {
+      return { rows: [], dataAsOf: null, unreachable: true };
+    }
+  }
+
+  /**
+   * What one install has already stored in the days a census row may still be dated, across all its uploads,
+   * so the daily cap holds over many uploads and not only within one. Null when it cannot be read: the caller
+   * then stores no census rows rather than guessing.
+   */
+  async function installCensus(installId: string): Promise<StoredCensusRecord[] | null> {
+    try {
+      if (unavailable) return null;
+      if (!cloud) {
+        const local = await readLocalPayloads();
+        return local ? foldCensus([], local.payloads).filter((r) => r.installId === installId) : null;
+      }
+      const since = new Date(now().getTime() - CENSUS_READ_DAYS * 86_400_000).toISOString();
+      const keys = (await listIndex(since, installId, CENSUS_INSTALL_UPLOADS_MAX)).map((r) => r.object_key);
+      let rows: StoredCensusRecord[] = [];
+      for (let i = 0; i < keys.length; i += MARKET_FOLD_BATCH) {
+        const read = await readPayloads(keys.slice(i, i + MARKET_FOLD_BATCH));
+        if (read.missed) return null;
+        rows = foldCensus(rows, read.payloads);
+      }
+      return rows.filter((r) => r.installId === installId);
+    } catch {
+      return null;
+    }
   }
 
   /** Each upload with its address hash (never published) and, from the index, when it arrived. */
@@ -656,7 +735,7 @@ export function createUploadStore(opts: {
       headers: { "content-type": "application/json", ...(current ? { "if-match": current.etag! } : { "if-none-match": "*" }) },
     });
     if (!put.ok) throw new Error(`snapshot write failed (${put.status})`);
-    cached = null; completionCached = null;
+    cached = null; completionCached = null; censusCached = null;
     return { uploads: snapshot.uploads, added: fresh.length };
   }
 
@@ -729,7 +808,7 @@ export function createUploadStore(opts: {
     } catch { return { status: "unavailable", ...unknown }; }
   }
 
-  return { putUpload, loadCorpus, putWaitlist, writeSnapshot, snapshotHealth, writeMarket, loadMarket, writeCompletion, loadCompletion };
+  return { putUpload, loadCorpus, putWaitlist, writeSnapshot, snapshotHealth, writeMarket, loadMarket, writeCompletion, loadCompletion, loadCensus, installCensus };
 }
 
 /** The store the routes and pages use. */

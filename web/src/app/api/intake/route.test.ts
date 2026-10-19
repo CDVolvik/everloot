@@ -6,13 +6,14 @@ import { mergeCensusRows } from "../../../../../kb/src/census-rows";
  * accepted records, and it must never report a receipt the store did not write.
  */
 
-const store = vi.hoisted(() => ({ putUpload: vi.fn(), lookup: vi.fn(), requestQuota: vi.fn(), installQuota: vi.fn(), reporter: vi.fn() }));
+const store = vi.hoisted(() => ({ putUpload: vi.fn(), lookup: vi.fn(), requestQuota: vi.fn(), installQuota: vi.fn(), reporter: vi.fn(), installCensus: vi.fn() }));
 vi.mock("@/lib/intake-quota", () => ({ intakeQuota: { request: store.requestQuota, install: store.installQuota, reporter: store.reporter } }));
 
 vi.mock("@/lib/upload-store", () => ({
   sharingStore: { lookup: store.lookup },
   uploadStore: {
     putUpload: store.putUpload,
+    installCensus: store.installCensus,
     loadCorpus: vi.fn(),
     putWaitlist: vi.fn(),
     writeSnapshot: vi.fn(),
@@ -56,6 +57,7 @@ beforeEach(() => {
   store.installQuota.mockReset().mockResolvedValue({ allowed: true, retryAfter: 0 });
   store.reporter.mockReset().mockReturnValue("0123456789abcdef");
   store.putUpload.mockReset();
+  store.installCensus.mockReset().mockResolvedValue([]);
   store.putUpload.mockResolvedValue(true);
   store.lookup.mockReset();
   store.lookup.mockResolvedValue(null);
@@ -233,6 +235,7 @@ describe("auction scans in an upload", () => {
 });
 
 describe("census rows in an upload", () => {
+  const KEY = "test-character-key".repeat(2);
   const GUID = "Player-4395-0A1B2C3D";
   const SEEN_GUID = "Player-4395-0F00BA44";
   const self = {
@@ -255,10 +258,15 @@ describe("census rows in an upload", () => {
     for (const guid of [GUID, SEEN_GUID]) for (const piece of pieces(guid)) expect(text, piece).not.toContain(piece);
   };
 
-  afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks(); });
+  beforeEach(() => { vi.useFakeTimers({ toFake: ["Date"] }); vi.setSystemTime(new Date("2026-10-18T23:30:00Z")); });
+  afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); vi.restoreAllMocks(); });
+
+  /** What the real store would hand back: the census rows an install has already stored. */
+  const storedBefore = () => store.installCensus.mockImplementation(async (installId: string) =>
+    store.putUpload.mock.calls.flatMap((c) => c[2].records).filter((r: { kind: string; installId: string }) => r.kind.startsWith("census_") && r.installId === installId));
 
   test("the stored upload holds a character key and server id, never the GUID or any piece of it", async () => {
-    vi.stubEnv("EVERLOOT_CHARACTER_KEY", "test-character-key");
+    vi.stubEnv("EVERLOOT_CHARACTER_KEY", KEY);
     const POST = await freshPost();
     const response = await POST(request({ addonVersion: "0.4.0", records: [self, seen, loot("install-1234")] }));
     expect(response.status).toBe(200);
@@ -266,8 +274,8 @@ describe("census rows in an upload", () => {
     const stored = store.putUpload.mock.calls[0]![2];
     expectNoGuid(stored);
     const [mine, theirs, kept] = stored.records;
-    expect(Object.keys(mine).sort()).toEqual(["capturedAt", "characterKey", "class", "eventId", "faction", "installId", "kind", "level", "race", "realm", "serverId"]);
-    expect(Object.keys(theirs).sort()).toEqual(["capturedAt", "characterKey", "class", "eventId", "faction", "installId", "kind", "level", "race", "serverId", "via"]);
+    expect(Object.keys(mine).sort()).toEqual(["capturedAt", "characterKey", "class", "eventId", "faction", "installId", "kind", "level", "race", "realm", "reporter", "serverId"]);
+    expect(Object.keys(theirs).sort()).toEqual(["capturedAt", "characterKey", "class", "eventId", "faction", "installId", "kind", "level", "race", "reporter", "serverId", "via"]);
     expect(mine).toMatchObject({ serverId: 4395, characterKey: expect.stringMatching(/^[0-9a-f]{64}$/) });
     expect(mine.eventId).toBe(`census_self:2026-10-18:${mine.characterKey.slice(0, 24)}`);
     expect(theirs.eventId).toBe(`census_seen:2026-10-18:${theirs.characterKey.slice(0, 24)}`);
@@ -275,7 +283,7 @@ describe("census rows in an upload", () => {
   });
 
   test("without EVERLOOT_CHARACTER_KEY census rows are dropped and the rest of the upload is kept", async () => {
-    for (const value of [undefined, "", "  "]) {
+    for (const value of [undefined, "", "  ", "x".repeat(31)]) {
       store.putUpload.mockClear();
       vi.stubEnv("EVERLOOT_CHARACTER_KEY", value);
       const POST = await freshPost();
@@ -301,7 +309,7 @@ describe("census rows in an upload", () => {
   });
 
   test("bad levels, factions and misplaced realm or via are refused with a reason", async () => {
-    vi.stubEnv("EVERLOOT_CHARACTER_KEY", "test-character-key");
+    vi.stubEnv("EVERLOOT_CHARACTER_KEY", KEY);
     const POST = await freshPost();
     const bad = [
       { ...seen, level: 61 }, { ...seen, level: 0 }, { ...seen, faction: "horde" },
@@ -317,8 +325,71 @@ describe("census rows in an upload", () => {
     expect(store.putUpload.mock.calls[0]![2].records).toEqual([canonicalLoot]);
   });
 
+  test("every census row carries the keyed address hash the server computed, and never an address", async () => {
+    vi.stubEnv("EVERLOOT_CHARACTER_KEY", KEY);
+    const POST = await freshPost();
+    await POST(request({ addonVersion: "0.4.0", records: [self, seen] }));
+    const stored = store.putUpload.mock.calls[0]![2].records;
+    expect(stored.map((r: { reporter: string }) => r.reporter)).toEqual(["0123456789abcdef", "0123456789abcdef"]);
+    expect(JSON.stringify(stored)).not.toMatch(/\d+\.\d+\.\d+\.\d+/);
+  });
+
+  test("rows dated more than a day ahead or more than 30 days back are refused", async () => {
+    vi.stubEnv("EVERLOOT_CHARACTER_KEY", KEY);
+    const POST = await freshPost();
+    const at = (iso: string) => ({ ...seen, capturedAt: iso });
+    const rows = [
+      at("2026-10-19T23:00:00.000Z"), at("2026-10-20T00:00:00.000Z"), at("2026-09-18T23:31:00.000Z"), at("2026-09-18T23:00:00.000Z"), at("2020-01-01T00:00:00.000Z"),
+    ];
+    const response = await POST(request({ addonVersion: "0.4.0", records: [...rows, loot("install-1234")] }));
+    const body = await response.json();
+    expect(body.rejected.map((r: { index: number }) => r.index)).toEqual([1, 3, 4]);
+    expect(body.rejected[0].reason).toMatch(/30 days/);
+    expect(store.putUpload.mock.calls[0]![2].records.filter((r: { kind: string }) => r.kind === "census_seen")).toHaveLength(2);
+  });
+
+  test("the daily cap holds across uploads: what an install stored before counts, and a repeat is still not new", async () => {
+    vi.stubEnv("EVERLOOT_CHARACTER_KEY", KEY);
+    storedBefore();
+    const POST = await freshPost();
+    const guid = (i: number) => `Player-4395-${i.toString(16).toUpperCase().padStart(8, "0")}`;
+    const batch = (from: number, to: number) => Array.from({ length: to - from }, (_, i) => ({ ...seen, guid: guid(from + i) }));
+    const send = async (records: unknown[]) => (await (await POST(request({ addonVersion: "0.4.0", records: [...records, loot("install-1234")] }))).json());
+    expect((await send(batch(0, 300))).rejected).toEqual([]);
+    const second = await send([...batch(300, 600), { ...seen, guid: guid(0), level: 59 }]);
+    expect(second.rejected.map((r: { index: number }) => r.index)).toEqual(Array.from({ length: 100 }, (_, i) => 200 + i));
+    const third = await send(batch(900, 901));
+    expect(third.rejected).toHaveLength(1);
+    const stored = store.putUpload.mock.calls.flatMap((c) => c[2].records).filter((r: { kind: string }) => r.kind === "census_seen");
+    expect(new Set(stored.map((r: { eventId: string }) => r.eventId)).size).toBe(500);
+  });
+
+  test("when an install's earlier uploads cannot be read, census rows wait and the rest is stored", async () => {
+    vi.stubEnv("EVERLOOT_CHARACTER_KEY", KEY);
+    store.installCensus.mockResolvedValue(null);
+    const POST = await freshPost();
+    const response = await POST(request({ addonVersion: "0.4.0", records: [self, loot("install-1234")] }));
+    const body = await response.json();
+    expect(body.accepted).toEqual([{ index: 1, kind: "loot" }]);
+    expect(body.rejected[0].reason).toMatch(/later/);
+  });
+
+  test("a GUID whose server number has a leading zero is refused", async () => {
+    vi.stubEnv("EVERLOOT_CHARACTER_KEY", KEY);
+    const POST = await freshPost();
+    const response = await POST(request({ addonVersion: "0.4.0", records: [{ ...seen, guid: "Player-04395-0F00BA44" }, loot("install-1234")] }));
+    expect((await response.json()).rejected.map((r: { index: number }) => r.index)).toEqual([0]);
+  });
+
+  test("a realm that is not a realm name is refused on your own character", async () => {
+    vi.stubEnv("EVERLOOT_CHARACTER_KEY", KEY);
+    const POST = await freshPost();
+    const response = await POST(request({ addonVersion: "0.4.0", records: [{ ...self, realm: "visit scam.example/<b>" }, loot("install-1234")] }));
+    expect((await response.json()).rejected.map((r: { index: number }) => r.index)).toEqual([0]);
+  });
+
   test("a name, guild or position sent with a player you see is not stored", async () => {
-    vi.stubEnv("EVERLOOT_CHARACTER_KEY", "test-character-key");
+    vi.stubEnv("EVERLOOT_CHARACTER_KEY", KEY);
     const POST = await freshPost();
     await POST(request({ addonVersion: "0.4.0", records: [seen] }));
     const text = JSON.stringify(store.putUpload.mock.calls[0]![2]);
@@ -326,7 +397,7 @@ describe("census rows in an upload", () => {
   });
 
   test("the same character sent again the same day keeps one event id, is never refused, and the later copy wins", async () => {
-    vi.stubEnv("EVERLOOT_CHARACTER_KEY", "test-character-key");
+    vi.stubEnv("EVERLOOT_CHARACTER_KEY", KEY);
     const POST = await freshPost();
     const later = { ...self, level: 25, capturedAt: "2026-10-18T23:10:00.000Z" };
     for (const rows of [[self], [self, later], [later]]) {
@@ -342,7 +413,7 @@ describe("census rows in an upload", () => {
   });
 
   test("one install keeps at most 500 players seen and 50 own characters per UTC day; the rest are refused and counted", async () => {
-    vi.stubEnv("EVERLOOT_CHARACTER_KEY", "test-character-key");
+    vi.stubEnv("EVERLOOT_CHARACTER_KEY", KEY);
     const POST = await freshPost();
     const guid = (i: number) => `Player-4395-${i.toString(16).toUpperCase().padStart(8, "0")}`;
     const seenRows = Array.from({ length: 502 }, (_, i) => ({ ...seen, guid: guid(i) }));
@@ -364,7 +435,7 @@ describe("census rows in an upload", () => {
   });
 
   test("no GUID is logged, even when storage fails", async () => {
-    vi.stubEnv("EVERLOOT_CHARACTER_KEY", "test-character-key");
+    vi.stubEnv("EVERLOOT_CHARACTER_KEY", KEY);
     const logged: string[] = [];
     for (const method of ["log", "info", "warn", "error", "debug"] as const) {
       vi.spyOn(console, method).mockImplementation((...args: unknown[]) => { logged.push(args.map(String).join(" ")); });

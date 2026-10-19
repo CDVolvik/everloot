@@ -432,7 +432,7 @@ export const talentSnapshot = base.extend({
 // or position. The GUID is in transit only: intake swaps it for a keyed hash before anything is stored.
 
 /** A player GUID as UnitGUID returns it: Player-<server id>-<player id>. */
-export const PLAYER_GUID = z.string().regex(/^Player-\d+-[0-9A-F]+$/)
+export const PLAYER_GUID = z.string().regex(/^Player-[1-9]\d*-[0-9A-F]+$/)
   .describe("The player GUID, in transit only: the server replaces it with a keyed hash before anything is stored.");
 
 const censusBase = base.extend({
@@ -444,7 +444,7 @@ const censusBase = base.extend({
   faction: z.enum(["Alliance", "Horde"]),
 });
 
-const CENSUS_REALM = z.string().min(1).max(64).describe("GetRealmName() for your own character.");
+const CENSUS_REALM = z.string().min(2).max(60).refine(validRealm, { message: "not a realm name" }).describe("GetRealmName() for your own character.");
 const CENSUS_VIA = z.enum(["target", "mouseover", "group"]).describe("How the addon saw the player.");
 const NO_REALM = z.never({ error: "realm is sent only for your own characters" }).optional()
   .describe("Absent: the server id in the GUID says where a player you see is from.");
@@ -467,6 +467,10 @@ export const censusSeen = censusBase.extend({
 /** The census kinds. Never public row by row: a private rollup publishes counts only. */
 export const CENSUS_KINDS: readonly string[] = ["census_self", "census_seen"];
 
+/** A keyed hash of the sender's address (16 hex), the same value auction scans carry. Never the address. */
+const CENSUS_REPORTER = z.string().regex(/^[a-f0-9]{16}$/).optional()
+  .describe("Keyed hash of the uploading address, set by the server. Lets a rollup count distinct addresses, never reveals one.");
+
 /** HMAC-SHA256 of the GUID under the server's character key, in hex. */
 export const CENSUS_CHARACTER_KEY = z.string().regex(/^[0-9a-f]{64}$/);
 
@@ -478,6 +482,7 @@ export const CENSUS_CHARACTER_KEY = z.string().regex(/^[0-9a-f]{64}$/);
 const storedCensusBase = censusBase.omit({ guid: true }).extend({
   characterKey: CENSUS_CHARACTER_KEY,
   serverId: z.number().int().nonnegative(),
+  reporter: CENSUS_REPORTER,
 });
 
 export const censusSelfStored = storedCensusBase.extend({

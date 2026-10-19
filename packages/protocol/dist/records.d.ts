@@ -477,7 +477,7 @@ export declare const censusSelf: z.ZodObject<{
         Horde: "Horde";
     }>;
     kind: z.ZodLiteral<"census_self">;
-    realm: z.ZodString;
+    realm: z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>;
     via: z.ZodOptional<z.ZodNever>;
 }, z.core.$strip>;
 /** A player you targeted, moused over or grouped with. */
@@ -517,9 +517,10 @@ export declare const censusSelfStored: z.ZodObject<{
     }>;
     characterKey: z.ZodString;
     serverId: z.ZodNumber;
+    reporter: z.ZodOptional<z.ZodString>;
     kind: z.ZodLiteral<"census_self">;
     eventId: z.ZodString;
-    realm: z.ZodString;
+    realm: z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>;
 }, z.core.$strip>;
 export declare const censusSeenStored: z.ZodObject<{
     installId: z.ZodString;
@@ -533,6 +534,7 @@ export declare const censusSeenStored: z.ZodObject<{
     }>;
     characterKey: z.ZodString;
     serverId: z.ZodNumber;
+    reporter: z.ZodOptional<z.ZodString>;
     kind: z.ZodLiteral<"census_seen">;
     eventId: z.ZodString;
     via: z.ZodEnum<{
@@ -554,9 +556,10 @@ export declare const storedCensusSchemas: {
         }>;
         characterKey: z.ZodString;
         serverId: z.ZodNumber;
+        reporter: z.ZodOptional<z.ZodString>;
         kind: z.ZodLiteral<"census_self">;
         eventId: z.ZodString;
-        realm: z.ZodString;
+        realm: z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>;
     }, z.core.$strip>;
     readonly census_seen: z.ZodObject<{
         installId: z.ZodString;
@@ -570,6 +573,7 @@ export declare const storedCensusSchemas: {
         }>;
         characterKey: z.ZodString;
         serverId: z.ZodNumber;
+        reporter: z.ZodOptional<z.ZodString>;
         kind: z.ZodLiteral<"census_seen">;
         eventId: z.ZodString;
         via: z.ZodEnum<{
@@ -1009,7 +1013,7 @@ export declare const recordSchemas: {
             Horde: "Horde";
         }>;
         kind: z.ZodLiteral<"census_self">;
-        realm: z.ZodString;
+        realm: z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>;
         via: z.ZodOptional<z.ZodNever>;
     }, z.core.$strip>;
     readonly census_seen: z.ZodObject<{
@@ -1432,7 +1436,7 @@ export declare const anyRecord: z.ZodDiscriminatedUnion<[z.ZodObject<{
         Horde: "Horde";
     }>;
     kind: z.ZodLiteral<"census_self">;
-    realm: z.ZodString;
+    realm: z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>;
     via: z.ZodOptional<z.ZodNever>;
 }, z.core.$strip>, z.ZodObject<{
     installId: z.ZodString;

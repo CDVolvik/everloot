@@ -44,7 +44,7 @@ export function mergeCensusRows(previous: readonly StoredCensusRecord[], raw: re
     if (!kept || replaces(parsed.data, kept)) rows.set(key, parsed.data);
   }
   const perDay = new Map<string, number>();
-  return [...rows].sort(([a], [b]) => a.localeCompare(b)).map(([, row]) => row).filter((row) => {
+  return [...rows].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)).map(([, row]) => row).filter((row) => {
     const group = JSON.stringify([row.installId, row.kind, row.eventId.split(":")[1]]);
     const count = (perDay.get(group) ?? 0) + 1;
     perDay.set(group, count);

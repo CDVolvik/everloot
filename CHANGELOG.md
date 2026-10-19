@@ -20,7 +20,10 @@ that has a zip in the repository. Earlier builds have none.
   `/privacy` say so. The upload page may send a character's row for the day again with a higher level;
   `mergeCensusRows` (`kb/src/census-rows.ts`) keeps the copy with the latest time, then the higher level,
   and never treats a repeat as a conflict. One install counts at most 500 players seen and 50 own characters
-  per UTC day, at intake and in that fold. The addon module and the `/census` page come in later steps.
+  per UTC day across all of its uploads, at intake and in that fold. Rows dated more than a day ahead or 30 days
+  back of the server clock are refused, each row keeps the keyed address hash of its sender (never the address)
+  so a count can ask for distinct addresses as well as installs, the key must be 32 characters or more, and
+  `uploadStore.loadCensus()` reads the stored keyed rows back for the summary. The addon module and the `/census` page come in later steps.
 
 ### Changed
 - The upload record contract moved from `web/src/lib/intake.ts` into one package, `packages/protocol`

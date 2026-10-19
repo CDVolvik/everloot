@@ -233,7 +233,7 @@ export default function PrivacyPage() {
         <li><strong>API key usage counts:</strong> {USAGE_KEPT_DAYS} days. A revoked key and its counts: {REVOKED_KEPT_DAYS} days after revocation, or at once when you delete it.</li>
         <li><strong>Rate-limit hashes:</strong> a short time, long enough to enforce the limit, then discarded.</li>
         <li><strong>Uploads:</strong> until you ask us to remove them. They are the public database.</li>
-        <li><strong>Census rows:</strong> as long as the upload they came in, and removed with it. They hold the character&apos;s hash, never its id, and are only ever published as counts.</li>
+        <li><strong>Census rows:</strong> as long as the upload they came in, and removed with it. They hold the character&apos;s hash, never its id, and a one-way hash of the address they came from, never the address. They are only ever published as counts.</li>
         <li><strong>Upload address hash:</strong> as long as the upload it belongs to. The completion rollup keeps its link between an address hash and an install until the rollup is next rebuilt.</li>
         <li><strong>Launch-notification email:</strong> until you ask us to remove it.</li>
       </ul>
