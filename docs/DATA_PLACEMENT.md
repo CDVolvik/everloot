@@ -71,6 +71,7 @@ DATA_POLICY.
 | Grants, suppressions | Live rows | `publication_grants`, `character_suppressions` | Sharing routes | Govern what is public | Nightly dump + offsite S3 |
 | Quotas, usage, keys | Live rows | `intake_quota_buckets`, `usage_counters`, `api_keys`, `api_key_usage` | Guard and metrics | No; `/status` shows aggregates | Nightly dump + offsite S3 |
 | Changes and ecosystem feeds, blue posts | Git + artifact | Generated files by the scheduled workflows | Actions | Yes | Git |
+| Bulk export (corpus, drops, edges, items as NDJSON + index) | Artifact | A public bucket of its own, one folder per export, `latest.json` as the pointer | `npm run export-bulk` then `scripts/upload-bulk.mjs` | Yes, once the bucket exists (RELEASING.md) | Add to the mirror when created |
 | Protocol package | Git + npm | `packages/protocol`, committed `dist/` and `schema/` | PR; publish by hand | Yes | Git |
 
 Coming datasets, placed now so the code is written to the right spot:
@@ -82,7 +83,6 @@ Coming datasets, placed now so the code is written to the right spot:
 | Talent loadouts shared by players | Nothing stored | The code is the URL; nothing server-side |
 | Trait tables, spell effects per build | Blizzard's (rule 2) | Private bucket per build; the reviewed JSON layer in git |
 | Sign-in accounts and sessions | Live rows (rule 4) | Supabase, as the sign-in spec describes |
-| Bulk exports for datasets (JSON, CSV) | Artifact (rule 5) | R2, one object per release and kind, linked from `/connect` |
 
 ## Security, tier by tier
 
