@@ -7,6 +7,10 @@ required, or tightening a limit is a major release.
 ## [Unreleased]
 
 ### Added
+- 1.2.0: the MCP tool `population` (who plays what, from the census) with its output shape `populationPage`
+  (`populationCell`, `CENSUS_FACTIONS`, `CENSUS_WINDOWS`), emitted as `schema/mcp/population.json`, and in
+  `PLAYER_DATA_TOOLS`. A hidden count is null; the page says whether the game has launched and whether the
+  window is still collecting.
 - `skill` as an entity kind and the `in_skill_line` relation (spell -> skill line), as the site's
   profession edges from the game files carry since 2026-10-18.
 - The upload record contract, moved here from the site: 31 record kinds, the upload envelope, the

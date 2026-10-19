@@ -41,7 +41,7 @@ test("ecosystem_projects is listed read-only, with a title and bounded input", a
   expect(t.annotations.readOnlyHint).toBe(true);
   expect(t.inputSchema.properties.limit).toMatchObject({ minimum: 1, maximum: 25 });
   expect(t.inputSchema.properties.board.enum).toEqual(["all", "installed", "rising", "active", "release", "maintained"]);
-  expect(listed.map((x) => x.name).filter((n) => n !== "population").slice(-2)).toEqual(["ecosystem_projects", "everloot_plan"]);
+  expect(listed.map((x) => x.name).slice(-2)).toEqual(["ecosystem_projects", "everloot_plan"]);
 });
 
 test("it answers from the view with installs, the repository link and the data age", async () => {

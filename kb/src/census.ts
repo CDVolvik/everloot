@@ -4,12 +4,18 @@
  *
  * - One character, one count: the latest row per characterKey, across both kinds and every install.
  * - Two windows: the last 7 UTC days, today included (the headline), and since launch. Rows from
- *   before launch (the beta) and rows dated after the corpus was current are not counted.
- * - A count shows only when it covers at least 10 characters reported by at least 3 installs; below
- *   that it is null, which the page and the MCP tool read as "fewer than 10".
- * - Every count that shows is rounded to the nearest 5, each from its own true number. A total is
- *   never the sum of its rounded parts, so subtracting the shown parts from a total gives a range,
- *   not the hidden part.
+ *   before launch (the beta) and rows dated after the corpus was current are not counted. Before
+ *   launch the view says so (`launched: false`) and both windows are empty.
+ * - A count shows only when it covers at least 10 characters reported by at least 3 installs.
+ * - Complementary suppression: in every published sum (total = factions = classes = level bands =
+ *   own + seen; faction = its races; race = its row of the race × class grid; class = its column), a
+ *   relation with anything hidden has at least two hidden parts whose true counts add up to at least
+ *   10. Where it would not, the smallest shown part is hidden too, until it does. So, from any one sum,
+ *   a hidden part could be anything from 0 to at least 10.
+ * - Every count that shows is rounded to the nearest 5, each from its own true number, so a total is
+ *   not the sum of its rounded parts either.
+ * - A hidden count is null: the page and the MCP tool read it as "hidden" (fewer than 10 characters,
+ *   fewer than 3 installs, or hidden so a small count can't be worked out).
  * - The output carries counts only: no characterKey, install id, event id, server id or realm.
  *
  * One global view for now. Step 4 of the spec maps realms to ruleset and region; it will group the
@@ -33,6 +39,7 @@ export type Faction = "Alliance" | "Horde";
 export interface CensusRow {
   kind: "census_self" | "census_seen";
   installId: string;
+  /** Intake writes `<kind>:<day>:<characterKey prefix>`; the rollup does not read it. */
   eventId?: string;
   capturedAt: string;
   /** HMAC of the GUID under a server key, hex. The GUID itself is never stored. */
@@ -88,16 +95,20 @@ export const LEVEL_BANDS = [
 
 export type LevelBand = (typeof LEVEL_BANDS)[number]["id"];
 
-/** A published count: rounded to the nearest 5, or null when the cell is under the thresholds ("fewer than 10"). */
+/** A published count: rounded to the nearest 5, or null when it is hidden. */
 export type CensusCount = number | null;
+
+/** What a hidden count means, in the words the page, /methodology and the MCP tool use. */
+export const HIDDEN_LABEL = "hidden";
+export const HIDDEN_MEANING = "fewer than 10 characters or fewer than 3 installs, or hidden so that a small count can't be worked out from the others";
 
 export interface CensusWindow {
   id: "week" | "launch";
-  /** First instant counted, ISO. */
+  /** First instant counted, ISO. Before launch, the same as `to`: the window is empty. */
   from: string;
   /** When the corpus was current, ISO. */
   to: string;
-  /** True while the window as a whole is under the thresholds: then nothing in it shows a number. */
+  /** True while the window as a whole is under the thresholds (or before launch): then nothing in it shows a number. */
   collecting: boolean;
   characters: CensusCount;
   /** Distinct installs that reported a census row in the window. A count of installs, not characters. */
@@ -114,9 +125,16 @@ export interface CensusWindow {
 export interface CensusView {
   scope: { id: string; label: string };
   asOf: string;
+  /** When counting starts, ISO. */
+  launch: string;
+  /** False before launch: nothing is counted yet, which is not the same as collecting. */
+  launched: boolean;
   rule: { minCharacters: number; minInstalls: number; roundTo: number };
   windows: { week: CensusWindow; launch: CensusWindow };
-  /** Characters active each UTC day of the 7-day window, oldest first, under the same thresholds. */
+  /**
+   * Characters active each UTC day of the 7-day window, oldest first, under the same thresholds. Days
+   * that end before launch are left out, so launch week has fewer than seven, and before launch none.
+   */
   trend: { day: string; count: CensusCount }[];
 }
 
@@ -128,9 +146,9 @@ export function roundCount(n: number): number {
   return Math.round(n / CENSUS_ROUND_TO) * CENSUS_ROUND_TO;
 }
 
-/** A count under the thresholds is null; one at or over them is rounded. */
-function publish(characters: number, installs: number): CensusCount {
-  return characters >= CENSUS_MIN_CHARACTERS && installs >= CENSUS_MIN_INSTALLS ? roundCount(characters) : null;
+/** Whether a count clears the thresholds on its own. */
+function clears(characters: number, installs: number): boolean {
+  return characters >= CENSUS_MIN_CHARACTERS && installs >= CENSUS_MIN_INSTALLS;
 }
 
 const RACE_BY_FACTION = new Map<string, (typeof CENSUS_RACES)[number]>(CENSUS_RACES.map((r) => [`${r.faction}/${r.token}`, r]));
@@ -146,38 +164,60 @@ function bandOf(level: number): LevelBand {
   return LEVEL_BANDS.find((b) => level >= b.min && level <= b.max)!.id;
 }
 
-/** The sequence number at the end of an event id ("install:census:12" is 12). */
-function seqOf(eventId: string | undefined): number {
-  const n = Number((eventId ?? "").split(":").pop());
-  return Number.isFinite(n) ? n : 0;
-}
+type Dated = { row: CensusRow; at: number };
 
-/** True when `a` is the later report: capture time, then an own row over a sighting, then the event sequence. */
-function laterThan(a: { row: CensusRow; at: number }, b: { row: CensusRow; at: number }): boolean {
+/**
+ * True when `a` is the report to keep for its character: the later capture, then the higher level, then
+ * an own row over a sighting, then the lexically smaller install id. The event id is not read: intake
+ * writes it as `<kind>:<day>:<characterKey prefix>`, which carries no order.
+ */
+function keeps(a: Dated, b: Dated): boolean {
   if (a.at !== b.at) return a.at > b.at;
+  if (a.row.level !== b.row.level) return a.row.level > b.row.level;
   const own = Number(a.row.kind === "census_self") - Number(b.row.kind === "census_self");
   if (own !== 0) return own > 0;
-  return seqOf(a.row.eventId) > seqOf(b.row.eventId);
+  return a.row.installId < b.row.installId;
 }
 
-type Dated = { row: CensusRow; at: number };
 type Character = { latest: Dated; installs: Set<string>; own: boolean };
 
-/** A cell's true numbers before publishing: its characters and the installs that reported any of them. */
-class Tally {
+/** One published cell before rounding: its characters, the installs that reported any of them, and whether it is hidden. */
+class Cell {
   characters = 0;
   installs = new Set<string>();
+  hidden = false;
   add(c: Character) {
     this.characters++;
     for (const id of c.installs) this.installs.add(id);
   }
-  get count(): CensusCount {
-    return publish(this.characters, this.installs.size);
-  }
 }
 
-function tallies<K extends string>(keys: readonly K[]): Map<K, Tally> {
-  return new Map(keys.map((k) => [k, new Tally()]));
+function cells<K extends string>(keys: readonly K[]): Map<K, Cell> {
+  return new Map(keys.map((k) => [k, new Cell()]));
+}
+
+/** A published sum: the margin (null for the window total, which is never hidden while counting) and its parts. */
+type Relation = { margin: Cell | null; parts: Cell[] };
+
+/**
+ * Hide cells under the thresholds, then keep hiding the smallest shown part of any relation whose hidden
+ * parts are fewer than two or add up to fewer than 10 characters, until no relation needs it.
+ */
+function suppress(all: Cell[], relations: Relation[]): void {
+  for (const c of all) c.hidden = !clears(c.characters, c.installs.size);
+  for (let changed = true; changed;) {
+    changed = false;
+    for (const { margin, parts } of relations) {
+      const hidden = parts.filter((p) => p.hidden);
+      if (hidden.length === 0 && !margin?.hidden) continue;
+      if (hidden.length >= 2 && hidden.reduce((s, p) => s + p.characters, 0) >= CENSUS_MIN_CHARACTERS) continue;
+      let smallest: Cell | null = null;
+      for (const p of parts) if (!p.hidden && (!smallest || p.characters < smallest.characters)) smallest = p;
+      if (!smallest) continue;
+      smallest.hidden = true;
+      changed = true;
+    }
+  }
 }
 
 function windowOf(id: CensusWindow["id"], rows: readonly Dated[], from: number, to: number): CensusWindow {
@@ -193,17 +233,17 @@ function windowOf(id: CensusWindow["id"], rows: readonly Dated[], from: number, 
     }
     c.installs.add(d.row.installId);
     if (d.row.kind === "census_self") c.own = true;
-    if (laterThan(d, c.latest)) c.latest = d;
+    if (keeps(d, c.latest)) c.latest = d;
   }
 
-  const total = new Tally();
-  const own = new Tally();
-  const seen = new Tally();
-  const factions = tallies(FACTIONS);
-  const races = tallies(CENSUS_RACES.map((r) => `${r.faction}/${r.token}`));
-  const classes = tallies<string>(CENSUS_CLASSES.map((c) => c.token));
-  const grid = tallies(CENSUS_RACES.flatMap((r) => r.classes.map((c) => `${r.faction}/${r.token}/${c}`)));
-  const levels = tallies(LEVEL_BANDS.map((b) => b.id));
+  const total = new Cell();
+  const own = new Cell();
+  const seen = new Cell();
+  const factions = cells(FACTIONS);
+  const races = cells(CENSUS_RACES.map((r) => `${r.faction}/${r.token}`));
+  const classes = cells<string>(CENSUS_CLASSES.map((c) => c.token));
+  const grid = cells(CENSUS_RACES.flatMap((r) => r.classes.map((c) => `${r.faction}/${r.token}/${c}`)));
+  const levels = cells(LEVEL_BANDS.map((b) => b.id));
   for (const c of characters.values()) {
     const r = c.latest.row;
     total.add(c);
@@ -215,14 +255,28 @@ function windowOf(id: CensusWindow["id"], rows: readonly Dated[], from: number, 
     levels.get(bandOf(r.level))!.add(c);
   }
 
-  const collecting = total.count === null;
-  const shown = (t: Tally): CensusCount => (collecting ? null : t.count);
+  const collecting = !clears(total.characters, total.installs.size);
+  const relations: Relation[] = [
+    { margin: null, parts: [...factions.values()] },
+    { margin: null, parts: [own, seen] },
+    { margin: null, parts: [...classes.values()] },
+    { margin: null, parts: [...levels.values()] },
+    ...FACTIONS.map((f) => ({ margin: factions.get(f)!, parts: CENSUS_RACES.filter((r) => r.faction === f).map((r) => races.get(`${f}/${r.token}`)!) })),
+    ...CENSUS_RACES.map((r) => ({ margin: races.get(`${r.faction}/${r.token}`)!, parts: r.classes.map((c) => grid.get(`${r.faction}/${r.token}/${c}`)!) })),
+    ...CENSUS_CLASSES.map((c) => ({
+      margin: classes.get(c.token)!,
+      parts: CENSUS_RACES.filter((r) => (r.classes as readonly string[]).includes(c.token)).map((r) => grid.get(`${r.faction}/${r.token}/${c.token}`)!),
+    })),
+  ];
+  suppress([own, seen, ...factions.values(), ...races.values(), ...classes.values(), ...grid.values(), ...levels.values()], relations);
+
+  const shown = (c: Cell): CensusCount => (collecting || c.hidden ? null : roundCount(c.characters));
   return {
     id,
     from: new Date(from).toISOString(),
     to: new Date(to).toISOString(),
     collecting,
-    characters: shown(total),
+    characters: collecting ? null : roundCount(total.characters),
     installs: installs.size,
     bias: { own: shown(own), seen: shown(seen) },
     factions: FACTIONS.map((faction) => ({ faction, count: shown(factions.get(faction)!) })),
@@ -235,17 +289,21 @@ function windowOf(id: CensusWindow["id"], rows: readonly Dated[], from: number, 
   };
 }
 
-/** Characters active on each UTC day of the week window, each day under the same thresholds. */
-function trendOf(rows: readonly Dated[], firstDay: number, from: number, to: number): CensusView["trend"] {
-  const days = Array.from({ length: CENSUS_WEEK_DAYS }, (_, i) => ({ start: firstDay + i * DAY_MS, characters: new Set<string>(), installs: new Set<string>() }));
+/** Characters active on each UTC day of the week window that ends after launch, each day under the same thresholds. */
+function trendOf(rows: readonly Dated[], firstDay: number, from: number, to: number, launch: number): CensusView["trend"] {
+  const days = Array.from({ length: CENSUS_WEEK_DAYS }, (_, i) => ({ start: firstDay + i * DAY_MS, characters: new Set<string>(), installs: new Set<string>() }))
+    .filter((d) => d.start + DAY_MS > launch && d.start <= to);
   for (const d of rows) {
     if (d.at < from || d.at > to) continue;
-    const day = days[Math.floor((d.at - firstDay) / DAY_MS)];
+    const day = days.find((x) => d.at >= x.start && d.at < x.start + DAY_MS);
     if (!day) continue;
     day.characters.add(d.row.characterKey);
     day.installs.add(d.row.installId);
   }
-  return days.map((d) => ({ day: new Date(d.start).toISOString().slice(0, 10), count: publish(d.characters.size, d.installs.size) }));
+  return days.map((d) => ({
+    day: new Date(d.start).toISOString().slice(0, 10),
+    count: clears(d.characters.size, d.installs.size) ? roundCount(d.characters.size) : null,
+  }));
 }
 
 export interface CensusOptions {
@@ -259,6 +317,7 @@ export interface CensusOptions {
 export function rollupCensus(rows: readonly CensusRow[], options: CensusOptions): CensusView {
   const to = new Date(options.asOf).getTime();
   const launch = Date.parse(options.launch ?? CENSUS_LAUNCH);
+  const launched = to >= launch;
   const dated: Dated[] = [];
   for (const row of rows) {
     const at = Date.parse(row.capturedAt);
@@ -266,13 +325,17 @@ export function rollupCensus(rows: readonly CensusRow[], options: CensusOptions)
   }
   const today = Math.floor(to / DAY_MS) * DAY_MS;
   const firstDay = today - (CENSUS_WEEK_DAYS - 1) * DAY_MS;
-  const weekFrom = Math.max(firstDay, launch);
+  // Before launch both windows are empty, from and to both the corpus time, never a range that runs backwards.
+  const weekFrom = launched ? Math.max(firstDay, launch) : to;
+  const launchFrom = launched ? launch : to;
   return {
     scope: options.scope ?? GLOBAL_SCOPE,
     asOf: new Date(to).toISOString(),
+    launch: new Date(launch).toISOString(),
+    launched,
     rule: { minCharacters: CENSUS_MIN_CHARACTERS, minInstalls: CENSUS_MIN_INSTALLS, roundTo: CENSUS_ROUND_TO },
-    windows: { week: windowOf("week", dated, weekFrom, to), launch: windowOf("launch", dated, launch, to) },
-    trend: trendOf(dated, firstDay, weekFrom, to),
+    windows: { week: windowOf("week", dated, weekFrom, to), launch: windowOf("launch", dated, launchFrom, to) },
+    trend: launched ? trendOf(dated, firstDay, weekFrom, to, launch) : [],
   };
 }
 

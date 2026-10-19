@@ -191,7 +191,10 @@ test("/methodology states the three-installs rule, unrecorded is not zero, and l
   expect(visible(html)).not.toContain("doesn't publish player counts yet");
   expect(visible(html)).toContain("Each character is counted once");
   expect(visible(html)).toContain("at least 10 characters reported by at least 3 installs");
-  expect(visible(html)).toContain("fewer than 10");
+  expect(visible(html)).toContain("reads “hidden”");
+  expect(visible(html)).toContain("fewer than 10 characters or fewer than 3 installs, or hidden to protect a small count");
+  expect(visible(html)).toContain("at least two counts are hidden and together they cover at least 10 characters");
+  expect(visible(html)).toContain("they are not a guarantee");
   expect(visible(html)).toContain("rounded to the nearest 5");
   expect(visible(html)).toContain("the last 7 days");
   expect(html).toContain('href="/census"');

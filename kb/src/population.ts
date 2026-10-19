@@ -1,15 +1,13 @@
-import { z } from "zod";
-import { LICENCE, SITE, uploadsAnswer, type McpToolDef } from "@everloot/protocol";
+import { LICENCE, SITE, type McpToolArgs, type PopulationCellOut, type PopulationPageOut } from "@everloot/protocol";
 import {
-  CENSUS_CLASSES, CENSUS_RACES, FACTIONS, LEVEL_BANDS,
+  CENSUS_CLASSES, CENSUS_RACES, HIDDEN_LABEL, HIDDEN_MEANING, LEVEL_BANDS,
   type CensusCount, type CensusView, type CensusWindow, type Faction,
 } from "./census.js";
 
 /**
  * population: the census as an MCP answer ("most played class", "how rare are Gnome Priests"), read from
- * the site's census rollup (kb/src/census.ts) under the same thresholds as /census, with the window in
- * every answer. Defined here rather than in @everloot/protocol's MCP_TOOLS until the census intake
- * change lands there; the server registers it after the protocol's tools.
+ * the site's census rollup (kb/src/census.ts) under the same rules as /census, with the window in every
+ * answer. The tool's shape is MCP_TOOLS.population in @everloot/protocol.
  */
 
 /** The site's census, aggregate only. Null means it was unreadable. */
@@ -22,49 +20,7 @@ export const CENSUS_UNAVAILABLE = "Population numbers unavailable. They are unre
 const CENSUS_URL = `${SITE}/census`;
 const METHOD_URL = `${SITE}/methodology#population`;
 
-const populationCell = z.object({
-  slice: z.enum(["faction", "race", "class", "raceClass", "level"]),
-  faction: z.enum(FACTIONS as [Faction, ...Faction[]]).optional(),
-  race: z.string().optional().describe("UnitRace's token, such as Scourge for Undead."),
-  class: z.string().optional().describe("UnitClass's token, such as PRIEST."),
-  band: z.string().optional().describe("Level band: 1-9, 10-19 ... 50-59, or 60."),
-  label: z.string(),
-  count: z.number().int().nullable().describe("Characters, rounded to the nearest 5; null means fewer than 10 characters or fewer than 3 installs."),
-  share: z.number().nullable().describe("count out of the window's characters, both as shown."),
-});
-export type PopulationCell = z.infer<typeof populationCell>;
-
-const populationPage = z.object({
-  scope: z.object({ id: z.string(), label: z.string() }),
-  window: z.object({ id: z.enum(["week", "launch"]), from: z.string(), to: z.string() }),
-  collecting: z.boolean().describe("True until the window has 10 characters from 3 installs; then no count is shown."),
-  characters: z.number().int().nullable(),
-  installs: z.number().int().describe("Installs that reported in the window: a count of installs, not of people."),
-  rule: z.object({ minCharacters: z.number().int(), minInstalls: z.number().int(), roundTo: z.number().int() }),
-  cells: z.array(populationCell),
-  note: z.string().optional().describe("Why there are no cells: a name the game does not have, or a combination it does not allow."),
-  source: z.object({ title: z.string(), url: z.string() }),
-  method: z.object({ title: z.string(), url: z.string() }),
-  licence: z.string(),
-});
-export type PopulationPage = z.infer<typeof populationPage>;
-
-export const POPULATION_TOOL = {
-  title: "Who plays what: population by race, class, faction and level",
-  description:
-    "How many characters play each race, class, race and class, faction and level band on WoW: Forever, from the census of players who turned it on in the Everloot addon. Each character counts once. A count shows only when it covers at least 10 characters reported by at least 3 installs, rounded to the nearest 5; below that it reads fewer than 10. Every answer states its window: active in the last 7 days (default) or since launch. With no arguments, the overview: most played class first. No names, ever. Missing or unavailable data is reported explicitly.",
-  inputSchema: {
-    race: z.string().max(40).optional().describe("A race, such as Gnome, Night Elf or Undead."),
-    class: z.string().max(40).optional().describe("A class, such as Priest."),
-    faction: z.enum(FACTIONS as [Faction, ...Faction[]]).optional().describe("Alliance or Horde."),
-    window: z.enum(["week", "launch"]).default("week").describe("week: active in the last 7 days. launch: seen since launch."),
-  },
-  // The envelope every structured answer built on player uploads uses.
-  outputSchema: { ...uploadsAnswer, page: populationPage.optional() },
-  annotations: { readOnlyHint: true, openWorldHint: false },
-} as const satisfies McpToolDef;
-
-export type PopulationArgs = { race?: string; class?: string; faction?: Faction; window: "week" | "launch" };
+export type PopulationArgs = McpToolArgs<"population">;
 
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z]/g, "");
 const CLASS_NAME = new Map<string, string>(CENSUS_CLASSES.map((c) => [c.token, c.name]));
@@ -77,32 +33,37 @@ const CLASS_ALIAS = new Map<string, string>();
 for (const c of CENSUS_CLASSES) for (const a of [c.token, `${c.name}s`]) CLASS_ALIAS.set(norm(a), c.token);
 
 const day = (iso: string) => iso.slice(0, 10);
+const minute = (iso: string) => `${iso.slice(0, 10)} ${iso.slice(11, 16)} UTC`;
 const about = (n: number) => `about ${n.toLocaleString("en-US")}`;
 const percent = (share: number) => `${Number((share * 100).toFixed(1))}%`;
+/** "an Alliance race", "a Horde race". */
+const withArticle = (faction: Faction) => `${faction === "Alliance" ? "an" : "a"} ${faction}`;
 
 function windowLine(view: CensusView, w: CensusWindow): string {
   const what = w.id === "week" ? "characters active in the last 7 days" : "characters seen since launch";
+  if (!view.launched) return `Census, ${view.scope.label}: ${what}. WoW: Forever has not launched yet: counting starts at launch (${minute(view.launch)}), and nothing before it is counted.`;
   return `Census, ${view.scope.label}: ${what} (${day(w.from)} to ${day(w.to)} UTC).`;
 }
 
 function ruleLine(view: CensusView): string {
   const { minCharacters, minInstalls, roundTo } = view.rule;
-  return `Each character counts once. A count shows when it covers at least ${minCharacters} characters reported by at least ${minInstalls} installs, rounded to the nearest ${roundTo}; below that it reads "fewer than ${minCharacters}". Method: ${METHOD_URL}`;
+  return `Each character counts once. A count shows when it covers at least ${minCharacters} characters reported by at least ${minInstalls} installs, rounded to the nearest ${roundTo}. "${HIDDEN_LABEL}" means ${HIDDEN_MEANING}. Method: ${METHOD_URL}`;
 }
 
-function cellOf(w: CensusWindow, base: Omit<PopulationCell, "count" | "share">, count: CensusCount): PopulationCell {
+function cellOf(w: CensusWindow, base: Omit<PopulationCellOut, "count" | "share">, count: CensusCount): PopulationCellOut {
   return { ...base, count, share: count !== null && w.characters ? Number((count / w.characters).toFixed(3)) : null };
 }
 
-function cellLine(c: PopulationCell, total: CensusCount, unit = ""): string {
-  if (c.count === null) return `${c.label}: fewer than 10${unit}`;
+function cellLine(c: PopulationCellOut, total: CensusCount, unit = ""): string {
+  if (c.count === null) return `${c.label}: ${HIDDEN_LABEL}`;
   return `${c.label}: ${about(c.count)}${unit}${c.share !== null && total !== null ? `, ${percent(c.share)} of ${about(total)}` : ""}`;
 }
 
-const byCount = (a: PopulationCell, b: PopulationCell) => (b.count ?? -1) - (a.count ?? -1) || a.label.localeCompare(b.label);
+const byCount = (a: PopulationCellOut, b: PopulationCellOut) => (b.count ?? -1) - (a.count ?? -1) || a.label.localeCompare(b.label);
+const shownOrHidden = (n: CensusCount) => (n === null ? HIDDEN_LABEL : about(n));
 
 /** The overview: factions, classes (most played first), races, level bands. */
-function overview(w: CensusWindow): PopulationCell[] {
+function overview(w: CensusWindow): PopulationCellOut[] {
   return [
     ...w.factions.map((f) => cellOf(w, { slice: "faction", faction: f.faction, label: f.faction }, f.count)),
     ...w.classes.map((c) => cellOf(w, { slice: "class", class: c.class, label: CLASS_NAME.get(c.class)! }, c.count)).sort(byCount),
@@ -112,7 +73,7 @@ function overview(w: CensusWindow): PopulationCell[] {
 }
 
 /** The cells a question names, or a note saying why there are none. */
-function query(args: PopulationArgs, w: CensusWindow): { cells: PopulationCell[]; note?: string } {
+function query(args: PopulationArgs, w: CensusWindow): { cells: PopulationCellOut[]; note?: string } {
   const race = args.race?.trim() ? RACE_ALIAS.get(norm(args.race)) : undefined;
   if (args.race?.trim() && !race) {
     return { cells: [], note: `No race called "${args.race.trim()}" in WoW: Forever. Races: ${[...new Set(CENSUS_RACES.map((r) => r.name))].join(", ")}.` };
@@ -122,8 +83,8 @@ function query(args: PopulationArgs, w: CensusWindow): { cells: PopulationCell[]
     return { cells: [], note: `No class called "${args.class.trim()}" in WoW: Forever. Classes: ${CENSUS_CLASSES.map((c) => c.name).join(", ")}.` };
   }
   const sides = (f: Faction) => !args.faction || args.faction === f;
-  if (race && !CENSUS_RACES.some((r) => r.token === race && sides(r.faction))) {
-    return { cells: [], note: `${RACE_NAME.get(race)} is not an ${args.faction} race in WoW: Forever.` };
+  if (race && args.faction && !CENSUS_RACES.some((r) => r.token === race && sides(r.faction))) {
+    return { cells: [], note: `${RACE_NAME.get(race)} is not ${withArticle(args.faction)} race in WoW: Forever.` };
   }
   if (cls && (race || args.faction)) {
     const cells = w.raceClass.filter((c) => c.class === cls && sides(c.faction) && (!race || c.race === race))
@@ -141,13 +102,15 @@ function query(args: PopulationArgs, w: CensusWindow): { cells: PopulationCell[]
 }
 
 /** The answer to one question from one census view: the text every client gets and the structured page. */
-export function populationAnswer(args: PopulationArgs, view: CensusView): { text: string; page: PopulationPage } {
+export function populationAnswer(args: PopulationArgs, view: CensusView): { text: string; page: PopulationPageOut } {
   const w = view.windows[args.window];
   const asked = Boolean(args.race?.trim() || args.class?.trim() || args.faction);
   const { cells, note } = asked ? query(args, w) : { cells: overview(w), note: undefined };
   const lines = [windowLine(view, w), ruleLine(view)];
   if (note) lines.push(note);
-  if (w.collecting) {
+  if (!view.launched) {
+    // Nothing to say yet: the not-launched line above is the answer.
+  } else if (w.collecting) {
     lines.push(`Still collecting: no count shows until this window has at least ${view.rule.minCharacters} characters reported by at least ${view.rule.minInstalls} installs. ${w.installs} ${w.installs === 1 ? "install has" : "installs have"} reported in it so far.`);
   } else {
     lines.push(`${about(w.characters!)} characters, from ${w.installs} installs.`);
@@ -163,7 +126,7 @@ export function populationAnswer(args: PopulationArgs, view: CensusView): { text
       const { own, seen } = w.bias;
       lines.push(own !== null && seen !== null
         ? `Known from: ${percent(seen / (own + seen))} players seen by uploaders, ${percent(own / (own + seen))} uploaders' own characters.`
-        : `Known from: ${seen === null ? "fewer than 10" : about(seen)} seen, ${own === null ? "fewer than 10" : about(own)} own characters.`);
+        : `Known from: players seen by uploaders ${shownOrHidden(seen)}, uploaders' own characters ${shownOrHidden(own)}.`);
     } else {
       lines.push(...cells.map((c) => cellLine(c, w.characters, " characters")));
     }
@@ -172,6 +135,8 @@ export function populationAnswer(args: PopulationArgs, view: CensusView): { text
     text: lines.join("\n"),
     page: {
       scope: view.scope,
+      launched: view.launched,
+      launch: view.launch,
       window: { id: w.id, from: w.from, to: w.to },
       collecting: w.collecting,
       characters: w.characters,

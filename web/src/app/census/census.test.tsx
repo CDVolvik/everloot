@@ -64,14 +64,18 @@ test("the top sentence says how many characters, from how many installs, in whic
   expect(page).toContain("How we count");
 });
 
-test("factions, classes, races and level bands show rounded counts; a small cell reads fewer than 10", async () => {
+test("factions, classes, races and level bands show rounded counts; a hidden count reads hidden, explained", async () => {
   store.loadCorpus.mockResolvedValue(corpus(RECORDS));
   const page = await html();
   const words = text(page);
   expect(words).toMatch(/Hunter 65 /);
-  expect(words).toMatch(/Mage fewer than 10/);
+  expect(words).toMatch(/Mage hidden/);
   expect(words).toMatch(/Alliance 90 /);
-  expect(words).toMatch(/At 60 30 /);
+  expect(words).toMatch(/20–29 85 /);
+  // A lone band at 60 would be the total minus the others: it is hidden along with the hidden ones.
+  expect(words).toMatch(/At 60 hidden/);
+  expect(words).toContain("“hidden” means fewer than 10 characters or fewer than 3 installs, or hidden so that a small count can't be worked out from the others");
+  expect(page).toContain('<th scope="col" class="px-4 py-3">Class</th>');
   expect(page).toContain("Factions");
   expect(page).toContain("Level bands");
 });
@@ -82,9 +86,9 @@ test("the race and class grid is Blizzard's table per faction, with counts in th
   const grids = page.match(/<table[^>]*>\s*<caption[^>]*>[^<]*(Horde|Alliance) races and classes[\s\S]*?<\/table>/g)!;
   expect(grids).toHaveLength(2);
   const alliance = grids.find((g) => g.includes("Alliance races"))!;
-  expect(text(alliance)).toMatch(/Gnome .*15/);
+  expect(text(alliance)).toMatch(/Human Not playable 40 /);
   expect(alliance).toContain("Not playable");
-  expect(alliance).toContain("fewer than 10");
+  expect(alliance).toContain('<span class="sr-only">hidden</span>');
 });
 
 test("since launch is a second window, linked from the first and marked as the current one", async () => {
@@ -100,7 +104,7 @@ test("the 7-day trend lists each day, and the bias line says how many were seen 
   store.loadCorpus.mockResolvedValue(corpus(RECORDS));
   const words = text(await html("launch"));
   expect(words).toContain("2026-11-15 110");
-  expect(words).toMatch(/2026-11-10 fewer than 10/);
+  expect(words).toMatch(/2026-11-10 hidden/);
   expect(words).toContain("79% players seen by uploaders, 21% uploaders' own characters");
 });
 
@@ -110,6 +114,18 @@ test("no character key, install id or event id reaches the page", async () => {
   expect(page).not.toContain("install-");
   expect(page).not.toMatch(/a[1-6]00[0-9a-f]{2}/);
   expect(page).not.toContain("census:");
+});
+
+test("before launch the page says the game has not launched: no window, no dates, no collecting", async () => {
+  store.loadCorpus.mockResolvedValue({ uploads: 1, records: crowd(30, "z1", { capturedAt: "2026-10-18T10:00:00.000Z" }), dataAsOf: "2026-10-18T12:00:00.000Z" });
+  const page = await html();
+  expect(text(page)).toContain("WoW: Forever hasn't launched yet. The census starts counting at launch, 2026-11-04 at 23:00 UTC");
+  expect(text(page)).toContain("Not launched yet");
+  expect(page).not.toContain("Still collecting");
+  expect(page).not.toContain("<table");
+  expect(page).not.toContain('aria-label="Census window"');
+  expect(text(page)).not.toMatch(/\d{4}-\d{2}-\d{2} to \d{4}-\d{2}-\d{2}/);
+  expect(page).toContain("/everloot census on");
 });
 
 test("unreadable storage says so, never a collecting page or a zero", async () => {

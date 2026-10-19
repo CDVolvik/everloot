@@ -82,9 +82,16 @@ export default function MethodologyPage() {
           <li>Two windows: active in the last 7 days (the last seven UTC days, today included), and seen since launch. Reports from
             before launch, in the beta, are not counted.</li>
           <li>A count shows only when it covers at least 10 characters reported by at least 3 installs. Below that it reads
-            &ldquo;fewer than 10&rdquo;, and until a whole window gets there the page says it is still collecting.</li>
-          <li>Every count that shows is rounded to the nearest 5, each from its own true number. A total isn&apos;t the sum of its
-            rounded parts, so subtracting the shown numbers from a total gives a range, not a hidden count.</li>
+            &ldquo;hidden&rdquo;, and until a whole window gets there the page says it is still collecting. Before launch it says so.</li>
+          <li>A hidden count could otherwise be worked out by taking the shown counts away from their total. So wherever one is
+            hidden, more are hidden with it: in every total, at least two counts are hidden and together they cover at least
+            10 characters. &ldquo;Hidden&rdquo; therefore means fewer than 10 characters or fewer than 3 installs, or hidden to
+            protect a small count.</li>
+          <li>Every count that shows is rounded to the nearest 5, each from its own true number, so the shown counts don&apos;t
+            add up exactly to their total either.</li>
+          <li>Together these make a small count hard to work out from the published ones. They narrow what can be learned; they
+            are not a guarantee. Someone who can send forged uploads could still probe a count by adding rows one at a time,
+            which the limits on how much one install can send slow down but don&apos;t stop.</li>
           <li>Levels are grouped 1&ndash;9, 10&ndash;19 and so on up to 50&ndash;59, and at 60.</li>
           <li>One view for all of WoW: Forever for now. Realms are split by ruleset and region once launch shows how Forever names them.</li>
         </ul>

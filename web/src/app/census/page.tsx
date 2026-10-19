@@ -6,7 +6,7 @@ import { loadCensus } from "@/lib/rollup-compute";
 import { REPO_URL } from "@/lib/source";
 import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
 import {
-  CENSUS_CLASSES, CENSUS_RACES, FACTIONS, LEVEL_BANDS, type CensusCount, type CensusView, type CensusWindow,
+  CENSUS_CLASSES, CENSUS_RACES, FACTIONS, HIDDEN_LABEL, HIDDEN_MEANING, LEVEL_BANDS, type CensusCount, type CensusView, type CensusWindow,
 } from "../../../../kb/src/census";
 
 const description =
@@ -25,13 +25,13 @@ const plural = (n: number, one: string, many: string) => `${number(n)} ${n === 1
 const percent = (count: number, total: number) => `${Math.round((count / total) * 100)}%`;
 
 function Count({ count }: { count: CensusCount }) {
-  return count === null ? <span className="text-muted">fewer than 10</span> : <>{number(count)}</>;
+  return count === null ? <span className="text-muted">{HIDDEN_LABEL}</span> : <>{number(count)}</>;
 }
 
 type Row = { key: string; label: string; count: CensusCount };
 
 /** One slice: a row per group with its count and its share of the window's characters. */
-function CountTable({ id, title, rows, total }: { id: string; title: string; rows: Row[]; total: number }) {
+function CountTable({ id, title, item, rows, total }: { id: string; title: string; item: string; rows: Row[]; total: number }) {
   return (
     <section aria-labelledby={id} className="space-y-3">
       <h2 id={id} className="text-2xl font-semibold text-fg">{title}</h2>
@@ -40,7 +40,7 @@ function CountTable({ id, title, rows, total }: { id: string; title: string; row
           <caption className="sr-only">{title}: characters and share of all characters in the window</caption>
           <thead>
             <tr className="bg-panel text-xs font-mono text-muted text-left">
-              <th scope="col" className="px-4 py-3">{title.replace(/s$/, "")}</th>
+              <th scope="col" className="px-4 py-3">{item}</th>
               <th scope="col" className="px-4 py-3 text-right">Characters</th>
               <th scope="col" className="px-4 py-3 w-1/2">Share</th>
             </tr>
@@ -92,7 +92,7 @@ function RaceClassGrid({ faction, window: w }: { faction: string; window: Census
                 return (
                   <td key={c.token} className="px-2 py-2 text-center font-mono tabular-nums">
                     {!cell ? <span className="sr-only">Not playable</span>
-                      : cell.count === null ? <><span aria-hidden="true" className="text-muted">&lt;10</span><span className="sr-only">fewer than 10</span></>
+                      : cell.count === null ? <><span aria-hidden="true" className="text-muted">&mdash;</span><span className="sr-only">{HIDDEN_LABEL}</span></>
                       : number(cell.count)}
                   </td>
                 );
@@ -124,6 +124,18 @@ function Headline({ view, window: w }: { view: CensusView; window: CensusWindow 
   const span = `(${day(w.from)} to ${day(w.to)}, UTC)`;
   const rule = `Each character counts once, and a number shows only when it covers at least ${view.rule.minCharacters} characters reported by at least ${view.rule.minInstalls} installs, rounded to the nearest ${view.rule.roundTo}.`;
   const how = <Link href="/methodology#population" className={link}>How we count</Link>;
+  if (!view.launched) {
+    return (
+      <div className="rounded-xl border border-line bg-panel p-6 sm:p-8 space-y-2">
+        <p className="text-fg">
+          WoW: Forever hasn&apos;t launched yet. The census starts counting at launch, {day(view.launch)} at{" "}
+          {view.launch.slice(11, 16)} UTC, and nothing from before it, such as the beta, is counted.
+        </p>
+        <p className="text-sm text-muted">{rule} {how}.</p>
+        <TakePart />
+      </div>
+    );
+  }
   if (w.collecting) {
     return (
       <div className="rounded-xl border border-line bg-panel p-6 sm:p-8 space-y-2">
@@ -155,7 +167,9 @@ export default async function CensusPage({ searchParams }: { searchParams?: Prom
     <article className="space-y-8 max-w-4xl">
       <header className="space-y-3">
         <p className="font-mono text-xs text-muted">
-          {unreachable || !w ? "Storage unreachable" : `${plural(w.installs, "reporting install", "reporting installs")} · ${dataAgeLabel(dataAsOf)}`}
+          {unreachable || !view || !w ? "Storage unreachable"
+            : !view.launched ? `Not launched yet · ${dataAgeLabel(dataAsOf)}`
+            : `${plural(w.installs, "reporting install", "reporting installs")} · ${dataAgeLabel(dataAsOf)}`}
         </p>
         <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">Who plays what on WoW: Forever</h1>
         <p className="text-fg-2 max-w-2xl">
@@ -169,7 +183,7 @@ export default async function CensusPage({ searchParams }: { searchParams?: Prom
         <p className="text-fg-2">{STORAGE_UNREACHABLE}</p>
       ) : (
         <>
-          <nav aria-label="Census window">
+          {view.launched && <nav aria-label="Census window">
             <ul className="flex flex-wrap gap-2">
               {WINDOWS.map((option) => (
                 <li key={option.id}>
@@ -179,25 +193,26 @@ export default async function CensusPage({ searchParams }: { searchParams?: Prom
                 </li>
               ))}
             </ul>
-          </nav>
+          </nav>}
 
           <Headline view={view} window={w} />
 
           {!w.collecting && (
             <>
+              <p className="text-sm text-fg-2 max-w-2xl">&ldquo;{HIDDEN_LABEL}&rdquo; means {HIDDEN_MEANING}.</p>
               <BiasLine window={w} />
-              <CountTable id="factions" title="Factions" total={w.characters!} rows={FACTIONS.map((f) => ({ key: f, label: f, count: w.factions.find((x) => x.faction === f)!.count }))} />
-              <CountTable id="classes" title="Classes" total={w.characters!} rows={w.classes.map((c) => ({ key: c.class, label: CLASS_NAME.get(c.class)!, count: c.count }))} />
-              <CountTable id="races" title="Races" total={w.characters!} rows={w.races.map((r) => ({ key: `${r.faction}/${r.race}`, label: `${RACE_NAME.get(r.race)} (${r.faction})`, count: r.count }))} />
+              <CountTable id="factions" title="Factions" item="Faction" total={w.characters!} rows={FACTIONS.map((f) => ({ key: f, label: f, count: w.factions.find((x) => x.faction === f)!.count }))} />
+              <CountTable id="classes" title="Classes" item="Class" total={w.characters!} rows={w.classes.map((c) => ({ key: c.class, label: CLASS_NAME.get(c.class)!, count: c.count }))} />
+              <CountTable id="races" title="Races" item="Race" total={w.characters!} rows={w.races.map((r) => ({ key: `${r.faction}/${r.race}`, label: `${RACE_NAME.get(r.race)} (${r.faction})`, count: r.count }))} />
               <section aria-labelledby="grid" className="space-y-3">
                 <h2 id="grid" className="text-2xl font-semibold text-fg">Race and class</h2>
                 <p className="text-fg-2">
                   Blizzard&apos;s race and class tables from <Link href="/wow-forever" className={link}>What is WoW: Forever</Link>, with
-                  the characters in each playable combination. &lt;10 means fewer than 10.
+                  the characters in each playable combination. A dash is a hidden count.
                 </p>
                 {FACTIONS.slice().reverse().map((f) => <RaceClassGrid key={f} faction={f} window={w} />)}
               </section>
-              <CountTable id="levels" title="Level bands" total={w.characters!} rows={LEVEL_BANDS.map((b) => ({ key: b.id, label: b.label, count: w.levels.find((l) => l.band === b.id)!.count }))} />
+              <CountTable id="levels" title="Level bands" item="Level band" total={w.characters!} rows={LEVEL_BANDS.map((b) => ({ key: b.id, label: b.label, count: w.levels.find((l) => l.band === b.id)!.count }))} />
             </>
           )}
 
@@ -246,7 +261,7 @@ function BiasLine({ window: w }: { window: CensusWindow }) {
     <p className="text-sm text-fg-2 max-w-2xl">
       {own !== null && seen !== null
         ? `Known from: ${percent(seen, own + seen)} players seen by uploaders, ${percent(own, own + seen)} uploaders' own characters. `
-        : `Known from: ${seen === null ? "fewer than 10" : `about ${number(seen)}`} players seen by uploaders, ${own === null ? "fewer than 10" : `about ${number(own)}`} uploaders' own characters. `}
+        : `Known from: players seen by uploaders ${seen === null ? HIDDEN_LABEL : `about ${number(seen)}`}, uploaders' own characters ${own === null ? HIDDEN_LABEL : `about ${number(own)}`}. `}
       Seen players lean toward the zones uploaders play in; own characters lean toward people who install addons.
     </p>
   );

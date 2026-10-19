@@ -20,7 +20,7 @@ import { KNOWLEDGE_KINDS, MCP_PROMPT_NAMES, MCP_PROMPTS, MCP_RESOURCE_TEMPLATE_U
 import { z } from "zod";
 import { handleProfessionPath, professionPath } from "./profession-path.js";
 import { promptText } from "./prompts.js";
-import { answerPopulation, POPULATION_TOOL, type CensusLoader, type PopulationArgs } from "./population.js";
+import { answerPopulation, type CensusLoader } from "./population.js";
 import { readResource } from "./resources.js";
 import { handleTalentPlan, handleTalentTree } from "./talent-tools.js";
 import { handleRecipeThresholds, pathFactsFromRecords, recipeFactsFromRecords, recipeThresholdsStructured } from "./recipe-thresholds.js";
@@ -572,6 +572,7 @@ export function createToolHandlers(db: DB, options: ToolOptions = {}): ToolHandl
       const now = new Date();
       return { text: handleEcosystemProjects(view, args, now), structured: ecosystemProjectsStructured(view, args, now) };
     },
+    population: (args) => answerPopulation(args, options.census, answerFooter),
     everloot_plan: () => ({ text: handlePlan(), structured: planStructured() }),
   };
   void readFacts;
@@ -598,11 +599,6 @@ export function createKnowledgeServer(db: DB, options: ToolOptions = {}): McpSer
       },
     );
   }
-  // population is not in the protocol's tool table yet (kb/src/population.ts), so it is listed after it.
-  server.registerTool("population", POPULATION_TOOL, async (args: unknown) => {
-    const answer = await answerPopulation(args as PopulationArgs, options.census, answerFooter);
-    return { content: [{ type: "text" as const, text: answer.text }], structuredContent: answer.structured };
-  });
   for (const uri of MCP_RESOURCE_URIS) {
     const def = MCP_RESOURCES[uri];
     server.registerResource(def.name, uri, { title: def.title, description: def.description, mimeType: def.mimeType }, () => {
