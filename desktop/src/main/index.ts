@@ -192,8 +192,10 @@ if (!app.requestSingleInstanceLock()) {
   const engineInputs = (s: Settings) => JSON.stringify([s.gameFolder, s.endpoint, s.upload, s.prices, s.ask, s.consentedAt]);
   ipcMain.handle("saveSettings", (_e, patch: unknown) => {
     const before = settings;
-    settings = mergeSettings(settings, patch);
-    saveSettings(settingsPath, settings);
+    const next = mergeSettings(settings, patch);
+    // Written first: a save that fails (data folder read-only or full) changes nothing and the page hears why.
+    saveSettings(settingsPath, next);
+    settings = next;
     applyLoginItem();
     if (!before.consentedAt && settings.consentedAt) checkReleases();
     if (engineInputs(before) !== engineInputs(settings)) engine.start(settings);

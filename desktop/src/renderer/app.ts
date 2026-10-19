@@ -206,7 +206,7 @@ function weekBars(days: MoneyDay[]): string {
   const max = Math.max(1, ...week.map((d) => Math.max(d.earned, d.spent)));
   const cols = week.map((d) => {
     const letter = DAY_LETTERS[new Date(`${d.date}T00:00:00Z`).getUTCDay()];
-    return `<div class="wk-col" title="${d.date}: +${gold(d.earned)} in, −${gold(d.spent)} out"><div class="wk-up"><i style="height:${Math.round((d.earned / max) * 100)}%"></i></div><div class="wk-down"><i style="height:${Math.round((d.spent / max) * 100)}%"></i></div><span class="wk-d">${letter}</span></div>`;
+    return `<div class="wk-col" title="${d.date}: +${gold(d.earned)} in, −${gold(d.spent)} out"><div class="wk-up"><i data-h="${Math.round((d.earned / max) * 100)}"></i></div><div class="wk-down"><i data-h="${Math.round((d.spent / max) * 100)}"></i></div><span class="wk-d">${letter}</span></div>`;
   }).join("");
   return `<div class="week-bars" role="img" aria-label="Money earned above the line and spent below, one column a day">${cols}</div>`;
 }
@@ -350,7 +350,7 @@ function selectChar(i: number): void {
   openDrawer(c, main.querySelector<HTMLElement>(`[data-char="${i}"]`));
 }
 
-function openDrawer(c: CharacterRow, opener: HTMLElement | null): void {
+function openDrawer(c: CharacterRow, opener: HTMLElement | null, tab = "overview", focus = true): void {
   const layer = main.querySelector<HTMLElement>("#drawerLayer");
   if (!layer) return;
   drawerChar = c; drawerOpener = opener;
@@ -358,10 +358,30 @@ function openDrawer(c: CharacterRow, opener: HTMLElement | null): void {
   const realm = main.querySelector<HTMLElement>("#dwRealm"), title = main.querySelector<HTMLElement>("#dwTitle");
   if (realm) realm.textContent = c.realm.toUpperCase();
   if (title) title.textContent = c.character;
-  renderDrawerTab("overview");
+  renderDrawerTab(tab);
   layer.hidden = false;
   layer.setAttribute("aria-hidden", "false");
-  main.querySelector<HTMLElement>(".drawer-close")?.focus();
+  if (focus) main.querySelector<HTMLElement>(".drawer-close")?.focus();
+}
+
+/** After the page is rebuilt (a job finished, the data refreshed), the open drawer comes back on the same character and tab. */
+function reopenDrawer(tab: string): void {
+  const was = drawerChar!;
+  const rows = data.characters?.characters ?? [];
+  const i = rows.findIndex((r) => r.character === was.character && r.realm === was.realm);
+  if (i < 0) { drawerChar = null; drawerOpener = null; return; }
+  openDrawer(rows[i], main.querySelector<HTMLElement>(`[data-char="${i}"]`), tab, false);
+}
+
+/** Remembers the focused control by its id or data attribute and returns the call that focuses it again after a rebuild. */
+function keepFocus(): () => void {
+  const el = document.activeElement as HTMLElement | null;
+  if (!el || !main.contains(el)) return () => {};
+  const attrs = ["data-page", "data-run", "data-char", "data-dwtab", "data-copy", "data-toggle", "data-realm", "data-unfollow", "data-restore", "data-open", "data-ask"];
+  const sel = el.id ? `#${CSS.escape(el.id)}`
+    : attrs.filter((a) => el.hasAttribute(a)).map((a) => `[${a}="${CSS.escape(el.getAttribute(a)!)}"]`)[0]
+      ?? (el.classList.contains("drawer-close") ? ".drawer-close" : null);
+  return () => { if (sel && document.activeElement !== main.querySelector(sel)) main.querySelector<HTMLElement>(sel)?.focus({ preventScroll: true }); };
 }
 
 function closeDrawer(): void {
@@ -582,8 +602,19 @@ function render(): void {
   const s = state;
   if (page.startsWith("site:")) { main.innerHTML = siteTool(s, page.slice(5)); return; }
   const draft = page === "chat" ? (main.querySelector("#chatText") as HTMLTextAreaElement | null)?.value : undefined;
+  const realmDraft = (main.querySelector("#realmAdd") as HTMLInputElement | null)?.value;
+  const drawerTab = drawerChar ? main.querySelector<HTMLElement>('[data-dwtab][aria-selected="true"]')?.dataset.dwtab ?? "overview" : null;
+  const refocus = keepFocus();
   main.innerHTML = page === "overview" ? overview(s) : page === "chat" ? chat() : page === "characters" ? characters() : page === "upload" ? upload(s) : page === "market" ? market(s) : page === "ask" ? ask(s)
     : page === "addon" ? addon(s) : page === "changes" ? changes() : page === "log" ? log(s) : settings(s);
+  // The page's CSP allows no inline style attributes; bar heights go through the DOM instead.
+  for (const el of main.querySelectorAll<HTMLElement>("[data-h]")) el.style.height = `${el.dataset.h}%`;
+  const realmBox = main.querySelector("#realmAdd") as HTMLInputElement | null;
+  if (realmBox && realmDraft) realmBox.value = realmDraft;
+  if (page === "characters" && drawerTab) reopenDrawer(drawerTab);
+  refocus();
+  // The drawer is modal: focus stays inside it.
+  if (drawerChar && !main.querySelector("#drawerLayer")?.contains(document.activeElement)) main.querySelector<HTMLElement>(".drawer-close")?.focus();
   if (page === "chat") {
     const box = main.querySelector("#chatText") as HTMLTextAreaElement | null;
     if (box && draft) box.value = draft;
@@ -627,7 +658,7 @@ async function detect(): Promise<void> {
 
 async function go(p: Page): Promise<void> {
   if (page.startsWith("site:") && !p.startsWith("site:")) await api.siteHide();
-  page = p; draftDirty = false; flash = "";
+  page = p; draftDirty = false; flash = ""; drawerChar = null; drawerOpener = null;
   if (p.startsWith("site:")) { siteUrl = await api.siteShow(p.slice(5)); render(); return; }
   render();
   void load(p);
@@ -654,7 +685,23 @@ api.onChatProgress((p) => {
   if (atEnd) thread.scrollTop = thread.scrollHeight;
 });
 
-document.body.addEventListener("click", async (ev) => {
+const toast = document.getElementById("toast")!;
+let toastTimer: ReturnType<typeof setTimeout> | undefined;
+/** A call to the main side that failed where the page has no message line of its own: shown, then gone. */
+function failed(e: unknown): void {
+  toast.textContent = msg(e);
+  toast.hidden = false;
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { toast.hidden = true; }, 8000);
+  // A switch the save refused goes back to what is actually set; a form draft stays as typed.
+  render();
+}
+
+document.body.addEventListener("click", (ev) => { onClick(ev).catch(failed); });
+main.addEventListener("change", (ev) => { onChange(ev).catch(failed); });
+main.addEventListener("submit", (ev) => { onSubmit(ev).catch(failed); });
+
+async function onClick(ev: MouseEvent): Promise<void> {
   const el = ev.target as HTMLElement;
   const row = el.closest<HTMLElement>("[data-char]");
   if (row) { selectChar(Number(row.dataset.char)); return; }
@@ -675,7 +722,7 @@ document.body.addEventListener("click", async (ev) => {
     const question = t.dataset.ask;
     if (page !== "chat") { if (page.startsWith("site:")) await api.siteHide(); page = "chat"; draftDirty = false; flash = ""; }
     if (!data.chat) data.chat = await api.chatInfo();
-    void sendChat(question);
+    sendChat(question).catch(failed);
     return;
   }
   if (t.dataset.copy) {
@@ -753,9 +800,9 @@ document.body.addEventListener("click", async (ev) => {
     } catch (e) { flash = `Could not check: ${msg(e)}`; }
     render();
   }
-});
+}
 
-main.addEventListener("change", async (ev) => {
+async function onChange(ev: Event): Promise<void> {
   const el = ev.target as HTMLInputElement;
   if (el.id === "providerKind") { pickKind = el.value as ProviderKind; render(); return; }
   if (el.dataset.toggle) {
@@ -773,7 +820,7 @@ main.addEventListener("change", async (ev) => {
   }
   if (el.name === "folder") { chosenFolder = el.value; render(); return; }
   if (el.form && el.form.id !== "chatForm" && el.form.id !== "providerForm") draftDirty = true;
-});
+}
 main.addEventListener("input", (ev) => { const f = (ev.target as HTMLElement).closest("form"); if (f && f.id !== "chatForm" && f.id !== "providerForm") draftDirty = true; });
 main.addEventListener("keydown", (ev) => {
   const el = ev.target as HTMLElement;
@@ -799,7 +846,7 @@ main.addEventListener("keydown", (ev) => {
   }
 });
 
-main.addEventListener("submit", async (ev) => {
+async function onSubmit(ev: SubmitEvent): Promise<void> {
   const form = ev.target as HTMLFormElement;
   ev.preventDefault();
   const f = new FormData(form);
@@ -819,7 +866,7 @@ main.addEventListener("submit", async (ev) => {
     const question = box.value.trim();
     if (!question || data.chat?.busy) return;
     box.value = "";
-    void sendChat(question);
+    sendChat(question).catch(failed);
     return;
   }
   if (form.id === "settings") {
@@ -831,7 +878,7 @@ main.addEventListener("submit", async (ev) => {
   render();
   const saved = main.querySelector("#saved");
   if (saved) saved.textContent = "Saved.";
-});
+}
 
 void (async () => {
   state = await api.state();
