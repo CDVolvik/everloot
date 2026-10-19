@@ -20,7 +20,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: main
           persist-credentials: false
@@ -28,7 +28,7 @@ jobs:
         run: |
           git fetch --depth=1 origin data/ecosystem:refs/remotes/origin/data/ecosystem || exit 0
           git checkout origin/data/ecosystem -- kb/changes/ecosystem.json
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22.23.2'
           cache: npm
@@ -45,7 +45,7 @@ jobs:
         working-directory: kb
         env:
           GITHUB_TOKEN: ${{ github.token }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: ecosystem
           path: kb/changes/ecosystem.json
@@ -60,12 +60,12 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: main
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: ecosystem
           path: kb/changes
