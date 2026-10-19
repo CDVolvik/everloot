@@ -1,3 +1,4 @@
+import { completable } from "@modelcontextprotocol/sdk/server/completable.js";
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CREDIT_LINE, LICENCE, MCP_CREDIT, SITE } from "@everloot/protocol";
@@ -412,6 +413,12 @@ export function handleSearch(db: DB, args: SearchArgs): string {
 type Answer = string | StructuredAnswer;
 type StructuredAnswer = { text: string; structured: object };
 
+/** The values that begin with what the user typed so far, case-insensitive, in the table's order. */
+function startingWith(values: readonly string[], typed: string): string[] {
+  const prefix = typed.trim().toLowerCase();
+  return values.filter((v) => v.startsWith(prefix));
+}
+
 /** The answer of a connector-contract tool (search, fetch): the structure, with the same JSON as the text block. */
 function jsonAnswer(structured: object): StructuredAnswer {
   return { text: JSON.stringify(structured), structured };
@@ -573,7 +580,15 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; 
   for (const uriTemplate of MCP_RESOURCE_TEMPLATE_URIS) {
     const def = MCP_RESOURCE_TEMPLATES[uriTemplate];
     const input = z.object(MCP_TOOLS[def.tool].inputSchema);
-    server.registerResource(def.name, new ResourceTemplate(uriTemplate, { list: undefined }), { title: def.title, description: def.description, mimeType: def.mimeType }, async (uri, variables) => {
+    // A variable with a known set of values gets one listed resource per value, and completion from that set.
+    const values = "values" in def ? def.values : undefined;
+    const template = new ResourceTemplate(uriTemplate, {
+      list: values
+        ? () => ({ resources: values.map((v) => ({ uri: uriTemplate.replace(`{${def.variable}}`, v), name: `${def.name}/${v}`, title: `${def.title}: ${v}`, mimeType: def.mimeType })) })
+        : undefined,
+      ...(values ? { complete: { [def.variable]: (typed: string) => startingWith(values, typed) } } : {}),
+    });
+    server.registerResource(def.name, template, { title: def.title, description: def.description, mimeType: def.mimeType }, async (uri, variables) => {
       const raw = String(variables[def.variable] ?? "");
       // The tool's own input schema decides what the variable may be: a positive id, or a class slug.
       const parsed = input.safeParse({ [def.argument]: /^\d+$/.test(raw) ? Number(raw) : raw });
@@ -585,7 +600,11 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; 
   }
   for (const name of MCP_PROMPT_NAMES) {
     const def = MCP_PROMPTS[name];
-    const argsSchema = Object.fromEntries(Object.entries(def.arguments).map(([arg, a]) => [arg, a.required ? z.string().describe(a.description) : z.string().optional().describe(a.description)]));
+    const argsSchema = Object.fromEntries(Object.entries(def.arguments).map(([arg, a]) => {
+      const schema = a.required ? z.string().describe(a.description) : z.string().optional().describe(a.description);
+      // An argument with a known set of values is completed from that set.
+      return [arg, "values" in a && a.values ? completable(schema, (typed) => startingWith(a.values!, String(typed ?? ""))) : schema];
+    }));
     server.registerPrompt(name, { title: def.title, description: def.description, argsSchema }, (args) => ({
       description: def.title,
       messages: [{ role: "user" as const, content: { type: "text" as const, text: promptText(name, args as Record<string, string | undefined>) } }],

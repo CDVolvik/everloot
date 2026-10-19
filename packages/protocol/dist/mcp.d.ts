@@ -3429,9 +3429,11 @@ export declare const MCP_RESOURCES: {
 export interface McpPromptDef {
     title: string;
     description: string;
+    /** `values`, when present, are the only values the argument takes; the server offers them through completion/complete. */
     arguments: Record<string, {
         description: string;
         required: boolean;
+        values?: readonly string[];
     }>;
 }
 /** Every prompt, keyed by name, in the order the server lists them. kb/src/prompts.ts holds the messages. */
@@ -3463,6 +3465,7 @@ export declare const MCP_PROMPTS: {
             readonly game: {
                 readonly description: "forever or classic. Without it, both.";
                 readonly required: false;
+                readonly values: readonly ["forever", "classic"];
             };
         };
     };
@@ -3498,6 +3501,7 @@ export declare const MCP_PROMPT_LIST: ({
         readonly game: {
             readonly description: "forever or classic. Without it, both.";
             readonly required: false;
+            readonly values: readonly ["forever", "classic"];
         };
     };
     name: "answer_with_sources" | "review_talent_plan" | "what_changed";
@@ -3516,6 +3520,8 @@ export interface McpResourceTemplateDef {
     /** The template variable, and the tool argument it fills. */
     variable: string;
     argument: string;
+    /** When the variable has a known finite set of values, the server lists one resource per value and completes the variable from them. */
+    values?: readonly string[];
 }
 export declare const MCP_RESOURCE_TEMPLATES: {
     readonly "everloot://item/{id}": {
@@ -3571,6 +3577,7 @@ export declare const MCP_RESOURCE_TEMPLATES: {
         readonly tool: "talent_tree";
         readonly variable: "class";
         readonly argument: "class";
+        readonly values: readonly ["warrior", "paladin", "hunter", "rogue", "priest", "shaman", "mage", "warlock", "druid"];
     };
 };
 export type McpResourceTemplateUri = keyof typeof MCP_RESOURCE_TEMPLATES;
@@ -3628,6 +3635,7 @@ export declare const MCP_RESOURCE_TEMPLATE_LIST: ({
     tool: "talent_tree";
     variable: "class";
     argument: "class";
+    values: readonly ["warrior", "paladin", "hunter", "rogue", "priest", "shaman", "mage", "warlock", "druid"];
     uriTemplate: "everloot://item/{id}" | "everloot://npc/{id}" | "everloot://object/{id}" | "everloot://quest/{id}" | "everloot://talents/{class}" | "everloot://vendor/{id}";
 })[];
 export type McpResourceUri = keyof typeof MCP_RESOURCES;

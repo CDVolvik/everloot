@@ -48,6 +48,9 @@ required, or tightening a limit is a major release.
 - `outputSchema` for `gold_ledger` (`goldLedger`, with `INCOME_CATEGORIES` and `SPENDING_CATEGORIES`) and
   `world_map_near` (`mapNear`), the last two: every tool is structured now (`STRUCTURED_TOOLS` is the
   whole list).
+- `values` on a prompt argument (`what_changed.game`: forever, classic) and on a resource template
+  (`everloot://talents/{class}`: `TALENT_CLASSES`): the finite set the server completes from and, for a
+  template, lists one resource per value. Written into `schema/mcp/prompts.json` and `resources.json`.
 - Two tools after OpenAI's connector contract, `search` (`searchResult`: id, title, url) and `fetch`
   (`fetchedDocument`: id, title, text, url, metadata with source, licence and date), listed in
   `CHATGPT_TOOLS`; their schema files say the text block is the structured answer as JSON.

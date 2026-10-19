@@ -84,7 +84,7 @@ export function emit(out = OUT): void {
     description: "The MCP server's prompts: a client fills the arguments (strings) and gets a user message that says how to use the tools for that job.",
     prompts: MCP_PROMPT_LIST.map((prompt) => ({
       name: prompt.name, title: prompt.title, description: prompt.description,
-      arguments: Object.entries(prompt.arguments).map(([name, a]) => ({ name, description: a.description, required: a.required })),
+      arguments: Object.entries(prompt.arguments).map(([name, a]) => ({ name, description: a.description, required: a.required, ...("values" in a ? { values: a.values } : {}) })),
     })),
   });
   write(join(out, "index.json"), {
