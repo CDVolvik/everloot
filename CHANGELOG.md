@@ -35,6 +35,11 @@ that has a zip in the repository. Earlier builds have none.
 - Desktop App: Chat answers appear as the model writes them, with the tool it is running shown while
   it looks something up (Anthropic and OpenAI-compatible providers; a server that does not stream
   still answers in one piece). Each answer has a Copy button.
+- Desktop App: a model menu under the Chat box, as in other chat apps. It lists the models of every
+  provider saved on the page (one key each for Anthropic, OpenRouter, OpenCode Zen, a custom server, plus
+  Ollama), and picking one switches Chat and the in-game `/ask`. Keys can be added, replaced or removed one
+  provider at a time. When search alone finds nothing, the answer says a model would read the question and
+  offers to add one.
 
 ### Changed
 - The upload record contract moved from `web/src/lib/intake.ts` into one package, `packages/protocol`

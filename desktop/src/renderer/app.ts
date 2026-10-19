@@ -116,27 +116,58 @@ function overview(s: AppState): string {
 function chat(): string {
   const c = data.chat;
   const thread = (c?.messages ?? []).map((m, i) => {
+    // Search alone found nothing and no model is set up: say what would answer it.
+    const nudge = !m.model && m.text === NO_SOURCED_ANSWER && !c?.providers.length && c?.mode === "plain search"
+      ? `<br>Search alone only matches names in Everloot's data. A model reads the question, fixes the spelling and looks it up for you. <button type="button" class="link" data-addmodel>Add a key or a free model</button>`
+      : "";
     const meta = m.role === "assistant"
-      ? `<div class="meta"><button type="button" class="link copy" data-copy="${i}">Copy</button>${m.model ? `<b>${esc(m.model)}</b>` : "<b>plain search</b>"}${m.steps.length ? ` · ${m.steps.length} tool call(s): ${esc(m.steps.map((st) => st.tool).join(", "))}` : ""}${m.sources.length ? `<br>Sources: ${m.sources.map((x) => esc(x)).join(" · ")}` : m.model && m.text !== NO_SOURCED_ANSWER ? "<br>No source in Everloot's data; the model's own knowledge" : ""}</div>`
+      ? `<div class="meta"><button type="button" class="link copy" data-copy="${i}">Copy</button>${m.model ? `<b>${esc(m.model)}</b>` : "<b>search only</b>"}${m.steps.length ? ` · ${m.steps.length} tool call(s): ${esc(m.steps.map((st) => st.tool).join(", "))}` : ""}${m.sources.length ? `<br>Sources: ${m.sources.map((x) => esc(x)).join(" · ")}` : m.model && m.text !== NO_SOURCED_ANSWER ? "<br>No source in Everloot's data; the model's own knowledge" : ""}${nudge}</div>`
       : `<div class="meta">${clock(m.at)}</div>`;
     return `<div class="msg msg-${m.role}">${esc(m.text)}${meta}</div>`;
   }).join("");
   return `<div class="page chat">
     <div class="head"><h1>Chat</h1><span class="sub">${c ? `${esc(c.mode)} · ${c.withToken ? "your MCP token" : "public MCP, rate limited"}` : ""} <button type="button" class="link" id="chatClear">clear</button></span></div>
     <p class="muted small">Ask anything about the game. The model looks it up in Everloot's own MCP tools first and names the sources; when they have nothing it says the answer is its own knowledge. Private: the transcript stays in your data folder.</p>
-    ${c?.provider && !pickOpen ? `<p class="muted small">Using <b>${esc(c.provider.kind)}:${esc(c.provider.model)}</b> from this page, for Chat and the in-game /ask. <button type="button" class="link" id="changeProvider">Change</button> · <button type="button" class="link" id="removeProvider">Remove</button></p>` : ""}
-    ${c && !c.provider && !pickOpen ? `<p class="muted small">${c.mode === "plain search" ? "Without a provider you get the sourced search hits only." : "That provider comes from config.json, written by hand."} <button type="button" class="link" id="changeProvider">Use your own key or a free model</button></p>` : ""}
-    ${c && pickOpen ? providerForm() : ""}
+    ${c && c.mode === "plain search" && !pickOpen ? `<p class="muted small">No model yet, so you get Everloot's search hits as they are. <button type="button" class="link" data-addmodel>Add your own key or a free model</button></p>` : ""}
+    ${c && pickOpen ? providerForm(c) : ""}
     ${flash ? `<p class="${flash.startsWith("!") ? "error" : "ok"} small">${esc(flash.replace(/^!/, ""))}</p>` : ""}
     <div class="thread" id="thread">${thread || `<span class="muted">Ask anything about WoW: Forever: a drop, a vendor, a recipe, a price, a quest.</span><div class="chips">${starters(c).map((q) => askChip(q)).join("")}</div>`}${c?.busy ? `<div class="msg msg-assistant" id="chatLive">${liveAnswer()}</div>` : ""}${c?.error ? `<div class="msg msg-assistant error">${esc(c.error)}</div>` : ""}</div>
-    <form id="chatForm"><textarea id="chatText" rows="2" placeholder="Ask about Forever. Enter sends, Shift+Enter is a new line." ${c?.busy ? "disabled" : ""}></textarea><button type="submit" class="btn btn-primary" ${c?.busy ? "disabled" : ""}>Send</button></form>
+    <form id="chatForm"><textarea id="chatText" rows="2" aria-label="Your question" placeholder="Ask about Forever. Enter sends, Shift+Enter is a new line." ${c?.busy ? "disabled" : ""}></textarea>
+      <div class="composer-bar">${c ? modelMenu(c) : ""}<button type="submit" class="btn btn-primary" ${c?.busy ? "disabled" : ""}>Send</button></div></form>
   </div>`;
+}
+
+/**
+ * The model menu under the question box, as in other chat apps: every model of every provider saved
+ * here, the one in use selected; picking one switches Chat and the in-game /ask. The last entries
+ * add a key or manage the saved ones.
+ */
+function modelMenu(c: ChatInfo): string {
+  const groups = c.providers.map((p) => {
+    const preset = presetFor(p.kind);
+    const models = [...(preset?.models ?? []).map((m) => ({ id: m.id, label: m.label }))];
+    if (!models.some((m) => m.id === p.model)) models.unshift({ id: p.model, label: p.model });
+    const on = (id: string) => c.provider?.kind === p.kind && c.provider.model === id;
+    return `<optgroup label="${esc(preset?.label ?? p.kind)}">${models.map((m) => `<option value="${esc(`${p.kind}|${m.id}`)}" ${on(m.id) ? "selected" : ""}>${esc(m.label)}</option>`).join("")}</optgroup>`;
+  }).join("");
+  const current = c.provider ? "" : `<option value="" selected>${c.mode === "plain search" ? "Search only, no model" : esc(`config.json: ${c.mode}`)}</option>`;
+  return `<select id="modelPick" class="model-pick" aria-label="Model" ${c.busy ? "disabled" : ""}>${current}${groups}<option value="add">Add a provider key…</option>${c.providers.length ? `<option value="manage">Manage saved keys…</option>` : ""}</select>`;
 }
 
 /** The answer so far, and what the model is doing while there is no text or it is running a tool. */
 function liveAnswer(): string {
   const doing = live?.tool ? `Looking up ${esc(live.tool)}…` : live?.text ? "" : "Answering…";
   return `${live?.text ? esc(live.text) : ""}${doing ? `<div class="meta">${doing}</div>` : ""}`;
+}
+
+/** Opens the provider form on a provider, or on the first one not saved yet (OpenRouter first: one key, cheap and free models). */
+function openProviderForm(kind: ProviderKind | null): void {
+  const saved = new Set(data.chat?.providers.map((p) => p.kind));
+  const order: ProviderKind[] = ["openrouter", "anthropic", "opencode", "ollama", "custom"];
+  pickKind = kind ?? order.find((k) => !saved.has(k)) ?? "openrouter";
+  pickOpen = true; flash = "";
+  render();
+  main.querySelector<HTMLElement>("#providerKind")?.focus();
 }
 
 /** Questions to start with: about the game always; about the player's own data when a model can call the local tools. */
@@ -146,17 +177,22 @@ function starters(c: ChatInfo | null | undefined): string[] {
   return ["How much gold do my characters have?", "When did I last scan my realms?", "Is my data uploading?", ...game];
 }
 
-/** The provider picker: one preset, its key, a model from the list or typed, and a custom server address. */
-function providerForm(): string {
+/** The provider picker: one preset, its key, a model from the list or typed, and a custom server address; and the keys already saved. */
+function providerForm(c: ChatInfo): string {
   const preset = presetFor(pickKind) ?? PROVIDER_PRESETS[0];
-  const kinds = PROVIDER_PRESETS.map((p) => `<option value="${p.kind}" ${p.kind === preset.kind ? "selected" : ""}>${esc(p.label)}</option>`).join("");
+  const saved = c.providers.some((p) => p.kind === preset.kind);
+  const kinds = PROVIDER_PRESETS.map((p) => `<option value="${p.kind}" ${p.kind === preset.kind ? "selected" : ""}>${esc(p.label)}${c.providers.some((s) => s.kind === p.kind) ? " · saved" : ""}</option>`).join("");
+  const list = c.providers.length
+    ? `<div class="saved-keys"><span class="muted small">Saved here:</span>${c.providers.map((p) => `<span class="chip">${esc(presetFor(p.kind)?.label ?? p.kind)} <button type="button" class="link" data-removekind="${p.kind}" aria-label="Remove ${esc(presetFor(p.kind)?.label ?? p.kind)}">remove</button></span>`).join("")}</div>`
+    : "";
   const models = preset.models.length
     ? `<select name="model" class="grow">${preset.models.map((m, i) => `<option value="${esc(m.id)}" ${i === 0 ? "selected" : ""}>${esc(m.label)} · ${esc(m.note)}</option>`).join("")}<option value="">Another model id…</option></select>`
     : "";
   return `<form id="providerForm" class="panel" autocomplete="off">
+    ${list}
     <div class="field"><label for="providerKind">Provider</label><select name="kind" id="providerKind">${kinds}</select></div>
     ${preset.kind === "custom" ? `<div class="field"><label for="providerUrl">Server</label><input name="baseUrl" id="providerUrl" placeholder="https://host/v1" spellcheck="false"></div>` : ""}
-    ${preset.keyFile ? `<div class="field"><label for="providerKey">Key</label><input type="password" name="key" id="providerKey" placeholder="${preset.kind === "custom" ? "optional" : "paste the key"}" spellcheck="false"><span class="hint">${esc(preset.keyHint)}</span></div>` : ""}
+    ${preset.keyFile ? `<div class="field"><label for="providerKey">Key</label><input type="password" name="key" id="providerKey" placeholder="${saved ? "saved; paste a new one to replace it" : preset.kind === "custom" ? "optional" : "paste the key"}" spellcheck="false"><span class="hint">${esc(preset.keyHint)}</span></div>` : ""}
     <div class="field"><label for="providerModel">Model</label>${models}<input name="modelText" id="providerModel" placeholder="${preset.models.length ? "only if you picked Another model id" : preset.kind === "ollama" ? "the model you pulled, like qwen3:8b" : "model id"}" spellcheck="false"></div>
     <p class="muted small">${esc(preset.dataNote)} The key is written to a file in your data folder and named from <code>config.json</code>; it goes to that provider only, with your questions and the tool results.</p>
     <div class="row"><button type="submit" class="btn btn-primary">Save</button><button type="button" class="btn" id="cancelProvider">Cancel</button></div>
@@ -667,7 +703,7 @@ async function go(p: Page): Promise<void> {
 /** Shows the question in the thread at once, then the answer when it comes. */
 async function sendChat(question: string): Promise<void> {
   if (!question || data.chat?.busy) return;
-  data.chat = { ...(data.chat ?? { messages: [], mode: "", mcpUrl: "", withToken: false, provider: null, error: null }), busy: true, messages: [...(data.chat?.messages ?? []), { role: "user", text: question, at: new Date().toISOString(), model: null, sources: [], steps: [] }] };
+  data.chat = { ...(data.chat ?? { messages: [], mode: "", mcpUrl: "", withToken: false, provider: null, providers: [], error: null }), busy: true, messages: [...(data.chat?.messages ?? []), { role: "user", text: question, at: new Date().toISOString(), model: null, sources: [], steps: [] }] };
   live = null;
   render();
   try { data.chat = await api.chatSend(question); } finally { live = null; }
@@ -770,12 +806,15 @@ async function onClick(ev: MouseEvent): Promise<void> {
     return;
   }
   if (t.id === "openBackups") { void api.openBackupsFolder(); return; }
-  if (t.id === "removeProvider") {
-    try { data.chat = await api.chatRemoveProvider(); flash = "Provider removed. Chat is back to sourced search."; } catch (e) { flash = `!${msg(e)}`; }
+  if (t.dataset.removekind) {
+    try {
+      data.chat = await api.chatRemoveProvider(t.dataset.removekind as ProviderKind);
+      flash = data.chat.provider ? `Key removed. Chat now runs ${data.chat.mode}.` : "Key removed. Chat is back to search only.";
+    } catch (e) { flash = `!${msg(e)}`; }
     render();
     return;
   }
-  if (t.id === "changeProvider") { pickKind = data.chat?.provider?.kind ?? "anthropic"; pickOpen = true; flash = ""; render(); return; }
+  if (t.hasAttribute("data-addmodel")) { openProviderForm(null); return; }
   if (t.id === "cancelProvider") { pickOpen = false; render(); return; }
   if (t.id === "copyDiag" && state) {
     try { await navigator.clipboard.writeText(diagnostics(state)); flash = "Copied. Paste it into the bug report."; }
@@ -805,6 +844,17 @@ async function onClick(ev: MouseEvent): Promise<void> {
 async function onChange(ev: Event): Promise<void> {
   const el = ev.target as HTMLInputElement;
   if (el.id === "providerKind") { pickKind = el.value as ProviderKind; render(); return; }
+  if (el.id === "modelPick") {
+    const v = el.value;
+    if (v === "add") { openProviderForm(null); return; }
+    if (v === "manage") { openProviderForm(data.chat?.provider?.kind ?? data.chat?.providers[0]?.kind ?? null); return; }
+    const [kind, ...rest] = v.split("|");
+    if (!kind || !rest.length) return;
+    data.chat = await api.chatUseModel(kind as ProviderKind, rest.join("|"));
+    flash = "";
+    render();
+    return;
+  }
   if (el.dataset.toggle) {
     const job = el.dataset.toggle as Job;
     state = await api.saveSettings(job === "ask" ? { ask: { ...state!.settings.ask, enabled: el.checked } } : { [job]: el.checked });
