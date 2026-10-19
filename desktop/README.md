@@ -38,7 +38,7 @@ The window is a sidebar with one page per thing to manage:
 |---|---|
 | Overview | The four states at a glance (upload, prices, `/ask`, addon), recent activity, the latest Blizzard changes |
 | Chat | A chat over Everloot's own MCP tools, with sources under every answer. With an Anthropic key (pasted on the page, kept in `anthropic.key` in the data folder and named from `config.json`) the model calls the tools itself; with another provider it phrases the search hits; with no provider you get the sourced hits as they are. The transcript stays in your data folder |
-| Characters | Your own characters from the save file: gold, peak, item level, money earned and spent, and the completion tracker's progress per character key. Never uploaded from here |
+| Characters | Your own characters from the save file: gold with a line of every snapshot the addon kept and the last seven days as earned, spent and net, peak, item level, and the completion tracker's progress per character key. Never uploaded from here |
 | Upload | Each account file: when it was written, addon and client build, records per kind, how many the site confirmed. Run now |
 | Market | Realm picks: your scanned realms are always carried; tick more from the realms the site has public values for (TSM-style realm picks, on Everloot's own scan data). When you last scanned each realm, with a reminder past a day. What the last refresh wrote |
 | Ask | MCP server and token file, which provider answers (`config.json`), questions pending in game, recent answers |
@@ -48,7 +48,8 @@ The window is a sidebar with one page per thing to manage:
 | Settings | Game folder, site, launch at login, start in tray, data folder, check for updates |
 | Site tools | The talent calculator, raid builder, database, auction prices, world map and lore archive, shown inside the window as the site itself. Links elsewhere open in your browser |
 
-The tray menu shows each job's last result, with Upload now, Refresh prices now, Pause and Quit.
+The tray menu shows each job's last result, a reminder when a realm's last full scan is older
+than a day, the newer app release when there is one, and Upload now, Refresh prices now, Pause and Quit.
 Closing the window keeps the app in the tray. The window opens where you left it, at the same
 size, unless that screen is gone. The release checks (app and addon) run at start and once a day
 after that.
@@ -74,7 +75,7 @@ companion's modules and the site's parser (`web/src/lib/sv-parse.ts`), so `web` 
 must be installed too.
 
 ```
-npm test            # vitest: settings, game folder detection, the engine, update checks
+npm test            # vitest: every module under src/main and the renderer's text helpers
 npm run typecheck
 npm run pack        # installers into release/ (electron-builder)
 npm run icons       # remake build/*.png from web/src/app/icon.svg
@@ -94,10 +95,12 @@ Set `EVERLOOT_DATA_DIR` to a scratch folder to keep a development run away from 
 | `src/main/market.ts`, `inspect.ts`, `addon.ts`, `changes.ts` | Realm picks and the prices file, what a save file holds, addon install with checksum, the changes feed |
 | `src/main/agent.ts`, `chat.ts` | The agent over the MCP server (tool loop, summary or plain search) and the Chat page's transcript |
 | `src/main/characters.ts` | Gold, gear and progress per character from the save file |
+| `src/main/backups.ts`, `providers.ts` | The dated copies of each account file and their restore; the Anthropic key file and its `config.json` entry |
+| `src/main/window-state.ts`, `json-file.ts` | The window's remembered size and place; JSON files read with a byte order mark allowed |
 | `src/main/site-views.ts` | The embedded site tools (one browser view, kept on the site's origin) |
 | `src/main/settings.ts`, `game-folder.ts`, `updates.ts`, `external.ts` | Settings file, where the game is, the release check, the browser allow-list |
 | `src/preload.ts` | The only bridge the page can call (`window.everloot`) |
-| `src/renderer/` | The window: one page, no framework, the site's colours |
+| `src/renderer/` | The window: one page, no framework, the site's colours; `format.ts` holds the text helpers, tested without the DOM |
 | `src/shared/types.ts` | Shapes both sides use |
 | `build/` | App and tray icons |
 | `scripts/` | The esbuild bundle, the icon maker, the screenshot helper |

@@ -18,7 +18,9 @@ that has a zip in the repository. Earlier builds have none.
   scans plus the realms you follow), the `/ask` setup and recent answers, addon install and update
   checked against the release's `SHA256SUMS`, the change tracker, the log, a chat over Everloot's
   MCP tools with sources (tool loop on the player's own Anthropic key, or plain sourced search), a
-  local characters view (gold, gear, progress), and the site's tools embedded. Electron, built on
+  local characters view (gold history, gear, progress), and the site's tools embedded. A dated
+  backup of each account file after every upload, with restore; a tray reminder when a realm's
+  scan is older than a day; the window remembers its place. Electron, built on
   `companion/src`, same data folder as the command line. Tagged `desktop-vX.Y.Z`; the first
   release is not code-signed.
 
