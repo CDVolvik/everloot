@@ -2,6 +2,8 @@ import { CREDIT_LINE, LICENCE, LICENCE_URL, MCP_PROMPT_NAMES, MCP_RESOURCE_TEMPL
 
 export const MCP_URL = `${SITE}/mcp/public`;
 export const CORPUS_URL = `${SITE}/api/corpus/public`;
+/** Where the bulk export is served from (scripts/upload-bulk.mjs), or null until the owner sets it. */
+export const BULK_URL = process.env.NEXT_PUBLIC_BULK_URL?.replace(/\/+$/, "") || null;
 
 /** The public MCP's per-IP limit per hour. connect.test.ts checks it against intake-quota.ts. */
 export const REQUESTS_PER_HOUR = 200;
@@ -102,6 +104,7 @@ npm run dev               # MCP at http://localhost:3000/mcp/public`,
   }, null, 2),
   toolsCurl: `curl -s "${SITE}/api/tools/get_by_name?name=Thrall" | jq .answer`,
   corpusCurl: `curl -s "${CORPUS_URL}?kinds=loot,vendor"`,
+  bulkCurl: `curl -s ${BULK_URL ?? "https://data.everloot.app"}/latest.json | jq -r .index   # the newest export's index.json`,
   openapiCurl: `curl -s ${SITE}/api/openapi.json | jq '.paths | keys'`,
   pagingJs: `// Every loot record, page by page. Stop when next is null.
 let url = "${CORPUS_URL}?kinds=loot&limit=500";

@@ -14,6 +14,9 @@ required, or tightening a limit is a major release.
   `CENSUS_KINDS`, `StoredRecord` and `StoredUpload` name them. Neither kind is a public corpus kind.
   `UPLOAD_LIMITS` gains `censusSeenPerDay` (500) and `censusSelfPerDay` (50), census rows one install may
   report per UTC day. Version 1.1.0, protocol 1.1.0.
+- `bulkIndex` and `bulkFile`, the shape of a bulk export's `index.json`, with `BULK_DATASETS`
+  (corpus, edges, drops, items): each file's rows are the array of an existing API response, named by
+  `rowsOf` and `field`, so the bulk files and the API share one definition.
 - `skill` as an entity kind and the `in_skill_line` relation (spell -> skill line), as the site's
   profession edges from the game files carry since 2026-10-18.
 - The upload record contract, moved here from the site: 31 record kinds, the upload envelope, the
