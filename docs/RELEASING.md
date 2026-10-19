@@ -125,7 +125,8 @@ protocol (`/schema/api/bulkIndex.json`).
 2. Upload it: `node scripts/upload-bulk.mjs ../bulk-out` with `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`,
    `R2_SECRET_ACCESS_KEY` and `BULK_BUCKET`. Every object is written create-only under a folder named
    by the export's `generatedAt`, data files first and the index last; then `latest.json` (the one
-   object the script overwrites) points at that folder. A hash mismatch stops it before anything is sent.
+   object the script overwrites) points at that folder. A hash mismatch, or a file (or the index) that
+   carries what looks like a local filesystem path, stops it before anything is sent.
 3. Once (owner): a public R2 bucket of its own (for example `everloot-bulk`, never the uploads bucket)
    with a public address such as `data.everloot.app`, a write token scoped to that bucket, and
    `NEXT_PUBLIC_BULK_URL` set in Vercel. Until it is set, `/connect` says there is no bulk download yet.

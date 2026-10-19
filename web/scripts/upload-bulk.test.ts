@@ -36,6 +36,17 @@ test("a file that does not match its hash or size in the index stops the upload 
   expect(() => plan(dir, index({ files: [{ ...JSON.parse(index()).files[0], bytes: 1 }] }))).toThrow(/bytes/);
 });
 
+test("a file or index that carries what looks like a local path stops the upload before anything is sent", () => {
+  const entry = JSON.parse(index()).files[0];
+  for (const leak of ['{"path":"D:\\\\Temp\\\\out.txt"}\n', '{"path":"/home/someone/notes.txt"}\n', '{"path":"C:\\\\Users\\\\someone\\\\AppData\\\\Local"}\n']) {
+    writeFileSync(join(dir, "edges.ndjson"), leak);
+    const file = { ...entry, rows: 1, bytes: Buffer.byteLength(leak), sha256: createHash("sha256").update(leak).digest("hex") };
+    expect(() => plan(dir, index({ files: [file] }))).toThrow(/local filesystem path/);
+  }
+  writeFileSync(join(dir, "edges.ndjson"), edges);
+  expect(() => plan(dir, index({ credit: "built in C:\\\\proj\\\\out" }))).toThrow(/index\.json carries/);
+});
+
 test("every object is written create-only and immutable, then latest.json points at the folder", async () => {
   writeFileSync(join(dir, "index.json"), index());
   const seen: { url: string; ifNoneMatch: string | null; cache: string | null }[] = [];
