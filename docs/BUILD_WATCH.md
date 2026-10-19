@@ -15,14 +15,16 @@ A maintainer reviews it. Nothing merges itself.
 3. Otherwise reads the tables from Blizzard's CDN and regenerates **exactly the files the site reads**, with
    the same generators a maintainer runs by hand ([the folder's README](../web/src/data/game-data/README.md)):
    `talents/<class>.json` (`trim-talent-catalog.mjs`), `raid-<build>.json` and `addon/modules/raid_data.lua`
-   (`build-raid-game-data.ts`), `map.json` (`client-map`) and `spell-values.json` (the numbers of the spells
-   talents show, which the trimmed talent files leave out). The old build's raid file is removed in the same
+   (`build-raid-game-data.ts`), `map.json` (`client-map`), `spell-values.json` (the numbers of the spells
+   talents show, which the trimmed talent files leave out) and `client-digests.json` (row counts and a content
+   hash per client table read, the read set's comparison baseline). The old build's raid file is removed in the same
    pull request and the import in `web/src/data/game-data/raid.ts` is pointed at the new one. There is no
    second copy of the data: what is committed is what the pages read.
 4. Compares the new files with the committed ones: talents added, removed, moved, rank changes, row-gate and
    prerequisite changes, talents swapped for another spell, spell number changes (effect values, duration,
    a hash of the tooltip), talent point levels, raid buff scope changes (per rank too), spell ids added or
-   removed and talent tree changes, and map zones and entrances that appeared, vanished or moved.
+   removed and talent tree changes, map zones and entrances that appeared, vanished or moved, and the client
+   read set: tables added, removed or changed by name, row count and content-hash difference (never rows).
 5. Writes a changelog entry (`web/src/data/game-data/changes/<product>-<buildId>.json`, shape in
    `kb/src/build-watch/changes.ts`; it carries the build, extraction source and encrypted block counts, so
    there is no separate manifest) and a pull request body. The workflow commits, pushes and opens or updates
@@ -53,7 +55,7 @@ downloaded files. `watch` has a read-only token and no credentials left in the c
 no npm and no parser; it alone has write access, and `BUILD_WATCH_TOKEN` appears only in its push step,
 passed to git for that call. `report` can only write issues. Branches are replaced with `--force-with-lease`.
 Before committing, `publish` checks the plan's values, accepts only the files the generators write (the
-talents, raid file, `raid.ts`, map, spell values, changelog entry and `raid_data.lua`) and requires that
+talents, raid file, `raid.ts`, map, spell values, client digests, changelog entry and `raid_data.lua`) and requires that
 `raid.ts` changes nothing but its import line.
 
 ## Repeated failure

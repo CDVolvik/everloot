@@ -4,7 +4,14 @@ import { dirname, join } from "node:path";
 import { LABEL, type BuildStamp } from "../src/talents/catalog.js";
 import type { WorldMapData } from "../src/world-map-data.js";
 import { GAME_DATA_DIR, RAID_LUA, RAID_TS, SPELL_VALUES_SCHEMA, raidFileName, writeSpellValues, type SiteData, type SpellValueTable, type TrimmedClass, type WebRaid } from "../src/build-watch/site-data.js";
+import { clientDigestsOf, writeClientDigests, type DigestInput } from "../src/build-watch/client-digests.js";
 import type { Extracted } from "../src/build-watch/watch.js";
+
+/** Two small tables, one of them changed by a test that says so. */
+export const DIGESTS: DigestInput[] = [
+  { table: "ItemSparse", rows: new Map<number, Record<string, unknown>>([[1, { Name_lang: "A", ItemLevel: 1 }], [2, { Name_lang: "B", ItemLevel: 2 }]]) },
+  { table: "SpellName", rows: new Map<number, Record<string, unknown>>([[1, { Name_lang: "Spell" }]]) },
+];
 
 export const CONFIG_A = "a".repeat(32);
 export const CONFIG_B = "b".repeat(32);
@@ -64,7 +71,7 @@ export function worldMap(buildId: number, zones: { id: number; name: string; lef
 const put = (path: string, text: string) => { mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, text); };
 
 /** Writes the files the generators write, under `root`. */
-export function writeSite(root: string, site: Partial<SiteData> & { talents: TrimmedClass[] }, opts: { raidTs?: boolean } = {}): void {
+export function writeSite(root: string, site: Partial<SiteData> & { talents: TrimmedClass[] }, opts: { raidTs?: boolean; digests?: DigestInput[] } = {}): void {
   const dir = join(root, GAME_DATA_DIR);
   for (const c of site.talents) put(join(dir, "talents", `${(c.className ?? "x").toLowerCase()}.json`), `${JSON.stringify(c, null, 1)}\n`);
   if (site.raid) {
@@ -73,17 +80,18 @@ export function writeSite(root: string, site: Partial<SiteData> & { talents: Tri
   }
   if (site.map) put(join(dir, "map.json"), `${JSON.stringify(site.map, null, 2)}\n`);
   if (site.spellValues) writeSpellValues(root, site.spellValues);
+  writeClientDigests(root, clientDigestsOf(site.talents[0].build, opts.digests ?? DIGESTS));
   if (opts.raidTs && site.raid) put(join(root, RAID_TS), `import raid from "./${raidFileName(site.raid.build)}";\nexport const CURRENT_BUILD: string = raid.build;\n`);
 }
 
-export interface Build { nodes: TNode[]; raid?: WebRaid; map?: WorldMapData; spells?: Parameters<typeof spellValues>[1]; classes?: TrimmedClass[]; config?: string }
+export interface Build { nodes: TNode[]; raid?: WebRaid; map?: WorldMapData; spells?: Parameters<typeof spellValues>[1]; classes?: TrimmedClass[]; config?: string; digests?: DigestInput[] }
 
 /** The first build a test commits, written into a root before the watch runs. */
 export function commitBuild(root: string, buildId: number, b: Build, opts: { raidTs?: boolean } = {}): void {
   writeSite(root, {
     talents: b.classes ?? [trimmed(buildId, b.nodes, {}, b.config)], raid: b.raid, map: b.map,
     spellValues: b.spells ? spellValues(buildId, b.spells, b.config) : undefined,
-  }, opts);
+  }, { ...opts, digests: b.digests });
 }
 
 /** What the CDN extraction would hand over for a build: the generators are replaced by writing fixtures. */
@@ -92,7 +100,9 @@ export function extracted(buildId: number, b: Build, over: Partial<Extracted> = 
   return {
     build: { buildId, buildConfig: config, version: `1.60.1.${buildId}` },
     spellValues: spellValues(buildId, b.spells ?? {}, config),
-    generate: (root) => writeSite(root, { talents: b.classes ?? [trimmed(buildId, b.nodes, {}, config)], raid: b.raid, map: b.map }),
+    clientDigests: clientDigestsOf(stamp(buildId, config), b.digests ?? DIGESTS),
+    missingTables: [],
+    generate: (root) => writeSite(root, { talents: b.classes ?? [trimmed(buildId, b.nodes, {}, config)], raid: b.raid, map: b.map }, { digests: b.digests }),
     encryptedTables: [{ table: "SpellName", blocks: 14 }, { table: "TraitNode", blocks: 0 }],
     source: { definitions: "abc123abc123", library: "lib@1", extractedAt: "2026-10-17T12:00:00.000Z" },
     warnings: [], ...over,
