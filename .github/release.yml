@@ -14,8 +14,8 @@ changelog:
       labels: [kb, mcp]
     - title: Game data
       labels: [game-data, data, lore]
-    - title: Companion
-      labels: [companion]
+    - title: Companion and desktop app
+      labels: [companion, desktop]
     - title: Documentation and project setup
       labels: [documentation, infra]
     - title: Protocol

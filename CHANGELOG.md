@@ -1,12 +1,14 @@
 # Changelog
 
 All notable changes to Everloot, in the style of [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
-The addon is versioned (`0.2.x`, tagged `addon-vX.Y.Z`) and so is the desktop app (tagged `desktop-vX.Y.Z`). The site and the knowledge base deploy from
-`main` and have no version number, so their milestones are listed by date at the bottom.
+The addon is versioned (`0.3.x`, tagged `addon-vX.Y.Z`) and so is the desktop app (tagged `desktop-vX.Y.Z`). The site and the knowledge base deploy from
+`main` and have no version number, so their milestones are listed by date at the bottom. Site and MCP
+server changes under Unreleased are already live on everloot.app; Unreleased means not yet in a tagged
+addon or desktop release.
 
-This file was written on 2026-10-17 from the merged pull requests and commit history. The first
-tagged release will be the first one to have a GitHub release page; `0.2.1` is the first addon build
-that has a zip in the repository. Earlier builds have none.
+This file was started on 2026-10-17 from the merged pull requests and commit history. Addon releases
+from 0.3.0 on have a GitHub release page with the zip and its `SHA256SUMS`; `0.2.1` is the first addon
+build that has a zip in the repository. Earlier builds have none.
 
 ## [Unreleased]
 
@@ -152,7 +154,7 @@ version line, separate from the addon. Builds are not code-signed yet.
   `companion/src`, same data folder as the command line. Tagged `desktop-vX.Y.Z`; the first
   release is not code-signed.
 
-## [0.3.3] - 2026-10-19
+## [0.3.3] - 2026-10-18
 
 ### Added
 - A **completion tracker** module for achievements, reputation, titles and quest chains. It is off until
@@ -180,7 +182,7 @@ Forever opens achievements as Legacy Challenges, so the catalog is the list the 
 The module has passed the automated tests against a mock of the documented calls; it has not run in the
 Forever client.
 
-## [0.3.2] - 2026-10-18
+## [0.3.2] - 2026-10-17
 
 ### Fixed
 - Recipes now read from Forever's own profession window (`C_TradeSkillUI`). The old trade-skill and
@@ -207,7 +209,7 @@ Forever client.
 The profession and purchase paths have passed the automated tests against a mock of the documented API;
 they have not run in the Forever client. This release also contains everything in 0.3.1.
 
-## [0.3.1] - 2026-10-18
+## [0.3.1] - 2026-10-17
 
 ### Fixed
 - The TOC declared interface 70058, an old build number, so the client listed the addon as out of

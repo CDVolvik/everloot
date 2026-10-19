@@ -10,6 +10,6 @@ reproduce it, and what an attacker could do with it.
 We will answer within a few days and keep you posted until it is fixed. Once a fix is live we are
 happy to credit you, if you want.
 
-In scope: everloot.app and its APIs, the MCP endpoints, the addon, the companion and this
-repository. Please do not test against other players' data, run load tests against the site, or
+In scope: everloot.app and its APIs, the MCP endpoints, the addon, the companion, the desktop
+app and this repository. Please do not test against other players' data, run load tests against the site, or
 use social engineering.
