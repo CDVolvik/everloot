@@ -113,6 +113,7 @@
     "auction_history",
     "market_value",
     "gold_ledger",
+    "population",
     "recent_changes",
     "ecosystem_projects",
     "everloot_plan"

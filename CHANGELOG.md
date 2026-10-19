@@ -84,6 +84,12 @@ that has a zip in the repository. Earlier builds have none.
 - The MCP server's implementation info carries a title, a one-line description and the site's icon (64 and
   512 px), so clients that draw a server list show Everloot by name and picture. `/connect` shows a curl
   call of `/api/tools/get_by_name` beside the MCP one.
+- `/census` and the MCP tool `population`: who plays what, from the census rows of players who turn it on.
+  Each character counts once (the latest report per character key, across both kinds and every install), in
+  two windows (the last 7 days and since launch) with a daily trend. A count shows only at 10 characters
+  reported by 3 installs, and every count is rounded to the nearest 5 so a hidden one can't be recovered by
+  subtraction. Until a window gets there it says it is still collecting, which is the state at launch.
+  `/methodology` states the rules. Reads `census_self` and `census_seen` once intake accepts them.
 - `/api/items/categories` joins the protocol's route catalogue with its response shape, so it appears in
   `/api/openapi.json`, the endpoint reference on `/connect` and `/schema/api/itemCategoriesResponse.json`,
   and its route test parses a real body with the shape. The endpoint itself is unchanged.

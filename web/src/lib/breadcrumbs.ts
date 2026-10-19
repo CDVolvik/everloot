@@ -17,6 +17,7 @@ const NAMES: Record<string, string> = {
   "/changes": "Patch notes and Blizzard posts",
   "/map": "World map",
   "/wow-forever": "What is WoW: Forever",
+  "/census": "Census",
   "/lore": "Lore archive",
   "/lore/coverage": "What the archive covers",
   "/lore/npcs": "NPCs",

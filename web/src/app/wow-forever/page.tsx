@@ -90,6 +90,9 @@ export default async function WowForeverPage() {
           <time dateTime={RACES.published}>{longDate(RACES.published)}</time>. Checked on{" "}
           <time dateTime={RACES.checkedOn}>{longDate(RACES.checkedOn)}</time>.
         </p>
+        <p className="text-sm text-fg-2">
+          How many characters play each combination: the <Link href="/census" className={link}>census</Link>.
+        </p>
         {assets && shown && <GameCredit version={assets.version} label={assets.label} what="Race and faction emblems" />}
       </section>
 

@@ -17,7 +17,7 @@ vi.mock("../../../kb/src/addon-rollup", () => ({ popularAddonsFromRecords: fns.a
 vi.mock("../../../kb/src/edges", () => ({ observedEdges: fns.edges }));
 vi.mock("./rollups", () => ({ lootWindowsFromRecords: fns.windows, rollupDrops: fns.rollup }));
 
-import { computeRollups, loadItemFacts, loadObservedEdges, loadPopularAddons, loadWorldFacts } from "./rollup-compute";
+import { computeRollups, loadCensus, loadItemFacts, loadObservedEdges, loadPopularAddons, loadWorldFacts } from "./rollup-compute";
 
 const V1 = { uploads: 2, records: [{ kind: "loot" }, { kind: "quest" }], dataAsOf: "2026-10-10T10:00:00.000Z" };
 const V2 = { ...V1, dataAsOf: "2026-10-10T10:05:00.000Z" };
@@ -83,6 +83,7 @@ test("an unreadable store stays unreadable and never serves stale aggregates", a
   expect((await loadWorldFacts()).unreachable).toBe(true);
   expect(await loadPopularAddons()).toEqual({ addons: [], reportingInstalls: 0, unreachable: true, dataAsOf: null });
   expect(await loadObservedEdges()).toEqual({ edges: [], unreachable: true, dataAsOf: null });
+  expect(await loadCensus()).toEqual({ view: null, unreachable: true, dataAsOf: null });
   expect(fns.windows).not.toHaveBeenCalled();
   // A readable corpus afterwards still aggregates fresh.
   store.loadCorpus.mockResolvedValue({ ...V1, dataAsOf: "2026-10-10T12:00:00.000Z" });

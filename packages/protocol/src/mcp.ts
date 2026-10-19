@@ -309,6 +309,39 @@ export const mapNear = z.object({
   vendors: z.array(nearPin).optional(),
 });
 
+/** The census's factions and windows (population). */
+export const CENSUS_FACTIONS = ["Alliance", "Horde"] as const;
+export const CENSUS_WINDOWS = ["week", "launch"] as const;
+
+/** One census count as population returns it. A hidden count is null, never a number. */
+export const populationCell = z.object({
+  slice: z.enum(["faction", "race", "class", "raceClass", "level"]),
+  faction: z.enum(CENSUS_FACTIONS).optional(),
+  race: z.string().optional().describe("UnitRace's token, such as Scourge for Undead."),
+  class: z.string().optional().describe("UnitClass's token, such as PRIEST."),
+  band: z.string().optional().describe("Level band: 1-9, 10-19 ... 50-59, or 60."),
+  label: z.string(),
+  count: z.number().int().nullable().describe("Characters, rounded to the nearest 5. Null is hidden: fewer than 10 characters or fewer than 3 installs, or hidden so a small count can't be worked out from the others."),
+  share: z.number().nullable().describe("count out of the window's characters, both as shown."),
+});
+export const populationPage = z.object({
+  scope: z.object({ id: z.string(), label: z.string() }),
+  launched: z.boolean().describe("False before launch: nothing is counted yet."),
+  launch: z.string().describe("When counting starts."),
+  window: z.object({ id: z.enum(CENSUS_WINDOWS), from: z.string(), to: z.string() }),
+  collecting: z.boolean().describe("True until the window has 10 characters from 3 installs; no count shows until then."),
+  characters: z.number().int().nullable(),
+  installs: z.number().int().describe("Installs that reported in the window: a count of installs, not of people."),
+  rule: z.object({ minCharacters: z.number().int(), minInstalls: z.number().int(), roundTo: z.number().int() }),
+  cells: z.array(populationCell),
+  note: z.string().optional().describe("Why there are no cells: a name the game does not have, or a combination it does not allow."),
+  source: z.object({ title: z.string(), url: z.string() }),
+  method: z.object({ title: z.string(), url: z.string() }),
+  licence: z.string(),
+});
+export type PopulationCellOut = z.infer<typeof populationCell>;
+export type PopulationPageOut = z.infer<typeof populationPage>;
+
 /** One row of the implementation tracker as everloot_plan returns it. */
 export const planRow = z.object({
   id: z.string(),
@@ -705,6 +738,19 @@ export const MCP_TOOLS = {
     outputSchema: { ...uploadsAnswer, page: goldLedger.optional() },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
+  population: {
+    title: "Who plays what: population by race, class, faction and level",
+    description:
+      "How many characters play each race, class, race and class, faction and level band on WoW: Forever, from the census of players who turned it on in the Everloot addon. Each character counts once. A count shows only when it covers at least 10 characters reported by at least 3 installs, rounded to the nearest 5, and a count that could be worked out from the others is hidden too. Every answer states its window: active in the last 7 days (default) or since launch. With no arguments, the overview: most played class first. No names, ever. Missing or unavailable data is reported explicitly.",
+    inputSchema: {
+      race: z.string().max(40).optional().describe("A race, such as Gnome, Night Elf or Undead."),
+      class: z.string().max(40).optional().describe("A class, such as Priest."),
+      faction: z.enum(CENSUS_FACTIONS).optional().describe("Alliance or Horde."),
+      window: z.enum(CENSUS_WINDOWS).default("week").describe("week: active in the last 7 days. launch: seen since launch."),
+    },
+    outputSchema: { ...uploadsAnswer, page: populationPage.optional() },
+    annotations: { readOnlyHint: true, openWorldHint: false },
+  },
   recent_changes: {
     title: "Recent official changes for WoW: Forever",
     description:
@@ -773,7 +819,7 @@ export const CHATGPT_TOOLS: readonly McpToolName[] = ["search", "fetch"];
 export const PLAYER_DATA_TOOLS: readonly McpToolName[] = [
   "answer_sources", "profession_path", "recipe_thresholds", "item_page", "npc_page", "object_page", "quest_page", "vendor_page",
   "world_map_near", "entity_relations", "collection_gap", "completion_progress", "guild_board", "auction_history",
-  "market_value", "gold_ledger",
+  "market_value", "gold_ledger", "population",
 ];
 
 /**

@@ -21,6 +21,7 @@ const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
 /** Pages that are not catalog tools but belong in the map of the site. */
 const PAGES: { title: string; path: string; text: string }[] = [
   { title: "What is WoW: Forever", path: "/wow-forever", text: "The launch date quoted from Blizzard's announcement with its source and the date it was checked, and the latest game build Everloot has seen." },
+  { title: "Census", path: "/census", text: "Who plays what: factions, races, classes, race and class, and level bands, from players who turned the census on. Each character counts once; a count shows from 10 characters reported by 3 installs, rounded to the nearest 5." },
   { title: "Patch notes and Blizzard posts", path: "/changes", text: "New game builds, hotfixes and Blizzard blue posts, newest first, with links to Blizzard's originals. A build's date is when Everloot first saw it." },
   { title: "World map", path: "/map", text: "Zones and dungeon and raid entrances read from the game files, drawn by Everloot with no game art. Found in game files, unconfirmed." },
   { title: "Addons", path: "/addons", text: "Everloot's collection addon and Polestar, a leveling-guide addon." },

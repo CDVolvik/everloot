@@ -34,6 +34,7 @@ const TOOL_TEXT: Record<McpToolName, string> = {
   auction_history: "Daily median auction price for one item on one realm.",
   market_value: "Market value, minimum buyout, historical value and units listed for one item on one realm, from full scans players started.",
   gold_ledger: "Peak gold and money events for one character, from that player's own upload.",
+  population: "How many characters play each race, class, faction and level band, from players who turned the census on. Every answer says its window, and a count is hidden when too few players report it.",
   recent_changes: "Recent Blizzard staff posts, hotfixes and new game builds, newest first, with links to the originals.",
   ecosystem_projects: "Forever addons and open-source projects, ranked on five boards, with GitHub facts and install counts from 3 installs.",
   everloot_plan: "What is built, what is next and what is waiting. Read it before assuming a tool exists.",

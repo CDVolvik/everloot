@@ -20,6 +20,7 @@ import { KNOWLEDGE_KINDS, MCP_PROMPT_NAMES, MCP_PROMPTS, MCP_RESOURCE_TEMPLATE_U
 import { z } from "zod";
 import { formatProfessionPath, professionPath } from "./profession-path.js";
 import { promptText } from "./prompts.js";
+import { answerPopulation, type CensusLoader } from "./population.js";
 import { readResource } from "./resources.js";
 import { handleTalentPlan, handleTalentTree } from "./talent-tools.js";
 import { handleRecipeThresholds, pathFactsFromRecords, recipeFactsFromRecords, recipeThresholdsStructured } from "./recipe-thresholds.js";
@@ -476,7 +477,7 @@ function professionArg(profession: string): string {
 }
 
 /** The readers a host lends the tools: the site's store in process, or nothing for a standalone server. */
-export interface ToolOptions { corpus?: CorpusLoader; market?: MarketLoader; completion?: CompletionLoader; changes?: ChangesLoader; ecosystem?: EcosystemLoader }
+export interface ToolOptions { corpus?: CorpusLoader; market?: MarketLoader; completion?: CompletionLoader; changes?: ChangesLoader; ecosystem?: EcosystemLoader; census?: CensusLoader }
 
 /** A tool's answer: the text every client gets, and the structured content of the tool's output schema. */
 export type ToolAnswer = Answer;
@@ -581,6 +582,7 @@ export function createToolHandlers(db: DB, options: ToolOptions = {}): ToolHandl
       const now = new Date();
       return { text: handleEcosystemProjects(view, args, now), structured: ecosystemProjectsStructured(view, args, now) };
     },
+    population: (args) => answerPopulation(args, options.census, answerFooter),
     everloot_plan: () => ({ text: handlePlan(), structured: planStructured() }),
   };
   void readFacts;

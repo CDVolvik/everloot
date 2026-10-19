@@ -7,6 +7,10 @@ required, or tightening a limit is a major release.
 ## [Unreleased]
 
 ### Added
+- 1.2.0: the MCP tool `population` (who plays what, from the census) with its output shape `populationPage`
+  (`populationCell`, `CENSUS_FACTIONS`, `CENSUS_WINDOWS`), emitted as `schema/mcp/population.json`, and in
+  `PLAYER_DATA_TOOLS`. A hidden count is null; the page says whether the game has launched and whether the
+  window is still collecting.
 - Two census kinds, `census_self` (your own character: race, class, level, faction, realm) and `census_seen`
   (a player you target, mouse over or group with: the same without realm, plus `via`). Each carries the
   player GUID in transit only. `censusSelfStored` and `censusSeenStored` are what the site stores instead:
