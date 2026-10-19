@@ -32,6 +32,9 @@ that has a zip in the repository. Earlier builds have none.
   back of the server clock are refused, each row keeps the keyed address hash of its sender (never the address)
   so a count can ask for distinct addresses as well as installs, the key must be 32 characters or more, and
   `uploadStore.loadCensus()` reads the stored keyed rows back for the summary. The addon module and the `/census` page come in later steps.
+- Desktop App: Chat answers appear as the model writes them, with the tool it is running shown while
+  it looks something up (Anthropic and OpenAI-compatible providers; a server that does not stream
+  still answers in one piece). Each answer has a Copy button.
 
 ### Changed
 - The upload record contract moved from `web/src/lib/intake.ts` into one package, `packages/protocol`

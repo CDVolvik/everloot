@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { ProviderChoice } from "./shared/providers";
-import type { AppState, EverlootApi, Job, Settings } from "./shared/types";
+import type { AppState, ChatProgress, EverlootApi, Job, Settings } from "./shared/types";
 
 // The only way the page reaches Node: named calls over IPC, each checked on the main side.
 const api: EverlootApi = {
@@ -39,6 +39,11 @@ const api: EverlootApi = {
     const handler = (_event: unknown, page: string) => listener(page);
     ipcRenderer.on("navigate", handler);
     return () => { ipcRenderer.removeListener("navigate", handler); };
+  },
+  onChatProgress: (listener) => {
+    const handler = (_event: unknown, progress: ChatProgress) => listener(progress);
+    ipcRenderer.on("chatProgress", handler);
+    return () => { ipcRenderer.removeListener("chatProgress", handler); };
   },
   onState: (listener) => {
     const handler = (_event: unknown, state: AppState) => listener(state);

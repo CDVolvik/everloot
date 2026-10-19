@@ -274,7 +274,7 @@ if (!app.requestSingleInstanceLock()) {
   ipcMain.handle("charactersInfo", () => charactersFromFiles(engine.snapshot().files));
 
   ipcMain.handle("chatInfo", () => chat.info());
-  ipcMain.handle("chatSend", (_e, text: unknown) => (typeof text === "string" ? chat.send(text) : chat.info()));
+  ipcMain.handle("chatSend", (e, text: unknown) => (typeof text === "string" ? chat.send(text, (p) => { if (!e.sender.isDestroyed()) e.sender.send("chatProgress", p); }) : chat.info()));
   ipcMain.handle("chatClear", () => chat.clear());
   ipcMain.handle("chatSetProvider", (_e, raw: unknown) => {
     const c = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
