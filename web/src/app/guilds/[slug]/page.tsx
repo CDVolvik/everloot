@@ -56,8 +56,8 @@ export default async function GuildFamilyPage(props: { params: Promise<{ slug: s
         <h2 className="text-2xl text-fg">Battle.net guild profile</h2>
         <p className="text-sm text-fg-2 max-w-2xl">
           The same columns, filled by Blizzard&apos;s guild API the day Forever has a namespace.
-          Checked {api.checked}: retail guild profile and Classic Era both answered from the
-          client we already have. Guessed Forever namespaces were refused. The open question is
+          Checked {api.checked}: the retail guild profile and Classic Era both answered our
+          requests. Guessed Forever namespaces were refused. The open question is
           on{" "}
           <a
             href={api.forumUrl}
@@ -65,7 +65,7 @@ export default async function GuildFamilyPage(props: { params: Promise<{ slug: s
           >
             Blizzard&apos;s API forum
           </a>
-          . When a namespace is published, it is one line in the local adapter. Those responses
+          . Once Blizzard publishes one, Everloot can read it. Those responses
           stay off this page, because Blizzard&apos;s terms keep API data in a local
           cache.
         </p>

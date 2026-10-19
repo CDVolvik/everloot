@@ -33,7 +33,7 @@ export default async function DropsPage() {
           Frequency means item observations divided by recorded, source-attributed loot windows.
           A loot window is not a verified kill, so this is not kill-based drop probability.
           Public frequencies require source observations from 3 install IDs; those IDs do
-          not prove independent people. Actual beta-client collection remains unverified.
+          not prove independent people.
         </p>
       </header>
 
@@ -41,7 +41,7 @@ export default async function DropsPage() {
         <p className="text-fg-2">{STORAGE_UNREACHABLE}</p>
       ) : live.length + zeros.length === 0 ? (
         <div className="rounded-xl border border-line bg-panel p-8 text-center">
-          <p className="text-fg-2">No public frequencies yet. Source observations from 3 install IDs are required.</p>
+          <p className="text-fg-2">No public frequencies yet. A frequency shows here once 3 installs have recorded loot windows from the same creature or object.</p>
           <p className="mt-1 text-sm text-muted">
             Be the first source — run the addon and send data on the{" "}
             <Link href="/upload" className="text-accent hover:underline underline-offset-4">upload page</Link>.
