@@ -67,7 +67,7 @@ p { margin: 0; }
 .nav button:hover { color: rgb(var(--fg)); background: rgb(var(--canvas) / 0.6); }
 .nav button[aria-current="page"] { color: rgb(var(--fg)); background: rgb(var(--canvas)); }
 .nav .dot { margin-left: auto; }
-.side-foot { margin-top: auto; padding: 0.7rem 0.9rem; border-top: 1px solid rgb(var(--line)); font-size: 0.8rem; color: rgb(var(--muted)); display: flex; flex-direction: column; gap: 0.35rem; }
+.side-foot { margin-top: auto; padding: 0.45rem 0.45rem 0.7rem; border-top: 1px solid rgb(var(--line)); font-size: 0.8rem; color: rgb(var(--muted)); display: flex; flex-direction: column; gap: 0.35rem; }
 
 .main { overflow: auto; min-height: 0; }
 .toast { position: fixed; right: 1rem; bottom: 1rem; max-width: 420px; padding: 0.55rem 0.8rem; border-radius: 8px; border: 1px solid rgb(var(--danger)); background: rgb(var(--panel)); color: rgb(var(--danger)); z-index: 50; }
@@ -161,9 +161,6 @@ ul.plain li { margin: 0.15rem 0; }
 
 /* Sidebar sections and the embedded site tools. */
 .nav .section { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: rgb(var(--muted)); padding: 0.7rem 0.5rem 0.2rem; }
-.site-head { display: flex; align-items: center; gap: 0.6rem; height: 44px; padding: 0 0.9rem; border-bottom: 1px solid rgb(var(--line)); }
-.site-head .url { color: rgb(var(--muted)); font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.site-note { padding: 1rem 1.25rem; color: rgb(var(--muted)); }
 
 /* Chat. */
 .chat { display: flex; flex-direction: column; height: calc(100vh - 2rem); }
@@ -244,3 +241,23 @@ ul.plain li { margin: 0.15rem 0; }
 .rc-cat { color: rgb(var(--fg-2)); }
 .rc-v { font-weight: 600; font-variant-numeric: tabular-nums; }
 .rc-v.out { color: rgb(var(--copper)); }
+
+/* Sidebar: the site's pages open in the browser; Settings is pinned above the status line. */
+.nav button.out { color: rgb(var(--muted)); }
+.nav .ext { margin-left: auto; font-size: 0.8em; opacity: 0.8; }
+.side-foot .nav { padding: 0; }
+.side-foot .foot-line { display: flex; flex-direction: column; gap: 0.2rem; padding: 0 0.5rem; }
+.gear { width: 15px; height: 15px; flex: none; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* Settings rows: a label and its note on the left, the control on the right. */
+.set-row { display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 0; border-top: 1px solid rgb(var(--line)); }
+.panel h2 + .set-row { border-top: 0; }
+details.panel > summary { cursor: pointer; list-style: none; }
+details.panel > summary::-webkit-details-marker { display: none; }
+details.panel > summary h2 { display: inline; }
+details.panel > summary::after { content: " +"; color: rgb(var(--muted)); }
+details.panel[open] > summary::after { content: " −"; }
+details.panel[open] > summary { margin-bottom: 0.6rem; }
+#settings > * + * { margin-top: 0.85rem; }
+#settings .switch { display: flex; width: fit-content; margin-top: 0.4rem; }

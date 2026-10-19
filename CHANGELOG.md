@@ -40,6 +40,11 @@ that has a zip in the repository. Earlier builds have none.
   Ollama), and picking one switches Chat and the in-game `/ask`. Keys can be added, replaced or removed one
   provider at a time. When search alone finds nothing, the answer says a model would read the question and
   offers to add one.
+- Desktop App: Settings is pinned at the bottom of the sidebar and holds everything the app can be set to: what
+  runs (upload, market prices, in-game `/ask`), the AI model keys, the game folder, startup and the app itself.
+  The site's tools are no longer shown inside the window; the sidebar links to the database, talent calculator,
+  raid builder and auction prices on everloot.app, which open in the browser. The world map and lore archive
+  links are gone; Chat answers those questions.
 
 ### Changed
 - The upload record contract moved from `web/src/lib/intake.ts` into one package, `packages/protocol`

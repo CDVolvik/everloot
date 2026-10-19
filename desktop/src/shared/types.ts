@@ -184,7 +184,6 @@ export interface CharactersInfo {
   talents: { class: string; level: number; points: number }[];
 }
 
-export interface SiteTool { id: string; label: string; path: string }
 
 /** Everything the page knows. The main side sends a fresh one after every change. */
 export interface AppState {
@@ -195,7 +194,6 @@ export interface AppState {
   notice: string | null;
   settings: Settings;
   engine: EngineState;
-  siteTools: SiteTool[];
   /** The desktop release check made once at start; null until it ran or when it could not reach GitHub. */
   update: UpdateCheck | null;
   /** Realms whose last full scan is older than a day (or never dated), for the tray reminder. */
@@ -237,11 +235,6 @@ export interface EverlootApi {
   chatRemoveProvider(kind?: ProviderKind): Promise<ChatInfo>;
   /** Switches Chat and /ask to a model of a provider already saved. */
   chatUseModel(kind: ProviderKind, model: string): Promise<ChatInfo>;
-  /** Shows a site tool inside the window; returns the URL it opened. */
-  siteShow(id: string): Promise<string | null>;
-  siteHide(): Promise<void>;
-  siteBack(): Promise<void>;
-  siteReload(): Promise<void>;
   onState(listener: (state: AppState) => void): () => void;
   /** The main side asks the page to open a screen: a tray entry or a notification was clicked. */
   onNavigate(listener: (page: string) => void): () => void;

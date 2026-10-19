@@ -3,11 +3,12 @@ import { diagnostics } from "../shared/diagnostics";
 import { ago, clock, esc, gold, kb, msg, sparkline, statusText, when } from "./format";
 import { NO_SOURCED_ANSWER, type AddonInfo, type AppState, type AskInfo, type BackupInfo, type ChangeItem, type CharacterRow, type CharactersInfo, type ChatInfo, type ChatProgress, type EverlootApi, type FileSummary, type GameFolderCandidate, type Job, type JobStatus, type MarketInfo, type MoneyDay } from "../shared/types";
 import { PROVIDER_PRESETS, presetFor, type ProviderKind } from "../shared/providers";
+import { WEBSITE_LINKS, websiteUrl } from "../shared/website";
 
 declare global { interface Window { everloot: EverlootApi } }
 const api = window.everloot;
 
-type Page = "overview" | "chat" | "characters" | "upload" | "market" | "ask" | "addon" | "changes" | "log" | "settings" | `site:${string}`;
+type Page = "overview" | "chat" | "characters" | "upload" | "market" | "ask" | "addon" | "changes" | "log" | "settings";
 const PAGES: { id: Page; label: string; job?: Job }[] = [
   { id: "overview", label: "Overview" },
   { id: "chat", label: "Chat" },
@@ -28,7 +29,6 @@ let chosenFolder: string | null = null;
 let draftDirty = false;
 let busy = "";
 let flash = "";
-let siteUrl: string | null = null;
 /** The provider picked in the Chat page's form before it is saved; the form re-renders around it. */
 let pickKind: ProviderKind = "anthropic";
 let pickOpen = false;
@@ -583,49 +583,68 @@ function log(s: AppState): string {
   </div>`;
 }
 
+const JOB_ROWS: { job: Job; label: string; what: string }[] = [
+  { job: "upload", label: "Upload", what: "Send what the addon recorded after every logout or /reload" },
+  { job: "prices", label: "Market prices", what: "Keep community prices in your item tooltips, refreshed hourly" },
+  { job: "ask", label: "In-game /ask", what: "Answer /ask questions from the game with the model below" },
+];
+
+/** Everything the app can be set to, on one page: what runs, the AI model, the game folder, startup, the app itself. */
 function settings(s: AppState): string {
   const st = s.settings;
+  const c = data.chat;
+  const jobs = JOB_ROWS.map((r) => `<div class="set-row"><div class="grow"><b>${r.label}</b><div class="muted small">${esc(r.what)} · <button type="button" class="link" data-page="${r.job}">details</button></div></div>${jobSwitch(r.job, s)}</div>`).join("");
+  const keys = c?.providers.length
+    ? c.providers.map((p) => {
+      const inUse = c.provider?.kind === p.kind;
+      return `<div class="set-row"><div class="grow"><b>${esc(presetFor(p.kind)?.label ?? p.kind)}</b><div class="muted small">${esc(p.model)}${inUse ? ' · <span class="ok">in use</span>' : ""}</div></div>
+        ${inUse ? "" : `<button type="button" class="btn" data-usekind="${p.kind}" data-usemodel="${esc(p.model)}">Use</button>`}<button type="button" class="btn" data-removekind="${p.kind}">Remove</button></div>`;
+    }).join("")
+    : `<p class="muted small">${c && c.mode !== "plain search" ? `In use: ${esc(c.mode)}, from config.json written by hand.` : "No model yet: Chat shows Everloot's search hits as they are, and /ask cannot answer."}</p>`;
   return `<div class="page">
     <div class="head"><h1>Settings</h1></div>
+    ${flash ? `<p role="status" class="${flash.startsWith("!") ? "error" : "ok"} small">${esc(flash.replace(/^!/, ""))}</p>` : ""}
+    <section class="panel"><h2>What runs</h2>${jobs}</section>
+    <section class="panel"><div class="row between"><h2>AI model</h2>${pickOpen ? "" : `<button type="button" class="btn" data-addmodel>Add a provider key</button>`}</div>
+      <p class="muted small">Your own key answers Chat and the in-game /ask. Each key is kept in a file in your data folder and goes only to its provider. Switch models from the menu under the Chat box too.</p>
+      ${c ? keys : '<p class="muted small">Loading…</p>'}
+      ${c && pickOpen ? providerForm(c) : ""}
+    </section>
     <form id="settings" autocomplete="off">
-      <section class="panel">
-        <div class="field"><label for="gameFolder">Game folder <span class="hint">the product folder that holds <code>WTF</code></span></label>
+      <section class="panel"><h2>Game</h2>
+        <div class="field"><label for="gameFolder">Game folder <span class="hint">the product folder that holds <code>WTF</code>, like <code>World of Warcraft\\_classic_era_</code></span></label>
           <div class="row"><input class="grow" type="text" id="gameFolder" name="gameFolder" value="${esc(st.gameFolder ?? "")}"><button type="button" class="btn" id="browse">Browse…</button></div></div>
-        <div class="field"><label for="endpoint">Site <span class="hint">change only to test against another deployment</span></label><input type="url" id="endpoint" name="endpoint" value="${esc(st.endpoint)}"></div>
+      </section>
+      <section class="panel"><h2>Startup</h2>
         ${s.platform === "linux" ? "" : `<label class="switch"><input type="checkbox" name="launchAtLogin" ${st.launchAtLogin ? "checked" : ""}> Start when I sign in</label>`}
         <label class="switch"><input type="checkbox" name="startInTray" ${st.startInTray ? "checked" : ""}> Start in the tray without a window</label>
-        <div class="row"><button type="submit" class="btn btn-primary">Save</button><span class="muted" id="saved"></span></div>
       </section>
+      <details class="panel"><summary><h2>Advanced</h2></summary>
+        <div class="field"><label for="endpoint">Site <span class="hint">change only to test against another deployment</span></label><input type="url" id="endpoint" name="endpoint" value="${esc(st.endpoint)}"></div>
+      </details>
+      <div class="row"><button type="submit" class="btn btn-primary">Save</button><span class="muted" id="saved"></span></div>
     </form>
     <section class="panel"><h2>This app</h2>
       <p class="fg2">Everloot Desktop App ${esc(s.version)} · AGPL-3.0-only · ${ext("https://github.com/Everloot/everloot/tree/main/desktop", "source")} · ${ext("https://discord.gg/9CKsbHTRu3", "Discord")}</p>
       <p class="muted small">Data folder: <span class="mono">${esc(s.dataFolder)}</span> <button type="button" class="link" id="openData">open</button></p>
-      <div class="row"><button type="button" class="btn" id="updates">Check for updates</button><span class="muted small" id="updateLine">${esc(flash)}</span></div>
+      <div class="row"><button type="button" class="btn" id="updates">Check for updates</button></div>
     </section>
   </div>`;
 }
 
-function siteTool(s: AppState, id: string): string {
-  const tool = s.siteTools.find((t) => t.id === id);
-  if (!tool) return `<div class="site-note">Unknown tool.</div>`;
-  return `<div class="site-head">
-    <strong>${esc(tool.label)}</strong>
-    <span class="url grow">${esc(siteUrl ?? new URL(tool.path, s.settings.endpoint).toString())}</span>
-    <button type="button" class="btn" id="siteBack">Back</button>
-    <button type="button" class="btn" id="siteReload">Reload</button>
-    ${ext(new URL(tool.path, "https://everloot.app").toString(), "open in browser")}
-  </div>
-  <div class="site-note">The page below is the site itself, inside the app. Share links from the talent and raid tools work as on the web.</div>`;
-}
-
 // ---------- render and data ----------
+
+const GEAR = `<svg class="gear" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="M10.3 3h3.4l.5 2.4 1.7.9 2.3-.8 1.7 2.9-1.8 1.7v1.8l1.8 1.7-1.7 2.9-2.3-.8-1.7.9-.5 2.4h-3.4l-.5-2.4-1.7-.9-2.3.8-1.7-2.9 1.8-1.7v-1.8L4.1 8.4l1.7-2.9 2.3.8 1.7-.9Z"/><circle cx="12" cy="12" r="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>`;
 
 function renderSide(s: AppState): void {
   const item = (id: string, label: string, job?: Job) => `<button type="button" data-page="${id}" ${id === page ? 'aria-current="page"' : ""}>${esc(label)}${job ? dot(s.engine.jobs[job]) : ""}</button>`;
-  nav.innerHTML = PAGES.map((p) => item(p.id, p.label, p.job)).join("")
-    + `<div class="section">Site tools</div>` + s.siteTools.map((t) => item(`site:${t.id}`, t.label)).join("");
+  // The site's tools open in the browser; the app does not carry them.
+  const web = WEBSITE_LINKS.map((l) => `<button type="button" class="out" data-open="${esc(websiteUrl(s.settings.endpoint, l.path))}">${esc(l.label)}<span class="ext" aria-hidden="true">↗</span><span class="sr-only"> (opens in your browser)</span></button>`).join("");
+  nav.innerHTML = PAGES.filter((p) => p.id !== "settings").map((p) => item(p.id, p.label, p.job)).join("")
+    + `<div class="section">On everloot.app</div>${web}`;
   const e = s.engine;
-  sideFoot.innerHTML = `<span>${e.files.length ? `Watching ${e.files.length} file(s)` : "Not watching"}${e.paused ? " · paused" : ""}</span><span>v${esc(s.version)}</span>`;
+  sideFoot.innerHTML = `<div class="nav"><button type="button" data-page="settings" ${page === "settings" ? 'aria-current="page"' : ""}>${GEAR}Settings</button></div>
+    <div class="foot-line"><span>${e.files.length ? `Watching ${e.files.length} file(s)` : "Not watching"}${e.paused ? " · paused" : ""}</span><span>v${esc(s.version)}</span></div>`;
 }
 
 function render(): void {
@@ -636,7 +655,6 @@ function render(): void {
   renderSide(state);
   if ((page === "settings" || page === "ask") && draftDirty) return;
   const s = state;
-  if (page.startsWith("site:")) { main.innerHTML = siteTool(s, page.slice(5)); return; }
   const draft = page === "chat" ? (main.querySelector("#chatText") as HTMLTextAreaElement | null)?.value : undefined;
   const realmDraft = (main.querySelector("#realmAdd") as HTMLInputElement | null)?.value;
   const drawerTab = drawerChar ? main.querySelector<HTMLElement>('[data-dwtab][aria-selected="true"]')?.dataset.dwtab ?? "overview" : null;
@@ -662,7 +680,7 @@ function render(): void {
 async function load(p: Page): Promise<void> {
   try {
     if (p === "overview") { [data.addon, data.changes] = await Promise.all([api.addonInfo(), api.changes().catch((e) => { data.changesError = msg(e); return undefined; })]); data.market = await api.marketInfo(); }
-    else if (p === "chat") data.chat = await api.chatInfo();
+    else if (p === "chat" || p === "settings") data.chat = await api.chatInfo();
     else if (p === "characters") data.characters = await api.charactersInfo();
     else if (p === "upload") [data.upload, data.backups] = await Promise.all([api.uploadInfo(), api.backups()]);
     else if (p === "market") data.market = await api.marketInfo();
@@ -693,9 +711,7 @@ async function detect(): Promise<void> {
 }
 
 async function go(p: Page): Promise<void> {
-  if (page.startsWith("site:") && !p.startsWith("site:")) await api.siteHide();
   page = p; draftDirty = false; flash = ""; drawerChar = null; drawerOpener = null;
-  if (p.startsWith("site:")) { siteUrl = await api.siteShow(p.slice(5)); render(); return; }
   render();
   void load(p);
 }
@@ -756,7 +772,7 @@ async function onClick(ev: MouseEvent): Promise<void> {
   if (t.dataset.ask) {
     // Not go(): its load("chat") would answer after the send and overwrite the busy thread.
     const question = t.dataset.ask;
-    if (page !== "chat") { if (page.startsWith("site:")) await api.siteHide(); page = "chat"; draftDirty = false; flash = ""; }
+    if (page !== "chat") { page = "chat"; draftDirty = false; flash = ""; }
     if (!data.chat) data.chat = await api.chatInfo();
     sendChat(question).catch(failed);
     return;
@@ -772,8 +788,6 @@ async function onClick(ev: MouseEvent): Promise<void> {
   if (t.dataset.run) { void api.runNow(t.dataset.run as Job); return; }
   if (t.dataset.unfollow) { const gone = t.dataset.unfollow.toLowerCase(); state = await api.saveSettings({ market: { realms: state!.settings.market.realms.filter((r) => r.toLowerCase() !== gone) } }); void load("market"); return; }
   if (t.id === "pause") { await api.setPaused(!state!.engine.paused); return; }
-  if (t.id === "siteBack") { void api.siteBack(); return; }
-  if (t.id === "siteReload") { void api.siteReload(); return; }
   if (t.id === "chatClear") { data.chat = await api.chatClear(); render(); return; }
   if (t.id === "browse") {
     const folder = await api.pickGameFolder();
@@ -815,6 +829,12 @@ async function onClick(ev: MouseEvent): Promise<void> {
     return;
   }
   if (t.hasAttribute("data-addmodel")) { openProviderForm(null); return; }
+  if (t.dataset.usekind && t.dataset.usemodel) {
+    data.chat = await api.chatUseModel(t.dataset.usekind as ProviderKind, t.dataset.usemodel);
+    flash = `Chat and /ask now use ${data.chat.provider?.model ?? t.dataset.usemodel}.`;
+    render();
+    return;
+  }
   if (t.id === "cancelProvider") { pickOpen = false; render(); return; }
   if (t.id === "copyDiag" && state) {
     try { await navigator.clipboard.writeText(diagnostics(state)); flash = "Copied. Paste it into the bug report."; }

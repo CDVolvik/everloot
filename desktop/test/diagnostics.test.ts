@@ -15,7 +15,7 @@ const state: AppState = {
     log: Array.from({ length: 120 }, (_, i) => ({ at: `2026-10-18T09:${String(i % 60).padStart(2, "0")}:00Z`, level: i === 119 ? "error" as const : "info" as const, text: `line ${i}` })),
     paused: false,
   },
-  siteTools: [], update: { current: "0.1.0", latest: "0.2.0", url: "https://github.com/Everloot/everloot/releases/tag/desktop-v0.2.0", newer: true }, staleScans: [],
+  update: { current: "0.1.0", latest: "0.2.0", url: "https://github.com/Everloot/everloot/releases/tag/desktop-v0.2.0", newer: true }, staleScans: [],
 };
 
 test("the report has version, settings without the token, jobs and the last hundred log lines, with home folders hidden", () => {
