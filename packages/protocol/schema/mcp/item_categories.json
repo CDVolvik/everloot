@@ -88,6 +88,9 @@
                       "name": {
                         "type": "string"
                       },
+                      "label": {
+                        "type": "string"
+                      },
                       "slug": {
                         "type": "string"
                       }
@@ -95,6 +98,7 @@
                     "required": [
                       "id",
                       "name",
+                      "label",
                       "slug"
                     ],
                     "additionalProperties": false
@@ -300,6 +304,9 @@
                     "name": {
                       "type": "string"
                     },
+                    "label": {
+                      "type": "string"
+                    },
                     "slug": {
                       "type": "string"
                     }
@@ -307,6 +314,7 @@
                   "required": [
                     "id",
                     "name",
+                    "label",
                     "slug"
                   ],
                   "additionalProperties": false

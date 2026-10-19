@@ -1,7 +1,7 @@
 {
   "$id": "https://everloot.app/schema/mcp/everloot_plan.json",
   "title": "Everloot implementation tracker",
-  "description": "The full Everloot build list: what is live, what is next, what is waiting on Carlos, and which reference sites are page shapes only. Read this before assuming a tool exists.",
+  "description": "The Everloot feature catalogue: what is live, what is next, what is waiting, and which reference sites are page shapes only.",
   "annotations": {
     "readOnlyHint": true,
     "openWorldHint": false

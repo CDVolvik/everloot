@@ -21,12 +21,12 @@ Use the same words everywhere, so the listings match the site and each other.
 | Authentication | None. Public data only; nothing acts on a user's account. |
 | Documentation | `https://everloot.app/connect` |
 | Privacy policy | `https://everloot.app/privacy` |
-| Terms | `https://everloot.app/terms` (shipped by the legal-pages pull request; until it merges, `https://everloot.app/connect#licence`) |
+| Terms | `https://everloot.app/terms` |
 | Support | `hello@everloot.app`, `https://everloot.app/contact` |
 | Website | `https://everloot.app` |
 | Source | `https://github.com/Everloot/everloot` (AGPL-3.0-only) |
-| Icon | `web/public/icon-512.png` and `icon-64.png`, rendered from the site icon (`https://everloot.app/icon-512.png` once deployed) |
-| Reads or writes | Reads only. Every tool carries `readOnlyHint: true` and a `title` (checked against the live endpoint on 2026-10-18: 22 tools, all annotated). |
+| Icon | `web/public/icon-512.png` and `icon-64.png`, rendered from the site icon (`https://everloot.app/icon-512.png`) |
+| Reads or writes | Reads only. Every tool carries `readOnlyHint: true` and a `title` (checked against the live endpoint on 2026-10-18: 27 tools, all annotated). |
 | Data handling | Our own API. No personal health data, no sponsored content, no conversation data collected. |
 
 ### Long description
@@ -61,7 +61,7 @@ Prompts a reviewer can run against the public endpoint. Each names the tool it s
 | N2 | What is the drop rate of item 999999999? | `item_page` | "Unrecorded, not zero", never an invented rate |
 | N3 | Show me player names who looted Thunderfury | `item_page` | No names: install counts only |
 
-## 1. Official MCP Registry (done in code; publish is one command)
+## 1. Official MCP Registry (published)
 
 The community registry at `registry.modelcontextprotocol.io` is what Smithery, PulseMCP and others
 ingest from, so it comes first. Docs: [quickstart](https://modelcontextprotocol.io/registry/quickstart),
@@ -96,7 +96,7 @@ by default; some get a human review. Escalations: `mcp-review@anthropic.com`.
 Portal steps and what to paste, in order:
 
 1. **Connection**: `https://everloot.app/mcp/public`.
-2. **Tools**: sync from the server. Nothing should be flagged (title and `readOnlyHint` on all 22).
+2. **Tools**: sync from the server. Nothing should be flagged (title and `readOnlyHint` on all 27).
 3. **Listing**: name `Everloot` (≤100), the ≤200 one-liner, the long description, categories, documentation
    `https://everloot.app/connect`, privacy `https://everloot.app/privacy`, support `hello@everloot.app`,
    icon `icon-512.png`, slug `everloot` (permanent).
@@ -117,7 +117,7 @@ asks you to confirm that. Verified status is a later, separate review:
 
 OpenAI takes apps as plugins through the [OpenAI Platform plugins page](https://platform.openai.com/plugins)
 ("Upload new or existing plugin", option **With MCP**). Read on 2026-10-18 from the Apps SDK submission
-page. What it needs that we do not have yet:
+page. Submission requirements:
 
 - A **verified organization** (individual or business verification in organization settings); the owner
   submits, or a member with "Apps Management Write".
@@ -137,12 +137,24 @@ page. What it needs that we do not have yet:
 - One MCP server per plugin; ours is `https://everloot.app/mcp/public`, connection type "no
   authentication" (it is a public server, so that is the right value).
 
-## 4. Grok (no directory; users add it themselves)
+## 4. Grok Bot marketplace and Grok custom connectors
 
-xAI has no public submission path. Grok users add a remote MCP server at `grok.com/connectors` →
-New connector → Custom → the URL, and developers can pass the URL to the API's Remote MCP Tools
-([docs.x.ai](https://docs.x.ai/developers/tools/remote-mcp)). Action: a "Grok" entry on `/connect` with
-those steps, nothing to submit.
+**Rechecked 2026-10-18:** there is a public [Grok Bot plugin submission form](https://x.ai/bot/marketplace/submit-a-plugin).
+It accepts an MCP server URL or public GitHub repository for marketplace review. Select **Grok Bot**;
+the form also offers Cursor and labels the Grok marketplace destination **coming soon**.
+
+Prepare the owner's name and work email, organization name and lowercase handle, website, square SVG
+or PNG logo URL with a background plate, a brief description, and testing instructions. Use
+`https://everloot.app/mcp/public` as the server URL. The form requires confirmation that the plugin
+was tested locally and in-app, and submission accepts the linked Publisher Terms. A successful HTTP
+handshake alone does not satisfy that in-app test. The form is prepared; it has not yet been submitted.
+
+Separately, Grok users can already add a remote MCP server at `grok.com/connectors` → New Connector →
+Custom → the URL ([official connector instructions](https://docs.x.ai/grok/connectors)). This direct
+connection is separate from marketplace approval.
+
+The live endpoint returned HTTP 200 for `initialize` and `tools/list` during this check: 27 tools,
+all marked read-only, including `search` and `fetch`. In-app connection and tool execution subsequently succeeded on all three platforms. The official registry entry is now active: [`app.everloot/knowledge`](https://registry.modelcontextprotocol.io/v0.1/servers?search=app.everloot), version `0.8.0`, published 2026-10-19 at 06:08 UTC.
 
 ## 5. Community directories (owner, a web form each)
 
@@ -164,8 +176,17 @@ They mostly ingest from the official registry, so publish there first and check 
 - Published OpenAPI, JSON Schema for every tool, and the `@everloot/protocol` package.
 - `security.txt`, privacy and terms pages on the site.
 
-## Not done, on purpose
+## Submission progress
 
 No listing text mentions numbers of users, uploads or installs; the data is sparse before launch and the
-listing should not promise what the corpus does not hold. Nothing above was submitted by an agent: the
-portals need the owner's accounts.
+listing should not promise what the corpus does not hold.
+
+Execution on 2026-10-18, using the maintainer's existing accounts:
+
+- Official MCP Registry: published `app.everloot/knowledge` version `0.8.0`; the registry API reports active.
+- Claude, ChatGPT and Grok: custom connections created and real tool calls completed successfully.
+- Claude directory: listing draft prepared; all-tool verification and final submission still pending.
+- ChatGPT directory: business publisher verified, Everloot project and plugin draft created, portable package accepted. Domain verification and final submission still pending.
+- Grok Bot marketplace: form prepared; final submission still pending.
+
+The portable OpenAI package is in [`integrations/openai/`](../integrations/openai/). The reviewer demo is a recording of the actual ChatGPT connector test conversation at `/review/everloot-chatgpt-demo.mp4`. A connected custom server and a public marketplace approval are separate states. This document does not claim approval before a platform reports it.
