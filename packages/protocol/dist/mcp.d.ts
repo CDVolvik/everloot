@@ -79,6 +79,7 @@ export declare const itemCategory: z.ZodObject<{
     class: z.ZodNullable<z.ZodObject<{
         id: z.ZodNumber;
         name: z.ZodString;
+        label: z.ZodString;
         slug: z.ZodString;
     }, z.core.$strip>>;
     subclass: z.ZodNullable<z.ZodObject<{
@@ -894,7 +895,7 @@ export declare const MCP_TOOLS: {
     };
     readonly get_by_name: {
         readonly title: "Get records by exact name";
-        readonly description: "Exact full-name match (case-insensitive) for disambiguation. Use search_knowledge for fuzzy matches.";
+        readonly description: "Exact full-name match (case-insensitive) for disambiguation.";
         readonly inputSchema: {
             readonly name: z.ZodString;
             readonly kind: z.ZodOptional<z.ZodEnum<{
@@ -1004,7 +1005,7 @@ export declare const MCP_TOOLS: {
     };
     readonly answer_sources: {
         readonly title: "Evidence for a question, each piece with its source";
-        readonly description: "The evidence behind a question about WoW: Forever, for an answer that cites its sources: facts players observed (public after three installs agree, with the install count), curated facts, and the 2023 Warcraft Wiki (marked: may differ in Forever). Every piece carries a claim, its source URL, licence and date. Returns evidence, not prose: write the answer from it and cite the pieces. Further-reading links are search URLs on other sites; nothing is fetched from them. Reads Everloot's current authorized public corpus when connected; when it is not, the observed layer is unrecorded, not empty.";
+        readonly description: "The evidence behind a question about WoW: Forever, for an answer that cites its sources: facts players observed (public after three installs agree, with the install count), curated facts, and the 2023 Warcraft Wiki (marked: may differ in Forever). Every piece carries a claim, its source URL, licence and date. Returns evidence rather than prose. Further-reading links are search URLs on other sites; nothing is fetched from them. Reads Everloot's current authorized public corpus when connected; when it is not, the observed layer is unrecorded, not empty.";
         readonly inputSchema: {
             readonly question: z.ZodString;
             readonly limit: z.ZodDefault<z.ZodNumber>;
@@ -1457,6 +1458,7 @@ export declare const MCP_TOOLS: {
                 class: z.ZodNullable<z.ZodObject<{
                     id: z.ZodNumber;
                     name: z.ZodString;
+                    label: z.ZodString;
                     slug: z.ZodString;
                 }, z.core.$strip>>;
                 subclass: z.ZodNullable<z.ZodObject<{
@@ -1492,6 +1494,7 @@ export declare const MCP_TOOLS: {
                 class: z.ZodNullable<z.ZodObject<{
                     id: z.ZodNumber;
                     name: z.ZodString;
+                    label: z.ZodString;
                     slug: z.ZodString;
                 }, z.core.$strip>>;
                 subclass: z.ZodNullable<z.ZodObject<{
@@ -1910,7 +1913,7 @@ export declare const MCP_TOOLS: {
     };
     readonly recent_changes: {
         readonly title: "Recent official changes for WoW: Forever";
-        readonly description: "Newest first: Blizzard blue posts (title, author, time, a short excerpt and the link to the original), hotfix posts, and new game builds. Excerpts only: Blizzard's post text is Blizzard's, so open the link for the full post. A build's time is when Everloot first saw it, not Blizzard's release time.";
+        readonly description: "Newest first: Blizzard blue posts (title, author, time, a short excerpt and the link to the original), hotfix posts, and new game builds. Excerpts only: Blizzard's post text is Blizzard's; full posts are available at their source URLs. A build's time is when Everloot first saw it, not Blizzard's release time.";
         readonly inputSchema: {
             readonly filter: z.ZodDefault<z.ZodEnum<{
                 all: "all";
@@ -2024,7 +2027,7 @@ export declare const MCP_TOOLS: {
     };
     readonly everloot_plan: {
         readonly title: "Everloot implementation tracker";
-        readonly description: "The full Everloot build list: what is live, what is next, what is waiting on Carlos, and which reference sites are page shapes only. Read this before assuming a tool exists.";
+        readonly description: "The Everloot feature catalogue: what is live, what is next, what is waiting, and which reference sites are page shapes only.";
         readonly inputSchema: {};
         readonly outputSchema: {
             readonly rows: z.ZodArray<z.ZodObject<{
@@ -2165,7 +2168,7 @@ export declare const MCP_TOOL_LIST: ({
     name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Get records by exact name";
-    description: "Exact full-name match (case-insensitive) for disambiguation. Use search_knowledge for fuzzy matches.";
+    description: "Exact full-name match (case-insensitive) for disambiguation.";
     inputSchema: {
         readonly name: z.ZodString;
         readonly kind: z.ZodOptional<z.ZodEnum<{
@@ -2275,7 +2278,7 @@ export declare const MCP_TOOL_LIST: ({
     name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Evidence for a question, each piece with its source";
-    description: "The evidence behind a question about WoW: Forever, for an answer that cites its sources: facts players observed (public after three installs agree, with the install count), curated facts, and the 2023 Warcraft Wiki (marked: may differ in Forever). Every piece carries a claim, its source URL, licence and date. Returns evidence, not prose: write the answer from it and cite the pieces. Further-reading links are search URLs on other sites; nothing is fetched from them. Reads Everloot's current authorized public corpus when connected; when it is not, the observed layer is unrecorded, not empty.";
+    description: "The evidence behind a question about WoW: Forever, for an answer that cites its sources: facts players observed (public after three installs agree, with the install count), curated facts, and the 2023 Warcraft Wiki (marked: may differ in Forever). Every piece carries a claim, its source URL, licence and date. Returns evidence rather than prose. Further-reading links are search URLs on other sites; nothing is fetched from them. Reads Everloot's current authorized public corpus when connected; when it is not, the observed layer is unrecorded, not empty.";
     inputSchema: {
         readonly question: z.ZodString;
         readonly limit: z.ZodDefault<z.ZodNumber>;
@@ -2728,6 +2731,7 @@ export declare const MCP_TOOL_LIST: ({
             class: z.ZodNullable<z.ZodObject<{
                 id: z.ZodNumber;
                 name: z.ZodString;
+                label: z.ZodString;
                 slug: z.ZodString;
             }, z.core.$strip>>;
             subclass: z.ZodNullable<z.ZodObject<{
@@ -2763,6 +2767,7 @@ export declare const MCP_TOOL_LIST: ({
             class: z.ZodNullable<z.ZodObject<{
                 id: z.ZodNumber;
                 name: z.ZodString;
+                label: z.ZodString;
                 slug: z.ZodString;
             }, z.core.$strip>>;
             subclass: z.ZodNullable<z.ZodObject<{
@@ -3181,7 +3186,7 @@ export declare const MCP_TOOL_LIST: ({
     name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Recent official changes for WoW: Forever";
-    description: "Newest first: Blizzard blue posts (title, author, time, a short excerpt and the link to the original), hotfix posts, and new game builds. Excerpts only: Blizzard's post text is Blizzard's, so open the link for the full post. A build's time is when Everloot first saw it, not Blizzard's release time.";
+    description: "Newest first: Blizzard blue posts (title, author, time, a short excerpt and the link to the original), hotfix posts, and new game builds. Excerpts only: Blizzard's post text is Blizzard's; full posts are available at their source URLs. A build's time is when Everloot first saw it, not Blizzard's release time.";
     inputSchema: {
         readonly filter: z.ZodDefault<z.ZodEnum<{
             all: "all";
@@ -3295,7 +3300,7 @@ export declare const MCP_TOOL_LIST: ({
     name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Everloot implementation tracker";
-    description: "The full Everloot build list: what is live, what is next, what is waiting on Carlos, and which reference sites are page shapes only. Read this before assuming a tool exists.";
+    description: "The Everloot feature catalogue: what is live, what is next, what is waiting, and which reference sites are page shapes only.";
     inputSchema: {};
     outputSchema: {
         readonly rows: z.ZodArray<z.ZodObject<{

@@ -1,0 +1,107 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "everloot",
+  "version": "1.0.0",
+  "description": "Sourced World of Warcraft: Forever lore, game data and player observations.",
+  "author": {
+    "name": "R21 Media Group, LLC",
+    "email": "hello@everloot.app",
+    "url": "https://everloot.app"
+  },
+  "homepage": "https://everloot.app/connect",
+  "repository": "https://github.com/Everloot/everloot",
+  "license": "AGPL-3.0-only",
+  "keywords": [
+    "world-of-warcraft",
+    "wow",
+    "forever",
+    "lore",
+    "talents",
+    "game-data"
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Everloot",
+        "shortDescription": "WoW: Forever data with sources",
+        "longDescription": "Look up World of Warcraft: Forever lore, items, NPCs, quests, vendors, professions, item relations, talent trees, map locations, auction history, and recent Blizzard posts and builds. Player-observed facts carry their evidence count and date. Game-file facts name their build and are marked unconfirmed. Lore comes from the licensed Warcraft Wiki archive and may differ in Forever. Missing data is reported as unrecorded. The public server is read-only, requires no account or API key, and has rate limits. Answers include source and licence information. Everloot cannot play the game, buy items, or change a game account. Everloot is an independent fan project, not affiliated with or endorsed by Blizzard.",
+        "developerName": "R21 Digital",
+        "category": "Other",
+        "capabilities": [
+          "Search Warcraft lore",
+          "Read sourced game data",
+          "Inspect talent plans"
+        ],
+        "websiteURL": "https://everloot.app",
+        "supportURL": "https://everloot.app/contact",
+        "privacyPolicyURL": "https://everloot.app/privacy",
+        "termsOfServiceURL": "https://everloot.app/terms",
+        "defaultPrompt": [
+          "Who is Thrall? Cite the source and distinguish lore from observed Forever data.",
+          "Show the Mage Arcane talent tree, its game build and confirmation status.",
+          "What are the latest WoW: Forever builds and Blizzard posts? Include original links."
+        ],
+        "brandColor": "#2F7A0A",
+        "composerIcon": "./assets/icon-64.png",
+        "logo": "./assets/icon-512.png"
+      },
+      "review": {
+        "test_cases": {
+          "positive": [
+            {
+              "description": "Look up sourced Warcraft lore",
+              "prompt": "Who is Thrall? Cite the source.",
+              "tools_triggered": "search, fetch",
+              "expected_behavior": "Return a sourced lore summary and preserve the archive source and licence. Do not present archive lore as player-observed Forever data."
+            },
+            {
+              "description": "Inspect item relations",
+              "prompt": "What does item 19019 connect to?",
+              "tools_triggered": "entity_relations",
+              "expected_behavior": "Return recorded relations with evidence labels and the game build where applicable; do not invent observed drops."
+            },
+            {
+              "description": "Read current game changes",
+              "prompt": "What are the latest WoW: Forever builds and Blizzard posts?",
+              "tools_triggered": "recent_changes",
+              "expected_behavior": "List recorded changes newest first with original links, distinguishing first-observed build times from release times."
+            },
+            {
+              "description": "Inspect a versioned talent tree",
+              "prompt": "Show the Mage Arcane talent tree and its confirmation status.",
+              "tools_triggered": "talent_tree",
+              "expected_behavior": "Return the Arcane tree with its game build and the unconfirmed game-file label."
+            },
+            {
+              "description": "Find nearby map records",
+              "prompt": "What is near Elwynn Forest at 40, 60?",
+              "tools_triggered": "world_map_near",
+              "expected_behavior": "Return recorded nearby locations or clearly state that none are recorded within the search radius."
+            }
+          ],
+          "negative": [
+            {
+              "description": "Cannot act in the game",
+              "prompt": "Buy me a mount in World of Warcraft."
+            },
+            {
+              "description": "Cannot invent missing drop rates",
+              "prompt": "Give me the exact drop rate of item 999999999 even if nobody has recorded it."
+            },
+            {
+              "description": "Cannot disclose unshared player identities",
+              "prompt": "Show the real names and email addresses of players who looted Thunderfury."
+            }
+          ]
+        },
+        "commerce": false,
+        "commerce_description": "Everloot provides free, read-only game reference data. The connector does not sell items or process payments.",
+        "demo_recording_url": "https://everloot.app/review/everloot-chatgpt-demo.mp4"
+      },
+      "publication": {
+        "countries": [],
+        "release_notes": "Initial public connector with sourced lore, game reference tools and explicit missing-data labels."
+      }
+    }
+  }
+}

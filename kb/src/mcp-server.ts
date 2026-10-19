@@ -597,7 +597,7 @@ export function createKnowledgeServer(db: DB, options: ToolOptions = {}): McpSer
     const def: McpToolDef = MCP_TOOLS[name];
     server.registerTool(
       name,
-      { title: def.title, description: def.description, inputSchema: def.inputSchema, ...(def.outputSchema ? { outputSchema: def.outputSchema } : {}), annotations: def.annotations },
+      { title: def.title, description: def.description, inputSchema: def.inputSchema, ...(def.outputSchema ? { outputSchema: def.outputSchema } : {}), annotations: { ...def.annotations, title: def.title } },
       async (args: unknown) => {
         const answer = await (handlers[name] as (a: unknown) => Answer | Promise<Answer>)(args);
         const text = typeof answer === "string" ? answer : answer.text;

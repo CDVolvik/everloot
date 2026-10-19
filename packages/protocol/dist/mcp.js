@@ -59,7 +59,7 @@ export const talentTreePoints = z.object({ id: z.number().int(), name: z.string(
 /** One item's category path as item_categories returns it. Null parts are not in the build's tables. */
 export const itemCategory = z.object({
     itemId: z.number().int(),
-    class: z.object({ id: z.number().int(), name: z.string(), slug: z.string() }).nullable(),
+    class: z.object({ id: z.number().int(), name: z.string(), label: z.string(), slug: z.string() }).nullable(),
     subclass: z.object({ id: z.number().int(), name: z.string().nullable(), slug: z.string() }).nullable(),
     slot: z.object({ inventoryType: z.number().int(), name: z.string(), slug: z.string() }).nullable(),
     quality: z.object({ id: z.number().int(), name: z.string(), slug: z.string() }).nullable(),
@@ -385,7 +385,7 @@ export const MCP_TOOLS = {
     },
     get_by_name: {
         title: "Get records by exact name",
-        description: "Exact full-name match (case-insensitive) for disambiguation. Use search_knowledge for fuzzy matches.",
+        description: "Exact full-name match (case-insensitive) for disambiguation.",
         inputSchema: {
             name: z.string().max(200).describe("Full record name."),
             kind: z.enum(KNOWLEDGE_KINDS).optional().describe("Narrow to one record kind."),
@@ -409,7 +409,7 @@ export const MCP_TOOLS = {
     },
     answer_sources: {
         title: "Evidence for a question, each piece with its source",
-        description: "The evidence behind a question about WoW: Forever, for an answer that cites its sources: facts players observed (public after three installs agree, with the install count), curated facts, and the 2023 Warcraft Wiki (marked: may differ in Forever). Every piece carries a claim, its source URL, licence and date. Returns evidence, not prose: write the answer from it and cite the pieces. Further-reading links are search URLs on other sites; nothing is fetched from them. Reads Everloot's current authorized public corpus when connected; when it is not, the observed layer is unrecorded, not empty.",
+        description: "The evidence behind a question about WoW: Forever, for an answer that cites its sources: facts players observed (public after three installs agree, with the install count), curated facts, and the 2023 Warcraft Wiki (marked: may differ in Forever). Every piece carries a claim, its source URL, licence and date. Returns evidence rather than prose. Further-reading links are search URLs on other sites; nothing is fetched from them. Reads Everloot's current authorized public corpus when connected; when it is not, the observed layer is unrecorded, not empty.",
         inputSchema: {
             question: z.string().min(1).max(500).describe("The question, with names spelled as in the game."),
             limit: z.number().int().min(1).max(25).default(8).describe("Most lore and curated pieces."),
@@ -644,7 +644,7 @@ export const MCP_TOOLS = {
     },
     recent_changes: {
         title: "Recent official changes for WoW: Forever",
-        description: "Newest first: Blizzard blue posts (title, author, time, a short excerpt and the link to the original), hotfix posts, and new game builds. Excerpts only: Blizzard's post text is Blizzard's, so open the link for the full post. A build's time is when Everloot first saw it, not Blizzard's release time.",
+        description: "Newest first: Blizzard blue posts (title, author, time, a short excerpt and the link to the original), hotfix posts, and new game builds. Excerpts only: Blizzard's post text is Blizzard's; full posts are available at their source URLs. A build's time is when Everloot first saw it, not Blizzard's release time.",
         inputSchema: {
             filter: z.enum(CHANGE_FILTERS).default("all").describe("posts (blue posts), hotfixes, builds, or all."),
             game: z.enum(["forever", "classic"]).optional().describe("Narrow to one game."),
@@ -674,7 +674,7 @@ export const MCP_TOOLS = {
     },
     everloot_plan: {
         title: "Everloot implementation tracker",
-        description: "The full Everloot build list: what is live, what is next, what is waiting on Carlos, and which reference sites are page shapes only. Read this before assuming a tool exists.",
+        description: "The Everloot feature catalogue: what is live, what is next, what is waiting, and which reference sites are page shapes only.",
         inputSchema: {},
         outputSchema: {
             rows: z.array(planRow).describe("Every row, in the tracker's order."),

@@ -66,6 +66,16 @@ test("item_categories: the whole tree, one item's path, a filtered list and a mi
   expect(missing.items).toBeUndefined();
 });
 
+test.each([{ item: 19019 }, { class: "weapons", limit: 2 }])("item_categories output validates against tools/list for %j", async (args) => {
+  const c = await client();
+  await c.listTools();
+  const result = await c.callTool({ name: "item_categories", arguments: args });
+  const out = categoriesOut.parse(result.structuredContent);
+  const items = out.item ? [out.item] : out.items!;
+  expect(items.length).toBeGreaterThan(0);
+  for (const item of items) expect(item.class).toMatchObject({ name: "Weapon", label: "Weapons", slug: "weapons" });
+});
+
 test("ecosystem_projects: the ranked rows with GitHub facts flattened, and not connected is not an empty list", async () => {
   const ranked = ecosystemOut.parse((await (await client({ ecosystem: view })).callTool({ name: "ecosystem_projects", arguments: { board: "installed" } })).structuredContent);
   expect(ranked.connected).toBe(true);

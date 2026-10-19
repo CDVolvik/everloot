@@ -1,0 +1,9 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "everloot": {
+      "type": "streamable-http",
+      "url": "https://everloot.app/mcp/public"
+    }
+  }
+}

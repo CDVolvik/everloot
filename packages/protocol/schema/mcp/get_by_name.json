@@ -1,7 +1,7 @@
 {
   "$id": "https://everloot.app/schema/mcp/get_by_name.json",
   "title": "Get records by exact name",
-  "description": "Exact full-name match (case-insensitive) for disambiguation. Use search_knowledge for fuzzy matches.",
+  "description": "Exact full-name match (case-insensitive) for disambiguation.",
   "annotations": {
     "readOnlyHint": true,
     "openWorldHint": false
