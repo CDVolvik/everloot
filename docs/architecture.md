@@ -43,6 +43,9 @@ Warcraft Wiki dump (CC BY-SA 4.0) + curated entries
 
 ## Boundaries
 
+Where each kind of data goes, who may write it and how each tier is protected is in
+[`DATA_PLACEMENT.md`](DATA_PLACEMENT.md).
+
 - **Raw and named data stay private.** Raw uploads and the index are never served directly. The
   public corpus holds sanitized anonymous observations, plus named records only with a grant.
 - **The knowledge release holds publishable sources only.** The build refuses Battle.net API rows
