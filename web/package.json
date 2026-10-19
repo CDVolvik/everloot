@@ -11,7 +11,8 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
-    "sample-release": "tsx scripts/sample-release.ts"
+    "sample-release": "tsx scripts/sample-release.ts",
+    "export-bulk": "tsx scripts/export-bulk.ts"
   },
   "dependencies": {
     "@everloot/protocol": "file:../packages/protocol",

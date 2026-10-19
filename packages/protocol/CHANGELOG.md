@@ -11,6 +11,9 @@ required, or tightening a limit is a major release.
   (`populationCell`, `CENSUS_FACTIONS`, `CENSUS_WINDOWS`), emitted as `schema/mcp/population.json`, and in
   `PLAYER_DATA_TOOLS`. A hidden count is null; the page says whether the game has launched and whether the
   window is still collecting.
+- `bulkIndex` and `bulkFile`, the shape of a bulk export's `index.json`, with `BULK_DATASETS`
+  (corpus, edges, drops, items): each file's rows are the array of an existing API response, named by
+  `rowsOf` and `field`, so the bulk files and the API share one definition.
 - `skill` as an entity kind and the `in_skill_line` relation (spell -> skill line), as the site's
   profession edges from the game files carry since 2026-10-18.
 - The upload record contract, moved here from the site: 31 record kinds, the upload envelope, the

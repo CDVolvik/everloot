@@ -1,4 +1,4 @@
-import { CORPUS_URL, MCP_PROMPTS, MCP_RESOURCE_TEMPLATES, MCP_RESOURCES, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR } from "@/app/connect/connect-data";
+import { BULK_URL, CORPUS_URL, MCP_PROMPTS, MCP_RESOURCE_TEMPLATES, MCP_RESOURCES, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR } from "@/app/connect/connect-data";
 import { LAUNCH, longDate } from "@/data/wow-forever";
 import { tools, toolHref } from "@/data/tools";
 import { PUBLIC_RECORD_KINDS } from "@everloot/protocol";
@@ -86,6 +86,7 @@ function connect(): string[] {
     bullet("Relations API", "/api/edges", "Typed relations between items, NPCs, spells, professions and quests (dropped by, sold by, created by, reagent for, set, same icon, profession), paged, filterable by entity, relation and evidence. Player-observed rows need 3 installs; game-file rows are labelled found in game files, unconfirmed, with their build, and are Blizzard's, not under our licence. The whole game-file layer: /api/edges/client-layer."),
     bullet("Objects", "/database/objects", "Chests, herbs, ore veins and fishing pools players looted, by the id in their GUID, with what came out of them; public after 3 install reports."),
     bullet("Items by category", "/database/items", "Every item in the current build by class and subclass, with slot and quality filters, from the game files (found in game files, unconfirmed). As JSON: /api/items and /api/items/categories."),
+    ...(BULK_URL ? [`- [Bulk export](${BULK_URL}/latest.json): the published data as files, one NDJSON file per dataset (corpus, drops, edges, items) with an index.json naming each file's rows, size, SHA-256, licence and the API response shape its rows follow. For the whole dataset, take this instead of paging the APIs.`] : []),
     bullet("OpenAPI document", "/api/openapi.json", "OpenAPI 3.1 for every JSON endpoint, assembled from the same protocol the routes are tested against."),
     bullet("JSON Schema", "/schema/index.json", "The protocol: one JSON Schema per upload record kind, the API response shapes (/schema/api/<name>.json) and the MCP tool inputs (/schema/mcp/<tool>.json)."),
     bullet("Connect guide", "/connect", "Setup for Claude Code and other MCP clients, a reference of every tool and endpoint, with examples."),

@@ -7,7 +7,7 @@ import Bracket from "@/components/Bracket";
 import { KEYS_MADE_PER_DAY, KEYS_PER_ACCOUNT, REVOKED_KEPT_DAYS, USAGE_KEPT_DAYS } from "@/lib/api-keys";
 import { ANON_PAGE, ANON_PER_HOUR, guardOn, KEY_PAGE, KEY_PER_HOUR } from "@/lib/data-guard";
 import { PUBLIC_RECORD_KINDS } from "@everloot/protocol";
-import { CONNECT_EXAMPLES as ex, MCP_PROMPTS, MCP_RESOURCE_TEMPLATES, MCP_RESOURCES, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR } from "./connect-data";
+import { BULK_URL, CONNECT_EXAMPLES as ex, MCP_PROMPTS, MCP_RESOURCE_TEMPLATES, MCP_RESOURCES, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR } from "./connect-data";
 import { ApiReference, SchemaReference, ToolReference } from "./Reference";
 
 export const metadata: Metadata = {
@@ -339,11 +339,26 @@ export default function ConnectPage() {
       </Section>
 
       <Section id="files" title="Data files">
-        <p className="text-fg-2">
-          There is no bulk download yet. A full export of the published data is on the{" "}
-          <a href={`${REPO}/blob/main/ROADMAP.md`} rel="noopener" className={link}>roadmap</a>, planned after launch. Until
-          then the corpus API is the way to get the data as files: save the response{guard ? ", page by page, with a free key for the whole of it" : ""}.
-        </p>
+        {BULK_URL ? (
+          <>
+            <p className="text-fg-2">
+              The published data as files: one newline-delimited JSON file per dataset (the public corpus, drop rates, relations,
+              items) and an <code className="font-mono text-fg">index.json</code> that lists each file with its row count, size,
+              SHA-256, licence and the API response whose rows it holds, so a file and the API never disagree on a shape. Each
+              export is its own folder, never changed after it is written; <a href={`${BULK_URL}/latest.json`} className={link}>latest.json</a>{" "}
+              points at the newest. The index shape is <a href="/schema/api/bulkIndex.json" className={link}>/schema/api/bulkIndex.json</a>.
+            </p>
+            <Code label="Find the newest export">{ex.bulkCurl}</Code>
+          </>
+        ) : (
+          <p className="text-fg-2">
+            There is no bulk download yet. A full export of the published data is on the{" "}
+            <a href={`${REPO}/blob/main/ROADMAP.md`} rel="noopener" className={link}>roadmap</a>, planned after launch. Until
+            then the corpus API is the way to get the data as files: save the response{guard ? ", page by page, with a free key for the whole of it" : ""}.
+            The export itself is built (<code className="font-mono text-fg">npm run export-bulk</code> in the repository); what is
+            missing is the public bucket it is served from.
+          </p>
+        )}
       </Section>
 
       <Section id="licence" title="Licence and credit">
