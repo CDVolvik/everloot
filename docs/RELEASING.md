@@ -18,7 +18,7 @@ notes. `.github/workflows/pr-title.yml` rejects a title that does not fit, and
 [`scripts/check_pr_title.py`](../scripts/check_pr_title.py) holds the rules.
 
 - Types: `feat`, `fix`, `perf`, `refactor`, `docs`, `chore`, `data`
-- Scopes: `addon`, `web`, `kb`, `companion`, `protocol`, `mcp`, `game-data`, `infra`, `docs`
+- Scopes: `addon`, `web`, `kb`, `companion`, `desktop`, `protocol`, `mcp`, `game-data`, `infra`, `docs`
 - Example: `feat(web): the raid builder shows which tree each buff needs`
 
 Dependabot pull requests and the rolling `data/changes` pull request are exempt; both already use the

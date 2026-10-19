@@ -20,6 +20,9 @@ desktop.ini
 
 # --- Node / Next.js (web/) ---
 node_modules/
+# Everloot Desktop bundle and installers (desktop/)
+desktop/dist/
+desktop/release/
 .next/
 out/
 .turbo/
@@ -31,6 +34,8 @@ yarn-error.log*
 
 # --- Swift / Xcode (ios/) ---
 build/
+# The desktop icons live in a build/ folder and are committed (a later rule wins).
+!desktop/build/
 DerivedData/
 *.xcuserstate
 xcuserdata/

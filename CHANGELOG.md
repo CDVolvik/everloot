@@ -1,7 +1,7 @@
 # Changelog
 
 All notable changes to Everloot, in the style of [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
-The addon is versioned (`0.2.x`, tagged `addon-vX.Y.Z`). The site and the knowledge base deploy from
+The addon is versioned (`0.2.x`, tagged `addon-vX.Y.Z`) and so is the desktop app (tagged `desktop-vX.Y.Z`). The site and the knowledge base deploy from
 `main` and have no version number, so their milestones are listed by date at the bottom.
 
 This file was written on 2026-10-17 from the merged pull requests and commit history. The first
@@ -125,6 +125,29 @@ that has a zip in the repository. Earlier builds have none.
   objects instead of parsing prose. The schema files and `/connect` show which tools do.
 
 Pull requests merged to `main` are listed in the nightly pre-releases until the next tagged release.
+
+## [desktop-v0.1.0] - 2026-10-19
+
+The first Everloot Desktop App release. Tagged `desktop-v0.1.0`; the desktop app has its own
+version line, separate from the addon. Builds are not code-signed yet.
+
+### Added
+- **Everloot Desktop App** (`desktop/`): the companion as a tray app with a sidebar window. First run
+  shows what leaves the computer and finds the game folder; then it uploads after every logout,
+  refreshes market prices after each upload and hourly, and answers `/ask` when turned on. Pages
+  for each thing to manage: what each account file holds, realm picks for the prices file (your
+  scans plus the realms you follow), the `/ask` setup and recent answers, addon install and update
+  checked against the release's `SHA256SUMS`, the change tracker, the log, a chat over Everloot's
+  MCP tools with sources (a tool loop on the player's own key: Anthropic, OpenRouter, OpenCode Zen's
+  zero-retention free models, a local Ollama or any OpenAI-compatible server, picked on the page and
+  shared with the in-game `/ask`; plain sourced search without one; three local tools let the model
+  read the player's own characters, scan ages and the app's own job status, sourced as this
+  computer; starter questions on an empty thread and an "ask why" link from a failed job), a
+  local characters view (gold history, gear, progress), and the site's tools embedded. A dated
+  backup of each account file after every upload, with restore; a tray reminder when a realm's
+  scan is older than a day; the window remembers its place. Electron, built on
+  `companion/src`, same data folder as the command line. Tagged `desktop-vX.Y.Z`; the first
+  release is not code-signed.
 
 ## [0.3.3] - 2026-10-19
 

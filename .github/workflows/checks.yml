@@ -55,6 +55,7 @@ jobs:
             kb/package-lock.json
             web/package-lock.json
             companion/package-lock.json
+            desktop/package-lock.json
       - run: npm ci && npm test && npm run typecheck && npm run build && git diff --exit-code -- dist schema
         working-directory: packages/protocol
       - name: The protocol version follows its semver rule against what is published
@@ -70,6 +71,8 @@ jobs:
         working-directory: web
       - run: npm ci && npm test && npm run typecheck
         working-directory: companion
+      - run: npm ci && npm test && npm run typecheck && npm run build
+        working-directory: desktop
       - uses: actions/setup-python@v7
         with:
           python-version: '3.12'

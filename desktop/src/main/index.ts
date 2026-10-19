@@ -1,0 +1,321 @@
+import { BrowserWindow, Notification, app, dialog, ipcMain, screen, shell } from "electron";
+import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
+import { readAsks } from "../../../companion/src/bridge/asks";
+import { loadProviders } from "../../../companion/src/providers/config";
+import type { AddonInfo, AppState, AskInfo, Job, MarketInfo, Settings } from "../shared/types";
+import { JOBS } from "../shared/types";
+import { presetFor, type ProviderKind } from "../shared/providers";
+import { listBackups, restoreBackup } from "./backups";
+import { compareVersions, installAddon, installedAddonVersion, newestRelease, slotAddons } from "./addon";
+import { fetchChanges } from "./changes";
+import { charactersFromFiles } from "./characters";
+import { createChat } from "./chat";
+import { localTools } from "./local-tools";
+import { createEngine } from "./engine";
+import { allowedExternal } from "./external";
+import { candidateRoots, detectGameFolders, realFs } from "./game-folder";
+import { newestScans, readScanAges, staleScans, summarizeFiles } from "./inspect";
+import { companionJobs } from "./jobs";
+import { listRealms, ownRealms } from "./market";
+import { loadSettings, mergeSettings, saveSettings } from "./settings";
+import { SITE_TOOLS, createSiteViews, siteToolPath } from "./site-views";
+import { createTray } from "./tray";
+import { checkForUpdates, fetchReleases, newestDesktopRelease } from "./updates";
+import { fitWindow, readWindowState, writeWindowState } from "./window-state";
+
+/** The same folder the command line uses (`companion/src/cli.ts` defaultStatePath), so both share sent.json. */
+function dataFolder(): string {
+  // EVERLOOT_DATA_DIR points a development run at a scratch folder instead of the real one.
+  if (process.env.EVERLOOT_DATA_DIR) return process.env.EVERLOOT_DATA_DIR;
+  if (process.platform === "win32") return join(process.env.APPDATA ?? join(homedir(), "AppData", "Roaming"), "Everloot");
+  if (process.platform === "darwin") return join(homedir(), "Library", "Application Support", "Everloot");
+  return join(process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config"), "everloot");
+}
+
+/** Remembers one network answer for a while, so opening a page twice does not ask the site twice. */
+function cached<T>(ms: number, load: () => Promise<T>): () => Promise<T> {
+  let value: { at: number; data: T } | null = null;
+  return async () => {
+    if (value && Date.now() - value.at < ms) return value.data;
+    const data = await load();
+    value = { at: Date.now(), data };
+    return data;
+  };
+}
+
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  const data = dataFolder();
+  const settingsPath = join(data, "settings.json");
+  const loaded = loadSettings(settingsPath);
+  let settings: Settings = loaded.settings;
+  const jobs = companionJobs(data, () => settings);
+  const engine = createEngine(jobs.deps);
+  let win: BrowserWindow | null = null;
+  let site: ReturnType<typeof createSiteViews> | null = null;
+  let tray: ReturnType<typeof createTray> | null = null;
+  let quitting = false;
+
+  const addonsDir = () => (settings.gameFolder ? join(settings.gameFolder, "Interface", "AddOns") : null);
+  let update: AppState["update"] = null;
+  // Scan ages come from parsing each account file; remembered per file size and write time so a broadcast stays cheap.
+  const scanMemo = new Map<string, { key: string; scans: ReturnType<typeof readScanAges> }>();
+  const allScans = () => engine.snapshot().files.flatMap((f) => {
+    try {
+      const st = statSync(f), key = `${st.mtimeMs}:${st.size}`;
+      const hit = scanMemo.get(f);
+      if (hit && hit.key === key) return hit.scans;
+      const scans = readScanAges(readFileSync(f, "utf8"));
+      scanMemo.set(f, { key, scans });
+      return scans;
+    } catch { return []; }
+  });
+  const chat = createChat(data, () => settings, localTools({
+    characters: () => charactersFromFiles(engine.snapshot().files),
+    scans: () => newestScans(allScans()),
+    followed: () => settings.market.realms,
+    status: () => {
+      const e = engine.snapshot();
+      const dir = addonsDir();
+      return {
+        version: app.getVersion(), gameFolder: settings.gameFolder, files: e.files.length, paused: e.paused,
+        switches: { upload: settings.upload, prices: settings.prices, ask: settings.ask.enabled }, jobs: e.jobs,
+        addonInstalled: dir ? installedAddonVersion(dir) : null, update,
+        errors: e.log.filter((l) => l.level === "error").slice(-5),
+      };
+    },
+  }));
+  const appState = (): AppState => ({ version: app.getVersion(), platform: process.platform, dataFolder: data, notice: loaded.error, settings, engine: engine.snapshot(), siteTools: SITE_TOOLS, update, staleScans: staleScans(allScans()) });
+  const broadcast = () => {
+    const s = appState();
+    win?.webContents.send("state", s);
+    tray?.update(s);
+  };
+  engine.onChange(broadcast);
+
+  // Two system notifications only: answers landed in the game (so the player knows to /reload),
+  // and a newer addon exists (once per run). Nothing else interrupts.
+  const notify = (title: string, body: string, page: string) => {
+    if (!Notification.isSupported()) return;
+    const n = new Notification({ title, body, silent: true });
+    n.on("click", () => show(page));
+    n.show();
+  };
+  let lastAskAt: string | null = null;
+  engine.onChange((s) => {
+    const ask = s.jobs.ask;
+    if (ask.state !== "ok" || ask.at === lastAskAt) return;
+    lastAskAt = ask.at;
+    const m = /^answered (\d+)/.exec(ask.message);
+    if (m && Number(m[1]) > 0) notify("Everloot answered in game", `${m[1]} answer(s) written. Type /reload to read them.`, "ask");
+  });
+  // The desktop release check at start is a line on the Overview and in the tray, never a notification.
+  const desktopUpdateLine = async () => {
+    try {
+      const newest = newestDesktopRelease(await releases());
+      update = newest ? { current: app.getVersion(), latest: newest.version, url: newest.url, newer: compareVersions(newest.version, app.getVersion()) > 0 } : null;
+      if (update?.newer) broadcast();
+    } catch { update = null; }
+  };
+  let addonNoticed: string | null = null;
+  const addonUpdateNotice = async () => {
+    const dir = addonsDir();
+    if (!dir) return;
+    try {
+      const installed = installedAddonVersion(dir);
+      const latest = newestRelease(await releases(), "addon-v");
+      if (installed && latest && latest.version !== addonNoticed && compareVersions(latest.version, installed) > 0) {
+        addonNoticed = latest.version;
+        notify("Everloot addon update", `${latest.version} is out (you run ${installed}). Open the Addon page to update.`, "addon");
+      }
+    } catch { /* offline; the Addon page will say so */ }
+  };
+  /** Both release checks; at start, after the first Start, and once a day. */
+  const checkReleases = () => { if (settings.consentedAt) { void addonUpdateNotice(); void desktopUpdateLine(); } };
+
+  const releases = cached(10 * 60 * 1000, () => fetchReleases(fetch, `everloot-desktop/${app.getVersion()}`));
+  const knownRealms = cached(10 * 60 * 1000, () => listRealms(settings.endpoint));
+  const changes = cached(15 * 60 * 1000, () => fetchChanges(settings.endpoint));
+
+  const applyLoginItem = () => {
+    if (process.platform === "linux") return; // no login item API there; the AppImage can be added by hand
+    app.setLoginItemSettings({ openAtLogin: settings.launchAtLogin, args: ["--hidden"] });
+  };
+
+  const show = (page?: string) => {
+    if (!win) createWindow();
+    else { if (win.isMinimized()) win.restore(); win.show(); win.focus(); }
+    if (page && win) {
+      const w = win;
+      if (w.webContents.isLoading()) w.webContents.once("did-finish-load", () => w.webContents.send("navigate", page));
+      else w.webContents.send("navigate", page);
+    }
+  };
+
+  const windowPath = join(data, "window.json");
+  function createWindow(): void {
+    const bounds = fitWindow(readWindowState(windowPath), screen.getAllDisplays().map((d) => d.workArea));
+    win = new BrowserWindow({
+      ...bounds, minWidth: 760, minHeight: 540,
+      title: "Everloot Desktop App",
+      backgroundColor: "#0E0F0D",
+      show: false,
+      autoHideMenuBar: true,
+      webPreferences: { preload: join(__dirname, "preload.cjs"), contextIsolation: true, nodeIntegration: false, sandbox: true },
+    });
+    site = createSiteViews(win, () => settings.endpoint);
+    win.loadFile(join(__dirname, "renderer", "index.html"));
+    win.once("ready-to-show", () => { win?.show(); });
+    // The size and place come back next time; written a moment after the last drag, and on close.
+    let saveTimer: ReturnType<typeof setTimeout> | null = null;
+    const remember = () => { if (win && !win.isDestroyed() && !win.isMinimized() && !win.isMaximized() && !win.isFullScreen()) { try { writeWindowState(windowPath, win.getBounds()); } catch { /* read-only data folder; nothing to remember */ } } };
+    const rememberSoon = () => { if (saveTimer) clearTimeout(saveTimer); saveTimer = setTimeout(remember, 500); };
+    win.on("resize", rememberSoon);
+    win.on("move", rememberSoon);
+    // Close keeps the app in the tray; Quit in the tray menu ends it.
+    win.on("close", (e) => { if (saveTimer) clearTimeout(saveTimer); remember(); if (!quitting) { e.preventDefault(); win?.hide(); } });
+    win.on("closed", () => { site?.destroy(); site = null; win = null; });
+    win.webContents.setWindowOpenHandler(({ url }) => { if (allowedExternal(url)) void shell.openExternal(url); return { action: "deny" }; });
+    win.webContents.on("will-navigate", (e) => e.preventDefault());
+  }
+
+  const pick = async (options: Electron.OpenDialogOptions) => {
+    const r = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options);
+    return r.canceled ? null : r.filePaths[0] ?? null;
+  };
+
+  ipcMain.handle("state", () => appState());
+  /** The settings the engine reads at start; a change to any of them restarts it, anything else does not. */
+  const engineInputs = (s: Settings) => JSON.stringify([s.gameFolder, s.endpoint, s.upload, s.prices, s.ask, s.consentedAt]);
+  ipcMain.handle("saveSettings", (_e, patch: unknown) => {
+    const before = settings;
+    settings = mergeSettings(settings, patch);
+    saveSettings(settingsPath, settings);
+    applyLoginItem();
+    if (!before.consentedAt && settings.consentedAt) checkReleases();
+    if (engineInputs(before) !== engineInputs(settings)) engine.start(settings);
+    else if (JSON.stringify(before.market.realms) !== JSON.stringify(settings.market.realms) && settings.prices) void engine.runNow("prices");
+    else broadcast();
+    return appState();
+  });
+  ipcMain.handle("detectGameFolders", () => detectGameFolders(candidateRoots({ platform: process.platform, env: process.env, home: homedir() }), realFs));
+  ipcMain.handle("pickGameFolder", () => pick({ title: "Pick the game folder that holds WTF", properties: ["openDirectory"] }));
+  ipcMain.handle("pickTokenFile", () => pick({ title: "Pick the file that holds your MCP token", properties: ["openFile"] }));
+  ipcMain.handle("runNow", (_e, job: unknown) => { if (JOBS.includes(job as Job)) return engine.runNow(job as Job); });
+  ipcMain.handle("setPaused", (_e, paused: unknown) => engine.setPaused(paused === true));
+  ipcMain.handle("openDataFolder", () => shell.openPath(data).then(() => undefined));
+  ipcMain.handle("openAddonsFolder", () => { const dir = addonsDir(); return dir && existsSync(dir) ? shell.openPath(dir).then(() => undefined) : undefined; });
+  ipcMain.handle("openConfig", () => {
+    const config = join(data, "config.json");
+    // A starter file with no providers, so the editor opens on the documented shape.
+    if (!existsSync(config)) writeFileSync(config, JSON.stringify({ providers: [] }, null, 2) + "\n");
+    return shell.openPath(config).then(() => undefined);
+  });
+  ipcMain.handle("openExternal", (_e, url: unknown) => {
+    if (typeof url !== "string" || !allowedExternal(url)) return false;
+    void shell.openExternal(url);
+    return true;
+  });
+  ipcMain.handle("checkForUpdates", () => checkForUpdates(app.getVersion()));
+
+  ipcMain.handle("uploadInfo", () => summarizeFiles(engine.snapshot().files, join(data, "sent.json")));
+  ipcMain.handle("backups", () => listBackups(data));
+  ipcMain.handle("openBackupsFolder", () => { const dir = join(data, "backups"); return existsSync(dir) ? shell.openPath(dir).then(() => undefined) : undefined; });
+  ipcMain.handle("restoreBackup", async (_e, file: unknown) => {
+    if (typeof file !== "string") throw new Error("Not a backup");
+    const entry = listBackups(data).find((b) => b.file === file);
+    if (!entry) throw new Error("That backup is gone");
+    const options: Electron.MessageBoxOptions = {
+      type: "warning", buttons: ["Restore", "Cancel"], defaultId: 1, cancelId: 1,
+      title: "Restore a backup",
+      message: `Put the ${entry.account} save file back to ${new Date(entry.at).toLocaleString()}?`,
+      detail: "Do this while logged out: the game rewrites the file on logout and would undo the restore. The file as it is now is backed up first, so you can go back.",
+    };
+    const r = win ? await dialog.showMessageBox(win, options) : await dialog.showMessageBox(options);
+    if (r.response !== 0) return null;
+    return restoreBackup(file, data, engine.snapshot().files);
+  });
+  ipcMain.handle("marketInfo", async (): Promise<MarketInfo> => {
+    const files = engine.snapshot().files;
+    const scans = newestScans(allScans());
+    const base = { own: ownRealms(files), followed: settings.market.realms, last: jobs.lastMarket(), scans };
+    try {
+      const k = await knownRealms();
+      return { ...base, known: k.realms, dataAsOf: k.dataAsOf, error: null };
+    } catch (err) {
+      return { ...base, known: [], dataAsOf: null, error: err instanceof Error ? err.message : String(err) };
+    }
+  });
+  ipcMain.handle("askInfo", (): AskInfo => {
+    const pending = engine.snapshot().files.map((file) => {
+      try { return { file, asks: readAsks(readFileSync(file, "utf8")) }; } catch { return { file, asks: [] }; }
+    });
+    let providers: string[] = [], providerError: string | null = null;
+    try { providers = loadProviders(join(data, "config.json")).map((p) => p.name); }
+    catch (err) { providerError = err instanceof Error ? err.message : String(err); }
+    return { pending, answers: jobs.answerStore.list().slice().reverse(), providers, providerError };
+  });
+  ipcMain.handle("addonInfo", async (): Promise<AddonInfo> => {
+    const dir = addonsDir();
+    const local = { addonsDir: dir, installed: dir ? installedAddonVersion(dir) : null, slots: dir ? slotAddons(dir) : { prices: false, answers: false } };
+    try { return { ...local, latest: newestRelease(await releases(), "addon-v"), error: null }; }
+    catch (err) { return { ...local, latest: null, error: err instanceof Error ? err.message : String(err) }; }
+  });
+  ipcMain.handle("installAddon", async (_e, version: unknown) => {
+    const dir = addonsDir();
+    if (!dir) throw new Error("Pick the game folder first");
+    if (typeof version !== "string" || !/^\d+\.\d+\.\d+$/.test(version)) throw new Error("Not a version");
+    return installAddon({ version, endpoint: settings.endpoint, addonsDir: dir });
+  });
+  ipcMain.handle("changes", () => changes());
+  ipcMain.handle("charactersInfo", () => charactersFromFiles(engine.snapshot().files));
+
+  ipcMain.handle("chatInfo", () => chat.info());
+  ipcMain.handle("chatSend", (_e, text: unknown) => (typeof text === "string" ? chat.send(text) : chat.info()));
+  ipcMain.handle("chatClear", () => chat.clear());
+  ipcMain.handle("chatSetProvider", (_e, raw: unknown) => {
+    const c = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
+    if (!presetFor(String(c.kind))) throw new Error("Pick a provider");
+    const str = (v: unknown) => (typeof v === "string" ? v.slice(0, 2000) : undefined);
+    return chat.setProvider({ kind: c.kind as ProviderKind, key: str(c.key), model: str(c.model), baseUrl: str(c.baseUrl) });
+  });
+  ipcMain.handle("chatRemoveProvider", () => chat.removeProvider());
+
+  ipcMain.handle("siteShow", (_e, id: unknown) => {
+    const path = typeof id === "string" ? siteToolPath(id) : null;
+    return path && site ? site.show(path) : null;
+  });
+  ipcMain.handle("siteHide", () => site?.hide());
+  ipcMain.handle("siteBack", () => site?.back());
+  ipcMain.handle("siteReload", () => site?.reload());
+
+  // A stray rejection or exception becomes a line on the Log page instead of Electron's dialog; the jobs keep running.
+  // Logging re-runs the engine listeners (broadcast, tray); if the error came from one of them, the handler must not throw too.
+  const describe = (err: unknown) => (err instanceof Error ? err.stack ?? err.message : String(err));
+  const note = (what: string, err: unknown) => { console.error(err); try { engine.log("error", `${what}: ${describe(err)}`); } catch { /* already on the console */ } };
+  process.on("unhandledRejection", (err) => note("Unhandled rejection", err));
+  process.on("uncaughtException", (err) => note("Uncaught exception", err));
+
+  app.on("second-instance", () => show());
+  app.on("activate", () => show());
+  app.on("before-quit", () => { quitting = true; });
+  app.on("window-all-closed", () => { /* stay in the tray */ });
+
+  void app.whenReady().then(() => {
+    tray = createTray(join(__dirname, process.platform === "darwin" ? "trayTemplate.png" : "tray.png"), {
+      show, runNow: (job) => void engine.runNow(job), setPaused: (p) => engine.setPaused(p), openExternal: (url) => { if (allowedExternal(url)) void shell.openExternal(url); }, quit: () => { quitting = true; app.quit(); },
+    });
+    applyLoginItem();
+    engine.start(settings);
+    // Windows passes the login item's args; macOS does not, but says whether this launch came from login.
+    const hidden = process.argv.includes("--hidden") || (process.platform === "darwin" && app.getLoginItemSettings().wasOpenedAtLogin);
+    if (!settings.consentedAt || !(hidden && settings.startInTray)) createWindow();
+    broadcast();
+    checkReleases();
+    // The app sits in the tray for weeks; look again once a day.
+    setInterval(checkReleases, 24 * 60 * 60 * 1000);
+  });
+}

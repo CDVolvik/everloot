@@ -38,6 +38,7 @@ architecture map.
 [`design/specs/`](design/specs/) holds the design for each feature, and [`design/plans/`](design/plans/)
 the plans that built them, both named by date. Recent ones:
 
+- [Everloot Desktop App](design/specs/2026-10-18-desktop-app-design.md)
 - [Forever market](design/specs/2026-10-16-forever-market-design.md)
 - [Platform expansion](design/specs/2026-10-18-platform-expansion-design.md)
 - [Agent chat (site, companion, addon)](design/specs/2026-10-18-agent-chat-design.md)

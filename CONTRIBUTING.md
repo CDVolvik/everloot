@@ -27,7 +27,7 @@ New here? Open the issues labelled
 says what done looks like, and names the files to start in. Comment on one to say you are taking it,
 and ask in [Discussions](https://github.com/Everloot/everloot/discussions) if anything is unclear.
 [`help wanted`](https://github.com/Everloot/everloot/labels/help%20wanted) marks larger work that is
-open to anyone. Area labels (`addon`, `web`, `kb`, `companion`, `mcp`, `tools`, `lore`, `game-data`)
+open to anyone. Area labels (`addon`, `web`, `kb`, `companion`, `desktop`, `mcp`, `tools`, `lore`, `game-data`)
 tell you which part an issue touches.
 
 ## Data rules
@@ -47,6 +47,7 @@ You need Node 22, Python 3.12 and Git. Each part's README says how to run and te
 - [`web/`](web/README.md): Next.js; `npm run sample-release` gives you local lore pages
 - [`kb/`](kb/README.md): the knowledge base and MCP server
 - [`companion/`](companion/README.md): needs `web` installed
+- [`desktop/`](desktop/README.md): Electron; needs `web` and `companion` installed
 - [`packages/protocol/`](packages/protocol/README.md): the contract. After a change there, run
   `npm run build` in `packages/protocol`, then in each of `web`, `kb` and `companion` delete
   `node_modules/@everloot/protocol` and run `npm install`: they install a packed copy, and npm keeps the
@@ -73,7 +74,7 @@ Title a pull request `type(scope): plain sentence`. The title becomes the line i
 so write it for someone reading them.
 
 - Types: `feat`, `fix`, `perf`, `refactor`, `docs`, `chore`, `data`
-- Scopes: `addon`, `web`, `kb`, `companion`, `protocol`, `mcp`, `game-data`, `infra`, `docs`
+- Scopes: `addon`, `web`, `kb`, `companion`, `desktop`, `protocol`, `mcp`, `game-data`, `infra`, `docs`
 - Example: `feat(web): the raid builder shows which tree each buff needs`
 
 A check on every pull request rejects a title that does not fit. No full stop at the end, 100
