@@ -272,9 +272,11 @@ if (!app.requestSingleInstanceLock()) {
   ipcMain.handle("siteReload", () => site?.reload());
 
   // A stray rejection or exception becomes a line on the Log page instead of Electron's dialog; the jobs keep running.
+  // Logging re-runs the engine listeners (broadcast, tray); if the error came from one of them, the handler must not throw too.
   const describe = (err: unknown) => (err instanceof Error ? err.stack ?? err.message : String(err));
-  process.on("unhandledRejection", (err) => engine.log("error", `Unhandled rejection: ${describe(err)}`));
-  process.on("uncaughtException", (err) => { console.error(err); engine.log("error", `Uncaught exception: ${describe(err)}`); });
+  const note = (what: string, err: unknown) => { console.error(err); try { engine.log("error", `${what}: ${describe(err)}`); } catch { /* already on the console */ } };
+  process.on("unhandledRejection", (err) => note("Unhandled rejection", err));
+  process.on("uncaughtException", (err) => note("Uncaught exception", err));
 
   app.on("second-instance", () => show());
   app.on("activate", () => show());
