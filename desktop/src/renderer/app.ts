@@ -1,7 +1,7 @@
 import { accountOf as account } from "../main/engine";
 import { diagnostics } from "../shared/diagnostics";
 import { ago, clock, esc, gold, kb, msg, sparkline, statusText, when } from "./format";
-import { NO_SOURCED_ANSWER, type AddonInfo, type AppState, type AskInfo, type BackupInfo, type ChangeItem, type CharactersInfo, type ChatInfo, type EverlootApi, type FileSummary, type GameFolderCandidate, type Job, type JobStatus, type MarketInfo } from "../shared/types";
+import { NO_SOURCED_ANSWER, type AddonInfo, type AppState, type AskInfo, type BackupInfo, type ChangeItem, type CharacterRow, type CharactersInfo, type ChatInfo, type EverlootApi, type FileSummary, type GameFolderCandidate, type Job, type JobStatus, type MarketInfo, type MoneyDay } from "../shared/types";
 import { PROVIDER_PRESETS, presetFor, type ProviderKind } from "../shared/providers";
 
 declare global { interface Window { everloot: EverlootApi } }
@@ -155,26 +155,228 @@ function providerForm(): string {
   </form>`;
 }
 
+const SLOT_ORDER = ["HeadSlot", "NeckSlot", "ShoulderSlot", "BackSlot", "ChestSlot", "WristSlot", "HandsSlot", "WaistSlot", "LegsSlot", "FeetSlot", "Finger0Slot", "Finger1Slot", "Trinket0Slot", "Trinket1Slot", "MainHandSlot", "SecondaryHandSlot"];
+const SLOT_LABEL: Record<string, string> = { HeadSlot: "Head", NeckSlot: "Neck", ShoulderSlot: "Shoulders", BackSlot: "Back", ChestSlot: "Chest", WristSlot: "Wrist", HandsSlot: "Hands", WaistSlot: "Waist", LegsSlot: "Legs", FeetSlot: "Feet", Finger0Slot: "Finger 1", Finger1Slot: "Finger 2", Trinket0Slot: "Trinket 1", Trinket1Slot: "Trinket 2", MainHandSlot: "Main hand", SecondaryHandSlot: "Off hand" };
+const DAY_LETTERS = ["S", "M", "T", "W", "T", "F", "S"];
+
+/** The picked character (character\0realm) and the open drawer, kept across re-renders. */
+let charPick: string | null = null;
+let drawerChar: CharacterRow | null = null;
+let drawerOpener: HTMLElement | null = null;
+
+const totals = (days: MoneyDay[]) => days.reduce((a, d) => ({ earned: a.earned + d.earned, spent: a.spent + d.spent }), { earned: 0, spent: 0 });
+const netOf = (m: { earned: number; spent: number }) => m.earned - m.spent;
+const signed = (copper: number) => `${copper >= 0 ? "+" : "−"}${gold(Math.abs(copper))}`;
+
+/** The 30-day cumulative net line and its area from the zero line; the page's signature element. */
+function moneyRiver(days: MoneyDay[]): string {
+  const w = 560, h = 96, pad = 6;
+  let net = 0;
+  const pts = [0, ...days.map((d) => (net += d.earned - d.spent))];
+  const lo = Math.min(0, ...pts), hi = Math.max(0, ...pts), span = hi - lo || 1;
+  const x = (i: number) => (i / (pts.length - 1)) * w;
+  const y = (v: number) => (pad + (1 - (v - lo) / span) * (h - pad * 2)).toFixed(1);
+  const line = pts.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(v)}`).join(" ");
+  return `<svg class="river" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" role="img" aria-label="Cumulative net gold over the last thirty days"><path class="river-area" d="${line} L${w},${y(0)} L0,${y(0)} Z"/><line class="river-zero" x1="0" y1="${y(0)}" x2="${w}" y2="${y(0)}"/><path class="river-line" d="${line}"/></svg>`;
+}
+
+/** A 30-day area of a series, for the drawer's gold history. */
+function goldChart(points: { at: string; copper: number }[]): string {
+  if (points.length < 2) return `<p class="muted small">One gold snapshot so far; a chart needs two.</p>`;
+  const w = 560, h = 110, pad = 6;
+  const lo = Math.min(...points.map((p) => p.copper)), hi = Math.max(...points.map((p) => p.copper)), span = hi - lo || 1;
+  const x = (i: number) => (i / (points.length - 1)) * w;
+  const y = (v: number) => (pad + (1 - (v - lo) / span) * (h - pad * 2)).toFixed(1);
+  const line = points.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p.copper)}`).join(" ");
+  const first = esc(points[0].at.slice(0, 10)), last = esc(points[points.length - 1].at.slice(0, 10));
+  return `<svg class="river" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" role="img" aria-label="Gold from ${first} to ${last}"><path class="river-area" d="${line} L${w},${y(lo)} L0,${y(lo)} Z"/><path class="river-line" d="${line}"/></svg>`;
+}
+
+/** Earned above the line, spent below, one column a day for the last seven. */
+function weekBars(days: MoneyDay[]): string {
+  const week = days.slice(-7);
+  const max = Math.max(1, ...week.map((d) => Math.max(d.earned, d.spent)));
+  const cols = week.map((d) => {
+    const letter = DAY_LETTERS[new Date(`${d.date}T00:00:00Z`).getUTCDay()];
+    return `<div class="wk-col" title="${d.date}: +${gold(d.earned)} in, −${gold(d.spent)} out"><div class="wk-up"><i style="height:${Math.round((d.earned / max) * 100)}%"></i></div><div class="wk-down"><i style="height:${Math.round((d.spent / max) * 100)}%"></i></div><span class="wk-d">${letter}</span></div>`;
+  }).join("");
+  return `<div class="week-bars" role="img" aria-label="Money earned above the line and spent below, one column a day">${cols}</div>`;
+}
+
+/** One keyed progress row set, listed apart from the named characters by design. */
+function keyedRows(c: CharactersInfo | undefined): string {
+  return (c?.progress ?? []).map((p) => `<tr><td><span class="mono">${esc(p.key)}</span></td><td>${esc(p.class.toLowerCase())} ${p.level}</td><td class="num">${p.achievements}${p.achievementsInProgress ? `<span class="muted"> +${p.achievementsInProgress} in progress</span>` : ""}</td><td class="num">${p.reputations}${p.exalted ? `<span class="muted"> · ${p.exalted} exalted</span>` : ""}</td><td class="num">${p.titles}</td><td class="num">${p.quests}</td></tr>`).join("");
+}
+
 function characters(): string {
   const c = data.characters;
-  const rows = (c?.characters ?? []).map((r) => {
-    const spent = Object.values(r.spent).reduce((a, b) => a + b, 0), earned = Object.values(r.earned).reduce((a, b) => a + b, 0);
-    const net = r.week.earned - r.week.spent;
-    const week = r.week.earned || r.week.spent ? `<span class="${net >= 0 ? "ok" : "warn"}">${net >= 0 ? "+" : "-"}${gold(Math.abs(net))}</span><div class="muted small">+${gold(r.week.earned)} / -${gold(r.week.spent)}</div>` : "–";
-    return `<tr><td>${esc(r.character)}<div class="muted small">${esc(r.realm)}</div></td><td class="num">${gold(r.gold)}${sparkline(r.history)}</td><td class="num muted">${gold(r.peakGold)}</td><td class="num">${week}</td><td class="num">${r.itemLevel ?? "–"}<div class="muted small">${r.gearSlots ? `${r.gearSlots} slots` : ""}</div></td><td class="num">${earned ? gold(earned) : "–"}</td><td class="num">${spent ? gold(spent) : "–"}</td></tr>`;
+  const named = c?.characters ?? [];
+  const selected = named.find((r) => `${r.character}\u0000${r.realm}` === charPick) ?? named[0] ?? null;
+  const t = selected ? totals(selected.days) : { earned: 0, spent: 0 };
+  const net30 = netOf(t), week = selected ? netOf(selected.week) : 0;
+  const rows = named.map((r, i) => {
+    const w = netOf(r.week), at = r.history[r.history.length - 1]?.at;
+    return `<tr class="roster-row${r === selected ? " sel" : ""}" data-char="${i}" tabindex="0" aria-haspopup="dialog">
+      <td><b>${esc(r.character)}</b><div class="muted small">${esc(r.realm)}</div></td>
+      <td class="num">${gold(r.gold)}${sparkline(r.history)}</td>
+      <td class="num ${w >= 0 ? "ok" : "warn"}">${r.week.earned || r.week.spent ? signed(w) : "–"}</td>
+      <td class="num">${r.itemLevel ?? "–"}<div class="muted small">${r.gearSlots ? `${r.gearSlots} slots` : ""}</div></td>
+      <td class="num muted small">${at ? ago(at) : "–"}</td>
+    </tr>`;
   }).join("");
-  const prog = (c?.progress ?? []).map((p) => `<tr><td><span class="mono">${esc(p.key)}</span></td><td>${esc(p.class.toLowerCase())} ${p.level}</td><td class="num">${p.achievements}${p.achievementsInProgress ? `<span class="muted"> +${p.achievementsInProgress} in progress</span>` : ""}</td><td class="num">${p.reputations}${p.exalted ? `<span class="muted"> · ${p.exalted} exalted</span>` : ""}</td><td class="num">${p.titles}</td><td class="num">${p.quests}</td></tr>`).join("");
-  return `<div class="page">
-    <div class="head"><h1>Characters</h1><div class="row"><span class="sub">from the addon's save file · never uploaded from here</span>${rows && data.chat?.mode !== "plain search" ? askChip("How are my characters doing: gold this week, gear and progress?", "Ask the assistant") : ""}</div></div>
+  const hero = selected ? `
+    <div class="char-hero">
+      <section class="panel river-card">
+        <div class="row between"><h2>30-day money river</h2><span class="muted small">+${gold(t.earned)} in · −${gold(t.spent)} out · <b class="${net30 >= 0 ? "ok" : "warn"}">${signed(net30)}</b> net</span></div>
+        ${moneyRiver(selected.days)}
+        <div class="row between muted small"><span>${selected.days[0]?.date ?? ""}</span><span>${selected.days[selected.days.length - 1]?.date ?? ""}</span></div>
+      </section>
+      <section class="panel week-card">
+        <div class="row between"><h2>This week</h2><span class="muted small">earned above · spent below</span></div>
+        ${weekBars(selected.days)}
+        <div class="week-foot"><span class="muted small">+${gold(selected.week.earned)}</span><span class="${week >= 0 ? "ok" : "warn"}"><b>${signed(week)}</b> net</span><span class="muted small">−${gold(selected.week.spent)}</span></div>
+      </section>
+    </div>` : "";
+  const prog = keyedRows(c);
+  return `<div class="page char-page">
+    <div class="head">
+      <div>
+        <div class="mono muted small">${selected ? `${esc(selected.realm.toUpperCase())} · from the addon's save file` : "from the addon's save file"}</div>
+        <h1 class="${selected ? "char-name" : ""}">${selected ? esc(selected.character) : "Characters"}</h1>
+      </div>
+      <div class="row"><span class="sub">never uploaded from here</span>${named.length && data.chat?.mode !== "plain search" ? askChip(`How is ${selected?.character ?? "my main"} doing: gold this week, gear and progress?`, "Ask the assistant") : ""}</div>
+    </div>
     <p class="fg2">What the addon recorded about your own characters. Gold and gear carry the name; progress rows carry an opaque key the addon derives per character, so they are listed apart. Sharing any of this with the site is a choice you make on the upload page with a verified grant, never here.</p>
-    <section class="panel"><div class="row between"><h2>Gold and gear</h2><span class="muted small">the line under Gold is every snapshot the addon kept, oldest to newest</span></div>
-      ${rows ? `<table><thead><tr><th>Character</th><th class="num">Gold</th><th class="num">Peak</th><th class="num">7 days</th><th class="num">Item level</th><th class="num">Earned</th><th class="num">Spent</th></tr></thead><tbody>${rows}</tbody></table>` : `<p class="muted">${c ? "No gold or gear snapshot yet. The addon records them while you play." : "Loading…"}</p>`}
-    </section>
-    <section class="panel"><h2>Progress</h2>
+    ${named.length ? `${hero}
+    <section class="panel"><div class="row between"><h2>Roster</h2><span class="muted small">click a character, or press Enter, for the details</span></div>
+      <table class="roster"><thead><tr><th>Character</th><th class="num">Gold</th><th class="num">7 days</th><th class="num">Item level</th><th class="num">Last seen</th></tr></thead><tbody>${rows}</tbody></table>
+    </section>` : `<section class="panel"><p class="muted">${c ? "No gold or gear snapshot yet. The addon records them while you play." : "Loading…"}</p></section>`}
+    <section class="panel" id="keyed" tabindex="-1"><h2>Progress · keyed</h2>
       ${prog ? `<table><thead><tr><th>Key</th><th>Class</th><th class="num">Achievements</th><th class="num">Reputations</th><th class="num">Titles</th><th class="num">Quests done</th></tr></thead><tbody>${prog}</tbody></table>` : `<p class="muted">${c ? "Nothing yet. The completion tracker is off until <code>/everloot completion on</code> in game." : "Loading…"}</p>`}
-      ${c?.talents.length ? `<p class="muted small">Active talent builds: ${c.talents.map((t) => `${esc(t.class.toLowerCase())} ${t.level} (${t.points} points)`).join(", ")}.</p>` : ""}
+      ${c?.talents.length ? `<p class="muted small">Active talent builds: ${c.talents.map((x) => `${esc(x.class.toLowerCase())} ${x.level} (${x.points} points)`).join(", ")}. Not linked to a name.</p>` : ""}
     </section>
+  </div>
+  <div class="drawer-layer" id="drawerLayer" hidden aria-hidden="true">
+    <div class="drawer-scrim" data-dwclose></div>
+    <div class="drawer" role="dialog" aria-modal="true" aria-labelledby="dwTitle">
+      <div class="drawer-head">
+        <div class="grow"><div class="mono muted small" id="dwRealm"></div><h2 class="dw-name" id="dwTitle"></h2></div>
+        <button type="button" class="drawer-close" data-dwclose aria-label="Close details">×</button>
+      </div>
+      <div class="drawer-tabs" role="tablist" aria-label="Character details">
+        <button type="button" role="tab" data-dwtab="overview" aria-selected="true">Overview</button>
+        <button type="button" role="tab" data-dwtab="history" aria-selected="false">History</button>
+        <button type="button" role="tab" data-dwtab="share" aria-selected="false">Sharing</button>
+      </div>
+      <div class="drawer-body" id="dwBody"></div>
+    </div>
   </div>`;
+}
+
+function drawerOverview(c: CharacterRow): string {
+  const week = netOf(c.week);
+  const slots = new Map(c.equipped.map((e) => [e.slot, e.itemLevel]));
+  const avg = c.equipped.length ? (c.equipped.reduce((s, e) => s + e.itemLevel, 0) / c.equipped.length).toFixed(1) : null;
+  const grid = SLOT_ORDER.map((s) => {
+    const v = slots.get(s);
+    return `<div class="slot${v ? "" : " empty"}"><span class="slot-k">${SLOT_LABEL[s] ?? esc(s)}</span><span class="slot-v">${v ?? "—"}</span></div>`;
+  }).join("");
+  const catCol = (dir: "in" | "out") => {
+    const rows = Object.entries(dir === "in" ? c.earned : c.spent).sort((a, b) => b[1] - a[1]).slice(0, 8);
+    return rows.length ? rows.map(([k, v]) => `<div class="cat"><span>${esc(k.replace(/_/g, " "))}</span><span class="num">${gold(v)}</span></div>`).join("") : '<p class="muted small">Nothing recorded.</p>';
+  };
+  return `
+    <div class="dw-stats">
+      <div class="dw-stat"><span class="k">Gold now</span><b>${gold(c.gold)}</b></div>
+      <div class="dw-stat"><span class="k">Peak</span><b>${gold(c.peakGold)}</b></div>
+      <div class="dw-stat"><span class="k">7-day net</span><b class="${week >= 0 ? "ok" : "warn"}">${signed(week)}</b></div>
+    </div>
+    <section class="dw-sec"><div class="row between"><h3>Gear</h3><span class="muted small">${c.equipped.length ? `${c.equipped.length} slots · average ${avg}` : "no snapshot yet"}</span></div>
+      <div class="slot-grid">${grid}</div>
+      <p class="muted small">Straight from the addon's last gear sample; empty slots show —.</p>
+    </section>
+    <section class="dw-sec"><div class="row between"><h3>Money by category</h3><span class="muted small">all time in this file</span></div>
+      <div class="cat-cols"><div><h4>Earned</h4>${catCol("in")}</div><div><h4>Spent</h4>${catCol("out")}</div></div>
+    </section>
+    <section class="dw-sec"><h3>Progress</h3>
+      <p class="muted small">Achievements, reputations, titles and quests are keyed by an opaque identifier, never a name, so they stay listed apart from this character. <button type="button" class="link" id="gotoKeyed">Show the keyed rows</button></p>
+    </section>`;
+}
+
+function drawerHistory(c: CharacterRow): string {
+  const first = c.history[0], last = c.history[c.history.length - 1];
+  const receipts = c.receipts.length
+    ? c.receipts.map((r) => `<div class="rc"><span class="rc-at muted small">${when(r.at)}</span><span class="rc-cat">${esc(r.category.replace(/_/g, " "))}</span><span class="rc-v ${r.direction === "in" ? "ok" : "out"}">${r.direction === "in" ? "+" : "−"}${gold(r.copper)}</span></div>`).join("")
+    : '<p class="muted small">No money events in the last thirty days.</p>';
+  return `
+    <section class="dw-sec"><div class="row between"><h3>Gold this file kept</h3><span class="muted small">${c.history.length} snapshot${c.history.length === 1 ? "" : "s"}</span></div>
+      ${goldChart(c.history)}
+      ${first && last && c.history.length > 1 ? `<div class="row between muted small"><span>${esc(first.at.slice(0, 10))}</span><span>${esc(last.at.slice(0, 10))}</span></div>` : ""}
+      <p class="muted small">Peak ${gold(c.peakGold)}${c.gold !== null && c.peakGold !== null && c.peakGold > c.gold ? `, ${gold(c.peakGold - c.gold)} above today` : ""}.</p>
+    </section>
+    <section class="dw-sec"><div class="row between"><h3>Receipts</h3><span class="muted small">newest first, up to twelve</span></div>
+      <div class="receipts">${receipts}</div>
+    </section>`;
+}
+
+function drawerShare(c: CharacterRow): string {
+  const activeDays = c.days.filter((d) => d.earned || d.spent).length;
+  return `
+    <section class="dw-sec"><div class="row between"><h3>Sharing stays on the website</h3><span class="muted small">off by default</span></div>
+      <p class="fg2">This app never uploads <b>${esc(c.character)}</b>'s gold, gear or progress. On everloot.app/upload you choose, per character, to include gear or gold; a verified grant authorizes it, and the same page revokes the grant or opts the character out at any time.</p>
+      <p class="muted small">Progress rows carry an opaque key, never a name, so they cannot be included. Nothing here leaves this computer until you make that choice on the site.</p>
+      <button type="button" class="btn btn-primary" data-open="https://everloot.app/upload">Open the upload page</button>
+    </section>
+    <section class="dw-sec"><h3>What is on this machine</h3>
+      <div class="cat"><span>Gear</span><span class="num">${c.gearSlots ? `${c.gearSlots} slots` : "none yet"}</span></div>
+      <div class="cat"><span>Gold snapshots</span><span class="num">${c.history.length}</span></div>
+      <div class="cat"><span>Days with money events, last 30</span><span class="num">${activeDays}</span></div>
+    </section>`;
+}
+
+function selectChar(i: number): void {
+  const c = data.characters?.characters[i];
+  if (!c) return;
+  charPick = `${c.character}\u0000${c.realm}`;
+  render();
+  openDrawer(c, main.querySelector<HTMLElement>(`[data-char="${i}"]`));
+}
+
+function openDrawer(c: CharacterRow, opener: HTMLElement | null): void {
+  const layer = main.querySelector<HTMLElement>("#drawerLayer");
+  if (!layer) return;
+  drawerChar = c; drawerOpener = opener;
+  main.querySelector<HTMLElement>(".char-page")?.setAttribute("inert", "");
+  const realm = main.querySelector<HTMLElement>("#dwRealm"), title = main.querySelector<HTMLElement>("#dwTitle");
+  if (realm) realm.textContent = c.realm.toUpperCase();
+  if (title) title.textContent = c.character;
+  renderDrawerTab("overview");
+  layer.hidden = false;
+  layer.setAttribute("aria-hidden", "false");
+  main.querySelector<HTMLElement>(".drawer-close")?.focus();
+}
+
+function closeDrawer(): void {
+  const layer = main.querySelector<HTMLElement>("#drawerLayer");
+  if (!layer || layer.hidden) return;
+  layer.hidden = true;
+  layer.setAttribute("aria-hidden", "true");
+  main.querySelector<HTMLElement>(".char-page")?.removeAttribute("inert");
+  drawerChar = null;
+  if (drawerOpener?.isConnected) drawerOpener.focus();
+  drawerOpener = null;
+}
+
+function renderDrawerTab(name: string): void {
+  const c = drawerChar, body = main.querySelector<HTMLElement>("#dwBody");
+  if (!c || !body) return;
+  body.innerHTML = name === "history" ? drawerHistory(c) : name === "share" ? drawerShare(c) : drawerOverview(c);
+  body.scrollTop = 0;
+  for (const b of main.querySelectorAll<HTMLElement>("[data-dwtab]")) {
+    const on = b.dataset.dwtab === name;
+    b.classList.toggle("on", on);
+    b.setAttribute("aria-selected", on ? "true" : "false");
+  }
 }
 
 function upload(s: AppState): string {
@@ -433,7 +635,19 @@ async function sendChat(question: string): Promise<void> {
 }
 
 document.body.addEventListener("click", async (ev) => {
-  const t = (ev.target as HTMLElement).closest<HTMLElement>("button");
+  const el = ev.target as HTMLElement;
+  const row = el.closest<HTMLElement>("[data-char]");
+  if (row) { selectChar(Number(row.dataset.char)); return; }
+  const dwTab = el.closest<HTMLElement>("[data-dwtab]");
+  if (dwTab) { renderDrawerTab(dwTab.dataset.dwtab!); return; }
+  if (el.closest("[data-dwclose]")) { closeDrawer(); return; }
+  if (el.id === "gotoKeyed") {
+    closeDrawer();
+    const keyed = main.querySelector<HTMLElement>("#keyed");
+    if (keyed) { keyed.focus(); keyed.scrollIntoView({ block: "start" }); }
+    return;
+  }
+  const t = el.closest<HTMLElement>("button");
   if (!t) return;
   if (t.dataset.page) { void go(t.dataset.page as Page); return; }
   if (t.dataset.ask) {
@@ -535,7 +749,27 @@ main.addEventListener("change", async (ev) => {
 });
 main.addEventListener("input", (ev) => { const f = (ev.target as HTMLElement).closest("form"); if (f && f.id !== "chatForm" && f.id !== "providerForm") draftDirty = true; });
 main.addEventListener("keydown", (ev) => {
-  if ((ev.target as HTMLElement).id === "chatText" && ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); (main.querySelector("#chatForm") as HTMLFormElement).requestSubmit(); }
+  const el = ev.target as HTMLElement;
+  if (el.id === "chatText" && ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); (main.querySelector("#chatForm") as HTMLFormElement).requestSubmit(); return; }
+  const row = el.closest<HTMLElement>("[data-char]");
+  if (row && (ev.key === "Enter" || ev.key === " ")) { ev.preventDefault(); selectChar(Number(row.dataset.char)); return; }
+  const layer = main.querySelector<HTMLElement>("#drawerLayer");
+  if (layer && !layer.hidden) {
+    if (ev.key === "Escape") { ev.preventDefault(); closeDrawer(); return; }
+    if (ev.key === "ArrowRight" || ev.key === "ArrowLeft") {
+      const tabs = [...layer.querySelectorAll<HTMLElement>("[data-dwtab]")];
+      const i = tabs.indexOf(el);
+      if (i >= 0) { ev.preventDefault(); const next = tabs[(i + (ev.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length]; next.focus(); renderDrawerTab(next.dataset.dwtab!); }
+      return;
+    }
+    if (ev.key === "Tab") {
+      const f = [...layer.querySelectorAll<HTMLElement>(".drawer button")].filter((b) => b.offsetParent !== null);
+      if (!f.length) return;
+      const first = f[0], last = f[f.length - 1];
+      if (!ev.shiftKey && document.activeElement === last) { ev.preventDefault(); first.focus(); }
+      else if (ev.shiftKey && document.activeElement === first) { ev.preventDefault(); last.focus(); }
+    }
+  }
 });
 
 main.addEventListener("submit", async (ev) => {

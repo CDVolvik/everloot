@@ -14,6 +14,9 @@ const str = (v: unknown): string => (typeof v === "string" ? v : "");
 export const HISTORY_POINTS = 60;
 const SPENT = ["vendor", "flight", "postage", "barber", "respec", "auction_spend"];
 const WEEK_MS = 7 * 24 * 3600 * 1000;
+const DAY_MS = 24 * 3600 * 1000;
+const MONEY_DAYS = 30;
+const RECEIPTS = 12;
 
 /** Keeps at most `max` points of a series, always the first and the last. */
 export function thin<T>(points: T[], max = HISTORY_POINTS): T[] {
@@ -26,12 +29,14 @@ export function summarizeCharacters(text: string, now = Date.now()): CharactersI
   const { records } = parseEverlootLua(text);
   const named = new Map<string, CharacterRow>();
   const keyed = new Map<string, ProgressRow>();
+  const gearAt = new Map<string, string>();
+  const money = new Map<string, { at: string; ms: number; category: string; copper: number; direction: "in" | "out" }[]>();
   const row = (r: Record<string, unknown>): CharacterRow | null => {
     const character = str(r.character), realm = str(r.realm);
     if (!character || !realm) return null;
     const id = `${character}-${realm}`;
     let c = named.get(id);
-    if (!c) { c = { character, realm, gold: null, peakGold: null, gearSlots: 0, itemLevel: null, spent: {}, earned: {}, history: [], week: { earned: 0, spent: 0 } }; named.set(id, c); }
+    if (!c) { c = { character, realm, gold: null, peakGold: null, gearSlots: 0, itemLevel: null, equipped: [], spent: {}, earned: {}, history: [], week: { earned: 0, spent: 0 }, days: [], receipts: [] }; named.set(id, c); }
     return c;
   };
   const prog = (r: Record<string, unknown>): ProgressRow | null => {
@@ -55,7 +60,13 @@ export function summarizeCharacters(text: string, now = Date.now()): CharactersI
       case "gear_snapshot": {
         const c = row(r); if (!c) break;
         const eq = Array.isArray(r.equipped) ? (r.equipped as Record<string, unknown>[]) : [];
-        if (eq.length) { c.gearSlots = eq.length; c.itemLevel = Math.round(eq.reduce((s, e) => s + num(e.itemLevel), 0) / eq.length); }
+        if (!eq.length) break;
+        const id = `${c.character}-${c.realm}`, at = str(r.capturedAt), seen = gearAt.get(id) ?? "";
+        if (c.equipped.length && !(at && at > seen)) break;
+        c.equipped = eq.map((e) => ({ slot: str(e.slot), itemLevel: num(e.itemLevel) })).filter((e) => e.slot && e.itemLevel > 0);
+        c.gearSlots = c.equipped.length;
+        c.itemLevel = c.gearSlots ? Math.round(c.equipped.reduce((s, e) => s + e.itemLevel, 0) / c.gearSlots) : null;
+        gearAt.set(id, at);
         break;
       }
       case "money_event": {
@@ -66,6 +77,12 @@ export function summarizeCharacters(text: string, now = Date.now()): CharactersI
         bucket[cat] = (bucket[cat] ?? 0) + copper;
         const at = Date.parse(str(r.capturedAt));
         if (Number.isFinite(at) && now - at <= WEEK_MS) c.week[out ? "spent" : "earned"] += copper;
+        if (Number.isFinite(at)) {
+          const id = `${c.character}-${c.realm}`;
+          const list = money.get(id) ?? [];
+          list.push({ at: str(r.capturedAt), ms: at, category: cat, copper, direction: out ? "out" : "in" });
+          money.set(id, list);
+        }
         break;
       }
       case "achievement_owned": { const p = prog(r); if (!p) break; const m = achievements.get(p.key) ?? new Map<number, boolean>(); m.set(num(r.achievementId), r.completed === true); achievements.set(p.key, m); break; }
@@ -85,7 +102,23 @@ export function summarizeCharacters(text: string, now = Date.now()): CharactersI
   }
   // Talent snapshots carry class and level but no key or name; count the active one per class as a hint.
   const talents = records.filter((r) => r.kind === "talent_snapshot" && r.active === true).map((r) => ({ class: str(r.class), level: num(r.level), points: num(r.points) }));
-  for (const c of named.values()) c.history = thin(c.history.sort((a, b) => a.at.localeCompare(b.at)));
+  const at = new Date(now);
+  const end = Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), at.getUTCDate());
+  const start = end - (MONEY_DAYS - 1) * DAY_MS;
+  for (const c of named.values()) {
+    const id = `${c.character}-${c.realm}`;
+    const events = (money.get(id) ?? []).filter((e) => e.ms >= start && e.ms <= now).sort((a, b) => a.ms - b.ms);
+    const days = Array.from({ length: MONEY_DAYS }, (_, i) => ({ date: new Date(start + i * DAY_MS).toISOString().slice(0, 10), earned: 0, spent: 0 }));
+    const where = new Map(days.map((d, i) => [d.date, i]));
+    for (const e of events) {
+      const i = where.get(new Date(e.ms).toISOString().slice(0, 10));
+      if (i === undefined) continue;
+      if (e.direction === "out") days[i].spent += e.copper; else days[i].earned += e.copper;
+    }
+    c.days = days;
+    c.receipts = events.slice(-RECEIPTS).reverse().map((e) => ({ at: e.at, category: e.category, copper: e.copper, direction: e.direction }));
+    c.history = thin(c.history.sort((a, b) => a.at.localeCompare(b.at)));
+  }
   return {
     characters: [...named.values()].sort((a, b) => (b.gold ?? 0) - (a.gold ?? 0)),
     progress: [...keyed.values()].sort((a, b) => b.level - a.level),

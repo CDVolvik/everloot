@@ -8,7 +8,7 @@ const info: CharactersInfo = {
   characters: [{
     character: "Volvik", realm: "Nightslayer", gold: 1234_56_78, peakGold: 2000_00_00, gearSlots: 15, itemLevel: 61,
     spent: { repairs: 50_00_00, auction: 100_00_00 }, earned: { loot: 300_00_00 },
-    history: [], week: { earned: 20_00_00, spent: 35_00_00 },
+    history: [], week: { earned: 20_00_00, spent: 35_00_00 }, equipped: [], days: [], receipts: [],
   }],
   progress: [{ key: "Volvik-Nightslayer", class: "Warrior", level: 60, achievements: 12, achievementsInProgress: 3, reputations: 20, exalted: 2, titles: 1, quests: 40, talentPoints: 51 }],
   talents: [],
