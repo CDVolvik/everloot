@@ -5,6 +5,7 @@ import { loadCompletion } from "./completion-store";
 import { attributionHeaders } from "./data-guard";
 import { loadEcosystem } from "./ecosystem";
 import { getRelease } from "./release";
+import { loadCensus } from "./rollup-compute";
 import { uploadStore } from "./upload-store";
 import { mcpToolMetrics, recordUsage } from "./usage-metrics";
 
@@ -37,6 +38,11 @@ export function toolLoaders(): ToolOptions {
     market: async () => {
       const loaded = await uploadStore.loadMarket();
       return loaded.state ? { state: loaded.state, dataAsOf: loaded.dataAsOf } : null;
+    },
+    // The same census /census shows: counts only, under its thresholds.
+    census: async () => {
+      const loaded = await loadCensus();
+      return loaded.view ? { view: loaded.view, dataAsOf: loaded.dataAsOf } : null;
     },
   };
 }

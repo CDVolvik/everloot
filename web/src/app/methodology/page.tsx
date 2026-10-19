@@ -69,8 +69,28 @@ export default function MethodologyPage() {
       <section aria-labelledby="population" className="space-y-3">
         <h2 id="population" className="text-2xl font-semibold text-fg">Population numbers</h2>
         <p className="text-fg-2">
-          Everloot doesn&apos;t publish player counts yet. When it does, each character will be counted once however often it is seen,
-          and this page will say exactly how the count works before the first number goes up.
+          The <Link href="/census" className={link}>census</Link> counts characters from players who turn it on in the addon with{" "}
+          <code className="font-mono text-fg">/everloot census on</code>: their own characters, and the players they target, mouse over
+          or group with. For other players the addon reads only race, class, level and faction. Never a name.
+        </p>
+        <p className="text-fg-2">
+          Each character is counted once. The game&apos;s id for a character never reaches storage: before an upload is stored, the id is
+          replaced with a keyed code that can&apos;t be turned back into it. The census keeps the latest report of each character, from
+          any install, so a player seen by fifty uploaders who also uploads their own characters counts once, at the latest level seen.
+        </p>
+        <ul className="list-disc pl-6 space-y-1 text-fg-2">
+          <li>Two windows: active in the last 7 days (the last seven UTC days, today included), and seen since launch. Reports from
+            before launch, in the beta, are not counted.</li>
+          <li>A count shows only when it covers at least 10 characters reported by at least 3 installs. Below that it reads
+            &ldquo;fewer than 10&rdquo;, and until a whole window gets there the page says it is still collecting.</li>
+          <li>Every count that shows is rounded to the nearest 5, each from its own true number. A total isn&apos;t the sum of its
+            rounded parts, so subtracting the shown numbers from a total gives a range, not a hidden count.</li>
+          <li>Levels are grouped 1&ndash;9, 10&ndash;19 and so on up to 50&ndash;59, and at 60.</li>
+          <li>One view for all of WoW: Forever for now. Realms are split by ruleset and region once launch shows how Forever names them.</li>
+        </ul>
+        <p className="text-fg-2">
+          Both sources lean. Own characters over-represent people who install addons; players seen over-represent the zones uploaders
+          play in. The census page shows what share came from each, so you can judge.
         </p>
       </section>
     </article>

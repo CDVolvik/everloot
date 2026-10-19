@@ -1,4 +1,5 @@
 import { popularAddonsFromRecords, type AddonRollup } from "../../../kb/src/addon-rollup";
+import { censusFromRecords, type CensusView } from "../../../kb/src/census";
 import { itemFactsFromRecords } from "../../../kb/src/drop-rollup";
 import { observedEdges, type Edge } from "../../../kb/src/edges";
 import type { ItemFacts } from "../../../kb/src/item-page";
@@ -29,6 +30,7 @@ interface AggregateSet {
   world: WorldFacts;
   addons: AddonRollup;
   edges: Edge[];
+  census: CensusView;
 }
 
 /**
@@ -67,6 +69,8 @@ async function loadAggregates(): Promise<AggregateSet | null> {
       // Addon rows dated after the corpus was current are ignored, so one forged clock cannot set "last seen".
       addons: popularAddonsFromRecords(corpus.records, corpus.dataAsOf ?? new Date()),
       edges: observedEdges(corpus.records, corpus.dataAsOf ?? new Date()),
+      // Counts only (kb/src/census.ts): no character key or install id leaves the rollup.
+      census: censusFromRecords(corpus.records, corpus.dataAsOf ?? new Date()),
     };
   }
   return memoized;
@@ -116,4 +120,11 @@ export async function loadPopularAddons(): Promise<AddonRollup & { unreachable: 
   const agg = await loadAggregates();
   if (!agg) return { addons: [], reportingInstalls: 0, unreachable: true, dataAsOf: null };
   return { ...agg.addons, unreachable: false, dataAsOf: agg.dataAsOf };
+}
+
+/** The census: aggregate counts under the 10-characters, 3-installs rule, never a character key or install id. */
+export async function loadCensus(): Promise<{ view: CensusView | null; unreachable: boolean; dataAsOf: string | null }> {
+  const agg = await loadAggregates();
+  if (!agg) return { view: null, unreachable: true, dataAsOf: null };
+  return { view: agg.census, unreachable: false, dataAsOf: agg.dataAsOf };
 }

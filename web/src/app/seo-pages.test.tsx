@@ -187,5 +187,12 @@ test("/methodology states the three-installs rule, unrecorded is not zero, and l
   expect(visible(html)).toContain("at least three different installs");
   expect(visible(html)).toContain("Unrecorded is not zero");
   expect(html).toContain('/blob/main/docs/DATA_POLICY.md"');
-  expect(visible(html)).toContain("doesn't publish player counts yet");
+  // Population numbers: the exact counting rules, before the first number on /census.
+  expect(visible(html)).not.toContain("doesn't publish player counts yet");
+  expect(visible(html)).toContain("Each character is counted once");
+  expect(visible(html)).toContain("at least 10 characters reported by at least 3 installs");
+  expect(visible(html)).toContain("fewer than 10");
+  expect(visible(html)).toContain("rounded to the nearest 5");
+  expect(visible(html)).toContain("the last 7 days");
+  expect(html).toContain('href="/census"');
 });

@@ -55,6 +55,10 @@ export default function Header() {
               World map
               <span className="ml-2 text-xs text-muted">Zones, entrances and NPCs</span>
             </Link>
+            <Link href="/census" onClick={() => setOpen(false)} className="min-h-11 px-3 py-3 rounded-lg text-sm text-fg-2 hover:bg-canvas hover:text-accent">
+              Census
+              <span className="ml-2 text-xs text-muted">Who plays what</span>
+            </Link>
             <Link href="/changes" onClick={() => setOpen(false)} className="min-h-11 px-3 py-3 rounded-lg text-sm text-fg-2 hover:bg-canvas hover:text-accent">
               What changed
               <span className="ml-2 text-xs text-muted">Blue posts and builds</span>
