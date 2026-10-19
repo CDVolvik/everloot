@@ -49,8 +49,8 @@ export default function GoldPerHourPage() {
             you got, and the current price on your realm&apos;s auction house.
           </li>
           <li>
-            Add any vendor gold from trash or quest rewards to the &ldquo;Vendor
-            gold&rdquo; field.
+            Add any vendor gold from trash or quest rewards to the &ldquo;Vendor /
+            extra gold&rdquo; field.
           </li>
           <li>
             Leave the 5% AH cut toggle on if you plan to list these on the
