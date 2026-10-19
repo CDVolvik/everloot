@@ -18,12 +18,12 @@ const CARDS = [
     body: "Route-linked estimates are planned. The available Gold/Hour Calculator uses the time, quantities and prices you enter yourself.",
   },
   {
-    title: "Respawns included",
-    body: "Respawn measurement and loop optimization are not available yet. Repeated sightings alone do not prove a respawn interval.",
+    title: "Respawn timing",
+    body: "Respawn measurement and loop optimization are planned. Repeated sightings alone do not prove a respawn interval.",
   },
   {
     title: "Gatherers + hunters",
-    body: "Combined gathering and mob routes are planned, pending verified collection and enough usable observations.",
+    body: "Combined gathering and mob routes are planned, once players have uploaded enough sightings to draw them.",
   },
 ];
 

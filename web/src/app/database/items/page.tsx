@@ -8,7 +8,7 @@ import { pageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata({
   title: "WoW Forever items by category",
-  description: `Every WoW: Forever item in build ${CLIENT_LAYER.build.version} by class and subclass, from the game files, found in game files and unconfirmed.`,
+  description: `Every WoW: Forever item in build ${CLIENT_LAYER.build.version} by class and subclass, read from the game files and unconfirmed until players see it in game.`,
   path: "/database/items",
 });
 

@@ -50,7 +50,7 @@ export default async function DatabasePage() {
         <p className="text-lg text-fg-2 max-w-2xl">
           Items, NPCs, quests and vendors for WoW: Forever — built from data players
           collect, with public facts gated by matching install reports. Distinct install IDs
-          do not establish independent players. Actual beta-client collection remains unverified.
+          do not establish independent players.
         </p>
       </header>
 
@@ -90,8 +90,8 @@ export default async function DatabasePage() {
             STORAGE_UNREACHABLE
           ) : (
             <>
-              A count above is what the store returned. Zero means that store was empty. Run the addon,
-              send data on the{" "}
+              Uploads are open now, during the beta. Every fact here starts as one player&apos;s
+              upload and goes public once 3 installs agree on it. Run the addon, send your save file on the{" "}
               <Link href="/upload" className="text-accent hover:underline underline-offset-4">upload page</Link>,
               and watch your farms become the reference.
             </>
