@@ -1,8 +1,10 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    // Bundler resolution, not NodeNext: the server runs under tsx (see Dockerfile and serve:mcp), and it
+    // imports the site's talent modules (web/src/lib/talents), whose relative imports carry no extension.
+    "module": "ESNext",
+    "moduleResolution": "bundler",
     "strict": true,
     "resolveJsonModule": true,
     "esModuleInterop": true,

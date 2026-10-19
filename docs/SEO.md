@@ -59,7 +59,7 @@ the owner can do. Written after the 2026-10-17 audit.
    verify by meta tag. Submit the same two sitemaps. IndexNow submissions show under "IndexNow" once the key
    works.
 5. **MCP registry.** Publish the public server (`https://everloot.app/mcp/public`) to the official MCP
-   registry as `io.github.CDVolvik/everloot`, then to Glama, Smithery and mcp.so. The server must have
+   registry as `io.github.Everloot/everloot`, then to Glama, Smithery and mcp.so. The server must have
    `EVERLOOT_MCP_PUBLIC=1` set in Production, or the endpoint answers 404.
 6. **Bot protection.** Check that Vercel's bot protection is not challenging GPTBot, ClaudeBot, PerplexityBot or
    OAI-SearchBot. The audit saw 200s for all of them.

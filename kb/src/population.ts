@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { LICENCE, SITE, type McpToolDef } from "@everloot/protocol";
+import { LICENCE, SITE, uploadsAnswer, type McpToolDef } from "@everloot/protocol";
 import {
   CENSUS_CLASSES, CENSUS_RACES, FACTIONS, LEVEL_BANDS,
   type CensusCount, type CensusView, type CensusWindow, type Faction,
@@ -59,12 +59,8 @@ export const POPULATION_TOOL = {
     faction: z.enum(FACTIONS as [Faction, ...Faction[]]).optional().describe("Alliance or Horde."),
     window: z.enum(["week", "launch"]).default("week").describe("week: active in the last 7 days. launch: seen since launch."),
   },
-  outputSchema: {
-    connected: z.boolean().describe("False when no census was read; the page is then absent, which is not a measured zero."),
-    dataAsOf: z.string().nullable().describe("When the uploads behind the census were current, or null when unrecorded."),
-    reason: z.string().optional().describe("Why nothing was read, when connected is false."),
-    page: populationPage.optional(),
-  },
+  // The envelope every structured answer built on player uploads uses.
+  outputSchema: { ...uploadsAnswer, page: populationPage.optional() },
   annotations: { readOnlyHint: true, openWorldHint: false },
 } as const satisfies McpToolDef;
 

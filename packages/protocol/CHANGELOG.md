@@ -31,9 +31,47 @@ required, or tightening a limit is a major release.
   The other tools gain it tool by tool in later minor releases.
 - `answer_sources` (the 23rd tool) and its `evidence` shape: claim, kind (observed, curated, lore), source,
   licence, asOf, support.
+- `talent_tree` and `talent_plan` (tools 24 and 25), both with structured output: `TALENT_CLASSES`,
+  `talentNode` and `talentTreePoints`. The trees of one class from the game files, and a share code read
+  against them.
+- `outputSchema` for `item_categories` (`itemCategory`), `ecosystem_projects` (`ecosystemProject`) and
+  `everloot_plan` (`planRow`): the three tools that read no uploads now answer with `structuredContent`.
+- `uploadsAnswer`, the envelope every structured answer built on player uploads starts with (`connected`,
+  `dataAsOf`, `reason`), and `outputSchema` for the five page tools: `item_page` (`itemPage`, `itemDrop`,
+  `mapPin`), `npc_page` (`npcPage`), `quest_page` (`questPage`), `vendor_page` (`vendorPage`, `vendorOffer`)
+  and `object_page` (`objectPage`). With no corpus read the page is absent, which is not a measured zero.
+- `outputSchema` for `auction_history` (`auctionHistory`), `collection_gap` (`collectionGap`) and `guild_board`
+  (`guildBoard`), under the same `uploadsAnswer` envelope.
+- `outputSchema` for `profession_path` (`professionPath`), `recipe_thresholds` (`recipeThresholds`),
+  `entity_relations` (`entityRelations`, `relationEdge`), `completion_progress` (`completionProgress`,
+  `characterProgress`) and `market_value` (`marketPage`, `marketValue`), under the same envelope.
+- `outputSchema` for `gold_ledger` (`goldLedger`, with `INCOME_CATEGORIES` and `SPENDING_CATEGORIES`) and
+  `world_map_near` (`mapNear`), the last two: every tool is structured now (`STRUCTURED_TOOLS` is the
+  whole list).
+- `GET /api/tools/{tool}` in `API_ROUTES` with its response shape `toolAnswerResponse` (tool, arguments,
+  answer, text, schema); `pathParams` on `ApiRoute` for parameters written as `{name}` in the path.
+- `GET /api/items/categories` in `API_ROUTES` with its response shape `itemCategoriesResponse` (classes with
+  subclasses, slots, qualities, the game-data notice), so the OpenAPI document and the connect reference
+  describe the endpoint the site already served.
+- `values` on a prompt argument (`what_changed.game`: forever, classic) and on a resource template
+  (`everloot://talents/{class}`: `TALENT_CLASSES`): the finite set the server completes from and, for a
+  template, lists one resource per value. Written into `schema/mcp/prompts.json` and `resources.json`.
+- Two tools after OpenAI's connector contract, `search` (`searchResult`: id, title, url) and `fetch`
+  (`fetchedDocument`: id, title, text, url, metadata with source, licence and date), listed in
+  `CHATGPT_TOOLS`; their schema files say the text block is the structured answer as JSON.
+- The MCP server's resource templates `MCP_RESOURCE_TEMPLATES` (`everloot://item/{id}`, `npc`, `quest`,
+  `vendor`, `object`, `talents/{class}`), each naming the tool whose structured answer it holds; in
+  `schema/mcp/resources.json` as `templates` and in `index.json` as `mcpResourceTemplates`.
+- The MCP server's prompt table `MCP_PROMPTS` (`answer_with_sources`, `review_talent_plan`, `what_changed`:
+  title, description, string arguments), emitted as `schema/mcp/prompts.json` and listed in `index.json`
+  as `mcpPrompts`.
 - The MCP server's resource table `MCP_RESOURCES` (`everloot://builds`, `everloot://methodology`,
   `everloot://data-policy`: name, title, description, MIME type), `buildEntry` and `buildsResource` for the
   JSON one, emitted as `schema/mcp/resources.json` and listed in `index.json` as `mcpResources`.
+
+### Changed
+- `TERMS_URL` points at the terms of use, `https://everloot.app/terms#licences`, now that the site has a
+  terms page; it was the licence section of `/connect`.
 
 ### Notes
 - The addon's Lua comments still name `web/src/lib/intake.ts`, the file this package replaced. They sit

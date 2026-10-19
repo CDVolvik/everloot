@@ -1,18 +1,22 @@
 {
   "schema": 1,
-  "refreshedAt": "2026-10-17T18:20:46.157Z",
+  "refreshedAt": "2026-10-19T04:53:22.600Z",
   "projects": {
     "everloot": {
       "status": "ok",
-      "fetchedAt": "2026-10-17T18:20:46.157Z",
+      "fetchedAt": "2026-10-19T04:53:22.600Z",
       "stars": 0,
       "archived": false,
       "license": "AGPL-3.0",
-      "lastCommit": "2026-10-17T18:03:40Z",
-      "release": null,
-      "commits4w": 482,
+      "lastCommit": "2026-10-18T23:46:59Z",
+      "release": {
+        "tag": "addon-v0.3.3",
+        "date": "2026-10-18T00:05:47Z",
+        "url": "https://github.com/Everloot/everloot/releases/tag/addon-v0.3.3"
+      },
+      "commits4w": 674,
       "contributors": 1,
-      "openIssues": 9,
+      "openIssues": 10,
       "closedIssues": 1,
       "medianFirstResponseHours": null,
       "responseSample": 0,
@@ -22,20 +26,20 @@
     },
     "polestar": {
       "status": "ok",
-      "fetchedAt": "2026-10-17T18:20:53.543Z",
-      "stars": 100,
+      "fetchedAt": "2026-10-19T04:53:29.373Z",
+      "stars": 119,
       "archived": false,
       "license": null,
-      "lastCommit": "2026-10-17T14:47:52Z",
+      "lastCommit": "2026-10-17T21:02:33Z",
       "release": {
         "tag": "v0.2.5",
         "date": "2026-10-17T12:32:11Z",
         "url": "https://github.com/fitzforge/polestar/releases/tag/v0.2.5"
       },
-      "commits4w": 920,
+      "commits4w": 927,
       "contributors": 10,
-      "openIssues": 35,
-      "closedIssues": 78,
+      "openIssues": 95,
+      "closedIssues": 79,
       "medianFirstResponseHours": null,
       "responseSample": 0,
       "interfaces": [
@@ -44,7 +48,7 @@
     },
     "olympus": {
       "status": "ok",
-      "fetchedAt": "2026-10-17T18:21:00.888Z",
+      "fetchedAt": "2026-10-19T04:53:35.886Z",
       "stars": 20,
       "archived": false,
       "license": "MIT",
@@ -58,8 +62,8 @@
       "contributors": 3,
       "openIssues": 6,
       "closedIssues": 13,
-      "medianFirstResponseHours": 101.7,
-      "responseSample": 12,
+      "medianFirstResponseHours": 90.2,
+      "responseSample": 13,
       "interfaces": [
         11509,
         16001,
@@ -68,7 +72,7 @@
     },
     "forever-ref": {
       "status": "ok",
-      "fetchedAt": "2026-10-17T18:21:11.443Z",
+      "fetchedAt": "2026-10-19T04:53:44.634Z",
       "stars": 0,
       "archived": false,
       "license": null,
@@ -88,23 +92,55 @@
       {
         "at": "2026-10-17T18:20:46.157Z",
         "stars": 0
+      },
+      {
+        "at": "2026-10-18T20:53:52.580Z",
+        "stars": 0
+      },
+      {
+        "at": "2026-10-19T04:53:22.600Z",
+        "stars": 0
       }
     ],
     "polestar": [
       {
         "at": "2026-10-17T18:20:46.157Z",
         "stars": 100
+      },
+      {
+        "at": "2026-10-18T20:53:52.580Z",
+        "stars": 118
+      },
+      {
+        "at": "2026-10-19T04:53:22.600Z",
+        "stars": 119
       }
     ],
     "olympus": [
       {
         "at": "2026-10-17T18:20:46.157Z",
         "stars": 20
+      },
+      {
+        "at": "2026-10-18T20:53:52.580Z",
+        "stars": 20
+      },
+      {
+        "at": "2026-10-19T04:53:22.600Z",
+        "stars": 20
       }
     ],
     "forever-ref": [
       {
         "at": "2026-10-17T18:20:46.157Z",
+        "stars": 0
+      },
+      {
+        "at": "2026-10-18T20:53:52.580Z",
+        "stars": 0
+      },
+      {
+        "at": "2026-10-19T04:53:22.600Z",
         "stars": 0
       }
     ]

@@ -259,6 +259,49 @@ export declare const itemsResponse: z.ZodObject<{
         credit: z.ZodOptional<z.ZodString>;
     }, z.core.$loose>;
 }, z.core.$strip>;
+export declare const itemCategoriesResponse: z.ZodObject<{
+    classes: z.ZodArray<z.ZodObject<{
+        id: z.ZodNumber;
+        name: z.ZodString;
+        label: z.ZodString;
+        slug: z.ZodString;
+        items: z.ZodNumber;
+        subclasses: z.ZodArray<z.ZodObject<{
+            id: z.ZodNumber;
+            name: z.ZodNullable<z.ZodString>;
+            slug: z.ZodString;
+            items: z.ZodNumber;
+        }, z.core.$strip>>;
+    }, z.core.$strip>>;
+    slots: z.ZodArray<z.ZodObject<{
+        slug: z.ZodString;
+        name: z.ZodString;
+    }, z.core.$strip>>;
+    qualities: z.ZodArray<z.ZodObject<{
+        id: z.ZodNumber;
+        name: z.ZodString;
+        slug: z.ZodString;
+    }, z.core.$strip>>;
+    gameData: z.ZodObject<{
+        label: z.ZodString;
+        build: z.ZodString;
+        extractedAt: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        credit: z.ZodOptional<z.ZodString>;
+    }, z.core.$loose>;
+}, z.core.$strip>;
+export type ItemCategoriesResponse = z.infer<typeof itemCategoriesResponse>;
+/**
+ * GET /api/tools/{tool}: one MCP tool's answer over plain HTTP. `answer` is the tool's structured content,
+ * of the shape its schema file declares under outputSchema; `text` is the same answer as the MCP text block.
+ */
+export declare const toolAnswerResponse: z.ZodObject<{
+    tool: z.ZodString;
+    arguments: z.ZodRecord<z.ZodString, z.ZodUnknown>;
+    answer: z.ZodRecord<z.ZodString, z.ZodUnknown>;
+    text: z.ZodString;
+    schema: z.ZodString;
+}, z.core.$strip>;
+export type ToolAnswerResponse = z.infer<typeof toolAnswerResponse>;
 /** POST /api/intake, 200: stored. */
 export declare const intakeReceipt: z.ZodObject<{
     ok: z.ZodLiteral<true>;
@@ -898,6 +941,43 @@ export declare const API_SCHEMAS: {
             credit: z.ZodOptional<z.ZodString>;
         }, z.core.$loose>;
     }, z.core.$strip>;
+    readonly itemCategoriesResponse: z.ZodObject<{
+        classes: z.ZodArray<z.ZodObject<{
+            id: z.ZodNumber;
+            name: z.ZodString;
+            label: z.ZodString;
+            slug: z.ZodString;
+            items: z.ZodNumber;
+            subclasses: z.ZodArray<z.ZodObject<{
+                id: z.ZodNumber;
+                name: z.ZodNullable<z.ZodString>;
+                slug: z.ZodString;
+                items: z.ZodNumber;
+            }, z.core.$strip>>;
+        }, z.core.$strip>>;
+        slots: z.ZodArray<z.ZodObject<{
+            slug: z.ZodString;
+            name: z.ZodString;
+        }, z.core.$strip>>;
+        qualities: z.ZodArray<z.ZodObject<{
+            id: z.ZodNumber;
+            name: z.ZodString;
+            slug: z.ZodString;
+        }, z.core.$strip>>;
+        gameData: z.ZodObject<{
+            label: z.ZodString;
+            build: z.ZodString;
+            extractedAt: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+            credit: z.ZodOptional<z.ZodString>;
+        }, z.core.$loose>;
+    }, z.core.$strip>;
+    readonly toolAnswerResponse: z.ZodObject<{
+        tool: z.ZodString;
+        arguments: z.ZodRecord<z.ZodString, z.ZodUnknown>;
+        answer: z.ZodRecord<z.ZodString, z.ZodUnknown>;
+        text: z.ZodString;
+        schema: z.ZodString;
+    }, z.core.$strip>;
     readonly intakeRequest: z.ZodObject<{
         addonVersion: z.ZodString;
         clientBuild: z.ZodOptional<z.ZodString>;
@@ -1352,6 +1432,8 @@ export interface ApiRoute {
     access: "open" | "rate-limited" | "key-or-rate-limited" | "cron";
     /** Which data layer the answer carries. */
     data: "observed" | "game-files" | "mixed" | "none";
+    /** Parameters in the path, written as `{name}` in `path`. */
+    pathParams?: ApiQueryParam[];
     query?: ApiQueryParam[];
     requestBody?: ApiSchemaName;
     responses: Record<string, {

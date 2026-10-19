@@ -39,7 +39,7 @@ Use the same words everywhere, so the listings match the site and each other.
 > is scraped from other sites and no fact is guessed: when something is not recorded yet, the tool says
 > so instead of making a number up.
 >
-> 22 read-only tools: search the lore archive, open one record, look up an item, NPC, object, quest or
+> 27 read-only tools: search the lore archive, open one record, look up an item, NPC, object, quest or
 > vendor, find what is near a spot on the map, follow relations (dropped by, sold by, reagent for),
 > browse item categories, plan a profession, read recipe skill ranges, check auction history and market
 > values, a gold ledger, a guild board, Blizzard's latest posts and builds, and the addon ecosystem.
@@ -129,6 +129,11 @@ page. What it needs that we do not have yet:
 - Listing fields with limits: display name ≤30 (`Everloot`), short description ≤30, long description
   ≤4,000, developer name ≤80, category, logo, website, support, privacy policy and terms URLs (all four
   required for MCP review).
+- The server already answers the two tools OpenAI's [connector contract](https://developers.openai.com/api/docs/mcp)
+  calls by name, `search` (results with `id`, `title`, `url`) and `fetch` (`id`, `title`, `text`, `url`,
+  `metadata`), as structured content with the same JSON in the text block, so ChatGPT's connectors, deep
+  research and company knowledge work against it without a special build. The 25 other tools stay listed
+  beside them for clients that read the full tool list.
 - One MCP server per plugin; ours is `https://everloot.app/mcp/public`, connection type "no
   authentication" (it is a public server, so that is the right value).
 

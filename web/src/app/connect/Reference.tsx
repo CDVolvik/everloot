@@ -10,7 +10,7 @@ import { ACCESS_LABEL, DATA_LABEL, routeDocs, toolDocs } from "@/lib/protocol-do
 const link = "text-accent hover:underline underline-offset-4";
 const code = "font-mono text-fg";
 
-function Params({ rows, caption }: { rows: { name: string; type: string; required: boolean; description: string }[]; caption: string }) {
+function Params({ rows, caption, head = "Parameter" }: { rows: { name: string; type: string; required: boolean; description: string }[]; caption: string; head?: string }) {
   if (rows.length === 0) return <p className="text-sm text-muted">No parameters.</p>;
   return (
     <div className="overflow-x-auto">
@@ -18,7 +18,7 @@ function Params({ rows, caption }: { rows: { name: string; type: string; require
         <caption className="sr-only">{caption}</caption>
         <thead>
           <tr className="text-left text-muted border-b border-line">
-            <th scope="col" className="py-1 pr-3 font-medium">Parameter</th>
+            <th scope="col" className="py-1 pr-3 font-medium">{head}</th>
             <th scope="col" className="py-1 pr-3 font-medium">Type</th>
             <th scope="col" className="py-1 pr-3 font-medium">What it is</th>
           </tr>
@@ -49,9 +49,11 @@ export function ToolReference() {
         <a href="/schema/index.json" className={link}><code className={code}>/schema/index.json</code></a> and{" "}
         <code className={code}>/schema/mcp/&lt;tool&gt;.json</code>. Tools marked <em>player data</em> state a fact only
         once three installs agree, say when something is unrecorded, and end their answer with the age of the data and the
-        credit line. The others carry their sources inside the answer. Tools marked <em>structured</em> also return{" "}
-        <code className={code}>structuredContent</code> of the shape in their schema file, beside the text; the rest gain it
-        tool by tool.
+        credit line. The others carry their sources inside the answer. Every tool also returns{" "}
+        <code className={code}>structuredContent</code> beside the text, of the shape in its schema file; the answer table
+        under each tool lists its top-level fields. Answers built on player data start with{" "}
+        <code className={code}>connected</code> and <code className={code}>dataAsOf</code>, and carry a{" "}
+        <code className={code}>page</code> only when a corpus was read: an absent page is not a measured zero.
       </p>
       <ul className="divide-y divide-line border-y border-line">
         {docs.map((tool) => (
@@ -61,13 +63,14 @@ export function ToolReference() {
                 <span>
                   <code className={`${code} text-sm`}>{tool.name}</code>
                   {tool.playerData && <span className="ml-2 text-xs text-muted whitespace-nowrap">player data</span>}
-                  {tool.structured && <span className="ml-2 text-xs text-muted whitespace-nowrap">structured</span>}
                 </span>
                 <span className="text-sm text-fg-2">{tool.title}</span>
               </summary>
               <div className="mt-3 space-y-3 sm:pl-[14rem]">
                 <p className="text-sm text-fg-2">{tool.description}</p>
                 <Params rows={tool.params} caption={`Arguments of ${tool.name}`} />
+                <h4 className="text-sm font-semibold text-fg">Answer</h4>
+                <Params rows={tool.output} caption={`Answer of ${tool.name}, as structuredContent`} head="Field" />
                 <p className="text-xs text-muted">
                   Schema: <a href={`/schema/mcp/${tool.name}.json`} className={link}><code className={code}>/schema/mcp/{tool.name}.json</code></a>
                 </p>
@@ -124,7 +127,7 @@ export function ApiReference() {
                     </>
                   )}
                 </dl>
-                <Params rows={(route.query ?? []).map((q) => ({ name: q.name, type: typeText(q.schema), required: q.required ?? false, description: q.description }))} caption={`Query parameters of ${route.path}`} />
+                <Params rows={[...(route.pathParams ?? []).map((p) => ({ name: `{${p.name}}`, type: typeText(p.schema), required: true, description: p.description })), ...(route.query ?? []).map((q) => ({ name: q.name, type: typeText(q.schema), required: q.required ?? false, description: q.description }))]} caption={`Parameters of ${route.path}`} />
               </div>
             </details>
           </li>

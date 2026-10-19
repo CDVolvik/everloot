@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { ALL_RECORD_KINDS, API_SCHEMAS, MCP_RESOURCE_URIS, MCP_TOOL_NAMES } from "@everloot/protocol";
+import { ALL_RECORD_KINDS, API_SCHEMAS, MCP_PROMPT_NAMES, MCP_RESOURCE_URIS, MCP_TOOL_NAMES } from "@everloot/protocol";
 import { expect, test } from "vitest";
 import { GET } from "./route";
 
@@ -18,6 +18,7 @@ test("serves the index, a record schema, an API schema and an MCP tool schema fr
   expect((await (await get("mcp", "search_knowledge.json")).json()).title).toBe("Search the Everloot knowledge base");
   expect(index.mcpResources).toEqual(MCP_RESOURCE_URIS);
   expect((await (await get("mcp", "resources.json")).json()).resources.map((r: { uri: string }) => r.uri)).toEqual(MCP_RESOURCE_URIS);
+  expect((await (await get("mcp", "prompts.json")).json()).prompts.map((p: { name: string }) => p.name)).toEqual(MCP_PROMPT_NAMES);
 });
 
 test("the files are byte for byte the package's committed schema folder", async () => {

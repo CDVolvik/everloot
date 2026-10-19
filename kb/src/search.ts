@@ -209,6 +209,12 @@ export function getEntity(db: DB, id: number): SearchHit | undefined {
   return r ? toHit(r) : undefined;
 }
 
+/** One row by id with its whole body, for the fetch tool. Unknown id gives undefined. */
+export function getDocument(db: DB, id: number): (SearchHit & { body: string }) | undefined {
+  const r = db.prepare(`SELECT ${ROW_BY_ID} FROM entities WHERE id = ?`).get(id) as EntityRow | undefined;
+  return r ? { ...toHit(r), body: r.body } : undefined;
+}
+
 /** Exact full-name match (case-insensitive), optionally narrowed to one kind. */
 export function getByName(db: DB, name: string, kind?: Kind): SearchHit[] {
   const cond = kind ? "AND kind = ?" : "";

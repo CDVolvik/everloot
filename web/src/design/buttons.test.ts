@@ -73,3 +73,9 @@ test("no filled gold buttons remain", () => {
   const offenders = [...sourceFiles(src)].filter((path) => /bg-gold-|text-parchment-950/.test(readFileSync(path, "utf8")));
   expect(offenders).toEqual([]);
 });
+
+test("links in running text are underlined at rest, so colour is not their only cue", () => {
+  const prose = rule("main p a, main .list-disc a");
+  expect(prose).toContain("text-decoration-line: underline");
+  expect(prose).toContain("text-underline-offset: 4px");
+});

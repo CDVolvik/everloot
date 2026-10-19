@@ -30,6 +30,686 @@ export declare const NEAR_DEFAULT_LIMIT = 5;
 export declare const NEAR_MAX_LIMIT = 20;
 /** Item quality slugs in Enum.ItemQuality order. */
 export declare const ITEM_QUALITY_SLUGS: readonly ["poor", "common", "uncommon", "rare", "epic", "legendary", "artifact", "heirloom"];
+/** The classes with a talent catalog, in the site's order (web/src/lib/talents/catalogs.ts). */
+export declare const TALENT_CLASSES: readonly ["warrior", "paladin", "hunter", "rogue", "priest", "shaman", "mage", "warlock", "druid"];
+export type TalentClass = (typeof TALENT_CLASSES)[number];
+/** One talent node as talent_tree returns it: the calculator's own shape, positions 1-based. */
+export declare const talentNode: z.ZodObject<{
+    id: z.ZodNumber;
+    treeId: z.ZodNumber;
+    row: z.ZodNumber;
+    col: z.ZodNumber;
+    kind: z.ZodEnum<{
+        choice: "choice";
+        single: "single";
+        tiered: "tiered";
+    }>;
+    maxRanks: z.ZodNumber;
+    talents: z.ZodArray<z.ZodObject<{
+        name: z.ZodString;
+        spellId: z.ZodNullable<z.ZodNumber>;
+        maxRanks: z.ZodOptional<z.ZodNumber>;
+    }, z.core.$strip>>;
+    prereqs: z.ZodArray<z.ZodNumber>;
+    anyOf: z.ZodOptional<z.ZodArray<z.ZodNumber>>;
+    gate: z.ZodOptional<z.ZodObject<{
+        pointsInTree: z.ZodOptional<z.ZodNumber>;
+        pointsTotal: z.ZodOptional<z.ZodNumber>;
+        scope: z.ZodOptional<z.ZodEnum<{
+            class: "class";
+            tree: "tree";
+            unconfirmed: "unconfirmed";
+        }>>;
+        ranksInNodes: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            nodeId: z.ZodNumber;
+            ranks: z.ZodNumber;
+        }, z.core.$strip>>>;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+export type TalentNodeOut = z.infer<typeof talentNode>;
+/** One tree of a plan, with the points spent in it. */
+export declare const talentTreePoints: z.ZodObject<{
+    id: z.ZodNumber;
+    name: z.ZodString;
+    points: z.ZodNumber;
+}, z.core.$strip>;
+/** One item's category path as item_categories returns it. Null parts are not in the build's tables. */
+export declare const itemCategory: z.ZodObject<{
+    itemId: z.ZodNumber;
+    class: z.ZodNullable<z.ZodObject<{
+        id: z.ZodNumber;
+        name: z.ZodString;
+        slug: z.ZodString;
+    }, z.core.$strip>>;
+    subclass: z.ZodNullable<z.ZodObject<{
+        id: z.ZodNumber;
+        name: z.ZodNullable<z.ZodString>;
+        slug: z.ZodString;
+    }, z.core.$strip>>;
+    slot: z.ZodNullable<z.ZodObject<{
+        inventoryType: z.ZodNumber;
+        name: z.ZodString;
+        slug: z.ZodString;
+    }, z.core.$strip>>;
+    quality: z.ZodNullable<z.ZodObject<{
+        id: z.ZodNumber;
+        name: z.ZodString;
+        slug: z.ZodString;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+export type ItemCategoryOut = z.infer<typeof itemCategory>;
+/** One project as ecosystem_projects returns it. GitHub facts carry the time they were refreshed in the answer. */
+export declare const ecosystemProject: z.ZodObject<{
+    rank: z.ZodOptional<z.ZodNumber>;
+    display: z.ZodOptional<z.ZodString>;
+    id: z.ZodString;
+    name: z.ZodString;
+    kind: z.ZodEnum<{
+        addon: "addon";
+        tool: "tool";
+    }>;
+    summary: z.ZodString;
+    repo: z.ZodString;
+    url: z.ZodString;
+    installs: z.ZodNullable<z.ZodNumber>;
+    stars: z.ZodNullable<z.ZodNumber>;
+    release: z.ZodNullable<z.ZodObject<{
+        tag: z.ZodString;
+        date: z.ZodString;
+        url: z.ZodString;
+    }, z.core.$strip>>;
+    lastCommit: z.ZodNullable<z.ZodString>;
+    commits4w: z.ZodNullable<z.ZodNumber>;
+    foreverReady: z.ZodEnum<{
+        no: "no";
+        unknown: "unknown";
+        yes: "yes";
+    }>;
+    badges: z.ZodArray<z.ZodString>;
+    maintenanceScore: z.ZodNullable<z.ZodNumber>;
+}, z.core.$strip>;
+export type EcosystemProjectOut = z.infer<typeof ecosystemProject>;
+/**
+ * What every structured answer built on player uploads starts with. connected false means no corpus
+ * was read (not connected, or unavailable): the page is then absent, and that is not a measured zero.
+ */
+export declare const uploadsAnswer: {
+    connected: z.ZodBoolean;
+    dataAsOf: z.ZodNullable<z.ZodString>;
+    reason: z.ZodOptional<z.ZodString>;
+};
+/** One source of an item with its observed loot-window frequency; public after 3 distinct install reports. */
+export declare const itemDrop: z.ZodObject<{
+    sourceNpcId: z.ZodOptional<z.ZodNumber>;
+    sourceObjectId: z.ZodOptional<z.ZodNumber>;
+    source: z.ZodString;
+    kills: z.ZodNumber;
+    drops: z.ZodNumber;
+    rate: z.ZodNumber;
+    reporters: z.ZodNumber;
+}, z.core.$strip>;
+export declare const mapPin: z.ZodObject<{
+    npcId: z.ZodNumber;
+    name: z.ZodNullable<z.ZodString>;
+    mapId: z.ZodNumber;
+    x: z.ZodNumber;
+    y: z.ZodNumber;
+    reporters: z.ZodNumber;
+}, z.core.$strip>;
+export declare const itemPage: z.ZodObject<{
+    itemId: z.ZodNumber;
+    name: z.ZodNullable<z.ZodString>;
+    drops: z.ZodArray<z.ZodObject<{
+        sourceNpcId: z.ZodOptional<z.ZodNumber>;
+        sourceObjectId: z.ZodOptional<z.ZodNumber>;
+        source: z.ZodString;
+        kills: z.ZodNumber;
+        drops: z.ZodNumber;
+        rate: z.ZodNumber;
+        reporters: z.ZodNumber;
+    }, z.core.$strip>>;
+    pins: z.ZodArray<z.ZodObject<{
+        npcId: z.ZodNumber;
+        name: z.ZodNullable<z.ZodString>;
+        mapId: z.ZodNumber;
+        x: z.ZodNumber;
+        y: z.ZodNumber;
+        reporters: z.ZodNumber;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+export declare const npcPage: z.ZodObject<{
+    npcId: z.ZodNumber;
+    name: z.ZodNullable<z.ZodString>;
+    pins: z.ZodArray<z.ZodObject<{
+        mapId: z.ZodNumber;
+        x: z.ZodNumber;
+        y: z.ZodNumber;
+        reporters: z.ZodNumber;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+export declare const questPage: z.ZodObject<{
+    questId: z.ZodNumber;
+    title: z.ZodNullable<z.ZodString>;
+    level: z.ZodNullable<z.ZodNumber>;
+    giverNpcId: z.ZodNullable<z.ZodNumber>;
+    turnInNpcId: z.ZodNullable<z.ZodNumber>;
+    rewards: z.ZodArray<z.ZodNumber>;
+}, z.core.$strip>;
+export declare const vendorOffer: z.ZodObject<{
+    itemId: z.ZodNumber;
+    priceCopper: z.ZodNumber;
+    limitedStock: z.ZodNullable<z.ZodNumber>;
+    unlimited: z.ZodBoolean;
+    reporters: z.ZodNumber;
+}, z.core.$strip>;
+export declare const vendorPage: z.ZodObject<{
+    vendorNpcId: z.ZodNumber;
+    offers: z.ZodArray<z.ZodObject<{
+        itemId: z.ZodNumber;
+        priceCopper: z.ZodNumber;
+        limitedStock: z.ZodNullable<z.ZodNumber>;
+        unlimited: z.ZodBoolean;
+        reporters: z.ZodNumber;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+export declare const objectPage: z.ZodObject<{
+    objectId: z.ZodNumber;
+    drops: z.ZodArray<z.ZodObject<{
+        itemId: z.ZodNumber;
+        itemName: z.ZodNullable<z.ZodString>;
+        kills: z.ZodNumber;
+        drops: z.ZodNumber;
+        rate: z.ZodNumber;
+        reporters: z.ZodNumber;
+    }, z.core.$strip>>;
+    zero: z.ZodNullable<z.ZodObject<{
+        kills: z.ZodNumber;
+        reporters: z.ZodNumber;
+    }, z.core.$strip>>;
+    queued: z.ZodBoolean;
+}, z.core.$strip>;
+export declare const auctionHistory: z.ZodObject<{
+    realm: z.ZodString;
+    itemId: z.ZodNumber;
+    points: z.ZodArray<z.ZodObject<{
+        day: z.ZodString;
+        copper: z.ZodNumber;
+        reporters: z.ZodNumber;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+export declare const collectionGap: z.ZodObject<{
+    collection: z.ZodString;
+    ownerInstallId: z.ZodString;
+    groups: z.ZodArray<z.ZodObject<{
+        source: z.ZodString;
+        owned: z.ZodArray<z.ZodNumber>;
+        missing: z.ZodArray<z.ZodNumber>;
+    }, z.core.$strip>>;
+    queued: z.ZodArray<z.ZodNumber>;
+    ownedRecorded: z.ZodBoolean;
+}, z.core.$strip>;
+export declare const guildBoard: z.ZodObject<{
+    guildName: z.ZodString;
+    realm: z.ZodString;
+    memberCount: z.ZodNullable<z.ZodNumber>;
+    roster: z.ZodArray<z.ZodObject<{
+        name: z.ZodString;
+        rank: z.ZodString;
+        level: z.ZodNumber;
+        className: z.ZodString;
+    }, z.core.$strip>>;
+    progression: z.ZodArray<z.ZodObject<{
+        instance: z.ZodString;
+        bosses: z.ZodArray<z.ZodString>;
+    }, z.core.$strip>>;
+    loot: z.ZodArray<z.ZodObject<{
+        itemId: z.ZodNumber;
+        recipient: z.ZodString;
+        sourceBoss: z.ZodString;
+    }, z.core.$strip>>;
+    averageItemLevel: z.ZodNullable<z.ZodNumber>;
+    gearCoverage: z.ZodObject<{
+        measured: z.ZodNumber;
+        roster: z.ZodNumber;
+    }, z.core.$strip>;
+    present: z.ZodArray<z.ZodString>;
+    attendanceWaiting: z.ZodBoolean;
+}, z.core.$strip>;
+export declare const professionPath: z.ZodObject<{
+    profession: z.ZodString;
+    fromSkill: z.ZodNumber;
+    toSkill: z.ZodNumber;
+    steps: z.ZodArray<z.ZodObject<{
+        recipe: z.ZodString;
+        fromSkill: z.ZodNumber;
+        toSkill: z.ZodNumber;
+        crafts: z.ZodNumber;
+        points: z.ZodNumber;
+        reagents: z.ZodArray<z.ZodObject<{
+            item: z.ZodString;
+            count: z.ZodNumber;
+        }, z.core.$strip>>;
+        copper: z.ZodNullable<z.ZodNumber>;
+        reporters: z.ZodNumber;
+        trainingCopper: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+    }, z.core.$strip>>;
+    gaps: z.ZodArray<z.ZodObject<{
+        fromSkill: z.ZodNumber;
+        toSkill: z.ZodNumber;
+    }, z.core.$strip>>;
+    reagents: z.ZodArray<z.ZodObject<{
+        item: z.ZodString;
+        count: z.ZodNumber;
+    }, z.core.$strip>>;
+    copper: z.ZodNullable<z.ZodNumber>;
+}, z.core.$strip>;
+export declare const recipeThresholds: z.ZodObject<{
+    profession: z.ZodString;
+    ranges: z.ZodArray<z.ZodObject<{
+        profession: z.ZodString;
+        recipe: z.ZodString;
+        installs: z.ZodNumber;
+        observations: z.ZodNumber;
+        yellow: z.ZodObject<{
+            min: z.ZodNullable<z.ZodNumber>;
+            max: z.ZodNullable<z.ZodNumber>;
+        }, z.core.$strip>;
+        green: z.ZodObject<{
+            min: z.ZodNullable<z.ZodNumber>;
+            max: z.ZodNullable<z.ZodNumber>;
+        }, z.core.$strip>;
+        grey: z.ZodObject<{
+            min: z.ZodNullable<z.ZodNumber>;
+            max: z.ZodNullable<z.ZodNumber>;
+        }, z.core.$strip>;
+        reagents: z.ZodNullable<z.ZodArray<z.ZodObject<{
+            item: z.ZodString;
+            count: z.ZodNumber;
+        }, z.core.$strip>>>;
+        costCopper: z.ZodNullable<z.ZodNumber>;
+        missingPrices: z.ZodArray<z.ZodString>;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+export declare const characterProgress: z.ZodObject<{
+    characterKey: z.ZodString;
+    class: z.ZodString;
+    level: z.ZodNumber;
+    achievements: z.ZodObject<{
+        done: z.ZodNumber;
+        total: z.ZodNumber;
+        points: z.ZodNumber;
+        pointsTotal: z.ZodNumber;
+        closest: z.ZodArray<z.ZodObject<{
+            achievementId: z.ZodNumber;
+            name: z.ZodString;
+            category: z.ZodString;
+            have: z.ZodNumber;
+            of: z.ZodNumber;
+            unit: z.ZodEnum<{
+                criteria: "criteria";
+                progress: "progress";
+            }>;
+        }, z.core.$strip>>;
+        unlisted: z.ZodNumber;
+    }, z.core.$strip>;
+    reputation: z.ZodObject<{
+        exalted: z.ZodNumber;
+        total: z.ZodNumber;
+        closest: z.ZodArray<z.ZodObject<{
+            factionId: z.ZodNumber;
+            name: z.ZodString;
+            standing: z.ZodString;
+            toNext: z.ZodNumber;
+            header: z.ZodOptional<z.ZodString>;
+        }, z.core.$strip>>;
+        unscaled: z.ZodArray<z.ZodObject<{
+            factionId: z.ZodNumber;
+            name: z.ZodString;
+            standing: z.ZodNumber;
+        }, z.core.$strip>>;
+        unlisted: z.ZodNumber;
+    }, z.core.$strip>;
+    titles: z.ZodObject<{
+        known: z.ZodNumber;
+        total: z.ZodNumber;
+        unlisted: z.ZodNumber;
+    }, z.core.$strip>;
+    quests: z.ZodObject<{
+        completed: z.ZodNumber;
+        chainsDone: z.ZodNumber;
+        chainsTotal: z.ZodNumber;
+        closest: z.ZodArray<z.ZodObject<{
+            questLineId: z.ZodNumber;
+            name: z.ZodString;
+            done: z.ZodNumber;
+            total: z.ZodNumber;
+            truncated: z.ZodBoolean;
+        }, z.core.$strip>>;
+    }, z.core.$strip>;
+}, z.core.$strip>;
+export declare const completionProgress: z.ZodObject<{
+    ownerInstallId: z.ZodString;
+    listed: z.ZodObject<{
+        achievements: z.ZodNumber;
+        factions: z.ZodNumber;
+        titles: z.ZodNumber;
+        chains: z.ZodNumber;
+    }, z.core.$strip>;
+    ownedRecorded: z.ZodBoolean;
+    characters: z.ZodArray<z.ZodObject<{
+        characterKey: z.ZodString;
+        class: z.ZodString;
+        level: z.ZodNumber;
+        achievements: z.ZodObject<{
+            done: z.ZodNumber;
+            total: z.ZodNumber;
+            points: z.ZodNumber;
+            pointsTotal: z.ZodNumber;
+            closest: z.ZodArray<z.ZodObject<{
+                achievementId: z.ZodNumber;
+                name: z.ZodString;
+                category: z.ZodString;
+                have: z.ZodNumber;
+                of: z.ZodNumber;
+                unit: z.ZodEnum<{
+                    criteria: "criteria";
+                    progress: "progress";
+                }>;
+            }, z.core.$strip>>;
+            unlisted: z.ZodNumber;
+        }, z.core.$strip>;
+        reputation: z.ZodObject<{
+            exalted: z.ZodNumber;
+            total: z.ZodNumber;
+            closest: z.ZodArray<z.ZodObject<{
+                factionId: z.ZodNumber;
+                name: z.ZodString;
+                standing: z.ZodString;
+                toNext: z.ZodNumber;
+                header: z.ZodOptional<z.ZodString>;
+            }, z.core.$strip>>;
+            unscaled: z.ZodArray<z.ZodObject<{
+                factionId: z.ZodNumber;
+                name: z.ZodString;
+                standing: z.ZodNumber;
+            }, z.core.$strip>>;
+            unlisted: z.ZodNumber;
+        }, z.core.$strip>;
+        titles: z.ZodObject<{
+            known: z.ZodNumber;
+            total: z.ZodNumber;
+            unlisted: z.ZodNumber;
+        }, z.core.$strip>;
+        quests: z.ZodObject<{
+            completed: z.ZodNumber;
+            chainsDone: z.ZodNumber;
+            chainsTotal: z.ZodNumber;
+            closest: z.ZodArray<z.ZodObject<{
+                questLineId: z.ZodNumber;
+                name: z.ZodString;
+                done: z.ZodNumber;
+                total: z.ZodNumber;
+                truncated: z.ZodBoolean;
+            }, z.core.$strip>>;
+        }, z.core.$strip>;
+    }, z.core.$strip>>;
+    unknownCharacter: z.ZodOptional<z.ZodString>;
+    droppedCharacters: z.ZodNumber;
+}, z.core.$strip>;
+export declare const marketValue: z.ZodObject<{
+    itemId: z.ZodNumber;
+    market: z.ZodNullable<z.ZodNumber>;
+    min: z.ZodNumber;
+    historical: z.ZodNumber;
+    quantity: z.ZodNumber;
+    day: z.ZodString;
+    ageDays: z.ZodNumber;
+    reporters: z.ZodNumber;
+    thin: z.ZodBoolean;
+}, z.core.$strip>;
+export declare const marketPage: z.ZodObject<{
+    realm: z.ZodString;
+    itemId: z.ZodNumber;
+    value: z.ZodNullable<z.ZodObject<{
+        itemId: z.ZodNumber;
+        market: z.ZodNullable<z.ZodNumber>;
+        min: z.ZodNumber;
+        historical: z.ZodNumber;
+        quantity: z.ZodNumber;
+        day: z.ZodString;
+        ageDays: z.ZodNumber;
+        reporters: z.ZodNumber;
+        thin: z.ZodBoolean;
+    }, z.core.$strip>>;
+    history: z.ZodArray<z.ZodObject<{
+        day: z.ZodString;
+        min: z.ZodNumber;
+        market: z.ZodNumber;
+        quantity: z.ZodNumber;
+        reporters: z.ZodNumber;
+        thin: z.ZodBoolean;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+export declare const relationEdge: z.ZodObject<{
+    fromKind: z.ZodEnum<{
+        icon: "icon";
+        item: "item";
+        item_set: "item_set";
+        npc: "npc";
+        object: "object";
+        quest: "quest";
+        skill: "skill";
+        spell: "spell";
+        zone: "zone";
+    }>;
+    fromId: z.ZodNumber;
+    rel: z.ZodEnum<{
+        created_by: "created_by";
+        dropped_by: "dropped_by";
+        in_skill_line: "in_skill_line";
+        located_in: "located_in";
+        part_of_set: "part_of_set";
+        reagent_for: "reagent_for";
+        reward_from: "reward_from";
+        same_icon: "same_icon";
+        sold_by: "sold_by";
+    }>;
+    toKind: z.ZodEnum<{
+        icon: "icon";
+        item: "item";
+        item_set: "item_set";
+        npc: "npc";
+        object: "object";
+        quest: "quest";
+        skill: "skill";
+        spell: "spell";
+        zone: "zone";
+    }>;
+    toId: z.ZodNumber;
+    evidence: z.ZodEnum<{
+        client: "client";
+        observed: "observed";
+    }>;
+    build: z.ZodNullable<z.ZodString>;
+    installs: z.ZodNullable<z.ZodNumber>;
+    firstSeen: z.ZodNullable<z.ZodString>;
+    lastSeen: z.ZodNullable<z.ZodString>;
+}, z.core.$strip>;
+export declare const entityRelations: z.ZodObject<{
+    kind: z.ZodEnum<{
+        icon: "icon";
+        item: "item";
+        item_set: "item_set";
+        npc: "npc";
+        object: "object";
+        quest: "quest";
+        skill: "skill";
+        spell: "spell";
+        zone: "zone";
+    }>;
+    id: z.ZodNumber;
+    edges: z.ZodArray<z.ZodObject<{
+        fromKind: z.ZodEnum<{
+            icon: "icon";
+            item: "item";
+            item_set: "item_set";
+            npc: "npc";
+            object: "object";
+            quest: "quest";
+            skill: "skill";
+            spell: "spell";
+            zone: "zone";
+        }>;
+        fromId: z.ZodNumber;
+        rel: z.ZodEnum<{
+            created_by: "created_by";
+            dropped_by: "dropped_by";
+            in_skill_line: "in_skill_line";
+            located_in: "located_in";
+            part_of_set: "part_of_set";
+            reagent_for: "reagent_for";
+            reward_from: "reward_from";
+            same_icon: "same_icon";
+            sold_by: "sold_by";
+        }>;
+        toKind: z.ZodEnum<{
+            icon: "icon";
+            item: "item";
+            item_set: "item_set";
+            npc: "npc";
+            object: "object";
+            quest: "quest";
+            skill: "skill";
+            spell: "spell";
+            zone: "zone";
+        }>;
+        toId: z.ZodNumber;
+        evidence: z.ZodEnum<{
+            client: "client";
+            observed: "observed";
+        }>;
+        build: z.ZodNullable<z.ZodString>;
+        installs: z.ZodNullable<z.ZodNumber>;
+        firstSeen: z.ZodNullable<z.ZodString>;
+        lastSeen: z.ZodNullable<z.ZodString>;
+    }, z.core.$strip>>;
+    notShown: z.ZodNumber;
+}, z.core.$strip>;
+export declare const INCOME_CATEGORIES: readonly ["loot", "quest", "vendor", "auction"];
+export declare const SPENDING_CATEGORIES: readonly ["flight", "postage", "barber", "respec", "auction_spend"];
+export declare const goldLedger: z.ZodObject<{
+    character: z.ZodString;
+    realm: z.ZodString;
+    recorded: z.ZodBoolean;
+    ledgers: z.ZodArray<z.ZodObject<{
+        installId: z.ZodString;
+        peakCopper: z.ZodNullable<z.ZodNumber>;
+        currentCopper: z.ZodNullable<z.ZodNumber>;
+        income: z.ZodObject<{
+            [x: string]: z.ZodOptional<z.ZodNumber>;
+        }, z.core.$strip>;
+        spending: z.ZodObject<{
+            [x: string]: z.ZodOptional<z.ZodNumber>;
+        }, z.core.$strip>;
+        incomeTotal: z.ZodNullable<z.ZodNumber>;
+    }, z.core.$strip>>;
+}, z.core.$strip>;
+export declare const mapNear: z.ZodObject<{
+    ok: z.ZodBoolean;
+    message: z.ZodOptional<z.ZodString>;
+    origin: z.ZodOptional<z.ZodString>;
+    radius: z.ZodOptional<z.ZodNumber>;
+    limit: z.ZodOptional<z.ZodNumber>;
+    entrances: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        names: z.ZodArray<z.ZodString>;
+        raid: z.ZodBoolean;
+        zone: z.ZodNullable<z.ZodString>;
+        yards: z.ZodNumber;
+    }, z.core.$strip>>>;
+    npcs: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        npcId: z.ZodNumber;
+        name: z.ZodNullable<z.ZodString>;
+        mapId: z.ZodNumber;
+        zoneName: z.ZodString;
+        x: z.ZodNumber;
+        y: z.ZodNumber;
+        yards: z.ZodNumber;
+        reporters: z.ZodNumber;
+    }, z.core.$strip>>>;
+    vendors: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        npcId: z.ZodNumber;
+        name: z.ZodNullable<z.ZodString>;
+        mapId: z.ZodNumber;
+        zoneName: z.ZodString;
+        x: z.ZodNumber;
+        y: z.ZodNumber;
+        yards: z.ZodNumber;
+        reporters: z.ZodNumber;
+    }, z.core.$strip>>>;
+}, z.core.$strip>;
+/** One row of the implementation tracker as everloot_plan returns it. */
+export declare const planRow: z.ZodObject<{
+    id: z.ZodString;
+    status: z.ZodEnum<{
+        live: "live";
+        next: "next";
+        shape: "shape";
+        waiting: "waiting";
+    }>;
+    name: z.ZodString;
+    done: z.ZodString;
+    proof: z.ZodOptional<z.ZodEnum<{
+        client: "client";
+        code: "code";
+        deployed: "deployed";
+        none: "none";
+        public: "public";
+        "real-data": "real-data";
+    }>>;
+}, z.core.$strip>;
+export type PlanRowOut = z.infer<typeof planRow>;
+/**
+ * search and fetch answer in the shape OpenAI's connector contract asks for (ChatGPT connectors, deep
+ * research and company knowledge call exactly these two tools by name): a result list, then one document
+ * by id. Ids are knowledge record ids as strings. The text block carries the same JSON as a string.
+ */
+export declare const searchResult: z.ZodObject<{
+    id: z.ZodString;
+    title: z.ZodString;
+    url: z.ZodString;
+}, z.core.$strip>;
+export type SearchResultOut = z.infer<typeof searchResult>;
+export declare const fetchedDocument: z.ZodObject<{
+    id: z.ZodString;
+    title: z.ZodString;
+    text: z.ZodString;
+    url: z.ZodString;
+    metadata: z.ZodObject<{
+        kind: z.ZodEnum<{
+            creator: "creator";
+            item: "item";
+            lore_page: "lore_page";
+            npc: "npc";
+            object: "object";
+            quest: "quest";
+            realm: "realm";
+            spell: "spell";
+            zone: "zone";
+        }>;
+        gameVersion: z.ZodEnum<{
+            classic: "classic";
+            forever: "forever";
+            lore: "lore";
+            retail: "retail";
+        }>;
+        sourceUrl: z.ZodString;
+        sourceId: z.ZodString;
+        licence: z.ZodString;
+        retrievedAt: z.ZodString;
+        credit: z.ZodString;
+    }, z.core.$strip>;
+}, z.core.$strip>;
+export type FetchedDocumentOut = z.infer<typeof fetchedDocument>;
 /** One knowledge record as search_knowledge, get_entity and get_by_name return it. */
 export declare const knowledgeHit: z.ZodObject<{
     id: z.ZodNumber;
@@ -263,6 +943,65 @@ export declare const MCP_TOOLS: {
             readonly openWorldHint: false;
         };
     };
+    readonly search: {
+        readonly title: "Search (ChatGPT connector contract)";
+        readonly description: "The same search as search_knowledge, in the shape ChatGPT connectors and deep research call by name: up to 10 results, each with an id for fetch, a title and a URL to cite. The text block is the same JSON as a string.";
+        readonly inputSchema: {
+            readonly query: z.ZodString;
+        };
+        readonly outputSchema: {
+            readonly results: z.ZodArray<z.ZodObject<{
+                id: z.ZodString;
+                title: z.ZodString;
+                url: z.ZodString;
+            }, z.core.$strip>>;
+        };
+        readonly annotations: {
+            readonly readOnlyHint: true;
+            readonly openWorldHint: false;
+        };
+    };
+    readonly fetch: {
+        readonly title: "Fetch one document (ChatGPT connector contract)";
+        readonly description: "One knowledge record by the id a search result gave, whole: title, the full text in the source's words, the URL to cite, and metadata with the source, licence and date. The text block is the same JSON as a string.";
+        readonly inputSchema: {
+            readonly id: z.ZodString;
+        };
+        readonly outputSchema: {
+            id: z.ZodString;
+            title: z.ZodString;
+            text: z.ZodString;
+            url: z.ZodString;
+            metadata: z.ZodObject<{
+                kind: z.ZodEnum<{
+                    creator: "creator";
+                    item: "item";
+                    lore_page: "lore_page";
+                    npc: "npc";
+                    object: "object";
+                    quest: "quest";
+                    realm: "realm";
+                    spell: "spell";
+                    zone: "zone";
+                }>;
+                gameVersion: z.ZodEnum<{
+                    classic: "classic";
+                    forever: "forever";
+                    lore: "lore";
+                    retail: "retail";
+                }>;
+                sourceUrl: z.ZodString;
+                sourceId: z.ZodString;
+                licence: z.ZodString;
+                retrievedAt: z.ZodString;
+                credit: z.ZodString;
+            }, z.core.$strip>;
+        };
+        readonly annotations: {
+            readonly readOnlyHint: true;
+            readonly openWorldHint: false;
+        };
+    };
     readonly answer_sources: {
         readonly title: "Evidence for a question, each piece with its source";
         readonly description: "The evidence behind a question about WoW: Forever, for an answer that cites its sources: facts players observed (public after three installs agree, with the install count), curated facts, and the 2023 Warcraft Wiki (marked: may differ in Forever). Every piece carries a claim, its source URL, licence and date. Returns evidence, not prose: write the answer from it and cite the pieces. Further-reading links are search URLs on other sites; nothing is fetched from them. Reads Everloot's current authorized public corpus when connected; when it is not, the observed layer is unrecorded, not empty.";
@@ -305,6 +1044,39 @@ export declare const MCP_TOOLS: {
             readonly fromSkill: z.ZodDefault<z.ZodNumber>;
             readonly toSkill: z.ZodNumber;
         };
+        readonly outputSchema: {
+            readonly connected: z.ZodBoolean;
+            readonly dataAsOf: z.ZodNullable<z.ZodString>;
+            readonly reason: z.ZodOptional<z.ZodString>;
+            readonly page: z.ZodOptional<z.ZodObject<{
+                profession: z.ZodString;
+                fromSkill: z.ZodNumber;
+                toSkill: z.ZodNumber;
+                steps: z.ZodArray<z.ZodObject<{
+                    recipe: z.ZodString;
+                    fromSkill: z.ZodNumber;
+                    toSkill: z.ZodNumber;
+                    crafts: z.ZodNumber;
+                    points: z.ZodNumber;
+                    reagents: z.ZodArray<z.ZodObject<{
+                        item: z.ZodString;
+                        count: z.ZodNumber;
+                    }, z.core.$strip>>;
+                    copper: z.ZodNullable<z.ZodNumber>;
+                    reporters: z.ZodNumber;
+                    trainingCopper: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+                }, z.core.$strip>>;
+                gaps: z.ZodArray<z.ZodObject<{
+                    fromSkill: z.ZodNumber;
+                    toSkill: z.ZodNumber;
+                }, z.core.$strip>>;
+                reagents: z.ZodArray<z.ZodObject<{
+                    item: z.ZodString;
+                    count: z.ZodNumber;
+                }, z.core.$strip>>;
+                copper: z.ZodNullable<z.ZodNumber>;
+            }, z.core.$strip>>;
+        };
         readonly annotations: {
             readonly readOnlyHint: true;
             readonly openWorldHint: false;
@@ -317,6 +1089,38 @@ export declare const MCP_TOOLS: {
             readonly profession: z.ZodString;
             readonly recipe: z.ZodOptional<z.ZodString>;
         };
+        readonly outputSchema: {
+            readonly connected: z.ZodBoolean;
+            readonly dataAsOf: z.ZodNullable<z.ZodString>;
+            readonly reason: z.ZodOptional<z.ZodString>;
+            readonly page: z.ZodOptional<z.ZodObject<{
+                profession: z.ZodString;
+                ranges: z.ZodArray<z.ZodObject<{
+                    profession: z.ZodString;
+                    recipe: z.ZodString;
+                    installs: z.ZodNumber;
+                    observations: z.ZodNumber;
+                    yellow: z.ZodObject<{
+                        min: z.ZodNullable<z.ZodNumber>;
+                        max: z.ZodNullable<z.ZodNumber>;
+                    }, z.core.$strip>;
+                    green: z.ZodObject<{
+                        min: z.ZodNullable<z.ZodNumber>;
+                        max: z.ZodNullable<z.ZodNumber>;
+                    }, z.core.$strip>;
+                    grey: z.ZodObject<{
+                        min: z.ZodNullable<z.ZodNumber>;
+                        max: z.ZodNullable<z.ZodNumber>;
+                    }, z.core.$strip>;
+                    reagents: z.ZodNullable<z.ZodArray<z.ZodObject<{
+                        item: z.ZodString;
+                        count: z.ZodNumber;
+                    }, z.core.$strip>>>;
+                    costCopper: z.ZodNullable<z.ZodNumber>;
+                    missingPrices: z.ZodArray<z.ZodString>;
+                }, z.core.$strip>>;
+            }, z.core.$strip>>;
+        };
         readonly annotations: {
             readonly readOnlyHint: true;
             readonly openWorldHint: false;
@@ -327,6 +1131,32 @@ export declare const MCP_TOOLS: {
         readonly description: "One Forever item: agreed name, public drop rate with kill count, and an agreed map pin. A rate is public after 3 installs kill the source. A name or pin needs 3 installs agreeing. No Wowhead rows. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.";
         readonly inputSchema: {
             readonly itemId: z.ZodNumber;
+        };
+        readonly outputSchema: {
+            readonly connected: z.ZodBoolean;
+            readonly dataAsOf: z.ZodNullable<z.ZodString>;
+            readonly reason: z.ZodOptional<z.ZodString>;
+            readonly page: z.ZodOptional<z.ZodObject<{
+                itemId: z.ZodNumber;
+                name: z.ZodNullable<z.ZodString>;
+                drops: z.ZodArray<z.ZodObject<{
+                    sourceNpcId: z.ZodOptional<z.ZodNumber>;
+                    sourceObjectId: z.ZodOptional<z.ZodNumber>;
+                    source: z.ZodString;
+                    kills: z.ZodNumber;
+                    drops: z.ZodNumber;
+                    rate: z.ZodNumber;
+                    reporters: z.ZodNumber;
+                }, z.core.$strip>>;
+                pins: z.ZodArray<z.ZodObject<{
+                    npcId: z.ZodNumber;
+                    name: z.ZodNullable<z.ZodString>;
+                    mapId: z.ZodNumber;
+                    x: z.ZodNumber;
+                    y: z.ZodNumber;
+                    reporters: z.ZodNumber;
+                }, z.core.$strip>>;
+            }, z.core.$strip>>;
         };
         readonly annotations: {
             readonly readOnlyHint: true;
@@ -339,6 +1169,21 @@ export declare const MCP_TOOLS: {
         readonly inputSchema: {
             readonly npcId: z.ZodNumber;
         };
+        readonly outputSchema: {
+            readonly connected: z.ZodBoolean;
+            readonly dataAsOf: z.ZodNullable<z.ZodString>;
+            readonly reason: z.ZodOptional<z.ZodString>;
+            readonly page: z.ZodOptional<z.ZodObject<{
+                npcId: z.ZodNumber;
+                name: z.ZodNullable<z.ZodString>;
+                pins: z.ZodArray<z.ZodObject<{
+                    mapId: z.ZodNumber;
+                    x: z.ZodNumber;
+                    y: z.ZodNumber;
+                    reporters: z.ZodNumber;
+                }, z.core.$strip>>;
+            }, z.core.$strip>>;
+        };
         readonly annotations: {
             readonly readOnlyHint: true;
             readonly openWorldHint: false;
@@ -349,6 +1194,27 @@ export declare const MCP_TOOLS: {
         readonly description: "One game object (a chest, herb, ore vein or fishing pool) by the id in its GUID: the items players looted from it, each with observed loot windows, windows with the item and distinct install reports. A frequency is public after 3 install reports; a public object with nothing in its windows reads as a measured zero. Objects have no names yet. Reads Everloot's current authorized public corpus when connected.";
         readonly inputSchema: {
             readonly objectId: z.ZodNumber;
+        };
+        readonly outputSchema: {
+            readonly connected: z.ZodBoolean;
+            readonly dataAsOf: z.ZodNullable<z.ZodString>;
+            readonly reason: z.ZodOptional<z.ZodString>;
+            readonly page: z.ZodOptional<z.ZodObject<{
+                objectId: z.ZodNumber;
+                drops: z.ZodArray<z.ZodObject<{
+                    itemId: z.ZodNumber;
+                    itemName: z.ZodNullable<z.ZodString>;
+                    kills: z.ZodNumber;
+                    drops: z.ZodNumber;
+                    rate: z.ZodNumber;
+                    reporters: z.ZodNumber;
+                }, z.core.$strip>>;
+                zero: z.ZodNullable<z.ZodObject<{
+                    kills: z.ZodNumber;
+                    reporters: z.ZodNumber;
+                }, z.core.$strip>>;
+                queued: z.ZodBoolean;
+            }, z.core.$strip>>;
         };
         readonly annotations: {
             readonly readOnlyHint: true;
@@ -361,6 +1227,19 @@ export declare const MCP_TOOLS: {
         readonly inputSchema: {
             readonly questId: z.ZodNumber;
         };
+        readonly outputSchema: {
+            readonly connected: z.ZodBoolean;
+            readonly dataAsOf: z.ZodNullable<z.ZodString>;
+            readonly reason: z.ZodOptional<z.ZodString>;
+            readonly page: z.ZodOptional<z.ZodObject<{
+                questId: z.ZodNumber;
+                title: z.ZodNullable<z.ZodString>;
+                level: z.ZodNullable<z.ZodNumber>;
+                giverNpcId: z.ZodNullable<z.ZodNumber>;
+                turnInNpcId: z.ZodNullable<z.ZodNumber>;
+                rewards: z.ZodArray<z.ZodNumber>;
+            }, z.core.$strip>>;
+        };
         readonly annotations: {
             readonly readOnlyHint: true;
             readonly openWorldHint: false;
@@ -371,6 +1250,21 @@ export declare const MCP_TOOLS: {
         readonly description: "Goods one Forever vendor sells. An item is listed when 3 installs agree on that item and its copper price. Two agreed prices both stay listed. No copied catalog. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.";
         readonly inputSchema: {
             readonly vendorNpcId: z.ZodNumber;
+        };
+        readonly outputSchema: {
+            readonly connected: z.ZodBoolean;
+            readonly dataAsOf: z.ZodNullable<z.ZodString>;
+            readonly reason: z.ZodOptional<z.ZodString>;
+            readonly page: z.ZodOptional<z.ZodObject<{
+                vendorNpcId: z.ZodNumber;
+                offers: z.ZodArray<z.ZodObject<{
+                    itemId: z.ZodNumber;
+                    priceCopper: z.ZodNumber;
+                    limitedStock: z.ZodNullable<z.ZodNumber>;
+                    unlimited: z.ZodBoolean;
+                    reporters: z.ZodNumber;
+                }, z.core.$strip>>;
+            }, z.core.$strip>>;
         };
         readonly annotations: {
             readonly readOnlyHint: true;
@@ -387,6 +1281,44 @@ export declare const MCP_TOOLS: {
             readonly npcId: z.ZodOptional<z.ZodNumber>;
             readonly radius: z.ZodDefault<z.ZodNumber>;
             readonly limit: z.ZodDefault<z.ZodNumber>;
+        };
+        readonly outputSchema: {
+            readonly connected: z.ZodBoolean;
+            readonly dataAsOf: z.ZodNullable<z.ZodString>;
+            readonly reason: z.ZodOptional<z.ZodString>;
+            readonly page: z.ZodOptional<z.ZodObject<{
+                ok: z.ZodBoolean;
+                message: z.ZodOptional<z.ZodString>;
+                origin: z.ZodOptional<z.ZodString>;
+                radius: z.ZodOptional<z.ZodNumber>;
+                limit: z.ZodOptional<z.ZodNumber>;
+                entrances: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                    names: z.ZodArray<z.ZodString>;
+                    raid: z.ZodBoolean;
+                    zone: z.ZodNullable<z.ZodString>;
+                    yards: z.ZodNumber;
+                }, z.core.$strip>>>;
+                npcs: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                    npcId: z.ZodNumber;
+                    name: z.ZodNullable<z.ZodString>;
+                    mapId: z.ZodNumber;
+                    zoneName: z.ZodString;
+                    x: z.ZodNumber;
+                    y: z.ZodNumber;
+                    yards: z.ZodNumber;
+                    reporters: z.ZodNumber;
+                }, z.core.$strip>>>;
+                vendors: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                    npcId: z.ZodNumber;
+                    name: z.ZodNullable<z.ZodString>;
+                    mapId: z.ZodNumber;
+                    zoneName: z.ZodString;
+                    x: z.ZodNumber;
+                    y: z.ZodNumber;
+                    yards: z.ZodNumber;
+                    reporters: z.ZodNumber;
+                }, z.core.$strip>>>;
+            }, z.core.$strip>>;
         };
         readonly annotations: {
             readonly readOnlyHint: true;
@@ -427,6 +1359,71 @@ export declare const MCP_TOOLS: {
             }>>;
             readonly limit: z.ZodDefault<z.ZodNumber>;
         };
+        readonly outputSchema: {
+            readonly connected: z.ZodBoolean;
+            readonly dataAsOf: z.ZodNullable<z.ZodString>;
+            readonly reason: z.ZodOptional<z.ZodString>;
+            readonly page: z.ZodOptional<z.ZodObject<{
+                kind: z.ZodEnum<{
+                    icon: "icon";
+                    item: "item";
+                    item_set: "item_set";
+                    npc: "npc";
+                    object: "object";
+                    quest: "quest";
+                    skill: "skill";
+                    spell: "spell";
+                    zone: "zone";
+                }>;
+                id: z.ZodNumber;
+                edges: z.ZodArray<z.ZodObject<{
+                    fromKind: z.ZodEnum<{
+                        icon: "icon";
+                        item: "item";
+                        item_set: "item_set";
+                        npc: "npc";
+                        object: "object";
+                        quest: "quest";
+                        skill: "skill";
+                        spell: "spell";
+                        zone: "zone";
+                    }>;
+                    fromId: z.ZodNumber;
+                    rel: z.ZodEnum<{
+                        created_by: "created_by";
+                        dropped_by: "dropped_by";
+                        in_skill_line: "in_skill_line";
+                        located_in: "located_in";
+                        part_of_set: "part_of_set";
+                        reagent_for: "reagent_for";
+                        reward_from: "reward_from";
+                        same_icon: "same_icon";
+                        sold_by: "sold_by";
+                    }>;
+                    toKind: z.ZodEnum<{
+                        icon: "icon";
+                        item: "item";
+                        item_set: "item_set";
+                        npc: "npc";
+                        object: "object";
+                        quest: "quest";
+                        skill: "skill";
+                        spell: "spell";
+                        zone: "zone";
+                    }>;
+                    toId: z.ZodNumber;
+                    evidence: z.ZodEnum<{
+                        client: "client";
+                        observed: "observed";
+                    }>;
+                    build: z.ZodNullable<z.ZodString>;
+                    installs: z.ZodNullable<z.ZodNumber>;
+                    firstSeen: z.ZodNullable<z.ZodString>;
+                    lastSeen: z.ZodNullable<z.ZodString>;
+                }, z.core.$strip>>;
+                notShown: z.ZodNumber;
+            }, z.core.$strip>>;
+        };
         readonly annotations: {
             readonly readOnlyHint: true;
             readonly openWorldHint: false;
@@ -452,6 +1449,202 @@ export declare const MCP_TOOLS: {
             }>>;
             readonly limit: z.ZodDefault<z.ZodNumber>;
         };
+        readonly outputSchema: {
+            readonly label: z.ZodString;
+            readonly build: z.ZodString;
+            readonly item: z.ZodOptional<z.ZodNullable<z.ZodObject<{
+                itemId: z.ZodNumber;
+                class: z.ZodNullable<z.ZodObject<{
+                    id: z.ZodNumber;
+                    name: z.ZodString;
+                    slug: z.ZodString;
+                }, z.core.$strip>>;
+                subclass: z.ZodNullable<z.ZodObject<{
+                    id: z.ZodNumber;
+                    name: z.ZodNullable<z.ZodString>;
+                    slug: z.ZodString;
+                }, z.core.$strip>>;
+                slot: z.ZodNullable<z.ZodObject<{
+                    inventoryType: z.ZodNumber;
+                    name: z.ZodString;
+                    slug: z.ZodString;
+                }, z.core.$strip>>;
+                quality: z.ZodNullable<z.ZodObject<{
+                    id: z.ZodNumber;
+                    name: z.ZodString;
+                    slug: z.ZodString;
+                }, z.core.$strip>>;
+            }, z.core.$strip>>>;
+            readonly classes: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                id: z.ZodNumber;
+                name: z.ZodString;
+                slug: z.ZodString;
+                items: z.ZodNumber;
+                subclasses: z.ZodArray<z.ZodObject<{
+                    id: z.ZodNumber;
+                    name: z.ZodNullable<z.ZodString>;
+                    slug: z.ZodString;
+                    items: z.ZodNumber;
+                }, z.core.$strip>>;
+            }, z.core.$strip>>>;
+            readonly items: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                itemId: z.ZodNumber;
+                class: z.ZodNullable<z.ZodObject<{
+                    id: z.ZodNumber;
+                    name: z.ZodString;
+                    slug: z.ZodString;
+                }, z.core.$strip>>;
+                subclass: z.ZodNullable<z.ZodObject<{
+                    id: z.ZodNumber;
+                    name: z.ZodNullable<z.ZodString>;
+                    slug: z.ZodString;
+                }, z.core.$strip>>;
+                slot: z.ZodNullable<z.ZodObject<{
+                    inventoryType: z.ZodNumber;
+                    name: z.ZodString;
+                    slug: z.ZodString;
+                }, z.core.$strip>>;
+                quality: z.ZodNullable<z.ZodObject<{
+                    id: z.ZodNumber;
+                    name: z.ZodString;
+                    slug: z.ZodString;
+                }, z.core.$strip>>;
+            }, z.core.$strip>>>;
+            readonly total: z.ZodOptional<z.ZodNumber>;
+            readonly error: z.ZodOptional<z.ZodString>;
+            readonly credit: z.ZodString;
+        };
+        readonly annotations: {
+            readonly readOnlyHint: true;
+            readonly openWorldHint: false;
+        };
+    };
+    readonly talent_tree: {
+        readonly title: "Talent trees for one class";
+        readonly description: "The WoW: Forever talent trees of one class from the game files (found in game files, unconfirmed, with the build): every node with its talents, ranks, grid position, prerequisites and row gate, plus the levels talent points arrive at. Node ids are the ids a share code names. Narrow to one tree by name. The calculator is at /tools/talents/<class>.";
+        readonly inputSchema: {
+            readonly class: z.ZodEnum<{
+                druid: "druid";
+                hunter: "hunter";
+                mage: "mage";
+                paladin: "paladin";
+                priest: "priest";
+                rogue: "rogue";
+                shaman: "shaman";
+                warlock: "warlock";
+                warrior: "warrior";
+            }>;
+            readonly tree: z.ZodOptional<z.ZodString>;
+        };
+        readonly outputSchema: {
+            readonly label: z.ZodString;
+            readonly build: z.ZodString;
+            readonly class: z.ZodEnum<{
+                druid: "druid";
+                hunter: "hunter";
+                mage: "mage";
+                paladin: "paladin";
+                priest: "priest";
+                rogue: "rogue";
+                shaman: "shaman";
+                warlock: "warlock";
+                warrior: "warrior";
+            }>;
+            readonly className: z.ZodString;
+            readonly specId: z.ZodNumber;
+            readonly points: z.ZodObject<{
+                firstPointLevel: z.ZodNumber;
+                maxLevel: z.ZodNumber;
+                total: z.ZodNumber;
+                pointLevels: z.ZodArray<z.ZodNumber>;
+            }, z.core.$strip>;
+            readonly trees: z.ZodArray<z.ZodObject<{
+                id: z.ZodNumber;
+                name: z.ZodString;
+                nodes: z.ZodNumber;
+            }, z.core.$strip>>;
+            readonly nodes: z.ZodArray<z.ZodObject<{
+                id: z.ZodNumber;
+                treeId: z.ZodNumber;
+                row: z.ZodNumber;
+                col: z.ZodNumber;
+                kind: z.ZodEnum<{
+                    choice: "choice";
+                    single: "single";
+                    tiered: "tiered";
+                }>;
+                maxRanks: z.ZodNumber;
+                talents: z.ZodArray<z.ZodObject<{
+                    name: z.ZodString;
+                    spellId: z.ZodNullable<z.ZodNumber>;
+                    maxRanks: z.ZodOptional<z.ZodNumber>;
+                }, z.core.$strip>>;
+                prereqs: z.ZodArray<z.ZodNumber>;
+                anyOf: z.ZodOptional<z.ZodArray<z.ZodNumber>>;
+                gate: z.ZodOptional<z.ZodObject<{
+                    pointsInTree: z.ZodOptional<z.ZodNumber>;
+                    pointsTotal: z.ZodOptional<z.ZodNumber>;
+                    scope: z.ZodOptional<z.ZodEnum<{
+                        class: "class";
+                        tree: "tree";
+                        unconfirmed: "unconfirmed";
+                    }>>;
+                    ranksInNodes: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                        nodeId: z.ZodNumber;
+                        ranks: z.ZodNumber;
+                    }, z.core.$strip>>>;
+                }, z.core.$strip>>;
+            }, z.core.$strip>>;
+            readonly credit: z.ZodString;
+        };
+        readonly annotations: {
+            readonly readOnlyHint: true;
+            readonly openWorldHint: false;
+        };
+    };
+    readonly talent_plan: {
+        readonly title: "Read a talent share code";
+        readonly description: "Decodes an Everloot talent share code (EL1-<class>-<spec>-<build>-<payload>, or a calculator link carrying one after #plan=) against the class's trees: the talents and ranks it holds, points per tree, the lowest level that can hold it, and every problem in plain words: a code made on another build, nodes the tree does not have, ranks cut back, points the rules would not place. Nothing is dropped silently. Game-file data, found in game files, unconfirmed.";
+        readonly inputSchema: {
+            readonly code: z.ZodString;
+        };
+        readonly outputSchema: {
+            readonly ok: z.ZodBoolean;
+            readonly message: z.ZodOptional<z.ZodString>;
+            readonly class: z.ZodOptional<z.ZodEnum<{
+                druid: "druid";
+                hunter: "hunter";
+                mage: "mage";
+                paladin: "paladin";
+                priest: "priest";
+                rogue: "rogue";
+                shaman: "shaman";
+                warlock: "warlock";
+                warrior: "warrior";
+            }>>;
+            readonly className: z.ZodOptional<z.ZodString>;
+            readonly codeBuild: z.ZodOptional<z.ZodString>;
+            readonly treeBuild: z.ZodOptional<z.ZodString>;
+            readonly pointsSpent: z.ZodOptional<z.ZodNumber>;
+            readonly minLevel: z.ZodOptional<z.ZodNumber>;
+            readonly byTree: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                id: z.ZodNumber;
+                name: z.ZodString;
+                points: z.ZodNumber;
+            }, z.core.$strip>>>;
+            readonly talents: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                id: z.ZodNumber;
+                treeId: z.ZodNumber;
+                name: z.ZodString;
+                rank: z.ZodNumber;
+                maxRanks: z.ZodNumber;
+                choice: z.ZodOptional<z.ZodNumber>;
+            }, z.core.$strip>>>;
+            readonly problems: z.ZodOptional<z.ZodArray<z.ZodString>>;
+            readonly link: z.ZodOptional<z.ZodString>;
+            readonly label: z.ZodString;
+            readonly credit: z.ZodString;
+        };
         readonly annotations: {
             readonly readOnlyHint: true;
             readonly openWorldHint: false;
@@ -463,6 +1656,22 @@ export declare const MCP_TOOLS: {
         readonly inputSchema: {
             readonly collection: z.ZodString;
             readonly ownerInstallId: z.ZodString;
+        };
+        readonly outputSchema: {
+            readonly connected: z.ZodBoolean;
+            readonly dataAsOf: z.ZodNullable<z.ZodString>;
+            readonly reason: z.ZodOptional<z.ZodString>;
+            readonly page: z.ZodOptional<z.ZodObject<{
+                collection: z.ZodString;
+                ownerInstallId: z.ZodString;
+                groups: z.ZodArray<z.ZodObject<{
+                    source: z.ZodString;
+                    owned: z.ZodArray<z.ZodNumber>;
+                    missing: z.ZodArray<z.ZodNumber>;
+                }, z.core.$strip>>;
+                queued: z.ZodArray<z.ZodNumber>;
+                ownedRecorded: z.ZodBoolean;
+            }, z.core.$strip>>;
         };
         readonly annotations: {
             readonly readOnlyHint: true;
@@ -476,6 +1685,80 @@ export declare const MCP_TOOLS: {
             readonly ownerInstallId: z.ZodString;
             readonly characterKey: z.ZodOptional<z.ZodString>;
         };
+        readonly outputSchema: {
+            readonly connected: z.ZodBoolean;
+            readonly dataAsOf: z.ZodNullable<z.ZodString>;
+            readonly reason: z.ZodOptional<z.ZodString>;
+            readonly page: z.ZodOptional<z.ZodObject<{
+                ownerInstallId: z.ZodString;
+                listed: z.ZodObject<{
+                    achievements: z.ZodNumber;
+                    factions: z.ZodNumber;
+                    titles: z.ZodNumber;
+                    chains: z.ZodNumber;
+                }, z.core.$strip>;
+                ownedRecorded: z.ZodBoolean;
+                characters: z.ZodArray<z.ZodObject<{
+                    characterKey: z.ZodString;
+                    class: z.ZodString;
+                    level: z.ZodNumber;
+                    achievements: z.ZodObject<{
+                        done: z.ZodNumber;
+                        total: z.ZodNumber;
+                        points: z.ZodNumber;
+                        pointsTotal: z.ZodNumber;
+                        closest: z.ZodArray<z.ZodObject<{
+                            achievementId: z.ZodNumber;
+                            name: z.ZodString;
+                            category: z.ZodString;
+                            have: z.ZodNumber;
+                            of: z.ZodNumber;
+                            unit: z.ZodEnum<{
+                                criteria: "criteria";
+                                progress: "progress";
+                            }>;
+                        }, z.core.$strip>>;
+                        unlisted: z.ZodNumber;
+                    }, z.core.$strip>;
+                    reputation: z.ZodObject<{
+                        exalted: z.ZodNumber;
+                        total: z.ZodNumber;
+                        closest: z.ZodArray<z.ZodObject<{
+                            factionId: z.ZodNumber;
+                            name: z.ZodString;
+                            standing: z.ZodString;
+                            toNext: z.ZodNumber;
+                            header: z.ZodOptional<z.ZodString>;
+                        }, z.core.$strip>>;
+                        unscaled: z.ZodArray<z.ZodObject<{
+                            factionId: z.ZodNumber;
+                            name: z.ZodString;
+                            standing: z.ZodNumber;
+                        }, z.core.$strip>>;
+                        unlisted: z.ZodNumber;
+                    }, z.core.$strip>;
+                    titles: z.ZodObject<{
+                        known: z.ZodNumber;
+                        total: z.ZodNumber;
+                        unlisted: z.ZodNumber;
+                    }, z.core.$strip>;
+                    quests: z.ZodObject<{
+                        completed: z.ZodNumber;
+                        chainsDone: z.ZodNumber;
+                        chainsTotal: z.ZodNumber;
+                        closest: z.ZodArray<z.ZodObject<{
+                            questLineId: z.ZodNumber;
+                            name: z.ZodString;
+                            done: z.ZodNumber;
+                            total: z.ZodNumber;
+                            truncated: z.ZodBoolean;
+                        }, z.core.$strip>>;
+                    }, z.core.$strip>;
+                }, z.core.$strip>>;
+                unknownCharacter: z.ZodOptional<z.ZodString>;
+                droppedCharacters: z.ZodNumber;
+            }, z.core.$strip>>;
+        };
         readonly annotations: {
             readonly readOnlyHint: true;
             readonly openWorldHint: false;
@@ -487,6 +1770,38 @@ export declare const MCP_TOOLS: {
         readonly inputSchema: {
             readonly guildName: z.ZodString;
             readonly realm: z.ZodString;
+        };
+        readonly outputSchema: {
+            readonly connected: z.ZodBoolean;
+            readonly dataAsOf: z.ZodNullable<z.ZodString>;
+            readonly reason: z.ZodOptional<z.ZodString>;
+            readonly page: z.ZodOptional<z.ZodObject<{
+                guildName: z.ZodString;
+                realm: z.ZodString;
+                memberCount: z.ZodNullable<z.ZodNumber>;
+                roster: z.ZodArray<z.ZodObject<{
+                    name: z.ZodString;
+                    rank: z.ZodString;
+                    level: z.ZodNumber;
+                    className: z.ZodString;
+                }, z.core.$strip>>;
+                progression: z.ZodArray<z.ZodObject<{
+                    instance: z.ZodString;
+                    bosses: z.ZodArray<z.ZodString>;
+                }, z.core.$strip>>;
+                loot: z.ZodArray<z.ZodObject<{
+                    itemId: z.ZodNumber;
+                    recipient: z.ZodString;
+                    sourceBoss: z.ZodString;
+                }, z.core.$strip>>;
+                averageItemLevel: z.ZodNullable<z.ZodNumber>;
+                gearCoverage: z.ZodObject<{
+                    measured: z.ZodNumber;
+                    roster: z.ZodNumber;
+                }, z.core.$strip>;
+                present: z.ZodArray<z.ZodString>;
+                attendanceWaiting: z.ZodBoolean;
+            }, z.core.$strip>>;
         };
         readonly annotations: {
             readonly readOnlyHint: true;
@@ -500,6 +1815,20 @@ export declare const MCP_TOOLS: {
             readonly realm: z.ZodString;
             readonly itemId: z.ZodNumber;
         };
+        readonly outputSchema: {
+            readonly connected: z.ZodBoolean;
+            readonly dataAsOf: z.ZodNullable<z.ZodString>;
+            readonly reason: z.ZodOptional<z.ZodString>;
+            readonly page: z.ZodOptional<z.ZodObject<{
+                realm: z.ZodString;
+                itemId: z.ZodNumber;
+                points: z.ZodArray<z.ZodObject<{
+                    day: z.ZodString;
+                    copper: z.ZodNumber;
+                    reporters: z.ZodNumber;
+                }, z.core.$strip>>;
+            }, z.core.$strip>>;
+        };
         readonly annotations: {
             readonly readOnlyHint: true;
             readonly openWorldHint: false;
@@ -512,6 +1841,34 @@ export declare const MCP_TOOLS: {
             readonly realm: z.ZodString;
             readonly itemId: z.ZodNumber;
         };
+        readonly outputSchema: {
+            readonly connected: z.ZodBoolean;
+            readonly dataAsOf: z.ZodNullable<z.ZodString>;
+            readonly reason: z.ZodOptional<z.ZodString>;
+            readonly page: z.ZodOptional<z.ZodObject<{
+                realm: z.ZodString;
+                itemId: z.ZodNumber;
+                value: z.ZodNullable<z.ZodObject<{
+                    itemId: z.ZodNumber;
+                    market: z.ZodNullable<z.ZodNumber>;
+                    min: z.ZodNumber;
+                    historical: z.ZodNumber;
+                    quantity: z.ZodNumber;
+                    day: z.ZodString;
+                    ageDays: z.ZodNumber;
+                    reporters: z.ZodNumber;
+                    thin: z.ZodBoolean;
+                }, z.core.$strip>>;
+                history: z.ZodArray<z.ZodObject<{
+                    day: z.ZodString;
+                    min: z.ZodNumber;
+                    market: z.ZodNumber;
+                    quantity: z.ZodNumber;
+                    reporters: z.ZodNumber;
+                    thin: z.ZodBoolean;
+                }, z.core.$strip>>;
+            }, z.core.$strip>>;
+        };
         readonly annotations: {
             readonly readOnlyHint: true;
             readonly openWorldHint: false;
@@ -523,6 +1880,28 @@ export declare const MCP_TOOLS: {
         readonly inputSchema: {
             readonly character: z.ZodString;
             readonly realm: z.ZodString;
+        };
+        readonly outputSchema: {
+            readonly connected: z.ZodBoolean;
+            readonly dataAsOf: z.ZodNullable<z.ZodString>;
+            readonly reason: z.ZodOptional<z.ZodString>;
+            readonly page: z.ZodOptional<z.ZodObject<{
+                character: z.ZodString;
+                realm: z.ZodString;
+                recorded: z.ZodBoolean;
+                ledgers: z.ZodArray<z.ZodObject<{
+                    installId: z.ZodString;
+                    peakCopper: z.ZodNullable<z.ZodNumber>;
+                    currentCopper: z.ZodNullable<z.ZodNumber>;
+                    income: z.ZodObject<{
+                        [x: string]: z.ZodOptional<z.ZodNumber>;
+                    }, z.core.$strip>;
+                    spending: z.ZodObject<{
+                        [x: string]: z.ZodOptional<z.ZodNumber>;
+                    }, z.core.$strip>;
+                    incomeTotal: z.ZodNullable<z.ZodNumber>;
+                }, z.core.$strip>>;
+            }, z.core.$strip>>;
         };
         readonly annotations: {
             readonly readOnlyHint: true;
@@ -591,6 +1970,53 @@ export declare const MCP_TOOLS: {
             readonly forever_ready_only: z.ZodOptional<z.ZodBoolean>;
             readonly limit: z.ZodDefault<z.ZodNumber>;
         };
+        readonly outputSchema: {
+            readonly connected: z.ZodBoolean;
+            readonly refreshedAt: z.ZodNullable<z.ZodString>;
+            readonly installsAvailable: z.ZodBoolean;
+            readonly forever: z.ZodNullable<z.ZodObject<{
+                interface: z.ZodNumber;
+                version: z.ZodString;
+                build: z.ZodNumber;
+            }, z.core.$strip>>;
+            readonly board: z.ZodEnum<{
+                active: "active";
+                all: "all";
+                installed: "installed";
+                maintained: "maintained";
+                release: "release";
+                rising: "rising";
+            }>;
+            readonly projects: z.ZodArray<z.ZodObject<{
+                rank: z.ZodOptional<z.ZodNumber>;
+                display: z.ZodOptional<z.ZodString>;
+                id: z.ZodString;
+                name: z.ZodString;
+                kind: z.ZodEnum<{
+                    addon: "addon";
+                    tool: "tool";
+                }>;
+                summary: z.ZodString;
+                repo: z.ZodString;
+                url: z.ZodString;
+                installs: z.ZodNullable<z.ZodNumber>;
+                stars: z.ZodNullable<z.ZodNumber>;
+                release: z.ZodNullable<z.ZodObject<{
+                    tag: z.ZodString;
+                    date: z.ZodString;
+                    url: z.ZodString;
+                }, z.core.$strip>>;
+                lastCommit: z.ZodNullable<z.ZodString>;
+                commits4w: z.ZodNullable<z.ZodNumber>;
+                foreverReady: z.ZodEnum<{
+                    no: "no";
+                    unknown: "unknown";
+                    yes: "yes";
+                }>;
+                badges: z.ZodArray<z.ZodString>;
+                maintenanceScore: z.ZodNullable<z.ZodNumber>;
+            }, z.core.$strip>>;
+        };
         readonly annotations: {
             readonly readOnlyHint: true;
             readonly openWorldHint: false;
@@ -600,6 +2026,33 @@ export declare const MCP_TOOLS: {
         readonly title: "Everloot implementation tracker";
         readonly description: "The full Everloot build list: what is live, what is next, what is waiting on Carlos, and which reference sites are page shapes only. Read this before assuming a tool exists.";
         readonly inputSchema: {};
+        readonly outputSchema: {
+            readonly rows: z.ZodArray<z.ZodObject<{
+                id: z.ZodString;
+                status: z.ZodEnum<{
+                    live: "live";
+                    next: "next";
+                    shape: "shape";
+                    waiting: "waiting";
+                }>;
+                name: z.ZodString;
+                done: z.ZodString;
+                proof: z.ZodOptional<z.ZodEnum<{
+                    client: "client";
+                    code: "code";
+                    deployed: "deployed";
+                    none: "none";
+                    public: "public";
+                    "real-data": "real-data";
+                }>>;
+            }, z.core.$strip>>;
+            readonly counts: z.ZodObject<{
+                live: z.ZodNumber;
+                next: z.ZodNumber;
+                waiting: z.ZodNumber;
+                shape: z.ZodNumber;
+            }, z.core.$strip>;
+        };
         readonly annotations: {
             readonly readOnlyHint: true;
             readonly openWorldHint: false;
@@ -669,7 +2122,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search_knowledge" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Get one knowledge record by id";
     description: "Fetch the full record behind a search hit id, for page rendering.";
@@ -709,7 +2162,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search_knowledge" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Get records by exact name";
     description: "Exact full-name match (case-insensitive) for disambiguation. Use search_knowledge for fuzzy matches.";
@@ -760,7 +2213,66 @@ export declare const MCP_TOOL_LIST: ({
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search_knowledge" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
+} | {
+    title: "Search (ChatGPT connector contract)";
+    description: "The same search as search_knowledge, in the shape ChatGPT connectors and deep research call by name: up to 10 results, each with an id for fetch, a title and a URL to cite. The text block is the same JSON as a string.";
+    inputSchema: {
+        readonly query: z.ZodString;
+    };
+    outputSchema: {
+        readonly results: z.ZodArray<z.ZodObject<{
+            id: z.ZodString;
+            title: z.ZodString;
+            url: z.ZodString;
+        }, z.core.$strip>>;
+    };
+    annotations: {
+        readonly readOnlyHint: true;
+        readonly openWorldHint: false;
+    };
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
+} | {
+    title: "Fetch one document (ChatGPT connector contract)";
+    description: "One knowledge record by the id a search result gave, whole: title, the full text in the source's words, the URL to cite, and metadata with the source, licence and date. The text block is the same JSON as a string.";
+    inputSchema: {
+        readonly id: z.ZodString;
+    };
+    outputSchema: {
+        id: z.ZodString;
+        title: z.ZodString;
+        text: z.ZodString;
+        url: z.ZodString;
+        metadata: z.ZodObject<{
+            kind: z.ZodEnum<{
+                creator: "creator";
+                item: "item";
+                lore_page: "lore_page";
+                npc: "npc";
+                object: "object";
+                quest: "quest";
+                realm: "realm";
+                spell: "spell";
+                zone: "zone";
+            }>;
+            gameVersion: z.ZodEnum<{
+                classic: "classic";
+                forever: "forever";
+                lore: "lore";
+                retail: "retail";
+            }>;
+            sourceUrl: z.ZodString;
+            sourceId: z.ZodString;
+            licence: z.ZodString;
+            retrievedAt: z.ZodString;
+            credit: z.ZodString;
+        }, z.core.$strip>;
+    };
+    annotations: {
+        readonly readOnlyHint: true;
+        readonly openWorldHint: false;
+    };
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Evidence for a question, each piece with its source";
     description: "The evidence behind a question about WoW: Forever, for an answer that cites its sources: facts players observed (public after three installs agree, with the install count), curated facts, and the 2023 Warcraft Wiki (marked: may differ in Forever). Every piece carries a claim, its source URL, licence and date. Returns evidence, not prose: write the answer from it and cite the pieces. Further-reading links are search URLs on other sites; nothing is fetched from them. Reads Everloot's current authorized public corpus when connected; when it is not, the observed layer is unrecorded, not empty.";
@@ -794,7 +2306,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search_knowledge" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Profession leveling path";
     description: "Leveling path for one Forever profession from Everloot uploads. A step exists only after 3 installs agree: on a reported recipe, or on the recipe colours that make it orange (a guaranteed skill-up), starting at the trainer's required rank. Gold exists only after 3 price uploads agree. No copied guide. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.";
@@ -803,11 +2315,44 @@ export declare const MCP_TOOL_LIST: ({
         readonly fromSkill: z.ZodDefault<z.ZodNumber>;
         readonly toSkill: z.ZodNumber;
     };
+    outputSchema: {
+        readonly connected: z.ZodBoolean;
+        readonly dataAsOf: z.ZodNullable<z.ZodString>;
+        readonly reason: z.ZodOptional<z.ZodString>;
+        readonly page: z.ZodOptional<z.ZodObject<{
+            profession: z.ZodString;
+            fromSkill: z.ZodNumber;
+            toSkill: z.ZodNumber;
+            steps: z.ZodArray<z.ZodObject<{
+                recipe: z.ZodString;
+                fromSkill: z.ZodNumber;
+                toSkill: z.ZodNumber;
+                crafts: z.ZodNumber;
+                points: z.ZodNumber;
+                reagents: z.ZodArray<z.ZodObject<{
+                    item: z.ZodString;
+                    count: z.ZodNumber;
+                }, z.core.$strip>>;
+                copper: z.ZodNullable<z.ZodNumber>;
+                reporters: z.ZodNumber;
+                trainingCopper: z.ZodOptional<z.ZodNullable<z.ZodNumber>>;
+            }, z.core.$strip>>;
+            gaps: z.ZodArray<z.ZodObject<{
+                fromSkill: z.ZodNumber;
+                toSkill: z.ZodNumber;
+            }, z.core.$strip>>;
+            reagents: z.ZodArray<z.ZodObject<{
+                item: z.ZodString;
+                count: z.ZodNumber;
+            }, z.core.$strip>>;
+            copper: z.ZodNullable<z.ZodNumber>;
+        }, z.core.$strip>>;
+    };
     annotations: {
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search_knowledge" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Recipe skill ranges";
     description: "Where a Forever profession's recipes turn yellow, green and grey, inferred from the colours players' trade-skill windows showed. A recipe appears only after 3 installs agree, as ranges, never guessed exact numbers. Agreed reagents come with an estimated cost per craft when every reagent has an agreed price. Reads Everloot's current public corpus.";
@@ -815,66 +2360,188 @@ export declare const MCP_TOOL_LIST: ({
         readonly profession: z.ZodString;
         readonly recipe: z.ZodOptional<z.ZodString>;
     };
+    outputSchema: {
+        readonly connected: z.ZodBoolean;
+        readonly dataAsOf: z.ZodNullable<z.ZodString>;
+        readonly reason: z.ZodOptional<z.ZodString>;
+        readonly page: z.ZodOptional<z.ZodObject<{
+            profession: z.ZodString;
+            ranges: z.ZodArray<z.ZodObject<{
+                profession: z.ZodString;
+                recipe: z.ZodString;
+                installs: z.ZodNumber;
+                observations: z.ZodNumber;
+                yellow: z.ZodObject<{
+                    min: z.ZodNullable<z.ZodNumber>;
+                    max: z.ZodNullable<z.ZodNumber>;
+                }, z.core.$strip>;
+                green: z.ZodObject<{
+                    min: z.ZodNullable<z.ZodNumber>;
+                    max: z.ZodNullable<z.ZodNumber>;
+                }, z.core.$strip>;
+                grey: z.ZodObject<{
+                    min: z.ZodNullable<z.ZodNumber>;
+                    max: z.ZodNullable<z.ZodNumber>;
+                }, z.core.$strip>;
+                reagents: z.ZodNullable<z.ZodArray<z.ZodObject<{
+                    item: z.ZodString;
+                    count: z.ZodNumber;
+                }, z.core.$strip>>>;
+                costCopper: z.ZodNullable<z.ZodNumber>;
+                missingPrices: z.ZodArray<z.ZodString>;
+            }, z.core.$strip>>;
+        }, z.core.$strip>>;
+    };
     annotations: {
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search_knowledge" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Item page for a drop";
     description: "One Forever item: agreed name, public drop rate with kill count, and an agreed map pin. A rate is public after 3 installs kill the source. A name or pin needs 3 installs agreeing. No Wowhead rows. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.";
     inputSchema: {
         readonly itemId: z.ZodNumber;
     };
+    outputSchema: {
+        readonly connected: z.ZodBoolean;
+        readonly dataAsOf: z.ZodNullable<z.ZodString>;
+        readonly reason: z.ZodOptional<z.ZodString>;
+        readonly page: z.ZodOptional<z.ZodObject<{
+            itemId: z.ZodNumber;
+            name: z.ZodNullable<z.ZodString>;
+            drops: z.ZodArray<z.ZodObject<{
+                sourceNpcId: z.ZodOptional<z.ZodNumber>;
+                sourceObjectId: z.ZodOptional<z.ZodNumber>;
+                source: z.ZodString;
+                kills: z.ZodNumber;
+                drops: z.ZodNumber;
+                rate: z.ZodNumber;
+                reporters: z.ZodNumber;
+            }, z.core.$strip>>;
+            pins: z.ZodArray<z.ZodObject<{
+                npcId: z.ZodNumber;
+                name: z.ZodNullable<z.ZodString>;
+                mapId: z.ZodNumber;
+                x: z.ZodNumber;
+                y: z.ZodNumber;
+                reporters: z.ZodNumber;
+            }, z.core.$strip>>;
+        }, z.core.$strip>>;
+    };
     annotations: {
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search_knowledge" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "NPC page";
     description: "One Forever NPC: agreed name and map pins. A name or pin needs 3 installs agreeing. The pin does not require a drop. No copied spawn list. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.";
     inputSchema: {
         readonly npcId: z.ZodNumber;
     };
+    outputSchema: {
+        readonly connected: z.ZodBoolean;
+        readonly dataAsOf: z.ZodNullable<z.ZodString>;
+        readonly reason: z.ZodOptional<z.ZodString>;
+        readonly page: z.ZodOptional<z.ZodObject<{
+            npcId: z.ZodNumber;
+            name: z.ZodNullable<z.ZodString>;
+            pins: z.ZodArray<z.ZodObject<{
+                mapId: z.ZodNumber;
+                x: z.ZodNumber;
+                y: z.ZodNumber;
+                reporters: z.ZodNumber;
+            }, z.core.$strip>>;
+        }, z.core.$strip>>;
+    };
     annotations: {
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search_knowledge" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Game object page";
     description: "One game object (a chest, herb, ore vein or fishing pool) by the id in its GUID: the items players looted from it, each with observed loot windows, windows with the item and distinct install reports. A frequency is public after 3 install reports; a public object with nothing in its windows reads as a measured zero. Objects have no names yet. Reads Everloot's current authorized public corpus when connected.";
     inputSchema: {
         readonly objectId: z.ZodNumber;
     };
+    outputSchema: {
+        readonly connected: z.ZodBoolean;
+        readonly dataAsOf: z.ZodNullable<z.ZodString>;
+        readonly reason: z.ZodOptional<z.ZodString>;
+        readonly page: z.ZodOptional<z.ZodObject<{
+            objectId: z.ZodNumber;
+            drops: z.ZodArray<z.ZodObject<{
+                itemId: z.ZodNumber;
+                itemName: z.ZodNullable<z.ZodString>;
+                kills: z.ZodNumber;
+                drops: z.ZodNumber;
+                rate: z.ZodNumber;
+                reporters: z.ZodNumber;
+            }, z.core.$strip>>;
+            zero: z.ZodNullable<z.ZodObject<{
+                kills: z.ZodNumber;
+                reporters: z.ZodNumber;
+            }, z.core.$strip>>;
+            queued: z.ZodBoolean;
+        }, z.core.$strip>>;
+    };
     annotations: {
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search_knowledge" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Quest page";
     description: "One Forever quest: agreed title, level, giver, turn-in, and rewards. Each fact needs 3 installs agreeing. No copied quest text. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.";
     inputSchema: {
         readonly questId: z.ZodNumber;
     };
+    outputSchema: {
+        readonly connected: z.ZodBoolean;
+        readonly dataAsOf: z.ZodNullable<z.ZodString>;
+        readonly reason: z.ZodOptional<z.ZodString>;
+        readonly page: z.ZodOptional<z.ZodObject<{
+            questId: z.ZodNumber;
+            title: z.ZodNullable<z.ZodString>;
+            level: z.ZodNullable<z.ZodNumber>;
+            giverNpcId: z.ZodNullable<z.ZodNumber>;
+            turnInNpcId: z.ZodNullable<z.ZodNumber>;
+            rewards: z.ZodArray<z.ZodNumber>;
+        }, z.core.$strip>>;
+    };
     annotations: {
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search_knowledge" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Vendor page";
     description: "Goods one Forever vendor sells. An item is listed when 3 installs agree on that item and its copper price. Two agreed prices both stay listed. No copied catalog. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.";
     inputSchema: {
         readonly vendorNpcId: z.ZodNumber;
     };
+    outputSchema: {
+        readonly connected: z.ZodBoolean;
+        readonly dataAsOf: z.ZodNullable<z.ZodString>;
+        readonly reason: z.ZodOptional<z.ZodString>;
+        readonly page: z.ZodOptional<z.ZodObject<{
+            vendorNpcId: z.ZodNumber;
+            offers: z.ZodArray<z.ZodObject<{
+                itemId: z.ZodNumber;
+                priceCopper: z.ZodNumber;
+                limitedStock: z.ZodNullable<z.ZodNumber>;
+                unlimited: z.ZodBoolean;
+                reporters: z.ZodNumber;
+            }, z.core.$strip>>;
+        }, z.core.$strip>>;
+    };
     annotations: {
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search_knowledge" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "What is near a place on the map";
     description: `Entrances, NPCs and vendors near a spot, nearest first, with straight-line distances in yards. Give a zone (name or map id) with x and y from 0 to 100, or an NPC id to start from where that NPC stands. Entrances come from the game files and are unconfirmed. NPCs and vendors are player-observed and listed only where 3 installs agree on the position. Zones the files hold back as possibly unreleased are not offered. Game objects are not listed: no public record gives them a position. Reads Everloot's current authorized public corpus when connected.`;
@@ -886,11 +2553,49 @@ export declare const MCP_TOOL_LIST: ({
         readonly radius: z.ZodDefault<z.ZodNumber>;
         readonly limit: z.ZodDefault<z.ZodNumber>;
     };
+    outputSchema: {
+        readonly connected: z.ZodBoolean;
+        readonly dataAsOf: z.ZodNullable<z.ZodString>;
+        readonly reason: z.ZodOptional<z.ZodString>;
+        readonly page: z.ZodOptional<z.ZodObject<{
+            ok: z.ZodBoolean;
+            message: z.ZodOptional<z.ZodString>;
+            origin: z.ZodOptional<z.ZodString>;
+            radius: z.ZodOptional<z.ZodNumber>;
+            limit: z.ZodOptional<z.ZodNumber>;
+            entrances: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                names: z.ZodArray<z.ZodString>;
+                raid: z.ZodBoolean;
+                zone: z.ZodNullable<z.ZodString>;
+                yards: z.ZodNumber;
+            }, z.core.$strip>>>;
+            npcs: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                npcId: z.ZodNumber;
+                name: z.ZodNullable<z.ZodString>;
+                mapId: z.ZodNumber;
+                zoneName: z.ZodString;
+                x: z.ZodNumber;
+                y: z.ZodNumber;
+                yards: z.ZodNumber;
+                reporters: z.ZodNumber;
+            }, z.core.$strip>>>;
+            vendors: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                npcId: z.ZodNumber;
+                name: z.ZodNullable<z.ZodString>;
+                mapId: z.ZodNumber;
+                zoneName: z.ZodString;
+                x: z.ZodNumber;
+                y: z.ZodNumber;
+                yards: z.ZodNumber;
+                reporters: z.ZodNumber;
+            }, z.core.$strip>>>;
+        }, z.core.$strip>>;
+    };
     annotations: {
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search_knowledge" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "How an item, NPC, spell or quest connects to others";
     description: `Every typed relation of one entity, both directions: dropped by, sold by, reward from, located in (player-observed, listed where 3 installs agree, with the install count and last seen), and created by, reagent for, part of set, same icon (found in game files, unconfirmed, with the build they came from). Ids are the game's own. Reads Everloot's current authorized public corpus and the committed client layer.`;
@@ -925,11 +2630,76 @@ export declare const MCP_TOOL_LIST: ({
         }>>;
         readonly limit: z.ZodDefault<z.ZodNumber>;
     };
+    outputSchema: {
+        readonly connected: z.ZodBoolean;
+        readonly dataAsOf: z.ZodNullable<z.ZodString>;
+        readonly reason: z.ZodOptional<z.ZodString>;
+        readonly page: z.ZodOptional<z.ZodObject<{
+            kind: z.ZodEnum<{
+                icon: "icon";
+                item: "item";
+                item_set: "item_set";
+                npc: "npc";
+                object: "object";
+                quest: "quest";
+                skill: "skill";
+                spell: "spell";
+                zone: "zone";
+            }>;
+            id: z.ZodNumber;
+            edges: z.ZodArray<z.ZodObject<{
+                fromKind: z.ZodEnum<{
+                    icon: "icon";
+                    item: "item";
+                    item_set: "item_set";
+                    npc: "npc";
+                    object: "object";
+                    quest: "quest";
+                    skill: "skill";
+                    spell: "spell";
+                    zone: "zone";
+                }>;
+                fromId: z.ZodNumber;
+                rel: z.ZodEnum<{
+                    created_by: "created_by";
+                    dropped_by: "dropped_by";
+                    in_skill_line: "in_skill_line";
+                    located_in: "located_in";
+                    part_of_set: "part_of_set";
+                    reagent_for: "reagent_for";
+                    reward_from: "reward_from";
+                    same_icon: "same_icon";
+                    sold_by: "sold_by";
+                }>;
+                toKind: z.ZodEnum<{
+                    icon: "icon";
+                    item: "item";
+                    item_set: "item_set";
+                    npc: "npc";
+                    object: "object";
+                    quest: "quest";
+                    skill: "skill";
+                    spell: "spell";
+                    zone: "zone";
+                }>;
+                toId: z.ZodNumber;
+                evidence: z.ZodEnum<{
+                    client: "client";
+                    observed: "observed";
+                }>;
+                build: z.ZodNullable<z.ZodString>;
+                installs: z.ZodNullable<z.ZodNumber>;
+                firstSeen: z.ZodNullable<z.ZodString>;
+                lastSeen: z.ZodNullable<z.ZodString>;
+            }, z.core.$strip>>;
+            notShown: z.ZodNumber;
+        }, z.core.$strip>>;
+    };
     annotations: {
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search_knowledge" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Item categories: class, subclass, slot and quality";
     description: `Item categories from the game files (found in game files, unconfirmed, with the build): class and subclass with the client's English names and slugs, slot and quality. With no arguments, the whole tree with item counts. With item, that item's category path. With class (a slug such as weapon or armor), and optionally subclass, slot and quality slugs, the items in it. Ids only: item names come from player uploads (item_page).`;
@@ -950,11 +2720,207 @@ export declare const MCP_TOOL_LIST: ({
         }>>;
         readonly limit: z.ZodDefault<z.ZodNumber>;
     };
+    outputSchema: {
+        readonly label: z.ZodString;
+        readonly build: z.ZodString;
+        readonly item: z.ZodOptional<z.ZodNullable<z.ZodObject<{
+            itemId: z.ZodNumber;
+            class: z.ZodNullable<z.ZodObject<{
+                id: z.ZodNumber;
+                name: z.ZodString;
+                slug: z.ZodString;
+            }, z.core.$strip>>;
+            subclass: z.ZodNullable<z.ZodObject<{
+                id: z.ZodNumber;
+                name: z.ZodNullable<z.ZodString>;
+                slug: z.ZodString;
+            }, z.core.$strip>>;
+            slot: z.ZodNullable<z.ZodObject<{
+                inventoryType: z.ZodNumber;
+                name: z.ZodString;
+                slug: z.ZodString;
+            }, z.core.$strip>>;
+            quality: z.ZodNullable<z.ZodObject<{
+                id: z.ZodNumber;
+                name: z.ZodString;
+                slug: z.ZodString;
+            }, z.core.$strip>>;
+        }, z.core.$strip>>>;
+        readonly classes: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            id: z.ZodNumber;
+            name: z.ZodString;
+            slug: z.ZodString;
+            items: z.ZodNumber;
+            subclasses: z.ZodArray<z.ZodObject<{
+                id: z.ZodNumber;
+                name: z.ZodNullable<z.ZodString>;
+                slug: z.ZodString;
+                items: z.ZodNumber;
+            }, z.core.$strip>>;
+        }, z.core.$strip>>>;
+        readonly items: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            itemId: z.ZodNumber;
+            class: z.ZodNullable<z.ZodObject<{
+                id: z.ZodNumber;
+                name: z.ZodString;
+                slug: z.ZodString;
+            }, z.core.$strip>>;
+            subclass: z.ZodNullable<z.ZodObject<{
+                id: z.ZodNumber;
+                name: z.ZodNullable<z.ZodString>;
+                slug: z.ZodString;
+            }, z.core.$strip>>;
+            slot: z.ZodNullable<z.ZodObject<{
+                inventoryType: z.ZodNumber;
+                name: z.ZodString;
+                slug: z.ZodString;
+            }, z.core.$strip>>;
+            quality: z.ZodNullable<z.ZodObject<{
+                id: z.ZodNumber;
+                name: z.ZodString;
+                slug: z.ZodString;
+            }, z.core.$strip>>;
+        }, z.core.$strip>>>;
+        readonly total: z.ZodOptional<z.ZodNumber>;
+        readonly error: z.ZodOptional<z.ZodString>;
+        readonly credit: z.ZodString;
+    };
     annotations: {
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search_knowledge" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
+} | {
+    title: "Talent trees for one class";
+    description: "The WoW: Forever talent trees of one class from the game files (found in game files, unconfirmed, with the build): every node with its talents, ranks, grid position, prerequisites and row gate, plus the levels talent points arrive at. Node ids are the ids a share code names. Narrow to one tree by name. The calculator is at /tools/talents/<class>.";
+    inputSchema: {
+        readonly class: z.ZodEnum<{
+            druid: "druid";
+            hunter: "hunter";
+            mage: "mage";
+            paladin: "paladin";
+            priest: "priest";
+            rogue: "rogue";
+            shaman: "shaman";
+            warlock: "warlock";
+            warrior: "warrior";
+        }>;
+        readonly tree: z.ZodOptional<z.ZodString>;
+    };
+    outputSchema: {
+        readonly label: z.ZodString;
+        readonly build: z.ZodString;
+        readonly class: z.ZodEnum<{
+            druid: "druid";
+            hunter: "hunter";
+            mage: "mage";
+            paladin: "paladin";
+            priest: "priest";
+            rogue: "rogue";
+            shaman: "shaman";
+            warlock: "warlock";
+            warrior: "warrior";
+        }>;
+        readonly className: z.ZodString;
+        readonly specId: z.ZodNumber;
+        readonly points: z.ZodObject<{
+            firstPointLevel: z.ZodNumber;
+            maxLevel: z.ZodNumber;
+            total: z.ZodNumber;
+            pointLevels: z.ZodArray<z.ZodNumber>;
+        }, z.core.$strip>;
+        readonly trees: z.ZodArray<z.ZodObject<{
+            id: z.ZodNumber;
+            name: z.ZodString;
+            nodes: z.ZodNumber;
+        }, z.core.$strip>>;
+        readonly nodes: z.ZodArray<z.ZodObject<{
+            id: z.ZodNumber;
+            treeId: z.ZodNumber;
+            row: z.ZodNumber;
+            col: z.ZodNumber;
+            kind: z.ZodEnum<{
+                choice: "choice";
+                single: "single";
+                tiered: "tiered";
+            }>;
+            maxRanks: z.ZodNumber;
+            talents: z.ZodArray<z.ZodObject<{
+                name: z.ZodString;
+                spellId: z.ZodNullable<z.ZodNumber>;
+                maxRanks: z.ZodOptional<z.ZodNumber>;
+            }, z.core.$strip>>;
+            prereqs: z.ZodArray<z.ZodNumber>;
+            anyOf: z.ZodOptional<z.ZodArray<z.ZodNumber>>;
+            gate: z.ZodOptional<z.ZodObject<{
+                pointsInTree: z.ZodOptional<z.ZodNumber>;
+                pointsTotal: z.ZodOptional<z.ZodNumber>;
+                scope: z.ZodOptional<z.ZodEnum<{
+                    class: "class";
+                    tree: "tree";
+                    unconfirmed: "unconfirmed";
+                }>>;
+                ranksInNodes: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                    nodeId: z.ZodNumber;
+                    ranks: z.ZodNumber;
+                }, z.core.$strip>>>;
+            }, z.core.$strip>>;
+        }, z.core.$strip>>;
+        readonly credit: z.ZodString;
+    };
+    annotations: {
+        readonly readOnlyHint: true;
+        readonly openWorldHint: false;
+    };
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
+} | {
+    title: "Read a talent share code";
+    description: "Decodes an Everloot talent share code (EL1-<class>-<spec>-<build>-<payload>, or a calculator link carrying one after #plan=) against the class's trees: the talents and ranks it holds, points per tree, the lowest level that can hold it, and every problem in plain words: a code made on another build, nodes the tree does not have, ranks cut back, points the rules would not place. Nothing is dropped silently. Game-file data, found in game files, unconfirmed.";
+    inputSchema: {
+        readonly code: z.ZodString;
+    };
+    outputSchema: {
+        readonly ok: z.ZodBoolean;
+        readonly message: z.ZodOptional<z.ZodString>;
+        readonly class: z.ZodOptional<z.ZodEnum<{
+            druid: "druid";
+            hunter: "hunter";
+            mage: "mage";
+            paladin: "paladin";
+            priest: "priest";
+            rogue: "rogue";
+            shaman: "shaman";
+            warlock: "warlock";
+            warrior: "warrior";
+        }>>;
+        readonly className: z.ZodOptional<z.ZodString>;
+        readonly codeBuild: z.ZodOptional<z.ZodString>;
+        readonly treeBuild: z.ZodOptional<z.ZodString>;
+        readonly pointsSpent: z.ZodOptional<z.ZodNumber>;
+        readonly minLevel: z.ZodOptional<z.ZodNumber>;
+        readonly byTree: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            id: z.ZodNumber;
+            name: z.ZodString;
+            points: z.ZodNumber;
+        }, z.core.$strip>>>;
+        readonly talents: z.ZodOptional<z.ZodArray<z.ZodObject<{
+            id: z.ZodNumber;
+            treeId: z.ZodNumber;
+            name: z.ZodString;
+            rank: z.ZodNumber;
+            maxRanks: z.ZodNumber;
+            choice: z.ZodOptional<z.ZodNumber>;
+        }, z.core.$strip>>>;
+        readonly problems: z.ZodOptional<z.ZodArray<z.ZodString>>;
+        readonly link: z.ZodOptional<z.ZodString>;
+        readonly label: z.ZodString;
+        readonly credit: z.ZodString;
+    };
+    annotations: {
+        readonly readOnlyHint: true;
+        readonly openWorldHint: false;
+    };
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Owned versus missing in a collection";
     description: "Missing items in one collection for one install. A list row is public after 3 installs agree on the collection, the source, and the item. Owned is what that install uploaded. Not a Blizzard profile read and not a copied catalog. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.";
@@ -962,11 +2928,27 @@ export declare const MCP_TOOL_LIST: ({
         readonly collection: z.ZodString;
         readonly ownerInstallId: z.ZodString;
     };
+    outputSchema: {
+        readonly connected: z.ZodBoolean;
+        readonly dataAsOf: z.ZodNullable<z.ZodString>;
+        readonly reason: z.ZodOptional<z.ZodString>;
+        readonly page: z.ZodOptional<z.ZodObject<{
+            collection: z.ZodString;
+            ownerInstallId: z.ZodString;
+            groups: z.ZodArray<z.ZodObject<{
+                source: z.ZodString;
+                owned: z.ZodArray<z.ZodNumber>;
+                missing: z.ZodArray<z.ZodNumber>;
+            }, z.core.$strip>>;
+            queued: z.ZodArray<z.ZodNumber>;
+            ownedRecorded: z.ZodBoolean;
+        }, z.core.$strip>>;
+    };
     annotations: {
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search_knowledge" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Achievement, reputation, title and quest progress";
     description: "What one install's characters have finished, and what is closest to done: achievements with the largest share of criteria or progress met, reputations nearest the next standing, titles known, and quests finished in a chain. A list entry is public after 3 players (installs uploading from different addresses) report it identically. Progress is shown only when that install uploaded it with the collection sharing choice and a verified grant; without it the answer says so. Not a Blizzard profile read and not a copied catalog. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.";
@@ -974,11 +2956,85 @@ export declare const MCP_TOOL_LIST: ({
         readonly ownerInstallId: z.ZodString;
         readonly characterKey: z.ZodOptional<z.ZodString>;
     };
+    outputSchema: {
+        readonly connected: z.ZodBoolean;
+        readonly dataAsOf: z.ZodNullable<z.ZodString>;
+        readonly reason: z.ZodOptional<z.ZodString>;
+        readonly page: z.ZodOptional<z.ZodObject<{
+            ownerInstallId: z.ZodString;
+            listed: z.ZodObject<{
+                achievements: z.ZodNumber;
+                factions: z.ZodNumber;
+                titles: z.ZodNumber;
+                chains: z.ZodNumber;
+            }, z.core.$strip>;
+            ownedRecorded: z.ZodBoolean;
+            characters: z.ZodArray<z.ZodObject<{
+                characterKey: z.ZodString;
+                class: z.ZodString;
+                level: z.ZodNumber;
+                achievements: z.ZodObject<{
+                    done: z.ZodNumber;
+                    total: z.ZodNumber;
+                    points: z.ZodNumber;
+                    pointsTotal: z.ZodNumber;
+                    closest: z.ZodArray<z.ZodObject<{
+                        achievementId: z.ZodNumber;
+                        name: z.ZodString;
+                        category: z.ZodString;
+                        have: z.ZodNumber;
+                        of: z.ZodNumber;
+                        unit: z.ZodEnum<{
+                            criteria: "criteria";
+                            progress: "progress";
+                        }>;
+                    }, z.core.$strip>>;
+                    unlisted: z.ZodNumber;
+                }, z.core.$strip>;
+                reputation: z.ZodObject<{
+                    exalted: z.ZodNumber;
+                    total: z.ZodNumber;
+                    closest: z.ZodArray<z.ZodObject<{
+                        factionId: z.ZodNumber;
+                        name: z.ZodString;
+                        standing: z.ZodString;
+                        toNext: z.ZodNumber;
+                        header: z.ZodOptional<z.ZodString>;
+                    }, z.core.$strip>>;
+                    unscaled: z.ZodArray<z.ZodObject<{
+                        factionId: z.ZodNumber;
+                        name: z.ZodString;
+                        standing: z.ZodNumber;
+                    }, z.core.$strip>>;
+                    unlisted: z.ZodNumber;
+                }, z.core.$strip>;
+                titles: z.ZodObject<{
+                    known: z.ZodNumber;
+                    total: z.ZodNumber;
+                    unlisted: z.ZodNumber;
+                }, z.core.$strip>;
+                quests: z.ZodObject<{
+                    completed: z.ZodNumber;
+                    chainsDone: z.ZodNumber;
+                    chainsTotal: z.ZodNumber;
+                    closest: z.ZodArray<z.ZodObject<{
+                        questLineId: z.ZodNumber;
+                        name: z.ZodString;
+                        done: z.ZodNumber;
+                        total: z.ZodNumber;
+                        truncated: z.ZodBoolean;
+                    }, z.core.$strip>>;
+                }, z.core.$strip>;
+            }, z.core.$strip>>;
+            unknownCharacter: z.ZodOptional<z.ZodString>;
+            droppedCharacters: z.ZodNumber;
+        }, z.core.$strip>>;
+    };
     annotations: {
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search_knowledge" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Officer guild board";
     description: "Roster, bosses, loot, attendance, and average item level from officer uploads. A figure is public after 2 uploads agree. The average names how many roster members were measured. There is no single score because score_v1 weights are not published. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.";
@@ -986,11 +3042,43 @@ export declare const MCP_TOOL_LIST: ({
         readonly guildName: z.ZodString;
         readonly realm: z.ZodString;
     };
+    outputSchema: {
+        readonly connected: z.ZodBoolean;
+        readonly dataAsOf: z.ZodNullable<z.ZodString>;
+        readonly reason: z.ZodOptional<z.ZodString>;
+        readonly page: z.ZodOptional<z.ZodObject<{
+            guildName: z.ZodString;
+            realm: z.ZodString;
+            memberCount: z.ZodNullable<z.ZodNumber>;
+            roster: z.ZodArray<z.ZodObject<{
+                name: z.ZodString;
+                rank: z.ZodString;
+                level: z.ZodNumber;
+                className: z.ZodString;
+            }, z.core.$strip>>;
+            progression: z.ZodArray<z.ZodObject<{
+                instance: z.ZodString;
+                bosses: z.ZodArray<z.ZodString>;
+            }, z.core.$strip>>;
+            loot: z.ZodArray<z.ZodObject<{
+                itemId: z.ZodNumber;
+                recipient: z.ZodString;
+                sourceBoss: z.ZodString;
+            }, z.core.$strip>>;
+            averageItemLevel: z.ZodNullable<z.ZodNumber>;
+            gearCoverage: z.ZodObject<{
+                measured: z.ZodNumber;
+                roster: z.ZodNumber;
+            }, z.core.$strip>;
+            present: z.ZodArray<z.ZodString>;
+            attendanceWaiting: z.ZodBoolean;
+        }, z.core.$strip>>;
+    };
     annotations: {
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search_knowledge" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Auction history for one item";
     description: "Price history from auction scans players uploaded on purpose. A day is public after 3 installs scanned that item on that realm. Copper is the median. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.";
@@ -998,11 +3086,25 @@ export declare const MCP_TOOL_LIST: ({
         readonly realm: z.ZodString;
         readonly itemId: z.ZodNumber;
     };
+    outputSchema: {
+        readonly connected: z.ZodBoolean;
+        readonly dataAsOf: z.ZodNullable<z.ZodString>;
+        readonly reason: z.ZodOptional<z.ZodString>;
+        readonly page: z.ZodOptional<z.ZodObject<{
+            realm: z.ZodString;
+            itemId: z.ZodNumber;
+            points: z.ZodArray<z.ZodObject<{
+                day: z.ZodString;
+                copper: z.ZodNumber;
+                reporters: z.ZodNumber;
+            }, z.core.$strip>>;
+        }, z.core.$strip>>;
+    };
     annotations: {
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search_knowledge" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Forever market value for one item";
     description: "Market value, minimum buyout, historical value and units listed for one item on one WoW: Forever realm, from full auction scans players started and uploaded. A day is public after 3 reporters (distinct upload addresses) scanned the item; values are medians, thin days and outlier days are left out of the market value. Market value weights the last 14 public days, historical is the median of 60. Missing or unavailable data is reported explicitly.";
@@ -1010,11 +3112,39 @@ export declare const MCP_TOOL_LIST: ({
         readonly realm: z.ZodString;
         readonly itemId: z.ZodNumber;
     };
+    outputSchema: {
+        readonly connected: z.ZodBoolean;
+        readonly dataAsOf: z.ZodNullable<z.ZodString>;
+        readonly reason: z.ZodOptional<z.ZodString>;
+        readonly page: z.ZodOptional<z.ZodObject<{
+            realm: z.ZodString;
+            itemId: z.ZodNumber;
+            value: z.ZodNullable<z.ZodObject<{
+                itemId: z.ZodNumber;
+                market: z.ZodNullable<z.ZodNumber>;
+                min: z.ZodNumber;
+                historical: z.ZodNumber;
+                quantity: z.ZodNumber;
+                day: z.ZodString;
+                ageDays: z.ZodNumber;
+                reporters: z.ZodNumber;
+                thin: z.ZodBoolean;
+            }, z.core.$strip>>;
+            history: z.ZodArray<z.ZodObject<{
+                day: z.ZodString;
+                min: z.ZodNumber;
+                market: z.ZodNumber;
+                quantity: z.ZodNumber;
+                reporters: z.ZodNumber;
+                thin: z.ZodBoolean;
+            }, z.core.$strip>>;
+        }, z.core.$strip>>;
+    };
     annotations: {
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search_knowledge" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Gold ledger for one character";
     description: "Peak gold and the money events that character's own upload recorded. Loot, quests, vendors, and auction sales stay on the money line. Gameplay stays on its own line. A missing line is unrecorded. The difference is not called bought and is not a ban. Installs are not merged. No scan of a player who did not upload. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.";
@@ -1022,11 +3152,33 @@ export declare const MCP_TOOL_LIST: ({
         readonly character: z.ZodString;
         readonly realm: z.ZodString;
     };
+    outputSchema: {
+        readonly connected: z.ZodBoolean;
+        readonly dataAsOf: z.ZodNullable<z.ZodString>;
+        readonly reason: z.ZodOptional<z.ZodString>;
+        readonly page: z.ZodOptional<z.ZodObject<{
+            character: z.ZodString;
+            realm: z.ZodString;
+            recorded: z.ZodBoolean;
+            ledgers: z.ZodArray<z.ZodObject<{
+                installId: z.ZodString;
+                peakCopper: z.ZodNullable<z.ZodNumber>;
+                currentCopper: z.ZodNullable<z.ZodNumber>;
+                income: z.ZodObject<{
+                    [x: string]: z.ZodOptional<z.ZodNumber>;
+                }, z.core.$strip>;
+                spending: z.ZodObject<{
+                    [x: string]: z.ZodOptional<z.ZodNumber>;
+                }, z.core.$strip>;
+                incomeTotal: z.ZodNullable<z.ZodNumber>;
+            }, z.core.$strip>>;
+        }, z.core.$strip>>;
+    };
     annotations: {
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search_knowledge" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Recent official changes for WoW: Forever";
     description: "Newest first: Blizzard blue posts (title, author, time, a short excerpt and the link to the original), hotfix posts, and new game builds. Excerpts only: Blizzard's post text is Blizzard's, so open the link for the full post. A build's time is when Everloot first saw it, not Blizzard's release time.";
@@ -1073,7 +3225,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search_knowledge" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "WoW: Forever addons and open-source projects";
     description: "Forever addons and tools from the community registry, with a board ranking: most installed, rising, most active, freshest release or best maintained. Each project shows its GitHub repository, stars, latest release, last commit, whether its .toc declares a Forever interface number, and installs from Everloot uploads (counted from 3 installs; a missing count means not counted, not zero). Projects are ranked, never people. GitHub facts carry the time they were refreshed.";
@@ -1089,26 +3241,100 @@ export declare const MCP_TOOL_LIST: ({
         readonly forever_ready_only: z.ZodOptional<z.ZodBoolean>;
         readonly limit: z.ZodDefault<z.ZodNumber>;
     };
+    outputSchema: {
+        readonly connected: z.ZodBoolean;
+        readonly refreshedAt: z.ZodNullable<z.ZodString>;
+        readonly installsAvailable: z.ZodBoolean;
+        readonly forever: z.ZodNullable<z.ZodObject<{
+            interface: z.ZodNumber;
+            version: z.ZodString;
+            build: z.ZodNumber;
+        }, z.core.$strip>>;
+        readonly board: z.ZodEnum<{
+            active: "active";
+            all: "all";
+            installed: "installed";
+            maintained: "maintained";
+            release: "release";
+            rising: "rising";
+        }>;
+        readonly projects: z.ZodArray<z.ZodObject<{
+            rank: z.ZodOptional<z.ZodNumber>;
+            display: z.ZodOptional<z.ZodString>;
+            id: z.ZodString;
+            name: z.ZodString;
+            kind: z.ZodEnum<{
+                addon: "addon";
+                tool: "tool";
+            }>;
+            summary: z.ZodString;
+            repo: z.ZodString;
+            url: z.ZodString;
+            installs: z.ZodNullable<z.ZodNumber>;
+            stars: z.ZodNullable<z.ZodNumber>;
+            release: z.ZodNullable<z.ZodObject<{
+                tag: z.ZodString;
+                date: z.ZodString;
+                url: z.ZodString;
+            }, z.core.$strip>>;
+            lastCommit: z.ZodNullable<z.ZodString>;
+            commits4w: z.ZodNullable<z.ZodNumber>;
+            foreverReady: z.ZodEnum<{
+                no: "no";
+                unknown: "unknown";
+                yes: "yes";
+            }>;
+            badges: z.ZodArray<z.ZodString>;
+            maintenanceScore: z.ZodNullable<z.ZodNumber>;
+        }, z.core.$strip>>;
+    };
     annotations: {
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search_knowledge" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Everloot implementation tracker";
     description: "The full Everloot build list: what is live, what is next, what is waiting on Carlos, and which reference sites are page shapes only. Read this before assuming a tool exists.";
     inputSchema: {};
+    outputSchema: {
+        readonly rows: z.ZodArray<z.ZodObject<{
+            id: z.ZodString;
+            status: z.ZodEnum<{
+                live: "live";
+                next: "next";
+                shape: "shape";
+                waiting: "waiting";
+            }>;
+            name: z.ZodString;
+            done: z.ZodString;
+            proof: z.ZodOptional<z.ZodEnum<{
+                client: "client";
+                code: "code";
+                deployed: "deployed";
+                none: "none";
+                public: "public";
+                "real-data": "real-data";
+            }>>;
+        }, z.core.$strip>>;
+        readonly counts: z.ZodObject<{
+            live: z.ZodNumber;
+            next: z.ZodNumber;
+            waiting: z.ZodNumber;
+            shape: z.ZodNumber;
+        }, z.core.$strip>;
+    };
     annotations: {
         readonly readOnlyHint: true;
         readonly openWorldHint: false;
     };
-    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search_knowledge" | "vendor_page" | "world_map_near";
+    name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 })[];
 /**
  * What every tool returns: one text content block. Answers built on player data end with the
  * credit line, after a line stating how old the data is. Tools that read nothing from players carry
- * their sources inside the text instead. Tools with an outputSchema also return structuredContent of
- * that shape (STRUCTURED_TOOLS); the others gain it tool by tool in later minor releases.
+ * their sources inside the text instead. Every tool also declares an outputSchema and returns
+ * structuredContent of that shape (STRUCTURED_TOOLS lists them, and is every tool today).
  */
 export declare const TOOL_OUTPUT: {
     readonly type: "text";
@@ -1116,6 +3342,8 @@ export declare const TOOL_OUTPUT: {
 };
 /** The tools that answer with structuredContent beside the text. */
 export declare const STRUCTURED_TOOLS: readonly McpToolName[];
+/** The two tools of OpenAI's connector contract: their text block is the structured answer as a JSON string, not prose. */
+export declare const CHATGPT_TOOLS: readonly McpToolName[];
 /** The tools whose answers are built on player uploads and therefore end with TOOL_OUTPUT.endsWith. */
 export declare const PLAYER_DATA_TOOLS: readonly McpToolName[];
 /**
@@ -1194,6 +3422,222 @@ export declare const MCP_RESOURCES: {
         readonly mimeType: "text/markdown";
     };
 };
+/**
+ * The server's prompts: a client offers them as commands, fills the arguments, and gets a user message
+ * that tells an assistant how to use the tools for that job. Argument values are strings, as MCP has them.
+ */
+export interface McpPromptDef {
+    title: string;
+    description: string;
+    /** `values`, when present, are the only values the argument takes; the server offers them through completion/complete. */
+    arguments: Record<string, {
+        description: string;
+        required: boolean;
+        values?: readonly string[];
+    }>;
+}
+/** Every prompt, keyed by name, in the order the server lists them. kb/src/prompts.ts holds the messages. */
+export declare const MCP_PROMPTS: {
+    readonly answer_with_sources: {
+        readonly title: "Answer with Everloot's sources";
+        readonly description: "Answer a question about WoW: Forever from answer_sources, citing each piece of evidence with its source, licence and date, and saying unrecorded where the evidence is.";
+        readonly arguments: {
+            readonly question: {
+                readonly description: "The question, in the player's words.";
+                readonly required: true;
+            };
+        };
+    };
+    readonly review_talent_plan: {
+        readonly title: "Review a talent share code";
+        readonly description: "Read a share code with talent_plan and the class's trees with talent_tree, then describe the build, its level and every problem in plain words.";
+        readonly arguments: {
+            readonly code: {
+                readonly description: "An EL1 share code, or a calculator link that carries one.";
+                readonly required: true;
+            };
+        };
+    };
+    readonly what_changed: {
+        readonly title: "What changed in WoW: Forever";
+        readonly description: "Summarize recent_changes, newest first: Blizzard posts, hotfixes and builds, each with its link, quoting only the excerpt the tool gives.";
+        readonly arguments: {
+            readonly game: {
+                readonly description: "forever or classic. Without it, both.";
+                readonly required: false;
+                readonly values: readonly ["forever", "classic"];
+            };
+        };
+    };
+};
+export type McpPromptName = keyof typeof MCP_PROMPTS;
+/** The names in the order the server lists them. */
+export declare const MCP_PROMPT_NAMES: McpPromptName[];
+/** The list form, for clients that iterate. */
+export declare const MCP_PROMPT_LIST: ({
+    title: "Answer with Everloot's sources";
+    description: "Answer a question about WoW: Forever from answer_sources, citing each piece of evidence with its source, licence and date, and saying unrecorded where the evidence is.";
+    arguments: {
+        readonly question: {
+            readonly description: "The question, in the player's words.";
+            readonly required: true;
+        };
+    };
+    name: "answer_with_sources" | "review_talent_plan" | "what_changed";
+} | {
+    title: "Review a talent share code";
+    description: "Read a share code with talent_plan and the class's trees with talent_tree, then describe the build, its level and every problem in plain words.";
+    arguments: {
+        readonly code: {
+            readonly description: "An EL1 share code, or a calculator link that carries one.";
+            readonly required: true;
+        };
+    };
+    name: "answer_with_sources" | "review_talent_plan" | "what_changed";
+} | {
+    title: "What changed in WoW: Forever";
+    description: "Summarize recent_changes, newest first: Blizzard posts, hotfixes and builds, each with its link, quoting only the excerpt the tool gives.";
+    arguments: {
+        readonly game: {
+            readonly description: "forever or classic. Without it, both.";
+            readonly required: false;
+            readonly values: readonly ["forever", "classic"];
+        };
+    };
+    name: "answer_with_sources" | "review_talent_plan" | "what_changed";
+})[];
+/**
+ * Resource templates: one URI per entity, read with resources/read, answering with the JSON a tool's
+ * structuredContent holds for that entity. The variable is passed to the tool as the named argument.
+ */
+export interface McpResourceTemplateDef {
+    name: string;
+    title: string;
+    description: string;
+    mimeType: "application/json";
+    /** The tool whose structured answer the resource holds. */
+    tool: McpToolName;
+    /** The template variable, and the tool argument it fills. */
+    variable: string;
+    argument: string;
+    /** When the variable has a known finite set of values, the server lists one resource per value and completes the variable from them. */
+    values?: readonly string[];
+}
+export declare const MCP_RESOURCE_TEMPLATES: {
+    readonly "everloot://item/{id}": {
+        readonly name: "item";
+        readonly title: "One item's page";
+        readonly description: "The item_page answer for an item id: agreed name, drop rates with loot-window counts, map pins.";
+        readonly mimeType: "application/json";
+        readonly tool: "item_page";
+        readonly variable: "id";
+        readonly argument: "itemId";
+    };
+    readonly "everloot://npc/{id}": {
+        readonly name: "npc";
+        readonly title: "One NPC's page";
+        readonly description: "The npc_page answer for an NPC id: agreed name and map pins.";
+        readonly mimeType: "application/json";
+        readonly tool: "npc_page";
+        readonly variable: "id";
+        readonly argument: "npcId";
+    };
+    readonly "everloot://quest/{id}": {
+        readonly name: "quest";
+        readonly title: "One quest's page";
+        readonly description: "The quest_page answer for a quest id: title, level, giver, turn-in and rewards.";
+        readonly mimeType: "application/json";
+        readonly tool: "quest_page";
+        readonly variable: "id";
+        readonly argument: "questId";
+    };
+    readonly "everloot://vendor/{id}": {
+        readonly name: "vendor";
+        readonly title: "One vendor's goods";
+        readonly description: "The vendor_page answer for a vendor NPC id: what it sells, with copper prices.";
+        readonly mimeType: "application/json";
+        readonly tool: "vendor_page";
+        readonly variable: "id";
+        readonly argument: "vendorNpcId";
+    };
+    readonly "everloot://object/{id}": {
+        readonly name: "object";
+        readonly title: "One game object's page";
+        readonly description: "The object_page answer for an object's entry id: what players looted from it.";
+        readonly mimeType: "application/json";
+        readonly tool: "object_page";
+        readonly variable: "id";
+        readonly argument: "objectId";
+    };
+    readonly "everloot://talents/{class}": {
+        readonly name: "talents";
+        readonly title: "One class's talent trees";
+        readonly description: "The talent_tree answer for a class slug: every node with its talents, ranks, position, prerequisites and gate.";
+        readonly mimeType: "application/json";
+        readonly tool: "talent_tree";
+        readonly variable: "class";
+        readonly argument: "class";
+        readonly values: readonly ["warrior", "paladin", "hunter", "rogue", "priest", "shaman", "mage", "warlock", "druid"];
+    };
+};
+export type McpResourceTemplateUri = keyof typeof MCP_RESOURCE_TEMPLATES;
+export declare const MCP_RESOURCE_TEMPLATE_URIS: McpResourceTemplateUri[];
+export declare const MCP_RESOURCE_TEMPLATE_LIST: ({
+    name: "item";
+    title: "One item's page";
+    description: "The item_page answer for an item id: agreed name, drop rates with loot-window counts, map pins.";
+    mimeType: "application/json";
+    tool: "item_page";
+    variable: "id";
+    argument: "itemId";
+    uriTemplate: "everloot://item/{id}" | "everloot://npc/{id}" | "everloot://object/{id}" | "everloot://quest/{id}" | "everloot://talents/{class}" | "everloot://vendor/{id}";
+} | {
+    name: "npc";
+    title: "One NPC's page";
+    description: "The npc_page answer for an NPC id: agreed name and map pins.";
+    mimeType: "application/json";
+    tool: "npc_page";
+    variable: "id";
+    argument: "npcId";
+    uriTemplate: "everloot://item/{id}" | "everloot://npc/{id}" | "everloot://object/{id}" | "everloot://quest/{id}" | "everloot://talents/{class}" | "everloot://vendor/{id}";
+} | {
+    name: "quest";
+    title: "One quest's page";
+    description: "The quest_page answer for a quest id: title, level, giver, turn-in and rewards.";
+    mimeType: "application/json";
+    tool: "quest_page";
+    variable: "id";
+    argument: "questId";
+    uriTemplate: "everloot://item/{id}" | "everloot://npc/{id}" | "everloot://object/{id}" | "everloot://quest/{id}" | "everloot://talents/{class}" | "everloot://vendor/{id}";
+} | {
+    name: "vendor";
+    title: "One vendor's goods";
+    description: "The vendor_page answer for a vendor NPC id: what it sells, with copper prices.";
+    mimeType: "application/json";
+    tool: "vendor_page";
+    variable: "id";
+    argument: "vendorNpcId";
+    uriTemplate: "everloot://item/{id}" | "everloot://npc/{id}" | "everloot://object/{id}" | "everloot://quest/{id}" | "everloot://talents/{class}" | "everloot://vendor/{id}";
+} | {
+    name: "object";
+    title: "One game object's page";
+    description: "The object_page answer for an object's entry id: what players looted from it.";
+    mimeType: "application/json";
+    tool: "object_page";
+    variable: "id";
+    argument: "objectId";
+    uriTemplate: "everloot://item/{id}" | "everloot://npc/{id}" | "everloot://object/{id}" | "everloot://quest/{id}" | "everloot://talents/{class}" | "everloot://vendor/{id}";
+} | {
+    name: "talents";
+    title: "One class's talent trees";
+    description: "The talent_tree answer for a class slug: every node with its talents, ranks, position, prerequisites and gate.";
+    mimeType: "application/json";
+    tool: "talent_tree";
+    variable: "class";
+    argument: "class";
+    values: readonly ["warrior", "paladin", "hunter", "rogue", "priest", "shaman", "mage", "warlock", "druid"];
+    uriTemplate: "everloot://item/{id}" | "everloot://npc/{id}" | "everloot://object/{id}" | "everloot://quest/{id}" | "everloot://talents/{class}" | "everloot://vendor/{id}";
+})[];
 export type McpResourceUri = keyof typeof MCP_RESOURCES;
 /** The URIs in the order the server lists them. */
 export declare const MCP_RESOURCE_URIS: McpResourceUri[];

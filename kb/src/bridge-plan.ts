@@ -162,3 +162,10 @@ export function renderTracker(): string {
 export function handlePlan(): string {
   return renderTracker();
 }
+
+/** The same rows as the text, for a client that reads structured content. */
+export function planStructured(): { rows: PlanItem[]; counts: Record<PlanStatus, number> } {
+  const counts: Record<PlanStatus, number> = { live: 0, next: 0, waiting: 0, shape: 0 };
+  for (const row of BRIDGE_PLAN) counts[row.status] += 1;
+  return { rows: [...BRIDGE_PLAN], counts };
+}

@@ -1,4 +1,4 @@
-import { CREDIT_LINE, LICENCE, LICENCE_URL, MCP_RESOURCE_URIS, MCP_TOOL_NAMES, SITE, TERMS_URL, type McpResourceUri, type McpToolName } from "@everloot/protocol";
+import { CREDIT_LINE, LICENCE, LICENCE_URL, MCP_PROMPT_NAMES, MCP_RESOURCE_TEMPLATE_LIST, MCP_RESOURCE_URIS, MCP_TOOL_NAMES, SITE, TERMS_URL, type McpPromptName, type McpResourceUri, type McpToolName } from "@everloot/protocol";
 
 export const MCP_URL = `${SITE}/mcp/public`;
 export const CORPUS_URL = `${SITE}/api/corpus/public`;
@@ -11,6 +11,8 @@ const TOOL_TEXT: Record<McpToolName, string> = {
   search_knowledge: "Search lore and reference data. Every hit has its source and licence.",
   get_entity: "One record, by the id a search hit gives you.",
   get_by_name: "Records with exactly this name, for telling similar names apart.",
+  search: "The same search in the shape ChatGPT connectors and deep research call by name: results with an id, a title and a URL to cite.",
+  fetch: "One record by a search result's id, whole, with its URL and the source, licence and date as metadata. ChatGPT's second tool.",
   answer_sources: "The evidence behind a question, each piece with its source, licence and date, so an assistant can answer and cite.",
   profession_path: "A leveling path for one profession, from what players reported.",
   recipe_thresholds: "The skill ranges where a recipe turns yellow, green and grey.",
@@ -22,6 +24,8 @@ const TOOL_TEXT: Record<McpToolName, string> = {
   world_map_near: "What is near a spot: entrances, observed NPCs and vendors, with distances in yards.",
   entity_relations: "How an item, NPC, spell or quest connects to others: dropped by, sold by, created by, reagent for, set, same icon. Each relation says if players saw it (3 installs) or the game files hold it (unconfirmed, with the build).",
   item_categories: "Item classes, subclasses, slots and qualities from the game files, with item counts; one item's category path, or the items in a category. Found in game files, unconfirmed, with the build.",
+  talent_tree: "One class's talent trees from the game files: every node with its talents, ranks, position, prerequisites and row gate. Found in game files, unconfirmed, with the build.",
+  talent_plan: "Reads a talent share code or calculator link: the talents and ranks it holds, points per tree, the lowest level for it, and every problem in plain words.",
   collection_gap: "What one install is missing from a collection, such as Mounts.",
   completion_progress: "What one install's characters finished in achievements, reputation, titles and quest chains, and what is closest to done.",
   guild_board: "A guild's roster, bosses, loot and attendance, from officer uploads.",
@@ -46,6 +50,22 @@ const RESOURCE_TEXT: Record<McpResourceUri, string> = {
 /** Every resource the MCP server registers, in the protocol's order. A client reads one whole with resources/read. */
 export const MCP_RESOURCES: readonly { uri: McpResourceUri; text: string }[] = MCP_RESOURCE_URIS.map((uri) => ({ uri, text: RESOURCE_TEXT[uri] }));
 
+/** Every resource template, in the protocol's order: an entity URI that reads as the named tool's structured answer. */
+export const MCP_RESOURCE_TEMPLATES: readonly { uriTemplate: string; text: string }[] = MCP_RESOURCE_TEMPLATE_LIST.map((t) => ({
+  uriTemplate: t.uriTemplate,
+  text: `${t.description} The same JSON as ${t.tool}'s structured answer.`,
+}));
+
+/** One plain sentence per prompt, keyed by name so a new prompt in the protocol fails the type check here. */
+const PROMPT_TEXT: Record<McpPromptName, string> = {
+  answer_with_sources: "Answer a question from answer_sources, citing every piece with its source, licence and date. Takes the question.",
+  review_talent_plan: "Read a share code with talent_plan and the trees with talent_tree, then describe the build and every problem. Takes the code or a calculator link.",
+  what_changed: "Summarize recent_changes newest first, with links and only the excerpts the tool gives. Takes forever or classic, or nothing for both.",
+};
+
+/** Every prompt the MCP server registers, in the protocol's order. A client offers them as commands and fills the arguments. */
+export const MCP_PROMPTS: readonly { name: McpPromptName; text: string }[] = MCP_PROMPT_NAMES.map((name) => ({ name, text: PROMPT_TEXT[name] }));
+
 const curlBody = JSON.stringify({
   jsonrpc: "2.0", id: 1, method: "tools/call",
   params: { name: "get_by_name", arguments: { name: "Thrall" } },
@@ -58,7 +78,7 @@ export const CONNECT_EXAMPLES = {
   -H "content-type: application/json" \\
   -H "accept: application/json, text/event-stream" \\
   -d '${curlBody}'`,
-  localSite: `git clone https://github.com/CDVolvik/everloot.git
+  localSite: `git clone https://github.com/Everloot/everloot.git
 cd everloot
 (cd kb && npm install)
 cd web && npm install
@@ -80,6 +100,7 @@ npm run dev               # MCP at http://localhost:3000/mcp/public`,
       },
     },
   }, null, 2),
+  toolsCurl: `curl -s "${SITE}/api/tools/get_by_name?name=Thrall" | jq .answer`,
   corpusCurl: `curl -s "${CORPUS_URL}?kinds=loot,vendor"`,
   openapiCurl: `curl -s ${SITE}/api/openapi.json | jq '.paths | keys'`,
   pagingJs: `// Every loot record, page by page. Stop when next is null.

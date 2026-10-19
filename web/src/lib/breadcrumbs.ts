@@ -8,6 +8,8 @@ import { CLASSES } from "@/design/tokens";
 const NAMES: Record<string, string> = {
   "/about": "About",
   "/privacy": "Privacy",
+  "/terms": "Terms of use",
+  "/security": "Security",
   "/contact": "Contact",
   "/upload": "Upload addon data",
   "/connect": "Connect",

@@ -27,6 +27,59 @@ that has a zip in the repository. Earlier builds have none.
 - A 23rd MCP tool, `answer_sources`: the evidence behind a question, observed facts first (with install
   counts), then curated facts and the 2023 wiki, every piece with its source URL, licence and date, plus
   search links on other sites (links only). Structured output from the start.
+- Two talent tools on the MCP server, answered from the same catalogs and rules as the calculator:
+  `talent_tree` (one class's trees from the game files, every node with its talents, ranks, position,
+  prerequisites and row gate, with the build) and `talent_plan` (a share code or calculator link read
+  against the trees: talents, points per tree, the lowest level, and every problem in plain words).
+  The knowledge base now typechecks with bundler resolution so it can import the site's talent modules.
+- Structured output for `item_categories`, `ecosystem_projects` and `everloot_plan`, the three tools that
+  read no uploads: the same cases as the text (a tree, one item's path, a filtered list with its total;
+  a board's ranked rows with GitHub facts flattened, or not connected; every tracker row with its proof).
+- Structured output for the five page tools (`item_page`, `npc_page`, `quest_page`, `vendor_page`,
+  `object_page`): the same page object the text is written from, under one envelope for answers built on
+  uploads (`connected`, `dataAsOf`, `reason`). With no corpus read the page is absent, not empty.
+- Structured output for `auction_history`, `collection_gap` and `guild_board`, the same result objects
+  their text is written from, under the same envelope.
+- Structured output for `profession_path`, `recipe_thresholds`, `entity_relations`, `completion_progress`
+  and `market_value`: the path, the ranges with each cost as numbers, the edges the text lists, one
+  install's progress, and the market value with its history, under the same envelope.
+- Structured output for `gold_ledger` (one ledger per install, never merged, unrecorded as null) and
+  `world_map_near` (entrances and pins with distances, or the refused query with its reason). Both
+  formatters now write their text from a result object, so every one of the 25 tools answers with
+  structured content beside its text.
+- Every MCP tool answers a plain `GET /api/tools/{tool}` too, for developers without an MCP client: the
+  tool's arguments as query parameters, read with the tool's own schema after the text-to-number coercion a
+  URL needs; the answer is the same structured content and the same text an MCP client gets, from the same
+  handlers, release and store. A wrong argument is a 400 that names it, an unknown tool a 404 that lists
+  them. In the route catalogue, OpenAPI, the `/connect` reference and `llms.txt`.
+- The MCP server's implementation info carries a title, a one-line description and the site's icon (64 and
+  512 px), so clients that draw a server list show Everloot by name and picture. `/connect` shows a curl
+  call of `/api/tools/get_by_name` beside the MCP one.
+- `/api/items/categories` joins the protocol's route catalogue with its response shape, so it appears in
+  `/api/openapi.json`, the endpoint reference on `/connect` and `/schema/api/itemCategoriesResponse.json`,
+  and its route test parses a real body with the shape. The endpoint itself is unchanged.
+- Completions on the MCP server (`completion/complete`): a client typing the `what_changed` prompt's game
+  or the class in `everloot://talents/{class}` is offered the values the protocol knows, by prefix. The
+  nine class resources are now listed under `resources/list` beside the three static ones, so a client
+  that browses resources finds every class's trees without knowing the slugs.
+- `search` and `fetch` on the MCP server, the two tools ChatGPT's connectors, deep research and company
+  knowledge call by name, after OpenAI's contract: results with an id, a title and a URL to cite, then one
+  record whole with its source, licence and date as metadata. A lore page's URL is its page on the site;
+  any other record points at its source. Both answer as structured content with the same JSON as text.
+- Resource templates on the MCP server: `everloot://item/{id}`, `npc`, `quest`, `vendor`, `object` and
+  `talents/{class}` read as the same JSON the matching tool returns as structured content, so a client that
+  prefers resources to tool calls gets the same page. A variable the tool refuses is an error in words.
+- The MCP server's first prompts, commands a client offers and fills: `answer_with_sources` (a question,
+  answered from `answer_sources` with a source on every piece), `review_talent_plan` (a share code, read
+  with `talent_plan` and `talent_tree`) and `what_changed` (`recent_changes`, newest first, excerpts
+  only). Listed on `/connect`, in `llms.txt` and in `/schema/mcp/prompts.json`.
+- The tool reference on `/connect` shows each tool's answer: the top-level fields of its structured
+  content with types and meanings, from the same schema the server validates against.
+- The protocol's publish path: `protocol-publish.yml` publishes `@everloot/protocol` to npm with
+  provenance on a `protocol-v<version>` tag, after checking the tag, `package.json` and the changelog
+  agree; and `scripts/check-semver.ts` holds every pull request to the package's semver rule by comparing
+  the committed `schema/` with the latest published tarball (it passes with a notice until the first
+  publish). The steps are in `docs/RELEASING.md`, "Protocol".
 - The MCP server's first resources, documents an assistant reads whole: `everloot://builds` (the build the
   game-file facts come from and the build registry, JSON), `everloot://methodology` (how uploads become
   facts) and `everloot://data-policy` (the policy in short, with the link to the full one). The two texts

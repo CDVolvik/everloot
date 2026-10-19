@@ -1,4 +1,4 @@
-import { CORPUS_URL, MCP_RESOURCES, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR } from "@/app/connect/connect-data";
+import { CORPUS_URL, MCP_PROMPTS, MCP_RESOURCE_TEMPLATES, MCP_RESOURCES, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR } from "@/app/connect/connect-data";
 import { LAUNCH, longDate } from "@/data/wow-forever";
 import { tools, toolHref } from "@/data/tools";
 import { PUBLIC_RECORD_KINDS } from "@everloot/protocol";
@@ -30,6 +30,9 @@ const PAGES: { title: string; path: string; text: string }[] = [
   { title: "How we count", path: "/methodology", text: "How addon uploads become facts: three installs must agree, unrecorded is not zero, and what is never published." },
   { title: "About", path: "/about", text: "What Everloot is and is not." },
   { title: "Privacy", path: "/privacy", text: "How uploads, cookies and usage statistics are handled." },
+  { title: "Terms of use", path: "/terms", text: "Uploads, API keys, licences, trademarks, takedown requests and warranty." },
+  { title: "Security", path: "/security", text: "How to report a security problem privately, and what is in scope." },
+  { title: "Accessibility", path: "/accessibility", text: "What the site aims for, what is in place, what has been checked and what has not, and how to report a problem." },
 ];
 
 const LIMITATIONS = [
@@ -77,7 +80,7 @@ function head(): string[] {
 function connect(): string[] {
   return [
     "## For AI assistants and developers",
-    `- [MCP server](${MCP_URL}): the way for an AI assistant to answer a question from Everloot's data. Read-only, no sign-in, ${REQUESTS_PER_HOUR} requests per hour per IP. ${MCP_TOOLS.length} tools: ${MCP_TOOLS.map((t) => t.name).join(", ")}. ${MCP_RESOURCES.length} resources, read whole: ${MCP_RESOURCES.map((r) => r.uri).join(", ")}.`,
+    `- [MCP server](${MCP_URL}): the way for an AI assistant to answer a question from Everloot's data. Read-only, no sign-in, ${REQUESTS_PER_HOUR} requests per hour per IP. ${MCP_TOOLS.length} tools: ${MCP_TOOLS.map((t) => t.name).join(", ")}. ${MCP_RESOURCES.length} resources, read whole: ${MCP_RESOURCES.map((r) => r.uri).join(", ")}. ${MCP_PROMPTS.length} prompts: ${MCP_PROMPTS.map((p) => p.name).join(", ")}.`,
     bullet("Public corpus API", "/api/corpus/public", `Raw anonymous addon observations in bulk, for developers building their own datasets; to answer a question, use the MCP server. Filter with ?kinds=${PUBLIC_RECORD_KINDS.slice(0, 2).join(",")}. ${corpusAccess()} Credit: ${CREDIT_LINE}`),
     bullet("Relations API", "/api/edges", "Typed relations between items, NPCs, spells, professions and quests (dropped by, sold by, created by, reagent for, set, same icon, profession), paged, filterable by entity, relation and evidence. Player-observed rows need 3 installs; game-file rows are labelled found in game files, unconfirmed, with their build, and are Blizzard's, not under our licence. The whole game-file layer: /api/edges/client-layer."),
     bullet("Objects", "/database/objects", "Chests, herbs, ore veins and fishing pools players looted, by the id in their GUID, with what came out of them; public after 3 install reports."),
@@ -149,6 +152,10 @@ export function llmsFullTxt(entries: ChangeEntry[] = loadTimeline()): string {
     ...MCP_TOOLS.map((t) => `- ${t.name}: ${t.text}`),
     "Resources (read whole with resources/read):",
     ...MCP_RESOURCES.map((r) => `- ${r.uri}: ${r.text}`),
+    "Resource templates (one URI per entity, the same JSON as the tool's structured answer):",
+    ...MCP_RESOURCE_TEMPLATES.map((t) => `- ${t.uriTemplate}: ${t.text}`),
+    "Prompts (prompts/get, arguments are strings):",
+    ...MCP_PROMPTS.map((p) => `- ${p.name}: ${p.text}`),
     "",
     "## Public corpus API",
     `GET ${CORPUS_URL}. Raw records in bulk; for answering questions the MCP server above is the right tool. Optional ?kinds= takes a comma-separated list of: ${PUBLIC_RECORD_KINDS.join(", ")}. Records carry no install id. ${corpusAccess()} Each response carries the licence and credit line in an attribution field and in X-Everloot-Licence, X-Everloot-Credit and Link headers. Credit: ${CREDIT_LINE}`,
@@ -159,6 +166,9 @@ export function llmsFullTxt(entries: ChangeEntry[] = loadTimeline()): string {
     "## Items API",
     `GET ${url("/api/items")}: every item in the current build with its class, subclass, slot and quality, from the game files. Filters: item, class and subclass (slugs, as in ${url("/database/items")}), slot, quality; paged like the corpus API. ${url("/api/items/categories")} lists the class and subclass tree with slugs and counts. Found in game files, unconfirmed, stamped with the build; Blizzard's data, not under Everloot's licence, so these answers carry a gameData notice instead of the credit line.`,
     "",
+    "## Tools over HTTP",
+    `GET ${url("/api/tools/{tool}")}: every MCP tool above, callable without an MCP client. Arguments go in the query string, named and typed as in ${url("/schema/mcp/{tool}.json")} (for example ${url("/api/tools/item_page?itemId=19019")}). The answer field is the tool's structured content, text is the same answer in words. Same limits as the other JSON endpoints; a wrong argument is a 400 that says which.`,
+    "",
     "## OpenAPI and schemas",
     `${url("/api/openapi.json")} describes every endpoint above (OpenAPI 3.1). ${url("/schema/index.json")} lists the protocol's JSON Schema files: records/<kind>.json for each upload record kind, api/<name>.json for each response shape, mcp/<tool>.json for each MCP tool's input. The same definitions are the npm package @everloot/protocol in the repository.`,
     "",
@@ -167,7 +177,7 @@ export function llmsFullTxt(entries: ChangeEntry[] = loadTimeline()): string {
     "",
     ...limitations(),
     "## Licences",
-    "- Code: AGPL-3.0. Source: https://github.com/CDVolvik/everloot",
+    "- Code: AGPL-3.0. Source: https://github.com/Everloot/everloot",
     "- Everloot's own data and uploaded observations: CC BY-SA 4.0, credited to Everloot contributors.",
     "- Game-file data (talents, raid buffs, map, build changes): Blizzard's, not under Everloot's licence.",
     "- Lore archive: Warcraft Wiki contributors, CC BY-SA 4.0.",

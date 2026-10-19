@@ -24,6 +24,181 @@
       "realm"
     ]
   },
+  "outputSchema": {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+      "connected": {
+        "type": "boolean",
+        "description": "False when no corpus was read; the page is then absent, which is not a measured zero."
+      },
+      "dataAsOf": {
+        "description": "The corpus snapshot time, or null when unrecorded.",
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "reason": {
+        "description": "Why nothing was read, when connected is false.",
+        "type": "string"
+      },
+      "page": {
+        "type": "object",
+        "properties": {
+          "guildName": {
+            "type": "string"
+          },
+          "realm": {
+            "type": "string"
+          },
+          "memberCount": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null until officer uploads agree."
+          },
+          "roster": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "rank": {
+                  "type": "string"
+                },
+                "level": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "className": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "rank",
+                "level",
+                "className"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "progression": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "instance": {
+                  "type": "string"
+                },
+                "bosses": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "instance",
+                "bosses"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "loot": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "itemId": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "recipient": {
+                  "type": "string"
+                },
+                "sourceBoss": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "itemId",
+                "recipient",
+                "sourceBoss"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "averageItemLevel": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "gearCoverage": {
+            "type": "object",
+            "properties": {
+              "measured": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "roster": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "measured",
+              "roster"
+            ],
+            "additionalProperties": false,
+            "description": "Roster members with one agreed item level, over the agreed roster."
+          },
+          "present": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "attendanceWaiting": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "guildName",
+          "realm",
+          "memberCount",
+          "roster",
+          "progression",
+          "loot",
+          "averageItemLevel",
+          "gearCoverage",
+          "present",
+          "attendanceWaiting"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "required": [
+      "connected",
+      "dataAsOf"
+    ],
+    "additionalProperties": false
+  },
   "x-everloot-output": {
     "type": "text",
     "endsWith": "Licence: CC BY-SA 4.0. Credit: Everloot contributors, https://everloot.app"

@@ -66,6 +66,8 @@
     "dropsResponse",
     "edgesResponse",
     "itemsResponse",
+    "itemCategoriesResponse",
+    "toolAnswerResponse",
     "intakeRequest",
     "intakeReceipt",
     "intakeRefused",
@@ -77,14 +79,18 @@
     "GET /api/edges",
     "GET /api/edges/client-layer",
     "GET /api/items",
+    "GET /api/items/categories",
     "GET /api/market/prices",
     "POST /api/intake",
+    "GET /api/tools/{tool}",
     "GET /api/health"
   ],
   "mcpTools": [
     "search_knowledge",
     "get_entity",
     "get_by_name",
+    "search",
+    "fetch",
     "answer_sources",
     "profession_path",
     "recipe_thresholds",
@@ -96,6 +102,8 @@
     "world_map_near",
     "entity_relations",
     "item_categories",
+    "talent_tree",
+    "talent_plan",
     "collection_gap",
     "completion_progress",
     "guild_board",
@@ -110,5 +118,18 @@
     "everloot://builds",
     "everloot://methodology",
     "everloot://data-policy"
+  ],
+  "mcpResourceTemplates": [
+    "everloot://item/{id}",
+    "everloot://npc/{id}",
+    "everloot://quest/{id}",
+    "everloot://vendor/{id}",
+    "everloot://object/{id}",
+    "everloot://talents/{class}"
+  ],
+  "mcpPrompts": [
+    "answer_with_sources",
+    "review_talent_plan",
+    "what_changed"
   ]
 }

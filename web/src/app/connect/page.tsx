@@ -7,14 +7,14 @@ import Bracket from "@/components/Bracket";
 import { KEYS_MADE_PER_DAY, KEYS_PER_ACCOUNT, REVOKED_KEPT_DAYS, USAGE_KEPT_DAYS } from "@/lib/api-keys";
 import { ANON_PAGE, ANON_PER_HOUR, guardOn, KEY_PAGE, KEY_PER_HOUR } from "@/lib/data-guard";
 import { PUBLIC_RECORD_KINDS } from "@everloot/protocol";
-import { CONNECT_EXAMPLES as ex, MCP_RESOURCES, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR } from "./connect-data";
+import { CONNECT_EXAMPLES as ex, MCP_PROMPTS, MCP_RESOURCE_TEMPLATES, MCP_RESOURCES, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR } from "./connect-data";
 import { ApiReference, SchemaReference, ToolReference } from "./Reference";
 
 export const metadata: Metadata = {
   ...pageMetadata({ title: "WoW Forever Data API and MCP Server", description: "Use Everloot's open data for WoW: Forever: the public corpus API, an MCP server for AI assistants, and the licence and credit line to use.", path: "/connect" }),
 };
 
-const REPO = "https://github.com/CDVolvik/everloot";
+const REPO = "https://github.com/Everloot/everloot";
 
 function Code({ children, label }: { children: string; label: string }) {
   return (
@@ -79,7 +79,9 @@ export default function ConnectPage() {
         <h3 className="font-semibold text-fg">ChatGPT and other assistants</h3>
         <p className="text-fg-2">
           Any assistant that takes a streamable HTTP MCP server by URL can use this one; it needs no sign-in and asks for
-          no key, so there is nothing to configure beyond the URL. Where an assistant has a directory of servers, Everloot
+          no key, so there is nothing to configure beyond the URL. ChatGPT&apos;s connectors and deep research call two tools by
+          name, <code className="font-mono text-fg">search</code> and <code className="font-mono text-fg">fetch</code>; both are here,
+          answering in the shape OpenAI&apos;s contract asks for. Where an assistant has a directory of servers, Everloot
           is listed there as it is accepted; the <a href={`${REPO}/blob/main/docs/2026-10-18-mcp-listings.md`} rel="noopener" className={link}>listing notes</a> in
           the repository say where it stands.
         </p>
@@ -113,6 +115,32 @@ export default function ConnectPage() {
             <li key={resource.uri} className="py-3 grid sm:grid-cols-[13rem_1fr] gap-x-4 gap-y-1">
               <code className="font-mono text-sm text-fg">{resource.uri}</code>
               <span className="text-sm text-fg-2">{resource.text}</span>
+            </li>
+          ))}
+        </ul>
+        <p className="text-fg-2">
+          Entity pages read as resources too, one URI per entity. Each answers with the same JSON as the named tool&apos;s
+          structured answer, so a client that prefers resources to tool calls gets the same page.
+        </p>
+        <ul className="divide-y divide-line border-y border-line">
+          {MCP_RESOURCE_TEMPLATES.map((t) => (
+            <li key={t.uriTemplate} className="py-3 grid sm:grid-cols-[13rem_1fr] gap-x-4 gap-y-1">
+              <code className="font-mono text-sm text-fg">{t.uriTemplate}</code>
+              <span className="text-sm text-fg-2">{t.text}</span>
+            </li>
+          ))}
+        </ul>
+        <h3 className="font-semibold text-fg">Prompts</h3>
+        <p className="text-fg-2">
+          Ready-made instructions a client offers as commands (<code className="font-mono text-fg">prompts/get</code>): you
+          fill the argument, the assistant gets a message that says which tools to call and how to treat what they return.
+          Their arguments are in <a href="/schema/mcp/prompts.json" className={link}>/schema/mcp/prompts.json</a>.
+        </p>
+        <ul className="divide-y divide-line border-y border-line">
+          {MCP_PROMPTS.map((prompt) => (
+            <li key={prompt.name} className="py-3 grid sm:grid-cols-[13rem_1fr] gap-x-4 gap-y-1">
+              <code className="font-mono text-sm text-fg">{prompt.name}</code>
+              <span className="text-sm text-fg-2">{prompt.text}</span>
             </li>
           ))}
         </ul>
@@ -240,6 +268,13 @@ export default function ConnectPage() {
           the tree with slugs and counts is at <code className="font-mono text-fg">/api/items/categories</code>. They carry the same{" "}
           <code className="font-mono text-fg">gameData</code> notice.
         </p>
+        <p className="text-fg-2">
+          Every MCP tool also answers a plain GET at <code className="font-mono text-fg">/api/tools/&#123;tool&#125;</code>, with the
+          tool&apos;s arguments as query parameters, named and typed as in its schema file (for example{" "}
+          <code className="font-mono text-fg">/api/tools/item_page?itemId=19019</code>). The <code className="font-mono text-fg">answer</code>{" "}
+          field is the same structured content an MCP client gets, and <code className="font-mono text-fg">text</code> the same words.
+        </p>
+        <Code label="Call get_by_name over HTTP">{ex.toolsCurl}</Code>
       </Section>
 
       <Section id="api" title="API reference">

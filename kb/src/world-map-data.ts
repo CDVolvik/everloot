@@ -153,7 +153,7 @@ export function writeWorldMapData(snapshotPath: string): WorldMapData {
     name: "Everloot client extract",
     status: "found in game files, unconfirmed",
     licence: "Blizzard game data, not under our licence",
-    licenceUrl: "https://github.com/CDVolvik/everloot/blob/main/docs/DATA_POLICY.md",
+    licenceUrl: "https://github.com/Everloot/everloot/blob/main/docs/DATA_POLICY.md",
     product: meta.product, buildId: meta.buildId, version: meta.version, buildConfig: meta.buildConfig,
     definitions: meta.definitions, extractedAt: meta.extractedAt,
     tables: WORLD_MAP_TABLES.filter((t) => present.has(t)).map((table) => ({

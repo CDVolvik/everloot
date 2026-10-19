@@ -1,6 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
+  "installCommand": "rm -rf node_modules/@everloot && npm install",
   "crons": [
     { "path": "/api/cron/snapshot", "schedule": "*/10 * * * *" },
     { "path": "/api/cron/indexnow", "schedule": "23 * * * *" }

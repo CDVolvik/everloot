@@ -6,11 +6,11 @@
       "name": "Everloot",
       "kind": "addon",
       "summary": "Our own collector addon: drops, vendors, trainers, auctions and gold recorded in game, uploaded by the player.",
-      "repo": "CDVolvik/everloot",
+      "repo": "Everloot/everloot",
       "toc": "addon/Everloot.toc",
       "addonNames": [],
       "verifiedAt": "2026-10-18",
-      "evidence": "https://github.com/CDVolvik/everloot/blob/main/addon/README.md"
+      "evidence": "https://github.com/Everloot/everloot/blob/main/addon/README.md"
     },
     {
       "id": "polestar",

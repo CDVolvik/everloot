@@ -244,17 +244,17 @@ test("tools/list is the protocol's tool table, in order, with its input shapes, 
   await client.close();
 });
 
-test("tools with an output schema answer with structured content beside the text; the others send text only", async () => {
+test("every tool declares an output schema and answers with structured content beside the text", async () => {
   const { Client } = await import("@modelcontextprotocol/sdk/client/index.js");
   const { InMemoryTransport } = await import("@modelcontextprotocol/sdk/inMemory.js");
-  const { STRUCTURED_TOOLS } = await import("@everloot/protocol");
+  const { MCP_TOOL_NAMES, STRUCTURED_TOOLS } = await import("@everloot/protocol");
   const changes = [{ id: "p1", type: "post" as const, game: "forever" as const, at: "2026-10-18T10:00:00Z", title: "Hotfixes", url: "https://example.test/post", author: "Kaivax", excerpt: "A fix." }];
   const server = createKnowledgeServer(await seed(), { changes: () => changes });
   const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
   await server.connect(serverSide);
   const client = new Client({ name: "test", version: "0" });
   await client.connect(clientSide);
-  expect(STRUCTURED_TOOLS).toEqual(["search_knowledge", "get_entity", "get_by_name", "answer_sources", "recent_changes"]);
+  expect(STRUCTURED_TOOLS).toEqual(MCP_TOOL_NAMES);
   const listed = (await client.listTools()).tools;
   for (const tool of listed) expect(tool.outputSchema !== undefined).toBe(tool.name === "population" || STRUCTURED_TOOLS.includes(tool.name as (typeof STRUCTURED_TOOLS)[number]));
 
@@ -270,7 +270,5 @@ test("tools with an output schema answer with structured content beside the text
   const recent = await client.callTool({ name: "recent_changes", arguments: {} });
   expect(recent.structuredContent).toEqual({ connected: true, entries: changes });
 
-  const plan = await client.callTool({ name: "everloot_plan", arguments: {} });
-  expect(plan.structuredContent).toBeUndefined();
   await client.close();
 });

@@ -13,8 +13,8 @@ vi.mock("@/components/CookieConsent", () => ({ CookiePreferencesButton: () => nu
 vi.mock("@/components/ApiKeys", () => ({ default: () => <div data-testid="api-keys" /> }));
 
 import ConnectPage, { metadata } from "./page";
-import { CONNECT_EXAMPLES, CORPUS_URL, MCP_RESOURCES, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR } from "./connect-data";
-import { API_ROUTES, MCP_RESOURCE_URIS, MCP_TOOL_NAMES, PROTOCOL_VERSION, PUBLIC_RECORD_KINDS } from "@everloot/protocol";
+import { CONNECT_EXAMPLES, CORPUS_URL, MCP_PROMPTS, MCP_RESOURCE_TEMPLATES, MCP_RESOURCES, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR } from "./connect-data";
+import { API_ROUTES, MCP_PROMPT_NAMES, MCP_RESOURCE_TEMPLATE_URIS, MCP_RESOURCE_URIS, MCP_TOOL_NAMES, PROTOCOL_VERSION, PUBLIC_RECORD_KINDS } from "@everloot/protocol";
 import { createIntakeQuota } from "@/lib/intake-quota";
 import { ANON_PAGE, ANON_PER_HOUR, attribution, KEY_PAGE, KEY_PER_HOUR } from "@/lib/data-guard";
 import sitemap from "../sitemap";
@@ -30,17 +30,24 @@ test("the tool list is exactly the tools the protocol declares, in order", () =>
   for (const tool of MCP_TOOLS) expect(page).toContain(`>${tool.name}</code>`);
 });
 
-test("the resource list is exactly the resources the protocol declares, in order, with their schema file", () => {
+test("the resource and prompt lists are exactly what the protocol declares, in order, with their schema files", () => {
   expect(MCP_RESOURCES.map((resource) => resource.uri)).toEqual(MCP_RESOURCE_URIS);
   for (const resource of MCP_RESOURCES) expect(page).toContain(`>${resource.uri}</code>`);
   expect(page).toContain("/schema/mcp/resources.json");
+  expect(MCP_RESOURCE_TEMPLATES.map((t) => t.uriTemplate)).toEqual(MCP_RESOURCE_TEMPLATE_URIS);
+  for (const t of MCP_RESOURCE_TEMPLATES) expect(decoded).toContain(`>${t.uriTemplate}</code>`);
+  expect(MCP_PROMPTS.map((prompt) => prompt.name)).toEqual(MCP_PROMPT_NAMES);
+  for (const prompt of MCP_PROMPTS) expect(page).toContain(`>${prompt.name}</code>`);
+  expect(page).toContain("/schema/mcp/prompts.json");
 });
 
 test("the reference lists every tool with its arguments, every endpoint, the OpenAPI file and the schema index", () => {
   for (const tool of MCP_TOOLS) {
     expect(page).toContain(`id="tool-${tool.name}"`);
     expect(page).toContain(`/schema/mcp/${tool.name}.json`);
+    expect(page).toContain(`Answer of ${tool.name}, as structuredContent`);
   }
+  for (const text of ["connected", "dataAsOf", "an absent page is not a measured zero"]) expect(decoded).toContain(text);
   for (const text of ["query", "itemId", "ownerInstallId", "required", "player data"]) expect(decoded).toContain(text);
   for (const route of API_ROUTES) expect(decoded).toContain(`${route.method} ${route.path.replace(/^\/api/, "")}`);
   for (const text of ["/api/openapi.json", "/schema/index.json", "/schema/upload.json", `@everloot/protocol`, PROTOCOL_VERSION, "offset, limit, next", "gameData"]) {
@@ -90,6 +97,8 @@ test("the examples point at the production URLs and parse", () => {
   const body = CONNECT_EXAMPLES.mcpCurl.match(/-d '(.*)'$/)?.[1] ?? "";
   expect(JSON.parse(body)).toMatchObject({ method: "tools/call", params: { name: "get_by_name" } });
   expect(CONNECT_EXAMPLES.mcpCurl).toContain("application/json, text/event-stream");
+  expect(CONNECT_EXAMPLES.toolsCurl).toContain("https://everloot.app/api/tools/get_by_name?name=Thrall");
+  expect(decoded).toContain(CONNECT_EXAMPLES.toolsCurl);
   expect(Object.keys(JSON.parse(CONNECT_EXAMPLES.corpusShape))).toEqual(["ok", "uploads", "records", "dataAsOf", "kinds", "offset", "limit", "total", "next", "attribution"]);
   expect(JSON.parse(CONNECT_EXAMPLES.corpusShape).attribution).toEqual(attribution("/database"));
   expect(decoded).toContain(CONNECT_EXAMPLES.corpusCurl);

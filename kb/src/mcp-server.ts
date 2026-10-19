@@ -1,38 +1,50 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { completable } from "@modelcontextprotocol/sdk/server/completable.js";
+import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CREDIT_LINE, LICENCE, MCP_CREDIT, SITE } from "@everloot/protocol";
 import { answerSources, answerSourcesFactsFromRecords, formatAnswerSources, type AnswerSourcesFacts } from "./answer-sources.js";
-import { auctionSightingsFromRecords, handleAuctionHistory } from "./auction-history.js";
-import { handlePlan } from "./bridge-plan.js";
+import { auctionHistory, auctionSightingsFromRecords, handleAuctionHistory } from "./auction-history.js";
+import { handlePlan, planStructured } from "./bridge-plan.js";
 import { handleRecentChanges, recentChangesStructured, type ChangeEntry } from "./changes.js";
-import { handleEcosystemProjects, type EcosystemView } from "./ecosystem.js";
-import { collectionFactsFromRecords, handleCollectionGap } from "./collection-gap.js";
-import { handleCompletionProgress, type CompletionFacts } from "./completion.js";
-import { goldFactsFromRecords, handleGoldLedger } from "./gold-ledger.js";
-import { guildFactsFromRecords, handleGuildBoard } from "./guild-board.js";
+import { ecosystemProjectsStructured, handleEcosystemProjects, type EcosystemView } from "./ecosystem.js";
+import { collectionFactsFromRecords, collectionGap, handleCollectionGap } from "./collection-gap.js";
+import { completionProgress, handleCompletionProgress, type CompletionFacts } from "./completion.js";
+import { goldFactsFromRecords, goldLedger, handleGoldLedger } from "./gold-ledger.js";
+import { guildBoard, guildFactsFromRecords, handleGuildBoard } from "./guild-board.js";
 import { itemFactsFromRecords } from "./drop-rollup.js";
-import { handleItemPage } from "./item-page.js";
-import { handleObjectPage, objectFactsFromRecords, type ObjectFacts } from "./object-page.js";
-import { handleMarketValue, type MarketState } from "./market.js";
+import { formatItemPage, itemPage } from "./item-page.js";
+import { formatObjectPage, objectFactsFromRecords, objectPage, type ObjectFacts } from "./object-page.js";
+import { handleMarketValue, itemMarket, type MarketState } from "./market.js";
 import { loadUploadRecords } from "./load-uploads.js";
-import { KNOWLEDGE_KINDS, MCP_RESOURCE_URIS, MCP_RESOURCES, MCP_TOOL_NAMES, MCP_TOOLS, parseRecords, type McpToolArgs, type McpToolDef, type McpToolName } from "@everloot/protocol";
+import { KNOWLEDGE_KINDS, MCP_PROMPT_NAMES, MCP_PROMPTS, MCP_RESOURCE_TEMPLATE_URIS, MCP_RESOURCE_TEMPLATES, MCP_RESOURCE_URIS, MCP_RESOURCES, MCP_TOOL_NAMES, MCP_TOOLS, parseRecords, type McpToolArgs, type McpToolDef, type McpToolName } from "@everloot/protocol";
+import { z } from "zod";
+import { handleProfessionPath, professionPath } from "./profession-path.js";
+import { promptText } from "./prompts.js";
 import { answerPopulation, POPULATION_TOOL, type CensusLoader, type PopulationArgs } from "./population.js";
-import { handleProfessionPath } from "./profession-path.js";
 import { readResource } from "./resources.js";
-import { handleRecipeThresholds, pathFactsFromRecords, recipeFactsFromRecords } from "./recipe-thresholds.js";
-import { handleNpcPage, handleQuestPage, handleVendorPage, worldFactsFromRecords } from "./world-pages.js";
-import { handleWorldMapNear, mapFactsFromRecords } from "./world-map-near.js";
+import { handleTalentPlan, handleTalentTree } from "./talent-tools.js";
+import { handleRecipeThresholds, pathFactsFromRecords, recipeFactsFromRecords, recipeThresholdsStructured } from "./recipe-thresholds.js";
+import { formatNpcPage, formatQuestPage, formatVendorPage, npcPage, questPage, vendorPage, worldFactsFromRecords } from "./world-pages.js";
+import { handleWorldMapNear, mapFactsFromRecords, nearResult } from "./world-map-near.js";
 import { WORLD_MAP_DATA } from "./world-map-file.js";
 import { CLIENT_EDGES, CLIENT_LAYER, CLIENT_TAXONOMY } from "./client-layer-file.js";
-import { handleItemCategories } from "./item-taxonomy.js";
-import { handleEntityRelations, observedEdgesFromRecords, type Edge } from "./edges.js";
+import { handleItemCategories, itemCategoriesStructured } from "./item-taxonomy.js";
+import { entityRelationsStructured, handleEntityRelations, observedEdgesFromRecords, type Edge } from "./edges.js";
 import type { DB } from "./db.js";
-import { getByName, getEntity, search, type SearchHit } from "./search.js";
+import { recordUrl } from "./lore-slug.js";
+import { getByName, getDocument, getEntity, search, type SearchHit } from "./search.js";
 
 export const SERVER_NAME = "everloot-knowledge";
 export const SERVER_VERSION = "0.8.0";
 /** The source this server runs, offered to every client (AGPL section 13). */
-export const SOURCE_URL = "https://github.com/CDVolvik/everloot";
+export const SOURCE_URL = "https://github.com/Everloot/everloot";
+/** One line a client shows beside the server's name in its list of servers. */
+export const SERVER_DESCRIPTION = "WoW: Forever knowledge from player reports and game files, with sources, under CC BY-SA 4.0.";
+/** The site's icon, for clients that draw one beside the server. */
+export const SERVER_ICONS = [
+  { src: `${SITE}/icon-64.png`, mimeType: "image/png", sizes: ["64x64"] },
+  { src: `${SITE}/icon-512.png`, mimeType: "image/png", sizes: ["512x512"] },
+];
 
 /** Sent to every client on connect: how to credit what the tools return. */
 export const SERVER_INSTRUCTIONS =
@@ -145,30 +157,49 @@ export type CompletionLoader = (ownerInstallId: string) => Promise<{ facts: Comp
 export const COMPLETION_UNSET =
   "Completion progress is not connected to this server, so this is not a measured zero. It is on everloot.app/tools/collections and its MCP.";
 
+/** The structured answer when nothing was read: not connected or unavailable, never an empty page. */
+const notRead = (reason: string): StructuredAnswer => ({ text: reason, structured: { connected: false, dataAsOf: null, reason } });
+
 /** completion_progress: the agreed lists and one install's own progress (kb/src/completion-rollup.ts). */
-export async function answerCompletionProgress(args: { ownerInstallId: string; characterKey?: string }, loader?: CompletionLoader): Promise<string> {
-  if (!loader) return COMPLETION_UNSET;
+export async function completionProgressAnswer(args: { ownerInstallId: string; characterKey?: string }, loader?: CompletionLoader): Promise<StructuredAnswer> {
+  if (!loader) return notRead(COMPLETION_UNSET);
   let loaded: Awaited<ReturnType<CompletionLoader>>;
   try {
     loaded = await loader(args.ownerInstallId.trim());
   } catch {
     loaded = null;
   }
-  if (!loaded) return "Completion progress unavailable. It is unrecorded, not zero.";
-  return `${handleCompletionProgress(args, loaded.facts)}\n${dataAgeLine(loaded.dataAsOf)}`;
+  if (!loaded) return notRead("Completion progress unavailable. It is unrecorded, not zero.");
+  return {
+    text: `${handleCompletionProgress(args, loaded.facts)}\n${dataAgeLine(loaded.dataAsOf)}`,
+    structured: { connected: true, dataAsOf: loaded.dataAsOf, page: completionProgress(args.ownerInstallId, args.characterKey, loaded.facts) },
+  };
+}
+
+export async function answerCompletionProgress(args: { ownerInstallId: string; characterKey?: string }, loader?: CompletionLoader): Promise<string> {
+  return (await completionProgressAnswer(args, loader)).text;
 }
 
 /** market_value: Forever market values from full scans (kb/src/market.ts). */
-export async function answerMarketValue(args: { realm: string; itemId: number }, loader?: MarketLoader): Promise<string> {
-  if (!loader) return MARKET_UNSET;
+export async function marketValueAnswer(args: { realm: string; itemId: number }, loader?: MarketLoader): Promise<StructuredAnswer> {
+  if (!loader) return notRead(MARKET_UNSET);
   let market: Awaited<ReturnType<MarketLoader>>;
   try {
     market = await loader();
   } catch {
     market = null;
   }
-  if (!market) return "Market values unavailable. They are unrecorded, not zero.";
-  return `${handleMarketValue(args, market.state, new Date())}\n${answerFooter(market.dataAsOf)}`;
+  if (!market) return notRead("Market values unavailable. They are unrecorded, not zero.");
+  const now = new Date();
+  const { value, points } = itemMarket(market.state, args.realm, args.itemId, now);
+  return {
+    text: `${handleMarketValue(args, market.state, now)}\n${answerFooter(market.dataAsOf)}`,
+    structured: { connected: true, dataAsOf: market.dataAsOf, page: { realm: args.realm.trim(), itemId: args.itemId, value, history: points } },
+  };
+}
+
+export async function answerMarketValue(args: { realm: string; itemId: number }, loader?: MarketLoader): Promise<string> {
+  return (await marketValueAnswer(args, loader)).text;
 }
 
 /** Prefer the web's sanitized current view; raw local files can supply anonymous facts only. */
@@ -387,7 +418,19 @@ export function handleSearch(db: DB, args: SearchArgs): string {
 }
 
 /** A tool answer: the text every client gets, plus structured content for tools with an output schema. */
-type Answer = string | { text: string; structured: object };
+type Answer = string | StructuredAnswer;
+type StructuredAnswer = { text: string; structured: object };
+
+/** The values that begin with what the user typed so far, case-insensitive, in the table's order. */
+function startingWith(values: readonly string[], typed: string): string[] {
+  const prefix = typed.trim().toLowerCase();
+  return values.filter((v) => v.startsWith(prefix));
+}
+
+/** The answer of a connector-contract tool (search, fetch): the structure, with the same JSON as the text block. */
+function jsonAnswer(structured: object): StructuredAnswer {
+  return { text: JSON.stringify(structured), structured };
+}
 
 export function handleGetEntity(db: DB, args: { id: number }): string {
   const hit = getEntity(db, args.id);
@@ -406,37 +449,118 @@ export type ChangesLoader = () => ChangeEntry[] | null | Promise<ChangeEntry[] |
 /** The ecosystem tracker with install counts joined. Null means it is not connected, which is not the same as empty. */
 export type EcosystemLoader = () => EcosystemView | null | Promise<EcosystemView | null>;
 
-export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; market?: MarketLoader; completion?: CompletionLoader; changes?: ChangesLoader; ecosystem?: EcosystemLoader; census?: CensusLoader } = {}): McpServer {
-  const server = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION, websiteUrl: SOURCE_URL }, { instructions: SERVER_INSTRUCTIONS });
+/** Whether any upload source is set at all: the difference between not connected and unavailable. */
+function uploadsConfigured(loader?: CorpusLoader): boolean {
+  return Boolean(loader || process.env.EVERLOOT_PUBLIC_CORPUS_URL?.trim() || process.env.EVERLOOT_UPLOADS?.trim());
+}
+
+/**
+ * A page tool's answer: the text the tool always gave, with the data's age and the credit, plus the page
+ * as structured content under the protocol's uploadsAnswer envelope. With no corpus read, the text says
+ * so as before and the structure carries connected false and the reason, never an empty page.
+ */
+export async function readPage<T>(tool: ToolName, loader: CorpusLoader | undefined, page: (facts: T) => { text: string; page: object }): Promise<StructuredAnswer> {
+  const read = await readTooledFacts<T>(tool, loader);
+  if (!read) {
+    const reason = uploadsConfigured(loader) ? UNAVAILABLE : UPLOADS_UNSET;
+    return { text: reason, structured: { connected: false, dataAsOf: null, reason } };
+  }
+  const built = page(read.facts);
+  return { text: `${built.text}\n${answerFooter(read.dataAsOf)}`, structured: { connected: true, dataAsOf: read.dataAsOf, page: built.page } };
+}
+
+/** The readers a host lends the tools: the site's store in process, or nothing for a standalone server. */
+export interface ToolOptions { corpus?: CorpusLoader; market?: MarketLoader; completion?: CompletionLoader; changes?: ChangesLoader; ecosystem?: EcosystemLoader; census?: CensusLoader }
+
+/** A tool's answer: the text every client gets, and the structured content of the tool's output schema. */
+export type ToolAnswer = Answer;
+export type ToolHandlers = { [K in McpToolName]: (args: McpToolArgs<K>) => ToolAnswer | Promise<ToolAnswer> };
+
+/**
+ * One handler per tool, typed by the protocol's input shape. The MCP registration in
+ * createKnowledgeServer and the site's GET /api/tools/{tool} are both thin wrappers over these, so
+ * a tool answers the same over MCP and over plain HTTP.
+ */
+export function createToolHandlers(db: DB, options: ToolOptions = {}): ToolHandlers {
   const readFacts = <T>(tool: ToolName, render: (facts: T) => string) => fromTooledUploads(tool, render, options.corpus);
-  /** One handler per tool, typed by the protocol's input shape; the MCP registration below is a thin wrapper. */
-  const handlers: { [K in McpToolName]: (args: McpToolArgs<K>) => Answer | Promise<Answer> } = {
+  const handlers: ToolHandlers = {
     search_knowledge: (args) => ({ text: handleSearch(db, args), structured: { hits: searchHits(db, args) } }),
     get_entity: (args) => ({ text: handleGetEntity(db, args), structured: { hit: getEntity(db, args.id) ?? null } }),
     get_by_name: (args) => ({ text: handleGetByName(db, args), structured: { hits: getByName(db, args.name, args.kind) } }),
+    search: (args) => jsonAnswer({
+      results: searchHits(db, { query: args.query, limit: 10 }).map((h) => ({ id: String(h.id), title: h.name, url: recordUrl(h, SITE) })),
+    }),
+    fetch: (args) => {
+      const doc = /^\d{1,15}$/.test(args.id) ? getDocument(db, Number(args.id)) : undefined;
+      if (!doc) throw new Error(`No record with id "${args.id}". Ids come from search results.`);
+      return jsonAnswer({
+        id: String(doc.id), title: doc.name, text: doc.body, url: recordUrl(doc, SITE),
+        metadata: { kind: doc.kind, gameVersion: doc.gameVersion, sourceUrl: doc.sourceUrl, sourceId: doc.sourceId, licence: doc.licence, retrievedAt: doc.retrievedAt, credit: CREDIT_LINE },
+      });
+    },
     answer_sources: async (args) => {
       const read = await readTooledFacts<AnswerSourcesFacts>("answer_sources", options.corpus);
       const result = answerSources(db, args, read?.facts ?? null, read?.dataAsOf ?? null);
       return { text: `${formatAnswerSources(result, read !== null)}\n${read ? answerFooter(read.dataAsOf) : MCP_CREDIT}`, structured: result };
     },
-    profession_path: (args) => readFacts("profession_path", (facts: ReturnType<typeof pathFactsFromRecords>) =>
-      handleProfessionPath(args, facts.sightings, facts.prices, facts.derived, facts.vendorPrices)),
-    recipe_thresholds: (args) => readFacts("recipe_thresholds", (facts: ReturnType<typeof recipeFactsFromRecords>) =>
-      handleRecipeThresholds(args, facts.observations, facts.prices, facts.vendorPrices)),
-    item_page: (args) => readFacts("item_page", (facts: ReturnType<typeof itemFactsFromRecords>) => handleItemPage(args, facts)),
-    npc_page: (args) => readFacts("npc_page", (facts: ReturnType<typeof worldFactsFromRecords>) => handleNpcPage(args, facts)),
-    object_page: (args) => readFacts("object_page", (facts: ObjectFacts) => handleObjectPage(args, facts)),
-    quest_page: (args) => readFacts("quest_page", (facts: ReturnType<typeof worldFactsFromRecords>) => handleQuestPage(args, facts)),
-    vendor_page: (args) => readFacts("vendor_page", (facts: ReturnType<typeof worldFactsFromRecords>) => handleVendorPage(args, facts)),
-    world_map_near: (args) => readFacts("world_map_near", (facts: ReturnType<typeof mapFactsFromRecords>) => handleWorldMapNear(args, WORLD_MAP_DATA, facts)),
-    entity_relations: (args) => readFacts("entity_relations", (observed: Edge[]) => handleEntityRelations(args, observed, CLIENT_EDGES)),
-    item_categories: (args) => handleItemCategories(args, CLIENT_TAXONOMY, CLIENT_LAYER.build.version),
-    collection_gap: (args) => readFacts("collection_gap", (facts: ReturnType<typeof collectionFactsFromRecords>) => handleCollectionGap(args, facts)),
-    completion_progress: (args) => answerCompletionProgress(args, options.completion),
-    guild_board: (args) => readFacts("guild_board", (facts: ReturnType<typeof guildFactsFromRecords>) => handleGuildBoard(args, facts)),
-    auction_history: (args) => readFacts("auction_history", (facts: ReturnType<typeof auctionSightingsFromRecords>) => handleAuctionHistory(args, facts)),
-    market_value: (args) => answerMarketValue(args, options.market),
-    gold_ledger: (args) => readFacts("gold_ledger", (facts: ReturnType<typeof goldFactsFromRecords>) => handleGoldLedger(args, facts.snapshots, facts.events)),
+    profession_path: (args) => readPage("profession_path", options.corpus, (facts: ReturnType<typeof pathFactsFromRecords>) => {
+      // The same defaults the text handler applies: from 1, to the start when no end is given.
+      const query = { profession: args.profession.trim(), fromSkill: args.fromSkill ?? 1, toSkill: args.toSkill ?? args.fromSkill ?? 1 };
+      return {
+        text: handleProfessionPath(args, facts.sightings, facts.prices, facts.derived, facts.vendorPrices),
+        page: professionPath(facts.sightings, facts.prices, query, facts.derived, facts.vendorPrices),
+      };
+    }),
+    recipe_thresholds: (args) => readPage("recipe_thresholds", options.corpus, (facts: ReturnType<typeof recipeFactsFromRecords>) => ({
+      text: handleRecipeThresholds(args, facts.observations, facts.prices, facts.vendorPrices),
+      page: recipeThresholdsStructured(args, facts.observations, facts.prices, facts.vendorPrices),
+    })),
+    item_page: (args) => readPage("item_page", options.corpus, (facts: ReturnType<typeof itemFactsFromRecords>) => {
+      const page = itemPage(args.itemId, facts);
+      return { text: formatItemPage(page), page };
+    }),
+    npc_page: (args) => readPage("npc_page", options.corpus, (facts: ReturnType<typeof worldFactsFromRecords>) => {
+      const page = npcPage(args.npcId, facts);
+      return { text: formatNpcPage(page), page };
+    }),
+    object_page: (args) => readPage("object_page", options.corpus, (facts: ObjectFacts) => {
+      const page = objectPage(args.objectId, facts);
+      return { text: formatObjectPage(page), page };
+    }),
+    quest_page: (args) => readPage("quest_page", options.corpus, (facts: ReturnType<typeof worldFactsFromRecords>) => {
+      const page = questPage(args.questId, facts);
+      return { text: formatQuestPage(page), page };
+    }),
+    vendor_page: (args) => readPage("vendor_page", options.corpus, (facts: ReturnType<typeof worldFactsFromRecords>) => {
+      const page = vendorPage(args.vendorNpcId, facts);
+      return { text: formatVendorPage(page), page };
+    }),
+    world_map_near: (args) => readPage("world_map_near", options.corpus, (facts: ReturnType<typeof mapFactsFromRecords>) => ({
+      text: handleWorldMapNear(args, WORLD_MAP_DATA, facts),
+      page: nearResult(args, WORLD_MAP_DATA, facts),
+    })),
+    entity_relations: (args) => readPage("entity_relations", options.corpus, (observed: Edge[]) => ({
+      text: handleEntityRelations(args, observed, CLIENT_EDGES),
+      page: entityRelationsStructured(args, observed, CLIENT_EDGES),
+    })),
+    item_categories: (args) => ({
+      text: handleItemCategories(args, CLIENT_TAXONOMY, CLIENT_LAYER.build.version),
+      structured: itemCategoriesStructured(args, CLIENT_TAXONOMY, CLIENT_LAYER.build.version),
+    }),
+    talent_tree: (args) => handleTalentTree(args),
+    talent_plan: (args) => handleTalentPlan(args),
+    collection_gap: (args) => readPage("collection_gap", options.corpus, (facts: ReturnType<typeof collectionFactsFromRecords>) =>
+      ({ text: handleCollectionGap(args, facts), page: collectionGap(args.collection, args.ownerInstallId, facts) })),
+    completion_progress: (args) => completionProgressAnswer(args, options.completion),
+    guild_board: (args) => readPage("guild_board", options.corpus, (facts: ReturnType<typeof guildFactsFromRecords>) =>
+      ({ text: handleGuildBoard(args, facts), page: guildBoard(args.guildName, args.realm, facts) })),
+    auction_history: (args) => readPage("auction_history", options.corpus, (facts: ReturnType<typeof auctionSightingsFromRecords>) =>
+      ({ text: handleAuctionHistory(args, facts), page: auctionHistory(args.realm, args.itemId, facts) })),
+    market_value: (args) => marketValueAnswer(args, options.market),
+    gold_ledger: (args) => readPage("gold_ledger", options.corpus, (facts: ReturnType<typeof goldFactsFromRecords>) => ({
+      text: handleGoldLedger(args, facts.snapshots, facts.events),
+      page: goldLedger(args.character, args.realm, facts.snapshots, facts.events),
+    })),
     recent_changes: async (args) => {
       let entries: ChangeEntry[] | null = null;
       try { entries = (await options.changes?.()) ?? null; } catch { entries = null; }
@@ -445,10 +569,21 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; 
     ecosystem_projects: async (args) => {
       let view: EcosystemView | null = null;
       try { view = (await options.ecosystem?.()) ?? null; } catch { view = null; }
-      return handleEcosystemProjects(view, args);
+      const now = new Date();
+      return { text: handleEcosystemProjects(view, args, now), structured: ecosystemProjectsStructured(view, args, now) };
     },
-    everloot_plan: () => handlePlan(),
+    everloot_plan: () => ({ text: handlePlan(), structured: planStructured() }),
   };
+  void readFacts;
+  return handlers;
+}
+
+export function createKnowledgeServer(db: DB, options: ToolOptions = {}): McpServer {
+  const server = new McpServer(
+    { name: SERVER_NAME, title: "Everloot", version: SERVER_VERSION, description: SERVER_DESCRIPTION, websiteUrl: SOURCE_URL, icons: SERVER_ICONS },
+    { instructions: SERVER_INSTRUCTIONS },
+  );
+  const handlers = createToolHandlers(db, options);
   for (const name of MCP_TOOL_NAMES) {
     const def: McpToolDef = MCP_TOOLS[name];
     server.registerTool(
@@ -474,6 +609,39 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; 
       const { mimeType, text } = readResource(uri, SOURCE_URL);
       return { contents: [{ uri, mimeType, text }] };
     });
+  }
+  for (const uriTemplate of MCP_RESOURCE_TEMPLATE_URIS) {
+    const def = MCP_RESOURCE_TEMPLATES[uriTemplate];
+    const input = z.object(MCP_TOOLS[def.tool].inputSchema);
+    // A variable with a known set of values gets one listed resource per value, and completion from that set.
+    const values = "values" in def ? def.values : undefined;
+    const template = new ResourceTemplate(uriTemplate, {
+      list: values
+        ? () => ({ resources: values.map((v) => ({ uri: uriTemplate.replace(`{${def.variable}}`, v), name: `${def.name}/${v}`, title: `${def.title}: ${v}`, mimeType: def.mimeType })) })
+        : undefined,
+      ...(values ? { complete: { [def.variable]: (typed: string) => startingWith(values, typed) } } : {}),
+    });
+    server.registerResource(def.name, template, { title: def.title, description: def.description, mimeType: def.mimeType }, async (uri, variables) => {
+      const raw = String(variables[def.variable] ?? "");
+      // The tool's own input schema decides what the variable may be: a positive id, or a class slug.
+      const parsed = input.safeParse({ [def.argument]: /^\d+$/.test(raw) ? Number(raw) : raw });
+      if (!parsed.success) throw new Error(`${uri.href}: ${def.variable} must be ${def.argument === "class" ? "a class slug" : "a positive id"}, not "${raw}".`);
+      const answer = await (handlers[def.tool] as (a: unknown) => Answer | Promise<Answer>)(parsed.data);
+      const structured = typeof answer === "string" ? { text: answer } : answer.structured;
+      return { contents: [{ uri: uri.href, mimeType: def.mimeType, text: JSON.stringify(structured, null, 2) }] };
+    });
+  }
+  for (const name of MCP_PROMPT_NAMES) {
+    const def = MCP_PROMPTS[name];
+    const argsSchema = Object.fromEntries(Object.entries(def.arguments).map(([arg, a]) => {
+      const schema = a.required ? z.string().describe(a.description) : z.string().optional().describe(a.description);
+      // An argument with a known set of values is completed from that set.
+      return [arg, "values" in a && a.values ? completable(schema, (typed) => startingWith(a.values!, String(typed ?? ""))) : schema];
+    }));
+    server.registerPrompt(name, { title: def.title, description: def.description, argsSchema }, (args) => ({
+      description: def.title,
+      messages: [{ role: "user" as const, content: { type: "text" as const, text: promptText(name, args as Record<string, string | undefined>) } }],
+    }));
   }
   return server;
 }
