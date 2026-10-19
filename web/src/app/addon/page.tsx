@@ -157,7 +157,6 @@ export default async function AddonPage() {
               it: <code className="font-mono">certutil -hashfile FILE SHA256</code> on Windows,{" "}
               <code className="font-mono">shasum -a 256 FILE</code> on macOS, <code className="font-mono">sha256sum FILE</code> on Linux.
             </p>
-            <p>The Windows build has been installed and run by us. The macOS and Linux builds pass the same automated build and tests but have not been opened by a person yet.</p>
           </div>
           {desktop && desktopFiles.length > 0 && (
             <div className="space-y-1 text-sm">

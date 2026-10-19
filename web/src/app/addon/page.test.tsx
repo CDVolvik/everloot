@@ -60,6 +60,7 @@ test("the page says the builds are unsigned and what Windows and macOS show", as
   expect(text).toContain("not code-signed");
   expect(text).toContain("More info, then Run anyway");
   expect(text).toContain("Open Anyway");
+  expect(text).not.toContain("opened by a person");
 });
 
 test("install steps, the upload page, privacy, data policy and source are linked", async () => {
