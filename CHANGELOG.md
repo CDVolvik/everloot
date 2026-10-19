@@ -11,6 +11,9 @@ that has a zip in the repository. Earlier builds have none.
 ## [Unreleased]
 
 ### Added
+- Battle.net sign-in can run on Better Auth behind `EVERLOOT_AUTH_V2`. Existing accounts and API keys
+  carry over. No provider tokens, IP addresses or user agents are stored. With the flag off, sign-in
+  behaves as before.
 - Census in the addon, off until `/everloot census on`. It records the race, class, level and faction of
   your own characters and of players you target, mouse over or group with: one row per character per UTC
   day, at most 2,000 rows of each kind. It never reads another player's name, guild, gear or position.
