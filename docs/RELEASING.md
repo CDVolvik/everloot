@@ -1,12 +1,14 @@
 # Releasing
 
-Three things ship from this repository, each differently.
+Four things ship from this repository, each differently. The protocol package has its own section
+below.
 
 | What | How it ships | Version |
 |---|---|---|
 | The site (`web/`) | Every merge to `main` deploys production on Vercel | none |
 | The addon, stable | A `addon-v*` tag runs `.github/workflows/release.yml` and creates a GitHub release | `0.3.x` |
 | The addon, nightly | `.github/workflows/nightly.yml` makes a pre-release from `main` when it has changed | `0.3.x-nightly.<date>.<run>` |
+| The desktop app | A `desktop-v*` tag runs `.github/workflows/desktop-release.yml`, which builds Windows, macOS and Linux installers and publishes a GitHub release with `SHA256SUMS` ([`desktop/README.md`](../desktop/README.md#release)) | `0.1.x` |
 
 The site's download link (`web/public/downloads/`) always points at the stable zip committed to the
 repository. A nightly never changes it.
