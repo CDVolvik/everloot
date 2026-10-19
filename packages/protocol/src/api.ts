@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ENTITY_KINDS, RELS } from "./mcp.js";
+import { ENTITY_KINDS, MCP_TOOL_NAMES, RELS } from "./mcp.js";
 import { anyRecord, PUBLIC_RECORD_KINDS } from "./records.js";
 
 /**
@@ -158,6 +158,42 @@ export const itemsResponse = z.object({
   gameData: gameDataNoticeSchema,
 }).extend(pageSchema.shape);
 
+/** GET /api/items/categories: the class and subclass tree of the current build, with the slot and quality slugs /api/items takes. */
+const itemSubclassSchema = z.object({
+  id: z.number().int(),
+  name: z.string().nullable().describe("The client's name; null when the client has none, then the slug is the id."),
+  slug: z.string().describe("The value /api/items takes as subclass."),
+  items: z.number().int().describe("Items of the build in this subclass."),
+});
+const itemClassSchema = z.object({
+  id: z.number().int(),
+  name: z.string().describe("The client's name."),
+  label: z.string().describe("The plural label pages use."),
+  slug: z.string().describe("The value /api/items takes as class."),
+  items: z.number().int().describe("Items of the build in this class."),
+  subclasses: z.array(itemSubclassSchema),
+});
+export const itemCategoriesResponse = z.object({
+  classes: z.array(itemClassSchema),
+  slots: z.array(z.object({ slug: z.string().describe("The value /api/items takes as slot."), name: z.string() })),
+  qualities: z.array(z.object({ id: z.number().int(), name: z.string(), slug: z.string().describe("The value /api/items takes as quality.") })),
+  gameData: gameDataNoticeSchema,
+});
+export type ItemCategoriesResponse = z.infer<typeof itemCategoriesResponse>;
+
+/**
+ * GET /api/tools/{tool}: one MCP tool's answer over plain HTTP. `answer` is the tool's structured content,
+ * of the shape its schema file declares under outputSchema; `text` is the same answer as the MCP text block.
+ */
+export const toolAnswerResponse = z.object({
+  tool: z.string().describe("The tool's name, as in the MCP tool list."),
+  arguments: z.record(z.string(), z.unknown()).describe("The arguments as the tool read them, defaults applied."),
+  answer: z.record(z.string(), z.unknown()).describe("The tool's structured answer. Its schema: /schema/mcp/{tool}.json#/outputSchema."),
+  text: z.string().describe("The same answer as the MCP text block, for a reader."),
+  schema: z.string().describe("The URL of the tool's schema file."),
+});
+export type ToolAnswerResponse = z.infer<typeof toolAnswerResponse>;
+
 /** One accepted or rejected row in an intake receipt, by its index in the request. */
 const receiptEntry = z.object({ index: z.number().int(), kind: z.string().optional(), reason: z.string().optional() });
 
@@ -202,6 +238,40 @@ export const healthResponse = z.object({
 export type HealthResponse = z.infer<typeof healthResponse>;
 
 /** The response schemas by name, the names schema/api/<name>.json uses. */
+/** The datasets the bulk export writes, one NDJSON file each; the rows are the same the JSON API serves. */
+export const BULK_DATASETS = ["corpus", "edges", "drops", "items"] as const;
+export type BulkDataset = (typeof BULK_DATASETS)[number];
+
+/** One file of a bulk export: a newline-delimited JSON file whose rows are the `rowsOf` response's `field` elements. */
+export const bulkFile = z.object({
+  name: z.string().describe("File name inside the export folder, for example edges.ndjson."),
+  dataset: z.enum(BULK_DATASETS),
+  format: z.literal("ndjson").describe("One JSON object per line."),
+  rowsOf: z.string().describe("The API response schema whose array these rows are, for example edgesResponse; its JSON Schema is at /schema/api/<rowsOf>.json."),
+  field: z.string().describe("The array field of that response the rows come from, for example edges."),
+  rows: z.number().int().nonnegative(),
+  bytes: z.number().int().nonnegative(),
+  sha256: z.string().regex(/^[0-9a-f]{64}$/),
+  data: z.enum(["observed", "game-files", "mixed"]).describe("observed: Everloot's data under its licence; game-files: Blizzard's, with the gameData notice; mixed: both, each row labelled by evidence."),
+  attribution: attributionSchema.nullable().describe("Present when the file holds observed rows."),
+  gameData: gameDataNoticeSchema.nullable().describe("Present when the file holds game-file rows."),
+});
+export type BulkFile = z.infer<typeof bulkFile>;
+
+/** index.json of a bulk export folder: what the folder holds, when the data was current, how to credit it. */
+export const bulkIndex = z.object({
+  protocol: z.string().describe("The protocol version the rows follow."),
+  generatedAt: ISO_TIME,
+  dataAsOf: ISO_TIME.nullable().describe("When the uploads behind the observed rows were current; null when storage was unreachable, then those files are absent, not empty."),
+  build: z.string().nullable().describe("Game build of the game-file rows."),
+  site: z.string(),
+  licence: z.string(),
+  licenceUrl: z.string(),
+  credit: z.string(),
+  files: z.array(bulkFile),
+});
+export type BulkIndex = z.infer<typeof bulkIndex>;
+
 export const API_SCHEMAS = {
   attribution: attributionSchema,
   gameDataNotice: gameDataNoticeSchema,
@@ -213,6 +283,9 @@ export const API_SCHEMAS = {
   dropsResponse,
   edgesResponse,
   itemsResponse,
+  itemCategoriesResponse,
+  toolAnswerResponse,
+  bulkIndex,
   intakeRequest,
   intakeReceipt,
   intakeRefused,
@@ -237,6 +310,8 @@ export interface ApiRoute {
   access: "open" | "rate-limited" | "key-or-rate-limited" | "cron";
   /** Which data layer the answer carries. */
   data: "observed" | "game-files" | "mixed" | "none";
+  /** Parameters in the path, written as `{name}` in `path`. */
+  pathParams?: ApiQueryParam[];
   query?: ApiQueryParam[];
   requestBody?: ApiSchemaName;
   responses: Record<string, { description: string; schema?: ApiSchemaName }>;
@@ -315,6 +390,13 @@ export const API_ROUTES: readonly ApiRoute[] = [
     responses: { "200": { description: "The page of items.", schema: "itemsResponse" }, ...ERROR_RESPONSES },
   },
   {
+    method: "GET", path: "/api/items/categories",
+    summary: "The item class and subclass tree of the current build, with the slot and quality slugs",
+    description: "Every class with its subclasses, each with the slug `/api/items` takes and the number of items in the build, plus the slot and quality slugs. From the game files. Public in the repository too, so it is neither paged nor limited. Cached for an hour.",
+    access: "open", data: "game-files",
+    responses: { "200": { description: "The tree.", schema: "itemCategoriesResponse" } },
+  },
+  {
     method: "GET", path: "/api/market/prices",
     summary: "Forever market values from full auction scans players started",
     description: "Without `realm`, the realms that have public values. With it, the items with the most units listed on that realm as tuples in `fields` order, copper per unit. A day is public when three reporters scanned the item.",
@@ -338,6 +420,18 @@ export const API_ROUTES: readonly ApiRoute[] = [
       "422": { description: "The envelope or every record was refused; the receipt says why.", schema: "intakeRefused" },
       "429": { description: "Rate limited; keep the file and retry after `Retry-After`.", schema: "intakeRefused" },
       "503": { description: "Storage could not confirm the write; keep the file and retry.", schema: "intakeRefused" },
+    },
+  },
+  {
+    method: "GET", path: "/api/tools/{tool}",
+    summary: "One MCP tool's answer over plain HTTP",
+    description: "Every tool of the MCP server, callable with a GET: the tool's arguments go in the query string (numbers and booleans as plain text), named and typed as in /schema/mcp/{tool}.json. The answer is the tool's structured content, with the same text an MCP client gets. A wrong argument is a 400 that says which; an unknown tool is a 404 that lists the tools. Answers built on player uploads say how old the data is and carry the credit line; game-file answers are labelled unconfirmed with their build.",
+    access: "key-or-rate-limited", data: "mixed",
+    pathParams: [{ name: "tool", description: "A tool name from the MCP tool list.", schema: { type: "string", enum: [...MCP_TOOL_NAMES] }, required: true }],
+    responses: {
+      "200": { description: "The tool's answer.", schema: "toolAnswerResponse" },
+      "404": { description: "No such tool; `error` lists them.", schema: "apiError" },
+      ...ERROR_RESPONSES,
     },
   },
   {

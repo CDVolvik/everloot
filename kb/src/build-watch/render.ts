@@ -41,6 +41,16 @@ function sections(entry: ChangeEntry): { title: string; items: string[] }[] {
   if (r) out.push({ title: "Raid buff spell changes", items: r.spellChanges.map((c) => `${c.spoiler ? "[spoiler] " : ""}${clean(c.label)}${c.spellId === null ? "" : `, spell ${c.spellId}`}: ${clean(c.change)}`) });
   if (r) out.push({ title: "Raid buff scope changes", items: r.scopeChanges.map((c) => `${c.spoiler ? "[spoiler] " : ""}${clean(c.label)}: ${val(c.before)} -> ${val(c.after)}${c.before === c.after ? ` (by rank: ${clean(c.beforeRanks)} -> ${clean(c.afterRanks)})` : ""}`) });
   if (entry.mapChanges) out.push({ title: "Map changes", items: entry.mapChanges.map((c) => `${c.spoiler ? "[spoiler] " : ""}${c.kind} ${clean(c.name)} (${c.id}): ${clean(c.change)}`) });
+  const rs = entry.readSet;
+  if (rs) {
+    const items = [
+      ...(rs.layoutChanged ? ["table definitions changed: every table may read as changed"] : []),
+      ...rs.addedTables.map((t) => `${clean(t.table)}: new table, ${t.rows} rows`),
+      ...rs.removedTables.map((t) => `${clean(t.table)}: no longer read`),
+      ...rs.changedTables.map((t) => `${clean(t.table)}: ${t.rowsBefore} -> ${t.rowsAfter} rows, content changed`),
+    ];
+    out.push({ title: "Client data", items });
+  }
   return out;
 }
 
@@ -51,7 +61,7 @@ function describe(entry: ChangeEntry): string[] {
   const lines: string[] = [];
   const found = sections(entry).filter((s) => s.items.length);
   if (entry.initial) lines.push("First data for this product: nothing to compare with, so this entry records a baseline.");
-  else if (!found.length) lines.push("No differences in the talents, spell numbers, raid buffs or map.");
+  else if (!found.length) lines.push("No differences in the talents, spell numbers, raid buffs, map or client tables.");
   for (const s of found) {
     lines.push("", `### ${s.title} (${s.items.length})`, "");
     for (const item of s.items.slice(0, CAP)) lines.push(`- ${item}`);
@@ -83,6 +93,10 @@ export function prBody(entry: ChangeEntry, ctx: BodyContext): string {
   if (entry.raidBuffs) {
     lines.push(`- Raid buffs compared with: ${entry.raidBuffs.comparedTo ? clean(entry.raidBuffs.comparedTo) : "no earlier raid file, so no comparison"} (the committed raid file)`);
   }
+  if (entry.readSet) {
+    const rs = entry.readSet;
+    lines.push(`- Client tables: ${rs.tables.after} read (${rs.tables.before} before), ${rs.rows.after} rows (${rs.rows.before} before), ${rs.addedTables.length + rs.removedTables.length + rs.changedTables.length} changed`);
+  }
   if (entry.spoiler) {
     lines.push("", "**Spoiler.** This build is not live, so everything below is marked `spoiler` in the changelog entry and stays hidden on the site unless the reader turns spoilers on. Labelled *found in game files, unconfirmed*.");
   }
@@ -93,7 +107,8 @@ export function prBody(entry: ChangeEntry, ctx: BodyContext): string {
     "### Review",
     "",
     "- [ ] The changes above look like the game, not a parsing problem (check any mass removal or warning).",
-    "- [ ] Only the files the site reads changed (`web/src/data/game-data/`: talents, raid file, map, spell values, one changelog entry; `addon/modules/raid_data.lua`; the import line in `raid.ts`).",
+    "- [ ] Only the files the site reads changed (`web/src/data/game-data/`: talents, raid file, map, spell values, client digests, one changelog entry; `addon/modules/raid_data.lua`; the import line in `raid.ts`).",
+    "- [ ] `client-digests.json` is the next build's baseline; it is written, not edited by hand.",
     "- [ ] The web tests still pass: some hard-code the build number in sample raid codes.",
     "- [ ] Spoiler flags are right for a build players cannot play yet.",
     "",

@@ -39,11 +39,11 @@ jobs:
       extracted: ${{ steps.watch.outputs.extracted }}
     steps:
       # Always the default branch: the data is compared with what is on main, wherever this run started.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22.23.2'
           cache: npm
@@ -71,7 +71,7 @@ jobs:
       # there is work, which is rare.
       - name: Restore the CDN index
         if: steps.check.outputs.needed == 'true'
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: kb/cache
           key: build-watch-casc-${{ github.run_id }}
@@ -92,13 +92,13 @@ jobs:
       # The index is only a download cache, so it is kept even when the run fails.
       - name: Save the CDN index
         if: always() && steps.watch.outputs.extracted == 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: kb/cache
           key: build-watch-casc-${{ github.run_id }}
       - name: Hand the files to the publish job
         if: always() && steps.watch.outputs.extracted == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: build-watch
           retention-days: 3
@@ -118,11 +118,11 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: build-watch
       - name: Open or update the pull requests
@@ -162,7 +162,7 @@ jobs:
             done
             git add -A -- web/src/data/game-data addon/modules/raid_data.lua
             # Only the files the generators write may change.
-            allowed='^(web/src/data/game-data/(talents/[a-z]+\.json|raid-[0-9.]+\.json|raid\.ts|map\.json|client-layer\.json|spell-values\.json|changes/[a-z0-9_]+-[0-9]+\.json)|addon/modules/raid_data\.lua)$'
+            allowed='^(web/src/data/game-data/(talents/[a-z]+\.json|raid-[0-9.]+\.json|raid\.ts|map\.json|client-layer\.json|spell-values\.json|client-digests\.json|changes/[a-z0-9_]+-[0-9]+\.json)|addon/modules/raid_data\.lua)$'
             unexpected=$(git diff --cached --name-only | grep -Ev "$allowed" || true)
             [ -z "$unexpected" ] || { echo "unexpected files in the change:"; echo "$unexpected"; exit 1; }
             # raid.ts may change its import line and nothing else.

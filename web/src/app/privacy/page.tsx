@@ -100,6 +100,18 @@ export default function PrivacyPage() {
           sell them.
         </li>
         <li>
+          <strong>Census (optional):</strong> off until you type{" "}
+          <code>/everloot census on</code> in the game. It records race, class,
+          level and faction for your own characters, with the realm name, and for
+          players you target, mouse over or group with. It never reads another
+          player&apos;s name, guild, gear or position. Before anything is stored,
+          the game&apos;s id for each character is replaced with a keyed one-way
+          hash, and only the number of the server the character is on is kept
+          from it. Census rows are never published one by one. We show counts
+          only, and only when a count covers at least 10 characters reported by
+          at least 3 installs.
+        </li>
+        <li>
           <strong>Cookies:</strong> an essential login cookie if you sign in (plus a
           short-lived one, 10 minutes, that holds the sign-in state while you are at
           Battle.net), and your cookie choice, which is saved in your browser. Optional analytics
@@ -221,6 +233,7 @@ export default function PrivacyPage() {
         <li><strong>API key usage counts:</strong> {USAGE_KEPT_DAYS} days. A revoked key and its counts: {REVOKED_KEPT_DAYS} days after revocation, or at once when you delete it.</li>
         <li><strong>Rate-limit hashes:</strong> a short time, long enough to enforce the limit, then discarded.</li>
         <li><strong>Uploads:</strong> until you ask us to remove them. They are the public database.</li>
+        <li><strong>Census rows:</strong> as long as the upload they came in, and removed with it. They hold the character&apos;s hash, never its id, and a one-way hash of the address they came from, never the address. They are only ever published as counts.</li>
         <li><strong>Upload address hash:</strong> as long as the upload it belongs to. The completion rollup keeps its link between an address hash and an install until the rollup is next rebuilt.</li>
         <li><strong>Launch-notification email:</strong> until you ask us to remove it.</li>
       </ul>

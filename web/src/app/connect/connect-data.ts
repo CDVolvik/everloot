@@ -2,6 +2,8 @@ import { CREDIT_LINE, LICENCE, LICENCE_URL, MCP_PROMPT_NAMES, MCP_RESOURCE_TEMPL
 
 export const MCP_URL = `${SITE}/mcp/public`;
 export const CORPUS_URL = `${SITE}/api/corpus/public`;
+/** Where the bulk export is served from (scripts/upload-bulk.mjs), or null until the owner sets it. */
+export const BULK_URL = process.env.NEXT_PUBLIC_BULK_URL?.replace(/\/+$/, "") || null;
 
 /** The public MCP's per-IP limit per hour. connect.test.ts checks it against intake-quota.ts. */
 export const REQUESTS_PER_HOUR = 200;
@@ -11,6 +13,8 @@ const TOOL_TEXT: Record<McpToolName, string> = {
   search_knowledge: "Search lore and reference data. Every hit has its source and licence.",
   get_entity: "One record, by the id a search hit gives you.",
   get_by_name: "Records with exactly this name, for telling similar names apart.",
+  search: "The same search in the shape ChatGPT connectors and deep research call by name: results with an id, a title and a URL to cite.",
+  fetch: "One record by a search result's id, whole, with its URL and the source, licence and date as metadata. ChatGPT's second tool.",
   answer_sources: "The evidence behind a question, each piece with its source, licence and date, so an assistant can answer and cite.",
   profession_path: "A leveling path for one profession, from what players reported.",
   recipe_thresholds: "The skill ranges where a recipe turns yellow, green and grey.",
@@ -98,7 +102,9 @@ npm run dev               # MCP at http://localhost:3000/mcp/public`,
       },
     },
   }, null, 2),
+  toolsCurl: `curl -s "${SITE}/api/tools/get_by_name?name=Thrall" | jq .answer`,
   corpusCurl: `curl -s "${CORPUS_URL}?kinds=loot,vendor"`,
+  bulkCurl: `curl -s ${BULK_URL ?? "https://data.everloot.app"}/latest.json | jq -r .index   # the newest export's index.json`,
   openapiCurl: `curl -s ${SITE}/api/openapi.json | jq '.paths | keys'`,
   pagingJs: `// Every loot record, page by page. Stop when next is null.
 let url = "${CORPUS_URL}?kinds=loot&limit=500";

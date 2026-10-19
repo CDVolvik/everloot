@@ -1,4 +1,5 @@
 import { createMcpHttpHandler } from "../../../kb/src/mcp-http-server";
+import type { ToolOptions } from "../../../kb/src/mcp-server";
 import { loadTimeline } from "./changes";
 import { loadCompletion } from "./completion-store";
 import { attributionHeaders } from "./data-guard";
@@ -20,6 +21,26 @@ export function unavailable(error: string, status = 503): Response {
   return Response.json({ error }, { status, headers: { "Cache-Control": "no-store" } });
 }
 
+/** The site's readers the tools answer from, the same for the MCP mounts and GET /api/tools/{tool}. */
+export function toolLoaders(): ToolOptions {
+  return {
+    // The same timeline the /changes page shows, read from the files bundled with the site.
+    changes: () => loadTimeline(),
+    // The registry and GitHub snapshot bundled with the site, joined with the same install counts as /addons/popular.
+    ecosystem: () => loadEcosystem(),
+    // Same deployment as the store: read the public records in process, no HTTP self-fetch or byte ceiling.
+    corpus: async () => {
+      const loaded = await uploadStore.loadCorpus();
+      return loaded.unreachable ? null : { records: loaded.records, dataAsOf: loaded.dataAsOf ?? null };
+    },
+    completion: (installId) => loadCompletion(installId),
+    market: async () => {
+      const loaded = await uploadStore.loadMarket();
+      return loaded.state ? { state: loaded.state, dataAsOf: loaded.dataAsOf } : null;
+    },
+  };
+}
+
 export function createMount(options: { path: string; bearer: boolean }) {
   let handler: ((req: Request) => Promise<Response>) | null = null;
   return async function mount(req: Request): Promise<Response> {
@@ -38,23 +59,10 @@ export function createMount(options: { path: string; bearer: boolean }) {
           bearerToken: options.bearer ? token! : null,
           path: options.path,
           maxRequestBodyBytes: 1_048_576,
-          // The same timeline the /changes page shows, read from the files bundled with the site.
-          changes: () => loadTimeline(),
-          // The registry and GitHub snapshot bundled with the site, joined with the same install counts as /addons/popular.
-          ecosystem: () => loadEcosystem(),
           // The public mount is limited per IP before it gets here; this is a per-instance backstop.
           rateLimitPerMinute: options.bearer ? 60 : 600,
           allowedOrigins: process.env.ALLOWED_ORIGINS?.split(",").map((s) => s.trim()).filter(Boolean) ?? DEFAULT_ORIGINS,
-          // Same deployment as the store: read the public records in process, no HTTP self-fetch or byte ceiling.
-          corpus: async () => {
-            const loaded = await uploadStore.loadCorpus();
-            return loaded.unreachable ? null : { records: loaded.records, dataAsOf: loaded.dataAsOf ?? null };
-          },
-          completion: (installId) => loadCompletion(installId),
-          market: async () => {
-            const loaded = await uploadStore.loadMarket();
-            return loaded.state ? { state: loaded.state, dataAsOf: loaded.dataAsOf } : null;
-          },
+          ...toolLoaders(),
         });
       } catch (err) {
         console.error("[mcp] knowledge release unavailable", err);

@@ -10,6 +10,7 @@ import { copyFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node
 import { dirname, join, resolve } from "node:path";
 import { z } from "zod";
 import { parseVersions, type VersionRow } from "../builds.js";
+import { readClientDigests, writeClientDigests, type ClientDigests } from "./client-digests.js";
 import { buildChangeEntry } from "./diff.js";
 import {
   differingFiles, GAME_DATA_DIR, generatedFiles, RAID_TS, raidFiles, readSiteData, retargetRaidImport, siteBuild,
@@ -37,6 +38,10 @@ export interface Extracted {
   build: { buildId: number; buildConfig: string; version: string };
   /** Numbers of the spells talents show; written to spell-values.json. */
   spellValues: SpellValueTable;
+  /** Counts and hashes of every table the extraction read; written to client-digests.json. */
+  clientDigests: ClientDigests;
+  /** Tables asked for and not read, with the reason; used to explain an absent table in the entry. */
+  missingTables: { table: string; reason: string }[];
   /** Writes the talent files, raid file, raid_data.lua and map.json for this build under `root`, with the site's own generators. */
   generate(root: string): Promise<void> | void;
   /** Frees the scratch files `generate` reads. */
@@ -121,6 +126,7 @@ export async function runWatch(opts: WatchOptions, deps: WatchDeps): Promise<Pro
 async function watchProduct(cfg: WatchConfig["products"][number], prs: PrRef[], opts: WatchOptions, deps: WatchDeps): Promise<ProductResult> {
   const row = latestRow(await deps.fetchVersions(cfg.product));
   const before = readSiteData(opts.repoRoot);
+  const beforeDigests = readClientDigests(opts.repoRoot);
   const ident = (b: { buildConfig: string; buildId: number }) => ({ buildConfig: b.buildConfig, buildId: b.buildId });
   const committed = before && ident(siteBuild(before));
   const decideOpts = { redo: opts.redo, force: opts.force };
@@ -151,6 +157,7 @@ async function watchProduct(cfg: WatchConfig["products"][number], prs: PrRef[], 
     rmSync(join(root, GAME_DATA_DIR, "talents"), { recursive: true, force: true });
     await got.generate(root);
     writeSpellValues(root, got.spellValues);
+    writeClientDigests(root, got.clientDigests);
 
     const written = raidFiles(root);
     if (written.length > 1) throw new Error(`more than one raid file was written: ${written.join(", ")}`);
@@ -161,6 +168,7 @@ async function watchProduct(cfg: WatchConfig["products"][number], prs: PrRef[], 
 
     const entry = buildChangeEntry({
       product: cfg.product, live: cfg.live, detectedAt: deps.now().toISOString(), before, after,
+      beforeDigests, afterDigests: got.clientDigests, missingTables: got.missingTables,
       encryptedTables: got.encryptedTables, source: got.source, warnings: got.warnings,
     });
     const branch = branchFor(cfg.product, got.build);

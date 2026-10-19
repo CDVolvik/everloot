@@ -3,7 +3,8 @@ import { buildChangeEntry, diffMap, diffRaid, diffSpellValues, diffTalents } fro
 import { ChangeEntry, hasChanges } from "../src/build-watch/changes.js";
 import type { SiteData } from "../src/build-watch/site-data.js";
 import { prBody, terminalSummary } from "../src/build-watch/render.js";
-import { CONFIG_A, node, raid, spellValues, trimmed, worldMap } from "./build-watch-fixtures.js";
+import { clientDigestsOf, type DigestInput } from "../src/build-watch/client-digests.js";
+import { CONFIG_A, node, raid, spellValues, stamp, trimmed, worldMap } from "./build-watch-fixtures.js";
 
 const classes = (nodes: ReturnType<typeof node>[], over = {}) => [trimmed(1, nodes, over)];
 
@@ -238,5 +239,24 @@ describe("rendering", () => {
     expect(text).toContain("wow_classic_beta 1.60.1.2");
     expect(text).toContain("Talents added: 1");
     expect(text).toContain("encrypted blocks skipped: 29");
+  });
+
+  it("lists client table changes and their counts", () => {
+    const tables = (rows: [number, Record<string, unknown>][], definitions = "abc123abc123"): DigestInput[] => [
+      { table: "ItemSparse", rows: new Map(rows) },
+    ];
+    const entry = buildChangeEntry({
+      product: "wow_classic_beta", live: false, detectedAt: "2026-10-17T10:00:00.000Z",
+      before: site(1, [node(1, "Mutilate")]), after: site(2, [node(1, "Mutilate")]),
+      beforeDigests: clientDigestsOf(stamp(1), tables([[1, { Name_lang: "A" }]])),
+      afterDigests: clientDigestsOf({ ...stamp(2), definitions: "def456def456" }, tables([[1, { Name_lang: "A" }], [2, { Name_lang: "B" }], [3, { Name_lang: "C" }]])),
+      encryptedTables: [], source: { definitions: null, library: "lib@1", extractedAt: "x" }, warnings: [],
+    });
+    const body = prBody(entry, { supersedes: [] });
+    expect(body).toContain("### Client data (2)");
+    expect(body).toContain("table definitions changed: every table may read as changed");
+    expect(body).toContain("ItemSparse: 1 -> 3 rows, content changed");
+    expect(body).toContain("- Client tables: 1 read (1 before), 3 rows (1 before), 1 changed");
+    expect(terminalSummary(entry)).toContain("Client data: 2");
   });
 });

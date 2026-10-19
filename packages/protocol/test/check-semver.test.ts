@@ -66,6 +66,34 @@ describe("compareTrees", () => {
     ]);
   });
 
+  test("a field named like a keyword (title, description, default, protocol) is still a field", () => {
+    const named = edit((t) => {
+      Object.assign(at(t, "records/loot.json").properties, {
+        title: { type: "string", description: "Quest title." },
+        protocol: { type: "string" },
+        definitions: { type: "object", description: "A field called definitions." },
+      });
+    });
+    expect(compareTrees(base, named).additions.sort()).toEqual([
+      "records/loot.json/properties/definitions was added",
+      "records/loot.json/properties/protocol was added",
+      "records/loot.json/properties/title was added",
+    ]);
+    const cosmetic = structuredClone(named);
+    at(cosmetic, "records/loot.json").properties.title.description = "Other words.";
+    at(cosmetic, "records/loot.json").properties.definitions.description = "Other words.";
+    expect(compareTrees(named, cosmetic)).toEqual({ breaking: [], additions: [] });
+    const broken = structuredClone(named);
+    delete at(broken, "records/loot.json").properties.title;
+    at(broken, "records/loot.json").properties.protocol.type = "number";
+    at(broken, "records/loot.json").properties.definitions.type = "string";
+    expect([...compareTrees(named, broken).breaking].sort()).toEqual([
+      'records/loot.json/properties/definitions/type: "object" -> "string"',
+      'records/loot.json/properties/protocol/type: "string" -> "number"',
+      "records/loot.json/properties/title was removed",
+    ]);
+  });
+
   test("a new kind, property, enum value, tool, route or a looser limit is an addition", () => {
     const more = edit((t) => {
       t["records/census_self.json"] = record({ installId: { type: "string" } });

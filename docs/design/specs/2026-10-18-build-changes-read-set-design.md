@@ -1,9 +1,10 @@
 # Build changes for the client read set
 
 **Date:** 2026-10-18
-**Status:** proposal, not started. Follows the [client data placement note](../../2026-10-18-client-data-placement.md),
-whose W4 closed the mining waves: 321 tables read, 622 unread candidates.
-**Next:** this section, then (separately) a site surface for build entries at all.
+**Status:** implemented 2026-10-18 (`kb/src/build-watch/client-digests.ts`). Follows the
+[client data placement note](../../2026-10-18-client-data-placement.md), whose W4 closed the mining
+waves: 321 tables read, 622 unread candidates.
+**Next:** a site surface for build entries itself; nothing in `web/src` reads `changes/` today.
 
 ## Why
 
@@ -53,9 +54,9 @@ backwards: the item and world tables are where most of a patch's real movement s
 3. **Schema bump.** `CHANGE_SCHEMA` `everloot.game-changes/1` → `/2`. The reader accepts both; v1
    entries stay valid as committed. Only the build watch writes entries.
 
-4. **Wiring.** `Extracted` gains `clientDigests`; `site-data.ts` gains the digest schema, a reader used
-   by `readSiteData` and `writeClientDigests`; `watch.ts` passes before/after to `buildChangeEntry` and
-   writes the baseline next to `writeSpellValues`; `render.ts` adds a "Client data" section (one line
+4. **Wiring.** `client-digests.ts` owns the digest schema, the reader and the writer; `Extracted` gains
+   `clientDigests` and `missingTables`; `watch.ts` reads the committed baseline, passes before/after to
+   `buildChangeEntry` and writes the baseline next to `writeSpellValues`; `render.ts` adds a "Client data" section (one line
    per changed table: `rowsBefore -> rowsAfter rows, content changed`), capped by `CAP` with the rest
    left to the JSON; the PR body review list gains a line. `hasChanges` counts the new section, or an
    entry with only table changes would claim "no differences".
@@ -79,8 +80,9 @@ backwards: the item and world tables are where most of a patch's real movement s
 
 ## Findings that shaped it
 
-- Read set today: 321 tables, 1,142,643 rows in 255 of them (66 read tables are empty in 1.60.1).
-  The digest pass is one sequential scan of a snapshot the watch already produces.
+- Read set today: 321 tables, 1,140,283 rows in 254 of them (67 are empty in 1.60.1). The digest pass
+  is one sequential scan of a snapshot the watch already produces. `FileStatus`, the extractor's probe of
+  which icon files the CDN serves, is not part of the read set: it changes with the spells.
 - The watch has no access to a previous *snapshot* (gitignored, 357 MB), so the baseline has to be the
   committed digest file, not a retained snapshot.
 - `hasChanges` today counts talents, raid buffs and maps only; a read-set-only change would otherwise
@@ -95,6 +97,15 @@ backwards: the item and world tables are where most of a patch's real movement s
 - Hashing about 1.1M rows adds seconds to the watch; measured before merge.
 - Hash stability depends on the canonical JSON rule. Changing that rule silently invalidates one
   comparison, so the baseline carries `hashVersion`.
+
+## Reference
+
+`wowsims/gamedata` (MIT) solves the same problem for the Forever client: it polls the CDN and the hotfix
+cache every three hours and publishes one diff per build and per hotfix, with `patches/<version>/CHANGES.md`
+and per-update item and spell diffs. Two of its decisions are worth taking later: hotfix push ids from
+raidbots' `DBCache.bin` mirror (our hotfix gap), and one update per build *and* hotfix push rather than one
+per build. Its spell and item cards are Blizzard-derived text, so they are read-only reference for us.
+Reference only: no code or data was copied from it.
 
 ## Tests
 

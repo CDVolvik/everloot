@@ -76,7 +76,7 @@ Primary public pages checked:
 - API categories include character, guild, raiding, Mythic+, and live tracking. The documented products include character/guild profiles, rankings, progression, boss kills, runs, score tiers, season cutoffs, raid compositions, loot feeds, pull tracking, gear/loadout snapshots, and activity contributions.
 - The API documentation says data comes from Blizzard’s API, Raider.IO live tracking, and community contributions; it also disclaims completeness, accuracy, and timeliness.
 - Official API rules require attribution, prohibit building competing services/reselling data, prohibit scraping outside published endpoints, and reserve access revocation. This matters directly to Everloot: do not use Raider.IO’s API as an Everloot data source or imitate its data dump.
-- The public RaiderIO addon repository is open source and documents the addon as a snapshot viewer for scores/progression/recruitment. Its README says qualifying data is selected by rules such as recent login/activity and score/progression thresholds, and that the addon is updated multiple times daily. It also documents a developer-facing Lua API, but says some APIs may be removed.
+- The RaiderIO addon repository is publicly readable on GitHub but is not open source — its LICENSE reserves all rights — and it documents the addon as a snapshot viewer for scores/progression/recruitment. Its README says qualifying data is selected by rules such as recent login/activity and score/progression thresholds, and that the addon is updated multiple times daily. It also documents a developer-facing Lua API, but says some APIs may be removed.
 
 ### Inferences / implications
 

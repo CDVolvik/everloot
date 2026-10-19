@@ -1,0 +1,43 @@
+{
+  "$id": "https://everloot.app/schema/api/toolAnswerResponse.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "tool": {
+      "type": "string",
+      "description": "The tool's name, as in the MCP tool list."
+    },
+    "arguments": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {},
+      "description": "The arguments as the tool read them, defaults applied."
+    },
+    "answer": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {},
+      "description": "The tool's structured answer. Its schema: /schema/mcp/{tool}.json#/outputSchema."
+    },
+    "text": {
+      "type": "string",
+      "description": "The same answer as the MCP text block, for a reader."
+    },
+    "schema": {
+      "type": "string",
+      "description": "The URL of the tool's schema file."
+    }
+  },
+  "required": [
+    "tool",
+    "arguments",
+    "answer",
+    "text",
+    "schema"
+  ],
+  "additionalProperties": false
+}

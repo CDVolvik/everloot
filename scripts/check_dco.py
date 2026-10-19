@@ -6,14 +6,17 @@ import sys
 
 # A trailer on its own line, with a non-empty name and an email address.
 SIGNOFF = re.compile(r"^Signed-off-by: *([^<>\s][^<>]*?) *<([^<>\s@]+@[^<>\s@]+)>\s*$", re.MULTILINE)
+# GitHub's own bots (Dependabot and the like) commit as <id>+<name>[bot]@users.noreply.github.com and
+# cannot sign off; nobody certifies a bot's commit, so they are exempt like the title check exempts them.
+GITHUB_BOT = re.compile(r"\[bot\]@users\.noreply\.github\.com$", re.IGNORECASE)
 
 
 def missing_signoff(commits: list[tuple[str, str, int, str]]) -> list[str]:
     """Shas of (sha, message, parent count, author email) commits that lack a sign-off by their
-    author. Merge commits are exempt."""
+    author. Merge commits and commits authored by a GitHub bot are exempt."""
     missing = []
     for sha, body, parents, author_email in commits:
-        if parents >= 2:
+        if parents >= 2 or GITHUB_BOT.search(author_email):
             continue
         emails = {m.group(2).lower() for m in SIGNOFF.finditer(body)}
         if author_email.lower() not in emails:

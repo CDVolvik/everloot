@@ -205,6 +205,17 @@
       "tool": "talent_tree",
       "variable": "class",
       "argument": "class",
+      "values": [
+        "warrior",
+        "paladin",
+        "hunter",
+        "rogue",
+        "priest",
+        "shaman",
+        "mage",
+        "warlock",
+        "druid"
+      ],
       "contents": "https://everloot.app/schema/mcp/talent_tree.json#/outputSchema"
     }
   ]

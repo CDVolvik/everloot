@@ -1,3 +1,4 @@
+import { completable } from "@modelcontextprotocol/sdk/server/completable.js";
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { CREDIT_LINE, LICENCE, MCP_CREDIT, SITE } from "@everloot/protocol";
@@ -17,7 +18,7 @@ import { handleMarketValue, itemMarket, type MarketState } from "./market.js";
 import { loadUploadRecords } from "./load-uploads.js";
 import { KNOWLEDGE_KINDS, MCP_PROMPT_NAMES, MCP_PROMPTS, MCP_RESOURCE_TEMPLATE_URIS, MCP_RESOURCE_TEMPLATES, MCP_RESOURCE_URIS, MCP_RESOURCES, MCP_TOOL_NAMES, MCP_TOOLS, parseRecords, type McpToolArgs, type McpToolDef, type McpToolName } from "@everloot/protocol";
 import { z } from "zod";
-import { handleProfessionPath, professionPath } from "./profession-path.js";
+import { formatProfessionPath, professionPath } from "./profession-path.js";
 import { promptText } from "./prompts.js";
 import { readResource } from "./resources.js";
 import { handleTalentPlan, handleTalentTree } from "./talent-tools.js";
@@ -29,12 +30,20 @@ import { CLIENT_EDGES, CLIENT_LAYER, CLIENT_TAXONOMY } from "./client-layer-file
 import { handleItemCategories, itemCategoriesStructured } from "./item-taxonomy.js";
 import { entityRelationsStructured, handleEntityRelations, observedEdgesFromRecords, type Edge } from "./edges.js";
 import type { DB } from "./db.js";
-import { getByName, getEntity, search, type SearchHit } from "./search.js";
+import { recordUrl } from "./lore-slug.js";
+import { getByName, getDocument, getEntity, search, type SearchHit } from "./search.js";
 
 export const SERVER_NAME = "everloot-knowledge";
 export const SERVER_VERSION = "0.8.0";
 /** The source this server runs, offered to every client (AGPL section 13). */
 export const SOURCE_URL = "https://github.com/Everloot/everloot";
+/** One line a client shows beside the server's name in its list of servers. */
+export const SERVER_DESCRIPTION = "WoW: Forever knowledge from player reports and game files, with sources, under CC BY-SA 4.0.";
+/** The site's icon, for clients that draw one beside the server. */
+export const SERVER_ICONS = [
+  { src: `${SITE}/icon-64.png`, mimeType: "image/png", sizes: ["64x64"] },
+  { src: `${SITE}/icon-512.png`, mimeType: "image/png", sizes: ["512x512"] },
+];
 
 /** Sent to every client on connect: how to credit what the tools return. */
 export const SERVER_INSTRUCTIONS =
@@ -411,6 +420,17 @@ export function handleSearch(db: DB, args: SearchArgs): string {
 type Answer = string | StructuredAnswer;
 type StructuredAnswer = { text: string; structured: object };
 
+/** The values that begin with what the user typed so far, case-insensitive, in the table's order. */
+function startingWith(values: readonly string[], typed: string): string[] {
+  const prefix = typed.trim().toLowerCase();
+  return values.filter((v) => v.startsWith(prefix));
+}
+
+/** The answer of a connector-contract tool (search, fetch): the structure, with the same JSON as the text block. */
+function jsonAnswer(structured: object): StructuredAnswer {
+  return { text: JSON.stringify(structured), structured };
+}
+
 export function handleGetEntity(db: DB, args: { id: number }): string {
   const hit = getEntity(db, args.id);
   return hit ? formatHit(hit) : `No record with id ${args.id}.`;
@@ -448,31 +468,62 @@ export async function readPage<T>(tool: ToolName, loader: CorpusLoader | undefin
   return { text: `${built.text}\n${answerFooter(read.dataAsOf)}`, structured: { connected: true, dataAsOf: read.dataAsOf, page: built.page } };
 }
 
-export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; market?: MarketLoader; completion?: CompletionLoader; changes?: ChangesLoader; ecosystem?: EcosystemLoader } = {}): McpServer {
-  const server = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION, websiteUrl: SOURCE_URL }, { instructions: SERVER_INSTRUCTIONS });
+/** A blank profession is refused before any read: an error, not a connected page about no profession. */
+function professionArg(profession: string): string {
+  const trimmed = profession.trim();
+  if (!trimmed) throw new Error("Name a profession.");
+  return trimmed;
+}
+
+/** The readers a host lends the tools: the site's store in process, or nothing for a standalone server. */
+export interface ToolOptions { corpus?: CorpusLoader; market?: MarketLoader; completion?: CompletionLoader; changes?: ChangesLoader; ecosystem?: EcosystemLoader }
+
+/** A tool's answer: the text every client gets, and the structured content of the tool's output schema. */
+export type ToolAnswer = Answer;
+export type ToolHandlers = { [K in McpToolName]: (args: McpToolArgs<K>) => ToolAnswer | Promise<ToolAnswer> };
+
+/**
+ * One handler per tool, typed by the protocol's input shape. The MCP registration in
+ * createKnowledgeServer and the site's GET /api/tools/{tool} are both thin wrappers over these, so
+ * a tool answers the same over MCP and over plain HTTP.
+ */
+export function createToolHandlers(db: DB, options: ToolOptions = {}): ToolHandlers {
   const readFacts = <T>(tool: ToolName, render: (facts: T) => string) => fromTooledUploads(tool, render, options.corpus);
-  /** One handler per tool, typed by the protocol's input shape; the MCP registration below is a thin wrapper. */
-  const handlers: { [K in McpToolName]: (args: McpToolArgs<K>) => Answer | Promise<Answer> } = {
+  const handlers: ToolHandlers = {
     search_knowledge: (args) => ({ text: handleSearch(db, args), structured: { hits: searchHits(db, args) } }),
     get_entity: (args) => ({ text: handleGetEntity(db, args), structured: { hit: getEntity(db, args.id) ?? null } }),
     get_by_name: (args) => ({ text: handleGetByName(db, args), structured: { hits: getByName(db, args.name, args.kind) } }),
+    search: (args) => jsonAnswer({
+      results: searchHits(db, { query: args.query, limit: 10 }).map((h) => ({ id: String(h.id), title: h.name, url: recordUrl(h, SITE) })),
+    }),
+    fetch: (args) => {
+      const doc = /^\d{1,15}$/.test(args.id) ? getDocument(db, Number(args.id)) : undefined;
+      if (!doc) throw new Error(`No record with id "${args.id}". Ids come from search results.`);
+      return jsonAnswer({
+        id: String(doc.id), title: doc.name, text: doc.body, url: recordUrl(doc, SITE),
+        metadata: { kind: doc.kind, gameVersion: doc.gameVersion, sourceUrl: doc.sourceUrl, sourceId: doc.sourceId, licence: doc.licence, retrievedAt: doc.retrievedAt, credit: CREDIT_LINE },
+      });
+    },
     answer_sources: async (args) => {
       const read = await readTooledFacts<AnswerSourcesFacts>("answer_sources", options.corpus);
       const result = answerSources(db, args, read?.facts ?? null, read?.dataAsOf ?? null);
       return { text: `${formatAnswerSources(result, read !== null)}\n${read ? answerFooter(read.dataAsOf) : MCP_CREDIT}`, structured: result };
     },
-    profession_path: (args) => readPage("profession_path", options.corpus, (facts: ReturnType<typeof pathFactsFromRecords>) => {
+    profession_path: (args) => {
       // The same defaults the text handler applies: from 1, to the start when no end is given.
-      const query = { profession: args.profession.trim(), fromSkill: args.fromSkill ?? 1, toSkill: args.toSkill ?? args.fromSkill ?? 1 };
-      return {
-        text: handleProfessionPath(args, facts.sightings, facts.prices, facts.derived, facts.vendorPrices),
-        page: professionPath(facts.sightings, facts.prices, query, facts.derived, facts.vendorPrices),
-      };
-    }),
-    recipe_thresholds: (args) => readPage("recipe_thresholds", options.corpus, (facts: ReturnType<typeof recipeFactsFromRecords>) => ({
-      text: handleRecipeThresholds(args, facts.observations, facts.prices, facts.vendorPrices),
-      page: recipeThresholdsStructured(args, facts.observations, facts.prices, facts.vendorPrices),
-    })),
+      const query = { profession: professionArg(args.profession), fromSkill: args.fromSkill ?? 1, toSkill: args.toSkill ?? args.fromSkill ?? 1 };
+      return readPage("profession_path", options.corpus, (facts: ReturnType<typeof pathFactsFromRecords>) => {
+        const page = professionPath(facts.sightings, facts.prices, query, facts.derived, facts.vendorPrices);
+        return { text: formatProfessionPath(page), page };
+      });
+    },
+    recipe_thresholds: (args) => {
+      professionArg(args.profession);
+      return readPage("recipe_thresholds", options.corpus, (facts: ReturnType<typeof recipeFactsFromRecords>) => ({
+        text: handleRecipeThresholds(args, facts.observations, facts.prices, facts.vendorPrices),
+        page: recipeThresholdsStructured(args, facts.observations, facts.prices, facts.vendorPrices),
+      }));
+    },
     item_page: (args) => readPage("item_page", options.corpus, (facts: ReturnType<typeof itemFactsFromRecords>) => {
       const page = itemPage(args.itemId, facts);
       return { text: formatItemPage(page), page };
@@ -532,6 +583,16 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; 
     },
     everloot_plan: () => ({ text: handlePlan(), structured: planStructured() }),
   };
+  void readFacts;
+  return handlers;
+}
+
+export function createKnowledgeServer(db: DB, options: ToolOptions = {}): McpServer {
+  const server = new McpServer(
+    { name: SERVER_NAME, title: "Everloot", version: SERVER_VERSION, description: SERVER_DESCRIPTION, websiteUrl: SOURCE_URL, icons: SERVER_ICONS },
+    { instructions: SERVER_INSTRUCTIONS },
+  );
+  const handlers = createToolHandlers(db, options);
   for (const name of MCP_TOOL_NAMES) {
     const def: McpToolDef = MCP_TOOLS[name];
     server.registerTool(
@@ -556,7 +617,15 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; 
   for (const uriTemplate of MCP_RESOURCE_TEMPLATE_URIS) {
     const def = MCP_RESOURCE_TEMPLATES[uriTemplate];
     const input = z.object(MCP_TOOLS[def.tool].inputSchema);
-    server.registerResource(def.name, new ResourceTemplate(uriTemplate, { list: undefined }), { title: def.title, description: def.description, mimeType: def.mimeType }, async (uri, variables) => {
+    // A variable with a known set of values gets one listed resource per value, and completion from that set.
+    const values = "values" in def ? def.values : undefined;
+    const template = new ResourceTemplate(uriTemplate, {
+      list: values
+        ? () => ({ resources: values.map((v) => ({ uri: uriTemplate.replace(`{${def.variable}}`, v), name: `${def.name}/${v}`, title: `${def.title}: ${v}`, mimeType: def.mimeType })) })
+        : undefined,
+      ...(values ? { complete: { [def.variable]: (typed: string) => startingWith(values, typed) } } : {}),
+    });
+    server.registerResource(def.name, template, { title: def.title, description: def.description, mimeType: def.mimeType }, async (uri, variables) => {
       const raw = String(variables[def.variable] ?? "");
       // The tool's own input schema decides what the variable may be: a positive id, or a class slug.
       const parsed = input.safeParse({ [def.argument]: /^\d+$/.test(raw) ? Number(raw) : raw });
@@ -568,7 +637,11 @@ export function createKnowledgeServer(db: DB, options: { corpus?: CorpusLoader; 
   }
   for (const name of MCP_PROMPT_NAMES) {
     const def = MCP_PROMPTS[name];
-    const argsSchema = Object.fromEntries(Object.entries(def.arguments).map(([arg, a]) => [arg, a.required ? z.string().describe(a.description) : z.string().optional().describe(a.description)]));
+    const argsSchema = Object.fromEntries(Object.entries(def.arguments).map(([arg, a]) => {
+      const schema = a.required ? z.string().describe(a.description) : z.string().optional().describe(a.description);
+      // An argument with a known set of values is completed from that set.
+      return [arg, "values" in a && a.values ? completable(schema, (typed) => startingWith(a.values!, String(typed ?? ""))) : schema];
+    }));
     server.registerPrompt(name, { title: def.title, description: def.description, argsSchema }, (args) => ({
       description: def.title,
       messages: [{ role: "user" as const, content: { type: "text" as const, text: promptText(name, args as Record<string, string | undefined>) } }],

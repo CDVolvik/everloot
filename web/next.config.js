@@ -34,6 +34,8 @@ const nextConfig = {
     "/schema/\\[\\.\\.\\.path\\]": ["./node_modules/@everloot/protocol/schema/**"],
     "/mcp": ["./.release/*.sqlite", "./.release/*.manifest.json"],
     "/mcp/public": ["./.release/*.sqlite", "./.release/*.manifest.json"],
+    // Keys match by substring, so this one covers /api/tools/[tool], the tools' plain-HTTP route.
+    "/api/tools": ["./.release/*.sqlite", "./.release/*.manifest.json"],
     "/lore/[slug]": ["./.release/*.sqlite", "./.release/*.manifest.json"],
     "/lore": ["./.release/*.sqlite", "./.release/*.manifest.json"],
     "/search": ["./.release/*.sqlite", "./.release/*.manifest.json"],
@@ -70,6 +72,10 @@ const nextConfig = {
     config.resolve.extensionAlias = { ...config.resolve.extensionAlias, ".js": [".js", ".ts", ".tsx"] };
     // kb/src imports packages that a Vercel build installs only under web/node_modules.
     config.resolve.modules = [...(config.resolve.modules ?? ["node_modules"]), path.join(__dirname, "node_modules")];
+    // Webpack's build cache treats a package under node_modules as unchanged while its version stays the same.
+    // The protocol is packed from ../packages/protocol, so a change without a version bump came out of the
+    // previous build's cache (production served stale tool lists twice). Its files are checked instead.
+    config.snapshot = { ...config.snapshot, managedPaths: [/^(.+?[\\/]node_modules[\\/](?!@everloot[\\/]))/] };
     return config;
   },
   // Adjust this when the production domain is set
