@@ -34,7 +34,10 @@ function Checksum({ name, sha256 }: { name: string; sha256: string | null }) {
 
 export default async function AddonPage() {
   const addon = latestAddonRelease();
-  const served = addon ? servedFile(addon.downloadPath) : null;
+  // The zip's name is rebuilt from the version (digits and dots) and encoded, so no name read from disk reaches an href.
+  const zipName = addon ? `Everloot-${addon.version}.zip` : "";
+  const zipHref = `/downloads/${encodeURIComponent(zipName)}`;
+  const served = addon ? servedFile(zipHref) : null;
   const releases = await fetchReleases();
   const addonRelease = addon ? addonReleaseFor(releases, addon.version) : null;
   const desktop = newestDesktopRelease(releases);
@@ -69,7 +72,7 @@ export default async function AddonPage() {
           </div>
           {addon ? (
             <>
-              <a className="btn btn-primary text-sm" href={addon.downloadPath} download>
+              <a className="btn btn-primary text-sm" href={zipHref} download>
                 Download addon {addon.version}{served ? ` (.zip, ${fileSize(served.size)})` : ""}
               </a>
               <div className="space-y-2">
@@ -92,7 +95,7 @@ export default async function AddonPage() {
               {served && (
                 <div className="space-y-1 text-sm">
                   <h3 className="font-semibold text-fg">SHA-256</h3>
-                  <ul><Checksum name={addon.downloadPath.split("/").pop()!} sha256={served.sha256} /></ul>
+                  <ul><Checksum name={zipName} sha256={served.sha256} /></ul>
                   {addonRelease?.sums && <a className={link} href={addonRelease.sums} rel={EXT}>SHA256SUMS</a>}
                 </div>
               )}

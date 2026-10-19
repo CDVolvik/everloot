@@ -29,7 +29,7 @@ const releases = [
   },
 ];
 
-const visible = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&amp;/g, "&").replace(/&#x27;/g, "'").replace(/\s+/g, " ");
+const visible = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/&#x27;/g, "'").replace(/&amp;/g, "&").replace(/\s+/g, " ");
 async function render(answer: () => Promise<Response>) {
   vi.stubGlobal("fetch", vi.fn(answer));
   return renderToStaticMarkup(await AddonPage());
