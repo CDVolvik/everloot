@@ -24,11 +24,13 @@ export function siteToolPath(id: string): string | null {
  * no preload and no Node, so the page is just the public site, inside the app's frame. The view's
  * user agent carries an `EverlootDesktopApp/<version>` token so the site can tell it is inside the
  * app and leave its ad units out (AdSense does not allow ads inside a desktop application).
+ * Electron's default user agent already holds the product name without spaces, so this only adds
+ * the token when a rename has taken it away.
  */
 export const USER_AGENT_TOKEN = "EverlootDesktopApp";
 
 export function appUserAgent(base: string, version: string): string {
-  return `${base} ${USER_AGENT_TOKEN}/${version}`;
+  return base.includes(`${USER_AGENT_TOKEN}/`) ? base : `${base} ${USER_AGENT_TOKEN}/${version}`;
 }
 
 export function createSiteViews(win: BrowserWindow, endpoint: () => string) {

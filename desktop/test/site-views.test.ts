@@ -11,6 +11,11 @@ describe("site views", () => {
     expect(ua).toContain(`${USER_AGENT_TOKEN}/`);
   });
 
+  it("leaves Electron's default alone when it already carries the token", () => {
+    const base = "Mozilla/5.0 (Windows NT 10.0) EverlootDesktopApp/0.1.0 Chrome/152.0 Electron/44.9.0";
+    expect(appUserAgent(base, "0.1.0")).toBe(base);
+  });
+
   it("maps a tool id to its site path and rejects unknown ids", () => {
     expect(siteToolPath("talents")).toBe("/tools/talents");
     expect(siteToolPath("nope")).toBeNull();
