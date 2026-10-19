@@ -82,8 +82,10 @@ characters at most.
 
 - The tests for the parts you touched pass (see `.github/workflows/checks.yml` for the exact commands
   CI runs).
-- An addon change rebuilds the zip with `python scripts/package-addon.py` and commits it; CI fails if
-  the zip does not match the source.
+- An addon change to a version that is not released yet rebuilds the zip with
+  `python scripts/package-addon.py` and commits it; CI fails if the zip does not match the source. Once
+  the version is tagged, its zip stays as published: CI only checks that the source still packages, and
+  the next release builds the new zip.
 - Data changes follow the data rules above.
 - Keep a pull request to one change. Say what changed and how you tested it.
 
