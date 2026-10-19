@@ -62,7 +62,8 @@ Add it with `-s`:
     git commit -s -m "Fix the vendor price rounding"
 
 If CI says a commit is not signed off, fix the last commit with `git commit --amend -s --no-edit`,
-or several with `git rebase --signoff main`, then force-push your branch.
+or several with `git rebase --signoff main`, then force-push your branch. Commits from GitHub's own
+bots, such as Dependabot, are exempt: a bot cannot certify anything.
 
 Commits and pull requests name people only. Leave out co-author lines and "generated with"
 footers that credit an AI tool; CI rejects them.
@@ -83,8 +84,10 @@ characters at most.
 
 - The tests for the parts you touched pass (see `.github/workflows/checks.yml` for the exact commands
   CI runs).
-- An addon change rebuilds the zip with `python scripts/package-addon.py` and commits it; CI fails if
-  the zip does not match the source.
+- An addon change to a version that is not released yet rebuilds the zip with
+  `python scripts/package-addon.py` and commits it; CI fails if the zip does not match the source. Once
+  the version is tagged, its zip stays as published: CI only checks that the source still packages, and
+  the next release builds the new zip.
 - Data changes follow the data rules above.
 - Keep a pull request to one change. Say what changed and how you tested it.
 

@@ -15,6 +15,9 @@ assert missing_signoff([("a2", signed, 1, "ANA@Example.com")]) == []
 assert missing_signoff([("a3", signed, 1, "someone@example.com")]) == ["a3"]
 # Merge commits (two parents) need no sign-off of their own.
 assert missing_signoff([("m1", "Merge branch 'main'\n", 2, ANA)]) == []
+# GitHub's bots cannot sign off, so their commits are exempt; a lookalike human address is not.
+assert missing_signoff([("g1", "Bump x\n", 1, "49699333+dependabot[bot]@users.noreply.github.com")]) == []
+assert missing_signoff([("g2", "Bump x\n", 1, "dependabot@example.com")]) == ["g2"]
 # A co-author line is not a sign-off.
 assert missing_signoff([("b2", "Fix\n\nCo-Authored-By: Bot <bot@example.com>\n", 1, ANA)]) == ["b2"]
 # The trailer must start its own line, and carry a real name and email.
@@ -40,4 +43,4 @@ with tempfile.TemporaryDirectory() as repo:
     assert len(found) == 1 and found[0][2] == 1 and found[0][3] == ANA, found
     assert missing_signoff(found) == []
 
-print("check_dco: 14 cases pass")
+print("check_dco: 16 cases pass")
