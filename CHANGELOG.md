@@ -13,6 +13,11 @@ build that has a zip in the repository. Earlier builds have none.
 ## [Unreleased]
 
 ### Added
+- Addon: `/everloot price <item>` prints an item's price in chat, anywhere in the world: a shift-clicked
+  link, an item id, or the name of an item the client has seen. It shows the same lines as the tooltip (community
+  market value, minimum, historical, units up, reporters, how fresh the file is, and your own last scan) and
+  links the full history on everloot.app. Nothing is fetched in game; the prices come from the file the
+  Desktop App or companion writes.
 - Battle.net sign-in can run on Better Auth behind `EVERLOOT_AUTH_V2`. Existing accounts and API keys
   carry over. No provider tokens, IP addresses or user agents are stored. With the flag off, sign-in
   behaves as before.
