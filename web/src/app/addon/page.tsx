@@ -174,6 +174,15 @@ export default async function AddonPage() {
           </Card>
         </div>
 
+        <section id="gold-per-hour" aria-labelledby="gold-per-hour-title" className="max-w-reading scroll-mt-20">
+          <SectionHeading id="gold-per-hour-title">Gold per hour, now in the addon</SectionHeading>
+          <p className="text-sm text-fg-2">
+            The gold per hour calculator that was on this site is moving into the Everloot addon, so you can work out what
+            a farm earns without leaving the game. The release notes say which addon version has it. Live prices stay on
+            the site, in the <Link href="/tools/auctions" className={link}>Auction House</Link>.
+          </p>
+        </section>
+
         <section aria-labelledby="privacy" className="max-w-reading">
           <SectionHeading id="privacy">Privacy</SectionHeading>
           <div className="space-y-2 text-sm text-fg-2">

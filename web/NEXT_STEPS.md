@@ -5,7 +5,7 @@ Tight checklist so you don't lose momentum.
 ## Today / this week
 
 - [ ] `npm install` + `npm run dev` to see the site locally at http://localhost:3000
-- [ ] Click through every page. Try the Gold/Hour calculator with fake data. Copy a share link and verify it restores state.
+- [ ] Click through every page. Open the Auction House, pick a realm and an item, and check the price page.
 - [ ] Pick a domain (see README for ideas) and buy it
 - [ ] Push to GitHub, deploy to Vercel, point the domain
 - [ ] Share the site with 5–10 WoW-playing friends for "does it work / what would you add" feedback
@@ -14,11 +14,11 @@ Tight checklist so you don't lose momentum.
 
 AdSense rejects sites that are too thin. You need 5–10 real articles first.
 
-- [ ] Write article #1 from the content roadmap in README (start with the "best gold farms in TWW" post — it has high search volume and feeds the calculator)
+- [ ] Write article #1 from the content roadmap in README (start with the "best gold farms in TWW" post — it has high search volume)
 - [ ] Add a `/blog` route with MDX support
 - [ ] Verify a Google Search Console property for your domain
 - [ ] Submit sitemap to Google Search Console
-- [ ] Post the Gold/Hour calculator on r/woweconomy for feedback (not self-promotion — actually useful there)
+- [ ] Post the Auction House on r/woweconomy for feedback (not self-promotion — actually useful there)
 
 ## Submit to AdSense
 
@@ -32,7 +32,7 @@ AdSense rejects sites that are too thin. You need 5–10 real articles first.
 - [ ] Update `public/ads.txt` with your real publisher ID
 - [ ] Add `<ins>` ad units where they make sense:
   - Between hero and tool grid on landing page
-  - Below the calculator results on `/tools/gold-per-hour` (not above — don't bury the tool)
+  - Below the price facts on an Auction House item page, `/tools/auctions/<realm>/<itemId>` (not above — don't bury the prices)
   - In the middle of long blog posts
 - [ ] Don't overload. Google penalizes sites with too many ads / shitty UX.
 

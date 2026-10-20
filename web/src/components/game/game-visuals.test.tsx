@@ -18,7 +18,7 @@ vi.mock("next/link", () => ({
 
 import Home from "@/app/page";
 import DropsPage from "@/app/database/drops/page";
-import AuctionsPage from "@/app/tools/auctions/page";
+import AuctionsRealmPage from "@/app/tools/auctions/[realm]/page";
 import ProfessionsPage from "@/app/tools/professions/page";
 import RaidPage from "@/app/tools/raid/page";
 import MapPage from "@/app/map/page";
@@ -55,7 +55,7 @@ const market = foldMarket(emptyMarket(), ["install-a", "install-b", "install-c"]
 const pages: [string, () => Promise<ReactNode>][] = [
   ["home", () => Home()],
   ["drops", () => DropsPage()],
-  ["auctions", () => AuctionsPage({ searchParams: Promise.resolve({ realm: "Forever" }) })],
+  ["auctions", () => AuctionsRealmPage({ params: Promise.resolve({ realm: "forever" }) })],
   ["professions", () => ProfessionsPage({ searchParams: Promise.resolve({}) })],
   ["raid", () => RaidPage()],
   ["map", () => MapPage({ searchParams: Promise.resolve({}) })],
@@ -112,11 +112,11 @@ test("drops and auctions: the item's icon beside its link, the tooltip as its de
   privateBucket();
   const fetcher = bucket();
   vi.stubGlobal("fetch", fetcher);
-  for (const page of [() => DropsPage(), () => AuctionsPage({ searchParams: Promise.resolve({ realm: "Forever" }) })]) {
+  for (const page of [() => DropsPage(), () => AuctionsRealmPage({ params: Promise.resolve({ realm: "forever" }) })]) {
     const html = await render(page);
     expect(html).toContain(`src="${BASE}/icons/132889.webp"`);
     expect(html).toMatch(/<img[^>]*alt=""[^>]*aria-hidden="true"/);
-    expect(html).toContain('href="/database/items/9"');
+    expect(html).toMatch(/href="\/(database\/items|tools\/auctions\/forever)\/9"/);
     expect(html).toMatch(/aria-describedby="[^"]+"/);
     expect(html).toContain("Linen Cloth, Common");
     expect(html).toContain(CREDIT);
