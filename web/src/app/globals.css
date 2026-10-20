@@ -12,6 +12,15 @@ body {
   background: rgb(var(--canvas));
   color: rgb(var(--fg));
   min-height: 100vh;
+  /* 100vw, which .full-bleed uses, counts the scrollbar's strip; clipping the few pixels that
+     stick out keeps one edge-to-edge band from giving every page a sideways scroll. */
+  overflow-x: clip;
+}
+
+.full-bleed {
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
 }
 
 /* Links in running text are underlined at rest, so colour is not their only cue (WCAG 1.4.1).

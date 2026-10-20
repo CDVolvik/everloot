@@ -23,7 +23,7 @@ export default async function Home() {
   // The launch banner, only with the game's own logo from the asset files.
   const launch = launchArt(assets);
   return (
-    <div className="space-y-16">
+    <div className="flex flex-col gap-16">
       <JsonLd data={organizationJsonLd()} />
       <JsonLd data={websiteJsonLd()} />
       {launch && (
