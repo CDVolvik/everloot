@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { track } from "@/lib/analytics/track";
 import AccountControls from "./AccountControls";
+import GameVersionLabel from "./GameVersionLabel";
 import { SuggestField } from "./ui/SearchBar";
 import { TOOL_GROUPS } from "@/data/tools";
 
@@ -158,6 +159,7 @@ export default function Header() {
             onClick={() => setSearchOpen(!searchOpen)}
             className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center text-fg-2 hover:text-accent xl:hidden"
           ><SearchIcon /></button>
+          <GameVersionLabel className="hidden shrink-0 sm:block" />
           <div className="hidden shrink-0 sm:block"><AccountControls /></div>
           <Link href="/addon" onClick={closeAll} className="btn btn-primary min-h-10 shrink-0 whitespace-nowrap px-4 text-sm">Get the addon</Link>
           <button ref={toggle} type="button" aria-label={open ? "Close menu" : "Menu"} aria-expanded={open} aria-controls="site-navigation" onClick={() => setOpen(!open)} className="btn min-h-10 shrink-0 px-3 text-sm lg:hidden">
