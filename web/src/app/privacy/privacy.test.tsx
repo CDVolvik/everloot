@@ -66,6 +66,25 @@ test("saved builds: what is kept, that characters are typed labels, that a share
   ]) expect(policy).toContain(claim);
 });
 
+test("profiles: private by default, what a public profile shows and never shows, and deletion", () => {
+  for (const claim of [
+    "a handle, a display name, a status",
+    "Your profile is private: only you see it.",
+    "only the parts you tick: your characters (name, class and realm), your shared builds and your status",
+    "It never shows your BattleTag, your email or a build you did not share",
+    "search engines index it only while it is public",
+    "Deleting your account deletes your profile with it.",
+    "unless you show your characters on a public profile",
+    "Handle, display name, status and profile choices: until you change them or delete your account.",
+  ]) expect(text).toContain(claim);
+  for (const claim of [
+    "## Profiles",
+    "Private by default.",
+    "It never shows the BattleTag, the email, a label's note or a build that is not shared.",
+    "A handle changes at most 5 times a day.",
+  ]) expect(policy).toContain(claim);
+});
+
 test("the retention list says how long census rows are kept", () => {
   expect(text).toContain("Census rows: as long as the upload they came in, and removed with it.");
 });
