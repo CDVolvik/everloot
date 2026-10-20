@@ -11,7 +11,7 @@ import { MAP_SOURCE } from "@/lib/world-map";
 import { Container, PageHeader, SectionHeading } from "@/components/ui";
 
 const description =
-  "How Everloot turns addon uploads into WoW Forever facts: three installs must agree, unrecorded never reads as zero, and names and addresses are never published.";
+  "How Everloot turns addon uploads into WoW Forever facts: three installs must agree, addresses are never published, and names only on the player pages.";
 
 export const metadata: Metadata = pageMetadata({ title: "How We Count WoW Forever Data", description, path: "/methodology" });
 
@@ -64,12 +64,13 @@ export default async function MethodologyPage() {
           <SectionHeading id="never">What we never publish</SectionHeading>
           <div className="space-y-4">
             <ul className="list-disc pl-6 space-y-1 text-fg-2">
-              <li>Character names, unless that player shares them on purpose from the <Link href="/upload" className={link}>upload page</Link>. Guild data needs an officer&apos;s upload.</li>
+              <li>Character names, unless that player shares them on purpose from the <Link href="/upload" className={link}>upload page</Link>, or the player pages are on: those show a character&apos;s name, realm, race, class, level, guild and the day it was last seen, and nothing else. Guild data needs an officer&apos;s upload.</li>
               <li>Your install id, or the address an upload came from. Where an address matters for counting, we keep a keyed hash in private storage.</li>
               <li>Your list of addons, row by row. It is off unless you turn it on, and only counts that three installs share are shown.</li>
             </ul>
             <p className="text-fg-2">
-              Uploaded observations are public as anonymous records, so anyone can check our counts.
+              Uploaded observations are public as anonymous records, so anyone can check our counts. Player rows are not
+              part of those records.
             </p>
           </div>
         </section>
