@@ -1,17 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { CLASSES } from "@/design/tokens";
 import { CURRENT_BUILD, TABLES, type BuffTable, type Scope } from "@/data/game-data/raid";
 import {
-  treeNames, SIZES, STATE_LABEL, coverage, decodeRaid, emptySlots, encodeRaid, findCode, groupsOf, resize,
+  treeNames, SIZES, STATE_LABEL, applyDrop, coverage, decodeRaid, describeRaid, emptySlots, encodeRaid, findCode, groupsOf, resize,
   titleCase, GROUP_SIZE, roster, swapSlots,
-  type ClassName, type FamilyCoverage, type Size, type Slot, type Slots, type State,
+  type ClassName, type DragSource, type DropTarget, type FamilyCoverage, type Size, type Slot, type Slots, type State,
 } from "@/lib/raid";
 import type { RaidArt } from "@/lib/game-assets";
 import GameIcon from "@/components/game/GameIcon";
 import SpellTip from "@/components/game/SpellTip";
-import { Card, DataTable, Input, SectionHeading, Segmented, type Column } from "@/components/ui";
+import { Badge, Card, DataTable, Input, SectionHeading, Segmented, type Column } from "@/components/ui";
 
 const table = TABLES[CURRENT_BUILD];
 
@@ -39,6 +39,14 @@ const SCOPE_TEXT: Record<Scope, string> = {
 };
 interface Snapshot { size: Size; slots: Slots }
 const HISTORY_LIMIT = 100;
+/** Pixels a mouse or pen moves before a press becomes a drag. */
+const DRAG_THRESHOLD = 5;
+/** A finger holds this long before a press becomes a drag, so a swipe still scrolls the page. */
+const TOUCH_HOLD_MS = 250;
+/** Within this many pixels of the window's top or bottom, a drag scrolls the page. */
+const EDGE = 48;
+/** Missing effects shown as chips; the rest are in the full coverage. */
+const MISSING_SHOWN = 12;
 
 function reach(f: FamilyCoverage, table: BuffTable): string {
   const scopes = [...new Set(f.entries.map((e) => SCOPE_TEXT[e.scope]))].join(", ");
@@ -49,6 +57,22 @@ function reach(f: FamilyCoverage, table: BuffTable): string {
   }))];
   return [scopes, ...needs].join(", ");
 }
+
+/** What is under the pointer: a slot, the trash, nothing (a gap between slots), or off the groups (the trash). */
+function targetAt(x: number, y: number): DropTarget | null {
+  const el = typeof document.elementFromPoint === "function" ? document.elementFromPoint(x, y) : null;
+  if (!el) return null;
+  const slot = el.closest<HTMLElement>("[data-drop-slot]");
+  if (slot) return { kind: "slot", index: Number(slot.dataset.dropSlot) };
+  if (el.closest("[data-drop-trash]")) return { kind: "trash" };
+  if (el.closest("[data-raid-groups]")) return null;
+  return { kind: "trash" };
+}
+
+const sameTarget = (a: DropTarget | null, b: DropTarget | null) =>
+  a === b || (!!a && !!b && a.kind === b.kind && (a.kind === "trash" || (b.kind === "slot" && a.index === b.index)));
+
+interface Drag { source: DragSource; over: DropTarget | null }
 
 /**
  * `art`: the game's class, tree and buff icons and the buffs' tooltips (lib/game-assets.ts), or null
@@ -68,17 +92,24 @@ export default function RaidBuilder({ art = null, initialCode }: { art?: RaidArt
   const [state, setState] = useState<Snapshot>({ size: 20, slots: emptySlots(20) });
   const [past, setPast] = useState<Snapshot[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
-  const [activeGroup, setActiveGroup] = useState(0);
+  // The class picked in the palette, placed by picking a slot: the keyboard and phone path for dragging.
+  const [armed, setArmed] = useState<ClassName | null>(null);
   const [linkBuild, setLinkBuild] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [paste, setPaste] = useState("");
   const [ready, setReady] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [dragFrom, setDragFrom] = useState<number | null>(null);
-  const [dragOver, setDragOver] = useState<number | null>(null);
+  const [drag, setDrag] = useState<Drag | null>(null);
   const [moveTo, setMoveTo] = useState("");
   const pickerRef = useRef<HTMLDivElement>(null);
   const slotRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const ghostRef = useRef<HTMLDivElement>(null);
+  const ghostAt = useRef({ x: 0, y: 0 });
+  const stopDrag = useRef<(() => void) | null>(null);
+  const dragging = useRef(false);
+  const layoutRef = useRef<HTMLElement>(null);
+  // A press that turned into a drag ends with a click on the button it started on; that click is not a pick.
+  const suppressClick = useRef(false);
 
   const { size, slots } = state;
 
@@ -109,7 +140,6 @@ export default function RaidBuilder({ art = null, initialCode }: { art?: RaidArt
     if (fromPaste) setPast((p) => [...p.slice(-(HISTORY_LIMIT - 1)), state]);
     setState({ size: s, slots: sl });
     setSelected(null);
-    setActiveGroup(0);
     setLinkBuild(build !== table.build ? build : null);
     setMessage(build !== table.build ? "" : "Raid loaded.");
   }, [state]);
@@ -152,10 +182,26 @@ export default function RaidBuilder({ art = null, initialCode }: { art?: RaidArt
         e.preventDefault();
         undo();
       }
+      if (e.key === "Escape" && armed) {
+        setArmed(null);
+        setMessage("Stopped placing.");
+      }
     };
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
-  }, [undo]);
+  }, [undo, armed]);
+
+  useEffect(() => () => stopDrag.current?.(), []);
+
+  // Once a finger is dragging, the page must not scroll under it. The listener is in place before any touch
+  // starts (a browser decides at touchstart whether a touch can block scrolling) and is non-passive.
+  useEffect(() => {
+    const el = layoutRef.current;
+    if (!el) return;
+    const onTouchMove = (ev: TouchEvent) => { if (dragging.current) ev.preventDefault(); };
+    el.addEventListener("touchmove", onTouchMove, { passive: false });
+    return () => el.removeEventListener("touchmove", onTouchMove);
+  }, []);
 
   const setSlot = (index: number, slot: Slot | null) => {
     const next = [...slots];
@@ -171,6 +217,7 @@ export default function RaidBuilder({ art = null, initialCode }: { art?: RaidArt
 
   const cov = useMemo(() => coverage(slots, table), [slots]);
   const ros = useMemo(() => roster(slots), [slots]);
+  const roles = useMemo(() => describeRaid(size, slots).roles, [size, slots]);
   const groups = groupsOf(slots);
   const current = selected === null ? null : slots[selected];
 
@@ -190,6 +237,129 @@ export default function RaidBuilder({ art = null, initialCode }: { art?: RaidArt
         : `Moved ${describe(mover ?? other)} to ${place(mover ? to : from)}.`,
     );
     return true;
+  };
+
+  // One drop or one placement: the step itself is lib/raid.ts's applyDrop; this records it and says what happened.
+  const drop = (source: DragSource, target: DropTarget) => {
+    if (source.kind === "slot" && target.kind === "slot") return moveMember(source.index, target.index);
+    const next = applyDrop(slots, source, target);
+    if (next === slots) return false;
+    commit({ size, slots: next });
+    if (source.kind === "slot") {
+      setMessage(`Removed ${describe(slots[source.index])} from ${place(source.index)}.`);
+    } else if (target.kind === "slot") {
+      const before = slots[target.index];
+      setMessage(before
+        ? `Replaced ${describe(before)} with ${titleCase(source.class)} in ${place(target.index)}.`
+        : `Added ${titleCase(source.class)} to ${place(target.index)}.`);
+    }
+    return true;
+  };
+  // The window listeners of a drag outlive the render that started it; they call the latest drop.
+  const dropRef = useRef(drop);
+  useEffect(() => { dropRef.current = drop; });
+
+  const moveGhost = (x: number, y: number) => {
+    ghostAt.current = { x, y };
+    if (ghostRef.current) ghostRef.current.style.transform = `translate(${x + 12}px, ${y + 12}px)`;
+  };
+
+  /**
+   * Pointer drag, for mouse, pen and touch alike. A mouse or pen drags once it moves a few pixels; a finger
+   * holds still briefly first, so a swipe still scrolls. Releasing over a slot drops there; over the trash
+   * or off the groups, a member leaves the raid; in a gap between slots, nothing happens. Escape cancels.
+   */
+  const startDrag = (source: DragSource) => (e: ReactPointerEvent<HTMLElement>) => {
+    if (e.button !== 0 || stopDrag.current) return;
+    const touch = e.pointerType === "touch";
+    const id = e.pointerId;
+    const start = { x: e.clientX, y: e.clientY };
+    let last = start;
+    let started = false;
+    let over: DropTarget | null = null;
+
+    const begin = () => {
+      started = true;
+      dragging.current = true;
+      setSelected(null);
+      moveGhost(last.x, last.y);
+      setDrag({ source, over: null });
+    };
+    const timer = touch ? window.setTimeout(begin, TOUCH_HOLD_MS) : undefined;
+
+    const stop = () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onCancel);
+      window.removeEventListener("keydown", onKey, true);
+      window.removeEventListener("contextmenu", onContextMenu);
+      stopDrag.current = null;
+      dragging.current = false;
+      setDrag(null);
+      if (started) {
+        suppressClick.current = true;
+        window.setTimeout(() => { suppressClick.current = false; }, 0);
+      }
+    };
+    const onMove = (ev: PointerEvent) => {
+      if (ev.pointerId !== id) return;
+      last = { x: ev.clientX, y: ev.clientY };
+      if (!started) {
+        if (Math.hypot(last.x - start.x, last.y - start.y) < DRAG_THRESHOLD) return;
+        if (touch) { stop(); return; } // a swipe before the hold: the page scrolls
+        begin();
+      }
+      moveGhost(last.x, last.y);
+      const target = targetAt(last.x, last.y);
+      if (!sameTarget(target, over)) {
+        over = target;
+        setDrag({ source, over: target });
+      }
+      if (last.y < EDGE) window.scrollBy(0, -12);
+      else if (last.y > window.innerHeight - EDGE) window.scrollBy(0, 12);
+    };
+    const onUp = (ev: PointerEvent) => {
+      if (ev.pointerId !== id) return;
+      const wasDragging = started;
+      stop();
+      if (!wasDragging) return;
+      const target = targetAt(ev.clientX, ev.clientY);
+      if (target) dropRef.current(source, target);
+    };
+    const onCancel = (ev: PointerEvent) => { if (ev.pointerId === id) stop(); };
+    const onKey = (ev: KeyboardEvent) => {
+      if (ev.key !== "Escape" || !started) return;
+      ev.stopPropagation();
+      stop();
+      setMessage("Drag cancelled.");
+    };
+    const onContextMenu = (ev: Event) => { if (touch) ev.preventDefault(); };
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onCancel);
+    window.addEventListener("keydown", onKey, true);
+    window.addEventListener("contextmenu", onContextMenu);
+    stopDrag.current = stop;
+  };
+
+  const pickClass = (c: ClassName) => {
+    if (suppressClick.current) return;
+    setSelected(null);
+    if (armed === c) {
+      setArmed(null);
+      setMessage("Stopped placing.");
+    } else {
+      setArmed(c);
+      setMessage(`${titleCase(c)} picked. Choose a slot, or press Escape to stop.`);
+    }
+  };
+
+  const pickSlot = (index: number) => {
+    if (suppressClick.current) return;
+    if (armed) { drop({ kind: "class", class: armed }, { kind: "slot", index }); return; }
+    setSelected(selected === index ? null : index);
   };
 
   useEffect(() => {
@@ -232,8 +402,21 @@ export default function RaidBuilder({ art = null, initialCode }: { art?: RaidArt
   ];
   const debuffColumns = buffColumns.slice(0, 2);
 
+  // Missing for at least one group; a party buff some groups do have names the groups without it.
+  const missing = [...cov.buffs, ...cov.debuffs].filter((f) => f.raid === "missing").map((f) => {
+    const lacking = f.groups.flatMap((s, g) => (s === "missing" ? [`G${g + 1}`] : []));
+    return { id: f.family.id, label: lacking.length < f.groups.length ? `${f.family.label} · ${lacking.join(" ")}` : f.family.label };
+  });
+  const debuffsCovered = cov.debuffs.filter((f) => f.raid === "covered").length;
+
+  const dragClass = drag ? (drag.source.kind === "class" ? drag.source.class : slots[drag.source.index]?.class ?? null) : null;
+  const overSlot = drag?.over?.kind === "slot" ? drag.over.index : null;
+  const overTrash = drag?.source.kind === "slot" && drag.over?.kind === "trash";
+  const draggable = "select-none [-webkit-touch-callout:none]";
+  const compact = "min-h-10 px-3 text-sm";
+
   return (
-    <div className="space-y-12">
+    <div className="space-y-8">
       {linkBuild && (
         <p role="status" className="text-sm text-warning">
           This link was made for build <span className="font-mono">{linkBuild}</span>. This page has rules for build{" "}
@@ -241,138 +424,124 @@ export default function RaidBuilder({ art = null, initialCode }: { art?: RaidArt
         </p>
       )}
 
-      <section aria-labelledby="raid-layout" className="space-y-4">
-        <SectionHeading id="raid-layout">Raid</SectionHeading>
+      <section ref={layoutRef} aria-labelledby="raid-layout" className="space-y-3">
+        <h2 id="raid-layout" className="sr-only">Raid</h2>
 
-        <div role="toolbar" aria-label="Raid controls" className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <Segmented
             label="Raid size"
             value={size}
             onChange={(s) => {
               if (s === size) return;
               setSelected(null);
-              setActiveGroup(0);
               commit({ size: s, slots: resize(slots, s) });
             }}
-            options={SIZES.map((s) => ({ value: s, label: `${s} players` }))}
+            options={SIZES.map((s) => ({ value: s, label: <>{s}<span className="sr-only"> players</span></> }))}
           />
-          <button type="button" className="btn text-sm" onClick={undo} disabled={past.length === 0}>Undo</button>
-          <button
-            type="button"
-            className="btn text-sm"
-            disabled={empty}
-            onClick={() => { setSelected(null); commit({ size, slots: emptySlots(size) }); }}
-          >
-            Clear raid
-          </button>
-          <button type="button" className="btn btn-primary text-sm sm:ml-auto" onClick={copy}>{copied ? "Copied" : "Copy link"}</button>
-        </div>
-        <p role="status" aria-live="polite" className="min-h-5 text-sm text-fg-2">{message}</p>
-
-        <Card padding="none" className="space-y-3 p-4">
-          <div role="group" aria-label="Roster summary" className="space-y-3">
-            <p className="text-sm text-fg-2">
-              <span className="font-medium text-fg">{ros.filled} of {size}</span> slots filled
-              {ros.filled > 0 && (
-                <>
-                  <span aria-hidden="true"> · </span>
-                  <span className="font-medium text-fg">Buffs covered: {cov.summary.covered} of {cov.buffs.length}</span>
-                </>
-              )}
-            </p>
-            {ros.filled === 0 ? (
-              <p className="text-sm text-muted">Pick a slot, then a class. The class count, the role split and the buffs they bring show here.</p>
-            ) : (
-              <>
-                <ul aria-label="Members per class" className="flex flex-wrap gap-2">
-                  {CLASSES.filter((c) => ros.classes[c] > 0).map((c) => (
-                    <li key={c} className={`inline-flex items-center gap-2 rounded-control border border-current px-3 py-1 text-sm font-medium ${CLASS_TEXT[c]}`}>
-                      {classIcon(c, 18, "")}
-                      {titleCase(c)}
-                      <span className="font-mono text-fg">{ros.classes[c]}</span>
-                    </li>
-                  ))}
-                </ul>
-                <p className="text-sm text-fg-2">
-                  Roles:{" "}
-                  <span className="text-fg">{ros.roles.tank} tank{ros.roles.tank === 1 ? "" : "s"}</span>,{" "}
-                  <span className="text-fg">{ros.roles.healer} healer{ros.roles.healer === 1 ? "" : "s"}</span>,{" "}
-                  <span className="text-fg">{ros.roles.damage} damage</span>
-                  {ros.roles.unknown > 0 && <>, <span className="text-fg">{ros.roles.unknown} not known</span> (any tree, or feral)</>}
-                </p>
-              </>
-            )}
+          <p data-raid-summary className="text-meta text-fg-2">
+            <span className="font-medium text-fg">{ros.filled} of {size}</span> filled
+            {ros.filled > 0 && <><span aria-hidden="true"> · </span>{roles}</>}
+          </p>
+          <div role="toolbar" aria-label="Raid controls" className="flex flex-wrap gap-2 sm:ml-auto">
+            <button type="button" className={`btn ${compact}`} onClick={undo} disabled={past.length === 0}>Undo</button>
+            <button
+              type="button"
+              className={`btn ${compact}`}
+              disabled={empty}
+              onClick={() => { setSelected(null); commit({ size, slots: emptySlots(size) }); }}
+            >
+              Clear
+            </button>
+            <button type="button" className={`btn btn-primary ${compact}`} onClick={copy}>{copied ? "Copied" : "Copy link"}</button>
           </div>
-        </Card>
-
-        <div className="md:hidden">
-          <Segmented stretch label="Group" value={activeGroup} onChange={setActiveGroup} options={groups.map((_, g) => ({ value: g, label: `G${g + 1}` }))} />
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="space-y-1.5">
+          <div role="group" aria-label="Classes" data-raid-palette className="grid grid-cols-3 gap-1.5 sm:grid-cols-5 lg:grid-cols-10">
+            {CLASSES.map((c) => {
+              const n = ros.classes[c];
+              return (
+                <button
+                  key={c}
+                  type="button"
+                  aria-pressed={armed === c}
+                  aria-label={`${titleCase(c)}, ${n} in the raid`}
+                  onPointerDown={startDrag({ kind: "class", class: c })}
+                  onDragStart={(e) => e.preventDefault()}
+                  onClick={() => pickClass(c)}
+                  className={`flex h-9 min-w-0 cursor-grab items-center gap-1.5 rounded-control border border-l-4 bg-canvas px-2 text-left text-control font-medium transition-colors duration-150 ${draggable} ${CLASS_TEXT[c]} ${CLASS_BORDER[c]} ${
+                    armed === c ? "border-accent" : "border-edge hover:border-fg-2"
+                  }`}
+                >
+                  {classIcon(c, 20, "")}
+                  <span className="min-w-0 truncate">{titleCase(c)}</span>
+                  {n > 0 && <span aria-hidden="true" className="ml-auto font-mono text-cell-2 text-fg-2">{n}</span>}
+                </button>
+              );
+            })}
+            <div
+              data-drop-trash
+              className={`flex h-9 items-center justify-center rounded-control border border-dashed px-2 text-cell-2 transition-colors duration-150 ${
+                overTrash ? "border-danger text-danger" : "border-edge text-muted"
+              }`}
+            >
+              Drop to remove
+            </div>
+          </div>
+          <p className="text-cell-2 text-muted">
+            {armed ? (
+              <>
+                Placing <span className={`font-medium ${CLASS_TEXT[armed]}`}>{titleCase(armed)}</span>: pick a slot.{" "}
+                <button type="button" className="text-fg-2 underline underline-offset-2 hover:text-fg" onClick={() => { setArmed(null); setMessage("Stopped placing."); }}>
+                  Stop
+                </button>
+              </>
+            ) : (
+              "Drag a class into a slot, or pick a class and then a slot. Pick a filled slot to set its tree."
+            )}
+          </p>
+        </div>
+
+        <p role="status" aria-live="polite" className="min-h-5 text-meta text-fg-2">{message}</p>
+
+        <div data-raid-groups className="grid grid-cols-2 gap-2 md:grid-cols-4">
           {groups.map((group, g) => (
-            <div key={g} role="group" aria-label={`Group ${g + 1}`} className={`${g === activeGroup ? "block" : "hidden"} min-w-0 md:block`}>
-              <Card padding="none" className="space-y-2 p-3">
-                <h3 className="text-sm font-semibold text-fg-2">Group {g + 1}</h3>
-                <ul className="space-y-2">
+            <div key={g} role="group" aria-label={`Group ${g + 1}`} className="min-w-0">
+              <Card padding="none" className="p-2">
+                <h3 className="mb-1.5 px-1 text-th text-muted">Group {g + 1}</h3>
+                <ul className="space-y-1">
                   {group.map((slot, k) => {
                     const index = g * GROUP_SIZE + k;
                     const treeName = slot && slot.tree ? treeNames(table, slot.class)[slot.tree - 1] : "any tree";
-                    const over = dragOver === index && dragFrom !== null && dragFrom !== index;
+                    const source = drag?.source.kind === "slot" && drag.source.index === index;
+                    const over = overSlot === index && !source;
                     return (
-                      <li
-                        key={k}
-                        onDragOver={(e) => {
-                          if (dragFrom === null) return;
-                          e.preventDefault();
-                          e.dataTransfer.dropEffect = "move";
-                          if (dragOver !== index) setDragOver(index);
-                        }}
-                        onDragLeave={(e) => {
-                          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragOver((d) => (d === index ? null : d));
-                        }}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          const from = dragFrom;
-                          setDragFrom(null);
-                          setDragOver(null);
-                          if (from === null) return;
-                          setSelected(null);
-                          moveMember(from, index);
-                        }}
-                      >
+                      <li key={k}>
                         <button
                           type="button"
+                          data-drop-slot={index}
                           ref={(el) => { slotRefs.current[index] = el; }}
                           aria-pressed={selected === index}
                           aria-label={`Group ${g + 1}, slot ${k + 1}: ${slot ? `${titleCase(slot.class)}, ${treeName}` : "empty"}`}
-                          onClick={() => setSelected(selected === index ? null : index)}
-                          draggable={!!slot}
-                          onDragStart={(e) => {
-                            e.dataTransfer.effectAllowed = "move";
-                            e.dataTransfer.setData("text/plain", String(index));
-                            setDragFrom(index);
-                          }}
-                          onDragEnd={() => { setDragFrom(null); setDragOver(null); }}
-                          className={`flex min-h-14 w-full items-center gap-3 rounded-control border px-3 text-left transition-colors duration-150 ${
+                          onClick={() => pickSlot(index)}
+                          onPointerDown={slot ? startDrag({ kind: "slot", index }) : undefined}
+                          onDragStart={(e) => e.preventDefault()}
+                          className={`flex h-9 w-full min-w-0 items-center gap-2 rounded-control border px-2 text-left transition-colors duration-150 ${draggable} ${
                             slot
                               ? `border-l-4 bg-canvas ${CLASS_BORDER[slot.class]} cursor-grab ${selected === index ? "border-accent" : "border-edge hover:border-fg-2"}`
                               : `border-dashed ${selected === index ? "border-accent" : "border-edge hover:border-fg-2"}`
-                          } ${over ? "!border-accent bg-panel ring-1 ring-accent" : ""} ${dragFrom === index ? "!border-accent border-dashed" : ""}`}
+                          } ${over ? "!border-accent bg-panel ring-1 ring-accent" : ""} ${source ? "!border-accent border-dashed" : ""}`}
                         >
                           {slot ? (
                             <>
-                              {classIcon(slot.class, 32, "")}
-                              <span className="min-w-0">
-                                <span className={`block font-medium ${CLASS_TEXT[slot.class]}`}>{titleCase(slot.class)}</span>
-                                <span className="flex items-center gap-1.5 text-sm text-fg-2">
-                                  {treeIcon(slot.class, slot.tree, 16, "")}
-                                  {treeName}
-                                </span>
+                              {classIcon(slot.class, 20, "")}
+                              <span className="min-w-0 truncate text-cell">
+                                <span className={`font-medium ${CLASS_TEXT[slot.class]}`}>{titleCase(slot.class)}</span>{" "}
+                                <span className="text-cell-2 text-fg-2">{treeName}</span>
                               </span>
                             </>
                           ) : (
-                            <span className="text-sm text-muted"><span aria-hidden="true">+ </span>Add</span>
+                            <span className="text-cell-2 text-muted"><span aria-hidden="true">+ </span>Add</span>
                           )}
                         </button>
                       </li>
@@ -384,25 +553,38 @@ export default function RaidBuilder({ art = null, initialCode }: { art?: RaidArt
           ))}
         </div>
 
+        {drag && dragClass && (
+          <div
+            ref={ghostRef}
+            aria-hidden="true"
+            data-drag-ghost
+            className={`pointer-events-none fixed left-0 top-0 z-50 flex h-9 items-center gap-1.5 rounded-control border border-l-4 border-accent bg-panel px-2 text-control font-medium ${CLASS_TEXT[dragClass]} ${CLASS_BORDER[dragClass]}`}
+            style={{ transform: `translate(${ghostAt.current.x + 12}px, ${ghostAt.current.y + 12}px)` }}
+          >
+            {classIcon(dragClass, 20, "")}
+            {titleCase(dragClass)}
+          </div>
+        )}
+
         {selected !== null && (
           <div
             ref={pickerRef}
             tabIndex={-1}
             role="group"
             aria-label={`Pick for group ${Math.floor(selected / GROUP_SIZE) + 1}, slot ${(selected % GROUP_SIZE) + 1}`}
-            className="space-y-4 rounded-card border border-accent bg-panel p-4"
+            className="space-y-3 rounded-card border border-accent bg-panel p-3"
             onKeyDown={(e) => { if (e.key === "Escape") closePicker(); }}
           >
-            <h3 className="text-base font-semibold text-fg">
+            <h3 className="text-h2-sm text-fg">
               Group {Math.floor(selected / GROUP_SIZE) + 1}, slot {(selected % GROUP_SIZE) + 1}
             </h3>
-            <div role="group" aria-label="Class" className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+            <div role="group" aria-label="Class" className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:grid-cols-5">
               {CLASSES.map((c) => (
                 <button
                   key={c}
                   type="button"
                   aria-pressed={current?.class === c}
-                  className={`flex min-h-11 items-center gap-2 rounded-control border border-l-4 bg-canvas px-3 text-left font-medium transition-colors ${CLASS_TEXT[c]} ${CLASS_BORDER[c]} ${
+                  className={`flex min-h-10 items-center gap-2 rounded-control border border-l-4 bg-canvas px-3 text-left font-medium transition-colors ${CLASS_TEXT[c]} ${CLASS_BORDER[c]} ${
                     current?.class === c ? "border-accent" : "border-edge hover:border-fg-2"
                   }`}
                   onClick={() => setSlot(selected, { class: c, tree: current?.class === c ? current.tree : 0 })}
@@ -412,14 +594,14 @@ export default function RaidBuilder({ art = null, initialCode }: { art?: RaidArt
                 </button>
               ))}
             </div>
-            <div role="group" aria-label="Talent tree" className="flex flex-wrap gap-2">
+            <div role="group" aria-label="Talent tree" className="flex flex-wrap gap-1.5">
               {([0, 1, 2, 3] as const).map((t) => (
                 <button
                   key={t}
                   type="button"
                   disabled={!current}
                   aria-pressed={!!current && current.tree === t}
-                  className={`flex min-h-11 items-center gap-2 rounded-control border px-3 disabled:opacity-50 ${current ? CLASS_TEXT[current.class] : "text-fg"} ${
+                  className={`flex min-h-10 items-center gap-2 rounded-control border px-3 disabled:opacity-50 ${current ? CLASS_TEXT[current.class] : "text-fg"} ${
                     current && current.tree === t ? "border-accent" : "border-edge"
                   }`}
                   onClick={() => current && setSlot(selected, { class: current.class, tree: t })}
@@ -436,7 +618,7 @@ export default function RaidBuilder({ art = null, initialCode }: { art?: RaidArt
                   id="raid-move"
                   value={moveTo}
                   onChange={(e) => setMoveTo(e.target.value)}
-                  className="min-h-11 rounded-control border border-edge bg-canvas px-3 text-sm text-fg"
+                  className="min-h-10 rounded-control border border-edge bg-canvas px-3 text-sm text-fg"
                 >
                   <option value="">Choose a slot</option>
                   {slots.map((s, i) => i === selected ? null : (
@@ -445,15 +627,12 @@ export default function RaidBuilder({ art = null, initialCode }: { art?: RaidArt
                 </select>
                 <button
                   type="button"
-                  className="btn"
+                  className={`btn ${compact}`}
                   disabled={moveTo === ""}
                   onClick={() => {
                     const to = Number(moveTo);
                     setMoveTo("");
-                    if (moveMember(selected, to)) {
-                      setSelected(to);
-                      setActiveGroup(Math.floor(to / GROUP_SIZE));
-                    }
+                    if (moveMember(selected, to)) setSelected(to);
                   }}
                 >
                   Move
@@ -461,59 +640,83 @@ export default function RaidBuilder({ art = null, initialCode }: { art?: RaidArt
               </div>
             )}
             <div className="flex gap-2">
-              <button type="button" className="btn" disabled={!current} onClick={() => setSlot(selected, null)}>Clear slot</button>
-              <button type="button" className="btn" onClick={closePicker}>Done</button>
+              <button type="button" className={`btn ${compact}`} disabled={!current} onClick={() => setSlot(selected, null)}>Clear slot</button>
+              <button type="button" className={`btn ${compact}`} onClick={closePicker}>Done</button>
             </div>
           </div>
         )}
       </section>
 
-      <section aria-labelledby="raid-coverage" className="space-y-4">
+      <section aria-labelledby="raid-coverage" className="space-y-3">
         <SectionHeading
           id="raid-coverage"
           note={
             <span role="status" aria-live="polite">
-              Buffs, for the raid: {cov.summary.covered} yes, {cov.summary.cast} by cast, {cov.summary.possible} if talented,{" "}
-              {cov.summary.unknown} unknown reach, {cov.summary.missing} missing.
+              Buffs for the whole raid: {cov.summary.covered} of {cov.buffs.length} yes, {cov.summary.cast} by cast,{" "}
+              {cov.summary.possible} if talented, {cov.summary.unknown} unknown reach, {cov.summary.missing} missing.
+              Debuffs: {debuffsCovered} of {cov.debuffs.length}.
             </span>
           }
         >
           Coverage
         </SectionHeading>
-        <DataTable caption="Buffs, per group" columns={buffColumns} rows={cov.buffs} rowKey={(f) => f.family.id} />
-        <DataTable caption="Debuffs on the enemy" columns={debuffColumns} rows={cov.debuffs} rowKey={(f) => f.family.id} />
-        <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-[auto_1fr]">
-          {(Object.keys(STATE_LABEL) as State[]).map((s) => (
-            <div key={s} className="contents">
-              <dt className={`font-medium ${STATE_TEXT[s]}`}>{STATE_SHORT[s]}</dt>
-              <dd className="text-fg-2">{LEGEND[s]}</dd>
-            </div>
-          ))}
-        </dl>
+        {ros.filled === 0 ? (
+          <p className="text-meta text-muted">Add classes to see what the raid is missing.</p>
+        ) : missing.length === 0 ? (
+          <p className="text-meta text-fg-2">Nothing missing.</p>
+        ) : (
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1.5">
+            <h3 id="raid-missing" className="text-meta font-medium text-fg">Missing ({missing.length})</h3>
+            <ul aria-labelledby="raid-missing" data-raid-missing className="flex flex-wrap items-center gap-1.5">
+              {missing.slice(0, MISSING_SHOWN).map((m) => <li key={m.id}><Badge tone="neutral">{m.label}</Badge></li>)}
+            </ul>
+            {missing.length > MISSING_SHOWN && <span className="text-meta text-muted">and {missing.length - MISSING_SHOWN} more in the full coverage</span>}
+          </div>
+        )}
+        <details data-coverage-details className="group border-t border-line">
+          <summary className="flex min-h-10 cursor-pointer list-none items-center gap-2 py-2 text-control font-medium text-fg-2 hover:text-fg [&::-webkit-details-marker]:hidden">
+            <span aria-hidden="true" className="font-mono text-muted transition-transform group-open:rotate-45">+</span>
+            Show full coverage
+          </summary>
+          <div className="space-y-4 pt-2">
+            <DataTable caption="Buffs, per group" columns={buffColumns} rows={cov.buffs} rowKey={(f) => f.family.id} />
+            <DataTable caption="Debuffs on the enemy" columns={debuffColumns} rows={cov.debuffs} rowKey={(f) => f.family.id} />
+            <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-[auto_1fr]">
+              {(Object.keys(STATE_LABEL) as State[]).map((s) => (
+                <div key={s} className="contents">
+                  <dt className={`font-medium ${STATE_TEXT[s]}`}>{STATE_SHORT[s]}</dt>
+                  <dd className="text-fg-2">{LEGEND[s]}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </details>
       </section>
 
-      <section aria-labelledby="raid-share" className="space-y-3">
+      <section aria-labelledby="raid-share" className="space-y-2">
         <SectionHeading id="raid-share" note="Anyone with the link sees the same raid.">Share</SectionHeading>
-        <div className="flex flex-wrap gap-2">
-          <label className="sr-only" htmlFor="raid-link">Share link</label>
-          <Input id="raid-link" mono readOnly value={link} className="flex-1 basis-60 text-sm" />
-          <button type="button" className="btn" onClick={copy}>{copied ? "Copied" : "Copy link"}</button>
+        <div className="grid gap-2 lg:grid-cols-2">
+          <div className="flex gap-2">
+            <label className="sr-only" htmlFor="raid-link">Share link</label>
+            <Input id="raid-link" mono readOnly value={link} className="min-h-10 py-1.5 text-sm" />
+            <button type="button" className={`btn shrink-0 ${compact}`} onClick={copy}>{copied ? "Copied" : "Copy"}</button>
+          </div>
+          <form
+            className="flex gap-2"
+            onSubmit={(e) => { e.preventDefault(); load(paste, true); }}
+          >
+            <label className="sr-only" htmlFor="raid-paste">Raid code or link</label>
+            <Input
+              id="raid-paste"
+              mono
+              value={paste}
+              onChange={(e) => setPaste(e.target.value)}
+              placeholder="Paste a raid code or link"
+              className="min-h-10 py-1.5 text-sm"
+            />
+            <button type="submit" className={`btn shrink-0 ${compact}`} disabled={!paste.trim()}>Load</button>
+          </form>
         </div>
-        <form
-          className="flex flex-wrap gap-2"
-          onSubmit={(e) => { e.preventDefault(); load(paste, true); }}
-        >
-          <label className="sr-only" htmlFor="raid-paste">Raid code or link</label>
-          <Input
-            id="raid-paste"
-            mono
-            value={paste}
-            onChange={(e) => setPaste(e.target.value)}
-            placeholder="Paste a raid code or link, for example from /everloot raid code"
-            className="flex-1 basis-60 text-sm"
-          />
-          <button type="submit" className="btn" disabled={!paste.trim()}>Load</button>
-        </form>
       </section>
     </div>
   );
