@@ -1,6 +1,6 @@
 import AdSlot from "@/components/AdSlot";
 import JsonLd from "@/components/JsonLd";
-import { Container, Disclosure, PageHeader, SectionHeading, SourceLine } from "@/components/ui";
+import { Container, Disclosure, PageHeader, SectionHeading } from "@/components/ui";
 import { trailFor } from "@/lib/breadcrumbs";
 import { webApplicationJsonLd } from "@/lib/jsonld";
 import { loadSiteAssets } from "@/lib/game-assets";
@@ -72,8 +72,6 @@ export default async function TalentClassView({ slug, initialCodes }: { slug: Ta
           {answers.layoutAnswer && <p>{answers.layoutAnswer}</p>}
         </Disclosure>
       </section>
-
-      <SourceLine build={catalog.build}>talent names &copy; Blizzard Entertainment</SourceLine>
     </Container>
   );
 }

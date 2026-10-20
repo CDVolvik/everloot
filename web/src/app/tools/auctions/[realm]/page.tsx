@@ -3,10 +3,8 @@ import { notFound, permanentRedirect } from "next/navigation";
 import { pageMetadata } from "@/lib/seo";
 import { MARKET_RULE } from "../../../../../../kb/src/market";
 import { uploadStore } from "@/lib/upload-store";
-import { dataAgeLabel } from "@/lib/data-age";
-import GameCredit from "@/components/game/GameCredit";
 import { trailFor } from "@/lib/breadcrumbs";
-import { Card, Container, Disclosure, EmptyState, PageHeader, SectionHeading, SourceLine } from "@/components/ui";
+import { Card, Container, Disclosure, EmptyState, PageHeader, SectionHeading } from "@/components/ui";
 import {
   AH_PATH, agreementSoFar, findBoard, indexable, loadAuctionNames, realmBoards, realmHref, slugParam, slugWords,
 } from "@/lib/auction-house";
@@ -52,7 +50,7 @@ export default async function RealmPage(props: Props) {
   if (decodeURIComponent(raw) !== slug) permanentRedirect(realmHref({ slug }));
   const state = market.state;
   const names = await loadAuctionNames();
-  const { assets, tips } = await itemArt(board ? boardItemIds(board.rows, now, ALL_ITEMS) : []);
+  const { tips } = await itemArt(board ? boardItemIds(board.rows, now, ALL_ITEMS) : []);
   const trail = [...trailFor(AH_PATH)!, { name, path: realmHref({ slug }) }];
 
   return (
@@ -98,8 +96,6 @@ export default async function RealmPage(props: Props) {
         </Disclosure>
       </div>
 
-      {assets && tips.size > 0 && <div className="mt-8"><GameCredit version={assets.version} label={assets.label} /></div>}
-      <SourceLine confirmed>{state ? dataAgeLabel(market.dataAsOf) : "Data age unrecorded"}</SourceLine>
     </Container>
   );
 }

@@ -45,7 +45,13 @@ test("names the deployed build only when one is known", () => {
 
 test("states the code and data licences", () => {
   expect(text()).toContain("R21 Media Group, LLC. ");
-  expect(text()).toContain("Code AGPL-3.0, data CC BY-SA 4.0.");
+  expect(text()).toContain("Code AGPL-3.0.");
+  expect(text()).toContain("Everloot data CC BY-SA 4.0");
+});
+
+test("one site-wide credit line, linked to the full credits on /methodology", () => {
+  expect(text()).toContain("Game data and art © Blizzard Entertainment · Everloot data CC BY-SA 4.0 · Item names from the Warcraft Wiki (CC BY-SA 4.0) · Credits");
+  expect(html()).toMatch(/<p data-site-credit[^>]*>[\s\S]*href="\/methodology#credits"[\s\S]*<\/p>/);
 });
 
 test("carries the full Blizzard trademark sentence", () => {

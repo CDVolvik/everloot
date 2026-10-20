@@ -64,7 +64,8 @@ export default function Footer() {
   const sha = deployedSha();
   return (
     <footer className="mt-24 border-t border-line">
-      <div className="mx-auto max-w-wide px-4 pb-8 pt-12">
+      {/* The data column's width and gutters, like the header, so its columns line up with the data tables. */}
+      <div className="mx-auto max-w-data px-4 pb-8 pt-12 lg:px-6">
         <nav aria-label="Footer">
           <div className="grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-[2fr_1fr_1fr_1fr]">
             <div className="col-span-2 md:col-span-1">
@@ -97,8 +98,13 @@ export default function Footer() {
           </div>
         </nav>
         <div className="mt-4 space-y-2 text-xs leading-relaxed text-muted">
+          {/* The site-wide credit: it stands in for a per-page credit line (docs/DATA_POLICY.md). */}
+          <p data-site-credit>
+            Game data and art &copy; Blizzard Entertainment · Everloot data CC BY-SA 4.0 · Item names from the Warcraft Wiki
+            (CC BY-SA 4.0) · <Link href="/methodology#credits" className="text-fg-2 underline underline-offset-4 hover:text-accent transition">Credits</Link>
+          </p>
           <p>
-            &copy; {year} {OPERATOR}. Code AGPL-3.0, data CC BY-SA 4.0.
+            &copy; {year} {OPERATOR}. Code AGPL-3.0.
             {sha && <> Build <a href={sourceUrl()} rel="noopener" className="font-mono hover:text-accent transition">{sha.slice(0, 7)}</a>.</>}
             {" "}Contact: <a href={`mailto:${CONTACT_EMAIL}`} className="hover:text-accent transition">{CONTACT_EMAIL}</a>
           </p>

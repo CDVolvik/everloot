@@ -9,7 +9,7 @@ import { loadPopularAddons } from "@/lib/rollup-compute";
 import { REPO_URL } from "@/lib/source";
 import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
 import { trailFor } from "@/lib/breadcrumbs";
-import { Card, Container, EmptyState, Explainer, Facts, PageHeader, SectionHeading, SourceLine } from "@/components/ui";
+import { Card, Container, EmptyState, Explainer, Facts, PageHeader, SectionHeading } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -260,9 +260,6 @@ export default async function AddonProfilePage({ params }: Props) {
           </p>
           <p>Addon lists are never published row by row, only these counts.</p>
         </Explainer>
-        <SourceLine source="Install counts from Everloot uploads; repository facts from GitHub" licence="Counts CC BY-SA 4.0">
-          <a href={`${REPO_URL}/blob/main/docs/DATA_POLICY.md`} rel={EXT} className={link}>Data policy</a>
-        </SourceLine>
       </article>
     </Container>
   );

@@ -5,13 +5,11 @@ import { pageMetadata } from "@/lib/seo";
 import { formatCopper, MARKET_RULE } from "../../../../../../../kb/src/market";
 import { auctionSightingsFromRecords, handleAuctionHistory } from "../../../../../../../kb/src/auction-history";
 import { STORAGE_UNREACHABLE, uploadStore } from "@/lib/upload-store";
-import { dataAgeLabel } from "@/lib/data-age";
 import { marketDatasetJsonLd } from "@/lib/jsonld";
 import JsonLd from "@/components/JsonLd";
-import GameCredit from "@/components/game/GameCredit";
 import GameIcon from "@/components/game/GameIcon";
 import { trailFor } from "@/lib/breadcrumbs";
-import { Card, Container, Disclosure, EmptyState, PageHeader, SectionHeading, SourceLine, Tabs } from "@/components/ui";
+import { Card, Container, Disclosure, EmptyState, PageHeader, SectionHeading, Tabs } from "@/components/ui";
 import {
   AH_PATH, agreementSoFar, crossRealmHref, findBoard, indexable, itemAcrossRealms, itemHref, itemIdParam, itemLabel,
   loadAuctionNames, money, realmBoards, realmHref, slugParam, slugWords,
@@ -58,7 +56,7 @@ export default async function RealmItemPage(props: Props) {
   if (decodeURIComponent(raw.realm) !== slug) permanentRedirect(itemHref({ slug }, itemId));
   const state = market.state;
   // Art only for an item with a public price somewhere: an id typed into the URL may be unreleased.
-  const { assets, tips } = await itemArt(row || others.length ? [itemId] : []);
+  const { tips } = await itemArt(row || others.length ? [itemId] : []);
   const tip = tips.get(itemId);
   const quality = qualityOf(tip) ?? undefined;
   const corpus = row ? await uploadStore.loadCorpus() : null;
@@ -158,8 +156,6 @@ export default async function RealmItemPage(props: Props) {
         </div>
       </div>
 
-      {assets && tip && <div className="mt-8"><GameCredit version={assets.version} label={assets.label} /></div>}
-      <SourceLine confirmed>{state ? dataAgeLabel(market.dataAsOf) : "Data age unrecorded"}</SourceLine>
     </Container>
   );
 }
