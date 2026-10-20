@@ -15,12 +15,11 @@ export interface Column<Row> {
   nowrap?: boolean;
 }
 
-/** A column that can be left out: `blank` says a cell has nothing to say ("—", 0, no id). */
+/** A column a list can leave out (filledColumns): `blank` says a cell has nothing to say ("—", 0, no id). */
 export type SparseColumn<Row> = Column<Row> & { blank?: (row: Row) => boolean };
 
 export interface DataTableProps<Row> {
-  /** A column blank on every row shown is left out (filledColumns). */
-  columns: SparseColumn<Row>[];
+  columns: Column<Row>[];
   rows: Row[];
   rowKey: (row: Row) => string;
   /** What the table lists, for screen readers and the scroll region's name. */
@@ -47,8 +46,8 @@ export interface DataTableProps<Row> {
 
 /**
  * The columns with something to say for these rows: one whose `blank` holds on every row (a count nobody has
- * reported yet, an id the results do not have) is noise. The table applies it to the rows it shows; a list
- * passes its whole result through it first, so a column does not come and go from page to page.
+ * reported yet, an id the results do not have) is noise. A list passes its whole result, not one page, so a
+ * column does not come and go from page to page.
  */
 export function filledColumns<Row>(columns: SparseColumn<Row>[], rows: readonly Row[]): SparseColumn<Row>[] {
   return rows.length ? columns.filter((col) => !col.blank || !rows.every(col.blank)) : columns;
@@ -60,8 +59,7 @@ const ariaSort = (direction: SortDirection) => (direction === "asc" ? "ascending
  * The one table: dense rows in a card frame. A wide table scrolls inside its frame, never the page.
  * Names go in their quality colour through QUALITY_TEXT. Rendered on the server; sorting is a link.
  */
-export default function DataTable<Row>(given: DataTableProps<Row>) {
-  const props = { ...given, columns: filledColumns(given.columns, given.rows) };
+export default function DataTable<Row>(props: DataTableProps<Row>) {
   if (props.dense) return <DenseTable {...props} />;
   const { columns, rows, rowKey, caption, sort, sortHref, empty, footer, toolbar } = props;
   return (

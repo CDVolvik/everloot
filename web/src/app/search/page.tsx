@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import LoreSearchForm from "@/components/LoreSearchForm";
-import { Container, DataTable, DataTitle, Entry, EntryList, LinkTabs, Pager, QUALITY_TEXT, SearchBar, qualityOf, type SparseColumn } from "@/components/ui";
+import { Container, DataTable, DataTitle, Entry, EntryList, filledColumns, LinkTabs, Pager, QUALITY_TEXT, SearchBar, qualityOf, type SparseColumn } from "@/components/ui";
 import { CC_BY_SA } from "@/lib/jsonld";
 import { BROWSE_HEADINGS, BROWSE_TYPES, hasTypes, loreSlug, MAX_QUERY, searchLore, UNAVAILABLE, UNAVAILABLE_COPY, type BrowseSlug, type LoreType } from "@/lib/lore";
 import { isScope, siteSearch, type Scope, type SearchGroup, type SearchResult } from "@/lib/site-search";
@@ -104,7 +104,7 @@ function ResultTable({ group, q, scoped }: { group: SearchGroup; q: string; scop
       <DataTable
         dense
         caption={`${group.heading} matching ${q}`}
-        columns={columns}
+        columns={filledColumns(columns, group.results)}
         rows={group.results}
         rowKey={(r) => r.href}
         meta={(r) => (group.type === "item" ? [r.meta, r.id !== undefined && `ID ${r.id}`] : [r.id !== undefined ? `ID ${r.id}` : r.note]).filter(Boolean).join(" · ")}

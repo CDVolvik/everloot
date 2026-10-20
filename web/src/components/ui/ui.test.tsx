@@ -15,7 +15,7 @@ import AgreementMeter, { agreementLabel, clampAgreement } from "./AgreementMeter
 import Badge from "./Badge";
 import Card from "./Card";
 import Container from "./Container";
-import DataTable, { type Column, type SparseColumn } from "./DataTable";
+import DataTable, { filledColumns, type Column, type SparseColumn } from "./DataTable";
 import EmptyState from "./EmptyState";
 import { pageWindow } from "./Pager";
 import PageHeader from "./PageHeader";
@@ -217,14 +217,14 @@ describe("DataTable", () => {
     expect(html).not.toContain("overflow-x-auto");
   });
 
-  test("a column blank on every row is left out; one value anywhere keeps it", () => {
+  test("filledColumns leaves out a column blank on every row; one value anywhere keeps it", () => {
     const withSource: SparseColumn<Row>[] = [...columns, { key: "src", header: "Source", cell: (r) => (r.count ? "Drop" : "—"), blank: (r) => !r.count }];
-    const none = render(<DataTable dense caption="Items" columns={withSource} rows={[rows[1]]} rowKey={(r) => String(r.id)} />);
-    expect(none).not.toContain("Source");
-    expect(none.match(/<th /g)).toHaveLength(2);
-    expect(render(<DataTable dense caption="Items" columns={withSource} rows={rows} rowKey={(r) => String(r.id)} />)).toContain("Source");
+    const keys = (rs: Row[]) => filledColumns(withSource, rs).map((c) => c.key);
+    expect(keys([rows[1]])).toEqual(["name", "count"]);
+    expect(keys(rows)).toEqual(["name", "count", "src"]);
     // With no rows the headers stay as given.
-    expect(render(<DataTable caption="Items" columns={withSource} rows={[]} rowKey={(r) => String(r.id)} />)).toContain("Source");
+    expect(keys([])).toEqual(["name", "count", "src"]);
+    expect(render(<DataTable dense caption="Items" columns={filledColumns(withSource, [rows[1]])} rows={[rows[1]]} rowKey={(r) => String(r.id)} />)).not.toContain("Source");
   });
 
   test("the numbered pager keeps the first, the last and the neighbours of the current page", () => {
