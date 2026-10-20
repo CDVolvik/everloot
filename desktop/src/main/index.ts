@@ -16,7 +16,7 @@ import { createChat } from "./chat";
 import { localTools } from "./local-tools";
 import { createEngine } from "./engine";
 import { allowedExternal } from "./external";
-import { candidateRoots, detectGameFolders, realFs } from "./game-folder";
+import { candidateRoots, detectGameFolders, realFs, resolvePickedFolder } from "./game-folder";
 import { newestScans, readScanAges, staleScans, summarizeFiles } from "./inspect";
 import { companionJobs } from "./jobs";
 import { itemIdFrom, listRealms, ownRealms, priceRows, readPricesFile } from "./market";
@@ -213,7 +213,7 @@ if (!app.requestSingleInstanceLock()) {
     return appState();
   });
   ipcMain.handle("detectGameFolders", () => detectGameFolders(candidateRoots({ platform: process.platform, env: process.env, home: homedir() }), realFs));
-  ipcMain.handle("pickGameFolder", () => pick({ title: "Pick the game folder that holds WTF", properties: ["openDirectory"] }));
+  ipcMain.handle("pickGameFolder", async () => { const p = await pick({ title: "Pick the game folder that holds WTF", properties: ["openDirectory"] }); return p && resolvePickedFolder(p, realFs); });
   ipcMain.handle("pickTokenFile", () => pick({ title: "Pick the file that holds your MCP token", properties: ["openFile"] }));
   ipcMain.handle("runNow", (_e, job: unknown) => { if (JOBS.includes(job as Job)) return engine.runNow(job as Job); });
   ipcMain.handle("setPaused", (_e, paused: unknown) => engine.setPaused(paused === true));

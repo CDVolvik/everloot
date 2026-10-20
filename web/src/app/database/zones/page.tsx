@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Container, DataTable, PageHeader, SectionHeading, SourceLine, type Column } from "@/components/ui";
+import { Container, DataTable, PageHeader, SectionHeading, type Column } from "@/components/ui";
 import { trailFor } from "@/lib/breadcrumbs";
 import { loadWorldFacts } from "@/lib/rollup-compute";
 import { pageMetadata } from "@/lib/seo";
@@ -47,14 +47,10 @@ export default async function ZonesPage() {
           {continents.map((c) => (
             <section key={c.id} aria-labelledby={`continent-${c.id}`}>
               <SectionHeading id={`continent-${c.id}`} note={`${c.rows.length} zones`}>{c.name}</SectionHeading>
-              <DataTable caption={`Zones of ${c.name}`} columns={columns} rows={c.rows} rowKey={(z) => String(z.mapId)} />
+              <DataTable dense caption={`Zones of ${c.name}`} columns={columns} rows={c.rows} rowKey={(z) => String(z.mapId)} />
             </section>
           ))}
         </div>
-        <p className="mt-8 max-w-[65ch] text-sm text-muted">
-          Zones found only in the game files, which may not be released, are not listed. Counts are what 3 installs agree on; dungeon and raid entrances are read from the game files.
-        </p>
-        <SourceLine build={WORLD_MAP.source.version} licence="Zone list and entrances are Blizzard's data; counts are player reports under CC BY-SA 4.0" />
       </Container>
     </article>
   );

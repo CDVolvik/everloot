@@ -1,20 +1,20 @@
 {
   "schema": 1,
-  "refreshedAt": "2026-10-19T13:36:09.229Z",
+  "refreshedAt": "2026-10-20T11:50:31.640Z",
   "projects": {
     "everloot": {
       "status": "ok",
-      "fetchedAt": "2026-10-19T13:36:09.229Z",
+      "fetchedAt": "2026-10-20T11:50:31.640Z",
       "stars": 0,
       "archived": false,
       "license": "AGPL-3.0",
-      "lastCommit": "2026-10-19T10:55:37Z",
+      "lastCommit": "2026-10-20T07:40:42Z",
       "release": {
-        "tag": "addon-v0.3.3",
-        "date": "2026-10-18T00:05:47Z",
-        "url": "https://github.com/Everloot/everloot/releases/tag/addon-v0.3.3"
+        "tag": "desktop-v0.1.2",
+        "date": "2026-10-20T06:20:55Z",
+        "url": "https://github.com/Everloot/everloot/releases/tag/desktop-v0.1.2"
       },
-      "commits4w": 821,
+      "commits4w": 990,
       "contributors": 2,
       "openIssues": 10,
       "closedIssues": 1,
@@ -26,29 +26,29 @@
     },
     "polestar": {
       "status": "ok",
-      "fetchedAt": "2026-10-19T13:36:16.311Z",
-      "stars": 121,
+      "fetchedAt": "2026-10-20T11:50:38.813Z",
+      "stars": 132,
       "archived": false,
       "license": null,
-      "lastCommit": "2026-10-19T13:12:30Z",
+      "lastCommit": "2026-10-20T10:24:02Z",
       "release": {
-        "tag": "v0.2.5",
-        "date": "2026-10-17T12:32:11Z",
-        "url": "https://github.com/fitzforge/polestar/releases/tag/v0.2.5"
+        "tag": "v0.2.6",
+        "date": "2026-10-19T17:20:38Z",
+        "url": "https://github.com/fitzforge/polestar/releases/tag/v0.2.6"
       },
-      "commits4w": 1294,
-      "contributors": 21,
-      "openIssues": 55,
-      "closedIssues": 134,
+      "commits4w": 1707,
+      "contributors": 25,
+      "openIssues": 25,
+      "closedIssues": 189,
       "medianFirstResponseHours": null,
-      "responseSample": 0,
+      "responseSample": 1,
       "interfaces": [
         16001
       ]
     },
     "olympus": {
       "status": "ok",
-      "fetchedAt": "2026-10-19T13:36:24.208Z",
+      "fetchedAt": "2026-10-20T11:50:46.392Z",
       "stars": 20,
       "archived": false,
       "license": "MIT",
@@ -72,7 +72,7 @@
     },
     "forever-ref": {
       "status": "ok",
-      "fetchedAt": "2026-10-19T13:36:34.061Z",
+      "fetchedAt": "2026-10-20T11:50:56.124Z",
       "stars": 0,
       "archived": false,
       "license": null,
@@ -98,7 +98,11 @@
         "stars": 0
       },
       {
-        "at": "2026-10-19T13:36:09.229Z",
+        "at": "2026-10-19T22:28:35.967Z",
+        "stars": 0
+      },
+      {
+        "at": "2026-10-20T11:50:31.640Z",
         "stars": 0
       }
     ],
@@ -112,8 +116,12 @@
         "stars": 118
       },
       {
-        "at": "2026-10-19T13:36:09.229Z",
-        "stars": 121
+        "at": "2026-10-19T22:28:35.967Z",
+        "stars": 125
+      },
+      {
+        "at": "2026-10-20T11:50:31.640Z",
+        "stars": 132
       }
     ],
     "olympus": [
@@ -126,7 +134,11 @@
         "stars": 20
       },
       {
-        "at": "2026-10-19T13:36:09.229Z",
+        "at": "2026-10-19T22:28:35.967Z",
+        "stars": 20
+      },
+      {
+        "at": "2026-10-20T11:50:31.640Z",
         "stars": 20
       }
     ],
@@ -140,7 +152,11 @@
         "stars": 0
       },
       {
-        "at": "2026-10-19T13:36:09.229Z",
+        "at": "2026-10-19T22:28:35.967Z",
+        "stars": 0
+      },
+      {
+        "at": "2026-10-20T11:50:31.640Z",
         "stars": 0
       }
     ]
