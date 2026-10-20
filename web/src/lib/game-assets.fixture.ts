@@ -28,6 +28,7 @@ export const siteManifest = {
     "1": loading(9001, "continent", "Kalimdor", false),
     "36": loading(9036, "dungeon", "Deadmines", false),
     "189": loading(9189, "dungeon", "Scarlet Monastery", false),
+    "249": loading(9249, "raid", "Onyxia's Lair", false),
     "409": loading(9409, "raid", "Molten Core", false),
     "2789": loading(9789, "raid", "The Tainted Scar", true),
   },
