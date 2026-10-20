@@ -13,7 +13,6 @@ export type { Infobox } from "../../../kb/src/importers/wiki-infobox";
  */
 
 export const PAGE_SIZE = 20;
-export const INDEXABLE_MIN_BODY = 300;
 export const CHUNK_SIZE = 40_000;
 export const MAX_QUERY = 200;
 /** Deepest search page served; beyond it the answer is "no hits", never a 20 million row LIMIT. */
@@ -41,8 +40,10 @@ export function parseLetter(raw: string | undefined): string | null {
   return /^[a-z]$/.test(l) ? l : null;
 }
 
-// The slug helpers live with the knowledge base, so the MCP server's search and fetch name the same pages.
-export { loreSlug, slugify } from "../../../kb/src/lore-slug";
+// The slug helpers and the indexing rule live with the knowledge base, so the MCP server names the same
+// pages and links only the ones the site indexes.
+import { INDEXABLE_MIN_BODY } from "../../../kb/src/lore-slug";
+export { INDEXABLE_MIN_BODY, isIndexable, loreSlug, slugify } from "../../../kb/src/lore-slug";
 
 /**
  * Wiki ids are digits (`291323-frostwhisper`); curated ids are kebab strings and carry no name
@@ -55,10 +56,6 @@ export function parseLoreSlug(slug: string): { extId: string; nameSlug: string }
   if (numeric) return { extId: numeric[1], nameSlug: numeric[2] ?? "" };
   if (/^0/.test(slug)) return null;
   return { extId: slug, nameSlug: "" };
-}
-
-export function isIndexable(body: string): boolean {
-  return body.length >= INDEXABLE_MIN_BODY && !body.includes("REDIRECT");
 }
 
 export type BodyBlock = { type: "p"; text: string } | { type: "ul"; items: string[] };

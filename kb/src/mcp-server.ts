@@ -1,7 +1,7 @@
 import { completable } from "@modelcontextprotocol/sdk/server/completable.js";
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { CREDIT_LINE, LICENCE, MCP_CREDIT, SITE } from "@everloot/protocol";
+import { CREDIT_LINE, GAME_DATA_CREDIT, LICENCE, MCP_CREDIT, SITE, type EntityKind } from "@everloot/protocol";
 import { answerSources, answerSourcesFactsFromRecords, formatAnswerSources, type AnswerSourcesFacts } from "./answer-sources.js";
 import { auctionHistory, auctionSightingsFromRecords, handleAuctionHistory } from "./auction-history.js";
 import { handlePlan, planStructured } from "./bridge-plan.js";
@@ -25,13 +25,17 @@ import { readResource } from "./resources.js";
 import { handleTalentPlan, handleTalentTree } from "./talent-tools.js";
 import { handleRecipeThresholds, pathFactsFromRecords, recipeFactsFromRecords, recipeThresholdsStructured } from "./recipe-thresholds.js";
 import { formatNpcPage, formatQuestPage, formatVendorPage, npcPage, questPage, vendorPage, worldFactsFromRecords } from "./world-pages.js";
-import { handleWorldMapNear, mapFactsFromRecords, nearResult } from "./world-map-near.js";
+import { handleWorldMapNear, mapFactsFromRecords, nearResult, nearZoneSpot } from "./world-map-near.js";
 import { WORLD_MAP_DATA } from "./world-map-file.js";
 import { CLIENT_EDGES, CLIENT_LAYER, CLIENT_TAXONOMY } from "./client-layer-file.js";
 import { handleItemCategories, itemCategoriesStructured } from "./item-taxonomy.js";
 import { entityRelationsStructured, handleEntityRelations, observedEdgesFromRecords, type Edge } from "./edges.js";
 import type { DB } from "./db.js";
 import { recordUrl } from "./lore-slug.js";
+import {
+  changesUrl, collectionsUrl, ECOSYSTEM_URL, goldLedgerUrl, guildBoardUrl, itemPageUrl, ITEMS_URL, loreUrls, mapSpotUrl, marketItemUrl,
+  npcPageUrl, npcUrl, objectPageUrl, professionsUrl, questPageUrl, vendorPageUrl, withMore,
+} from "./page-urls.js";
 import { getByName, getDocument, getEntity, search, type SearchHit } from "./search.js";
 
 export const SERVER_NAME = "everloot-knowledge";
@@ -170,9 +174,12 @@ export async function completionProgressAnswer(args: { ownerInstallId: string; c
     loaded = null;
   }
   if (!loaded) return notRead("Completion progress unavailable. It is unrecorded, not zero.");
+  const page = completionProgress(args.ownerInstallId, args.characterKey, loaded.facts);
+  const shown = page.ownedRecorded && page.characters.length > 0 && !page.unknownCharacter;
+  const url = shown ? collectionsUrl({ install: args.ownerInstallId, character: args.characterKey }) : undefined;
   return {
-    text: `${handleCompletionProgress(args, loaded.facts)}\n${dataAgeLine(loaded.dataAsOf)}`,
-    structured: { connected: true, dataAsOf: loaded.dataAsOf, page: completionProgress(args.ownerInstallId, args.characterKey, loaded.facts) },
+    text: `${withMore(handleCompletionProgress(args, loaded.facts), url)}\n${dataAgeLine(loaded.dataAsOf)}`,
+    structured: { connected: true, dataAsOf: loaded.dataAsOf, page },
   };
 }
 
@@ -192,8 +199,9 @@ export async function marketValueAnswer(args: { realm: string; itemId: number },
   if (!market) return notRead("Market values unavailable. They are unrecorded, not zero.");
   const now = new Date();
   const { value, points } = itemMarket(market.state, args.realm, args.itemId, now);
+  const url = value || points.length ? marketItemUrl(args.realm, args.itemId) : undefined;
   return {
-    text: `${handleMarketValue(args, market.state, now)}\n${answerFooter(market.dataAsOf)}`,
+    text: `${withMore(handleMarketValue(args, market.state, now), url)}\n${answerFooter(market.dataAsOf)}`,
     structured: { connected: true, dataAsOf: market.dataAsOf, page: { realm: args.realm.trim(), itemId: args.itemId, value, history: points } },
   };
 }
@@ -399,8 +407,10 @@ function dataAgeLine(dataAsOf: unknown): string {
 
 type SearchArgs = McpToolArgs<"search_knowledge">;
 
-function formatHit(h: SearchHit): string {
-  return `[${h.kind}/${h.gameVersion}] ${h.name}\n${h.snippet}\nSource: ${h.sourceUrl} (${h.licence}, retrieved ${h.retrievedAt})`;
+/** The hits as text, each with its page on the site when it has one the site indexes. */
+function formatHits(db: DB, hits: SearchHit[]): string {
+  const urls = loreUrls(db, hits);
+  return hits.map((h) => withMore(`[${h.kind}/${h.gameVersion}] ${h.name}\n${h.snippet}\nSource: ${h.sourceUrl} (${h.licence}, retrieved ${h.retrievedAt})`, urls.get(h.id))).join("\n\n");
 }
 
 /** Pure handlers — tested directly; the MCP registration below is a thin wrapper. */
@@ -414,7 +424,7 @@ export function searchHits(db: DB, args: SearchArgs): SearchHit[] {
 export function handleSearch(db: DB, args: SearchArgs): string {
   const hits = searchHits(db, args);
   if (hits.length === 0) return "No matches. Try fewer or different words.";
-  return hits.map(formatHit).join("\n\n");
+  return formatHits(db, hits);
 }
 
 /** A tool answer: the text every client gets, plus structured content for tools with an output schema. */
@@ -434,13 +444,13 @@ function jsonAnswer(structured: object): StructuredAnswer {
 
 export function handleGetEntity(db: DB, args: { id: number }): string {
   const hit = getEntity(db, args.id);
-  return hit ? formatHit(hit) : `No record with id ${args.id}.`;
+  return hit ? formatHits(db, [hit]) : `No record with id ${args.id}.`;
 }
 
 export function handleGetByName(db: DB, args: { name: string; kind?: (typeof KNOWLEDGE_KINDS)[number] }): string {
   const hits = getByName(db, args.name, args.kind);
   if (hits.length === 0) return `No record named exactly "${args.name}". Try search_knowledge for close matches.`;
-  return hits.map(formatHit).join("\n\n");
+  return formatHits(db, hits);
 }
 
 /** The merged blue-post and build timeline. Null means it is not connected, which is not the same as empty. */
@@ -459,14 +469,37 @@ function uploadsConfigured(loader?: CorpusLoader): boolean {
  * as structured content under the protocol's uploadsAnswer envelope. With no corpus read, the text says
  * so as before and the structure carries connected false and the reason, never an empty page.
  */
-export async function readPage<T>(tool: ToolName, loader: CorpusLoader | undefined, page: (facts: T) => { text: string; page: object }): Promise<StructuredAnswer> {
+export async function readPage<T>(
+  tool: ToolName, loader: CorpusLoader | undefined, page: (facts: T) => { text: string; page: object; url?: string },
+): Promise<StructuredAnswer> {
   const read = await readTooledFacts<T>(tool, loader);
   if (!read) {
     const reason = uploadsConfigured(loader) ? UNAVAILABLE : UPLOADS_UNSET;
     return { text: reason, structured: { connected: false, dataAsOf: null, reason } };
   }
   const built = page(read.facts);
-  return { text: `${built.text}\n${answerFooter(read.dataAsOf)}`, structured: { connected: true, dataAsOf: read.dataAsOf, page: built.page } };
+  return {
+    text: `${withMore(built.text, built.url)}\n${answerFooter(read.dataAsOf)}`,
+    structured: { connected: true, dataAsOf: read.dataAsOf, page: built.page },
+  };
+}
+
+/** The page of an entity entity_relations was asked about, when the site has one with something on it. */
+async function entityPageUrl(kind: EntityKind, id: number, loader?: CorpusLoader): Promise<string | undefined> {
+  if (kind === "item") {
+    const read = await readTooledFacts<ReturnType<typeof itemFactsFromRecords>>("item_page", loader);
+    return read ? itemPageUrl(itemPage(id, read.facts)) : undefined;
+  }
+  if (kind === "object") {
+    const read = await readTooledFacts<ObjectFacts>("object_page", loader);
+    return read ? objectPageUrl(objectPage(id, read.facts)) : undefined;
+  }
+  if (kind === "npc" || kind === "quest") {
+    const read = await readTooledFacts<ReturnType<typeof worldFactsFromRecords>>(kind === "npc" ? "npc_page" : "quest_page", loader);
+    if (!read) return undefined;
+    return kind === "npc" ? npcPageUrl(npcPage(id, read.facts)) : questPageUrl(questPage(id, read.facts));
+  }
+  return undefined;
 }
 
 /** A blank profession is refused before any read: an error, not a connected page about no profession. */
@@ -508,79 +541,110 @@ export function createToolHandlers(db: DB, options: ToolOptions = {}): ToolHandl
     answer_sources: async (args) => {
       const read = await readTooledFacts<AnswerSourcesFacts>("answer_sources", options.corpus);
       const result = answerSources(db, args, read?.facts ?? null, read?.dataAsOf ?? null);
-      return { text: `${formatAnswerSources(result, read !== null)}\n${read ? answerFooter(read.dataAsOf) : MCP_CREDIT}`, structured: result };
+      // The page links go in the text only: the published evidence shape has no url field.
+      const evidence = result.evidence.map(({ url, ...piece }) => (void url, piece));
+      return { text: `${formatAnswerSources(result, read !== null)}\n${read ? answerFooter(read.dataAsOf) : MCP_CREDIT}`, structured: { ...result, evidence } };
     },
     profession_path: (args) => {
       // The same defaults the text handler applies: from 1, to the start when no end is given.
       const query = { profession: professionArg(args.profession), fromSkill: args.fromSkill ?? 1, toSkill: args.toSkill ?? args.fromSkill ?? 1 };
       return readPage("profession_path", options.corpus, (facts: ReturnType<typeof pathFactsFromRecords>) => {
         const page = professionPath(facts.sightings, facts.prices, query, facts.derived, facts.vendorPrices);
-        return { text: formatProfessionPath(page), page };
+        const url = page.steps.length ? professionsUrl(query.profession, query.fromSkill, query.toSkill) : undefined;
+        return { text: formatProfessionPath(page), page, url };
       });
     },
     recipe_thresholds: (args) => {
-      professionArg(args.profession);
-      return readPage("recipe_thresholds", options.corpus, (facts: ReturnType<typeof recipeFactsFromRecords>) => ({
-        text: handleRecipeThresholds(args, facts.observations, facts.prices, facts.vendorPrices),
-        page: recipeThresholdsStructured(args, facts.observations, facts.prices, facts.vendorPrices),
-      }));
+      const profession = professionArg(args.profession);
+      return readPage("recipe_thresholds", options.corpus, (facts: ReturnType<typeof recipeFactsFromRecords>) => {
+        const page = recipeThresholdsStructured(args, facts.observations, facts.prices, facts.vendorPrices);
+        return {
+          text: handleRecipeThresholds(args, facts.observations, facts.prices, facts.vendorPrices),
+          page,
+          url: page.ranges.length ? professionsUrl(profession) : undefined,
+        };
+      });
     },
     item_page: (args) => readPage("item_page", options.corpus, (facts: ReturnType<typeof itemFactsFromRecords>) => {
       const page = itemPage(args.itemId, facts);
-      return { text: formatItemPage(page), page };
+      return { text: formatItemPage(page), page, url: itemPageUrl(page) };
     }),
     npc_page: (args) => readPage("npc_page", options.corpus, (facts: ReturnType<typeof worldFactsFromRecords>) => {
       const page = npcPage(args.npcId, facts);
-      return { text: formatNpcPage(page), page };
+      return { text: formatNpcPage(page), page, url: npcPageUrl(page) };
     }),
     object_page: (args) => readPage("object_page", options.corpus, (facts: ObjectFacts) => {
       const page = objectPage(args.objectId, facts);
-      return { text: formatObjectPage(page), page };
+      return { text: formatObjectPage(page), page, url: objectPageUrl(page) };
     }),
     quest_page: (args) => readPage("quest_page", options.corpus, (facts: ReturnType<typeof worldFactsFromRecords>) => {
       const page = questPage(args.questId, facts);
-      return { text: formatQuestPage(page), page };
+      return { text: formatQuestPage(page), page, url: questPageUrl(page) };
     }),
     vendor_page: (args) => readPage("vendor_page", options.corpus, (facts: ReturnType<typeof worldFactsFromRecords>) => {
       const page = vendorPage(args.vendorNpcId, facts);
-      return { text: formatVendorPage(page), page };
+      return { text: formatVendorPage(page), page, url: vendorPageUrl(page) };
     }),
-    world_map_near: (args) => readPage("world_map_near", options.corpus, (facts: ReturnType<typeof mapFactsFromRecords>) => ({
-      text: handleWorldMapNear(args, WORLD_MAP_DATA, facts),
-      page: nearResult(args, WORLD_MAP_DATA, facts),
-    })),
-    entity_relations: (args) => readPage("entity_relations", options.corpus, (observed: Edge[]) => ({
-      text: handleEntityRelations(args, observed, CLIENT_EDGES),
-      page: entityRelationsStructured(args, observed, CLIENT_EDGES),
-    })),
-    item_categories: (args) => ({
-      text: handleItemCategories(args, CLIENT_TAXONOMY, CLIENT_LAYER.build.version),
-      structured: itemCategoriesStructured(args, CLIENT_TAXONOMY, CLIENT_LAYER.build.version),
+    world_map_near: (args) => readPage("world_map_near", options.corpus, (facts: ReturnType<typeof mapFactsFromRecords>) => {
+      const page = nearResult(args, WORLD_MAP_DATA, facts);
+      // An answer from an NPC links that NPC's page (it has an agreed pin); one from a spot, the map there.
+      const spot = page.ok && args.npcId === undefined ? nearZoneSpot(args, WORLD_MAP_DATA) : null;
+      const url = !page.ok ? undefined : args.npcId !== undefined ? npcUrl(args.npcId) : spot ? mapSpotUrl(spot.mapId, spot.x, spot.y) : undefined;
+      return { text: handleWorldMapNear(args, WORLD_MAP_DATA, facts), page, url };
     }),
+    entity_relations: async (args) => {
+      const url = await entityPageUrl(args.kind, args.id, options.corpus);
+      return readPage("entity_relations", options.corpus, (observed: Edge[]) => ({
+        text: handleEntityRelations(args, observed, CLIENT_EDGES),
+        page: entityRelationsStructured(args, observed, CLIENT_EDGES),
+        url,
+      }));
+    },
+    item_categories: (args) => {
+      const structured = itemCategoriesStructured(args, CLIENT_TAXONOMY, CLIENT_LAYER.build.version) as { error?: string; item?: unknown };
+      // The database's item index, unless the class or item asked for is not in the build.
+      const url = structured.error || structured.item === null ? undefined : ITEMS_URL;
+      return { text: withMore(handleItemCategories(args, CLIENT_TAXONOMY, CLIENT_LAYER.build.version), url, GAME_DATA_CREDIT), structured };
+    },
     talent_tree: (args) => handleTalentTree(args),
     talent_plan: (args) => handleTalentPlan(args),
-    collection_gap: (args) => readPage("collection_gap", options.corpus, (facts: ReturnType<typeof collectionFactsFromRecords>) =>
-      ({ text: handleCollectionGap(args, facts), page: collectionGap(args.collection, args.ownerInstallId, facts) })),
+    collection_gap: (args) => readPage("collection_gap", options.corpus, (facts: ReturnType<typeof collectionFactsFromRecords>) => {
+      const page = collectionGap(args.collection, args.ownerInstallId, facts);
+      const url = page.groups.length ? collectionsUrl({ collection: args.collection, install: args.ownerInstallId }) : undefined;
+      return { text: handleCollectionGap(args, facts), page, url };
+    }),
     completion_progress: (args) => completionProgressAnswer(args, options.completion),
-    guild_board: (args) => readPage("guild_board", options.corpus, (facts: ReturnType<typeof guildFactsFromRecords>) =>
-      ({ text: handleGuildBoard(args, facts), page: guildBoard(args.guildName, args.realm, facts) })),
-    auction_history: (args) => readPage("auction_history", options.corpus, (facts: ReturnType<typeof auctionSightingsFromRecords>) =>
-      ({ text: handleAuctionHistory(args, facts), page: auctionHistory(args.realm, args.itemId, facts) })),
+    guild_board: (args) => readPage("guild_board", options.corpus, (facts: ReturnType<typeof guildFactsFromRecords>) => {
+      const page = guildBoard(args.guildName, args.realm, facts);
+      const published = page.roster.length || page.progression.length || page.loot.length;
+      return { text: handleGuildBoard(args, facts), page, url: published ? guildBoardUrl(page.guildName, page.realm) : undefined };
+    }),
+    auction_history: (args) => readPage("auction_history", options.corpus, (facts: ReturnType<typeof auctionSightingsFromRecords>) => {
+      const page = auctionHistory(args.realm, args.itemId, facts);
+      return { text: handleAuctionHistory(args, facts), page, url: page.points.length ? marketItemUrl(args.realm, args.itemId) : undefined };
+    }),
     market_value: (args) => marketValueAnswer(args, options.market),
-    gold_ledger: (args) => readPage("gold_ledger", options.corpus, (facts: ReturnType<typeof goldFactsFromRecords>) => ({
-      text: handleGoldLedger(args, facts.snapshots, facts.events),
-      page: goldLedger(args.character, args.realm, facts.snapshots, facts.events),
-    })),
+    gold_ledger: (args) => readPage("gold_ledger", options.corpus, (facts: ReturnType<typeof goldFactsFromRecords>) => {
+      const page = goldLedger(args.character, args.realm, facts.snapshots, facts.events);
+      return {
+        text: handleGoldLedger(args, facts.snapshots, facts.events),
+        page,
+        url: page.recorded ? goldLedgerUrl(page.character, page.realm) : undefined,
+      };
+    }),
     recent_changes: async (args) => {
       let entries: ChangeEntry[] | null = null;
       try { entries = (await options.changes?.()) ?? null; } catch { entries = null; }
-      return { text: handleRecentChanges(entries, args), structured: recentChangesStructured(entries, args) };
+      const structured = recentChangesStructured(entries, args);
+      const url = structured.entries.length ? changesUrl(args.filter ?? "all", args.game) : undefined;
+      return { text: withMore(handleRecentChanges(entries, args), url), structured };
     },
     ecosystem_projects: async (args) => {
       let view: EcosystemView | null = null;
       try { view = (await options.ecosystem?.()) ?? null; } catch { view = null; }
       const now = new Date();
-      return { text: handleEcosystemProjects(view, args, now), structured: ecosystemProjectsStructured(view, args, now) };
+      const url = view ? ECOSYSTEM_URL : undefined;
+      return { text: withMore(handleEcosystemProjects(view, args, now), url), structured: ecosystemProjectsStructured(view, args, now) };
     },
     population: (args) => answerPopulation(args, options.census, answerFooter),
     everloot_plan: () => ({ text: handlePlan(), structured: planStructured() }),
