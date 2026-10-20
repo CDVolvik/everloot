@@ -14,6 +14,7 @@ build that has a zip in the repository. Earlier builds have none.
 
 ### Added
 - Addon, protocol and database: NPC lists gain Type and Rank columns and filters (creature type and rank as the game shows them on target), and quest lists gain Category, Side and Group columns, with Category and Side filters. The addon now records a quest when you accept it: title, level, the quest log header, suggested group size and tag, the giver, and your faction (Alliance or Horde, no character name). Every value is public only after 3 installs agree; a side needs 3 installs on that faction and none on the other. Older addons keep working. Needs an addon release to start collecting; the quest-log calls have not been tried in the Forever client yet.
+- Site: a game version label in the header ("Beta · 1.60.1") with a menu of Live (at launch), PTR (none running) and Beta, read from one list in `web/src/lib/game-version.ts`; a test checks every game-data layer names the current build. The build is also named on `/methodology`.
 - Site: `/docs`, one documentation area for players and developers: Overview, Guides, API Reference, MCP and
   Cookbook tabs, a grouped sidebar, "On this page", "Copy page" as Markdown, and a page per API endpoint and
   per MCP tool generated from the protocol, with cURL, JavaScript and Python examples. "Docs" replaces "Open data"
@@ -164,8 +165,17 @@ build that has a zip in the repository. Earlier builds have none.
 - `scripts/upload-bulk.mjs` refuses a folder whose `index.json` or any data file carries what looks like a
   machine's own filesystem path (a Windows drive path, `/Users/`, `/home/` or `AppData`) before anything is
   sent, like the sha256 check, so a bug in the export cannot publish a local path alongside the data.
+- The header menu brightens to the site's green on hover instead of the body text colour.
 
 Pull requests merged to `main` are listed in the nightly pre-releases until the next tagged release.
+
+## [desktop-v0.1.3] - 2026-10-20
+
+### Fixed
+- Browse for the game folder now lands on the product folder. Picking `World of Warcraft` itself chose the
+  folder one level above the one that holds `WTF`, so the app found no account files; it now takes the product
+  folder with Everloot data (`_classic_era_`, `_anniversary_` and the rest). Picking `WTF` or `Interface`
+  steps back up to the product folder too.
 
 ## [desktop-v0.1.2] - 2026-10-20
 
