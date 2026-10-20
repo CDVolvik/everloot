@@ -61,6 +61,9 @@ build that has a zip in the repository. Earlier builds have none.
   opens GitHub's bug form with the app version and its diagnostics filled in (user folder hidden, never the
   token), or copies them. The Addon page says Up to date instead of offering Reinstall as the main button;
   reinstalling is a small repair link.
+- Site: zone pages at `/database/zones`, one for every released zone, with its map, the dungeons and raids
+  entered there, and the NPCs, vendors and quests players have confirmed in it. Zone links in the database
+  now open the zone page instead of the map.
 
 ### Changed
 - The upload record contract moved from `web/src/lib/intake.ts` into one package, `packages/protocol`
