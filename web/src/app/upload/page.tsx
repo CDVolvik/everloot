@@ -5,6 +5,7 @@ import JsonLd from "@/components/JsonLd";
 import { latestAddonRelease } from "@/lib/addon-release";
 import { softwareApplicationJsonLd } from "@/lib/jsonld";
 import { REPO_URL } from "@/lib/source";
+import { playerPagesOn } from "@/lib/player-pages";
 import UploadClient from "./UploadClient";
 
 export const metadata: Metadata = {
@@ -49,7 +50,7 @@ export default function UploadPage() {
         )}
         <p className="text-sm text-fg-2">Log out before selecting Everloot.lua from your account’s SavedVariables folder below. Keep a backup. Named records need your explicit sharing choice and verified authority.</p>
       </section>
-      <UploadClient />
+      <UploadClient playerPages={playerPagesOn()} />
     </div>
   );
 }

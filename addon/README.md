@@ -76,6 +76,27 @@ stops it at once and deletes every row it wrote.
   stores anything, and the site publishes only counts that cover at least 10 characters from at least
   3 installs (`docs/design/specs/2026-10-18-census-design.md`).
 
+## Players
+
+Off until `/everloot players on` (then `/reload`), and meant to stay off until the player pages on the site are
+switched on (`docs/design/specs/2026-10-20-player-pages-design.md`). This is the one module that reads other
+players' names and guilds, so it is separate from the census, which never does. `/everloot players` says
+whether it is on and how many characters it holds; `/everloot players off` stops it at once and deletes every row.
+
+- **What a row holds** (`player_seen`): name (`UnitName`), realm (`GetRealmName`), race and class tokens
+  (`UnitRace`, `UnitClass`), level (`UnitLevel`) and the guild name when the game shows one (`GetGuildInfo`).
+  The date is the row's `capturedAt`; the site keeps the day, not the time.
+- **Whom it reads**: your own characters at login and at each level-up, and players you target, mouse over or
+  group with (`PLAYER_TARGET_CHANGED`, `UPDATE_MOUSEOVER_UNIT`, `GROUP_ROSTER_UPDATE`). Not nameplates, not the
+  guild roster, not the who list, not inspection. Players from another realm are skipped.
+- **Nothing else**: no position, gear, GUID, chat or history. `addon/tests/players_contract.py` fails if
+  `players.lua` names a call that could read them, and lists every call the module may make.
+- **Load**: a player already read is left alone for 10 minutes, target and mouseover reads are at least a
+  quarter of a second apart, at most 300 new characters a UTC day, at most 1,000 rows in the file (the oldest
+  go first, about 200 KB). One row per character, kept in place.
+- **Sending**: only from the upload page, which counts the rows first. The companion never sends them. The site
+  drops them until the owner has turned the player pages on.
+
 ## Talents, selftest and the plan panel
 
 - **Talents** (on by default). Reads your build through `C_Traits` and `C_ClassTalents`: the active spec
@@ -136,6 +157,7 @@ The contract tests run the Lua in real Lua 5.1 through `lupa`:
     python addon/tests/raid_contract.py
     python addon/tests/completion_contract.py
     python addon/tests/census_contract.py
+    python addon/tests/players_contract.py
 
 Run them from the repository root. CI also rebuilds the zip. For a version that is not released yet it
 fails if the zip differs from the one committed in `web/public/downloads/`, so commit the rebuilt zip
@@ -161,6 +183,7 @@ addon/
 │   ├── talents.lua     your talent build per spec group, plus the game's own loadout string
 │   ├── completion.lua  achievements, reputation, titles, quest chains: catalogs and your progress; off until enabled
 │   ├── census.lua      race, class, level and faction of your characters and players you see; off until enabled
+│   ├── players.lua     name, realm, race, class, level and guild of your characters and players you see; off until enabled
 │   ├── selftest.lua    /everloot selftest and /everloot talents
 │   ├── plan.lua        share code reader and the display-only plan panel
 │   ├── raid_data.lua   raid buff list generated from web/src/data/game-data/raid-*.json

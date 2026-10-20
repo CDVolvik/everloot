@@ -28,7 +28,7 @@ end
 local defaults = {
   version = E.VERSION,
   installId = nil,
-  toggles = { openworld = true, guild = true, gear = true, auctions = false, gold = true, addons = false, talents = true, completion = false, census = false },
+  toggles = { openworld = true, guild = true, gear = true, auctions = false, gold = true, addons = false, talents = true, completion = false, census = false, players = false },
   records = {},
 }
 
@@ -125,7 +125,7 @@ function E:Status()
     "collection_catalog", "collection_owned", "auction_scan", "auction_snapshot", "recipe_seen", "recipe_observed", "trainer_seen", "price_seen",
     "gold_snapshot", "money_event", "addon_seen", "map_bounds", "talent_snapshot",
     "achievement_catalog", "reputation_catalog", "title_catalog", "quest_chain_catalog",
-    "achievement_owned", "reputation_owned", "title_owned", "quest_owned", "census_self", "census_seen" }) do
+    "achievement_owned", "reputation_owned", "title_owned", "quest_owned", "census_self", "census_seen", "player_seen" }) do
     lines[#lines + 1] = string.format("  rows %s: %d", kind, self:Count(kind))
   end
   return table.concat(lines, "\n")
@@ -193,6 +193,17 @@ SlashCmdList["EVERLOOT"] = function(msg)
     end
   elseif msg == "census" and E.Census then
     print(E.Census.StatusLine())
+  elseif msg == "players on" or msg == "players off" then
+    EverlootDB.toggles.players = (msg == "players on")
+    if EverlootDB.toggles.players then
+      print("Everloot: players on. It records the name, realm, race, class, level and guild of your characters and of players you target, mouse over or group with, one row per character and the day you saw it. Never where they are, their gear or what they do. It is sent only from the everloot.app upload page, after its preview. If the site has player pages on, these characters can appear there, and anyone can have a character hidden. /reload to apply.")
+    else
+      -- Turning it off withdraws what it wrote: every player row is deleted from this file.
+      if E.Players then E.Players.Withdraw() end
+      print("Everloot: players off; all player rows were deleted from this file.")
+    end
+  elseif msg == "players" and E.Players then
+    print(E.Players.StatusLine())
   elseif msg == "scan" then
     if E.StartScan then E:StartScan() else print("Everloot: full scans are not available in this client.") end
   elseif msg == "addons on" or msg == "addons off" then
@@ -207,6 +218,6 @@ SlashCmdList["EVERLOOT"] = function(msg)
       print("Everloot: installed addon list off; all recorded addon rows were deleted from this file. /reload to apply.")
     end
   else
-    print("Everloot commands: /everloot status, /everloot auctions on|off, /everloot scan, /everloot price [item], /everloot addons on|off, /everloot completion [on|off], /everloot census [on|off], /everloot selftest, /everloot talents, /everloot plan <share code>, /everloot raid [code], /ask <question>")
+    print("Everloot commands: /everloot status, /everloot auctions on|off, /everloot scan, /everloot price [item], /everloot addons on|off, /everloot completion [on|off], /everloot census [on|off], /everloot players [on|off], /everloot selftest, /everloot talents, /everloot plan <share code>, /everloot raid [code], /ask <question>")
   end
 end
