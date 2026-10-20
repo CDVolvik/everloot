@@ -100,6 +100,9 @@ CI also scans every pull request for leaked secrets and for private file paths.
   in `web/public/downloads/`, a tagged GitHub release and an upload to CurseForge by a maintainer.
   A nightly pre-release is built from `main` when it has changed. [`docs/RELEASING.md`](docs/RELEASING.md)
   has the steps.
+- **The desktop app** gets a new version in `desktop/package.json`, a `desktop-vX.Y.Z` section in
+  `CHANGELOG.md` and a `desktop-vX.Y.Z` tag; the release workflow builds the installers and publishes
+  them with `SHA256SUMS`. [`desktop/README.md`](desktop/README.md#release) has the steps.
 - **The knowledge release** (the lore archive) is rebuilt by a maintainer from the wiki dump with
   `npm run kb -- snapshot`, checked with `npm run kb -- audit-sources`, and published to the site's
   storage. The site refuses a release that does not match its manifest.

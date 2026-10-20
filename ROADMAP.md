@@ -1,13 +1,14 @@
 # Roadmap
 
-What we are working on, and what you can pick up. The live board is the
-[Everloot project](https://github.com/Everloot/everloot/projects) on GitHub; issues labelled
-`good first issue` and `help wanted` are open for anyone.
+What we are working on, and what you can pick up. Open work is in the
+[issues](https://github.com/Everloot/everloot/issues); those labelled `good first issue` and
+`help wanted` are open for anyone.
 
 ## Now: launch (WoW: Forever, 2026-11-04)
 
 - The addon on CurseForge, checked in the live client.
-- Everloot Desktop App: a first `desktop-v0.1.0` release, tried on Windows with the live client.
+- Everloot Desktop App: `desktop-v0.1.0` is out (unsigned builds for Windows, macOS and Linux). Next,
+  trying it on Windows with the live client.
 - Enough uploads at launch that the first drops, vendors and prices reach three agreeing installs.
 
 ## Next

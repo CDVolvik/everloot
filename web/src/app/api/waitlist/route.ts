@@ -10,7 +10,7 @@ import { recordUsage } from "@/lib/usage-metrics";
  */
 export const dynamic = "force-dynamic";
 
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/;
 const SLUG = /^[a-z0-9-]{1,60}$/;
 
 export async function POST(req: Request) {
@@ -34,7 +34,7 @@ export async function POST(req: Request) {
   if (typeof toolSlug !== "string" || !SLUG.test(toolSlug)) {
     return NextResponse.json({ ok: false, error: "unknown list" }, { status: 400 });
   }
-  if (typeof email !== "string" || !EMAIL.test(email.trim()) || email.length > 200) {
+  if (typeof email !== "string" || email.length > 200 || !EMAIL.test(email.trim())) {
     return NextResponse.json({ ok: false, error: "invalid email" }, { status: 422 });
   }
   const persisted = await uploadStore.putWaitlist({ toolSlug, email: email.trim().toLowerCase(), ts: new Date().toISOString() });

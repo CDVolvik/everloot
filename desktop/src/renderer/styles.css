@@ -67,9 +67,11 @@ p { margin: 0; }
 .nav button:hover { color: rgb(var(--fg)); background: rgb(var(--canvas) / 0.6); }
 .nav button[aria-current="page"] { color: rgb(var(--fg)); background: rgb(var(--canvas)); }
 .nav .dot { margin-left: auto; }
-.side-foot { margin-top: auto; padding: 0.7rem 0.9rem; border-top: 1px solid rgb(var(--line)); font-size: 0.8rem; color: rgb(var(--muted)); display: flex; flex-direction: column; gap: 0.35rem; }
+.side-foot { margin-top: auto; padding: 0.45rem 0.45rem 0.7rem; border-top: 1px solid rgb(var(--line)); font-size: 0.8rem; color: rgb(var(--muted)); display: flex; flex-direction: column; gap: 0.35rem; }
 
 .main { overflow: auto; min-height: 0; }
+.toast { position: fixed; right: 1rem; bottom: 1rem; max-width: 420px; padding: 0.55rem 0.8rem; border-radius: 8px; border: 1px solid rgb(var(--danger)); background: rgb(var(--panel)); color: rgb(var(--danger)); z-index: 50; }
+.toast[hidden] { display: none; }
 .page { padding: 1rem 1.25rem 1.5rem; max-width: 900px; }
 .page > * + * { margin-top: 0.85rem; }
 .head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
@@ -159,9 +161,6 @@ ul.plain li { margin: 0.15rem 0; }
 
 /* Sidebar sections and the embedded site tools. */
 .nav .section { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: rgb(var(--muted)); padding: 0.7rem 0.5rem 0.2rem; }
-.site-head { display: flex; align-items: center; gap: 0.6rem; height: 44px; padding: 0 0.9rem; border-bottom: 1px solid rgb(var(--line)); }
-.site-head .url { color: rgb(var(--muted)); font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.site-note { padding: 1rem 1.25rem; color: rgb(var(--muted)); }
 
 /* Chat. */
 .chat { display: flex; flex-direction: column; height: calc(100vh - 2rem); }
@@ -171,7 +170,15 @@ ul.plain li { margin: 0.15rem 0; }
 .msg-assistant { align-self: flex-start; background: rgb(var(--panel)); }
 .msg .meta { margin-top: 0.35rem; font-size: 0.78rem; color: rgb(var(--muted)); white-space: normal; }
 .msg .meta b { color: rgb(var(--fg-2)); font-weight: 500; }
+.msg .meta .copy { float: right; margin-left: 0.75rem; }
 .chat form { display: flex; gap: 0.5rem; align-items: flex-end; margin-top: 0.5rem; }
+.chat #chatForm { flex-direction: column; align-items: stretch; gap: 0.4rem; }
+.chat #chatForm textarea { width: 100%; }
+.composer-bar { display: flex; justify-content: flex-end; align-items: center; gap: 0.5rem; }
+.model-pick { max-width: 24rem; padding: 0.3rem 0.45rem; border-radius: 6px; border: 1px solid rgb(var(--line)); background: rgb(var(--panel)); color: rgb(var(--fg-2)); font: inherit; font-size: 0.85rem; cursor: pointer; }
+.model-pick:hover { color: rgb(var(--fg)); border-color: rgb(var(--edge)); }
+.model-pick:focus-visible { outline: 2px solid rgb(var(--accent)); outline-offset: 1px; }
+.saved-keys { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
 .chat #providerForm { flex-direction: column; align-items: stretch; margin: 0 0 0.6rem; }
 .chat #providerForm select, .chat #providerForm input { max-width: 36rem; }
 .chat textarea { flex: 1; min-height: 2.6rem; max-height: 8rem; resize: vertical; padding: 0.5rem 0.65rem; border-radius: 8px; border: 1px solid rgb(var(--edge)); background: rgb(var(--canvas)); color: rgb(var(--fg)); font: inherit; }
@@ -234,3 +241,53 @@ ul.plain li { margin: 0.15rem 0; }
 .rc-cat { color: rgb(var(--fg-2)); }
 .rc-v { font-weight: 600; font-variant-numeric: tabular-nums; }
 .rc-v.out { color: rgb(var(--copper)); }
+
+/* Sidebar: the site's pages open in the browser; Settings is pinned above the status line. */
+.nav button.out { color: rgb(var(--muted)); }
+.nav .ext { margin-left: auto; font-size: 0.8em; opacity: 0.8; }
+.side-foot .nav { padding: 0; }
+.side-foot .foot-line { display: flex; flex-direction: column; gap: 0.2rem; padding: 0 0.5rem; }
+.gear { width: 15px; height: 15px; flex: none; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* Settings rows: a label and its note on the left, the control on the right. */
+.set-row { display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 0; border-top: 1px solid rgb(var(--line)); }
+.panel h2 + .set-row { border-top: 0; }
+details.panel > summary { cursor: pointer; list-style: none; }
+details.panel > summary::-webkit-details-marker { display: none; }
+details.panel > summary h2 { display: inline; }
+details.panel > summary::after { content: " +"; color: rgb(var(--muted)); }
+details.panel[open] > summary::after { content: " −"; }
+details.panel[open] > summary { margin-bottom: 0.6rem; }
+#settings > * + * { margin-top: 0.85rem; }
+#settings .switch { display: flex; width: fit-content; margin-top: 0.4rem; }
+
+/* The update button beside Settings, and its popover: what changed in the new version, and the download. */
+.side-foot .foot-row { display: flex; flex-direction: row; align-items: center; gap: 0.35rem; }
+.side-foot .foot-row > button[data-page] { flex: 1; }
+/* Beats ".nav button", which makes every sidebar button a full-width row. */
+.nav .update-btn { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 999px; border: 1px solid rgb(var(--accent)); background: rgb(var(--accent) / 0.12); color: rgb(var(--accent)); cursor: pointer; padding: 0; }
+.nav .update-btn svg { width: 16px; height: 16px; }
+.nav .update-btn:hover, .nav .update-btn[aria-expanded="true"] { background: rgb(var(--accent) / 0.22); }
+.update-btn:focus-visible { outline: 2px solid rgb(var(--accent)); outline-offset: 2px; }
+.update-pop { position: fixed; left: 192px; bottom: 12px; z-index: 40; width: min(380px, calc(100vw - 24px)); max-height: min(560px, calc(100vh - 88px)); display: flex; flex-direction: column; gap: 0.6rem; padding: 0.9rem 1rem; border-radius: 12px; border: 1px solid rgb(var(--edge)); background: rgb(var(--panel)); box-shadow: 0 16px 48px rgb(0 0 0 / 0.45); }
+.update-pop[hidden] { display: none; }
+.update-pop h2 { font-size: 0.95rem; text-transform: none; letter-spacing: 0; color: rgb(var(--fg)); }
+.update-pop h3 { font-size: 0.85rem; font-weight: 600; margin: 0 0 0.35rem; }
+.update-pop .pop-body { overflow-y: auto; min-height: 0; padding-right: 0.25rem; }
+.update-pop ul { margin: 0 0 0.5rem; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 0.35rem; }
+/* A long change reads as three lines; the release page has it in full. */
+.update-pop li { line-height: 1.4; }
+.update-pop li .note { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.update-pop .pop-foot { display: flex; gap: 0.5rem; }
+
+/* Footer icon buttons beside Settings, and the update button's other two looks: downloading and ready to restart. */
+.nav .foot-icon { flex: none; display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border-radius: 8px; color: rgb(var(--muted)); }
+.nav .foot-icon svg { width: 17px; height: 17px; }
+.nav .foot-icon:hover { color: rgb(var(--fg)); }
+.nav .update-btn.busy { border-style: dashed; }
+.nav .update-btn .pct { font-size: 0.68rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.nav .restart-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem; width: 100%; margin-bottom: 0.35rem; padding: 0.3rem 0.65rem; border-radius: 999px; border: 0; background: rgb(var(--accent)); color: rgb(var(--canvas)); font-weight: 600; cursor: pointer; }
+.nav .restart-btn svg { width: 14px; height: 14px; }
+.nav .restart-btn:focus-visible { outline: 2px solid rgb(var(--accent)); outline-offset: 2px; }
+.toast.info { border-color: rgb(var(--edge)); color: rgb(var(--fg)); }

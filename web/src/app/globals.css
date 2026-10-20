@@ -2,9 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
-/* The colour variables come from src/design/tokens.ts through the Tailwind plugin. */
+/* The colour variables come from src/design/tokens.ts through the Tailwind plugin. Dark-only. */
 :root {
-  color-scheme: light dark;
+  color-scheme: dark;
+}
+
+/* A page whose PageHeader draws its own breadcrumb hides the layout's copy of it, so the trail is
+   drawn once. The layout still emits the BreadcrumbList for the routes it knows. */
+main:has([data-page-crumbs]) [data-layout-crumbs] {
+  display: none;
 }
 
 html,
@@ -32,8 +38,8 @@ main p a, main .list-disc a {
 }
 }
 
-/* Buttons are outline pills. The primary action adds a green gradient outline, the only
-   gradient on the site. Plain declarations (no @apply) so src/design/buttons.test.ts can read them. */
+/* Buttons are pills. The secondary is an outline; the primary, one per view, is filled fel green
+   with canvas-coloured text. Plain declarations (no @apply) so src/design/buttons.test.ts can read them. */
 @layer components {
 .btn {
   display: inline-flex;
@@ -58,37 +64,25 @@ main p a, main .list-disc a {
   opacity: 0.5;
   cursor: not-allowed;
 }
-/* The transparent border is what forced-colours mode paints when the gradient ring is dropped. */
 .btn-primary {
-  position: relative;
-  border: 1.5px solid transparent;
+  border: 1px solid rgb(var(--accent));
+  background: rgb(var(--accent));
+  color: rgb(var(--canvas));
+  font-weight: 600;
+  transition: background-color 150ms, border-color 150ms;
 }
-.btn-primary:hover {
-  color: rgb(var(--accent));
-}
-.btn-primary::before {
-  content: "";
-  position: absolute;
-  inset: -1.5px;
-  border-radius: inherit;
-  padding: 1.5px;
-  background: linear-gradient(90deg, rgb(var(--grad-from)), rgb(var(--grad-to)));
-  -webkit-mask: linear-gradient(black 0 0) content-box, linear-gradient(black 0 0);
-  -webkit-mask-composite: xor;
-  mask: linear-gradient(black 0 0) content-box, linear-gradient(black 0 0);
-  mask-composite: exclude;
-  pointer-events: none;
+.btn-primary:hover,
+.btn-primary:focus-visible {
+  border-color: rgb(var(--accent-hover));
+  background: rgb(var(--accent-hover));
 }
 }
 
-/* Forced colours paint both pills' borders the same colour, so the primary one gets a thicker
-   edge instead of the gradient ring. */
+/* Forced colours drop the fill and paint both pills' borders the same colour, so the primary one
+   gets a thicker edge. */
 @media (forced-colors: active) {
   .btn-primary {
     border-width: 3px;
-  }
-  .btn-primary::before {
-    display: none;
   }
 }
 

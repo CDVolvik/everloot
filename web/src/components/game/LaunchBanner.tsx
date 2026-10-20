@@ -23,7 +23,7 @@ export default function LaunchBanner({ art, children }: { art: LaunchArt; childr
             className="absolute inset-0 h-full w-full object-cover"
           />
         )}
-        <div className="relative mx-auto flex w-full max-w-6xl flex-col items-center gap-4 px-4 py-5 text-center sm:flex-row sm:py-8 sm:text-left">
+        <div className="relative mx-auto flex w-full max-w-wide flex-col items-center gap-4 px-4 py-5 text-center sm:flex-row sm:py-8 sm:text-left">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={art.logo.url}

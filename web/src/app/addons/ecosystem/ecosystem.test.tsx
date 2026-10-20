@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, expect, test, vi } from "vitest";
 
-const rollup = vi.hoisted(() => ({ loadPopularAddons: vi.fn() }));
+const rollup = vi.hoisted(() => ({ loadPopularAddons: vi.fn(), loadItemFacts: async () => ({ rates: [], names: [], npcs: [], unreachable: true }), loadWorldFacts: async () => ({ npcs: [], quests: [], vendors: [], unreachable: true }) }));
 vi.mock("@/lib/rollup-compute", () => rollup);
 vi.mock("../../../lib/rollup-compute", () => rollup);
 vi.mock("next/link", () => ({
@@ -64,6 +64,6 @@ test("the page names no person: no usernames or contributor lists", async () => 
   expect(await html()).not.toMatch(/contributors?\/|@[a-z]/i);
 });
 
-test("the sitemap lists the page", () => {
-  expect(sitemap().map((e) => e.url)).toContain("https://everloot.app/addons/ecosystem");
+test("the sitemap lists the page", async () => {
+  expect((await sitemap()).map((e) => e.url)).toContain("https://everloot.app/addons/ecosystem");
 });

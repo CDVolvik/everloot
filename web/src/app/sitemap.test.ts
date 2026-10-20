@@ -1,10 +1,16 @@
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { LAUNCH } from "@/data/wow-forever";
 import { MAP_DATA_EXTRACTED_AT, TALENT_DATA_EXTRACTED_AT } from "@/lib/build-stamp";
 import { loadTimeline } from "@/lib/changes";
+import { CLIENT_TAXONOMY, ITEMS_PER_PAGE, itemsHref } from "@/lib/items";
+import { filterItems } from "../../../kb/src/item-taxonomy";
 import sitemap from "./sitemap";
 
-const entries = sitemap();
+const facts = vi.hoisted(() => ({ rates: [] as unknown[], names: [] as { installId: string; itemId: number; name: string }[], npcs: [] as unknown[], unreachable: false }));
+const world = vi.hoisted(() => ({ npcs: [] as unknown[], quests: [] as unknown[], vendors: [] as unknown[], unreachable: false }));
+vi.mock("@/lib/rollup-compute", () => ({ loadItemFacts: async () => facts, loadWorldFacts: async () => world }));
+
+const entries = await sitemap();
 const byPath = new Map(entries.map((e) => [new URL(e.url).pathname, e]));
 
 test("/changes is dated by its newest entry", () => {
@@ -33,5 +39,37 @@ test("changefreq and priority are gone", () => {
   for (const entry of entries) {
     expect(entry).not.toHaveProperty("changeFrequency");
     expect(entry).not.toHaveProperty("priority");
+  }
+});
+
+test("the zone index is listed; a zone page only once something is on it, and never a held-back one", async () => {
+  const paths = async () => (await sitemap()).map((e) => new URL(e.url).pathname);
+  expect(byPath.has("/database/zones")).toBe(true);
+  expect(byPath.has("/database/zones/1436-westfall")).toBe(true);
+  expect(byPath.has("/database/zones/1450-moonglade")).toBe(false);
+  expect([...byPath.keys()].filter((p) => p.startsWith("/database/zones/2482"))).toEqual([]);
+  try {
+    world.npcs = ["a", "b", "c"].map((installId) => ({ installId, npcId: 5, name: "Keeper", mapId: 1450, x: 50, y: 50, positionKind: "npc" }));
+    expect(await paths()).toContain("/database/zones/1450-moonglade");
+    world.unreachable = true;
+    expect(await paths()).not.toContain("/database/zones/1450-moonglade");
+  } finally {
+    world.npcs = [];
+    world.unreachable = false;
+  }
+});
+
+test("an item category is listed only once half its first page has an agreed name", async () => {
+  const cls = CLIENT_TAXONOMY.classes.find((c) => c.slug === "weapons")!;
+  expect(byPath.has(itemsHref("weapons"))).toBe(false);
+  const ids = filterItems(CLIENT_TAXONOMY, { classId: cls.id }).slice(0, ITEMS_PER_PAGE).map((r) => r[0]);
+  const name = (n: number) => ids.slice(0, n).flatMap((itemId) => ["a", "b", "c"].map((installId) => ({ installId, itemId, name: `Item name ${itemId}` })));
+  try {
+    facts.names = name(Math.ceil(ids.length / 2) - 1);
+    expect((await sitemap()).map((e) => new URL(e.url).pathname)).not.toContain(itemsHref("weapons"));
+    facts.names = name(Math.ceil(ids.length / 2));
+    expect((await sitemap()).map((e) => new URL(e.url).pathname)).toContain(itemsHref("weapons"));
+  } finally {
+    facts.names = [];
   }
 });

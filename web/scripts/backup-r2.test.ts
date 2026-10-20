@@ -9,6 +9,8 @@ const env = { R2_ACCOUNT_ID: "acct", R2_ACCESS_KEY_ID: "AKID", R2_SECRET_ACCESS_
 const md5 = (s: string) => createHash("md5").update(s).digest("hex");
 const quiet = () => {};
 
+const escapeXml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
 /** A fake R2 bucket: ListObjectsV2 pages of one key each, and GETs that can lie. */
 function bucket(objects: Record<string, string>, corrupt: string[] = []) {
   const keys = Object.keys(objects).sort();
@@ -18,7 +20,7 @@ function bucket(objects: Record<string, string>, corrupt: string[] = []) {
       const start = Number(url.searchParams.get("continuation-token") ?? 0);
       const key = keys[start];
       const more = start + 1 < keys.length;
-      const body = `<ListBucketResult>${key ? `<Contents><Key>${key}</Key><Size>${Buffer.byteLength(objects[key])}</Size><ETag>&quot;${md5(objects[key])}&quot;</ETag></Contents>` : ""}` +
+      const body = `<ListBucketResult>${key ? `<Contents><Key>${escapeXml(key)}</Key><Size>${Buffer.byteLength(objects[key])}</Size><ETag>&quot;${md5(objects[key])}&quot;</ETag></Contents>` : ""}` +
         `<IsTruncated>${more}</IsTruncated>${more ? `<NextContinuationToken>${start + 1}</NextContinuationToken>` : ""}</ListBucketResult>`;
       return new Response(body);
     }
@@ -58,6 +60,14 @@ test("a corrupted download fails the run and leaves no manifest claiming complet
     .rejects.toThrow(/uploads\/2026-10-10\/b\.json/);
   expect(existsSync(join(dest, "_manifest.json"))).toBe(false);
   expect(existsSync(join(dest, "uploads/2026-10-10/b.json"))).toBe(false);
+});
+
+test("a key that contains entity-like text is decoded once and mirrored under its own name", async () => {
+  const dest = mkdtempSync(join(tmpdir(), "everloot-r2-"));
+  const objects = { "uploads/R&D &lt;notes&gt;.json": '{"records":[4]}' };
+  const result = await mirrorBucket({ dest, env, fetch: bucket(objects), log: quiet });
+  expect(result).toMatchObject({ objects: 1, downloaded: 1 });
+  expect(readFileSync(join(dest, "uploads/R&D &lt;notes&gt;.json"), "utf8")).toBe('{"records":[4]}');
 });
 
 test("keys cannot escape the backup folder", async () => {

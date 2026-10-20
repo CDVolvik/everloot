@@ -101,7 +101,7 @@ are stored. Quotas and the data guard fail closed in production when the databas
 nightly dump runs, with a restore rehearsal done once and an offsite copy to S3 verified by checksum.
 
 **Vercel.** Secrets live only in the project environment. The crons accept only their bearer secret.
-Every response carries HSTS, `X-Frame-Options`, a referrer policy and a report-only CSP. Data routes go
+Every response carries HSTS, `X-Frame-Options`, a referrer policy and a CSP. Data routes go
 through one guard with per-IP and per-key quotas and answer with attribution headers. Pages and the
 MCP server never see the raw upload or the index.
 
@@ -129,7 +129,8 @@ in DATA_POLICY. Security reports go through the private channel in SECURITY.md.
    document. Confirm it in the repository settings.
 4. **Spend limit and alerts on Vercel** are not set. The plan itself is inferred from the ten-minute
    cron. Confirm both in billing before launch.
-5. **The CSP is report-only.** Enforce it once the ads and analytics origins have been seen in reports.
+5. **The CSP enforces only the plugin, base-tag and framing rules.** Script, connect and frame sources are
+   report-only: AdSense supports a nonce-based CSP only, and there is no report endpoint to collect reports.
 6. **Nothing sits in front of Vercel.** The Cloudflare zone is DNS-only, so there is no WAF or bot rule
    there; Vercel's own firewall is available if abuse appears. The data guard is the current control.
 7. **No rotation schedule for tokens.** Write one: R2 tokens, the cron secret, the MCP bearer token, the

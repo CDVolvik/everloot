@@ -5,7 +5,8 @@ import { CLASSES } from "@/design/tokens";
 import { CURRENT_BUILD, TABLES, type BuffTable, type Scope } from "@/data/game-data/raid";
 import {
   treeNames, SIZES, STATE_LABEL, coverage, decodeRaid, emptySlots, encodeRaid, findCode, groupsOf, resize,
-  titleCase, GROUP_SIZE, type ClassName, type FamilyCoverage, type Size, type Slot, type Slots, type State,
+  titleCase, GROUP_SIZE, roster, swapSlots,
+  type ClassName, type FamilyCoverage, type Size, type Slot, type Slots, type State,
 } from "@/lib/raid";
 import type { RaidArt } from "@/lib/game-assets";
 import GameIcon from "@/components/game/GameIcon";
@@ -18,6 +19,12 @@ const CLASS_TEXT: Record<ClassName, string> = {
   warrior: "text-class-warrior", paladin: "text-class-paladin", hunter: "text-class-hunter",
   rogue: "text-class-rogue", priest: "text-class-priest", shaman: "text-class-shaman",
   mage: "text-class-mage", warlock: "text-class-warlock", druid: "text-class-druid",
+};
+
+const CLASS_BORDER: Record<ClassName, string> = {
+  warrior: "border-l-class-warrior", paladin: "border-l-class-paladin", hunter: "border-l-class-hunter",
+  rogue: "border-l-class-rogue", priest: "border-l-class-priest", shaman: "border-l-class-shaman",
+  mage: "border-l-class-mage", warlock: "border-l-class-warlock", druid: "border-l-class-druid",
 };
 
 const STATE_TEXT: Record<State, string> = {
@@ -47,14 +54,15 @@ function reach(f: FamilyCoverage, table: BuffTable): string {
  * without the asset URL. The icons sit beside the names, which stay; without them the builder is the
  * text it always was.
  */
-export default function RaidBuilder({ art = null }: { art?: RaidArt | null } = {}) {
-  const classIcon = (c: ClassName, size = 20) => {
+/** `initialCode` is the raid from a raid link (/tools/raid/r/<code>), opened when the address has no #raid=. */
+export default function RaidBuilder({ art = null, initialCode }: { art?: RaidArt | null; initialCode?: string } = {}) {
+  const classIcon = (c: ClassName, size = 20, gap = "mr-2") => {
     const src = art?.classes[c];
-    return src ? <GameIcon src={src} size={size} className="mr-2" /> : null;
+    return src ? <GameIcon src={src} size={size} className={gap} /> : null;
   };
-  const treeIcon = (c: ClassName, tree: number, size = 20) => {
+  const treeIcon = (c: ClassName, tree: number, size = 20, gap = "mr-2") => {
     const src = tree > 0 ? art?.trees[c]?.[tree - 1] : null;
-    return src ? <GameIcon src={src} size={size} className="mr-2" /> : null;
+    return src ? <GameIcon src={src} size={size} className={gap} /> : null;
   };
   const [state, setState] = useState<Snapshot>({ size: 20, slots: emptySlots(20) });
   const [past, setPast] = useState<Snapshot[]>([]);
@@ -64,6 +72,10 @@ export default function RaidBuilder({ art = null }: { art?: RaidArt | null } = {
   const [message, setMessage] = useState("");
   const [paste, setPaste] = useState("");
   const [ready, setReady] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [dragFrom, setDragFrom] = useState<number | null>(null);
+  const [dragOver, setDragOver] = useState<number | null>(null);
+  const [moveTo, setMoveTo] = useState("");
   const pickerRef = useRef<HTMLDivElement>(null);
   const slotRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
@@ -102,6 +114,8 @@ export default function RaidBuilder({ art = null }: { art?: RaidArt | null } = {
   }, [state]);
 
   useEffect(() => {
+    // A raid link carries its code in the path; move it into the planner's #raid= address and read it there.
+    if (!location.hash && initialCode) history.replaceState(null, "", `/tools/raid#raid=${initialCode}`);
     if (location.hash.startsWith("#raid=")) load(location.hash.slice(6), false);
     setReady(true);
     // A link pasted into the address bar of this tab changes only the fragment. Our own updates use
@@ -115,7 +129,8 @@ export default function RaidBuilder({ art = null }: { art?: RaidArt | null } = {
 
   const code = useMemo(() => encodeRaid({ size, build: table.build, slots }), [size, slots]);
   const empty = slots.every((s) => !s);
-  const link = typeof window === "undefined" ? "" : `${location.origin}${location.pathname}#raid=${code}`;
+  // The link handed out is the raid link: same raid, and its preview in a chat names the roster.
+  const link = typeof window === "undefined" ? "" : `${location.origin}/tools/raid/r/${code}`;
 
   useEffect(() => {
     if (!ready) return;
@@ -125,6 +140,7 @@ export default function RaidBuilder({ art = null }: { art?: RaidArt | null } = {
 
   useEffect(() => {
     if (selected !== null) pickerRef.current?.focus();
+    setMoveTo("");
   }, [selected]);
 
   useEffect(() => {
@@ -153,12 +169,38 @@ export default function RaidBuilder({ art = null }: { art?: RaidArt | null } = {
   };
 
   const cov = useMemo(() => coverage(slots, table), [slots]);
+  const ros = useMemo(() => roster(slots), [slots]);
   const groups = groupsOf(slots);
   const current = selected === null ? null : slots[selected];
+
+  const place = (i: number) => `group ${Math.floor(i / GROUP_SIZE) + 1}, slot ${(i % GROUP_SIZE) + 1}`;
+  const describe = (s: Slot | null) => (s ? `${titleCase(s.class)}, ${s.tree ? treeNames(table, s.class)[s.tree - 1] : "any tree"}` : "empty");
+
+  // Move a member to another slot; an occupied target swaps places. One undo step either way.
+  const moveMember = (from: number, to: number) => {
+    const next = swapSlots(slots, from, to);
+    if (next === slots) return false;
+    const mover = slots[from];
+    const other = slots[to];
+    commit({ size, slots: next });
+    setMessage(
+      mover && other
+        ? `Swapped ${describe(mover)} with ${describe(other)}.`
+        : `Moved ${describe(mover ?? other)} to ${place(mover ? to : from)}.`,
+    );
+    return true;
+  };
+
+  useEffect(() => {
+    if (!copied) return;
+    const t = setTimeout(() => setCopied(false), 2000);
+    return () => clearTimeout(t);
+  }, [copied]);
 
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(link);
+      setCopied(true);
       setMessage("Link copied.");
     } catch {
       setMessage("Select the link and copy it.");
@@ -215,15 +257,18 @@ export default function RaidBuilder({ art = null }: { art?: RaidArt | null } = {
       </section>
 
       <section aria-labelledby="raid-layout" className="space-y-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <h2 id="raid-layout" className="text-xl font-semibold text-fg">Raid</h2>
-          <div role="group" aria-label="Raid size" className="flex gap-2">
+        <h2 id="raid-layout" className="text-xl font-semibold text-fg">Raid</h2>
+
+        <div role="toolbar" aria-label="Raid controls" className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-line bg-panel p-2">
+          <div role="group" aria-label="Raid size" className="flex items-center gap-1">
+            <span className="px-2 text-sm text-fg-2" aria-hidden="true">Size</span>
             {SIZES.map((s) => (
               <button
                 key={s}
                 type="button"
                 aria-pressed={size === s}
-                className={`btn ${size === s ? "border-accent text-accent" : ""}`}
+                aria-label={`${s} players`}
+                className={`btn !px-4 ${size === s ? "border-accent text-accent" : "border-transparent"}`}
                 onClick={() => {
                   if (s === size) return;
                   setSelected(null);
@@ -235,16 +280,54 @@ export default function RaidBuilder({ art = null }: { art?: RaidArt | null } = {
               </button>
             ))}
           </div>
-          <button type="button" className="btn" onClick={undo} disabled={past.length === 0}>Undo</button>
-          <button
-            type="button"
-            className="btn"
-            disabled={empty}
-            onClick={() => { setSelected(null); commit({ size, slots: emptySlots(size) }); }}
-          >
-            Clear raid
-          </button>
-          <p role="status" aria-live="polite" className="text-sm text-fg-2">{message}</p>
+          <span className="hidden h-6 w-px bg-line sm:block" aria-hidden="true" />
+          <div className="flex flex-wrap items-center gap-1">
+            <button type="button" className="btn !px-4 border-transparent" onClick={undo} disabled={past.length === 0}>Undo</button>
+            <button
+              type="button"
+              className="btn !px-4 border-transparent"
+              disabled={empty}
+              onClick={() => { setSelected(null); commit({ size, slots: emptySlots(size) }); }}
+            >
+              Clear raid
+            </button>
+            <button type="button" className="btn !px-4" onClick={copy}>{copied ? "Copied" : "Copy link"}</button>
+          </div>
+        </div>
+        <p role="status" aria-live="polite" className="min-h-5 text-sm text-fg-2">{message}</p>
+
+        <div role="group" aria-label="Roster summary" className="space-y-3 rounded-lg border border-line bg-panel p-4">
+          <p className="text-sm text-fg-2">
+            <span className="font-medium text-fg">{ros.filled} of {size}</span> slots filled
+            {ros.filled > 0 && (
+              <>
+                <span aria-hidden="true"> · </span>
+                <span className="font-medium text-fg">Buffs covered: {cov.summary.covered} of {cov.buffs.length}</span>
+              </>
+            )}
+          </p>
+          {ros.filled === 0 ? (
+            <p className="text-sm text-muted">Add members to see the class count, the role split and the buffs they bring.</p>
+          ) : (
+            <>
+              <ul aria-label="Members per class" className="flex flex-wrap gap-2">
+                {CLASSES.filter((c) => ros.classes[c] > 0).map((c) => (
+                  <li key={c} className={`inline-flex items-center gap-2 rounded-full border border-edge px-3 py-1 text-sm font-medium ${CLASS_TEXT[c]}`}>
+                    {classIcon(c, 18, "")}
+                    {titleCase(c)}
+                    <span className="font-mono text-fg">{ros.classes[c]}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-sm text-fg-2">
+                Roles:{" "}
+                <span className="text-fg">{ros.roles.tank} tank{ros.roles.tank === 1 ? "" : "s"}</span>,{" "}
+                <span className="text-fg">{ros.roles.healer} healer{ros.roles.healer === 1 ? "" : "s"}</span>,{" "}
+                <span className="text-fg">{ros.roles.damage} damage</span>
+                {ros.roles.unknown > 0 && <>, <span className="text-fg">{ros.roles.unknown} not known</span> (any tree, or feral)</>}
+              </p>
+            </>
+          )}
         </div>
 
         <div role="tablist" aria-label="Group" className="flex gap-2 overflow-x-auto md:hidden">
@@ -275,25 +358,61 @@ export default function RaidBuilder({ art = null }: { art?: RaidArt | null } = {
                 {group.map((slot, k) => {
                   const index = g * GROUP_SIZE + k;
                   const treeName = slot && slot.tree ? treeNames(table, slot.class)[slot.tree - 1] : "any tree";
+                  const over = dragOver === index && dragFrom !== null && dragFrom !== index;
                   return (
-                    <li key={k}>
+                    <li
+                      key={k}
+                      onDragOver={(e) => {
+                        if (dragFrom === null) return;
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = "move";
+                        if (dragOver !== index) setDragOver(index);
+                      }}
+                      onDragLeave={(e) => {
+                        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragOver((d) => (d === index ? null : d));
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const from = dragFrom;
+                        setDragFrom(null);
+                        setDragOver(null);
+                        if (from === null) return;
+                        setSelected(null);
+                        moveMember(from, index);
+                      }}
+                    >
                       <button
                         type="button"
                         ref={(el) => { slotRefs.current[index] = el; }}
                         aria-pressed={selected === index}
                         aria-label={`Group ${g + 1}, slot ${k + 1}: ${slot ? `${titleCase(slot.class)}, ${treeName}` : "empty"}`}
-                        className={`flex min-h-11 w-full items-center justify-between gap-2 rounded-md border px-3 text-left ${
-                          selected === index ? "border-accent" : "border-edge"
-                        }`}
                         onClick={() => setSelected(selected === index ? null : index)}
+                        draggable={!!slot}
+                        onDragStart={(e) => {
+                          e.dataTransfer.effectAllowed = "move";
+                          e.dataTransfer.setData("text/plain", String(index));
+                          setDragFrom(index);
+                        }}
+                        onDragEnd={() => { setDragFrom(null); setDragOver(null); }}
+                        className={`flex min-h-14 w-full items-center gap-3 rounded-md border px-3 text-left transition-colors duration-150 ${
+                          slot
+                            ? `border-l-4 bg-canvas ${CLASS_BORDER[slot.class]} cursor-grab ${selected === index ? "border-accent" : "border-edge hover:border-fg-2"}`
+                            : `border-dashed ${selected === index ? "border-accent" : "border-edge hover:border-fg-2"}`
+                        } ${over ? "!border-accent bg-panel ring-1 ring-accent" : ""} ${dragFrom === index ? "!border-accent border-dashed" : ""}`}
                       >
                         {slot ? (
                           <>
-                            <span className={`font-medium ${CLASS_TEXT[slot.class]}`}>{classIcon(slot.class)}{titleCase(slot.class)}</span>
-                            <span className="text-sm text-fg-2">{treeIcon(slot.class, slot.tree, 18)}{treeName}</span>
+                            {classIcon(slot.class, 32, "")}
+                            <span className="min-w-0">
+                              <span className={`block font-medium ${CLASS_TEXT[slot.class]}`}>{titleCase(slot.class)}</span>
+                              <span className="flex items-center gap-1.5 text-sm text-fg-2">
+                                {treeIcon(slot.class, slot.tree, 16, "")}
+                                {treeName}
+                              </span>
+                            </span>
                           </>
                         ) : (
-                          <span className="text-sm text-muted">Empty</span>
+                          <span className="text-sm text-muted"><span aria-hidden="true">+ </span>Add</span>
                         )}
                       </button>
                     </li>
@@ -349,6 +468,37 @@ export default function RaidBuilder({ art = null }: { art?: RaidArt | null } = {
                 </button>
               ))}
             </div>
+            {current && (
+              <div className="flex flex-wrap items-center gap-2">
+                <label htmlFor="raid-move" className="text-sm text-fg-2">Move to</label>
+                <select
+                  id="raid-move"
+                  value={moveTo}
+                  onChange={(e) => setMoveTo(e.target.value)}
+                  className="min-h-11 rounded-md border border-edge bg-panel px-3 text-sm text-fg"
+                >
+                  <option value="">Choose a slot</option>
+                  {slots.map((s, i) => i === selected ? null : (
+                    <option key={i} value={i}>{`Group ${Math.floor(i / GROUP_SIZE) + 1}, slot ${(i % GROUP_SIZE) + 1}: ${describe(s)}`}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={moveTo === ""}
+                  onClick={() => {
+                    const to = Number(moveTo);
+                    setMoveTo("");
+                    if (moveMember(selected, to)) {
+                      setSelected(to);
+                      setActiveGroup(Math.floor(to / GROUP_SIZE));
+                    }
+                  }}
+                >
+                  Move
+                </button>
+              </div>
+            )}
             <div className="flex gap-2">
               <button type="button" className="btn" disabled={!current} onClick={() => setSlot(selected, null)}>Clear slot</button>
               <button type="button" className="btn" onClick={closePicker}>Done</button>
@@ -401,7 +551,7 @@ export default function RaidBuilder({ art = null }: { art?: RaidArt | null } = {
         <div className="flex flex-wrap gap-2">
           <label className="sr-only" htmlFor="raid-link">Share link</label>
           <input id="raid-link" readOnly value={link} className="min-w-0 flex-1 rounded-md border border-edge bg-panel px-3 font-mono text-sm text-fg" />
-          <button type="button" className="btn" onClick={copy}>Copy link</button>
+          <button type="button" className="btn" onClick={copy}>{copied ? "Copied" : "Copy link"}</button>
         </div>
         <form
           className="flex flex-wrap gap-2"

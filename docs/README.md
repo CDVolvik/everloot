@@ -7,11 +7,14 @@ architecture map.
 
 | File | What it is |
 |---|---|
-| [`RELEASING.md`](RELEASING.md) | Stable and nightly releases, and the pull request title convention |
+| [`RELEASING.md`](RELEASING.md) | Addon (stable and nightly), desktop app and protocol releases, and the pull request title convention |
 | [`2026-10-08-beta-client-checklist.md`](2026-10-08-beta-client-checklist.md) | What gets checked in the live client before an addon release |
+| [`2026-10-18-addon-0.3.2-beta-checklist.md`](2026-10-18-addon-0.3.2-beta-checklist.md), [`2026-10-19-addon-0.3.3-beta-checklist.md`](2026-10-19-addon-0.3.3-beta-checklist.md) | The in-client checks for the 0.3.2 profession and auction reads and the 0.3.3 completion tracker |
 | [`2026-10-08-release-checklist.md`](2026-10-08-release-checklist.md) | What gets checked before a site release |
 | [`BUILD_WATCH.md`](BUILD_WATCH.md) | How a new game build becomes a reviewed data pull request |
 | [`TRACKER.md`](TRACKER.md) | The build list, generated from `kb/src/bridge-plan.ts` (a test keeps it in sync) |
+| [`ASSETS.md`](ASSETS.md) | How Blizzard's icons, tooltip text and interface art get onto the site, and the rules for them |
+| [`SEO.md`](SEO.md) | What the site does so search engines and AI assistants can find and quote it |
 | [`../CONTRIBUTING.md`](../CONTRIBUTING.md), [`../ROADMAP.md`](../ROADMAP.md), [`../CHANGELOG.md`](../CHANGELOG.md) | How to contribute, what is planned, what has shipped |
 
 ## Data policy
@@ -27,6 +30,8 @@ architecture map.
 | File | What it is |
 |---|---|
 | [`architecture.md`](architecture.md) | The service and data map |
+| [`DATA_PLACEMENT.md`](DATA_PLACEMENT.md) | Where each kind of data is stored, who may write and read it |
+| [`2026-10-18-database-taxonomy-research.md`](2026-10-18-database-taxonomy-research.md), [`2026-10-18-client-data-placement.md`](2026-10-18-client-data-placement.md) | How other game databases map entities, and where each table in the Forever client fits in Everloot |
 | [`everloot-wow-architecture-audit.md`](everloot-wow-architecture-audit.md) | The datamining and community-data audit that led to the game-file layer |
 | [`2026-10-09-public-mcp-hosting-options.md`](2026-10-09-public-mcp-hosting-options.md) | Where the public MCP endpoint can run |
 | [`2026-10-09-recipe-capture-options.md`](2026-10-09-recipe-capture-options.md), [`2026-10-10-recipe-windows-design.md`](2026-10-10-recipe-windows-design.md) | How recipe difficulty is captured |

@@ -104,10 +104,11 @@ const root = join(__dirname, "../../../..");
 const SHOWS_ART = new Set([
   "web/src/lib/talents/assets.ts", "web/src/lib/game-assets.ts", "web/src/lib/game-assets.fixture.ts",
   "web/src/components/RaidBuilder.tsx",
-  "web/src/app/page.tsx", "web/src/app/map/page.tsx", "web/src/app/tools/raid/page.tsx", "web/src/app/tools/auctions/page.tsx",
+  "web/src/app/page.tsx", "web/src/app/map/page.tsx", "web/src/components/RaidView.tsx", "web/src/app/tools/auctions/page.tsx",
   "web/src/app/tools/professions/page.tsx", "web/src/app/database/drops/page.tsx", "web/src/app/database/items/[id]/page.tsx", "web/src/app/database/items/category-page.tsx",
   "web/src/app/database/vendors/[id]/page.tsx", "web/src/app/changes/page.tsx", "web/src/lib/spell-mentions.ts", "web/src/app/wow-forever/page.tsx",
   "kb/src/cli.ts", "web/scripts/upload-game-assets.mjs", "web/scripts/game-assets-upload.mjs",
+  "web/src/app/database/zones/[zone]/page.tsx",
 ]);
 
 test("nothing outside the pages that show the art can read the asset URL or the manifest modules", () => {

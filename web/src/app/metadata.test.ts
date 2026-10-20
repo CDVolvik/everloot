@@ -9,6 +9,7 @@ vi.mock("next/navigation", () => ({ notFound: () => { throw new Error("NOT_FOUND
 /** Every static route that exports `metadata`, with whether its title must lead with "WoW Forever". */
 const routes: [string, () => Promise<{ metadata: Metadata }>, boolean][] = [
   ["/about", () => import("./about/page"), false],
+  ["/addon", () => import("./addon/page"), true],
   ["/addons", () => import("./addons/page"), true],
   ["/addons/polestar", () => import("./addons/polestar/page"), false],
   ["/addons/polestar/packs", () => import("./addons/polestar/packs/page"), true],

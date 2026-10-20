@@ -11,8 +11,8 @@ describe("working feature discovery", () => {
   it("describes routes that are still planned honestly", () => {
     expect(tools.find((tool) => tool.slug === "farming-routes")?.status).toBe("coming-soon");
   });
-  it("lists canonical routes once without redirect or waitlist duplicates", () => {
-    const urls = sitemap().map((entry) => new URL(entry.url).pathname);
+  it("lists canonical routes once without redirect or waitlist duplicates", async () => {
+    const urls = (await sitemap()).map((entry) => new URL(entry.url).pathname);
     expect(new Set(urls).size).toBe(urls.length);
     expect(urls).toContain("/database");
     expect(urls).toContain("/upload");
@@ -21,8 +21,8 @@ describe("working feature discovery", () => {
     expect(urls).not.toContain("/tools/completionist");
     expect(urls).not.toContain("/tools/profession-planner");
   });
-  it("exposes a contact page linked from the footer and sitemap", () => {
-    const urls = sitemap().map((entry) => new URL(entry.url).pathname);
+  it("exposes a contact page linked from the footer and sitemap", async () => {
+    const urls = (await sitemap()).map((entry) => new URL(entry.url).pathname);
     expect(urls).toContain("/about");
     expect(urls).toContain("/privacy");
     expect(urls).toContain("/contact");

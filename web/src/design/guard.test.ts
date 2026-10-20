@@ -1,6 +1,5 @@
 // Keeps the old look from coming back: each rule scans every non-test .ts, .tsx and .css file
-// under web/src, line by line. The primary pill's gradient ring is the one allowed gradient, so
-// its block in globals.css is blanked before scanning.
+// under web/src, line by line. No exceptions: the primary button is a flat fill, not a gradient.
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -113,14 +112,7 @@ function* sourceFiles(dir: string): Generator<string> {
   }
 }
 
-// Blank the allowed gradient block but keep its line breaks, so line numbers stay true.
-function scannable(path: string): string {
-  const text = readFileSync(path, "utf8");
-  if (!path.endsWith("globals.css")) return text;
-  return text.replace(/\.btn-primary::before\s*\{[^}]*\}/, (block) => block.replace(/[^\n]/g, ""));
-}
-
-const files = [...sourceFiles(src)].map((path) => ({ name: relative(src, path).replaceAll("\\", "/"), lines: scannable(path).split(/\r?\n/) }));
+const files = [...sourceFiles(src)].map((path) => ({ name: relative(src, path).replaceAll("\\", "/"), lines: readFileSync(path, "utf8").split(/\r?\n/) }));
 
 function offenders(rule: Rule): string[] {
   return files.flatMap(({ name, lines }) =>
@@ -143,12 +135,10 @@ test("the scan sees the source", () => {
   expect(files.length).toBeGreaterThan(40);
 });
 
-test("the one allowed gradient is the primary pill's ring", () => {
+test("no gradient at all, the primary button included (it is a flat fill)", () => {
   const css = readFileSync(join(src, "app/globals.css"), "utf8");
   const gradients = RULES.find((r) => r.name === "gradients")!.pattern;
-  // The ring's background and its two mask layers; all of them sit in the blanked block.
-  expect(css.split(/\r?\n/).filter((line) => gradients.test(line)).length).toBeGreaterThan(0);
-  expect(scannable(join(src, "app/globals.css")).split(/\r?\n/).some((line) => gradients.test(line))).toBe(false);
+  expect(css.split(/\r?\n/).some((line) => gradients.test(line))).toBe(false);
 });
 
 test("only Geist families", () => {

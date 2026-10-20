@@ -3,7 +3,7 @@ const path = require("node:path");
 const reportOnlyCsp = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://www.googletagmanager.com https://eu.i.posthog.com https://us.i.posthog.com https://eu-assets.i.posthog.com https://us-assets.i.posthog.com https://pagead2.googlesyndication.com https://fundingchoicesmessages.google.com https://*.adtrafficquality.google",
-  "connect-src 'self' https://cloudflareinsights.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com https://eu.i.posthog.com https://us.i.posthog.com https://pagead2.googlesyndication.com https://fundingchoicesmessages.google.com https://*.adtrafficquality.google https://googleads.g.doubleclick.net",
+  "connect-src 'self' https://assets.everloot.app https://cloudflareinsights.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com https://eu.i.posthog.com https://us.i.posthog.com https://pagead2.googlesyndication.com https://fundingchoicesmessages.google.com https://*.adtrafficquality.google https://googleads.g.doubleclick.net https://api.anthropic.com https://openrouter.ai http://localhost:11434",
   "img-src 'self' data: blob: https:",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self' data:",
@@ -13,12 +13,17 @@ const reportOnlyCsp = [
   "object-src 'none'",
 ].join("; ");
 
+// Enforced: only directives that block nothing the site or AdSense uses. AdSense supports a nonce-based
+// CSP only (support.google.com/adsense/answer/16283098), so script, connect and frame sources stay report-only.
+const enforcedCsp = ["object-src 'none'", "base-uri 'self'", "frame-ancestors 'self'"].join("; ");
+
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "SAMEORIGIN" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()" },
   { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
+  { key: "Content-Security-Policy", value: enforcedCsp },
   { key: "Content-Security-Policy-Report-Only", value: reportOnlyCsp },
 ];
 
@@ -32,6 +37,8 @@ const nextConfig = {
     // The protocol's JSON Schema files, served by /schema/<file>.json from the installed package.
     // Brackets are glob characters in these keys, so the segment is escaped (as the Next docs show).
     "/schema/\\[\\.\\.\\.path\\]": ["./node_modules/@everloot/protocol/schema/**"],
+    // /addon hashes the zip it serves when it is rebuilt each hour (the key also matches /addons, which costs ~1 MB).
+    "/addon": ["./public/downloads/*.zip"],
     "/mcp": ["./.release/*.sqlite", "./.release/*.manifest.json"],
     "/mcp/public": ["./.release/*.sqlite", "./.release/*.manifest.json"],
     // Keys match by substring, so this one covers /api/tools/[tool], the tools' plain-HTTP route.
@@ -44,6 +51,9 @@ const nextConfig = {
     "/lore/browse/[type]": ["./.release/*.sqlite", "./.release/*.manifest.json"],
     "/lore/coverage": ["./.release/*.sqlite", "./.release/*.manifest.json"],
     "/lore-sitemap/pages.xml": ["./.release/*.sqlite", "./.release/*.manifest.json"],
+    // The build-link previews draw their card on each request, so they read the Geist fonts at run time.
+    "/tools/raid/card": ["./node_modules/geist/dist/fonts/geist-sans/Geist-{Bold,Regular}.ttf"],
+    "/tools/talents/\\[class\\]/card": ["./node_modules/geist/dist/fonts/geist-sans/Geist-{Bold,Regular}.ttf"],
   },
   // /lore/[slug] already owns one dynamic segment under /lore, so the browse pages live at
   // /lore/browse/<type> and are served at the short URL. afterFiles rewrites run before dynamic routes.
@@ -57,10 +67,11 @@ const nextConfig = {
   async redirects() {
     return [{ source: "/lore/browse/:type(npcs|items|quests|zones|spells)", destination: "/lore/:type", permanent: true }];
   },
-  // Security headers on every route. The CSP is report-only: it lists what the site loads (the analytics and ads
-  // scripts only start after consent) and enforces nothing, so a missed host shows in the console, not as a
-  // broken page. Access-Control-Allow-Origin is not set here: the `*` seen on pages is added by Vercel for
-  // prerendered responses, and a header set here could not remove it.
+  // Security headers on every route. The full CSP is report-only: it lists what the site loads (the analytics
+  // scripts only start after consent), so a missed host shows in the console, not as a broken page. The
+  // enforced CSP holds only the plugin, base-tag and framing rules. Access-Control-Allow-Origin is not set
+  // here: the `*` seen on pages is added by Vercel for prerendered responses, and a header set here could not
+  // remove it.
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },

@@ -48,7 +48,7 @@ test("raid talent facts come from the file's tree and treeProof, naming the tree
   expect(facts.talent.length + facts.unknownTree.length + facts.baseline).toBe(counted.length);
 });
 
-test("every response carries the security headers, with only a report-only CSP", async () => {
+test("every response carries the security headers; the CSP enforces only the plugin, base and framing rules", async () => {
   const [rule] = await nextConfig.headers!();
   expect(rule.source).toBe("/:path*");
   const headers = Object.fromEntries(rule.headers.map((h: { key: string; value: string }) => [h.key, h.value]));
@@ -57,8 +57,13 @@ test("every response carries the security headers, with only a report-only CSP",
   expect(headers["Referrer-Policy"]).toBe("strict-origin-when-cross-origin");
   expect(headers["Permissions-Policy"]).toContain("camera=()");
   expect(headers["Strict-Transport-Security"]).toBe("max-age=63072000; includeSubDomains");
-  expect(headers["Content-Security-Policy"]).toBeUndefined();
+  // AdSense supports only a nonce-based CSP, so no script, connect or frame source is enforced.
+  expect(headers["Content-Security-Policy"]).toBe("object-src 'none'; base-uri 'self'; frame-ancestors 'self'");
   const csp = headers["Content-Security-Policy-Report-Only"];
   // The analytics and consent scripts the site can load stay allowed.
   for (const host of ["static.cloudflareinsights.com", "www.googletagmanager.com", "eu.i.posthog.com", "pagead2.googlesyndication.com"]) expect(csp).toContain(host);
+  // The talent calculator fetches its asset manifest from the asset host.
+  expect(csp).toMatch(/connect-src [^;]*https:\/\/assets\.everloot\.app/);
+  // /chat calls the player's own provider from the page.
+  expect(csp).toMatch(/connect-src [^;]*https:\/\/api\.anthropic\.com [^;]*https:\/\/openrouter\.ai [^;]*http:\/\/localhost:11434/);
 });
