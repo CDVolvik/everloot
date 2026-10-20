@@ -119,14 +119,14 @@ export default async function NpcPage(props: { params: Promise<{ id: string }> }
             {
               id: "drops", label: "Drops", count: unreachable ? undefined : dropped.length,
               panel: unreachable ? <Unreachable />
-                : dropped.length ? <DataTable caption={`What ${title} drops`} columns={dropColumns} rows={dropped} rowKey={(r) => String(r.itemId)} />
+                : dropped.length ? <DataTable dense caption={`What ${title} drops`} columns={dropColumns} rows={dropped} rowKey={(r) => String(r.itemId)} />
                 : zero ? <p className="py-3 text-meta text-fg">No items observed in {zero.kills} recorded loot windows. {zero.reporters} install IDs.</p>
                 : <EmptyTab message="Nobody has looted this NPC in Forever yet." />,
             },
             {
               id: "map", label: "Map", count: unreachable ? undefined : page.pins.length,
               panel: unreachable ? <Unreachable />
-                : page.pins.length ? <DataTable caption={`Where ${title} stands`} columns={pinColumns} rows={page.pins} rowKey={(p) => String(p.mapId)} />
+                : page.pins.length ? <DataTable dense caption={`Where ${title} stands`} columns={pinColumns} rows={page.pins} rowKey={(p) => String(p.mapId)} />
                 : <EmptyTab message="No agreed position yet." />,
             },
           ]}

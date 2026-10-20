@@ -101,7 +101,7 @@ export default async function ItemPage(props: Props) {
     return {
       id, label, count: rows.length,
       panel: rows.length
-        ? <DataTable caption={`${label}: ${title}`} columns={relationColumns(head, rows)} rows={rows} rowKey={(e) => `${e.evidence}-${e.toKind}-${e.toId}`} />
+        ? <DataTable dense caption={`${label}: ${title}`} columns={relationColumns(head, rows)} rows={rows} rowKey={(e) => `${e.evidence}-${e.toKind}-${e.toId}`} />
         : <EmptyTab message={empty} {...(files ? { players: false, action: files } : {})} />,
     };
   };
@@ -128,7 +128,7 @@ export default async function ItemPage(props: Props) {
     {
       id: "dropped-by", label: "Dropped by", count: facts.unreachable ? undefined : page.drops.length,
       panel: facts.unreachable ? <Unreachable />
-        : page.drops.length ? <DataTable caption={`Where ${title} drops`} columns={dropColumns} rows={page.drops} rowKey={(d) => d.source} />
+        : page.drops.length ? <DataTable dense caption={`Where ${title} drops`} columns={dropColumns} rows={page.drops} rowKey={(d) => d.source} />
         : <EmptyTab message="Nobody has looted this in Forever yet." />,
     },
     relationTab("sold-by", "Sold by", "sold_by", "Vendor", "No vendor seen selling this yet."),
@@ -137,12 +137,13 @@ export default async function ItemPage(props: Props) {
     ...(rel("reward_from").length ? [relationTab("reward-from", "Reward from", "reward_from", "Quest", "")] : []),
     ...(page.pins.length ? [{
       id: "map", label: "Map", count: page.pins.length,
-      panel: <DataTable caption={`Where ${title} is found on the map`} columns={pinColumns} rows={page.pins} rowKey={(p) => `${p.npcId}-${p.mapId}`} />,
+      panel: <DataTable dense caption={`Where ${title} is found on the map`} columns={pinColumns} rows={page.pins} rowKey={(p) => `${p.npcId}-${p.mapId}`} />,
     }] : []),
     ...(related.length ? [{
       id: "related", label: "Related", count: related.length,
       panel: (
         <DataTable
+          dense
           caption={`Items related to ${title}`}
           columns={[
             { key: "what", header: "Relation", nowrap: true, cell: (e: Edge) => (e.rel === "same_icon" ? "Same icon" : "Part of set") },

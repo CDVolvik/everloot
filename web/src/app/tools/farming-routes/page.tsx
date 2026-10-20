@@ -3,7 +3,7 @@ import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import EmailCapture from "@/components/EmailCapture";
 import { trailFor } from "@/lib/breadcrumbs";
-import { Card, Container, Disclosure, EmptyState, PageHeader, SectionHeading, SourceLine } from "@/components/ui";
+import { Card, Container, Disclosure, EmptyState, PageHeader, SectionHeading } from "@/components/ui";
 
 export const metadata: Metadata = {
   ...pageMetadata({ title: "WoW Forever Farming Routes", description: "Planned WoW: Forever farming routes built from uploaded sightings. Route optimization and respawn timing are not available yet.", path: "/tools/farming-routes" }),
@@ -55,8 +55,6 @@ export default function FarmingRoutesPage() {
           <EmailCapture toolSlug="farming-routes" />
         </Card>
       </div>
-
-      <SourceLine source="Player uploads, once there are enough sightings to draw a route" />
     </Container>
   );
 }

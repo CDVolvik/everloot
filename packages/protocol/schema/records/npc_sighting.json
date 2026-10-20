@@ -70,6 +70,36 @@
         "player",
         "npc"
       ]
+    },
+    "creatureType": {
+      "description": "The creature type the game shows, as `UnitCreatureType` reports it in English. Older addons send none.",
+      "type": "string",
+      "enum": [
+        "Beast",
+        "Dragonkin",
+        "Demon",
+        "Elemental",
+        "Giant",
+        "Undead",
+        "Humanoid",
+        "Critter",
+        "Mechanical",
+        "Not specified",
+        "Totem",
+        "Non-combat Pet",
+        "Gas Cloud"
+      ]
+    },
+    "rank": {
+      "description": "`UnitClassification`: normal, elite, rare, rare_elite or boss (`worldboss`). Older addons send none.",
+      "type": "string",
+      "enum": [
+        "normal",
+        "elite",
+        "rare",
+        "rare_elite",
+        "boss"
+      ]
     }
   },
   "required": [

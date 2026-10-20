@@ -7,5 +7,6 @@
   "grantTokensMax": 4,
   "realmsPerUpload": 3,
   "censusSeenPerDay": 500,
-  "censusSelfPerDay": 50
+  "censusSelfPerDay": 50,
+  "playersPerUpload": 1000
 }

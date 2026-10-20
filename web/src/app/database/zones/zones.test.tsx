@@ -54,7 +54,7 @@ test("a zone page shows its confirmed NPCs, its lore, and the map link; the name
   expect(page).toContain("Westfall is a farming zone.");
   expect(page).toContain('href="/lore/1-westfall"');
   expect(page).toContain('href="/map?zone=1436"');
-  expect(page).toContain("From game files");
+  expect(page).toContain('data-badge="files"');
   expect((await generateMetadata(props("1436-westfall"))).robots).toMatchObject({ index: true });
 });
 

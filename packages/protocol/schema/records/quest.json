@@ -59,6 +59,36 @@
         "exclusiveMinimum": 0,
         "maximum": 9007199254740991
       }
+    },
+    "category": {
+      "description": "The quest log header the quest sits under, a zone or a category. Older addons send none.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 60
+    },
+    "faction": {
+      "description": "The faction of the character that accepted it. Never the character's name.",
+      "type": "string",
+      "enum": [
+        "alliance",
+        "horde"
+      ]
+    },
+    "suggestedGroup": {
+      "description": "The suggested group size the quest log shows; absent for a solo quest.",
+      "type": "integer",
+      "minimum": 2,
+      "maximum": 40
+    },
+    "tag": {
+      "description": "The quest tag the game reports, when it reports one.",
+      "type": "string",
+      "enum": [
+        "group",
+        "dungeon",
+        "raid",
+        "pvp"
+      ]
     }
   },
   "required": [

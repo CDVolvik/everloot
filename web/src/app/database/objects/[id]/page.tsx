@@ -67,7 +67,7 @@ export default async function ObjectPage(props: { params: Promise<{ id: string }
           tabs={[{
             id: "drops", label: "Drops", count: facts.unreachable ? undefined : page.drops.length,
             panel: facts.unreachable ? <Unreachable />
-              : page.drops.length ? <DataTable caption={`What players looted from ${title}`} columns={columns} rows={page.drops} rowKey={(d) => String(d.itemId)} />
+              : page.drops.length ? <DataTable dense caption={`What players looted from ${title}`} columns={columns} rows={page.drops} rowKey={(d) => String(d.itemId)} />
               : page.zero ? <p className="py-3 text-meta text-fg">{formatMeasuredZero(page.zero.kills)} · {page.zero.reporters} install IDs.</p>
               : <EmptyTab message={page.queued ? "Observed, not yet public: fewer than 3 installs so far." : "Nobody has looted this object in Forever yet."} />,
           }]}

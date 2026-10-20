@@ -90,6 +90,36 @@
                   "player",
                   "npc"
                 ]
+              },
+              "creatureType": {
+                "description": "The creature type the game shows, as `UnitCreatureType` reports it in English. Older addons send none.",
+                "type": "string",
+                "enum": [
+                  "Beast",
+                  "Dragonkin",
+                  "Demon",
+                  "Elemental",
+                  "Giant",
+                  "Undead",
+                  "Humanoid",
+                  "Critter",
+                  "Mechanical",
+                  "Not specified",
+                  "Totem",
+                  "Non-combat Pet",
+                  "Gas Cloud"
+                ]
+              },
+              "rank": {
+                "description": "`UnitClassification`: normal, elite, rare, rare_elite or boss (`worldboss`). Older addons send none.",
+                "type": "string",
+                "enum": [
+                  "normal",
+                  "elite",
+                  "rare",
+                  "rare_elite",
+                  "boss"
+                ]
               }
             },
             "required": [
@@ -238,6 +268,36 @@
                   "exclusiveMinimum": 0,
                   "maximum": 9007199254740991
                 }
+              },
+              "category": {
+                "description": "The quest log header the quest sits under, a zone or a category. Older addons send none.",
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 60
+              },
+              "faction": {
+                "description": "The faction of the character that accepted it. Never the character's name.",
+                "type": "string",
+                "enum": [
+                  "alliance",
+                  "horde"
+                ]
+              },
+              "suggestedGroup": {
+                "description": "The suggested group size the quest log shows; absent for a solo quest.",
+                "type": "integer",
+                "minimum": 2,
+                "maximum": 40
+              },
+              "tag": {
+                "description": "The quest tag the game reports, when it reports one.",
+                "type": "string",
+                "enum": [
+                  "group",
+                  "dungeon",
+                  "raid",
+                  "pvp"
+                ]
               }
             },
             "required": [
@@ -2423,6 +2483,77 @@
               "faction",
               "kind",
               "via"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "installId": {
+                "type": "string",
+                "minLength": 8,
+                "maxLength": 64,
+                "description": "Random install id, no account needed."
+              },
+              "eventId": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 96,
+                "pattern": "^[A-Za-z0-9:_-]+$"
+              },
+              "capturedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                "description": "ISO time the event happened in-game."
+              },
+              "kind": {
+                "type": "string",
+                "const": "player_seen"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 48,
+                "description": "UnitName: letters only, 2 to 12 of them."
+              },
+              "realm": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 60,
+                "description": "GetRealmName(): the realm the addon runs on. Players from another realm are not recorded."
+              },
+              "race": {
+                "type": "string",
+                "pattern": "^[A-Za-z]{2,24}$",
+                "description": "Race file token, UnitRace's second return, e.g. Scourge."
+              },
+              "class": {
+                "type": "string",
+                "pattern": "^[A-Z]{3,16}$",
+                "description": "Class token, UnitClass's second return, e.g. HUNTER."
+              },
+              "level": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 60
+              },
+              "guild": {
+                "description": "GetGuildInfo: the guild name, when the game showed one.",
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 96
+              }
+            },
+            "required": [
+              "installId",
+              "capturedAt",
+              "kind",
+              "name",
+              "realm",
+              "race",
+              "class",
+              "level"
             ],
             "additionalProperties": false
           }

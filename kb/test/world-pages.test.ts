@@ -1,16 +1,41 @@
 import { expect, test } from "vitest";
-import { handleNpcPage, handleQuestPage, handleVendorPage, npcTraits, worldFactsFromRecords } from "../src/world-pages.js";
+import { handleNpcPage, handleQuestPage, handleVendorPage, npcTraits, questTraits, worldFactsFromRecords } from "../src/world-pages.js";
 
 test("an NPC's level and reaction are kept from sightings and public once 3 installs agree", () => {
   const sight = (installId: string, level: unknown, reaction: unknown) =>
     ({ kind: "npc_sighting", installId, npcId: 7, name: "Hogger", mapId: 12, x: 1, y: 1, level, reaction });
   const facts = worldFactsFromRecords([sight("a", 11, "hostile"), sight("b", 11, "hostile"), sight("c", 11, "hostile"), sight("d", 0.5, "angry")]);
   expect(facts.npcs.map((r) => [r.level, r.reaction])).toEqual([[11, "hostile"], [11, "hostile"], [11, "hostile"], [undefined, undefined]]);
-  expect(npcTraits(facts.npcs)).toEqual({ level: 11, reaction: "hostile" });
-  expect(npcTraits(facts.npcs.slice(0, 2))).toEqual({ level: null, reaction: null });
+  expect(npcTraits(facts.npcs)).toMatchObject({ level: 11, reaction: "hostile" });
+  expect(npcTraits(facts.npcs.slice(0, 2))).toMatchObject({ level: null, reaction: null });
   // Alliance and Horde players see the same NPC differently: two agreed reactions are no answer.
   const split = worldFactsFromRecords(["a", "b", "c", "d", "e", "f"].map((id, i) => sight(id, 11, i < 3 ? "hostile" : "friendly")));
   expect(npcTraits(split.npcs).reaction).toBeNull();
+});
+
+test("an NPC's type and rank are public once 3 installs agree, and an unknown type is dropped", () => {
+  const sight = (installId: string, creatureType: unknown, rank: unknown) =>
+    ({ kind: "npc_sighting", installId, npcId: 7, name: "Hogger", mapId: 12, x: 1, y: 1, creatureType, rank });
+  const facts = worldFactsFromRecords([sight("a", "Humanoid", "elite"), sight("b", "Humanoid", "elite"), sight("c", "Humanoid", "elite"), sight("d", "Bestie", "legend")]);
+  expect(facts.npcs.map((r) => [r.creatureType, r.rank]).slice(3)).toEqual([[undefined, undefined]]);
+  expect(npcTraits(facts.npcs)).toMatchObject({ creatureType: "Humanoid", rank: "elite" });
+  expect(npcTraits(facts.npcs.slice(0, 2))).toMatchObject({ creatureType: null, rank: null });
+});
+
+test("a quest's side is one faction only when 3 installs report it and none the other, Both when 3 report each", () => {
+  const quest = (installId: string, faction: unknown, extra: Record<string, unknown> = {}) =>
+    ({ kind: "quest", installId, questId: 9, title: "Q", level: 5, rewardItemIds: [], faction, ...extra });
+  const side = (rows: unknown[]) => questTraits(worldFactsFromRecords(rows).quests).side;
+  expect(side([quest("a", "alliance"), quest("b", "alliance"), quest("c", "alliance")])).toBe("alliance");
+  expect(side([quest("a", "horde"), quest("b", "horde"), quest("c", "horde")])).toBe("horde");
+  // Two installs are not enough, and one stray report from the other side is not enough for Both: no guess.
+  expect(side([quest("a", "alliance"), quest("b", "alliance")])).toBeNull();
+  expect(side([quest("a", "alliance"), quest("b", "alliance"), quest("c", "alliance"), quest("d", "horde")])).toBeNull();
+  expect(side(["a", "b", "c", "d", "e", "f"].map((i, k) => quest(i, k < 3 ? "alliance" : "horde")))).toBe("both");
+  // The same install reporting twice counts once, and a row with no faction says nothing about a side.
+  expect(side([quest("a", "alliance"), quest("a", "alliance"), quest("a", "alliance"), quest("b", undefined), quest("c", undefined)])).toBeNull();
+  const traits = questTraits(worldFactsFromRecords(["a", "b", "c"].map((i) => quest(i, "alliance", { category: "Elwynn Forest", suggestedGroup: 5, tag: "dungeon" }))).quests);
+  expect(traits).toEqual({ category: "Elwynn Forest", side: "alliance", suggestedGroup: 5, tag: "dungeon" });
 });
 
 test("three agreeing sightings publish a name and a pin, and a split name stays blank", () => {

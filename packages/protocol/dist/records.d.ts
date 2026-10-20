@@ -20,6 +20,12 @@ export declare const RULES: {
     readonly talent_snapshot: readonly ["talent points must equal the sum of node ranks", "talent node ids must be unique"];
 };
 export declare const INSTALL_ID: z.ZodString;
+/** What the game calls a creature (`UnitCreatureType`), in English. The addon sends only these exact names. */
+export declare const NPC_CREATURE_TYPES: readonly ["Beast", "Dragonkin", "Demon", "Elemental", "Giant", "Undead", "Humanoid", "Critter", "Mechanical", "Not specified", "Totem", "Non-combat Pet", "Gas Cloud"];
+/** `UnitClassification` without the minor ranks: a boss is the game's `worldboss`. */
+export declare const NPC_RANKS: readonly ["normal", "elite", "rare", "rare_elite", "boss"];
+/** The group a quest asks for, from the quest tag the game reports. */
+export declare const QUEST_TAGS: readonly ["group", "dungeon", "raid", "pvp"];
 export declare const npcSighting: z.ZodObject<{
     installId: z.ZodString;
     eventId: z.ZodOptional<z.ZodString>;
@@ -39,6 +45,28 @@ export declare const npcSighting: z.ZodObject<{
     positionKind: z.ZodOptional<z.ZodEnum<{
         npc: "npc";
         player: "player";
+    }>>;
+    creatureType: z.ZodOptional<z.ZodEnum<{
+        Beast: "Beast";
+        Critter: "Critter";
+        Demon: "Demon";
+        Dragonkin: "Dragonkin";
+        Elemental: "Elemental";
+        "Gas Cloud": "Gas Cloud";
+        Giant: "Giant";
+        Humanoid: "Humanoid";
+        Mechanical: "Mechanical";
+        "Non-combat Pet": "Non-combat Pet";
+        "Not specified": "Not specified";
+        Totem: "Totem";
+        Undead: "Undead";
+    }>>;
+    rank: z.ZodOptional<z.ZodEnum<{
+        boss: "boss";
+        elite: "elite";
+        normal: "normal";
+        rare: "rare";
+        rare_elite: "rare_elite";
     }>>;
 }, z.core.$strip>;
 export declare const lootWindow: z.ZodObject<{
@@ -65,6 +93,18 @@ export declare const questEvent: z.ZodObject<{
     giverNpcId: z.ZodOptional<z.ZodNumber>;
     turnInNpcId: z.ZodOptional<z.ZodNumber>;
     rewardItemIds: z.ZodDefault<z.ZodArray<z.ZodNumber>>;
+    category: z.ZodOptional<z.ZodString>;
+    faction: z.ZodOptional<z.ZodEnum<{
+        alliance: "alliance";
+        horde: "horde";
+    }>>;
+    suggestedGroup: z.ZodOptional<z.ZodNumber>;
+    tag: z.ZodOptional<z.ZodEnum<{
+        dungeon: "dungeon";
+        group: "group";
+        pvp: "pvp";
+        raid: "raid";
+    }>>;
 }, z.core.$strip>;
 export declare const vendorList: z.ZodObject<{
     installId: z.ZodString;
@@ -599,6 +639,25 @@ export declare const storedCensusSchemas: {
     }, z.core.$strip>;
 };
 export type StoredCensusRecord = z.infer<typeof censusSelfStored> | z.infer<typeof censusSeenStored>;
+/** A character name: letters only, 2 to 12 of them, in any script the game allows. */
+export declare function validPlayerName(name: unknown): name is string;
+/** A guild name: letters, digits, spaces, apostrophes and hyphens, 2 to 24 characters. */
+export declare function validGuildName(name: unknown): name is string;
+/** One character, as the addon last saw it. The site keeps the newest row per character and realm. */
+export declare const playerSeen: z.ZodObject<{
+    installId: z.ZodString;
+    eventId: z.ZodOptional<z.ZodString>;
+    capturedAt: z.ZodString;
+    kind: z.ZodLiteral<"player_seen">;
+    name: z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>;
+    realm: z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>;
+    race: z.ZodString;
+    class: z.ZodString;
+    level: z.ZodNumber;
+    guild: z.ZodOptional<z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>>;
+}, z.core.$strip>;
+/** The player-page kind. Never part of the public corpus; intake writes it to the players table, not to the upload. */
+export declare const PLAYER_KINDS: readonly string[];
 /** Every record kind and its schema, in the order the contract lists them. */
 export declare const recordSchemas: {
     readonly npc_sighting: z.ZodObject<{
@@ -620,6 +679,28 @@ export declare const recordSchemas: {
         positionKind: z.ZodOptional<z.ZodEnum<{
             npc: "npc";
             player: "player";
+        }>>;
+        creatureType: z.ZodOptional<z.ZodEnum<{
+            Beast: "Beast";
+            Critter: "Critter";
+            Demon: "Demon";
+            Dragonkin: "Dragonkin";
+            Elemental: "Elemental";
+            "Gas Cloud": "Gas Cloud";
+            Giant: "Giant";
+            Humanoid: "Humanoid";
+            Mechanical: "Mechanical";
+            "Non-combat Pet": "Non-combat Pet";
+            "Not specified": "Not specified";
+            Totem: "Totem";
+            Undead: "Undead";
+        }>>;
+        rank: z.ZodOptional<z.ZodEnum<{
+            boss: "boss";
+            elite: "elite";
+            normal: "normal";
+            rare: "rare";
+            rare_elite: "rare_elite";
         }>>;
     }, z.core.$strip>;
     readonly loot: z.ZodObject<{
@@ -646,6 +727,18 @@ export declare const recordSchemas: {
         giverNpcId: z.ZodOptional<z.ZodNumber>;
         turnInNpcId: z.ZodOptional<z.ZodNumber>;
         rewardItemIds: z.ZodDefault<z.ZodArray<z.ZodNumber>>;
+        category: z.ZodOptional<z.ZodString>;
+        faction: z.ZodOptional<z.ZodEnum<{
+            alliance: "alliance";
+            horde: "horde";
+        }>>;
+        suggestedGroup: z.ZodOptional<z.ZodNumber>;
+        tag: z.ZodOptional<z.ZodEnum<{
+            dungeon: "dungeon";
+            group: "group";
+            pvp: "pvp";
+            raid: "raid";
+        }>>;
     }, z.core.$strip>;
     readonly vendor: z.ZodObject<{
         installId: z.ZodString;
@@ -1060,6 +1153,18 @@ export declare const recordSchemas: {
         }>;
         realm: z.ZodOptional<z.ZodNever>;
     }, z.core.$strip>;
+    readonly player_seen: z.ZodObject<{
+        installId: z.ZodString;
+        eventId: z.ZodOptional<z.ZodString>;
+        capturedAt: z.ZodString;
+        kind: z.ZodLiteral<"player_seen">;
+        name: z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>;
+        realm: z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>;
+        race: z.ZodString;
+        class: z.ZodString;
+        level: z.ZodNumber;
+        guild: z.ZodOptional<z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>>;
+    }, z.core.$strip>;
 };
 export type RecordKind = keyof typeof recordSchemas;
 export declare const ALL_RECORD_KINDS: RecordKind[];
@@ -1084,6 +1189,28 @@ export declare const anyRecord: z.ZodDiscriminatedUnion<[z.ZodObject<{
         npc: "npc";
         player: "player";
     }>>;
+    creatureType: z.ZodOptional<z.ZodEnum<{
+        Beast: "Beast";
+        Critter: "Critter";
+        Demon: "Demon";
+        Dragonkin: "Dragonkin";
+        Elemental: "Elemental";
+        "Gas Cloud": "Gas Cloud";
+        Giant: "Giant";
+        Humanoid: "Humanoid";
+        Mechanical: "Mechanical";
+        "Non-combat Pet": "Non-combat Pet";
+        "Not specified": "Not specified";
+        Totem: "Totem";
+        Undead: "Undead";
+    }>>;
+    rank: z.ZodOptional<z.ZodEnum<{
+        boss: "boss";
+        elite: "elite";
+        normal: "normal";
+        rare: "rare";
+        rare_elite: "rare_elite";
+    }>>;
 }, z.core.$strip>, z.ZodObject<{
     installId: z.ZodString;
     eventId: z.ZodOptional<z.ZodString>;
@@ -1107,6 +1234,18 @@ export declare const anyRecord: z.ZodDiscriminatedUnion<[z.ZodObject<{
     giverNpcId: z.ZodOptional<z.ZodNumber>;
     turnInNpcId: z.ZodOptional<z.ZodNumber>;
     rewardItemIds: z.ZodDefault<z.ZodArray<z.ZodNumber>>;
+    category: z.ZodOptional<z.ZodString>;
+    faction: z.ZodOptional<z.ZodEnum<{
+        alliance: "alliance";
+        horde: "horde";
+    }>>;
+    suggestedGroup: z.ZodOptional<z.ZodNumber>;
+    tag: z.ZodOptional<z.ZodEnum<{
+        dungeon: "dungeon";
+        group: "group";
+        pvp: "pvp";
+        raid: "raid";
+    }>>;
 }, z.core.$strip>, z.ZodObject<{
     installId: z.ZodString;
     eventId: z.ZodOptional<z.ZodString>;
@@ -1490,11 +1629,25 @@ export declare const anyRecord: z.ZodDiscriminatedUnion<[z.ZodObject<{
         target: "target";
     }>;
     realm: z.ZodOptional<z.ZodNever>;
+}, z.core.$strip>, z.ZodObject<{
+    installId: z.ZodString;
+    eventId: z.ZodOptional<z.ZodString>;
+    capturedAt: z.ZodString;
+    kind: z.ZodLiteral<"player_seen">;
+    name: z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>;
+    realm: z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>;
+    race: z.ZodString;
+    class: z.ZodString;
+    level: z.ZodNumber;
+    guild: z.ZodOptional<z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>>;
 }, z.core.$strip>], "kind">;
 export type IntakeRecord = z.infer<typeof anyRecord>;
-/** A record as intake stores it: census rows have their GUID swapped for a key, every other kind is as parsed. */
+/**
+ * A record as intake stores it in an upload: census rows have their GUID swapped for a key, player rows are
+ * not in the upload at all (they go to the players table), every other kind is as parsed.
+ */
 export type StoredRecord = Exclude<IntakeRecord, {
-    kind: "census_self" | "census_seen";
+    kind: "census_self" | "census_seen" | "player_seen";
 }> | StoredCensusRecord;
 /** The request envelope. `protocol` is the uploader's protocol version; a missing one means major 1. */
 export declare const uploadPayload: z.ZodObject<{

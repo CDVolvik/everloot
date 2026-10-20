@@ -3,7 +3,6 @@ import { describe, expect, test } from "vitest";
 import Disclosure from "./Disclosure";
 import Field, { Input } from "./Field";
 import Segmented from "./Segmented";
-import SourceLine from "./SourceLine";
 
 describe("Disclosure", () => {
   test("is a closed native details whose summary is a heading", () => {
@@ -38,14 +37,5 @@ describe("Segmented", () => {
     expect(html).toContain('role="group" aria-label="Auction house cut"');
     expect(html.match(/aria-pressed="true"/g)).toHaveLength(1);
     expect(html).toMatch(/aria-pressed="true"[^>]*>Subtract 5%/);
-  });
-});
-
-describe("SourceLine from", () => {
-  test("replaces the game-files clause when the values come from somewhere else", () => {
-    const html = renderToStaticMarkup(<SourceLine source="Your own numbers" />);
-    expect(html).toContain("Your own numbers");
-    expect(html).not.toContain("From game files");
-    expect(html).toContain("CC BY-SA 4.0");
   });
 });

@@ -1,6 +1,8 @@
 -- Everloot open-world collector: NPC sightings, loot windows, quests, vendors, items seen.
 -- Anonymous by design: no character or guild names, no chat. Matches the intake contract
 -- (web/src/lib/intake.ts kinds: npc_sighting, loot, quest, vendor, item_seen).
+-- NPC type, rank and a quest's category, group size, tag and faction are game facts about the NPC or quest.
+-- The faction is the accepting character's side only; no character name is read or stored.
 
 local E = Everloot
 
@@ -26,6 +28,28 @@ local function npcIdFromGuid(guid)
   return nil
 end
 
+-- The English creature types the protocol accepts. A localized client names them in its own language and
+-- they do not match, so no type is recorded there rather than a guess.
+local CREATURE_TYPES = {}
+for _, t in ipairs({ "Beast", "Dragonkin", "Demon", "Elemental", "Giant", "Undead", "Humanoid", "Critter",
+  "Mechanical", "Not specified", "Totem", "Non-combat Pet", "Gas Cloud" }) do CREATURE_TYPES[t] = true end
+
+-- UnitClassification: trivial and minus are left out, they are not ranks a player looks up.
+local RANKS = { normal = "normal", elite = "elite", rare = "rare", rareelite = "rare_elite", worldboss = "boss" }
+
+local function creatureTraits(unit)
+  local creatureType, rank
+  if UnitCreatureType then
+    local ok, t = pcall(UnitCreatureType, unit)
+    if ok and type(t) == "string" and CREATURE_TYPES[t] then creatureType = t end
+  end
+  if UnitClassification then
+    local ok, c = pcall(UnitClassification, unit)
+    if ok and type(c) == "string" then rank = RANKS[c] end
+  end
+  return creatureType, rank
+end
+
 local function targetSighting(unit)
   local guid = UnitGUID(unit)
   local npcId = npcIdFromGuid(guid)
@@ -38,13 +62,61 @@ local function targetSighting(unit)
   local reaction = "neutral"
   if UnitIsFriend("player", unit) then reaction = "friendly"
   elseif UnitCanAttack("player", unit) then reaction = "hostile" end
+  local creatureType, rank = creatureTraits(unit)
   E:Store("npc_sighting", {
     installId = EverlootDB.installId,
     capturedAt = date("!%Y-%m-%dT%H:%M:%SZ"),
     npcId = npcId, name = name,
     mapId = where.mapId, x = where.x, y = where.y, positionKind = "player",
     level = level, reaction = reaction,
+    creatureType = creatureType, rank = rank,
   })
+end
+
+-- Quest tags by the game's own Enum.QuestTag names; a client without the enum records no tag.
+local function questTag(questId)
+  local info = C_QuestLog and C_QuestLog.GetQuestTagInfo
+  local tags = Enum and Enum.QuestTag
+  if not info or not tags then return nil end
+  local ok, tagInfo = pcall(info, questId)
+  local id = ok and type(tagInfo) == "table" and tagInfo.tagID
+  if not id then return nil end
+  if id == tags.Dungeon then return "dungeon" end
+  if id == tags.Raid then return "raid" end
+  if id == tags.PvP then return "pvp" end
+  if id == tags.Group then return "group" end
+  return nil
+end
+
+-- A quest the character just accepted, read from its own quest log row. Level is the quest's level as the log
+-- shows it; a row that is not this quest, or has no real level, records nothing.
+local function questCapture(index, questId)
+  if not GetQuestLogTitle or type(index) ~= "number" or type(questId) ~= "number" then return end
+  local faction = UnitFactionGroup and UnitFactionGroup("player")
+  faction = faction == "Alliance" and "alliance" or faction == "Horde" and "horde" or nil
+  EverlootDB.questSeen = EverlootDB.questSeen or {}
+  local seenKey = tostring(questId) .. ":" .. tostring(faction)
+  if EverlootDB.questSeen[seenKey] then return end
+  local ok, title, level, group, isHeader, _, _, _, logId = pcall(GetQuestLogTitle, index)
+  if not ok or isHeader or logId ~= questId or type(title) ~= "string" or title == "" then return end
+  if type(level) ~= "number" or level < 1 or level ~= math.floor(level) then return end
+  -- The category is the nearest header above the quest in the log.
+  local category
+  for i = index - 1, 1, -1 do
+    local okRow, name, _, _, header = pcall(GetQuestLogTitle, i)
+    if okRow and header and type(name) == "string" and name ~= "" then category = name:sub(1, 60); break end
+  end
+  local row = {
+    installId = EverlootDB.installId,
+    capturedAt = date("!%Y-%m-%dT%H:%M:%SZ"),
+    questId = questId, title = title:sub(1, 200), level = level, rewardItemIds = {},
+    category = category, faction = faction, tag = questTag(questId),
+  }
+  -- A number here is the suggested group size; some clients return a tag string in this place.
+  if type(group) == "number" and group >= 2 and group <= 40 and group == math.floor(group) then row.suggestedGroup = group end
+  -- The giver is the NPC whose window is open; nothing is recorded for an item, an object or a shared quest.
+  row.giverNpcId = npcIdFromGuid(UnitGUID("npc")) or npcIdFromGuid(UnitGUID("questnpc"))
+  if E:Store("quest", row) then EverlootDB.questSeen[seenKey] = true end
 end
 
 local QUALITY = {
@@ -143,14 +215,18 @@ E:RegisterModule("openworld", function()
   f:RegisterEvent("PLAYER_TARGET_CHANGED")
   f:RegisterEvent("UPDATE_MOUSEOVER_UNIT")
   f:RegisterEvent("LOOT_OPENED")
+  pcall(function() f:RegisterEvent("QUEST_ACCEPTED") end)
   -- MERCHANT_SHOW is an old client event. A missing event disables the hook.
   pcall(function() f:RegisterEvent("MERCHANT_SHOW") end)
-  f:HookScript("OnEvent", function(_, event, ...)
+  f:HookScript("OnEvent", function(_, event, arg1, arg2)
     if event == "PLAYER_TARGET_CHANGED" then targetSighting("target")
     elseif event == "UPDATE_MOUSEOVER_UNIT" then targetSighting("mouseover")
     elseif event == "LOOT_OPENED" then lootCapture()
-    elseif event == "MERCHANT_SHOW" then vendorCapture() end
+    elseif event == "MERCHANT_SHOW" then vendorCapture()
+    elseif event == "QUEST_ACCEPTED" then questCapture(arg1, arg2) end
   end)
-  -- Quest capture stays off. The intake requires a real level, and this client has no honest level call to store.
-  return "ready (target/mouseover/loot/merchant; quest capture still waits on a real level)"
+  if not GetQuestLogTitle then
+    return "ready (target/mouseover/loot/merchant; quests off, this client has no GetQuestLogTitle)"
+  end
+  return "ready (target/mouseover/loot/merchant/quest accept)"
 end)
