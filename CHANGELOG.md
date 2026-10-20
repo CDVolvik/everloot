@@ -16,7 +16,8 @@ build that has a zip in the repository. Earlier builds have none.
 - Site: `/docs`, one documentation area for players and developers: Overview, Guides, API Reference, MCP and
   Cookbook tabs, a grouped sidebar, "On this page", "Copy page" as Markdown, and a page per API endpoint and
   per MCP tool generated from the protocol, with cURL, JavaScript and Python examples. "Docs" replaces "Open data"
-  in the header, and docs pages are in search, the sitemap and `llms.txt`.
+  in the header, and docs pages are in search, the sitemap and `llms.txt`. `/connect` now redirects to `/docs`, and its old
+  `#anchors` land on the matching docs page.
 - Accounts: `/sign-in`, `/sign-up` and `/reset-password` pages, and an `/account` page with your profile,
   sign-in methods and API keys. Under `EVERLOOT_AUTH_V2`, with `RESEND_API_KEY` and `EMAIL_FROM` set,
   anyone can make an account with an email and password; the email has to be confirmed before the first
