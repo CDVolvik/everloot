@@ -178,7 +178,7 @@ export async function CategoryPage({ classSlug, subclassKey, search }: { classSl
         />
         <SourceLine build={CLIENT_LAYER.build.version}>
           Names show once 3 installs report the same one. {GAME_DATA_CREDIT}
-          {assets && icons ? <>{" "}<GameCredit as="span" version={assets.version} label={assets.label} /></> : null}
+          {assets && icons ? <>{" "}<GameCredit inline version={assets.version} label={assets.label} /></> : null}
         </SourceLine>
       </article>
     </Container>

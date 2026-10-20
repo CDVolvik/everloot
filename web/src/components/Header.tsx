@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { track } from "@/lib/analytics/track";
 import AccountControls from "./AccountControls";
+import { TOOL_GROUPS } from "@/data/tools";
 
 type NavLink = { label: string; href: string };
 
@@ -17,37 +18,8 @@ export const PRIMARY: NavLink[] = [
   { label: "Open data", href: "/connect" },
 ];
 
-/** The Tools menu, grouped the way players use them. Every tool in data/tools.ts is here (header.test.tsx). */
-export const TOOL_GROUPS: { title: string; links: NavLink[] }[] = [
-  {
-    title: "Plan",
-    links: [
-      { label: "Talent calculator", href: "/tools/talents" },
-      { label: "Raid builder", href: "/tools/raid" },
-      { label: "Gold per hour", href: "/tools/gold-per-hour" },
-      { label: "Professions", href: "/tools/professions" },
-      { label: "Farming routes", href: "/tools/farming-routes" },
-    ],
-  },
-  {
-    title: "Look up",
-    links: [
-      { label: "Chat", href: "/chat" },
-      { label: "Auction history", href: "/tools/auctions" },
-      { label: "Census", href: "/census" },
-      { label: "Addons", href: "/addons" },
-    ],
-  },
-  {
-    title: "Track",
-    links: [
-      { label: "Guild board", href: "/tools/guild-board" },
-      { label: "Collections", href: "/tools/collections" },
-      { label: "Gold ledger", href: "/tools/gold-ledger" },
-      { label: "Upload a save file", href: "/upload" },
-    ],
-  },
-];
+// The Tools menu lives in data/tools.ts so the home page lists the same groups.
+export { TOOL_GROUPS };
 
 const TOOL_HREFS = TOOL_GROUPS.flatMap((g) => g.links.map((l) => l.href));
 
