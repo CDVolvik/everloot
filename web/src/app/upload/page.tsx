@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { pageMetadata } from "@/lib/seo";
 import JsonLd from "@/components/JsonLd";
 import { latestAddonRelease } from "@/lib/addon-release";
@@ -41,6 +42,7 @@ export default function UploadPage() {
             <p className="text-fg-2">Extract the Everloot folder into Interface/AddOns, reload the client, and check /everloot status. Version {addon.version} has passed automated checks; testing in the Forever client is still pending.</p>
             <a className="inline-flex min-h-11 items-center text-accent underline" href={addon.downloadPath} download>Download beta addon {addon.version}</a>
             <p className="text-sm text-fg-2">Licence: {LICENCE_NAME}. <a className="text-accent underline" href={REPO_URL} rel="noopener">Source code</a>.</p>
+            <p className="text-sm text-fg-2">Checksums, install steps and the Desktop App, which uploads for you after each logout, are on the <Link className="text-accent underline" href="/addon">downloads page</Link>.</p>
           </>
         ) : (
           <p className="text-fg-2">The addon download is not available right now.</p>

@@ -71,7 +71,7 @@ that players start with the addon's **Everloot scan** button. The site shows a r
 60-day chart per item, a day is published once three reporters agree, and the same prices appear in
 item tooltips in game. [everloot.app/tools/auctions](https://everloot.app/tools/auctions)
 
-**MCP server.** 23 tools that let an AI assistant search the archive and read the same sourced
+**MCP server.** 28 tools that let an AI assistant search the archive and read the same sourced
 facts the site shows: items, NPCs, quests, vendors, profession paths, recipe ranges, auction history,
 market values, recent Blizzard changes and more. The public endpoint is read only and rate limited:
 `https://everloot.app/mcp/public`.
@@ -95,7 +95,7 @@ flowchart LR
   market --> site
   market --> companion
   rollups --> site["Site pages and tools"]
-  rollups --> mcp["MCP server<br/>23 tools"]
+  rollups --> mcp["MCP server<br/>28 tools"]
   wiki["Warcraft Wiki dump<br/>CC BY-SA 4.0"] --> kb["kb/<br/>import, provenance, snapshot"]
   files["Game files<br/>maintainer extraction"] --> gamedata["Reviewed game-data files<br/>unconfirmed"]
   kb --> site
@@ -125,6 +125,10 @@ flowchart LR
 2. Play. Log out, or type `/reload`, to save.
 3. Upload `WTF/Account/<account>/SavedVariables/Everloot.lua` at everloot.app/upload. You preview
    everything before it is sent.
+
+Or install the [Everloot Desktop App](desktop/README.md)
+([download](https://github.com/Everloot/everloot/releases/tag/desktop-v0.1.0)): it uploads after
+every logout and can install and update the addon for you.
 
 Auction capture and the list of your installed addons are off until you turn them on
 (`/everloot auctions on`, `/everloot addons on`). To see market prices in item tooltips, the
@@ -168,7 +172,8 @@ Beta. The addon is at 0.3.3 and passes its automated tests; the in-client checks
 [`docs/2026-10-08-beta-client-checklist.md`](docs/2026-10-08-beta-client-checklist.md) and
 [`docs/2026-10-18-addon-0.3.2-beta-checklist.md`](docs/2026-10-18-addon-0.3.2-beta-checklist.md) and
 [`docs/2026-10-19-addon-0.3.3-beta-checklist.md`](docs/2026-10-19-addon-0.3.3-beta-checklist.md) are still open
-until the game is playable. The game-file layers (talents, raid buffs, map) are read from build
+until the game is playable. The Everloot Desktop App had its first release, `desktop-v0.1.0`, on
+2026-10-19; its builds are not code-signed yet. The game-file layers (talents, raid buffs, map) are read from build
 `1.60.1.70450` and marked unconfirmed. A [build watch](docs/BUILD_WATCH.md) checks for new builds
 every half hour and opens a reviewed pull request when one appears. WoW: Forever launches on
 2026-11-04.

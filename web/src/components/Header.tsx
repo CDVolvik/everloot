@@ -33,6 +33,7 @@ export default function Header() {
           <Link href="/connect" className="hidden md:inline-flex items-center min-h-11 text-muted hover:text-fg"><Bracket>Connect</Bracket></Link>
         </nav>
         <div className="flex items-center gap-1 shrink-0">
+          <Link href="/addon" className="btn btn-primary hidden xl:inline-flex min-h-11 px-3 text-sm">Get App &amp; AddOn</Link>
           <AccountControls />
           <button ref={toggle} type="button" aria-label={open ? "Close menu" : "Menu"} aria-expanded={open} aria-controls="site-navigation" onClick={() => setOpen(!open)} className="btn min-h-11 px-3 text-sm">
             {open ? "Close" : "Menu"}
@@ -45,6 +46,10 @@ export default function Header() {
             <Link href="/chat" onClick={() => setOpen(false)} className="min-h-11 px-3 py-3 rounded-lg text-sm text-fg-2 hover:bg-canvas hover:text-accent">
               Chat
               <span className="ml-2 text-xs text-muted">Ask with your own AI key</span>
+            </Link>
+            <Link href="/addon" onClick={() => setOpen(false)} className="min-h-11 px-3 py-3 rounded-lg text-sm text-fg-2 hover:bg-canvas hover:text-accent">
+              Get App &amp; AddOn
+              <span className="ml-2 text-xs text-muted">Addon zip and Desktop App</span>
             </Link>
             <Link href="/addons" onClick={() => setOpen(false)} className="min-h-11 px-3 py-3 rounded-lg text-sm text-fg-2 hover:bg-canvas hover:text-accent">
               Addons

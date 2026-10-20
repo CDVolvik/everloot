@@ -49,7 +49,7 @@ export async function categoryMetadata(classSlug: string, subclassKey: string | 
   return {
     ...pageMetadata({
       title: r.sub ? `${name} items` : name,
-      description: `${count} WoW: Forever items in ${name}, from the game files of build ${CLIENT_LAYER.build.version}, found in game files and unconfirmed.`,
+      description: `${count.toLocaleString("en-US")} WoW: Forever items in ${name}, read from the game files of build ${CLIENT_LAYER.build.version} and unconfirmed until players see them.`,
       path: itemsHref(r.cls.slug, r.sub?.slug),
     }),
     robots: { index: plain && categoryNamedEnough(r.cls.id, r.sub?.id, named), follow: true },
