@@ -211,7 +211,7 @@ export default async function ItemPage(props: Props) {
         </EntityLayout>
         <SourceLine build={BUILD}>
           {(category || all.some((e) => e.evidence === "client")) && GAME_DATA_CREDIT}
-          {assets && (tip || relationIcons) && <>{" "}<GameCredit as="span" version={assets.version} label={assets.label} /></>}
+          {assets && (tip || relationIcons) && <>{" "}<GameCredit inline version={assets.version} label={assets.label} /></>}
         </SourceLine>
       </article>
     </Container>

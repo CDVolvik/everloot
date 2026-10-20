@@ -120,7 +120,7 @@ export default async function QuestPage(props: { params: Promise<{ id: string }>
         </EntityLayout>
         <SourceLine confirmed>
           The addon does not guess a level.
-          {assets && tips.size > 0 && <>{" "}<GameCredit as="span" version={assets.version} label={assets.label} /></>}
+          {assets && tips.size > 0 && <>{" "}<GameCredit inline version={assets.version} label={assets.label} /></>}
         </SourceLine>
       </article>
     </Container>

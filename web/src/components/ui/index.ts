@@ -3,6 +3,7 @@ export { default as AgreementMeter, agreementLabel, clampAgreement, AGREEMENT_NE
 export { default as Badge, type BadgeProps } from "./Badge";
 export { default as Banner } from "./Banner";
 export { default as Card, type CardProps } from "./Card";
+export { default as CodeBlock } from "./CodeBlock";
 export { default as Container, type ContainerWidth } from "./Container";
 export { default as Crumbs } from "./Crumbs";
 export { default as DataTable, type Column, type DataTableProps, type SortDirection } from "./DataTable";

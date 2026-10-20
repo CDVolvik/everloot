@@ -74,7 +74,7 @@ export default async function DropsPage() {
         )}
         <SourceLine confirmed>
           A loot window is not a verified kill, so a frequency is not a drop chance. Install IDs do not prove independent people.
-          {assets && tips.size > 0 && <>{" "}<GameCredit as="span" version={assets.version} label={assets.label} /></>}
+          {assets && tips.size > 0 && <>{" "}<GameCredit inline version={assets.version} label={assets.label} /></>}
         </SourceLine>
       </article>
     </Container>

@@ -126,7 +126,7 @@ export default async function NpcPage(props: { params: Promise<{ id: string }> }
         </EntityLayout>
         <SourceLine confirmed>
           Distinct install IDs do not prove independent players.
-          {assets && tips.size > 0 && <>{" "}<GameCredit as="span" version={assets.version} label={assets.label} /></>}
+          {assets && tips.size > 0 && <>{" "}<GameCredit inline version={assets.version} label={assets.label} /></>}
         </SourceLine>
       </article>
     </Container>
