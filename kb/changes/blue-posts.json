@@ -18398,6 +18398,7 @@
     {
       "id": "forum:25634705",
       "source": "forum",
+      "region": "us",
       "url": "https://us.forums.blizzard.com/en/wow/t/extended-maintenance-for-hardcore-realms-november-19/2013118/94",
       "title": "Extended Maintenance for Hardcore Realms - November 19",
       "author": "Zorbrix",
@@ -18408,12 +18409,11 @@
       "game": "classic",
       "kind": "post",
       "excerpt": "Hello! As an update, we have discovered the cause of the Hardcore realm instability and are currently working on fixes to safely resolve it.",
-      "firstSeen": "2026-10-17T16:15:33.109Z",
-      "region": "us",
       "topicId": 2013118,
       "topicSlug": "extended-maintenance-for-hardcore-realms-november-19",
       "postNumber": 94,
-      "startedThread": false
+      "startedThread": false,
+      "firstSeen": "2026-10-17T16:15:33.109Z"
     },
     {
       "id": "forum:25632981",
@@ -19678,6 +19678,7 @@
     {
       "id": "forum:24987945",
       "source": "forum",
+      "region": "us",
       "url": "https://us.forums.blizzard.com/en/wow/t/realm-consolidation-update-season-of-discovery/1953566/1884",
       "title": "Realm Consolidation Update - Season of Discovery",
       "author": "Fwoibles",
@@ -19688,12 +19689,11 @@
       "game": "classic",
       "kind": "post",
       "excerpt": "As of 5am PDT, all transfers had processed, that was a lot of characters! I wanted to give an update on Name Reclamation, this system has not functioned on Live as expected, we’ve identified the cause and it is going through testing.",
-      "firstSeen": "2026-10-17T16:15:33.109Z",
-      "region": "us",
       "topicId": 1953566,
       "topicSlug": "realm-consolidation-update-season-of-discovery",
       "postNumber": 1884,
-      "startedThread": false
+      "startedThread": false,
+      "firstSeen": "2026-10-17T16:15:33.109Z"
     },
     {
       "id": "forum:eu:5520844",
@@ -19758,6 +19758,7 @@
     {
       "id": "forum:24968449",
       "source": "forum",
+      "region": "us",
       "url": "https://us.forums.blizzard.com/en/wow/t/realm-consolidation-update-season-of-discovery/1953566/1660",
       "title": "Realm Consolidation Update - Season of Discovery",
       "author": "Fwoibles",
@@ -19768,16 +19769,16 @@
       "game": "classic",
       "kind": "post",
       "excerpt": "Transfer are back open, still going slower than I’d like but we’ll be making some tuning changes shortly that should significantly speed things up.",
-      "firstSeen": "2026-10-17T16:15:33.109Z",
-      "region": "us",
       "topicId": 1953566,
       "topicSlug": "realm-consolidation-update-season-of-discovery",
       "postNumber": 1660,
-      "startedThread": false
+      "startedThread": false,
+      "firstSeen": "2026-10-17T16:15:33.109Z"
     },
     {
       "id": "forum:24963715",
       "source": "forum",
+      "region": "us",
       "url": "https://us.forums.blizzard.com/en/wow/t/realm-consolidation-update-season-of-discovery/1953566/1098",
       "title": "Realm Consolidation Update - Season of Discovery",
       "author": "Fwoibles",
@@ -19788,16 +19789,16 @@
       "game": "classic",
       "kind": "post",
       "excerpt": "Hey folks, quick update on this as many of you have noticed these transfers are not… transferring. We have temporarily closed the transfers to stop any further attempts, everyone who has queued up a transfer, you have not lost anything and you can login and play your characters as normal on their…",
-      "firstSeen": "2026-10-17T16:15:33.109Z",
-      "region": "us",
       "topicId": 1953566,
       "topicSlug": "realm-consolidation-update-season-of-discovery",
       "postNumber": 1098,
-      "startedThread": false
+      "startedThread": false,
+      "firstSeen": "2026-10-17T16:15:33.109Z"
     },
     {
       "id": "forum:24960100",
       "source": "forum",
+      "region": "us",
       "url": "https://us.forums.blizzard.com/en/wow/t/realm-consolidation-update-season-of-discovery/1953566/418",
       "title": "Realm Consolidation Update - Season of Discovery",
       "author": "Fwoibles",
@@ -19808,16 +19809,16 @@
       "game": "classic",
       "kind": "post",
       "excerpt": "These changes are now Live! One further change will take place with the next realm restarts, Crusader Strikes ruleset will change from RP-PvP to PvP.",
-      "firstSeen": "2026-10-17T16:15:33.109Z",
-      "region": "us",
       "topicId": 1953566,
       "topicSlug": "realm-consolidation-update-season-of-discovery",
       "postNumber": 418,
-      "startedThread": false
+      "startedThread": false,
+      "firstSeen": "2026-10-17T16:15:33.109Z"
     },
     {
       "id": "forum:24902800",
       "source": "forum",
+      "region": "us",
       "url": "https://us.forums.blizzard.com/en/wow/t/realm-consolidation-update-season-of-discovery/1953566/139",
       "title": "Realm Consolidation Update - Season of Discovery",
       "author": "Fwoibles",
@@ -19828,12 +19829,11 @@
       "game": "classic",
       "kind": "post",
       "excerpt": "Looking through some common questions, FCMs ignore some common Paid transfer restrictions such as level restrictions, gold restrictions. But you will have to no longer be a Guild Master.",
-      "firstSeen": "2026-10-17T16:15:33.109Z",
-      "region": "us",
       "topicId": 1953566,
       "topicSlug": "realm-consolidation-update-season-of-discovery",
       "postNumber": 139,
-      "startedThread": false
+      "startedThread": false,
+      "firstSeen": "2026-10-17T16:15:33.109Z"
     },
     {
       "id": "forum:eu:5505694",
@@ -19978,6 +19978,7 @@
     {
       "id": "forum:24701757",
       "source": "forum",
+      "region": "us",
       "url": "https://us.forums.blizzard.com/en/wow/t/season-of-discovery-realm-consolidation/1924907/274",
       "title": "Season of Discovery Realm Consolidation",
       "author": "Fwoibles",
@@ -19988,12 +19989,11 @@
       "game": "classic",
       "kind": "post",
       "excerpt": "Once again, we really appreciate the discourse around this, it’s a topic with no easy single answer depending on your personal preferences for how you play World of Warcraft. We’ve read through your feedback and debated internally.",
-      "firstSeen": "2026-10-17T16:15:33.109Z",
-      "region": "us",
       "topicId": 1924907,
       "topicSlug": "season-of-discovery-realm-consolidation",
       "postNumber": 274,
-      "startedThread": false
+      "startedThread": false,
+      "firstSeen": "2026-10-17T16:15:33.109Z"
     },
     {
       "id": "forum:eu:5455635",
@@ -20078,6 +20078,7 @@
     {
       "id": "forum:24584360",
       "source": "forum",
+      "region": "us",
       "url": "https://us.forums.blizzard.com/en/wow/t/season-of-discovery-realm-consolidation/1924907/25",
       "title": "Season of Discovery Realm Consolidation",
       "author": "Fwoibles",
@@ -20088,12 +20089,11 @@
       "game": "classic",
       "kind": "post",
       "excerpt": "Appreciate the discussion so far, please keep it coming. To answer a few questions I’ve seen that I can answer - Name Collisions We understand this is a pain point and was the reason for the Connected Realms technology “back in the day”, it is unfortunately a very expensive process from both time …",
-      "firstSeen": "2026-10-17T16:15:33.109Z",
-      "region": "us",
       "topicId": 1924907,
       "topicSlug": "season-of-discovery-realm-consolidation",
       "postNumber": 25,
-      "startedThread": false
+      "startedThread": false,
+      "firstSeen": "2026-10-17T16:15:33.109Z"
     },
     {
       "id": "forum:24564196",
@@ -20698,6 +20698,7 @@
     {
       "id": "forum:24302297",
       "source": "forum",
+      "region": "us",
       "url": "https://us.forums.blizzard.com/en/wow/t/turn-up-the-heat-in-season-of-discovery-molten-core/1900761/49",
       "title": "Turn Up the Heat in Season of Discovery: Molten Core",
       "author": "Aggrend",
@@ -20708,16 +20709,16 @@
       "game": "classic",
       "kind": "post",
       "excerpt": "We agree, actually. We are sending a hotfix very soon to add a chance for Librams of Resilence to drop from certain Blackrock Depths and Blackrock Spire bosses, and increase the liklihood you get Burning Essence from the Dark Coffer in Blackrock Depths.",
-      "firstSeen": "2026-10-17T16:15:33.109Z",
-      "region": "us",
       "topicId": 1900761,
       "topicSlug": "turn-up-the-heat-in-season-of-discovery-molten-core",
       "postNumber": 49,
-      "startedThread": false
+      "startedThread": false,
+      "firstSeen": "2026-10-17T16:15:33.109Z"
     },
     {
       "id": "forum:24300553",
       "source": "forum",
+      "region": "us",
       "url": "https://us.forums.blizzard.com/en/wow/t/turn-up-the-heat-in-season-of-discovery-molten-core/1900761/26",
       "title": "Turn Up the Heat in Season of Discovery: Molten Core",
       "author": "Aggrend",
@@ -20728,12 +20729,11 @@
       "game": "classic",
       "kind": "post",
       "excerpt": "This is not entirely accurate. To be very very clear, the items in Molten Core never increase in quality or power level as the heat level increases.",
-      "firstSeen": "2026-10-17T16:15:33.109Z",
-      "region": "us",
       "topicId": 1900761,
       "topicSlug": "turn-up-the-heat-in-season-of-discovery-molten-core",
       "postNumber": 26,
-      "startedThread": false
+      "startedThread": false,
+      "firstSeen": "2026-10-17T16:15:33.109Z"
     },
     {
       "id": "forum:24270139",
@@ -22638,6 +22638,7 @@
     {
       "id": "forum:23336187",
       "source": "forum",
+      "region": "us",
       "url": "https://us.forums.blizzard.com/en/wow/t/sod-account-restrictions-how-can-blizzard-help-new-players-who-are-affected/1826329/82",
       "title": "SOD Account Restrictions: how can Blizzard help new players who are affected?",
       "author": "Fwoibles",
@@ -22648,16 +22649,16 @@
       "game": "classic",
       "kind": "post",
       "excerpt": "Can you or any fellow February starter check again for me?",
-      "firstSeen": "2026-10-17T16:15:33.109Z",
-      "region": "us",
       "topicId": 1826329,
       "topicSlug": "sod-account-restrictions-how-can-blizzard-help-new-players-who-are-affected",
       "postNumber": 82,
-      "startedThread": false
+      "startedThread": false,
+      "firstSeen": "2026-10-17T16:15:33.109Z"
     },
     {
       "id": "forum:23336068",
       "source": "forum",
+      "region": "us",
       "url": "https://us.forums.blizzard.com/en/wow/t/sod-account-restrictions-how-can-blizzard-help-new-players-who-are-affected/1826329/76",
       "title": "SOD Account Restrictions: how can Blizzard help new players who are affected?",
       "author": "Fwoibles",
@@ -22668,16 +22669,16 @@
       "game": "classic",
       "kind": "post",
       "excerpt": "Sorry about that, if you log out and back in this should be resolved. Stupid February and its 28 days.",
-      "firstSeen": "2026-10-17T16:15:33.109Z",
-      "region": "us",
       "topicId": 1826329,
       "topicSlug": "sod-account-restrictions-how-can-blizzard-help-new-players-who-are-affected",
       "postNumber": 76,
-      "startedThread": false
+      "startedThread": false,
+      "firstSeen": "2026-10-17T16:15:33.109Z"
     },
     {
       "id": "forum:23335358",
       "source": "forum",
+      "region": "us",
       "url": "https://us.forums.blizzard.com/en/wow/t/sod-account-restrictions-how-can-blizzard-help-new-players-who-are-affected/1826329/39",
       "title": "SOD Account Restrictions: how can Blizzard help new players who are affected?",
       "author": "Fwoibles",
@@ -22688,12 +22689,11 @@
       "game": "classic",
       "kind": "post",
       "excerpt": "Hi there, firstly, apologies for the radio silence on this change, it is targeting a group that that we specifically wanted to keep in the dark as long as possible. Let me now try and fill in some details for you!",
-      "firstSeen": "2026-10-17T16:15:33.109Z",
-      "region": "us",
       "topicId": 1826329,
       "topicSlug": "sod-account-restrictions-how-can-blizzard-help-new-players-who-are-affected",
       "postNumber": 39,
-      "startedThread": false
+      "startedThread": false,
+      "firstSeen": "2026-10-17T16:15:33.109Z"
     },
     {
       "id": "forum:eu:5229518",
@@ -22878,6 +22878,7 @@
     {
       "id": "forum:23278017",
       "source": "forum",
+      "region": "us",
       "url": "https://us.forums.blizzard.com/en/wow/t/dual-spec-vendor-disabled/1821547/56",
       "title": "Dual Spec Vendor Disabled",
       "author": "Aggrend",
@@ -22888,16 +22889,16 @@
       "game": "classic",
       "kind": "post",
       "excerpt": "The dual spec NPC has arrived at his new locations in Ironforge and Orgrimmar a bit early and is again open for business.",
-      "firstSeen": "2026-10-17T16:15:33.109Z",
-      "region": "us",
       "topicId": 1821547,
       "topicSlug": "dual-spec-vendor-disabled",
       "postNumber": 56,
-      "startedThread": false
+      "startedThread": false,
+      "firstSeen": "2026-10-17T16:15:33.109Z"
     },
     {
       "id": "forum:23277751",
       "source": "forum",
+      "region": "us",
       "url": "https://us.forums.blizzard.com/en/wow/t/nightmare-incursions/1821465/6",
       "title": "Nightmare Incursions",
       "author": "Aggrend",
@@ -22908,12 +22909,11 @@
       "game": "classic",
       "kind": "post",
       "excerpt": "I did just make a minor edit to the post for clarity. You don’t need to have gathering professions yourself to complete a gathering-based mission if you are given one, but having folks in your group that can gather will help as the the materials needed for these quests can be traded (but cannot be …",
-      "firstSeen": "2026-10-17T16:15:33.109Z",
-      "region": "us",
       "topicId": 1821465,
       "topicSlug": "nightmare-incursions",
       "postNumber": 6,
-      "startedThread": false
+      "startedThread": false,
+      "firstSeen": "2026-10-17T16:15:33.109Z"
     },
     {
       "id": "forum:23275259",
@@ -23138,6 +23138,7 @@
     {
       "id": "forum:22956841",
       "source": "forum",
+      "region": "us",
       "url": "https://us.forums.blizzard.com/en/wow/t/season-of-discovery-developer-update-feb-27-2024/1797049/3",
       "title": "Season of Discovery Developer Update - Feb 27, 2024",
       "author": "Aggrend",
@@ -23148,12 +23149,11 @@
       "game": "classic",
       "kind": "post",
       "excerpt": "Hi Roebling",
-      "firstSeen": "2026-10-17T16:15:33.109Z",
-      "region": "us",
       "topicId": 1797049,
       "topicSlug": "season-of-discovery-developer-update-feb-27-2024",
       "postNumber": 3,
-      "startedThread": false
+      "startedThread": false,
+      "firstSeen": "2026-10-17T16:15:33.109Z"
     },
     {
       "id": "forum:eu:5161784",
@@ -23198,6 +23198,7 @@
     {
       "id": "forum:22925042",
       "source": "forum",
+      "region": "us",
       "url": "https://us.forums.blizzard.com/en/wow/t/season-of-discovery-class-tuning-incoming-february-27/1794527/252",
       "title": "Season of Discovery Class Tuning Incoming - February 27",
       "author": "Aggrend",
@@ -23208,12 +23209,11 @@
       "game": "classic",
       "kind": "post",
       "excerpt": "Greetings, Wanted to chime in and provide a quick update to this note: We’ve decided not to send this specific part of the paladin changes live on Tuesday. While this could arguably be considered a bug, we are simply going to let it ride as it is not nearly as problematic as the second part of t…",
-      "firstSeen": "2026-10-17T16:15:33.109Z",
-      "region": "us",
       "topicId": 1794527,
       "topicSlug": "season-of-discovery-class-tuning-incoming-february-27",
       "postNumber": 252,
-      "startedThread": false
+      "startedThread": false,
+      "firstSeen": "2026-10-17T16:15:33.109Z"
     },
     {
       "id": "forum:22919959",
@@ -23398,6 +23398,7 @@
     {
       "id": "forum:22891682",
       "source": "forum",
+      "region": "us",
       "url": "https://us.forums.blizzard.com/en/wow/t/gnomeregan-raid-lockout-update-feburary-20/1792114/88",
       "title": "Gnomeregan Raid Lockout Update - Feburary 20",
       "author": "Aggrend",
@@ -23408,16 +23409,16 @@
       "game": "classic",
       "kind": "post",
       "excerpt": "Hello again, Wanted to provide an update and let everyone know that we’ve run an operation on our database that should have reset Gnomeregan raid lockouts for those who had been saved yesterday, Feb 21st and incorrectly had their lockouts persist after maintenance this morning. If you ran Gnomereg…",
-      "firstSeen": "2026-10-17T16:15:33.109Z",
-      "region": "us",
       "topicId": 1792114,
       "topicSlug": "gnomeregan-raid-lockout-update-feburary-20",
       "postNumber": 88,
-      "startedThread": false
+      "startedThread": false,
+      "firstSeen": "2026-10-17T16:15:33.109Z"
     },
     {
       "id": "forum:22889129",
       "source": "forum",
+      "region": "us",
       "url": "https://us.forums.blizzard.com/en/wow/t/gnomeregan-raid-lockout-update-feburary-20/1792114/40",
       "title": "Gnomeregan Raid Lockout Update - Feburary 20",
       "author": "Aggrend",
@@ -23428,12 +23429,11 @@
       "game": "classic",
       "kind": "post",
       "excerpt": "This is actually true, we have never in WoW’s history changed a dungeon’s lockout timer like this, so there was a degree of uncertainty on what exactly would happen. Regrettably in our testing we did not encounter the issue we are having today, but are working hard to resolve it.",
-      "firstSeen": "2026-10-17T16:15:33.109Z",
-      "region": "us",
       "topicId": 1792114,
       "topicSlug": "gnomeregan-raid-lockout-update-feburary-20",
       "postNumber": 40,
-      "startedThread": false
+      "startedThread": false,
+      "firstSeen": "2026-10-17T16:15:33.109Z"
     },
     {
       "id": "forum:22858220",
@@ -23638,6 +23638,7 @@
     {
       "id": "forum:22278833",
       "source": "forum",
+      "region": "us",
       "url": "https://us.forums.blizzard.com/en/wow/t/update-on-the-battle-for-ashenvale-and-layers-12142023/1742396/337",
       "title": "Update on the Battle for Ashenvale and Layers - 12/14/2023",
       "author": "Aggrend",
@@ -23648,16 +23649,16 @@
       "game": "classic",
       "kind": "post",
       "excerpt": "Wanted to take a moment and let everyone know that as a follow-up to the statement above, we’ve been watching things unfold for the past few days since we disabled the automatic layer retirement system. While it’s reduced instances of being layered suddenly, it’s also made the world feel a bit less…",
-      "firstSeen": "2026-10-17T16:15:33.109Z",
-      "region": "us",
       "topicId": 1742396,
       "topicSlug": "update-on-the-battle-for-ashenvale-and-layers-12142023",
       "postNumber": 337,
-      "startedThread": false
+      "startedThread": false,
+      "firstSeen": "2026-10-17T16:15:33.109Z"
     },
     {
       "id": "forum:22259478",
       "source": "forum",
+      "region": "us",
       "url": "https://us.forums.blizzard.com/en/wow/t/update-on-the-battle-for-ashenvale-and-layers-12142023/1742396/9",
       "title": "Update on the Battle for Ashenvale and Layers - 12/14/2023",
       "author": "Aggrend",
@@ -23668,12 +23669,11 @@
       "game": "classic",
       "kind": "post",
       "excerpt": "This is a good suggestion and something I imagine we’ll be looking at soon.",
-      "firstSeen": "2026-10-17T16:15:33.109Z",
-      "region": "us",
       "topicId": 1742396,
       "topicSlug": "update-on-the-battle-for-ashenvale-and-layers-12142023",
       "postNumber": 9,
-      "startedThread": false
+      "startedThread": false,
+      "firstSeen": "2026-10-17T16:15:33.109Z"
     },
     {
       "id": "forum:22028152",
@@ -23778,6 +23778,7 @@
     {
       "id": "forum:21978881",
       "source": "forum",
+      "region": "us",
       "url": "https://us.forums.blizzard.com/en/wow/t/range-tracker-disabled/1714042/82",
       "title": "Range tracker disabled",
       "author": "Aggrend",
@@ -23788,16 +23789,16 @@
       "game": "classic",
       "kind": "post",
       "excerpt": "It never stopped working. However, it is entirely up to addon authors if they want to pre-emptively remove support for this in classic or not on the assumption that we may, at some point, change this.",
-      "firstSeen": "2026-10-17T16:15:33.109Z",
-      "region": "us",
       "topicId": 1714042,
       "topicSlug": "range-tracker-disabled",
       "postNumber": 82,
-      "startedThread": false
+      "startedThread": false,
+      "firstSeen": "2026-10-17T16:15:33.109Z"
     },
     {
       "id": "forum:21978734",
       "source": "forum",
+      "region": "us",
       "url": "https://us.forums.blizzard.com/en/wow/t/range-tracker-disabled/1714042/74",
       "title": "Range tracker disabled",
       "author": "Aggrend",
@@ -23808,12 +23809,11 @@
       "game": "classic",
       "kind": "post",
       "excerpt": "Greetings, Just for clarification, we don’t plan to make this API adjustment to Classic Era or Wrath Classic at this time. We will be reviewing this adjustment for potential inclusion in our next Era Patch (1.15.1) and Wrath/Cata Classic (4.4.0) which will both arrive sometime next year, but we don…",
-      "firstSeen": "2026-10-17T16:15:33.109Z",
-      "region": "us",
       "topicId": 1714042,
       "topicSlug": "range-tracker-disabled",
       "postNumber": 74,
-      "startedThread": false
+      "startedThread": false,
+      "firstSeen": "2026-10-17T16:15:33.109Z"
     },
     {
       "id": "forum:21958316",
@@ -23998,6 +23998,7 @@
     {
       "id": "forum:21536508",
       "source": "forum",
+      "region": "us",
       "url": "https://us.forums.blizzard.com/en/wow/t/wow-classic-patch-1144-known-issues-list-updated-092023/1656087/80",
       "title": "WoW Classic Patch 1.14.4 Known Issues List - Updated 09/20/23",
       "author": "Aggrend",
@@ -24008,12 +24009,11 @@
       "game": "classic",
       "kind": "post",
       "excerpt": "Greetings, The known issues post above was just updated with two new issues relating to Ouro in the Temple of Ahn’Qiraj. We wanted to highlight specifically here to raise awareness of these issues for groups on Hardcore realms attempting this boss.",
-      "firstSeen": "2026-10-17T16:15:33.109Z",
-      "region": "us",
       "topicId": 1656087,
       "topicSlug": "wow-classic-patch-1144-known-issues-list-updated-092023",
       "postNumber": 80,
-      "startedThread": false
+      "startedThread": false,
+      "firstSeen": "2026-10-17T16:15:33.109Z"
     },
     {
       "id": "forum:21534765",
@@ -24038,6 +24038,7 @@
     {
       "id": "forum:21534196",
       "source": "forum",
+      "region": "us",
       "url": "https://us.forums.blizzard.com/en/wow/t/sindragosa-ice-tomb-los/1673573/2",
       "title": "Sindragosa Ice Tomb LOS",
       "author": "Aggrend",
@@ -24048,12 +24049,11 @@
       "game": "classic",
       "kind": "post",
       "excerpt": "This is how Line of Sight works with temporary objects like ice blocks and is not a bug. You must turn off your auto attack if the Ice Block is close enough to the boss for you to melee, or it will not block LoS.",
-      "firstSeen": "2026-10-17T16:15:33.109Z",
-      "region": "us",
       "topicId": 1673573,
       "topicSlug": "sindragosa-ice-tomb-los",
       "postNumber": 2,
-      "startedThread": false
+      "startedThread": false,
+      "firstSeen": "2026-10-17T16:15:33.109Z"
     },
     {
       "id": "forum:21528983",
@@ -24198,6 +24198,7 @@
     {
       "id": "forum:21369689",
       "source": "forum",
+      "region": "us",
       "url": "https://us.forums.blizzard.com/en/wow/t/whitemane-still-has-layers-after-reset/1659090/3",
       "title": "Whitemane still has layers after reset",
       "author": "Aggrend",
@@ -24208,12 +24209,11 @@
       "game": "classic",
       "kind": "post",
       "excerpt": "If you have an addon showing you there are layers, that addon is wrong. Whitemane does not have layers right now and has not since the realms restarted at 7:00AM PDT this morning.",
-      "firstSeen": "2026-10-17T16:15:33.109Z",
-      "region": "us",
       "topicId": 1659090,
       "topicSlug": "whitemane-still-has-layers-after-reset",
       "postNumber": 3,
-      "startedThread": false
+      "startedThread": false,
+      "firstSeen": "2026-10-17T16:15:33.109Z"
     },
     {
       "id": "forum:21361960",
@@ -24358,6 +24358,7 @@
     {
       "id": "forum:21348383",
       "source": "forum",
+      "region": "us",
       "url": "https://us.forums.blizzard.com/en/wow/t/whispering-players-from-different-server-bugged/1656495/3",
       "title": "Whispering Players from different Server bugged?",
       "author": "Aggrend",
@@ -24368,12 +24369,11 @@
       "game": "classic",
       "kind": "post",
       "excerpt": "Hi Helistab, We just deployed a new hotfix that should resolve this issue. In order to download the new client hotfix, you may need to close out of your WoW Client and allow your Battle.net app to download the new version (you should have 1.14.4.50156).",
-      "firstSeen": "2026-10-17T16:15:33.109Z",
-      "region": "us",
       "topicId": 1656495,
       "topicSlug": "whispering-players-from-different-server-bugged",
       "postNumber": 3,
-      "startedThread": false
+      "startedThread": false,
+      "firstSeen": "2026-10-17T16:15:33.109Z"
     },
     {
       "id": "forum:21348304",
@@ -24518,6 +24518,7 @@
     {
       "id": "forum:21336959",
       "source": "forum",
+      "region": "us",
       "url": "https://us.forums.blizzard.com/en/wow/t/ptr-wand-shoot-ability-failing-to-work-in-melee-range/1649436/6",
       "title": "PTR Wand Shoot ability failing to work in melee range",
       "author": "Aggrend",
@@ -24528,12 +24529,11 @@
       "game": "classic",
       "kind": "post",
       "excerpt": "We have a fix in internal testing right now to default this option to off, and remove the option from the interface options menu. We hope to have this fix live within the next few days.",
-      "firstSeen": "2026-10-17T16:15:33.109Z",
-      "region": "us",
       "topicId": 1649436,
       "topicSlug": "ptr-wand-shoot-ability-failing-to-work-in-melee-range",
       "postNumber": 6,
-      "startedThread": false
+      "startedThread": false,
+      "firstSeen": "2026-10-17T16:15:33.109Z"
     },
     {
       "id": "forum:21259732",
@@ -24578,6 +24578,7 @@
     {
       "id": "forum:20958071",
       "source": "forum",
+      "region": "us",
       "url": "https://us.forums.blizzard.com/en/wow/t/disconnect-deaths-on-jumpstuns/1622074/5",
       "title": "Disconnect deaths on jump+stuns",
       "author": "Aggrend",
@@ -24588,16 +24589,16 @@
       "game": "classic",
       "kind": "post",
       "excerpt": "I know, bud. Asking WoW players not to spam jump is kinda like asking them not to breathe.",
-      "firstSeen": "2026-10-17T16:15:33.109Z",
-      "region": "us",
       "topicId": 1622074,
       "topicSlug": "disconnect-deaths-on-jumpstuns",
       "postNumber": 5,
-      "startedThread": false
+      "startedThread": false,
+      "firstSeen": "2026-10-17T16:15:33.109Z"
     },
     {
       "id": "forum:20957483",
       "source": "forum",
+      "region": "us",
       "url": "https://us.forums.blizzard.com/en/wow/t/disconnect-deaths-on-jumpstuns/1622074/2",
       "title": "Disconnect deaths on jump+stuns",
       "author": "Aggrend",
@@ -24608,16 +24609,16 @@
       "game": "classic",
       "kind": "post",
       "excerpt": "Thanks for the report Ebbnflow. We are aware of this issue and hope to have a fix in for our build update next week.",
-      "firstSeen": "2026-10-17T16:15:33.109Z",
-      "region": "us",
       "topicId": 1622074,
       "topicSlug": "disconnect-deaths-on-jumpstuns",
       "postNumber": 2,
-      "startedThread": false
+      "startedThread": false,
+      "firstSeen": "2026-10-17T16:15:33.109Z"
     },
     {
       "id": "forum:20944810",
       "source": "forum",
+      "region": "us",
       "url": "https://us.forums.blizzard.com/en/wow/t/togc-weekly-lockout-not-working/1621115/22",
       "title": "TOGC weekly lockout not working",
       "author": "Aggrend",
@@ -24628,16 +24629,16 @@
       "game": "classic",
       "kind": "post",
       "excerpt": "While we want to be very very fair here, we are also not looking to help anyone find loopholes to this. The simple way to look at this is: Did I get my 5/5 clear this week in a given raid size (10 or 25)?",
-      "firstSeen": "2026-10-17T16:15:33.109Z",
-      "region": "us",
       "topicId": 1621115,
       "topicSlug": "togc-weekly-lockout-not-working",
       "postNumber": 22,
-      "startedThread": false
+      "startedThread": false,
+      "firstSeen": "2026-10-17T16:15:33.109Z"
     },
     {
       "id": "forum:20944621",
       "source": "forum",
+      "region": "us",
       "url": "https://us.forums.blizzard.com/en/wow/t/togc-weekly-lockout-not-working/1621115/17",
       "title": "TOGC weekly lockout not working",
       "author": "Aggrend",
@@ -24648,12 +24649,11 @@
       "game": "classic",
       "kind": "post",
       "excerpt": "Hi Everyone, We really appreciate the reports about this and wanted to provide an update for those of you with Trial of the Crusader or Trial of the Grand Crusader lockouts that are in limbo at the moment. We are aware of an issue that can rarely cause some raid lockouts to not properly save and w…",
-      "firstSeen": "2026-10-17T16:15:33.109Z",
-      "region": "us",
       "topicId": 1621115,
       "topicSlug": "togc-weekly-lockout-not-working",
       "postNumber": 17,
-      "startedThread": false
+      "startedThread": false,
+      "firstSeen": "2026-10-17T16:15:33.109Z"
     },
     {
       "id": "forum:20575282",
@@ -24678,6 +24678,7 @@
     {
       "id": "forum:19974365",
       "source": "forum",
+      "region": "us",
       "url": "https://us.forums.blizzard.com/en/wow/t/whitemane-era-cluster-locked/1534191/62",
       "title": "Whitemane era cluster locked!",
       "author": "Aggrend",
@@ -24688,16 +24689,16 @@
       "game": "classic",
       "kind": "post",
       "excerpt": "Hi Everyone, Just popping in to confirm that Whitemane-Era being locked is not intended and we are looking into this. Hopefully we should have it unlocked soon.",
-      "firstSeen": "2026-10-17T16:15:33.109Z",
-      "region": "us",
       "topicId": 1534191,
       "topicSlug": "whitemane-era-cluster-locked",
       "postNumber": 62,
-      "startedThread": false
+      "startedThread": false,
+      "firstSeen": "2026-10-17T16:15:33.109Z"
     },
     {
       "id": "forum:19727657",
       "source": "forum",
+      "region": "us",
       "url": "https://us.forums.blizzard.com/en/wow/t/where-is-the-kaluak-fishing-tourney-quest-npc/1512599/20",
       "title": "Where is the kalu'ak fishing tourney quest npc",
       "author": "Aggrend",
@@ -24708,16 +24709,16 @@
       "game": "classic",
       "kind": "post",
       "excerpt": "Greetings, We pushed a hotfix late last week to resolve some issues with Elder Clearwater and unfortunately exposed another issue which caused him to be missing for the Fishing Derby this past weekend. We believe we’ve corrected that error now and he should be present as expected for this coming we…",
-      "firstSeen": "2026-10-17T16:15:33.109Z",
-      "region": "us",
       "topicId": 1512599,
       "topicSlug": "where-is-the-kaluak-fishing-tourney-quest-npc",
       "postNumber": 20,
-      "startedThread": false
+      "startedThread": false,
+      "firstSeen": "2026-10-17T16:15:33.109Z"
     },
     {
       "id": "forum:19490194",
       "source": "forum",
+      "region": "us",
       "url": "https://us.forums.blizzard.com/en/wow/t/slaves-to-saronite-daily-massive-bug/1490602/67",
       "title": "\"Slaves to Saronite\" daily MASSIVE BUG",
       "author": "Aggrend",
@@ -24728,16 +24729,16 @@
       "game": "classic",
       "kind": "post",
       "excerpt": "Nope, not needed at all. We can see all those affected on our end and the process to refund everyone should be totally automatic.",
-      "firstSeen": "2026-10-17T16:15:33.109Z",
-      "region": "us",
       "topicId": 1490602,
       "topicSlug": "slaves-to-saronite-daily-massive-bug",
       "postNumber": 67,
-      "startedThread": false
+      "startedThread": false,
+      "firstSeen": "2026-10-17T16:15:33.109Z"
     },
     {
       "id": "forum:19485734",
       "source": "forum",
+      "region": "us",
       "url": "https://us.forums.blizzard.com/en/wow/t/slaves-to-saronite-daily-massive-bug/1490602/61",
       "title": "\"Slaves to Saronite\" daily MASSIVE BUG",
       "author": "Aggrend",
@@ -24748,16 +24749,16 @@
       "game": "classic",
       "kind": "post",
       "excerpt": "Hi All, Sorry for the late reply on this but I wanted to chime in and confirm that we are actively looking into refunding those that lost gold during the time period this issue was active in the US/AU this past Tuesday/Wednesday. We’ve hit a few delays and complications trying to get this resolved …",
-      "firstSeen": "2026-10-17T16:15:33.109Z",
-      "region": "us",
       "topicId": 1490602,
       "topicSlug": "slaves-to-saronite-daily-massive-bug",
       "postNumber": 61,
-      "startedThread": false
+      "startedThread": false,
+      "firstSeen": "2026-10-17T16:15:33.109Z"
     },
     {
       "id": "forum:19463533",
       "source": "forum",
+      "region": "us",
       "url": "https://us.forums.blizzard.com/en/wow/t/oce-still-dont-have-the-last-week-of-arena-points-no-comms-from-blizz-what-is-going-on/1489202/3",
       "title": "OCE Still don't have the last week of Arena Points - no comms from blizz, what is going on?",
       "author": "Aggrend",
@@ -24768,12 +24769,11 @@
       "game": "classic",
       "kind": "post",
       "excerpt": "Greetings, We are aware of this issue and are cooking up a solution now for those impacted by it. We appreciate the reports about it and hope to have more info to share very soon.",
-      "firstSeen": "2026-10-17T16:15:33.109Z",
-      "region": "us",
       "topicId": 1489202,
       "topicSlug": "oce-still-dont-have-the-last-week-of-arena-points-no-comms-from-blizz-what-is-going-on",
       "postNumber": 3,
-      "startedThread": false
+      "startedThread": false,
+      "firstSeen": "2026-10-17T16:15:33.109Z"
     },
     {
       "id": "forum:18950225",
@@ -24798,6 +24798,7 @@
     {
       "id": "forum:18637131",
       "source": "forum",
+      "region": "us",
       "url": "https://us.forums.blizzard.com/en/wow/t/ret-paladin-deserves-slight-buff/1411172/458",
       "title": "Ret Paladin Deserves Slight Buff",
       "author": "Aggrend",
@@ -24808,12 +24809,11 @@
       "game": "classic",
       "kind": "post",
       "excerpt": "Hi Everyone, The team has been looking at this thread and discussing the topic of class balance amongst ourselves a lot recently, and we wanted to take a moment to talk about class balance vs. spec balance and clarify some comments that we’ve made in recent discussions and interviews, and also gene…",
-      "firstSeen": "2026-10-17T16:15:33.109Z",
-      "region": "us",
       "topicId": 1411172,
       "topicSlug": "ret-paladin-deserves-slight-buff",
       "postNumber": 458,
-      "startedThread": false
+      "startedThread": false,
+      "firstSeen": "2026-10-17T16:15:33.109Z"
     },
     {
       "id": "forum:17360636",
