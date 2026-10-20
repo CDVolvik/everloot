@@ -19,6 +19,34 @@ body:has([data-banner]) {
   overflow-x: clip;
 }
 
+/* Data pages (a <Container width="data">): the column grows to 1440 with 24 px sides (16 under
+   1024 px) and the title sits 16 px under the header (density spec, 2026-10-20). */
+main:has([data-container="data"]) {
+  max-width: 1440px;
+  padding-top: 1rem;
+}
+@media (min-width: 1024px) {
+  main:has([data-container="data"]) {
+    padding-inline: 1.5rem;
+  }
+}
+
+/* Controls on data pages (filter buttons, pager, tabs): 32 px tall with 13 px text, 40 px on phones.
+   Put `.ctl` on the control; inputs keep 16 px text on phones so iOS does not zoom. */
+.ctl,
+.ctl:is(input, select):not([type="checkbox"]):not([type="radio"]) {
+  min-height: 2.5rem;
+  border-radius: 6px;
+}
+@media (min-width: 640px) {
+  .ctl,
+  .ctl:is(input, select):not([type="checkbox"]):not([type="radio"]) {
+    min-height: 2rem;
+    font-size: 13px;
+    line-height: 20px;
+  }
+}
+
 /* The map fills the screen: its page lifts the column's width limit and keeps only a small side margin. */
 main:has([data-map-page]) {
   max-width: none;
