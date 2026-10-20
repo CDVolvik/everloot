@@ -64,6 +64,7 @@ export function worldMap(buildId: number, zones: { id: number; name: string; lef
     zones: zones.map((z) => ({ uiMapId: z.id, name: z.name, continentId: 1, bounds: { left: z.left ?? 10, top: 20, right: 5, bottom: 1 } })),
     heldBackZones: [],
     entrances: [{ mapId: 33, name: "Shadowfang Keep", raid: false, continentId: 0, worldX: -231, worldY: 1571.6 }],
+    flightNodes: [], flightPaths: [],
     warnings: [],
   };
 }

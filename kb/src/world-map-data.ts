@@ -13,13 +13,16 @@
  *   only whole-map rectangles (0,0 to 1,1) are used.
  * - Map: the continents, and for each dungeon or raid `CorpseMapID` and `Corpse` (x, y), the spot where a
  *   ghost returns, which is the entrance.
+ * - TaxiNodes, TaxiPath, TaxiPathNode: flight masters (a node with a flight to or from it), and each
+ *   flight's line through its path points. Boats and zeppelins are paths that start or end at "Transport"
+ *   stand-in nodes (some hop to another continent), not at a dock, so they are left out for now.
  */
 import { z } from "zod";
 import { readClientManifest, readClientMeta, readClientRows, readClientTables } from "./client-snapshot.js";
 
 export const WORLD_MAP_SCHEMA = "everloot.world-map/1";
 /** Tables this file is built from. */
-export const WORLD_MAP_TABLES = ["Map", "UiMap", "UiMapAssignment"] as const;
+export const WORLD_MAP_TABLES = ["Map", "UiMap", "UiMapAssignment", "TaxiNodes", "TaxiPath", "TaxiPathNode"] as const;
 
 /**
  * Zones of the original world, as numbered by their UiMap ids (1411 to 1458). Zones with later ids are
@@ -52,6 +55,12 @@ export const WorldMapData = z.object({
   entrances: z.array(z.object({
     mapId: z.number().int(), name: z.string(), raid: z.boolean(), continentId: z.number().int(), worldX: z.number(), worldY: z.number(),
   })),
+  /** Flight masters: the taxi nodes that a flight starts or ends at (TaxiNodes). World yards, as everything else here. */
+  flightNodes: z.array(z.object({ id: z.number().int(), name: z.string(), continentId: z.number().int(), worldX: z.number(), worldY: z.number() })).default([]),
+  /** One flight line per pair of nodes (TaxiPath, drawn through its TaxiPathNode points), points as [worldX, worldY] yards, thinned. */
+  flightPaths: z.array(z.object({
+    from: z.number().int(), to: z.number().int(), continentId: z.number().int(), points: z.array(z.tuple([z.number(), z.number()])),
+  })).default([]),
   warnings: z.array(z.string()),
 });
 export type WorldMapData = z.infer<typeof WorldMapData>;
@@ -136,7 +145,71 @@ export function buildWorldMapData(
   }
   entrances.sort((a, b) => a.mapId - b.mapId);
 
-  return WorldMapData.parse({ schema: WORLD_MAP_SCHEMA, source, continents, zones, heldBackZones, entrances, warnings });
+  const { flightNodes, flightPaths } = buildFlights(get("TaxiNodes"), get("TaxiPath"), get("TaxiPathNode"), continentIds);
+  if (!flightNodes.length) warnings.push("no flight tables in the snapshot: no flight masters or flight lines");
+
+  return WorldMapData.parse({ schema: WORLD_MAP_SCHEMA, source, continents, zones, heldBackZones, entrances, flightNodes, flightPaths, warnings });
+}
+
+/** Taxi nodes that are not flight masters: test targets, transport (boat and zeppelin) stand-ins, a ferry, quest-only paths, retired rows. */
+const NOT_A_FLIGHT_MASTER = /^(generic|transport|quest path|zzold|programmer)|\bferry\b/i;
+/** How far a thinned flight line may stray from the full one, in yards. */
+export const FLIGHT_LINE_TOLERANCE = 20;
+
+/** Douglas-Peucker: the fewest points that keep the line within `tolerance` of the original. */
+export function thinLine(points: [number, number][], tolerance: number): [number, number][] {
+  if (points.length < 3) return points;
+  const [ax, ay] = points[0]!, [bx, by] = points[points.length - 1]!;
+  const len = Math.hypot(bx - ax, by - ay);
+  let far = 0, at = -1;
+  for (let i = 1; i < points.length - 1; i++) {
+    const [px, py] = points[i]!;
+    const d = len === 0 ? Math.hypot(px - ax, py - ay) : Math.abs((bx - ax) * (ay - py) - (ax - px) * (by - ay)) / len;
+    if (d > far) { far = d; at = i; }
+  }
+  if (far <= tolerance) return [points[0]!, points[points.length - 1]!];
+  return [...thinLine(points.slice(0, at + 1), tolerance).slice(0, -1), ...thinLine(points.slice(at), tolerance)];
+}
+
+/**
+ * Flight masters and flight lines from the taxi tables. A node counts when a flight starts or ends at it and
+ * it lies on one of the continents; a line is kept once for a pair of nodes (the return trip runs the same
+ * way), from the path with the lower id, drawn through its own points. A table the snapshot lacks gives none.
+ */
+export function buildFlights(nodes: Rows | undefined, paths: Rows | undefined, pathNodes: Rows | undefined, continentIds: Set<number>) {
+  const flightNodes: WorldMapData["flightNodes"] = [], flightPaths: WorldMapData["flightPaths"] = [];
+  if (!nodes || !paths || !pathNodes) return { flightNodes, flightPaths };
+  const used = new Set<number>();
+  for (const p of paths.values()) used.add(Number(p.FromTaxiNode)), used.add(Number(p.ToTaxiNode));
+  const kept = new Map<number, WorldMapData["flightNodes"][number]>();
+  for (const n of nodes.values()) {
+    const id = Number(n.ID), at = Array.isArray(n.Pos) ? n.Pos.map(num) : [];
+    if (!used.has(id) || typeof n.Name_lang !== "string" || NOT_A_FLIGHT_MASTER.test(n.Name_lang.trim()) || !continentIds.has(Number(n.ContinentID))) continue;
+    if (at.length < 2 || at[0] === null || at[1] === null) continue;
+    kept.set(id, { id, name: n.Name_lang.trim(), continentId: Number(n.ContinentID), worldX: round(at[0]), worldY: round(at[1]) });
+  }
+  const byPath = new Map<number, { index: number; x: number; y: number }[]>();
+  for (const q of pathNodes.values()) {
+    const at = Array.isArray(q.Loc) ? q.Loc.map(num) : [];
+    if (at.length < 2 || at[0] === null || at[1] === null) continue;
+    const list = byPath.get(Number(q.PathID)) ?? [];
+    list.push({ index: Number(q.NodeIndex), x: at[0], y: at[1] });
+    byPath.set(Number(q.PathID), list);
+  }
+  const done = new Set<string>();
+  for (const p of [...paths.values()].sort((a, b) => Number(a.ID) - Number(b.ID))) {
+    const from = kept.get(Number(p.FromTaxiNode)), to = kept.get(Number(p.ToTaxiNode));
+    const key = [Number(p.FromTaxiNode), Number(p.ToTaxiNode)].sort((a, b) => a - b).join("-");
+    const line = byPath.get(Number(p.ID));
+    if (!from || !to || from.continentId !== to.continentId || done.has(key) || !line || line.length < 2) continue;
+    done.add(key);
+    const points = thinLine(line.sort((a, b) => a.index - b.index).map((q) => [Math.round(q.x), Math.round(q.y)] as [number, number]), FLIGHT_LINE_TOLERANCE);
+    flightPaths.push({ from: from.id, to: to.id, continentId: from.continentId, points });
+  }
+  const drawn = new Set(flightPaths.flatMap((p) => [p.from, p.to]));
+  for (const n of kept.values()) if (drawn.has(n.id)) flightNodes.push(n);
+  flightNodes.sort((a, b) => a.id - b.id);
+  return { flightNodes, flightPaths };
 }
 
 export function writeWorldMapData(snapshotPath: string): WorldMapData {
