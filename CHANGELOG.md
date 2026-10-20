@@ -20,6 +20,11 @@ Pull requests merged to `main` are listed in the nightly pre-releases until the 
   form. The search index stays off for now, so the pages are reached by name and are not listed anywhere.
 
 ### Added
+- Desktop App: Sign in with everloot.app. The setup screen and Settings open everloot.app's new
+  `/desktop/connect` page in the browser; after Battle.net sign-in and Connect, the app has its own key named
+  "Everloot Desktop App". The key travels back to `127.0.0.1` sealed to a one-time key only that app holds
+  (ECDH P-256, AES-GCM), so it is never in a URL in the clear, and the app never sees a password. Pasting a key
+  still works. The setup screen also asks to agree to the Terms of Use and Privacy Policy before Start.
 - Site: an achievement's page lists its criteria, with how many each needs, once three players sent the same complete list; the list is agreed apart from the entry itself. Lists and search still show no criteria wording. Run the completion rebuild (`?rebuild=1`) once to fill it from uploads already stored.
 
 ## [0.3.6] - 2026-10-20
