@@ -75,7 +75,9 @@ id. The link lasts until the rollup is rebuilt (`?rebuild=1`), which drops every
 were deleted; deleting a player's uploads therefore takes a rebuild to remove the link. Turning the
 module off deletes every one of these rows from the file.
 
-The census (from the next addon release, off until `/everloot census on`) counts who plays what. It
+The census counts who plays what. It is on in a new install of the addon, which says so once in chat; an
+install from before the census keeps it off until `/everloot census on`. It leaves the player's computer
+only from the upload page or from the Desktop App, if the player allowed the census there. It
 records race, class, level and faction for your own characters as you log in, plus the realm name, and
 for players you target, mouse over or group with. For other players it reads those four things only,
 never their name, guild, gear or position. The addon keeps one row per character per day. Each row

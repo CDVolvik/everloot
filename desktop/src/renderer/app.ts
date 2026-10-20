@@ -26,6 +26,8 @@ let state: AppState | null = null;
 let page: Page = "overview";
 let candidates: GameFolderCandidate[] = [];
 let chosenFolder: string | null = null;
+/** The census line on the welcome screen, ticked until the player unticks it. */
+let censusChoice = true;
 let draftDirty = false;
 let busy = "";
 let flash = "";
@@ -78,6 +80,7 @@ function welcome(): string {
       <h2>What leaves this computer</h2>
       <ul class="plain fg2">
         <li>Anonymous observations from <code>Everloot.lua</code>: drops, vendors, recipes, spawns, auction scans. No character or account name.</li>
+        <li><label class="switch"><input type="checkbox" id="censusConsent" ${censusChoice ? "checked" : ""}> Census: the race, class, level and faction of your characters and of players the addon sees. Never names, guilds, gear or places; the site shows only totals.</label></li>
         <li>Nothing else. Named data (guild, gear, gold, collection) and your installed addon list stay here; share those on the website if you want to.</li>
       </ul>
       <p class="small fg2">Uploaded observations are published under CC BY-SA 4.0, credited to Everloot contributors. Source: ${ext("https://github.com/Everloot/everloot", "github.com/Everloot/everloot")} · Rules: ${ext("https://everloot.app/privacy", "everloot.app/privacy")}</p>
@@ -665,6 +668,10 @@ function settings(s: AppState): string {
         ${s.platform === "linux" ? "" : `<label class="switch"><input type="checkbox" name="launchAtLogin" ${st.launchAtLogin ? "checked" : ""}> Start when I sign in</label>`}
         <label class="switch"><input type="checkbox" name="startInTray" ${st.startInTray ? "checked" : ""}> Start in the tray without a window</label>
       </section>
+      <section class="panel"><h2>Census</h2>
+        <label class="switch"><input type="checkbox" name="census" ${st.census ? "checked" : ""}> Send census counts with the uploads</label>
+        <p class="muted small">The race, class, level and faction of your characters and of players the addon sees. Never names, guilds, gear or places; the site shows only totals. Off keeps them in <code>Everloot.lua</code>; <code>/everloot census off</code> in the game stops recording and deletes them.</p>
+      </section>
       <details class="panel"><summary><h2>Advanced</h2></summary>
         <div class="field"><label for="endpoint">Site <span class="hint">change only to test against another deployment</span></label><input type="url" id="endpoint" name="endpoint" value="${esc(st.endpoint)}"></div>
       </details>
@@ -938,7 +945,7 @@ async function onClick(ev: MouseEvent): Promise<void> {
   }
   if (t.id === "pickToken") { const f = await api.pickTokenFile(); if (f) { (main.querySelector("#tokenFile") as HTMLInputElement).value = f; draftDirty = true; } return; }
   if (t.id === "redetect") { chosenFolder = null; await detect(); return; }
-  if (t.id === "start" && chosenFolder) { state = await api.saveSettings({ gameFolder: chosenFolder, consentedAt: new Date().toISOString() }); void go("overview"); return; }
+  if (t.id === "start" && chosenFolder) { state = await api.saveSettings({ gameFolder: chosenFolder, census: censusChoice, consentedAt: new Date().toISOString() }); void go("overview"); return; }
   if (t.id === "openConfig") { void api.openConfig(); return; }
   if (t.id === "openData") { void api.openDataFolder(); return; }
   if (t.id === "openAddons") { void api.openAddonsFolder(); return; }
@@ -1003,6 +1010,7 @@ async function onClick(ev: MouseEvent): Promise<void> {
 
 async function onChange(ev: Event): Promise<void> {
   const el = ev.target as HTMLInputElement;
+  if (el.id === "censusConsent") { censusChoice = el.checked; return; }
   if (el.id === "providerKind") { pickKind = el.value as ProviderKind; render(); return; }
   if (el.id === "modelPick") {
     const v = el.value;
@@ -1094,7 +1102,7 @@ async function onSubmit(ev: SubmitEvent): Promise<void> {
     return;
   }
   if (form.id === "settings") {
-    state = await api.saveSettings({ gameFolder: text("gameFolder") || null, endpoint: text("endpoint"), launchAtLogin: f.get("launchAtLogin") === "on", startInTray: f.get("startInTray") === "on" });
+    state = await api.saveSettings({ gameFolder: text("gameFolder") || null, endpoint: text("endpoint"), launchAtLogin: f.get("launchAtLogin") === "on", startInTray: f.get("startInTray") === "on", census: f.get("census") === "on" });
   } else if (form.id === "askForm") {
     state = await api.saveSettings({ ask: { ...state!.settings.ask, mcpUrl: text("mcpUrl"), tokenFile: text("tokenFile") || null } });
   }

@@ -107,8 +107,10 @@ expands, clicks or changes anything.
 
 ## Census
 
-Off until `/everloot census on` (then `/reload`). It counts who plays what: race, class, level and faction,
-never a name. `/everloot census` says whether it is on and how many rows it holds; `/everloot census off`
+On in a new install, which says so once in chat; an install from before the census keeps it off until
+`/everloot census on` (then `/reload`). It counts who plays what: race, class, level and faction,
+never a name. It leaves your computer from the upload page, or from the Desktop App if you allowed the
+census there. `/everloot census` says whether it is on and how many rows it holds; `/everloot census off`
 stops it at once and deletes every row it wrote.
 
 - **Your own characters** (`census_self`): at login and at each level-up, your character's game id
@@ -237,7 +239,7 @@ addon/
 │   ├── mapbounds.lua   each zone's corners in world coordinates, once per zone per build
 │   ├── talents.lua     your talent build per spec group, plus the game's own loadout string
 │   ├── completion.lua  achievements, reputation, titles, quest chains: catalogs and your progress; off until enabled
-│   ├── census.lua      race, class, level and faction of your characters and players you see; off until enabled
+│   ├── census.lua      race, class, level and faction of your characters and players you see; on in a new install
 │   ├── players.lua     name, realm, race, class, level and guild of your characters and players you see; off until enabled
 │   ├── selftest.lua    /everloot selftest and /everloot talents
 │   ├── plan.lua        share code reader and the display-only plan panel

@@ -1,4 +1,5 @@
--- Everloot census: who plays what. Off until the player runs /everloot census on.
+-- Everloot census: who plays what. On for a new install, which says so once in chat; an install from
+-- before the census keeps it off until /everloot census on. /everloot census off deletes the rows.
 --
 -- Two kinds of rows, written in the shape the upload sends:
 --   census_self  your own character, at login and level-up: guid, race, class, level, faction, realm
@@ -7,7 +8,8 @@
 --
 -- Nothing else is read about another player: no name, guild, gear or position. The contract test
 -- fails if this file names a call that could read them, and lists every game call it may make.
--- The guid leaves this file only from the upload page; the server swaps it for a keyed hash before
+-- The guid leaves this file from the upload page, or from the Desktop App when the player allowed the census
+-- there; the server swaps it for a keyed hash before
 -- anything is stored (docs/design/specs/2026-10-18-census-design.md, section 5).
 --
 -- One row per guid per UTC day and kind. A row keeps the first way you saw the player that day; only a
@@ -181,7 +183,7 @@ function C.StatusLine()
   if not E:IsEnabled("census") then
     return "Everloot census: off. /everloot census on starts it."
   end
-  return string.format("Everloot census: %s. %d rows of players you saw, %d of your own characters. Nothing leaves this file until you upload it at everloot.app/upload.",
+  return string.format("Everloot census: %s. %d rows of players you saw, %d of your own characters. Nothing leaves this file unless the Everloot Desktop App, with the census allowed, or everloot.app/upload sends it.",
     active and "on" or "on after /reload", E:Count("census_seen"), E:Count("census_self"))
 end
 

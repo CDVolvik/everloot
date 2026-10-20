@@ -11,6 +11,7 @@ export function defaultSettings(): Settings {
     endpoint: DEFAULT_ENDPOINT,
     upload: true,
     prices: true,
+    census: true,
     ask: { enabled: false, mcpUrl: `${DEFAULT_ENDPOINT}/mcp`, tokenFile: null },
     market: { realms: [] },
     consentedAt: null,
@@ -40,6 +41,7 @@ export function mergeSettings(base: Settings, patch: unknown): Settings {
     endpoint: isHttp(p.endpoint) ? p.endpoint.replace(/\/+$/, "") : base.endpoint,
     upload: bool(p.upload, base.upload),
     prices: bool(p.prices, base.prices),
+    census: bool(p.census, base.census),
     ask: {
       enabled: bool(ask.enabled, base.ask.enabled),
       mcpUrl: isHttp(ask.mcpUrl) ? ask.mcpUrl : base.ask.mcpUrl,
@@ -60,7 +62,10 @@ export function loadSettings(path: string): LoadedSettings {
   try {
     const parsed: unknown = readJsonFile(path);
     if (!parsed || typeof parsed !== "object") throw new Error("not an object");
-    return { settings: mergeSettings(defaultSettings(), parsed), error: null };
+    // A setup finished before the census switch agreed to a list without it: the census stays off until the player turns it on.
+    const agreedBefore = !("census" in parsed) && Boolean((parsed as { consentedAt?: unknown }).consentedAt);
+    const base = agreedBefore ? { ...defaultSettings(), census: false } : defaultSettings();
+    return { settings: mergeSettings(base, parsed), error: null };
   } catch (err) {
     return { settings: defaultSettings(), error: `settings.json could not be read (${err instanceof Error ? err.message : String(err)}); using defaults` };
   }

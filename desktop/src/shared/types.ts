@@ -10,6 +10,8 @@ export interface Settings {
   endpoint: string;
   upload: boolean;
   prices: boolean;
+  /** Census counts go with the uploads: race, class, level and faction of players seen, never names. */
+  census: boolean;
   ask: { enabled: boolean; mcpUrl: string; tokenFile: string | null };
   /** Realms to keep prices for beyond the ones in the player's own scans (TSM-style realm picks). */
   market: { realms: string[] };
