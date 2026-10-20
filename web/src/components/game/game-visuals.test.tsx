@@ -250,23 +250,22 @@ test("professions: a picker of profession icons with their names", async () => {
   expect(html).toContain(CREDIT);
 });
 
-test("map: zone pictures for the map; held-back zones and the continent picture only with spoilers", async () => {
+test("map: the continent picture and zone pictures; held-back zones only with spoilers", async () => {
   vi.stubEnv("NEXT_PUBLIC_GAME_ASSETS_URL", BASE);
   vi.stubGlobal("fetch", bucket());
   const art = (html: string): { continent: { url: string } | null; zones: { url: string; smallUrl: string | null }[] } | null =>
     JSON.parse((html.match(/data-map-art="([^"]*)"/)![1]!).replaceAll("&quot;", '"'));
   const off = await render(() => MapPage({ searchParams: Promise.resolve({ continent: "0" }) }));
-  // Never a held-back zone's picture or the continent's own, which may show a held-back zone painted in.
-  expect(art(off)!.continent).toBeNull();
+  // The continent's own picture always; never a held-back zone's.
+  expect(art(off)!.continent!.url).toBe(`${BASE}/maps/13.webp`);
   expect(art(off)!.zones.find((z) => z.url === `${BASE}/maps/1429.webp`)?.smallUrl).toBe(`${BASE}/maps/1429-small.webp`);
   expect(off).not.toContain("maps/2548");
-  expect(off).not.toContain("maps/13");
   expect(off).toContain("Game map art");
   expect(off).not.toContain("No game art.");
   expect(off).toContain(CREDIT);
-  // With spoilers on, the continent's own picture.
+  // With spoilers on, the held-back zone's picture too.
   const on = await render(() => MapPage({ searchParams: Promise.resolve({ continent: "0", spoilers: "1" }) }));
-  expect(art(on)!.continent!.url).toBe(`${BASE}/maps/13.webp`);
+  expect(art(on)!.zones.some((z) => z.url === `${BASE}/maps/2548.webp`)).toBe(true);
   // The page's description no longer says "No game art" once the pictures are on.
   const { generateMetadata } = await import("@/app/map/page");
   expect((await generateMetadata()).description).toContain("The map pictures are the game's own.");

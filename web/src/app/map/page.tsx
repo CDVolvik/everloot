@@ -61,7 +61,7 @@ export default async function MapPage(props: { searchParams: Promise<Query> }) {
   // The game's own map pictures under the outlines, only when the asset URL is set and the upload has them.
   // A held-back zone's picture follows its outline: none unless spoilers are on.
   const assets = vb ? await loadSiteAssets() : null;
-  const art = continentArt(assets, continentId, spoilers, WORLD_MAP.heldBackZones.some((z) => z.continentId === continentId));
+  const art = continentArt(assets, continentId, spoilers);
   const lead = art ? withArt(description) : description;
   // Each dungeon's and raid's loading screen beside its entrance in the list; a later map's only with spoilers on.
   const allThumbs = instanceThumbs(assets, spoilers);
