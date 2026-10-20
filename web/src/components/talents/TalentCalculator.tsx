@@ -3,10 +3,15 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { importCode, type ImportReport } from "@/lib/talents/import";
 import {
-  add, canAdd, canRemove, commit, entryAtRank, nodeMap, pointsAtLevel, pointsByTree, pointsSpent, redo, refusalText,
+  add, canAdd, canRemove, commit, entryAtRank, isLegal, nodeMap, pointsAtLevel, pointsByTree, pointsSpent, redo, refusalText,
   remove, startHistory, undo, levelFor, type History,
 } from "@/lib/talents/rules";
+import GameIcon from "@/components/game/GameIcon";
+import Card from "@/components/ui/Card";
+import { Input } from "@/components/ui/Field";
+import Segmented from "@/components/ui/Segmented";
 import { CREDIT, hasNodeFrames, loadGameAssets, type GameAssets } from "@/lib/talents/assets";
+import { HOW_IT_WORKS_ID } from "@/lib/talents/facts";
 import { encodeBuild } from "@/lib/talents/share";
 import type { Ranks, TalentCatalog } from "@/lib/talents/types";
 import GameTree from "./GameTree";
@@ -19,7 +24,8 @@ import TalentTreeView, { assetOf, CLASS_TEXT, type TipMode } from "./TalentTreeV
 type Sets = [Ranks, Ranks];
 const LONG_PRESS_MS = 500;
 
-export default function TalentCalculator({ catalog }: { catalog: TalentCatalog }) {
+/** `classIcon`: the game's class icon for the bar, when the page has the asset folder. */
+export default function TalentCalculator({ catalog, classIcon = null }: { catalog: TalentCatalog; classIcon?: string | null }) {
   const { rules } = catalog;
   const [history, setHistory] = useState<History<Sets>>(() => startHistory<Sets>([{}, {}]));
   const [active, setActive] = useState<0 | 1>(0);
@@ -297,99 +303,116 @@ export default function TalentCalculator({ catalog }: { catalog: TalentCatalog }
   }
   const classText = CLASS_TEXT[catalog.classSlug];
   const rovingFor = (treeId: number) => rovingByTree[treeId] ?? catalog.nodes.find((n) => n.treeId === treeId)!.id;
+  const setName = active === 0 ? "set 1" : "set 2";
+
+  // Take every point out of one tree. Refused when another tree's talents need those points.
+  function resetTree(treeId: number, name: string) {
+    const next: Ranks = {};
+    for (const [id, r] of Object.entries(ranks)) if (nodes.get(Number(id))?.treeId !== treeId) next[Number(id)] = r;
+    if (!isLegal(catalog, next)) {
+      setMessage(`Talents in another tree need the points in ${name}. Take those back first.`);
+      return;
+    }
+    setActiveRanks(next);
+    setMessage(`${name} was reset. Undo brings it back.`);
+  }
+
+  // The explanations live in the page's closed "How it works" section; "?" opens it and goes there.
+  function openHowTo() {
+    const how = document.getElementById(HOW_IT_WORKS_ID);
+    if (how instanceof HTMLDetailsElement) how.open = true;
+    how?.scrollIntoView({ block: "start" });
+  }
 
   return (
-    <div className="space-y-5" onKeyDown={onKeyDown}>
-      <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Talent sets">
-        <button type="button" className="btn text-sm" aria-pressed={active === 0} onClick={() => chooseSet(0)}>
-          First set{active === 0 ? " (editing)" : ""}
-        </button>
-        <button type="button" className="btn text-sm" aria-pressed={active === 1} aria-disabled={!secondOpen} onClick={() => chooseSet(1)}>
-          Second set{active === 1 ? " (editing)" : ""}
-        </button>
-        {!secondOpen && <span className="text-sm text-muted">The second set opens at level {rules.dualSpecLevel}.</span>}
-      </div>
-
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-        <label className="flex items-center gap-3 text-sm text-fg-2">
-          <span>Level <span className="font-mono tabular-nums text-fg">{level}</span></span>
-          <input
-            type="range"
-            min={rules.firstPointLevel}
-            max={rules.maxLevel}
-            value={level}
-            aria-valuetext={`Level ${level}, ${available} talent points`}
-            onChange={(e) => setLevelClamped(Number(e.target.value))}
-            className="w-40 accent-[rgb(var(--accent))]"
-          />
-        </label>
-        {level < rules.dualSpecLevel && (
-          <label className="flex min-h-11 items-center gap-3 text-sm text-fg-2">
-            <input type="checkbox" checked={planAhead} onChange={(e) => { setPlanAhead(e.target.checked); if (!e.target.checked && active === 1) setActive(0); }} className="size-5" />
-            Plan the second set before level {rules.dualSpecLevel}
+    <div onKeyDown={onKeyDown} data-calculator>
+      <Card padding="none">
+        <div className="flex flex-wrap items-center gap-x-8 gap-y-4 border-b border-line p-4">
+          <div className="flex min-w-0 items-center gap-3">
+            {classIcon && <GameIcon src={classIcon} size={32} />}
+            <span className={`font-semibold ${classText}`}>{catalog.className}</span>
+            <span className="font-mono text-sm tabular-nums text-fg-2" aria-label={`Points spent by tree: ${catalog.trees.map((t) => `${t.name} ${perTree.get(t.id)}`).join(", ")}`}>
+              {catalog.trees.map((t) => perTree.get(t.id)).join(" / ")}
+            </span>
+          </div>
+          <Stat label="Points left" value={Math.max(0, available - spent)} />
+          <Stat label="Level needed" value={spent === 0 ? "–" : levelFor(catalog, spent)} />
+          <label className="flex flex-col gap-0.5">
+            <span className="text-xs text-muted">Level</span>
+            <span className="flex items-center gap-3">
+              <span className="w-7 font-mono text-xl font-semibold tabular-nums text-fg">{level}</span>
+              <input
+                type="range"
+                min={rules.firstPointLevel}
+                max={rules.maxLevel}
+                value={level}
+                aria-label="Character level"
+                aria-valuetext={`Level ${level}, ${available} talent points`}
+                onChange={(e) => setLevelClamped(Number(e.target.value))}
+                className="w-32 accent-[rgb(var(--accent))]"
+              />
+            </span>
           </label>
-        )}
-      </div>
+          <div className="flex flex-wrap items-center gap-3 sm:ml-auto">
+            <Segmented
+              label="Talent set"
+              value={active}
+              onChange={chooseSet}
+              options={[{ value: 0, label: "Set 1" }, { value: 1, label: "Set 2", disabled: !secondOpen }]}
+            />
+          </div>
+        </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <button type="button" className="btn text-sm" onClick={() => travel(undo)} disabled={history.past.length === 0}>Undo</button>
-        <button type="button" className="btn text-sm" onClick={() => travel(redo)} disabled={history.future.length === 0}>Redo</button>
-        <button type="button" className="btn text-sm" onClick={() => { setActiveRanks({}); setMessage("This set was reset. Undo brings it back."); }} disabled={spent === 0}>Reset this set</button>
-        <button type="button" className="btn text-sm" aria-pressed={removeMode} onClick={() => setRemoveMode(!removeMode)}>
-          Take points back: {removeMode ? "on" : "off"}
-        </button>
-      </div>
+        <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
+          <button type="button" className="btn text-sm" onClick={() => travel(undo)} disabled={history.past.length === 0}>Undo</button>
+          <button type="button" className="btn text-sm" onClick={() => travel(redo)} disabled={history.future.length === 0}>Redo</button>
+          <button type="button" className="btn text-sm" onClick={() => { setActiveRanks({}); setMessage("This set was reset. Undo brings it back."); }} disabled={spent === 0}>Reset {setName}</button>
+          <button type="button" className="btn text-sm" aria-pressed={removeMode} onClick={() => setRemoveMode(!removeMode)}>
+            Take points back: {removeMode ? "on" : "off"}
+          </button>
+          <button type="button" className="btn size-11 px-0 text-sm" aria-label="How the calculator works" title="How it works" onClick={openHowTo}>?</button>
+          {level < rules.dualSpecLevel && (
+            <label className="flex min-h-11 items-center gap-3 text-sm text-fg-2">
+              <input type="checkbox" checked={planAhead} onChange={(e) => { setPlanAhead(e.target.checked); if (!e.target.checked && active === 1) setActive(0); }} className="size-5" />
+              Plan set 2 now (it opens at level {rules.dualSpecLevel})
+            </label>
+          )}
+        </div>
 
-      <p className="font-mono text-sm tabular-nums text-fg-2" aria-label="Points spent by tree">
-        {catalog.trees.map((t, i) => (
-          <span key={t.id}>
-            {i > 0 && <span className="text-muted"> / </span>}
-            <span className={classText}>{t.name}</span> {perTree.get(t.id)}
-          </span>
-        ))}
-        <span className="text-muted"> · </span>
-        {spent} of {available} points spent, {Math.max(0, available - spent)} left
-      </p>
+        <p role="status" aria-live="polite" className="min-h-6 px-4 pt-3 text-sm text-fg-2">{message}</p>
 
-      <p role="status" aria-live="polite" className="min-h-6 text-sm text-fg-2">{message}</p>
+        <div className="px-4 pt-3 lg:hidden">
+          <Segmented stretch label="Show tree" value={view} onChange={setView} options={catalog.trees.map((t, i) => ({ value: i, label: `${t.name} ${perTree.get(t.id)}` }))} />
+        </div>
 
-      <div className="flex gap-2 md:hidden" role="group" aria-label="Show tree">
-        {catalog.trees.map((t, i) => (
-          <button key={t.id} type="button" className="btn flex-1 px-2 text-sm" aria-pressed={view === i} onClick={() => setView(i)}>{t.name}</button>
-        ))}
-      </div>
+        <h2 className="sr-only">Talent trees</h2>
+        <div className="grid gap-4 p-4 lg:grid-cols-3" onPointerDown={onPointerDown} onPointerUp={endPress} onPointerLeave={endPress} onPointerCancel={endPress} onClickCapture={onClickCapture} onContextMenu={onContextMenu}>
+          {catalog.trees.map((tree, i) => {
+            const points = perTree.get(tree.id) ?? 0;
+            return (
+              <section key={tree.id} className={`min-w-0 ${i === view ? "" : "hidden lg:block"}`} aria-label={tree.name}>
+                <div className="mb-2 flex items-center gap-3">
+                  <h3 className={`text-sm font-semibold ${classText}`}>{tree.name}</h3>
+                  <span className={`ml-auto font-mono text-xl font-semibold tabular-nums ${points === 0 ? "text-muted" : "text-fg"}`}>{points}</span>
+                  <button type="button" className="min-h-11 px-1 text-sm text-muted hover:text-fg disabled:opacity-50" disabled={points === 0} aria-label={`Reset ${tree.name}`} onClick={() => resetTree(tree.id, tree.name)}>Reset</button>
+                </div>
+                {(() => {
+                  const props = {
+                    catalog, tree, ranks, available, spent: points, selected, roving: rovingFor(tree.id), onAdd: doAdd, onTip,
+                    onSelect: (id: number) => { setSelected(id); setRovingByTree((r) => ({ ...r, [nodes.get(id)!.treeId]: id })); },
+                  };
+                  return game ? <GameTree {...props} assets={assets} /> : <TalentTreeView {...props} assets={assets} />;
+                })()}
+              </section>
+            );
+          })}
+        </div>
+        {assets && tipContent && tip && <TalentTooltip anchorId={tipAnchor!} id="talent-tooltip" content={tipContent} />}
 
-      <div className="grid md:grid-cols-3 gap-6" onPointerDown={onPointerDown} onPointerUp={endPress} onPointerLeave={endPress} onPointerCancel={endPress} onClickCapture={onClickCapture} onContextMenu={onContextMenu}>
-        {catalog.trees.map((tree, i) => (
-          <section key={tree.id} className={i === view ? "" : "hidden md:block"} aria-label={tree.name}>
-            <h2 className={`mb-3 text-center font-mono text-sm ${classText}`}>{tree.name} · {perTree.get(tree.id)}</h2>
-            {(() => {
-              const props = {
-                catalog, tree, ranks, available, spent: perTree.get(tree.id) ?? 0, selected, roving: rovingFor(tree.id), onAdd: doAdd, onTip,
-                onSelect: (id: number) => { setSelected(id); setRovingByTree((r) => ({ ...r, [nodes.get(id)!.treeId]: id })); },
-              };
-              return game ? <GameTree {...props} assets={assets} /> : <TalentTreeView {...props} assets={assets} />;
-            })()}
-          </section>
-        ))}
-      </div>
-      {assets && tipContent && tip && <TalentTooltip anchorId={tipAnchor!} id="talent-tooltip" content={tipContent} />}
-      {assets && (
-        <p className="text-xs text-muted" data-game-credit>
-          {CREDIT} Icons and text from game build {assets.version}, {assets.label}.
-        </p>
-      )}
-      <p className="text-xs text-muted">
-        The small number at the left of each row is how many points must be spent in the tree, on the rows above, before that row opens (from the game tables; where some gates count is unconfirmed).
-        Tap or press Enter to add a point. {assets
-          ? "Right click, Delete or the switch above takes one back; a long press shows the tooltip. Escape closes it."
-          : "Right click, long press, Delete or the switch above takes one back."} Arrow keys move between talents.
-      </p>
-
-      <section aria-label="Selected talent" className="rounded-lg border border-line bg-panel p-4 text-sm text-fg-2 space-y-1">
-        {selectedNode ? (
-          <>
-            <p className="text-fg font-semibold">{selectedNode.entries.map((e) => e.name).join(selectedNode.kind === "choice" ? " or " : ", then ")}</p>
+        {/* Without the game's tooltips this panel is how a talent's row, needs and spell id are read. With them, the tooltip says it. */}
+        {!assets && selectedNode && (
+          <section aria-label="Selected talent" className="mx-4 mb-4 space-y-1 rounded-control border border-line bg-canvas p-4 text-sm text-fg-2">
+            <p className="font-semibold text-fg">{selectedNode.entries.map((e) => e.name).join(selectedNode.kind === "choice" ? " or " : ", then ")}</p>
             <p className="font-mono text-xs tabular-nums text-muted">
               Row {selectedNode.row}, max rank {selectedNode.maxRanks}
               {selectedNode.entries.map((e) => e.spellId).filter(Boolean).length > 0 && ` · spell id ${selectedNode.entries.map((e) => e.spellId).filter(Boolean).join(", ")}`}
@@ -399,49 +422,57 @@ export default function TalentCalculator({ catalog }: { catalog: TalentCatalog }
             {selectedNode.unlock?.ranksInNodes?.map((r) => <p key={r.nodeId}>Needs {r.ranks} {r.ranks === 1 ? "rank" : "ranks"} in {nameOf(r.nodeId)}.</p>)}
             {selectedNode.prereqs.length > 0 && <p>Needs {selectedNode.prereqs.map(nameOf).join(", ")} at full rank.</p>}
             {(selectedNode.anyOf?.length ?? 0) > 0 && <p>Needs {selectedNode.anyOf!.map(nameOf).join(" or ")} at full rank.</p>}
-            {assets
-              ? <p className="whitespace-pre-line">{selectedNode.entries.map((e) => assetOf(assets, e)?.text).filter(Boolean).join("\n\n") || "No description in the game files."}</p>
-              : <p className="text-muted">Description: not shown yet.</p>}
-          </>
-        ) : (
-          <p>Select a talent to see its row, prerequisites and spell id.</p>
+            <p className="text-muted">Description: not shown yet.</p>
+          </section>
         )}
-      </section>
 
-      <section aria-label="Share" className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <button type="button" className="btn btn-primary text-sm" onClick={share} disabled={spent === 0}>Make a share link</button>
-        </div>
-        {link && (
-          <div className="space-y-1">
-            <label className="block text-sm text-fg-2" htmlFor="talent-link">Link to the {active === 0 ? "first" : "second"} set (game build {catalog.build})</label>
-            <div className="flex gap-2">
-              <input id="talent-link" readOnly value={link} onFocus={(e) => e.currentTarget.select()} className="flex-1 min-w-0 rounded-lg border border-edge bg-panel px-3 font-mono text-xs text-fg" />
-              <button type="button" className="btn text-sm" onClick={() => { void navigator.clipboard?.writeText(link).then(() => setMessage("Link copied."), () => setMessage("Copy failed. Select the link and copy it.")); }}>Copy</button>
-            </div>
-            <p className="text-xs text-muted">The link holds the whole build and names the game build. If talents move, opening it lists what changed.</p>
+        <section aria-label="Share" className="space-y-3 border-t border-line p-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" className="btn btn-primary text-sm" onClick={share} disabled={spent === 0}>Make a share link</button>
+            {link && (
+              <>
+                <label className="sr-only" htmlFor="talent-link">Link to {setName} (game build {catalog.build})</label>
+                <Input id="talent-link" mono readOnly value={link} onFocus={(e) => e.currentTarget.select()} className="flex-1 basis-60 text-xs" />
+                <button type="button" className="btn text-sm" onClick={() => { void navigator.clipboard?.writeText(link).then(() => setMessage("Link copied."), () => setMessage("Copy failed. Select the link and copy it.")); }}>Copy</button>
+              </>
+            )}
           </div>
-        )}
-        <form className="flex flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); load(pasted); }}>
-          <label className="sr-only" htmlFor="talent-paste">Share code or link</label>
-          <input id="talent-paste" value={pasted} onChange={(e) => setPasted(e.target.value)} placeholder="Paste a share code or link" className="flex-1 min-w-0 rounded-lg border border-edge bg-panel px-3 font-mono text-xs text-fg" />
-          <button type="submit" className="btn text-sm">Load into the {active === 0 ? "first" : "second"} set</button>
-        </form>
-      </section>
-
-      {report && (
-        <section aria-label="What loaded" className="rounded-lg border border-line bg-panel p-4 text-sm text-fg-2 space-y-2">
-          <p className="text-fg font-semibold">
-            {report.problems.length === 0 ? "Loaded as made." : `Loaded, with ${report.problems.length} ${report.problems.length === 1 ? "change" : "changes"}.`}
-          </p>
-          <p className="font-mono text-xs text-muted">Made on build {report.codeBuild} · this tree is build {report.treeBuild}</p>
-          {report.problems.length > 0 && (
-            <ul className="list-disc pl-5 space-y-1">
-              {report.problems.map((p, i) => <li key={i}>{p}</li>)}
-            </ul>
+          <form className="flex flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); load(pasted); }}>
+            <label className="sr-only" htmlFor="talent-paste">Share code or link</label>
+            <Input id="talent-paste" mono value={pasted} onChange={(e) => setPasted(e.target.value)} placeholder="Paste a share code or link" className="flex-1 basis-60 text-xs" />
+            <button type="submit" className="btn text-sm">Load into {setName}</button>
+          </form>
+          {report && (
+            <section aria-label="What loaded" className="space-y-2 rounded-control border border-line bg-canvas p-4 text-sm text-fg-2">
+              <p className="font-semibold text-fg">
+                {report.problems.length === 0 ? "Loaded as made." : `Loaded, with ${report.problems.length} ${report.problems.length === 1 ? "change" : "changes"}.`}
+              </p>
+              <p className="font-mono text-xs text-muted">Made on build {report.codeBuild} · this tree is build {report.treeBuild}</p>
+              {report.problems.length > 0 && (
+                <ul className="list-disc space-y-1 pl-5">
+                  {report.problems.map((p, i) => <li key={i}>{p}</li>)}
+                </ul>
+              )}
+            </section>
           )}
         </section>
-      )}
+
+        {assets && (
+          <p className="border-t border-line px-4 py-3 text-xs text-muted" data-game-credit>
+            {CREDIT} Icons and text from game build {assets.version}, {assets.label}.
+          </p>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+/** One figure in the calculator's bar: a small label over a mono number. */
+function Stat({ label, value }: { label: string; value: number | string }) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-xs text-muted">{label}</span>
+      <span className="font-mono text-xl font-semibold tabular-nums text-fg">{value}</span>
     </div>
   );
 }

@@ -1,6 +1,9 @@
 import { pointsAtLevel } from "./rules";
 import type { TalentCatalog } from "./types";
 
+/** The id of a class page's closed "How it works" section, which the calculator's "?" button opens. */
+export const HOW_IT_WORKS_ID = "how-it-works";
+
 /**
  * Plain facts about one class, counted from its talent catalog. Everything here is read from the game
  * files of the catalog's build and stays unconfirmed until checked in game; nothing is advice.

@@ -26,6 +26,8 @@ const node = (id: number) => container.querySelector<HTMLButtonElement>(`#talent
 const status = () => container.querySelector('[role="status"]')!.textContent;
 const button = (label: RegExp) => [...container.querySelectorAll("button")].find((b) => label.test(b.textContent ?? ""))!;
 const click = (el: Element) => act(async () => { el.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
+/** A figure in the calculator bar by its label: "Points left", "Level needed". */
+const stat = (label: string) => [...container.querySelectorAll("span")].find((s) => s.textContent === label)!.nextElementSibling!.textContent;
 
 test("a talent says its rank, row and why it is locked", async () => {
   await render();
@@ -40,7 +42,8 @@ test("a click adds a point and announces it; a refused click explains itself", a
   expect(node(11).textContent).toContain("1/5");
   await click(node(21));
   expect(status()).toBe("Needs 5 points spent in Left on rows above.");
-  expect(container.textContent).toContain("1 of 51 points spent, 50 left");
+  expect(stat("Points left")).toBe("50");
+  expect(stat("Level needed")).toBe("10");
 });
 
 test("take-points-back mode removes, and a point other rows depend on stays", async () => {
@@ -64,7 +67,7 @@ test("undo, redo and reset", async () => {
   expect(node(11).textContent).toContain("1/5");
   await click(button(/^Redo$/));
   expect(node(11).textContent).toContain("2/5");
-  await click(button(/Reset this set/));
+  await click(button(/^Reset set 1$/));
   expect(node(11).textContent).toContain("0/5");
   await click(button(/^Undo$/));
   expect(node(11).textContent).toContain("2/5");
@@ -72,15 +75,15 @@ test("undo, redo and reset", async () => {
 
 test("the second set stays locked below level 40 unless planning ahead", async () => {
   await render();
-  const second = button(/Second set/);
+  const second = button(/^Set 2$/);
   expect(second.getAttribute("aria-disabled")).toBe("false");
   const slider = container.querySelector<HTMLInputElement>('input[type="range"]')!;
   const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
   await act(async () => { setter.call(slider, "30"); slider.dispatchEvent(new Event("input", { bubbles: true })); });
-  expect(button(/Second set/).getAttribute("aria-disabled")).toBe("true");
+  expect(button(/^Set 2$/).getAttribute("aria-disabled")).toBe("true");
   expect(container.textContent).toContain("opens at level 40");
   await click(container.querySelector('input[type="checkbox"]')!);
-  expect(button(/Second set/).getAttribute("aria-disabled")).toBe("false");
+  expect(button(/^Set 2$/).getAttribute("aria-disabled")).toBe("false");
 });
 
 test("a link from another build loads and lists what it could not place", async () => {
@@ -113,12 +116,14 @@ test("redo cannot bring back more points than the level holds", async () => {
   await render();
   for (let i = 0; i < 5; i++) await click(node(11));
   for (let i = 0; i < 3; i++) await click(node(12));
-  expect(container.textContent).toContain("8 of 51 points spent");
+  expect(stat("Points left")).toBe("43");
   for (let i = 0; i < 3; i++) await click(button(/^Undo$/));
   await setLevel("14");
-  expect(container.textContent).toContain("5 of 5 points spent");
+  expect(stat("Points left")).toBe("0");
+  expect(stat("Level needed")).toBe("14");
   for (let i = 0; i < 3; i++) await click(button(/^Redo$/));
-  expect(container.textContent).toMatch(/8 of 8 points spent, 0 left/);
+  expect(stat("Points left")).toBe("0");
+  expect(stat("Level needed")).toBe("17");
   expect(status()).toBe("Level raised to 17, the lowest that holds the points in this build.");
 });
 
@@ -126,7 +131,7 @@ test("a locked talent says what it needs before it says the points ran out", asy
   await render();
   await setLevel("10");
   await click(node(11));
-  expect(container.textContent).toContain("1 of 1 points spent, 0 left");
+  expect(stat("Points left")).toBe("0");
   expect(node(21).getAttribute("aria-label")).toContain("Needs 5 points spent in Left on rows above");
   expect(node(21).getAttribute("aria-label")).not.toContain("No points left");
   expect(node(12).getAttribute("aria-label")).toContain("No points left at this level");
@@ -161,4 +166,22 @@ test("pasting a share link into an open tab loads it", async () => {
   expect(status()).toBe("Build loaded from the link.");
   await click(button(/^Undo$/));
   expect(node(11).textContent).toContain("0/5");
+});
+
+test("a tree's own reset clears that tree, and is refused while another tree needs its points", async () => {
+  await render();
+  for (let i = 0; i < 5; i++) await click(node(11));
+  await click(node(51));
+  await click(node(52));
+  expect(node(52).textContent).toContain("1/1");
+  const reset = (tree: string) => container.querySelector<HTMLButtonElement>(`button[aria-label="Reset ${tree}"]`)!;
+  await click(reset("Left"));
+  expect(status()).toBe("Talents in another tree need the points in Left. Take those back first.");
+  expect(node(11).textContent).toContain("5/5");
+  await click(reset("Right"));
+  expect(status()).toBe("Right was reset. Undo brings it back.");
+  expect(node(51).textContent).toContain("0/5");
+  expect(node(11).textContent).toContain("5/5");
+  await click(button(/^Undo$/));
+  expect(node(52).textContent).toContain("1/1");
 });

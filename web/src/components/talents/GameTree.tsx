@@ -28,7 +28,7 @@ export default function GameTree({ catalog, tree, ranks, available, spent, selec
   const bgUrl = bg ? frames.get(bg.element)?.url : undefined;
 
   return (
-    <div role="group" aria-label={`${tree.name} talents, ${spent} ${spent === 1 ? "point" : "points"}`} className="overflow-x-auto rounded-lg border border-[#3d3a2e]" data-game-look>
+    <div role="group" aria-label={`${tree.name} talents, ${spent} ${spent === 1 ? "point" : "points"}`} className="overflow-x-auto rounded-card border border-[#3d3a2e]" data-game-look>
       <div
         className="relative p-3"
         style={{ backgroundColor: "#07070d", backgroundImage: bgUrl ? `url(${bgUrl})` : undefined, backgroundSize: "cover", backgroundPosition: "center" }}
