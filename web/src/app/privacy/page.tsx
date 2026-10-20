@@ -143,8 +143,13 @@ export default function PrivacyPage() {
                 sell them. Player rows are not part of the public records.
               </li>
               <li>
-                <strong>Census (optional):</strong> off until you type{" "}
-                <code>/everloot census on</code> in the game. It records race, class,
+                <strong>Census (optional):</strong> on in a new install of the addon,
+                which says so once in chat; an install from before the census keeps it
+                off until you type <code>/everloot census on</code>.{" "}
+                <code>/everloot census off</code> stops it and deletes its rows from your
+                file. It leaves your computer only if you allowed it in the Everloot
+                Desktop App (a box on its setup screen and a switch in its settings) or
+                send your file from the upload page. It records race, class,
                 level and faction for your own characters, with the realm name, and for
                 players you target, mouse over or group with. It never reads another
                 player&apos;s name, guild, gear or position. Before anything is stored,

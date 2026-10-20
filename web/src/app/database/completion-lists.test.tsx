@@ -83,7 +83,7 @@ test("the achievement list shows what three reporters agree on and hides the res
   expect(linked(out, "achievements")).toEqual(["2-level-10", "4-ten-quests", "9-explore-elwynn-forest"]);
   expect(out).toContain(">Exploration<");
   for (const hidden of ["Only Two Saw This", "Disputed", "Split Vote"]) expect(out).not.toContain(hidden);
-  // The criteria wording is collected but never shown.
+  // Criteria wording is for the entry's own page, never the list.
   expect(out).not.toContain("Secret criterion text");
   for (const col of ["Name", "Category", "Points", "Criteria", "ID"]) expect(out).toContain(`>${col}`);
 });
@@ -220,4 +220,18 @@ test("sitemap and search include agreed titles and quest chains only", async () 
   expect((await siteSearch("defias")).find((g) => g.type === "chain")!.heading).toBe("Quest chains");
   expect((await siteSearch("900")).find((g) => g.type === "chain")!.results[0]).toMatchObject({ exact: true });
   expect((await siteSearch("two chain")).some((g) => g.type === "chain")).toBe(false);
+});
+
+test("an achievement page lists its criteria once three players sent the same full list", async () => {
+  serve([...rows, ...from(3, { ...ach(5, "Two Steps", "General", 5, 2), criteria: [{ text: "Visit Goldshire", required: 1 }, { text: "Kill 12 Kobolds", required: 12 }] })]);
+  expect(await html(AchievementList(search()))).not.toContain("Visit Goldshire");
+  const out = await html(AchievementPage(page("5-two-steps")));
+  expect(out).toContain("Criteria of Two Steps");
+  expect(out).toContain("Visit Goldshire");
+  expect(out).toContain("Kill 12 Kobolds");
+  expect(out).toContain(">12<");
+  // A list cut short of the count is not shown, and the page says when it will be.
+  const partial = await html(AchievementPage(page("4-ten-quests")));
+  expect(partial).not.toContain("Secret criterion text");
+  expect(partial).toContain("The criteria show once three players report the same full list.");
 });

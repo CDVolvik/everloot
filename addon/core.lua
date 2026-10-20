@@ -28,7 +28,7 @@ end
 local defaults = {
   version = E.VERSION,
   installId = nil,
-  toggles = { openworld = true, guild = true, gear = true, auctions = false, gold = true, addons = false, talents = true, completion = false, census = false, players = false },
+  toggles = { openworld = true, guild = true, gear = true, auctions = false, gold = true, addons = false, talents = true, completion = false, census = true, players = false },
   records = {},
 }
 
@@ -134,8 +134,11 @@ end
 frame:RegisterEvent("ADDON_LOADED")
 frame:SetScript("OnEvent", function(_, event, arg1)
   if event == "ADDON_LOADED" and arg1 == "Everloot" then
+    local upgraded = EverlootDB ~= nil
     EverlootDB = EverlootDB or {}
     for k, v in pairs(defaults) do if EverlootDB[k] == nil then EverlootDB[k] = v end end
+    -- The census starts on only for a new install; one from before it keeps it off until the player turns it on.
+    if upgraded and EverlootDB.toggles.census == nil then EverlootDB.toggles.census = false end
     -- A toggle added after this file was created takes its default: off-by-default stays off.
     for k, v in pairs(defaults.toggles) do if EverlootDB.toggles[k] == nil then EverlootDB.toggles[k] = v end end
     if not EverlootDB.installId then EverlootDB.installId = newInstallId() end
@@ -143,6 +146,11 @@ frame:SetScript("OnEvent", function(_, event, arg1)
     EverlootDB.clientBuild = clientBuild()
     E:InitModules()
     print(E:Status())
+    -- Said once per install, so a player never records other players without having been told.
+    if EverlootDB.toggles.census and not EverlootDB.censusNotice then
+      print("Everloot: census on. It records the race, class, level and faction of your characters and of players you target, mouse over or group with. Never their names, guilds, gear or where they are. It stays in this file unless the Everloot Desktop App, if you allowed the census there, or the everloot.app upload page sends it. /everloot census off stops it and deletes the rows.")
+      EverlootDB.censusNotice = true
+    end
   end
 end)
 
@@ -187,7 +195,7 @@ SlashCmdList["EVERLOOT"] = function(msg)
   elseif msg == "census on" or msg == "census off" then
     EverlootDB.toggles.census = (msg == "census on")
     if EverlootDB.toggles.census then
-      print("Everloot: census on. It records the race, class, level and faction of your characters and of players you target, mouse over or group with. Never their names, guilds, gear or where they are. It is sent only from the everloot.app upload page, after its preview. /reload to apply.")
+      print("Everloot: census on. It records the race, class, level and faction of your characters and of players you target, mouse over or group with. Never their names, guilds, gear or where they are. It stays in this file unless the Everloot Desktop App, if you allowed the census there, or the everloot.app upload page sends it. /reload to apply.")
     else
       -- Turning it off withdraws what it wrote: every census row is deleted from this file.
       if E.Census then E.Census.Withdraw() end

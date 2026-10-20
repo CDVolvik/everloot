@@ -133,7 +133,7 @@ export default function UploadClient({ playerPages = false }: { playerPages?: bo
           <p className="mt-1 text-fg-2">This list is never published row by row; the site shows only counts for addons that at least three installs report.</p>
         </div>}
         {censusSummary(prepared.value.census) && <div className="mt-3 text-sm text-fg-2">
-          <p>Census in this upload: {censusSummary(prepared.value.census)}, recorded because you ran <code>/everloot census on</code>.</p>
+          <p>Census in this upload: {censusSummary(prepared.value.census)}, recorded because the census is on in your addon (<code>/everloot census off</code> stops it).</p>
           <p className="mt-1 text-fg-2">Each row holds a character&apos;s game id, race, class, level and faction, never a name. The server replaces the id with a key before anything is stored, and the site shows only counts that cover at least 10 characters from at least three installs.</p>
         </div>}
         {(prepared.value.counts.player_seen ?? 0) > 0 && <div className="mt-3 text-sm text-fg-2">

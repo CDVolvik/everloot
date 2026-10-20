@@ -12,7 +12,16 @@ build that has a zip in the repository. Earlier builds have none.
 
 ## [Unreleased]
 
+### Changed
+- The census starts on in a new addon install and says so once in chat; an install from before keeps it
+  off until `/everloot census on`. The Desktop App sends census rows with its uploads when the player leaves
+  the census box ticked on its setup screen, or turns it on in Settings; a setup finished before this keeps
+  it off. Still never names, guilds, gear or places, and the site shows only totals.
+
 Pull requests merged to `main` are listed in the nightly pre-releases until the next tagged release.
+
+### Added
+- Site: an achievement's page lists its criteria, with how many each needs, once three players sent the same complete list; the list is agreed apart from the entry itself. Lists and search still show no criteria wording. Run the completion rebuild (`?rebuild=1`) once to fill it from uploads already stored.
 
 ## [desktop-v0.1.3] - 2026-10-20
 

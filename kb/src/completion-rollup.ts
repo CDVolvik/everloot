@@ -10,6 +10,9 @@
  * by bytes. Of the catalog, whatever has the fewest supporters (then was seen least recently) is the first
  * thing evicted or trimmed, and all of it is trimmed before any progress an owner still shares.
  *
+ * An achievement's criteria list is its own vote (bucket `c`), with its own creation caps, so a long list
+ * never costs a voter the entries themselves. It is shown only next to an agreed entry.
+ *
  * Owned rows keep only the latest row per (install, character, id), and titles and completed quests as
  * one sorted union. Owned data is shown only for installs whose current grant covers the collection
  * category (authorizedOwners).
@@ -40,6 +43,8 @@ export const COMPLETION_LIMITS = {
   newPerUpload: 4000,
   /** Canonical JSON of the listed fields of one entry. */
   contentBytes: 2048,
+  /** Canonical JSON of one achievement's criteria list; a longer list is not voted on. */
+  criteriaBytes: 8192,
   charactersPerInstall: 8,
   grantsPerInstall: 8,
   installs: 20_000,
@@ -52,7 +57,8 @@ export const COMPLETION_LIMITS = {
  * f: when it was first confirmed (epoch s); by: creator [voter, install].
  */
 type Variant = { c: string; v: string[]; s: number; f?: number; by: [string, string] };
-type CatalogKey = "a" | "f" | "t" | "q";
+type CatalogKey = "a" | "f" | "t" | "q" | "c";
+const KEYS = ["a", "f", "t", "q", "c"] as const;
 type Stamp = { at: string; n: number };
 type AchState = Stamp & { c: boolean; e?: boolean; m: number; t: number; q?: number; r?: number };
 type RepState = Stamp & { k: number; s: number; lo: number; hi: number };
@@ -63,7 +69,8 @@ export type CharacterState = {
 export type InstallState = { grants: string[]; characters: Record<string, CharacterState>; dropped: number };
 export type CompletionState = {
   version: 2;
-  catalog: Record<CatalogKey, Record<string, Variant[]>>;
+  /** `c` (achievement criteria) is absent from rollups written before it existed. */
+  catalog: Record<Exclude<CatalogKey, "c">, Record<string, Variant[]>> & { c?: Record<string, Variant[]> };
   /** Keyed by install id, which is free text: a null-prototype object, so "__proto__" is an ordinary key. */
   owned: Record<string, InstallState>;
 };
@@ -72,7 +79,7 @@ export type CompletionUpload = { records: readonly unknown[]; grants: readonly s
 const table = <T>(): Record<string, T> => Object.create(null) as Record<string, T>;
 
 export function emptyCompletion(): CompletionState {
-  return { version: 2, catalog: { a: table(), f: table(), t: table(), q: table() }, owned: table() };
+  return { version: 2, catalog: { a: table(), f: table(), t: table(), q: table(), c: table() }, owned: table() };
 }
 
 /** A parsed state with null-prototype maps, so a stored key cannot reach Object.prototype. */
@@ -82,7 +89,7 @@ export function normalizeCompletion(state: CompletionState): CompletionState {
   for (const install of Object.values(owned)) install.characters = copy(install.characters);
   return {
     version: 2,
-    catalog: { a: copy(state.catalog.a), f: copy(state.catalog.f), t: copy(state.catalog.t), q: copy(state.catalog.q) },
+    catalog: { a: copy(state.catalog.a), f: copy(state.catalog.f), t: copy(state.catalog.t), q: copy(state.catalog.q), c: copy(state.catalog.c ?? {}) },
     owned,
   };
 }
@@ -103,7 +110,7 @@ const CATALOG_BUCKET: Record<string, CatalogKey> = {
   achievement_catalog: "a", reputation_catalog: "f", title_catalog: "t", quest_chain_catalog: "q",
 };
 
-/** The id and the fields the lists show. Agreement is on these; criteria text and category ids are not shown. */
+/** The id and the fields the lists show. Agreement is on these; category ids are not shown. */
 function listed(row: IntakeRecord): { id: number; fields: Record<string, unknown> } | null {
   switch (row.kind) {
     case "achievement_catalog": return { id: row.achievementId, fields: { name: row.name, category: row.category, points: row.points, criteriaCount: row.criteriaCount } };
@@ -112,6 +119,16 @@ function listed(row: IntakeRecord): { id: number; fields: Record<string, unknown
     case "quest_chain_catalog": return { id: row.questLineId, fields: { name: row.name, questIds: row.questIds, truncated: row.truncated === true } };
     default: return null;
   }
+}
+
+/**
+ * An achievement's criteria as one content: only a complete list (every criterion kept, each with its wording),
+ * so a cut-off or blank list is never voted on.
+ */
+function criteriaOf(row: IntakeRecord): { id: number; fields: Record<string, unknown> } | null {
+  if (row.kind !== "achievement_catalog" || row.criteriaCount === 0 || row.criteria.length !== row.criteriaCount) return null;
+  if (row.criteria.some((c) => !c.text.trim())) return null;
+  return { id: row.achievementId, fields: { criteria: row.criteria.map((c) => [c.text, c.required]) } };
 }
 
 const confirmed = (v: Variant) => v.v.length >= COMPLETION_AGREEMENT;
@@ -126,25 +143,28 @@ const lastSeen = (vs: Variant[]) => vs.reduce((n, v) => Math.max(n, v.s), 0);
  */
 type FoldIndex = {
   ids: Record<CatalogKey, number>;
+  /** Creation counts per voter and install; the criteria bucket counts under its own "c|" keys. */
   voter: Map<string, number>;
   voterBytes: Map<string, number>;
   install: Map<string, number>;
   queue: Partial<Record<CatalogKey, { ids: string[]; next: number } | null>>;
 };
 function indexOf(state: CompletionState): FoldIndex {
-  const ix: FoldIndex = { ids: { a: 0, f: 0, t: 0, q: 0 }, voter: new Map(), voterBytes: new Map(), install: new Map(), queue: {} };
-  for (const key of ["a", "f", "t", "q"] as const) {
-    for (const variants of Object.values(state.catalog[key])) {
+  const ix: FoldIndex = { ids: { a: 0, f: 0, t: 0, q: 0, c: 0 }, voter: new Map(), voterBytes: new Map(), install: new Map(), queue: {} };
+  for (const key of KEYS) {
+    for (const variants of Object.values(state.catalog[key] ?? {})) {
       ix.ids[key]++;
-      for (const v of variants) credit(ix, v, 1);
+      for (const v of variants) credit(ix, key, v, 1);
     }
   }
   return ix;
 }
-function credit(ix: FoldIndex, v: Variant, delta: number) {
-  ix.voter.set(v.by[0], (ix.voter.get(v.by[0]) ?? 0) + delta);
-  ix.voterBytes.set(v.by[0], (ix.voterBytes.get(v.by[0]) ?? 0) + delta * v.c.length);
-  ix.install.set(v.by[1], (ix.install.get(v.by[1]) ?? 0) + delta);
+const budget = (key: CatalogKey, who: string) => (key === "c" ? `c|${who}` : who);
+function credit(ix: FoldIndex, key: CatalogKey, v: Variant, delta: number) {
+  const voter = budget(key, v.by[0]), install = budget(key, v.by[1]);
+  ix.voter.set(voter, (ix.voter.get(voter) ?? 0) + delta);
+  ix.voterBytes.set(voter, (ix.voterBytes.get(voter) ?? 0) + delta * v.c.length);
+  ix.install.set(install, (ix.install.get(install) ?? 0) + delta);
 }
 
 /** Remove one id to make room for a new one: the one whose best content has the fewest supporters, then least recently seen. */
@@ -163,7 +183,7 @@ function evictOne(bucket: Record<string, Variant[]>, key: CatalogKey, ix: FoldIn
     const id = queue.ids[queue.next++];
     const vs = bucket[id];
     if (!vs) continue;
-    vs.forEach((v) => credit(ix, v, -1));
+    vs.forEach((v) => credit(ix, key, v, -1));
     delete bucket[id];
     ix.ids[key]--;
     return true;
@@ -177,18 +197,24 @@ type UploadContext = { voter: string; install: string; seen: number; added: numb
 function foldCatalog(state: CompletionState, row: IntakeRecord, ctx: UploadContext, ix: FoldIndex) {
   const entry = listed(row);
   if (!entry) return;
+  vote(state, CATALOG_BUCKET[row.kind], entry, COMPLETION_LIMITS.contentBytes, ctx, ix);
+  const criteria = criteriaOf(row);
+  if (criteria) vote(state, "c", criteria, COMPLETION_LIMITS.criteriaBytes, ctx, ix);
+}
+
+function vote(state: CompletionState, key: CatalogKey, entry: { id: number; fields: Record<string, unknown> }, maxBytes: number, ctx: UploadContext, ix: FoldIndex) {
   const content = canonicalJson(entry.fields);
-  if (content.length > COMPLETION_LIMITS.contentBytes) return;
-  const key = CATALOG_BUCKET[row.kind];
-  const bucket = state.catalog[key];
+  if (content.length > maxBytes) return;
+  const bucket = (state.catalog[key] ??= table());
   const id = String(entry.id);
   let variants = bucket[id];
   let variant = variants?.find((v) => v.c === content);
   if (!variant) {
+    const voter = budget(key, ctx.voter), install = budget(key, ctx.install);
     if (ctx.added >= COMPLETION_LIMITS.newPerUpload) return;
-    if ((ix.voter.get(ctx.voter) ?? 0) >= COMPLETION_LIMITS.createdPerVoter) return;
-    if ((ix.voterBytes.get(ctx.voter) ?? 0) + content.length > COMPLETION_LIMITS.createdBytesPerVoter) return;
-    if ((ix.install.get(ctx.install) ?? 0) >= COMPLETION_LIMITS.createdPerInstall) return;
+    if ((ix.voter.get(voter) ?? 0) >= COMPLETION_LIMITS.createdPerVoter) return;
+    if ((ix.voterBytes.get(voter) ?? 0) + content.length > COMPLETION_LIMITS.createdBytesPerVoter) return;
+    if ((ix.install.get(install) ?? 0) >= COMPLETION_LIMITS.createdPerInstall) return;
     if (!variants) {
       if (ix.ids[key] >= COMPLETION_LIMITS.idsPerKind && !evictOne(bucket, key, ix)) return;
       variants = bucket[id] = [];
@@ -196,13 +222,13 @@ function foldCatalog(state: CompletionState, row: IntakeRecord, ctx: UploadConte
     } else if (variants.length >= COMPLETION_LIMITS.variantsPerId) {
       // The least supported content leaves, the least recently seen first, so junk cannot hold the slots.
       const out = variants.reduce((x, y) => (weaker(y, x) < 0 ? y : x));
-      credit(ix, out, -1);
+      credit(ix, key, out, -1);
       variants.splice(variants.indexOf(out), 1);
     }
     variant = { c: content, v: [], s: ctx.seen, by: [ctx.voter, ctx.install] };
     variants.push(variant);
-    credit(ix, variant, 1);
-    ctx.added++;
+    credit(ix, key, variant, 1);
+    if (key !== "c") ctx.added++;
   }
   // Only now that the content is in does the voter's support move to it from the content it backed before.
   for (const v of variants) {
@@ -215,7 +241,7 @@ function foldCatalog(state: CompletionState, row: IntakeRecord, ctx: UploadConte
   variant.s = Math.max(variant.s, ctx.seen);
   // Contents nobody backs any more leave.
   const kept = variants.filter((v) => v.v.length > 0);
-  for (const v of variants) if (!kept.includes(v)) credit(ix, v, -1);
+  for (const v of variants) if (!kept.includes(v)) credit(ix, key, v, -1);
   bucket[id] = kept;
 }
 
@@ -330,7 +356,7 @@ export function trimCompletion(state: CompletionState, maxBytes: number, live: R
   const target = live ? maxBytes * 0.8 : maxBytes * 0.85;
   const dropVariants = (pick: (v: Variant) => boolean) => {
     const all: { bucket: Record<string, Variant[]>; id: string; v: Variant }[] = [];
-    for (const bucket of Object.values(state.catalog)) for (const [id, vs] of Object.entries(bucket)) for (const v of vs) if (pick(v)) all.push({ bucket, id, v });
+    for (const bucket of Object.values(state.catalog)) if (bucket) for (const [id, vs] of Object.entries(bucket)) for (const v of vs) if (pick(v)) all.push({ bucket, id, v });
     all.sort((x, y) => weaker(x.v, y.v));
     for (const { bucket, id, v } of all) {
       if (size <= target) return;
@@ -374,6 +400,7 @@ export function isCompletionState(value: unknown): value is CompletionState {
 }
 
 type Agreed = Pick<CompletionFacts, "achievements" | "factions" | "titles" | "chains">;
+type Criterion = { text: string; required: number };
 const agreedCache = new WeakMap<CompletionState, Agreed>();
 
 /** One entry per id: of the contents 3 voters back, the most supported, then the one confirmed first. */
@@ -391,8 +418,13 @@ function agreedOf<T>(bucket: Record<string, Variant[]>, build: (id: number, row:
 export function agreedCatalog(state: CompletionState): Agreed {
   const hit = agreedCache.get(state);
   if (hit) return hit;
+  const criteria = agreedOf(state.catalog.c ?? {}, (_id, r) => (r.criteria as [string, number][]).map(([text, required]): Criterion => ({ text, required })));
   const agreed: Agreed = {
-    achievements: agreedOf(state.catalog.a, (id, r) => ({ achievementId: id, name: String(r.name), category: String(r.category), points: Number(r.points), criteriaCount: Number(r.criteriaCount) })),
+    achievements: agreedOf(state.catalog.a, (id, r) => {
+      // The criteria list shows only beside an agreed entry, and only when it is as long as that entry says.
+      const list = criteria.get(id);
+      return { achievementId: id, name: String(r.name), category: String(r.category), points: Number(r.points), criteriaCount: Number(r.criteriaCount), ...(list && list.length === Number(r.criteriaCount) ? { criteria: list } : {}) };
+    }),
     factions: agreedOf(state.catalog.f, (id, r) => ({ factionId: id, name: String(r.name), header: r.header as string | undefined, major: r.major === true })),
     titles: agreedOf(state.catalog.t, (id, r) => ({ titleId: id, name: String(r.name) })),
     chains: agreedOf(state.catalog.q, (id, r) => ({ questLineId: id, name: String(r.name), questIds: r.questIds as number[], truncated: r.truncated === true })),

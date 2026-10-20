@@ -62,7 +62,9 @@ criteria text, standing headers and quest ids, with no player data. They reflect
 windows list, so they are not on the public allowlist and never leave the site raw: the pages (the
 collections tool, and the database's achievement, faction, title and quest chain lists and pages with
 their sitemap and search entries) and the MCP tool list an entry only after three reporters (distinct upload addresses, an IPv6 address counted by its /64 block, as the market counts them)
-report it identically; there is no copied catalog, and flavour text is not collected. For that count an
+report it identically; there is no copied catalog, and flavour text is not collected. An achievement's
+criteria wording is agreed separately: its page shows the list only when three reporters sent the identical
+complete list (a cut-off or blank list is never counted), and the list never appears on the lists or in search. For that count an
 upload containing a catalog row is stored with the same keyed address hash as a scan, kept private and
 never published. Four owned kinds (`achievement_owned`, `reputation_owned`,
 `title_owned`, `quest_owned`) hold one character's own progress under an opaque 8-digit key derived
@@ -75,7 +77,9 @@ id. The link lasts until the rollup is rebuilt (`?rebuild=1`), which drops every
 were deleted; deleting a player's uploads therefore takes a rebuild to remove the link. Turning the
 module off deletes every one of these rows from the file.
 
-The census (from the next addon release, off until `/everloot census on`) counts who plays what. It
+The census counts who plays what. It is on in a new install of the addon, which says so once in chat; an
+install from before the census keeps it off until `/everloot census on`. It leaves the player's computer
+only from the upload page or from the Desktop App, if the player allowed the census there. It
 records race, class, level and faction for your own characters as you log in, plus the realm name, and
 for players you target, mouse over or group with. For other players it reads those four things only,
 never their name, guild, gear or position. The addon keeps one row per character per day. Each row

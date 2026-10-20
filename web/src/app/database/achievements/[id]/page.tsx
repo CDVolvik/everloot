@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
-import { Container, Facts, TooltipFrame } from "@/components/ui";
+import { Container, DataTable, Facts, TooltipFrame } from "@/components/ui";
 import { trailFor } from "@/lib/breadcrumbs";
 import { achievementHref, loadCatalog, parseSegment } from "@/lib/completion-lists";
 import { pageMetadata } from "@/lib/seo";
@@ -9,6 +9,8 @@ import { EmptyTab, EntityHeader, EntityTop, Unreachable } from "../../entity";
 export const dynamic = "force-dynamic";
 
 type Props = { params: Promise<{ id: string }> };
+// Two criteria can read the same, so a row is keyed by its place in the list.
+type Criterion = { text: string; required: number; i: number };
 
 export async function generateMetadata(props: Props): Promise<Metadata> {
   const { id: segment } = await props.params;
@@ -17,7 +19,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   // Only an entry three players reported is a page; storage down says noindex rather than cache a thin page.
   if (!entry) return { robots: { index: false, follow: true } };
   return {
-    ...pageMetadata({ title: `${entry.name} (achievement)`, description: `The ${entry.name} achievement in WoW: Forever: category, points and criteria count, as three players reported it.`, path: achievementHref(entry.achievementId, entry.name) }),
+    ...pageMetadata({ title: `${entry.name} (achievement)`, description: `The ${entry.name} achievement in WoW: Forever: category, points and ${entry.criteria ? "criteria" : "criteria count"}, as three players reported it.`, path: achievementHref(entry.achievementId, entry.name) }),
     robots: { index: true, follow: true },
   };
 }
@@ -62,7 +64,20 @@ export default async function AchievementPage(props: Props) {
             }
           />
         ) : <Unreachable />}
-        {entry && <EmptyTab players={false} action={null} message="Everloot lists what three players reported identically. The criteria wording is not published." />}
+        {entry?.criteria ? (
+          <DataTable
+            dense
+            caption={`Criteria of ${entry.name}`}
+            columns={[
+              { key: "text", header: "Criterion", cell: (c: Criterion) => c.text },
+              { key: "required", header: "Required", numeric: true, cell: (c: Criterion) => (c.required > 1 ? c.required : null) },
+            ]}
+            rows={entry.criteria.map((c, i) => ({ ...c, i }))}
+            rowKey={(c) => String(c.i)}
+          />
+        ) : entry && entry.criteriaCount > 0 ? (
+          <EmptyTab players={false} action={null} message="The criteria show once three players report the same full list." />
+        ) : null}
       </article>
     </Container>
   );

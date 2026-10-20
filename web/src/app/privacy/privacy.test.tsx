@@ -33,9 +33,12 @@ test("the cookie line mentions the short-lived sign-in state cookie", () => {
   expect(text).toContain("short-lived one, 10 minutes, that holds the sign-in state while you are at Battle.net");
 });
 
-test("the census paragraph says it is opt-in, what is kept, what is never read and when counts show", () => {
+test("the census paragraph says how it starts and leaves, what is kept, what is never read and when counts show", () => {
   for (const claim of [
+    "on in a new install of the addon",
     "/everloot census on",
+    "/everloot census off",
+    "only if you allowed it in the Everloot Desktop App",
     "race, class, level and faction for your own characters, with the realm name",
     "players you target, mouse over or group with",
     "never reads another player's name, guild, gear or position",
@@ -69,6 +72,7 @@ test("the retention list says how long census rows are kept", () => {
 
 test("the data policy says the same about the census", () => {
   for (const claim of [
+    "on in a new install",
     "off until `/everloot census on`",
     "never their name, guild, gear or position",
     "HMAC-SHA256",

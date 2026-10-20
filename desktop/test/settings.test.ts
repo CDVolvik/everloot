@@ -56,3 +56,14 @@ test("a missing file is the defaults and a damaged one is the defaults plus an e
   writeFileSync(path, "[1,2]");
   expect(loadSettings(path).settings).toEqual(defaultSettings());
 });
+
+test("the census starts on for a new setup and stays off for one finished before the switch existed", () => {
+  const path = join(dir(), "settings.json");
+  expect(defaultSettings().census).toBe(true);
+  writeFileSync(path, JSON.stringify({ gameFolder: "D:\\Games\\WoW", consentedAt: "2026-10-18T00:00:00Z" }));
+  expect(loadSettings(path).settings.census).toBe(false);
+  writeFileSync(path, JSON.stringify({ gameFolder: "D:\\Games\\WoW", consentedAt: null }));
+  expect(loadSettings(path).settings.census).toBe(true);
+  writeFileSync(path, JSON.stringify({ consentedAt: "2026-10-18T00:00:00Z", census: true }));
+  expect(loadSettings(path).settings.census).toBe(true);
+});

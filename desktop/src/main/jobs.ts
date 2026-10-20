@@ -26,11 +26,11 @@ export function companionJobs(dataFolder: string, current: () => Settings): { de
   const deps: EngineDeps = {
     findFiles: findEverlootFiles,
     async upload(file) {
-      const r = await uploadFile(file, { endpoint: current().endpoint, state });
+      const r = await uploadFile(file, { endpoint: current().endpoint, state, census: current().census });
       // A copy of the file as it was uploaded; a failed backup never fails the upload.
       let backup = "";
       try { backupSavedVariables(file, dataFolder); backup = "; backup kept"; } catch (err) { backup = `; backup failed: ${err instanceof Error ? err.message : String(err)}`; }
-      return `sent ${r.sent} new events in ${r.batches} batch(es); kept ${r.heldNamed} named, ${r.heldAddons} installed-addon and ${r.heldLegacy} legacy rows here${backup}`;
+      return `sent ${r.sent} new events in ${r.batches} batch(es); kept ${r.heldNamed} named, ${r.heldAddons} installed-addon, ${r.heldCensus} census and ${r.heldLegacy} legacy rows here${backup}`;
     },
     async prices(files) {
       const s = current();

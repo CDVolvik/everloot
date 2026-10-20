@@ -5,7 +5,7 @@ import type { AppState } from "../src/shared/types";
 const state: AppState = {
   version: "0.1.0", platform: "win32", dataFolder: "C:\\Users\\carlos\\AppData\\Roaming\\Everloot", notice: null,
   settings: {
-    gameFolder: "D:\\Games\\World of Warcraft\\_classic_era_", endpoint: "https://everloot.app", upload: true, prices: true,
+    gameFolder: "D:\\Games\\World of Warcraft\\_classic_era_", endpoint: "https://everloot.app", upload: true, census: true, prices: true,
     ask: { enabled: true, mcpUrl: "https://everloot.app/mcp", tokenFile: "C:\\Users\\carlos\\secret\\token.txt" },
     market: { realms: ["Nightslayer"] }, consentedAt: "2026-10-18T00:00:00Z", launchAtLogin: false, startInTray: true,
   },
