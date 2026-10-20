@@ -16,7 +16,7 @@ Use the same words everywhere, so the listings match the site and each other.
 | One line (≤200, Claude) | Look up WoW: Forever lore and what players actually saw in play: drop rates, vendors, quests, professions, map pins and talents. Every answer carries its source and licence. |
 | Short description (≤30, ChatGPT) | WoW: Forever data with sources |
 | Description (≤2,000) | see [Long description](#long-description) |
-| Categories | Gaming; Reference / Data; Developer tools (pick what the portal offers, in that order) |
+| Categories | ChatGPT: Entertainment (game reference service). Other directories: Gaming or the closest game reference category. |
 | Endpoint | `https://everloot.app/mcp/public` (streamable HTTP, no sign-in, 200 requests per hour per IP) |
 | Authentication | None. Public data only; nothing acts on a user's account. |
 | Documentation | `https://everloot.app/connect` |
