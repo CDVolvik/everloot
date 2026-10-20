@@ -5,6 +5,7 @@ import { loreSlug, MAX_QUERY, searchLore, UNAVAILABLE } from "./lore";
 import { loadNames } from "./names";
 import { loadObjectFacts } from "./objects";
 import { WORLD_MAP } from "./world-map";
+import { zoneHref } from "./zones";
 
 /** One page the search found. `exact` is an exact id or an exact name: those lead their group, and the page. */
 export interface SearchResult { label: string; href: string; note?: string; exact: boolean }
@@ -80,7 +81,7 @@ export async function siteSearch(raw: string): Promise<SearchGroup[]> {
   }
 
   found.set("zone", byName(WORLD_MAP.zones.map((z) => ({ id: z.uiMapId, name: z.name })), q, GROUP_LIMIT)
-    .map(({ entry, exact }) => ({ label: entry.name, href: `/map?zone=${entry.id}`, note: "on the map", exact })));
+    .map(({ entry, exact }) => ({ label: entry.name, href: zoneHref(entry.id, entry.name), note: "zone", exact })));
 
   const lore = searchLore(text, 1);
   if (lore !== UNAVAILABLE) {

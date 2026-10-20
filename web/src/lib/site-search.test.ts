@@ -73,7 +73,7 @@ test("an object is found by id, and only when it has public loot observations", 
 
 test("zones are the released ones, linking to the map", async () => {
   const zones = (await search("elwynn")).find((g) => g.type === "zone")!.results;
-  expect(zones[0]).toMatchObject({ label: "Elwynn Forest", href: "/map?zone=1429", exact: false });
+  expect(zones[0]).toMatchObject({ label: "Elwynn Forest", href: "/database/zones/1429-elwynn-forest", exact: false });
   expect((await search("Elwynn Forest")).find((g) => g.type === "zone")!.results[0].exact).toBe(true);
 });
 
