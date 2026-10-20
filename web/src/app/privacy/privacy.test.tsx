@@ -53,6 +53,11 @@ test("the retention list says how long census rows are kept", () => {
   expect(text).toContain("Census rows: as long as the upload they came in, and removed with it.");
 });
 
+test("the player pages paragraph links the hide form", () => {
+  expect(text).toContain("on the hide form");
+  expect(html).toContain('href="/players/opt-out"');
+});
+
 test("the data policy says the same about the census", () => {
   for (const claim of [
     "on in a new install",
