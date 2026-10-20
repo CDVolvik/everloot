@@ -3,8 +3,8 @@ import type { LoadingArt } from "@/lib/game-assets";
 // A game loading screen as a section hub's wide-screen banner. One rule everywhere it appears: only on
 // the section hubs (map, patch notes, lore; the home hero and the raid planner may use it the same way),
 // edge to edge across the viewport, cropped to fill, at full brightness, fading into the page only where
-// the text sits (ui/Banner), with the page's breadcrumb and title on it and a one-line caption. The page
-// keeps its full GameCredit, with the build, at the foot.
+// the text sits (ui/Banner), with the page's title on it and a one-line caption. The full credit, with
+// the build, is on /methodology#credits.
 //
 // BannerArt is the picture alone, for PageHeader's `banner`: <PageHeader banner={{ image: <BannerArt
 // art={art} eager /> }} … />. The picture is decorative (empty alt, hidden from screen readers);

@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { WIKI_URL } from "@/components/LoreSource";
+import { loadSiteAssets } from "@/lib/game-assets";
+import { CLIENT_LAYER } from "@/lib/items";
 import { pageMetadata } from "@/lib/seo";
 import { REPO_URL } from "@/lib/source";
+import { CREDIT } from "@/lib/talents/assets";
+import { MAP_SOURCE } from "@/lib/world-map";
 import { Container, PageHeader, SectionHeading } from "@/components/ui";
 
 const description =
@@ -11,7 +16,9 @@ export const metadata: Metadata = pageMetadata({ title: "How We Count WoW Foreve
 
 const link = "text-accent hover:underline underline-offset-4";
 
-export default function MethodologyPage() {
+export default async function MethodologyPage() {
+  // The art's build comes from the asset manifest, only when the asset URL is set.
+  const assets = await loadSiteAssets();
   return (
     <Container width="reading">
       <PageHeader
@@ -113,6 +120,36 @@ export default function MethodologyPage() {
               play in. The census page shows what share came from each, so you can judge.
             </p>
           </div>
+        </section>
+
+        {/* The full attribution. Pages carry none of their own; the footer's one line links here (docs/DATA_POLICY.md). */}
+        <section aria-labelledby="credits">
+          <SectionHeading id="credits">Credits</SectionHeading>
+          <ul className="list-disc pl-6 space-y-3 text-fg-2">
+            <li>
+              <span className="text-fg">Blizzard Entertainment.</span> Game data, map pictures and loading screen art are © Blizzard
+              Entertainment, Inc., read from the public game client and not under Everloot&apos;s licence. {CREDIT} Game files read from build{" "}
+              <span className="font-mono">{CLIENT_LAYER.build.version}</span>; the map from build <span className="font-mono">{MAP_SOURCE.version}</span>
+              {assets && <>; icons, tooltip text, map pictures and loading screen art from build <span className="font-mono">{assets.version}</span>, {assets.label}</>}.
+              Blue posts on the <Link href="/changes" className={link}>changes page</Link> are Blizzard&apos;s text, each linked to its original on
+              Blizzard&apos;s forum or Bluesky.
+            </li>
+            <li>
+              <span className="text-fg">Warcraft Wiki contributors.</span> Item names, where the game files and the{" "}
+              <a href={WIKI_URL} rel="noopener" className={link}>Warcraft Wiki</a> give the same one, and the{" "}
+              <Link href="/lore" className={link}>lore archive</Link> (the wiki as of 13 November 2023), under CC BY-SA 4.0. Each lore page
+              links its source.
+            </li>
+            <li>
+              <span className="text-fg">WoWDBDefs.</span> Column names for the game&apos;s data tables, from{" "}
+              <a href="https://github.com/wowdev/WoWDBDefs" rel="noopener" className={link}>WoWDBDefs</a>, CC BY-SA 4.0.
+            </li>
+            <li>
+              <span className="text-fg">Everloot contributors.</span> Every drop, vendor, price, census count and addon install count comes from
+              players&apos; uploads, published under CC BY-SA 4.0 and credited to Everloot contributors. The code is AGPL-3.0. Addon repository
+              facts are read from GitHub; the <Link href="/addons/polestar" className={link}>Polestar</Link> addon is GPL-3.0 and its authors&apos;.
+            </li>
+          </ul>
         </section>
       </div>
     </Container>

@@ -3,7 +3,8 @@ import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import BrowseFilters from "@/components/BrowseFilters";
-import { Card, Container, PageHeader, Pager, SourceLine } from "@/components/ui";
+import { Card, Container, PageHeader, Pager } from "@/components/ui";
+import LoreSource from "@/components/LoreSource";
 import { trailFor } from "@/lib/breadcrumbs";
 import {
   browse, BROWSE_HEADINGS, BROWSE_TYPES, FACET_KEYS, facetValues, hasTypes, LETTERS, lettersWithRows, loreSlug,
@@ -15,7 +16,7 @@ export const dynamic = "force-dynamic";
 const link = "text-accent hover:underline underline-offset-4";
 
 /** The page's one source line: everything here is the 2023 wiki. */
-const SOURCE = <SourceLine source="Warcraft Wiki, 13 November 2023" licence="Warcraft Wiki contributors, CC BY-SA 4.0" />;
+const SOURCE = <LoreSource />;
 
 type RawQuery = Partial<Record<FacetKey | "letter" | "page", string | string[]>>;
 type Query = Partial<Record<FacetKey | "letter" | "page", string>>;

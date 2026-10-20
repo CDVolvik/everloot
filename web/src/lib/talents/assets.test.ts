@@ -112,6 +112,8 @@ const SHOWS_ART = new Set([
   "web/src/app/database/zones/[zone]/page.tsx",
   // The quest list's reward icons, under the item lists' rule (reported or wiki-named items only).
   "web/src/app/database/quests/page.tsx",
+  // The site-wide credit (footer → /methodology#credits): reads only the manifest's build and label, no art.
+  "web/src/app/methodology/page.tsx",
   // The item names shown from the game files and the Warcraft Wiki: read for the item pages, and by the sitemap
   // only to know whether a category has enough names to list.
   "web/src/lib/shown-item-names.ts", "web/src/app/sitemap.ts", "web/scripts/upload-item-names.mjs",

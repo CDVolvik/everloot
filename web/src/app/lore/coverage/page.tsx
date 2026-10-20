@@ -6,7 +6,8 @@ import { dataAgeLabel } from "@/lib/data-age";
 import { BROWSE_HEADINGS, BROWSE_TYPES, coverage, FACET_KEYS, PRE_CLASSIFICATION_COPY, UNAVAILABLE, UNAVAILABLE_COPY, type BrowseSlug, type FacetKey } from "@/lib/lore";
 import { getRelease } from "@/lib/release";
 import { trailFor } from "@/lib/breadcrumbs";
-import { Card, Container, DataTable, Facts, PageHeader, SectionHeading, SourceLine } from "@/components/ui";
+import { Card, Container, DataTable, Facts, PageHeader, SectionHeading } from "@/components/ui";
+import LoreSource from "@/components/LoreSource";
 
 // Cached for a day (fixed release). The unavailable answer calls noStore() so it is never cached.
 export const revalidate = 86400;
@@ -117,7 +118,7 @@ export default async function CoveragePage() {
             {" "}· <Link href="/search" className={link}>Search</Link>
           </p>
         </div>
-        <SourceLine source="Warcraft Wiki, 13 November 2023" licence="Warcraft Wiki contributors, CC BY-SA 4.0" />
+        <LoreSource />
       </article>
     </Container>
   );

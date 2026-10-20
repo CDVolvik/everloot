@@ -3,10 +3,8 @@ import { redirect } from "next/navigation";
 import { pageMetadata } from "@/lib/seo";
 import { MARKET_RULE } from "../../../../../kb/src/market";
 import { uploadStore } from "@/lib/upload-store";
-import { dataAgeLabel } from "@/lib/data-age";
-import GameCredit from "@/components/game/GameCredit";
 import { trailFor } from "@/lib/breadcrumbs";
-import { Card, Container, Disclosure, EmptyState, PageHeader, SectionHeading, SourceLine } from "@/components/ui";
+import { Card, Container, Disclosure, EmptyState, PageHeader, SectionHeading } from "@/components/ui";
 import {
   crossRealmHref, itemIdParam, loadAuctionNames, realmBoards, realmHref, realmSlug, searchByName, slugParam,
 } from "@/lib/auction-house";
@@ -49,7 +47,7 @@ export default async function AuctionHousePage(
   const rows = boards.flatMap((b) => b.rows);
   const names = await loadAuctionNames();
   const found = query ? searchByName(boards, names, query) : [];
-  const { assets, tips } = await itemArt([...boardItemIds(rows, now), ...found]);
+  const { tips } = await itemArt([...boardItemIds(rows, now), ...found]);
   const items = new Set(rows.map((r) => r.value.itemId)).size;
   const updated = market.dataAsOf ? Date.parse(market.dataAsOf) : null;
 
@@ -128,8 +126,6 @@ export default async function AuctionHousePage(
         </div>
       </div>
 
-      {assets && tips.size > 0 && <div className="mt-8"><GameCredit version={assets.version} label={assets.label} /></div>}
-      <SourceLine confirmed>{state ? dataAgeLabel(market.dataAsOf) : "Data age unrecorded"}</SourceLine>
     </Container>
   );
 }

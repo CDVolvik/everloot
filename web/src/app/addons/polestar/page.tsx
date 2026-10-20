@@ -5,7 +5,7 @@ import { POLESTAR } from "@/data/polestar";
 import TrackedDownload from "@/components/TrackedDownload";
 import { polestarLive } from "@/lib/polestar-github";
 import { trailFor } from "@/lib/breadcrumbs";
-import { Container, DataTable, PageHeader, SectionHeading, SourceLine } from "@/components/ui";
+import { Container, DataTable, PageHeader, SectionHeading } from "@/components/ui";
 
 export const revalidate = 3600;
 
@@ -118,10 +118,10 @@ export default async function PolestarPage() {
           </section>
         </div>
 
-        <SourceLine source={`Facts checked against Polestar's repository on ${POLESTAR.checked}`} licence="Polestar is GPL-3.0">
+        <p className="mt-12 text-xs text-muted">
           Not affiliated with or endorsed by Polestar&apos;s authors. Everloot&apos;s maintainer contributes to Polestar:{" "}
-          <a className={link} href={POLESTAR.maintainerPrs}>their pull requests</a>
-        </SourceLine>
+          <a className={link} href={POLESTAR.maintainerPrs}>their pull requests</a>.
+        </p>
       </article>
     </Container>
   );

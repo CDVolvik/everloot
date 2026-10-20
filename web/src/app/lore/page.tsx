@@ -4,10 +4,10 @@ import { unstable_noStore as noStore } from "next/cache";
 import LoreSearchForm from "@/components/LoreSearchForm";
 import { BROWSE_HEADINGS, BROWSE_TYPES, hasTypes, UNAVAILABLE_COPY, type BrowseSlug } from "@/lib/lore";
 import JsonLd from "@/components/JsonLd";
-import GameCredit from "@/components/game/GameCredit";
+import LoreSource from "@/components/LoreSource";
 import { BannerArt } from "@/components/game/PageBanner";
-import { BANNER_MAP, creditWhat, loadingArt, loadSiteAssets } from "@/lib/game-assets";
-import { Card, Container, Explainer, PageHeader, SectionHeading, SourceLine } from "@/components/ui";
+import { BANNER_MAP, loadingArt, loadSiteAssets } from "@/lib/game-assets";
+import { Card, Container, Explainer, PageHeader, SectionHeading } from "@/components/ui";
 import { trailFor } from "@/lib/breadcrumbs";
 import { loreCollectionJsonLd } from "@/lib/jsonld";
 import { getRelease } from "@/lib/release";
@@ -85,10 +85,7 @@ export default async function LoreLanding() {
             <p>{release.manifest.notice}</p>
           </Explainer>
         )}
-        {banner && assets && (
-          <div className="mt-6"><GameCredit version={assets.version} label={assets.label} what={creditWhat("loading screen art")} /></div>
-        )}
-        <SourceLine source="Warcraft Wiki, 13 November 2023" licence="Warcraft Wiki contributors, CC BY-SA 4.0" />
+        <LoreSource />
       </Container>
     </article>
   );

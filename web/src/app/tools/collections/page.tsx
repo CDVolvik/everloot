@@ -8,7 +8,7 @@ import { STORAGE_UNREACHABLE, uploadStore } from "@/lib/upload-store";
 import { dataAgeLabel } from "@/lib/data-age";
 import CompletionView from "./CompletionView";
 import { trailFor } from "@/lib/breadcrumbs";
-import { Card, Container, Disclosure, EmptyState, Field, PageHeader, SectionHeading, SourceLine } from "@/components/ui";
+import { Card, Container, Disclosure, EmptyState, Field, PageHeader, SectionHeading } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +46,7 @@ export default async function CollectionsPage(
         trail={trailFor("/tools/collections")!}
         title="Collection gap and completion"
         lede="Owned versus missing in a collection, and a character's achievement, reputation, title and quest progress."
+        meta={<span>{corpus.unreachable ? "Storage unreachable" : dataAgeLabel(completion?.dataAsOf ?? corpus.dataAsOf)}</span>}
         actions={<Link href="/upload" className="btn">Upload addon data</Link>}
       />
 
@@ -89,10 +90,6 @@ export default async function CollectionsPage(
           </p>
         </Disclosure>
       </div>
-
-      <SourceLine source="Player uploads; a list entry is public once 3 installs agree">
-        {corpus.unreachable ? "Storage unreachable" : dataAgeLabel(completion?.dataAsOf ?? corpus.dataAsOf)}
-      </SourceLine>
     </Container>
   );
 }

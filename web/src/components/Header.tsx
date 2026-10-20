@@ -88,6 +88,7 @@ export default function Header() {
       if (open) { setOpen(false); toggle.current?.focus(); }
       if (searchOpen) { setSearchOpen(false); searchButton.current?.focus(); }
     }}>
+      {/* The data column's width and gutters (globals.css), so the logo lines up with the data tables. */}
       <div className="mx-auto flex min-h-16 max-w-data items-center gap-3 px-4 lg:gap-6 lg:px-6">
         <Link href="/" className="inline-flex min-h-11 shrink-0 items-center gap-2 text-xl font-bold tracking-tight text-fg" onClick={closeAll}>
           {/* The favicon's diamond, outlined in the accent green. */}
@@ -180,7 +181,7 @@ export default function Header() {
 
       {open && (
         <nav id="site-navigation" aria-label="Site menu" className="absolute inset-x-0 top-full max-h-[75vh] overflow-y-auto border-b border-edge bg-panel lg:hidden">
-          <div className="mx-auto max-w-wide space-y-6 px-4 py-6">
+          <div className="mx-auto max-w-data space-y-6 px-4 py-6 lg:px-6">
             <form action="/search" method="get" role="search" onSubmit={() => track("search", { surface: "lore" })} className="flex items-center gap-2 rounded-full border border-edge bg-canvas px-3 text-muted focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent">
               <SearchIcon />
               <label htmlFor="menu-search" className="sr-only">Search Everloot</label>

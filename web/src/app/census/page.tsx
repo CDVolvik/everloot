@@ -6,7 +6,7 @@ import { loadCensus } from "@/lib/rollup-compute";
 import { REPO_URL } from "@/lib/source";
 import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
 import { trailFor } from "@/lib/breadcrumbs";
-import { Card, Container, DataTable, EmptyState, Explainer, LinkTabs, PageHeader, SectionHeading, SourceLine, type Column } from "@/components/ui";
+import { Card, Container, DataTable, EmptyState, Explainer, LinkTabs, PageHeader, SectionHeading, type Column } from "@/components/ui";
 import {
   CENSUS_CLASSES, CENSUS_RACES, FACTIONS, HIDDEN_LABEL, HIDDEN_MEANING, LEVEL_BANDS, type CensusCount, type CensusView, type CensusWindow,
 } from "../../../../kb/src/census";
@@ -141,13 +141,14 @@ export default async function CensusPage({ searchParams }: { searchParams?: Prom
           trail={trailFor("/census")!}
           title="Who plays what on WoW: Forever"
           lede="Counted from Everloot uploads by players who turned the census on: their own characters and the players they target, mouse over or group with."
-          meta={
+          meta={<>
             <span className="font-mono text-xs">
               {!ready ? "Storage unreachable"
                 : !view.launched ? "Not launched yet"
                 : plural(w.installs, "reporting install", "reporting installs")}
             </span>
-          }
+            {!unreachable && <span>{dataAgeLabel(dataAsOf)}</span>}
+          </>}
         />
 
         {!ready ? (
@@ -218,9 +219,6 @@ export default async function CensusPage({ searchParams }: { searchParams?: Prom
             <a href={`${REPO_URL}/blob/main/docs/DATA_POLICY.md`} rel="noopener" className={link}>data policy</a>.
           </p>
         </Explainer>
-        <SourceLine source="Everloot uploads with the census on" licence="CC BY-SA 4.0">
-          {!unreachable && dataAgeLabel(dataAsOf)}
-        </SourceLine>
       </article>
     </Container>
   );

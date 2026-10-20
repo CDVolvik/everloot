@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { FEED, IMAGE, TWITTER_IMAGE } from "@/lib/seo";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
-import { Card, Container, Explainer, Facts, PageHeader, Prose, SectionHeading, SourceLine } from "@/components/ui";
+import { Card, Container, Explainer, Facts, PageHeader, Prose, SectionHeading } from "@/components/ui";
+import LoreSource from "@/components/LoreSource";
 import { trailFor } from "@/lib/breadcrumbs";
 import { entityHref } from "@/components/EntityLink";
 import { idForName, loadNames } from "@/lib/names";
@@ -156,10 +157,7 @@ export default async function LorePage(props: { params: Promise<{ slug: string }
             <p>{CONVERSION_NOTE}</p>
           </Explainer>
         )}
-        <SourceLine
-          source={<>From <a href={page.sourceUrl} rel="noopener" className={`${link} [overflow-wrap:anywhere]`}>{page.sourceUrl}</a>, retrieved {page.retrievedAt}</>}
-          licence={`${wiki ? "Warcraft Wiki contributors, " : ""}${page.licence.replace("CC-BY-SA-4.0", "CC BY-SA 4.0")}`}
-        />
+        <LoreSource href={page.sourceUrl} wiki={wiki} name={wiki ? undefined : page.sourceUrl.replace(/^https?:\/\//, "").split("/")[0]} licence={page.licence.replace("CC-BY-SA-4.0", "CC BY-SA 4.0")} />
       </article>
     </Container>
   );

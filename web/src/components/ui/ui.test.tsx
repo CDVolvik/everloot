@@ -43,30 +43,28 @@ describe("PageHeader", () => {
     expect(text(html)).toContain("Linen Cloth A trade good. Item 2589 Copy link");
   });
 
-  test("one title size on every page", () => {
+  test("one compact title size on every page", () => {
     const html = render(<PageHeader title="T" />);
-    expect(html).toMatch(/<h1 class="[^"]*text-3xl[^"]*sm:text-4xl/);
+    expect(html).toMatch(/<h1 class="[^"]*text-title-sm[^"]*sm:text-title(?:\s|")/);
   });
 
-  test("no bracket eyebrow above the title", () => {
+  test("nothing above the title: no eyebrow and no visible breadcrumb", () => {
     // A route the layout knows, so the header emits no JSON-LD and all of its text is visible text.
     const html = render(<PageHeader title="Talent calculator" trail={[{ name: "Home", path: "/" }, { name: "Talent calculator", path: "/tools/talents" }]} />);
     expect(html).not.toContain("BreadcrumbList");
-    expect(text(html)).not.toMatch(/[[\]]/);
-    expect(text(html)).toBe("Home / Talent calculator Talent calculator");
+    expect(html).not.toContain('aria-label="Breadcrumb"');
+    expect(text(html)).toBe("Talent calculator");
   });
 
-  test("an entity page's trail is drawn and gets its BreadcrumbList", () => {
+  test("an entity page's trail is not drawn but still gets its BreadcrumbList", () => {
     const html = render(<PageHeader title="Linen Cloth" trail={trail} />);
-    expect(html).toContain('aria-label="Breadcrumb"');
-    expect(html).toContain("data-page-crumbs");
-    expect(html).toContain('aria-current="page"');
+    expect(html).not.toContain('aria-label="Breadcrumb"');
     expect(html).toContain("BreadcrumbList");
+    expect(html).toContain('"name":"Database"');
   });
 
   test("a route the layout already knows does not get a second BreadcrumbList", () => {
     const html = render(<PageHeader title="Census" trail={[{ name: "Home", path: "/" }, { name: "Census", path: "/census" }]} />);
-    expect(html).toContain("data-page-crumbs");
     expect(html).not.toContain("BreadcrumbList");
   });
 
@@ -103,10 +101,12 @@ describe("Card", () => {
 });
 
 describe("Badge", () => {
-  test("the files badge is dashed and says where the value comes from", () => {
+  test("the files badge is a quiet dashed marker, not a pill: a tooltip and a screen-reader label", () => {
     const html = render(<Badge tone="files" />);
     expect(html).toContain("border-dashed");
-    expect(text(html)).toBe("From game files · unconfirmed");
+    expect(html).not.toContain("rounded-full border px-2.5");
+    expect(html).toContain('title="From the game files, not yet confirmed by players"');
+    expect(html).toMatch(/<span class="sr-only">unconfirmed<\/span>/);
   });
 
   test("a quality badge is in its quality colour", () => {
