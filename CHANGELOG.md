@@ -25,6 +25,20 @@ Pull requests merged to `main` are listed in the nightly pre-releases until the 
   the census box ticked on its setup screen, or turns it on in Settings; a setup finished before this keeps
   it off. Still never names, guilds, gear or places, and the site shows only totals.
 
+## [desktop-v0.1.4] - 2026-10-20
+
+### Added
+- Census switch. The setup screen has a census box, ticked by default, and Settings has a Census switch. With
+  it on, census rows (race, class, level and faction, never names) go out with the uploads after logout; with
+  it off they wait for the upload page. A setup finished before this keeps it off.
+- Saved talent builds reach the game. With an account key that has the "Read my saved builds" permission, the
+  app writes your builds from everloot.app into the `EverlootBuilds` slot addon after sign-in, on Sync builds
+  and every 15 minutes. The key goes only to the site it was signed in on, and uploads never carry it.
+
+### Fixed
+- The account panel links to the keys page (`/docs/api/keys`) instead of the old `/connect` page.
+- The builds sync stays quiet when a key is refused, and sends the key only to the site it was signed in on.
+
 ## [desktop-v0.1.3] - 2026-10-20
 
 ### Fixed
