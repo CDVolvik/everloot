@@ -13,6 +13,7 @@ build that has a zip in the repository. Earlier builds have none.
 ## [Unreleased]
 
 ### Added
+- Site: an item's page shows its Source (Drop, Vendor, Crafted, Quest, Object) in the quick facts, each linking to its tab, from the same 3-install index as the item lists. Items nobody has reported show no row.
 - Site: database pages for achievements, factions, titles and quest chains (`/database/achievements`,
   `/database/factions`, `/database/titles`, `/database/quest-chains`), with lists you can filter and sort, a page for each entry, and entries in the hub, sitemap and search. An entry
   shows only once three players report it the same way; until then each list says so.
