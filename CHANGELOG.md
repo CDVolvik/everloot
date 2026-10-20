@@ -15,7 +15,15 @@ build that has a zip in the repository. Earlier builds have none.
 Pull requests merged to `main` are listed in the nightly pre-releases until the next tagged release.
 
 ### Added
+- An Everloot tab at the auction house, after Blizzard's tabs. It has a Scan this house button with the
+  cooldown, says whether the last scan is in your saved file yet, has a Share now button (a `/reload`, so
+  the Desktop App can send the scan) and looks up an item's price with the tooltip's lines. Shift-click an
+  item into its box. It never posts, bids or buys, and a scan still starts only from your click.
 - Site: an achievement's page lists its criteria, with how many each needs, once three players sent the same complete list; the list is agreed apart from the entry itself. Lists and search still show no criteria wording. Run the completion rebuild (`?rebuild=1`) once to fill it from uploads already stored.
+
+### Changed
+- Auction scans are on in a new addon install, which says once at the first auction house what a scan
+  reads. An install where scans were turned off keeps them off.
 
 ## [0.3.5] - 2026-10-20
 

@@ -68,10 +68,12 @@ root = Path(__file__).parents[1]
 for file in ["core.lua", "modules/auctions.lua"]:
     lua.execute((root / file).read_text(encoding="utf-8"))
 
-# Scans off: the module does not start, and the first visit says once how to opt in.
+# Scans off (turned off by the player): the module does not start, and the first visit says once how to opt in.
+# This file loads no tab module, so the house gets the fallback Everloot scan button.
 lua.execute("""
+EverlootDB = { installId = 'abcd-1234', toggles = { auctions = false }, records = {} }
 Everloot.frame.onEvent(nil, 'ADDON_LOADED', 'Everloot')
-assert(EverlootDB.toggles.auctions == false, 'auction scans are off by default')
+assert(EverlootDB.toggles.auctions == false, 'auction scans stay off when the player turned them off')
 local hint = Everloot.auctionHintFrame
 assert(hint and hint.events.AUCTION_HOUSE_SHOW, 'the hint listens for the auction house even with scans off')
 printed = {}
@@ -89,7 +91,11 @@ Everloot:InitModules()
 AuctionHouseFrame = CreateFrame('Frame', 'AuctionHouseFrame')
 printed = {}
 Everloot.auctionHintFrame.onEvent(nil, 'AUCTION_HOUSE_SHOW')
-assert(#printed == 0, 'with scans on there is no opt-in hint')
+assert(#printed == 1 and said('Everloot tab') and said('never sellers') and said('auctions off'), 'with scans on, the first visit says once what a scan reads: ' .. table.concat(printed, ' | '))
+assert(not said('/everloot auctions on'), 'with scans on there is no opt-in hint')
+printed = {}
+Everloot.auctionHintFrame.onEvent(nil, 'AUCTION_HOUSE_SHOW')
+assert(#printed == 0, 'the notice is said once per install')
 
 -- Opening the house: a prompt with one button, and nothing scanned until it is clicked.
 fire('AUCTION_HOUSE_SHOW')

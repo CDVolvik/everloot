@@ -1,5 +1,6 @@
--- Everloot auction collector. Off unless the player enables the auctions toggle.
--- Forever (C_AuctionHouse): a full scan the player starts with the "Everloot scan" button, the
+-- Everloot auction collector. On in a new install; /everloot auctions off turns it off.
+-- Forever (C_AuctionHouse): a full scan the player starts from the Everloot tab at the auction house
+-- (modules/auctiontab.lua; an "Everloot scan" button if the tab cannot be added), the
 -- "Scan prices for Everloot" prompt (shown once per visit when a scan can run) or /everloot scan while
 -- the auction house is open. Each scan records the player's faction and, when the auctioneer can be
 -- read, which house it was (Alliance, Horde or a neutral goblin house). Clients with the older API: buyouts from the
@@ -219,8 +220,14 @@ function E:StartScan()
   return say("scanning the auction house. Keep it open until the scan reports.")
 end
 
+--- True while a full scan is waiting for or reading the house.
+function E:Scanning()
+  return scan ~= nil
+end
+
 local function addButton()
   if E.scanButton or not AuctionHouseFrame then return end
+  if E.AuctionTab and E.AuctionTab.Attach(AuctionHouseFrame) then return end
   local button = CreateFrame("Button", "EverlootScanButton", AuctionHouseFrame, "UIPanelButtonTemplate")
   button:SetSize(120, 22)
   -- Placement still needs checking in the Forever client.
@@ -279,6 +286,7 @@ local function onFullScanEvent(event, arg1)
     addButton()
     showPrompt()
   elseif event == "AUCTION_HOUSE_CLOSED" then
+    if E.AuctionTab then E.AuctionTab.Hide() end
     E.auctionHouseOpen = false
     E.auctionHouseKind = nil
     E.promptShown = false
@@ -298,13 +306,22 @@ local function onFullScanEvent(event, arg1)
   end
 end
 
--- With scans off, the module does not start; this listener says once per install how to opt in, the
--- first time the player opens an auction house. It reads nothing from the house.
+-- The first time the player opens an auction house, this listener says once per install what scans do:
+-- with scans on, where the Everloot tab is and what a scan reads; with scans off, how to turn them on.
+-- It reads nothing from the house.
 local hint = CreateFrame("Frame")
 E.auctionHintFrame = hint
 pcall(hint.RegisterEvent, hint, "AUCTION_HOUSE_SHOW")
 hint:SetScript("OnEvent", function()
-  if not EverlootDB or E:IsEnabled("auctions") or EverlootDB.auctionHintShown or EverlootDB.scanPrompt == false then return end
+  if not EverlootDB then return end
+  if E:IsEnabled("auctions") then
+    if EverlootDB.auctionNoticeShown then return end
+    EverlootDB.auctionNoticeShown = true
+    say("the Everloot tab at the bottom of the auction house scans this house's prices when you click Scan. "
+      .. "It reads item prices and quantities, never sellers, and never posts, bids or buys. /everloot auctions off turns scans off.")
+    return
+  end
+  if EverlootDB.auctionHintShown or EverlootDB.scanPrompt == false then return end
   EverlootDB.auctionHintShown = true
   say("you can share this auction house's prices with Everloot: /everloot auctions on, then /reload. "
     .. "A scan only runs when you click it. /everloot scanprompt off hides this.")

@@ -27,4 +27,5 @@ modules\plan.lua
 modules\raid_data.lua
 modules\raid.lua
 modules\prices.lua
+modules\auctiontab.lua
 modules\gph.lua
