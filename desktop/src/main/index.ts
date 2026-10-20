@@ -305,13 +305,12 @@ if (!app.requestSingleInstanceLock()) {
   ipcMain.handle("accountSignIn", async (_e, key: unknown) => {
     if (typeof key !== "string") throw new Error("Paste the key first.");
     await signIn(data, settings.endpoint, key);
-    broadcast();
-    void builds.sync();
+    void builds.signedIn();
     return appState();
   });
   ipcMain.handle("accountSignOut", () => {
     signOut(data);
-    builds.reset();
+    builds.signedOut();
     return appState();
   });
   ipcMain.handle("checkForUpdates", async () => {

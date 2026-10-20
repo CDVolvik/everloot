@@ -31,7 +31,7 @@ runs nothing until you press **Start**.
 | Upload | Sends events the site has not confirmed, from every account's `Everloot.lua` under the game folder | After the game writes the file (logout or `/reload`), once the write settles |
 | Market prices | Writes the `EverlootPrices` slot addon for the realms you scanned plus the realms you follow | After each upload and every hour |
 | `/ask` | Answers pending `/ask` questions into the `EverlootAnswers` slot addon | After the game writes the file; needs an MCP URL and a token file on the Ask page |
-| Saved builds | Reads the talent builds you saved on everloot.app with your account key (it needs the "Read my saved builds" permission) and writes them into the `EverlootBuilds` slot addon, where `/everloot plan` lists them after a `/reload`. Nothing goes back to the site | After you sign in, on **Sync builds** (Addon page), and every 15 minutes; never without a key |
+| Saved builds | Reads the talent builds you saved on everloot.app with your account key (it needs the "Read my saved builds" permission) and writes them into the `EverlootBuilds` slot addon, where `/everloot plan` lists them after a `/reload`. Nothing goes back to the site | After you sign in, on **Sync builds** (Addon page), and every 15 minutes, only to the site you signed in on and over https. Never without a key; a key the site refuses stops the timer until you press Sync builds or sign in again; signing out takes the builds out of the game |
 
 The window is a sidebar with one page per thing to manage:
 
