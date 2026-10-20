@@ -62,7 +62,9 @@ export default async function RaidView({ initialCode }: { initialCode?: string }
         </Disclosure>
         <Disclosure summary="How do I read the planner?">
           <p>
-            Pick a slot, then a class and a talent tree. Each group holds five. The tables show what the classes you
+            Drag a class into a slot, or pick a class and then a slot; pick a filled slot to set its talent tree.
+            Drag a member to another slot to move or swap it, or off the groups to remove it. Each group holds
+            five. The coverage shows what the classes you
             picked can bring, not what a raid has assigned: a shaman is counted as able to bring every totem, even
             though one shaman drops one totem per element.
           </p>

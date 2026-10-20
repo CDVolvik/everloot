@@ -36,8 +36,8 @@ import LorePage from "@/app/lore/page";
 
 /** The wide-screen banner's markup: from its start to the end of its caption. */
 const onBanner = (html: string) => html.slice(html.indexOf("data-banner"), html.indexOf("</p>", html.indexOf("data-banner-credit")));
-/** The banner's one-line caption; the full credit with the build is at the foot of the page. */
-const CAPTION = /data-banner-credit[^>]*>Art © Blizzard Entertainment$/;
+/** The banner's one-line caption, tiny and quiet in the corner; the full credit with the build is at the foot of the page. */
+const CAPTION = /data-banner-credit(?:="true")? class="absolute bottom-1 right-0 text-\[10px\] leading-none text-muted[^"]*">Art © Blizzard Entertainment$/;
 
 const BASE = "https://assets.example.test/wow_classic_beta-70450-84bea423";
 const PRIVATE = "https://r2.example.test/everloot-game-data/wow_classic_beta-70450-84bea423";

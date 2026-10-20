@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vitest";
 import { CURRENT_BUILD, TABLES, type BuffTable } from "@/data/game-data/raid";
 import {
-  coverage, decodeRaid, describeRaid, emptySlots, encodeRaid, findCode, groupsOf, resize, roleOf, roster, SIZES, swapSlots, treeNames,
+  applyDrop, coverage, decodeRaid, describeRaid, emptySlots, encodeRaid, findCode, groupsOf, placeClass, removeSlot, resize, roleOf, roster, SIZES, swapSlots, treeNames,
   type Slot, type Slots,
 } from "./raid";
 
@@ -294,6 +294,48 @@ describe("swapSlots", () => {
     const moved = swapSlots(s, 0, 12);
     const back = decodeRaid(encodeRaid({ size: 20, build: "1.0.1", slots: moved }));
     expect(back).toMatchObject({ ok: true, value: { slots: moved } });
+  });
+});
+
+describe("drag and drop", () => {
+  test("a class dropped on an empty slot fills it on any tree", () => {
+    const s = emptySlots(10);
+    const next = applyDrop(s, { kind: "class", class: "mage" }, { kind: "slot", index: 6 });
+    expect(next[6]).toEqual(slot("mage", 0));
+    expect(s[6]).toBeNull();
+  });
+  test("a class dropped on a filled slot replaces it; the same class keeps its tree", () => {
+    const s: Slots = [slot("priest", 1), slot("warrior", 3), null];
+    expect(applyDrop(s, { kind: "class", class: "druid" }, { kind: "slot", index: 0 })).toEqual([slot("druid", 0), slot("warrior", 3), null]);
+    expect(applyDrop(s, { kind: "class", class: "warrior" }, { kind: "slot", index: 1 })).toBe(s);
+    expect(placeClass(s, 1, "warrior")).toBe(s);
+  });
+  test("a member dropped on an empty slot moves, on a filled one swaps", () => {
+    const s: Slots = [slot("rogue", 2), null, slot("shaman", 3)];
+    expect(applyDrop(s, { kind: "slot", index: 0 }, { kind: "slot", index: 1 })).toEqual([null, slot("rogue", 2), slot("shaman", 3)]);
+    expect(applyDrop(s, { kind: "slot", index: 0 }, { kind: "slot", index: 2 })).toEqual([slot("shaman", 3), null, slot("rogue", 2)]);
+  });
+  test("a member dropped on the trash leaves the raid", () => {
+    const s: Slots = [slot("rogue", 2), slot("mage", 1)];
+    expect(applyDrop(s, { kind: "slot", index: 1 }, { kind: "trash" })).toEqual([slot("rogue", 2), null]);
+    expect(removeSlot(s, 0)).toEqual([null, slot("mage", 1)]);
+  });
+  test("drops that change nothing return the same array", () => {
+    const s: Slots = [slot("mage"), null];
+    expect(applyDrop(s, { kind: "class", class: "mage" }, { kind: "trash" })).toBe(s);
+    expect(applyDrop(s, { kind: "slot", index: 1 }, { kind: "trash" })).toBe(s);
+    expect(applyDrop(s, { kind: "slot", index: 0 }, { kind: "slot", index: 0 })).toBe(s);
+    expect(applyDrop(s, { kind: "class", class: "druid" }, { kind: "slot", index: 5 })).toBe(s);
+    expect(removeSlot(s, -1)).toBe(s);
+  });
+  test("a raid built by drops round-trips through the share code", () => {
+    let s = emptySlots(40);
+    s = applyDrop(s, { kind: "class", class: "warrior" }, { kind: "slot", index: 0 });
+    s = applyDrop(s, { kind: "class", class: "priest" }, { kind: "slot", index: 39 });
+    s = applyDrop(s, { kind: "slot", index: 0 }, { kind: "slot", index: 21 });
+    const back = decodeRaid(encodeRaid({ size: 40, build: "1.0.1", slots: s }));
+    expect(back).toMatchObject({ ok: true, value: { slots: s } });
+    expect(s[21]).toEqual(slot("warrior"));
   });
 });
 

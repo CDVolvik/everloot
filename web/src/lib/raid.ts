@@ -36,18 +36,53 @@ export function groupsOf(slots: Slots): Slots[] {
   return groups;
 }
 
+const inSlots = (slots: Slots, i: number) => Number.isInteger(i) && i >= 0 && i < slots.length;
+
 /**
  * Swap two slots, or move a member into an empty one. Out-of-range indexes, the same index and two
  * empty slots return the array unchanged (same reference), so callers can skip the history entry.
  */
 export function swapSlots(slots: Slots, from: number, to: number): Slots {
-  const inRange = (i: number) => Number.isInteger(i) && i >= 0 && i < slots.length;
-  if (!inRange(from) || !inRange(to) || from === to) return slots;
+  if (!inSlots(slots, from) || !inSlots(slots, to) || from === to) return slots;
   if (!slots[from] && !slots[to]) return slots;
   const next = [...slots];
   next[from] = slots[to];
   next[to] = slots[from];
   return next;
+}
+
+/**
+ * Put a class in a slot, replacing whoever is there. The same class keeps its tree; another class starts
+ * on any tree. Returns the array unchanged (same reference) when nothing changes.
+ */
+export function placeClass(slots: Slots, index: number, c: ClassName): Slots {
+  if (!inSlots(slots, index) || slots[index]?.class === c) return slots;
+  const next = [...slots];
+  next[index] = { class: c, tree: 0 };
+  return next;
+}
+
+/** Empty a slot. Returns the array unchanged (same reference) when it is already empty or out of range. */
+export function removeSlot(slots: Slots, index: number): Slots {
+  if (!inSlots(slots, index) || !slots[index]) return slots;
+  const next = [...slots];
+  next[index] = null;
+  return next;
+}
+
+/** What is being dragged: a class from the palette, or the member in a slot. */
+export type DragSource = { kind: "class"; class: ClassName } | { kind: "slot"; index: number };
+/** Where it lands: a slot, or the trash (anywhere off the groups). */
+export type DropTarget = { kind: "slot"; index: number } | { kind: "trash" };
+
+/**
+ * One drop, as a pure step: a class on a slot fills or replaces it, a member on another slot moves or
+ * swaps, a member on the trash leaves the raid. A class on the trash, or a drop that changes nothing,
+ * returns the array unchanged (same reference), so callers can skip the history entry.
+ */
+export function applyDrop(slots: Slots, source: DragSource, target: DropTarget): Slots {
+  if (source.kind === "class") return target.kind === "slot" ? placeClass(slots, target.index, source.class) : slots;
+  return target.kind === "slot" ? swapSlots(slots, source.index, target.index) : removeSlot(slots, source.index);
 }
 
 /* ---------- Roles ---------- */
