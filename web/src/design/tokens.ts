@@ -1,15 +1,30 @@
-// The site's colours, dark and light. The only place hex values live (besides icon.svg).
-// Tailwind reads them as CSS variables, so a class like `text-fg` follows the visitor's
-// colour scheme. Every text token passes 4.5:1 on canvas and panel (tokens.test.ts).
+// The site's colours, spacing, corners and widths. The only place hex values live (besides icon.svg).
+// Tailwind reads the colours as CSS variables. The site is dark-only: every visitor gets the dark
+// values. The light values are kept, and kept passing, so a light theme can return later by
+// emitting them under a selector of its own. Every text token passes 4.5:1 on canvas and panel
+// (tokens.test.ts).
 
 export type Mode = "dark" | "light";
+
+/** The mode every visitor sees. */
+export const SITE_MODE: Mode = "dark";
+
+/** One spacing scale, in px. Tailwind steps 1 2 3 4 6 8 12 18 (18 is added in tailwind.config.ts). */
+export const SPACE = [4, 8, 12, 16, 24, 32, 48, 72] as const;
+
+/** Corners: `rounded-card` for every card, table frame and panel; `rounded-control` for inputs,
+ *  icons and the tooltip frame; `rounded-full` for buttons, badges and pills. */
+export const RADIUS = { control: 6, card: 12 } as const;
+
+/** Two content widths: `reading` for documents, `wide` for data and tools (and the header and footer). */
+export const WIDTH = { reading: 768, wide: 1152 } as const;
 
 export const QUALITIES = ["poor", "common", "uncommon", "rare", "epic", "legendary"] as const;
 export const CLASSES = ["warrior", "paladin", "hunter", "rogue", "priest", "shaman", "mage", "warlock", "druid"] as const;
 
 export type TokenName =
   | "canvas" | "panel" | "line" | "edge" | "fg" | "fg-2" | "muted" | "accent" | "danger" | "warning"
-  | "tooltip" | "tooltip-border" | "tooltip-inner" | "grad-from" | "grad-to"
+  | "tooltip" | "tooltip-border" | "tooltip-inner" | "accent-hover"
   | `q-${(typeof QUALITIES)[number]}` | `class-${(typeof CLASSES)[number]}` | "chat-whisper" | "chat-guild";
 
 // Tooltip frames stay dark in both modes, as in the game.
@@ -29,8 +44,8 @@ export const tokens: Record<Mode, Record<TokenName, string>> = {
     danger: "#FF6B6B",
     warning: "#F5B83D",
     ...tooltip,
-    "grad-from": "#1EFF00",
-    "grad-to": "#9CF03A",
+    // The primary button's fill on hover; its text is the canvas colour.
+    "accent-hover": "#B3F566",
     "q-poor": "#9D9D9D",
     "q-common": "#F2F4F8",
     "q-uncommon": "#1EFF00",
@@ -61,9 +76,7 @@ export const tokens: Record<Mode, Record<TokenName, string>> = {
     danger: "#C62828",
     warning: "#8A5A00",
     ...tooltip,
-    // The dark stops are about 1.3:1 on the light canvas; these keep the outline visible.
-    "grad-from": "#1A7A12",
-    "grad-to": "#2F7A0A",
+    "accent-hover": "#256207",
     "q-poor": "#6B6B6B",
     "q-common": "#12130F",
     "q-uncommon": "#1A7A12",

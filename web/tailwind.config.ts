@@ -1,12 +1,9 @@
 import type { Config } from "tailwindcss";
 import plugin from "tailwindcss/plugin";
-import { cssVariables, tokens, type TokenName } from "./src/design/tokens";
+import { cssVariables, RADIUS, SITE_MODE, tokens, WIDTH, type TokenName } from "./src/design/tokens";
 
-// Every token except the gradient stops, which only the primary pill's outline uses.
 const tokenColors = Object.fromEntries(
-  (Object.keys(tokens.dark) as TokenName[])
-    .filter((name) => name !== "grad-from" && name !== "grad-to")
-    .map((name) => [name, `rgb(var(--${name}) / <alpha-value>)`]),
+  (Object.keys(tokens.dark) as TokenName[]).map((name) => [name, `rgb(var(--${name}) / <alpha-value>)`]),
 );
 
 const config: Config = {
@@ -18,6 +15,10 @@ const config: Config = {
   theme: {
     extend: {
       colors: tokenColors,
+      maxWidth: { reading: `${WIDTH.reading}px`, wide: `${WIDTH.wide}px` },
+      borderRadius: { control: `${RADIUS.control}px`, card: `${RADIUS.card}px` },
+      // The 72 px step of the spacing scale; the others are Tailwind's own (1 2 3 4 6 8 12).
+      spacing: { 18: "4.5rem" },
       fontFamily: {
         // Geist for reading, Geist Mono for anything precise (variables set in src/app/fonts.ts).
         sans: ["var(--font-geist-sans)", "ui-sans-serif", "system-ui", "sans-serif"],
@@ -26,12 +27,12 @@ const config: Config = {
     },
   },
   plugins: [
-    // Dark is the default; light follows the system setting. Tooltip frames stay dark in both
-    // modes, as in the game, so they re-declare the dark variables for everything inside them.
+    // Dark-only: the system's light setting no longer switches the page to cream. A light theme
+    // would come back as one more selector here with cssVariables("light"). Tooltip frames stay
+    // dark in every mode, as in the game, so they re-declare the dark variables for their contents.
     plugin(({ addBase }) => {
       addBase({
-        ":root": cssVariables("dark"),
-        "@media (prefers-color-scheme: light)": { ":root": cssVariables("light") },
+        ":root": cssVariables(SITE_MODE),
         ".bg-tooltip": cssVariables("dark"),
       });
     }),
