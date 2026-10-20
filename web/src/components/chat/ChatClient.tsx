@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { answer, loadTools, NO_SOURCED_ANSWER, searchOnly, signedIn, type ChatProgress, type ToolDef } from "@/lib/chat/agent";
 import { CHAT_PROVIDERS, chatProvider, type ChatProviderKind } from "@/lib/chat/providers";
 import { loadProviders, loadThread, pickModel, removeProvider, saveProvider, saveThread, type ChatMessage, type SavedProvider } from "@/lib/chat/store";
+import { askPrefill, validCharacterId } from "@/lib/profiles";
+import type { AccountBuilds, BuildCharacter, SavedBuild } from "@/lib/saved-builds";
 
 const STARTERS = ["Who is Leeroy Jenkins?", "What drops the Bindings of the Windseeker?", "Where do I learn Enchanting past 225?", "What changed in the last build?"];
 const field = "w-full rounded-lg bg-canvas border border-edge px-3 py-2 text-fg placeholder:text-muted focus:border-accent";
@@ -34,6 +36,32 @@ export default function ChatClient({ savedBuilds = false }: { savedBuilds?: bool
   // localStorage only exists in the browser; read it after the first render.
   useEffect(() => { setProviders(loadProviders(localStorage)); setMessages(loadThread(localStorage)); setReady(true); }, []);
   useEffect(() => { if (ready) saveThread(localStorage, messages); }, [messages, ready]);
+  // From the home's Ask box: /chat?q=<question>&character=<id> fills the question box, with the character and its
+  // saved builds when the visitor is signed in. Nothing is sent until the player presses Send.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get("q") ?? "";
+    const characterId = params.get("character");
+    if (!q && !characterId) return;
+    let cancelled = false;
+    void (async () => {
+      let character: BuildCharacter | null = null;
+      let builds: SavedBuild[] = [];
+      if (savedBuilds && validCharacterId(characterId)) {
+        try {
+          const res = await fetch("/api/me/builds", { cache: "no-store" });
+          if (res.ok) {
+            const own = (await res.json()) as AccountBuilds;
+            character = own.characters.find((c) => c.id === characterId) ?? null;
+            builds = character ? own.builds.filter((b) => b.characterId === characterId) : [];
+          }
+        } catch { /* signed out or offline: the question alone */ }
+      }
+      const text = askPrefill(q, character, builds);
+      if (!cancelled && text && box.current && !box.current.value) { box.current.value = text; box.current.focus(); }
+    })();
+    return () => { cancelled = true; };
+  }, [savedBuilds]);
   useEffect(() => { const t = thread.current; if (t && t.scrollHeight - t.scrollTop - t.clientHeight < 80) t.scrollTop = t.scrollHeight; }, [messages, live]);
 
   const active = providers[0] ?? null;

@@ -2,14 +2,23 @@ import { createHash } from "node:crypto";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 const USER_ID = "00000000-0000-4000-8000-000000000001";
-const v2 = vi.hoisted(() => ({
-  enabled: true,
-  v1Token: undefined as string | undefined,
-  fake: {
-    handler: vi.fn(),
-    api: { getSession: vi.fn(), signOut: vi.fn() },
-  },
-}));
+const v2 = vi.hoisted(() => {
+  const deleteSession = vi.fn();
+  return {
+    enabled: true,
+    v1Token: undefined as string | undefined,
+    deleteSession,
+    fake: {
+      handler: vi.fn(),
+      api: { getSession: vi.fn(), signOut: vi.fn(), listDeviceSessions: vi.fn(), revokeDeviceSession: vi.fn(), setActiveSession: vi.fn() },
+      $context: Promise.resolve({
+        secret: "secret",
+        internalAdapter: { deleteSession },
+        authCookies: { sessionToken: { name: "everloot.session_token", attributes: { httpOnly: true, sameSite: "lax", path: "/", secure: false } } },
+      }),
+    },
+  };
+});
 vi.mock("@/lib/auth/auth", () => ({ authV2Enabled: () => v2.enabled, getAuth: () => v2.fake }));
 vi.mock("next/headers", () => ({
   headers: async () => new Headers({ cookie: "everloot.session_token=t" }),
@@ -25,6 +34,7 @@ beforeEach(() => {
   v2.enabled = true;
   v2.v1Token = undefined;
   v2.fake.handler.mockReset();
+  v2.deleteSession.mockReset();
   Object.values(v2.fake.api).forEach((fn) => fn.mockReset());
   vi.stubEnv("SUPABASE_URL", "https://example.supabase.co");
   vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "server-key");
@@ -150,6 +160,69 @@ test("v2 logout still signs out when the v1 session cannot be revoked", async ()
   expect(await res.json()).toEqual({ ok: true });
   expect(v2.fake.api.signOut).toHaveBeenCalledTimes(1);
   expect(res.headers.getSetCookie()).toContain("everloot_session=; Path=/; Max-Age=0; HttpOnly; SameSite=lax");
+});
+
+test("with account switching on, logout ends only this account and says whether another one took over", async () => {
+  vi.stubEnv("EVERLOOT_PROFILES", "1");
+  const ALT = "00000000-0000-4000-8000-000000000002";
+  v2.fake.api.getSession.mockResolvedValue({ user: { id: USER_ID, name: "Thrall#1" }, session: { token: "tok-me" } });
+  v2.fake.api.listDeviceSessions.mockResolvedValue([
+    { session: { token: "tok-me" }, user: { id: USER_ID, name: "Thrall#1" } },
+    { session: { token: "tok-alt" }, user: { id: ALT, name: "Jaina#2" } },
+  ]);
+  const headers = new Headers();
+  headers.append("set-cookie", "everloot.session_token=tok-alt.sig; Path=/");
+  v2.fake.api.revokeDeviceSession.mockResolvedValue(new Response(JSON.stringify({ status: true }), { headers }));
+  const send = () => logoutPOST(new Request("https://everloot.app/api/auth/logout", { method: "POST", headers: { origin: "https://everloot.app" } }));
+
+  const res = await send();
+  expect(await res.json()).toEqual({ ok: true, next: true });
+  expect(v2.fake.api.getSession.mock.calls[0][0].query).toEqual({ disableRefresh: true });
+  expect(v2.fake.api.revokeDeviceSession.mock.calls[0][0]).toMatchObject({ body: { sessionToken: "tok-me" }, asResponse: true });
+  expect(v2.fake.api.signOut).not.toHaveBeenCalled();
+  expect(res.headers.getSetCookie()).toContain("everloot.session_token=tok-alt.sig; Path=/");
+
+  // The last account on this browser: signed out for good.
+  v2.fake.api.listDeviceSessions.mockResolvedValue([{ session: { token: "tok-me" }, user: { id: USER_ID, name: "Thrall#1" } }]);
+  expect(await (await send()).json()).toEqual({ ok: true, next: false });
+
+  // A session with no multi-session cookie (a sixth sign-in, or one from before the plugin) ends alone: its row is
+  // deleted and its cookie expired, never Better Auth's sign-out, whose plugin hook ends every account.
+  v2.fake.api.revokeDeviceSession.mockResolvedValue(Response.json({ code: "INVALID_SESSION_TOKEN" }, { status: 401 }));
+  const alone = await send();
+  expect(await alone.json()).toEqual({ ok: true, next: false });
+  expect(v2.deleteSession).toHaveBeenCalledWith("tok-me");
+  expect(alone.headers.getSetCookie().some((c) => /^everloot\.session_token=; .*Max-Age=0/.test(c))).toBe(true);
+  expect(v2.fake.api.signOut).not.toHaveBeenCalled();
+
+  // ... and with other accounts here, the next one becomes current.
+  v2.deleteSession.mockClear();
+  v2.fake.api.listDeviceSessions.mockResolvedValue([
+    { session: { token: "tok-alt" }, user: { id: ALT, name: "Jaina#2" } },
+    { session: { token: "tok-3" }, user: { id: "00000000-0000-4000-8000-000000000003", name: "Rexxar#3" } },
+  ]);
+  const switched = new Headers();
+  switched.append("set-cookie", "everloot.session_token=tok-alt.sig; Path=/");
+  v2.fake.api.setActiveSession.mockResolvedValue(new Response(JSON.stringify({}), { headers: switched }));
+  const handedOver = await send();
+  expect(await handedOver.json()).toEqual({ ok: true, next: true });
+  expect(v2.deleteSession).toHaveBeenCalledWith("tok-me");
+  expect(v2.fake.api.setActiveSession.mock.calls[0][0]).toMatchObject({ body: { sessionToken: "tok-alt" } });
+  expect(handedOver.headers.getSetCookie()).toContain("everloot.session_token=tok-alt.sig; Path=/");
+  expect(v2.fake.api.signOut).not.toHaveBeenCalled();
+
+  // No session at all: nothing to revoke, the cookie is expired, the other accounts are left alone.
+  v2.fake.api.getSession.mockResolvedValue(null);
+  expect(await (await send()).json()).toEqual({ ok: true, next: false });
+  expect(v2.fake.api.signOut).not.toHaveBeenCalled();
+});
+
+test("with account switching off, logout signs out of every account on the browser as before", async () => {
+  v2.fake.api.signOut.mockResolvedValue(Response.json({ success: true }));
+  const res = await logoutPOST(new Request("https://everloot.app/api/auth/logout", { method: "POST", headers: { origin: "https://everloot.app" } }));
+  expect(await res.json()).toEqual({ ok: true });
+  expect(v2.fake.api.getSession).not.toHaveBeenCalled();
+  expect(v2.fake.api.revokeDeviceSession).not.toHaveBeenCalled();
 });
 
 test("v2 logout fails closed when sign-out errors", async () => {

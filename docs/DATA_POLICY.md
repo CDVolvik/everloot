@@ -529,7 +529,8 @@ player's own data, not game data and not an observation, and none of it is publi
   nothing the addon observed.
 - **Character labels are typed, not checked.** A label is a name, a class, an optional realm and an
   optional note that the player types. It is not looked up in the game, the census or the player
-  pages, and it is never shown to anyone else.
+  pages, and it is never shown to anyone else unless the player shows their characters on a public
+  profile (below).
 - **A shared link is public to anyone who has it.** Each build has a short link, `/b/<code>`, on by
   default. While it is on, anyone with the link sees the build's name, notes and talents, but not
   the character label. The owner's name shows only if the owner chooses to show it. The page is
@@ -540,3 +541,23 @@ player's own data, not game data and not an observation, and none of it is publi
 - **Deletion.** The owner deletes a build or a label on /me at any time. Deleting a label keeps its
   builds, with no character. Deleting the account (write to hello@everloot.app) deletes every
   saved build and label with it.
+
+## Profiles
+
+A signed-in player can set up a profile on /settings. Like saved builds, this is the player's own
+data, not game data and not an observation.
+
+- **What a profile holds.** A handle (3 to 24 letters, numbers and hyphens, unique), an optional
+  display name, an optional status (one emoji and up to 80 characters, with an optional time after
+  which it stops showing), a main character and the character the player is on now (both chosen
+  from their own character labels), and the public profile switch with what it shows. Nothing is
+  looked up in the game, and no picture is stored: the avatar is drawn from the name's initials.
+- **Private by default.** Until the player turns the public profile on, only they see any of it.
+  On, `/u/<handle>` shows the handle, the display name and only what the player ticks: characters
+  (name, class, realm), shared builds (their short links) and the status. It never shows the
+  BattleTag, the email, a label's note or a build that is not shared. It is indexed by search
+  engines only while it is public; off, unknown or without a handle, the address is a 404.
+- **Limits.** A handle changes at most 5 times a day. Reserved handles (admin, everloot, support
+  and a few more) cannot be taken.
+- **Deletion.** The player changes or clears any of it, or turns the public profile off, on
+  /settings at any time. Deleting the account (write to hello@everloot.app) deletes the profile.

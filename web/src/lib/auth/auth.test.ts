@@ -380,3 +380,46 @@ test("signInMethods offers email only with the Better Auth flag and a mail sende
   expect(signInMethods(emailEnv)).toEqual({ battlenet: true, email: false });
   expect(signInMethods({ EVERLOOT_AUTH_V2: "1", RESEND_API_KEY: "re_test" })).toEqual({ battlenet: false, email: false });
 });
+
+// The account switcher: Better Auth's multi-session plugin, as /api/me/accounts and /api/auth/logout use it.
+test("two accounts signed in on one browser: both are listed, either can be current, signing out one keeps the other", async () => {
+  const sent = stubResend();
+  const { auth } = emailAuth();
+  const thrall = { ...jaina, name: "Thrall", email: "thrall@example.com" };
+  for (const person of [jaina, thrall]) {
+    await post(auth, "/sign-up/email", person);
+    await auth.handler(new Request(sent.at(-1)!.text.match(/https:\/\/\S+/)?.[0] ?? ""));
+  }
+  // One browser: a cookie jar that keeps what each response sets.
+  const jar = new Map<string, string>();
+  const keep = (response: Response) => {
+    for (const cookie of response.headers.getSetCookie()) {
+      const [pair, ...attributes] = cookie.split(";");
+      const [name, value] = [pair.slice(0, pair.indexOf("=")), pair.slice(pair.indexOf("=") + 1)];
+      if (!value || attributes.some((a) => /max-age=0/i.test(a.trim()))) jar.delete(name); else jar.set(name, value);
+    }
+  };
+  const headers = () => new Headers({ cookie: [...jar].map(([k, v]) => `${k}=${v}`).join("; "), origin: "https://everloot.app" });
+  const signIn = async (person: typeof jaina) => keep(await auth.handler(new Request("https://everloot.app/api/auth/sign-in/email", {
+    method: "POST", headers: { "content-type": "application/json", origin: "https://everloot.app", cookie: headers().get("cookie") ?? "" },
+    body: JSON.stringify({ email: person.email, password: person.password }),
+  })));
+  await signIn(jaina);
+  await signIn(thrall);
+
+  const names = async () => (await auth.api.listDeviceSessions({ headers: headers() })).map((s) => s.user.name).sort();
+  const current = async () => (await auth.api.getSession({ headers: headers() }))?.user.name;
+  expect(await names()).toEqual(["Jaina", "Thrall"]);
+  expect(await current()).toBe("Thrall");
+
+  const jainaToken = (await auth.api.listDeviceSessions({ headers: headers() })).find((s) => s.user.name === "Jaina")!.session.token;
+  keep(await auth.api.setActiveSession({ headers: headers(), body: { sessionToken: jainaToken }, asResponse: true }));
+  expect(await current()).toBe("Jaina");
+
+  // Signing out of the current account only: Thrall becomes current and is still signed in.
+  const out = await auth.api.revokeDeviceSession({ headers: headers(), body: { sessionToken: jainaToken }, asResponse: true });
+  expect(out.ok).toBe(true);
+  keep(out);
+  expect(await current()).toBe("Thrall");
+  expect(await names()).toEqual(["Thrall"]);
+});

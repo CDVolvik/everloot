@@ -31,6 +31,9 @@ test("off, signed out or from another site, nothing is written", async () => {
   expect((await signedOut.json()).signIn).toBe("/sign-in?returnTo=%2Fme");
   auth.getUser.mockResolvedValue(USER);
   expect((await POST(call({ name: "Jaina", classSlug: "mage" }, "https://evil.example"))).status).toBe(403);
+  // A write with no Origin is refused too.
+  expect((await POST(new Request("https://everloot.app/api/me/characters", { method: "POST", body: JSON.stringify({ name: "Jaina", classSlug: "mage" }) }))).status).toBe(403);
+  expect((await DELETE(new Request(`https://everloot.app/api/me/characters/${CHARACTER_ID}`, { method: "DELETE" }), { params: Promise.resolve({ id: CHARACTER_ID }) })).status).toBe(403);
   expect(auth.authQuery).not.toHaveBeenCalled();
 });
 

@@ -121,11 +121,23 @@ export default function PrivacyPage() {
                 calculator while signed in, we store its share codes, the game build, the name
                 and notes you type, and the character you file it under. A character is only a
                 label you type: a name, a class, and a realm and note if you add them. We don&apos;t
-                check it against the game, and nobody else sees it. Each build has a short link,
+                check it against the game, and nobody else sees it, unless you show your characters
+                on a public profile. Each build has a short link,
                 on unless you turn it off. Anyone you give it to can see the build&apos;s name,
                 notes and talents, but not your character or your name, unless you choose to show
                 your name. Turning the link off or deleting the build stops it at once. You can
                 delete builds and characters on My builds. Deleting your account deletes them all.
+              </li>
+              <li id="profiles">
+                <strong>Profile (optional):</strong> on Settings you can choose a handle, a display
+                name, a status (an emoji and a short line, cleared when you say), a main character
+                and the character you are playing now. We store what you choose and nothing else.
+                Your profile is private: only you see it. If you turn on your public profile, anyone
+                can open it at its address and sees your handle, your display name, and only the
+                parts you tick: your characters (name, class and realm), your shared builds and your
+                status. It never shows your BattleTag, your email or a build you did not share, and
+                search engines index it only while it is public. Turning it off hides it at once.
+                Deleting your account deletes your profile with it.
               </li>
               <li>
                 <strong>Uploads:</strong> files you send on the upload page
@@ -289,6 +301,9 @@ export default function PrivacyPage() {
                 off, on My builds.
               </li>
               <li>
+                <strong>Your profile</strong> is changed, cleared or made private again on Settings.
+              </li>
+              <li>
                 <strong>Uploads</strong> you ask us to remove are deleted, and the
                 next rollup rebuild removes anything derived from them.
               </li>
@@ -303,6 +318,7 @@ export default function PrivacyPage() {
               <li><strong>Account email, name and password hash:</strong> until you ask us to delete your account. Unused confirmation and reset links expire after one hour.</li>
               <li><strong>API key usage counts:</strong> {USAGE_KEPT_DAYS} days. A revoked key and its counts: {REVOKED_KEPT_DAYS} days after revocation, or at once when you delete it.</li>
               <li><strong>Saved builds and characters:</strong> until you delete them or your account.</li>
+              <li><strong>Handle, display name, status and profile choices:</strong> until you change them or delete your account. A status with a clear-after time stops showing at that time.</li>
               <li><strong>Rate-limit hashes:</strong> a short time, long enough to enforce the limit, then discarded.</li>
               <li><strong>Uploads:</strong> until you ask us to remove them. They are the public database.</li>
               <li><strong>Census rows:</strong> as long as the upload they came in, and removed with it. They hold the character&apos;s hash, never its id, and a one-way hash of the address they came from, never the address. They are only ever published as counts.</li>

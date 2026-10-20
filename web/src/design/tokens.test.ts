@@ -98,7 +98,8 @@ test("the data-page scale is the density spec's", () => {
   expect(size.th).toEqual(["12px", { lineHeight: "16px", fontWeight: "600" }]);
   expect([size.cell[0], size.meta[0], size["cell-2"][0], size.control[0], size.tip[0]]).toEqual(["14px", "13px", "12px", "13px", "13px"]);
   expect(extend.height).toMatchObject({ row: "36px", "row-sm": "52px", th: "32px", control: "32px", "control-sm": "40px" });
-  expect(extend.inset).toEqual({ header: "64px" });
+  // The compact header (account shell spec, 2026-10-20): two thirds of the old 64 px.
+  expect(extend.inset).toEqual({ header: "44px" });
 });
 
 test("Tailwind exposes the tokens as variables", () => {

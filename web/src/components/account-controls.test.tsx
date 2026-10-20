@@ -51,12 +51,13 @@ describe("header account controls", () => {
     expect(signInLink()?.getAttribute("href")).toBe("/sign-in");
   });
 
-  it("links a signed-in visitor to My builds only with saved builds on", async () => {
+  // The text links moved into the avatar menu, and My builds is now Your builds there (account shell spec).
+  it("links a signed-in visitor to Your builds only with saved builds on", async () => {
     vi.stubGlobal("fetch", async () => Response.json({ user }));
     await act(async () => root.render(<Header />));
     expect(container.querySelector('a[href="/me"]')).toBeNull();
     await act(async () => root.render(<Header savedBuilds />));
-    expect(container.querySelector('a[href="/me"]')?.textContent).toBe("My builds");
+    expect(container.querySelector('#account-menu a[href="/me"]')?.textContent).toBe("Your builds");
   });
 
   it("signs an authenticated visitor out with POST and returns to sign-in", async () => {
@@ -108,6 +109,8 @@ describe("header account controls", () => {
     const pending = new Promise<Response>(resolve => { finish = resolve; });
     vi.stubGlobal("fetch", async (url: string) => {
       if (url === "/api/auth/me") return Response.json({ user });
+      // The avatar menu also asks for the player's shell; only logout attempts count here.
+      if (url === "/api/me/shell") return Response.json({ error: "Not found" }, { status: 404 });
       attempts++;
       return pending;
     });
