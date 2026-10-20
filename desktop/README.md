@@ -45,8 +45,8 @@ The window is a sidebar with one page per thing to manage:
 | Addon | Installed version against the latest `addon-v*` release, install or update in one click (the zip is checked against the release's `SHA256SUMS` before anything is written), the slot addons' state |
 | Changes | The site's change tracker feed: Blizzard posts, hotfixes and builds |
 | Log | Everything the engine did this session, with Pause |
-| Settings | Game folder, site, launch at login, start in tray, data folder, check for updates |
-| Site tools | The talent calculator, raid builder, database, auction prices, world map and lore archive, shown inside the window as the site itself. The view tells the site it is inside the app (an `EverlootDesktopApp/<version>` user-agent token), so the site can leave its ads out. Links elsewhere open in your browser |
+| Settings | Pinned at the bottom of the sidebar. What runs (upload, market prices, in-game `/ask`), the AI model keys (use, add, remove), the game folder, startup, the site address under Advanced, the data folder and the update check |
+| On everloot.app | Links to the site's database, talent calculator, raid builder and auction prices. They open in your browser (tagged `utm_source=desktop-app`), not inside the app; Chat answers what the database and lore archive would |
 
 The tray menu shows each job's last result, a reminder when a realm's last full scan is older
 than a day, the newer app release when there is one, and Upload now, Refresh prices now, Pause and Quit.
@@ -99,7 +99,7 @@ Set `EVERLOOT_DATA_DIR` to a scratch folder to keep a development run away from 
 | `src/main/backups.ts`, `providers.ts` | The dated copies of each account file and their restore; the picked provider's key file and its `config.json` entry |
 | `src/shared/providers.ts` | The provider presets the Chat page offers: base URLs, key shapes, the curated models and their data notes |
 | `src/main/window-state.ts`, `json-file.ts` | The window's remembered size and place; JSON files read with a byte order mark allowed |
-| `src/main/site-views.ts` | The embedded site tools (one browser view, kept on the site's origin) |
+| `src/shared/website.ts` | The site pages the sidebar links to, and their address with the source tag |
 | `src/main/settings.ts`, `game-folder.ts`, `updates.ts`, `external.ts` | Settings file, where the game is, the release check, the browser allow-list |
 | `src/preload.ts` | The only bridge the page can call (`window.everloot`) |
 | `src/renderer/` | The window: one page, no framework, the site's colours; `format.ts` holds the text helpers, tested without the DOM |

@@ -20,7 +20,6 @@ import { newestScans, readScanAges, staleScans, summarizeFiles } from "./inspect
 import { companionJobs } from "./jobs";
 import { listRealms, ownRealms } from "./market";
 import { loadSettings, mergeSettings, saveSettings } from "./settings";
-import { SITE_TOOLS, createSiteViews, siteToolPath } from "./site-views";
 import { createTray } from "./tray";
 import { checkForUpdates, fetchReleases, newestDesktopRelease } from "./updates";
 import { fitWindow, readWindowState, writeWindowState } from "./window-state";
@@ -55,7 +54,6 @@ if (!app.requestSingleInstanceLock()) {
   const jobs = companionJobs(data, () => settings);
   const engine = createEngine(jobs.deps);
   let win: BrowserWindow | null = null;
-  let site: ReturnType<typeof createSiteViews> | null = null;
   let tray: ReturnType<typeof createTray> | null = null;
   let quitting = false;
 
@@ -88,7 +86,7 @@ if (!app.requestSingleInstanceLock()) {
       };
     },
   }));
-  const appState = (): AppState => ({ version: app.getVersion(), platform: process.platform, dataFolder: data, notice: loaded.error, settings, engine: engine.snapshot(), siteTools: SITE_TOOLS, update, staleScans: staleScans(allScans()) });
+  const appState = (): AppState => ({ version: app.getVersion(), platform: process.platform, dataFolder: data, notice: loaded.error, settings, engine: engine.snapshot(), update, staleScans: staleScans(allScans()) });
   const broadcast = () => {
     const s = appState();
     win?.webContents.send("state", s);
@@ -166,7 +164,6 @@ if (!app.requestSingleInstanceLock()) {
       autoHideMenuBar: true,
       webPreferences: { preload: join(__dirname, "preload.cjs"), contextIsolation: true, nodeIntegration: false, sandbox: true },
     });
-    site = createSiteViews(win, () => settings.endpoint);
     win.loadFile(join(__dirname, "renderer", "index.html"));
     win.once("ready-to-show", () => { win?.show(); });
     // The size and place come back next time; written a moment after the last drag, and on close.
@@ -177,7 +174,7 @@ if (!app.requestSingleInstanceLock()) {
     win.on("move", rememberSoon);
     // Close keeps the app in the tray; Quit in the tray menu ends it.
     win.on("close", (e) => { if (saveTimer) clearTimeout(saveTimer); remember(); if (!quitting) { e.preventDefault(); win?.hide(); } });
-    win.on("closed", () => { site?.destroy(); site = null; win = null; });
+    win.on("closed", () => { win = null; });
     win.webContents.setWindowOpenHandler(({ url }) => { if (allowedExternal(url)) void shell.openExternal(url); return { action: "deny" }; });
     win.webContents.on("will-navigate", (e) => e.preventDefault());
   }
@@ -290,13 +287,6 @@ if (!app.requestSingleInstanceLock()) {
     return chat.useModel(kind as ProviderKind, model.slice(0, 200));
   });
 
-  ipcMain.handle("siteShow", (_e, id: unknown) => {
-    const path = typeof id === "string" ? siteToolPath(id) : null;
-    return path && site ? site.show(path) : null;
-  });
-  ipcMain.handle("siteHide", () => site?.hide());
-  ipcMain.handle("siteBack", () => site?.back());
-  ipcMain.handle("siteReload", () => site?.reload());
 
   // A stray rejection or exception becomes a line on the Log page instead of Electron's dialog; the jobs keep running.
   // Logging re-runs the engine listeners (broadcast, tray); if the error came from one of them, the handler must not throw too.

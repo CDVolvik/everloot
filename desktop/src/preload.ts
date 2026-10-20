@@ -32,10 +32,6 @@ const api: EverlootApi = {
   chatSetProvider: (choice: ProviderChoice) => ipcRenderer.invoke("chatSetProvider", choice),
   chatRemoveProvider: (kind?: ProviderKind) => ipcRenderer.invoke("chatRemoveProvider", kind),
   chatUseModel: (kind: ProviderKind, model: string) => ipcRenderer.invoke("chatUseModel", kind, model),
-  siteShow: (id: string) => ipcRenderer.invoke("siteShow", id),
-  siteHide: () => ipcRenderer.invoke("siteHide"),
-  siteBack: () => ipcRenderer.invoke("siteBack"),
-  siteReload: () => ipcRenderer.invoke("siteReload"),
   onNavigate: (listener) => {
     const handler = (_event: unknown, page: string) => listener(page);
     ipcRenderer.on("navigate", handler);
