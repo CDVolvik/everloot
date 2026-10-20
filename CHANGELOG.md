@@ -17,6 +17,12 @@ build that has a zip in the repository. Earlier builds have none.
   sign-in methods and API keys. Under `EVERLOOT_AUTH_V2`, with `RESEND_API_KEY` and `EMAIL_FROM` set,
   anyone can make an account with an email and password; the email has to be confirmed before the first
   sign-in. Without them Battle.net stays the only sign-in. The header's Sign in now opens `/sign-in`.
+- Site: embeddable tooltips. Any site can load `https://everloot.app/tooltips.js` so links to Everloot item, NPC, quest and object pages show a hover card (keyboard, touch, no cookies, no tracking), fed by the cached `GET /api/tooltip/<type>/<id>`; see `/connect#tooltips`.
+- Site: the world map is now a Leaflet map that fills the screen: click a zone to zoom to it, search for a zone or NPC, flight masters and flight paths from the game files, coordinates on hover with a copyable `/way` line, a bottom card for a tapped pin, and an address that keeps your view; `/map?zone=<id>` opens that zone.
+- One search on everloot.app: the header box and `/search` find items, NPCs, quests, zones, lore pages and
+  tools by name or id, grouped by type with an exact id or name first. Drop, reward, giver and vendor lists
+  show names and icons instead of "Item 1234", NPC, item and quest pages show a Lore section when the lore
+  archive has a page of the same name, and those lore pages link back to the database.
 - Addon: `/everloot price <item>` prints an item's price in chat, anywhere in the world: a shift-clicked
   link, an item id, or the name of an item the client has seen. It shows the same lines as the tooltip (community
   market value, minimum, historical, units up, reporters, how fresh the file is, and your own last scan) and

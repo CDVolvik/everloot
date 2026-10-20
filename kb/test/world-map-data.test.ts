@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
-import { assignmentRect, buildWorldMapData, WorldMapData, WORLD_MAP_SCHEMA } from "../src/world-map-data.js";
+import { assignmentRect, buildWorldMapData, thinLine, WorldMapData, WORLD_MAP_SCHEMA } from "../src/world-map-data.js";
 
 // Synthetic rows in the shape of the client tables (column names from WoWDBDefs). The numbers are made up.
 type Row = Record<string, unknown>;
@@ -69,7 +69,7 @@ describe("map data from client tables", () => {
 
   test("zones that are not on a continent, battlegrounds and later ids are left out, and the hold-back is reported", () => {
     expect(data.zones.map((z) => z.uiMapId)).toEqual([1411, 1429]);
-    expect(data.warnings).toEqual(["1 zone(s) with later UiMap ids are held back as possibly unreleased"]);
+    expect(data.warnings).toEqual(["1 zone(s) with later UiMap ids are held back as possibly unreleased", "no flight tables in the snapshot: no flight masters or flight lines"]);
     // The held-back zone is kept apart, with its rectangle, for the spoiler switch.
     expect(data.heldBackZones).toHaveLength(1);
     expect(data.heldBackZones[0]!.uiMapId).toBeGreaterThan(1458);
@@ -105,6 +105,55 @@ describe("map data from client tables", () => {
   });
 });
 
+describe("flight masters and flight lines from the taxi tables", () => {
+  const node = (ID: number, Name_lang: string, ContinentID: number, Pos: number[]): Row => ({ ID, Name_lang, ContinentID, Pos });
+  const path = (ID: number, FromTaxiNode: number, ToTaxiNode: number): Row => ({ ID, FromTaxiNode, ToTaxiNode, Cost: 100 });
+  const point = (ID: number, PathID: number, NodeIndex: number, x: number, y: number): Row => ({ ID, PathID, NodeIndex, Loc: [x, y, 50] });
+  const taxi: typeof tables = {
+    ...tables,
+    TaxiNodes: rows([
+      node(2, "Stormwind, Elwynn", 0, [-8832.77, 478.62, 109]),
+      node(4, "Sentinel Hill, Westfall", 0, [-10628.89, 1036.68, 34]),
+      node(5, "Generic, World target", 0, [-8644, 433, 59]),
+      node(6, "Southshore Ferry, Hillsbrad", 0, [-700, -500, 1]),
+      node(7, "Programmer Isle", 0, [16391, 16341, 69]),
+      node(8, "Durotar Post", 30, [0, 0, 0]),
+      node(9, "Unlinked, Elwynn", 0, [-9000, 400, 0]),
+    ]),
+    TaxiPath: rows([path(10, 4, 2), path(11, 2, 4), path(12, 2, 5), path(13, 6, 2), path(14, 8, 2)]),
+    TaxiPathNode: rows([
+      point(1, 10, 0, -10628, 1036), point(2, 10, 2, -9700.4, 700), point(3, 10, 1, -10100, 900.6), point(4, 10, 3, -8832, 478),
+      point(5, 11, 0, -8832, 478), point(6, 11, 1, -10628, 1036),
+      point(7, 12, 0, -8832, 478), point(8, 12, 1, -8644, 433),
+    ]),
+  };
+  const flights = buildWorldMapData((t) => taxi[t], source);
+
+  test("a flight master is a taxi node a flight starts or ends at; stand-ins, ferries, test rows and other maps are left out", () => {
+    expect(flights.flightNodes.map((n) => n.name)).toEqual(["Stormwind, Elwynn", "Sentinel Hill, Westfall"]);
+    expect(flights.flightNodes[0]).toEqual({ id: 2, name: "Stormwind, Elwynn", continentId: 0, worldX: -8832.8, worldY: 478.6 });
+  });
+
+  test("a pair of nodes has one line, from the lower path id, through its points in order", () => {
+    expect(flights.flightPaths).toHaveLength(1);
+    const line = flights.flightPaths[0]!;
+    expect([line.from, line.to, line.continentId]).toEqual([4, 2, 0]);
+    expect(line.points[0]).toEqual([-10628, 1036]);
+    expect(line.points[line.points.length - 1]).toEqual([-8832, 478]);
+  });
+
+  test("a snapshot without the taxi tables has no flights and says so", () => {
+    expect(data.flightNodes).toEqual([]);
+    expect(data.flightPaths).toEqual([]);
+  });
+
+  test("thinning keeps the ends and the corners, and drops points on the line", () => {
+    expect(thinLine([[0, 0], [10, 0], [20, 0], [30, 0]], 5)).toEqual([[0, 0], [30, 0]]);
+    expect(thinLine([[0, 0], [10, 0], [20, 0], [20, 30]], 5)).toEqual([[0, 0], [20, 0], [20, 30]]);
+    expect(thinLine([[1, 1], [2, 2]], 5)).toEqual([[1, 1], [2, 2]]);
+  });
+});
+
 describe("the committed map data", () => {
   const committed = WorldMapData.parse(JSON.parse(readFileSync(join(import.meta.dirname, "..", "..", "web", "src", "data", "game-data", "map.json"), "utf8")));
 
@@ -112,13 +161,23 @@ describe("the committed map data", () => {
     expect(committed.schema).toBe(WORLD_MAP_SCHEMA);
     expect(committed.source).toMatchObject({ product: "wow_classic_beta", status: "found in game files, unconfirmed", licence: "Blizzard game data, not under our licence" });
     expect(committed.source.buildId).toBeGreaterThan(70000);
-    expect(committed.source.tables.map((t) => t.table).sort()).toEqual(["Map", "UiMap", "UiMapAssignment"]);
+    expect(committed.source.tables.map((t) => t.table).sort()).toEqual(["Map", "TaxiNodes", "TaxiPath", "TaxiPathNode", "UiMap", "UiMapAssignment"]);
   });
 
   test("carries no third-party data: only the fields the page uses, and no unused-map placeholders", () => {
     expect(committed.entrances.length).toBeGreaterThan(15);
     expect(committed.entrances.some((e) => /unused/i.test(e.name))).toBe(false);
     expect(Object.keys(committed.zones[0]).sort()).toEqual(["bounds", "continentId", "name", "uiMapId"]);
+  });
+
+  test("flight masters and lines are there, on the continents, and every line joins two masters", () => {
+    expect(committed.flightNodes.length).toBeGreaterThan(40);
+    const ids = new Set(committed.flightNodes.map((n) => n.id));
+    for (const p of committed.flightPaths) {
+      expect(ids.has(p.from) && ids.has(p.to), `${p.from}-${p.to}`).toBe(true);
+      expect(p.points.length).toBeGreaterThanOrEqual(2);
+    }
+    expect(committed.flightNodes.some((n) => /^(generic|transport|quest path)/i.test(n.name))).toBe(false);
   });
 
   test("every entrance and zone lies inside its continent", () => {

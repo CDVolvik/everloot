@@ -7,6 +7,9 @@ import { npcPage, stockLabel, vendorPage } from "../../../../../../kb/src/world-
 import { loadWorldFacts } from "@/lib/rollup-compute";
 import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
 import { pinLink } from "@/lib/world-map";
+import { loadItemFacts } from "@/lib/rollup-compute";
+import { itemNames, npcNames } from "@/lib/names";
+import EntityLink from "@/components/EntityLink";
 import { loadItemTips, loadSiteAssets } from "@/lib/game-assets";
 import ItemTip from "@/components/game/ItemTip";
 import GameCredit from "@/components/game/GameCredit";
@@ -47,12 +50,15 @@ export default async function VendorPage(props: { params: Promise<{ id: string }
   });
   const assets = await loadSiteAssets();
   const tips = await loadItemTips(assets, facts.unreachable ? [] : page.offers.map((o) => o.itemId));
+  const itemFacts = facts.unreachable || page.offers.length === 0 ? null : await loadItemFacts();
+  const items = itemFacts && !itemFacts.unreachable ? itemNames(itemFacts) : new Map<number, string>();
+  const vendorName = facts.unreachable ? undefined : npcNames(facts).get(page.vendorNpcId);
 
   return (
     <article className="space-y-8 max-w-4xl">
       <header className="space-y-3">
         <p className="font-mono text-xs text-muted">WoW: Forever · vendor</p>
-        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">Vendor NPC {page.vendorNpcId}</h1>
+        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">{vendorName ? `${vendorName} (vendor)` : `Vendor NPC ${page.vendorNpcId}`}</h1>
         <p className="text-sm text-muted">An item is listed when 3 installs agree on that item and its copper price.</p>
       </header>
 
@@ -76,7 +82,7 @@ export default async function VendorPage(props: { params: Promise<{ id: string }
                 <tr key={`${offer.itemId}-${offer.priceCopper}`} className="border-t border-line bg-panel text-fg">
                   <td className="px-4 py-3">
                     <ItemTip tip={tips.get(offer.itemId)}>
-                      <Link href={`/database/items/${offer.itemId}`} className="text-accent hover:underline underline-offset-4">Item {offer.itemId}</Link>
+                      <EntityLink kind="item" id={offer.itemId} name={items.get(offer.itemId) ?? tips.get(offer.itemId)?.name} />
                     </ItemTip>
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums">{formatCopper(offer.priceCopper)}</td>
@@ -90,7 +96,7 @@ export default async function VendorPage(props: { params: Promise<{ id: string }
       )}
 
       <p className="text-sm text-muted">
-        <Link href={`/database/npcs/${page.vendorNpcId}`} className="text-accent hover:underline underline-offset-4">NPC {page.vendorNpcId}</Link>
+        <Link href={`/database/npcs/${page.vendorNpcId}`} className="text-accent hover:underline underline-offset-4">{vendorName ?? `NPC ${page.vendorNpcId}`}</Link>
         {places.map((place) => (
           <span key={place.href}>{" · "}<Link href={place.href} className="text-accent hover:underline underline-offset-4">Show on the map ({place.label})</Link></span>
         ))}

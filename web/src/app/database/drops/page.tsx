@@ -5,6 +5,8 @@ import { computeRollups } from "@/lib/rollup-compute";
 import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
 import { dataAgeLabel } from "@/lib/data-age";
 import { loadItemTips, loadSiteAssets } from "@/lib/game-assets";
+import { loadNames } from "@/lib/names";
+import EntityLink from "@/components/EntityLink";
 import ItemTip from "@/components/game/ItemTip";
 import GameCredit from "@/components/game/GameCredit";
 
@@ -20,6 +22,11 @@ export default async function DropsPage() {
   // Game icons and tooltips, only when the asset URL is set and the upload has the items.
   const assets = await loadSiteAssets();
   const tips = await loadItemTips(assets, live.map((r) => r.itemId));
+  const names = await loadNames();
+  const source = (r: { sourceNpcId?: number; sourceObjectId?: number }) =>
+    r.sourceNpcId !== undefined
+      ? <EntityLink kind="npc" id={r.sourceNpcId} name={names.npcs.get(r.sourceNpcId)} />
+      : <EntityLink kind="object" id={r.sourceObjectId!} />;
   return (
     <article className="space-y-8 max-w-4xl">
       <header className="space-y-3">
@@ -65,14 +72,10 @@ export default async function DropsPage() {
                 <tr key={`${r.sourceNpcId ?? r.sourceObjectId}-${r.itemId}`} className="border-t border-line bg-panel text-fg">
                   <td className="px-4 py-3">
                     <ItemTip tip={tips.get(r.itemId)}>
-                      <Link href={`/database/items/${r.itemId}`} className="text-accent hover:underline underline-offset-4">
-                        Item #{r.itemId}
-                      </Link>
+                      <EntityLink kind="item" id={r.itemId} name={names.items.get(r.itemId) ?? tips.get(r.itemId)?.name} />
                     </ItemTip>
                   </td>
-                  <td className="px-4 py-3">
-                    {r.sourceNpcId !== undefined ? `NPC #${r.sourceNpcId}` : `Object #${r.sourceObjectId}`}
-                  </td>
+                  <td className="px-4 py-3">{source(r)}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{r.kills}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{r.drops}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{`${(r.rate * 100).toFixed(1)}%`}</td>
@@ -82,9 +85,7 @@ export default async function DropsPage() {
               {zeros.map((z) => (
                 <tr key={`zero-${z.sourceNpcId ?? "o"}-${z.sourceObjectId ?? "n"}`} className="border-t border-line bg-panel text-fg">
                   <td className="px-4 py-3">No items observed</td>
-                  <td className="px-4 py-3">
-                    {z.sourceNpcId !== undefined ? `NPC #${z.sourceNpcId}` : `Object #${z.sourceObjectId}`}
-                  </td>
+                  <td className="px-4 py-3">{source(z)}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{z.kills}</td>
                   <td className="px-4 py-3 text-right tabular-nums">0</td>
                   <td className="px-4 py-3 text-right tabular-nums">0 observed</td>

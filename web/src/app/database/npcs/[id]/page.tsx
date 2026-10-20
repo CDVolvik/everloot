@@ -7,6 +7,13 @@ import { npcPage } from "../../../../../../kb/src/world-pages";
 import { computeRollups, loadWorldFacts } from "@/lib/rollup-compute";
 import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
 import { pinLink } from "@/lib/world-map";
+import { loadItemFacts } from "@/lib/rollup-compute";
+import { itemNames } from "@/lib/names";
+import { loreForEntity } from "@/lib/lore";
+import { loadItemTips, loadSiteAssets } from "@/lib/game-assets";
+import EntityLink from "@/components/EntityLink";
+import GameCredit from "@/components/game/GameCredit";
+import LoreSection from "@/components/LoreSection";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +39,12 @@ export default async function NpcPage(props: { params: Promise<{ id: string }> }
   const title = unreachable ? `NPC ${page.npcId}` : page.name ?? `NPC ${page.npcId}`;
   const zero = rollup.measuredZeros.find((row) => row.public && row.sourceNpcId === npcId);
   const dropped = rollup.rates.filter((row) => row.public && row.sourceNpcId === npcId);
+  // Item names (and icons, when the game files have them) for the drop list; an item nobody named stays "Item N".
+  const itemFacts = unreachable || dropped.length === 0 ? null : await loadItemFacts();
+  const names = itemFacts && !itemFacts.unreachable ? itemNames(itemFacts) : new Map<number, string>();
+  const assets = dropped.length > 0 ? await loadSiteAssets() : null;
+  const tips = await loadItemTips(assets, dropped.map((row) => row.itemId));
+  const lore = !unreachable && page.name ? loreForEntity("npc", page.name) : null;
 
   return (
     <article className="space-y-8 max-w-4xl">
@@ -58,8 +71,8 @@ export default async function NpcPage(props: { params: Promise<{ id: string }> }
           <ul className="text-sm text-fg space-y-1">
             {dropped.map((row) => (
               <li key={row.itemId}>
-                <Link href={`/database/items/${row.itemId}`} className="text-accent hover:underline underline-offset-4">Item {row.itemId}</Link>
-                {" "}· {row.drops} item observations in {row.kills} loot windows · {row.reporters} install IDs
+                <EntityLink kind="item" id={row.itemId} name={names.get(row.itemId) ?? tips.get(row.itemId)?.name} icon={tips.get(row.itemId)?.icon} />
+                {" "}·{row.drops} item observations in {row.kills} loot windows · {row.reporters} install IDs
               </li>
             ))}
           </ul>
@@ -68,6 +81,8 @@ export default async function NpcPage(props: { params: Promise<{ id: string }> }
       )}
 
       <p className="text-sm text-muted">Loot windows are observations, not verified kills. Distinct install IDs do not prove independent players.</p>
+
+      <LoreSection match={lore} />
 
       {unreachable ? null : (
       <section className="space-y-2">
@@ -90,6 +105,7 @@ export default async function NpcPage(props: { params: Promise<{ id: string }> }
       <p className="text-sm text-muted">
         <Link href="/database/npcs" className="text-accent hover:underline underline-offset-4">NPC lookup</Link>
       </p>
+      {assets && tips.size > 0 && <GameCredit version={assets.version} label={assets.label} />}
       {!unreachable && (page.name !== null || dropped.length > 0 || zero !== undefined) && <AdSlot slot="inContent" />}
     </article>
   );
