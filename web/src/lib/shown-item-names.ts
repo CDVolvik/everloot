@@ -15,10 +15,22 @@ export interface ShownNames {
   matched: ItemNames | null;
   /** Whether an item has a name from either: the share a category needs before it is indexed. */
   named: { has(id: number): boolean };
+  /**
+   * Whether a page may show an item's game file tooltip (icon, item level, required level, binding, and the rest):
+   * players reported it (an agreed name or a public drop, as its page counts them), or its name shows under the
+   * item name rule (docs/DATA_POLICY.md). Any other id may be unreleased content.
+   */
+  showsTip(id: number): boolean;
 }
 
 export async function loadShownNames(): Promise<ShownNames> {
   const [facts, matched] = await Promise.all([loadItemFacts(), loadItemNames(CLIENT_LAYER.build.version)]);
   const agreed = facts.unreachable ? new Map<number, string>() : agreedItemNames(facts);
-  return { facts, agreed, matched, named: { has: (id) => agreed.has(id) || Boolean(matched?.names.has(id)) } };
+  // The same test as itemPage's name, drops and pins (pins come only with a drop), in one pass.
+  const dropped = new Set(facts.unreachable ? [] : facts.rates.filter((r) => r.public).map((r) => r.itemId));
+  return {
+    facts, agreed, matched,
+    named: { has: (id) => agreed.has(id) || Boolean(matched?.names.has(id)) },
+    showsTip: (id) => agreed.has(id) || dropped.has(id) || Boolean(matched?.names.has(id)),
+  };
 }
