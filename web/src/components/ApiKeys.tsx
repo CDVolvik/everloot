@@ -13,7 +13,7 @@ type State =
 const button = "inline-flex items-center min-h-11 px-3 rounded-lg border border-line text-sm text-fg hover:text-accent disabled:opacity-60";
 const day = (iso: string | null) => (iso ? iso.slice(0, 10) : "never");
 
-/** The signed-in player's keys on /connect: make one, see when each was last used, revoke one, delete a revoked one. */
+/** The signed-in player's keys on /account and /docs/api/keys: make one, see when each was last used, revoke one, delete a revoked one. */
 export default function ApiKeys() {
   const [state, setState] = useState<State>({ status: "loading" });
   const [label, setLabel] = useState("");
@@ -69,7 +69,7 @@ export default function ApiKeys() {
   if (state.status === "off") return <p className="text-sm text-muted">Keys are not switched on yet. Until they are, every endpoint works without one.</p>;
   if (state.status === "error") return <p role="alert" className="text-sm text-fg">{state.message}</p>;
   if (state.status === "signed-out") {
-    return <p className="text-fg-2"><a href="/api/auth/bnet" className="text-accent hover:underline underline-offset-4">Sign in with Battle.net</a> to make a key.</p>;
+    return <p className="text-fg-2"><a href="/sign-in" className="text-accent hover:underline underline-offset-4">Sign in</a> to make a key.</p>;
   }
   const live = state.keys.filter((k) => !k.revoked_at);
   return (

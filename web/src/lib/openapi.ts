@@ -4,14 +4,14 @@ import { z } from "zod";
 /**
  * The OpenAPI 3.1 description of everloot.app's JSON API, assembled from the protocol's route catalogue
  * and response schemas, so the document can never describe an endpoint the protocol does not. Served at
- * /api/openapi.json and linked from /connect. OpenAPI 3.1 schemas are JSON Schema 2020-12, which is what
+ * /api/openapi.json and linked from the docs. OpenAPI 3.1 schemas are JSON Schema 2020-12, which is what
  * zod emits, so the response shapes go in as they are.
  */
 
 const ACCESS_TEXT: Record<ApiRoute["access"], string> = {
   open: "Open: no key, no limit of its own.",
   "rate-limited": "Rate limited per IP address; no key.",
-  "key-or-rate-limited": "Open without a key within a per-IP limit; a free key (see /connect#keys) raises the limit and the page size once keys are on.",
+  "key-or-rate-limited": "Open without a key within a per-IP limit; a free key (see /docs/api/keys) raises the limit and the page size once keys are on.",
   cron: "Internal.",
 };
 
@@ -81,7 +81,7 @@ export function openApiDocument(): Json {
         `For answering questions, the MCP server at ${SITE}/mcp/public is the right tool; this API is for building datasets and tools.`,
       ].join(" "),
       termsOfService: TERMS_URL,
-      contact: { name: "Everloot", url: `${SITE}/connect`, email: "hello@everloot.app" },
+      contact: { name: "Everloot", url: `${SITE}/docs`, email: "hello@everloot.app" },
       license: { name: `${LICENCE} (data); AGPL-3.0-only (code)`, url: LICENCE_URL },
     },
     servers: [{ url: SITE }],
@@ -98,7 +98,7 @@ export function openApiDocument(): Json {
       securitySchemes: {
         apiKey: {
           type: "http", scheme: "bearer",
-          description: `A free key from ${SITE}/connect#keys, sent as Authorization: Bearer <key>. Only needed to copy in bulk once keys are switched on.`,
+          description: `A free key from ${SITE}/docs/api/keys, sent as Authorization: Bearer <key>. Only needed to copy in bulk once keys are switched on.`,
         },
       },
     },

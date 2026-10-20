@@ -24,7 +24,12 @@ upload, and named records only with that person's sharing choice.
 Full auction scans are not public records either. They feed market values only, and a value is
 published when three distinct reporters scanned the item. For that count, an upload containing a scan
 is stored with a keyed hash of the address it came from (never the address itself). The hash stays in
-private storage and is never published.
+private storage and is never published. A scan also records the scanning character's faction (Alliance
+or Horde) and which auction house it read (Alliance, Horde or neutral), so each house can have its own
+market values, published under the same three-reporter rule; no character, seller or buyer is recorded.
+
+The addon's gold-per-hour sessions (`/everloot gph`) are personal: they stay in your SavedVariables
+file, outside the records an upload reads, and are never sent to the site.
 
 Completion tracking (addon 0.3.3, off until `/everloot completion on`) follows the same split.
 Four catalog kinds (`achievement_catalog`, `reputation_catalog`, `title_catalog`,
@@ -70,8 +75,8 @@ launcher downloads from its public CDN, the same files every player receives, an
 builds field by field. The [source ledger](sources/LEDGER.md) lists the tables we read. Those
 snapshots and comparisons stay on the maintainer's machine. Encrypted blocks are skipped, never
 decrypted: no decryption keys are loaded. Nothing else read from the game files is in the dataset, the
-API or the MCP server; the client layer below is the one game-file layer they carry. On the site, only the talent catalog, the map layer, the raid buff table, the client layer, the build changes and
-the icons, tooltip text and frame art covered further down may appear.
+API or the MCP server; the client layer below is the one game-file layer they carry. On the site, only the talent catalog, the map layer, the raid buff table, the client layer, the build changes,
+the icons, tooltip text and frame art covered further down, and the item names covered further down may appear.
 
 Publishing the table data comes later, as a separate step. Once it ships, every entry from game
 files will:
@@ -87,8 +92,9 @@ files will:
   CC BY-SA data and not under our licence;
 - credit **WoWDBDefs**. The column names come from the
   [WoWDBDefs](https://github.com/wowdev/WoWDBDefs) table definitions by the WoWDBDefs contributors,
-  which are under CC BY-SA 4.0, so every page or file that shows them will name WoWDBDefs and link
-  its licence.
+  which are under CC BY-SA 4.0, so every file that shows them names WoWDBDefs and links its
+  licence. On the site, the credits section of `/methodology` (`/methodology#credits`) does, and
+  every page links to it from the footer.
 
 When players later see the same thing in the game, the entry will show both: found in the files
 and observed in play.
@@ -105,13 +111,17 @@ interface files, is a different thing and is covered by the second extension. Th
 - **Extracted by a maintainer, kept out of git.** A maintainer extracts them from the local game
   client and uploads them to Everloot's asset storage with a build-stamped manifest. They are
   never committed to the git repository.
-- **Stamped with the build** they came from, on the page and in the file name or manifest.
+- **Stamped with the build** they came from, in the file name or manifest and in the credits
+  section of `/methodology`.
 - **Still Blizzard's.** We do not relicense them. They sit outside our CC BY-SA 4.0 data and our
-  AGPL-3.0 code, and each page that shows them says so. The licence notes of every release file
-  that includes them say so too.
-- **Credited on every page that shows them**: "Icons, tooltip text and interface art are
+  AGPL-3.0 code, and the site says so on every page, in the footer credit line below. The licence
+  notes of every release file that includes them say so too.
+- **Credited site-wide**: every page's footer carries one line, "Game data and art © Blizzard
+  Entertainment · Everloot data CC BY-SA 4.0 · Item names from the Warcraft Wiki (CC BY-SA 4.0) ·
+  Credits", whose last part links to `/methodology#credits`. That section carries the full credit,
+  with the build: "Icons, tooltip text and interface art are
   © Blizzard Entertainment, Inc. Everloot is a fan project and is not affiliated with or
-  endorsed by Blizzard."
+  endorsed by Blizzard." Together they stand in for a credit line on each page.
 - **Pages only.** The data downloads, the API and the MCP server carry ids and facts, plus a link
   to the page where the icon and text are shown. They do not carry icon files, tooltip text or
   frame textures in bulk. If you want Blizzard's art in your own project, take it from the game
@@ -134,15 +144,17 @@ interface files, is a different thing and is covered by the second extension. Th
   quality, item level, required level, binding, slot, armour or weapon kind, weapon speed, stat kinds
   (not amounts), flavour text and sell price. Shown on a page only for an item that 3 installs have
   reported (a drop, a vendor offer, an auction scan), never in bulk and never for an id someone types
-  into a URL. The extracted facts cover every named item in the build, released or not, so they are
+  into a URL. The one exception is an item's name, quality and icon under the item name rule below. The extracted facts cover every named item in the build, released or not, so they are
   kept in private storage that only the site's server reads, never in the public asset bucket.
 - **Map pictures**: the game's own continent and zone map art from the map art tables, laid under
-  our zone outlines. A held-back zone's picture shows only with spoilers on, and so does a continent's
-  picture when that continent has a held-back zone, since it may be painted in.
+  our zone outlines. A held-back zone's picture shows only with spoilers on. A continent's own
+  picture always shows (decided 2026-10-19): it is the original world's parchment map, with no names
+  and no new land painted in.
 - **The `/database` pages** (decided 2026-10-18 by the maintainer): the icons of the spells an item is
   created by or used in (from the client layer's relations) beside those relations, and pet family
   icons (`CreatureFamily.IconFileID`) in the manifest. Item icons and names on these pages follow the
-  item tooltip rule above: only for items 3 installs reported, never in bulk and never for every id.
+  item tooltip rule above: only for items 3 installs reported, never in bulk and never for every id,
+  except where the item name rule below allows them.
 
 **Second extension: loading screens, race and faction emblems, spell tooltips and the game's logo.**
 Decided 2026-10-18. Carlos: "Approved next: (1) loading-screen art as page banners (zones, dungeons,
@@ -168,6 +180,52 @@ batch." The rules above also cover:
   banner itself; the game's name beside it is plain text. It is never used to suggest that Blizzard
   made, approves or supports Everloot. No logo in the files means no banner: Blizzard's marketing
   logos and art are still never used, not even as a stand-in.
+
+**Item names from the game files and the Warcraft Wiki.** Decided 2026-10-19 by Carlos: "Wiki match
+only". An item's name, quality and icon may be shown on the item page and the category lists before
+players confirm it, when the name in the game files of the current build (`ItemSparse`) and the item's
+page in the Warcraft Wiki dump of 2023-11-13 give the same name, apart from case, spacing and the kind
+of apostrophe. The wiki page predates WoW: Forever, so a match says the item is released content in
+another version of the game, not something Forever has yet to reveal. The game files cannot say that on
+their own: in build 1.60.1.70450, 19,219 of the 19,231 named items, new ones included, list the base game
+as their expansion (`ItemSparse.ExpansionID` 0), so the expansion is not used. The rules:
+
+- Each such name says where it comes from in a tooltip on the name, *Name from the Warcraft Wiki* (and in words for screen readers), and
+  the site-wide footer credits the Warcraft Wiki under CC BY-SA 4.0 beside Blizzard's credit, and
+  `/methodology#credits` names the Warcraft Wiki contributors. A name
+  3 installs agree on comes first, with the tooltip *Name confirmed by players*. No source label is printed beside a name.
+- For the lowest spoiler risk, only items below id 25,000, the original game's range, are named this
+  way (`SHOWN_MAX_ITEM_ID` in `kb/src/item-name-rule.ts`). Higher ids belong to later versions, such as
+  Wrath Classic's Scourge event. A name that reads like a placeholder or an internal entry is never
+  shown either: one starting with "Deprecated", "DEP", "[PH]", "PH ", "Test", "QA" or "Monster -", or
+  containing "UNUSED", "zzOLD" or "(old)", in any case, or starting with "OLD" in capitals ("Old
+  Greatsword" is a real item and shows).
+- Every other item keeps "Item N": a name only the game files give (it may be unreleased), a name only
+  the wiki gives (it may not be in Forever), an item whose two names differ, and a match the two rules
+  above hold back. A category page where
+  fewer than half the rows have a name stays out of search.
+- Pages only. The data downloads, the API and the MCP server carry no item names, as before; a test
+  checks that their code does not read them.
+- The names come from a ledger a maintainer builds with `npm run kb -- item-names`. It records every name
+  each source gives for each item id, mismatches and single-source names included, and it only grows: a
+  new build, dump or source adds to it and removes nothing. It holds every name in the build, released or
+  not, so it stays on the maintainer's machine like the snapshots. Only the matched names go to the
+  private storage the site's server reads, never to git or the public asset bucket.
+- The maintainer review is the pull request that sets or changes the rule or adds a source. The first
+  one (2026-10-19) listed the count per tier, a sample of the shown names, the highest item ids among
+  them and the mismatches. A file for a new build is checked the same way before it is uploaded.
+
+**Third extension: game icons and tooltip text in embeddable cards.** Decided 2026-10-19 (Carlos
+approved it with the site structure plan). The hover card any site can show through
+`https://everloot.app/tooltips.js` and `GET /api/tooltip/<type>/<id>` may carry one item's game icon
+and tooltip facts, the same ones its page shows:
+
+- **One item per request**, and only for an item its page would show them for (3 installs reported
+  it). Never in bulk, never for an id nobody reported.
+- **Labelled and credited in the card**: *found in game files, unconfirmed*, the build, and the
+  Blizzard credit above. The icon is a link to our asset storage, not a copy in the response.
+- **Same spoiler and takedown rules** as the pages. The downloads, the rest of the API and the MCP
+  server still carry no icons or tooltip text.
 
 **The talent catalog.** The talent calculator at `/tools/talents` uses our own catalog, read from
 the public client by a maintainer, not taken from any other site. The catalog is the trait node
@@ -217,11 +275,13 @@ They are facts: ids and the relation between them, with no Blizzard text and no 
 - Relations players see in the game (dropped by, sold by, reward from, located in) keep the
   three-install rule. Where both exist, a page shows both, each with its evidence.
 - Forever has no live build yet, so every entry comes from a pre-release build. Entries are not
-  marked one by one as spoilers: the layer holds ids and relations only, no names, text or art.
+  marked one by one as spoilers: the layer holds ids and relations only, no names, text or art. The
+  item names a page may show beside it follow the item name rule above and are not part of the layer.
 - How it sits with the item tooltip facts above: class, subclass, slot and quality are public for
   every item through this layer. The rest of an item's tooltip (name, item level, required level,
   binding, weapon speed, stat kinds, flavour text, sell price) and its icon stay in private storage
-  and appear only for items 3 installs reported, as the extension says.
+  and appear only for items 3 installs reported, as the extension says, or, for the name and icon,
+  under the item name rule above.
 
 **Build changes, beta builds included.** Decided 2026-10-18, the same way Wowhead and other
 datamining sites work: when Blizzard ships a new build, a reviewed pull request records what
@@ -241,16 +301,21 @@ Blizzard's version service reports.
   an excerpt of at most two sentences (300 characters) and a link to the original. The text is
   Blizzard's, so we never copy a post in full. A maintainer may add a one-line summary in our own
   words; nothing writes one automatically.
-- *Sources.* Forum posts come only from a short list of named Blizzard staff accounts, and only
-  from the WoW: Forever and WoW Classic categories. Bluesky posts come only from the verified
+- *Sources.* Forum posts come from the US and EU English WoW forums, only from the WoW: Forever and
+  WoW Classic categories, and only from Blizzard staff: people on each forum's published staff list
+  (`about.json`) or posts the forum itself marks as Blizzard's (its group tracker; the green MVP
+  groups are players and are left out). `kb/curated/blue-accounts.json` holds hand corrections.
+  Players' posts are read with a topic but never kept. Bluesky posts come only from the verified
   official World of Warcraft account, and only when they are about Forever or Classic. No
   third-party tracker is read or copied.
 - *Robots and manners.* The reader checks robots.txt before every run and uses public JSON only.
   Blizzard's forum `.rss` routes are disallowed by its robots.txt, so we never use them. It names
   itself (`Everloot/1.0`, with a contact address), never follows a redirect, and stops when a
   server answers 429 or a server error, honouring Retry-After.
-- *Polling cap.* At most once every 30 minutes, at most 3 pages of 30 items per source per run,
-  stopping at what it already saw. A source asked less than 25 minutes ago is skipped.
+- *Polling cap.* At most once every 30 minutes and at most 40 requests a run in all: the staff list
+  at most once a day, the Forever and Classic topic lists only back to what the last run saw, and
+  only topics that changed and carry a staff post. A source asked less than 25 minutes ago is
+  skipped. A one-off history import (`blue-backfill`) uses the same rules and pace with a larger budget.
 - *Build times.* A build's time on that page is when Everloot first saw it, not when Blizzard
   released it.
 
@@ -360,12 +425,12 @@ things are asked in return: credit it, and use a free key when you copy all of i
 - **Copying in bulk takes a free key.** Once the limits are switched on, the corpus API and the drop
   list answer a few requests an hour per address without a key, one page of records at a time. An
   IPv6 address counts by its /64 block. A free key, made on
-  [/connect](https://everloot.app/connect#keys) after signing in with Battle.net, raises the limits
+  [/docs/api/keys](https://everloot.app/docs/api/keys) after signing in with Battle.net, raises the limits
   far enough to copy everything. The allowance belongs to the account, across all its keys, and an
   account can make only a few keys a day, so new keys do not bring new allowances. Requests are
   counted per key, so we know who copies the data in bulk and can ask what they are building. Keys
   can be revoked or deleted by their owner at any time, and revoked by us when a key is used to
-  republish the data without credit. The exact numbers are on /connect.
+  republish the data without credit. The exact numbers are on /docs/api/keys.
 - **Pages are not limited.** Search engines and AI assistants may read and quote the site's pages.
   These limits apply only to the machine-readable endpoints.
 - **Not covered.** Game-file data and Blizzard's posts are Blizzard's, not ours; the credit line and
@@ -375,6 +440,6 @@ things are asked in return: credit it, and use a free key when you copy all of i
 characters, its label, its account, when it was made, last used and revoked, and a count of its
 requests per day and endpoint. Not what was asked. Daily counts are kept 90 days. A revoked key and
 its counts are deleted 30 days after it was revoked, or at once when its owner deletes it on
-/connect. Deleting an account (write to hello@everloot.app) deletes its keys and counts. Anonymous
+/account. Deleting an account (write to hello@everloot.app) deletes its keys and counts. Anonymous
 requests are counted per hour against a keyed hash of the address, which is deleted after about a
 day; the address itself is never stored.

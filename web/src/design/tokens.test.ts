@@ -79,14 +79,26 @@ test("the site is dark-only: no system setting switches it to the light values",
   expect(Object.keys(tokens.light)).toEqual(Object.keys(tokens.dark));
 });
 
-test("one spacing scale, one card radius, two content widths", () => {
+test("one spacing scale, one card radius, three content widths", () => {
   expect(SPACE).toEqual([4, 8, 12, 16, 24, 32, 48, 72]);
   expect(RADIUS).toEqual({ control: 6, card: 12 });
-  expect(WIDTH).toEqual({ reading: 768, wide: 1152 });
+  expect(WIDTH).toEqual({ reading: 768, wide: 1152, data: 1440 });
   const extend = config.theme!.extend!;
-  expect(extend.maxWidth).toEqual({ reading: "768px", wide: "1152px" });
+  expect(extend.maxWidth).toEqual({ reading: "768px", wide: "1152px", data: "1440px", tip: "320px" });
   expect(extend.borderRadius).toEqual({ control: "6px", card: "12px" });
   expect(extend.spacing).toEqual({ 18: "4.5rem" });
+});
+
+test("the data-page scale is the density spec's", () => {
+  const extend = config.theme!.extend!;
+  const size = extend.fontSize as Record<string, [string, Record<string, string>]>;
+  expect(size.title).toEqual(["28px", { lineHeight: "34px", fontWeight: "700", letterSpacing: "-0.01em" }]);
+  expect(size["title-sm"][0]).toBe("22px");
+  expect(size.h2).toEqual(["16px", { lineHeight: "24px", fontWeight: "600" }]);
+  expect(size.th).toEqual(["12px", { lineHeight: "16px", fontWeight: "600" }]);
+  expect([size.cell[0], size.meta[0], size["cell-2"][0], size.control[0], size.tip[0]]).toEqual(["14px", "13px", "12px", "13px", "13px"]);
+  expect(extend.height).toMatchObject({ row: "36px", "row-sm": "52px", th: "32px", control: "32px", "control-sm": "40px" });
+  expect(extend.inset).toEqual({ header: "64px" });
 });
 
 test("Tailwind exposes the tokens as variables", () => {

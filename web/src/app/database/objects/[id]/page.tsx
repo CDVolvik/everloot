@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { objectPage } from "../../../../../../kb/src/object-page";
+import { objectPage, type ObjectDrop } from "../../../../../../kb/src/object-page";
 import { formatMeasuredZero } from "../../../../../../kb/src/item-page";
 import { loadObjectFacts } from "@/lib/objects";
 import { pageMetadata } from "@/lib/seo";
-import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
+import { Container, DataTable, Facts, Tabs, TooltipFrame, type Column } from "@/components/ui";
+import type { Crumb } from "@/lib/jsonld";
+import { EmptyTab, EntityHeader, EntityTop, FREQUENCY, known, LINK, percent, Unreachable } from "../../entity";
 
 export const dynamic = "force-dynamic";
 
@@ -20,65 +22,57 @@ export async function generateMetadata(props: { params: Promise<{ id: string }> 
   };
 }
 
+const columns: Column<ObjectDrop>[] = [
+  { key: "item", header: "Item", cell: (d) => <Link href={`/database/items/${d.itemId}`} className={LINK}>{d.itemName ?? `Item ${d.itemId}`}</Link> },
+  { key: "windows", header: "Loot windows", numeric: true, cell: (d) => d.kills },
+  { key: "drops", header: "Drops", numeric: true, cell: (d) => d.drops },
+  { key: "rate", header: FREQUENCY, numeric: true, cell: (d) => percent(d.rate) },
+  { key: "installs", header: "Install IDs", numeric: true, cell: (d) => d.reporters },
+];
+
 export default async function ObjectPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   if (!/^[1-9]\d*$/.test(params.id)) notFound();
   const facts = await loadObjectFacts();
   const page = objectPage(Number(params.id), facts);
+  const title = `Object ${page.objectId}`;
+  const trail: Crumb[] = [
+    { name: "Home", path: "/" },
+    { name: "Database", path: "/database" },
+    { name: "Objects", path: "/database/objects" },
+    { name: title, path: `/database/objects/${page.objectId}` },
+  ];
+  const windows = page.zero?.kills ?? page.drops[0]?.kills;
 
   return (
-    <article className="space-y-8 max-w-4xl">
-      <header className="space-y-3">
-        <p className="font-mono text-xs text-muted">WoW: Forever · object</p>
-        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">Object {page.objectId}</h1>
-        <p className="text-sm text-muted">
-          {facts.unreachable ? STORAGE_UNREACHABLE : "A chest, herb, ore vein, fishing pool or other object players looted, known by the id in its GUID. Uploads carry no object names yet."}
-        </p>
-      </header>
-
-      {facts.unreachable ? null : (
-        <section className="space-y-2">
-          <h2 className="text-2xl text-fg">Drops</h2>
-          {page.zero ? (
-            <p className="text-sm text-fg">{formatMeasuredZero(page.zero.kills)} · {page.zero.reporters} install IDs.</p>
-          ) : page.drops.length === 0 ? (
-            <p className="text-sm text-fg-2">
-              {page.queued ? "Observed, not yet public: " : ""}Loot observations unrecorded. Public frequencies require source observations from 3 install IDs.
-            </p>
-          ) : (
-            <div className="overflow-x-auto rounded-xl border border-line">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-panel text-xs font-mono text-muted text-left">
-                    <th className="px-4 py-3">Item</th>
-                    <th className="px-4 py-3 text-right">Loot windows</th>
-                    <th className="px-4 py-3 text-right">Drops</th>
-                    <th className="px-4 py-3 text-right">Observed frequency</th>
-                    <th className="px-4 py-3 text-right">Install IDs</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {page.drops.map((d) => (
-                    <tr key={d.itemId} className="border-t border-line bg-panel text-fg">
-                      <td className="px-4 py-3"><Link href={`/database/items/${d.itemId}`} className="text-accent hover:underline underline-offset-4">{d.itemName ?? `Item ${d.itemId}`}</Link></td>
-                      <td className="px-4 py-3 text-right tabular-nums">{d.kills}</td>
-                      <td className="px-4 py-3 text-right tabular-nums">{d.drops}</td>
-                      <td className="px-4 py-3 text-right tabular-nums">{`${(d.rate * 100).toFixed(1)}%`}</td>
-                      <td className="px-4 py-3 text-right tabular-nums">{d.reporters}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+    <Container width="data">
+      <article>
+        <EntityHeader trail={trail} title={title} meta={["Object", "chest, herb, ore vein or fishing pool"]} />
+        <EntityTop
+          box={<TooltipFrame name={title} label={`${title}, as players saw it`} />}
+          facts={!facts.unreachable && (
+            <Facts
+              layout="list"
+              label={`${title}: quick facts`}
+              items={[
+                { label: "Loot windows", value: known(windows), numeric: true },
+                { label: "Items seen", value: known(page.zero ? "None" : page.drops.length || null), numeric: true },
+                { label: "Map position", value: "Not collected" },
+              ]}
+            />
           )}
-        </section>
-      )}
-
-      <p className="text-sm text-muted">Loot windows are observations, not a count of every time the object was opened. Distinct install IDs do not prove independent players. No map position yet: no upload gives an object a position.</p>
-
-      <p className="text-sm text-muted">
-        <Link href="/database/objects" className="text-accent hover:underline underline-offset-4">All objects</Link>
-      </p>
-    </article>
+        />
+        <Tabs
+          label={`${title}: relations`}
+          tabs={[{
+            id: "drops", label: "Drops", count: facts.unreachable ? undefined : page.drops.length,
+            panel: facts.unreachable ? <Unreachable />
+              : page.drops.length ? <DataTable caption={`What players looted from ${title}`} columns={columns} rows={page.drops} rowKey={(d) => String(d.itemId)} />
+              : page.zero ? <p className="py-3 text-meta text-fg">{formatMeasuredZero(page.zero.kills)} · {page.zero.reporters} install IDs.</p>
+              : <EmptyTab message={page.queued ? "Observed, not yet public: fewer than 3 installs so far." : "Nobody has looted this object in Forever yet."} />,
+          }]}
+        />
+      </article>
+    </Container>
   );
 }

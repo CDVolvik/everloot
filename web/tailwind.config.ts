@@ -1,10 +1,27 @@
 import type { Config } from "tailwindcss";
 import plugin from "tailwindcss/plugin";
-import { cssVariables, RADIUS, SITE_MODE, tokens, WIDTH, type TokenName } from "./src/design/tokens";
+import { cssVariables, DATA_SIZE, DATA_TYPE, RADIUS, SITE_MODE, tokens, WIDTH, type TokenName } from "./src/design/tokens";
 
 const tokenColors = Object.fromEntries(
   (Object.keys(tokens.dark) as TokenName[]).map((name) => [name, `rgb(var(--${name}) / <alpha-value>)`]),
 );
+
+const px = (n: number) => `${n}px`;
+// The data-page type: `text-title`, `text-meta`, `text-th`… Titles, section headings and table
+// headers carry their weight, so one class sets the whole step.
+const WEIGHT: Partial<Record<keyof typeof DATA_TYPE, string>> = { title: "700", "title-sm": "700", h2: "600", "h2-sm": "600", th: "600" };
+type FontStep = [string, { lineHeight: string; fontWeight?: string; letterSpacing?: string }];
+const dataFontSize: Record<string, FontStep> = Object.fromEntries(
+  (Object.keys(DATA_TYPE) as (keyof typeof DATA_TYPE)[]).map((step): [string, FontStep] => {
+    const [size, line] = DATA_TYPE[step];
+    return [step, [px(size), {
+      lineHeight: px(line),
+      ...(WEIGHT[step] ? { fontWeight: WEIGHT[step] } : {}),
+      ...(step.startsWith("title") ? { letterSpacing: "-0.01em" } : {}),
+    }]];
+  }),
+);
+const dataSize = Object.fromEntries(Object.entries(DATA_SIZE).map(([name, n]) => [name, px(n)]));
 
 const config: Config = {
   content: [
@@ -15,7 +32,12 @@ const config: Config = {
   theme: {
     extend: {
       colors: tokenColors,
-      maxWidth: { reading: `${WIDTH.reading}px`, wide: `${WIDTH.wide}px` },
+      maxWidth: { reading: `${WIDTH.reading}px`, wide: `${WIDTH.wide}px`, data: `${WIDTH.data}px`, tip: px(DATA_SIZE.tip) },
+      fontSize: dataFontSize,
+      // `h-row`, `h-th`, `h-control`, `min-h-row-sm`…, and `top-header` for sticky table headers.
+      height: dataSize,
+      minHeight: dataSize,
+      inset: { header: px(DATA_SIZE.header) },
       borderRadius: { control: `${RADIUS.control}px`, card: `${RADIUS.card}px` },
       // The 72 px step of the spacing scale; the others are Tailwind's own (1 2 3 4 6 8 12).
       spacing: { 18: "4.5rem" },

@@ -78,3 +78,10 @@ test("when GitHub cannot be read the addon still downloads and the app points at
   expect(html).toContain('href="https://github.com/Everloot/everloot/releases"');
   expect(html).not.toContain("DesktopApp-");
 });
+
+test("the old gold per hour address lands on a section that says where the calculator went", async () => {
+  const html = await render(() => Promise.resolve(Response.json(releases)));
+  expect(html).toContain('id="gold-per-hour"');
+  expect(visible(html)).toContain("Gold per hour, now in the addon");
+  expect(html).toContain('href="/tools/auctions"');
+});

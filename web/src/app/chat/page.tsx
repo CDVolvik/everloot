@@ -34,7 +34,7 @@ export default function ChatPage() {
           not back says it comes from the model&apos;s own knowledge. Without a key you get the search hits as they are.
         </p>
         <p>
-          The <Link href="/connect" className="underline hover:text-accent">Everloot connector</Link> brings the same tools
+          The <Link href="/docs/mcp/clients" className="underline hover:text-accent">Everloot connector</Link> brings the same tools
           to Claude and ChatGPT, and the Everloot Desktop App has this chat with your own characters&apos; gold and scans too.
         </p>
       </section>

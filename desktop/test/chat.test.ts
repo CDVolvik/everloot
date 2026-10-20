@@ -2,6 +2,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "no
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, test, vi } from "vitest";
+import { ACCOUNT_KEY_FILE } from "../src/main/account";
 import { answer } from "../src/main/agent";
 import { createChat } from "../src/main/chat";
 import { defaultSettings } from "../src/main/settings";
@@ -79,6 +80,22 @@ test("the target is the public mount without a token and the token endpoint with
   // An empty or missing token file falls back to the public mount.
   writeFileSync(tokenFile, "");
   expect(withToken.info()).toMatchObject({ mcpUrl: "https://example.test/mcp/public", withToken: false });
+});
+
+test("signed in, the public mount gets the account key; a token file still wins", async () => {
+  const d = dir();
+  const key = `evl_${"0f".repeat(32)}`;
+  writeFileSync(join(d, ACCOUNT_KEY_FILE), key + "\n");
+  const chat = createChat(d, () => settings());
+  expect(chat.info()).toMatchObject({ mcpUrl: "https://example.test/mcp/public", withToken: false });
+  mockAnswer.mockResolvedValueOnce(reply("ok"));
+  await chat.send("q");
+  expect(mockAnswer.mock.calls[0][0].mcp).toEqual({ url: "https://example.test/mcp/public", token: key });
+  const tokenFile = join(d, "token.txt");
+  writeFileSync(tokenFile, "tok-123\n");
+  mockAnswer.mockResolvedValueOnce(reply("ok"));
+  await createChat(d, () => settings({ ask: { enabled: true, mcpUrl: "https://example.test/mcp", tokenFile } })).send("q");
+  expect(mockAnswer.mock.calls[1][0].mcp).toEqual({ url: "https://example.test/mcp", token: "tok-123" });
 });
 
 test("the mode names the first provider with its model, and the picker's entry goes in front of hand-written ones", () => {

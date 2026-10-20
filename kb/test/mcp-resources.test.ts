@@ -81,7 +81,7 @@ test("everloot://data-policy is the short form of docs/DATA_POLICY.md, with the 
     "not legal advice", "at least three installs", "three distinct reporters", "never published row by row",
     "officer's upload", "unencrypted", "found in game files, unconfirmed", "WoWDBDefs", "pages only", "2023-11-13",
     "Bulk scraping of any site", "robots.txt", "Content Blizzard encrypts stays encrypted", "never copy it",
-    "stays under the same licence", "AGPL-3.0", "needs no key", "/connect#keys", "hello@everloot.app",
+    "stays under the same licence", "AGPL-3.0", "needs no key", "/docs/api/keys", "hello@everloot.app",
   ]) {
     expect(text).toContain(claim);
     expect(POLICY).toContain(claim);

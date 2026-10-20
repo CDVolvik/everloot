@@ -9,7 +9,10 @@ vi.mock("next/link", () => ({
 vi.mock("next/navigation", () => ({ notFound: () => { throw new Error("NOT_FOUND"); }, permanentRedirect: () => {}, usePathname: () => mocks.path }));
 vi.mock("@/components/CookieConsent", () => ({ CookiePreferencesButton: () => null }));
 vi.mock("./upload/UploadClient", () => ({ default: () => null }));
-vi.mock("@/lib/rollup-compute", () => ({ computeRollups: async () => ({ rates: [], measuredZeros: [], stats: mocks.stats }) }));
+vi.mock("@/lib/rollup-compute", () => ({
+  computeRollups: async () => ({ rates: [], measuredZeros: [], stats: mocks.stats }),
+  loadWorldFacts: async () => ({ npcs: [], quests: [], vendors: [], unreachable: false }),
+}));
 vi.mock("@/lib/upload-store", () => ({ STORAGE_UNREACHABLE: "unreachable", uploadStore: { loadCorpus: async () => ({ records: [], unreachable: false, dataAsOf: "2026-10-17T00:00:00.000Z" }) } }));
 vi.mock("@/lib/release", () => ({ getRelease: () => null }));
 
@@ -66,7 +69,8 @@ test("a class page: name matches the H1, description and facts are visible, the 
   expect(list["@type"]).toBe("BreadcrumbList");
   const names = list.itemListElement.map((i: { name: string }) => i.name);
   expect(names).toEqual(["Home", "Talent calculator", "Hunter"]);
-  for (const name of names) expect(visible(crumbs)).toContain(name);
+  // The trail is for search engines only: nothing visible (density spec, 2026-10-20).
+  expect(visible(crumbs).trim()).toBe("");
   expect(JSON.stringify(list)).not.toContain('"https://everloot.app/tools"');
   expect(crumbs).not.toContain('href="/tools"');
 });
@@ -97,7 +101,7 @@ test("/changes opens with the latest build and its ItemList items are the entrie
   expect(page["@type"]).toBe("CollectionPage");
   expect(visible(html)).toMatch(/Latest build: WoW: Forever \d+\.\d+\.\d+\.\d+, first seen by Everloot on \d{4}-\d{2}-\d{2}\./);
   expect(h1(html)).toBe(page.name);
-  const shown = (html.match(/<li class="rounded-xl/g) ?? []).length;
+  const shown = (html.match(/<li data-entry/g) ?? []).length;
   expect(page.mainEntity.itemListElement).toHaveLength(shown);
   for (const { item } of page.mainEntity.itemListElement) expect(visible(html)).toContain(item.name);
 });
@@ -116,17 +120,17 @@ test("/upload: the structured version and download are the ones the page shows, 
   expect(visible(html)).toContain(app.description);
 });
 
-test("/database: no Dataset while nothing is uploaded, a Dataset once something is, and the CC BY-SA line is always shown", async () => {
+test("/database: no Dataset while nothing is uploaded, a Dataset with its licence once something is, and no licence text on the page", async () => {
   const { default: Page } = await import("./database/page");
   const empty = renderToStaticMarkup(await Page());
   expect(blocks(empty)).toEqual([]);
-  expect(visible(empty)).toContain("CC BY-SA 4.0");
   mocks.stats = { uploads: 2, lootWindows: 5, unreachable: false, dataAsOf: "2026-10-17T18:20:27.999Z" };
   const full = renderToStaticMarkup(await Page());
   const [dataset] = blocks(full);
   expect(dataset["@type"]).toBe("Dataset");
-  expect(visible(full)).toContain(dataset.description);
-  expect(visible(full)).toContain(dataset.name);
+  expect(JSON.stringify(dataset.license)).toContain("creativecommons.org/licenses/by-sa/4.0");
+  // The site footer and /methodology carry the licence (Carlos, 2026-10-20: no licence lines on pages).
+  expect(visible(full)).not.toContain("CC BY-SA");
   mocks.stats = { uploads: 9, lootWindows: 5, unreachable: true, dataAsOf: "2026-10-17T18:20:27.999Z" };
   expect(blocks(renderToStaticMarkup(await Page()))).toEqual([]);
 });
@@ -182,8 +186,14 @@ test("/wow-forever shows Blizzard's race and class tables with the new combinati
 
 test("/methodology states the three-installs rule, unrecorded is not zero, and links the data policy", async () => {
   const { default: Page } = await import("./methodology/page");
-  const html = renderToStaticMarkup(<Page />);
+  const html = renderToStaticMarkup(await Page());
   expect(h1(html)).toBe("How we count");
+  // The full credits the footer's one line links to, with the build.
+  expect(html).toContain('id="credits"');
+  expect(visible(html)).toContain("Icons, tooltip text and interface art are © Blizzard Entertainment, Inc.");
+  expect(visible(html)).toMatch(/Game files read from build \d+\.\d+\.\d+\.\d+/);
+  expect(visible(html)).toContain("Warcraft Wiki contributors.");
+  expect(html).toContain('href="https://github.com/wowdev/WoWDBDefs"');
   expect(visible(html)).toContain("at least three different installs");
   expect(visible(html)).toContain("Unrecorded is not zero");
   expect(html).toContain('/blob/main/docs/DATA_POLICY.md"');

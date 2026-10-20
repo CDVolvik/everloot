@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
-import { computeRollups } from "@/lib/rollup-compute";
-import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
-import { dataAgeLabel } from "@/lib/data-age";
+import { objectList } from "../../../../kb/src/object-page";
+import { computeRollups, loadWorldFacts } from "@/lib/rollup-compute";
+import { CLIENT_TAXONOMY as T, itemsHref } from "@/lib/items";
+import { npcRows, publicQuests, publicVendors } from "@/lib/world-lists";
+import { publicZones } from "@/lib/zones";
 import JsonLd from "@/components/JsonLd";
-import { CC_BY_SA, datasetJsonLd } from "@/lib/jsonld";
+import { AgreementMeter, Container, DataTitle, SearchBar } from "@/components/ui";
+import { datasetJsonLd } from "@/lib/jsonld";
 
 const TITLE = "WoW Forever Database";
 const description = "Loot-window observations, NPC sightings, quests and vendors for WoW: Forever, from addon uploads. Public facts need corroborated install reports.";
@@ -16,89 +20,76 @@ export const metadata: Metadata = {
 };
 export const dynamic = "force-dynamic";
 
-const SECTIONS = [
-  { title: "Zones", href: "/database/zones", body: "Every zone by continent: its map, the dungeons and raids entered there, and the NPCs, vendors and quests players have confirmed in it." },
-  { title: "Items by category", href: "/database/items", body: "Every item in the current build by class, subclass, slot and quality, read from the game files and labelled unconfirmed until players see it." },
-  { title: "Loot observations", href: "/database/drops", body: "Observed frequency per source-attributed loot window. Source observations from 3 install IDs are required; these are not verified kills or drop probabilities." },
-  { title: "Spawn maps", href: "/database/npcs", body: "NPC positions from corroborated sightings. Single reports stay queued, never published." },
-  { title: "Objects", href: "/database/objects", body: "Chests, herbs, ore veins and fishing pools, with what players looted from them. A frequency is public after 3 install reports." },
-  { title: "Quests", href: "/database/quests", body: "Givers, turn-ins, and rewards. A row is public after 3 installs agree." },
-  { title: "Vendors", href: "/database/vendors", body: "Merchant lists. A price is public after 3 installs agree on the item and the copper." },
-  { title: "Guilds", href: "/tools/guild-board", body: "Officer-authorized progression and roster uploads. No aggregate guild score is published." },
-  { title: "Lore archive", href: "/lore", body: "Warcraft Wiki pages as of November 2023, CC BY-SA 4.0. Lore and history, not collected Forever data." },
-];
+const n = (x: number) => x.toLocaleString("en-US");
+
+/** One block of the browse index: a heading with its count, then its links, 13 px on 26 px lines. */
+function Block({ heading, href, count, links }: { heading: string; href?: string; count?: ReactNode; links: { href: string; label: string; count: ReactNode }[] }) {
+  return (
+    <section className="mb-6 break-inside-avoid">
+      <h2 className="flex items-baseline justify-between gap-3 text-cell font-semibold text-fg">
+        {href ? <Link href={href} className="hover:text-accent">{heading}</Link> : heading}
+        {count !== undefined && <span className="text-meta font-normal tabular-nums text-muted">{count}</span>}
+      </h2>
+      {links.length > 0 && (
+        <ul className="mt-1">
+          {links.map((l) => (
+            <li key={l.href}>
+              <Link href={l.href} className="flex h-[26px] items-center justify-between gap-3 text-meta text-fg-2 hover:text-accent">
+                <span className="min-w-0 truncate">{l.label}</span>
+                <span className="shrink-0 tabular-nums text-muted">{l.count}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
 
 export default async function DatabasePage() {
-  const { rates, measuredZeros, stats } = await computeRollups();
+  const [{ rates, measuredZeros, stats }, world] = await Promise.all([computeRollups(), loadWorldFacts()]);
   const live = rates.filter((r) => r.public).length + measuredZeros.filter((z) => z.public).length;
-  const queued = rates.length + measuredZeros.length - live;
-  const counts = [
-    { label: "Uploads", value: stats.uploads },
-    { label: "Loot windows", value: stats.lootWindows },
-    { label: "Public frequencies", value: live },
-    { label: "Queued facts", value: queued },
+  const classes = T.classes.filter((c) => c.items > 0).sort((a, b) => b.items - a.items);
+  // What players have made public so far, per place: a count once there is one, the empty meter until then.
+  const seen = (x: number) => (stats.unreachable ? "unrecorded" : x > 0 ? n(x) : <AgreementMeter count={0} />);
+  const readable = !world.unreachable;
+  const players = [
+    { href: "/database/npcs", label: "NPCs", count: seen(readable ? npcRows(world, rates).length : 0) },
+    { href: "/database/quests", label: "Quests", count: seen(readable ? publicQuests(world).length : 0) },
+    { href: "/database/vendors", label: "Vendors", count: seen(readable ? publicVendors(world).length : 0) },
+    { href: "/database/objects", label: "Objects: chests, herbs, ore", count: seen(stats.unreachable ? 0 : objectList({ rates, measuredZeros, names: [] }).length) },
+    { href: "/database/drops", label: "Loot observations", count: seen(live) },
+    { href: "/database/zones", label: "Zones", count: n(publicZones().length) },
+    { href: "/tools/guild-board", label: "Guilds", count: "uploads" },
   ];
+
   return (
-    <article className="space-y-10 max-w-4xl">
-      <JsonLd data={datasetJsonLd({ uploads: stats.unreachable ? 0 : stats.uploads, name: DATASET_NAME, description, path: "/database", corpusPath: "/api/corpus/public", dataAsOf: stats.unreachable ? null : stats.dataAsOf })} />
-      <header className="space-y-3">
-        <p className="font-mono text-xs text-muted">
-          Thottbot reborn · corroborated only
-        </p>
-        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">
-          {TITLE}
-        </h1>
-        <p className="text-lg text-fg-2 max-w-2xl">
-          Items, NPCs, quests and vendors for WoW: Forever — built from data players
-          collect, with public facts gated by matching install reports. Distinct install IDs
-          do not establish independent players.
-        </p>
-      </header>
+    <Container width="data">
+      <article>
+        <JsonLd data={datasetJsonLd({ uploads: stats.unreachable ? 0 : stats.uploads, name: DATASET_NAME, description, path: "/database", corpusPath: "/api/corpus/public", dataAsOf: stats.unreachable ? null : stats.dataAsOf })} />
+        <DataTitle title="Database" meta={`${n(T.items.length)} items · NPCs, quests and objects seen by players`} />
+        <SearchBar
+          action="/search"
+          id="database-search"
+          label="Search the database"
+          placeholder="An item, NPC, quest or object: a name or an id"
+          scopes
+        />
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {counts.map((c) => (
-          <div key={c.label} className="rounded-xl border border-line bg-panel p-5 text-center">
-            <div className={`${stats.unreachable ? "text-xl" : "text-3xl"} font-bold text-accent`}>{stats.unreachable ? "unrecorded" : c.value}</div>
-            <div className="mt-1 text-xs font-mono text-muted">{c.label}</div>
-          </div>
-        ))}
-      </div>
-      {!stats.unreachable && <p className="text-xs text-muted">{dataAgeLabel(stats.dataAsOf)}</p>}
-
-      <div className="grid md:grid-cols-2 gap-4">
-        {SECTIONS.map((s) => (
-          <Link key={s.title} href={s.href} className="rounded-xl border border-line p-5 bg-panel hover:border-accent">
-            <h2 className="text-lg font-semibold text-accent">{s.title}</h2>
-            <p className="mt-1 text-sm text-fg-2">{s.body}</p>
-          </Link>
-        ))}
-      </div>
-
-      <section aria-labelledby="licence" className="space-y-2 text-sm text-fg-2 max-w-2xl">
-        <h2 id="licence" className="text-lg font-semibold text-fg">{DATASET_NAME}</h2>
-        <p>{description}</p>
-        <p>
-          Uploaded observations are published under <a href={CC_BY_SA.url} rel="noopener" className="text-accent hover:underline underline-offset-4">{CC_BY_SA.name}</a>,
-          credited to Everloot contributors. The records are open at{" "}
-          <a href="/api/corpus/public" className="text-accent hover:underline underline-offset-4">/api/corpus/public</a>.
-        </p>
-      </section>
-
-      <div className="rounded-2xl border border-line bg-panel p-6">
-        <h2 className="text-xl text-fg">Be the first source</h2>
-        <p className="mt-1 text-sm text-fg-2 max-w-xl">
-          {stats.unreachable ? (
-            STORAGE_UNREACHABLE
-          ) : (
-            <>
-              Uploads are open now, during the beta. Every fact here starts as one player&apos;s
-              upload and goes public once 3 installs agree on it. Run the addon, send your save file on the{" "}
-              <Link href="/upload" className="text-accent hover:underline underline-offset-4">upload page</Link>,
-              and watch your farms become the reference.
-            </>
-          )}
-        </p>
-      </div>
-    </article>
+        <nav aria-label="Browse the database" className="mt-6 columns-2 gap-x-8 sm:columns-3 lg:columns-4">
+          <Block heading="Seen by players" links={players} />
+          <Block heading="All items" href="/database/items" count={n(T.items.length)} links={[]} />
+          {classes.map((c) => (
+            <Block
+              key={c.id}
+              heading={c.label}
+              href={itemsHref(c.slug)}
+              count={n(c.items)}
+              links={T.subclasses.filter((s) => s.classId === c.id && s.items > 0).map((s) => ({ href: itemsHref(c.slug, s.slug), label: s.name ?? `Subclass ${s.id}`, count: n(s.items) }))}
+            />
+          ))}
+        </nav>
+      </article>
+    </Container>
   );
 }

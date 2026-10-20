@@ -13,7 +13,6 @@ export type { Infobox } from "../../../kb/src/importers/wiki-infobox";
  */
 
 export const PAGE_SIZE = 20;
-export const INDEXABLE_MIN_BODY = 300;
 export const CHUNK_SIZE = 40_000;
 export const MAX_QUERY = 200;
 /** Deepest search page served; beyond it the answer is "no hits", never a 20 million row LIMIT. */
@@ -41,8 +40,10 @@ export function parseLetter(raw: string | undefined): string | null {
   return /^[a-z]$/.test(l) ? l : null;
 }
 
-// The slug helpers live with the knowledge base, so the MCP server's search and fetch name the same pages.
-export { loreSlug, slugify } from "../../../kb/src/lore-slug";
+// The slug helpers and the indexing rule live with the knowledge base, so the MCP server names the same
+// pages and links only the ones the site indexes.
+import { INDEXABLE_MIN_BODY } from "../../../kb/src/lore-slug";
+export { INDEXABLE_MIN_BODY, isIndexable, loreSlug, slugify } from "../../../kb/src/lore-slug";
 
 /**
  * Wiki ids are digits (`291323-frostwhisper`); curated ids are kebab strings and carry no name
@@ -55,10 +56,6 @@ export function parseLoreSlug(slug: string): { extId: string; nameSlug: string }
   if (numeric) return { extId: numeric[1], nameSlug: numeric[2] ?? "" };
   if (/^0/.test(slug)) return null;
   return { extId: slug, nameSlug: "" };
-}
-
-export function isIndexable(body: string): boolean {
-  return body.length >= INDEXABLE_MIN_BODY && !body.includes("REDIRECT");
 }
 
 export type BodyBlock = { type: "p"; text: string } | { type: "ul"; items: string[] };
@@ -181,6 +178,47 @@ export function loreByExtId(extId: string): LorePage | null | Unavailable {
     facets: parseFacets(data.facets),
     infobox: parseInfobox(data.infobox),
   };
+}
+
+export interface LoreMatch { extId: string; name: string; intro: string }
+
+/** The first paragraph of a body, cut at `max` on a word boundary; "" when the body opens with a list or is empty. */
+export function firstParagraph(body: string, max = 420): string {
+  const first = renderBody(body)[0];
+  return first?.type === "p" ? truncate(first.text.replace(/\s+/g, " ").trim(), max) : "";
+}
+
+const MATCH_CACHE_MAX = 500;
+const MATCHES = new WeakMap<object, Map<string, LoreMatch | null>>();
+
+/**
+ * The lore page for a database entity: an exact name match (any case) within the type. Two pages with one
+ * name in a type, a redirect or a page with no opening paragraph are no match: a wrong link is worse than none.
+ * The archive has a game id only for quests (a field of their infobox, not indexed), so the id match the plan
+ * names would scan the whole file; the name lookup uses the (type, name) index. Answers are kept per opened
+ * release, so a page never asks twice for the same name.
+ */
+export function loreForEntity(type: "npc" | "item" | "quest" | "zone", name: string): LoreMatch | null | Unavailable {
+  const release = getRelease();
+  if (!release) return UNAVAILABLE;
+  const clean = name.trim();
+  if (!clean) return null;
+  let cache = MATCHES.get(release.db);
+  if (!cache) { cache = new Map(); MATCHES.set(release.db, cache); }
+  const key = `${type}|${clean.toLowerCase()}`;
+  if (cache.has(key)) return cache.get(key) ?? null;
+  const rows = release.db
+    .prepare(
+      `SELECT ext_id AS extId, name, body FROM entities
+       WHERE ${LORE_SQL} AND json_extract(data, '$.type') = ? AND name = ? COLLATE NOCASE LIMIT 3`,
+    )
+    .all(...PUBLISHABLE, type, clean) as { extId: string; name: string; body: string }[];
+  const usable = rows.filter((r) => !r.body.includes("REDIRECT"));
+  const intro = usable.length === 1 ? firstParagraph(usable[0].body) : "";
+  const match = intro ? { extId: usable[0].extId, name: usable[0].name, intro } : null;
+  if (cache.size >= MATCH_CACHE_MAX) cache.clear();
+  cache.set(key, match);
+  return match;
 }
 
 export function searchLore(q: string, page: number, type?: LoreType): { hits: SearchHit[]; hasNext: boolean } | Unavailable {

@@ -2,7 +2,7 @@ import { expect, test, vi } from "vitest";
 import { LAUNCH } from "@/data/wow-forever";
 import { MAP_DATA_EXTRACTED_AT, TALENT_DATA_EXTRACTED_AT } from "@/lib/build-stamp";
 import { loadTimeline } from "@/lib/changes";
-import { CLIENT_TAXONOMY, ITEMS_PER_PAGE, itemsHref } from "@/lib/items";
+import { CLIENT_TAXONOMY, NAMED_SAMPLE, itemsHref } from "@/lib/items";
 import { filterItems } from "../../../kb/src/item-taxonomy";
 import sitemap from "./sitemap";
 
@@ -32,7 +32,7 @@ test("/wow-forever is listed and dated by the day its source was read", () => {
 });
 
 test("a page with no known modification time has none, instead of today's date", () => {
-  for (const path of ["/about", "/privacy", "/terms", "/security", "/accessibility", "/connect"]) expect(byPath.get(path)?.lastModified, path).toBeUndefined();
+  for (const path of ["/about", "/privacy", "/terms", "/security", "/accessibility", "/docs"]) expect(byPath.get(path)?.lastModified, path).toBeUndefined();
 });
 
 test("changefreq and priority are gone", () => {
@@ -62,7 +62,7 @@ test("the zone index is listed; a zone page only once something is on it, and ne
 test("an item category is listed only once half its first page has an agreed name", async () => {
   const cls = CLIENT_TAXONOMY.classes.find((c) => c.slug === "weapons")!;
   expect(byPath.has(itemsHref("weapons"))).toBe(false);
-  const ids = filterItems(CLIENT_TAXONOMY, { classId: cls.id }).slice(0, ITEMS_PER_PAGE).map((r) => r[0]);
+  const ids = filterItems(CLIENT_TAXONOMY, { classId: cls.id }).slice(0, NAMED_SAMPLE).map((r) => r[0]);
   const name = (n: number) => ids.slice(0, n).flatMap((itemId) => ["a", "b", "c"].map((installId) => ({ installId, itemId, name: `Item name ${itemId}` })));
   try {
     facts.names = name(Math.ceil(ids.length / 2) - 1);

@@ -1,6 +1,6 @@
 /**
  * The licence and credit line for Everloot's own data, in one place. The site's JSON APIs, the MCP
- * answers built on player data, /connect and docs/DATA_POLICY.md all use these words.
+ * answers built on player data, the docs and docs/DATA_POLICY.md all use these words.
  * Game-file data and Blizzard's text are not under this licence and do not get this line.
  */
 export const SITE = "https://everloot.app";

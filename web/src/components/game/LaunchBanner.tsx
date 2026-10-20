@@ -10,20 +10,20 @@ import GameCredit from "./GameCredit";
 export default function LaunchBanner({ art, children }: { art: LaunchArt; children?: ReactNode }) {
   return (
     <div className="space-y-2">
-      <section aria-label="WoW: Forever launch" data-launch-banner className="full-bleed relative -mt-8 overflow-hidden bg-panel">
+      <section aria-label="WoW: Forever launch" data-launch-banner className="relative overflow-hidden rounded-xl border border-line bg-panel">
         {art.background && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={art.background.url}
             srcSet={art.background.small ? `${art.background.small.url} ${art.background.small.width}w, ${art.background.url} ${art.background.width}w` : undefined}
-            sizes="100vw"
+            sizes="(min-width: 1024px) 1024px, 100vw"
             alt=""
             aria-hidden="true"
             decoding="async"
             className="absolute inset-0 h-full w-full object-cover"
           />
         )}
-        <div className="relative mx-auto flex w-full max-w-wide flex-col items-center gap-4 px-4 py-5 text-center sm:flex-row sm:py-8 sm:text-left">
+        <div className="relative flex flex-col items-center gap-4 p-5 text-center sm:flex-row sm:p-8 sm:text-left">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={art.logo.url}

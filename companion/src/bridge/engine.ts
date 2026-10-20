@@ -15,11 +15,11 @@ export function answerFromSearch(text: string): { answer: string; source: string
 }
 
 /** The knowledge server's search_knowledge text for one question: hits with their Source lines. */
-export async function mcpSearch(options: { url: string; token: string }, question: string, limit: number): Promise<string> {
+export async function mcpSearch(options: { url: string; token: string | null }, question: string, limit: number): Promise<string> {
   const client = new Client({ name: "everloot-companion", version: "0.1.0" });
-  const transport = new StreamableHTTPClientTransport(new URL(options.url), {
-    requestInit: { headers: { Authorization: `Bearer ${options.token}` } },
-  });
+  const transport = new StreamableHTTPClientTransport(new URL(options.url), options.token
+    ? { requestInit: { headers: { Authorization: `Bearer ${options.token}` } } }
+    : {});
   await client.connect(transport);
   try {
     const result = await client.callTool({ name: "search_knowledge", arguments: { query: question, limit } });
@@ -31,6 +31,6 @@ export async function mcpSearch(options: { url: string; token: string }, questio
 }
 
 /** Plain search answers: the top hit and its source. With providers configured, the CLI uses llmEngine instead. */
-export function mcpEngine(options: { url: string; token: string }): AnswerEngine {
+export function mcpEngine(options: { url: string; token: string | null }): AnswerEngine {
   return { answer: async (question) => answerFromSearch(await mcpSearch(options, question, 1)) };
 }

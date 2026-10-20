@@ -75,7 +75,7 @@ test("the focus ring follows each element's own corners", () => {
 });
 
 const PRIMARY = [
-  "app/tools/auctions/page.tsx",
+  "app/tools/auctions/parts.tsx",
   "app/tools/collections/page.tsx",
   "app/tools/gold-ledger/page.tsx",
   "app/tools/guild-board/page.tsx",
@@ -86,7 +86,6 @@ const PRIMARY = [
   "components/BrowseFilters.tsx",
   "components/CookieConsent.tsx",
   "components/EmailCapture.tsx",
-  "components/GoldCalculator.tsx",
   "components/IdLookup.tsx",
   "components/LoreSearchForm.tsx",
 ];

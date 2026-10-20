@@ -252,6 +252,11 @@ export const auctionScan = base.extend({
 const SCAN_COUNT = z.number().int().min(1).max(Number.MAX_SAFE_INTEGER);
 const SCAN_COPPER = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
 /**
+ * The auction houses a scan can come from. The game files list Alliance, Horde and neutral
+ * (Blackwater) houses with different cuts, so a scan says which one it read.
+ */
+export const AUCTION_HOUSES = ["Alliance", "Horde", "Neutral"];
+/**
  * One part of a full auction-house scan the player started (addon 0.3.0+). Each item is
  * [itemId, auctions, quantity, minUnit, marketUnit], copper per unit. A scan is split into parts of
  * at most 1,000 items. These rows feed the market rollup, not the general corpus.
@@ -260,6 +265,8 @@ export const auctionSnapshot = base.extend({
     kind: z.literal("auction_snapshot"),
     // Plain realm names only: the name is published once 3 reporters scanned there.
     realm: z.string().min(2).max(60).refine(validRealm, { message: "not a realm name" }),
+    faction: z.enum(["Alliance", "Horde"]).optional().describe("The scanning character's faction. Scans from addons up to 0.3.3 have none."),
+    house: z.enum(AUCTION_HOUSES).optional().describe("The auction house the scan read, from the auctioneer's faction: Neutral for a goblin house. Absent in older scans and when the addon could not tell."),
     scanId: z.string().min(3).max(96).regex(/^[A-Za-z0-9:_-]+$/),
     part: z.number().int().min(1).max(100),
     parts: z.number().int().min(1).max(100),

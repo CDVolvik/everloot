@@ -94,7 +94,7 @@ export function dataPolicyText(sourceUrl: string): string {
     "",
     `- Everloot's own data is ${LICENCE}. Anyone may read it, copy it and build on it. Credit it wherever it appears: "${CREDIT_LINE}" What you build from it stays under the same licence.`,
     "- Game-file data and Blizzard's posts are Blizzard's, not Everloot's; the credit line and the licence do not apply to them. The code is AGPL-3.0.",
-    `- Asking questions through this server is free and needs no key. Copying everything in bulk takes a free key, made on ${SITE}/connect#keys; the exact limits are on ${SITE}/connect.`,
+    `- Asking questions through this server is free and needs no key. Copying everything in bulk takes a free key, made on ${SITE}/docs/api/keys; the exact limits are on ${SITE}/connect.`,
     `- Terms: ${TERMS_URL}. Questions and takedown requests: hello@everloot.app or ${SITE}/contact.`,
     "",
   ].join("\n");

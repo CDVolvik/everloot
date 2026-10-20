@@ -67,12 +67,11 @@ test("watching a file that is not there does not throw, and stop cancels the ret
   expect(stop).not.toThrow();
 });
 
-test("the ask job refuses to run without a readable, non-empty token file", async () => {
+test("the ask job refuses a token file it cannot read or that is empty", async () => {
   const d = dir();
   const empty = join(d, "empty.txt");
   writeFileSync(empty, "");
   const run = (tokenFile: string | null) => companionJobs(join(d, "data"), () => ({ ...defaultSettings(), ask: { enabled: true, mcpUrl: "https://example.test/mcp", tokenFile } })).deps.ask(join(d, "Everloot.lua"));
-  await expect(run(null)).rejects.toThrow(/token file/);
   await expect(run(join(d, "nope.txt"))).rejects.toThrow(/could not be read/);
   await expect(run(empty)).rejects.toThrow(/is empty/);
 });

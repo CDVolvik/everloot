@@ -15,6 +15,13 @@ export function loreSlug(row: { extId: string; name: string }): string {
   return /^[1-9]\d*$/.test(row.extId) ? `${row.extId}-${slugify(row.name)}` : row.extId;
 }
 
+/** A lore page shorter than this, or a redirect stub, renders but is not indexed. */
+export const INDEXABLE_MIN_BODY = 300;
+
+export function isIndexable(body: string): boolean {
+  return body.length >= INDEXABLE_MIN_BODY && !body.includes("REDIRECT");
+}
+
 /**
  * Where a knowledge record is read: a lore page has its own page on the site, where the source and
  * licence are shown with the text; any other record points at the source's own page.

@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test, vi } from "vitest";
-import { folderProblems, isPrivateFile, isPublicFile, parseUploadArgs, uploadOrder, withRetry } from "./game-assets-upload.mjs";
+import { folderProblems, isPrivateFile, isPublicFile, itemNamesCheck, parseUploadArgs, uploadOrder, withRetry } from "./game-assets-upload.mjs";
 
 test("arguments: a folder or --snapshot <file>; a flag is never read as the path", () => {
   expect(parseUploadArgs(["../kb/data/assets/b", "--dry-run"])).toMatchObject({ folder: "../kb/data/assets/b", dry: true, snapshot: null, error: null });
@@ -48,4 +48,13 @@ test("a failed upload is tried again with growing waits, and gives up after four
   expect(await withRetry(async () => { if (++calls < 3) throw new Error("503"); return "ok"; }, { sleep })).toBe("ok");
   expect(sleep.mock.calls.map(([ms]) => ms)).toEqual([1000, 2000]);
   await expect(withRetry(async () => { throw new Error("403"); }, { sleep })).rejects.toThrow("403");
+});
+
+test("a shown-names file goes under its build folder, and only when it is one", () => {
+  const file = { schema: "everloot.item-names/1", build: { version: "1.60.1.70450" }, wiki: { licence: "CC-BY-SA-4.0" }, count: 1, names: { 2589: { n: "Linen Cloth", q: 1, w: "Linen_Cloth" } } };
+  expect(itemNamesCheck(file, "wow_classic_beta-70450-84bea423-names")).toEqual({ prefix: "wow_classic_beta-70450-84bea423", problems: [] });
+  expect(itemNamesCheck(file, "wow_classic_beta-70450-84bea423-private").problems[0]).toMatch(/-names folder/);
+  expect(itemNamesCheck({ ...file, count: 2 }, "b-names").problems).toEqual(["count is 2 but the file holds 1 names"]);
+  expect(itemNamesCheck({ ...file, schema: "everloot.game-items/1" }, "b-names").problems[0]).toMatch(/schema/);
+  expect(itemNamesCheck({ ...file, wiki: { licence: "CC-BY-NC" } }, "b-names").problems).toEqual(["the wiki source is not CC-BY-SA-4.0"]);
 });

@@ -1,4 +1,4 @@
-import type { BlueGame, BluePost } from "./blue-posts.js";
+import type { BlueGame, BluePost, BlueRegion } from "./blue-posts.js";
 import { clampExcerpt, clampText, isoTime, safeHttpUrl } from "./text-safety.js";
 
 /**
@@ -40,6 +40,13 @@ export interface ChangeEntry {
   version?: string;
   /** Link to the build's diff once the auto-diff pipeline publishes it; null until then and when not a web link. */
   diffUrl?: string | null;
+  /** Forum posts: which forum, and the thread the post belongs to (see blueThreads). */
+  region?: BlueRegion;
+  topicId?: number;
+  topicSlug?: string;
+  postNumber?: number;
+  /** True when this post opened the thread, false for a reply. */
+  startedThread?: boolean;
 }
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -53,9 +60,15 @@ export function sanitizePost(raw: unknown): BluePost | null {
   if (!id || !title || !postedAt) return null;
   if (raw.game !== "forever" && raw.game !== "classic") return null;
   const summary = clampText(raw.summary, 280);
+  const source = raw.source === "bluesky" ? "bluesky" : "forum";
+  const positive = (v: unknown) => (Number.isInteger(v) && (v as number) > 0 && (v as number) < 2 ** 31 ? (v as number) : undefined);
+  const topicId = source === "forum" ? positive(raw.topicId) : undefined;
+  const postNumber = topicId === undefined ? undefined : positive(raw.postNumber);
+  const slug = typeof raw.topicSlug === "string" && /^(?:[a-z0-9-]|%[0-9a-f]{2}){1,200}$/i.test(raw.topicSlug) ? raw.topicSlug : undefined;
   return {
     id,
-    source: raw.source === "bluesky" ? "bluesky" : "forum",
+    source,
+    ...(source === "forum" && (raw.region === "us" || raw.region === "eu") ? { region: raw.region } : {}),
     url: safeHttpUrl(raw.url),
     title,
     author: clampText(raw.author, 100),
@@ -66,6 +79,8 @@ export function sanitizePost(raw: unknown): BluePost | null {
     game: raw.game,
     kind: raw.kind === "hotfix" ? "hotfix" : "post",
     excerpt: clampExcerpt(raw.excerpt),
+    ...(topicId !== undefined ? { topicId, ...(slug ? { topicSlug: slug } : {}) } : {}),
+    ...(postNumber !== undefined ? { postNumber, startedThread: postNumber === 1 } : {}),
     ...(summary ? { summary } : {}),
     firstSeen: isoTime(raw.firstSeen) ?? postedAt,
   };
@@ -90,6 +105,9 @@ export function buildTimeline(posts: unknown[], builds: unknown[]): ChangeEntry[
       id: p.id, type: p.kind, game: p.game, at: p.postedAt, title: p.title, url: p.url,
       author: p.author, role: p.role, category: p.category, source: p.source, excerpt: p.excerpt,
       ...(p.summary ? { summary: p.summary } : {}),
+      ...(p.region ? { region: p.region } : {}),
+      ...(p.topicId !== undefined ? { topicId: p.topicId, ...(p.topicSlug ? { topicSlug: p.topicSlug } : {}) } : {}),
+      ...(p.postNumber !== undefined ? { postNumber: p.postNumber, startedThread: p.startedThread } : {}),
     });
   }
   const fromBuilds: ChangeEntry[] = [];
@@ -121,6 +139,53 @@ export function filterTimeline(entries: ChangeEntry[], filter: ChangeFilter, gam
 
 export function parseFilter(value: unknown): ChangeFilter {
   return CHANGE_FILTERS.includes(value as ChangeFilter) ? (value as ChangeFilter) : "all";
+}
+
+/** One forum thread with every blue post kept from it. */
+export interface BlueThread {
+  /** `<region>:<topic id>`, unique across both forums. */
+  key: string;
+  region: BlueRegion;
+  topicId: number;
+  topicSlug: string | null;
+  title: string;
+  game: BlueGame;
+  category: string;
+  /** The thread's first post when its slug is known, else the earliest blue post's link. */
+  url: string | null;
+  /** Whether a Blizzard post opened the thread. */
+  startedByBlue: boolean;
+  /** Time of the newest blue post in it. */
+  latestAt: string;
+  /** Oldest first, the way the thread reads. */
+  posts: ChangeEntry[];
+}
+
+const FORUM_HOST: Record<BlueRegion, string> = { us: "https://us.forums.blizzard.com", eu: "https://eu.forums.blizzard.com" };
+
+/** Forum posts grouped by thread, the thread with the newest blue post first. Bluesky posts and builds are not threads. */
+export function blueThreads(entries: ChangeEntry[]): BlueThread[] {
+  const byKey = new Map<string, ChangeEntry[]>();
+  for (const e of entries) {
+    if (e.source !== "forum" || e.topicId === undefined) continue;
+    const key = `${e.region ?? "us"}:${e.topicId}`;
+    byKey.set(key, [...(byKey.get(key) ?? []), e]);
+  }
+  const threads: BlueThread[] = [];
+  for (const [key, list] of byKey) {
+    const posts = [...list].sort((a, b) => (a.postNumber ?? 0) - (b.postNumber ?? 0) || a.at.localeCompare(b.at));
+    const first = posts[0];
+    const region = first.region ?? "us";
+    const slug = posts.find((p) => p.topicSlug)?.topicSlug ?? null;
+    threads.push({
+      key, region, topicId: first.topicId!, topicSlug: slug, title: first.title, game: first.game, category: first.category ?? "",
+      url: slug ? `${FORUM_HOST[region]}/en/wow/t/${slug}/${first.topicId}` : first.url,
+      startedByBlue: posts.some((p) => p.startedThread === true),
+      latestAt: posts.map((p) => p.at).sort().at(-1)!,
+      posts,
+    });
+  }
+  return threads.sort((a, b) => b.latestAt.localeCompare(a.latestAt) || a.key.localeCompare(b.key));
 }
 
 export const TYPE_LABEL: Record<ChangeType, string> = { post: "Blue post", hotfix: "Hotfix", build: "Build" };
@@ -190,7 +255,7 @@ export function handleRecentChanges(
   const shown = filterTimeline(entries, args.filter ?? "all", args.game).slice(0, args.limit ?? 10);
   if (shown.length === 0) return "No changes recorded for that filter yet.";
   const lines = shown.map((e) => {
-    const head = `${e.at.slice(0, 16).replace("T", " ")} UTC  [${TYPE_LABEL[e.type]}, ${GAME_LABEL[e.game]}] ${e.title}`;
+    const head = `${e.at.slice(0, 16).replace("T", " ")} UTC  [${TYPE_LABEL[e.type]}, ${GAME_LABEL[e.game]}${e.region === "eu" ? ", EU forum" : ""}] ${e.title}`;
     if (e.type === "build") {
       return `${head}\nFirst seen by Everloot, not Blizzard's release time.${e.diffUrl ? ` Diff: ${e.diffUrl}` : ""}`;
     }

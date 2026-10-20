@@ -64,8 +64,15 @@ const nextConfig = {
   // original URL, so this does not loop with the rewrite above. The source is constrained to the
   // five real types so an unknown /lore/browse/<type> 404s directly instead of a permanent
   // redirect out of the internal route.
+  // The gold-per-hour calculator moved into the addon (2026-10-20): its old address answers 301 with the
+  // download page's section about it.
   async redirects() {
-    return [{ source: "/lore/browse/:type(npcs|items|quests|zones|spells)", destination: "/lore/:type", permanent: true }];
+    return [
+      { source: "/lore/browse/:type(npcs|items|quests|zones|spells)", destination: "/lore/:type", permanent: true },
+      { source: "/tools/gold-per-hour", destination: "/addon#gold-per-hour", statusCode: 301 },
+      // The developer page became the docs; docs/page.tsx sends its old #anchors on to the matching page.
+      { source: "/connect", destination: "/docs", permanent: true },
+    ];
   },
   // Security headers on every route. The full CSP is report-only: it lists what the site loads (the analytics
   // scripts only start after consent), so a missed host shows in the console, not as a broken page. The
@@ -73,7 +80,14 @@ const nextConfig = {
   // here: the `*` seen on pages is added by Vercel for prerendered responses, and a header set here could not
   // remove it.
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // The embeddable tooltip script other sites load: an hour in browsers and at the CDN, so a fix reaches them quickly.
+      { source: "/tooltips.js", headers: [
+        { key: "Cache-Control", value: "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400" },
+        { key: "Access-Control-Allow-Origin", value: "*" },
+      ] },
+    ];
   },
   webpack(config, { isServer }) {
     // kb/src/db.ts would otherwise resolve better-sqlite3 through kb/node_modules and bundle it.

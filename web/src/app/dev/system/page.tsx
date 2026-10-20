@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { CLASSES, QUALITIES, RADIUS, SPACE, tokens, WIDTH, type TokenName } from "@/design/tokens";
 import {
-  AgreementMeter, Badge, Card, Container, DataTable, EmptyState, PageHeader, SectionHeading, SourceLine, Tabs, TooltipFrame,
+  AgreementMeter, Badge, Card, Container, DataTable, EmptyState, PageHeader, SectionHeading, Tabs, TooltipFrame,
   QUALITY_TEXT, qualityOf, type Column,
 } from "@/components/ui";
 
@@ -144,7 +144,7 @@ export default function DesignSystemPage() {
           </div>
         </Specimen>
 
-        <Specimen id="page-header" title="PageHeader" note="One per page. Breadcrumb, one title size, one-line lede, then meta and actions.">
+        <Specimen id="page-header" title="PageHeader" note="One per page. One compact title size, one-line lede, then meta and actions. No visible breadcrumb.">
           <Card>
             <PageHeader
               title="Linen Cloth"
@@ -258,11 +258,6 @@ export default function DesignSystemPage() {
             </TooltipFrame>
             <TooltipFrame name="Linen Cloth" quality="common" foot="Build 1.60.1.70450 · unconfirmed"><p>Trade Goods · Cloth</p></TooltipFrame>
           </div>
-        </Specimen>
-
-        <Specimen id="source-line" title="SourceLine" note="One per page, at the foot of its content. Two here only to show both states.">
-          <SourceLine build="1.60.1.70450" />
-          <SourceLine confirmed>uploads from 3 installs</SourceLine>
         </Specimen>
       </div>
     </Container>

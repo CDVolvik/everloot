@@ -32,7 +32,7 @@ test("an object with loot from 3 installs lists its drops; the list page links i
   expect(page).toContain('href="/database/items/2770"');
   expect(page).toContain("66.7%");
   expect((await generateMetadata(props("1731"))).robots).toMatchObject({ index: true });
-  expect(await html(ObjectsPage())).toContain('href="/database/objects/1731"');
+  expect(await html(ObjectsPage({}))).toContain('href="/database/objects/1731"');
   expect(await html(ItemPage({ params: Promise.resolve({ id: "2770" }) }))).toContain('href="/database/objects/1731"');
 });
 
@@ -40,11 +40,17 @@ test("two installs are not enough; storage down reads unavailable, never zero", 
   store.loadCorpus.mockResolvedValue(corpus([loot("install-a", 1618, [765]), loot("install-b", 1618, [765])]));
   const queued = await html(ObjectPage(props("1618")));
   expect(queued).toContain("Observed, not yet public");
-  expect(queued).not.toContain("<table");
+  // The table keeps its headers; no queued row reaches it.
+  expect(queued).not.toContain('href="/database/items/765"');
+  expect(queued).toContain("data-empty-state");
   expect((await generateMetadata(props("1618"))).robots).toMatchObject({ index: false });
-  expect(await html(ObjectsPage())).toContain("No object has public loot observations yet");
+  expect(await html(ObjectsPage({}))).toContain("No object has public loot observations yet");
   store.loadCorpus.mockResolvedValue({ uploads: 0, records: [], unreachable: true });
   const down = await html(ObjectPage(props("1731")));
-  expect(down).not.toContain("0 items");
+  // Checked in the visible text: class names such as "shrink-0 items-center" are not a count.
+  const text = down.replace(/<[^>]+>/g, " ");
+  expect(text).not.toMatch(/\b0 items\b/);
+  expect(text).toContain("unrecorded, not zero");
+  expect(down).not.toContain("data-empty-state");
   await expect(html(ObjectPage(props("chest")))).rejects.toThrow("NEXT_NOT_FOUND");
 });

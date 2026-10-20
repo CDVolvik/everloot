@@ -2,7 +2,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { CURRENT_BUILD, TABLES } from "@/data/game-data/raid";
 import {
   assetUrl, BANNER_MAP, buildFolder, classAndProfessionIcons, continentArt, creditWhat, emblems, FETCH_TIMEOUT_MS, forgetPrivateReads, iconUrl,
-  instanceThumbs, itemIconUrl, itemShard, itemTip, launchArt, loadingArt, loadItemTips, loadSiteAssets, parseSiteManifest, privateStoreFromEnv, raidArt,
+  instanceThumbs, itemIconUrl, itemShard, itemTip, launchArt, loadingArt, loadItemNames, loadItemTips, loadSiteAssets, parseSiteManifest, privateStoreFromEnv, raidArt,
 } from "./game-assets";
 import { itemTipText, qualityColor } from "./item-names";
 import { cameraBox, zoneArtShown, ZONE_ART_ZOOM, type Box, type Camera } from "./map-view";
@@ -68,7 +68,7 @@ test("unset: nothing is fetched and every reader gives nothing to draw", async (
   expect(fetcher).not.toHaveBeenCalled();
   expect(store.reads).toEqual([]);
   expect(raidArt(null, TABLES[CURRENT_BUILD])).toBeNull();
-  expect(continentArt(null, 0, true, false)).toBeNull();
+  expect(continentArt(null, 0, true)).toBeNull();
   expect(classAndProfessionIcons(null)).toEqual({ classes: [], professions: [] });
   expect(loadingArt(null, 0)).toBeNull();
   expect(instanceThumbs(null, true)).toEqual({});
@@ -155,40 +155,31 @@ test("class and profession icons come in the game's order, only the professions 
   expect(icons.professions.map((p) => p.key)).toEqual(["Alchemy"]);
 });
 
-test("map pictures land on the stitched map; held-back zones and the continent picture wait for spoilers", () => {
+test("map pictures land on the stitched map; held-back zones wait for spoilers, the continent picture does not", () => {
   const a = parseSiteManifest(siteManifest, BASE)!;
-  const off = continentArt(a, 0, false, true)!;
-  expect(off.continent).toBeNull();
+  const off = continentArt(a, 0, false)!;
+  expect(off.continent?.uiMapId).toBe(13);
   expect(off.zones.map((z) => z.uiMapId).sort()).toEqual([1426, 1429]);
   // World y runs west and x north; the stitched map is x east, y south.
   expect(off.zones.find((z) => z.uiMapId === 1429)).toMatchObject({ x: -1000, y: -500, width: 1000, height: 1000, smallUrl: `${BASE}/maps/1429-small.webp` });
-  const on = continentArt(a, 0, true, true)!;
+  const on = continentArt(a, 0, true)!;
   expect(on.continent?.uiMapId).toBe(13);
   expect(on.zones.map((z) => z.uiMapId).sort()).toEqual([1426, 1429, 2548]);
-  expect(continentArt(a, 1, true, false)).toBeNull();
-});
-
-test("the upload's own held-back marks also hide the continent picture, even when the map file names none", () => {
-  const a = parseSiteManifest(siteManifest, BASE)!;
-  // 2548 is marked held back in the upload; the map file is told there is nothing held back here.
-  expect(continentArt(a, 0, false, false)!.continent).toBeNull();
-  const released = parseSiteManifest({ ...siteManifest, maps: Object.fromEntries(Object.entries(siteManifest.maps).filter(([id]) => id !== "2548")) }, BASE)!;
-  expect(continentArt(released, 0, false, false)!.continent?.uiMapId).toBe(13);
+  expect(continentArt(a, 1, true)).toBeNull();
 });
 
 const frame: Box = { x: -4000, y: -4000, width: 8000, height: 8000 };
 const at = (zoom: number, cx: number, cy: number): [Camera, Box] => [{ zoom, cx, cy }, cameraBox(frame, { zoom, cx, cy })];
 
 test("with a continent picture, a zone's own picture shows only when zoomed in over it", () => {
-  const released = parseSiteManifest({ ...siteManifest, maps: Object.fromEntries(Object.entries(siteManifest.maps).filter(([id]) => id !== "2548")) }, BASE)!;
-  const art = continentArt(released, 0, false, false)!;
+  const art = continentArt(parseSiteManifest(siteManifest, BASE)!, 0, false)!;
   expect(zoneArtShown(art, ...at(1, -500, 0))).toEqual([]);
   expect(zoneArtShown(art, ...at(ZONE_ART_ZOOM, -500, 0)).map((z) => [z.uiMapId, z.url])).toEqual([[1429, `${BASE}/maps/1429.webp`]]);
   expect(zoneArtShown(art, ...at(ZONE_ART_ZOOM, 2000, -2000))).toEqual([]);
 });
 
 test("without one, only the zones in view are drawn, from their small copies until zoomed in", () => {
-  const art = continentArt(parseSiteManifest(siteManifest, BASE)!, 0, false, true)!;
+  const art = { ...continentArt(parseSiteManifest(siteManifest, BASE)!, 0, false)!, continent: null };
   // Zoomed out, both zones are in view: small copies.
   expect(zoneArtShown(art, ...at(1, 0, 0)).map((z) => z.url)).toEqual([`${BASE}/maps/1429-small.webp`, `${BASE}/maps/1426-small.webp`]);
   // Zoomed in over Elwynn: only Elwynn, at full size; Dun Morogh is out of view and not drawn.
@@ -208,7 +199,11 @@ test("loading screens: banners for original maps, a later map's picture only wit
   expect(loadingArt(a, 2789, true)?.name).toBe("The Tainted Scar");
   expect(loadingArt(a, 9999, true)).toBeNull();
   // Thumbnails for dungeons and raids by name, small copies, never a continent; the held-back raid waits for spoilers.
-  expect(instanceThumbs(a, false)).toEqual({ Deadmines: `${BASE}/loading/9036-small.webp`, "Molten Core": `${BASE}/loading/9409-small.webp` });
+  expect(instanceThumbs(a, false)).toEqual({
+    Deadmines: `${BASE}/loading/9036-small.webp`, "Scarlet Monastery": `${BASE}/loading/9189-small.webp`, "Molten Core": `${BASE}/loading/9409-small.webp`,
+    "Onyxia's Lair": `${BASE}/loading/9249-small.webp`,
+  });
+  expect(loadingArt(a, BANNER_MAP.lore)?.name).toBe("Scarlet Monastery");
   expect(instanceThumbs(a, true)["The Tainted Scar"]).toBe(`${BASE}/loading/9789-small.webp`);
 });
 
@@ -220,7 +215,7 @@ test("the launch banner needs the game's own logo: without it there is no banner
   });
   expect(launchArt(parseSiteManifest({ ...siteManifest, logo: null }, BASE))).toBeNull();
   // A logo with no loading screen still makes a banner, on the plain panel.
-  const rest = Object.fromEntries(Object.entries(siteManifest.loadingScreens).filter(([id]) => id !== "0"));
+  const rest = Object.fromEntries(Object.entries(siteManifest.loadingScreens).filter(([id]) => id !== "249"));
   expect(launchArt(parseSiteManifest({ ...siteManifest, loadingScreens: rest }, BASE))?.background).toBeNull();
 });
 
@@ -243,4 +238,37 @@ test("a credit line names what the page shows", () => {
   expect(creditWhat("icons", false, "loading screen art")).toBe("Icons and loading screen art");
   expect(creditWhat("icons", "tooltip text", "loading screen art")).toBe("Icons, tooltip text and loading screen art");
   expect(creditWhat(null, "loading screen art")).toBe("Loading screen art");
+});
+
+const namesFile = {
+  schema: "everloot.item-names/1", build: { version: "1.60.1.70450" },
+  wiki: { name: "Warcraft Wiki (Internet Archive dump, 2023-11-13)", url: "https://warcraft.wiki.gg", licence: "CC-BY-SA-4.0" },
+  count: 2, names: { 2589: { n: "Linen Cloth", q: 1, w: "Linen_Cloth" }, 19019: { n: "Thunderfury, Blessed Blade of the Windseeker", q: 5, w: "Thunderfury,_Blessed_Blade_of_the_Windseeker" } },
+};
+
+test("the shown item names come from one private file for the client layer's build, with colour and wiki link", async () => {
+  const store = memoryStore({ [`${FOLDER}/item-names.json`]: namesFile });
+  const names = await loadItemNames("1.60.1.70450", BASE, store);
+  expect(store.reads).toEqual([`${FOLDER}/item-names.json`]);
+  expect(names?.wiki).toEqual({ name: namesFile.wiki.name, url: "https://warcraft.wiki.gg" });
+  expect(names?.names.get(19019)).toEqual({ name: "Thunderfury, Blessed Blade of the Windseeker", color: qualityColor(5), wikiPage: "https://warcraft.wiki.gg/wiki/Thunderfury,_Blessed_Blade_of_the_Windseeker" });
+  expect(names?.names.has(9)).toBe(false);
+});
+
+test("the reader applies the id cap and the placeholder rule again, whatever the file holds", async () => {
+  const file = { ...namesFile, count: 4, names: { ...namesFile.names, 191666: { n: "Skeletal Steed", q: 4, w: "Skeletal_Steed" }, 883: { n: "Deprecated Fire Eyed Skull", q: 1, w: "Deprecated_Fire_Eyed_Skull" } } };
+  const names = await loadItemNames("1.60.1.70450", BASE, memoryStore({ [`${FOLDER}/item-names.json`]: file }));
+  expect([...names!.names.keys()].sort((a, b) => a - b)).toEqual([2589, 19019]);
+});
+
+test("without the file, the bucket or the asset URL, or with a file for another build or of another kind, no names show", async () => {
+  const store = (file: unknown) => memoryStore({ [`${FOLDER}/item-names.json`]: file });
+  expect(await loadItemNames("1.60.1.70450", BASE, memoryStore({}))).toBeNull();
+  expect(await loadItemNames("1.60.1.70450", BASE, null)).toBeNull();
+  expect(await loadItemNames("1.60.1.70450", null, store(namesFile))).toBeNull();
+  expect(await loadItemNames("1.60.1.99999", BASE, store(namesFile))).toBeNull();
+  expect(await loadItemNames("1.60.1.70450", BASE, store({ ...namesFile, schema: "everloot.item-names/2" }))).toBeNull();
+  // A wiki source under another licence, or a link that is not a page title, makes the whole file unusable.
+  expect(await loadItemNames("1.60.1.70450", BASE, store({ ...namesFile, wiki: { ...namesFile.wiki, licence: "CC-BY-NC" } }))).toBeNull();
+  expect(await loadItemNames("1.60.1.70450", BASE, store({ ...namesFile, names: { 1: { n: "X", q: 1, w: "\"><script>" } } }))).toBeNull();
 });

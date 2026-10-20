@@ -104,6 +104,28 @@ export function placeEntrances(data: Pick<WorldMapData, "entrances">): EntranceP
   return pins;
 }
 
+export interface FlightMasterPin { id: number; name: string; world: WorldPoint; map: MapPoint; heldBack: boolean }
+export interface FlightLine { from: number; to: number; continentId: number; points: MapPoint[]; heldBack: boolean }
+
+/**
+ * Flight masters and flight lines on the stitched map. One whose smallest zone is a held-back one (zone
+ * rectangles overlap, so a held-back zone can lie over released ones), or whose name names one, is flagged, and so is a line that has such an end, so the spoiler switch can keep them off.
+ */
+export function placeFlights(data: Pick<WorldMapData, "flightNodes" | "flightPaths" | "zones" | "heldBackZones">): { masters: FlightMasterPin[]; lines: FlightLine[] } {
+  const all = zoneTable({ zones: [...data.zones, ...data.heldBackZones] }), held = new Set(data.heldBackZones.map((z) => z.uiMapId));
+  const masters = data.flightNodes.map((n): FlightMasterPin => {
+    const world = { continentId: n.continentId, worldX: n.worldX, worldY: n.worldY };
+    return { id: n.id, name: n.name, world, map: worldToMap(world), heldBack: held.has(zoneAt(all, world)?.mapId ?? -1) || data.heldBackZones.some((z) => n.name.toLowerCase().includes(z.name.toLowerCase())) };
+  });
+  const hidden = new Set(masters.filter((m) => m.heldBack).map((m) => m.id));
+  const lines = data.flightPaths.map((p): FlightLine => ({
+    from: p.from, to: p.to, continentId: p.continentId,
+    points: p.points.map(([worldX, worldY]) => worldToMap({ continentId: p.continentId, worldX, worldY })),
+    heldBack: hidden.has(p.from) || hidden.has(p.to),
+  }));
+  return { masters, lines };
+}
+
 export interface BoundsCheck {
   mapId: number;
   name: string;
