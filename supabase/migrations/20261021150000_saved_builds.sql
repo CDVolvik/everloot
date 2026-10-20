@@ -79,7 +79,8 @@ revoke all on function public.take_build_save(uuid) from public, anon, authentic
 -- 1. Save a build: create (p_id null, with a fresh p_slug from the server) or update one of the owner's builds.
 -- Class and game build come from the first code; the second code must be the same class. A character must be
 -- the owner's and of the same class. Marking a build active unmarks the character's other one; a build with no
--- character is never active. On update, a null p_shared, p_active or p_show_name keeps the stored value.
+-- character is never active. On update, a null p_shared, p_active or p_show_name keeps the stored value, except
+-- that a build moved to another character is not active there unless p_active is true.
 -- Refusals (no row written): not_found (build or character is not the owner's), class_mismatch, build_limit,
 -- daily_limit, slug_taken (the server retries with another slug). Malformed input raises: the server validates first.
 create or replace function public.save_build(
@@ -132,10 +133,15 @@ begin
   if p_id is null then
     select count(*) into v_count from public.saved_builds b where b.user_id = p_user_id;
     if v_count >= 200 then refusal := 'build_limit'; return next; return; end if;
+    -- Before anything is counted or changed, so a taken slug costs nothing.
+    if exists (select 1 from public.saved_builds b where b.slug = p_slug) then refusal := 'slug_taken'; return next; return; end if;
   end if;
   if not public.take_build_save(p_user_id) then refusal := 'daily_limit'; return next; return; end if;
 
-  v_active := p_character_id is not null and coalesce(p_active, v_existing.active, false);
+  -- A build that moves to another character arrives there unmarked unless p_active says otherwise, so it never
+  -- takes the mark from that character's active build by accident.
+  v_active := p_character_id is not null and coalesce(p_active,
+    case when p_character_id is not distinct from v_existing.character_id then v_existing.active end, false);
   if v_active then
     update public.saved_builds set active = false
       where character_id = p_character_id and active and id is distinct from p_id;
@@ -268,8 +274,11 @@ alter table public.api_key_usage add constraint api_key_usage_surface_check
 -- 7. The owner's builds and characters for a key (the Desktop App, MCP, scripts). Only a live key with
 -- read:own gets them; the request counts against the account's hourly allowance, as consume_api_key does.
 -- refusal: unknown_key (unknown, revoked or expired), no_scope (live, without read:own), limited (allowance
--- spent; retry_after in seconds). characters and builds are null on a refusal.
-create or replace function public.own_builds_for_key(p_token_hash text)
+-- spent; retry_after in seconds). characters and builds are null on a refusal. p_count false is for a request
+-- the data guard has already counted against the same allowance (consume_api_key on the MCP mount), so one
+-- MCP call is one request.
+drop function if exists public.own_builds_for_key(text);
+create or replace function public.own_builds_for_key(p_token_hash text, p_count boolean default true)
 returns table (refusal text, retry_after integer, characters jsonb, builds jsonb)
 language plpgsql security definer set search_path = '' set lock_timeout = '3s'
 as $$
@@ -287,6 +296,7 @@ begin
     where k.token_hash = p_token_hash and k.revoked_at is null and (k.expires_at is null or k.expires_at > now());
   if not found then refusal := 'unknown_key'; return next; return; end if;
   if not ('read:own' = any(found_key.scopes)) then refusal := 'no_scope'; return next; return; end if;
+  if p_count is distinct from false then
   bucket_name := 'user:' || found_key.user_id::text;
   time_now := clock_timestamp();
   insert into public.intake_quota_buckets values (bucket_name, 0, time_now + interval '1 hour')
@@ -310,6 +320,7 @@ begin
     on conflict on constraint api_key_usage_pkey do update set count = u.count + 1;
   update public.api_keys set last_used_at = now()
     where id = found_key.id and (last_used_at is null or last_used_at < now() - interval '1 minute');
+  end if;
   select coalesce(jsonb_agg(jsonb_build_object('id', c.id, 'name', c.name, 'class_slug', c.class_slug, 'realm', c.realm, 'note', c.note)
       order by lower(c.name), c.id), '[]'::jsonb)
     into characters from public.build_characters c where c.user_id = found_key.user_id;
@@ -322,8 +333,8 @@ begin
   return next;
 end;
 $$;
-revoke all on function public.own_builds_for_key(text) from public, anon, authenticated;
-grant execute on function public.own_builds_for_key(text) to service_role;
+revoke all on function public.own_builds_for_key(text, boolean) from public, anon, authenticated;
+grant execute on function public.own_builds_for_key(text, boolean) to service_role;
 
 -- 8. Keys may now be made with read:own as well ("Read my saved builds"). Without p_scopes a key is
 -- read:public, as before. The four-argument version is dropped first so a call by name has one match
@@ -383,7 +394,7 @@ notify pgrst, 'reload schema';
 --   select * from public.build_characters where user_id = '<id>';
 -- Take one shared link down by hand (the owner's tool for abuse): update public.saved_builds set shared = false where slug = '<slug>';
 -- Rollback (run by hand; this deletes every saved build and label):
---   drop function if exists public.own_builds_for_key(text);
+--   drop function if exists public.own_builds_for_key(text, boolean);
 --   drop function if exists public.shared_build(text);
 --   drop function if exists public.delete_build_character(uuid, uuid);
 --   drop function if exists public.save_build_character(uuid, uuid, text, text, text, text);

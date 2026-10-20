@@ -123,6 +123,19 @@ try {
   assert.deepEqual(actives.map((r) => r.id), [two.build_ref]);
   await save(owner, { id: one.build_ref, character: jaina.character_ref, active: true });
   assert.deepEqual((await service("select id from public.saved_builds where character_id = $1 and active", [jaina.character_ref])).map((r) => r.id), [one.build_ref]);
+  // Moving a build to another character does not take that character's active mark, unless asked.
+  const alt = await character(owner, { name: "Alt mage" });
+  const altActive = await save(owner, { character: alt.character_ref, active: true });
+  const mover = await save(owner, { character: jaina.character_ref, active: true });
+  await save(owner, { id: mover.build_ref, character: alt.character_ref });
+  const altMarks = await service("select id from public.saved_builds where character_id = $1 and active", [alt.character_ref]);
+  assert.deepEqual(altMarks.map((r) => r.id), [altActive.build_ref]);
+  await save(owner, { id: mover.build_ref, character: alt.character_ref, active: true });
+  assert.deepEqual((await service("select id from public.saved_builds where character_id = $1 and active", [alt.character_ref])).map((r) => r.id), [mover.build_ref]);
+  // A null p_active on the same character keeps the mark.
+  await save(owner, { id: mover.build_ref, character: alt.character_ref, name: "Renamed" });
+  assert.equal((await service("select active from public.saved_builds where id = $1", [mover.build_ref]))[0].active, true);
+  await save(owner, { id: one.build_ref, character: jaina.character_ref, active: true });
   // A build without a character is never active.
   const loose = await save(owner, { active: true });
   assert.equal((await service("select active from public.saved_builds where id = $1", [loose.build_ref]))[0].active, false);
@@ -145,8 +158,11 @@ try {
   assert.equal(await shared("%%%%%%%%"), null);
   assert.equal((await service("select public.delete_build($1,$2) as ok", [owner, open.build_ref]))[0].ok, true);
   assert.equal(await shared(open.build_slug), null, "a deleted build has no public read");
-  // A slug already in use is refused, not overwritten.
+  // A slug already in use is refused, not overwritten, and costs no save.
+  const savesBefore = (await pool.query("select count from public.intake_quota_buckets where bucket = $1", [`builds:${other}`])).rows[0]?.count ?? 0;
   assert.equal((await save(other, { slug: made.build_slug })).refusal, "slug_taken");
+  const savesAfter = (await pool.query("select count from public.intake_quota_buckets where bucket = $1", [`builds:${other}`])).rows[0]?.count ?? 0;
+  assert.equal(savesAfter, savesBefore);
 
   // Limits: 200 builds and 30 characters per account, 300 saves a day.
   await pool.query("delete from public.saved_builds");
@@ -192,6 +208,15 @@ try {
   assert.ok(listed.builds.every((b) => !JSON.stringify(b).includes(other)));
   const usage = await service("select surface, count::int from public.api_key_usage where key_id = $1", [ownKey.key_ref]);
   assert.deepEqual(usage, [{ surface: "builds", count: 1 }]);
+  // A read the data guard already counted (MCP) is not counted twice.
+  const bucket = async () => (await pool.query("select count from public.intake_quota_buckets where bucket = $1", [`user:${owner}`])).rows[0].count;
+  const counted = await bucket();
+  const uncounted = (await service("select * from public.own_builds_for_key($1, false)", [hash(`evl_${hex(2)}`)]))[0];
+  assert.equal(uncounted.refusal, null);
+  assert.equal(uncounted.builds.length, 2);
+  assert.equal(await bucket(), counted);
+  assert.deepEqual(await service("select surface, count::int from public.api_key_usage where key_id = $1", [ownKey.key_ref]), usage);
+  assert.equal((await service("select * from public.own_builds_for_key($1, false)", [hash(`evl_${hex(1)}`)]))[0].refusal, "no_scope");
   await pool.query("update public.intake_quota_buckets set count = 2000 where bucket = $1", [`user:${owner}`]);
   const limited = await forKey(`evl_${hex(2)}`);
   assert.equal(limited.refusal, "limited");
