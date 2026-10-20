@@ -85,6 +85,21 @@ test("the hub is the browse view across realms: names, realms, house switch, cat
   expect(html).toContain('href="/addon#desktop"');
 });
 
+test("on a phone the tree is one closed Category control and the house tabs drop their counts from view", async () => {
+  const html = await realmHtml("forever", { class: "armor", sub: "leather" });
+  // The phone control: closed, naming the current category; the rail is drawn from lg up only.
+  const control = /<details data-category-control="[^"]*" class="lg:hidden">([\s\S]*?)<\/details>/.exec(html);
+  expect(control).not.toBeNull();
+  expect(control![0]).not.toContain(" open");
+  expect(text(control![1]!)).toContain("Category: Armor › Leather");
+  expect(html).toContain('<div class="hidden lg:block"><nav aria-label="Categories">');
+  expect(text(await realmHtml("forever"))).toContain("Category: All");
+  // Short tab labels; the counts and "houses" are read out on a phone but drawn only from sm up.
+  const tabs = /data-link-tabs[\s\S]*?<\/nav>/.exec(html)![0];
+  expect(tabs.match(/data-house-count="[^"]*" class="sr-only[^"]*sm:not-sr-only/g)).toHaveLength(4);
+  expect(tabs).toContain('<span class="sr-only sm:not-sr-only"> houses</span>');
+});
+
 test("the old page's links and an item id land on the item pages; a word filters by name", async () => {
   await expect(hub({ realm: "Forever" })).rejects.toThrow("REDIRECT /tools/auctions/forever");
   await expect(hub({ realm: "Mal'Ganis", q: "2589" })).rejects.toThrow("REDIRECT /tools/auctions/malganis/2589");

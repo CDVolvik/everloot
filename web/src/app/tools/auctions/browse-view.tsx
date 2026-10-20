@@ -33,6 +33,11 @@ const WIDE_SORTS: AhSort[] = ["name", "ilvl", "req"];
 /** Only the plain view is indexed; a filter, a house, a sort or a later page points its canonical at it. */
 export const isPlainView = (q: AhQuery) => activeFilters(q) === 0 && !q.house && !q.sort && q.page === 1;
 
+/** A house tab's item count: read out everywhere, drawn from 640 px up so the four tabs fit a phone. */
+function HouseCount({ n }: { n: number }) {
+  return <span data-house-count className="sr-only tabular-nums text-muted sm:not-sr-only sm:ml-1">{` (${n.toLocaleString("en-US")})`}</span>;
+}
+
 /** One category in the left tree, its open children under it. */
 function TreeItem({ node, depth }: { node: TreeNode; depth: number }) {
   return (
@@ -103,8 +108,8 @@ export async function browseView({ slug, search }: { slug: string | null; search
 
   const counts = state ? houseCounts(state, now, slug ?? undefined) : new Map<AuctionHouse | null, number>();
   const houseTabs = [
-    { href: here({ house: null }), label: "All houses", current: !q.house, count: counts.get(null) ?? 0 },
-    ...HOUSES.map((h) => ({ href: here({ house: h }), label: h, current: q.house === h, count: counts.get(h) ?? 0 })),
+    { href: here({ house: null }), label: <>All<span className="sr-only sm:not-sr-only"> houses</span><HouseCount n={counts.get(null) ?? 0} /></>, current: !q.house },
+    ...HOUSES.map((h) => ({ href: here({ house: h }), label: <>{h}<HouseCount n={counts.get(h) ?? 0} /></>, current: q.house === h })),
   ];
 
   const inCat = rows.filter((r) => inCategory(r.value.itemId, q));
@@ -161,6 +166,25 @@ export async function browseView({ slug, search }: { slug: string | null; search
   ];
   const sort = q.sort ?? (q.moved ? { key: "change" as AhSort, desc: true } : DEFAULT_SORT);
 
+  const tree = categoryTree(rows, q, path);
+  const categoryLabel = [q.cls?.label, q.sub ? q.sub.name ?? `Subclass ${q.sub.id}` : null, q.slot ? tree.flatMap((n) => n.children ?? []).flatMap((n) => n.children ?? []).find((n) => n.on)?.label : null]
+    .filter(Boolean).join(" › ") || "All";
+  const categoryNav = (
+    <nav aria-label="Categories">
+      <ul>
+        <li>
+          <Link
+            href={ahHref(path, { ...q, cls: undefined, sub: undefined, slot: undefined, page: 1 })}
+            aria-current={!q.cls ? "page" : undefined}
+            className={`flex min-h-7 items-center rounded-control px-2 text-control hover:bg-panel hover:text-fg ${!q.cls ? "bg-panel font-medium text-fg" : "text-fg-2"}`}
+          >
+            All categories
+          </Link>
+        </li>
+        {tree.map((node) => <TreeItem key={node.key} node={node} depth={0} />)}
+      </ul>
+    </nav>
+  );
   let body;
   if (!state) {
     body = <Card><p className="text-fg-2" role="status">Market values are unavailable right now. They are unrecorded, not zero.</p></Card>;
@@ -220,20 +244,15 @@ export async function browseView({ slug, search }: { slug: string | null; search
               />
               <button type="submit" className="sr-only">Search</button>
             </form>
-            <nav aria-label="Categories">
-              <ul>
-                <li>
-                  <Link
-                    href={ahHref(path, { ...q, cls: undefined, sub: undefined, slot: undefined, page: 1 })}
-                    aria-current={!q.cls ? "page" : undefined}
-                    className={`flex min-h-7 items-center rounded-control px-2 text-control hover:bg-panel hover:text-fg ${!q.cls ? "bg-panel font-medium text-fg" : "text-fg-2"}`}
-                  >
-                    All categories
-                  </Link>
-                </li>
-                {categoryTree(rows, q, path).map((node) => <TreeItem key={node.key} node={node} depth={0} />)}
-              </ul>
-            </nav>
+            {/* A phone gets the tree as one closed control that names the current category; a wide screen keeps it as the left rail. */}
+            <details data-category-control className="lg:hidden">
+              <summary className={`ctl flex cursor-pointer list-none items-center gap-1.5 border px-3 [&::-webkit-details-marker]:hidden ${q.cls ? "border-accent text-fg" : "border-edge text-fg-2"}`}>
+                <span className="min-w-0 flex-1 truncate">Category: <span className="text-fg">{categoryLabel}</span></span>
+                <svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10" className="shrink-0 text-muted"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.5" /></svg>
+              </summary>
+              <div className="mt-1 rounded-control border border-line bg-panel p-1">{categoryNav}</div>
+            </details>
+            <div className="hidden lg:block">{categoryNav}</div>
           </aside>
           <div className="min-w-0">
             <FilterBar label="Auction filters" controls={controls} active={activeFilters(q)} clearHref={clearHref} />
