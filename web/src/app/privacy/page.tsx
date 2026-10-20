@@ -75,6 +75,15 @@ export default function PrivacyPage() {
           publish your named addon records or establish guild officer authority.
         </li>
         <li>
+          <strong>Email account (optional):</strong> if you make an account with
+          your email instead of Battle.net, we store the email, the name you
+          choose and a one-way hash of your password, never the password itself.
+          We use the email only for account mail: the link that confirms it and
+          password-reset links. That mail is sent through Resend, which handles
+          the address only to deliver it. Sessions work as described for
+          Battle.net above.
+        </li>
+        <li>
           <strong>API keys (optional):</strong> if you make a free API key on the
           Connect page, we store a one-way hash of it, the last four characters,
           your label, which account it belongs to, when it was made, last used
@@ -230,6 +239,7 @@ export default function PrivacyPage() {
         <li><strong>Login cookie:</strong> at most 30 days after your last visit, or until you sign out.</li>
         <li><strong>Cookie choice:</strong> in your browser until you clear it or change it.</li>
         <li><strong>Battle.net Account ID and BattleTag:</strong> until you ask us to delete your account.</li>
+        <li><strong>Account email, name and password hash:</strong> until you ask us to delete your account. Unused confirmation and reset links expire after one hour.</li>
         <li><strong>API key usage counts:</strong> {USAGE_KEPT_DAYS} days. A revoked key and its counts: {REVOKED_KEPT_DAYS} days after revocation, or at once when you delete it.</li>
         <li><strong>Rate-limit hashes:</strong> a short time, long enough to enforce the limit, then discarded.</li>
         <li><strong>Uploads:</strong> until you ask us to remove them. They are the public database.</li>

@@ -46,8 +46,8 @@ export default function AccountControls() {
 
   return (
     <div className="relative shrink-0">
-      {status === "anonymous" ? <a href="/api/auth/bnet" className={controlClass}>Sign in</a>
-        : status === "signed-in" ? <button type="button" disabled={signingOut} aria-busy={signingOut} onClick={signOut} className={controlClass}>Sign out</button>
+      {status === "anonymous" ? <a href="/sign-in" className={controlClass}>Sign in</a>
+        : status === "signed-in" ? <span className="inline-flex"><a href="/account" className={controlClass}>Account</a><button type="button" disabled={signingOut} aria-busy={signingOut} onClick={signOut} className={controlClass}>Sign out</button></span>
         : status === "unavailable" ? <button type="button" aria-label="Retry account status" onClick={() => setRetry(retry + 1)} className={controlClass}>Retry</button>
         : <button type="button" disabled aria-busy="true" className={controlClass}>Account</button>}
       {error && <p role="alert" className="absolute right-0 top-full mt-2 w-56 rounded-lg border border-line bg-canvas p-3 text-sm text-fg">{error}</p>}

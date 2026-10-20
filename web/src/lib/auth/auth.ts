@@ -1,14 +1,24 @@
 import { createHmac } from "node:crypto";
 import { betterAuth, type DBAdapterInstance } from "better-auth";
+import { APIError, createAuthMiddleware } from "better-auth/api";
 import { nextCookies } from "better-auth/next-js";
 import { genericOAuth } from "better-auth/plugins";
 import type { Pool } from "pg";
 import { siteUrl } from "@/lib/supabase/server";
-import { battlenetProvider } from "./battlenet";
+import { battlenetProvider, isPlaceholderEmail } from "./battlenet";
 import { authPool, pgRateLimitStore, type RateLimitStore } from "./db";
+import { emailConfigured, resetText, sendEmail, verificationText } from "./email";
 
 export function authV2Enabled(env: Record<string, string | undefined> = process.env): boolean {
   return env.EVERLOOT_AUTH_V2 === "1";
+}
+
+/** Which sign-in buttons the pages show. Email needs the Better Auth flag and a mail sender. */
+export function signInMethods(env: Record<string, string | undefined> = process.env) {
+  return {
+    battlenet: Boolean(env.BNET_CLIENT_ID?.trim() && env.BNET_CLIENT_SECRET?.trim()),
+    email: authV2Enabled(env) && emailConfigured(env),
+  };
 }
 
 const noProviderTokens = { accessToken: null, refreshToken: null, idToken: null };
@@ -33,6 +43,31 @@ export function createAuth(options: {
     baseURL: env.BETTER_AUTH_URL?.trim() || siteUrl(),
     basePath: "/api/auth",
     trustedOrigins: [siteUrl()],
+    // Off until Resend is set up: an account nobody can verify is an account nobody can use.
+    emailAndPassword: {
+      enabled: emailConfigured(env),
+      requireEmailVerification: true,
+      minPasswordLength: 10,
+      revokeSessionsOnPasswordReset: true,
+      sendResetPassword: ({ user, url }) =>
+        sendEmail(env, { to: user.email, subject: "Reset your Everloot password", text: resetText(url) }),
+    },
+    emailVerification: {
+      sendOnSignUp: true,
+      autoSignInAfterVerification: true,
+      sendVerificationEmail: ({ user, url }) =>
+        sendEmail(env, { to: user.email, subject: "Confirm your Everloot email", text: verificationText(url) }),
+    },
+    hooks: {
+      // Battle.net users hold a placeholder address; taking one would block that player's next sign-in.
+      before: createAuthMiddleware(async (ctx) => {
+        if (ctx.path !== "/sign-up/email") return;
+        const email = (ctx.body as { email?: unknown } | undefined)?.email;
+        if (typeof email === "string" && isPlaceholderEmail(email.trim())) {
+          throw new APIError("BAD_REQUEST", { message: "Use a real email address." });
+        }
+      }),
+    },
     user: {
       modelName: "users",
       fields: { emailVerified: "email_verified", createdAt: "created_at", updatedAt: "updated_at" },

@@ -13,6 +13,10 @@ build that has a zip in the repository. Earlier builds have none.
 ## [Unreleased]
 
 ### Added
+- Accounts: `/sign-in`, `/sign-up` and `/reset-password` pages, and an `/account` page with your profile,
+  sign-in methods and API keys. Under `EVERLOOT_AUTH_V2`, with `RESEND_API_KEY` and `EMAIL_FROM` set,
+  anyone can make an account with an email and password; the email has to be confirmed before the first
+  sign-in. Without them Battle.net stays the only sign-in. The header's Sign in now opens `/sign-in`.
 - Battle.net sign-in can run on Better Auth behind `EVERLOOT_AUTH_V2`. Existing accounts and API keys
   carry over. No provider tokens, IP addresses or user agents are stored. With the flag off, sign-in
   behaves as before.
