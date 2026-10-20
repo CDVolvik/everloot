@@ -1,10 +1,10 @@
 import mapJson from "@/data/game-data/map.json";
 import { rollupMapBounds, type MapBoundsRow } from "../../../kb/src/map-bounds";
-import { checkReportedBounds, placeEntrances, worldToMap, zoneTable, type BoundsCheck, type EntrancePin } from "../../../kb/src/world-coords";
+import { checkReportedBounds, placeEntrances, placeFlights, worldToMap, zoneTable, type BoundsCheck, type EntrancePin } from "../../../kb/src/world-coords";
 import { WorldMapData } from "../../../kb/src/world-map-data";
 import { observedPins } from "../../../kb/src/world-map-near";
 import { PUBLIC_RECORD_KINDS } from "@everloot/protocol";
-import { mapHref, type MapPin } from "./map-view";
+import { mapHref, type MapFlightLine, type MapFlightMaster, type MapPin } from "./map-view";
 import { worldFactsFromRecords, type WorldFacts } from "../../../kb/src/world-pages";
 
 export const CONTINENTS = [
@@ -64,6 +64,20 @@ export function continentMap(continentId: number, boundsRows: MapBoundsRow[], da
 }
 
 export const MAP_SOURCE = WORLD_MAP.source;
+
+/**
+ * Flight masters and flight lines on one continent, from the game files (found in game files, unconfirmed).
+ * Those in held-back zones are returned only when spoilers are on, like the zones themselves.
+ */
+export function continentFlights(continentId: number, spoilers = false, data: WorldMapData = WORLD_MAP): { masters: MapFlightMaster[]; lines: MapFlightLine[] } {
+  const { masters, lines } = placeFlights(data);
+  return {
+    masters: masters.filter((m) => m.world.continentId === continentId && (spoilers || !m.heldBack))
+      .map((m) => ({ id: `f${m.id}`, name: m.name, x: m.map.x, y: m.map.y, heldBack: m.heldBack })),
+    lines: lines.filter((l) => l.continentId === continentId && (spoilers || !l.heldBack))
+      .map((l) => ({ id: `l${l.from}-${l.to}`, from: `f${l.from}`, to: `f${l.to}`, points: l.points.map((p): [number, number] => [p.x, p.y]), heldBack: l.heldBack })),
+  };
+}
 
 /**
  * Player-observed NPC and vendor points on one continent, after the 3-install rule (kb/src/world-map-near.ts).

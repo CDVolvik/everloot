@@ -13,6 +13,7 @@ build that has a zip in the repository. Earlier builds have none.
 ## [Unreleased]
 
 ### Added
+- Site: the world map is now a Leaflet map that fills the screen: click a zone to zoom to it, search for a zone or NPC, flight masters and flight paths from the game files, coordinates on hover with a copyable `/way` line, a bottom card for a tapped pin, and an address that keeps your view; `/map?zone=<id>` opens that zone.
 - Addon: `/everloot price <item>` prints an item's price in chat, anywhere in the world: a shift-clicked
   link, an item id, or the name of an item the client has seen. It shows the same lines as the tooltip (community
   market value, minimum, historical, units up, reporters, how fresh the file is, and your own last scan) and
