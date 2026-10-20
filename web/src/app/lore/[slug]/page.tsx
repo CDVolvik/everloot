@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { FEED, IMAGE, TWITTER_IMAGE } from "@/lib/seo";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
+import { Card, SectionHeading } from "@/components/ui";
+import { entityHref } from "@/components/EntityLink";
+import { idForName, loadNames } from "@/lib/names";
 import { BROWSE_HEADINGS, BROWSE_TYPES, CONVERSION_NOTE, FACET_KEYS, firstSentence, isIndexable, loreByExtId, loreSlug, parseLoreSlug, renderBody, UNAVAILABLE, UNAVAILABLE_COPY, type BrowseSlug, type LorePage as Lore } from "@/lib/lore";
 
 const FACET_LABELS = { expansion: "Expansion", profession: "Profession", class: "Class", race: "Race", zone: "Zone", faction: "Faction" } as const;
@@ -67,6 +70,10 @@ export default async function LorePage(props: { params: Promise<{ slug: string }
     ? FACET_KEYS.flatMap((key) => page.facets![key].map((value) => ({ key, value, href: `/lore/${typeSlug}?${key}=${encodeURIComponent(value)}` })))
     : [];
   const infoboxEntries = page.infobox ? Object.entries(page.infobox.fields) : [];
+  // The database page for the same thing, when players have agreed on a name that is exactly this page's.
+  const dbKind = wiki && (page.type === "npc" || page.type === "item" || page.type === "quest") ? page.type : null;
+  const names = dbKind ? await loadNames() : null;
+  const dbId = dbKind && names ? idForName(dbKind === "npc" ? names.npcs : dbKind === "item" ? names.items : names.quests, page.name) : null;
   return (
     <article className="space-y-8 max-w-4xl">
       <header className="space-y-3">
@@ -98,6 +105,16 @@ export default async function LorePage(props: { params: Promise<{ slug: string }
           ),
         )}
       </section>
+
+      {dbKind && dbId !== null && (
+        <Card as="section" aria-labelledby="in-database">
+          <SectionHeading id="in-database">In the Forever database</SectionHeading>
+          <p className="text-sm text-fg-2">
+            Players have recorded {page.name} in WoW: Forever.{" "}
+            <Link href={entityHref(dbKind, dbId)} className="text-accent hover:underline underline-offset-4">See the {dbKind === "npc" ? "NPC" : dbKind} page</Link>
+          </p>
+        </Card>
+      )}
 
       {infoboxEntries.length > 0 && (
         <section className="space-y-2">

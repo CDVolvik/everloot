@@ -34,9 +34,12 @@ function professionOf(spellId: number, client: readonly Edge[]): string | undefi
   return e ? professionName(e.toId) : undefined;
 }
 
-function Target({ edge, rel, client, spellIcon }: { edge: Edge; rel: Rel; client: readonly Edge[]; spellIcon?: SpellIconFor }) {
+/** An agreed name for an entity, where the page has one; the label falls back to "kind id". */
+export type NameFor = (kind: EdgeKind, id: number) => string | undefined;
+
+function Target({ edge, rel, client, spellIcon, nameOf }: { edge: Edge; rel: Rel; client: readonly Edge[]; spellIcon?: SpellIconFor; nameOf?: NameFor }) {
   const href = hrefFor(edge.toKind, edge.toId, rel);
-  const text = edge.toKind === "skill" ? professionName(edge.toId) : edge.toKind === "zone" ? zoneByMapId(edge.toId)?.name ?? entityLabel("zone", edge.toId) : entityLabel(edge.toKind, edge.toId);
+  const text = edge.toKind === "skill" ? professionName(edge.toId) : edge.toKind === "zone" ? zoneByMapId(edge.toId)?.name ?? entityLabel("zone", edge.toId) : nameOf?.(edge.toKind, edge.toId) ?? entityLabel(edge.toKind, edge.toId);
   const icon = edge.toKind === "spell" ? spellIcon?.(edge.toId) : undefined;
   // A spell's profession beside it (Created by: spell 2660 · Blacksmithing), as item databases list recipes.
   const profession = edge.toKind === "spell" ? professionOf(edge.toId, client) : undefined;
@@ -55,8 +58,8 @@ function Target({ edge, rel, client, spellIcon }: { edge: Edge; rel: Rel; client
  * from the files, which build, and Blizzard's notice. `skip` leaves out relations the page already shows
  * in full (an item's drop table).
  */
-export function EntityRelations({ kind, id, observed, client, skip = [], spellIcon }: {
-  kind: EdgeKind; id: number; observed: readonly Edge[]; client: readonly Edge[]; skip?: Rel[]; spellIcon?: SpellIconFor;
+export function EntityRelations({ kind, id, observed, client, skip = [], spellIcon, nameOf }: {
+  kind: EdgeKind; id: number; observed: readonly Edge[]; client: readonly Edge[]; skip?: Rel[]; spellIcon?: SpellIconFor; nameOf?: NameFor;
 }) {
   const groups = groupByRel(edgesFrom([...observed, ...client], kind, id)).filter((g) => !skip.includes(g.rel));
   const clientBuild = groups.flatMap((g) => g.edges).find((e) => e.evidence === "client")?.build;
@@ -74,7 +77,7 @@ export function EntityRelations({ kind, id, observed, client, skip = [], spellIc
                 <ul className="space-y-1 text-fg">
                   {g.edges.map((e) => (
                     <li key={`${e.evidence}-${e.toKind}-${e.toId}`}>
-                      {e.rel === "same_icon" ? <SameIcon edge={e} self={id} client={client} /> : <Target edge={e} rel={g.rel} client={client} spellIcon={spellIcon} />}
+                      {e.rel === "same_icon" ? <SameIcon edge={e} self={id} client={client} /> : <Target edge={e} rel={g.rel} client={client} spellIcon={spellIcon} nameOf={nameOf} />}
                       {e.evidence === "observed" ? <span className="text-muted">{` · ${evidenceLabel(e)}`}</span> : null}
                     </li>
                   ))}

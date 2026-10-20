@@ -129,7 +129,7 @@ test("without the private bucket's variables, item links stay plain: no item ico
   vi.stubGlobal("fetch", bucket());
   const html = await render(() => DropsPage());
   expect(html).not.toMatch(/data-item-tip|<img|data-game-credit/);
-  expect(html).toContain("Item #9");
+  expect(html).toContain("Item 9");
 });
 
 test("item page: the tooltip card for an item players reported; an id nobody reported reads nothing at all", async () => {

@@ -13,6 +13,10 @@ build that has a zip in the repository. Earlier builds have none.
 ## [Unreleased]
 
 ### Added
+- One search on everloot.app: the header box and `/search` find items, NPCs, quests, zones, lore pages and
+  tools by name or id, grouped by type with an exact id or name first. Drop, reward, giver and vendor lists
+  show names and icons instead of "Item 1234", NPC, item and quest pages show a Lore section when the lore
+  archive has a page of the same name, and those lore pages link back to the database.
 - Addon: `/everloot price <item>` prints an item's price in chat, anywhere in the world: a shift-clicked
   link, an item id, or the name of an item the client has seen. It shows the same lines as the tooltip (community
   market value, minimum, historical, units up, reporters, how fresh the file is, and your own last scan) and

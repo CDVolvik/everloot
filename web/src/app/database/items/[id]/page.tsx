@@ -15,6 +15,10 @@ import GameCredit from "@/components/game/GameCredit";
 import { categoryOf } from "../../../../../../kb/src/item-taxonomy";
 import { CLIENT_LABEL } from "../../../../../../kb/src/edges";
 import { CLIENT_LAYER, CLIENT_TAXONOMY, itemsHref } from "@/lib/items";
+import { loadNames, nameOf } from "@/lib/names";
+import { loreForEntity } from "@/lib/lore";
+import EntityLink from "@/components/EntityLink";
+import LoreSection from "@/components/LoreSection";
 import { CategoryPage, categoryMetadata } from "../category-page";
 
 /** The segment is an item id, or a class slug (/database/items/weapons): numbers are items, words are classes. */
@@ -53,6 +57,8 @@ export default async function ItemPage(props: Props) {
   const spellIcon = (spellId: number) => assets?.spellIcons.get(spellId);
   const relationIcons = edges.client.some((e) => e.fromKind === "item" && e.fromId === itemId && e.toKind === "spell" && spellIcon(e.toId));
   const category = categoryOf(CLIENT_TAXONOMY, itemId);
+  const names = await loadNames();
+  const lore = seen && page.name ? loreForEntity("item", page.name) : null;
 
   return (
     <article className="space-y-8 max-w-4xl">
@@ -96,7 +102,9 @@ export default async function ItemPage(props: Props) {
               {page.drops.map((drop) => (
                 <tr key={drop.source} className="border-t border-line bg-panel text-fg">
                   <td className="px-4 py-3">
-                    <Link href={drop.sourceNpcId !== undefined ? `/database/npcs/${drop.sourceNpcId}` : `/database/objects/${drop.sourceObjectId}`} className="text-accent hover:underline underline-offset-4">{drop.source}</Link>
+                    {drop.sourceNpcId !== undefined
+                      ? <EntityLink kind="npc" id={drop.sourceNpcId} name={names.npcs.get(drop.sourceNpcId)} />
+                      : <EntityLink kind="object" id={drop.sourceObjectId!} />}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums">{drop.kills}</td>
                   <td className="px-4 py-3 text-right tabular-nums">{drop.drops}</td>
@@ -120,8 +128,7 @@ export default async function ItemPage(props: Props) {
           <ul className="text-sm text-fg space-y-1">
             {page.pins.map((pin) => (
               <li key={`${pin.npcId}-${pin.mapId}`}>
-                NPC {pin.npcId}
-                {pin.name ? ` ${pin.name}` : ""} on map {pin.mapId} at {pin.x}, {pin.y} · {pin.reporters} reporters
+                <EntityLink kind="npc" id={pin.npcId} name={pin.name ?? names.npcs.get(pin.npcId)} /> on map {pin.mapId} at {pin.x}, {pin.y} · {pin.reporters} reporters
                 {pinLink(pin.mapId, pin.x, pin.y) && <>{" · "}<Link href={pinLink(pin.mapId, pin.x, pin.y)!} className="text-accent hover:underline underline-offset-4">Show on the map</Link></>}
               </li>
             ))}
@@ -130,7 +137,9 @@ export default async function ItemPage(props: Props) {
       </section>
       )}
 
-      <EntityRelations kind="item" id={itemId} observed={edges.observed} client={edges.client} skip={["dropped_by"]} spellIcon={spellIcon} />
+      <EntityRelations kind="item" id={itemId} observed={edges.observed} client={edges.client} skip={["dropped_by"]} spellIcon={spellIcon} nameOf={nameOf(names)} />
+
+      <LoreSection match={lore} />
 
       {category?.class ? <p className="text-xs text-muted">The category line is {CLIENT_LABEL.toLowerCase()}: read from build {CLIENT_LAYER.build.version}, not yet seen in play.</p> : null}
 
