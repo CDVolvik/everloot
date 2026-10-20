@@ -7,13 +7,15 @@ vi.mock("next/link", () => ({
     <a href={href} aria-current={current} className={className}>{children}</a>
   ),
 }));
-vi.mock("next/navigation", () => ({ usePathname: () => "/database/items/2589" }));
-vi.mock("./AccountControls", () => ({ default: () => null }));
+// AccountControls renders for real: on the server it has not looked the account up yet, so it shows the signed-out
+// side (Get the addon), as the static page does.
+vi.mock("next/navigation", () => ({ usePathname: () => "/database/items/2589", useRouter: () => ({ refresh: () => {} }) }));
 vi.mock("./CookieConsent", () => ({ CookiePreferencesButton: () => <button type="button">Cookie preferences</button> }));
 
 import Header, { PRIMARY, TOOL_GROUPS } from "./Header";
 import Footer from "./Footer";
 import { toolHref, tools } from "@/data/tools";
+import { DATA_SIZE } from "@/design/tokens";
 
 const html = renderToStaticMarkup(<Header />);
 const primary = html.match(/<nav aria-label="Primary"[^>]*>([\s\S]*?)<\/nav>/)?.[1] ?? "";
@@ -42,6 +44,18 @@ test("the current section is marked", () => {
 
 test("Get the addon is the primary pill and leads to /addon", () => {
   expect(html).toMatch(/<a href="\/addon" class="btn btn-primary[^"]*">Get the addon<\/a>/);
+});
+
+test("the bar is compact: 44 px (two thirds of the old 64), the search centred, the version label kept", () => {
+  expect(DATA_SIZE.header).toBe(44);
+  const bar = html.match(/<header [^>]*>\s*<div class="([^"]*)"/)?.[1] ?? "";
+  expect(bar.split(" ")).toContain("h-header");
+  expect(bar).not.toContain("min-h-16");
+  // The search sits in its own growing slot, centred between the nav and the account area.
+  expect(html).toMatch(/<div class="[^"]*\bflex-1\b[^"]*\bjustify-center\b[^"]*"><form [^>]*role="search"/);
+  expect(html).toContain("Game version:");
+  // Tighter nav items.
+  expect(primary).toMatch(/<a href="\/map"[^>]*class="[^"]*\bpx-2\b/);
 });
 
 test("search is in the bar: a GET form to the site search, named Search Everloot", () => {
