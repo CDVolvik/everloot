@@ -117,6 +117,8 @@ export interface AddonInfo {
   addonsDir: string | null;
   installed: string | null;
   latest: { version: string; url: string } | null;
+  /** The latest release is newer than what is installed; false for a nightly ahead of it. */
+  newer: boolean;
   slots: { prices: boolean; answers: boolean };
   error: string | null;
 }
