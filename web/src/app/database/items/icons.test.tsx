@@ -17,7 +17,7 @@ vi.mock("@/lib/rollup-compute", () => ({
   loadWorldFacts: async () => ({ npcs: [], quests: [], vendors: [], unreachable: false }),
   loadObservedEdges: async () => ({ edges: [], unreachable: false, dataAsOf: null }),
 }));
-vi.mock("@/lib/upload-store", () => ({ STORAGE_UNREACHABLE: "Storage unavailable" }));
+vi.mock("@/lib/upload-store", () => ({ STORAGE_UNREACHABLE: "Storage unavailable", uploadStore: { loadCompletion: async () => ({ state: null, dataAsOf: null, unreachable: true }) } }));
 vi.mock("next/link", () => ({ default: ({ href, children, style, title }: { href: string; children: ReactNode; style?: object; title?: string }) => <a href={href} title={title} style={style}>{children}</a> }));
 vi.mock("next/navigation", () => ({ notFound: () => { throw new Error("NEXT_NOT_FOUND"); }, useRouter: () => ({ push: () => {} }) }));
 

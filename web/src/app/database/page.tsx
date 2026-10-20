@@ -6,6 +6,7 @@ import { objectList } from "../../../../kb/src/object-page";
 import { computeRollups, loadWorldFacts } from "@/lib/rollup-compute";
 import { CLIENT_TAXONOMY as T, itemsHref } from "@/lib/items";
 import { npcRows, publicQuests, publicVendors } from "@/lib/world-lists";
+import { loadCatalog } from "@/lib/completion-lists";
 import { publicZones } from "@/lib/zones";
 import JsonLd from "@/components/JsonLd";
 import { AgreementMeter, Container, DataTitle, SearchBar } from "@/components/ui";
@@ -47,17 +48,20 @@ function Block({ heading, href, count, links }: { heading: string; href?: string
 }
 
 export default async function DatabasePage() {
-  const [{ rates, measuredZeros, stats }, world] = await Promise.all([computeRollups(), loadWorldFacts()]);
+  const [{ rates, measuredZeros, stats }, world, catalog] = await Promise.all([computeRollups(), loadWorldFacts(), loadCatalog()]);
   const live = rates.filter((r) => r.public).length + measuredZeros.filter((z) => z.public).length;
   const classes = T.classes.filter((c) => c.items > 0).sort((a, b) => b.items - a.items);
   // What players have made public so far, per place: a count once there is one, the empty meter until then.
   const seen = (x: number) => (stats.unreachable ? "unrecorded" : x > 0 ? n(x) : <AgreementMeter count={0} />);
+  const listed = (x?: number) => (x === undefined ? "unrecorded" : x > 0 ? n(x) : <AgreementMeter count={0} />);
   const readable = !world.unreachable;
   const players = [
     { href: "/database/npcs", label: "NPCs", count: seen(readable ? npcRows(world, rates).length : 0) },
     { href: "/database/quests", label: "Quests", count: seen(readable ? publicQuests(world).length : 0) },
     { href: "/database/vendors", label: "Vendors", count: seen(readable ? publicVendors(world).length : 0) },
     { href: "/database/objects", label: "Objects: chests, herbs, ore", count: seen(stats.unreachable ? 0 : objectList({ rates, measuredZeros, names: [] }).length) },
+    { href: "/database/achievements", label: "Achievements", count: listed(catalog?.achievements.length) },
+    { href: "/database/factions", label: "Factions", count: listed(catalog?.factions.length) },
     { href: "/database/drops", label: "Loot observations", count: seen(live) },
     { href: "/database/zones", label: "Zones", count: n(publicZones().length) },
     { href: "/tools/guild-board", label: "Guilds", count: "uploads" },

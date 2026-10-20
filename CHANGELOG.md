@@ -13,6 +13,9 @@ build that has a zip in the repository. Earlier builds have none.
 ## [Unreleased]
 
 ### Added
+- Site: database pages for achievements and factions (`/database/achievements`, `/database/factions`), with
+  lists you can filter and sort, a page for each entry, and entries in the hub, sitemap and search. An entry
+  shows only once three players report it the same way; until then each list says so.
 - Site: `/docs`, one documentation area for players and developers: Overview, Guides, API Reference, MCP and
   Cookbook tabs, a grouped sidebar, "On this page", "Copy page" as Markdown, and a page per API endpoint and
   per MCP tool generated from the protocol, with cURL, JavaScript and Python examples. "Docs" replaces "Open data"

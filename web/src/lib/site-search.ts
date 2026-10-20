@@ -3,6 +3,7 @@ import { allDocsPages } from "@/lib/docs/nav";
 import { entityHref } from "@/components/EntityLink";
 import { describe } from "../../../kb/src/item-taxonomy";
 import { objectList } from "../../../kb/src/object-page";
+import { achievementHref, factionHref, loadCatalog } from "./completion-lists";
 import { CLIENT_TAXONOMY } from "./items";
 import { loreSlug, MAX_QUERY, searchLore, UNAVAILABLE } from "./lore";
 import { loadNames, type Names } from "./names";
@@ -16,16 +17,16 @@ import { zoneHref } from "./zones";
  * the item is in the build.
  */
 export interface SearchResult { label: string; href: string; note?: string; exact: boolean; id?: number; quality?: number | null; meta?: string }
-export type SearchType = "item" | "npc" | "quest" | "object" | "zone" | "lore" | "tool" | "doc";
+export type SearchType = "item" | "npc" | "quest" | "object" | "achievement" | "faction" | "zone" | "lore" | "tool" | "doc";
 /** `total` counts every match; `results` holds the first `limit` of them. */
 export interface SearchGroup { type: SearchType; heading: string; results: SearchResult[]; total: number }
 export const GROUP_LIMIT = 8;
 export const LORE_LIMIT = 5;
 
 export const HEADINGS: Record<SearchType, string> = {
-  item: "Items", npc: "NPCs", quest: "Quests", object: "Objects", zone: "Zones", lore: "Lore archive", tool: "Tools", doc: "Docs",
+  item: "Items", npc: "NPCs", quest: "Quests", object: "Objects", achievement: "Achievements", faction: "Factions", zone: "Zones", lore: "Lore archive", tool: "Tools", doc: "Docs",
 };
-const ORDER: SearchType[] = ["item", "npc", "quest", "object", "zone", "lore", "tool", "doc"];
+const ORDER: SearchType[] = ["item", "npc", "quest", "object", "achievement", "faction", "zone", "lore", "tool", "doc"];
 /** The types a search can be scoped to (`/search?q=…&in=item`); `in=lore` is the lore archive's own list. */
 export const SCOPES = ["item", "npc", "quest", "object"] as const satisfies readonly SearchType[];
 export type Scope = (typeof SCOPES)[number];
@@ -103,6 +104,21 @@ export async function siteSearch(raw: string, { only, limit = GROUP_LIMIT }: { o
   if (want("object")) { const objects = await objectById(id); found.set("object", { results: objects, total: objects.length }); }
 
   if (!only) {
+    // Achievements and factions three players reported, by name or id; none when the rollup cannot be read.
+    const catalog = await loadCatalog();
+    if (catalog) {
+      const hit = (label: string, href: string, n: number, exact: boolean): SearchResult => ({ label, href, note: `id ${n}`, exact, id: n });
+      const achievements = byName(catalog.achievements, q).map(({ entry, exact }) => hit(entry.name, achievementHref(entry.achievementId, entry.name), entry.achievementId, exact));
+      const factions = byName(catalog.factions, q).map(({ entry, exact }) => hit(entry.name, factionHref(entry.factionId, entry.name), entry.factionId, exact));
+      if (id !== null) {
+        const a = catalog.achievements.find((x) => x.achievementId === id), f = catalog.factions.find((x) => x.factionId === id);
+        if (a && !achievements.some((r) => r.id === id)) achievements.unshift(hit(a.name, achievementHref(id, a.name), id, true));
+        if (f && !factions.some((r) => r.id === id)) factions.unshift(hit(f.name, factionHref(id, f.name), id, true));
+      }
+      found.set("achievement", { results: achievements, total: achievements.length });
+      found.set("faction", { results: factions, total: factions.length });
+    }
+
     const zones = byName(WORLD_MAP.zones.map((z) => ({ id: z.uiMapId, name: z.name })), q)
       .map(({ entry, exact }) => ({ label: entry.name, href: zoneHref(entry.id, entry.name), note: "zone", exact }));
     found.set("zone", { results: zones, total: zones.length });
