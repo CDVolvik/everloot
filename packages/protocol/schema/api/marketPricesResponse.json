@@ -65,6 +65,15 @@
         "null"
       ]
     },
+    "house": {
+      "description": "Present when the request named a house: the values come only from scans of that house.",
+      "type": "string",
+      "enum": [
+        "Alliance",
+        "Horde",
+        "Neutral"
+      ]
+    },
     "items": {
       "type": "array",
       "items": {

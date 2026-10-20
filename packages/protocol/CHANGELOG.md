@@ -7,6 +7,7 @@ required, or tightening a limit is a major release.
 ## [Unreleased]
 
 ### Added
+- 1.4.0 (record protocol 1.2.0): `auction_snapshot` gains two optional fields, `faction` (the scanning character's, Alliance or Horde) and `house` (`AUCTION_HOUSES`: the auction house the scan read, Alliance, Horde or Neutral). Older scans have neither. `GET /api/market/prices` takes an optional `house`; `marketPricesResponse` gains `house` and `marketRealmsResponse` gains `houses`, the houses with public values of their own per realm.
 - `GET /api/tooltip/{type}/{id}` in `API_ROUTES` with its response shape `tooltipResponse` (and `TOOLTIP_TYPES`):
   the hover card of an item, NPC, quest or object page, for the embeddable script. Minor release; the version is
   bumped when the package is next published.

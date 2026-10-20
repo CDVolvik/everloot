@@ -58,6 +58,11 @@ export declare const marketRealmsResponse: z.ZodObject<{
     ok: z.ZodLiteral<true>;
     dataAsOf: z.ZodNullable<z.ZodString>;
     realms: z.ZodArray<z.ZodString>;
+    houses: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodArray<z.ZodEnum<{
+        Alliance: "Alliance";
+        Horde: "Horde";
+        Neutral: "Neutral";
+    }>>>>;
     attribution: z.ZodObject<{
         licence: z.ZodString;
         licenceUrl: z.ZodString;
@@ -74,6 +79,11 @@ export declare const marketPricesResponse: z.ZodObject<{
     rule: z.ZodString;
     fields: z.ZodTuple<[z.ZodLiteral<"itemId">, z.ZodLiteral<"market">, z.ZodLiteral<"min">, z.ZodLiteral<"historical">, z.ZodLiteral<"quantity">, z.ZodLiteral<"day">, z.ZodLiteral<"reporters">], null>;
     realm: z.ZodNullable<z.ZodString>;
+    house: z.ZodOptional<z.ZodEnum<{
+        Alliance: "Alliance";
+        Horde: "Horde";
+        Neutral: "Neutral";
+    }>>;
     items: z.ZodArray<z.ZodTuple<[z.ZodNumber, z.ZodNumber, z.ZodNumber, z.ZodNumber, z.ZodNumber, z.ZodString, z.ZodNumber], null>>;
     attribution: z.ZodObject<{
         licence: z.ZodString;
@@ -630,6 +640,15 @@ export declare const intakeRequest: z.ZodObject<{
         capturedAt: z.ZodString;
         kind: z.ZodLiteral<"auction_snapshot">;
         realm: z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>;
+        faction: z.ZodOptional<z.ZodEnum<{
+            Alliance: "Alliance";
+            Horde: "Horde";
+        }>>;
+        house: z.ZodOptional<z.ZodEnum<{
+            Alliance: "Alliance";
+            Horde: "Horde";
+            Neutral: "Neutral";
+        }>>;
         scanId: z.ZodString;
         part: z.ZodNumber;
         parts: z.ZodNumber;
@@ -948,6 +967,11 @@ export declare const API_SCHEMAS: {
         ok: z.ZodLiteral<true>;
         dataAsOf: z.ZodNullable<z.ZodString>;
         realms: z.ZodArray<z.ZodString>;
+        houses: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodArray<z.ZodEnum<{
+            Alliance: "Alliance";
+            Horde: "Horde";
+            Neutral: "Neutral";
+        }>>>>;
         attribution: z.ZodObject<{
             licence: z.ZodString;
             licenceUrl: z.ZodString;
@@ -962,6 +986,11 @@ export declare const API_SCHEMAS: {
         rule: z.ZodString;
         fields: z.ZodTuple<[z.ZodLiteral<"itemId">, z.ZodLiteral<"market">, z.ZodLiteral<"min">, z.ZodLiteral<"historical">, z.ZodLiteral<"quantity">, z.ZodLiteral<"day">, z.ZodLiteral<"reporters">], null>;
         realm: z.ZodNullable<z.ZodString>;
+        house: z.ZodOptional<z.ZodEnum<{
+            Alliance: "Alliance";
+            Horde: "Horde";
+            Neutral: "Neutral";
+        }>>;
         items: z.ZodArray<z.ZodTuple<[z.ZodNumber, z.ZodNumber, z.ZodNumber, z.ZodNumber, z.ZodNumber, z.ZodString, z.ZodNumber], null>>;
         attribution: z.ZodObject<{
             licence: z.ZodString;
@@ -1461,6 +1490,15 @@ export declare const API_SCHEMAS: {
             capturedAt: z.ZodString;
             kind: z.ZodLiteral<"auction_snapshot">;
             realm: z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>;
+            faction: z.ZodOptional<z.ZodEnum<{
+                Alliance: "Alliance";
+                Horde: "Horde";
+            }>>;
+            house: z.ZodOptional<z.ZodEnum<{
+                Alliance: "Alliance";
+                Horde: "Horde";
+                Neutral: "Neutral";
+            }>>;
             scanId: z.ZodString;
             part: z.ZodNumber;
             parts: z.ZodNumber;

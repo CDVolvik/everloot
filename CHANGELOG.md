@@ -13,6 +13,18 @@ build that has a zip in the repository. Earlier builds have none.
 ## [Unreleased]
 
 ### Added
+- Addon: gold per hour. `/everloot gph start` opens a small window and counts your own looted items, looted
+  money, quest money and vendor sales while the session runs (pause, resume, stop, reset; a reload pauses the
+  clock). Items are valued from the Everloot market value, else your own last scan, else the vendor price,
+  each marked with its source, with the 5% auction cut on market and scan values unless you turn it off. The
+  last 50 sessions stay in your SavedVariables file for the Desktop App; they are never uploaded.
+- Addon: each auction scan records your faction and which house it read (Alliance, Horde, or Neutral for a
+  goblin house). At the auction house, when a scan can run, a "Scan prices for Everloot" prompt starts one
+  with a click, once per visit; `/everloot scanprompt off` hides it. With scans off, the first visit
+  prints how to opt in.
+- Market: scans that name their house also build that house's own market values, next to the realm-wide
+  ones. `GET /api/market/prices?realm=<realm>&house=horde` serves them, and the realm list says which houses
+  have values. Older scans and readers keep the realm-wide view.
 - Accounts: `/sign-in`, `/sign-up` and `/reset-password` pages, and an `/account` page with your profile,
   sign-in methods and API keys. Under `EVERLOOT_AUTH_V2`, with `RESEND_API_KEY` and `EMAIL_FROM` set,
   anyone can make an account with an email and password; the email has to be confirmed before the first
