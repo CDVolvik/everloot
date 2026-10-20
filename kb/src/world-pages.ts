@@ -10,6 +10,16 @@ export const WORLD_AGREEMENT = 3;
 export type NpcReaction = "friendly" | "neutral" | "hostile";
 export const NPC_REACTIONS: readonly NpcReaction[] = ["friendly", "neutral", "hostile"];
 
+/** The game's English creature types and the ranks `UnitClassification` gives (`worldboss` is `boss`). */
+export const NPC_CREATURE_TYPES: readonly string[] = [
+  "Beast", "Dragonkin", "Demon", "Elemental", "Giant", "Undead", "Humanoid", "Critter", "Mechanical", "Not specified", "Totem", "Non-combat Pet", "Gas Cloud",
+];
+export type NpcRank = "normal" | "elite" | "rare" | "rare_elite" | "boss";
+export const NPC_RANKS: readonly NpcRank[] = ["normal", "elite", "rare", "rare_elite", "boss"];
+export type QuestTag = "group" | "dungeon" | "raid" | "pvp";
+export const QUEST_TAGS: readonly QuestTag[] = ["group", "dungeon", "raid", "pvp"];
+export type QuestSide = "alliance" | "horde" | "both";
+
 export type NpcSightingRow = {
   installId: string;
   npcId: number;
@@ -20,6 +30,8 @@ export type NpcSightingRow = {
   y: number;
   level?: number;
   reaction?: NpcReaction;
+  creatureType?: string;
+  rank?: NpcRank;
 };
 
 export type QuestSighting = {
@@ -30,6 +42,10 @@ export type QuestSighting = {
   giverNpcId?: number;
   turnInNpcId?: number;
   rewardItemIds: number[];
+  category?: string;
+  faction?: "alliance" | "horde";
+  suggestedGroup?: number;
+  tag?: QuestTag;
 };
 
 export type VendorSighting = {
@@ -162,10 +178,13 @@ export function npcPage(npcId: number, facts: WorldFacts): NpcPage {
  * from `npcPage`, so the page and the MCP answer built on it stay as they are. A reaction is as seen by the
  * reporting player, so Alliance and Horde reports can disagree; then there is no agreed one.
  */
-export function npcTraits(rows: NpcSightingRow[]): { level: number | null; reaction: NpcReaction | null } {
+export function npcTraits(rows: NpcSightingRow[]): { level: number | null; reaction: NpcReaction | null; creatureType: string | null; rank: NpcRank | null } {
   const level = agreedNumber(rows.filter((row) => row.level !== undefined).map((row) => ({ installId: row.installId, value: row.level! })));
   const reaction = agreedLabel(rows.filter((row) => row.reaction !== undefined).map((row) => ({ installId: row.installId, label: row.reaction! })));
-  return { level, reaction: reaction as NpcReaction | null };
+  // The type and rank are the game's own for the creature, the same for every player, and need the same 3 installs.
+  const creatureType = agreedLabel(rows.filter((row) => row.creatureType !== undefined).map((row) => ({ installId: row.installId, label: row.creatureType! })));
+  const rank = agreedLabel(rows.filter((row) => row.rank !== undefined).map((row) => ({ installId: row.installId, label: row.rank! })));
+  return { level, reaction: reaction as NpcReaction | null, creatureType, rank: rank as NpcRank | null };
 }
 
 export function formatNpcPage(page: NpcPage): string {
@@ -205,6 +224,23 @@ export function questPage(questId: number, facts: WorldFacts): QuestPage {
     ),
     rewards: [...rewards.entries()].filter(([, installs]) => installs.size >= WORLD_AGREEMENT).map(([itemId]) => itemId).sort((a, b) => a - b),
   };
+}
+
+/**
+ * A quest's category, suggested group and tag, each public when 3 installs report the same one, and its side.
+ * The side is the faction of the characters that accepted it: Alliance or Horde when 3 installs report that
+ * faction and none reports the other, Both when 3 installs report each, and no side otherwise. It is never
+ * guessed from the title, giver or zone.
+ */
+export function questTraits(rows: QuestSighting[]): { category: string | null; side: QuestSide | null; suggestedGroup: number | null; tag: QuestTag | null } {
+  const category = agreedLabel(rows.filter((row) => row.category !== undefined).map((row) => ({ installId: row.installId, label: row.category! })));
+  const suggestedGroup = agreedNumber(rows.filter((row) => row.suggestedGroup !== undefined).map((row) => ({ installId: row.installId, value: row.suggestedGroup! })));
+  const tag = agreedLabel(rows.filter((row) => row.tag !== undefined).map((row) => ({ installId: row.installId, label: row.tag! })));
+  const installs = { alliance: new Set<string>(), horde: new Set<string>() };
+  for (const row of rows) if (row.faction && row.installId.trim()) installs[row.faction].add(row.installId.trim());
+  const [a, h] = [installs.alliance.size, installs.horde.size];
+  const side: QuestSide | null = a >= WORLD_AGREEMENT && h >= WORLD_AGREEMENT ? "both" : a >= WORLD_AGREEMENT && h === 0 ? "alliance" : h >= WORLD_AGREEMENT && a === 0 ? "horde" : null;
+  return { category, side, suggestedGroup, tag: tag as QuestTag | null };
 }
 
 export function formatQuestPage(page: QuestPage): string {
@@ -297,7 +333,9 @@ export function worldFactsFromRecords(records: unknown[]): WorldFacts {
       facts.npcs.push({ installId: row.installId, npcId: row.npcId, name: row.name, mapId: row.mapId, x: row.x, y: row.y,
         ...(row.positionKind === "npc" || row.positionKind === "player" ? { positionKind: row.positionKind } : {}),
         ...(typeof row.level === "number" && Number.isInteger(row.level) && row.level > 0 ? { level: row.level } : {}),
-        ...(NPC_REACTIONS.includes(row.reaction as NpcReaction) ? { reaction: row.reaction as NpcReaction } : {}) });
+        ...(NPC_REACTIONS.includes(row.reaction as NpcReaction) ? { reaction: row.reaction as NpcReaction } : {}),
+        ...(typeof row.creatureType === "string" && NPC_CREATURE_TYPES.includes(row.creatureType) ? { creatureType: row.creatureType } : {}),
+        ...(NPC_RANKS.includes(row.rank as NpcRank) ? { rank: row.rank as NpcRank } : {}) });
     }
     if (row.kind === "quest" && typeof row.questId === "number" && typeof row.title === "string" && typeof row.level === "number") {
       facts.quests.push({
@@ -308,6 +346,10 @@ export function worldFactsFromRecords(records: unknown[]): WorldFacts {
         ...(typeof row.giverNpcId === "number" ? { giverNpcId: row.giverNpcId } : {}),
         ...(typeof row.turnInNpcId === "number" ? { turnInNpcId: row.turnInNpcId } : {}),
         rewardItemIds: Array.isArray(row.rewardItemIds) ? row.rewardItemIds.filter((id): id is number => typeof id === "number") : [],
+        ...(typeof row.category === "string" && row.category.trim() ? { category: row.category.trim() } : {}),
+        ...(row.faction === "alliance" || row.faction === "horde" ? { faction: row.faction } : {}),
+        ...(typeof row.suggestedGroup === "number" && Number.isInteger(row.suggestedGroup) && row.suggestedGroup > 1 ? { suggestedGroup: row.suggestedGroup } : {}),
+        ...(QUEST_TAGS.includes(row.tag as QuestTag) ? { tag: row.tag as QuestTag } : {}),
       });
     }
     if (row.kind === "vendor" && typeof row.vendorNpcId === "number" && Array.isArray(row.items)) {

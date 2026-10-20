@@ -7,6 +7,7 @@ required, or tightening a limit is a major release.
 ## [Unreleased]
 
 ### Added
+- 1.6.0 (record protocol 1.3.0): `npc_sighting` gains two optional fields, `creatureType` (`NPC_CREATURE_TYPES`, the game's English creature type) and `rank` (`NPC_RANKS`: normal, elite, rare, rare_elite, boss). `quest` gains four optional fields: `category` (the quest log header), `faction` (Alliance or Horde, the accepting character's), `suggestedGroup` and `tag` (`QUEST_TAGS`). Older addons send none of them.
 - 1.5.0: `changeEntry`, the shape of a `recent_changes` entry, gains five optional fields for forum posts:
   `region` (`us` or `eu`, now that the EU English forum is read too), `topicId`, `topicSlug`, `postNumber` and
   `startedThread`, so a client can group every Blizzard reply in one thread. Nothing existing changes.
