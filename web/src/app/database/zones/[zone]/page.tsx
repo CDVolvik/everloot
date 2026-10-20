@@ -2,10 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 import AdSlot from "@/components/AdSlot";
-import GameCredit from "@/components/game/GameCredit";
 import ZonePreview from "@/components/ZonePreview";
 import {
-  AgreementMeter, Badge, Card, Container, DataTable, EmptyState, PageHeader, SectionHeading, SourceLine, Tabs,
+  AgreementMeter, Badge, Card, Container, DataTable, EmptyState, PageHeader, SectionHeading, Tabs,
   type Column, type TabItem,
 } from "@/components/ui";
 import { loadSiteAssets } from "@/lib/game-assets";
@@ -94,10 +93,10 @@ export default async function ZonePage(props: Props) {
   ];
 
   const all: TabItem[] = [
-    { id: "npcs", label: "NPCs", count: npcs.length, panel: <DataTable caption={`NPCs players placed in ${zone.name}`} columns={npcColumns("npcs")} rows={npcs} rowKey={(n) => String(n.npcId)} empty={empty("No NPC has a confirmed position here yet. A pin needs 3 installs on the same map.")} /> },
-    { id: "vendors", label: "Vendors", count: vendors.length, panel: <DataTable caption={`Vendors players placed in ${zone.name}`} columns={npcColumns("vendors")} rows={vendors} rowKey={(n) => String(n.npcId)} empty={empty("No vendor here has prices 3 installs agree on yet.")} /> },
-    { id: "quests", label: "Quests", count: quests.length, panel: <DataTable caption={`Quests given or turned in at confirmed NPCs in ${zone.name}`} columns={questColumns} rows={quests} rowKey={(q) => String(q.questId)} empty={empty("No quest has a confirmed giver or turn-in here yet.")} /> },
-    { id: "dungeons", label: "Dungeons and raids", count: entrances.length, panel: <DataTable caption={`Dungeon and raid entrances in ${zone.name}`} columns={entranceColumns} rows={entrances} rowKey={(e) => e.names.join("|")} empty={<p className="px-4 py-8 text-fg-2 sm:px-6">No dungeon or raid is entered from this zone.</p>} /> },
+    { id: "npcs", label: "NPCs", count: npcs.length, panel: <DataTable dense caption={`NPCs players placed in ${zone.name}`} columns={npcColumns("npcs")} rows={npcs} rowKey={(n) => String(n.npcId)} empty={empty("No NPC has a confirmed position here yet. A pin needs 3 installs on the same map.")} /> },
+    { id: "vendors", label: "Vendors", count: vendors.length, panel: <DataTable dense caption={`Vendors players placed in ${zone.name}`} columns={npcColumns("vendors")} rows={vendors} rowKey={(n) => String(n.npcId)} empty={empty("No vendor here has prices 3 installs agree on yet.")} /> },
+    { id: "quests", label: "Quests", count: quests.length, panel: <DataTable dense caption={`Quests given or turned in at confirmed NPCs in ${zone.name}`} columns={questColumns} rows={quests} rowKey={(q) => String(q.questId)} empty={empty("No quest has a confirmed giver or turn-in here yet.")} /> },
+    { id: "dungeons", label: "Dungeons and raids", count: entrances.length, panel: <DataTable dense caption={`Dungeon and raid entrances in ${zone.name}`} columns={entranceColumns} rows={entrances} rowKey={(e) => e.names.join("|")} empty={<p className="px-4 py-8 text-fg-2 sm:px-6">No dungeon or raid is entered from this zone.</p>} /> },
     { id: "objects", label: "Objects", count: 0, panel: <EmptyState message="Chests, herbs and ore veins have no position in what players have reported yet, so none can be placed in a zone." framed={false} /> },
   ];
   // Storage down: an empty list would read as "nobody has seen anything", so only the game-file list stays.
@@ -151,9 +150,6 @@ export default async function ZonePage(props: Props) {
             <Tabs label={`Known in ${zone.name}`} tabs={tabs} />
           </section>
         </div>
-
-        <SourceLine build={WORLD_MAP.source.version} licence="Outline and entrances are Blizzard's data; positions and quests are player reports under CC BY-SA 4.0" />
-        {art && assets && <div className="mt-2"><GameCredit version={assets.version} label={assets.label} what="Map picture" /></div>}
         {!facts.unreachable && hasContent(here) && <AdSlot slot="inContent" />}
       </Container>
     </article>

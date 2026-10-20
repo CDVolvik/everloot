@@ -616,9 +616,9 @@ const JOB_ROWS: { job: Job; label: string; what: string }[] = [
   { job: "ask", label: "In-game /ask", what: "Answer /ask questions from the game with the model below" },
 ];
 
-/** The everloot.app account: a free key made after Battle.net sign-in on /connect, pasted here. */
+/** The everloot.app account: a free key made after Battle.net sign-in on /docs/api/keys, pasted here. */
 function accountPanel(s: AppState): string {
-  const keys = websiteUrl(s.settings.endpoint, "/connect#keys");
+  const keys = websiteUrl(s.settings.endpoint, "/docs/api/keys#your-keys");
   const what = "Chat and the in-game /ask send it to everloot.app's public server, which then counts their requests against your account instead of this internet address, with a higher limit. Uploads never carry it.";
   return s.account.signedIn
     ? `<section class="panel" id="account" tabindex="-1"><h2>Account</h2>

@@ -20,4 +20,6 @@ export const UPLOAD_LIMITS = {
    */
   censusSeenPerDay: 500,
   censusSelfPerDay: 50,
+  /** `player_seen` rows one upload may carry; the rest are refused. The addon keeps at most this many. */
+  playersPerUpload: 1000,
 } as const;

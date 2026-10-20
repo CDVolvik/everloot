@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
-import { itemPage } from "../../../../../kb/src/item-page";
 import { describe, filterItems, QUALITIES, resolveClass, resolveLegacyClass, resolveSubclass, slotOf, type ItemClass, type ItemRow, type ItemSubclass } from "../../../../../kb/src/item-taxonomy";
 import {
-  activeFilters, CLIENT_LAYER, CLIENT_TAXONOMY as T, categoryNamedEnough, categoryQuery, itemFacets, ITEMS_PER_PAGE, itemsHref, listItems,
-  shownItemName, toggled, UNRECORDED, type CategoryQuery, type NameSource,
+  activeFilters, BINDINGS, CLIENT_LAYER, CLIENT_TAXONOMY as T, categoryNamedEnough, categoryQuery, itemFacets, ITEM_LEVEL_BRACKETS, ITEMS_PER_PAGE, itemsHref,
+  listItems, shownItemName, toggled, UNRECORDED, type CategoryQuery, type NameSource,
 } from "@/lib/items";
 import { loadItemSeen } from "@/lib/item-seen";
 import { pageMetadata } from "@/lib/seo";
@@ -15,6 +14,7 @@ import GameIcon from "@/components/game/GameIcon";
 import Badge, { UNCONFIRMED_TITLE } from "@/components/ui/Badge";
 import { Container, DataTable, DataTitle, FilterBar, QUALITY_TEXT, ResultStrip, qualityOf, type Column, type FilterControl } from "@/components/ui";
 import type { Crumb } from "@/lib/jsonld";
+import { LEVEL_BRACKETS } from "../list-parts";
 
 type Search = Record<string, string | string[] | undefined>;
 
@@ -76,6 +76,8 @@ export async function categoryMetadata(classSlug: string | undefined, subclassKe
 }
 
 const plural = (n: number) => `${n.toLocaleString("en-US")} item${n === 1 ? "" : "s"}`;
+/** A level range as a menu writes it: "11–20", "81+" for the open top bracket. */
+const bracket = (r: { min: number; max: number }) => (r.max >= 999 ? `${r.min}+` : r.min === r.max ? String(r.min) : `${r.min}–${r.max}`);
 
 export async function CategoryPage({ classSlug, subclassKey, search }: { classSlug?: string; subclassKey?: string; search: Search }) {
   const r = resolve(classSlug, subclassKey, search);
@@ -86,21 +88,21 @@ export async function CategoryPage({ classSlug, subclassKey, search }: { classSl
   }
   const { cls, sub, q } = r;
   const base = cls ? filterItems(T, { classId: cls.id, subclassId: sub?.id }) : T.items;
-  const [{ facts, agreed, matched }, seen] = await Promise.all([loadShownNames(), loadItemSeen()]);
+  const [{ agreed, matched, showsTip }, seen] = await Promise.all([loadShownNames(), loadItemSeen()]);
   const nameOf = (id: number) => agreed.get(id) ?? matched?.names.get(id)?.name;
-  const rows = listItems(base, q, { name: nameOf, seen: seen.seen });
+  // The game file name, icon and tooltip facts only for items players reported (3 installs) or the item name rule
+  // names, as on the item page: a list of every id in the files must not become a list of unreleased items.
+  const tipsFor = async (ids: number[]) => loadItemTips(ids.length ? await loadSiteAssets() : null, ids);
+  // A level or binding filter or sort reads the facts of every row that may show them; otherwise only this page's.
+  const wide = Boolean(q.ilvl || q.req || q.bind) || q.sort?.key === "ilvl" || q.sort?.key === "req";
+  const every = wide ? await tipsFor(base.map((row) => row[0]).filter(showsTip)) : null;
+  const rows = listItems(base, q, { name: nameOf, seen: seen.seen, tip: (id) => every?.get(id) });
   const pages = Math.max(1, Math.ceil(rows.length / ITEMS_PER_PAGE));
   if (q.page > pages) notFound();
   const shown = rows.slice((q.page - 1) * ITEMS_PER_PAGE, q.page * ITEMS_PER_PAGE);
-  // The game file name and icon only for items players reported (3 installs), as on the item page, and for items
-  // whose game file name the Warcraft Wiki gives too: a list of every id in the files must not become a list of
-  // unreleased item names.
-  const reported = facts.unreachable ? [] : shown.map((row) => row[0]).filter((id) => { const p = itemPage(id, facts); return Boolean(p.name || p.drops.length || p.pins.length); });
-  const withArt = [...new Set([...reported, ...shown.map((row) => row[0]).filter((id) => matched?.names.has(id))])];
-  const assets = withArt.length ? await loadSiteAssets() : null;
-  const tips = await loadItemTips(assets, withArt);
-  const names = new Map(shown.map((row) => [row[0], shownItemName(row[0], agreed, matched?.names, reported.includes(row[0]) ? tips.get(row[0]) : null)]));
-  const icons = [...tips.values()].some((t) => t.icon);
+  const tips = every ?? await tipsFor(shown.map((row) => row[0]).filter(showsTip));
+  const names = new Map(shown.map((row) => [row[0], shownItemName(row[0], agreed, matched?.names, tips.get(row[0]))]));
+  const icons = shown.some((row) => tips.get(row[0])?.icon);
   const here = (over: Partial<CategoryQuery>) => itemsHref(cls?.slug, sub?.slug, { ...q, page: 1, ...over });
   const title = sub ? subName(sub) : cls ? cls.label : "Items";
 
@@ -138,6 +140,9 @@ export async function CategoryPage({ classSlug, subclassKey, search }: { classSl
         );
       },
     },
+    // Levels from the tooltip facts: blank for an item that shows none, and for "no required level".
+    { key: "ilvl", header: "Item level", numeric: true, sortable: true, cell: (row) => tips.get(row[0])?.level || <span className="text-muted">—</span> },
+    { key: "req", header: "Req. level", numeric: true, sortable: true, cell: (row) => tips.get(row[0])?.required || <span className="text-muted">—</span> },
     ...(sub ? [] : [{ key: "type", header: "Type", sortable: true, cell: (row: ItemRow) => describe(T, row).subclass?.name ?? "None" }]),
     { key: "slot", header: "Slot", sortable: true, cell: (row) => slotOf(row[3])?.name ?? <span className="text-muted">—</span> },
     { key: "seen", header: "Seen as", sortable: true, cell: (row) => seenAs(row) ?? <span className="text-muted">—</span> },
@@ -183,6 +188,25 @@ export async function CategoryPage({ classSlug, subclassKey, search }: { classSl
         label: "Unrecorded", href: itemsHref(cls?.slug, sub?.slug, toggled(q, "quality", UNRECORDED)), on: Boolean(q.quality?.includes(UNRECORDED)), count: qualities.get(UNRECORDED) ?? 0,
       }] : [])],
     },
+    {
+      type: "menu", key: "ilvl", label: "Item level",
+      options: [{ label: "Any item level", href: here({ ilvl: undefined }), on: !q.ilvl, reset: true }, ...ITEM_LEVEL_BRACKETS.map((b) => ({
+        label: bracket(b), href: here({ ilvl: b }), on: q.ilvl?.min === b.min && q.ilvl?.max === b.max,
+      }))],
+    },
+    {
+      type: "menu", key: "req", label: "Req. level",
+      options: [{ label: "Any required level", href: here({ req: undefined }), on: !q.req, reset: true }, ...LEVEL_BRACKETS.map((b) => ({
+        label: bracket(b), href: here({ req: b }), on: q.req?.min === b.min && q.req?.max === b.max,
+      }))],
+    },
+    {
+      type: "menu", key: "bind", label: "Binding",
+      options: [
+        { label: "Any binding", href: here({ bind: undefined }), on: !q.bind, reset: true },
+        ...BINDINGS.map((b) => ({ label: b.label, href: here({ bind: b.slug }), on: q.bind === b.slug })),
+      ],
+    },
     ...(skills.length ? [{
       type: "menu" as const, key: "skill", label: "Profession",
       options: [
@@ -205,6 +229,9 @@ export async function CategoryPage({ classSlug, subclassKey, search }: { classSl
     ...(q.q ? [{ label: `Name: ${q.q}`, href: here({ q: undefined }) }] : []),
     ...(q.slot ?? []).map((s) => ({ label: slotNames.get(s) ?? s, href: itemsHref(cls?.slug, sub?.slug, toggled(q, "slot", s)) })),
     ...(q.quality ?? []).map((s) => ({ label: QUALITIES.find((x) => x.slug === s)?.name ?? "Unrecorded", href: itemsHref(cls?.slug, sub?.slug, toggled(q, "quality", s)) })),
+    ...(q.ilvl ? [{ label: `Item level ${bracket(q.ilvl)}`, href: here({ ilvl: undefined }) }] : []),
+    ...(q.req ? [{ label: `Req. level ${bracket(q.req)}`, href: here({ req: undefined }) }] : []),
+    ...(q.bind ? [{ label: BINDINGS.find((b) => b.slug === q.bind)?.label ?? q.bind, href: here({ bind: undefined }) }] : []),
     ...(q.skill ? [{ label: facets.professions.find((p) => p.slug === q.skill)?.name ?? q.skill, href: here({ skill: undefined }) }] : []),
     ...(q.crafted ? [{ label: "Crafted", href: here({ crafted: undefined }) }] : []),
     ...(q.reagent ? [{ label: "Reagent", href: here({ reagent: undefined }) }] : []),
@@ -243,7 +270,7 @@ export async function CategoryPage({ classSlug, subclassKey, search }: { classSl
             rowKey={(row) => String(row[0])}
             sort={q.sort ? { key: q.sort.key, direction: q.sort.desc ? "desc" : "asc" } : { key: "id", direction: "asc" }}
             sortHref={(key, dir) => here({ sort: key === "id" && dir === "asc" ? undefined : { key: key as NonNullable<CategoryQuery["sort"]>["key"], desc: dir === "desc" } })}
-            meta={(row) => [slotOf(row[3])?.name, sub ? null : describe(T, row).subclass?.name, seenAs(row)].filter(Boolean).join(" · ")}
+            meta={(row) => [tips.get(row[0])?.level ? `Item level ${tips.get(row[0])!.level}` : null, slotOf(row[3])?.name, sub ? null : describe(T, row).subclass?.name, seenAs(row)].filter(Boolean).join(" · ")}
             empty={empty}
           />
         </div>
