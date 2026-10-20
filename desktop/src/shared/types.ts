@@ -1,5 +1,5 @@
 /** Shapes shared by the Node side and the page. No Node or Electron imports here. */
-import type { ProviderChoice, ProviderInUse } from "./providers";
+import type { ProviderChoice, ProviderInUse, ProviderKind } from "./providers";
 
 export type Job = "upload" | "prices" | "ask";
 export const JOBS: Job[] = ["upload", "prices", "ask"];
@@ -118,6 +118,8 @@ export interface ChatInfo {
   withToken: boolean;
   /** The provider saved from the Chat page, if config.json still names it; null when none or hand-written only. */
   provider: ProviderInUse | null;
+  /** Every provider saved from the Chat page, with a key where it needs one; the model menu lists their models. */
+  providers: ProviderInUse[];
   busy: boolean;
   error: string | null;
 }
@@ -231,7 +233,10 @@ export interface EverlootApi {
   chatClear(): Promise<ChatInfo>;
   /** Saves a provider pick (its key, if any, to a file in the data folder) and points config.json at it; the key never comes back to the page. */
   chatSetProvider(choice: ProviderChoice): Promise<ChatInfo>;
-  chatRemoveProvider(): Promise<ChatInfo>;
+  /** Removes a saved provider and its key; without a kind, the one in use. */
+  chatRemoveProvider(kind?: ProviderKind): Promise<ChatInfo>;
+  /** Switches Chat and /ask to a model of a provider already saved. */
+  chatUseModel(kind: ProviderKind, model: string): Promise<ChatInfo>;
   /** Shows a site tool inside the window; returns the URL it opened. */
   siteShow(id: string): Promise<string | null>;
   siteHide(): Promise<void>;

@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { ProviderChoice } from "./shared/providers";
+import type { ProviderChoice, ProviderKind } from "./shared/providers";
 import type { AppState, ChatProgress, EverlootApi, Job, Settings } from "./shared/types";
 
 // The only way the page reaches Node: named calls over IPC, each checked on the main side.
@@ -30,7 +30,8 @@ const api: EverlootApi = {
   chatSend: (text: string) => ipcRenderer.invoke("chatSend", text),
   chatClear: () => ipcRenderer.invoke("chatClear"),
   chatSetProvider: (choice: ProviderChoice) => ipcRenderer.invoke("chatSetProvider", choice),
-  chatRemoveProvider: () => ipcRenderer.invoke("chatRemoveProvider"),
+  chatRemoveProvider: (kind?: ProviderKind) => ipcRenderer.invoke("chatRemoveProvider", kind),
+  chatUseModel: (kind: ProviderKind, model: string) => ipcRenderer.invoke("chatUseModel", kind, model),
   siteShow: (id: string) => ipcRenderer.invoke("siteShow", id),
   siteHide: () => ipcRenderer.invoke("siteHide"),
   siteBack: () => ipcRenderer.invoke("siteBack"),

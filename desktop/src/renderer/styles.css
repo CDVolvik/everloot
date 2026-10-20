@@ -175,6 +175,13 @@ ul.plain li { margin: 0.15rem 0; }
 .msg .meta b { color: rgb(var(--fg-2)); font-weight: 500; }
 .msg .meta .copy { float: right; margin-left: 0.75rem; }
 .chat form { display: flex; gap: 0.5rem; align-items: flex-end; margin-top: 0.5rem; }
+.chat #chatForm { flex-direction: column; align-items: stretch; gap: 0.4rem; }
+.chat #chatForm textarea { width: 100%; }
+.composer-bar { display: flex; justify-content: flex-end; align-items: center; gap: 0.5rem; }
+.model-pick { max-width: 24rem; padding: 0.3rem 0.45rem; border-radius: 6px; border: 1px solid rgb(var(--line)); background: rgb(var(--panel)); color: rgb(var(--fg-2)); font: inherit; font-size: 0.85rem; cursor: pointer; }
+.model-pick:hover { color: rgb(var(--fg)); border-color: rgb(var(--edge)); }
+.model-pick:focus-visible { outline: 2px solid rgb(var(--accent)); outline-offset: 1px; }
+.saved-keys { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; }
 .chat #providerForm { flex-direction: column; align-items: stretch; margin: 0 0 0.6rem; }
 .chat #providerForm select, .chat #providerForm input { max-width: 36rem; }
 .chat textarea { flex: 1; min-height: 2.6rem; max-height: 8rem; resize: vertical; padding: 0.5rem 0.65rem; border-radius: 8px; border: 1px solid rgb(var(--edge)); background: rgb(var(--canvas)); color: rgb(var(--fg)); font: inherit; }

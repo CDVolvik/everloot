@@ -284,7 +284,11 @@ if (!app.requestSingleInstanceLock()) {
     const str = (v: unknown) => (typeof v === "string" ? v.slice(0, 2000) : undefined);
     return chat.setProvider({ kind: c.kind as ProviderKind, key: str(c.key), model: str(c.model), baseUrl: str(c.baseUrl) });
   });
-  ipcMain.handle("chatRemoveProvider", () => chat.removeProvider());
+  ipcMain.handle("chatRemoveProvider", (_e, kind: unknown) => chat.removeProvider(presetFor(String(kind)) ? (kind as ProviderKind) : undefined));
+  ipcMain.handle("chatUseModel", (_e, kind: unknown, model: unknown) => {
+    if (!presetFor(String(kind)) || typeof model !== "string") throw new Error("Pick a model");
+    return chat.useModel(kind as ProviderKind, model.slice(0, 200));
+  });
 
   ipcMain.handle("siteShow", (_e, id: unknown) => {
     const path = typeof id === "string" ? siteToolPath(id) : null;
