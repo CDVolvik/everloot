@@ -265,6 +265,47 @@ GetRealmName = function() return 'Forever' end
 Everloot:ResetPrices()
 """)
 
+# /everloot price <item>: the tooltip's lines in chat, anywhere, from the files already in the game.
+lua.execute((Path(__file__).parent / "fixtures" / "EverlootPrices.lua").read_text(encoding="utf-8"))
+lua.execute("""
+Everloot:ResetPrices()
+GetRealmName = function() return 'Forever' end
+local LINK = '|cffffffff|Hitem:2589::::::::60:::::|h[Linen Cloth]|h|r'
+GetItemInfo = function(x) if x == 2589 or x == 'Linen Cloth' then return 'Linen Cloth', LINK end end
+local function ask(arg) printed = {}; SlashCmdList.EVERLOOT('price ' .. arg); drain(); return table.concat(printed, '\\n') end
+
+local linen = ask(LINK)
+assert(linen:find('Everloot price: ' .. LINK:gsub('%p', '%%%0') .. ' on Forever'), linen)
+assert(linen:find('Everloot market 2s 5c') and linen:find('min 2s 0c') and linen:find('historical 1s 90c'), 'same numbers as the tooltip: ' .. linen)
+assert(linen:find('Your scan: min 1s 0c'), 'the player\\'s own scan too: ' .. linen)
+assert(linen:find('everloot.app/tools/auctions%?realm=Forever&item=2589'), 'the full history is on the site: ' .. linen)
+assert(ask('2589'):find('Everloot market 2s 5c'), 'an item id works')
+assert(ask('Linen Cloth'):find('Everloot market 2s 5c'), 'a name the client knows works, case kept')
+assert(ask('765'):find('market unrecorded'), 'a null market value is unrecorded, never zero')
+assert(ask(''):find('shift%-click'), 'no item says how to give one')
+assert(ask('Never Seen Sword'):find('shift%-click'), 'a name the client has not loaded says how to give one')
+assert(ask('424242'):find('No price for this item on this realm yet'), 'an item without a price says so')
+
+GetRealmName = function() return 'Nowhere' end
+Everloot:ResetPrices()
+assert(ask('2589'):find('No community prices in the game for this realm yet'), 'a realm with no file says where prices come from')
+
+-- A large file still being checked: the answer waits for the checksum, then prints.
+local big = {}
+for id = 1, 3000 do big[#big + 1] = string.format('%d,500,400,450,50,2026-10-20,3', id) end
+local data = table.concat(big, ';')
+EverlootPricesDB.realms.bigrealm = { dataAsOf = '2026-10-20T06:30:00.000Z', data = data, sum = Everloot.Adler32(data) }
+GetRealmName = function() return 'Bigrealm' end
+Everloot:ResetPrices()
+timers = {}; printed = {}
+SlashCmdList.EVERLOOT('price 7')
+assert(not said('Everloot price'), 'nothing is printed before the checksum has passed')
+drain()
+assert(said('Everloot market 5s 0c'), 'once checked, the price prints')
+GetRealmName = function() return 'Forever' end
+Everloot:ResetPrices()
+""")
+
 # Nothing in this addon buys, bids or posts: no trapped API was called by a scan, a timeout, a
 # tooltip or any slash command above, and no source file names one.
 lua.execute("""
@@ -285,4 +326,4 @@ for source in sorted(root.rglob("*.lua")):
 # Every row the addon wrote is a record the site would accept (packages/protocol/schema).
 from protocol_schema import check_all  # noqa: E402
 check_all(lua)
-print("Lua 5.1 market: clicked full scan, chunked reads, retry, parts, cooldown, 3 scans kept, scan timeout, tooltips with sliced checksums, stale and thin labels, no buy or post call")
+print("Lua 5.1 market: clicked full scan, chunked reads, retry, parts, cooldown, 3 scans kept, scan timeout, tooltips with sliced checksums, stale and thin labels, /everloot price in chat, no buy or post call")

@@ -110,34 +110,84 @@ local function communityRow(entry, itemId)
   }
 end
 
-local function addLines(tooltip, itemId)
-  local realm = GetRealmName and GetRealmName()
-  if type(realm) ~= "string" or realm == "" then return end
+--- The price lines for one item on the player's realm, as { text, r, g, b }: the community market value
+--- from the companion's file (with its freshness) and the player's own last scan. The tooltip and the
+--- chat command show the same lines, so they always agree.
+local function priceLines(realm, itemId)
+  local out = {}
+  local function add(text, r, g, b) out[#out + 1] = { text = text, r = r, g = g, b = b } end
   local entry = communityFor(realm)
   local row = communityRow(entry, itemId)
   if row then
     local market = row.market and E.Coins(row.market)
       or (row.quantity <= E.THIN_UNITS and "unrecorded (thin)" or "unrecorded")
-    tooltip:AddLine(string.format("Everloot market %s · min %s · historical %s",
+    add(string.format("Everloot market %s · min %s · historical %s",
       market, E.Coins(row.min), E.Coins(row.historical)), 0.9, 0.8, 0.5)
-    tooltip:AddLine(string.format("  %d up · %d reporters · %s", row.quantity, row.reporters, row.day), 0.6, 0.6, 0.6)
+    add(string.format("  %d up · %d reporters · %s", row.quantity, row.reporters, row.day), 0.6, 0.6, 0.6)
     -- The file is only as fresh as the companion's last run: show its date, and flag it when old.
     local fetched, today = E.DayNumber(entry.asOf or ""), E.DayNumber(date("!%Y-%m-%d"))
     if not fetched or not today then
-      tooltip:AddLine("  price data age unknown (stale?)", 1, 0.4, 0.4)
+      add("  price data age unknown (stale?)", 1, 0.4, 0.4)
     elseif today - fetched > E.STALE_DAYS then
-      tooltip:AddLine(string.format("  STALE: prices from %s; run the companion to refresh", entry.asOf:sub(1, 10)), 1, 0.4, 0.4)
+      add(string.format("  STALE: prices from %s; run the companion to refresh", entry.asOf:sub(1, 10)), 1, 0.4, 0.4)
     else
-      tooltip:AddLine("  prices fetched " .. entry.asOf:sub(1, 10), 0.6, 0.6, 0.6)
+      add("  prices fetched " .. entry.asOf:sub(1, 10), 0.6, 0.6, 0.6)
     end
   end
   local own = E:OwnScan(realm)
   local item = own and own.items[itemId]
   if item then
     local hours = math.floor((time() - own.at) / 3600)
-    tooltip:AddLine(string.format("Your scan: min %s · value %s · %d up · %s", E.Coins(item[4]), E.Coins(item[5]), item[3],
+    add(string.format("Your scan: min %s · value %s · %d up · %s", E.Coins(item[4]), E.Coins(item[5]), item[3],
       hours < 1 and "under 1 h ago" or (hours .. " h ago")), 0.6, 0.8, 1)
   end
+  return out, entry
+end
+
+local function addLines(tooltip, itemId)
+  local realm = GetRealmName and GetRealmName()
+  if type(realm) ~= "string" or realm == "" then return end
+  for _, line in ipairs((priceLines(realm, itemId))) do tooltip:AddLine(line.text, line.r, line.g, line.b) end
+end
+
+--- The item id in what the player typed after /everloot price: a shift-clicked link, a bare id, or the
+--- name of an item this client has seen (the game only knows names it has loaded).
+function E.ItemIdFrom(text)
+  text = tostring(text or ""):gsub("^%s+", ""):gsub("%s+$", "")
+  local id = text:match("|Hitem:(%d+)") or text:match("^item:(%d+)") or text:match("^(%d+)$")
+  if id then return tonumber(id) end
+  if text == "" then return nil end
+  local link = GetItemInfo and select(2, GetItemInfo(text))
+  return link and tonumber(link:match("item:(%d+)")) or nil
+end
+
+local function hex(r, g, b) return string.format("|cff%02x%02x%02x", r * 255, g * 255, b * 255) end
+
+--- /everloot price <item>: the same lines as the tooltip, in chat, anywhere in the world. Read from the
+--- files already in the game (the companion's prices and the player's own scans); nothing is fetched.
+--- The full history, every realm and the chart are on the site.
+function E.PriceCommand(text, tries)
+  local id = E.ItemIdFrom(text)
+  if not id then
+    print("Everloot: shift-click an item into the command (/everloot price [item]), or give its item id.")
+    return
+  end
+  local realm = GetRealmName and GetRealmName()
+  if type(realm) ~= "string" or realm == "" then return end
+  local lines, entry = priceLines(realm, id)
+  -- A large price file is checked a slice per frame the first time it is read; wait for it.
+  if entry.status == "verifying" and (tries or 0) < 100 and C_Timer and C_Timer.After then
+    return C_Timer.After(0, function() E.PriceCommand(text, (tries or 0) + 1) end)
+  end
+  local name = (GetItemInfo and select(2, GetItemInfo(id))) or ("item " .. id)
+  print("Everloot price: " .. name .. " on " .. realm)
+  if #lines == 0 then
+    print(entry.status == "bad" and entry.silent
+      and "  No community prices in the game for this realm yet: the Everloot Desktop App or companion writes them, then /reload."
+      or "  No price for this item on this realm yet: no public day (3 reporters) and no scan of your own.")
+  end
+  for _, line in ipairs(lines) do print(hex(line.r, line.g, line.b) .. line.text .. "|r") end
+  print("  Full history and other realms: everloot.app/tools/auctions?realm=" .. realm:gsub(" ", "+") .. "&item=" .. id)
 end
 
 E:RegisterModule("prices", function()
