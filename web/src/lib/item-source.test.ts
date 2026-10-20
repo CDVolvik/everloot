@@ -43,6 +43,15 @@ test("sorting by source puts the reported items first, A to Z", () => {
   expect(ids({ sort: { key: "seen", desc: false } }).slice(0, 3)).toEqual([rows[0][0], rows[2][0], rows[1][0]]);
 });
 
+test("with no sort the named items come first, each part in id order; sort=id is the plain id order", () => {
+  const named = new Map([[rows[30][0], "Linen Cloth"], [rows[5][0], "Worn Shortsword"]]);
+  const list = (q: Partial<CategoryQuery>) => listItems(rows, { page: 1, ...q }, { name: (id) => named.get(id) }).map((r) => r[0]);
+  expect(list({})).toEqual([rows[5][0], rows[30][0], ...rows.map((r) => r[0]).filter((id) => !named.has(id))]);
+  expect(list({ sort: { key: "id", desc: false } })).toEqual(rows.map((r) => r[0]));
+  // Without names (the API's case) the order stays by id.
+  expect(ids({})).toEqual(rows.map((r) => r[0]));
+});
+
 test("src round-trips through the URL, in one order, beside the other filters", () => {
   const q = categoryQuery({ src: "quest,drop", quality: "epic", q: "robe", sort: "-seen", page: "2" })!;
   expect(q.src).toEqual(["drop", "quest"]);

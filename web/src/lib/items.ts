@@ -128,7 +128,7 @@ export interface CategoryQuery {
   ilvl?: { min: number; max: number };
   req?: { min: number; max: number };
   bind?: string;
-  /** Absent: by id, ascending. */
+  /** Absent: named items first, each part by id (sortItems). */
   sort?: { key: ItemSort; desc: boolean };
   page: number;
 }
@@ -267,8 +267,13 @@ export function listItems(base: readonly ItemRow[], q: CategoryQuery, ctx: ItemL
   return sortItems(rows, q.sort, ctx);
 }
 
-/** Text keys sort A to Z and levels low to high, with the rows that have none last, whichever way; ties go by id. */
+/**
+ * Text keys sort A to Z and levels low to high, with the rows that have none last, whichever way; ties go by id.
+ * With no sort, items with a name the page shows come first, each part by id, so a list opens on real items
+ * rather than "Item N"; `sort=id` is the plain id order.
+ */
 export function sortItems(rows: ItemRow[], sort: CategoryQuery["sort"], ctx: ItemListContext = {}): ItemRow[] {
+  if (!sort && ctx.name) return [...rows.filter((row) => ctx.name!(row[0]) !== undefined), ...rows.filter((row) => ctx.name!(row[0]) === undefined)];
   if (!sort || sort.key === "id") return sort?.desc ? [...rows].sort((a, b) => b[0] - a[0]) : rows;
   const dir = sort.desc ? -1 : 1;
   const key = (row: ItemRow): string | number | null => {

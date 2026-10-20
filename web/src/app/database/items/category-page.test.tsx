@@ -60,7 +60,8 @@ test("filters, sort and page live in the URL in one order; several values join w
   expect(many).toContain('href="/database/items/armor/cloth?quality=rare&amp;sort=-id"');
   expect(many).toContain('href="/database/items/armor/cloth?quality=uncommon,rare,epic&amp;sort=-id"');
   // The sorted column says so, and its header turns the order around.
-  expect(many).toMatch(/aria-sort="descending"[^>]*>[\s\S]*?href="\/database\/items\/armor\/cloth\?quality=rare,epic"/);
+  // (Ascending by id is its own URL: the plain list opens on the named items first.)
+  expect(many).toMatch(/aria-sort="descending"[^>]*>[\s\S]*?href="\/database\/items\/armor\/cloth\?quality=rare,epic&amp;sort=id"/);
   await expect(html(SubclassPage(sub("armor", "cloth", { sort: "price" })))).rejects.toThrow("NEXT_NOT_FOUND");
   await expect(html(SubclassPage(sub("armor", "cloth", { crafted: "yes" })))).rejects.toThrow("NEXT_NOT_FOUND");
   await expect(html(items({ skill: "basket-weaving" }))).rejects.toThrow("NEXT_NOT_FOUND");
