@@ -69,6 +69,8 @@ build that has a zip in the repository. Earlier builds have none.
 - Site: zone pages at `/database/zones`, one for every released zone, with its map, the dungeons and raids
   entered there, and the NPCs, vendors and quests players have confirmed in it. Zone links in the database
   now open the zone page instead of the map.
+- Site: the item lists have a Source column and a `src` filter (Drop, Vendor, Crafted, Quest reward, Container or object),
+  from what players reported: drops, vendor offers, recipes and quest rewards, each once 3 installs agree.
 
 ### Changed
 - The upload record contract moved from `web/src/lib/intake.ts` into one package, `packages/protocol`

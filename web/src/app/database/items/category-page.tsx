@@ -4,7 +4,7 @@ import { notFound, permanentRedirect } from "next/navigation";
 import { describe, filterItems, QUALITIES, resolveClass, resolveLegacyClass, resolveSubclass, slotOf, type ItemClass, type ItemRow, type ItemSubclass } from "../../../../../kb/src/item-taxonomy";
 import {
   activeFilters, BINDINGS, CLIENT_LAYER, CLIENT_TAXONOMY as T, categoryNamedEnough, categoryQuery, itemFacets, ITEM_LEVEL_BRACKETS, ITEMS_PER_PAGE, itemsHref,
-  listItems, shownItemName, toggled, UNRECORDED, type CategoryQuery, type NameSource,
+  listItems, SOURCES, shownItemName, toggled, UNRECORDED, type CategoryQuery, type NameSource,
 } from "@/lib/items";
 import { loadItemSeen } from "@/lib/item-seen";
 import { pageMetadata } from "@/lib/seo";
@@ -96,7 +96,7 @@ export async function CategoryPage({ classSlug, subclassKey, search }: { classSl
   // A level or binding filter or sort reads the facts of every row that may show them; otherwise only this page's.
   const wide = Boolean(q.ilvl || q.req || q.bind) || q.sort?.key === "ilvl" || q.sort?.key === "req";
   const every = wide ? await tipsFor(base.map((row) => row[0]).filter(showsTip)) : null;
-  const rows = listItems(base, q, { name: nameOf, seen: seen.seen, tip: (id) => every?.get(id) });
+  const rows = listItems(base, q, { name: nameOf, seen: seen.seen, sources: (id) => seen.from.get(id), tip: (id) => every?.get(id) });
   const pages = Math.max(1, Math.ceil(rows.length / ITEMS_PER_PAGE));
   if (q.page > pages) notFound();
   const shown = rows.slice((q.page - 1) * ITEMS_PER_PAGE, q.page * ITEMS_PER_PAGE);
@@ -114,7 +114,8 @@ export async function CategoryPage({ classSlug, subclassKey, search }: { classSl
     ...(cls && sub ? [{ name: subName(sub), path: itemsHref(cls.slug, sub.slug) }] : []),
   ];
 
-  const seenAs = (row: ItemRow) => seen.as.get(row[0])?.join(" · ") ?? null;
+  /** Where players have seen the item come from, as compact labels ("Drop, Vendor"). */
+  const sourceOf = (row: ItemRow) => seen.from.get(row[0])?.map((x) => SOURCES.find((s) => s.slug === x)!.label).join(", ") ?? null;
   const columns: Column<ItemRow>[] = [
     {
       key: "name", header: "Name", sortable: true, cell: (row) => {
@@ -145,7 +146,7 @@ export async function CategoryPage({ classSlug, subclassKey, search }: { classSl
     { key: "req", header: "Req. level", numeric: true, sortable: true, cell: (row) => tips.get(row[0])?.required || <span className="text-muted">—</span> },
     ...(sub ? [] : [{ key: "type", header: "Type", sortable: true, cell: (row: ItemRow) => describe(T, row).subclass?.name ?? "None" }]),
     { key: "slot", header: "Slot", sortable: true, cell: (row) => slotOf(row[3])?.name ?? <span className="text-muted">—</span> },
-    { key: "seen", header: "Seen as", sortable: true, cell: (row) => seenAs(row) ?? <span className="text-muted">—</span> },
+    { key: "seen", header: "Source", sortable: true, cell: (row) => sourceOf(row) ?? <span className="text-muted">—</span> },
     { key: "id", header: "ID", numeric: true, sortable: true, cell: (row) => row[0] },
   ];
 
@@ -153,6 +154,11 @@ export async function CategoryPage({ classSlug, subclassKey, search }: { classSl
   const counted = <K,>(key: (row: ItemRow) => K) => { const m = new Map<K, number>(); for (const row of base) m.set(key(row), (m.get(key(row)) ?? 0) + 1); return m; };
   const slots = counted((row) => slotOf(row[3])?.slug ?? null);
   const qualities = counted((row) => (row[4] === null ? UNRECORDED : QUALITIES[row[4]]?.slug ?? UNRECORDED));
+  const sourceOptions = SOURCES.map((x) => ({
+    label: x.menu, href: itemsHref(cls?.slug, sub?.slug, toggled(q, "src", x.slug)), on: Boolean(q.src?.includes(x.slug)),
+    count: base.reduce((n, row) => n + Number(seen.from.get(row[0])?.includes(x.slug) ?? false), 0),
+  }))
+    .filter((o) => o.count > 0 || o.on);
   const facets = itemFacets();
   const inBase = (set: Set<number>) => base.reduce((n, row) => n + Number(set.has(row[0])), 0);
   const skills = facets.professions.map((p) => ({ ...p, count: inBase(facets.bySkill.get(p.id)!) })).filter((p) => p.count > 0);
@@ -188,6 +194,7 @@ export async function CategoryPage({ classSlug, subclassKey, search }: { classSl
         label: "Unrecorded", href: itemsHref(cls?.slug, sub?.slug, toggled(q, "quality", UNRECORDED)), on: Boolean(q.quality?.includes(UNRECORDED)), count: qualities.get(UNRECORDED) ?? 0,
       }] : [])],
     },
+    ...(sourceOptions.length ? [{ type: "menu" as const, key: "src", label: "Source", multi: true, options: sourceOptions }] : []),
     {
       type: "menu", key: "ilvl", label: "Item level",
       options: [{ label: "Any item level", href: here({ ilvl: undefined }), on: !q.ilvl, reset: true }, ...ITEM_LEVEL_BRACKETS.map((b) => ({
@@ -229,6 +236,7 @@ export async function CategoryPage({ classSlug, subclassKey, search }: { classSl
     ...(q.q ? [{ label: `Name: ${q.q}`, href: here({ q: undefined }) }] : []),
     ...(q.slot ?? []).map((s) => ({ label: slotNames.get(s) ?? s, href: itemsHref(cls?.slug, sub?.slug, toggled(q, "slot", s)) })),
     ...(q.quality ?? []).map((s) => ({ label: QUALITIES.find((x) => x.slug === s)?.name ?? "Unrecorded", href: itemsHref(cls?.slug, sub?.slug, toggled(q, "quality", s)) })),
+    ...(q.src ?? []).map((s) => ({ label: SOURCES.find((x) => x.slug === s)!.menu, href: itemsHref(cls?.slug, sub?.slug, toggled(q, "src", s)) })),
     ...(q.ilvl ? [{ label: `Item level ${bracket(q.ilvl)}`, href: here({ ilvl: undefined }) }] : []),
     ...(q.req ? [{ label: `Req. level ${bracket(q.req)}`, href: here({ req: undefined }) }] : []),
     ...(q.bind ? [{ label: BINDINGS.find((b) => b.slug === q.bind)?.label ?? q.bind, href: here({ bind: undefined }) }] : []),
@@ -270,7 +278,7 @@ export async function CategoryPage({ classSlug, subclassKey, search }: { classSl
             rowKey={(row) => String(row[0])}
             sort={q.sort ? { key: q.sort.key, direction: q.sort.desc ? "desc" : "asc" } : { key: "id", direction: "asc" }}
             sortHref={(key, dir) => here({ sort: key === "id" && dir === "asc" ? undefined : { key: key as NonNullable<CategoryQuery["sort"]>["key"], desc: dir === "desc" } })}
-            meta={(row) => [tips.get(row[0])?.level ? `Item level ${tips.get(row[0])!.level}` : null, slotOf(row[3])?.name, sub ? null : describe(T, row).subclass?.name, seenAs(row)].filter(Boolean).join(" · ")}
+            meta={(row) => [tips.get(row[0])?.level ? `Item level ${tips.get(row[0])!.level}` : null, slotOf(row[3])?.name, sub ? null : describe(T, row).subclass?.name, sourceOf(row)].filter(Boolean).join(" · ")}
             empty={empty}
           />
         </div>
