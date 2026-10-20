@@ -451,7 +451,7 @@ export const MCP_TOOLS = {
     },
     answer_sources: {
         title: "Evidence for a question, each piece with its source",
-        description: "The evidence behind a question about WoW: Forever, for an answer that cites its sources: facts players observed (public after three installs agree, with the install count), curated facts, and the 2023 Warcraft Wiki (marked: may differ in Forever). Every piece carries a claim, its source URL, licence and date. Returns evidence rather than prose. Further-reading links are search URLs on other sites; nothing is fetched from them. Reads Everloot's current authorized public corpus when connected; when it is not, the observed layer is unrecorded, not empty.",
+        description: "The evidence behind a question about WoW: Forever, for an answer that cites its sources: facts players observed (public after three installs agree, with the install count), curated facts, and the 2023 Warcraft Wiki (marked: may differ in Forever). Every piece carries a claim, its source URL, licence and date. Returns evidence rather than prose. Further-reading links are search URLs on other sites; nothing is fetched from them. Reads Everloot's public player data when connected; when it is not, the observed layer is unrecorded, not empty.",
         inputSchema: {
             question: z.string().min(1).max(500).describe("The question, with names spelled as in the game."),
             limit: z.number().int().min(1).max(25).default(8).describe("Most lore and curated pieces."),
@@ -465,7 +465,7 @@ export const MCP_TOOLS = {
     },
     profession_path: {
         title: "Profession leveling path",
-        description: "Leveling path for one Forever profession from Everloot uploads. A step exists only after 3 installs agree: on a reported recipe, or on the recipe colours that make it orange (a guaranteed skill-up), starting at the trainer's required rank. Gold exists only after 3 price uploads agree. No copied guide. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.",
+        description: "Leveling path for one Forever profession from Everloot uploads. A step exists only after 3 installs agree: on a reported recipe, or on the recipe colours that make it orange (a guaranteed skill-up), starting at the trainer's required rank. Gold exists only after 3 price uploads agree. No copied guide. Reads Everloot's public player data when connected. Missing or unavailable data is reported explicitly.",
         inputSchema: {
             profession: z.string().describe("Profession name, such as Alchemy."),
             fromSkill: z.number().int().min(1).max(500).default(1).describe("Skill the character has now."),
@@ -486,42 +486,42 @@ export const MCP_TOOLS = {
     },
     item_page: {
         title: "Item page for a drop",
-        description: "One Forever item: agreed name, public drop rate with kill count, and an agreed map pin. A rate is public after 3 installs kill the source. A name or pin needs 3 installs agreeing. No Wowhead rows. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.",
+        description: "One Forever item: agreed name, public drop rate with kill count, and an agreed map pin. A rate is public after 3 installs kill the source. A name or pin needs 3 installs agreeing. No Wowhead rows. Reads Everloot's public player data when connected. Missing or unavailable data is reported explicitly.",
         inputSchema: { itemId: z.number().int().positive().describe("Item id from a drop row.") },
         outputSchema: { ...uploadsAnswer, page: itemPage.optional() },
         annotations: { readOnlyHint: true, openWorldHint: false },
     },
     npc_page: {
         title: "NPC page",
-        description: "One Forever NPC: agreed name and map pins. A name or pin needs 3 installs agreeing. The pin does not require a drop. No copied spawn list. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.",
+        description: "One Forever NPC: agreed name and map pins. A name or pin needs 3 installs agreeing. The pin does not require a drop. No copied spawn list. Reads Everloot's public player data when connected. Missing or unavailable data is reported explicitly.",
         inputSchema: { npcId: z.number().int().positive().describe("NPC id.") },
         outputSchema: { ...uploadsAnswer, page: npcPage.optional() },
         annotations: { readOnlyHint: true, openWorldHint: false },
     },
     object_page: {
         title: "Game object page",
-        description: "One game object (a chest, herb, ore vein or fishing pool) by the id in its GUID: the items players looted from it, each with observed loot windows, windows with the item and distinct install reports. A frequency is public after 3 install reports; a public object with nothing in its windows reads as a measured zero. Objects have no names yet. Reads Everloot's current authorized public corpus when connected.",
+        description: "One game object (a chest, herb, ore vein or fishing pool) by the id in its GUID: the items players looted from it, each with observed loot windows, windows with the item and distinct install reports. A frequency is public after 3 install reports; a public object with nothing in its windows reads as a measured zero. Objects have no names yet. Reads Everloot's public player data when connected.",
         inputSchema: { objectId: z.number().int().positive().describe("The object's entry id, as in /database/objects/1731.") },
         outputSchema: { ...uploadsAnswer, page: objectPage.optional() },
         annotations: { readOnlyHint: true, openWorldHint: false },
     },
     quest_page: {
         title: "Quest page",
-        description: "One Forever quest: agreed title, level, giver, turn-in, and rewards. Each fact needs 3 installs agreeing. No copied quest text. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.",
+        description: "One Forever quest: agreed title, level, giver, turn-in, and rewards. Each fact needs 3 installs agreeing. No copied quest text. Reads Everloot's public player data when connected. Missing or unavailable data is reported explicitly.",
         inputSchema: { questId: z.number().int().positive().describe("Quest id.") },
         outputSchema: { ...uploadsAnswer, page: questPage.optional() },
         annotations: { readOnlyHint: true, openWorldHint: false },
     },
     vendor_page: {
         title: "Vendor page",
-        description: "Goods one Forever vendor sells. An item is listed when 3 installs agree on that item and its copper price. Two agreed prices both stay listed. No copied catalog. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.",
+        description: "Goods one Forever vendor sells. An item is listed when 3 installs agree on that item and its copper price. Two agreed prices both stay listed. No copied catalog. Reads Everloot's public player data when connected. Missing or unavailable data is reported explicitly.",
         inputSchema: { vendorNpcId: z.number().int().positive().describe("Vendor NPC id.") },
         outputSchema: { ...uploadsAnswer, page: vendorPage.optional() },
         annotations: { readOnlyHint: true, openWorldHint: false },
     },
     world_map_near: {
         title: "What is near a place on the map",
-        description: `Entrances, NPCs and vendors near a spot, nearest first, with straight-line distances in yards. Give a zone (name or map id) with x and y from 0 to 100, or an NPC id to start from where that NPC stands. Entrances come from the game files and are unconfirmed. NPCs and vendors are player-observed and listed only where 3 installs agree on the position. Zones the files hold back as possibly unreleased are not offered. Game objects are not listed: no public record gives them a position. Reads Everloot's current authorized public corpus when connected.`,
+        description: `Entrances, NPCs and vendors near a spot, nearest first, with straight-line distances in yards. Give a zone (name or map id) with x and y from 0 to 100, or an NPC id to start from where that NPC stands. Entrances come from the game files and are unconfirmed. NPCs and vendors are player-observed and listed only where 3 installs agree on the position. Zones the files hold back as possibly unreleased are not offered. Game objects are not listed: no public record gives them a position. Reads Everloot's public player data when connected.`,
         inputSchema: {
             zone: z.string().max(80).optional().describe("Zone name or map id, such as Elwynn Forest or 1429. Needs x and y."),
             x: z.number().min(0).max(100).optional().describe("Across the zone map, 0 (west) to 100 (east)."),
@@ -535,7 +535,7 @@ export const MCP_TOOLS = {
     },
     entity_relations: {
         title: "How an item, NPC, spell or quest connects to others",
-        description: `Every typed relation of one entity, both directions: dropped by, sold by, reward from, located in (player-observed, listed where 3 installs agree, with the install count and last seen), and created by, reagent for, part of set, same icon (found in game files, unconfirmed, with the build they came from). Ids are the game's own. Reads Everloot's current authorized public corpus and the committed client layer.`,
+        description: `Every typed relation of one entity, both directions: dropped by, sold by, reward from, located in (player-observed, listed where 3 installs agree, with the install count and last seen), and created by, reagent for, part of set, same icon (found in game files, unconfirmed, with the build they came from). Ids are the game's own. Reads Everloot's public player data and the game-file relations of the current build.`,
         inputSchema: {
             kind: z.enum(ENTITY_KINDS).describe("What the id names. A zone is a UiMap id, as on /map."),
             id: z.number().int().positive().describe("The game's id for it, such as item 19019."),
@@ -629,7 +629,7 @@ export const MCP_TOOLS = {
     },
     collection_gap: {
         title: "Owned versus missing in a collection",
-        description: "Missing items in one collection for one install. A list row is public after 3 installs agree on the collection, the source, and the item. Owned is what that install uploaded. Not a Blizzard profile read and not a copied catalog. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.",
+        description: "Missing items in one collection for one install. A list row is public after 3 installs agree on the collection, the source, and the item. Owned is what that install uploaded. Not a Blizzard profile read and not a copied catalog. Reads Everloot's public player data when connected. Missing or unavailable data is reported explicitly.",
         inputSchema: {
             collection: z.string().describe("Collection name, such as Mounts."),
             ownerInstallId: z.string().describe("Install id whose owned upload to compare."),
@@ -639,7 +639,7 @@ export const MCP_TOOLS = {
     },
     completion_progress: {
         title: "Achievement, reputation, title and quest progress",
-        description: "What one install's characters have finished, and what is closest to done: achievements with the largest share of criteria or progress met, reputations nearest the next standing, titles known, and quests finished in a chain. A list entry is public after 3 players (installs uploading from different addresses) report it identically. Progress is shown only when that install uploaded it with the collection sharing choice and a verified grant; without it the answer says so. Not a Blizzard profile read and not a copied catalog. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.",
+        description: "What one install's characters have finished, and what is closest to done: achievements with the largest share of criteria or progress met, reputations nearest the next standing, titles known, and quests finished in a chain. A list entry is public after 3 players (installs uploading from different addresses) report it identically. Progress is shown only when that install uploaded it with the collection sharing choice and a verified grant; without it the answer says so. Not a Blizzard profile read and not a copied catalog. Reads Everloot's public player data when connected. Missing or unavailable data is reported explicitly.",
         inputSchema: {
             ownerInstallId: z.string().describe("Install id whose completion upload to read."),
             characterKey: z.string().max(8).optional().describe("One character's 8-digit key from the upload, when the install has several."),
@@ -649,7 +649,7 @@ export const MCP_TOOLS = {
     },
     guild_board: {
         title: "Guild board its officers published",
-        description: "One guild's roster, bosses killed, loot awarded, raid attendance and average item level, as that guild's own officers chose to publish them. Only uploads from officers holding a verified grant for the guild count, and a figure is public after 2 of them agree. Names are in-game character names, never accounts or real-world identities. A character's owner can opt out, and an opted-out character is left out of the roster, loot and attendance. A guild whose officers have not published gets an empty board; the tool does not look up other players or guilds. The average names how many roster members were measured; there is no combined score. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.",
+        description: "One guild's roster, bosses killed, loot awarded, raid attendance and average item level, as that guild's own officers chose to publish them. Only uploads from officers holding a verified grant for the guild count, and a figure is public after 2 of them agree. Names are in-game character names, never accounts or real-world identities. A character's owner can opt out, and an opted-out character is left out of the roster, loot and attendance. A guild whose officers have not published gets an empty board; the tool does not look up other players or guilds. The average names how many roster members were measured; there is no combined score. Reads Everloot's public player data when connected. Missing or unavailable data is reported explicitly.",
         inputSchema: {
             guildName: z.string().describe("Guild name."),
             realm: z.string().describe("Realm name."),
@@ -659,7 +659,7 @@ export const MCP_TOOLS = {
     },
     auction_history: {
         title: "Auction history for one item",
-        description: "Price history from auction scans players uploaded on purpose. A day is public after 3 installs scanned that item on that realm. Copper is the median. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.",
+        description: "Price history from auction scans players uploaded on purpose. A day is public after 3 installs scanned that item on that realm. Copper is the median. Reads Everloot's public player data when connected. Missing or unavailable data is reported explicitly.",
         inputSchema: {
             realm: z.string().describe("Realm name."),
             itemId: z.number().int().positive().describe("Item id."),
@@ -679,7 +679,7 @@ export const MCP_TOOLS = {
     },
     gold_ledger: {
         title: "Gold ledger for one character",
-        description: "Peak gold and the money events that character's own upload recorded. Loot, quests, vendors, and auction sales stay on the money line. Gameplay stays on its own line. A missing line is unrecorded. The difference is not called bought and is not a ban. Installs are not merged. No scan of a player who did not upload. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.",
+        description: "Peak gold and the money events that character's own upload recorded: income (loot, quests, vendor and auction sales) and spending, each install's ledger kept apart. A category with nothing recorded says unrecorded, not zero. The gap between recorded income and peak gold is shown as unrecorded, never called bought gold or a ban. No scan of a player who did not upload. Reads Everloot's public player data when connected. Missing or unavailable data is reported explicitly.",
         inputSchema: {
             character: z.string().describe("Character name."),
             realm: z.string().describe("Realm name."),
