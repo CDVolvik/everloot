@@ -3,7 +3,7 @@ import { expect, test } from "vitest";
 import { GET as llmsFull } from "@/app/llms-full.txt/route";
 import { GET as llms } from "@/app/llms.txt/route";
 import { tools, toolHref } from "@/data/tools";
-import { llmsFullTxt, llmsTxt } from "./llms";
+import { FULL_VERSION, llmsFullTxt, llmsTxt } from "./llms";
 
 const registered = MCP_TOOL_NAMES;
 
@@ -74,5 +74,24 @@ test("llms.txt and llms-full.txt carry the licence and credit headers", () => {
   for (const res of [llms(), llmsFull()]) {
     expect(res.headers.get("x-everloot-licence")).toBe("CC BY-SA 4.0");
     expect(res.headers.get("x-everloot-credit")).toBe("Data from Everloot (https://everloot.app), CC BY-SA 4.0.");
+  }
+});
+
+test("llms-full.txt is a superset of llms.txt: every line of the short file is in the full one, but the pointer to itself", () => {
+  const full = new Set(llmsFullTxt().split("\n"));
+  const missing = llmsTxt().split("\n").filter((line) => line.trim() && !FULL_VERSION.includes(line) && !full.has(line));
+  expect(missing).toEqual([]);
+  expect(llmsFullTxt()).not.toContain("## Full version");
+});
+
+test("both files give the page addresses to cite, the credit line and the operator in /about's words", () => {
+  for (const text of [llmsTxt(), llmsFullTxt()]) {
+    const section = text.slice(text.indexOf("## Linking to Everloot"));
+    for (const pattern of ["/database/items/{itemId}", "/database/npcs/{npcId}", "/database/quests/{questId}", "/database/zones/{mapId}-{zone-name}", "/tools/talents/{class}", "/.well-known/mcp/server-card.json"]) {
+      expect(section).toContain(`https://everloot.app${pattern}`);
+    }
+    expect(section).toContain("Credit line for Everloot's own data: Data from Everloot (https://everloot.app), CC BY-SA 4.0.");
+    expect(text).toContain("Everloot is run by R21 Media Group, LLC.");
+    expect(text).not.toContain("run by its maintainer");
   }
 });

@@ -49,7 +49,7 @@ const filters = (q: QuestQuery) => Number(Boolean(q.q)) + Number(Boolean(q.level
 
 export async function generateMetadata(props: { searchParams?: Promise<Search> }): Promise<Metadata> {
   const q = questQuery((await props.searchParams) ?? {});
-  return listMetadata(META, Boolean(q) && filters(q!) === 0 && !q!.sort && q!.page === 1);
+  return listMetadata(META, Boolean(q) && filters(q!) === 0 && !q!.sort, q?.page);
 }
 
 export default async function QuestListPage(props: { searchParams?: Promise<Search> }) {
@@ -91,10 +91,11 @@ export default async function QuestListPage(props: { searchParams?: Promise<Sear
     { key: "name", header: "Name", sortable: true, cell: (x) => {
       const wiki = !x.title && titleOf(x);
       // Where a title comes from is its tooltip (and words for a screen reader), never a printed label.
-      return <Link href={`/database/quests/${x.questId}`} title={wiki ? GAME_NAME_TITLE.wiki : undefined} className={LINK}>
-        {titleOf(x) ?? `Quest ${x.questId}`}
+      // The screen reader words follow the link, so its text is the title alone.
+      return <>
+        <Link href={`/database/quests/${x.questId}`} title={wiki ? GAME_NAME_TITLE.wiki : undefined} className={LINK}>{titleOf(x) ?? `Quest ${x.questId}`}</Link>
         {wiki && <span className="sr-only"> ({GAME_NAME_TITLE.wiki.toLowerCase()})</span>}
-      </Link>;
+      </>;
     } },
     { key: "level", header: "Level", numeric: true, sortable: true, cell: (x) => x.level ?? dash },
     { key: "category", header: "Category", sortable: true, cell: (x) => x.category ?? dash },

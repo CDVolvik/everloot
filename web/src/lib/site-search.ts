@@ -86,12 +86,22 @@ async function objectById(id: number | null): Promise<SearchResult[]> {
 }
 
 /**
- * Everything the site knows by this name or id, grouped by type. Names are the ones players agree on (the
- * database pages' own rule), zones are the released ones on the map, lore comes from the archive, tools from
+ * Everything the site knows by this name or id, grouped by type. Names are the ones players agree on, and for
+ * items also the names the item pages show when the caller passes them, zones are the released ones on the map, lore comes from the archive, tools from
  * the tool list. A group with an exact id or name match comes first; an empty group is left out. `only`
  * keeps one database type; `limit` is the rows per group.
  */
-export async function siteSearch(raw: string, { only, limit = GROUP_LIMIT }: { only?: Scope; limit?: number } = {}): Promise<SearchGroup[]> {
+export async function siteSearch(
+  raw: string,
+  { only, limit = GROUP_LIMIT, shownItemNames }: {
+    only?: Scope; limit?: number;
+    /**
+     * The item names the item pages show beyond players' (game files + Warcraft Wiki, docs/DATA_POLICY.md). The
+     * /search page passes them; this module does not read them, so the suggestion API built on it never can.
+     */
+    shownItemNames?: ReadonlyMap<number, string>;
+  } = {},
+): Promise<SearchGroup[]> {
   const text = raw.trim().slice(0, MAX_QUERY);
   const q = text.toLowerCase();
   if (!q) return [];
@@ -100,7 +110,9 @@ export async function siteSearch(raw: string, { only, limit = GROUP_LIMIT }: { o
   const want = (t: SearchType) => !only || only === t;
 
   const names = await loadNames();
-  for (const kind of ["item", "npc", "quest"] as const) if (want(kind)) found.set(kind, agreed(kind, names[`${kind}s`], q, id));
+  // Players' agreed name wins over the shown one, as on the item page.
+  const items = shownItemNames ? new Map([...shownItemNames, ...names.items]) : names.items;
+  for (const kind of ["item", "npc", "quest"] as const) if (want(kind)) found.set(kind, agreed(kind, kind === "item" ? items : names[`${kind}s`], q, id));
   if (want("object")) { const objects = await objectById(id); found.set("object", { results: objects, total: objects.length }); }
 
   if (!only) {
@@ -159,8 +171,9 @@ export async function siteSearch(raw: string, { only, limit = GROUP_LIMIT }: { o
       return { type, heading: HEADINGS[type], results: f.results.slice(0, limit).map(strip), total: f.total };
     })
     .filter((g) => g.results.length > 0)
-    // Stable: groups with an exact hit move up, the rest keep their order.
-    .map((g, i) => ({ g, i, exact: g.results.some((r) => r.exact) }))
+    // Stable: groups with an exact hit move up, the rest keep their order. The lore archive (Warcraft Wiki copies)
+    // keeps its place after Everloot's own pages even on an exact name: the Forever record comes first.
+    .map((g, i) => ({ g, i, exact: g.type !== "lore" && g.results.some((r) => r.exact) }))
     .sort((a, b) => Number(b.exact) - Number(a.exact) || a.i - b.i)
     .map(({ g }) => g);
 }

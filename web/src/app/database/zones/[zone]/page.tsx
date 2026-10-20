@@ -43,8 +43,8 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   const indexable = !facts.unreachable && hasContent(here);
   return {
     ...pageMetadata({
-      title: `${zone.name}, ${zone.continentName}`,
-      description: `${zone.name} in ${zone.continentName}: its map, the dungeons and raids entered here, and the NPCs, vendors and quests players have confirmed. WoW: Forever.`,
+      title: `${zone.name} – WoW Forever Zone: Quests, NPCs and Map`,
+      description: `${zone.name} in WoW: Forever (${zone.continentName}): the map, the dungeon and raid entrances, and the NPCs, vendors and quests players have confirmed.`,
       path: zoneHref(zone.mapId, zone.name),
     }),
     robots: { index: indexable, follow: true },
@@ -86,10 +86,11 @@ export default async function ZonePage(props: Props) {
     { key: "title", header: "Quest", cell: (q) => {
       // A title players agree on; else the Warcraft Wiki's, with its source as the tooltip.
       const wiki = q.title ? undefined : wikiTitles?.names.get(q.questId)?.name;
-      return <Link href={`/database/quests/${q.questId}`} title={wiki ? GAME_NAME_TITLE.wiki : undefined} className={link}>
-        {q.title ?? wiki ?? `Quest ${q.questId}`}
+      // The screen reader words follow the link, so its text is the title alone.
+      return <>
+        <Link href={`/database/quests/${q.questId}`} title={wiki ? GAME_NAME_TITLE.wiki : undefined} className={link}>{q.title ?? wiki ?? `Quest ${q.questId}`}</Link>
         {wiki && <span className="sr-only"> ({GAME_NAME_TITLE.wiki.toLowerCase()})</span>}
-      </Link>;
+      </>;
     } },
     { key: "level", header: "Level", numeric: true, cell: (q) => q.level ?? "–" },
     { key: "giver", header: "Giver", cell: (q) => npcLink(q.giverNpcId) },

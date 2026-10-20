@@ -1,5 +1,5 @@
 import { AUCTIONS_CHUNK, AUCTIONS_SITEMAP_HEADERS, auctionPaths, auctionsUnavailable } from "@/lib/auctions-sitemap";
-import { chunkNumber, escapeXml, siteUrl } from "@/lib/lore-sitemap";
+import { chunkNumber, escapeXml, siteUrl } from "@/lib/sitemap-xml";
 
 export const dynamic = "force-dynamic";
 

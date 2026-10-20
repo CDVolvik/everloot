@@ -6,6 +6,7 @@ import { Container, DataTable, DataTitle, Entry, EntryList, LinkTabs, Pager, QUA
 import { CC_BY_SA } from "@/lib/jsonld";
 import { BROWSE_HEADINGS, BROWSE_TYPES, hasTypes, loreSlug, MAX_QUERY, searchLore, UNAVAILABLE, UNAVAILABLE_COPY, type BrowseSlug, type LoreType } from "@/lib/lore";
 import { isScope, siteSearch, type Scope, type SearchGroup, type SearchResult } from "@/lib/site-search";
+import { loadShownNames } from "@/lib/shown-item-names";
 
 /** A `type=` value is one of the stored types; anything else means All. */
 function typeOf(raw: string | undefined): LoreType | undefined {
@@ -45,7 +46,10 @@ export default async function SearchPage(props: { searchParams: Promise<Params> 
   if (first(params.in) === "lore" || params.page !== undefined || params.type !== undefined) return <LoreResults q={q} params={params} />;
   const scope = isScope(first(params.in)) ? (first(params.in) as Scope) : undefined;
 
-  const groups = q ? await siteSearch(q, scope ? { only: scope, limit: SCOPED_LIMIT } : {}) : null;
+  // Items are found by the name their page shows (players' name, else the game files' name the wiki matches).
+  const matched = q && (!scope || scope === "item") ? (await loadShownNames()).matched : null;
+  const shownItemNames = matched ? new Map([...matched.names].map(([id, n]) => [id, n.name])) : undefined;
+  const groups = q ? await siteSearch(q, { ...(scope ? { only: scope, limit: SCOPED_LIMIT } : {}), shownItemNames }) : null;
   const base = `/search?q=${encodeURIComponent(q)}`;
   const tabs = groups && groups.length > 0 && [
     { label: "All", href: base, current: !scope },

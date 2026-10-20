@@ -13,7 +13,6 @@ export type { Infobox } from "../../../kb/src/importers/wiki-infobox";
  */
 
 export const PAGE_SIZE = 20;
-export const CHUNK_SIZE = 40_000;
 export const MAX_QUERY = 200;
 /** Deepest search page served; beyond it the answer is "no hits", never a 20 million row LIMIT. */
 export const MAX_PAGE = 50;
@@ -242,19 +241,6 @@ export function indexableCount(): number | Unavailable {
   const row = release.db.prepare(`SELECT count(*) AS n FROM entities WHERE ${INDEXABLE_SQL}`).get(...PUBLISHABLE) as { n: number };
   COUNTS.set(release.db, row.n);
   return row.n;
-}
-
-export function indexableChunk(n: number, size = CHUNK_SIZE): { extId: string; name: string }[] | Unavailable {
-  const release = getRelease();
-  if (!release) return UNAVAILABLE;
-  return release.db
-    .prepare(`SELECT ext_id AS extId, name FROM entities WHERE ${INDEXABLE_SQL} ORDER BY id LIMIT ? OFFSET ?`)
-    .all(...PUBLISHABLE, size, n * size) as { extId: string; name: string }[];
-}
-
-export function releaseCreatedAt(): string | Unavailable {
-  const release = getRelease();
-  return release ? release.manifest.createdAt : UNAVAILABLE;
 }
 
 // ---- Types, facets and browsing ---------------------------------------------------------------

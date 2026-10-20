@@ -30,7 +30,7 @@ import SubclassPage, { generateMetadata as subclassMetadata } from "./[id]/[subc
 import { NAME_TITLE } from "./category-page";
 import { CREDIT } from "@/lib/talents/assets";
 import { CLIENT_EDGES } from "@/lib/edges";
-import { CLIENT_TAXONOMY, ITEMS_PER_PAGE, NAMED_SAMPLE, NAME_SOURCE } from "@/lib/items";
+import { CLIENT_TAXONOMY, ITEMS_PER_PAGE, NAME_SOURCE } from "@/lib/items";
 import sitemap from "@/app/sitemap";
 
 const BASE = "https://assets.example.test/b";
@@ -81,7 +81,7 @@ const matchedNames = (ids: number[]) => ({
   wiki: { name: "Warcraft Wiki (Internet Archive dump, 2023-11-13)", url: "https://warcraft.wiki.gg" },
   names: new Map(ids.map((id) => [id, { name: `Wiki name ${id}`, color: "#a335ee", wikiPage: `https://warcraft.wiki.gg/wiki/Wiki_${id}` }])),
 });
-const clothIds = () => CLIENT_TAXONOMY.items.filter((r) => r[1] === 4 && r[2] === 1).slice(0, NAMED_SAMPLE).map((r) => r[0]);
+const clothIds = () => CLIENT_TAXONOMY.items.filter((r) => r[1] === 4 && r[2] === 1).map((r) => r[0]);
 const cloth = () => SubclassPage({ params: Promise.resolve({ id: "armor", subclass: "cloth" }), searchParams: Promise.resolve({}) });
 
 test("a category row shows a name the game files and the wiki agree on, in its quality colour, its source as the name's tooltip, no printed label", async () => {
@@ -93,7 +93,9 @@ test("a category row shows a name the game files and the wiki agree on, in its q
   expect(page).toContain(`Wiki name ${ids[0]}`);
   expect(page).toContain("color:#a335ee");
   expect(page).toContain(`title="${NAME_TITLE.wiki}"`);
-  expect(page).toContain(`<span class="sr-only"> (name from the warcraft wiki)</span>`);
+  // The screen reader words follow the link: its anchor text is the name alone.
+  expect(page).toContain(`>Wiki name ${ids[0]}</a><span class="sr-only"> (name from the warcraft wiki)</span>`);
+  expect(page).not.toMatch(/<a [^>]*>[^<]*<span class="sr-only">/);
   // Players' names keep first place and say so in their tooltip; every other row stays "Item N" with none.
   expect(page).toContain(`Agreed ${ids[1]}`);
   expect(page).toContain(`title="${NAME_TITLE.players}"`);
@@ -114,7 +116,7 @@ test("without the names file a category shows Item N and no wiki credit", async 
 
 test("wiki-matched names count toward the half a category needs to be indexed and listed in the sitemap", async () => {
   const ids = clothIds();
-  const half = Math.ceil(ids.length / 2);
+  const half = Math.ceil(Math.min(ids.length, ITEMS_PER_PAGE) / 2);
   state.matched = matchedNames(ids.slice(0, half - 1));
   expect((await subclassMetadata({ params: Promise.resolve({ id: "armor", subclass: "cloth" }), searchParams: Promise.resolve({}) })).robots).toMatchObject({ index: false });
   expect((await sitemap()).map((e) => new URL(e.url).pathname)).not.toContain("/database/items/armor/cloth");
@@ -139,8 +141,10 @@ test("an item page with a matched name shows it with its icon and tooltip facts,
   expect(page).not.toMatch(/game files, unconfirmed/i);
   expect(state.tipCalls).toEqual([[id]]);
   const meta = await generateMetadata(props(String(id)));
-  expect(meta.title).toContain(`Wiki name ${id}`);
-  expect(meta.description).toContain("Warcraft Wiki");
+  expect(meta.title).toBe(`Wiki name ${id} – WoW Forever item`);
+  // A description of the page, not of where the name comes from (no provenance in the search snippet).
+  expect(meta.description).toMatch(new RegExp(`^Wiki name ${id} is a [a-z]+ Armor item \\(Cloth\\) in WoW: Forever\\.`));
+  expect(String(meta.description).replace(`Wiki name ${id}`, "")).not.toMatch(/wiki|game files|build|confirmed/i);
   expect(meta.robots).toMatchObject({ index: true });
   // An item with no name from any source stays "Item N", with no tooltip facts, and out of search.
   const other = clothIds()[1];

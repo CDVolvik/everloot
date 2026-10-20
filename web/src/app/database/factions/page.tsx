@@ -34,7 +34,7 @@ const filters = (q: FactionQuery) => Number(Boolean(q.q)) + Number(Boolean(q.hea
 
 export async function generateMetadata(props: { searchParams?: Promise<Search> }): Promise<Metadata> {
   const q = factionQuery((await props.searchParams) ?? {});
-  return listMetadata(META, Boolean(q) && filters(q!) === 0 && !q!.sort && q!.page === 1);
+  return listMetadata(META, Boolean(q) && filters(q!) === 0 && !q!.sort, q?.page);
 }
 
 export default async function FactionListPage(props: { searchParams?: Promise<Search> }) {

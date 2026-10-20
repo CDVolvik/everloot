@@ -27,7 +27,7 @@ test("the coverage page reports types, facets, pages, damage and the release dat
   expect(html).toMatch(/NPCs and characters<\/a><\/td><td[^>]*>3</);
   expect(html).toContain("Legion");
   expect(html).toContain("Orc");
-  expect(html).toMatch(/Indexable pages[\s\S]{0,120}>28</);
+  expect(html).toMatch(/Full pages[\s\S]{0,120}>28</);
   expect(html).toMatch(/Damaged pages[\s\S]{0,120}>1</);
   expect(html).toContain("2026-10-15");
   expect(html).toContain("not WoW: Forever data");

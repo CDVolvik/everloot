@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 import { describe, filterItems, QUALITIES, resolveClass, resolveLegacyClass, resolveSubclass, slotOf, type ItemClass, type ItemRow, type ItemSubclass } from "../../../../../kb/src/item-taxonomy";
 import {
-  activeFilters, BINDINGS, CLIENT_LAYER, CLIENT_TAXONOMY as T, categoryNamedEnough, categoryQuery, itemFacets, ITEM_LEVEL_BRACKETS, ITEMS_PER_PAGE, itemsHref,
+  activeFilters, BINDINGS, CLIENT_TAXONOMY as T, categoryNamedEnough, categoryQuery, itemFacets, ITEM_LEVEL_BRACKETS, ITEMS_PER_PAGE, itemsHref,
   listItems, SOURCES, shownItemName, toggled, UNRECORDED, type CategoryQuery, type NameSource,
 } from "@/lib/items";
 import { loadItemSeen } from "@/lib/item-seen";
@@ -47,31 +47,43 @@ export const NAME_TITLE: Record<NameSource, string> = {
   files: UNCONFIRMED_TITLE,
 };
 
-/** Only the plain list is indexed; a filter, a sort, a name search or a later page is noindex and points its canonical at it. */
-const isPlain = (q: CategoryQuery) => activeFilters(q) === 0 && !q.sort && q.page === 1;
+/**
+ * The plain list, on any page, is its own canonical; a filter, a sort or a name search is noindex and points
+ * its canonical at page 1 of the plain list.
+ */
+const isPlain = (q: CategoryQuery) => activeFilters(q) === 0 && !q.sort;
 
 export const ALL_ITEMS = {
-  title: "WoW Forever items by category",
-  description: `Every WoW: Forever item in build ${CLIENT_LAYER.build.version} by class and subclass, read from the game files and unconfirmed until players see it in game.`,
+  title: "WoW Forever Items by Category",
+  description: "Every WoW: Forever item by class and subclass: weapons, armor, recipes, trade goods and more, with filters for slot, quality, item level and source.",
 };
+
+const pageSuffix = (page: number) => (page > 1 ? ` – Page ${page}` : "");
 
 export async function categoryMetadata(classSlug: string | undefined, subclassKey: string | undefined, search: Search): Promise<Metadata> {
   const r = resolve(classSlug, subclassKey, search);
   if (!r) return { robots: { index: false, follow: true } };
-  if (!r.cls) return { ...pageMetadata({ ...ALL_ITEMS, path: "/database/items" }), ...(isPlain(r.q) ? {} : { robots: { index: false, follow: true } }) };
-  const name = r.sub ? `${subName(r.sub)} (${r.cls.label})` : r.cls.label;
-  const count = r.sub ? r.sub.items : r.cls.items;
-  // Only the plain category page is indexed; filtered and later pages repeat it. And only once half its
-  // rows have a name: until then it is a list of "Item N" (the sitemap leaves it out for the same reason).
   const plain = isPlain(r.q);
+  const page = plain ? r.q.page : 1;
+  // A later page of the plain list is indexed like page 1: once half the rows it shows have a name. The plain
+  // list shows named rows first, so its first pages fill with them; until then a page is a list of "Item N".
   const named = plain ? (await loadShownNames()).named : null;
+  if (!r.cls) {
+    const index = plain && (page === 1 || categoryNamedEnough(undefined, undefined, named!, page));
+    return {
+      ...pageMetadata({ title: `${ALL_ITEMS.title}${pageSuffix(page)}`, description: ALL_ITEMS.description, path: itemsHref(undefined, undefined, { page }) }),
+      ...(index ? {} : { robots: { index: false, follow: true } }),
+    };
+  }
+  const name = r.sub ? `${subName(r.sub)} (${r.cls.label})` : r.cls.label;
+  const count = (r.sub ? r.sub.items : r.cls.items).toLocaleString("en-US");
   return {
     ...pageMetadata({
-      title: r.sub ? `${name} items` : name,
-      description: `${count.toLocaleString("en-US")} WoW: Forever items in ${name}, read from the game files of build ${CLIENT_LAYER.build.version} and unconfirmed until players see them.`,
-      path: itemsHref(r.cls.slug, r.sub?.slug),
+      title: `${r.sub ? `WoW Forever ${name}: ${count} Items` : `WoW Forever ${name}: All ${count} Items`}${pageSuffix(page)}`,
+      description: `All ${count} ${name} items in WoW: Forever, with filters for slot, quality, item level, required level, binding and where players found them.`,
+      path: itemsHref(r.cls.slug, r.sub?.slug, { page }),
     }),
-    robots: { index: named !== null && categoryNamedEnough(r.cls.id, r.sub?.id, named), follow: true },
+    robots: { index: named !== null && categoryNamedEnough(r.cls.id, r.sub?.id, named, page), follow: true },
   };
 }
 
@@ -130,12 +142,13 @@ export async function CategoryPage({ classSlug, subclassKey, search }: { classSl
             {icons && (tip?.icon
               ? <GameIcon src={tip.icon} size={24} />
               : <span aria-hidden="true" className="h-6 w-6 shrink-0 rounded-sm border border-line" />)}
-            {/* Where the name comes from is the name's tooltip (and words for a screen reader), never a printed label;
-                a name only the game files give carries the quiet unconfirmed marker. */}
+            {/* Where the name comes from is the name's tooltip (and words for a screen reader, after the link so the
+                link's text is the name alone), never a printed label; a name only the game files give carries the
+                quiet unconfirmed marker. */}
             <Link href={`/database/items/${row[0]}`} title={name ? NAME_TITLE[name.source] : undefined} className={`min-w-0 ${colour} hover:underline underline-offset-4`} style={name?.color ? { color: name.color } : undefined}>
               {name?.name ?? `Item ${row[0]}`}
-              {name && name.source !== "files" && <span className="sr-only"> ({NAME_TITLE[name.source].toLowerCase()})</span>}
             </Link>
+            {name && name.source !== "files" && <span className="sr-only"> ({NAME_TITLE[name.source].toLowerCase()})</span>}
             {unconfirmed && <Badge tone="files" />}
           </span>
         );

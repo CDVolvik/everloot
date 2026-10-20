@@ -7,12 +7,10 @@ export { CLIENT_LAYER, CLIENT_TAXONOMY };
 export const ITEMS_PER_PAGE = 50;
 
 /**
- * A category page stays out of search (noindex, and out of the sitemap) until at least this share of its
- * first rows has a name. A page of "Item 1234" rows is thin, and search engines judge the whole site by it.
+ * A page of a category stays out of search (noindex, and out of the sitemap) until at least this share of the
+ * rows it shows has a name. A page of "Item 1234" rows is thin, and search engines judge the whole site by it.
  */
 export const MIN_NAMED_SHARE = 0.5;
-/** The rows that share is read over: the first 100 by id, as when a page held 100 rows, so the same categories stay indexed. */
-export const NAMED_SAMPLE = 100;
 
 /** Where a shown item name comes from, in the words each page writes beside it. */
 export const NAME_SOURCE = {
@@ -41,10 +39,18 @@ export function shownItemName(
   return null;
 }
 
-/** Whether the plain first rows of a category have enough names to be indexed. */
-export function categoryNamedEnough(classId: number, subclassId: number | undefined, named: { has(id: number): boolean }): boolean {
-  const ids = filterItems(CLIENT_TAXONOMY, { classId, subclassId }).slice(0, NAMED_SAMPLE).map((row) => row[0]);
-  return ids.length > 0 && ids.filter((id) => named.has(id)).length / ids.length >= MIN_NAMED_SHARE;
+/**
+ * Whether a page of a category's plain list has enough names to be indexed. The plain list shows the named
+ * rows first (sortItems), so page `page` holds the named rows left after the earlier pages, then unnamed ones.
+ * No row gets a name it does not have: a category with too few names stays out.
+ */
+export function categoryNamedEnough(classId: number | undefined, subclassId: number | undefined, named: { has(id: number): boolean }, page = 1): boolean {
+  const rows = filterItems(CLIENT_TAXONOMY, { classId, subclassId });
+  const start = (page - 1) * ITEMS_PER_PAGE;
+  const shown = Math.min(ITEMS_PER_PAGE, rows.length - start);
+  if (shown <= 0) return false;
+  const namedRows = rows.reduce((n, row) => n + Number(named.has(row[0])), 0);
+  return Math.min(Math.max(namedRows - start, 0), shown) / shown >= MIN_NAMED_SHARE;
 }
 
 /** Slot slugs any item in the build uses, in inventory type order (robes and chest pieces share "chest"). */
@@ -267,8 +273,16 @@ export function listItems(base: readonly ItemRow[], q: CategoryQuery, ctx: ItemL
   return sortItems(rows, q.sort, ctx);
 }
 
-/** Text keys sort A to Z and levels low to high, with the rows that have none last, whichever way; ties go by id. */
+/**
+ * Text keys sort A to Z and levels low to high, with the rows that have none last, whichever way; ties go by id.
+ * With no sort, rows with a name the page may show come first, each part by id (the API passes no names, so
+ * its order stays by id).
+ */
 export function sortItems(rows: ItemRow[], sort: CategoryQuery["sort"], ctx: ItemListContext = {}): ItemRow[] {
+  if (!sort && ctx.name) {
+    const named = rows.filter((row) => ctx.name!(row[0]) !== undefined);
+    return named.length === 0 || named.length === rows.length ? rows : [...named, ...rows.filter((row) => ctx.name!(row[0]) === undefined)];
+  }
   if (!sort || sort.key === "id") return sort?.desc ? [...rows].sort((a, b) => b[0] - a[0]) : rows;
   const dir = sort.desc ? -1 : 1;
   const key = (row: ItemRow): string | number | null => {

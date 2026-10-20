@@ -55,7 +55,7 @@ const filters = (q: NpcQuery) => Number(Boolean(q.q)) + Number(Boolean(q.zone)) 
 
 export async function generateMetadata(props: { searchParams?: Promise<Search> }): Promise<Metadata> {
   const q = npcQuery((await props.searchParams) ?? {});
-  return listMetadata(META, Boolean(q) && filters(q!) === 0 && !q!.sort && q!.page === 1);
+  return listMetadata(META, Boolean(q) && filters(q!) === 0 && !q!.sort, q?.page);
 }
 
 export default async function NpcListPage(props: { searchParams?: Promise<Search> }) {
