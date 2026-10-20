@@ -241,16 +241,14 @@ test("map: each dungeon's loading screen beside its entrance in the list", async
   expect(html).not.toMatch(/data-game-credit|data-source-line/);
 });
 
-test("patch notes: a wide-screen loading screen with the title and a one-line caption on it, and no credit block (it is site-wide)", async () => {
+test("changes: a compact title row like the database lists, no loading-screen banner and no credit block (it is site-wide)", async () => {
   vi.stubEnv("NEXT_PUBLIC_GAME_ASSETS_URL", BASE);
   vi.stubGlobal("fetch", bucket());
   const html = await render(() => ChangesPage({ searchParams: Promise.resolve({}) }));
-  expect(onBanner(html)).toMatch(/<img[^>]*loading\/9001\.webp[^>]*data-page-banner/);
-  // The title sits on the art, with one caption line and no breadcrumb; the lede follows under the art.
-  expect(onBanner(html)).toMatch(/<h1[^>]*>WoW Forever Patch Notes and Blizzard Posts<\/h1>/);
-  expect(onBanner(html)).not.toContain('aria-label="Breadcrumb"');
-  expect(onBanner(html)).toMatch(CAPTION);
-  expect(onBanner(html)).not.toContain("Official posts from Blizzard staff");
+  expect(html).not.toContain("data-page-banner");
+  expect(html).not.toMatch(/loading\/9001\.webp/);
+  expect(html).toMatch(/<h1[^>]*>Changes<\/h1>/);
+  expect(html).not.toContain('aria-label="Breadcrumb"');
   expect(html).not.toMatch(/data-game-credit|data-source-line/);
 });
 
