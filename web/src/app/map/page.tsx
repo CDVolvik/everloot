@@ -13,7 +13,9 @@ import { CONTINENTS, continentMap, continentPins, MAP_SOURCE, observedFacts, WOR
 import WorldMapView from "@/components/WorldMapView";
 import { continentArt, creditWhat, instanceThumbs, loadingArt, loadSiteAssets } from "@/lib/game-assets";
 import GameCredit from "@/components/game/GameCredit";
-import PageBanner from "@/components/game/PageBanner";
+import { BannerArt } from "@/components/game/PageBanner";
+import { Card, Explainer, LinkTabs, PageHeader, SectionHeading, SourceLine } from "@/components/ui";
+import { trailFor } from "@/lib/breadcrumbs";
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +57,7 @@ export default async function MapPage(props: { searchParams: Promise<Query> }) {
   const assets = vb ? await loadSiteAssets() : null;
   const art = continentArt(assets, continentId, spoilers, WORLD_MAP.heldBackZones.some((z) => z.continentId === continentId));
   const lead = art ? withArt(description) : description;
-  // The continent's loading screen above the map, and each dungeon's and raid's beside its entrance;
+  // The continent's loading screen under the title, and each dungeon's and raid's beside its entrance;
   // a later map's only with spoilers on.
   const banner = loadingArt(assets, continentId, spoilers);
   const allThumbs = instanceThumbs(assets, spoilers);
@@ -80,95 +82,98 @@ export default async function MapPage(props: { searchParams: Promise<Query> }) {
     return `/map?${q.toString()}`;
   })();
 
+  // One credit line for the page's game art: the banner's caption when there is a banner, else at the foot.
+  const credit = assets && (art || banner || thumbShown)
+    ? <GameCredit version={assets.version} label={assets.label} what={creditWhat(art && "map pictures", (banner || thumbShown) && "loading screen art")} />
+    : null;
+
   return (
-    <article className="space-y-8 max-w-5xl">
+    <article>
       <JsonLd data={webApplicationJsonLd({ name: TITLE, path: "/map", description: lead })} />
-      {banner && <PageBanner art={banner} eager />}
-      <header className="space-y-3">
-        <p className="font-mono text-xs text-muted">WoW: Forever · {map.name}</p>
-        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">{TITLE}</h1>
-        <p className="text-sm text-fg-2 max-w-2xl">
-          {lead} Zone outlines and entrances are positions read from the
-          game files. They are found in the files and unconfirmed until players see them in the game. Points for NPCs and vendors
-          come from what players uploaded.
-        </p>
-        <nav aria-label="Continent" className="flex gap-3 text-sm">
-          {CONTINENTS.map((c) => (
-            <Link
-              key={c.id}
-              href={`/map?continent=${c.id}${spoilers ? "&spoilers=1" : ""}`}
-              aria-current={c.id === continentId ? "page" : undefined}
-              className={c.id === continentId ? "inline-flex items-center min-h-11 text-fg underline underline-offset-4" : "inline-flex items-center min-h-11 text-accent hover:underline underline-offset-4"}
-            >
-              {c.name}
+      <PageHeader
+        trail={trailFor("/map")!}
+        title={TITLE}
+        lede={lead}
+        banner={banner ? { image: <BannerArt art={banner} eager />, credit } : undefined}
+      />
+
+      <LinkTabs
+        label="Continent"
+        tabs={CONTINENTS.map((c) => ({ href: `/map?continent=${c.id}${spoilers ? "&spoilers=1" : ""}`, label: c.name, current: c.id === continentId }))}
+        aside={
+          <>
+            <span className="text-fg">Spoilers: {spoilers ? "on" : "off"}</span>
+            <Link href={switchHref} className="inline-flex min-h-11 items-center text-accent hover:underline underline-offset-4">
+              {spoilers ? "Hide them" : "Show them"}
             </Link>
-          ))}
-        </nav>
-        <p className="text-sm text-fg-2 max-w-2xl">
-          <span className="text-fg">Spoilers: {spoilers ? "on" : "off"}.</span>{" "}
-          {spoilers
-            ? "Zones found only in the game files are drawn dashed and marked as unconfirmed. They may not be in the game."
-            : "Zones found only in the game files, which may not be released, are held back."}{" "}
-          <Link href={switchHref} className="inline-flex items-center min-h-11 text-accent hover:underline underline-offset-4">
-            {spoilers ? "Hide them" : "Show them"}
-          </Link>
-        </p>
+          </>
+        }
+      />
+      <div className="mt-6 space-y-8">
         {hiddenTarget && target && (
           <p className="text-sm text-warning">{target.name} is held back as possibly unreleased. Turn spoilers on to see this spot.</p>
         )}
-      </header>
+        {corpus.unreachable && <p className="text-sm text-warning">{STORAGE_UNREACHABLE} The in-game cross-check and player-observed points are missing; the map itself does not depend on them.</p>}
 
-      {corpus.unreachable && <p className="text-sm text-warning">{STORAGE_UNREACHABLE} The in-game cross-check and player-observed points are missing; the map itself does not depend on them.</p>}
+        {vb ? (
+          <WorldMapView
+            key={`${continentId}-${spoilers}-${link ? `${link.mapId}-${link.x}-${link.y}` : ""}`}
+            name={map.name}
+            base={vb}
+            items={items}
+            focus={focus}
+            marker={marker}
+            spoilers={spoilers}
+            art={art}
+            thumbs={thumbShown ? thumbs : undefined}
+          />
+        ) : (
+          <Card><p className="text-sm text-fg-2">Nothing is placed on this continent yet.</p></Card>
+        )}
 
-      {vb ? (
-        <WorldMapView
-          key={`${continentId}-${spoilers}-${link ? `${link.mapId}-${link.x}-${link.y}` : ""}`}
-          name={map.name}
-          base={vb}
-          items={items}
-          focus={focus}
-          marker={marker}
-          spoilers={spoilers}
-          art={art}
-          thumbs={thumbShown ? thumbs : undefined}
-        />
-      ) : (
-        <p className="rounded-xl border border-line bg-panel p-5 text-sm text-fg-2">Nothing is placed on this continent yet.</p>
-      )}
-
-      <section aria-labelledby="zones" className="space-y-3">
-        <h2 id="zones" className="text-xl font-semibold text-fg">Zones</h2>
-        <p className="text-sm text-fg-2">
-          {map.zones.filter((z) => !z.heldBack).map((z) => z.name).join(", ")}.
-          {map.zones.some((z) => z.heldBack) && (
-            <> Held back, {HELD_LABEL}: {map.zones.filter((z) => z.heldBack).map((z) => z.name).join(", ")}.</>
-          )}
-        </p>
-      </section>
-
-      {(map.confirmedZones > 0 || map.disagreements.length > 0) && (
-        <section aria-labelledby="check" className="space-y-3">
-          <h2 id="check" className="text-xl font-semibold text-fg">In-game cross-check</h2>
+        <section aria-labelledby="zones">
+          <SectionHeading id="zones">Zones</SectionHeading>
           <p className="text-sm text-fg-2">
-            Where 3 installs agree on a zone&apos;s corners, we compare them with the game files:
-            {" "}{map.confirmedZones} zone{map.confirmedZones === 1 ? "" : "s"} match within a yard.
-            {map.disagreements.length > 0 && <> These differ, so treat their outlines as unconfirmed: {map.disagreements.map((d) => d.name).join(", ")}.</>}
+            {map.zones.filter((z) => !z.heldBack).map((z) => z.name).join(", ")}.
+            {map.zones.some((z) => z.heldBack) && (
+              <> Held back, {HELD_LABEL}: {map.zones.filter((z) => z.heldBack).map((z) => z.name).join(", ")}.</>
+            )}
           </p>
         </section>
-      )}
 
-      <footer className="space-y-1 text-xs text-muted">
-        {!corpus.unreachable && <p>{dataAgeLabel(corpus.dataAsOf)}</p>}
+        {(map.confirmedZones > 0 || map.disagreements.length > 0) && (
+          <section aria-labelledby="check">
+            <SectionHeading id="check">In-game cross-check</SectionHeading>
+            <p className="text-sm text-fg-2">
+              Where 3 installs agree on a zone&apos;s corners, we compare them with the game files:
+              {" "}{map.confirmedZones} zone{map.confirmedZones === 1 ? "" : "s"} match within a yard.
+              {map.disagreements.length > 0 && <> These differ, so treat their outlines as unconfirmed: {map.disagreements.map((d) => d.name).join(", ")}.</>}
+            </p>
+          </section>
+        )}
+      </div>
+
+      <Explainer summary="Where the map comes from">
+        <p>
+          Zone outlines and entrances are positions read from the game files. They are found in the files and unconfirmed
+          until players see them in the game. Points for NPCs and vendors come from what players uploaded.
+        </p>
+        <p>
+          {spoilers
+            ? "Spoilers are on: zones found only in the game files are drawn dashed and marked as unconfirmed. They may not be in the game."
+            : "Spoilers are off: zones found only in the game files, which may not be released, are held back."}
+        </p>
         <p>
           Map data read from the WoW: Forever game files, build {MAP_SOURCE.version}. It is Blizzard&apos;s data, found in the
           files and unconfirmed, and is not under our licence. See the{" "}
-          <a className="text-accent hover:underline underline-offset-4" href={MAP_SOURCE.licenceUrl}>data policy</a>.
+          <a className="text-accent" href={MAP_SOURCE.licenceUrl}>data policy</a>.
           NPC and vendor points are from player uploads (CC BY-SA 4.0).
         </p>
-        {assets && (art || banner || thumbShown) && (
-          <GameCredit version={assets.version} label={assets.label} what={creditWhat(art && "map pictures", (banner || thumbShown) && "loading screen art")} />
-        )}
-      </footer>
+      </Explainer>
+      {!banner && credit && <div className="mt-6">{credit}</div>}
+      <SourceLine build={MAP_SOURCE.version} licence="Blizzard's data, not under our licence; player points CC BY-SA 4.0">
+        {!corpus.unreachable && dataAgeLabel(corpus.dataAsOf)}
+      </SourceLine>
     </article>
   );
 }

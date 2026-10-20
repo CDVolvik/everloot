@@ -69,7 +69,7 @@ export default async function GoldLedgerPage(
         </Disclosure>
       </div>
 
-      <SourceLine from="The character's own upload">
+      <SourceLine source="The character's own upload">
         {corpus.unreachable ? "Storage unreachable" : dataAgeLabel(corpus.dataAsOf)}
       </SourceLine>
     </Container>

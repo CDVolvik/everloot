@@ -21,7 +21,7 @@ export default function BrowseFilters({
       {keys.map((key) => (
         <label key={key} className="flex flex-col gap-1 text-fg-2">
           {LABELS[key]}
-          <select name={key} defaultValue={selected[key] ?? ""} className="min-h-11 rounded-lg border border-edge bg-canvas px-2 text-fg">
+          <select name={key} defaultValue={selected[key] ?? ""} className="min-h-11 rounded-control border border-edge bg-canvas px-2 text-fg">
             <option value="">Any</option>
             {values[key].map((v) => (
               <option key={v} value={v}>{v}</option>

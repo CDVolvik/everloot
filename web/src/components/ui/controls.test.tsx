@@ -41,9 +41,9 @@ describe("Segmented", () => {
   });
 });
 
-describe("SourceLine from", () => {
+describe("SourceLine source", () => {
   test("replaces the game-files clause when the values come from somewhere else", () => {
-    const html = renderToStaticMarkup(<SourceLine from="Your own numbers" />);
+    const html = renderToStaticMarkup(<SourceLine source="Your own numbers" />);
     expect(html).toContain("Your own numbers");
     expect(html).not.toContain("From game files");
     expect(html).toContain("CC BY-SA 4.0");

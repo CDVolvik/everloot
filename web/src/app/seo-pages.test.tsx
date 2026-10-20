@@ -100,7 +100,7 @@ test("/changes opens with the latest build and its ItemList items are the entrie
   expect(page["@type"]).toBe("CollectionPage");
   expect(visible(html)).toMatch(/Latest build: WoW: Forever \d+\.\d+\.\d+\.\d+, first seen by Everloot on \d{4}-\d{2}-\d{2}\./);
   expect(h1(html)).toBe(page.name);
-  const shown = (html.match(/<li class="rounded-xl/g) ?? []).length;
+  const shown = (html.match(/<li data-entry/g) ?? []).length;
   expect(page.mainEntity.itemListElement).toHaveLength(shown);
   for (const { item } of page.mainEntity.itemListElement) expect(visible(html)).toContain(item.name);
 });

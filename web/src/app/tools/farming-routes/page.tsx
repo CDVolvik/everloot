@@ -56,7 +56,7 @@ export default function FarmingRoutesPage() {
         </Card>
       </div>
 
-      <SourceLine from="Player uploads, once there are enough sightings to draw a route" />
+      <SourceLine source="Player uploads, once there are enough sightings to draw a route" />
     </Container>
   );
 }

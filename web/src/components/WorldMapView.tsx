@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import EmptyState from "@/components/ui/EmptyState";
+import SectionHeading from "@/components/ui/SectionHeading";
 import {
   DEFAULT_LAYERS, ZOOM_STEP, cameraBox, cameraForBox, cameraForKey, cameraOn, ensureZoneVisible, fitCamera, frameBox, homeCamera,
   labelFontPx, mapHref, panBy, pinchFactor, placeLabels, visibleItems, zoneArtShown, zoomAt,
@@ -196,7 +198,7 @@ export default function WorldMapView(props: {
   return (
     <div className="space-y-3">
       {/* The toolbar sits above the frame, so nothing on the map is ever covered by a control. */}
-      <div className="rounded-xl border border-line bg-panel/80 p-3 space-y-3">
+      <div className="rounded-card border border-line bg-panel p-3 space-y-3">
         <fieldset className="flex flex-wrap gap-x-5 gap-y-0 text-sm text-fg-2">
           <legend className="sr-only">Layers</legend>
           {(Object.keys(LAYER_LABELS) as LayerId[]).map((id) => (
@@ -220,7 +222,7 @@ export default function WorldMapView(props: {
               aria-label="Jump to a zone"
               value=""
               onChange={(e) => e.target.value && jump(Number(e.target.value))}
-              className="min-h-11 min-w-0 flex-1 rounded-lg border border-line bg-canvas px-2 text-sm text-fg"
+              className="min-h-11 min-w-0 flex-1 rounded-control border border-line bg-canvas px-2 text-sm text-fg"
             >
               <option value="">Choose a zone</option>
               {zoneOptions.map((z) => <option key={z.mapId} value={z.mapId}>{z.name}{z.heldBack ? " (unconfirmed)" : ""}</option>)}
@@ -250,7 +252,7 @@ export default function WorldMapView(props: {
         onPointerMove={onPointerMove}
         onPointerUp={onPointerEnd}
         onPointerCancel={onPointerEnd}
-        className="relative h-[clamp(340px,calc(100dvh-5rem),880px)] rounded-xl border border-line bg-panel overflow-hidden touch-none select-none cursor-grab active:cursor-grabbing focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+        className="relative h-[clamp(340px,calc(100dvh-5rem),880px)] rounded-card border border-line bg-panel overflow-hidden touch-none select-none cursor-grab active:cursor-grabbing focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
         <svg
           ref={svg}
@@ -313,8 +315,8 @@ export default function WorldMapView(props: {
       </div>
       <p className="text-xs text-muted" aria-live="polite">Zoom {camera.zoom.toFixed(1)}x. Drag or use arrow keys to pan; scroll, pinch, + and - to zoom.</p>
 
-      <section aria-labelledby="entrances" className="space-y-3 pt-4">
-        <h2 id="entrances" className="text-xl font-semibold text-fg">Dungeon and raid entrances</h2>
+      <section aria-labelledby="entrances" className="pt-8">
+        <SectionHeading id="entrances">Dungeon and raid entrances</SectionHeading>
         {shown.entrances.length ? (
           <ul className="space-y-2 text-sm text-fg-2">
             {shown.entrances.map((p) => {
@@ -330,7 +332,7 @@ export default function WorldMapView(props: {
                 <li key={p.id} className="flex items-center gap-3">
                   {/* The dungeon's or raid's loading screen, small; decorative, the name is beside it. */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={thumb} alt="" aria-hidden="true" width={96} height={54} loading="lazy" decoding="async" data-entrance-art className="h-[54px] w-24 shrink-0 rounded-md border border-line object-cover" />
+                  <img src={thumb} alt="" aria-hidden="true" width={96} height={54} loading="lazy" decoding="async" data-entrance-art className="h-[54px] w-24 shrink-0 rounded-control border border-line object-cover" />
                   <span>{text}</span>
                 </li>
               ) : <li key={p.id}>{text}</li>;
@@ -340,9 +342,8 @@ export default function WorldMapView(props: {
       </section>
 
       {(layers.npcs || layers.vendors) && (
-        <section aria-labelledby="observed" className="space-y-3 pt-4">
-          <h2 id="observed" className="text-xl font-semibold text-fg">Seen by players</h2>
-          <p className="text-sm text-fg-2">A point shows once 3 installs agree on where the NPC stands. Distinct install ids do not prove independent players.</p>
+        <section aria-labelledby="observed" className="pt-8">
+          <SectionHeading id="observed" note="A point shows once 3 installs agree on where the NPC stands. Distinct install ids do not prove independent players.">Seen by players</SectionHeading>
           {shown.pins.length ? (
             <ul className="space-y-2 text-sm text-fg-2">
               {shown.pins.slice(0, LIST_LIMIT).map((p) => (
@@ -356,7 +357,7 @@ export default function WorldMapView(props: {
               ))}
               {shown.pins.length > LIST_LIMIT && <li className="text-muted">and {shown.pins.length - LIST_LIMIT} more on the map.</li>}
             </ul>
-          ) : <p className="text-sm text-muted">No NPC or vendor position has 3 agreeing installs yet on this continent.</p>}
+          ) : <EmptyState message="No NPC or vendor position has 3 agreeing installs yet on this continent." />}
         </section>
       )}
     </div>
