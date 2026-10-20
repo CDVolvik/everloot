@@ -164,6 +164,16 @@ export function toCharacter(row: CharacterRow): BuildCharacter {
   return { id: row.id, name: row.name, classSlug: row.class_slug, realm: row.realm, note: row.note };
 }
 
+/** Characters in one order whichever way they were read (session or key): by lower-case name, then id. */
+export function toCharacters(rows: CharacterRow[]): BuildCharacter[] {
+  const key = (c: BuildCharacter) => [c.name.toLowerCase(), c.id] as const;
+  return rows.map(toCharacter).sort((a, b) => {
+    const [an, ai] = key(a);
+    const [bn, bi] = key(b);
+    return an < bn ? -1 : an > bn ? 1 : ai < bi ? -1 : ai > bi ? 1 : 0;
+  });
+}
+
 /** Where the calculator opens a saved build: its class page, marked as editing it, with both sets in the address. */
 export function editPath(build: Pick<SavedBuild, "id" | "classSlug" | "code" | "code2">): string {
   return `/tools/talents/${build.classSlug}?saved=${build.id}#plan=${build.code}${build.code2 ? `&plan2=${build.code2}` : ""}`;

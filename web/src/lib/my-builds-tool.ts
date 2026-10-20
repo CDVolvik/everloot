@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { ExtraTool } from "../../../kb/src/mcp-server";
 import { describeBuilds } from "@/components/builds/describe";
 import { presentedKey } from "./api-keys";
+import { guardOn } from "./data-guard";
 import { MY_BUILDS, MY_BUILDS_LINE, MY_BUILDS_REFUSAL, savedBuildsOn, SLUG_PATTERN, type AccountBuilds, type SavedBuild } from "./saved-builds";
 import { fail, keyReadsOwn, limitedText, listOwn, NO_STORE, ownBuildsForKey, unavailable } from "./saved-builds-store";
 import { getUser, siteUrl } from "./supabase/server";
@@ -120,9 +121,12 @@ export async function answerMyBuilds(data: AccountBuilds, args: Args, site = sit
 
 type Read = { ok: true; value: AccountBuilds } | { ok: false; status: number; error: string; retryAfter?: number };
 
-/** The key owner's builds; the key needs read:own. Counts against the account's hourly allowance. */
-async function readWithKey(token: string): Promise<Read> {
-  const read = await ownBuildsForKey(token);
+/**
+ * The key owner's builds; the key needs read:own. Counts against the account's hourly allowance unless `count` is
+ * false (the request was already counted).
+ */
+async function readWithKey(token: string, count = true): Promise<Read> {
+  const read = await ownBuildsForKey(token, count);
   if (read.ok) return read;
   if (read.refusal === "limited") return { ok: false, status: 429, error: limitedText(read.retryAfter), retryAfter: read.retryAfter };
   return { ok: false, status: read.refusal === "no_scope" ? 403 : 401, error: MY_BUILDS_REFUSAL };
@@ -136,7 +140,8 @@ function myBuildsMcp(token: string | null): ExtraTool {
     handler: async (args) => {
       if (!token) throw new Error(MY_BUILDS_REFUSAL);
       let read: Read;
-      try { read = await readWithKey(token); } catch { throw new Error(UNAVAILABLE); }
+      // With the data guard on, /mcp/public has already counted this request against the key's allowance.
+      try { read = await readWithKey(token, !guardOn()); } catch { throw new Error(UNAVAILABLE); }
       if (!read.ok) throw new Error(read.error);
       return answerMyBuilds(read.value, args as Args);
     },

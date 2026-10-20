@@ -145,6 +145,20 @@ describe("on the MCP mount", () => {
     expect(await tool.handler({})).toMatchObject({ text: expect.stringContaining("No saved builds yet.") });
     expect(auth.authQuery).toHaveBeenCalledWith("rpc/own_builds_for_key", expect.anything());
   });
+
+  test("with the data guard on, the mount has counted the request already, so the read does not count it again", async () => {
+    const counted = async () => {
+      auth.authQuery.mockClear();
+      const [tool] = await accountMcpTools(mcpRequest(KEY), rpc("tools/call", { name: "my_builds" }));
+      await tool.handler({});
+      const call = auth.authQuery.mock.calls.find(([path]) => path === "rpc/own_builds_for_key")!;
+      return JSON.parse(call[1].body).p_count;
+    };
+    database(["read:own"]);
+    expect(await counted()).toBe(true);
+    vi.stubEnv("EVERLOOT_DATA_GUARD", "1");
+    expect(await counted()).toBe(false);
+  });
 });
 
 describe("GET /api/tools/my_builds", () => {

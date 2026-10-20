@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import { safeReturnTo, signInPath } from "./auth/return-to";
-import { codeClass, editPath, LIMITS, parseBuildInput, parseCharacterInput, savedBuildsOn, toBuild, type BuildRow } from "./saved-builds";
+import { codeClass, editPath, LIMITS, parseBuildInput, parseCharacterInput, savedBuildsOn, toBuild, toCharacters, type BuildRow } from "./saved-builds";
 
 const MAGE = "EL1-mage-0-1.60.1.70450-MTE6NQ";
 const MAGE2 = "EL1-mage-1482-1.60.1.70450-MjE6MQ";
@@ -78,6 +78,12 @@ test("a stored row becomes the API's shape, with the short link only while share
     gameBuild: "1.60.1.70450", shared: true, active: false, link: "https://everloot.app/b/AbCd1234", updatedAt: "2026-10-20T12:00:00.123Z", showName: false,
   });
   expect(toBuild({ ...row, shared: false }, "https://everloot.app").link).toBeNull();
+});
+
+test("characters come back in one order on every path: lower-case name, then id", () => {
+  const row = (id: string, name: string) => ({ id, name, class_slug: "mage", realm: null, note: null });
+  expect(toCharacters([row("b", "jaina"), row("c", "Arthas"), row("a", "Jaina"), row("d", "zed")]).map((c) => `${c.name}/${c.id}`))
+    .toEqual(["Arthas/c", "Jaina/a", "jaina/b", "zed/d"]);
 });
 
 test("opening a saved build marks the calculator as editing it, with both sets in the address", () => {

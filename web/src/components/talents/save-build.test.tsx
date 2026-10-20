@@ -35,7 +35,7 @@ function api(state: "in" | "out" | "off", builds = [saved()]) {
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   window.history.replaceState(null, "", "/tools/talents/mage");
-  sessionStorage.clear();
+  localStorage.clear();
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
@@ -84,19 +84,19 @@ test("signed out, Save offers sign-in and remembers the build for the way back",
   expect(link.getAttribute("href")).toBe("/sign-in?returnTo=%2Ftools%2Ftalents%2Fmage%3Fsave%3D1");
   link.addEventListener("click", (e) => e.preventDefault());
   await click(link);
-  expect(JSON.parse(sessionStorage.getItem("everloot:pending-save")!)).toEqual({ path: "/tools/talents/mage", hash: window.location.hash });
+  expect(JSON.parse(localStorage.getItem("everloot:pending-save")!)).toMatchObject({ path: "/tools/talents/mage", hash: window.location.hash, at: expect.any(Number) });
   expect(window.location.hash).toMatch(/^#plan=EL1-mage-/);
 });
 
 test("back from sign-in, the build is restored and the save panel opens", async () => {
   api("in", []);
-  sessionStorage.setItem("everloot:pending-save", JSON.stringify({ path: "/tools/talents/mage", hash: `#plan=${CODE}` }));
+  localStorage.setItem("everloot:pending-save", JSON.stringify({ path: "/tools/talents/mage", hash: `#plan=${CODE}`, at: Date.now() }));
   window.history.replaceState(null, "", "/tools/talents/mage?save=1");
   await render();
   expect(node(11).textContent).toContain("2/5");
   expect(panel()).not.toBeNull();
   expect(window.location.search).toBe("");
-  expect(sessionStorage.getItem("everloot:pending-save")).toBeNull();
+  expect(localStorage.getItem("everloot:pending-save")).toBeNull();
 });
 
 test("a new build is saved with its name, character, notes and codes, and the page then edits it", async () => {
@@ -115,7 +115,7 @@ test("a new build is saved with its name, character, notes and codes, and the pa
   expect(posts[0].body).toMatchObject({ name: "Jaina", classSlug: "mage" });
   expect(posts[1].body).toEqual({
     name: "My frost", notes: "Raid night", characterId: "2b6f1c1e-3f43-4a4e-9a51-3d2a1f0c9e22",
-    code: encodeBuild({ classSlug: "mage", specId: fixture.specId, build: fixture.build, ranks: { 11: { rank: 1 } } }), code2: null, shared: true,
+    code: encodeBuild({ classSlug: "mage", specId: fixture.specId, build: fixture.build, ranks: { 11: { rank: 1 } } }), code2: null, shared: true, showName: false,
   });
   expect(status()).toBe("Saved as a new build. Short link: https://everloot.app/b/NewSlug1");
   expect(new URLSearchParams(window.location.search).get("saved")).toBe("9b6f1c1e-3f43-4a4e-9a51-3d2a1f0c9e99");
@@ -138,6 +138,59 @@ test("opened from a saved build, Save updates it in place and Save as new makes 
   await click(button(/^Save as new$/)!);
   expect(posts[1].body.id).toBeUndefined();
   expect(status()).toContain("Saved as a new build");
+});
+
+test("a new character is kept even if the build fails to save, so trying again does not make a second one", async () => {
+  api("in", []);
+  const real = globalThis.fetch;
+  let failOnce = true;
+  vi.stubGlobal("fetch", async (url: string, init?: RequestInit) => {
+    if (url === "/api/me/builds" && init?.method === "POST" && failOnce) {
+      failOnce = false;
+      posts.push({ url, body: JSON.parse(String(init.body)) });
+      return Response.json({ error: "Saved builds are unavailable right now. Try again in a minute." }, { status: 503 });
+    }
+    return real(url, init);
+  });
+  await render();
+  await click(node(11));
+  await click(button(/^Save$/)!);
+  await type(panel()!.querySelector("select")!, "new");
+  await type(panel()!.querySelectorAll<HTMLInputElement>("input")[1], "Jaina");
+  await click(button(/^Save build$/)!);
+  expect(panel()!.querySelector('[role="alert"]')!.textContent).toContain("unavailable");
+  expect(panel()!.querySelector("select")!.value).toBe("2b6f1c1e-3f43-4a4e-9a51-3d2a1f0c9e22");
+  await click(button(/^Save build$/)!);
+  expect(posts.map((p) => p.url)).toEqual(["/api/me/characters", "/api/me/builds", "/api/me/builds"]);
+  expect(posts[2].body.characterId).toBe("2b6f1c1e-3f43-4a4e-9a51-3d2a1f0c9e22");
+  expect(panel()).toBeNull();
+});
+
+test("the owner's name goes on the shared link only when chosen, and only while sharing is on", async () => {
+  api("in", []);
+  await render();
+  await click(node(11));
+  await click(button(/^Save$/)!);
+  const [share, showName] = [...panel()!.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')];
+  expect(showName.parentElement!.textContent).toContain("Show my name on the shared link");
+  expect(showName.checked).toBe(false);
+  await act(async () => share.parentElement!.click());
+  expect(showName.disabled).toBe(true);
+  await act(async () => share.parentElement!.click());
+  await act(async () => showName.parentElement!.click());
+  await click(button(/^Save build$/)!);
+  expect(posts[0].body).toMatchObject({ shared: true, showName: true });
+});
+
+test("back from sign-in with no build to restore, the panel says to spend a point instead of offering a dead button", async () => {
+  api("in", []);
+  window.history.replaceState(null, "", "/tools/talents/mage?save=1");
+  await render();
+  expect(panel()!.textContent).toContain("Spend a point to save this build.");
+  expect(button(/^Save build$/)!.disabled).toBe(true);
+  await click(node(11));
+  expect(button(/^Save build$/)!.disabled).toBe(false);
+  expect(panel()!.textContent).not.toContain("Spend a point");
 });
 
 test("My builds lists this class's saved builds", async () => {

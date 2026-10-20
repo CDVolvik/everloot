@@ -146,7 +146,7 @@ test("a key with read:own reads its owner's builds; the key itself never reaches
   expect(res.status).toBe(200);
   expect(await res.json()).toMatchObject({ characters: [], builds: [{ id: BUILD_ID, link: "https://everloot.app/b/AbCd1234" }] });
   expect(auth.authQuery.mock.calls[0][0]).toBe("rpc/own_builds_for_key");
-  expect(rpcBody()).toEqual({ p_token_hash: hashKey(KEY) });
+  expect(rpcBody()).toEqual({ p_token_hash: hashKey(KEY), p_count: true });
   expect(auth.getUser).not.toHaveBeenCalled();
 });
 

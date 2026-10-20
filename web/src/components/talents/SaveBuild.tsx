@@ -10,23 +10,27 @@ import { Input } from "@/components/ui";
 // and notes. Opened from a saved build (?saved=<id>), Save updates that build and Save as new makes a copy.
 
 const PENDING = "everloot:pending-save";
+/** A new account's confirmation link works for an hour; the waiting build is kept a little longer, then dropped. */
+const PENDING_MS = 2 * 60 * 60 * 1000;
 const button = "btn px-3 text-sm sm:px-5";
 
 /**
- * Called by the calculator before it reads its address: after a sign-in that started at Save, the address is
- * /tools/talents/<class>?save=1 with no build in it. The build waited in this tab's session storage; put it back.
+ * Called by the calculator before it reads its address: after a sign-in (or a sign-up's confirmation link, which
+ * may open in another tab) that started at Save, the address is /tools/talents/<class>?save=1 with no build in it.
+ * The build waited in local storage; put it back.
  */
 export function restorePendingSave(): void {
   try {
-    const pending = sessionStorage.getItem(PENDING);
+    const pending = localStorage.getItem(PENDING);
     if (!pending || new URLSearchParams(window.location.search).get("save") !== "1") return;
-    sessionStorage.removeItem(PENDING);
-    const { path, hash } = JSON.parse(pending) as { path?: unknown; hash?: unknown };
-    if (path === window.location.pathname && typeof hash === "string" && hash.startsWith("#plan") && !window.location.hash) {
+    localStorage.removeItem(PENDING);
+    const { path, hash, at } = JSON.parse(pending) as { path?: unknown; hash?: unknown; at?: unknown };
+    const fresh = typeof at === "number" && Date.now() - at < PENDING_MS;
+    if (fresh && path === window.location.pathname && typeof hash === "string" && hash.startsWith("#plan") && !window.location.hash) {
       window.history.replaceState(window.history.state, "", `${window.location.pathname}${window.location.search}${hash}`);
     }
   } catch {
-    // No session storage (private mode, blocked): the visitor lands on an empty calculator, nothing worse.
+    // No local storage (private mode, blocked): the visitor lands on an empty calculator, nothing worse.
   }
 }
 
@@ -53,7 +57,7 @@ export default function SaveBuild({ classSlug, codes, defaultName, onMessage }: 
   const [panel, setPanel] = useState<"save" | "sign-in" | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: "", characterId: "", newName: "", newRealm: "", notes: "", shared: true });
+  const [form, setForm] = useState({ name: "", characterId: "", newName: "", newRealm: "", notes: "", shared: true, showName: false });
   // The name the build bar shows now; the panel can open from the first render's effect, before the build loads.
   const nameNow = useRef(defaultName);
   nameNow.current = defaultName;
@@ -91,7 +95,7 @@ export default function SaveBuild({ classSlug, codes, defaultName, onMessage }: 
     setError(null);
     setForm({
       name: from?.name ?? nameNow.current, characterId: from?.characterId ?? "", newName: "", newRealm: "",
-      notes: from?.notes ?? "", shared: from?.shared ?? true,
+      notes: from?.notes ?? "", shared: from?.shared ?? true, showName: from?.showName ?? false,
     });
     setPanel("save");
   }
@@ -105,7 +109,7 @@ export default function SaveBuild({ classSlug, codes, defaultName, onMessage }: 
 
   function rememberBuild() {
     try {
-      sessionStorage.setItem(PENDING, JSON.stringify({ path: window.location.pathname, hash: window.location.hash }));
+      localStorage.setItem(PENDING, JSON.stringify({ path: window.location.pathname, hash: window.location.hash, at: Date.now() }));
     } catch {}
   }
 
@@ -129,11 +133,14 @@ export default function SaveBuild({ classSlug, codes, defaultName, onMessage }: 
         const { character } = await post<{ character: AccountBuilds["characters"][number] }>("/api/me/characters", { name: form.newName, classSlug, realm: form.newRealm });
         data = { ...data, characters: [...data.characters, character] };
         characterId = character.id;
+        // Kept at once, so if the build fails to save, trying again files it under this character, not a second one.
+        setAccount({ status: "ready", data });
+        setForm((f) => ({ ...f, characterId: character.id, newName: "", newRealm: "" }));
       }
       const update = editing && !asNew;
       const { build } = await post<{ build: SavedBuild }>("/api/me/builds", {
         ...(update ? { id: editing.id } : {}),
-        name: form.name, notes: form.notes, characterId, code: codes[0], code2: codes[1], shared: form.shared,
+        name: form.name, notes: form.notes, characterId, code: codes[0], code2: codes[1], shared: form.shared, showName: form.showName,
       });
       data = { ...data, builds: [build, ...data.builds.filter((b) => b.id !== build.id)] };
       setAccount({ status: "ready", data });
@@ -210,9 +217,14 @@ export default function SaveBuild({ classSlug, codes, defaultName, onMessage }: 
             <input type="checkbox" checked={form.shared} onChange={(e) => setForm({ ...form, shared: e.target.checked })} className="size-5" />
             Share link on
           </label>
-          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-            <button type="submit" className={`${button} btn-primary`} disabled={busy} aria-busy={busy}>{editing ? "Save" : "Save build"}</button>
-            {editing && <button type="button" className={button} disabled={busy} onClick={(e) => submit(e as unknown as FormEvent<HTMLFormElement>, true)}>Save as new</button>}
+          <label className={`flex min-h-11 items-center gap-2 text-sm ${form.shared ? "text-fg-2" : "text-muted"}`}>
+            <input type="checkbox" checked={form.showName} disabled={!form.shared} onChange={(e) => setForm({ ...form, showName: e.target.checked })} className="size-5" />
+            Show my name on the shared link
+          </label>
+          <div className="flex flex-wrap items-center gap-2 sm:col-span-2 sm:justify-end">
+            {!codes[0] && <p className="text-sm text-fg-2">Spend a point to save this build.</p>}
+            <button type="submit" className={`${button} btn-primary`} disabled={busy || !codes[0]} aria-busy={busy}>{editing ? "Save" : "Save build"}</button>
+            {editing && <button type="button" className={button} disabled={busy || !codes[0]} onClick={(e) => submit(e as unknown as FormEvent<HTMLFormElement>, true)}>Save as new</button>}
             <button type="button" className={button} onClick={() => setPanel(null)}>Cancel</button>
           </div>
           {error && <p role="alert" className="text-sm text-fg sm:col-span-2">{error}</p>}

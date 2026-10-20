@@ -113,8 +113,11 @@ test("the first sign-in flow carries the return path in a short cookie and lands
   const { GET: start } = await import("./bnet/route");
   await start(new Request("https://everloot.app/api/auth/bnet?returnTo=%2Fme"));
   expect(jar.get("everloot_return_to")).toBe("/me");
-  jar.clear();
+  // A later sign-in without a return path (or with a bad one) drops the old one.
   await start(new Request("https://everloot.app/api/auth/bnet?returnTo=%2F%2Fevil.example"));
+  expect(jar.has("everloot_return_to")).toBe(false);
+  jar.set("everloot_return_to", "/me");
+  await start(new Request("https://everloot.app/api/auth/bnet"));
   expect(jar.has("everloot_return_to")).toBe(false);
 
   jar.set("bnet_oauth_state", "state");

@@ -87,10 +87,10 @@ test("not indexed, canonical to the class page, with the saved build's own card"
   expect((await generateMetadata(params())).robots).toEqual({ index: false, follow: false });
 });
 
-test("the card takes the codes and the name from the database, and is not kept long", async () => {
+test("the card takes the codes and the name from the database, and is never cached", async () => {
   const res = await card(new Request("https://everloot.app/tools/talents/mage/card?s=AbCd1234"), { params: Promise.resolve({ class: "mage" }) });
   expect(res.status).toBe(200);
-  expect(res.headers.get("cache-control")).toBe("public, max-age=300, s-maxage=3600");
+  expect(res.headers.get("cache-control")).toBe("private, no-store");
   expect(JSON.parse(auth.authQuery.mock.calls[0][1].body)).toEqual({ p_slug: "AbCd1234" });
   // With the switch off the slug is ignored: the generic class card, and no database call.
   vi.stubEnv("EVERLOOT_SAVED_BUILDS", "");

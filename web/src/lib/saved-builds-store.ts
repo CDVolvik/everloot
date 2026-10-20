@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { hashKey, KEY_PATTERN } from "./api-keys";
 import { signInPath } from "./auth/return-to";
 import {
-  BUILD_COLUMNS, CHARACTER_COLUMNS, savedBuildsOn, SLUG_PATTERN, toBuild, toCharacter,
+  BUILD_COLUMNS, CHARACTER_COLUMNS, savedBuildsOn, SLUG_PATTERN, toBuild, toCharacters,
   type AccountBuilds, type BuildCharacter, type BuildInput, type BuildRow, type CharacterInput, type CharacterRow, type SavedBuild,
 } from "./saved-builds";
 import { authQuery, getUser, siteUrl, type AccountUser } from "./supabase/server";
@@ -27,11 +27,11 @@ export function newSlug(): string {
 export async function listOwn(userId: string): Promise<AccountBuilds> {
   const user = encodeURIComponent(userId);
   const [characters, builds] = await Promise.all([
-    authQuery<CharacterRow[]>(`build_characters?select=${CHARACTER_COLUMNS}&user_id=eq.${user}&order=name.asc,id.asc`),
+    authQuery<CharacterRow[]>(`build_characters?select=${CHARACTER_COLUMNS}&user_id=eq.${user}`),
     authQuery<BuildRow[]>(`saved_builds?select=${BUILD_COLUMNS}&user_id=eq.${user}&order=updated_at.desc,id.asc`),
   ]);
   const site = siteUrl();
-  return { characters: characters.map(toCharacter), builds: builds.map((b) => toBuild(b, site)) };
+  return { characters: toCharacters(characters), builds: builds.map((b) => toBuild(b, site)) };
 }
 
 export type BuildRefusal = "not_found" | "class_mismatch" | "build_limit" | "daily_limit";
@@ -105,11 +105,14 @@ export async function sharedBuild(slug: string): Promise<SharedBuild | null> {
 
 export type KeyRead = { ok: true; value: AccountBuilds } | { ok: false; refusal: "unknown_key" | "no_scope" | "limited"; retryAfter: number };
 
-/** The key owner's builds, when the key is live and has read:own. Counts against the account's hourly allowance. */
-export async function ownBuildsForKey(token: string): Promise<KeyRead> {
+/**
+ * The key owner's builds, when the key is live and has read:own. Counts against the account's hourly allowance,
+ * unless `count` is false: a request the data guard already counted (the MCP mount) is one request, not two.
+ */
+export async function ownBuildsForKey(token: string, count = true): Promise<KeyRead> {
   if (!KEY_PATTERN.test(token)) return { ok: false, refusal: "unknown_key", retryAfter: 0 };
   const rows = await authQuery<Array<{ refusal: string | null; retry_after: number; characters: CharacterRow[] | null; builds: BuildRow[] | null }>>(
-    "rpc/own_builds_for_key", { method: "POST", body: JSON.stringify({ p_token_hash: hashKey(token) }) },
+    "rpc/own_builds_for_key", { method: "POST", body: JSON.stringify({ p_token_hash: hashKey(token), p_count: count }) },
   );
   const row = Array.isArray(rows) && rows.length === 1 ? rows[0] : null;
   if (!row) throw new Error("Invalid key response");
@@ -119,7 +122,7 @@ export async function ownBuildsForKey(token: string): Promise<KeyRead> {
   }
   if (row.refusal !== null || !Array.isArray(row.characters) || !Array.isArray(row.builds)) throw new Error("Invalid key response");
   const site = siteUrl();
-  return { ok: true, value: { characters: row.characters.map(toCharacter), builds: row.builds.map((b) => toBuild(b, site)) } };
+  return { ok: true, value: { characters: toCharacters(row.characters), builds: row.builds.map((b) => toBuild(b, site)) } };
 }
 
 /** Whether a live key has read:own, without counting a request. Decides if MCP lists my_builds for the key. */

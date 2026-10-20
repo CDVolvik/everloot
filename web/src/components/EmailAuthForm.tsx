@@ -13,7 +13,7 @@ function request(mode: Mode, form: FormData, token?: string, returnTo = "/accoun
   const password = String(form.get("password") ?? "");
   switch (mode) {
     case "sign-in": return ["/api/auth/sign-in/email", { email, password, callbackURL: returnTo }];
-    case "sign-up": return ["/api/auth/sign-up/email", { name: String(form.get("name") ?? "").trim(), email, password, callbackURL: "/account" }];
+    case "sign-up": return ["/api/auth/sign-up/email", { name: String(form.get("name") ?? "").trim(), email, password, callbackURL: returnTo }];
     case "request-reset": return ["/api/auth/request-password-reset", { email, redirectTo: "/reset-password" }];
     case "reset": return ["/api/auth/reset-password", { newPassword: password, token }];
   }
@@ -28,7 +28,8 @@ const done: Record<Mode, string> = {
 
 /**
  * The email forms on /sign-in, /sign-up and /reset-password. They post to Better Auth's routes on this site.
- * `returnTo` is where a sign-in lands, a path the sign-in page has already checked; /account without one.
+ * `returnTo` is where a sign-in, or the confirmation link of a sign-up, lands: a path the page has already checked;
+ * /account without one.
  */
 export default function EmailAuthForm({ mode, token, returnTo = "/account" }: { mode: Mode; token?: string; returnTo?: string }) {
   const [busy, setBusy] = useState(false);

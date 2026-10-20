@@ -9,7 +9,7 @@ import { buildTitle, readPathCodes, summarizeBuild } from "@/lib/talents/summary
 // The same codes give the same picture, so it is cached like a file.
 // A saved build's short link (/b/<slug>) asks for ?s=<slug>: the codes and the build's name come from the
 // database, never from the address, so nobody can print their own text on an Everloot card. Its name and
-// sharing can change, so that picture is kept for an hour at most.
+// sharing can change, so that picture is never cached: turning sharing off or deleting the build ends it at once.
 export async function GET(req: Request, { params }: { params: Promise<{ class: string }> }) {
   const { class: slug } = await params;
   if (!isTalentClass(slug)) return new Response("Not found", { status: 404 });
@@ -34,6 +34,6 @@ export async function GET(req: Request, { params }: { params: Promise<{ class: s
       });
     })()
     : await renderCard({ label: "Everloot", title: `WoW Forever ${catalog.className} Talent Calculator`, subtitle: "Plan a build and share it with its game build attached" });
-  image.headers.set("Cache-Control", q.has("s") ? "public, max-age=300, s-maxage=3600" : "public, max-age=86400, s-maxage=604800, immutable");
+  image.headers.set("Cache-Control", q.has("s") ? "private, no-store" : "public, max-age=86400, s-maxage=604800, immutable");
   return image;
 }

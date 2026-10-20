@@ -156,7 +156,11 @@ Policy and privacy, in the same change:
 
 - MCP: a `my_builds` tool (list, or one build by slug with its resolved talents) available only on a
   connection that presents a key with `read:own`. The public, keyless tool list does not change, so
-  directory listings under review keep their reviewed tool set.
+  directory listings under review keep their reviewed tool set. The tool's definition lives in the
+  website (`web/src/lib/my-builds-tool.ts`), not in `packages/protocol`, and the MCP server adds it per
+  request. With `EVERLOOT_SAVED_BUILDS` off it is simply an unknown tool. With the data guard on, the
+  mount has already counted the request against the key's allowance, so reading the builds does not
+  count it again.
 - Website Chat: the same tool through `/api/tools/my_builds`, using the visitor's session; offered only
   when signed in and the switch is on.
 - Answers carry the build's `/b/<slug>` link when shared, otherwise the code link.

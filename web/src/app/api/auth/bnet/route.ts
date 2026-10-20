@@ -30,7 +30,9 @@ export async function GET(req: Request) {
     path: "/",
   };
   cookieStore.set("bnet_oauth_state", state, cookieOptions);
+  // A sign-in without a return path must not land on one left over from an earlier, abandoned sign-in.
   if (returnTo) cookieStore.set(RETURN_COOKIE, returnTo, cookieOptions);
+  else cookieStore.delete(RETURN_COOKIE);
 
   const scope = "openid wow.profile";
   const authUrl = `https://oauth.battle.net/authorize?` +
