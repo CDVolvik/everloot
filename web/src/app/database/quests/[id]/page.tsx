@@ -9,6 +9,13 @@ import { pinLink } from "@/lib/world-map";
 import { trailFor } from "@/lib/breadcrumbs";
 import { Container, DataTable, EmptyState, PageHeader, SourceLine, Tabs, TooltipFrame } from "@/components/ui";
 import { EntityLayout, FactsCard, LINK, Unreachable } from "../../entity";
+import { loadItemFacts } from "@/lib/rollup-compute";
+import { itemNames, npcNames } from "@/lib/names";
+import { loreForEntity } from "@/lib/lore";
+import { loadItemTips, loadSiteAssets } from "@/lib/game-assets";
+import EntityLink from "@/components/EntityLink";
+import LoreSection from "@/components/LoreSection";
+import GameCredit from "@/components/game/GameCredit";
 
 export const dynamic = "force-dynamic";
 
@@ -36,12 +43,19 @@ export default async function QuestPage(props: { params: Promise<{ id: string }>
     return pin ? pinLink(pin.mapId, pin.x, pin.y) : null;
   };
   const title = facts.unreachable ? `Quest ${page.questId}` : page.title ?? `Quest ${page.questId}`;
+  // Names for the giver, the turn-in and the rewards; icons for the rewards when the game files have them.
+  const npcs = facts.unreachable ? new Map<number, string>() : npcNames(facts);
+  const itemFacts = facts.unreachable || page.rewards.length === 0 ? null : await loadItemFacts();
+  const items = itemFacts && !itemFacts.unreachable ? itemNames(itemFacts) : new Map<number, string>();
+  const assets = page.rewards.length > 0 ? await loadSiteAssets() : null;
+  const tips = await loadItemTips(assets, facts.unreachable ? [] : page.rewards);
+  const lore = !facts.unreachable && page.title ? loreForEntity("quest", page.title) : null;
   const trail = [...trailFor("/database/quests")!, { name: title, path: `/database/quests/${page.questId}` }];
   const people: Person[] = facts.unreachable ? [] : [
     ...(page.giverNpcId !== null ? [{ role: "Giver", npcId: page.giverNpcId, map: where(page.giverNpcId) }] : []),
     ...(page.turnInNpcId !== null ? [{ role: "Turn-in", npcId: page.turnInNpcId, map: where(page.turnInNpcId) }] : []),
   ];
-  const npcLink = (id: number) => <Link href={`/database/npcs/${id}`} className={LINK}>NPC {id}</Link>;
+  const npcLink = (id: number) => <EntityLink kind="npc" id={id} name={npcs.get(id)} />;
 
   return (
     <Container width="wide">
@@ -76,7 +90,7 @@ export default async function QuestPage(props: { params: Promise<{ id: string }>
                 panel: (
                   <DataTable
                     caption={`Rewards of ${title}`}
-                    columns={[{ key: "item", header: "Item", cell: (itemId: number) => <Link href={`/database/items/${itemId}`} className={LINK}>Item {itemId}</Link> }]}
+                    columns={[{ key: "item", header: "Item", cell: (itemId: number) => <EntityLink kind="item" id={itemId} name={items.get(itemId) ?? tips.get(itemId)?.name} icon={tips.get(itemId)?.icon} /> }]}
                     rows={facts.unreachable ? [] : page.rewards}
                     rowKey={String}
                     empty={facts.unreachable ? <Unreachable /> : <EmptyState framed={false} message="No agreed rewards yet. A reward shows once 3 installs report the same one." />}
@@ -101,9 +115,13 @@ export default async function QuestPage(props: { params: Promise<{ id: string }>
               },
             ]}
           />
+          <LoreSection match={lore} />
           {!facts.unreachable && page.title !== null && <AdSlot slot="inContent" />}
         </EntityLayout>
-        <SourceLine confirmed>The addon does not guess a level.</SourceLine>
+        <SourceLine confirmed>
+          The addon does not guess a level.
+          {assets && tips.size > 0 && <>{" "}<GameCredit as="span" version={assets.version} label={assets.label} /></>}
+        </SourceLine>
       </article>
     </Container>
   );

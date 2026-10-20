@@ -4,6 +4,8 @@ import Link from "next/link";
 import { guildFactsFromRecords, handleGuildBoard } from "../../../../../kb/src/guild-board";
 import { STORAGE_UNREACHABLE, uploadStore } from "@/lib/upload-store";
 import { dataAgeLabel } from "@/lib/data-age";
+import { trailFor } from "@/lib/breadcrumbs";
+import { Card, Container, Disclosure, EmptyState, Field, PageHeader, SourceLine } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -24,41 +26,43 @@ export default async function GuildBoardPage(
   const guild = one(searchParams.guild);
   const realm = one(searchParams.realm);
   const corpus = await uploadStore.loadCorpus();
-  const answer = corpus.unreachable
-    ? STORAGE_UNREACHABLE
-    : handleGuildBoard({ guildName: guild, realm }, guildFactsFromRecords(corpus.records));
+  const facts = corpus.unreachable ? null : guildFactsFromRecords(corpus.records);
+  const answer = facts ? handleGuildBoard({ guildName: guild, realm }, facts) : STORAGE_UNREACHABLE;
+  // No officer upload of any kind yet: every board would read "no agreed" line by line.
+  const pending = facts !== null && Object.values(facts).every((rows) => rows.length === 0);
 
   return (
-    <article className="space-y-8 max-w-4xl">
-      <header className="space-y-3">
-        <p className="font-mono text-xs text-muted">WoW: Forever · guild</p>
-        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">Guild board</h1>
-        <p className="text-sm text-fg-2 max-w-2xl">
-          Roster, bosses, loot, and item level come from officer uploads. A figure is public when two of those uploads agree.
-          A combined guild score is not available; each component is shown separately.
-        </p>
-      </header>
+    <Container>
+      <PageHeader
+        trail={trailFor("/tools/guild-board")!}
+        title="Guild board"
+        lede="Roster, bosses, loot and item level from officer uploads; a figure is public when two of them agree."
+        actions={<Link href="/guilds/olympus" className="btn">Olympus family record</Link>}
+      />
 
-      <form method="get" className="rounded-xl border border-line bg-panel p-5 space-y-4">
-        <div className="grid sm:grid-cols-2 gap-3">
-          <label className="text-sm text-fg-2 space-y-1">
-            <span className="block text-xs font-mono text-muted">Guild</span>
-            <input name="guild" defaultValue={guild} className="w-full rounded-lg border border-edge bg-canvas px-3 py-2 text-fg" />
-          </label>
-          <label className="text-sm text-fg-2 space-y-1">
-            <span className="block text-xs font-mono text-muted">Realm</span>
-            <input name="realm" defaultValue={realm} className="w-full rounded-lg border border-edge bg-canvas px-3 py-2 text-fg" />
-          </label>
-        </div>
-        <button type="submit" className="btn btn-primary text-sm">Show the board</button>
-      </form>
+      <div className="space-y-8">
+        <Card>
+          <form method="get" className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Guild" name="guild" defaultValue={guild} />
+              <Field label="Realm" name="realm" defaultValue={realm} />
+            </div>
+            <button type="submit" className="btn btn-primary text-sm">Show the board</button>
+          </form>
+        </Card>
 
-      <pre className="whitespace-pre-wrap text-sm text-fg rounded-xl border border-line bg-panel p-5">{answer}</pre>
-      {!corpus.unreachable && <p className="text-xs text-muted">{dataAgeLabel(corpus.dataAsOf)}</p>}
+        {pending
+          ? <EmptyState message="No guild board yet: a board fills in once two officers upload the same guild with the Everloot addon." />
+          : <Card><pre className="whitespace-pre-wrap text-sm text-fg">{answer}</pre></Card>}
 
-      <p className="text-sm text-muted">
-        <Link href="/guilds/olympus" className="text-accent hover:underline underline-offset-4">Olympus family record</Link>
-      </p>
-    </article>
+        <Disclosure summary="Why is there no single guild score?">
+          <p>A combined guild score is not available; each component is shown separately.</p>
+        </Disclosure>
+      </div>
+
+      <SourceLine from="Officer uploads, public once two agree">
+        {corpus.unreachable ? "Storage unreachable" : dataAgeLabel(corpus.dataAsOf)}
+      </SourceLine>
+    </Container>
   );
 }

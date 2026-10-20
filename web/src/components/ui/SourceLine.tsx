@@ -9,6 +9,8 @@ export interface SourceLineProps {
   licence?: string;
   /** One more short clause, e.g. "lore from Warcraft Wiki, 2023". */
   children?: ReactNode;
+  /** Where the values come from when that is neither the game files nor players (a calculator's own inputs). Replaces the first clause. */
+  from?: ReactNode;
 }
 
 /**
@@ -16,10 +18,11 @@ export interface SourceLineProps {
  * the licence. It also carries the key for the dashed convention: anything drawn with a dashed edge
  * on the page is from the game files and unconfirmed. At most one per page.
  */
-export default function SourceLine({ build, confirmed = false, licence = "CC BY-SA 4.0", children }: SourceLineProps) {
+export default function SourceLine({ build, confirmed = false, licence = "CC BY-SA 4.0", children, from }: SourceLineProps) {
   const parts: ReactNode[] = [];
   parts.push(
-    confirmed
+    from ? <span key="from">{from}</span>
+    : confirmed
       ? <span key="from">Confirmed by players</span>
       : (
         <span key="from" className="inline-flex items-center gap-2">

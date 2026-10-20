@@ -44,12 +44,15 @@ test("Get the addon is the primary pill and leads to /addon", () => {
   expect(html).toMatch(/<a href="\/addon" class="btn btn-primary[^"]*">Get the addon<\/a>/);
 });
 
-test("search is in the bar: a GET form to the archive search", () => {
+test("search is in the bar: a GET form to the site search, named Search Everloot", () => {
   const form = html.match(/<form [^>]*>/)?.[0] ?? "";
   expect(form).toContain('role="search"');
   expect(form).toContain('action="/search"');
   expect(form).toContain('method="get"');
   expect(html).toContain('name="q"');
+  expect(html).toContain('placeholder="Search Everloot"');
+  expect(html).toContain(">Search Everloot</label>");
+  expect(html).not.toContain("Search the archive");
 });
 
 test("every tool in the catalogue is in the Tools menu", () => {

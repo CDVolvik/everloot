@@ -1,4 +1,4 @@
-import { copyFileSync, existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import type { BackupInfo } from "../shared/types";
 import { accountOf } from "./engine";
@@ -14,17 +14,24 @@ export function backupSavedVariables(file: string, dataFolder: string, keep = BA
   const dir = join(dataFolder, "backups");
   mkdirSync(dir, { recursive: true });
   const account = safeAccount(accountOf(file));
+  // This account's copies only: "A" must not count "A-B"'s files.
+  const own = (n: string) => n.startsWith(`${account}-`) && /^\d{8}T\d{6}Z\.lua$/.test(n.slice(account.length + 1));
+  // A file that has not changed since the newest copy (an app start, an upload with nothing new)
+  // gets no second copy, so ten starts in a row cannot push the useful history out.
+  const newest = readdirSync(dir).filter(own).sort().at(-1);
+  if (newest && sameBytes(join(dir, newest), file)) return join(dir, newest);
   const stamp = now.toISOString().replace(/[-:]/g, "").replace(/\.\d+Z$/, "Z");
   const target = join(dir, `${account}-${stamp}.lua`);
   copyFileSync(file, `${target}.tmp`);
   renameSync(`${target}.tmp`, target);
-  const mine = readdirSync(dir).filter((n) => n.startsWith(`${account}-`) && n.endsWith(".lua")).sort();
+  const mine = readdirSync(dir).filter(own).sort();
   for (const old of mine.slice(0, Math.max(0, mine.length - keep))) rmSync(join(dir, old), { force: true });
   return target;
 }
 
 
 const safeAccount = (account: string) => account.replace(/[^A-Za-z0-9#_-]/g, "_");
+const sameBytes = (a: string, b: string) => statSync(a).size === statSync(b).size && readFileSync(a).equals(readFileSync(b));
 
 export function listBackups(dataFolder: string): BackupInfo[] {
   const dir = join(dataFolder, "backups");

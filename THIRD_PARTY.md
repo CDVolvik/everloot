@@ -11,12 +11,16 @@ full record of every source we have used, linked or only read is
 | [Warcraft Wiki dump, 2023-11-13](https://archive.org/details/wiki-warcraft.wiki.gg-20231113) (Internet Archive) | The lore archive: `/lore`, `/search` and the MCP lore answers | CC BY-SA 4.0; each page credits and links its source article | Imported by `kb/src/importers/wiki-*.ts` into the knowledge release |
 | Battle.net API (Blizzard) | Sign-in identity, and a local cache on a maintainer's machine | Blizzard Developer API terms: no redistribution | Sign-in: `web/src/app/api/auth/bnet/`. Cache: `kb/src/blizzard/`, marked not publishable; the release build refuses it |
 | [Polestar](https://github.com/fitzforge/polestar) by fitzforge | Facts about Polestar on the addons pages; we copy no code or guide text | GPL-3.0-only with a guide-pack exception | `web/src/data/polestar.ts`, and live release and issue data from the GitHub API (`web/src/lib/polestar-github.ts`) |
-| Blizzard game files (client tables `ItemSparse`, `Item`, `SpellName`, `Spell`, and for the asset extractor `ChrClasses`, `ChrRaces`, `SkillLine`, `SpellMisc`, `Map`, `LoadingScreens`, the `UiMapArt*` map art tables and the `UiTextureAtlas*` interface atlas tables) from Blizzard's CDN | Per-build snapshots and diffs on a maintainer machine; published only after review, labelled unconfirmed. Item tooltip facts from `ItemSparse`/`Item` (approved 2026-10-18, `docs/DATA_POLICY.md`) are kept in private storage and shown on a page only for items 3 installs reported | Game data © Blizzard Entertainment; facts, not under our CC BY-SA licence | `kb/src/client-extract.ts`, `kb/src/client-snapshot.ts`, `kb/src/client-diff.ts` |
+| Blizzard game files (client tables `ItemSparse`, `Item`, `SpellName`, `Spell`, and for the asset extractor `ChrClasses`, `ChrRaces`, `SkillLine`, `SpellMisc`, `Map`, `LoadingScreens`, `UiMap`, `UiMapAssignment`, `TaxiNodes`, `TaxiPath`, `TaxiPathNode`, the `UiMapArt*` map art tables and the `UiTextureAtlas*` interface atlas tables) from Blizzard's CDN | Per-build snapshots and diffs on a maintainer machine; published only after review, labelled unconfirmed. Item tooltip facts from `ItemSparse`/`Item` (approved 2026-10-18, `docs/DATA_POLICY.md`) are kept in private storage and shown on a page only for items 3 installs reported | Game data © Blizzard Entertainment; facts, not under our CC BY-SA licence | `kb/src/client-extract.ts`, `kb/src/client-snapshot.ts`, `kb/src/client-diff.ts` |
 | [WoWDBDefs](https://github.com/wowdev/WoWDBDefs) by the wowdev contributors | Table layouts used to read the client tables | CC BY-SA 4.0 (definitions) | Fetched at extraction by `@rhyster/wow-casc-dbc`; the commit is in each snapshot manifest |
 | Public pages cited for guild-family facts | One fact each, in our own words, with its link and date | Facts only; no text copied | `web/src/data/families.ts` |
 
 World of Warcraft, Warcraft and Blizzard Entertainment are trademarks or registered trademarks of Blizzard Entertainment, Inc. in the U.S. and/or other countries.
 Everloot is a fan project and is not affiliated with or endorsed by Blizzard.
+
+## Libraries
+
+The site ships [Leaflet](https://leafletjs.com/) 1.9.4 (BSD-2-Clause, Volodymyr Agafonkin and contributors) for the world map at `/map`. It is loaded on that page only and draws no tiles or images of its own: the map is our own shapes and, when the asset folder has them, the game's map pictures.
 
 ## Media
 

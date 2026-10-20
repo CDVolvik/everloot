@@ -437,7 +437,8 @@ async function main(): Promise<number> {
       const data = writeWorldMapData(args[0]);
       const out = flags.get("out") || "../web/src/data/game-data/map.json";
       mkdirSync(dirname(out), { recursive: true });
-      writeFileSync(out, `${JSON.stringify(data, null, 2)}
+      // A flight line's points stay one pair per line, not three lines each.
+      writeFileSync(out, `${JSON.stringify(data, null, 2).replace(/\[\s+(-?\d+),\s+(-?\d+)\s+\]/g, "[$1, $2]")}
 `);
       for (const t of data.source.tables) console.log(`${t.table}: ${t.rows} rows${t.encryptedBlocks ? `, ${t.encryptedBlocks} encrypted blocks skipped` : ""}`);
       for (const w of data.warnings) console.log(`warning: ${w}`);

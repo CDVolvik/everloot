@@ -2,7 +2,8 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, test, vi } from "vitest";
-import { listRealms, mergeRealms, ownRealms, refreshMarket } from "../src/main/market";
+import { writePricesAddon } from "../../companion/src/prices";
+import { itemIdFrom, listRealms, mergeRealms, ownRealms, priceRows, readPricesFile, refreshMarket } from "../src/main/market";
 
 const dirs: string[] = [];
 const dir = () => { const d = mkdtempSync(join(tmpdir(), "everloot-market-")); dirs.push(d); return d; };
@@ -40,4 +41,27 @@ test("a refresh fetches scanned and followed realms and writes the slot addon; a
   expect(asked).toEqual(["Nightslayer", "Doomhowl"]);
   expect(r.realms.map((x) => [x.realm, x.source])).toEqual([["Nightslayer", "scan"], ["Doomhowl", "followed"]]);
   expect(readFileSync(join(d, "AddOns", "EverlootPrices", "EverlootPrices.toc"), "utf8")).toContain("EverlootPrices");
+});
+
+test("the prices file in the game reads back per realm, and one item comes back on every realm that has it", () => {
+  const addons = dir();
+  expect(readPricesFile(addons)).toBeNull();
+  writePricesAddon(addons, [
+    { realm: "Forever", dataAsOf: "2026-10-20T06:30:00.000Z", items: [[2589, 205, 200, 190, 40, "2026-10-20", 3], [765, null, 30, 33, 900, "2026-10-05", 4], [25890, 1, 1, 1, 1, "2026-10-20", 3]] },
+    { realm: "Doomhowl", dataAsOf: null, items: [[2589, 300, 250, 280, 12, "2026-10-19", 5]] },
+  ]);
+  const file = readPricesFile(addons)!;
+  expect(file.realms).toEqual([{ realm: "forever", dataAsOf: "2026-10-20T06:30:00.000Z", items: 3 }, { realm: "doomhowl", dataAsOf: null, items: 1 }]);
+  expect(priceRows(file, 2589).map((r) => [r.realm, r.market, r.min, r.historical, r.quantity, r.reporters])).toEqual([["forever", 205, 200, 190, 40, 3], ["doomhowl", 300, 250, 280, 12, 5]]);
+  expect(priceRows(file, 765)[0]).toMatchObject({ market: null, min: 30, day: "2026-10-05" });
+  // 258 is not 2589 or 25890: rows are matched whole.
+  expect(priceRows(file, 258)).toEqual([]);
+});
+
+test("an item is given by id, by a link pasted from game chat, or by its everloot.app address", () => {
+  expect(itemIdFrom(" 2589 ")).toBe(2589);
+  expect(itemIdFrom("|cffffffff|Hitem:2589::::::::60:::::|h[Linen Cloth]|h|r")).toBe(2589);
+  expect(itemIdFrom("https://everloot.app/database/items/19019")).toBe(19019);
+  expect(itemIdFrom("Linen Cloth")).toBeNull();
+  expect(itemIdFrom("")).toBeNull();
 });

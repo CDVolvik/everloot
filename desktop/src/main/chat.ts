@@ -1,11 +1,12 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { explainKeyError, readAccountKey } from "./account";
 import { readJsonFile } from "./json-file";
-import type { ChatInfo, ChatMessage, Settings } from "../shared/types";
+import type { ChatInfo, ChatMessage, ChatProgress, Settings } from "../shared/types";
 import { answer, readProviderEntries } from "./agent";
 import type { LocalTool } from "./local-tools";
-import { DEFAULT_MODEL, ownProvider, removeProvider, setProvider } from "./providers";
-import type { ProviderChoice } from "../shared/providers";
+import { DEFAULT_MODEL, ownProvider, ownProviders, removeProvider, setProvider, useModel } from "./providers";
+import type { ProviderChoice, ProviderKind } from "../shared/providers";
 
 const MAX_MESSAGES = 100;
 
@@ -32,11 +33,11 @@ export function createChat(dataFolder: string, current: () => Settings, local: L
     if (!file) return null;
     try { const t = readFileSync(file, "utf8").trim(); return t || null; } catch { return null; }
   };
-  /** The token endpoint when a token is set, else the public read-only mount of the same site. */
+  /** The token endpoint when a token is set, else the public read-only mount of the same site, with the account key when signed in. */
   const target = () => {
     const s = current();
     const t = token();
-    return t ? { url: s.ask.mcpUrl, token: t } : { url: `${s.endpoint}/mcp/public`, token: null };
+    return t ? { url: s.ask.mcpUrl, token: t } : { url: `${s.endpoint}/mcp/public`, token: readAccountKey(dataFolder) };
   };
   const mode = (): string => {
     try {
@@ -47,15 +48,16 @@ export function createChat(dataFolder: string, current: () => Settings, local: L
   };
   const info = (): ChatInfo => {
     const t = target();
-    return { messages: [...messages], mode: mode(), mcpUrl: t.url, withToken: t.token !== null, provider: ownProvider(dataFolder), busy, error };
+    return { messages: [...messages], mode: mode(), mcpUrl: t.url, withToken: token() !== null, provider: ownProvider(dataFolder), providers: ownProviders(dataFolder), busy, error };
   };
 
   return {
     info,
     clear(): ChatInfo { messages = []; error = null; save(); return info(); },
     setProvider(choice: ProviderChoice): ChatInfo { setProvider(dataFolder, choice); error = null; return info(); },
-    removeProvider(): ChatInfo { removeProvider(dataFolder); return info(); },
-    async send(text: string): Promise<ChatInfo> {
+    useModel(kind: ProviderKind, model: string): ChatInfo { useModel(dataFolder, kind, model); error = null; return info(); },
+    removeProvider(kind?: ProviderKind): ChatInfo { removeProvider(dataFolder, kind); return info(); },
+    async send(text: string, onProgress?: (progress: ChatProgress) => void): Promise<ChatInfo> {
       const question = text.trim().slice(0, 2000);
       if (!question || busy) return info();
       busy = true; error = null;
@@ -63,10 +65,10 @@ export function createChat(dataFolder: string, current: () => Settings, local: L
       messages.push({ role: "user", text: question, at: new Date().toISOString(), model: null, sources: [], steps: [] });
       try {
         const entries = readProviderEntries(join(dataFolder, "config.json"));
-        const r = await answer({ mcp: target(), entries, history, question, local });
+        const r = await answer({ mcp: target(), entries, history, question, local, onProgress });
         messages.push({ role: "assistant", text: r.text, at: new Date().toISOString(), model: r.model, sources: r.sources, steps: r.steps });
       } catch (err) {
-        error = err instanceof Error ? err.message : String(err);
+        error = explainKeyError(err instanceof Error ? err.message : String(err));
       } finally {
         busy = false;
         messages = messages.slice(-MAX_MESSAGES);

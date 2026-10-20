@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
-import Link from "next/link";
 import { computeRollups } from "@/lib/rollup-compute";
 import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
 import { dataAgeLabel } from "@/lib/data-age";
 import { trailFor } from "@/lib/breadcrumbs";
 import { loadItemTips, loadSiteAssets } from "@/lib/game-assets";
+import { loadNames } from "@/lib/names";
+import EntityLink from "@/components/EntityLink";
 import ItemTip from "@/components/game/ItemTip";
 import GameCredit from "@/components/game/GameCredit";
 import { Card, Container, DataTable, EmptyState, PageHeader, SourceLine, type Column } from "@/components/ui";
-import { LINK, percent } from "../entity";
+import { percent } from "../entity";
 
 export const metadata: Metadata = {
   ...pageMetadata({ title: "WoW Forever Loot Observations", description: "Observed item frequency per recorded WoW: Forever loot window, with observation and install counts. These are not kill-based drop probabilities.", path: "/database/drops" }),
@@ -19,10 +20,6 @@ export const dynamic = "force-dynamic";
 /** One public row: an item's frequency from a source, or a source whose windows held nothing (itemId null). */
 interface Row { key: string; itemId: number | null; sourceNpcId?: number; sourceObjectId?: number; kills: number; drops: number; rate: number | null; reporters: number }
 
-const source = (r: Row) => (r.sourceNpcId !== undefined
-  ? <Link href={`/database/npcs/${r.sourceNpcId}`} className={LINK}>NPC #{r.sourceNpcId}</Link>
-  : <Link href={`/database/objects/${r.sourceObjectId}`} className={LINK}>Object #{r.sourceObjectId}</Link>);
-
 export default async function DropsPage() {
   const { rates, measuredZeros, stats } = await computeRollups();
   const live = rates.filter((r) => r.public);
@@ -30,6 +27,10 @@ export default async function DropsPage() {
   // Game icons and tooltips, only when the asset URL is set and the upload has the items.
   const assets = await loadSiteAssets();
   const tips = await loadItemTips(assets, live.map((r) => r.itemId));
+  const names = await loadNames();
+  const source = (r: Row) => (r.sourceNpcId !== undefined
+    ? <EntityLink kind="npc" id={r.sourceNpcId} name={names.npcs.get(r.sourceNpcId)} />
+    : <EntityLink kind="object" id={r.sourceObjectId!} />);
   const rows: Row[] = [
     ...live.map((r) => ({ key: `${r.sourceNpcId ?? r.sourceObjectId}-${r.itemId}`, itemId: r.itemId, sourceNpcId: r.sourceNpcId, sourceObjectId: r.sourceObjectId, kills: r.kills, drops: r.drops, rate: r.rate, reporters: r.reporters })),
     ...zeros.map((z) => ({ key: `zero-${z.sourceNpcId ?? "o"}-${z.sourceObjectId ?? "n"}`, itemId: null, sourceNpcId: z.sourceNpcId, sourceObjectId: z.sourceObjectId, kills: z.kills, drops: 0, rate: null, reporters: z.reporters })),
@@ -38,7 +39,7 @@ export default async function DropsPage() {
     {
       key: "item", header: "Item", cell: (r) => (r.itemId === null ? "No items observed" : (
         <ItemTip tip={tips.get(r.itemId)}>
-          <Link href={`/database/items/${r.itemId}`} className={LINK}>Item #{r.itemId}</Link>
+          <EntityLink kind="item" id={r.itemId} name={names.items.get(r.itemId) ?? tips.get(r.itemId)?.name} />
         </ItemTip>
       )),
     },

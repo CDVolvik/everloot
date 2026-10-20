@@ -5,6 +5,7 @@ import { expect, test, vi } from "vitest";
 const facts = vi.hoisted(() => ({ rates: [] as unknown[], names: [] as unknown[], npcs: [] as unknown[], unreachable: false }));
 vi.mock("@/lib/rollup-compute", () => ({
   loadItemFacts: async () => facts,
+  loadWorldFacts: async () => ({ npcs: [], quests: [], vendors: [], unreachable: false }),
   loadObservedEdges: async () => ({ edges: [], unreachable: false, dataAsOf: null }),
 }));
 vi.mock("@/lib/upload-store", () => ({ STORAGE_UNREACHABLE: "Storage unavailable" }));
