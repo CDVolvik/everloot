@@ -47,6 +47,9 @@ build that has a zip in the repository. Earlier builds have none.
   The site's tools are no longer shown inside the window; the sidebar links to the database, talent calculator,
   raid builder and auction prices on everloot.app, which open in the browser. The world map and lore archive
   links are gone; Chat answers those questions.
+- Desktop App: when a newer release is out, an arrow button sits beside Settings. It opens a panel with the
+  new version, its release date, what the release lists as changed (the first eight, then a link to the rest
+  on GitHub) and a Download button for this system's installer. Escape or Later closes it.
 
 ### Changed
 - The upload record contract moved from `web/src/lib/intake.ts` into one package, `packages/protocol`

@@ -1,5 +1,5 @@
 import { expect, test, vi } from "vitest";
-import { checkForUpdates, compareVersions, newestDesktopRelease } from "../src/main/updates";
+import { checkForUpdates, compareVersions, downloadFor, newestDesktopRelease, releaseNotes, updateFrom } from "../src/main/updates";
 import { allowedExternal } from "../src/main/external";
 
 test("versions compare by number, and a dev build is older than any release", () => {
@@ -25,7 +25,7 @@ test("the newest desktop release wins; addon tags, drafts and pre-releases are i
 
 test("a check says whether something newer exists and never downloads", async () => {
   const send = vi.fn(async () => new Response(JSON.stringify([{ tag_name: "desktop-v0.2.0", html_url: "u" }]), { status: 200 }));
-  expect(await checkForUpdates("0.1.0", send as unknown as typeof fetch)).toEqual({ current: "0.1.0", latest: "0.2.0", url: "u", newer: true });
+  expect(await checkForUpdates("0.1.0", send as unknown as typeof fetch)).toEqual({ current: "0.1.0", latest: "0.2.0", url: "u", newer: true, notes: [], downloadUrl: null, publishedAt: null });
   expect(await checkForUpdates("0.2.0", send as unknown as typeof fetch)).toMatchObject({ newer: false });
   expect(send).toHaveBeenCalledTimes(2);
   const empty = vi.fn(async () => new Response("[]", { status: 200 }));
@@ -41,4 +41,59 @@ test("the page may open a browser only to https on the project's own hosts", () 
   expect(allowedExternal("https://evil.example/everloot.app")).toBe(false);
   expect(allowedExternal("file:///C:/Windows")).toBe(false);
   expect(allowedExternal("not a url")).toBe(false);
+});
+
+test("a release's changes are read from the changelog section or GitHub's generated list", () => {
+  const changelog = [
+    "## [desktop-v0.2.0] - 2026-10-21",
+    "",
+    "### Added",
+    "- Desktop App: Chat answers appear as the model writes them, with the tool it is running shown while",
+    "  it looks something up. Each answer has a Copy button.",
+    "",
+    "### Fixed",
+    "- Desktop App: an `Everloot.lua` written after start is found. See [the README](https://example.test).",
+    "",
+    "```",
+    "- not a bullet, inside code",
+    "```",
+    "| System | File |",
+  ].join("\n");
+  expect(releaseNotes(changelog)).toEqual([
+    { text: "Desktop App: Chat answers appear as the model writes them, with the tool it is running shown while it looks something up. Each answer has a Copy button.", author: null, pr: null },
+    { text: "Desktop App: an Everloot.lua written after start is found. See the README.", author: null, pr: null },
+  ]);
+  const generated = [
+    "## What's Changed",
+    "### Addon",
+    "* feat(addon): census of your characters by @CDVolvik in https://github.com/Everloot/everloot/pull/116",
+    "* chore(web): bump by @dependabot[bot] in https://github.com/Everloot/everloot/pull/131",
+    "",
+    "**Full Changelog**: https://github.com/x",
+  ].join("\n");
+  expect(releaseNotes(generated)).toEqual([
+    { text: "feat(addon): census of your characters", author: "CDVolvik", pr: 116 },
+    { text: "chore(web): bump", author: "dependabot[bot]", pr: 131 },
+  ]);
+  expect(releaseNotes("Just prose, no list.")).toEqual([]);
+});
+
+test("the download is this system's file from the release, and the popover gets the notes with it", () => {
+  const names = ["win-x64-setup.exe", "win-x64-portable.exe", "mac-arm64.dmg", "linux-x86_64.AppImage"].map((n) => `Everloot-DesktopApp-0.2.0-${n}`).concat("SHA256SUMS");
+  const assets = names.map((name) => ({ name, browser_download_url: `https://github.com/Everloot/everloot/releases/download/desktop-v0.2.0/${name}` }));
+  expect(downloadFor(assets, "win32")).toMatch(/setup\.exe$/);
+  expect(downloadFor(assets, "win32", true)).toMatch(/portable\.exe$/);
+  expect(downloadFor(assets, "darwin")).toMatch(/\.dmg$/);
+  expect(downloadFor(assets, "linux")).toMatch(/\.AppImage$/);
+  expect(downloadFor(assets, "freebsd")).toBeNull();
+  expect(downloadFor("nope", "win32")).toBeNull();
+  const releases = [
+    { tag_name: "desktop-v0.2.0", html_url: "page", body: "### Fixed\n- One fix.", assets, published_at: "2026-10-21T10:00:00Z" },
+    { tag_name: "desktop-v0.1.0", html_url: "old" },
+  ];
+  expect(updateFrom(releases, "0.1.0", "win32")).toEqual({
+    current: "0.1.0", latest: "0.2.0", url: "page", newer: true,
+    notes: [{ text: "One fix.", author: null, pr: null }], downloadUrl: assets[0].browser_download_url, publishedAt: "2026-10-21T10:00:00Z",
+  });
+  expect(updateFrom(releases, "0.2.0", "win32").newer).toBe(false);
 });

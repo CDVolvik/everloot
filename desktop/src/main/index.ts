@@ -21,7 +21,7 @@ import { companionJobs } from "./jobs";
 import { itemIdFrom, listRealms, ownRealms, priceRows, readPricesFile } from "./market";
 import { loadSettings, mergeSettings, saveSettings } from "./settings";
 import { createTray } from "./tray";
-import { checkForUpdates, fetchReleases, newestDesktopRelease } from "./updates";
+import { checkForUpdates, fetchReleases, updateFrom } from "./updates";
 import { fitWindow, readWindowState, writeWindowState } from "./window-state";
 
 /** The same folder the command line uses (`companion/src/cli.ts` defaultStatePath), so both share sent.json. */
@@ -117,8 +117,8 @@ if (!app.requestSingleInstanceLock()) {
   // The desktop release check at start is a line on the Overview and in the tray, never a notification.
   const desktopUpdateLine = async () => {
     try {
-      const newest = newestDesktopRelease(await releases());
-      update = newest ? { current: app.getVersion(), latest: newest.version, url: newest.url, newer: compareVersions(newest.version, app.getVersion()) > 0 } : null;
+      const check = updateFrom(await releases(), app.getVersion(), process.platform, Boolean(process.env.PORTABLE_EXECUTABLE_FILE));
+      update = check.latest ? check : null;
       if (update?.newer) broadcast();
     } catch { update = null; }
   };
@@ -225,7 +225,13 @@ if (!app.requestSingleInstanceLock()) {
     void shell.openExternal(url);
     return true;
   });
-  ipcMain.handle("checkForUpdates", () => checkForUpdates(app.getVersion()));
+  // A check from Settings also refreshes the sidebar's update button.
+  ipcMain.handle("checkForUpdates", async () => {
+    const check = await checkForUpdates(app.getVersion(), fetch, process.platform, Boolean(process.env.PORTABLE_EXECUTABLE_FILE));
+    update = check.latest ? check : null;
+    broadcast();
+    return check;
+  });
 
   ipcMain.handle("uploadInfo", () => summarizeFiles(engine.snapshot().files, join(data, "sent.json")));
   ipcMain.handle("backups", () => listBackups(data));

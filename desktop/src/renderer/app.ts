@@ -42,6 +42,9 @@ const main = document.getElementById("app")!;
 const side = document.getElementById("side")!;
 const nav = document.getElementById("nav")!;
 const sideFoot = document.getElementById("side-foot")!;
+const updatePop = document.getElementById("updatePop")!;
+/** Whether the update popover is open. */
+let updateOpen = false;
 
 const ext = (url: string, text: string) => `<button type="button" class="link" data-open="${esc(url)}">${esc(text)}</button>`;
 
@@ -663,8 +666,36 @@ function renderSide(s: AppState): void {
   nav.innerHTML = PAGES.filter((p) => p.id !== "settings").map((p) => item(p.id, p.label, p.job)).join("")
     + `<div class="section">On everloot.app</div>${web}`;
   const e = s.engine;
-  sideFoot.innerHTML = `<div class="nav"><button type="button" data-page="settings" ${page === "settings" ? 'aria-current="page"' : ""}>${GEAR}Settings</button></div>
+  const up = s.update?.newer ? s.update : null;
+  sideFoot.innerHTML = `<div class="nav foot-row"><button type="button" data-page="settings" ${page === "settings" ? 'aria-current="page"' : ""}>${GEAR}Settings</button>${up ? `<button type="button" class="update-btn" id="updateBtn" aria-expanded="${updateOpen}" aria-controls="updatePop" aria-label="Update ${esc(up.latest ?? "")} available" title="Update ${esc(up.latest ?? "")} available">${ARROW}</button>` : ""}</div>
     <div class="foot-line"><span>${e.files.length ? `Watching ${e.files.length} file(s)` : "Not watching"}${e.paused ? " · paused" : ""}</span><span>v${esc(s.version)}</span></div>`;
+}
+
+const ARROW = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5.5 11.5 12 5l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const NOTES_SHOWN = 8;
+
+/** The update popover: the new version, what its release lists as changed, and this system's download. */
+function updatePopover(u: NonNullable<AppState["update"]>): string {
+  const notes = u.notes.slice(0, NOTES_SHOWN).map((n) => `<li><span class="note" title="${esc(n.text)}">${esc(n.text)}${n.author ? ` <span class="muted">by @${esc(n.author)}${n.pr ? ` in #${n.pr}` : ""}</span>` : ""}</span></li>`).join("");
+  const more = u.notes.length > NOTES_SHOWN ? `${u.notes.length - NOTES_SHOWN} more changes on GitHub ↗` : "Release notes on GitHub ↗";
+  return `<div class="pop-head"><h2 id="updTitle">Update available</h2><div class="muted small">${esc(u.latest ?? "")} · you run ${esc(u.current)}${u.publishedAt ? ` · released ${when(u.publishedAt)}` : ""}</div></div>
+    <div class="pop-body"><h3>What's changed</h3>${notes ? `<ul>${notes}</ul>` : '<p class="muted small">This release lists no changes.</p>'}${u.url ? ext(u.url, more) : ""}</div>
+    <div class="pop-foot"><button type="button" class="btn btn-primary" data-open="${esc(u.downloadUrl ?? u.url ?? "")}">Download ${esc(u.latest ?? "")}</button><button type="button" class="btn" id="updateLater">Later</button></div>
+    <p class="muted small">Run the download to update; your settings and data folder stay. The app is not code-signed yet, so Windows asks once (More info, Run anyway).</p>`;
+}
+
+function renderUpdate(s: AppState): void {
+  const up = s.update?.newer ? s.update : null;
+  if (!up) updateOpen = false;
+  updatePop.hidden = !updateOpen;
+  if (updateOpen && up) updatePop.innerHTML = updatePopover(up);
+}
+
+function toggleUpdate(open: boolean): void {
+  updateOpen = open;
+  if (state) { renderSide(state); renderUpdate(state); }
+  if (open) updatePop.querySelector<HTMLElement>(".btn-primary")?.focus();
+  else document.getElementById("updateBtn")?.focus();
 }
 
 function render(): void {
@@ -673,6 +704,7 @@ function render(): void {
   side.hidden = setup;
   if (setup) { main.innerHTML = welcome(); return; }
   renderSide(state);
+  renderUpdate(state);
   if ((page === "settings" || page === "ask") && draftDirty) return;
   const s = state;
   const draft = page === "chat" ? (main.querySelector("#chatText") as HTMLTextAreaElement | null)?.value : undefined;
@@ -775,6 +807,10 @@ main.addEventListener("submit", (ev) => { onSubmit(ev).catch(failed); });
 
 async function onClick(ev: MouseEvent): Promise<void> {
   const el = ev.target as HTMLElement;
+  if (el.closest("#updateBtn")) { toggleUpdate(!updateOpen); return; }
+  if (el.closest("#updateLater")) { toggleUpdate(false); return; }
+  // A click anywhere outside the open popover closes it; its own links still work.
+  if (updateOpen && !el.closest("#updatePop")) toggleUpdate(false);
   const row = el.closest<HTMLElement>("[data-char]");
   if (row) { selectChar(Number(row.dataset.char)); return; }
   const dwTab = el.closest<HTMLElement>("[data-dwtab]");
@@ -912,6 +948,8 @@ async function onChange(ev: Event): Promise<void> {
   if (el.form && el.form.id !== "chatForm" && el.form.id !== "providerForm") draftDirty = true;
 }
 main.addEventListener("input", (ev) => { const f = (ev.target as HTMLElement).closest("form"); if (f && f.id !== "chatForm" && f.id !== "providerForm") draftDirty = true; });
+// Escape closes the update popover from anywhere.
+document.addEventListener("keydown", (ev) => { if (ev.key === "Escape" && updateOpen) { ev.preventDefault(); toggleUpdate(false); } });
 main.addEventListener("keydown", (ev) => {
   const el = ev.target as HTMLElement;
   if (el.id === "chatText" && ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); (main.querySelector("#chatForm") as HTMLFormElement).requestSubmit(); return; }
