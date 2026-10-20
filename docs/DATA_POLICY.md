@@ -170,6 +170,18 @@ batch." The rules above also cover:
   made, approves or supports Everloot. No logo in the files means no banner: Blizzard's marketing
   logos and art are still never used, not even as a stand-in.
 
+**Third extension: game icons and tooltip text in embeddable cards.** Decided 2026-10-19 (Carlos
+approved it with the site structure plan). The hover card any site can show through
+`https://everloot.app/tooltips.js` and `GET /api/tooltip/<type>/<id>` may carry one item's game icon
+and tooltip facts, the same ones its page shows:
+
+- **One item per request**, and only for an item its page would show them for (3 installs reported
+  it). Never in bulk, never for an id nobody reported.
+- **Labelled and credited in the card**: *found in game files, unconfirmed*, the build, and the
+  Blizzard credit above. The icon is a link to our asset storage, not a copy in the response.
+- **Same spoiler and takedown rules** as the pages. The downloads, the rest of the API and the MCP
+  server still carry no icons or tooltip text.
+
 **The talent catalog.** The talent calculator at `/tools/talents` uses our own catalog, read from
 the public client by a maintainer, not taken from any other site. The catalog is the trait node
 ids, positions, ranks, gates, prerequisites, spell ids, talent names and the build stamp. This is

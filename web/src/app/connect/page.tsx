@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
+import Script from "next/script";
 import type { ReactNode } from "react";
 import ApiKeys from "@/components/ApiKeys";
 import Bracket from "@/components/Bracket";
 import { KEYS_MADE_PER_DAY, KEYS_PER_ACCOUNT, REVOKED_KEPT_DAYS, USAGE_KEPT_DAYS } from "@/lib/api-keys";
 import { ANON_PAGE, ANON_PER_HOUR, guardOn, KEY_PAGE, KEY_PER_HOUR } from "@/lib/data-guard";
-import { PUBLIC_RECORD_KINDS } from "@everloot/protocol";
+import { PUBLIC_RECORD_KINDS, SITE } from "@everloot/protocol";
 import { BULK_URL, CONNECT_EXAMPLES as ex, MCP_PROMPTS, MCP_RESOURCE_TEMPLATES, MCP_RESOURCES, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR } from "./connect-data";
 import { ApiReference, SchemaReference, ToolReference } from "./Reference";
 
@@ -277,6 +278,39 @@ export default function ConnectPage() {
         <Code label="Call get_by_name over HTTP">{ex.toolsCurl}</Code>
       </Section>
 
+      <Section id="tooltips" title="Embeddable tooltips">
+        <p className="text-fg-2">
+          Add one line to your blog, guild site or forum theme and every link to an Everloot item, NPC, quest or object page
+          shows a game-style card on hover.
+        </p>
+        <Code label="Load the Everloot tooltip script">{ex.tooltipScript}</Code>
+        <p className="text-fg-2">
+          Then link as you normally would. Nothing else to configure; links added later are picked up too.
+        </p>
+        <Code label="A link that gets a tooltip">{ex.tooltipLink}</Code>
+        <p className="text-fg-2">
+          Live example, with the script loaded on this page:{" "}
+          <a href={`${SITE}/database/items/19019`} className={link}>Thunderfury</a>,{" "}
+          <a href={`${SITE}/database/npcs/6`} className={link}>an NPC</a> and{" "}
+          <a href={`${SITE}/database/quests/9`} className={link}>a quest</a>. A card appears only for pages players
+          have reported, so a link to an id nobody has seen shows no card and just works as a link.
+        </p>
+        <ul className="list-disc pl-6 text-fg-2 space-y-1">
+          <li>Hover or keyboard focus shows the card; Escape closes it. On a touch screen the first tap shows it and the second follows the link.</li>
+          <li>The script is under 8 KB, has no dependencies, and draws the card in an isolated container, so your page&apos;s styles cannot break it. It respects <code className="font-mono text-fg">prefers-reduced-motion</code>.</li>
+          <li>No cookies and no tracking. Each hovered link makes one request to everloot.app, sent without cookies or a referrer.</li>
+          <li>To skip a link, add <code className="font-mono text-fg">data-everloot-tooltip=&quot;off&quot;</code>.</li>
+          <li>Cards follow the site&apos;s rules: a fact appears once 3 installs reported it, and anything that comes from the game files is labelled unconfirmed with its build, and credited to Blizzard.</li>
+        </ul>
+        <p className="text-fg-2">
+          The data is <code className="font-mono text-fg">GET /api/tooltip/&#123;type&#125;/&#123;id&#125;</code> (type: item, npc, quest or
+          object), one page per request. It is open to any website (CORS for GET), and the CDN keeps each answer for an hour, so
+          it needs no key. It is meant for cards, not for copying data: for that, use the corpus API above.
+        </p>
+        <Code label="Fetch one tooltip">{ex.tooltipCurl}</Code>
+        <Script src="/tooltips.js" strategy="lazyOnload" />
+      </Section>
+
       <Section id="api" title="API reference">
         <ApiReference />
         <h3 className="font-semibold text-fg">OpenAPI</h3>
@@ -373,7 +407,7 @@ export default function ConnectPage() {
           </li>
           <li>
             <span className="text-fg">Not ours:</span> World of Warcraft and Blizzard&apos;s game data belong to Blizzard.
-            Downloads, the API and the MCP server carry ids and facts. Blizzard&apos;s icons, tooltip text and art are never in them.
+            Downloads, the API and the MCP server carry ids and facts. Blizzard&apos;s icons, tooltip text and art are never in them; a tooltip card carries one item&apos;s, credited to Blizzard.
           </li>
           <li>
             <span className="text-fg">Table names:</span> where a page or file shows column names from game tables, they come from{" "}
