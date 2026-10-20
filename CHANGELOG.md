@@ -13,7 +13,7 @@ build that has a zip in the repository. Earlier builds have none.
 ## [Unreleased]
 
 ### Added
-- Site: a game version label in the header ("Beta · 1.60.1") with a menu of Live (at launch), PTR (none running) and Beta, read from one list in `web/src/lib/game-version.ts`; a test checks every game-data layer names the current build. The build is also named on `/methodology`.
+- Site: a game version label in the header ("Beta Â· 1.60.1") with a menu of Live (at launch), PTR (none running) and Beta, read from one list in `web/src/lib/game-version.ts`; a test checks every game-data layer names the current build. The build is also named on `/methodology`.
 - Site: `/docs`, one documentation area for players and developers: Overview, Guides, API Reference, MCP and
   Cookbook tabs, a grouped sidebar, "On this page", "Copy page" as Markdown, and a page per API endpoint and
   per MCP tool generated from the protocol, with cURL, JavaScript and Python examples. "Docs" replaces "Open data"
