@@ -41,6 +41,8 @@ test("talent_tree lists every node of the class with the build, the point levels
   expect(text).toContain("found in game files, unconfirmed");
   for (const tree of mage.trees) expect(text).toContain(`${tree.name} (`);
   expect(text.endsWith(GAME_DATA_CREDIT)).toBe(true);
+  // The calculator page links last, before the credit.
+  expect(text.endsWith(`\nMore: https://everloot.app/tools/talents/mage\n${GAME_DATA_CREDIT}`)).toBe(true);
   // A gate and a prerequisite are said in words where the catalog has them.
   const gated = mage.nodes.find((n) => n.unlock?.pointsInTree);
   if (gated) expect(text).toContain(`needs ${gated.unlock!.pointsInTree} in tree`);
@@ -75,6 +77,8 @@ test("talent_plan reads a legal code: talents, points per tree, the lowest level
   expect(text).toContain(`${firstNode().entries[0].name} ${firstNode().maxRanks}/${firstNode().maxRanks}`);
   expect(text).not.toContain("Problem:");
   expect(text.endsWith(GAME_DATA_CREDIT)).toBe(true);
+  // The build's own link: the calculator on this plan, with a preview card when shared.
+  expect(text.endsWith(`\nMore: https://everloot.app/tools/talents/mage/b/${code}\n${GAME_DATA_CREDIT}`)).toBe(true);
 });
 
 test("talent_plan takes a calculator link and says what did not load: another build, an unknown node, a gated node", () => {
@@ -95,6 +99,7 @@ test("talent_plan takes a calculator link and says what did not load: another bu
 test("talent_plan refuses what it cannot read, in the calculator's words", () => {
   const damaged = handleTalentPlan({ code: "EL1-mage-0-1.60.1.70450-!!!" });
   expect(planOut.parse(damaged.structured).ok).toBe(false);
+  expect(damaged.text).not.toContain("More:");
   expect(damaged.text).toContain("not a share code");
   const newer = handleTalentPlan({ code: "EL9-mage-0-1.60.1.70450-" });
   expect(newer.text).toContain("newer version");
@@ -117,6 +122,7 @@ test("both tools answer over MCP with structured content of the declared shape",
   const tree = await client.callTool({ name: "talent_tree", arguments: { class: "druid", tree: siteCatalog("druid").trees[0].name } });
   expect(tree.isError).not.toBe(true);
   expect(treeOut.parse(tree.structuredContent).class).toBe("druid");
+  expect(JSON.stringify(tree.content)).toContain("More: https://everloot.app/tools/talents/druid");
   const plan = await client.callTool({ name: "talent_plan", arguments: { code: legalCode() } });
   expect(plan.isError).not.toBe(true);
   expect(planOut.parse(plan.structuredContent).ok).toBe(true);

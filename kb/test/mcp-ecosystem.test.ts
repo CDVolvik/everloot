@@ -51,10 +51,12 @@ test("it answers from the view with installs, the repository link and the data a
   expect(text).toContain("6 installs");
   expect(text).toContain("Repository: https://github.com/o/a");
   expect(text).toContain("GitHub data refreshed 2026-10-20");
+  expect(text.endsWith("\nMore: https://everloot.app/addons/ecosystem")).toBe(true);
 });
 
 test("without a tracker it says not connected, and a loader that throws is not a crash", async () => {
   expect((await tool(handler(), {})).content[0].text).toMatch(/not connected/);
+  expect((await tool(handler(), {})).content[0].text).not.toContain("More:");
   const boom = await tool(handler(() => { throw new Error("disk"); }), {});
   expect(boom.isError).not.toBe(true);
   expect(boom.content[0].text).toMatch(/not connected/);

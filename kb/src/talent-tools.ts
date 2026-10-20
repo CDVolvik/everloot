@@ -3,6 +3,7 @@ import { extractCode, importCode } from "../../web/src/lib/talents/import";
 import { decodeBuild } from "../../web/src/lib/talents/share";
 import { nodeMap, pointsByTree } from "../../web/src/lib/talents/rules";
 import type { TalentCatalog, TalentNode } from "../../web/src/lib/talents/types";
+import { moreLine, talentBuildUrl, talentsUrl } from "./page-urls.js";
 import { siteCatalog } from "./talents/site-catalogs.js";
 
 /**
@@ -54,7 +55,9 @@ export function handleTalentTree(args: McpToolArgs<"talent_tree">): Answer {
     const rows = [...new Set(own.map((n) => n.row))].sort((a, b) => a - b);
     for (const row of rows) lines.push(`  row ${row}: ${own.filter((n) => n.row === row).map((n) => nodeLine(n, nodes)).join("; ")}`);
   }
-  lines.push(`Node ids and the calculator: ${SITE}/tools/talents/${args.class}`, GAME_DATA_CREDIT);
+  // The calculator shows the node ids a share code names.
+  const url = talentsUrl(args.class);
+  lines.push(moreLine(url), GAME_DATA_CREDIT);
   return {
     text: lines.join("\n"),
     structured: {
@@ -98,7 +101,8 @@ export function handleTalentPlan(args: McpToolArgs<"talent_plan">): Answer {
     lines.push(`${tree.name}: ${talents.filter((t) => t.treeId === tree.id).map((t) => `${t.name} ${t.rank}/${t.maxRanks}`).join(", ")}`);
   }
   if (result.report.problems.length > 0) lines.push("", ...result.report.problems.map((p) => `Problem: ${p}`));
-  lines.push(`Open it: ${link}`, GAME_DATA_CREDIT);
+  const url = talentBuildUrl(catalog.classSlug, code);
+  lines.push(moreLine(url), GAME_DATA_CREDIT);
   return {
     text: lines.join("\n"),
     structured: {

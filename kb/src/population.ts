@@ -3,6 +3,7 @@ import {
   CENSUS_CLASSES, CENSUS_RACES, HIDDEN_LABEL, HIDDEN_MEANING, LEVEL_BANDS,
   type CensusCount, type CensusView, type CensusWindow, type Faction,
 } from "./census.js";
+import { censusUrl, withMore } from "./page-urls.js";
 
 /**
  * population: the census as an MCP answer ("most played class", "how rare are Gnome Priests"), read from
@@ -160,5 +161,6 @@ export async function answerPopulation(
   try { loaded = await loader(); } catch { loaded = null; }
   if (!loaded) return { text: CENSUS_UNAVAILABLE, structured: { connected: false, dataAsOf: null, reason: CENSUS_UNAVAILABLE } };
   const { text, page } = populationAnswer(args, loaded.view);
-  return { text: `${text}\n${footer(loaded.dataAsOf)}`, structured: { connected: true, dataAsOf: loaded.dataAsOf, page } };
+  const url = censusUrl(args.window);
+  return { text: `${withMore(text, url)}\n${footer(loaded.dataAsOf)}`, structured: { connected: true, dataAsOf: loaded.dataAsOf, page } };
 }
