@@ -1,27 +1,30 @@
 # desktop/: Everloot Desktop App
 
-The companion as an app. It sits in the system tray beside the game and does what the
-[command line](../companion/README.md) does, without a terminal: after every logout or `/reload`
+The command-line uploader as an app. It sits in the system tray beside the game and does what the
+[command-line uploader](../companion/README.md) does, without a terminal: after every logout or `/reload`
 it uploads the addon's anonymous observations, keeps community market prices in your item tooltips,
 and, if you turn it on, answers `/ask` questions. Design:
 [`docs/design/specs/2026-10-18-desktop-app-design.md`](../docs/design/specs/2026-10-18-desktop-app-design.md).
 
 ![The Overview page of Everloot Desktop App](../docs/media/desktop.webp)
 
-It sends nothing the command line does not send, and it follows the same rules
-([`docs/DATA_POLICY.md`](../docs/DATA_POLICY.md)): anonymous events only, named data stays on your
-computer, nothing touches the game client. The window never shows an ad.
+It follows the same rules ([`docs/DATA_POLICY.md`](../docs/DATA_POLICY.md)). It sends anonymous
+open-world events, and census rows if you allowed the census on its setup screen (the box starts ticked)
+or later in Settings; the command-line uploader never sends census rows. It never sends named data
+(guild, gear, gold, collection), player rows or the installed addon list: those stay on your computer.
+Nothing touches the game client. The window never shows an ad.
 
 ## Install
 
-Downloads are on the [releases page](https://github.com/Everloot/everloot/releases) under
-`desktop-v*`: a Windows installer and a portable exe, a macOS disk image, a Linux AppImage. The
-builds are not code-signed yet, so Windows shows a SmartScreen notice (More info, Run anyway) and
-macOS needs a right-click, Open the first time. The `SHA256SUMS` file on each release lets you check
+Downloads are on [everloot.app/addon](https://everloot.app/addon) and the
+[releases page](https://github.com/Everloot/everloot/releases) under `desktop-v*`: a Windows installer
+and a portable exe, a macOS disk image, a Linux AppImage. The builds are not code-signed yet, so
+Windows shows a SmartScreen notice (More info, Run anyway). On macOS, open System Settings, Privacy &
+Security and choose Open Anyway (on macOS 14 and earlier, right-click the app and choose Open). The `SHA256SUMS` file on each release lets you check
 a download.
 
 On first run the app shows what leaves your computer, finds your World of Warcraft folder (or you
-browse to the product folder that holds `WTF`, for example `World of Warcraft\_classic_era_`), and
+browse to the folder of your game version that holds `WTF`, under `World of Warcraft`), and
 runs nothing until you press **Start**.
 
 ## What it does

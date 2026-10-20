@@ -122,11 +122,11 @@ export default function Page() {
       <List>
         <li>Node 18 or newer, or Python 3 with only its standard library. Nothing to install.</li>
         <li>A spreadsheet that opens CSV files: Excel, Google Sheets, LibreOffice or Numbers.</li>
-        <li>No account. Without a key, this endpoint allows 30 requests an hour for each IP address and up to 500 rows a page. <Link href="/docs/api/keys" className={docLink}>Limits and keys</Link> explains the free key that raises both.</li>
+        <li>No account. Without a key, this endpoint allows 30 requests an hour for each IP address, shared with the corpus, items, edges and tools endpoints, and up to 500 rows a page. <Link href="/docs/api/keys" className={docLink}>Limits and keys</Link> explains the free key that raises both.</li>
       </List>
 
       <Callout kind="note">
-        <p>WoW: Forever has not launched yet, so there are no drop rates and the answer is an empty list. The empty output below is what you get today; the rows shown after it are placeholders, so you can see the shape.</p>
+        <p>Before WoW: Forever launches on 4 November 2026, and until 3 installs loot the same source, there are few or no public drop rates and the answer can be an empty list. The empty output below is what an empty answer gives; the rows shown after it are placeholders, so you can see the shape.</p>
       </Callout>
 
       <H2 id="steps">Steps</H2>
@@ -143,8 +143,8 @@ export default function Page() {
         </Step>
         <Step title="Run it" id="run">
           <div className="mt-6"><CodeGroup title="Run" tabs={[{ label: "JavaScript", lang: "bash", code: RUN_JS }, { label: "Python", lang: "bash", code: RUN_PY }]} /></div>
-          <p className="mt-4 leading-7 text-fg-2">Today it prints this, and <C>drops.csv</C> holds only the header row:</p>
-          <div className="mt-6"><CodeGroup title="Output" tabs={[{ label: "Output", lang: "text", code: EMPTY_OUT }, { label: "drops.csv today", lang: "text", code: EMPTY_CSV }]} /></div>
+          <p className="mt-4 leading-7 text-fg-2">With no public rates it prints this, and <C>drops.csv</C> holds only the header row:</p>
+          <div className="mt-6"><CodeGroup title="Output" tabs={[{ label: "Output", lang: "text", code: EMPTY_OUT }, { label: "drops.csv, empty", lang: "text", code: EMPTY_CSV }]} /></div>
           <p className="mt-4 leading-7 text-fg-2">Once rates exist, each one is a row. Placeholder rows:</p>
           <div className="mt-6"><CodeGroup title="drops.csv" tabs={[{ label: "With rates", lang: "text", code: FILLED_CSV }]} /></div>
         </Step>
@@ -159,10 +159,10 @@ export default function Page() {
       <H2 id="check">Check your work</H2>
       <List>
         <li>The script prints how many rates it wrote and the credit line. The row count in the spreadsheet is that number plus the header row.</li>
-        <li>Every <C>rate</C> is between 0 and 1,.</li>
+        <li>Every <C>rate</C> is between 0 and 1.</li>
         <li><C>drops-credit.txt</C> holds one line starting with &quot;Data from Everloot&quot;.</li>
         <li>A 429 stops the script with <C>Rate limited. Try again in N seconds.</C> N is the <C>Retry-After</C> header. Wait that long, or use a free key.</li>
-        <li>A file with only the header row is a real answer today. It means no source has three installs behind it yet, not that nothing drops.</li>
+        <li>A file with only the header row is a real answer. It means no source has three installs behind it yet, not that nothing drops.</li>
       </List>
       <P>You can also ask for a smaller page with <C>?offset=0&amp;limit=100</C>. A <C>limit</C> above your page size is capped, and <C>next</C> still leads on.</P>
 

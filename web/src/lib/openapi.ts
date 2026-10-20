@@ -77,7 +77,7 @@ export function openApiDocument(): Json {
         "Everloot publishes what players saw in WoW: Forever, and states a fact only once three installs reported it.",
         "The corpus and the drop rates are Everloot's data under CC BY-SA 4.0: credit it when you show it.",
         "Game-file endpoints carry Blizzard's data, found in game files and unconfirmed, with the build they came from; they are not under Everloot's licence.",
-        `Every shape here is also published as JSON Schema under ${SITE}/schema/api/, and the same definitions ship as the npm package @everloot/protocol.`,
+        `Every shape here is also published as JSON Schema under ${SITE}/schema/api/, and the same definitions are the @everloot/protocol package in the repository (packages/protocol), not yet on npm.`,
         `For answering questions, the MCP server at ${SITE}/mcp/public is the right tool; this API is for building datasets and tools.`,
       ].join(" "),
       termsOfService: TERMS_URL,

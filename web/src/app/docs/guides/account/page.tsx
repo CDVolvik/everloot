@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Callout, C, H2, List, P, docLink } from "@/components/docs/blocks";
 import DocPage from "@/components/docs/DocPage";
 import { KEYS_PER_ACCOUNT } from "@/lib/api-keys";
+import { savedBuildsOn } from "@/lib/saved-builds";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata({
@@ -12,11 +13,15 @@ export const metadata: Metadata = pageMetadata({
 });
 
 export default function Page() {
+  // Read at build time, like the keys page: switching saved builds on takes a redeploy, which rebuilds this page.
+  const builds = savedBuildsOn();
   return (
     <DocPage href="/docs/guides/account">
       <P>
-        An account is for one thing today: making API keys. You do not need one to read the site, search, use the tools
-        or upload your addon data. The API works without one too, within the limits described below.
+        {builds
+          ? <>An account is for two things today: saving talent builds and making API keys.</>
+          : <>An account is for one thing today: making API keys.</>}{" "}
+        You do not need one to read the site, search, use the tools or upload your addon data. The API works without one too, within the limits described below.
       </P>
 
       <H2 id="signing-in">Signing in</H2>
@@ -42,7 +47,8 @@ export default function Page() {
       <P>
         <Link href="/account" className={docLink}>Your account</Link> shows your name, the email on the account if it
         has one, and how you sign in. If you signed up with email and a password, it also links to changing your
-        password. Below that is the list of your API keys.
+        password.{builds ? <> A link takes you to <Link href="/me" className={docLink}>My builds</Link>, where your saved talent builds and characters are.</> : null}{" "}
+        Below that is the list of your API keys.
       </P>
 
       <H2 id="api-keys">API keys</H2>
@@ -57,6 +63,7 @@ export default function Page() {
         <li>You can have {KEYS_PER_ACCOUNT} keys at a time. Revoke one to make another.</li>
         <li>The list shows the last four characters of each key, its label, when it was made and when it was last used.</li>
         <li>Revoking a key stops it at once.</li>
+        {builds && <li>A key made with <strong>Read my saved builds</strong> can also read your saved builds. The Desktop App uses one to put your builds in the game.</li>}
       </List>
       <Callout kind="warning">
         <p>

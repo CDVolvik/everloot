@@ -4,21 +4,27 @@ The contract between the Everloot addon, its uploaders, [everloot.app](https://e
 clients that read it: the record kinds the addon writes, the upload envelope, the parser the site runs,
 the sharing categories, the upload limits, the licence and credit line, the JSON API's response shapes
 and route catalogue, and the MCP server's tool table. One definition, used by the site, the knowledge
-base, the companion, the addon's contract tests and anyone building on the data.
+base, the Desktop App and the command-line uploader, the addon's contract tests and anyone building on the data.
 
 ## Status
 
-1.8.0, used by everloot.app. Not yet published to npm; the parts of this repository install it from
-the folder. After editing it, `npm run build` here, then in each consumer delete
+Package 1.8.0, used by everloot.app. It carries a second number, `PROTOCOL_VERSION` (record protocol
+1.3.0): the upload contract an uploader stamps on every envelope. The two move separately. Not yet
+published to npm; the parts of this repository install it from the folder. After editing it, `npm run build` here, then in each consumer delete
 `node_modules/@everloot/protocol` and `npm install` (npm keeps the packed copy while the version is the same).
 
 ## Install
 
+It is not on npm yet, so install it from a clone of the repository:
+
 ```sh
-npm install @everloot/protocol zod
+git clone https://github.com/Everloot/everloot.git
+cd everloot/packages/protocol && npm ci && npm run build
+cd /path/to/your-project && npm install /path/to/everloot/packages/protocol zod
 ```
 
-`zod` is a peer dependency. The package resolves the copy your project installs.
+`zod` is a peer dependency. The package resolves the copy your project installs. You can also skip the
+package and read the JSON Schema files in `schema/`, which the site serves at `https://everloot.app/schema/`.
 
 ## How it connects
 
@@ -36,7 +42,7 @@ npm install @everloot/protocol zod
 ```ts
 import { parseUpload, PROTOCOL_VERSION, UPLOAD_LIMITS } from "@everloot/protocol";
 
-const parsed = parseUpload({ addonVersion: "0.3.3", protocol: PROTOCOL_VERSION, records });
+const parsed = parseUpload({ addonVersion: "0.3.7", protocol: PROTOCOL_VERSION, records });
 if (parsed.ok) console.log(parsed.upload.records.length, "records accepted");
 ```
 
@@ -49,7 +55,7 @@ console.log(body.total, "loot windows;", MCP_TOOL_NAMES.length, "MCP tools;", AP
 
 ## Versioning
 
-Semver. A new record kind, field or tool is a minor release. Removing or renaming anything, making a
+Both numbers follow semver. A new record kind, field or tool is a minor release. Removing or renaming anything, making a
 field required, or tightening a limit is a major release. The server accepts the current major and the
 previous one. The generated `schema/` and `dist/` folders are committed; CI rebuilds them and fails on
 any difference.

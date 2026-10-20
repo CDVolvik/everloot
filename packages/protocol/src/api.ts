@@ -348,7 +348,7 @@ export interface ApiRoute {
 
 const PAGING: ApiQueryParam[] = [
   { name: "offset", description: "First row to return, 0 or more.", schema: { type: "integer", minimum: 0 } },
-  { name: "limit", description: "Rows per page. Capped at the caller's page size when the data guard is on.", schema: { type: "integer", minimum: 1 } },
+  { name: "limit", description: "Rows per page: at most 500 without an API key, 5,000 with one.", schema: { type: "integer", minimum: 1 } },
 ];
 
 const ERROR_RESPONSES = {
@@ -362,7 +362,7 @@ export const API_ROUTES: readonly ApiRoute[] = [
   {
     method: "GET", path: "/api/corpus/public",
     summary: "The public corpus: every public record players reported, without install ids",
-    description: "Anonymous observations as records, so anyone can check the counts behind a published fact. `kinds` narrows the body to the record kinds a reader needs. Named records appear only with a grant.",
+    description: "Anonymous observations as records, so anyone can check the counts behind a published fact. `kinds` narrows the body to the record kinds a reader needs. Named records appear only when their owner shares them with a verified sharing grant.",
     access: "key-or-rate-limited", data: "observed", paged: true,
     query: [
       { name: "kinds", description: "Comma-separated record kinds to include. Unknown kinds are a 400.", schema: { type: "string", examples: ["loot,vendor"] } },
@@ -397,7 +397,7 @@ export const API_ROUTES: readonly ApiRoute[] = [
   {
     method: "GET", path: "/api/edges/client-layer",
     summary: "The whole game-file relation layer of the current build",
-    description: "The committed client layer as one object: Blizzard's data, found in game files, unconfirmed. Public in the repository too, so it is neither paged nor limited. Cached for an hour.",
+    description: "The game-file relations of the current build as one object: Blizzard's data, found in game files, unconfirmed. Public in the repository too, so it is neither paged nor limited. Cached for an hour.",
     access: "open", data: "game-files",
     responses: { "200": { description: "The client layer file." } },
   },
@@ -426,7 +426,7 @@ export const API_ROUTES: readonly ApiRoute[] = [
   {
     method: "GET", path: "/api/market/prices",
     summary: "Forever market values from full auction scans players started",
-    description: "Without `realm`, the realms that have public values (and, in `houses`, which auction houses have values of their own). With it, the items with the most units listed on that realm as tuples in `fields` order, copper per unit. Without `house` the values blend every house of the realm; with it, only scans that named that house count. A day is public when three reporters scanned the item.",
+    description: "Without `realm`, the realms that have public values (and, in `houses`, which auction houses have values of their own). With it, the items with the most units listed on that realm as tuples in `fields` order, copper per unit. Without `house` the values blend every house of the realm; with it, only scans that named that house count. A day is public when three reporters scanned the item on that realm.",
     access: "rate-limited", data: "observed",
     query: [
       { name: "realm", description: "Realm name. Omit it to list realms.", schema: { type: "string", minLength: 2, maxLength: 40 } },

@@ -63,11 +63,37 @@ export default function ClientsPage() {
         OpenAI&apos;s contract asks for: <C>search</C> returns results with an id, a title and a URL to cite, and <C>fetch</C> takes
         one of those ids and returns the record whole, with its URL and the source, licence and date as metadata.
       </P>
+      <Steps>
+        <Step id="chatgpt-add" title="Add a custom connector">
+          <P>
+            In ChatGPT&apos;s settings, under Apps and Connectors, create a connector, name it Everloot and paste the endpoint
+            above. Choose no authentication. Depending on your plan, custom connectors may first need Developer mode turned on
+            in the advanced settings there. OpenAI moves these menus from time to time; its help center has the current path.
+          </P>
+        </Step>
+        <Step id="chatgpt-use" title="Use it in a chat">
+          <P>Turn the connector on for a chat and ask about WoW: Forever.</P>
+        </Step>
+      </Steps>
       <P>
-        Where an assistant has a directory of servers, Everloot is listed there as it is accepted. The{" "}
-        <a href={`${REPO}/blob/main/docs/2026-10-18-mcp-listings.md`} rel="noopener" className={docLink}>listing notes</a> in the
-        repository say where it stands.
+        Everloot is in the official MCP Registry as <C>app.everloot/knowledge</C>. It is not yet listed in the Claude or
+        ChatGPT directories, so add it by URL as above.
       </P>
+
+      <H2 id="editors">Cursor and VS Code</H2>
+      <P>
+        Cursor reads <C>.cursor/mcp.json</C> in your project (or <C>~/.cursor/mcp.json</C> for every project). VS Code reads{" "}
+        <C>.vscode/mcp.json</C>, which uses <C>servers</C> where most clients use <C>mcpServers</C>.
+      </P>
+      <div className="mt-6">
+        <CodeGroup
+          title="Editor config for the hosted endpoint"
+          tabs={[
+            { label: "Cursor", lang: "json", code: JSON.stringify({ mcpServers: { everloot: { url: MCP_URL } } }, null, 2) },
+            { label: "VS Code", lang: "json", code: JSON.stringify({ servers: { everloot: { type: "http", url: MCP_URL } } }, null, 2) },
+          ]}
+        />
+      </div>
 
       <H2 id="streamable-http">Any streamable HTTP client</H2>
       <P>

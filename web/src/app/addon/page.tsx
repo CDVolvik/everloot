@@ -173,9 +173,9 @@ export default async function AddonPage() {
         <section id="gold-per-hour" aria-labelledby="gold-per-hour-title" className="max-w-reading scroll-mt-20">
           <SectionHeading id="gold-per-hour-title">Gold per hour, now in the addon</SectionHeading>
           <p className="text-sm text-fg-2">
-            The gold per hour calculator that was on this site is moving into the Everloot addon, so you can work out what
-            a farm earns without leaving the game. The release notes say which addon version has it. Live prices stay on
-            the site, in the <Link href="/tools/auctions" className={link}>Auction House</Link>.
+            The gold per hour calculator that was on this site is now in the Everloot addon, so you can work out what a
+            farm earns without leaving the game: type <code>/everloot gph start</code>. Sessions stay in your file and are
+            never uploaded. Live prices stay on the site, in the <Link href="/tools/auctions" className={link}>Auction House</Link>.
           </p>
         </section>
 
@@ -184,7 +184,9 @@ export default async function AddonPage() {
           <div className="space-y-2 text-sm text-fg-2">
             <p>
               The addon only writes a file on your computer. Uploads, from the upload page or the app, carry anonymous
-              observations; named data stays on your computer unless you choose to share it. The players module is off
+              observations; named data stays on your computer unless you choose to share it. The census is on in a new
+              install and says so once in chat: it counts the race, class, level and faction of characters you see, never a
+              name. <code>/everloot census off</code> turns it off and deletes its rows. The players module is off
               until you type <code>/everloot players on</code>; when you turn it on, the addon records the name, realm,
               race, class, level and guild of your own characters and of players you target, mouse over or group with.
               Those rows can appear on the site&apos;s player pages, and any character can be hidden without an account.

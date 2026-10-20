@@ -24,7 +24,7 @@ the **companion** uploads and runs the `/ask` bridge on the player's computer.
 ```text
 Player plays
   -> addon records events into SavedVariables
-  -> upload page (preview, sharing choices) or companion (anonymous events only)
+  -> upload page (preview, sharing choices) or the Desktop App / command-line uploader (anonymous events; the app adds census rows if allowed)
   -> /api/intake: quotas, schema checks, event deduplication
   -> raw upload in R2, index row in Supabase
   -> cron snapshot merges new events into the corpus

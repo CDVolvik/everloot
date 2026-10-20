@@ -111,13 +111,14 @@ export const DOCS_TABS: DocsTab[] = [
           { href: "/docs/guides/addon", title: "Install the addon", lede: "Get the Everloot addon into WoW: Forever and check it is running." },
           { href: "/docs/guides/desktop", title: "The Desktop App", lede: "The optional app that sends your addon data and brings prices back to the game." },
           { href: "/docs/guides/upload", title: "Upload your data", lede: "Share what you saw in game, in the browser or through the Desktop App." },
+          { href: "/docs/guides/troubleshooting", title: "Troubleshooting", lede: "The addon will not load, a part is off, an upload is refused, or the API answers 429." },
         ],
       },
       {
         title: "Use the site", icon: "compass",
         pages: [
           { href: "/docs/guides/find", title: "Find things on the site", lede: "Search, the database, zone pages, the world map and the tools." },
-          { href: "/docs/guides/account", title: "Your account", lede: "Sign in with Battle.net or email, and manage your API keys." },
+          { href: "/docs/guides/account", title: "Your account", lede: "Sign in, and manage your API keys." },
           { href: "/docs/guides/privacy", title: "Privacy and your data", lede: "What an upload carries, what is published, and how to take it back." },
         ],
       },
