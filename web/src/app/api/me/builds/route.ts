@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { presentedKey } from "@/lib/api-keys";
 import { BUILDS_PER_ACCOUNT, parseBuildInput, savedBuildsOn, SAVES_PER_DAY } from "@/lib/saved-builds";
-import { fail, listOwn, meAccount, NO_STORE, ownBuildsForKey, saveBuild, unavailable } from "@/lib/saved-builds-store";
+import { fail, limitedText, listOwn, meAccount, NO_STORE, ownBuildsForKey, saveBuild, unavailable } from "@/lib/saved-builds-store";
 
 /**
  * The player's saved builds (docs/design/specs/2026-10-20-saved-builds-design.md). Nothing works until
@@ -21,7 +21,7 @@ export async function GET(req: Request) {
       if (read.ok) return NextResponse.json(read.value, { headers: NO_STORE });
       if (read.refusal === "no_scope") return fail(403, "This key can't read your saved builds");
       if (read.refusal === "limited") {
-        return fail(429, `This account's keys have used their requests for this hour. Try again in ${read.retryAfter} seconds.`, { "Retry-After": String(read.retryAfter) });
+        return fail(429, limitedText(read.retryAfter), { "Retry-After": String(read.retryAfter) });
       }
       return fail(401, "This API key is not valid or was revoked.", { "WWW-Authenticate": 'Bearer error="invalid_token"' });
     }

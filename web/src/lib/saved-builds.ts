@@ -146,6 +146,12 @@ export const CHARACTER_COLUMNS = "id,name,class_slug,realm,note";
 
 export const shortPath = (slug: string) => `/b/${slug}`;
 
+// The my_builds tool (Chat and MCP). Name, line and refusal sit here so the chat page can offer the tool too;
+// the tool itself is web/src/lib/my-builds-tool.ts.
+export const MY_BUILDS = "my_builds";
+export const MY_BUILDS_LINE = "Your saved talent builds on Everloot: with no slug the list, with a build's slug its talents.";
+export const MY_BUILDS_REFUSAL = "Sign in or use a key that can read your saved builds.";
+
 export function toBuild(row: BuildRow, site: string): SavedBuild {
   return {
     id: row.id, slug: row.slug, name: row.name, notes: row.notes, classSlug: row.class_slug, characterId: row.character_id,

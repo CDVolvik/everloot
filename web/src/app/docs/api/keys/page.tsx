@@ -97,6 +97,10 @@ export default function KeysPage() {
                 builds, newest first; each build has its share codes, its game build and, while sharing is on, its short link.
                 A key without that permission gets <C>403</C>. These requests count against the same hourly allowance.
               </P>
+              <P>
+                On the MCP endpoint the same key adds a <C>my_builds</C> tool that lists your builds and reads one build&apos;s
+                talents. See <Link href="/docs/mcp#your-builds" className={docLink}>the MCP overview</Link>.
+              </P>
               <div className="mt-6">
                 <CodeGroup
                   title="Read your saved builds"

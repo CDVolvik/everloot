@@ -122,6 +122,18 @@ export async function ownBuildsForKey(token: string): Promise<KeyRead> {
   return { ok: true, value: { characters: row.characters.map(toCharacter), builds: row.builds.map((b) => toBuild(b, site)) } };
 }
 
+/** Whether a live key has read:own, without counting a request. Decides if MCP lists my_builds for the key. */
+export async function keyReadsOwn(token: string): Promise<boolean> {
+  if (!KEY_PATTERN.test(token)) return false;
+  const rows = await authQuery<Array<{ scopes: string[]; expires_at: string | null }>>(
+    `api_keys?select=scopes,expires_at&token_hash=eq.${hashKey(token)}&revoked_at=is.null&limit=1`,
+  );
+  const key = rows[0];
+  return !!key && key.scopes.includes("read:own") && (key.expires_at === null || Date.parse(key.expires_at) > Date.now());
+}
+
+export const limitedText = (retryAfter: number) => `This account's keys have used their requests for this hour. Try again in ${retryAfter} seconds.`;
+
 // The routes under /api/me. Same-origin JSON for the signed-in player; nothing is cached.
 
 export const NO_STORE = { "Cache-Control": "private, no-store" };

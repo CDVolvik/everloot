@@ -6,6 +6,7 @@ import { CodeGroup } from "@/components/docs/DocsClient";
 import DocPage from "@/components/docs/DocPage";
 import { CONNECT_EXAMPLES as ex, MCP_TOOLS, MCP_URL } from "@/lib/docs/connect-data";
 import { DOCS_TABS } from "@/lib/docs/nav";
+import { MY_BUILDS_REFUSAL, savedBuildsOn } from "@/lib/saved-builds";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata({
@@ -26,6 +27,8 @@ function toolGroups() {
 export default function McpOverview() {
   const groups = toolGroups();
   const playerData = new Set<string>(PLAYER_DATA_TOOLS);
+  // Read at build time, like the keys page.
+  const savedBuilds = savedBuildsOn();
   return (
     <DocPage href="/docs/mcp">
       <P>
@@ -109,6 +112,36 @@ export default function McpOverview() {
           />
         </div>
       ))}
+
+      {savedBuilds && (
+        <>
+          <H2 id="your-builds">Your saved builds</H2>
+          <P>
+            One more tool, <C>my_builds</C>, reads the talent builds you saved in the calculator. It is not in the public list.
+            The server offers it only when the request sends a key made with <strong>Read my saved builds</strong> on the{" "}
+            <Link href="/docs/api/keys#your-builds" className={docLink}>keys page</Link>, as{" "}
+            <C>Authorization: Bearer evl_...</C>.
+          </P>
+          <List>
+            <li>
+              With no argument it lists your builds, newest first: name, slug, class and points, character, the active mark, the
+              game build (and whether it is older than the calculator&apos;s tree) and a link.
+            </li>
+            <li>
+              With a build&apos;s <C>slug</C> it returns that build: points per tree, the talents taken in each set, your notes and
+              anything that no longer fits today&apos;s tree.
+            </li>
+            <li>
+              The link is the build&apos;s short link while sharing is on, and otherwise a calculator link with the build&apos;s
+              codes.
+            </li>
+            <li>
+              Without such a key, a call answers &quot;{MY_BUILDS_REFUSAL}&quot; The chat on this site offers the tool when you
+              are signed in.
+            </li>
+          </List>
+        </>
+      )}
 
       <H2 id="beyond-tools">Beyond tools</H2>
       <List>

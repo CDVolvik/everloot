@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { answer, loadTools, NO_SOURCED_ANSWER, searchOnly, type ChatProgress, type ToolDef } from "@/lib/chat/agent";
+import { answer, loadTools, NO_SOURCED_ANSWER, searchOnly, signedIn, type ChatProgress, type ToolDef } from "@/lib/chat/agent";
 import { CHAT_PROVIDERS, chatProvider, type ChatProviderKind } from "@/lib/chat/providers";
 import { loadProviders, loadThread, pickModel, removeProvider, saveProvider, saveThread, type ChatMessage, type SavedProvider } from "@/lib/chat/store";
 
@@ -15,7 +15,8 @@ function Source({ text }: { text: string }) {
   return <span><a href={m[1]} target="_blank" rel="noopener noreferrer" className="underline hover:text-accent break-all">{decodeURIComponent(m[1].replace(/^https:\/\/(www\.)?/, ""))}</a> {m[2]}</span>;
 }
 
-export default function ChatClient() {
+/** `savedBuilds`: the saved-builds switch; with it on, a signed-in visitor's model also gets my_builds. */
+export default function ChatClient({ savedBuilds = false }: { savedBuilds?: boolean }) {
   const [providers, setProviders] = useState<SavedProvider[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [ready, setReady] = useState(false);
@@ -49,7 +50,7 @@ export default function ChatClient() {
       let r;
       if (!active) r = await searchOnly(q);
       else {
-        tools.current ??= await loadTools();
+        tools.current ??= await loadTools(fetch, savedBuilds && await signedIn());
         const preset = chatProvider(active.kind)!;
         r = await answer({ provider: preset, model: active.model, key: active.key, history, question: q, tools: tools.current, onProgress: setLive, signal: ctl.signal });
       }

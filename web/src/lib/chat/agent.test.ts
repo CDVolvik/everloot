@@ -1,5 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
-import { answer, callTool, CHAT_TOOLS, loadTools, NO_SOURCED_ANSWER, readOpenAiStream, searchOnly, sourcesIn, type ToolDef } from "./agent";
+import { MY_BUILDS_LINE, MY_BUILDS_REFUSAL } from "../saved-builds";
+import { ACCOUNT_TOOL, answer, callTool, CHAT_TOOLS, loadTools, NO_SOURCED_ANSWER, readOpenAiStream, searchOnly, signedIn, sourcesIn, type ToolDef } from "./agent";
 import { chatProvider } from "./providers";
 
 const HIT = "[lore_page/lore] Leeroy Jenkins\nLeeroy Jenkins is a valiant human paladin.\nSource: https://warcraft.wiki.gg/wiki/Leeroy_Jenkins (CC-BY-SA-4.0, retrieved 2023-11-13)\n";
@@ -31,7 +32,35 @@ test("tools load from the published schema files without their $schema and $id",
   expect(tools[0]).toEqual({ name: "search_knowledge", description: "T. D", inputSchema: { type: "object", properties: {} } });
 });
 
+test("my_builds is offered only for a signed-in visitor, with its one line and a slug argument", async () => {
+  const send = vi.fn(async (_url: string) => new Response(JSON.stringify({ title: "T", inputSchema: { type: "object", properties: {} } }), { status: 200 }));
+  expect((await loadTools(send as never)).map((t) => t.name)).toEqual([...CHAT_TOOLS]);
+  const tools = await loadTools(send as never, true);
+  expect(tools.map((t) => t.name)).toEqual([...CHAT_TOOLS, "my_builds"]);
+  expect(tools.at(-1)).toEqual(ACCOUNT_TOOL);
+  expect(ACCOUNT_TOOL.description).toBe(MY_BUILDS_LINE);
+  expect(ACCOUNT_TOOL.inputSchema).toMatchObject({ properties: { slug: { type: "string", pattern: "^[A-Za-z0-9]{8}$" } } });
+  // The schema files are fetched for the public tools only; my_builds has none.
+  expect(send.mock.calls.map((c) => c[0])).not.toContain("/schema/mcp/my_builds.json");
+});
+
+test("signed in means /api/auth/me names a user; anything else is signed out", async () => {
+  const me = (body: unknown, status = 200) => vi.fn(async () => new Response(JSON.stringify(body), { status })) as never;
+  expect(await signedIn(me({ user: { id: "u", name: "Thrall#1" } }))).toBe(true);
+  expect(await signedIn(me({ user: null }))).toBe(false);
+  expect(await signedIn(me({ error: "down" }, 503))).toBe(false);
+  expect(await signedIn(vi.fn(async () => { throw new TypeError("offline"); }) as never)).toBe(false);
+});
+
 describe("tool calls", () => {
+  test("my_builds goes to /api/tools like the others; the site answers the refusal when signed out", async () => {
+    const calls: string[] = [];
+    expect(await callTool("my_builds", { slug: "AbCd1234" }, site(calls))).toBe(HIT);
+    expect(calls).toEqual(["/api/tools/my_builds?slug=AbCd1234"]);
+    const refused = vi.fn(async () => new Response(JSON.stringify({ error: MY_BUILDS_REFUSAL }), { status: 401 }));
+    expect(await callTool("my_builds", {}, refused as never)).toBe(`Tool error: ${MY_BUILDS_REFUSAL}`);
+  });
+
   test("go to /api/tools with plain arguments in the query string", async () => {
     const calls: string[] = [];
     expect(await callTool("item_page", { itemId: 19019, nested: { no: 1 }, empty: null }, site(calls))).toBe(HIT);
