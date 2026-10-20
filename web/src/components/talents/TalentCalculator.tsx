@@ -8,6 +8,7 @@ import {
 } from "@/lib/talents/rules";
 import { CREDIT, hasNodeFrames, loadGameAssets, type GameAssets } from "@/lib/talents/assets";
 import { encodeBuild } from "@/lib/talents/share";
+import { previewPath, summarizeBuild } from "@/lib/talents/summary";
 import type { Ranks, TalentCatalog } from "@/lib/talents/types";
 import GameIcon from "@/components/game/GameIcon";
 import GameTree from "./GameTree";
@@ -20,8 +21,11 @@ import TalentTreeView, { assetOf, CLASS_TEXT, type TipMode } from "./TalentTreeV
 type Sets = [Ranks, Ranks];
 const LONG_PRESS_MS = 500;
 
-/** `treeIcons` are the trees' icons in the catalog's tree order, from the site's asset folder; absent without one. */
-export default function TalentCalculator({ catalog, treeIcons }: { catalog: TalentCatalog; treeIcons?: (string | null)[] }) {
+/**
+ * `treeIcons` are the trees' icons in the catalog's tree order, from the site's asset folder; absent without one.
+ * `initialCodes` are the two sets' share codes from a build link (/b/...), opened when the address has no #plan=.
+ */
+export default function TalentCalculator({ catalog, treeIcons, initialCodes }: { catalog: TalentCatalog; treeIcons?: (string | null)[]; initialCodes?: (string | null)[] }) {
   const { rules } = catalog;
   const [history, setHistory] = useState<History<Sets>>(() => startHistory<Sets>([{}, {}]));
   const [active, setActive] = useState<0 | 1>(0);
@@ -112,11 +116,18 @@ export default function TalentCalculator({ catalog, treeIcons }: { catalog: Tale
       setReport({ ...loaded[0].report, problems, loaded: true });
       setMessage(problems.length === 0 ? `${loaded.length === 2 ? "Both sets" : "Build"} loaded from the link.` : "Loaded from the link with changes. The list below says what.");
     }
+    // A build link carries its codes in the path; move them into the class page's #plan= address, which is
+    // what the page keeps up to date from here on, and read them from there.
+    if (!window.location.hash && initialCodes?.some(Boolean)) {
+      window.history.replaceState(window.history.state, "", `/tools/talents/${catalog.classSlug}${planHash(initialCodes[0] ?? null, initialCodes[1] ?? null)}`);
+    }
     fromHash(true);
     // The page rewrites its own address as points are spent; only a hash it did not write is a new link.
     const onHashChange = () => { if (window.location.hash !== written.current) fromHash(false); };
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
+    // initialCodes come from the server once per page; reading them again on a change is not wanted.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [catalog, rules.maxLevel, rules.dualSpecLevel]);
 
   // Undo and redo can bring back more points than the level now holds (spend 8, undo 3, lower the
@@ -181,11 +192,14 @@ export default function TalentCalculator({ catalog, treeIcons }: { catalog: Tale
   useEffect(() => {
     if (!linkReady.current) { linkReady.current = true; return; }
     const codeOf = (r: Ranks) => (pointsSpent(r) > 0 ? encodeBuild({ classSlug: catalog.classSlug, specId: catalog.specId, build: catalog.build, ranks: r }) : null);
-    const hash = planHash(codeOf(history.present[0]), codeOf(history.present[1]));
+    const [first, second] = [codeOf(history.present[0]), codeOf(history.present[1])];
+    const hash = planHash(first, second);
     const { pathname, search, origin } = window.location;
     written.current = hash;
     if (window.location.hash !== hash) window.history.replaceState(window.history.state, "", `${pathname}${search}${hash}`);
-    setLink(hash ? `${origin}${pathname}${hash}` : "");
+    // The link handed out is the build link: same build, and its preview in a chat names it.
+    const preview = previewPath(catalog.classSlug, first, second);
+    setLink(preview ? `${origin}${preview}` : "");
   }, [history.present, catalog]);
 
   const [copied, setCopied] = useState(false);
@@ -323,7 +337,7 @@ export default function TalentCalculator({ catalog, treeIcons }: { catalog: Tale
   }
   const classText = CLASS_TEXT[catalog.classSlug];
   // The tree with the most points names the build, as players say it ("Fire 17/34/0"); none before the first point.
-  const lead = spent === 0 ? null : catalog.trees.reduce((best, t) => ((perTree.get(t.id) ?? 0) > (perTree.get(best.id) ?? 0) ? t : best));
+  const lead = summarizeBuild(catalog, ranks).lead;
   const rovingFor = (treeId: number) => rovingByTree[treeId] ?? catalog.nodes.find((n) => n.treeId === treeId)!.id;
 
   return (
@@ -334,7 +348,7 @@ export default function TalentCalculator({ catalog, treeIcons }: { catalog: Tale
           <div className="min-w-0">
             <p className="font-mono text-xs text-muted">{active === 0 ? "First set" : "Second set"} · level {level}</p>
             <p className="text-2xl font-bold tracking-tight">
-              <span className={classText}>{lead ? lead.name : catalog.className}</span>{" "}
+              <span className={classText}>{lead ?? catalog.className}</span>{" "}
               <span className="font-mono tabular-nums text-fg" aria-label={`Points by tree: ${catalog.trees.map((t) => `${t.name} ${perTree.get(t.id) ?? 0}`).join(", ")}`}>
                 {catalog.trees.map((t) => perTree.get(t.id) ?? 0).join("/")}
               </span>
