@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, test } from "vitest";
 import { loadProviders } from "../../companion/src/providers/config";
-import { ownProvider, removeProvider, setProvider } from "../src/main/providers";
+import { ownProvider, ownProviders, removeProvider, setProvider, useModel } from "../src/main/providers";
 import { PROVIDER_PRESETS } from "../src/shared/providers";
 
 const dirs: string[] = [];
@@ -28,16 +28,45 @@ test("OpenRouter and OpenCode Zen become openai-compatible entries on their base
   expect(config(d).providers[0]).toEqual({ type: "openai-compatible", baseUrl: "https://openrouter.ai/api/v1", model: "qwen/qwen3.7-flash", apiKeyFile: join(d, "openrouter.key"), source: "everloot-desktop", kind: "openrouter" });
   expect(loadProviders(join(d, "config.json"))[0].name).toBe("openai-compatible:qwen/qwen3.7-flash");
 
-  // Switching providers replaces the entry and removes the old key file.
+  // A second provider is saved beside the first and goes first; both keys stay.
   setProvider(d, { kind: "opencode", key: "zen-example-key" });
-  expect(existsSync(join(d, "openrouter.key"))).toBe(false);
-  expect(config(d).providers).toHaveLength(1);
+  expect(existsSync(join(d, "openrouter.key"))).toBe(true);
   expect(ownProvider(d)).toEqual({ kind: "opencode", model: "glm-5.3-flash-free", baseUrl: "https://opencode.ai/inference/openai/v1" });
 
   setProvider(d, { kind: "ollama", model: "qwen3:8b" });
-  expect(existsSync(join(d, "opencode.key"))).toBe(false);
   expect(config(d).providers[0]).toEqual({ type: "openai-compatible", baseUrl: "http://localhost:11434/v1", model: "qwen3:8b", source: "everloot-desktop", kind: "ollama" });
-  expect(loadProviders(join(d, "config.json"))).toHaveLength(1);
+  expect(ownProviders(d).map((p) => p.kind)).toEqual(["ollama", "opencode", "openrouter"]);
+  expect(loadProviders(join(d, "config.json"))).toHaveLength(3);
+});
+
+test("the model menu switches between saved providers without the key, and remove takes one provider out", () => {
+  const d = dir();
+  setProvider(d, { kind: "anthropic", key: ANT });
+  setProvider(d, { kind: "openrouter", key: OR });
+  expect(useModel(d, "anthropic", "claude-haiku-5-5")).toEqual({ kind: "anthropic", model: "claude-haiku-5-5", baseUrl: null });
+  expect(config(d).providers.map((p: { model: string }) => p.model)).toEqual(["claude-haiku-5-5", "deepseek/deepseek-v4.1-flash"]);
+  expect(config(d).providers[0].apiKeyFile).toBe(join(d, "anthropic.key"));
+  // A saved provider changes model in the form without the key being pasted again.
+  setProvider(d, { kind: "openrouter", model: "qwen/qwen3.7-flash" });
+  expect(readFileSync(join(d, "openrouter.key"), "utf8").trim()).toBe(OR);
+  expect(ownProvider(d)).toMatchObject({ kind: "openrouter", model: "qwen/qwen3.7-flash" });
+  expect(() => useModel(d, "opencode", "glm-5.3-flash-free")).toThrow(/add it first/);
+  expect(() => useModel(d, "anthropic", "not a model")).toThrow(/model id/);
+  removeProvider(d, "anthropic");
+  expect(existsSync(join(d, "anthropic.key"))).toBe(false);
+  expect(existsSync(join(d, "openrouter.key"))).toBe(true);
+  expect(ownProviders(d).map((p) => p.kind)).toEqual(["openrouter"]);
+});
+
+test("a hand-written first entry means the app's saved provider is not the one in use", () => {
+  const d = dir();
+  setProvider(d, { kind: "anthropic", key: ANT });
+  const c = config(d);
+  writeFileSync(join(d, "config.json"), JSON.stringify({ providers: [{ type: "openai-compatible", baseUrl: "http://x", model: "m" }, ...c.providers] }));
+  expect(ownProvider(d)).toBeNull();
+  expect(ownProviders(d)).toHaveLength(1);
+  useModel(d, "anthropic", "claude-sonnet-5-5");
+  expect(ownProvider(d)).toMatchObject({ kind: "anthropic" });
 });
 
 test("a custom server takes its own address and an optional key", () => {
@@ -88,7 +117,7 @@ test("bad pastes are refused before anything is written", () => {
   const d = dir();
   expect(() => setProvider(d, { kind: "anthropic", key: "hunter2" })).toThrow(/sk-ant-/);
   expect(() => setProvider(d, { kind: "openrouter", key: ANT })).toThrow(/sk-or-/);
-  expect(() => setProvider(d, { kind: "openrouter", key: "" })).toThrow(/sk-or-/);
+  expect(() => setProvider(d, { kind: "openrouter", key: "" })).toThrow(/Paste the key first.*sk-or-/);
   expect(() => setProvider(d, { kind: "opencode", key: "" })).toThrow(/Paste the key/);
   expect(() => setProvider(d, { kind: "ollama", model: "" })).toThrow(/Pick or type a model/);
   expect(() => setProvider(d, { kind: "ollama", model: "not a model id" })).toThrow(/model id/);

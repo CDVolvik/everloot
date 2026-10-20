@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vitest";
 import { CURRENT_BUILD, TABLES, type BuffTable } from "@/data/game-data/raid";
 import {
-  coverage, decodeRaid, emptySlots, encodeRaid, findCode, groupsOf, resize, SIZES, treeNames,
+  coverage, decodeRaid, describeRaid, emptySlots, encodeRaid, findCode, groupsOf, resize, roleOf, roster, SIZES, swapSlots, treeNames,
   type Slot, type Slots,
 } from "./raid";
 
@@ -266,4 +266,72 @@ describe("layout helpers", () => {
     expect(small[0]).toEqual(slot("mage"));
     expect(resize(small, 40)).toHaveLength(40);
   });
+});
+
+describe("swapSlots", () => {
+  test("swaps two members", () => {
+    const s: Slots = [slot("mage", 1), slot("priest", 2), null];
+    expect(swapSlots(s, 0, 1)).toEqual([slot("priest", 2), slot("mage", 1), null]);
+  });
+  test("moves a member into an empty slot, across groups, without touching the input", () => {
+    const s = emptySlots(10);
+    s[0] = slot("rogue", 3);
+    const next = swapSlots(s, 0, 7);
+    expect(next[0]).toBeNull();
+    expect(next[7]).toEqual(slot("rogue", 3));
+    expect(s[0]).toEqual(slot("rogue", 3));
+  });
+  test("returns the same array when nothing changes", () => {
+    const s: Slots = [slot("mage"), null, null];
+    expect(swapSlots(s, 0, 0)).toBe(s);
+    expect(swapSlots(s, 1, 2)).toBe(s);
+    expect(swapSlots(s, 0, 3)).toBe(s);
+    expect(swapSlots(s, -1, 0)).toBe(s);
+  });
+  test("a moved raid still round-trips through the share code", () => {
+    const s = emptySlots(20);
+    s[0] = slot("warrior", 3);
+    const moved = swapSlots(s, 0, 12);
+    const back = decodeRaid(encodeRaid({ size: 20, build: "1.0.1", slots: moved }));
+    expect(back).toMatchObject({ ok: true, value: { slots: moved } });
+  });
+});
+
+describe("roles", () => {
+  test("reads the role from class and tree", () => {
+    expect(roleOf(slot("warrior", 3))).toBe("tank");
+    expect(roleOf(slot("warrior", 2))).toBe("damage");
+    expect(roleOf(slot("paladin", 1))).toBe("healer");
+    expect(roleOf(slot("paladin", 2))).toBe("tank");
+    expect(roleOf(slot("priest", 3))).toBe("damage");
+    expect(roleOf(slot("shaman", 3))).toBe("healer");
+    expect(roleOf(slot("druid", 3))).toBe("healer");
+    expect(roleOf(slot("druid", 1))).toBe("damage");
+  });
+  test("feral is unknown, since it can tank or deal damage", () => {
+    expect(roleOf(slot("druid", 2))).toBe("unknown");
+  });
+  test("any tree is unknown, except for classes with one role", () => {
+    expect(roleOf(slot("priest", 0))).toBe("unknown");
+    expect(roleOf(slot("warrior", 0))).toBe("unknown");
+    expect(roleOf(slot("mage", 0))).toBe("damage");
+    expect(roleOf(slot("hunter", 2))).toBe("damage");
+  });
+  test("roster counts classes and roles", () => {
+    const r = roster([slot("warrior", 3), slot("priest", 2), slot("priest", 0), slot("mage"), null]);
+    expect(r.filled).toBe(4);
+    expect(r.classes.priest).toBe(2);
+    expect(r.classes.druid).toBe(0);
+    expect(r.roles).toEqual({ tank: 1, healer: 1, damage: 1, unknown: 1 });
+  });
+});
+
+test("a raid is described by its size and roles, for page titles and link previews", () => {
+  const slots = emptySlots(10);
+  slots[0] = { class: "warrior", tree: 3 };
+  slots[1] = { class: "priest", tree: 2 };
+  slots[2] = { class: "mage", tree: 0 };
+  slots[3] = { class: "druid", tree: 2 };
+  expect(describeRaid(10, slots)).toEqual({ title: "10-player raid", roles: "1 tank, 1 healer, 1 damage, 1 not known", filled: 4 });
+  expect(describeRaid(20, emptySlots(20)).roles).toBe("0 tanks, 0 healers, 0 damage");
 });
