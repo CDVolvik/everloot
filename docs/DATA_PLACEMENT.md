@@ -80,7 +80,7 @@ Coming datasets, placed now so the code is written to the right spot:
 |---|---|---|
 | Market scans and sale ledgers | Observation (rule 3) | Record kinds in the protocol, raw in R2, rollups in the release; a per-day price object in R2 for bulk |
 | Census (`population`) | Observation (rule 3) | Record kind, raw in R2, published at the 10-character and 3-install threshold through the release |
-| Talent loadouts shared by players | Nothing stored | The code is the URL; nothing server-side |
+| Saved builds (talent codes, names, notes, character labels) | Live rows (rule 4) | Supabase (`saved_builds`, `build_characters`), per account, private unless the link is shared; deleted with the account. A code link (`#plan=`, `/b/<codes>`) still stores nothing |
 | Trait tables, spell effects per build | Blizzard's (rule 2) | Private bucket per build; the reviewed JSON layer in git |
 | Sign-in accounts and sessions | Live rows (rule 4) | Supabase, as the sign-in spec describes |
 

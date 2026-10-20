@@ -513,3 +513,26 @@ its counts are deleted 30 days after it was revoked, or at once when its owner d
 /account. Deleting an account (write to hello@everloot.app) deletes its keys and counts. Anonymous
 requests are counted per hour against a keyed hash of the address, which is deleted after about a
 day; the address itself is never stored.
+
+## Saved builds
+
+A signed-in player can save builds from the talent calculator to their account. This is the
+player's own data, not game data and not an observation, and none of it is published as a dataset.
+
+- **What a saved build holds.** The calculator's share codes for one or two talent sets (the same
+  `EL1-...` code a link carries), the game build they were made on, a name, optional notes, an
+  optional character label, and whether its short link is on. Nothing from the game files and
+  nothing the addon observed.
+- **Character labels are typed, not checked.** A label is a name, a class, an optional realm and an
+  optional note that the player types. It is not looked up in the game, the census or the player
+  pages, and it is never shown to anyone else.
+- **A shared link is public to anyone who has it.** Each build has a short link, `/b/<code>`, on by
+  default. While it is on, anyone with the link sees the build's name, notes and talents, but not
+  the character label. The owner's name shows only if the owner chooses to show it. The page is
+  not indexed by search engines. Turning sharing off or deleting the build stops the link at once.
+- **Keys.** A free key made with "Read my saved builds" (`read:own`) can read its owner's builds
+  and labels, for the Desktop App, MCP clients and scripts. A key without it cannot.
+- **Limits.** 200 builds and 30 character labels per account, and 300 saves a day.
+- **Deletion.** The owner deletes a build or a label on /me at any time. Deleting a label keeps its
+  builds, with no character. Deleting the account (write to hello@everloot.app) deletes every
+  saved build and label with it.

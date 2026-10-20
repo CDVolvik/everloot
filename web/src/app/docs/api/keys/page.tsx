@@ -8,6 +8,7 @@ import DocPage from "@/components/docs/DocPage";
 import { KEYS_MADE_PER_DAY, KEYS_PER_ACCOUNT, REVOKED_KEPT_DAYS, USAGE_KEPT_DAYS } from "@/lib/api-keys";
 import { ANON_PAGE, ANON_PER_HOUR, guardOn, KEY_PAGE, KEY_PER_HOUR } from "@/lib/data-guard";
 import { REQUESTS_PER_HOUR } from "@/lib/docs/connect-data";
+import { savedBuildsOn } from "@/lib/saved-builds";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata({
@@ -19,6 +20,7 @@ export const metadata: Metadata = pageMetadata({
 export default function KeysPage() {
   // Read at build time; turning the guard on in Vercel takes a redeploy, which rebuilds this page too.
   const guard = guardOn();
+  const builds = savedBuildsOn();
   return (
     <DocPage href="/docs/api/keys">
       <P>
@@ -85,6 +87,24 @@ export default function KeysPage() {
               tied to it, write to <a href="mailto:hello@everloot.app" className={docLink}>hello@everloot.app</a>.
             </li>
           </List>
+
+          {builds && (
+            <>
+              <H2 id="your-builds">Your saved builds</H2>
+              <P>
+                A key made with <strong>Read my saved builds</strong> also reads the builds you saved in the talent calculator.
+                The Desktop App uses it to put them in the game. <C>GET /api/me/builds</C> answers with your characters and your
+                builds, newest first; each build has its share codes, its game build and, while sharing is on, its short link.
+                A key without that permission gets <C>403</C>. These requests count against the same hourly allowance.
+              </P>
+              <div className="mt-6">
+                <CodeGroup
+                  title="Read your saved builds"
+                  tabs={[{ label: "cURL", lang: "bash", code: `curl "${SITE}/api/me/builds" \\\n  -H "Authorization: Bearer $EVERLOOT_API_KEY"` }]}
+                />
+              </div>
+            </>
+          )}
 
           <H2 id="your-keys">Your keys</H2>
           <ApiKeys />
