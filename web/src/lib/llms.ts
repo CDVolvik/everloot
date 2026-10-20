@@ -25,7 +25,7 @@ const PAGES: { title: string; path: string; text: string }[] = [
   { title: "Census", path: "/census", text: "Who plays what: factions, races, classes, race and class, and level bands, from players who turned the census on. Each character counts once; a count shows from 10 characters reported by 3 installs, rounded to the nearest 5." },
   { title: "Patch notes and Blizzard posts", path: "/changes", text: "New game builds, hotfixes and Blizzard blue posts, newest first, with links to Blizzard's originals. A build's date is when Everloot first saw it." },
   { title: "World map", path: "/map", text: "Zones and dungeon and raid entrances read from the game files, drawn by Everloot with no game art. Found in game files, unconfirmed." },
-  { title: "Addons", path: "/addons", text: "Everloot's collection addon and Polestar, a leveling-guide addon." },
+  { title: "Addons", path: "/addons", text: "Addons and tools made for WoW: Forever, ranked by GitHub stars, as a leaderboard or cards." },
   { title: "Upload addon data", path: "/upload", text: "Download the Everloot addon (AGPL-3.0) and upload what it collected, with a preview and explicit sharing choices." },
   { title: "Lore archive", path: "/lore", text: "Warcraft Wiki pages as of 13 November 2023, CC BY-SA 4.0. Lore and history, not WoW: Forever data." },
   { title: "Docs", path: "/docs", text: "Guides for players, and the API reference, MCP server, tooltips and cookbook for developers." },
