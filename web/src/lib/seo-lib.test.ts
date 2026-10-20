@@ -64,4 +64,6 @@ test("every response carries the security headers; the CSP enforces only the plu
   for (const host of ["static.cloudflareinsights.com", "www.googletagmanager.com", "eu.i.posthog.com", "pagead2.googlesyndication.com"]) expect(csp).toContain(host);
   // The talent calculator fetches its asset manifest from the asset host.
   expect(csp).toMatch(/connect-src [^;]*https:\/\/assets\.everloot\.app/);
+  // /chat calls the player's own provider from the page.
+  expect(csp).toMatch(/connect-src [^;]*https:\/\/api\.anthropic\.com [^;]*https:\/\/openrouter\.ai [^;]*http:\/\/localhost:11434/);
 });

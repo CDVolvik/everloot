@@ -1,5 +1,5 @@
 name: Bug report
-description: Something in the addon, the site or the companion does not work.
+description: Something in the addon, the site, the Desktop App or the companion does not work.
 labels: ["bug"]
 body:
   - type: dropdown
@@ -9,6 +9,7 @@ body:
       options:
         - Addon (in game)
         - everloot.app
+        - Desktop App
         - Companion
         - MCP / AI assistant
     validations:
@@ -34,4 +35,10 @@ body:
     id: page
     attributes:
       label: Page or version
-      description: The everloot.app page, or the companion version.
+      description: The everloot.app page, or the companion or Desktop App version.
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Desktop App diagnostics
+      description: Filled in when you report from the Desktop App (its Report a bug button). Your user folder is hidden and the token is never included; read it before sending.
+      render: text

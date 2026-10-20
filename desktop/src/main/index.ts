@@ -1,10 +1,10 @@
-import { BrowserWindow, Notification, app, dialog, ipcMain, screen, shell } from "electron";
+import { BrowserWindow, Notification, app, clipboard, dialog, ipcMain, screen, shell } from "electron";
 import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { readAsks } from "../../../companion/src/bridge/asks";
 import { loadProviders } from "../../../companion/src/providers/config";
-import type { AddonInfo, AppState, AskInfo, Job, MarketInfo, Settings } from "../shared/types";
+import type { AddonInfo, AppState, AskInfo, Job, MarketInfo, PriceLookup, Settings } from "../shared/types";
 import { JOBS } from "../shared/types";
 import { presetFor, type ProviderKind } from "../shared/providers";
 import { listBackups, restoreBackup } from "./backups";
@@ -18,11 +18,11 @@ import { allowedExternal } from "./external";
 import { candidateRoots, detectGameFolders, realFs } from "./game-folder";
 import { newestScans, readScanAges, staleScans, summarizeFiles } from "./inspect";
 import { companionJobs } from "./jobs";
-import { listRealms, ownRealms } from "./market";
+import { itemIdFrom, listRealms, ownRealms, priceRows, readPricesFile } from "./market";
 import { loadSettings, mergeSettings, saveSettings } from "./settings";
-import { SITE_TOOLS, createSiteViews, siteToolPath } from "./site-views";
 import { createTray } from "./tray";
-import { checkForUpdates, fetchReleases, newestDesktopRelease } from "./updates";
+import { checkForUpdates, fetchReleases, updateFrom } from "./updates";
+import { downloadUpdate, runInstaller } from "./self-update";
 import { fitWindow, readWindowState, writeWindowState } from "./window-state";
 
 /** The same folder the command line uses (`companion/src/cli.ts` defaultStatePath), so both share sent.json. */
@@ -34,13 +34,17 @@ function dataFolder(): string {
   return join(process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config"), "everloot");
 }
 
-/** Remembers one network answer for a while, so opening a page twice does not ask the site twice. */
-function cached<T>(ms: number, load: () => Promise<T>): () => Promise<T> {
-  let value: { at: number; data: T } | null = null;
+/**
+ * Remembers one network answer for a while, so opening a page twice does not ask the site twice.
+ * The key (the site address) is part of it: another site in Settings is asked at once.
+ */
+function cached<T>(ms: number, load: () => Promise<T>, key: () => string = () => ""): () => Promise<T> {
+  let value: { at: number; key: string; data: T } | null = null;
   return async () => {
-    if (value && Date.now() - value.at < ms) return value.data;
+    const k = key();
+    if (value && value.key === k && Date.now() - value.at < ms) return value.data;
     const data = await load();
-    value = { at: Date.now(), data };
+    value = { at: Date.now(), key: k, data };
     return data;
   };
 }
@@ -55,12 +59,14 @@ if (!app.requestSingleInstanceLock()) {
   const jobs = companionJobs(data, () => settings);
   const engine = createEngine(jobs.deps);
   let win: BrowserWindow | null = null;
-  let site: ReturnType<typeof createSiteViews> | null = null;
   let tray: ReturnType<typeof createTray> | null = null;
   let quitting = false;
 
   const addonsDir = () => (settings.gameFolder ? join(settings.gameFolder, "Interface", "AddOns") : null);
   let update: AppState["update"] = null;
+  let updateProgress: AppState["updateProgress"] = { stage: "idle", percent: 0, error: null };
+  /** The verified installer, once downloaded, and the version it installs. */
+  let downloaded: { path: string; version: string } | null = null;
   // Scan ages come from parsing each account file; remembered per file size and write time so a broadcast stays cheap.
   const scanMemo = new Map<string, { key: string; scans: ReturnType<typeof readScanAges> }>();
   const allScans = () => engine.snapshot().files.flatMap((f) => {
@@ -88,7 +94,7 @@ if (!app.requestSingleInstanceLock()) {
       };
     },
   }));
-  const appState = (): AppState => ({ version: app.getVersion(), platform: process.platform, dataFolder: data, notice: loaded.error, settings, engine: engine.snapshot(), siteTools: SITE_TOOLS, update, staleScans: staleScans(allScans()) });
+  const appState = (): AppState => ({ version: app.getVersion(), platform: process.platform, dataFolder: data, notice: loaded.error, settings, engine: engine.snapshot(), update, updateProgress, staleScans: staleScans(allScans()) });
   const broadcast = () => {
     const s = appState();
     win?.webContents.send("state", s);
@@ -115,8 +121,8 @@ if (!app.requestSingleInstanceLock()) {
   // The desktop release check at start is a line on the Overview and in the tray, never a notification.
   const desktopUpdateLine = async () => {
     try {
-      const newest = newestDesktopRelease(await releases());
-      update = newest ? { current: app.getVersion(), latest: newest.version, url: newest.url, newer: compareVersions(newest.version, app.getVersion()) > 0 } : null;
+      const check = updateFrom(await releases(), app.getVersion(), process.platform, Boolean(process.env.PORTABLE_EXECUTABLE_FILE));
+      update = check.latest ? check : null;
       if (update?.newer) broadcast();
     } catch { update = null; }
   };
@@ -137,8 +143,8 @@ if (!app.requestSingleInstanceLock()) {
   const checkReleases = () => { if (settings.consentedAt) { void addonUpdateNotice(); void desktopUpdateLine(); } };
 
   const releases = cached(10 * 60 * 1000, () => fetchReleases(fetch, `everloot-desktop/${app.getVersion()}`));
-  const knownRealms = cached(10 * 60 * 1000, () => listRealms(settings.endpoint));
-  const changes = cached(15 * 60 * 1000, () => fetchChanges(settings.endpoint));
+  const knownRealms = cached(10 * 60 * 1000, () => listRealms(settings.endpoint), () => settings.endpoint);
+  const changes = cached(15 * 60 * 1000, () => fetchChanges(settings.endpoint), () => settings.endpoint);
 
   const applyLoginItem = () => {
     if (process.platform === "linux") return; // no login item API there; the AppImage can be added by hand
@@ -166,7 +172,6 @@ if (!app.requestSingleInstanceLock()) {
       autoHideMenuBar: true,
       webPreferences: { preload: join(__dirname, "preload.cjs"), contextIsolation: true, nodeIntegration: false, sandbox: true },
     });
-    site = createSiteViews(win, () => settings.endpoint);
     win.loadFile(join(__dirname, "renderer", "index.html"));
     win.once("ready-to-show", () => { win?.show(); });
     // The size and place come back next time; written a moment after the last drag, and on close.
@@ -177,7 +182,10 @@ if (!app.requestSingleInstanceLock()) {
     win.on("move", rememberSoon);
     // Close keeps the app in the tray; Quit in the tray menu ends it.
     win.on("close", (e) => { if (saveTimer) clearTimeout(saveTimer); remember(); if (!quitting) { e.preventDefault(); win?.hide(); } });
-    win.on("closed", () => { site?.destroy(); site = null; win = null; });
+    // Windows sign-out, restart or shutdown: let the window close instead of holding the session up.
+    win.on("query-session-end", () => { quitting = true; });
+    win.on("session-end", () => { quitting = true; });
+    win.on("closed", () => { win = null; });
     win.webContents.setWindowOpenHandler(({ url }) => { if (allowedExternal(url)) void shell.openExternal(url); return { action: "deny" }; });
     win.webContents.on("will-navigate", (e) => e.preventDefault());
   }
@@ -192,8 +200,10 @@ if (!app.requestSingleInstanceLock()) {
   const engineInputs = (s: Settings) => JSON.stringify([s.gameFolder, s.endpoint, s.upload, s.prices, s.ask, s.consentedAt]);
   ipcMain.handle("saveSettings", (_e, patch: unknown) => {
     const before = settings;
-    settings = mergeSettings(settings, patch);
-    saveSettings(settingsPath, settings);
+    const next = mergeSettings(settings, patch);
+    // Written first: a save that fails (data folder read-only or full) changes nothing and the page hears why.
+    saveSettings(settingsPath, next);
+    settings = next;
     applyLoginItem();
     if (!before.consentedAt && settings.consentedAt) checkReleases();
     if (engineInputs(before) !== engineInputs(settings)) engine.start(settings);
@@ -219,7 +229,72 @@ if (!app.requestSingleInstanceLock()) {
     void shell.openExternal(url);
     return true;
   });
-  ipcMain.handle("checkForUpdates", () => checkForUpdates(app.getVersion()));
+  // A check from Settings also refreshes the sidebar's update button.
+  const messageBox = (options: Electron.MessageBoxOptions) => (win ? dialog.showMessageBox(win, options) : dialog.showMessageBox(options));
+  // Windows installs download the update here, checked against SHA256SUMS, and install it on restart.
+  ipcMain.handle("updateDownload", async () => {
+    const u = update;
+    if (!u?.newer || !u.installable || !u.downloadUrl || !u.sumsUrl || updateProgress.stage === "downloading") return;
+    if (downloaded?.version === u.latest) { updateProgress = { stage: "ready", percent: 100, error: null }; broadcast(); return; }
+    updateProgress = { stage: "downloading", percent: 0, error: null };
+    broadcast();
+    try {
+      const path = await downloadUpdate({ url: u.downloadUrl, sumsUrl: u.sumsUrl, dir: join(data, "updates"), onProgress: (percent) => { updateProgress = { stage: "downloading", percent, error: null }; broadcast(); } });
+      downloaded = { path, version: u.latest! };
+      updateProgress = { stage: "ready", percent: 100, error: null };
+    } catch (err) {
+      updateProgress = { stage: "failed", percent: 0, error: err instanceof Error ? err.message : String(err) };
+    }
+    broadcast();
+  });
+  // Restart asks first, waits for a running upload or price refresh to finish, then hands over to the installer.
+  ipcMain.handle("updateRestart", async () => {
+    if (!downloaded || updateProgress.stage !== "ready") return false;
+    const busy = JOBS.filter((j) => engine.snapshot().jobs[j].state === "running");
+    const answer = await messageBox({
+      type: "question",
+      buttons: ["Restart and update", "Not now"],
+      defaultId: 0,
+      cancelId: 1,
+      title: "Restart to update",
+      message: `Restart Everloot Desktop App to install ${downloaded.version}?`,
+      detail: [
+        "The app closes, installs the update and opens again in a few seconds.",
+        "Your settings, characters, chat and backups stay in the data folder. The game and its save files are not touched.",
+        busy.length ? `It waits for the running ${busy.join(" and ")} job to finish first.` : "Nothing is uploading right now.",
+      ].join("\n\n"),
+    });
+    if (answer.response !== 0) return false;
+    for (let i = 0; i < 120 && JOBS.some((j) => engine.snapshot().jobs[j].state === "running"); i++) await new Promise((r) => setTimeout(r, 500));
+    runInstaller(downloaded.path);
+    quitting = true;
+    app.quit();
+    return true;
+  });
+  // The bug report opens GitHub's form with the version and the page's diagnostics filled in, or copies them.
+  ipcMain.handle("reportBug", async (_e, diag: unknown) => {
+    const text = typeof diag === "string" ? diag.slice(-4000) : "";
+    const answer = await messageBox({
+      type: "info",
+      buttons: ["Open the report on GitHub", "Copy diagnostics", "Cancel"],
+      defaultId: 0,
+      cancelId: 2,
+      title: "Report a bug",
+      message: "Report a bug in Everloot Desktop App",
+      detail: "Opens a bug report on GitHub with the app version and these diagnostics filled in: your settings (where the token file is, never the token), the files watched, each job's last state and the last log lines, with your user folder hidden. You read and edit it before sending; it needs a GitHub account. Or copy the diagnostics and post them in the Discord #bug-reports channel.",
+    });
+    if (answer.response === 1) { clipboard.writeText(text); return "copied"; }
+    if (answer.response !== 0) return null;
+    const q = new URLSearchParams({ template: "bug-report.yml", labels: "bug,desktop", part: "Desktop App", page: `Everloot Desktop App ${app.getVersion()} (${process.platform})`, diagnostics: text });
+    void shell.openExternal(`https://github.com/Everloot/everloot/issues/new?${q}`);
+    return "opened";
+  });
+  ipcMain.handle("checkForUpdates", async () => {
+    const check = await checkForUpdates(app.getVersion(), fetch, process.platform, Boolean(process.env.PORTABLE_EXECUTABLE_FILE));
+    update = check.latest ? check : null;
+    broadcast();
+    return check;
+  });
 
   ipcMain.handle("uploadInfo", () => summarizeFiles(engine.snapshot().files, join(data, "sent.json")));
   ipcMain.handle("backups", () => listBackups(data));
@@ -241,13 +316,24 @@ if (!app.requestSingleInstanceLock()) {
   ipcMain.handle("marketInfo", async (): Promise<MarketInfo> => {
     const files = engine.snapshot().files;
     const scans = newestScans(allScans());
-    const base = { own: ownRealms(files), followed: settings.market.realms, last: jobs.lastMarket(), scans };
+    const dir = addonsDir();
+    const inGame = dir ? readPricesFile(dir)?.realms ?? null : null;
+    const base = { own: ownRealms(files), followed: settings.market.realms, last: jobs.lastMarket(), scans, inGame };
     try {
       const k = await knownRealms();
       return { ...base, known: k.realms, dataAsOf: k.dataAsOf, error: null };
     } catch (err) {
       return { ...base, known: [], dataAsOf: null, error: err instanceof Error ? err.message : String(err) };
     }
+  });
+  ipcMain.handle("marketLookup", (_e, text: unknown): PriceLookup => {
+    const itemId = typeof text === "string" ? itemIdFrom(text.slice(0, 500)) : null;
+    if (itemId === null) return { itemId, rows: [], note: "Give an item id, or paste an item link from game chat." };
+    const dir = addonsDir();
+    const file = dir ? readPricesFile(dir) : null;
+    if (!file) return { itemId, rows: [], note: "No prices file in the game yet. Turn on Market prices and press Refresh now." };
+    const rows = priceRows(file, itemId).map(({ realm, dataAsOf, market, min, historical, quantity, day, reporters }) => ({ realm, dataAsOf, market, min, historical, quantity, day, reporters }));
+    return { itemId, rows, note: rows.length ? null : "No public price for this item on the realms in the game file. A day is public once three reporters scanned it." };
   });
   ipcMain.handle("askInfo", (): AskInfo => {
     const pending = engine.snapshot().files.map((file) => {
@@ -274,7 +360,7 @@ if (!app.requestSingleInstanceLock()) {
   ipcMain.handle("charactersInfo", () => charactersFromFiles(engine.snapshot().files));
 
   ipcMain.handle("chatInfo", () => chat.info());
-  ipcMain.handle("chatSend", (_e, text: unknown) => (typeof text === "string" ? chat.send(text) : chat.info()));
+  ipcMain.handle("chatSend", (e, text: unknown) => (typeof text === "string" ? chat.send(text, (p) => { if (!e.sender.isDestroyed()) e.sender.send("chatProgress", p); }) : chat.info()));
   ipcMain.handle("chatClear", () => chat.clear());
   ipcMain.handle("chatSetProvider", (_e, raw: unknown) => {
     const c = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
@@ -282,15 +368,12 @@ if (!app.requestSingleInstanceLock()) {
     const str = (v: unknown) => (typeof v === "string" ? v.slice(0, 2000) : undefined);
     return chat.setProvider({ kind: c.kind as ProviderKind, key: str(c.key), model: str(c.model), baseUrl: str(c.baseUrl) });
   });
-  ipcMain.handle("chatRemoveProvider", () => chat.removeProvider());
-
-  ipcMain.handle("siteShow", (_e, id: unknown) => {
-    const path = typeof id === "string" ? siteToolPath(id) : null;
-    return path && site ? site.show(path) : null;
+  ipcMain.handle("chatRemoveProvider", (_e, kind: unknown) => chat.removeProvider(presetFor(String(kind)) ? (kind as ProviderKind) : undefined));
+  ipcMain.handle("chatUseModel", (_e, kind: unknown, model: unknown) => {
+    if (!presetFor(String(kind)) || typeof model !== "string") throw new Error("Pick a model");
+    return chat.useModel(kind as ProviderKind, model.slice(0, 200));
   });
-  ipcMain.handle("siteHide", () => site?.hide());
-  ipcMain.handle("siteBack", () => site?.back());
-  ipcMain.handle("siteReload", () => site?.reload());
+
 
   // A stray rejection or exception becomes a line on the Log page instead of Electron's dialog; the jobs keep running.
   // Logging re-runs the engine listeners (broadcast, tray); if the error came from one of them, the handler must not throw too.

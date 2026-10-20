@@ -13,6 +13,11 @@ build that has a zip in the repository. Earlier builds have none.
 ## [Unreleased]
 
 ### Added
+- Addon: `/everloot price <item>` prints an item's price in chat, anywhere in the world: a shift-clicked
+  link, an item id, or the name of an item the client has seen. It shows the same lines as the tooltip (community
+  market value, minimum, historical, units up, reporters, how fresh the file is, and your own last scan) and
+  links the full history on everloot.app. Nothing is fetched in game; the prices come from the file the
+  Desktop App or companion writes.
 - Battle.net sign-in can run on Better Auth behind `EVERLOOT_AUTH_V2`. Existing accounts and API keys
   carry over. No provider tokens, IP addresses or user agents are stored. With the flag off, sign-in
   behaves as before.
@@ -34,6 +39,28 @@ build that has a zip in the repository. Earlier builds have none.
   back of the server clock are refused, each row keeps the keyed address hash of its sender (never the address)
   so a count can ask for distinct addresses as well as installs, the key must be 32 characters or more, and
   `uploadStore.loadCensus()` reads the stored keyed rows back for the summary. The addon module and the `/census` page come in later steps.
+- Desktop App: Chat answers appear as the model writes them, with the tool it is running shown while
+  it looks something up (Anthropic and OpenAI-compatible providers; a server that does not stream
+  still answers in one piece). Each answer has a Copy button.
+- Desktop App: a model menu under the Chat box, as in other chat apps. It lists the models of every
+  provider saved on the page (one key each for Anthropic, OpenRouter, OpenCode Zen, a custom server, plus
+  Ollama), and picking one switches Chat and the in-game `/ask`. Keys can be added, replaced or removed one
+  provider at a time. When search alone finds nothing, the answer says a model would read the question and
+  offers to add one.
+- Desktop App: Settings is pinned at the bottom of the sidebar and holds everything the app can be set to: what
+  runs (upload, market prices, in-game `/ask`), the AI model keys, the game folder, startup and the app itself.
+  The site's tools are no longer shown inside the window; the sidebar links to the database, talent calculator,
+  raid builder and auction prices on everloot.app, which open in the browser. The world map and lore archive
+  links are gone; Chat answers those questions.
+- Desktop App: when a newer release is out, an arrow button sits beside Settings. It opens a panel with the
+  new version, its release date, what the release lists as changed (the first eight, then a link to the rest
+  on GitHub) and a Download button for this system's installer. Escape or Later closes it.
+- Desktop App: on a Windows install, the update downloads inside the app, is checked against the release's
+  SHA256SUMS, and installs on restart: a Restart to update button appears in the footer and asks first, waits
+  for a running upload, then runs the installer silently and opens the app again. A bug button beside Settings
+  opens GitHub's bug form with the app version and its diagnostics filled in (user folder hidden, never the
+  token), or copies them. The Addon page says Up to date instead of offering Reinstall as the main button;
+  reinstalling is a small repair link.
 
 ### Changed
 - The upload record contract moved from `web/src/lib/intake.ts` into one package, `packages/protocol`
@@ -128,6 +155,13 @@ build that has a zip in the repository. Earlier builds have none.
 - `scripts/upload-bulk.mjs` refuses a folder whose `index.json` or any data file carries what looks like a
   machine's own filesystem path (a Windows drive path, `/Users/`, `/home/` or `AppData`) before anything is
   sent, like the sha256 check, so a bug in the export cannot publish a local path alongside the data.
+
+### Fixed
+- Desktop App: an `Everloot.lua` written after the app started (the first logout, a second account) is
+  found within 30 seconds and uploaded; before, the app kept saying there was no file until it was
+  restarted. Resuming after Pause catches up on a logout that was skipped. A failed upload or `/ask`
+  run is tried again after 1, 5 and 15 minutes. On Linux and macOS the file watch is armed again after
+  the game replaces the file at logout, so later logouts are not missed.
 
 Pull requests merged to `main` are listed in the nightly pre-releases until the next tagged release.
 

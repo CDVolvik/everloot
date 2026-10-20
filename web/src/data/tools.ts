@@ -169,6 +169,7 @@ export const TOOL_GROUPS: { title: string; links: { label: string; href: string 
   {
     title: "Look up",
     links: [
+      { label: "Chat", href: "/chat" },
       { label: "Auction history", href: "/tools/auctions" },
       { label: "Census", href: "/census" },
       { label: "Addons", href: "/addons" },
