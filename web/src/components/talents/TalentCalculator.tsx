@@ -3,14 +3,16 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { importCode, planHash, readPlanHash, type ImportReport, type ImportResult } from "@/lib/talents/import";
 import {
-  add, canAdd, canRemove, commit, entryAtRank, nodeMap, pointsAtLevel, pointsByTree, pointsSpent, redo, refusalText,
+  add, canAdd, canRemove, commit, entryAtRank, isLegal, nodeMap, pointsAtLevel, pointsByTree, pointsSpent, redo, refusalText,
   remove, startHistory, undo, levelFor, type History,
 } from "@/lib/talents/rules";
 import { CREDIT, hasNodeFrames, loadGameAssets, type GameAssets } from "@/lib/talents/assets";
+import { HOW_IT_WORKS_ID } from "@/lib/talents/facts";
 import { encodeBuild } from "@/lib/talents/share";
 import { previewPath, summarizeBuild } from "@/lib/talents/summary";
 import type { Ranks, TalentCatalog } from "@/lib/talents/types";
 import GameIcon from "@/components/game/GameIcon";
+import { Card, Input, Segmented } from "@/components/ui";
 import GameTree from "./GameTree";
 import TalentTooltip, { type TipContent } from "./TalentTooltip";
 import TalentTreeView, { assetOf, CLASS_TEXT, type TipMode } from "./TalentTreeView";
@@ -23,9 +25,10 @@ const LONG_PRESS_MS = 500;
 
 /**
  * `treeIcons` are the trees' icons in the catalog's tree order, from the site's asset folder; absent without one.
+ * `classIcon` is the game's class icon for the build bar, from the same folder.
  * `initialCodes` are the two sets' share codes from a build link (/b/...), opened when the address has no #plan=.
  */
-export default function TalentCalculator({ catalog, treeIcons, initialCodes }: { catalog: TalentCatalog; treeIcons?: (string | null)[]; initialCodes?: (string | null)[] }) {
+export default function TalentCalculator({ catalog, treeIcons, classIcon = null, initialCodes }: { catalog: TalentCatalog; treeIcons?: (string | null)[]; classIcon?: string | null; initialCodes?: (string | null)[] }) {
   const { rules } = catalog;
   const [history, setHistory] = useState<History<Sets>>(() => startHistory<Sets>([{}, {}]));
   const [active, setActive] = useState<0 | 1>(0);
@@ -339,130 +342,126 @@ export default function TalentCalculator({ catalog, treeIcons, initialCodes }: {
   // The tree with the most points names the build, as players say it ("Fire 17/34/0"); none before the first point.
   const lead = summarizeBuild(catalog, ranks).lead;
   const rovingFor = (treeId: number) => rovingByTree[treeId] ?? catalog.nodes.find((n) => n.treeId === treeId)!.id;
+  const setName = active === 0 ? "set 1" : "set 2";
+  const left = Math.max(0, available - spent);
+
+  // Take every point out of one tree. Refused when another tree's talents need those points.
+  function resetTree(treeId: number, name: string) {
+    const next: Ranks = {};
+    for (const [id, r] of Object.entries(ranks)) if (nodes.get(Number(id))?.treeId !== treeId) next[Number(id)] = r;
+    if (!isLegal(catalog, next)) {
+      setMessage(`Talents in another tree need the points in ${name}. Take those back first.`);
+      return;
+    }
+    setActiveRanks(next);
+    setMessage(`${name} was reset. Undo brings it back.`);
+  }
+
+  // The explanations live in the page's closed "How it works" section; "?" opens it and goes there.
+  function openHowTo() {
+    const how = document.getElementById(HOW_IT_WORKS_ID);
+    if (how instanceof HTMLDetailsElement) how.open = true;
+    how?.scrollIntoView({ block: "start" });
+  }
 
   return (
-    <div className="space-y-4" onKeyDown={onKeyDown}>
-      {/* The build at a glance: which tree leads, the split, what is left, and the link. */}
-      <section aria-label="Build" className="rounded-xl border border-line bg-panel p-4 space-y-4">
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-          <div className="min-w-0">
-            <p className="font-mono text-xs text-muted">{active === 0 ? "First set" : "Second set"} · level {level}</p>
-            <p className="text-2xl font-bold tracking-tight">
+    <div onKeyDown={onKeyDown} data-calculator>
+      <Card padding="none">
+        {/* The build at a glance: which tree leads, the split, points left, the level it needs, and the link. */}
+        <section aria-label="Build" className="flex flex-wrap items-center gap-x-8 gap-y-3 border-b border-line px-4 py-3">
+          {/* A phone puts the link beside the build and the figures under them; a wide screen keeps them on one line. */}
+          <div className="flex min-w-0 flex-1 items-center gap-3 lg:flex-none">
+            {classIcon && <GameIcon src={classIcon} size={36} />}
+            <p className="text-xl font-bold tracking-tight">
               <span className={classText}>{lead ?? catalog.className}</span>{" "}
               <span className="font-mono tabular-nums text-fg" aria-label={`Points by tree: ${catalog.trees.map((t) => `${t.name} ${perTree.get(t.id) ?? 0}`).join(", ")}`}>
                 {catalog.trees.map((t) => perTree.get(t.id) ?? 0).join("/")}
               </span>
             </p>
-            <p className="text-sm text-fg-2 tabular-nums">{spent} of {available} points spent, {Math.max(0, available - spent)} left</p>
-            <p role="status" aria-live="polite" className="min-h-5 text-sm text-muted">{message}</p>
           </div>
-          <button type="button" className="btn btn-primary text-sm sm:ml-auto" onClick={copyLink} disabled={!link}>{copied ? "Copied" : "Copy link"}</button>
-        </div>
-        <ul className="grid grid-cols-3 gap-3" aria-hidden="true">
-          {catalog.trees.map((t, i) => {
-            const pts = perTree.get(t.id) ?? 0;
-            return (
-              <li key={t.id} className="min-w-0 space-y-1.5">
-                <div className="flex items-center gap-2 text-sm">
-                  {treeIcons?.[i] && <GameIcon src={treeIcons[i]!} size={20} />}
-                  <span className={`truncate ${classText}`}>{t.name}</span>
-                  <span className="ml-auto font-mono tabular-nums text-fg">{pts}</span>
-                </div>
-                <div className="h-1.5 rounded-full bg-canvas border border-line overflow-hidden">
-                  <div className={`h-full rounded-full bg-current transition-[width] duration-200 motion-reduce:transition-none ${classText}`} style={{ width: `${available ? Math.min(100, (pts / available) * 100) : 0}%` }} />
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      </section>
+          <div className="order-last flex items-end gap-6 lg:order-none">
+            <Stat label="Points left" value={left} />
+            <Stat label="Level needed" value={spent === 0 ? "–" : levelFor(catalog, spent)} />
+            <label className="flex flex-col gap-0.5">
+              <span className="text-xs text-muted">Level</span>
+              <span className="flex items-center gap-3">
+                <span className="w-7 font-mono text-xl font-semibold tabular-nums text-fg">{level}</span>
+                <input
+                  type="range"
+                  min={rules.firstPointLevel}
+                  max={rules.maxLevel}
+                  value={level}
+                  aria-label="Character level"
+                  aria-valuetext={`Level ${level}, ${available} talent points`}
+                  onChange={(e) => setLevelClamped(Number(e.target.value))}
+                  className="w-24 accent-[rgb(var(--accent))] sm:w-32"
+                />
+              </span>
+            </label>
+          </div>
+          <button type="button" className="btn btn-primary text-sm lg:ml-auto" onClick={copyLink} disabled={!link}>{copied ? "Copied" : "Copy link"}</button>
+        </section>
 
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <div className="flex items-center gap-2 [&>button[aria-pressed=true]]:border-accent [&>button[aria-pressed=true]]:text-accent" role="group" aria-label="Talent sets">
-          <button type="button" className="btn px-3 text-sm sm:px-5" aria-pressed={active === 0} onClick={() => chooseSet(0)}>
-            <span className="sm:hidden">Set 1</span><span className="hidden sm:inline">First set{active === 0 ? " (editing)" : ""}</span>
-          </button>
-          <button type="button" className="btn px-3 text-sm sm:px-5" aria-pressed={active === 1} aria-disabled={!secondOpen} onClick={() => chooseSet(1)}>
-            <span className="sm:hidden">Set 2</span><span className="hidden sm:inline">Second set{active === 1 ? " (editing)" : ""}</span>
-          </button>
-        </div>
-        <label className="flex min-h-11 items-center gap-3 text-sm text-fg-2">
-          <span>Level <span className="font-mono tabular-nums text-fg">{level}</span></span>
-          <input
-            type="range"
-            min={rules.firstPointLevel}
-            max={rules.maxLevel}
-            value={level}
-            aria-valuetext={`Level ${level}, ${available} talent points`}
-            onChange={(e) => setLevelClamped(Number(e.target.value))}
-            className="w-32 sm:w-40 accent-[rgb(var(--accent))]"
+        <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
+          <Segmented
+            label="Talent set"
+            value={active}
+            onChange={chooseSet}
+            options={[{ value: 0, label: "Set 1" }, { value: 1, label: "Set 2", disabled: !secondOpen }]}
           />
-        </label>
-        <div className="flex flex-wrap items-center gap-2 lg:ml-auto">
           <button type="button" className="btn px-3 text-sm sm:px-5" onClick={() => travel(undo)} disabled={history.past.length === 0}>Undo</button>
           <button type="button" className="btn px-3 text-sm sm:px-5" onClick={() => travel(redo)} disabled={history.future.length === 0}>Redo</button>
-          <button type="button" className="btn px-3 text-sm sm:px-5" onClick={() => { setActiveRanks({}); setMessage("This set was reset. Undo brings it back."); }} disabled={spent === 0}><span className="sm:hidden">Reset</span><span className="hidden sm:inline">Reset this set</span></button>
+          <button type="button" className="btn px-3 text-sm sm:px-5" onClick={() => { setActiveRanks({}); setMessage("This set was reset. Undo brings it back."); }} disabled={spent === 0}><span className="sm:hidden">Reset</span><span className="hidden sm:inline">Reset {setName}</span></button>
           <button type="button" className="btn px-3 text-sm sm:px-5" aria-pressed={removeMode} onClick={() => setRemoveMode(!removeMode)}>
             <span className="sm:hidden">Take back: {removeMode ? "on" : "off"}</span><span className="hidden sm:inline">Take points back: {removeMode ? "on" : "off"}</span>
           </button>
-        </div>
-      </div>
-      {(!secondOpen || level < rules.dualSpecLevel) && (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted">
-          {!secondOpen && <span>The second set opens at level {rules.dualSpecLevel}.</span>}
+          <button type="button" className="btn size-11 !px-0 text-sm" aria-label="How the calculator works" title="How it works" onClick={openHowTo}>?</button>
           {level < rules.dualSpecLevel && (
-            <label className="flex min-h-11 items-center gap-3 text-fg-2">
+            <label className="flex min-h-11 items-center gap-3 text-sm text-fg-2">
               <input type="checkbox" checked={planAhead} onChange={(e) => { setPlanAhead(e.target.checked); if (!e.target.checked && active === 1) setActive(0); }} className="size-5" />
-              Plan the second set before level {rules.dualSpecLevel}
+              Plan set 2 now (it opens at level {rules.dualSpecLevel})
             </label>
           )}
+          <p role="status" aria-live="polite" className="min-h-5 basis-full text-sm text-fg-2 lg:ml-auto lg:basis-auto">{message}</p>
         </div>
-      )}
 
-      <div className="flex gap-2 md:hidden [&>button[aria-pressed=true]]:border-accent [&>button[aria-pressed=true]]:text-accent" role="group" aria-label="Show tree">
-        {catalog.trees.map((t, i) => (
-          <button key={t.id} type="button" className="btn flex-1 px-2 text-sm" aria-pressed={view === i} onClick={() => setView(i)}>
-            {t.name} <span className="font-mono tabular-nums">{perTree.get(t.id) ?? 0}</span>
-          </button>
-        ))}
-      </div>
+        <div className="px-4 pt-4 md:hidden">
+          <Segmented stretch label="Show tree" value={view} onChange={setView} options={catalog.trees.map((t, i) => ({ value: i, label: `${t.name} ${perTree.get(t.id) ?? 0}` }))} />
+        </div>
 
-      <div className="grid md:grid-cols-3 gap-6" onPointerDown={onPointerDown} onPointerUp={endPress} onPointerLeave={endPress} onPointerCancel={endPress} onClickCapture={onClickCapture} onContextMenu={onContextMenu}>
-        {catalog.trees.map((tree, i) => (
-          <section key={tree.id} className={i === view ? "" : "hidden md:block"} aria-label={tree.name}>
-            <h2 className="mb-3 flex items-center justify-center gap-2 text-base font-semibold">
-              {treeIcons?.[i] && <GameIcon src={treeIcons[i]!} size={24} />}
-              <span className={classText}>{tree.name}</span>
-              <span className="font-mono text-sm tabular-nums text-fg-2">{perTree.get(tree.id)}</span>
-            </h2>
-            {(() => {
-              const props = {
-                catalog, tree, ranks, available, spent: perTree.get(tree.id) ?? 0, selected, roving: rovingFor(tree.id), onAdd: doAdd, onTip,
-                onSelect: (id: number) => { setSelected(id); setRovingByTree((r) => ({ ...r, [nodes.get(id)!.treeId]: id })); },
-              };
-              return game ? <GameTree {...props} assets={assets} /> : <TalentTreeView {...props} assets={assets} />;
-            })()}
-          </section>
-        ))}
-      </div>
-      {assets && tipContent && tip && <TalentTooltip anchorId={tipAnchor!} id="talent-tooltip" content={tipContent} />}
-      {assets && (
-        <p className="text-xs text-muted" data-game-credit>
-          {CREDIT} Icons and text from game build {assets.version}, {assets.label}.
-        </p>
-      )}
-      <p className="text-xs text-muted">
-        The small number at the left of each row is how many points must be spent in the tree, on the rows above, before that row opens (from the game tables; where some gates count is unconfirmed).
-        Tap or press Enter to add a point. {assets
-          ? "Right click, Delete or the switch above takes one back; a long press shows the tooltip. Escape closes it."
-          : "Right click, long press, Delete or the switch above takes one back."} Arrow keys move between talents.
-      </p>
+        <div className="grid gap-4 p-4 md:grid-cols-3" onPointerDown={onPointerDown} onPointerUp={endPress} onPointerLeave={endPress} onPointerCancel={endPress} onClickCapture={onClickCapture} onContextMenu={onContextMenu}>
+          {catalog.trees.map((tree, i) => {
+            const points = perTree.get(tree.id) ?? 0;
+            return (
+              <section key={tree.id} className={`min-w-0 ${i === view ? "" : "hidden md:block"}`} aria-label={tree.name}>
+                <div className="mb-2 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    {treeIcons?.[i] && <GameIcon src={treeIcons[i]!} size={24} />}
+                    <h2 className={`min-w-0 truncate text-base font-semibold ${classText}`}>{tree.name}</h2>
+                    <span className={`ml-auto font-mono text-xl tabular-nums ${points === 0 ? "text-muted" : "text-fg"}`}>{points}</span>
+                    <button type="button" className="min-h-11 px-1 text-sm text-muted hover:text-fg disabled:opacity-50" disabled={points === 0} aria-label={`Reset ${tree.name}`} onClick={() => resetTree(tree.id, tree.name)}>Reset</button>
+                  </div>
+                  <div className="h-1 overflow-hidden rounded-full bg-canvas" aria-hidden="true">
+                    <div className={`h-full rounded-full bg-current transition-[width] duration-200 motion-reduce:transition-none ${classText}`} style={{ width: `${available ? Math.min(100, (points / available) * 100) : 0}%` }} />
+                  </div>
+                </div>
+                {(() => {
+                  const props = {
+                    catalog, tree, ranks, available, spent: points, selected, roving: rovingFor(tree.id), onAdd: doAdd, onTip,
+                    onSelect: (id: number) => { setSelected(id); setRovingByTree((r) => ({ ...r, [nodes.get(id)!.treeId]: id })); },
+                  };
+                  return game ? <GameTree {...props} assets={assets} /> : <TalentTreeView {...props} assets={assets} />;
+                })()}
+              </section>
+            );
+          })}
+        </div>
+        {assets && tipContent && tip && <TalentTooltip anchorId={tipAnchor!} id="talent-tooltip" content={tipContent} />}
 
-      <div className="grid gap-4 md:grid-cols-2 md:items-start">
-      <section aria-label="Selected talent" className="rounded-lg border border-line bg-panel p-4 text-sm text-fg-2 space-y-1">
-        {selectedNode ? (
-          <>
-            <p className="text-fg font-semibold">{selectedNode.entries.map((e) => e.name).join(selectedNode.kind === "choice" ? " or " : ", then ")}</p>
+        {/* Without the game's tooltips this panel is how a talent's row, needs and spell id are read. With them, the tooltip says it. */}
+        {!assets && selectedNode && (
+          <section aria-label="Selected talent" className="mx-4 mb-4 space-y-1 rounded-control border border-line bg-canvas p-4 text-sm text-fg-2">
+            <p className="font-semibold text-fg">{selectedNode.entries.map((e) => e.name).join(selectedNode.kind === "choice" ? " or " : ", then ")}</p>
             <p className="font-mono text-xs tabular-nums text-muted">
               Row {selectedNode.row}, max rank {selectedNode.maxRanks}
               {selectedNode.entries.map((e) => e.spellId).filter(Boolean).length > 0 && ` · spell id ${selectedNode.entries.map((e) => e.spellId).filter(Boolean).join(", ")}`}
@@ -472,45 +471,56 @@ export default function TalentCalculator({ catalog, treeIcons, initialCodes }: {
             {selectedNode.unlock?.ranksInNodes?.map((r) => <p key={r.nodeId}>Needs {r.ranks} {r.ranks === 1 ? "rank" : "ranks"} in {nameOf(r.nodeId)}.</p>)}
             {selectedNode.prereqs.length > 0 && <p>Needs {selectedNode.prereqs.map(nameOf).join(", ")} at full rank.</p>}
             {(selectedNode.anyOf?.length ?? 0) > 0 && <p>Needs {selectedNode.anyOf!.map(nameOf).join(" or ")} at full rank.</p>}
-            {assets
-              ? <p className="whitespace-pre-line">{selectedNode.entries.map((e) => assetOf(assets, e)?.text).filter(Boolean).join("\n\n") || "No description in the game files."}</p>
-              : <p className="text-muted">Description: not shown yet.</p>}
-          </>
-        ) : (
-          <p>Select a talent to see its row, prerequisites and spell id.</p>
+            <p className="text-muted">Description: not shown yet.</p>
+          </section>
         )}
-      </section>
 
-      <section aria-label="Share" className="rounded-lg border border-line bg-panel p-4 space-y-3">
-        <div className="space-y-1">
-          <label className="block text-sm text-fg-2" htmlFor="talent-link">Link to this build, both sets (game build {catalog.build})</label>
-          <div className="flex gap-2">
-            <input id="talent-link" readOnly value={link} placeholder="Spend a point and the page address becomes the link" onFocus={(e) => e.currentTarget.select()} className="min-h-11 flex-1 min-w-0 rounded-lg border border-edge bg-canvas px-3 font-mono text-xs text-fg placeholder:text-muted" />
-            <button type="button" className="btn px-3 text-sm sm:px-5" onClick={copyLink} disabled={!link}>{copied ? "Copied" : "Copy"}</button>
+        <section aria-label="Share" className="grid gap-3 border-t border-line p-4 md:grid-cols-2">
+          <div className="min-w-0 space-y-1">
+            <label className="block text-sm text-fg-2" htmlFor="talent-link">Link to this build, both sets (game build {catalog.build})</label>
+            <div className="flex gap-2">
+              <Input id="talent-link" mono readOnly value={link} placeholder="Spend a point and the page address becomes the link" onFocus={(e) => e.currentTarget.select()} className="flex-1 text-xs" />
+              <button type="button" className="btn px-3 text-sm sm:px-5" onClick={copyLink} disabled={!link}>{copied ? "Copied" : "Copy"}</button>
+            </div>
           </div>
-          <p className="text-xs text-muted">The page address changes as you spend points, so the address bar is the link too. It holds both sets and names the game build; if talents move, opening it lists what changed.</p>
-        </div>
-        <form className="flex flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); load(pasted); }}>
-          <label className="sr-only" htmlFor="talent-paste">Share code or link</label>
-          <input id="talent-paste" value={pasted} onChange={(e) => setPasted(e.target.value)} placeholder="Paste a share code or link" className="min-h-11 flex-1 min-w-0 rounded-lg border border-edge bg-canvas px-3 font-mono text-xs text-fg" />
-          <button type="submit" className="btn px-3 text-sm sm:px-5">Load into the {active === 0 ? "first" : "second"} set</button>
-        </form>
-      </section>
-      </div>
-
-      {report && (
-        <section aria-label="What loaded" className="rounded-lg border border-line bg-panel p-4 text-sm text-fg-2 space-y-2">
-          <p className="text-fg font-semibold">
-            {report.problems.length === 0 ? "Loaded as made." : `Loaded, with ${report.problems.length} ${report.problems.length === 1 ? "change" : "changes"}.`}
-          </p>
-          <p className="font-mono text-xs text-muted">Made on build {report.codeBuild} · this tree is build {report.treeBuild}</p>
-          {report.problems.length > 0 && (
-            <ul className="list-disc pl-5 space-y-1">
-              {report.problems.map((p, i) => <li key={i}>{p}</li>)}
-            </ul>
+          <form className="min-w-0 space-y-1" onSubmit={(e) => { e.preventDefault(); load(pasted); }}>
+            <label className="block text-sm text-fg-2" htmlFor="talent-paste">Share code or link</label>
+            <div className="flex gap-2">
+              <Input id="talent-paste" mono value={pasted} onChange={(e) => setPasted(e.target.value)} placeholder="Paste a share code or link" className="flex-1 text-xs" />
+              <button type="submit" className="btn px-3 text-sm sm:px-5">Load into {setName}</button>
+            </div>
+          </form>
+          {report && (
+            <section aria-label="What loaded" className="space-y-2 rounded-control border border-line bg-canvas p-4 text-sm text-fg-2 md:col-span-2">
+              <p className="font-semibold text-fg">
+                {report.problems.length === 0 ? "Loaded as made." : `Loaded, with ${report.problems.length} ${report.problems.length === 1 ? "change" : "changes"}.`}
+              </p>
+              <p className="font-mono text-xs text-muted">Made on build {report.codeBuild} · this tree is build {report.treeBuild}</p>
+              {report.problems.length > 0 && (
+                <ul className="list-disc space-y-1 pl-5">
+                  {report.problems.map((p, i) => <li key={i}>{p}</li>)}
+                </ul>
+              )}
+            </section>
           )}
         </section>
-      )}
+
+        {assets && (
+          <p className="border-t border-line px-4 py-3 text-xs text-muted" data-game-credit>
+            {CREDIT} Icons and text from game build {assets.version}, {assets.label}.
+          </p>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+/** One figure in the build bar: a small label over a mono number. */
+function Stat({ label, value }: { label: string; value: number | string }) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-xs text-muted">{label}</span>
+      <span className="font-mono text-xl font-semibold tabular-nums text-fg">{value}</span>
     </div>
   );
 }
