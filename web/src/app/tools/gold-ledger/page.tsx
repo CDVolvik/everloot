@@ -4,6 +4,8 @@ import Link from "next/link";
 import { goldFactsFromRecords, handleGoldLedger } from "../../../../../kb/src/gold-ledger";
 import { STORAGE_UNREACHABLE, uploadStore } from "@/lib/upload-store";
 import { dataAgeLabel } from "@/lib/data-age";
+import { trailFor } from "@/lib/breadcrumbs";
+import { Card, Container, Disclosure, EmptyState, Field, PageHeader, SourceLine } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -28,42 +30,48 @@ export default async function GoldLedgerPage(
   const answer = corpus.unreachable
     ? STORAGE_UNREACHABLE
     : handleGoldLedger({ character, realm }, facts.snapshots, facts.events);
+  const pending = !corpus.unreachable && facts.snapshots.length + facts.events.length === 0;
 
   return (
-    <article className="space-y-8 max-w-4xl">
-      <header className="space-y-3">
-        <p className="font-mono text-xs text-muted">WoW: Forever · gold</p>
-        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">Gold ledger</h1>
-        <p className="text-sm text-fg-2 max-w-2xl">
-          Peak gold and the money events that character uploaded. Addon 0.2.4 records loot, quest
-          rewards, vendor sales, flight costs, auction sales taken from the mailbox (after the house cut),
-          postage and auction buyouts. Bids, deposits, other mail, other spending, and gameplay stay
-          unrecorded until an event is seen. The difference is unrecorded. This is the same answer as the gold_ledger tool.
-        </p>
-      </header>
+    <Container>
+      <PageHeader
+        trail={trailFor("/tools/gold-ledger")!}
+        title="Gold ledger"
+        lede="Peak gold and the money events a character uploaded, from that player's own addon file."
+        actions={<>
+          <Link href="/tools/gold-per-hour" className="btn">Gold per hour</Link>
+          <Link href="/tools/auctions" className="btn">Auction history</Link>
+        </>}
+      />
 
-      <form method="get" className="rounded-xl border border-line bg-panel p-5 space-y-4">
-        <div className="grid sm:grid-cols-2 gap-3">
-          <label className="text-sm text-fg-2 space-y-1">
-            <span className="block text-xs font-mono text-muted">Character</span>
-            <input name="character" defaultValue={character} className="w-full rounded-lg border border-edge bg-canvas px-3 py-2 text-fg" />
-          </label>
-          <label className="text-sm text-fg-2 space-y-1">
-            <span className="block text-xs font-mono text-muted">Realm</span>
-            <input name="realm" defaultValue={realm} className="w-full rounded-lg border border-edge bg-canvas px-3 py-2 text-fg" />
-          </label>
-        </div>
-        <button type="submit" className="btn btn-primary text-sm">Show the ledger</button>
-      </form>
+      <div className="space-y-8">
+        <Card>
+          <form method="get" className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Character" name="character" defaultValue={character} />
+              <Field label="Realm" name="realm" defaultValue={realm} />
+            </div>
+            <button type="submit" className="btn btn-primary text-sm">Show the ledger</button>
+          </form>
+        </Card>
 
-      <pre className="whitespace-pre-wrap text-sm text-fg rounded-xl border border-line bg-panel p-5">{answer}</pre>
-      {!corpus.unreachable && <p className="text-xs text-muted">{dataAgeLabel(corpus.dataAsOf)}</p>}
+        {pending
+          ? <EmptyState message="No gold ledger yet: a character's ledger appears once its player uploads the Everloot addon's file." />
+          : <Card><pre className="whitespace-pre-wrap text-sm text-fg">{answer}</pre></Card>}
 
-      <p className="text-sm text-muted">
-        <Link href="/tools/gold-per-hour" className="text-accent hover:underline underline-offset-4">Gold per hour</Link>
-        {" · "}
-        <Link href="/tools/auctions" className="text-accent hover:underline underline-offset-4">Auction history</Link>
-      </p>
-    </article>
+        <Disclosure summary="What does the ledger record?">
+          <p>
+            Addon 0.2.4 records loot, quest rewards, vendor sales, flight costs, auction sales taken from the mailbox
+            (after the house cut), postage and auction buyouts. Bids, deposits, other mail, other spending, and gameplay
+            stay unrecorded until an event is seen. The difference is unrecorded. This is the same answer as the
+            gold_ledger tool.
+          </p>
+        </Disclosure>
+      </div>
+
+      <SourceLine source="The character's own upload">
+        {corpus.unreachable ? "Storage unreachable" : dataAgeLabel(corpus.dataAsOf)}
+      </SourceLine>
+    </Container>
   );
 }

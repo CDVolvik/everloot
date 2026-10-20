@@ -124,11 +124,11 @@ export default function Header() {
         </nav>
 
         <div className="ml-auto flex shrink-0 items-center gap-2">
-          {/* The lore archive's search, the site's one search today. Works without JavaScript. */}
+          {/* The site's one search: items, NPCs, quests, zones, lore and tools. Works without JavaScript. */}
           <form action="/search" method="get" role="search" onSubmit={() => track("search", { surface: "lore" })} className="hidden h-11 w-56 items-center gap-2 overflow-hidden rounded-full border border-edge bg-panel px-3 text-muted focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent xl:flex">
             <SearchIcon />
-            <label htmlFor="site-search" className="sr-only">Search the archive</label>
-            <input ref={search} id="site-search" name="q" type="search" maxLength={200} placeholder="Search the archive" className="w-full min-w-0 bg-transparent text-fg placeholder:text-muted focus:outline-none" />
+            <label htmlFor="site-search" className="sr-only">Search Everloot</label>
+            <input ref={search} id="site-search" name="q" type="search" maxLength={200} placeholder="Search Everloot" className="w-full min-w-0 bg-transparent text-fg placeholder:text-muted focus:outline-none" />
             <kbd aria-hidden="true" className="rounded-[4px] border border-line px-1.5 font-mono text-xs text-muted">/</kbd>
           </form>
           <Link href="/search" aria-label="Search" className="hidden min-h-11 min-w-11 items-center justify-center text-fg-2 hover:text-accent sm:inline-flex xl:hidden"><SearchIcon /></Link>
@@ -145,8 +145,8 @@ export default function Header() {
           <div className="mx-auto max-w-wide space-y-6 px-4 py-6">
             <form action="/search" method="get" role="search" onSubmit={() => track("search", { surface: "lore" })} className="flex items-center gap-2 rounded-full border border-edge bg-canvas px-3 text-muted focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent">
               <SearchIcon />
-              <label htmlFor="menu-search" className="sr-only">Search the archive</label>
-              <input id="menu-search" name="q" type="search" maxLength={200} placeholder="Search the archive" className="w-full min-w-0 bg-transparent text-fg placeholder:text-muted focus:outline-none" />
+              <label htmlFor="menu-search" className="sr-only">Search Everloot</label>
+              <input id="menu-search" name="q" type="search" maxLength={200} placeholder="Search Everloot" className="w-full min-w-0 bg-transparent text-fg placeholder:text-muted focus:outline-none" />
             </form>
             <div className="grid grid-cols-2 gap-x-4 gap-y-6">
               <div>

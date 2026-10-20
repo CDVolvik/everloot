@@ -2,7 +2,13 @@ import type { Metadata } from "next";
 import { FEED, IMAGE, TWITTER_IMAGE } from "@/lib/seo";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
+import { Card, Container, Explainer, Facts, PageHeader, Prose, SectionHeading, SourceLine } from "@/components/ui";
+import { trailFor } from "@/lib/breadcrumbs";
+import { entityHref } from "@/components/EntityLink";
+import { idForName, loadNames } from "@/lib/names";
 import { BROWSE_HEADINGS, BROWSE_TYPES, CONVERSION_NOTE, FACET_KEYS, firstSentence, isIndexable, loreByExtId, loreSlug, parseLoreSlug, renderBody, UNAVAILABLE, UNAVAILABLE_COPY, type BrowseSlug, type LorePage as Lore } from "@/lib/lore";
+
+const link = "text-accent hover:underline underline-offset-4";
 
 const FACET_LABELS = { expansion: "Expansion", profession: "Profession", class: "Class", race: "Race", zone: "Zone", faction: "Faction" } as const;
 
@@ -67,84 +73,94 @@ export default async function LorePage(props: { params: Promise<{ slug: string }
     ? FACET_KEYS.flatMap((key) => page.facets![key].map((value) => ({ key, value, href: `/lore/${typeSlug}?${key}=${encodeURIComponent(value)}` })))
     : [];
   const infoboxEntries = page.infobox ? Object.entries(page.infobox.fields) : [];
+  const trail = [...(typeSlug ? trailFor(`/lore/${typeSlug}`)! : trailFor("/lore")!), { name: page.name, path: `/lore/${loreSlug(page)}` }];
+  // The database page for the same thing, when players have agreed on a name that is exactly this page's.
+  const dbKind = wiki && (page.type === "npc" || page.type === "item" || page.type === "quest") ? page.type : null;
+  const names = dbKind ? await loadNames() : null;
+  const dbId = dbKind && names ? idForName(dbKind === "npc" ? names.npcs : dbKind === "item" ? names.items : names.quests, page.name) : null;
   return (
-    <article className="space-y-8 max-w-4xl">
-      <header className="space-y-3">
-        <p className="font-mono text-xs text-muted">{label(page)}</p>
-        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">{page.name}</h1>
-        {revised && <p className="text-sm text-muted">Last wiki revision {revised}</p>}
-        {typeSlug && (
-          <ul className="flex flex-wrap gap-2 text-xs">
-            <li><Link href={`/lore/${typeSlug}`} className="rounded-full border border-edge px-3 py-1 text-accent hover:underline underline-offset-4">{BROWSE_HEADINGS[typeSlug]}</Link></li>
-            {facetLinks.map((f) => (
-              <li key={`${f.key}:${f.value}`}>
-                <Link href={f.href} className="rounded-full border border-edge px-3 py-1 text-fg-2 hover:text-accent">
-                  {FACET_LABELS[f.key]}: {f.value}
-                </Link>
-              </li>
-            ))}
-          </ul>
+    <Container width="reading">
+      <article>
+        <PageHeader
+          trail={trail}
+          title={page.name}
+          meta={
+            <>
+              <span>{label(page)}</span>
+              {revised && <span>Last wiki revision <span className="font-mono tabular-nums">{revised}</span></span>}
+            </>
+          }
+        />
+
+        <Prose>
+          {blocks.map((block, i) =>
+            block.type === "p" ? (
+              <p key={i}>{block.text}</p>
+            ) : (
+              <ul key={i}>
+                {block.items.map((item, j) => <li key={j}>{item}</li>)}
+              </ul>
+            ),
+          )}
+        </Prose>
+
+        {dbKind && dbId !== null && (
+          <Card as="section" aria-labelledby="in-database" className="mt-12">
+            <SectionHeading id="in-database">In the Forever database</SectionHeading>
+            <p className="text-sm text-fg-2">
+              Players have recorded {page.name} in WoW: Forever.{" "}
+              <Link href={entityHref(dbKind, dbId)} className={link}>See the {dbKind === "npc" ? "NPC" : dbKind} page</Link>
+            </p>
+          </Card>
         )}
-      </header>
 
-      <section className="space-y-4 text-fg leading-relaxed">
-        {blocks.map((block, i) =>
-          block.type === "p" ? (
-            <p key={i}>{block.text}</p>
-          ) : (
-            <ul key={i} className="list-disc pl-6 space-y-1">
-              {block.items.map((item, j) => <li key={j}>{item}</li>)}
-            </ul>
-          ),
+        {infoboxEntries.length > 0 && (
+          <section aria-labelledby="infobox" className="mt-12">
+            <SectionHeading id="infobox" note="As written on the wiki in 2023; values are not interpreted and are not Forever data.">Details from the wiki infobox</SectionHeading>
+            <Facts layout="rows" items={infoboxEntries.map(([key, value]) => ({ label: key, value }))} />
+          </section>
         )}
-      </section>
 
-      {infoboxEntries.length > 0 && (
-        <section className="space-y-2">
-          <h2 className="text-lg text-fg">Details from the wiki infobox</h2>
-          <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-sm">
-            {infoboxEntries.map(([key, value]) => (
-              <div key={key} className="contents">
-                <dt className="text-muted">{key}</dt><dd className="text-fg">{value}</dd>
-              </div>
-            ))}
-          </dl>
-          <p className="text-xs text-muted">As written on the wiki in 2023; values are not interpreted and are not Forever data.</p>
-        </section>
-      )}
+        {(typeSlug || page.categories.length > 0) && (
+          <section aria-labelledby="categories" className="mt-12">
+            <SectionHeading id="categories">Categories</SectionHeading>
+            {typeSlug && (
+              <p className="text-sm text-fg-2">
+                <Link href={`/lore/${typeSlug}`} className={link}>{BROWSE_HEADINGS[typeSlug]}</Link>
+                {facetLinks.map((f) => (
+                  <span key={`${f.key}:${f.value}`}>
+                    {" · "}
+                    <Link href={f.href} className={link}>{FACET_LABELS[f.key]}: {f.value}</Link>
+                  </span>
+                ))}
+              </p>
+            )}
+            {page.categories.length > 0 && <p className="mt-2 text-sm text-muted">{page.categories.join(" · ")}</p>}
+          </section>
+        )}
 
-      {page.categories.length > 0 && (
-        <section className="space-y-2">
-          <h2 className="text-lg text-fg">Categories</h2>
-          <ul className="flex flex-wrap gap-2 text-xs">
-            {page.categories.map((c) => (
-              <li key={c} className="rounded-full border border-line px-3 py-1 text-fg-2">{c}</li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      <section className="rounded-2xl border border-line bg-panel p-5 text-sm text-fg-2 space-y-2">
-        <h2 className="text-lg text-fg">Source</h2>
-        <p>
-          <a href={page.sourceUrl} rel="noopener" className="text-accent hover:underline underline-offset-4 break-all">{page.sourceUrl}</a>
-          {" "}· retrieved {page.retrievedAt} · {page.licence.replace("CC-BY-SA-4.0", "CC BY-SA 4.0")}
+        <p className="mt-12 text-sm text-fg-2">
+          {slug === "forever-launch-date" && (
+            <>
+              More on the game, with the launch date quoted from Blizzard&apos;s own post:{" "}
+              <Link href="/wow-forever" className={link}>What is WoW: Forever?</Link>{" "}
+            </>
+          )}
+          {wiki && <>This archive predates WoW: Forever. For collected gameplay facts see the{" "}
+          <Link href="/database" className={link}>Forever database</Link>.{" "}</>}
+          <Link href="/search" className={link}>Search the archive</Link>.
         </p>
-        {wiki && <p>{CONVERSION_NOTE}</p>}
-      </section>
 
-      {slug === "forever-launch-date" && (
-        <p className="text-sm text-fg-2">
-          More on the game, with the launch date quoted from Blizzard&apos;s own post:{" "}
-          <Link href="/wow-forever" className="text-accent hover:underline underline-offset-4">What is WoW: Forever?</Link>
-        </p>
-      )}
-
-      <p className="text-sm text-muted">
-        {wiki && <>This archive predates WoW: Forever. For collected gameplay facts see the{" "}
-        <Link href="/database" className="text-accent hover:underline underline-offset-4">Forever database</Link>.{" "}</>}
-        <Link href="/search" className="text-accent hover:underline underline-offset-4">Search the archive</Link>.
-      </p>
-    </article>
+        {wiki && (
+          <Explainer summary="About this copy">
+            <p>{CONVERSION_NOTE}</p>
+          </Explainer>
+        )}
+        <SourceLine
+          source={<>From <a href={page.sourceUrl} rel="noopener" className={`${link} [overflow-wrap:anywhere]`}>{page.sourceUrl}</a>, retrieved {page.retrievedAt}</>}
+          licence={`${wiki ? "Warcraft Wiki contributors, " : ""}${page.licence.replace("CC-BY-SA-4.0", "CC BY-SA 4.0")}`}
+        />
+      </article>
+    </Container>
   );
 }

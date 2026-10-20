@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { explainKeyError, readAccountKey } from "./account";
 import { readJsonFile } from "./json-file";
 import type { ChatInfo, ChatMessage, ChatProgress, Settings } from "../shared/types";
 import { answer, readProviderEntries } from "./agent";
@@ -32,11 +33,11 @@ export function createChat(dataFolder: string, current: () => Settings, local: L
     if (!file) return null;
     try { const t = readFileSync(file, "utf8").trim(); return t || null; } catch { return null; }
   };
-  /** The token endpoint when a token is set, else the public read-only mount of the same site. */
+  /** The token endpoint when a token is set, else the public read-only mount of the same site, with the account key when signed in. */
   const target = () => {
     const s = current();
     const t = token();
-    return t ? { url: s.ask.mcpUrl, token: t } : { url: `${s.endpoint}/mcp/public`, token: null };
+    return t ? { url: s.ask.mcpUrl, token: t } : { url: `${s.endpoint}/mcp/public`, token: readAccountKey(dataFolder) };
   };
   const mode = (): string => {
     try {
@@ -47,7 +48,7 @@ export function createChat(dataFolder: string, current: () => Settings, local: L
   };
   const info = (): ChatInfo => {
     const t = target();
-    return { messages: [...messages], mode: mode(), mcpUrl: t.url, withToken: t.token !== null, provider: ownProvider(dataFolder), providers: ownProviders(dataFolder), busy, error };
+    return { messages: [...messages], mode: mode(), mcpUrl: t.url, withToken: token() !== null, provider: ownProvider(dataFolder), providers: ownProviders(dataFolder), busy, error };
   };
 
   return {
@@ -67,7 +68,7 @@ export function createChat(dataFolder: string, current: () => Settings, local: L
         const r = await answer({ mcp: target(), entries, history, question, local, onProgress });
         messages.push({ role: "assistant", text: r.text, at: new Date().toISOString(), model: r.model, sources: r.sources, steps: r.steps });
       } catch (err) {
-        error = err instanceof Error ? err.message : String(err);
+        error = explainKeyError(err instanceof Error ? err.message : String(err));
       } finally {
         busy = false;
         messages = messages.slice(-MAX_MESSAGES);

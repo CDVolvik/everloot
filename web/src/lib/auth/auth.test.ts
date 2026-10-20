@@ -2,7 +2,7 @@ import { createHash, createHmac } from "node:crypto";
 import { afterEach, beforeAll, expect, test, vi } from "vitest";
 import { memoryAdapter } from "better-auth/adapters/memory";
 import { exportJWK, generateKeyPair, SignJWT, type CryptoKey } from "jose";
-import { authV2Enabled, createAuth } from "./auth";
+import { authV2Enabled, createAuth, signInMethods } from "./auth";
 import type { RateLimitStore } from "./db";
 
 afterEach(() => vi.unstubAllGlobals());
@@ -263,4 +263,108 @@ test("authV2Enabled is only on for exactly 1", () => {
   expect(authV2Enabled({ EVERLOOT_AUTH_V2: "1" })).toBe(true);
   expect(authV2Enabled({ EVERLOOT_AUTH_V2: "true" })).toBe(false);
   expect(authV2Enabled({})).toBe(false);
+});
+
+const emailEnv = { ...env, RESEND_API_KEY: "re_test", EMAIL_FROM: "Everloot <hello@everloot.app>" } as NodeJS.ProcessEnv;
+
+// Resend is the only outside call the email flow makes; the mail it would send is kept here.
+function stubResend(status = 200) {
+  const sent: Array<{ from: string; to: string[]; subject: string; text: string }> = [];
+  vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = input instanceof Request ? input.url : String(input);
+    if (url !== "https://api.resend.com/emails") throw new Error(`Unexpected fetch: ${url}`);
+    sent.push(JSON.parse(String(init?.body)));
+    return Response.json({ id: "mail" }, { status });
+  }));
+  return sent;
+}
+
+function emailAuth(authEnv = emailEnv) {
+  const db: Record<string, Row[]> = { users: [], auth_session: [], auth_account: [], auth_verification: [] };
+  return { db, auth: createAuth({ database: memoryAdapter(db), rateLimitStore: mapRateLimitStore().rateLimitStore, env: authEnv }) };
+}
+
+function post(auth: ReturnType<typeof createAuth>, path: string, body: object) {
+  return auth.handler(new Request(`https://everloot.app/api/auth${path}`, {
+    method: "POST", headers: { "content-type": "application/json", origin: "https://everloot.app" }, body: JSON.stringify(body),
+  }));
+}
+
+const jaina = { name: "Jaina", email: "jaina@example.com", password: "kul-tiras-forever", callbackURL: "/account" };
+
+test("an email sign-up sends a confirmation link and gives no session until it is used", async () => {
+  const sent = stubResend();
+  const { auth, db } = emailAuth();
+  const response = await post(auth, "/sign-up/email", jaina);
+  expect(response.status).toBe(200);
+  expect(response.headers.getSetCookie().join(";")).not.toMatch(/session_token=/);
+  expect(db.users[0]).toMatchObject({ email: "jaina@example.com", email_verified: false });
+  // The password is hashed, never stored as typed.
+  expect(db.auth_account[0]).toMatchObject({ provider_id: "credential" });
+  expect(JSON.stringify(db.auth_account)).not.toContain(jaina.password);
+  expect(sent).toHaveLength(1);
+  expect(sent[0]).toMatchObject({ from: "Everloot <hello@everloot.app>", to: ["jaina@example.com"], subject: "Confirm your Everloot email" });
+
+  // Signing in before confirming is refused.
+  const early = await post(auth, "/sign-in/email", { email: jaina.email, password: jaina.password });
+  expect(early.status).toBe(403);
+
+  // The link in the mail confirms the email and signs in.
+  const link = sent[0].text.match(/https:\/\/\S+/)?.[0] ?? "";
+  expect(link).toContain("/api/auth/verify-email?token=");
+  const verified = await auth.handler(new Request(link));
+  expect(verified.headers.getSetCookie().join(";")).toMatch(/everloot\.session_token=/);
+  expect(db.users[0]).toMatchObject({ email_verified: true });
+  expect((await post(auth, "/sign-in/email", { email: jaina.email, password: jaina.password })).status).toBe(200);
+});
+
+test("a password reset mails a link, and the new password replaces the old one", async () => {
+  const sent = stubResend();
+  const { auth, db } = emailAuth();
+  await post(auth, "/sign-up/email", jaina);
+  await auth.handler(new Request(sent[0].text.match(/https:\/\/\S+/)?.[0] ?? ""));
+
+  expect((await post(auth, "/request-password-reset", { email: jaina.email, redirectTo: "/reset-password" })).status).toBe(200);
+  expect(sent[1]).toMatchObject({ to: ["jaina@example.com"], subject: "Reset your Everloot password" });
+  const link = sent[1].text.match(/https:\/\/\S+/)?.[0] ?? "";
+  const landing = await auth.handler(new Request(link));
+  const token = new URL(landing.headers.get("location") ?? "", "https://everloot.app").searchParams.get("token");
+  expect(token).toBeTruthy();
+
+  expect((await post(auth, "/reset-password", { newPassword: "boralus-harbour-1", token })).status).toBe(200);
+  expect((await post(auth, "/sign-in/email", { email: jaina.email, password: jaina.password })).status).toBe(401);
+  expect((await post(auth, "/sign-in/email", { email: jaina.email, password: "boralus-harbour-1" })).status).toBe(200);
+  // Sessions from before the reset are ended.
+  expect(db.auth_session).toHaveLength(1);
+});
+
+test("nobody can sign up with a Battle.net placeholder address", async () => {
+  const sent = stubResend();
+  const { auth, db } = emailAuth();
+  const response = await post(auth, "/sign-up/email", { ...jaina, email: "bnet-999@users.everloot.invalid" });
+  expect(response.status).toBe(400);
+  expect(db.users).toEqual([]);
+  expect(sent).toEqual([]);
+});
+
+test("email sign-up is off without a Resend key, so no unverifiable account is made", async () => {
+  const sent = stubResend();
+  const { auth, db } = emailAuth(env);
+  const response = await post(auth, "/sign-up/email", jaina);
+  expect(response.ok).toBe(false);
+  expect(db.users).toEqual([]);
+  expect(sent).toEqual([]);
+});
+
+test("a sign-up whose confirmation mail Resend refuses makes no session", async () => {
+  stubResend(500);
+  const { auth } = emailAuth();
+  const response = await post(auth, "/sign-up/email", jaina);
+  expect(response.headers.getSetCookie().join(";")).not.toMatch(/session_token=/);
+});
+
+test("signInMethods offers email only with the Better Auth flag and a mail sender", () => {
+  expect(signInMethods({ ...emailEnv, EVERLOOT_AUTH_V2: "1" })).toEqual({ battlenet: true, email: true });
+  expect(signInMethods(emailEnv)).toEqual({ battlenet: true, email: false });
+  expect(signInMethods({ EVERLOOT_AUTH_V2: "1", RESEND_API_KEY: "re_test" })).toEqual({ battlenet: false, email: false });
 });

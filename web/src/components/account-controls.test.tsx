@@ -48,7 +48,7 @@ describe("header account controls", () => {
   it("lets an anonymous visitor start Battle.net sign-in from the header", async () => {
     vi.stubGlobal("fetch", async () => Response.json({ user: null }));
     await act(async () => root.render(<Header />));
-    expect(signInLink()?.getAttribute("href")).toBe("/api/auth/bnet");
+    expect(signInLink()?.getAttribute("href")).toBe("/sign-in");
   });
 
   it("signs an authenticated visitor out with POST and returns to sign-in", async () => {
@@ -62,7 +62,7 @@ describe("header account controls", () => {
     expect(signInLink()).toBeUndefined();
     await act(async () => button("Sign out").click());
     expect(logoutMethod).toBe("POST");
-    expect(signInLink()?.getAttribute("href")).toBe("/api/auth/bnet");
+    expect(signInLink()?.getAttribute("href")).toBe("/sign-in");
   });
 
   it("reports an unavailable account lookup and lets the visitor retry", async () => {
@@ -74,7 +74,7 @@ describe("header account controls", () => {
     expect(signInLink()).toBeUndefined();
     expect(container.querySelector('[role="alert"]')?.textContent ?? "").toMatch(/account.*unavailable/i);
     await act(async () => button("Retry").click());
-    expect(signInLink()?.getAttribute("href")).toBe("/api/auth/bnet");
+    expect(signInLink()?.getAttribute("href")).toBe("/sign-in");
   });
 
   it("keeps sign-out available after a failed logout and supports a successful retry", async () => {

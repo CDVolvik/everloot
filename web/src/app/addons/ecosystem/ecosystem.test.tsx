@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, expect, test, vi } from "vitest";
 
-const rollup = vi.hoisted(() => ({ loadPopularAddons: vi.fn(), loadItemFacts: async () => ({ rates: [], names: [], npcs: [], unreachable: true }) }));
+const rollup = vi.hoisted(() => ({ loadPopularAddons: vi.fn(), loadItemFacts: async () => ({ rates: [], names: [], npcs: [], unreachable: true }), loadWorldFacts: async () => ({ npcs: [], quests: [], vendors: [], unreachable: true }) }));
 vi.mock("@/lib/rollup-compute", () => rollup);
 vi.mock("../../../lib/rollup-compute", () => rollup);
 vi.mock("next/link", () => ({
