@@ -16,8 +16,8 @@ const PLANNED = [
     body: "Planned maps will use uploaded sightings. Distinct install IDs are not verified independent players, and sightings do not establish respawn timing.",
   },
   {
-    title: "Gold-per-hour attached",
-    body: "Route-linked estimates are planned. The available Gold/Hour Calculator uses the time, quantities and prices you enter yourself.",
+    title: "Gold per hour attached",
+    body: "Route-linked estimates are planned. Gold per hour for your own farm is moving into the Everloot addon.",
   },
   {
     title: "Respawn timing",
@@ -36,7 +36,7 @@ export default function FarmingRoutesPage() {
         trail={trailFor("/tools/farming-routes")!}
         title="Forever Farming Routes"
         lede="Zone-by-zone gold and material routes, drawn from the sightings players upload."
-        actions={<Link href="/tools/gold-per-hour" className="btn">Gold per hour calculator</Link>}
+        actions={<Link href="/tools/auctions" className="btn">Auction House</Link>}
       />
 
       <div className="space-y-8">
@@ -56,7 +56,7 @@ export default function FarmingRoutesPage() {
         </Card>
       </div>
 
-      <SourceLine from="Player uploads, once there are enough sightings to draw a route" />
+      <SourceLine source="Player uploads, once there are enough sightings to draw a route" />
     </Container>
   );
 }

@@ -19,6 +19,7 @@ const data: WorldMapData = {
     { mapId: 35, name: "Synthetic Keep", raid: true, continentId: 0, worldX: -9097 + 400, worldY: -200 },
     { mapId: 36, name: "Faraway Hold", raid: false, continentId: 0, worldX: 6000, worldY: 9000 },
   ],
+  flightNodes: [], flightPaths: [],
   warnings: [],
 };
 

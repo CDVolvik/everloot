@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "everloot",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Sourced World of Warcraft: Forever lore, game data and player observations.",
   "author": {
     "name": "R21 Media Group, LLC",
@@ -26,7 +26,7 @@
         "shortDescription": "WoW: Forever data with sources",
         "longDescription": "Look up World of Warcraft: Forever lore, items, NPCs, quests, vendors, professions, item relations, talent trees, map locations, auction history, and recent Blizzard posts and builds. Player-observed facts carry their evidence count and date. Game-file facts name their build and are marked unconfirmed. Lore comes from the licensed Warcraft Wiki archive and may differ in Forever. Missing data is reported as unrecorded. The public server is read-only, requires no account or API key, and has rate limits. Answers include source and licence information. Everloot cannot play the game, buy items, or change a game account. Everloot is an independent fan project, not affiliated with or endorsed by Blizzard.",
         "developerName": "R21 Digital",
-        "category": "Other",
+        "category": "Entertainment",
         "capabilities": [
           "Search Warcraft lore",
           "Read sourced game data",
@@ -100,7 +100,7 @@
       },
       "publication": {
         "countries": [],
-        "release_notes": "Initial public connector with sourced lore, game reference tools and explicit missing-data labels."
+        "release_notes": "Corrected the listing category to Entertainment for this World of Warcraft game reference service."
       }
     }
   }

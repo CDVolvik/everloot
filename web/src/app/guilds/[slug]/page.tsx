@@ -3,12 +3,15 @@ import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { FAMILIES, figureLabel, getFamily, type FamilyFact } from "@/data/families";
+import { Container, DataTable, Explainer, Facts, PageHeader, SectionHeading } from "@/components/ui";
 
 const KIND_LABEL: Record<FamilyFact["kind"], string> = {
   "guild-site": "Their page",
   claim: "Published claim",
   sighting: "Name sighted",
 };
+
+const link = "text-accent hover:underline underline-offset-4";
 
 export function generateStaticParams() {
   return FAMILIES.map((family) => ({ slug: family.slug }));
@@ -30,113 +33,90 @@ export default async function GuildFamilyPage(props: { params: Promise<{ slug: s
   const claims = family.facts.filter((fact) => fact.kind === "claim");
   const sightings = family.facts.filter((fact) => fact.kind === "sighting");
   const api = family.blizzard;
+  const answer = (value: "answers" | "refused") => (value === "answers" ? "Answers" : "Refused");
 
   return (
-    <article className="space-y-10 max-w-4xl">
-      <header className="space-y-3">
-        <p className="font-mono text-xs text-muted">
-          WoW: Forever · guild family
-        </p>
-        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">
-          {family.name}
-        </h1>
-        <p className="text-fg-2 max-w-2xl">{family.summary}</p>
-        <p className="text-sm text-muted max-w-2xl">
-          A guild hall can list its own members and say how it knows. This page does that
-          for the whole family. Each row is someone else&apos;s published sentence, with the
-          page and the date beside it.
-        </p>
-      </header>
+    <Container width="wide">
+      <article>
+        <PageHeader
+          trail={[{ name: "Home", path: "/" }, { name: `${family.name} family`, path: `/guilds/${family.slug}` }]}
+          title={family.name}
+          lede={family.summary}
+        />
 
-      <FactTable title="Guild halls" caption="A guild's own site. The count is theirs." rows={halls} />
-      <FactTable title="What has been published about the family" caption="Claims, in the order they were said. They do not add up to one census." rows={claims} />
-      <FactTable title="Names sighted" caption="A public page named a guild. That is not a member list." rows={sightings} />
+        <div className="space-y-12">
+          <FactTable id="halls" title="Guild halls" caption="A guild's own site. The count is theirs." rows={halls} />
+          <FactTable id="claims" title="What has been published about the family" caption="Claims, in the order they were said. They do not add up to one census." rows={claims} />
+          <FactTable id="sightings" title="Names sighted" caption="A public page named a guild. That is not a member list." rows={sightings} />
 
-      <section className="space-y-3">
-        <h2 className="text-2xl text-fg">Battle.net guild profile</h2>
-        <p className="text-sm text-fg-2 max-w-2xl">
-          The same columns, filled by Blizzard&apos;s guild API the day Forever has a namespace.
-          Checked {api.checked}: the retail guild profile and Classic Era both answered our
-          requests. Guessed Forever namespaces were refused. The open question is
-          on{" "}
-          <a
-            href={api.forumUrl}
-            className="text-accent hover:underline underline-offset-4"
-          >
-            Blizzard&apos;s API forum
-          </a>
-          . Once Blizzard publishes one, Everloot can read it. Those responses
-          stay off this page, because Blizzard&apos;s terms keep API data in a local
-          cache.
+          <section aria-labelledby="battle-net" className="space-y-4">
+            <SectionHeading id="battle-net" note="The same columns, filled by Blizzard's guild API the day Forever has a namespace.">
+              Battle.net guild profile
+            </SectionHeading>
+            <Facts
+              label="Blizzard guild API, as checked"
+              items={[
+                { label: "Retail guild profile", value: answer(api.retailProfile) },
+                { label: "Classic Era", value: answer(api.classicEraStatic) },
+                { label: "Forever, guessed names", value: answer(api.foreverGuessed) },
+              ]}
+            />
+            <p className="max-w-[65ch] text-sm text-fg-2">
+              Checked {api.checked}: the retail guild profile and Classic Era both answered our
+              requests. Guessed Forever namespaces were refused. The open question is
+              on <a href={api.forumUrl} className={link}>Blizzard&apos;s API forum</a>. Once Blizzard publishes one,
+              Everloot can read it. Those responses stay off this page, because Blizzard&apos;s terms keep API data in a
+              local cache.
+            </p>
+          </section>
+        </div>
+
+        <Explainer summary="How this record is built">
+          <p>
+            A guild hall can list its own members and say how it knows. This page does that
+            for the whole family. Each row is someone else&apos;s published sentence, with the
+            page and the date beside it.
+          </p>
+          <p>A guild the public web has not mentioned is left off this page.</p>
+        </Explainer>
+        <p className="mt-6 text-sm text-muted">
+          Progression, roster, and loot from officer uploads are on the{" "}
+          <Link href="/tools/guild-board" className={link}>guild board</Link>.
         </p>
-        <dl className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <ApiStat label="Retail guild profile" value={api.retailProfile} />
-          <ApiStat label="Classic Era" value={api.classicEraStatic} />
-          <ApiStat label="Forever, guessed names" value={api.foreverGuessed} />
-        </dl>
-      </section>
-
-      <p className="text-sm text-muted">
-        Progression, roster, and loot from officer uploads are on the{" "}
-        <Link href="/tools/guild-board" className="text-accent hover:underline underline-offset-4">
-          guild board
-        </Link>
-        . A guild the public web has not mentioned is left off this page.
-      </p>
-    </article>
+      </article>
+    </Container>
   );
 }
 
-function ApiStat({ label, value }: { label: string; value: "answers" | "refused" }) {
+function FactTable({ id, title, caption, rows }: { id: string; title: string; caption: string; rows: FamilyFact[] }) {
+  // A kind nobody has published yet is left out rather than drawn as an empty table.
+  if (rows.length === 0) return null;
   return (
-    <div className="rounded-xl border border-line bg-panel p-4">
-      <dt className="text-xs font-mono text-muted">{label}</dt>
-      <dd className="mt-1 text-lg text-fg">
-        {value === "answers" ? "Answers" : "Refused"}
-      </dd>
-    </div>
-  );
-}
-
-function FactTable({ title, caption, rows }: { title: string; caption: string; rows: FamilyFact[] }) {
-  return (
-    <section className="space-y-3">
-      <div>
-        <h2 className="text-2xl text-fg">{title}</h2>
-        <p className="text-sm text-muted">{caption}</p>
-      </div>
-      <div className="overflow-x-auto rounded-xl border border-line">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="bg-panel text-xs font-mono text-muted text-left">
-              <th className="px-4 py-3">What was published</th>
-              <th className="px-4 py-3">Figure</th>
-              <th className="px-4 py-3">Source</th>
-              <th className="px-4 py-3">As of</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((fact) => (
-              <tr key={fact.id} className="border-t border-line bg-panel align-top text-fg">
-                <td className="px-4 py-3 max-w-md">
-                  <span className="text-[10px] font-mono text-muted">
-                    {KIND_LABEL[fact.kind]}
-                    {fact.guild ? ` · ${fact.guild}` : ""}
-                  </span>
-                  <p className="mt-1">{fact.statement}</p>
-                </td>
-                <td className="px-4 py-3 whitespace-nowrap tabular-nums text-accent">{figureLabel(fact)}</td>
-                <td className="px-4 py-3">
-                  <a href={fact.url} className="text-accent hover:underline underline-offset-4">
-                    {fact.sourceName}
-                  </a>
-                </td>
-                <td className="px-4 py-3 whitespace-nowrap tabular-nums">{fact.asOf}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+    <section aria-labelledby={id}>
+      <SectionHeading id={id} note={caption}>{title}</SectionHeading>
+      <DataTable<FamilyFact>
+        caption={title}
+        rowKey={(fact) => fact.id}
+        rows={rows}
+        columns={[
+          {
+            key: "statement",
+            header: "What was published",
+            cell: (fact) => (
+              <div className="min-w-60 max-w-md py-1">
+                <span className="font-mono text-xs text-muted">
+                  {KIND_LABEL[fact.kind]}
+                  {fact.guild ? ` · ${fact.guild}` : ""}
+                </span>
+                <p className="mt-1">{fact.statement}</p>
+              </div>
+            ),
+          },
+          { key: "figure", header: "Figure", nowrap: true, cell: (fact) => <span className="tabular-nums text-accent">{figureLabel(fact)}</span> },
+          { key: "source", header: "Source", cell: (fact) => <a href={fact.url} className={link}>{fact.sourceName}</a> },
+          { key: "asOf", header: "As of", numeric: true, cell: (fact) => fact.asOf },
+        ]}
+      />
     </section>
   );
 }

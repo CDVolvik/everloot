@@ -23,8 +23,8 @@ async function render(path = release) {
 
 test("the coverage page reports types, facets, pages, damage and the release date", async () => {
   const html = await render();
-  expect(html).toMatch(/Zones and locations<\/a><\/th><td[^>]*>23</);
-  expect(html).toMatch(/NPCs and characters<\/a><\/th><td[^>]*>3</);
+  expect(html).toMatch(/Zones and locations<\/a><\/td><td[^>]*>23</);
+  expect(html).toMatch(/NPCs and characters<\/a><\/td><td[^>]*>3</);
   expect(html).toContain("Legion");
   expect(html).toContain("Orc");
   expect(html).toMatch(/Indexable pages[\s\S]{0,120}>28</);

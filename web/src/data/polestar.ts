@@ -96,7 +96,7 @@ export const PACK_IDEAS: PackIdea[] = [
     source: { label: "Polestar Guides, guide list", url: `${REPO}/tree/next/guides/forever` },
     start: [
       { label: "Farming routes", href: "/tools/farming-routes" },
-      { label: "Gold per hour", href: "/tools/gold-per-hour" },
+      { label: "Auction House", href: "/tools/auctions" },
     ],
   },
 ];
