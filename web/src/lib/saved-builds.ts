@@ -1,0 +1,164 @@
+import { decodeBuild } from "./talents/share";
+import { TALENT_CLASSES, isTalentClass, type TalentClassSlug } from "./talents/catalogs";
+
+/**
+ * Saved talent builds (docs/design/specs/2026-10-20-saved-builds-design.md): a signed-in player's builds from
+ * the calculator, filed under typed character labels, each with a short link. Off until EVERLOOT_SAVED_BUILDS=1;
+ * with it unset there is no Save button and /me, /b/<slug> and /api/me/* answer 404.
+ *
+ * This file has no server imports, so the calculator can use the limits and checks too. The database checks the
+ * same rules again (supabase/migrations/20261021150000_saved_builds.sql).
+ */
+export function savedBuildsOn(env: Record<string, string | undefined> = process.env): boolean {
+  return env.EVERLOOT_SAVED_BUILDS === "1";
+}
+
+export const BUILDS_PER_ACCOUNT = 200;
+export const CHARACTERS_PER_ACCOUNT = 30;
+export const SAVES_PER_DAY = 300;
+export const LIMITS = { name: 60, notes: 1000, code: 400, characterName: 24, realm: 32, note: 140 } as const;
+
+export const CODE_PATTERN = /^EL1-[a-z]+-\d+-[0-9.]+-[A-Za-z0-9_-]+$/;
+export const SLUG_PATTERN = /^[A-Za-z0-9]{8}$/;
+const ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+export const validId = (id: unknown): id is string => typeof id === "string" && ID_PATTERN.test(id);
+
+/** One saved build, as GET /api/me/builds returns it. `link` is the short link while sharing is on. */
+export interface SavedBuild {
+  id: string;
+  slug: string;
+  name: string;
+  notes: string | null;
+  classSlug: string;
+  characterId: string | null;
+  code: string;
+  code2: string | null;
+  gameBuild: string;
+  shared: boolean;
+  active: boolean;
+  link: string | null;
+  updatedAt: string;
+  showName: boolean;
+}
+
+/** A character label: typed by the player, not checked against the game. */
+export interface BuildCharacter { id: string; name: string; classSlug: string; realm: string | null; note: string | null }
+
+/** The body of GET /api/me/builds: builds newest first. */
+export interface AccountBuilds { characters: BuildCharacter[]; builds: SavedBuild[] }
+
+export interface BuildInput {
+  id: string | null;
+  name: string;
+  notes: string | null;
+  characterId: string | null;
+  code: string;
+  code2: string | null;
+  /** Null keeps the stored value on an update; a new build is shared, not active and anonymous by default. */
+  shared: boolean | null;
+  active: boolean | null;
+  showName: boolean | null;
+}
+
+export interface CharacterInput { id: string | null; name: string; classSlug: TalentClassSlug; realm: string | null; note: string | null }
+
+type Parsed<T> = { ok: true; value: T } | { ok: false; error: string };
+
+/** Characters as Postgres counts them, so a limit here is the limit there. */
+const length = (s: string) => Array.from(s).length;
+
+/** Plain text: control characters out (line breaks kept where allowed), trimmed. */
+function clean(value: unknown, multiline = false): string | null {
+  if (value === undefined || value === null) return "";
+  if (typeof value !== "string") return null;
+  const stripped = multiline ? value.replace(/\r\n?/g, "\n").replace(/[\u0000-\u0009\u000b-\u001f\u007f]/g, "") : value.replace(/[\u0000-\u001f\u007f]/g, "");
+  return stripped.trim();
+}
+
+function optionalBoolean(value: unknown): boolean | null | undefined {
+  if (value === undefined || value === null) return null;
+  return typeof value === "boolean" ? value : undefined;
+}
+
+/** The class of a share code that is shaped right, decodes and names a calculator class; null otherwise. */
+export function codeClass(code: string): TalentClassSlug | null {
+  if (length(code) > LIMITS.code || !CODE_PATTERN.test(code)) return null;
+  const decoded = decodeBuild(code);
+  if (!decoded.ok || !/^\d+(?:\.\d+)*$/.test(decoded.build.build)) return null;
+  return isTalentClass(decoded.build.classSlug) ? decoded.build.classSlug : null;
+}
+
+/** The body of POST /api/me/builds. */
+export function parseBuildInput(body: unknown): Parsed<BuildInput> {
+  const b = (body && typeof body === "object" ? body : {}) as Record<string, unknown>;
+  const id = b.id ?? null;
+  if (id !== null && !validId(id)) return { ok: false, error: "That build id is not valid." };
+  const name = clean(b.name);
+  if (!name || length(name) > LIMITS.name) return { ok: false, error: `Give the build a name of 1 to ${LIMITS.name} characters.` };
+  const notes = clean(b.notes, true);
+  if (notes === null || length(notes) > LIMITS.notes) return { ok: false, error: `Notes can be up to ${LIMITS.notes.toLocaleString("en-US")} characters.` };
+  const characterId = b.characterId ?? null;
+  if (characterId !== null && !validId(characterId)) return { ok: false, error: "That character id is not valid." };
+  if (typeof b.code !== "string") return { ok: false, error: "A build needs a share code." };
+  const code = b.code.trim();
+  const cls = codeClass(code);
+  if (!cls) return { ok: false, error: "That share code is not valid." };
+  let code2: string | null = null;
+  if (b.code2 !== undefined && b.code2 !== null && b.code2 !== "") {
+    if (typeof b.code2 !== "string") return { ok: false, error: "The second share code is not valid." };
+    code2 = b.code2.trim();
+    const cls2 = codeClass(code2);
+    if (!cls2) return { ok: false, error: "The second share code is not valid." };
+    if (cls2 !== cls) return { ok: false, error: "Both talent sets must be for the same class." };
+  }
+  const shared = optionalBoolean(b.shared);
+  const active = optionalBoolean(b.active);
+  const showName = optionalBoolean(b.showName);
+  if (shared === undefined || active === undefined || showName === undefined) return { ok: false, error: "shared, active and showName are true or false." };
+  return { ok: true, value: { id, name, notes: notes || null, characterId, code, code2, shared, active, showName } };
+}
+
+/** The body of POST /api/me/characters. */
+export function parseCharacterInput(body: unknown): Parsed<CharacterInput> {
+  const b = (body && typeof body === "object" ? body : {}) as Record<string, unknown>;
+  const id = b.id ?? null;
+  if (id !== null && !validId(id)) return { ok: false, error: "That character id is not valid." };
+  const name = clean(b.name);
+  if (!name || length(name) > LIMITS.characterName) return { ok: false, error: `Give the character a name of 1 to ${LIMITS.characterName} characters.` };
+  if (typeof b.classSlug !== "string" || !isTalentClass(b.classSlug)) return { ok: false, error: `Pick a class: ${TALENT_CLASSES.join(", ")}.` };
+  const realm = clean(b.realm);
+  if (realm === null || length(realm) > LIMITS.realm) return { ok: false, error: `A realm can be up to ${LIMITS.realm} characters.` };
+  const note = clean(b.note);
+  if (note === null || length(note) > LIMITS.note) return { ok: false, error: `A note can be up to ${LIMITS.note} characters.` };
+  return { ok: true, value: { id, name, classSlug: b.classSlug, realm: realm || null, note: note || null } };
+}
+
+/** A build row as the database returns it, from a table read or from own_builds_for_key. */
+export interface BuildRow {
+  id: string; slug: string; name: string; notes: string | null; class_slug: string; character_id: string | null;
+  code: string; code2: string | null; game_build: string; shared: boolean; show_name: boolean; active: boolean; updated_at: string;
+}
+export interface CharacterRow { id: string; name: string; class_slug: string; realm: string | null; note: string | null }
+
+export const BUILD_COLUMNS = "id,slug,name,notes,class_slug,character_id,code,code2,game_build,shared,show_name,active,updated_at";
+export const CHARACTER_COLUMNS = "id,name,class_slug,realm,note";
+
+export const shortPath = (slug: string) => `/b/${slug}`;
+
+export function toBuild(row: BuildRow, site: string): SavedBuild {
+  return {
+    id: row.id, slug: row.slug, name: row.name, notes: row.notes, classSlug: row.class_slug, characterId: row.character_id,
+    code: row.code, code2: row.code2, gameBuild: row.game_build, shared: row.shared, active: row.active,
+    link: row.shared ? `${site}${shortPath(row.slug)}` : null, updatedAt: new Date(row.updated_at).toISOString(), showName: row.show_name,
+  };
+}
+
+export function toCharacter(row: CharacterRow): BuildCharacter {
+  return { id: row.id, name: row.name, classSlug: row.class_slug, realm: row.realm, note: row.note };
+}
+
+/** Where the calculator opens a saved build: its class page, marked as editing it, with both sets in the address. */
+export function editPath(build: Pick<SavedBuild, "id" | "classSlug" | "code" | "code2">): string {
+  return `/tools/talents/${build.classSlug}?saved=${build.id}#plan=${build.code}${build.code2 ? `&plan2=${build.code2}` : ""}`;
+}

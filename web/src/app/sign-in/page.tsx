@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import EmailAuthForm from "@/components/EmailAuthForm";
 import { signInMethods } from "@/lib/auth/auth";
+import { safeReturnTo } from "@/lib/auth/return-to";
 import { pageMetadata } from "@/lib/seo";
 import { getUser } from "@/lib/supabase/server";
 
@@ -15,19 +16,21 @@ export const metadata: Metadata = {
 
 const battlenetButton = "inline-flex items-center justify-center min-h-11 px-4 rounded-lg border border-line text-sm text-fg hover:text-accent";
 
-export default async function SignInPage() {
-  if (await getUser().catch(() => null)) redirect("/account");
+// `?returnTo=/path` brings the visitor back to the page that sent them here (Save in the talent calculator, /me).
+export default async function SignInPage({ searchParams }: { searchParams?: Promise<{ returnTo?: string | string[] }> }) {
+  const returnTo = safeReturnTo((await searchParams)?.returnTo);
+  if (await getUser().catch(() => null)) redirect(returnTo ?? "/account");
   const methods = signInMethods();
   return (
     <article className="max-w-3xl space-y-6">
       <h1 className="text-3xl font-bold text-fg">Sign in</h1>
       {methods.battlenet && (
-        <p><a href="/api/auth/bnet" className={battlenetButton}>Sign in with Battle.net</a></p>
+        <p><a href={returnTo ? `/api/auth/bnet?returnTo=${encodeURIComponent(returnTo)}` : "/api/auth/bnet"} className={battlenetButton}>Sign in with Battle.net</a></p>
       )}
       {methods.email ? (
         <>
           {methods.battlenet && <p className="text-sm text-muted">Or with your email:</p>}
-          <EmailAuthForm mode="sign-in" />
+          <EmailAuthForm mode="sign-in" returnTo={returnTo ?? undefined} />
           <p className="text-sm text-fg-2">
             New here? <Link href="/sign-up" className="text-accent hover:underline underline-offset-4">Make an account</Link>
             {" · "}

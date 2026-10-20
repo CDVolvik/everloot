@@ -107,6 +107,29 @@ test("callback does not create a browser session when storage fails", async () =
   expect(response.headers.get("location")).toContain("auth_error=callback_failed");
 });
 
+test("the first sign-in flow carries the return path in a short cookie and lands there", async () => {
+  vi.stubEnv("BNET_CLIENT_ID", "client");
+  vi.stubEnv("BNET_CLIENT_SECRET", "secret");
+  const { GET: start } = await import("./bnet/route");
+  await start(new Request("https://everloot.app/api/auth/bnet?returnTo=%2Fme"));
+  expect(jar.get("everloot_return_to")).toBe("/me");
+  jar.clear();
+  await start(new Request("https://everloot.app/api/auth/bnet?returnTo=%2F%2Fevil.example"));
+  expect(jar.has("everloot_return_to")).toBe(false);
+
+  jar.set("bnet_oauth_state", "state");
+  jar.set("everloot_return_to", "/tools/talents/mage?save=1");
+  vi.stubGlobal("fetch", async (input: string) => {
+    if (input === "https://oauth.battle.net/token") return Response.json({ access_token: "provider-token" });
+    if (input === "https://oauth.battle.net/userinfo") return Response.json({ sub: "123", battletag: user.battletag });
+    return input.includes("/users?") ? Response.json([user]) : new Response(null, { status: 201 });
+  });
+  const { GET } = await import("./bnet/callback/route");
+  const response = await GET(new Request("https://everloot.app/api/auth/bnet/callback?code=code&state=state"));
+  expect(response.headers.get("location")).toBe("https://everloot.app/tools/talents/mage?save=1");
+  expect(jar.has("everloot_return_to")).toBe(false);
+});
+
 test("callback rejects mismatched state before contacting the provider", async () => {
   jar.set("bnet_oauth_state", "expected");
   const fetch = vi.fn();

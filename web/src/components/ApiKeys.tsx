@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 
-interface Key { id: string; hint: string; label: string; created_at: string; last_used_at: string | null; revoked_at: string | null }
+interface Key { id: string; hint: string; label: string; scopes?: string[]; created_at: string; last_used_at: string | null; revoked_at: string | null }
 type State =
   | { status: "loading" }
   | { status: "signed-out" }
   | { status: "off" }
   | { status: "error"; message: string }
-  | { status: "ready"; keys: Key[]; limit: number };
+  | { status: "ready"; keys: Key[]; limit: number; ownScope: boolean };
 
 const button = "inline-flex items-center min-h-11 px-3 rounded-lg border border-line text-sm text-fg hover:text-accent disabled:opacity-60";
 const day = (iso: string | null) => (iso ? iso.slice(0, 10) : "never");
@@ -17,6 +17,7 @@ const day = (iso: string | null) => (iso ? iso.slice(0, 10) : "never");
 export default function ApiKeys() {
   const [state, setState] = useState<State>({ status: "loading" });
   const [label, setLabel] = useState("");
+  const [builds, setBuilds] = useState(false);
   const [fresh, setFresh] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +33,7 @@ export default function ApiKeys() {
         if (response.status === 401) setState({ status: "signed-out" });
         else if (response.status === 503 && body.error === "API keys are not switched on yet.") setState({ status: "off" });
         else if (!response.ok) setState({ status: "error", message: body.error ?? "Keys are unavailable." });
-        else setState({ status: "ready", keys: body.keys, limit: body.limit });
+        else setState({ status: "ready", keys: body.keys, limit: body.limit, ownScope: body.ownScope === true });
       } catch {
         if (active) setState({ status: "error", message: "Keys are unavailable. Try again." });
       }
@@ -57,8 +58,8 @@ export default function ApiKeys() {
   }
 
   async function create() {
-    const made = await send("POST", "/api/keys", { label });
-    if (made) { setFresh(made.token); setLabel(""); setReload(reload + 1); }
+    const made = await send("POST", "/api/keys", builds ? { label, builds: true } : { label });
+    if (made) { setFresh(made.token); setLabel(""); setBuilds(false); setReload(reload + 1); }
   }
 
   async function revoke(id: string, erase = false) {
@@ -85,7 +86,7 @@ export default function ApiKeys() {
           {state.keys.map((k) => (
             <li key={k.id} className="py-3 flex flex-wrap items-center justify-between gap-2">
               <span className="text-sm text-fg-2">
-                <code className="font-mono text-fg">evl_…{k.hint}</code> {k.label && <>· {k.label} </>}· made {day(k.created_at)} · last used {day(k.last_used_at)}
+                <code className="font-mono text-fg">evl_…{k.hint}</code> {k.label && <>· {k.label} </>}{k.scopes?.includes("read:own") && <>· reads your saved builds </>}· made {day(k.created_at)} · last used {day(k.last_used_at)}
                 {k.revoked_at && <> · revoked {day(k.revoked_at)}</>}
               </span>
               {k.revoked_at
@@ -100,6 +101,12 @@ export default function ApiKeys() {
           <label className="sr-only" htmlFor="key-label">What the key is for</label>
           <input id="key-label" value={label} maxLength={60} onChange={(e) => setLabel(e.target.value)} placeholder="What it is for (optional)"
             className="min-h-11 flex-1 min-w-48 rounded-lg border border-line bg-canvas px-3 text-sm text-fg" />
+          {state.ownScope && (
+            <label className="flex min-h-11 items-center gap-2 text-sm text-fg-2">
+              <input type="checkbox" checked={builds} onChange={(e) => setBuilds(e.target.checked)} className="size-5" />
+              Read my saved builds
+            </label>
+          )}
           <button type="button" className={button} disabled={busy} aria-busy={busy} onClick={create}>Make a key</button>
         </div>
       ) : <p className="text-sm text-muted">You have {state.limit} keys. Revoke one to make another.</p>}

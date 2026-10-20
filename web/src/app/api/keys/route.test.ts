@@ -47,6 +47,19 @@ test("making a key shows it once and stores only its hash, under the signed-in a
   expect(init.body).not.toContain(made.token);
 });
 
+test("with saved builds on, a key can also read its owner's builds; otherwise the call is unchanged", async () => {
+  auth.authQuery.mockResolvedValue([{ key_ref: KEY_ID, refusal: null }]);
+  await POST(call("POST", "", { label: "desktop", builds: true }));
+  expect(JSON.parse(auth.authQuery.mock.calls[0][1].body)).not.toHaveProperty("p_scopes");
+  vi.stubEnv("EVERLOOT_SAVED_BUILDS", "1");
+  await POST(call("POST", "", { label: "desktop", builds: true }));
+  expect(JSON.parse(auth.authQuery.mock.calls[1][1].body).p_scopes).toEqual(["read:public", "read:own"]);
+  await POST(call("POST", "", { label: "bot", builds: "yes" }));
+  expect(JSON.parse(auth.authQuery.mock.calls[2][1].body)).not.toHaveProperty("p_scopes");
+  auth.authQuery.mockResolvedValue([]);
+  expect(await (await GET(call("GET"))).json()).toMatchObject({ ownScope: true });
+});
+
 test("a sixth live key is refused, and so is an eleventh key made in one day", async () => {
   auth.authQuery.mockResolvedValue([{ key_ref: null, refusal: "live_limit" }]);
   const res = await POST(call("POST", "", {}));

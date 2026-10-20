@@ -91,6 +91,14 @@ test("v2 bnet start passes a refusal through instead of redirecting", async () =
   expect(res.headers.get("location")).toBeNull();
 });
 
+test("v2 bnet start brings the visitor back to a path on this site, never to another site", async () => {
+  v2.fake.handler.mockImplementation(async () => Response.json({ url: "https://oauth.battle.net/authorize?x=1", redirect: true }));
+  await bnetGET(new Request("https://everloot.app/api/auth/bnet?returnTo=%2Ftools%2Ftalents%2Fmage%3Fsave%3D1"));
+  expect(await (v2.fake.handler.mock.calls[0][0] as Request).json()).toEqual({ provider: "battlenet", callbackURL: "/tools/talents/mage?save=1" });
+  await bnetGET(new Request("https://everloot.app/api/auth/bnet?returnTo=https%3A%2F%2Fevil.example"));
+  expect(await (v2.fake.handler.mock.calls[1][0] as Request).json()).toEqual({ provider: "battlenet", callbackURL: "/" });
+});
+
 test("v2 bnet start is 503 until Battle.net is configured", async () => {
   vi.stubEnv("BNET_CLIENT_SECRET", "");
   const res = await bnetGET(new Request("https://everloot.app/api/auth/bnet"));

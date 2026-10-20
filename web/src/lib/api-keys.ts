@@ -61,12 +61,18 @@ export async function listKeys(userId: string): Promise<KeyRow[]> {
 
 export type Refusal = "live_limit" | "daily_limit";
 
-/** A refusal when the account already has its five live keys, or made its ten keys today. */
-export async function createKey(userId: string, label: string): Promise<{ id: string; token: string; hint: string } | { refused: Refusal }> {
+/** read:own lets a key read its owner's saved builds ("Read my saved builds"), on top of the public data. */
+export const OWN_SCOPES = ["read:public", "read:own"] as const;
+
+/**
+ * A refusal when the account already has its five live keys, or made its ten keys today. Without `scopes` the
+ * key is read:public, and the call stays the four-argument one the database had before saved builds.
+ */
+export async function createKey(userId: string, label: string, scopes?: readonly string[]): Promise<{ id: string; token: string; hint: string } | { refused: Refusal }> {
   const key = newKey();
   const rows = await authQuery<Array<{ key_ref: string | null; refusal: string | null }>>("rpc/create_api_key", {
     method: "POST",
-    body: JSON.stringify({ p_user_id: userId, p_token_hash: key.hash, p_hint: key.hint, p_label: label }),
+    body: JSON.stringify({ p_user_id: userId, p_token_hash: key.hash, p_hint: key.hint, p_label: label, ...(scopes ? { p_scopes: scopes } : {}) }),
   });
   const row = Array.isArray(rows) && rows.length === 1 ? rows[0] : null;
   if (row && row.key_ref === null && (row.refusal === "live_limit" || row.refusal === "daily_limit")) return { refused: row.refusal };
