@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import {
-  MARKET_LIMITS, MARKET_MAX_BYTES, MAX_PRICE_ROWS, OPEN_DAYS, THIN_UNITS, emptyMarket, foldMarket, handleMarketValue, itemMarket,
+  MARKET_LIMITS, MARKET_MAX_BYTES, MAX_PRICE_ROWS, OPEN_DAYS, THIN_UNITS, emptyMarket, foldMarket, handleMarketValue, itemListings, itemMarket,
   marketBytes, marketHouses, marketPrices, marketRealms, parseHouse, realmMarket, uploadScans, validRealm,
 } from "../src/market.js";
 
@@ -25,6 +25,17 @@ test("a day is public when 3 installs scanned the item; values are medians", () 
   const { value, points } = itemMarket(state, "forever", 2589, NOW);
   expect(points).toEqual([{ day: "2026-10-20", min: 300, market: 310, quantity: 100, reporters: 3, thin: false }]);
   expect(value).toMatchObject({ itemId: 2589, market: 310, min: 300, historical: 310, quantity: 100, reporters: 3, ageDays: 0 });
+});
+
+test("listings per open public day are the median of the reporters' counts; closed and unagreed days have none", () => {
+  const open = foldMarket(emptyMarket(), three("2026-10-20", [100, 300, 500]), NOW);
+  expect(itemListings(open, "forever", 2589, NOW)).toEqual({ "2026-10-20": 5 });
+  expect(itemListings(open, "Forever", 765, NOW)).toEqual({});
+  expect(itemListings(foldMarket(emptyMarket(), three("2026-10-20", [100, 300, 500]).slice(0, 2), NOW), "Forever", 2589, NOW)).toEqual({});
+  // A closed day keeps its prices, not its count.
+  const closed = foldMarket(emptyMarket(), three("2026-10-10", [100, 300, 500]), NOW);
+  expect(itemMarket(closed, "Forever", 2589, NOW).points).toHaveLength(1);
+  expect(itemListings(closed, "Forever", 2589, NOW)).toEqual({});
 });
 
 test("two installs are not enough, and an unscanned item is unrecorded, never zero", () => {
