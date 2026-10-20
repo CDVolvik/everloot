@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { TabCount, tabClass } from "./tab-style";
+import { TAB_SCROLL, TabCount, tabClass } from "./tab-style";
 
 export interface LinkTab {
   href: string;
@@ -20,7 +20,7 @@ export default function LinkTabs({ label, tabs, aside }: { label: string; tabs: 
   return (
     <div data-link-tabs className="flex min-w-0 flex-wrap items-end justify-between gap-x-6 gap-y-2 border-b border-line">
       {/* The list scrolls on a narrow screen, never the page. */}
-      <nav aria-label={label} className="min-w-0 max-w-full overflow-x-auto">
+      <nav aria-label={label} className={`min-w-0 max-w-full ${TAB_SCROLL}`}>
         <ul className="flex">
           {tabs.map((tab) => (
             <li key={tab.href} className="shrink-0">

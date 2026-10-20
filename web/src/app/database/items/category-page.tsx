@@ -4,7 +4,7 @@ import { notFound, permanentRedirect } from "next/navigation";
 import { describe, filterItems, QUALITIES, resolveClass, resolveLegacyClass, resolveSubclass, slotOf, type ItemClass, type ItemRow, type ItemSubclass } from "../../../../../kb/src/item-taxonomy";
 import {
   activeFilters, BINDINGS, CLIENT_LAYER, CLIENT_TAXONOMY as T, categoryNamedEnough, categoryQuery, itemFacets, ITEM_LEVEL_BRACKETS, ITEMS_PER_PAGE, itemsHref,
-  listItems, SOURCES, shownItemName, toggled, UNRECORDED, type CategoryQuery, type NameSource,
+  listItems, SOURCES, shownItemName, subclassLabel, toggled, UNRECORDED, type CategoryQuery, type NameSource,
 } from "@/lib/items";
 import { loadItemSeen } from "@/lib/item-seen";
 import { pageMetadata } from "@/lib/seo";
@@ -104,7 +104,7 @@ export async function CategoryPage({ classSlug, subclassKey, search }: { classSl
   const names = new Map(shown.map((row) => [row[0], shownItemName(row[0], agreed, matched?.names, tips.get(row[0]))]));
   const icons = shown.some((row) => tips.get(row[0])?.icon);
   const here = (over: Partial<CategoryQuery>) => itemsHref(cls?.slug, sub?.slug, { ...q, page: 1, ...over });
-  const title = sub ? subName(sub) : cls ? cls.label : "Items";
+  const title = sub ? subclassLabel(sub).label : cls ? cls.label : "Items";
 
   const trail: Crumb[] = [
     { name: "Home", path: "/" },
@@ -178,7 +178,7 @@ export async function CategoryPage({ classSlug, subclassKey, search }: { classSl
       type: "menu" as const, key: "type", label: "Type",
       options: [
         { label: `All ${cls.label.toLowerCase()}`, href: itemsHref(cls.slug, undefined, { ...q, page: 1 }), on: !sub, reset: true, count: cls.items },
-        ...T.subclasses.filter((s) => s.classId === cls.id && s.items > 0).map((s) => ({ label: subName(s), href: itemsHref(cls.slug, s.slug, { ...q, page: 1 }), on: s.id === sub?.id, count: s.items })),
+        ...T.subclasses.filter((s) => s.classId === cls.id && s.items > 0).map((s) => ({ label: subclassLabel(s).label, href: itemsHref(cls.slug, s.slug, { ...q, page: 1 }), on: s.id === sub?.id, count: s.items })),
       ],
     }] : []),
     {

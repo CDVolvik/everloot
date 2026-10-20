@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import { craftedItemsFromRecords } from "../../../kb/src/item-source";
 import { buildItemSources } from "./item-seen";
-import { activeFilters, categoryQuery, CLIENT_TAXONOMY, itemsHref, listItems, toggled, type CategoryQuery, type SourceSlug } from "./items";
+import { activeFilters, categoryQuery, CLIENT_TAXONOMY, itemsHref, listItems, subclassLabel, toggled, type CategoryQuery, type SourceSlug } from "./items";
 
 const rate = (itemId: number, over: object = {}) => ({ itemId, drops: 4, public: true, sourceNpcId: 1, ...over });
 const sources = buildItemSources({
@@ -60,4 +60,13 @@ test("src round-trips through the URL, in one order, beside the other filters", 
   expect(toggled(q, "src", "drop")).toMatchObject({ src: ["quest"], page: 1 });
   expect(toggled(toggled(q, "src", "drop"), "src", "quest").src).toBeUndefined();
   expect(categoryQuery({ src: "loot" })).toBeNull();
+});
+
+test("a subclass is labelled without the client's OBSOLETE suffix or a bare number, and those buckets are marked retired", () => {
+  expect(subclassLabel({ name: "Trade Goods (OBSOLETE)" })).toEqual({ label: "Trade Goods", retired: true });
+  expect(subclassLabel({ name: "Wand(OBSOLETE)" })).toEqual({ label: "Wand", retired: true });
+  expect(subclassLabel({ name: null })).toEqual({ label: "Other", retired: true });
+  expect(subclassLabel({ name: "Cloth" })).toEqual({ label: "Cloth", retired: false });
+  // Every listed subclass in the build gets a label with neither.
+  for (const s of CLIENT_TAXONOMY.subclasses) expect(subclassLabel(s).label).not.toMatch(/OBSOLETE|^Subclass \d/);
 });

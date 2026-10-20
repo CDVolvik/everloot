@@ -41,6 +41,16 @@ export function shownItemName(
   return null;
 }
 
+/**
+ * A subclass as a page labels it: the client's "(OBSOLETE)" suffix dropped, and "Other" for one the files leave
+ * unnamed, never "Subclass 0". `retired` marks the buckets the hub leaves out (the class page still lists them).
+ */
+export function subclassLabel(s: { name: string | null }): { label: string; retired: boolean } {
+  if (s.name === null) return { label: "Other", retired: true };
+  const label = s.name.replace(/\s*\(OBSOLETE\)\s*$/i, "");
+  return { label, retired: label !== s.name };
+}
+
 /** Whether the plain first rows of a category have enough names to be indexed. */
 export function categoryNamedEnough(classId: number, subclassId: number | undefined, named: { has(id: number): boolean }): boolean {
   const ids = filterItems(CLIENT_TAXONOMY, { classId, subclassId }).slice(0, NAMED_SAMPLE).map((row) => row[0]);
