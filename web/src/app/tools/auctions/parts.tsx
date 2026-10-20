@@ -1,13 +1,11 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import ItemTip from "@/components/game/ItemTip";
-import { Card, DataTable, EmptyState, Field, QUALITY_LABEL, QUALITY_TEXT, SectionHeading, Tabs, type Column, type Quality } from "@/components/ui";
-import {
-  AH_PATH, biggestMoves, itemHref, itemLabel, money, mostListed, percent, realmHref, recentlyUpdated,
-  type ItemNames, type MarketRow, type Move,
-} from "@/lib/auction-house";
+import { Card, DataTable, EmptyState, QUALITY_LABEL, QUALITY_TEXT, SectionHeading, qualityOf as qualityToken, type Column, type Quality } from "@/components/ui";
+import { SPARK_BOX, itemHref, itemLabel, money, sparkline, type ItemNames, type MarketRow } from "@/lib/auction-house";
 import { HISTORY_DAYS, formatCopper, type PublicDay } from "../../../../../kb/src/market";
 import type { ItemTip as Tip } from "./art";
+import { categoryRow } from "./browse";
 import TimeAgo from "./TimeAgo";
 
 /** The quality token for a tooltip's quality name ("Uncommon"); null without a tooltip. */
@@ -16,9 +14,17 @@ export function qualityOf(tip: Tip | undefined): Quality | null {
   return (Object.keys(QUALITY_LABEL) as Quality[]).find((q) => QUALITY_LABEL[q] === tip.quality) ?? null;
 }
 
+/** An item's quality: its tooltip's, else the game files' for an item with a shown name; null for a plain "Item N". */
+export function itemQuality(id: number, tip: Tip | undefined, named: boolean): Quality | null {
+  const fromTip = qualityOf(tip);
+  if (fromTip || !named) return fromTip;
+  const q = categoryRow(id)?.[4];
+  return q === undefined || q === null || q > 5 ? null : qualityToken(q);
+}
+
 /** An item's label in its quality colour, its icon in front and the game tooltip on hover and focus. */
 export function ItemLink({ id, href, tip, names }: { id: number; href: string; tip: Tip | undefined; names: ItemNames }) {
-  const q = qualityOf(tip);
+  const q = itemQuality(id, tip, names.has(id));
   return (
     <ItemTip tip={tip}>
       <Link href={href} className={`underline-offset-4 hover:underline ${q ? QUALITY_TEXT[q] : "text-accent"}`}>{itemLabel(id, names)}</Link>
@@ -26,19 +32,27 @@ export function ItemLink({ id, href, tip, names }: { id: number; href: string; t
   );
 }
 
-/** The realm picker and item search: one GET form that the hub turns into the clean URL. */
-export function FindPrices({ realms, realm = "", query = "" }: { realms: string[]; realm?: string; query?: string }) {
+/** The trend in a results row: the market value over the last two weeks, or nothing under two solid days. */
+export function Sparkline({ points, now }: { points: PublicDay[]; now: Date }) {
+  const line = sparkline(points, now);
+  if (!line) return <span className="text-muted">—</span>;
   return (
-    <Card as="section" aria-labelledby="ah-find">
-      <h2 id="ah-find" className="sr-only">Find prices</h2>
-      <form method="get" action={AH_PATH} className="grid items-end gap-3 sm:grid-cols-[1fr_1fr_auto]">
-        <Field label="Realm" name="realm" defaultValue={realm} list="ah-realms" autoComplete="off" placeholder={realms[0] ?? "Your realm"} />
-        <Field label="Item id" name="q" defaultValue={query} inputMode="numeric" mono placeholder="2589" />
-        <button type="submit" className="btn btn-primary">Find prices</button>
-        <datalist id="ah-realms">{realms.map((name) => <option key={name} value={name} />)}</datalist>
-      </form>
-    </Card>
+    <svg data-sparkline width={SPARK_BOX.width} height={SPARK_BOX.height} viewBox={`0 0 ${SPARK_BOX.width} ${SPARK_BOX.height}`} aria-hidden="true" className="inline-block align-middle text-accent">
+      <polyline points={line} fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinejoin="round" />
+    </svg>
   );
+}
+
+/** One item on one realm in each auction house: market value, minimum, units and when it was last scanned. */
+export function HousePrices({ rows, caption, now }: { rows: MarketRow[]; caption: string; now: Date }) {
+  const columns: Column<MarketRow>[] = [
+    { key: "house", header: "House", nowrap: true, cell: (r) => r.house },
+    { key: "market", header: "Market value", numeric: true, cell: (r) => <span className={r.value.market === null ? "text-muted" : undefined}>{money(r.value.market)}</span> },
+    { key: "min", header: "Min buyout", numeric: true, cell: (r) => formatCopper(r.value.min) },
+    { key: "units", header: "Units", numeric: true, cell: (r) => r.value.quantity.toLocaleString("en-US") },
+    { key: "updated", header: "Updated", numeric: true, cell: (r) => (r.updatedAt !== null ? <TimeAgo at={r.updatedAt} renderedAt={now.getTime()} /> : r.value.day) },
+  ];
+  return <DataTable dense caption={caption} columns={columns} rows={rows} rowKey={(r) => r.house ?? "all"} />;
 }
 
 /** Contributing is the one way a realm gets prices: run a scan, upload it. */
@@ -56,11 +70,11 @@ export function Contribute() {
   );
 }
 
-/** Facts beside each other under a page title: "Prices updated 4 min ago · 3 realms". */
+/** Facts beside each other under a page title: "Prices updated 4 min ago Â· 3 realms". */
 export function Facts({ items }: { items: ReactNode[] }) {
   return (
     <>
-      {items.flatMap((item, i) => (i === 0 ? [<span key={i}>{item}</span>] : [<span key={`s${i}`} aria-hidden="true">·</span>, <span key={i}>{item}</span>]))}
+      {items.flatMap((item, i) => (i === 0 ? [<span key={i}>{item}</span>] : [<span key={`s${i}`} aria-hidden="true">Â·</span>, <span key={i}>{item}</span>]))}
     </>
   );
 }
@@ -140,90 +154,4 @@ export function DayTable({ points, caption }: { points: PublicDay[]; caption: st
     { key: "reporters", header: "Reporters", numeric: true, cell: (p) => p.reporters },
   ];
   return <DataTable caption={caption} columns={columns} rows={[...points].reverse()} rowKey={(p) => p.day} />;
-}
-
-const BOARD_ROWS = 25;
-
-/** The items the boards show, so a page reads art for those and no others. */
-export function boardItemIds(rows: MarketRow[], now: Date, listedLimit = BOARD_ROWS): number[] {
-  return [
-    ...mostListed(rows, listedLimit).map((r) => r.value.itemId),
-    ...biggestMoves(rows, 1, now, BOARD_ROWS).map((m) => m.row.value.itemId),
-    ...biggestMoves(rows, 7, now, BOARD_ROWS).map((m) => m.row.value.itemId),
-    ...recentlyUpdated(rows, BOARD_ROWS).map((r) => r.value.itemId),
-  ];
-}
-
-/**
- * The live boards: most listed, the biggest moves over a day and a week, and the newest scans. One tab
- * list per page; `showRealm` adds the realm column on the all-realm hub.
- */
-export function Boards({ rows, tips, names, now, showRealm, listedLimit = BOARD_ROWS }: {
-  rows: MarketRow[];
-  tips: Map<number, Tip>;
-  names: ItemNames;
-  now: Date;
-  showRealm: boolean;
-  listedLimit?: number;
-}) {
-  const listed = mostListed(rows, listedLimit);
-  const day = biggestMoves(rows, 1, now, BOARD_ROWS);
-  const week = biggestMoves(rows, 7, now, BOARD_ROWS);
-  const recent = recentlyUpdated(rows, BOARD_ROWS);
-
-  const item: Column<MarketRow> = {
-    key: "item", header: "Item", nowrap: true,
-    cell: (r) => <ItemLink id={r.value.itemId} href={itemHref(r.realm, r.value.itemId)} tip={tips.get(r.value.itemId)} names={names} />,
-  };
-  const realm: Column<MarketRow>[] = showRealm
-    ? [{ key: "realm", header: "Realm", nowrap: true, cell: (r) => <Link href={realmHref(r.realm)} className="text-fg-2 underline-offset-4 hover:text-fg hover:underline">{r.realm.name}</Link> }]
-    : [];
-  const market: Column<MarketRow> = { key: "market", header: "Market value", numeric: true, cell: (r) => <span className={r.value.market === null ? "text-muted" : undefined}>{money(r.value.market)}</span> };
-  const min: Column<MarketRow> = { key: "min", header: "Min buyout", numeric: true, cell: (r) => formatCopper(r.value.min) };
-  const units: Column<MarketRow> = { key: "units", header: "Units", numeric: true, cell: (r) => r.value.quantity.toLocaleString("en-US") };
-
-  const moveColumns: Column<Move>[] = [
-    { ...item, cell: (m) => item.cell(m.row) },
-    ...realm.map((c) => ({ ...c, cell: (m: Move) => c.cell(m.row) })),
-    { key: "change", header: "Change", numeric: true, cell: (m) => <span className={m.change > 0 ? "text-accent" : "text-fg"}>{percent(m.change)}</span> },
-    { key: "from", header: "Was", numeric: true, cell: (m) => formatCopper(m.from.market) },
-    { key: "to", header: "Now", numeric: true, cell: (m) => formatCopper(m.to.market) },
-    { ...units, cell: (m) => m.to.quantity.toLocaleString("en-US") },
-  ];
-  const quiet = (message: string) => <EmptyState framed={false} message={message} />;
-  const table = <T,>(caption: string, columns: Column<T>[], data: T[], key: (row: T) => string, empty: string, footer?: ReactNode) => (
-    <div className="pt-4">
-      <DataTable caption={caption} columns={columns} rows={data} rowKey={key} empty={quiet(empty)} footer={footer} />
-    </div>
-  );
-  const rowKey = (r: MarketRow) => `${r.realm.key}:${r.value.itemId}`;
-  const moveKey = (m: Move) => rowKey(m.row);
-
-  return (
-    <Tabs
-      label="Market boards"
-      tabs={[
-        {
-          id: "most-listed", label: "Most listed", count: listed.length,
-          panel: table("Items with the most units listed", [item, ...realm, market, min, { key: "historical", header: "Historical", numeric: true, cell: (r) => formatCopper(r.value.historical) }, units], listed, rowKey,
-            "No item has a public price here yet.",
-            rows.length > listed.length ? <span>{listed.length.toLocaleString("en-US")} of {rows.length.toLocaleString("en-US")}, most units first</span> : undefined),
-        },
-        {
-          id: "moves-24h", label: "Moves 24h", count: day.length,
-          panel: table("Biggest market value moves since the day before", moveColumns, day, moveKey, "No price has two days in a row to compare yet."),
-        },
-        {
-          id: "moves-7d", label: "Moves 7d", count: week.length,
-          panel: table("Biggest market value moves over a week", moveColumns, week, moveKey, "No price has a week of scans to compare yet."),
-        },
-        {
-          id: "recent", label: "Recently updated", count: recent.length,
-          panel: table("Items scanned most recently", [item, ...realm, market, min, units, {
-            key: "updated", header: "Scanned", numeric: true, cell: (r) => <TimeAgo at={r.updatedAt!} renderedAt={now.getTime()} />,
-          }], recent, rowKey, "No scan from this week is public yet."),
-        },
-      ]}
-    />
-  );
 }

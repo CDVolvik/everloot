@@ -1,8 +1,8 @@
 import { expect, test } from "vitest";
 import { emptyMarket, foldMarket } from "../../../kb/src/market";
 import {
-  agreementSoFar, biggestMoves, itemAcrossRealms, itemIdParam, itemLabel, percent, realmBoards, realmSlug, recentlyUpdated,
-  sitemapPaths, slugParam, timeAgo,
+  SPARK_BOX, agreementSoFar, houseCounts, houseParam, itemAcrossRealms, itemByHouse, itemIdParam, itemLabel, percent, priceMove, realmBoards,
+  realmSlug, sitemapPaths, slugParam, sparkline, timeAgo,
 } from "./auction-house";
 
 const now = new Date("2026-10-20T12:00:00.000Z");
@@ -51,12 +51,48 @@ test("only realms with a public value get a board; Nightfall's two reporters sho
 
 test("moves compare the newest solid day with the day before, or a week before", () => {
   const rows = realmBoards(state, now)[0]!.rows;
-  const day = biggestMoves(rows, 1, now, 10);
-  expect(day.map((m) => [m.row.value.itemId, percent(m.change)])).toEqual([[765, "+10%"]]);
-  const week = biggestMoves(rows, 7, now, 10);
-  expect(week.map((m) => [m.row.value.itemId, percent(m.change)])).toEqual([[2592, "+25%"]]);
+  const moves = (span: 1 | 7) => rows.flatMap((r) => { const m = priceMove(r, span, now); return m ? [[r.value.itemId, percent(m.change)]] : []; });
+  expect(moves(1)).toEqual([[765, "+10%"]]);
+  expect(moves(7)).toEqual([[2592, "+25%"]]);
   // An item last scanned 30 days ago has no recent scan time.
-  expect(recentlyUpdated(rows, 10).map((r) => r.value.itemId)).not.toContain(4306);
+  expect(rows.find((r) => r.value.itemId === 4306)!.updatedAt).toBeNull();
+});
+
+test("each house is its own board; the blend is every house, and the switch counts items per house", () => {
+  const houses = foldMarket(emptyMarket(), [
+    ...scans("Forever", 0, [[2589, 100]]).map((r) => ({ ...r, house: "Horde" })),
+    ...scans("Forever", 0, [[2589, 300], [765, 30]]).map((r, i) => ({ ...r, installId: `alliance-${i}-x`, house: "Alliance" })),
+  ], now);
+  expect(realmBoards(houses, now).map((b) => [b.realm.slug, b.house, b.rows.length])).toEqual([["forever", null, 2]]);
+  const horde = realmBoards(houses, now, "Horde");
+  expect(horde.map((b) => [b.realm.name, b.house])).toEqual([["Forever", "Horde"]]);
+  expect(horde[0]!.byItem.get(2589)!.value.market).toBe(100);
+  expect(realmBoards(houses, now, "Neutral")).toEqual([]);
+  expect(itemByHouse(houses, now, "forever", 2589).map((r) => [r.house, r.value.market])).toEqual([["Alliance", 300], ["Horde", 100]]);
+  expect([...houseCounts(houses, now, "forever")]).toEqual([[null, 2], ["Alliance", 2], ["Horde", 1], ["Neutral", 0]]);
+  expect(houseParam(undefined)).toBeNull();
+  expect(houseParam("all")).toBeNull();
+  expect(houseParam("horde")).toBe("Horde");
+  expect(houseParam("Horde")).toBeUndefined();
+  expect(houseParam("goblin")).toBeUndefined();
+});
+
+test("a row carries its listings while its newest day is open", () => {
+  const rows = realmBoards(state, now)[0]!.byItem;
+  expect(rows.get(2589)!.listings).toBe(2);
+  // Its only day is 30 days old: closed, so no count is kept.
+  expect(rows.get(4306)!.listings).toBeNull();
+});
+
+test("the sparkline places the solid days of the last two weeks by day, and needs two of them", () => {
+  const rows = realmBoards(state, now)[0]!.byItem;
+  // 765: yesterday at 30, today at 33. Today is at the right edge, the higher value at the top.
+  expect(sparkline(rows.get(765)!.points, now)).toBe("58.2,15.0 63.0,1.0");
+  expect(sparkline(rows.get(2589)!.points, now)).toBeNull();
+  // 2592 a week ago and today; 4306 only 30 days ago.
+  expect(sparkline(rows.get(2592)!.points, now)?.split(" ")).toHaveLength(2);
+  expect(sparkline(rows.get(4306)!.points, now)).toBeNull();
+  expect(SPARK_BOX).toEqual({ width: 64, height: 16 });
 });
 
 test("the sitemap lists realms, items on a realm and items across realms, only with a market value", () => {
