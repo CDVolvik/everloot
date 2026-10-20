@@ -4,7 +4,7 @@ import type { Account } from "../shared/types";
 
 /**
  * The player's everloot.app account, as one of its free API keys (made after Battle.net sign-in on
- * /connect). It goes to the site's public MCP server with Chat and the in-game /ask, which raises their
+ * /docs/api/keys). It goes to the site's public MCP server with Chat and the in-game /ask, which raises their
  * limits; uploads never carry it. Kept in a file in the data folder, like the provider keys.
  */
 export const ACCOUNT_KEY_FILE = "everloot-key.txt";

@@ -3,6 +3,7 @@ import { censusFromRows, type CensusView } from "../../../kb/src/census";
 import { itemFactsFromRecords } from "../../../kb/src/drop-rollup";
 import { observedEdges, type Edge } from "../../../kb/src/edges";
 import type { ItemFacts } from "../../../kb/src/item-page";
+import { craftedItemsFromRecords } from "../../../kb/src/item-source";
 import { worldFactsFromRecords, type WorldFacts } from "../../../kb/src/world-pages";
 import { lootWindowsFromRecords, rollupDrops, type RollupResult } from "./rollups";
 import { uploadStore, type CensusRead } from "./upload-store";
@@ -28,6 +29,8 @@ interface AggregateSet {
   drops: { rates: RollupResult["rates"]; measuredZeros: RollupResult["measuredZeros"]; rejected: RollupResult["rejected"] };
   items: ItemFacts;
   world: WorldFacts;
+  /** Items 3 installs saw a recipe make. */
+  crafted: Set<number>;
   addons: AddonRollup;
   edges: Edge[];
 }
@@ -65,6 +68,7 @@ async function loadAggregates(): Promise<AggregateSet | null> {
       drops: rollupDrops(windows),
       items: itemFactsFromRecords(corpus.records),
       world: worldFactsFromRecords(corpus.records),
+      crafted: craftedItemsFromRecords(corpus.records),
       // Addon rows dated after the corpus was current are ignored, so one forged clock cannot set "last seen".
       addons: popularAddonsFromRecords(corpus.records, corpus.dataAsOf ?? new Date()),
       edges: observedEdges(corpus.records, corpus.dataAsOf ?? new Date()),
@@ -103,6 +107,12 @@ export async function loadWorldFacts(): Promise<WorldFacts & { unreachable: bool
   const agg = await loadAggregates();
   if (!agg) return { npcs: [], quests: [], vendors: [], unreachable: true };
   return { ...agg.world, unreachable: false };
+}
+
+/** Items players have seen a recipe make (3 installs), for the item lists' Source column. */
+export async function loadCraftedItems(): Promise<{ items: Set<number>; unreachable: boolean }> {
+  const agg = await loadAggregates();
+  return agg ? { items: agg.crafted, unreachable: false } : { items: new Set(), unreachable: true };
 }
 
 /** Relations seen in play, each public under the 3-install rule its page uses (kb/src/edges.ts). */

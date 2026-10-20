@@ -53,6 +53,30 @@ export const QUALITY_SLUGS: string[] = QUALITIES.map((q) => q.slug);
 /** The quality filter also takes items whose quality the files leave unrecorded. */
 export const UNRECORDED = "unrecorded";
 
+/** The binding filter's choices, by the client's bonding enum (item-names.ts writes the same words in tooltips). */
+export const BINDINGS = [
+  { slug: "pickup", label: "Binds when picked up", value: 1 },
+  { slug: "equip", label: "Binds when equipped", value: 2 },
+  { slug: "use", label: "Binds when used", value: 3 },
+  { slug: "quest", label: "Quest item", value: 4 },
+  { slug: "none", label: "Not bound", value: 0 },
+] as const;
+const BINDING_SLUGS: string[] = BINDINGS.map((b) => b.slug);
+
+/** Where players have seen an item come from, in the order a cell and the menu list them (the `src` filter's values). */
+export const SOURCES = [
+  { slug: "drop", label: "Drop", menu: "Drop" },
+  { slug: "vendor", label: "Vendor", menu: "Vendor" },
+  { slug: "crafted", label: "Crafted", menu: "Crafted" },
+  { slug: "quest", label: "Quest", menu: "Quest reward" },
+  { slug: "object", label: "Object", menu: "Container or object" },
+] as const;
+export type SourceSlug = (typeof SOURCES)[number]["slug"];
+const SOURCE_SLUGS: string[] = SOURCES.map((x) => x.slug);
+
+/** The item level menu's brackets; any other range still works typed into the URL. */
+export const ITEM_LEVEL_BRACKETS = [[1, 10], [11, 20], [21, 30], [31, 40], [41, 50], [51, 60], [61, 70], [71, 80], [81, 999]].map(([min, max]) => ({ min, max }));
+
 /* ---------- What the game files say about each item: crafted, reagent, set piece, profession ---------- */
 
 export interface Profession { id: number; name: string; slug: string }
@@ -82,7 +106,7 @@ export function itemFacets(): Facets {
 
 /* ---------- The list's query string ---------- */
 
-export const ITEM_SORTS = ["name", "type", "slot", "seen", "id"] as const;
+export const ITEM_SORTS = ["name", "ilvl", "req", "type", "slot", "seen", "id"] as const;
 export type ItemSort = (typeof ITEM_SORTS)[number];
 
 /** Filters, sort and page of an item list; the class and subclass are in the path. */
@@ -91,6 +115,8 @@ export interface CategoryQuery {
   q?: string;
   slot?: string[];
   quality?: string[];
+  /** Where players have seen it come from: any of these (a public fact, so unreported items match none). */
+  src?: SourceSlug[];
   crafted?: boolean;
   reagent?: boolean;
   set?: boolean;
@@ -98,6 +124,10 @@ export interface CategoryQuery {
   skill?: string;
   /** Items players have reported (a public fact: name, drop, vendor or quest). */
   seen?: boolean;
+  /** Item level and required level ranges, and a binding slug: from the tooltip facts, so only items that show them match. */
+  ilvl?: { min: number; max: number };
+  req?: { min: number; max: number };
+  bind?: string;
   /** Absent: by id, ascending. */
   sort?: { key: ItemSort; desc: boolean };
   page: number;
@@ -105,9 +135,18 @@ export interface CategoryQuery {
 
 /** How many filters are on (the page and the sort are not filters). */
 export function activeFilters(q: CategoryQuery): number {
-  return Number(Boolean(q.q)) + (q.slot?.length ? 1 : 0) + (q.quality?.length ? 1 : 0) + Number(Boolean(q.crafted)) + Number(Boolean(q.reagent))
-    + Number(Boolean(q.set)) + Number(Boolean(q.skill)) + Number(Boolean(q.seen));
+  return Number(Boolean(q.q)) + (q.slot?.length ? 1 : 0) + (q.quality?.length ? 1 : 0) + (q.src?.length ? 1 : 0) + Number(Boolean(q.crafted)) + Number(Boolean(q.reagent))
+    + Number(Boolean(q.set)) + Number(Boolean(q.skill)) + Number(Boolean(q.seen)) + Number(Boolean(q.ilvl)) + Number(Boolean(q.req)) + Number(Boolean(q.bind));
 }
+
+/** `10-20` or `12`, as the other database lists write a level range (list-parts.tsx); null when malformed. */
+function levels(raw: string | undefined): { min: number; max: number } | undefined | null {
+  if (raw === undefined) return undefined;
+  const m = /^(\d{1,3})(?:-(\d{1,3}))?$/.exec(raw);
+  const min = Number(m?.[1]), max = Number(m?.[2] ?? m?.[1]);
+  return m && min >= 1 && min <= max ? { min, max } : null;
+}
+const levelsParam = (r?: { min: number; max: number }) => (r ? (r.min === r.max ? String(r.min) : `${r.min}-${r.max}`) : undefined);
 
 /** A comma list where every value is known, in the known values' order; null when one is not. */
 function list(raw: string | undefined, known: readonly string[]): string[] | undefined | null {
@@ -123,19 +162,23 @@ export function categoryQuery(search: Record<string, string | string[] | undefin
   const flag = (k: string): boolean | undefined | null => { const v = one(k); return v === undefined ? undefined : v === "1" ? true : null; };
   const slot = list(one("slot"), SLOT_SLUGS);
   const quality = list(one("quality"), [...QUALITY_SLUGS, UNRECORDED]);
+  const src = list(one("src"), SOURCE_SLUGS) as SourceSlug[] | undefined | null;
   const crafted = flag("crafted"), reagent = flag("reagent"), set = flag("set"), seen = flag("seen");
   const skill = one("skill"), sort = one("sort"), page = one("page");
-  if (slot === null || quality === null || crafted === null || reagent === null || set === null || seen === null) return null;
+  const ilvl = levels(one("ilvl")), req = levels(one("req")), bind = one("bind");
+  if (slot === null || quality === null || src === null || crafted === null || reagent === null || set === null || seen === null || ilvl === null || req === null) return null;
   if (skill !== undefined && !itemFacets().professions.some((p) => p.slug === skill)) return null;
+  if (bind !== undefined && !BINDING_SLUGS.includes(bind)) return null;
   const sorted = sort === undefined ? undefined : /^(-?)([a-z]+)$/.exec(sort);
   if (sort !== undefined && (!sorted || !(ITEM_SORTS as readonly string[]).includes(sorted[2]))) return null;
   if (page !== undefined && !/^[1-9]\d{0,4}$/.test(page)) return null;
   const text = one("q")?.trim().slice(0, 60);
   return {
     ...(text ? { q: text } : {}),
-    ...(slot ? { slot } : {}), ...(quality ? { quality } : {}),
+    ...(slot ? { slot } : {}), ...(quality ? { quality } : {}), ...(src ? { src } : {}),
     ...(crafted ? { crafted } : {}), ...(reagent ? { reagent } : {}), ...(set ? { set } : {}), ...(seen ? { seen } : {}),
     ...(skill ? { skill } : {}),
+    ...(ilvl ? { ilvl } : {}), ...(req ? { req } : {}), ...(bind ? { bind } : {}),
     ...(sorted ? { sort: { key: sorted[2] as ItemSort, desc: sorted[1] === "-" } } : {}),
     page: page === undefined ? 1 : Number(page),
   };
@@ -148,11 +191,15 @@ export function itemsHref(classSlug?: string, subclassSlug?: string, q: Partial<
   if (q.q) params.set("q", q.q);
   if (q.slot?.length) params.set("slot", q.slot.join(","));
   if (q.quality?.length) params.set("quality", q.quality.join(","));
+  if (q.src?.length) params.set("src", q.src.join(","));
   if (q.skill) params.set("skill", q.skill);
   if (q.crafted) params.set("crafted", "1");
   if (q.reagent) params.set("reagent", "1");
   if (q.set) params.set("set", "1");
   if (q.seen) params.set("seen", "1");
+  if (q.ilvl) params.set("ilvl", levelsParam(q.ilvl)!);
+  if (q.req) params.set("req", levelsParam(q.req)!);
+  if (q.bind) params.set("bind", q.bind);
   if (q.sort) params.set("sort", `${q.sort.desc ? "-" : ""}${q.sort.key}`);
   if (q.page && q.page > 1) params.set("page", String(q.page));
   // Commas read better in a shared link than %2C, and are safe in a query string.
@@ -161,9 +208,9 @@ export function itemsHref(classSlug?: string, subclassSlug?: string, q: Partial<
 }
 
 /** The query with one value of a multi filter switched on or off, back on page 1. */
-export function toggled(q: CategoryQuery, key: "slot" | "quality", value: string): CategoryQuery {
+export function toggled(q: CategoryQuery, key: "slot" | "quality" | "src", value: string): CategoryQuery {
   const now = q[key] ?? [];
-  const order = key === "slot" ? SLOT_SLUGS : [...QUALITY_SLUGS, UNRECORDED];
+  const order = key === "slot" ? SLOT_SLUGS : key === "src" ? SOURCE_SLUGS : [...QUALITY_SLUGS, UNRECORDED];
   const next = order.filter((v) => (v === value ? !now.includes(v) : now.includes(v)));
   return { ...q, [key]: next.length ? next : undefined, page: 1 };
 }
@@ -176,7 +223,16 @@ export interface ItemListContext {
   name?: (id: number) => string | undefined;
   /** Items with a public fact from players. */
   seen?: { has(id: number): boolean };
+  /** Where players have seen an item come from, in SOURCES order; undefined when nobody has reported one. */
+  sources?: (id: number) => readonly SourceSlug[] | undefined;
+  /** The tooltip facts a page may show for an item (item level, required level, binding); undefined when it shows none. */
+  tip?: (id: number) => ItemLevels | undefined;
 }
+
+/** What the item level, required level and binding filters read: 0 is "none" for both levels. */
+export interface ItemLevels { level: number; required: number; binding: number }
+
+const within = (value: number | undefined, r: { min: number; max: number }) => value !== undefined && value >= r.min && value <= r.max;
 
 /** The game-file filters, which the page and the API share. */
 export function matchesFacets(id: number, f: Pick<CategoryQuery, "crafted" | "reagent" | "set" | "skill">): boolean {
@@ -200,12 +256,18 @@ export function listItems(base: readonly ItemRow[], q: CategoryQuery, ctx: ItemL
     if (q.slot?.length && !q.slot.includes(slotOf(inv)?.slug ?? "")) return false;
     if (q.quality?.length && !q.quality.includes(quality === null ? UNRECORDED : QUALITIES[quality]?.slug ?? UNRECORDED)) return false;
     if (q.seen && !ctx.seen?.has(itemId)) return false;
+    if (q.src?.length && !ctx.sources?.(itemId)?.some((x) => q.src!.includes(x))) return false;
+    // Only an item whose facts the page shows can match these; the rest have no known value.
+    const tip = q.ilvl || q.req || q.bind ? ctx.tip?.(itemId) : undefined;
+    if (q.ilvl && !within(tip?.level, q.ilvl)) return false;
+    if (q.req && !within(tip?.required, q.req)) return false;
+    if (q.bind && (!tip || BINDINGS.find((b) => b.slug === q.bind)?.value !== tip.binding)) return false;
     return matchesFacets(itemId, q);
   });
   return sortItems(rows, q.sort, ctx);
 }
 
-/** Text keys sort A to Z with the rows that have none last, whichever way; ties go by id. */
+/** Text keys sort A to Z and levels low to high, with the rows that have none last, whichever way; ties go by id. */
 export function sortItems(rows: ItemRow[], sort: CategoryQuery["sort"], ctx: ItemListContext = {}): ItemRow[] {
   if (!sort || sort.key === "id") return sort?.desc ? [...rows].sort((a, b) => b[0] - a[0]) : rows;
   const dir = sort.desc ? -1 : 1;
@@ -213,7 +275,10 @@ export function sortItems(rows: ItemRow[], sort: CategoryQuery["sort"], ctx: Ite
     if (sort.key === "name") return ctx.name?.(row[0])?.toLowerCase() ?? null;
     if (sort.key === "type") return describe(CLIENT_TAXONOMY, row).subclass?.name?.toLowerCase() ?? null;
     if (sort.key === "slot") return slotOf(row[3])?.name.toLowerCase() ?? null;
-    return ctx.seen?.has(row[0]) ? 0 : null;
+    if (sort.key === "ilvl") return ctx.tip?.(row[0])?.level || null;
+    if (sort.key === "req") return ctx.tip?.(row[0])?.required || null;
+    const from = ctx.sources?.(row[0]);
+    return from?.length ? from.map((x) => SOURCES.find((s) => s.slug === x)!.label).join(", ").toLowerCase() : null;
   };
   const keyed = rows.map((row) => ({ row, k: key(row) }));
   keyed.sort((a, b) => {

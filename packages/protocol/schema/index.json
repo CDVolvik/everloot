@@ -1,5 +1,5 @@
 {
-  "protocol": "1.2.0",
+  "protocol": "1.3.0",
   "kinds": [
     "achievement_catalog",
     "achievement_owned",
@@ -20,6 +20,7 @@
     "map_bounds",
     "money_event",
     "npc_sighting",
+    "player_seen",
     "price_seen",
     "quest",
     "quest_chain_catalog",

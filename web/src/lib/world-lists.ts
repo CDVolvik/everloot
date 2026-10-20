@@ -1,4 +1,4 @@
-import { npcPage, npcTraits, questPage, vendorPage, type NpcPage, type NpcReaction, type QuestPage, type VendorPage, type WorldFacts } from "../../../kb/src/world-pages";
+import { npcPage, npcTraits, questPage, questTraits, vendorPage, type NpcPage, type NpcRank, type NpcReaction, type QuestPage, type QuestSide, type QuestTag, type VendorPage, type WorldFacts } from "../../../kb/src/world-pages";
 import { publicZones, type ZoneSummary } from "./zones";
 
 // The NPCs, quests and vendors that have at least one public fact (3 installs agree), for the list pages
@@ -27,6 +27,9 @@ export function publicNpcs(facts: WorldFacts): NpcPage[] {
 export interface NpcRow extends NpcPage {
   level: number | null;
   reaction: NpcReaction | null;
+  /** The creature type (Beast, Undead...) and rank (normal, elite, rare...) 3 installs agree on. */
+  creatureType: string | null;
+  rank: NpcRank | null;
   /** The released zone of its first agreed pin; null when it has none, or the zone is held back. */
   zone: ZoneSummary | null;
   /** Items with a public loot frequency from it. */
@@ -51,8 +54,16 @@ export function npcRows(facts: WorldFacts, rates: readonly { sourceNpcId?: numbe
   }).filter((r) => r.name !== null || r.pins.length > 0 || r.level !== null || r.reaction !== null || r.drops > 0);
 }
 
-export function publicQuests(facts: WorldFacts): QuestPage[] {
-  return [...byId(facts.quests, (r) => r.questId)].map(([id, quests]) => questPage(id, { ...EMPTY, quests }))
+/** One row of the quest list: the page's facts and the category, side, group size and tag 3 installs agree on. */
+export interface QuestRow extends QuestPage {
+  category: string | null;
+  side: QuestSide | null;
+  suggestedGroup: number | null;
+  tag: QuestTag | null;
+}
+
+export function publicQuests(facts: WorldFacts): QuestRow[] {
+  return [...byId(facts.quests, (r) => r.questId)].map(([id, quests]) => ({ ...questPage(id, { ...EMPTY, quests }), ...questTraits(quests) }))
     .filter((p) => p.title !== null || p.level !== null || p.giverNpcId !== null || p.turnInNpcId !== null || p.rewards.length > 0);
 }
 

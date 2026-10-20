@@ -238,16 +238,24 @@ export interface ItemTip {
   partial: boolean;
   /** "found in game files, unconfirmed · build x". */
   label: string;
+  /** Item level, required level (0 for both: none) and the bonding enum, for the item lists' columns and filters. */
+  level: number;
+  required: number;
+  binding: number;
 }
 
 export function itemTip(r: ItemRecord, assets: Pick<SiteAssets, "base" | "version" | "label">): ItemTip {
   const text = itemTipText(r);
-  return { ...text, color: qualityColor(r.q), icon: r.i ? itemIconUrl(assets.base, r.i) : null, label: `${assets.label} · build ${assets.version}` };
+  return {
+    ...text, color: qualityColor(r.q), icon: r.i ? itemIconUrl(assets.base, r.i) : null, label: `${assets.label} · build ${assets.version}`,
+    level: r.l, required: r.r, binding: r.b,
+  };
 }
 
 /**
- * Tooltips for the given items: the caller passes only items players have reported (the 3-install rule),
- * and only the shards they are in are read. Nothing is read without the public manifest (its build and
+ * Tooltips for the given items: the caller passes only items players have reported (the 3-install rule) or,
+ * on pages, items named under the item name rule (`showsTip` in shown-item-names.ts), and only the shards
+ * they are in are read. Nothing is read without the public manifest (its build and
  * icons) and the private bucket, and the private files must be for the same build. Never throws.
  */
 export async function loadItemTips(assets: SiteAssets | null, ids: readonly number[], store: PrivateStore | null = privateStoreFromEnv()): Promise<Map<number, ItemTip>> {

@@ -21,7 +21,6 @@ export { default as Prose } from "./Prose";
 export { default as SearchBar, type SearchBarProps } from "./SearchBar";
 export { default as SectionHeading } from "./SectionHeading";
 export { default as Segmented, type SegmentedOption } from "./Segmented";
-export { default as SourceLine, type SourceLineProps } from "./SourceLine";
 export { default as Tabs, tabFromHash, type TabItem } from "./Tabs";
 export { default as TocLayout, type TocItem } from "./TocLayout";
 export { default as TooltipFrame, type TooltipFrameProps } from "./TooltipFrame";

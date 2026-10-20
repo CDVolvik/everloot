@@ -71,3 +71,16 @@ export function detectGameFolders(roots: string[], fs: FsLike): GameFolderCandid
   }
   return found.sort((a, b) => b.files - a.files || Number(b.hasAccounts) - Number(a.hasAccounts) || a.product.localeCompare(b.product));
 }
+
+/**
+ * The product folder a Browse pick means. Players often pick `World of Warcraft` itself, or step
+ * one level too deep into `WTF` or `Interface`; both land on the product folder the app needs.
+ */
+export function resolvePickedFolder(picked: string, fs: FsLike): string {
+  if (fs.isDir(join(picked, "WTF"))) return picked;
+  const best = detectGameFolders([picked], fs)[0];
+  if (best) return best.folder;
+  const parent = join(picked, "..");
+  const name = picked.split(/[\\/]/).filter(Boolean).pop() ?? "";
+  return /^(WTF|Interface)$/i.test(name) && fs.isDir(join(parent, "WTF")) ? parent : picked;
+}
