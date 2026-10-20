@@ -40,6 +40,7 @@ await Promise.all([
 ]);
 cpSync(join(root, "src/renderer/index.html"), join(dist, "renderer", "index.html"));
 cpSync(join(root, "src/renderer/styles.css"), join(dist, "renderer", "styles.css"));
+cpSync(join(root, "build", "icon.png"), join(dist, "renderer", "logo.png"));
 // Tray icons travel with the bundle; build/ itself is only for electron-builder.
 for (const icon of ["tray.png", "trayTemplate.png", "trayTemplate@2x.png"]) cpSync(join(root, "build", icon), join(dist, icon));
 if (watch) console.log("--watch is not supported; run the build again after a change.");

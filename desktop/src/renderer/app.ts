@@ -28,6 +28,10 @@ let candidates: GameFolderCandidate[] = [];
 let chosenFolder: string | null = null;
 /** The census line on the welcome screen, ticked until the player unticks it. */
 let censusChoice = true;
+/** The welcome screen's "I agree to the Terms of Use and Privacy Policy" box. */
+let agreed = false;
+/** A browser sign-in is waiting for everloot.app. */
+let connecting = false;
 let draftDirty = false;
 let busy = "";
 let flash = "";
@@ -73,8 +77,21 @@ function welcome(): string {
           <span class="grow"><span class="mono">${esc(c.product)}</span> <span class="muted">${c.files ? `${c.files} account file(s) with Everloot data` : c.hasAccounts ? "no Everloot data yet" : "never played here yet"}</span><br><span class="muted mono small">${esc(c.folder)}</span></span></label>`).join("")}</div>`
     : `<p class="muted">No World of Warcraft folder was found in the usual places. Browse to the folder that holds <code>WTF</code>, for example <code>World of Warcraft\\_classic_era_</code>.</p>`;
   const custom = chosenFolder && !candidates.some((c) => c.folder === chosenFolder) ? `<p class="mono fg2">${esc(chosenFolder)}</p>` : "";
+  const signedIn = state?.account.signedIn;
   return `<div class="welcome">
-    <div><h1>Set up Everloot Desktop App</h1>
+    <div class="brand"><img src="logo.png" alt=""><h1>Set up Everloot Desktop App</h1></div>
+    <section class="panel signin" aria-label="Your everloot.app account">
+      ${signedIn
+        ? `<p class="ok">Signed in to everloot.app <span class="muted small">key …${esc(state?.account.hint ?? "")}</span></p>`
+        : connecting
+          ? `<p class="fg2">Finish in your browser: sign in with Battle.net, then press <b>Connect</b>.</p><div class="row center"><button type="button" class="btn" id="connect">Open the browser again</button><button type="button" class="btn" id="connectCancel">Cancel</button></div>`
+          : `<button type="button" class="btn btn-primary btn-block" id="connect">Sign in with everloot.app</button>
+            <p class="muted small">Opens everloot.app in your browser. Sign in with Battle.net, press Connect, and you're back here. The app never sees your password.</p>`}
+      ${flash ? `<p role="status" class="${flash.startsWith("!") ? "error" : "ok"} small">${esc(flash.replace(/^!/, ""))}</p>` : ""}
+      <div class="or">or</div>
+      <p class="muted small">Continue without an account below: uploads and prices work either way. Signing in raises the Chat and <code>/ask</code> limits and brings your saved talent builds into the game.</p>
+    </section>
+    <div>
       <p class="lead">It runs in the tray beside the game: uploads what the addon recorded after every logout, keeps market prices in your tooltips, installs addon updates, carries the site's tools and a chat over Everloot's data, and, if you turn it on, answers <code>/ask</code>.</p></div>
     <section class="panel">
       <h2>What leaves this computer</h2>
@@ -90,7 +107,8 @@ function welcome(): string {
       ${list}${custom}
       <div class="row"><button type="button" class="btn" id="browse">Browse…</button><button type="button" class="btn" id="redetect">Look again</button></div>
     </section>
-    <div class="row"><button type="button" class="btn btn-primary btn-lg" id="start" ${chosenFolder ? "" : "disabled"}>Start</button><span class="muted">Nothing runs before you press Start.</span></div>
+    <label class="agree"><input type="checkbox" id="agree" ${agreed ? "checked" : ""}> I agree to the ${ext("https://everloot.app/terms", "Terms of Use")} and ${ext("https://everloot.app/privacy", "Privacy Policy")}.</label>
+    <div class="row"><button type="button" class="btn btn-primary btn-lg" id="start" ${chosenFolder && agreed ? "" : "disabled"}>Start</button><span class="muted">Nothing runs before you press Start.</span></div>
   </div>`;
 }
 
@@ -653,9 +671,10 @@ function accountPanel(s: AppState): string {
       <div class="row"><button type="button" class="btn" data-open="${esc(keys)}">Manage keys on everloot.app ↗</button><button type="button" class="btn" id="accountSignOut">Sign out</button></div>
     </section>`
     : `<section class="panel" id="account" tabindex="-1"><h2>Account</h2>
-      <p class="fg2">Sign in with Battle.net on everloot.app, make a free key there, and paste it here.</p>
+      <p class="fg2">Sign in through your browser: everloot.app opens, you sign in with Battle.net and press Connect, and the app gets its own key. It never sees your password.</p>
+      <div class="row">${connecting ? `<button type="button" class="btn" id="connect">Open the browser again</button><button type="button" class="btn" id="connectCancel">Cancel</button><span class="muted small">Waiting for the browser…</span>` : `<button type="button" class="btn btn-primary" id="connect">Sign in with everloot.app</button>`}</div>
       <p class="muted small">${what} The key is kept in a file in your data folder and goes only to everloot.app.</p>
-      <div class="row"><button type="button" class="btn" data-open="${esc(keys)}">Get a key on everloot.app ↗</button></div>
+      <p class="muted small">Or make a key on ${ext(keys, "everloot.app")} and paste it:</p>
       <form id="accountForm" class="row" autocomplete="off"><input class="grow mono" type="password" name="key" placeholder="evl_…" aria-label="Everloot key" spellcheck="false"><button type="submit" class="btn btn-primary">Sign in</button></form>
     </section>`;
 }
@@ -917,6 +936,23 @@ async function onClick(ev: MouseEvent): Promise<void> {
     (panel?.querySelector<HTMLElement>("input") ?? panel)?.focus();
     return;
   }
+  if (el.closest("#connect")) {
+    connecting = true;
+    render();
+    try {
+      state = await api.accountConnect();
+      flash = "Signed in. Chat and /ask now use your account's limits, and your saved builds sync to the game (Addon page).";
+    } catch (e) {
+      const why = msg(e);
+      // A second press restarts the wait, which ends the first one: only the newest wait reports.
+      if (/cancelled\.$/.test(why) && connecting) return;
+      flash = `!${why}`;
+    }
+    connecting = false;
+    render();
+    return;
+  }
+  if (el.closest("#connectCancel")) { await api.accountConnectCancel(); connecting = false; render(); return; }
   if (el.closest("#accountSignOut")) { state = await api.accountSignOut(); flash = "Signed out on this computer. The key still works until you revoke it on everloot.app."; render(); return; }
   if (el.closest("#reportBug") && state) {
     const r = await api.reportBug(diagnostics(state));
@@ -1035,6 +1071,7 @@ async function onClick(ev: MouseEvent): Promise<void> {
 async function onChange(ev: Event): Promise<void> {
   const el = ev.target as HTMLInputElement;
   if (el.id === "censusConsent") { censusChoice = el.checked; return; }
+  if (el.id === "agree") { agreed = el.checked; render(); return; }
   if (el.id === "providerKind") { pickKind = el.value as ProviderKind; render(); return; }
   if (el.id === "modelPick") {
     const v = el.value;
