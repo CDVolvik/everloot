@@ -4,7 +4,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { readAsks } from "../../../companion/src/bridge/asks";
 import { loadProviders } from "../../../companion/src/providers/config";
-import type { AddonInfo, AppState, AskInfo, Job, MarketInfo, Settings } from "../shared/types";
+import type { AddonInfo, AppState, AskInfo, Job, MarketInfo, PriceLookup, Settings } from "../shared/types";
 import { JOBS } from "../shared/types";
 import { presetFor, type ProviderKind } from "../shared/providers";
 import { listBackups, restoreBackup } from "./backups";
@@ -18,7 +18,7 @@ import { allowedExternal } from "./external";
 import { candidateRoots, detectGameFolders, realFs } from "./game-folder";
 import { newestScans, readScanAges, staleScans, summarizeFiles } from "./inspect";
 import { companionJobs } from "./jobs";
-import { listRealms, ownRealms } from "./market";
+import { itemIdFrom, listRealms, ownRealms, priceRows, readPricesFile } from "./market";
 import { loadSettings, mergeSettings, saveSettings } from "./settings";
 import { createTray } from "./tray";
 import { checkForUpdates, fetchReleases, newestDesktopRelease } from "./updates";
@@ -247,13 +247,24 @@ if (!app.requestSingleInstanceLock()) {
   ipcMain.handle("marketInfo", async (): Promise<MarketInfo> => {
     const files = engine.snapshot().files;
     const scans = newestScans(allScans());
-    const base = { own: ownRealms(files), followed: settings.market.realms, last: jobs.lastMarket(), scans };
+    const dir = addonsDir();
+    const inGame = dir ? readPricesFile(dir)?.realms ?? null : null;
+    const base = { own: ownRealms(files), followed: settings.market.realms, last: jobs.lastMarket(), scans, inGame };
     try {
       const k = await knownRealms();
       return { ...base, known: k.realms, dataAsOf: k.dataAsOf, error: null };
     } catch (err) {
       return { ...base, known: [], dataAsOf: null, error: err instanceof Error ? err.message : String(err) };
     }
+  });
+  ipcMain.handle("marketLookup", (_e, text: unknown): PriceLookup => {
+    const itemId = typeof text === "string" ? itemIdFrom(text.slice(0, 500)) : null;
+    if (itemId === null) return { itemId, rows: [], note: "Give an item id, or paste an item link from game chat." };
+    const dir = addonsDir();
+    const file = dir ? readPricesFile(dir) : null;
+    if (!file) return { itemId, rows: [], note: "No prices file in the game yet. Turn on Market prices and press Refresh now." };
+    const rows = priceRows(file, itemId).map(({ realm, dataAsOf, market, min, historical, quantity, day, reporters }) => ({ realm, dataAsOf, market, min, historical, quantity, day, reporters }));
+    return { itemId, rows, note: rows.length ? null : "No public price for this item on the realms in the game file. A day is public once three reporters scanned it." };
   });
   ipcMain.handle("askInfo", (): AskInfo => {
     const pending = engine.snapshot().files.map((file) => {

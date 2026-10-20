@@ -73,6 +73,15 @@ export interface MarketInfo {
   /** The player's last full scan per realm across every account file, newest first. */
   scans: ScanAge[];
   error: string | null;
+  /** What the EverlootPrices file in the game holds now, per realm; null when there is no file. */
+  inGame: { realm: string; dataAsOf: string | null; items: number }[] | null;
+}
+/** One item's price on each realm in the game's prices file, as the tooltip shows it. */
+export interface PriceLookup {
+  itemId: number | null;
+  rows: { realm: string; dataAsOf: string | null; market: number | null; min: number; historical: number; quantity: number; day: string; reporters: number }[];
+  /** Why there is nothing to show, in a sentence; null with rows. */
+  note: string | null;
 }
 
 export interface Ask { id: string; question: string; askedAt: string }
@@ -221,6 +230,8 @@ export interface EverlootApi {
   restoreBackup(file: string): Promise<string | null>;
   openBackupsFolder(): Promise<void>;
   marketInfo(): Promise<MarketInfo>;
+  /** Looks an item up in the game's prices file: an item id or a link pasted from game chat. */
+  marketLookup(text: string): Promise<PriceLookup>;
   askInfo(): Promise<AskInfo>;
   addonInfo(): Promise<AddonInfo>;
   installAddon(version: string): Promise<{ version: string; files: number }>;
