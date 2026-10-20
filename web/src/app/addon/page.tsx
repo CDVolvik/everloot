@@ -4,7 +4,7 @@ import { pageMetadata } from "@/lib/seo";
 import { latestAddonRelease } from "@/lib/addon-release";
 import { addonReleaseFor, fetchReleases, fileSize, newestDesktopRelease, RELEASES_PAGE, servedFile } from "@/lib/everloot-releases";
 import { REPO_URL } from "@/lib/source";
-import { Badge, Card, Container, PageHeader, SectionHeading } from "@/components/ui";
+import { Badge, Card, Container, Disclosure, PageHeader, SectionHeading } from "@/components/ui";
 
 export const metadata: Metadata = {
   ...pageMetadata({ title: "WoW Forever Addon and Desktop App Downloads", description: "Download the Everloot addon for WoW: Forever and the optional Desktop App for Windows, macOS and Linux, with versions, file sizes and SHA-256 checksums.", path: "/addon" }),
@@ -14,7 +14,6 @@ export const metadata: Metadata = {
 export const revalidate = 3600;
 
 const link = "text-accent hover:underline underline-offset-4";
-const summary = "cursor-pointer text-sm font-medium text-fg hover:text-accent";
 const EXT = "noopener noreferrer";
 
 /** The Desktop App files the page offers, in this order, matched by the end of the artifact name. */
@@ -91,11 +90,10 @@ export default async function AddonPage() {
                   </p>
                 </div>
                 {served && (
-                  <details className="text-sm">
-                    <summary className={summary}>SHA-256 checksum</summary>
-                    <ul className="mt-2"><Checksum name={zipName} sha256={served.sha256} /></ul>
-                    {addonRelease?.sums && <a className={link} href={addonRelease.sums} rel={EXT}>SHA256SUMS</a>}
-                  </details>
+                  <Disclosure summary="SHA-256 checksum">
+                    <ul className="text-sm"><Checksum name={zipName} sha256={served.sha256} /></ul>
+                    {addonRelease?.sums && <p className="text-sm"><a className={link} href={addonRelease.sums} rel={EXT}>SHA256SUMS</a></p>}
+                  </Disclosure>
                 )}
                 <p className="text-sm text-fg-2">
                   <a className={link} href={addonRelease?.url ?? RELEASES_PAGE} rel={EXT}>Release notes</a>
@@ -138,9 +136,8 @@ export default async function AddonPage() {
                 <code className="font-mono">desktop-v</code> release.
               </p>
             )}
-            <details className="text-sm text-fg-2">
-              <summary className={summary}>The builds are not code-signed yet</summary>
-              <div className="mt-2 space-y-2">
+            <Disclosure summary="The builds are not code-signed yet">
+              <div className="space-y-2 text-sm">
                 <p>Your system will warn you the first time you open the app. That is expected for now.</p>
                 <ul className="list-disc space-y-1 pl-5">
                   <li>Windows: SmartScreen says &ldquo;Windows protected your PC&rdquo;. Choose More info, then Run anyway.</li>
@@ -156,15 +153,14 @@ export default async function AddonPage() {
                   <code className="font-mono">shasum -a 256 FILE</code> on macOS, <code className="font-mono">sha256sum FILE</code> on Linux.
                 </p>
               </div>
-            </details>
+            </Disclosure>
             {desktop && desktopFiles.length > 0 && (
-              <details className="text-sm">
-                <summary className={summary}>SHA-256 checksums</summary>
-                <ul className="mt-2 space-y-1">
+              <Disclosure summary="SHA-256 checksums">
+                <ul className="space-y-1 text-sm">
                   {desktopFiles.map(({ file }) => <Checksum key={file.name} name={file.name} sha256={file.sha256} />)}
                 </ul>
-                {desktop.sums && <a className={link} href={desktop.sums} rel={EXT}>SHA256SUMS</a>}
-              </details>
+                {desktop.sums && <p className="text-sm"><a className={link} href={desktop.sums} rel={EXT}>SHA256SUMS</a></p>}
+              </Disclosure>
             )}
             <p className="text-sm text-fg-2">
               <a className={link} href={desktop?.url ?? RELEASES_PAGE} rel={EXT}>Release notes</a>
