@@ -160,6 +160,29 @@ endpoint answered 28 tools, every one with a title and `readOnlyHint: true`, and
 `search_knowledge` call returned a sourced answer. The registry entry stays at version `0.8.0`: the
 server version did not move with the count. In-app connection and tool execution subsequently succeeded on all three platforms. The official registry entry is now active: [`app.everloot/knowledge`](https://registry.modelcontextprotocol.io/v0.1/servers?search=app.everloot), version `0.8.0`, published 2026-10-19 at 06:08 UTC.
 
+### Re-sync before any resubmission (checked 2026-10-20)
+
+A directory keeps the copy of the tool schemas it synced at submission time. Those copies close their
+objects (`additionalProperties: false`), so a copy taken before the answers gained a `url` field will
+reject a live answer that carries one. Diff the live `tools/list` against the copy each directory
+holds, right before resubmitting, and re-sync the tools so the copy is current.
+
+What the live endpoint serves was checked against the published contract on 2026-10-20, and it agrees:
+
+| Check | Result |
+|---|---|
+| Live `inputSchema` vs `schema/mcp/<tool>.json` | 28 of 28 identical |
+| Live `outputSchema` vs `schema/mcp/<tool>.json` | 28 of 28 identical |
+| Live `title` vs the published title | 28 of 28 identical |
+| Live answers vs the published output schema | every answer that could be exercised validated |
+| `url` declared in the output schema | 22 tools declare it, and the answers that carry it declare it too |
+
+Two deltas are expected and harmless, so a diff does not have to be explained: the live schemas name
+the draft-07 dialect and the published files name 2020-12, and the live annotations carry `title` and
+`destructiveHint` that the published descriptor does not list. The published copy cannot go stale on
+its own: the release checks build the package and fail if the emitted files differ from what is
+committed (`git diff --exit-code -- dist schema`).
+
 ## 5. Community directories (owner, a web form each)
 
 They mostly ingest from the official registry, so publish there first and check these a week later.
