@@ -14,6 +14,11 @@ build that has a zip in the repository. Earlier builds have none.
 
 Pull requests merged to `main` are listed in the nightly pre-releases until the next tagged release.
 
+### Changed
+- Site: the player pages are live. A player page shows what the addon last saw of a character — race, class,
+  level, guild and the day — found by the start of the name, and every page carries a hide link and a hide
+  form. The search index stays off for now, so the pages are reached by name and are not listed anywhere.
+
 ### Added
 - An Everloot tab at the auction house, after Blizzard's tabs. It has a Scan this house button with the
   cooldown, says whether the last scan is in your saved file yet, has a Share now button (a `/reload`, so
