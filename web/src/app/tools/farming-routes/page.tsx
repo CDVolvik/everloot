@@ -2,13 +2,15 @@ import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import EmailCapture from "@/components/EmailCapture";
+import { trailFor } from "@/lib/breadcrumbs";
+import { Card, Container, Disclosure, EmptyState, PageHeader, SectionHeading, SourceLine } from "@/components/ui";
 
 export const metadata: Metadata = {
   ...pageMetadata({ title: "WoW Forever Farming Routes", description: "Planned WoW: Forever farming routes built from uploaded sightings. Route optimization and respawn timing are not available yet.", path: "/tools/farming-routes" }),
   keywords: ["wow forever farming", "wow forever gold farm", "wow forever routes"],
 };
 
-const CARDS = [
+const PLANNED = [
   {
     title: "Spawn maps, not guesses",
     body: "Planned maps will use uploaded sightings. Distinct install IDs are not verified independent players, and sightings do not establish respawn timing.",
@@ -29,44 +31,32 @@ const CARDS = [
 
 export default function FarmingRoutesPage() {
   return (
-    <article className="space-y-10 max-w-4xl">
-      <header className="space-y-3">
-        <p className="font-mono text-xs text-muted">
-          Planned · routes not yet available
-        </p>
-        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">
-          Forever Farming Routes
-        </h1>
-        <p className="text-lg text-fg-2 max-w-2xl">
-          Zone-by-zone gold and material routes are planned. No optimized routes or
-          respawn estimates are available yet. You can upload sightings or use the
-          calculator for a farm you already know.
-        </p>
-      </header>
+    <Container>
+      <PageHeader
+        trail={trailFor("/tools/farming-routes")!}
+        title="Forever Farming Routes"
+        lede="Zone-by-zone gold and material routes, drawn from the sightings players upload."
+        actions={<Link href="/tools/gold-per-hour" className="btn">Gold per hour calculator</Link>}
+      />
 
-      <div className="grid md:grid-cols-2 gap-4">
-        {CARDS.map((s) => (
-          <div key={s.title} className="rounded-xl border border-line p-5 bg-panel">
-            <h2 className="text-lg font-semibold text-accent">{s.title}</h2>
-            <p className="mt-1 text-sm text-fg-2">{s.body}</p>
-          </div>
-        ))}
+      <div className="space-y-8">
+        <EmptyState message="No routes yet: farm with the Everloot addon running and your sightings become the first spawn maps." />
+
+        <section aria-labelledby="routes-planned">
+          <SectionHeading id="routes-planned">What is planned</SectionHeading>
+          {PLANNED.map((s) => (
+            <Disclosure key={s.title} summary={s.title}>
+              <p>{s.body}</p>
+            </Disclosure>
+          ))}
+        </section>
+
+        <Card className="max-w-xl">
+          <EmailCapture toolSlug="farming-routes" />
+        </Card>
       </div>
 
-      <div className="rounded-2xl border border-line bg-panel p-6">
-        <h2 className="text-xl text-fg">Draw the first route</h2>
-        <p className="mt-1 text-sm text-fg-2 max-w-xl">
-          Farm with the Everloot addon running — your sightings become the first spawn
-          maps. Upload on the{" "}
-          <Link href="/upload" className="text-accent hover:underline underline-offset-4">upload page</Link>,
-          or math out your current farm in the{" "}
-          <Link href="/tools/gold-per-hour" className="text-accent hover:underline underline-offset-4">Gold/Hour Calculator</Link>.
-        </p>
-      </div>
-
-      <div className="rounded-2xl border border-line bg-panel p-6 max-w-xl">
-        <EmailCapture toolSlug="farming-routes" />
-      </div>
-    </article>
+      <SourceLine from="Player uploads, once there are enough sightings to draw a route" />
+    </Container>
   );
 }

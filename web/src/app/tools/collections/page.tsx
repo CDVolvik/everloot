@@ -7,6 +7,8 @@ import { loadCompletion } from "@/lib/completion-store";
 import { STORAGE_UNREACHABLE, uploadStore } from "@/lib/upload-store";
 import { dataAgeLabel } from "@/lib/data-age";
 import CompletionView from "./CompletionView";
+import { trailFor } from "@/lib/breadcrumbs";
+import { Card, Container, Disclosure, EmptyState, Field, PageHeader, SectionHeading, SourceLine } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -30,65 +32,67 @@ export default async function CollectionsPage(
   const corpus = await uploadStore.loadCorpus();
   // An install id with no collection is a completion question: the gap box would only say "Name a collection."
   const showGap = collection.trim() !== "" || install.trim() === "";
-  const answer = corpus.unreachable
-    ? STORAGE_UNREACHABLE
-    : handleCollectionGap({ collection, ownerInstallId: install }, collectionFactsFromRecords(corpus.records));
+  const facts = corpus.unreachable ? null : collectionFactsFromRecords(corpus.records);
+  const answer = facts ? handleCollectionGap({ collection, ownerInstallId: install }, facts) : STORAGE_UNREACHABLE;
+  // No collection upload of any kind yet: every gap would read "unrecorded".
+  const pending = facts !== null && facts.catalog.length + facts.owned.length === 0;
   const completion = install.trim() ? await loadCompletion(install) : null;
   const progress = completion ? completionProgress(install, character, completion.facts) : null;
   const completionDown = install.trim() !== "" && completion === null;
 
   return (
-    <article className="space-y-8 max-w-4xl">
-      <header className="space-y-3">
-        <p className="font-mono text-xs text-muted">WoW: Forever · completionist</p>
-        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">Collection gap and completion</h1>
-        <p className="text-sm text-fg-2 max-w-2xl">
-          An item joins a list when 3 installs agree on it. Owned is what one install uploaded.
-          This view uses uploaded records, not a Battle.net profile.
-        </p>
-      </header>
+    <Container>
+      <PageHeader
+        trail={trailFor("/tools/collections")!}
+        title="Collection gap and completion"
+        lede="Owned versus missing in a collection, and a character's achievement, reputation, title and quest progress."
+        actions={<Link href="/upload" className="btn">Upload addon data</Link>}
+      />
 
-      <form method="get" className="rounded-xl border border-line bg-panel p-5 space-y-4">
-        <div className="grid sm:grid-cols-3 gap-3">
-          <label className="text-sm text-fg-2 space-y-1">
-            <span className="block text-xs font-mono text-muted">Collection</span>
-            <input name="collection" defaultValue={collection} className="w-full rounded-lg border border-edge bg-canvas px-3 py-2 text-fg" />
-          </label>
-          <label className="text-sm text-fg-2 space-y-1">
-            <span className="block text-xs font-mono text-muted">Install id</span>
-            <input name="install" defaultValue={install} className="w-full rounded-lg border border-edge bg-canvas px-3 py-2 text-fg" />
-          </label>
-          <label className="text-sm text-fg-2 space-y-1">
-            <span className="block text-xs font-mono text-muted">Character key (optional)</span>
-            <input name="character" defaultValue={character} maxLength={8} className="w-full rounded-lg border border-edge bg-canvas px-3 py-2 font-mono text-fg" />
-          </label>
-        </div>
-        <button type="submit" className="btn btn-primary text-sm">Show progress</button>
-      </form>
+      <div className="space-y-8">
+        <Card>
+          <form method="get" className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Field label="Collection" name="collection" defaultValue={collection} />
+              <Field label="Install id" name="install" defaultValue={install} />
+              <Field label="Character key (optional)" name="character" defaultValue={character} maxLength={8} mono />
+            </div>
+            <button type="submit" className="btn btn-primary text-sm">Show progress</button>
+          </form>
+        </Card>
 
-      {showGap && (
-        <section className="space-y-3" aria-labelledby="gap-heading">
-          <h2 id="gap-heading" className="text-xl text-fg">Collection gap</h2>
-          <pre className="whitespace-pre-wrap text-sm text-fg rounded-xl border border-line bg-panel p-5">{answer}</pre>
+        {showGap && (
+          <section aria-labelledby="gap-heading">
+            <SectionHeading id="gap-heading">Collection gap</SectionHeading>
+            {pending
+              ? <EmptyState message="No collection list yet: an item joins a list once 3 installs agree on it and its source." />
+              : <Card><pre className="whitespace-pre-wrap text-sm text-fg">{answer}</pre></Card>}
+          </section>
+        )}
+
+        <section aria-labelledby="completion-heading">
+          <SectionHeading id="completion-heading">Completion</SectionHeading>
+          {completionDown
+            ? <Card><p className="text-fg-2" role="status">Completion data is unavailable right now. It is unrecorded, not zero.</p></Card>
+            : <CompletionView progress={progress} />}
         </section>
-      )}
 
-      <section className="space-y-3" aria-labelledby="completion-heading">
-        <h2 id="completion-heading" className="text-xl text-fg">Completion</h2>
-        <p className="text-sm text-fg-2 max-w-2xl">
-          Per character, from that install&apos;s own upload: what is done, and what is closest to done. Progress needs
-          the addon&apos;s completion tracker (off until you turn it on) and an upload that shares your collection ownership.
-        </p>
-        {completionDown
-          ? <p className="text-sm text-fg-2">Completion data is unavailable right now. It is unrecorded, not zero.</p>
-          : <CompletionView progress={progress} />}
-      </section>
+        <Disclosure summary="Where do owned and missing come from?">
+          <p>
+            An item joins a list when 3 installs agree on it. Owned is what one install uploaded. This view uses
+            uploaded records, not a Battle.net profile.
+          </p>
+          <p>
+            Completion is per character, from that install&apos;s own upload: what is done, and what is closest to done.
+            Progress needs the addon&apos;s completion tracker (off until you turn it on) and an upload that shares your
+            collection ownership.
+          </p>
+        </Disclosure>
+      </div>
 
-      {!corpus.unreachable && <p className="text-xs text-muted">{dataAgeLabel(completion?.dataAsOf ?? corpus.dataAsOf)}</p>}
-
-      <p className="text-sm text-muted">
-        <Link href="/upload" className="text-accent hover:underline underline-offset-4">Upload addon data</Link>
-      </p>
-    </article>
+      <SourceLine from="Player uploads; a list entry is public once 3 installs agree">
+        {corpus.unreachable ? "Storage unreachable" : dataAgeLabel(completion?.dataAsOf ?? corpus.dataAsOf)}
+      </SourceLine>
+    </Container>
   );
 }
