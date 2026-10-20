@@ -16,6 +16,8 @@ export {
  */
 const registry = parseRegistry(registryFile);
 const snapshot = parseSnapshot(snapshotFile);
+/** The daily star counts the refresh keeps, by project id; /addons compares against them for its change column. */
+export const starHistory = snapshot.history;
 // The newest Forever build the version service reported (kb/changes/builds.json, kept fresh by the changes
 // workflow), so Forever-ready moves with the build instead of a number someone typed in.
 const forever = currentForeverInterface((buildsFile as unknown as { builds: { product: string; version: string; buildId: number }[] }).builds);
