@@ -385,10 +385,11 @@ check.execute(BUILDS)
 assert set(check.globals().keys()) - before == {"EverlootBuildsData"}, "the file sets one global and nothing else"
 data = check.globals().EverlootBuildsData
 assert data.version == 1 and data.syncedAt == "2026-10-20T12:00:00.000Z"
-assert data.builds[2].name == TRICKY, repr(data.builds[2].name)
-assert data.builds[5].character == "Ærîn" and data.builds[4].character is None and data.builds[2].code2.startswith("EL1-")
+assert data.builds[3].name == TRICKY, repr(data.builds[3].name)
+assert data.builds[5].character == "Ærîn" and data.builds[5].realm == "Doomhowl" and data.builds[3].code2.startswith("EL1-")
+assert data.builds[1].character is None and data.builds[1].realm is None and data.builds[2].realm == "nightslayer" and data.builds[3].realm is None
 
-me = "UnitName = function() return 'Aerin', nil end\n" + BUILDS
+me = "UnitName = function() return 'Aerin', nil end\nGetRealmName = function() return 'Night Slayer' end\n" + BUILDS
 lua = fresh(me)
 lua.execute(f"""
 local list = Everloot.Plan.SavedBuilds()
@@ -429,6 +430,32 @@ assert(EverlootDB.plan == '{CODE}', 'plan 1 1 is the first set')
 local keys = {{}}
 for k in pairs(EverlootDB) do keys[#keys + 1] = k end
 assert(EverlootDB.builds == nil and EverlootBuildsData.version == 1, 'nothing of the builds is saved: ' .. table.concat(keys, ','))
+""")
+
+# A label with a realm counts as this character only on that realm (any case, spaces ignored); without
+# a readable realm it does not. A label without a realm matches on any realm.
+for realm in ["'Doomhowl'", "nil"]:
+    lua = fresh(f"UnitName = function() return 'Aerin' end\nGetRealmName = function() return {realm} end\n" + BUILDS)
+    lua.execute("""
+local names = {}
+for i, b in ipairs(Everloot.Plan.SavedBuilds()) do names[i] = b.name end
+assert(names[2] == 'Frost AoE' and names[3] == 'Arcane leveling', 'another realm: the label goes with the class: ' .. table.concat(names, ' / '))
+assert(names[1]:find('^Fire'), 'the label without a realm still matches')
+""")
+
+# Accented names: the Latin-1 capitals fold to lower case as UTF-8, so "Ásh" is "ásh"; × is not a letter.
+lua = fresh(f"""
+UnitName = function() return 'Ásh' end
+EverlootBuildsData = {{ version = 1, syncedAt = 'x', builds = {{
+  {{ name = 'Other', class = 'mage', code = '{CODE}', active = false, gameBuild = '1.60.1.70450' }},
+  {{ name = 'Mine', character = 'ásh', class = 'mage', code = '{CODE}', active = false, gameBuild = '1.60.1.70450' }},
+}} }}
+""")
+lua.execute("""
+local P = Everloot.Plan
+assert(P.Fold('ÀÉÎÕÜÞ×Ab') == 'àéîõüþ×ab', P.Fold('ÀÉÎÕÜÞ×Ab'))
+local list = P.SavedBuilds()
+assert(list[1].name == 'Mine' and list[2].name == 'Other', 'Ásh matches the label ásh')
 """)
 
 # Another class sees its own builds only; the character name still puts them first.

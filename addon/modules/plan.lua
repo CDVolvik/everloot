@@ -148,8 +148,8 @@ end
 ---------------------------------------------------------------- saved builds (EverlootBuilds slot addon)
 
 -- The Desktop App writes the player's saved builds from everloot.app into the EverlootBuilds slot addon,
--- which sets EverlootBuildsData = { version, syncedAt, builds = { { name, character, class, code, code2,
--- active, gameBuild } } }. Read only, at command time; nothing is saved or sent from here.
+-- which sets EverlootBuildsData = { version, syncedAt, builds = { { name, character, realm, class, code,
+-- code2, active, gameBuild } } }. Read only, at command time; nothing is saved or sent from here.
 
 local function savedData()
   local data = EverlootBuildsData
@@ -159,11 +159,28 @@ end
 
 --- Chat-safe: one line, and a typed | cannot start a WoW escape sequence.
 local function plain(text)
-  return (text:gsub("[%c]", " "):gsub("|", "||"))
+  return (text:gsub("[%z\1-\31\127]", " "):gsub("|", "||"))
+end
+
+--- Lower case for comparing names: ASCII, plus the Latin-1 capitals typed as UTF-8 (À to Þ, not ×),
+--- which string.lower leaves alone.
+local function fold(text)
+  -- Byte ranges, not string.lower or %u: those follow the C locale, which may fold single high bytes.
+  return (text:gsub("[A-Z]", function(c) return string.char(c:byte() + 32) end):gsub("\195([\128-\158])", function(c)
+    if c ~= "\151" then return "\195" .. string.char(c:byte() + 32) end
+  end))
+end
+P.Fold = fold
+
+--- The player's realm, folded with its spaces taken out; nil when the client does not say.
+local function realmKey(realm)
+  if type(realm) ~= "string" or realm == "" then return nil end
+  return (fold(realm):gsub("[ \t]", ""))
 end
 
 --- The saved builds for this player, in the order /everloot plan numbers them: those filed under this
---- character (name, case-insensitive) and class, the active one first, then the class's other builds.
+--- character (name, case-insensitive; the label's realm too when it has one) and class, the active one
+--- first, then the class's other builds.
 --- Nil when the EverlootBuilds addon is not loaded.
 function P.SavedBuilds()
   local data = savedData()
@@ -172,13 +189,19 @@ function P.SavedBuilds()
   local me
   if UnitName then
     local ok, name = pcall(UnitName, "player")
-    if ok and type(name) == "string" and name ~= "" then me = name:lower() end
+    if ok and type(name) == "string" and name ~= "" then me = fold(name) end
+  end
+  local here
+  if GetRealmName then
+    local ok, realm = pcall(GetRealmName)
+    if ok then here = realmKey(realm) end
   end
   local active, mine, others = {}, {}, {}
   for _, b in ipairs(data.builds) do
     if type(b) == "table" and type(b.name) == "string" and type(b.code) == "string" and type(b.class) == "string" then
       if not class or b.class:gsub("%A", ""):upper() == class then
-        if me and type(b.character) == "string" and b.character:lower() == me then
+        local realmOk = b.realm == nil or (here ~= nil and realmKey(b.realm) == here)
+        if me and type(b.character) == "string" and fold(b.character) == me and realmOk then
           table.insert(b.active == true and active or mine, b)
         else
           others[#others + 1] = b
