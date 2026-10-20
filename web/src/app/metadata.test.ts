@@ -38,7 +38,6 @@ const routes: [string, () => Promise<{ metadata: Metadata }>, boolean][] = [
   ["/tools/collections", () => import("./tools/collections/page"), true],
   ["/tools/farming-routes", () => import("./tools/farming-routes/page"), true],
   ["/tools/gold-ledger", () => import("./tools/gold-ledger/page"), true],
-  ["/tools/gold-per-hour", () => import("./tools/gold-per-hour/page"), true],
   ["/tools/guild-board", () => import("./tools/guild-board/page"), true],
   ["/tools/professions", () => import("./tools/professions/page"), true],
   ["/tools/raid", () => import("./tools/raid/page"), true],

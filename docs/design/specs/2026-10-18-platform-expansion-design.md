@@ -50,7 +50,7 @@ board is cited as **board**.
 
 | Area | State on `main` |
 |---|---|
-| Site | Next.js on Vercel. Pages: database (items, NPCs, quests, vendors, drops), lore, addons (`/addons`, `/addons/popular`, `/addons/polestar`), tools (auctions, collections, completionist, farming routes, gold ledger, gold per hour, guild board, profession planner and others), `/mcp`, `/upload`, `/about`, `/privacy` |
+| Site | Next.js on Vercel. Pages: database (items, NPCs, quests, vendors, drops), lore, addons (`/addons`, `/addons/popular`, `/addons/polestar`), tools (Auction House, collections, completionist, farming routes, gold ledger, guild board, profession planner and others), `/mcp`, `/upload`, `/about`, `/privacy` |
 | API and MCP | `/mcp` (bearer) and `/mcp/public` (no sign-in, per-IP quota; the quota code sets 200 per IP and 5,000 global per window, hourly by its comment). 14 tools, each with a `title` and `readOnlyHint` |
 | Accounts | Battle.net OAuth sessions, used only for named sharing. Uploads are anonymous, keyed by a random install id |
 | Data | Immutable SQLite knowledge releases; Supabase Postgres for sessions, grants, quotas; R2 for uploads and the public corpus |
@@ -414,7 +414,7 @@ people and for crawlers:
 | Column | Links |
 |---|---|
 | Database | Items, NPCs, quests, vendors, drops, lore, builds |
-| Tools | Talents, raid, completionist, gold ledger, gold per hour, professions, auctions, collections |
+| Tools | Talents, raid, completionist, gold ledger, professions, Auction House, collections (gold per hour moved into the addon, 2026-10-20) |
 | Guides | Classes, raids, launch guides |
 | Addons | Everloot addon, popular addons, Polestar, your addon |
 | Developers | Connect your AI, MCP, API, data and licence, status, Source |

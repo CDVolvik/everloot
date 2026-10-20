@@ -2,25 +2,42 @@ import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import IdLookup from "@/components/IdLookup";
+import { Container, DataTable, EmptyState, PageHeader, SourceLine } from "@/components/ui";
+import { trailFor } from "@/lib/breadcrumbs";
+import { loadWorldFacts } from "@/lib/rollup-compute";
+import { publicNpcs } from "@/lib/world-lists";
+import { LINK, Unreachable } from "../entity";
 
 export const metadata: Metadata = {
   ...pageMetadata({ title: "WoW Forever NPC Lookup", description: "Look up a WoW: Forever NPC by id. A name or a map pin becomes public only after three installs agree, and single reports stay queued.", path: "/database/npcs" }),
 };
+export const dynamic = "force-dynamic";
 
-export default function NpcLookupPage() {
+export default async function NpcLookupPage() {
+  const facts = await loadWorldFacts();
+  const npcs = facts.unreachable ? [] : publicNpcs(facts);
   return (
-    <article className="space-y-8 max-w-4xl">
-      <header className="space-y-3">
-        <p className="font-mono text-xs text-muted">WoW: Forever · npcs</p>
-        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">NPC lookup</h1>
-        <p className="text-sm text-fg-2 max-w-2xl">
-          A name or a map pin is public when 3 installs report the same NPC. One install repeating itself does not count.
-        </p>
-      </header>
-      <IdLookup kind="npcs" label="NPC id" />
-      <p className="text-sm text-muted">
-        <Link href="/database" className="text-accent hover:underline underline-offset-4">Forever Database</Link>
-      </p>
-    </article>
+    <Container width="wide">
+      <article>
+        <PageHeader
+          trail={trailFor("/database/npcs")!}
+          title="NPC lookup"
+          lede="Open any NPC by its id. A name or a map pin is public when 3 installs report the same one."
+          actions={<IdLookup kind="npcs" label="NPC id" />}
+        />
+        <DataTable
+          caption="NPCs players have named or placed"
+          columns={[
+            { key: "npc", header: "NPC", cell: (p) => <Link href={`/database/npcs/${p.npcId}`} className={LINK}>{p.name ?? `NPC ${p.npcId}`}</Link> },
+            { key: "pins", header: "Map positions", numeric: true, cell: (p) => p.pins.length },
+            { key: "id", header: "ID", numeric: true, cell: (p) => p.npcId },
+          ]}
+          rows={npcs}
+          rowKey={(p) => String(p.npcId)}
+          empty={facts.unreachable ? <Unreachable /> : <EmptyState framed={false} message="No NPC has an agreed name or position yet. Each shows here once 3 installs report it." />}
+        />
+        <SourceLine confirmed>One install repeating itself does not count.</SourceLine>
+      </article>
+    </Container>
   );
 }

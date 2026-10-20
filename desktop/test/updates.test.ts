@@ -7,6 +7,10 @@ test("versions compare by number, and a dev build is older than any release", ()
   expect(compareVersions("1.0.0", "0.10.0")).toBeGreaterThan(0);
   expect(compareVersions("0.1.0", "0.1.0")).toBe(0);
   expect(compareVersions("dev", "0.1.0")).toBeLessThan(0);
+  // A nightly sits between the release before it and its own release, so 0.3.3 never "updates" it.
+  expect(compareVersions("0.3.3", "0.3.4-nightly.20261019.4")).toBeLessThan(0);
+  expect(compareVersions("0.3.4", "0.3.4-nightly.20261019.4")).toBeGreaterThan(0);
+  expect(compareVersions("0.3.4-nightly.20261020.1", "0.3.4-nightly.20261019.4")).toBe(0);
 });
 
 test("the newest desktop release wins; addon tags, drafts and pre-releases are ignored", () => {

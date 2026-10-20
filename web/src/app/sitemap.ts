@@ -7,6 +7,8 @@ import { loadTimeline } from "@/lib/changes";
 import { TALENT_CLASSES } from "@/lib/talents/catalogs";
 import { CLIENT_LAYER, CLIENT_TAXONOMY, categoryNamedEnough, itemsHref } from "@/lib/items";
 import { loadShownNames } from "@/lib/shown-item-names";
+import { loadWorldFacts } from "@/lib/rollup-compute";
+import { hasContent, publicZones, zoneContents, zoneHref } from "@/lib/zones";
 
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://everloot.app";
 
@@ -16,7 +18,7 @@ const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://everloot.app";
  * /wow-forever. Every other page has none, because a made-up date teaches crawlers to ignore the field.
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const staticRoutes = ["/", "/wow-forever", "/methodology", "/about", "/privacy", "/terms", "/security", "/accessibility", "/contact", "/upload", "/addon", "/lore", "/changes", "/map", "/database", "/database/items", "/database/drops", "/database/npcs", "/database/objects", "/database/quests", "/database/vendors", "/tools/collections", "/tools/guild-board", "/tools/auctions", "/tools/gold-ledger", "/addons", "/addons/popular", "/census", "/addons/ecosystem", "/addons/polestar", "/addons/polestar/packs", "/addons/polestar/wanted", "/connect"];
+  const staticRoutes = ["/", "/wow-forever", "/methodology", "/about", "/privacy", "/terms", "/security", "/accessibility", "/contact", "/upload", "/addon", "/lore", "/changes", "/map", "/database", "/database/items", "/database/drops", "/database/npcs", "/database/objects", "/database/quests", "/database/vendors", "/database/zones", "/tools/collections", "/tools/guild-board", "/tools/auctions", "/tools/gold-ledger", "/addons", "/addons/popular", "/census", "/addons/ecosystem", "/addons/polestar", "/addons/polestar/packs", "/addons/polestar/wanted", "/connect"];
 
   const talentRoutes = TALENT_CLASSES.map((slug) => `/tools/talents/${slug}`);
   // Item categories from the client layer: each class and subclass that holds items, first page only, and only
@@ -26,7 +28,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...(categoryNamedEnough(c.id, undefined, named) ? [itemsHref(c.slug)] : []),
     ...CLIENT_TAXONOMY.subclasses.filter((s) => s.classId === c.id && s.items > 0 && categoryNamedEnough(c.id, s.id, named)).map((s) => itemsHref(c.slug, s.slug)),
   ]);
-  const paths = [...new Set([...staticRoutes, ...talentRoutes, ...itemRoutes, ...tools.filter((tool) => tool.status !== "coming-soon").map(toolHref)])];
+  // Zone pages with something on them, like the item categories: one with nothing yet says noindex itself.
+  const world = await loadWorldFacts();
+  const zoneRoutes = world.unreachable ? [] : (() => {
+    const contents = zoneContents(world);
+    return publicZones().filter((z) => hasContent(contents.get(z.mapId))).map((z) => zoneHref(z.mapId, z.name));
+  })();
+  const paths = [...new Set([...staticRoutes, ...talentRoutes, ...itemRoutes, ...zoneRoutes, ...tools.filter((tool) => tool.status !== "coming-soon").map(toolHref)])];
 
   const newestChange = loadTimeline()[0]?.at;
   const modified = (path: string): Date | undefined => {

@@ -2,9 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 import { GAME_DATA_CREDIT } from "@everloot/protocol";
-import { CLIENT_LABEL } from "../../../../../kb/src/edges";
 import { itemPage } from "../../../../../kb/src/item-page";
-import { describe, filterItems, QUALITIES, resolveClass, resolveLegacyClass, resolveSubclass, slotOf, type ItemClass, type ItemSubclass } from "../../../../../kb/src/item-taxonomy";
+import { describe, filterItems, QUALITIES, resolveClass, resolveLegacyClass, resolveSubclass, slotOf, type ItemClass, type ItemRow, type ItemSubclass } from "../../../../../kb/src/item-taxonomy";
 import { CLIENT_LAYER, CLIENT_TAXONOMY as T, categoryNamedEnough, categoryQuery, ITEMS_PER_PAGE, itemsHref, NAME_SOURCE, shownItemName, type CategoryQuery } from "@/lib/items";
 import { CC_BY_SA } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/seo";
@@ -12,6 +11,9 @@ import { loadShownNames } from "@/lib/shown-item-names";
 import { loadItemTips, loadSiteAssets } from "@/lib/game-assets";
 import GameIcon from "@/components/game/GameIcon";
 import GameCredit from "@/components/game/GameCredit";
+import { Container, DataTable, PageHeader, QUALITY_TEXT, SourceLine, qualityOf, type Column } from "@/components/ui";
+import type { Crumb } from "@/lib/jsonld";
+import { LINK } from "../entity";
 
 type Search = Record<string, string | string[] | undefined>;
 
@@ -56,18 +58,27 @@ export async function categoryMetadata(classSlug: string, subclassKey: string | 
   };
 }
 
-function FilterLinks({ label, options, current, href }: { label: string; options: { slug: string; name: string }[]; current?: string; href: (slug?: string) => string }) {
+interface FilterOption { slug: string; name: string; count?: number }
+
+/**
+ * One row of quiet tabs above the table, each a link (the filters live in the URL). `current` undefined is All.
+ * Drawn like the shared Tabs so the table's toolbar reads as one control.
+ */
+function FilterTabs({ label, options, current, href, allHref }: { label: string; options: FilterOption[]; current?: string; href: (slug: string) => string; allHref: string }) {
   if (options.length < 2) return null;
+  const item = "inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3 text-sm";
+  const all: FilterOption & { href: string } = { slug: "", name: "All", href: allHref };
   return (
-    <p className="text-sm text-fg-2">
-      <span className="font-mono text-xs text-muted">{label} </span>
-      {[{ slug: undefined, name: "All" }, ...options].map((o, i) => (
-        <span key={o.slug ?? "all"}>
-          {i > 0 ? " · " : ""}
-          {o.slug === current ? <strong className="text-fg">{o.name}</strong> : <Link href={href(o.slug)} className="text-accent hover:underline underline-offset-4">{o.name}</Link>}
-        </span>
-      ))}
-    </p>
+    <nav aria-label={label} className="flex items-center gap-1 overflow-x-auto px-2 [&+nav]:border-t [&+nav]:border-line">
+      <span className="shrink-0 px-2 font-mono text-xs text-muted">{label}</span>
+      {[all, ...options.map((o) => ({ ...o, href: href(o.slug) }))].map((o) => {
+        const on = (o.slug || undefined) === current;
+        const count = o.count !== undefined && <span className="font-mono text-xs tabular-nums text-muted">{o.count.toLocaleString("en-US")}</span>;
+        return on
+          ? <span key={o.slug || "all"} aria-current="page" className={`${item} border-accent font-medium text-fg`}>{o.name}{count}</span>
+          : <Link key={o.slug || "all"} href={o.href} className={`${item} border-transparent text-fg-2 hover:text-fg`}>{o.name}{count}</Link>;
+      })}
+    </nav>
   );
 }
 
@@ -97,88 +108,93 @@ export async function CategoryPage({ classSlug, subclassKey, search }: { classSl
   const qualities = QUALITIES.filter((qq) => inCategory.some((x) => x[4] === qq.id)).map((qq) => ({ slug: qq.slug, name: qq.name }));
   const subclasses = T.subclasses.filter((s) => s.classId === cls.id && s.items > 0);
   const here = (over: Partial<CategoryQuery>) => itemsHref(cls.slug, sub?.slug, { ...q, page: 1, ...over });
+  const title = sub ? subName(sub) : cls.label;
+  const icons = [...tips.values()].some((t) => t.icon);
+
+  const trail: Crumb[] = [
+    { name: "Home", path: "/" },
+    { name: "Database", path: "/database" },
+    { name: "Items", path: "/database/items" },
+    { name: cls.label, path: itemsHref(cls.slug) },
+    ...(sub ? [{ name: subName(sub), path: itemsHref(cls.slug, sub.slug) }] : []),
+  ];
+
+  const columns: Column<ItemRow>[] = [
+    {
+      key: "item", header: "Item", nowrap: true, cell: (row) => {
+        const c = describe(T, row);
+        const tip = tips.get(row[0]);
+        const name = names.get(row[0]);
+        // A shown name carries its own quality colour; otherwise the game files' quality colours the row.
+        const colour = name?.color ? "" : c.quality && c.quality.id <= 5 ? QUALITY_TEXT[qualityOf(c.quality.id)] : "text-fg";
+        return (
+          <span className="inline-flex items-center gap-2">
+            {tip?.icon ? <GameIcon src={tip.icon} size={20} /> : null}
+            <Link href={`/database/items/${row[0]}`} className={`${colour} hover:underline underline-offset-4`} style={name?.color ? { color: name.color } : undefined}>{name?.name ?? `Item ${row[0]}`}</Link>
+            {name?.wikiPage
+              ? <a href={name.wikiPage} className="text-xs text-muted hover:underline underline-offset-4">{NAME_SOURCE[name.source]}</a>
+              : name ? <span className="text-xs text-muted">{NAME_SOURCE[name.source]}</span> : null}
+          </span>
+        );
+      },
+    },
+    ...(sub ? [] : [{ key: "subclass", header: "Subclass", cell: (row: ItemRow) => describe(T, row).subclass?.name ?? "None" }]),
+    { key: "slot", header: "Slot", cell: (row) => describe(T, row).slot?.name ?? "None" },
+    { key: "quality", header: "Quality", cell: (row) => describe(T, row).quality?.name ?? "unrecorded" },
+    { key: "id", header: "ID", numeric: true, cell: (row) => row[0] },
+  ];
+
+  const toolbar = (
+    <>
+      <FilterTabs
+        label="Subclass"
+        options={subclasses.map((s) => ({ slug: s.slug, name: subName(s), count: s.items }))}
+        current={sub?.slug}
+        href={(slug) => itemsHref(cls.slug, slug)}
+        allHref={itemsHref(cls.slug)}
+      />
+      <FilterTabs label="Slot" options={slots} current={q.slot} href={(slot) => here({ slot })} allHref={here({ slot: undefined })} />
+      <FilterTabs label="Quality" options={qualities} current={q.quality} href={(quality) => here({ quality })} allHref={here({ quality: undefined })} />
+    </>
+  );
 
   return (
-    <article className="space-y-8 max-w-4xl">
-      <header className="space-y-3">
-        <nav aria-label="Breadcrumb" className="font-mono text-xs text-muted">
-          <Link href="/database/items" className="hover:underline underline-offset-4">Items</Link>
-          {" › "}
-          {sub ? <Link href={itemsHref(cls.slug)} className="hover:underline underline-offset-4">{cls.label}</Link> : cls.label}
-          {sub ? <>{" › "}{subName(sub)}</> : null}
-        </nav>
-        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">{sub ? subName(sub) : cls.label}</h1>
-        <p className="text-sm text-muted">{rows.length.toLocaleString("en-US")} items · build {CLIENT_LAYER.build.version}</p>
-      </header>
-
-      {!sub && subclasses.length > 0 ? (
-        <ul className="grid sm:grid-cols-2 md:grid-cols-3 gap-2 text-sm">
-          {subclasses.map((s) => (
-            <li key={s.id}><Link href={itemsHref(cls.slug, s.slug)} className="text-accent hover:underline underline-offset-4">{subName(s)}</Link> <span className="text-muted">{s.items}</span></li>
-          ))}
-        </ul>
-      ) : null}
-
-      <div className="space-y-1">
-        <FilterLinks label="Slot" options={slots} current={q.slot} href={(slot) => here({ slot })} />
-        <FilterLinks label="Quality" options={qualities} current={q.quality} href={(quality) => here({ quality })} />
-      </div>
-
-      {shown.length === 0 ? (
-        <p className="text-fg-2">No items in this category match.</p>
-      ) : (
-        <div className="overflow-x-auto rounded-xl border border-line">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-panel text-xs font-mono text-muted text-left">
-                <th className="px-4 py-3">Item</th>
-                {sub ? null : <th className="px-4 py-3">Subclass</th>}
-                <th className="px-4 py-3">Slot</th>
-                <th className="px-4 py-3">Quality</th>
-              </tr>
-            </thead>
-            <tbody>
-              {shown.map((row) => {
-                const c = describe(T, row);
-                const tip = tips.get(row[0]);
-                const name = names.get(row[0]);
-                return (
-                  <tr key={row[0]} className="border-t border-line bg-panel text-fg">
-                    <td className="px-4 py-2"><span className="inline-flex items-center gap-2">{tip?.icon ? <GameIcon src={tip.icon} size={20} /> : null}<Link href={`/database/items/${row[0]}`} className="text-accent hover:underline underline-offset-4" style={name?.color ? { color: name.color } : undefined}>{name?.name ?? `Item ${row[0]}`}</Link>{name?.wikiPage ? <a href={name.wikiPage} className="text-xs text-muted hover:underline underline-offset-4">{NAME_SOURCE[name.source]}</a> : name ? <span className="text-xs text-muted">{NAME_SOURCE[name.source]}</span> : null}</span></td>
-                    {sub ? null : <td className="px-4 py-2">{c.subclass?.name ?? "—"}</td>}
-                    <td className="px-4 py-2">{c.slot?.name ?? "—"}</td>
-                    <td className="px-4 py-2">{c.quality?.name ?? "unrecorded"}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {pages > 1 ? (
-        <nav aria-label="Pages" className="flex gap-4 text-sm">
-          {q.page > 1 ? <Link href={itemsHref(cls.slug, sub?.slug, { ...q, page: q.page - 1 })} className="text-accent hover:underline underline-offset-4">Previous</Link> : null}
-          <span className="text-muted">Page {q.page} of {pages}</span>
-          {q.page < pages ? <Link href={itemsHref(cls.slug, sub?.slug, { ...q, page: q.page + 1 })} className="text-accent hover:underline underline-offset-4">Next</Link> : null}
-        </nav>
-      ) : null}
-
-      {assets && [...tips.values()].some((t) => t.icon) ? <GameCredit version={assets.version} label={assets.label} /> : null}
-
-      {matched && [...names.values()].some((n) => n?.source === "wiki") ? (
-        <p className="text-xs text-muted">
-          {NAME_SOURCE.wiki}: the game files of build {CLIENT_LAYER.build.version} and the{" "}
-          <a href={matched.wiki.url} className="text-accent hover:underline underline-offset-4">{matched.wiki.name}</a> give the same name. Not yet confirmed in play.
-          Each label links to its wiki page. Names from the wiki: Warcraft Wiki contributors,{" "}
-          <a href={CC_BY_SA.url} className="text-accent hover:underline underline-offset-4">{CC_BY_SA.name}</a>.
-        </p>
-      ) : null}
-
-      <p className="text-xs text-muted">
-        Classes, subclasses, slots and qualities are {CLIENT_LABEL.toLowerCase()}: read from build {CLIENT_LAYER.build.version}, not yet seen in play.
-        A quality reads unrecorded where the game files hold none we can read. A name shows once 3 installs report the same one, or where the game files and the Warcraft Wiki give the same one. {GAME_DATA_CREDIT}
-      </p>
-    </article>
+    <Container width="wide">
+      <article>
+        <PageHeader
+          trail={trail}
+          title={title}
+          meta={<><span className="font-mono tabular-nums">{rows.length.toLocaleString("en-US")} items</span><span>build <span className="font-mono tabular-nums">{CLIENT_LAYER.build.version}</span></span></>}
+        />
+        <DataTable
+          caption={`${title} items`}
+          columns={columns}
+          rows={shown}
+          rowKey={(row) => String(row[0])}
+          toolbar={toolbar}
+          empty={<p className="px-4 py-8 text-fg-2 sm:px-6">No items in this category match. <Link href={itemsHref(cls.slug, sub?.slug)} className={LINK}>Clear the filters</Link></p>}
+          footer={pages > 1 ? (
+            <>
+              <span>Page {q.page} of {pages}</span>
+              <nav aria-label="Pages" className="flex gap-4">
+                {q.page > 1 ? <Link href={itemsHref(cls.slug, sub?.slug, { ...q, page: q.page - 1 })} className={LINK}>Previous</Link> : null}
+                {q.page < pages ? <Link href={itemsHref(cls.slug, sub?.slug, { ...q, page: q.page + 1 })} className={LINK}>Next</Link> : null}
+              </nav>
+            </>
+          ) : undefined}
+        />
+        <SourceLine build={CLIENT_LAYER.build.version}>
+          A name shows once 3 installs report the same one, or where the game files and the Warcraft Wiki give the same one. {GAME_DATA_CREDIT}
+          {matched && [...names.values()].some((n) => n?.source === "wiki") ? (
+            <>
+              {" "}{NAME_SOURCE.wiki}: the game files and the{" "}
+              <a href={matched.wiki.url} className={LINK}>{matched.wiki.name}</a> give the same name, not yet confirmed in play. Each label links to
+              its wiki page. Names from the wiki: Warcraft Wiki contributors, <a href={CC_BY_SA.url} className={LINK}>{CC_BY_SA.name}</a>.
+            </>
+          ) : null}
+          {assets && icons ? <>{" "}<GameCredit inline version={assets.version} label={assets.label} /></> : null}
+        </SourceLine>
+      </article>
+    </Container>
   );
 }

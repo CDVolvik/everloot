@@ -35,7 +35,11 @@ test("the default letter lists the type's pages alphabetically with letter tabs"
   expect(out).toContain('href="/lore/zones"');
   expect(out.match(/href="\/lore\/1\d\d-zone-\d+"/g)).toHaveLength(22);
   expect(out.indexOf("Zone 1<")).toBeLessThan(out.indexOf("Zone 10<"));
-  expect(out).toContain("Lore archive · Warcraft Wiki, 2023 dump");
+  // The source is the page's one source line at the foot, not a line above the title.
+  expect(out).not.toContain("2023 dump");
+  expect(out.match(/data-source-line/g)).toHaveLength(1);
+  expect(out).toContain("Warcraft Wiki, 13 November 2023");
+  expect(out.indexOf("data-source-line")).toBeGreaterThan(out.indexOf("Zone 10<"));
 });
 
 test("facet filters narrow the list and the filter form keeps the letter", async () => {

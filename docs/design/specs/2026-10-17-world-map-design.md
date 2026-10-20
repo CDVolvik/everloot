@@ -22,8 +22,9 @@ third-party credit on the page. Everything on the map is read by us.
 | Zone rectangles seen in play | Our addon (`map_bounds`) | CC BY-SA 4.0 | Cross-check only: names zones where 3 agreeing installs differ from the files |
 | NPC pins | Our corroborated sightings | CC BY-SA 4.0 | Published, as today |
 
-Not available in the tables of build 1.60.1.70450: level ranges (only a content tuning id), boat and
-zeppelin routes, flight paths. They stay off the map until a table gives them. Zones added after the
+Not available in the tables of build 1.60.1.70450: level ranges (only a content tuning id) and usable boat and
+zeppelin routes (they are taxi paths between "Transport" stand-in nodes). Flight masters and flight lines are
+there (`TaxiNodes`, `TaxiPath`, `TaxiPathNode`, added to the map data on 2026-10-20). The rest stays off the map until a table gives it. Zones added after the
 original world (`UiMap` ids above 1458) are held back as possibly unreleased. The site draws its own
 map: zone rectangles as shapes with names, no game art.
 

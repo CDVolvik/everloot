@@ -16,9 +16,15 @@ vi.mock("next/link", () => ({
   default: ({ href, children, ...rest }: { href: string; children: ReactNode }) => <a href={href} {...rest}>{children}</a>,
 }));
 
+// The map's pictures are drawn in the browser, so the page hands them to the map as props: this puts them in the markup to read.
+vi.mock("@/components/WorldMapView", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@/components/WorldMapView")>();
+  return { default: (props: Parameters<typeof real.default>[0]) => <><i data-map-art={JSON.stringify(props.art ?? null)} />{real.default(props)}</> };
+});
+
 import Home from "@/app/page";
 import DropsPage from "@/app/database/drops/page";
-import AuctionsPage from "@/app/tools/auctions/page";
+import AuctionsRealmPage from "@/app/tools/auctions/[realm]/page";
 import ProfessionsPage from "@/app/tools/professions/page";
 import RaidPage from "@/app/tools/raid/page";
 import MapPage from "@/app/map/page";
@@ -26,6 +32,12 @@ import ItemPage from "@/app/database/items/[id]/page";
 import VendorPage from "@/app/database/vendors/[id]/page";
 import ChangesPage from "@/app/changes/page";
 import WowForeverPage from "@/app/wow-forever/page";
+import LorePage from "@/app/lore/page";
+
+/** The wide-screen banner's markup: from its start to the end of its caption. */
+const onBanner = (html: string) => html.slice(html.indexOf("data-banner"), html.indexOf("</p>", html.indexOf("data-banner-credit")));
+/** The banner's one-line caption; the full credit with the build is at the foot of the page. */
+const CAPTION = /data-banner-credit[^>]*>Art: WoW: Forever game files · © Blizzard Entertainment$/;
 
 const BASE = "https://assets.example.test/wow_classic_beta-70450-84bea423";
 const PRIVATE = "https://r2.example.test/everloot-game-data/wow_classic_beta-70450-84bea423";
@@ -51,7 +63,7 @@ const market = foldMarket(emptyMarket(), ["install-a", "install-b", "install-c"]
 const pages: [string, () => Promise<ReactNode>][] = [
   ["home", () => Home()],
   ["drops", () => DropsPage()],
-  ["auctions", () => AuctionsPage({ searchParams: Promise.resolve({ realm: "Forever" }) })],
+  ["auctions", () => AuctionsRealmPage({ params: Promise.resolve({ realm: "forever" }) })],
   ["professions", () => ProfessionsPage({ searchParams: Promise.resolve({}) })],
   ["raid", () => RaidPage()],
   ["map", () => MapPage({ searchParams: Promise.resolve({}) })],
@@ -108,11 +120,11 @@ test("drops and auctions: the item's icon beside its link, the tooltip as its de
   privateBucket();
   const fetcher = bucket();
   vi.stubGlobal("fetch", fetcher);
-  for (const page of [() => DropsPage(), () => AuctionsPage({ searchParams: Promise.resolve({ realm: "Forever" }) })]) {
+  for (const page of [() => DropsPage(), () => AuctionsRealmPage({ params: Promise.resolve({ realm: "forever" }) })]) {
     const html = await render(page);
     expect(html).toContain(`src="${BASE}/icons/132889.webp"`);
     expect(html).toMatch(/<img[^>]*alt=""[^>]*aria-hidden="true"/);
-    expect(html).toContain('href="/database/items/9"');
+    expect(html).toMatch(/href="\/(database\/items|tools\/auctions\/forever)\/9"/);
     expect(html).toMatch(/aria-describedby="[^"]+"/);
     expect(html).toContain("Linen Cloth, Common");
     expect(html).toContain(CREDIT);
@@ -129,7 +141,7 @@ test("without the private bucket's variables, item links stay plain: no item ico
   vi.stubGlobal("fetch", bucket());
   const html = await render(() => DropsPage());
   expect(html).not.toMatch(/data-item-tip|<img|data-game-credit/);
-  expect(html).toContain("Item #9");
+  expect(html).toContain("Item 9");
 });
 
 test("item page: the tooltip card for an item players reported; an id nobody reported reads nothing at all", async () => {
@@ -138,27 +150,27 @@ test("item page: the tooltip card for an item players reported; an id nobody rep
   const fetcher = bucket();
   vi.stubGlobal("fetch", fetcher);
   const seen = await render(() => ItemPage({ params: Promise.resolve({ id: "9" }) }));
-  expect(seen).toContain("data-item-card");
-  expect(seen).toContain("Linen Cloth");
+  expect(seen).toMatch(/data-tooltip-frame[^>]*>[\s\S]*Linen Cloth/);
   expect(seen).toContain(CREDIT);
   // Item 25 is in the same shard, but no install reported it: a typed id must not reveal it.
   fetcher.mockClear();
   forgetPrivateReads();
   const typed = await render(() => ItemPage({ params: Promise.resolve({ id: "25" }) }));
-  expect(typed).not.toMatch(/data-item-card|Worn Shortsword|<img|data-game-credit/);
+  expect(typed).not.toMatch(/Worn Shortsword|<img|data-game-credit/);
   // The one read is the file of names the game files and the wiki agree on (none for item 25 here): no manifest, no shard.
   expect(fetcher.mock.calls.map(([req]) => String(req instanceof Request ? req.url : req))).toEqual([expect.stringMatching(/\/item-names\.json$/)]);
 });
 
-test("home: class icons link to the talent calculator and profession icons to their hub, names kept", async () => {
+test("home: class icons link to the talent calculator, names kept, and the source line credits them", async () => {
   vi.stubEnv("NEXT_PUBLIC_GAME_ASSETS_URL", BASE);
   vi.stubGlobal("fetch", bucket());
   const html = await render(() => Home());
-  expect(html).toContain("Classes and professions");
   expect(html).toMatch(/href="\/tools\/talents\/warrior"[^>]*><img[^>]*icons\/6001\.webp[^>]*\/?>Warrior/);
-  expect(html).toMatch(/href="\/tools\/professions\?profession=Alchemy"[^>]*><img[^>]*icons\/7001\.webp[^>]*\/?>Alchemy/);
-  expect(html).not.toContain("Riding");
-  expect(html).toContain(CREDIT);
+  // A class the upload has no icon for keeps its link and name.
+  expect(html).toMatch(/href="\/tools\/talents\/druid"[^>]*>(?:<img[^>]*\/?>)?Druid/);
+  const source = html.slice(html.indexOf("data-source-line"));
+  expect(source).toContain(CREDIT);
+  expect(source).toMatch(/class icons from game build 1\.60\.1\.70450/);
 });
 
 test("raid builder: buff icons beside the effect names, and the credit", async () => {
@@ -173,7 +185,7 @@ test("raid builder: a raid's loading screen above the title, and a buff's toolti
   vi.stubEnv("NEXT_PUBLIC_GAME_ASSETS_URL", BASE);
   vi.stubGlobal("fetch", bucket());
   const html = await render(() => RaidPage());
-  expect(html).toMatch(/<div aria-hidden="true" data-page-banner[^>]*><img[^>]*src="[^"]*loading\/9409\.webp"[^>]*alt=""[^>]*aria-hidden="true"/);
+  expect(html).toMatch(/<img[^>]*src="[^"]*loading\/9409\.webp"[^>]*alt=""[^>]*aria-hidden="true"[^>]*data-page-banner/);
   expect(html.indexOf("data-page-banner")).toBeLessThan(html.indexOf("<h1"));
   // The name stays text, focusable, described by the tooltip text.
   expect(html).toMatch(/data-spell-tip[^>]*><img[^>]*icons\/8001\.webp[^>]*\/?><span tabindex="0"[^>]*aria-describedby="[^"]+"[^>]*>Battle Shout<\/span>/);
@@ -181,11 +193,12 @@ test("raid builder: a raid's loading screen above the title, and a buff's toolti
   expect(html).toContain("Icons, tooltip text and loading screen art from game build 1.60.1.70450");
 });
 
-test("home: the launch banner shows the game's own logo, the name and the disclaimer as text, and the credit", async () => {
+test("home: the hero shows the game's own logo, the name and the disclaimer as text, and the page's source line credits the art", async () => {
   vi.stubEnv("NEXT_PUBLIC_GAME_ASSETS_URL", BASE);
   vi.stubGlobal("fetch", bucket());
   const html = await render(() => Home());
-  const banner = html.slice(html.indexOf("data-launch-banner"), html.indexOf("Every drop."));
+  const start = html.indexOf("data-launch-banner");
+  const banner = html.slice(start, html.indexOf("</section>", start));
   expect(banner).toMatch(/<img[^>]*src="[^"]*logo\/logo-wow-forever-2x\.webp"[^>]*alt=""[^>]*aria-hidden="true"/);
   expect(banner).toMatch(/<img[^>]*src="[^"]*loading\/9000\.webp"[^>]*alt=""[^>]*aria-hidden="true"/);
   expect(banner).toContain(">World of Warcraft: Forever</p>");
@@ -193,7 +206,7 @@ test("home: the launch banner shows the game's own logo, the name and the discla
   // The countdown sits on the banner, and only there.
   expect(banner).toMatch(/href="\/wow-forever"[^>]*>WoW: Forever launches <time/);
   expect(html.match(/WoW: Forever launches/g)).toHaveLength(1);
-  expect(banner).toContain("Logo and loading screen art from game build 1.60.1.70450");
+  expect(html.slice(html.indexOf("data-source-line"))).toContain("Logo, loading screen art and class icons from game build 1.60.1.70450");
   expect(html.indexOf("data-launch-banner")).toBeLessThan(html.indexOf("<h1"));
 });
 
@@ -211,30 +224,36 @@ test("wow-forever: race and faction emblems beside the names in the race and cla
   vi.stubEnv("NEXT_PUBLIC_GAME_ASSETS_URL", BASE);
   vi.stubGlobal("fetch", bucket());
   const html = await render(() => WowForeverPage());
-  expect(html).toMatch(/<caption[^>]*><img[^>]*emblems\/HordeEmblem\.webp"[^>]*alt=""[^>]*aria-hidden="true"[^>]*\/?>Horde<\/caption>/);
-  expect(html).toMatch(/<th scope="row"[^>]*><img[^>]*emblems\/raceicon128-human-female\.webp"[^>]*\/?>Human<\/th>/);
-  expect(html).toMatch(/<th scope="row"[^>]*><img[^>]*emblems\/raceicon128-nightelf-male\.webp"[^>]*\/?>Night Elf<\/th>/);
+  // The faction's emblem beside its heading, the race's beside its name in the first column.
+  expect(html).toMatch(/<h3[^>]*><span[^>]*><img[^>]*emblems\/HordeEmblem\.webp"[^>]*alt=""[^>]*aria-hidden="true"[^>]*\/?>Horde<\/span><\/h3>/);
+  expect(html).toMatch(/<td[^>]*><span[^>]*><img[^>]*emblems\/raceicon128-human-female\.webp"[^>]*\/?>Human<\/span><\/td>/);
+  expect(html).toMatch(/<td[^>]*><span[^>]*><img[^>]*emblems\/raceicon128-nightelf-male\.webp"[^>]*\/?>Night Elf<\/span><\/td>/);
   // A race the upload has no icon for keeps its plain name.
-  expect(html).toMatch(/<th scope="row"[^>]*>Orc<\/th>/);
-  expect(html).toContain("Race and faction emblems from game build 1.60.1.70450");
+  expect(html).toMatch(/<td[^>]*><span[^>]*>Orc<\/span><\/td>/);
+  expect(html.slice(html.indexOf("data-source-line"))).toContain("Race and faction emblems from game build 1.60.1.70450");
 });
 
-test("map: the continent's loading screen above the map, and each dungeon's beside its entrance", async () => {
+test("map: each dungeon's loading screen beside its entrance in the list", async () => {
   vi.stubEnv("NEXT_PUBLIC_GAME_ASSETS_URL", BASE);
   vi.stubGlobal("fetch", bucket());
   const html = await render(() => MapPage({ searchParams: Promise.resolve({ continent: "0" }) }));
-  expect(html).toMatch(/data-page-banner[^>]*><img[^>]*loading\/9000\.webp/);
-  expect(html).toMatch(/<li class="flex items-center gap-3"><img src="[^"]*loading\/9036-small\.webp" alt="" aria-hidden="true"[^>]*><span><span class="text-fg">Deadmines<\/span>/);
+  expect(html).toMatch(/<li class="flex items-center gap-3"><img src="[^"]*loading\/9036-small\.webp" alt="" aria-hidden="true"[^>]*><span class="min-w-0"><span class="text-fg">Deadmines<\/span>/);
   expect(html).toContain("Map pictures and loading screen art from game build");
 });
 
-test("patch notes: a loading screen above the title, and a spell a post names gets its icon, tooltip and link", async () => {
+test("patch notes: a wide-screen loading screen with the title and a one-line caption on it, the full credit at the foot, and a spell a post names gets its icon, tooltip and link", async () => {
   vi.stubEnv("NEXT_PUBLIC_GAME_ASSETS_URL", BASE);
   vi.stubGlobal("fetch", bucket());
   const html = await render(() => ChangesPage({ searchParams: Promise.resolve({}) }));
-  expect(html).toMatch(/data-page-banner[^>]*><img[^>]*loading\/9001\.webp/);
-  expect(html.indexOf("data-page-banner")).toBeLessThan(html.indexOf("<h1"));
-  expect(html).toContain(CREDIT);
+  expect(onBanner(html)).toMatch(/<img[^>]*loading\/9001\.webp[^>]*data-page-banner/);
+  // The breadcrumb and the title sit on the art, with one caption line; the lede follows under the art.
+  expect(onBanner(html)).toMatch(/data-page-crumbs[\s\S]*<h1[^>]*>WoW Forever Patch Notes and Blizzard Posts<\/h1>/);
+  expect(onBanner(html)).toMatch(CAPTION);
+  expect(onBanner(html)).not.toContain("Official posts from Blizzard staff");
+  // The full credit, with the build, once, after the banner.
+  expect(html.match(/data-game-credit/g)).toHaveLength(1);
+  expect(html.indexOf("data-game-credit")).toBeGreaterThan(html.indexOf("data-banner-credit"));
+  expect(html).toMatch(/data-game-credit[^>]*>Icons, tooltip text and interface art are © Blizzard[^<]*from game build 1\.60\.1\.70450/);
 });
 
 test("professions: a picker of profession icons with their names", async () => {
@@ -246,28 +265,40 @@ test("professions: a picker of profession icons with their names", async () => {
   expect(html).toContain(CREDIT);
 });
 
-test("map: zone pictures under the outlines; held-back zones and the continent picture only with spoilers", async () => {
+test("map: the continent picture and zone pictures; held-back zones only with spoilers", async () => {
   vi.stubEnv("NEXT_PUBLIC_GAME_ASSETS_URL", BASE);
   vi.stubGlobal("fetch", bucket());
+  const art = (html: string): { continent: { url: string } | null; zones: { url: string; smallUrl: string | null }[] } | null =>
+    JSON.parse((html.match(/data-map-art="([^"]*)"/)![1]!).replaceAll("&quot;", '"'));
   const off = await render(() => MapPage({ searchParams: Promise.resolve({ continent: "0" }) }));
-  // Zoomed out, the zones in view from their small copies; never a held-back zone or the continent picture.
-  expect(off).toContain(`href="${BASE}/maps/1429-small.webp"`);
-  expect(off).not.toContain("maps/1429.webp");
+  // The continent's own picture always; never a held-back zone's.
+  expect(art(off)!.continent!.url).toBe(`${BASE}/maps/13.webp`);
+  expect(art(off)!.zones.find((z) => z.url === `${BASE}/maps/1429.webp`)?.smallUrl).toBe(`${BASE}/maps/1429-small.webp`);
   expect(off).not.toContain("maps/2548");
-  expect(off).not.toContain("maps/13");
   expect(off).toContain("Game map art");
-  expect(off).toContain("Zones");
   expect(off).not.toContain("No game art.");
   expect(off).toContain(CREDIT);
-  // With spoilers on, the continent's own picture; zone pictures then wait until the reader zooms in.
+  // With spoilers on, the held-back zone's picture too.
   const on = await render(() => MapPage({ searchParams: Promise.resolve({ continent: "0", spoilers: "1" }) }));
-  expect(on).toContain(`href="${BASE}/maps/13.webp"`);
-  expect(on).not.toContain("maps/1429");
+  expect(art(on)!.zones.some((z) => z.url === `${BASE}/maps/2548.webp`)).toBe(true);
   // The page's description no longer says "No game art" once the pictures are on.
   const { generateMetadata } = await import("@/app/map/page");
   expect((await generateMetadata()).description).toContain("The map pictures are the game's own.");
-  // Kalimdor has no map pictures in this upload: none drawn, and the credit names only its loading screen.
+  // Kalimdor has no map pictures in this upload: none drawn, and no credit for them.
   const kalimdor = await render(() => MapPage({ searchParams: Promise.resolve({ continent: "1" }) }));
-  expect(kalimdor).not.toMatch(/<image|Map pictures/);
-  expect(kalimdor).toContain("Loading screen art from game build");
+  expect(art(kalimdor)).toBeNull();
+  expect(kalimdor).not.toMatch(/Map pictures/);
+});
+
+test("lore archive: the same wide-screen banner, Scarlet Monastery's loading screen with the title on it", async () => {
+  vi.stubEnv("NEXT_PUBLIC_GAME_ASSETS_URL", BASE);
+  vi.stubGlobal("fetch", bucket());
+  const html = await render(() => LorePage());
+  expect(onBanner(html)).toMatch(/<img[^>]*loading\/9189\.webp[^>]*data-page-banner/);
+  expect(onBanner(html)).toMatch(/<h1[^>]*>Lore archive<\/h1>/);
+  expect(onBanner(html)).toMatch(CAPTION);
+  // The full credit, with the build, at the foot.
+  expect(html.match(/data-game-credit/g)).toHaveLength(1);
+  expect(html.indexOf("data-game-credit")).toBeGreaterThan(html.indexOf("data-banner-credit"));
+  expect(html).toContain("Loading screen art from game build 1.60.1.70450");
 });

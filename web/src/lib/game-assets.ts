@@ -407,21 +407,18 @@ export interface ArtBox { uiMapId: number; name: string; url: string; smallUrl: 
 
 /**
  * The pictures for one continent: the continent's own, and one per zone. A held-back zone's picture is
- * left out unless spoilers are on, like its outline. The continent's picture may show a held-back zone
- * painted in, so on a continent that has one it too waits for spoilers; the zone pictures still show.
- * A continent has one when the map file says so (`heldBackHere`) or the upload marks a zone on it as
- * held back. Null when there is none.
+ * left out unless spoilers are on, like its outline. The continent's picture always shows: it is the
+ * original world's parchment map, with no names and no new land painted in. Null when there is none.
  */
-export function continentArt(assets: SiteAssets | null, continentId: number, spoilers: boolean, heldBackHere: boolean): { continent: ArtBox | null; zones: ArtBox[] } | null {
+export function continentArt(assets: SiteAssets | null, continentId: number, spoilers: boolean): { continent: ArtBox | null; zones: ArtBox[] } | null {
   if (!assets) return null;
   const box = (m: MapArt): ArtBox => {
     const a = worldToMap({ continentId, worldX: m.rect.top, worldY: m.rect.left });
     const c = worldToMap({ continentId, worldX: m.rect.bottom, worldY: m.rect.right });
     return { uiMapId: m.uiMapId, name: m.name, url: m.url, smallUrl: m.smallUrl, x: a.x, y: a.y, width: c.x - a.x, height: c.y - a.y };
   };
-  const held = heldBackHere || assets.maps.some((m) => m.heldBack && m.continentId === continentId);
   const here = assets.maps.filter((m) => m.continentId === continentId && (spoilers || !m.heldBack));
-  const continent = spoilers || !held ? here.find((m) => m.kind === "continent") : undefined;
+  const continent = here.find((m) => m.kind === "continent");
   const zones = here.filter((m) => m.kind === "zone").map(box);
   if (!continent && !zones.length) return null;
   return { continent: continent ? box(continent) : null, zones };
@@ -431,10 +428,10 @@ export function continentArt(assets: SiteAssets | null, continentId: number, spo
 
 /**
  * Which game map's loading screen a page shows as its banner: Eastern Kingdoms on the home page, Kalimdor
- * on the patch notes, Molten Core on the raid builder. All are maps of the original world, so no banner
+ * on the patch notes, Scarlet Monastery on the lore archive, Molten Core on the raid builder. All are maps of the original world, so no banner
  * can spoil anything. The world map shows the continent on view.
  */
-export const BANNER_MAP = { home: 0, changes: 1, raid: 409 } as const;
+export const BANNER_MAP = { home: 0, changes: 1, lore: 189, raid: 409 } as const;
 
 /** A map's loading screen, or null: none in the upload, or held back with spoilers off. */
 export function loadingArt(assets: SiteAssets | null, mapId: number, spoilers = false): LoadingArt | null {
