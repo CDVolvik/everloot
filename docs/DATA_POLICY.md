@@ -11,8 +11,10 @@ This is our reading of the rules, not legal advice.
 play: drops, vendors, auction prices you browse, recipes, trainers, gold in and out. The list of
 your installed addons is recorded only if you turn it on with `/everloot addons on`, and it is
 sent only from the website's upload page, after the preview names each addon. You choose
-when to upload. On the website you preview everything before it is sent. The companion sends only
-anonymous open-world events and keeps named data (guild, gear, gold, collection) on your machine.
+when to upload. On the website you preview everything before it is sent. The Desktop App sends
+anonymous open-world events, and census rows if you allowed the census on its setup screen; the
+command-line uploader sends only the anonymous events. Neither sends named data (guild, gear, gold,
+collection), player rows or the installed addon list: those stay on your machine.
 
 Uploaded observations are public as individual, anonymous records, with no character names and
 without the addon's install id, so anyone can check our counts. The facts the site states itself, such as drop rates, spawn points and recipe
@@ -435,7 +437,7 @@ same licence.
 - **Bulk scraping of any site.** No crawlers, no copying another database's rows, guides or text.
   If a site's terms or robots.txt say no, the answer is no.
 - **Touching the running game.** No reading or changing the game's memory, no automation, no
-  bypassing protections. The addon uses only the game's own addon API. The companion reads the
+  bypassing protections. The addon uses only the game's own addon API. The Desktop App and the command-line uploader read the
   SavedVariables file the game writes, and writes `/ask` answers into a file the addon loads after
   `/reload`.
 - **Decrypting game data.** Content Blizzard encrypts stays encrypted.
