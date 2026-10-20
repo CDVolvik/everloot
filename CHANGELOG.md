@@ -13,6 +13,7 @@ build that has a zip in the repository. Earlier builds have none.
 ## [Unreleased]
 
 ### Added
+- Site: the world map is now a Leaflet map that fills the screen: click a zone to zoom to it, search for a zone or NPC, flight masters and flight paths from the game files, coordinates on hover with a copyable `/way` line, a bottom card for a tapped pin, and an address that keeps your view; `/map?zone=<id>` opens that zone.
 - One search on everloot.app: the header box and `/search` find items, NPCs, quests, zones, lore pages and
   tools by name or id, grouped by type with an exact id or name first. Drop, reward, giver and vendor lists
   show names and icons instead of "Item 1234", NPC, item and quest pages show a Lore section when the lore

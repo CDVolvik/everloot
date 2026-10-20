@@ -23,6 +23,8 @@ const data: WorldMapData = {
     { mapId: 389, name: "Synthetic Chasm", raid: false, continentId: 1, worldX: 1500, worldY: -4423.4 },
     { mapId: 99, name: "Synthetic Spire", raid: true, continentId: 1, worldX: 5000, worldY: -2000 },
   ],
+  flightNodes: [],
+  flightPaths: [],
   warnings: [],
 };
 

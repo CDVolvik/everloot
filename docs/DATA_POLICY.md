@@ -137,8 +137,9 @@ interface files, is a different thing and is covered by the second extension. Th
   into a URL. The extracted facts cover every named item in the build, released or not, so they are
   kept in private storage that only the site's server reads, never in the public asset bucket.
 - **Map pictures**: the game's own continent and zone map art from the map art tables, laid under
-  our zone outlines. A held-back zone's picture shows only with spoilers on, and so does a continent's
-  picture when that continent has a held-back zone, since it may be painted in.
+  our zone outlines. A held-back zone's picture shows only with spoilers on. A continent's own
+  picture always shows (decided 2026-10-19): it is the original world's parchment map, with no names
+  and no new land painted in.
 - **The `/database` pages** (decided 2026-10-18 by the maintainer): the icons of the spells an item is
   created by or used in (from the client layer's relations) beside those relations, and pet family
   icons (`CreatureFamily.IconFileID`) in the manifest. Item icons and names on these pages follow the

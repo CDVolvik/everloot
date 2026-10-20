@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import type { MapBoundsRow } from "../../../kb/src/map-bounds";
 import type { WorldMapData } from "../../../kb/src/world-map-data";
 import { worldToZone, zoneAt, zoneTable } from "../../../kb/src/world-coords";
-import { continentMap, continentPins, MAP_RECORD_KINDS, observedFacts, pinLink, WORLD_MAP } from "./world-map";
+import { continentFlights, continentMap, continentPins, MAP_RECORD_KINDS, observedFacts, pinLink, WORLD_MAP } from "./world-map";
 import { PUBLIC_RECORD_KINDS } from "@everloot/protocol";
 
 // SYNTHETIC data in the shape of the generated file; the numbers are made up.
@@ -23,6 +23,16 @@ const data: WorldMapData = {
   entrances: [
     { mapId: 34, name: "Synthetic Stockade", raid: false, continentId: 0, worldX: -8762.4, worldY: 848 },
     { mapId: 389, name: "Synthetic Chasm", raid: false, continentId: 1, worldX: 1816.8, worldY: -4423.4 },
+  ],
+  flightNodes: [
+    { id: 2, name: "Synthetic Post", continentId: 0, worldX: -8840, worldY: 489 },
+    { id: 4, name: "Synthetic Far Post", continentId: 0, worldX: -10000, worldY: 900 },
+    { id: 5, name: "Synthetic Peak Post", continentId: 1, worldX: 5000, worldY: -2000 },
+    { id: 6, name: "Synthetic Dunes Post", continentId: 1, worldX: 0, worldY: -3000 },
+  ],
+  flightPaths: [
+    { from: 2, to: 4, continentId: 0, points: [[-8840, 489], [-10000, 900]] },
+    { from: 6, to: 5, continentId: 1, points: [[0, -3000], [5000, -2000]] },
   ],
   warnings: [],
 };
@@ -169,5 +179,35 @@ describe("player-observed points", () => {
     expect(PUBLIC_RECORD_KINDS).not.toContain("addon_seen");
     const facts = observedFacts([...three(7, 1429), { kind: "gold_snapshot", installId: "a" }, null, "text"]);
     expect(facts.npcs).toHaveLength(3);
+  });
+});
+describe("flights on the map", () => {
+  test("masters and lines are those of the continent asked for", () => {
+    const zero = continentFlights(0, false, data);
+    expect(zero.masters.map((m) => m.name)).toEqual(["Synthetic Post", "Synthetic Far Post"]);
+    expect(zero.lines.map((l) => [l.from, l.to])).toEqual([["f2", "f4"]]);
+    expect(zero.lines[0]!.points[0]).toEqual([-489, 8840]);
+  });
+
+  test("a master in a held-back zone, and a line that ends at one, wait for the spoiler switch", () => {
+    const off = continentFlights(1, false, data);
+    expect(off.masters.map((m) => m.name)).toEqual(["Synthetic Dunes Post"]);
+    expect(off.lines).toEqual([]);
+    const on = continentFlights(1, true, data);
+    expect(on.masters.map((m) => [m.name, m.heldBack])).toEqual([["Synthetic Peak Post", true], ["Synthetic Dunes Post", false]]);
+    expect(on.lines).toHaveLength(1);
+  });
+
+  test("the real file has flight masters on both continents", () => {
+    expect(continentFlights(0).masters.length).toBeGreaterThan(10);
+    expect(continentFlights(1).masters.length).toBeGreaterThan(10);
+  });
+
+  test("with spoilers off, no flight master or line of a held-back zone is in the real file's answer", () => {
+    for (const c of [0, 1]) {
+      const names = continentFlights(c).masters.map((m) => m.name).join("|");
+      for (const z of WORLD_MAP.heldBackZones) expect(names).not.toContain(z.name);
+    }
+    expect(continentFlights(1, true).masters.some((m) => /Hyjal/.test(m.name))).toBe(true);
   });
 });
