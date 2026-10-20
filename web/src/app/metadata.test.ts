@@ -39,7 +39,7 @@ const routes: [string, () => Promise<{ metadata: Metadata }>, boolean][] = [
   ["/terms", () => import("./terms/page"), false],
   ["/tools/auctions", () => import("./tools/auctions/page"), true],
   ["/tools/collections", () => import("./tools/collections/page"), true],
-  ["/tools/farming-routes", () => import("./tools/farming-routes/page"), true],
+  ["/tools/farming-routes", async () => ({ metadata: await (await import("./tools/farming-routes/page")).generateMetadata({}) }), true],
   ["/tools/gold-ledger", () => import("./tools/gold-ledger/page"), true],
   ["/tools/guild-board", () => import("./tools/guild-board/page"), true],
   ["/tools/professions", () => import("./tools/professions/page"), true],
