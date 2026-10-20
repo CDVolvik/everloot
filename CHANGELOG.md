@@ -25,11 +25,15 @@ Pull requests merged to `main` are listed in the nightly pre-releases until the 
   "Everloot Desktop App". The key travels back to `127.0.0.1` sealed to a one-time key only that app holds
   (ECDH P-256, AES-GCM), so it is never in a URL in the clear, and the app never sees a password. Pasting a key
   still works. The setup screen also asks to agree to the Terms of Use and Privacy Policy before Start.
+- Site: an achievement's page lists its criteria, with how many each needs, once three players sent the same complete list; the list is agreed apart from the entry itself. Lists and search still show no criteria wording. Run the completion rebuild (`?rebuild=1`) once to fill it from uploads already stored.
+
+## [0.3.7] - 2026-10-20
+
+### Added
 - An Everloot settings page in the game: Esc > Options > AddOns > Everloot, or `/everloot options`. One switch
   per module and for the auction scan prompt, each saying what it records and where it goes, and a Reload now
   button. A switch with a `/everloot` command runs it, so turning the census, players, completion or addon
   list off deletes their rows exactly as in chat. Clients without the options API get it as a window.
-- Site: an achievement's page lists its criteria, with how many each needs, once three players sent the same complete list; the list is agreed apart from the entry itself. Lists and search still show no criteria wording. Run the completion rebuild (`?rebuild=1`) once to fill it from uploads already stored.
 
 ## [0.3.6] - 2026-10-20
 
