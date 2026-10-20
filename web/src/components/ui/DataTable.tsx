@@ -43,8 +43,9 @@ export default function DataTable<Row>({ columns, rows, rowKey, caption, sort, s
   return (
     <div data-table className="min-w-0 overflow-hidden rounded-card border border-line bg-panel">
       {toolbar && <div className="border-b border-line">{toolbar}</div>}
-      {/* Focusable so a keyboard can scroll it sideways; named by the caption. */}
-      <div role="region" aria-label={caption} tabIndex={0} className="max-w-full overflow-x-auto">
+      {/* Focusable so a keyboard can scroll it sideways; named by the caption. Positioned, so a cell's
+          absolutely placed sr-only text is clipped with the rest instead of widening the page. */}
+      <div role="region" aria-label={caption} tabIndex={0} className="relative max-w-full overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <caption className="sr-only">{caption}</caption>
           <thead>
@@ -77,7 +78,9 @@ export default function DataTable<Row>({ columns, rows, rowKey, caption, sort, s
           </thead>
           <tbody>
             {rows.length === 0 && empty ? (
-              <tr><td colSpan={columns.length} className="p-0">{empty}</td></tr>
+              // Pinned to the frame's left edge and no wider than the screen, so on a phone the message and its
+              // button stay in view while the headers above it scroll sideways.
+              <tr><td colSpan={columns.length} className="p-0"><div className="sticky left-0 max-w-[calc(100vw-2rem-2px)]">{empty}</div></td></tr>
             ) : rows.map((row) => (
               <tr key={rowKey(row)} className="border-t border-line first:border-t-0 hover:bg-canvas/40">
                 {columns.map((col) => (

@@ -74,7 +74,7 @@ All in `web/src/design/tokens.ts`, exposed to Tailwind by `web/tailwind.config.t
 ## Navigation
 
 Top bar: Database · Tools (menu: Plan / Look up / Track) · Map · Changes · Lore · Open data, then
-search (the archive search, `/` focuses it), Sign in and **Get the addon** (`/addon`). On a phone:
+search ("Search Everloot": the database and the lore archive, `/` focuses it), Sign in and **Get the addon** (`/addon`). On a phone:
 the wordmark, Get the addon and Menu, which lists the same places. A new tool goes in
 `web/src/data/tools.ts` and in `TOOL_GROUPS` in `web/src/components/Header.tsx`; a test fails if it
 is missing from the menu. The footer is compact: Browse, Data and API, Project, and one legal row.

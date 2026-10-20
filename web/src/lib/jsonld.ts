@@ -123,6 +123,27 @@ export function datasetJsonLd(data: { uploads: number; name: string; description
   };
 }
 
+/**
+ * An Auction House price page: a Dataset of the public days it shows. Not a Product with an Offer: nobody
+ * here sells the item, and gold is not a currency a search engine knows.
+ */
+export function marketDatasetJsonLd(page: { name: string; description: string; path: string; apiPath: string; from: string; to: string; dataAsOf: string | null }): JsonLd {
+  return {
+    "@context": CONTEXT,
+    "@type": "Dataset",
+    name: page.name,
+    description: page.description,
+    url: absoluteUrl(page.path),
+    license: CC_BY_SA.url,
+    creator: publisher,
+    isAccessibleForFree: true,
+    temporalCoverage: `${page.from}/${page.to}`,
+    variableMeasured: ["Market value", "Minimum buyout", "Historical value", "Units listed"],
+    ...(page.dataAsOf ? { dateModified: page.dataAsOf } : {}),
+    distribution: [{ "@type": "DataDownload", encodingFormat: "application/json", contentUrl: absoluteUrl(page.apiPath) }],
+  };
+}
+
 /** One timeline entry as the page shows it. A build carries no date property: its time is when Everloot first saw it. */
 function changeItem(entry: ChangeEntry): JsonLd {
   if (entry.type === "build") {

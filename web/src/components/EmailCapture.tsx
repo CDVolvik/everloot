@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Input } from "@/components/ui";
 
 export default function EmailCapture({ toolSlug }: { toolSlug: string }) {
   const [email, setEmail] = useState("");
@@ -45,7 +46,7 @@ export default function EmailCapture({ toolSlug }: { toolSlug: string }) {
         Want a heads-up when this launches?
       </label>
       <div className="flex gap-2">
-        <input
+        <Input
           type="email"
           required
           placeholder="your@email.com"
@@ -54,7 +55,7 @@ export default function EmailCapture({ toolSlug }: { toolSlug: string }) {
             setEmail(e.target.value);
             if (state === "error") setState("idle");
           }}
-          className="flex-1 rounded-lg bg-panel border border-edge px-3 py-2 text-fg placeholder:text-muted focus:border-accent outline-none"
+          className="flex-1"
         />
         <button
           type="submit"

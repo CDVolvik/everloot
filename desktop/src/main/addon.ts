@@ -22,13 +22,14 @@ export function slotAddons(addonsDir: string): { prices: boolean; answers: boole
 }
 
 interface Release { tag_name?: unknown; html_url?: unknown; draft?: unknown; prerelease?: unknown }
-const parse = (v: string): number[] | null => { const m = /^(\d+)\.(\d+)\.(\d+)$/.exec(v); return m ? m.slice(1).map(Number) : null; };
+// X.Y.Z, or a pre-release such as a nightly (0.3.4-nightly.20261019.4): the fourth number is 1 for a release, 0 for a pre-release.
+const parse = (v: string): number[] | null => { const m = /^(\d+)\.(\d+)\.(\d+)(-[0-9A-Za-z.]+)?$/.exec(v); return m ? [...m.slice(1, 4).map(Number), m[4] ? 0 : 1] : null; };
 
-/** Positive when a is newer than b. A non-numeric version (a dev build) is older than anything. */
+/** Positive when a is newer than b. A nightly is newer than the release before it and older than its own release; a non-numeric version (a dev build) is older than anything. */
 export function compareVersions(a: string, b: string): number {
   const pa = parse(a), pb = parse(b);
   if (!pa || !pb) return pa ? 1 : pb ? -1 : 0;
-  for (let i = 0; i < 3; i++) if (pa[i] !== pb[i]) return pa[i] - pb[i];
+  for (let i = 0; i < 4; i++) if (pa[i] !== pb[i]) return pa[i] - pb[i];
   return 0;
 }
 

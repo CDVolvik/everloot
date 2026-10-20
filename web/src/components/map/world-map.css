@@ -1,0 +1,137 @@
+/* The world map's look, on top of Leaflet's own stylesheet. Colours are the design tokens. */
+
+.wm-map {
+  background: rgb(var(--panel));
+  font: inherit;
+  outline-offset: -2px;
+}
+
+/* Zone outlines: shapes with names. They stay whether or not the game's pictures are under them. */
+.wm-map .wm-zone {
+  fill: rgb(var(--fg) / 0.05);
+  stroke: rgb(var(--edge));
+  cursor: pointer;
+  transition: fill 150ms, stroke 150ms;
+}
+.wm-map .wm-zone:hover {
+  fill: rgb(var(--accent) / 0.18);
+  stroke: rgb(var(--accent));
+}
+/* Dashed is the site's mark for "from the game files, unconfirmed". */
+.wm-map .wm-zone-held {
+  fill: rgb(var(--warning) / 0.1);
+  stroke: rgb(var(--warning));
+  stroke-dasharray: 5 3;
+}
+.wm-map .wm-flight-line {
+  stroke: rgb(var(--fg-2));
+  stroke-opacity: 0.75;
+  stroke-dasharray: 4 4;
+}
+
+/* Pins: a 26 px target around a mark of 10 to 14 px, so a finger can hit it. */
+.wm-pin {
+  background: none;
+  border: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.wm-pin > span {
+  display: block;
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid rgb(var(--canvas));
+  transition: transform 150ms;
+}
+.wm-pin:hover > span,
+.wm-pin.wm-selected > span {
+  transform: scale(1.5);
+}
+.wm-pin.wm-selected > span {
+  outline: 2px solid rgb(var(--fg));
+}
+.wm-pin-dungeon > span { background: rgb(var(--accent)); border-radius: 9999px; }
+.wm-pin-raid > span { background: rgb(var(--warning)); }
+.wm-pin-npc > span { background: rgb(var(--fg-2)); border-radius: 9999px; width: 9px; height: 9px; }
+.wm-pin-vendor > span { background: rgb(var(--fg)); transform: rotate(45deg); width: 10px; height: 10px; }
+.wm-pin-vendor:hover > span,
+.wm-pin-vendor.wm-selected > span { transform: rotate(45deg) scale(1.5); }
+/* A flight master: a small up-pointing triangle. */
+.wm-pin-flight > span {
+  width: 0;
+  height: 0;
+  border: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 11px solid rgb(var(--fg));
+  background: none;
+}
+.wm-pin-spot { pointer-events: none; }
+.wm-pin-spot > span {
+  width: 28px;
+  height: 28px;
+  border: 2.5px solid rgb(var(--accent));
+  border-radius: 9999px;
+  background: rgb(var(--accent) / 0.15);
+}
+
+/* Labels sit on their own pane above the shapes, with a dark halo so they read over any picture. */
+.wm-label {
+  background: none;
+  border: 0;
+  white-space: nowrap;
+  font-size: 12px;
+  line-height: 1;
+  pointer-events: none;
+}
+.wm-label > span {
+  position: absolute;
+  top: 0;
+  color: rgb(var(--fg));
+  -webkit-text-stroke: 3px rgb(var(--canvas));
+  paint-order: stroke fill;
+}
+.wm-label-middle > span { transform: translate(-50%, -50%); }
+.wm-label-start > span { transform: translate(0, -50%); }
+.wm-label-zone > span { color: rgb(var(--fg-2)); font-weight: 500; }
+.wm-label-held > span { color: rgb(var(--warning)); }
+
+/* Our own zoom buttons: Leaflet's carry a drop shadow, which the site does not use. */
+.wm-zoom {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgb(var(--edge));
+  border-radius: 6px;
+  overflow: hidden;
+  background: rgb(var(--panel));
+}
+.wm-zoom button {
+  width: 44px;
+  height: 44px;
+  font-size: 20px;
+  line-height: 1;
+  color: rgb(var(--fg));
+  background: rgb(var(--panel));
+  cursor: pointer;
+}
+.wm-zoom button + button {
+  border-top: 1px solid rgb(var(--line));
+}
+.wm-zoom button:hover,
+.wm-zoom button:focus-visible {
+  background: rgb(var(--canvas));
+  color: rgb(var(--accent));
+}
+.wm-zoom button:disabled {
+  color: rgb(var(--muted));
+  cursor: not-allowed;
+}
+.wm-map .leaflet-container,
+.wm-map.leaflet-container {
+  font-family: inherit;
+}
+@media (prefers-reduced-motion: reduce) {
+  .wm-map .leaflet-zoom-anim .leaflet-zoom-animated { transition: none !important; }
+}

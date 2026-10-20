@@ -117,6 +117,8 @@ export interface AddonInfo {
   addonsDir: string | null;
   installed: string | null;
   latest: { version: string; url: string } | null;
+  /** The latest release is newer than what is installed; false for a nightly ahead of it. */
+  newer: boolean;
   slots: { prices: boolean; answers: boolean };
   error: string | null;
 }
@@ -213,6 +215,9 @@ export interface CharactersInfo {
 }
 
 
+/** Signed in to everloot.app with one of the account's API keys; the page sees only its last four characters. */
+export interface Account { signedIn: boolean; hint: string | null }
+
 /** Everything the page knows. The main side sends a fresh one after every change. */
 export interface AppState {
   version: string;
@@ -227,6 +232,7 @@ export interface AppState {
   updateProgress: UpdateProgress;
   /** Realms whose last full scan is older than a day (or never dated), for the tray reminder. */
   staleScans: ScanAge[];
+  account: Account;
 }
 
 /** What `window.everloot` offers the page. Implemented in preload.ts over IPC. */
@@ -250,6 +256,10 @@ export interface EverlootApi {
   updateRestart(): Promise<boolean>;
   /** Offers a GitHub bug report with these diagnostics, or copies them. */
   reportBug(diagnostics: string): Promise<"opened" | "copied" | null>;
+  /** Checks an everloot.app API key with the site and keeps it; throws with the reason when it is refused. */
+  accountSignIn(key: string): Promise<AppState>;
+  /** Forgets the key on this computer. */
+  accountSignOut(): Promise<AppState>;
   uploadInfo(): Promise<FileSummary[]>;
   backups(): Promise<BackupInfo[]>;
   /** Asks the player to confirm, then copies the backup over the live file; returns the restored path or null when cancelled. */
