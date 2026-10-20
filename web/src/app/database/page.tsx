@@ -9,7 +9,7 @@ import { npcRows, publicQuests, publicVendors } from "@/lib/world-lists";
 import { publicZones } from "@/lib/zones";
 import JsonLd from "@/components/JsonLd";
 import { AgreementMeter, Container, DataTitle, SearchBar } from "@/components/ui";
-import { CC_BY_SA, datasetJsonLd } from "@/lib/jsonld";
+import { datasetJsonLd } from "@/lib/jsonld";
 
 const TITLE = "WoW Forever Database";
 const description = "Loot-window observations, NPC sightings, quests and vendors for WoW: Forever, from addon uploads. Public facts need corroborated install reports.";
@@ -89,11 +89,6 @@ export default async function DatabasePage() {
             />
           ))}
         </nav>
-        {/* The Dataset's name, description and licence, visible as its structured data requires: one quiet line at the foot. */}
-        <p className="mt-2 border-t border-line pt-3 text-xs text-muted">
-          {DATASET_NAME}: {description} Open at <a href="/api/corpus/public" className="hover:text-accent">/api/corpus/public</a> under{" "}
-          <a href={CC_BY_SA.url} rel="noopener" className="hover:text-accent">{CC_BY_SA.name}</a>.
-        </p>
       </article>
     </Container>
   );

@@ -5,13 +5,14 @@ import { itemPage } from "../../../../../kb/src/item-page";
 import { describe, filterItems, QUALITIES, resolveClass, resolveLegacyClass, resolveSubclass, slotOf, type ItemClass, type ItemRow, type ItemSubclass } from "../../../../../kb/src/item-taxonomy";
 import {
   activeFilters, CLIENT_LAYER, CLIENT_TAXONOMY as T, categoryNamedEnough, categoryQuery, itemFacets, ITEMS_PER_PAGE, itemsHref, listItems,
-  NAME_SOURCE, shownItemName, toggled, UNRECORDED, type CategoryQuery,
+  shownItemName, toggled, UNRECORDED, type CategoryQuery, type NameSource,
 } from "@/lib/items";
 import { loadItemSeen } from "@/lib/item-seen";
 import { pageMetadata } from "@/lib/seo";
 import { loadShownNames } from "@/lib/shown-item-names";
 import { loadItemTips, loadSiteAssets } from "@/lib/game-assets";
 import GameIcon from "@/components/game/GameIcon";
+import Badge, { UNCONFIRMED_TITLE } from "@/components/ui/Badge";
 import { Container, DataTable, DataTitle, FilterBar, QUALITY_TEXT, ResultStrip, qualityOf, type Column, type FilterControl } from "@/components/ui";
 import type { Crumb } from "@/lib/jsonld";
 
@@ -38,6 +39,13 @@ function resolve(classSlug: string | undefined, subclassKey: string | undefined,
 }
 
 const subName = (s: ItemSubclass) => s.name ?? `Subclass ${s.id}`;
+
+/** The tooltip on a shown name: where it comes from (DATA_POLICY, item names). */
+export const NAME_TITLE: Record<NameSource, string> = {
+  players: "Name confirmed by players",
+  wiki: "Name from the Warcraft Wiki",
+  files: UNCONFIRMED_TITLE,
+};
 
 /** Only the plain list is indexed; a filter, a sort, a name search or a later page is noindex and points its canonical at it. */
 const isPlain = (q: CategoryQuery) => activeFilters(q) === 0 && !q.sort && q.page === 1;
@@ -117,16 +125,15 @@ export async function CategoryPage({ classSlug, subclassKey, search }: { classSl
         return (
           <span className="flex min-w-0 items-center gap-2">
             {icons && (tip?.icon
-              // A name only the game files give is unconfirmed: a dashed edge on its icon, said in words to a screen reader.
-              ? <span className={`shrink-0 rounded-sm ${unconfirmed ? "outline-dashed outline-1 outline-offset-1 outline-muted" : ""}`} title={unconfirmed ? "From the game files, not yet confirmed by players" : undefined}><GameIcon src={tip.icon} size={24} /></span>
+              ? <GameIcon src={tip.icon} size={24} />
               : <span aria-hidden="true" className="h-6 w-6 shrink-0 rounded-sm border border-line" />)}
-            <span className="min-w-0">
-              <Link href={`/database/items/${row[0]}`} className={`${colour} hover:underline underline-offset-4`} style={name?.color ? { color: name.color } : undefined}>{name?.name ?? `Item ${row[0]}`}</Link>
-              {unconfirmed && <span className="sr-only"> (unconfirmed)</span>}
-              {name?.wikiPage
-                ? <a href={name.wikiPage} className="block text-cell-2 text-muted hover:underline underline-offset-4">{NAME_SOURCE.wiki}</a>
-                : name?.source === "players" ? <span className="block text-cell-2 text-muted">{NAME_SOURCE.players}</span> : null}
-            </span>
+            {/* Where the name comes from is the name's tooltip (and words for a screen reader), never a printed label;
+                a name only the game files give carries the quiet unconfirmed marker. */}
+            <Link href={`/database/items/${row[0]}`} title={name ? NAME_TITLE[name.source] : undefined} className={`min-w-0 ${colour} hover:underline underline-offset-4`} style={name?.color ? { color: name.color } : undefined}>
+              {name?.name ?? `Item ${row[0]}`}
+              {name && name.source !== "files" && <span className="sr-only"> ({NAME_TITLE[name.source].toLowerCase()})</span>}
+            </Link>
+            {unconfirmed && <Badge tone="files" />}
           </span>
         );
       },
