@@ -1,77 +1,203 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
-import { tools, toolHref } from "@/data/tools";
+import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { track } from "@/lib/analytics/track";
 import AccountControls from "./AccountControls";
-import Bracket from "./Bracket";
+
+type NavLink = { label: string; href: string };
+
+/** The top bar: six items, Tools opening the grouped menu below. */
+export const PRIMARY: NavLink[] = [
+  { label: "Database", href: "/database" },
+  { label: "Map", href: "/map" },
+  { label: "Changes", href: "/changes" },
+  { label: "Lore", href: "/lore" },
+  { label: "Open data", href: "/connect" },
+];
+
+/** The Tools menu, grouped the way players use them. Every tool in data/tools.ts is here (header.test.tsx). */
+export const TOOL_GROUPS: { title: string; links: NavLink[] }[] = [
+  {
+    title: "Plan",
+    links: [
+      { label: "Talent calculator", href: "/tools/talents" },
+      { label: "Raid builder", href: "/tools/raid" },
+      { label: "Gold per hour", href: "/tools/gold-per-hour" },
+      { label: "Professions", href: "/tools/professions" },
+      { label: "Farming routes", href: "/tools/farming-routes" },
+    ],
+  },
+  {
+    title: "Look up",
+    links: [
+      { label: "Chat", href: "/chat" },
+      { label: "Auction history", href: "/tools/auctions" },
+      { label: "Census", href: "/census" },
+      { label: "Addons", href: "/addons" },
+    ],
+  },
+  {
+    title: "Track",
+    links: [
+      { label: "Guild board", href: "/tools/guild-board" },
+      { label: "Collections", href: "/tools/collections" },
+      { label: "Gold ledger", href: "/tools/gold-ledger" },
+      { label: "Upload a save file", href: "/upload" },
+    ],
+  },
+];
+
+const TOOL_HREFS = TOOL_GROUPS.flatMap((g) => g.links.map((l) => l.href));
+
+const isCurrent = (path: string, href: string) => path === href || path.startsWith(`${href}/`);
+
+const navItem = "inline-flex min-h-11 items-center border-b-2 px-3 transition-colors";
+const navState = (on: boolean) => (on ? "border-accent text-fg" : "border-transparent text-fg-2 hover:text-fg");
+const menuLink = "flex min-h-11 items-center rounded-control px-3 text-sm text-fg-2 hover:bg-canvas hover:text-accent";
+
+function SearchIcon() {
+  return (
+    <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+      <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
+    </svg>
+  );
+}
 
 export default function Header() {
+  const path = usePathname() ?? "/";
   const [open, setOpen] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
   const toggle = useRef<HTMLButtonElement>(null);
+  const toolsButton = useRef<HTMLButtonElement>(null);
+  const tools = useRef<HTMLDivElement>(null);
+  const search = useRef<HTMLInputElement>(null);
+
+  // A click outside the Tools menu closes it.
+  useEffect(() => {
+    if (!toolsOpen) return;
+    const close = (event: PointerEvent) => { if (!tools.current?.contains(event.target as Node)) setToolsOpen(false); };
+    document.addEventListener("pointerdown", close);
+    return () => document.removeEventListener("pointerdown", close);
+  }, [toolsOpen]);
+
+  // "/" focuses the search field, as on GitHub, unless the visitor is typing somewhere already.
+  useEffect(() => {
+    const focusSearch = (event: KeyboardEvent) => {
+      if (event.key !== "/" || event.metaKey || event.ctrlKey || event.altKey) return;
+      const target = event.target as HTMLElement | null;
+      if (target && (target.isContentEditable || /^(?:INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) return;
+      const field = search.current;
+      if (!field || field.offsetParent === null) return;
+      event.preventDefault();
+      field.focus();
+    };
+    document.addEventListener("keydown", focusSearch);
+    return () => document.removeEventListener("keydown", focusSearch);
+  }, []);
+
+  const closeAll = () => { setOpen(false); setToolsOpen(false); };
+  const toolsCurrent = TOOL_HREFS.some((href) => isCurrent(path, href));
+
   return (
-    <header className="border-b border-line bg-canvas sticky top-0 z-40" onKeyDown={(event) => {
-      if (event.key === "Escape" && open) { setOpen(false); toggle.current?.focus(); }
+    <header className="sticky top-0 z-40 border-b border-line bg-canvas" onKeyDown={(event) => {
+      if (event.key !== "Escape") return;
+      if (toolsOpen) { setToolsOpen(false); toolsButton.current?.focus(); }
+      if (open) { setOpen(false); toggle.current?.focus(); }
     }}>
-      <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between gap-3">
-        <Link href="/" className="inline-flex items-center gap-2 min-h-11 text-xl font-bold tracking-tight text-fg shrink-0" onClick={() => setOpen(false)}>
+      <div className="mx-auto flex min-h-16 max-w-wide items-center gap-3 px-4 lg:gap-6">
+        <Link href="/" className="inline-flex min-h-11 shrink-0 items-center gap-2 text-xl font-bold tracking-tight text-fg" onClick={closeAll}>
           {/* The favicon's diamond, outlined in the accent green. */}
           <svg aria-hidden="true" viewBox="8 8 48 48" width="16" height="16" className="text-accent">
             <path d="M32 12 52 32 32 52 12 32Z" fill="none" stroke="currentColor" strokeWidth="5" strokeLinejoin="round" />
           </svg>
           everloot
         </Link>
-        <nav aria-label="Primary" className="hidden sm:flex items-center gap-4 text-sm">
-          <Link href="/database" className="inline-flex items-center min-h-11 text-muted hover:text-fg"><Bracket>Database</Bracket></Link>
-          <Link href="/lore" className="inline-flex items-center min-h-11 text-muted hover:text-fg"><Bracket>Lore</Bracket></Link>
-          <Link href="/map" className="inline-flex items-center min-h-11 text-muted hover:text-fg"><Bracket>Map</Bracket></Link>
-          <Link href="/changes" className="inline-flex items-center min-h-11 text-muted hover:text-fg"><Bracket>Changes</Bracket></Link>
-          <Link href="/upload" className="inline-flex items-center min-h-11 text-muted hover:text-fg"><Bracket>Upload</Bracket></Link>
-          <Link href="/tools/gold-per-hour" className="inline-flex items-center min-h-11 text-muted hover:text-fg"><Bracket>Gold/Hour</Bracket></Link>
-          <Link href="/addons" className="inline-flex items-center min-h-11 text-muted hover:text-fg"><Bracket>Addons</Bracket></Link>
-          <Link href="/connect" className="hidden md:inline-flex items-center min-h-11 text-muted hover:text-fg"><Bracket>Connect</Bracket></Link>
+
+        <nav aria-label="Primary" className="hidden items-center text-sm font-medium lg:flex">
+          <Link href={PRIMARY[0].href} aria-current={isCurrent(path, PRIMARY[0].href) ? "page" : undefined} className={`${navItem} ${navState(isCurrent(path, PRIMARY[0].href))}`}>{PRIMARY[0].label}</Link>
+          <div ref={tools} className="relative">
+            <button
+              ref={toolsButton}
+              type="button"
+              aria-expanded={toolsOpen}
+              aria-controls="tools-menu"
+              onClick={() => setToolsOpen(!toolsOpen)}
+              className={`${navItem} gap-1.5 ${navState(toolsCurrent || toolsOpen)}`}
+            >
+              Tools
+              <svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.5" /></svg>
+            </button>
+            {/* Always in the page, so the tools are in the HTML for crawlers; hidden until opened. */}
+            <div id="tools-menu" hidden={!toolsOpen} className={`absolute left-0 top-full mt-2 w-[36rem] grid-cols-3 gap-6 rounded-card border border-edge bg-panel p-6 ${toolsOpen ? "grid" : "hidden"}`}>
+              {TOOL_GROUPS.map((group) => (
+                <div key={group.title}>
+                  <p className="mb-2 px-3 font-mono text-xs text-muted">{group.title}</p>
+                  <ul>
+                    {group.links.map((link) => (
+                      <li key={link.href}>
+                        <Link href={link.href} onClick={closeAll} aria-current={isCurrent(path, link.href) ? "page" : undefined} className={menuLink}>{link.label}</Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          </div>
+          {PRIMARY.slice(1).map((link) => {
+            const on = isCurrent(path, link.href);
+            return <Link key={link.href} href={link.href} aria-current={on ? "page" : undefined} className={`${navItem} ${navState(on)}`}>{link.label}</Link>;
+          })}
         </nav>
-        <div className="flex items-center gap-1 shrink-0">
-          <AccountControls />
-          <button ref={toggle} type="button" aria-label={open ? "Close menu" : "Menu"} aria-expanded={open} aria-controls="site-navigation" onClick={() => setOpen(!open)} className="btn min-h-11 px-3 text-sm">
+
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          {/* The lore archive's search, the site's one search today. Works without JavaScript. */}
+          <form action="/search" method="get" role="search" onSubmit={() => track("search", { surface: "lore" })} className="hidden h-11 w-56 items-center gap-2 overflow-hidden rounded-full border border-edge bg-panel px-3 text-muted focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent xl:flex">
+            <SearchIcon />
+            <label htmlFor="site-search" className="sr-only">Search the archive</label>
+            <input ref={search} id="site-search" name="q" type="search" maxLength={200} placeholder="Search the archive" className="w-full min-w-0 bg-transparent text-fg placeholder:text-muted focus:outline-none" />
+            <kbd aria-hidden="true" className="rounded-[4px] border border-line px-1.5 font-mono text-xs text-muted">/</kbd>
+          </form>
+          <Link href="/search" aria-label="Search" className="hidden min-h-11 min-w-11 items-center justify-center text-fg-2 hover:text-accent sm:inline-flex xl:hidden"><SearchIcon /></Link>
+          <div className="hidden sm:block"><AccountControls /></div>
+          <Link href="/addon" onClick={closeAll} className="btn btn-primary min-h-10 px-4 text-sm">Get the addon</Link>
+          <button ref={toggle} type="button" aria-label={open ? "Close menu" : "Menu"} aria-expanded={open} aria-controls="site-navigation" onClick={() => setOpen(!open)} className="btn min-h-10 px-3 text-sm lg:hidden">
             {open ? "Close" : "Menu"}
           </button>
         </div>
       </div>
+
       {open && (
-        <nav id="site-navigation" aria-label="All tools" className="absolute top-full inset-x-0 border-b border-edge bg-panel max-h-[70vh] overflow-y-auto">
-          <div className="mx-auto max-w-6xl px-4 py-3 grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            <Link href="/addons" onClick={() => setOpen(false)} className="min-h-11 px-3 py-3 rounded-lg text-sm text-fg-2 hover:bg-canvas hover:text-accent">
-              Addons
-              <span className="ml-2 text-xs text-muted">Everloot, Polestar and guide packs</span>
-            </Link>
-            {tools.map((tool) => (
-              <Link key={tool.slug} href={toolHref(tool)} onClick={() => setOpen(false)} className="min-h-11 px-3 py-3 rounded-lg text-sm text-fg-2 hover:bg-canvas hover:text-accent">
-                {tool.shortTitle}
-                <span className="ml-2 text-xs text-muted">{tool.status === "coming-soon" ? "Planned" : tool.status === "collecting" ? "Collecting data" : "Available"}</span>
-              </Link>
-            ))}
-            <Link href="/map" onClick={() => setOpen(false)} className="min-h-11 px-3 py-3 rounded-lg text-sm text-fg-2 hover:bg-canvas hover:text-accent">
-              World map
-              <span className="ml-2 text-xs text-muted">Zones, entrances and NPCs</span>
-            </Link>
-            <Link href="/census" onClick={() => setOpen(false)} className="min-h-11 px-3 py-3 rounded-lg text-sm text-fg-2 hover:bg-canvas hover:text-accent">
-              Census
-              <span className="ml-2 text-xs text-muted">Who plays what</span>
-            </Link>
-            <Link href="/changes" onClick={() => setOpen(false)} className="min-h-11 px-3 py-3 rounded-lg text-sm text-fg-2 hover:bg-canvas hover:text-accent">
-              What changed
-              <span className="ml-2 text-xs text-muted">Blue posts and builds</span>
-            </Link>
-            <Link href="/lore" onClick={() => setOpen(false)} className="min-h-11 px-3 py-3 rounded-lg text-sm text-fg-2 hover:text-accent">
-              Lore archive
-              <span className="ml-2 text-xs text-muted">2023 wiki</span>
-            </Link>
-            <Link href="/connect" onClick={() => setOpen(false)} className="min-h-11 px-3 py-3 rounded-lg text-sm text-fg-2 hover:bg-canvas hover:text-accent">
-              Connect
-              <span className="ml-2 text-xs text-muted">Open data, API and MCP</span>
-            </Link>
-            <Link href="/about" onClick={() => setOpen(false)} className="min-h-11 px-3 py-3 rounded-lg text-sm text-fg-2 hover:text-accent">About</Link>
+        <nav id="site-navigation" aria-label="Site menu" className="absolute inset-x-0 top-full max-h-[75vh] overflow-y-auto border-b border-edge bg-panel lg:hidden">
+          <div className="mx-auto max-w-wide space-y-6 px-4 py-6">
+            <form action="/search" method="get" role="search" onSubmit={() => track("search", { surface: "lore" })} className="flex items-center gap-2 rounded-full border border-edge bg-canvas px-3 text-muted focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent">
+              <SearchIcon />
+              <label htmlFor="menu-search" className="sr-only">Search the archive</label>
+              <input id="menu-search" name="q" type="search" maxLength={200} placeholder="Search the archive" className="w-full min-w-0 bg-transparent text-fg placeholder:text-muted focus:outline-none" />
+            </form>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-6">
+              <div>
+                <p className="mb-1 px-3 font-mono text-xs text-muted">Browse</p>
+                <ul>
+                  {PRIMARY.map((link) => (
+                    <li key={link.href}><Link href={link.href} onClick={closeAll} aria-current={isCurrent(path, link.href) ? "page" : undefined} className={menuLink}>{link.label}</Link></li>
+                  ))}
+                  <li><Link href="/about" onClick={closeAll} className={menuLink}>About</Link></li>
+                </ul>
+              </div>
+              {TOOL_GROUPS.map((group) => (
+                <div key={group.title}>
+                  <p className="mb-1 px-3 font-mono text-xs text-muted">{group.title}</p>
+                  <ul>
+                    {group.links.map((link) => (
+                      <li key={link.href}><Link href={link.href} onClick={closeAll} aria-current={isCurrent(path, link.href) ? "page" : undefined} className={menuLink}>{link.label}</Link></li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+            <div className="border-t border-line pt-4 sm:hidden"><AccountControls /></div>
           </div>
         </nav>
       )}

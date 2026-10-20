@@ -10,3 +10,7 @@ test("the upload page says how uploaded observations are licensed", () => {
     "Uploaded observations are published under CC BY-SA 4.0, credited to Everloot contributors.",
   );
 });
+
+test("the upload page links the downloads page", () => {
+  expect(renderToStaticMarkup(<UploadPage />)).toContain('href="/addon"');
+});

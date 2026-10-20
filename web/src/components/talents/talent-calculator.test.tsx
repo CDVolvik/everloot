@@ -94,12 +94,49 @@ test("a link from another build loads and lists what it could not place", async 
   expect(text).toContain("node 999");
 });
 
-test("a share link names the build and loads back", async () => {
+test("the page address is the build as points are spent, and it carries both sets", async () => {
   await render();
+  expect(container.querySelector<HTMLInputElement>("#talent-link")!.value).toBe("");
+  expect(button(/Copy link/).disabled).toBe(true);
   await click(node(11));
-  await click(button(/Make a share link/));
-  const link = container.querySelector<HTMLInputElement>("#talent-link")!.value;
-  expect(link).toMatch(/#plan=EL1-mage-1482-1\.0\.0\.1-/);
+  expect(window.location.hash).toMatch(/^#plan=EL1-mage-1482-1\.0\.0\.1-/);
+  // The link handed out is the build link, which a chat can preview; the address bar carries the same build.
+  const first = window.location.hash.slice("#plan=".length);
+  expect(container.querySelector<HTMLInputElement>("#talent-link")!.value).toBe(`${window.location.origin}/tools/talents/mage/b/${first}`);
+  await click(button(/Second set/));
+  await click(node(11));
+  await click(node(11));
+  const both = window.location.hash;
+  expect(both).toMatch(/^#plan=EL1-[^&]+&plan2=EL1-/);
+
+  // A friend opens the link: both sets come back.
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  window.location.hash = both;
+  await render();
+  expect(status()).toBe("Both sets loaded from the link.");
+  expect(node(11).textContent).toContain("1/5");
+  await click(button(/Second set/));
+  expect(node(11).textContent).toContain("2/5");
+  expect(window.location.hash).toBe(both);
+});
+
+test("a build link opens its sets and moves the address to the class page's #plan= form", async () => {
+  const one = encodeBuild({ classSlug: "mage", specId: 1482, build: "1.0.0.1", ranks: { 11: { rank: 4 } } });
+  window.history.replaceState(null, "", "/tools/talents/mage/b/x");
+  await act(async () => root.render(<TalentCalculator catalog={fixture} initialCodes={[one, null]} />));
+  expect(node(11).textContent).toContain("4/5");
+  expect(window.location.pathname).toBe("/tools/talents/mage");
+  expect(window.location.hash).toBe(`#plan=${one}`);
+  window.history.replaceState(null, "", "/");
+});
+
+test("an old link with only the first set still opens", async () => {
+  const code = encodeBuild({ classSlug: "mage", specId: 1482, build: "1.0.0.1", ranks: { 11: { rank: 3 } } });
+  window.location.hash = `#plan=${code}`;
+  await render();
+  expect(node(11).textContent).toContain("3/5");
+  expect(status()).toBe("Build loaded from the link.");
 });
 
 const setLevel = (value: string) => act(async () => {

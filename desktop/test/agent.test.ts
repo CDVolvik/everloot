@@ -69,6 +69,50 @@ test("an OpenAI-compatible provider runs the same tool loop in that API's shape"
   expect(r.sources).toHaveLength(2);
 });
 
+/** A text/event-stream response whose events are split across reads at awkward places. */
+const sse = (events: unknown[]) => {
+  const raw = events.map((e) => `data: ${JSON.stringify(e)}\n\n`).join("") + ": keep-alive\n\ndata: [DONE]\n\n";
+  const bytes = new TextEncoder().encode(raw);
+  const body = new ReadableStream<Uint8Array>({ start(c) { for (let i = 0; i < bytes.length; i += 7) c.enqueue(bytes.slice(i, i + 7)); c.close(); } });
+  return new Response(body, { status: 200, headers: { "content-type": "text/event-stream" } });
+};
+
+test("a streamed OpenAI-compatible answer puts tool calls back together and reports the text as it grows", async () => {
+  const calls: { name: string; args: unknown }[] = [];
+  const bodies: { stream?: boolean }[] = [];
+  const send = vi.fn(async (_url: string, init: { body: string }) => {
+    bodies.push(JSON.parse(init.body));
+    return bodies.length === 1
+      ? sse([
+        { model: "qwen3", choices: [{ delta: { role: "assistant", tool_calls: [{ index: 0, id: "c1", type: "function", function: { name: "search_knowledge", arguments: "" } }] } }] },
+        { choices: [{ delta: { tool_calls: [{ index: 0, function: { arguments: "{\"query\":" } }] } }] },
+        { choices: [{ delta: { tool_calls: [{ index: 0, function: { arguments: "\"bindings\"}" } }] } }] },
+      ])
+      : sse([
+        { model: "qwen3", choices: [{ delta: { content: "Baron Geddon" } }] },
+        { choices: [{ delta: { content: " in Molten Core." } }] },
+      ]);
+  });
+  const progress: { text: string; tool: string | null }[] = [];
+  const entry = { type: "openai-compatible", baseUrl: "http://localhost:11434/v1", model: "qwen3" };
+  const r = await answer({ mcp: { url: "u", token: null }, entries: [entry], history: [], question: "q", session: fakeSession(calls), send: send as never, onProgress: (p) => progress.push(p) });
+  expect(bodies[0].stream).toBe(true);
+  expect(calls).toEqual([{ name: "search_knowledge", args: { query: "bindings" } }]);
+  expect(progress).toEqual([
+    { text: "", tool: "search_knowledge" },
+    { text: "Baron Geddon", tool: null },
+    { text: "Baron Geddon in Molten Core.", tool: null },
+  ]);
+  expect(r).toMatchObject({ model: "qwen3", text: "Baron Geddon in Molten Core.", sources: ["Everloot uploads (CC BY-SA 4.0)", "Warcraft Wiki 2023 dump (CC BY-SA 4.0)"] });
+});
+
+test("an error inside a stream names the server", async () => {
+  const send = vi.fn(async () => sse([{ error: { message: "Rate limit exceeded" } }]));
+  const entry = { type: "openai-compatible", baseUrl: "https://openrouter.ai/api/v1", model: "x" };
+  await expect(answer({ mcp: { url: "u", token: null }, entries: [entry], history: [], question: "q", session: fakeSession([]), send: send as never }))
+    .rejects.toThrow("https://openrouter.ai/api/v1: Rate limit exceeded");
+});
+
 test("an OpenAI-compatible error names the server and the message", async () => {
   const send = vi.fn(async () => new Response(JSON.stringify({ error: { message: "Insufficient credits" } }), { status: 402 }));
   const entry = { type: "openai-compatible", baseUrl: "https://openrouter.ai/api/v1", model: "x" };
@@ -124,14 +168,33 @@ test("with Anthropic the model calls the MCP tools itself and the steps and sour
   writeFileSync(join(d, "k.txt"), "sk-test\n");
   const calls: { name: string; args: unknown }[] = [];
   let turn = 0;
-  const client = { messages: { create: vi.fn(async (req: { tools: { name: string }[]; messages: unknown[] }) => {
+  const reply = (req: { tools: { name: string }[]; messages: unknown[] }) => {
     expect(req.tools.map((t) => t.name)).toEqual(["search_knowledge"]);
     turn++;
     if (turn === 1) return { model: "claude-sonnet-5-5", stop_reason: "tool_use", content: [{ type: "tool_use", id: "t1", name: "search_knowledge", input: { query: "bindings" } }] };
     expect(req.messages).toHaveLength(3);
     return { model: "claude-sonnet-5-5", stop_reason: "end_turn", content: [{ type: "text", text: "Baron Geddon in Molten Core. Source: Everloot uploads." }] };
+  };
+  // A stand-in for the SDK's message stream: the final text arrives in two deltas.
+  const client = { messages: { stream: vi.fn((req: { tools: { name: string }[]; messages: unknown[] }) => {
+    const res = reply(req);
+    let onText: (delta: string) => void = () => {};
+    return {
+      on(_event: "text", fn: (delta: string) => void) { onText = fn; return this; },
+      async finalMessage() {
+        const text = (res.content.find((b) => b.type === "text") as { text?: string } | undefined)?.text ?? "";
+        if (text) { onText(text.slice(0, 12)); onText(text.slice(12)); }
+        return res;
+      },
+    };
   }) } };
-  const r = await answer({ mcp: { url: "u", token: null }, entries: [{ type: "anthropic", apiKeyFile: join(d, "k.txt") }], history: [], question: "bindings?", session: fakeSession(calls), anthropicClient: client as never });
+  const progress: { text: string; tool: string | null }[] = [];
+  const r = await answer({ mcp: { url: "u", token: null }, entries: [{ type: "anthropic", apiKeyFile: join(d, "k.txt") }], history: [], question: "bindings?", session: fakeSession(calls), anthropicClient: client as never, onProgress: (p) => progress.push(p) });
+  expect(progress).toEqual([
+    { text: "", tool: "search_knowledge" },
+    { text: "Baron Geddon", tool: null },
+    { text: "Baron Geddon in Molten Core. Source: Everloot uploads.", tool: null },
+  ]);
   expect(calls).toEqual([{ name: "search_knowledge", args: { query: "bindings" } }]);
   expect(r.model).toBe("claude-sonnet-5-5");
   expect(r.steps).toEqual([{ tool: "search_knowledge", input: '{"query":"bindings"}', chars: HIT.length }]);

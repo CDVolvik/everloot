@@ -17,7 +17,7 @@ test("a backup is a dated copy per account, and only the newest ten per account 
   const first = backupSavedVariables(sv, data, 10, new Date("2026-10-18T03:04:05.678Z"));
   expect(first.replace(/\\/g, "/")).toMatch(/\/backups\/MYACC-20261018T030405Z\.lua$/);
   expect(readFileSync(first, "utf8")).toBe("EverlootDB = {}");
-  for (let i = 1; i <= 12; i++) backupSavedVariables(sv, data, 10, new Date(Date.UTC(2026, 9, 18, 4, i)));
+  for (let i = 1; i <= 12; i++) { writeFileSync(sv, `EverlootDB = { v = ${i} }`); backupSavedVariables(sv, data, 10, new Date(Date.UTC(2026, 9, 18, 4, i))); }
   const kept = readdirSync(join(data, "backups"));
   expect(kept).toHaveLength(10);
   expect(existsSync(first)).toBe(false);
@@ -27,6 +27,22 @@ test("a backup is a dated copy per account, and only the newest ten per account 
   writeFileSync(other, "x");
   backupSavedVariables(other, data, 10, new Date("2026-10-18T05:00:00Z"));
   expect(readdirSync(join(data, "backups"))).toHaveLength(11);
+});
+
+test("an unchanged file gets no second copy, and an account's pruning leaves a longer account name alone", () => {
+  const d = dir();
+  const data = join(d, "data");
+  const file = (account: string) => { const p = join(d, "WTF", "Account", account, "SavedVariables", "Everloot.lua"); mkdirSync(join(p, ".."), { recursive: true }); return p; };
+  const a = file("A"), ab = file("A-B");
+  writeFileSync(ab, "theirs");
+  backupSavedVariables(ab, data, 1, new Date("2026-10-18T01:00:00Z"));
+  writeFileSync(a, "same");
+  const first = backupSavedVariables(a, data, 1, new Date("2026-10-18T02:00:00Z"));
+  // Ten app starts with nothing new: still the one copy, the same file.
+  for (let i = 0; i < 10; i++) expect(backupSavedVariables(a, data, 1, new Date(Date.UTC(2026, 9, 18, 3, i)))).toBe(first);
+  writeFileSync(a, "changed");
+  backupSavedVariables(a, data, 1, new Date("2026-10-18T04:00:00Z"));
+  expect(readdirSync(join(data, "backups")).sort()).toEqual(["A-20261018T040000Z.lua", "A-B-20261018T010000Z.lua"]);
 });
 
 test("the list is newest first with the account and time parsed from the name", () => {
