@@ -32,6 +32,8 @@ let censusChoice = true;
 let agreed = false;
 /** A browser sign-in is waiting for everloot.app. */
 let connecting = false;
+/** Counts sign-in attempts, so only the newest one reports how it ended. */
+let connectAttempt = 0;
 let draftDirty = false;
 let busy = "";
 let flash = "";
@@ -937,22 +939,24 @@ async function onClick(ev: MouseEvent): Promise<void> {
     return;
   }
   if (el.closest("#connect")) {
+    const attempt = ++connectAttempt;
     connecting = true;
     render();
     try {
-      state = await api.accountConnect();
+      const next = await api.accountConnect();
+      if (attempt !== connectAttempt) return;
+      state = next;
       flash = "Signed in. Chat and /ask now use your account's limits, and your saved builds sync to the game (Addon page).";
     } catch (e) {
-      const why = msg(e);
-      // A second press restarts the wait, which ends the first one: only the newest wait reports.
-      if (/cancelled\.$/.test(why) && connecting) return;
-      flash = `!${why}`;
+      // A second press or Cancel ends this wait; only the newest attempt reports.
+      if (attempt !== connectAttempt) return;
+      flash = `!${msg(e)}`;
     }
     connecting = false;
     render();
     return;
   }
-  if (el.closest("#connectCancel")) { await api.accountConnectCancel(); connecting = false; render(); return; }
+  if (el.closest("#connectCancel")) { connectAttempt++; await api.accountConnectCancel(); connecting = false; render(); return; }
   if (el.closest("#accountSignOut")) { state = await api.accountSignOut(); flash = "Signed out on this computer. The key still works until you revoke it on everloot.app."; render(); return; }
   if (el.closest("#reportBug") && state) {
     const r = await api.reportBug(diagnostics(state));

@@ -17,6 +17,8 @@ const page = (title: string, text: string) => `<!doctype html><meta charset="utf
  */
 export async function connectInBrowser(endpoint: string, open: (url: string) => void, timeoutMs = CONNECT_TIMEOUT_MS, signal?: AbortSignal): Promise<string> {
   const { privateKey, pub, state } = await desktopKeyPair();
+  // A cancel that came while the key pair was being made must still stop this wait.
+  if (signal?.aborted) throw new Error("Sign-in was cancelled.");
   let server: Server | undefined;
   try {
     return await new Promise<string>((resolve, reject) => {
@@ -52,7 +54,9 @@ export async function connectInBrowser(endpoint: string, open: (url: string) => 
       });
     });
   } finally {
+    // Stop listening now; let the browser's open connection finish receiving its page before it is cut.
     server?.close();
-    server?.closeAllConnections?.();
+    const open = server;
+    setTimeout(() => open?.closeAllConnections?.(), 1000).unref?.();
   }
 }

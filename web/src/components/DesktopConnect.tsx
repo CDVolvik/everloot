@@ -47,7 +47,7 @@ export default function DesktopConnect({ request, name }: { request: ConnectRequ
         <li>It gets a key named <b>Everloot Desktop App</b>. You can revoke it any time on <Link href="/account" className="text-accent hover:underline underline-offset-4">your account</Link>. Uploads never carry it, and the app never sees your Battle.net password.</li>
       </ul>
       {done === "connected" ? (
-        <p role="status" className="text-fg">Connected. Go back to the Desktop App; you can close this tab.</p>
+        <p role="status" className="text-fg">Connected. Go back to the Desktop App; you can close this tab. If the app does not show you signed in (it stops waiting after five minutes), press Sign in there again and revoke the unused key on <Link href="/account" className="text-accent hover:underline underline-offset-4">your account</Link>.</p>
       ) : done === "cancelled" ? (
         <p role="status" className="text-fg-2">Cancelled. Nothing was made. You can close this tab.</p>
       ) : (
