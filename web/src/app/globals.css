@@ -13,6 +13,19 @@ main:has([data-page-crumbs]) [data-layout-crumbs] {
   display: none;
 }
 
+/* A wide-screen banner (ui/Banner) runs 100vw wide, which on a desktop with a scrollbar is a few
+   pixels wider than the page; clip that bleed so the page never scrolls sideways. */
+body:has([data-banner]) {
+  overflow-x: clip;
+}
+
+/* The map fills the screen: its page lifts the column's width limit and keeps only a small side margin. */
+main:has([data-map-page]) {
+  max-width: none;
+  padding-inline: 0.75rem;
+  padding-top: 1rem;
+}
+
 html,
 body {
   background: rgb(var(--canvas));

@@ -22,6 +22,8 @@ import { writeWorldMapData } from "./world-map-data.js";
 import { clientSnapshotName, readClientMeta, writeClientSnapshot } from "./client-snapshot.js";
 import { Curated, diffRaidBuffs, RaidBuffTable } from "./raid-buffs.js";
 import { parseItemIds } from "./assets/items.js";
+import { runItemNames } from "./item-names.js";
+import { SHOWN_MAX_ITEM_ID } from "./item-name-rule.js";
 import { parse as parseYaml } from "yaml";
 import { parseArgs } from "./args.js";
 import { buildWatchCommand } from "./build-watch/command.js";
@@ -116,6 +118,11 @@ const USAGE = `usage: npm run kb -- <command> --db <path>
   client-layer <snapshot.sqlite> [--out ../web/src/data/game-data/client-layer.json]
     (relation edges derived from the game files, one build-stamped file for the database pages. Game file data,
     labelled found in game files, unconfirmed. See docs/DATA_POLICY.md)
+  item-names <snapshot.sqlite> --wiki <knowledge base or release .sqlite> [--ledger data/item-names/ledger.json] [--out data/assets]
+    (adds the snapshot's item names and the Warcraft Wiki dump's item names to the name ledger, which only
+    grows, and writes the names the site may show, where both agree, to <out>/<product>-<build>-<config>-names/
+    item-names.json for the private bucket. Prints the count per tier and the mismatches. The ledger holds every
+    name in the build, so it stays on this machine; never commit either file. See docs/DATA_POLICY.md)
   client-map <snapshot.sqlite> [--out ../web/src/data/game-data/map.json]
     (zone rectangles in world coordinates, continents and dungeon and raid entrances from a client
     snapshot, for the world map page. Game file data, stamped with the build. See docs/DATA_POLICY.md)
@@ -477,12 +484,26 @@ async function main(): Promise<number> {
       console.log(`-> ${run.dir}`);
       return 0;
     }
+    case "item-names": {
+      const kbPath = flags.get("wiki");
+      if (!args[0] || !kbPath) break;
+      const run = runItemNames({ snapshotPath: args[0], kbPath, ledgerPath: flags.get("ledger") || "data/item-names/ledger.json", outDir: flags.get("out") || "data/assets" });
+      console.log(`build ${run.build}: ${run.items} items`);
+      for (const [tier, n] of Object.entries(run.counts)) console.log(`  ${tier}: ${n}`);
+      console.log(`shown: ${run.shownCount} of the ${run.counts.match} matches; held back: ${run.held.highId} with an id from ${SHOWN_MAX_ITEM_ID}, ${run.held.internalName} with a placeholder name`);
+      console.log(`mismatches (kept in the ledger, not shown), first 25 of ${run.mismatches.length}:`);
+      for (const m of run.mismatches.slice(0, 25)) console.log(`  ${m.id}: files "${m.files}", wiki "${m.wiki.join('" | "')}"`);
+      console.log(`ledger: ${run.ledger.runs.length} runs, ${Object.keys(run.ledger.items).length} items; this run added ${run.ledger.runs.at(-1)!.added.files} game file and ${run.ledger.runs.at(-1)!.added.wiki} wiki names`);
+      console.log(`shown -> ${run.shownPath} (${run.shown.count} names)`);
+      return 0;
+    }
     case "client-map": {
       if (!args[0]) break;
       const data = writeWorldMapData(args[0]);
       const out = flags.get("out") || "../web/src/data/game-data/map.json";
       mkdirSync(dirname(out), { recursive: true });
-      writeFileSync(out, `${JSON.stringify(data, null, 2)}
+      // A flight line's points stay one pair per line, not three lines each.
+      writeFileSync(out, `${JSON.stringify(data, null, 2).replace(/\[\s+(-?\d+),\s+(-?\d+)\s+\]/g, "[$1, $2]")}
 `);
       for (const t of data.source.tables) console.log(`${t.table}: ${t.rows} rows${t.encryptedBlocks ? `, ${t.encryptedBlocks} encrypted blocks skipped` : ""}`);
       for (const w of data.warnings) console.log(`warning: ${w}`);

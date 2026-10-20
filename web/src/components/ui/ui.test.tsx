@@ -137,7 +137,13 @@ describe("EmptyState", () => {
     expect(html).toContain('aria-label="0 of 3 installs agree"');
     expect(text(html)).toBe("Nobody has looted this in Forever yet. Get the addon");
     expect(html).toContain('href="/addon"');
-    expect(html).toContain("btn btn-primary");
+    // An outline pill: the header's Get the addon, or the page's own form, is the one filled button in view.
+    expect(html).toContain('class="btn shrink-0"');
+    expect(html).not.toContain("btn-primary");
+  });
+
+  test("fills its action only when asked, for a page where it is the one thing to do", () => {
+    expect(render(<EmptyState message="No uploads this week." primary />)).toContain("btn shrink-0 btn-primary");
   });
 
   test("takes a better action when the page has one", () => {

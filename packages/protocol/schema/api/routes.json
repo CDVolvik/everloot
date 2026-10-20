@@ -347,7 +347,7 @@
     "method": "GET",
     "path": "/api/market/prices",
     "summary": "Forever market values from full auction scans players started",
-    "description": "Without `realm`, the realms that have public values. With it, the items with the most units listed on that realm as tuples in `fields` order, copper per unit. A day is public when three reporters scanned the item.",
+    "description": "Without `realm`, the realms that have public values (and, in `houses`, which auction houses have values of their own). With it, the items with the most units listed on that realm as tuples in `fields` order, copper per unit. Without `house` the values blend every house of the realm; with it, only scans that named that house count. A day is public when three reporters scanned the item.",
     "access": "rate-limited",
     "data": "observed",
     "query": [
@@ -358,6 +358,18 @@
           "type": "string",
           "minLength": 2,
           "maxLength": 40
+        }
+      },
+      {
+        "name": "house",
+        "description": "Alliance, Horde or Neutral (any case). Needs realm.",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "alliance",
+            "horde",
+            "neutral"
+          ]
         }
       }
     ],
@@ -481,6 +493,53 @@
       },
       "503": {
         "description": "A dependency is unavailable. The answer is unrecorded, not zero.",
+        "schema": "apiError"
+      }
+    }
+  },
+  {
+    "method": "GET",
+    "path": "/api/tooltip/{type}/{id}",
+    "summary": "The hover card for one item, NPC, quest or object page, for the embeddable tooltip script",
+    "description": "What `https://everloot.app/tooltips.js` shows when a visitor hovers a link to an Everloot page: title, icon and lines as plain text, the page URL, and the licence. One entity per request, not a bulk feed. Open to any website (CORS `*`, GET only) and cached by the CDN for an hour. Only things players reported (3 installs) are answered; the item card can add the game files' tooltip text and icon, labelled unconfirmed with their build (off unless the site has switched it on). Anything else is a 404.",
+    "access": "open",
+    "data": "mixed",
+    "pathParams": [
+      {
+        "name": "type",
+        "description": "item, npc, quest or object.",
+        "schema": {
+          "type": "string",
+          "enum": [
+            "item",
+            "npc",
+            "quest",
+            "object"
+          ]
+        },
+        "required": true
+      },
+      {
+        "name": "id",
+        "description": "The game's id, a positive whole number.",
+        "schema": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "required": true
+      }
+    ],
+    "responses": {
+      "200": {
+        "description": "The card.",
+        "schema": "tooltipResponse"
+      },
+      "404": {
+        "description": "Unknown type, bad id, or nothing players have reported about it.",
+        "schema": "apiError"
+      },
+      "503": {
+        "description": "Storage is unavailable. The answer is unrecorded, not empty.",
         "schema": "apiError"
       }
     }

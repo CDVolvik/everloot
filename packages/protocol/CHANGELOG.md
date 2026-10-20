@@ -7,9 +7,13 @@ required, or tightening a limit is a major release.
 ## [Unreleased]
 
 ### Added
-- 1.4.0: `changeEntry`, the shape of a `recent_changes` entry, gains five optional fields for forum posts:
+- 1.5.0: `changeEntry`, the shape of a `recent_changes` entry, gains five optional fields for forum posts:
   `region` (`us` or `eu`, now that the EU English forum is read too), `topicId`, `topicSlug`, `postNumber` and
   `startedThread`, so a client can group every Blizzard reply in one thread. Nothing existing changes.
+- 1.4.0 (record protocol 1.2.0): `auction_snapshot` gains two optional fields, `faction` (the scanning character's, Alliance or Horde) and `house` (`AUCTION_HOUSES`: the auction house the scan read, Alliance, Horde or Neutral). Older scans have neither. `GET /api/market/prices` takes an optional `house`; `marketPricesResponse` gains `house` and `marketRealmsResponse` gains `houses`, the houses with public values of their own per realm.
+- `GET /api/tooltip/{type}/{id}` in `API_ROUTES` with its response shape `tooltipResponse` (and `TOOLTIP_TYPES`):
+  the hover card of an item, NPC, quest or object page, for the embeddable script. Minor release; the version is
+  bumped when the package is next published.
 - 1.3.0: a census count also needs 3 distinct addresses (`reporter`, the keyed address hash intake stamps), so `population`'s `rule` gains `minReporters` and a hidden count is null for fewer than 10 characters, 3 installs or 3 addresses, or when held back so it can't be worked out.
 - 1.2.0: the MCP tool `population` (who plays what, from the census) with its output shape `populationPage`
   (`populationCell`, `CENSUS_FACTIONS`, `CENSUS_WINDOWS`), emitted as `schema/mcp/population.json`, and in

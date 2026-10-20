@@ -25,8 +25,8 @@ variables (`GAME_DATA_*`), item links stay plain while the other art still shows
 | --- | --- |
 | `/tools/talents/<class>` | Talent icons, tooltips, node frames and spec backgrounds |
 | `/database/drops`, `/database/vendors/<id>`, `/tools/auctions` | Item icon beside each item link, the item's tooltip on hover and keyboard focus |
-| `/database/items/<id>` | The item's tooltip as a card, once players have reported the item; the icon of each spell that creates or uses the item, beside that relation |
-| `/database/items/<class>/<subclass>` | Icon and game file name of each listed item players have reported; other rows stay plain |
+| `/database/items/<id>` | The item's tooltip as a card, once players have reported the item; the icon of each spell that creates or uses the item, beside that relation; the item's name, quality colour and icon where the game files and the Warcraft Wiki give the same name |
+| `/database/items/<class>/<subclass>` | Icon and game file name of each listed item players have reported, and name, quality colour and icon where the game files and the Warcraft Wiki agree; other rows stay "Item N" |
 | `/tools/professions` | Profession icons as a picker |
 | `/tools/raid` | Class, talent tree and buff icons, each buff's tooltip on hover and keyboard focus, and Molten Core's loading screen as the banner |
 | `/map` | The game's own continent and zone pictures under the zone outlines, with a switch to hide them; the continent's loading screen as the banner; each dungeon's and raid's loading screen, small, beside its entrance |
@@ -50,9 +50,8 @@ Spoilers follow the same rule as everywhere else:
   vendor offer, an auction scan). An id typed into a URL gets nothing, and nothing is read for it.
   The item facts live in a private bucket that only the site's server reads, because the extract
   holds every named item in the build, released or not.
-- **Maps.** A held-back zone's picture shows only with spoilers on. A continent's own picture may
-  show a held-back zone painted in, so on a continent that has one (by the map file or by the
-  upload's own marks) it also waits for spoilers. Without it, the zone pictures show.
+- **Maps.** A held-back zone's picture, outline and name show only with spoilers on. A continent's
+  own picture always shows: it is the original world's parchment map, with no names and no new land.
 - **Loading screens.** A dungeon or raid with a map id after the original world's (above 533,
   Naxxramas) is marked held back, and its picture shows only with spoilers on. The banners the pages
   use (Eastern Kingdoms, Kalimdor, Molten Core) are all original maps.
@@ -220,7 +219,30 @@ repeat these steps for a new build or another deployment.
    Redeploy. Open `/`, `/tools/talents/hunter`, `/database/drops`, `/tools/raid`, `/map` and
    `/changes`: the icons, pictures, banners and the credit line appear. Pages read the manifest and item files again at most once an
    hour. To turn it off, clear the variables and redeploy.
-8. **Next build.** Repeat steps 5 to 7 with the new build. Check the counts against the last run
+8. **Item names.** The category lists and item pages name an item before players do where the game
+   files and the Warcraft Wiki agree ([data policy](DATA_POLICY.md), "Item names from the game files
+   and the Warcraft Wiki"). In `kb/`, with the snapshot and a knowledge base or release that holds the
+   wiki dump:
+
+   ```
+   npm run kb -- item-names data/client/<product>-<build>-<config>.sqlite --wiki data/release/<release>.sqlite
+   ```
+
+   It adds both sources to the name ledger (`data/item-names/ledger.json`, which only grows and stays on
+   this machine), prints the count per tier and the mismatches, and writes the matched names to
+   `data/assets/<product>-<build>-<config>-names/item-names.json`. Check the counts and a sample of the
+   names in a pull request, then upload that one file to the private bucket from `web/`, with the same
+   upload key in the environment:
+
+   ```
+   node scripts/upload-item-names.mjs ../kb/data/assets/<product>-<build>-<config>-names/item-names.json --dry-run
+   node scripts/upload-item-names.mjs ../kb/data/assets/<product>-<build>-<config>-names/item-names.json
+   ```
+
+   It goes to `<private bucket>/<build folder>/item-names.json` with a five-minute cache, so a re-run
+   replaces it. The server reads it with the read-only key from step 7, only for the build of the
+   committed client layer. Without it, every unconfirmed item reads "Item N".
+9. **Next build.** Repeat steps 5 to 8 with the new build. Check the counts against the last run
    before uploading; a jump in `iconsEncrypted`, `tooltipsUnresolved`, `mapsSkipped` or
    `loadingScreensSkipped`, or `logoExtracted` falling to 0, means Blizzard changed something.
 
@@ -246,8 +268,8 @@ At 1440 and 390 px wide:
 - **Raid builder.** Class icons in the slots and the class picker, tree icons beside the tree names,
   buff icons in the coverage tables.
 - **Map.** The zone pictures sit exactly inside the zone outlines; "Game map art" turns them off and
-  "Zones" turns the outlines off. Zoomed out, the network tab shows only small copies. With spoilers
-  on, the continent picture shows and a zone's own picture appears once you zoom in over it. The
+  "Zones" turns the outlines off. The continent picture shows, and a zone's own picture appears
+  once you zoom in over it. The
   continent's loading screen is above the map, and each entrance in the list has its small picture.
 - **Banners.** On `/`, `/tools/raid`, `/map` and `/changes` the loading screen fills its strip
   without stretching, at 390 px too. On `/` the logo is crisp, the game's name, launch line and "Not

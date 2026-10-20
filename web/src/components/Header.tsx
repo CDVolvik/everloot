@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { track } from "@/lib/analytics/track";
 import AccountControls from "./AccountControls";
+import { TOOL_GROUPS } from "@/data/tools";
 
 type NavLink = { label: string; href: string };
 
@@ -17,37 +18,8 @@ export const PRIMARY: NavLink[] = [
   { label: "Open data", href: "/connect" },
 ];
 
-/** The Tools menu, grouped the way players use them. Every tool in data/tools.ts is here (header.test.tsx). */
-export const TOOL_GROUPS: { title: string; links: NavLink[] }[] = [
-  {
-    title: "Plan",
-    links: [
-      { label: "Talent calculator", href: "/tools/talents" },
-      { label: "Raid builder", href: "/tools/raid" },
-      { label: "Gold per hour", href: "/tools/gold-per-hour" },
-      { label: "Professions", href: "/tools/professions" },
-      { label: "Farming routes", href: "/tools/farming-routes" },
-    ],
-  },
-  {
-    title: "Look up",
-    links: [
-      { label: "Chat", href: "/chat" },
-      { label: "Auction history", href: "/tools/auctions" },
-      { label: "Census", href: "/census" },
-      { label: "Addons", href: "/addons" },
-    ],
-  },
-  {
-    title: "Track",
-    links: [
-      { label: "Guild board", href: "/tools/guild-board" },
-      { label: "Collections", href: "/tools/collections" },
-      { label: "Gold ledger", href: "/tools/gold-ledger" },
-      { label: "Upload a save file", href: "/upload" },
-    ],
-  },
-];
+// The Tools menu lives in data/tools.ts so the home page lists the same groups.
+export { TOOL_GROUPS };
 
 const TOOL_HREFS = TOOL_GROUPS.flatMap((g) => g.links.map((l) => l.href));
 
@@ -152,11 +124,11 @@ export default function Header() {
         </nav>
 
         <div className="ml-auto flex shrink-0 items-center gap-2">
-          {/* The lore archive's search, the site's one search today. Works without JavaScript. */}
+          {/* The site's one search: items, NPCs, quests, zones, lore and tools. Works without JavaScript. */}
           <form action="/search" method="get" role="search" onSubmit={() => track("search", { surface: "lore" })} className="hidden h-11 w-56 items-center gap-2 overflow-hidden rounded-full border border-edge bg-panel px-3 text-muted focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent xl:flex">
             <SearchIcon />
-            <label htmlFor="site-search" className="sr-only">Search the archive</label>
-            <input ref={search} id="site-search" name="q" type="search" maxLength={200} placeholder="Search the archive" className="w-full min-w-0 bg-transparent text-fg placeholder:text-muted focus:outline-none" />
+            <label htmlFor="site-search" className="sr-only">Search Everloot</label>
+            <input ref={search} id="site-search" name="q" type="search" maxLength={200} placeholder="Search Everloot" className="w-full min-w-0 bg-transparent text-fg placeholder:text-muted focus:outline-none" />
             <kbd aria-hidden="true" className="rounded-[4px] border border-line px-1.5 font-mono text-xs text-muted">/</kbd>
           </form>
           <Link href="/search" aria-label="Search" className="hidden min-h-11 min-w-11 items-center justify-center text-fg-2 hover:text-accent sm:inline-flex xl:hidden"><SearchIcon /></Link>
@@ -173,8 +145,8 @@ export default function Header() {
           <div className="mx-auto max-w-wide space-y-6 px-4 py-6">
             <form action="/search" method="get" role="search" onSubmit={() => track("search", { surface: "lore" })} className="flex items-center gap-2 rounded-full border border-edge bg-canvas px-3 text-muted focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent">
               <SearchIcon />
-              <label htmlFor="menu-search" className="sr-only">Search the archive</label>
-              <input id="menu-search" name="q" type="search" maxLength={200} placeholder="Search the archive" className="w-full min-w-0 bg-transparent text-fg placeholder:text-muted focus:outline-none" />
+              <label htmlFor="menu-search" className="sr-only">Search Everloot</label>
+              <input id="menu-search" name="q" type="search" maxLength={200} placeholder="Search Everloot" className="w-full min-w-0 bg-transparent text-fg placeholder:text-muted focus:outline-none" />
             </form>
             <div className="grid grid-cols-2 gap-x-4 gap-y-6">
               <div>

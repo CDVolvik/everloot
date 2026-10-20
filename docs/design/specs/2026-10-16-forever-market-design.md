@@ -207,6 +207,15 @@ They share one branch and one pull request, one commit per stage, because each s
   as realmless: players pick a ruleset (Normal, PvP, RP, later Hardcore). Unverified. Market values are
   keyed by `GetRealmName()`. If auction houses are shared per ruleset or region, the key must change
   before release. Check `GetRealmName()` and the auction house's scope in game.
+- **Faction houses (2026-10-20).** The `AuctionHouse` table of build 1.60.1.70450 (the client snapshot
+  `kb` extracts) has 21 rows: Alliance houses (Stormwind, Darnassus, "Alliance Auction House"), Horde
+  houses (Undercity, Thunder Bluff, "Horde Auction House") at a 5% deposit and 5% cut, and "Blackwater"
+  neutral houses at 25% and 15%. That is vanilla's split: one house per faction plus goblin houses. Not
+  yet confirmed on a live server. Scans now carry the player's `faction` and the `house` read from the
+  auctioneer (`UnitFactionGroup("npc")`, none means Neutral). The rollup keeps the realm-wide view every
+  reader already uses and adds a view per house (`houses` in `market.json`, keyed `realm|house`), fed by
+  `house`, else `faction`. `GET /api/market/prices?realm=&house=` serves it. In game: check that a
+  capital's auctioneer reports its faction and a goblin one reports none.
 
 - In-game checks for 0.3.0 (Carlos): `/dump select(4, GetBuildInfo())` for the real interface number;
   the Everloot scan button's place on the frame; one full scan (does it complete, how many rows,

@@ -301,6 +301,12 @@ export declare const auctionScan: z.ZodObject<{
     priceBasis: z.ZodOptional<z.ZodLiteral<"unit">>;
 }, z.core.$strip>;
 /**
+ * The auction houses a scan can come from. The game files list Alliance, Horde and neutral
+ * (Blackwater) houses with different cuts, so a scan says which one it read.
+ */
+export declare const AUCTION_HOUSES: readonly ["Alliance", "Horde", "Neutral"];
+export type AuctionHouse = (typeof AUCTION_HOUSES)[number];
+/**
  * One part of a full auction-house scan the player started (addon 0.3.0+). Each item is
  * [itemId, auctions, quantity, minUnit, marketUnit], copper per unit. A scan is split into parts of
  * at most 1,000 items. These rows feed the market rollup, not the general corpus.
@@ -311,6 +317,15 @@ export declare const auctionSnapshot: z.ZodObject<{
     capturedAt: z.ZodString;
     kind: z.ZodLiteral<"auction_snapshot">;
     realm: z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>;
+    faction: z.ZodOptional<z.ZodEnum<{
+        Alliance: "Alliance";
+        Horde: "Horde";
+    }>>;
+    house: z.ZodOptional<z.ZodEnum<{
+        Alliance: "Alliance";
+        Horde: "Horde";
+        Neutral: "Neutral";
+    }>>;
     scanId: z.ZodString;
     part: z.ZodNumber;
     parts: z.ZodNumber;
@@ -860,6 +875,15 @@ export declare const recordSchemas: {
         capturedAt: z.ZodString;
         kind: z.ZodLiteral<"auction_snapshot">;
         realm: z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>;
+        faction: z.ZodOptional<z.ZodEnum<{
+            Alliance: "Alliance";
+            Horde: "Horde";
+        }>>;
+        house: z.ZodOptional<z.ZodEnum<{
+            Alliance: "Alliance";
+            Horde: "Horde";
+            Neutral: "Neutral";
+        }>>;
         scanId: z.ZodString;
         part: z.ZodNumber;
         parts: z.ZodNumber;
@@ -1293,6 +1317,15 @@ export declare const anyRecord: z.ZodDiscriminatedUnion<[z.ZodObject<{
     capturedAt: z.ZodString;
     kind: z.ZodLiteral<"auction_snapshot">;
     realm: z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>;
+    faction: z.ZodOptional<z.ZodEnum<{
+        Alliance: "Alliance";
+        Horde: "Horde";
+    }>>;
+    house: z.ZodOptional<z.ZodEnum<{
+        Alliance: "Alliance";
+        Horde: "Horde";
+        Neutral: "Neutral";
+    }>>;
     scanId: z.ZodString;
     part: z.ZodNumber;
     parts: z.ZodNumber;
