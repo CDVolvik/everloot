@@ -92,6 +92,15 @@ test("type chips are hidden for a release without type data", async () => {
   expect(html).not.toContain("type=npc");
 });
 
+test("an id also finds the database entries, on the first page only; a lore word finds none", async () => {
+  const first = await render({ q: "2589" });
+  expect(first).toContain("In the database");
+  expect(first).toContain('href="/database/items/2589"');
+  expect(first).toContain('href="/database/npcs/2589"');
+  expect(await render({ q: "2589", page: "2" })).not.toContain("In the database");
+  expect(await render({ q: "grommash" })).not.toContain("In the database");
+});
+
 test("a repeated parameter answers with its first value, never a crash", async () => {
   const html = await render({ q: ["grommash", "thrall"], page: ["2", "9"] } as unknown as Record<string, string>);
   expect(html).toContain('href="/search?q=grommash"');

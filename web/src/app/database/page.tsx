@@ -1,10 +1,17 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
-import { computeRollups } from "@/lib/rollup-compute";
+import { GAME_DATA_CREDIT } from "@everloot/protocol";
+import { objectList } from "../../../../kb/src/object-page";
+import { computeRollups, loadWorldFacts } from "@/lib/rollup-compute";
 import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
 import { dataAgeLabel } from "@/lib/data-age";
+import { trailFor } from "@/lib/breadcrumbs";
+import { CLIENT_LAYER, CLIENT_TAXONOMY as T, itemsHref } from "@/lib/items";
+import { publicNpcs, publicQuests, publicVendors } from "@/lib/world-lists";
 import JsonLd from "@/components/JsonLd";
+import { AgreementMeter, Card, Container, PageHeader, SearchBar, SectionHeading, SourceLine } from "@/components/ui";
 import { CC_BY_SA, datasetJsonLd } from "@/lib/jsonld";
 
 const TITLE = "WoW Forever Database";
@@ -16,88 +23,91 @@ export const metadata: Metadata = {
 };
 export const dynamic = "force-dynamic";
 
-const SECTIONS = [
-  { title: "Items by category", href: "/database/items", body: "Every item in the current build by class, subclass, slot and quality, read from the game files and labelled unconfirmed until players see it." },
-  { title: "Loot observations", href: "/database/drops", body: "Observed frequency per source-attributed loot window. Source observations from 3 install IDs are required; these are not verified kills or drop probabilities." },
-  { title: "Spawn maps", href: "/database/npcs", body: "NPC positions from corroborated sightings. Single reports stay queued, never published." },
-  { title: "Objects", href: "/database/objects", body: "Chests, herbs, ore veins and fishing pools, with what players looted from them. A frequency is public after 3 install reports." },
-  { title: "Quests", href: "/database/quests", body: "Givers, turn-ins, and rewards. A row is public after 3 installs agree." },
-  { title: "Vendors", href: "/database/vendors", body: "Merchant lists. A price is public after 3 installs agree on the item and the copper." },
-  { title: "Guilds", href: "/tools/guild-board", body: "Officer-authorized progression and roster uploads. No aggregate guild score is published." },
-  { title: "Lore archive", href: "/lore", body: "Warcraft Wiki pages as of November 2023, CC BY-SA 4.0. Lore and history, not collected Forever data." },
-];
+/** One row of the panels: a place in the database and what it holds. */
+function Row({ href, label, value }: { href: string; label: string; value: ReactNode }) {
+  return (
+    <li>
+      <Link href={href} className="flex min-h-11 items-center justify-between gap-4 py-2 text-fg hover:text-accent">
+        <span className="min-w-0">{label}</span>
+        <span className="shrink-0 font-mono text-sm tabular-nums text-muted">{value}</span>
+      </Link>
+    </li>
+  );
+}
 
 export default async function DatabasePage() {
-  const { rates, measuredZeros, stats } = await computeRollups();
+  const [{ rates, measuredZeros, stats }, world] = await Promise.all([computeRollups(), loadWorldFacts()]);
   const live = rates.filter((r) => r.public).length + measuredZeros.filter((z) => z.public).length;
-  const queued = rates.length + measuredZeros.length - live;
-  const counts = [
-    { label: "Uploads", value: stats.uploads },
-    { label: "Loot windows", value: stats.lootWindows },
-    { label: "Public frequencies", value: live },
-    { label: "Queued facts", value: queued },
+  const classes = T.classes.filter((c) => c.items > 0).sort((a, b) => b.items - a.items);
+  // What players have made public so far, per place: a count once there is one, the empty meter until then.
+  const seen = (n: number) => (stats.unreachable ? "unrecorded" : n > 0 ? `${n.toLocaleString("en-US")} public` : <AgreementMeter count={0} />);
+  const readable = !world.unreachable;
+  const players = [
+    { href: "/database/npcs", label: "NPCs and spawns", value: seen(readable ? publicNpcs(world).length : 0) },
+    { href: "/database/quests", label: "Quests", value: seen(readable ? publicQuests(world).length : 0) },
+    { href: "/database/vendors", label: "Vendors", value: seen(readable ? publicVendors(world).length : 0) },
+    { href: "/database/objects", label: "Objects: chests, herbs, ore", value: seen(stats.unreachable ? 0 : objectList({ rates, measuredZeros, names: [] }).length) },
+    { href: "/database/drops", label: "Loot observations", value: seen(live) },
+    { href: "/tools/guild-board", label: "Guilds", value: "officer uploads" },
   ];
+
   return (
-    <article className="space-y-10 max-w-4xl">
-      <JsonLd data={datasetJsonLd({ uploads: stats.unreachable ? 0 : stats.uploads, name: DATASET_NAME, description, path: "/database", corpusPath: "/api/corpus/public", dataAsOf: stats.unreachable ? null : stats.dataAsOf })} />
-      <header className="space-y-3">
-        <p className="font-mono text-xs text-muted">
-          Thottbot reborn · corroborated only
-        </p>
-        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">
-          {TITLE}
-        </h1>
-        <p className="text-lg text-fg-2 max-w-2xl">
-          Items, NPCs, quests and vendors for WoW: Forever — built from data players
-          collect, with public facts gated by matching install reports. Distinct install IDs
-          do not establish independent players.
-        </p>
-      </header>
+    <Container width="wide">
+      <article>
+        <JsonLd data={datasetJsonLd({ uploads: stats.unreachable ? 0 : stats.uploads, name: DATASET_NAME, description, path: "/database", corpusPath: "/api/corpus/public", dataAsOf: stats.unreachable ? null : stats.dataAsOf })} />
+        <PageHeader
+          trail={trailFor("/database")!}
+          title={TITLE}
+          lede="Every item in the game files, and what players' addons have seen in Forever."
+        />
+        <SearchBar
+          action="/search"
+          id="database-search"
+          label="Search the database"
+          placeholder="An item, NPC, quest or object: a name or an id"
+          hint="Names show once 3 installs agree on them; any id opens its page."
+        />
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {counts.map((c) => (
-          <div key={c.label} className="rounded-xl border border-line bg-panel p-5 text-center">
-            <div className={`${stats.unreachable ? "text-xl" : "text-3xl"} font-bold text-accent`}>{stats.unreachable ? "unrecorded" : c.value}</div>
-            <div className="mt-1 text-xs font-mono text-muted">{c.label}</div>
-          </div>
-        ))}
-      </div>
-      {!stats.unreachable && <p className="text-xs text-muted">{dataAgeLabel(stats.dataAsOf)}</p>}
+        <div className="mt-12 grid gap-6 lg:grid-cols-2">
+          <Card as="section" aria-labelledby="db-items">
+            <SectionHeading id="db-items" action={<Link href="/database/items" className="text-accent hover:underline underline-offset-4">All categories →</Link>}>
+              Items by category
+            </SectionHeading>
+            <ul className="divide-y divide-line">
+              {classes.map((c) => <Row key={c.id} href={itemsHref(c.slug)} label={c.label} value={c.items.toLocaleString("en-US")} />)}
+            </ul>
+          </Card>
 
-      <div className="grid md:grid-cols-2 gap-4">
-        {SECTIONS.map((s) => (
-          <Link key={s.title} href={s.href} className="rounded-xl border border-line p-5 bg-panel hover:border-accent">
-            <h2 className="text-lg font-semibold text-accent">{s.title}</h2>
-            <p className="mt-1 text-sm text-fg-2">{s.body}</p>
-          </Link>
-        ))}
-      </div>
+          <Card as="section" aria-labelledby="db-players">
+            <SectionHeading id="db-players" note="A fact is public once 3 installs agree on it.">Seen by players</SectionHeading>
+            <ul className="divide-y divide-line">
+              {players.map((p) => <Row key={p.href} {...p} />)}
+            </ul>
+            <p className="mt-4 text-sm text-muted">
+              {stats.unreachable
+                ? STORAGE_UNREACHABLE
+                : stats.uploads > 0
+                  ? `${stats.uploads.toLocaleString("en-US")} uploads · ${stats.lootWindows.toLocaleString("en-US")} loot windows · ${dataAgeLabel(stats.dataAsOf)}`
+                  : <>Uploads are open during the beta. <Link href="/addon" className="text-accent hover:underline underline-offset-4">Get the addon</Link> and be one of the first 3.</>}
+            </p>
+          </Card>
+        </div>
 
-      <section aria-labelledby="licence" className="space-y-2 text-sm text-fg-2 max-w-2xl">
-        <h2 id="licence" className="text-lg font-semibold text-fg">{DATASET_NAME}</h2>
-        <p>{description}</p>
-        <p>
-          Uploaded observations are published under <a href={CC_BY_SA.url} rel="noopener" className="text-accent hover:underline underline-offset-4">{CC_BY_SA.name}</a>,
-          credited to Everloot contributors. The records are open at{" "}
-          <a href="/api/corpus/public" className="text-accent hover:underline underline-offset-4">/api/corpus/public</a>.
-        </p>
-      </section>
+        <section aria-labelledby="licence" className="mt-12 max-w-reading">
+          <SectionHeading id="licence">{DATASET_NAME}</SectionHeading>
+          <p className="text-fg-2">{description}</p>
+          <p className="mt-2 text-fg-2">
+            Uploaded observations are published under <a href={CC_BY_SA.url} rel="noopener">{CC_BY_SA.name}</a>,
+            credited to Everloot contributors. The records are open at <a href="/api/corpus/public">/api/corpus/public</a>.
+            Distinct install IDs do not establish independent players.
+          </p>
+          <p className="mt-2 text-fg-2">
+            The <Link href="/lore">lore archive</Link> holds Warcraft Wiki pages as of November 2023: lore and history, not collected Forever data.
+          </p>
+        </section>
 
-      <div className="rounded-2xl border border-line bg-panel p-6">
-        <h2 className="text-xl text-fg">Be the first source</h2>
-        <p className="mt-1 text-sm text-fg-2 max-w-xl">
-          {stats.unreachable ? (
-            STORAGE_UNREACHABLE
-          ) : (
-            <>
-              Uploads are open now, during the beta. Every fact here starts as one player&apos;s
-              upload and goes public once 3 installs agree on it. Run the addon, send your save file on the{" "}
-              <Link href="/upload" className="text-accent hover:underline underline-offset-4">upload page</Link>,
-              and watch your farms become the reference.
-            </>
-          )}
-        </p>
-      </div>
-    </article>
+        <SourceLine build={CLIENT_LAYER.build.version}>Item counts from the game files. {GAME_DATA_CREDIT}</SourceLine>
+      </article>
+    </Container>
   );
 }

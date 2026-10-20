@@ -7,6 +7,7 @@ export { default as Crumbs } from "./Crumbs";
 export { default as DataTable, type Column, type DataTableProps, type SortDirection } from "./DataTable";
 export { default as EmptyState, GET_THE_ADDON, type EmptyStateProps } from "./EmptyState";
 export { default as PageHeader, type PageHeaderProps } from "./PageHeader";
+export { default as SearchBar, type SearchBarProps } from "./SearchBar";
 export { default as SectionHeading } from "./SectionHeading";
 export { default as SourceLine, type SourceLineProps } from "./SourceLine";
 export { default as Tabs, tabFromHash, type TabItem } from "./Tabs";

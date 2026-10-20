@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import LoreSearchForm from "@/components/LoreSearchForm";
+import DatabaseResults from "@/components/DatabaseResults";
+import { databaseHits } from "@/lib/database-search";
 import { BROWSE_HEADINGS, BROWSE_TYPES, hasTypes, loreSlug, MAX_QUERY, searchLore, UNAVAILABLE, UNAVAILABLE_COPY, type BrowseSlug, type LoreType } from "@/lib/lore";
 
 /** A `type=` value is one of the stored types; anything else means All. */
@@ -34,6 +36,8 @@ export default async function SearchPage(props: { searchParams: Promise<{ q?: st
   const typed = hasTypes() === true;
   const type = typed ? typeOf(first(params.type)) : undefined;
   const result = q ? searchLore(q, page, type) : null;
+  // Database matches lead the first page only; the pages after it are the archive's.
+  const dbHits = q && page === 1 ? await databaseHits(q) : [];
   const typeQuery = type ? `&type=${type}` : "";
   const chips: { label: string; href: string; active: boolean }[] = typed && q
     ? [
@@ -55,6 +59,8 @@ export default async function SearchPage(props: { searchParams: Promise<{ q?: st
       </header>
 
       <LoreSearchForm query={q} />
+
+      <DatabaseResults hits={dbHits} />
 
       {chips.length > 0 && (
         <nav aria-label="Page type" className="flex flex-wrap gap-2 text-xs">

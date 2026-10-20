@@ -138,14 +138,13 @@ test("item page: the tooltip card for an item players reported; an id nobody rep
   const fetcher = bucket();
   vi.stubGlobal("fetch", fetcher);
   const seen = await render(() => ItemPage({ params: Promise.resolve({ id: "9" }) }));
-  expect(seen).toContain("data-item-card");
-  expect(seen).toContain("Linen Cloth");
+  expect(seen).toMatch(/data-tooltip-frame[^>]*>[\s\S]*Linen Cloth/);
   expect(seen).toContain(CREDIT);
   // Item 25 is in the same shard, but no install reported it: a typed id must not reveal it.
   fetcher.mockClear();
   forgetPrivateReads();
   const typed = await render(() => ItemPage({ params: Promise.resolve({ id: "25" }) }));
-  expect(typed).not.toMatch(/data-item-card|Worn Shortsword|<img|data-game-credit/);
+  expect(typed).not.toMatch(/Worn Shortsword|<img|data-game-credit/);
   expect(fetcher).not.toHaveBeenCalled();
 });
 

@@ -32,8 +32,9 @@ export default function SourceLine({ build, confirmed = false, licence = "CC BY-
   if (children) parts.push(<span key="extra">{children}</span>);
   parts.push(<span key="licence">{licence}</span>);
   return (
-    <p data-source-line className="mt-12 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-line pt-4 text-sm text-muted">
-      {parts.flatMap((part, i) => (i === 0 ? [part] : [<span key={`sep${i}`} aria-hidden="true">·</span>, part]))}
+    // Running text, not a flex row: a long credit clause wraps like a sentence instead of becoming its own block.
+    <p data-source-line className="mt-12 border-t border-line pt-4 text-sm leading-relaxed text-muted">
+      {parts.flatMap((part, i) => (i === 0 ? [part] : [<span key={`sep${i}`} aria-hidden="true" className="mx-2">·</span>, part]))}
     </p>
   );
 }
