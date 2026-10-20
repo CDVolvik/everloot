@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { itemPage } from "../../../../../kb/src/item-page";
 import type { QuestSide, QuestTag } from "../../../../../kb/src/world-pages";
 import GameIcon from "@/components/game/GameIcon";
 import { Container, DataTable, DataTitle, FilterBar, ResultStrip, type Column, type FilterControl } from "@/components/ui";
@@ -78,10 +77,9 @@ export default async function QuestListPage(props: { searchParams?: Promise<Sear
   // Reward icons and names under the item lists' rule: art only for items players reported or the wiki names.
   const rewardIds = [...new Set(shown.flatMap((x) => x.rewards))];
   const shownNames = rewardIds.length ? await loadShownNames() : null;
-  const reported = !shownNames || shownNames.facts.unreachable ? [] : rewardIds.filter((rid) => { const p = itemPage(rid, shownNames.facts); return Boolean(p.name || p.drops.length || p.pins.length); });
-  const withArt = [...new Set([...reported, ...rewardIds.filter((rid) => shownNames?.matched?.names.has(rid))])];
+  const withArt = shownNames ? rewardIds.filter(shownNames.showsTip) : [];
   const tips = await loadItemTips(withArt.length ? await loadSiteAssets() : null, withArt);
-  const itemName = (rid: number) => (shownNames ? shownItemName(rid, shownNames.agreed, shownNames.matched?.names, reported.includes(rid) ? tips.get(rid) : null)?.name : undefined) ?? `Item ${rid}`;
+  const itemName = (rid: number) => (shownNames ? shownItemName(rid, shownNames.agreed, shownNames.matched?.names, tips.get(rid))?.name : undefined) ?? `Item ${rid}`;
 
   const dash = <span className="text-muted">—</span>;
   const npc = (n: number | null) => (n === null ? dash : <Link href={`/database/npcs/${n}`} className={LINK}>{npcs.get(n) ?? `NPC ${n}`}</Link>);

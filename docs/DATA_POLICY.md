@@ -155,7 +155,7 @@ interface files, is a different thing and is covered by the second extension. Th
   quality, item level, required level, binding, slot, armour or weapon kind, weapon speed, stat kinds
   (not amounts), flavour text and sell price. Shown on a page only for an item that 3 installs have
   reported (a drop, a vendor offer, an auction scan), never in bulk and never for an id someone types
-  into a URL. The one exception is an item's name, quality and icon under the item name rule below. The extracted facts cover every named item in the build, released or not, so they are
+  into a URL. The one exception is an item the item name rule below names: its name, quality, icon and these facts. The extracted facts cover every named item in the build, released or not, so they are
   kept in private storage that only the site's server reads, never in the public asset bucket.
 - **Map pictures**: the game's own continent and zone map art from the map art tables, laid under
   our zone outlines. A held-back zone's picture shows only with spoilers on. A continent's own
@@ -193,7 +193,8 @@ batch." The rules above also cover:
   logos and art are still never used, not even as a stand-in.
 
 **Item names from the game files and the Warcraft Wiki.** Decided 2026-10-19 by Carlos: "Wiki match
-only". An item's name, quality and icon may be shown on the item page and the category lists before
+only". An item's name, quality and icon, and since 2026-10-20 its tooltip facts (item level, required level,
+binding, sell price, weapon speed, stat kinds and flavour text), may be shown on the item page and the category lists before
 players confirm it, when the name in the game files of the current build (`ItemSparse`) and the item's
 page in the Warcraft Wiki dump of 2023-11-13 give the same name, apart from case, spacing and the kind
 of apostrophe. The wiki page predates WoW: Forever, so a match says the item is released content in
@@ -205,18 +206,23 @@ as their expansion (`ItemSparse.ExpansionID` 0), so the expansion is not used. T
   the site-wide footer credits the Warcraft Wiki under CC BY-SA 4.0 beside Blizzard's credit, and
   `/methodology#credits` names the Warcraft Wiki contributors. A name
   3 installs agree on comes first, with the tooltip *Name confirmed by players*. No source label is printed beside a name.
+- The tooltip facts follow the name (added 2026-10-20, at Carlos's request that the database show the game file
+  data it already holds, as Wowhead does). Until players confirm the item, its page keeps the quiet unconfirmed
+  marker on the icon, whose tooltip says so, and prints no source line. The lists sort and filter by item level,
+  required level and binding; an item whose facts are not shown matches none of those filters.
 - For the lowest spoiler risk, only items below id 25,000, the original game's range, are named this
   way (`SHOWN_MAX_ITEM_ID` in `kb/src/item-name-rule.ts`). Higher ids belong to later versions, such as
   Wrath Classic's Scourge event. A name that reads like a placeholder or an internal entry is never
   shown either: one starting with "Deprecated", "DEP", "[PH]", "PH ", "Test", "QA" or "Monster -", or
   containing "UNUSED", "zzOLD" or "(old)", in any case, or starting with "OLD" in capitals ("Old
   Greatsword" is a real item and shows).
-- Every other item keeps "Item N": a name only the game files give (it may be unreleased), a name only
+- Every other item keeps "Item N", with no tooltip facts: a name only the game files give (it may be unreleased), a name only
   the wiki gives (it may not be in Forever), an item whose two names differ, and a match the two rules
   above hold back. A category page where
   fewer than half the rows have a name stays out of search.
-- Pages only. The data downloads, the API and the MCP server carry no item names, as before; a test
-  checks that their code does not read them.
+- Pages only. The data downloads, the API and the MCP server carry no item names and no tooltip facts for these
+  items, as before; a test checks that their code does not read the names. The embeddable cards keep the
+  three-install rule.
 - The names come from a ledger a maintainer builds with `npm run kb -- item-names`. It records every name
   each source gives for each item id, mismatches and single-source names included, and it only grows: a
   new build, dump or source adds to it and removes nothing. It holds every name in the build, released or
@@ -291,8 +297,7 @@ They are facts: ids and the relation between them, with no Blizzard text and no 
 - How it sits with the item tooltip facts above: class, subclass, slot and quality are public for
   every item through this layer. The rest of an item's tooltip (name, item level, required level,
   binding, weapon speed, stat kinds, flavour text, sell price) and its icon stay in private storage
-  and appear only for items 3 installs reported, as the extension says, or, for the name and icon,
-  under the item name rule above.
+  and appear only for items 3 installs reported, as the extension says, or under the item name rule above.
 
 **Build changes, beta builds included.** Decided 2026-10-18, the same way Wowhead and other
 datamining sites work: when Blizzard ships a new build, a reviewed pull request records what
