@@ -170,6 +170,8 @@ SlashCmdList["EVERLOOT"] = function(msg)
   if gph and E.GphCommand then return E.GphCommand(gph) end
   if msg == "status" or msg == "" then
     print(E:Status())
+  elseif (msg == "options" or msg == "settings" or msg == "config") and E.Options then
+    E.Options.Open()
   elseif msg == "version" then
     print("Everloot " .. E.VERSION)
   elseif msg == "selftest" and E.SelfTest then
@@ -232,6 +234,6 @@ SlashCmdList["EVERLOOT"] = function(msg)
       print("Everloot: installed addon list off; all recorded addon rows were deleted from this file. /reload to apply.")
     end
   else
-    print("Everloot commands: /everloot status, /everloot auctions on|off, /everloot scan, /everloot scanprompt on|off, /everloot price [item], /everloot gph [start|pause|stop|reset|show|history], /everloot addons on|off, /everloot completion [on|off], /everloot census [on|off], /everloot players [on|off], /everloot selftest, /everloot talents, /everloot plan [share code|number], /everloot raid [code], /ask <question>")
+    print("Everloot commands: /everloot options, /everloot status, /everloot auctions on|off, /everloot scan, /everloot scanprompt on|off, /everloot price [item], /everloot gph [start|pause|stop|reset|show|history], /everloot addons on|off, /everloot completion [on|off], /everloot census [on|off], /everloot players [on|off], /everloot selftest, /everloot talents, /everloot plan [share code|number], /everloot raid [code], /ask <question>")
   end
 end

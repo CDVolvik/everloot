@@ -29,3 +29,4 @@ modules\raid.lua
 modules\prices.lua
 modules\auctiontab.lua
 modules\gph.lua
+modules\options.lua
