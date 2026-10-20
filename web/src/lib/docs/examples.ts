@@ -62,9 +62,11 @@ export function schemaFields(name: ApiSchemaName): { name: string; type: string;
 function fieldType(node: Node): string {
   const options = node.anyOf ?? [];
   const nullable = options.some((o) => o.type === "null") || (Array.isArray(node.type) && node.type.includes("null"));
-  const base = options.find((o) => o.type !== "null") ?? node;
-  const type = Array.isArray(base.type) ? base.type.filter((t) => t !== "null").join(" or ") : base.type;
-  const label = type === "array" ? (base.items?.type === "object" ? "array of objects" : `array of ${base.items?.type ?? "values"}`) : type === "object" ? "object" : typeLabel(base as Parameters<typeof typeLabel>[0]);
+  const found = options.find((o) => o.type !== "null") ?? node;
+  // "or null" is said once, at the end, so the type itself is read without its null.
+  const base = Array.isArray(found.type) ? { ...found, type: found.type.filter((t) => t !== "null") } : found;
+  const type = Array.isArray(base.type) ? base.type.join(" or ") : base.type;
+  const label = type === "array" ? (base.items?.type === "object" ? "array of objects" : `array of ${base.items?.type ?? "values"}`) : type === "object" ? "object" : typeLabel({ ...base, type } as Parameters<typeof typeLabel>[0]);
   return nullable ? `${label}, or null` : label;
 }
 
@@ -106,10 +108,24 @@ export function requestSamples(route: ApiRoute): CodeTab[] {
   ];
 }
 
-/** An example answer per documented status code that has a schema. */
+/** The answer a status really gives where the schema alone would show a healthy one. */
+function sampleFor(route: ApiRoute, status: string, schema: ApiSchemaName): unknown {
+  const value = schemaSample(schema);
+  if (route.path === "/api/health" && status === "503") {
+    return { ...(value as object), ok: false, snapshot: { status: "stale", updatedAt: "2026-11-04T10:30:00.000Z", ageSeconds: 5400 } };
+  }
+  return value;
+}
+
+/** An example answer per documented status code that has a schema, and both answers of the market prices. */
 export function responseSamples(route: ApiRoute): CodeTab[] {
-  return Object.entries(route.responses).flatMap(([status, response]) =>
-    response.schema ? [{ label: status, lang: "json", code: JSON.stringify(schemaSample(response.schema), null, 2) }] : []);
+  const tabs = Object.entries(route.responses).flatMap(([status, response]) =>
+    response.schema ? [{ label: status, lang: "json", code: JSON.stringify(sampleFor(route, status, response.schema), null, 2) }] : []);
+  if (route.path === "/api/market/prices") {
+    tabs.splice(1, 0, { label: "200, no realm", lang: "json", code: JSON.stringify(schemaSample("marketRealmsResponse"), null, 2) });
+    tabs[0] = { ...tabs[0]!, label: "200, with realm" };
+  }
+  return tabs;
 }
 
 /**

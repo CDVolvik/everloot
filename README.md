@@ -109,9 +109,9 @@ flowchart LR
 | [`addon/`](addon/) | The in-game collector (Lua) and the `/ask` command |
 | [`web/`](web/) | everloot.app: the database, tools, map, change tracker, lore archive, upload page and MCP endpoints (Next.js on Vercel) |
 | [`kb/`](kb/) | The knowledge base: lore import, public releases, the game-file extractor and the MCP server (TypeScript, SQLite) |
-| [`companion/`](companion/) | A desktop helper that uploads your file and answers `/ask` in game |
-| [`desktop/`](desktop/) | Everloot Desktop App: the same, as a tray app with an installer |
-| [`packages/protocol/`](packages/protocol/) | The upload contract: record kinds, envelope, limits and their JSON Schema, shared by the site, the knowledge base, the companion and the addon tests |
+| [`companion/`](companion/) | The command-line uploader: sends your file, answers `/ask` in game and writes market prices |
+| [`desktop/`](desktop/) | The Everloot Desktop App: the same jobs as a tray app with an installer |
+| [`packages/protocol/`](packages/protocol/) | The upload contract: record kinds, envelope, limits and their JSON Schema, shared by the site, the knowledge base, the uploaders and the addon tests |
 | [`supabase/`](supabase/) | The site's database schema |
 
 [`docs/architecture.md`](docs/architecture.md) goes into the boundaries and the decisions behind them.
@@ -120,20 +120,22 @@ flowchart LR
 
 ### Players
 
-1. Download the addon from [everloot.app/upload](https://everloot.app/upload) and extract
+1. Download the addon from [everloot.app/addon](https://everloot.app/addon) and extract
    `Everloot/` into the game's `Interface/AddOns/`.
 2. Play. Log out, or type `/reload`, to save.
 3. Upload `WTF/Account/<account>/SavedVariables/Everloot.lua` at everloot.app/upload. You preview
    everything before it is sent.
 
 Or install the [Everloot Desktop App](desktop/README.md)
-([download](https://github.com/Everloot/everloot/releases/tag/desktop-v0.1.0)): it uploads after
-every logout and can install and update the addon for you.
+([download](https://everloot.app/addon)): it uploads after every logout, writes market prices for
+your item tooltips, and can install and update the addon for you.
 
-Auction capture and the list of your installed addons are off until you turn them on
-(`/everloot auctions on`, `/everloot addons on`). To see market prices in item tooltips, the
-[companion](companion/README.md) writes them into the game folder (`prices --game`); the addon's scan
-button on the auction house adds your own scan.
+In a new install, auction capture and the census are on (`/everloot auctions off` and
+`/everloot census off` turn them off; the census off command also deletes its rows). Nothing scans
+until you click Scan this house at the auction house. The list of your installed addons and the
+players module are off until you turn them on (`/everloot addons on`, `/everloot players on`). The
+[command-line uploader](companion/README.md) can also write market prices into the game folder
+(`prices --game`).
 
 ### Developers
 
@@ -168,12 +170,13 @@ files are under [`/schema/`](https://everloot.app/schema/index.json).
 
 ## Project status
 
-Beta. The addon is at 0.3.3 and passes its automated tests; the in-client checks in
+Beta. The addon passes its automated tests (the current version is on
+[everloot.app/addon](https://everloot.app/addon)); the in-client checks in
 [`docs/2026-10-08-beta-client-checklist.md`](docs/2026-10-08-beta-client-checklist.md) and
 [`docs/2026-10-18-addon-0.3.2-beta-checklist.md`](docs/2026-10-18-addon-0.3.2-beta-checklist.md) and
 [`docs/2026-10-19-addon-0.3.3-beta-checklist.md`](docs/2026-10-19-addon-0.3.3-beta-checklist.md) are still open
-until the game is playable. The Everloot Desktop App had its first release, `desktop-v0.1.0`, on
-2026-10-19; its builds are not code-signed yet. The game-file layers (talents, raid buffs, map) are read from build
+until the game is playable. The Everloot Desktop App had its first release on 2026-10-19; its builds
+are not code-signed yet. The game-file layers (talents, raid buffs, map) are read from build
 `1.60.1.70450` and marked unconfirmed. A [build watch](docs/BUILD_WATCH.md) checks for new builds
 every half hour and opens a reviewed pull request when one appears. WoW: Forever launches on
 2026-11-04.

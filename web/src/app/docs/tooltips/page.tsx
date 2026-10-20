@@ -40,6 +40,12 @@ export default function Page() {
         <a href={`${SITE}/database/quests/9`} className={docLink}>a quest</a>. A card appears only for pages players have
         reported, so a link to an id nobody has seen shows no card and just works as a link.
       </P>
+      <Callout kind="note">
+        <p>
+          WoW: Forever launches on 4 November 2026. Until players have reported these pages, the card request answers{" "}
+          <C>404</C> and the three links above show no card. They start to work as players upload and 3 installs agree.
+        </p>
+      </Callout>
 
       <H2 id="how-it-behaves">How it behaves</H2>
       <List>

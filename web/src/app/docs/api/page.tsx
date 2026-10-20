@@ -7,6 +7,7 @@ import DocPage from "@/components/docs/DocPage";
 import { ANON_PAGE, ANON_PER_HOUR, guardOn, KEY_PAGE, KEY_PER_HOUR } from "@/lib/data-guard";
 import { DOCS_TABS, endpointHref } from "@/lib/docs/nav";
 import { pageMetadata } from "@/lib/seo";
+import { REPO_URL } from "@/lib/source";
 
 export const metadata: Metadata = pageMetadata({
   title: "API overview",
@@ -59,9 +60,9 @@ export default function ApiOverview() {
       <H2 id="keys-and-limits">Keys and limits</H2>
       <P>
         {guard
-          ? <>You do not need a key to read. Without one, the corpus feed and the drop list answer {ANON_PER_HOUR} requests per hour for each IP address, {ANON_PAGE} records a page. A free key raises that to {KEY_PER_HOUR.toLocaleString("en-US")} requests per hour and {KEY_PAGE.toLocaleString("en-US")} records a page.</>
+          ? <>You do not need a key to read. Without one, the corpus feed, the drop list, <C>/api/items</C>, <C>/api/edges</C> and <C>/api/tools</C> share one allowance of {ANON_PER_HOUR} requests per hour for each IP address, {ANON_PAGE} records a page. A free key raises that to {KEY_PER_HOUR.toLocaleString("en-US")} requests per hour and {KEY_PAGE.toLocaleString("en-US")} records a page.</>
           : <>You do not need a key to read. Keys are not switched on yet, and nothing needs one.</>}{" "}
-        The MCP server and the market prices have their own per-IP limits. All of it is on{" "}
+        The MCP server and the market prices have their own per-IP limits. Every endpoint and its limit is on{" "}
         <Link href="/docs/api/keys" className={docLink}>Limits and keys</Link>.
       </P>
 
@@ -103,7 +104,7 @@ export default function ApiOverview() {
       <Table
         head={["Status", "Meaning"]}
         rows={[
-          [<C key="s">400</C>, <>A parameter is wrong. <C>error</C> says which.</>],
+          [<C key="s">400</C>, <>A parameter is wrong. <C>error</C> says what is wrong.</>],
           [<C key="s">401</C>, "The key you sent is not valid or was revoked. Only when keys are switched on."],
           [<C key="s">404</C>, "Nothing there: an unknown tool, or no page players have reported."],
           [<C key="s">429</C>, <>Rate limited. The <C>Retry-After</C> header is the number of seconds to wait.</>],
@@ -160,8 +161,13 @@ export default function ApiOverview() {
 
       <H2 id="protocol-version">Protocol version</H2>
       <P>
-        The contract behind the API is one package, <C>@everloot/protocol</C>, currently version <C>{PROTOCOL_VERSION}</C>. A new
-        kind, field or tool is a minor release. A removal, a rename or a tighter limit is a major release.
+        The contract behind the API is one package, <C>@everloot/protocol</C>, and it has two version numbers. The record
+        protocol, currently <C>{PROTOCOL_VERSION}</C>, is the upload contract: uploaders stamp it on every envelope. The
+        package has its own version, listed in its{" "}
+        <a href={`${REPO_URL}/blob/main/packages/protocol/CHANGELOG.md`} rel="noopener" className={docLink}>changelog</a>.
+        For both, a new kind, field or tool is a minor release, and a removal, a rename or a tighter limit is a major release.
+        The package is not on npm yet: install it from the repository&apos;s <C>packages/protocol</C> folder, or read the JSON
+        Schema files instead.
       </P>
 
       <H2 id="endpoints">Endpoints</H2>

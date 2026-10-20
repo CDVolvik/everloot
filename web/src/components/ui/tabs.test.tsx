@@ -101,3 +101,13 @@ test("tabFromHash", () => {
   expect(tabFromHash("", ["a"])).toBeNull();
   expect(tabFromHash("#x", ["a"])).toBeNull();
 });
+
+test("an empty tab is drawn quieter: muted, regular weight, no hover; the strip scrolls without a scrollbar", () => {
+  const html = renderToStaticMarkup(<Tabs label="Item relations" tabs={TABS} />);
+  const tab = (name: string) => html.match(new RegExp(`<button[^>]*class="([^"]*)"[^>]*>${name}`))![1];
+  expect(tab("Dropped by")).toContain("text-muted");
+  expect(tab("Dropped by")).toContain("font-normal");
+  expect(tab("Dropped by")).not.toContain("hover:");
+  expect(tab("Sources")).toContain("hover:text-fg");
+  expect(html).toContain("[scrollbar-width:none]");
+});

@@ -4,7 +4,7 @@ import { notFound, permanentRedirect } from "next/navigation";
 import { describe, filterItems, QUALITIES, resolveClass, resolveLegacyClass, resolveSubclass, slotOf, type ItemClass, type ItemRow, type ItemSubclass } from "../../../../../kb/src/item-taxonomy";
 import {
   activeFilters, BINDINGS, CLIENT_LAYER, CLIENT_TAXONOMY as T, categoryNamedEnough, categoryQuery, itemFacets, ITEM_LEVEL_BRACKETS, ITEMS_PER_PAGE, itemsHref,
-  listItems, SOURCES, shownItemName, toggled, UNRECORDED, type CategoryQuery, type NameSource,
+  listItems, SOURCES, shownItemName, subclassLabel, toggled, UNRECORDED, type CategoryQuery, type NameSource,
 } from "@/lib/items";
 import { loadItemSeen } from "@/lib/item-seen";
 import { pageMetadata } from "@/lib/seo";
@@ -12,7 +12,7 @@ import { loadShownNames } from "@/lib/shown-item-names";
 import { loadItemTips, loadSiteAssets } from "@/lib/game-assets";
 import GameIcon from "@/components/game/GameIcon";
 import Badge, { UNCONFIRMED_TITLE } from "@/components/ui/Badge";
-import { Container, DataTable, DataTitle, FilterBar, QUALITY_TEXT, ResultStrip, qualityOf, type Column, type FilterControl } from "@/components/ui";
+import { Container, DataTable, DataTitle, FilterBar, filledColumns, QUALITY_TEXT, ResultStrip, qualityOf, type FilterControl, type SparseColumn } from "@/components/ui";
 import type { Crumb } from "@/lib/jsonld";
 import { LEVEL_BRACKETS } from "../list-parts";
 
@@ -104,7 +104,7 @@ export async function CategoryPage({ classSlug, subclassKey, search }: { classSl
   const names = new Map(shown.map((row) => [row[0], shownItemName(row[0], agreed, matched?.names, tips.get(row[0]))]));
   const icons = shown.some((row) => tips.get(row[0])?.icon);
   const here = (over: Partial<CategoryQuery>) => itemsHref(cls?.slug, sub?.slug, { ...q, page: 1, ...over });
-  const title = sub ? subName(sub) : cls ? cls.label : "Items";
+  const title = sub ? subclassLabel(sub).label : cls ? cls.label : "Items";
 
   const trail: Crumb[] = [
     { name: "Home", path: "/" },
@@ -116,7 +116,7 @@ export async function CategoryPage({ classSlug, subclassKey, search }: { classSl
 
   /** Where players have seen the item come from, as compact labels ("Drop, Vendor"). */
   const sourceOf = (row: ItemRow) => seen.from.get(row[0])?.map((x) => SOURCES.find((s) => s.slug === x)!.label).join(", ") ?? null;
-  const columns: Column<ItemRow>[] = [
+  const columns: SparseColumn<ItemRow>[] = [
     {
       key: "name", header: "Name", sortable: true, cell: (row) => {
         const c = describe(T, row);
@@ -146,7 +146,7 @@ export async function CategoryPage({ classSlug, subclassKey, search }: { classSl
     { key: "req", header: "Req. level", numeric: true, sortable: true, cell: (row) => tips.get(row[0])?.required || <span className="text-muted">—</span> },
     ...(sub ? [] : [{ key: "type", header: "Type", sortable: true, cell: (row: ItemRow) => describe(T, row).subclass?.name ?? "None" }]),
     { key: "slot", header: "Slot", sortable: true, cell: (row) => slotOf(row[3])?.name ?? <span className="text-muted">—</span> },
-    { key: "seen", header: "Source", sortable: true, cell: (row) => sourceOf(row) ?? <span className="text-muted">—</span> },
+    { key: "seen", header: "Source", sortable: true, cell: (row) => sourceOf(row) ?? <span className="text-muted">—</span>, blank: (row) => !seen.from.has(row[0]) },
     { key: "id", header: "ID", numeric: true, sortable: true, cell: (row) => row[0] },
   ];
 
@@ -178,7 +178,7 @@ export async function CategoryPage({ classSlug, subclassKey, search }: { classSl
       type: "menu" as const, key: "type", label: "Type",
       options: [
         { label: `All ${cls.label.toLowerCase()}`, href: itemsHref(cls.slug, undefined, { ...q, page: 1 }), on: !sub, reset: true, count: cls.items },
-        ...T.subclasses.filter((s) => s.classId === cls.id && s.items > 0).map((s) => ({ label: subName(s), href: itemsHref(cls.slug, s.slug, { ...q, page: 1 }), on: s.id === sub?.id, count: s.items })),
+        ...T.subclasses.filter((s) => s.classId === cls.id && s.items > 0).map((s) => ({ label: subclassLabel(s).label, href: itemsHref(cls.slug, s.slug, { ...q, page: 1 }), on: s.id === sub?.id, count: s.items })),
       ],
     }] : []),
     {
@@ -273,11 +273,13 @@ export async function CategoryPage({ classSlug, subclassKey, search }: { classSl
           <DataTable
             dense
             caption={`${title}: ${plural(rows.length)}`}
-            columns={columns}
+            // A column with nothing in the whole result (Source, before anyone reports one) is left out.
+            columns={filledColumns(columns, rows)}
             rows={shown}
             rowKey={(row) => String(row[0])}
-            sort={q.sort ? { key: q.sort.key, direction: q.sort.desc ? "desc" : "asc" } : { key: "id", direction: "asc" }}
-            sortHref={(key, dir) => here({ sort: key === "id" && dir === "asc" ? undefined : { key: key as NonNullable<CategoryQuery["sort"]>["key"], desc: dir === "desc" } })}
+            // The default order (named items first) is no one column, so no header shows an arrow for it.
+            sort={q.sort ? { key: q.sort.key, direction: q.sort.desc ? "desc" : "asc" } : undefined}
+            sortHref={(key, dir) => here({ sort: { key: key as NonNullable<CategoryQuery["sort"]>["key"], desc: dir === "desc" } })}
             meta={(row) => [tips.get(row[0])?.level ? `Item level ${tips.get(row[0])!.level}` : null, slotOf(row[3])?.name, sub ? null : describe(T, row).subclass?.name, sourceOf(row)].filter(Boolean).join(" · ")}
             empty={empty}
           />

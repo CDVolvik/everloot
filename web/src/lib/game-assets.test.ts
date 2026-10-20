@@ -136,6 +136,10 @@ test("an item tooltip reads like the game's and marks the stat amounts the table
   expect(text.lines).toEqual(["Binds when equipped", "Unique", "One-Hand · Sword", "Speed 1.90", "+[?] Stamina", "+[?] Strength", "Requires Level 5", "Item Level 2", '"Old."', "Sell Price: 7c"]);
   expect(text.partial).toBe(true);
   expect(itemTipText(shard0["9"]).partial).toBe(false);
+  // A stat kind without a word is left out, not printed as "unknown stat 51".
+  const odd = itemTipText({ ...shard0["9"], st: [51] });
+  expect(odd.lines.join(" ")).not.toContain("unknown");
+  expect(odd.partial).toBe(false);
   expect(qualityColor(3)).toMatch(/^#/);
   expect(itemTip(shard0["9"], { base: BASE, version: "v", label: "l" }).color).toBe(qualityColor(1));
 });

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from "react";
 import { QUALITY_TEXT, qualityOf } from "./quality";
 
-/** One row the suggestion endpoint answers (GET /api/suggest). */
+/** One row the suggestion route answers (GET /search/suggest). */
 export interface Suggestion { type: "item" | "npc" | "quest" | "object"; id: number; label: string; href: string; quality?: number | null }
 
 const TYPE_LABEL: Record<Suggestion["type"], string> = { item: "Item", npc: "NPC", quest: "Quest", object: "Object" };
@@ -25,7 +25,8 @@ function useSuggestions(text: string, scope: string): Suggestion[] {
     if (hit) { setRows(hit); return; }
     const ctrl = new AbortController();
     const timer = setTimeout(() => {
-      fetch(`/api/suggest?q=${encodeURIComponent(q)}${scope ? `&in=${scope}` : ""}`, { signal: ctrl.signal })
+      // The site's own route, matched on the names the pages show (/api/suggest keeps the agreed names only).
+      fetch(`/search/suggest?q=${encodeURIComponent(q)}${scope ? `&in=${scope}` : ""}`, { signal: ctrl.signal })
         .then((r) => (r.ok ? r.json() : { results: [] }))
         .then((body: { results?: Suggestion[] }) => { const list = body.results ?? []; cache.set(key, list); setRows(list); })
         .catch(() => {});

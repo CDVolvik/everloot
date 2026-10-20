@@ -270,7 +270,8 @@ describe("census rows in an upload", () => {
     return out;
   };
   const expectNoGuid = (value: unknown) => {
-    const text = JSON.stringify(value).toLowerCase();
+    // Upload and receipt ids are random UUIDs; one can contain a 5-character piece of a GUID by chance.
+    const text = JSON.stringify(value).toLowerCase().replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g, "<uuid>");
     for (const guid of [GUID, SEEN_GUID]) for (const piece of pieces(guid)) expect(text, piece).not.toContain(piece);
   };
 

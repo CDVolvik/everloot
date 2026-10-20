@@ -90,9 +90,14 @@ export function classAnswers(facts: ClassFacts): { pointsQuestion: string; point
   };
 }
 
-/** Meta description and lead line of a class page, from the same facts the answer block uses. */
+/** Lead line of a class page, from the same facts the answer block uses: no "unconfirmed" sentence on the page. */
+export function classLede(facts: ClassFacts): string {
+  return `Plan ${facts.className} talents for WoW: Forever: ${facts.points} points at level ${facts.maxLevel} across ${list(facts.trees.map((t) => t.name))}, with point rules and sharing.`;
+}
+
+/** Meta description of a class page: the lead line, and for search results the word the page says with its marker. */
 export function classDescription(facts: ClassFacts): string {
-  return `Plan ${facts.className} talents for WoW: Forever: ${facts.points} points at level ${facts.maxLevel} across ${list(facts.trees.map((t) => t.name))}, with point rules and sharing. Unconfirmed.`;
+  return `${classLede(facts)} Unconfirmed.`;
 }
 
 export interface MaxLevelPoints { points: number; level: number; firstPointLevel: number; classes: string[] }
