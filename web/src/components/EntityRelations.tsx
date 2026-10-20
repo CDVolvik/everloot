@@ -2,6 +2,7 @@ import Link from "next/link";
 import { GAME_DATA_CREDIT } from "@everloot/protocol";
 import { CLIENT_SKILLS } from "../../../kb/src/client-layer-file";
 import { CLIENT_LABEL, edgesFrom, entityLabel, evidenceLabel, groupByRel, type Edge, type EdgeKind, type Rel } from "../../../kb/src/edges";
+import { zoneByMapId, zoneHref } from "@/lib/zones";
 import GameIcon from "./game/GameIcon";
 
 /** A spell's icon URL, when the page has the asset manifest. Items get none here: their icons follow the reported-items rule. */
@@ -13,7 +14,11 @@ function hrefFor(kind: EdgeKind, id: number, rel: Rel): string | null {
   if (kind === "npc") return rel === "sold_by" ? `/database/vendors/${id}` : `/database/npcs/${id}`;
   if (kind === "object") return `/database/objects/${id}`;
   if (kind === "quest") return `/database/quests/${id}`;
-  if (kind === "zone") return `/map?zone=${id}`;
+  if (kind === "zone") {
+    // Released zones only: a zone found just in the game files gets no page, so no link.
+    const zone = zoneByMapId(id);
+    return zone ? zoneHref(zone.mapId, zone.name) : null;
+  }
   if (kind === "skill") return "/tools/professions";
   return null;
 }
@@ -34,7 +39,7 @@ export type NameFor = (kind: EdgeKind, id: number) => string | undefined;
 
 function Target({ edge, rel, client, spellIcon, nameOf }: { edge: Edge; rel: Rel; client: readonly Edge[]; spellIcon?: SpellIconFor; nameOf?: NameFor }) {
   const href = hrefFor(edge.toKind, edge.toId, rel);
-  const text = edge.toKind === "skill" ? professionName(edge.toId) : nameOf?.(edge.toKind, edge.toId) ?? entityLabel(edge.toKind, edge.toId);
+  const text = edge.toKind === "skill" ? professionName(edge.toId) : edge.toKind === "zone" ? zoneByMapId(edge.toId)?.name ?? entityLabel("zone", edge.toId) : nameOf?.(edge.toKind, edge.toId) ?? entityLabel(edge.toKind, edge.toId);
   const icon = edge.toKind === "spell" ? spellIcon?.(edge.toId) : undefined;
   // A spell's profession beside it (Created by: spell 2660 · Blacksmithing), as item databases list recipes.
   const profession = edge.toKind === "spell" ? professionOf(edge.toId, client) : undefined;

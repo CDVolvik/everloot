@@ -108,6 +108,7 @@ const SHOWS_ART = new Set([
   "web/src/app/tools/professions/page.tsx", "web/src/app/database/drops/page.tsx", "web/src/app/database/items/[id]/page.tsx", "web/src/app/database/items/category-page.tsx",
   "web/src/app/database/vendors/[id]/page.tsx", "web/src/app/database/npcs/[id]/page.tsx", "web/src/app/database/quests/[id]/page.tsx", "web/src/app/changes/page.tsx", "web/src/lib/spell-mentions.ts", "web/src/app/wow-forever/page.tsx",
   "kb/src/cli.ts", "web/scripts/upload-game-assets.mjs", "web/scripts/game-assets-upload.mjs",
+  "web/src/app/database/zones/[zone]/page.tsx",
 ]);
 
 test("nothing outside the pages that show the art can read the asset URL or the manifest modules", () => {
