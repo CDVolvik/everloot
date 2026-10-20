@@ -8,7 +8,7 @@ base, the companion, the addon's contract tests and anyone building on the data.
 
 ## Status
 
-1.3.0, used by everloot.app. Not yet published to npm; the parts of this repository install it from
+1.4.0, used by everloot.app. Not yet published to npm; the parts of this repository install it from
 the folder. After editing it, `npm run build` here, then in each consumer delete
 `node_modules/@everloot/protocol` and `npm install` (npm keeps the packed copy while the version is the same).
 

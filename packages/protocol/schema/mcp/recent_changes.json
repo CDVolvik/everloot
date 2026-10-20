@@ -109,6 +109,33 @@
                 "string",
                 "null"
               ]
+            },
+            "region": {
+              "description": "Forum posts: the US or EU English WoW forum.",
+              "type": "string",
+              "enum": [
+                "us",
+                "eu"
+              ]
+            },
+            "topicId": {
+              "description": "Forum posts: the thread's topic id on that forum. Region and topic id together name one thread.",
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "topicSlug": {
+              "type": "string"
+            },
+            "postNumber": {
+              "description": "Forum posts: the post's number in its thread; 1 opened the thread.",
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "startedThread": {
+              "description": "Forum posts: true when this Blizzard post opened the thread, false for a reply.",
+              "type": "boolean"
             }
           },
           "required": [
