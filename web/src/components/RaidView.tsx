@@ -29,7 +29,7 @@ export default async function RaidView({ initialCode }: { initialCode?: string }
   const banner = loadingArt(assets, BANNER_MAP.raid);
   return (
     <Container>
-      <JsonLd data={webApplicationJsonLd({ name: TITLE, path: "/tools/raid", description })} />
+      <JsonLd data={webApplicationJsonLd({ name: TITLE, path: "/tools/raid", description: lede })} />
       <PageHeader
         trail={trailFor("/tools/raid")!}
         title={TITLE}

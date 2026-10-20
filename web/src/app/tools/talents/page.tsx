@@ -28,7 +28,7 @@ export default async function TalentsIndexPage() {
   const classes = classChoices(await loadSiteAssets(), new Map(catalogs.map((c) => [c.classSlug, c.trees.map((t) => t.name)])));
   return (
     <Container>
-      <JsonLd data={webApplicationJsonLd({ name: TITLE, path: "/tools/talents", description })} />
+      <JsonLd data={webApplicationJsonLd({ name: TITLE, path: "/tools/talents", description: lede })} />
       <PageHeader trail={trailFor("/tools/talents")!} title={TITLE} lede={lede} />
 
       <ClassPicker variant="tiles" classes={classes} />
