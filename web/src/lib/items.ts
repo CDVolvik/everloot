@@ -63,6 +63,17 @@ export const BINDINGS = [
 ] as const;
 const BINDING_SLUGS: string[] = BINDINGS.map((b) => b.slug);
 
+/** Where players have seen an item come from, in the order a cell and the menu list them (the `src` filter's values). */
+export const SOURCES = [
+  { slug: "drop", label: "Drop", menu: "Drop" },
+  { slug: "vendor", label: "Vendor", menu: "Vendor" },
+  { slug: "crafted", label: "Crafted", menu: "Crafted" },
+  { slug: "quest", label: "Quest", menu: "Quest reward" },
+  { slug: "object", label: "Object", menu: "Container or object" },
+] as const;
+export type SourceSlug = (typeof SOURCES)[number]["slug"];
+const SOURCE_SLUGS: string[] = SOURCES.map((x) => x.slug);
+
 /** The item level menu's brackets; any other range still works typed into the URL. */
 export const ITEM_LEVEL_BRACKETS = [[1, 10], [11, 20], [21, 30], [31, 40], [41, 50], [51, 60], [61, 70], [71, 80], [81, 999]].map(([min, max]) => ({ min, max }));
 
@@ -104,6 +115,8 @@ export interface CategoryQuery {
   q?: string;
   slot?: string[];
   quality?: string[];
+  /** Where players have seen it come from: any of these (a public fact, so unreported items match none). */
+  src?: SourceSlug[];
   crafted?: boolean;
   reagent?: boolean;
   set?: boolean;
@@ -122,7 +135,7 @@ export interface CategoryQuery {
 
 /** How many filters are on (the page and the sort are not filters). */
 export function activeFilters(q: CategoryQuery): number {
-  return Number(Boolean(q.q)) + (q.slot?.length ? 1 : 0) + (q.quality?.length ? 1 : 0) + Number(Boolean(q.crafted)) + Number(Boolean(q.reagent))
+  return Number(Boolean(q.q)) + (q.slot?.length ? 1 : 0) + (q.quality?.length ? 1 : 0) + (q.src?.length ? 1 : 0) + Number(Boolean(q.crafted)) + Number(Boolean(q.reagent))
     + Number(Boolean(q.set)) + Number(Boolean(q.skill)) + Number(Boolean(q.seen)) + Number(Boolean(q.ilvl)) + Number(Boolean(q.req)) + Number(Boolean(q.bind));
 }
 
@@ -149,10 +162,11 @@ export function categoryQuery(search: Record<string, string | string[] | undefin
   const flag = (k: string): boolean | undefined | null => { const v = one(k); return v === undefined ? undefined : v === "1" ? true : null; };
   const slot = list(one("slot"), SLOT_SLUGS);
   const quality = list(one("quality"), [...QUALITY_SLUGS, UNRECORDED]);
+  const src = list(one("src"), SOURCE_SLUGS) as SourceSlug[] | undefined | null;
   const crafted = flag("crafted"), reagent = flag("reagent"), set = flag("set"), seen = flag("seen");
   const skill = one("skill"), sort = one("sort"), page = one("page");
   const ilvl = levels(one("ilvl")), req = levels(one("req")), bind = one("bind");
-  if (slot === null || quality === null || crafted === null || reagent === null || set === null || seen === null || ilvl === null || req === null) return null;
+  if (slot === null || quality === null || src === null || crafted === null || reagent === null || set === null || seen === null || ilvl === null || req === null) return null;
   if (skill !== undefined && !itemFacets().professions.some((p) => p.slug === skill)) return null;
   if (bind !== undefined && !BINDING_SLUGS.includes(bind)) return null;
   const sorted = sort === undefined ? undefined : /^(-?)([a-z]+)$/.exec(sort);
@@ -161,7 +175,7 @@ export function categoryQuery(search: Record<string, string | string[] | undefin
   const text = one("q")?.trim().slice(0, 60);
   return {
     ...(text ? { q: text } : {}),
-    ...(slot ? { slot } : {}), ...(quality ? { quality } : {}),
+    ...(slot ? { slot } : {}), ...(quality ? { quality } : {}), ...(src ? { src } : {}),
     ...(crafted ? { crafted } : {}), ...(reagent ? { reagent } : {}), ...(set ? { set } : {}), ...(seen ? { seen } : {}),
     ...(skill ? { skill } : {}),
     ...(ilvl ? { ilvl } : {}), ...(req ? { req } : {}), ...(bind ? { bind } : {}),
@@ -177,6 +191,7 @@ export function itemsHref(classSlug?: string, subclassSlug?: string, q: Partial<
   if (q.q) params.set("q", q.q);
   if (q.slot?.length) params.set("slot", q.slot.join(","));
   if (q.quality?.length) params.set("quality", q.quality.join(","));
+  if (q.src?.length) params.set("src", q.src.join(","));
   if (q.skill) params.set("skill", q.skill);
   if (q.crafted) params.set("crafted", "1");
   if (q.reagent) params.set("reagent", "1");
@@ -193,9 +208,9 @@ export function itemsHref(classSlug?: string, subclassSlug?: string, q: Partial<
 }
 
 /** The query with one value of a multi filter switched on or off, back on page 1. */
-export function toggled(q: CategoryQuery, key: "slot" | "quality", value: string): CategoryQuery {
+export function toggled(q: CategoryQuery, key: "slot" | "quality" | "src", value: string): CategoryQuery {
   const now = q[key] ?? [];
-  const order = key === "slot" ? SLOT_SLUGS : [...QUALITY_SLUGS, UNRECORDED];
+  const order = key === "slot" ? SLOT_SLUGS : key === "src" ? SOURCE_SLUGS : [...QUALITY_SLUGS, UNRECORDED];
   const next = order.filter((v) => (v === value ? !now.includes(v) : now.includes(v)));
   return { ...q, [key]: next.length ? next : undefined, page: 1 };
 }
@@ -208,6 +223,8 @@ export interface ItemListContext {
   name?: (id: number) => string | undefined;
   /** Items with a public fact from players. */
   seen?: { has(id: number): boolean };
+  /** Where players have seen an item come from, in SOURCES order; undefined when nobody has reported one. */
+  sources?: (id: number) => readonly SourceSlug[] | undefined;
   /** The tooltip facts a page may show for an item (item level, required level, binding); undefined when it shows none. */
   tip?: (id: number) => ItemLevels | undefined;
 }
@@ -239,6 +256,7 @@ export function listItems(base: readonly ItemRow[], q: CategoryQuery, ctx: ItemL
     if (q.slot?.length && !q.slot.includes(slotOf(inv)?.slug ?? "")) return false;
     if (q.quality?.length && !q.quality.includes(quality === null ? UNRECORDED : QUALITIES[quality]?.slug ?? UNRECORDED)) return false;
     if (q.seen && !ctx.seen?.has(itemId)) return false;
+    if (q.src?.length && !ctx.sources?.(itemId)?.some((x) => q.src!.includes(x))) return false;
     // Only an item whose facts the page shows can match these; the rest have no known value.
     const tip = q.ilvl || q.req || q.bind ? ctx.tip?.(itemId) : undefined;
     if (q.ilvl && !within(tip?.level, q.ilvl)) return false;
@@ -259,7 +277,8 @@ export function sortItems(rows: ItemRow[], sort: CategoryQuery["sort"], ctx: Ite
     if (sort.key === "slot") return slotOf(row[3])?.name.toLowerCase() ?? null;
     if (sort.key === "ilvl") return ctx.tip?.(row[0])?.level || null;
     if (sort.key === "req") return ctx.tip?.(row[0])?.required || null;
-    return ctx.seen?.has(row[0]) ? 0 : null;
+    const from = ctx.sources?.(row[0]);
+    return from?.length ? from.map((x) => SOURCES.find((s) => s.slug === x)!.label).join(", ").toLowerCase() : null;
   };
   const keyed = rows.map((row) => ({ row, k: key(row) }));
   keyed.sort((a, b) => {

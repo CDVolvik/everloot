@@ -6,6 +6,7 @@ const facts = vi.hoisted(() => ({ rates: [] as unknown[], names: [] as unknown[]
 vi.mock("@/lib/rollup-compute", () => ({
   loadItemFacts: async () => facts,
   loadWorldFacts: async () => ({ npcs: [], quests: [], vendors: [], unreachable: false }),
+  loadCraftedItems: async () => ({ items: new Set<number>(), unreachable: false }),
   loadObservedEdges: async () => ({ edges: [], unreachable: false, dataAsOf: null }),
 }));
 vi.mock("@/lib/upload-store", () => ({ STORAGE_UNREACHABLE: "Storage unavailable" }));
@@ -139,4 +140,30 @@ test("an item page shows its category path, slot and quality; unconfirmed is a q
   expect(page).toContain('"item":"https://everloot.app/database/items/armor/cloth"');
   // Every empty relation tab is the shared one-line empty state, never a bare zero.
   expect(page).toContain("data-empty-state");
+});
+
+test("the Source column and filter: reported items show where they come from, the filter keeps its place in pager, menus and name box", async () => {
+  const cloth = CLIENT_TAXONOMY.items.filter((r) => r[1] === 4 && r[2] === 1).map((r) => r[0]);
+  const [dropped, plain] = cloth;
+  facts.rates = [{ itemId: dropped, sourceNpcId: 5, kills: 9, drops: 3, rate: 0.33, reporters: 3, public: true }];
+  try {
+    const all = await html(SubclassPage(sub("armor", "cloth")));
+    expect(all).toContain(">Source<");
+    expect(all).toContain(">Drop</td>");
+    // Only the reported item has a source; the rest of the page shows a dash.
+    expect(all.match(/>Drop<\/td>/g)).toHaveLength(1);
+    const only = await html(SubclassPage(sub("armor", "cloth", { src: "drop", quality: "epic" })));
+    expect(only).toContain("No items match these filters.");
+    expect(only).toContain('href="/database/items/armor/cloth?src=drop"');
+    const hit = await html(SubclassPage(sub("armor", "cloth", { src: "drop", sort: "-seen" })));
+    expect(hit).toContain(`href="/database/items/${dropped}"`);
+    expect(hit.match(/<tr /g)).toHaveLength(1);
+    // The source menu turns it off, the other menus and the header links keep it, and the name box carries it as a hidden field.
+    expect(hit).toContain('href="/database/items/armor/cloth?sort=-seen"');
+    expect(hit).toContain('href="/database/items/armor?src=drop&amp;sort=-seen"');
+    expect(hit).toContain('href="/database/items/armor/cloth?quality=epic&amp;src=drop&amp;sort=-seen"');
+    expect(hit).toMatch(/<input[^>]*name="src"[^>]*value="drop"|<input[^>]*value="drop"[^>]*name="src"/);
+  } finally {
+    facts.rates = [];
+  }
 });
