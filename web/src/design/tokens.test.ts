@@ -1,6 +1,6 @@
 import { expect, test } from "vitest";
 import config from "../../tailwind.config";
-import { channels, cssVariables, TEXT_TOKENS, tokens } from "./tokens";
+import { channels, cssVariables, RADIUS, SITE_MODE, SPACE, TEXT_TOKENS, tokens, WIDTH } from "./tokens";
 
 // WCAG 2.x relative luminance and contrast ratio.
 function luminance(hex: string): number {
@@ -39,10 +39,9 @@ function baseStyles(): Record<string, Vars | Record<string, Vars>> {
   for (const p of plugins) p.handler({ addBase: (s) => Object.assign(styles, s) });
   return styles;
 }
+/** The variables a page gets: the emitted :root for the site's mode, the kept token values for the other. */
 function rootVars(m: "dark" | "light"): Vars {
-  const base = baseStyles();
-  const light = (base["@media (prefers-color-scheme: light)"] as Record<string, Vars>)[":root"];
-  return m === "dark" ? (base[":root"] as Vars) : { ...(base[":root"] as Vars), ...light };
+  return m === SITE_MODE ? (baseStyles()[":root"] as Vars) : cssVariables(m);
 }
 const hex = (rgb: string) => "#" + rgb.split(" ").map((n) => Number(n).toString(16).padStart(2, "0")).join("").toUpperCase();
 
@@ -59,9 +58,9 @@ test.each(["dark", "light"] as const)("control edges reach 3:1 on canvas and pan
     expect(contrast(hex(vars["--edge"]), hex(vars[`--${bg}`])), `edge on ${bg}`).toBeGreaterThanOrEqual(3);
 });
 
-test.each(["dark", "light"] as const)("the primary outline stops reach 3:1 on the canvas (%s)", (m) => {
-  for (const t of ["grad-from", "grad-to"] as const)
-    expect(contrast(tokens[m][t], tokens[m].canvas)).toBeGreaterThanOrEqual(3);
+test.each(["dark", "light"] as const)("the primary fill stands out from the canvas at rest and on hover (%s)", (m) => {
+  for (const t of ["accent", "accent-hover"] as const)
+    expect(contrast(tokens[m][t], tokens[m].canvas), t).toBeGreaterThanOrEqual(3);
 });
 
 test("channels", () => expect(channels("#0E0F0D")).toBe("14 15 13"));
@@ -71,9 +70,29 @@ test("css variables cover every token in both modes", () => {
   expect(Object.keys(cssVariables("light"))).toHaveLength(Object.keys(tokens.light).length);
 });
 
+test("the site is dark-only: no system setting switches it to the light values", () => {
+  expect(SITE_MODE).toBe("dark");
+  const base = baseStyles();
+  expect(Object.keys(base).some((k) => k.includes("prefers-color-scheme"))).toBe(false);
+  expect(base[":root"]).toEqual(cssVariables("dark"));
+  // The light values stay in tokens.ts, complete, for a light theme to come back to.
+  expect(Object.keys(tokens.light)).toEqual(Object.keys(tokens.dark));
+});
+
+test("one spacing scale, one card radius, two content widths", () => {
+  expect(SPACE).toEqual([4, 8, 12, 16, 24, 32, 48, 72]);
+  expect(RADIUS).toEqual({ control: 6, card: 12 });
+  expect(WIDTH).toEqual({ reading: 768, wide: 1152 });
+  const extend = config.theme!.extend!;
+  expect(extend.maxWidth).toEqual({ reading: "768px", wide: "1152px" });
+  expect(extend.borderRadius).toEqual({ control: "6px", card: "12px" });
+  expect(extend.spacing).toEqual({ 18: "4.5rem" });
+});
+
 test("Tailwind exposes the tokens as variables", () => {
   const colors = config.theme!.extend!.colors as Record<string, unknown>;
   expect(colors.fg).toBe("rgb(var(--fg) / <alpha-value>)");
   expect(Object.keys(colors)).toEqual(expect.arrayContaining(["canvas", "fg-2", "q-legendary", "class-druid", "chat-guild", "tooltip-border"]));
+  expect(colors["accent-hover"]).toBe("rgb(var(--accent-hover) / <alpha-value>)");
   expect(colors).not.toHaveProperty("grad-from");
 });
