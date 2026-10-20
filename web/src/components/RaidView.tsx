@@ -8,7 +8,7 @@ import { webApplicationJsonLd } from "@/lib/jsonld";
 import { raidTalentFacts } from "@/lib/raid-facts";
 import { BANNER_MAP, creditWhat, loadingArt, loadSiteAssets, raidArt } from "@/lib/game-assets";
 import GameCredit from "@/components/game/GameCredit";
-import PageBanner from "@/components/game/PageBanner";
+import { BannerArt } from "@/components/game/PageBanner";
 
 export const TITLE = "WoW Forever Raid Buff Planner";
 export const description = "Fill a 10, 20 or 40 player WoW: Forever raid with classes and talent trees to see which buffs and debuffs each group gets. Rules are unconfirmed.";
@@ -30,11 +30,16 @@ export default async function RaidView({ initialCode }: { initialCode?: string }
   return (
     <Container>
       <JsonLd data={webApplicationJsonLd({ name: TITLE, path: "/tools/raid", description })} />
-      {banner && <div className="mb-6"><PageBanner art={banner} eager /></div>}
-      <PageHeader trail={trailFor("/tools/raid")!} title={TITLE} lede={description} />
+      {/* One credit line for the page's game art: the banner's caption when there is a banner, else under the planner. */}
+      <PageHeader
+        trail={trailFor("/tools/raid")!}
+        title={TITLE}
+        lede={description}
+        banner={banner && assets ? { image: <BannerArt art={banner} eager />, credit: <GameCredit version={assets.version} label={assets.label} what={credit} /> } : undefined}
+      />
 
       <RaidBuilder art={art} initialCode={initialCode} />
-      {assets && (art || banner) && <div className="mt-6"><GameCredit version={assets.version} label={assets.label} what={credit} /></div>}
+      {assets && art && !banner && <div className="mt-6"><GameCredit version={assets.version} label={assets.label} what={credit} /></div>}
       <AdSlot slot="belowTool" />
 
       {/* The explanations stay on the page for readers and search engines, closed until asked for. */}

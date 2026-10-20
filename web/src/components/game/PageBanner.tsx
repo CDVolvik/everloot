@@ -1,5 +1,3 @@
-import type { ReactNode } from "react";
-import Banner from "@/components/ui/Banner";
 import type { LoadingArt } from "@/lib/game-assets";
 
 // A game loading screen as a section hub's wide-screen banner. One rule everywhere it appears: only on
@@ -26,9 +24,4 @@ export function BannerArt({ art, eager = false }: { art: LoadingArt; eager?: boo
       className="absolute inset-0 h-full w-full object-cover object-center brightness-90"
     />
   );
-}
-
-/** The banner without a title on it, for a page that keeps its header below (`children` go on the art). */
-export default function PageBanner({ art, eager = false, credit, children }: { art: LoadingArt; eager?: boolean; credit?: ReactNode; children?: ReactNode }) {
-  return <Banner image={<BannerArt art={art} eager={eager} />} credit={credit}>{children}</Banner>;
 }
