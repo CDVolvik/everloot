@@ -38,17 +38,7 @@ test("an item card carries the page's name, the licence and the page URL, and pa
   expect(res.headers.get("x-everloot-licence")).toBeTruthy();
 });
 
-test("the game files' icon and text stay out of the card unless the site has switched them on", async () => {
-  mocks.tips.mockResolvedValue(new Map([[19019, { name: "Thunderfury", color: "#ff8000", quality: "Legendary", icon: "https://assets.everloot.app/b/icons/1.webp", lines: ["Binds when picked up"], partial: false, label: "x" }]]));
-  const body = tooltipResponse.parse(await (await call("item", "19019")).json());
-  expect(body).toMatchObject({ icon: null, color: null, gameData: null });
-  expect(body.lines).not.toContain("Binds when picked up");
-  expect(mocks.assets).not.toHaveBeenCalled();
-  expect(mocks.tips).not.toHaveBeenCalled();
-});
-
-test("switched on, the game files' tooltip text and icon come with their label and build, and the Blizzard credit", async () => {
-  vi.stubEnv("EVERLOOT_TOOLTIP_GAME_FILES", "1");
+test("the game files' tooltip text and icon come with their label and build, and the Blizzard credit", async () => {
   mocks.tips.mockResolvedValue(new Map([[19019, { name: "Thunderfury", color: "#ff8000", quality: "Legendary", icon: "https://assets.everloot.app/b/icons/1.webp", lines: ["Binds when picked up", '"Blessed Blade"'], partial: true, label: "x" }]]));
   const body = tooltipResponse.parse(await (await call("item", "19019")).json());
   expect(body).toMatchObject({ color: "#ff8000", icon: "https://assets.everloot.app/b/icons/1.webp", partial: true, gameData: { label: "Found in game files, unconfirmed", build: "70450" } });
@@ -57,7 +47,6 @@ test("switched on, the game files' tooltip text and icon come with their label a
 });
 
 test("an item nobody reported is a 404, and so is one a single install named (the 3-install rule)", async () => {
-  vi.stubEnv("EVERLOOT_TOOLTIP_GAME_FILES", "1");
   expect((await call("item", "123456")).status).toBe(404);
   expect((await call("item", "5")).status).toBe(404);
   expect(mocks.tips).not.toHaveBeenCalled();

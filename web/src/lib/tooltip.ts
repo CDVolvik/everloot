@@ -52,9 +52,9 @@ export async function loadTooltip(type: TooltipType, id: number): Promise<Toolti
     const page = itemPage(id, facts);
     // The same test as the item page: the game file tooltip only for an item players have reported.
     if (!(page.name || page.drops.length || page.pins.length)) return notFound;
-    // The game's icon and tooltip text are Blizzard's, and the data policy keeps them to pages. They go into a
-    // card only once the owner has switched this on (docs/DATA_POLICY.md names the exception).
-    const assets = process.env.EVERLOOT_TOOLTIP_GAME_FILES === "1" ? await loadSiteAssets() : null;
+    // The game's icon and tooltip text are Blizzard's; docs/DATA_POLICY.md ("Third extension") lets one item's
+    // into a card, under the same rules as its page.
+    const assets = await loadSiteAssets();
     const tip = assets ? (await loadItemTips(assets, [id])).get(id) : undefined;
     const lines = [...(tip?.lines ?? [])];
     if (tip?.partial) lines.push(`${PLACEHOLDER} marks a value the game files do not give us yet.`);

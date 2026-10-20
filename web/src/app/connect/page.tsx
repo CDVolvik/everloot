@@ -407,7 +407,7 @@ export default function ConnectPage() {
           </li>
           <li>
             <span className="text-fg">Not ours:</span> World of Warcraft and Blizzard&apos;s game data belong to Blizzard.
-            Downloads, the API and the MCP server carry ids and facts. Blizzard&apos;s icons, tooltip text and art are never in them.
+            Downloads, the API and the MCP server carry ids and facts. Blizzard&apos;s icons, tooltip text and art are never in them; a tooltip card carries one item&apos;s, credited to Blizzard.
           </li>
           <li>
             <span className="text-fg">Table names:</span> where a page or file shows column names from game tables, they come from{" "}
