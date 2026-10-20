@@ -12,8 +12,8 @@ import { WORLD_MAP_DATA } from "../src/world-map-file.js";
 
 /**
  * Every tool answer that has a page on everloot.app names it in its text, as a "More: <url>" line, and
- * names none when the page would be empty or not indexed. The structured answers stay exactly the
- * published output shapes: the link is text only.
+ * names none when the page would be empty or not indexed. The structured answer carries the same page
+ * as `url`, and nothing outside its published output shape.
  */
 
 const LONG = "Thrall, son of Durotan, was Warchief of the Horde. ".repeat(8).trim();
@@ -160,6 +160,25 @@ test("the game-file tools link before Blizzard's credit", async () => {
   expect((await call(c, "item_categories", {})).endsWith(`\nMore: https://everloot.app/database/items\n${GAME_DATA_CREDIT}`)).toBe(true);
   expect(await call(c, "item_categories", { class: "no-such-class" })).not.toContain("More:");
   expect((await call(c, "talent_tree", { class: "mage" })).endsWith(`\nMore: https://everloot.app/tools/talents/mage\n${GAME_DATA_CREDIT}`)).toBe(true);
+});
+
+test("the structured answers carry the same page as url, and no url where the text has no link", async () => {
+  const c = await client();
+  const structured = async (name: McpToolName, args: Record<string, unknown>) =>
+    z.object(MCP_TOOLS[name].outputSchema!).parse((await c.callTool({ name, arguments: args })).structuredContent) as Record<string, unknown>;
+  const hits = (await structured("search_knowledge", { query: "Thrall" })).hits as { id: number; name: string; url?: string }[];
+  expect(Object.fromEntries(hits.map((h) => [h.name, h.url]))).toEqual({
+    Thrall: THRALL, "Thrall stub": undefined, "Thrall redirect": undefined, "Thrall's Blade": undefined,
+  });
+  expect((await structured("get_entity", { id: hits.find((h) => h.name === "Thrall")!.id })).hit).toMatchObject({ url: THRALL });
+  expect((await structured("get_by_name", { name: "thrall" })).hits).toEqual([expect.objectContaining({ url: THRALL })]);
+  const evidence = (await structured("answer_sources", { question: "Who is Thrall?" })).evidence as { source: { title: string }; url?: string }[];
+  expect(evidence.find((e) => e.source.title === "Thrall")).toMatchObject({ url: THRALL });
+  expect(evidence.find((e) => e.source.title === "Thrall stub")).not.toHaveProperty("url");
+  expect(await structured("item_categories", {})).toMatchObject({ url: "https://everloot.app/database/items" });
+  expect(await structured("item_categories", { class: "no-such-class" })).not.toHaveProperty("url");
+  expect(await structured("item_page", { itemId: 1234 })).toMatchObject({ url: "https://everloot.app/database/items/1234" });
+  expect(await structured("item_page", { itemId: 999 })).not.toHaveProperty("url");
 });
 
 test("page links are absolute, encoded like the site's own, and the More line sits before a credit", () => {

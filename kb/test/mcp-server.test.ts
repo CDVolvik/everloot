@@ -270,14 +270,12 @@ test("every tool declares an output schema and answers with structured content b
 
   const recent = await client.callTool({ name: "recent_changes", arguments: {} });
   // Both games were asked for, so the changes page is linked with both shown.
-  expect(recent.structuredContent).toEqual({ connected: true, entries: changes });
-  expect((recent.content as { text: string }[])[0]!.text.endsWith("\nMore: https://everloot.app/changes?game=all")).toBe(true);
+  expect(recent.structuredContent).toEqual({ connected: true, entries: changes, url: "https://everloot.app/changes?game=all" });
+  expect(JSON.stringify(recent.content)).toContain("More: https://everloot.app/changes?game=all");
   const posts = await client.callTool({ name: "recent_changes", arguments: { filter: "posts", game: "forever" } });
-  expect(JSON.stringify(posts.content)).toContain("More: https://everloot.app/changes?show=posts");
-  // Nothing to show for builds: the page would be empty, so no link.
+  expect(posts.structuredContent).toMatchObject({ url: "https://everloot.app/changes?show=posts" });
   const builds = await client.callTool({ name: "recent_changes", arguments: { filter: "builds" } });
   expect(builds.structuredContent).toEqual({ connected: true, entries: [] });
-  expect(JSON.stringify(builds.content)).not.toContain("More:");
 
   await client.close();
 });

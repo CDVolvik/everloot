@@ -152,10 +152,10 @@ test("over MCP: the protocol's tool, answering text with the data age and credit
   expect(text).toContain("Data as of 2026-11-16 12:00 UTC.");
   expect(text.endsWith(MCP_CREDIT)).toBe(true);
   const structured = z.object(MCP_TOOLS.population.outputSchema).parse(answer.structuredContent);
-  expect(structured).toMatchObject({ connected: true, dataAsOf: AS_OF, page: { characters: 1165, cells: [{ count: 20 }] } });
+  expect(structured).toMatchObject({ connected: true, dataAsOf: AS_OF, url: "https://everloot.app/census", page: { characters: 1165, cells: [{ count: 20 }] } });
   expect(text).toContain("More: https://everloot.app/census\nData as of");
   const launch = await client.callTool({ name: "population", arguments: { window: "launch" } });
-  expect(JSON.stringify(launch.content)).toContain("More: https://everloot.app/census?window=launch");
+  expect(launch.structuredContent).toMatchObject({ url: "https://everloot.app/census?window=launch" });
   await client.close();
 });
 

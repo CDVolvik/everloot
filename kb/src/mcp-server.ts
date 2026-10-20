@@ -179,7 +179,7 @@ export async function completionProgressAnswer(args: { ownerInstallId: string; c
   const url = shown ? collectionsUrl({ install: args.ownerInstallId, character: args.characterKey }) : undefined;
   return {
     text: `${withMore(handleCompletionProgress(args, loaded.facts), url)}\n${dataAgeLine(loaded.dataAsOf)}`,
-    structured: { connected: true, dataAsOf: loaded.dataAsOf, page },
+    structured: { connected: true, dataAsOf: loaded.dataAsOf, ...(url ? { url } : {}), page },
   };
 }
 
@@ -202,7 +202,7 @@ export async function marketValueAnswer(args: { realm: string; itemId: number },
   const url = value || points.length ? marketItemUrl(args.realm, args.itemId) : undefined;
   return {
     text: `${withMore(handleMarketValue(args, market.state, now), url)}\n${answerFooter(market.dataAsOf)}`,
-    structured: { connected: true, dataAsOf: market.dataAsOf, page: { realm: args.realm.trim(), itemId: args.itemId, value, history: points } },
+    structured: { connected: true, dataAsOf: market.dataAsOf, ...(url ? { url } : {}), page: { realm: args.realm.trim(), itemId: args.itemId, value, history: points } },
   };
 }
 
@@ -407,10 +407,15 @@ function dataAgeLine(dataAsOf: unknown): string {
 
 type SearchArgs = McpToolArgs<"search_knowledge">;
 
-/** The hits as text, each with its page on the site when it has one the site indexes. */
-function formatHits(db: DB, hits: SearchHit[]): string {
+/** The hits, each with its page on the site when it has one the site indexes. */
+function withPages(db: DB, hits: SearchHit[]): (SearchHit & { url?: string })[] {
   const urls = loreUrls(db, hits);
-  return hits.map((h) => withMore(`[${h.kind}/${h.gameVersion}] ${h.name}\n${h.snippet}\nSource: ${h.sourceUrl} (${h.licence}, retrieved ${h.retrievedAt})`, urls.get(h.id))).join("\n\n");
+  return hits.map((h) => (urls.has(h.id) ? { ...h, url: urls.get(h.id)! } : h));
+}
+
+/** The hits as text, each with its page on the site when it has one. */
+function formatHits(db: DB, hits: SearchHit[]): string {
+  return withPages(db, hits).map((h) => withMore(`[${h.kind}/${h.gameVersion}] ${h.name}\n${h.snippet}\nSource: ${h.sourceUrl} (${h.licence}, retrieved ${h.retrievedAt})`, h.url)).join("\n\n");
 }
 
 /** Pure handlers — tested directly; the MCP registration below is a thin wrapper. */
@@ -480,7 +485,7 @@ export async function readPage<T>(
   const built = page(read.facts);
   return {
     text: `${withMore(built.text, built.url)}\n${answerFooter(read.dataAsOf)}`,
-    structured: { connected: true, dataAsOf: read.dataAsOf, page: built.page },
+    structured: { connected: true, dataAsOf: read.dataAsOf, ...(built.url ? { url: built.url } : {}), page: built.page },
   };
 }
 
@@ -524,9 +529,12 @@ export type ToolHandlers = { [K in McpToolName]: (args: McpToolArgs<K>) => ToolA
 export function createToolHandlers(db: DB, options: ToolOptions = {}): ToolHandlers {
   const readFacts = <T>(tool: ToolName, render: (facts: T) => string) => fromTooledUploads(tool, render, options.corpus);
   const handlers: ToolHandlers = {
-    search_knowledge: (args) => ({ text: handleSearch(db, args), structured: { hits: searchHits(db, args) } }),
-    get_entity: (args) => ({ text: handleGetEntity(db, args), structured: { hit: getEntity(db, args.id) ?? null } }),
-    get_by_name: (args) => ({ text: handleGetByName(db, args), structured: { hits: getByName(db, args.name, args.kind) } }),
+    search_knowledge: (args) => ({ text: handleSearch(db, args), structured: { hits: withPages(db, searchHits(db, args)) } }),
+    get_entity: (args) => {
+      const hit = getEntity(db, args.id);
+      return { text: handleGetEntity(db, args), structured: { hit: hit ? withPages(db, [hit])[0]! : null } };
+    },
+    get_by_name: (args) => ({ text: handleGetByName(db, args), structured: { hits: withPages(db, getByName(db, args.name, args.kind)) } }),
     search: (args) => jsonAnswer({
       results: searchHits(db, { query: args.query, limit: 10 }).map((h) => ({ id: String(h.id), title: h.name, url: recordUrl(h, SITE) })),
     }),
@@ -541,9 +549,7 @@ export function createToolHandlers(db: DB, options: ToolOptions = {}): ToolHandl
     answer_sources: async (args) => {
       const read = await readTooledFacts<AnswerSourcesFacts>("answer_sources", options.corpus);
       const result = answerSources(db, args, read?.facts ?? null, read?.dataAsOf ?? null);
-      // The page links go in the text only: the published evidence shape has no url field.
-      const evidence = result.evidence.map(({ url, ...piece }) => (void url, piece));
-      return { text: `${formatAnswerSources(result, read !== null)}\n${read ? answerFooter(read.dataAsOf) : MCP_CREDIT}`, structured: { ...result, evidence } };
+      return { text: `${formatAnswerSources(result, read !== null)}\n${read ? answerFooter(read.dataAsOf) : MCP_CREDIT}`, structured: result };
     },
     profession_path: (args) => {
       // The same defaults the text handler applies: from 1, to the start when no end is given.
@@ -604,7 +610,10 @@ export function createToolHandlers(db: DB, options: ToolOptions = {}): ToolHandl
       const structured = itemCategoriesStructured(args, CLIENT_TAXONOMY, CLIENT_LAYER.build.version) as { error?: string; item?: unknown };
       // The database's item index, unless the class or item asked for is not in the build.
       const url = structured.error || structured.item === null ? undefined : ITEMS_URL;
-      return { text: withMore(handleItemCategories(args, CLIENT_TAXONOMY, CLIENT_LAYER.build.version), url, GAME_DATA_CREDIT), structured };
+      return {
+        text: withMore(handleItemCategories(args, CLIENT_TAXONOMY, CLIENT_LAYER.build.version), url, GAME_DATA_CREDIT),
+        structured: { ...structured, ...(url ? { url } : {}) },
+      };
     },
     talent_tree: (args) => handleTalentTree(args),
     talent_plan: (args) => handleTalentPlan(args),
@@ -637,14 +646,14 @@ export function createToolHandlers(db: DB, options: ToolOptions = {}): ToolHandl
       try { entries = (await options.changes?.()) ?? null; } catch { entries = null; }
       const structured = recentChangesStructured(entries, args);
       const url = structured.entries.length ? changesUrl(args.filter ?? "all", args.game) : undefined;
-      return { text: withMore(handleRecentChanges(entries, args), url), structured };
+      return { text: withMore(handleRecentChanges(entries, args), url), structured: { ...structured, ...(url ? { url } : {}) } };
     },
     ecosystem_projects: async (args) => {
       let view: EcosystemView | null = null;
       try { view = (await options.ecosystem?.()) ?? null; } catch { view = null; }
       const now = new Date();
       const url = view ? ECOSYSTEM_URL : undefined;
-      return { text: withMore(handleEcosystemProjects(view, args, now), url), structured: ecosystemProjectsStructured(view, args, now) };
+      return { text: withMore(handleEcosystemProjects(view, args, now), url), structured: { ...ecosystemProjectsStructured(view, args, now), ...(url ? { url } : {}) } };
     },
     population: (args) => answerPopulation(args, options.census, answerFooter),
     everloot_plan: () => ({ text: handlePlan(), structured: planStructured() }),

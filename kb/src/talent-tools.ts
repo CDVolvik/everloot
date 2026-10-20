@@ -66,6 +66,7 @@ export function handleTalentTree(args: McpToolArgs<"talent_tree">): Answer {
       trees: trees.map((t) => ({ id: t.id, name: t.name, nodes: picked.filter((n) => n.treeId === t.id).length })),
       nodes: picked.map(nodeOut),
       credit: GAME_DATA_CREDIT,
+      url,
     },
   };
 }
@@ -107,7 +108,7 @@ export function handleTalentPlan(args: McpToolArgs<"talent_plan">): Answer {
     text: lines.join("\n"),
     structured: {
       ok: true, class: catalog.classSlug, className: catalog.className, codeBuild: result.report.codeBuild, treeBuild: result.report.treeBuild,
-      pointsSpent, minLevel: result.minLevel, byTree, talents, problems: result.report.problems, link, label: catalog.label, credit: GAME_DATA_CREDIT,
+      pointsSpent, minLevel: result.minLevel, byTree, talents, problems: result.report.problems, link, label: catalog.label, credit: GAME_DATA_CREDIT, url,
     },
   };
 }

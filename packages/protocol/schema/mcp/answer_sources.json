@@ -81,6 +81,10 @@
               "type": "integer",
               "minimum": -9007199254740991,
               "maximum": 9007199254740991
+            },
+            "url": {
+              "description": "The everloot.app page for this piece, absolute: the item or NPC page, or the indexed lore page. Absent when there is none.",
+              "type": "string"
             }
           },
           "required": [

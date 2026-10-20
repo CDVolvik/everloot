@@ -7,6 +7,10 @@ required, or tightening a limit is a major release.
 ## [Unreleased]
 
 ### Added
+- 1.5.0: an optional `url` in tool answers, the everloot.app page that shows the answer, absolute, and absent when
+  there is none or it would be empty (`PAGE_URL`). It is on `uploadsAnswer` (every tool built on player uploads),
+  `knowledgeHit` (an indexed lore page), `evidence`, and the answers of `item_categories`, `talent_tree`,
+  `talent_plan` (the build's own link), `recent_changes` and `ecosystem_projects`. Input schemas are unchanged.
 - 1.3.0: a census count also needs 3 distinct addresses (`reporter`, the keyed address hash intake stamps), so `population`'s `rule` gains `minReporters` and a hidden count is null for fewer than 10 characters, 3 installs or 3 addresses, or when held back so it can't be worked out.
 - 1.2.0: the MCP tool `population` (who plays what, from the census) with its output shape `populationPage`
   (`populationCell`, `CENSUS_FACTIONS`, `CENSUS_WINDOWS`), emitted as `schema/mcp/population.json`, and in
@@ -87,6 +91,8 @@ required, or tightening a limit is a major release.
   JSON one, emitted as `schema/mcp/resources.json` and listed in `index.json` as `mcpResources`.
 
 ### Changed
+- `scripts/check-semver.ts` compares the branches of an `anyOf` or `oneOf` field by field, so a nullable object
+  that gains an optional field (`get_entity`'s `hit`) counts as an addition, not as a removed branch.
 - `TERMS_URL` points at the terms of use, `https://everloot.app/terms#licences`, now that the site has a
   terms page; it was the licence section of `/connect`.
 

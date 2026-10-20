@@ -162,5 +162,5 @@ export async function answerPopulation(
   if (!loaded) return { text: CENSUS_UNAVAILABLE, structured: { connected: false, dataAsOf: null, reason: CENSUS_UNAVAILABLE } };
   const { text, page } = populationAnswer(args, loaded.view);
   const url = censusUrl(args.window);
-  return { text: `${withMore(text, url)}\n${footer(loaded.dataAsOf)}`, structured: { connected: true, dataAsOf: loaded.dataAsOf, page } };
+  return { text: `${withMore(text, url)}\n${footer(loaded.dataAsOf)}`, structured: { connected: true, dataAsOf: loaded.dataAsOf, url, page } };
 }

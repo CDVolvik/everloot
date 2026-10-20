@@ -17,10 +17,11 @@ test("every tool gets a parameter table in declaration order, with required flag
   // The answer table: every tool has fields, and upload answers start with the envelope.
   for (const d of docs) expect(d.output.length, d.name).toBeGreaterThan(0);
   const item = toolOutput("item_page");
-  expect(item.map((f) => f.name)).toEqual(["connected", "dataAsOf", "reason", "page"]);
+  expect(item.map((f) => f.name)).toEqual(["connected", "dataAsOf", "reason", "url", "page"]);
   expect(item[0]).toMatchObject({ type: "boolean", required: true });
   expect(item[1]).toMatchObject({ type: "string, or null", required: true });
-  expect(item[3]).toMatchObject({ type: "object", required: false });
+  expect(item[3]).toMatchObject({ type: "string", required: false });
+  expect(item[4]).toMatchObject({ type: "object", required: false });
   expect(toolOutput("search_knowledge")[0]).toMatchObject({ name: "hits", type: "array of objects", required: true });
   expect(toolOutput("everloot_plan").map((f) => f.name)).toEqual(["rows", "counts"]);
   expect(toolParams("everloot_plan")).toEqual([]);

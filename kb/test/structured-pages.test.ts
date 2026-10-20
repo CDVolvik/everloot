@@ -52,7 +52,7 @@ test("each page tool answers with its page under the uploads envelope, and the t
 
   const item = await c.callTool({ name: "item_page", arguments: { itemId: 1234 } });
   const itemOut = out("item_page").parse(item.structuredContent);
-  expect(itemOut).toEqual({ connected: true, dataAsOf: AS_OF, page: itemPage(1234, itemFactsFromRecords(records)) });
+  expect(itemOut).toEqual({ connected: true, dataAsOf: AS_OF, url: "https://everloot.app/database/items/1234", page: itemPage(1234, itemFactsFromRecords(records)) });
   expect(itemOut.page!.name).toBe("Peacebloom");
   expect(itemOut.page!.drops[0]).toMatchObject({ sourceNpcId: 456, source: "NPC 456 Forest Spider", kills: 12, drops: 3, reporters: 3 });
   expect(itemOut.page!.pins[0]).toMatchObject({ npcId: 456, name: "Forest Spider", mapId: 141, x: 41, y: 61, reporters: 3 });
@@ -60,21 +60,24 @@ test("each page tool answers with its page under the uploads envelope, and the t
   expect(itemText).toContain("Peacebloom");
   expect(itemText).toContain("Data as of 2026-10-18 10:00 UTC.");
   expect(itemText).toContain(MCP_CREDIT);
+  // The page link is the body's last line, before the data age and the credit the answer must end with.
+  const itemLines = (item.content as { text: string }[])[0]!.text.split("\n");
+  expect(itemLines.slice(-3)).toEqual(["More: https://everloot.app/database/items/1234", "Data as of 2026-10-18 10:00 UTC.", MCP_CREDIT]);
 
   const npc = out("npc_page").parse((await c.callTool({ name: "npc_page", arguments: { npcId: 456 } })).structuredContent);
-  expect(npc).toEqual({ connected: true, dataAsOf: AS_OF, page: npcPage(456, world) });
+  expect(npc).toEqual({ connected: true, dataAsOf: AS_OF, url: "https://everloot.app/database/npcs/456", page: npcPage(456, world) });
   expect(npc.page!.pins).toEqual([{ mapId: 141, x: 41, y: 61, reporters: 3 }]);
 
   const quest = out("quest_page").parse((await c.callTool({ name: "quest_page", arguments: { questId: 7 } })).structuredContent);
-  expect(quest).toEqual({ connected: true, dataAsOf: AS_OF, page: questPage(7, world) });
+  expect(quest).toEqual({ connected: true, dataAsOf: AS_OF, url: "https://everloot.app/database/quests/7", page: questPage(7, world) });
   expect(quest.page).toEqual({ questId: 7, title: "Spiders", level: 5, giverNpcId: 456, turnInNpcId: 456, rewards: [1234] });
 
   const vendor = out("vendor_page").parse((await c.callTool({ name: "vendor_page", arguments: { vendorNpcId: 99 } })).structuredContent);
-  expect(vendor).toEqual({ connected: true, dataAsOf: AS_OF, page: vendorPage(99, world) });
+  expect(vendor).toEqual({ connected: true, dataAsOf: AS_OF, url: "https://everloot.app/database/vendors/99", page: vendorPage(99, world) });
   expect(vendor.page!.offers).toEqual([{ itemId: 1234, priceCopper: 25, limitedStock: null, unlimited: true, reporters: 3 }]);
 
   const object = out("object_page").parse((await c.callTool({ name: "object_page", arguments: { objectId: 1731 } })).structuredContent);
-  expect(object).toEqual({ connected: true, dataAsOf: AS_OF, page: objectPage(1731, objectFactsFromRecords(records)) });
+  expect(object).toEqual({ connected: true, dataAsOf: AS_OF, url: "https://everloot.app/database/objects/1731", page: objectPage(1731, objectFactsFromRecords(records)) });
   expect(object.page!.drops[0]).toMatchObject({ itemId: 2770, kills: 3, drops: 3, reporters: 3 });
 });
 
@@ -82,9 +85,15 @@ test("an unknown id is a page with nothing agreed, not an error and not a zero",
   const c = await client(async () => ({ records, dataAsOf: AS_OF }));
   const result = await c.callTool({ name: "item_page", arguments: { itemId: 999 } });
   expect(result.isError).not.toBe(true);
-  const page = out("item_page").parse(result.structuredContent).page!;
-  expect(page).toEqual({ itemId: 999, name: null, drops: [], pins: [] });
+  const parsed = out("item_page").parse(result.structuredContent);
+  expect(parsed.page).toEqual({ itemId: 999, name: null, drops: [], pins: [] });
   expect(JSON.stringify(result.content)).toContain("Drop rate unrecorded");
+  // Its page on the site is empty and not indexed, so the answer links nowhere.
+  expect(parsed).not.toHaveProperty("url");
+  expect(JSON.stringify(result.content)).not.toContain("More:");
+  for (const [name, args] of [["npc_page", { npcId: 999 }], ["quest_page", { questId: 999 }], ["vendor_page", { vendorNpcId: 999 }], ["object_page", { objectId: 999 }]] as const) {
+    expect((await c.callTool({ name, arguments: args })).structuredContent, name).not.toHaveProperty("url");
+  }
 });
 
 test("with no corpus the structure says not connected and why; an unreadable corpus says unavailable", async () => {
