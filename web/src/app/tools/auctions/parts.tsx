@@ -49,7 +49,7 @@ export function Contribute() {
         Add your realm&apos;s prices
       </SectionHeading>
       <div className="flex flex-wrap gap-2">
-        <Link href="/addon" className="btn btn-primary">Get the addon</Link>
+        <Link href="/addon" className="btn">Get the addon</Link>
         <Link href="/addon#desktop" className="btn">Get the Desktop App</Link>
       </div>
     </Card>
