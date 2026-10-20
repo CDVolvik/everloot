@@ -1,17 +1,14 @@
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { expect, test } from "vitest";
-import { emptyStore, mergePosts, parseBlueskyFeed, parseForumActions } from "../src/blue-posts.js";
-import { buildTimeline, filterTimeline, handleRecentChanges, parseFilter, renderFeed, type BuildLike } from "../src/changes.js";
+import { emptyStore, loadStore, mergePosts, parseBlueskyFeed, type BluePost } from "../src/blue-posts.js";
+import { blueThreads, buildTimeline, filterTimeline, handleRecentChanges, parseFilter, renderFeed, type BuildLike } from "../src/changes.js";
 import { clampExcerpt, safeHttpUrl } from "../src/text-safety.js";
 
 const fixture = (name: string) => JSON.parse(readFileSync(new URL(`./fixtures/blue/${name}`, import.meta.url), "utf8"));
 const seen = new Date("2026-10-17T12:00:00Z");
-const accounts = [
-  { username: "Zorbrix-83447", title: "Game Producer" },
-  { username: "Linxy", title: "Community Manager" },
-  { username: "Rommax-244181", title: "WoW Developer" },
-];
-const posts = mergePosts(mergePosts(emptyStore(), parseForumActions(fixture("user_actions.json"), accounts, seen)).store, parseBlueskyFeed(fixture("bluesky-feed.json"), seen)).store.posts;
+const forumPosts = fixture("stored-forum-posts.json").posts as BluePost[];
+const posts = mergePosts(mergePosts(emptyStore(), forumPosts).store, parseBlueskyFeed(fixture("bluesky-feed.json"), seen)).store.posts;
 const builds: BuildLike[] = [
   { key: "wow_classic_beta:aaa", product: "wow_classic_beta", buildId: 70450, version: "1.60.1.70450", firstSeen: "2026-10-16T20:00:00.000Z" },
   { key: "wow_classic_beta:bbb", product: "wow_classic_beta", buildId: 70460, version: "1.60.1.70460", firstSeen: "2026-10-17T06:00:00.000Z", diffUrl: "https://everloot.app/changes/diff/70460" },
@@ -151,6 +148,62 @@ test("the feed and the MCP text stay safe when the stored link is bad", () => {
   expect(xml).not.toContain("javascript:");
   expect(xml).toContain("<link>https://everloot.app/changes</link>");
   expect(handleRecentChanges(entries, {})).toContain("Original: link unavailable");
+});
+
+test("thread fields reach the timeline: region, topic, post number, and whether the blue started the thread", () => {
+  const entry = timeline.find((e) => e.id === "forum:70000002")!;
+  expect(entry).toMatchObject({ region: "us", topicId: 9000002, topicSlug: "synthetic-forever-hotfixes", postNumber: 14, startedThread: false });
+  expect(timeline.find((e) => e.id === "forum:70000001")!.startedThread).toBe(true);
+  // Bluesky posts and builds have no thread.
+  expect(timeline.filter((e) => e.source === "bluesky").every((e) => e.topicId === undefined && e.region === undefined)).toBe(true);
+});
+
+test("stored thread fields are checked: a bad topic id, number or slug is dropped, startedThread follows the post number", () => {
+  const [entry] = buildTimeline([{ ...onePost(), topicId: -4, postNumber: 2, topicSlug: "x", region: "mars" }], []);
+  expect(entry.topicId).toBeUndefined();
+  expect(entry.postNumber).toBeUndefined();
+  expect(entry.region).toBeUndefined();
+  const [other] = buildTimeline([{ ...onePost(), topicSlug: "../../evil", postNumber: 3, startedThread: true }], []);
+  expect(other.topicSlug).toBeUndefined();
+  expect(other.startedThread).toBe(false);
+});
+
+test("blueThreads groups forum posts per region and topic, oldest reply first, newest thread first", () => {
+  const reply = { ...forumPosts[0], id: "forum:70000099", postNumber: 7, startedThread: false, postedAt: "2026-10-17T09:00:00.000Z", url: "https://us.forums.blizzard.com/en/wow/t/synthetic-beta-maintenance/9000001/7" };
+  // Same topic id on the EU forum is a different thread.
+  const eu = { ...forumPosts[0], id: "forum:eu:5", region: "eu", url: "https://eu.forums.blizzard.com/en/wow/t/synthetic-beta-maintenance/9000001", postedAt: "2026-10-10T09:00:00.000Z" };
+  const threads = blueThreads(buildTimeline([...posts, reply, eu], []));
+  expect(threads[0]).toMatchObject({
+    key: "us:9000001", region: "us", topicId: 9000001, startedByBlue: true, latestAt: "2026-10-17T09:00:00.000Z",
+    url: "https://us.forums.blizzard.com/en/wow/t/synthetic-beta-maintenance/9000001", title: "Synthetic Beta Realm Maintenance & Restart",
+  });
+  expect(threads[0].posts.map((p) => p.postNumber)).toEqual([1, 7]);
+  expect(threads.find((t) => t.key === "eu:9000001")?.url).toBe("https://eu.forums.blizzard.com/en/wow/t/synthetic-beta-maintenance/9000001");
+  expect(threads.find((t) => t.key === "us:9000002")?.startedByBlue).toBe(false);
+  expect(threads.every((t) => t.posts.every((p) => p.source === "forum"))).toBe(true);
+  expect(threads).toHaveLength(6);
+});
+
+test("recent_changes text names the EU forum, and US posts read as before", () => {
+  const eu = buildTimeline([{ ...onePost(), id: "forum:eu:1", region: "eu" }], []);
+  expect(handleRecentChanges(eu, {})).toContain("[Blue post, WoW: Forever, EU forum]");
+  expect(handleRecentChanges(buildTimeline([onePost()], []), {})).toContain("[Blue post, WoW: Forever] ");
+});
+
+test("the committed blue-posts.json is clean: unique ids, every forum post has its region and thread, excerpts within limits", () => {
+  const raw = JSON.parse(readFileSync(new URL("../changes/blue-posts.json", import.meta.url), "utf8")).posts as Record<string, unknown>[];
+  const stored = loadStore(fileURLToPath(new URL("../changes/blue-posts.json", import.meta.url))).posts;
+  expect(stored).toHaveLength(raw.length);
+  expect(new Set(stored.map((p) => p.id)).size).toBe(stored.length);
+  for (const p of stored.filter((x) => x.source === "forum")) {
+    expect(p.region, p.id).toMatch(/^(us|eu)$/);
+    expect(p.id.startsWith(p.region === "eu" ? "forum:eu:" : "forum:") && (p.region === "eu" || !p.id.startsWith("forum:eu:")), p.id).toBe(true);
+    expect(p.topicId, p.id).toBeGreaterThan(0);
+    expect(p.postNumber, p.id).toBeGreaterThan(0);
+    expect(p.url, p.id).toContain(`https://${p.region}.forums.blizzard.com/en/wow/t/`);
+  }
+  // Nothing is widened on the way in: what is stored is what the site shows.
+  for (const [i, p] of raw.entries()) expect(stored[i].excerpt, String(p.id)).toBe(p.excerpt);
 });
 
 test("MCP excerpts are marked as untrusted quoted source text", () => {

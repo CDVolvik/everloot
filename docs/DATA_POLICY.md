@@ -295,16 +295,21 @@ Blizzard's version service reports.
   an excerpt of at most two sentences (300 characters) and a link to the original. The text is
   Blizzard's, so we never copy a post in full. A maintainer may add a one-line summary in our own
   words; nothing writes one automatically.
-- *Sources.* Forum posts come only from a short list of named Blizzard staff accounts, and only
-  from the WoW: Forever and WoW Classic categories. Bluesky posts come only from the verified
+- *Sources.* Forum posts come from the US and EU English WoW forums, only from the WoW: Forever and
+  WoW Classic categories, and only from Blizzard staff: people on each forum's published staff list
+  (`about.json`) or posts the forum itself marks as Blizzard's (its group tracker; the green MVP
+  groups are players and are left out). `kb/curated/blue-accounts.json` holds hand corrections.
+  Players' posts are read with a topic but never kept. Bluesky posts come only from the verified
   official World of Warcraft account, and only when they are about Forever or Classic. No
   third-party tracker is read or copied.
 - *Robots and manners.* The reader checks robots.txt before every run and uses public JSON only.
   Blizzard's forum `.rss` routes are disallowed by its robots.txt, so we never use them. It names
   itself (`Everloot/1.0`, with a contact address), never follows a redirect, and stops when a
   server answers 429 or a server error, honouring Retry-After.
-- *Polling cap.* At most once every 30 minutes, at most 3 pages of 30 items per source per run,
-  stopping at what it already saw. A source asked less than 25 minutes ago is skipped.
+- *Polling cap.* At most once every 30 minutes and at most 40 requests a run in all: the staff list
+  at most once a day, the Forever and Classic topic lists only back to what the last run saw, and
+  only topics that changed and carry a staff post. A source asked less than 25 minutes ago is
+  skipped. A one-off history import (`blue-backfill`) uses the same rules and pace with a larger budget.
 - *Build times.* A build's time on that page is when Everloot first saw it, not when Blizzard
   released it.
 

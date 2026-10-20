@@ -842,6 +842,14 @@ export declare const changeEntry: z.ZodObject<{
     summary: z.ZodOptional<z.ZodString>;
     version: z.ZodOptional<z.ZodString>;
     diffUrl: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+    region: z.ZodOptional<z.ZodEnum<{
+        eu: "eu";
+        us: "us";
+    }>>;
+    topicId: z.ZodOptional<z.ZodNumber>;
+    topicSlug: z.ZodOptional<z.ZodString>;
+    postNumber: z.ZodOptional<z.ZodNumber>;
+    startedThread: z.ZodOptional<z.ZodBoolean>;
 }, z.core.$strip>;
 export type ChangeEntryOut = z.infer<typeof changeEntry>;
 /** One piece of evidence from answer_sources. */
@@ -2109,6 +2117,14 @@ export declare const MCP_TOOLS: {
                 summary: z.ZodOptional<z.ZodString>;
                 version: z.ZodOptional<z.ZodString>;
                 diffUrl: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+                region: z.ZodOptional<z.ZodEnum<{
+                    eu: "eu";
+                    us: "us";
+                }>>;
+                topicId: z.ZodOptional<z.ZodNumber>;
+                topicSlug: z.ZodOptional<z.ZodString>;
+                postNumber: z.ZodOptional<z.ZodNumber>;
+                startedThread: z.ZodOptional<z.ZodBoolean>;
             }, z.core.$strip>>;
         };
         readonly annotations: {
@@ -3461,6 +3477,14 @@ export declare const MCP_TOOL_LIST: ({
             summary: z.ZodOptional<z.ZodString>;
             version: z.ZodOptional<z.ZodString>;
             diffUrl: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+            region: z.ZodOptional<z.ZodEnum<{
+                eu: "eu";
+                us: "us";
+            }>>;
+            topicId: z.ZodOptional<z.ZodNumber>;
+            topicSlug: z.ZodOptional<z.ZodString>;
+            postNumber: z.ZodOptional<z.ZodNumber>;
+            startedThread: z.ZodOptional<z.ZodBoolean>;
         }, z.core.$strip>>;
     };
     annotations: {

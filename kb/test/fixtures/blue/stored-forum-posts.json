@@ -1,0 +1,50 @@
+{
+  "note": "synthetic stored forum posts, shaped like kb/changes/blue-posts.json",
+  "posts": [
+    {
+      "id": "forum:70000001", "source": "forum", "region": "us",
+      "url": "https://us.forums.blizzard.com/en/wow/t/synthetic-beta-maintenance/9000001",
+      "title": "Synthetic Beta Realm Maintenance & Restart", "author": "Zorbrix", "role": "Game Producer",
+      "postedAt": "2026-10-16T22:42:05.842Z", "editedAt": null, "category": "WoW: Forever Beta Discussion", "game": "forever", "kind": "post",
+      "excerpt": "The beta realms will restart soon for a test fix. Expect about an hour of downtime.",
+      "topicId": 9000001, "topicSlug": "synthetic-beta-maintenance", "postNumber": 1, "startedThread": true,
+      "firstSeen": "2026-10-17T12:00:00.000Z"
+    },
+    {
+      "id": "forum:70000002", "source": "forum", "region": "us",
+      "url": "https://us.forums.blizzard.com/en/wow/t/synthetic-forever-hotfixes/9000002/14",
+      "title": "WoW: Forever Hotfixes - October 16", "author": "Linxy", "role": "Community Manager",
+      "postedAt": "2026-10-16T18:00:00.000Z", "editedAt": null, "category": "WoW: Forever General Discussion", "game": "forever", "kind": "hotfix",
+      "excerpt": "Dungeons: a boss no longer resets early.…",
+      "topicId": 9000002, "topicSlug": "synthetic-forever-hotfixes", "postNumber": 14, "startedThread": false,
+      "firstSeen": "2026-10-17T12:00:00.000Z"
+    },
+    {
+      "id": "forum:70000004", "source": "forum", "region": "us",
+      "url": "https://us.forums.blizzard.com/en/wow/t/classic-fix/9000004/3",
+      "title": "Synthetic Classic realm fix", "author": "Rommax", "role": "WoW Developer",
+      "postedAt": "2026-10-16T16:00:00.000Z", "editedAt": null, "category": "WoW Classic General Discussion", "game": "classic", "kind": "post",
+      "excerpt": "Fixed.",
+      "topicId": 9000004, "topicSlug": "classic-fix", "postNumber": 3, "startedThread": false,
+      "firstSeen": "2026-10-17T12:00:00.000Z"
+    },
+    {
+      "id": "forum:70000010", "source": "forum", "region": "us",
+      "url": "https://us.forums.blizzard.com/en/wow/t/synthetic-lowercase/9000010/5",
+      "title": "Synthetic lowercase sentences", "author": "Linxy", "role": "Community Manager",
+      "postedAt": "2026-10-16T12:00:00.000Z", "editedAt": null, "category": "WoW: Forever General Discussion", "game": "forever", "kind": "post",
+      "excerpt": "Fixed a bug. we also changed a thing.",
+      "topicId": 9000010, "topicSlug": "synthetic-lowercase", "postNumber": 5, "startedThread": false,
+      "firstSeen": "2026-10-17T12:00:00.000Z"
+    },
+    {
+      "id": "forum:70000008", "source": "forum", "region": "us",
+      "url": "https://us.forums.blizzard.com/en/wow/t/synthetic-launch-note/9000008",
+      "title": "Launch notes", "author": "Linxy", "role": "Community Manager",
+      "postedAt": "2026-10-15T12:00:00.000Z", "editedAt": null, "category": "WoW: Forever", "game": "forever", "kind": "post",
+      "excerpt": "",
+      "topicId": 9000008, "topicSlug": "synthetic-launch-note", "postNumber": 1, "startedThread": true,
+      "firstSeen": "2026-10-17T12:00:00.000Z"
+    }
+  ]
+}
