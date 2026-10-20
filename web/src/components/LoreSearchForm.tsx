@@ -14,7 +14,7 @@ export default function LoreSearchForm({ query = "", label = "Search the lore ar
         defaultValue={query}
         maxLength={200}
         placeholder={placeholder}
-        className="flex-1 min-h-11 rounded-lg border border-edge bg-canvas px-3 text-fg placeholder:text-muted"
+        className="flex-1 min-h-11 rounded-control border border-edge bg-canvas px-3 text-fg placeholder:text-muted"
       />
       <button type="submit" className="btn btn-primary min-h-11">Search</button>
     </form>

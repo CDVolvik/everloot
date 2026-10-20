@@ -199,7 +199,10 @@ test("loading screens: banners for original maps, a later map's picture only wit
   expect(loadingArt(a, 2789, true)?.name).toBe("The Tainted Scar");
   expect(loadingArt(a, 9999, true)).toBeNull();
   // Thumbnails for dungeons and raids by name, small copies, never a continent; the held-back raid waits for spoilers.
-  expect(instanceThumbs(a, false)).toEqual({ Deadmines: `${BASE}/loading/9036-small.webp`, "Molten Core": `${BASE}/loading/9409-small.webp` });
+  expect(instanceThumbs(a, false)).toEqual({
+    Deadmines: `${BASE}/loading/9036-small.webp`, "Scarlet Monastery": `${BASE}/loading/9189-small.webp`, "Molten Core": `${BASE}/loading/9409-small.webp`,
+  });
+  expect(loadingArt(a, BANNER_MAP.lore)?.name).toBe("Scarlet Monastery");
   expect(instanceThumbs(a, true)["The Tainted Scar"]).toBe(`${BASE}/loading/9789-small.webp`);
 });
 

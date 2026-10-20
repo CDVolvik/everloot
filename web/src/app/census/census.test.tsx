@@ -75,7 +75,7 @@ test("factions, classes, races and level bands show rounded counts; a hidden cou
   // A lone band at 60 would be the total minus the others: it is hidden along with the hidden ones.
   expect(words).toMatch(/At 60 not enough reports/);
   expect(words).toContain("“not enough reports” means fewer than 10 characters, fewer than 3 installs or fewer than 3 addresses, or hidden so that a small count can't be worked out from the others");
-  expect(page).toContain('<th scope="col" class="px-4 py-3">Class</th>');
+  expect(page).toMatch(/<th scope="col"[^>]*>Class<\/th>/);
   expect(page).toContain("Factions");
   expect(page).toContain("Level bands");
 });

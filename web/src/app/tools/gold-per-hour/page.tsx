@@ -84,7 +84,7 @@ export default function GoldPerHourPage() {
         </Disclosure>
       </section>
 
-      <SourceLine from="Your own numbers: the time, loot and prices you enter" />
+      <SourceLine source="Your own numbers: the time, loot and prices you enter" />
     </Container>
   );
 }

@@ -90,7 +90,7 @@ export default async function CollectionsPage(
         </Disclosure>
       </div>
 
-      <SourceLine from="Player uploads; a list entry is public once 3 installs agree">
+      <SourceLine source="Player uploads; a list entry is public once 3 installs agree">
         {corpus.unreachable ? "Storage unreachable" : dataAgeLabel(completion?.dataAsOf ?? corpus.dataAsOf)}
       </SourceLine>
     </Container>

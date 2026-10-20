@@ -10,6 +10,7 @@ const NAMES: Record<string, string> = {
   "/privacy": "Privacy",
   "/terms": "Terms of use",
   "/security": "Security",
+  "/accessibility": "Accessibility",
   "/contact": "Contact",
   "/upload": "Upload addon data",
   "/connect": "Connect",

@@ -32,6 +32,12 @@ import ItemPage from "@/app/database/items/[id]/page";
 import VendorPage from "@/app/database/vendors/[id]/page";
 import ChangesPage from "@/app/changes/page";
 import WowForeverPage from "@/app/wow-forever/page";
+import LorePage from "@/app/lore/page";
+
+/** The wide-screen banner's markup: from its start to the end of its caption. */
+const onBanner = (html: string) => html.slice(html.indexOf("data-banner"), html.indexOf("</p>", html.indexOf("data-banner-credit")));
+/** The banner's one-line caption; the full credit with the build is at the foot of the page. */
+const CAPTION = /data-banner-credit[^>]*>Art: WoW: Forever game files · © Blizzard Entertainment$/;
 
 const BASE = "https://assets.example.test/wow_classic_beta-70450-84bea423";
 const PRIVATE = "https://r2.example.test/everloot-game-data/wow_classic_beta-70450-84bea423";
@@ -177,7 +183,7 @@ test("raid builder: a raid's loading screen above the title, and a buff's toolti
   vi.stubEnv("NEXT_PUBLIC_GAME_ASSETS_URL", BASE);
   vi.stubGlobal("fetch", bucket());
   const html = await render(() => RaidPage());
-  expect(html).toMatch(/<div aria-hidden="true" data-page-banner[^>]*><img[^>]*src="[^"]*loading\/9409\.webp"[^>]*alt=""[^>]*aria-hidden="true"/);
+  expect(html).toMatch(/<img[^>]*src="[^"]*loading\/9409\.webp"[^>]*alt=""[^>]*aria-hidden="true"[^>]*data-page-banner/);
   expect(html.indexOf("data-page-banner")).toBeLessThan(html.indexOf("<h1"));
   // The name stays text, focusable, described by the tooltip text.
   expect(html).toMatch(/data-spell-tip[^>]*><img[^>]*icons\/8001\.webp[^>]*\/?><span tabindex="0"[^>]*aria-describedby="[^"]+"[^>]*>Battle Shout<\/span>/);
@@ -231,13 +237,19 @@ test("map: each dungeon's loading screen beside its entrance in the list", async
   expect(html).toContain("Map pictures and loading screen art from game build");
 });
 
-test("patch notes: a loading screen above the title, and a spell a post names gets its icon, tooltip and link", async () => {
+test("patch notes: a wide-screen loading screen with the title and a one-line caption on it, the full credit at the foot, and a spell a post names gets its icon, tooltip and link", async () => {
   vi.stubEnv("NEXT_PUBLIC_GAME_ASSETS_URL", BASE);
   vi.stubGlobal("fetch", bucket());
   const html = await render(() => ChangesPage({ searchParams: Promise.resolve({}) }));
-  expect(html).toMatch(/data-page-banner[^>]*><img[^>]*loading\/9001\.webp/);
-  expect(html.indexOf("data-page-banner")).toBeLessThan(html.indexOf("<h1"));
-  expect(html).toContain(CREDIT);
+  expect(onBanner(html)).toMatch(/<img[^>]*loading\/9001\.webp[^>]*data-page-banner/);
+  // The breadcrumb and the title sit on the art, with one caption line; the lede follows under the art.
+  expect(onBanner(html)).toMatch(/data-page-crumbs[\s\S]*<h1[^>]*>WoW Forever Patch Notes and Blizzard Posts<\/h1>/);
+  expect(onBanner(html)).toMatch(CAPTION);
+  expect(onBanner(html)).not.toContain("Official posts from Blizzard staff");
+  // The full credit, with the build, once, after the banner.
+  expect(html.match(/data-game-credit/g)).toHaveLength(1);
+  expect(html.indexOf("data-game-credit")).toBeGreaterThan(html.indexOf("data-banner-credit"));
+  expect(html).toMatch(/data-game-credit[^>]*>Icons, tooltip text and interface art are © Blizzard[^<]*from game build 1\.60\.1\.70450/);
 });
 
 test("professions: a picker of profession icons with their names", async () => {
@@ -274,3 +286,15 @@ test("map: the continent picture and zone pictures; held-back zones only with sp
   expect(kalimdor).not.toMatch(/Map pictures/);
 });
 
+test("lore archive: the same wide-screen banner, Scarlet Monastery's loading screen with the title on it", async () => {
+  vi.stubEnv("NEXT_PUBLIC_GAME_ASSETS_URL", BASE);
+  vi.stubGlobal("fetch", bucket());
+  const html = await render(() => LorePage());
+  expect(onBanner(html)).toMatch(/<img[^>]*loading\/9189\.webp[^>]*data-page-banner/);
+  expect(onBanner(html)).toMatch(/<h1[^>]*>Lore archive<\/h1>/);
+  expect(onBanner(html)).toMatch(CAPTION);
+  // The full credit, with the build, at the foot.
+  expect(html.match(/data-game-credit/g)).toHaveLength(1);
+  expect(html.indexOf("data-game-credit")).toBeGreaterThan(html.indexOf("data-banner-credit"));
+  expect(html).toContain("Loading screen art from game build 1.60.1.70450");
+});
