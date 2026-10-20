@@ -60,7 +60,14 @@ export function companionJobs(dataFolder: string, current: () => Settings): { de
       let retry: ReturnType<typeof setTimeout> | null = null;
       const arm = () => {
         if (stopped) return;
-        try { w = fsWatch(file, onChange); } catch { retry = setTimeout(arm, 5000); return; }
+        // The game saves by moving the old file aside and writing a new one. On Linux and macOS a watch
+        // follows the moved file, so after a rename it is armed again on the new one.
+        try {
+          w = fsWatch(file, (event) => {
+            onChange();
+            if (event === "rename") { w?.close(); w = null; if (retry) clearTimeout(retry); retry = setTimeout(arm, 500); }
+          });
+        } catch { retry = setTimeout(arm, 5000); return; }
         w.on("error", () => { w?.close(); w = null; retry = setTimeout(arm, 5000); });
       };
       arm();
