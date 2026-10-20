@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { candidateRoots, detectGameFolders, type FsLike } from "../src/main/game-folder";
+import { candidateRoots, detectGameFolders, resolvePickedFolder, type FsLike } from "../src/main/game-folder";
 
 /** A fake tree: directories map to their entries, files are listed with a leading "file:". */
 function fakeFs(tree: Record<string, string[]>): FsLike {
@@ -43,6 +43,18 @@ test("a root that is itself a product folder is offered", () => {
   const t = tree("D:/WoW");
   const found = detectGameFolders(["D:/WoW/_anniversary_"], fakeFs(t));
   expect(found.map((c) => c.product)).toEqual(["_anniversary_"]);
+});
+
+test("a Browse pick of World of Warcraft, WTF or Interface lands on the product folder", () => {
+  const root = "C:/Program Files (x86)/World of Warcraft";
+  const fs = fakeFs({ ...tree(root), [`${root}/_classic_era_/Interface`]: [] });
+  const era = `${root}/_classic_era_`;
+  const norm = (p: string) => p.replace(/\\/g, "/");
+  expect(norm(resolvePickedFolder(root, fs))).toBe(era);
+  expect(norm(resolvePickedFolder(era, fs))).toBe(era);
+  expect(norm(resolvePickedFolder(`${era}/WTF`, fs))).toBe(era);
+  expect(norm(resolvePickedFolder(`${era}/Interface`, fs))).toBe(era);
+  expect(resolvePickedFolder("D:/Elsewhere", fs)).toBe("D:/Elsewhere");
 });
 
 test("each OS looks where Battle.net and Wine put the game", () => {

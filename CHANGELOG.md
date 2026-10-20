@@ -167,6 +167,14 @@ build that has a zip in the repository. Earlier builds have none.
 
 Pull requests merged to `main` are listed in the nightly pre-releases until the next tagged release.
 
+## [desktop-v0.1.3] - 2026-10-20
+
+### Fixed
+- Browse for the game folder now lands on the product folder. Picking `World of Warcraft` itself chose the
+  folder one level above the one that holds `WTF`, so the app found no account files; it now takes the product
+  folder with Everloot data (`_classic_era_`, `_anniversary_` and the rest). Picking `WTF` or `Interface`
+  steps back up to the product folder too.
+
 ## [desktop-v0.1.2] - 2026-10-20
 
 ### Fixed
