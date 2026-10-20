@@ -65,16 +65,35 @@ export function folderProblems(root, expected, { index, allowed, skip = [] }) {
 }
 
 /**
- * The build folder a shown-names file (`npm run kb -- item-names`) goes under in the private bucket, from the
- * folder it was written to (`<build folder>-names`), and what is wrong with the file. Nothing wrong: `problems` is empty.
+ * The shown-names files (`npm run kb -- item-names` and `game-names`), each with its schema and whether it carries
+ * names from the Warcraft Wiki.
  */
-export function itemNamesCheck(json, folderName) {
+export const NAME_FILES = {
+  "item-names.json": { schema: "everloot.item-names/1", wiki: true },
+  "quest-names.json": { schema: "everloot.quest-names/1", wiki: true },
+  "item-set-names.json": { schema: "everloot.item-set-names/1", wiki: false },
+  "spell-names.json": { schema: "everloot.spell-names/1", wiki: false },
+};
+
+/**
+ * The build folder a shown-names file goes under in the private bucket, from the folder it was written to
+ * (`<build folder>-names`), and what is wrong with the file. Nothing wrong: `problems` is empty.
+ * `live` is the folder the site reads, the last part of NEXT_PUBLIC_GAME_ASSETS_URL, when a re-extract of the
+ * same build was uploaded under another name (`<build folder>-2`); another build's folder is refused.
+ * @param {string | null} [live]
+ */
+export function namesFileCheck(json, folderName, fileName = "item-names.json", live = null) {
   const problems = [];
-  const prefix = /^([A-Za-z0-9_.-]+)-names$/.exec(folderName)?.[1] ?? null;
-  if (!prefix) problems.push(`the file is not in a <build folder>-names folder (${folderName})`);
-  if (json?.schema !== "everloot.item-names/1") problems.push(`schema is ${json?.schema}, expected everloot.item-names/1`);
+  const built = /^([A-Za-z0-9_.-]+)-names$/.exec(folderName)?.[1] ?? null;
+  if (!built) problems.push(`the file is not in a <build folder>-names folder (${folderName})`);
+  const sameBuild = live !== null && built !== null && /^[A-Za-z0-9_.-]+$/.test(live) && (live === built || live.startsWith(`${built}-`));
+  if (live !== null && built && !sameBuild) problems.push(`--folder ${live} is not a folder of build ${built}`);
+  const prefix = live !== null ? (sameBuild ? live : null) : built;
+  const kind = Object.hasOwn(NAME_FILES, fileName) ? NAME_FILES[fileName] : null;
+  if (!kind) problems.push(`${fileName} is not a names file (${Object.keys(NAME_FILES).join(", ")})`);
+  else if (json?.schema !== kind.schema) problems.push(`schema is ${json?.schema}, expected ${kind.schema}`);
   if (typeof json?.build?.version !== "string") problems.push("no build version");
-  if (json?.wiki?.licence !== "CC-BY-SA-4.0") problems.push("the wiki source is not CC-BY-SA-4.0");
+  if (kind?.wiki && json?.wiki?.licence !== "CC-BY-SA-4.0") problems.push("the wiki source is not CC-BY-SA-4.0");
   const names = json?.names && typeof json.names === "object" ? Object.keys(json.names) : null;
   if (!names) problems.push("no names");
   else if (names.length !== json.count) problems.push(`count is ${json.count} but the file holds ${names.length} names`);

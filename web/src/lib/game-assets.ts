@@ -7,6 +7,8 @@ import { assetPath, assetsBaseUrl, MANIFEST_SCHEMA } from "@/lib/talents/assets"
 import type { ItemRecord } from "../../../kb/src/assets/items";
 import { worldToMap } from "../../../kb/src/world-coords";
 import { mayShowName } from "../../../kb/src/item-name-rule";
+import { mayShowQuestTitle, mayShowSetName, mayShowSpellName } from "../../../kb/src/game-name-rule";
+import type { EdgeKind } from "../../../kb/src/edges";
 
 // Blizzard's icons, item tooltip facts and map pictures across the site (docs/DATA_POLICY.md,
 // "Blizzard's icons, tooltip text and window frame"; docs/ASSETS.md). Server-side only: pages call it
@@ -333,6 +335,87 @@ export async function loadItemNames(version: string, base: string | null = asset
   }
   const names = parsedNames.get(raw) ?? null;
   return names && names.version === version ? names : null;
+}
+
+/* ---------- Quest titles, item set names and spell names ---------- */
+
+const NameId = z.string().regex(/^\d+$/);
+const QuestNamesSchema = z.object({
+  schema: z.literal("everloot.quest-names/1"),
+  build: z.object({ version: z.string() }),
+  wiki: z.object({ name: z.string(), url: z.string().regex(/^https:\/\//), licence: z.literal("CC-BY-SA-4.0") }),
+  names: z.record(NameId, z.object({ n: z.string().min(1), w: z.string().regex(/^[^\s"<>]+$/) })),
+});
+const fileNamesSchema = <S extends string>(schema: S) =>
+  z.object({ schema: z.literal(schema), build: z.object({ version: z.string() }), names: z.record(NameId, z.string().min(1)) });
+const SetNamesSchema = fileNamesSchema("everloot.item-set-names/1");
+const SpellNamesSchema = fileNamesSchema("everloot.spell-names/1");
+
+export interface QuestNames {
+  version: string;
+  wiki: { name: string; url: string };
+  /** By quest id: the title and the wiki article that gives it. */
+  names: Map<number, { name: string; wikiPage: string }>;
+}
+
+/** Item set or spell names from the game files alone, by id. */
+export interface FileNames { version: string; names: Map<number, string> }
+
+// Like parsedNames: one parse per file object the private store returns, kept with the file name it was read as.
+const parsedGameNames = new WeakMap<object, { file: string; names: { version: string } | null }>();
+
+async function loadNamesFile<T extends { version: string }>(file: string, version: string, base: string | null, store: PrivateStore | null, parse: (raw: unknown) => T | null): Promise<T | null> {
+  const folder = base ? buildFolder(base) : null;
+  if (!folder || !store) return null;
+  const raw = await store.read(`${folder}/${file}`);
+  if (!raw || typeof raw !== "object") return null;
+  if (parsedGameNames.get(raw)?.file !== file) parsedGameNames.set(raw, { file, names: parse(raw) });
+  const names = parsedGameNames.get(raw)!.names as T | null;
+  return names && names.version === version ? names : null;
+}
+
+/**
+ * Quest titles for quests players have not titled yet (docs/DATA_POLICY.md, "Quest titles from the game files and
+ * the Warcraft Wiki"): `<build folder>/quest-names.json` in the private bucket, read like loadItemNames. Null when
+ * it is missing, unreadable or for another build; the pages then show "Quest N". Never throws.
+ */
+export function loadQuestNames(version: string, base: string | null = assetsBaseUrl(), store: PrivateStore | null = privateStoreFromEnv()): Promise<QuestNames | null> {
+  return loadNamesFile("quest-names.json", version, base, store, (raw) => {
+    const f = QuestNamesSchema.safeParse(raw);
+    return f.success ? {
+      version: f.data.build.version,
+      wiki: { name: f.data.wiki.name, url: f.data.wiki.url },
+      // The rule is applied again here, as for item names.
+      names: new Map(Object.entries(f.data.names).filter(([id, x]) => mayShowQuestTitle(Number(id), x.n)).map(([id, x]) => [Number(id), { name: x.n, wikiPage: `${WIKI_PAGE_PREFIX}${x.w}` }])),
+    } : null;
+  });
+}
+
+function fileNames(schema: typeof SetNamesSchema | typeof SpellNamesSchema, may: (id: number, name: string) => boolean) {
+  return (raw: unknown): FileNames | null => {
+    const f = schema.safeParse(raw);
+    return f.success ? { version: f.data.build.version, names: new Map(Object.entries(f.data.names).filter(([id, n]) => may(Number(id), n)).map(([id, n]) => [Number(id), n])) } : null;
+  };
+}
+
+/**
+ * Item set and spell names from the game files (docs/DATA_POLICY.md, "Item set and spell names from the game
+ * files"): `<build folder>/item-set-names.json` and `spell-names.json` in the private bucket. Null like loadQuestNames.
+ */
+export const loadItemSetNames = (version: string, base: string | null = assetsBaseUrl(), store: PrivateStore | null = privateStoreFromEnv()) =>
+  loadNamesFile("item-set-names.json", version, base, store, fileNames(SetNamesSchema, mayShowSetName));
+export const loadSpellNames = (version: string, base: string | null = assetsBaseUrl(), store: PrivateStore | null = privateStoreFromEnv()) =>
+  loadNamesFile("spell-names.json", version, base, store, fileNames(SpellNamesSchema, mayShowSpellName));
+
+/** A relation target's name from these files, and where it comes from: the wiki (quest titles) or the game files alone. */
+export interface GameName { name: string; source: "wiki" | "files" }
+
+/** Looks up a relation target (quest, item set, spell) in whichever of the files the page loaded. */
+export function gameNameFor(n: { quests?: QuestNames | null; sets?: FileNames | null; spells?: FileNames | null }): (kind: EdgeKind, id: number) => GameName | undefined {
+  return (kind, id) => {
+    const name = kind === "quest" ? n.quests?.names.get(id)?.name : kind === "item_set" ? n.sets?.names.get(id) : kind === "spell" ? n.spells?.names.get(id) : undefined;
+    return name ? { name, source: kind === "quest" ? "wiki" : "files" } : undefined;
+  };
 }
 
 /* ---------- Classes, professions, raid builder ---------- */

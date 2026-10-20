@@ -13,7 +13,13 @@ build that has a zip in the repository. Earlier builds have none.
 ## [Unreleased]
 
 ### Added
+<<<<<<< HEAD
 - Site: an item's page shows its Source (Drop, Vendor, Crafted, Quest, Object) in the quick facts, each linking to its tab, from the same 3-install index as the item lists. Items nobody has reported show no row.
+=======
+- Site: database pages for achievements, factions, titles and quest chains (`/database/achievements`,
+  `/database/factions`, `/database/titles`, `/database/quest-chains`), with lists you can filter and sort, a page for each entry, and entries in the hub, sitemap and search. An entry
+  shows only once three players report it the same way; until then each list says so.
+>>>>>>> origin/main
 - Addon, protocol and database: NPC lists gain Type and Rank columns and filters (creature type and rank as the game shows them on target), and quest lists gain Category, Side and Group columns, with Category and Side filters. The addon now records a quest when you accept it: title, level, the quest log header, suggested group size and tag, the giver, and your faction (Alliance or Horde, no character name). Every value is public only after 3 installs agree; a side needs 3 installs on that faction and none on the other. Older addons keep working. Needs an addon release to start collecting; the quest-log calls have not been tried in the Forever client yet.
 - Player pages, off by default: search a WoW: Forever character by name and open a page with its race, class, level, guild and the day it was last seen, with a hide link on every page that needs no account. Nothing is collected or shown until `EVERLOOT_PLAYER_PAGES=1` is set on the site and a player turns on `/everloot players on` in an addon release that includes it; the design and the open legal questions are in `docs/design/specs/2026-10-20-player-pages-design.md`.
 - Site: a game version label in the header ("Beta · 1.60.1") with a menu of Live (at launch), PTR (none running) and Beta, read from one list in `web/src/lib/game-version.ts`; a test checks every game-data layer names the current build. The build is also named on `/methodology`.
