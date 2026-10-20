@@ -114,6 +114,14 @@ main p a, main .list-disc a {
   border-color: rgb(var(--accent-hover));
   background: rgb(var(--accent-hover));
 }
+/* A disabled primary button drops its fill: at half opacity the green read as a different olive colour. */
+.btn-primary:disabled,
+.btn-primary[aria-disabled="true"] {
+  opacity: 1;
+  border-color: rgb(var(--line));
+  background: rgb(var(--panel));
+  color: rgb(var(--muted));
+}
 }
 
 /* Forced colours drop the fill and paint both pills' borders the same colour, so the primary one
