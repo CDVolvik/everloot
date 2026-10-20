@@ -9,6 +9,7 @@ export { default as Disclosure } from "./Disclosure";
 export { default as EmptyState, GET_THE_ADDON, type EmptyStateProps } from "./EmptyState";
 export { default as Field, Input } from "./Field";
 export { default as PageHeader, type PageHeaderProps } from "./PageHeader";
+export { default as SearchBar, type SearchBarProps } from "./SearchBar";
 export { default as SectionHeading } from "./SectionHeading";
 export { default as Segmented, type SegmentedOption } from "./Segmented";
 export { default as SourceLine, type SourceLineProps } from "./SourceLine";

@@ -9,7 +9,10 @@ vi.mock("next/link", () => ({
 vi.mock("next/navigation", () => ({ notFound: () => { throw new Error("NOT_FOUND"); }, permanentRedirect: () => {}, usePathname: () => mocks.path }));
 vi.mock("@/components/CookieConsent", () => ({ CookiePreferencesButton: () => null }));
 vi.mock("./upload/UploadClient", () => ({ default: () => null }));
-vi.mock("@/lib/rollup-compute", () => ({ computeRollups: async () => ({ rates: [], measuredZeros: [], stats: mocks.stats }) }));
+vi.mock("@/lib/rollup-compute", () => ({
+  computeRollups: async () => ({ rates: [], measuredZeros: [], stats: mocks.stats }),
+  loadWorldFacts: async () => ({ npcs: [], quests: [], vendors: [], unreachable: false }),
+}));
 vi.mock("@/lib/upload-store", () => ({ STORAGE_UNREACHABLE: "unreachable", uploadStore: { loadCorpus: async () => ({ records: [], unreachable: false, dataAsOf: "2026-10-17T00:00:00.000Z" }) } }));
 vi.mock("@/lib/release", () => ({ getRelease: () => null }));
 

@@ -40,7 +40,9 @@ test("a word in the item slot is a class page; a subclass page filters by slot a
   expect(cls).toContain("Armor");
   expect(cls).toContain('href="/database/items/armor/cloth"');
   const cloth = await html(SubclassPage(sub("armor", "cloth", { slot: "chest" })));
-  expect(cloth.match(/found in game files, unconfirmed/g)).toHaveLength(1);
+  // One source line says where the rows come from; no row repeats it.
+  expect(cloth.match(/game files, unconfirmed/gi)).toHaveLength(1);
+  expect(cloth.match(/data-source-line/g)).toHaveLength(1);
   expect(cloth).toContain(">Chest<");
   expect(cloth).not.toContain(">Head<\/td>");
   expect(cloth).toContain("Page 1 of");
@@ -83,12 +85,16 @@ test("only the plain category page is indexed, and only once half its rows have 
   }
 });
 
-test("an item page shows its category path, slot and quality, with one note giving the label and build", async () => {
+test("an item page shows its category path, slot and quality, with one source line giving the label and build", async () => {
   const row = CLIENT_TAXONOMY.items.find((r) => r[1] === 4 && r[2] === 1 && r[4] === 4)!;
   const page = await html(ItemPage(props(String(row[0]))));
   expect(page).toContain('href="/database/items/armor"');
   expect(page).toContain('href="/database/items/armor/cloth"');
   expect(page).toContain("Epic");
-  expect(page).toContain(`read from build ${CLIENT_LAYER.build.version}`);
+  expect(page.match(/data-source-line/g)).toHaveLength(1);
+  expect(page.match(/game files, unconfirmed/gi)).toHaveLength(1);
+  expect(page).toContain(`build <span class="font-mono tabular-nums">${CLIENT_LAYER.build.version}</span>`);
+  // Every empty relation tab is the shared empty state, never a bare zero.
+  expect(page).toContain("data-empty-state");
   expect(page).not.toContain("unconfirmed, build");
 });
