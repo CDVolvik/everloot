@@ -39,7 +39,7 @@ const railLink = "block truncate rounded-control px-2 py-1 text-cell text-fg-2 h
  * The signed-in home. Visitors never see this route: the middleware rewrites `/` here only when a session cookie
  * is present, and `/` stays the cached landing page. A cookie with no session behind it gets the landing too.
  */
-export default async function SignedInHome({ searchParams }: { searchParams?: Promise<{ added?: string | string[] }> } = {}) {
+export default async function SignedInHome({ searchParams }: { searchParams?: Promise<{ added?: string | string[] }> }) {
   if (!profilesOn()) notFound();
   let loaded: { shell: AccountShell | null; saved: AccountBuilds };
   try {

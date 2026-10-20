@@ -59,23 +59,23 @@ afterEach(() => { vi.unstubAllEnvs(); });
 
 test("with the switch off /home is a 404 and nothing is read", async () => {
   vi.stubEnv("EVERLOOT_PROFILES", "");
-  await expect(SignedInHome()).rejects.toThrow("NEXT_NOT_FOUND");
+  await expect(SignedInHome({})).rejects.toThrow("NEXT_NOT_FOUND");
   expect(auth.getUser).not.toHaveBeenCalled();
 });
 
 test("no session: /home itself goes back to /, and a stale cookie on / gets the landing page", async () => {
   auth.getUser.mockResolvedValue(null);
-  await expect(SignedInHome()).rejects.toThrow("NEXT_REDIRECT /");
+  await expect(SignedInHome({})).rejects.toThrow("NEXT_REDIRECT /");
   request.headers = new Headers({ "x-everloot-home": "1" });
-  expect(renderToStaticMarkup(await SignedInHome())).toBe("<p>The landing page</p>");
+  expect(renderToStaticMarkup(await SignedInHome({}))).toBe("<p>The landing page</p>");
   // Storage trouble also falls back to the landing page.
   auth.getUser.mockResolvedValue(USER);
   auth.authQuery.mockRejectedValue(new Error("down"));
-  expect(renderToStaticMarkup(await SignedInHome())).toBe("<p>The landing page</p>");
+  expect(renderToStaticMarkup(await SignedInHome({}))).toBe("<p>The landing page</p>");
 });
 
 test("the three columns: the player, the Ask box and the active character's builds, the latest from Forever", async () => {
-  const html = renderToStaticMarkup(await SignedInHome()).replace(/&#x27;/g, "'");
+  const html = renderToStaticMarkup(await SignedInHome({})).replace(/&#x27;/g, "'");
   // Left rail: the card, the switch, the characters with the main marked, the recent builds.
   expect(html).toContain("Go'el");
   expect(html).toContain("@thrall");
@@ -104,7 +104,7 @@ test("the three columns: the player, the Ask box and the active character's buil
 });
 
 test("the Ask box hands the question and the active character to Chat", async () => {
-  const html = renderToStaticMarkup(await SignedInHome());
+  const html = renderToStaticMarkup(await SignedInHome({}));
   const form = html.match(/<form[^>]*>.*?<\/form>/)![0];
   expect(form).toContain('action="/chat"');
   expect(form).toContain('method="get"');
@@ -118,7 +118,7 @@ test("the Ask box hands the question and the active character to Chat", async ()
 test("back from adding a Battle.net account that was already here: says so, once and only then", async () => {
   const added = (value: string) => ({ searchParams: Promise.resolve({ added: value }) });
   const notice = "You're already signed in as Go'el. To add a different Battle.net account, sign out at battle.net first, then try again.";
-  const text = async (props?: object) => renderToStaticMarkup(await SignedInHome(props as never)).replace(/&#x27;/g, "'");
+  const text = async (props?: object) => renderToStaticMarkup(await SignedInHome((props ?? {}) as never)).replace(/&#x27;/g, "'");
   request.cookies = { everloot_add_from: `99999999-0000-4000-8000-000000000000,${USER.id}` };
   expect(await text(added("bnet"))).toContain(notice);
   // Not after an email sign-in, not without the marker, not when a new account came back.
@@ -132,12 +132,12 @@ test("back from adding a Battle.net account that was already here: says so, once
 
 test("a new player: no handle, no character, the active character follows the main", async () => {
   profileRow = null;
-  const html = renderToStaticMarkup(await SignedInHome());
+  const html = renderToStaticMarkup(await SignedInHome({}));
   expect(html).toContain("Hello, Thrall!");
   expect(html).toContain("Choose a handle");
   expect(html).not.toContain('name="character"');
   expect(html).toContain("bg-accent");
   profileRow = { handle: null, display_name: null, status_emoji: null, status_text: null, status_clears_at: null, public_profile: false,
     show_characters: true, show_builds: true, show_status: true, main_character_id: THRALL, active_character_id: null };
-  expect(renderToStaticMarkup(await SignedInHome())).toContain(`name="character" value="${THRALL}"`);
+  expect(renderToStaticMarkup(await SignedInHome({}))).toContain(`name="character" value="${THRALL}"`);
 });

@@ -22,7 +22,7 @@ vi.mock("@/lib/auth/auth", () => ({
 import { GET } from "./route";
 import { addAccountState } from "@/lib/auth/device-accounts";
 
-const TOKEN = "AbCdEfGh12345678AbCdEfGh12345678";
+const TOKEN = "t".repeat(32); // a session token is any opaque string; this one looks nothing like a secret
 const device = (userId: string, token: string) => ({ session: { token }, user: { id: userId, name: "x" } });
 const others = (n: number) => Array.from({ length: n }, (_, i) => device(`00000000-0000-4000-8000-00000000000${i + 1}`, `tok-${i}`));
 const call = (cookie = "everloot.session_token=s") => GET(new Request("https://everloot.app/api/me/accounts/add", { headers: { cookie } }));
