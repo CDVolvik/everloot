@@ -1,6 +1,17 @@
 import { pointsAtLevel } from "./rules";
 import type { TalentCatalog } from "./types";
 
+/** The id of a class page's closed "How it works" section, which the calculator's "?" button opens. */
+export const HOW_IT_WORKS_ID = "how-it-works";
+
+/**
+ * The first-point sentence, the same wherever the level is stated. The game files put the first point
+ * at level 10; the Legacy perk Talented (5 ranks) moves it earlier, down to level 5, which community
+ * guides report but our game files do not hold, so it is stated as theirs and not computed.
+ */
+export const firstPointLine = (firstPointLevel: number, points: number) =>
+  `First point at level ${firstPointLevel} (Talented moves it as early as 5); ${points} points either way.`;
+
 /**
  * Plain facts about one class, counted from its talent catalog. Everything here is read from the game
  * files of the catalog's build and stays unconfirmed until checked in game; nothing is advice.
@@ -71,7 +82,7 @@ export function classAnswers(facts: ClassFacts): { pointsQuestion: string; point
   return {
     pointsQuestion: `How many talent points does a ${facts.className} get at level ${facts.maxLevel}?`,
     pointsAnswer:
-      `In the game files of build ${facts.build}, a ${facts.className} has ${facts.points} talent points by level ${facts.maxLevel}, the first at level ${facts.firstPointLevel}. ` +
+      `In the game files of build ${facts.build}, a ${facts.className} has ${facts.points} talent points by level ${facts.maxLevel}. ${firstPointLine(facts.firstPointLevel, facts.points)} ` +
       `The ${plural(facts.trees.length, "tree")} (${treeNames}) hold ${plural(facts.totalTalents, "talent")} with ${plural(facts.totalRanks, "rank")} between them, ` +
       (facts.totalRanks > facts.points ? "so no build can take everything." : "enough for every rank."),
     layoutQuestion: `How are the ${facts.className} talent trees laid out?`,
@@ -107,7 +118,7 @@ export function hubAnswers(catalogs: TalentCatalog[]): { pointsQuestion: string;
   const dual = catalogs[0]?.rules.dualSpecLevel ?? 40;
   const points =
     groups.length === 1
-      ? `In the game files of build ${build}, every class has ${groups[0].points} talent points by level ${groups[0].level}, the first at level ${groups[0].firstPointLevel}.`
+      ? `In the game files of build ${build}, every class has ${groups[0].points} talent points by level ${groups[0].level}. ${firstPointLine(groups[0].firstPointLevel, groups[0].points)}`
       : `In the game files of build ${build}, the points a class has by level ${level} are: ${groups.map((g) => `${g.points} for ${list(g.classes)}`).join("; ")}.`;
   return {
     pointsQuestion: `How many talent points do you get at level ${level}?`,
