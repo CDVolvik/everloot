@@ -47,8 +47,8 @@ Four catalog kinds (`achievement_catalog`, `reputation_catalog`, `title_catalog`
 `quest_chain_catalog`) hold only game facts the addon read from the game's own calls: ids, names,
 criteria text, standing headers and quest ids, with no player data. They reflect what one character's
 windows list, so they are not on the public allowlist and never leave the site raw: the pages (the
-collections tool, and the database's achievement and faction lists and pages with their sitemap and
-search entries) and the MCP tool list an entry only after three reporters (distinct upload addresses, an IPv6 address counted by its /64 block, as the market counts them)
+collections tool, and the database's achievement, faction, title and quest chain lists and pages with
+their sitemap and search entries) and the MCP tool list an entry only after three reporters (distinct upload addresses, an IPv6 address counted by its /64 block, as the market counts them)
 report it identically; there is no copied catalog, and flavour text is not collected. For that count an
 upload containing a catalog row is stored with the same keyed address hash as a scan, kept private and
 never published. Four owned kinds (`achievement_owned`, `reputation_owned`,

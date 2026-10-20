@@ -23,6 +23,10 @@ import AchievementList, { generateMetadata as achievementListMetadata } from "./
 import AchievementPage, { generateMetadata as achievementMetadata } from "./achievements/[id]/page";
 import FactionList from "./factions/page";
 import FactionPage from "./factions/[id]/page";
+import TitleList from "./titles/page";
+import TitlePage from "./titles/[id]/page";
+import ChainList from "./quest-chains/page";
+import ChainPage from "./quest-chains/[id]/page";
 import sitemap from "../sitemap";
 import { siteSearch } from "@/lib/site-search";
 import { emptyCompletion, foldCompletion } from "../../../../kb/src/completion-rollup";
@@ -55,6 +59,13 @@ const rows = [
   // Two agree, one differs: still short of three.
   ...from(2, ach(31, "Split Vote", "General", 5, 1)),
   row("reporter-three", ach(31, "Split Vote", "General", 15, 1)),
+  ...from(3, { kind: "title_catalog", titleId: 4, name: "Private" }),
+  ...from(3, { kind: "title_catalog", titleId: 5, name: "Corporal" }),
+  ...from(2, { kind: "title_catalog", titleId: 6, name: "Only Two Titles" }),
+  ...["one", "two", "three"].map((id, i) => row(`reporter-${id}`, { kind: "title_catalog", titleId: 7, name: `Split ${i}` })),
+  ...from(3, { kind: "quest_chain_catalog", questLineId: 900, name: "The Defias", questIds: [7, 8, 9] }),
+  ...from(3, { kind: "quest_chain_catalog", questLineId: 901, name: "Long Road", questIds: [1, 2], truncated: true }),
+  ...from(2, { kind: "quest_chain_catalog", questLineId: 902, name: "Two Chain", questIds: [3] }),
   ...from(3, rep(69, "Darnassus", "Alliance")),
   ...from(3, rep(76, "Orgrimmar", "Horde")),
   ...from(3, rep(529, "Argent Dawn")),
@@ -163,4 +174,50 @@ test("site search finds an agreed achievement or faction by name or id, and noth
   expect((await siteSearch("69")).find((g) => g.type === "faction")!.results[0]).toMatchObject({ href: "/database/factions/69-darnassus", exact: true });
   expect((await siteSearch("disputed")).some((g) => g.type === "achievement")).toBe(false);
   expect((await siteSearch("elwynn", { only: "item" })).some((g) => g.type === "achievement")).toBe(false);
+});
+
+test("the title and quest chain lists apply the same three-reporter gate", async () => {
+  const titles = await html(TitleList(search()));
+  expect(linked(titles, "titles")).toEqual(["4-private", "5-corporal"]);
+  for (const hidden of ["Only Two Titles", "Split"]) expect(titles).not.toContain(hidden);
+  expect(linked(await html(TitleList(search({ q: "corp" }))), "titles")).toEqual(["5-corporal"]);
+  expect(linked(await html(TitleList(search({ sort: "-name" }))), "titles")).toEqual(["4-private", "5-corporal"]);
+  const chains = await html(ChainList(search()));
+  expect(linked(chains, "quest-chains")).toEqual(["900-the-defias", "901-long-road"]);
+  expect(chains).toContain(">2+<");
+  expect(chains).not.toContain("Two Chain");
+  await expect(TitleList(search({ sort: "points" }))).rejects.toThrow("NEXT_NOT_FOUND");
+});
+
+test("title and quest chain pages: facts, quest links, redirects and 404s", async () => {
+  expect(await html(TitlePage(page("5-corporal")))).toContain("Corporal");
+  await expect(TitlePage(page("6"))).rejects.toThrow("NEXT_NOT_FOUND");
+  await expect(TitlePage(page("5"))).rejects.toThrow("REDIRECT /database/titles/5-corporal");
+  const chain = await html(ChainPage(page("900-the-defias")));
+  expect(chain).toContain("The Defias");
+  for (const q of [7, 8, 9]) expect(chain).toContain(`href="/database/quests/${q}"`);
+  expect(await html(ChainPage(page("901-long-road")))).toContain("Longer than the 80 quests listed");
+  await expect(ChainPage(page("902"))).rejects.toThrow("NEXT_NOT_FOUND");
+  await expect(ChainPage(page("900"))).rejects.toThrow("REDIRECT /database/quest-chains/900-the-defias");
+});
+
+test("empty and unreadable states for titles and quest chains", async () => {
+  serve(from(2, { kind: "title_catalog", titleId: 4, name: "Private" }));
+  for (const el of [TitleList(search()), ChainList(search())]) {
+    const out = await html(el);
+    expect(out).toContain("once three players report it");
+    expect(out).not.toContain("Private");
+  }
+  store.loadCompletion.mockResolvedValue({ state: null, dataAsOf: null, unreachable: true });
+  expect(await html(TitleList(search()))).not.toContain("data-empty-state");
+});
+
+test("sitemap and search include agreed titles and quest chains only", async () => {
+  const paths = (await sitemap()).map((e) => new URL(e.url).pathname);
+  for (const p of ["/database/titles", "/database/quest-chains", "/database/titles/5-corporal", "/database/quest-chains/900-the-defias"]) expect(paths).toContain(p);
+  expect(paths.filter((p) => /two-titles|two-chain|split/.test(p))).toEqual([]);
+  expect((await siteSearch("corporal")).find((g) => g.type === "title")!.results[0].href).toBe("/database/titles/5-corporal");
+  expect((await siteSearch("defias")).find((g) => g.type === "chain")!.heading).toBe("Quest chains");
+  expect((await siteSearch("900")).find((g) => g.type === "chain")!.results[0]).toMatchObject({ exact: true });
+  expect((await siteSearch("two chain")).some((g) => g.type === "chain")).toBe(false);
 });

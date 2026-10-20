@@ -62,6 +62,8 @@ export default async function DatabasePage() {
     { href: "/database/objects", label: "Objects: chests, herbs, ore", count: seen(stats.unreachable ? 0 : objectList({ rates, measuredZeros, names: [] }).length) },
     { href: "/database/achievements", label: "Achievements", count: listed(catalog?.achievements.length) },
     { href: "/database/factions", label: "Factions", count: listed(catalog?.factions.length) },
+    { href: "/database/titles", label: "Titles", count: listed(catalog?.titles.length) },
+    { href: "/database/quest-chains", label: "Quest chains", count: listed(catalog?.chains.length) },
     { href: "/database/drops", label: "Loot observations", count: seen(live) },
     { href: "/database/zones", label: "Zones", count: n(publicZones().length) },
     { href: "/tools/guild-board", label: "Guilds", count: "uploads" },

@@ -8,7 +8,7 @@ import { loadTimeline } from "@/lib/changes";
 import { TALENT_CLASSES } from "@/lib/talents/catalogs";
 import { CLIENT_LAYER, CLIENT_TAXONOMY, categoryNamedEnough, itemsHref } from "@/lib/items";
 import { loadShownNames } from "@/lib/shown-item-names";
-import { achievementHref, factionHref, loadCatalog } from "@/lib/completion-lists";
+import { achievementHref, chainHref, factionHref, loadCatalog, titleHref } from "@/lib/completion-lists";
 import { loadWorldFacts } from "@/lib/rollup-compute";
 import { hasContent, publicZones, zoneContents, zoneHref } from "@/lib/zones";
 
@@ -20,7 +20,7 @@ const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://everloot.app";
  * /wow-forever. Every other page has none, because a made-up date teaches crawlers to ignore the field.
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const staticRoutes = ["/", "/wow-forever", "/methodology", "/about", "/privacy", "/terms", "/security", "/accessibility", "/contact", "/upload", "/addon", "/lore", "/changes", "/map", "/database", "/database/items", "/database/drops", "/database/npcs", "/database/objects", "/database/quests", "/database/vendors", "/database/zones", "/database/achievements", "/database/factions", "/tools/collections", "/tools/guild-board", "/tools/auctions", "/tools/gold-ledger", "/addons", "/addons/popular", "/census", "/addons/ecosystem", "/addons/polestar", "/addons/polestar/packs", "/addons/polestar/wanted"];
+  const staticRoutes = ["/", "/wow-forever", "/methodology", "/about", "/privacy", "/terms", "/security", "/accessibility", "/contact", "/upload", "/addon", "/lore", "/changes", "/map", "/database", "/database/items", "/database/drops", "/database/npcs", "/database/objects", "/database/quests", "/database/vendors", "/database/zones", "/database/achievements", "/database/factions", "/database/titles", "/database/quest-chains", "/tools/collections", "/tools/guild-board", "/tools/auctions", "/tools/gold-ledger", "/addons", "/addons/popular", "/census", "/addons/ecosystem", "/addons/polestar", "/addons/polestar/packs", "/addons/polestar/wanted"];
 
   const talentRoutes = TALENT_CLASSES.map((slug) => `/tools/talents/${slug}`);
   // Item categories from the client layer: each class and subclass that holds items, first page only, and only
@@ -36,9 +36,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const contents = zoneContents(world);
     return publicZones().filter((z) => hasContent(contents.get(z.mapId))).map((z) => zoneHref(z.mapId, z.name));
   })();
-  // Achievement and faction pages exist only for entries three players reported, so each listed one has content.
+  // Achievement, faction, title and quest chain pages exist only for entries three players reported, so each listed one has content.
   const catalog = await loadCatalog();
-  const catalogRoutes = catalog ? [...catalog.achievements.map((a) => achievementHref(a.achievementId, a.name)), ...catalog.factions.map((f) => factionHref(f.factionId, f.name))] : [];
+  const catalogRoutes = catalog ? [...catalog.achievements.map((a) => achievementHref(a.achievementId, a.name)), ...catalog.factions.map((f) => factionHref(f.factionId, f.name)), ...catalog.titles.map((t) => titleHref(t.titleId, t.name)), ...catalog.chains.map((c) => chainHref(c.questLineId, c.name))] : [];
   const paths = [...new Set([...staticRoutes, ...talentRoutes, ...itemRoutes, ...zoneRoutes, ...catalogRoutes, ...tools.filter((tool) => tool.status !== "coming-soon").map(toolHref), ...allDocsPages().map((page) => page.href)])];
 
   const newestChange = loadTimeline()[0]?.at;
