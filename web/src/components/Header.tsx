@@ -24,7 +24,6 @@ export const TOOL_GROUPS: { title: string; links: NavLink[] }[] = [
     links: [
       { label: "Talent calculator", href: "/tools/talents" },
       { label: "Raid builder", href: "/tools/raid" },
-      { label: "Gold per hour", href: "/tools/gold-per-hour" },
       { label: "Professions", href: "/tools/professions" },
       { label: "Farming routes", href: "/tools/farming-routes" },
     ],
@@ -32,7 +31,7 @@ export const TOOL_GROUPS: { title: string; links: NavLink[] }[] = [
   {
     title: "Look up",
     links: [
-      { label: "Auction history", href: "/tools/auctions" },
+      { label: "Auction House", href: "/tools/auctions" },
       { label: "Census", href: "/census" },
       { label: "Addons", href: "/addons" },
     ],
