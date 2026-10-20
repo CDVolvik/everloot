@@ -21,6 +21,17 @@ exception to public records: they are never published row by row, only as counts
 at least three installs report. Guild data is published only through an officer's
 upload, and named records only with that person's sharing choice.
 
+The addon also reads a few game facts about the NPC you target and the quest you accept, as the game
+shows them to you. For an NPC: its creature type (Beast, Undead, Humanoid) and its rank (normal, elite,
+rare, rare elite, boss). For a quest: the quest log header it sits under (a zone or a category), the
+suggested group size and tag (group, dungeon, raid, PvP) when the game gives one, the NPC who gave it, and
+the faction of the character that accepted it, Alliance or Horde, never the character's name. These are
+facts about the NPC or the quest, not about the player, and the site never shows a faction next to a
+person. Each is published only when three installs report the same value. A quest's side is shown as
+Alliance or Horde when three installs on that faction report it and none on the other; it is shown as
+Both when three installs on each faction report it; otherwise it stays blank, and it is never guessed from a
+title, a giver or a zone. Nothing is read from the game's Creature or quest tables for these columns.
+
 Full auction scans are not public records either. They feed market values only, and a value is
 published when three distinct reporters scanned the item. For that count, an upload containing a scan
 is stored with a keyed hash of the address it came from (never the address itself). The hash stays in

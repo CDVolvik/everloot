@@ -35,6 +35,14 @@ const base = z.object({
     capturedAt: z.string().datetime({ offset: true }).describe("ISO time the event happened in-game."),
 });
 // --- Open-world records (anonymous: no character or guild names, no chat) ---
+/** What the game calls a creature (`UnitCreatureType`), in English. The addon sends only these exact names. */
+export const NPC_CREATURE_TYPES = [
+    "Beast", "Dragonkin", "Demon", "Elemental", "Giant", "Undead", "Humanoid", "Critter", "Mechanical", "Not specified", "Totem", "Non-combat Pet", "Gas Cloud",
+];
+/** `UnitClassification` without the minor ranks: a boss is the game's `worldboss`. */
+export const NPC_RANKS = ["normal", "elite", "rare", "rare_elite", "boss"];
+/** The group a quest asks for, from the quest tag the game reports. */
+export const QUEST_TAGS = ["group", "dungeon", "raid", "pvp"];
 export const npcSighting = base.extend({
     kind: z.literal("npc_sighting"),
     npcId: z.number().int().positive(),
@@ -45,6 +53,8 @@ export const npcSighting = base.extend({
     level: z.number().int().min(1).max(100),
     reaction: z.enum(["friendly", "neutral", "hostile"]),
     positionKind: z.enum(["player", "npc"]).optional().describe("Whose coordinates were measured; legacy unknown positions never become spawn pins."),
+    creatureType: z.enum(NPC_CREATURE_TYPES).optional().describe("The creature type the game shows, as `UnitCreatureType` reports it in English. Older addons send none."),
+    rank: z.enum(NPC_RANKS).optional().describe("`UnitClassification`: normal, elite, rare, rare_elite or boss (`worldboss`). Older addons send none."),
 });
 export const lootWindow = base.extend({
     kind: z.literal("loot"),
@@ -63,6 +73,10 @@ export const questEvent = base.extend({
     giverNpcId: z.number().int().positive().optional(),
     turnInNpcId: z.number().int().positive().optional(),
     rewardItemIds: z.array(z.number().int().positive()).max(20).default([]),
+    category: z.string().min(1).max(60).optional().describe("The quest log header the quest sits under, a zone or a category. Older addons send none."),
+    faction: z.enum(["alliance", "horde"]).optional().describe("The faction of the character that accepted it. Never the character's name."),
+    suggestedGroup: z.number().int().min(2).max(40).optional().describe("The suggested group size the quest log shows; absent for a solo quest."),
+    tag: z.enum(QUEST_TAGS).optional().describe("The quest tag the game reports, when it reports one."),
 });
 export const vendorList = base.extend({
     kind: z.literal("vendor"),
