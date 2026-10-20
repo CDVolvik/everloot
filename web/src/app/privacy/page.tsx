@@ -172,8 +172,10 @@ export default function PrivacyPage() {
                 public page you can find by searching for the name. The row says nothing about who
                 reported it, and we delete it 90 days after the character was last seen. The players
                 it names have not been asked. Anyone can have a character hidden, without an
-                account, on the hide form; a hidden character is deleted and not recorded again. If
-                you play a character and do not want a page, hide it. You can also email{" "}
+                account, on the{" "}
+                <Link href="/players/opt-out">hide form</Link>; a hidden character is deleted and not
+                recorded again. If you play a character and do not want a page, hide it. You can also
+                email{" "}
                 <a href="mailto:hello@everloot.app">hello@everloot.app</a>.
               </li>
               <li>
