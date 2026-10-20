@@ -127,12 +127,13 @@ test("nothing outside the pages that show the art can read the asset URL or the 
   expect(offenders).toEqual([]);
   // And the API and MCP code, specifically, never imports the talents folder or the site-wide reader at all.
   // Nor the item names: the shown names, the reader for them and the name ledger stay out of the API, the MCP
-  // server and the bulk download (docs/DATA_POLICY.md, "Item names from the game files and the Warcraft Wiki").
+  // server and the bulk download (docs/DATA_POLICY.md, "Item names from the game files and the Warcraft Wiki"),
+  // and so do the quest titles, item set names and spell names beside them.
   const api = [
     ...sources(join(root, "web/src/app/api")), ...sources(join(root, "web/src/app/mcp")), join(root, "web/src/lib/mcp-mount.ts"),
     join(root, "web/src/lib/bulk-export.ts"), join(root, "web/scripts/export-bulk.ts"), ...sources(join(root, "kb/src")).filter((p) => /mcp|exporters/.test(p)),
   ];
-  for (const p of api) expect(readFileSync(p, "utf8"), p).not.toMatch(/talents\/(assets|catalogs)|GAME_ASSETS|GAME_DATA_(S3|BUCKET|ACCESS|SECRET|REGION)|game-assets|components\/game\/|shown-item-names|src\/item-names|loadItemNames|loadShownNames/);
+  for (const p of api) expect(readFileSync(p, "utf8"), p).not.toMatch(/talents\/(assets|catalogs)|GAME_ASSETS|GAME_DATA_(S3|BUCKET|ACCESS|SECRET|REGION)|game-assets|components\/game\/|shown-item-names|src\/item-names|loadItemNames|loadShownNames|src\/game-names|loadQuestNames|loadItemSetNames|loadSpellNames/);
 });
 
 let release = "";

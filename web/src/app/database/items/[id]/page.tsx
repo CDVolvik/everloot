@@ -8,7 +8,7 @@ import { loadShownNames } from "@/lib/shown-item-names";
 import { loadEdges } from "@/lib/edges";
 import { RelationTarget, SameIcon } from "@/components/EntityRelations";
 import { pinLink } from "@/lib/world-map";
-import { loadItemTips, loadSiteAssets } from "@/lib/game-assets";
+import { gameNameFor, loadItemSetNames, loadItemTips, loadQuestNames, loadSiteAssets, loadSpellNames } from "@/lib/game-assets";
 import { Badge, Container, DataTable, Facts, QUALITY_TEXT, Tabs, TooltipFrame, qualityOf, type Column, type Fact, type TabItem } from "@/components/ui";
 import { categoryOf } from "../../../../../../kb/src/item-taxonomy";
 import { edgesFrom, evidenceLabel, type Edge, type Rel } from "../../../../../../kb/src/edges";
@@ -78,6 +78,13 @@ export default async function ItemPage(props: Props) {
 
   const all = edgesFrom([...edges.observed, ...edges.client], "item", itemId);
   const rel = (r: Rel) => all.filter((e) => e.rel === r);
+  // Names for the quests, sets and spells this item relates to, read only for the kinds it has (players' names come first).
+  const kinds = new Set(all.map((e) => e.toKind));
+  const version = CLIENT_LAYER.build.version;
+  const [questNames, setNames, spellNames] = await Promise.all([
+    kinds.has("quest") ? loadQuestNames(version) : null, kinds.has("item_set") ? loadItemSetNames(version) : null, kinds.has("spell") ? loadSpellNames(version) : null,
+  ]);
+  const gameName = gameNameFor({ quests: questNames, sets: setNames, spells: spellNames });
 
   const trail: Crumb[] = [
     { name: "Home", path: "/" },
@@ -91,7 +98,7 @@ export default async function ItemPage(props: Props) {
   // The "Seen" column only where some row was seen in play; a tab read wholly from the game files carries
   // the item's own unconfirmed marker instead of one per row.
   const relationColumns = (head: string, rows: Edge[]): Column<Edge>[] => [
-    { key: "target", header: head, cell: (e) => <span className="inline-flex flex-wrap items-center gap-1"><RelationTarget edge={e} rel={e.rel} client={edges.client} spellIcon={spellIcon} nameOf={nameFor} /></span> },
+    { key: "target", header: head, cell: (e) => <span className="inline-flex flex-wrap items-center gap-1"><RelationTarget edge={e} rel={e.rel} client={edges.client} spellIcon={spellIcon} nameOf={nameFor} gameName={gameName} /></span> },
     ...(rows.some((e) => e.evidence === "observed") ? [{ key: "source", header: "Seen", cell: evidence, nowrap: true }] : []),
   ];
   // A relation tab from player reports (sold by) empties with the agreement meter; one from the game files
@@ -147,7 +154,7 @@ export default async function ItemPage(props: Props) {
           caption={`Items related to ${title}`}
           columns={[
             { key: "what", header: "Relation", nowrap: true, cell: (e: Edge) => (e.rel === "same_icon" ? "Same icon" : "Part of set") },
-            { key: "target", header: "With", cell: (e: Edge) => (e.rel === "same_icon" ? <SameIcon edge={e} self={itemId} client={edges.client} /> : <RelationTarget edge={e} rel={e.rel} client={edges.client} nameOf={nameFor} />) },
+            { key: "target", header: "With", cell: (e: Edge) => (e.rel === "same_icon" ? <SameIcon edge={e} self={itemId} client={edges.client} /> : <RelationTarget edge={e} rel={e.rel} client={edges.client} nameOf={nameFor} gameName={gameName} />) },
           ]}
           rows={related}
           rowKey={(e) => `${e.rel}-${e.toId}`}

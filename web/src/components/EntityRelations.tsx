@@ -4,6 +4,7 @@ import { CLIENT_SKILLS } from "../../../kb/src/client-layer-file";
 import { CLIENT_LABEL, edgesFrom, entityLabel, evidenceLabel, groupByRel, type Edge, type EdgeKind, type Rel } from "../../../kb/src/edges";
 import { zoneByMapId, zoneHref } from "@/lib/zones";
 import GameIcon from "./game/GameIcon";
+import Badge, { UNCONFIRMED_TITLE } from "./ui/Badge";
 
 /** A spell's icon URL, when the page has the asset manifest. Items get none here: their icons follow the reported-items rule. */
 export type SpellIconFor = (spellId: number) => string | undefined;
@@ -37,16 +38,31 @@ function professionOf(spellId: number, client: readonly Edge[]): string | undefi
 /** An agreed name for an entity, where the page has one; the label falls back to "kind id". */
 export type NameFor = (kind: EdgeKind, id: number) => string | undefined;
 
-export function RelationTarget({ edge, rel, client, spellIcon, nameOf }: { edge: Edge; rel: Rel; client: readonly Edge[]; spellIcon?: SpellIconFor; nameOf?: NameFor }) {
+/**
+ * A name from the private name files (docs/DATA_POLICY.md): a quest title the Warcraft Wiki gives for a quest the
+ * game files list, or an item set or spell name from the game files alone. Players' names come first.
+ */
+export type GameNameFor = (kind: EdgeKind, id: number) => { name: string; source: "wiki" | "files" } | undefined;
+
+/** The tooltip on a name from the name files: where it comes from, never a printed label. */
+export const GAME_NAME_TITLE = { wiki: "Name from the Warcraft Wiki", files: UNCONFIRMED_TITLE } as const;
+
+export function RelationTarget({ edge, rel, client, spellIcon, nameOf, gameName }: { edge: Edge; rel: Rel; client: readonly Edge[]; spellIcon?: SpellIconFor; nameOf?: NameFor; gameName?: GameNameFor }) {
   const href = hrefFor(edge.toKind, edge.toId, rel);
-  const text = edge.toKind === "skill" ? professionName(edge.toId) : edge.toKind === "zone" ? zoneByMapId(edge.toId)?.name ?? entityLabel("zone", edge.toId) : nameOf?.(edge.toKind, edge.toId) ?? entityLabel(edge.toKind, edge.toId);
+  const players = edge.toKind === "skill" || edge.toKind === "zone" ? undefined : nameOf?.(edge.toKind, edge.toId);
+  const fromFiles = edge.toKind === "skill" || edge.toKind === "zone" || players ? undefined : gameName?.(edge.toKind, edge.toId);
+  const text = edge.toKind === "skill" ? professionName(edge.toId) : edge.toKind === "zone" ? zoneByMapId(edge.toId)?.name ?? entityLabel("zone", edge.toId) : players ?? fromFiles?.name ?? entityLabel(edge.toKind, edge.toId);
+  const title = fromFiles ? GAME_NAME_TITLE[fromFiles.source] : undefined;
   const icon = edge.toKind === "spell" ? spellIcon?.(edge.toId) : undefined;
   // A spell's profession beside it (Created by: spell 2660 · Blacksmithing), as item databases list recipes.
   const profession = edge.toKind === "spell" ? professionOf(edge.toId, client) : undefined;
   return (
     <>
       {icon ? <><GameIcon src={icon} size={18} />{" "}</> : null}
-      {href ? <Link href={href} className="text-accent hover:underline underline-offset-4">{text}</Link> : text}
+      {href ? <Link href={href} title={title} className="text-accent hover:underline underline-offset-4">{text}</Link> : title ? <span title={title}>{text}</span> : text}
+      {fromFiles?.source === "wiki" ? <span className="sr-only"> ({GAME_NAME_TITLE.wiki.toLowerCase()})</span> : null}
+      {/* A name only the game files give carries the quiet unconfirmed marker, as on the item lists. */}
+      {fromFiles?.source === "files" ? <>{" "}<Badge tone="files" /></> : null}
       {profession ? <span className="text-fg-2">{` · ${profession}`}</span> : null}
     </>
   );
