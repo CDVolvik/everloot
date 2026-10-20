@@ -168,6 +168,10 @@ build that has a zip in the repository. Earlier builds have none.
   sent, like the sha256 check, so a bug in the export cannot publish a local path alongside the data.
 - The header menu brightens to the site's green on hover instead of the body text colour.
 
+### Fixed
+- Addon: `/everloot selftest` printed the failure text on two passing lines ("PASS C_Traits exists: no C_Traits
+  table: talents cannot be read"). Both now say "present".
+
 Pull requests merged to `main` are listed in the nightly pre-releases until the next tagged release.
 
 ## [desktop-v0.1.3] - 2026-10-20
