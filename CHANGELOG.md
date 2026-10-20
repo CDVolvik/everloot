@@ -13,6 +13,10 @@ build that has a zip in the repository. Earlier builds have none.
 ## [Unreleased]
 
 ### Added
+- Site: database pages for achievements, factions, titles and quest chains (`/database/achievements`,
+  `/database/factions`, `/database/titles`, `/database/quest-chains`), with lists you can filter and sort, a page for each entry, and entries in the hub, sitemap and search. An entry
+  shows only once three players report it the same way; until then each list says so.
+- Addon, protocol and database: NPC lists gain Type and Rank columns and filters (creature type and rank as the game shows them on target), and quest lists gain Category, Side and Group columns, with Category and Side filters. The addon now records a quest when you accept it: title, level, the quest log header, suggested group size and tag, the giver, and your faction (Alliance or Horde, no character name). Every value is public only after 3 installs agree; a side needs 3 installs on that faction and none on the other. Older addons keep working. Needs an addon release to start collecting; the quest-log calls have not been tried in the Forever client yet.
 - Player pages, off by default: search a WoW: Forever character by name and open a page with its race, class, level, guild and the day it was last seen, with a hide link on every page that needs no account. Nothing is collected or shown until `EVERLOOT_PLAYER_PAGES=1` is set on the site and a player turns on `/everloot players on` in an addon release that includes it; the design and the open legal questions are in `docs/design/specs/2026-10-20-player-pages-design.md`.
 - Site: a game version label in the header ("Beta · 1.60.1") with a menu of Live (at launch), PTR (none running) and Beta, read from one list in `web/src/lib/game-version.ts`; a test checks every game-data layer names the current build. The build is also named on `/methodology`.
 - Site: `/docs`, one documentation area for players and developers: Overview, Guides, API Reference, MCP and
@@ -71,6 +75,8 @@ build that has a zip in the repository. Earlier builds have none.
 - Site: zone pages at `/database/zones`, one for every released zone, with its map, the dungeons and raids
   entered there, and the NPCs, vendors and quests players have confirmed in it. Zone links in the database
   now open the zone page instead of the map.
+- Site: the item lists have a Source column and a `src` filter (Drop, Vendor, Crafted, Quest reward, Container or object),
+  from what players reported: drops, vendor offers, recipes and quest rewards, each once 3 installs agree.
 
 ### Changed
 - The upload record contract moved from `web/src/lib/intake.ts` into one package, `packages/protocol`
@@ -166,6 +172,10 @@ build that has a zip in the repository. Earlier builds have none.
   machine's own filesystem path (a Windows drive path, `/Users/`, `/home/` or `AppData`) before anything is
   sent, like the sha256 check, so a bug in the export cannot publish a local path alongside the data.
 - The header menu brightens to the site's green on hover instead of the body text colour.
+
+### Fixed
+- Addon: `/everloot selftest` printed the failure text on two passing lines ("PASS C_Traits exists: no C_Traits
+  table: talents cannot be read"). Both now say "present".
 
 Pull requests merged to `main` are listed in the nightly pre-releases until the next tagged release.
 

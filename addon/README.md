@@ -40,6 +40,14 @@ When scans are on, the cooldown is over and no scan is running, opening the auct
 the next visit. It never scans by itself. `/everloot scanprompt off` turns it off (the **Everloot scan**
 button and `/everloot scan` still work). With scans off, the first visit prints one line saying how to opt in.
 
+## NPC and quest facts
+
+When you target an NPC the addon also notes its creature type and rank, and when you accept a quest it
+records the quest's title, level, quest log header (category), suggested group size, tag, giver and your
+faction (Alliance or Horde, no name). The quest-log calls (`GetQuestLogTitle`, `C_QuestLog.GetQuestTagInfo`)
+have not been tried in the Forever client; a call that is missing or returns something unexpected records
+nothing for that field. The site shows each value only after 3 installs agree.
+
 ## Gold per hour
 
 `/everloot gph start` begins a session and opens a small window you can drag; `gph pause` stops the clock

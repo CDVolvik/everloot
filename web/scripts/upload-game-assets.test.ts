@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test, vi } from "vitest";
-import { folderProblems, isPrivateFile, isPublicFile, itemNamesCheck, parseUploadArgs, uploadOrder, withRetry } from "./game-assets-upload.mjs";
+import { folderProblems, isPrivateFile, isPublicFile, namesFileCheck, parseUploadArgs, uploadOrder, withRetry } from "./game-assets-upload.mjs";
 
 test("arguments: a folder or --snapshot <file>; a flag is never read as the path", () => {
   expect(parseUploadArgs(["../kb/data/assets/b", "--dry-run"])).toMatchObject({ folder: "../kb/data/assets/b", dry: true, snapshot: null, error: null });
@@ -52,9 +52,31 @@ test("a failed upload is tried again with growing waits, and gives up after four
 
 test("a shown-names file goes under its build folder, and only when it is one", () => {
   const file = { schema: "everloot.item-names/1", build: { version: "1.60.1.70450" }, wiki: { licence: "CC-BY-SA-4.0" }, count: 1, names: { 2589: { n: "Linen Cloth", q: 1, w: "Linen_Cloth" } } };
-  expect(itemNamesCheck(file, "wow_classic_beta-70450-84bea423-names")).toEqual({ prefix: "wow_classic_beta-70450-84bea423", problems: [] });
-  expect(itemNamesCheck(file, "wow_classic_beta-70450-84bea423-private").problems[0]).toMatch(/-names folder/);
-  expect(itemNamesCheck({ ...file, count: 2 }, "b-names").problems).toEqual(["count is 2 but the file holds 1 names"]);
-  expect(itemNamesCheck({ ...file, schema: "everloot.game-items/1" }, "b-names").problems[0]).toMatch(/schema/);
-  expect(itemNamesCheck({ ...file, wiki: { licence: "CC-BY-NC" } }, "b-names").problems).toEqual(["the wiki source is not CC-BY-SA-4.0"]);
+  expect(namesFileCheck(file, "wow_classic_beta-70450-84bea423-names")).toEqual({ prefix: "wow_classic_beta-70450-84bea423", problems: [] });
+  expect(namesFileCheck(file, "wow_classic_beta-70450-84bea423-private").problems[0]).toMatch(/-names folder/);
+  expect(namesFileCheck({ ...file, count: 2 }, "b-names").problems).toEqual(["count is 2 but the file holds 1 names"]);
+  expect(namesFileCheck({ ...file, schema: "everloot.game-items/1" }, "b-names").problems[0]).toMatch(/schema/);
+  expect(namesFileCheck({ ...file, wiki: { licence: "CC-BY-NC" } }, "b-names").problems).toEqual(["the wiki source is not CC-BY-SA-4.0"]);
+});
+
+test("the quest, set and spell names files are checked by their own schema; only the quest file needs the wiki licence", () => {
+  const build = { version: "1.60.1.70450" };
+  const quests = { schema: "everloot.quest-names/1", build, wiki: { licence: "CC-BY-SA-4.0" }, count: 1, names: { 176: { n: "Wanted: Hogger", w: "Wanted:_Hogger" } } };
+  expect(namesFileCheck(quests, "b-names", "quest-names.json").problems).toEqual([]);
+  expect(namesFileCheck({ ...quests, wiki: undefined }, "b-names", "quest-names.json").problems).toEqual(["the wiki source is not CC-BY-SA-4.0"]);
+  const sets = { schema: "everloot.item-set-names/1", build, count: 1, names: { 1: "The Gladiator" } };
+  expect(namesFileCheck(sets, "b-names", "item-set-names.json").problems).toEqual([]);
+  expect(namesFileCheck(sets, "b-names", "spell-names.json").problems).toEqual(["schema is everloot.item-set-names/1, expected everloot.spell-names/1"]);
+  expect(namesFileCheck({ ...sets, schema: "everloot.spell-names/1" }, "b-names", "spell-names.json").problems).toEqual([]);
+  expect(namesFileCheck(sets, "b-names", "items.json").problems[0]).toMatch(/not a names file/);
+});
+
+test("--folder sends a names file to the live folder of the same build, never another build's", () => {
+  const file = { schema: "everloot.item-set-names/1", build: { version: "1.60.1.70450" }, count: 1, names: { 1: "The Gladiator" } };
+  const check = (live: string) => namesFileCheck(file, "wow_classic_beta-70450-84bea423-names", "item-set-names.json", live);
+  expect(check("wow_classic_beta-70450-84bea423-2")).toEqual({ prefix: "wow_classic_beta-70450-84bea423-2", problems: [] });
+  expect(check("wow_classic_beta-70450-84bea423").prefix).toBe("wow_classic_beta-70450-84bea423");
+  expect(check("wow_classic_beta-70451-0000aaaa")).toMatchObject({ prefix: null, problems: [expect.stringMatching(/not a folder of build/)] });
+  expect(check("wow_classic_beta-70450-84bea4239").problems[0]).toMatch(/not a folder of build/);
+  expect(check("../x").prefix).toBeNull();
 });

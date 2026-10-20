@@ -2,7 +2,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { CURRENT_BUILD, TABLES } from "@/data/game-data/raid";
 import {
   assetUrl, BANNER_MAP, buildFolder, classAndProfessionIcons, continentArt, creditWhat, emblems, FETCH_TIMEOUT_MS, forgetPrivateReads, iconUrl,
-  instanceThumbs, itemIconUrl, itemShard, itemTip, launchArt, loadingArt, loadItemNames, loadItemTips, loadSiteAssets, parseSiteManifest, privateStoreFromEnv, raidArt,
+  instanceThumbs, itemIconUrl, itemShard, itemTip, gameNameFor, launchArt, loadingArt, loadItemNames, loadItemSetNames, loadItemTips, loadQuestNames, loadSpellNames, loadSiteAssets, parseSiteManifest, privateStoreFromEnv, raidArt,
 } from "./game-assets";
 import { itemTipText, qualityColor } from "./item-names";
 import { cameraBox, zoneArtShown, ZONE_ART_ZOOM, type Box, type Camera } from "./map-view";
@@ -271,4 +271,40 @@ test("without the file, the bucket or the asset URL, or with a file for another 
   // A wiki source under another licence, or a link that is not a page title, makes the whole file unusable.
   expect(await loadItemNames("1.60.1.70450", BASE, store({ ...namesFile, wiki: { ...namesFile.wiki, licence: "CC-BY-NC" } }))).toBeNull();
   expect(await loadItemNames("1.60.1.70450", BASE, store({ ...namesFile, names: { 1: { n: "X", q: 1, w: "\"><script>" } } }))).toBeNull();
+});
+
+const questFile = {
+  schema: "everloot.quest-names/1", build: { version: "1.60.1.70450" }, wiki: namesFile.wiki,
+  count: 2, names: { 176: { n: "Wanted: Hogger", w: "Wanted:_Hogger" }, 65593: { n: "Hearts of the Lovers", w: "Hearts_of_the_Lovers" } },
+};
+const setFile = { schema: "everloot.item-set-names/1", build: { version: "1.60.1.70450" }, count: 2, names: { 1: "The Gladiator", 1570: "Twilight Invoker's Vestments" } };
+const spellFile = { schema: "everloot.spell-names/1", build: { version: "1.60.1.70450" }, count: 3, names: { 3275: "Linen Bandage", 16633: "Create Item Visual (DND)", 1316597: "Stock Crate" } };
+
+test("quest titles, set names and spell names each come from their own private file, with the rule applied again", async () => {
+  const store = memoryStore({ [`${FOLDER}/quest-names.json`]: questFile, [`${FOLDER}/item-set-names.json`]: setFile, [`${FOLDER}/spell-names.json`]: spellFile });
+  const quests = await loadQuestNames("1.60.1.70450", BASE, store);
+  expect(quests?.wiki).toEqual({ name: namesFile.wiki.name, url: "https://warcraft.wiki.gg" });
+  expect([...quests!.names]).toEqual([[176, { name: "Wanted: Hogger", wikiPage: "https://warcraft.wiki.gg/wiki/Wanted:_Hogger" }]]);
+  expect([...(await loadItemSetNames("1.60.1.70450", BASE, store))!.names]).toEqual([[1, "The Gladiator"]]);
+  expect([...(await loadSpellNames("1.60.1.70450", BASE, store))!.names]).toEqual([[3275, "Linen Bandage"]]);
+  expect(store.reads).toEqual([`${FOLDER}/quest-names.json`, `${FOLDER}/item-set-names.json`, `${FOLDER}/spell-names.json`]);
+});
+
+test("without a file, for another build, or with one file's content under another's name, no names show", async () => {
+  expect(await loadQuestNames("1.60.1.70450", BASE, memoryStore({}))).toBeNull();
+  expect(await loadQuestNames("1.60.1.99999", BASE, memoryStore({ [`${FOLDER}/quest-names.json`]: questFile }))).toBeNull();
+  expect(await loadQuestNames("1.60.1.70450", BASE, memoryStore({ [`${FOLDER}/quest-names.json`]: { ...questFile, wiki: { ...questFile.wiki, licence: "CC-BY-NC" } } }))).toBeNull();
+  expect(await loadSpellNames("1.60.1.70450", BASE, memoryStore({ [`${FOLDER}/spell-names.json`]: setFile }))).toBeNull();
+  expect(await loadItemSetNames("1.60.1.70450", BASE, null)).toBeNull();
+});
+
+test("a relation target takes its name from the loaded files, and says whether the wiki or the game files gave it", () => {
+  const of = gameNameFor({
+    quests: { version: "v", wiki: { name: "w", url: "u" }, names: new Map([[176, { name: "Wanted: Hogger", wikiPage: "p" }]]) },
+    spells: { version: "v", names: new Map([[3275, "Linen Bandage"]]) },
+  });
+  expect(of("quest", 176)).toEqual({ name: "Wanted: Hogger", source: "wiki" });
+  expect(of("spell", 3275)).toEqual({ name: "Linen Bandage", source: "files" });
+  expect(of("item_set", 1)).toBeUndefined();
+  expect(of("item", 176)).toBeUndefined();
 });

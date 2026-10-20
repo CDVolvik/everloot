@@ -2,22 +2,26 @@ import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { beforeEach, expect, test, vi } from "vitest";
 
-const state = vi.hoisted(() => ({ assets: null as unknown, names: [] as unknown[], tipCalls: [] as number[][], matched: null as unknown }));
+const state = vi.hoisted(() => ({
+  assets: null as unknown, names: [] as unknown[], tipCalls: [] as number[][], matched: null as unknown,
+  levels: new Map<number, { level: number; required: number; binding: number }>(),
+}));
 vi.mock("@/lib/game-assets", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/game-assets")>()),
   loadSiteAssets: async () => state.assets,
   loadItemNames: async () => state.matched,
   loadItemTips: async (_assets: unknown, ids: readonly number[]) => {
     state.tipCalls.push([...ids]);
-    return new Map(ids.map((id) => [id, { name: `Game name ${id}`, color: "#fff", quality: "Common", icon: `https://assets.example.test/b/icons/i${id}.webp`, lines: [], partial: false, label: "found in game files, unconfirmed · build 1.60.1.70450" }]));
+    return new Map(ids.map((id) => [id, { name: `Game name ${id}`, color: "#fff", quality: "Common", icon: `https://assets.example.test/b/icons/i${id}.webp`, lines: [], partial: false, label: "found in game files, unconfirmed · build 1.60.1.70450", level: 0, required: 0, binding: 0, ...state.levels.get(id) }]));
   },
 }));
 vi.mock("@/lib/rollup-compute", () => ({
   loadItemFacts: async () => ({ rates: [], names: state.names, npcs: [], unreachable: false }),
   loadWorldFacts: async () => ({ npcs: [], quests: [], vendors: [], unreachable: false }),
+  loadCraftedItems: async () => ({ items: new Set<number>(), unreachable: false }),
   loadObservedEdges: async () => ({ edges: [], unreachable: false, dataAsOf: null }),
 }));
-vi.mock("@/lib/upload-store", () => ({ STORAGE_UNREACHABLE: "Storage unavailable" }));
+vi.mock("@/lib/upload-store", () => ({ STORAGE_UNREACHABLE: "Storage unavailable", uploadStore: { loadCompletion: async () => ({ state: null, dataAsOf: null, unreachable: true }) } }));
 vi.mock("next/link", () => ({ default: ({ href, children, style, title }: { href: string; children: ReactNode; style?: object; title?: string }) => <a href={href} title={title} style={style}>{children}</a> }));
 vi.mock("next/navigation", () => ({ notFound: () => { throw new Error("NEXT_NOT_FOUND"); }, useRouter: () => ({ push: () => {} }) }));
 
@@ -26,7 +30,7 @@ import SubclassPage, { generateMetadata as subclassMetadata } from "./[id]/[subc
 import { NAME_TITLE } from "./category-page";
 import { CREDIT } from "@/lib/talents/assets";
 import { CLIENT_EDGES } from "@/lib/edges";
-import { CLIENT_TAXONOMY, NAMED_SAMPLE, NAME_SOURCE } from "@/lib/items";
+import { CLIENT_TAXONOMY, ITEMS_PER_PAGE, NAMED_SAMPLE, NAME_SOURCE } from "@/lib/items";
 import sitemap from "@/app/sitemap";
 
 const BASE = "https://assets.example.test/b";
@@ -40,7 +44,7 @@ const html = async (el: Promise<ReactNode>) => renderToStaticMarkup(await el);
 const props = (id: string) => ({ params: Promise.resolve({ id }), searchParams: Promise.resolve({}) });
 const agreed = (itemId: number) => ["a", "b", "c"].map((installId) => ({ installId, itemId, name: `Agreed ${itemId}` }));
 
-beforeEach(() => { state.assets = null; state.names = []; state.tipCalls = []; state.matched = null; });
+beforeEach(() => { state.assets = null; state.names = []; state.tipCalls = []; state.matched = null; state.levels = new Map(); });
 
 test("an unreported item: the creating spell's icon, but no game file tooltip; the credit is the site footer's", async () => {
   state.assets = assets;
@@ -98,8 +102,8 @@ test("a category row shows a name the game files and the wiki agree on, in its q
   expect(page).not.toContain(NAME_SOURCE.wiki);
   expect(page).not.toContain(NAME_SOURCE.players);
   expect(page).not.toContain("warcraft.wiki.gg/wiki/");
-  // Icons are asked for the reported item and the matched one only.
-  expect(state.tipCalls).toEqual([[ids[1], ids[0]]]);
+  // Tooltip facts are asked for the matched item and the reported one only.
+  expect(state.tipCalls).toEqual([[ids[0], ids[1]]]);
 });
 
 test("without the names file a category shows Item N and no wiki credit", async () => {
@@ -120,23 +124,104 @@ test("wiki-matched names count toward the half a category needs to be indexed an
   expect((await sitemap()).map((e) => new URL(e.url).pathname)).toContain("/database/items/armor/cloth");
 });
 
-test("an item page with a matched name shows it with its icon, marked unconfirmed, and is indexed; no tooltip text; credits are the footer's", async () => {
+test("an item page with a matched name shows it with its icon and tooltip facts, marked unconfirmed, and is indexed; credits are the footer's", async () => {
   state.assets = assets;
   const id = clothIds()[0];
   state.matched = matchedNames([id]);
   const page = await html(ItemPage(props(String(id))));
   expect(page).toContain(`Wiki name ${id}</h1>`);
   expect(page).toMatch(new RegExp(`data-unconfirmed[^>]*>(?:<[^>]+>)*?<img[^>]*i${id}\\.webp`));
+  // The tooltip card, as for an item players reported (DATA_POLICY, item names: facts follow the name).
+  expect(page).toMatch(new RegExp(`data-tooltip-frame[^>]*>[\\s\\S]*Game name ${id}`));
   // No source line on the page: the Warcraft Wiki and Blizzard credits are in the site footer and /methodology#credits.
   expect(page).not.toContain(NAME_SOURCE.wiki);
   expect(page).not.toContain(CREDIT);
-  expect(page).not.toContain("Game name");
+  expect(page).not.toMatch(/game files, unconfirmed/i);
+  expect(state.tipCalls).toEqual([[id]]);
   const meta = await generateMetadata(props(String(id)));
   expect(meta.title).toContain(`Wiki name ${id}`);
   expect(meta.description).toContain("Warcraft Wiki");
   expect(meta.robots).toMatchObject({ index: true });
-  // An item with no name from any source stays "Item N" and out of search.
+  // An item with no name from any source stays "Item N", with no tooltip facts, and out of search.
   const other = clothIds()[1];
-  expect(await html(ItemPage(props(String(other))))).toContain(`Item ${other}</h1>`);
+  state.tipCalls = [];
+  const plain = await html(ItemPage(props(String(other))));
+  expect(plain).toContain(`Item ${other}</h1>`);
+  expect(plain).not.toContain("Game name");
+  expect(state.tipCalls).toEqual([]);
   expect((await generateMetadata(props(String(other)))).robots).toMatchObject({ index: false });
+});
+
+test("item level and required level columns, from the tooltip facts of items players reported or the name rule names", async () => {
+  state.assets = assets;
+  const ids = clothIds();
+  state.matched = matchedNames([ids[0]]);
+  state.names = agreed(ids[1]);
+  for (const id of ids.slice(0, 3)) state.levels.set(id, { level: 17, required: 12, binding: 2 });
+  const page = await html(cloth());
+  expect(page).toContain(">Item level<");
+  expect(page).toContain(">Req. level<");
+  // Two rows show their levels; the third has facts in the files but neither a reported item nor a matched name.
+  expect(page.match(/>17<\/td>/g)).toHaveLength(2);
+  expect(page.match(/>12<\/td>/g)).toHaveLength(2);
+  expect(state.tipCalls.flat()).not.toContain(ids[2]);
+});
+
+/** The cloth list with these filters: the ids of its rows, in order, and its markup. */
+async function clothRows(search: Record<string, string>) {
+  const page = await html(SubclassPage({ params: Promise.resolve({ id: "armor", subclass: "cloth" }), searchParams: Promise.resolve(search) }));
+  return { page, rows: [...page.matchAll(/<tr[^>]*>[\s\S]*?href="\/database\/items\/(\d+)"/g)].map((m) => Number(m[1])) };
+}
+
+test("level and binding filters match only items whose facts show; unknown values never match, whatever the files hold", async () => {
+  state.assets = assets;
+  const ids = clothIds();
+  state.matched = matchedNames(ids.slice(0, 3));
+  state.names = agreed(ids[3]);
+  state.levels = new Map([
+    [ids[0], { level: 15, required: 10, binding: 2 }],
+    [ids[1], { level: 25, required: 20, binding: 1 }],
+    [ids[2], { level: 15, required: 0, binding: 0 }],
+    [ids[3], { level: 18, required: 12, binding: 2 }],
+    // In the files, but nobody reported it and the wiki does not name it: never read, never matched.
+    [ids[4], { level: 15, required: 10, binding: 2 }],
+  ]);
+  const ilvl = await clothRows({ ilvl: "11-20" });
+  expect(ilvl.rows).toEqual([ids[0], ids[2], ids[3]]);
+  // The filter reads the facts of every row that may show them, and only those.
+  expect(state.tipCalls).toEqual([ids.slice(0, 4)]);
+  // No required level is no value: it does not match a required level range.
+  expect((await clothRows({ req: "1-10" })).rows).toEqual([ids[0]]);
+  expect((await clothRows({ bind: "none" })).rows).toEqual([ids[2]]);
+  expect((await clothRows({ bind: "equip", req: "11-20" })).rows).toEqual([ids[3]]);
+  // The filter is on in its menu and removable as a chip when nothing matches.
+  const none = await clothRows({ ilvl: "81-999" });
+  expect(none.rows).toEqual([]);
+  expect(none.page).toContain("Item level 81+");
+  expect(none.page).toContain('href="/database/items/armor/cloth"');
+});
+
+test("sorting by item level or required level puts known values first, low to high or back, ties by id", async () => {
+  state.assets = assets;
+  const ids = clothIds();
+  state.matched = matchedNames(ids.slice(0, 3));
+  state.levels = new Map([[ids[0], { level: 15, required: 10, binding: 2 }], [ids[1], { level: 25, required: 0, binding: 1 }], [ids[2], { level: 15, required: 5, binding: 0 }]]);
+  expect((await clothRows({ sort: "-ilvl" })).rows.slice(0, 4)).toEqual([ids[1], ids[0], ids[2], ids[3]]);
+  expect((await clothRows({ sort: "ilvl" })).rows.slice(0, 4)).toEqual([ids[0], ids[2], ids[1], ids[3]]);
+  // Item 1's "no required level" sorts with the unknown rows, by id.
+  expect((await clothRows({ sort: "req" })).rows.slice(0, 3)).toEqual([ids[2], ids[0], ids[1]]);
+});
+
+test("the pager and the other filters' links keep the level and binding filters", async () => {
+  state.assets = assets;
+  const ids = clothIds();
+  state.matched = matchedNames(ids);
+  for (const id of ids) state.levels.set(id, { level: 15, required: 10, binding: 2 });
+  const { page, rows } = await clothRows({ ilvl: "11-20", bind: "equip" });
+  expect(rows).toHaveLength(ITEMS_PER_PAGE);
+  expect(page).toContain('href="/database/items/armor/cloth?ilvl=11-20&amp;bind=equip&amp;page=2"');
+  expect(page).toContain('href="/database/items/armor/cloth?quality=poor&amp;ilvl=11-20&amp;bind=equip"');
+  // The name box keeps them as hidden fields.
+  expect(page).toContain('name="ilvl" value="11-20"');
+  expect(page).toContain('name="bind" value="equip"');
 });

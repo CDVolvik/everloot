@@ -137,7 +137,8 @@ export default async function MethodologyPage() {
             </li>
             <li>
               <span className="text-fg">Warcraft Wiki contributors.</span> Item names, where the game files and the{" "}
-              <a href={WIKI_URL} rel="noopener" className={link}>Warcraft Wiki</a> give the same one, and the{" "}
+              <a href={WIKI_URL} rel="noopener" className={link}>Warcraft Wiki</a> give the same one, quest titles, where the game files
+              list the quest and the wiki titles it, and the{" "}
               <Link href="/lore" className={link}>lore archive</Link> (the wiki as of 13 November 2023), under CC BY-SA 4.0. Each lore page
               links its source.
             </li>

@@ -407,6 +407,28 @@ export declare const intakeRequest: z.ZodObject<{
             npc: "npc";
             player: "player";
         }>>;
+        creatureType: z.ZodOptional<z.ZodEnum<{
+            Beast: "Beast";
+            Critter: "Critter";
+            Demon: "Demon";
+            Dragonkin: "Dragonkin";
+            Elemental: "Elemental";
+            "Gas Cloud": "Gas Cloud";
+            Giant: "Giant";
+            Humanoid: "Humanoid";
+            Mechanical: "Mechanical";
+            "Non-combat Pet": "Non-combat Pet";
+            "Not specified": "Not specified";
+            Totem: "Totem";
+            Undead: "Undead";
+        }>>;
+        rank: z.ZodOptional<z.ZodEnum<{
+            boss: "boss";
+            elite: "elite";
+            normal: "normal";
+            rare: "rare";
+            rare_elite: "rare_elite";
+        }>>;
     }, z.core.$strip>, z.ZodObject<{
         installId: z.ZodString;
         eventId: z.ZodOptional<z.ZodString>;
@@ -430,6 +452,18 @@ export declare const intakeRequest: z.ZodObject<{
         giverNpcId: z.ZodOptional<z.ZodNumber>;
         turnInNpcId: z.ZodOptional<z.ZodNumber>;
         rewardItemIds: z.ZodDefault<z.ZodArray<z.ZodNumber>>;
+        category: z.ZodOptional<z.ZodString>;
+        faction: z.ZodOptional<z.ZodEnum<{
+            alliance: "alliance";
+            horde: "horde";
+        }>>;
+        suggestedGroup: z.ZodOptional<z.ZodNumber>;
+        tag: z.ZodOptional<z.ZodEnum<{
+            dungeon: "dungeon";
+            group: "group";
+            pvp: "pvp";
+            raid: "raid";
+        }>>;
     }, z.core.$strip>, z.ZodObject<{
         installId: z.ZodString;
         eventId: z.ZodOptional<z.ZodString>;
@@ -1268,6 +1302,28 @@ export declare const API_SCHEMAS: {
                 npc: "npc";
                 player: "player";
             }>>;
+            creatureType: z.ZodOptional<z.ZodEnum<{
+                Beast: "Beast";
+                Critter: "Critter";
+                Demon: "Demon";
+                Dragonkin: "Dragonkin";
+                Elemental: "Elemental";
+                "Gas Cloud": "Gas Cloud";
+                Giant: "Giant";
+                Humanoid: "Humanoid";
+                Mechanical: "Mechanical";
+                "Non-combat Pet": "Non-combat Pet";
+                "Not specified": "Not specified";
+                Totem: "Totem";
+                Undead: "Undead";
+            }>>;
+            rank: z.ZodOptional<z.ZodEnum<{
+                boss: "boss";
+                elite: "elite";
+                normal: "normal";
+                rare: "rare";
+                rare_elite: "rare_elite";
+            }>>;
         }, z.core.$strip>, z.ZodObject<{
             installId: z.ZodString;
             eventId: z.ZodOptional<z.ZodString>;
@@ -1291,6 +1347,18 @@ export declare const API_SCHEMAS: {
             giverNpcId: z.ZodOptional<z.ZodNumber>;
             turnInNpcId: z.ZodOptional<z.ZodNumber>;
             rewardItemIds: z.ZodDefault<z.ZodArray<z.ZodNumber>>;
+            category: z.ZodOptional<z.ZodString>;
+            faction: z.ZodOptional<z.ZodEnum<{
+                alliance: "alliance";
+                horde: "horde";
+            }>>;
+            suggestedGroup: z.ZodOptional<z.ZodNumber>;
+            tag: z.ZodOptional<z.ZodEnum<{
+                dungeon: "dungeon";
+                group: "group";
+                pvp: "pvp";
+                raid: "raid";
+            }>>;
         }, z.core.$strip>, z.ZodObject<{
             installId: z.ZodString;
             eventId: z.ZodOptional<z.ZodString>;

@@ -1,16 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { itemPage } from "../../../../../kb/src/item-page";
-import type { QuestPage } from "../../../../../kb/src/world-pages";
+import type { QuestSide, QuestTag } from "../../../../../kb/src/world-pages";
+import { GAME_NAME_TITLE } from "@/components/EntityRelations";
 import GameIcon from "@/components/game/GameIcon";
 import { Container, DataTable, DataTitle, FilterBar, ResultStrip, type Column, type FilterControl } from "@/components/ui";
-import { loadItemTips, loadSiteAssets } from "@/lib/game-assets";
-import { shownItemName } from "@/lib/items";
+import { loadItemTips, loadQuestNames, loadSiteAssets } from "@/lib/game-assets";
+import { CLIENT_LAYER, shownItemName } from "@/lib/items";
 import { npcNames } from "@/lib/names";
 import { loadWorldFacts } from "@/lib/rollup-compute";
 import { loadShownNames } from "@/lib/shown-item-names";
-import { publicQuests } from "@/lib/world-lists";
+import { publicQuests, type QuestRow } from "@/lib/world-lists";
 import { LINK } from "../entity";
 import {
   flag, LEVEL_BRACKETS, listHref, listMetadata, listQuery, nextSort, NoMatches, NoObservations, PER_PAGE, range, rangeParam, sortParam, sortRows, Unreadable,
@@ -20,24 +20,32 @@ import {
 const META = { title: "WoW Forever Quest Lookup", description: "Look up a WoW: Forever quest by id. Title, level, giver, turn-in and rewards become public after three installs agree on them.", path: "/database/quests" };
 export const dynamic = "force-dynamic";
 
-const SORTS = ["name", "level", "giver", "turnin", "rewards", "id"] as const;
+const SORTS = ["name", "level", "category", "side", "group", "giver", "turnin", "rewards", "id"] as const;
 type Sort = (typeof SORTS)[number];
 const DEFAULT_SORT = { key: "id" as Sort, desc: false };
 
-interface QuestQuery extends ListQuery<Sort> { level?: { min: number; max: number }; rewards?: boolean }
+const SIDES: Record<string, QuestSide> = { alliance: "alliance", horde: "horde", both: "both" };
+const SIDE_LABEL: Record<QuestSide, string> = { alliance: "Alliance", horde: "Horde", both: "Both" };
+const TAG_LABEL: Record<QuestTag, string> = { group: "Group", dungeon: "Dungeon", raid: "Raid", pvp: "PvP" };
+const groupLabel = (x: QuestRow) => [x.tag && TAG_LABEL[x.tag], x.suggestedGroup !== null && `${x.suggestedGroup} players`].filter(Boolean).join(", ");
 
-/** The quest list's filters from the URL: `q`, `level=10-20`, `rewards=1`. */
+interface QuestQuery extends ListQuery<Sort> { level?: { min: number; max: number }; rewards?: boolean; category?: string; side?: string }
+
+/** The quest list's filters from the URL: `q`, `level=10-20`, `rewards=1`, `category=Elwynn Forest`, `side=alliance|horde|both`. */
 function questQuery(search: Search): QuestQuery | null {
   const base = listQuery(search, SORTS);
   const level = range(search, "level"), rewards = flag(search, "rewards");
+  const category = typeof search.category === "string" && search.category.trim() ? search.category.trim().slice(0, 60) : undefined;
+  const side = typeof search.side === "string" ? search.side : undefined;
   if (!base || level === null || rewards === null) return null;
-  return { ...base, ...(level ? { level } : {}), ...(rewards ? { rewards } : {}) };
+  if (side !== undefined && !SIDES[side]) return null;
+  return { ...base, ...(level ? { level } : {}), ...(rewards ? { rewards } : {}), ...(category ? { category } : {}), ...(side ? { side } : {}) };
 }
 
 const href = (q: Partial<QuestQuery>) => listHref("/database/quests", [
-  ["q", q.q], ["level", rangeParam(q.level)], ["rewards", q.rewards ? "1" : undefined], ["sort", sortParam(q.sort)], ["page", q.page && q.page > 1 ? String(q.page) : undefined],
+  ["q", q.q], ["level", rangeParam(q.level)], ["rewards", q.rewards ? "1" : undefined], ["category", q.category], ["side", q.side], ["sort", sortParam(q.sort)], ["page", q.page && q.page > 1 ? String(q.page) : undefined],
 ]);
-const filters = (q: QuestQuery) => Number(Boolean(q.q)) + Number(Boolean(q.level)) + Number(Boolean(q.rewards));
+const filters = (q: QuestQuery) => Number(Boolean(q.q)) + Number(Boolean(q.level)) + Number(Boolean(q.rewards)) + Number(Boolean(q.category)) + Number(Boolean(q.side));
 
 export async function generateMetadata(props: { searchParams?: Promise<Search> }): Promise<Metadata> {
   const q = questQuery((await props.searchParams) ?? {});
@@ -50,14 +58,19 @@ export default async function QuestListPage(props: { searchParams?: Promise<Sear
   const facts = await loadWorldFacts();
   const all = facts.unreachable ? [] : publicQuests(facts);
   const npcs = facts.unreachable ? new Map<number, string>() : npcNames(facts);
+  // A title players agree on; else the Warcraft Wiki's, for a quest the game files list (docs/DATA_POLICY.md).
+  const wikiTitles = all.some((x) => !x.title) ? await loadQuestNames(CLIENT_LAYER.build.version) : null;
+  const titleOf = (x: QuestRow) => x.title ?? wikiTitles?.names.get(x.questId)?.name ?? null;
   const text = q.q?.toLowerCase();
   const id = text && /^#?\d+$/.test(text) ? Number(text.replace("#", "")) : null;
   const matched = all.filter((x) =>
-    (!text || (id !== null ? x.questId === id : Boolean(x.title?.toLowerCase().includes(text))))
-    && (!q.level || (x.level !== null && x.level >= q.level.min && x.level <= q.level.max)) && (!q.rewards || x.rewards.length > 0));
+    (!text || (id !== null ? x.questId === id : Boolean(titleOf(x)?.toLowerCase().includes(text))))
+    && (!q.level || (x.level !== null && x.level >= q.level.min && x.level <= q.level.max)) && (!q.rewards || x.rewards.length > 0)
+    && (!q.category || x.category === q.category) && (!q.side || x.side === SIDES[q.side]));
   const sort = q.sort ?? DEFAULT_SORT;
   const npcKey = (n: number | null) => (n === null ? null : npcs.get(n)?.toLowerCase() ?? `~${String(n).padStart(9, "0")}`);
-  const key = (x: QuestPage): string | number | null => sort.key === "name" ? x.title?.toLowerCase() ?? null : sort.key === "level" ? x.level
+  const key = (x: QuestRow): string | number | null => sort.key === "name" ? titleOf(x)?.toLowerCase() ?? null : sort.key === "level" ? x.level
+    : sort.key === "category" ? x.category?.toLowerCase() ?? null : sort.key === "side" ? x.side : sort.key === "group" ? x.suggestedGroup
     : sort.key === "giver" ? npcKey(x.giverNpcId) : sort.key === "turnin" ? npcKey(x.turnInNpcId) : sort.key === "rewards" ? x.rewards.length : x.questId;
   const rows = sortRows(matched, key, sort.desc, (x) => x.questId);
   const pages = Math.max(1, Math.ceil(rows.length / PER_PAGE));
@@ -68,16 +81,25 @@ export default async function QuestListPage(props: { searchParams?: Promise<Sear
   // Reward icons and names under the item lists' rule: art only for items players reported or the wiki names.
   const rewardIds = [...new Set(shown.flatMap((x) => x.rewards))];
   const shownNames = rewardIds.length ? await loadShownNames() : null;
-  const reported = !shownNames || shownNames.facts.unreachable ? [] : rewardIds.filter((rid) => { const p = itemPage(rid, shownNames.facts); return Boolean(p.name || p.drops.length || p.pins.length); });
-  const withArt = [...new Set([...reported, ...rewardIds.filter((rid) => shownNames?.matched?.names.has(rid))])];
+  const withArt = shownNames ? rewardIds.filter(shownNames.showsTip) : [];
   const tips = await loadItemTips(withArt.length ? await loadSiteAssets() : null, withArt);
-  const itemName = (rid: number) => (shownNames ? shownItemName(rid, shownNames.agreed, shownNames.matched?.names, reported.includes(rid) ? tips.get(rid) : null)?.name : undefined) ?? `Item ${rid}`;
+  const itemName = (rid: number) => (shownNames ? shownItemName(rid, shownNames.agreed, shownNames.matched?.names, tips.get(rid))?.name : undefined) ?? `Item ${rid}`;
 
   const dash = <span className="text-muted">—</span>;
   const npc = (n: number | null) => (n === null ? dash : <Link href={`/database/npcs/${n}`} className={LINK}>{npcs.get(n) ?? `NPC ${n}`}</Link>);
-  const columns: Column<QuestPage>[] = [
-    { key: "name", header: "Name", sortable: true, cell: (x) => <Link href={`/database/quests/${x.questId}`} className={LINK}>{x.title ?? `Quest ${x.questId}`}</Link> },
+  const columns: Column<QuestRow>[] = [
+    { key: "name", header: "Name", sortable: true, cell: (x) => {
+      const wiki = !x.title && titleOf(x);
+      // Where a title comes from is its tooltip (and words for a screen reader), never a printed label.
+      return <Link href={`/database/quests/${x.questId}`} title={wiki ? GAME_NAME_TITLE.wiki : undefined} className={LINK}>
+        {titleOf(x) ?? `Quest ${x.questId}`}
+        {wiki && <span className="sr-only"> ({GAME_NAME_TITLE.wiki.toLowerCase()})</span>}
+      </Link>;
+    } },
     { key: "level", header: "Level", numeric: true, sortable: true, cell: (x) => x.level ?? dash },
+    { key: "category", header: "Category", sortable: true, cell: (x) => x.category ?? dash },
+    { key: "side", header: "Side", sortable: true, cell: (x) => (x.side ? SIDE_LABEL[x.side] : dash) },
+    { key: "group", header: "Group", sortable: true, cell: (x) => groupLabel(x) || dash },
     { key: "giver", header: "Giver", sortable: true, cell: (x) => npc(x.giverNpcId) },
     { key: "turnin", header: "Turn-in", sortable: true, cell: (x) => npc(x.turnInNpcId) },
     {
@@ -95,11 +117,24 @@ export default async function QuestListPage(props: { searchParams?: Promise<Sear
     { key: "id", header: "ID", numeric: true, sortable: true, cell: (x) => x.questId },
   ];
 
+  const categories = [...new Set(all.map((x) => x.category).filter((c): c is string => c !== null))].sort((a, b) => a.localeCompare(b));
   const controls: FilterControl[] = [
     {
       type: "menu", key: "level", label: "Level",
       options: [{ label: "Any level", href: here({ level: undefined }), on: !q.level, reset: true }, ...LEVEL_BRACKETS.map((b) => ({
         label: `${b.min}–${b.max}`, href: here({ level: b }), on: q.level?.min === b.min && q.level?.max === b.max,
+      }))],
+    },
+    {
+      type: "menu", key: "category", label: "Category",
+      options: [{ label: "Any category", href: here({ category: undefined }), on: !q.category, reset: true }, ...categories.map((c) => ({
+        label: c, href: here({ category: c }), on: q.category === c, count: all.filter((x) => x.category === c).length,
+      }))],
+    },
+    {
+      type: "menu", key: "side", label: "Side",
+      options: [{ label: "Any side", href: here({ side: undefined }), on: !q.side, reset: true }, ...Object.entries(SIDES).map(([k, s]) => ({
+        label: SIDE_LABEL[s], href: here({ side: k }), on: q.side === k, count: all.filter((x) => x.side === s).length,
       }))],
     },
     { type: "toggle", key: "rewards", label: "Has rewards", href: here({ rewards: q.rewards ? undefined : true }), on: Boolean(q.rewards) },
@@ -109,6 +144,8 @@ export default async function QuestListPage(props: { searchParams?: Promise<Sear
   const chips = [
     ...(q.q ? [{ label: `Name: ${q.q}`, href: here({ q: undefined }) }] : []),
     ...(q.level ? [{ label: `Level ${rangeParam(q.level)}`, href: here({ level: undefined }) }] : []),
+    ...(q.category ? [{ label: q.category, href: here({ category: undefined }) }] : []),
+    ...(q.side ? [{ label: SIDE_LABEL[SIDES[q.side]!], href: here({ side: undefined }) }] : []),
     ...(q.rewards ? [{ label: "Has rewards", href: here({ rewards: undefined }) }] : []),
   ];
   const empty = facts.unreachable ? <Unreadable />
@@ -138,7 +175,7 @@ export default async function QuestListPage(props: { searchParams?: Promise<Sear
             rowKey={(x) => String(x.questId)}
             sort={{ key: sort.key, direction: sort.desc ? "desc" : "asc" }}
             sortHref={(k, dir) => here({ sort: nextSort(k, dir, DEFAULT_SORT) })}
-            meta={(x) => [x.level !== null && `Level ${x.level}`, x.giverNpcId !== null && `From ${npcs.get(x.giverNpcId) ?? `NPC ${x.giverNpcId}`}`, x.rewards.length > 0 && `${x.rewards.length} reward${x.rewards.length === 1 ? "" : "s"}`, `ID ${x.questId}`].filter(Boolean).join(" · ")}
+            meta={(x) => [x.level !== null && `Level ${x.level}`, x.category, x.side && SIDE_LABEL[x.side], x.giverNpcId !== null && `From ${npcs.get(x.giverNpcId) ?? `NPC ${x.giverNpcId}`}`, x.rewards.length > 0 && `${x.rewards.length} reward${x.rewards.length === 1 ? "" : "s"}`, `ID ${x.questId}`].filter(Boolean).join(" · ")}
             empty={empty}
           />
         </div>

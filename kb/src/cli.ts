@@ -23,6 +23,8 @@ import { clientSnapshotName, readClientMeta, writeClientSnapshot } from "./clien
 import { Curated, diffRaidBuffs, RaidBuffTable } from "./raid-buffs.js";
 import { parseItemIds } from "./assets/items.js";
 import { runItemNames } from "./item-names.js";
+import { runGameNames } from "./game-names.js";
+import { SHOWN_MAX_QUEST_ID, SHOWN_MAX_SET_ID, SHOWN_MAX_SPELL_ID } from "./game-name-rule.js";
 import { SHOWN_MAX_ITEM_ID } from "./item-name-rule.js";
 import { parse as parseYaml } from "yaml";
 import { parseArgs } from "./args.js";
@@ -123,6 +125,11 @@ const USAGE = `usage: npm run kb -- <command> --db <path>
     grows, and writes the names the site may show, where both agree, to <out>/<product>-<build>-<config>-names/
     item-names.json for the private bucket. Prints the count per tier and the mismatches. The ledger holds every
     name in the build, so it stays on this machine; never commit either file. See docs/DATA_POLICY.md)
+  game-names <snapshot.sqlite> --wiki <knowledge base or release .sqlite> [--out data/assets]
+    (writes, beside item-names.json, the quest titles where the build's QuestV2 lists the quest id and the
+    Warcraft Wiki dump's quest infoboxes give it one title (quest-names.json), and the game files' names of the
+    item sets and spells the client layer's relations name (item-set-names.json, spell-names.json), each held to
+    the id ranges in kb/src/game-name-rule.ts. For the private bucket only; never commit them. See docs/DATA_POLICY.md)
   client-map <snapshot.sqlite> [--out ../web/src/data/game-data/map.json]
     (zone rectangles in world coordinates, continents and dungeon and raid entrances from a client
     snapshot, for the world map page. Game file data, stamped with the build. See docs/DATA_POLICY.md)
@@ -495,6 +502,21 @@ async function main(): Promise<number> {
       for (const m of run.mismatches.slice(0, 25)) console.log(`  ${m.id}: files "${m.files}", wiki "${m.wiki.join('" | "')}"`);
       console.log(`ledger: ${run.ledger.runs.length} runs, ${Object.keys(run.ledger.items).length} items; this run added ${run.ledger.runs.at(-1)!.added.files} game file and ${run.ledger.runs.at(-1)!.added.wiki} wiki names`);
       console.log(`shown -> ${run.shownPath} (${run.shown.count} names)`);
+      return 0;
+    }
+    case "game-names": {
+      const kbPath = flags.get("wiki");
+      if (!args[0] || !kbPath) break;
+      const run = runGameNames({ snapshotPath: args[0], kbPath, outDir: flags.get("out") || "data/assets", edges: CLIENT_EDGES });
+      const q = run.quests.counts;
+      console.log(`build ${run.build}, wiki dump ${run.wikiDump} (${run.wikiQuestIds} quest ids with a title)`);
+      console.log(`quests: ${q.quests} in QuestV2; ${q.match} with one wiki title, ${q.mismatch} where wiki pages disagree, ${q.files} the wiki lacks; held back ${q.held} with an id from ${SHOWN_MAX_QUEST_ID}`);
+      console.log(`wiki pages that disagree (not shown), first 15 of ${run.quests.mismatches.length}:`);
+      for (const m of run.quests.mismatches.slice(0, 15)) console.log(`  ${m.id}: "${m.wiki.join('" | "')}"`);
+      for (const [label, r, cap] of [["item sets", run.sets, SHOWN_MAX_SET_ID], ["spells", run.spells, SHOWN_MAX_SPELL_ID]] as const) {
+        console.log(`${label}: ${r.counts.referenced} in the client layer's relations, ${r.counts.named} named in the files, held back ${r.counts.held} (id from ${cap} or a placeholder name)`);
+      }
+      for (const r of [run.quests, run.sets, run.spells]) console.log(`shown -> ${r.path} (${r.file.count} names)`);
       return 0;
     }
     case "client-map": {
