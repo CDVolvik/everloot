@@ -15,7 +15,7 @@ import AgreementMeter, { agreementLabel, clampAgreement } from "./AgreementMeter
 import Badge from "./Badge";
 import Card from "./Card";
 import Container from "./Container";
-import DataTable, { type Column } from "./DataTable";
+import DataTable, { type Column, type SparseColumn } from "./DataTable";
 import EmptyState from "./EmptyState";
 import { pageWindow } from "./Pager";
 import PageHeader from "./PageHeader";
@@ -199,7 +199,9 @@ describe("DataTable", () => {
       <DataTable dense caption="Items" columns={columns} rows={rows} rowKey={(r) => String(r.id)} sort={{ key: "name", direction: "asc" }} sortHref={(key, dir) => `?sort=${dir === "desc" ? "-" : ""}${key}`} />,
     );
     expect(html).not.toContain("rounded-card");
-    expect(html).toMatch(/<th scope="col" aria-sort="ascending" class="[^"]*sticky top-header[^"]*h-th[^"]*text-th/);
+    expect(html).toMatch(/<th scope="col" aria-sort="ascending" class="[^"]*h-th sm:sticky sm:top-header[^"]*text-th/);
+    // Not sticky on a phone, where a sideways-scrolling table would push its header down onto the rows.
+    expect(html).not.toMatch(/[\s"]sticky[\s"]/);
     expect(html).not.toContain("font-mono text-xs");
     expect(html).toMatch(/<td class="[^"]*sm:h-row/);
     expect(html).toContain("▲");
@@ -213,6 +215,16 @@ describe("DataTable", () => {
     expect(html.match(/hidden sm:table-cell/g)).toHaveLength(1 + rows.length);
     expect(html).toContain('<div class="text-cell-2 text-muted sm:hidden">Seen 12</div>');
     expect(html).not.toContain("overflow-x-auto");
+  });
+
+  test("a column blank on every row is left out; one value anywhere keeps it", () => {
+    const withSource: SparseColumn<Row>[] = [...columns, { key: "src", header: "Source", cell: (r) => (r.count ? "Drop" : "—"), blank: (r) => !r.count }];
+    const none = render(<DataTable dense caption="Items" columns={withSource} rows={[rows[1]]} rowKey={(r) => String(r.id)} />);
+    expect(none).not.toContain("Source");
+    expect(none.match(/<th /g)).toHaveLength(2);
+    expect(render(<DataTable dense caption="Items" columns={withSource} rows={rows} rowKey={(r) => String(r.id)} />)).toContain("Source");
+    // With no rows the headers stay as given.
+    expect(render(<DataTable caption="Items" columns={withSource} rows={[]} rowKey={(r) => String(r.id)} />)).toContain("Source");
   });
 
   test("the numbered pager keeps the first, the last and the neighbours of the current page", () => {

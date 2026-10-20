@@ -15,8 +15,12 @@ export interface Column<Row> {
   nowrap?: boolean;
 }
 
+/** A column that can be left out: `blank` says a cell has nothing to say ("—", 0, no id). */
+export type SparseColumn<Row> = Column<Row> & { blank?: (row: Row) => boolean };
+
 export interface DataTableProps<Row> {
-  columns: Column<Row>[];
+  /** A column blank on every row shown is left out (filledColumns). */
+  columns: SparseColumn<Row>[];
   rows: Row[];
   rowKey: (row: Row) => string;
   /** What the table lists, for screen readers and the scroll region's name. */
@@ -41,13 +45,23 @@ export interface DataTableProps<Row> {
   meta?: (row: Row) => ReactNode;
 }
 
+/**
+ * The columns with something to say for these rows: one whose `blank` holds on every row (a count nobody has
+ * reported yet, an id the results do not have) is noise. The table applies it to the rows it shows; a list
+ * passes its whole result through it first, so a column does not come and go from page to page.
+ */
+export function filledColumns<Row>(columns: SparseColumn<Row>[], rows: readonly Row[]): SparseColumn<Row>[] {
+  return rows.length ? columns.filter((col) => !col.blank || !rows.every(col.blank)) : columns;
+}
+
 const ariaSort = (direction: SortDirection) => (direction === "asc" ? "ascending" : "descending");
 
 /**
  * The one table: dense rows in a card frame. A wide table scrolls inside its frame, never the page.
  * Names go in their quality colour through QUALITY_TEXT. Rendered on the server; sorting is a link.
  */
-export default function DataTable<Row>(props: DataTableProps<Row>) {
+export default function DataTable<Row>(given: DataTableProps<Row>) {
+  const props = { ...given, columns: filledColumns(given.columns, given.rows) };
   if (props.dense) return <DenseTable {...props} />;
   const { columns, rows, rowKey, caption, sort, sortHref, empty, footer, toolbar } = props;
   return (
@@ -136,7 +150,9 @@ function DenseTable<Row>({ columns, rows, rowKey, caption, sort, sortHref, empty
                     key={col.key}
                     scope="col"
                     aria-sort={sorted ? ariaSort(sorted) : undefined}
-                    className={`sticky top-header z-10 h-th whitespace-nowrap border-b border-line bg-canvas px-3 text-th ${sorted ? "text-fg" : "text-muted"} ${col.numeric ? "text-right" : "text-left"} ${phoneHidden(i)}`}
+                    // Sticky under the site header from 640 px up only: below that a table that scrolls sideways is its
+                    // own sticky box, so the offset pushed the header down onto the rows.
+                    className={`z-10 h-th sm:sticky sm:top-header whitespace-nowrap border-b border-line bg-canvas px-3 text-th ${sorted ? "text-fg" : "text-muted"} ${col.numeric ? "text-right" : "text-left"} ${phoneHidden(i)}`}
                   >
                     {col.sortable && sortHref ? (
                       // Block-level, so the link fills the 32 px cell without a line box around it.
