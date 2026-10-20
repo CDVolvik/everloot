@@ -70,7 +70,7 @@ test("three installs with empty windows publish a measured zero; two installs pu
   });
   const drops = await html(DropsPage);
   expect(drops).toContain("No items observed");
-  expect(drops).toContain("NPC #42");
-  expect(drops).not.toContain("NPC #77");
-  expect(drops).not.toContain("Item #9");
+  expect(drops).toContain("NPC 42");
+  expect(drops).not.toContain("NPC 77");
+  expect(drops).not.toContain("Item 9");
 });

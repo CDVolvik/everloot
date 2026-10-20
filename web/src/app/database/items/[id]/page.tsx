@@ -17,6 +17,10 @@ import { categoryOf } from "../../../../../../kb/src/item-taxonomy";
 import { edgesFrom, evidenceLabel, type Edge, type Rel } from "../../../../../../kb/src/edges";
 import { CLIENT_LAYER, CLIENT_TAXONOMY, itemsHref, NAME_SOURCE, shownItemName } from "@/lib/items";
 import { CC_BY_SA, type Crumb } from "@/lib/jsonld";
+import { loadNames, nameOf } from "@/lib/names";
+import { loreForEntity } from "@/lib/lore";
+import EntityLink from "@/components/EntityLink";
+import LoreSection from "@/components/LoreSection";
 import { CategoryPage, categoryMetadata } from "../category-page";
 import { EntityLayout, FactsCard, LINK, percent, Unreachable } from "../../entity";
 
@@ -75,6 +79,9 @@ export default async function ItemPage(props: Props) {
   const relationIcons = edges.client.some((e) => e.fromKind === "item" && e.fromId === itemId && e.toKind === "spell" && spellIcon(e.toId));
   const category = categoryOf(CLIENT_TAXONOMY, itemId);
   const quality = category?.quality && category.quality.id <= 5 ? qualityOf(category.quality.id) : undefined;
+  const names = await loadNames();
+  const nameFor = nameOf(names);
+  const lore = seen && page.name ? loreForEntity("item", page.name) : null;
 
   const all = edgesFrom([...edges.observed, ...edges.client], "item", itemId);
   const rel = (r: Rel) => all.filter((e) => e.rel === r);
@@ -89,7 +96,7 @@ export default async function ItemPage(props: Props) {
   ];
 
   const relationColumns = (head: string): Column<Edge>[] => [
-    { key: "target", header: head, cell: (e) => <span className="inline-flex flex-wrap items-center gap-1"><RelationTarget edge={e} rel={e.rel} client={edges.client} spellIcon={spellIcon} /></span> },
+    { key: "target", header: head, cell: (e) => <span className="inline-flex flex-wrap items-center gap-1"><RelationTarget edge={e} rel={e.rel} client={edges.client} spellIcon={spellIcon} nameOf={nameFor} /></span> },
     { key: "source", header: "Source", cell: evidence, nowrap: true },
   ];
   const relationTab = (id: string, label: string, r: Rel, head: string, empty: string, action?: { href: string; label: string }): TabItem => {
@@ -101,14 +108,16 @@ export default async function ItemPage(props: Props) {
   };
 
   const dropColumns: Column<(typeof page.drops)[number]>[] = [
-    { key: "source", header: "Source", cell: (d) => <Link href={d.sourceNpcId !== undefined ? `/database/npcs/${d.sourceNpcId}` : `/database/objects/${d.sourceObjectId}`} className={LINK}>{d.source}</Link> },
+    { key: "source", header: "Source", cell: (d) => (d.sourceNpcId !== undefined
+      ? <EntityLink kind="npc" id={d.sourceNpcId} name={names.npcs.get(d.sourceNpcId)} />
+      : <EntityLink kind="object" id={d.sourceObjectId!} />) },
     { key: "windows", header: "Loot windows", numeric: true, cell: (d) => d.kills },
     { key: "drops", header: "Drops", numeric: true, cell: (d) => d.drops },
     { key: "rate", header: "Observed frequency", numeric: true, cell: (d) => percent(d.rate) },
     { key: "installs", header: "Install IDs", numeric: true, cell: (d) => d.reporters },
   ];
   const pinColumns: Column<(typeof page.pins)[number]>[] = [
-    { key: "npc", header: "NPC", cell: (p) => <Link href={`/database/npcs/${p.npcId}`} className={LINK}>{p.name ?? `NPC ${p.npcId}`}</Link> },
+    { key: "npc", header: "NPC", cell: (p) => <EntityLink kind="npc" id={p.npcId} name={p.name ?? names.npcs.get(p.npcId)} /> },
     { key: "map", header: "Map", numeric: true, cell: (p) => p.mapId },
     { key: "at", header: "Position", numeric: true, cell: (p) => `${p.x}, ${p.y}` },
     { key: "installs", header: "Reporters", numeric: true, cell: (p) => p.reporters },
@@ -145,7 +154,7 @@ export default async function ItemPage(props: Props) {
           caption={`Items related to ${title}`}
           columns={[
             { key: "what", header: "Relation", nowrap: true, cell: (e: Edge) => (e.rel === "same_icon" ? "Same icon" : "Part of set") },
-            { key: "target", header: "With", cell: (e: Edge) => (e.rel === "same_icon" ? <SameIcon edge={e} self={itemId} client={edges.client} /> : <RelationTarget edge={e} rel={e.rel} client={edges.client} />) },
+            { key: "target", header: "With", cell: (e: Edge) => (e.rel === "same_icon" ? <SameIcon edge={e} self={itemId} client={edges.client} /> : <RelationTarget edge={e} rel={e.rel} client={edges.client} nameOf={nameFor} />) },
           ]}
           rows={related}
           rowKey={(e) => `${e.rel}-${e.toId}`}
@@ -210,6 +219,7 @@ export default async function ItemPage(props: Props) {
           }
         >
           <Tabs label={`${title}: relations`} tabs={tabs} />
+          <LoreSection match={lore} />
           {!facts.unreachable && (page.name !== null || page.drops.length > 0) && <AdSlot slot="inContent" />}
         </EntityLayout>
         <SourceLine build={BUILD}>

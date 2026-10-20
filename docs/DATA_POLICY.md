@@ -137,8 +137,9 @@ interface files, is a different thing and is covered by the second extension. Th
   into a URL. The one exception is an item's name, quality and icon under the item name rule below. The extracted facts cover every named item in the build, released or not, so they are
   kept in private storage that only the site's server reads, never in the public asset bucket.
 - **Map pictures**: the game's own continent and zone map art from the map art tables, laid under
-  our zone outlines. A held-back zone's picture shows only with spoilers on, and so does a continent's
-  picture when that continent has a held-back zone, since it may be painted in.
+  our zone outlines. A held-back zone's picture shows only with spoilers on. A continent's own
+  picture always shows (decided 2026-10-19): it is the original world's parchment map, with no names
+  and no new land painted in.
 - **The `/database` pages** (decided 2026-10-18 by the maintainer): the icons of the spells an item is
   created by or used in (from the client layer's relations) beside those relations, and pet family
   icons (`CreatureFamily.IconFileID`) in the manifest. Item icons and names on these pages follow the
@@ -202,6 +203,18 @@ as their expansion (`ItemSparse.ExpansionID` 0), so the expansion is not used. T
 - The maintainer review is the pull request that sets or changes the rule or adds a source. The first
   one (2026-10-19) listed the count per tier, a sample of the shown names, the highest item ids among
   them and the mismatches. A file for a new build is checked the same way before it is uploaded.
+
+**Third extension: game icons and tooltip text in embeddable cards.** Decided 2026-10-19 (Carlos
+approved it with the site structure plan). The hover card any site can show through
+`https://everloot.app/tooltips.js` and `GET /api/tooltip/<type>/<id>` may carry one item's game icon
+and tooltip facts, the same ones its page shows:
+
+- **One item per request**, and only for an item its page would show them for (3 installs reported
+  it). Never in bulk, never for an id nobody reported.
+- **Labelled and credited in the card**: *found in game files, unconfirmed*, the build, and the
+  Blizzard credit above. The icon is a link to our asset storage, not a copy in the response.
+- **Same spoiler and takedown rules** as the pages. The downloads, the rest of the API and the MCP
+  server still carry no icons or tooltip text.
 
 **The talent catalog.** The talent calculator at `/tools/talents` uses our own catalog, read from
 the public client by a maintainer, not taken from any other site. The catalog is the trait node

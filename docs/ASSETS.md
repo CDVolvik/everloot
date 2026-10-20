@@ -50,9 +50,8 @@ Spoilers follow the same rule as everywhere else:
   vendor offer, an auction scan). An id typed into a URL gets nothing, and nothing is read for it.
   The item facts live in a private bucket that only the site's server reads, because the extract
   holds every named item in the build, released or not.
-- **Maps.** A held-back zone's picture shows only with spoilers on. A continent's own picture may
-  show a held-back zone painted in, so on a continent that has one (by the map file or by the
-  upload's own marks) it also waits for spoilers. Without it, the zone pictures show.
+- **Maps.** A held-back zone's picture, outline and name show only with spoilers on. A continent's
+  own picture always shows: it is the original world's parchment map, with no names and no new land.
 - **Loading screens.** A dungeon or raid with a map id after the original world's (above 533,
   Naxxramas) is marked held back, and its picture shows only with spoilers on. The banners the pages
   use (Eastern Kingdoms, Kalimdor, Molten Core) are all original maps.
@@ -269,8 +268,8 @@ At 1440 and 390 px wide:
 - **Raid builder.** Class icons in the slots and the class picker, tree icons beside the tree names,
   buff icons in the coverage tables.
 - **Map.** The zone pictures sit exactly inside the zone outlines; "Game map art" turns them off and
-  "Zones" turns the outlines off. Zoomed out, the network tab shows only small copies. With spoilers
-  on, the continent picture shows and a zone's own picture appears once you zoom in over it. The
+  "Zones" turns the outlines off. The continent picture shows, and a zone's own picture appears
+  once you zoom in over it. The
   continent's loading screen is above the map, and each entrance in the list has its small picture.
 - **Banners.** On `/`, `/tools/raid`, `/map` and `/changes` the loading screen fills its strip
   without stretching, at 390 px too. On `/` the logo is crisp, the game's name, launch line and "Not

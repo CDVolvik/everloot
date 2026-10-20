@@ -20,12 +20,20 @@ export function latestAddonRelease(dir = join(process.cwd(), "public", "download
   } catch {
     return null;
   }
+  // The link is rebuilt from the numbers, never copied from the file name, and a name the numbers would not
+  // rebuild exactly (a leading zero) is skipped, so the link always names a file that is there.
   const found = files
-    .map((file) => ({ file, m: NAME.exec(file) }))
-    .filter((f): f is { file: string; m: RegExpExecArray } => f.m !== null)
+    .map((file) => {
+      const m = NAME.exec(file);
+      const v = m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
+      return v && file === `Everloot-${v.join(".")}.zip` ? v : null;
+    })
+    .filter((v): v is number[] => v !== null)
     .sort((a, b) => {
-      for (let i = 1; i <= 3; i++) if (a.m[i] !== b.m[i]) return Number(b.m[i]) - Number(a.m[i]);
+      for (let i = 0; i < 3; i++) if (a[i] !== b[i]) return b[i] - a[i];
       return 0;
     })[0];
-  return found ? { version: `${found.m[1]}.${found.m[2]}.${found.m[3]}`, downloadPath: `/downloads/${found.file}` } : null;
+  if (!found) return null;
+  const version = found.join(".");
+  return { version, downloadPath: `/downloads/Everloot-${version}.zip` };
 }

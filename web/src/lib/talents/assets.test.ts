@@ -106,9 +106,10 @@ const SHOWS_ART = new Set([
   "web/src/components/RaidBuilder.tsx",
   "web/src/app/page.tsx", "web/src/app/map/page.tsx", "web/src/components/RaidView.tsx", "web/src/app/tools/auctions/page.tsx", "web/src/app/tools/auctions/art.ts",
   "web/src/app/tools/professions/page.tsx", "web/src/app/database/drops/page.tsx", "web/src/app/database/items/[id]/page.tsx", "web/src/app/database/items/category-page.tsx",
-  "web/src/app/database/vendors/[id]/page.tsx",
-  "web/src/app/changes/page.tsx", "web/src/app/lore/page.tsx", "web/src/lib/spell-mentions.ts", "web/src/app/wow-forever/page.tsx", "web/src/app/tools/talents/page.tsx",
+  "web/src/lib/tooltip.ts", // the embeddable hover card: one item per request
+  "web/src/app/database/vendors/[id]/page.tsx", "web/src/app/database/npcs/[id]/page.tsx", "web/src/app/database/quests/[id]/page.tsx", "web/src/app/changes/page.tsx", "web/src/app/lore/page.tsx", "web/src/lib/spell-mentions.ts", "web/src/app/wow-forever/page.tsx", "web/src/app/tools/talents/page.tsx",
   "kb/src/cli.ts", "web/scripts/upload-game-assets.mjs", "web/scripts/game-assets-upload.mjs",
+  "web/src/app/database/zones/[zone]/page.tsx",
   // The item names shown from the game files and the Warcraft Wiki: read for the item pages, and by the sitemap
   // only to know whether a category has enough names to list.
   "web/src/lib/shown-item-names.ts", "web/src/app/sitemap.ts", "web/scripts/upload-item-names.mjs",

@@ -124,7 +124,7 @@ export default function Header() {
         </nav>
 
         <div className="ml-auto flex shrink-0 items-center gap-2">
-          {/* The lore archive's search, the site's one search today. Works without JavaScript. */}
+          {/* The site's one search: items, NPCs, quests, zones, lore and tools. Works without JavaScript. */}
           <form action="/search" method="get" role="search" onSubmit={() => track("search", { surface: "lore" })} className="hidden h-11 w-56 items-center gap-2 overflow-hidden rounded-full border border-edge bg-panel px-3 text-muted focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent xl:flex">
             <SearchIcon />
             <label htmlFor="site-search" className="sr-only">Search Everloot</label>

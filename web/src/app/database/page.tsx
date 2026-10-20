@@ -10,6 +10,7 @@ import { dataAgeLabel } from "@/lib/data-age";
 import { trailFor } from "@/lib/breadcrumbs";
 import { CLIENT_LAYER, CLIENT_TAXONOMY as T, itemsHref } from "@/lib/items";
 import { publicNpcs, publicQuests, publicVendors } from "@/lib/world-lists";
+import { publicZones } from "@/lib/zones";
 import JsonLd from "@/components/JsonLd";
 import { AgreementMeter, Card, Container, PageHeader, SearchBar, SectionHeading, SourceLine } from "@/components/ui";
 import { CC_BY_SA, datasetJsonLd } from "@/lib/jsonld";
@@ -43,6 +44,7 @@ export default async function DatabasePage() {
   const seen = (n: number) => (stats.unreachable ? "unrecorded" : n > 0 ? `${n.toLocaleString("en-US")} public` : <AgreementMeter count={0} />);
   const readable = !world.unreachable;
   const players = [
+    { href: "/database/zones", label: "Zones by continent", value: `${publicZones().length} zones` },
     { href: "/database/npcs", label: "NPCs and spawns", value: seen(readable ? publicNpcs(world).length : 0) },
     { href: "/database/quests", label: "Quests", value: seen(readable ? publicQuests(world).length : 0) },
     { href: "/database/vendors", label: "Vendors", value: seen(readable ? publicVendors(world).length : 0) },

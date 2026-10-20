@@ -10,6 +10,13 @@ import { pinLink } from "@/lib/world-map";
 import { trailFor } from "@/lib/breadcrumbs";
 import { Container, DataTable, EmptyState, PageHeader, SourceLine, Tabs, TooltipFrame, type Column } from "@/components/ui";
 import { EntityLayout, FactsCard, LINK, percent, Unreachable } from "../../entity";
+import { loadItemFacts } from "@/lib/rollup-compute";
+import { itemNames } from "@/lib/names";
+import { loreForEntity } from "@/lib/lore";
+import { loadItemTips, loadSiteAssets } from "@/lib/game-assets";
+import EntityLink from "@/components/EntityLink";
+import GameCredit from "@/components/game/GameCredit";
+import LoreSection from "@/components/LoreSection";
 
 export const dynamic = "force-dynamic";
 
@@ -31,13 +38,6 @@ const pinColumns: Column<NpcPin>[] = [
   { key: "show", header: "", cell: (p) => { const href = pinLink(p.mapId, p.x, p.y); return href ? <Link href={href} className={LINK}>Show on the map</Link> : null; } },
 ];
 
-const dropColumns: Column<DropRateRow>[] = [
-  { key: "item", header: "Item", cell: (r) => <Link href={`/database/items/${r.itemId}`} className={LINK}>Item {r.itemId}</Link> },
-  { key: "windows", header: "Loot windows", numeric: true, cell: (r) => r.kills },
-  { key: "drops", header: "Item observations", numeric: true, cell: (r) => r.drops },
-  { key: "rate", header: "Observed frequency", numeric: true, cell: (r) => percent(r.rate) },
-  { key: "installs", header: "Install IDs", numeric: true, cell: (r) => r.reporters },
-];
 
 export default async function NpcPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
@@ -50,6 +50,19 @@ export default async function NpcPage(props: { params: Promise<{ id: string }> }
   const title = unreachable ? `NPC ${page.npcId}` : page.name ?? `NPC ${page.npcId}`;
   const zero = rollup.measuredZeros.find((row) => row.public && row.sourceNpcId === npcId);
   const dropped = rollup.rates.filter((row) => row.public && row.sourceNpcId === npcId);
+  // Item names (and icons, when the game files have them) for the drop list; an item nobody named stays "Item N".
+  const itemFacts = unreachable || dropped.length === 0 ? null : await loadItemFacts();
+  const names = itemFacts && !itemFacts.unreachable ? itemNames(itemFacts) : new Map<number, string>();
+  const assets = dropped.length > 0 ? await loadSiteAssets() : null;
+  const tips = await loadItemTips(assets, dropped.map((row) => row.itemId));
+  const lore = !unreachable && page.name ? loreForEntity("npc", page.name) : null;
+  const dropColumns: Column<DropRateRow>[] = [
+    { key: "item", header: "Item", cell: (r) => <EntityLink kind="item" id={r.itemId} name={names.get(r.itemId) ?? tips.get(r.itemId)?.name} icon={tips.get(r.itemId)?.icon} /> },
+    { key: "windows", header: "Loot windows", numeric: true, cell: (r) => r.kills },
+    { key: "drops", header: "Item observations", numeric: true, cell: (r) => r.drops },
+    { key: "rate", header: "Observed frequency", numeric: true, cell: (r) => percent(r.rate) },
+    { key: "installs", header: "Install IDs", numeric: true, cell: (r) => r.reporters },
+  ];
   const trail = [...trailFor("/database/npcs")!, { name: title, path: `/database/npcs/${npcId}` }];
   const firstPin = page.pins[0];
 
@@ -108,9 +121,13 @@ export default async function NpcPage(props: { params: Promise<{ id: string }> }
               },
             ]}
           />
+          <LoreSection match={lore} />
           {!unreachable && (page.name !== null || dropped.length > 0 || zero !== undefined) && <AdSlot slot="inContent" />}
         </EntityLayout>
-        <SourceLine confirmed>Distinct install IDs do not prove independent players.</SourceLine>
+        <SourceLine confirmed>
+          Distinct install IDs do not prove independent players.
+          {assets && tips.size > 0 && <>{" "}<GameCredit inline version={assets.version} label={assets.label} /></>}
+        </SourceLine>
       </article>
     </Container>
   );

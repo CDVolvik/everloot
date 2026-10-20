@@ -7,6 +7,9 @@ import { npcPage, stockLabel, vendorPage, type VendorOffer } from "../../../../.
 import { loadWorldFacts } from "@/lib/rollup-compute";
 import { pinLink } from "@/lib/world-map";
 import { trailFor } from "@/lib/breadcrumbs";
+import { loadItemFacts } from "@/lib/rollup-compute";
+import { itemNames, npcNames } from "@/lib/names";
+import EntityLink from "@/components/EntityLink";
 import { loadItemTips, loadSiteAssets } from "@/lib/game-assets";
 import ItemTip from "@/components/game/ItemTip";
 import GameCredit from "@/components/game/GameCredit";
@@ -51,7 +54,10 @@ export default async function VendorPage(props: { params: Promise<{ id: string }
   });
   const assets = await loadSiteAssets();
   const tips = await loadItemTips(assets, facts.unreachable ? [] : page.offers.map((o) => o.itemId));
-  const title = `Vendor NPC ${page.vendorNpcId}`;
+  const itemFacts = facts.unreachable || page.offers.length === 0 ? null : await loadItemFacts();
+  const items = itemFacts && !itemFacts.unreachable ? itemNames(itemFacts) : new Map<number, string>();
+  const vendorName = facts.unreachable ? undefined : npcNames(facts).get(page.vendorNpcId);
+  const title = vendorName ? `${vendorName} (vendor)` : `Vendor NPC ${page.vendorNpcId}`;
   const trail = [...trailFor("/database/vendors")!, { name: title, path: `/database/vendors/${page.vendorNpcId}` }];
 
   return (
@@ -60,7 +66,7 @@ export default async function VendorPage(props: { params: Promise<{ id: string }
         <PageHeader
           trail={trail}
           title={title}
-          meta={<Link href={`/database/npcs/${page.vendorNpcId}`} className={LINK}>NPC {page.vendorNpcId}</Link>}
+          meta={<Link href={`/database/npcs/${page.vendorNpcId}`} className={LINK}>{vendorName ?? `NPC ${page.vendorNpcId}`}</Link>}
         />
         <EntityLayout
           rail={
@@ -89,7 +95,7 @@ export default async function VendorPage(props: { params: Promise<{ id: string }
                   <DataTable
                     caption={`What ${title} sells`}
                     columns={[
-                      { key: "item", header: "Item", cell: (o: VendorOffer) => <ItemTip tip={tips.get(o.itemId)}><Link href={`/database/items/${o.itemId}`} className={LINK}>Item {o.itemId}</Link></ItemTip> },
+                      { key: "item", header: "Item", cell: (o: VendorOffer) => <ItemTip tip={tips.get(o.itemId)}><EntityLink kind="item" id={o.itemId} name={items.get(o.itemId) ?? tips.get(o.itemId)?.name} /></ItemTip> },
                       { key: "price", header: "Price", numeric: true, cell: (o: VendorOffer) => formatCopper(o.priceCopper) },
                       { key: "stock", header: "Stock", numeric: true, cell: (o: VendorOffer) => stockLabel(o) },
                       { key: "installs", header: "Reporters", numeric: true, cell: (o: VendorOffer) => o.reporters },

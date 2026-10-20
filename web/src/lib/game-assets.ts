@@ -407,21 +407,18 @@ export interface ArtBox { uiMapId: number; name: string; url: string; smallUrl: 
 
 /**
  * The pictures for one continent: the continent's own, and one per zone. A held-back zone's picture is
- * left out unless spoilers are on, like its outline. The continent's picture may show a held-back zone
- * painted in, so on a continent that has one it too waits for spoilers; the zone pictures still show.
- * A continent has one when the map file says so (`heldBackHere`) or the upload marks a zone on it as
- * held back. Null when there is none.
+ * left out unless spoilers are on, like its outline. The continent's picture always shows: it is the
+ * original world's parchment map, with no names and no new land painted in. Null when there is none.
  */
-export function continentArt(assets: SiteAssets | null, continentId: number, spoilers: boolean, heldBackHere: boolean): { continent: ArtBox | null; zones: ArtBox[] } | null {
+export function continentArt(assets: SiteAssets | null, continentId: number, spoilers: boolean): { continent: ArtBox | null; zones: ArtBox[] } | null {
   if (!assets) return null;
   const box = (m: MapArt): ArtBox => {
     const a = worldToMap({ continentId, worldX: m.rect.top, worldY: m.rect.left });
     const c = worldToMap({ continentId, worldX: m.rect.bottom, worldY: m.rect.right });
     return { uiMapId: m.uiMapId, name: m.name, url: m.url, smallUrl: m.smallUrl, x: a.x, y: a.y, width: c.x - a.x, height: c.y - a.y };
   };
-  const held = heldBackHere || assets.maps.some((m) => m.heldBack && m.continentId === continentId);
   const here = assets.maps.filter((m) => m.continentId === continentId && (spoilers || !m.heldBack));
-  const continent = spoilers || !held ? here.find((m) => m.kind === "continent") : undefined;
+  const continent = here.find((m) => m.kind === "continent");
   const zones = here.filter((m) => m.kind === "zone").map(box);
   if (!continent && !zones.length) return null;
   return { continent: continent ? box(continent) : null, zones };

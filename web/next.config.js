@@ -78,7 +78,14 @@ const nextConfig = {
   // here: the `*` seen on pages is added by Vercel for prerendered responses, and a header set here could not
   // remove it.
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // The embeddable tooltip script other sites load: an hour in browsers and at the CDN, so a fix reaches them quickly.
+      { source: "/tooltips.js", headers: [
+        { key: "Cache-Control", value: "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400" },
+        { key: "Access-Control-Allow-Origin", value: "*" },
+      ] },
+    ];
   },
   webpack(config, { isServer }) {
     // kb/src/db.ts would otherwise resolve better-sqlite3 through kb/node_modules and bundle it.

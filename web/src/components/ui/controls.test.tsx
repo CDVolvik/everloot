@@ -41,7 +41,7 @@ describe("Segmented", () => {
   });
 });
 
-describe("SourceLine source", () => {
+describe("SourceLine from", () => {
   test("replaces the game-files clause when the values come from somewhere else", () => {
     const html = renderToStaticMarkup(<SourceLine source="Your own numbers" />);
     expect(html).toContain("Your own numbers");
