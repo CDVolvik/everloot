@@ -51,7 +51,9 @@ export async function generateMetadata(props: { params: Promise<{ slug: string }
     title: `${page.name} · Lore archive`,
     description,
     alternates: { canonical: url, types: FEED },
-    robots: { index: isIndexable(page.body), follow: true },
+    // A Warcraft Wiki copy stays readable (and linked to its original) but out of search: the wiki is the
+    // source to rank. Everloot's own entries follow the length rule.
+    robots: { index: page.sourceId !== "warcraft-wiki-2023" && isIndexable(page.body), follow: true },
     openGraph: { type: "article", title: page.name, description, url, siteName: "Everloot", images: [IMAGE] },
     twitter: { card: "summary", title: page.name, description, images: [TWITTER_IMAGE] },
   };

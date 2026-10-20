@@ -2,7 +2,7 @@ import { expect, test, vi } from "vitest";
 import { LAUNCH } from "@/data/wow-forever";
 import { MAP_DATA_EXTRACTED_AT, TALENT_DATA_EXTRACTED_AT } from "@/lib/build-stamp";
 import { loadTimeline } from "@/lib/changes";
-import { CLIENT_TAXONOMY, NAMED_SAMPLE, itemsHref } from "@/lib/items";
+import { CLIENT_TAXONOMY, ITEMS_PER_PAGE, itemsHref } from "@/lib/items";
 import { filterItems } from "../../../kb/src/item-taxonomy";
 import sitemap from "./sitemap";
 
@@ -62,12 +62,13 @@ test("the zone index is listed; a zone page only once something is on it, and ne
 test("an item category is listed only once half its first page has an agreed name", async () => {
   const cls = CLIENT_TAXONOMY.classes.find((c) => c.slug === "weapons")!;
   expect(byPath.has(itemsHref("weapons"))).toBe(false);
-  const ids = filterItems(CLIENT_TAXONOMY, { classId: cls.id }).slice(0, NAMED_SAMPLE).map((r) => r[0]);
+  // Named rows lead the plain list, so it takes half a page of them, wherever they sit in the id order.
+  const ids = filterItems(CLIENT_TAXONOMY, { classId: cls.id }).map((r) => r[0]).reverse();
   const name = (n: number) => ids.slice(0, n).flatMap((itemId) => ["a", "b", "c"].map((installId) => ({ installId, itemId, name: `Item name ${itemId}` })));
   try {
-    facts.names = name(Math.ceil(ids.length / 2) - 1);
+    facts.names = name(Math.ceil(ITEMS_PER_PAGE / 2) - 1);
     expect((await sitemap()).map((e) => new URL(e.url).pathname)).not.toContain(itemsHref("weapons"));
-    facts.names = name(Math.ceil(ids.length / 2));
+    facts.names = name(Math.ceil(ITEMS_PER_PAGE / 2));
     expect((await sitemap()).map((e) => new URL(e.url).pathname)).toContain(itemsHref("weapons"));
   } finally {
     facts.names = [];

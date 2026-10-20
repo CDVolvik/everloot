@@ -125,6 +125,17 @@ test("each tool built on uploads links its page last before the data age and cre
   for (const [name, args] of unlinked) expect(await call(c, name, args), `${name} ${JSON.stringify(args)}`).not.toContain("More:");
 });
 
+test("an item the game files list links its page before anyone reports it; an id they do not list links none", async () => {
+  const c = await client();
+  // Linen Cloth (2589) is in the committed client layer, with no upload about it in this corpus.
+  const text = await call(c, "item_page", { itemId: 2589 });
+  expect(text.endsWith(`\nMore: https://everloot.app/database/items/2589\n${FOOTER}`), text).toBe(true);
+  expect(text).toContain("No agreed name yet.");
+  const relations = await call(c, "entity_relations", { kind: "item", id: 2589 });
+  expect(relations.endsWith(`\nMore: https://everloot.app/database/items/2589\n${FOOTER}`), relations).toBe(true);
+  expect(await call(c, "item_page", { itemId: 99999999 })).not.toContain("More:");
+});
+
 test("with no corpus there is no page to send anyone to", async () => {
   const c = await client({ corpus: undefined, market: undefined });
   for (const [name, args] of [["item_page", { itemId: 1234 }], ["market_value", { realm: "Forever", itemId: 2589 }]] as const) {

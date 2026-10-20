@@ -71,8 +71,12 @@ export function sortRows<T>(rows: T[], key: (row: T) => string | number | null, 
   }).map((x) => x.row);
 }
 
-/** The plain list is indexed; a filter, a sort, a search or a later page is noindex, its canonical the plain list. */
-export function listMetadata(meta: { title: string; description: string; path: string }, plain: boolean): Metadata {
+/**
+ * The plain list is indexed, each of its pages under its own URL (a later page is the only path to the rows on
+ * it); a filter, a sort or a search is noindex, its canonical page 1 of the plain list.
+ */
+export function listMetadata(meta: { title: string; description: string; path: string }, plain: boolean, page = 1): Metadata {
+  if (plain && page > 1) return pageMetadata({ ...meta, title: `${meta.title} – Page ${page}`, path: listHref(meta.path, [["page", String(page)]]) });
   return { ...pageMetadata(meta), ...(plain ? {} : { robots: { index: false, follow: true } }) };
 }
 

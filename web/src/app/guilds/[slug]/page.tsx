@@ -21,7 +21,7 @@ export async function generateMetadata(props: { params: Promise<{ slug: string }
   const params = await props.params;
   const family = getFamily(params.slug);
   if (!family) return { title: "Guild family" };
-  return pageMetadata({ title: `${family.name} family record`, description: family.summary, path: `/guilds/${family.slug}` });
+  return pageMetadata({ title: `${family.name} – WoW Forever Guild`, description: family.summary, path: `/guilds/${family.slug}` });
 }
 
 export default async function GuildFamilyPage(props: { params: Promise<{ slug: string }> }) {

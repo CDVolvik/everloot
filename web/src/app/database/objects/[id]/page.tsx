@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { objectPage, type ObjectDrop } from "../../../../../../kb/src/object-page";
+import { objectPage, type ObjectDrop, type ObjectPage as ObjectFactsPage } from "../../../../../../kb/src/object-page";
+import { objectIndexable } from "@/lib/indexable";
+import { entityTitle, objectDescription } from "@/lib/entity-meta";
 import { formatMeasuredZero } from "../../../../../../kb/src/item-page";
 import { loadObjectFacts } from "@/lib/objects";
 import { pageMetadata } from "@/lib/seo";
@@ -11,14 +13,19 @@ import { EmptyTab, EntityHeader, EntityTop, FREQUENCY, known, LINK, percent, Unr
 
 export const dynamic = "force-dynamic";
 
+/** An object no loot window came from, public or not: a 404 (uploads are the only list of objects). */
+const unknownObject = (page: ObjectFactsPage, unreachable: boolean) => !unreachable && !page.drops.length && !page.zero && !page.queued;
+
 export async function generateMetadata(props: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const params = await props.params;
   if (!/^[1-9]\d*$/.test(params.id)) return { robots: { index: false, follow: true } };
   const facts = await loadObjectFacts();
   const page = objectPage(Number(params.id), facts);
+  if (unknownObject(page, facts.unreachable)) notFound();
+  const windows = facts.unreachable ? null : page.zero?.kills ?? page.drops[0]?.kills ?? null;
   return {
-    ...pageMetadata({ title: `Object ${params.id}`, description: "A WoW: Forever object (chest, herb, ore vein or fishing pool) and what players looted from it.", path: `/database/objects/${params.id}` }),
-    robots: { index: !facts.unreachable && Boolean(page.drops.length || page.zero), follow: true },
+    ...pageMetadata({ title: entityTitle(`Object ${params.id}`, "object"), description: objectDescription({ id: page.objectId, items: facts.unreachable ? 0 : page.drops.length, windows }), path: `/database/objects/${params.id}` }),
+    robots: { index: objectIndexable(page, facts.unreachable), follow: true },
   };
 }
 
@@ -35,6 +42,7 @@ export default async function ObjectPage(props: { params: Promise<{ id: string }
   if (!/^[1-9]\d*$/.test(params.id)) notFound();
   const facts = await loadObjectFacts();
   const page = objectPage(Number(params.id), facts);
+  if (unknownObject(page, facts.unreachable)) notFound();
   const title = `Object ${page.objectId}`;
   const trail: Crumb[] = [
     { name: "Home", path: "/" },

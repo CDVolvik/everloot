@@ -120,15 +120,20 @@ test("nothing uploaded yet: the empty meter, one sentence and a plain addon link
   expect(page).not.toContain("btn");
 });
 
-test("the plain lists are indexed; any filter, sort, search or later page is noindex with the plain list as canonical", async () => {
+test("the plain lists are indexed, each page under its own URL; any filter, sort or search is noindex with the plain list as canonical", async () => {
   expect((await npcMetadata(search())).robots).toBeUndefined();
   expect((await questMetadata(search())).robots).toBeUndefined();
-  for (const s of [{ zone: "1429-elwynn-forest" }, { sort: "name" }, { q: "hog" }, { page: "2" }] as Record<string, string>[]) {
+  for (const s of [{ zone: "1429-elwynn-forest" }, { sort: "name" }, { q: "hog" }, { sort: "name", page: "2" }] as Record<string, string>[]) {
     const m = await npcMetadata(search(s));
     expect(m.robots).toMatchObject({ index: false, follow: true });
     expect(m.alternates?.canonical).toBe("/database/npcs");
   }
   expect((await questMetadata(search({ rewards: "1" }))).robots).toMatchObject({ index: false });
+  // A later page of the plain list is the only path to its rows: indexed, its own canonical, its own title.
+  const second = await npcMetadata(search({ page: "2" }));
+  expect(second.robots).toBeUndefined();
+  expect(second.alternates?.canonical).toBe("/database/npcs?page=2");
+  expect(String(second.title)).toMatch(/ – Page 2$/);
 });
 
 test("a quest a page can title from the Warcraft Wiki is listed beside the reported ones, its unknown cells left out or '—'", async () => {

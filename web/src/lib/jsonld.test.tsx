@@ -22,11 +22,14 @@ test("JsonLd renders nothing for null", () => {
 });
 
 test("Organization carries the repository, the email and the non-affiliation line, and WebSite describes its search as lore search", () => {
-  const org = organizationJsonLd() as Record<string, unknown>;
+  const org = organizationJsonLd() as Record<string, unknown> & { description: string };
   expect(org.sameAs).toEqual(["https://github.com/Everloot/everloot", "https://discord.gg/9CKsbHTRu3"]);
   expect(org.email).toBe("hello@everloot.app");
   expect(org.publishingPrinciples).toBe("https://everloot.app/methodology");
   expect(org.description).toContain("Not affiliated with or endorsed by Blizzard Entertainment.");
+  // The operator the footer and /about name, and the square logo the listings use.
+  expect(org.parentOrganization).toEqual({ "@type": "Organization", name: "R21 Media Group, LLC" });
+  expect(org.logo).toEqual({ "@type": "ImageObject", url: "https://everloot.app/icon-512.png", width: 512, height: 512 });
   const site = websiteJsonLd() as { potentialAction: { name: string; target: { urlTemplate: string } } };
   expect(site.potentialAction.name).toBe("Search the lore archive");
   expect(site.potentialAction.target.urlTemplate).toBe("https://everloot.app/search?q={search_term_string}");
@@ -54,6 +57,12 @@ test("WebApplication has only what the page gives it: no rating, no licence, no 
 test("SoftwareApplication takes its version and download from the release it is given", () => {
   const app = softwareApplicationJsonLd({ name: "Everloot addon", description: "d", version: "9.8.7", downloadPath: "/downloads/Everloot-9.8.7.zip", licenceUrl: "https://www.gnu.org/licenses/agpl-3.0.html", path: "/upload" });
   expect(app).toMatchObject({ softwareVersion: "9.8.7", downloadUrl: "https://everloot.app/downloads/Everloot-9.8.7.zip", license: "https://www.gnu.org/licenses/agpl-3.0.html" });
+  // Free, as the page says; no rating, and an operating system only when the page names one.
+  expect(app).toMatchObject({ isAccessibleForFree: true, offers: { "@type": "Offer", price: "0" } });
+  expect(app).not.toHaveProperty("operatingSystem");
+  expect(JSON.stringify(app)).not.toMatch(/aggregateRating|ratingValue/);
+  const desktop = softwareApplicationJsonLd({ name: "Everloot Desktop App", description: "d", version: "0.1.0", downloadPath: "https://github.com/Everloot/everloot/releases/tag/desktop-v0.1.0", licenceUrl: "l", path: "/addon", operatingSystem: "Windows, macOS, Linux" });
+  expect(desktop).toMatchObject({ operatingSystem: "Windows, macOS, Linux", downloadUrl: "https://github.com/Everloot/everloot/releases/tag/desktop-v0.1.0" });
 });
 
 test("Dataset is emitted only when something was uploaded", () => {

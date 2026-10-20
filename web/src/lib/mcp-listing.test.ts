@@ -21,6 +21,10 @@ test("the registry's HTTP proof record is served from .well-known in the documen
   expect(record.split(";")).toHaveLength(3);
 });
 
+test("/.well-known/mcp/server-card.json is the registry's server.json, word for word, so the two cannot drift", () => {
+  expect(JSON.parse(read("web/public/.well-known/mcp/server-card.json"))).toEqual(JSON.parse(read("server.json")));
+});
+
 test("the listing icons exist at the sizes the directories ask for", () => {
   for (const size of [512, 64]) expect(existsSync(new URL(`web/public/icon-${size}.png`, root))).toBe(true);
 });

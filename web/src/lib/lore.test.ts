@@ -182,13 +182,9 @@ describe("with a release", () => {
     expect(result !== "unavailable" && result.hits).toHaveLength(2);
   });
 
-  test("indexable count and chunks follow the 300-character, no-redirect rule", async () => {
-    const { indexableCount, indexableChunk } = await lore();
+  test("the full-page count follows the 300-character, no-redirect rule", async () => {
+    const { indexableCount } = await lore();
     expect(indexableCount()).toBe(28);
-    const all = indexableChunk(0);
-    expect(all !== "unavailable" && all.map((r) => r.extId).slice(0, 6)).toEqual(["1", "4", "5", "6", "7", "8"]);
-    expect(indexableChunk(5)).toEqual([]);
-    expect(indexableChunk(1, 2)).toMatchObject([{ extId: "5" }, { extId: "6" }]);
   });
 
   test("indexableCount runs its scan once per opened release", async () => {
@@ -200,19 +196,12 @@ describe("with a release", () => {
     expect(spy.mock.calls.filter(([sql]) => /count\(\*\)/.test(String(sql)))).toHaveLength(1);
   });
 
-  test("releaseCreatedAt comes from the manifest", async () => {
-    const { releaseCreatedAt } = await lore();
-    expect(releaseCreatedAt()).toBe("2026-10-15T00:00:00.000Z");
-  });
-
   test("every lookup reports unavailable when the release cannot be opened", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
-    const { loreByExtId, searchLore, indexableCount, indexableChunk, releaseCreatedAt } = await lore(join(tmpdir(), "missing.sqlite"));
+    const { loreByExtId, searchLore, indexableCount } = await lore(join(tmpdir(), "missing.sqlite"));
     expect(loreByExtId("1")).toBe("unavailable");
     expect(searchLore("thrall", 1)).toBe("unavailable");
     expect(indexableCount()).toBe("unavailable");
-    expect(indexableChunk(0)).toBe("unavailable");
-    expect(releaseCreatedAt()).toBe("unavailable");
   });
 });
 

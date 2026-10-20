@@ -34,7 +34,7 @@ const filters = (q: AchievementQuery) => Number(Boolean(q.q)) + Number(Boolean(q
 
 export async function generateMetadata(props: { searchParams?: Promise<Search> }): Promise<Metadata> {
   const q = achievementQuery((await props.searchParams) ?? {});
-  return listMetadata(META, Boolean(q) && filters(q!) === 0 && !q!.sort && q!.page === 1);
+  return listMetadata(META, Boolean(q) && filters(q!) === 0 && !q!.sort, q?.page);
 }
 
 export default async function AchievementListPage(props: { searchParams?: Promise<Search> }) {

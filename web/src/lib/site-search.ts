@@ -159,8 +159,9 @@ export async function siteSearch(raw: string, { only, limit = GROUP_LIMIT, names
       return { type, heading: HEADINGS[type], results: f.results.slice(0, limit).map(strip), total: f.total };
     })
     .filter((g) => g.results.length > 0)
-    // Stable: groups with an exact hit move up, the rest keep their order.
-    .map((g, i) => ({ g, i, exact: g.results.some((r) => r.exact) }))
+    // Stable: groups with an exact hit move up, the rest keep their order. The lore archive (Warcraft Wiki copies)
+    // keeps its place after Everloot's own pages even on an exact name: the Forever record comes first.
+    .map((g, i) => ({ g, i, exact: g.type !== "lore" && g.results.some((r) => r.exact) }))
     .sort((a, b) => Number(b.exact) - Number(a.exact) || a.i - b.i)
     .map(({ g }) => g);
 }

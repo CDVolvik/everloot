@@ -14,17 +14,25 @@ import { loadItemTips, loadSiteAssets } from "@/lib/game-assets";
 import ItemTip from "@/components/game/ItemTip";
 import { Container, DataTable, Facts, Tabs, TooltipFrame } from "@/components/ui";
 import { EmptyTab, EntityHeader, EntityTop, known, LINK, Unreachable } from "../../entity";
+import { vendorIndexable } from "@/lib/indexable";
+import { entityTitle, vendorDescription } from "@/lib/entity-meta";
 
 export const dynamic = "force-dynamic";
+
+/** An NPC no vendor row names: a 404 (uploads are the only list of vendors). Unreachable storage rules nothing out. */
+const unknownVendor = (vendorNpcId: number, facts: Awaited<ReturnType<typeof loadWorldFacts>>) =>
+  !facts.unreachable && !facts.vendors.some((r) => r.vendorNpcId === vendorNpcId);
 
 export async function generateMetadata(props: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const params = await props.params;
   if (!/^[1-9]\d*$/.test(params.id)) return { robots: { index: false, follow: true } };
   const facts = await loadWorldFacts();
   const page = vendorPage(Number(params.id), facts);
+  if (unknownVendor(page.vendorNpcId, facts)) notFound();
+  const name = (facts.unreachable ? undefined : npcNames(facts).get(page.vendorNpcId)) ?? `Vendor ${params.id}`;
   return {
-    ...pageMetadata({ title: `Vendor ${params.id}`, description: "A WoW: Forever vendor page. A price is public after 3 installs agree on the item and the copper.", path: `/database/vendors/${params.id}` }),
-    robots: { index: !facts.unreachable && page.offers.length > 0, follow: true },
+    ...pageMetadata({ title: entityTitle(name, "vendor"), description: vendorDescription({ name, id: page.vendorNpcId, offers: facts.unreachable ? 0 : page.offers.length }), path: `/database/vendors/${params.id}` }),
+    robots: { index: vendorIndexable(page, facts.unreachable), follow: true },
   };
 }
 
@@ -46,6 +54,7 @@ export default async function VendorPage(props: { params: Promise<{ id: string }
   if (!/^[1-9]\d*$/.test(params.id)) notFound();
   const facts = await loadWorldFacts();
   const page = vendorPage(Number(params.id), facts);
+  if (unknownVendor(page.vendorNpcId, facts)) notFound();
   // Where players saw this vendor stand: the NPC pins that 3 installs agree on, as links to the map.
   const places: Place[] = facts.unreachable ? [] : npcPage(page.vendorNpcId, facts).pins.flatMap((pin) => {
     const href = pinLink(pin.mapId, pin.x, pin.y);

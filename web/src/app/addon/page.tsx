@@ -4,6 +4,8 @@ import { pageMetadata } from "@/lib/seo";
 import { latestAddonRelease } from "@/lib/addon-release";
 import { addonReleaseFor, fetchReleases, fileSize, newestDesktopRelease, RELEASES_PAGE, servedFile } from "@/lib/everloot-releases";
 import { REPO_URL } from "@/lib/source";
+import JsonLd from "@/components/JsonLd";
+import { softwareApplicationJsonLd } from "@/lib/jsonld";
 import { Badge, Card, Container, Disclosure, PageHeader, SectionHeading } from "@/components/ui";
 
 export const metadata: Metadata = {
@@ -18,11 +20,15 @@ const EXT = "noopener noreferrer";
 
 /** The Desktop App files the page offers, in this order, matched by the end of the artifact name. */
 const DESKTOP_KINDS = [
-  { suffix: "-win-x64-setup.exe", label: "Windows installer", needs: "Windows 10 or 11, 64-bit" },
-  { suffix: "-win-x64-portable.exe", label: "Windows portable", needs: "Windows 10 or 11, 64-bit. Runs without installing" },
-  { suffix: "-mac-arm64.dmg", label: "macOS disk image", needs: "Apple silicon (M1 or newer), macOS 13 Ventura or later. No Intel build yet" },
-  { suffix: "-linux-x86_64.AppImage", label: "Linux AppImage", needs: "64-bit x86 Linux" },
+  { suffix: "-win-x64-setup.exe", label: "Windows installer", needs: "Windows 10 or 11, 64-bit", os: "Windows" },
+  { suffix: "-win-x64-portable.exe", label: "Windows portable", needs: "Windows 10 or 11, 64-bit. Runs without installing", os: "Windows" },
+  { suffix: "-mac-arm64.dmg", label: "macOS disk image", needs: "Apple silicon (M1 or newer), macOS 13 Ventura or later. No Intel build yet", os: "macOS" },
+  { suffix: "-linux-x86_64.AppImage", label: "Linux AppImage", needs: "64-bit x86 Linux", os: "Linux" },
 ];
+
+const LICENCE_URL = "https://www.gnu.org/licenses/agpl-3.0.html";
+const ADDON_TEXT = "The addon records what you see in WoW: Forever and saves it to a file on your computer.";
+const DESKTOP_TEXT = "The Desktop App is optional and uploads that file for you.";
 
 function Checksum({ name, sha256 }: { name: string; sha256: string | null }) {
   return (
@@ -49,11 +55,15 @@ export default async function AddonPage() {
       })
     : [];
 
+  // One SoftwareApplication per program the page offers, from the same release it lists.
+  const systems = [...new Set(desktopFiles.map((f) => f.os))].join(", ");
   return (
     <Container>
+      {addon && <JsonLd data={softwareApplicationJsonLd({ name: "Everloot addon", description: ADDON_TEXT, version: addon.version, downloadPath: zipHref, licenceUrl: LICENCE_URL, path: "/addon" })} />}
+      {desktop && desktopFiles.length > 0 && <JsonLd data={softwareApplicationJsonLd({ name: "Everloot Desktop App", description: DESKTOP_TEXT, version: desktop.version, downloadPath: desktop.url, licenceUrl: LICENCE_URL, path: "/addon", operatingSystem: systems })} />}
       <PageHeader
         title="Everloot addon and Desktop App"
-        lede="The addon records what you see in WoW: Forever and saves it to a file on your computer. The Desktop App is optional and uploads that file for you."
+        lede={`${ADDON_TEXT} ${DESKTOP_TEXT}`}
         trail={[{ name: "Home", path: "/" }, { name: "Get the addon", path: "/addon" }]}
         meta={<><Badge tone="neutral">AGPL-3.0</Badge><span>Free and open source</span></>}
       />

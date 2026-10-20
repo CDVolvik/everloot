@@ -23,7 +23,7 @@ const href = (q: Partial<ListQuery<Sort>>) => listHref("/database/titles", [
 
 export async function generateMetadata(props: { searchParams?: Promise<Search> }): Promise<Metadata> {
   const q = listQuery((await props.searchParams) ?? {}, SORTS);
-  return listMetadata(META, Boolean(q) && !q!.q && !q!.sort && q!.page === 1);
+  return listMetadata(META, Boolean(q) && !q!.q && !q!.sort, q?.page);
 }
 
 export default async function TitleListPage(props: { searchParams?: Promise<Search> }) {

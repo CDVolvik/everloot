@@ -17,17 +17,35 @@ import { loreForEntity } from "@/lib/lore";
 import { loadItemTips, loadSiteAssets } from "@/lib/game-assets";
 import EntityLink from "@/components/EntityLink";
 import LoreSection from "@/components/LoreSection";
+import { npcIndexable } from "@/lib/indexable";
+import { entityTitle, npcDescription } from "@/lib/entity-meta";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * An id no upload mentions: no sighting, no vendor or quest row naming it, no loot window from it. The game
+ * files the site reads hold no NPC table, so that is a 404, not an empty page. Unreachable storage rules nothing out.
+ */
+function unknownNpc(npcId: number, facts: Awaited<ReturnType<typeof loadWorldFacts>>, rollup: Awaited<ReturnType<typeof computeRollups>>): boolean {
+  if (facts.unreachable || rollup.stats.unreachable) return false;
+  return !facts.npcs.some((r) => r.npcId === npcId)
+    && !facts.vendors.some((r) => r.vendorNpcId === npcId)
+    && !facts.quests.some((r) => r.giverNpcId === npcId || r.turnInNpcId === npcId)
+    && !rollup.rates.some((r) => r.sourceNpcId === npcId)
+    && !rollup.measuredZeros.some((r) => r.sourceNpcId === npcId);
+}
 
 export async function generateMetadata(props: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const params = await props.params;
   if (!/^[1-9]\d*$/.test(params.id)) return { robots: { index: false, follow: true } };
-  const facts = await loadWorldFacts();
-  const page = npcPage(Number(params.id), facts);
+  const npcId = Number(params.id);
+  const [facts, rollup] = await Promise.all([loadWorldFacts(), computeRollups()]);
+  if (unknownNpc(npcId, facts, rollup)) notFound();
+  const page = npcPage(npcId, facts);
+  const name = !facts.unreachable && page.name ? page.name : `NPC ${npcId}`;
   return {
-    ...pageMetadata({ title: !facts.unreachable && page.name ? page.name : `NPC ${params.id}`, description: "A WoW: Forever NPC page from corroborated names and map pins.", path: `/database/npcs/${params.id}` }),
-    robots: { index: !facts.unreachable && Boolean(page.name || page.pins.length), follow: true },
+    ...pageMetadata({ title: entityTitle(name, "NPC"), description: npcDescription({ name, id: npcId, positions: facts.unreachable ? 0 : page.pins.length }), path: `/database/npcs/${npcId}` }),
+    robots: { index: npcIndexable(page, facts.unreachable), follow: true },
   };
 }
 
@@ -66,6 +84,7 @@ export default async function NpcPage(props: { params: Promise<{ id: string }> }
   const npcId = Number(params.id);
   const facts = await loadWorldFacts();
   const rollup = await computeRollups();
+  if (unknownNpc(npcId, facts, rollup)) notFound();
   const unreachable = facts.unreachable || rollup.stats.unreachable;
   const page = npcPage(npcId, facts);
   const title = unreachable ? `NPC ${page.npcId}` : page.name ?? `NPC ${page.npcId}`;
