@@ -8,7 +8,6 @@ import AccountControls from "./AccountControls";
 import GameVersionLabel from "./GameVersionLabel";
 import { SuggestField } from "./ui/SearchBar";
 import { TOOL_GROUPS } from "@/data/tools";
-import type { AccountShell } from "@/lib/account-shell-types";
 
 type NavLink = { label: string; href: string };
 
@@ -42,13 +41,11 @@ function SearchIcon() {
 
 /**
  * The compact bar (docs/design/specs/2026-10-20-account-shell-design.md). From the layout: `savedBuilds` adds Your
- * builds to the avatar menu (EVERLOOT_SAVED_BUILDS); `shell` is the signed-in player (loadAccountShell(), null when
- * signed out or EVERLOOT_PROFILES is off); `accountSwitching` is true with Better Auth (EVERLOOT_AUTH_V2), which
- * can hold several accounts on one browser.
+ * builds to the avatar menu (EVERLOOT_SAVED_BUILDS); `accountSwitching` is true with Better Auth (EVERLOOT_AUTH_V2),
+ * which can hold several accounts on one browser. The avatar menu fetches the player from /api/me/shell itself.
  */
-export default function Header({ savedBuilds = false, shell = null, accountSwitching = false }: {
+export default function Header({ savedBuilds = false, accountSwitching = false }: {
   savedBuilds?: boolean;
-  shell?: AccountShell | null;
   accountSwitching?: boolean;
 }) {
   const path = usePathname() ?? "/";
@@ -174,7 +171,7 @@ export default function Header({ savedBuilds = false, shell = null, accountSwitc
             className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center text-fg-2 hover:text-accent xl:hidden"
           ><SearchIcon /></button>
           <GameVersionLabel className="hidden shrink-0 sm:block" />
-          <AccountControls savedBuilds={savedBuilds} shell={shell} accountSwitching={accountSwitching} />
+          <AccountControls savedBuilds={savedBuilds} accountSwitching={accountSwitching} />
           <button ref={toggle} type="button" aria-label={open ? "Close menu" : "Menu"} aria-expanded={open} aria-controls="site-navigation" onClick={() => setOpen(!open)} className="btn min-h-8 shrink-0 px-3 text-sm lg:hidden">
             {open ? "Close" : "Menu"}
           </button>
@@ -223,7 +220,7 @@ export default function Header({ savedBuilds = false, shell = null, accountSwitc
                 </div>
               ))}
             </div>
-            <AccountControls place="menu" shell={shell} />
+            <AccountControls place="menu" />
           </div>
         </nav>
       )}

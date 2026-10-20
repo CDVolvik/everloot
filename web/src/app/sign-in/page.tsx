@@ -29,7 +29,7 @@ export default async function SignInPage({ searchParams }: { searchParams?: Prom
   return (
     <article className="max-w-3xl space-y-6">
       <h1 className="text-3xl font-bold text-fg">{add ? "Add another account" : "Sign in"}</h1>
-      {add && methods.battlenet && <p className="text-sm text-fg-2">To add a different Battle.net account, sign out of Battle.net first.</p>}
+      {add && <p className="text-sm text-fg-2">Sign in with the account you want to add.</p>}
       {methods.battlenet && (
         <p><a href={returnTo ? `/api/auth/bnet?returnTo=${encodeURIComponent(returnTo)}` : "/api/auth/bnet"} className={battlenetButton}>Sign in with Battle.net</a></p>
       )}

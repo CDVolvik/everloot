@@ -25,6 +25,7 @@ afterEach(() => { vi.unstubAllEnvs(); });
 test("Add another account keeps the signed-in account on the page and comes back home", async () => {
   const html = renderToStaticMarkup(await SignInPage(add()));
   expect(html).toContain(">Add another account</h1>");
+  expect(html).toContain("Sign in with the account you want to add.");
   expect(html).toContain(`href="/api/auth/bnet?returnTo=${encodeURIComponent("/")}"`);
 });
 

@@ -196,12 +196,13 @@ export function AccountSwitcher() {
 }
 
 /**
- * The avatar bubble and its menu, in GitHub's order. `shell` comes from the layout while EVERLOOT_PROFILES is on;
- * without it the menu lists what exists today. `accountSwitching` (Better Auth on) shows Add another account.
+ * The avatar bubble and its menu, in GitHub's order. The player's shell is fetched from /api/me/shell once the
+ * menu mounts (signed in); while it loads, or on 401/404 (EVERLOOT_PROFILES off), the menu lists what exists
+ * today. `initialShell` only seeds it (tests). `accountSwitching` (Better Auth on) shows Add another account.
  */
-export function AvatarMenu({ name, shell, savedBuilds, accountSwitching, signingOut, onSignOut }: {
+export function AvatarMenu({ name, initialShell = null, savedBuilds, accountSwitching, signingOut, onSignOut }: {
   name: string;
-  shell?: AccountShell | null;
+  initialShell?: AccountShell | null;
   savedBuilds: boolean;
   accountSwitching: boolean;
   signingOut: boolean;
@@ -209,6 +210,19 @@ export function AvatarMenu({ name, shell, savedBuilds, accountSwitching, signing
 }) {
   const menu = useDisclosure();
   const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [shell, setShell] = useState<AccountShell | null>(initialShell);
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/me/shell", { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) return;
+        const data = await response.json() as AccountShell;
+        if (active && typeof data?.userId === "string") setShell(data);
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
   const shown = shell?.displayName || name;
   const fill = avatarClass(shell);
   const status = currentStatus(shell?.status);

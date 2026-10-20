@@ -3,6 +3,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AccountShell, DeviceAccount } from "@/lib/account-shell-types";
+import AccountControls from "./AccountControls";
 import Header from "./Header";
 import { accountMenuSections, currentStatus, initials } from "./AccountMenu";
 
@@ -53,8 +54,23 @@ const accountMenu = () => container.querySelector<HTMLElement>("#account-menu")!
 const menuLinks = () => Array.from(accountMenu().querySelectorAll("a")).map((a) => [a.textContent, a.getAttribute("href")]);
 const buttons = (scope: ParentNode, label: string) => Array.from(scope.querySelectorAll("button")).filter((b) => b.textContent === label);
 
+type Route = (init?: RequestInit) => Response | Promise<Response>;
+const signedIn: Route = () => Response.json({ user: { id: ME, name: "Thrall#1", entitlements: [] } });
+/** A mocked fetch: signed in, /api/me/shell 404 (EVERLOOT_PROFILES off) unless a route says otherwise. */
+function api(routes: Record<string, Route> = {}) {
+  const all: Record<string, Route> = { "/api/auth/me": signedIn, "/api/me/shell": () => Response.json({ error: "Not found" }, { status: 404 }), ...routes };
+  const fetch = vi.fn(async (url: string, init?: RequestInit) => {
+    const route = all[url];
+    if (!route) throw new Error(`Unexpected request ${url}`);
+    return route(init);
+  });
+  vi.stubGlobal("fetch", fetch);
+  return fetch;
+}
+const withShell = (s: AccountShell, routes: Record<string, Route> = {}) => api({ "/api/me/shell": () => Response.json(s), ...routes });
+
 describe("signed in without a shell (EVERLOOT_PROFILES off)", () => {
-  beforeEach(() => { vi.stubGlobal("fetch", vi.fn(async () => Response.json({ user: { id: ME, name: "Thrall#1", entitlements: [] } }))); });
+  beforeEach(() => { api(); });
 
   it("shows the + menu and the avatar instead of Sign in and Get the addon", async () => {
     await act(async () => root.render(<Header savedBuilds />));
@@ -106,11 +122,10 @@ describe("signed in without a shell (EVERLOOT_PROFILES off)", () => {
 });
 
 describe("signed in with a shell", () => {
-  it("needs no account lookup and shows name, handle, status and the menu in GitHub's order", async () => {
-    const fetch = vi.fn(async () => Response.json({ user: null }));
-    vi.stubGlobal("fetch", fetch);
-    await act(async () => root.render(<Header savedBuilds shell={shell()} accountSwitching />));
-    expect(fetch).not.toHaveBeenCalled();
+  it("fetches the shell once and shows name, handle, status and the menu in GitHub's order", async () => {
+    const fetch = withShell(shell());
+    await act(async () => root.render(<Header savedBuilds accountSwitching />));
+    expect(fetch.mock.calls.filter(([url]) => url === "/api/me/shell")).toHaveLength(1);
     // Initials on the main character's class colour.
     expect(avatarButton().textContent).toBe("JP");
     expect(avatarButton().querySelector("span")!.className).toContain("bg-class-mage");
@@ -131,8 +146,8 @@ describe("signed in with a shell", () => {
   });
 
   it("asks for a handle and a status when there are none, and uses the accent without a main character", async () => {
-    vi.stubGlobal("fetch", vi.fn());
-    await act(async () => root.render(<Header shell={shell({ handle: null, status: null, mainCharacterId: null })} />));
+    withShell(shell({ handle: null, status: null, mainCharacterId: null }));
+    await act(async () => root.render(<Header />));
     const links = menuLinks();
     expect(links[0]).toEqual(["Choose a handle", "/settings"]);
     expect(links[1]).toEqual(["Set status", "/settings#status"]);
@@ -141,9 +156,28 @@ describe("signed in with a shell", () => {
   });
 
   it("hides Add another account with the legacy session", async () => {
-    vi.stubGlobal("fetch", vi.fn());
-    await act(async () => root.render(<Header shell={shell()} />));
+    withShell(shell());
+    await act(async () => root.render(<Header />));
     expect(container.querySelector('a[href="/sign-in?add=1"]')).toBeNull();
+  });
+
+  it("keeps today's menu while the shell loads or when the route answers 401 or 404", async () => {
+    let finish!: (r: Response) => void;
+    api({ "/api/me/shell": () => new Promise<Response>((resolve) => { finish = resolve; }) });
+    await act(async () => root.render(<Header savedBuilds accountSwitching />));
+    expect(menuLinks()).toEqual([["Your builds", "/me"], ["API keys", "/account"], ["Desktop App and addon", "/addon"]]);
+    await act(async () => finish(Response.json({ error: "Sign in first." }, { status: 401 })));
+    expect(menuLinks()).toEqual([["Your builds", "/me"], ["API keys", "/account"], ["Desktop App and addon", "/addon"]]);
+    expect(container.querySelector('button[aria-label="Switch account"]')).toBeNull();
+  });
+
+  it("an initial shell (tests) shows at once, then the fetched one replaces it", async () => {
+    let finish!: (r: Response) => void;
+    api({ "/api/me/shell": () => new Promise<Response>((resolve) => { finish = resolve; }) });
+    await act(async () => root.render(<AccountControls initialShell={shell()} />));
+    expect(accountMenu().textContent).toContain("@jaina");
+    await act(async () => finish(Response.json(shell({ handle: "proudmoore" }))));
+    expect(accountMenu().textContent).toContain("@proudmoore");
   });
 });
 
@@ -155,13 +189,11 @@ describe("account switcher", () => {
 
   it("lists the accounts on this browser with the current one marked, and switches to another", async () => {
     const calls: Array<[string, RequestInit | undefined]> = [];
-    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
-      calls.push([url, init]);
-      if (url === "/api/me/accounts") return Response.json(accounts);
-      if (url === "/api/me/accounts/switch") return Response.json({ ok: true });
-      throw new Error(`Unexpected request ${url}`);
-    }));
-    await act(async () => root.render(<Header shell={shell()} accountSwitching />));
+    const fetch = withShell(shell(), {
+      "/api/me/accounts": () => Response.json(accounts),
+      "/api/me/accounts/switch": () => Response.json({ ok: true }),
+    });
+    await act(async () => root.render(<Header accountSwitching />));
     await act(async () => avatarButton().click());
     const toggle = container.querySelector<HTMLButtonElement>('button[aria-label="Switch account"]')!;
     await act(async () => toggle.click());
@@ -171,13 +203,14 @@ describe("account switcher", () => {
     const thrall = buttons(switcher, "TThrall")[0];
     expect(thrall).toBeDefined();
     await act(async () => thrall.click());
+    for (const [url, init] of fetch.mock.calls) calls.push([url, init]);
     expect(calls.at(-1)).toEqual(["/api/me/accounts/switch", expect.objectContaining({ method: "POST", body: JSON.stringify({ userId: ALT }) })]);
     expect(reload).toHaveBeenCalledTimes(1);
   });
 
   it("with the legacy session lists only the current account", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => Response.json([accounts[0]])));
-    await act(async () => root.render(<Header shell={shell()} />));
+    withShell(shell(), { "/api/me/accounts": () => Response.json([accounts[0]]) });
+    await act(async () => root.render(<Header />));
     await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Switch account"]')!.click());
     const switcher = container.querySelector("#account-switcher")!;
     expect(switcher.querySelectorAll("li")).toHaveLength(1);
@@ -186,10 +219,11 @@ describe("account switcher", () => {
   });
 
   it("says so when the switch fails, and stays on this account", async () => {
-    vi.stubGlobal("fetch", vi.fn(async (url: string) => url === "/api/me/accounts"
-      ? Response.json(accounts)
-      : Response.json({ error: "That account is not signed in on this browser." }, { status: 404 })));
-    await act(async () => root.render(<Header shell={shell()} accountSwitching />));
+    withShell(shell(), {
+      "/api/me/accounts": () => Response.json(accounts),
+      "/api/me/accounts/switch": () => Response.json({ error: "That account is not signed in on this browser." }, { status: 404 }),
+    });
+    await act(async () => root.render(<Header accountSwitching />));
     await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Switch account"]')!.click());
     await act(async () => buttons(container.querySelector("#account-switcher")!, "TThrall")[0].click());
     expect(container.querySelector("#account-switcher [role=alert]")?.textContent).toMatch(/could not switch/i);
@@ -199,15 +233,15 @@ describe("account switcher", () => {
 
 describe("sign out", () => {
   it("ends only this account and loads the page as the next one when the server says there is one", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ ok: true, next: true })));
-    await act(async () => root.render(<Header shell={shell()} accountSwitching />));
+    withShell(shell(), { "/api/auth/logout": () => Response.json({ ok: true, next: true }) });
+    await act(async () => root.render(<Header accountSwitching />));
     await act(async () => buttons(accountMenu(), "Sign out")[0].click());
     expect(reload).toHaveBeenCalledTimes(1);
   });
 
   it("shows Sign in again when no other account is left", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ ok: true, next: false })));
-    await act(async () => root.render(<Header shell={shell()} accountSwitching />));
+    withShell(shell(), { "/api/auth/logout": () => Response.json({ ok: true, next: false }) });
+    await act(async () => root.render(<Header accountSwitching />));
     await act(async () => buttons(accountMenu(), "Sign out")[0].click());
     expect(reload).not.toHaveBeenCalled();
     expect(refresh).toHaveBeenCalled();

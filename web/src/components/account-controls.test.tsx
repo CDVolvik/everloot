@@ -109,6 +109,8 @@ describe("header account controls", () => {
     const pending = new Promise<Response>(resolve => { finish = resolve; });
     vi.stubGlobal("fetch", async (url: string) => {
       if (url === "/api/auth/me") return Response.json({ user });
+      // The avatar menu also asks for the player's shell; only logout attempts count here.
+      if (url === "/api/me/shell") return Response.json({ error: "Not found" }, { status: 404 });
       attempts++;
       return pending;
     });
