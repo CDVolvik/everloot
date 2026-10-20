@@ -37,7 +37,7 @@ function professionOf(spellId: number, client: readonly Edge[]): string | undefi
 /** An agreed name for an entity, where the page has one; the label falls back to "kind id". */
 export type NameFor = (kind: EdgeKind, id: number) => string | undefined;
 
-function Target({ edge, rel, client, spellIcon, nameOf }: { edge: Edge; rel: Rel; client: readonly Edge[]; spellIcon?: SpellIconFor; nameOf?: NameFor }) {
+export function RelationTarget({ edge, rel, client, spellIcon, nameOf }: { edge: Edge; rel: Rel; client: readonly Edge[]; spellIcon?: SpellIconFor; nameOf?: NameFor }) {
   const href = hrefFor(edge.toKind, edge.toId, rel);
   const text = edge.toKind === "skill" ? professionName(edge.toId) : edge.toKind === "zone" ? zoneByMapId(edge.toId)?.name ?? entityLabel("zone", edge.toId) : nameOf?.(edge.toKind, edge.toId) ?? entityLabel(edge.toKind, edge.toId);
   const icon = edge.toKind === "spell" ? spellIcon?.(edge.toId) : undefined;
@@ -77,7 +77,7 @@ export function EntityRelations({ kind, id, observed, client, skip = [], spellIc
                 <ul className="space-y-1 text-fg">
                   {g.edges.map((e) => (
                     <li key={`${e.evidence}-${e.toKind}-${e.toId}`}>
-                      {e.rel === "same_icon" ? <SameIcon edge={e} self={id} client={client} /> : <Target edge={e} rel={g.rel} client={client} spellIcon={spellIcon} nameOf={nameOf} />}
+                      {e.rel === "same_icon" ? <SameIcon edge={e} self={id} client={client} /> : <RelationTarget edge={e} rel={g.rel} client={client} spellIcon={spellIcon} nameOf={nameOf} />}
                       {e.evidence === "observed" ? <span className="text-muted">{` · ${evidenceLabel(e)}`}</span> : null}
                     </li>
                   ))}
@@ -92,7 +92,7 @@ export function EntityRelations({ kind, id, observed, client, skip = [], spellIc
   );
 }
 
-function SameIcon({ edge, self, client }: { edge: Edge; self: number; client: readonly Edge[] }) {
+export function SameIcon({ edge, self, client }: { edge: Edge; self: number; client: readonly Edge[] }) {
   const others = client.filter((o) => o.rel === "same_icon" && o.toId === edge.toId && o.fromId !== self).map((o) => o.fromId);
   return (
     <>

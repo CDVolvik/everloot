@@ -153,6 +153,14 @@ build that has a zip in the repository. Earlier builds have none.
 
 Pull requests merged to `main` are listed in the nightly pre-releases until the next tagged release.
 
+## [desktop-v0.1.2] - 2026-10-20
+
+### Fixed
+- A nightly addon build (such as 0.3.4-nightly) counts as newer than the release before it. The Addon page and
+  the Overview used to offer the older release as an update, and the app sent a "newer addon" notice, so one
+  click put back a build without the nightly's features. The page now says the nightly is newer than the latest
+  release; putting the release back is the small repair link.
+
 ## [desktop-v0.1.1] - 2026-10-20
 
 Everloot Desktop App 0.1.1. From this version, Windows installs download the next update inside the app and

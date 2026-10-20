@@ -3,10 +3,13 @@ import AdSlot from "@/components/AdSlot";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { npcPage } from "../../../../../../kb/src/world-pages";
+import { npcPage, type NpcPin } from "../../../../../../kb/src/world-pages";
+import type { DropRateRow } from "../../../../../../kb/src/item-page";
 import { computeRollups, loadWorldFacts } from "@/lib/rollup-compute";
-import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
 import { pinLink } from "@/lib/world-map";
+import { trailFor } from "@/lib/breadcrumbs";
+import { Container, DataTable, EmptyState, PageHeader, SourceLine, Tabs, TooltipFrame, type Column } from "@/components/ui";
+import { EntityLayout, FactsCard, LINK, percent, Unreachable } from "../../entity";
 import { loadItemFacts } from "@/lib/rollup-compute";
 import { itemNames } from "@/lib/names";
 import { loreForEntity } from "@/lib/lore";
@@ -28,6 +31,14 @@ export async function generateMetadata(props: { params: Promise<{ id: string }> 
   };
 }
 
+const pinColumns: Column<NpcPin>[] = [
+  { key: "map", header: "Map", numeric: true, cell: (p) => p.mapId },
+  { key: "at", header: "Position", numeric: true, cell: (p) => `${p.x}, ${p.y}` },
+  { key: "installs", header: "Reporters", numeric: true, cell: (p) => p.reporters },
+  { key: "show", header: "", cell: (p) => { const href = pinLink(p.mapId, p.x, p.y); return href ? <Link href={href} className={LINK}>Show on the map</Link> : null; } },
+];
+
+
 export default async function NpcPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   if (!/^[1-9]\d*$/.test(params.id)) notFound();
@@ -45,68 +56,79 @@ export default async function NpcPage(props: { params: Promise<{ id: string }> }
   const assets = dropped.length > 0 ? await loadSiteAssets() : null;
   const tips = await loadItemTips(assets, dropped.map((row) => row.itemId));
   const lore = !unreachable && page.name ? loreForEntity("npc", page.name) : null;
+  const dropColumns: Column<DropRateRow>[] = [
+    { key: "item", header: "Item", cell: (r) => <EntityLink kind="item" id={r.itemId} name={names.get(r.itemId) ?? tips.get(r.itemId)?.name} icon={tips.get(r.itemId)?.icon} /> },
+    { key: "windows", header: "Loot windows", numeric: true, cell: (r) => r.kills },
+    { key: "drops", header: "Item observations", numeric: true, cell: (r) => r.drops },
+    { key: "rate", header: "Observed frequency", numeric: true, cell: (r) => percent(r.rate) },
+    { key: "installs", header: "Install IDs", numeric: true, cell: (r) => r.reporters },
+  ];
+  const trail = [...trailFor("/database/npcs")!, { name: title, path: `/database/npcs/${npcId}` }];
+  const firstPin = page.pins[0];
 
   return (
-    <article className="space-y-8 max-w-4xl">
-      <header className="space-y-3">
-        <p className="font-mono text-xs text-muted">WoW: Forever · npc</p>
-        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">{title}</h1>
-        <p className="text-sm text-muted">
-          {unreachable
-            ? STORAGE_UNREACHABLE
-            : page.name
-              ? `NPC ${page.npcId}`
-              : "No agreed name yet. A name needs 3 installs reporting the same one."}
-        </p>
-      </header>
-
-      {unreachable ? null : (
-      <section className="space-y-2">
-        <h2 className="text-2xl text-fg">Drops</h2>
-        {zero ? (
-          <p className="text-sm text-fg">No items observed in {zero.kills} recorded loot windows. {zero.reporters} install IDs.</p>
-        ) : dropped.length === 0 ? (
-          <p className="text-sm text-fg-2">Loot observations unrecorded. Public frequencies require source observations from 3 install IDs.</p>
-        ) : (
-          <ul className="text-sm text-fg space-y-1">
-            {dropped.map((row) => (
-              <li key={row.itemId}>
-                <EntityLink kind="item" id={row.itemId} name={names.get(row.itemId) ?? tips.get(row.itemId)?.name} icon={tips.get(row.itemId)?.icon} />
-                {" "}·{row.drops} item observations in {row.kills} loot windows · {row.reporters} install IDs
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-      )}
-
-      <p className="text-sm text-muted">Loot windows are observations, not verified kills. Distinct install IDs do not prove independent players.</p>
-
-      <LoreSection match={lore} />
-
-      {unreachable ? null : (
-      <section className="space-y-2">
-        <h2 className="text-2xl text-fg">Map</h2>
-        {page.pins.length === 0 ? (
-          <p className="text-sm text-fg-2">No agreed position. A pin needs 3 installs on the same map.</p>
-        ) : (
-          <ul className="text-sm text-fg space-y-1">
-            {page.pins.map((pin) => (
-              <li key={pin.mapId}>
-                Map {pin.mapId} at {pin.x}, {pin.y} · {pin.reporters} reporters
-                {pinLink(pin.mapId, pin.x, pin.y) && <>{" · "}<Link href={pinLink(pin.mapId, pin.x, pin.y)!} className="text-accent hover:underline underline-offset-4">Show on the map</Link></>}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-      )}
-
-      <p className="text-sm text-muted">
-        <Link href="/database/npcs" className="text-accent hover:underline underline-offset-4">NPC lookup</Link>
-      </p>
-      {assets && tips.size > 0 && <GameCredit version={assets.version} label={assets.label} />}
-      {!unreachable && (page.name !== null || dropped.length > 0 || zero !== undefined) && <AdSlot slot="inContent" />}
-    </article>
+    <Container width="wide">
+      <article>
+        <PageHeader trail={trail} title={title} meta={title !== `NPC ${npcId}` ? <span className="font-mono tabular-nums">NPC {npcId}</span> : undefined} />
+        <EntityLayout
+          rail={
+            <>
+              <TooltipFrame name={title} label={`${title}, as players saw it`}>
+                {firstPin && <p>Map {firstPin.mapId} at {firstPin.x}, {firstPin.y}</p>}
+              </TooltipFrame>
+              {!unreachable && (
+                <FactsCard
+                  title="Seen by players"
+                  facts={[
+                    { label: "Name", value: page.name ?? undefined },
+                    { label: "Map positions", value: page.pins.length ? page.pins.length : undefined },
+                    { label: "Drops", value: zero ? `None in ${zero.kills} windows` : dropped.length ? `${dropped.length} items` : undefined },
+                  ]}
+                />
+              )}
+            </>
+          }
+        >
+          <Tabs
+            label={`${title}: relations`}
+            tabs={[
+              {
+                id: "drops", label: "Drops", count: unreachable ? undefined : dropped.length,
+                panel: (
+                  <DataTable
+                    caption={`What ${title} drops`}
+                    columns={dropColumns}
+                    rows={unreachable ? [] : dropped}
+                    rowKey={(r) => String(r.itemId)}
+                    empty={unreachable ? <Unreachable /> : zero
+                      ? <p className="px-4 py-8 text-fg sm:px-6">No items observed in {zero.kills} recorded loot windows. {zero.reporters} install IDs.</p>
+                      : <EmptyState framed={false} message="Nobody has looted this NPC in Forever yet. Its drops show here once 3 installs record them." />}
+                    footer={dropped.length > 0 ? <span>A loot window is a recorded loot, not a verified kill, so a frequency is not a drop chance.</span> : undefined}
+                  />
+                ),
+              },
+              {
+                id: "map", label: "Map", count: unreachable ? undefined : page.pins.length,
+                panel: (
+                  <DataTable
+                    caption={`Where ${title} stands`}
+                    columns={pinColumns}
+                    rows={unreachable ? [] : page.pins}
+                    rowKey={(p) => String(p.mapId)}
+                    empty={unreachable ? <Unreachable /> : <EmptyState framed={false} message="No agreed position yet. A pin shows once 3 installs see this NPC on the same map." />}
+                  />
+                ),
+              },
+            ]}
+          />
+          <LoreSection match={lore} />
+          {!unreachable && (page.name !== null || dropped.length > 0 || zero !== undefined) && <AdSlot slot="inContent" />}
+        </EntityLayout>
+        <SourceLine confirmed>
+          Distinct install IDs do not prove independent players.
+          {assets && tips.size > 0 && <>{" "}<GameCredit inline version={assets.version} label={assets.label} /></>}
+        </SourceLine>
+      </article>
+    </Container>
   );
 }

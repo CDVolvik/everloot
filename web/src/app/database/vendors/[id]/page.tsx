@@ -3,16 +3,18 @@ import AdSlot from "@/components/AdSlot";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { npcPage, stockLabel, vendorPage } from "../../../../../../kb/src/world-pages";
+import { npcPage, stockLabel, vendorPage, type VendorOffer } from "../../../../../../kb/src/world-pages";
 import { loadWorldFacts } from "@/lib/rollup-compute";
-import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
 import { pinLink } from "@/lib/world-map";
+import { trailFor } from "@/lib/breadcrumbs";
 import { loadItemFacts } from "@/lib/rollup-compute";
 import { itemNames, npcNames } from "@/lib/names";
 import EntityLink from "@/components/EntityLink";
 import { loadItemTips, loadSiteAssets } from "@/lib/game-assets";
 import ItemTip from "@/components/game/ItemTip";
 import GameCredit from "@/components/game/GameCredit";
+import { Container, DataTable, EmptyState, PageHeader, SourceLine, Tabs, TooltipFrame } from "@/components/ui";
+import { EntityLayout, FactsCard, LINK, Unreachable } from "../../entity";
 
 export const dynamic = "force-dynamic";
 
@@ -38,13 +40,15 @@ function formatCopper(copper: number): string {
   return parts.join(" ");
 }
 
+interface Place { href: string; label: string }
+
 export default async function VendorPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   if (!/^[1-9]\d*$/.test(params.id)) notFound();
   const facts = await loadWorldFacts();
   const page = vendorPage(Number(params.id), facts);
   // Where players saw this vendor stand: the NPC pins that 3 installs agree on, as links to the map.
-  const places = facts.unreachable ? [] : npcPage(page.vendorNpcId, facts).pins.flatMap((pin) => {
+  const places: Place[] = facts.unreachable ? [] : npcPage(page.vendorNpcId, facts).pins.flatMap((pin) => {
     const href = pinLink(pin.mapId, pin.x, pin.y);
     return href ? [{ href, label: `Map ${pin.mapId} at ${pin.x}, ${pin.y}` }] : [];
   });
@@ -53,58 +57,80 @@ export default async function VendorPage(props: { params: Promise<{ id: string }
   const itemFacts = facts.unreachable || page.offers.length === 0 ? null : await loadItemFacts();
   const items = itemFacts && !itemFacts.unreachable ? itemNames(itemFacts) : new Map<number, string>();
   const vendorName = facts.unreachable ? undefined : npcNames(facts).get(page.vendorNpcId);
+  const title = vendorName ? `${vendorName} (vendor)` : `Vendor NPC ${page.vendorNpcId}`;
+  const trail = [...trailFor("/database/vendors")!, { name: title, path: `/database/vendors/${page.vendorNpcId}` }];
 
   return (
-    <article className="space-y-8 max-w-4xl">
-      <header className="space-y-3">
-        <p className="font-mono text-xs text-muted">WoW: Forever · vendor</p>
-        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">{vendorName ? `${vendorName} (vendor)` : `Vendor NPC ${page.vendorNpcId}`}</h1>
-        <p className="text-sm text-muted">An item is listed when 3 installs agree on that item and its copper price.</p>
-      </header>
-
-      {facts.unreachable ? (
-        <p className="text-fg-2">{STORAGE_UNREACHABLE}</p>
-      ) : page.offers.length === 0 ? (
-        <p className="text-fg-2">Goods unrecorded. A price needs 3 installs agreeing.</p>
-      ) : (
-        <div className="overflow-x-auto rounded-xl border border-line">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-panel text-xs font-mono text-muted text-left">
-                <th className="px-4 py-3">Item</th>
-                <th className="px-4 py-3 text-right">Price</th>
-                <th className="px-4 py-3 text-right">Stock</th>
-                <th className="px-4 py-3 text-right">Reporters</th>
-              </tr>
-            </thead>
-            <tbody>
-              {page.offers.map((offer) => (
-                <tr key={`${offer.itemId}-${offer.priceCopper}`} className="border-t border-line bg-panel text-fg">
-                  <td className="px-4 py-3">
-                    <ItemTip tip={tips.get(offer.itemId)}>
-                      <EntityLink kind="item" id={offer.itemId} name={items.get(offer.itemId) ?? tips.get(offer.itemId)?.name} />
-                    </ItemTip>
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums">{formatCopper(offer.priceCopper)}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{stockLabel(offer)}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{offer.reporters}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      <p className="text-sm text-muted">
-        <Link href={`/database/npcs/${page.vendorNpcId}`} className="text-accent hover:underline underline-offset-4">{vendorName ?? `NPC ${page.vendorNpcId}`}</Link>
-        {places.map((place) => (
-          <span key={place.href}>{" · "}<Link href={place.href} className="text-accent hover:underline underline-offset-4">Show on the map ({place.label})</Link></span>
-        ))}
-        {" · "}
-        <Link href="/database/vendors" className="text-accent hover:underline underline-offset-4">Vendor lookup</Link>
-      </p>
-      {assets && tips.size > 0 && <GameCredit version={assets.version} label={assets.label} />}
-      {!facts.unreachable && page.offers.length > 0 && <AdSlot slot="inContent" />}
-    </article>
+    <Container width="wide">
+      <article>
+        <PageHeader
+          trail={trail}
+          title={title}
+          meta={<Link href={`/database/npcs/${page.vendorNpcId}`} className={LINK}>{vendorName ?? `NPC ${page.vendorNpcId}`}</Link>}
+        />
+        <EntityLayout
+          rail={
+            <>
+              <TooltipFrame name={title} label={`${title}, as players saw it`}>
+                {places[0] && <p>{places[0].label}</p>}
+              </TooltipFrame>
+              {!facts.unreachable && (
+                <FactsCard
+                  title="Seen by players"
+                  facts={[
+                    { label: "Goods", value: page.offers.length ? `${page.offers.length} prices` : undefined },
+                    { label: "Map positions", value: places.length ? places.length : undefined },
+                  ]}
+                />
+              )}
+            </>
+          }
+        >
+          <Tabs
+            label={`${title}: relations`}
+            tabs={[
+              {
+                id: "goods", label: "Goods", count: facts.unreachable ? undefined : page.offers.length,
+                panel: (
+                  <DataTable
+                    caption={`What ${title} sells`}
+                    columns={[
+                      { key: "item", header: "Item", cell: (o: VendorOffer) => <ItemTip tip={tips.get(o.itemId)}><EntityLink kind="item" id={o.itemId} name={items.get(o.itemId) ?? tips.get(o.itemId)?.name} /></ItemTip> },
+                      { key: "price", header: "Price", numeric: true, cell: (o: VendorOffer) => formatCopper(o.priceCopper) },
+                      { key: "stock", header: "Stock", numeric: true, cell: (o: VendorOffer) => stockLabel(o) },
+                      { key: "installs", header: "Reporters", numeric: true, cell: (o: VendorOffer) => o.reporters },
+                    ]}
+                    rows={facts.unreachable ? [] : page.offers}
+                    rowKey={(o) => `${o.itemId}-${o.priceCopper}`}
+                    empty={facts.unreachable ? <Unreachable /> : <EmptyState framed={false} message="No agreed goods yet. A price shows once 3 installs agree on the item and the copper." />}
+                    footer={page.offers.length > 1 ? <span>Two agreed prices for one item both stay listed.</span> : undefined}
+                  />
+                ),
+              },
+              {
+                id: "map", label: "Map", count: facts.unreachable ? undefined : places.length,
+                panel: (
+                  <DataTable
+                    caption={`Where ${title} stands`}
+                    columns={[
+                      { key: "where", header: "Position", cell: (p: Place) => p.label },
+                      { key: "show", header: "", cell: (p: Place) => <Link href={p.href} className={LINK}>Show on the map</Link> },
+                    ]}
+                    rows={places}
+                    rowKey={(p) => p.href}
+                    empty={facts.unreachable ? <Unreachable /> : <EmptyState framed={false} message="No agreed position yet. A pin shows once 3 installs see this vendor on the same map." />}
+                  />
+                ),
+              },
+            ]}
+          />
+          {!facts.unreachable && page.offers.length > 0 && <AdSlot slot="inContent" />}
+        </EntityLayout>
+        <SourceLine confirmed>
+          Distinct install IDs do not prove independent players.
+          {assets && tips.size > 0 && <>{" "}<GameCredit inline version={assets.version} label={assets.label} /></>}
+        </SourceLine>
+      </article>
+    </Container>
   );
 }

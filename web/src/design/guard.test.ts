@@ -1,12 +1,13 @@
 // Keeps the old look from coming back: each rule scans every non-test .ts, .tsx and .css file
-// under web/src, line by line. No exceptions: the primary button is a flat fill, not a gradient.
+// under web/src, line by line. One exception: the banner's scrim (components/ui/Banner.tsx), the fade that
+// lets section-hub art blend into the page (Carlos, 10/19). The primary button is a flat fill, not a gradient.
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, test } from "vitest";
 import config from "../../tailwind.config";
 
-type Rule = { name: string; pattern: RegExp; bites: string[]; spares: string[] };
+type Rule = { name: string; pattern: RegExp; bites: string[]; spares: string[]; allow?: string[] };
 
 // A class token starts the line or follows whitespace or a quote, may carry variants
 // (`hover:`, `sm:`, `!`), and ends at whitespace, a quote or the end of the line.
@@ -63,6 +64,7 @@ const RULES: Rule[] = [
     pattern: tokenOr(String.raw`bg-(?:gradient|linear|radial|conic)-${REST}|from-${REST}|via-${REST}`, String.raw`gradient\(`),
     bites: ["bg-gradient-to-r from-accent to-q-uncommon", "bg-linear-to-r", "hover:from-accent", "via-q-epic", "radial-gradient(", "linear-gradient(90deg"],
     spares: ["data from the wiki", "bg-panel", "to-do"],
+    allow: ["components/ui/Banner.tsx"],
   },
   {
     // Letter-spaced capitals. Negative tracking (tracking-tight, tracking-[-0.035em]) is allowed.
@@ -115,7 +117,7 @@ function* sourceFiles(dir: string): Generator<string> {
 const files = [...sourceFiles(src)].map((path) => ({ name: relative(src, path).replaceAll("\\", "/"), lines: readFileSync(path, "utf8").split(/\r?\n/) }));
 
 function offenders(rule: Rule): string[] {
-  return files.flatMap(({ name, lines }) =>
+  return files.filter(({ name }) => !rule.allow?.includes(name)).flatMap(({ name, lines }) =>
     lines.flatMap((line, i) => (rule.pattern.test(line) ? [`src/${name}:${i + 1}`] : [])));
 }
 

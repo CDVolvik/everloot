@@ -96,7 +96,7 @@ function overview(s: AppState): string {
   const up = e.jobs.upload, pr = e.jobs.prices, ask = e.jobs.ask;
   const addon = data.addon;
   const addonLine = !addon ? "…" : addon.installed
-    ? (addon.latest && addon.latest.version !== addon.installed ? `${addon.installed} <span class="warn">→ ${addon.latest.version} available</span>` : `${addon.installed}${addon.latest ? ' <span class="ok">up to date</span>' : ""}`)
+    ? (addon.newer && addon.latest ? `${addon.installed} <span class="warn">→ ${addon.latest.version} available</span>` : `${addon.installed}${addon.latest ? ' <span class="ok">up to date</span>' : ""}`)
     : '<span class="warn">not installed</span>';
   const changes = (data.changes ?? []).slice(0, 5);
   return `<div class="page">
@@ -108,7 +108,7 @@ function overview(s: AppState): string {
       <div class="stat"><div class="k">Upload</div><div class="v">${dot(up)} ${up.state === "ok" ? "OK" : up.state === "error" ? "Failed" : up.state === "off" ? "Off" : "Waiting"}</div><div class="s">${up.at ? ago(up.at) : "never"}${askWhy("upload", s)}</div></div>
       <div class="stat"><div class="k">Market prices</div><div class="v">${dot(pr)} ${data.market ? `${data.market.last.length} realm(s)` : pr.state === "off" ? "Off" : "Waiting"}</div><div class="s">${data.market?.scans[0] ? `your last scan ${ago(data.market.scans[0].at)}` : pr.at ? ago(pr.at) : "never"}${askWhy("prices", s)}</div></div>
       <div class="stat"><div class="k">/ask</div><div class="v">${dot(ask)} ${ask.state === "off" ? "Off" : ask.state === "error" ? "Failed" : "On"}</div><div class="s">${ask.at ? ago(ask.at) : s.settings.ask.enabled ? "waiting" : "turn on in Ask"}${askWhy("ask", s)}</div></div>
-      <div class="stat"><div class="k">Addon</div><div class="v">${addonLine}</div><div class="s">${addon?.slots.prices ? "prices file in game" : "no prices file yet"}${addon && (!addon.installed || (addon.latest && addon.latest.version !== addon.installed)) ? ` · <button type="button" class="link" data-page="addon">${addon.installed ? "update" : "install"}</button>` : ""}</div></div>
+      <div class="stat"><div class="k">Addon</div><div class="v">${addonLine}</div><div class="s">${addon?.slots.prices ? "prices file in game" : "no prices file yet"}${addon && (!addon.installed || addon.newer) ? ` · <button type="button" class="link" data-page="addon">${addon.installed ? "update" : "install"}</button>` : ""}</div></div>
     </div>
     <div class="grid2">
       <section class="panel"><div class="row between"><h2>Recent activity</h2><div class="row">${runBtn("upload", s, "Upload now")}${runBtn("prices", s, "Refresh prices")}</div></div><div class="log">${logLines(s, 8)}</div></section>
@@ -560,7 +560,7 @@ function ask(s: AppState): string {
 
 function addon(s: AppState): string {
   const a = data.addon;
-  const newer = a?.installed && a.latest && a.latest.version !== a.installed;
+  const newer = Boolean(a?.newer);
   // Up to date means no button in the main place: a second install changes nothing, so it moves to a small repair link.
   const upToDate = Boolean(a?.installed && a.latest && !newer);
   return `<div class="page">
@@ -573,7 +573,7 @@ function addon(s: AppState): string {
     </div>
     <section class="panel">
       ${upToDate
-        ? `<h2>Up to date</h2><p class="fg2">You have the newest Everloot addon, ${esc(a!.installed!)}. Nothing to do.</p>`
+        ? `<h2>Up to date</h2><p class="fg2">${a!.installed === a!.latest!.version ? `You have the newest Everloot addon, ${esc(a!.installed!)}.` : `You have ${esc(a!.installed!)}, newer than the latest release ${esc(a!.latest!.version)}.`} Nothing to do.</p>`
         : `<h2>${a?.installed ? "Update" : "Install"}</h2><p class="fg2">Downloads <code>Everloot-${esc(a?.latest?.version ?? "x.y.z")}.zip</code> from the site, checks it against the checksum published with the GitHub release, and replaces <code>Interface/AddOns/Everloot</code> in one swap. Close the game first, or <code>/reload</code> after.</p>`}
       <div class="row">
         ${upToDate ? "" : `<button type="button" class="btn btn-primary" id="installAddon" ${a?.latest && s.settings.gameFolder && !busy ? "" : "disabled"}>${busy === "install" ? "Installing…" : a?.installed ? `Update to ${esc(a.latest?.version ?? "")}` : "Install"}</button>`}
@@ -581,7 +581,7 @@ function addon(s: AppState): string {
         ${a?.addonsDir ? '<button type="button" class="link" id="openAddons">open the AddOns folder</button>' : ""}
         <span class="${flash.startsWith("!") ? "error" : "ok"} small" role="status">${esc(flash.replace(/^!/, ""))}</span>
       </div>
-      ${upToDate ? `<p class="muted small">Addon acting up? <button type="button" class="link" id="installAddon" ${s.settings.gameFolder && !busy ? "" : "disabled"}>${busy === "install" ? "Reinstalling…" : `Reinstall ${esc(a!.installed!)}`}</button> puts a clean copy back. Only needed when files are broken or missing.</p>` : ""}
+      ${upToDate ? `<p class="muted small">Addon acting up? <button type="button" class="link" id="installAddon" ${s.settings.gameFolder && !busy ? "" : "disabled"}>${busy === "install" ? "Reinstalling…" : a!.installed === a!.latest!.version ? `Reinstall ${esc(a!.installed!)}` : `Install release ${esc(a!.latest!.version)}`}</button> puts a clean copy of the release back${a!.installed === a!.latest!.version ? "" : " in place of this build"}. Only needed when files are broken or missing.</p>` : ""}
     </section>
     <section class="panel"><h2>In game</h2>
       <ul class="plain fg2">

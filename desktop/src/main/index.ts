@@ -359,8 +359,10 @@ if (!app.requestSingleInstanceLock()) {
   ipcMain.handle("addonInfo", async (): Promise<AddonInfo> => {
     const dir = addonsDir();
     const local = { addonsDir: dir, installed: dir ? installedAddonVersion(dir) : null, slots: dir ? slotAddons(dir) : { prices: false, answers: false } };
-    try { return { ...local, latest: newestRelease(await releases(), "addon-v"), error: null }; }
-    catch (err) { return { ...local, latest: null, error: err instanceof Error ? err.message : String(err) }; }
+    try {
+      const latest = newestRelease(await releases(), "addon-v");
+      return { ...local, latest, newer: Boolean(latest && local.installed && compareVersions(latest.version, local.installed) > 0), error: null };
+    } catch (err) { return { ...local, latest: null, newer: false, error: err instanceof Error ? err.message : String(err) }; }
   });
   ipcMain.handle("installAddon", async (_e, version: unknown) => {
     const dir = addonsDir();

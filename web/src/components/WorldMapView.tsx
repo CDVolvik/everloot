@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Badge, Card, SectionHeading } from "@/components/ui";
+import { Badge, Card, EmptyState, SectionHeading } from "@/components/ui";
 import {
   DEFAULT_LAYERS, mapHref, searchMap, viewSearch, visibleItems, wayCommand, zoneHref, zoneSpot,
   type Box, type LayerId, type LayerState, type MapArtLayer, type MapItems, type SearchHit,
@@ -343,7 +343,7 @@ export default function WorldMapView(props: WorldMapViewProps) {
                     {thumb && (
                       // The dungeon's or raid's loading screen, small; decorative, the name is beside it.
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={thumb} alt="" aria-hidden="true" width={96} height={54} loading="lazy" decoding="async" data-entrance-art className="h-[54px] w-24 shrink-0 rounded-md border border-line object-cover" />
+                      <img src={thumb} alt="" aria-hidden="true" width={96} height={54} loading="lazy" decoding="async" data-entrance-art className="h-[54px] w-24 shrink-0 rounded-control border border-line object-cover" />
                     )}
                     <span className="min-w-0">
                       <span className="text-fg">{p.names.join(", ")}</span>
@@ -389,7 +389,7 @@ export default function WorldMapView(props: WorldMapViewProps) {
                 ))}
                 {shown.pins.length > LIST_LIMIT && <li className="text-muted">and {shown.pins.length - LIST_LIMIT} more on the map.</li>}
               </ul>
-            ) : <p className="text-sm text-muted">No NPC or vendor position has 3 agreeing installs yet on this continent.</p>}
+            ) : <EmptyState message="No NPC or vendor position has 3 agreeing installs yet on this continent." />}
           </section>
         )}
       </div>

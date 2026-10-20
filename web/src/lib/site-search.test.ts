@@ -82,7 +82,7 @@ test("lore pages come with their lore link, and tools by title or keyword", asyn
   expect(groups.find((g) => g.type === "lore")!.results[0]).toMatchObject({ label: "Thrall", href: "/lore/1-thrall", exact: true });
   const tools = (await search("talent")).find((g) => g.type === "tool")!.results;
   expect(tools[0]).toMatchObject({ label: "Talent Calculator", href: "/tools/talents" });
-  expect((await search("gph")).find((g) => g.type === "tool")!.results[0].href).toBe("/tools/gold-per-hour");
+  expect((await search("raid planner")).find((g) => g.type === "tool")!.results[0].href).toBe("/tools/raid");
 });
 
 test("without a lore release the other groups still answer", async () => {

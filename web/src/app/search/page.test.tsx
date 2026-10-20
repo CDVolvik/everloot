@@ -31,8 +31,9 @@ test("without a query it shows the form and no results", async () => {
   const html = await render({});
   expect(html).toContain('name="q"');
   expect(html).toContain('action="/search"');
+  expect(html).not.toContain("data-entry-list");
+  expect(html).not.toContain('href="/lore/');
   expect(html).toContain("Search Everloot");
-  expect(html).not.toContain("<ol");
 });
 
 test("a query shows the groups the site search found, each under its heading, and a link to every lore result", async () => {

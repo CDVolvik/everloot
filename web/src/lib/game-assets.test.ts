@@ -2,7 +2,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { CURRENT_BUILD, TABLES } from "@/data/game-data/raid";
 import {
   assetUrl, BANNER_MAP, buildFolder, classAndProfessionIcons, continentArt, creditWhat, emblems, FETCH_TIMEOUT_MS, forgetPrivateReads, iconUrl,
-  instanceThumbs, itemIconUrl, itemShard, itemTip, launchArt, loadingArt, loadItemTips, loadSiteAssets, parseSiteManifest, privateStoreFromEnv, raidArt,
+  instanceThumbs, itemIconUrl, itemShard, itemTip, launchArt, loadingArt, loadItemNames, loadItemTips, loadSiteAssets, parseSiteManifest, privateStoreFromEnv, raidArt,
 } from "./game-assets";
 import { itemTipText, qualityColor } from "./item-names";
 import { cameraBox, zoneArtShown, ZONE_ART_ZOOM, type Box, type Camera } from "./map-view";
@@ -199,7 +199,11 @@ test("loading screens: banners for original maps, a later map's picture only wit
   expect(loadingArt(a, 2789, true)?.name).toBe("The Tainted Scar");
   expect(loadingArt(a, 9999, true)).toBeNull();
   // Thumbnails for dungeons and raids by name, small copies, never a continent; the held-back raid waits for spoilers.
-  expect(instanceThumbs(a, false)).toEqual({ Deadmines: `${BASE}/loading/9036-small.webp`, "Molten Core": `${BASE}/loading/9409-small.webp` });
+  expect(instanceThumbs(a, false)).toEqual({
+    Deadmines: `${BASE}/loading/9036-small.webp`, "Scarlet Monastery": `${BASE}/loading/9189-small.webp`, "Molten Core": `${BASE}/loading/9409-small.webp`,
+    "Onyxia's Lair": `${BASE}/loading/9249-small.webp`,
+  });
+  expect(loadingArt(a, BANNER_MAP.lore)?.name).toBe("Scarlet Monastery");
   expect(instanceThumbs(a, true)["The Tainted Scar"]).toBe(`${BASE}/loading/9789-small.webp`);
 });
 
@@ -211,7 +215,7 @@ test("the launch banner needs the game's own logo: without it there is no banner
   });
   expect(launchArt(parseSiteManifest({ ...siteManifest, logo: null }, BASE))).toBeNull();
   // A logo with no loading screen still makes a banner, on the plain panel.
-  const rest = Object.fromEntries(Object.entries(siteManifest.loadingScreens).filter(([id]) => id !== "0"));
+  const rest = Object.fromEntries(Object.entries(siteManifest.loadingScreens).filter(([id]) => id !== "249"));
   expect(launchArt(parseSiteManifest({ ...siteManifest, loadingScreens: rest }, BASE))?.background).toBeNull();
 });
 
@@ -234,4 +238,37 @@ test("a credit line names what the page shows", () => {
   expect(creditWhat("icons", false, "loading screen art")).toBe("Icons and loading screen art");
   expect(creditWhat("icons", "tooltip text", "loading screen art")).toBe("Icons, tooltip text and loading screen art");
   expect(creditWhat(null, "loading screen art")).toBe("Loading screen art");
+});
+
+const namesFile = {
+  schema: "everloot.item-names/1", build: { version: "1.60.1.70450" },
+  wiki: { name: "Warcraft Wiki (Internet Archive dump, 2023-11-13)", url: "https://warcraft.wiki.gg", licence: "CC-BY-SA-4.0" },
+  count: 2, names: { 2589: { n: "Linen Cloth", q: 1, w: "Linen_Cloth" }, 19019: { n: "Thunderfury, Blessed Blade of the Windseeker", q: 5, w: "Thunderfury,_Blessed_Blade_of_the_Windseeker" } },
+};
+
+test("the shown item names come from one private file for the client layer's build, with colour and wiki link", async () => {
+  const store = memoryStore({ [`${FOLDER}/item-names.json`]: namesFile });
+  const names = await loadItemNames("1.60.1.70450", BASE, store);
+  expect(store.reads).toEqual([`${FOLDER}/item-names.json`]);
+  expect(names?.wiki).toEqual({ name: namesFile.wiki.name, url: "https://warcraft.wiki.gg" });
+  expect(names?.names.get(19019)).toEqual({ name: "Thunderfury, Blessed Blade of the Windseeker", color: qualityColor(5), wikiPage: "https://warcraft.wiki.gg/wiki/Thunderfury,_Blessed_Blade_of_the_Windseeker" });
+  expect(names?.names.has(9)).toBe(false);
+});
+
+test("the reader applies the id cap and the placeholder rule again, whatever the file holds", async () => {
+  const file = { ...namesFile, count: 4, names: { ...namesFile.names, 191666: { n: "Skeletal Steed", q: 4, w: "Skeletal_Steed" }, 883: { n: "Deprecated Fire Eyed Skull", q: 1, w: "Deprecated_Fire_Eyed_Skull" } } };
+  const names = await loadItemNames("1.60.1.70450", BASE, memoryStore({ [`${FOLDER}/item-names.json`]: file }));
+  expect([...names!.names.keys()].sort((a, b) => a - b)).toEqual([2589, 19019]);
+});
+
+test("without the file, the bucket or the asset URL, or with a file for another build or of another kind, no names show", async () => {
+  const store = (file: unknown) => memoryStore({ [`${FOLDER}/item-names.json`]: file });
+  expect(await loadItemNames("1.60.1.70450", BASE, memoryStore({}))).toBeNull();
+  expect(await loadItemNames("1.60.1.70450", BASE, null)).toBeNull();
+  expect(await loadItemNames("1.60.1.70450", null, store(namesFile))).toBeNull();
+  expect(await loadItemNames("1.60.1.99999", BASE, store(namesFile))).toBeNull();
+  expect(await loadItemNames("1.60.1.70450", BASE, store({ ...namesFile, schema: "everloot.item-names/2" }))).toBeNull();
+  // A wiki source under another licence, or a link that is not a page title, makes the whole file unusable.
+  expect(await loadItemNames("1.60.1.70450", BASE, store({ ...namesFile, wiki: { ...namesFile.wiki, licence: "CC-BY-NC" } }))).toBeNull();
+  expect(await loadItemNames("1.60.1.70450", BASE, store({ ...namesFile, names: { 1: { n: "X", q: 1, w: "\"><script>" } } }))).toBeNull();
 });
