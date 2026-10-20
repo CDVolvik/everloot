@@ -1,6 +1,9 @@
 import { describe, expect, test, vi } from "vitest";
 import { MY_BUILDS_LINE, MY_BUILDS_REFUSAL } from "../saved-builds";
-import { ACCOUNT_TOOL, answer, callTool, CHAT_TOOLS, loadTools, NO_SOURCED_ANSWER, readOpenAiStream, searchOnly, signedIn, sourcesIn, type ToolDef } from "./agent";
+import {
+  ACCOUNT_TOOL, answer, answerOrigin, callTool, CHAT_TOOLS, loadTools, NO_SOURCED_ANSWER, pagesIn, readOpenAiStream, searchOnly, signedIn, sourceLink,
+  sourcesIn, SYSTEM, testKey, TOOL_POLICY, UNSOURCED, type ToolDef,
+} from "./agent";
 import { chatProvider } from "./providers";
 
 const HIT = "[lore_page/lore] Leeroy Jenkins\nLeeroy Jenkins is a valiant human paladin.\nSource: https://warcraft.wiki.gg/wiki/Leeroy_Jenkins (CC-BY-SA-4.0, retrieved 2023-11-13)\n";
@@ -155,4 +158,60 @@ test("an Ollama that cannot be reached says how to let the page in", async () =>
 test("a stream without indexes treats each tool piece as a whole call", async () => {
   const r = await readOpenAiStream(sse([{ choices: [{ delta: { tool_calls: [{ id: "a", function: { name: "get_entity", arguments: "{\"id\":1}" } }] } }] }, { choices: [{ delta: { tool_calls: [{ id: "b", function: { name: "get_entity", arguments: "{\"id\":2}" } }] } }] }]).body!, () => {});
   expect(r.message.tool_calls?.map((c) => c.function.arguments)).toEqual(["{\"id\":1}", "{\"id\":2}"]);
+});
+
+describe("Everloot first", () => {
+  test("the tool policy covers every tool once, database, wiki and lore, market, then builds, and the web only after", () => {
+    expect(TOOL_POLICY.map((g) => g.label)).toEqual(["the database", "the wiki and lore archive", "the market", "builds and talents"]);
+    const listed = TOOL_POLICY.flatMap((g) => g.tools);
+    expect([...listed].sort()).toEqual([...CHAT_TOOLS, "my_builds"].sort());
+    expect(new Set(listed).size).toBe(listed.length);
+    // The prompt names the groups in that order, and the web fallback comes after all of them.
+    const at = TOOL_POLICY.map((g) => SYSTEM.indexOf(g.label));
+    expect(at.every((n, i) => n > 0 && (i === 0 || n > at[i - 1]))).toBe(true);
+    expect(SYSTEM.indexOf("from the web")).toBeGreaterThan(at.at(-1)!);
+    expect(SYSTEM.indexOf("Everloot's data comes first")).toBeLessThan(at[0]);
+    expect(SYSTEM).toContain(UNSOURCED);
+  });
+
+  test("an answer's Everloot pages come from the tools' More lines; sources lose their licence note", async () => {
+    const page = "[item] Linen Cloth\nDropped by humanoids.\nMore: https://everloot.app/database/item/2589\nSource: https://warcraft.wiki.gg/wiki/Linen_Cloth (CC-BY-SA-4.0, retrieved 2023-11-13)\nMore: https://evil.example/x";
+    expect(pagesIn(page + "\n" + page)).toEqual(["https://everloot.app/database/item/2589"]);
+    expect(sourceLink("https://warcraft.wiki.gg/wiki/Linen_Cloth (CC-BY-SA-4.0, retrieved 2023-11-13)")).toEqual({ href: "https://warcraft.wiki.gg/wiki/Linen_Cloth", label: "warcraft.wiki.gg/wiki/Linen_Cloth" });
+    expect(sourceLink("Everloot observations")).toBeNull();
+    const one = vi.fn(async () => new Response(JSON.stringify({ text: page }), { status: 200 }));
+    expect((await searchOnly("linen", one as never)).pages).toEqual(["https://everloot.app/database/item/2589"]);
+  });
+
+  test("labels: From Everloot when the tools backed it, From the web when the model answered alone or said so", () => {
+    const base = { text: "Tailors make it.", model: "m", sources: [] as string[], pages: [] as string[] };
+    expect(answerOrigin({ ...base, pages: ["https://everloot.app/x"] })).toEqual({ everloot: true, web: false });
+    expect(answerOrigin({ ...base, sources: ["https://warcraft.wiki.gg/wiki/X"] })).toEqual({ everloot: true, web: false });
+    expect(answerOrigin(base)).toEqual({ everloot: false, web: true });
+    expect(answerOrigin({ ...base, pages: ["https://everloot.app/x"], text: `Drops in Elwynn. ${UNSOURCED} it is common.` })).toEqual({ everloot: true, web: true });
+    expect(answerOrigin({ ...base, text: NO_SOURCED_ANSWER })).toEqual({ everloot: false, web: false });
+    expect(answerOrigin({ ...base, model: null, sources: ["s"] })).toEqual({ everloot: true, web: false });
+  });
+});
+
+describe("testing a key", () => {
+  const ok = (body: unknown = {}) => vi.fn(async (_url: string, _init?: RequestInit) => new Response(JSON.stringify(body), { status: 200 }));
+
+  test("each provider is asked with a free request, straight from the browser", async () => {
+    const ant = ok({ data: [] });
+    expect(await testKey(chatProvider("anthropic")!, "claude-sonnet-5-5", "sk-ant-x", ant as never)).toBe("Anthropic accepted the key.");
+    expect(ant.mock.calls[0][0]).toBe("https://api.anthropic.com/v1/models?limit=1");
+    expect(ant.mock.calls[0][1]?.headers).toMatchObject({ "x-api-key": "sk-ant-x", "anthropic-dangerous-direct-browser-access": "true" });
+    const or = ok({ data: {} });
+    expect(await testKey(chatProvider("openrouter")!, "m", "sk-or-x", or as never)).toBe("OpenRouter accepted the key.");
+    expect(or.mock.calls[0]).toEqual(["https://openrouter.ai/api/v1/key", { headers: { authorization: "Bearer sk-or-x" } }]);
+    const ol = ok({ data: [{ id: "qwen3:8b" }] });
+    expect(await testKey(chatProvider("ollama")!, "qwen3:8b", "", ol as never)).toBe("Ollama answered and has qwen3:8b.");
+    expect(await testKey(chatProvider("ollama")!, "llama4", "", ol as never)).toMatch(/not pulled yet. Run: ollama pull llama4/);
+  });
+
+  test("a refused key names the provider and its reason", async () => {
+    const bad = vi.fn(async () => new Response(JSON.stringify({ error: { message: "invalid x-api-key" } }), { status: 401 }));
+    await expect(testKey(chatProvider("anthropic")!, "m", "sk-ant-x", bad as never)).rejects.toThrow("Anthropic: HTTP 401, invalid x-api-key");
+  });
 });

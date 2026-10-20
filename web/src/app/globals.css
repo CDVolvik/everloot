@@ -59,6 +59,15 @@ main:has([data-map-page]) {
   padding-top: 1rem;
 }
 
+/* Chat fills the screen under the header (components/chat/ChatClient.tsx): the page itself does not scroll,
+   and the footer stays off it. */
+body:has([data-chat-page]) {
+  overflow: hidden;
+}
+body:has([data-chat-page]) > footer {
+  display: none;
+}
+
 html,
 body {
   background: rgb(var(--canvas));

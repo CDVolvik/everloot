@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import ChatKeys from "@/components/chat/ChatKeys";
 import { className } from "@/components/builds/describe";
 import MainCharacterButton from "@/components/settings/MainCharacterButton";
 import ProfileForm from "@/components/settings/ProfileForm";
@@ -91,6 +92,11 @@ export default async function SettingsPage() {
             Your main character colours your avatar and is who you play unless you switch. Add, rename or delete characters on{" "}
             <Link href="/me" className={link}>My builds</Link>.
           </p>
+        </section>
+
+        <section id="chat-keys" aria-labelledby="chat-keys-heading" className="scroll-mt-16 space-y-2">
+          <h2 id="chat-keys-heading" className={heading}>Chat keys</h2>
+          <ChatKeys />
         </section>
 
         <section aria-labelledby="more" className="space-y-2">

@@ -61,6 +61,9 @@ test("profile, status, characters with the main marked, and the links to keys an
   expect(html).toContain('href="/me"');
   expect(html).toContain('href="/account#keys"');
   expect(html).toContain('href="/addon"');
+  // Chat keys has its own section, the target of chat's "Finish your key setup", and says where keys live.
+  expect(html).toMatch(/<section id="chat-keys"[^>]*><h2 id="chat-keys-heading"[^>]*>Chat keys<\/h2>/);
+  expect(html).toContain("kept in this browser only");
   // The account name stays off the page except as the display name's placeholder; a label's note is not shown.
   expect(html).not.toContain("Thrall#1234");
   expect(html).not.toContain(">alt<");
