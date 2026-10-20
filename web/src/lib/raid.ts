@@ -36,6 +36,65 @@ export function groupsOf(slots: Slots): Slots[] {
   return groups;
 }
 
+/**
+ * Swap two slots, or move a member into an empty one. Out-of-range indexes, the same index and two
+ * empty slots return the array unchanged (same reference), so callers can skip the history entry.
+ */
+export function swapSlots(slots: Slots, from: number, to: number): Slots {
+  const inRange = (i: number) => Number.isInteger(i) && i >= 0 && i < slots.length;
+  if (!inRange(from) || !inRange(to) || from === to) return slots;
+  if (!slots[from] && !slots[to]) return slots;
+  const next = [...slots];
+  next[from] = slots[to];
+  next[to] = slots[from];
+  return next;
+}
+
+/* ---------- Roles ---------- */
+
+export type Role = "tank" | "healer" | "damage" | "unknown";
+
+// Per class, the role of each talent tree in the client's order (trees 1-3). A class with one entry
+// has the same role in every tree, so "any tree" is not a guess for it.
+const TREE_ROLES: Record<ClassName, Role[]> = {
+  warrior: ["damage", "damage", "tank"],
+  paladin: ["healer", "tank", "damage"],
+  hunter: ["damage"],
+  rogue: ["damage"],
+  priest: ["healer", "healer", "damage"],
+  shaman: ["damage", "damage", "healer"],
+  mage: ["damage"],
+  warlock: ["damage"],
+  // Feral tanks or deals damage depending on the gear and the fight, so the tree does not settle it.
+  druid: ["damage", "unknown", "healer"],
+};
+
+/** The role a slot fills, from its class and tree. Tree 0 ("any") is unknown unless the class has one role. */
+export function roleOf(slot: Slot): Role {
+  const roles = TREE_ROLES[slot.class];
+  if (roles.length === 1) return roles[0];
+  return slot.tree === 0 ? "unknown" : roles[slot.tree - 1] ?? "unknown";
+}
+
+export interface Roster {
+  filled: number;
+  classes: Record<ClassName, number>;
+  roles: Record<Role, number>;
+}
+
+export function roster(slots: Slots): Roster {
+  const classes = Object.fromEntries(CLASSES.map((c) => [c, 0])) as Record<ClassName, number>;
+  const roles: Record<Role, number> = { tank: 0, healer: 0, damage: 0, unknown: 0 };
+  let filled = 0;
+  for (const s of slots) {
+    if (!s) continue;
+    filled++;
+    classes[s.class]++;
+    roles[roleOf(s)]++;
+  }
+  return { filled, classes, roles };
+}
+
 /* ---------- Coverage ---------- */
 
 /**
