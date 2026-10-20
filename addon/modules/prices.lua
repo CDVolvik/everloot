@@ -150,6 +150,8 @@ local function priceLines(realm, itemId)
   return out, entry
 end
 
+E.PriceLines = priceLines
+
 local function addLines(tooltip, itemId)
   local realm = GetRealmName and GetRealmName()
   if type(realm) ~= "string" or realm == "" then return end

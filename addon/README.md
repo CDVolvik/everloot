@@ -19,10 +19,13 @@ Download the zip from everloot.app/upload, or build it from the repository root:
     python scripts/package-addon.py
 
 That writes `web/public/downloads/Everloot-<version>.zip`. Extract `Everloot/` into the Forever
-client's `Interface/AddOns/`, `/reload`, then run `/everloot status`. Auction capture is off until
-`/everloot auctions on`. Then, at the auction house, click **Everloot scan** (or type
-`/everloot scan`) for a full scan: at most one every 15 minutes, read in chunks, summarised per item,
-and the last three scans per realm kept. Nothing scans without that click. The list of your
+client's `Interface/AddOns/`, `/reload`, then run `/everloot status`. Auction capture is on in a new
+install (`/everloot auctions off` turns it off). At the auction house, open the **Everloot** tab after
+Blizzard's tabs and click **Scan this house** (or type `/everloot scan`) for a full scan: at most one every 15 minutes, read in chunks, summarised per item,
+and the last three scans per realm kept. Nothing scans without that click. The tab shows the cooldown,
+whether the last scan is in your saved file yet, a **Share now** button (a `/reload`, which writes the
+file so the Desktop App can send it) and a price lookup with the tooltip's lines. If the tab cannot be
+added, an **Everloot scan** button takes its place. The list of your
 installed addons is off until `/everloot addons on`; it is sent only from the upload page, after
 its preview. `/everloot addons off` stops it and deletes every recorded addon row.
 
@@ -200,6 +203,7 @@ The contract tests run the Lua in real Lua 5.1 through `lupa`:
     python addon/tests/event_identity.py
     python addon/tests/collection_contract.py
     python addon/tests/auction_contract.py
+    python addon/tests/auction_tab_contract.py
     python addon/tests/gold_contract.py
     python addon/tests/ask_contract.py
     python addon/tests/recipes_contract.py
@@ -231,7 +235,7 @@ addon/
 │   ├── openworld.lua   target/mouseover sightings, loot windows, merchant windows
 │   ├── guild.lua       roster, attendance, saved lockouts (published only through an officer)
 │   ├── gear.lua        equipped item level sample, at most once an hour
-│   ├── auctions.lua    full auction-house scans you start (Forever); listed buyouts on older clients; off until enabled
+│   ├── auctions.lua    full auction-house scans you start (Forever); listed buyouts on older clients; on in a new install
 │   ├── gold.lua        your own gold: loot, quests, vendors, flights, mailed auction sales, postage, buyouts
 │   ├── professions.lua recipe colours at your rank (C_TradeSkillUI); required rank and cost from trainer windows
 │   ├── ask.lua         /ask stores a question; the companion's answers show after /reload

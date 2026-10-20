@@ -33,8 +33,7 @@ for file in ["core.lua", "modules/auctions.lua"]:
     lua.execute((root / file).read_text(encoding="utf-8"))
 lua.execute("""
 Everloot.frame.onEvent(nil,'ADDON_LOADED','Everloot')
-EverlootDB.toggles.auctions = true
-Everloot:InitModules()
+assert(EverlootDB.toggles.auctions == true, 'a new install starts with auction scans on')
 for _, hook in ipairs(Everloot.frame.hooks) do hook(nil,'AUCTION_ITEM_LIST_UPDATE') end
 local rows = EverlootDB.records.auction_scan
 assert(rows and #rows == 2, 'bid-only and zero-count listings must be skipped, got ' .. tostring(rows and #rows))
