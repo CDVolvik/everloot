@@ -109,6 +109,41 @@ describe("with a release", () => {
     expect(loreByExtId("999")).toBeNull();
   });
 
+  test("loreForEntity matches the exact name within the type, any case, and gives the first paragraph", async () => {
+    const { loreForEntity } = await lore();
+    const thrall = loreForEntity("npc", "thrall");
+    expect(thrall).toMatchObject({ extId: "1", name: "Thrall" });
+    expect(thrall !== "unavailable" && thrall?.intro.startsWith("Thrall is the former Warchief of the Horde.")).toBe(true);
+    // Same name, two types: each type finds its own page.
+    expect(loreForEntity("npc", "Return to Sender")).toMatchObject({ extId: "4" });
+    expect(loreForEntity("quest", "Return to Sender")).toMatchObject({ extId: "5" });
+  });
+
+  test("loreForEntity finds nothing for a wrong type, a redirect, a partial name or an empty name", async () => {
+    const { loreForEntity } = await lore();
+    expect(loreForEntity("item", "Thrall")).toBeNull();
+    expect(loreForEntity("npc", "Old Name")).toBeNull();
+    expect(loreForEntity("npc", "Thral")).toBeNull();
+    expect(loreForEntity("npc", "  ")).toBeNull();
+  });
+
+  test("loreForEntity answers from memory the second time and is unavailable without a release", async () => {
+    const mod = await lore();
+    const first = mod.loreForEntity("npc", "Thrall");
+    expect(mod.loreForEntity("npc", "THRALL")).toBe(first);
+    vi.resetModules();
+    const missing = await lore(join(tmpdir(), "missing-release.sqlite"));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(missing.loreForEntity("npc", "Thrall")).toBe("unavailable");
+  });
+
+  test("firstParagraph is the opening paragraph, cut on a word, and empty for a body that opens with a list", async () => {
+    const { firstParagraph } = await lore();
+    expect(firstParagraph("One short opening.\n\nSecond paragraph.")).toBe("One short opening.");
+    expect(firstParagraph(`${"word ".repeat(200)}`, 40).endsWith("…")).toBe(true);
+    expect(firstParagraph(" * a\n * b\n\nThen text.")).toBe("");
+  });
+
   test("searchLore pages 20 at a time and knows when a next page exists", async () => {
     const { searchLore } = await lore();
     const first = searchLore("grommash", 1);
