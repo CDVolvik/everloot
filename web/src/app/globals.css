@@ -7,10 +7,6 @@
   color-scheme: dark;
 }
 
-/* The docs need room for a sidebar, the page and its code panel: their column is wider than the site's. */
-main:has([data-docs]) {
-  max-width: 88rem;
-}
 
 /* Thin scrollbars inside the docs' sidebar and code panels, in the line colour. */
 [data-docs] * {
@@ -24,16 +20,22 @@ body:has([data-banner]) {
   overflow-x: clip;
 }
 
-/* Data pages (a <Container width="data">): the column grows to 1440 with 24 px sides (16 under
-   1024 px) and the title sits 16 px under the header (density spec, 2026-10-20). */
-main:has([data-container="data"]) {
+/* One content width (design review 2026-10-20, H1): every page's column is the header's and footer's own
+   container, 1440 with 16 px sides (24 from 1024 px), so a page's left edge lines up with the logo. A page that
+   wants a narrower measure caps its Container inside it (wide 1152, reading 768), left-aligned, never centred.
+   The id outranks the layout's own width classes on <main>. */
+#main-content {
   max-width: 1440px;
-  padding-top: 1rem;
 }
 @media (min-width: 1024px) {
-  main:has([data-container="data"]) {
+  #main-content {
     padding-inline: 1.5rem;
   }
+}
+
+/* Data pages (a <Container width="data">): the title sits 16 px under the header (density spec, 2026-10-20). */
+#main-content:has([data-container="data"]) {
+  padding-top: 1rem;
 }
 
 /* Controls on data pages (filter buttons, pager, tabs): 32 px tall with 13 px text, 40 px on phones.
@@ -52,10 +54,9 @@ main:has([data-container="data"]) {
   }
 }
 
-/* The map fills the screen: its page lifts the column's width limit and keeps only a small side margin. */
-main:has([data-map-page]) {
+/* The map fills the screen: its page lifts the column's width limit and keeps the header's side margins. */
+#main-content:has([data-map-page]) {
   max-width: none;
-  padding-inline: 0.75rem;
   padding-top: 1rem;
 }
 

@@ -91,7 +91,7 @@ export default async function MapPage(props: { searchParams: Promise<Query> }) {
       <JsonLd data={webApplicationJsonLd({ name: TITLE, path: "/map", description: lead })} />
       <header className="mx-auto w-full max-w-[1800px]">
         <div className="flex flex-wrap items-baseline gap-x-6 gap-y-0">
-          <h1 className="text-2xl font-bold tracking-tight text-fg">{TITLE}</h1>
+          <h1 className="text-title-sm text-fg sm:text-title">{TITLE}</h1>
           <p className="text-sm text-fg-2">
             <span className="text-fg">Spoilers: {spoilers ? "on" : "off"}.</span>{" "}
             {spoilers
@@ -124,10 +124,10 @@ export default async function MapPage(props: { searchParams: Promise<Query> }) {
           view={parseViewState(searchParams)}
         />
       ) : (
-        <p className="mx-auto w-full max-w-wide rounded-card border border-line bg-panel p-5 text-sm text-fg-2">Nothing is placed on this continent yet.</p>
+        <p className="w-full max-w-wide rounded-card border border-line bg-panel p-5 text-sm text-fg-2">Nothing is placed on this continent yet.</p>
       )}
 
-      <Container className="mx-auto space-y-8 pt-8">
+      <Container className="space-y-8 pt-8">
         {vb && (
           <section aria-labelledby="legend">
             <SectionHeading id="legend">How to read the map</SectionHeading>
