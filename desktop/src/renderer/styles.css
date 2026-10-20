@@ -280,3 +280,14 @@ details.panel[open] > summary { margin-bottom: 0.6rem; }
 .update-pop li { line-height: 1.4; }
 .update-pop li .note { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .update-pop .pop-foot { display: flex; gap: 0.5rem; }
+
+/* Footer icon buttons beside Settings, and the update button's other two looks: downloading and ready to restart. */
+.nav .foot-icon { flex: none; display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border-radius: 8px; color: rgb(var(--muted)); }
+.nav .foot-icon svg { width: 17px; height: 17px; }
+.nav .foot-icon:hover { color: rgb(var(--fg)); }
+.nav .update-btn.busy { border-style: dashed; }
+.nav .update-btn .pct { font-size: 0.68rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.nav .restart-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem; width: 100%; margin-bottom: 0.35rem; padding: 0.3rem 0.65rem; border-radius: 999px; border: 0; background: rgb(var(--accent)); color: rgb(var(--canvas)); font-weight: 600; cursor: pointer; }
+.nav .restart-btn svg { width: 14px; height: 14px; }
+.nav .restart-btn:focus-visible { outline: 2px solid rgb(var(--accent)); outline-offset: 2px; }
+.toast.info { border-color: rgb(var(--edge)); color: rgb(var(--fg)); }

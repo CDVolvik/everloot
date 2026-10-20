@@ -48,6 +48,12 @@ that has a zip in the repository. Earlier builds have none.
 - Desktop App: when a newer release is out, an arrow button sits beside Settings. It opens a panel with the
   new version, its release date, what the release lists as changed (the first eight, then a link to the rest
   on GitHub) and a Download button for this system's installer. Escape or Later closes it.
+- Desktop App: on a Windows install, the update downloads inside the app, is checked against the release's
+  SHA256SUMS, and installs on restart: a Restart to update button appears in the footer and asks first, waits
+  for a running upload, then runs the installer silently and opens the app again. A bug button beside Settings
+  opens GitHub's bug form with the app version and its diagnostics filled in (user folder hidden, never the
+  token), or copies them. The Addon page says Up to date instead of offering Reinstall as the main button;
+  reinstalling is a small repair link.
 
 ### Changed
 - The upload record contract moved from `web/src/lib/intake.ts` into one package, `packages/protocol`

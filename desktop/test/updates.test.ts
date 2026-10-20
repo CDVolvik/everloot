@@ -25,7 +25,7 @@ test("the newest desktop release wins; addon tags, drafts and pre-releases are i
 
 test("a check says whether something newer exists and never downloads", async () => {
   const send = vi.fn(async () => new Response(JSON.stringify([{ tag_name: "desktop-v0.2.0", html_url: "u" }]), { status: 200 }));
-  expect(await checkForUpdates("0.1.0", send as unknown as typeof fetch)).toEqual({ current: "0.1.0", latest: "0.2.0", url: "u", newer: true, notes: [], downloadUrl: null, publishedAt: null });
+  expect(await checkForUpdates("0.1.0", send as unknown as typeof fetch)).toEqual({ current: "0.1.0", latest: "0.2.0", url: "u", newer: true, notes: [], downloadUrl: null, publishedAt: null, sumsUrl: null, installable: false });
   expect(await checkForUpdates("0.2.0", send as unknown as typeof fetch)).toMatchObject({ newer: false });
   expect(send).toHaveBeenCalledTimes(2);
   const empty = vi.fn(async () => new Response("[]", { status: 200 }));
@@ -94,6 +94,11 @@ test("the download is this system's file from the release, and the popover gets 
   expect(updateFrom(releases, "0.1.0", "win32")).toEqual({
     current: "0.1.0", latest: "0.2.0", url: "page", newer: true,
     notes: [{ text: "One fix.", author: null, pr: null }], downloadUrl: assets[0].browser_download_url, publishedAt: "2026-10-21T10:00:00Z",
+    sumsUrl: assets[4].browser_download_url, installable: true,
   });
+  // Only the Windows installer can be swapped in place; the portable exe, a disk image and an AppImage cannot.
+  expect(updateFrom(releases, "0.1.0", "win32", true).installable).toBe(false);
+  expect(updateFrom(releases, "0.1.0", "darwin").installable).toBe(false);
+  expect(updateFrom(releases, "0.1.0", "linux").installable).toBe(false);
   expect(updateFrom(releases, "0.2.0", "win32").newer).toBe(false);
 });

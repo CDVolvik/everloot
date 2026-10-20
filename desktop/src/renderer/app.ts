@@ -561,6 +561,8 @@ function ask(s: AppState): string {
 function addon(s: AppState): string {
   const a = data.addon;
   const newer = a?.installed && a.latest && a.latest.version !== a.installed;
+  // Up to date means no button in the main place: a second install changes nothing, so it moves to a small repair link.
+  const upToDate = Boolean(a?.installed && a.latest && !newer);
   return `<div class="page">
     <div class="head"><h1>Addon</h1><span class="sub">${a?.addonsDir ? `<span class="mono">${esc(a.addonsDir)}</span>` : "no game folder"}</span></div>
     <div class="stats">
@@ -570,14 +572,16 @@ function addon(s: AppState): string {
       <div class="stat"><div class="k">Answers file</div><div class="v">${a?.slots.answers ? '<span class="ok">present</span>' : "none"}</div><div class="s">EverlootAnswers</div></div>
     </div>
     <section class="panel">
-      <h2>${a?.installed ? (newer ? "Update" : "Reinstall") : "Install"}</h2>
-      <p class="fg2">Downloads <code>Everloot-${esc(a?.latest?.version ?? "x.y.z")}.zip</code> from the site, checks it against the checksum published with the GitHub release, and replaces <code>Interface/AddOns/Everloot</code> in one swap. Close the game first, or <code>/reload</code> after.</p>
+      ${upToDate
+        ? `<h2>Up to date</h2><p class="fg2">You have the newest Everloot addon, ${esc(a!.installed!)}. Nothing to do.</p>`
+        : `<h2>${a?.installed ? "Update" : "Install"}</h2><p class="fg2">Downloads <code>Everloot-${esc(a?.latest?.version ?? "x.y.z")}.zip</code> from the site, checks it against the checksum published with the GitHub release, and replaces <code>Interface/AddOns/Everloot</code> in one swap. Close the game first, or <code>/reload</code> after.</p>`}
       <div class="row">
-        <button type="button" class="btn btn-primary" id="installAddon" ${a?.latest && s.settings.gameFolder && !busy ? "" : "disabled"}>${busy === "install" ? "Installing…" : a?.installed ? (newer ? `Update to ${esc(a.latest!.version)}` : "Reinstall") : "Install"}</button>
+        ${upToDate ? "" : `<button type="button" class="btn btn-primary" id="installAddon" ${a?.latest && s.settings.gameFolder && !busy ? "" : "disabled"}>${busy === "install" ? "Installing…" : a?.installed ? `Update to ${esc(a.latest?.version ?? "")}` : "Install"}</button>`}
         ${ext("https://everloot.app/upload", "manual install steps")}
         ${a?.addonsDir ? '<button type="button" class="link" id="openAddons">open the AddOns folder</button>' : ""}
-        <span class="${flash.startsWith("!") ? "error" : "ok"} small">${esc(flash.replace(/^!/, ""))}</span>
+        <span class="${flash.startsWith("!") ? "error" : "ok"} small" role="status">${esc(flash.replace(/^!/, ""))}</span>
       </div>
+      ${upToDate ? `<p class="muted small">Addon acting up? <button type="button" class="link" id="installAddon" ${s.settings.gameFolder && !busy ? "" : "disabled"}>${busy === "install" ? "Reinstalling…" : `Reinstall ${esc(a!.installed!)}`}</button> puts a clean copy back. Only needed when files are broken or missing.</p>` : ""}
     </section>
     <section class="panel"><h2>In game</h2>
       <ul class="plain fg2">
@@ -666,29 +670,61 @@ function renderSide(s: AppState): void {
   nav.innerHTML = PAGES.filter((p) => p.id !== "settings").map((p) => item(p.id, p.label, p.job)).join("")
     + `<div class="section">On everloot.app</div>${web}`;
   const e = s.engine;
-  const up = s.update?.newer ? s.update : null;
-  sideFoot.innerHTML = `<div class="nav foot-row"><button type="button" data-page="settings" ${page === "settings" ? 'aria-current="page"' : ""}>${GEAR}Settings</button>${up ? `<button type="button" class="update-btn" id="updateBtn" aria-expanded="${updateOpen}" aria-controls="updatePop" aria-label="Update ${esc(up.latest ?? "")} available" title="Update ${esc(up.latest ?? "")} available">${ARROW}</button>` : ""}</div>
+  // Ready to install: Restart gets its own row, the clearest thing in the footer.
+  const ready = s.update?.newer && s.updateProgress.stage === "ready";
+  sideFoot.innerHTML = `${ready ? `<div class="nav"><button type="button" class="restart-btn" id="updateRestart" title="Restart to install ${esc(s.update!.latest ?? "")}">${ARROW}Restart to update</button></div>` : ""}<div class="nav foot-row"><button type="button" data-page="settings" ${page === "settings" ? 'aria-current="page"' : ""}>${GEAR}Settings</button><button type="button" class="foot-icon" id="reportBug" aria-label="Report a bug" title="Report a bug">${BUG}</button>${updateButton(s)}</div>
     <div class="foot-line"><span>${e.files.length ? `Watching ${e.files.length} file(s)` : "Not watching"}${e.paused ? " · paused" : ""}</span><span>v${esc(s.version)}</span></div>`;
+}
+
+const BUG = `<svg viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="8" width="10" height="12" rx="5"/><path d="M9 8V7a3 3 0 0 1 6 0v1M12 12v8M3 13h4M17 13h4M4 7l3 2M20 7l-3 2M4 19l3-2M20 19l-3-2"/></g></svg>`;
+
+/**
+ * The footer's update button: an arrow while an update is out, the percentage while it downloads,
+ * and a Restart pill once it is ready to install.
+ */
+function updateButton(s: AppState): string {
+  const up = s.update?.newer ? s.update : null;
+  if (!up) return "";
+  const p = s.updateProgress;
+  // Ready: the Restart row above the footer takes over; the arrow stays to reopen what changed.
+  const label = p.stage === "downloading" ? `Downloading update ${p.percent}%` : `Update ${esc(up.latest ?? "")} available`;
+  return `<button type="button" class="update-btn${p.stage === "downloading" ? " busy" : ""}" id="updateBtn" aria-expanded="${updateOpen}" aria-controls="updatePop" aria-label="${label}" title="${label}">${p.stage === "downloading" ? `<span class="pct">${p.percent}</span>` : ARROW}</button>`;
 }
 
 const ARROW = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5.5 11.5 12 5l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 const NOTES_SHOWN = 8;
 
 /** The update popover: the new version, what its release lists as changed, and this system's download. */
-function updatePopover(u: NonNullable<AppState["update"]>): string {
+function updatePopover(u: NonNullable<AppState["update"]>, p: AppState["updateProgress"]): string {
   const notes = u.notes.slice(0, NOTES_SHOWN).map((n) => `<li><span class="note" title="${esc(n.text)}">${esc(n.text)}${n.author ? ` <span class="muted">by @${esc(n.author)}${n.pr ? ` in #${n.pr}` : ""}</span>` : ""}</span></li>`).join("");
   const more = u.notes.length > NOTES_SHOWN ? `${u.notes.length - NOTES_SHOWN} more changes on GitHub ↗` : "Release notes on GitHub ↗";
   return `<div class="pop-head"><h2 id="updTitle">Update available</h2><div class="muted small">${esc(u.latest ?? "")} · you run ${esc(u.current)}${u.publishedAt ? ` · released ${when(u.publishedAt)}` : ""}</div></div>
     <div class="pop-body"><h3>What's changed</h3>${notes ? `<ul>${notes}</ul>` : '<p class="muted small">This release lists no changes.</p>'}${u.url ? ext(u.url, more) : ""}</div>
-    <div class="pop-foot"><button type="button" class="btn btn-primary" data-open="${esc(u.downloadUrl ?? u.url ?? "")}">Download ${esc(u.latest ?? "")}</button><button type="button" class="btn" id="updateLater">Later</button></div>
-    <p class="muted small">Run the download to update; your settings and data folder stay. The app is not code-signed yet, so Windows asks once (More info, Run anyway).</p>`;
+    ${p.stage === "failed" ? `<p class="error small">The download failed: ${esc(p.error ?? "")}</p>` : ""}
+    <div class="pop-foot">${updatePrimary(u, p)}<button type="button" class="btn" id="updateLater">Later</button></div>
+    <p class="muted small">${u.installable
+      ? "The update is checked against the release's published checksum before it installs. Your settings and data folder stay."
+      : "Run the download to update; your settings and data folder stay. The app is not code-signed yet, so Windows asks once (More info, Run anyway)."}</p>`;
+}
+
+/** Download and install where this install can (the Windows installer), else the download in the browser. */
+function updatePrimary(u: NonNullable<AppState["update"]>, p: AppState["updateProgress"]): string {
+  if (!u.installable) return `<button type="button" class="btn btn-primary" data-open="${esc(u.downloadUrl ?? u.url ?? "")}">Download ${esc(u.latest ?? "")}</button>`;
+  if (p.stage === "ready") return `<button type="button" class="btn btn-primary" id="updateRestartPop">Restart to update</button>`;
+  if (p.stage === "downloading") return `<button type="button" class="btn btn-primary" disabled>Downloading ${p.percent}%</button>`;
+  return `<button type="button" class="btn btn-primary" id="updateGet">${p.stage === "failed" ? "Try again" : `Download and install ${esc(u.latest ?? "")}`}</button>`;
 }
 
 function renderUpdate(s: AppState): void {
   const up = s.update?.newer ? s.update : null;
   if (!up) updateOpen = false;
   updatePop.hidden = !updateOpen;
-  if (updateOpen && up) updatePop.innerHTML = updatePopover(up);
+  if (updateOpen && up) {
+    const focused = document.activeElement?.id;
+    updatePop.innerHTML = updatePopover(up, s.updateProgress);
+    // Progress re-renders the panel; keep the reader where they were.
+    if (focused) document.getElementById(focused)?.focus();
+  }
 }
 
 function toggleUpdate(open: boolean): void {
@@ -791,8 +827,18 @@ api.onChatProgress((p) => {
 
 const toast = document.getElementById("toast")!;
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
+/** A short note in the same corner, for things that went right. */
+function notice(text: string): void {
+  toast.textContent = text;
+  toast.classList.add("info");
+  toast.hidden = false;
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { toast.hidden = true; toast.classList.remove("info"); }, 6000);
+}
+
 /** A call to the main side that failed where the page has no message line of its own: shown, then gone. */
 function failed(e: unknown): void {
+  toast.classList.remove("info");
   toast.textContent = msg(e);
   toast.hidden = false;
   if (toastTimer) clearTimeout(toastTimer);
@@ -809,6 +855,13 @@ async function onClick(ev: MouseEvent): Promise<void> {
   const el = ev.target as HTMLElement;
   if (el.closest("#updateBtn")) { toggleUpdate(!updateOpen); return; }
   if (el.closest("#updateLater")) { toggleUpdate(false); return; }
+  if (el.closest("#updateGet")) { await api.updateDownload(); return; }
+  if (el.closest("#updateRestart, #updateRestartPop")) { await api.updateRestart(); return; }
+  if (el.closest("#reportBug") && state) {
+    const r = await api.reportBug(diagnostics(state));
+    if (r === "copied") notice("Diagnostics copied. Paste them into the Discord #bug-reports channel or a GitHub issue.");
+    return;
+  }
   // A click anywhere outside the open popover closes it; its own links still work.
   if (updateOpen && !el.closest("#updatePop")) toggleUpdate(false);
   const row = el.closest<HTMLElement>("[data-char]");

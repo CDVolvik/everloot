@@ -1,4 +1,4 @@
-import { BrowserWindow, Notification, app, dialog, ipcMain, screen, shell } from "electron";
+import { BrowserWindow, Notification, app, clipboard, dialog, ipcMain, screen, shell } from "electron";
 import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -22,6 +22,7 @@ import { itemIdFrom, listRealms, ownRealms, priceRows, readPricesFile } from "./
 import { loadSettings, mergeSettings, saveSettings } from "./settings";
 import { createTray } from "./tray";
 import { checkForUpdates, fetchReleases, updateFrom } from "./updates";
+import { downloadUpdate, runInstaller } from "./self-update";
 import { fitWindow, readWindowState, writeWindowState } from "./window-state";
 
 /** The same folder the command line uses (`companion/src/cli.ts` defaultStatePath), so both share sent.json. */
@@ -63,6 +64,9 @@ if (!app.requestSingleInstanceLock()) {
 
   const addonsDir = () => (settings.gameFolder ? join(settings.gameFolder, "Interface", "AddOns") : null);
   let update: AppState["update"] = null;
+  let updateProgress: AppState["updateProgress"] = { stage: "idle", percent: 0, error: null };
+  /** The verified installer, once downloaded, and the version it installs. */
+  let downloaded: { path: string; version: string } | null = null;
   // Scan ages come from parsing each account file; remembered per file size and write time so a broadcast stays cheap.
   const scanMemo = new Map<string, { key: string; scans: ReturnType<typeof readScanAges> }>();
   const allScans = () => engine.snapshot().files.flatMap((f) => {
@@ -90,7 +94,7 @@ if (!app.requestSingleInstanceLock()) {
       };
     },
   }));
-  const appState = (): AppState => ({ version: app.getVersion(), platform: process.platform, dataFolder: data, notice: loaded.error, settings, engine: engine.snapshot(), update, staleScans: staleScans(allScans()) });
+  const appState = (): AppState => ({ version: app.getVersion(), platform: process.platform, dataFolder: data, notice: loaded.error, settings, engine: engine.snapshot(), update, updateProgress, staleScans: staleScans(allScans()) });
   const broadcast = () => {
     const s = appState();
     win?.webContents.send("state", s);
@@ -226,6 +230,65 @@ if (!app.requestSingleInstanceLock()) {
     return true;
   });
   // A check from Settings also refreshes the sidebar's update button.
+  const messageBox = (options: Electron.MessageBoxOptions) => (win ? dialog.showMessageBox(win, options) : dialog.showMessageBox(options));
+  // Windows installs download the update here, checked against SHA256SUMS, and install it on restart.
+  ipcMain.handle("updateDownload", async () => {
+    const u = update;
+    if (!u?.newer || !u.installable || !u.downloadUrl || !u.sumsUrl || updateProgress.stage === "downloading") return;
+    if (downloaded?.version === u.latest) { updateProgress = { stage: "ready", percent: 100, error: null }; broadcast(); return; }
+    updateProgress = { stage: "downloading", percent: 0, error: null };
+    broadcast();
+    try {
+      const path = await downloadUpdate({ url: u.downloadUrl, sumsUrl: u.sumsUrl, dir: join(data, "updates"), onProgress: (percent) => { updateProgress = { stage: "downloading", percent, error: null }; broadcast(); } });
+      downloaded = { path, version: u.latest! };
+      updateProgress = { stage: "ready", percent: 100, error: null };
+    } catch (err) {
+      updateProgress = { stage: "failed", percent: 0, error: err instanceof Error ? err.message : String(err) };
+    }
+    broadcast();
+  });
+  // Restart asks first, waits for a running upload or price refresh to finish, then hands over to the installer.
+  ipcMain.handle("updateRestart", async () => {
+    if (!downloaded || updateProgress.stage !== "ready") return false;
+    const busy = JOBS.filter((j) => engine.snapshot().jobs[j].state === "running");
+    const answer = await messageBox({
+      type: "question",
+      buttons: ["Restart and update", "Not now"],
+      defaultId: 0,
+      cancelId: 1,
+      title: "Restart to update",
+      message: `Restart Everloot Desktop App to install ${downloaded.version}?`,
+      detail: [
+        "The app closes, installs the update and opens again in a few seconds.",
+        "Your settings, characters, chat and backups stay in the data folder. The game and its save files are not touched.",
+        busy.length ? `It waits for the running ${busy.join(" and ")} job to finish first.` : "Nothing is uploading right now.",
+      ].join("\n\n"),
+    });
+    if (answer.response !== 0) return false;
+    for (let i = 0; i < 120 && JOBS.some((j) => engine.snapshot().jobs[j].state === "running"); i++) await new Promise((r) => setTimeout(r, 500));
+    runInstaller(downloaded.path);
+    quitting = true;
+    app.quit();
+    return true;
+  });
+  // The bug report opens GitHub's form with the version and the page's diagnostics filled in, or copies them.
+  ipcMain.handle("reportBug", async (_e, diag: unknown) => {
+    const text = typeof diag === "string" ? diag.slice(-4000) : "";
+    const answer = await messageBox({
+      type: "info",
+      buttons: ["Open the report on GitHub", "Copy diagnostics", "Cancel"],
+      defaultId: 0,
+      cancelId: 2,
+      title: "Report a bug",
+      message: "Report a bug in Everloot Desktop App",
+      detail: "Opens a bug report on GitHub with the app version and these diagnostics filled in: your settings (where the token file is, never the token), the files watched, each job's last state and the last log lines, with your user folder hidden. You read and edit it before sending; it needs a GitHub account. Or copy the diagnostics and post them in the Discord #bug-reports channel.",
+    });
+    if (answer.response === 1) { clipboard.writeText(text); return "copied"; }
+    if (answer.response !== 0) return null;
+    const q = new URLSearchParams({ template: "bug-report.yml", labels: "bug,desktop", part: "Desktop App", page: `Everloot Desktop App ${app.getVersion()} (${process.platform})`, diagnostics: text });
+    void shell.openExternal(`https://github.com/Everloot/everloot/issues/new?${q}`);
+    return "opened";
+  });
   ipcMain.handle("checkForUpdates", async () => {
     const check = await checkForUpdates(app.getVersion(), fetch, process.platform, Boolean(process.env.PORTABLE_EXECUTABLE_FILE));
     update = check.latest ? check : null;
