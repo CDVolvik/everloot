@@ -94,6 +94,7 @@ export default async function QuestPage(props: { params: Promise<{ id: string }>
               panel: facts.unreachable ? <Unreachable />
                 : page.rewards.length ? (
                   <DataTable
+                    dense
                     caption={`Rewards of ${title}`}
                     columns={[{ key: "item", header: "Item", cell: (itemId: number) => <EntityLink kind="item" id={itemId} name={items.get(itemId) ?? tips.get(itemId)?.name} icon={tips.get(itemId)?.icon} /> }]}
                     rows={page.rewards}
@@ -107,6 +108,7 @@ export default async function QuestPage(props: { params: Promise<{ id: string }>
               panel: facts.unreachable ? <Unreachable />
                 : people.length ? (
                   <DataTable
+                    dense
                     caption={`Who gives and takes ${title}`}
                     columns={[
                       { key: "role", header: "Role", nowrap: true, cell: (p: Person) => p.role },
