@@ -100,7 +100,7 @@ export default async function ChangesPage({ searchParams }: { searchParams: Prom
   const banner = loadingArt(assets, BANNER_MAP.changes);
   const index = mentionIndex(assets, assets ? await siteSpellNames() : []);
   const named = shown.some((e) => [e.summary, e.excerpt].some((t) => t && splitMentions(t, index).some((p) => typeof p !== "string")));
-  // One credit line for the page's game art: the banner's caption when there is a banner, else at the foot.
+  // One full credit line for the page's game art, at the foot; the banner carries only its one-line caption.
   const credit = assets && (banner || named)
     ? <GameCredit version={assets.version} label={assets.label} what={creditWhat(named && "icons", named && "tooltip text", banner && "loading screen art")} />
     : null;
@@ -120,7 +120,7 @@ export default async function ChangesPage({ searchParams }: { searchParams: Prom
           </>
         }
         actions={<a href="/changes/feed.xml" className="btn">RSS feed</a>}
-        banner={banner ? { image: <BannerArt art={banner} eager />, credit } : undefined}
+        banner={banner ? { image: <BannerArt art={banner} eager /> } : undefined}
       />
 
       <Container width="reading">
@@ -157,7 +157,7 @@ export default async function ChangesPage({ searchParams }: { searchParams: Prom
             <a href={`${REPO_URL}/blob/main/docs/DATA_POLICY.md`} rel="noopener" className="text-accent">data policy</a>.
           </p>
         </Explainer>
-        {!banner && credit && <div className="mt-6">{credit}</div>}
+        {credit && <div className="mt-6">{credit}</div>}
         <SourceLine source="Blizzard's forum and Bluesky, linked to each original" licence="Post text is Blizzard's" />
         <AdSlot slot="inContent" />
       </Container>
