@@ -4,10 +4,10 @@ import { expect, test, vi } from "vitest";
 import type { Edge } from "../../../kb/src/edges";
 
 vi.mock("next/link", () => ({
-  default: ({ href, children }: { href: string; children: ReactNode }) => <a href={href}>{children}</a>,
+  default: ({ href, title, children }: { href: string; title?: string; children: ReactNode }) => <a href={href} title={title}>{children}</a>,
 }));
 
-import { EntityRelations } from "./EntityRelations";
+import { EntityRelations, RelationTarget } from "./EntityRelations";
 
 const client = (fromId: number, rel: Edge["rel"], toKind: Edge["toKind"], toId: number): Edge =>
   ({ fromKind: "item", fromId, rel, toKind, toId, evidence: "client", build: "1.60.1.70450", installs: null, firstSeen: null, lastSeen: null });
@@ -41,6 +41,26 @@ test("a spell's own relations name its profession and link to the profession pag
   expect(html).toContain("Profession");
   expect(html).toContain('href="/tools/professions"');
   expect(html).toContain(">Blacksmithing<");
+});
+
+test("a relation target named from the name files: players first, a wiki title with its tooltip, a game-file name with the quiet marker", () => {
+  const reward: Edge = { ...client(2862, "reward_from", "quest", 176), evidence: "observed", build: null, installs: 3 };
+  const gameName = (kind: Edge["toKind"], id: number) =>
+    kind === "quest" && id === 176 ? { name: "Wanted: Hogger", source: "wiki" as const } : kind === "spell" && id === 2660 ? { name: "Rough Sharpening Stone", source: "files" as const } : undefined;
+  const quest = renderToStaticMarkup(<RelationTarget edge={reward} rel="reward_from" client={edges} gameName={gameName} />);
+  expect(quest).toContain('title="Name from the Warcraft Wiki">Wanted: Hogger</a>');
+  expect(quest).toContain('class="sr-only"> (name from the warcraft wiki)');
+  expect(quest).not.toContain("data-badge");
+  // A title players agree on wins, with no tooltip of the wiki's.
+  const agreed = renderToStaticMarkup(<RelationTarget edge={reward} rel="reward_from" client={edges} gameName={gameName} nameOf={() => "Wanted: Hogger!"} />);
+  expect(agreed).toContain(">Wanted: Hogger!</a>");
+  expect(agreed).not.toContain("Warcraft Wiki");
+  const spell = renderToStaticMarkup(<RelationTarget edge={client(2862, "created_by", "spell", 2660)} rel="created_by" client={edges} gameName={gameName} />);
+  expect(spell).toContain('title="From the game files, not yet confirmed by players">Rough Sharpening Stone</span>');
+  expect(spell).toContain('data-badge="files"');
+  expect(spell).toContain("· Blacksmithing");
+  // Nothing in the files: "item set 1", as before.
+  expect(renderToStaticMarkup(<RelationTarget edge={client(2862, "part_of_set", "item_set", 1)} rel="part_of_set" client={edges} gameName={gameName} />)).toBe("item set 1");
 });
 
 test("only observed relations: no game-file notice; none at all: says what is needed", () => {

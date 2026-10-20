@@ -76,7 +76,7 @@ builds field by field. The [source ledger](sources/LEDGER.md) lists the tables w
 snapshots and comparisons stay on the maintainer's machine. Encrypted blocks are skipped, never
 decrypted: no decryption keys are loaded. Nothing else read from the game files is in the dataset, the
 API or the MCP server; the client layer below is the one game-file layer they carry. On the site, only the talent catalog, the map layer, the raid buff table, the client layer, the build changes,
-the icons, tooltip text and frame art covered further down, and the item names covered further down may appear.
+the icons, tooltip text and frame art covered further down, and the item names, quest titles and item set and spell names covered further down may appear.
 
 Publishing the table data comes later, as a separate step. Once it ships, every entry from game
 files will:
@@ -117,7 +117,7 @@ interface files, is a different thing and is covered by the second extension. Th
   AGPL-3.0 code, and the site says so on every page, in the footer credit line below. The licence
   notes of every release file that includes them say so too.
 - **Credited site-wide**: every page's footer carries one line, "Game data and art © Blizzard
-  Entertainment · Everloot data CC BY-SA 4.0 · Item names from the Warcraft Wiki (CC BY-SA 4.0) ·
+  Entertainment · Everloot data CC BY-SA 4.0 · Item and quest names from the Warcraft Wiki (CC BY-SA 4.0) ·
   Credits", whose last part links to `/methodology#credits`. That section carries the full credit,
   with the build: "Icons, tooltip text and interface art are
   © Blizzard Entertainment, Inc. Everloot is a fan project and is not affiliated with or
@@ -226,6 +226,46 @@ and tooltip facts, the same ones its page shows:
   Blizzard credit above. The icon is a link to our asset storage, not a copy in the response.
 - **Same spoiler and takedown rules** as the pages. The downloads, the rest of the API and the MCP
   server still carry no icons or tooltip text.
+
+**Quest titles from the game files and the Warcraft Wiki.** *Proposed 2026-10-20, awaiting the
+maintainer's approval.* The game files list quests by id (`QuestV2`) but carry no titles. A quest's
+title may be shown on its page, in the quest lists and where an item page names the quest as a reward,
+before players confirm it, when the quest id is in the current build's `QuestV2` table and the quest's
+page in the Warcraft Wiki dump of 2023-11-13 gives that id in its quest infobox. The title is the
+infobox's name, or the page title where the infobox has none, kept as the wiki writes it; a few carry
+the wiki's own note, such as "(Alliance, 55)". The rules:
+
+- As with item names, a title 3 installs agree on comes first. A wiki title says where it comes from in
+  a tooltip on the title, *Name from the Warcraft Wiki* (and in words for screen readers); on the quest
+  page it also carries the quiet unconfirmed marker. No source label is printed beside it. The
+  footer credit reads "Item and quest names from the Warcraft Wiki (CC BY-SA 4.0)".
+- Only quests below id 10,000, the original game's range (`SHOWN_MAX_QUEST_ID` in
+  `kb/src/game-name-rule.ts`). The client also lists quests from later seasons and versions at higher ids.
+- Where wiki pages give one id different titles (a quest renamed in a later version, say), none is
+  shown. A quest the wiki lacks keeps "Quest N", and so does a wiki title for an id the build does not list.
+- Pages only. The data downloads, the API and the MCP server carry no quest titles from this file; a
+  test checks that their code does not read it.
+- A maintainer makes the file with `npm run kb -- game-names`, into the same private storage as the item
+  names, never git or the public asset bucket. Unlike the item names it keeps no ledger: it is rebuilt
+  from the snapshot and the dump each run. In build 1.60.1.70450: 6,614 quest ids, 3,191 with one wiki
+  title, 47 where the pages disagree and 3,376 the wiki lacks; 3,184 shown after the id range holds back 7.
+
+**Item set and spell names from the game files.** *Proposed 2026-10-20, awaiting the maintainer's
+approval.* The client layer relates items to item sets and to the spells that create or use them, by
+id. The names of those sets (`ItemSet.Name_lang`) and spells (`SpellName.Name_lang`) may be shown beside
+the relations on the item pages. They come from the game files alone, so:
+
+- Each carries the quiet unconfirmed marker, with *From the game files, not yet confirmed by players*
+  as its tooltip. No source label is printed.
+- Only the sets and spells the committed client layer's relations name, and only in the original
+  game's ranges: set ids below 1,000 and spell ids below 30,000 (`SHOWN_MAX_SET_ID`,
+  `SHOWN_MAX_SPELL_ID`). Above them sit Season of Discovery sets and recipes and entries new to Forever,
+  which could spoil unreleased content. A name that reads like an internal entry is held back too: the
+  item rule's placeholders, a bracketed tag such as "[DNT]", "OLD" at the end, or the client's own
+  "DND" (do not display) mark.
+- Every other one keeps "item set N" or "spell N".
+- Pages only, in the same private storage, made by the same command. In build 1.60.1.70450: 532 sets
+  in the relations, 172 shown; 4,085 spells, 4,044 named in the files, 1,868 shown.
 
 **The talent catalog.** The talent calculator at `/tools/talents` uses our own catalog, read from
 the public client by a maintainer, not taken from any other site. The catalog is the trait node

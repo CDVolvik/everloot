@@ -8,6 +8,12 @@ vi.mock("@/lib/upload-store", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/upload-store")>()),
   uploadStore: { loadCorpus: store.loadCorpus },
 }));
+// Quest titles from the private names file; none unless a test sets them.
+const titles = vi.hoisted(() => ({ quests: null as unknown }));
+vi.mock("@/lib/game-assets", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/game-assets")>()),
+  loadQuestNames: async () => titles.quests,
+}));
 vi.mock("next/link", () => ({
   default: ({ href, children, className }: { href: string; children: ReactNode; className?: string }) => (
     <a href={href} className={className}>{children}</a>
@@ -27,17 +33,17 @@ const records = installs.flatMap((installId) => [
 let release = "";
 beforeAll(async () => { release = await buildLoreRelease(); });
 beforeEach(() => store.loadCorpus.mockReset().mockResolvedValue({ uploads: 3, records, dataAsOf: "2026-10-09T00:00:00.000Z" }));
-afterEach(() => { vi.unstubAllEnvs(); vi.resetModules(); });
+afterEach(() => { vi.unstubAllEnvs(); vi.resetModules(); titles.quests = null; });
 
 async function npcPage() {
   vi.stubEnv("KB_SNAPSHOT_PATH", release);
   const { default: Page } = await import("./npcs/[id]/page");
   return renderToStaticMarkup(await Page({ params: Promise.resolve({ id: "77" }) }));
 }
-async function questPage() {
+async function questPage(id = "5") {
   vi.stubEnv("KB_SNAPSHOT_PATH", release);
   const { default: Page } = await import("./quests/[id]/page");
-  return renderToStaticMarkup(await Page({ params: Promise.resolve({ id: "5" }) }));
+  return renderToStaticMarkup(await Page({ params: Promise.resolve({ id }) }));
 }
 
 test("an NPC's drop list names the items players agree on and keeps the id for one nobody named", async () => {
@@ -64,6 +70,21 @@ test("a quest page names its giver, turn-in and reward, and shows the quest's lo
   // The lore for the quest is the quest page, not the NPC page of the same name.
   expect(page).toContain("An achievement.");
   expect(page).toContain('href="/lore/5-return-to-sender"');
+});
+
+test("a quest nobody has titled takes the Warcraft Wiki's title with the quiet marker; players' title wins", async () => {
+  titles.quests = {
+    version: "1.60.1.70450", wiki: { name: "Warcraft Wiki", url: "https://warcraft.wiki.gg" },
+    names: new Map([[5, { name: "Wiki Return", wikiPage: "https://warcraft.wiki.gg/wiki/Wiki_Return" }], [6, { name: "Wanted: Hogger", wikiPage: "https://warcraft.wiki.gg/wiki/Wanted:_Hogger" }]]),
+  };
+  const untitled = await questPage("6");
+  expect(untitled).toContain("Wanted: Hogger");
+  expect(untitled).not.toContain("Quest 6");
+  expect(untitled).toContain('data-badge="files"');
+  const titled = await questPage("5");
+  expect(titled).toContain("Return to Sender");
+  expect(titled).not.toContain("Wiki Return");
+  expect(titled).not.toContain('data-badge="files"');
 });
 
 test("no lore section when no lore page has the name, and none when the archive cannot be opened", async () => {

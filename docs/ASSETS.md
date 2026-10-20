@@ -242,6 +242,18 @@ repeat these steps for a new build or another deployment.
    It goes to `<private bucket>/<build folder>/item-names.json` with a five-minute cache, so a re-run
    replaces it. The server reads it with the read-only key from step 7, only for the build of the
    committed client layer. Without it, every unconfirmed item reads "Item N".
+
+   Quest titles, item set names and spell names follow the same path ([data policy](DATA_POLICY.md),
+   "Quest titles from the game files and the Warcraft Wiki" and "Item set and spell names from the game
+   files"):
+
+   ```
+   npm run kb -- game-names data/client/<product>-<build>-<config>.sqlite --wiki data/release/<release>.sqlite
+   ```
+
+   It prints the counts and writes `quest-names.json`, `item-set-names.json` and `spell-names.json` beside
+   `item-names.json`. Upload each one with the same script, dry run first. Without them, the pages read
+   "Quest N", "item set N" and "spell N".
 9. **Next build.** Repeat steps 5 to 8 with the new build. Check the counts against the last run
    before uploading; a jump in `iconsEncrypted`, `tooltipsUnresolved`, `mapsSkipped` or
    `loadingScreensSkipped`, or `logoExtracted` falling to 0, means Blizzard changed something.

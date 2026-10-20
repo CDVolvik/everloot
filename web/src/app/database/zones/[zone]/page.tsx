@@ -8,7 +8,9 @@ import {
   AgreementMeter, Badge, Card, Container, DataTable, EmptyState, PageHeader, SectionHeading, SourceLine, Tabs,
   type Column, type TabItem,
 } from "@/components/ui";
-import { loadSiteAssets } from "@/lib/game-assets";
+import { GAME_NAME_TITLE } from "@/components/EntityRelations";
+import { loadQuestNames, loadSiteAssets } from "@/lib/game-assets";
+import { CLIENT_LAYER } from "@/lib/items";
 import { loadWorldFacts } from "@/lib/rollup-compute";
 import { pageMetadata } from "@/lib/seo";
 import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
@@ -70,6 +72,7 @@ export default async function ZonePage(props: Props) {
   const npcs = (here?.npcs ?? []).filter((n) => !n.vendor);
   const vendors = (here?.npcs ?? []).filter((n) => n.vendor);
   const quests = here?.quests ?? [];
+  const wikiTitles = quests.some((q) => !q.title) ? await loadQuestNames(CLIENT_LAYER.build.version) : null;
   const entrances = here?.entrances ?? [];
   const nameOf = (n: ZoneNpc) => n.name ?? `NPC ${n.npcId}`;
   const empty = (message: string) => <EmptyState message={message} framed={false} />;
@@ -81,7 +84,14 @@ export default async function ZonePage(props: Props) {
   ];
   const npcLink = (id: number | null) => (id === null ? "unrecorded" : <Link href={`/database/npcs/${id}`} className={link}>NPC {id}</Link>);
   const questColumns: Column<ZoneQuest>[] = [
-    { key: "title", header: "Quest", cell: (q) => <Link href={`/database/quests/${q.questId}`} className={link}>{q.title ?? `Quest ${q.questId}`}</Link> },
+    { key: "title", header: "Quest", cell: (q) => {
+      // A title players agree on; else the Warcraft Wiki's, with its source as the tooltip.
+      const wiki = q.title ? undefined : wikiTitles?.names.get(q.questId)?.name;
+      return <Link href={`/database/quests/${q.questId}`} title={wiki ? GAME_NAME_TITLE.wiki : undefined} className={link}>
+        {q.title ?? wiki ?? `Quest ${q.questId}`}
+        {wiki && <span className="sr-only"> ({GAME_NAME_TITLE.wiki.toLowerCase()})</span>}
+      </Link>;
+    } },
     { key: "level", header: "Level", numeric: true, cell: (q) => q.level ?? "–" },
     { key: "giver", header: "Giver", cell: (q) => npcLink(q.giverNpcId) },
     { key: "turnin", header: "Turn-in", cell: (q) => npcLink(q.turnInNpcId) },

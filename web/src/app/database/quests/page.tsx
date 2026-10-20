@@ -3,10 +3,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { itemPage } from "../../../../../kb/src/item-page";
 import type { QuestPage } from "../../../../../kb/src/world-pages";
+import { GAME_NAME_TITLE } from "@/components/EntityRelations";
 import GameIcon from "@/components/game/GameIcon";
 import { Container, DataTable, DataTitle, FilterBar, ResultStrip, type Column, type FilterControl } from "@/components/ui";
-import { loadItemTips, loadSiteAssets } from "@/lib/game-assets";
-import { shownItemName } from "@/lib/items";
+import { loadItemTips, loadQuestNames, loadSiteAssets } from "@/lib/game-assets";
+import { CLIENT_LAYER, shownItemName } from "@/lib/items";
 import { npcNames } from "@/lib/names";
 import { loadWorldFacts } from "@/lib/rollup-compute";
 import { loadShownNames } from "@/lib/shown-item-names";
@@ -50,14 +51,17 @@ export default async function QuestListPage(props: { searchParams?: Promise<Sear
   const facts = await loadWorldFacts();
   const all = facts.unreachable ? [] : publicQuests(facts);
   const npcs = facts.unreachable ? new Map<number, string>() : npcNames(facts);
+  // A title players agree on; else the Warcraft Wiki's, for a quest the game files list (docs/DATA_POLICY.md).
+  const wikiTitles = all.some((x) => !x.title) ? await loadQuestNames(CLIENT_LAYER.build.version) : null;
+  const titleOf = (x: QuestPage) => x.title ?? wikiTitles?.names.get(x.questId)?.name ?? null;
   const text = q.q?.toLowerCase();
   const id = text && /^#?\d+$/.test(text) ? Number(text.replace("#", "")) : null;
   const matched = all.filter((x) =>
-    (!text || (id !== null ? x.questId === id : Boolean(x.title?.toLowerCase().includes(text))))
+    (!text || (id !== null ? x.questId === id : Boolean(titleOf(x)?.toLowerCase().includes(text))))
     && (!q.level || (x.level !== null && x.level >= q.level.min && x.level <= q.level.max)) && (!q.rewards || x.rewards.length > 0));
   const sort = q.sort ?? DEFAULT_SORT;
   const npcKey = (n: number | null) => (n === null ? null : npcs.get(n)?.toLowerCase() ?? `~${String(n).padStart(9, "0")}`);
-  const key = (x: QuestPage): string | number | null => sort.key === "name" ? x.title?.toLowerCase() ?? null : sort.key === "level" ? x.level
+  const key = (x: QuestPage): string | number | null => sort.key === "name" ? titleOf(x)?.toLowerCase() ?? null : sort.key === "level" ? x.level
     : sort.key === "giver" ? npcKey(x.giverNpcId) : sort.key === "turnin" ? npcKey(x.turnInNpcId) : sort.key === "rewards" ? x.rewards.length : x.questId;
   const rows = sortRows(matched, key, sort.desc, (x) => x.questId);
   const pages = Math.max(1, Math.ceil(rows.length / PER_PAGE));
@@ -76,7 +80,14 @@ export default async function QuestListPage(props: { searchParams?: Promise<Sear
   const dash = <span className="text-muted">—</span>;
   const npc = (n: number | null) => (n === null ? dash : <Link href={`/database/npcs/${n}`} className={LINK}>{npcs.get(n) ?? `NPC ${n}`}</Link>);
   const columns: Column<QuestPage>[] = [
-    { key: "name", header: "Name", sortable: true, cell: (x) => <Link href={`/database/quests/${x.questId}`} className={LINK}>{x.title ?? `Quest ${x.questId}`}</Link> },
+    { key: "name", header: "Name", sortable: true, cell: (x) => {
+      const wiki = !x.title && titleOf(x);
+      // Where a title comes from is its tooltip (and words for a screen reader), never a printed label.
+      return <Link href={`/database/quests/${x.questId}`} title={wiki ? GAME_NAME_TITLE.wiki : undefined} className={LINK}>
+        {titleOf(x) ?? `Quest ${x.questId}`}
+        {wiki && <span className="sr-only"> ({GAME_NAME_TITLE.wiki.toLowerCase()})</span>}
+      </Link>;
+    } },
     { key: "level", header: "Level", numeric: true, sortable: true, cell: (x) => x.level ?? dash },
     { key: "giver", header: "Giver", sortable: true, cell: (x) => npc(x.giverNpcId) },
     { key: "turnin", header: "Turn-in", sortable: true, cell: (x) => npc(x.turnInNpcId) },
