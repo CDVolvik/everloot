@@ -31,8 +31,8 @@ export const BANNER_CAPTION = "Art © Blizzard Entertainment";
  * A wide-screen banner across the top of a section hub: the picture runs edge to edge across the
  * viewport, at least 256 px tall on a phone and 336 px from `lg`, cropped to fill, and fades into the canvas.
  * `children` (the page's title, from PageHeader) sit on its bottom-left in the page's
- * column, over the art at every width. The caption is one line, bottom-right on a wide screen and under
- * the title on a narrow one. Use it as the first thing in the layout's `<main>`, not inside a Container:
+ * column, over the art at every width. The caption is a tiny, quiet line in the bottom-right corner at
+ * every width, never a block. Use it as the first thing in the layout's `<main>`, not inside a Container:
  * it cancels the main's top padding so it meets the site header. Body clips the sideways bleed (globals.css).
  *
  * `hero` is the home page's taller version: at least 432 px on a phone and 544 px from `lg`. `aside` sits on
@@ -51,7 +51,7 @@ export default function Banner({ image, children, aside, hero = false }: { image
       <div className="relative min-w-0 lg:max-w-[calc(100%-26rem)]">{children}</div>
       {aside && <div className="relative mt-4 lg:absolute lg:bottom-16 lg:right-0 lg:mt-0 lg:w-56">{aside}</div>}
       {image && (
-        <p data-banner-credit className="relative mt-3 text-xs text-fg-2 lg:absolute lg:bottom-8 lg:right-0 lg:mt-0">
+        <p data-banner-credit className="absolute bottom-1 right-0 text-[10px] leading-none text-muted lg:bottom-2">
           {BANNER_CAPTION}
         </p>
       )}
