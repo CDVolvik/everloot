@@ -13,6 +13,7 @@ build that has a zip in the repository. Earlier builds have none.
 ## [Unreleased]
 
 ### Added
+- Site: embeddable tooltips. Any site can load `https://everloot.app/tooltips.js` so links to Everloot item, NPC, quest and object pages show a hover card (keyboard, touch, no cookies, no tracking), fed by the cached `GET /api/tooltip/<type>/<id>`; see `/connect#tooltips`.
 - Addon: `/everloot price <item>` prints an item's price in chat, anywhere in the world: a shift-clicked
   link, an item id, or the name of an item the client has seen. It shows the same lines as the tooltip (community
   market value, minimum, historical, units up, reporters, how fresh the file is, and your own last scan) and

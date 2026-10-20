@@ -302,6 +302,43 @@ export declare const toolAnswerResponse: z.ZodObject<{
     schema: z.ZodString;
 }, z.core.$strip>;
 export type ToolAnswerResponse = z.infer<typeof toolAnswerResponse>;
+/** The page types GET /api/tooltip/{type}/{id} answers for. */
+export declare const TOOLTIP_TYPES: readonly ["item", "npc", "quest", "object"];
+export type TooltipType = (typeof TOOLTIP_TYPES)[number];
+/**
+ * GET /api/tooltip/{type}/{id}: what a hover card for one page needs, for the embeddable script. Plain text
+ * only (no markup). `gameData` is present when the card shows the game's icon or tooltip text.
+ */
+export declare const tooltipResponse: z.ZodObject<{
+    ok: z.ZodLiteral<true>;
+    type: z.ZodEnum<{
+        item: "item";
+        npc: "npc";
+        object: "object";
+        quest: "quest";
+    }>;
+    id: z.ZodNumber;
+    title: z.ZodString;
+    color: z.ZodNullable<z.ZodString>;
+    icon: z.ZodNullable<z.ZodString>;
+    lines: z.ZodArray<z.ZodString>;
+    partial: z.ZodBoolean;
+    url: z.ZodString;
+    attribution: z.ZodObject<{
+        licence: z.ZodString;
+        licenceUrl: z.ZodString;
+        credit: z.ZodString;
+        source: z.ZodString;
+        terms: z.ZodString;
+    }, z.core.$strip>;
+    gameData: z.ZodNullable<z.ZodObject<{
+        label: z.ZodString;
+        build: z.ZodString;
+        extractedAt: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+        credit: z.ZodOptional<z.ZodString>;
+    }, z.core.$loose>>;
+}, z.core.$strip>;
+export type TooltipResponse = z.infer<typeof tooltipResponse>;
 /** POST /api/intake, 200: stored. */
 export declare const intakeReceipt: z.ZodObject<{
     ok: z.ZodLiteral<true>;
@@ -1094,6 +1131,35 @@ export declare const API_SCHEMAS: {
         answer: z.ZodRecord<z.ZodString, z.ZodUnknown>;
         text: z.ZodString;
         schema: z.ZodString;
+    }, z.core.$strip>;
+    readonly tooltipResponse: z.ZodObject<{
+        ok: z.ZodLiteral<true>;
+        type: z.ZodEnum<{
+            item: "item";
+            npc: "npc";
+            object: "object";
+            quest: "quest";
+        }>;
+        id: z.ZodNumber;
+        title: z.ZodString;
+        color: z.ZodNullable<z.ZodString>;
+        icon: z.ZodNullable<z.ZodString>;
+        lines: z.ZodArray<z.ZodString>;
+        partial: z.ZodBoolean;
+        url: z.ZodString;
+        attribution: z.ZodObject<{
+            licence: z.ZodString;
+            licenceUrl: z.ZodString;
+            credit: z.ZodString;
+            source: z.ZodString;
+            terms: z.ZodString;
+        }, z.core.$strip>;
+        gameData: z.ZodNullable<z.ZodObject<{
+            label: z.ZodString;
+            build: z.ZodString;
+            extractedAt: z.ZodOptional<z.ZodNullable<z.ZodString>>;
+            credit: z.ZodOptional<z.ZodString>;
+        }, z.core.$loose>>;
     }, z.core.$strip>;
     readonly bulkIndex: z.ZodObject<{
         protocol: z.ZodString;
