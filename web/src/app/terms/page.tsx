@@ -18,6 +18,7 @@ const HISTORY_URL = `${REPO_URL}/commits/main/web/src/app/terms/page.tsx`;
 
 const SECTIONS: TocItem[] = [
   { id: "use", label: "Using Everloot" },
+  { id: "player-pages", label: "Player pages" },
   { id: "uploads", label: "Your uploads" },
   { id: "accounts", label: "Accounts and Battle.net sign-in" },
   { id: "api", label: "API, MCP server and keys" },
@@ -67,6 +68,20 @@ export default function TermsPage() {
               <Link href="/docs/api/keys">Limits and keys page</Link>. Do not try to get around those limits, probe or attack
               the service, send uploads you have forged or altered, or use other players&apos; data in ways the{" "}
               <Link href="/privacy">Privacy Policy</Link> rules out. We may limit or block access that does.
+            </p>
+          </Section>
+
+          <Section id="player-pages">
+            <p>
+              The player pages show what other players reported about a character: its name, realm, race, class, level,
+              guild, and the day it was last seen. That information is unverified, and Everloot makes no statement that
+              a character belongs to anyone, or that a page is accurate.
+            </p>
+            <p>
+              If a character is yours and you do not want a page, hide it on the{" "}
+              <Link href="/players/opt-out">hide form</Link>, which needs no account, or email us; we will remove it and
+              it is not recorded again. We may remove any player page at any time, including one that is accurate. Do not
+              use the player pages to harass, dox or locate a person.
             </p>
           </Section>
 

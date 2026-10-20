@@ -129,7 +129,7 @@ export default function PrivacyPage() {
                 which address hash and install produced each entry until it is rebuilt. Guild data publishes only through an authorized officer upload. A
                 character owner with a verified sharing grant can opt out on the upload
                 page; anyone else can ask us by email (below). Uploads build the public database; we never
-                sell them.
+                sell them. Player rows are not part of the public records.
               </li>
               <li>
                 <strong>Census (optional):</strong> off until you type{" "}
@@ -141,7 +141,24 @@ export default function PrivacyPage() {
                 hash, and only the number of the server the character is on is kept
                 from it. Census rows are never published one by one. We show counts
                 only, and only when a count covers at least 10 characters reported by
-                at least 3 installs.
+                at least 3 installs. The separate players module is different: when you
+                turn it on with{" "}
+                <code>/everloot players on</code>, it does read names and guilds, and
+                what it collects is described next.
+              </li>
+              <li id="player-pages">
+                <strong>Player pages (optional for uploaders, public for characters):</strong> if you
+                turn on <code>/everloot players on</code> in the game, the addon records the name,
+                realm, race, class, level and guild of your own characters, and of players you
+                target, mouse over or group with, and the day it saw them. It never records where a
+                player is, what they wear or what they do. You send these rows only from the upload
+                page, after a preview. We keep one row per character, the newest, and show it on a
+                public page you can find by searching for the name. The row says nothing about who
+                reported it, and we delete it 90 days after the character was last seen. The players
+                it names have not been asked. Anyone can have a character hidden, without an
+                account, on the hide form; a hidden character is deleted and not recorded again. If
+                you play a character and do not want a page, hide it. You can also email{" "}
+                <a href="mailto:hello@everloot.app">hello@everloot.app</a>.
               </li>
               <li>
                 <strong>Cookies:</strong> an essential login cookie if you sign in (plus a
@@ -267,6 +284,7 @@ export default function PrivacyPage() {
               <li><strong>Uploads:</strong> until you ask us to remove them. They are the public database.</li>
               <li><strong>Census rows:</strong> as long as the upload they came in, and removed with it. They hold the character&apos;s hash, never its id, and a one-way hash of the address they came from, never the address. They are only ever published as counts.</li>
               <li><strong>Upload address hash:</strong> as long as the upload it belongs to. The completion rollup keeps its link between an address hash and an install until the rollup is next rebuilt.</li>
+              <li><strong>Player rows:</strong> 90 days after the character was last seen. A hidden character is deleted at once and is not recorded again.</li>
               <li><strong>Launch-notification email:</strong> until you ask us to remove it.</li>
             </ul>
           </Section>

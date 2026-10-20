@@ -184,7 +184,11 @@ export default async function AddonPage() {
           <div className="space-y-2 text-sm text-fg-2">
             <p>
               The addon only writes a file on your computer. Uploads, from the upload page or the app, carry anonymous
-              observations; named data stays on your computer unless you choose to share it. Read the{" "}
+              observations; named data stays on your computer unless you choose to share it. The players module is off
+              until you type <code>/everloot players on</code>; when you turn it on, the addon records the name, realm,
+              race, class, level and guild of your own characters and of players you target, mouse over or group with.
+              Those rows can appear on the site&apos;s player pages, and any character can be hidden without an account.
+              Read the{" "}
               <Link href="/privacy" className={link}>Privacy Policy</Link> and the{" "}
               <a className={link} href={`${REPO_URL}/blob/main/docs/DATA_POLICY.md`} rel={EXT}>data policy</a>.
             </p>
