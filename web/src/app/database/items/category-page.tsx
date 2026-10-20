@@ -2,11 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
 import { GAME_DATA_CREDIT } from "@everloot/protocol";
-import { agreedItemNames, itemPage } from "../../../../../kb/src/item-page";
+import { itemPage } from "../../../../../kb/src/item-page";
 import { describe, filterItems, QUALITIES, resolveClass, resolveLegacyClass, resolveSubclass, slotOf, type ItemClass, type ItemRow, type ItemSubclass } from "../../../../../kb/src/item-taxonomy";
-import { CLIENT_LAYER, CLIENT_TAXONOMY as T, categoryNamedEnough, categoryQuery, ITEMS_PER_PAGE, itemsHref, type CategoryQuery } from "@/lib/items";
+import { CLIENT_LAYER, CLIENT_TAXONOMY as T, categoryNamedEnough, categoryQuery, ITEMS_PER_PAGE, itemsHref, NAME_SOURCE, shownItemName, type CategoryQuery } from "@/lib/items";
+import { CC_BY_SA } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/seo";
-import { loadItemFacts } from "@/lib/rollup-compute";
+import { loadShownNames } from "@/lib/shown-item-names";
 import { loadItemTips, loadSiteAssets } from "@/lib/game-assets";
 import GameIcon from "@/components/game/GameIcon";
 import GameCredit from "@/components/game/GameCredit";
@@ -46,15 +47,14 @@ export async function categoryMetadata(classSlug: string, subclassKey: string | 
   // Only the plain category page is indexed; filtered and later pages repeat it. And only once half its
   // rows have a name: until then it is a list of "Item N" (the sitemap leaves it out for the same reason).
   const plain = !r.q.slot && !r.q.quality && r.q.page === 1;
-  const facts = plain ? await loadItemFacts() : null;
-  const named = facts && !facts.unreachable ? agreedItemNames(facts) : new Map<number, string>();
+  const named = plain ? (await loadShownNames()).named : null;
   return {
     ...pageMetadata({
       title: r.sub ? `${name} items` : name,
       description: `${count.toLocaleString("en-US")} WoW: Forever items in ${name}, read from the game files of build ${CLIENT_LAYER.build.version} and unconfirmed until players see them.`,
       path: itemsHref(r.cls.slug, r.sub?.slug),
     }),
-    robots: { index: plain && categoryNamedEnough(r.cls.id, r.sub?.id, named), follow: true },
+    robots: { index: named !== null && categoryNamedEnough(r.cls.id, r.sub?.id, named), follow: true },
   };
 }
 
@@ -95,12 +95,15 @@ export async function CategoryPage({ classSlug, subclassKey, search }: { classSl
   const pages = Math.max(1, Math.ceil(rows.length / ITEMS_PER_PAGE));
   if (q.page > pages) notFound();
   const shown = rows.slice((q.page - 1) * ITEMS_PER_PAGE, q.page * ITEMS_PER_PAGE);
-  const facts = await loadItemFacts();
-  // The game file name and icon only for items players reported (3 installs), as on the item page: a list of
-  // every id in the files must not become a list of unreleased item names.
+  const { facts, agreed, matched } = await loadShownNames();
+  // The game file name and icon only for items players reported (3 installs), as on the item page, and for items
+  // whose game file name the Warcraft Wiki gives too: a list of every id in the files must not become a list of
+  // unreleased item names.
   const reported = facts.unreachable ? [] : shown.map((row) => row[0]).filter((id) => { const p = itemPage(id, facts); return Boolean(p.name || p.drops.length || p.pins.length); });
-  const assets = reported.length ? await loadSiteAssets() : null;
-  const tips = await loadItemTips(assets, reported);
+  const withArt = [...new Set([...reported, ...shown.map((row) => row[0]).filter((id) => matched?.names.has(id))])];
+  const assets = withArt.length ? await loadSiteAssets() : null;
+  const tips = await loadItemTips(assets, withArt);
+  const names = new Map(shown.map((row) => [row[0], shownItemName(row[0], agreed, matched?.names, reported.includes(row[0]) ? tips.get(row[0]) : null)]));
   const slots = [...new Map(inCategory.map((x) => slotOf(x[3])).filter((s) => s !== null).map((s) => [s!.slug, { slug: s!.slug, name: s!.name }])).values()];
   const qualities = QUALITIES.filter((qq) => inCategory.some((x) => x[4] === qq.id)).map((qq) => ({ slug: qq.slug, name: qq.name }));
   const subclasses = T.subclasses.filter((s) => s.classId === cls.id && s.items > 0);
@@ -121,12 +124,16 @@ export async function CategoryPage({ classSlug, subclassKey, search }: { classSl
       key: "item", header: "Item", nowrap: true, cell: (row) => {
         const c = describe(T, row);
         const tip = tips.get(row[0]);
-        const name = (facts.unreachable ? null : itemPage(row[0], facts).name) ?? tip?.name ?? null;
-        const colour = c.quality && c.quality.id <= 5 ? QUALITY_TEXT[qualityOf(c.quality.id)] : "text-fg";
+        const name = names.get(row[0]);
+        // A shown name carries its own quality colour; otherwise the game files' quality colours the row.
+        const colour = name?.color ? "" : c.quality && c.quality.id <= 5 ? QUALITY_TEXT[qualityOf(c.quality.id)] : "text-fg";
         return (
           <span className="inline-flex items-center gap-2">
             {tip?.icon ? <GameIcon src={tip.icon} size={20} /> : null}
-            <Link href={`/database/items/${row[0]}`} className={`${colour} hover:underline underline-offset-4`}>{name ?? `Item ${row[0]}`}</Link>
+            <Link href={`/database/items/${row[0]}`} className={`${colour} hover:underline underline-offset-4`} style={name?.color ? { color: name.color } : undefined}>{name?.name ?? `Item ${row[0]}`}</Link>
+            {name?.wikiPage
+              ? <a href={name.wikiPage} className="text-xs text-muted hover:underline underline-offset-4">{NAME_SOURCE[name.source]}</a>
+              : name ? <span className="text-xs text-muted">{NAME_SOURCE[name.source]}</span> : null}
           </span>
         );
       },
@@ -177,7 +184,14 @@ export async function CategoryPage({ classSlug, subclassKey, search }: { classSl
           ) : undefined}
         />
         <SourceLine build={CLIENT_LAYER.build.version}>
-          Names show once 3 installs report the same one. {GAME_DATA_CREDIT}
+          A name shows once 3 installs report the same one, or where the game files and the Warcraft Wiki give the same one. {GAME_DATA_CREDIT}
+          {matched && [...names.values()].some((n) => n?.source === "wiki") ? (
+            <>
+              {" "}{NAME_SOURCE.wiki}: the game files and the{" "}
+              <a href={matched.wiki.url} className={LINK}>{matched.wiki.name}</a> give the same name, not yet confirmed in play. Each label links to
+              its wiki page. Names from the wiki: Warcraft Wiki contributors, <a href={CC_BY_SA.url} className={LINK}>{CC_BY_SA.name}</a>.
+            </>
+          ) : null}
           {assets && icons ? <>{" "}<GameCredit inline version={assets.version} label={assets.label} /></> : null}
         </SourceLine>
       </article>

@@ -157,7 +157,8 @@ test("item page: the tooltip card for an item players reported; an id nobody rep
   forgetPrivateReads();
   const typed = await render(() => ItemPage({ params: Promise.resolve({ id: "25" }) }));
   expect(typed).not.toMatch(/Worn Shortsword|<img|data-game-credit/);
-  expect(fetcher).not.toHaveBeenCalled();
+  // The one read is the file of names the game files and the wiki agree on (none for item 25 here): no manifest, no shard.
+  expect(fetcher.mock.calls.map(([req]) => String(req instanceof Request ? req.url : req))).toEqual([expect.stringMatching(/\/item-names\.json$/)]);
 });
 
 test("home: class icons link to the talent calculator, names kept, and the source line credits them", async () => {

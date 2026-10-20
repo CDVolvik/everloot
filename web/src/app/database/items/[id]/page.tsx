@@ -5,7 +5,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { GAME_DATA_CREDIT } from "@everloot/protocol";
 import { itemPage } from "../../../../../../kb/src/item-page";
-import { loadItemFacts } from "@/lib/rollup-compute";
+import { loadShownNames } from "@/lib/shown-item-names";
 import { loadEdges } from "@/lib/edges";
 import { RelationTarget, SameIcon } from "@/components/EntityRelations";
 import { pinLink } from "@/lib/world-map";
@@ -15,8 +15,8 @@ import GameCredit from "@/components/game/GameCredit";
 import { Badge, Container, DataTable, EmptyState, PageHeader, QUALITY_TEXT, SourceLine, Tabs, TooltipFrame, qualityOf, type Column, type TabItem } from "@/components/ui";
 import { categoryOf } from "../../../../../../kb/src/item-taxonomy";
 import { edgesFrom, evidenceLabel, type Edge, type Rel } from "../../../../../../kb/src/edges";
-import { CLIENT_LAYER, CLIENT_TAXONOMY, itemsHref } from "@/lib/items";
-import type { Crumb } from "@/lib/jsonld";
+import { CLIENT_LAYER, CLIENT_TAXONOMY, itemsHref, NAME_SOURCE, shownItemName } from "@/lib/items";
+import { CC_BY_SA, type Crumb } from "@/lib/jsonld";
 import { loadNames, nameOf } from "@/lib/names";
 import { loreForEntity } from "@/lib/lore";
 import EntityLink from "@/components/EntityLink";
@@ -33,11 +33,16 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   const params = await props.params;
   if (/^[a-z][a-z0-9-]*$/.test(params.id)) return categoryMetadata(params.id, undefined, (await props.searchParams) ?? {});
   if (!/^[1-9]\d*$/.test(params.id)) return { robots: { index: false, follow: true } };
-  const facts = await loadItemFacts();
+  const { facts, agreed, matched } = await loadShownNames();
   const page = itemPage(Number(params.id), facts);
+  const name = shownItemName(Number(params.id), agreed, matched?.names);
+  const description = name?.source === "wiki"
+    ? `${name.name}, a WoW: Forever item. The name is read from the game files of build ${CLIENT_LAYER.build.version}, where the Warcraft Wiki gives the same one; not yet confirmed in play.`
+    : "A WoW: Forever item page from corroborated drops, names, and map pins.";
   return {
-    ...pageMetadata({ title: !facts.unreachable && page.name ? page.name : `Item ${params.id}`, description: "A WoW: Forever item page from corroborated drops, names, and map pins.", path: `/database/items/${params.id}` }),
-    robots: { index: !facts.unreachable && Boolean(page.name || page.drops.length || page.pins.length), follow: true },
+    ...pageMetadata({ title: name?.name ?? `Item ${params.id}`, description, path: `/database/items/${params.id}` }),
+    // Indexed once players have reported the item, or once its name is shown from the game files and the wiki.
+    robots: { index: (!facts.unreachable && Boolean(page.name || page.drops.length || page.pins.length)) || name?.source === "wiki", follow: true },
   };
 }
 
@@ -51,18 +56,25 @@ export default async function ItemPage(props: Props) {
   if (/^[a-z][a-z0-9-]*$/.test(params.id)) return CategoryPage({ classSlug: params.id, search: (await props.searchParams) ?? {} });
   if (!/^[1-9]\d*$/.test(params.id)) notFound();
   const itemId = Number(params.id);
-  const [facts, edges] = await Promise.all([loadItemFacts(), loadEdges()]);
+  const [{ facts, agreed, matched }, edges] = await Promise.all([loadShownNames(), loadEdges()]);
   const page = itemPage(itemId, facts);
-  const named = !facts.unreachable && page.name !== null;
-  const title = named ? page.name! : `Item ${page.itemId}`;
+  // Named by players (3 installs agree); the badge and the facts card say so.
+  const confirmed = !facts.unreachable && page.name !== null;
+  // The name players agree on; else the game file name where the Warcraft Wiki gives the same one; else "Item N".
+  const name = shownItemName(itemId, agreed, matched?.names);
+  const wikiName = name?.source === "wiki" ? name : null;
+  const title = name?.name ?? `Item ${page.itemId}`;
   // The game file tooltip only for an item players have reported: any id can be typed into the URL, and
   // an item found only in the files may be unreleased (the spoiler rule in docs/DATA_POLICY.md).
   const seen = !facts.unreachable && Boolean(page.name || page.drops.length || page.pins.length);
   // The manifest is read only when there is art to show: the item's tooltip (players reported it) or the icon of
   // a spell the game files say makes or uses it. An id nobody reported and nothing links to reads nothing.
   const spellLinked = edges.client.some((e) => e.fromKind === "item" && e.fromId === itemId && e.toKind === "spell");
-  const assets = seen || spellLinked ? await loadSiteAssets() : null;
-  const tip = seen ? (await loadItemTips(assets, [itemId])).get(itemId) : undefined;
+  const assets = seen || spellLinked || wikiName ? await loadSiteAssets() : null;
+  const loaded = seen || wikiName ? (await loadItemTips(assets, [itemId])).get(itemId) : undefined;
+  // The full tooltip only for an item players reported; for a name from the files and the wiki, its icon only.
+  const tip = seen ? loaded : undefined;
+  const icon = !tip && wikiName ? loaded?.icon ?? null : null;
   const spellIcon = (spellId: number) => assets?.spellIcons.get(spellId);
   const relationIcons = edges.client.some((e) => e.fromKind === "item" && e.fromId === itemId && e.toKind === "spell" && spellIcon(e.toId));
   const category = categoryOf(CLIENT_TAXONOMY, itemId);
@@ -161,13 +173,14 @@ export default async function ItemPage(props: Props) {
         <PageHeader
           trail={trail}
           title={title}
-          quality={named ? quality : undefined}
-          icon={tip?.icon ? <GameIcon src={tip.icon} size={48} className="rounded-control" /> : undefined}
+          quality={name ? quality : undefined}
+          icon={tip?.icon ?? icon ? <GameIcon src={(tip?.icon ?? icon)!} size={48} className="rounded-control" /> : undefined}
           meta={
             <>
-              {named && <span className="font-mono tabular-nums">Item {itemId}</span>}
+              {name && <span className="font-mono tabular-nums">Item {itemId}</span>}
+              {wikiName && <a href={wikiName.wikiPage!} className={LINK}>{NAME_SOURCE.wiki}</a>}
               {category?.quality && <span className={quality ? QUALITY_TEXT[quality] : undefined}>{category.quality.name}</span>}
-              {!named && <Badge tone="files">Unconfirmed</Badge>}
+              {!confirmed && <Badge tone="files">Unconfirmed</Badge>}
             </>
           }
         />
@@ -211,7 +224,14 @@ export default async function ItemPage(props: Props) {
         </EntityLayout>
         <SourceLine build={BUILD}>
           {(category || all.some((e) => e.evidence === "client")) && GAME_DATA_CREDIT}
-          {assets && (tip || relationIcons) && <>{" "}<GameCredit inline version={assets.version} label={assets.label} /></>}
+          {wikiName && matched ? (
+            <>
+              {" "}{NAME_SOURCE.wiki}: the game files and the{" "}
+              <a href={matched.wiki.url} className={LINK}>{matched.wiki.name}</a> give the same name, not yet confirmed in play; a name 3 installs
+              report replaces it. The name from the wiki: Warcraft Wiki contributors, <a href={CC_BY_SA.url} className={LINK}>{CC_BY_SA.name}</a>.
+            </>
+          ) : null}
+          {assets && (tip || icon || relationIcons) && <>{" "}<GameCredit inline version={assets.version} label={assets.label} /></>}
         </SourceLine>
       </article>
     </Container>

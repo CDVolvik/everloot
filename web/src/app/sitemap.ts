@@ -6,9 +6,9 @@ import { MAP_DATA_EXTRACTED_AT, TALENT_DATA_EXTRACTED_AT } from "@/lib/build-sta
 import { loadTimeline } from "@/lib/changes";
 import { TALENT_CLASSES } from "@/lib/talents/catalogs";
 import { CLIENT_LAYER, CLIENT_TAXONOMY, categoryNamedEnough, itemsHref } from "@/lib/items";
-import { loadItemFacts, loadWorldFacts } from "@/lib/rollup-compute";
+import { loadShownNames } from "@/lib/shown-item-names";
+import { loadWorldFacts } from "@/lib/rollup-compute";
 import { hasContent, publicZones, zoneContents, zoneHref } from "@/lib/zones";
-import { agreedItemNames } from "../../../kb/src/item-page";
 
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://everloot.app";
 
@@ -23,8 +23,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const talentRoutes = TALENT_CLASSES.map((slug) => `/tools/talents/${slug}`);
   // Item categories from the client layer: each class and subclass that holds items, first page only, and only
   // once half that page has a name (the page itself says noindex until then).
-  const facts = await loadItemFacts();
-  const named = facts.unreachable ? new Map<number, string>() : agreedItemNames(facts);
+  const { named } = await loadShownNames();
   const itemRoutes = CLIENT_TAXONOMY.classes.filter((c) => c.items > 0).flatMap((c) => [
     ...(categoryNamedEnough(c.id, undefined, named) ? [itemsHref(c.slug)] : []),
     ...CLIENT_TAXONOMY.subclasses.filter((s) => s.classId === c.id && s.items > 0 && categoryNamedEnough(c.id, s.id, named)).map((s) => itemsHref(c.slug, s.slug)),
