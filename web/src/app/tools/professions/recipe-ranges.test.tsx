@@ -26,7 +26,8 @@ beforeEach(() => store.loadCorpus.mockReset());
 test("with no observations the page says ranges are unrecorded, not zero", async () => {
   store.loadCorpus.mockResolvedValue({ uploads: 0, records: [], dataAsOf: "2026-10-10T00:00:00.000Z" });
   const html = await render();
-  expect(html).toContain("Recipe skill ranges");
+  // One empty state stands for both the path and the ranges until a report arrives.
+  expect(html).toContain("data-empty-state");
   expect(html).toContain("No recipe ranges for Alchemy yet");
 });
 
