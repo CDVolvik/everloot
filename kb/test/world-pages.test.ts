@@ -1,5 +1,17 @@
 import { expect, test } from "vitest";
-import { handleNpcPage, handleQuestPage, handleVendorPage, worldFactsFromRecords } from "../src/world-pages.js";
+import { handleNpcPage, handleQuestPage, handleVendorPage, npcTraits, worldFactsFromRecords } from "../src/world-pages.js";
+
+test("an NPC's level and reaction are kept from sightings and public once 3 installs agree", () => {
+  const sight = (installId: string, level: unknown, reaction: unknown) =>
+    ({ kind: "npc_sighting", installId, npcId: 7, name: "Hogger", mapId: 12, x: 1, y: 1, level, reaction });
+  const facts = worldFactsFromRecords([sight("a", 11, "hostile"), sight("b", 11, "hostile"), sight("c", 11, "hostile"), sight("d", 0.5, "angry")]);
+  expect(facts.npcs.map((r) => [r.level, r.reaction])).toEqual([[11, "hostile"], [11, "hostile"], [11, "hostile"], [undefined, undefined]]);
+  expect(npcTraits(facts.npcs)).toEqual({ level: 11, reaction: "hostile" });
+  expect(npcTraits(facts.npcs.slice(0, 2))).toEqual({ level: null, reaction: null });
+  // Alliance and Horde players see the same NPC differently: two agreed reactions are no answer.
+  const split = worldFactsFromRecords(["a", "b", "c", "d", "e", "f"].map((id, i) => sight(id, 11, i < 3 ? "hostile" : "friendly")));
+  expect(npcTraits(split.npcs).reaction).toBeNull();
+});
 
 test("three agreeing sightings publish a name and a pin, and a split name stays blank", () => {
   const sight = (installId: string, name: string, x: number) => ({

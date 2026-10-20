@@ -1,5 +1,5 @@
 {
-  "protocol": "1.1.0",
+  "protocol": "1.2.0",
   "kinds": [
     "achievement_catalog",
     "achievement_owned",
@@ -20,6 +20,7 @@
     "map_bounds",
     "money_event",
     "npc_sighting",
+    "player_seen",
     "price_seen",
     "quest",
     "quest_chain_catalog",
@@ -70,6 +71,7 @@
     "itemsResponse",
     "itemCategoriesResponse",
     "toolAnswerResponse",
+    "tooltipResponse",
     "bulkIndex",
     "intakeRequest",
     "intakeReceipt",
@@ -86,6 +88,7 @@
     "GET /api/market/prices",
     "POST /api/intake",
     "GET /api/tools/{tool}",
+    "GET /api/tooltip/{type}/{id}",
     "GET /api/health"
   ],
   "mcpTools": [

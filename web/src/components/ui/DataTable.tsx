@@ -31,6 +31,14 @@ export interface DataTableProps<Row> {
   footer?: ReactNode;
   /** Tabs or filters above the headers, inside the frame. */
   toolbar?: ReactNode;
+  /**
+   * The database list style (density spec, 2026-10-20): no card frame, 36 px rows, a 32 px header that sticks
+   * under the site header, sans headers. Below 640 px only the first column shows, with `meta` as its
+   * second line, so a phone never scrolls the table sideways.
+   */
+  dense?: boolean;
+  /** Dense tables on a phone: the other columns' facts in one muted line under the first cell. */
+  meta?: (row: Row) => ReactNode;
 }
 
 const ariaSort = (direction: SortDirection) => (direction === "asc" ? "ascending" : "descending");
@@ -39,12 +47,15 @@ const ariaSort = (direction: SortDirection) => (direction === "asc" ? "ascending
  * The one table: dense rows in a card frame. A wide table scrolls inside its frame, never the page.
  * Names go in their quality colour through QUALITY_TEXT. Rendered on the server; sorting is a link.
  */
-export default function DataTable<Row>({ columns, rows, rowKey, caption, sort, sortHref, empty, footer, toolbar }: DataTableProps<Row>) {
+export default function DataTable<Row>(props: DataTableProps<Row>) {
+  if (props.dense) return <DenseTable {...props} />;
+  const { columns, rows, rowKey, caption, sort, sortHref, empty, footer, toolbar } = props;
   return (
     <div data-table className="min-w-0 overflow-hidden rounded-card border border-line bg-panel">
       {toolbar && <div className="border-b border-line">{toolbar}</div>}
-      {/* Focusable so a keyboard can scroll it sideways; named by the caption. */}
-      <div role="region" aria-label={caption} tabIndex={0} className="max-w-full overflow-x-auto">
+      {/* Focusable so a keyboard can scroll it sideways; named by the caption. Positioned, so a cell's
+          absolutely placed sr-only text is clipped with the rest instead of widening the page. */}
+      <div role="region" aria-label={caption} tabIndex={0} className="relative max-w-full overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <caption className="sr-only">{caption}</caption>
           <thead>
@@ -77,7 +88,9 @@ export default function DataTable<Row>({ columns, rows, rowKey, caption, sort, s
           </thead>
           <tbody>
             {rows.length === 0 && empty ? (
-              <tr><td colSpan={columns.length} className="p-0">{empty}</td></tr>
+              // Pinned to the frame's left edge and no wider than the screen, so on a phone the message and its
+              // button stay in view while the headers above it scroll sideways.
+              <tr><td colSpan={columns.length} className="p-0"><div className="sticky left-0 max-w-[calc(100vw-2rem-2px)]">{empty}</div></td></tr>
             ) : rows.map((row) => (
               <tr key={rowKey(row)} className="border-t border-line first:border-t-0 hover:bg-canvas/40">
                 {columns.map((col) => (
@@ -94,6 +107,70 @@ export default function DataTable<Row>({ columns, rows, rowKey, caption, sort, s
         </table>
       </div>
       {footer && <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-3 text-sm text-muted">{footer}</div>}
+    </div>
+  );
+}
+
+/**
+ * The dense list table. Every sortable header is a link that says its direction (▲ ascending, ▼ descending)
+ * on the sorted column, with aria-sort. On a phone the first column carries the row; the others hide.
+ */
+function DenseTable<Row>({ columns, rows, rowKey, caption, sort, sortHref, empty, footer, toolbar, meta }: DataTableProps<Row>) {
+  // Without a phone line the other columns cannot fold away; the table then scrolls inside itself on a phone.
+  const folds = Boolean(meta);
+  const phoneHidden = (i: number) => (folds && i > 0 ? "hidden sm:table-cell" : "");
+  return (
+    <div data-table data-dense className="min-w-0">
+      {toolbar}
+      <div role="region" aria-label={caption} tabIndex={0} className={`relative max-w-full ${folds ? "" : "overflow-x-auto sm:overflow-visible"}`}>
+        <table className="w-full border-collapse text-cell">
+          <caption className="sr-only">{caption}</caption>
+          <thead>
+            <tr>
+              {columns.map((col, i) => {
+                const sorted = sort?.key === col.key ? sort.direction : undefined;
+                const next: SortDirection = sorted === "asc" ? "desc" : sorted === "desc" ? "asc" : col.numeric ? "desc" : "asc";
+                const arrow = sorted && <span aria-hidden="true" className="text-[10px] text-accent">{sorted === "asc" ? "▲" : "▼"}</span>;
+                return (
+                  <th
+                    key={col.key}
+                    scope="col"
+                    aria-sort={sorted ? ariaSort(sorted) : undefined}
+                    className={`sticky top-header z-10 h-th whitespace-nowrap border-b border-line bg-canvas px-3 text-th ${sorted ? "text-fg" : "text-muted"} ${col.numeric ? "text-right" : "text-left"} ${phoneHidden(i)}`}
+                  >
+                    {col.sortable && sortHref ? (
+                      // Block-level, so the link fills the 32 px cell without a line box around it.
+                      <Link href={sortHref(col.key, next)} className={`flex items-center gap-1 hover:text-fg ${col.numeric ? "flex-row-reverse" : ""}`}>
+                        {col.header}{arrow}
+                      </Link>
+                    ) : (
+                      <span className={`flex items-center gap-1 ${col.numeric ? "flex-row-reverse" : ""}`}>{col.header}{arrow}</span>
+                    )}
+                  </th>
+                );
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 && empty ? (
+              <tr><td colSpan={columns.length} className="p-0">{empty}</td></tr>
+            ) : rows.map((row) => (
+              <tr key={rowKey(row)} className="border-b border-line hover:bg-panel">
+                {columns.map((col, i) => (
+                  <td
+                    key={col.key}
+                    className={`h-row-sm px-3 py-1 align-middle text-fg sm:h-row ${col.numeric ? "text-right font-mono tabular-nums" : "text-left"} ${col.nowrap || col.numeric ? "whitespace-nowrap" : ""} ${phoneHidden(i)}`}
+                  >
+                    {col.cell(row)}
+                    {folds && i === 0 && <div className="text-cell-2 text-muted sm:hidden">{meta!(row)}</div>}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {footer && <div className="flex flex-wrap items-center justify-between gap-2 py-2 text-meta text-muted">{footer}</div>}
     </div>
   );
 }

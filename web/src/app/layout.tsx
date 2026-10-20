@@ -22,12 +22,12 @@ export const metadata: Metadata = {
     template: "%s · Everloot",
   },
   description:
-    "WoW: Forever addon uploads, loot-window observations, guild tools and a gold-per-hour calculator. Public facts depend on available corroborated data.",
+    "WoW: Forever addon uploads, loot-window observations, guild tools and auction house prices. Public facts depend on available corroborated data.",
   keywords: [
     "wow forever database",
     "wow forever guild tracker",
     "wow forever tools",
-    "wow gold calculator",
+    "wow forever auction house",
     "wow profession planner",
   ],
   openGraph: {
@@ -35,14 +35,14 @@ export const metadata: Metadata = {
     siteName: "Everloot",
     title: "Everloot — WoW: Forever Database, Guild Tracker & Tools",
     description:
-      "WoW: Forever observations from addon uploads, guild tools and a gold-per-hour calculator.",
+      "WoW: Forever observations from addon uploads, guild tools and auction house prices.",
     url: siteUrl,
   },
   twitter: {
     card: "summary_large_image",
     title: "Everloot — WoW: Forever Database, Guild Tracker & Tools",
     description:
-      "WoW: Forever observations from addon uploads, guild tools and a gold-per-hour calculator.",
+      "WoW: Forever observations from addon uploads, guild tools and auction house prices.",
   },
   alternates: { types: FEED },
   robots: { index: true, follow: true },

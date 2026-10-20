@@ -22,6 +22,7 @@
     "better-auth": "1.7.10",
     "better-sqlite3": "13.0.3",
     "geist": "1.8.1",
+    "leaflet": "1.9.4",
     "next": "15.5.28",
     "pg": "8.23.1",
     "posthog-js": "1.438.12",
@@ -31,6 +32,7 @@
   },
   "devDependencies": {
     "@types/better-sqlite3": "9.6.0",
+    "@types/leaflet": "1.9.22",
     "@types/node": "^22.0.0",
     "@types/pg": "8.23.1",
     "@types/react": "19.3.0",

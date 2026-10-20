@@ -1,11 +1,7 @@
 {
-  "note": "Blizzard staff accounts on us.forums.blizzard.com/en/wow whose posts the blue tracker keeps. Usernames and titles come from the forum's /about.json. Each account is one request per run, so add them one at a time and only when they post about Forever. Customer Support and Forum Moderator accounts are left out on purpose.",
-  "accounts": [
-    { "username": "Linxy", "title": "Community Manager" },
-    { "username": "Rommax-244181", "title": "WoW Developer" },
-    { "username": "Zorbrix-83447", "title": "Game Producer" },
-    { "username": "Chimes", "title": "WoW Developer" },
-    { "username": "Aggrend", "title": "WoW Game Developer" },
-    { "username": "Fwoibles", "title": "WoW Developer" }
-  ]
+  "note": "Hand corrections for the blue tracker. Who is staff comes from the forums themselves: each forum's /en/wow/about.json staff list (read at most once a day) and Blizzard's own blue marker on posts (the group tracker). This file only adjusts that. include: always keep this person's posts in Forever and Classic categories, even if the forum does not list them. exclude: never keep this person. excludeTitles: never keep posts whose role is one of these forum titles. titles: show this role instead of the forum's title. Every entry names its region, us or eu; usernames are the forum's, with any numeric suffix.",
+  "include": [],
+  "exclude": [],
+  "excludeTitles": [],
+  "titles": []
 }

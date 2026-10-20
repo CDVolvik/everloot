@@ -131,7 +131,7 @@ protocol (`/schema/api/bulkIndex.json`).
    carries what looks like a local filesystem path, stops it before anything is sent.
 3. Once (owner): a public R2 bucket of its own (for example `everloot-bulk`, never the uploads bucket)
    with a public address such as `data.everloot.app`, a write token scoped to that bucket, and
-   `NEXT_PUBLIC_BULK_URL` set in Vercel. Until it is set, `/connect` says there is no bulk download yet.
+   `NEXT_PUBLIC_BULK_URL` set in Vercel. Until it is set, `/docs/api/data-files` says there is no bulk download yet.
    Add the bucket to the nightly backup mirror's read-only token.
 
 ## One-time repository settings

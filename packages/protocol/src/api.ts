@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ENTITY_KINDS, MCP_TOOL_NAMES, RELS } from "./mcp.js";
-import { anyRecord, PUBLIC_RECORD_KINDS } from "./records.js";
+import { anyRecord, AUCTION_HOUSES, PUBLIC_RECORD_KINDS } from "./records.js";
 
 /**
  * The shapes everloot.app's JSON endpoints answer with. The routes build their bodies as they always
@@ -66,6 +66,8 @@ export const marketRealmsResponse = z.object({
   ok: z.literal(true),
   dataAsOf: ISO_TIME.nullable(),
   realms: z.array(z.string()),
+  houses: z.record(z.string(), z.array(z.enum(AUCTION_HOUSES))).optional()
+    .describe("Per realm, the auction houses that have public values of their own (scans that named their house)."),
   attribution: attributionSchema,
 });
 
@@ -78,6 +80,7 @@ export const marketPricesResponse = z.object({
   rule: z.string().describe("How a day becomes public and how the values are computed."),
   fields: z.tuple([z.literal("itemId"), z.literal("market"), z.literal("min"), z.literal("historical"), z.literal("quantity"), z.literal("day"), z.literal("reporters")]),
   realm: z.string().nullable(),
+  house: z.enum(AUCTION_HOUSES).optional().describe("Present when the request named a house: the values come only from scans of that house."),
   items: z.array(z.tuple([
     z.number().int().positive(), z.number().int().nonnegative(), z.number().int().nonnegative(), z.number().int().nonnegative(),
     z.number().int().nonnegative(), z.string(), z.number().int().nonnegative(),
@@ -194,6 +197,29 @@ export const toolAnswerResponse = z.object({
 });
 export type ToolAnswerResponse = z.infer<typeof toolAnswerResponse>;
 
+/** The page types GET /api/tooltip/{type}/{id} answers for. */
+export const TOOLTIP_TYPES = ["item", "npc", "quest", "object"] as const;
+export type TooltipType = (typeof TOOLTIP_TYPES)[number];
+
+/**
+ * GET /api/tooltip/{type}/{id}: what a hover card for one page needs, for the embeddable script. Plain text
+ * only (no markup). `gameData` is present when the card shows the game's icon or tooltip text.
+ */
+export const tooltipResponse = z.object({
+  ok: z.literal(true),
+  type: z.enum(TOOLTIP_TYPES),
+  id: z.number().int().positive(),
+  title: z.string().describe("The agreed name, or \"Item 123\" style when no name has 3 installs behind it."),
+  color: z.string().regex(/^#[0-9a-f]{6}$/i).nullable().describe("Title colour (item quality), or null."),
+  icon: z.string().url().nullable().describe("An icon from the game files asset folder, or null."),
+  lines: z.array(z.string()).describe("The card's lines, in order. A value the game files do not give is shown as [?]."),
+  partial: z.boolean().describe("A line holds a [?] for a value the game files do not give yet."),
+  url: z.string().url().describe("The page this card is for."),
+  attribution: attributionSchema,
+  gameData: gameDataNoticeSchema.nullable(),
+});
+export type TooltipResponse = z.infer<typeof tooltipResponse>;
+
 /** One accepted or rejected row in an intake receipt, by its index in the request. */
 const receiptEntry = z.object({ index: z.number().int(), kind: z.string().optional(), reason: z.string().optional() });
 
@@ -285,6 +311,7 @@ export const API_SCHEMAS = {
   itemsResponse,
   itemCategoriesResponse,
   toolAnswerResponse,
+  tooltipResponse,
   bulkIndex,
   intakeRequest,
   intakeReceipt,
@@ -399,9 +426,12 @@ export const API_ROUTES: readonly ApiRoute[] = [
   {
     method: "GET", path: "/api/market/prices",
     summary: "Forever market values from full auction scans players started",
-    description: "Without `realm`, the realms that have public values. With it, the items with the most units listed on that realm as tuples in `fields` order, copper per unit. A day is public when three reporters scanned the item.",
+    description: "Without `realm`, the realms that have public values (and, in `houses`, which auction houses have values of their own). With it, the items with the most units listed on that realm as tuples in `fields` order, copper per unit. Without `house` the values blend every house of the realm; with it, only scans that named that house count. A day is public when three reporters scanned the item.",
     access: "rate-limited", data: "observed",
-    query: [{ name: "realm", description: "Realm name. Omit it to list realms.", schema: { type: "string", minLength: 2, maxLength: 40 } }],
+    query: [
+      { name: "realm", description: "Realm name. Omit it to list realms.", schema: { type: "string", minLength: 2, maxLength: 40 } },
+      { name: "house", description: "Alliance, Horde or Neutral (any case). Needs realm.", schema: { type: "string", enum: ["alliance", "horde", "neutral"] } },
+    ],
     responses: {
       "200": { description: "Realms when `realm` is absent (marketRealmsResponse), prices when present.", schema: "marketPricesResponse" },
       ...ERROR_RESPONSES,
@@ -432,6 +462,21 @@ export const API_ROUTES: readonly ApiRoute[] = [
       "200": { description: "The tool's answer.", schema: "toolAnswerResponse" },
       "404": { description: "No such tool; `error` lists them.", schema: "apiError" },
       ...ERROR_RESPONSES,
+    },
+  },
+  {
+    method: "GET", path: "/api/tooltip/{type}/{id}",
+    summary: "The hover card for one item, NPC, quest or object page, for the embeddable tooltip script",
+    description: "What `https://everloot.app/tooltips.js` shows when a visitor hovers a link to an Everloot page: title, icon and lines as plain text, the page URL, and the licence. One entity per request, not a bulk feed. Open to any website (CORS `*`, GET only) and cached by the CDN for an hour. Only things players reported (3 installs) are answered; the item card adds the game files' tooltip text and icon, labelled unconfirmed with their build. Anything else is a 404.",
+    access: "open", data: "mixed",
+    pathParams: [
+      { name: "type", description: "item, npc, quest or object.", schema: { type: "string", enum: [...TOOLTIP_TYPES] }, required: true },
+      { name: "id", description: "The game's id, a positive whole number.", schema: { type: "integer", minimum: 1 }, required: true },
+    ],
+    responses: {
+      "200": { description: "The card.", schema: "tooltipResponse" },
+      "404": { description: "Unknown type, bad id, or nothing players have reported about it.", schema: "apiError" },
+      "503": { description: "Storage is unavailable. The answer is unrecorded, not empty.", schema: "apiError" },
     },
   },
   {

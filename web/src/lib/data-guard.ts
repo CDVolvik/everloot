@@ -17,7 +17,7 @@ export const ANON_PER_HOUR = 30;
 export const ANON_PAGE = 500;
 export const KEY_PER_HOUR = 2000;
 export const KEY_PAGE = 5000;
-export const KEY_URL = `${SITE}/connect#keys`;
+export const KEY_URL = `${SITE}/docs/api/keys`;
 
 export type Surface = KeySurface;
 export interface Admitted { tier: "open" | "anonymous" | "key"; pageMax: number | null; keyId?: string }

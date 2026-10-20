@@ -6,6 +6,10 @@
 
 export const WORLD_AGREEMENT = 3;
 
+/** How the NPC stood toward the player who saw it, as the addon records it. */
+export type NpcReaction = "friendly" | "neutral" | "hostile";
+export const NPC_REACTIONS: readonly NpcReaction[] = ["friendly", "neutral", "hostile"];
+
 export type NpcSightingRow = {
   installId: string;
   npcId: number;
@@ -14,6 +18,8 @@ export type NpcSightingRow = {
   mapId: number;
   x: number;
   y: number;
+  level?: number;
+  reaction?: NpcReaction;
 };
 
 export type QuestSighting = {
@@ -73,6 +79,32 @@ function agreedLabel(rows: { installId: string; label: string }[]): string | nul
   return winners.length === 1 ? winners[0]!.label : null;
 }
 
+/** `agreedLabel` for many ids in one pass: id -> the label 3 installs agree on, ids without one left out. */
+function agreedLabelsById(rows: { id: number; installId: string; label: string }[]): Map<number, string> {
+  const byId = new Map<number, { installId: string; label: string }[]>();
+  for (const row of rows) {
+    const list = byId.get(row.id) ?? [];
+    list.push(row);
+    byId.set(row.id, list);
+  }
+  const out = new Map<number, string>();
+  for (const [id, list] of byId) {
+    const label = agreedLabel(list);
+    if (label) out.set(id, label);
+  }
+  return out;
+}
+
+/** Every NPC with an agreed name, by id: the names `npcPage` gives, in one pass over the sightings. */
+export function agreedNpcNames(facts: Pick<WorldFacts, "npcs">): Map<number, string> {
+  return agreedLabelsById(facts.npcs.map((row) => ({ id: row.npcId, installId: row.installId, label: row.name })));
+}
+
+/** Every quest with an agreed title, by id: the titles `questPage` gives, in one pass. */
+export function agreedQuestTitles(facts: Pick<WorldFacts, "quests">): Map<number, string> {
+  return agreedLabelsById(facts.quests.map((row) => ({ id: row.questId, installId: row.installId, label: row.title })));
+}
+
 function agreedNumber(rows: { installId: string; value: number }[]): number | null {
   const groups = new Map<number, Set<string>>();
   for (const row of rows) {
@@ -123,6 +155,17 @@ export function npcPage(npcId: number, facts: WorldFacts): NpcPage {
     })
     .sort((a, b) => a.mapId - b.mapId);
   return { npcId, name, pins };
+}
+
+/**
+ * An NPC's level and reaction, each public when 3 installs report the same one, for the NPC list. Kept apart
+ * from `npcPage`, so the page and the MCP answer built on it stay as they are. A reaction is as seen by the
+ * reporting player, so Alliance and Horde reports can disagree; then there is no agreed one.
+ */
+export function npcTraits(rows: NpcSightingRow[]): { level: number | null; reaction: NpcReaction | null } {
+  const level = agreedNumber(rows.filter((row) => row.level !== undefined).map((row) => ({ installId: row.installId, value: row.level! })));
+  const reaction = agreedLabel(rows.filter((row) => row.reaction !== undefined).map((row) => ({ installId: row.installId, label: row.reaction! })));
+  return { level, reaction: reaction as NpcReaction | null };
 }
 
 export function formatNpcPage(page: NpcPage): string {
@@ -252,7 +295,9 @@ export function worldFactsFromRecords(records: unknown[]): WorldFacts {
       typeof row.y === "number"
     ) {
       facts.npcs.push({ installId: row.installId, npcId: row.npcId, name: row.name, mapId: row.mapId, x: row.x, y: row.y,
-        ...(row.positionKind === "npc" || row.positionKind === "player" ? { positionKind: row.positionKind } : {}) });
+        ...(row.positionKind === "npc" || row.positionKind === "player" ? { positionKind: row.positionKind } : {}),
+        ...(typeof row.level === "number" && Number.isInteger(row.level) && row.level > 0 ? { level: row.level } : {}),
+        ...(NPC_REACTIONS.includes(row.reaction as NpcReaction) ? { reaction: row.reaction as NpcReaction } : {}) });
     }
     if (row.kind === "quest" && typeof row.questId === "number" && typeof row.title === "string" && typeof row.level === "number") {
       facts.quests.push({

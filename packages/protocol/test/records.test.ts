@@ -5,7 +5,7 @@ const base = { installId: "test-install-1234", capturedAt: "2026-09-29T12:00:00.
 
 describe("intake contract", () => {
   test("all record kinds exist", () => {
-    expect(ALL_RECORD_KINDS).toHaveLength(33);
+    expect(ALL_RECORD_KINDS).toHaveLength(34);
     expect(ALL_RECORD_KINDS).toContain("census_self");
     expect(ALL_RECORD_KINDS).toContain("census_seen");
     expect(ALL_RECORD_KINDS).toContain("achievement_catalog");
@@ -104,6 +104,25 @@ describe("intake contract", () => {
       expect.objectContaining({ kind: "auction_snapshot", scanId: "scan-1", part: 1, parts: 2, items: [[2589, 4, 80, 95, 100], [765, 1, 3, 33, 33]] }),
     ]);
     expect(result.receipt.rejected.map((r) => r.index)).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+  });
+
+  test("a scan may say its faction and auction house; older scans without them still parse", () => {
+    const snap = (over = {}) => ({
+      ...base, kind: "auction_snapshot", realm: "Forever", scanId: "scan-1", part: 1, parts: 1, items: [[2589, 4, 80, 95, 100]], ...over,
+    });
+    const result = parseRecords([
+      snap({ faction: "Horde", house: "Neutral" }),
+      snap(),
+      snap({ faction: "Alliance" }),
+      snap({ faction: "Neutral" }),
+      snap({ house: "alliance" }),
+    ]);
+    expect(result.records).toEqual([
+      expect.objectContaining({ faction: "Horde", house: "Neutral" }),
+      expect.not.objectContaining({ faction: expect.anything() }),
+      expect.objectContaining({ faction: "Alliance" }),
+    ]);
+    expect(result.receipt.rejected.map((r) => r.index)).toEqual([3, 4]);
   });
 
   test("one listing above 200k gold does not drop the other items of its scan part", () => {

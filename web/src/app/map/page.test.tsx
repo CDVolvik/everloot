@@ -44,11 +44,14 @@ test("with no reports the whole map still shows, from the game files", async () 
   const html = await render();
   expect(html).toContain("Stormwind Stockade");
   expect(html).toContain("Elwynn Forest");
-  expect(html).toContain("zone outlines");
+  expect(html).toContain("Dungeon and raid entrances");
+  expect(html).toContain("Flight masters");
+  expect(html).toContain("Stormwind, Elwynn");
   expect(html).not.toContain("In-game cross-check");
   expect(html).not.toContain("Storage unreachable");
   expect(html).toContain("Dungeon (circle)");
   expect(html).toContain("Raid (square)");
+  expect(html).toContain("Flight path (dashed line)");
 });
 
 test("unreadable storage says so, keeps the map, and shows no data age", async () => {
@@ -71,16 +74,16 @@ test("a continent with nothing placed says so and draws no map or legend", async
   store.loadCorpus.mockResolvedValue({ uploads: 0, records: [] });
   const html = await render();
   expect(html).toContain("Nothing is placed on this continent yet.");
-  expect(html).not.toContain('role="img"');
+  expect(html).not.toContain("Search the map");
   expect(html).not.toContain("Dungeon (circle)");
 });
 
-test("the credit line is ours: game files, the build, Blizzard's data, no third-party project", async () => {
+test("no credit block on the page (it is site-wide), and no third-party project", async () => {
   store.loadCorpus.mockResolvedValue({ uploads: 0, records: [] });
   const html = await render();
-  expect(html).toMatch(/Map data read from the WoW: Forever game files, build 1\.60\.1\.\d+/);
-  expect(html).toContain("not under our licence");
-  expect(html).not.toMatch(/OpenMap|warcraft\.wiki|creativecommons|Boats and zeppelins/);
+  expect(html).not.toMatch(/Map data read from the WoW: Forever game files, build/);
+  expect(html).not.toContain("data-game-credit");
+  expect(html).not.toMatch(/OpenMap|warcraft\.wiki|creativecommons/);
 });
 
 test("agreeing installs that differ from the files are named; matching ones are counted", async () => {
@@ -106,6 +109,7 @@ test("spoilers are off by default: held-back zones are named nowhere in the page
     expect(html).toContain("Spoilers: off");
     expect(html).toContain("Show them");
     expect(html).not.toMatch(/Mount Hyjal|Riverglades|Shen&#x27;dralas|Shen'dralas/);
+    expect(html).toContain("Flight masters");
   }
 });
 
@@ -139,7 +143,37 @@ test("a deep link opens the continent of its zone with a marker on the spot", as
   store.loadCorpus.mockResolvedValue({ uploads: 0, records: [] });
   const html = await renderWith({ zone: "1411", x: "50", y: "50" });
   expect(html).toContain("Kalimdor");
-  expect(html).toContain("Durotar 50, 50");
+  // The ring and its label are drawn in the browser; the page itself names the zone in the trail.
+  expect(html).toMatch(/aria-current="page"[^>]*>Durotar</);
+  expect(html).toContain("Azeroth");
+});
+
+test("a zone link without a spot opens that zone fitted to the view, on its continent", async () => {
+  store.loadCorpus.mockResolvedValue({ uploads: 0, records: [] });
+  const html = await renderWith({ zone: "1411" });
+  expect(html).toContain("Kalimdor");
+  expect(html).toMatch(/aria-current="page"[^>]*>Durotar</);
+  // The zone link survives the spoiler switch, and there is no ring (that is for a spot).
+  expect(html).toContain("zone=1411");
+  expect(html).toContain("Show them");
+  const eastern = await renderWith({ zone: "1429" });
+  expect(eastern).toMatch(/aria-current="page"[^>]*>Elwynn Forest</);
+  expect(eastern).toContain("Eastern Kingdoms");
+});
+
+test("a zone link into a held-back zone says so without naming the view, until spoilers are on", async () => {
+  store.loadCorpus.mockResolvedValue({ uploads: 0, records: [] });
+  const off = await renderWith({ zone: "2482" });
+  expect(off).toContain("is held back as possibly unreleased. Turn spoilers on to see this zone.");
+  expect(off).not.toMatch(/aria-current="page"[^>]*>Mount Hyjal/);
+  const on = await renderWith({ zone: "2482", spoilers: "1" });
+  expect(on).toMatch(/aria-current="page"[^>]*>Mount Hyjal/);
+});
+
+test("a spot link with a zone id still puts the spot first: the pin link keeps working next to the zone link", async () => {
+  store.loadCorpus.mockResolvedValue({ uploads: 0, records: [] });
+  const html = await renderWith({ zone: "1429", x: "40", y: "60" });
+  expect(html).toContain("zone=1429&amp;x=40&amp;y=60");
 });
 
 test("a deep link into a held-back zone says so without drawing it, until spoilers are on", async () => {
@@ -148,13 +182,20 @@ test("a deep link into a held-back zone says so without drawing it, until spoile
   expect(off).toContain("is held back as possibly unreleased");
   expect(off).not.toContain("Mount Hyjal 50, 50");
   const on = await renderWith({ zone: "2482", x: "50", y: "50", spoilers: "1" });
-  expect(on).toContain("Mount Hyjal 50, 50");
+  expect(on).toMatch(/aria-current="page"[^>]*>Mount Hyjal/);
   expect(on).toContain("zone=2482");
 });
 
 test("a broken deep link opens the plain map", async () => {
   store.loadCorpus.mockResolvedValue({ uploads: 0, records: [] });
-  const html = await renderWith({ zone: "1411", x: "500", y: "50" });
+  const html = await renderWith({ zone: "abc", x: "50", y: "50" });
   expect(html).toContain("Eastern Kingdoms");
-  expect(html).not.toContain("Durotar 500");
+  expect(html).not.toMatch(/aria-current="page"[^>]*>Durotar/);
+});
+
+test("a spot out of range keeps the zone but drops the spot", async () => {
+  store.loadCorpus.mockResolvedValue({ uploads: 0, records: [] });
+  const html = await renderWith({ zone: "1411", x: "500", y: "50" });
+  expect(html).toMatch(/aria-current="page"[^>]*>Durotar/);
+  expect(html).not.toContain("x=500");
 });

@@ -118,7 +118,9 @@ test("with the game art, a spell a post names gets its icon, its tooltip and a l
   expect(html).toMatch(/data-spell-tip[^>]*><img[^>]*icons\/8001\.webp[^>]*alt=""[^>]*\/?><a href="\/tools\/raid"[^>]*aria-describedby="[^"]+"[^>]*>Battle Shout<\/a>/);
   expect(html).toContain("Battle Shout. Raises attack power by 20 for 2 min. found in game files, unconfirmed · build 1.60.1.70450.");
   expect(html).toContain("</span></span> now reaches the whole raid.");
-  expect(html).toContain("Icons, tooltip text and loading screen art from game build 1.60.1.70450");
+  // The credit is site-wide (footer and /methodology#credits), not a line on the page.
+  expect(html).not.toContain("data-game-credit");
+  expect(html).not.toContain("data-source-line");
   timeline.entries = entries;
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();

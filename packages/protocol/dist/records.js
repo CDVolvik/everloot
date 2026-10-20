@@ -252,6 +252,11 @@ export const auctionScan = base.extend({
 const SCAN_COUNT = z.number().int().min(1).max(Number.MAX_SAFE_INTEGER);
 const SCAN_COPPER = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
 /**
+ * The auction houses a scan can come from. The game files list Alliance, Horde and neutral
+ * (Blackwater) houses with different cuts, so a scan says which one it read.
+ */
+export const AUCTION_HOUSES = ["Alliance", "Horde", "Neutral"];
+/**
  * One part of a full auction-house scan the player started (addon 0.3.0+). Each item is
  * [itemId, auctions, quantity, minUnit, marketUnit], copper per unit. A scan is split into parts of
  * at most 1,000 items. These rows feed the market rollup, not the general corpus.
@@ -260,6 +265,8 @@ export const auctionSnapshot = base.extend({
     kind: z.literal("auction_snapshot"),
     // Plain realm names only: the name is published once 3 reporters scanned there.
     realm: z.string().min(2).max(60).refine(validRealm, { message: "not a realm name" }),
+    faction: z.enum(["Alliance", "Horde"]).optional().describe("The scanning character's faction. Scans from addons up to 0.3.3 have none."),
+    house: z.enum(AUCTION_HOUSES).optional().describe("The auction house the scan read, from the auctioneer's faction: Neutral for a goblin house. Absent in older scans and when the addon could not tell."),
     scanId: z.string().min(3).max(96).regex(/^[A-Za-z0-9:_-]+$/),
     part: z.number().int().min(1).max(100),
     parts: z.number().int().min(1).max(100),
@@ -386,11 +393,13 @@ export const talentSnapshot = base.extend({
 /** A player GUID as UnitGUID returns it: Player-<server id>-<player id>. */
 export const PLAYER_GUID = z.string().regex(/^Player-[1-9]\d*-[0-9A-F]+$/)
     .describe("The player GUID, in transit only: the server replaces it with a keyed hash before anything is stored.");
+// Not a list: Forever adds Skyborne, whose token is not confirmed yet.
+const CENSUS_RACE = z.string().regex(/^[A-Za-z]{2,24}$/).describe("Race file token, UnitRace's second return, e.g. Scourge.");
+const CENSUS_CLASS = z.string().regex(/^[A-Z]{3,16}$/).describe("Class token, UnitClass's second return, e.g. HUNTER.");
 const censusBase = base.extend({
     guid: PLAYER_GUID,
-    // Not a list: Forever adds Skyborne, whose token is not confirmed yet.
-    race: z.string().regex(/^[A-Za-z]{2,24}$/).describe("Race file token, UnitRace's second return, e.g. Scourge."),
-    class: z.string().regex(/^[A-Z]{3,16}$/).describe("Class token, UnitClass's second return, e.g. HUNTER."),
+    race: CENSUS_RACE,
+    class: CENSUS_CLASS,
     level: z.number().int().min(1).max(60),
     faction: z.enum(["Alliance", "Horde"]),
 });
@@ -439,6 +448,32 @@ export const censusSeenStored = storedCensusBase.extend({
     via: CENSUS_VIA,
 });
 export const storedCensusSchemas = { census_self: censusSelfStored, census_seen: censusSeenStored };
+// --- Player pages: one named row per character (docs/design/specs/2026-10-20-player-pages-design.md) ---
+// Name, realm, race, class, level and guild of a player the addon saw, or of your own character. Off until
+// `/everloot players on`, and the site stores nothing from it until the owner turns the player pages on.
+// No GUID, position, gear or history: the site keeps the newest row per character, not the rows.
+/** A character name: letters only, 2 to 12 of them, in any script the game allows. */
+export function validPlayerName(name) {
+    return typeof name === "string" && /^\p{L}{2,12}$/u.test(name);
+}
+/** A guild name: letters, digits, spaces, apostrophes and hyphens, 2 to 24 characters. */
+export function validGuildName(name) {
+    return typeof name === "string" && name.length >= 2 && name.length <= 24 && /^[\p{L}\p{N}][\p{L}\p{N} '’-]*$/u.test(name);
+}
+/** One character, as the addon last saw it. The site keeps the newest row per character and realm. */
+export const playerSeen = base.extend({
+    kind: z.literal("player_seen"),
+    name: z.string().min(2).max(48).refine(validPlayerName, { message: "not a character name" })
+        .describe("UnitName: letters only, 2 to 12 of them."),
+    realm: CENSUS_REALM.describe("GetRealmName(): the realm the addon runs on. Players from another realm are not recorded."),
+    race: CENSUS_RACE,
+    class: CENSUS_CLASS,
+    level: z.number().int().min(1).max(60),
+    guild: z.string().min(2).max(96).refine(validGuildName, { message: "not a guild name" }).optional()
+        .describe("GetGuildInfo: the guild name, when the game showed one."),
+});
+/** The player-page kind. Never part of the public corpus; intake writes it to the players table, not to the upload. */
+export const PLAYER_KINDS = ["player_seen"];
 /** Every record kind and its schema, in the order the contract lists them. */
 export const recordSchemas = {
     npc_sighting: npcSighting,
@@ -474,6 +509,7 @@ export const recordSchemas = {
     talent_snapshot: talentSnapshot,
     census_self: censusSelf,
     census_seen: censusSeen,
+    player_seen: playerSeen,
 };
 export const ALL_RECORD_KINDS = Object.keys(recordSchemas);
 /**
@@ -490,6 +526,7 @@ const PUBLIC_KIND_LIST = [
     // only when 3 installs reported it identically. Owned rows are shown only to a granted owner. Both come
     // from the completion rollup, not from this corpus.
     // The census kinds are absent too: like addon lists, they are published only as counts.
+    // So is player_seen: named rows reach the player pages, never this corpus.
 ];
 export const PUBLIC_RECORD_KINDS = PUBLIC_KIND_LIST;
 export const anyRecord = z.discriminatedUnion("kind", [
@@ -497,7 +534,7 @@ export const anyRecord = z.discriminatedUnion("kind", [
     guildSnapshot, raidLockout, attendance, lootAward, gearSnapshot,
     collectionCatalog, collectionOwned, achievementCatalog, reputationCatalog, titleCatalog, questChainCatalog,
     achievementOwned, reputationOwned, titleOwned, questOwned, auctionScan, auctionSnapshot, recipeSeen, priceSeen, recipeObserved, trainerSeen,
-    goldSnapshot, moneyEvent, addonSeen, mapBounds, talentSnapshot, censusSelf, censusSeen,
+    goldSnapshot, moneyEvent, addonSeen, mapBounds, talentSnapshot, censusSelf, censusSeen, playerSeen,
 ]);
 /** The request envelope. `protocol` is the uploader's protocol version; a missing one means major 1. */
 export const uploadPayload = z.object({

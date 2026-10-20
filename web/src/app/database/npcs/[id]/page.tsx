@@ -3,10 +3,20 @@ import AdSlot from "@/components/AdSlot";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { npcPage } from "../../../../../../kb/src/world-pages";
+import { npcPage, type NpcPin } from "../../../../../../kb/src/world-pages";
+import type { DropRateRow } from "../../../../../../kb/src/item-page";
 import { computeRollups, loadWorldFacts } from "@/lib/rollup-compute";
-import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
-import { pinLink } from "@/lib/world-map";
+import { pinLink, WORLD_MAP } from "@/lib/world-map";
+import { zoneByMapId, zoneHref } from "@/lib/zones";
+import { trailFor } from "@/lib/breadcrumbs";
+import { Container, DataTable, Facts, Tabs, TooltipFrame, type Column } from "@/components/ui";
+import { EmptyTab, EntityHeader, EntityTop, FREQUENCY, known, LINK, percent, Unreachable } from "../../entity";
+import { loadItemFacts } from "@/lib/rollup-compute";
+import { itemNames } from "@/lib/names";
+import { loreForEntity } from "@/lib/lore";
+import { loadItemTips, loadSiteAssets } from "@/lib/game-assets";
+import EntityLink from "@/components/EntityLink";
+import LoreSection from "@/components/LoreSection";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +31,35 @@ export async function generateMetadata(props: { params: Promise<{ id: string }> 
   };
 }
 
+const pinColumns: Column<NpcPin>[] = [
+  { key: "map", header: "Map", numeric: true, cell: (p) => p.mapId },
+  { key: "at", header: "Position", numeric: true, cell: (p) => `${p.x}, ${p.y}` },
+  { key: "installs", header: "Reporters", numeric: true, cell: (p) => p.reporters },
+  { key: "show", header: "", cell: (p) => { const href = pinLink(p.mapId, p.x, p.y); return href ? <Link href={href} className={LINK}>Show on the map</Link> : null; } },
+];
+
+/**
+ * In place of a tooltip, a small picture of the zone with the NPC's point on it, linked to the world map.
+ * The zone's own map art when the asset manifest has it, otherwise a plain panel of the zone's shape.
+ */
+function MapThumb({ pin, zone, art }: { pin: NpcPin; zone: string; art: string | null }) {
+  const shape = WORLD_MAP.zones.find((z) => z.uiMapId === pin.mapId);
+  const href = pinLink(pin.mapId, pin.x, pin.y);
+  if (!shape || !href) return null;
+  const ratio = `${Math.abs(shape.bounds.left - shape.bounds.right)} / ${Math.abs(shape.bounds.top - shape.bounds.bottom)}`;
+  return (
+    <figure data-map-thumb className="w-full sm:max-w-tip">
+      <Link href={href} aria-label={`${zone} at ${pin.x}, ${pin.y}, on the map`} className="relative block overflow-hidden rounded-[4px] border border-line bg-panel" style={{ aspectRatio: ratio }}>
+        {/* The zone's picture from the asset bucket as it is; next/image would only proxy it. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        {art && <img src={art} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover" />}
+        <span aria-hidden="true" className="absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent ring-2 ring-black/60" style={{ left: `${pin.x}%`, top: `${pin.y}%` }} />
+      </Link>
+      <figcaption className="mt-1 text-meta text-muted">{zone} · <span className="tabular-nums">{pin.x}, {pin.y}</span></figcaption>
+    </figure>
+  );
+}
+
 export default async function NpcPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   if (!/^[1-9]\d*$/.test(params.id)) notFound();
@@ -32,65 +71,71 @@ export default async function NpcPage(props: { params: Promise<{ id: string }> }
   const title = unreachable ? `NPC ${page.npcId}` : page.name ?? `NPC ${page.npcId}`;
   const zero = rollup.measuredZeros.find((row) => row.public && row.sourceNpcId === npcId);
   const dropped = rollup.rates.filter((row) => row.public && row.sourceNpcId === npcId);
+  const firstPin = unreachable ? undefined : page.pins[0];
+  const zone = firstPin ? zoneByMapId(firstPin.mapId) : undefined;
+  // Item names (and icons, when the game files have them) for the drop list; an item nobody named stays "Item N".
+  const itemFacts = unreachable || dropped.length === 0 ? null : await loadItemFacts();
+  const names = itemFacts && !itemFacts.unreachable ? itemNames(itemFacts) : new Map<number, string>();
+  const assets = dropped.length > 0 || zone ? await loadSiteAssets() : null;
+  const tips = await loadItemTips(assets, dropped.map((row) => row.itemId));
+  const art = zone ? assets?.maps.find((m) => m.kind === "zone" && m.uiMapId === zone.mapId && !m.heldBack) : undefined;
+  const lore = !unreachable && page.name ? loreForEntity("npc", page.name) : null;
+  const dropColumns: Column<DropRateRow>[] = [
+    { key: "item", header: "Item", cell: (r) => <EntityLink kind="item" id={r.itemId} name={names.get(r.itemId) ?? tips.get(r.itemId)?.name} icon={tips.get(r.itemId)?.icon} /> },
+    { key: "windows", header: "Loot windows", numeric: true, cell: (r) => r.kills },
+    { key: "drops", header: "Item observations", numeric: true, cell: (r) => r.drops },
+    { key: "rate", header: FREQUENCY, numeric: true, cell: (r) => percent(r.rate) },
+    { key: "installs", header: "Install IDs", numeric: true, cell: (r) => r.reporters },
+  ];
+  const trail = [...trailFor("/database/npcs")!, { name: title, path: `/database/npcs/${npcId}` }];
+  const named = title !== `NPC ${npcId}`;
 
   return (
-    <article className="space-y-8 max-w-4xl">
-      <header className="space-y-3">
-        <p className="font-mono text-xs text-muted">WoW: Forever · npc</p>
-        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">{title}</h1>
-        <p className="text-sm text-muted">
-          {unreachable
-            ? STORAGE_UNREACHABLE
-            : page.name
-              ? `NPC ${page.npcId}`
-              : "No agreed name yet. A name needs 3 installs reporting the same one."}
-        </p>
-      </header>
-
-      {unreachable ? null : (
-      <section className="space-y-2">
-        <h2 className="text-2xl text-fg">Drops</h2>
-        {zero ? (
-          <p className="text-sm text-fg">No items observed in {zero.kills} recorded loot windows. {zero.reporters} install IDs.</p>
-        ) : dropped.length === 0 ? (
-          <p className="text-sm text-fg-2">Loot observations unrecorded. Public frequencies require source observations from 3 install IDs.</p>
-        ) : (
-          <ul className="text-sm text-fg space-y-1">
-            {dropped.map((row) => (
-              <li key={row.itemId}>
-                <Link href={`/database/items/${row.itemId}`} className="text-accent hover:underline underline-offset-4">Item {row.itemId}</Link>
-                {" "}· {row.drops} item observations in {row.kills} loot windows · {row.reporters} install IDs
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-      )}
-
-      <p className="text-sm text-muted">Loot windows are observations, not verified kills. Distinct install IDs do not prove independent players.</p>
-
-      {unreachable ? null : (
-      <section className="space-y-2">
-        <h2 className="text-2xl text-fg">Map</h2>
-        {page.pins.length === 0 ? (
-          <p className="text-sm text-fg-2">No agreed position. A pin needs 3 installs on the same map.</p>
-        ) : (
-          <ul className="text-sm text-fg space-y-1">
-            {page.pins.map((pin) => (
-              <li key={pin.mapId}>
-                Map {pin.mapId} at {pin.x}, {pin.y} · {pin.reporters} reporters
-                {pinLink(pin.mapId, pin.x, pin.y) && <>{" · "}<Link href={pinLink(pin.mapId, pin.x, pin.y)!} className="text-accent hover:underline underline-offset-4">Show on the map</Link></>}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-      )}
-
-      <p className="text-sm text-muted">
-        <Link href="/database/npcs" className="text-accent hover:underline underline-offset-4">NPC lookup</Link>
-      </p>
-      {!unreachable && (page.name !== null || dropped.length > 0 || zero !== undefined) && <AdSlot slot="inContent" />}
-    </article>
+    <Container width="data">
+      <article>
+        <EntityHeader trail={trail} title={title} meta={["NPC", zone?.name, named ? <span className="tabular-nums">ID {npcId}</span> : null]} />
+        <EntityTop
+          box={(firstPin && zone && <MapThumb pin={firstPin} zone={zone.name} art={art?.smallUrl ?? art?.url ?? null} />) || (
+            <TooltipFrame name={title} label={`${title}, as players saw it`}>
+              {firstPin && <p>Map {firstPin.mapId} at {firstPin.x}, {firstPin.y}</p>}
+            </TooltipFrame>
+          )}
+          facts={!unreachable && (
+            <Facts
+              layout="list"
+              label={`${title}: quick facts`}
+              items={[
+                { label: "Reported name", value: known(page.name) },
+                { label: "Zone", value: zone ? <Link href={zoneHref(zone.mapId, zone.name)} className={LINK}>{zone.name}</Link> : known(null) },
+                { label: "Map positions", value: known(page.pins.length || null), numeric: true },
+                { label: "Drops", value: known(zero ? `None in ${zero.kills} windows` : dropped.length ? `${dropped.length} items` : null) },
+              ]}
+            />
+          )}
+        />
+        <Tabs
+          label={`${title}: relations`}
+          tabs={[
+            {
+              id: "drops", label: "Drops", count: unreachable ? undefined : dropped.length,
+              panel: unreachable ? <Unreachable />
+                : dropped.length ? <DataTable dense caption={`What ${title} drops`} columns={dropColumns} rows={dropped} rowKey={(r) => String(r.itemId)} />
+                : zero ? <p className="py-3 text-meta text-fg">No items observed in {zero.kills} recorded loot windows. {zero.reporters} install IDs.</p>
+                : <EmptyTab message="Nobody has looted this NPC in Forever yet." />,
+            },
+            {
+              id: "map", label: "Map", count: unreachable ? undefined : page.pins.length,
+              panel: unreachable ? <Unreachable />
+                : page.pins.length ? <DataTable dense caption={`Where ${title} stands`} columns={pinColumns} rows={page.pins} rowKey={(p) => String(p.mapId)} />
+                : <EmptyTab message="No agreed position yet." />,
+            },
+          ]}
+        />
+        <div className="mt-6 space-y-6 empty:hidden">
+          <LoreSection match={lore} />
+          {!unreachable && (page.name !== null || dropped.length > 0 || zero !== undefined) && <AdSlot slot="inContent" />}
+        </div>
+      </article>
+    </Container>
   );
 }

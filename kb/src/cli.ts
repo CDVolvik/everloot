@@ -3,7 +3,9 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { auditSources } from "./audit-sources.js";
 import { BlizzardClient } from "./blizzard/client.js";
-import { ingestBluePosts, loadAccounts, loadFetchState, loadStore, saveFetchState, saveStore } from "./blue-posts.js";
+import {
+  backfillBluePosts, ingestBluePosts, loadFetchState, loadOverrides, loadStore, saveFetchState, saveStore, type BlueGame, type BlueRegion, type IngestResult,
+} from "./blue-posts.js";
 import { buildTimeline } from "./changes.js";
 import { checkBuilds, loadRegistry, recordBuilds, saveRegistry, versionsUrl } from "./builds.js";
 import { clientCoverage, formatCoverage } from "./client-coverage.js";
@@ -20,6 +22,8 @@ import { writeWorldMapData } from "./world-map-data.js";
 import { clientSnapshotName, readClientMeta, writeClientSnapshot } from "./client-snapshot.js";
 import { Curated, diffRaidBuffs, RaidBuffTable } from "./raid-buffs.js";
 import { parseItemIds } from "./assets/items.js";
+import { runItemNames } from "./item-names.js";
+import { SHOWN_MAX_ITEM_ID } from "./item-name-rule.js";
 import { parse as parseYaml } from "yaml";
 import { parseArgs } from "./args.js";
 import { buildWatchCommand } from "./build-watch/command.js";
@@ -62,15 +66,22 @@ const USAGE = `usage: npm run kb -- <command> --db <path>
     (asks Blizzard's public version service which builds exist; records new ones as queued.
     Reads build identifiers only, never game files)
   blue-check [--store <kb>/changes/blue-posts.json] [--accounts <kb>/curated/blue-accounts.json]
-    [--state data/blue-fetch-state.json] [--min-minutes 25]
-    (the blue post tracker: reads the tracked Blizzard staff accounts on the WoW forum and the official
-    WoW Bluesky feed, politely: robots.txt first, 1.5 s apart, skips a source asked less than 25
-    minutes ago, never follows a redirect, stops on 429 or a server error, reads at most 3 pages of 30 per
-    source and stops paging at what it already saw. Keeps title, author, time, link and a two-sentence
-    excerpt per post, never the full text. Run it every 30 minutes at most. The posts file is public and
-    committed under kb/changes (the same folder holds builds.json, written by the scheduled workflow
+    [--state data/blue-fetch-state.json] [--min-minutes 25] [--max-requests 40] [--regions us,eu]
+    (the blue post tracker: reads the US and EU English WoW forums and the official WoW Bluesky feed,
+    politely: robots.txt first, 1.5 s apart, the forum's staff list at most once a day, then the Forever
+    and Classic topic lists by last activity back to what the last run handled, opening only changed
+    topics that carry a staff post. At most --max-requests requests a run; skips a list asked less than
+    25 minutes ago, never follows a redirect, stops on 429 or a server error. Keeps title, author, role,
+    time, thread, link and a two-sentence excerpt per post, never the full text. The posts file is public
+    and committed under kb/changes (the same folder holds builds.json, written by the scheduled workflow
     with: builds-check --registry changes/builds.json). The politeness state (last asked, Retry-After,
-    validators) is a separate file that stays out of git)
+    validators, the staff list) is a separate file that stays out of git)
+  blue-backfill [--store <kb>/changes/blue-posts.json] [--accounts <kb>/curated/blue-accounts.json]
+    [--games forever|classic|forever,classic] [--regions us,eu] [--since 2026-01-01] [--max-requests 3000]
+    [--max-pages N]
+    (one-off history for the blue tracker, not for the schedule: walks every page of the Forever topic
+    lists, and the Classic ones back to --since, at the same pace and rules as blue-check, and keeps the
+    staff posts of every topic that has one. Prints request counts by kind)
   ecosystem-check [--registry <kb>/curated/ecosystem.json] [--snapshot <kb>/changes/ecosystem.json]
     [--min-hours 3] [--force]
     (the ecosystem tracker: reads GitHub's public REST API for every project in the registry, one request at
@@ -107,6 +118,11 @@ const USAGE = `usage: npm run kb -- <command> --db <path>
   client-layer <snapshot.sqlite> [--out ../web/src/data/game-data/client-layer.json]
     (relation edges derived from the game files, one build-stamped file for the database pages. Game file data,
     labelled found in game files, unconfirmed. See docs/DATA_POLICY.md)
+  item-names <snapshot.sqlite> --wiki <knowledge base or release .sqlite> [--ledger data/item-names/ledger.json] [--out data/assets]
+    (adds the snapshot's item names and the Warcraft Wiki dump's item names to the name ledger, which only
+    grows, and writes the names the site may show, where both agree, to <out>/<product>-<build>-<config>-names/
+    item-names.json for the private bucket. Prints the count per tier and the mismatches. The ledger holds every
+    name in the build, so it stays on this machine; never commit either file. See docs/DATA_POLICY.md)
   client-map <snapshot.sqlite> [--out ../web/src/data/game-data/map.json]
     (zone rectangles in world coordinates, continents and dungeon and raid entrances from a client
     snapshot, for the world map page. Game file data, stamped with the build. See docs/DATA_POLICY.md)
@@ -151,6 +167,26 @@ function closeOnExit(db: DB): void {
       process.exit(0);
     });
   }
+}
+
+/** Redirects are not followed: robots.txt was read for the host we asked, not for wherever it points. */
+const politeFetch = (url: string, init: { headers: Record<string, string> }) =>
+  fetch(url, { ...init, redirect: "manual", signal: AbortSignal.timeout(15_000) });
+
+function blueRegions(value: string | undefined): BlueRegion[] | undefined {
+  if (!value) return undefined;
+  const regions = value.split(",").filter(Boolean);
+  if (regions.some((r) => r !== "us" && r !== "eu")) throw new Error("--regions takes us, eu or both");
+  return regions as BlueRegion[];
+}
+
+function reportBlue(result: IngestResult, path: string): number {
+  for (const p of result.added) console.log(`new post: [${p.game}${p.region ? ` ${p.region}` : ""}] ${p.title} (${p.author}) ${p.url}`);
+  for (const s of result.skipped) console.log(`skipped ${s}`);
+  for (const e of result.errors) console.error(`${e.source}: ${e.error}`);
+  const spent = Object.entries(result.requests).map(([k, n]) => `${k} ${n}`).join(", ");
+  console.log(`${result.added.length} new, ${result.store.posts.length} kept; requests: ${spent || "none"}; store ${path}`);
+  return result.errors.length ? 1 : 0;
 }
 
 async function main(): Promise<number> {
@@ -284,19 +320,35 @@ async function main(): Promise<number> {
       const statePath = flags.get("state") || "data/blue-fetch-state.json";
       const result = await ingestBluePosts({
         store: { ...loadStore(path), fetched: loadFetchState(statePath) },
-        accounts: loadAccounts(flags.get("accounts") || ACCOUNTS_FILE),
-        // Redirects are not followed: robots.txt was read for the host we asked, not for wherever it points.
-        fetcher: (url, init) => fetch(url, { ...init, redirect: "manual", signal: AbortSignal.timeout(15_000) }),
+        overrides: loadOverrides(flags.get("accounts") || ACCOUNTS_FILE),
+        fetcher: politeFetch,
         now: new Date(),
         minIntervalMs: Number(flags.get("min-minutes") ?? 25) * 60_000,
+        maxRequests: Number(flags.get("max-requests") || 40),
+        regions: blueRegions(flags.get("regions")),
       });
       saveStore(path, result.store);
       saveFetchState(statePath, result.store.fetched);
-      for (const p of result.added) console.log(`new post: [${p.game}] ${p.title} (${p.author}) ${p.url}`);
-      for (const s of result.skipped) console.log(`skipped ${s}`);
-      for (const e of result.errors) console.error(`${e.source}: ${e.error}`);
-      console.log(`${result.added.length} new, ${result.store.posts.length} kept; store ${path}`);
-      return result.errors.length ? 1 : 0;
+      return reportBlue(result, path);
+    }
+    case "blue-backfill": {
+      const path = flags.get("store") || join(CHANGES_DIR, "blue-posts.json");
+      const games = (flags.get("games") || "forever").split(",").filter(Boolean) as BlueGame[];
+      if (games.some((g) => g !== "forever" && g !== "classic")) throw new Error("--games takes forever, classic or both");
+      const result = await backfillBluePosts({
+        store: loadStore(path),
+        overrides: loadOverrides(flags.get("accounts") || ACCOUNTS_FILE),
+        fetcher: politeFetch,
+        now: new Date(),
+        games,
+        regions: blueRegions(flags.get("regions")),
+        since: flags.get("since") || undefined,
+        maxRequests: Number(flags.get("max-requests") || 3000),
+        maxListPages: flags.get("max-pages") ? Number(flags.get("max-pages")) : undefined,
+      });
+      saveStore(path, result.store);
+      console.log(`${result.pages} list pages, ${result.topics} topics opened`);
+      return reportBlue(result, path);
     }
     case "ecosystem-check": {
       const registry = parseRegistry(JSON.parse(readFileSync(flags.get("registry") || ECOSYSTEM_FILE, "utf8")));
@@ -432,12 +484,26 @@ async function main(): Promise<number> {
       console.log(`-> ${run.dir}`);
       return 0;
     }
+    case "item-names": {
+      const kbPath = flags.get("wiki");
+      if (!args[0] || !kbPath) break;
+      const run = runItemNames({ snapshotPath: args[0], kbPath, ledgerPath: flags.get("ledger") || "data/item-names/ledger.json", outDir: flags.get("out") || "data/assets" });
+      console.log(`build ${run.build}: ${run.items} items`);
+      for (const [tier, n] of Object.entries(run.counts)) console.log(`  ${tier}: ${n}`);
+      console.log(`shown: ${run.shownCount} of the ${run.counts.match} matches; held back: ${run.held.highId} with an id from ${SHOWN_MAX_ITEM_ID}, ${run.held.internalName} with a placeholder name`);
+      console.log(`mismatches (kept in the ledger, not shown), first 25 of ${run.mismatches.length}:`);
+      for (const m of run.mismatches.slice(0, 25)) console.log(`  ${m.id}: files "${m.files}", wiki "${m.wiki.join('" | "')}"`);
+      console.log(`ledger: ${run.ledger.runs.length} runs, ${Object.keys(run.ledger.items).length} items; this run added ${run.ledger.runs.at(-1)!.added.files} game file and ${run.ledger.runs.at(-1)!.added.wiki} wiki names`);
+      console.log(`shown -> ${run.shownPath} (${run.shown.count} names)`);
+      return 0;
+    }
     case "client-map": {
       if (!args[0]) break;
       const data = writeWorldMapData(args[0]);
       const out = flags.get("out") || "../web/src/data/game-data/map.json";
       mkdirSync(dirname(out), { recursive: true });
-      writeFileSync(out, `${JSON.stringify(data, null, 2)}
+      // A flight line's points stay one pair per line, not three lines each.
+      writeFileSync(out, `${JSON.stringify(data, null, 2).replace(/\[\s+(-?\d+),\s+(-?\d+)\s+\]/g, "[$1, $2]")}
 `);
       for (const t of data.source.tables) console.log(`${t.table}: ${t.rows} rows${t.encryptedBlocks ? `, ${t.encryptedBlocks} encrypted blocks skipped` : ""}`);
       for (const w of data.warnings) console.log(`warning: ${w}`);

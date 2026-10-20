@@ -1,9 +1,13 @@
 import type { ReactNode } from "react";
 import { QUALITY_LABEL, QUALITY_TEXT, type Quality } from "./quality";
 
+/** The tooltip on the unconfirmed marker. */
+export const UNCONFIRMED_TITLE = "From the game files, not yet confirmed by players";
+
 /**
  * The badge set, and only this set:
- * - `files`: dashed, "From game files · unconfirmed" by default. The same dashed edge the SourceLine explains.
+ * - `files`: not a pill but a quiet marker, a small dashed ring with a tooltip. Screen readers hear
+ *   "unconfirmed" (or `children`, when given). Never a chip or a sentence (density spec, 2026-10-20).
  * - `confirmed`: solid accent, for a fact three installs agree on.
  * - `neutral`: a plain fact (a build, a type).
  * - `quality`: an item quality in its own colour.
@@ -19,7 +23,11 @@ const BASE = "inline-flex h-6 max-w-full items-center gap-1.5 whitespace-nowrap 
 export default function Badge(props: BadgeProps) {
   switch (props.tone) {
     case "files":
-      return <span data-badge="files" className={`${BASE} border-dashed border-edge text-fg-2`}>{props.children ?? "From game files · unconfirmed"}</span>;
+      return (
+        <span data-badge="files" title={UNCONFIRMED_TITLE} className="inline-block h-2.5 w-2.5 shrink-0 rounded-full border border-dashed border-edge align-middle">
+          <span className="sr-only">{props.children ?? "unconfirmed"}</span>
+        </span>
+      );
     case "confirmed":
       return <span data-badge="confirmed" className={`${BASE} border-accent text-accent`}>{props.children ?? "Confirmed by 3 installs"}</span>;
     case "neutral":

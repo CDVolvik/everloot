@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Card, EmptyState } from "@/components/ui";
 import { ANOTHER_CHARACTER_NOTE, COMPLETION_AGREEMENT, completionEmptyState, droppedCharactersNote, type CharacterProgress, type CompletionProgress } from "../../../../../kb/src/completion";
 
 const pct = (done: number, total: number) => (total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0);
@@ -38,18 +39,18 @@ function Closest({ title, empty, children }: { title: string; empty: string; chi
 
 function Character({ c }: { c: CharacterProgress }) {
   return (
-    <section aria-label={`Character ${c.characterKey}`} className="rounded-xl border border-line bg-panel p-5 space-y-5">
+    <Card as="section" aria-labelledby={`character-${c.characterKey}`} className="space-y-6">
       <header className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="text-lg text-fg">{c.class[0]}{c.class.slice(1).toLowerCase()} <span className="font-mono text-sm text-fg-2">level {c.level}</span></h3>
+        <h3 id={`character-${c.characterKey}`} className="text-lg font-semibold text-fg">{c.class[0]}{c.class.slice(1).toLowerCase()} <span className="font-mono text-sm text-fg-2">level {c.level}</span></h3>
         <p className="font-mono text-xs text-muted">key {c.characterKey}</p>
       </header>
-      <div className="grid gap-5 sm:grid-cols-2">
+      <div className="grid gap-6 sm:grid-cols-2">
         <Stat title="Achievements" done={c.achievements.done} total={c.achievements.total} unit="done" note={`${c.achievements.points} of ${c.achievements.pointsTotal} points`} />
         <Stat title="Reputation" done={c.reputation.exalted} total={c.reputation.total} unit="Exalted" />
         <Stat title="Titles" done={c.titles.known} total={c.titles.total} unit="known" />
         <Stat title="Quest chains" done={c.quests.chainsDone} total={c.quests.chainsTotal} unit="finished" note={`${c.quests.completed} quests completed in all`} />
       </div>
-      <div className="grid gap-5 sm:grid-cols-3">
+      <div className="grid gap-6 sm:grid-cols-3">
         <Closest title="Achievements closest to done" empty="None started that the list covers.">
           {c.achievements.closest.map((a) => (
             <li key={a.achievementId}>{a.name} <span className="block font-mono text-xs text-fg-2">{a.category} · {a.have} of {a.of} {a.unit === "progress" ? "progress" : "criteria"}</span></li>
@@ -71,7 +72,7 @@ function Character({ c }: { c: CharacterProgress }) {
           ))}
         </Closest>
       </div>
-    </section>
+    </Card>
   );
 }
 
@@ -79,33 +80,37 @@ function Character({ c }: { c: CharacterProgress }) {
 export default function CompletionView({ progress }: { progress: CompletionProgress | null }) {
   if (!progress) {
     return (
-      <p className="text-sm text-fg-2">
+      <p className="text-fg-2">
         Enter an install id to see achievements, reputation, titles and quest chains for that install&apos;s characters.
       </p>
     );
   }
   const empty = completionEmptyState(progress);
   const dropped = droppedCharactersNote(progress);
+  const droppedNote = dropped && <p className="text-sm text-fg-2" role="status">{dropped}</p>;
   if (empty) {
     return (
-      <div className="rounded-xl border border-line bg-panel p-5 space-y-2" role="status">
-        {dropped && <p className="text-sm text-fg-2">{dropped}</p>}
-        <p className="text-sm text-fg">{empty}</p>
-        <p className="text-xs text-muted">The addon&apos;s completion tracker is opt-in and its progress stays in your file until you upload it with the collection choice ticked.</p>
+      <div className="space-y-4">
+        {droppedNote}
+        {progress.ownedRecorded
+          ? <Card><p className="text-fg" role="status">{empty}</p></Card>
+          : <EmptyState message={empty} />}
       </div>
     );
   }
   const { listed } = progress;
-  const nothingListed = listed.achievements + listed.factions + listed.titles + listed.chains === 0;
+  // Until a list is public every total would read 0: say why instead of drawing empty bars.
+  if (listed.achievements + listed.factions + listed.titles + listed.chains === 0) {
+    return (
+      <div className="space-y-4">
+        {droppedNote}
+        <EmptyState message={`No list is public yet: an entry appears when ${COMPLETION_AGREEMENT} players (installs uploading from different addresses) report the same achievement, faction, title or chain.`} />
+      </div>
+    );
+  }
   return (
     <div className="space-y-4">
-      {nothingListed && (
-        <p className="text-sm text-fg-2" role="status">
-          No list is public yet: an entry appears when {COMPLETION_AGREEMENT} players (installs uploading from different addresses) report the same achievement, faction, title or chain.
-          Totals read 0 until then, which is unrecorded, not a measured zero.
-        </p>
-      )}
-      {dropped && <p className="text-sm text-fg-2" role="status">{dropped}</p>}
+      {droppedNote}
       {progress.characters.map((c) => <Character key={c.characterKey} c={c} />)}
       <p className="text-xs text-muted">{ANOTHER_CHARACTER_NOTE}</p>
     </div>

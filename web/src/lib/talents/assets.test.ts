@@ -104,10 +104,19 @@ const root = join(__dirname, "../../../..");
 const SHOWS_ART = new Set([
   "web/src/lib/talents/assets.ts", "web/src/lib/game-assets.ts", "web/src/lib/game-assets.fixture.ts",
   "web/src/components/RaidBuilder.tsx",
-  "web/src/app/page.tsx", "web/src/app/map/page.tsx", "web/src/components/RaidView.tsx", "web/src/app/tools/auctions/page.tsx",
+  "web/src/app/page.tsx", "web/src/app/map/page.tsx", "web/src/components/RaidView.tsx", "web/src/app/tools/auctions/page.tsx", "web/src/app/tools/auctions/art.ts",
   "web/src/app/tools/professions/page.tsx", "web/src/app/database/drops/page.tsx", "web/src/app/database/items/[id]/page.tsx", "web/src/app/database/items/category-page.tsx",
-  "web/src/app/database/vendors/[id]/page.tsx", "web/src/app/changes/page.tsx", "web/src/lib/spell-mentions.ts", "web/src/app/wow-forever/page.tsx",
+  "web/src/lib/tooltip.ts", // the embeddable hover card: one item per request
+  "web/src/app/database/vendors/[id]/page.tsx", "web/src/app/database/npcs/[id]/page.tsx", "web/src/app/database/quests/[id]/page.tsx", "web/src/app/changes/page.tsx", "web/src/app/lore/page.tsx", "web/src/lib/spell-mentions.ts", "web/src/app/wow-forever/page.tsx", "web/src/app/tools/talents/page.tsx",
   "kb/src/cli.ts", "web/scripts/upload-game-assets.mjs", "web/scripts/game-assets-upload.mjs",
+  "web/src/app/database/zones/[zone]/page.tsx",
+  // The quest list's reward icons, under the item lists' rule (reported or wiki-named items only).
+  "web/src/app/database/quests/page.tsx",
+  // The site-wide credit (footer → /methodology#credits): reads only the manifest's build and label, no art.
+  "web/src/app/methodology/page.tsx",
+  // The item names shown from the game files and the Warcraft Wiki: read for the item pages, and by the sitemap
+  // only to know whether a category has enough names to list.
+  "web/src/lib/shown-item-names.ts", "web/src/app/sitemap.ts", "web/scripts/upload-item-names.mjs",
 ]);
 
 test("nothing outside the pages that show the art can read the asset URL or the manifest modules", () => {
@@ -117,8 +126,13 @@ test("nothing outside the pages that show the art can read the asset URL or the 
     .map(({ p }) => p);
   expect(offenders).toEqual([]);
   // And the API and MCP code, specifically, never imports the talents folder or the site-wide reader at all.
-  const api = [...sources(join(root, "web/src/app/api")), ...sources(join(root, "web/src/app/mcp")), join(root, "web/src/lib/mcp-mount.ts"), ...sources(join(root, "kb/src")).filter((p) => /mcp|exporters/.test(p))];
-  for (const p of api) expect(readFileSync(p, "utf8"), p).not.toMatch(/talents\/(assets|catalogs)|GAME_ASSETS|GAME_DATA_(S3|BUCKET|ACCESS|SECRET|REGION)|game-assets|components\/game\//);
+  // Nor the item names: the shown names, the reader for them and the name ledger stay out of the API, the MCP
+  // server and the bulk download (docs/DATA_POLICY.md, "Item names from the game files and the Warcraft Wiki").
+  const api = [
+    ...sources(join(root, "web/src/app/api")), ...sources(join(root, "web/src/app/mcp")), join(root, "web/src/lib/mcp-mount.ts"),
+    join(root, "web/src/lib/bulk-export.ts"), join(root, "web/scripts/export-bulk.ts"), ...sources(join(root, "kb/src")).filter((p) => /mcp|exporters/.test(p)),
+  ];
+  for (const p of api) expect(readFileSync(p, "utf8"), p).not.toMatch(/talents\/(assets|catalogs)|GAME_ASSETS|GAME_DATA_(S3|BUCKET|ACCESS|SECRET|REGION)|game-assets|components\/game\/|shown-item-names|src\/item-names|loadItemNames|loadShownNames/);
 });
 
 let release = "";

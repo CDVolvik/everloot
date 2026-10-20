@@ -10,6 +10,11 @@ export interface EmptyStateProps {
   action?: { href: string; label: string };
   /** Drop the frame when the empty state sits inside a Card or a DataTable that already draws one. */
   framed?: boolean;
+  /**
+   * Fill the action. Off by default: the header's "Get the addon" is already the filled button in view, and a
+   * page with a form or a sign-up has its own. Turn it on only where this action is the one thing to do.
+   */
+  primary?: boolean;
 }
 
 export const GET_THE_ADDON = { href: "/addon", label: "Get the addon" } as const;
@@ -18,7 +23,7 @@ export const GET_THE_ADDON = { href: "/addon", label: "Get the addon" } as const
  * Every empty dataset looks like this: the agreement meter at its count, one sentence and one
  * action. Never a bare "0", never an empty box.
  */
-export default function EmptyState({ message, count = 0, action = GET_THE_ADDON, framed = true }: EmptyStateProps) {
+export default function EmptyState({ message, count = 0, action = GET_THE_ADDON, framed = true, primary = false }: EmptyStateProps) {
   return (
     <div
       data-empty-state
@@ -26,7 +31,7 @@ export default function EmptyState({ message, count = 0, action = GET_THE_ADDON,
     >
       <AgreementMeter count={count} size="lg" />
       <p className="min-w-0 flex-1 text-fg-2">{message}</p>
-      <Link href={action.href} className="btn btn-primary shrink-0">{action.label}</Link>
+      <Link href={action.href} className={`btn shrink-0${primary ? " btn-primary" : ""}`}>{action.label}</Link>
     </div>
   );
 }

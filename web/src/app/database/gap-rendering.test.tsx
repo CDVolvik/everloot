@@ -26,7 +26,7 @@ beforeEach(() => store.loadCorpus.mockReset());
 
 test("unreadable storage reads unrecorded, never zero", async () => {
   store.loadCorpus.mockResolvedValue({ uploads: 0, records: [], unreachable: true });
-  const drops = await html(DropsPage);
+  const drops = await html(() => DropsPage({}));
   expect(drops).toContain("Storage unreachable");
   expect(drops).not.toContain("0 windows");
   expect(drops).not.toContain("<table");
@@ -35,18 +35,35 @@ test("unreadable storage reads unrecorded, never zero", async () => {
   expect(db).not.toMatch(/>0<\/div>/);
 });
 
-test("the database page points to the lore archive and says it is not collected Forever data", async () => {
+test("the database page is search first: the search, its scopes and a text index of every category, no prose", async () => {
   store.loadCorpus.mockResolvedValue({ uploads: 0, records: [], dataAsOf: "2026-10-09T00:00:00.000Z" });
   const db = await html(DatabasePage);
-  expect(db).toContain('href="/lore"');
-  expect(db).toContain("not collected Forever data");
+  expect(db).toMatch(/<form[^>]*action="\/search"[^>]*method="get"/);
+  for (const scope of ["", "item", "npc", "quest", "object"]) expect(db).toMatch(new RegExp(`<input type="radio"[^>]*name="in"[^>]*value="${scope}"`));
+  expect(db).toContain('href="/database/items/weapons/one-handed-swords"');
+  expect(db).toContain('href="/database/npcs"');
+  expect(db).not.toContain("data-source-line");
+  expect(db).not.toContain('aria-label="Breadcrumb"');
 });
 
-test("an empty readable corpus says nothing is public yet", async () => {
+test("an empty readable corpus says nothing is public yet, with the empty state and no bare zero", async () => {
   store.loadCorpus.mockResolvedValue({ uploads: 0, records: [], dataAsOf: "2026-10-09T00:00:00.000Z" });
-  const drops = await html(DropsPage);
-  expect(drops).toContain("0 windows · 0 public frequencies");
+  const drops = await html(() => DropsPage({}));
+  expect(drops).not.toContain("0 windows");
+  expect(drops).toContain("data-empty-state");
   expect(drops).toContain("No public frequencies yet");
+  expect(await html(DatabasePage)).not.toContain(">0<");
+});
+
+test("with loot windows recorded, the drops page counts them beside its title", async () => {
+  store.loadCorpus.mockResolvedValue({
+    uploads: 3,
+    records: [loot("install-aaa", 42, [], 1), loot("install-bbb", 42, [], 1), loot("install-ccc", 42, [], 1)],
+    dataAsOf: "2026-10-09T00:00:00.000Z",
+  });
+  const drops = await html(() => DropsPage({}));
+  expect(drops).toContain("3 loot windows · ");
+  expect(drops).toMatch(/>1<\/span> public frequency/);
 });
 
 test("three installs with empty windows publish a measured zero; two installs publish nothing", async () => {
@@ -57,9 +74,9 @@ test("three installs with empty windows publish a measured zero; two installs pu
       loot("install-aaa", 77, [{ itemId: 9, count: 1 }], 1), loot("install-bbb", 77, [{ itemId: 9, count: 1 }], 1),
     ],
   });
-  const drops = await html(DropsPage);
+  const drops = await html(() => DropsPage({}));
   expect(drops).toContain("No items observed");
-  expect(drops).toContain("NPC #42");
-  expect(drops).not.toContain("NPC #77");
-  expect(drops).not.toContain("Item #9");
+  expect(drops).toContain("NPC 42");
+  expect(drops).not.toContain("NPC 77");
+  expect(drops).not.toContain("Item 9");
 });

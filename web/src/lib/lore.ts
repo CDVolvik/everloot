@@ -180,6 +180,47 @@ export function loreByExtId(extId: string): LorePage | null | Unavailable {
   };
 }
 
+export interface LoreMatch { extId: string; name: string; intro: string }
+
+/** The first paragraph of a body, cut at `max` on a word boundary; "" when the body opens with a list or is empty. */
+export function firstParagraph(body: string, max = 420): string {
+  const first = renderBody(body)[0];
+  return first?.type === "p" ? truncate(first.text.replace(/\s+/g, " ").trim(), max) : "";
+}
+
+const MATCH_CACHE_MAX = 500;
+const MATCHES = new WeakMap<object, Map<string, LoreMatch | null>>();
+
+/**
+ * The lore page for a database entity: an exact name match (any case) within the type. Two pages with one
+ * name in a type, a redirect or a page with no opening paragraph are no match: a wrong link is worse than none.
+ * The archive has a game id only for quests (a field of their infobox, not indexed), so the id match the plan
+ * names would scan the whole file; the name lookup uses the (type, name) index. Answers are kept per opened
+ * release, so a page never asks twice for the same name.
+ */
+export function loreForEntity(type: "npc" | "item" | "quest" | "zone", name: string): LoreMatch | null | Unavailable {
+  const release = getRelease();
+  if (!release) return UNAVAILABLE;
+  const clean = name.trim();
+  if (!clean) return null;
+  let cache = MATCHES.get(release.db);
+  if (!cache) { cache = new Map(); MATCHES.set(release.db, cache); }
+  const key = `${type}|${clean.toLowerCase()}`;
+  if (cache.has(key)) return cache.get(key) ?? null;
+  const rows = release.db
+    .prepare(
+      `SELECT ext_id AS extId, name, body FROM entities
+       WHERE ${LORE_SQL} AND json_extract(data, '$.type') = ? AND name = ? COLLATE NOCASE LIMIT 3`,
+    )
+    .all(...PUBLISHABLE, type, clean) as { extId: string; name: string; body: string }[];
+  const usable = rows.filter((r) => !r.body.includes("REDIRECT"));
+  const intro = usable.length === 1 ? firstParagraph(usable[0].body) : "";
+  const match = intro ? { extId: usable[0].extId, name: usable[0].name, intro } : null;
+  if (cache.size >= MATCH_CACHE_MAX) cache.clear();
+  cache.set(key, match);
+  return match;
+}
+
 export function searchLore(q: string, page: number, type?: LoreType): { hits: SearchHit[]; hasNext: boolean } | Unavailable {
   const release = getRelease();
   if (!release) return UNAVAILABLE;

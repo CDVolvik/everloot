@@ -5,7 +5,7 @@ vi.mock("@/lib/upload-store", () => ({ uploadStore: { loadCorpus: store.loadCorp
 vi.mock("@/lib/intake-quota", () => ({ intakeQuota: { api: store.api } }));
 
 import { GET } from "./route";
-import { ALL_RECORD_KINDS, CENSUS_KINDS, COMPLETION_KINDS, PUBLIC_RECORD_KINDS } from "@everloot/protocol";
+import { ALL_RECORD_KINDS, CENSUS_KINDS, COMPLETION_KINDS, PLAYER_KINDS, PUBLIC_RECORD_KINDS } from "@everloot/protocol";
 import { ANON_PAGE, KEY_PAGE } from "@/lib/data-guard";
 import { newKey } from "@/lib/api-keys";
 import { corpusPublicResponse } from "@everloot/protocol";
@@ -92,13 +92,13 @@ test("census rows never leave row by row, even if one reached the corpus", async
   const seen = { ...census, eventId: `census_seen:2026-10-18:${"a".repeat(24)}`, kind: "census_seen", via: "target" };
   store.loadCorpus.mockResolvedValue({ uploads: 1, records: [gold, self, seen, scan] });
   expect((await (await GET(req())).json()).records).toEqual([published(gold), published(scan)]);
-  for (const kind of CENSUS_KINDS) expect((await GET(req(`?kinds=${kind}`))).status).toBe(400);
+  for (const kind of [...CENSUS_KINDS, ...PLAYER_KINDS]) expect((await GET(req(`?kinds=${kind}`))).status).toBe(400);
 });
 
 test("every record kind is either on the allowlist or named private here", () => {
   // The completion kinds are served only through the completion rollup: 3-install agreement and live grants.
-  // The census kinds are published only as counts, like addon lists.
-  const privateKinds = ["addon_seen", "talent_snapshot", "auction_snapshot", ...COMPLETION_KINDS, ...CENSUS_KINDS];
+  // The census kinds are published only as counts, like addon lists. Player rows go to the player pages, never this feed.
+  const privateKinds = ["addon_seen", "talent_snapshot", "auction_snapshot", ...COMPLETION_KINDS, ...CENSUS_KINDS, ...PLAYER_KINDS];
   expect([...PUBLIC_RECORD_KINDS, ...privateKinds].sort()).toEqual([...ALL_RECORD_KINDS].sort());
 });
 
@@ -136,7 +136,7 @@ test("guard on: past the anonymous limit the answer is a 429 that names the free
   const res = await GET(req());
   expect(res.status).toBe(429);
   expect(res.headers.get("retry-after")).toBe("1800");
-  expect((await res.json()).getAKey).toBe("https://everloot.app/connect#keys");
+  expect((await res.json()).getAKey).toBe("https://everloot.app/docs/api/keys");
   expect(store.loadCorpus).not.toHaveBeenCalled();
 });
 

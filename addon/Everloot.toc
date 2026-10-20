@@ -21,8 +21,10 @@ modules\mapbounds.lua
 modules\talents.lua
 modules\completion.lua
 modules\census.lua
+modules\players.lua
 modules\selftest.lua
 modules\plan.lua
 modules\raid_data.lua
 modules\raid.lua
 modules\prices.lua
+modules\gph.lua

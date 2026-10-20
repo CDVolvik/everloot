@@ -81,7 +81,7 @@ test("a revoked or unknown key is a 401; a malformed one never reaches the datab
   const revoked = await admit(req(undefined, newKey().token), "corpus", { env: ON, quota: quotaMock(), fetch: keyRow({ allowed: false, retry_after: 0, key_ref: null }) }) as Response;
   expect(revoked.status).toBe(401);
   expect(revoked.headers.get("www-authenticate")).toMatch(/^Bearer error="invalid_token"/);
-  expect((await revoked.json()).error).toContain("/connect#keys");
+  expect((await revoked.json()).error).toContain("/docs/api/keys");
   const send = vi.fn();
   expect(((await admit(req(undefined, "evl_short"), "corpus", { env: ON, quota: quotaMock(), fetch: send })) as Response).status).toBe(401);
   expect(send).not.toHaveBeenCalled();

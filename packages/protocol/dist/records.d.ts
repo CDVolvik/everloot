@@ -301,6 +301,12 @@ export declare const auctionScan: z.ZodObject<{
     priceBasis: z.ZodOptional<z.ZodLiteral<"unit">>;
 }, z.core.$strip>;
 /**
+ * The auction houses a scan can come from. The game files list Alliance, Horde and neutral
+ * (Blackwater) houses with different cuts, so a scan says which one it read.
+ */
+export declare const AUCTION_HOUSES: readonly ["Alliance", "Horde", "Neutral"];
+export type AuctionHouse = (typeof AUCTION_HOUSES)[number];
+/**
  * One part of a full auction-house scan the player started (addon 0.3.0+). Each item is
  * [itemId, auctions, quantity, minUnit, marketUnit], copper per unit. A scan is split into parts of
  * at most 1,000 items. These rows feed the market rollup, not the general corpus.
@@ -311,6 +317,15 @@ export declare const auctionSnapshot: z.ZodObject<{
     capturedAt: z.ZodString;
     kind: z.ZodLiteral<"auction_snapshot">;
     realm: z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>;
+    faction: z.ZodOptional<z.ZodEnum<{
+        Alliance: "Alliance";
+        Horde: "Horde";
+    }>>;
+    house: z.ZodOptional<z.ZodEnum<{
+        Alliance: "Alliance";
+        Horde: "Horde";
+        Neutral: "Neutral";
+    }>>;
     scanId: z.ZodString;
     part: z.ZodNumber;
     parts: z.ZodNumber;
@@ -584,6 +599,25 @@ export declare const storedCensusSchemas: {
     }, z.core.$strip>;
 };
 export type StoredCensusRecord = z.infer<typeof censusSelfStored> | z.infer<typeof censusSeenStored>;
+/** A character name: letters only, 2 to 12 of them, in any script the game allows. */
+export declare function validPlayerName(name: unknown): name is string;
+/** A guild name: letters, digits, spaces, apostrophes and hyphens, 2 to 24 characters. */
+export declare function validGuildName(name: unknown): name is string;
+/** One character, as the addon last saw it. The site keeps the newest row per character and realm. */
+export declare const playerSeen: z.ZodObject<{
+    installId: z.ZodString;
+    eventId: z.ZodOptional<z.ZodString>;
+    capturedAt: z.ZodString;
+    kind: z.ZodLiteral<"player_seen">;
+    name: z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>;
+    realm: z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>;
+    race: z.ZodString;
+    class: z.ZodString;
+    level: z.ZodNumber;
+    guild: z.ZodOptional<z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>>;
+}, z.core.$strip>;
+/** The player-page kind. Never part of the public corpus; intake writes it to the players table, not to the upload. */
+export declare const PLAYER_KINDS: readonly string[];
 /** Every record kind and its schema, in the order the contract lists them. */
 export declare const recordSchemas: {
     readonly npc_sighting: z.ZodObject<{
@@ -860,6 +894,15 @@ export declare const recordSchemas: {
         capturedAt: z.ZodString;
         kind: z.ZodLiteral<"auction_snapshot">;
         realm: z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>;
+        faction: z.ZodOptional<z.ZodEnum<{
+            Alliance: "Alliance";
+            Horde: "Horde";
+        }>>;
+        house: z.ZodOptional<z.ZodEnum<{
+            Alliance: "Alliance";
+            Horde: "Horde";
+            Neutral: "Neutral";
+        }>>;
         scanId: z.ZodString;
         part: z.ZodNumber;
         parts: z.ZodNumber;
@@ -1035,6 +1078,18 @@ export declare const recordSchemas: {
             target: "target";
         }>;
         realm: z.ZodOptional<z.ZodNever>;
+    }, z.core.$strip>;
+    readonly player_seen: z.ZodObject<{
+        installId: z.ZodString;
+        eventId: z.ZodOptional<z.ZodString>;
+        capturedAt: z.ZodString;
+        kind: z.ZodLiteral<"player_seen">;
+        name: z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>;
+        realm: z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>;
+        race: z.ZodString;
+        class: z.ZodString;
+        level: z.ZodNumber;
+        guild: z.ZodOptional<z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>>;
     }, z.core.$strip>;
 };
 export type RecordKind = keyof typeof recordSchemas;
@@ -1293,6 +1348,15 @@ export declare const anyRecord: z.ZodDiscriminatedUnion<[z.ZodObject<{
     capturedAt: z.ZodString;
     kind: z.ZodLiteral<"auction_snapshot">;
     realm: z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>;
+    faction: z.ZodOptional<z.ZodEnum<{
+        Alliance: "Alliance";
+        Horde: "Horde";
+    }>>;
+    house: z.ZodOptional<z.ZodEnum<{
+        Alliance: "Alliance";
+        Horde: "Horde";
+        Neutral: "Neutral";
+    }>>;
     scanId: z.ZodString;
     part: z.ZodNumber;
     parts: z.ZodNumber;
@@ -1457,11 +1521,25 @@ export declare const anyRecord: z.ZodDiscriminatedUnion<[z.ZodObject<{
         target: "target";
     }>;
     realm: z.ZodOptional<z.ZodNever>;
+}, z.core.$strip>, z.ZodObject<{
+    installId: z.ZodString;
+    eventId: z.ZodOptional<z.ZodString>;
+    capturedAt: z.ZodString;
+    kind: z.ZodLiteral<"player_seen">;
+    name: z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>;
+    realm: z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>;
+    race: z.ZodString;
+    class: z.ZodString;
+    level: z.ZodNumber;
+    guild: z.ZodOptional<z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>>;
 }, z.core.$strip>], "kind">;
 export type IntakeRecord = z.infer<typeof anyRecord>;
-/** A record as intake stores it: census rows have their GUID swapped for a key, every other kind is as parsed. */
+/**
+ * A record as intake stores it in an upload: census rows have their GUID swapped for a key, player rows are
+ * not in the upload at all (they go to the players table), every other kind is as parsed.
+ */
 export type StoredRecord = Exclude<IntakeRecord, {
-    kind: "census_self" | "census_seen";
+    kind: "census_self" | "census_seen" | "player_seen";
 }> | StoredCensusRecord;
 /** The request envelope. `protocol` is the uploader's protocol version; a missing one means major 1. */
 export declare const uploadPayload: z.ZodObject<{

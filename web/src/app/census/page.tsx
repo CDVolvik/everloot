@@ -5,6 +5,8 @@ import { dataAgeLabel } from "@/lib/data-age";
 import { loadCensus } from "@/lib/rollup-compute";
 import { REPO_URL } from "@/lib/source";
 import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
+import { trailFor } from "@/lib/breadcrumbs";
+import { Card, Container, DataTable, EmptyState, Explainer, LinkTabs, PageHeader, SectionHeading, type Column } from "@/components/ui";
 import {
   CENSUS_CLASSES, CENSUS_RACES, FACTIONS, HIDDEN_LABEL, HIDDEN_MEANING, LEVEL_BANDS, type CensusCount, type CensusView, type CensusWindow,
 } from "../../../../kb/src/census";
@@ -32,39 +34,26 @@ type Row = { key: string; label: string; count: CensusCount };
 
 /** One slice: a row per group with its count and its share of the window's characters. */
 function CountTable({ id, title, item, rows, total }: { id: string; title: string; item: string; rows: Row[]; total: number }) {
+  const columns: Column<Row>[] = [
+    { key: "label", header: item, cell: (row) => <span className="font-medium">{row.label}</span> },
+    { key: "count", header: "Characters", numeric: true, cell: (row) => <Count count={row.count} /> },
+    {
+      key: "share",
+      header: "Share",
+      cell: (row) => row.count !== null && (
+        <div className="flex min-w-32 items-center gap-3">
+          <span className="w-10 text-right font-mono tabular-nums">{percent(row.count, total)}</span>
+          <div aria-hidden="true" className="h-1 flex-1 rounded-full bg-line">
+            <div className="h-1 rounded-full bg-fg-2" style={{ width: percent(row.count, total) }} />
+          </div>
+        </div>
+      ),
+    },
+  ];
   return (
-    <section aria-labelledby={id} className="space-y-3">
-      <h2 id={id} className="text-2xl font-semibold text-fg">{title}</h2>
-      <div className="overflow-x-auto rounded-xl border border-line">
-        <table className="w-full text-sm">
-          <caption className="sr-only">{title}: characters and share of all characters in the window</caption>
-          <thead>
-            <tr className="bg-panel text-xs font-mono text-muted text-left">
-              <th scope="col" className="px-4 py-3">{item}</th>
-              <th scope="col" className="px-4 py-3 text-right">Characters</th>
-              <th scope="col" className="px-4 py-3 w-1/2">Share</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.key} className="border-t border-line bg-panel text-fg">
-                <th scope="row" className="px-4 py-3 text-left font-medium">{row.label}</th>
-                <td className="px-4 py-3 text-right font-mono tabular-nums"><Count count={row.count} /></td>
-                <td className="px-4 py-3">
-                  {row.count !== null && (
-                    <div className="flex items-center gap-3">
-                      <span className="font-mono tabular-nums w-10 text-right">{percent(row.count, total)}</span>
-                      <div aria-hidden="true" className="h-1 flex-1 rounded-full bg-line">
-                        <div className="h-1 rounded-full bg-fg-2" style={{ width: percent(row.count, total) }} />
-                      </div>
-                    </div>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+    <section aria-labelledby={id}>
+      <SectionHeading id={id}>{title}</SectionHeading>
+      <DataTable caption={`${title}: characters and share of all characters in the window`} columns={columns} rows={rows} rowKey={(row) => row.key} />
     </section>
   );
 }
@@ -73,41 +62,31 @@ function CountTable({ id, title, item, rows, total }: { id: string; title: strin
 function RaceClassGrid({ faction, window: w }: { faction: string; window: CensusWindow }) {
   const races = CENSUS_RACES.filter((r) => r.faction === faction);
   const count = (race: string, cls: string) => w.raceClass.find((c) => c.faction === faction && c.race === race && c.class === cls);
+  const columns: Column<(typeof races)[number]>[] = [
+    { key: "race", header: "Race", nowrap: true, cell: (race) => <span className="font-medium">{race.name}</span> },
+    ...CENSUS_CLASSES.map((c): Column<(typeof races)[number]> => ({
+      key: c.token,
+      header: c.name,
+      numeric: true,
+      cell: (race) => {
+        const cell = count(race.token, c.token);
+        return !cell ? <span className="sr-only">Not playable</span>
+          : cell.count === null ? <><span aria-hidden="true" className="text-muted">&mdash;</span><span className="sr-only">{HIDDEN_LABEL}</span></>
+          : number(cell.count);
+      },
+    })),
+  ];
   return (
-    <div className="overflow-x-auto rounded-lg border border-line">
-      <table className="w-full text-sm">
-        <caption className="text-left px-3 py-2 font-semibold text-fg">{faction} races and classes</caption>
-        <thead>
-          <tr className="border-t border-line text-muted">
-            <th scope="col" className="text-left px-3 py-2 font-medium">Race</th>
-            {CENSUS_CLASSES.map((c) => <th key={c.token} scope="col" className="px-2 py-2 font-medium">{c.name}</th>)}
-          </tr>
-        </thead>
-        <tbody>
-          {races.map((race) => (
-            <tr key={race.token} className="border-t border-line">
-              <th scope="row" className="text-left px-3 py-2 font-medium text-fg">{race.name}</th>
-              {CENSUS_CLASSES.map((c) => {
-                const cell = count(race.token, c.token);
-                return (
-                  <td key={c.token} className="px-2 py-2 text-center font-mono tabular-nums">
-                    {!cell ? <span className="sr-only">Not playable</span>
-                      : cell.count === null ? <><span aria-hidden="true" className="text-muted">&mdash;</span><span className="sr-only">{HIDDEN_LABEL}</span></>
-                      : number(cell.count)}
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div>
+      <SectionHeading as="h3">{faction}</SectionHeading>
+      <DataTable caption={`${faction} races and classes`} columns={columns} rows={races} rowKey={(race) => race.token} />
     </div>
   );
 }
 
 function TakePart() {
   return (
-    <p className="text-sm text-fg-2">
+    <p>
       To add your characters and the players you meet, type <code className="font-mono text-fg">/everloot census on</code> in
       the game, play, log out, then send your save file from the <Link href="/upload" className={link}>upload page</Link>.
       The preview shows the counts before anything is sent.
@@ -120,41 +99,32 @@ const WINDOWS = [
   { id: "launch", label: "Since launch", href: "/census?window=launch" },
 ] as const;
 
+/** The census counting rule, word for word as the page has always stated it. */
+const ruleOf = (view: CensusView) =>
+  `Each character counts once, and a number shows only when it covers at least ${view.rule.minCharacters} characters reported by at least ${view.rule.minInstalls} installs from at least ${view.rule.minReporters} addresses, rounded to the nearest ${view.rule.roundTo}.`;
+
+/** The top of the page's content: an EmptyState until the window has numbers, then one sentence. */
 function Headline({ view, window: w }: { view: CensusView; window: CensusWindow }) {
   const span = `(${day(w.from)} to ${day(w.to)}, UTC)`;
-  const rule = `Each character counts once, and a number shows only when it covers at least ${view.rule.minCharacters} characters reported by at least ${view.rule.minInstalls} installs from at least ${view.rule.minReporters} addresses, rounded to the nearest ${view.rule.roundTo}.`;
-  const how = <Link href="/methodology#population" className={link}>How we count</Link>;
   if (!view.launched) {
     return (
-      <div className="rounded-xl border border-line bg-panel p-6 sm:p-8 space-y-2">
-        <p className="text-fg">
-          WoW: Forever hasn&apos;t launched yet. The census starts counting at launch, {day(view.launch)} at{" "}
-          {view.launch.slice(11, 16)} UTC, and nothing from before it, such as the beta, is counted.
-        </p>
-        <p className="text-sm text-muted">{rule} {how}.</p>
-        <TakePart />
-      </div>
+      <EmptyState
+        message={`WoW: Forever hasn't launched yet. The census starts counting at launch, ${day(view.launch)} at ${view.launch.slice(11, 16)} UTC, and nothing from before it, such as the beta, is counted.`}
+      />
     );
   }
   if (w.collecting) {
     return (
-      <div className="rounded-xl border border-line bg-panel p-6 sm:p-8 space-y-2">
-        <p className="text-fg">
-          Still collecting. The census shows numbers once the window {span} has at least {view.rule.minCharacters} characters
-          reported by at least {view.rule.minInstalls} installs from at least {view.rule.minReporters} addresses.
-        </p>
-        <p className="text-sm text-muted">
-          {w.installs === 0 ? "No install has reported census data in this window so far." : `${plural(w.installs, "install has", "installs have")} reported census data in this window so far.`}{" "}
-          {rule} {how}.
-        </p>
-        <TakePart />
-      </div>
+      <EmptyState
+        count={w.installs}
+        message={`Still collecting: the census shows numbers once the window ${span} has at least ${view.rule.minCharacters} characters reported by at least ${view.rule.minInstalls} installs from at least ${view.rule.minReporters} addresses.`}
+      />
     );
   }
   return (
-    <p className="text-lg text-fg-2">
+    <p className="max-w-[65ch] text-lg text-fg-2">
       About {number(w.characters!)} characters were {w.id === "week" ? "active in the last 7 days" : "seen since launch"} {span},
-      counted from {plural(w.installs, "install", "installs")} that turned the census on. {rule} {how}.
+      counted from {plural(w.installs, "install", "installs")} that turned the census on.
     </p>
   );
 }
@@ -163,94 +133,94 @@ export default async function CensusPage({ searchParams }: { searchParams?: Prom
   const chosen = (await searchParams)?.window === "launch" ? "launch" : "week";
   const { view, unreachable, dataAsOf } = await loadCensus();
   const w = view?.windows[chosen];
+  const ready = !unreachable && view && w;
   return (
-    <article className="space-y-8 max-w-4xl">
-      <header className="space-y-3">
-        <p className="font-mono text-xs text-muted">
-          {unreachable || !view || !w ? "Storage unreachable"
-            : !view.launched ? `Not launched yet · ${dataAgeLabel(dataAsOf)}`
-            : `${plural(w.installs, "reporting install", "reporting installs")} · ${dataAgeLabel(dataAsOf)}`}
-        </p>
-        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">Who plays what on WoW: Forever</h1>
-        <p className="text-fg-2 max-w-2xl">
-          Counted from Everloot uploads by players who turned the census on: their own characters and the players they target,
-          mouse over or group with. Only race, class, level and faction are kept. Names are never read for anyone else, and no
-          character id is stored or published.
-        </p>
-      </header>
+    <Container width="wide">
+      <article>
+        <PageHeader
+          trail={trailFor("/census")!}
+          title="Who plays what on WoW: Forever"
+          lede="Counted from Everloot uploads by players who turned the census on: their own characters and the players they target, mouse over or group with."
+          meta={<>
+            <span className="font-mono text-xs">
+              {!ready ? "Storage unreachable"
+                : !view.launched ? "Not launched yet"
+                : plural(w.installs, "reporting install", "reporting installs")}
+            </span>
+            {!unreachable && <span>{dataAgeLabel(dataAsOf)}</span>}
+          </>}
+        />
 
-      {unreachable || !view || !w ? (
-        <p className="text-fg-2">{STORAGE_UNREACHABLE}</p>
-      ) : (
-        <>
-          {view.launched && <nav aria-label="Census window">
-            <ul className="flex flex-wrap gap-2">
-              {WINDOWS.map((option) => (
-                <li key={option.id}>
-                  <Link href={option.href} aria-current={option.id === chosen ? "page" : undefined} className={`btn min-h-11 text-sm ${option.id === chosen ? "btn-primary" : ""}`}>
-                    {option.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </nav>}
+        {!ready ? (
+          <Card><p className="text-fg-2">{STORAGE_UNREACHABLE}</p></Card>
+        ) : (
+          <div className="space-y-12">
+            <div className="space-y-6">
+              {view.launched && (
+                <LinkTabs
+                  label="Census window"
+                  tabs={WINDOWS.map((option) => ({ href: option.href, label: option.label, current: option.id === chosen }))}
+                />
+              )}
+              <Headline view={view} window={w} />
+            </div>
 
-          <Headline view={view} window={w} />
+            {!w.collecting && (
+              <>
+                <CountTable id="factions" title="Factions" item="Faction" total={w.characters!} rows={FACTIONS.map((f) => ({ key: f, label: f, count: w.factions.find((x) => x.faction === f)!.count }))} />
+                <CountTable id="classes" title="Classes" item="Class" total={w.characters!} rows={w.classes.map((c) => ({ key: c.class, label: CLASS_NAME.get(c.class)!, count: c.count }))} />
+                <CountTable id="races" title="Races" item="Race" total={w.characters!} rows={w.races.map((r) => ({ key: `${r.faction}/${r.race}`, label: `${RACE_NAME.get(r.race)} (${r.faction})`, count: r.count }))} />
+                <section aria-labelledby="grid" className="space-y-6">
+                  <SectionHeading
+                    id="grid"
+                    note={<>Blizzard&apos;s race and class tables from <Link href="/wow-forever" className={link}>What is WoW: Forever</Link>, with the characters in each playable combination. A dash is a hidden count.</>}
+                  >
+                    Race and class
+                  </SectionHeading>
+                  {FACTIONS.slice().reverse().map((f) => <RaceClassGrid key={f} faction={f} window={w} />)}
+                </section>
+                <CountTable id="levels" title="Level bands" item="Level band" total={w.characters!} rows={LEVEL_BANDS.map((b) => ({ key: b.id, label: b.label, count: w.levels.find((l) => l.band === b.id)!.count }))} />
+              </>
+            )}
 
-          {!w.collecting && (
-            <>
-              <p className="text-sm text-fg-2 max-w-2xl">&ldquo;{HIDDEN_LABEL}&rdquo; means {HIDDEN_MEANING}.</p>
-              <BiasLine window={w} />
-              <CountTable id="factions" title="Factions" item="Faction" total={w.characters!} rows={FACTIONS.map((f) => ({ key: f, label: f, count: w.factions.find((x) => x.faction === f)!.count }))} />
-              <CountTable id="classes" title="Classes" item="Class" total={w.characters!} rows={w.classes.map((c) => ({ key: c.class, label: CLASS_NAME.get(c.class)!, count: c.count }))} />
-              <CountTable id="races" title="Races" item="Race" total={w.characters!} rows={w.races.map((r) => ({ key: `${r.faction}/${r.race}`, label: `${RACE_NAME.get(r.race)} (${r.faction})`, count: r.count }))} />
-              <section aria-labelledby="grid" className="space-y-3">
-                <h2 id="grid" className="text-2xl font-semibold text-fg">Race and class</h2>
-                <p className="text-fg-2">
-                  Blizzard&apos;s race and class tables from <Link href="/wow-forever" className={link}>What is WoW: Forever</Link>, with
-                  the characters in each playable combination. A dash is a hidden count.
-                </p>
-                {FACTIONS.slice().reverse().map((f) => <RaceClassGrid key={f} faction={f} window={w} />)}
+            {/* The trend comes from the 7-day window, so it shows once that window has numbers, whichever window is chosen. */}
+            {!view.windows.week.collecting && (
+              <section aria-labelledby="trend">
+                <SectionHeading id="trend" note="Characters active each UTC day, under the same rule.">The last 7 days, day by day</SectionHeading>
+                <DataTable
+                  caption="Characters active each day of the last 7 days"
+                  columns={[
+                    { key: "day", header: "Day (UTC)", cell: (d) => <span className="font-mono tabular-nums">{d.day}</span> },
+                    { key: "count", header: "Characters", numeric: true, cell: (d) => <Count count={d.count} /> },
+                  ]}
+                  rows={view.trend}
+                  rowKey={(d) => d.day}
+                />
               </section>
-              <CountTable id="levels" title="Level bands" item="Level band" total={w.characters!} rows={LEVEL_BANDS.map((b) => ({ key: b.id, label: b.label, count: w.levels.find((l) => l.band === b.id)!.count }))} />
+            )}
+          </div>
+        )}
+
+        <Explainer summary="How the census counts">
+          <p>
+            Only race, class, level and faction are kept. Names are never read for anyone else, and no character id is stored
+            or published.
+          </p>
+          {ready && (
+            <>
+              <p>{ruleOf(view)} <Link href="/methodology#population" className={link}>How we count</Link>.</p>
+              {!w.collecting && <p>&ldquo;{HIDDEN_LABEL}&rdquo; means {HIDDEN_MEANING}.</p>}
+              {!w.collecting && <BiasLine window={w} />}
             </>
           )}
-
-          {/* The trend comes from the 7-day window, so it shows once that window has numbers, whichever window is chosen. */}
-          {!view.windows.week.collecting && <section aria-labelledby="trend" className="space-y-3">
-            <h2 id="trend" className="text-2xl font-semibold text-fg">The last 7 days, day by day</h2>
-            <p className="text-fg-2">Characters active each UTC day, under the same rule.</p>
-            <div className="overflow-x-auto rounded-xl border border-line">
-              <table className="w-full text-sm">
-                <caption className="sr-only">Characters active each day of the last 7 days</caption>
-                <thead>
-                  <tr className="bg-panel text-xs font-mono text-muted text-left">
-                    <th scope="col" className="px-4 py-3">Day (UTC)</th>
-                    <th scope="col" className="px-4 py-3 text-right">Characters</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {view.trend.map((d) => (
-                    <tr key={d.day} className="border-t border-line bg-panel text-fg">
-                      <th scope="row" className="px-4 py-3 text-left font-mono font-normal tabular-nums">{d.day}</th>
-                      <td className="px-4 py-3 text-right font-mono tabular-nums"><Count count={d.count} /></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>}
-          {!w.collecting && <TakePart />}
-        </>
-      )}
-
-      <footer className="border-t border-line pt-4 text-sm text-muted">
-        <p>
-          Census rows are never published one by one, only these counts. How Everloot collects and publishes data is in the{" "}
-          <a href={`${REPO_URL}/blob/main/docs/DATA_POLICY.md`} rel="noopener" className={link}>data policy</a>.
-        </p>
-      </footer>
-    </article>
+          <TakePart />
+          <p>
+            Census rows are never published one by one, only these counts. How Everloot collects and publishes data is in the{" "}
+            <a href={`${REPO_URL}/blob/main/docs/DATA_POLICY.md`} rel="noopener" className={link}>data policy</a>.
+          </p>
+        </Explainer>
+      </article>
+    </Container>
   );
 }
 
@@ -258,7 +228,7 @@ export default async function CensusPage({ searchParams }: { searchParams?: Prom
 function BiasLine({ window: w }: { window: CensusWindow }) {
   const { own, seen } = w.bias;
   return (
-    <p className="text-sm text-fg-2 max-w-2xl">
+    <p>
       {own !== null && seen !== null
         ? `Known from: ${percent(seen, own + seen)} players seen by uploaders, ${percent(own, own + seen)} uploaders' own characters. `
         : `Known from: players seen by uploaders ${seen === null ? HIDDEN_LABEL : `about ${number(seen)}`}, uploaders' own characters ${own === null ? HIDDEN_LABEL : `about ${number(own)}`}. `}

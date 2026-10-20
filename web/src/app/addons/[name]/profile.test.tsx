@@ -116,7 +116,7 @@ test("a curated addon shows GitHub facts, author download links and plain links 
   expect(page).toContain("Fixed arrows.");
   expect(page).toContain('href="https://github.com/fitzforge/polestar/releases"');
   expect(page).toContain('href="https://www.curseforge.com/wow/addons/polestar-guides"');
-  expect(page).toContain('href="/connect"');
+  expect(page).toContain('href="/docs"');
   expect(page).toContain('href="/api/corpus/public"');
 });
 

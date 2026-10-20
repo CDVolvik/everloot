@@ -85,6 +85,6 @@ test("guard on: a free key spends its own allowance instead of the per-IP one; a
     deps.mcp.mockResolvedValueOnce({ allowed: false, retryAfter: 90 });
     const limited = await POST(initialize());
     expect(limited.status).toBe(429);
-    expect((await limited.json()).error).toContain("https://everloot.app/connect#keys");
+    expect((await limited.json()).error).toContain("https://everloot.app/docs/api/keys");
   } finally { vi.unstubAllGlobals(); }
 });
