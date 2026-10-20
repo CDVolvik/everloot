@@ -56,7 +56,8 @@ test("an item shows its value, a 60-day chart and the day list", async () => {
   // Numbers sit in their own mono spans, so the sentence is checked as text.
   expect(html.replace(/<[^>]*>/g, "")).toContain("Market value: 1s 98c");
   expect(html).toContain("<svg");
-  expect(html).toContain("value 1s 90c");
+  // The day list is a table: three days ago the value was 1s 90c.
+  expect(html).toMatch(/<td[^>]*>[^<]*<\/td><td[^>]*>1s 90c<\/td>/);
   expect(html).toContain("Browse history");
 });
 

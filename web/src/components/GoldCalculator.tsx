@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Card, Field, Input, SectionHeading, Segmented } from "@/components/ui";
 
 /* ---------- Types + helpers ---------- */
 
@@ -224,66 +225,56 @@ export default function GoldCalculator() {
   return (
     <div className="space-y-8">
       {/* Header row: farm name */}
-      <div className="grid sm:grid-cols-[1fr,auto,auto] gap-3 items-end">
-        <label className="block">
-          <span className="block text-xs font-mono text-muted mb-1">
-            Farm name <span className="text-muted">(optional)</span>
-          </span>
-          <input
-            type="text"
-            placeholder="e.g. Cloth farm"
-            value={state.farmName}
-            onChange={(e) => patch({ farmName: e.target.value })}
-            className="min-h-11 text-base w-full rounded-lg bg-panel border border-edge px-3 py-2 text-fg placeholder:text-muted focus:border-accent"
-          />
-        </label>
-        <label className="block">
-          <span className="block text-xs font-mono text-muted mb-1">
-            Hours
-          </span>
-          <input
+      <div className="grid items-end gap-3 sm:grid-cols-[1fr,6rem,6rem]">
+        <Field
+          label={<>Farm name <span className="text-muted">(optional)</span></>}
+          type="text"
+          placeholder="e.g. Cloth farm"
+          value={state.farmName}
+          onChange={(e) => patch({ farmName: e.target.value })}
+        />
+        <div className="grid grid-cols-2 gap-3 sm:contents">
+          <Field
+            label="Hours"
             type="number"
             min={0}
+            mono
             value={state.hours}
             onChange={(e) =>
               patch({ hours: Math.max(0, Number(e.target.value) || 0) })
             }
-            className="min-h-11 text-base w-24 rounded-lg bg-panel border border-edge px-3 py-2 text-fg focus:border-accent"
           />
-        </label>
-        <label className="block">
-          <span className="block text-xs font-mono text-muted mb-1">
-            Minutes
-          </span>
-          <input
+          <Field
+            label="Minutes"
             type="number"
             min={0}
             max={59}
+            mono
             value={state.minutes}
             onChange={(e) =>
               patch({
                 minutes: Math.min(59, Math.max(0, Number(e.target.value) || 0)),
               })
             }
-            className="min-h-11 text-base w-24 rounded-lg bg-panel border border-edge px-3 py-2 text-fg focus:border-accent"
           />
-        </label>
+        </div>
       </div>
 
       {/* Items */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xl text-fg">Items looted</h2>
-          <button
-            onClick={addItem}
-            className="btn min-h-11 text-sm px-3"
-          >
-            + Add item
-          </button>
-        </div>
+      <section aria-labelledby="gph-items">
+        <SectionHeading
+          id="gph-items"
+          action={
+            <button onClick={addItem} className="btn min-h-11 px-3 text-sm">
+              + Add item
+            </button>
+          }
+        >
+          Items looted
+        </SectionHeading>
 
-        <div className="rounded-xl border border-line overflow-hidden">
-          <div className="hidden md:grid grid-cols-[minmax(0,1fr),100px,120px,130px,44px] gap-2 px-4 py-2 bg-panel text-xs font-mono text-muted">
+        <Card padding="none">
+          <div className="hidden grid-cols-[minmax(0,1fr),100px,120px,130px,44px] gap-2 border-b border-line bg-canvas px-4 py-2 font-mono text-xs text-muted md:grid">
             <div>Item</div>
             <div>Quantity</div>
             <div>Price each (g)</div>
@@ -297,53 +288,52 @@ export default function GoldCalculator() {
               return (
                 <div
                   key={it.id}
-                  className="grid grid-cols-2 md:grid-cols-[minmax(0,1fr),100px,120px,130px,44px] gap-2 px-4 py-3 items-center"
+                  className="grid grid-cols-2 items-center gap-2 px-4 py-3 md:grid-cols-[minmax(0,1fr),100px,120px,130px,44px]"
                 >
-                  <label className="col-span-2 md:col-span-1 min-w-0">
-                  <span className="sr-only">Item {idx + 1} name</span>
-                  <input
-                    type="text"
-                    placeholder="Item name"
-                    value={it.name}
-                    onChange={(e) => updateItem(it.id, { name: e.target.value })}
-                    className="min-h-11 w-full min-w-0 rounded-md bg-canvas/60 border border-edge px-3 py-2 text-base text-fg placeholder:text-muted focus:border-accent"
-                  />
+                  <label className="col-span-2 min-w-0 md:col-span-1">
+                    <span className="sr-only">Item {idx + 1} name</span>
+                    <Input
+                      type="text"
+                      placeholder="Item name"
+                      value={it.name}
+                      onChange={(e) => updateItem(it.id, { name: e.target.value })}
+                    />
                   </label>
                   <label className="min-w-0">
-                  <span className="block md:sr-only text-xs text-muted mb-1">Item {idx + 1} quantity</span>
-                  <input
-                    type="number"
-                    min={0}
-                    placeholder="Qty"
-                    value={it.qty || ""}
-                    onChange={(e) =>
-                      updateItem(it.id, { qty: Number(e.target.value) || 0 })
-                    }
-                    className="min-h-11 w-full min-w-0 rounded-md bg-canvas/60 border border-edge px-3 py-2 text-base text-fg focus:border-accent"
-                  />
+                    <span className="mb-1 block text-xs text-muted md:sr-only">Item {idx + 1} quantity</span>
+                    <Input
+                      type="number"
+                      min={0}
+                      mono
+                      placeholder="Qty"
+                      value={it.qty || ""}
+                      onChange={(e) =>
+                        updateItem(it.id, { qty: Number(e.target.value) || 0 })
+                      }
+                    />
                   </label>
                   <label className="min-w-0">
-                  <span className="block md:sr-only text-xs text-muted mb-1">Item {idx + 1} price each (g)</span>
-                  <input
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    placeholder="Gold"
-                    value={it.price || ""}
-                    onChange={(e) =>
-                      updateItem(it.id, { price: Number(e.target.value) || 0 })
-                    }
-                    className="min-h-11 w-full min-w-0 rounded-md bg-canvas/60 border border-edge px-3 py-2 text-base text-fg focus:border-accent"
-                  />
+                    <span className="mb-1 block text-xs text-muted md:sr-only">Item {idx + 1} price each (g)</span>
+                    <Input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      mono
+                      placeholder="Gold"
+                      value={it.price || ""}
+                      onChange={(e) =>
+                        updateItem(it.id, { price: Number(e.target.value) || 0 })
+                      }
+                    />
                   </label>
-                  <div className="text-sm text-accent tabular-nums">
+                  <div className="font-mono text-sm tabular-nums text-accent">
                     {formatGold(line?.net ?? 0)}
                   </div>
                   <button
                     onClick={() => removeItem(it.id)}
                     aria-label={`Remove item ${idx + 1}`}
                     disabled={state.items.length === 1}
-                    className="min-h-11 min-w-11 text-muted hover:text-danger transition text-lg justify-self-end disabled:opacity-40"
+                    className="btn min-h-11 min-w-11 justify-self-end px-0 hover:border-danger hover:text-danger disabled:opacity-40"
                   >
                     &times;
                   </button>
@@ -351,75 +341,71 @@ export default function GoldCalculator() {
               );
             })}
           </div>
+        </Card>
+      </section>
+
+      {/* Extras */}
+      <div className="grid items-end gap-4 sm:grid-cols-2">
+        <Field
+          label={<>Vendor / extra gold <span className="text-muted">(optional)</span></>}
+          type="number"
+          min={0}
+          step="0.01"
+          mono
+          value={state.vendorGold || ""}
+          onChange={(e) =>
+            patch({ vendorGold: Number(e.target.value) || 0 })
+          }
+          placeholder="Lump sum from trash / quests"
+        />
+        <div className="space-y-1 text-sm">
+          <span className="block text-muted">Auction house cut</span>
+          <Segmented
+            label="Auction house cut"
+            value={state.ahCut ? "on" : "off"}
+            onChange={(v) => patch({ ahCut: v === "on" })}
+            options={[
+              { value: "on", label: "Subtract 5%" },
+              { value: "off", label: "No cut" },
+            ]}
+          />
         </div>
       </div>
 
-      {/* Extras */}
-      <div className="grid sm:grid-cols-2 gap-4">
-        <label className="block">
-          <span className="block text-xs font-mono text-muted mb-1">
-            Vendor / extra gold <span className="text-muted">(optional)</span>
-          </span>
-          <input
-            type="number"
-            min={0}
-            step="0.01"
-            value={state.vendorGold || ""}
-            onChange={(e) =>
-              patch({ vendorGold: Number(e.target.value) || 0 })
-            }
-            placeholder="Lump sum from trash / quests"
-            className="min-h-11 text-base w-full rounded-lg bg-panel border border-edge px-3 py-2 text-fg placeholder:text-muted focus:border-accent"
-          />
-        </label>
-
-        <label className="min-h-11 flex items-center gap-3 rounded-lg border border-edge px-3 py-2 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={state.ahCut}
-            onChange={(e) => patch({ ahCut: e.target.checked })}
-            className="h-4 w-4 accent-accent"
-          />
-          <span className="text-sm text-fg">
-            Subtract 5% auction house cut from AH items
-          </span>
-        </label>
-      </div>
-
       {/* Results */}
-      <div className="rounded-2xl border border-line bg-panel p-6">
-        <div className="flex flex-col sm:flex-row sm:items-end gap-4 sm:justify-between">
+      <Card>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-mono text-muted">
+            <p className="font-mono text-xs text-muted">
               Gold per hour
             </p>
-            <p className="text-5xl sm:text-6xl font-bold text-accent tabular-nums leading-none mt-1">
+            <p className="mt-1 text-5xl font-bold leading-none tabular-nums text-accent sm:text-6xl">
               {formatCompactGold(calc.perHour)}
             </p>
-            <p className="text-sm text-fg-2 mt-2">
+            <p className="mt-2 font-mono text-sm tabular-nums text-fg-2">
               {formatGold(calc.perHour)} / hr
             </p>
           </div>
-          <div className="text-sm text-fg-2 space-y-1 min-w-[220px]">
+          <div className="min-w-[220px] space-y-1 text-sm text-fg-2">
             <div className="flex justify-between gap-6">
               <span>Items subtotal</span>
-              <span className="tabular-nums">{formatGold(calc.itemsSubtotal)}</span>
+              <span className="font-mono tabular-nums">{formatGold(calc.itemsSubtotal)}</span>
             </div>
             {state.vendorGold > 0 && (
               <div className="flex justify-between gap-6">
                 <span>Vendor gold</span>
-                <span className="tabular-nums">{formatGold(state.vendorGold)}</span>
+                <span className="font-mono tabular-nums">{formatGold(state.vendorGold)}</span>
               </div>
             )}
-            <div className="flex justify-between gap-6 pt-1 border-t border-line mt-2 text-fg">
+            <div className="mt-2 flex justify-between gap-6 border-t border-line pt-1 text-fg">
               <span>Total</span>
-              <span className="tabular-nums font-semibold text-accent">
+              <span className="font-mono font-semibold tabular-nums text-accent">
                 {formatGold(calc.total)}
               </span>
             </div>
             <div className="flex justify-between gap-6 text-xs text-muted">
               <span>Duration</span>
-              <span>
+              <span className="font-mono tabular-nums">
                 {state.hours}h {state.minutes}m
               </span>
             </div>
@@ -427,14 +413,14 @@ export default function GoldCalculator() {
         </div>
 
         {calc.best && calc.best.net > 0 && (
-          <p className="mt-5 text-sm text-fg-2">
+          <p className="mt-6 text-sm text-fg-2">
             Biggest earner:{" "}
             <span className="text-accent">{calc.best.name || "Unnamed item"}</span>{" "}
             &mdash; {formatGold(calc.best.net)} (
             {Math.round(calc.best.share * 100)}% of total)
           </p>
         )}
-      </div>
+      </Card>
 
       {/* One polite announcement for screen readers: settled results, and copy feedback the buttons only show visually. */}
       <p role="status" aria-live="polite" className="sr-only">
