@@ -8,8 +8,11 @@ const store = vi.hoisted(() => ({ api: vi.fn(), loadCorpus: vi.fn(), loadMarket:
 vi.mock("@/lib/intake-quota", () => ({ intakeQuota: { api: store.api } }));
 vi.mock("@/lib/upload-store", () => ({ uploadStore: { loadCorpus: store.loadCorpus, loadMarket: store.loadMarket } }));
 vi.mock("@/lib/release", () => ({ getRelease: () => (store.release.db ? store.release : null) }));
+const auth = vi.hoisted(() => ({ getUser: vi.fn(), authQuery: vi.fn() }));
+vi.mock("@/lib/supabase/server", () => ({ getUser: auth.getUser, authQuery: auth.authQuery, siteUrl: () => "https://everloot.app" }));
 
 import { GET } from "./route";
+import { MY_BUILDS_REFUSAL } from "@/lib/saved-builds";
 import { argumentsFromQuery } from "@/lib/tool-query";
 
 const AS_OF = "2026-10-18T10:00:00.000Z";
@@ -72,6 +75,24 @@ test("a wrong argument is a 400 that names it, an unknown tool a 404 that lists 
   const gone = await get("everloot_plan");
   expect(gone.status).toBe(503);
   expect((await gone.json()).error).toContain("unrecorded, not zero");
+});
+
+test("my_builds is unknown with the switch off, and with it on answers for the session without the public quota", async () => {
+  vi.stubEnv("EVERLOOT_DATA_GUARD", "1");
+  const off = await get("my_builds");
+  expect(off.status).toBe(404);
+  expect((await off.json()).error).toBe(`No tool named my_builds. Tools: ${MCP_TOOL_NAMES.join(", ")}.`);
+  vi.stubEnv("EVERLOOT_SAVED_BUILDS", "1");
+  auth.getUser.mockResolvedValue(null);
+  const signedOut = await get("my_builds");
+  expect(signedOut.status).toBe(401);
+  expect((await signedOut.json()).error).toBe(MY_BUILDS_REFUSAL);
+  auth.getUser.mockResolvedValue({ id: "11111111-2222-4333-8444-555555555555", name: "Thrall#1" });
+  auth.authQuery.mockResolvedValue([]);
+  const mine = await get("my_builds");
+  expect(mine.status).toBe(200);
+  expect((await mine.json()).text).toContain("No saved builds yet.");
+  expect(store.api).not.toHaveBeenCalled();
 });
 
 test("with the data guard on, the quota decides before the tool runs", async () => {

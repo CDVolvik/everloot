@@ -39,7 +39,8 @@ function SearchIcon() {
   );
 }
 
-export default function Header() {
+/** `savedBuilds` adds My builds to the account links (EVERLOOT_SAVED_BUILDS, read by the layout). */
+export default function Header({ savedBuilds = false }: { savedBuilds?: boolean }) {
   const path = usePathname() ?? "/";
   const [open, setOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
@@ -160,7 +161,7 @@ export default function Header() {
             className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center text-fg-2 hover:text-accent xl:hidden"
           ><SearchIcon /></button>
           <GameVersionLabel className="hidden shrink-0 sm:block" />
-          <div className="hidden shrink-0 sm:block"><AccountControls /></div>
+          <div className="hidden shrink-0 sm:block"><AccountControls savedBuilds={savedBuilds} /></div>
           <Link href="/addon" onClick={closeAll} className="btn btn-primary min-h-10 shrink-0 whitespace-nowrap px-4 text-sm">Get the addon</Link>
           <button ref={toggle} type="button" aria-label={open ? "Close menu" : "Menu"} aria-expanded={open} aria-controls="site-navigation" onClick={() => setOpen(!open)} className="btn min-h-10 shrink-0 px-3 text-sm lg:hidden">
             {open ? "Close" : "Menu"}
@@ -210,7 +211,7 @@ export default function Header() {
                 </div>
               ))}
             </div>
-            <div className="border-t border-line pt-4 sm:hidden"><AccountControls /></div>
+            <div className="border-t border-line pt-4 sm:hidden"><AccountControls savedBuilds={savedBuilds} /></div>
           </div>
         </nav>
       )}

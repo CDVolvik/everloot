@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { RETURN_COOKIE, safeReturnTo } from "@/lib/auth/return-to";
 import { createSession, SESSION_SECONDS, siteUrl } from "@/lib/supabase/server";
 
 export async function GET(req: Request) {
@@ -8,7 +9,9 @@ export async function GET(req: Request) {
   const state = url.searchParams.get("state");
   const jar = await cookies();
   const storedState = jar.get("bnet_oauth_state")?.value;
+  const returnTo = safeReturnTo(jar.get(RETURN_COOKIE)?.value) ?? "";
   jar.delete("bnet_oauth_state");
+  jar.delete(RETURN_COOKIE);
   const failure = (reason: string) => NextResponse.redirect(`${siteUrl()}/?auth_error=${reason}`);
   if (!state || !storedState || state !== storedState) return failure("invalid_state");
   if (url.searchParams.has("error")) return failure("access_denied");
@@ -37,7 +40,7 @@ export async function GET(req: Request) {
     if (!/^\d+$/.test(id) || !profile.battletag) throw new Error("invalid_profile");
     // Provider tokens are used only for this request and are never persisted.
     const token = await createSession({ id, battletag: profile.battletag });
-    const response = NextResponse.redirect(siteUrl());
+    const response = NextResponse.redirect(`${siteUrl()}${returnTo}`);
     response.cookies.set("everloot_session", token, {
       httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", maxAge: SESSION_SECONDS, path: "/",
     });

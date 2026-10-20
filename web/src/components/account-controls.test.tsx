@@ -51,6 +51,14 @@ describe("header account controls", () => {
     expect(signInLink()?.getAttribute("href")).toBe("/sign-in");
   });
 
+  it("links a signed-in visitor to My builds only with saved builds on", async () => {
+    vi.stubGlobal("fetch", async () => Response.json({ user }));
+    await act(async () => root.render(<Header />));
+    expect(container.querySelector('a[href="/me"]')).toBeNull();
+    await act(async () => root.render(<Header savedBuilds />));
+    expect(container.querySelector('a[href="/me"]')?.textContent).toBe("My builds");
+  });
+
   it("signs an authenticated visitor out with POST and returns to sign-in", async () => {
     let logoutMethod: string | undefined;
     vi.stubGlobal("fetch", async (url: string, options?: RequestInit) => {

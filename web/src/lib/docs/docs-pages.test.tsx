@@ -25,6 +25,7 @@ import sitemap from "@/app/sitemap";
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
 import { allDocsPages, endpointSlug } from "./nav";
+import { MY_BUILDS_REFUSAL } from "@/lib/saved-builds";
 
 type PageModule = { default: (props: { params: Promise<Record<string, string>> }) => unknown };
 const modules = import.meta.glob<PageModule>("../../app/docs/**/page.tsx", { eager: true });
@@ -183,6 +184,17 @@ test("with the data guard on it states the limits it enforces, how to send a key
     ]) expect(on).toContain(text);
     expect(on).not.toContain("This endpoint has no limit of its own today");
     expect(on).not.toMatch(/premium|paid|upgrade|subscribe|coming soon/i);
+  } finally { vi.unstubAllEnvs(); }
+});
+
+test("my_builds is documented only while saved builds are on: the key permission, what it returns, the refusal", async () => {
+  expect(decoded).not.toContain("my_builds");
+  vi.stubEnv("EVERLOOT_DATA_GUARD", "1");
+  vi.stubEnv("EVERLOOT_SAVED_BUILDS", "1");
+  try {
+    const on = decode(stripTags(await renderDocs()));
+    for (const text of ["One more tool, my_builds", "It is not in the public list", "Read my saved builds", "With a build's slug",
+      "short link while sharing is on", `"${MY_BUILDS_REFUSAL}"`, "the same key adds a my_builds tool"]) expect(on).toContain(text);
   } finally { vi.unstubAllEnvs(); }
 });
 

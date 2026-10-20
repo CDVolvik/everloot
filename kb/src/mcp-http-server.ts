@@ -1,7 +1,7 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import type { DB } from "./db.js";
-import { createKnowledgeServer, type ChangesLoader, type CompletionLoader, type CorpusLoader, type EcosystemLoader, type MarketLoader } from "./mcp-server.js";
+import { createKnowledgeServer, type ChangesLoader, type CompletionLoader, type CorpusLoader, type EcosystemLoader, type ExtraTool, type MarketLoader } from "./mcp-server.js";
 import type { CensusLoader } from "./population.js";
 
 export interface PublicMcpConfig {
@@ -25,10 +25,18 @@ export interface PublicMcpConfig {
   ecosystem?: EcosystemLoader;
   /** The web route's census rollup reader, aggregate only; without it population says it is not connected. */
   census?: CensusLoader;
+  /**
+   * Tools for this caller only, decided per request from its headers and the JSON-RPC body (the site's account
+   * tools, for a player's own key). Without it, or when it returns none, the server lists the public tools alone.
+   */
+  extraTools?: (req: Request, body: string) => readonly ExtraTool[] | Promise<readonly ExtraTool[]>;
 }
 
-export function createPublicMcpServer(config: { db: DB; corpus?: CorpusLoader; market?: MarketLoader; completion?: CompletionLoader; changes?: ChangesLoader; ecosystem?: EcosystemLoader; census?: CensusLoader }) {
-  const server = createKnowledgeServer(config.db, { corpus: config.corpus, market: config.market, completion: config.completion, changes: config.changes, ecosystem: config.ecosystem, census: config.census });
+export function createPublicMcpServer(
+  config: { db: DB; corpus?: CorpusLoader; market?: MarketLoader; completion?: CompletionLoader; changes?: ChangesLoader; ecosystem?: EcosystemLoader; census?: CensusLoader },
+  extraTools: readonly ExtraTool[] = [],
+) {
+  const server = createKnowledgeServer(config.db, { corpus: config.corpus, market: config.market, completion: config.completion, changes: config.changes, ecosystem: config.ecosystem, census: config.census }, extraTools);
   const transport = new WebStandardStreamableHTTPServerTransport({
     sessionIdGenerator: undefined, enableJsonResponse: true,
   });
@@ -87,7 +95,13 @@ export function createMcpHttpHandler(config: PublicMcpConfig) {
       } finally { reader.releaseLock(); }
     }
     const body = Buffer.concat(chunks).toString("utf8");
-    const { server, transport } = createPublicMcpServer(config);
+    let extraTools: readonly ExtraTool[] = [];
+    try {
+      if (config.extraTools) extraTools = await config.extraTools(req, body);
+    } catch {
+      return reply(500, "Internal server error");
+    }
+    const { server, transport } = createPublicMcpServer(config, extraTools);
     try {
       await server.connect(transport);
       const response = await transport.handleRequest(new Request(req.url, { method: "POST", headers: req.headers, body }));

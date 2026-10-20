@@ -53,6 +53,28 @@ test("makes a key, shows it once, and revokes one", async () => {
   expect(buttonNamed("Revoke")).toBeUndefined();
 });
 
+test("with saved builds on, a key can be made to read them, and the list says which keys can", async () => {
+  const posts: unknown[] = [];
+  vi.stubGlobal("fetch", async (_url: string, init?: RequestInit) => {
+    if (init?.method === "POST") { posts.push(JSON.parse(String(init.body))); return Response.json({ ok: true, id: "x", token: `evl_${"c".repeat(64)}`, hint: "cccc" }, { status: 201 }); }
+    return Response.json({ ok: true, keys: [{ ...KEY, scopes: ["read:public", "read:own"] }], limit: 5, ownScope: true });
+  });
+  await act(async () => root.render(<ApiKeys />));
+  expect(container.textContent).toContain("reads your saved builds");
+  const box = container.querySelector<HTMLInputElement>('input[type="checkbox"]')!;
+  expect(box.parentElement!.textContent).toContain("Read my saved builds");
+  await act(async () => box.parentElement!.click());
+  expect(box.checked).toBe(true);
+  await act(async () => buttonNamed("Make a key")!.click());
+  expect(posts).toEqual([{ label: "", builds: true }]);
+});
+
+test("without saved builds there is no such option", async () => {
+  vi.stubGlobal("fetch", async () => Response.json({ ok: true, keys: [], limit: 5 }));
+  await act(async () => root.render(<ApiKeys />));
+  expect(container.querySelector('input[type="checkbox"]')).toBeNull();
+});
+
 test("a revoked key offers Delete, which erases it", async () => {
   const calls: string[] = [];
   vi.stubGlobal("fetch", async (url: string, init?: RequestInit) => {

@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-export default function AccountControls() {
+/** Sign in, or the signed-in links: My builds (with saved builds on), Account and Sign out. */
+export default function AccountControls({ savedBuilds = false }: { savedBuilds?: boolean }) {
   const router = useRouter();
   const [status, setStatus] = useState<"loading" | "anonymous" | "signed-in" | "unavailable">("loading");
   const [retry, setRetry] = useState(0);
@@ -47,7 +48,7 @@ export default function AccountControls() {
   return (
     <div className="relative shrink-0">
       {status === "anonymous" ? <a href="/sign-in" className={controlClass}>Sign in</a>
-        : status === "signed-in" ? <span className="inline-flex"><a href="/account" className={controlClass}>Account</a><button type="button" disabled={signingOut} aria-busy={signingOut} onClick={signOut} className={controlClass}>Sign out</button></span>
+        : status === "signed-in" ? <span className="inline-flex">{savedBuilds && <a href="/me" className={controlClass}>My builds</a>}<a href="/account" className={controlClass}>Account</a><button type="button" disabled={signingOut} aria-busy={signingOut} onClick={signOut} className={controlClass}>Sign out</button></span>
         : status === "unavailable" ? <button type="button" aria-label="Retry account status" onClick={() => setRetry(retry + 1)} className={controlClass}>Retry</button>
         : <button type="button" disabled aria-busy="true" className={controlClass}>Account</button>}
       {error && <p role="alert" className="absolute right-0 top-full mt-2 w-56 rounded-lg border border-line bg-canvas p-3 text-sm text-fg">{error}</p>}

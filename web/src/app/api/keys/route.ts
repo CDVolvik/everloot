@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
-import { cleanLabel, createKey, deleteKey, KEYS_MADE_PER_DAY, KEYS_PER_ACCOUNT, listKeys, revokeKey, validKeyId } from "@/lib/api-keys";
+import { cleanLabel, createKey, deleteKey, KEYS_MADE_PER_DAY, KEYS_PER_ACCOUNT, listKeys, OWN_SCOPES, revokeKey, validKeyId } from "@/lib/api-keys";
 import { guardOn } from "@/lib/data-guard";
+import { savedBuildsOn } from "@/lib/saved-builds";
 import { getUser, siteUrl } from "@/lib/supabase/server";
 
 /**
  * The signed-in player's free API keys: GET lists them, POST makes one (shown once), DELETE ?id= revokes
  * one, DELETE ?id=&erase=1 deletes a revoked one with its counts. Battle.net sign-in is the identity;
- * nothing works until EVERLOOT_DATA_GUARD=1.
+ * nothing works until EVERLOOT_DATA_GUARD=1. With saved builds on, POST { builds: true } makes a key that
+ * can also read the owner's saved builds, and GET says so with `ownScope`.
  */
 export const dynamic = "force-dynamic";
 
@@ -26,7 +28,7 @@ export async function GET(req: Request) {
   try {
     const user = await account(req, false);
     if (user instanceof Response) return user;
-    return NextResponse.json({ ok: true, keys: await listKeys(user.id), limit: KEYS_PER_ACCOUNT }, { headers });
+    return NextResponse.json({ ok: true, keys: await listKeys(user.id), limit: KEYS_PER_ACCOUNT, ownScope: savedBuildsOn() }, { headers });
   } catch {
     return fail(503, "Keys are temporarily unavailable.");
   }
@@ -38,7 +40,8 @@ export async function POST(req: Request) {
     if (user instanceof Response) return user;
     let body: unknown = {};
     try { body = await req.json(); } catch {}
-    const made = await createKey(user.id, cleanLabel((body as { label?: unknown } | null)?.label));
+    const fields = body as { label?: unknown; builds?: unknown } | null;
+    const made = await createKey(user.id, cleanLabel(fields?.label), fields?.builds === true && savedBuildsOn() ? OWN_SCOPES : undefined);
     if ("refused" in made) {
       return made.refused === "live_limit" ? fail(409, `You already have ${KEYS_PER_ACCOUNT} keys. Revoke one first.`)
         : fail(429, `You made ${KEYS_MADE_PER_DAY} keys in the last day. Try again tomorrow.`);
