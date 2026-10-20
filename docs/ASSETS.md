@@ -267,6 +267,10 @@ repeat these steps for a new build or another deployment.
    replaces it. The server reads it with the read-only key from step 7, only for the build of the
    committed client layer. Without it, every unconfirmed item reads "Item N".
 
+   The server looks in the folder at the end of `NEXT_PUBLIC_GAME_ASSETS_URL`. If that is a re-extract of
+   the same build under another name (production's ends in `-2`), add `--folder=<that folder>`; the script
+   refuses a folder of another build. Then open an item page, such as `/database/items/25`, to check the name.
+
    Quest titles, item set names and spell names follow the same path ([data policy](DATA_POLICY.md),
    "Quest titles from the game files and the Warcraft Wiki" and "Item set and spell names from the game
    files"):

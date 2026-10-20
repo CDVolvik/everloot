@@ -78,11 +78,17 @@ export const NAME_FILES = {
 /**
  * The build folder a shown-names file goes under in the private bucket, from the folder it was written to
  * (`<build folder>-names`), and what is wrong with the file. Nothing wrong: `problems` is empty.
+ * `live` is the folder the site reads, the last part of NEXT_PUBLIC_GAME_ASSETS_URL, when a re-extract of the
+ * same build was uploaded under another name (`<build folder>-2`); another build's folder is refused.
+ * @param {string | null} [live]
  */
-export function namesFileCheck(json, folderName, fileName = "item-names.json") {
+export function namesFileCheck(json, folderName, fileName = "item-names.json", live = null) {
   const problems = [];
-  const prefix = /^([A-Za-z0-9_.-]+)-names$/.exec(folderName)?.[1] ?? null;
-  if (!prefix) problems.push(`the file is not in a <build folder>-names folder (${folderName})`);
+  const built = /^([A-Za-z0-9_.-]+)-names$/.exec(folderName)?.[1] ?? null;
+  if (!built) problems.push(`the file is not in a <build folder>-names folder (${folderName})`);
+  const sameBuild = live !== null && built !== null && /^[A-Za-z0-9_.-]+$/.test(live) && (live === built || live.startsWith(`${built}-`));
+  if (live !== null && built && !sameBuild) problems.push(`--folder ${live} is not a folder of build ${built}`);
+  const prefix = live !== null ? (sameBuild ? live : null) : built;
   const kind = Object.hasOwn(NAME_FILES, fileName) ? NAME_FILES[fileName] : null;
   if (!kind) problems.push(`${fileName} is not a names file (${Object.keys(NAME_FILES).join(", ")})`);
   else if (json?.schema !== kind.schema) problems.push(`schema is ${json?.schema}, expected ${kind.schema}`);

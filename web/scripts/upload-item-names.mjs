@@ -2,10 +2,12 @@
 // key: the item names (`npm run kb -- item-names`), and the quest titles, item set names and spell names
 // (`npm run kb -- game-names`). A maintainer runs it with their own credentials, once per file.
 //
-//   node scripts/upload-item-names.mjs <kb/data/assets/<build folder>-names/<file>> [--dry-run]
+//   node scripts/upload-item-names.mjs <kb/data/assets/<build folder>-names/<file>> [--folder=<live folder>] [--dry-run]
 //   (<file>: item-names.json, quest-names.json, item-set-names.json or spell-names.json)
 //
-// The file goes to <private bucket>/<build folder>/<file>, beside the item tooltip facts. Unlike them it changes
+// The file goes to <private bucket>/<build folder>/<file>, beside the item tooltip facts. The site reads the folder
+// at the end of NEXT_PUBLIC_GAME_ASSETS_URL; when that is a re-extract of the build (production's ends in `-2`),
+// name it with --folder. Unlike them it changes
 // within a build (the ledger grows as sources arrive), so it is cached for five minutes, not a year.
 // Same environment as upload-game-assets.mjs: ASSETS_S3_ENDPOINT, ASSETS_BUCKET (only to refuse it),
 // ASSETS_PRIVATE_BUCKET, ASSETS_ACCESS_KEY_ID, ASSETS_SECRET_ACCESS_KEY, ASSETS_REGION (optional).
@@ -17,8 +19,9 @@ import { NAME_FILES, namesFileCheck, withRetry } from "./game-assets-upload.mjs"
 
 const args = process.argv.slice(2);
 const dry = args.includes("--dry-run");
-const files = args.filter((a) => a !== "--dry-run");
-if (files.length !== 1 || files[0].startsWith("--")) fail(`usage: node scripts/upload-item-names.mjs <.../<build folder>-names/<${Object.keys(NAME_FILES).join(" | ")}>> [--dry-run]`);
+const live = args.find((a) => a.startsWith("--folder="))?.slice("--folder=".length) ?? null;
+const files = args.filter((a) => a !== "--dry-run" && !a.startsWith("--folder="));
+if (files.length !== 1 || files[0].startsWith("--") || live === "") fail(`usage: node scripts/upload-item-names.mjs <.../<build folder>-names/<${Object.keys(NAME_FILES).join(" | ")}>> [--folder=<live folder>] [--dry-run]`);
 
 function fail(message) {
   console.error(message);
@@ -29,7 +32,7 @@ const file = resolve(files[0]);
 const name = basename(file);
 if (!Object.hasOwn(NAME_FILES, name)) fail(`expected one of ${Object.keys(NAME_FILES).join(", ")}, not ${name}`);
 const body = readFileSync(file);
-const { prefix, problems } = namesFileCheck(JSON.parse(body.toString("utf8")), basename(dirname(file)), name);
+const { prefix, problems } = namesFileCheck(JSON.parse(body.toString("utf8")), basename(dirname(file)), name, live);
 if (problems.length) fail(`Not uploaded:\n${problems.join("\n")}`);
 const { count, build } = JSON.parse(body.toString("utf8"));
 console.log(`${count} names for build ${build.version} -> <private bucket>/${prefix}/${name}`);
