@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, test } from "vitest";
 import { CURRENT_BUILD, TABLES, type BuffTable } from "@/data/game-data/raid";
 import {
-  coverage, decodeRaid, emptySlots, encodeRaid, findCode, groupsOf, resize, roleOf, roster, SIZES, swapSlots, treeNames,
+  coverage, decodeRaid, describeRaid, emptySlots, encodeRaid, findCode, groupsOf, resize, roleOf, roster, SIZES, swapSlots, treeNames,
   type Slot, type Slots,
 } from "./raid";
 
@@ -324,4 +324,14 @@ describe("roles", () => {
     expect(r.classes.druid).toBe(0);
     expect(r.roles).toEqual({ tank: 1, healer: 1, damage: 1, unknown: 1 });
   });
+});
+
+test("a raid is described by its size and roles, for page titles and link previews", () => {
+  const slots = emptySlots(10);
+  slots[0] = { class: "warrior", tree: 3 };
+  slots[1] = { class: "priest", tree: 2 };
+  slots[2] = { class: "mage", tree: 0 };
+  slots[3] = { class: "druid", tree: 2 };
+  expect(describeRaid(10, slots)).toEqual({ title: "10-player raid", roles: "1 tank, 1 healer, 1 damage, 1 not known", filled: 4 });
+  expect(describeRaid(20, emptySlots(20)).roles).toBe("0 tanks, 0 healers, 0 damage");
 });

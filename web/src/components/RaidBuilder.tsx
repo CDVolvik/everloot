@@ -54,7 +54,8 @@ function reach(f: FamilyCoverage, table: BuffTable): string {
  * without the asset URL. The icons sit beside the names, which stay; without them the builder is the
  * text it always was.
  */
-export default function RaidBuilder({ art = null }: { art?: RaidArt | null } = {}) {
+/** `initialCode` is the raid from a raid link (/tools/raid/r/<code>), opened when the address has no #raid=. */
+export default function RaidBuilder({ art = null, initialCode }: { art?: RaidArt | null; initialCode?: string } = {}) {
   const classIcon = (c: ClassName, size = 20, gap = "mr-2") => {
     const src = art?.classes[c];
     return src ? <GameIcon src={src} size={size} className={gap} /> : null;
@@ -113,6 +114,8 @@ export default function RaidBuilder({ art = null }: { art?: RaidArt | null } = {
   }, [state]);
 
   useEffect(() => {
+    // A raid link carries its code in the path; move it into the planner's #raid= address and read it there.
+    if (!location.hash && initialCode) history.replaceState(null, "", `/tools/raid#raid=${initialCode}`);
     if (location.hash.startsWith("#raid=")) load(location.hash.slice(6), false);
     setReady(true);
     // A link pasted into the address bar of this tab changes only the fragment. Our own updates use
@@ -126,7 +129,8 @@ export default function RaidBuilder({ art = null }: { art?: RaidArt | null } = {
 
   const code = useMemo(() => encodeRaid({ size, build: table.build, slots }), [size, slots]);
   const empty = slots.every((s) => !s);
-  const link = typeof window === "undefined" ? "" : `${location.origin}${location.pathname}#raid=${code}`;
+  // The link handed out is the raid link: same raid, and its preview in a chat names the roster.
+  const link = typeof window === "undefined" ? "" : `${location.origin}/tools/raid/r/${code}`;
 
   useEffect(() => {
     if (!ready) return;

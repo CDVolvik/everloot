@@ -95,6 +95,14 @@ export function roster(slots: Slots): Roster {
   return { filled, classes, roles };
 }
 
+/** A raid in one line for a page title or a link preview: "20-player raid", "2 tanks, 5 healers, 10 damage". */
+export function describeRaid(size: Size, slots: Slots): { title: string; roles: string; filled: number } {
+  const r = roster(slots);
+  const n = (count: number, one: string, many = `${one}s`) => `${count} ${count === 1 ? one : many}`;
+  const roles = [n(r.roles.tank, "tank"), n(r.roles.healer, "healer"), `${r.roles.damage} damage`, ...(r.roles.unknown ? [`${r.roles.unknown} not known`] : [])].join(", ");
+  return { title: `${size}-player raid`, roles, filled: r.filled };
+}
+
 /* ---------- Coverage ---------- */
 
 /**
