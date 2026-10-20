@@ -12,6 +12,21 @@ export const ACCOUNT_KEY_FILE = "everloot-key.txt";
 export const EVERLOOT_KEY = /^evl_[a-f0-9]{64}$/;
 
 const keyPath = (dataFolder: string) => join(dataFolder, ACCOUNT_KEY_FILE);
+/** The site origin the key was checked against at sign-in. Only that site is sent the key in the background. */
+export const KEY_ORIGIN_FILE = "everloot-key-origin.txt";
+const originPath = (dataFolder: string) => join(dataFolder, KEY_ORIGIN_FILE);
+/** Keys pasted before the origin was kept were checked against the only site there was. */
+const FIRST_ORIGIN = "https://everloot.app";
+
+export function readKeyOrigin(dataFolder: string): string {
+  try { return readFileSync(originPath(dataFolder), "utf8").trim() || FIRST_ORIGIN; } catch { return FIRST_ORIGIN; }
+}
+
+export function writeKeyOrigin(dataFolder: string, endpoint: string): void {
+  mkdirSync(dataFolder, { recursive: true });
+  writeFileSync(`${originPath(dataFolder)}.tmp`, new URL(endpoint).origin + "\n");
+  renameSync(`${originPath(dataFolder)}.tmp`, originPath(dataFolder));
+}
 
 export function readAccountKey(dataFolder: string): string | null {
   try {
@@ -48,6 +63,7 @@ export async function signIn(dataFolder: string, endpoint: string, raw: string, 
   mkdirSync(dataFolder, { recursive: true });
   writeFileSync(`${keyPath(dataFolder)}.tmp`, key + "\n", { mode: 0o600 });
   renameSync(`${keyPath(dataFolder)}.tmp`, keyPath(dataFolder));
+  writeKeyOrigin(dataFolder, endpoint);
   return accountInfo(dataFolder);
 }
 
@@ -61,5 +77,6 @@ export function explainKeyError(message: string): string {
 /** Forgets the key on this computer. The key itself stays on the account until it is revoked on everloot.app. */
 export function signOut(dataFolder: string): Account {
   if (existsSync(keyPath(dataFolder))) rmSync(keyPath(dataFolder));
+  if (existsSync(originPath(dataFolder))) rmSync(originPath(dataFolder));
   return accountInfo(dataFolder);
 }

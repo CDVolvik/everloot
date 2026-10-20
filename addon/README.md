@@ -171,6 +171,9 @@ whether it is on and how many characters it holds; `/everloot players off` stops
   it (it also has a paste box), `plan hide` closes it, `plan clear` forgets it. When the talent window is
   open it also puts a green overlay on the next talent and red ones on mismatches. It never spends a
   point, clicks, imports a loadout or acts for you. The plan is kept in your SavedVariables file.
+- **Saved builds.** When the Desktop App has synced your everloot.app builds into the `EverlootBuilds`
+  slot addon, `/everloot plan` also lists them in chat, this character's first (the label's name, and its realm when it has one), then the rest of your class,
+  and `/everloot plan <number>` loads one as if you pasted its code (`/everloot plan <number> 2` loads its second talent set, marked `[2 sets]` in the list). Nothing is saved or uploaded for it.
 
 ### Share code, version 1
 

@@ -145,12 +145,103 @@ local function spellName(configID, nodeId, state, choice)
   return "node " .. nodeId
 end
 
+---------------------------------------------------------------- saved builds (EverlootBuilds slot addon)
+
+-- The Desktop App writes the player's saved builds from everloot.app into the EverlootBuilds slot addon,
+-- which sets EverlootBuildsData = { version, syncedAt, builds = { { name, character, realm, class, code,
+-- code2, active, gameBuild } } }. Read only, at command time; nothing is saved or sent from here.
+
+local function savedData()
+  local data = EverlootBuildsData
+  if type(data) == "table" and type(data.builds) == "table" then return data end
+  return nil
+end
+
+--- Chat-safe: one line, and a typed | cannot start a WoW escape sequence.
+local function plain(text)
+  return (text:gsub("[%z\1-\31\127]", " "):gsub("|", "||"))
+end
+
+--- Lower case for comparing names: ASCII, plus the Latin-1 capitals typed as UTF-8 (À to Þ, not ×),
+--- which string.lower leaves alone.
+local function fold(text)
+  -- Byte ranges, not string.lower or %u: those follow the C locale, which may fold single high bytes.
+  return (text:gsub("[A-Z]", function(c) return string.char(c:byte() + 32) end):gsub("\195([\128-\158])", function(c)
+    if c ~= "\151" then return "\195" .. string.char(c:byte() + 32) end
+  end))
+end
+P.Fold = fold
+
+--- The player's realm, folded with its spaces taken out; nil when the client does not say.
+local function realmKey(realm)
+  if type(realm) ~= "string" or realm == "" then return nil end
+  return (fold(realm):gsub("[ \t]", ""))
+end
+
+--- The saved builds for this player, in the order /everloot plan numbers them: those filed under this
+--- character (name, case-insensitive; the label's realm too when it has one) and class, the active one
+--- first, then the class's other builds.
+--- Nil when the EverlootBuilds addon is not loaded.
+function P.SavedBuilds()
+  local data = savedData()
+  if not data then return nil end
+  local class = T.Player()
+  local me
+  if UnitName then
+    local ok, name = pcall(UnitName, "player")
+    if ok and type(name) == "string" and name ~= "" then me = fold(name) end
+  end
+  local here
+  if GetRealmName then
+    local ok, realm = pcall(GetRealmName)
+    if ok then here = realmKey(realm) end
+  end
+  local active, mine, others = {}, {}, {}
+  for _, b in ipairs(data.builds) do
+    if type(b) == "table" and type(b.name) == "string" and type(b.code) == "string" and type(b.class) == "string" then
+      if not class or b.class:gsub("%A", ""):upper() == class then
+        local realmOk = b.realm == nil or (here ~= nil and realmKey(b.realm) == here)
+        if me and type(b.character) == "string" and fold(b.character) == me and realmOk then
+          table.insert(b.active == true and active or mine, b)
+        else
+          others[#others + 1] = b
+        end
+      end
+    end
+  end
+  for _, b in ipairs(mine) do active[#active + 1] = b end
+  for _, b in ipairs(others) do active[#active + 1] = b end
+  return active
+end
+
+--- Print the numbered list. Returns false when there is no EverlootBuilds data.
+function P.ListSaved()
+  local list = P.SavedBuilds()
+  if not list then return false end
+  if #list == 0 then
+    print("Everloot: no saved builds for this class in the last Desktop App sync.")
+    return true
+  end
+  print("Everloot: your saved builds (/everloot plan <number> loads one, <number> 2 its second set):")
+  for i, b in ipairs(list) do
+    if i > 20 then print("  and " .. (#list - 20) .. " more, up to /everloot plan " .. #list); break end
+    local who = type(b.character) == "string" and (" - " .. plain(b.character)) or ""
+    print(string.format("  %d. %s%s%s%s", i, plain(b.name), who, b.active == true and " (active)" or "",
+      type(b.code2) == "string" and " [2 sets]" or ""))
+  end
+  return true
+end
+
 local current       -- the loaded plan
 local last          -- { configID, state, result } from the latest refresh
 
 --- The text lines shown in the panel and printed to chat.
 local function lines()
-  if not current then return { "No plan loaded. Paste an Everloot share code below, or /everloot plan <code>." } end
+  if not current then
+    return { "No plan loaded. Paste an Everloot share code below, or /everloot plan <code>.",
+      savedData() and "/everloot plan lists your saved builds; /everloot plan <number> loads one."
+        or "Builds saved on everloot.app show here after a Desktop App sync and /reload." }
+  end
   local out = {}
   local here = EverlootDB and EverlootDB.clientBuild
   out[#out + 1] = string.format("%s plan, made on build %s", current.class, current.build)
@@ -363,11 +454,38 @@ function P.Clear()
   if panel then panel.body:SetText(table.concat(lines(), "\n")) end
 end
 
---- /everloot plan [code | show | hide | clear]
+--- Load saved build number n from the list /everloot plan prints, exactly like a pasted code.
+--- set 2 loads the build's second talent set.
+function P.LoadSaved(n, set)
+  local list = P.SavedBuilds()
+  if not list then
+    print("Everloot: no saved builds here yet. Sync them with the Everloot Desktop App, then /reload.")
+    return false
+  end
+  local build = list[n]
+  if not build then
+    print("Everloot: there is no saved build " .. n .. ". /everloot plan lists them.")
+    return false
+  end
+  set = set or 1
+  local code = set == 1 and build.code or set == 2 and build.code2 or nil
+  if type(code) ~= "string" then
+    print(set == 2 and ("Everloot: saved build " .. n .. " has no second talent set.")
+      or ("Everloot: a saved build has talent sets 1 and 2, not " .. set .. "."))
+    return false
+  end
+  print("Everloot: loading saved build " .. n .. (set == 2 and " (second set)" or "") .. ", " .. plain(build.name) .. ".")
+  return P.Load(code)
+end
+
+--- /everloot plan [code | number | show | hide | clear]
 function E.PlanCommand(arg)
   arg = (arg or ""):gsub("^%s+", ""):gsub("%s+$", "")
   local word = arg:lower()
-  if word == "" or word == "show" then return P.Show() end
+  if word == "" then P.ListSaved(); return P.Show() end
+  if word == "show" then return P.Show() end
+  local n, set = word:match("^(%d+)%s*(%d*)$")
+  if n then return P.LoadSaved(tonumber(n), tonumber(set)) end
   if word == "hide" then userHidden = true; if panel then panel:Hide() end return end
   if word == "clear" then P.Clear(); print("Everloot: plan cleared."); return end
   P.Load(arg)
