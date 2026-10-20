@@ -154,6 +154,9 @@ SlashCmdList["EVERLOOT"] = function(msg)
   -- A share code is case-sensitive, so it is routed before the command is lowercased.
   local plan = type(msg) == "string" and msg:match("^%s*[Pp][Ll][Aa][Nn]%s*(.-)%s*$")
   if plan and E.PlanCommand and msg:lower():match("^%s*plan%f[%s%z]") then return E.PlanCommand(plan) end
+  -- An item name or link keeps its case too: the price of an item, from the files already in the game.
+  local item = type(msg) == "string" and msg:match("^%s*[Pp][Rr][Ii][Cc][Ee]%s*(.-)%s*$")
+  if item and E.PriceCommand and msg:lower():match("^%s*price%f[%s%z]") then return E.PriceCommand(item) end
   msg = msg and msg:lower():gsub("^%s+", "") or ""
   if msg == "status" or msg == "" then
     print(E:Status())
@@ -204,6 +207,6 @@ SlashCmdList["EVERLOOT"] = function(msg)
       print("Everloot: installed addon list off; all recorded addon rows were deleted from this file. /reload to apply.")
     end
   else
-    print("Everloot commands: /everloot status, /everloot auctions on|off, /everloot scan, /everloot addons on|off, /everloot completion [on|off], /everloot census [on|off], /everloot selftest, /everloot talents, /everloot plan <share code>, /everloot raid [code], /ask <question>")
+    print("Everloot commands: /everloot status, /everloot auctions on|off, /everloot scan, /everloot price [item], /everloot addons on|off, /everloot completion [on|off], /everloot census [on|off], /everloot selftest, /everloot talents, /everloot plan <share code>, /everloot raid [code], /ask <question>")
   end
 end
