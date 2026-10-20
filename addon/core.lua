@@ -158,6 +158,8 @@ SlashCmdList["EVERLOOT"] = function(msg)
   local item = type(msg) == "string" and msg:match("^%s*[Pp][Rr][Ii][Cc][Ee]%s*(.-)%s*$")
   if item and E.PriceCommand and msg:lower():match("^%s*price%f[%s%z]") then return E.PriceCommand(item) end
   msg = msg and msg:lower():gsub("^%s+", "") or ""
+  local gph = msg:match("^gph%f[%s%z]%s*(.-)%s*$")
+  if gph and E.GphCommand then return E.GphCommand(gph) end
   if msg == "status" or msg == "" then
     print(E:Status())
   elseif msg == "version" then
@@ -204,6 +206,10 @@ SlashCmdList["EVERLOOT"] = function(msg)
     end
   elseif msg == "players" and E.Players then
     print(E.Players.StatusLine())
+  elseif msg == "scanprompt on" or msg == "scanprompt off" then
+    EverlootDB.scanPrompt = (msg == "scanprompt on")
+    print("Everloot: the scan prompt at the auction house is " .. (EverlootDB.scanPrompt and "on" or "off")
+      .. ". The Everloot scan button and /everloot scan still work.")
   elseif msg == "scan" then
     if E.StartScan then E:StartScan() else print("Everloot: full scans are not available in this client.") end
   elseif msg == "addons on" or msg == "addons off" then
@@ -218,6 +224,6 @@ SlashCmdList["EVERLOOT"] = function(msg)
       print("Everloot: installed addon list off; all recorded addon rows were deleted from this file. /reload to apply.")
     end
   else
-    print("Everloot commands: /everloot status, /everloot auctions on|off, /everloot scan, /everloot price [item], /everloot addons on|off, /everloot completion [on|off], /everloot census [on|off], /everloot players [on|off], /everloot selftest, /everloot talents, /everloot plan <share code>, /everloot raid [code], /ask <question>")
+    print("Everloot commands: /everloot status, /everloot auctions on|off, /everloot scan, /everloot scanprompt on|off, /everloot price [item], /everloot gph [start|pause|stop|reset|show|history], /everloot addons on|off, /everloot completion [on|off], /everloot census [on|off], /everloot players [on|off], /everloot selftest, /everloot talents, /everloot plan <share code>, /everloot raid [code], /ask <question>")
   end
 end

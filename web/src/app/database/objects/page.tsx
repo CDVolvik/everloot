@@ -1,63 +1,91 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { objectList } from "../../../../../kb/src/object-page";
-import IdLookup from "@/components/IdLookup";
+import { Container, DataTable, DataTitle, FilterBar, ResultStrip, type Column } from "@/components/ui";
+import type { Crumb } from "@/lib/jsonld";
 import { loadObjectFacts } from "@/lib/objects";
-import { pageMetadata } from "@/lib/seo";
-import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
+import { LINK } from "../entity";
+import { listHref, listMetadata, listQuery, nextSort, NoMatches, NoObservations, PER_PAGE, sortParam, sortRows, Unreadable, type ListQuery, type Search } from "../list-parts";
 
-export const metadata: Metadata = pageMetadata({
+const META = {
   title: "WoW Forever objects: chests, herbs and ore",
   description: "Chests, herbs, ore veins and fishing pools players looted in WoW: Forever, with what came out of them. A frequency is public after 3 install reports.",
   path: "/database/objects",
-});
+};
 export const dynamic = "force-dynamic";
 
-export default async function ObjectsPage() {
+const TRAIL: Crumb[] = [{ name: "Home", path: "/" }, { name: "Database", path: "/database" }, { name: "Objects", path: "/database/objects" }];
+const SORTS = ["id", "windows", "items", "installs"] as const;
+type Sort = (typeof SORTS)[number];
+// Most-looted first, as the list has always read.
+const DEFAULT_SORT = { key: "windows" as Sort, desc: true };
+
+const href = (q: Partial<ListQuery<Sort>>) => listHref("/database/objects", [["q", q.q], ["sort", sortParam(q.sort)], ["page", q.page && q.page > 1 ? String(q.page) : undefined]]);
+
+export async function generateMetadata(props: { searchParams?: Promise<Search> }): Promise<Metadata> {
+  const q = listQuery((await props.searchParams) ?? {}, SORTS);
+  return listMetadata(META, Boolean(q) && !q!.q && !q!.sort && q!.page === 1);
+}
+
+type Row = ReturnType<typeof objectList>[number];
+
+export default async function ObjectsPage(props: { searchParams?: Promise<Search> }) {
+  const q = listQuery((await props.searchParams) ?? {}, SORTS);
+  if (!q) notFound();
   const facts = await loadObjectFacts();
-  const objects = objectList(facts);
+  const all = facts.unreachable ? [] : objectList(facts);
+  // Objects have no names in uploads: the box takes an id.
+  const id = q.q && /^#?\d+$/.test(q.q) ? Number(q.q.replace("#", "")) : null;
+  const matched = q.q ? all.filter((o) => o.objectId === id) : all;
+  const sort = q.sort ?? DEFAULT_SORT;
+  const rows = sortRows(matched, (o) => (sort.key === "windows" ? o.windows : sort.key === "items" ? o.items : sort.key === "installs" ? o.reporters : o.objectId), sort.desc, (o) => o.objectId);
+  const pages = Math.max(1, Math.ceil(rows.length / PER_PAGE));
+  if (q.page > pages) notFound();
+  const shown = rows.slice((q.page - 1) * PER_PAGE, q.page * PER_PAGE);
+  const here = (over: Partial<ListQuery<Sort>>) => href({ ...q, page: 1, ...over });
+
+  const columns: Column<Row>[] = [
+    { key: "id", header: "Object", sortable: true, cell: (o) => <Link href={`/database/objects/${o.objectId}`} className={LINK}>Object {o.objectId}</Link> },
+    { key: "windows", header: "Loot windows", numeric: true, sortable: true, cell: (o) => o.windows },
+    { key: "items", header: "Items seen", numeric: true, sortable: true, cell: (o) => o.items },
+    { key: "installs", header: "Install IDs", numeric: true, sortable: true, cell: (o) => o.reporters },
+  ];
+  const keep = Object.fromEntries(new URLSearchParams(href({ ...q, q: undefined, page: 1 }).split("?")[1] ?? ""));
+  const strip = <ResultStrip total={rows.length} noun={rows.length === 1 ? "object" : "objects"} page={q.page} perPage={PER_PAGE} href={(page) => href({ ...q, page })} label="Object pages" />;
+  const empty = facts.unreachable ? <Unreadable />
+    : q.q ? <>
+        <NoMatches noun="objects" chips={[{ label: `Id: ${q.q}`, href: here({ q: undefined }) }]} clearHref="/database/objects" />
+        {id !== null && <p className="pb-4 text-cell"><Link href={`/database/objects/${id}`} className={LINK}>Open object {id}</Link></p>}
+      </>
+    : <NoObservations>No object has public loot observations yet; each needs loot windows from 3 installs.</NoObservations>;
+
   return (
-    <article className="space-y-8 max-w-4xl">
-      <header className="space-y-3">
-        <p className="font-mono text-xs text-muted">WoW: Forever · objects</p>
-        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">Objects</h1>
-        <p className="text-sm text-fg-2 max-w-2xl">
-          Chests, herbs, ore veins and fishing pools, by the id in their GUID, with what players looted from them.
-          An object is listed once 3 installs have reported loot windows from it.
-        </p>
-      </header>
-      <IdLookup kind="objects" label="Object id" />
-      {facts.unreachable ? (
-        <p className="text-fg-2">{STORAGE_UNREACHABLE}</p>
-      ) : objects.length === 0 ? (
-        <p className="text-fg-2">No object has public loot observations yet. Each needs loot windows from 3 install IDs.</p>
-      ) : (
-        <div className="overflow-x-auto rounded-xl border border-line">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-panel text-xs font-mono text-muted text-left">
-                <th className="px-4 py-3">Object</th>
-                <th className="px-4 py-3 text-right">Loot windows</th>
-                <th className="px-4 py-3 text-right">Items seen</th>
-                <th className="px-4 py-3 text-right">Install IDs</th>
-              </tr>
-            </thead>
-            <tbody>
-              {objects.map((o) => (
-                <tr key={o.objectId} className="border-t border-line bg-panel text-fg">
-                  <td className="px-4 py-3"><Link href={`/database/objects/${o.objectId}`} className="text-accent hover:underline underline-offset-4">Object {o.objectId}</Link></td>
-                  <td className="px-4 py-3 text-right tabular-nums">{o.windows}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{o.items}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{o.reporters}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+    <Container width="data">
+      <article>
+        <DataTitle title="Objects" trail={TRAIL} aside={strip} />
+        <FilterBar
+          label="Object filters"
+          search={{ action: "/database/objects", value: q.q, placeholder: "Object id", label: "Find an object by id", keep }}
+          controls={[]}
+          active={q.q ? 1 : 0}
+          clearHref="/database/objects"
+        />
+        <div className="mt-2">
+          <DataTable
+            dense
+            caption={`Objects with public loot observations: ${rows.length}`}
+            columns={columns}
+            rows={shown}
+            rowKey={(o) => String(o.objectId)}
+            sort={{ key: sort.key, direction: sort.desc ? "desc" : "asc" }}
+            sortHref={(k, dir) => here({ sort: nextSort(k, dir, DEFAULT_SORT) })}
+            meta={(o) => `${o.windows} loot windows · ${o.items} items · ${o.reporters} install IDs`}
+            empty={empty}
+          />
         </div>
-      )}
-      <p className="text-sm text-muted">
-        <Link href="/database" className="text-accent hover:underline underline-offset-4">Forever Database</Link>
-      </p>
-    </article>
+        {pages > 1 && <div className="mt-2">{strip}</div>}
+      </article>
+    </Container>
   );
 }

@@ -64,6 +64,23 @@ export function folderProblems(root, expected, { index, allowed, skip = [] }) {
   return { present, problems };
 }
 
+/**
+ * The build folder a shown-names file (`npm run kb -- item-names`) goes under in the private bucket, from the
+ * folder it was written to (`<build folder>-names`), and what is wrong with the file. Nothing wrong: `problems` is empty.
+ */
+export function itemNamesCheck(json, folderName) {
+  const problems = [];
+  const prefix = /^([A-Za-z0-9_.-]+)-names$/.exec(folderName)?.[1] ?? null;
+  if (!prefix) problems.push(`the file is not in a <build folder>-names folder (${folderName})`);
+  if (json?.schema !== "everloot.item-names/1") problems.push(`schema is ${json?.schema}, expected everloot.item-names/1`);
+  if (typeof json?.build?.version !== "string") problems.push("no build version");
+  if (json?.wiki?.licence !== "CC-BY-SA-4.0") problems.push("the wiki source is not CC-BY-SA-4.0");
+  const names = json?.names && typeof json.names === "object" ? Object.keys(json.names) : null;
+  if (!names) problems.push("no names");
+  else if (names.length !== json.count) problems.push(`count is ${json.count} but the file holds ${names.length} names`);
+  return { prefix, problems };
+}
+
 /** Upload order: the data files, then the index last, so a half-finished upload never lists a file that is not there. */
 export const uploadOrder = (files, index) => [...files.filter((f) => f !== index), index];
 

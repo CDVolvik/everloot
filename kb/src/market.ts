@@ -21,8 +21,13 @@
  * Size: realms, items per realm, installs per item-day and the total entries are capped (MARKET_LIMITS),
  * so the rollup cannot grow with what a stranger uploads; MARKET_MAX_BYTES is the last guard.
  * Days past the open window collapse to their public medians (or are dropped if they never were).
+ *
+ * Auction houses: the game files list Alliance, Horde and neutral (Blackwater) houses with different
+ * cuts, so they are separate markets. Every scan still feeds the realm-wide view (`realms`, what every
+ * reader got before houses were recorded). A scan that names its house, or failing that its scanner's
+ * faction, also feeds that house's own view (`houses`), with the same 3-reporter rule per house.
  */
-import { UPLOAD_LIMITS, validRealm } from "@everloot/protocol";
+import { AUCTION_HOUSES, UPLOAD_LIMITS, validRealm, type AuctionHouse } from "@everloot/protocol";
 import { z } from "zod";
 import { AUCTION_AGREEMENT } from "./auction-history.js";
 
@@ -63,10 +68,14 @@ export interface ItemDays {
   closed: Record<string, ClosedDay>;
 }
 
+export interface RealmDays { name: string; items: Record<string, ItemDays> }
+
 export interface MarketState {
   version: 3;
-  /** Keyed by the trimmed realm with ASCII letters lower-cased (as Lua's string.lower does); `name` is the first spelling seen. */
-  realms: Record<string, { name: string; items: Record<string, ItemDays> }>;
+  /** Keyed by the trimmed realm with ASCII letters lower-cased (as Lua's string.lower does); `name` is the first spelling seen. Every house blended. */
+  realms: Record<string, RealmDays>;
+  /** One auction house of a realm, keyed by `houseKey`. Only scans that named a house or a faction; absent until one did. */
+  houses?: Record<string, RealmDays>;
 }
 
 export interface PublicDay { day: string; min: number; market: number; quantity: number; reporters: number; thin: boolean }
@@ -92,6 +101,17 @@ export function emptyMarket(): MarketState {
 /** ASCII-only lower case, so the site, the companion and the addon's string.lower agree on every realm. */
 export function realmKey(realm: string): string {
   return realm.trim().replace(/[A-Z]/g, (c) => c.toLowerCase());
+}
+
+/** The key of one auction house of a realm: `forever|horde`. */
+export function houseKey(realm: string, house: AuctionHouse): string {
+  return `${realmKey(realm)}|${house.toLowerCase()}`;
+}
+
+/** An auction house named in any case (`horde`, `Horde`), or null. */
+export function parseHouse(text: string): AuctionHouse | null {
+  const lower = text.trim().toLowerCase();
+  return AUCTION_HOUSES.find((h) => h.toLowerCase() === lower) ?? null;
 }
 
 const dayString = (n: number) => new Date(n * DAY_MS).toISOString().slice(0, 10);
@@ -127,10 +147,20 @@ const scanRecord = z.object({
   installId: z.string().min(8).max(64),
   capturedAt: z.string().datetime({ offset: true }),
   realm: z.string().refine(validRealm),
+  faction: z.enum(["Alliance", "Horde"]).optional(),
+  house: z.enum(AUCTION_HOUSES).optional(),
   reporter: z.string().regex(/^[a-f0-9]{16}$/).optional(),
   items: z.array(z.unknown()).max(1000),
 });
 type ScanRecord = z.infer<typeof scanRecord>;
+
+/**
+ * The house a scan counts for: the one it read, else its scanner's faction (a faction can only use its
+ * own faction's house and the neutral ones, and most scans happen in a capital). Null for older scans.
+ */
+function houseOf(row: ScanRecord): AuctionHouse | null {
+  return row.house ?? row.faction ?? null;
+}
 
 /**
  * One upload's auction parts, at most `limit` distinct realms: a stranger cannot make one file name
@@ -169,9 +199,12 @@ function publicOf(installs: Record<string, InstallScan>): ClosedDay | null {
   return [per(0), per(1), per(2), groups.length];
 }
 
+/** Every bucket of the state: the realm-wide views, then the per-house views. */
+const buckets = (state: MarketState): Record<string, RealmDays>[] => [state.realms, state.houses ?? {}];
+
 function entryCount(state: MarketState): number {
   let n = 0;
-  for (const realm of Object.values(state.realms)) {
+  for (const realm of buckets(state).flatMap((map) => Object.values(map))) {
     for (const days of Object.values(realm.items)) {
       n += Object.keys(days.closed).length;
       for (const installs of Object.values(days.open)) n += Object.keys(installs).length;
@@ -187,60 +220,78 @@ export const marketBytes = (state: MarketState) => Buffer.byteLength(JSON.string
  * Fold auction_snapshot records into the state, then close days that left the open window and prune
  * days that left the 60-day window. A scan for a day that is already closed is ignored. A record that
  * would exceed a cap (new realm, new item, an install past the day's limit, or an entry past the total)
- * is dropped; scans from installs already counted still update.
+ * is dropped; scans from installs already counted still update. Every scan is folded into the realm-wide
+ * view before any is folded into a house's view, so the caps favour the realm-wide view.
  */
 export function foldMarket(previous: MarketState, records: readonly unknown[], now: Date, limits: Partial<typeof MARKET_LIMITS> = {}): MarketState {
   const cap = { ...MARKET_LIMITS, ...limits };
   const state: MarketState = structuredClone(previous);
   let entries = entryCount(state);
-  const itemCounts = new Map(Object.entries(state.realms).map(([key, r]) => [key, Object.keys(r.items).length]));
+  const itemCounts = new Map<RealmDays, number>();
+  const countOf = (realm: RealmDays) => itemCounts.get(realm) ?? Object.keys(realm.items).length;
+  /** One install's scan of one item into one bucket. False when the bucket is new and the map is full. */
+  const place = (map: Record<string, RealmDays>, key: string, maxKeys: number, name: string, day: string, itemId: number, installId: string, scan: InstallScan): boolean => {
+    const existing = map[key]?.items[String(itemId)];
+    if (existing?.closed[day]) return true;
+    if (!map[key]) {
+      if (Object.keys(map).length >= maxKeys) return false;
+      map[key] = { name, items: {} };
+    }
+    const realm = map[key]!;
+    if (!existing && countOf(realm) >= cap.itemsPerRealm) return true;
+    if (!existing) itemCounts.set(realm, countOf(realm) + 1);
+    const days = (realm.items[String(itemId)] ??= { open: {}, closed: {} });
+    const installs = (days.open[day] ??= {});
+    const prev = installs[installId];
+    if (prev && prev[4] >= scan[4]) return true;
+    if (!prev && (Object.keys(installs).length >= cap.installsPerItemDay || entries >= cap.entries)) return true;
+    if (!prev) entries++;
+    installs[installId] = scan;
+    return true;
+  };
+  const scans: { row: ScanRecord; at: number; day: string }[] = [];
   for (const raw of records) {
     if (!raw || typeof raw !== "object" || (raw as { kind?: unknown }).kind !== "auction_snapshot") continue;
     const parsed = scanRecord.safeParse(raw);
     if (!parsed.success) continue;
-    const row = parsed.data;
-    const at = Date.parse(row.capturedAt);
+    const at = Date.parse(parsed.data.capturedAt);
     const n = Math.floor(at / DAY_MS);
-    if (!inHistory(n, now)) continue;
-    const day = dayString(n);
-    const key = realmKey(row.realm);
-    for (const item of row.items) {
-      const scan = scanItem.safeParse(item);
-      if (!scan.success) continue;
-      const [itemId, auctions, quantity, minUnit, marketUnit] = scan.data;
-      const existing = state.realms[key]?.items[String(itemId)];
-      if (existing?.closed[day]) continue;
-      if (!state.realms[key]) {
-        if (Object.keys(state.realms).length >= cap.realms) break;
-        state.realms[key] = { name: row.realm.trim(), items: {} };
-        itemCounts.set(key, 0);
+    if (inHistory(n, now)) scans.push({ row: parsed.data, at, day: dayString(n) });
+  }
+  // Realm-wide first, for every record, so a full cap never trades a realm-wide entry for a house entry.
+  for (const byHouse of [false, true]) {
+    for (const { row, at, day } of scans) {
+      const house = houseOf(row);
+      if (byHouse && (!house || !state.realms[realmKey(row.realm)])) continue;
+      const map = byHouse ? (state.houses ??= {}) : state.realms;
+      const key = byHouse ? houseKey(row.realm, house!) : realmKey(row.realm);
+      const maxKeys = byHouse ? cap.realms * AUCTION_HOUSES.length : cap.realms;
+      for (const item of row.items) {
+        const scan = scanItem.safeParse(item);
+        if (!scan.success) continue;
+        const [itemId, auctions, quantity, minUnit, marketUnit] = scan.data;
+        const values: InstallScan = [minUnit, marketUnit, quantity, auctions, at, row.reporter ?? ""];
+        if (!place(map, key, maxKeys, row.realm.trim(), day, itemId, row.installId, values)) break;
       }
-      const realm = state.realms[key]!;
-      if (!existing && itemCounts.get(key)! >= cap.itemsPerRealm) continue;
-      const days = (realm.items[String(itemId)] ??= { open: {}, closed: {} });
-      if (!existing) itemCounts.set(key, itemCounts.get(key)! + 1);
-      const installs = (days.open[day] ??= {});
-      const prev = installs[row.installId];
-      if (prev && prev[4] >= at) continue;
-      if (!prev && (Object.keys(installs).length >= cap.installsPerItemDay || entries >= cap.entries)) continue;
-      if (!prev) entries++;
-      installs[row.installId] = [minUnit, marketUnit, quantity, auctions, at, row.reporter ?? ""];
     }
   }
-  for (const [key, realm] of Object.entries(state.realms)) {
-    for (const [itemId, days] of Object.entries(realm.items)) {
-      for (const [day, installs] of Object.entries(days.open)) {
-        const n = dayNumber(day)!;
-        if (isOpen(n, now) && inHistory(n, now)) continue;
-        delete days.open[day];
-        const closed = publicOf(installs);
-        if (closed && inHistory(n, now)) days.closed[day] = closed;
+  for (const map of buckets(state)) {
+    for (const [key, realm] of Object.entries(map)) {
+      for (const [itemId, days] of Object.entries(realm.items)) {
+        for (const [day, installs] of Object.entries(days.open)) {
+          const n = dayNumber(day)!;
+          if (isOpen(n, now) && inHistory(n, now)) continue;
+          delete days.open[day];
+          const closed = publicOf(installs);
+          if (closed && inHistory(n, now)) days.closed[day] = closed;
+        }
+        for (const day of Object.keys(days.closed)) if (!inHistory(dayNumber(day)!, now)) delete days.closed[day];
+        if (!Object.keys(days.open).length && !Object.keys(days.closed).length) delete realm.items[itemId];
       }
-      for (const day of Object.keys(days.closed)) if (!inHistory(dayNumber(day)!, now)) delete days.closed[day];
-      if (!Object.keys(days.open).length && !Object.keys(days.closed).length) delete realm.items[itemId];
+      if (!Object.keys(realm.items).length) delete map[key];
     }
-    if (!Object.keys(realm.items).length) delete state.realms[key];
   }
+  if (state.houses && !Object.keys(state.houses).length) delete state.houses;
   return state;
 }
 
@@ -291,15 +342,20 @@ function valueOf(itemId: number, points: PublicDay[], now: Date): MarketValue | 
   };
 }
 
-export function itemMarket(state: MarketState, realm: string, itemId: number, now: Date): { value: MarketValue | null; points: PublicDay[] } {
-  const days = state.realms[realmKey(realm)]?.items[String(itemId)];
+/** The realm-wide view, or one house's view when `house` is given. */
+function bucketOf(state: MarketState, realm: string, house?: AuctionHouse | null): RealmDays | undefined {
+  return house ? state.houses?.[houseKey(realm, house)] : state.realms[realmKey(realm)];
+}
+
+export function itemMarket(state: MarketState, realm: string, itemId: number, now: Date, house?: AuctionHouse | null): { value: MarketValue | null; points: PublicDay[] } {
+  const days = bucketOf(state, realm, house)?.items[String(itemId)];
   const points = days ? publicDays(days, now) : [];
   return { value: valueOf(itemId, points, now), points };
 }
 
-/** Every item with a public value on the realm, most units first. */
-export function realmMarket(state: MarketState, realm: string, now: Date): MarketValue[] {
-  const items = state.realms[realmKey(realm)]?.items ?? {};
+/** Every item with a public value on the realm (or on one of its houses), most units first. */
+export function realmMarket(state: MarketState, realm: string, now: Date, house?: AuctionHouse | null): MarketValue[] {
+  const items = bucketOf(state, realm, house)?.items ?? {};
   return Object.entries(items)
     .map(([itemId, days]) => valueOf(Number(itemId), publicDays(days, now), now))
     .filter((v): v is MarketValue => v !== null)
@@ -316,6 +372,18 @@ export function marketRealms(state: MarketState, now: Date = new Date()): string
     .sort((a, b) => a.localeCompare(b));
 }
 
+/** Per realm (display name), the houses that hold a public value of their own, in AUCTION_HOUSES order. */
+export function marketHouses(state: MarketState, now: Date = new Date()): Record<string, AuctionHouse[]> {
+  const out: Record<string, AuctionHouse[]> = {};
+  for (const [key, bucket] of Object.entries(state.houses ?? {})) {
+    const house = parseHouse(key.slice(key.lastIndexOf("|") + 1));
+    if (!house || !validRealm(bucket.name) || !Object.values(bucket.items).some((days) => publicDays(days, now).length > 0)) continue;
+    const name = realmName(state, bucket.name);
+    out[name] = [...(out[name] ?? []), house].sort((a, b) => AUCTION_HOUSES.indexOf(a) - AUCTION_HOUSES.indexOf(b));
+  }
+  return out;
+}
+
 /** The realm's display name: the first spelling seen, or the name as asked. */
 export function realmName(state: MarketState, realm: string): string {
   return state.realms[realmKey(realm)]?.name ?? realm.trim();
@@ -326,10 +394,11 @@ export function realmName(state: MarketState, realm: string): string {
  * Tuples keep the file small; at most `limit` rows, the items with the most units listed. A thin item
  * has no market value (null), only its minimum.
  */
-export function marketPrices(state: MarketState, realm: string, now: Date, limit = MAX_PRICE_ROWS) {
+export function marketPrices(state: MarketState, realm: string, now: Date, limit = MAX_PRICE_ROWS, house?: AuctionHouse | null) {
   return {
     realm: realmName(state, realm),
-    items: realmMarket(state, realm, now).slice(0, limit)
+    ...(house ? { house } : {}),
+    items: realmMarket(state, realm, now, house).slice(0, limit)
       .map((v) => [v.itemId, v.market, v.min, v.historical, v.quantity, v.day, v.reporters] as const),
   };
 }

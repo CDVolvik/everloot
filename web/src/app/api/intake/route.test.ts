@@ -203,6 +203,18 @@ describe("auction scans in an upload", () => {
     expect(JSON.stringify(stored)).not.toContain("ffffffffffffffff");
   });
 
+  test("a scan's faction and auction house are stored; a scan without them is still accepted", async () => {
+    const POST = await freshPost();
+    const named = { ...part("Forever", 1), faction: "Horde", house: "Neutral" };
+    const response = await POST(request({ addonVersion: "0.3.4", records: [named, part("Forever", 2)] }));
+    expect(response.status).toBe(200);
+    const [first, second] = store.putUpload.mock.calls[0]![2].records;
+    expect(first).toMatchObject({ faction: "Horde", house: "Neutral" });
+    expect(second).not.toHaveProperty("house");
+    const bad = await (await freshPost())(request({ addonVersion: "0.3.4", records: [{ ...part("Forever", 3), house: "Goblin" }] }));
+    expect(bad.status).toBe(422);
+  });
+
   test("uploads without scans are not tagged with a reporter", async () => {
     const POST = await freshPost();
     await POST(request({ addonVersion: "0.3.0", records: [loot("install-1234")] }));

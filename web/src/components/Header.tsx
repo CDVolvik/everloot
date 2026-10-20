@@ -5,6 +5,9 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { track } from "@/lib/analytics/track";
 import AccountControls from "./AccountControls";
+import GameVersionLabel from "./GameVersionLabel";
+import { SuggestField } from "./ui/SearchBar";
+import { TOOL_GROUPS } from "@/data/tools";
 
 type NavLink = { label: string; href: string };
 
@@ -14,47 +17,18 @@ export const PRIMARY: NavLink[] = [
   { label: "Map", href: "/map" },
   { label: "Changes", href: "/changes" },
   { label: "Lore", href: "/lore" },
-  { label: "Open data", href: "/connect" },
+  { label: "Docs", href: "/docs" },
 ];
 
-/** The Tools menu, grouped the way players use them. Every tool in data/tools.ts is here (header.test.tsx). */
-export const TOOL_GROUPS: { title: string; links: NavLink[] }[] = [
-  {
-    title: "Plan",
-    links: [
-      { label: "Talent calculator", href: "/tools/talents" },
-      { label: "Raid builder", href: "/tools/raid" },
-      { label: "Gold per hour", href: "/tools/gold-per-hour" },
-      { label: "Professions", href: "/tools/professions" },
-      { label: "Farming routes", href: "/tools/farming-routes" },
-    ],
-  },
-  {
-    title: "Look up",
-    links: [
-      { label: "Chat", href: "/chat" },
-      { label: "Auction history", href: "/tools/auctions" },
-      { label: "Census", href: "/census" },
-      { label: "Addons", href: "/addons" },
-    ],
-  },
-  {
-    title: "Track",
-    links: [
-      { label: "Guild board", href: "/tools/guild-board" },
-      { label: "Collections", href: "/tools/collections" },
-      { label: "Gold ledger", href: "/tools/gold-ledger" },
-      { label: "Upload a save file", href: "/upload" },
-    ],
-  },
-];
+// The Tools menu lives in data/tools.ts so the home page lists the same groups.
+export { TOOL_GROUPS };
 
 const TOOL_HREFS = TOOL_GROUPS.flatMap((g) => g.links.map((l) => l.href));
 
 const isCurrent = (path: string, href: string) => path === href || path.startsWith(`${href}/`);
 
-const navItem = "inline-flex min-h-11 items-center border-b-2 px-3 transition-colors";
-const navState = (on: boolean) => (on ? "border-accent text-fg" : "border-transparent text-fg-2 hover:text-fg");
+const navItem = "inline-flex min-h-11 items-center whitespace-nowrap border-b-2 px-3 transition-colors";
+const navState = (on: boolean) => (on ? "border-accent text-fg" : "border-transparent text-fg-2 hover:text-accent");
 const menuLink = "flex min-h-11 items-center rounded-control px-3 text-sm text-fg-2 hover:bg-canvas hover:text-accent";
 
 function SearchIcon() {
@@ -69,10 +43,18 @@ export default function Header() {
   const path = usePathname() ?? "/";
   const [open, setOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
+  // Below 1280 px the bar has no room for the field: the search icon opens it full width under the bar.
+  const [searchOpen, setSearchOpen] = useState(false);
   const toggle = useRef<HTMLButtonElement>(null);
   const toolsButton = useRef<HTMLButtonElement>(null);
   const tools = useRef<HTMLDivElement>(null);
   const search = useRef<HTMLInputElement>(null);
+  const searchButton = useRef<HTMLButtonElement>(null);
+  const searchRow = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { if (searchOpen) searchRow.current?.focus(); }, [searchOpen]);
+  // A new page closes the opened field.
+  useEffect(() => setSearchOpen(false), [path]);
 
   // A click outside the Tools menu closes it.
   useEffect(() => {
@@ -105,8 +87,10 @@ export default function Header() {
       if (event.key !== "Escape") return;
       if (toolsOpen) { setToolsOpen(false); toolsButton.current?.focus(); }
       if (open) { setOpen(false); toggle.current?.focus(); }
+      if (searchOpen) { setSearchOpen(false); searchButton.current?.focus(); }
     }}>
-      <div className="mx-auto flex min-h-16 max-w-wide items-center gap-3 px-4 lg:gap-6">
+      {/* The data column's width and gutters (globals.css), so the logo lines up with the data tables. */}
+      <div className="mx-auto flex min-h-16 max-w-data items-center gap-3 px-4 lg:gap-6 lg:px-6">
         <Link href="/" className="inline-flex min-h-11 shrink-0 items-center gap-2 text-xl font-bold tracking-tight text-fg" onClick={closeAll}>
           {/* The favicon's diamond, outlined in the accent green. */}
           <svg aria-hidden="true" viewBox="8 8 48 48" width="16" height="16" className="text-accent">
@@ -115,7 +99,7 @@ export default function Header() {
           everloot
         </Link>
 
-        <nav aria-label="Primary" className="hidden items-center text-sm font-medium lg:flex">
+        <nav aria-label="Primary" className="hidden shrink-0 items-center text-sm font-medium lg:flex">
           <Link href={PRIMARY[0].href} aria-current={isCurrent(path, PRIMARY[0].href) ? "page" : undefined} className={`${navItem} ${navState(isCurrent(path, PRIMARY[0].href))}`}>{PRIMARY[0].label}</Link>
           <div ref={tools} className="relative">
             <button
@@ -151,30 +135,59 @@ export default function Header() {
           })}
         </nav>
 
-        <div className="ml-auto flex shrink-0 items-center gap-2">
-          {/* The lore archive's search, the site's one search today. Works without JavaScript. */}
-          <form action="/search" method="get" role="search" onSubmit={() => track("search", { surface: "lore" })} className="hidden h-11 w-56 items-center gap-2 overflow-hidden rounded-full border border-edge bg-panel px-3 text-muted focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent xl:flex">
+        <div className="ml-auto flex min-w-0 flex-1 items-center justify-end gap-2">
+          {/* The site's one search: items, NPCs, quests, zones, lore and tools, with instant suggestions for
+              database pages. A GET form, so it works without JavaScript. */}
+          <form action="/search" method="get" role="search" onSubmit={() => track("search", { surface: "lore" })} className="hidden h-10 min-w-0 max-w-[360px] flex-1 items-center gap-2 rounded-full border border-edge bg-panel px-3 text-muted focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent xl:flex">
             <SearchIcon />
-            <label htmlFor="site-search" className="sr-only">Search the archive</label>
-            <input ref={search} id="site-search" name="q" type="search" maxLength={200} placeholder="Search the archive" className="w-full min-w-0 bg-transparent text-fg placeholder:text-muted focus:outline-none" />
+            <SuggestField
+              id="site-search"
+              inputRef={search}
+              label="Search Everloot"
+              placeholder="Search Everloot"
+              listClassName="-left-9 -right-3 mt-2"
+              className="h-9 w-full min-w-0 bg-transparent text-sm text-fg placeholder:text-muted focus:outline-none"
+            />
             <kbd aria-hidden="true" className="rounded-[4px] border border-line px-1.5 font-mono text-xs text-muted">/</kbd>
           </form>
-          <Link href="/search" aria-label="Search" className="hidden min-h-11 min-w-11 items-center justify-center text-fg-2 hover:text-accent sm:inline-flex xl:hidden"><SearchIcon /></Link>
-          <div className="hidden sm:block"><AccountControls /></div>
-          <Link href="/addon" onClick={closeAll} className="btn btn-primary min-h-10 px-4 text-sm">Get the addon</Link>
-          <button ref={toggle} type="button" aria-label={open ? "Close menu" : "Menu"} aria-expanded={open} aria-controls="site-navigation" onClick={() => setOpen(!open)} className="btn min-h-10 px-3 text-sm lg:hidden">
+          <button
+            ref={searchButton}
+            type="button"
+            aria-label="Search"
+            aria-expanded={searchOpen}
+            aria-controls="header-search"
+            onClick={() => setSearchOpen(!searchOpen)}
+            className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center text-fg-2 hover:text-accent xl:hidden"
+          ><SearchIcon /></button>
+          <GameVersionLabel className="hidden shrink-0 sm:block" />
+          <div className="hidden shrink-0 sm:block"><AccountControls /></div>
+          <Link href="/addon" onClick={closeAll} className="btn btn-primary min-h-10 shrink-0 whitespace-nowrap px-4 text-sm">Get the addon</Link>
+          <button ref={toggle} type="button" aria-label={open ? "Close menu" : "Menu"} aria-expanded={open} aria-controls="site-navigation" onClick={() => setOpen(!open)} className="btn min-h-10 shrink-0 px-3 text-sm lg:hidden">
             {open ? "Close" : "Menu"}
           </button>
         </div>
       </div>
 
+      <div id="header-search" hidden={!searchOpen} className="border-t border-line bg-canvas xl:hidden">
+        <form action="/search" method="get" role="search" onSubmit={() => track("search", { surface: "lore" })} className="mx-auto flex max-w-wide items-center gap-2 px-4 py-2">
+          <SuggestField
+            id="header-search-field"
+            inputRef={searchRow}
+            label="Search Everloot"
+            placeholder="Search Everloot"
+            className="h-10 w-full min-w-0 rounded-control border border-edge bg-panel px-3 text-base text-fg placeholder:text-muted focus:border-accent focus:outline-none"
+          />
+          <button type="submit" className="btn btn-primary h-10 shrink-0 px-4 text-sm">Search</button>
+        </form>
+      </div>
+
       {open && (
         <nav id="site-navigation" aria-label="Site menu" className="absolute inset-x-0 top-full max-h-[75vh] overflow-y-auto border-b border-edge bg-panel lg:hidden">
-          <div className="mx-auto max-w-wide space-y-6 px-4 py-6">
+          <div className="mx-auto max-w-data space-y-6 px-4 py-6 lg:px-6">
             <form action="/search" method="get" role="search" onSubmit={() => track("search", { surface: "lore" })} className="flex items-center gap-2 rounded-full border border-edge bg-canvas px-3 text-muted focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent">
               <SearchIcon />
-              <label htmlFor="menu-search" className="sr-only">Search the archive</label>
-              <input id="menu-search" name="q" type="search" maxLength={200} placeholder="Search the archive" className="w-full min-w-0 bg-transparent text-fg placeholder:text-muted focus:outline-none" />
+              <label htmlFor="menu-search" className="sr-only">Search Everloot</label>
+              <input id="menu-search" name="q" type="search" maxLength={200} placeholder="Search Everloot" className="w-full min-w-0 bg-transparent text-fg placeholder:text-muted focus:outline-none" />
             </form>
             <div className="grid grid-cols-2 gap-x-4 gap-y-6">
               <div>

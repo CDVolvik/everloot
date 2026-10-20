@@ -57,3 +57,9 @@ test("the hub answers points at level 60 and the two talent sets, with the level
   expect(a.setsAnswer).toContain("beta notes");
   expect(a.setsAnswer).toContain("unconfirmed");
 });
+
+test("the first point is stated one way everywhere, with the Legacy perk Talented beside it", async () => {
+  const line = "First point at level 10 (Talented moves it as early as 5); 51 points either way.";
+  expect(hubAnswers(await Promise.all(TALENT_CLASSES.map(loadCatalog))).pointsAnswer).toContain(line);
+  for (const slug of TALENT_CLASSES) expect(classAnswers(classFacts(await loadCatalog(slug))).pointsAnswer, slug).toContain(line);
+});

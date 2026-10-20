@@ -105,6 +105,19 @@ export type NearResult =
   | { ok: false; message: string }
   | { ok: true; origin: string; radius: number; limit: number; entrances: NearEntrance[]; npcs: NearPin[]; vendors: NearPin[] };
 
+/** A zone by map id or name, case-insensitive. */
+function findZone<Z extends { mapId: number; name: string }>(zones: readonly Z[], zone: string): Z | undefined {
+  const wanted = zone.trim().toLowerCase();
+  return zones.find((z) => String(z.mapId) === wanted) ?? zones.find((z) => z.name.toLowerCase() === wanted);
+}
+
+/** The map id and spot a zone query names, for a link to the map there; null for an NPC query or an unknown zone. */
+export function nearZoneSpot(args: NearArgs, data: WorldMapData): { mapId: number; x: number; y: number } | null {
+  if (typeof args.zone !== "string" || typeof args.x !== "number" || typeof args.y !== "number") return null;
+  const found = findZone(zoneTable(data), args.zone);
+  return found ? { mapId: found.mapId, x: args.x, y: args.y } : null;
+}
+
 /** The result the text is written from. Held-back zones never appear: the public tool carries no spoilers. */
 export function nearResult(args: NearArgs, data: WorldMapData, facts: Pick<WorldFacts, "npcs" | "vendors">): NearResult {
   const no = (message: string): NearResult => ({ ok: false, message });
@@ -136,8 +149,7 @@ export function nearResult(args: NearArgs, data: WorldMapData, facts: Pick<World
     if (typeof x !== "number" || typeof y !== "number" || !Number.isFinite(x) || !Number.isFinite(y) || x < 0 || x > 100 || y < 0 || y > 100) {
       return no("x and y are needed, each from 0 to 100, as on the zone map.");
     }
-    const wanted = zone.trim().toLowerCase();
-    const found = zones.find((z) => String(z.mapId) === wanted) ?? zones.find((z) => z.name.toLowerCase() === wanted);
+    const found = findZone(zones, zone);
     if (!found) return no(`No zone "${clip(zone.trim())}" in the map layer. Held-back zones are not offered here.`);
     const world = zoneToWorld(zones, found.mapId, x / 100, y / 100);
     if (!world) return no("That spot is outside the zone.");

@@ -1,0 +1,148 @@
+{
+  "$id": "https://everloot.app/schema/api/tooltipResponse.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "ok": {
+      "type": "boolean",
+      "const": true
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "item",
+        "npc",
+        "quest",
+        "object"
+      ]
+    },
+    "id": {
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740991
+    },
+    "title": {
+      "type": "string",
+      "description": "The agreed name, or \"Item 123\" style when no name has 3 installs behind it."
+    },
+    "color": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^#[0-9a-f]{6}$"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Title colour (item quality), or null."
+    },
+    "icon": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "uri"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "An icon from the game files asset folder, or null."
+    },
+    "lines": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "The card's lines, in order. A value the game files do not give is shown as [?]."
+    },
+    "partial": {
+      "type": "boolean",
+      "description": "A line holds a [?] for a value the game files do not give yet."
+    },
+    "url": {
+      "type": "string",
+      "format": "uri",
+      "description": "The page this card is for."
+    },
+    "attribution": {
+      "type": "object",
+      "properties": {
+        "licence": {
+          "type": "string"
+        },
+        "licenceUrl": {
+          "type": "string",
+          "format": "uri"
+        },
+        "credit": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string",
+          "format": "uri"
+        },
+        "terms": {
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "licence",
+        "licenceUrl",
+        "credit",
+        "source",
+        "terms"
+      ],
+      "additionalProperties": false
+    },
+    "gameData": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "label": {
+              "type": "string",
+              "description": "The evidence label pages show, such as \"found in game files, unconfirmed\"."
+            },
+            "build": {
+              "type": "string",
+              "description": "The game build the rows were read from."
+            },
+            "extractedAt": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "credit": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "label",
+            "build"
+          ],
+          "additionalProperties": {}
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "required": [
+    "ok",
+    "type",
+    "id",
+    "title",
+    "color",
+    "icon",
+    "lines",
+    "partial",
+    "url",
+    "attribution",
+    "gameData"
+  ],
+  "additionalProperties": false
+}

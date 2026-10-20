@@ -7,6 +7,7 @@ import { loadProviders } from "../../../companion/src/providers/config";
 import type { AddonInfo, AppState, AskInfo, Job, MarketInfo, PriceLookup, Settings } from "../shared/types";
 import { JOBS } from "../shared/types";
 import { presetFor, type ProviderKind } from "../shared/providers";
+import { accountInfo, signIn, signOut } from "./account";
 import { listBackups, restoreBackup } from "./backups";
 import { compareVersions, installAddon, installedAddonVersion, newestRelease, slotAddons } from "./addon";
 import { fetchChanges } from "./changes";
@@ -15,7 +16,7 @@ import { createChat } from "./chat";
 import { localTools } from "./local-tools";
 import { createEngine } from "./engine";
 import { allowedExternal } from "./external";
-import { candidateRoots, detectGameFolders, realFs } from "./game-folder";
+import { candidateRoots, detectGameFolders, realFs, resolvePickedFolder } from "./game-folder";
 import { newestScans, readScanAges, staleScans, summarizeFiles } from "./inspect";
 import { companionJobs } from "./jobs";
 import { itemIdFrom, listRealms, ownRealms, priceRows, readPricesFile } from "./market";
@@ -94,7 +95,7 @@ if (!app.requestSingleInstanceLock()) {
       };
     },
   }));
-  const appState = (): AppState => ({ version: app.getVersion(), platform: process.platform, dataFolder: data, notice: loaded.error, settings, engine: engine.snapshot(), update, updateProgress, staleScans: staleScans(allScans()) });
+  const appState = (): AppState => ({ version: app.getVersion(), platform: process.platform, dataFolder: data, notice: loaded.error, settings, engine: engine.snapshot(), update, updateProgress, staleScans: staleScans(allScans()), account: accountInfo(data) });
   const broadcast = () => {
     const s = appState();
     win?.webContents.send("state", s);
@@ -212,7 +213,7 @@ if (!app.requestSingleInstanceLock()) {
     return appState();
   });
   ipcMain.handle("detectGameFolders", () => detectGameFolders(candidateRoots({ platform: process.platform, env: process.env, home: homedir() }), realFs));
-  ipcMain.handle("pickGameFolder", () => pick({ title: "Pick the game folder that holds WTF", properties: ["openDirectory"] }));
+  ipcMain.handle("pickGameFolder", async () => { const p = await pick({ title: "Pick the game folder that holds WTF", properties: ["openDirectory"] }); return p && resolvePickedFolder(p, realFs); });
   ipcMain.handle("pickTokenFile", () => pick({ title: "Pick the file that holds your MCP token", properties: ["openFile"] }));
   ipcMain.handle("runNow", (_e, job: unknown) => { if (JOBS.includes(job as Job)) return engine.runNow(job as Job); });
   ipcMain.handle("setPaused", (_e, paused: unknown) => engine.setPaused(paused === true));
@@ -289,6 +290,17 @@ if (!app.requestSingleInstanceLock()) {
     void shell.openExternal(`https://github.com/Everloot/everloot/issues/new?${q}`);
     return "opened";
   });
+  ipcMain.handle("accountSignIn", async (_e, key: unknown) => {
+    if (typeof key !== "string") throw new Error("Paste the key first.");
+    await signIn(data, settings.endpoint, key);
+    broadcast();
+    return appState();
+  });
+  ipcMain.handle("accountSignOut", () => {
+    signOut(data);
+    broadcast();
+    return appState();
+  });
   ipcMain.handle("checkForUpdates", async () => {
     const check = await checkForUpdates(app.getVersion(), fetch, process.platform, Boolean(process.env.PORTABLE_EXECUTABLE_FILE));
     update = check.latest ? check : null;
@@ -347,8 +359,10 @@ if (!app.requestSingleInstanceLock()) {
   ipcMain.handle("addonInfo", async (): Promise<AddonInfo> => {
     const dir = addonsDir();
     const local = { addonsDir: dir, installed: dir ? installedAddonVersion(dir) : null, slots: dir ? slotAddons(dir) : { prices: false, answers: false } };
-    try { return { ...local, latest: newestRelease(await releases(), "addon-v"), error: null }; }
-    catch (err) { return { ...local, latest: null, error: err instanceof Error ? err.message : String(err) }; }
+    try {
+      const latest = newestRelease(await releases(), "addon-v");
+      return { ...local, latest, newer: Boolean(latest && local.installed && compareVersions(latest.version, local.installed) > 0), error: null };
+    } catch (err) { return { ...local, latest: null, newer: false, error: err instanceof Error ? err.message : String(err) }; }
   });
   ipcMain.handle("installAddon", async (_e, version: unknown) => {
     const dir = addonsDir();

@@ -111,3 +111,28 @@ test("the bodies are the protocol's market responses", async () => {
     expect(() => marketPricesResponse.parse(prices)).not.toThrow();
   }
 });
+
+test("a house narrows a realm to the scans of that auction house; the realm list says which houses have values", async () => {
+  const hordeScans = ["install-h-1", "install-h-2", "install-h-3"].map((installId, i) => ({
+    kind: "auction_snapshot", installId, eventId: `h:${i}`, capturedAt: NOW.toISOString(), realm: "Forever",
+    scanId: `h-${i}`, part: 1, parts: 1, faction: "Horde", house: "Horde", items: [[2589, 1, 10, 900, 900]],
+  }));
+  store.loadMarket.mockResolvedValue({ state: foldMarket(emptyMarket(), [...scans, ...hordeScans], NOW), dataAsOf: "2026-10-20T12:00:00.000Z" });
+  const horde = await (await GET(req("?realm=Forever&house=horde"))).json();
+  expect(horde).toMatchObject({ ok: true, realm: "Forever", house: "Horde", items: [[2589, 900, 900, 900, 10, day, 3]] });
+  expect(() => marketPricesResponse.parse(horde)).not.toThrow();
+  expect((await (await GET(req("?realm=Forever&house=Alliance"))).json())).toMatchObject({ ok: true, house: "Alliance", items: [] });
+  const blended = await (await GET(req("?realm=Forever"))).json();
+  expect(blended).not.toHaveProperty("house");
+  expect(blended.items[0][6]).toBe(6);
+  const realms = await (await GET(req())).json();
+  expect(realms).toMatchObject({ realms: ["Forever"], houses: { Forever: ["Horde"] } });
+  expect(() => marketRealmsResponse.parse(realms)).not.toThrow();
+});
+
+test("a house must be Alliance, Horde or Neutral, and needs a realm", async () => {
+  for (const query of ["?realm=Forever&house=goblin", "?realm=Forever&house=", "?house=horde"]) {
+    expect((await GET(req(query))).status).toBe(400);
+  }
+  expect(store.loadMarket).not.toHaveBeenCalled();
+});

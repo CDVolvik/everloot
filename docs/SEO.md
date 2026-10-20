@@ -22,10 +22,15 @@ the owner can do. Written after the 2026-10-17 audit.
   (`web/src/lib/changes-facts.ts`). /wow-forever quotes Blizzard's launch sentence from
   `web/src/data/wow-forever.ts`; when you re-read the source, update `checkedOn` there.
 - **llms.txt and llms-full.txt** are route handlers built from the tool catalog, the MCP tool list in
-  `web/src/app/connect/connect-data.ts` and the changes data. A test fails if an MCP tool registered in
+  `web/src/lib/docs/connect-data.ts` and the changes data. A test fails if an MCP tool registered in
   `kb/src/mcp-server.ts` is missing from either.
 - **Sitemap.** `lastModified` only where one is known: newest change entry for /changes, the build extraction
   date for the talent, raid and map pages, the checked-on date for /wow-forever.
+- **Auction House pages** (`/tools/auctions/<realm>`, `/tools/auctions/<realm>/<itemId>`,
+  `/tools/auctions/item/<itemId>`) are built on first visit and rebuilt at most every five minutes. One is
+  indexed, and listed in `/auctions-sitemap.xml`, only when it has a market value: a day 3 reporters scanned,
+  with more than 5 units listed, in the last 14 days (`indexable` in `web/src/lib/auction-house.ts`). Every
+  other price page says noindex. Item pages carry a Dataset, not a Product: nobody here sells the item.
 - **RSS.** Every page advertises `/changes/feed.xml`.
 - **Security headers** in `web/next.config.js`: nosniff, `X-Frame-Options: SAMEORIGIN`, Referrer-Policy,
   Permissions-Policy, HSTS with `includeSubDomains`, an enforced CSP with only `object-src 'none'`,
@@ -55,10 +60,10 @@ the owner can do. Written after the 2026-10-17 audit.
 2. **www redirect.** Vercel project, Domains: make `www.everloot.app` a permanent redirect to `everloot.app`.
    Today it serves a 200 duplicate and relies on the canonical tag.
 3. **Google Search Console.** Add the property for `everloot.app`. Either verify by DNS, or set `GSC_VERIFICATION`
-   (the content value of the meta tag) in Vercel. Submit `https://everloot.app/sitemap.xml` and
-   `https://everloot.app/lore-sitemap.xml`.
+   (the content value of the meta tag) in Vercel. Submit `https://everloot.app/sitemap.xml`,
+   `https://everloot.app/lore-sitemap.xml` and `https://everloot.app/auctions-sitemap.xml`.
 4. **Bing Webmaster Tools.** Add the site, or import it from Search Console. Set `BING_VERIFICATION` if you
-   verify by meta tag. Submit the same two sitemaps. IndexNow submissions show under "IndexNow" once the key
+   verify by meta tag. Submit the same three sitemaps. IndexNow submissions show under "IndexNow" once the key
    works.
 5. **MCP registry.** Publish the public server (`https://everloot.app/mcp/public`) to the official MCP
    registry as `io.github.Everloot/everloot`, then to Glama, Smithery and mcp.so. The server must have

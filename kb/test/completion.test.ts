@@ -4,7 +4,7 @@ import {
   agreedCatalog, authorizedOwners, COMPLETION_LIMITS, completionFactsFromRecords, completionFactsOf, emptyCompletion, foldCompletion,
   trimCompletion,
 } from "../src/completion-rollup.js";
-import { answerCompletionProgress, COMPLETION_UNSET } from "../src/mcp-server.js";
+import { answerCompletionProgress, COMPLETION_UNSET, completionProgressAnswer } from "../src/mcp-server.js";
 import { sharingCategory, type PublicationGrant } from "../src/publication.js";
 import { mergeCorpus, publicRecords } from "../src/corpus.js";
 import { COMPLETION_KINDS, parseRecords, PUBLIC_RECORD_KINDS } from "@everloot/protocol";
@@ -219,6 +219,12 @@ test("the MCP tool reads the rollup, never the corpus, and says when it is not c
   expect(asked).toEqual([OWNER]);
   expect(full).toContain("Ten Quests (Quests): 8 of 10 criteria");
   expect(full).toContain("Data as of 2026-10-19 06:30 UTC");
+  // The install's own progress is there, so the answer links its page, last before the data age.
+  expect(full).toContain(`More: https://everloot.app/tools/collections?install=${OWNER}\nData as of`);
+  const one = (await completionProgressAnswer({ ownerInstallId: OWNER, characterKey: KEY }, async () => ({ facts: facts(), dataAsOf: null }))).text;
+  expect(one).toContain(`More: https://everloot.app/tools/collections?install=${OWNER}&character=${KEY}\n`);
+  // A key this install does not have: the page would say so and nothing else, so no link.
+  expect((await completionProgressAnswer({ ownerInstallId: OWNER, characterKey: "ffffffff" }, async () => ({ facts: facts(), dataAsOf: null }))).text).not.toContain("More:");
 });
 
 // --- votes by address, support past 3, and junk that cannot block or freeze ----------------------------

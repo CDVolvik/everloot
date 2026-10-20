@@ -30,6 +30,51 @@ A scan that gets no answer from the auction house in 30 seconds stops and gives 
 Tooltip prices show the date the companion last fetched them and flag them as stale after two days.
 Nothing in the addon calls a buy, bid or post API; `addon/tests/market_contract.py` traps them.
 
+Each scan records your faction (`faction`) and which house it read (`house`): Alliance or Horde from the
+auctioneer's faction, Neutral for a goblin house whose auctioneer has none, and nothing when the client
+gives no auctioneer to read. The game files list separate Alliance, Horde and Blackwater (neutral) houses
+with different cuts, so the site keeps a market per house next to the realm-wide one.
+
+When scans are on, the cooldown is over and no scan is running, opening the auction house shows a small
+**Scan prices for Everloot** prompt beside it, once per visit. One click scans; closing it hides it until
+the next visit. It never scans by itself. `/everloot scanprompt off` turns it off (the **Everloot scan**
+button and `/everloot scan` still work). With scans off, the first visit prints one line saying how to opt in.
+
+## Gold per hour
+
+`/everloot gph start` begins a session and opens a small window you can drag; `gph pause` stops the clock
+(`gph start` resumes), `gph stop` saves the session, `gph reset` throws it away, `gph show` and `gph hide`
+open and close the window, `gph history` prints the last five, `gph cut on|off` sets the auction cut.
+
+- It counts, while running: items you loot (the game's "You receive loot" lines, so other players' loot,
+  quest rewards, purchases and crafts are left out), money you loot or get as your share of group loot,
+  quest money (`QUEST_TURNED_IN`), and what you sell at a vendor. A reload or logout pauses the clock and
+  the session resumes when you are back; after a crash it waits, paused.
+- Each item is valued from the Everloot market value on your realm (the file the Desktop App or companion
+  writes), else your own last full scan, else the vendor price, and the window says which. With the cut on
+  (the default) 5% is taken from market and scan values, as the faction houses take it.
+- Total = item values + looted money + quest money. Vendor sales are shown apart and not added: the items
+  sold are already in the item values.
+- The window shows the clock, total, gold per hour, the value by source, the top five items and the zone.
+
+Sessions are personal. They live in `EverlootDB.gph`, not in `EverlootDB.records`, so no uploader reads them
+and nothing is sent. The last 50 finished sessions are kept in `EverlootDB.gph.sessions`, oldest first, each:
+
+| Field | Meaning |
+|---|---|
+| `v` | Shape version, 1. |
+| `character`, `realm` | The character that ran it (kept in your file only). |
+| `startedAt`, `endedAt` | UTC, `YYYY-MM-DDTHH:MM:SSZ`. |
+| `seconds` | Time the session ran, pauses left out. |
+| `zone`, `zones` | The zone it started in, and every zone entered, in order (at most 10). |
+| `money` | `{ loot, quest, vendor }` in copper. |
+| `items` | `{ itemId, count, unit, source }` per item, most valuable first. `unit` is copper per item after the cut; `source` is `market`, `scan`, `vendor` or `none`. At most 200 items. |
+| `itemValue`, `total`, `perHour` | Copper. `total` is `itemValue` + `money.loot` + `money.quest`. |
+| `cut` | The auction cut taken from market and scan values: 0.05, or 0 when off. |
+
+The running session is `EverlootDB.gph.current` (item counts in `counts`, by item id); `EverlootDB.gph.cut`
+holds the cut setting.
+
 ## Completion tracker
 
 Off until `/everloot completion on` (then `/reload`). It reads your achievements, reputation, titles and
@@ -152,6 +197,8 @@ The contract tests run the Lua in real Lua 5.1 through `lupa`:
     python addon/tests/addons_contract.py
     python addon/tests/mapbounds_contract.py
     python addon/tests/market_contract.py
+    python addon/tests/scan_prompt_contract.py
+    python addon/tests/gph_contract.py
     python addon/tests/talents_contract.py
     python addon/tests/plan_contract.py
     python addon/tests/raid_contract.py
@@ -188,7 +235,8 @@ addon/
 │   ├── plan.lua        share code reader and the display-only plan panel
 │   ├── raid_data.lua   raid buff list generated from web/src/data/game-data/raid-*.json
 │   ├── raid.lua        /everloot raid: buffs missing per group, and a raid share code; display only
-│   └── prices.lua      item tooltips: your latest scan and the companion's community prices
+│   ├── prices.lua      item tooltips: your latest scan and the companion's community prices
+│   └── gph.lua         gold per hour sessions, kept in your file only
 └── tests/              Lua 5.1 contract tests and their fixtures
 ```
 

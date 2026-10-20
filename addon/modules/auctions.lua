@@ -1,6 +1,8 @@
 -- Everloot auction collector. Off unless the player enables the auctions toggle.
--- Forever (C_AuctionHouse): a full scan the player starts with the "Everloot scan" button or
--- /everloot scan while the auction house is open. Clients with the older API: buyouts from the
+-- Forever (C_AuctionHouse): a full scan the player starts with the "Everloot scan" button, the
+-- "Scan prices for Everloot" prompt (shown once per visit when a scan can run) or /everloot scan while
+-- the auction house is open. Each scan records the player's faction and, when the auctioneer can be
+-- read, which house it was (Alliance, Horde or a neutral goblin house). Clients with the older API: buyouts from the
 -- list the player already opened. No external price feed. Nothing here posts, bids or buys.
 -- Copper is per unit: a stack's buyout divided by its size. Bid-only listings have no price.
 
@@ -65,6 +67,26 @@ end
 
 local scan -- the full scan in progress, or nil
 
+--- The scanning character's faction, "Alliance" or "Horde"; nil when the client does not say.
+local function playerFaction()
+  if not UnitFactionGroup then return nil end
+  local ok, group = pcall(UnitFactionGroup, "player")
+  if ok and (group == "Alliance" or group == "Horde") then return group end
+  return nil
+end
+
+--- The house the open auctioneer serves: a faction house's auctioneer carries that faction, a goblin
+--- (neutral) house's carries none. Nil when the client gives no auctioneer unit.
+local function auctioneerHouse()
+  if not (UnitExists and UnitFactionGroup) then return nil end
+  local okExists, exists = pcall(UnitExists, "npc")
+  if not okExists or not exists then return nil end
+  local ok, group = pcall(UnitFactionGroup, "npc")
+  if not ok then return nil end
+  if group == "Alliance" or group == "Horde" then return group end
+  return "Neutral"
+end
+
 --- Clears a scan that never got its data and gives the cooldown back.
 local function refundWaitingScan()
   EverlootDB.lastScanAt = scan.previousScanAt
@@ -120,6 +142,7 @@ local function finish()
     end
     if not E:Store("auction_snapshot", {
       installId = EverlootDB.installId, capturedAt = s.at, realm = s.realm,
+      faction = s.faction, house = s.house,
       scanId = scanId, part = p, parts = parts, items = items,
     }) then
       return say("the scan could not be stored. Upload your file with the companion, then scan again.")
@@ -176,8 +199,10 @@ function E:StartScan()
   if wait > 0 then return say(string.format("next full scan in %d min.", math.ceil(wait / 60))) end
   local realm = GetRealmName and GetRealmName()
   if type(realm) ~= "string" or #realm < 2 then return say("no realm name.") end
+  if E.scanPrompt then E.scanPrompt:Hide() end
   local started = {
     realm = realm, startedAt = time(), at = date("!%Y-%m-%dT%H:%M:%SZ"), waiting = true,
+    faction = playerFaction(), house = E.auctionHouseKind,
     byItem = {}, retry = {}, skipped = 0, incomplete = 0, next = 1, total = 0,
     previousScanAt = EverlootDB.lastScanAt,
   }
@@ -205,24 +230,85 @@ local function addButton()
   E.scanButton = button
 end
 
+--- True when a click could start a full scan now: enabled, the house open, nothing running, cooldown over.
+function E:ScanReady()
+  return E:IsEnabled("auctions") and E.auctionHouseOpen and not scan
+    and (EverlootDB.lastScanAt or 0) + E.SCAN_COOLDOWN <= time()
+end
+
+--- A small "Scan prices for Everloot" prompt beside the auction house, at most once per visit, only when
+--- a scan can run. It never scans by itself: the scan starts from the player's click.
+local function showPrompt()
+  if EverlootDB.scanPrompt == false or E.promptShown or not AuctionHouseFrame or not E:ScanReady() then return end
+  if not E.scanPrompt then
+    local ok, frame = pcall(CreateFrame, "Frame", "EverlootScanPrompt", AuctionHouseFrame, "BackdropTemplate")
+    if not ok or not frame then return end
+    local built = pcall(function()
+      frame:SetSize(230, 74)
+      frame:SetPoint("TOPLEFT", AuctionHouseFrame, "TOPRIGHT", 4, 0)
+      if frame.SetBackdrop then
+        frame:SetBackdrop({ bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background", edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
+          tile = true, tileSize = 16, edgeSize = 16, insets = { left = 4, right = 4, top = 4, bottom = 4 } })
+      end
+      local text = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+      text:SetPoint("TOPLEFT", 12, -10)
+      text:SetWidth(190)
+      text:SetJustifyH("LEFT")
+      text:SetText("Share this house's prices with Everloot? One scan, every 15 min at most. /everloot scanprompt off hides this.")
+      local button = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+      button:SetSize(180, 22)
+      button:SetPoint("BOTTOMLEFT", 10, 8)
+      button:SetText("Scan prices for Everloot")
+      button:SetScript("OnClick", function() frame:Hide(); E:StartScan() end)
+      frame.button = button
+      local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
+      close:SetPoint("TOPRIGHT", -2, -2)
+      close:SetScript("OnClick", function() frame:Hide() end)
+    end)
+    if not built then return end
+    E.scanPrompt = frame
+  end
+  E.promptShown = true
+  E.scanPrompt:Show()
+end
+
 local function onFullScanEvent(event, arg1)
   if event == "AUCTION_HOUSE_SHOW" then
     E.auctionHouseOpen = true
+    E.auctionHouseKind = auctioneerHouse()
     addButton()
+    showPrompt()
   elseif event == "AUCTION_HOUSE_CLOSED" then
     E.auctionHouseOpen = false
+    E.auctionHouseKind = nil
+    E.promptShown = false
+    if E.scanPrompt then E.scanPrompt:Hide() end
     if scan then
       if scan.waiting then refundWaitingScan() else scan = nil end
       say("scan stopped: the auction house closed.")
     end
   elseif event == "ADDON_LOADED" and arg1 == "Blizzard_AuctionHouseUI" then
     addButton()
+    -- The house's window loads on the first visit, possibly after AUCTION_HOUSE_SHOW reached us.
+    if E.auctionHouseOpen then showPrompt() end
   elseif event == "REPLICATE_ITEM_LIST_UPDATE" and scan and scan.waiting then
     scan.waiting = false
     scan.total = C_AuctionHouse.GetNumReplicateItems() or 0
     safeStep()
   end
 end
+
+-- With scans off, the module does not start; this listener says once per install how to opt in, the
+-- first time the player opens an auction house. It reads nothing from the house.
+local hint = CreateFrame("Frame")
+E.auctionHintFrame = hint
+pcall(hint.RegisterEvent, hint, "AUCTION_HOUSE_SHOW")
+hint:SetScript("OnEvent", function()
+  if not EverlootDB or E:IsEnabled("auctions") or EverlootDB.auctionHintShown or EverlootDB.scanPrompt == false then return end
+  EverlootDB.auctionHintShown = true
+  say("you can share this auction house's prices with Everloot: /everloot auctions on, then /reload. "
+    .. "A scan only runs when you click it. /everloot scanprompt off hides this.")
+end)
 
 E:RegisterModule("auctions", function()
   local f = E.frame

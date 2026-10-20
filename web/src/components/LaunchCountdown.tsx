@@ -33,7 +33,8 @@ export default function LaunchCountdown({ initialNow }: { initialNow?: number })
     ? `in ${left.days > 0 ? `${plural(left.days, "day")}, ${plural(left.hours, "hour")}` : `${plural(left.hours, "hour")}, ${plural(left.minutes, "minute")}`}`
     : `on ${longDate(LAUNCH.date)}, 3:00 p.m. PST`;
   return (
-    <p className="font-mono text-xs text-muted">
+    // fg-2, not muted: the line sits on the hero's art.
+    <p className="font-mono text-xs text-fg-2">
       <Link href="/wow-forever" className="hover:text-accent transition">
         WoW: Forever launches <time dateTime={LAUNCH_AT} className="text-fg">{when}</time>
       </Link>

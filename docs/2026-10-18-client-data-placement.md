@@ -81,7 +81,7 @@ existing structures, and the wave column proposes when to read it (W0 = next, sm
 | holidays 4/1/3 | `HolidayNames`, `HolidayDescriptions`, `HolidayXTimeEvent` | fixes the documented gap: `Holidays` holds name ids, the names are in a table we do not read | W0 |
 | pvp 1/0/1 | `ArenaTrackedItem` | internal tracking only | never |
 | group content 25/0/25 | `LFGDungeons`, `JournalInstance`, `JournalEncounter`, `JournalTier`, `DungeonEncounter`, scenarios, keystone affixes | instance pages (a new route and kind); entrances already sit in `map.json` | W1 |
-| travel 3/0/3 | `TaxiNodes`, `TaxiPath`, `TaxiPathNode` | `/map` overlay and route tools (`farming-routes`, `gold-per-hour`) | W2 |
+| travel 3/0/3 | `TaxiNodes`, `TaxiPath`, `TaxiPathNode` | `/map` overlay and route tools (`farming-routes`; gold per hour moved into the addon) | W2 |
 | interface 32/3/29 | texture atlases, widgets, cameras, chat, fonts | internal tooling and the asset pipeline; not a database kind | mostly never |
 | audio 21/0/21 | sound kits, ambience, zone music, weapon and weather sounds | page-only assets if a sound feature is ever approved, under the icon rules (credited, unencrypted, never in API, MCP or bulk) | W3, feature-dependent |
 | other 612/2/610 | the catch-all: legacy systems shipped in the client but not live in Forever (`Garrison*`, `Azerite*`, `Artifact*`, `Covenant`, housing), live support tables (`Criteria`, `Emotes`), and internal plumbing (`Light`, `Weather`, `Node*`) | triage queue: each table moves to a domain, or to "never", by hand (first pass applied: 216 to the never-list, `bcc4f02`) | ongoing |

@@ -2,6 +2,7 @@ import { CREDIT_LINE, LICENCE, SITE } from "@everloot/protocol";
 import type { DB } from "./db.js";
 import { itemFactsFromRecords } from "./drop-rollup.js";
 import { itemPage, ITEM_AGREEMENT, type ItemFacts } from "./item-page.js";
+import { loreUrls, moreLine } from "./page-urls.js";
 import { search, type SearchHit } from "./search.js";
 import { npcPage, WORLD_AGREEMENT, worldFactsFromRecords, type WorldFacts } from "./world-pages.js";
 
@@ -25,6 +26,8 @@ export interface Evidence {
   asOf: string | null;
   /** Observed facts: how many installs reported it. */
   support?: number;
+  /** The piece's page on everloot.app: the item or NPC page, or the indexed lore page. The MCP answer gives it in the text. */
+  url?: string;
 }
 
 export interface FurtherReading { site: string; url: string }
@@ -76,7 +79,7 @@ function firstSentence(text: string): string {
   return end === -1 ? trimmed.slice(0, 240) : trimmed.slice(0, end + 1);
 }
 
-function loreEvidence(hit: SearchHit): Evidence {
+function loreEvidence(hit: SearchHit, url: string | undefined): Evidence {
   const curated = hit.sourceId.startsWith("curated");
   return {
     claim: `${hit.name}: ${firstSentence(hit.snippet)}`,
@@ -84,6 +87,7 @@ function loreEvidence(hit: SearchHit): Evidence {
     source: { title: hit.name, url: hit.sourceUrl },
     licence: hit.licence,
     asOf: hit.retrievedAt,
+    ...(url ? { url } : {}),
   };
 }
 
@@ -127,7 +131,8 @@ function observedEvidence(question: string, facts: AnswerSourcesFacts, dataAsOf:
       });
     }
   }
-  return out;
+  // An observed fact's source is its page on the site, named only once three installs agree on the name.
+  return out.map((e) => ({ ...e, url: e.source.url }));
 }
 
 /** Search links on other sites, built from the question. Links only: nothing is fetched. */
@@ -164,7 +169,9 @@ export function answerSources(
 ): AnswerSources {
   const question = args.question.trim();
   const observed = facts ? observedEvidence(question, facts, dataAsOf) : [];
-  const hits = knowledgeHits(db, question, args.limit).map(loreEvidence);
+  const found = knowledgeHits(db, question, args.limit);
+  const pages = loreUrls(db, found);
+  const hits = found.map((hit) => loreEvidence(hit, pages.get(hit.id)));
   const curated = hits.filter((e) => e.kind === "curated");
   const lore = hits.filter((e) => e.kind === "lore");
   return { evidence: [...observed, ...curated, ...lore].slice(0, Math.max(args.limit, observed.length)), furtherReading: furtherReading(question), dataAsOf };
@@ -178,6 +185,8 @@ export function formatAnswerSources(result: AnswerSources, corpusConnected: bool
   for (const e of result.evidence) {
     const support = e.support !== undefined ? `, ${e.support} installs` : "";
     lines.push(`- [${KIND_LABEL[e.kind]}${support}] ${e.claim}\n  Source: ${e.source.url} (${e.licence}${e.asOf ? `, as of ${e.asOf.slice(0, 10)}` : ""})`);
+    // A lore piece's source is the wiki; its page on the site is listed beside it. An observed piece's source already is its page.
+    if (e.url && e.url !== e.source.url) lines.push(`  ${moreLine(e.url)}`);
   }
   if (!corpusConnected) lines.push("Player observations are not connected here, so the observed layer is unrecorded, not empty.");
   if (result.furtherReading.length) lines.push(`Further reading (links only, nothing fetched): ${result.furtherReading.map((l) => `${l.site} ${l.url}`).join(" | ")}`);

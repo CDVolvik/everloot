@@ -71,6 +71,7 @@
     "itemsResponse",
     "itemCategoriesResponse",
     "toolAnswerResponse",
+    "tooltipResponse",
     "bulkIndex",
     "intakeRequest",
     "intakeReceipt",
@@ -87,6 +88,7 @@
     "GET /api/market/prices",
     "POST /api/intake",
     "GET /api/tools/{tool}",
+    "GET /api/tooltip/{type}/{id}",
     "GET /api/health"
   ],
   "mcpTools": [
