@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import type { ZoneBounds } from "../src/map-bounds.js";
 import {
-  checkReportedBounds, mapToWorld, placeEntrances, worldToMap, worldToZone, zoneAt, zoneTable, zoneToMap, zoneToWorld,
+  checkReportedBounds, mapToWorld, placeEntrances, placeFlights, worldToMap, worldToZone, zoneAt, zoneTable, zoneToMap, zoneToWorld,
 } from "../src/world-coords.js";
 import type { WorldMapData } from "../src/world-map-data.js";
 
@@ -100,6 +100,32 @@ describe("entrance pins", () => {
 
   test("an entrance on another continent stays there", () => {
     expect(pins[2]).toMatchObject({ names: ["Ragefire Chasm"], world: { continentId: 1 } });
+  });
+});
+
+describe("flight masters and lines", () => {
+  const held = { uiMapId: 2548, name: "Synthetic Held", continentId: 0, bounds: { top: -9700, bottom: -6467, left: -1892, right: -6742 } };
+  const flights = placeFlights({
+    zones: data.zones,
+    heldBackZones: [held],
+    flightNodes: [
+      { id: 2, name: "Stormwind", continentId: 0, worldX: -8840.6, worldY: 489.7 },
+      { id: 4, name: "Held Post", continentId: 0, worldX: -8000, worldY: -4000 },
+    ],
+    flightPaths: [
+      { from: 2, to: 4, continentId: 0, points: [[-8840, 489], [-8000, -4000]] },
+      { from: 2, to: 2, continentId: 0, points: [[-8840, 489], [-8850, 500]] },
+    ],
+  });
+
+  test("masters and line points are on the stitched map", () => {
+    expect(flights.masters[0]).toMatchObject({ id: 2, map: { continentId: 0, x: -489.7, y: 8840.6 }, heldBack: false });
+    expect(flights.lines[0]!.points[1]).toEqual({ continentId: 0, x: 4000, y: 8000 });
+  });
+
+  test("a master that lies in a held-back zone only, and a line that ends at one, are flagged", () => {
+    expect(flights.masters.map((m) => m.heldBack)).toEqual([false, true]);
+    expect(flights.lines.map((l) => l.heldBack)).toEqual([true, false]);
   });
 });
 

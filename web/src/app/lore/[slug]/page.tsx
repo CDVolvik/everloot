@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import { FEED, IMAGE, TWITTER_IMAGE } from "@/lib/seo";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
-import { Container, Explainer, Facts, PageHeader, Prose, SectionHeading, SourceLine } from "@/components/ui";
+import { Card, Container, Explainer, Facts, PageHeader, Prose, SectionHeading, SourceLine } from "@/components/ui";
 import { trailFor } from "@/lib/breadcrumbs";
+import { entityHref } from "@/components/EntityLink";
+import { idForName, loadNames } from "@/lib/names";
 import { BROWSE_HEADINGS, BROWSE_TYPES, CONVERSION_NOTE, FACET_KEYS, firstSentence, isIndexable, loreByExtId, loreSlug, parseLoreSlug, renderBody, UNAVAILABLE, UNAVAILABLE_COPY, type BrowseSlug, type LorePage as Lore } from "@/lib/lore";
 
 const link = "text-accent hover:underline underline-offset-4";
@@ -72,6 +74,10 @@ export default async function LorePage(props: { params: Promise<{ slug: string }
     : [];
   const infoboxEntries = page.infobox ? Object.entries(page.infobox.fields) : [];
   const trail = [...(typeSlug ? trailFor(`/lore/${typeSlug}`)! : trailFor("/lore")!), { name: page.name, path: `/lore/${loreSlug(page)}` }];
+  // The database page for the same thing, when players have agreed on a name that is exactly this page's.
+  const dbKind = wiki && (page.type === "npc" || page.type === "item" || page.type === "quest") ? page.type : null;
+  const names = dbKind ? await loadNames() : null;
+  const dbId = dbKind && names ? idForName(dbKind === "npc" ? names.npcs : dbKind === "item" ? names.items : names.quests, page.name) : null;
   return (
     <Container width="reading">
       <article>
@@ -97,6 +103,16 @@ export default async function LorePage(props: { params: Promise<{ slug: string }
             ),
           )}
         </Prose>
+
+        {dbKind && dbId !== null && (
+          <Card as="section" aria-labelledby="in-database" className="mt-12">
+            <SectionHeading id="in-database">In the Forever database</SectionHeading>
+            <p className="text-sm text-fg-2">
+              Players have recorded {page.name} in WoW: Forever.{" "}
+              <Link href={entityHref(dbKind, dbId)} className={link}>See the {dbKind === "npc" ? "NPC" : dbKind} page</Link>
+            </p>
+          </Card>
+        )}
 
         {infoboxEntries.length > 0 && (
           <section aria-labelledby="infobox" className="mt-12">

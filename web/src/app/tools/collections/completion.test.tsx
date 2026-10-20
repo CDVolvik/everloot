@@ -52,7 +52,17 @@ test("with no install the page asks for one and says nothing is measured", async
   const html = await render({});
   expect(html).toContain("Enter an install id");
   expect(html).not.toContain('role="progressbar"');
-  expect(html).toContain("Name a collection.");
+  // No collection upload exists yet, so the gap box is the empty state rather than a prompt.
+  expect(html).toContain("No collection list yet");
+  expect(html).toContain("data-empty-state");
+});
+
+test("once collection lists exist, the gap box asks for a collection", async () => {
+  store.loadCorpus.mockResolvedValue({
+    uploads: 3, dataAsOf: null,
+    records: three({ kind: "collection_catalog", collection: "Mounts", itemId: 1, source: "Vendor" }),
+  });
+  expect(await render({})).toContain("Name a collection.");
 });
 
 test("an install that uploaded no completion data gets an honest empty state, not zeros", async () => {

@@ -7,6 +7,7 @@ import { loadProviders } from "../../../companion/src/providers/config";
 import type { AddonInfo, AppState, AskInfo, Job, MarketInfo, PriceLookup, Settings } from "../shared/types";
 import { JOBS } from "../shared/types";
 import { presetFor, type ProviderKind } from "../shared/providers";
+import { accountInfo, signIn, signOut } from "./account";
 import { listBackups, restoreBackup } from "./backups";
 import { compareVersions, installAddon, installedAddonVersion, newestRelease, slotAddons } from "./addon";
 import { fetchChanges } from "./changes";
@@ -94,7 +95,7 @@ if (!app.requestSingleInstanceLock()) {
       };
     },
   }));
-  const appState = (): AppState => ({ version: app.getVersion(), platform: process.platform, dataFolder: data, notice: loaded.error, settings, engine: engine.snapshot(), update, updateProgress, staleScans: staleScans(allScans()) });
+  const appState = (): AppState => ({ version: app.getVersion(), platform: process.platform, dataFolder: data, notice: loaded.error, settings, engine: engine.snapshot(), update, updateProgress, staleScans: staleScans(allScans()), account: accountInfo(data) });
   const broadcast = () => {
     const s = appState();
     win?.webContents.send("state", s);
@@ -288,6 +289,17 @@ if (!app.requestSingleInstanceLock()) {
     const q = new URLSearchParams({ template: "bug-report.yml", labels: "bug,desktop", part: "Desktop App", page: `Everloot Desktop App ${app.getVersion()} (${process.platform})`, diagnostics: text });
     void shell.openExternal(`https://github.com/Everloot/everloot/issues/new?${q}`);
     return "opened";
+  });
+  ipcMain.handle("accountSignIn", async (_e, key: unknown) => {
+    if (typeof key !== "string") throw new Error("Paste the key first.");
+    await signIn(data, settings.endpoint, key);
+    broadcast();
+    return appState();
+  });
+  ipcMain.handle("accountSignOut", () => {
+    signOut(data);
+    broadcast();
+    return appState();
   });
   ipcMain.handle("checkForUpdates", async () => {
     const check = await checkForUpdates(app.getVersion(), fetch, process.platform, Boolean(process.env.PORTABLE_EXECUTABLE_FILE));

@@ -77,7 +77,9 @@ export default function DataTable<Row>({ columns, rows, rowKey, caption, sort, s
           </thead>
           <tbody>
             {rows.length === 0 && empty ? (
-              <tr><td colSpan={columns.length} className="p-0">{empty}</td></tr>
+              // Pinned to the frame's left edge and no wider than the screen, so on a phone the message and its
+              // button stay in view while the headers above it scroll sideways.
+              <tr><td colSpan={columns.length} className="p-0"><div className="sticky left-0 max-w-[calc(100vw-2rem-2px)]">{empty}</div></td></tr>
             ) : rows.map((row) => (
               <tr key={rowKey(row)} className="border-t border-line first:border-t-0 hover:bg-canvas/40">
                 {columns.map((col) => (

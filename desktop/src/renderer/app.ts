@@ -131,7 +131,7 @@ function chat(): string {
     return `<div class="msg msg-${m.role}">${esc(m.text)}${meta}</div>`;
   }).join("");
   return `<div class="page chat">
-    <div class="head"><h1>Chat</h1><span class="sub">${c ? `${esc(c.mode)} · ${c.withToken ? "your MCP token" : "public MCP, rate limited"}` : ""} <button type="button" class="link" id="chatClear">clear</button></span></div>
+    <div class="head"><h1>Chat</h1><span class="sub">${c ? `${esc(c.mode)} · ${c.withToken ? "your MCP token" : state?.account.signedIn ? "public MCP, your account's limits" : "public MCP, rate limited"}` : ""} <button type="button" class="link" id="chatClear">clear</button></span></div>
     <p class="muted small">Ask anything about the game. The model looks it up in Everloot's own MCP tools first and names the sources; when they have nothing it says the answer is its own knowledge. Private: the transcript stays in your data folder.</p>
     ${c && c.mode === "plain search" && !pickOpen ? `<p class="muted small">No model yet, so you get Everloot's search hits as they are. <button type="button" class="link" data-addmodel>Add your own key or a free model</button></p>` : ""}
     ${c && pickOpen ? providerForm(c) : ""}
@@ -533,11 +533,11 @@ function ask(s: AppState): string {
   const pending = (a?.pending ?? []).flatMap((p) => p.asks.map((q) => ({ ...q, account: account(p.file) })));
   return `<div class="page">
     <div class="head"><h1>Ask</h1><div class="row">${jobSwitch("ask", s)}${runBtn("ask", s, "Answer now")}</div></div>
-    <p class="fg2"><code>/ask</code> questions from the game are answered from the Everloot MCP server and written into <code>EverlootAnswers</code>; they show after <code>/reload</code>. Every answer names its source; with no source there is no answer. The same setup serves the Chat page.</p>
+    <p class="fg2"><code>/ask</code> questions from the game are answered from everloot.app's public MCP server (with your account's limits when you are signed in, Settings > Account) and written into <code>EverlootAnswers</code>; they show after <code>/reload</code>. Every answer names its source; with no source there is no answer. The same setup serves the Chat page.</p>
     <form id="askForm" class="panel" autocomplete="off">
       <div class="grid2">
-        <div class="field"><label for="mcpUrl">MCP server</label><input type="url" id="mcpUrl" name="mcpUrl" value="${esc(st.mcpUrl)}"></div>
-        <div class="field"><label for="tokenFile">Token file <span class="hint">a file holding your key from ${ext("https://everloot.app/connect", "everloot.app/connect")}; the key is never typed here</span></label>
+        <div class="field"><label for="mcpUrl">Private MCP server <span class="hint">used only with a token file</span></label><input type="url" id="mcpUrl" name="mcpUrl" value="${esc(st.mcpUrl)}"></div>
+        <div class="field"><label for="tokenFile">Token file <span class="hint">for a private Everloot server; leave empty to use the public one. The token is never typed here</span></label>
           <div class="row"><input class="grow" type="text" id="tokenFile" name="tokenFile" value="${esc(st.tokenFile ?? "")}"><button type="button" class="btn" id="pickToken">Choose…</button></div></div>
       </div>
       <div class="row"><button type="submit" class="btn btn-primary">Save</button><span class="muted" id="saved"></span></div>
@@ -616,6 +616,24 @@ const JOB_ROWS: { job: Job; label: string; what: string }[] = [
   { job: "ask", label: "In-game /ask", what: "Answer /ask questions from the game with the model below" },
 ];
 
+/** The everloot.app account: a free key made after Battle.net sign-in on /connect, pasted here. */
+function accountPanel(s: AppState): string {
+  const keys = websiteUrl(s.settings.endpoint, "/connect#keys");
+  const what = "Chat and the in-game /ask send it to everloot.app's public server, which then counts their requests against your account instead of this internet address, with a higher limit. Uploads never carry it.";
+  return s.account.signedIn
+    ? `<section class="panel" id="account" tabindex="-1"><h2>Account</h2>
+      <p class="fg2">Signed in to everloot.app with the key ending <b class="mono">…${esc(s.account.hint ?? "")}</b>.</p>
+      <p class="muted small">${what}</p>
+      <div class="row"><button type="button" class="btn" data-open="${esc(keys)}">Manage keys on everloot.app ↗</button><button type="button" class="btn" id="accountSignOut">Sign out</button></div>
+    </section>`
+    : `<section class="panel" id="account" tabindex="-1"><h2>Account</h2>
+      <p class="fg2">Sign in with Battle.net on everloot.app, make a free key there, and paste it here.</p>
+      <p class="muted small">${what} The key is kept in a file in your data folder and goes only to everloot.app.</p>
+      <div class="row"><button type="button" class="btn" data-open="${esc(keys)}">Get a key on everloot.app ↗</button></div>
+      <form id="accountForm" class="row" autocomplete="off"><input class="grow mono" type="password" name="key" placeholder="evl_…" aria-label="Everloot key" spellcheck="false"><button type="submit" class="btn btn-primary">Sign in</button></form>
+    </section>`;
+}
+
 /** Everything the app can be set to, on one page: what runs, the AI model, the game folder, startup, the app itself. */
 function settings(s: AppState): string {
   const st = s.settings;
@@ -627,10 +645,11 @@ function settings(s: AppState): string {
       return `<div class="set-row"><div class="grow"><b>${esc(presetFor(p.kind)?.label ?? p.kind)}</b><div class="muted small">${esc(p.model)}${inUse ? ' · <span class="ok">in use</span>' : ""}</div></div>
         ${inUse ? "" : `<button type="button" class="btn" data-usekind="${p.kind}" data-usemodel="${esc(p.model)}">Use</button>`}<button type="button" class="btn" data-removekind="${p.kind}">Remove</button></div>`;
     }).join("")
-    : `<p class="muted small">${c && c.mode !== "plain search" ? `In use: ${esc(c.mode)}, from config.json written by hand.` : "No model yet: Chat shows Everloot's search hits as they are, and /ask cannot answer."}</p>`;
+    : `<p class="muted small">${c && c.mode !== "plain search" ? `In use: ${esc(c.mode)}, from config.json written by hand.` : "No model yet: Chat and /ask answer with Everloot's top search hits as they are."}</p>`;
   return `<div class="page">
     <div class="head"><h1>Settings</h1></div>
     ${flash ? `<p role="status" class="${flash.startsWith("!") ? "error" : "ok"} small">${esc(flash.replace(/^!/, ""))}</p>` : ""}
+    ${accountPanel(s)}
     <section class="panel"><h2>What runs</h2>${jobs}</section>
     <section class="panel"><div class="row between"><h2>AI model</h2>${pickOpen ? "" : `<button type="button" class="btn" data-addmodel>Add a provider key</button>`}</div>
       <p class="muted small">Your own key answers Chat and the in-game /ask. Each key is kept in a file in your data folder and goes only to its provider. Switch models from the menu under the Chat box too.</p>
@@ -672,10 +691,14 @@ function renderSide(s: AppState): void {
   const e = s.engine;
   // Ready to install: Restart gets its own row, the clearest thing in the footer.
   const ready = s.update?.newer && s.updateProgress.stage === "ready";
-  sideFoot.innerHTML = `${ready ? `<div class="nav"><button type="button" class="restart-btn" id="updateRestart" title="Restart to install ${esc(s.update!.latest ?? "")}">${ARROW}Restart to update</button></div>` : ""}<div class="nav foot-row"><button type="button" data-page="settings" ${page === "settings" ? 'aria-current="page"' : ""}>${GEAR}Settings</button><button type="button" class="foot-icon" id="reportBug" aria-label="Report a bug" title="Report a bug">${BUG}</button>${updateButton(s)}</div>
+  const acct = s.account.signedIn
+    ? `<button type="button" class="account-btn" id="accountBtn" title="Signed in to everloot.app">${PERSON}<span class="grow">Signed in</span><span class="muted small">key …${esc(s.account.hint ?? "")}</span></button>`
+    : `<button type="button" class="account-btn" id="accountBtn">${PERSON}<span class="grow">Sign in</span><span class="muted small">everloot.app</span></button>`;
+  sideFoot.innerHTML = `<div class="nav">${acct}</div>${ready ? `<div class="nav"><button type="button" class="restart-btn" id="updateRestart" title="Restart to install ${esc(s.update!.latest ?? "")}">${ARROW}Restart to update</button></div>` : ""}<div class="nav foot-row"><button type="button" data-page="settings" ${page === "settings" ? 'aria-current="page"' : ""}>${GEAR}Settings</button><button type="button" class="foot-icon" id="reportBug" aria-label="Report a bug" title="Report a bug">${BUG}</button>${updateButton(s)}</div>
     <div class="foot-line"><span>${e.files.length ? `Watching ${e.files.length} file(s)` : "Not watching"}${e.paused ? " · paused" : ""}</span><span>v${esc(s.version)}</span></div>`;
 }
 
+const PERSON = `<svg class="gear" viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9.5"/><circle cx="12" cy="10" r="3.2"/><path d="M6.4 18.6a6.5 6.5 0 0 1 11.2 0"/></g></svg>`;
 const BUG = `<svg viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="8" width="10" height="12" rx="5"/><path d="M9 8V7a3 3 0 0 1 6 0v1M12 12v8M3 13h4M17 13h4M4 7l3 2M20 7l-3 2M4 19l3-2M20 19l-3-2"/></g></svg>`;
 
 /**
@@ -857,6 +880,14 @@ async function onClick(ev: MouseEvent): Promise<void> {
   if (el.closest("#updateLater")) { toggleUpdate(false); return; }
   if (el.closest("#updateGet")) { await api.updateDownload(); return; }
   if (el.closest("#updateRestart, #updateRestartPop")) { await api.updateRestart(); return; }
+  if (el.closest("#accountBtn")) {
+    if (page !== "settings") await go("settings");
+    const panel = main.querySelector<HTMLElement>("#account");
+    panel?.scrollIntoView({ block: "nearest" });
+    (panel?.querySelector<HTMLElement>("input") ?? panel)?.focus();
+    return;
+  }
+  if (el.closest("#accountSignOut")) { state = await api.accountSignOut(); flash = "Signed out on this computer. The key still works until you revoke it on everloot.app."; render(); return; }
   if (el.closest("#reportBug") && state) {
     const r = await api.reportBug(diagnostics(state));
     if (r === "copied") notice("Diagnostics copied. Paste them into the Discord #bug-reports channel or a GitHub issue.");
@@ -1039,6 +1070,13 @@ async function onSubmit(ev: SubmitEvent): Promise<void> {
       data.chat = await api.chatSetProvider({ kind: pickKind, key: text("key"), model, baseUrl: text("baseUrl") });
       pickOpen = false; flash = `Saved. Chat now runs ${data.chat.mode}.`;
     } catch (e) { flash = `!${msg(e)}`; }
+    render();
+    return;
+  }
+  if (form.id === "accountForm") {
+    try { state = await api.accountSignIn(String(f.get("key") ?? "")); flash = "Signed in. Chat and /ask now use your account's limits."; }
+    catch (e) { flash = `!${msg(e)}`; }
+    draftDirty = false;
     render();
     return;
   }

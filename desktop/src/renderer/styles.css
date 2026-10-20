@@ -290,4 +290,8 @@ details.panel[open] > summary { margin-bottom: 0.6rem; }
 .nav .restart-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem; width: 100%; margin-bottom: 0.35rem; padding: 0.3rem 0.65rem; border-radius: 999px; border: 0; background: rgb(var(--accent)); color: rgb(var(--canvas)); font-weight: 600; cursor: pointer; }
 .nav .restart-btn svg { width: 14px; height: 14px; }
 .nav .restart-btn:focus-visible { outline: 2px solid rgb(var(--accent)); outline-offset: 2px; }
+/* The account row at the top of the footer: who the app is signed in as on everloot.app. */
+.nav .account-btn { gap: 0.45rem; }
+.nav .account-btn .grow { flex: 1; text-align: left; }
+#account:focus { outline: none; }
 .toast.info { border-color: rgb(var(--edge)); color: rgb(var(--fg)); }
