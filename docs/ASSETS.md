@@ -152,6 +152,30 @@ How it works, and what it will not do:
 - **Sizes.** Icons and map pictures are lossy WebP (quality 90 and 82); frame pieces stay lossless.
 - Every record is labelled *found in game files, unconfirmed* and stamped with the build.
 
+## Game versions: Live, PTR and Beta
+
+The site knows its game versions in one list, `web/src/lib/game-version.ts`. The header label next to the
+search ("Beta · 1.60.1") and the build line on `/methodology` read from it. Today only Beta exists; Live
+arrives at launch on 2026-11-04, and Blizzard runs no PTR for Forever. The Beta build is not typed in: it
+comes from the `build` in `web/src/data/game-data/client-layer.json`. `game-version.test.ts` fails if any
+committed game-data layer (client layer, map, talents, digests, spell values, raid file) names a different
+build, so a build bump cannot leave one layer behind.
+
+**Adding a product or build** (Live at launch, or a PTR):
+
+1. Let the build watch see the product (`kb/src/builds.ts`, `kb/changes/builds.json`) and add it to the
+   ecosystem products in `kb/src/ecosystem.ts` (`FOREVER_PRODUCT` is the Beta product today).
+2. Extract and upload it as above. It gets its own `<product>-<build>-<config>/` asset folder, so the
+   older version keeps working.
+3. In `game-version.ts`, fill in `product` and `build` for its entry and set `available: true`. The
+   test then expects every layer to name the build of the version the site shows, so regenerate the
+   layers from the new snapshot in the same change.
+
+**URL plan, not built yet.** Live is the default and has no prefix. Other versions get a path prefix
+(`/ptr/...`, `/beta/...`), each page with a canonical tag to the same page of its own version and the
+Live page as the only one in the sitemap, so search engines do not mix versions. Until then the label is
+information only; the menu does not switch anything.
+
 ## Owner steps for the buckets
 
 Done for production on 2026-10-18: public bucket `everloot-assets` at `https://assets.everloot.app`
