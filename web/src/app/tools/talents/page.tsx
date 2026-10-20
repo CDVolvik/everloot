@@ -13,7 +13,9 @@ import { hubAnswers } from "@/lib/talents/facts";
 
 const tool = getTool("talents")!;
 const TITLE = "WoW Forever Talent Calculator";
-const description = "Plan WoW: Forever talents for all nine classes with the game's own point rules, two talent sets, undo and a share link. Trees are unconfirmed.";
+// The page's lead line carries no "unconfirmed" sentence (owner rule, 2026-10-20); the meta description keeps it.
+const lede = "Plan WoW: Forever talents for all nine classes with the game's own point rules, two talent sets, undo and a share link.";
+const description = `${lede} Trees are unconfirmed.`;
 
 export const metadata: Metadata = {
   ...pageMetadata({ title: TITLE, description, path: "/tools/talents" }),
@@ -26,8 +28,8 @@ export default async function TalentsIndexPage() {
   const classes = classChoices(await loadSiteAssets(), new Map(catalogs.map((c) => [c.classSlug, c.trees.map((t) => t.name)])));
   return (
     <Container>
-      <JsonLd data={webApplicationJsonLd({ name: TITLE, path: "/tools/talents", description })} />
-      <PageHeader trail={trailFor("/tools/talents")!} title={TITLE} lede={description} />
+      <JsonLd data={webApplicationJsonLd({ name: TITLE, path: "/tools/talents", description: lede })} />
+      <PageHeader trail={trailFor("/tools/talents")!} title={TITLE} lede={lede} />
 
       <ClassPicker variant="tiles" classes={classes} />
 

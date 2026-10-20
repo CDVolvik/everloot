@@ -41,6 +41,16 @@ export function shownItemName(
   return null;
 }
 
+/**
+ * A subclass as a page labels it: the client's "(OBSOLETE)" suffix dropped, and "Other" for one the files leave
+ * unnamed, never "Subclass 0". `retired` marks the buckets the hub leaves out (the class page still lists them).
+ */
+export function subclassLabel(s: { name: string | null }): { label: string; retired: boolean } {
+  if (s.name === null) return { label: "Other", retired: true };
+  const label = s.name.replace(/\s*\(OBSOLETE\)\s*$/i, "");
+  return { label, retired: label !== s.name };
+}
+
 /** Whether the plain first rows of a category have enough names to be indexed. */
 export function categoryNamedEnough(classId: number, subclassId: number | undefined, named: { has(id: number): boolean }): boolean {
   const ids = filterItems(CLIENT_TAXONOMY, { classId, subclassId }).slice(0, NAMED_SAMPLE).map((row) => row[0]);
@@ -128,7 +138,7 @@ export interface CategoryQuery {
   ilvl?: { min: number; max: number };
   req?: { min: number; max: number };
   bind?: string;
-  /** Absent: by id, ascending. */
+  /** Absent: named items first, each part by id (sortItems). */
   sort?: { key: ItemSort; desc: boolean };
   page: number;
 }
@@ -267,8 +277,13 @@ export function listItems(base: readonly ItemRow[], q: CategoryQuery, ctx: ItemL
   return sortItems(rows, q.sort, ctx);
 }
 
-/** Text keys sort A to Z and levels low to high, with the rows that have none last, whichever way; ties go by id. */
+/**
+ * Text keys sort A to Z and levels low to high, with the rows that have none last, whichever way; ties go by id.
+ * With no sort, items with a name the page shows come first, each part by id, so a list opens on real items
+ * rather than "Item N"; `sort=id` is the plain id order.
+ */
 export function sortItems(rows: ItemRow[], sort: CategoryQuery["sort"], ctx: ItemListContext = {}): ItemRow[] {
+  if (!sort && ctx.name) return [...rows.filter((row) => ctx.name!(row[0]) !== undefined), ...rows.filter((row) => ctx.name!(row[0]) === undefined)];
   if (!sort || sort.key === "id") return sort?.desc ? [...rows].sort((a, b) => b[0] - a[0]) : rows;
   const dir = sort.desc ? -1 : 1;
   const key = (row: ItemRow): string | number | null => {

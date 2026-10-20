@@ -16,9 +16,9 @@ export const SPACE = [4, 8, 12, 16, 24, 32, 48, 72] as const;
  *  icons and the tooltip frame; `rounded-full` for buttons, badges and pills. */
 export const RADIUS = { control: 6, card: 12 } as const;
 
-/** Three content widths: `reading` for documents, `wide` for tools and hubs (and the header and
- *  footer), `data` for the database, search and the item, NPC and quest pages (1440 with 24 px
- *  sides, 16 px under 1024 px). */
+/** Three content widths: `reading` for documents, `wide` for tools and hubs, `data` for the database,
+ *  search and the item, NPC and quest pages. The header, the footer and <main> run at `data` (1440 with
+ *  24 px sides, 16 px under 1024 px), and every page's column starts at its left edge. */
 export const WIDTH = { reading: 768, wide: 1152, data: 1440 } as const;
 
 /**

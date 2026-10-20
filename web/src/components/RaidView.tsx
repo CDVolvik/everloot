@@ -10,7 +10,9 @@ import { BANNER_MAP, loadingArt, loadSiteAssets, raidArt } from "@/lib/game-asse
 import { BannerArt } from "@/components/game/PageBanner";
 
 export const TITLE = "WoW Forever Raid Buff Planner";
-export const description = "Fill a 10, 20 or 40 player WoW: Forever raid with classes and talent trees to see which buffs and debuffs each group gets. Rules are unconfirmed.";
+// The page's lead line carries no "unconfirmed" sentence (owner rule, 2026-10-20); the meta description keeps it.
+const lede = "Fill a 10, 20 or 40 player WoW: Forever raid with classes and talent trees to see which buffs and debuffs each group gets.";
+export const description = `${lede} Rules are unconfirmed.`;
 
 const PROOF: Record<string, string> = {
   "talent spell": "a talent has the effect's spell",
@@ -27,11 +29,11 @@ export default async function RaidView({ initialCode }: { initialCode?: string }
   const banner = loadingArt(assets, BANNER_MAP.raid);
   return (
     <Container>
-      <JsonLd data={webApplicationJsonLd({ name: TITLE, path: "/tools/raid", description })} />
+      <JsonLd data={webApplicationJsonLd({ name: TITLE, path: "/tools/raid", description: lede })} />
       <PageHeader
         trail={trailFor("/tools/raid")!}
         title={TITLE}
-        lede={description}
+        lede={lede}
         banner={banner && assets ? { image: <BannerArt art={banner} eager /> } : undefined}
       />
 

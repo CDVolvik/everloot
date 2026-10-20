@@ -1,6 +1,6 @@
 // Words for the numbers in an item record (kb/src/assets/items.ts): quality, binding, slot, armour and
 // weapon kind, stat kind. These are the client's own enumerations, as the WoWDev wiki documents them.
-// A number this file does not know is printed as unknown, never guessed.
+// A number this file does not know is printed as unknown, never guessed; a stat kind it does not know is left out.
 import { tokens } from "@/design/tokens";
 import { formatCopper } from "../../../kb/src/market";
 import type { ItemRecord } from "../../../kb/src/assets/items";
@@ -61,10 +61,12 @@ export function itemTipText(r: ItemRecord): ItemTipText {
   const k = kind(r.c, r.sc);
   if (slot || k) lines.push([slot, k].filter(Boolean).join(" · "));
   if (r.d > 0) lines.push(`Speed ${(r.d / 1000).toFixed(2)}`);
-  for (const s of r.st) lines.push(`+${PLACEHOLDER} ${STAT[s] ?? `unknown stat ${s}`}`);
+  // A stat kind this file has no word for is left out rather than printed as "unknown stat 51".
+  const stats = r.st.filter((s) => STAT[s]);
+  for (const s of stats) lines.push(`+${PLACEHOLDER} ${STAT[s]}`);
   if (r.r > 1) lines.push(`Requires Level ${r.r}`);
   if (r.l > 0) lines.push(`Item Level ${r.l}`);
   if (r.t) lines.push(`"${r.t}"`);
   if (r.sp > 0) lines.push(`Sell Price: ${formatCopper(r.sp)}`);
-  return { name: r.n, quality: QUALITY_NAMES[r.q] ?? `quality ${r.q}`, lines, partial: r.st.length > 0 };
+  return { name: r.n, quality: QUALITY_NAMES[r.q] ?? `quality ${r.q}`, lines, partial: stats.length > 0 };
 }
