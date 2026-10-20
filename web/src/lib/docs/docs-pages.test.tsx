@@ -88,7 +88,7 @@ test("the reference lists every tool with its arguments, every endpoint, the Ope
 });
 
 test("tells users how to add the server in Claude, Grok and any other assistant that takes a URL", () => {
-  for (const text of ["https://claude.ai/customize/connectors", "including Free", "https://docs.x.ai/developers/tools/remote-mcp", "streamable HTTP MCP server by URL", "docs/2026-10-18-mcp-listings.md"]) {
+  for (const text of ["https://claude.ai/customize/connectors", "including Free", "https://docs.x.ai/developers/tools/remote-mcp", "streamable HTTP MCP server by URL", "app.everloot/knowledge", ".cursor/mcp.json", ".vscode/mcp.json"]) {
     expect(decoded).toContain(text);
   }
 });
@@ -177,7 +177,10 @@ test("with the data guard on it states the limits it enforces, how to send a key
       "deleted 30 days after it was revoked",
       `${KEY_PAGE.toLocaleString("en-US")} records a page`,
       "Authorization: Bearer <key>",
-      "Battle.net account",
+      "A key belongs to your account",
+      "/api/tools/{tool}",
+      "shared by all five",
+      "one hourly cap of 10,000 requests",
       "Search engines and AI assistants are welcome",
       'data-testid="api-keys"',
       "no sign-in wall",
@@ -196,6 +199,44 @@ test("my_builds is documented only while saved builds are on: the key permission
     for (const text of ["One more tool, my_builds", "It is not in the public list", "Read my saved builds", "With a build's slug",
       "short link while sharing is on", `"${MY_BUILDS_REFUSAL}"`, "the same key adds a my_builds tool"]) expect(on).toContain(text);
   } finally { vi.unstubAllEnvs(); }
+});
+
+test("the docs state the addon's defaults and the publication rules the code enforces", () => {
+  // Census and auction capture are on in a new install (addon/core.lua defaults); no page may call them opt-in.
+  expect(text).toContain("The census is on in a new install and says so once in chat.");
+  expect(text).not.toMatch(/census[^.]*off until you turn/i);
+  expect(text).not.toContain("It is off until you do this");
+  expect(text).toContain("Turns off auction capture, which is on in a new install.");
+  // Character names are published in three places; the old promise that they never are is gone.
+  expect(text).not.toContain("Character names and your install id are not published");
+  expect(text).toContain("on guild boards a guild's officers publish, and on player pages");
+  // Guild boards follow the 2-officer rule in kb/src/guild-board.ts, not the generic 3-install note.
+  expect(text).toContain("a figure is public when uploads from 2 of the guild's officers agree");
+  // The Desktop App sends census rows when allowed (companion/src/uploader.ts).
+  expect(text).toContain("and census rows if you allowed the census on its setup screen");
+  // Grants are issued by hand; the upload guide says how to ask for one.
+  expect(text).toContain("Get a sharing grant");
+  expect(text).toContain("Grants are not made on the site.");
+  // The two version numbers are named apart, and nothing claims an npm install.
+  expect(text).toContain("two version numbers");
+  expect(text).not.toMatch(/npm install @everloot\/protocol/);
+});
+
+test("the player pages section links the hide form only while player pages are on", async () => {
+  expect(text).toContain("Player pages are switched off on the site for now.");
+  expect(page).not.toContain('href="/players/opt-out"');
+  vi.stubEnv("EVERLOOT_PLAYER_PAGES", "1");
+  try {
+    const on = await renderDocs();
+    expect(on).toContain('href="/players/opt-out"');
+    expect(decode(stripTags(on))).toContain("anyone can hide a character, without an account");
+  } finally { vi.unstubAllEnvs(); }
+});
+
+test("field lists hide empty descriptions and generator noise", () => {
+  expect(text).not.toContain("No description.");
+  expect(text).not.toContain("or null, or null");
+  expect(text).not.toContain("9007199254740991");
 });
 
 test("the credit rule names the attribution field and headers every answer carries", () => {

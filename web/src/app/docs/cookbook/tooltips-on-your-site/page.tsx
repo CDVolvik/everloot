@@ -71,7 +71,7 @@ export default function Page() {
         <Step title="Make a test page" id="test-page">
           <p className="mt-2 leading-7 text-fg-2">Start with a plain HTML file. Save this as <C>tooltip-test.html</C>. The script tag goes just before the closing <C>&lt;/body&gt;</C>. The second link has <C>data-everloot-tooltip=&quot;off&quot;</C>, which tells the script to skip it.</p>
           <div className="mt-6"><CodeGroup title="tooltip-test.html" tabs={[{ label: "HTML", lang: "html", code: PAGE }]} /></div>
-          <p className="mt-4 leading-7 text-fg-2">Open the file in your browser and hover the first link. <Link href="#check" className={docLink}>Check your work</Link> says what to expect today.</p>
+          <p className="mt-4 leading-7 text-fg-2">Open the file in your browser and hover the first link. <Link href="#check" className={docLink}>Check your work</Link> says what to expect.</p>
         </Step>
         <Step title="Add it to WordPress" id="wordpress">
           <p className="mt-2 leading-7 text-fg-2">For one post or page, add a <strong>Custom HTML</strong> block and paste the script tag into it. Write your links as normal links, in the editor or in the same block.</p>
@@ -98,7 +98,7 @@ export default function Page() {
       </Steps>
 
       <Callout kind="note">
-        <p>WoW: Forever has not launched yet, so no page has been reported and every card request returns the 404 above. Your links still work as plain links, and cards start to appear as players upload and three installs agree.</p>
+        <p>Before WoW: Forever launches on 4 November 2026, and until players report a page, its card request returns the 404 above. Your links still work as plain links, and cards start to appear as players upload and three installs agree.</p>
       </Callout>
 
       <H2 id="check">Check your work</H2>

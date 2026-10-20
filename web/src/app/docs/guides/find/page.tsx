@@ -92,9 +92,13 @@ export default function Page() {
       <Cards>
         <LinkCard href="/tools/talents" title="Talent calculator">Plan a build and share it with its game build attached. Trees and rules are unconfirmed beta data.</LinkCard>
         <LinkCard href="/tools/raid" title="Raid group builder">Plan a raid and see which buffs it covers.</LinkCard>
-        <LinkCard href="/tools/gold-per-hour" title="Gold per hour calculator">Work out a farm from your route, items looted and auction prices.</LinkCard>
         <LinkCard href="/tools/auctions" title="Auction prices">Auction prices from full scans players started and uploaded.</LinkCard>
+        <LinkCard href="/census" title="Census">Who plays what: race, class, level and faction counts from the addon&apos;s census.</LinkCard>
       </Cards>
+      <P>
+        Gold per hour is now part of the addon: <C>/everloot gph start</C> in game. See{" "}
+        <Link href="/docs/guides/addon#commands" className={docLink}>the slash commands</Link>.
+      </P>
     </DocPage>
   );
 }

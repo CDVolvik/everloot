@@ -65,7 +65,10 @@ export default function McpOverview() {
 
       <H3 id="player-data-and-the-3-install-rule">Player data and the 3-install rule</H3>
       <P>
-        Tools built on player data, marked below, state a fact only after 3 installs agree on it. They say when something is not
+        Tools built on player data, marked below, state a fact only after 3 installs agree on it. A few follow their own
+        rule and say so on their pages: <C>guild_board</C> needs 2 of a guild&apos;s officers to agree, and{" "}
+        <C>gold_ledger</C>, <C>collection_gap</C> and <C>completion_progress</C> read the owner&apos;s own shared upload for
+        what that person owns or has done. They say when something is not
         recorded yet, and an unrecorded answer is never a zero. Anything read from the game files is labelled &quot;found in game
         files, unconfirmed&quot;, with its build. <Link href="/docs/how-it-works" className={docLink}>How Everloot works</Link>{" "}
         explains the rule.

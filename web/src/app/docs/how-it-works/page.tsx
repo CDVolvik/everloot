@@ -26,8 +26,10 @@ export default function Page() {
         trainers, gold in and out. It saves them to a file on your computer. Nothing leaves your machine until you upload.
       </P>
       <P>
-        Some modules are off until you turn them on. The census is one, and the list of your installed addons is another.
-        Install steps are in <Link href="/docs/guides/addon" className={docLink}>Install the addon</Link>.
+        The census is on in a new install and says so once in chat. An install from before the census keeps it off.{" "}
+        <C>/everloot census off</C> turns it off and deletes its rows. The players module and the list of your installed
+        addons are off until you turn them on. Install steps and every switch are in{" "}
+        <Link href="/docs/guides/addon" className={docLink}>Install the addon</Link>.
       </P>
 
       <H2 id="upload">You upload</H2>
@@ -38,14 +40,21 @@ export default function Page() {
       </P>
       <P>
         Uploaded observations are public as anonymous records, with no character names and without your install id, so anyone
-        can check our counts. What is never published, and why, is on <Link href="/docs/guides/privacy" className={docLink}>Privacy and your data</Link>.
+        can check our counts. Names appear only in named records their owner shares (gear, gold, collection), on guild boards
+        a guild&apos;s officers publish, and on player pages. What is published, what is never published, and why, is on{" "}
+        <Link href="/docs/guides/privacy" className={docLink}>Privacy and your data</Link>.
       </P>
 
       <H2 id="three-installs">Three installs have to agree</H2>
       <P>
         A drop, a vendor item, a spawn point, a recipe range or a market price appears as a fact only once at least{" "}
-        {AGREEMENT_NEEDED} different installs have reported it the same way. For prices and catalogue entries, different means
+        {AGREEMENT_NEEDED} different installs have reported it the same way. For prices and catalog entries, different means
         different upload addresses, with an IPv6 address counted by its /64 block. One household cannot make a fact true on its own.
+      </P>
+      <P>
+        Two kinds of answer follow their own rule. A guild board figure is public when uploads from 2 of that guild&apos;s
+        officers agree, each with a verified sharing grant. A character&apos;s gold ledger and a collection&apos;s owned
+        list come from that owner&apos;s own shared upload, so no agreement is needed.
       </P>
       <P>On the site you see this as a row of diamonds, one for each install that has reported the fact:</P>
       <Table
@@ -62,12 +71,13 @@ export default function Page() {
       <H2 id="zeros">Unrecorded is not zero</H2>
       <P>
         If nobody has recorded something, the page says <em>unrecorded</em>. A zero appears only when it was measured: for
-        example, &quot;0 drops in 40 kills&quot; once three installs killed that creature and none of them saw the item. A
-        storage outage or a missing source is never shown as zero.
+        example, &quot;0 drops in 40 loot windows&quot; once three installs looted that creature and none of them saw the item.
+        A storage outage or a missing source is never shown as zero.
       </P>
       <P>
-        Loot windows show what dropped, not how many kills it took, so they do not make a drop rate on their own. A rate is
-        drops divided by recorded kills.
+        A drop rate is the share of recorded loot windows on a creature or object that held the item. A kill nobody looted
+        is not counted, because the addon never saw it. The API field for that count is named <C>kills</C>, but it counts
+        loot windows.
       </P>
 
       <H2 id="unconfirmed">Found in game files, unconfirmed</H2>
@@ -90,7 +100,7 @@ export default function Page() {
       <H2 id="builds">Builds</H2>
       <P>
         Game-file data is stamped with the build it came from, on the page and in every answer. When Blizzard ships a new build,
-        a reviewed change records what moved in the tables Everloot reads. Forever has no live build yet, so these entries come from a pre-release build. The <Link href="/changes" className={docLink}>what changed</Link> page
+        a reviewed change records what moved in the tables Everloot reads. Entries read before launch on 4 November 2026 come from a pre-release build, and each one names it. The <Link href="/changes" className={docLink}>what changed</Link> page
         lists recent Blizzard posts and builds, and the MCP server gives assistants the same list as a resource,{" "}
         <C>everloot://builds</C>.
       </P>

@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { MCP_TOOL_NAMES } from "@everloot/protocol";
+import type { ReactNode } from "react";
+import { MCP_TOOL_NAMES, type McpToolName } from "@everloot/protocol";
 import { C, Callout, H2, P, Params, docLink } from "@/components/docs/blocks";
 import { CodeGroup } from "@/components/docs/DocsClient";
 import DocPage from "@/components/docs/DocPage";
@@ -11,6 +12,44 @@ import { toolDocs } from "@/lib/protocol-docs";
 import { pageMetadata } from "@/lib/seo";
 
 /** One page per MCP tool, generated from the protocol's tool definitions (MCP_TOOLS). */
+
+const GRANT = <Link href="/docs/guides/upload#get-a-grant" className={docLink}>sharing grant</Link>;
+const INSTALL_ID = (
+  <>
+    Your install id is the code in brackets on the first line of <C>/everloot status</C> in game. Anyone who has it can
+    read the progress you shared, so keep it private.
+  </>
+);
+
+/** Tools whose rule is not the usual 3-install one get their own note instead of the generic one. */
+const TOOL_NOTES: Partial<Record<McpToolName, ReactNode>> = {
+  guild_board: (
+    <>
+      Built on officers&apos; uploads, not the 3-install rule: a figure is public when uploads from 2 of the guild&apos;s
+      officers agree, each holding a verified {GRANT} for that guild. The answer ends with the age of the data and the
+      credit line.
+    </>
+  ),
+  gold_ledger: (
+    <>
+      Reads one character&apos;s own upload, shared by its owner with a verified {GRANT}, so no agreement between installs
+      is needed. A character whose owner has not shared gold has no ledger. The answer ends with the age of the data and
+      the credit line.
+    </>
+  ),
+  collection_gap: (
+    <>
+      The collection lists follow the 3-install rule. What you own comes from your own upload, shared with the collection
+      choice and a verified {GRANT}. {INSTALL_ID}
+    </>
+  ),
+  completion_progress: (
+    <>
+      The lists follow the 3-install rule. Your progress comes from your own upload, shared with the collection choice and
+      a verified {GRANT}. {INSTALL_ID}
+    </>
+  ),
+};
 
 export const dynamicParams = false;
 
@@ -38,7 +77,9 @@ export default async function ToolPage({ params }: { params: Promise<{ tool: str
   return (
     <DocPage href={toolHref(doc.name)} title={<span className="font-mono text-2xl sm:text-3xl">{doc.name}</span>} lede={doc.title} aside={aside}>
       <P>{doc.description}</P>
-      {doc.playerData ? (
+      {TOOL_NOTES[doc.name] ? (
+        <Callout kind="note"><p>{TOOL_NOTES[doc.name]}</p></Callout>
+      ) : doc.playerData ? (
         <Callout kind="note"><p>Built on player uploads: a fact appears once 3 installs agree on it, an answer says when something is not recorded yet, and it ends with the age of the data and the credit line.</p></Callout>
       ) : (
         <Callout kind="note"><p>Carries its sources inside the answer. Anything read from the game files is labelled unconfirmed, with its build.</p></Callout>

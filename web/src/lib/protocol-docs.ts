@@ -35,11 +35,14 @@ export function typeLabel(node: JsonSchemaNode): string {
   const type = Array.isArray(node.type) ? node.type.join(" or ") : (node.type ?? "value");
   const parts = [type];
   const integer = type === "integer";
-  const min = node.exclusiveMinimum !== undefined ? (integer ? node.exclusiveMinimum + 1 : undefined) : node.minimum;
+  // zod writes .int() as the safe-integer range; those bounds say nothing a reader needs.
+  const bound = (n: number | undefined) => (n === undefined || Math.abs(n) >= Number.MAX_SAFE_INTEGER ? undefined : n);
+  const min = node.exclusiveMinimum !== undefined ? (integer ? node.exclusiveMinimum + 1 : undefined) : bound(node.minimum);
+  const max = bound(node.maximum);
   if (!integer && node.exclusiveMinimum !== undefined) parts.push(`above ${node.exclusiveMinimum}`);
-  if (min !== undefined && node.maximum !== undefined) parts.push(`${min} to ${node.maximum}`);
+  if (min !== undefined && max !== undefined) parts.push(`${min} to ${max}`);
   else if (min !== undefined) parts.push(`${min} or more`);
-  else if (node.maximum !== undefined) parts.push(`up to ${node.maximum}`);
+  else if (max !== undefined) parts.push(`up to ${max}`);
   if (node.maxLength !== undefined) parts.push(`up to ${node.maxLength} characters`);
   if (node.default !== undefined) parts.push(`default ${String(node.default)}`);
   return parts.join(", ");

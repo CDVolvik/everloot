@@ -15,8 +15,8 @@ export default function Page() {
     <DocPage href="/docs/guides/desktop">
       <P>
         The Desktop App sits in your system tray beside the game. After you log out or type <C>/reload</C>, it uploads
-        what the addon recorded, and it writes community market prices into a small companion addon so they show in
-        your item tooltips. It is free and open source under the AGPL-3.0.
+        what the addon recorded, and it writes community market prices into a small price addon, EverlootPrices, so they
+        show in your item tooltips. It is free and open source under the AGPL-3.0.
       </P>
       <Callout kind="note">
         <p>
@@ -29,8 +29,8 @@ export default function Page() {
       <Table
         head={["Job", "What happens", "When"]}
         rows={[
-          ["Upload", "Sends the anonymous events the site has not confirmed yet, from the Everloot.lua file of each account.", "After the game writes the file, at logout or /reload."],
-          ["Market prices", "Writes community prices for the realms you scanned, and the realms you follow, into the EverlootPrices companion addon.", "After each upload, and every hour."],
+          ["Upload", "Sends the anonymous events the site has not confirmed yet, and census rows if you allowed them, from the Everloot.lua file of each account.", "After the game writes the file, at logout or /reload."],
+          ["Market prices", "Writes community prices for the realms you scanned, and the realms you follow, into the EverlootPrices price addon.", "After each upload, and every hour."],
           ["/ask", "Answers questions you typed with /ask in game, if you turn it on.", "After the game writes the file."],
         ]}
       />
@@ -40,8 +40,10 @@ export default function Page() {
         uploaded from there.
       </P>
       <P>
-        It follows the same rules as the website: only anonymous open-world events are sent, and named data such as
-        guild, gear, gold and collection stays on your computer. Nothing touches the game client.
+        It follows the same rules as the website. The app sends anonymous open-world events, and census rows if you
+        allowed the census on its setup screen (the box is ticked until you untick it; a switch in its settings changes
+        it later). It never sends named data (guild, gear, gold, collection), player rows or your installed addon list.
+        Those stay on your computer. Nothing touches the game client.
       </P>
 
       <H2 id="platforms">Platforms</H2>
@@ -84,6 +86,7 @@ export default function Page() {
       <List>
         <li><Link href="/docs/guides/upload" className={docLink}>Upload your data</Link> by hand instead.</li>
         <li><Link href="/docs/guides/privacy" className={docLink}>Privacy and your data</Link>: what an upload carries.</li>
+        <li><Link href="/docs/guides/troubleshooting" className={docLink}>Troubleshooting</Link>: when the app cannot find the game, or an upload is refused.</li>
       </List>
     </DocPage>
   );

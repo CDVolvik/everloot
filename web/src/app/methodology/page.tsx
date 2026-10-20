@@ -50,12 +50,13 @@ export default async function MethodologyPage() {
           <div className="space-y-4">
             <p className="text-fg-2">
               If nobody has recorded something, the page says <em>unrecorded</em>. A zero appears only when it was measured: for example,
-              &ldquo;0 drops in 40 kills&rdquo; once three installs killed that creature and none of them saw the item. A storage outage
-              or a missing source is never shown as zero either.
+              &ldquo;0 drops in 40 loot windows&rdquo; once three installs looted that creature and none of them saw the item. A storage
+              outage or a missing source is never shown as zero either.
             </p>
             <p className="text-fg-2">
-              Loot windows show what dropped, not how many kills it took, so they don&apos;t make a drop rate on their own. A rate is
-              drops divided by recorded kills.
+              A drop rate is the share of recorded loot windows on a creature or object that held the item. A kill nobody looted
+              isn&apos;t counted, because the addon never saw it. The API calls that count <code className="font-mono text-fg">kills</code>,
+              but it counts loot windows.
             </p>
           </div>
         </section>
@@ -64,7 +65,7 @@ export default async function MethodologyPage() {
           <SectionHeading id="never">What we never publish</SectionHeading>
           <div className="space-y-4">
             <ul className="list-disc pl-6 space-y-1 text-fg-2">
-              <li>Character names, unless that player shares them on purpose from the <Link href="/upload" className={link}>upload page</Link>, or the player pages are on: those show a character&apos;s name, realm, race, class, level, guild and the day it was last seen, and nothing else. Guild data needs an officer&apos;s upload.</li>
+              <li>Character names, unless that player shares them on purpose from the <Link href="/upload" className={link}>upload page</Link>, a guild&apos;s officers publish its guild board, or the player pages are on: those show a character&apos;s name, realm, race, class, level, guild and the day it was last seen, and nothing else. Guild data needs an officer&apos;s upload.</li>
               <li>Your install id, or the address an upload came from. Where an address matters for counting, we keep a keyed hash in private storage.</li>
               <li>Your list of addons, row by row. It is off unless you turn it on, and only counts that three installs share are shown.</li>
             </ul>
@@ -90,9 +91,11 @@ export default async function MethodologyPage() {
           <SectionHeading id="population">Population numbers</SectionHeading>
           <div className="space-y-4">
             <p className="text-fg-2">
-              The <Link href="/census" className={link}>census</Link> counts characters from players who turn it on in the addon with{" "}
-              <code className="font-mono text-fg">/everloot census on</code>: their own characters, and the players they target, mouse over
-              or group with. For other players the addon reads only race, class, level and faction. Never a name.
+              The <Link href="/census" className={link}>census</Link> counts characters from players who run the census in the addon:
+              their own characters, and the players they target, mouse over or group with. For other players the addon reads only race,
+              class, level and faction. Never a name. The census is on in a new install and says so once in chat. An install from
+              before the census keeps it off. <code className="font-mono text-fg">/everloot census off</code> turns it off and deletes
+              its rows.
             </p>
             <p className="text-fg-2">
               Each character is counted once. The game&apos;s id for a character never reaches storage: before an upload is stored, the id is

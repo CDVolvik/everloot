@@ -30,7 +30,12 @@ export default function DataFilesPage() {
           <H2 id="exports">Exports</H2>
           <P>
             Each export is its own folder, never changed after it is written. <a href={`${BULK_URL}/latest.json`} className={docLink}>latest.json</a>{" "}
-            points at the newest one.
+            points at the newest one, by a path relative to the same address.
+          </P>
+          <P>
+            Exports are made by hand, not on a schedule, so the newest one can be older than the live API. Check{" "}
+            <C>generatedAt</C> and <C>dataAsOf</C> in its index, and use the{" "}
+            <Link href="/docs/api/corpus-public" className={docLink}>corpus API</Link> when you need what was uploaded since.
           </P>
           <div className="mt-6">
             <CodeGroup title="Find the newest export" tabs={[{ label: "cURL", lang: "bash", code: ex.bulkCurl }]} />
