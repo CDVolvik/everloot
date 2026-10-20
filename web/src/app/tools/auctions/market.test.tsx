@@ -39,7 +39,12 @@ const market = foldMarket(emptyMarket(), [
   ...scans(dayAgo(0), [[2589, 900, 999]], "Nightfall", ["install-x", "install-y"]),
 ], today);
 
-const text = (html: string) => html.replace(/<[^>]*>/g, "");
+// Strips tags until none are left, so a tag split across another one cannot survive a single pass.
+const text = (html: string) => {
+  let out = html;
+  for (let prev = ""; prev !== out; ) [prev, out] = [out, out.replace(/<[^>]*>/g, "")];
+  return out;
+};
 const hub = async (searchParams: Record<string, string>) =>
   renderToStaticMarkup(await AuctionHousePage({ searchParams: Promise.resolve(searchParams) }));
 const realm = (slug: string) => ({ params: Promise.resolve({ realm: slug }) });
