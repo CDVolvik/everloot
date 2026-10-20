@@ -9,7 +9,7 @@ export const newestDesktopRelease = (releases: unknown) => newestRelease(release
 
 /** Reads the release list once and says whether a newer app or addon exists. It never downloads anything. */
 export async function fetchReleases(send: typeof fetch = fetch, userAgent = "everloot-desktop"): Promise<unknown> {
-  const res = await send(RELEASES_API, { headers: { accept: "application/vnd.github+json", "user-agent": userAgent } });
+  const res = await send(RELEASES_API, { headers: { accept: "application/vnd.github+json", "user-agent": userAgent }, signal: AbortSignal.timeout(15_000) });
   if (!res.ok) throw new Error(`GitHub answered ${res.status}`);
   return res.json();
 }

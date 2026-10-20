@@ -33,13 +33,17 @@ function dataFolder(): string {
   return join(process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config"), "everloot");
 }
 
-/** Remembers one network answer for a while, so opening a page twice does not ask the site twice. */
-function cached<T>(ms: number, load: () => Promise<T>): () => Promise<T> {
-  let value: { at: number; data: T } | null = null;
+/**
+ * Remembers one network answer for a while, so opening a page twice does not ask the site twice.
+ * The key (the site address) is part of it: another site in Settings is asked at once.
+ */
+function cached<T>(ms: number, load: () => Promise<T>, key: () => string = () => ""): () => Promise<T> {
+  let value: { at: number; key: string; data: T } | null = null;
   return async () => {
-    if (value && Date.now() - value.at < ms) return value.data;
+    const k = key();
+    if (value && value.key === k && Date.now() - value.at < ms) return value.data;
     const data = await load();
-    value = { at: Date.now(), data };
+    value = { at: Date.now(), key: k, data };
     return data;
   };
 }
@@ -135,8 +139,8 @@ if (!app.requestSingleInstanceLock()) {
   const checkReleases = () => { if (settings.consentedAt) { void addonUpdateNotice(); void desktopUpdateLine(); } };
 
   const releases = cached(10 * 60 * 1000, () => fetchReleases(fetch, `everloot-desktop/${app.getVersion()}`));
-  const knownRealms = cached(10 * 60 * 1000, () => listRealms(settings.endpoint));
-  const changes = cached(15 * 60 * 1000, () => fetchChanges(settings.endpoint));
+  const knownRealms = cached(10 * 60 * 1000, () => listRealms(settings.endpoint), () => settings.endpoint);
+  const changes = cached(15 * 60 * 1000, () => fetchChanges(settings.endpoint), () => settings.endpoint);
 
   const applyLoginItem = () => {
     if (process.platform === "linux") return; // no login item API there; the AppImage can be added by hand
@@ -174,6 +178,9 @@ if (!app.requestSingleInstanceLock()) {
     win.on("move", rememberSoon);
     // Close keeps the app in the tray; Quit in the tray menu ends it.
     win.on("close", (e) => { if (saveTimer) clearTimeout(saveTimer); remember(); if (!quitting) { e.preventDefault(); win?.hide(); } });
+    // Windows sign-out, restart or shutdown: let the window close instead of holding the session up.
+    win.on("query-session-end", () => { quitting = true; });
+    win.on("session-end", () => { quitting = true; });
     win.on("closed", () => { win = null; });
     win.webContents.setWindowOpenHandler(({ url }) => { if (allowedExternal(url)) void shell.openExternal(url); return { action: "deny" }; });
     win.webContents.on("will-navigate", (e) => e.preventDefault());
