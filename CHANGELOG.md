@@ -12,6 +12,98 @@ build that has a zip in the repository. Earlier builds have none.
 
 ## [Unreleased]
 
+Pull requests merged to `main` are listed in the nightly pre-releases until the next tagged release.
+
+## [desktop-v0.1.3] - 2026-10-20
+
+### Fixed
+- Browse for the game folder now lands on the product folder. Picking `World of Warcraft` itself chose the
+  folder one level above the one that holds `WTF`, so the app found no account files; it now takes the product
+  folder with Everloot data (`_classic_era_`, `_anniversary_` and the rest). Picking `WTF` or `Interface`
+  steps back up to the product folder too.
+
+## [desktop-v0.1.2] - 2026-10-20
+
+### Fixed
+- A nightly addon build (such as 0.3.4-nightly) counts as newer than the release before it. The Addon page and
+  the Overview used to offer the older release as an update, and the app sent a "newer addon" notice, so one
+  click put back a build without the nightly's features. The page now says the nightly is newer than the latest
+  release; putting the release back is the small repair link.
+
+## [desktop-v0.1.1] - 2026-10-20
+
+Everloot Desktop App 0.1.1. From this version, Windows installs download the next update inside the app and
+install it on restart. Updating from 0.1.0 is one manual download.
+
+### Added
+- An account row at the top of the sidebar footer. Signing in means pasting a free key made on
+  everloot.app after Battle.net sign-in; the app checks it with the site and keeps it in a file in the data
+  folder. Chat and the in-game `/ask` send it to the site's public MCP server, so their requests count against
+  the account instead of the internet address. Uploads and price refreshes never carry it. `/ask` no longer
+  needs a private token file: without one it answers from the public server, like Chat.
+- On a Windows install, the update downloads inside the app, is checked against the release's
+  SHA256SUMS, and installs on restart: a Restart to update button appears in the footer and asks first, waits
+  for a running upload, then runs the installer silently and opens the app again. A bug button beside Settings
+  opens GitHub's bug form with the app version and its diagnostics filled in (user folder hidden, never the
+  token), or copies them. The Addon page says Up to date instead of offering Reinstall as the main button;
+  reinstalling is a small repair link.
+- Chat answers appear as the model writes them, with the tool it is running shown while
+  it looks something up (Anthropic and OpenAI-compatible providers; a server that does not stream
+  still answers in one piece). Each answer has a Copy button.
+- A model menu under the Chat box, as in other chat apps. It lists the models of every
+  provider saved on the page (one key each for Anthropic, OpenRouter, OpenCode Zen, a custom server, plus
+  Ollama), and picking one switches Chat and the in-game `/ask`. Keys can be added, replaced or removed one
+  provider at a time. When search alone finds nothing, the answer says a model would read the question and
+  offers to add one.
+- Settings is pinned at the bottom of the sidebar and holds everything the app can be set to: what
+  runs (upload, market prices, in-game `/ask`), the AI model keys, the game folder, startup and the app itself.
+  The site's tools are no longer shown inside the window; the sidebar links to the database, talent calculator,
+  raid builder and auction prices on everloot.app, which open in the browser. The world map and lore archive
+  links are gone; Chat answers those questions.
+- The Market page looks up an item's price in the prices file the game reads: paste an item link from game
+  chat or type its id, and it shows each realm's community value, minimum, historical price and units up, with
+  a link to the item's history on everloot.app.
+- When a newer release is out, an arrow button sits beside Settings. It opens a panel with the
+  new version, its release date, what the release lists as changed (the first eight, then a link to the rest
+  on GitHub) and a Download button for this system's installer. Escape or Later closes it.
+
+### Fixed
+- An `Everloot.lua` written after the app started (the first logout, a second account) is
+  found within 30 seconds and uploaded; before, the app kept saying there was no file until it was
+  restarted. Resuming after Pause catches up on a logout that was skipped. A failed upload or `/ask`
+  run is tried again after 1, 5 and 15 minutes. On Linux and macOS the file watch is armed again after
+  the game replaces the file at logout, so later logouts are not missed.
+- Pages keep an open drawer, the focus and what you are typing when the app refreshes them. The Characters
+  week bars draw again (the page's security rules had blocked their heights), and a setting the app could not
+  save shows why and switches back.
+- Network calls time out instead of hanging, backups skip account files that did not change, and the app
+  no longer holds up a Windows sign-out.
+
+## [desktop-v0.1.0] - 2026-10-19
+
+The first Everloot Desktop App release. Tagged `desktop-v0.1.0`; the desktop app has its own
+version line, separate from the addon. Builds are not code-signed yet.
+
+### Added
+- **Everloot Desktop App** (`desktop/`): the companion as a tray app with a sidebar window. First run
+  shows what leaves the computer and finds the game folder; then it uploads after every logout,
+  refreshes market prices after each upload and hourly, and answers `/ask` when turned on. Pages
+  for each thing to manage: what each account file holds, realm picks for the prices file (your
+  scans plus the realms you follow), the `/ask` setup and recent answers, addon install and update
+  checked against the release's `SHA256SUMS`, the change tracker, the log, a chat over Everloot's
+  MCP tools with sources (a tool loop on the player's own key: Anthropic, OpenRouter, OpenCode Zen's
+  zero-retention free models, a local Ollama or any OpenAI-compatible server, picked on the page and
+  shared with the in-game `/ask`; plain sourced search without one; three local tools let the model
+  read the player's own characters, scan ages and the app's own job status, sourced as this
+  computer; starter questions on an empty thread and an "ask why" link from a failed job), a
+  local characters view (gold history, gear, progress), and the site's tools embedded. A dated
+  backup of each account file after every upload, with restore; a tray reminder when a realm's
+  scan is older than a day; the window remembers its place. Electron, built on
+  `companion/src`, same data folder as the command line. Tagged `desktop-vX.Y.Z`; the first
+  release is not code-signed.
+
+## [0.3.4] - 2026-10-20
+
 ### Added
 - Site: the player pages' disclosure text: the privacy policy, the terms, the data policy, the methodology page and the addon page now say what the player pages collect, that the pages are unverified information reported by other players, how long a row is kept, and how a character is hidden. It goes live with the switch, not before.
 - Site: an item's page shows its Source (Drop, Vendor, Crafted, Quest, Object) in the quick facts, each linking to its tab, from the same 3-install index as the item lists. Items nobody has reported show no row.
@@ -178,96 +270,6 @@ build that has a zip in the repository. Earlier builds have none.
 ### Fixed
 - Addon: `/everloot selftest` printed the failure text on two passing lines ("PASS C_Traits exists: no C_Traits
   table: talents cannot be read"). Both now say "present".
-
-Pull requests merged to `main` are listed in the nightly pre-releases until the next tagged release.
-
-## [desktop-v0.1.3] - 2026-10-20
-
-### Fixed
-- Browse for the game folder now lands on the product folder. Picking `World of Warcraft` itself chose the
-  folder one level above the one that holds `WTF`, so the app found no account files; it now takes the product
-  folder with Everloot data (`_classic_era_`, `_anniversary_` and the rest). Picking `WTF` or `Interface`
-  steps back up to the product folder too.
-
-## [desktop-v0.1.2] - 2026-10-20
-
-### Fixed
-- A nightly addon build (such as 0.3.4-nightly) counts as newer than the release before it. The Addon page and
-  the Overview used to offer the older release as an update, and the app sent a "newer addon" notice, so one
-  click put back a build without the nightly's features. The page now says the nightly is newer than the latest
-  release; putting the release back is the small repair link.
-
-## [desktop-v0.1.1] - 2026-10-20
-
-Everloot Desktop App 0.1.1. From this version, Windows installs download the next update inside the app and
-install it on restart. Updating from 0.1.0 is one manual download.
-
-### Added
-- An account row at the top of the sidebar footer. Signing in means pasting a free key made on
-  everloot.app after Battle.net sign-in; the app checks it with the site and keeps it in a file in the data
-  folder. Chat and the in-game `/ask` send it to the site's public MCP server, so their requests count against
-  the account instead of the internet address. Uploads and price refreshes never carry it. `/ask` no longer
-  needs a private token file: without one it answers from the public server, like Chat.
-- On a Windows install, the update downloads inside the app, is checked against the release's
-  SHA256SUMS, and installs on restart: a Restart to update button appears in the footer and asks first, waits
-  for a running upload, then runs the installer silently and opens the app again. A bug button beside Settings
-  opens GitHub's bug form with the app version and its diagnostics filled in (user folder hidden, never the
-  token), or copies them. The Addon page says Up to date instead of offering Reinstall as the main button;
-  reinstalling is a small repair link.
-- Chat answers appear as the model writes them, with the tool it is running shown while
-  it looks something up (Anthropic and OpenAI-compatible providers; a server that does not stream
-  still answers in one piece). Each answer has a Copy button.
-- A model menu under the Chat box, as in other chat apps. It lists the models of every
-  provider saved on the page (one key each for Anthropic, OpenRouter, OpenCode Zen, a custom server, plus
-  Ollama), and picking one switches Chat and the in-game `/ask`. Keys can be added, replaced or removed one
-  provider at a time. When search alone finds nothing, the answer says a model would read the question and
-  offers to add one.
-- Settings is pinned at the bottom of the sidebar and holds everything the app can be set to: what
-  runs (upload, market prices, in-game `/ask`), the AI model keys, the game folder, startup and the app itself.
-  The site's tools are no longer shown inside the window; the sidebar links to the database, talent calculator,
-  raid builder and auction prices on everloot.app, which open in the browser. The world map and lore archive
-  links are gone; Chat answers those questions.
-- The Market page looks up an item's price in the prices file the game reads: paste an item link from game
-  chat or type its id, and it shows each realm's community value, minimum, historical price and units up, with
-  a link to the item's history on everloot.app.
-- When a newer release is out, an arrow button sits beside Settings. It opens a panel with the
-  new version, its release date, what the release lists as changed (the first eight, then a link to the rest
-  on GitHub) and a Download button for this system's installer. Escape or Later closes it.
-
-### Fixed
-- An `Everloot.lua` written after the app started (the first logout, a second account) is
-  found within 30 seconds and uploaded; before, the app kept saying there was no file until it was
-  restarted. Resuming after Pause catches up on a logout that was skipped. A failed upload or `/ask`
-  run is tried again after 1, 5 and 15 minutes. On Linux and macOS the file watch is armed again after
-  the game replaces the file at logout, so later logouts are not missed.
-- Pages keep an open drawer, the focus and what you are typing when the app refreshes them. The Characters
-  week bars draw again (the page's security rules had blocked their heights), and a setting the app could not
-  save shows why and switches back.
-- Network calls time out instead of hanging, backups skip account files that did not change, and the app
-  no longer holds up a Windows sign-out.
-
-## [desktop-v0.1.0] - 2026-10-19
-
-The first Everloot Desktop App release. Tagged `desktop-v0.1.0`; the desktop app has its own
-version line, separate from the addon. Builds are not code-signed yet.
-
-### Added
-- **Everloot Desktop App** (`desktop/`): the companion as a tray app with a sidebar window. First run
-  shows what leaves the computer and finds the game folder; then it uploads after every logout,
-  refreshes market prices after each upload and hourly, and answers `/ask` when turned on. Pages
-  for each thing to manage: what each account file holds, realm picks for the prices file (your
-  scans plus the realms you follow), the `/ask` setup and recent answers, addon install and update
-  checked against the release's `SHA256SUMS`, the change tracker, the log, a chat over Everloot's
-  MCP tools with sources (a tool loop on the player's own key: Anthropic, OpenRouter, OpenCode Zen's
-  zero-retention free models, a local Ollama or any OpenAI-compatible server, picked on the page and
-  shared with the in-game `/ask`; plain sourced search without one; three local tools let the model
-  read the player's own characters, scan ages and the app's own job status, sourced as this
-  computer; starter questions on an empty thread and an "ask why" link from a failed job), a
-  local characters view (gold history, gear, progress), and the site's tools embedded. A dated
-  backup of each account file after every upload, with restore; a tray reminder when a realm's
-  scan is older than a day; the window remembers its place. Electron, built on
-  `companion/src`, same data folder as the command line. Tagged `desktop-vX.Y.Z`; the first
-  release is not code-signed.
 
 ## [0.3.3] - 2026-10-18
 
