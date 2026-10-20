@@ -49,16 +49,16 @@ test("auction_history, collection_gap and guild_board answer with their result u
 
   const auctions = await c.callTool({ name: "auction_history", arguments: { realm: "Forever", itemId: 5 } });
   const auctionsOut = OUT.auction_history.parse(auctions.structuredContent);
-  expect(auctionsOut).toEqual({ connected: true, dataAsOf: AS_OF, page: auctionHistory("Forever", 5, auctionSightingsFromRecords(records)) });
+  expect(auctionsOut).toEqual({ connected: true, dataAsOf: AS_OF, url: "https://everloot.app/tools/auctions?realm=Forever&item=5", page: auctionHistory("Forever", 5, auctionSightingsFromRecords(records)) });
   expect(auctionsOut.page!.points).toEqual([{ day: "2026-10-12", copper: 200, reporters: 3 }]);
   expect(JSON.stringify(auctions.content)).toContain("2026-10-12  2s 0c  3 reporters");
 
   const gap = OUT.collection_gap.parse((await c.callTool({ name: "collection_gap", arguments: { collection: "Mounts", ownerInstallId: "owner" } })).structuredContent);
-  expect(gap).toEqual({ connected: true, dataAsOf: AS_OF, page: collectionGap("Mounts", "owner", collectionFactsFromRecords(records)) });
+  expect(gap).toEqual({ connected: true, dataAsOf: AS_OF, url: "https://everloot.app/tools/collections?collection=Mounts&install=owner", page: collectionGap("Mounts", "owner", collectionFactsFromRecords(records)) });
   expect(gap.page).toMatchObject({ ownedRecorded: true, groups: [{ source: "Drop", owned: [], missing: [2] }, { source: "Vendor", owned: [1], missing: [] }] });
 
   const guild = OUT.guild_board.parse((await c.callTool({ name: "guild_board", arguments: { guildName: "Olympus", realm: "Forever" } })).structuredContent);
-  expect(guild).toEqual({ connected: true, dataAsOf: AS_OF, page: guildBoard("Olympus", "Forever", guildFactsFromRecords(records)) });
+  expect(guild).toEqual({ connected: true, dataAsOf: AS_OF, url: "https://everloot.app/tools/guild-board?guild=Olympus&realm=Forever", page: guildBoard("Olympus", "Forever", guildFactsFromRecords(records)) });
   expect(guild.page).toMatchObject({ memberCount: 2, roster: [{ name: "Ada", rank: "Officer", level: 60, className: "Mage" }, { name: "Bea", rank: "Member", level: 60, className: "Priest" }], averageItemLevel: null });
 });
 
@@ -67,6 +67,10 @@ test("a blank name keeps the text's refusal and a page with nothing agreed; no c
   const blank = await c.callTool({ name: "guild_board", arguments: { guildName: " ", realm: "Forever" } });
   expect(JSON.stringify(blank.content)).toContain("Name a guild.");
   expect(OUT.guild_board.parse(blank.structuredContent).page).toMatchObject({ memberCount: null, roster: [] });
+  // Nothing published, nothing scanned, no catalog: those pages would be empty, so none is linked.
+  expect(blank.structuredContent).not.toHaveProperty("url");
+  expect((await c.callTool({ name: "auction_history", arguments: { realm: "Forever", itemId: 6 } })).structuredContent).not.toHaveProperty("url");
+  expect((await c.callTool({ name: "collection_gap", arguments: { collection: "Pets", ownerInstallId: "owner" } })).structuredContent).not.toHaveProperty("url");
   const off = OUT.auction_history.parse((await (await client()).callTool({ name: "auction_history", arguments: { realm: "Forever", itemId: 5 } })).structuredContent);
   expect(off.connected).toBe(false);
   expect(off).not.toHaveProperty("page");

@@ -84,6 +84,10 @@
               "retrievedAt": {
                 "type": "string",
                 "description": "When the source was read."
+              },
+              "url": {
+                "description": "The record's page on everloot.app, absolute: an indexed lore page. Absent for a record the site has no page for.",
+                "type": "string"
               }
             },
             "required": [

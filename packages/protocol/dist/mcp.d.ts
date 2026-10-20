@@ -131,6 +131,11 @@ export declare const ecosystemProject: z.ZodObject<{
 }, z.core.$strip>;
 export type EcosystemProjectOut = z.infer<typeof ecosystemProject>;
 /**
+ * What an answer's `url` means. Absent when the answer has no page, or its page would be empty or not
+ * indexed; a page link never stands in for a fact the answer does not hold.
+ */
+export declare const PAGE_URL = "The everloot.app page that shows this answer, absolute. Absent when there is no such page or it would be empty.";
+/**
  * What every structured answer built on player uploads starts with. connected false means no corpus
  * was read (not connected, or unavailable): the page is then absent, and that is not a measured zero.
  */
@@ -138,6 +143,7 @@ export declare const uploadsAnswer: {
     connected: z.ZodBoolean;
     dataAsOf: z.ZodNullable<z.ZodString>;
     reason: z.ZodOptional<z.ZodString>;
+    url: z.ZodOptional<z.ZodString>;
 };
 /** One source of an item with its observed loot-window frequency; public after 3 distinct install reports. */
 export declare const itemDrop: z.ZodObject<{
@@ -817,6 +823,7 @@ export declare const knowledgeHit: z.ZodObject<{
     sourceId: z.ZodString;
     licence: z.ZodString;
     retrievedAt: z.ZodString;
+    url: z.ZodOptional<z.ZodString>;
 }, z.core.$strip>;
 export type KnowledgeHit = z.infer<typeof knowledgeHit>;
 /** One entry of the changes timeline as recent_changes returns it. Titles and excerpts are quoted source text. */
@@ -867,6 +874,7 @@ export declare const evidence: z.ZodObject<{
     licence: z.ZodString;
     asOf: z.ZodNullable<z.ZodString>;
     support: z.ZodOptional<z.ZodNumber>;
+    url: z.ZodOptional<z.ZodString>;
 }, z.core.$strip>;
 export type Evidence = z.infer<typeof evidence>;
 export interface McpToolDef {
@@ -933,6 +941,7 @@ export declare const MCP_TOOLS: {
                 sourceId: z.ZodString;
                 licence: z.ZodString;
                 retrievedAt: z.ZodString;
+                url: z.ZodOptional<z.ZodString>;
             }, z.core.$strip>>;
         };
         readonly annotations: {
@@ -973,6 +982,7 @@ export declare const MCP_TOOLS: {
                 sourceId: z.ZodString;
                 licence: z.ZodString;
                 retrievedAt: z.ZodString;
+                url: z.ZodOptional<z.ZodString>;
             }, z.core.$strip>>;
         };
         readonly annotations: {
@@ -1024,6 +1034,7 @@ export declare const MCP_TOOLS: {
                 sourceId: z.ZodString;
                 licence: z.ZodString;
                 retrievedAt: z.ZodString;
+                url: z.ZodOptional<z.ZodString>;
             }, z.core.$strip>>;
         };
         readonly annotations: {
@@ -1112,6 +1123,7 @@ export declare const MCP_TOOLS: {
                 licence: z.ZodString;
                 asOf: z.ZodNullable<z.ZodString>;
                 support: z.ZodOptional<z.ZodNumber>;
+                url: z.ZodOptional<z.ZodString>;
             }, z.core.$strip>>;
             readonly furtherReading: z.ZodArray<z.ZodObject<{
                 site: z.ZodString;
@@ -1136,6 +1148,7 @@ export declare const MCP_TOOLS: {
             readonly connected: z.ZodBoolean;
             readonly dataAsOf: z.ZodNullable<z.ZodString>;
             readonly reason: z.ZodOptional<z.ZodString>;
+            readonly url: z.ZodOptional<z.ZodString>;
             readonly page: z.ZodOptional<z.ZodObject<{
                 profession: z.ZodString;
                 fromSkill: z.ZodNumber;
@@ -1181,6 +1194,7 @@ export declare const MCP_TOOLS: {
             readonly connected: z.ZodBoolean;
             readonly dataAsOf: z.ZodNullable<z.ZodString>;
             readonly reason: z.ZodOptional<z.ZodString>;
+            readonly url: z.ZodOptional<z.ZodString>;
             readonly page: z.ZodOptional<z.ZodObject<{
                 profession: z.ZodString;
                 ranges: z.ZodArray<z.ZodObject<{
@@ -1224,6 +1238,7 @@ export declare const MCP_TOOLS: {
             readonly connected: z.ZodBoolean;
             readonly dataAsOf: z.ZodNullable<z.ZodString>;
             readonly reason: z.ZodOptional<z.ZodString>;
+            readonly url: z.ZodOptional<z.ZodString>;
             readonly page: z.ZodOptional<z.ZodObject<{
                 itemId: z.ZodNumber;
                 name: z.ZodNullable<z.ZodString>;
@@ -1261,6 +1276,7 @@ export declare const MCP_TOOLS: {
             readonly connected: z.ZodBoolean;
             readonly dataAsOf: z.ZodNullable<z.ZodString>;
             readonly reason: z.ZodOptional<z.ZodString>;
+            readonly url: z.ZodOptional<z.ZodString>;
             readonly page: z.ZodOptional<z.ZodObject<{
                 npcId: z.ZodNumber;
                 name: z.ZodNullable<z.ZodString>;
@@ -1287,6 +1303,7 @@ export declare const MCP_TOOLS: {
             readonly connected: z.ZodBoolean;
             readonly dataAsOf: z.ZodNullable<z.ZodString>;
             readonly reason: z.ZodOptional<z.ZodString>;
+            readonly url: z.ZodOptional<z.ZodString>;
             readonly page: z.ZodOptional<z.ZodObject<{
                 objectId: z.ZodNumber;
                 drops: z.ZodArray<z.ZodObject<{
@@ -1319,6 +1336,7 @@ export declare const MCP_TOOLS: {
             readonly connected: z.ZodBoolean;
             readonly dataAsOf: z.ZodNullable<z.ZodString>;
             readonly reason: z.ZodOptional<z.ZodString>;
+            readonly url: z.ZodOptional<z.ZodString>;
             readonly page: z.ZodOptional<z.ZodObject<{
                 questId: z.ZodNumber;
                 title: z.ZodNullable<z.ZodString>;
@@ -1343,6 +1361,7 @@ export declare const MCP_TOOLS: {
             readonly connected: z.ZodBoolean;
             readonly dataAsOf: z.ZodNullable<z.ZodString>;
             readonly reason: z.ZodOptional<z.ZodString>;
+            readonly url: z.ZodOptional<z.ZodString>;
             readonly page: z.ZodOptional<z.ZodObject<{
                 vendorNpcId: z.ZodNumber;
                 offers: z.ZodArray<z.ZodObject<{
@@ -1374,6 +1393,7 @@ export declare const MCP_TOOLS: {
             readonly connected: z.ZodBoolean;
             readonly dataAsOf: z.ZodNullable<z.ZodString>;
             readonly reason: z.ZodOptional<z.ZodString>;
+            readonly url: z.ZodOptional<z.ZodString>;
             readonly page: z.ZodOptional<z.ZodObject<{
                 ok: z.ZodBoolean;
                 message: z.ZodOptional<z.ZodString>;
@@ -1451,6 +1471,7 @@ export declare const MCP_TOOLS: {
             readonly connected: z.ZodBoolean;
             readonly dataAsOf: z.ZodNullable<z.ZodString>;
             readonly reason: z.ZodOptional<z.ZodString>;
+            readonly url: z.ZodOptional<z.ZodString>;
             readonly page: z.ZodOptional<z.ZodObject<{
                 kind: z.ZodEnum<{
                     icon: "icon";
@@ -1603,6 +1624,7 @@ export declare const MCP_TOOLS: {
             readonly total: z.ZodOptional<z.ZodNumber>;
             readonly error: z.ZodOptional<z.ZodString>;
             readonly credit: z.ZodString;
+            readonly url: z.ZodOptional<z.ZodString>;
         };
         readonly annotations: {
             readonly readOnlyHint: true;
@@ -1686,6 +1708,7 @@ export declare const MCP_TOOLS: {
                 }, z.core.$strip>>;
             }, z.core.$strip>>;
             readonly credit: z.ZodString;
+            readonly url: z.ZodOptional<z.ZodString>;
         };
         readonly annotations: {
             readonly readOnlyHint: true;
@@ -1734,6 +1757,7 @@ export declare const MCP_TOOLS: {
             readonly link: z.ZodOptional<z.ZodString>;
             readonly label: z.ZodString;
             readonly credit: z.ZodString;
+            readonly url: z.ZodOptional<z.ZodString>;
         };
         readonly annotations: {
             readonly readOnlyHint: true;
@@ -1751,6 +1775,7 @@ export declare const MCP_TOOLS: {
             readonly connected: z.ZodBoolean;
             readonly dataAsOf: z.ZodNullable<z.ZodString>;
             readonly reason: z.ZodOptional<z.ZodString>;
+            readonly url: z.ZodOptional<z.ZodString>;
             readonly page: z.ZodOptional<z.ZodObject<{
                 collection: z.ZodString;
                 ownerInstallId: z.ZodString;
@@ -1779,6 +1804,7 @@ export declare const MCP_TOOLS: {
             readonly connected: z.ZodBoolean;
             readonly dataAsOf: z.ZodNullable<z.ZodString>;
             readonly reason: z.ZodOptional<z.ZodString>;
+            readonly url: z.ZodOptional<z.ZodString>;
             readonly page: z.ZodOptional<z.ZodObject<{
                 ownerInstallId: z.ZodString;
                 listed: z.ZodObject<{
@@ -1865,6 +1891,7 @@ export declare const MCP_TOOLS: {
             readonly connected: z.ZodBoolean;
             readonly dataAsOf: z.ZodNullable<z.ZodString>;
             readonly reason: z.ZodOptional<z.ZodString>;
+            readonly url: z.ZodOptional<z.ZodString>;
             readonly page: z.ZodOptional<z.ZodObject<{
                 guildName: z.ZodString;
                 realm: z.ZodString;
@@ -1909,6 +1936,7 @@ export declare const MCP_TOOLS: {
             readonly connected: z.ZodBoolean;
             readonly dataAsOf: z.ZodNullable<z.ZodString>;
             readonly reason: z.ZodOptional<z.ZodString>;
+            readonly url: z.ZodOptional<z.ZodString>;
             readonly page: z.ZodOptional<z.ZodObject<{
                 realm: z.ZodString;
                 itemId: z.ZodNumber;
@@ -1935,6 +1963,7 @@ export declare const MCP_TOOLS: {
             readonly connected: z.ZodBoolean;
             readonly dataAsOf: z.ZodNullable<z.ZodString>;
             readonly reason: z.ZodOptional<z.ZodString>;
+            readonly url: z.ZodOptional<z.ZodString>;
             readonly page: z.ZodOptional<z.ZodObject<{
                 realm: z.ZodString;
                 itemId: z.ZodNumber;
@@ -1975,6 +2004,7 @@ export declare const MCP_TOOLS: {
             readonly connected: z.ZodBoolean;
             readonly dataAsOf: z.ZodNullable<z.ZodString>;
             readonly reason: z.ZodOptional<z.ZodString>;
+            readonly url: z.ZodOptional<z.ZodString>;
             readonly page: z.ZodOptional<z.ZodObject<{
                 character: z.ZodString;
                 realm: z.ZodString;
@@ -2017,6 +2047,7 @@ export declare const MCP_TOOLS: {
             readonly connected: z.ZodBoolean;
             readonly dataAsOf: z.ZodNullable<z.ZodString>;
             readonly reason: z.ZodOptional<z.ZodString>;
+            readonly url: z.ZodOptional<z.ZodString>;
             readonly page: z.ZodOptional<z.ZodObject<{
                 scope: z.ZodObject<{
                     id: z.ZodString;
@@ -2126,6 +2157,7 @@ export declare const MCP_TOOLS: {
                 postNumber: z.ZodOptional<z.ZodNumber>;
                 startedThread: z.ZodOptional<z.ZodBoolean>;
             }, z.core.$strip>>;
+            readonly url: z.ZodOptional<z.ZodString>;
         };
         readonly annotations: {
             readonly readOnlyHint: true;
@@ -2193,6 +2225,7 @@ export declare const MCP_TOOLS: {
                 badges: z.ZodArray<z.ZodString>;
                 maintenanceScore: z.ZodNullable<z.ZodNumber>;
             }, z.core.$strip>>;
+            readonly url: z.ZodOptional<z.ZodString>;
         };
         readonly annotations: {
             readonly readOnlyHint: true;
@@ -2293,6 +2326,7 @@ export declare const MCP_TOOL_LIST: ({
             sourceId: z.ZodString;
             licence: z.ZodString;
             retrievedAt: z.ZodString;
+            url: z.ZodOptional<z.ZodString>;
         }, z.core.$strip>>;
     };
     annotations: {
@@ -2333,6 +2367,7 @@ export declare const MCP_TOOL_LIST: ({
             sourceId: z.ZodString;
             licence: z.ZodString;
             retrievedAt: z.ZodString;
+            url: z.ZodOptional<z.ZodString>;
         }, z.core.$strip>>;
     };
     annotations: {
@@ -2384,6 +2419,7 @@ export declare const MCP_TOOL_LIST: ({
             sourceId: z.ZodString;
             licence: z.ZodString;
             retrievedAt: z.ZodString;
+            url: z.ZodOptional<z.ZodString>;
         }, z.core.$strip>>;
     };
     annotations: {
@@ -2472,6 +2508,7 @@ export declare const MCP_TOOL_LIST: ({
             licence: z.ZodString;
             asOf: z.ZodNullable<z.ZodString>;
             support: z.ZodOptional<z.ZodNumber>;
+            url: z.ZodOptional<z.ZodString>;
         }, z.core.$strip>>;
         readonly furtherReading: z.ZodArray<z.ZodObject<{
             site: z.ZodString;
@@ -2496,6 +2533,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly connected: z.ZodBoolean;
         readonly dataAsOf: z.ZodNullable<z.ZodString>;
         readonly reason: z.ZodOptional<z.ZodString>;
+        readonly url: z.ZodOptional<z.ZodString>;
         readonly page: z.ZodOptional<z.ZodObject<{
             profession: z.ZodString;
             fromSkill: z.ZodNumber;
@@ -2541,6 +2579,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly connected: z.ZodBoolean;
         readonly dataAsOf: z.ZodNullable<z.ZodString>;
         readonly reason: z.ZodOptional<z.ZodString>;
+        readonly url: z.ZodOptional<z.ZodString>;
         readonly page: z.ZodOptional<z.ZodObject<{
             profession: z.ZodString;
             ranges: z.ZodArray<z.ZodObject<{
@@ -2584,6 +2623,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly connected: z.ZodBoolean;
         readonly dataAsOf: z.ZodNullable<z.ZodString>;
         readonly reason: z.ZodOptional<z.ZodString>;
+        readonly url: z.ZodOptional<z.ZodString>;
         readonly page: z.ZodOptional<z.ZodObject<{
             itemId: z.ZodNumber;
             name: z.ZodNullable<z.ZodString>;
@@ -2621,6 +2661,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly connected: z.ZodBoolean;
         readonly dataAsOf: z.ZodNullable<z.ZodString>;
         readonly reason: z.ZodOptional<z.ZodString>;
+        readonly url: z.ZodOptional<z.ZodString>;
         readonly page: z.ZodOptional<z.ZodObject<{
             npcId: z.ZodNumber;
             name: z.ZodNullable<z.ZodString>;
@@ -2647,6 +2688,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly connected: z.ZodBoolean;
         readonly dataAsOf: z.ZodNullable<z.ZodString>;
         readonly reason: z.ZodOptional<z.ZodString>;
+        readonly url: z.ZodOptional<z.ZodString>;
         readonly page: z.ZodOptional<z.ZodObject<{
             objectId: z.ZodNumber;
             drops: z.ZodArray<z.ZodObject<{
@@ -2679,6 +2721,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly connected: z.ZodBoolean;
         readonly dataAsOf: z.ZodNullable<z.ZodString>;
         readonly reason: z.ZodOptional<z.ZodString>;
+        readonly url: z.ZodOptional<z.ZodString>;
         readonly page: z.ZodOptional<z.ZodObject<{
             questId: z.ZodNumber;
             title: z.ZodNullable<z.ZodString>;
@@ -2703,6 +2746,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly connected: z.ZodBoolean;
         readonly dataAsOf: z.ZodNullable<z.ZodString>;
         readonly reason: z.ZodOptional<z.ZodString>;
+        readonly url: z.ZodOptional<z.ZodString>;
         readonly page: z.ZodOptional<z.ZodObject<{
             vendorNpcId: z.ZodNumber;
             offers: z.ZodArray<z.ZodObject<{
@@ -2734,6 +2778,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly connected: z.ZodBoolean;
         readonly dataAsOf: z.ZodNullable<z.ZodString>;
         readonly reason: z.ZodOptional<z.ZodString>;
+        readonly url: z.ZodOptional<z.ZodString>;
         readonly page: z.ZodOptional<z.ZodObject<{
             ok: z.ZodBoolean;
             message: z.ZodOptional<z.ZodString>;
@@ -2811,6 +2856,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly connected: z.ZodBoolean;
         readonly dataAsOf: z.ZodNullable<z.ZodString>;
         readonly reason: z.ZodOptional<z.ZodString>;
+        readonly url: z.ZodOptional<z.ZodString>;
         readonly page: z.ZodOptional<z.ZodObject<{
             kind: z.ZodEnum<{
                 icon: "icon";
@@ -2963,6 +3009,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly total: z.ZodOptional<z.ZodNumber>;
         readonly error: z.ZodOptional<z.ZodString>;
         readonly credit: z.ZodString;
+        readonly url: z.ZodOptional<z.ZodString>;
     };
     annotations: {
         readonly readOnlyHint: true;
@@ -3046,6 +3093,7 @@ export declare const MCP_TOOL_LIST: ({
             }, z.core.$strip>>;
         }, z.core.$strip>>;
         readonly credit: z.ZodString;
+        readonly url: z.ZodOptional<z.ZodString>;
     };
     annotations: {
         readonly readOnlyHint: true;
@@ -3094,6 +3142,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly link: z.ZodOptional<z.ZodString>;
         readonly label: z.ZodString;
         readonly credit: z.ZodString;
+        readonly url: z.ZodOptional<z.ZodString>;
     };
     annotations: {
         readonly readOnlyHint: true;
@@ -3111,6 +3160,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly connected: z.ZodBoolean;
         readonly dataAsOf: z.ZodNullable<z.ZodString>;
         readonly reason: z.ZodOptional<z.ZodString>;
+        readonly url: z.ZodOptional<z.ZodString>;
         readonly page: z.ZodOptional<z.ZodObject<{
             collection: z.ZodString;
             ownerInstallId: z.ZodString;
@@ -3139,6 +3189,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly connected: z.ZodBoolean;
         readonly dataAsOf: z.ZodNullable<z.ZodString>;
         readonly reason: z.ZodOptional<z.ZodString>;
+        readonly url: z.ZodOptional<z.ZodString>;
         readonly page: z.ZodOptional<z.ZodObject<{
             ownerInstallId: z.ZodString;
             listed: z.ZodObject<{
@@ -3225,6 +3276,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly connected: z.ZodBoolean;
         readonly dataAsOf: z.ZodNullable<z.ZodString>;
         readonly reason: z.ZodOptional<z.ZodString>;
+        readonly url: z.ZodOptional<z.ZodString>;
         readonly page: z.ZodOptional<z.ZodObject<{
             guildName: z.ZodString;
             realm: z.ZodString;
@@ -3269,6 +3321,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly connected: z.ZodBoolean;
         readonly dataAsOf: z.ZodNullable<z.ZodString>;
         readonly reason: z.ZodOptional<z.ZodString>;
+        readonly url: z.ZodOptional<z.ZodString>;
         readonly page: z.ZodOptional<z.ZodObject<{
             realm: z.ZodString;
             itemId: z.ZodNumber;
@@ -3295,6 +3348,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly connected: z.ZodBoolean;
         readonly dataAsOf: z.ZodNullable<z.ZodString>;
         readonly reason: z.ZodOptional<z.ZodString>;
+        readonly url: z.ZodOptional<z.ZodString>;
         readonly page: z.ZodOptional<z.ZodObject<{
             realm: z.ZodString;
             itemId: z.ZodNumber;
@@ -3335,6 +3389,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly connected: z.ZodBoolean;
         readonly dataAsOf: z.ZodNullable<z.ZodString>;
         readonly reason: z.ZodOptional<z.ZodString>;
+        readonly url: z.ZodOptional<z.ZodString>;
         readonly page: z.ZodOptional<z.ZodObject<{
             character: z.ZodString;
             realm: z.ZodString;
@@ -3377,6 +3432,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly connected: z.ZodBoolean;
         readonly dataAsOf: z.ZodNullable<z.ZodString>;
         readonly reason: z.ZodOptional<z.ZodString>;
+        readonly url: z.ZodOptional<z.ZodString>;
         readonly page: z.ZodOptional<z.ZodObject<{
             scope: z.ZodObject<{
                 id: z.ZodString;
@@ -3486,6 +3542,7 @@ export declare const MCP_TOOL_LIST: ({
             postNumber: z.ZodOptional<z.ZodNumber>;
             startedThread: z.ZodOptional<z.ZodBoolean>;
         }, z.core.$strip>>;
+        readonly url: z.ZodOptional<z.ZodString>;
     };
     annotations: {
         readonly readOnlyHint: true;
@@ -3553,6 +3610,7 @@ export declare const MCP_TOOL_LIST: ({
             badges: z.ZodArray<z.ZodString>;
             maintenanceScore: z.ZodNullable<z.ZodNumber>;
         }, z.core.$strip>>;
+        readonly url: z.ZodOptional<z.ZodString>;
     };
     annotations: {
         readonly readOnlyHint: true;
@@ -3601,6 +3659,8 @@ export declare const MCP_TOOL_LIST: ({
  * credit line, after a line stating how old the data is. Tools that read nothing from players carry
  * their sources inside the text instead. Every tool also declares an outputSchema and returns
  * structuredContent of that shape (STRUCTURED_TOOLS lists them, and is every tool today).
+ * When one everloot.app page shows the answer, its structured `url` holds it and the text carries a
+ * `More: <url>` line, last before the data age and credit lines.
  */
 export declare const TOOL_OUTPUT: {
     readonly type: "text";

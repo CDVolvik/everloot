@@ -148,6 +148,10 @@
           ],
           "additionalProperties": false
         }
+      },
+      "url": {
+        "description": "The changes page on everloot.app with the same filter, absolute.",
+        "type": "string"
       }
     },
     "required": [

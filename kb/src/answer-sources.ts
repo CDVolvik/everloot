@@ -26,7 +26,7 @@ export interface Evidence {
   asOf: string | null;
   /** Observed facts: how many installs reported it. */
   support?: number;
-  /** The piece's page on everloot.app: the item or NPC page, or the indexed lore page. The MCP answer gives it in the text. */
+  /** The piece's page on everloot.app: the item or NPC page, or the indexed lore page. */
   url?: string;
 }
 

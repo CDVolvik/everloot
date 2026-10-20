@@ -250,6 +250,10 @@
           ],
           "additionalProperties": false
         }
+      },
+      "url": {
+        "description": "The everloot.app page that shows this answer, absolute. Absent when there is no such page or it would be empty.",
+        "type": "string"
       }
     },
     "required": [

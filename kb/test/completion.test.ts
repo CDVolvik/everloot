@@ -221,10 +221,10 @@ test("the MCP tool reads the rollup, never the corpus, and says when it is not c
   expect(full).toContain("Data as of 2026-10-19 06:30 UTC");
   // The install's own progress is there, so the answer links its page, last before the data age.
   expect(full).toContain(`More: https://everloot.app/tools/collections?install=${OWNER}\nData as of`);
-  const one = (await completionProgressAnswer({ ownerInstallId: OWNER, characterKey: KEY }, async () => ({ facts: facts(), dataAsOf: null }))).text;
-  expect(one).toContain(`More: https://everloot.app/tools/collections?install=${OWNER}&character=${KEY}\n`);
+  const structured = (await completionProgressAnswer({ ownerInstallId: OWNER, characterKey: KEY }, async () => ({ facts: facts(), dataAsOf: null }))).structured;
+  expect(structured).toMatchObject({ connected: true, url: `https://everloot.app/tools/collections?install=${OWNER}&character=${KEY}` });
   // A key this install does not have: the page would say so and nothing else, so no link.
-  expect((await completionProgressAnswer({ ownerInstallId: OWNER, characterKey: "ffffffff" }, async () => ({ facts: facts(), dataAsOf: null }))).text).not.toContain("More:");
+  expect((await completionProgressAnswer({ ownerInstallId: OWNER, characterKey: "ffffffff" }, async () => ({ facts: facts(), dataAsOf: null }))).structured).not.toHaveProperty("url");
 });
 
 // --- votes by address, support past 3, and junk that cannot block or freeze ----------------------------

@@ -155,6 +155,10 @@
       },
       "credit": {
         "type": "string"
+      },
+      "url": {
+        "description": "The build's own link on everloot.app, absolute: the calculator opened on this plan, with a preview card for sharing.",
+        "type": "string"
       }
     },
     "required": [

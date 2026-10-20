@@ -68,6 +68,10 @@
         "description": "Why nothing was read, when connected is false.",
         "type": "string"
       },
+      "url": {
+        "description": "The everloot.app page that shows this answer, absolute. Absent when there is no such page or it would be empty.",
+        "type": "string"
+      },
       "page": {
         "type": "object",
         "properties": {

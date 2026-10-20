@@ -15,6 +15,26 @@ const edit = (change: (tree: Tree) => void): Tree => { const copy = structuredCl
 // The fixtures are loose JSON by design: the check reads real files, not typed shapes.
 const at = (tree: Tree, file: string) => tree[file] as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 
+describe("compareTrees: anyOf branches", () => {
+  const hit = { type: "object", properties: { id: { type: "integer" } }, required: ["id"], additionalProperties: false };
+  const nullable = (branch: unknown): Tree => ({ "mcp/get_entity.json": { outputSchema: { properties: { hit: { anyOf: [branch, { type: "null" }] } } } } });
+
+  test("a nullable object gaining an optional field is an addition, not a removed branch", () => {
+    const grown = { ...hit, properties: { ...hit.properties, url: { type: "string" } } };
+    expect(compareTrees(nullable(hit), nullable(grown))).toEqual({
+      breaking: [], additions: ["mcp/get_entity.json/outputSchema/properties/hit/anyOf/0/properties/url was added"],
+    });
+  });
+
+  test("a branch made stricter inside, or dropped, is still breaking; a new branch is an addition", () => {
+    const stricter = { ...hit, required: ["id", "name"] };
+    expect(compareTrees(nullable(hit), nullable(stricter)).breaking).toEqual(["mcp/get_entity.json/outputSchema/properties/hit/anyOf/0/required: name became required"]);
+    const onlyNull: Tree = { "mcp/get_entity.json": { outputSchema: { properties: { hit: { anyOf: [{ type: "null" }] } } } } };
+    expect(compareTrees(nullable(hit), onlyNull).breaking).toHaveLength(1);
+    expect(compareTrees(onlyNull, nullable(hit))).toEqual({ breaking: [], additions: [expect.stringContaining("anyOf/0: ")] });
+  });
+});
+
 describe("compareTrees", () => {
   test("an unchanged tree, or one where only descriptions, defaults and the protocol stamp change, has no diff", () => {
     expect(compareTrees(base, base)).toEqual({ breaking: [], additions: [] });

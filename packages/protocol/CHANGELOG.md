@@ -7,6 +7,10 @@ required, or tightening a limit is a major release.
 ## [Unreleased]
 
 ### Added
+- 1.8.0: an optional `url` in tool answers, the everloot.app page that shows the answer, absolute, and absent when
+  there is none or it would be empty (`PAGE_URL`). It is on `uploadsAnswer` (every tool built on player uploads),
+  `knowledgeHit` (an indexed lore page), `evidence`, and the answers of `item_categories`, `talent_tree`,
+  `talent_plan` (the build's own link), `recent_changes` and `ecosystem_projects`. Input schemas are unchanged.
 - 1.7.0 (record protocol 1.3.0): `npc_sighting` gains two optional fields, `creatureType` (`NPC_CREATURE_TYPES`, the game's English creature type) and `rank` (`NPC_RANKS`: normal, elite, rare, rare_elite, boss). `quest` gains four optional fields: `category` (the quest log header), `faction` (Alliance or Horde, the accepting character's), `suggestedGroup` and `tag` (`QUEST_TAGS`). Older addons send none of them.
 - 1.6.0, protocol 1.2.0: the record kind `player_seen` (name, realm, race, class, level and optional guild of a player the addon saw or of your own character), with `validPlayerName`, `validGuildName`, `PLAYER_KINDS` and `UPLOAD_LIMITS.playersPerUpload` (1,000). Not a public corpus kind, and not kept in the stored upload: the site writes the newest row per character to its players table, and only when the owner has turned the player pages on.
 - 1.5.0: `changeEntry`, the shape of a `recent_changes` entry, gains five optional fields for forum posts:
@@ -96,6 +100,8 @@ required, or tightening a limit is a major release.
   JSON one, emitted as `schema/mcp/resources.json` and listed in `index.json` as `mcpResources`.
 
 ### Changed
+- `scripts/check-semver.ts` compares the branches of an `anyOf` or `oneOf` field by field, so a nullable object
+  that gains an optional field (`get_entity`'s `hit`) counts as an addition, not as a removed branch.
 - `TERMS_URL` points at the terms of use, `https://everloot.app/terms#licences`, now that the site has a
   terms page; it was the licence section of `/connect`.
 

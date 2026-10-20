@@ -99,6 +99,12 @@ export const ecosystemProject = z.object({
 export type EcosystemProjectOut = z.infer<typeof ecosystemProject>;
 
 /**
+ * What an answer's `url` means. Absent when the answer has no page, or its page would be empty or not
+ * indexed; a page link never stands in for a fact the answer does not hold.
+ */
+export const PAGE_URL = "The everloot.app page that shows this answer, absolute. Absent when there is no such page or it would be empty.";
+
+/**
  * What every structured answer built on player uploads starts with. connected false means no corpus
  * was read (not connected, or unavailable): the page is then absent, and that is not a measured zero.
  */
@@ -106,6 +112,7 @@ export const uploadsAnswer = {
   connected: z.boolean().describe("False when no corpus was read; the page is then absent, which is not a measured zero."),
   dataAsOf: z.string().nullable().describe("The corpus snapshot time, or null when unrecorded."),
   reason: z.string().optional().describe("Why nothing was read, when connected is false."),
+  url: z.string().optional().describe(PAGE_URL),
 };
 
 /** One source of an item with its observed loot-window frequency; public after 3 distinct install reports. */
@@ -399,6 +406,7 @@ export const knowledgeHit = z.object({
   sourceId: z.string(),
   licence: z.string().describe("The source's licence, such as CC-BY-SA-4.0."),
   retrievedAt: z.string().describe("When the source was read."),
+  url: z.string().optional().describe("The record's page on everloot.app, absolute: an indexed lore page. Absent for a record the site has no page for."),
 });
 export type KnowledgeHit = z.infer<typeof knowledgeHit>;
 
@@ -434,6 +442,7 @@ export const evidence = z.object({
   licence: z.string(),
   asOf: z.string().nullable().describe("When the source was read, or when the observations were current."),
   support: z.number().int().optional().describe("Observed facts: how many installs reported it."),
+  url: z.string().optional().describe("The everloot.app page for this piece, absolute: the item or NPC page, or the indexed lore page. Absent when there is none."),
 });
 export type Evidence = z.infer<typeof evidence>;
 
@@ -620,6 +629,7 @@ export const MCP_TOOLS = {
       total: z.number().int().optional().describe("With class: how many items match, listed or not."),
       error: z.string().optional().describe("A class or subclass that is not in the build."),
       credit: z.string(),
+      url: z.string().optional().describe(PAGE_URL),
     },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
@@ -646,6 +656,7 @@ export const MCP_TOOLS = {
       trees: z.array(z.object({ id: z.number().int(), name: z.string(), nodes: z.number().int() })),
       nodes: z.array(talentNode),
       credit: z.string(),
+      url: z.string().optional().describe(PAGE_URL),
     },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
@@ -674,6 +685,7 @@ export const MCP_TOOLS = {
       link: z.string().optional().describe("The calculator with this plan loaded."),
       label: z.string(),
       credit: z.string(),
+      url: z.string().optional().describe("The build's own link on everloot.app, absolute: the calculator opened on this plan, with a preview card for sharing."),
     },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
@@ -765,7 +777,11 @@ export const MCP_TOOLS = {
       game: z.enum(["forever", "classic"]).optional().describe("Narrow to one game."),
       limit: z.number().int().min(1).max(25).default(10),
     },
-    outputSchema: { connected: z.boolean().describe("False when the timeline is not connected: the list is then not a measured zero."), entries: z.array(changeEntry) },
+    outputSchema: {
+      connected: z.boolean().describe("False when the timeline is not connected: the list is then not a measured zero."),
+      entries: z.array(changeEntry),
+      url: z.string().optional().describe("The changes page on everloot.app with the same filter, absolute."),
+    },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
   ecosystem_projects: {
@@ -785,6 +801,7 @@ export const MCP_TOOLS = {
         .describe("What Forever-ready compares each .toc with, derived from the build's version and not yet confirmed in the client."),
       board: z.enum(ECOSYSTEM_BOARD_FILTERS),
       projects: z.array(ecosystemProject),
+      url: z.string().optional().describe(PAGE_URL),
     },
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
@@ -814,6 +831,8 @@ export const MCP_TOOL_LIST = MCP_TOOL_NAMES.map((name) => ({ name, ...MCP_TOOLS[
  * credit line, after a line stating how old the data is. Tools that read nothing from players carry
  * their sources inside the text instead. Every tool also declares an outputSchema and returns
  * structuredContent of that shape (STRUCTURED_TOOLS lists them, and is every tool today).
+ * When one everloot.app page shows the answer, its structured `url` holds it and the text carries a
+ * `More: <url>` line, last before the data age and credit lines.
  */
 export const TOOL_OUTPUT = { type: "text", endsWith: MCP_CREDIT } as const;
 /** The tools that answer with structuredContent beside the text. */

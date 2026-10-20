@@ -50,7 +50,8 @@ test("gold_ledger answers with one ledger per install, never merged, with unreco
   const result = await c.callTool({ name: "gold_ledger", arguments: { character: "bigz", realm: "forever" } });
   const out = OUT.gold_ledger.parse(result.structuredContent);
   const facts = goldFactsFromRecords(records);
-  expect(out).toEqual({ connected: true, dataAsOf: AS_OF, page: goldLedger("bigz", "forever", facts.snapshots, facts.events) });
+  // The link names the character as the uploads spell it.
+  expect(out).toEqual({ connected: true, dataAsOf: AS_OF, url: "https://everloot.app/tools/gold-ledger?character=Bigz&realm=Forever", page: goldLedger("bigz", "forever", facts.snapshots, facts.events) });
   expect(out.page).toMatchObject({ character: "Bigz", realm: "Forever", recorded: true });
   expect(out.page!.ledgers.map((l) => l.installId)).toEqual(["a", "b", "c"]);
   expect(out.page!.ledgers[0]).toEqual({ installId: "a", peakCopper: 5389075, currentCopper: 120000, income: { loot: 64600 }, spending: {}, incomeTotal: 64600 });
@@ -60,6 +61,7 @@ test("gold_ledger answers with one ledger per install, never merged, with unreco
 
   const nobody = OUT.gold_ledger.parse((await c.callTool({ name: "gold_ledger", arguments: { character: "Nobody", realm: "Forever" } })).structuredContent);
   expect(nobody.page).toEqual({ character: "Nobody", realm: "Forever", recorded: false, ledgers: [] });
+  expect(nobody).not.toHaveProperty("url");
   const blank = await c.callTool({ name: "gold_ledger", arguments: { character: " ", realm: "Forever" } });
   expect(JSON.stringify(blank.content)).toContain("Name a character.");
   expect(OUT.gold_ledger.parse(blank.structuredContent).page).toEqual({ character: "", realm: "Forever", recorded: false, ledgers: [] });
@@ -71,7 +73,8 @@ test("world_map_near answers with the entrances and pins the text lists, and a r
   const args = { npcId: 77, radius: 500, limit: 5 };
   const result = await c.callTool({ name: "world_map_near", arguments: args });
   const out = OUT.world_map_near.parse(result.structuredContent);
-  expect(out).toEqual({ connected: true, dataAsOf: AS_OF, page: nearResult(args, WORLD_MAP_DATA, facts) });
+  // From an NPC: that NPC's page, which has its agreed pin.
+  expect(out).toEqual({ connected: true, dataAsOf: AS_OF, url: "https://everloot.app/database/npcs/77", page: nearResult(args, WORLD_MAP_DATA, facts) });
   expect(out.page!.ok).toBe(true);
   expect(out.page!.origin).toContain("Centre Guard");
   expect(out.page!.npcs).toMatchObject([{ npcId: 78, name: "Near Smith", reporters: 3 }]);
@@ -83,4 +86,11 @@ test("world_map_near answers with the entrances and pins the text lists, and a r
   expect(page.ok).toBe(false);
   expect(page.message).toContain("NPC 999999 has no agreed position");
   expect(JSON.stringify(refused.content)).toContain(page.message!);
+  expect(refused.structuredContent).not.toHaveProperty("url");
+
+  // From a spot, named by zone name: the map centred there, by the zone's map id.
+  const spot = await c.callTool({ name: "world_map_near", arguments: { zone: zone.name, x: 50.04, y: 49.96 } });
+  const spotUrl = `https://everloot.app/map?zone=${zone.uiMapId}&x=50&y=50`;
+  expect(spot.structuredContent).toMatchObject({ connected: true, url: spotUrl });
+  expect(JSON.stringify(spot.content)).toContain(`More: ${spotUrl}`);
 });

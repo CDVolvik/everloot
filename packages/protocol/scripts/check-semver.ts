@@ -52,6 +52,32 @@ function compareArrays(path: string, key: string, a: unknown[], b: unknown[], di
   for (const v of added) diff.additions.push(`${path}: ${show(v)} was added`);
 }
 
+/**
+ * The branches of an anyOf or oneOf. A branch that changed inside (a nullable object gaining an optional
+ * field) is the same branch, so it is compared field by field, not reported as removed and added. Each
+ * old branch pairs with an identical new one first, then with one of the same type; what is left over
+ * was removed or added.
+ */
+function compareBranches(path: string, a: unknown[], b: unknown[], diff: Diff): void {
+  const left = new Set(b.keys());
+  const typeOf = (v: unknown) => (isObject(v) ? JSON.stringify(v.type ?? null) : null);
+  const pairs: [number, number][] = [];
+  const unpaired: number[] = [];
+  for (const [i, branch] of a.entries()) {
+    const same = [...left].find((j) => JSON.stringify(b[j]) === JSON.stringify(branch));
+    if (same !== undefined) { left.delete(same); continue; }
+    unpaired.push(i);
+  }
+  for (const i of unpaired) {
+    const like = typeOf(a[i]) === null ? undefined : [...left].find((j) => typeOf(b[j]) === typeOf(a[i]));
+    if (like === undefined) { diff.breaking.push(`${path}/${i}: ${JSON.stringify(a[i])} was removed`); continue; }
+    left.delete(like);
+    pairs.push([i, like]);
+  }
+  for (const [i, j] of pairs) compareValues(`${path}/${i}`, "", a[i], b[j], diff);
+  for (const j of left) diff.additions.push(`${path}/${j}: ${JSON.stringify(b[j])} was added`);
+}
+
 /** `isName` is true when `key` names a field inside properties/$defs/definitions: a field called
  * title or description is data the client reads, not a keyword that only describes. */
 function compareValues(path: string, key: string, a: unknown, b: unknown, diff: Diff, isName = false): void {
@@ -78,7 +104,8 @@ function compareValues(path: string, key: string, a: unknown, b: unknown, diff: 
     return;
   }
   if (Array.isArray(a) && Array.isArray(b)) {
-    compareArrays(path, key, a, b, diff);
+    if (!isName && (key === "anyOf" || key === "oneOf")) compareBranches(path, a, b, diff);
+    else compareArrays(path, key, a, b, diff);
     return;
   }
   if (typeof a === "number" && typeof b === "number" && a !== b) {
