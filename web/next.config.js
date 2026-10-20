@@ -61,8 +61,13 @@ const nextConfig = {
   // original URL, so this does not loop with the rewrite above. The source is constrained to the
   // five real types so an unknown /lore/browse/<type> 404s directly instead of a permanent
   // redirect out of the internal route.
+  // The gold-per-hour calculator moved into the addon (2026-10-20): its old address answers 301 with the
+  // download page's section about it.
   async redirects() {
-    return [{ source: "/lore/browse/:type(npcs|items|quests|zones|spells)", destination: "/lore/:type", permanent: true }];
+    return [
+      { source: "/lore/browse/:type(npcs|items|quests|zones|spells)", destination: "/lore/:type", permanent: true },
+      { source: "/tools/gold-per-hour", destination: "/addon#gold-per-hour", statusCode: 301 },
+    ];
   },
   // Security headers on every route. The full CSP is report-only: it lists what the site loads (the analytics
   // scripts only start after consent), so a missed host shows in the console, not as a broken page. The

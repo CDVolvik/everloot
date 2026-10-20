@@ -41,8 +41,8 @@ export default async function Home() {
           Every drop. Every guild. <span className="text-accent">Every reset.</span>
         </h1>
         <p className="mt-6 max-w-2xl mx-auto text-lg text-fg-2">
-          Browse WoW: Forever observations, upload your addon records, or calculate
-          a farm&apos;s gold per hour. Database facts appear when enough install reports
+          Browse WoW: Forever observations, upload your addon records, or check
+          auction prices. Database facts appear when enough install reports
           agree. Loot-window observations do not establish kill-based drop probabilities.
         </p>
         {/* With the launch banner, the countdown is on the banner instead. */}
@@ -64,7 +64,6 @@ export default async function Home() {
           >
             Upload addon data
           </Link>
-          <Link href="/tools/gold-per-hour" className="inline-flex min-h-11 items-center px-3 text-accent hover:underline">Gold/Hour Calculator</Link>
         </div>
         </div>
       </section>

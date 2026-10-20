@@ -39,8 +39,7 @@ export default async function GoldLedgerPage(
         title="Gold ledger"
         lede="Peak gold and the money events a character uploaded, from that player's own addon file."
         actions={<>
-          <Link href="/tools/gold-per-hour" className="btn">Gold per hour</Link>
-          <Link href="/tools/auctions" className="btn">Auction history</Link>
+          <Link href="/tools/auctions" className="btn">Auction House</Link>
         </>}
       />
 
