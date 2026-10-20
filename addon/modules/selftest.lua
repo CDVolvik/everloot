@@ -24,7 +24,7 @@ local function has(tbl, name)
 end
 
 local function checkApi()
-  if not check(type(C_Traits) == "table", "C_Traits exists", nil, "no C_Traits table: talents cannot be read") then return false end
+  if not check(type(C_Traits) == "table", "C_Traits exists", "present", "no C_Traits table: talents cannot be read") then return false end
   local needed = {
     { "GetConfigInfo", "config and tree ids" }, { "GetTreeNodes", "node list" }, { "GetNodeInfo", "ranks and choices" },
     { "GetEntryInfo", "talent names in the plan panel" }, { "GetDefinitionInfo", "talent names in the plan panel" },
@@ -36,7 +36,7 @@ local function checkApi()
     local ok = check(has(C_Traits, item[1]), "C_Traits." .. item[1], "present", "missing, needed for " .. item[2])
     if not ok and (item[1] == "GetConfigInfo" or item[1] == "GetTreeNodes" or item[1] == "GetNodeInfo") then core = false end
   end
-  check(type(C_ClassTalents) == "table", "C_ClassTalents exists", nil, "no C_ClassTalents table")
+  check(type(C_ClassTalents) == "table", "C_ClassTalents exists", "present", "no C_ClassTalents table")
   check(has(C_ClassTalents, "GetActiveConfigID"), "C_ClassTalents.GetActiveConfigID", "present", "missing, the active config falls back to the spec group lookup")
   check(has(C_ClassTalents, "ImportLoadout"), "C_ClassTalents.ImportLoadout exists", "present (not called: the addon never imports for you)", "missing: a build cannot be loaded by string")
   check(has(C_ClassTalents, "ViewLoadout"), "C_ClassTalents.ViewLoadout exists", "present (not called)", "missing: a talentbuild link cannot open a view")

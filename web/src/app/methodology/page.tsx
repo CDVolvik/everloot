@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { WIKI_URL } from "@/components/LoreSource";
+import { CURRENT_VERSION } from "@/lib/game-version";
 import { loadSiteAssets } from "@/lib/game-assets";
 import { CLIENT_LAYER } from "@/lib/items";
 import { pageMetadata } from "@/lib/seo";
@@ -79,7 +80,7 @@ export default async function MethodologyPage() {
             <p className="text-fg-2">
               Some pages, such as the <Link href="/tools/talents" className={link}>talent calculator</Link> and the{" "}
               <Link href="/map" className={link}>map</Link>, use data read from the game&apos;s own files. It is labelled as found in the game
-              files and unconfirmed until players see it in play.
+              files and unconfirmed until players see it in play. It comes from the {CURRENT_VERSION.label} build {CURRENT_VERSION.build}.
             </p>
           </div>
         </section>

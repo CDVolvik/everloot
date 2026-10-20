@@ -53,25 +53,22 @@ export default async function ItemPage(props: Props) {
   if (/^[a-z][a-z0-9-]*$/.test(params.id)) return CategoryPage({ classSlug: params.id, search: (await props.searchParams) ?? {} });
   if (!/^[1-9]\d*$/.test(params.id)) notFound();
   const itemId = Number(params.id);
-  const [{ facts, agreed, matched }, edges] = await Promise.all([loadShownNames(), loadEdges()]);
+  const [{ facts, agreed, matched, showsTip }, edges] = await Promise.all([loadShownNames(), loadEdges()]);
   const page = itemPage(itemId, facts);
   // Named by players (3 installs agree); the badge and the facts card say so.
   const confirmed = !facts.unreachable && page.name !== null;
   // The name players agree on; else the game file name where the Warcraft Wiki gives the same one; else "Item N".
   const name = shownItemName(itemId, agreed, matched?.names);
-  const wikiName = name?.source === "wiki" ? name : null;
   const title = name?.name ?? `Item ${page.itemId}`;
-  // The game file tooltip only for an item players have reported: any id can be typed into the URL, and
-  // an item found only in the files may be unreleased (the spoiler rule in docs/DATA_POLICY.md).
   const seen = !facts.unreachable && Boolean(page.name || page.drops.length || page.pins.length);
-  // The manifest is read only when there is art to show: the item's tooltip (players reported it) or the icon of
-  // a spell the game files say makes or uses it. An id nobody reported and nothing links to reads nothing.
+  // The game file tooltip only for an item players have reported or whose name shows under the item name rule:
+  // any id can be typed into the URL, and an item found only in the files may be unreleased (docs/DATA_POLICY.md).
+  const tipped = showsTip(itemId);
+  // The manifest is read only when there is art to show: the item's tooltip or the icon of a spell the game
+  // files say makes or uses it. An id nobody reported or named and nothing links to reads nothing.
   const spellLinked = edges.client.some((e) => e.fromKind === "item" && e.fromId === itemId && e.toKind === "spell");
-  const assets = seen || spellLinked || wikiName ? await loadSiteAssets() : null;
-  const loaded = seen || wikiName ? (await loadItemTips(assets, [itemId])).get(itemId) : undefined;
-  // The full tooltip only for an item players reported; for a name from the files and the wiki, its icon only.
-  const tip = seen ? loaded : undefined;
-  const icon = !tip && wikiName ? loaded?.icon ?? null : null;
+  const assets = tipped || spellLinked ? await loadSiteAssets() : null;
+  const tip = tipped ? (await loadItemTips(assets, [itemId])).get(itemId) : undefined;
   const spellIcon = (spellId: number) => assets?.spellIcons.get(spellId);
   const category = categoryOf(CLIENT_TAXONOMY, itemId);
   const quality = category?.quality && category.quality.id <= 5 ? qualityOf(category.quality.id) : undefined;
@@ -111,7 +108,7 @@ export default async function ItemPage(props: Props) {
     return {
       id, label, count: rows.length,
       panel: rows.length
-        ? <DataTable caption={`${label}: ${title}`} columns={relationColumns(head, rows)} rows={rows} rowKey={(e) => `${e.evidence}-${e.toKind}-${e.toId}`} />
+        ? <DataTable dense caption={`${label}: ${title}`} columns={relationColumns(head, rows)} rows={rows} rowKey={(e) => `${e.evidence}-${e.toKind}-${e.toId}`} />
         : <EmptyTab message={empty} {...(files ? { players: false, action: files } : {})} />,
     };
   };
@@ -138,7 +135,7 @@ export default async function ItemPage(props: Props) {
     {
       id: "dropped-by", label: "Dropped by", count: facts.unreachable ? undefined : page.drops.length,
       panel: facts.unreachable ? <Unreachable />
-        : page.drops.length ? <DataTable caption={`Where ${title} drops`} columns={dropColumns} rows={page.drops} rowKey={(d) => d.source} />
+        : page.drops.length ? <DataTable dense caption={`Where ${title} drops`} columns={dropColumns} rows={page.drops} rowKey={(d) => d.source} />
         : <EmptyTab message="Nobody has looted this in Forever yet." />,
     },
     relationTab("sold-by", "Sold by", "sold_by", "Vendor", "No vendor seen selling this yet."),
@@ -147,12 +144,13 @@ export default async function ItemPage(props: Props) {
     ...(rel("reward_from").length ? [relationTab("reward-from", "Reward from", "reward_from", "Quest", "")] : []),
     ...(page.pins.length ? [{
       id: "map", label: "Map", count: page.pins.length,
-      panel: <DataTable caption={`Where ${title} is found on the map`} columns={pinColumns} rows={page.pins} rowKey={(p) => `${p.npcId}-${p.mapId}`} />,
+      panel: <DataTable dense caption={`Where ${title} is found on the map`} columns={pinColumns} rows={page.pins} rowKey={(p) => `${p.npcId}-${p.mapId}`} />,
     }] : []),
     ...(related.length ? [{
       id: "related", label: "Related", count: related.length,
       panel: (
         <DataTable
+          dense
           caption={`Items related to ${title}`}
           columns={[
             { key: "what", header: "Relation", nowrap: true, cell: (e: Edge) => (e.rel === "same_icon" ? "Same icon" : "Part of set") },
@@ -193,7 +191,7 @@ export default async function ItemPage(props: Props) {
           trail={trail}
           title={title}
           quality={shownQuality}
-          icon={<EntityIcon src={tip?.icon ?? icon} unconfirmed={!confirmed} />}
+          icon={<EntityIcon src={tip?.icon} unconfirmed={!confirmed} />}
           meta={[category?.class?.label, subclassLabel, name ? <span className="tabular-nums">ID {itemId}</span> : null]}
         />
         <EntityTop

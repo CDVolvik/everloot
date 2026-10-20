@@ -92,6 +92,7 @@ export default async function VendorPage(props: { params: Promise<{ id: string }
               panel: facts.unreachable ? <Unreachable />
                 : page.offers.length ? (
                   <DataTable
+                    dense
                     caption={`What ${title} sells`}
                     columns={[
                       { key: "item", header: "Item", cell: (o: VendorOffer) => <ItemTip tip={tips.get(o.itemId)}><EntityLink kind="item" id={o.itemId} name={items.get(o.itemId) ?? tips.get(o.itemId)?.name} /></ItemTip> },
@@ -110,6 +111,7 @@ export default async function VendorPage(props: { params: Promise<{ id: string }
               panel: facts.unreachable ? <Unreachable />
                 : places.length ? (
                   <DataTable
+                    dense
                     caption={`Where ${title} stands`}
                     columns={[
                       { key: "where", header: "Position", cell: (p: Place) => p.label },

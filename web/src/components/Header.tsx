@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { track } from "@/lib/analytics/track";
 import AccountControls from "./AccountControls";
+import GameVersionLabel from "./GameVersionLabel";
 import { SuggestField } from "./ui/SearchBar";
 import { TOOL_GROUPS } from "@/data/tools";
 
@@ -27,7 +28,7 @@ const TOOL_HREFS = TOOL_GROUPS.flatMap((g) => g.links.map((l) => l.href));
 const isCurrent = (path: string, href: string) => path === href || path.startsWith(`${href}/`);
 
 const navItem = "inline-flex min-h-11 items-center whitespace-nowrap border-b-2 px-3 transition-colors";
-const navState = (on: boolean) => (on ? "border-accent text-fg" : "border-transparent text-fg-2 hover:text-fg");
+const navState = (on: boolean) => (on ? "border-accent text-fg" : "border-transparent text-fg-2 hover:text-accent");
 const menuLink = "flex min-h-11 items-center rounded-control px-3 text-sm text-fg-2 hover:bg-canvas hover:text-accent";
 
 function SearchIcon() {
@@ -158,6 +159,7 @@ export default function Header() {
             onClick={() => setSearchOpen(!searchOpen)}
             className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center text-fg-2 hover:text-accent xl:hidden"
           ><SearchIcon /></button>
+          <GameVersionLabel className="hidden shrink-0 sm:block" />
           <div className="hidden shrink-0 sm:block"><AccountControls /></div>
           <Link href="/addon" onClick={closeAll} className="btn btn-primary min-h-10 shrink-0 whitespace-nowrap px-4 text-sm">Get the addon</Link>
           <button ref={toggle} type="button" aria-label={open ? "Close menu" : "Menu"} aria-expanded={open} aria-controls="site-navigation" onClick={() => setOpen(!open)} className="btn min-h-10 shrink-0 px-3 text-sm lg:hidden">

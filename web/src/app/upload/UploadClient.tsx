@@ -17,7 +17,8 @@ const button = "btn btn-primary disabled:opacity-50";
 const outlineButton = "btn";
 const input = "w-full rounded-control border border-edge bg-canvas p-3 text-base text-fg";
 
-export default function UploadClient() {
+/** `playerPages`: the site collects player rows. Off, the server drops them, and the preview says so. */
+export default function UploadClient({ playerPages = false }: { playerPages?: boolean } = {}) {
   const [payload, setPayload] = useState<unknown>(null);
   const [choices, setChoices] = useState<SharingChoices>({});
   const [tokens, setTokens] = useState("");
@@ -134,6 +135,12 @@ export default function UploadClient() {
         {censusSummary(prepared.value.census) && <div className="mt-3 text-sm text-fg-2">
           <p>Census in this upload: {censusSummary(prepared.value.census)}, recorded because you ran <code>/everloot census on</code>.</p>
           <p className="mt-1 text-fg-2">Each row holds a character&apos;s game id, race, class, level and faction, never a name. The server replaces the id with a key before anything is stored, and the site shows only counts that cover at least 10 characters from at least three installs.</p>
+        </div>}
+        {(prepared.value.counts.player_seen ?? 0) > 0 && <div className="mt-3 text-sm text-fg-2">
+          <p>Players in this upload: {prepared.value.counts.player_seen.toLocaleString("en-US")}, recorded because you ran <code>/everloot players on</code>.</p>
+          {playerPages
+            ? <p className="mt-1 text-fg-2">Each row holds a character&apos;s name, realm, race, class, level and guild, and the day it was seen, never where. Everloot keeps the newest row per character and shows it on a public player page with a link to hide it. Characters whose owners hid them are skipped.</p>
+            : <p className="mt-1 text-fg-2">Everloot does not collect player rows yet, so the server drops these. They stay in your file.</p>}
         </div>}
         <p className="mt-3 text-sm text-fg-2">{prepared.value.held.legacy} legacy records without event IDs, {prepared.value.held.named} unchecked named records, and {prepared.value.held.invalid} invalid records stay out of this upload. Keep your original file.</p>
         <p className="mt-2 text-sm text-fg-2">{prepared.value.batches.length} batches. Only a confirmed storage receipt advances progress. Named choices are checked against the grant on the server.</p>

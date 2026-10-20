@@ -20,7 +20,6 @@ import EmptyState from "./EmptyState";
 import { pageWindow } from "./Pager";
 import PageHeader from "./PageHeader";
 import SectionHeading from "./SectionHeading";
-import SourceLine from "./SourceLine";
 import TooltipFrame from "./TooltipFrame";
 import { qualityOf, QUALITY_TEXT } from "./quality";
 
@@ -151,21 +150,6 @@ describe("EmptyState", () => {
     const html = render(<EmptyState message="No uploads this week." action={{ href: "/upload", label: "Upload a save file" }} />);
     expect(html).toContain('href="/upload"');
     expect(html).not.toContain('href="/addon"');
-  });
-});
-
-describe("SourceLine", () => {
-  test("from game files, the build and the licence on one line", () => {
-    const html = render(<SourceLine build="1.60.1.70450" />);
-    expect(text(html)).toBe("From game files, unconfirmed · build 1.60.1.70450 · CC BY-SA 4.0");
-    expect(html).toContain("border-dashed");
-    expect(html).toContain("data-source-line");
-  });
-
-  test("confirmed data drops the unconfirmed key", () => {
-    const html = render(<SourceLine confirmed>uploads from 3 installs</SourceLine>);
-    expect(text(html)).toBe("Confirmed by players · uploads from 3 installs · CC BY-SA 4.0");
-    expect(html).not.toContain("border-dashed");
   });
 });
 

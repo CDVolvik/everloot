@@ -5,6 +5,7 @@ import JsonLd from "@/components/JsonLd";
 import { latestAddonRelease } from "@/lib/addon-release";
 import { softwareApplicationJsonLd } from "@/lib/jsonld";
 import { REPO_URL } from "@/lib/source";
+import { playerPagesOn } from "@/lib/player-pages";
 import { Card, Container, PageHeader, SectionHeading } from "@/components/ui";
 import { trailFor } from "@/lib/breadcrumbs";
 import UploadClient from "./UploadClient";
@@ -49,7 +50,7 @@ export default function UploadPage() {
             <p className="text-sm">Log out before selecting Everloot.lua from your account’s SavedVariables folder below. Keep a backup. Named records need your explicit sharing choice and verified authority.</p>
           </div>
         </Card>
-        <UploadClient />
+        <UploadClient playerPages={playerPagesOn()} />
       </div>
     </Container>
   );

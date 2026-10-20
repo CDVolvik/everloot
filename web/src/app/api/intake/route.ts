@@ -7,6 +7,8 @@ import { recordUsage } from "@/lib/usage-metrics";
 import { censusDateProblem, characterSecret, isCensusRow, storedCensusRow } from "@/lib/census-intake";
 import { MARKET_LIMITS, realmKey } from "../../../../../kb/src/market";
 import { authorizeRecord, sharingCategory, type PublicationGrant } from "../../../../../kb/src/publication";
+import { isPlayerRow, playerDateProblem, playerPagesOn, playerUpsert, PLAYERS_PER_UPLOAD, type PlayerUpsert } from "@/lib/player-pages";
+import { playerStore } from "@/lib/player-store";
 import { censusDailyCap } from "../../../../../kb/src/census-rows";
 
 /**
@@ -80,6 +82,11 @@ export async function POST(req: Request) {
   const censusDays = new Map<string, Set<string>>();
   const censusSeeded = new Set<string>();
   const censusReporter = upload.records.some(isCensusRow) ? intakeQuota.reporter(req) : undefined;
+  // Player rows never go into the upload: with the switch on they are written to the players table, one row per
+  // character, in one batch below. With it off they are dropped here.
+  const playersOn = playerPagesOn();
+  const players: PlayerUpsert[] = [];
+  const playerInstalls = new Set<string>();
   const grantHashes = new Set<string>();
   const scanRealms = new Set<string>();
   for (let i = 0; i < upload.records.length; i++) {
@@ -100,6 +107,17 @@ export async function POST(req: Request) {
       continue;
     }
     if ("claimToken" in row) delete row.claimToken;
+    if (isPlayerRow(row)) {
+      const now = new Date();
+      const problem = !playersOn ? "Player pages are not collected yet." : players.length >= PLAYERS_PER_UPLOAD
+        ? `An upload may carry at most ${PLAYERS_PER_UPLOAD} player rows.` : playerDateProblem(row.capturedAt, now);
+      if (problem) {
+        receipt.rejected.push({ index: receipt.accepted[i].index, reason: problem });
+        continue;
+      }
+      players.push(playerUpsert(row, now)); playerInstalls.add(row.installId); accepted.push(receipt.accepted[i]);
+      continue;
+    }
     if (isCensusRow(row)) {
       // The GUID never reaches storage: it becomes a keyed hash and the server's own event id here.
       const dateProblem = censusDateProblem(row.capturedAt, new Date());
@@ -141,19 +159,29 @@ export async function POST(req: Request) {
     authorized.push(row); accepted.push(receipt.accepted[i]);
   }
   const stored: StoredUpload = { ...upload, records: authorized }; receipt.accepted = accepted;
-  if (!authorized.length) return NextResponse.json({ ok: false, ...receipt }, { status: 422 });
+  if (!authorized.length && !players.length) return NextResponse.json({ ok: false, ...receipt }, { status: 422 });
   // Attribution comes from the accepted records, never from the first raw row.
-  const installs = new Set(stored.records.map((r) => r.installId));
+  const installs = new Set([...stored.records.map((r) => r.installId), ...playerInstalls]);
   if (installs.size !== 1) {
     return NextResponse.json(
       { ok: false, error: "every record in one upload must come from the same install", ...receipt },
       { status: 422 },
     );
   }
-  const installId = stored.records[0].installId;
+  const installId = [...installs][0];
   const installDenied = await admission(() => intakeQuota.install(installId));
   if (installDenied) return installDenied;
   const uploadId = randomUUID();
+  if (players.length) {
+    try {
+      await playerStore().upsert(players);
+    } catch (err) {
+      console.error(`upload ${uploadId}: player write failed`, err);
+      return NextResponse.json({ ok: false, persisted: false, uploadId, error: "storage could not be confirmed — keep the file and retry in a moment", ...receipt }, { status: 503 });
+    }
+    // Nothing else to keep: the rows were the whole upload, and the table is where they live.
+    if (!authorized.length) return NextResponse.json({ ok: true, uploadId, persisted: true, ...receipt });
+  }
   // The market and the completion lists count installs behind one address once; only a keyed hash of the
   // address is kept, in the private upload object, and it is never published.
   if (stored.records.some((r) => r.kind === "auction_snapshot" || COMPLETION_CATALOG_KINDS.includes(r.kind))) {
