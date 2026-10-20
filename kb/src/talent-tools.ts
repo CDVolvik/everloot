@@ -44,7 +44,7 @@ export function handleTalentTree(args: McpToolArgs<"talent_tree">): Answer {
   const trees = wanted ? catalog.trees.filter((t) => t.name.toLowerCase() === wanted) : catalog.trees;
   const nodes = nodeMap(catalog);
   const picked = catalog.nodes.filter((n) => trees.some((t) => t.id === n.treeId));
-  const lines = [`${catalog.className} talents (${stampOf(catalog)}). Points: first at level ${catalog.rules.firstPointLevel}, ${catalog.rules.pointLevels?.length ?? 0} by level ${catalog.rules.maxLevel}.`];
+  const lines = [`${catalog.className} talents (${stampOf(catalog)}). Points: ${catalog.rules.pointLevels?.length ?? 0} by level ${catalog.rules.maxLevel}. First point at level ${catalog.rules.firstPointLevel} (Talented moves it as early as 5); ${catalog.rules.pointLevels?.length ?? 0} points either way.`];
   if (wanted && trees.length === 0) {
     lines.push(`No tree named ${args.tree} for ${catalog.className}. Trees: ${catalog.trees.map((t) => t.name).join(", ")}.`);
   }
