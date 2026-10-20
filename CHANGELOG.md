@@ -13,6 +13,11 @@ build that has a zip in the repository. Earlier builds have none.
 ## [Unreleased]
 
 ### Added
+- Site: `/docs`, one documentation area for players and developers: Overview, Guides, API Reference, MCP and
+  Cookbook tabs, a grouped sidebar, "On this page", "Copy page" as Markdown, and a page per API endpoint and
+  per MCP tool generated from the protocol, with cURL, JavaScript and Python examples. "Docs" replaces "Open data"
+  in the header, and docs pages are in search, the sitemap and `llms.txt`. `/connect` now redirects to `/docs`, and its old
+  `#anchors` land on the matching docs page.
 - Addon: gold per hour. `/everloot gph start` opens a small window and counts your own looted items, looted
   money, quest money and vendor sales while the session runs (pause, resume, stop, reset; a reload pauses the
   clock). Items are valued from the Everloot market value, else your own last scan, else the vendor price,

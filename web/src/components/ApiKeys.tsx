@@ -13,7 +13,7 @@ type State =
 const button = "inline-flex items-center min-h-11 px-3 rounded-lg border border-line text-sm text-fg hover:text-accent disabled:opacity-60";
 const day = (iso: string | null) => (iso ? iso.slice(0, 10) : "never");
 
-/** The signed-in player's keys on /connect: make one, see when each was last used, revoke one, delete a revoked one. */
+/** The signed-in player's keys on /account and /docs/api/keys: make one, see when each was last used, revoke one, delete a revoked one. */
 export default function ApiKeys() {
   const [state, setState] = useState<State>({ status: "loading" });
   const [label, setLabel] = useState("");

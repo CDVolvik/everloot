@@ -16,7 +16,7 @@ export const PRIMARY: NavLink[] = [
   { label: "Map", href: "/map" },
   { label: "Changes", href: "/changes" },
   { label: "Lore", href: "/lore" },
-  { label: "Open data", href: "/connect" },
+  { label: "Docs", href: "/docs" },
 ];
 
 // The Tools menu lives in data/tools.ts so the home page lists the same groups.

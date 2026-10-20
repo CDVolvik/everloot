@@ -1,4 +1,5 @@
 import { tools, toolHref } from "@/data/tools";
+import { allDocsPages } from "@/lib/docs/nav";
 import { entityHref } from "@/components/EntityLink";
 import { describe } from "../../../kb/src/item-taxonomy";
 import { objectList } from "../../../kb/src/object-page";
@@ -15,22 +16,20 @@ import { zoneHref } from "./zones";
  * the item is in the build.
  */
 export interface SearchResult { label: string; href: string; note?: string; exact: boolean; id?: number; quality?: number | null; meta?: string }
-export type SearchType = "item" | "npc" | "quest" | "object" | "zone" | "lore" | "tool";
+export type SearchType = "item" | "npc" | "quest" | "object" | "zone" | "lore" | "tool" | "doc";
 /** `total` counts every match; `results` holds the first `limit` of them. */
 export interface SearchGroup { type: SearchType; heading: string; results: SearchResult[]; total: number }
-
 export const GROUP_LIMIT = 8;
 export const LORE_LIMIT = 5;
 
 export const HEADINGS: Record<SearchType, string> = {
-  item: "Items", npc: "NPCs", quest: "Quests", object: "Objects", zone: "Zones", lore: "Lore archive", tool: "Tools",
+  item: "Items", npc: "NPCs", quest: "Quests", object: "Objects", zone: "Zones", lore: "Lore archive", tool: "Tools", doc: "Docs",
 };
-const ORDER: SearchType[] = ["item", "npc", "quest", "object", "zone", "lore", "tool"];
+const ORDER: SearchType[] = ["item", "npc", "quest", "object", "zone", "lore", "tool", "doc"];
 /** The types a search can be scoped to (`/search?q=…&in=item`); `in=lore` is the lore archive's own list. */
 export const SCOPES = ["item", "npc", "quest", "object"] as const satisfies readonly SearchType[];
 export type Scope = (typeof SCOPES)[number];
 export const isScope = (v: unknown): v is Scope => (SCOPES as readonly unknown[]).includes(v);
-
 /** 0 exact, 1 starts with, 2 contains, null no match; both sides lowercase. */
 function rank(name: string, q: string): number | null {
   if (name === q) return 0;
@@ -120,6 +119,13 @@ export async function siteSearch(raw: string, { only, limit = GROUP_LIMIT }: { o
       return r === null ? [] : [{ label: t.title, href: toolHref(t), note: t.tagline, exact: r === 0 }];
     }).sort((a, b) => Number(b.exact) - Number(a.exact));
     found.set("tool", { results: matches, total: matches.length });
+
+    // Docs pages by title, then by their one-line description.
+    const docs = allDocsPages().flatMap((p) => {
+      const r = rank(p.title.toLowerCase(), q) ?? (p.lede.toLowerCase().includes(q) ? 3 : null);
+      return r === null ? [] : [{ label: p.title, href: p.href, note: p.lede, exact: r === 0, r }];
+    }).sort((a, b) => a.r - b.r).map(({ r: _r, ...hit }) => hit);
+    found.set("doc", { results: docs, total: docs.length });
   }
 
   return ORDER

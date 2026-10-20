@@ -425,12 +425,12 @@ things are asked in return: credit it, and use a free key when you copy all of i
 - **Copying in bulk takes a free key.** Once the limits are switched on, the corpus API and the drop
   list answer a few requests an hour per address without a key, one page of records at a time. An
   IPv6 address counts by its /64 block. A free key, made on
-  [/connect](https://everloot.app/connect#keys) after signing in with Battle.net, raises the limits
+  [/docs/api/keys](https://everloot.app/docs/api/keys) after signing in with Battle.net, raises the limits
   far enough to copy everything. The allowance belongs to the account, across all its keys, and an
   account can make only a few keys a day, so new keys do not bring new allowances. Requests are
   counted per key, so we know who copies the data in bulk and can ask what they are building. Keys
   can be revoked or deleted by their owner at any time, and revoked by us when a key is used to
-  republish the data without credit. The exact numbers are on /connect.
+  republish the data without credit. The exact numbers are on /docs/api/keys.
 - **Pages are not limited.** Search engines and AI assistants may read and quote the site's pages.
   These limits apply only to the machine-readable endpoints.
 - **Not covered.** Game-file data and Blizzard's posts are Blizzard's, not ours; the credit line and
@@ -440,6 +440,6 @@ things are asked in return: credit it, and use a free key when you copy all of i
 characters, its label, its account, when it was made, last used and revoked, and a count of its
 requests per day and endpoint. Not what was asked. Daily counts are kept 90 days. A revoked key and
 its counts are deleted 30 days after it was revoked, or at once when its owner deletes it on
-/connect. Deleting an account (write to hello@everloot.app) deletes its keys and counts. Anonymous
+/account. Deleting an account (write to hello@everloot.app) deletes its keys and counts. Anonymous
 requests are counted per hour against a keyed hash of the address, which is deleted after about a
 day; the address itself is never stored.

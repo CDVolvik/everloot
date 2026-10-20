@@ -1,4 +1,5 @@
-import { BULK_URL, CORPUS_URL, MCP_PROMPTS, MCP_RESOURCE_TEMPLATES, MCP_RESOURCES, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR } from "@/app/connect/connect-data";
+import { BULK_URL, CORPUS_URL, MCP_PROMPTS, MCP_RESOURCE_TEMPLATES, MCP_RESOURCES, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR } from "@/lib/docs/connect-data";
+import { DOCS_TABS } from "@/lib/docs/nav";
 import { LAUNCH, longDate } from "@/data/wow-forever";
 import { tools, toolHref } from "@/data/tools";
 import { PUBLIC_RECORD_KINDS } from "@everloot/protocol";
@@ -27,7 +28,7 @@ const PAGES: { title: string; path: string; text: string }[] = [
   { title: "Addons", path: "/addons", text: "Everloot's collection addon and Polestar, a leveling-guide addon." },
   { title: "Upload addon data", path: "/upload", text: "Download the Everloot addon (AGPL-3.0) and upload what it collected, with a preview and explicit sharing choices." },
   { title: "Lore archive", path: "/lore", text: "Warcraft Wiki pages as of 13 November 2023, CC BY-SA 4.0. Lore and history, not WoW: Forever data." },
-  { title: "Connect", path: "/connect", text: "How to use the public corpus API and the MCP server, and the credit line." },
+  { title: "Docs", path: "/docs", text: "Guides for players, and the API reference, MCP server, tooltips and cookbook for developers." },
   { title: "How we count", path: "/methodology", text: "How addon uploads become facts: three installs must agree, unrecorded is not zero, and what is never published." },
   { title: "About", path: "/about", text: "What Everloot is and is not." },
   { title: "Privacy", path: "/privacy", text: "How uploads, cookies and usage statistics are handled." },
@@ -53,7 +54,7 @@ const bullet = (title: string, path: string, text: string) => `- [${title}](${ur
 /** The paging and key sentence for the corpus API; it names limits only once the data guard is on. */
 function corpusAccess(): string {
   return guardOn()
-    ? `Pages with ?offset= and ?limit=. Without a key: ${ANON_PER_HOUR} requests per hour per IP, ${ANON_PAGE} records a page; a free key (${url("/connect#keys")}) lifts both.`
+    ? `Pages with ?offset= and ?limit=. Without a key: ${ANON_PER_HOUR} requests per hour per IP, ${ANON_PAGE} records a page; a free key (${url("/docs/api/keys")}) lifts both.`
     : "Optional ?offset= and ?limit= page it.";
 }
 
@@ -90,7 +91,8 @@ function connect(): string[] {
     bullet("Embeddable tooltips", "/tooltips.js", "A script other sites load so links to Everloot item, NPC, quest and object pages show a hover card. Data from /api/tooltip/<type>/<id>."),
     bullet("OpenAPI document", "/api/openapi.json", "OpenAPI 3.1 for every JSON endpoint, assembled from the same protocol the routes are tested against."),
     bullet("JSON Schema", "/schema/index.json", "The protocol: one JSON Schema per upload record kind, the API response shapes (/schema/api/<name>.json) and the MCP tool inputs (/schema/mcp/<tool>.json)."),
-    bullet("Connect guide", "/connect", "Setup for Claude Code and other MCP clients, a reference of every tool and endpoint, with examples."),
+    bullet("MCP docs", "/docs/mcp", "Setup for Claude Code and other MCP clients, and a page for every tool, with examples."),
+    bullet("API reference", "/docs/api", "Every endpoint with its parameters, answers and examples."),
     bullet("Changes feed (RSS)", "/changes/feed.xml", "The newest 50 WoW: Forever builds and Blizzard posts."),
     "",
   ];
@@ -98,6 +100,11 @@ function connect(): string[] {
 
 function limitations(): string[] {
   return ["## Data limitations", ...LIMITATIONS.map((l) => `- ${l}`), ""];
+}
+
+/** Every docs page, by tab, in reading order. */
+function docs(): string[] {
+  return ["## Docs", ...DOCS_TABS.flatMap((tab) => tab.groups.flatMap((group) => group.pages.map((page) => bullet(`${tab.label}: ${page.title}`, page.href, page.lede)))), ""];
 }
 
 export function llmsTxt(): string {
@@ -115,6 +122,7 @@ export function llmsTxt(): string {
     `- Talent calculator per class: ${TALENT_CLASSES.map((c) => `[${cap(c)}](${url(`/tools/talents/${c}`)})`).join(", ")}.`,
     "",
     ...connect(),
+    ...docs(),
     ...limitations(),
     "## Full version",
     bullet("llms-full.txt", "/llms-full.txt", "The same map with every MCP tool described and the licences."),
@@ -173,7 +181,7 @@ export function llmsFullTxt(entries: ChangeEntry[] = loadTimeline()): string {
     `GET ${url("/api/tools/{tool}")}: every MCP tool above, callable without an MCP client. Arguments go in the query string, named and typed as in ${url("/schema/mcp/{tool}.json")} (for example ${url("/api/tools/item_page?itemId=19019")}). The answer field is the tool's structured content, text is the same answer in words. Same limits as the other JSON endpoints; a wrong argument is a 400 that says which.`,
     "",
     "## Embeddable tooltips",
-    `<script src="${url("/tooltips.js")}" async></script> on any page turns links to everloot.app item, NPC, quest and object pages into hover cards, with no cookies and no tracking. GET ${url("/api/tooltip/{type}/{id}")} (type: item, npc, quest or object) is the card's data: one page per request, open to any website (CORS), cached for an hour. Facts follow the 3-install rule; game-file text is labelled unconfirmed with its build and is Blizzard's. The guide is ${url("/connect#tooltips")}.`,
+    `<script src="${url("/tooltips.js")}" async></script> on any page turns links to everloot.app item, NPC, quest and object pages into hover cards, with no cookies and no tracking. GET ${url("/api/tooltip/{type}/{id}")} (type: item, npc, quest or object) is the card's data: one page per request, open to any website (CORS), cached for an hour. Facts follow the 3-install rule; game-file text is labelled unconfirmed with its build and is Blizzard's. The guide is ${url("/docs/tooltips")}.`,
     "",
     "## OpenAPI and schemas",
     `${url("/api/openapi.json")} describes every endpoint above (OpenAPI 3.1). ${url("/schema/index.json")} lists the protocol's JSON Schema files: records/<kind>.json for each upload record kind, api/<name>.json for each response shape, mcp/<tool>.json for each MCP tool's input. The same definitions are the npm package @everloot/protocol in the repository.`,

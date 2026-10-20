@@ -1,28 +1,63 @@
+/// <reference types="vite/client" />
 import { readFileSync } from "node:fs";
 import type { ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { expect, test, vi } from "vitest";
+import { beforeAll, expect, test, vi } from "vitest";
+
+// The promises the old /connect page made, now checked across the docs that replaced it: every docs page,
+// the generated endpoint and tool pages included, rendered and read as one text.
 
 vi.mock("next/link", () => ({
   default: ({ href, children, className }: { href: string; children: ReactNode; className?: string }) => (
     <a href={href} className={className}>{children}</a>
   ),
 }));
+vi.mock("next/script", () => ({ default: () => null }));
 vi.mock("@/components/AccountControls", () => ({ default: () => null }));
 vi.mock("@/components/CookieConsent", () => ({ CookiePreferencesButton: () => null }));
 vi.mock("@/components/ApiKeys", () => ({ default: () => <div data-testid="api-keys" /> }));
 
-import ConnectPage, { metadata } from "./page";
 import { CONNECT_EXAMPLES, CORPUS_URL, MCP_PROMPTS, MCP_RESOURCE_TEMPLATES, MCP_RESOURCES, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR } from "./connect-data";
 import { API_ROUTES, MCP_PROMPT_NAMES, MCP_RESOURCE_TEMPLATE_URIS, MCP_RESOURCE_URIS, MCP_TOOL_NAMES, PROTOCOL_VERSION, PUBLIC_RECORD_KINDS } from "@everloot/protocol";
 import { createIntakeQuota } from "@/lib/intake-quota";
 import { ANON_PAGE, ANON_PER_HOUR, attribution, KEY_PAGE, KEY_PER_HOUR } from "@/lib/data-guard";
-import sitemap from "../sitemap";
+import sitemap from "@/app/sitemap";
 import Footer from "@/components/Footer";
 import Header from "@/components/Header";
+import { allDocsPages, endpointSlug } from "./nav";
 
-const page = renderToStaticMarkup(<ConnectPage />);
-const decoded = page.replaceAll("&quot;", '"').replaceAll("&#x27;", "'").replaceAll("&amp;", "&");
+type PageModule = { default: (props: { params: Promise<Record<string, string>> }) => unknown };
+const modules = import.meta.glob<PageModule>("../../app/docs/**/page.tsx", { eager: true });
+
+/** Every docs page as HTML, one after another. */
+async function renderDocs(): Promise<string> {
+  const out: string[] = [];
+  for (const [path, mod] of Object.entries(modules)) {
+    const calls = path.includes("[endpoint]") ? API_ROUTES.map((r) => ({ endpoint: endpointSlug(r) }))
+      : path.includes("[tool]") ? MCP_TOOL_NAMES.map((n) => ({ tool: n.replaceAll("_", "-") }))
+      : [{}];
+    for (const params of calls) out.push(renderToStaticMarkup((await mod.default({ params: Promise.resolve(params) })) as ReactNode));
+  }
+  return out.join("\n");
+}
+// &amp; last, so "&amp;lt;" stays "&lt;" instead of becoming "<".
+const decode = (html: string) => html.replaceAll("&quot;", '"').replaceAll("&#x27;", "'").replaceAll("&lt;", "<").replaceAll("&gt;", ">").replaceAll("&amp;", "&");
+/** The text of some HTML: tags removed until none are left. */
+function stripTags(html: string): string {
+  let out = html;
+  for (let prev = ""; prev !== out;) { prev = out; out = out.replace(/<[^>]*>/g, ""); }
+  return out;
+}
+
+let page = "";
+let decoded = "";
+/** The words alone: code panels split code into highlighted spans. */
+let text = "";
+beforeAll(async () => {
+  page = await renderDocs();
+  decoded = decode(page);
+  text = decode(stripTags(page));
+});
 
 test("the tool list is exactly the tools the protocol declares, in order", () => {
   expect(MCP_TOOL_NAMES.length).toBeGreaterThan(0);
@@ -42,19 +77,13 @@ test("the resource and prompt lists are exactly what the protocol declares, in o
 });
 
 test("the reference lists every tool with its arguments, every endpoint, the OpenAPI file and the schema index", () => {
-  for (const tool of MCP_TOOLS) {
-    expect(page).toContain(`id="tool-${tool.name}"`);
-    expect(page).toContain(`/schema/mcp/${tool.name}.json`);
-    expect(page).toContain(`Answer of ${tool.name}, as structuredContent`);
-  }
+  for (const tool of MCP_TOOLS) expect(page).toContain(`/schema/mcp/${tool.name}.json`);
   for (const text of ["connected", "dataAsOf", "an absent page is not a measured zero"]) expect(decoded).toContain(text);
   for (const text of ["query", "itemId", "ownerInstallId", "required", "player data"]) expect(decoded).toContain(text);
-  for (const route of API_ROUTES) expect(decoded).toContain(`${route.method} ${route.path.replace(/^\/api/, "")}`);
-  for (const text of ["/api/openapi.json", "/schema/index.json", "/schema/upload.json", `@everloot/protocol`, PROTOCOL_VERSION, "offset, limit, next", "gameData"]) {
+  for (const route of API_ROUTES) expect(decoded).toContain(route.path);
+  for (const text of ["/api/openapi.json", "/schema/index.json", "/schema/upload.json", `@everloot/protocol`, PROTOCOL_VERSION, "gameData"]) {
     expect(decoded).toContain(text);
   }
-  expect(decoded).toContain("// Every loot record, page by page. Stop when next is null.");
-  expect(decoded).toContain('print(len(records), "vendor lists; credit:"');
 });
 
 test("tells users how to add the server in Claude, Grok and any other assistant that takes a URL", () => {
@@ -66,7 +95,8 @@ test("tells users how to add the server in Claude, Grok and any other assistant 
 test("the corpus kinds on the page are the kinds the API accepts, without addon lists", () => {
   expect(PUBLIC_RECORD_KINDS).not.toContain("addon_seen");
   for (const kind of PUBLIC_RECORD_KINDS) expect(page).toContain(kind);
-  expect(page).not.toContain("addon_seen");
+  // The schemas page lists every kind an upload may carry; addon lists are marked as never public.
+  expect(decoded).toMatch(/addon_seen<\/code><\/a><\/td><td[^>]*>No</);
 });
 
 test("the stated limit is the limit the public MCP quota enforces", async () => {
@@ -81,7 +111,7 @@ test("the stated limit is the limit the public MCP quota enforces", async () => 
 
 test("without EVERLOOT_MCP_QUOTA_SCOPE the MCP shares the intake bucket, as the page says", () => {
   // Production runs without the scope variable. If that changes, this fails and the page needs a new sentence.
-  const quota = readFileSync(new URL("../../lib/intake-quota.ts", import.meta.url), "utf8");
+  const quota = readFileSync(new URL("../intake-quota.ts", import.meta.url), "utf8");
   expect(quota).toMatch(/if \(env\.EVERLOOT_MCP_QUOTA_SCOPE === "mcp"\) return consume\("mcp", clientIp\(req\)\);\s*return consume\("request", `mcp:\$\{clientIp\(req\)\}`\);/);
   expect(quota).toContain('[["global", 10000], [`ip:${value}`, ' + REQUESTS_PER_HOUR + "]]");
   expect(decoded).toContain("share one hourly cap");
@@ -98,41 +128,45 @@ test("the examples point at the production URLs and parse", () => {
   expect(JSON.parse(body)).toMatchObject({ method: "tools/call", params: { name: "get_by_name" } });
   expect(CONNECT_EXAMPLES.mcpCurl).toContain("application/json, text/event-stream");
   expect(CONNECT_EXAMPLES.toolsCurl).toContain("https://everloot.app/api/tools/get_by_name?name=Thrall");
-  expect(decoded).toContain(CONNECT_EXAMPLES.toolsCurl);
+  expect(decoded).toContain(`${"https://everloot.app"}/api/tools/get_by_name?name=Thrall`);
   expect(Object.keys(JSON.parse(CONNECT_EXAMPLES.corpusShape))).toEqual(["ok", "uploads", "records", "dataAsOf", "kinds", "offset", "limit", "total", "next", "attribution"]);
   expect(JSON.parse(CONNECT_EXAMPLES.corpusShape).attribution).toEqual(attribution("/database"));
-  expect(decoded).toContain(CONNECT_EXAMPLES.corpusCurl);
+  expect(text).toContain(CONNECT_EXAMPLES.corpusCurl);
+  expect(text).toMatch(/pass offset and limit, and follow next/);
 });
 
 test("states the open position, the licences and the credit line, and promises nothing unbuilt", () => {
-  for (const text of ["no sign-in wall", "CC BY-SA 4.0", "AGPL-3.0-only", CONNECT_EXAMPLES.credit, "There is no bulk download yet", "WoWDBDefs", "never in them"]) {
+  for (const text of ["no sign-in wall", "CC BY-SA 4.0", "AGPL-3.0-only", CONNECT_EXAMPLES.credit, "There is no bulk download yet", "WoWDBDefs", "They do not carry Blizzard's icons, tooltip text or art in bulk"]) {
     expect(decoded).toContain(text);
   }
-  expect(decoded).not.toMatch(/api key|premium|paid|upgrade|subscribe|coming soon/i);
+  expect(decoded).not.toMatch(/premium|paid plan|upgrade|subscribe|coming soon/i);
 });
 
 test("links the repository's policy files", () => {
   for (const file of ["DATA_POLICY.md", "THIRD_PARTY.md", "TRADEMARKS.md", "kb/README.md"]) expect(page).toContain(file);
 });
 
-test("is in the sitemap, the header and the footer", async () => {
-  expect((await sitemap()).map((entry) => new URL(entry.url).pathname)).toContain("/connect");
-  expect(renderToStaticMarkup(<Header />)).toContain('href="/connect"');
-  expect(renderToStaticMarkup(<Footer />)).toContain('href="/connect"');
-  expect(metadata.alternates?.canonical).toBe("/connect");
+test("every docs page is in the sitemap, the docs are in the header and the footer, and /connect redirects to them", async () => {
+  const paths = (await sitemap()).map((entry) => new URL(entry.url).pathname);
+  for (const { href } of allDocsPages()) expect(paths, href).toContain(href);
+  expect(paths).not.toContain("/connect");
+  expect(renderToStaticMarkup(<Header />)).toContain('href="/docs"');
+  expect(renderToStaticMarkup(<Footer />)).toContain('href="/docs"');
+  const config = readFileSync(new URL("../../../next.config.js", import.meta.url), "utf8");
+  expect(config).toContain('{ source: "/connect", destination: "/docs", permanent: true }');
 });
 
 test("with the data guard off the page promises no limit and no key it does not enforce", () => {
   expect(decoded).toContain("Keys are not switched on yet");
   expect(decoded).toContain("This endpoint has no limit of its own today");
-  expect(page).not.toContain("api-keys");
+  expect(page).not.toContain('data-testid="api-keys"');
   expect(decoded).not.toContain(`${ANON_PER_HOUR} requests per hour for each IP address, ${ANON_PAGE} records a page`);
 });
 
-test("with the data guard on it states the limits it enforces, how to send a key, and shows the key list", () => {
+test("with the data guard on it states the limits it enforces, how to send a key, and shows the key list", async () => {
   vi.stubEnv("EVERLOOT_DATA_GUARD", "1");
   try {
-    const on = renderToStaticMarkup(<ConnectPage />).replaceAll("&quot;", '"').replaceAll("&#x27;", "'").replaceAll("&amp;", "&").replaceAll("&lt;", "<").replaceAll("&gt;", ">");
+    const on = decode(await renderDocs());
     for (const text of [
       `${REQUESTS_PER_HOUR} requests per hour for each IP address`,
       `${ANON_PER_HOUR} requests per hour for each IP address, ${ANON_PAGE} records a page`,

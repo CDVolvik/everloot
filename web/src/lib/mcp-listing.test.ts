@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { expect, test } from "vitest";
-import { MCP_URL } from "@/app/connect/connect-data";
+import { MCP_URL } from "@/lib/docs/connect-data";
 
 const root = new URL("../../../", import.meta.url);
 const read = (path: string) => readFileSync(new URL(path, root), "utf8");

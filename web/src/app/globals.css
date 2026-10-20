@@ -7,6 +7,17 @@
   color-scheme: dark;
 }
 
+/* The docs need room for a sidebar, the page and its code panel: their column is wider than the site's. */
+main:has([data-docs]) {
+  max-width: 88rem;
+}
+
+/* Thin scrollbars inside the docs' sidebar and code panels, in the line colour. */
+[data-docs] * {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--line)) transparent;
+}
+
 /* A wide-screen banner (ui/Banner) runs 100vw wide, which on a desktop with a scrollbar is a few
    pixels wider than the page; clip that bleed so the page never scrolls sideways. */
 body:has([data-banner]) {

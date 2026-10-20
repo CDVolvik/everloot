@@ -66,7 +66,7 @@ export default async function AccountPage() {
       <section className="space-y-3">
         <h2 className="text-xl text-fg">API keys</h2>
         <p className="text-sm text-fg-2">
-          Keys for the Everloot API and MCP server. How to use them is on <Link href="/connect" className="text-accent hover:underline underline-offset-4">Connect</Link>.
+          Keys for the Everloot API and MCP server. How to use them is in <Link href="/docs/api/keys" className="text-accent hover:underline underline-offset-4">the docs</Link>.
         </p>
         <ApiKeys />
       </section>

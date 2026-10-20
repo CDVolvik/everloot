@@ -70,6 +70,8 @@ const nextConfig = {
     return [
       { source: "/lore/browse/:type(npcs|items|quests|zones|spells)", destination: "/lore/:type", permanent: true },
       { source: "/tools/gold-per-hour", destination: "/addon#gold-per-hour", statusCode: 301 },
+      // The developer page became the docs; docs/page.tsx sends its old #anchors on to the matching page.
+      { source: "/connect", destination: "/docs", permanent: true },
     ];
   },
   // Security headers on every route. The full CSP is report-only: it lists what the site loads (the analytics

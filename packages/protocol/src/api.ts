@@ -467,7 +467,7 @@ export const API_ROUTES: readonly ApiRoute[] = [
   {
     method: "GET", path: "/api/tooltip/{type}/{id}",
     summary: "The hover card for one item, NPC, quest or object page, for the embeddable tooltip script",
-    description: "What `https://everloot.app/tooltips.js` shows when a visitor hovers a link to an Everloot page: title, icon and lines as plain text, the page URL, and the licence. One entity per request, not a bulk feed. Open to any website (CORS `*`, GET only) and cached by the CDN for an hour. Only things players reported (3 installs) are answered; the item card can add the game files' tooltip text and icon, labelled unconfirmed with their build (off unless the site has switched it on). Anything else is a 404.",
+    description: "What `https://everloot.app/tooltips.js` shows when a visitor hovers a link to an Everloot page: title, icon and lines as plain text, the page URL, and the licence. One entity per request, not a bulk feed. Open to any website (CORS `*`, GET only) and cached by the CDN for an hour. Only things players reported (3 installs) are answered; the item card adds the game files' tooltip text and icon, labelled unconfirmed with their build. Anything else is a 404.",
     access: "open", data: "mixed",
     pathParams: [
       { name: "type", description: "item, npc, quest or object.", schema: { type: "string", enum: [...TOOLTIP_TYPES] }, required: true },

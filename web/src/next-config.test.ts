@@ -10,7 +10,8 @@ test("the internal browse route redirects to its public address, and the rewrite
 test("the old gold-per-hour page answers 301 with the addon page's section about it", async () => {
   const redirects = await nextConfig.redirects!();
   expect(redirects).toContainEqual({ source: "/tools/gold-per-hour", destination: "/addon#gold-per-hour", statusCode: 301 });
-  expect(redirects).toHaveLength(2);
+  expect(redirects).toContainEqual({ source: "/connect", destination: "/docs", permanent: true });
+  expect(redirects).toHaveLength(3);
 });
 
 test("the tools' HTTP route is traced with the release files, as the MCP mounts are", () => {

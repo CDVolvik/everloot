@@ -14,7 +14,7 @@ import { FEED } from "@/lib/seo";
 import { classAndProfessionIcons, launchArt, loadSiteAssets } from "@/lib/game-assets";
 import GameIcon from "@/components/game/GameIcon";
 import { BannerArt } from "@/components/game/PageBanner";
-import { CONNECT_EXAMPLES, MCP_TOOLS } from "./connect/connect-data";
+import { CONNECT_EXAMPLES, MCP_TOOLS } from "@/lib/docs/connect-data";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/", types: FEED },
@@ -212,9 +212,9 @@ export default async function Home() {
             Ask your AI about WoW: Forever
           </SectionHeading>
           <p className="text-sm">
-            <Link href="/connect" className={link}>Connect an assistant</Link>
+            <Link href="/docs/mcp/clients" className={link}>Connect an assistant</Link>
             <span className="text-muted"> · </span>
-            <Link href="/connect#corpus" className={link}>Open data and API</Link>
+            <Link href="/docs/api" className={link}>Open data and API</Link>
           </p>
         </div>
         <div className="min-w-0 space-y-2">

@@ -136,7 +136,7 @@ test("guard on: past the anonymous limit the answer is a 429 that names the free
   const res = await GET(req());
   expect(res.status).toBe(429);
   expect(res.headers.get("retry-after")).toBe("1800");
-  expect((await res.json()).getAKey).toBe("https://everloot.app/connect#keys");
+  expect((await res.json()).getAKey).toBe("https://everloot.app/docs/api/keys");
   expect(store.loadCorpus).not.toHaveBeenCalled();
 });
 
