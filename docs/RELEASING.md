@@ -33,8 +33,8 @@ with its area before it merges.
 1. On a branch, bump the version in `addon/Everloot.toc` (`## Version:`) and `addon/core.lua`
    (`E.VERSION`). Both must carry the same number.
 2. Run `python scripts/package-addon.py` and commit the new
-   `web/public/downloads/Everloot-<version>.zip`. Update the download link and its label in
-   `web/src/app/upload/page.tsx`.
+   `web/public/downloads/Everloot-<version>.zip`. The download link and its label need no edit: the upload
+   page resolves the newest zip in that folder, so the link cannot disagree with the file.
 3. In `CHANGELOG.md`, move the entries from `[Unreleased]` to a new `## [<version>] - <date>`
    section. The release uses this section as the top of its notes, so write it for players.
 4. Open a pull request titled `chore(addon): release <version>`, wait for checks, merge it.
