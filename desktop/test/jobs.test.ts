@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, test } from "vitest";
@@ -34,6 +34,30 @@ test("the watcher reports a write to the account file and stops cleanly", async 
   writeFileSync(file, "EverlootDB = { v = 3 }\n");
   await new Promise((r) => setTimeout(r, 200));
   expect(changes).toBe(seen);
+});
+
+test("the watcher still sees writes after the game moves the file aside and writes a new one", async () => {
+  const d = dir();
+  const file = join(d, "Everloot.lua");
+  writeFileSync(file, "EverlootDB = {}\n");
+  const { deps } = companionJobs(join(d, "data"), () => defaultSettings());
+  let changes = 0;
+  const stop = deps.watch(file, () => { changes += 1; });
+  let v = 1;
+  await until(() => {
+    if (changes === 0) writeFileSync(file, `EverlootDB = { v = ${++v} }\n`);
+    return changes > 0;
+  });
+  // What a logout does: the old file becomes .bak and a new file takes its name.
+  renameSync(file, `${file}.bak`);
+  writeFileSync(file, "EverlootDB = { v = 100 }\n");
+  await new Promise((r) => setTimeout(r, 800));
+  const seen = changes;
+  await until(() => {
+    if (changes === seen) writeFileSync(file, `EverlootDB = { v = ${++v} }\n`);
+    return changes > seen;
+  });
+  stop();
 });
 
 test("watching a file that is not there does not throw, and stop cancels the retry", () => {
