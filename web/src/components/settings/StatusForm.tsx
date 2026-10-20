@@ -6,6 +6,8 @@ import { Input } from "@/components/ui";
 import type { AccountStatus } from "@/lib/account-shell-types";
 import { CLEAR_AFTER, clearsAtFor, PROFILE_LIMITS, shellChanged, type ClearAfter } from "@/lib/profiles";
 
+const KEEP = "keep";
+
 /** One emoji and a short line, cleared after a time the player picks, or by hand. */
 export default function StatusForm({ status }: { status: AccountStatus | null }) {
   const router = useRouter();
@@ -34,8 +36,10 @@ export default function StatusForm({ status }: { status: AccountStatus | null })
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const clearsAt = clearsAtFor(String(form.get("clearAfter") ?? "never") as ClearAfter, new Date());
-    void send({ emoji: form.get("emoji"), text: form.get("text"), clearsAt: clearsAt?.toISOString() ?? null }, "Status set.");
+    const choice = String(form.get("clearAfter") ?? "never");
+    // "Keep current" leaves the clear-after time the status already has.
+    const clearsAt = choice === KEEP ? status?.clearsAt ?? null : clearsAtFor(choice as ClearAfter, new Date())?.toISOString() ?? null;
+    void send({ emoji: form.get("emoji"), text: form.get("text"), clearsAt }, "Status set.");
   }
 
   return (
@@ -50,7 +54,8 @@ export default function StatusForm({ status }: { status: AccountStatus | null })
       </label>
       <label className="block space-y-1 text-sm">
         <span className="block text-muted">Clear after</span>
-        <select name="clearAfter" defaultValue="never" className="min-h-11 w-full rounded-control border border-edge bg-canvas px-3 text-base text-fg">
+        <select name="clearAfter" defaultValue={status?.clearsAt ? KEEP : "never"} className="min-h-11 w-full rounded-control border border-edge bg-canvas px-3 text-base text-fg">
+          {status?.clearsAt && <option value={KEEP}>Keep current</option>}
           {CLEAR_AFTER.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
       </label>

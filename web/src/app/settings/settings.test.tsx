@@ -52,6 +52,8 @@ test("profile, status, characters with the main marked, and the links to keys an
   expect(html).toMatch(/name="emoji"[^>]*value="🔥"/);
   expect(html).toMatch(/name="text"[^>]*value="Raiding"/);
   for (const label of ["30 minutes", "4 hours", "Today", "This week", "Never"]) expect(html).toContain(`>${label}</option>`);
+  // Editing a status that clears later keeps that time unless the player picks another.
+  expect(html).toContain('<option value="keep" selected="">Keep current</option>');
   expect(html).toContain("Clear status");
   expect(html).toMatch(/text-class-warrior">Thrall<\/a><span data-badge="neutral"[^>]*>Main</);
   expect(html).toContain('aria-label="Make Jaina your main"');
@@ -71,6 +73,8 @@ test("before anything is saved: the defaults, private and with no handle", async
   expect(html).not.toMatch(/name="publicProfile"[^>]*checked/);
   expect(html).toMatch(/name="showCharacters"[^>]*checked/);
   expect(html).not.toContain("Clear status");
+  expect(html).not.toContain("Keep current");
+  expect(html).toContain('<option value="never" selected="">Never</option>');
   expect(html).not.toContain('href="/u/');
 });
 

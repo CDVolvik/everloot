@@ -142,11 +142,10 @@ export const NO_STORE = { "Cache-Control": "private, no-store" };
 export const fail = (status: number, error: string) => NextResponse.json({ error }, { status, headers: NO_STORE });
 export const unavailable = () => fail(503, "Your profile is unavailable right now. Try again in a minute.");
 
-/** 404 with the switch off, 403 for a write from another site, 401 with where to sign in, else the user. */
+/** 404 with the switch off, 403 for a write not from this site (a missing Origin too), 401 with where to sign in, else the user. */
 export async function profileAccount(req: Request, write: boolean): Promise<AccountUser | Response> {
   if (!profilesOn()) return fail(404, "Not found");
-  const origin = req.headers.get("origin");
-  if (write && origin && origin !== siteUrl()) return fail(403, "Invalid origin");
+  if (write && req.headers.get("origin") !== siteUrl()) return fail(403, "Invalid origin");
   const user = await getUser();
   if (!user) return NextResponse.json({ error: "Sign in to change your profile.", signIn: signInPath("/settings") }, { status: 401, headers: NO_STORE });
   return user;

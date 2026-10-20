@@ -47,6 +47,12 @@ test("signed out is a 401 with where to sign in; another site's write is a 403",
   auth.getUser.mockResolvedValue(USER);
   expect((await profile(call("profile", PROFILE, "https://evil.example"))).status).toBe(403);
   expect((await activeCharacter(call("active-character", { characterId: JAINA }, "https://evil.example"))).status).toBe(403);
+  // A write with no Origin is refused too.
+  const bare = (path: string, body: unknown) => new Request(`https://everloot.app/api/me/${path}`, { method: "POST", body: JSON.stringify(body) });
+  expect((await profile(bare("profile", PROFILE))).status).toBe(403);
+  expect((await status(bare("status", { text: "x" }))).status).toBe(403);
+  expect((await mainCharacter(bare("main-character", { characterId: JAINA }))).status).toBe(403);
+  expect((await activeCharacter(bare("active-character", { characterId: JAINA }))).status).toBe(403);
   expect(auth.authQuery).not.toHaveBeenCalled();
 });
 
