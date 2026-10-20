@@ -10,8 +10,12 @@ vi.mock("next/navigation", () => ({
   redirect: (to: string) => { throw new Error(`NEXT_REDIRECT ${to}`); },
   useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }),
 }));
-const request = vi.hoisted(() => ({ headers: new Headers() }));
-vi.mock("next/headers", () => ({ headers: async () => request.headers }));
+const request = vi.hoisted(() => ({ headers: new Headers(), cookies: {} as Record<string, string> }));
+vi.mock("next/headers", () => ({
+  headers: async () => request.headers,
+  cookies: async () => ({ get: (name: string) => (name in request.cookies ? { value: request.cookies[name] } : undefined) }),
+}));
+vi.mock("@/lib/auth/device-accounts", () => ({ ADD_FROM_COOKIE: "everloot_add_from" }));
 const auth = vi.hoisted(() => ({ getUser: vi.fn(), authQuery: vi.fn() }));
 vi.mock("@/lib/supabase/server", () => ({ getUser: auth.getUser, authQuery: auth.authQuery, siteUrl: () => "https://everloot.app" }));
 vi.mock("../page", () => ({ default: () => <p>The landing page</p> }));
@@ -39,6 +43,7 @@ let profileRow: object | null;
 beforeEach(() => {
   vi.stubEnv("EVERLOOT_PROFILES", "1");
   request.headers = new Headers();
+  request.cookies = {};
   profileRow = { handle: "thrall", display_name: "Go'el", status_emoji: "🔥", status_text: "Raiding", status_clears_at: null, public_profile: false,
     show_characters: true, show_builds: true, show_status: true, main_character_id: THRALL, active_character_id: JAINA };
   auth.getUser.mockReset().mockResolvedValue(USER);
@@ -108,6 +113,21 @@ test("the Ask box hands the question and the active character to Chat", async ()
   // So the browser goes to /chat?q=<question>&character=<id>.
   const fields = new URLSearchParams({ q: "Best spec?", character: JAINA });
   expect(`/chat?${fields}`).toBe(`/chat?q=Best+spec%3F&character=${JAINA}`);
+});
+
+test("back from adding a Battle.net account that was already here: says so, once and only then", async () => {
+  const added = (value: string) => ({ searchParams: Promise.resolve({ added: value }) });
+  const notice = "You're already signed in as Go'el. To add a different Battle.net account, sign out at battle.net first, then try again.";
+  const text = async (props?: object) => renderToStaticMarkup(await SignedInHome(props as never)).replace(/&#x27;/g, "'");
+  request.cookies = { everloot_add_from: `99999999-0000-4000-8000-000000000000,${USER.id}` };
+  expect(await text(added("bnet"))).toContain(notice);
+  // Not after an email sign-in, not without the marker, not when a new account came back.
+  expect(await text(added("email"))).not.toContain("already signed in");
+  expect(await text()).not.toContain("already signed in");
+  request.cookies = { everloot_add_from: "99999999-0000-4000-8000-000000000000" };
+  expect(await text(added("bnet"))).not.toContain("already signed in");
+  request.cookies = {};
+  expect(await text(added("bnet"))).not.toContain("already signed in");
 });
 
 test("a new player: no handle, no character, the active character follows the main", async () => {

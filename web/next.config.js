@@ -39,6 +39,8 @@ const nextConfig = {
     "/schema/\\[\\.\\.\\.path\\]": ["./node_modules/@everloot/protocol/schema/**"],
     // /addon hashes the zip it serves when it is rebuilt each hour (the key also matches /addons, which costs ~1 MB).
     "/addon": ["./public/downloads/*.zip"],
+    // The signed-in home falls back to the landing page per request (a stale cookie), whose download button hashes it too.
+    "/home": ["./public/downloads/*.zip"],
     "/mcp": ["./.release/*.sqlite", "./.release/*.manifest.json"],
     "/mcp/public": ["./.release/*.sqlite", "./.release/*.manifest.json"],
     // Keys match by substring, so this one covers /api/tools/[tool], the tools' plain-HTTP route.

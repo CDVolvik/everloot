@@ -123,13 +123,18 @@ export function CreateMenu({ savedBuilds }: { savedBuilds: boolean }) {
   );
 }
 
-/** The accounts signed in on this browser; picking one makes it current and reloads the page as that account. */
-export function AccountSwitcher() {
-  const [accounts, setAccounts] = useState<DeviceAccount[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [switching, setSwitching] = useState<string | null>(null);
+/** The multi-session plugin's limit: at 5 accounts a sixth sign-in would replace the current one. */
+export const MAX_ACCOUNTS = 5;
 
+/**
+ * The accounts signed in on this browser, fetched once the menu first opens (not on every page). Null while
+ * loading or not asked yet; `failed` when the route did not answer.
+ */
+function useDeviceAccounts(wanted: boolean) {
+  const [accounts, setAccounts] = useState<DeviceAccount[] | null>(null);
+  const [failed, setFailed] = useState(false);
   useEffect(() => {
+    if (!wanted || accounts || failed) return;
     let active = true;
     fetch("/api/me/accounts", { cache: "no-store" })
       .then(async (response) => {
@@ -137,9 +142,17 @@ export function AccountSwitcher() {
         const list = await response.json() as DeviceAccount[];
         if (active) setAccounts(list);
       })
-      .catch(() => { if (active) setError("Accounts unavailable. Try again."); });
+      .catch(() => { if (active) setFailed(true); });
     return () => { active = false; };
-  }, []);
+  }, [wanted, accounts, failed]);
+  return { accounts, failed };
+}
+
+/** The accounts signed in on this browser; picking one makes it current and reloads the page as that account. */
+export function AccountSwitcher({ accounts, failed }: { accounts: DeviceAccount[] | null; failed: boolean }) {
+  const [switchError, setError] = useState<string | null>(null);
+  const [switching, setSwitching] = useState<string | null>(null);
+  const error = switchError ?? (failed ? "Accounts unavailable. Try again." : null);
 
   async function choose(userId: string) {
     setSwitching(userId);
@@ -197,13 +210,15 @@ export function AccountSwitcher() {
 }
 
 /**
- * The avatar bubble and its menu, in GitHub's order. The player's shell is fetched from /api/me/shell once the
- * menu mounts (signed in); while it loads, or on 401/404 (EVERLOOT_PROFILES off), the menu lists what exists
- * today. `initialShell` only seeds it (tests). `accountSwitching` (Better Auth on) shows Add another account.
+ * The avatar bubble and its menu, in GitHub's order. With `profiles` (EVERLOOT_PROFILES, from the layout) the
+ * player's shell is fetched from /api/me/shell once the menu mounts; without it, or while it loads, or on 401, the
+ * menu lists what exists today and nothing is fetched. `initialShell` only seeds it (tests). `accountSwitching`
+ * (Better Auth on) shows Add another account, once the menu knows fewer than 5 accounts are on this browser.
  */
-export function AvatarMenu({ name, initialShell = null, savedBuilds, accountSwitching, signingOut, onSignOut }: {
+export function AvatarMenu({ name, initialShell = null, profiles = false, savedBuilds, accountSwitching, signingOut, onSignOut }: {
   name: string;
   initialShell?: AccountShell | null;
+  profiles?: boolean;
   savedBuilds: boolean;
   accountSwitching: boolean;
   signingOut: boolean;
@@ -212,8 +227,11 @@ export function AvatarMenu({ name, initialShell = null, savedBuilds, accountSwit
   const menu = useDisclosure();
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [shell, setShell] = useState<AccountShell | null>(initialShell);
+  const device = useDeviceAccounts(Boolean(shell) && (switcherOpen || (menu.open && accountSwitching)));
+  const canAdd = Boolean(shell) && accountSwitching && device.accounts !== null && device.accounts.length < MAX_ACCOUNTS;
 
   useEffect(() => {
+    if (!profiles) return;
     let active = true;
     const load = () => fetch("/api/me/shell", { cache: "no-store" })
       .then(async (response) => {
@@ -226,7 +244,7 @@ export function AvatarMenu({ name, initialShell = null, savedBuilds, accountSwit
     // The home and settings announce a status or character change; show it without a reload.
     window.addEventListener(SHELL_CHANGED_EVENT, load);
     return () => { active = false; window.removeEventListener(SHELL_CHANGED_EVENT, load); };
-  }, []);
+  }, [profiles]);
   const shown = shell?.displayName || name;
   const fill = avatarClass(shell);
   const status = currentStatus(shell?.status);
@@ -269,7 +287,7 @@ export function AvatarMenu({ name, initialShell = null, savedBuilds, accountSwit
             >⇄</button>
           )}
         </div>
-        {switcherOpen && <AccountSwitcher />}
+        {switcherOpen && <AccountSwitcher accounts={device.accounts} failed={device.failed} />}
         {shell && (
           <a href="/settings#status" className={`${itemClass} gap-2 border-t border-line`}>
             {status ? <>{status.emoji && <span>{status.emoji}</span>}<span className="truncate">{status.text}</span></> : "Set status"}
@@ -281,7 +299,7 @@ export function AvatarMenu({ name, initialShell = null, savedBuilds, accountSwit
           </ul>
         ))}
         <ul className="border-t border-line pt-1">
-          {shell && accountSwitching && <li><a href="/sign-in?add=1" className={itemClass}>Add another account</a></li>}
+          {canAdd && <li><a href="/sign-in?add=1" className={itemClass}>Add another account</a></li>}
           <li>
             <button type="button" disabled={signingOut} aria-busy={signingOut} onClick={onSignOut} className={itemClass}>Sign out</button>
           </li>

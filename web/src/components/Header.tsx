@@ -42,10 +42,12 @@ function SearchIcon() {
 /**
  * The compact bar (docs/design/specs/2026-10-20-account-shell-design.md). From the layout: `savedBuilds` adds Your
  * builds to the avatar menu (EVERLOOT_SAVED_BUILDS); `accountSwitching` is true with Better Auth (EVERLOOT_AUTH_V2),
- * which can hold several accounts on one browser. The avatar menu fetches the player from /api/me/shell itself.
+ * which can hold several accounts on one browser; `profiles` is EVERLOOT_PROFILES, without which the avatar menu
+ * never asks for the player's shell. With it, the menu fetches the player from /api/me/shell itself.
  */
-export default function Header({ savedBuilds = false, accountSwitching = false }: {
+export default function Header({ savedBuilds = false, profiles = false, accountSwitching = false }: {
   savedBuilds?: boolean;
+  profiles?: boolean;
   accountSwitching?: boolean;
 }) {
   const path = usePathname() ?? "/";
@@ -171,7 +173,7 @@ export default function Header({ savedBuilds = false, accountSwitching = false }
             className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center text-fg-2 hover:text-accent xl:hidden"
           ><SearchIcon /></button>
           <GameVersionLabel className="hidden shrink-0 sm:block" />
-          <AccountControls savedBuilds={savedBuilds} accountSwitching={accountSwitching} />
+          <AccountControls savedBuilds={savedBuilds} profiles={profiles} accountSwitching={accountSwitching} />
           <button ref={toggle} type="button" aria-label={open ? "Close menu" : "Menu"} aria-expanded={open} aria-controls="site-navigation" onClick={() => setOpen(!open)} className="btn min-h-8 shrink-0 px-3 text-sm lg:hidden">
             {open ? "Close" : "Menu"}
           </button>

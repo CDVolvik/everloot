@@ -55,7 +55,7 @@ test("lists the accounts on this browser, current first, with handles from profi
   expect(res.headers.get("cache-control")).toBe("private, no-store");
   const body = await res.json();
   expect(body).toEqual([
-    { userId: ME, displayName: "Jaina#1", handle: null, current: true },
+    { userId: ME, displayName: "Jaina", handle: null, current: true },
     { userId: ALT, displayName: "Thrall", handle: "thrall", current: false },
   ]);
   expect(JSON.stringify(body)).not.toContain("tok-");
@@ -63,14 +63,14 @@ test("lists the accounts on this browser, current first, with handles from profi
   expect(auth.api.listDeviceSessions.mock.calls[0][0].headers.get("cookie")).toContain("everloot.session_token");
 });
 
-test("without user_profiles yet the accounts show their sign-in names", async () => {
+test("without user_profiles yet the accounts show their sign-in names, without the BattleTag number as the header does", async () => {
   auth.authQuery.mockRejectedValue(new Error("Authentication storage failed (404)"));
-  expect((await (await list()).json()).map((a: { displayName: string }) => a.displayName)).toEqual(["Jaina#1", "Thrall#2"]);
+  expect((await (await list()).json()).map((a: { displayName: string }) => a.displayName)).toEqual(["Jaina", "Thrall"]);
 });
 
 test("with the legacy session only the current account is listed, and only it can be picked", async () => {
   auth.v2 = false;
-  expect(await (await list()).json()).toEqual([{ userId: ME, displayName: "Jaina#1", handle: null, current: true }]);
+  expect(await (await list()).json()).toEqual([{ userId: ME, displayName: "Jaina", handle: null, current: true }]);
   expect(auth.api.listDeviceSessions).not.toHaveBeenCalled();
   expect((await pick({ userId: ALT })).status).toBe(404);
   expect((await pick({ userId: ME })).status).toBe(200);

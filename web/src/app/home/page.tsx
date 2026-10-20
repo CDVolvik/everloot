@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import Landing from "../page";
@@ -12,6 +12,7 @@ import LaunchCountdown from "@/components/LaunchCountdown";
 import { CLASS_TEXT } from "@/components/talents/TalentTreeView";
 import type { AccountShell } from "@/lib/account-shell-types";
 import { loadAccountShell } from "@/lib/account-shell";
+import { ADD_FROM_COOKIE } from "@/lib/auth/device-accounts";
 import { filterTimeline, loadTimeline, TYPE_LABEL } from "@/lib/changes";
 import { HOME_REWRITE_HEADER, profilesOn } from "@/lib/profiles";
 import { editPath, type AccountBuilds } from "@/lib/saved-builds";
@@ -38,7 +39,7 @@ const railLink = "block truncate rounded-control px-2 py-1 text-cell text-fg-2 h
  * The signed-in home. Visitors never see this route: the middleware rewrites `/` here only when a session cookie
  * is present, and `/` stays the cached landing page. A cookie with no session behind it gets the landing too.
  */
-export default async function SignedInHome() {
+export default async function SignedInHome({ searchParams }: { searchParams?: Promise<{ added?: string | string[] }> } = {}) {
   if (!profilesOn()) notFound();
   let loaded: { shell: AccountShell | null; saved: AccountBuilds };
   try {
@@ -59,6 +60,10 @@ export default async function SignedInHome() {
   const activeBuilds = active ? saved.builds.filter((b) => b.characterId === active.id) : [];
   const facts = await describeBuilds(activeBuilds);
   const latest = filterTimeline(loadTimeline(), "all", "forever").slice(0, 5);
+  // Back from "Add another account" through Battle.net as an account that was already here: Battle.net kept the
+  // earlier login and signed it in again.
+  const sameAccount = (await searchParams)?.added === "bnet"
+    && ((await cookies()).get(ADD_FROM_COOKIE)?.value ?? "").split(",").includes(shell.userId);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,14rem)_minmax(0,1fr)_minmax(0,18rem)]">
@@ -118,6 +123,11 @@ export default async function SignedInHome() {
       </aside>
 
       <section aria-label="Start" className="order-first min-w-0 space-y-5 lg:order-none">
+        {sameAccount && (
+          <p role="status" className="rounded-control border border-line bg-panel px-3 py-2 text-cell text-fg-2">
+            You&apos;re already signed in as {shell.displayName}. To add a different Battle.net account, sign out at battle.net first, then try again.
+          </p>
+        )}
         <Greeting name={shell.displayName} />
         <form action="/chat" method="get" role="search" aria-label="Ask anything" className="flex gap-2">
           <label htmlFor="ask" className="sr-only">Ask anything</label>

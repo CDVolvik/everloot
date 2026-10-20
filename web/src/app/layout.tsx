@@ -8,6 +8,7 @@ import CookieConsent from "@/components/CookieConsent";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { analyticsConfig } from "@/lib/analytics/config";
 import { authV2Enabled } from "@/lib/auth/auth";
+import { profilesOn } from "@/lib/profiles";
 import { savedBuildsOn } from "@/lib/saved-builds";
 import { FEED } from "@/lib/seo";
 import { tokens } from "@/design/tokens";
@@ -68,7 +69,7 @@ export default function RootLayout({
     <html lang="en" className={fontVariables}>
       <body className="flex flex-col min-h-screen">
         <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:bg-canvas focus:px-4 focus:py-3">Skip to content</a>
-        <Header savedBuilds={savedBuildsOn()} accountSwitching={authV2Enabled()} />
+        <Header savedBuilds={savedBuildsOn()} profiles={profilesOn()} accountSwitching={authV2Enabled()} />
         <main id="main-content" className="flex-1 min-w-0 mx-auto w-full max-w-wide px-4 py-8">
           <Breadcrumbs />
           {children}

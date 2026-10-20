@@ -20,6 +20,19 @@ test("with a session cookie, / is the signed-in home, marked as the rewrite", ()
   }
 });
 
+test("the query goes along with the rewrite", () => {
+  vi.stubEnv("EVERLOOT_PROFILES", "1");
+  const res = middleware(new NextRequest("https://everloot.app/?added=bnet", { headers: { cookie: "everloot.session_token=abc.def" } }));
+  expect(rewrittenTo(res)).toBe("https://everloot.app/home?added=bnet");
+});
+
+test("with Better Auth on, only its cookie counts: a leftover legacy cookie is not a session", () => {
+  vi.stubEnv("EVERLOOT_PROFILES", "1");
+  vi.stubEnv("EVERLOOT_AUTH_V2", "1");
+  expect(rewrittenTo(middleware(request(`everloot_session=${"a".repeat(64)}`)))).toBeNull();
+  expect(rewrittenTo(middleware(request("__Secure-everloot.session_token=abc.def")))).toBe("https://everloot.app/home");
+});
+
 test("without one, or with only other cookies, / stays the landing page", () => {
   vi.stubEnv("EVERLOOT_PROFILES", "1");
   expect(rewrittenTo(middleware(request()))).toBeNull();

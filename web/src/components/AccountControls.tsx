@@ -12,9 +12,11 @@ type Status = "loading" | "anonymous" | "signed-in" | "unavailable";
  * The account is looked up here; the avatar menu fetches the player's shell itself. `initialShell` seeds it (tests).
  * `place="menu"` is the phone menu's copy: only Sign in (or Retry), which the bar hides below 640 px.
  */
-export default function AccountControls({ savedBuilds = false, initialShell = null, accountSwitching = false, place = "bar" }: {
+export default function AccountControls({ savedBuilds = false, initialShell = null, profiles = false, accountSwitching = false, place = "bar" }: {
   savedBuilds?: boolean;
   initialShell?: AccountShell | null;
+  /** EVERLOOT_PROFILES: the avatar menu fetches the player's shell only with it on. */
+  profiles?: boolean;
   accountSwitching?: boolean;
   place?: "bar" | "menu";
 }) {
@@ -78,7 +80,7 @@ export default function AccountControls({ savedBuilds = false, initialShell = nu
       {status === "signed-in" ? (
         <>
           <CreateMenu savedBuilds={savedBuilds} />
-          <AvatarMenu name={name} initialShell={initialShell} savedBuilds={savedBuilds} accountSwitching={accountSwitching} signingOut={signingOut} onSignOut={signOut} />
+          <AvatarMenu name={name} initialShell={initialShell} profiles={profiles} savedBuilds={savedBuilds} accountSwitching={accountSwitching} signingOut={signingOut} onSignOut={signOut} />
         </>
       ) : (
         <>

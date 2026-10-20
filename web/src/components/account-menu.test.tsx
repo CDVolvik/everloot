@@ -71,7 +71,17 @@ function api(routes: Record<string, Route> = {}) {
 const withShell = (s: AccountShell, routes: Record<string, Route> = {}) => api({ "/api/me/shell": () => Response.json(s), ...routes });
 
 describe("signed in without a shell (EVERLOOT_PROFILES off)", () => {
-  beforeEach(() => { api(); });
+  let fetch: ReturnType<typeof api>;
+  beforeEach(() => { fetch = api(); });
+  afterEach(() => {
+    // With the switch off the menu never asks for the shell: no 404 per page, no listener.
+    expect(fetch.mock.calls.filter(([url]) => url === "/api/me/shell")).toHaveLength(0);
+  });
+
+  it("does not listen for shell changes", async () => {
+    await act(async () => root.render(<Header savedBuilds />));
+    await act(async () => { window.dispatchEvent(new Event(SHELL_CHANGED_EVENT)); });
+  });
 
   it("shows the + menu and the avatar instead of Sign in and Get the addon", async () => {
     await act(async () => root.render(<Header savedBuilds />));
@@ -124,9 +134,13 @@ describe("signed in without a shell (EVERLOOT_PROFILES off)", () => {
 
 describe("signed in with a shell", () => {
   it("fetches the shell once and shows name, handle, status and the menu in GitHub's order", async () => {
-    const fetch = withShell(shell());
-    await act(async () => root.render(<Header savedBuilds accountSwitching />));
+    const fetch = withShell(shell(), { "/api/me/accounts": () => Response.json([{ userId: ME, displayName: "Jaina Proudmoore", handle: "jaina", current: true }]) });
+    await act(async () => root.render(<Header profiles savedBuilds accountSwitching />));
     expect(fetch.mock.calls.filter(([url]) => url === "/api/me/shell")).toHaveLength(1);
+    // The accounts on this browser are asked for only once the menu opens.
+    expect(fetch.mock.calls.filter(([url]) => url === "/api/me/accounts")).toHaveLength(0);
+    await act(async () => avatarButton().click());
+    expect(fetch.mock.calls.filter(([url]) => url === "/api/me/accounts")).toHaveLength(1);
     // Initials on the main character's class colour.
     expect(avatarButton().textContent).toBe("JP");
     expect(avatarButton().querySelector("span")!.className).toContain("bg-class-mage");
@@ -148,7 +162,7 @@ describe("signed in with a shell", () => {
 
   it("asks for a handle and a status when there are none, and uses the accent without a main character", async () => {
     withShell(shell({ handle: null, status: null, mainCharacterId: null }));
-    await act(async () => root.render(<Header />));
+    await act(async () => root.render(<Header profiles />));
     const links = menuLinks();
     expect(links[0]).toEqual(["Choose a handle", "/settings"]);
     expect(links[1]).toEqual(["Set status", "/settings#status"]);
@@ -156,16 +170,28 @@ describe("signed in with a shell", () => {
     expect(avatarButton().querySelector("span")!.className).toContain("bg-accent");
   });
 
+  it("hides Add another account at 5 accounts on this browser, and until the list is known", async () => {
+    const five = Array.from({ length: 5 }, (_, i) => ({ userId: `0000000${i}-0000-4000-8000-000000000000`, displayName: `A${i}`, handle: null, current: i === 0 }));
+    let finish!: (r: Response) => void;
+    withShell(shell(), { "/api/me/accounts": () => new Promise<Response>((resolve) => { finish = resolve; }) });
+    await act(async () => root.render(<Header profiles accountSwitching />));
+    await act(async () => avatarButton().click());
+    expect(container.querySelector('a[href="/sign-in?add=1"]')).toBeNull();
+    await act(async () => finish(Response.json(five)));
+    expect(container.querySelector('a[href="/sign-in?add=1"]')).toBeNull();
+    expect(buttons(accountMenu(), "Sign out")).toHaveLength(1);
+  });
+
   it("hides Add another account with the legacy session", async () => {
     withShell(shell());
-    await act(async () => root.render(<Header />));
+    await act(async () => root.render(<Header profiles />));
     expect(container.querySelector('a[href="/sign-in?add=1"]')).toBeNull();
   });
 
   it("keeps today's menu while the shell loads or when the route answers 401 or 404", async () => {
     let finish!: (r: Response) => void;
     api({ "/api/me/shell": () => new Promise<Response>((resolve) => { finish = resolve; }) });
-    await act(async () => root.render(<Header savedBuilds accountSwitching />));
+    await act(async () => root.render(<Header profiles savedBuilds accountSwitching />));
     expect(menuLinks()).toEqual([["Your builds", "/me"], ["API keys", "/account"], ["Desktop App and addon", "/addon"]]);
     await act(async () => finish(Response.json({ error: "Sign in first." }, { status: 401 })));
     expect(menuLinks()).toEqual([["Your builds", "/me"], ["API keys", "/account"], ["Desktop App and addon", "/addon"]]);
@@ -175,7 +201,7 @@ describe("signed in with a shell", () => {
   it("an initial shell (tests) shows at once, then the fetched one replaces it", async () => {
     let finish!: (r: Response) => void;
     api({ "/api/me/shell": () => new Promise<Response>((resolve) => { finish = resolve; }) });
-    await act(async () => root.render(<AccountControls initialShell={shell()} />));
+    await act(async () => root.render(<AccountControls profiles initialShell={shell()} />));
     expect(accountMenu().textContent).toContain("@jaina");
     await act(async () => finish(Response.json(shell({ handle: "proudmoore" }))));
     expect(accountMenu().textContent).toContain("@proudmoore");
@@ -184,7 +210,7 @@ describe("signed in with a shell", () => {
   it("fetches the shell again when the home or settings announce a change", async () => {
     let current = shell();
     const fetch = api({ "/api/me/shell": () => Response.json(current) });
-    await act(async () => root.render(<Header savedBuilds />));
+    await act(async () => root.render(<Header profiles savedBuilds />));
     expect(accountMenu().textContent).toContain("Raiding Molten Core");
     current = shell({ status: null });
     await act(async () => { window.dispatchEvent(new Event(SHELL_CHANGED_EVENT)); });
@@ -205,7 +231,7 @@ describe("account switcher", () => {
       "/api/me/accounts": () => Response.json(accounts),
       "/api/me/accounts/switch": () => Response.json({ ok: true }),
     });
-    await act(async () => root.render(<Header accountSwitching />));
+    await act(async () => root.render(<Header profiles accountSwitching />));
     await act(async () => avatarButton().click());
     const toggle = container.querySelector<HTMLButtonElement>('button[aria-label="Switch account"]')!;
     await act(async () => toggle.click());
@@ -222,7 +248,7 @@ describe("account switcher", () => {
 
   it("with the legacy session lists only the current account", async () => {
     withShell(shell(), { "/api/me/accounts": () => Response.json([accounts[0]]) });
-    await act(async () => root.render(<Header />));
+    await act(async () => root.render(<Header profiles />));
     await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Switch account"]')!.click());
     const switcher = container.querySelector("#account-switcher")!;
     expect(switcher.querySelectorAll("li")).toHaveLength(1);
@@ -235,7 +261,7 @@ describe("account switcher", () => {
       "/api/me/accounts": () => Response.json(accounts),
       "/api/me/accounts/switch": () => Response.json({ error: "That account is not signed in on this browser." }, { status: 404 }),
     });
-    await act(async () => root.render(<Header accountSwitching />));
+    await act(async () => root.render(<Header profiles accountSwitching />));
     await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Switch account"]')!.click());
     await act(async () => buttons(container.querySelector("#account-switcher")!, "TThrall")[0].click());
     expect(container.querySelector("#account-switcher [role=alert]")?.textContent).toMatch(/could not switch/i);
@@ -246,14 +272,14 @@ describe("account switcher", () => {
 describe("sign out", () => {
   it("ends only this account and loads the page as the next one when the server says there is one", async () => {
     withShell(shell(), { "/api/auth/logout": () => Response.json({ ok: true, next: true }) });
-    await act(async () => root.render(<Header accountSwitching />));
+    await act(async () => root.render(<Header profiles accountSwitching />));
     await act(async () => buttons(accountMenu(), "Sign out")[0].click());
     expect(reload).toHaveBeenCalledTimes(1);
   });
 
   it("shows Sign in again when no other account is left", async () => {
     withShell(shell(), { "/api/auth/logout": () => Response.json({ ok: true, next: false }) });
-    await act(async () => root.render(<Header accountSwitching />));
+    await act(async () => root.render(<Header profiles accountSwitching />));
     await act(async () => buttons(accountMenu(), "Sign out")[0].click());
     expect(reload).not.toHaveBeenCalled();
     expect(refresh).toHaveBeenCalled();
