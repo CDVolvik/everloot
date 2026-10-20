@@ -5,13 +5,7 @@ import { authV2Enabled, getAuth } from "./auth";
 // The accounts signed in on one browser, for the account switcher
 // (docs/design/specs/2026-10-20-account-shell-design.md, "Account switching").
 
-/**
- * EVERLOOT_PROFILES, strictly "1". The same check as profilesOn() in lib/account-shell.ts (the data side of the
- * project), copied here so this half builds on its own; use that one once both halves are merged.
- */
-export function profilesOn(env: Record<string, string | undefined> = process.env): boolean {
-  return env.EVERLOOT_PROFILES === "1";
-}
+export { profilesOn } from "@/lib/profiles";
 
 export interface DeviceSession { token: string; userId: string; name: string }
 

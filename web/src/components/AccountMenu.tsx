@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import type { AccountShell, AccountStatus, DeviceAccount } from "@/lib/account-shell-types";
+import { SHELL_CHANGED_EVENT } from "@/lib/profiles";
 
 // The signed-in side of the header (docs/design/specs/2026-10-20-account-shell-design.md): the "+" menu, the
 // avatar bubble and its menu, and the account switcher. Both menus are disclosures like Tools and the version
@@ -214,14 +215,17 @@ export function AvatarMenu({ name, initialShell = null, savedBuilds, accountSwit
 
   useEffect(() => {
     let active = true;
-    fetch("/api/me/shell", { cache: "no-store" })
+    const load = () => fetch("/api/me/shell", { cache: "no-store" })
       .then(async (response) => {
         if (!response.ok) return;
         const data = await response.json() as AccountShell;
         if (active && typeof data?.userId === "string") setShell(data);
       })
       .catch(() => {});
-    return () => { active = false; };
+    load();
+    // The home and settings announce a status or character change; show it without a reload.
+    window.addEventListener(SHELL_CHANGED_EVENT, load);
+    return () => { active = false; window.removeEventListener(SHELL_CHANGED_EVENT, load); };
   }, []);
   const shown = shell?.displayName || name;
   const fill = avatarClass(shell);

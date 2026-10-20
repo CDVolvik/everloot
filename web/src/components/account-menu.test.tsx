@@ -3,6 +3,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AccountShell, DeviceAccount } from "@/lib/account-shell-types";
+import { SHELL_CHANGED_EVENT } from "@/lib/profiles";
 import AccountControls from "./AccountControls";
 import Header from "./Header";
 import { accountMenuSections, currentStatus, initials } from "./AccountMenu";
@@ -178,6 +179,17 @@ describe("signed in with a shell", () => {
     expect(accountMenu().textContent).toContain("@jaina");
     await act(async () => finish(Response.json(shell({ handle: "proudmoore" }))));
     expect(accountMenu().textContent).toContain("@proudmoore");
+  });
+
+  it("fetches the shell again when the home or settings announce a change", async () => {
+    let current = shell();
+    const fetch = api({ "/api/me/shell": () => Response.json(current) });
+    await act(async () => root.render(<Header savedBuilds />));
+    expect(accountMenu().textContent).toContain("Raiding Molten Core");
+    current = shell({ status: null });
+    await act(async () => { window.dispatchEvent(new Event(SHELL_CHANGED_EVENT)); });
+    expect(fetch.mock.calls.filter(([url]) => url === "/api/me/shell")).toHaveLength(2);
+    expect(accountMenu().textContent).not.toContain("Raiding Molten Core");
   });
 });
 
