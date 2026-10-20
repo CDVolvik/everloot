@@ -153,7 +153,7 @@ export default async function ProfessionsPage(
       </div>
 
       {assets && icons.length > 0 && <div className="mt-8"><GameCredit version={assets.version} label={assets.label} what="Icons" /></div>}
-      <SourceLine from="Player uploads; a step counts once 3 installs agree">
+      <SourceLine source="Player uploads; a step counts once 3 installs agree">
         {corpus.unreachable ? "Storage unreachable" : dataAgeLabel(corpus.dataAsOf)}
       </SourceLine>
     </Container>

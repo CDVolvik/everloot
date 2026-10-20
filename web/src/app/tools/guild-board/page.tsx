@@ -60,7 +60,7 @@ export default async function GuildBoardPage(
         </Disclosure>
       </div>
 
-      <SourceLine from="Officer uploads, public once two agree">
+      <SourceLine source="Officer uploads, public once two agree">
         {corpus.unreachable ? "Storage unreachable" : dataAgeLabel(corpus.dataAsOf)}
       </SourceLine>
     </Container>

@@ -34,7 +34,7 @@ export function parseFeed(xml: string, limit = 30): ChangeItem[] {
 }
 
 export async function fetchChanges(endpoint: string, send: typeof fetch = fetch): Promise<ChangeItem[]> {
-  const res = await send(`${endpoint}/changes/feed.xml`, { headers: { accept: "application/rss+xml" } });
+  const res = await send(`${endpoint}/changes/feed.xml`, { headers: { accept: "application/rss+xml" }, signal: AbortSignal.timeout(15_000) });
   if (!res.ok) throw new Error(`changes feed: ${res.status}`);
   return parseFeed(await res.text());
 }

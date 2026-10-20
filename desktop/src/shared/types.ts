@@ -1,5 +1,5 @@
 /** Shapes shared by the Node side and the page. No Node or Electron imports here. */
-import type { ProviderChoice, ProviderInUse } from "./providers";
+import type { ProviderChoice, ProviderInUse, ProviderKind } from "./providers";
 
 export type Job = "upload" | "prices" | "ask";
 export const JOBS: Job[] = ["upload", "prices", "ask"];
@@ -33,7 +33,26 @@ export interface EngineState {
 /** `files` counts accounts with an Everloot.lua; `hasAccounts` says WTF/Account exists at all. */
 export interface GameFolderCandidate { folder: string; product: string; files: number; hasAccounts: boolean }
 
-export interface UpdateCheck { current: string; latest: string | null; url: string | null; newer: boolean }
+/** One change a release lists; author and pull request when GitHub generated the line. */
+export interface ReleaseNote { text: string; author: string | null; pr: number | null }
+export interface UpdateCheck {
+  current: string;
+  latest: string | null;
+  /** The release page. */
+  url: string | null;
+  newer: boolean;
+  /** What the newest release lists as changed. */
+  notes: ReleaseNote[];
+  /** This system's installer from that release; null when it has none. */
+  downloadUrl: string | null;
+  publishedAt: string | null;
+  /** The release's SHA256SUMS, which an in-app download is checked against. */
+  sumsUrl: string | null;
+  /** Whether this install can download the update and install it on restart (the Windows installer only). */
+  installable: boolean;
+}
+/** The in-app update download: idle until asked, then downloading, then ready to restart, or failed with why. */
+export interface UpdateProgress { stage: "idle" | "downloading" | "ready" | "failed"; percent: number; error: string | null }
 
 /** One dated copy of an account's Everloot.lua in the data folder, kept after each upload. */
 export interface BackupInfo { file: string; account: string; at: string; bytes: number }
@@ -73,6 +92,15 @@ export interface MarketInfo {
   /** The player's last full scan per realm across every account file, newest first. */
   scans: ScanAge[];
   error: string | null;
+  /** What the EverlootPrices file in the game holds now, per realm; null when there is no file. */
+  inGame: { realm: string; dataAsOf: string | null; items: number }[] | null;
+}
+/** One item's price on each realm in the game's prices file, as the tooltip shows it. */
+export interface PriceLookup {
+  itemId: number | null;
+  rows: { realm: string; dataAsOf: string | null; market: number | null; min: number; historical: number; quantity: number; day: string; reporters: number }[];
+  /** Why there is nothing to show, in a sentence; null with rows. */
+  note: string | null;
 }
 
 export interface Ask { id: string; question: string; askedAt: string }
@@ -89,6 +117,8 @@ export interface AddonInfo {
   addonsDir: string | null;
   installed: string | null;
   latest: { version: string; url: string } | null;
+  /** The latest release is newer than what is installed; false for a nightly ahead of it. */
+  newer: boolean;
   slots: { prices: boolean; answers: boolean };
   error: string | null;
 }
@@ -118,9 +148,13 @@ export interface ChatInfo {
   withToken: boolean;
   /** The provider saved from the Chat page, if config.json still names it; null when none or hand-written only. */
   provider: ProviderInUse | null;
+  /** Every provider saved from the Chat page, with a key where it needs one; the model menu lists their models. */
+  providers: ProviderInUse[];
   busy: boolean;
   error: string | null;
 }
+/** The answer being written: the model's text so far in this round and the tool it is running, if any. */
+export interface ChatProgress { text: string; tool: string | null }
 
 /** One of the player's own characters, from the save file. Never uploaded from here. */
 export interface GearSlot {
@@ -180,7 +214,9 @@ export interface CharactersInfo {
   talents: { class: string; level: number; points: number }[];
 }
 
-export interface SiteTool { id: string; label: string; path: string }
+
+/** Signed in to everloot.app with one of the account's API keys; the page sees only its last four characters. */
+export interface Account { signedIn: boolean; hint: string | null }
 
 /** Everything the page knows. The main side sends a fresh one after every change. */
 export interface AppState {
@@ -191,11 +227,12 @@ export interface AppState {
   notice: string | null;
   settings: Settings;
   engine: EngineState;
-  siteTools: SiteTool[];
   /** The desktop release check made once at start; null until it ran or when it could not reach GitHub. */
   update: UpdateCheck | null;
+  updateProgress: UpdateProgress;
   /** Realms whose last full scan is older than a day (or never dated), for the tray reminder. */
   staleScans: ScanAge[];
+  account: Account;
 }
 
 /** What `window.everloot` offers the page. Implemented in preload.ts over IPC. */
@@ -213,12 +250,24 @@ export interface EverlootApi {
   openConfig(): Promise<void>;
   openExternal(url: string): Promise<boolean>;
   checkForUpdates(): Promise<UpdateCheck>;
+  /** Downloads the update to install on restart (Windows installs); progress arrives with the state. */
+  updateDownload(): Promise<void>;
+  /** Asks to restart, then installs the downloaded update; false when the player chose Not now. */
+  updateRestart(): Promise<boolean>;
+  /** Offers a GitHub bug report with these diagnostics, or copies them. */
+  reportBug(diagnostics: string): Promise<"opened" | "copied" | null>;
+  /** Checks an everloot.app API key with the site and keeps it; throws with the reason when it is refused. */
+  accountSignIn(key: string): Promise<AppState>;
+  /** Forgets the key on this computer. */
+  accountSignOut(): Promise<AppState>;
   uploadInfo(): Promise<FileSummary[]>;
   backups(): Promise<BackupInfo[]>;
   /** Asks the player to confirm, then copies the backup over the live file; returns the restored path or null when cancelled. */
   restoreBackup(file: string): Promise<string | null>;
   openBackupsFolder(): Promise<void>;
   marketInfo(): Promise<MarketInfo>;
+  /** Looks an item up in the game's prices file: an item id or a link pasted from game chat. */
+  marketLookup(text: string): Promise<PriceLookup>;
   askInfo(): Promise<AskInfo>;
   addonInfo(): Promise<AddonInfo>;
   installAddon(version: string): Promise<{ version: string; files: number }>;
@@ -229,13 +278,13 @@ export interface EverlootApi {
   chatClear(): Promise<ChatInfo>;
   /** Saves a provider pick (its key, if any, to a file in the data folder) and points config.json at it; the key never comes back to the page. */
   chatSetProvider(choice: ProviderChoice): Promise<ChatInfo>;
-  chatRemoveProvider(): Promise<ChatInfo>;
-  /** Shows a site tool inside the window; returns the URL it opened. */
-  siteShow(id: string): Promise<string | null>;
-  siteHide(): Promise<void>;
-  siteBack(): Promise<void>;
-  siteReload(): Promise<void>;
+  /** Removes a saved provider and its key; without a kind, the one in use. */
+  chatRemoveProvider(kind?: ProviderKind): Promise<ChatInfo>;
+  /** Switches Chat and /ask to a model of a provider already saved. */
+  chatUseModel(kind: ProviderKind, model: string): Promise<ChatInfo>;
   onState(listener: (state: AppState) => void): () => void;
   /** The main side asks the page to open a screen: a tray entry or a notification was clicked. */
   onNavigate(listener: (page: string) => void): () => void;
+  /** The Chat page's answer as it is written, until chatSend resolves. */
+  onChatProgress(listener: (progress: ChatProgress) => void): () => void;
 }

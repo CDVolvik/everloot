@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { ProviderChoice } from "./shared/providers";
-import type { AppState, EverlootApi, Job, Settings } from "./shared/types";
+import type { ProviderChoice, ProviderKind } from "./shared/providers";
+import type { AppState, ChatProgress, EverlootApi, Job, Settings } from "./shared/types";
 
 // The only way the page reaches Node: named calls over IPC, each checked on the main side.
 const api: EverlootApi = {
@@ -16,11 +16,17 @@ const api: EverlootApi = {
   openConfig: () => ipcRenderer.invoke("openConfig"),
   openExternal: (url: string) => ipcRenderer.invoke("openExternal", url),
   checkForUpdates: () => ipcRenderer.invoke("checkForUpdates"),
+  updateDownload: () => ipcRenderer.invoke("updateDownload"),
+  updateRestart: () => ipcRenderer.invoke("updateRestart"),
+  reportBug: (diagnostics: string) => ipcRenderer.invoke("reportBug", diagnostics),
+  accountSignIn: (key: string) => ipcRenderer.invoke("accountSignIn", key),
+  accountSignOut: () => ipcRenderer.invoke("accountSignOut"),
   uploadInfo: () => ipcRenderer.invoke("uploadInfo"),
   backups: () => ipcRenderer.invoke("backups"),
   restoreBackup: (file: string) => ipcRenderer.invoke("restoreBackup", file),
   openBackupsFolder: () => ipcRenderer.invoke("openBackupsFolder"),
   marketInfo: () => ipcRenderer.invoke("marketInfo"),
+  marketLookup: (text: string) => ipcRenderer.invoke("marketLookup", text),
   askInfo: () => ipcRenderer.invoke("askInfo"),
   addonInfo: () => ipcRenderer.invoke("addonInfo"),
   installAddon: (version: string) => ipcRenderer.invoke("installAddon", version),
@@ -30,15 +36,17 @@ const api: EverlootApi = {
   chatSend: (text: string) => ipcRenderer.invoke("chatSend", text),
   chatClear: () => ipcRenderer.invoke("chatClear"),
   chatSetProvider: (choice: ProviderChoice) => ipcRenderer.invoke("chatSetProvider", choice),
-  chatRemoveProvider: () => ipcRenderer.invoke("chatRemoveProvider"),
-  siteShow: (id: string) => ipcRenderer.invoke("siteShow", id),
-  siteHide: () => ipcRenderer.invoke("siteHide"),
-  siteBack: () => ipcRenderer.invoke("siteBack"),
-  siteReload: () => ipcRenderer.invoke("siteReload"),
+  chatRemoveProvider: (kind?: ProviderKind) => ipcRenderer.invoke("chatRemoveProvider", kind),
+  chatUseModel: (kind: ProviderKind, model: string) => ipcRenderer.invoke("chatUseModel", kind, model),
   onNavigate: (listener) => {
     const handler = (_event: unknown, page: string) => listener(page);
     ipcRenderer.on("navigate", handler);
     return () => { ipcRenderer.removeListener("navigate", handler); };
+  },
+  onChatProgress: (listener) => {
+    const handler = (_event: unknown, progress: ChatProgress) => listener(progress);
+    ipcRenderer.on("chatProgress", handler);
+    return () => { ipcRenderer.removeListener("chatProgress", handler); };
   },
   onState: (listener) => {
     const handler = (_event: unknown, state: AppState) => listener(state);

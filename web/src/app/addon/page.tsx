@@ -4,6 +4,7 @@ import { pageMetadata } from "@/lib/seo";
 import { latestAddonRelease } from "@/lib/addon-release";
 import { addonReleaseFor, fetchReleases, fileSize, newestDesktopRelease, RELEASES_PAGE, servedFile } from "@/lib/everloot-releases";
 import { REPO_URL } from "@/lib/source";
+import { Badge, Card, Container, PageHeader, SectionHeading } from "@/components/ui";
 
 export const metadata: Metadata = {
   ...pageMetadata({ title: "WoW Forever Addon and Desktop App Downloads", description: "Download the Everloot addon for WoW: Forever and the optional Desktop App for Windows, macOS and Linux, with versions, file sizes and SHA-256 checksums.", path: "/addon" }),
@@ -13,6 +14,7 @@ export const metadata: Metadata = {
 export const revalidate = 3600;
 
 const link = "text-accent hover:underline underline-offset-4";
+const summary = "cursor-pointer text-sm font-medium text-fg hover:text-accent";
 const EXT = "noopener noreferrer";
 
 /** The Desktop App files the page offers, in this order, matched by the end of the artifact name. */
@@ -49,154 +51,154 @@ export default async function AddonPage() {
     : [];
 
   return (
-    <article className="space-y-8 max-w-5xl mx-auto">
-      <header className="pt-6 space-y-3">
-        <p className="font-mono text-xs text-muted">Downloads</p>
-        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">Everloot addon and Desktop App</h1>
-        <p className="text-fg-2 max-w-3xl">
-          The addon records what you see in WoW: Forever and saves it to a file on your computer. The Desktop App is
-          optional: it sits in the tray, uploads that file after you log out, and keeps community market prices in your
-          item tooltips. Both are free and open source under the AGPL-3.0.
-        </p>
-      </header>
+    <Container>
+      <PageHeader
+        title="Everloot addon and Desktop App"
+        lede="The addon records what you see in WoW: Forever and saves it to a file on your computer. The Desktop App is optional and uploads that file for you."
+        trail={[{ name: "Home", path: "/" }, { name: "Get the addon", path: "/addon" }]}
+        meta={<><Badge tone="neutral">AGPL-3.0</Badge><span>Free and open source</span></>}
+      />
 
-      <div className="grid md:grid-cols-2 gap-6 items-start">
-        <section aria-labelledby="addon" className="rounded-xl border border-line p-5 space-y-4">
-          <div className="space-y-1">
-            <h2 id="addon" className="text-xl font-semibold text-fg">The addon</h2>
-            {addon && (
-              <p className="text-sm text-muted">
-                Version {addon.version}, beta{addonRelease ? `, released ${addonRelease.date}` : ""}. For the WoW: Forever client.
+      <div className="space-y-12">
+        <div className="grid items-start gap-6 md:grid-cols-2">
+          <Card as="section" aria-labelledby="addon" className="space-y-6">
+            <SectionHeading
+              id="addon"
+              note={addon ? `Version ${addon.version}, beta${addonRelease ? `, released ${addonRelease.date}` : ""}. For the WoW: Forever client.` : undefined}
+            >
+              The addon
+            </SectionHeading>
+            {addon ? (
+              <>
+                <a className="btn btn-primary" href={zipHref} download>
+                  Download addon {addon.version}{served ? ` (.zip, ${fileSize(served.size)})` : ""}
+                </a>
+                <div>
+                  <SectionHeading as="h3">Install</SectionHeading>
+                  <ol className="list-decimal space-y-1 pl-5 text-sm text-fg-2">
+                    <li>Quit the game.</li>
+                    <li>Extract the zip. It holds one folder, <code className="font-mono">Everloot</code>.</li>
+                    <li>
+                      Move that folder into <code className="font-mono">Interface/AddOns</code>, inside the folder of the game
+                      version you play under <code className="font-mono">World of Warcraft</code>.
+                    </li>
+                    <li>Start the game, check Everloot is ticked in the AddOns list, and type <code className="font-mono">/everloot status</code> in chat.</li>
+                  </ol>
+                  <p className="mt-3 text-sm text-fg-2">
+                    To send what it collected, log out and pick <code className="font-mono">Everloot.lua</code> on the{" "}
+                    <Link href="/upload" className={link}>upload page</Link>, which shows you everything before it is sent. Or let the
+                    Desktop App do it.
+                  </p>
+                </div>
+                {served && (
+                  <details className="text-sm">
+                    <summary className={summary}>SHA-256 checksum</summary>
+                    <ul className="mt-2"><Checksum name={zipName} sha256={served.sha256} /></ul>
+                    {addonRelease?.sums && <a className={link} href={addonRelease.sums} rel={EXT}>SHA256SUMS</a>}
+                  </details>
+                )}
+                <p className="text-sm text-fg-2">
+                  <a className={link} href={addonRelease?.url ?? RELEASES_PAGE} rel={EXT}>Release notes</a>
+                  {" · "}
+                  <a className={link} href={`${REPO_URL}/tree/main/addon`} rel={EXT}>Source code</a>
+                </p>
+              </>
+            ) : (
+              <p className="text-fg-2">
+                The addon download is not available on this site right now. It is on the{" "}
+                <a className={link} href={RELEASES_PAGE} rel={EXT}>releases page</a>.
               </p>
             )}
-          </div>
-          {addon ? (
-            <>
-              <a className="btn btn-primary text-sm" href={zipHref} download>
-                Download addon {addon.version}{served ? ` (.zip, ${fileSize(served.size)})` : ""}
-              </a>
-              <div className="space-y-2">
-                <h3 className="font-semibold text-fg">Install</h3>
-                <ol className="list-decimal pl-5 space-y-1 text-sm text-fg-2">
-                  <li>Quit the game.</li>
-                  <li>Extract the zip. It holds one folder, <code className="font-mono">Everloot</code>.</li>
-                  <li>
-                    Move that folder into <code className="font-mono">Interface/AddOns</code>, inside the folder of the game
-                    version you play under <code className="font-mono">World of Warcraft</code>.
+          </Card>
+
+          <Card as="section" aria-labelledby="desktop" className="space-y-6">
+            <SectionHeading id="desktop" note={desktop ? `Version ${desktop.version}, released ${desktop.date}. Optional.` : undefined}>
+              Everloot Desktop App
+            </SectionHeading>
+            <p className="text-sm text-fg-2">
+              After every logout or <code className="font-mono">/reload</code> it uploads the addon&apos;s anonymous observations,
+              writes community prices for the realms you scanned into a small companion addon, and can answer <code className="font-mono">/ask</code>{" "}
+              questions in game if you turn that on. It shows what leaves your computer and runs nothing until you press Start.
+            </p>
+            {desktopFiles.length > 0 ? (
+              <ul className="space-y-3">
+                {desktopFiles.map(({ label, needs, file }) => (
+                  <li key={file.name} className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                    <a className="btn text-sm" href={file.url} rel={EXT}>
+                      {label} ({fileSize(file.size)})
+                    </a>
+                    <span className="text-xs text-muted">{needs}.</span>
                   </li>
-                  <li>Start the game, check Everloot is ticked in the AddOns list, and type <code className="font-mono">/everloot status</code> in chat.</li>
-                </ol>
-                <p className="text-sm text-fg-2">
-                  To send what it collected, log out and pick <code className="font-mono">Everloot.lua</code> on the{" "}
-                  <Link href="/upload" className={link}>upload page</Link>, which shows you everything before it is sent. Or let the
-                  Desktop App do it.
+                ))}
+              </ul>
+            ) : (
+              <p className="text-fg-2">
+                The download list could not be loaded right now. The files are on the{" "}
+                <a className={link} href={RELEASES_PAGE} rel={EXT}>releases page</a>, under the newest{" "}
+                <code className="font-mono">desktop-v</code> release.
+              </p>
+            )}
+            <details className="text-sm text-fg-2">
+              <summary className={summary}>The builds are not code-signed yet</summary>
+              <div className="mt-2 space-y-2">
+                <p>Your system will warn you the first time you open the app. That is expected for now.</p>
+                <ul className="list-disc space-y-1 pl-5">
+                  <li>Windows: SmartScreen says &ldquo;Windows protected your PC&rdquo;. Choose More info, then Run anyway.</li>
+                  <li>
+                    macOS: it says Apple could not verify the app. Open System Settings, Privacy &amp; Security, and choose Open
+                    Anyway. On macOS 14 and earlier, right-click the app and choose Open instead.
+                  </li>
+                  <li>Linux: make the AppImage executable (<code className="font-mono">chmod +x</code>), then run it. Some distributions need FUSE 2 installed.</li>
+                </ul>
+                <p>
+                  If you want to be sure a file is the one we published, compare its SHA-256 with the checksums before opening
+                  it: <code className="font-mono">certutil -hashfile FILE SHA256</code> on Windows,{" "}
+                  <code className="font-mono">shasum -a 256 FILE</code> on macOS, <code className="font-mono">sha256sum FILE</code> on Linux.
                 </p>
               </div>
-              {served && (
-                <div className="space-y-1 text-sm">
-                  <h3 className="font-semibold text-fg">SHA-256</h3>
-                  <ul><Checksum name={zipName} sha256={served.sha256} /></ul>
-                  {addonRelease?.sums && <a className={link} href={addonRelease.sums} rel={EXT}>SHA256SUMS</a>}
-                </div>
-              )}
-              <p className="text-sm text-fg-2">
-                <a className={link} href={addonRelease?.url ?? RELEASES_PAGE} rel={EXT}>Release notes</a>
-                {" · "}
-                <a className={link} href={`${REPO_URL}/tree/main/addon`} rel={EXT}>Source code</a>
-              </p>
-            </>
-          ) : (
-            <p className="text-fg-2">
-              The addon download is not available on this site right now. It is on the{" "}
-              <a className={link} href={RELEASES_PAGE} rel={EXT}>releases page</a>.
+            </details>
+            {desktop && desktopFiles.length > 0 && (
+              <details className="text-sm">
+                <summary className={summary}>SHA-256 checksums</summary>
+                <ul className="mt-2 space-y-1">
+                  {desktopFiles.map(({ file }) => <Checksum key={file.name} name={file.name} sha256={file.sha256} />)}
+                </ul>
+                {desktop.sums && <a className={link} href={desktop.sums} rel={EXT}>SHA256SUMS</a>}
+              </details>
+            )}
+            <p className="text-sm text-fg-2">
+              <a className={link} href={desktop?.url ?? RELEASES_PAGE} rel={EXT}>Release notes</a>
+              {" · "}
+              <a className={link} href={`${REPO_URL}/tree/main/desktop`} rel={EXT}>Source code</a>
             </p>
-          )}
+          </Card>
+        </div>
+
+        <section id="gold-per-hour" aria-labelledby="gold-per-hour-title" className="max-w-reading scroll-mt-20">
+          <SectionHeading id="gold-per-hour-title">Gold per hour, now in the addon</SectionHeading>
+          <p className="text-sm text-fg-2">
+            The gold per hour calculator that was on this site is moving into the Everloot addon, so you can work out what
+            a farm earns without leaving the game. The release notes say which addon version has it. Live prices stay on
+            the site, in the <Link href="/tools/auctions" className={link}>Auction House</Link>.
+          </p>
         </section>
 
-        <section aria-labelledby="desktop" className="rounded-xl border border-line p-5 space-y-4">
-          <div className="space-y-1">
-            <h2 id="desktop" className="text-xl font-semibold text-fg">Everloot Desktop App</h2>
-            {desktop && <p className="text-sm text-muted">Version {desktop.version}, released {desktop.date}. Optional.</p>}
-          </div>
-          <p className="text-sm text-fg-2">
-            After every logout or <code className="font-mono">/reload</code> it uploads the addon&apos;s anonymous observations,
-            writes community prices for the realms you scanned into a small companion addon, and can answer <code className="font-mono">/ask</code>{" "}
-            questions in game if you turn that on. It shows what leaves your computer and runs nothing until you press Start.
-          </p>
-          {desktopFiles.length > 0 ? (
-            <ul className="space-y-3">
-              {desktopFiles.map(({ label, needs, file }) => (
-                <li key={file.name} className="space-y-1">
-                  <a className="btn text-sm" href={file.url} rel={EXT}>
-                    {label} ({fileSize(file.size)})
-                  </a>
-                  <p className="text-xs text-muted">{needs}.</p>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-fg-2">
-              The download list could not be loaded right now. The files are on the{" "}
-              <a className={link} href={RELEASES_PAGE} rel={EXT}>releases page</a>, under the newest{" "}
-              <code className="font-mono">desktop-v</code> release.
-            </p>
-          )}
-          <div className="rounded-lg border border-line bg-panel/40 p-4 space-y-2 text-sm text-fg-2">
-            <h3 className="font-semibold text-fg">The builds are not code-signed yet</h3>
-            <p>Your system will warn you the first time you open the app. That is expected for now.</p>
-            <ul className="list-disc pl-5 space-y-1">
-              <li>Windows: SmartScreen says &ldquo;Windows protected your PC&rdquo;. Choose More info, then Run anyway.</li>
-              <li>
-                macOS: it says Apple could not verify the app. Open System Settings, Privacy &amp; Security, and choose Open
-                Anyway. On macOS 14 and earlier, right-click the app and choose Open instead.
-              </li>
-              <li>Linux: make the AppImage executable (<code className="font-mono">chmod +x</code>), then run it. Some distributions need FUSE 2 installed.</li>
-            </ul>
+        <section aria-labelledby="privacy" className="max-w-reading">
+          <SectionHeading id="privacy">Privacy</SectionHeading>
+          <div className="space-y-2 text-sm text-fg-2">
             <p>
-              If you want to be sure a file is the one we published, compare its SHA-256 with the list below before opening
-              it: <code className="font-mono">certutil -hashfile FILE SHA256</code> on Windows,{" "}
-              <code className="font-mono">shasum -a 256 FILE</code> on macOS, <code className="font-mono">sha256sum FILE</code> on Linux.
+              The addon only writes a file on your computer. Uploads, from the upload page or the app, carry anonymous
+              observations; named data stays on your computer unless you choose to share it. Read the{" "}
+              <Link href="/privacy" className={link}>Privacy Policy</Link> and the{" "}
+              <a className={link} href={`${REPO_URL}/blob/main/docs/DATA_POLICY.md`} rel={EXT}>data policy</a>.
+            </p>
+            <p>
+              Every release, including nightly addon builds marked as pre-releases, is on{" "}
+              <a className={link} href={RELEASES_PAGE} rel={EXT}>GitHub</a>.
             </p>
           </div>
-          {desktop && desktopFiles.length > 0 && (
-            <div className="space-y-1 text-sm">
-              <h3 className="font-semibold text-fg">SHA-256</h3>
-              <ul className="space-y-1">
-                {desktopFiles.map(({ file }) => <Checksum key={file.name} name={file.name} sha256={file.sha256} />)}
-              </ul>
-              {desktop.sums && <a className={link} href={desktop.sums} rel={EXT}>SHA256SUMS</a>}
-            </div>
-          )}
-          <p className="text-sm text-fg-2">
-            <a className={link} href={desktop?.url ?? RELEASES_PAGE} rel={EXT}>Release notes</a>
-            {" · "}
-            <a className={link} href={`${REPO_URL}/tree/main/desktop`} rel={EXT}>Source code</a>
-          </p>
         </section>
       </div>
-
-      <section id="gold-per-hour" aria-labelledby="gold-per-hour-title" className="space-y-2 max-w-3xl scroll-mt-20">
-        <h2 id="gold-per-hour-title" className="text-xl font-semibold text-fg">Gold per hour, now in the addon</h2>
-        <p className="text-sm text-fg-2">
-          The gold per hour calculator that was on this site is moving into the Everloot addon, so you can work out what
-          a farm earns without leaving the game. The release notes say which addon version has it. Live prices stay on
-          the site, in the <Link href="/tools/auctions" className={link}>Auction House</Link>.
-        </p>
-      </section>
-
-      <section aria-labelledby="privacy" className="space-y-2 max-w-3xl">
-        <h2 id="privacy" className="text-xl font-semibold text-fg">Privacy</h2>
-        <p className="text-sm text-fg-2">
-          The addon only writes a file on your computer. Uploads, from the upload page or the app, carry anonymous
-          observations; named data stays on your computer unless you choose to share it. Read the{" "}
-          <Link href="/privacy" className={link}>Privacy Policy</Link> and the{" "}
-          <a className={link} href={`${REPO_URL}/blob/main/docs/DATA_POLICY.md`} rel={EXT}>data policy</a>.
-        </p>
-        <p className="text-sm text-fg-2">
-          Every release, including nightly addon builds marked as pre-releases, is on{" "}
-          <a className={link} href={RELEASES_PAGE} rel={EXT}>GitHub</a>.
-        </p>
-      </section>
-    </article>
+    </Container>
   );
 }

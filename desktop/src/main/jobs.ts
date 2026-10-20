@@ -8,6 +8,7 @@ import { findEverlootFiles } from "../../../companion/src/savedvariables";
 import { createSentState } from "../../../companion/src/sent-state";
 import { uploadFile } from "../../../companion/src/uploader";
 import type { RealmSummary, Settings } from "../shared/types";
+import { readAccountKey } from "./account";
 import { backupSavedVariables } from "./backups";
 import type { EngineDeps } from "./engine";
 import { refreshMarket } from "./market";
@@ -39,12 +40,15 @@ export function companionJobs(dataFolder: string, current: () => Settings): { de
     },
     async ask(file) {
       const s = current();
-      if (!s.ask.tokenFile) throw new Error("/ask needs a token file (Ask page)");
-      let token: string;
-      try { token = readFileSync(s.ask.tokenFile, "utf8").trim(); }
-      catch { throw new Error(`token file ${s.ask.tokenFile} could not be read`); }
-      if (!token) throw new Error(`token file ${s.ask.tokenFile} is empty`);
-      const mcp = { url: s.ask.mcpUrl, token };
+      // A token file points at a private server; without one, the site's public server answers, with the account key when signed in.
+      let mcp: { url: string; token: string | null } = { url: `${s.endpoint}/mcp/public`, token: readAccountKey(dataFolder) };
+      if (s.ask.tokenFile) {
+        let token: string;
+        try { token = readFileSync(s.ask.tokenFile, "utf8").trim(); }
+        catch { throw new Error(`token file ${s.ask.tokenFile} could not be read`); }
+        if (!token) throw new Error(`token file ${s.ask.tokenFile} is empty`);
+        mcp = { url: s.ask.mcpUrl, token };
+      }
       // Providers the player enabled in config.json beside sent.json; none means plain search answers.
       const providers = loadProviders(join(dataFolder, "config.json"));
       const engine = providers.length ? llmEngine({ search: (q) => mcpSearch(mcp, q, 3), providers }) : mcpEngine(mcp);
@@ -60,7 +64,14 @@ export function companionJobs(dataFolder: string, current: () => Settings): { de
       let retry: ReturnType<typeof setTimeout> | null = null;
       const arm = () => {
         if (stopped) return;
-        try { w = fsWatch(file, onChange); } catch { retry = setTimeout(arm, 5000); return; }
+        // The game saves by moving the old file aside and writing a new one. On Linux and macOS a watch
+        // follows the moved file, so after a rename it is armed again on the new one.
+        try {
+          w = fsWatch(file, (event) => {
+            onChange();
+            if (event === "rename") { w?.close(); w = null; if (retry) clearTimeout(retry); retry = setTimeout(arm, 500); }
+          });
+        } catch { retry = setTimeout(arm, 5000); return; }
         w.on("error", () => { w?.close(); w = null; retry = setTimeout(arm, 5000); });
       };
       arm();

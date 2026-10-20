@@ -7,7 +7,8 @@ import { filterItems } from "../../../kb/src/item-taxonomy";
 import sitemap from "./sitemap";
 
 const facts = vi.hoisted(() => ({ rates: [] as unknown[], names: [] as { installId: string; itemId: number; name: string }[], npcs: [] as unknown[], unreachable: false }));
-vi.mock("@/lib/rollup-compute", () => ({ loadItemFacts: async () => facts }));
+const world = vi.hoisted(() => ({ npcs: [] as unknown[], quests: [] as unknown[], vendors: [] as unknown[], unreachable: false }));
+vi.mock("@/lib/rollup-compute", () => ({ loadItemFacts: async () => facts, loadWorldFacts: async () => world }));
 
 const entries = await sitemap();
 const byPath = new Map(entries.map((e) => [new URL(e.url).pathname, e]));
@@ -38,6 +39,23 @@ test("changefreq and priority are gone", () => {
   for (const entry of entries) {
     expect(entry).not.toHaveProperty("changeFrequency");
     expect(entry).not.toHaveProperty("priority");
+  }
+});
+
+test("the zone index is listed; a zone page only once something is on it, and never a held-back one", async () => {
+  const paths = async () => (await sitemap()).map((e) => new URL(e.url).pathname);
+  expect(byPath.has("/database/zones")).toBe(true);
+  expect(byPath.has("/database/zones/1436-westfall")).toBe(true);
+  expect(byPath.has("/database/zones/1450-moonglade")).toBe(false);
+  expect([...byPath.keys()].filter((p) => p.startsWith("/database/zones/2482"))).toEqual([]);
+  try {
+    world.npcs = ["a", "b", "c"].map((installId) => ({ installId, npcId: 5, name: "Keeper", mapId: 1450, x: 50, y: 50, positionKind: "npc" }));
+    expect(await paths()).toContain("/database/zones/1450-moonglade");
+    world.unreachable = true;
+    expect(await paths()).not.toContain("/database/zones/1450-moonglade");
+  } finally {
+    world.npcs = [];
+    world.unreachable = false;
   }
 });
 

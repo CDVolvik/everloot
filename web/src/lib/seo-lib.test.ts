@@ -14,6 +14,9 @@ test("the newest addon zip wins by version number, not by name order", () => {
     for (const name of ["Everloot-0.2.9.zip", "Everloot-0.10.0.zip", "Everloot-0.2.10.zip", "notes.txt", "Everloot-0.3.zip"]) writeFileSync(join(dir, name), "x");
     expect(latestAddonRelease(dir)).toEqual({ version: "0.10.0", downloadPath: "/downloads/Everloot-0.10.0.zip" });
     expect(latestAddonRelease(join(dir, "missing"))).toBeNull();
+    // The link is rebuilt from the version numbers, so a name they would not rebuild exactly is never offered.
+    writeFileSync(join(dir, "Everloot-0.011.0.zip"), "x");
+    expect(latestAddonRelease(dir)).toEqual({ version: "0.10.0", downloadPath: "/downloads/Everloot-0.10.0.zip" });
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -64,4 +67,6 @@ test("every response carries the security headers; the CSP enforces only the plu
   for (const host of ["static.cloudflareinsights.com", "www.googletagmanager.com", "eu.i.posthog.com", "pagead2.googlesyndication.com"]) expect(csp).toContain(host);
   // The talent calculator fetches its asset manifest from the asset host.
   expect(csp).toMatch(/connect-src [^;]*https:\/\/assets\.everloot\.app/);
+  // /chat calls the player's own provider from the page.
+  expect(csp).toMatch(/connect-src [^;]*https:\/\/api\.anthropic\.com [^;]*https:\/\/openrouter\.ai [^;]*http:\/\/localhost:11434/);
 });

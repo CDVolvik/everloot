@@ -3,7 +3,7 @@ const path = require("node:path");
 const reportOnlyCsp = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://www.googletagmanager.com https://eu.i.posthog.com https://us.i.posthog.com https://eu-assets.i.posthog.com https://us-assets.i.posthog.com https://pagead2.googlesyndication.com https://fundingchoicesmessages.google.com https://*.adtrafficquality.google",
-  "connect-src 'self' https://assets.everloot.app https://cloudflareinsights.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com https://eu.i.posthog.com https://us.i.posthog.com https://pagead2.googlesyndication.com https://fundingchoicesmessages.google.com https://*.adtrafficquality.google https://googleads.g.doubleclick.net",
+  "connect-src 'self' https://assets.everloot.app https://cloudflareinsights.com https://*.google-analytics.com https://*.analytics.google.com https://www.googletagmanager.com https://eu.i.posthog.com https://us.i.posthog.com https://pagead2.googlesyndication.com https://fundingchoicesmessages.google.com https://*.adtrafficquality.google https://googleads.g.doubleclick.net https://api.anthropic.com https://openrouter.ai http://localhost:11434",
   "img-src 'self' data: blob: https:",
   "style-src 'self' 'unsafe-inline'",
   "font-src 'self' data:",
@@ -51,6 +51,9 @@ const nextConfig = {
     "/lore/browse/[type]": ["./.release/*.sqlite", "./.release/*.manifest.json"],
     "/lore/coverage": ["./.release/*.sqlite", "./.release/*.manifest.json"],
     "/lore-sitemap/pages.xml": ["./.release/*.sqlite", "./.release/*.manifest.json"],
+    // The build-link previews draw their card on each request, so they read the Geist fonts at run time.
+    "/tools/raid/card": ["./node_modules/geist/dist/fonts/geist-sans/Geist-{Bold,Regular}.ttf"],
+    "/tools/talents/\\[class\\]/card": ["./node_modules/geist/dist/fonts/geist-sans/Geist-{Bold,Regular}.ttf"],
   },
   // /lore/[slug] already owns one dynamic segment under /lore, so the browse pages live at
   // /lore/browse/<type> and are served at the short URL. afterFiles rewrites run before dynamic routes.
@@ -75,7 +78,14 @@ const nextConfig = {
   // here: the `*` seen on pages is added by Vercel for prerendered responses, and a header set here could not
   // remove it.
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // The embeddable tooltip script other sites load: an hour in browsers and at the CDN, so a fix reaches them quickly.
+      { source: "/tooltips.js", headers: [
+        { key: "Cache-Control", value: "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400" },
+        { key: "Access-Control-Allow-Origin", value: "*" },
+      ] },
+    ];
   },
   webpack(config, { isServer }) {
     // kb/src/db.ts would otherwise resolve better-sqlite3 through kb/node_modules and bundle it.

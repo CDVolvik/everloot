@@ -42,11 +42,22 @@ test("the database page points to the lore archive and says it is not collected 
   expect(db).toContain("not collected Forever data");
 });
 
-test("an empty readable corpus says nothing is public yet", async () => {
+test("an empty readable corpus says nothing is public yet, with the empty state and no bare zero", async () => {
   store.loadCorpus.mockResolvedValue({ uploads: 0, records: [], dataAsOf: "2026-10-09T00:00:00.000Z" });
   const drops = await html(DropsPage);
-  expect(drops).toContain("0 windows · 0 public frequencies");
+  expect(drops).not.toContain("0 windows");
+  expect(drops).toContain("data-empty-state");
   expect(drops).toContain("No public frequencies yet");
+  expect(await html(DatabasePage)).not.toContain(">0<");
+});
+
+test("with loot windows recorded, the drops page counts them beside its title", async () => {
+  store.loadCorpus.mockResolvedValue({
+    uploads: 3,
+    records: [loot("install-aaa", 42, [], 1), loot("install-bbb", 42, [], 1), loot("install-ccc", 42, [], 1)],
+    dataAsOf: "2026-10-09T00:00:00.000Z",
+  });
+  expect(await html(DropsPage)).toContain("3 windows · 1 public frequencies");
 });
 
 test("three installs with empty windows publish a measured zero; two installs publish nothing", async () => {
@@ -59,7 +70,7 @@ test("three installs with empty windows publish a measured zero; two installs pu
   });
   const drops = await html(DropsPage);
   expect(drops).toContain("No items observed");
-  expect(drops).toContain("NPC #42");
-  expect(drops).not.toContain("NPC #77");
-  expect(drops).not.toContain("Item #9");
+  expect(drops).toContain("NPC 42");
+  expect(drops).not.toContain("NPC 77");
+  expect(drops).not.toContain("Item 9");
 });

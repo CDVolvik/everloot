@@ -181,3 +181,35 @@ test("with the flag off the catch-all route is 404", async () => {
   expect((await allPOST(request)).status).toBe(404);
   expect(v2.fake.handler).not.toHaveBeenCalled();
 });
+
+test("the catch-all route hands the email links and forms to Better Auth", async () => {
+  v2.fake.handler.mockImplementation(async () => new Response("handled"));
+  for (const path of ["/api/auth/verify-email?token=t&callbackURL=/account", "/api/auth/reset-password/tok?callbackURL=/reset-password"]) {
+    expect(await (await allGET(new Request(`https://everloot.app${path}`))).text()).toBe("handled");
+  }
+  for (const path of ["sign-up/email", "sign-in/email", "send-verification-email", "request-password-reset", "reset-password"]) {
+    const request = new Request(`https://everloot.app/api/auth/${path}`, { method: "POST", headers: { origin: "https://everloot.app" } });
+    expect(await (await allPOST(request)).text()).toBe("handled");
+  }
+  expect(v2.fake.handler).toHaveBeenCalledTimes(7);
+});
+
+test.each([
+  ["another site", { origin: "https://evil.example" }],
+  ["no origin", {}],
+] as [string, Record<string, string>][])("an email form posted from %s is refused before Better Auth", async (_, headers) => {
+  const response = await allPOST(new Request("https://everloot.app/api/auth/sign-in/email", { method: "POST", headers }));
+  expect(response.status).toBe(403);
+  expect(v2.fake.handler).not.toHaveBeenCalled();
+});
+
+test.each([
+  ["GET", "/api/auth/reset-password/tok/extra"],
+  ["GET", "/api/auth/reset-password"],
+  ["POST", "/api/auth/change-password"],
+  ["POST", "/api/auth/delete-user"],
+])("the catch-all route still answers %s %s with 404", async (method, path) => {
+  const request = new Request(`https://everloot.app${path}`, { method, headers: { origin: "https://everloot.app" } });
+  expect((await (method === "GET" ? allGET : allPOST)(request)).status).toBe(404);
+  expect(v2.fake.handler).not.toHaveBeenCalled();
+});

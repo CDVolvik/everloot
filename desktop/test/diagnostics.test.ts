@@ -15,7 +15,7 @@ const state: AppState = {
     log: Array.from({ length: 120 }, (_, i) => ({ at: `2026-10-18T09:${String(i % 60).padStart(2, "0")}:00Z`, level: i === 119 ? "error" as const : "info" as const, text: `line ${i}` })),
     paused: false,
   },
-  siteTools: [], update: { current: "0.1.0", latest: "0.2.0", url: "https://github.com/Everloot/everloot/releases/tag/desktop-v0.2.0", newer: true }, staleScans: [],
+  update: { current: "0.1.0", latest: "0.2.0", url: "https://github.com/Everloot/everloot/releases/tag/desktop-v0.2.0", newer: true, notes: [], downloadUrl: null, publishedAt: null, sumsUrl: null, installable: false }, updateProgress: { stage: "idle", percent: 0, error: null }, staleScans: [], account: { signedIn: true, hint: "9f3c" },
 };
 
 test("the report has version, settings without the token, jobs and the last hundred log lines, with home folders hidden", () => {
@@ -27,6 +27,8 @@ test("the report has version, settings without the token, jobs and the last hund
   expect(text).toContain("upload: ok, sent 3 new events (2026-10-18T10:00:00Z)");
   expect(text).toContain("ask: error, token file missing");
   expect(text).toContain("update: 0.2.0 (newer)");
+  expect(text).toContain("account: signed in with an everloot.app key");
+  expect(text).not.toContain("9f3c");
   expect(text).toContain("log (last 100 of 120):");
   expect(text).not.toContain("line 19\n");
   expect(text).toContain("line 20\n");
