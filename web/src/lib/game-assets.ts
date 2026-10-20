@@ -427,11 +427,11 @@ export function continentArt(assets: SiteAssets | null, continentId: number, spo
 /* ---------- Loading screens, emblems and the launch banner ---------- */
 
 /**
- * Which game map's loading screen a page shows as its banner: Eastern Kingdoms on the home page, Kalimdor
+ * Which game map's loading screen a page shows as its banner: Onyxia's Lair on the home page, Kalimdor
  * on the patch notes, Scarlet Monastery on the lore archive, Molten Core on the raid builder. All are maps of the original world, so no banner
  * can spoil anything. The world map shows the continent on view.
  */
-export const BANNER_MAP = { home: 0, changes: 1, lore: 189, raid: 409 } as const;
+export const BANNER_MAP = { home: 249, changes: 1, lore: 189, raid: 409 } as const;
 
 /** A map's loading screen, or null: none in the upload, or held back with spoilers off. */
 export function loadingArt(assets: SiteAssets | null, mapId: number, spoilers = false): LoadingArt | null {

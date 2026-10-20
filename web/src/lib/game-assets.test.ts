@@ -201,6 +201,7 @@ test("loading screens: banners for original maps, a later map's picture only wit
   // Thumbnails for dungeons and raids by name, small copies, never a continent; the held-back raid waits for spoilers.
   expect(instanceThumbs(a, false)).toEqual({
     Deadmines: `${BASE}/loading/9036-small.webp`, "Scarlet Monastery": `${BASE}/loading/9189-small.webp`, "Molten Core": `${BASE}/loading/9409-small.webp`,
+    "Onyxia's Lair": `${BASE}/loading/9249-small.webp`,
   });
   expect(loadingArt(a, BANNER_MAP.lore)?.name).toBe("Scarlet Monastery");
   expect(instanceThumbs(a, true)["The Tainted Scar"]).toBe(`${BASE}/loading/9789-small.webp`);
@@ -214,7 +215,7 @@ test("the launch banner needs the game's own logo: without it there is no banner
   });
   expect(launchArt(parseSiteManifest({ ...siteManifest, logo: null }, BASE))).toBeNull();
   // A logo with no loading screen still makes a banner, on the plain panel.
-  const rest = Object.fromEntries(Object.entries(siteManifest.loadingScreens).filter(([id]) => id !== "0"));
+  const rest = Object.fromEntries(Object.entries(siteManifest.loadingScreens).filter(([id]) => id !== "249"));
   expect(launchArt(parseSiteManifest({ ...siteManifest, loadingScreens: rest }, BASE))?.background).toBeNull();
 });
 

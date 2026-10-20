@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
 import LaunchCountdown from "@/components/LaunchCountdown";
 import LoreSearchForm from "@/components/LoreSearchForm";
-import { AgreementMeter, Card, CodeBlock, SectionHeading, SourceLine, type Agreement } from "@/components/ui";
+import { AgreementMeter, Banner, Card, CodeBlock, SectionHeading, SourceLine, type Agreement } from "@/components/ui";
 import { TOOL_GROUPS, tools, toolHref } from "@/data/tools";
 import { CLASSES } from "@/design/tokens";
 import { latestAddonRelease } from "@/lib/addon-release";
@@ -14,6 +14,7 @@ import { FEED } from "@/lib/seo";
 import { classAndProfessionIcons, creditWhat, launchArt, loadSiteAssets } from "@/lib/game-assets";
 import GameIcon from "@/components/game/GameIcon";
 import GameCredit from "@/components/game/GameCredit";
+import { BannerArt } from "@/components/game/PageBanner";
 import { CONNECT_EXAMPLES, MCP_TOOLS } from "./connect/connect-data";
 
 export const metadata: Metadata = {
@@ -46,6 +47,11 @@ const AGREEMENT_STEPS: { count: Agreement; title: string; text: string }[] = [
 
 const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
+// Onyxia's Lair: the raid on the cliff on the left, under the text; Onyxia on the right, where a phone's
+// crop keeps her. On a phone the hero is taller than the art's shape, so the picture is drawn about 1200 px wide.
+const HERO_ART_POSITION = "61% 30%";
+const HERO_ART_SIZES = "(min-width: 1024px) 100vw, 1200px";
+
 export default async function Home() {
   // The game's art (loading screen, logo, class icons), only when the asset URL is set and the upload has it.
   const assets = await loadSiteAssets();
@@ -64,37 +70,16 @@ export default async function Home() {
       <JsonLd data={organizationJsonLd()} />
       <JsonLd data={websiteJsonLd()} />
 
-      {/* The hero: the page-title pattern at full size, over the game's own loading screen and logo. */}
-      <section aria-labelledby="hero-title" data-launch-banner={launch ? "" : undefined} className="relative overflow-hidden rounded-card border border-line bg-canvas">
-        {launch?.background && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={launch.background.url}
-            srcSet={launch.background.small ? `${launch.background.small.url} ${launch.background.small.width}w, ${launch.background.url} ${launch.background.width}w` : undefined}
-            sizes="(min-width: 1152px) 1152px, 100vw"
-            alt=""
-            aria-hidden="true"
-            decoding="async"
-            className="absolute inset-0 h-full w-full object-cover grayscale brightness-[.35]"
-          />
-        )}
-        <div className="relative grid gap-8 p-6 sm:p-12 md:grid-cols-[minmax(0,1fr)_14rem] md:items-center">
-          <div className="min-w-0">
-            <LaunchCountdown />
-            <h1 id="hero-title" className="mt-4 text-5xl font-bold leading-none tracking-tight text-fg sm:text-7xl">
-              Every drop.<br />Every guild.<br /><span className="text-accent">Every reset.</span>
-            </h1>
-            <p className="mt-6 max-w-[40ch] text-lg text-fg-2">
-              The open WoW: Forever database, written by the addons of the people who play it.
-            </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/database" className="btn btn-primary">Browse the database</Link>
-              <Link href="/tools/talents" className="btn">Plan a talent build</Link>
-            </div>
-          </div>
-          {launch && (
-            // The game's name and the disclaimer stay real text beside its logo; the logo is decorative.
-            <div className="md:text-center">
+      {/* The hero: the section banner at full height, over the game's own loading screen, with its logo.
+          The scripts above it would give it the list's top margin; the banner meets the site header instead. */}
+      <section aria-labelledby="hero-title" data-launch-banner={launch ? "" : undefined} className="!mt-0">
+        <Banner
+          hero
+          image={launch?.background && <BannerArt art={launch.background} eager position={HERO_ART_POSITION} sizes={HERO_ART_SIZES} />}
+          aside={launch && (
+            // The game's name and the disclaimer stay real text under its logo; the logo is decorative. On a
+            // phone only the disclaimer shows, under the buttons, to keep the hero short.
+            <div className="lg:text-center">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={launch.logo.url}
@@ -103,13 +88,25 @@ export default async function Home() {
                 width={launch.logo.width}
                 height={launch.logo.height}
                 decoding="async"
-                className="mx-auto mb-4 hidden h-48 w-48 object-contain md:block"
+                className="mx-auto mb-3 hidden h-28 w-28 object-contain lg:block"
               />
-              <p className="font-semibold text-fg">World of Warcraft: Forever</p>
-              <p className="mt-1 text-sm text-fg-2">Not affiliated with or endorsed by Blizzard Entertainment.</p>
+              <p className="hidden font-semibold text-fg lg:block">World of Warcraft: Forever</p>
+              <p className="text-xs text-fg-2 lg:mt-1 lg:text-sm">Not affiliated with or endorsed by Blizzard Entertainment.</p>
             </div>
           )}
-        </div>
+        >
+          <LaunchCountdown />
+          <h1 id="hero-title" className="mt-4 text-5xl font-bold leading-none tracking-tight text-fg sm:text-7xl">
+            Every drop.<br />Every guild.<br /><span className="text-accent">Every reset.</span>
+          </h1>
+          <p className="mt-4 max-w-[40ch] text-lg text-fg-2 sm:mt-6">
+            The open WoW: Forever database, written by the addons of the people who play it.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3 sm:mt-8">
+            <Link href="/database" className="btn btn-primary">Browse the database</Link>
+            <Link href="/tools/talents" className="btn">Plan a talent build</Link>
+          </div>
+        </Banner>
       </section>
 
       {/* The database: real counts from the game files carry the section while uploads are few. */}

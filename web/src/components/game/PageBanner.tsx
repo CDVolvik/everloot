@@ -1,5 +1,3 @@
-import type { ReactNode } from "react";
-import Banner from "@/components/ui/Banner";
 import type { LoadingArt } from "@/lib/game-assets";
 
 // A game loading screen as a section hub's wide-screen banner. One rule everywhere it appears: only on
@@ -11,25 +9,24 @@ import type { LoadingArt } from "@/lib/game-assets";
 // BannerArt is the picture alone, for PageHeader's `banner`: <PageHeader banner={{ image: <BannerArt
 // art={art} eager /> }} … />. The picture is decorative (empty alt, hidden from screen readers);
 // the title and text are real text. Rendered only when the page has the art.
-export function BannerArt({ art, eager = false }: { art: LoadingArt; eager?: boolean }) {
+//
+// `position` is the CSS object-position of the crop (centred by default). `sizes` is the width the
+// picture is drawn at; a banner taller than the art's shape on a phone is drawn wider than the screen.
+export function BannerArt({ art, eager = false, position, sizes = "100vw" }: { art: LoadingArt; eager?: boolean; position?: string; sizes?: string }) {
   return (
     // The files come from the asset bucket as they are (already sized WebP); next/image would only proxy them.
     // eslint-disable-next-line @next/next/no-img-element
     <img
       src={art.url}
       srcSet={art.small ? `${art.small.url} ${art.small.width}w, ${art.url} ${art.width}w` : undefined}
-      sizes="100vw"
+      sizes={sizes}
       alt=""
       aria-hidden="true"
       data-page-banner
       loading={eager ? "eager" : "lazy"}
       decoding="async"
       className="absolute inset-0 h-full w-full object-cover object-center"
+      style={position ? { objectPosition: position } : undefined}
     />
   );
-}
-
-/** The banner without a title on it, for a page that keeps its header below (`children` go on the art). */
-export default function PageBanner({ art, eager = false, children }: { art: LoadingArt; eager?: boolean; children?: ReactNode }) {
-  return <Banner image={<BannerArt art={art} eager={eager} />}>{children}</Banner>;
 }

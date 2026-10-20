@@ -200,7 +200,7 @@ test("home: the hero shows the game's own logo, the name and the disclaimer as t
   const start = html.indexOf("data-launch-banner");
   const banner = html.slice(start, html.indexOf("</section>", start));
   expect(banner).toMatch(/<img[^>]*src="[^"]*logo\/logo-wow-forever-2x\.webp"[^>]*alt=""[^>]*aria-hidden="true"/);
-  expect(banner).toMatch(/<img[^>]*src="[^"]*loading\/9000\.webp"[^>]*alt=""[^>]*aria-hidden="true"/);
+  expect(banner).toMatch(/<img[^>]*src="[^"]*loading\/9249\.webp"[^>]*alt=""[^>]*aria-hidden="true"/);
   expect(banner).toContain(">World of Warcraft: Forever</p>");
   expect(banner).toContain("Not affiliated with or endorsed by Blizzard Entertainment.");
   // The countdown sits on the banner, and only there.
@@ -215,7 +215,7 @@ test("home: without the game's logo in the upload there is no launch banner, and
   vi.stubGlobal("fetch", bucket({ ...siteManifest, logo: null }));
   const html = await render(() => Home());
   expect(html).not.toMatch(/data-launch-banner|logo-wow|World of Warcraft: Forever<\/p>/);
-  expect(html).not.toContain("loading/9000");
+  expect(html).not.toContain("loading/9249");
   // The countdown stays in the hero.
   expect(html).toContain("WoW: Forever launches");
 });
