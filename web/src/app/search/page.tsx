@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import LoreSearchForm from "@/components/LoreSearchForm";
+import { Card, Container, Entry, EntryList, LinkTabs, PageHeader, Pager, SectionHeading, SourceLine } from "@/components/ui";
+import { trailFor } from "@/lib/breadcrumbs";
 import { BROWSE_HEADINGS, BROWSE_TYPES, hasTypes, loreSlug, MAX_QUERY, searchLore, UNAVAILABLE, UNAVAILABLE_COPY, type BrowseSlug, type LoreType } from "@/lib/lore";
 
 /** A `type=` value is one of the stored types; anything else means All. */
@@ -27,6 +29,8 @@ function sourceHost(url: string): string {
 /** Next hands a repeated parameter over as an array; the first value is the one we answer. */
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
+const link = "text-accent hover:underline underline-offset-4";
+
 export default async function SearchPage(props: { searchParams: Promise<{ q?: string | string[]; page?: string | string[]; type?: string | string[] }> }) {
   const params = await props.searchParams;
   const q = (first(params.q) ?? "").trim().slice(0, MAX_QUERY);
@@ -35,86 +39,84 @@ export default async function SearchPage(props: { searchParams: Promise<{ q?: st
   const type = typed ? typeOf(first(params.type)) : undefined;
   const result = q ? searchLore(q, page, type) : null;
   const typeQuery = type ? `&type=${type}` : "";
-  const chips: { label: string; href: string; active: boolean }[] = typed && q
+  const chips = typed && q
     ? [
-        { label: "All", href: `/search?q=${encodeURIComponent(q)}`, active: !type },
+        { label: "All", href: `/search?q=${encodeURIComponent(q)}`, current: !type },
         ...(Object.keys(BROWSE_TYPES) as BrowseSlug[]).map((slug) => ({
-          label: BROWSE_HEADINGS[slug], href: `/search?q=${encodeURIComponent(q)}&type=${BROWSE_TYPES[slug]}`, active: type === BROWSE_TYPES[slug],
+          label: BROWSE_HEADINGS[slug], href: `/search?q=${encodeURIComponent(q)}&type=${BROWSE_TYPES[slug]}`, current: type === BROWSE_TYPES[slug],
         })),
       ]
     : [];
 
   return (
-    <article className="space-y-8 max-w-4xl">
-      <header className="space-y-3">
-        <p className="font-mono text-xs text-muted">Lore archive · Warcraft Wiki, 2023 dump</p>
-        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">Search the lore archive</h1>
-        <p className="text-sm text-fg-2 max-w-2xl">
-          Pages named exactly what you typed come first. Every result links to its wiki source. This archive predates WoW: Forever.
-        </p>
-      </header>
+    <Container width="reading">
+      <article>
+        <PageHeader
+          trail={trailFor("/search")!}
+          title="Search the lore archive"
+          lede="Pages named exactly what you typed come first. Every result links to its wiki source."
+        />
+        <LoreSearchForm query={q} />
 
-      <LoreSearchForm query={q} />
-
-      {chips.length > 0 && (
-        <nav aria-label="Page type" className="flex flex-wrap gap-2 text-xs">
-          {chips.map((chip) => (
-            <Link key={chip.label} href={chip.href} aria-current={chip.active ? "page" : undefined}
-              className={`min-h-9 inline-flex items-center rounded-full border px-3 ${chip.active ? "border-accent text-accent" : "border-edge text-fg-2 hover:text-accent"}`}>
-              {chip.label}
-            </Link>
-          ))}
-        </nav>
-      )}
-
-      {result === UNAVAILABLE ? (
-        <section className="space-y-2">
-          <h2 className="text-xl text-fg">Lore archive unavailable</h2>
-          <p className="text-sm text-fg-2">{UNAVAILABLE_COPY}</p>
-        </section>
-      ) : result === null ? null : result.hits.length === 0 && page > 1 ? (
-        <section className="space-y-2 text-sm text-fg-2">
-          <p>No more results.</p>
-          <p><Link href={`/search?q=${encodeURIComponent(q)}`} className="text-accent hover:underline underline-offset-4">Back to the first page</Link></p>
-        </section>
-      ) : result.hits.length === 0 ? (
-        <section className="space-y-2 text-sm text-fg-2">
-          <p>No lore page matches that.</p>
-          <p>
-            Try the wiki&apos;s own search:{" "}
-            <a href={`https://warcraft.wiki.gg/index.php?search=${encodeURIComponent(q)}`} rel="noopener" className="text-accent hover:underline underline-offset-4">
-              warcraft.wiki.gg
-            </a>
-          </p>
-        </section>
-      ) : (
-        <section className="space-y-4">
-          <ol className="space-y-4">
-            {result.hits.map((hit) => (
-              <li key={hit.id} className="rounded-xl border border-line bg-panel p-4">
-                <Link href={`/lore/${loreSlug(hit)}`} className="text-lg text-accent hover:underline underline-offset-4">{hit.name}</Link>
-                <p className="mt-1 text-sm text-fg-2">{hit.snippet}</p>
-                <p className="mt-2 text-xs text-muted">
-                  {hit.gameVersion === "lore" ? "lore · 2023" : `${hit.gameVersion} · ${hit.sourceId}`} · {sourceHost(hit.sourceUrl)}
+        {/* One section per kind of result, so another source (the database) can sit beside the lore archive. */}
+        {result !== null && (
+          <section aria-labelledby="lore-results" className="mt-12">
+            <SectionHeading id="lore-results">Lore archive</SectionHeading>
+            {chips.length > 0 && (
+              <div className="mb-6">
+                <LinkTabs label="Page type" tabs={chips} />
+              </div>
+            )}
+            {result === UNAVAILABLE ? (
+              <Card>
+                <p className="font-semibold text-fg">Lore archive unavailable</p>
+                <p className="mt-2 text-sm text-fg-2">{UNAVAILABLE_COPY}</p>
+              </Card>
+            ) : result.hits.length === 0 && page > 1 ? (
+              <Card>
+                <p className="text-fg-2">No more results.</p>
+                <p className="mt-2 text-sm"><Link href={`/search?q=${encodeURIComponent(q)}`} className={link}>Back to the first page</Link></p>
+              </Card>
+            ) : result.hits.length === 0 ? (
+              <Card>
+                <p className="text-fg-2">No lore page matches that.</p>
+                <p className="mt-2 text-sm text-fg-2">
+                  Try the wiki&apos;s own search:{" "}
+                  <a href={`https://warcraft.wiki.gg/index.php?search=${encodeURIComponent(q)}`} rel="noopener" className={link}>
+                    warcraft.wiki.gg
+                  </a>
                 </p>
-              </li>
-            ))}
-          </ol>
-          <nav aria-label="Search pages" className="flex items-center gap-4 text-sm">
-            {page > 1 && (
-              <Link href={`/search?q=${encodeURIComponent(q)}${typeQuery}&page=${page - 1}`} className="text-accent hover:underline underline-offset-4">Previous</Link>
+              </Card>
+            ) : (
+              <>
+                <EntryList ordered label="Lore pages, best match first">
+                  {result.hits.map((hit) => (
+                    <Entry
+                      key={hit.id}
+                      as="h3"
+                      href={`/lore/${loreSlug(hit)}`}
+                      title={hit.name}
+                      meta={<>{hit.gameVersion === "lore" ? "lore · 2023" : `${hit.gameVersion} · ${hit.sourceId}`} · {sourceHost(hit.sourceUrl)}</>}
+                    >
+                      <p>{hit.snippet}</p>
+                    </Entry>
+                  ))}
+                </EntryList>
+                <Pager
+                  label="Search pages"
+                  page={page}
+                  prevHref={page > 1 ? `/search?q=${encodeURIComponent(q)}${typeQuery}&page=${page - 1}` : null}
+                  nextHref={result.hasNext ? `/search?q=${encodeURIComponent(q)}${typeQuery}&page=${page + 1}` : null}
+                />
+              </>
             )}
-            <span className="text-muted">Page {page}</span>
-            {result.hasNext && (
-              <Link href={`/search?q=${encodeURIComponent(q)}${typeQuery}&page=${page + 1}`} className="text-accent hover:underline underline-offset-4">Next</Link>
-            )}
-          </nav>
-        </section>
-      )}
+          </section>
+        )}
 
-      <p className="text-sm text-muted">
-        <Link href="/lore" className="text-accent hover:underline underline-offset-4">About the lore archive</Link>
-      </p>
-    </article>
+        <SourceLine source={<>Warcraft Wiki, 13 November 2023, which predates WoW: Forever</>} licence="Warcraft Wiki contributors, CC BY-SA 4.0">
+          <Link href="/lore" className={link}>About the lore archive</Link>
+        </SourceLine>
+      </article>
+    </Container>
   );
 }

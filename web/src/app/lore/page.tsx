@@ -78,7 +78,7 @@ export default async function LoreLanding() {
             <p>{release.manifest.notice}</p>
           </Explainer>
         )}
-        <SourceLine source="Warcraft Wiki, 13 November 2023" licence="CC BY-SA 4.0">Credit: Warcraft Wiki contributors</SourceLine>
+        <SourceLine source="Warcraft Wiki, 13 November 2023" licence="Warcraft Wiki contributors, CC BY-SA 4.0" />
       </article>
     </Container>
   );

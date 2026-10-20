@@ -25,7 +25,8 @@ test("without a query it shows the form and no results", async () => {
   const html = await render({});
   expect(html).toContain('name="q"');
   expect(html).toContain('action="/search"');
-  expect(html).not.toContain("<ol");
+  expect(html).not.toContain("data-entry-list");
+  expect(html).not.toContain('href="/lore/');
 });
 
 test("a query lists 20 hits linking to lore pages, with a next link", async () => {
