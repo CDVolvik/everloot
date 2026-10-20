@@ -108,6 +108,13 @@ expands, clicks or changes anything.
 - The reputation list is the rows the reputation window shows now; a collapsed header hides its factions
   and the module never expands one. `/everloot status` says how many headers were collapsed.
 
+## Settings
+
+Esc > Options > AddOns > **Everloot**, or `/everloot options`, lists every module with a switch: what it
+records and where it goes. A switch that has a `/everloot` command runs that command, so the page and chat
+always agree. Changes apply after a reload; the page has a **Reload now** button. A client without the
+game's options API shows the page as a window instead.
+
 ## Census
 
 On in a new install, which says so once in chat; an install from before the census keeps it off until
@@ -207,6 +214,7 @@ The contract tests run the Lua in real Lua 5.1 through `lupa`:
     python addon/tests/collection_contract.py
     python addon/tests/auction_contract.py
     python addon/tests/auction_tab_contract.py
+    python addon/tests/options_contract.py
     python addon/tests/gold_contract.py
     python addon/tests/ask_contract.py
     python addon/tests/recipes_contract.py
