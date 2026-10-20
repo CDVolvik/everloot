@@ -29,7 +29,7 @@ function professionOf(spellId: number, client: readonly Edge[]): string | undefi
   return e ? professionName(e.toId) : undefined;
 }
 
-function Target({ edge, rel, client, spellIcon }: { edge: Edge; rel: Rel; client: readonly Edge[]; spellIcon?: SpellIconFor }) {
+export function RelationTarget({ edge, rel, client, spellIcon }: { edge: Edge; rel: Rel; client: readonly Edge[]; spellIcon?: SpellIconFor }) {
   const href = hrefFor(edge.toKind, edge.toId, rel);
   const text = edge.toKind === "skill" ? professionName(edge.toId) : entityLabel(edge.toKind, edge.toId);
   const icon = edge.toKind === "spell" ? spellIcon?.(edge.toId) : undefined;
@@ -69,7 +69,7 @@ export function EntityRelations({ kind, id, observed, client, skip = [], spellIc
                 <ul className="space-y-1 text-fg">
                   {g.edges.map((e) => (
                     <li key={`${e.evidence}-${e.toKind}-${e.toId}`}>
-                      {e.rel === "same_icon" ? <SameIcon edge={e} self={id} client={client} /> : <Target edge={e} rel={g.rel} client={client} spellIcon={spellIcon} />}
+                      {e.rel === "same_icon" ? <SameIcon edge={e} self={id} client={client} /> : <RelationTarget edge={e} rel={g.rel} client={client} spellIcon={spellIcon} />}
                       {e.evidence === "observed" ? <span className="text-muted">{` · ${evidenceLabel(e)}`}</span> : null}
                     </li>
                   ))}
@@ -84,7 +84,7 @@ export function EntityRelations({ kind, id, observed, client, skip = [], spellIc
   );
 }
 
-function SameIcon({ edge, self, client }: { edge: Edge; self: number; client: readonly Edge[] }) {
+export function SameIcon({ edge, self, client }: { edge: Edge; self: number; client: readonly Edge[] }) {
   const others = client.filter((o) => o.rel === "same_icon" && o.toId === edge.toId && o.fromId !== self).map((o) => o.fromId);
   return (
     <>

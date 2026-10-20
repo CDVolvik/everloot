@@ -5,8 +5,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { npcPage, questPage } from "../../../../../../kb/src/world-pages";
 import { loadWorldFacts } from "@/lib/rollup-compute";
-import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
 import { pinLink } from "@/lib/world-map";
+import { trailFor } from "@/lib/breadcrumbs";
+import { Container, DataTable, EmptyState, PageHeader, SourceLine, Tabs, TooltipFrame } from "@/components/ui";
+import { EntityLayout, FactsCard, LINK, Unreachable } from "../../entity";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +23,8 @@ export async function generateMetadata(props: { params: Promise<{ id: string }> 
   };
 }
 
+interface Person { role: string; npcId: number; map: string | null }
+
 export default async function QuestPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   if (!/^[1-9]\d*$/.test(params.id)) notFound();
@@ -31,55 +35,76 @@ export default async function QuestPage(props: { params: Promise<{ id: string }>
     const pin = npcId === null || facts.unreachable ? undefined : npcPage(npcId, facts).pins.find((p) => pinLink(p.mapId, p.x, p.y));
     return pin ? pinLink(pin.mapId, pin.x, pin.y) : null;
   };
-  const giverOnMap = where(page.giverNpcId);
-  const turnInOnMap = where(page.turnInNpcId);
   const title = facts.unreachable ? `Quest ${page.questId}` : page.title ?? `Quest ${page.questId}`;
+  const trail = [...trailFor("/database/quests")!, { name: title, path: `/database/quests/${page.questId}` }];
+  const people: Person[] = facts.unreachable ? [] : [
+    ...(page.giverNpcId !== null ? [{ role: "Giver", npcId: page.giverNpcId, map: where(page.giverNpcId) }] : []),
+    ...(page.turnInNpcId !== null ? [{ role: "Turn-in", npcId: page.turnInNpcId, map: where(page.turnInNpcId) }] : []),
+  ];
+  const npcLink = (id: number) => <Link href={`/database/npcs/${id}`} className={LINK}>NPC {id}</Link>;
 
   return (
-    <article className="space-y-8 max-w-4xl">
-      <header className="space-y-3">
-        <p className="font-mono text-xs text-muted">WoW: Forever · quest</p>
-        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">{title}</h1>
-        <p className="text-sm text-muted">
-          {facts.unreachable
-            ? STORAGE_UNREACHABLE
-            : page.title
-              ? `Quest ${page.questId}`
-              : "No agreed title yet. A title needs 3 installs reporting the same one."}
-        </p>
-      </header>
-
-      {facts.unreachable ? null : (
-      <>
-      <dl className="text-sm text-fg space-y-2">
-        <div>{page.level === null ? "No agreed level. A level needs 3 installs reporting the same one." : `Level ${page.level}`}</div>
-        <div>{page.giverNpcId === null ? "No agreed giver." : <Link href={`/database/npcs/${page.giverNpcId}`} className="text-accent hover:underline underline-offset-4">Giver NPC {page.giverNpcId}</Link>}
-          {giverOnMap && <>{" · "}<Link href={giverOnMap} className="text-accent hover:underline underline-offset-4">Show on the map</Link></>}</div>
-        <div>{page.turnInNpcId === null ? "No agreed turn-in." : <Link href={`/database/npcs/${page.turnInNpcId}`} className="text-accent hover:underline underline-offset-4">Turn-in NPC {page.turnInNpcId}</Link>}
-          {turnInOnMap && <>{" · "}<Link href={turnInOnMap} className="text-accent hover:underline underline-offset-4">Show on the map</Link></>}</div>
-      </dl>
-
-      <section className="space-y-2">
-        <h2 className="text-2xl text-fg">Rewards</h2>
-        {page.rewards.length === 0 ? (
-          <p className="text-sm text-fg-2">No agreed rewards.</p>
-        ) : (
-          <ul className="text-sm space-y-1">
-            {page.rewards.map((itemId) => (
-              <li key={itemId}>
-                <Link href={`/database/items/${itemId}`} className="text-accent hover:underline underline-offset-4">Item {itemId}</Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-      </>
-      )}
-
-      <p className="text-sm text-muted">
-        <Link href="/database/quests" className="text-accent hover:underline underline-offset-4">Quest lookup</Link>
-      </p>
-      {!facts.unreachable && page.title !== null && <AdSlot slot="inContent" />}
-    </article>
+    <Container width="wide">
+      <article>
+        <PageHeader trail={trail} title={title} meta={title !== `Quest ${page.questId}` ? <span className="font-mono tabular-nums">Quest {page.questId}</span> : undefined} />
+        <EntityLayout
+          rail={
+            <>
+              <TooltipFrame name={title} label={`${title}, as players saw it`}>
+                {!facts.unreachable && page.level !== null && <p>Level {page.level}</p>}
+              </TooltipFrame>
+              {!facts.unreachable && (
+                <FactsCard
+                  title="Seen by players"
+                  facts={[
+                    { label: "Title", value: page.title ?? undefined },
+                    { label: "Level", value: page.level ?? undefined },
+                    { label: "Giver", value: page.giverNpcId !== null ? npcLink(page.giverNpcId) : undefined },
+                    { label: "Turn-in", value: page.turnInNpcId !== null ? npcLink(page.turnInNpcId) : undefined },
+                    { label: "Rewards", value: page.rewards.length ? `${page.rewards.length} items` : undefined },
+                  ]}
+                />
+              )}
+            </>
+          }
+        >
+          <Tabs
+            label={`${title}: relations`}
+            tabs={[
+              {
+                id: "rewards", label: "Rewards", count: facts.unreachable ? undefined : page.rewards.length,
+                panel: (
+                  <DataTable
+                    caption={`Rewards of ${title}`}
+                    columns={[{ key: "item", header: "Item", cell: (itemId: number) => <Link href={`/database/items/${itemId}`} className={LINK}>Item {itemId}</Link> }]}
+                    rows={facts.unreachable ? [] : page.rewards}
+                    rowKey={String}
+                    empty={facts.unreachable ? <Unreachable /> : <EmptyState framed={false} message="No agreed rewards yet. A reward shows once 3 installs report the same one." />}
+                  />
+                ),
+              },
+              {
+                id: "givers", label: "Giver and turn-in", count: facts.unreachable ? undefined : people.length,
+                panel: (
+                  <DataTable
+                    caption={`Who gives and takes ${title}`}
+                    columns={[
+                      { key: "role", header: "Role", nowrap: true, cell: (p: Person) => p.role },
+                      { key: "npc", header: "NPC", cell: (p: Person) => npcLink(p.npcId) },
+                      { key: "map", header: "", cell: (p: Person) => (p.map ? <Link href={p.map} className={LINK}>Show on the map</Link> : null) },
+                    ]}
+                    rows={people}
+                    rowKey={(p) => p.role}
+                    empty={facts.unreachable ? <Unreachable /> : <EmptyState framed={false} message="No agreed giver or turn-in yet. Each shows once 3 installs report the same NPC." />}
+                  />
+                ),
+              },
+            ]}
+          />
+          {!facts.unreachable && page.title !== null && <AdSlot slot="inContent" />}
+        </EntityLayout>
+        <SourceLine confirmed>The addon does not guess a level.</SourceLine>
+      </article>
+    </Container>
   );
 }
