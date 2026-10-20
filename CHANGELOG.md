@@ -61,6 +61,11 @@ build that has a zip in the repository. Earlier builds have none.
   opens GitHub's bug form with the app version and its diagnostics filled in (user folder hidden, never the
   token), or copies them. The Addon page says Up to date instead of offering Reinstall as the main button;
   reinstalling is a small repair link.
+- Desktop App: an account row at the top of the sidebar footer. Signing in means pasting a free key made on
+  everloot.app after Battle.net sign-in; the app checks it with the site and keeps it in a file in the data
+  folder. Chat and the in-game `/ask` send it to the site's public MCP server, so their requests count against
+  the account instead of the internet address. Uploads and price refreshes never carry it. `/ask` no longer
+  needs a private token file: without one it answers from the public server, like Chat.
 - Site: zone pages at `/database/zones`, one for every released zone, with its map, the dungeons and raids
   entered there, and the NPCs, vendors and quests players have confirmed in it. Zone links in the database
   now open the zone page instead of the map.
