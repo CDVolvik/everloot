@@ -17,6 +17,7 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 const SECTIONS = [
+  { title: "Zones", href: "/database/zones", body: "Every zone by continent: its map, the dungeons and raids entered there, and the NPCs, vendors and quests players have confirmed in it." },
   { title: "Items by category", href: "/database/items", body: "Every item in the current build by class, subclass, slot and quality, read from the game files and labelled unconfirmed until players see it." },
   { title: "Loot observations", href: "/database/drops", body: "Observed frequency per source-attributed loot window. Source observations from 3 install IDs are required; these are not verified kills or drop probabilities." },
   { title: "Spawn maps", href: "/database/npcs", body: "NPC positions from corroborated sightings. Single reports stay queued, never published." },
