@@ -9,7 +9,7 @@ import { loadEdges } from "@/lib/edges";
 import { RelationTarget, SameIcon } from "@/components/EntityRelations";
 import { pinLink } from "@/lib/world-map";
 import { loadItemTips, loadSiteAssets } from "@/lib/game-assets";
-import { Container, DataTable, Facts, QUALITY_TEXT, Tabs, TooltipFrame, qualityOf, type Column, type Fact, type TabItem } from "@/components/ui";
+import { Badge, Container, DataTable, Facts, QUALITY_TEXT, Tabs, TooltipFrame, qualityOf, type Column, type Fact, type TabItem } from "@/components/ui";
 import { categoryOf } from "../../../../../../kb/src/item-taxonomy";
 import { edgesFrom, evidenceLabel, type Edge, type Rel } from "../../../../../../kb/src/edges";
 import { CLIENT_LAYER, CLIENT_TAXONOMY, itemsHref, shownItemName } from "@/lib/items";
@@ -19,7 +19,7 @@ import { loreForEntity } from "@/lib/lore";
 import EntityLink from "@/components/EntityLink";
 import LoreSection from "@/components/LoreSection";
 import { CategoryPage, categoryMetadata } from "../category-page";
-import { EmptyTab, EntityHeader, EntityIcon, EntityTop, FREQUENCY, known, LINK, percent, Unconfirmed, Unreachable } from "../../entity";
+import { EmptyTab, EntityHeader, EntityIcon, EntityTop, FREQUENCY, known, LINK, percent, Unreachable } from "../../entity";
 
 const PROFESSIONS = { href: "/tools/professions", label: "Professions" };
 
@@ -46,7 +46,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
 }
 
 /** Who vouches for a relation row: the installs that agree, or (the quiet marker) the game files. */
-const evidence = (e: Edge) => (e.evidence === "observed" ? evidenceLabel(e) : <Unconfirmed><span className="block h-3 w-5" /></Unconfirmed>);
+const evidence = (e: Edge) => (e.evidence === "observed" ? evidenceLabel(e) : <Badge tone="files" />);
 
 export default async function ItemPage(props: Props) {
   const params = await props.params;

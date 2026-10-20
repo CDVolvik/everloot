@@ -3,6 +3,7 @@ import Link from "next/link";
 import JsonLd from "@/components/JsonLd";
 import GameIcon from "@/components/game/GameIcon";
 import { AgreementMeter, GET_THE_ADDON, QUALITY_TEXT, type Quality } from "@/components/ui";
+import { UNCONFIRMED_TITLE } from "@/components/ui/Badge";
 import { trailFor } from "@/lib/breadcrumbs";
 import { breadcrumbJsonLd, type Crumb } from "@/lib/jsonld";
 import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
@@ -12,11 +13,9 @@ import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
 // then full-width tabs of dense tables. Stacked on a phone. No breadcrumb on screen: the trail is
 // only the BreadcrumbList JSON-LD.
 
-export const UNCONFIRMED_TITLE = "From the game files, not yet confirmed by players";
-
 /**
- * The quiet "unconfirmed" marker: a 1 px dashed edge around what it wraps, a tooltip and sr-only text.
- * Never a chip or a sentence.
+ * The quiet "unconfirmed" marker as an edge: a 1 px dashed frame around what it wraps (the header icon),
+ * with the tooltip and sr-only text of the `files` Badge. Never a chip or a sentence.
  */
 export function Unconfirmed({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
