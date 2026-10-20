@@ -51,6 +51,9 @@ const nextConfig = {
     "/lore/browse/[type]": ["./.release/*.sqlite", "./.release/*.manifest.json"],
     "/lore/coverage": ["./.release/*.sqlite", "./.release/*.manifest.json"],
     "/lore-sitemap/pages.xml": ["./.release/*.sqlite", "./.release/*.manifest.json"],
+    // The build-link previews draw their card on each request, so they read the Geist fonts at run time.
+    "/tools/raid/card": ["./node_modules/geist/dist/fonts/geist-sans/Geist-{Bold,Regular}.ttf"],
+    "/tools/talents/\\[class\\]/card": ["./node_modules/geist/dist/fonts/geist-sans/Geist-{Bold,Regular}.ttf"],
   },
   // /lore/[slug] already owns one dynamic segment under /lore, so the browse pages live at
   // /lore/browse/<type> and are served at the short URL. afterFiles rewrites run before dynamic routes.
