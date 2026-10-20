@@ -199,11 +199,12 @@ function P.ListSaved()
     print("Everloot: no saved builds for this class in the last Desktop App sync.")
     return true
   end
-  print("Everloot: your saved builds (/everloot plan <number> loads one):")
+  print("Everloot: your saved builds (/everloot plan <number> loads one, <number> 2 its second set):")
   for i, b in ipairs(list) do
     if i > 20 then print("  and " .. (#list - 20) .. " more, up to /everloot plan " .. #list); break end
     local who = type(b.character) == "string" and (" - " .. plain(b.character)) or ""
-    print(string.format("  %d. %s%s%s", i, plain(b.name), who, b.active == true and " (active)" or ""))
+    print(string.format("  %d. %s%s%s%s", i, plain(b.name), who, b.active == true and " (active)" or "",
+      type(b.code2) == "string" and " [2 sets]" or ""))
   end
   return true
 end
@@ -431,7 +432,8 @@ function P.Clear()
 end
 
 --- Load saved build number n from the list /everloot plan prints, exactly like a pasted code.
-function P.LoadSaved(n)
+--- set 2 loads the build's second talent set.
+function P.LoadSaved(n, set)
   local list = P.SavedBuilds()
   if not list then
     print("Everloot: no saved builds here yet. Sync them with the Everloot Desktop App, then /reload.")
@@ -442,8 +444,15 @@ function P.LoadSaved(n)
     print("Everloot: there is no saved build " .. n .. ". /everloot plan lists them.")
     return false
   end
-  print("Everloot: loading saved build " .. n .. ", " .. plain(build.name) .. ".")
-  return P.Load(build.code)
+  set = set or 1
+  local code = set == 1 and build.code or set == 2 and build.code2 or nil
+  if type(code) ~= "string" then
+    print(set == 2 and ("Everloot: saved build " .. n .. " has no second talent set.")
+      or ("Everloot: a saved build has talent sets 1 and 2, not " .. set .. "."))
+    return false
+  end
+  print("Everloot: loading saved build " .. n .. (set == 2 and " (second set)" or "") .. ", " .. plain(build.name) .. ".")
+  return P.Load(code)
 end
 
 --- /everloot plan [code | number | show | hide | clear]
@@ -452,7 +461,8 @@ function E.PlanCommand(arg)
   local word = arg:lower()
   if word == "" then P.ListSaved(); return P.Show() end
   if word == "show" then return P.Show() end
-  if word:find("^%d+$") then return P.LoadSaved(tonumber(word)) end
+  local n, set = word:match("^(%d+)%s*(%d*)$")
+  if n then return P.LoadSaved(tonumber(n), tonumber(set)) end
   if word == "hide" then userHidden = true; if panel then panel:Hide() end return end
   if word == "clear" then P.Clear(); print("Everloot: plan cleared."); return end
   P.Load(arg)

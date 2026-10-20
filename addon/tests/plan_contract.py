@@ -378,6 +378,7 @@ assert "EverlootBuilds" in toc.split("## OptionalDeps:")[1].splitlines()[0], "th
 BUILDS = (Path(__file__).parent / "fixtures" / "EverlootBuilds.lua").read_text(encoding="utf-8")
 TRICKY = 'Fire "burst" |T \\ v2\n]] --[[ end\r\x01'
 FROST = "EL1-mage-1482-1.59.0.69000-OTAwMDE6MQ"
+CODE2 = "EL1-mage-0-1.60.1.70450-MToxLDI6MQ"
 check = LuaRuntime()
 before = set(check.globals().keys())
 check.execute(BUILDS)
@@ -399,9 +400,9 @@ assert(names[2] == 'Arcane leveling' and names[3] == 'Frost AoE' and names[4] ==
 
 SlashCmdList.EVERLOOT('plan')
 local out = table.concat(printed, '\\n')
-assert(string.find(out, 'your saved builds (/everloot plan <number> loads one)', 1, true), out)
-assert(string.find(out, '  1. Fire "burst" ||T \\\\ v2 ]] --[[ end   - aERIN (active)', 1, true), 'one line, | escaped: ' .. out)
-assert(string.find(out, '  4. Alt\\'s build - Ærîn', 1, true), out)
+assert(string.find(out, 'your saved builds (/everloot plan <number> loads one, <number> 2 its second set)', 1, true), out)
+assert(string.find(out, '  1. Fire "burst" ||T \\\\ v2 ]] --[[ end   - aERIN (active) [2 sets]', 1, true), 'one line, | escaped: ' .. out)
+assert(string.find(out, '  4. Alt\\'s build - Ærîn\\n', 1, true) or out:sub(-#'  4. Alt\\'s build - Ærîn') == '  4. Alt\\'s build - Ærîn', 'no marker without a second set: ' .. out)
 assert(not string.find(out, 'Healer', 1, true), 'another class is not listed')
 assert(panel().shown and string.find(panel().body.text, '/everloot plan lists your saved builds', 1, true), 'the panel still opens')
 
@@ -414,6 +415,17 @@ SlashCmdList.EVERLOOT('plan 9')
 assert(EverlootDB.plan == '{FROST}' and string.find(printed[1], 'there is no saved build 9', 1, true), printed[1])
 SlashCmdList.EVERLOOT('plan 1')
 assert(EverlootDB.plan == '{CODE}', 'the first set of the active build')
+SlashCmdList.EVERLOOT('plan 1 2')
+assert(EverlootDB.plan == '{CODE2}', 'plan 1 2 loads the second set: ' .. tostring(EverlootDB.plan))
+assert(string.find(table.concat(printed, '\\n'), 'loading saved build 1 (second set)', 1, true))
+printed = {{}}
+SlashCmdList.EVERLOOT('plan 3 2')
+assert(EverlootDB.plan == '{CODE2}' and printed[1] == 'Everloot: saved build 3 has no second talent set.', tostring(printed[1]))
+printed = {{}}
+SlashCmdList.EVERLOOT('plan 1 3')
+assert(EverlootDB.plan == '{CODE2}' and string.find(printed[1], 'talent sets 1 and 2, not 3', 1, true), tostring(printed[1]))
+SlashCmdList.EVERLOOT('plan 1 1')
+assert(EverlootDB.plan == '{CODE}', 'plan 1 1 is the first set')
 local keys = {{}}
 for k in pairs(EverlootDB) do keys[#keys + 1] = k end
 assert(EverlootDB.builds == nil and EverlootBuildsData.version == 1, 'nothing of the builds is saved: ' .. table.concat(keys, ','))
