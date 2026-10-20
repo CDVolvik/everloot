@@ -10,7 +10,8 @@ import { COMPLETION_AGREEMENT } from "./completion-rollup.js";
 export { COMPLETION_AGREEMENT };
 export const CLOSEST_LIMIT = 5;
 
-export type AchievementEntry = { achievementId: number; name: string; category: string; points: number; criteriaCount: number };
+/** `criteria` is present only when three reporters sent the identical complete list. */
+export type AchievementEntry = { achievementId: number; name: string; category: string; points: number; criteriaCount: number; criteria?: { text: string; required: number }[] };
 export type FactionEntry = { factionId: number; name: string; header?: string; major: boolean };
 export type TitleEntry = { titleId: number; name: string };
 export type ChainEntry = { questLineId: number; name: string; questIds: number[]; truncated: boolean };

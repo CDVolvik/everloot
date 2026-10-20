@@ -280,8 +280,10 @@ test("one address flooding junk ids is capped, and the rollup stays small", () =
   // 10 uploads of 2000 new ids from one address: five times what one voter may hold unconfirmed.
   const state = fold(Array.from({ length: 10 }, (_, n) => flood(n)));
   expect(Object.keys(state.catalog.a).length).toBeLessThanOrEqual(COMPLETION_LIMITS.createdPerVoter);
-  // Criteria text is not part of what is agreed or kept.
-  expect(JSON.stringify(state).length).toBeLessThan(2_000_000);
+  // Criteria lists are a separate vote with their own per-voter cap, so they add at most that much.
+  const criteriaBytes = Object.values(state.catalog.c ?? {}).flat().reduce((n, v) => n + v.c.length, 0);
+  expect(criteriaBytes).toBeLessThanOrEqual(COMPLETION_LIMITS.createdBytesPerVoter);
+  expect(JSON.stringify(state).length).toBeLessThan(2_000_000 + 2 * COMPLETION_LIMITS.createdBytesPerVoter);
   // A real entry from three other addresses still gets in and is listed.
   fold(["r1", "r2", "r3"].map((id, i) => vote(`${id}-install`, `000000000000010${i}`)), state);
   expect(agreedCatalog(state).titles.get(6)?.name).toBe("Sergeant");
@@ -359,4 +361,31 @@ test("a page asking about one install checks and builds only that install", () =
   expect([...authorizedOwners(state, authority, now, OWNER)]).toEqual([OWNER]);
   expect([...authorizedOwners(state, authority, now, "missing-install")]).toEqual([]);
   expect(completionFactsOf(state, "all", OWNER).owned.map((c) => c.installId)).toEqual([OWNER]);
+});
+
+test("an achievement's criteria list is shown only when three reporters sent the same complete list", () => {
+  const base = { kind: "achievement_catalog", name: "Explore Elwynn", categoryId: 10, category: "Exploration", points: 10, criteriaCount: 2 };
+  const list = [{ text: "Goldshire", required: 1 }, { text: "Northshire Abbey", required: 1 }];
+  const facts = completionFactsFromRecords([
+    ...three({ ...base, achievementId: 40, criteria: list }),
+    // Two complete lists and a third that differs: the entry is listed, its criteria are not.
+    ...three({ ...base, achievementId: 41, criteria: list }).map((r, i) => (i === 2 ? { ...r, criteria: [list[0], { text: "Fargodeep Mine", required: 1 }] } : r)),
+    // A cut-off list (one of two) or a blank criterion is never voted on.
+    ...three({ ...base, achievementId: 42, criteria: [list[0]] }),
+    ...three({ ...base, achievementId: 43, criteria: [list[0], { text: " ", required: 1 }] }),
+  ]);
+  expect(facts.achievements.get(40)?.criteria).toEqual(list);
+  for (const id of [41, 42, 43]) {
+    expect(facts.achievements.get(id)?.name).toBe("Explore Elwynn");
+    expect(facts.achievements.get(id)?.criteria).toBeUndefined();
+  }
+});
+
+test("criteria agreed without an agreed entry show nowhere, and a rollup written before criteria still folds", () => {
+  const state = emptyCompletion();
+  delete state.catalog.c;
+  const list = [{ text: "Goldshire", required: 1 }];
+  foldCompletion(state, [{ grants: [], records: ["a", "b", "c"].map((id, i) => row(`split-reporter-${id}`, { kind: "achievement_catalog", achievementId: 50, name: `Name ${i}`, categoryId: 1, category: "General", points: 5, criteriaCount: 1, criteria: list })) }]);
+  expect(Object.keys(state.catalog.c ?? {})).toEqual(["50"]);
+  expect(agreedCatalog(state).achievements.has(50)).toBe(false);
 });
