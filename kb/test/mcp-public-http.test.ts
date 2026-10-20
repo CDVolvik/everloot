@@ -1,4 +1,6 @@
+import { MCP_TOOL_NAMES, MCP_TOOLS } from "@everloot/protocol";
 import { afterEach, expect, test } from "vitest";
+import { z } from "zod";
 import { openDb, type DB } from "../src/db.js";
 import { replaceSourceRows } from "../src/entities.js";
 import { createMcpHttpHandler } from "../src/mcp-http-server.js";
@@ -85,6 +87,28 @@ test("a public mount serves its own path with no bearer, and only that path", as
   expect(ok.status).toBe(200);
   expect((await ok.json()).result.serverInfo.name).toBe("everloot-knowledge");
   expect((await handle(init("http://localhost/mcp"))).status).toBe(404);
+});
+
+test("a host's extra tool is listed and answers only for the requests it is given to", async () => {
+  const extra = {
+    name: "my_test_tool",
+    def: { title: "Test", description: "Test tool", inputSchema: { slug: z.string().optional() }, annotations: { readOnlyHint: true, openWorldHint: false } } as const,
+    handler: (args: unknown) => `got ${JSON.stringify(args)}`,
+  };
+  const handle = await handler({ extraTools: (req: Request, body: string) => (req.headers.get("x-test") === "yes" && body.includes("tools/") ? [extra] : []) });
+  const names = async (headers = {}) => ((await (await handle(request("tools/list", {}, headers))).json()).result.tools as { name: string }[]).map((t) => t.name);
+  expect(await names()).toEqual(MCP_TOOL_NAMES);
+  expect(await names({ "x-test": "yes" })).toEqual([...MCP_TOOL_NAMES, "my_test_tool"]);
+  const called = await (await handle(request("tools/call", { name: "my_test_tool", arguments: { slug: "a" } }, { "x-test": "yes" }))).json();
+  expect(called.result.content[0].text).toBe('got {"slug":"a"}');
+  const refused = await (await handle(request("tools/call", { name: "my_test_tool", arguments: {} }))).json();
+  expect(refused.result.isError).toBe(true);
+});
+
+test("an extra tool cannot take a public tool's name, and a failing hook is a 500", async () => {
+  const clash = { name: "search", def: MCP_TOOLS.search, handler: () => "replaced" };
+  await expect((await handler({ extraTools: () => [clash] }))(request("tools/list", {}))).rejects.toThrow(/already registered/);
+  expect((await (await handler({ extraTools: () => { throw new Error("down"); } }))(request("tools/list", {}))).status).toBe(500);
 });
 
 test("the bearer mount still refuses a request without the token", async () => {

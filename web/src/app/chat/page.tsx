@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import ChatClient from "@/components/chat/ChatClient";
+import { savedBuildsOn } from "@/lib/saved-builds";
 import { pageMetadata } from "@/lib/seo";
 
 const TITLE = "Ask Everloot";
@@ -10,6 +11,7 @@ export const metadata: Metadata = pageMetadata({ title: TITLE, description, path
 
 // No ad slot here: the page is a conversation, and a key form is no place for an ad.
 export default function ChatPage() {
+  const savedBuilds = savedBuildsOn();
   return (
     <article className="space-y-6 max-w-3xl">
       <header className="space-y-3">
@@ -18,7 +20,7 @@ export default function ChatPage() {
         <p className="text-lg text-fg-2">{description}</p>
       </header>
 
-      <ChatClient />
+      <ChatClient savedBuilds={savedBuildsOn()} />
 
       <section className="pt-6 border-t border-line space-y-3 text-sm text-fg-2">
         <h2 className="text-xl text-fg">How it works</h2>
@@ -32,6 +34,7 @@ export default function ChatPage() {
           The model looks things up with Everloot&apos;s own read-only tools: the database, the lore archive, recipes,
           market values and the change tracker. Each answer lists the sources those tools returned; a part the tools could
           not back says it comes from the model&apos;s own knowledge. Without a key you get the search hits as they are.
+          {savedBuilds && " When you are signed in, it can also read the talent builds you saved."}
         </p>
         <p>
           The <Link href="/docs/mcp/clients" className="underline hover:text-accent">Everloot connector</Link> brings the same tools

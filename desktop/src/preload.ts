@@ -29,6 +29,7 @@ const api: EverlootApi = {
   marketLookup: (text: string) => ipcRenderer.invoke("marketLookup", text),
   askInfo: () => ipcRenderer.invoke("askInfo"),
   addonInfo: () => ipcRenderer.invoke("addonInfo"),
+  buildsSync: () => ipcRenderer.invoke("buildsSync"),
   installAddon: (version: string) => ipcRenderer.invoke("installAddon", version),
   changes: () => ipcRenderer.invoke("changes"),
   charactersInfo: () => ipcRenderer.invoke("charactersInfo"),

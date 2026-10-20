@@ -8,12 +8,12 @@ const input = "min-h-11 w-full rounded-lg border border-line bg-canvas px-3 text
 const button = "inline-flex items-center justify-center min-h-11 px-4 rounded-lg border border-line text-sm text-fg hover:text-accent disabled:opacity-60";
 
 // Where each form posts, and the body Better Auth expects.
-function request(mode: Mode, form: FormData, token?: string): [string, object] {
+function request(mode: Mode, form: FormData, token?: string, returnTo = "/account"): [string, object] {
   const email = String(form.get("email") ?? "").trim();
   const password = String(form.get("password") ?? "");
   switch (mode) {
-    case "sign-in": return ["/api/auth/sign-in/email", { email, password, callbackURL: "/account" }];
-    case "sign-up": return ["/api/auth/sign-up/email", { name: String(form.get("name") ?? "").trim(), email, password, callbackURL: "/account" }];
+    case "sign-in": return ["/api/auth/sign-in/email", { email, password, callbackURL: returnTo }];
+    case "sign-up": return ["/api/auth/sign-up/email", { name: String(form.get("name") ?? "").trim(), email, password, callbackURL: returnTo }];
     case "request-reset": return ["/api/auth/request-password-reset", { email, redirectTo: "/reset-password" }];
     case "reset": return ["/api/auth/reset-password", { newPassword: password, token }];
   }
@@ -26,8 +26,12 @@ const done: Record<Mode, string> = {
   reset: "Your password is changed. Sign in with the new one.",
 };
 
-/** The email forms on /sign-in, /sign-up and /reset-password. They post to Better Auth's routes on this site. */
-export default function EmailAuthForm({ mode, token }: { mode: Mode; token?: string }) {
+/**
+ * The email forms on /sign-in, /sign-up and /reset-password. They post to Better Auth's routes on this site.
+ * `returnTo` is where a sign-in, or the confirmation link of a sign-up, lands: a path the page has already checked;
+ * /account without one.
+ */
+export default function EmailAuthForm({ mode, token, returnTo = "/account" }: { mode: Mode; token?: string; returnTo?: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -37,13 +41,13 @@ export default function EmailAuthForm({ mode, token }: { mode: Mode; token?: str
     setBusy(true);
     setError(null);
     try {
-      const [url, body] = request(mode, new FormData(event.currentTarget), token);
+      const [url, body] = request(mode, new FormData(event.currentTarget), token, returnTo);
       const response = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
       const result = await response.json().catch(() => ({})) as { message?: string; code?: string };
       if (response.status === 429) throw new Error("Too many tries. Wait a minute and try again.");
       if (result.code === "EMAIL_NOT_VERIFIED") throw new Error("Confirm your email first: use the link we sent you.");
       if (!response.ok) throw new Error(result.message ?? "That did not work. Try again.");
-      if (mode === "sign-in") { window.location.assign("/account"); return; }
+      if (mode === "sign-in") { window.location.assign(returnTo); return; }
       setMessage(done[mode]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "That did not work. Try again.");

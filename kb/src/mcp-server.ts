@@ -662,26 +662,32 @@ export function createToolHandlers(db: DB, options: ToolOptions = {}): ToolHandl
   return handlers;
 }
 
-export function createKnowledgeServer(db: DB, options: ToolOptions = {}): McpServer {
+/**
+ * A tool the host adds for one request only, outside the protocol's table: the site's account tools, which read a
+ * player's own data with their key. A server made without any lists exactly MCP_TOOL_NAMES.
+ */
+export interface ExtraTool { name: string; def: McpToolDef; handler: (args: unknown) => ToolAnswer | Promise<ToolAnswer> }
+
+export function createKnowledgeServer(db: DB, options: ToolOptions = {}, extraTools: readonly ExtraTool[] = []): McpServer {
   const server = new McpServer(
     { name: SERVER_NAME, title: "Everloot", version: SERVER_VERSION, description: SERVER_DESCRIPTION, websiteUrl: SOURCE_URL, icons: SERVER_ICONS },
     { instructions: SERVER_INSTRUCTIONS },
   );
   const handlers = createToolHandlers(db, options);
-  for (const name of MCP_TOOL_NAMES) {
-    const def: McpToolDef = MCP_TOOLS[name];
-    server.registerTool(
-      name,
-      { title: def.title, description: def.description, inputSchema: def.inputSchema, ...(def.outputSchema ? { outputSchema: def.outputSchema } : {}), annotations: { ...def.annotations, title: def.title, destructiveHint: false } },
-      async (args: unknown) => {
-        const answer = await (handlers[name] as (a: unknown) => Answer | Promise<Answer>)(args);
-        const text = typeof answer === "string" ? answer : answer.text;
-        // Structured content goes only with a declared schema; a text-only tool never sends an unvalidated object.
-        const structuredContent = typeof answer === "string" || !def.outputSchema ? undefined : (answer.structured as Record<string, unknown>);
-        return { content: [{ type: "text" as const, text }], ...(structuredContent ? { structuredContent } : {}) };
-      },
-    );
-  }
+  const register = (name: string, def: McpToolDef, handler: (args: unknown) => Answer | Promise<Answer>) => server.registerTool(
+    name,
+    { title: def.title, description: def.description, inputSchema: def.inputSchema, ...(def.outputSchema ? { outputSchema: def.outputSchema } : {}), annotations: { ...def.annotations, title: def.title, destructiveHint: false } },
+    async (args: unknown) => {
+      const answer = await handler(args);
+      const text = typeof answer === "string" ? answer : answer.text;
+      // Structured content goes only with a declared schema; a text-only tool never sends an unvalidated object.
+      const structuredContent = typeof answer === "string" || !def.outputSchema ? undefined : (answer.structured as Record<string, unknown>);
+      return { content: [{ type: "text" as const, text }], ...(structuredContent ? { structuredContent } : {}) };
+    },
+  );
+  for (const name of MCP_TOOL_NAMES) register(name, MCP_TOOLS[name], handlers[name] as (a: unknown) => Answer | Promise<Answer>);
+  // After the public tools, so a clash with one of their names throws instead of replacing it.
+  for (const extra of extraTools) register(extra.name, extra.def, extra.handler);
   for (const uri of MCP_RESOURCE_URIS) {
     const def = MCP_RESOURCES[uri];
     server.registerResource(def.name, uri, { title: def.title, description: def.description, mimeType: def.mimeType }, () => {

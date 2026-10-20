@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
 import { importCode, planHash, readPlanHash, type ImportReport, type ImportResult } from "@/lib/talents/import";
 import {
   add, canAdd, canRemove, commit, entryAtRank, isLegal, nodeMap, pointsAtLevel, pointsByTree, pointsSpent, redo, refusalText,
@@ -9,11 +9,12 @@ import {
 import { hasNodeFrames, loadGameAssets, type GameAssets } from "@/lib/talents/assets";
 import { HOW_IT_WORKS_ID } from "@/lib/talents/facts";
 import { encodeBuild } from "@/lib/talents/share";
-import { previewPath, summarizeBuild } from "@/lib/talents/summary";
+import { buildTitle, previewPath, summarizeBuild } from "@/lib/talents/summary";
 import type { Ranks, TalentCatalog } from "@/lib/talents/types";
 import GameIcon from "@/components/game/GameIcon";
 import { Card, Input, Segmented } from "@/components/ui";
 import GameTree from "./GameTree";
+import SaveBuild, { restorePendingSave } from "./SaveBuild";
 import TalentTooltip, { type TipContent } from "./TalentTooltip";
 import TalentTreeView, { assetOf, CLASS_TEXT, type TipMode } from "./TalentTreeView";
 
@@ -27,8 +28,12 @@ const LONG_PRESS_MS = 500;
  * `treeIcons` are the trees' icons in the catalog's tree order, from the site's asset folder; absent without one.
  * `classIcon` is the game's class icon for the build bar, from the same folder.
  * `initialCodes` are the two sets' share codes from a build link (/b/...), opened when the address has no #plan=.
+ * `savedBuilds` shows Save and My builds (EVERLOOT_SAVED_BUILDS). `readOnly` shows `initialCodes` without
+ * letting points change and leaves the address alone, for a saved build's short link (/b/<slug>).
  */
-export default function TalentCalculator({ catalog, treeIcons, classIcon = null, initialCodes }: { catalog: TalentCatalog; treeIcons?: (string | null)[]; classIcon?: string | null; initialCodes?: (string | null)[] }) {
+export default function TalentCalculator({ catalog, treeIcons, classIcon = null, initialCodes, savedBuilds = false, readOnly = false }: {
+  catalog: TalentCatalog; treeIcons?: (string | null)[]; classIcon?: string | null; initialCodes?: (string | null)[]; savedBuilds?: boolean; readOnly?: boolean;
+}) {
   const { rules } = catalog;
   const [history, setHistory] = useState<History<Sets>>(() => startHistory<Sets>([{}, {}]));
   const [active, setActive] = useState<0 | 1>(0);
@@ -74,8 +79,10 @@ export default function TalentCalculator({ catalog, treeIcons, classIcon = null,
   };
 
   function setSets(next: Sets) {
+    if (readOnly) return;
     setHistory((h) => commit(h, next));
   }
+  const READ_ONLY = "This is a saved build. Open it in the calculator to change it.";
   function setActiveRanks(next: Ranks) {
     const sets: Sets = [...history.present];
     sets[active] = next;
@@ -101,9 +108,8 @@ export default function TalentCalculator({ catalog, treeIcons, classIcon = null,
   // stays static and cached. Read when the page opens and whenever the hash changes, so pasting a
   // link into a tab that is already open loads it.
   useEffect(() => {
-    function fromHash(opening: boolean) {
+    function fromHash(opening: boolean, codes = readPlanHash(window.location.hash)) {
       // The first set rides after #plan= (the code the addon reads), the second after &plan2=.
-      const codes = readPlanHash(window.location.hash);
       if (!codes.first && !codes.second) return;
       const results = [codes.first, codes.second].map((c) => (c ? importCode(catalog, c) : null));
       for (const r of results) if (r && !r.ok) { setMessage(r.message); return; }
@@ -119,6 +125,13 @@ export default function TalentCalculator({ catalog, treeIcons, classIcon = null,
       setReport({ ...loaded[0].report, problems, loaded: true });
       setMessage(problems.length === 0 ? `${loaded.length === 2 ? "Both sets" : "Build"} loaded from the link.` : "Loaded from the link with changes. The list below says what.");
     }
+    // A saved build's short link shows its codes as they are and keeps its own address.
+    if (readOnly) {
+      fromHash(true, { first: initialCodes?.[0] ?? null, second: initialCodes?.[1] ?? null });
+      return;
+    }
+    // Back from signing in to save: the build waited in session storage while the visitor was away.
+    if (savedBuilds) restorePendingSave();
     // A build link carries its codes in the path; move them into the class page's #plan= address, which is
     // what the page keeps up to date from here on, and read them from there.
     if (!window.location.hash && initialCodes?.some(Boolean)) {
@@ -136,6 +149,7 @@ export default function TalentCalculator({ catalog, treeIcons, classIcon = null,
   // Undo and redo can bring back more points than the level now holds (spend 8, undo 3, lower the
   // level, redo 3). Raise the level to fit rather than show more points spent than allowed.
   function travel(step: (h: History<Sets>) => History<Sets>) {
+    if (readOnly) return;
     const next = step(history);
     if (next === history) return;
     const needed = Math.max(...next.present.map((r) => levelFor(catalog, pointsSpent(r))));
@@ -147,6 +161,7 @@ export default function TalentCalculator({ catalog, treeIcons, classIcon = null,
   }
 
   function doAdd(id: number, choice?: number) {
+    if (readOnly) { setMessage(READ_ONLY); return; }
     const node = nodes.get(id)!;
     const next = add(catalog, ranks, id, available, choice);
     if (next === ranks) {
@@ -160,6 +175,7 @@ export default function TalentCalculator({ catalog, treeIcons, classIcon = null,
   }
 
   function doRemove(id: number) {
+    if (readOnly) { setMessage(READ_ONLY); return; }
     const node = nodes.get(id)!;
     const next = remove(catalog, ranks, id);
     if (next === ranks) {
@@ -192,10 +208,14 @@ export default function TalentCalculator({ catalog, treeIcons, classIcon = null,
   // fragment, so copying the address bar shares both sets. Skipped on the first run, where the
   // build from an opened link has not loaded yet and would be wiped.
   const linkReady = useRef(false);
-  useEffect(() => {
-    if (!linkReady.current) { linkReady.current = true; return; }
+  const codes = useMemo<[string | null, string | null]>(() => {
     const codeOf = (r: Ranks) => (pointsSpent(r) > 0 ? encodeBuild({ classSlug: catalog.classSlug, specId: catalog.specId, build: catalog.build, ranks: r }) : null);
-    const [first, second] = [codeOf(history.present[0]), codeOf(history.present[1])];
+    return [codeOf(history.present[0]), codeOf(history.present[1])];
+  }, [history.present, catalog]);
+  useEffect(() => {
+    if (readOnly) return;
+    if (!linkReady.current) { linkReady.current = true; return; }
+    const [first, second] = codes;
     const hash = planHash(first, second);
     const { pathname, search, origin } = window.location;
     written.current = hash;
@@ -203,7 +223,7 @@ export default function TalentCalculator({ catalog, treeIcons, classIcon = null,
     // The link handed out is the build link: same build, and its preview in a chat names it.
     const preview = previewPath(catalog.classSlug, first, second);
     setLink(preview ? `${origin}${preview}` : "");
-  }, [history.present, catalog]);
+  }, [codes, catalog, readOnly]);
 
   const [copied, setCopied] = useState(false);
   function copyLink() {
@@ -399,7 +419,11 @@ export default function TalentCalculator({ catalog, treeIcons, classIcon = null,
               </span>
             </label>
           </div>
-          <button type="button" className="btn btn-primary text-sm lg:ml-auto" onClick={copyLink} disabled={!link}>{copied ? "Copied" : "Copy link"}</button>
+          {!readOnly && <button type="button" className="btn btn-primary text-sm lg:ml-auto" onClick={copyLink} disabled={!link}>{copied ? "Copied" : "Copy link"}</button>}
+          {/* Save, My builds and the save panel, which takes its own row under the bar. */}
+          {savedBuilds && !readOnly && (
+            <SaveBuild classSlug={catalog.classSlug} codes={codes} defaultName={buildTitle(catalog, summarizeBuild(catalog, history.present[0]))} onMessage={setMessage} />
+          )}
         </section>
 
         <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-3">
@@ -409,12 +433,16 @@ export default function TalentCalculator({ catalog, treeIcons, classIcon = null,
             onChange={chooseSet}
             options={[{ value: 0, label: "Set 1" }, { value: 1, label: "Set 2", disabled: !secondOpen }]}
           />
-          <button type="button" className="btn px-3 text-sm sm:px-5" onClick={() => travel(undo)} disabled={history.past.length === 0}>Undo</button>
-          <button type="button" className="btn px-3 text-sm sm:px-5" onClick={() => travel(redo)} disabled={history.future.length === 0}>Redo</button>
-          <button type="button" className="btn px-3 text-sm sm:px-5" onClick={() => { setActiveRanks({}); setMessage("This set was reset. Undo brings it back."); }} disabled={spent === 0}><span className="sm:hidden">Reset</span><span className="hidden sm:inline">Reset {setName}</span></button>
-          <button type="button" className="btn px-3 text-sm sm:px-5" aria-pressed={removeMode} onClick={() => setRemoveMode(!removeMode)}>
-            <span className="sm:hidden">Take back: {removeMode ? "on" : "off"}</span><span className="hidden sm:inline">Take points back: {removeMode ? "on" : "off"}</span>
-          </button>
+          {!readOnly && (
+            <>
+              <button type="button" className="btn px-3 text-sm sm:px-5" onClick={() => travel(undo)} disabled={history.past.length === 0}>Undo</button>
+              <button type="button" className="btn px-3 text-sm sm:px-5" onClick={() => travel(redo)} disabled={history.future.length === 0}>Redo</button>
+              <button type="button" className="btn px-3 text-sm sm:px-5" onClick={() => { setActiveRanks({}); setMessage("This set was reset. Undo brings it back."); }} disabled={spent === 0}><span className="sm:hidden">Reset</span><span className="hidden sm:inline">Reset {setName}</span></button>
+              <button type="button" className="btn px-3 text-sm sm:px-5" aria-pressed={removeMode} onClick={() => setRemoveMode(!removeMode)}>
+                <span className="sm:hidden">Take back: {removeMode ? "on" : "off"}</span><span className="hidden sm:inline">Take points back: {removeMode ? "on" : "off"}</span>
+              </button>
+            </>
+          )}
           <button type="button" className="btn size-11 !px-0 text-sm" aria-label="How the calculator works" title="How it works" onClick={openHowTo}>?</button>
           {level < rules.dualSpecLevel && (
             <label className="flex min-h-11 items-center gap-3 text-sm text-fg-2">
@@ -439,7 +467,7 @@ export default function TalentCalculator({ catalog, treeIcons, classIcon = null,
                     {treeIcons?.[i] && <GameIcon src={treeIcons[i]!} size={24} />}
                     <h2 className={`min-w-0 truncate text-base font-semibold ${classText}`}>{tree.name}</h2>
                     <span className={`ml-auto font-mono text-xl tabular-nums ${points === 0 ? "text-muted" : "text-fg"}`}>{points}</span>
-                    <button type="button" className="min-h-11 px-1 text-sm text-muted hover:text-fg disabled:opacity-50" disabled={points === 0} aria-label={`Reset ${tree.name}`} onClick={() => resetTree(tree.id, tree.name)}>Reset</button>
+                    {!readOnly && <button type="button" className="min-h-11 px-1 text-sm text-muted hover:text-fg disabled:opacity-50" disabled={points === 0} aria-label={`Reset ${tree.name}`} onClick={() => resetTree(tree.id, tree.name)}>Reset</button>}
                   </div>
                   <div className="h-1 overflow-hidden rounded-full bg-canvas" aria-hidden="true">
                     <div className={`h-full rounded-full bg-current transition-[width] duration-200 motion-reduce:transition-none ${classText}`} style={{ width: `${available ? Math.min(100, (points / available) * 100) : 0}%` }} />
@@ -475,7 +503,7 @@ export default function TalentCalculator({ catalog, treeIcons, classIcon = null,
           </section>
         )}
 
-        <section aria-label="Share" className="grid gap-3 border-t border-line p-4 md:grid-cols-2">
+        {!readOnly && <section aria-label="Share" className="grid gap-3 border-t border-line p-4 md:grid-cols-2">
           <div className="min-w-0 space-y-1">
             <label className="block text-sm text-fg-2" htmlFor="talent-link">Link to this build, both sets (game build {catalog.build})</label>
             <div className="flex gap-2">
@@ -503,7 +531,7 @@ export default function TalentCalculator({ catalog, treeIcons, classIcon = null,
               )}
             </section>
           )}
-        </section>
+        </section>}
       </Card>
     </div>
   );

@@ -116,6 +116,17 @@ export default function PrivacyPage() {
                 revoked, or at once when you delete it on the Connect page. To delete
                 your account and everything tied to it, email us (below).
               </li>
+              <li id="saved-builds">
+                <strong>Saved builds (optional):</strong> if you save a build in the talent
+                calculator while signed in, we store its share codes, the game build, the name
+                and notes you type, and the character you file it under. A character is only a
+                label you type: a name, a class, and a realm and note if you add them. We don&apos;t
+                check it against the game, and nobody else sees it. Each build has a short link,
+                on unless you turn it off. Anyone you give it to can see the build&apos;s name,
+                notes and talents, but not your character or your name, unless you choose to show
+                your name. Turning the link off or deleting the build stops it at once. You can
+                delete builds and characters on My builds. Deleting your account deletes them all.
+              </li>
               <li>
                 <strong>Uploads:</strong> files you send on the upload page
                 (addon records plus a random install id — no account, no character
@@ -272,6 +283,10 @@ export default function PrivacyPage() {
                 <strong>API keys</strong> are revoked and deleted on the Connect page.
               </li>
               <li>
+                <strong>Saved builds and characters</strong> are deleted, and short links turned
+                off, on My builds.
+              </li>
+              <li>
                 <strong>Uploads</strong> you ask us to remove are deleted, and the
                 next rollup rebuild removes anything derived from them.
               </li>
@@ -285,6 +300,7 @@ export default function PrivacyPage() {
               <li><strong>Battle.net Account ID and BattleTag:</strong> until you ask us to delete your account.</li>
               <li><strong>Account email, name and password hash:</strong> until you ask us to delete your account. Unused confirmation and reset links expire after one hour.</li>
               <li><strong>API key usage counts:</strong> {USAGE_KEPT_DAYS} days. A revoked key and its counts: {REVOKED_KEPT_DAYS} days after revocation, or at once when you delete it.</li>
+              <li><strong>Saved builds and characters:</strong> until you delete them or your account.</li>
               <li><strong>Rate-limit hashes:</strong> a short time, long enough to enforce the limit, then discarded.</li>
               <li><strong>Uploads:</strong> until you ask us to remove them. They are the public database.</li>
               <li><strong>Census rows:</strong> as long as the upload they came in, and removed with it. They hold the character&apos;s hash, never its id, and a one-way hash of the address they came from, never the address. They are only ever published as counts.</li>

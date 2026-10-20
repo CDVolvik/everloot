@@ -4,6 +4,7 @@ import { loadTimeline } from "./changes";
 import { loadCompletion } from "./completion-store";
 import { attributionHeaders } from "./data-guard";
 import { loadEcosystem } from "./ecosystem";
+import { accountMcpTools } from "./my-builds-tool";
 import { getRelease } from "./release";
 import { loadCensus } from "./rollup-compute";
 import { uploadStore } from "./upload-store";
@@ -69,6 +70,8 @@ export function createMount(options: { path: string; bearer: boolean }) {
           rateLimitPerMinute: options.bearer ? 60 : 600,
           allowedOrigins: process.env.ALLOWED_ORIGINS?.split(",").map((s) => s.trim()).filter(Boolean) ?? DEFAULT_ORIGINS,
           ...toolLoaders(),
+          // my_builds, for a player's own key only; the keyless tool list stays the protocol's.
+          extraTools: accountMcpTools,
         });
       } catch (err) {
         console.error("[mcp] knowledge release unavailable", err);

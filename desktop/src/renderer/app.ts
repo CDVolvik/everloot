@@ -573,6 +573,7 @@ function addon(s: AppState): string {
       <div class="stat"><div class="k">Latest release</div><div class="v">${a ? (a.latest ? esc(a.latest.version) : "–") : "…"}</div><div class="s">${a?.error ? `<span class="error">${esc(a.error)}</span>` : a?.latest ? ext(a.latest.url, "release notes") : ""}</div></div>
       <div class="stat"><div class="k">Prices file</div><div class="v">${a?.slots.prices ? '<span class="ok">present</span>' : "none"}</div><div class="s">EverlootPrices</div></div>
       <div class="stat"><div class="k">Answers file</div><div class="v">${a?.slots.answers ? '<span class="ok">present</span>' : "none"}</div><div class="s">EverlootAnswers</div></div>
+      <div class="stat"><div class="k">Builds file</div><div class="v">${a?.slots.builds ? '<span class="ok">present</span>' : "none"}</div><div class="s">EverlootBuilds</div></div>
     </div>
     <section class="panel">
       ${upToDate
@@ -586,14 +587,36 @@ function addon(s: AppState): string {
       </div>
       ${upToDate ? `<p class="muted small">Addon acting up? <button type="button" class="link" id="installAddon" ${s.settings.gameFolder && !busy ? "" : "disabled"}>${busy === "install" ? "Reinstalling…" : a!.installed === a!.latest!.version ? `Reinstall ${esc(a!.installed!)}` : `Install release ${esc(a!.latest!.version)}`}</button> puts a clean copy of the release back${a!.installed === a!.latest!.version ? "" : " in place of this build"}. Only needed when files are broken or missing.</p>` : ""}
     </section>
+    ${savedBuilds(s)}
     <section class="panel"><h2>In game</h2>
       <ul class="plain fg2">
         <li><code>/everloot status</code> shows what the addon is recording; <code>/everloot addons on</code> shares your addon list on the upload page only.</li>
+        <li><code>/everloot plan</code> lists your saved builds after a sync; <code>/everloot plan 2</code> loads the second one.</li>
         <li><code>/ask &lt;question&gt;</code> queues a question; this app answers it after the game writes the file.</li>
         <li>The addon only reads the game's own API and writes its own save file. It never acts for you.</li>
       </ul>
     </section>
   </div>`;
+}
+
+/** The saved-builds sync: the builds saved on everloot.app, written into EverlootBuilds for /everloot plan. */
+function savedBuilds(s: AppState): string {
+  const b = s.builds;
+  const keys = websiteUrl(s.settings.endpoint, "/docs/api/keys#your-keys");
+  const line = !s.account.signedIn
+    ? `<p class="muted small">Sign in under <button type="button" class="link" data-account>Settings &gt; Account</button> with a key that has the "Read my saved builds" permission.</p>`
+    : b.state === "forbidden"
+      ? `<p class="error small" role="status">This key can't read your saved builds. ${ext(keys, "Make a key with \"Read my saved builds\" on everloot.app ↗")}</p>`
+      : b.state === "unavailable" ? `<p class="muted small" role="status">Saved builds aren't available yet.</p>`
+        : b.state === "error" ? `<p class="error small" role="status">${esc(b.message)}</p>`
+          : b.state === "running" ? `<p class="muted small" role="status">Syncing…</p>` : "";
+  const last = b.syncedAt ? `<p class="fg2">Last synced ${esc(when(b.syncedAt))}${b.builds !== null ? ` (${b.builds} build${b.builds === 1 ? "" : "s"})` : ""} · <code>/reload</code> in game to see them</p>` : "";
+  const can = s.account.signedIn && s.settings.gameFolder && b.state !== "running";
+  return `<section class="panel"><h2>Saved builds</h2>
+      <p class="fg2">The talent builds you saved on everloot.app, written into <code>EverlootBuilds</code> so <code>/everloot plan</code> lists them in game. Synced after you sign in and every 15 minutes; nothing goes back.</p>
+      ${last}${line}
+      <div class="row"><button type="button" class="btn" id="buildsSync" ${can ? "" : "disabled"}>${b.state === "running" ? "Syncing…" : "Sync builds"}</button></div>
+    </section>`;
 }
 
 function changes(): string {
@@ -622,7 +645,7 @@ const JOB_ROWS: { job: Job; label: string; what: string }[] = [
 /** The everloot.app account: a free key made after Battle.net sign-in on /docs/api/keys, pasted here. */
 function accountPanel(s: AppState): string {
   const keys = websiteUrl(s.settings.endpoint, "/docs/api/keys#your-keys");
-  const what = "Chat and the in-game /ask send it to everloot.app's public server, which then counts their requests against your account instead of this internet address, with a higher limit. Uploads never carry it.";
+  const what = "Chat and the in-game /ask send it to everloot.app's public server, which then counts their requests against your account instead of this internet address, with a higher limit. A key with the \"Read my saved builds\" permission also brings your saved talent builds into the game. Uploads never carry it.";
   return s.account.signedIn
     ? `<section class="panel" id="account" tabindex="-1"><h2>Account</h2>
       <p class="fg2">Signed in to everloot.app with the key ending <b class="mono">…${esc(s.account.hint ?? "")}</b>.</p>
@@ -887,7 +910,7 @@ async function onClick(ev: MouseEvent): Promise<void> {
   if (el.closest("#updateLater")) { toggleUpdate(false); return; }
   if (el.closest("#updateGet")) { await api.updateDownload(); return; }
   if (el.closest("#updateRestart, #updateRestartPop")) { await api.updateRestart(); return; }
-  if (el.closest("#accountBtn")) {
+  if (el.closest("#accountBtn, [data-account]")) {
     if (page !== "settings") await go("settings");
     const panel = main.querySelector<HTMLElement>("#account");
     panel?.scrollIntoView({ block: "nearest" });
@@ -966,6 +989,7 @@ async function onClick(ev: MouseEvent): Promise<void> {
     await load("addon");
     return;
   }
+  if (t.id === "buildsSync") { state = await api.buildsSync(); await load("addon"); return; }
   if (t.id === "openBackups") { void api.openBackupsFolder(); return; }
   if (t.dataset.removekind) {
     try {
@@ -1082,7 +1106,7 @@ async function onSubmit(ev: SubmitEvent): Promise<void> {
     return;
   }
   if (form.id === "accountForm") {
-    try { state = await api.accountSignIn(String(f.get("key") ?? "")); flash = "Signed in. Chat and /ask now use your account's limits."; }
+    try { state = await api.accountSignIn(String(f.get("key") ?? "")); flash = "Signed in. Chat and /ask now use your account's limits, and your saved builds sync to the game (Addon page)."; }
     catch (e) { flash = `!${msg(e)}`; }
     draftDirty = false;
     render();

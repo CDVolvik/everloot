@@ -1,7 +1,9 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeAll, beforeEach, expect, test, vi } from "vitest";
+import { MCP_TOOL_NAMES } from "@everloot/protocol";
+import { afterEach, beforeAll, beforeEach, describe, expect, test, vi } from "vitest";
+import { MY_BUILDS_REFUSAL } from "@/lib/saved-builds";
 import { openDb } from "../../../../../kb/src/db";
 import { replaceSourceRows } from "../../../../../kb/src/entities";
 import { snapshot } from "../../../../../kb/src/snapshot";
@@ -68,6 +70,69 @@ test("every answer carries the licence and credit line in its headers", async ()
   expect(res.headers.get("x-everloot-licence")).toBe("CC BY-SA 4.0");
   expect(res.headers.get("x-everloot-credit")).toBe("Data from Everloot (https://everloot.app), CC BY-SA 4.0.");
   expect((await res.json()).result.instructions).toContain("Data from Everloot (https://everloot.app), CC BY-SA 4.0.");
+});
+
+describe("my_builds, the account tool", () => {
+  const KEY = `evl_${"a".repeat(64)}`;
+  const rpc = (method: string, params: object, key?: string) => new Request("https://everloot.app/mcp/public", {
+    method: "POST",
+    headers: { "content-type": "application/json", accept: "application/json, text/event-stream", ...(key ? { authorization: `Bearer ${key}` } : {}) },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 2, method, params }),
+  });
+  /** Supabase: every key is live; `scopes` decides read:own, and own_builds_for_key answers with no builds. */
+  function database(scopes: string[]) {
+    const send = vi.fn(async (url: RequestInfo | URL) => {
+      const path = String(url);
+      if (path.includes("/rpc/consume_api_key")) return Response.json([{ allowed: true, retry_after: 0, key_ref: crypto.randomUUID() }]);
+      if (path.includes("/api_keys?")) return Response.json([{ scopes, expires_at: null }]);
+      if (path.includes("/rpc/own_builds_for_key")) {
+        return Response.json([scopes.includes("read:own")
+          ? { refusal: null, retry_after: 0, characters: [], builds: [] }
+          : { refusal: "no_scope", retry_after: 0, characters: null, builds: null }]);
+      }
+      throw new Error(`unexpected ${path}`);
+    });
+    vi.stubGlobal("fetch", send);
+    return send;
+  }
+  const env = (savedBuilds: string) => ({ KB_SNAPSHOT_PATH: release, EVERLOOT_MCP_PUBLIC: "1", EVERLOOT_DATA_GUARD: "1", EVERLOOT_SAVED_BUILDS: savedBuilds,
+    SUPABASE_URL: "https://db.example", SUPABASE_SERVICE_ROLE_KEY: "service" });
+  const listed = async (res: Response) => ((await res.json()).result.tools as { name: string }[]).map((t) => t.name);
+  afterEach(() => vi.unstubAllGlobals());
+
+  test("the keyless list is exactly the protocol's tools, and a call is refused in words", async () => {
+    const send = database(["read:public", "read:own"]);
+    const { POST } = await route(env("1"));
+    expect(await listed(await POST(rpc("tools/list", {})))).toEqual(MCP_TOOL_NAMES);
+    const called = (await (await POST(rpc("tools/call", { name: "my_builds", arguments: {} }))).json()).result;
+    expect(called).toEqual({ content: [{ type: "text", text: MY_BUILDS_REFUSAL }], isError: true });
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  test("a key without read:own sees the public list and gets the refusal", async () => {
+    database(["read:public"]);
+    const { POST } = await route(env("1"));
+    expect(await listed(await POST(rpc("tools/list", {}, KEY)))).toEqual(MCP_TOOL_NAMES);
+    const called = (await (await POST(rpc("tools/call", { name: "my_builds", arguments: {} }, KEY))).json()).result;
+    expect(called.isError).toBe(true);
+    expect(called.content[0].text).toBe(MY_BUILDS_REFUSAL);
+  });
+
+  test("with the switch off even a read:own key sees the public list only", async () => {
+    database(["read:public", "read:own"]);
+    const { POST } = await route(env(""));
+    expect(await listed(await POST(rpc("tools/list", {}, KEY)))).toEqual(MCP_TOOL_NAMES);
+  });
+
+  test("a read:own key gets my_builds after the public tools, and it answers", async () => {
+    const send = database(["read:public", "read:own"]);
+    const { POST } = await route(env("1"));
+    expect(await listed(await POST(rpc("tools/list", {}, KEY)))).toEqual([...MCP_TOOL_NAMES, "my_builds"]);
+    const called = (await (await POST(rpc("tools/call", { name: "my_builds", arguments: {} }, KEY))).json()).result;
+    expect(called.isError).not.toBe(true);
+    expect(called.content[0].text).toContain("No saved builds yet.");
+    expect(send.mock.calls.map((c) => String(c[0]))).toContainEqual(expect.stringContaining("/rpc/own_builds_for_key"));
+  });
 });
 
 test("guard on: a free key spends its own allowance instead of the per-IP one; a refused caller is pointed at it", async () => {

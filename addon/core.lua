@@ -5,7 +5,7 @@
 Everloot = Everloot or {}
 local E = Everloot
 
-E.VERSION = "0.3.4"
+E.VERSION = "0.3.5"
 E.MAX_ROWS_PER_KIND = 2000
 
 -- Same Adler-32 the companion writes into its slot addons; Lua 5.1 arithmetic only.
@@ -232,6 +232,6 @@ SlashCmdList["EVERLOOT"] = function(msg)
       print("Everloot: installed addon list off; all recorded addon rows were deleted from this file. /reload to apply.")
     end
   else
-    print("Everloot commands: /everloot status, /everloot auctions on|off, /everloot scan, /everloot scanprompt on|off, /everloot price [item], /everloot gph [start|pause|stop|reset|show|history], /everloot addons on|off, /everloot completion [on|off], /everloot census [on|off], /everloot players [on|off], /everloot selftest, /everloot talents, /everloot plan <share code>, /everloot raid [code], /ask <question>")
+    print("Everloot commands: /everloot status, /everloot auctions on|off, /everloot scan, /everloot scanprompt on|off, /everloot price [item], /everloot gph [start|pause|stop|reset|show|history], /everloot addons on|off, /everloot completion [on|off], /everloot census [on|off], /everloot players [on|off], /everloot selftest, /everloot talents, /everloot plan [share code|number], /everloot raid [code], /ask <question>")
   end
 end

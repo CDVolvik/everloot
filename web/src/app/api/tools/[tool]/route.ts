@@ -4,7 +4,9 @@ import { z } from "zod";
 import { createToolHandlers, type ToolHandlers } from "../../../../../../kb/src/mcp-server";
 import { admit, attributionHeaders } from "@/lib/data-guard";
 import { toolLoaders } from "@/lib/mcp-mount";
+import { myBuildsRoute } from "@/lib/my-builds-tool";
 import { getRelease } from "@/lib/release";
+import { MY_BUILDS, savedBuildsOn } from "@/lib/saved-builds";
 import { argumentsFromQuery } from "@/lib/tool-query";
 import { recordUsage } from "@/lib/usage-metrics";
 
@@ -27,6 +29,8 @@ let handlers: ToolHandlers | null = null;
 
 export async function GET(req: Request, context: { params: Promise<{ tool: string }> }) {
   const { tool } = await context.params;
+  // The player's own builds: read with their session or key, not the public quota. Unknown while the switch is off.
+  if (tool === MY_BUILDS && savedBuildsOn()) return myBuildsRoute(req);
   if (!(MCP_TOOL_NAMES as string[]).includes(tool)) return refuse(404, `No tool named ${tool}. Tools: ${MCP_TOOL_NAMES.join(", ")}.`);
   const name = tool as McpToolName;
   // The same key surface and per-IP quota as the other per-row JSON endpoints (/api/edges, /api/items).

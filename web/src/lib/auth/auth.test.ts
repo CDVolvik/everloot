@@ -250,6 +250,18 @@ test("a sign-in start keeps its state in a cookie and writes no database row", a
   expect(db.auth_verification).toEqual([]);
 });
 
+// /api/auth/bnet passes only paths that safeReturnTo accepts (lib/auth/return-to.ts); this checks Better Auth takes them.
+test("a sign-in may return to a page on this site with its query (Save in the calculator)", async () => {
+  stubBattlenet(thrall);
+  const db = { users: [], auth_session: [], auth_account: [], auth_verification: [] };
+  const auth = createAuth({ database: memoryAdapter(db), rateLimitStore: mapRateLimitStore().rateLimitStore, env });
+  const start = (callbackURL: string) => auth.handler(new Request("https://everloot.app/api/auth/sign-in/social", {
+    method: "POST", headers: { "content-type": "application/json", origin: "https://everloot.app" },
+    body: JSON.stringify({ provider: "battlenet", callbackURL }),
+  }));
+  expect((await start("/tools/talents/mage?save=1")).status).toBe(200);
+});
+
 test("Battle.net is not offered unless both its client id and secret are set", async () => {
   stubBattlenet(thrall);
   const db = { users: [], auth_session: [], auth_account: [], auth_verification: [] };

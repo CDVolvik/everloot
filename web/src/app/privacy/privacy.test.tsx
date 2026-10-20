@@ -49,6 +49,23 @@ test("the census paragraph says how it starts and leaves, what is kept, what is 
   ]) expect(text).toContain(claim);
 });
 
+test("saved builds: what is kept, that characters are typed labels, that a shared link is public, and deletion", () => {
+  for (const claim of [
+    "its share codes, the game build, the name and notes you type, and the character you file it under",
+    "A character is only a label you type",
+    "We don't check it against the game, and nobody else sees it",
+    "Anyone you give it to can see the build's name, notes and talents",
+    "Turning the link off or deleting the build stops it at once",
+    "Deleting your account deletes them all",
+    "Saved builds and characters: until you delete them or your account.",
+  ]) expect(text).toContain(claim);
+  for (const claim of [
+    "Character labels are typed, not checked.",
+    "A shared link is public to anyone who has it.",
+    "deletes every saved build and label with it",
+  ]) expect(policy).toContain(claim);
+});
+
 test("the retention list says how long census rows are kept", () => {
   expect(text).toContain("Census rows: as long as the upload they came in, and removed with it.");
 });

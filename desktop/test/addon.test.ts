@@ -24,10 +24,13 @@ test("the installed version is read from the TOC, and the slot addons are report
   mkdirSync(join(addons, "Everloot"), { recursive: true });
   writeFileSync(join(addons, "Everloot", "Everloot.toc"), "## Interface: 16001\r\n## Version: 0.3.3\r\n");
   expect(installedAddonVersion(addons)).toBe("0.3.3");
-  expect(slotAddons(addons)).toEqual({ prices: false, answers: false });
+  expect(slotAddons(addons)).toEqual({ prices: false, answers: false, builds: false });
   mkdirSync(join(addons, "EverlootPrices"));
   writeFileSync(join(addons, "EverlootPrices", "EverlootPrices.toc"), "x");
   expect(slotAddons(addons).prices).toBe(true);
+  mkdirSync(join(addons, "EverlootBuilds"));
+  writeFileSync(join(addons, "EverlootBuilds", "EverlootBuilds.toc"), "x");
+  expect(slotAddons(addons)).toEqual({ prices: true, answers: false, builds: true });
 });
 
 test("only regular files under Everloot/ are written; traversal, absolute and backslash names are ignored", () => {

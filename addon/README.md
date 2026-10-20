@@ -7,7 +7,7 @@ companion, and adds auction prices to item tooltips. It uses only the game's add
 plays the character. Records match the upload contract (`packages/protocol`, see its `schema/records/`) field for
 field.
 
-**Status:** 0.3.4 beta. The automated contract tests pass; the in-client checks in
+**Status:** 0.3.5 beta. The automated contract tests pass; the in-client checks in
 `docs/2026-10-08-beta-client-checklist.md`, `docs/2026-10-18-addon-0.3.2-beta-checklist.md` and
 `docs/2026-10-19-addon-0.3.3-beta-checklist.md` are still open, and the full scan
 (`docs/design/specs/2026-10-16-forever-market-design.md`) has not run in the Forever client.
@@ -174,6 +174,9 @@ whether it is on and how many characters it holds; `/everloot players off` stops
   it (it also has a paste box), `plan hide` closes it, `plan clear` forgets it. When the talent window is
   open it also puts a green overlay on the next talent and red ones on mismatches. It never spends a
   point, clicks, imports a loadout or acts for you. The plan is kept in your SavedVariables file.
+- **Saved builds.** When the Desktop App has synced your everloot.app builds into the `EverlootBuilds`
+  slot addon, `/everloot plan` also lists them in chat, this character's first (the label's name, and its realm when it has one), then the rest of your class,
+  and `/everloot plan <number>` loads one as if you pasted its code (`/everloot plan <number> 2` loads its second talent set, marked `[2 sets]` in the list). Nothing is saved or uploaded for it.
 
 ### Share code, version 1
 

@@ -1,3 +1,4 @@
+import { MY_BUILDS, MY_BUILDS_LINE, SLUG_PATTERN } from "../saved-builds";
 import type { ChatProviderPreset } from "./providers";
 
 /**
@@ -21,6 +22,13 @@ export const CHAT_TOOLS = [
   "profession_path", "recipe_thresholds", "talent_tree",
   "market_value", "auction_history", "population", "recent_changes", "world_map_near",
 ] as const;
+
+/** The visitor's own saved builds, offered only when they are signed in and saved builds are on. */
+export const ACCOUNT_TOOL: ToolDef = {
+  name: MY_BUILDS,
+  description: MY_BUILDS_LINE,
+  inputSchema: { type: "object", properties: { slug: { type: "string", pattern: SLUG_PATTERN.source, description: "A build's slug from the list, for that build's talents." } } },
+};
 
 export const NO_SOURCED_ANSWER = "No sourced answer found in Everloot's data for that.";
 /** The sentence an answer starts with when Everloot's tools had nothing and the model answered on its own. */
@@ -47,9 +55,19 @@ export function sourcesIn(text: string): string[] {
   return out;
 }
 
-/** The chat's tools with their input schemas, from the site's published schema files. */
-export async function loadTools(send: typeof fetch = fetch): Promise<ToolDef[]> {
-  return Promise.all(CHAT_TOOLS.map(async (name) => {
+/** Whether the visitor is signed in. Any failure counts as signed out. */
+export async function signedIn(send: typeof fetch = fetch): Promise<boolean> {
+  try {
+    const res = await send("/api/auth/me", { cache: "no-store" });
+    return res.ok && Boolean(((await res.json()) as { user?: unknown }).user);
+  } catch {
+    return false;
+  }
+}
+
+/** The chat's tools with their input schemas, from the site's published schema files; `account` adds my_builds. */
+export async function loadTools(send: typeof fetch = fetch, account = false): Promise<ToolDef[]> {
+  const tools = await Promise.all(CHAT_TOOLS.map(async (name) => {
     const res = await send(`/schema/mcp/${name}.json`);
     if (!res.ok) throw new Error(`Could not load the ${name} tool (${res.status})`);
     const doc = (await res.json()) as { title?: string; description?: string; inputSchema?: Record<string, unknown> };
@@ -59,11 +77,13 @@ export async function loadTools(send: typeof fetch = fetch): Promise<ToolDef[]> 
     delete inputSchema.$id;
     return { name, description: [doc.title, doc.description].filter(Boolean).join(". "), inputSchema };
   }));
+  return account ? [...tools, ACCOUNT_TOOL] : tools;
 }
 
 /** One tool call through this site's HTTP API. A failure comes back as text for the model to read. */
 export async function callTool(name: string, input: Record<string, unknown>, send: typeof fetch = fetch): Promise<string> {
-  if (!(CHAT_TOOLS as readonly string[]).includes(name)) return `Tool error: there is no tool named ${name}.`;
+  // my_builds is checked by the site: without a session it answers with the refusal.
+  if (!(CHAT_TOOLS as readonly string[]).includes(name) && name !== MY_BUILDS) return `Tool error: there is no tool named ${name}.`;
   const query = new URLSearchParams();
   for (const [k, v] of Object.entries(input)) if (v !== undefined && v !== null && typeof v !== "object") query.set(k, String(v));
   try {
