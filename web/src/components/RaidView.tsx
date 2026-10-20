@@ -30,16 +30,16 @@ export default async function RaidView({ initialCode }: { initialCode?: string }
   return (
     <Container>
       <JsonLd data={webApplicationJsonLd({ name: TITLE, path: "/tools/raid", description })} />
-      {/* One credit line for the page's game art: the banner's caption when there is a banner, else under the planner. */}
+      {/* One full credit line for the page's game art, under the planner; the banner carries only its one-line caption. */}
       <PageHeader
         trail={trailFor("/tools/raid")!}
         title={TITLE}
         lede={description}
-        banner={banner && assets ? { image: <BannerArt art={banner} eager />, credit: <GameCredit version={assets.version} label={assets.label} what={credit} /> } : undefined}
+        banner={banner && assets ? { image: <BannerArt art={banner} eager /> } : undefined}
       />
 
       <RaidBuilder art={art} initialCode={initialCode} />
-      {assets && art && !banner && <div className="mt-6"><GameCredit version={assets.version} label={assets.label} what={credit} /></div>}
+      {assets && (art || banner) && <div className="mt-6"><GameCredit version={assets.version} label={assets.label} what={credit} /></div>}
       <AdSlot slot="belowTool" />
 
       {/* The explanations stay on the page for readers and search engines, closed until asked for. */}
