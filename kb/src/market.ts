@@ -353,6 +353,21 @@ export function itemMarket(state: MarketState, realm: string, itemId: number, no
   return { value: valueOf(itemId, points, now), points };
 }
 
+/**
+ * Listings (auctions) of an item on each public day still open: the median of the reporters' counts, as the
+ * prices are. A closed day keeps no count, so a day older than the open window has none. A count only: no
+ * listing, seller or buyer is kept.
+ */
+export function itemListings(state: MarketState, realm: string, itemId: number, now: Date, house?: AuctionHouse | null): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [day, installs] of Object.entries(bucketOf(state, realm, house)?.items[String(itemId)]?.open ?? {})) {
+    if (!inHistory(dayNumber(day)!, now)) continue;
+    const groups = reporterGroups(installs);
+    if (groups.length >= AUCTION_AGREEMENT) out[day] = median(groups.map((g) => median(g.map((s) => s[3]))));
+  }
+  return out;
+}
+
 /** Every item with a public value on the realm (or on one of its houses), most units first. */
 export function realmMarket(state: MarketState, realm: string, now: Date, house?: AuctionHouse | null): MarketValue[] {
   const items = bucketOf(state, realm, house)?.items ?? {};

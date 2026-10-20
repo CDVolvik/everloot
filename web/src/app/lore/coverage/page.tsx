@@ -17,7 +17,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     ...pageMetadata({
       title: available ? "Lore archive coverage" : "Lore archive unavailable",
-      description: "What the Everloot lore archive covers: pages by type, facet, indexability and template damage, with the release date. The archive is the Warcraft Wiki as of November 2023, not WoW: Forever data.",
+      description: "What the Everloot lore archive covers: pages by type, facet, length and template damage, with the release date. The archive is the Warcraft Wiki as of November 2023, not WoW: Forever data.",
       path: "/lore/coverage",
     }),
     robots: { index: available, follow: true },
@@ -71,7 +71,7 @@ export default async function CoveragePage() {
               label="Pages in the archive"
               items={[
                 { label: "Wiki pages", value: num(wikiPages), numeric: true },
-                { label: "Indexable pages", value: num(summary.indexable), numeric: true },
+                { label: "Full pages", value: num(summary.indexable), numeric: true },
                 { label: "Damaged pages", value: summary.damaged === null ? "not measured" : num(summary.damaged), numeric: summary.damaged !== null },
                 { label: "Release", value: summary.createdAt.slice(0, 10), numeric: true },
               ]}

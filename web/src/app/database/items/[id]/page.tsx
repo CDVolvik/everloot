@@ -21,6 +21,9 @@ import { loreForEntity } from "@/lib/lore";
 import EntityLink from "@/components/EntityLink";
 import LoreSection from "@/components/LoreSection";
 import { CategoryPage, categoryMetadata } from "../category-page";
+import { itemIndexable } from "@/lib/indexable";
+import { entityTitle, itemDescription } from "@/lib/entity-meta";
+import { MarketBox, loadMarketBox } from "@/app/tools/auctions/MarketBox";
 import { EmptyTab, EntityHeader, EntityIcon, EntityTop, FREQUENCY, known, LINK, percent, Unreachable } from "../../entity";
 
 const PROFESSIONS = { href: "/tools/professions", label: "Professions" };
@@ -30,20 +33,37 @@ type Props = { params: Promise<{ id: string }>; searchParams?: Promise<Record<st
 
 export const dynamic = "force-dynamic";
 
+/**
+ * An id neither the game files nor any upload knows: no row in the client layer, no report about it (even one
+ * short of the 3 installs), no relation. It is a 404, not an empty page. While upload storage is out of reach
+ * nothing can be ruled out.
+ */
+function unknownItem(itemId: number, facts: Awaited<ReturnType<typeof loadShownNames>>["facts"], relations: readonly Edge[], seen: { seen: Set<number>; unreachable: boolean }): boolean {
+  if (facts.unreachable || seen.unreachable || categoryOf(CLIENT_TAXONOMY, itemId) !== null || relations.length > 0 || seen.seen.has(itemId)) return false;
+  return !facts.names.some((r) => r.itemId === itemId) && !facts.rates.some((r) => r.itemId === itemId);
+}
+
 export async function generateMetadata(props: Props): Promise<Metadata> {
   const params = await props.params;
   if (/^[a-z][a-z0-9-]*$/.test(params.id)) return categoryMetadata(params.id, undefined, (await props.searchParams) ?? {});
   if (!/^[1-9]\d*$/.test(params.id)) return { robots: { index: false, follow: true } };
-  const { facts, agreed, matched } = await loadShownNames();
-  const page = itemPage(Number(params.id), facts);
-  const name = shownItemName(Number(params.id), agreed, matched?.names);
-  const description = name?.source === "wiki"
-    ? `${name.name}, a WoW: Forever item. The name is read from the game files of build ${CLIENT_LAYER.build.version}, where the Warcraft Wiki gives the same one; not yet confirmed in play.`
-    : "A WoW: Forever item page from corroborated drops, names, and map pins.";
+  const itemId = Number(params.id);
+  const [{ facts, agreed, matched }, edges, itemSeen] = await Promise.all([loadShownNames(), loadEdges(), loadItemSeen()]);
+  const page = itemPage(itemId, facts);
+  const all = edgesFrom([...edges.observed, ...edges.client], "item", itemId);
+  if (unknownItem(itemId, facts, all, itemSeen)) notFound();
+  const name = shownItemName(itemId, agreed, matched?.names);
+  const category = categoryOf(CLIENT_TAXONOMY, itemId);
+  const targets = (r: Rel) => new Set(all.filter((e) => e.rel === r).map((e) => e.toId)).size;
+  const description = itemDescription({
+    name: name?.name ?? `Item ${itemId}`, id: itemId,
+    quality: category?.quality?.name, classLabel: category?.class?.label, subclass: category?.subclass?.name,
+    dropSources: page.drops.length, vendors: targets("sold_by"), createdBy: targets("created_by"), usedIn: targets("reagent_for"), questRewards: targets("reward_from"),
+  });
   return {
-    ...pageMetadata({ title: name?.name ?? `Item ${params.id}`, description, path: `/database/items/${params.id}` }),
+    ...pageMetadata({ title: entityTitle(name?.name ?? `Item ${itemId}`, "item"), description, path: `/database/items/${itemId}` }),
     // Indexed once players have reported the item, or once its name is shown from the game files and the wiki.
-    robots: { index: (!facts.unreachable && Boolean(page.name || page.drops.length || page.pins.length)) || name?.source === "wiki", follow: true },
+    robots: { index: itemIndexable(page, facts.unreachable, name), follow: true },
   };
 }
 
@@ -55,8 +75,9 @@ export default async function ItemPage(props: Props) {
   if (/^[a-z][a-z0-9-]*$/.test(params.id)) return CategoryPage({ classSlug: params.id, search: (await props.searchParams) ?? {} });
   if (!/^[1-9]\d*$/.test(params.id)) notFound();
   const itemId = Number(params.id);
-  const [{ facts, agreed, matched, showsTip }, edges, itemSeen] = await Promise.all([loadShownNames(), loadEdges(), loadItemSeen()]);
+  const [{ facts, agreed, matched, showsTip }, edges, itemSeen, auctions] = await Promise.all([loadShownNames(), loadEdges(), loadItemSeen(), loadMarketBox(itemId)]);
   const page = itemPage(itemId, facts);
+  if (unknownItem(itemId, facts, edgesFrom([...edges.observed, ...edges.client], "item", itemId), itemSeen)) notFound();
   // Named by players (3 installs agree); the badge and the facts card say so.
   const confirmed = !facts.unreachable && page.name !== null;
   // The name players agree on; else the game file name where the Warcraft Wiki gives the same one; else "Item N".
@@ -208,6 +229,7 @@ export default async function ItemPage(props: Props) {
           }
           facts={<Facts layout="list" label={`${title}: quick facts`} items={quickFacts} />}
         />
+        <MarketBox itemId={itemId} rows={auctions} />
         <Tabs label={`${title}: relations`} tabs={tabs} />
         <div className="mt-6 space-y-6 empty:hidden">
           <LoreSection match={lore} />

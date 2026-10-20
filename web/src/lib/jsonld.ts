@@ -24,6 +24,10 @@ export const OPERATOR = "R21 Media Group, LLC";
 export const DISCORD_INVITE = "https://discord.gg/9CKsbHTRu3";
 /** The footer shows both sentences, and the Organization description repeats them. */
 export const SITE_BLURB = "The WoW: Forever database, built from player data.";
+/** Who runs Everloot, in the words /about uses; llms.txt and llms-full.txt say the same. */
+export const OPERATOR_LINE = `Everloot is run by ${OPERATOR}.`;
+/** The square logo the MCP listings use too (web/public/icon-512.png). */
+export const LOGO = { path: "/icon-512.png", size: 512 } as const;
 export const NON_AFFILIATION = "Not affiliated with or endorsed by Blizzard Entertainment.";
 /** The trademark sentence the footer and the terms carry, in the form the other WoW fan sites use. */
 export const TRADEMARK_LINE = "World of Warcraft, Warcraft and Blizzard Entertainment are trademarks or registered trademarks of Blizzard Entertainment, Inc. in the U.S. and/or other countries.";
@@ -39,8 +43,11 @@ export function organizationJsonLd(): JsonLd {
     "@id": ORG_ID,
     name: SITE_NAME,
     url: SITE_URL,
+    logo: { "@type": "ImageObject", url: absoluteUrl(LOGO.path), width: LOGO.size, height: LOGO.size },
     email: CONTACT_EMAIL,
     description: `${SITE_BLURB} ${NON_AFFILIATION}`,
+    // The company the footer's copyright line and /about name.
+    parentOrganization: { "@type": "Organization", name: OPERATOR },
     sameAs: [REPO_URL, DISCORD_INVITE],
     publishingPrinciples: `${SITE_URL}/methodology`,
   };
@@ -91,7 +98,12 @@ export function webApplicationJsonLd(app: { name: string; path: string; descript
   };
 }
 
-export function softwareApplicationJsonLd(app: { name: string; description: string; version: string; downloadPath: string; licenceUrl: string; path: string }): JsonLd {
+/**
+ * One of Everloot's own programs (the addon, the Desktop App): its version and download as the page offers
+ * them, the systems the page names, and free, as the page says. AGPL-3.0 is Everloot's own code, so its
+ * licence may be stated; no rating.
+ */
+export function softwareApplicationJsonLd(app: { name: string; description: string; version: string; downloadPath: string; licenceUrl: string; path: string; operatingSystem?: string }): JsonLd {
   return {
     "@context": CONTEXT,
     "@type": "SoftwareApplication",
@@ -99,10 +111,35 @@ export function softwareApplicationJsonLd(app: { name: string; description: stri
     url: absoluteUrl(app.path),
     description: app.description,
     applicationCategory: "GameApplication",
+    ...(app.operatingSystem ? { operatingSystem: app.operatingSystem } : {}),
     softwareVersion: app.version,
     downloadUrl: absoluteUrl(app.downloadPath),
     license: app.licenceUrl,
+    isAccessibleForFree: true,
+    offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
     publisher,
+  };
+}
+
+/**
+ * The /wow-forever page and the game it is about, with only what the page states: the full name and the short
+ * ones it explains, Blizzard as the company releasing it, and the Blizzard post it quotes.
+ */
+export function videoGamePageJsonLd(page: { name: string; description: string; path: string; source: { title: string; url: string } }): JsonLd {
+  return {
+    "@context": CONTEXT,
+    "@type": "WebPage",
+    name: page.name,
+    description: page.description,
+    url: absoluteUrl(page.path),
+    isPartOf: { "@id": WEBSITE_ID },
+    about: {
+      "@type": "VideoGame",
+      name: "World of Warcraft: Forever",
+      alternateName: ["WoW: Forever", "WoW Forever"],
+      publisher: { "@type": "Organization", name: "Blizzard Entertainment" },
+      subjectOf: { "@type": "Article", headline: page.source.title, url: page.source.url },
+    },
   };
 }
 

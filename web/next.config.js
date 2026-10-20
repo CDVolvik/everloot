@@ -48,11 +48,8 @@ const nextConfig = {
     "/lore/[slug]": ["./.release/*.sqlite", "./.release/*.manifest.json"],
     "/lore": ["./.release/*.sqlite", "./.release/*.manifest.json"],
     "/search": ["./.release/*.sqlite", "./.release/*.manifest.json"],
-    "/lore-sitemap.xml": ["./.release/*.sqlite", "./.release/*.manifest.json"],
-    "/lore-sitemap/[n]": ["./.release/*.sqlite", "./.release/*.manifest.json"],
     "/lore/browse/[type]": ["./.release/*.sqlite", "./.release/*.manifest.json"],
     "/lore/coverage": ["./.release/*.sqlite", "./.release/*.manifest.json"],
-    "/lore-sitemap/pages.xml": ["./.release/*.sqlite", "./.release/*.manifest.json"],
     // The build-link previews draw their card on each request, so they read the Geist fonts at run time.
     "/tools/raid/card": ["./node_modules/geist/dist/fonts/geist-sans/Geist-{Bold,Regular}.ttf"],
     "/tools/talents/\\[class\\]/card": ["./node_modules/geist/dist/fonts/geist-sans/Geist-{Bold,Regular}.ttf"],
@@ -68,8 +65,13 @@ const nextConfig = {
   // redirect out of the internal route.
   // The gold-per-hour calculator moved into the addon (2026-10-20): its old address answers 301 with the
   // download page's section about it.
+  // www.everloot.app answers 301 with the same path and query on the apex, so one host is indexed. Next
+  // passes the query string on by itself. The host is matched exactly; preview and local hosts never match.
+  // The curated launch-date note moved to /wow-forever, which quotes Blizzard's post with its source.
   async redirects() {
     return [
+      { source: "/:path*", has: [{ type: "host", value: "www.everloot.app" }], destination: "https://everloot.app/:path*", statusCode: 301 },
+      { source: "/lore/forever-launch-date", destination: "/wow-forever", permanent: true },
       { source: "/lore/browse/:type(npcs|items|quests|zones|spells)", destination: "/lore/:type", permanent: true },
       { source: "/tools/gold-per-hour", destination: "/addon#gold-per-hour", statusCode: 301 },
       // The developer page became the docs; docs/page.tsx sends its old #anchors on to the matching page.
