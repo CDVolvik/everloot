@@ -371,4 +371,74 @@ assert(string.find(Everloot:Status(), 'plan: disabled', 1, true), 'no trait API 
 SlashCmdList.EVERLOOT('plan {CODE}')
 """)
 
-print("Lua 5.1 plan: EL1 share code (independent base64url check), next point and mismatches, panel, display only")
+# --- Saved builds from the Desktop App's EverlootBuilds slot addon ---
+# The golden file is rendered by the Desktop App (desktop/test/builds.test.ts writes it with
+# EVERLOOT_WRITE_FIXTURES=1). Typed text must come back from Lua exactly as the player typed it.
+assert "EverlootBuilds" in toc.split("## OptionalDeps:")[1].splitlines()[0], "the builds slot addon must load before the main addon"
+BUILDS = (Path(__file__).parent / "fixtures" / "EverlootBuilds.lua").read_text(encoding="utf-8")
+TRICKY = 'Fire "burst" |T \\ v2\n]] --[[ end\r\x01'
+FROST = "EL1-mage-1482-1.59.0.69000-OTAwMDE6MQ"
+check = LuaRuntime()
+before = set(check.globals().keys())
+check.execute(BUILDS)
+assert set(check.globals().keys()) - before == {"EverlootBuildsData"}, "the file sets one global and nothing else"
+data = check.globals().EverlootBuildsData
+assert data.version == 1 and data.syncedAt == "2026-10-20T12:00:00.000Z"
+assert data.builds[2].name == TRICKY, repr(data.builds[2].name)
+assert data.builds[5].character == "Ærîn" and data.builds[4].character is None and data.builds[2].code2.startswith("EL1-")
+
+me = "UnitName = function() return 'Aerin', nil end\n" + BUILDS
+lua = fresh(me)
+lua.execute(f"""
+local list = Everloot.Plan.SavedBuilds()
+local names = {{}}
+for i, b in ipairs(list) do names[i] = b.name end
+assert(#list == 4, 'four mage builds: ' .. table.concat(names, ' / '))
+assert(list[1].active and list[1].character == 'aERIN', 'this character first (any case), the active one on top')
+assert(names[2] == 'Arcane leveling' and names[3] == 'Frost AoE' and names[4] == "Alt's build", 'then this character, then the class: ' .. table.concat(names, ' / '))
+
+SlashCmdList.EVERLOOT('plan')
+local out = table.concat(printed, '\\n')
+assert(string.find(out, 'your saved builds (/everloot plan <number> loads one)', 1, true), out)
+assert(string.find(out, '  1. Fire "burst" ||T \\\\ v2 ]] --[[ end   - aERIN (active)', 1, true), 'one line, | escaped: ' .. out)
+assert(string.find(out, '  4. Alt\\'s build - Ærîn', 1, true), out)
+assert(not string.find(out, 'Healer', 1, true), 'another class is not listed')
+assert(panel().shown and string.find(panel().body.text, '/everloot plan lists your saved builds', 1, true), 'the panel still opens')
+
+SlashCmdList.EVERLOOT('plan 3')
+assert(EverlootDB.plan == '{FROST}', 'plan 3 loads the third build like a pasted code: ' .. tostring(EverlootDB.plan))
+assert(string.find(panel().body.text, 'MAGE plan, made on build 1.59.0.69000', 1, true), panel().body.text)
+assert(string.find(table.concat(printed, '\\n'), 'loading saved build 3, Frost AoE.', 1, true))
+printed = {{}}
+SlashCmdList.EVERLOOT('plan 9')
+assert(EverlootDB.plan == '{FROST}' and string.find(printed[1], 'there is no saved build 9', 1, true), printed[1])
+SlashCmdList.EVERLOOT('plan 1')
+assert(EverlootDB.plan == '{CODE}', 'the first set of the active build')
+local keys = {{}}
+for k in pairs(EverlootDB) do keys[#keys + 1] = k end
+assert(EverlootDB.builds == nil and EverlootBuildsData.version == 1, 'nothing of the builds is saved: ' .. table.concat(keys, ','))
+""")
+
+# Another class sees its own builds only; the character name still puts them first.
+lua = fresh("CLASS = 'PRIEST'\n" + me)
+lua.execute("""
+local list = Everloot.Plan.SavedBuilds()
+assert(#list == 1 and list[1].name == 'Healer', 'only the priest build')
+SlashCmdList.EVERLOOT('plan 1')
+assert(EverlootDB.plan == 'EL1-priest-0-1.60.1.70450-MToxLDI6MQ')
+""")
+
+# Without the slot addon: today's panel, one line about the Desktop App, and a number explains itself.
+lua = fresh("UnitName = function() return 'Aerin' end")
+lua.execute("""
+assert(Everloot.Plan.SavedBuilds() == nil)
+printed = {}
+SlashCmdList.EVERLOOT('plan')
+assert(string.find(panel().body.text, 'No plan loaded', 1, true) and string.find(panel().body.text, 'after a Desktop App sync and /reload', 1, true), panel().body.text)
+assert(#printed == 0, 'no list without the data')
+SlashCmdList.EVERLOOT('plan 1')
+assert(string.find(table.concat(printed, '\\n'), 'no saved builds here yet. Sync them with the Everloot Desktop App', 1, true))
+assert(EverlootDB.plan == nil)
+""")
+
+print("Lua 5.1 plan: EL1 share code (independent base64url check), next point and mismatches, panel, display only, saved builds list")

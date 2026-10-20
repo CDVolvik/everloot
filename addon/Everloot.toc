@@ -5,7 +5,7 @@
 ## Version: 0.3.4
 ## X-License: AGPL-3.0
 ## SavedVariables: EverlootDB
-## OptionalDeps: EverlootAnswers, EverlootPrices
+## OptionalDeps: EverlootAnswers, EverlootPrices, EverlootBuilds
 ## IconTexture: Interface\Icons\INV_Misc_Coin_02
 
 core.lua
