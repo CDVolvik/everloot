@@ -53,6 +53,18 @@ test("a name of exactly the asked words beats one that only matches after droppi
   expect(search(db, "Who is Thunderfury?", 1)[0].name).toBe("Thunderfury");
 });
 
+test("at the same rank, Everloot's curated entry comes before a copied wiki page", async () => {
+  const db = openDb(":memory:");
+  // The wiki copy goes in first, so it has the lower id and wins every tie the SQL order breaks.
+  await replaceSourceRows(db, "warcraft-wiki-2023", ["lore_page"], [row("10", "Forever launch date", "Forever launch date, Forever launch date, as the wiki had it.")]);
+  await replaceSourceRows(db, "curated", ["lore_page"], [row("forever-launch-date", "Forever launch date", "Launches November 4.")]);
+  const hits = search(db, "Forever launch date");
+  expect(hits.map((h) => h.sourceId)).toEqual(["curated", "warcraft-wiki-2023"]);
+  // An exact name still beats a curated entry that only shares words.
+  await replaceSourceRows(db, "curated", ["lore_page"], [row("forever-notes", "Notes on the Forever launch date", "Forever launch date.")]);
+  expect(search(db, "Forever launch date")[0].sourceId).toBe("warcraft-wiki-2023");
+});
+
 test("hits carry gameVersion and retrievedAt", async () => {
   const hits = search(await seed(), "Thunderfury");
   expect(hits[0]).toMatchObject({ gameVersion: "lore", retrievedAt: "2023-11-13" });

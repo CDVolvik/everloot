@@ -1,14 +1,14 @@
 import { SITE, type ChangeFilter, type TalentClass } from "@everloot/protocol";
 import { previewPath } from "../../web/src/lib/talents/summary";
 import type { DB } from "./db.js";
-import { INDEXABLE_MIN_BODY, loreSlug } from "./lore-slug.js";
+import { INDEXABLE_MIN_BODY, lorePath } from "./lore-slug.js";
 import { SOURCES } from "./sources.js";
 
 /**
  * The everloot.app page that shows each kind of tool answer, so an assistant answering from Everloot can
- * send the reader to it. Every function gives an absolute URL, or undefined when the site has no page for
- * the answer or the page would be empty or not indexed. The database pages' rules match their own robots
- * metadata (web/src/app/database/<kind>/[id]/page.tsx).
+ * send the reader to it and cite it. Every function gives an absolute URL, or undefined when the site has no
+ * page for the answer or the page would be empty. The database pages' tests are their own robots rule
+ * (web/src/lib/indexable.ts); an item page also counts once the game files list the item.
  */
 
 const abs = (path: string) => `${SITE}${path}`;
@@ -34,28 +34,46 @@ export function withMore(text: string, url: string | undefined, credit?: string)
 export const ITEMS_URL = abs("/database/items");
 export const ECOSYSTEM_URL = abs("/addons/ecosystem");
 
-export function itemPageUrl(page: { itemId: number; name: string | null; drops: readonly unknown[]; pins: readonly unknown[] }): string | undefined {
-  return page.name || page.drops.length || page.pins.length ? abs(`/database/items/${page.itemId}`) : undefined;
+// Whether each database page has a public fact from players on it. The pages' robots rule, the database
+// sitemap and the links below all read these, so a page is linked, listed and indexed by one test.
+
+export const itemHasFacts = (page: { name: string | null; drops: readonly unknown[]; pins: readonly unknown[] }): boolean =>
+  Boolean(page.name || page.drops.length || page.pins.length);
+
+export const npcHasFacts = (page: { name: string | null; pins: readonly unknown[] }): boolean => Boolean(page.name || page.pins.length);
+
+export const questHasFacts = (page: { title: string | null; level: number | null; giverNpcId: number | null; turnInNpcId: number | null; rewards: readonly unknown[] }): boolean =>
+  Boolean(page.title || page.level !== null || page.giverNpcId !== null || page.turnInNpcId !== null || page.rewards.length);
+
+export const vendorHasFacts = (page: { offers: readonly unknown[] }): boolean => page.offers.length > 0;
+
+export const objectHasFacts = (page: { drops: readonly unknown[]; zero: unknown }): boolean => Boolean(page.drops.length || page.zero);
+
+/**
+ * An item's page: one with a public fact from players, or (`inGameFiles`) one for an item the game files
+ * list, whose page shows its class, type, slot and quality from them before anyone has reported it.
+ */
+export function itemPageUrl(page: { itemId: number; name: string | null; drops: readonly unknown[]; pins: readonly unknown[] }, inGameFiles = false): string | undefined {
+  return itemHasFacts(page) || inGameFiles ? abs(`/database/items/${page.itemId}`) : undefined;
 }
 
 /** An NPC's page, for an NPC already known to have an agreed name or pin. */
 export const npcUrl = (npcId: number): string => abs(`/database/npcs/${npcId}`);
 
 export function npcPageUrl(page: { npcId: number; name: string | null; pins: readonly unknown[] }): string | undefined {
-  return page.name || page.pins.length ? npcUrl(page.npcId) : undefined;
+  return npcHasFacts(page) ? npcUrl(page.npcId) : undefined;
 }
 
 export function questPageUrl(page: { questId: number; title: string | null; level: number | null; giverNpcId: number | null; turnInNpcId: number | null; rewards: readonly unknown[] }): string | undefined {
-  const shown = page.title || page.level !== null || page.giverNpcId !== null || page.turnInNpcId !== null || page.rewards.length;
-  return shown ? abs(`/database/quests/${page.questId}`) : undefined;
+  return questHasFacts(page) ? abs(`/database/quests/${page.questId}`) : undefined;
 }
 
 export function vendorPageUrl(page: { vendorNpcId: number; offers: readonly unknown[] }): string | undefined {
-  return page.offers.length ? abs(`/database/vendors/${page.vendorNpcId}`) : undefined;
+  return vendorHasFacts(page) ? abs(`/database/vendors/${page.vendorNpcId}`) : undefined;
 }
 
 export function objectPageUrl(page: { objectId: number; drops: readonly unknown[]; zero: unknown }): string | undefined {
-  return page.drops.length || page.zero ? abs(`/database/objects/${page.objectId}`) : undefined;
+  return objectHasFacts(page) ? abs(`/database/objects/${page.objectId}`) : undefined;
 }
 
 /**
@@ -110,8 +128,8 @@ export function talentBuildUrl(classSlug: string, code: string): string {
 const PUBLISHABLE = Object.values(SOURCES).filter((s) => s.publishable).map((s) => s.id);
 
 /**
- * The lore page of each record that has one the site indexes, by record id: a lore page from a
- * publishable source with enough text, the rule web/src/lib/lore.ts applies. Other records get none.
+ * The lore page of each record that has a full one on the site, by record id: a lore page from a
+ * publishable source with enough text, not a redirect stub. Other records get none.
  */
 export function loreUrls(db: DB, rows: readonly { id: number; extId: string; name: string; kind: string }[]): Map<number, string> {
   const lore = rows.filter((r) => r.kind === "lore_page");
@@ -120,5 +138,5 @@ export function loreUrls(db: DB, rows: readonly { id: number; extId: string; nam
     `SELECT id FROM entities WHERE id IN (${lore.map(() => "?").join(",")}) AND kind = 'lore_page'
        AND source_id IN (${PUBLISHABLE.map(() => "?").join(",")}) AND length(body) >= ? AND instr(body, 'REDIRECT') = 0`,
   ).all(...lore.map((r) => r.id), ...PUBLISHABLE, INDEXABLE_MIN_BODY) as { id: number }[]).map((r) => r.id));
-  return new Map(lore.filter((r) => ids.has(r.id)).map((r) => [r.id, abs(`/lore/${loreSlug(r)}`)]));
+  return new Map(lore.filter((r) => ids.has(r.id)).map((r) => [r.id, abs(lorePath(r))]));
 }

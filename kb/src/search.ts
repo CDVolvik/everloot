@@ -166,9 +166,11 @@ export function search(db: DB, query: string, limit = 10, opts: SearchOptions = 
   const seen = new Set(pool.map((h) => h.id));
   const merged = [...exact.filter((h) => !seen.has(h.id) && allTerms(h.name) === wanted), ...pool];
   const rank = (hit: SearchHit) => (allTerms(hit.name) === wanted ? 0 : contentTerms(hit.name).join(" ") === wanted ? 1 : 2);
+  // At the same rank, Everloot's own curated entries come before the copied Warcraft Wiki pages.
+  const own = (hit: SearchHit) => (hit.sourceId === "curated" ? 0 : 1);
   // Re-rank only the first RERANK rows: they are the same rows whatever the limit, so page cuts at
   // different limits stay a stable prefix of one ordering. Rows after them keep the SQL order.
-  const head = merged.slice(0, RERANK).sort((a, b) => rank(a) - rank(b));
+  const head = merged.slice(0, RERANK).sort((a, b) => rank(a) - rank(b) || own(a) - own(b));
   return [...head, ...merged.slice(RERANK)].slice(0, limit);
 }
 
