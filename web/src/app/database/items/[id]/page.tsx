@@ -23,6 +23,7 @@ import LoreSection from "@/components/LoreSection";
 import { CategoryPage, categoryMetadata } from "../category-page";
 import { itemIndexable } from "@/lib/indexable";
 import { entityTitle, itemDescription } from "@/lib/entity-meta";
+import { MarketBox, loadMarketBox } from "@/app/tools/auctions/MarketBox";
 import { EmptyTab, EntityHeader, EntityIcon, EntityTop, FREQUENCY, known, LINK, percent, Unreachable } from "../../entity";
 
 const PROFESSIONS = { href: "/tools/professions", label: "Professions" };
@@ -74,7 +75,7 @@ export default async function ItemPage(props: Props) {
   if (/^[a-z][a-z0-9-]*$/.test(params.id)) return CategoryPage({ classSlug: params.id, search: (await props.searchParams) ?? {} });
   if (!/^[1-9]\d*$/.test(params.id)) notFound();
   const itemId = Number(params.id);
-  const [{ facts, agreed, matched, showsTip }, edges, itemSeen] = await Promise.all([loadShownNames(), loadEdges(), loadItemSeen()]);
+  const [{ facts, agreed, matched, showsTip }, edges, itemSeen, auctions] = await Promise.all([loadShownNames(), loadEdges(), loadItemSeen(), loadMarketBox(itemId)]);
   const page = itemPage(itemId, facts);
   if (unknownItem(itemId, facts, edgesFrom([...edges.observed, ...edges.client], "item", itemId), itemSeen)) notFound();
   // Named by players (3 installs agree); the badge and the facts card say so.
@@ -228,6 +229,7 @@ export default async function ItemPage(props: Props) {
           }
           facts={<Facts layout="list" label={`${title}: quick facts`} items={quickFacts} />}
         />
+        <MarketBox itemId={itemId} rows={auctions} />
         <Tabs label={`${title}: relations`} tabs={tabs} />
         <div className="mt-6 space-y-6 empty:hidden">
           <LoreSection match={lore} />

@@ -1,101 +1,45 @@
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
 import { pageMetadata } from "@/lib/seo";
-import { MARKET_RULE } from "../../../../../../kb/src/market";
 import { uploadStore } from "@/lib/upload-store";
-import { trailFor } from "@/lib/breadcrumbs";
-import { Card, Container, Disclosure, EmptyState, PageHeader, SectionHeading } from "@/components/ui";
-import {
-  AH_PATH, agreementSoFar, findBoard, indexable, loadAuctionNames, realmBoards, realmHref, slugParam, slugWords,
-} from "@/lib/auction-house";
-import { itemArt } from "../art";
-import { Boards, Contribute, Facts, FindPrices, boardItemIds, count } from "../parts";
-import TimeAgo from "../TimeAgo";
+import { findBoard, indexable, realmBoards, realmHref, slugParam, slugWords } from "@/lib/auction-house";
+import { ahHref, ahQuery } from "../browse";
+import { browseView, isPlainView } from "../browse-view";
+import { count } from "../parts";
 
-type Props = { params: Promise<{ realm: string }> };
+type Search = Record<string, string | string[] | undefined>;
+type Props = { params: Promise<{ realm: string }>; searchParams?: Promise<Search> };
 
-// Built on first visit and rebuilt at most every five minutes: the rollup itself changes every ten.
-export const revalidate = 300;
-export async function generateStaticParams() {
-  return [];
-}
-
-const ALL_ITEMS = 200;
-
-async function load(raw: string) {
-  const slug = slugParam(raw);
-  if (!slug) notFound();
-  const now = new Date();
-  const market = await uploadStore.loadMarket();
-  const board = market.state ? findBoard(realmBoards(market.state, now), slug) : null;
-  return { slug, now, market, board, name: board?.realm.name ?? slugWords(slug) };
-}
+// The filters live in the query string, so the page is rendered for each request (the rollup is cached by the store).
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata(props: Props): Promise<Metadata> {
-  const { slug, board, name } = await load((await props.params).realm);
+  const slug = slugParam((await props.params).realm);
+  if (!slug) return { robots: { index: false, follow: true } };
+  const market = await uploadStore.loadMarket();
+  const board = market.state ? findBoard(realmBoards(market.state, new Date()), slug) : null;
+  const name = board?.realm.name ?? slugWords(slug);
   const items = board ? count(board.rows.length, "item") : "the items";
+  const q = ahQuery((await props.searchParams) ?? {});
   return {
     ...pageMetadata({
       title: `WoW Forever ${name} Auction House Prices`,
-      description: `Auction house prices on ${name} in WoW: Forever: market value, minimum buyout and the biggest price moves for ${items}, from scans players upload.`,
+      description: `Auction house prices on ${name} in WoW: Forever: market value, minimum buyout, units listed and the biggest price moves for ${items}, by category and house, from scans players upload.`,
       path: realmHref({ slug }),
     }),
-    robots: { index: Boolean(board?.rows.some((r) => indexable(r.value))), follow: true },
+    // Indexed only as the plain list, and only with a market value on it.
+    robots: { index: Boolean(q && isPlainView(q) && board?.rows.some((r) => indexable(r.value))), follow: true },
   };
 }
 
 export default async function RealmPage(props: Props) {
   const raw = (await props.params).realm;
-  const { slug, now, market, board, name } = await load(raw);
-  if (decodeURIComponent(raw) !== slug) permanentRedirect(realmHref({ slug }));
-  const state = market.state;
-  const names = await loadAuctionNames();
-  const { tips } = await itemArt(board ? boardItemIds(board.rows, now, ALL_ITEMS) : []);
-  const trail = [...trailFor(AH_PATH)!, { name, path: realmHref({ slug }) }];
-
-  return (
-    <Container>
-      <PageHeader
-        trail={trail}
-        title={name}
-        lede={`Auction House prices on ${name}, from scans players run with the Everloot addon.`}
-        meta={board && (
-          <Facts items={[
-            board.updatedAt !== null ? <>Last scan <TimeAgo at={board.updatedAt} renderedAt={now.getTime()} /></> : "No scan this week",
-            count(board.rows.length, "item"),
-            `${count(board.reporters, "reporter")} this week`,
-          ]} />
-        )}
-      />
-
-      <div className="space-y-10">
-        <FindPrices realms={board ? [board.realm.name] : []} realm={board?.realm.name ?? ""} />
-
-        {!state && (
-          <Card><p className="text-fg-2" role="status">Market values are unavailable right now. They are unrecorded, not zero.</p></Card>
-        )}
-
-        {state && !board && (
-          <EmptyState
-            count={agreementSoFar(state, slug)}
-            message={`No public prices on ${name} yet: a price shows once 3 reporters scan the same item here.`}
-          />
-        )}
-
-        {board && (
-          <section aria-labelledby="ah-realm-boards">
-            <SectionHeading id="ah-realm-boards">Market</SectionHeading>
-            <Boards rows={board.rows} tips={tips} names={names} now={now} showRealm={false} listedLimit={ALL_ITEMS} />
-          </section>
-        )}
-
-        <Contribute />
-
-        <Disclosure summary="How are market values made?">
-          <p>{MARKET_RULE}</p>
-        </Disclosure>
-      </div>
-
-    </Container>
-  );
+  const slug = slugParam(raw);
+  if (!slug) notFound();
+  const search = (await props.searchParams) ?? {};
+  if (decodeURIComponent(raw) !== slug) {
+    const q = ahQuery(search);
+    permanentRedirect(q ? ahHref(realmHref({ slug }), q) : realmHref({ slug }));
+  }
+  return browseView({ slug, search });
 }
