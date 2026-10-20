@@ -6,6 +6,7 @@ import { itemTipText, qualityColor } from "@/lib/item-names";
 import { assetPath, assetsBaseUrl, MANIFEST_SCHEMA } from "@/lib/talents/assets";
 import type { ItemRecord } from "../../../kb/src/assets/items";
 import { worldToMap } from "../../../kb/src/world-coords";
+import { mayShowName } from "../../../kb/src/item-name-rule";
 
 // Blizzard's icons, item tooltip facts and map pictures across the site (docs/DATA_POLICY.md,
 // "Blizzard's icons, tooltip text and window frame"; docs/ASSETS.md). Server-side only: pages call it
@@ -270,6 +271,60 @@ export async function loadItemTips(assets: SiteAssets | null, ids: readonly numb
     }
   }));
   return out;
+}
+
+/* ---------- Item names from the game files and the Warcraft Wiki ---------- */
+
+/** The file keeps each wiki page as its title in the URL; the link adds this. */
+const WIKI_PAGE_PREFIX = "https://warcraft.wiki.gg/wiki/";
+const ItemNamesSchema = z.object({
+  schema: z.literal("everloot.item-names/1"),
+  build: z.object({ version: z.string() }),
+  wiki: z.object({ name: z.string(), url: z.string().regex(/^https:\/\//), licence: z.literal("CC-BY-SA-4.0") }),
+  names: z.record(z.string().regex(/^\d+$/), z.object({ n: z.string().min(1), q: z.number().int(), w: z.string().regex(/^[^\s"<>]+$/) })),
+});
+
+/** An item name the site shows before players confirm it: the game files and the Warcraft Wiki give the same one. */
+export interface MatchedName {
+  name: string;
+  /** Name colour by quality. */
+  color: string;
+  /** The wiki article that gives the same name. */
+  wikiPage: string;
+}
+
+export interface ItemNames {
+  version: string;
+  /** The wiki source, for the credit line: its name and home page. */
+  wiki: { name: string; url: string };
+  names: Map<number, MatchedName>;
+}
+
+// The same file object comes back while the private store keeps it, so it is parsed once per read.
+const parsedNames = new WeakMap<object, ItemNames | null>();
+
+/**
+ * The names the site may show for items players have not named yet (docs/DATA_POLICY.md, "Item names from the
+ * game files and the Warcraft Wiki"): one file, `<build folder>/item-names.json` in the private bucket, read
+ * by the server only. Null when it is missing, unreadable or for another build than the client layer the
+ * pages list; the pages then show "Item N", as before. Never throws.
+ */
+export async function loadItemNames(version: string, base: string | null = assetsBaseUrl(), store: PrivateStore | null = privateStoreFromEnv()): Promise<ItemNames | null> {
+  const folder = base ? buildFolder(base) : null;
+  if (!folder || !store) return null;
+  const raw = await store.read(`${folder}/item-names.json`);
+  if (!raw || typeof raw !== "object") return null;
+  if (!parsedNames.has(raw)) {
+    const f = ItemNamesSchema.safeParse(raw);
+    parsedNames.set(raw, f.success ? {
+      version: f.data.build.version,
+      wiki: { name: f.data.wiki.name, url: f.data.wiki.url },
+      // The rule is applied again here, so a file written before a change to it cannot show what it now holds back.
+      names: new Map(Object.entries(f.data.names).filter(([id, x]) => mayShowName(Number(id), x.n)).map(([id, x]) => [Number(id), { name: x.n, color: qualityColor(x.q), wikiPage: `${WIKI_PAGE_PREFIX}${x.w}` }])),
+    } : null);
+  }
+  const names = parsedNames.get(raw) ?? null;
+  return names && names.version === version ? names : null;
 }
 
 /* ---------- Classes, professions, raid builder ---------- */
