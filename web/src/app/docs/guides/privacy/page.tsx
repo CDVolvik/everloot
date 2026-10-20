@@ -29,7 +29,8 @@ export default function Page() {
       <List>
         <li>Open-world sightings, loot, vendors and similar observations are anonymous.</li>
         <li>Named data (guild, gear, gold, collection) is sent only if you tick it and have a verified sharing grant. The Desktop App never sends it.</li>
-        <li>The census and the installed addon list are off in the game until you turn them on, and they are sent only from the upload page, after the preview.</li>
+        <li>The installed addon list is off in the game until you turn it on, and it is sent only from the upload page, after the preview.</li>
+        <li>The census is on in a new install of the addon and says so once in chat. It is sent from the upload page, after the preview, or by the Desktop App if you allowed the census there.</li>
         <li>An upload that contains a scan is stored with a keyed one-way hash of the address it came from, never the address, so distinct reporters can be counted. The hash stays in private storage and is never published.</li>
       </List>
 
@@ -52,7 +53,8 @@ export default function Page() {
 
       <H2 id="census">The census</H2>
       <P>
-        The census counts who plays what. It is off until you type <C>/everloot census on</C> in the game. It records
+        The census counts who plays what. It is on in a new install of the addon, which says so once in chat; an install
+        from before the census keeps it off until you type <C>/everloot census on</C>. It records
         race, class, level and faction for your own characters (with the realm name) and for players you target, mouse
         over or group with. It never reads another player&apos;s name, guild, gear or position.
       </P>

@@ -114,10 +114,24 @@ function rows(kind) return EverlootDB.records[kind] or {} end
     return lua
 
 
-# --- Off by default: nothing registered, nothing recorded ---
+# --- A new install: on, and it says so once ---
 lua = fresh()
 lua.execute("""
-assert(EverlootDB.toggles.census == false, 'the census is off by default')
+assert(EverlootDB.toggles.census == true, 'a new install starts with the census on')
+local told = 0
+for _, line in ipairs(printed) do if string.find(line, 'census on', 1, true) and string.find(line, 'Never their names', 1, true) and string.find(line, 'census off', 1, true) then told = told + 1 end end
+assert(told == 1, 'a new install is told once about the census')
+assert(EverlootDB.censusNotice == true, 'the notice is remembered')
+local before = #printed
+reload()
+for i = before + 1, #printed do assert(not string.find(printed[i], 'Never their names', 1, true), 'the notice is not repeated') end
+""")
+
+# --- Off: nothing registered, nothing recorded ---
+lua = fresh("{ installId = 'abcd-1234', toggles = { census = false }, records = {} }")
+lua.execute("""
+assert(EverlootDB.toggles.census == false, 'the census is off when the player turned it off')
+for _, line in ipairs(printed) do assert(not string.find(line, 'Never their names', 1, true), 'off prints no notice') end
 for _, name in ipairs({ 'PLAYER_TARGET_CHANGED', 'UPDATE_MOUSEOVER_UNIT', 'GROUP_ROSTER_UPDATE', 'PLAYER_LOGIN', 'PLAYER_LEVEL_UP' }) do
  assert(registered[name] == nil, 'off registers nothing: ' .. name)
 end
@@ -135,7 +149,7 @@ lua = fresh("{ installId = 'abcd-1234', toggles = { openworld = true, completion
 lua.execute("assert(EverlootDB.toggles.census == false and EverlootDB.toggles.completion == true, 'an upgraded install starts with the census off')")
 
 # --- On: your own character and the players you see ---
-lua = fresh()
+lua = fresh("{ installId = 'abcd-1234', toggles = { census = false }, records = {} }")
 lua.execute("""
 SlashCmdList.EVERLOOT('census on')
 assert(EverlootDB.toggles.census == true, '/everloot census on turns it on')

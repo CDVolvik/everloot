@@ -87,9 +87,9 @@ function RaceClassGrid({ faction, window: w }: { faction: string; window: Census
 function TakePart() {
   return (
     <p>
-      To add your characters and the players you meet, type <code className="font-mono text-fg">/everloot census on</code> in
-      the game, play, log out, then send your save file from the <Link href="/upload" className={link}>upload page</Link>.
-      The preview shows the counts before anything is sent.
+      The addon records the census from a new install; an older one needs <code className="font-mono text-fg">/everloot census on</code> in
+      the game. Play, log out, and the Desktop App sends it if you allowed the census there, or send your save file from
+      the <Link href="/upload" className={link}>upload page</Link>, whose preview shows the counts before anything is sent.
     </p>
   );
 }
