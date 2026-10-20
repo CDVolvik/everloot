@@ -227,13 +227,15 @@ test("map: the continent's loading screen above the map, and each dungeon's besi
   expect(html).toContain("Map pictures and loading screen art from game build");
 });
 
-test("patch notes: a loading screen above the title, and a spell a post names gets its icon, tooltip and link", async () => {
+test("patch notes: a loading screen under the title with the credit as its caption, and a spell a post names gets its icon, tooltip and link", async () => {
   vi.stubEnv("NEXT_PUBLIC_GAME_ASSETS_URL", BASE);
   vi.stubGlobal("fetch", bucket());
   const html = await render(() => ChangesPage({ searchParams: Promise.resolve({}) }));
   expect(html).toMatch(/data-page-banner[^>]*><img[^>]*loading\/9001\.webp/);
-  expect(html.indexOf("data-page-banner")).toBeLessThan(html.indexOf("<h1"));
-  expect(html).toContain(CREDIT);
+  // The title starts at the same height on every page: the banner follows the page header.
+  expect(html.indexOf("data-page-banner")).toBeGreaterThan(html.indexOf("<h1"));
+  expect(html).toMatch(/<figcaption><p[^>]*data-game-credit[^>]*>Icons, tooltip text and interface art are © Blizzard/);
+  expect(html.match(/data-game-credit/g)).toHaveLength(1);
 });
 
 test("professions: a picker of profession icons with their names", async () => {

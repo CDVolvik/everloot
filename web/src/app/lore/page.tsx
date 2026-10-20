@@ -4,6 +4,8 @@ import { unstable_noStore as noStore } from "next/cache";
 import LoreSearchForm from "@/components/LoreSearchForm";
 import { BROWSE_HEADINGS, BROWSE_TYPES, hasTypes, UNAVAILABLE_COPY, type BrowseSlug } from "@/lib/lore";
 import JsonLd from "@/components/JsonLd";
+import { Card, Container, Explainer, PageHeader, SectionHeading, SourceLine } from "@/components/ui";
+import { trailFor } from "@/lib/breadcrumbs";
 import { loreCollectionJsonLd } from "@/lib/jsonld";
 import { getRelease } from "@/lib/release";
 import { pageMetadata } from "@/lib/seo";
@@ -27,50 +29,57 @@ export default async function LoreLanding() {
   const pages = release ? release.manifest.counts["warcraft-wiki-2023"] ?? null : null;
 
   return (
-    <article className="space-y-10 max-w-4xl">
-      <JsonLd data={loreCollectionJsonLd({ name: "Lore archive", description: LEAD, path: "/lore", creditText: CREDIT })} />
-      <header className="space-y-3">
-        <p className="font-mono text-xs text-muted">Lore archive · Warcraft Wiki, 2023 dump</p>
-        <h1 className="text-3xl sm:text-4xl font-bold text-fg tracking-tight">Lore archive</h1>
-        <p className="text-lg text-fg-2 max-w-2xl">
-          The Warcraft Wiki as it stood on 13 November 2023
-          {pages !== null ? <>, {formatter.format(pages)} pages</> : null}, published under CC BY-SA 4.0 with a source link on every page.
-          {LEAD}
-        </p>
-        <p className="text-sm text-muted">Credit: {CREDIT}.</p>
-      </header>
+    <Container width="reading">
+      <article>
+        <JsonLd data={loreCollectionJsonLd({ name: "Lore archive", description: LEAD, path: "/lore", creditText: CREDIT })} />
+        <PageHeader
+          trail={trailFor("/lore")!}
+          title="Lore archive"
+          lede={<>The Warcraft Wiki as it stood on 13 November 2023{pages !== null ? <>, {formatter.format(pages)} pages</> : null}. {LEAD}</>}
+        />
 
-      {release ? (
-        <>
-          <LoreSearchForm />
-          {hasTypes() === true && (
-            <nav aria-label="Browse by type" className="flex flex-wrap gap-2 text-sm">
-              {(Object.keys(BROWSE_TYPES) as BrowseSlug[]).map((slug) => (
-                <Link key={slug} href={`/lore/${slug}`} className="btn min-h-11 px-3">
-                  {BROWSE_HEADINGS[slug]}
-                </Link>
-              ))}
-              <Link href="/lore/coverage" className="btn min-h-11 px-3">
-                What the archive covers
-              </Link>
-            </nav>
-          )}
-          <section className="rounded-2xl border border-line bg-panel p-6 text-sm text-fg-2 space-y-2">
-            <h2 className="text-xl text-fg">Licence and attribution</h2>
+        {release ? (
+          <div className="space-y-12">
+            <LoreSearchForm />
+            {hasTypes() === true && (
+              <nav aria-labelledby="browse">
+                <SectionHeading id="browse">Browse by type</SectionHeading>
+                <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                  {(Object.keys(BROWSE_TYPES) as BrowseSlug[]).map((slug) => (
+                    <li key={slug}>
+                      <Card href={`/lore/${slug}`} padding="none" className="flex min-h-11 items-center px-4 py-3 font-medium text-fg">
+                        {BROWSE_HEADINGS[slug]}
+                      </Card>
+                    </li>
+                  ))}
+                  <li>
+                    <Card href="/lore/coverage" padding="none" className="flex min-h-11 items-center px-4 py-3 text-fg-2">
+                      What the archive covers
+                    </Card>
+                  </li>
+                </ul>
+              </nav>
+            )}
+            <p className="text-sm text-muted">
+              This archive predates WoW: Forever. For collected gameplay facts see the{" "}
+              <Link href="/database" className="text-accent">Forever database</Link>.
+            </p>
+          </div>
+        ) : (
+          <Card as="section" aria-labelledby="unavailable">
+            <SectionHeading id="unavailable">Lore archive unavailable</SectionHeading>
+            <p className="text-sm text-fg-2">{UNAVAILABLE_COPY}</p>
+          </Card>
+        )}
+
+        {release && (
+          <Explainer summary="Licence and attribution">
+            <p>Published under CC BY-SA 4.0 with a source link on every page.</p>
             <p>{release.manifest.notice}</p>
-          </section>
-        </>
-      ) : (
-        <section className="space-y-2">
-          <h2 className="text-xl text-fg">Lore archive unavailable</h2>
-          <p className="text-sm text-fg-2">{UNAVAILABLE_COPY}</p>
-        </section>
-      )}
-
-      <p className="text-sm text-muted">
-        This archive predates WoW: Forever. For collected gameplay facts see the{" "}
-        <Link href="/database" className="text-accent hover:underline underline-offset-4">Forever database</Link>.
-      </p>
-    </article>
+          </Explainer>
+        )}
+        <SourceLine source="Warcraft Wiki, 13 November 2023" licence="CC BY-SA 4.0">Credit: Warcraft Wiki contributors</SourceLine>
+      </article>
+    </Container>
   );
 }

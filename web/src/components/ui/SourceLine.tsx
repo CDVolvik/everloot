@@ -5,6 +5,11 @@ export interface SourceLineProps {
   build?: string;
   /** True when players have confirmed what the page shows; then the line drops "unconfirmed". */
   confirmed?: boolean;
+  /**
+   * Where the content comes from when it is neither the game files nor player reports, e.g. "Warcraft
+   * Wiki, 13 November 2023". It takes the first place, and the dashed key goes with it.
+   */
+  source?: ReactNode;
   /** The licence of the page's data. */
   licence?: string;
   /** One more short clause, e.g. "lore from Warcraft Wiki, 2023". */
@@ -16,10 +21,12 @@ export interface SourceLineProps {
  * the licence. It also carries the key for the dashed convention: anything drawn with a dashed edge
  * on the page is from the game files and unconfirmed. At most one per page.
  */
-export default function SourceLine({ build, confirmed = false, licence = "CC BY-SA 4.0", children }: SourceLineProps) {
+export default function SourceLine({ build, confirmed = false, source, licence = "CC BY-SA 4.0", children }: SourceLineProps) {
   const parts: ReactNode[] = [];
   parts.push(
-    confirmed
+    source
+      ? <span key="from">{source}</span>
+      : confirmed
       ? <span key="from">Confirmed by players</span>
       : (
         <span key="from" className="inline-flex items-center gap-2">
