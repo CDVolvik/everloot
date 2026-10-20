@@ -5,8 +5,8 @@ import type { CSSProperties, ReactNode } from "react";
 // The one gradient the design guard allows (Carlos, 10/19), and only in this file.
 const SCRIM: CSSProperties = {
   backgroundImage: [
-    "linear-gradient(to top, rgb(var(--canvas)) 0%, rgb(var(--canvas) / 0.9) 40%, rgb(var(--canvas) / 0.55) 75%, rgb(var(--canvas) / 0.25) 100%)",
-    "linear-gradient(to right, rgb(var(--canvas) / 0.85) 0%, rgb(var(--canvas) / 0.5) 45%, rgb(var(--canvas) / 0) 75%)",
+    "linear-gradient(to top, rgb(var(--canvas)) 0%, rgb(var(--canvas) / 0.8) 35%, rgb(var(--canvas) / 0.3) 75%, rgb(var(--canvas) / 0.1) 100%)",
+    "linear-gradient(to right, rgb(var(--canvas) / 0.75) 0%, rgb(var(--canvas) / 0.35) 45%, rgb(var(--canvas) / 0) 70%)",
   ].join(", "),
 };
 

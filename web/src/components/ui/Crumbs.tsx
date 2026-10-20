@@ -16,7 +16,7 @@ export default function Crumbs({ trail, owner, onArt = false, className = "" }: 
           return (
             <li key={crumb.path} className="flex min-w-0 items-center gap-2">
               {last
-                ? <span aria-current="page" className="text-fg-2 [overflow-wrap:anywhere]">{crumb.name}</span>
+                ? <span aria-current="page" className={`${onArt ? "text-fg" : "text-fg-2"} [overflow-wrap:anywhere]`}>{crumb.name}</span>
                 : <Link href={crumb.path} className="hover:text-accent hover:underline underline-offset-4">{crumb.name}</Link>}
               {!last && <span aria-hidden="true">/</span>}
             </li>
