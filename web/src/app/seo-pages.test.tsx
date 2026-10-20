@@ -13,7 +13,7 @@ vi.mock("@/lib/rollup-compute", () => ({
   computeRollups: async () => ({ rates: [], measuredZeros: [], stats: mocks.stats }),
   loadWorldFacts: async () => ({ npcs: [], quests: [], vendors: [], unreachable: false }),
 }));
-vi.mock("@/lib/upload-store", () => ({ STORAGE_UNREACHABLE: "unreachable", uploadStore: { loadCorpus: async () => ({ records: [], unreachable: false, dataAsOf: "2026-10-17T00:00:00.000Z" }) } }));
+vi.mock("@/lib/upload-store", () => ({ STORAGE_UNREACHABLE: "unreachable", uploadStore: { loadCompletion: async () => ({ state: null, dataAsOf: null, unreachable: true }), loadCorpus: async () => ({ records: [], unreachable: false, dataAsOf: "2026-10-17T00:00:00.000Z" }) } }));
 vi.mock("@/lib/release", () => ({ getRelease: () => null }));
 
 const mocks = vi.hoisted(() => ({ path: "/", stats: { uploads: 0, lootWindows: 0, unreachable: false, dataAsOf: "2026-10-17T18:20:27.999Z" } as Record<string, unknown> }));
