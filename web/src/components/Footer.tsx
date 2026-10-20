@@ -64,7 +64,8 @@ export default function Footer() {
   const sha = deployedSha();
   return (
     <footer className="mt-24 border-t border-line">
-      <div className="mx-auto max-w-wide px-4 pb-8 pt-12">
+      {/* The data column's width and gutters, like the header, so its columns line up with the data tables. */}
+      <div className="mx-auto max-w-data px-4 pb-8 pt-12 lg:px-6">
         <nav aria-label="Footer">
           <div className="grid grid-cols-2 gap-x-6 gap-y-8 md:grid-cols-[2fr_1fr_1fr_1fr]">
             <div className="col-span-2 md:col-span-1">
