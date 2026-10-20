@@ -105,6 +105,15 @@ describe("uploading", () => {
     expect(api.bodies[0].records.map((r) => r.kind)).toEqual(["loot"]);
   });
 
+  test("player rows never leave from here: the upload page says what they are first", async () => {
+    const player = { kind: "player_seen", lua: `["eventId"] = "player_seen:1", ["capturedAt"] = "2026-10-20T00:00:00Z", ["name"] = "Thrallina", ["realm"] = "Forever", ["race"] = "Orc", ["class"] = "SHAMAN", ["level"] = 20, ["guild"] = "Night Watch"` };
+    const { file, state } = workspace(luaFile([loot(1), player]));
+    const api = intake();
+    const result = await uploadFile(file, { endpoint: "https://everloot.example", fetch: api.send, state });
+    expect(result).toMatchObject({ sent: 1, heldPlayers: 1, heldAddons: 0, heldCensus: 0, invalid: 0 });
+    expect(api.bodies[0].records.map((r) => r.kind)).toEqual(["loot"]);
+  });
+
   test("named records stay on this machine unless shared on purpose", async () => {
     const { file, state } = workspace(luaFile([loot(1), gold]));
     const api = intake();

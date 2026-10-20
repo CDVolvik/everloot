@@ -3,6 +3,8 @@ import { sharingStore, uploadStore } from "@/lib/upload-store";
 import { intakeQuota } from "@/lib/intake-quota";
 import { pruneKeys } from "@/lib/api-keys";
 import { guardOn } from "@/lib/data-guard";
+import { playerPagesOn } from "@/lib/player-pages";
+import { playerStore } from "@/lib/player-store";
 
 /**
  * GET /api/cron/snapshot — Vercel Cron (vercel.json) extends the corpus snapshot with new uploads,
@@ -33,6 +35,10 @@ export async function GET(req: Request) {
     // Key retention (lib/api-keys.ts) runs only once the data guard's tables exist; a failure is retried next run.
     if (guardOn()) {
       try { await pruneKeys(); } catch (err) { console.error("key retention failed", err); }
+    }
+    // Player rows not seen for 90 days are deleted. Only with the player pages on, once their table exists.
+    if (playerPagesOn()) {
+      try { await playerStore().prune(); } catch (err) { console.error("player retention failed", err); }
     }
     // The market has its own watermark, so a failure here leaves the corpus snapshot current
     // and the next run retries the same uploads.

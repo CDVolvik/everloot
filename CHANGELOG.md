@@ -13,6 +13,7 @@ build that has a zip in the repository. Earlier builds have none.
 ## [Unreleased]
 
 ### Added
+- Player pages, off by default: search a WoW: Forever character by name and open a page with its race, class, level, guild and the day it was last seen, with a hide link on every page that needs no account. Nothing is collected or shown until `EVERLOOT_PLAYER_PAGES=1` is set on the site and a player turns on `/everloot players on` in an addon release that includes it; the design and the open legal questions are in `docs/design/specs/2026-10-20-player-pages-design.md`.
 - Site: a game version label in the header ("Beta · 1.60.1") with a menu of Live (at launch), PTR (none running) and Beta, read from one list in `web/src/lib/game-version.ts`; a test checks every game-data layer names the current build. The build is also named on `/methodology`.
 - Site: `/docs`, one documentation area for players and developers: Overview, Guides, API Reference, MCP and
   Cookbook tabs, a grouped sidebar, "On this page", "Copy page" as Markdown, and a page per API endpoint and

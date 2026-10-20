@@ -7,6 +7,7 @@ required, or tightening a limit is a major release.
 ## [Unreleased]
 
 ### Added
+- 1.6.0, protocol 1.2.0: the record kind `player_seen` (name, realm, race, class, level and optional guild of a player the addon saw or of your own character), with `validPlayerName`, `validGuildName`, `PLAYER_KINDS` and `UPLOAD_LIMITS.playersPerUpload` (1,000). Not a public corpus kind, and not kept in the stored upload: the site writes the newest row per character to its players table, and only when the owner has turned the player pages on.
 - 1.5.0: `changeEntry`, the shape of a `recent_changes` entry, gains five optional fields for forum posts:
   `region` (`us` or `eu`, now that the EU English forum is read too), `topicId`, `topicSlug`, `postNumber` and
   `startedThread`, so a client can group every Blizzard reply in one thread. Nothing existing changes.

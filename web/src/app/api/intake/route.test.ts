@@ -20,6 +20,9 @@ vi.mock("@/lib/upload-store", () => ({
   },
 }));
 
+const players = vi.hoisted(() => ({ upsert: vi.fn() }));
+vi.mock("@/lib/player-store", () => ({ playerStore: () => ({ upsert: players.upsert }) }));
+
 const capturedAt = "2026-10-05T00:00:00.000Z";
 const loot = (installId: string) => ({
   kind: "loot",
@@ -61,6 +64,7 @@ beforeEach(() => {
   store.putUpload.mockResolvedValue(true);
   store.lookup.mockReset();
   store.lookup.mockResolvedValue(null);
+  players.upsert.mockReset().mockResolvedValue(undefined);
 });
 
 describe("POST /api/intake", () => {
@@ -459,5 +463,87 @@ describe("census rows in an upload", () => {
     expect(logged.length).toBeGreaterThan(0);
     expectNoGuid(logged);
     expectNoGuid(await response.json());
+  });
+});
+
+describe("player rows in an upload", () => {
+  const seenAt = new Date().toISOString();
+  const player = (name: string, extra: object = {}) => ({
+    kind: "player_seen", installId: "install-1234", eventId: `player_seen:${name}`, capturedAt: seenAt,
+    name, realm: "Forever Pioneer", race: "Orc", class: "SHAMAN", level: 24, guild: "Night Watch", ...extra,
+  });
+  afterEach(() => { vi.unstubAllEnvs(); });
+
+  test("with the switch off they are dropped, the rest of the upload is kept and the table is never touched", async () => {
+    const POST = await freshPost();
+    const response = await POST(request({ addonVersion: "0.4.0", records: [player("Thrallina"), canonicalLoot] }));
+    const body = await response.json();
+    expect(response.status).toBe(200);
+    expect(body.accepted.map((a: { kind: string }) => a.kind)).toEqual(["loot"]);
+    expect(body.rejected).toHaveLength(1);
+    expect(body.rejected[0].reason).toMatch(/not collected yet/);
+    expect(players.upsert).not.toHaveBeenCalled();
+    expect(store.putUpload.mock.calls[0]![2].records.map((r: { kind: string }) => r.kind)).toEqual(["loot"]);
+  });
+
+  test("an upload of player rows only, with the switch off, is refused and writes nothing", async () => {
+    const POST = await freshPost();
+    const response = await POST(request({ addonVersion: "0.4.0", records: [player("Thrallina")] }));
+    expect(response.status).toBe(422);
+    expect(players.upsert).not.toHaveBeenCalled();
+    expect(store.putUpload).not.toHaveBeenCalled();
+  });
+
+  test("with the switch on they are written in one batch, with a date and no time, and never stored in the upload", async () => {
+    vi.stubEnv("EVERLOOT_PLAYER_PAGES", "1");
+    const POST = await freshPost();
+    const response = await POST(request({ addonVersion: "0.4.0", records: [player("Thrallina"), player("Throgar", { guild: undefined, guid: "Player-1-ABC", x: 4 }), canonicalLoot] }));
+    const body = await response.json();
+    expect(response.status).toBe(200);
+    expect(body.accepted.map((a: { kind: string }) => a.kind)).toEqual(["player_seen", "player_seen", "loot"]);
+    expect(players.upsert).toHaveBeenCalledOnce();
+    const rows = players.upsert.mock.calls[0]![0];
+    expect(rows).toEqual([
+      { name: "Thrallina", realm: "Forever Pioneer", race: "Orc", class: "SHAMAN", level: 24, guild: "Night Watch", seen: seenAt.slice(0, 10) },
+      { name: "Throgar", realm: "Forever Pioneer", race: "Orc", class: "SHAMAN", level: 24, seen: seenAt.slice(0, 10) },
+    ]);
+    expect(store.putUpload.mock.calls[0]![2].records.map((r: { kind: string }) => r.kind)).toEqual(["loot"]);
+  });
+
+  test("a player-only upload is persisted by the table alone and gets a normal receipt", async () => {
+    vi.stubEnv("EVERLOOT_PLAYER_PAGES", "1");
+    const POST = await freshPost();
+    const response = await POST(request({ addonVersion: "0.4.0", records: [player("Thrallina")] }));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ ok: true, persisted: true, accepted: [{ kind: "player_seen" }] });
+    expect(store.putUpload).not.toHaveBeenCalled();
+  });
+
+  test("a date more than 30 days back or a day ahead, and rows past the per-upload cap, are refused", async () => {
+    vi.stubEnv("EVERLOOT_PLAYER_PAGES", "1");
+    const POST = await freshPost();
+    const old = new Date(Date.now() - 31 * 86_400_000).toISOString();
+    const future = new Date(Date.now() + 2 * 86_400_000).toISOString();
+    const response = await POST(request({ addonVersion: "0.4.0", records: [player("Aa", { capturedAt: old }), player("Bb", { capturedAt: future }), player("Cc")] }));
+    const body = await response.json();
+    expect(body.rejected).toHaveLength(2);
+    expect(players.upsert.mock.calls[0]![0].map((r: { name: string }) => r.name)).toEqual(["Cc"]);
+    players.upsert.mockClear();
+    const many = Array.from({ length: 1001 }, (_, i) => player(`N${String.fromCharCode(97 + (i % 26))}${String.fromCharCode(97 + (Math.floor(i / 26) % 26))}${String.fromCharCode(97 + Math.floor(i / 676))}`, { eventId: `player_seen:${i}` }));
+    const capped = await (await POST(request({ addonVersion: "0.4.0", records: many }))).json();
+    expect(players.upsert.mock.calls[0]![0]).toHaveLength(1000);
+    expect(capped.rejected).toHaveLength(1);
+    expect(capped.rejected[0].reason).toMatch(/at most 1000/);
+  });
+
+  test("when the table cannot be written the upload is not confirmed and the player can retry", async () => {
+    vi.stubEnv("EVERLOOT_PLAYER_PAGES", "1");
+    players.upsert.mockRejectedValue(new Error("supabase down"));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const POST = await freshPost();
+    const response = await POST(request({ addonVersion: "0.4.0", records: [player("Thrallina"), canonicalLoot] }));
+    expect(response.status).toBe(503);
+    expect((await response.json()).persisted).toBe(false);
+    expect(store.putUpload).not.toHaveBeenCalled();
   });
 });
