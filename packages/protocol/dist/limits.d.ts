@@ -20,4 +20,6 @@ export declare const UPLOAD_LIMITS: {
      */
     readonly censusSeenPerDay: 500;
     readonly censusSelfPerDay: 50;
+    /** `player_seen` rows one upload may carry; the rest are refused. The addon keeps at most this many. */
+    readonly playersPerUpload: 1000;
 };

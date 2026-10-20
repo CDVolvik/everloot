@@ -20,6 +20,7 @@
     "map_bounds",
     "money_event",
     "npc_sighting",
+    "player_seen",
     "price_seen",
     "quest",
     "quest_chain_catalog",

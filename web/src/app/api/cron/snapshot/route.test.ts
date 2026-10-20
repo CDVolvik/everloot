@@ -6,6 +6,8 @@ vi.mock("@/lib/upload-store", () => ({ uploadStore: { writeSnapshot: store.write
 vi.mock("@/lib/intake-quota", () => ({ intakeQuota: { prune: store.prune } }));
 const keys = vi.hoisted(() => ({ pruneKeys: vi.fn() }));
 vi.mock("@/lib/api-keys", () => ({ pruneKeys: keys.pruneKeys }));
+const players = vi.hoisted(() => ({ prune: vi.fn() }));
+vi.mock("@/lib/player-store", () => ({ playerStore: () => ({ prune: players.prune }) }));
 import { GET } from "./route";
 beforeEach(() => {
   vi.stubEnv("CRON_SECRET", "synthetic-cron-key");
@@ -14,6 +16,7 @@ beforeEach(() => {
   store.writeCompletion.mockReset().mockResolvedValue({ added: 0, remaining: 0, trimmed: 0, rebuilding: false });
   store.prune.mockReset().mockResolvedValue(undefined);
   keys.pruneKeys.mockReset().mockResolvedValue(undefined);
+  players.prune.mockReset().mockResolvedValue(undefined);
 });
 const req = (auth = "Bearer synthetic-cron-key", query = "") =>
   new Request(`https://everloot.app/api/cron/snapshot${query}`, { headers: { authorization: auth } });
@@ -71,4 +74,13 @@ test("key retention runs only once the data guard is on, and its failure does no
   vi.spyOn(console, "error").mockImplementation(() => {});
   expect((await GET(req())).status).toBe(200);
   vi.stubEnv("EVERLOOT_DATA_GUARD", "");
+});
+test("player rows are pruned only with the player pages on, and a failure does not fail the run", async () => {
+  expect((await GET(req())).status).toBe(200);
+  expect(players.prune).not.toHaveBeenCalled();
+  vi.stubEnv("EVERLOOT_PLAYER_PAGES", "1");
+  players.prune.mockRejectedValue(new Error("players down"));
+  expect((await GET(req())).status).toBe(200);
+  expect(players.prune).toHaveBeenCalledOnce();
+  vi.unstubAllEnvs();
 });
