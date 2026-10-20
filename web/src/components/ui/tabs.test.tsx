@@ -3,7 +3,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, expect, test } from "vitest";
-import Tabs, { tabFromHash, type TabItem } from "./Tabs";
+import Tabs, { firstFilled, tabFromHash, type TabItem } from "./Tabs";
 
 const TABS: TabItem[] = [
   { id: "created-by", label: "Created by", count: 1, panel: <p>Blacksmithing</p> },
@@ -37,17 +37,24 @@ test("the server opens the first tab, and the others are hidden panels", () => {
   expect(html.match(/hidden=""/g)).toHaveLength(2);
 });
 
+test("the first tab with rows opens, not an empty one before it", () => {
+  const html = renderToStaticMarkup(<Tabs label="Item relations" tabs={[TABS[1], TABS[0], TABS[2]]} />);
+  expect(html).toMatch(/aria-selected="true"[^>]*>Created by/);
+  expect(firstFilled([{ id: "a", count: 0 }, { id: "b", count: 0 }])).toBe("a");
+  expect(firstFilled([{ id: "a", count: 0 }, { id: "b" }])).toBe("b");
+});
+
 test("a hash in the address opens its tab", async () => {
   window.history.replaceState(null, "", "/database/items/7960#dropped-by");
   await act(async () => root.render(<Tabs label="Item relations" tabs={TABS} />));
-  expect(selected()).toBe("Dropped by0");
+  expect(selected()).toBe("Dropped by (0)");
   expect(visiblePanel()).toBe("Nobody yet");
 });
 
 test("an unknown hash leaves the first tab open", async () => {
   window.history.replaceState(null, "", "/database/items/7960#nope");
   await act(async () => root.render(<Tabs label="Item relations" tabs={TABS} />));
-  expect(selected()).toBe("Created by1");
+  expect(selected()).toBe("Created by (1)");
 });
 
 test("a click opens the tab and writes its hash", async () => {
@@ -63,16 +70,16 @@ test("arrow keys, Home and End move between tabs and focus follows", async () =>
   const key = (k: string) => act(async () => { document.activeElement!.dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true })); });
   tabs()[0].focus();
   await key("ArrowRight");
-  expect(selected()).toBe("Dropped by0");
+  expect(selected()).toBe("Dropped by (0)");
   expect(document.activeElement).toBe(tabs()[1]);
   await key("End");
   expect(selected()).toBe("Sources");
   await key("ArrowRight");
-  expect(selected()).toBe("Created by1");
+  expect(selected()).toBe("Created by (1)");
   await key("ArrowLeft");
   expect(selected()).toBe("Sources");
   await key("Home");
-  expect(selected()).toBe("Created by1");
+  expect(selected()).toBe("Created by (1)");
 });
 
 test("only the open tab is in the tab order", async () => {

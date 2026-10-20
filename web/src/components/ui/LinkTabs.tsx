@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { TabCount, tabClass } from "./tab-style";
 
 export interface LinkTab {
   href: string;
@@ -20,24 +21,22 @@ export default function LinkTabs({ label, tabs, aside }: { label: string; tabs: 
     <div data-link-tabs className="flex min-w-0 flex-wrap items-end justify-between gap-x-6 gap-y-2 border-b border-line">
       {/* The list scrolls on a narrow screen, never the page. */}
       <nav aria-label={label} className="min-w-0 max-w-full overflow-x-auto">
-        <ul className="flex gap-1">
+        <ul className="flex">
           {tabs.map((tab) => (
             <li key={tab.href} className="shrink-0">
               <Link
                 href={tab.href}
                 aria-current={tab.current ? "page" : undefined}
-                className={`inline-flex min-h-11 items-center gap-2 whitespace-nowrap border-b-2 px-3 text-sm font-medium transition-colors ${tab.current ? "border-accent text-fg" : "border-transparent text-fg-2 hover:text-fg"}`}
+                className={tabClass(tab.current, tab.count === 0)}
               >
                 {tab.label}
-                {tab.count !== undefined && (
-                  <span className={`rounded-control px-1.5 font-mono text-xs tabular-nums ${tab.count === 0 ? "border border-line text-muted" : "bg-canvas text-fg-2"}`}>{tab.count}</span>
-                )}
+                {tab.count !== undefined && <TabCount count={tab.count} />}
               </Link>
             </li>
           ))}
         </ul>
       </nav>
-      {aside && <div className="flex min-h-11 flex-wrap items-center gap-x-4 text-sm text-fg-2">{aside}</div>}
+      {aside && <div className="flex min-h-control-sm flex-wrap items-center gap-x-4 text-control text-fg-2 sm:min-h-control">{aside}</div>}
     </div>
   );
 }

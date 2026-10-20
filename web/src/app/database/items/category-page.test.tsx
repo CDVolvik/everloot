@@ -123,16 +123,20 @@ test("only the plain category page is indexed, and only once half its rows have 
   }
 });
 
-test("an item page shows its category path, slot and quality, with one source line giving the label and build", async () => {
+test("an item page shows its category path, slot and quality; unconfirmed is a quiet marker, with no source line or build", async () => {
   const row = CLIENT_TAXONOMY.items.find((r) => r[1] === 4 && r[2] === 1 && r[4] === 4)!;
   const page = await html(ItemPage(props(String(row[0]))));
   expect(page).toContain('href="/database/items/armor"');
   expect(page).toContain('href="/database/items/armor/cloth"');
   expect(page).toContain("Epic");
-  expect(page.match(/data-source-line/g)).toHaveLength(1);
-  expect(page.match(/game files, unconfirmed/gi)).toHaveLength(1);
-  expect(page).toContain(`build <span class="font-mono tabular-nums">${CLIENT_LAYER.build.version}</span>`);
-  // Every empty relation tab is the shared empty state, never a bare zero.
+  expect(page).not.toContain("data-source-line");
+  expect(page).not.toMatch(/game files, unconfirmed/i);
+  expect(page).not.toContain(CLIENT_LAYER.build.version);
+  expect(page).toMatch(/data-unconfirmed[^>]*title="From the game files, not yet confirmed by players"/);
+  // No breadcrumb on screen; the trail stays as JSON-LD.
+  expect(page).not.toContain('aria-label="Breadcrumb"');
+  expect(page).toContain('"@type":"BreadcrumbList"');
+  expect(page).toContain('"item":"https://everloot.app/database/items/armor/cloth"');
+  // Every empty relation tab is the shared one-line empty state, never a bare zero.
   expect(page).toContain("data-empty-state");
-  expect(page).not.toContain("unconfirmed, build");
 });
