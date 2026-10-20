@@ -43,8 +43,9 @@ export default function DataTable<Row>({ columns, rows, rowKey, caption, sort, s
   return (
     <div data-table className="min-w-0 overflow-hidden rounded-card border border-line bg-panel">
       {toolbar && <div className="border-b border-line">{toolbar}</div>}
-      {/* Focusable so a keyboard can scroll it sideways; named by the caption. */}
-      <div role="region" aria-label={caption} tabIndex={0} className="max-w-full overflow-x-auto">
+      {/* Focusable so a keyboard can scroll it sideways; named by the caption. Positioned, so a cell's
+          absolutely placed sr-only text is clipped with the rest instead of widening the page. */}
+      <div role="region" aria-label={caption} tabIndex={0} className="relative max-w-full overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <caption className="sr-only">{caption}</caption>
           <thead>

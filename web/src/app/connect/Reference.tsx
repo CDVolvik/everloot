@@ -1,5 +1,6 @@
 import { API_SCHEMAS, PROTOCOL_VERSION, SITE, UPLOAD_LIMITS, ALL_RECORD_KINDS } from "@everloot/protocol";
 import { ACCESS_LABEL, DATA_LABEL, routeDocs, toolDocs } from "@/lib/protocol-docs";
+import { DataTable, type Column } from "@/components/ui";
 
 /**
  * The reference half of /connect: every MCP tool with its parameters, every JSON endpoint with its
@@ -10,34 +11,21 @@ import { ACCESS_LABEL, DATA_LABEL, routeDocs, toolDocs } from "@/lib/protocol-do
 const link = "text-accent hover:underline underline-offset-4";
 const code = "font-mono text-fg";
 
-function Params({ rows, caption, head = "Parameter" }: { rows: { name: string; type: string; required: boolean; description: string }[]; caption: string; head?: string }) {
+type ParamRow = { name: string; type: string; required: boolean; description: string };
+
+function Params({ rows, caption, head = "Parameter" }: { rows: ParamRow[]; caption: string; head?: string }) {
   if (rows.length === 0) return <p className="text-sm text-muted">No parameters.</p>;
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <caption className="sr-only">{caption}</caption>
-        <thead>
-          <tr className="text-left text-muted border-b border-line">
-            <th scope="col" className="py-1 pr-3 font-medium">{head}</th>
-            <th scope="col" className="py-1 pr-3 font-medium">Type</th>
-            <th scope="col" className="py-1 pr-3 font-medium">What it is</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.name} className="border-b border-line/60 align-top">
-              <td className="py-1.5 pr-3 whitespace-nowrap">
-                <code className={code}>{row.name}</code>
-                {row.required && <span className="ml-1 text-xs text-muted">required</span>}
-              </td>
-              <td className="py-1.5 pr-3 text-fg-2">{row.type}</td>
-              <td className="py-1.5 pr-3 text-fg-2">{row.description}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
+  const columns: Column<ParamRow>[] = [
+    {
+      key: "name",
+      header: head,
+      nowrap: true,
+      cell: (row) => <><code className={code}>{row.name}</code>{row.required && <span className="ml-1 text-xs text-muted">required</span>}</>,
+    },
+    { key: "type", header: "Type", cell: (row) => <span className="text-fg-2">{row.type}</span> },
+    { key: "what", header: "What it is", cell: (row) => <span className="text-fg-2">{row.description}</span> },
+  ];
+  return <DataTable caption={caption} columns={columns} rows={rows} rowKey={(row) => row.name} />;
 }
 
 export function ToolReference() {
@@ -59,7 +47,7 @@ export function ToolReference() {
         {docs.map((tool) => (
           <li key={tool.name} id={`tool-${tool.name}`} className="py-3">
             <details className="group">
-              <summary className="cursor-pointer list-none grid sm:grid-cols-[13rem_1fr] gap-x-4 gap-y-1">
+              <summary className="cursor-pointer list-none grid sm:grid-cols-[13rem_minmax(0,1fr)] gap-x-4 gap-y-1">
                 <span>
                   <code className={`${code} text-sm`}>{tool.name}</code>
                   {tool.playerData && <span className="ml-2 text-xs text-muted whitespace-nowrap">player data</span>}
@@ -99,13 +87,13 @@ export function ApiReference() {
         {routes.map((route) => (
           <li key={`${route.method} ${route.path}`} id={`api-${route.path.replace(/^\/api\//, "").replace(/\//g, "-")}`} className="py-3">
             <details>
-              <summary className="cursor-pointer list-none grid sm:grid-cols-[13rem_1fr] gap-x-4 gap-y-1">
+              <summary className="cursor-pointer list-none grid sm:grid-cols-[13rem_minmax(0,1fr)] gap-x-4 gap-y-1">
                 <span className={`${code} text-sm`}>{route.method} {route.path.replace(/^\/api/, "")}</span>
                 <span className="text-sm text-fg-2">{route.summary}</span>
               </summary>
               <div className="mt-3 space-y-3 sm:pl-[14rem]">
                 <p className="text-sm text-fg-2">{route.description}</p>
-                <dl className="grid grid-cols-[8rem_1fr] gap-y-1 text-sm">
+                <dl className="grid grid-cols-[6rem_minmax(0,1fr)] gap-x-3 gap-y-1 text-sm [overflow-wrap:anywhere]">
                   <dt className="text-muted">Access</dt><dd className="text-fg-2">{ACCESS_LABEL[route.access]}</dd>
                   <dt className="text-muted">Data</dt><dd className="text-fg-2">{DATA_LABEL[route.data]}</dd>
                   <dt className="text-muted">Paged</dt><dd className="text-fg-2">{route.paged ? "yes: offset, limit, next" : "no"}</dd>

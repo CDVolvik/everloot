@@ -149,15 +149,16 @@ test("item page: the tooltip card for an item players reported; an id nobody rep
   expect(fetcher).not.toHaveBeenCalled();
 });
 
-test("home: class icons link to the talent calculator and profession icons to their hub, names kept", async () => {
+test("home: class icons link to the talent calculator, names kept, and the source line credits them", async () => {
   vi.stubEnv("NEXT_PUBLIC_GAME_ASSETS_URL", BASE);
   vi.stubGlobal("fetch", bucket());
   const html = await render(() => Home());
-  expect(html).toContain("Classes and professions");
   expect(html).toMatch(/href="\/tools\/talents\/warrior"[^>]*><img[^>]*icons\/6001\.webp[^>]*\/?>Warrior/);
-  expect(html).toMatch(/href="\/tools\/professions\?profession=Alchemy"[^>]*><img[^>]*icons\/7001\.webp[^>]*\/?>Alchemy/);
-  expect(html).not.toContain("Riding");
-  expect(html).toContain(CREDIT);
+  // A class the upload has no icon for keeps its link and name.
+  expect(html).toMatch(/href="\/tools\/talents\/druid"[^>]*>(?:<img[^>]*\/?>)?Druid/);
+  const source = html.slice(html.indexOf("data-source-line"));
+  expect(source).toContain(CREDIT);
+  expect(source).toMatch(/class icons from game build 1\.60\.1\.70450/);
 });
 
 test("raid builder: buff icons beside the effect names, and the credit", async () => {
@@ -180,11 +181,12 @@ test("raid builder: a raid's loading screen above the title, and a buff's toolti
   expect(html).toContain("Icons, tooltip text and loading screen art from game build 1.60.1.70450");
 });
 
-test("home: the launch banner shows the game's own logo, the name and the disclaimer as text, and the credit", async () => {
+test("home: the hero shows the game's own logo, the name and the disclaimer as text, and the page's source line credits the art", async () => {
   vi.stubEnv("NEXT_PUBLIC_GAME_ASSETS_URL", BASE);
   vi.stubGlobal("fetch", bucket());
   const html = await render(() => Home());
-  const banner = html.slice(html.indexOf("data-launch-banner"), html.indexOf("Every drop."));
+  const start = html.indexOf("data-launch-banner");
+  const banner = html.slice(start, html.indexOf("</section>", start));
   expect(banner).toMatch(/<img[^>]*src="[^"]*logo\/logo-wow-forever-2x\.webp"[^>]*alt=""[^>]*aria-hidden="true"/);
   expect(banner).toMatch(/<img[^>]*src="[^"]*loading\/9000\.webp"[^>]*alt=""[^>]*aria-hidden="true"/);
   expect(banner).toContain(">World of Warcraft: Forever</p>");
@@ -192,7 +194,7 @@ test("home: the launch banner shows the game's own logo, the name and the discla
   // The countdown sits on the banner, and only there.
   expect(banner).toMatch(/href="\/wow-forever"[^>]*>WoW: Forever launches <time/);
   expect(html.match(/WoW: Forever launches/g)).toHaveLength(1);
-  expect(banner).toContain("Logo and loading screen art from game build 1.60.1.70450");
+  expect(html.slice(html.indexOf("data-source-line"))).toContain("Logo, loading screen art and class icons from game build 1.60.1.70450");
   expect(html.indexOf("data-launch-banner")).toBeLessThan(html.indexOf("<h1"));
 });
 
@@ -210,12 +212,13 @@ test("wow-forever: race and faction emblems beside the names in the race and cla
   vi.stubEnv("NEXT_PUBLIC_GAME_ASSETS_URL", BASE);
   vi.stubGlobal("fetch", bucket());
   const html = await render(() => WowForeverPage());
-  expect(html).toMatch(/<caption[^>]*><img[^>]*emblems\/HordeEmblem\.webp"[^>]*alt=""[^>]*aria-hidden="true"[^>]*\/?>Horde<\/caption>/);
-  expect(html).toMatch(/<th scope="row"[^>]*><img[^>]*emblems\/raceicon128-human-female\.webp"[^>]*\/?>Human<\/th>/);
-  expect(html).toMatch(/<th scope="row"[^>]*><img[^>]*emblems\/raceicon128-nightelf-male\.webp"[^>]*\/?>Night Elf<\/th>/);
+  // The faction's emblem beside its heading, the race's beside its name in the first column.
+  expect(html).toMatch(/<h3[^>]*><span[^>]*><img[^>]*emblems\/HordeEmblem\.webp"[^>]*alt=""[^>]*aria-hidden="true"[^>]*\/?>Horde<\/span><\/h3>/);
+  expect(html).toMatch(/<td[^>]*><span[^>]*><img[^>]*emblems\/raceicon128-human-female\.webp"[^>]*\/?>Human<\/span><\/td>/);
+  expect(html).toMatch(/<td[^>]*><span[^>]*><img[^>]*emblems\/raceicon128-nightelf-male\.webp"[^>]*\/?>Night Elf<\/span><\/td>/);
   // A race the upload has no icon for keeps its plain name.
-  expect(html).toMatch(/<th scope="row"[^>]*>Orc<\/th>/);
-  expect(html).toContain("Race and faction emblems from game build 1.60.1.70450");
+  expect(html).toMatch(/<td[^>]*><span[^>]*>Orc<\/span><\/td>/);
+  expect(html.slice(html.indexOf("data-source-line"))).toContain("Race and faction emblems from game build 1.60.1.70450");
 });
 
 test("map: the continent's loading screen above the map, and each dungeon's beside its entrance", async () => {

@@ -152,3 +152,35 @@ export const getTool = (slug: string): Tool | undefined =>
 
 export const liveTools = () => tools.filter((t) => t.status === "live");
 export const upcomingTools = () => tools.filter((t) => t.status === "coming-soon");
+
+/** The Tools menu, grouped the way players use them. Every tool above is in it (header.test.tsx). The header
+ * menu and the home page list these groups. */
+export const TOOL_GROUPS: { title: string; links: { label: string; href: string }[] }[] = [
+  {
+    title: "Plan",
+    links: [
+      { label: "Talent calculator", href: "/tools/talents" },
+      { label: "Raid builder", href: "/tools/raid" },
+      { label: "Gold per hour", href: "/tools/gold-per-hour" },
+      { label: "Professions", href: "/tools/professions" },
+      { label: "Farming routes", href: "/tools/farming-routes" },
+    ],
+  },
+  {
+    title: "Look up",
+    links: [
+      { label: "Auction history", href: "/tools/auctions" },
+      { label: "Census", href: "/census" },
+      { label: "Addons", href: "/addons" },
+    ],
+  },
+  {
+    title: "Track",
+    links: [
+      { label: "Guild board", href: "/tools/guild-board" },
+      { label: "Collections", href: "/tools/collections" },
+      { label: "Gold ledger", href: "/tools/gold-ledger" },
+      { label: "Upload a save file", href: "/upload" },
+    ],
+  },
+];
