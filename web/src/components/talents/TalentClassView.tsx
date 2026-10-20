@@ -1,9 +1,11 @@
+import type { ReactNode } from "react";
 import AdSlot from "@/components/AdSlot";
 import JsonLd from "@/components/JsonLd";
 import { Container, Disclosure, PageHeader, SectionHeading } from "@/components/ui";
 import { trailFor } from "@/lib/breadcrumbs";
 import { webApplicationJsonLd } from "@/lib/jsonld";
 import { loadSiteAssets } from "@/lib/game-assets";
+import { savedBuildsOn } from "@/lib/saved-builds";
 import { loadCatalog, type TalentClassSlug } from "@/lib/talents/catalogs";
 import { HOW_IT_WORKS_ID, classAnswers, classDescription, classFacts } from "@/lib/talents/facts";
 import ClassPicker from "./ClassPicker";
@@ -13,10 +15,14 @@ import { CLASS_TEXT } from "./TalentTreeView";
 
 // One class's calculator page body: the header, the class strip, the calculator, then the questions,
 // closed. The class page renders it as is; a build link (/b/<code>) renders it with the build to open.
+// A saved build's short link (/b/<slug>) passes `saved`: its name and notes head the page, the calculator only
+// shows the build, and the questions are left to the class page.
 
 export const pageTitle = (className: string) => `WoW Forever ${className} Talent Calculator`;
 
-export default async function TalentClassView({ slug, initialCodes }: { slug: TalentClassSlug; initialCodes?: (string | null)[] }) {
+export default async function TalentClassView({ slug, initialCodes, saved }: {
+  slug: TalentClassSlug; initialCodes?: (string | null)[]; saved?: { name: string; notes: string | null; meta: ReactNode; actions: ReactNode };
+}) {
   const catalog = await loadCatalog(slug);
   const facts = classFacts(catalog);
   const answers = classAnswers(facts);
@@ -27,6 +33,18 @@ export default async function TalentClassView({ slug, initialCodes }: { slug: Ta
   const art = assets?.classes.get(slug);
   const treeIcons = catalog.trees.map((t, i) => art?.trees.find((a) => a.name === t.name)?.icon ?? art?.trees[i]?.icon ?? null);
   const classes = classChoices(assets);
+  const classIcon = classes.find((c) => c.slug === slug)?.icon ?? null;
+
+  if (saved) {
+    return (
+      <Container>
+        <PageHeader title={<span className={CLASS_TEXT[slug]}>{saved.name}</span>} meta={saved.meta} actions={saved.actions} />
+        {saved.notes && <p className="-mt-2 mb-4 max-w-[75ch] whitespace-pre-line text-cell text-fg-2 [overflow-wrap:anywhere]">{saved.notes}</p>}
+        <TalentCalculator catalog={catalog} treeIcons={treeIcons} classIcon={classIcon} initialCodes={initialCodes} readOnly />
+        <AdSlot slot="belowTool" />
+      </Container>
+    );
+  }
 
   return (
     <Container>
@@ -35,7 +53,7 @@ export default async function TalentClassView({ slug, initialCodes }: { slug: Ta
 
       <div className="space-y-4">
         <ClassPicker variant="strip" classes={classes} current={slug} />
-        <TalentCalculator catalog={catalog} treeIcons={treeIcons} classIcon={classes.find((c) => c.slug === slug)?.icon ?? null} initialCodes={initialCodes} />
+        <TalentCalculator catalog={catalog} treeIcons={treeIcons} classIcon={classIcon} initialCodes={initialCodes} savedBuilds={savedBuildsOn()} />
       </div>
       <AdSlot slot="belowTool" />
 

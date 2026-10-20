@@ -8,12 +8,13 @@ export const UNCONFIRMED_TITLE = "From the game files, not yet confirmed by play
  * The badge set, and only this set:
  * - `files`: not a pill but a quiet marker, a small dashed ring with a tooltip. Screen readers hear
  *   "unconfirmed" (or `children`, when given). Never a chip or a sentence (density spec, 2026-10-20).
+ *   `title` replaces the tooltip when the marker means something else (a build made on an older game build).
  * - `confirmed`: solid accent, for a fact three installs agree on.
  * - `neutral`: a plain fact (a build, a type).
  * - `quality`: an item quality in its own colour.
  */
 export type BadgeProps =
-  | { tone: "files"; children?: ReactNode }
+  | { tone: "files"; children?: ReactNode; title?: string }
   | { tone: "confirmed"; children?: ReactNode }
   | { tone: "neutral"; children: ReactNode }
   | { tone: "quality"; quality: Quality; children?: ReactNode };
@@ -24,7 +25,7 @@ export default function Badge(props: BadgeProps) {
   switch (props.tone) {
     case "files":
       return (
-        <span data-badge="files" title={UNCONFIRMED_TITLE} className="inline-block h-2.5 w-2.5 shrink-0 rounded-full border border-dashed border-edge align-middle">
+        <span data-badge="files" title={props.title ?? UNCONFIRMED_TITLE} className="inline-block h-2.5 w-2.5 shrink-0 rounded-full border border-dashed border-edge align-middle">
           <span className="sr-only">{props.children ?? "unconfirmed"}</span>
         </span>
       );

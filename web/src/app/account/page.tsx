@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import ApiKeys from "@/components/ApiKeys";
 import { authV2Enabled, getAuth } from "@/lib/auth/auth";
 import { isPlaceholderEmail } from "@/lib/auth/battlenet";
+import { savedBuildsOn } from "@/lib/saved-builds";
 import { pageMetadata } from "@/lib/seo";
 import { getUser } from "@/lib/supabase/server";
 
@@ -62,6 +63,15 @@ export default async function AccountPage() {
           </p>
         )}
       </section>
+
+      {savedBuildsOn() && (
+        <section className="space-y-2">
+          <h2 className="text-xl text-fg">Saved builds</h2>
+          <p className="text-sm text-fg-2">
+            Your talent builds and characters are on <Link href="/me" className="text-accent hover:underline underline-offset-4">My builds</Link>.
+          </p>
+        </section>
+      )}
 
       <section className="space-y-3">
         <h2 className="text-xl text-fg">API keys</h2>
