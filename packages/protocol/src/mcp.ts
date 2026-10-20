@@ -418,6 +418,11 @@ export const changeEntry = z.object({
   summary: z.string().optional(),
   version: z.string().optional(),
   diffUrl: z.string().nullable().optional(),
+  region: z.enum(["us", "eu"]).optional().describe("Forum posts: the US or EU English WoW forum."),
+  topicId: z.number().int().optional().describe("Forum posts: the thread's topic id on that forum. Region and topic id together name one thread."),
+  topicSlug: z.string().optional(),
+  postNumber: z.number().int().optional().describe("Forum posts: the post's number in its thread; 1 opened the thread."),
+  startedThread: z.boolean().optional().describe("Forum posts: true when this Blizzard post opened the thread, false for a reply."),
 });
 export type ChangeEntryOut = z.infer<typeof changeEntry>;
 

@@ -92,8 +92,9 @@ files will:
   CC BY-SA data and not under our licence;
 - credit **WoWDBDefs**. The column names come from the
   [WoWDBDefs](https://github.com/wowdev/WoWDBDefs) table definitions by the WoWDBDefs contributors,
-  which are under CC BY-SA 4.0, so every page or file that shows them will name WoWDBDefs and link
-  its licence.
+  which are under CC BY-SA 4.0, so every file that shows them names WoWDBDefs and links its
+  licence. On the site, the credits section of `/methodology` (`/methodology#credits`) does, and
+  every page links to it from the footer.
 
 When players later see the same thing in the game, the entry will show both: found in the files
 and observed in play.
@@ -110,13 +111,17 @@ interface files, is a different thing and is covered by the second extension. Th
 - **Extracted by a maintainer, kept out of git.** A maintainer extracts them from the local game
   client and uploads them to Everloot's asset storage with a build-stamped manifest. They are
   never committed to the git repository.
-- **Stamped with the build** they came from, on the page and in the file name or manifest.
+- **Stamped with the build** they came from, in the file name or manifest and in the credits
+  section of `/methodology`.
 - **Still Blizzard's.** We do not relicense them. They sit outside our CC BY-SA 4.0 data and our
-  AGPL-3.0 code, and each page that shows them says so. The licence notes of every release file
-  that includes them say so too.
-- **Credited on every page that shows them**: "Icons, tooltip text and interface art are
+  AGPL-3.0 code, and the site says so on every page, in the footer credit line below. The licence
+  notes of every release file that includes them say so too.
+- **Credited site-wide**: every page's footer carries one line, "Game data and art © Blizzard
+  Entertainment · Everloot data CC BY-SA 4.0 · Item names from the Warcraft Wiki (CC BY-SA 4.0) ·
+  Credits", whose last part links to `/methodology#credits`. That section carries the full credit,
+  with the build: "Icons, tooltip text and interface art are
   © Blizzard Entertainment, Inc. Everloot is a fan project and is not affiliated with or
-  endorsed by Blizzard."
+  endorsed by Blizzard." Together they stand in for a credit line on each page.
 - **Pages only.** The data downloads, the API and the MCP server carry ids and facts, plus a link
   to the page where the icon and text are shown. They do not carry icon files, tooltip text or
   frame textures in bulk. If you want Blizzard's art in your own project, take it from the game
@@ -185,9 +190,10 @@ another version of the game, not something Forever has yet to reveal. The game f
 their own: in build 1.60.1.70450, 19,219 of the 19,231 named items, new ones included, list the base game
 as their expansion (`ItemSparse.ExpansionID` 0), so the expansion is not used. The rules:
 
-- Each such name says where it comes from: *Game files + Warcraft Wiki*, linked to its wiki page, and
-  the page credits the Warcraft Wiki contributors under CC BY-SA 4.0 beside Blizzard's credit. A name
-  3 installs agree on comes first and reads *Confirmed by players*.
+- Each such name says where it comes from in a tooltip on the name, *Name from the Warcraft Wiki* (and in words for screen readers), and
+  the site-wide footer credits the Warcraft Wiki under CC BY-SA 4.0 beside Blizzard's credit, and
+  `/methodology#credits` names the Warcraft Wiki contributors. A name
+  3 installs agree on comes first, with the tooltip *Name confirmed by players*. No source label is printed beside a name.
 - For the lowest spoiler risk, only items below id 25,000, the original game's range, are named this
   way (`SHOWN_MAX_ITEM_ID` in `kb/src/item-name-rule.ts`). Higher ids belong to later versions, such as
   Wrath Classic's Scourge event. A name that reads like a placeholder or an internal entry is never
@@ -295,16 +301,21 @@ Blizzard's version service reports.
   an excerpt of at most two sentences (300 characters) and a link to the original. The text is
   Blizzard's, so we never copy a post in full. A maintainer may add a one-line summary in our own
   words; nothing writes one automatically.
-- *Sources.* Forum posts come only from a short list of named Blizzard staff accounts, and only
-  from the WoW: Forever and WoW Classic categories. Bluesky posts come only from the verified
+- *Sources.* Forum posts come from the US and EU English WoW forums, only from the WoW: Forever and
+  WoW Classic categories, and only from Blizzard staff: people on each forum's published staff list
+  (`about.json`) or posts the forum itself marks as Blizzard's (its group tracker; the green MVP
+  groups are players and are left out). `kb/curated/blue-accounts.json` holds hand corrections.
+  Players' posts are read with a topic but never kept. Bluesky posts come only from the verified
   official World of Warcraft account, and only when they are about Forever or Classic. No
   third-party tracker is read or copied.
 - *Robots and manners.* The reader checks robots.txt before every run and uses public JSON only.
   Blizzard's forum `.rss` routes are disallowed by its robots.txt, so we never use them. It names
   itself (`Everloot/1.0`, with a contact address), never follows a redirect, and stops when a
   server answers 429 or a server error, honouring Retry-After.
-- *Polling cap.* At most once every 30 minutes, at most 3 pages of 30 items per source per run,
-  stopping at what it already saw. A source asked less than 25 minutes ago is skipped.
+- *Polling cap.* At most once every 30 minutes and at most 40 requests a run in all: the staff list
+  at most once a day, the Forever and Classic topic lists only back to what the last run saw, and
+  only topics that changed and carry a staff post. A source asked less than 25 minutes ago is
+  skipped. A one-off history import (`blue-backfill`) uses the same rules and pace with a larger budget.
 - *Build times.* A build's time on that page is when Everloot first saw it, not when Blizzard
   released it.
 

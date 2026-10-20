@@ -4,8 +4,8 @@ import type { BlueStore } from "../../../kb/src/blue-posts";
 import { buildTimeline, type BuildLike, type ChangeEntry } from "../../../kb/src/changes";
 
 export {
-  CHANGE_FILTERS, GAME_LABEL, TYPE_LABEL, buildTimeline, filterTimeline, parseFilter, renderFeed,
-  type ChangeEntry, type ChangeFilter,
+  CHANGE_FILTERS, GAME_LABEL, TYPE_LABEL, blueThreads, buildTimeline, filterTimeline, parseFilter, renderFeed,
+  type BlueThread, type ChangeEntry, type ChangeFilter,
 } from "../../../kb/src/changes";
 
 /**

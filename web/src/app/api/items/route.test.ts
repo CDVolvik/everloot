@@ -46,6 +46,16 @@ test("unknown slugs and bad numbers are a 400", async () => {
   }
 });
 
+test("the game files' relations filter too: crafted, reagent, set piece and profession, and a bad value is a 400", async () => {
+  const crafted = await (await GET(req("?crafted=1"))).json();
+  const tailoring = await (await GET(req("?crafted=1&skill=tailoring"))).json();
+  expect(crafted.total).toBeGreaterThan(tailoring.total);
+  expect(tailoring.total).toBeGreaterThan(0);
+  expect((await (await GET(req("?class=armor&set=1"))).json()).total).toBeGreaterThan(0);
+  expect((await (await GET(req("?class=trade-goods&subclass=cloth&reagent=1"))).json()).items.map((i: { itemId: number }) => i.itemId)).toContain(2589);
+  for (const q of ["?crafted=yes", "?set=0", "?skill=basket-weaving"]) expect((await GET(req(q))).status, q).toBe(400);
+});
+
 test("with the guard on, anonymous pages are capped like the other bulk endpoints", async () => {
   vi.stubEnv("EVERLOOT_DATA_GUARD", "1");
   const body = await (await GET(req())).json();

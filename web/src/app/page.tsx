@@ -4,16 +4,15 @@ import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
 import LaunchCountdown from "@/components/LaunchCountdown";
 import LoreSearchForm from "@/components/LoreSearchForm";
-import { AgreementMeter, Banner, Card, CodeBlock, SectionHeading, SourceLine, type Agreement } from "@/components/ui";
+import { AgreementMeter, Banner, Card, CodeBlock, SectionHeading, type Agreement } from "@/components/ui";
 import { TOOL_GROUPS, tools, toolHref } from "@/data/tools";
 import { CLASSES } from "@/design/tokens";
 import { latestAddonRelease } from "@/lib/addon-release";
-import { CLIENT_LAYER, CLIENT_TAXONOMY, itemsHref } from "@/lib/items";
+import { CLIENT_TAXONOMY, itemsHref } from "@/lib/items";
 import { LORE_SEARCH_LABEL, organizationJsonLd, websiteJsonLd } from "@/lib/jsonld";
 import { FEED } from "@/lib/seo";
-import { classAndProfessionIcons, creditWhat, launchArt, loadSiteAssets } from "@/lib/game-assets";
+import { classAndProfessionIcons, launchArt, loadSiteAssets } from "@/lib/game-assets";
 import GameIcon from "@/components/game/GameIcon";
-import GameCredit from "@/components/game/GameCredit";
 import { BannerArt } from "@/components/game/PageBanner";
 import { CONNECT_EXAMPLES, MCP_TOOLS } from "@/lib/docs/connect-data";
 
@@ -59,11 +58,9 @@ export default async function Home() {
   const launch = launchArt(assets);
   const classIcons = new Map(icons.classes.map((c) => [c.key, c.icon]));
   const addon = latestAddonRelease();
-  const build = CLIENT_LAYER.build.version;
   const categories = CLIENT_TAXONOMY.classes.filter((c) => c.items > 0).sort((a, b) => b.items - a.items).slice(0, 6);
   const status = new Map(tools.map((t) => [toolHref(t), t.status]));
   const groups = TOOL_GROUPS.map((g) => ({ ...g, links: g.links.filter((l) => l.href !== "/tools/talents") }));
-  const art = creditWhat(launch && "logo", launch?.background && "loading screen art", classIcons.size > 0 && "class icons");
 
   return (
     <div className="space-y-18">
@@ -115,7 +112,7 @@ export default async function Home() {
         <Card unconfirmed className="grid gap-8 md:grid-cols-[auto_minmax(0,1fr)] md:items-center">
           <div>
             <p className="text-5xl font-bold tabular-nums tracking-tight text-fg">{CLIENT_TAXONOMY.items.length.toLocaleString("en-US")}</p>
-            <p className="mt-2 max-w-[28ch] text-sm text-fg-2">items in the files of build <span className="font-mono">{build}</span>. Players turn them into facts.</p>
+            <p className="mt-2 max-w-[28ch] text-sm text-fg-2">items in the game files. Players turn them into facts.</p>
           </div>
           <div className="min-w-0">
             <ul aria-label="Items by category" className="grid gap-x-8 sm:grid-cols-2 lg:grid-cols-3">
@@ -247,10 +244,6 @@ export default async function Home() {
         </SectionHeading>
         <LoreSearchForm />
       </section>
-
-      <SourceLine build={build}>
-        {assets && art && <GameCredit inline version={assets.version} label={assets.label} what={art} />}
-      </SourceLine>
     </div>
   );
 }

@@ -4,13 +4,11 @@ import { notFound } from "next/navigation";
 import { pageMetadata } from "@/lib/seo";
 import { formatCopper, MARKET_RULE } from "../../../../../../../kb/src/market";
 import { uploadStore } from "@/lib/upload-store";
-import { dataAgeLabel } from "@/lib/data-age";
 import { marketDatasetJsonLd } from "@/lib/jsonld";
 import JsonLd from "@/components/JsonLd";
-import GameCredit from "@/components/game/GameCredit";
 import GameIcon from "@/components/game/GameIcon";
 import { trailFor } from "@/lib/breadcrumbs";
-import { Card, Container, Disclosure, EmptyState, PageHeader, SectionHeading, SourceLine } from "@/components/ui";
+import { Card, Container, Disclosure, EmptyState, PageHeader, SectionHeading } from "@/components/ui";
 import {
   AH_PATH, crossRealmHref, indexable, itemAcrossRealms, itemIdParam, itemLabel, loadAuctionNames, realmBoards, type MarketRow,
 } from "@/lib/auction-house";
@@ -56,7 +54,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
 export default async function CrossRealmItemPage(props: Props) {
   const { itemId, market, rows, label } = await load(props.params);
   const state = market.state;
-  const { assets, tips } = await itemArt(rows.length ? [itemId] : []);
+  const { tips } = await itemArt(rows.length ? [itemId] : []);
   const tip = tips.get(itemId);
   const path = crossRealmHref(itemId);
   const low = extreme(rows, (a, b) => a < b);
@@ -117,8 +115,6 @@ export default async function CrossRealmItemPage(props: Props) {
         </Disclosure>
       </div>
 
-      {assets && tip && <div className="mt-8"><GameCredit version={assets.version} label={assets.label} /></div>}
-      <SourceLine confirmed>{state ? dataAgeLabel(market.dataAsOf) : "Data age unrecorded"}</SourceLine>
     </Container>
   );
 }

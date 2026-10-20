@@ -2,13 +2,14 @@ import { NextResponse } from "next/server";
 import { describe, filterItems, resolveClass, resolveLegacyClass, resolveSubclass, type ItemFilter } from "../../../../../kb/src/item-taxonomy";
 import { admit, badPage, pageOf, pageRequest } from "@/lib/data-guard";
 import { gameDataNotice } from "@/lib/edges";
-import { CLIENT_TAXONOMY as T, QUALITY_SLUGS, SLOT_SLUGS } from "@/lib/items";
+import { CLIENT_TAXONOMY as T, itemFacets, matchesFacets, QUALITY_SLUGS, SLOT_SLUGS, type CategoryQuery } from "@/lib/items";
 import { recordUsage } from "@/lib/usage-metrics";
 
 /**
  * GET /api/items: every item in the current build with its class, subclass, slot and quality, from the
  * game files. Filters: `item` (one id), `class` and `subclass` (slugs, or a subclass number), `slot`,
- * `quality`. Paged through the data guard like the other bulk endpoints. Game-file data: it carries the
+ * `quality`, and from the game files' relations `crafted=1`, `reagent=1`, `set=1` and `skill` (a profession
+ * slug: items its spells make or use), as the database lists filter. Paged through the data guard like the other bulk endpoints. Game-file data: it carries the
  * `gameData` notice and build, not Everloot's CC BY-SA attribution.
  */
 export const dynamic = "force-dynamic";
@@ -46,11 +47,25 @@ export async function GET(req: Request) {
     if (!QUALITY_SLUGS.includes(quality)) return bad(`quality must be one of ${QUALITY_SLUGS.join(", ")}.`);
     f.quality = quality;
   }
+  // What the game files say an item is part of: made by a spell, used by one, a set piece, or either for a profession.
+  const facets: Pick<CategoryQuery, "crafted" | "reagent" | "set" | "skill"> = {};
+  for (const key of ["crafted", "reagent", "set"] as const) {
+    const v = params.get(key);
+    if (v === null) continue;
+    if (v !== "1") return bad(`${key} must be 1.`);
+    facets[key] = true;
+  }
+  const skill = params.get("skill");
+  if (skill !== null) {
+    const known = itemFacets().professions.map((p) => p.slug);
+    if (!known.includes(skill)) return bad(`skill must be one of ${known.join(", ")}.`);
+    facets.skill = skill;
+  }
   const admitted = await admit(req, "drops");
   if (admitted instanceof Response) return admitted;
   const at = pageRequest(req, admitted.pageMax);
   if (!at) return badPage();
-  const rows = filterItems(T, f).filter((r) => item === null || r[0] === Number(item));
+  const rows = filterItems(T, f).filter((r) => (item === null || r[0] === Number(item)) && matchesFacets(r[0], facets));
   const { items, page } = pageOf(req, rows, at);
   return NextResponse.json({
     generatedAt: new Date().toISOString(),

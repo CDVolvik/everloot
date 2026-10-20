@@ -49,9 +49,11 @@ test("the page shows the body, attribution and the predates-Forever note", async
   expect(html).toContain("<h1");
   expect(html).toContain("Thrall is the former Warchief of the Horde.");
   expect(html).toContain("<li>Son of Durotan</li>");
-  expect(html).toContain("https://warcraft.wiki.gg/wiki/Thrall");
-  expect(html).toContain("retrieved 2023-11-13");
+  // The one source line the licence asks for: the page's own source, its authors and the licence.
+  expect(html.match(/data-lore-source/g)).toHaveLength(1);
+  expect(html).toMatch(/Source: <a href="https:\/\/warcraft\.wiki\.gg\/wiki\/Thrall"[^>]*>Warcraft Wiki<\/a> contributors, /);
   expect(html).toContain("CC BY-SA 4.0");
+  expect(html).not.toContain("data-source-line");
   expect(html).toContain("Converted from wikitext with templates, tables and images removed, so some sentences may be missing values.");
   expect(html).toContain("Orcs");
   expect(html).toContain("2023-01-14");

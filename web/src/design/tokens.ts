@@ -16,8 +16,43 @@ export const SPACE = [4, 8, 12, 16, 24, 32, 48, 72] as const;
  *  icons and the tooltip frame; `rounded-full` for buttons, badges and pills. */
 export const RADIUS = { control: 6, card: 12 } as const;
 
-/** Two content widths: `reading` for documents, `wide` for data and tools (and the header and footer). */
-export const WIDTH = { reading: 768, wide: 1152 } as const;
+/** Three content widths: `reading` for documents, `wide` for tools and hubs (and the header and
+ *  footer), `data` for the database, search and the item, NPC and quest pages (1440 with 24 px
+ *  sides, 16 px under 1024 px). */
+export const WIDTH = { reading: 768, wide: 1152, data: 1440 } as const;
+
+/**
+ * The data-page scale (density spec, 2026-10-20): `/database/*`, `/search` and the item, NPC and
+ * quest pages. Prose pages keep Tailwind's own scale. Each step is [font-size, line-height] in px;
+ * the `-sm` steps are the phone values (< 640 px), so a title reads `text-title-sm sm:text-title`.
+ * Rhythm on those pages uses the spacing scale: header to title 16, title to filter bar 12,
+ * filter bar to table 8, between sections 24.
+ */
+export const DATA_TYPE = {
+  /** Page title: 700, tracking -0.01em. */
+  title: [28, 34],
+  "title-sm": [22, 28],
+  /** Section heading: 600. */
+  h2: [16, 24],
+  "h2-sm": [15, 22],
+  /** Body and table cells. */
+  cell: [14, 20],
+  /** Meta lines (muted). */
+  meta: [13, 20],
+  /** A cell's second line (muted). */
+  "cell-2": [12, 16],
+  /** Table headers: 600, sans (never mono), muted. */
+  th: [12, 16],
+  /** Filter buttons, the pager and tabs. */
+  control: [13, 20],
+  /** Tooltip box text. */
+  tip: [13, 18],
+} as const;
+
+/** Sizes on data pages, in px: rows (36; two-line 52 on phones), the 32 px table header, controls
+ *  (32; 40 on phones), the 24 px row icon, the sticky offset under the 64 px site header, and the
+ *  tooltip box's 320 px limit. */
+export const DATA_SIZE = { row: 36, "row-sm": 52, th: 32, control: 32, "control-sm": 40, icon: 24, header: 64, tip: 320 } as const;
 
 export const QUALITIES = ["poor", "common", "uncommon", "rare", "epic", "legendary"] as const;
 export const CLASSES = ["warrior", "paladin", "hunter", "rogue", "priest", "shaman", "mage", "warlock", "druid"] as const;

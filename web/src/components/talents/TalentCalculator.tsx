@@ -6,7 +6,7 @@ import {
   add, canAdd, canRemove, commit, entryAtRank, isLegal, nodeMap, pointsAtLevel, pointsByTree, pointsSpent, redo, refusalText,
   remove, startHistory, undo, levelFor, type History,
 } from "@/lib/talents/rules";
-import { CREDIT, hasNodeFrames, loadGameAssets, type GameAssets } from "@/lib/talents/assets";
+import { hasNodeFrames, loadGameAssets, type GameAssets } from "@/lib/talents/assets";
 import { HOW_IT_WORKS_ID } from "@/lib/talents/facts";
 import { encodeBuild } from "@/lib/talents/share";
 import { previewPath, summarizeBuild } from "@/lib/talents/summary";
@@ -504,12 +504,6 @@ export default function TalentCalculator({ catalog, treeIcons, classIcon = null,
             </section>
           )}
         </section>
-
-        {assets && (
-          <p className="border-t border-line px-4 py-3 text-xs text-muted" data-game-credit>
-            {CREDIT} Icons and text from game build {assets.version}, {assets.label}.
-          </p>
-        )}
       </Card>
     </div>
   );

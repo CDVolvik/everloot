@@ -1,34 +1,44 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
+import {
+  BLUE_REGIONS, REGIONS, bluePostsOf, emptyOverrides, isBlueGroup, isCandidate, nextTracked, parseAbout, parseOverrides, parsePostChunk, parseTopicList,
+  parseTopicView, staffIndex, type BlueOverrides, type ListedTopic, type StaffIndex, type StaffMember,
+} from "./blue-forum.js";
 import { sanitizePost } from "./changes.js";
 import { clampExcerpt, clampText, isoTime, plainText } from "./text-safety.js";
 
 export { clampExcerpt as excerptOf, plainText } from "./text-safety.js";
+export { gameOf } from "./blue-forum.js";
 
 /**
  * Official Blizzard posts about WoW: Forever (and Classic), for the "what changed" page.
  *
  * What it reads, and nothing else:
- *  - the Blizzard WoW forum's public Discourse JSON, one request per tracked staff account and page
- *    (`user_actions.json`), after checking robots.txt;
+ *  - the Blizzard WoW forums' public Discourse JSON, US and EU English, after checking each host's robots.txt:
+ *    the staff list (`about.json`, at most once a day), the Forever and Classic topic lists sorted by last
+ *    activity, and only the topics among them that changed and carry a staff post (see blue-forum.ts);
  *  - the official World of Warcraft account's public Bluesky feed.
- * What it keeps per post: source, link, title, author, role, times, category, game and an excerpt of
- * at most two sentences. Blizzard's post text is Blizzard's, so there is never a full copy here. The
- * research behind these choices is in the Everloot wiki note 2026-10-18-blue-tracker-sources.
+ * What it keeps per post: source, region, link, topic, title, author, role, times, category, game and an
+ * excerpt of at most two sentences. Blizzard's post text is Blizzard's, so there is never a full copy here.
+ * Players' posts are read with the topic but never kept. The research behind these choices is in the
+ * Everloot wiki note 2026-10-18-blue-tracker-sources.
  *
- * Caps: at most MAX_PAGES pages (30 items each) per source per run, and a run stops paging as soon as a
- * page reaches items it has already seen. A normal run is one page per source.
+ * Budget: a scheduled run makes at most `maxRequests` requests (default 40) in all, 1.5 s apart per host.
  */
 
 export type BlueSource = "forum" | "bluesky";
 export type BlueGame = "forever" | "classic";
+export type BlueRegion = "us" | "eu";
 
 export interface BluePost {
-  /** Stable across runs: `forum:<post id>` or `bluesky:<record key>`. */
+  /** Stable across runs: `forum:<post id>` (US), `forum:eu:<post id>` or `bluesky:<record key>`. */
   id: string;
   source: BlueSource;
+  /** Which forum a forum post is on. Absent for Bluesky. */
+  region?: BlueRegion;
   /** The original, which every page shows prominently. Null only if a stored link was not a web link. */
   url: string | null;
+  /** Forum posts: the topic's title. */
   title: string;
   author: string;
   /** The author's published forum title, such as "Community Manager"; empty when unknown. */
@@ -41,6 +51,13 @@ export interface BluePost {
   kind: "post" | "hotfix";
   /** At most two sentences of the original; see clampExcerpt. */
   excerpt: string;
+  /** Forum posts: the topic, so every blue reply in one thread can be listed together. */
+  topicId?: number;
+  topicSlug?: string;
+  /** 1 for the post that opened the topic. */
+  postNumber?: number;
+  /** True when this post opened the topic; false for a reply. */
+  startedThread?: boolean;
   /** One line a maintainer may write by hand. Never filled automatically, never overwritten by a fetch. */
   summary?: string;
   firstSeen: string;
@@ -54,8 +71,10 @@ export interface FetchState extends Validators {
   at: string;
   /** Do not ask again before this time (a Retry-After we were given), ISO. */
   notBefore?: string;
-  /** Time of the newest item the source showed at the last read; paging stops once it reaches this. */
+  /** Bluesky: newest post time seen. Topic lists: newest activity time fully handled. */
   newestSeen?: string;
+  /** Roster sources: the forum's staff list as last read. */
+  staff?: StaffMember[];
 }
 
 export interface BlueStore {
@@ -63,91 +82,18 @@ export interface BlueStore {
   fetched: Record<string, FetchState>;
 }
 
-export interface TrackedAccount { username: string; title: string }
-
-/** Forum and feed constants. The category ids come from /en/wow/site.json (read 2026-10-17). */
-export const FORUM_HOST = "https://us.forums.blizzard.com";
-export const FORUM_BASE = `${FORUM_HOST}/en/wow`;
 export const BLUESKY_ACTOR = "worldofwarcraft.blizzard.com";
 export const BLUESKY_FEED = `https://public.api.bsky.app/xrpc/app.bsky.feed.getAuthorFeed?actor=${BLUESKY_ACTOR}&filter=posts_no_replies&limit=30`;
 export const USER_AGENT = "Everloot/1.0 (+https://everloot.app; hello@everloot.app)";
 export const MAX_PAGES = 3;
 const PAGE_SIZE = 30;
-
-/** "WoW: Forever" 346 with its General Discussion 347 and Community Connections 348, and "Forever Beta Discussion" 349. */
-const FOREVER_CATEGORIES = new Map<number, string>([
-  [346, "WoW: Forever"],
-  [347, "WoW: Forever General Discussion"],
-  [348, "WoW: Forever Community Connections"],
-  [349, "WoW: Forever Beta Discussion"],
-]);
-/** "WoW Classic" 197 and its sub-forums. */
-const CLASSIC_CATEGORIES = new Map<number, string>([
-  [197, "WoW Classic"], [172, "WoW Classic General Discussion"], [335, "The Burning Crusade Classic"],
-  [254, "Mists of Pandaria Classic Discussion"], [199, "WoW Classic Bug Report"], [201, "WoW Classic New Guild Listings"],
-  [200, "Classic Connections"], [302, "Season of Discovery"], [296, "WoW Classic Hardcore"],
-]);
-
-/** The game a forum post is about, by category alone, or null (retail threads and any other category are dropped). */
-export function gameOf(categoryId: number | undefined): { game: BlueGame; category: string } | null {
-  if (categoryId === undefined) return null;
-  if (FOREVER_CATEGORIES.has(categoryId)) return { game: "forever", category: FOREVER_CATEGORIES.get(categoryId)! };
-  if (CLASSIC_CATEGORIES.has(categoryId)) return { game: "classic", category: CLASSIC_CATEGORIES.get(categoryId)! };
-  return null;
-}
+/** Topics per list page; Discourse allows up to 100, which costs a third of the requests of the default 30. */
+export const LIST_PAGE_SIZE = 100;
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 const str = (v: unknown): string => (typeof v === "string" ? v : "");
 
-/** Forum usernames carry a numeric suffix (`Rommax-244181`); the name shown to players does not. */
-const displayName = (username: string, name: string) => name || username.replace(/-\d+$/, "");
-
 export interface PageInfo { count: number; oldest: string | null; newest: string | null; next: string | null }
-
-/** Size and time span of one `user_actions.json` answer, kept or not, so paging knows when to stop. */
-export function forumPageInfo(json: unknown): PageInfo {
-  if (!isRecord(json) || !Array.isArray(json.user_actions)) throw new Error("not a Discourse user_actions answer");
-  const times = json.user_actions.map((a) => isoTime(isRecord(a) ? a.created_at : null)).filter((t): t is string => t !== null).sort();
-  return { count: json.user_actions.length, oldest: times[0] ?? null, newest: times.at(-1) ?? null, next: null };
-}
-
-/** Posts by tracked staff accounts from one `user_actions.json` answer. Anything about another game is dropped. */
-export function parseForumActions(json: unknown, accounts: TrackedAccount[], now: Date): BluePost[] {
-  if (!isRecord(json) || !Array.isArray(json.user_actions)) throw new Error("not a Discourse user_actions answer");
-  const roster = new Map(accounts.map((a) => [a.username.toLowerCase(), a]));
-  const posts: BluePost[] = [];
-  for (const action of json.user_actions) {
-    if (!isRecord(action) || action.deleted === true || action.hidden === true) continue;
-    if (action.action_type !== 4 && action.action_type !== 5) continue;
-    const username = str(action.acting_username) || str(action.username);
-    const account = roster.get(username.toLowerCase());
-    const title = clampText(action.title, 200);
-    const postId = action.post_id;
-    const topicId = action.topic_id;
-    const postNumber = action.post_number;
-    const postedAt = isoTime(action.created_at);
-    if (!account || !title || !Number.isInteger(postId) || !Number.isInteger(topicId) || !Number.isInteger(postNumber) || !postedAt) continue;
-    const game = gameOf(typeof action.category_id === "number" ? action.category_id : undefined);
-    if (!game) continue;
-    const slug = /^[a-z0-9-]+$/i.test(str(action.slug)) ? str(action.slug) : "topic";
-    posts.push({
-      id: `forum:${postId}`,
-      source: "forum",
-      url: `${FORUM_BASE}/t/${slug}/${topicId}${postNumber === 1 ? "" : `/${postNumber}`}`,
-      title,
-      author: displayName(username, str(action.acting_name) || str(action.name)),
-      role: account.title,
-      postedAt,
-      editedAt: null,
-      category: game.category,
-      game: game.game,
-      kind: /hotfix/i.test(title) ? "hotfix" : "post",
-      excerpt: clampExcerpt(action.excerpt),
-      firstSeen: now.toISOString(),
-    });
-  }
-  return posts;
-}
 
 /** A Forever-specific signal: the game's name, its beta, its hashtag, or a link to its pages. Bare "forever" is not one. */
 const FOREVER_SIGNAL = /\b(?:wow|world of warcraft)\s*:?\s*forever\b|\bforever beta\b|#wowforever\b|worldofwarcraft\.blizzard\.com\/[a-z-]+\/forever|forums\.blizzard\.com\/[a-z]+\/wow\/c\/wow-forever/i;
@@ -294,8 +240,20 @@ export function loadStore(path: string): BlueStore {
   if (!existsSync(path)) return emptyStore();
   const parsed = JSON.parse(readFileSync(path, "utf8"));
   if (!isRecord(parsed) || !Array.isArray(parsed.posts)) throw new Error(`${path} is not a blue post store`);
-  const posts = (parsed.posts as unknown[]).map(sanitizePost).filter((p): p is BluePost => p !== null);
+  const posts = (parsed.posts as unknown[]).map(sanitizePost).filter((p): p is BluePost => p !== null).map(withThread);
   return { posts, fetched: {} };
+}
+
+/**
+ * Posts stored before the forum reader kept the topic carry it only in their link. Fill region, topic and
+ * post number from it, so every stored forum post can be grouped by thread.
+ */
+export function withThread(post: BluePost): BluePost {
+  if (post.source !== "forum" || post.topicId !== undefined || !post.url) return post;
+  const m = /^https:\/\/(us|eu)\.forums\.blizzard\.com\/en\/wow\/t\/((?:[a-z0-9-]|%[0-9a-f]{2})+)\/(\d+)(?:\/(\d+))?$/i.exec(post.url);
+  if (!m) return post;
+  const postNumber = m[4] ? Number(m[4]) : 1;
+  return { ...post, region: m[1].toLowerCase() as BlueRegion, topicId: Number(m[3]), topicSlug: m[2], postNumber, startedThread: postNumber === 1 };
 }
 
 /** Written beside the target and renamed into place, so a crash never leaves half a store. Posts only: fetch state stays out of git. */
@@ -305,7 +263,7 @@ export function saveStore(path: string, store: BlueStore): void {
   renameSync(`${path}.tmp`, path);
 }
 
-/** The politeness state (last asked, validators, Retry-After) of the previous run; empty if there was none. */
+/** The politeness state (last asked, validators, Retry-After, staff list) of the previous run; empty if there was none. */
 export function loadFetchState(path: string): Record<string, FetchState> {
   if (!existsSync(path)) return {};
   try {
@@ -322,13 +280,9 @@ export function saveFetchState(path: string, fetched: Record<string, FetchState>
   renameSync(`${path}.tmp`, path);
 }
 
-export function loadAccounts(path: string): TrackedAccount[] {
-  const parsed = JSON.parse(readFileSync(path, "utf8"));
-  if (!isRecord(parsed) || !Array.isArray(parsed.accounts)) throw new Error(`${path} has no accounts list`);
-  return parsed.accounts.map((a: unknown) => {
-    if (!isRecord(a) || !str(a.username) || !str(a.title)) throw new Error(`${path}: every account needs a username and a title`);
-    return { username: str(a.username), title: str(a.title) };
-  });
+/** kb/curated/blue-accounts.json: hand corrections on top of the forum's own staff list. */
+export function loadOverrides(path: string): BlueOverrides {
+  return parseOverrides(JSON.parse(readFileSync(path, "utf8")));
 }
 
 // ---- polite fetching ----
@@ -337,14 +291,24 @@ export type Fetcher = (url: string, init: { headers: Record<string, string> }) =
 
 export interface IngestOptions {
   store: BlueStore;
-  accounts: TrackedAccount[];
+  overrides?: BlueOverrides;
   fetcher: Fetcher;
   now: Date;
+  /** Forums to read. Default both. */
+  regions?: BlueRegion[];
   /** A source asked less than this long ago is skipped. Default 25 minutes. */
   minIntervalMs?: number;
   /** Pause between two requests to the same host. Default 1.5 s. */
   delayMs?: number;
   sleep?: (ms: number) => Promise<void>;
+  /** Requests a run may make in all, robots.txt included. Default 40. */
+  maxRequests?: number;
+  /** List pages per topic list and run. Default 4 (400 topics). */
+  maxListPages?: number;
+  /** The staff list is read again once it is older than this. Default 24 hours. */
+  rosterMaxAgeMs?: number;
+  /** Skip Bluesky (the backfill reads the forums only). */
+  forumOnly?: boolean;
 }
 
 export interface IngestResult {
@@ -352,14 +316,16 @@ export interface IngestResult {
   added: BluePost[];
   skipped: string[];
   errors: { source: string; error: string }[];
+  /** Requests made, by kind. */
+  requests: Record<string, number>;
 }
 
-/** A server that says "slow down" or fails ends the run; the next scheduled run tries again. */
+/** A server that says "slow down" or fails ends the forum pass; the next scheduled run tries again. */
 class Backoff extends Error {
   constructor(message: string, readonly notBefore?: string) { super(message); }
 }
-
-const forumPath = (username: string, offset: number) => `/en/wow/user_actions.json?username=${encodeURIComponent(username)}&filter=4,5&offset=${offset}`;
+/** The run's request budget is spent. */
+class BudgetSpent extends Error {}
 
 function retryAfter(res: Response, now: Date): string | undefined {
   const value = res.headers.get("retry-after");
@@ -370,37 +336,51 @@ function retryAfter(res: Response, now: Date): string | undefined {
 }
 
 const message = (err: unknown) => (err instanceof Error ? err.message : String(err));
+const HOUR = 3_600_000;
+
+/** The topic list path for one page. */
+export const listPath = (path: string, page: number) => `/en/wow/${path}/l/latest.json?per_page=${LIST_PAGE_SIZE}${page ? `&page=${page}` : ""}`;
 
 /**
- * One scheduled pass. For each tracked forum account, and the official Bluesky feed: obey robots.txt, skip
- * a source asked too recently or told to wait, send the validators the server last gave us, treat 304 as
- * "nothing new", never follow a redirect, and stop at the first 429 or server error. A source is read up to
- * MAX_PAGES pages, stopping when a page reaches what the last read already showed. A source that fails is
- * reported and left exactly as it was: its validators, last-asked time and newest-seen time only move after
- * every page of the read parsed.
+ * Everything a forum pass needs: the polite GET, the robots check, the staff list and opening one topic.
+ * Shared by the scheduled run and the one-off backfill.
  */
-export async function ingestBluePosts(opts: IngestOptions): Promise<IngestResult> {
-  const minInterval = opts.minIntervalMs ?? 25 * 60_000;
+function session(opts: IngestOptions) {
   const delay = opts.delayMs ?? 1500;
   const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
-  let store = opts.store;
-  const added: BluePost[] = [];
-  const skipped: string[] = [];
-  const errors: { source: string; error: string }[] = [];
-  let backedOff = false;
-  const lastRequest = new Map<string, number>();
+  const budget = opts.maxRequests ?? 40;
+  const overrides = opts.overrides ?? emptyOverrides();
+  const s = {
+    store: opts.store,
+    added: [] as BluePost[],
+    skipped: [] as string[],
+    errors: [] as { source: string; error: string }[],
+    requests: {} as Record<string, number>,
+    backedOff: false,
+  };
+  const lastRequest = new Set<string>();
+  const robots = new Map<BlueRegion, string>();
+  const staff = new Map<BlueRegion, StaffIndex>();
 
-  const setState = (key: string, state: FetchState) => { store = { ...store, fetched: { ...store.fetched, [key]: state } }; };
+  const setState = (key: string, state: FetchState) => { s.store = { ...s.store, fetched: { ...s.store.fetched, [key]: state } }; };
+  const spent = () => Object.values(s.requests).reduce((a, b) => a + b, 0);
+  const merge = (posts: BluePost[]) => {
+    const merged = mergePosts(s.store, posts);
+    s.store = merged.store;
+    s.added.push(...merged.added);
+  };
 
-  /** One GET, with the politeness rules that apply to every request. */
-  const get = async (host: string, key: string, url: string, headers: Record<string, string>): Promise<Response> => {
+  /** One GET with the rules every request follows. `stateKey` receives a Retry-After. */
+  const get = async (kind: string, host: string, url: string, headers: Record<string, string>, stateKey: string): Promise<Response> => {
+    if (spent() >= budget) throw new BudgetSpent(`request budget of ${budget} spent`);
     if (lastRequest.has(host)) await sleep(delay);
-    lastRequest.set(host, 1);
+    lastRequest.add(host);
+    s.requests[kind] = (s.requests[kind] ?? 0) + 1;
     const res = await opts.fetcher(url, { headers: { "User-Agent": USER_AGENT, ...headers } });
     if (res.status === 429 || res.status >= 500) {
       const notBefore = retryAfter(res, opts.now);
-      const previous = store.fetched[key];
-      setState(key, { ...(previous ?? { at: opts.now.toISOString() }), ...(notBefore ? { notBefore } : {}) });
+      const previous = s.store.fetched[stateKey];
+      setState(stateKey, { ...(previous ?? { at: opts.now.toISOString() }), ...(notBefore ? { notBefore } : {}) });
       throw new Backoff(`HTTP ${res.status}`, notBefore);
     }
     // A redirect could lead somewhere robots.txt was never read for, so it is reported, not followed.
@@ -408,93 +388,308 @@ export async function ingestBluePosts(opts: IngestOptions): Promise<IngestResult
     return res;
   };
 
-  /**
-   * Read one source, page by page. `urlFor(page, cursor)` builds each request, `info` measures a page and
-   * `parse` turns it into posts. Nothing is merged or remembered unless every page succeeded.
-   */
-  const readSource = async (
-    key: string, host: string, urlFor: (page: number, cursor: string | null) => string,
-    info: (json: unknown) => PageInfo, parse: (json: unknown) => BluePost[],
-  ): Promise<void> => {
-    const state = store.fetched[key];
-    if (state?.notBefore && Date.parse(state.notBefore) > opts.now.getTime()) { skipped.push(`${key}: asked to wait until ${state.notBefore}`); return; }
-    if (state && opts.now.getTime() - Date.parse(state.at) < minInterval) { skipped.push(`${key}: asked less than ${Math.round(minInterval / 60000)} minutes ago`); return; }
-    const found: BluePost[] = [];
-    let validators: Validators = {};
-    let newest: string | null = null;
-    let cursor: string | null = null;
-    for (let page = 0; page < MAX_PAGES; page++) {
-      const headers: Record<string, string> = { Accept: "application/json" };
-      if (page === 0 && state?.etag) headers["If-None-Match"] = state.etag;
-      if (page === 0 && state?.lastModified) headers["If-Modified-Since"] = state.lastModified;
-      const res = await get(host, key, urlFor(page, cursor), headers);
-      if (res.status === 304) {
-        // Nothing new. A 304 that omits a validator does not erase the one we hold.
-        const next: FetchState = { ...state, at: opts.now.toISOString() };
-        const etag = res.headers.get("etag");
-        const lastModified = res.headers.get("last-modified");
-        if (etag) next.etag = etag;
-        if (lastModified) next.lastModified = lastModified;
-        delete next.notBefore;
-        setState(key, next);
-        return;
-      }
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
-      const measured = info(json);
-      found.push(...parse(json));
-      if (page === 0) {
-        validators = { ...(res.headers.get("etag") ? { etag: res.headers.get("etag")! } : {}), ...(res.headers.get("last-modified") ? { lastModified: res.headers.get("last-modified")! } : {}) };
-        newest = measured.newest;
-      }
-      cursor = measured.next;
-      const reachedKnown = state?.newestSeen !== undefined && measured.oldest !== null && measured.oldest <= state.newestSeen;
-      if (reachedKnown || measured.count < PAGE_SIZE || (key === "bluesky" && !cursor)) break;
-    }
-    const merged = mergePosts(store, found);
-    store = merged.store;
-    added.push(...merged.added);
-    const newestSeen = [newest, state?.newestSeen].filter((t): t is string => !!t).sort().at(-1);
-    setState(key, { at: opts.now.toISOString(), ...validators, ...(newestSeen ? { newestSeen } : {}) });
+  const hostKey = (region: BlueRegion) => `host:${region}`;
+
+  /** GET JSON from a forum, after robots.txt. A 404 or 403 is null (a topic deleted or made private since it was listed). */
+  const forumJson = async (kind: string, region: BlueRegion, path: string): Promise<unknown | null> => {
+    const rules = robots.get(region);
+    if (rules === undefined) throw new Error("robots.txt not read");
+    if (!robotsAllows(rules, path)) throw new Error(`robots.txt disallows ${path}`);
+    const res = await get(kind, region, `${REGIONS[region].host}${path}`, { Accept: "application/json" }, hostKey(region));
+    if (res.status === 404 || res.status === 403) return null;
+    if (!res.ok) throw new Error(`HTTP ${res.status} for ${path}`);
+    return res.json();
   };
 
-  // Forum: robots.txt first, then each account.
-  let robots: string | null = null;
-  try {
-    const res = await opts.fetcher(`${FORUM_HOST}/robots.txt`, { headers: { "User-Agent": USER_AGENT } });
-    if (res.status === 404) robots = "";
-    else if (res.ok) robots = await res.text();
-    else throw new Error(`robots.txt: HTTP ${res.status}`);
-  } catch (err) {
-    errors.push({ source: "forum", error: message(err) });
-  }
-  if (robots !== null) {
-    for (const account of opts.accounts) {
-      const key = `forum:${account.username}`;
-      if (!robotsAllows(robots, forumPath(account.username, 0))) { errors.push({ source: key, error: "robots.txt disallows this path" }); continue; }
-      if (backedOff) { skipped.push(`${key}: stopped after an earlier slow-down`); continue; }
+  /** robots.txt for a forum host, read once per run before anything else on that host. False when it could not be read. */
+  const readRobots = async (region: BlueRegion): Promise<boolean> => {
+    const state = s.store.fetched[hostKey(region)];
+    if (state?.notBefore && Date.parse(state.notBefore) > opts.now.getTime()) {
+      s.skipped.push(`forum ${region}: asked to wait until ${state.notBefore}`);
+      return false;
+    }
+    try {
+      const res = await get("robots", region, `${REGIONS[region].host}/robots.txt`, {}, hostKey(region));
+      if (res.status === 404) robots.set(region, "");
+      else if (res.ok) robots.set(region, await res.text());
+      else throw new Error(`robots.txt: HTTP ${res.status}`);
+      return true;
+    } catch (err) {
+      if (err instanceof Backoff) s.backedOff = true;
+      if (err instanceof BudgetSpent) throw err;
+      s.errors.push({ source: `forum ${region}`, error: message(err).startsWith("robots.txt") ? message(err) : `robots.txt: ${message(err)}` });
+      return false;
+    }
+  };
+
+  /** The staff list, from the state when it is fresh enough, else from about.json. A failed read keeps the old list. */
+  const loadStaff = async (region: BlueRegion): Promise<StaffIndex> => {
+    const key = `roster:${region}`;
+    const state = s.store.fetched[key];
+    let roster = state?.staff ?? [];
+    const maxAge = opts.rosterMaxAgeMs ?? 24 * HOUR;
+    if (!state || opts.now.getTime() - Date.parse(state.at) >= maxAge) {
       try {
-        await readSource(
-          key, "forum",
-          (page) => `${FORUM_HOST}${forumPath(account.username, page * PAGE_SIZE)}`,
-          forumPageInfo, (json) => parseForumActions(json, [account], opts.now),
-        );
+        const json = await forumJson("roster", region, "/en/wow/about.json");
+        if (json === null) throw new Error("about.json: not found");
+        roster = parseAbout(json);
+        setState(key, { at: opts.now.toISOString(), staff: roster });
       } catch (err) {
-        errors.push({ source: key, error: message(err) });
-        if (err instanceof Backoff) backedOff = true;
+        if (err instanceof Backoff || err instanceof BudgetSpent) throw err;
+        s.errors.push({ source: key, error: message(err) });
       }
+    }
+    const index = staffIndex(region, roster, overrides);
+    staff.set(region, index);
+    return index;
+  };
+
+  /** Stored post numbers per topic, so a topic opened again only fetches the staff posts not yet kept. */
+  const knownNumbers = (region: BlueRegion, topicId: number) =>
+    new Set(s.store.posts.filter((p) => p.source === "forum" && (p.region ?? "us") === region && p.topicId === topicId).map((p) => p.postNumber));
+
+  /**
+   * Open one topic and keep its staff posts. The forum chains its staff posts (each post names the next
+   * one), so this reads the topic from the last staff post already kept (or from the start: a new topic,
+   * or `fromStart` for the backfill), then follows the chain 20 posts at a time to the end. A re-opened
+   * topic usually costs one request. Null when the topic is gone.
+   */
+  const openTopic = async (region: BlueRegion, topicId: number, fromStart = false): Promise<BluePost[] | null> => {
+    const known = knownNumbers(region, topicId);
+    const last = fromStart ? 0 : Math.max(0, ...[...known].filter((n): n is number => typeof n === "number"));
+    const json = await forumJson("topic", region, last > 1 ? `/en/wow/t/${topicId}/${last}.json` : `/en/wow/t/${topicId}.json`);
+    if (json === null) return null;
+    const view = parseTopicView(json);
+    if (view.topic.id !== topicId) throw new Error(`topic ${topicId}: answer is for topic ${view.topic.id}`);
+    const posts = [...view.posts];
+    const loaded = new Set(posts.map((p) => p.post_number));
+    const tracked = new Set(view.tracked);
+    const chain = new Set(view.chain);
+    const asked = new Set<number>();
+    for (;;) {
+      // Re-reading from the last kept post, only the chain after it matters.
+      const n = [...chain].filter((m) => !loaded.has(m) && !asked.has(m) && (fromStart || (m > last && !known.has(m)))).sort((a, b) => a - b)[0];
+      if (n === undefined) break;
+      // A number a chunk does not bring back (deleted since) is not asked for twice.
+      asked.add(n);
+      const chunk = await forumJson("posts", region, `/en/wow/t/${topicId}/posts.json?post_number=${n - 1}&asc=true`);
+      const more = chunk === null ? [] : parsePostChunk(chunk);
+      posts.push(...more);
+      for (const p of more) loaded.add(p.post_number);
+      for (const m of nextTracked(more)) {
+        chain.add(m.n);
+        if (isBlueGroup(m.group)) tracked.add(m.n);
+      }
+    }
+    return bluePostsOf(region, { ...view, tracked: [...tracked] }, posts, staff.get(region)!, opts.now);
+  };
+  return { s, get, setState, merge, forumJson, readRobots, loadStaff, openTopic, budget };
+}
+
+/**
+ * One scheduled pass, within `maxRequests` requests:
+ *  1. the official Bluesky feed (one request, as before);
+ *  2. per forum region: robots.txt, the staff list when it is a day old, then each Forever and Classic topic
+ *     list by last activity, page by page (100 topics a page) until it reaches the activity time the last
+ *     run handled, at most `maxListPages` pages; then each listed topic that changed since and carries a
+ *     staff post is opened, oldest change first, and its staff posts are kept.
+ * A list's handled time only moves past a topic once that topic was read, so a run cut short by the budget,
+ * an error or a 429 picks up where it stopped. A list that needed more than `maxListPages` pages leaves a gap,
+ * reported in `skipped`; `blue-backfill` fills it. Any 429 or server error ends the forum pass and records
+ * Retry-After; redirects are never followed.
+ */
+export async function ingestBluePosts(opts: IngestOptions): Promise<IngestResult> {
+  const minInterval = opts.minIntervalMs ?? 25 * 60_000;
+  const maxPages = opts.maxListPages ?? 4;
+  const x = session(opts);
+  const { s } = x;
+
+  if (!opts.forumOnly) {
+    try {
+      await readBluesky(x, opts, minInterval);
+    } catch (err) {
+      s.errors.push({ source: "bluesky", error: message(err) });
     }
   }
 
-  // Bluesky: the public AppView API.
   try {
-    await readSource(
-      "bluesky", "bluesky",
-      (_page, cursor) => (cursor ? `${BLUESKY_FEED}&cursor=${encodeURIComponent(cursor)}` : BLUESKY_FEED),
-      blueskyPageInfo, (json) => parseBlueskyFeed(json, opts.now),
-    );
+    for (const region of opts.regions ?? BLUE_REGIONS) {
+      if (s.backedOff) { s.skipped.push(`forum ${region}: stopped after an earlier slow-down`); continue; }
+      if (!(await x.readRobots(region))) continue;
+      try {
+        const staff = await x.loadStaff(region);
+        for (const list of REGIONS[region].lists) {
+          const key = `list:${region}:${list.key}`;
+          const state = s.store.fetched[key];
+          if (state && opts.now.getTime() - Date.parse(state.at) < minInterval) { s.skipped.push(`${key}: asked less than ${Math.round(minInterval / 60000)} minutes ago`); continue; }
+          try {
+            await readList(x, opts.now, region, key, list.path, state, staff, maxPages);
+          } catch (err) {
+            if (err instanceof Backoff || err instanceof BudgetSpent) throw err;
+            s.errors.push({ source: key, error: message(err) });
+          }
+        }
+      } catch (err) {
+        if (err instanceof BudgetSpent) throw err;
+        if (err instanceof Backoff) s.backedOff = true;
+        s.errors.push({ source: `forum ${region}`, error: message(err) });
+      }
+    }
   } catch (err) {
-    errors.push({ source: "bluesky", error: message(err) });
+    if (!(err instanceof BudgetSpent)) throw err;
+    s.skipped.push(`stopped: ${message(err)}; the next run continues from here`);
   }
-  return { store, added, skipped, errors };
+  // Fetch state from the per-account reader this replaced.
+  const fetched = Object.fromEntries(Object.entries(s.store.fetched).filter(([k]) => !k.startsWith("forum:")));
+  return { store: { ...s.store, fetched }, added: s.added, skipped: s.skipped, errors: s.errors, requests: s.requests };
+}
+
+type Session = ReturnType<typeof session>;
+
+/** One topic list: pages back to the last handled activity time, then the changed topics with a staff post. */
+async function readList(x: Session, now: Date, region: BlueRegion, key: string, path: string, state: FetchState | undefined, staff: StaffIndex, maxPages: number) {
+  const { s } = x;
+  const since = state?.newestSeen ?? null;
+  const listed: ListedTopic[] = [];
+  let reached = since === null;
+  let pages = 0;
+  for (let page = 0; page < maxPages; page++) {
+    const json = await x.forumJson("list", region, listPath(path, page));
+    if (json === null) throw new Error(`topic list ${path}: not found`);
+    const { topics, full } = parseTopicList(json);
+    listed.push(...topics);
+    pages++;
+    // Pinned topics sit on top whatever their age, so only the others say how far back a page reaches.
+    const oldest = topics.filter((t) => !t.pinned).map((t) => t.bumpedAt).sort()[0];
+    // A first run reads one page and starts from there; history is the backfill's job.
+    if (since === null || !full || (oldest !== undefined && oldest <= since)) { reached = true; break; }
+  }
+  const newest = listed.map((t) => t.bumpedAt).sort().at(-1) ?? since;
+  if (!reached) s.skipped.push(`${key}: more than ${pages} pages changed since ${since}; older changes were not listed (run blue-backfill to fill the gap)`);
+  const todo = listed
+    .filter((t) => (since === null || t.bumpedAt > since) && isCandidate(t, staff))
+    .sort((a, b) => a.bumpedAt.localeCompare(b.bumpedAt) || a.id - b.id);
+  const seen = new Set<number>();
+  let handled = since;
+  for (const topic of todo) {
+    if (seen.has(topic.id)) continue;
+    seen.add(topic.id);
+    try {
+      const posts = await x.openTopic(region, topic.id);
+      if (posts === null) s.skipped.push(`${key}: topic ${topic.id} is gone`);
+      else x.merge(posts);
+    } catch (err) {
+      // Stop here: the handled time stays before this topic, so the next run opens it again.
+      x.setState(key, { at: now.toISOString(), ...(handled ? { newestSeen: handled } : {}) });
+      if (err instanceof Backoff || err instanceof BudgetSpent) throw err;
+      s.errors.push({ source: `${key}: topic ${topic.id}`, error: message(err) });
+      return;
+    }
+    handled = topic.bumpedAt;
+  }
+  x.setState(key, { at: now.toISOString(), ...(newest ? { newestSeen: newest } : {}) });
+}
+
+/** The Bluesky feed, page by page up to MAX_PAGES, stopping at what the last read already showed. */
+async function readBluesky(x: Session, opts: IngestOptions, minInterval: number) {
+  const { s } = x;
+  const key = "bluesky";
+  const state = s.store.fetched[key];
+  if (state?.notBefore && Date.parse(state.notBefore) > opts.now.getTime()) { s.skipped.push(`${key}: asked to wait until ${state.notBefore}`); return; }
+  if (state && opts.now.getTime() - Date.parse(state.at) < minInterval) { s.skipped.push(`${key}: asked less than ${Math.round(minInterval / 60000)} minutes ago`); return; }
+  const found: BluePost[] = [];
+  let validators: Validators = {};
+  let newest: string | null = null;
+  let cursor: string | null = null;
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const headers: Record<string, string> = { Accept: "application/json" };
+    if (page === 0 && state?.etag) headers["If-None-Match"] = state.etag;
+    if (page === 0 && state?.lastModified) headers["If-Modified-Since"] = state.lastModified;
+    const res = await x.get("bluesky", "bluesky", cursor ? `${BLUESKY_FEED}&cursor=${encodeURIComponent(cursor)}` : BLUESKY_FEED, headers, key);
+    if (res.status === 304) {
+      // Nothing new. A 304 that omits a validator does not erase the one we hold.
+      const next: FetchState = { ...state, at: opts.now.toISOString() };
+      const etag = res.headers.get("etag");
+      const lastModified = res.headers.get("last-modified");
+      if (etag) next.etag = etag;
+      if (lastModified) next.lastModified = lastModified;
+      delete next.notBefore;
+      x.setState(key, next);
+      return;
+    }
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    const measured = blueskyPageInfo(json);
+    found.push(...parseBlueskyFeed(json, opts.now));
+    if (page === 0) {
+      validators = { ...(res.headers.get("etag") ? { etag: res.headers.get("etag")! } : {}), ...(res.headers.get("last-modified") ? { lastModified: res.headers.get("last-modified")! } : {}) };
+      newest = measured.newest;
+    }
+    cursor = measured.next;
+    const reachedKnown = state?.newestSeen !== undefined && measured.oldest !== null && measured.oldest <= state.newestSeen;
+    if (reachedKnown || measured.count < PAGE_SIZE || !cursor) break;
+  }
+  x.merge(found);
+  const newestSeen = [newest, state?.newestSeen].filter((t): t is string => !!t).sort().at(-1);
+  x.setState(key, { at: opts.now.toISOString(), ...validators, ...(newestSeen ? { newestSeen } : {}) });
+}
+
+export interface BackfillOptions extends Omit<IngestOptions, "minIntervalMs" | "maxListPages" | "forumOnly"> {
+  /** Games to walk. */
+  games: BlueGame[];
+  /** Stop listing a topic list at topics whose last activity is older than this (ISO); the whole list when absent. */
+  since?: string;
+  /** Pages per topic list at most. Default: no cap besides the request budget. */
+  maxListPages?: number;
+}
+
+/**
+ * The one-off history: walk every page of each Forever (and, if asked, Classic) topic list, back to `since`
+ * or the first topic, and open every topic that carries a staff post. Same rules and pace as the scheduled
+ * run; only the request budget is larger. Not for the cron. Lists are walked one after the other, Forever first.
+ */
+export async function backfillBluePosts(opts: BackfillOptions): Promise<IngestResult & { topics: number; pages: number }> {
+  const x = session({ ...opts, forumOnly: true });
+  const { s } = x;
+  let topicsOpened = 0;
+  let pagesRead = 0;
+  const wanted = new Set(opts.games);
+  try {
+    for (const region of opts.regions ?? BLUE_REGIONS) {
+      if (s.backedOff || !(await x.readRobots(region))) continue;
+      const staff = await x.loadStaff(region);
+      const ordered = [...REGIONS[region].lists].sort((a, b) => Number(b.key !== "classic") - Number(a.key !== "classic"));
+      for (const list of ordered) {
+        const game: BlueGame = list.key === "classic" ? "classic" : "forever";
+        // "In Development" also holds the Classic PTR; it is walked with Forever.
+        if (!wanted.has(game)) continue;
+        const done = new Set<number>();
+        for (let page = 0; opts.maxListPages === undefined || page < opts.maxListPages; page++) {
+          const json = await x.forumJson("list", region, listPath(list.path, page));
+          if (json === null) break;
+          pagesRead++;
+          const { topics, full } = parseTopicList(json);
+          for (const t of topics) {
+            if (done.has(t.id) || !isCandidate(t, staff)) continue;
+            done.add(t.id);
+            try {
+              const posts = await x.openTopic(region, t.id, true);
+              topicsOpened++;
+              if (posts) x.merge(posts);
+            } catch (err) {
+              if (err instanceof Backoff || err instanceof BudgetSpent) throw err;
+              s.errors.push({ source: `list:${region}:${list.key}: topic ${t.id}`, error: message(err) });
+            }
+          }
+          const oldest = topics.filter((t) => !t.pinned).map((t) => t.bumpedAt).sort()[0];
+          if (!full || (opts.since && oldest !== undefined && oldest < opts.since)) break;
+        }
+      }
+    }
+  } catch (err) {
+    if (err instanceof Backoff) s.errors.push({ source: "forum", error: `stopped: ${message(err)}` });
+    else if (err instanceof BudgetSpent) s.skipped.push(`stopped: ${message(err)}`);
+    else throw err;
+  }
+  return { store: s.store, added: s.added, skipped: s.skipped, errors: s.errors, requests: s.requests, topics: topicsOpened, pages: pagesRead };
 }

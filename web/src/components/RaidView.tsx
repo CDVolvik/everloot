@@ -1,13 +1,12 @@
 import AdSlot from "@/components/AdSlot";
 import JsonLd from "@/components/JsonLd";
-import { Container, Disclosure, PageHeader, SectionHeading, SourceLine } from "@/components/ui";
+import { Container, Disclosure, PageHeader, SectionHeading } from "@/components/ui";
 import RaidBuilder from "./RaidBuilder";
 import { CURRENT_BUILD, TABLES } from "@/data/game-data/raid";
 import { trailFor } from "@/lib/breadcrumbs";
 import { webApplicationJsonLd } from "@/lib/jsonld";
 import { raidTalentFacts } from "@/lib/raid-facts";
-import { BANNER_MAP, creditWhat, loadingArt, loadSiteAssets, raidArt } from "@/lib/game-assets";
-import GameCredit from "@/components/game/GameCredit";
+import { BANNER_MAP, loadingArt, loadSiteAssets, raidArt } from "@/lib/game-assets";
 import { BannerArt } from "@/components/game/PageBanner";
 
 export const TITLE = "WoW Forever Raid Buff Planner";
@@ -26,11 +25,9 @@ export default async function RaidView({ initialCode }: { initialCode?: string }
   const assets = await loadSiteAssets();
   const art = raidArt(assets, TABLES[CURRENT_BUILD]);
   const banner = loadingArt(assets, BANNER_MAP.raid);
-  const credit = creditWhat(art && "icons", art && Object.keys(art.familyTips).length > 0 && "tooltip text", banner && "loading screen art");
   return (
     <Container>
       <JsonLd data={webApplicationJsonLd({ name: TITLE, path: "/tools/raid", description })} />
-      {/* One full credit line for the page's game art, under the planner; the banner carries only its one-line caption. */}
       <PageHeader
         trail={trailFor("/tools/raid")!}
         title={TITLE}
@@ -39,7 +36,6 @@ export default async function RaidView({ initialCode }: { initialCode?: string }
       />
 
       <RaidBuilder art={art} initialCode={initialCode} />
-      {assets && (art || banner) && <div className="mt-6"><GameCredit version={assets.version} label={assets.label} what={credit} /></div>}
       <AdSlot slot="belowTool" />
 
       {/* The explanations stay on the page for readers and search engines, closed until asked for. */}
@@ -97,8 +93,6 @@ export default async function RaidView({ initialCode }: { initialCode?: string }
           </p>
         </Disclosure>
       </section>
-
-      <SourceLine build={CURRENT_BUILD} />
     </Container>
   );
 }

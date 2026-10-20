@@ -7,8 +7,7 @@ import { pageMetadata } from "@/lib/seo";
 import { trailFor } from "@/lib/breadcrumbs";
 import { emblems, loadSiteAssets } from "@/lib/game-assets";
 import GameIcon from "@/components/game/GameIcon";
-import GameCredit from "@/components/game/GameCredit";
-import { Container, DataTable, PageHeader, SectionHeading, SourceLine, type Column } from "@/components/ui";
+import { Container, DataTable, PageHeader, SectionHeading, type Column } from "@/components/ui";
 
 const description =
   "WoW Forever is Blizzard's World of Warcraft: Forever: the launch date, every playable race and class combination, and the newest game build Everloot has seen.";
@@ -64,7 +63,6 @@ export default async function WowForeverPage() {
   // The game's race and faction emblems beside the names, only when the asset URL is set and the upload has them.
   const assets = await loadSiteAssets();
   const icons = emblems(assets);
-  const shown = icons.races.size > 0 || icons.factions.size > 0;
   return (
     <Container width="reading">
       <PageHeader
@@ -135,10 +133,6 @@ export default async function WowForeverPage() {
         </section>
 
       </div>
-      {/* Game-file data is Blizzard's, so the line names Blizzard rather than Everloot's data licence. */}
-      <SourceLine licence="game data is Blizzard's">
-        {assets && shown && <GameCredit inline version={assets.version} label={assets.label} what="Race and faction emblems" />}
-      </SourceLine>
     </Container>
   );
 }

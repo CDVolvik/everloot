@@ -7,15 +7,14 @@ import { npcPage, questPage } from "../../../../../../kb/src/world-pages";
 import { loadWorldFacts } from "@/lib/rollup-compute";
 import { pinLink } from "@/lib/world-map";
 import { trailFor } from "@/lib/breadcrumbs";
-import { Container, DataTable, EmptyState, PageHeader, SourceLine, Tabs, TooltipFrame } from "@/components/ui";
-import { EntityLayout, FactsCard, LINK, Unreachable } from "../../entity";
+import { Container, DataTable, Facts, Tabs, TooltipFrame } from "@/components/ui";
+import { EmptyTab, EntityHeader, EntityTop, known, LINK, Unreachable } from "../../entity";
 import { loadItemFacts } from "@/lib/rollup-compute";
 import { itemNames, npcNames } from "@/lib/names";
 import { loreForEntity } from "@/lib/lore";
 import { loadItemTips, loadSiteAssets } from "@/lib/game-assets";
 import EntityLink from "@/components/EntityLink";
 import LoreSection from "@/components/LoreSection";
-import GameCredit from "@/components/game/GameCredit";
 
 export const dynamic = "force-dynamic";
 
@@ -57,49 +56,56 @@ export default async function QuestPage(props: { params: Promise<{ id: string }>
   ];
   const npcLink = (id: number) => <EntityLink kind="npc" id={id} name={npcs.get(id)} />;
 
+  const named = title !== `Quest ${page.questId}`;
+
   return (
-    <Container width="wide">
+    <Container width="data">
       <article>
-        <PageHeader trail={trail} title={title} meta={title !== `Quest ${page.questId}` ? <span className="font-mono tabular-nums">Quest {page.questId}</span> : undefined} />
-        <EntityLayout
-          rail={
-            <>
-              <TooltipFrame name={title} label={`${title}, as players saw it`}>
-                {!facts.unreachable && page.level !== null && <p>Level {page.level}</p>}
-              </TooltipFrame>
-              {!facts.unreachable && (
-                <FactsCard
-                  title="Seen by players"
-                  facts={[
-                    { label: "Title", value: page.title ?? undefined },
-                    { label: "Level", value: page.level ?? undefined },
-                    { label: "Giver", value: page.giverNpcId !== null ? npcLink(page.giverNpcId) : undefined },
-                    { label: "Turn-in", value: page.turnInNpcId !== null ? npcLink(page.turnInNpcId) : undefined },
-                    { label: "Rewards", value: page.rewards.length ? `${page.rewards.length} items` : undefined },
-                  ]}
-                />
-              )}
-            </>
+        <EntityHeader
+          trail={trail}
+          title={title}
+          meta={["Quest", !facts.unreachable && page.level !== null ? `Level ${page.level}` : null, named ? <span className="tabular-nums">ID {page.questId}</span> : null]}
+        />
+        <EntityTop
+          box={
+            <TooltipFrame name={title} label={`${title}, as players saw it`}>
+              {!facts.unreachable && page.level !== null && <p>Level {page.level}</p>}
+            </TooltipFrame>
           }
-        >
-          <Tabs
-            label={`${title}: relations`}
-            tabs={[
-              {
-                id: "rewards", label: "Rewards", count: facts.unreachable ? undefined : page.rewards.length,
-                panel: (
+          facts={!facts.unreachable && (
+            <Facts
+              layout="list"
+              label={`${title}: quick facts`}
+              items={[
+                { label: "Reported title", value: known(page.title) },
+                { label: "Level", value: known(page.level), numeric: true },
+                { label: "Giver", value: known(page.giverNpcId !== null ? npcLink(page.giverNpcId) : null) },
+                { label: "Turn-in", value: known(page.turnInNpcId !== null ? npcLink(page.turnInNpcId) : null) },
+                { label: "Rewards", value: known(page.rewards.length ? `${page.rewards.length} items` : null) },
+              ]}
+            />
+          )}
+        />
+        <Tabs
+          label={`${title}: relations`}
+          tabs={[
+            {
+              id: "rewards", label: "Rewards", count: facts.unreachable ? undefined : page.rewards.length,
+              panel: facts.unreachable ? <Unreachable />
+                : page.rewards.length ? (
                   <DataTable
                     caption={`Rewards of ${title}`}
                     columns={[{ key: "item", header: "Item", cell: (itemId: number) => <EntityLink kind="item" id={itemId} name={items.get(itemId) ?? tips.get(itemId)?.name} icon={tips.get(itemId)?.icon} /> }]}
-                    rows={facts.unreachable ? [] : page.rewards}
+                    rows={page.rewards}
                     rowKey={String}
-                    empty={facts.unreachable ? <Unreachable /> : <EmptyState framed={false} message="No agreed rewards yet. A reward shows once 3 installs report the same one." />}
                   />
-                ),
-              },
-              {
-                id: "givers", label: "Giver and turn-in", count: facts.unreachable ? undefined : people.length,
-                panel: (
+                )
+                : <EmptyTab message="No agreed rewards yet." />,
+            },
+            {
+              id: "givers", label: "Giver and turn-in", count: facts.unreachable ? undefined : people.length,
+              panel: facts.unreachable ? <Unreachable />
+                : people.length ? (
                   <DataTable
                     caption={`Who gives and takes ${title}`}
                     columns={[
@@ -109,19 +115,16 @@ export default async function QuestPage(props: { params: Promise<{ id: string }>
                     ]}
                     rows={people}
                     rowKey={(p) => p.role}
-                    empty={facts.unreachable ? <Unreachable /> : <EmptyState framed={false} message="No agreed giver or turn-in yet. Each shows once 3 installs report the same NPC." />}
                   />
-                ),
-              },
-            ]}
-          />
+                )
+                : <EmptyTab message="No agreed giver or turn-in yet." />,
+            },
+          ]}
+        />
+        <div className="mt-6 space-y-6 empty:hidden">
           <LoreSection match={lore} />
           {!facts.unreachable && page.title !== null && <AdSlot slot="inContent" />}
-        </EntityLayout>
-        <SourceLine confirmed>
-          The addon does not guess a level.
-          {assets && tips.size > 0 && <>{" "}<GameCredit inline version={assets.version} label={assets.label} /></>}
-        </SourceLine>
+        </div>
       </article>
     </Container>
   );
