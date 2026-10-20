@@ -82,7 +82,7 @@ export default async function MapPage(props: { searchParams: Promise<Query> }) {
     return `/map?${q.toString()}`;
   })();
 
-  // One credit line for the page's game art: the banner's caption when there is a banner, else at the foot.
+  // One full credit line for the page's game art, at the foot; the banner carries only its one-line caption.
   const credit = assets && (art || banner || thumbShown)
     ? <GameCredit version={assets.version} label={assets.label} what={creditWhat(art && "map pictures", (banner || thumbShown) && "loading screen art")} />
     : null;
@@ -94,7 +94,7 @@ export default async function MapPage(props: { searchParams: Promise<Query> }) {
         trail={trailFor("/map")!}
         title={TITLE}
         lede={lead}
-        banner={banner ? { image: <BannerArt art={banner} eager />, credit } : undefined}
+        banner={banner ? { image: <BannerArt art={banner} eager /> } : undefined}
       />
 
       <LinkTabs
@@ -170,7 +170,7 @@ export default async function MapPage(props: { searchParams: Promise<Query> }) {
           NPC and vendor points are from player uploads (CC BY-SA 4.0).
         </p>
       </Explainer>
-      {!banner && credit && <div className="mt-6">{credit}</div>}
+      {credit && <div className="mt-6">{credit}</div>}
       <SourceLine build={MAP_SOURCE.version} licence="Blizzard's data, not under our licence; player points CC BY-SA 4.0">
         {!corpus.unreachable && dataAgeLabel(corpus.dataAsOf)}
       </SourceLine>

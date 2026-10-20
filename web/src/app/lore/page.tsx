@@ -41,10 +41,7 @@ export default async function LoreLanding() {
         trail={trailFor("/lore")!}
         title="Lore archive"
         lede={<>The Warcraft Wiki as it stood on 13 November 2023{pages !== null ? <>, {formatter.format(pages)} pages</> : null}. {LEAD}</>}
-        banner={banner && assets ? {
-          image: <BannerArt art={banner} eager />,
-          credit: <GameCredit version={assets.version} label={assets.label} what={creditWhat("loading screen art")} />,
-        } : undefined}
+        banner={banner ? { image: <BannerArt art={banner} eager /> } : undefined}
       />
       <Container width="reading">
 
@@ -87,6 +84,9 @@ export default async function LoreLanding() {
             <p>Published under CC BY-SA 4.0 with a source link on every page.</p>
             <p>{release.manifest.notice}</p>
           </Explainer>
+        )}
+        {banner && assets && (
+          <div className="mt-6"><GameCredit version={assets.version} label={assets.label} what={creditWhat("loading screen art")} /></div>
         )}
         <SourceLine source="Warcraft Wiki, 13 November 2023" licence="Warcraft Wiki contributors, CC BY-SA 4.0" />
       </Container>

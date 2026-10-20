@@ -28,8 +28,10 @@ import ChangesPage from "@/app/changes/page";
 import WowForeverPage from "@/app/wow-forever/page";
 import LorePage from "@/app/lore/page";
 
-/** The wide-screen banner's markup: from its start to the end of its credit caption. */
-const onBanner = (html: string) => html.slice(html.indexOf("data-banner"), html.indexOf("</div>", html.indexOf("data-banner-credit")));
+/** The wide-screen banner's markup: from its start to the end of its caption. */
+const onBanner = (html: string) => html.slice(html.indexOf("data-banner"), html.indexOf("</p>", html.indexOf("data-banner-credit")));
+/** The banner's one-line caption; the full credit with the build is at the foot of the page. */
+const CAPTION = /data-banner-credit[^>]*>Art: WoW: Forever game files · © Blizzard Entertainment$/;
 
 const BASE = "https://assets.example.test/wow_classic_beta-70450-84bea423";
 const PRIVATE = "https://r2.example.test/everloot-game-data/wow_classic_beta-70450-84bea423";
@@ -231,20 +233,25 @@ test("map: the continent's loading screen above the map, and each dungeon's besi
   const html = await render(() => MapPage({ searchParams: Promise.resolve({ continent: "0" }) }));
   expect(onBanner(html)).toMatch(/<img[^>]*loading\/9000\.webp[^>]*data-page-banner/);
   expect(onBanner(html)).toMatch(/<h1[^>]*>WoW Forever World Map<\/h1>/);
-  expect(onBanner(html)).toContain("Map pictures and loading screen art from game build");
+  expect(onBanner(html)).toMatch(CAPTION);
+  expect(onBanner(html)).not.toContain("data-game-credit");
   expect(html).toMatch(/<li class="flex items-center gap-3"><img src="[^"]*loading\/9036-small\.webp" alt="" aria-hidden="true"[^>]*><span><span class="text-fg">Deadmines<\/span>/);
   expect(html).toContain("Map pictures and loading screen art from game build");
 });
 
-test("patch notes: a wide-screen loading screen with the title on it and the credit as its caption, and a spell a post names gets its icon, tooltip and link", async () => {
+test("patch notes: a wide-screen loading screen with the title and a one-line caption on it, the full credit at the foot, and a spell a post names gets its icon, tooltip and link", async () => {
   vi.stubEnv("NEXT_PUBLIC_GAME_ASSETS_URL", BASE);
   vi.stubGlobal("fetch", bucket());
   const html = await render(() => ChangesPage({ searchParams: Promise.resolve({}) }));
   expect(onBanner(html)).toMatch(/<img[^>]*loading\/9001\.webp[^>]*data-page-banner/);
-  // The breadcrumb and the title sit on the art; the credit is its caption.
+  // The breadcrumb and the title sit on the art, with one caption line; the lede follows under the art.
   expect(onBanner(html)).toMatch(/data-page-crumbs[\s\S]*<h1[^>]*>WoW Forever Patch Notes and Blizzard Posts<\/h1>/);
-  expect(onBanner(html)).toMatch(/data-banner-credit[^>]*><p[^>]*data-game-credit[^>]*>Icons, tooltip text and interface art are © Blizzard/);
+  expect(onBanner(html)).toMatch(CAPTION);
+  expect(onBanner(html)).not.toContain("Official posts from Blizzard staff");
+  // The full credit, with the build, once, after the banner.
   expect(html.match(/data-game-credit/g)).toHaveLength(1);
+  expect(html.indexOf("data-game-credit")).toBeGreaterThan(html.indexOf("data-banner-credit"));
+  expect(html).toMatch(/data-game-credit[^>]*>Icons, tooltip text and interface art are © Blizzard[^<]*from game build 1\.60\.1\.70450/);
 });
 
 test("professions: a picker of profession icons with their names", async () => {
@@ -288,5 +295,9 @@ test("lore archive: the same wide-screen banner, Scarlet Monastery's loading scr
   const html = await render(() => LorePage());
   expect(onBanner(html)).toMatch(/<img[^>]*loading\/9189\.webp[^>]*data-page-banner/);
   expect(onBanner(html)).toMatch(/<h1[^>]*>Lore archive<\/h1>/);
-  expect(onBanner(html)).toContain("Loading screen art from game build 1.60.1.70450");
+  expect(onBanner(html)).toMatch(CAPTION);
+  // The full credit, with the build, at the foot.
+  expect(html.match(/data-game-credit/g)).toHaveLength(1);
+  expect(html.indexOf("data-game-credit")).toBeGreaterThan(html.indexOf("data-banner-credit"));
+  expect(html).toContain("Loading screen art from game build 1.60.1.70450");
 });
