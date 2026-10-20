@@ -1,43 +1,73 @@
 import type { Metadata } from "next";
-import AdSlot from "@/components/AdSlot";
-import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
-import {
-  CHANGE_FILTERS, GAME_LABEL, TYPE_LABEL, filterTimeline, loadTimeline, parseFilter,
-  type ChangeEntry, type ChangeFilter,
-} from "@/lib/changes";
-import { REPO_URL } from "@/lib/source";
+import { notFound } from "next/navigation";
+import AdSlot from "@/components/AdSlot";
 import JsonLd from "@/components/JsonLd";
-import { latestBuildLine } from "@/lib/changes-facts";
-import { changesJsonLd } from "@/lib/jsonld";
-import { trailFor } from "@/lib/breadcrumbs";
-import { BANNER_MAP, loadingArt, loadSiteAssets } from "@/lib/game-assets";
-import { mentionIndex, siteSpellNames, splitMentions, type MentionIndex } from "@/lib/spell-mentions";
-import { BannerArt } from "@/components/game/PageBanner";
 import SpellTip from "@/components/game/SpellTip";
-import PostEntry, { stamp } from "@/components/PostEntry";
-import { Card, Container, Entry, EntryList, Explainer, LinkTabs, PageHeader } from "@/components/ui";
+import { Badge, Container, DataTable, DataTitle, FilterBar, ResultStrip, type Column, type FilterControl } from "@/components/ui";
+import { CHANGE_FILTERS, GAME_LABEL, TYPE_LABEL, filterTimeline, loadTimeline, parseFilter, type ChangeEntry, type ChangeFilter } from "@/lib/changes";
+import { latestBuildLine } from "@/lib/changes-facts";
+import { loadSiteAssets } from "@/lib/game-assets";
+import { changesJsonLd } from "@/lib/jsonld";
+import { pageMetadata } from "@/lib/seo";
+import { mentionIndex, siteSpellNames, splitMentions, type MentionIndex } from "@/lib/spell-mentions";
+import { listHref, listQuery, nextSort, NoMatches, PER_PAGE, sortParam, type ListQuery, type Search } from "../database/list-parts";
 
 export const metadata: Metadata = {
   ...pageMetadata({ title: "WoW Forever Patch Notes and Blizzard Posts", description: "New WoW: Forever builds, hotfixes and Blizzard blue posts, newest first. Each links to Blizzard's original; builds are dated when Everloot first saw them.", path: "/changes", image: "/changes/opengraph-image" }),
 };
 
-const TITLE = "WoW Forever Patch Notes and Blizzard Posts";
-const LEAD = "Official posts from Blizzard staff and new game builds, newest first.";
+const TITLE = "Changes";
+const LEAD = "Blue posts, hotfixes and new game builds, newest first.";
+const LINK = "text-accent hover:underline underline-offset-4";
 
-const link = "text-accent hover:underline underline-offset-4";
-const PAGE_SIZE = 60;
+/** UTC to the minute, whatever offset the time was written with. */
+const stamp = (iso: string) => `${new Date(iso).toISOString().slice(0, 16).replace("T", " ")} UTC`;
 
-// The filters are link tabs. A blue tracker of staff forum posts joins them as one more tab (or a sibling
-// route such as /changes/blue-tracker with the same tabs), its items drawn by PostEntry like the posts here.
-const FILTER_LABEL: Record<ChangeFilter, string> ={ all: "Everything", posts: "Blue posts", hotfixes: "Hotfixes", builds: "Builds" };
+const SORTS = ["date", "type", "title", "author", "source"] as const;
+type Sort = (typeof SORTS)[number];
+const DEFAULT_SORT = { key: "date" as Sort, desc: true };
 
-const href = (show: ChangeFilter, both: boolean) => {
-  const query = [show !== "all" ? `show=${show}` : "", both ? "game=all" : ""].filter(Boolean).join("&");
-  return query ? `/changes?${query}` : "/changes";
-};
+const TYPE_FILTER_LABEL: Record<ChangeFilter, string> = { all: "Any type", posts: "Blue posts", hotfixes: "Hotfixes", builds: "Builds" };
+const GAMES = { forever: "WoW: Forever", classic: "WoW Classic", all: "Both games" } as const;
+type Game = keyof typeof GAMES;
+const REGIONS = { us: "US forum", eu: "EU forum" } as const;
+type Region = keyof typeof REGIONS;
+const DAYS = { 7: "Last 7 days", 30: "Last 30 days", 90: "Last 90 days", 365: "Last year" } as const;
+type Days = keyof typeof DAYS;
 
-const ORIGIN_LABEL: Record<string, string> = { forum: "Blizzard's forum", bluesky: "Bluesky" };
+interface ChangesQuery extends ListQuery<Sort> { show: ChangeFilter; game: Game; region?: Region; author?: string; days?: Days }
+
+const one = (search: Search, k: string) => (typeof search[k] === "string" ? (search[k] as string) : undefined);
+
+/**
+ * The filters from the URL: `q`, `show=posts|hotfixes|builds`, `game=classic|all` (Forever when absent),
+ * `region=us|eu`, `author=`, `days=7|30|90|365`, `sort`, `page`. An unknown filter value is ignored, as the old
+ * links did; a malformed sort or page is a 404, as on the database lists.
+ */
+function changesQuery(search: Search): ChangesQuery | null {
+  const base = listQuery(search, SORTS);
+  if (!base) return null;
+  const game = one(search, "game"), region = one(search, "region"), days = Number(one(search, "days"));
+  const author = one(search, "author")?.trim().slice(0, 100);
+  return {
+    ...base,
+    show: parseFilter(one(search, "show")),
+    game: game === "classic" || game === "all" ? game : "forever",
+    ...(region === "us" || region === "eu" ? { region } : {}),
+    ...(author ? { author } : {}),
+    ...(days in DAYS ? { days: days as Days } : {}),
+  };
+}
+
+const href = (q: Partial<ChangesQuery>) => listHref("/changes", [
+  ["q", q.q], ["show", q.show && q.show !== "all" ? q.show : undefined], ["game", q.game && q.game !== "forever" ? q.game : undefined],
+  ["region", q.region], ["author", q.author], ["days", q.days ? String(q.days) : undefined], ["sort", sortParam(q.sort)],
+  ["page", q.page && q.page > 1 ? String(q.page) : undefined],
+]);
+const active = (q: ChangesQuery) => [q.q, q.show !== "all", q.game !== "forever", q.region, q.author, q.days].filter(Boolean).length;
+
+const SOURCE_LABEL = (e: ChangeEntry) => e.type === "build" ? "" : e.source === "bluesky" ? "Bluesky" : REGIONS[e.region ?? "us"];
 
 /** Text with the spells it names given their icon and tooltip, linked to the page that shows them. Without the art, the text as it was. */
 function WithSpells({ text, index }: { text: string; index: MentionIndex }) {
@@ -45,114 +75,155 @@ function WithSpells({ text, index }: { text: string; index: MentionIndex }) {
     <>
       {splitMentions(text, index).map((p, i) => (typeof p === "string" ? p : (
         <SpellTip key={i} tip={p.mention.tip}>
-          <Link href={p.mention.href} className={link}>{p.text}</Link>
+          <Link href={p.mention.href} className={LINK}>{p.text}</Link>
         </SpellTip>
       )))}
     </>
   );
 }
 
-/** One post or build: the same list item for every kind, in one list. */
-function ChangeItem({ entry, index }: { entry: ChangeEntry; index: MentionIndex }) {
-  const meta = <>{TYPE_LABEL[entry.type]} · {GAME_LABEL[entry.game]} · <time dateTime={entry.at}>{stamp(entry.at)}</time></>;
-  if (entry.type === "build") {
-    return (
-      <Entry
-        meta={meta}
-        title={entry.title}
-        actions={entry.diffUrl
-          ? <a href={entry.diffUrl} className={`inline-flex items-center min-h-11 ${link}`}>See what changed in this build</a>
-          : <span className="text-muted">What changed in this build: not published yet.</span>}
-      >
-        <p>First seen by Everloot on this date. Blizzard&apos;s own release time is not recorded.</p>
-      </Entry>
-    );
-  }
-  return (
-    <PostEntry
-      kind={<>{TYPE_LABEL[entry.type]} · {GAME_LABEL[entry.game]}</>}
-      at={entry.at}
-      title={entry.title}
-      url={entry.url}
-      origin={ORIGIN_LABEL[entry.source ?? ""] ?? "Blizzard"}
-      author={entry.author}
-      role={entry.role}
-      forum={entry.category}
-      summary={entry.summary && <WithSpells text={entry.summary} index={index} />}
-      excerpt={entry.excerpt && <WithSpells text={entry.excerpt} index={index} />}
-    />
-  );
-}
-
-export default async function ChangesPage({ searchParams }: { searchParams: Promise<{ show?: string; game?: string }> }) {
-  const params = await searchParams;
-  const show = parseFilter(params.show);
-  const both = params.game === "all";
+export default async function ChangesPage({ searchParams }: { searchParams: Promise<Search> }) {
+  const q = changesQuery((await searchParams) ?? {});
+  if (!q) notFound();
   const all = loadTimeline();
-  const entries = filterTimeline(all, show, both ? undefined : "forever");
-  const shown = entries.slice(0, PAGE_SIZE);
-  // The newest thing we hold, not the time of the last check: a stalled schedule has to look stale.
-  const newest = all[0]?.at;
-  // A loading screen under the title and the game's icon and tooltip on spells the posts name, only when
-  // the asset URL is set and the upload has them.
+  const scope = filterTimeline(all, "all", q.game === "all" ? undefined : q.game);
+  const text = q.q?.toLowerCase();
+  const since = q.days ? new Date(Date.now() - q.days * 86_400_000).toISOString() : undefined;
+  const matched = filterTimeline(scope, q.show).filter((e) =>
+    (!text || [e.title, e.excerpt, e.summary, e.author, e.category, e.version].some((s) => s?.toLowerCase().includes(text)))
+    && (!q.region || (e.source === "forum" && (e.region ?? "us") === q.region))
+    && (!q.author || e.author === q.author)
+    && (!since || e.at >= since));
+  const sort = q.sort ?? DEFAULT_SORT;
+  const key = (e: ChangeEntry) => sort.key === "type" ? TYPE_LABEL[e.type] : sort.key === "title" ? e.title.toLowerCase()
+    : sort.key === "author" ? e.author?.toLowerCase() ?? null : sort.key === "source" ? SOURCE_LABEL(e) || null : e.at;
+  const dir = sort.desc ? -1 : 1;
+  // Empty keys last either way; ties newest first.
+  const rows = [...matched].sort((a, b) => {
+    const ka = key(a), kb = key(b);
+    const c = ka === kb ? 0 : ka === null ? 1 : kb === null ? -1 : ka.localeCompare(kb) * dir;
+    return c || b.at.localeCompare(a.at) || a.id.localeCompare(b.id);
+  });
+  const pages = Math.max(1, Math.ceil(rows.length / PER_PAGE));
+  if (q.page > pages) notFound();
+  const shown = rows.slice((q.page - 1) * PER_PAGE, q.page * PER_PAGE);
+  const here = (over: Partial<ChangesQuery>) => href({ ...q, page: 1, ...over });
+
+  // The game's icon and tooltip on spells the posts name, only when the asset URL is set and the upload has them.
   const assets = await loadSiteAssets();
-  const banner = loadingArt(assets, BANNER_MAP.changes);
   const index = mentionIndex(assets, assets ? await siteSpellNames() : []);
+
+  const dash = <span className="text-muted">—</span>;
+  const columns: Column<ChangeEntry>[] = [
+    {
+      key: "date", header: "Date", sortable: true, nowrap: true, cell: (e) => (
+        <time dateTime={e.at} title={e.type === "build" ? `${stamp(e.at)}, when Everloot first saw it` : stamp(e.at)} className="font-mono tabular-nums text-fg-2">{e.at.slice(0, 10)}</time>
+      ),
+    },
+    { key: "type", header: "Type", sortable: true, nowrap: true, cell: (e) => <Badge tone="neutral">{TYPE_LABEL[e.type]}</Badge> },
+    {
+      key: "title", header: "Title", sortable: true, cell: (e) => {
+        const line = e.type === "build"
+          ? <>First seen by Everloot. {e.diffUrl ? <a href={e.diffUrl} className={LINK}>See what changed</a> : "What changed: not published yet."}</>
+          : (e.summary ?? e.excerpt) && <WithSpells text={(e.summary ?? e.excerpt)!} index={index} />;
+        return (
+          <div data-change-row className="min-w-0 py-1">
+            {e.url
+              ? <a href={e.url} rel="noopener" className={`${LINK} font-medium`}>{e.title}</a>
+              : <span className="font-medium">{e.title}</span>}
+            {q.game === "all" && <span className="ml-2 text-cell-2 text-muted">{GAME_LABEL[e.game]}</span>}
+            {line && <p className="line-clamp-2 text-cell-2 text-muted">{line}</p>}
+          </div>
+        );
+      },
+    },
+    {
+      key: "author", header: "Author", sortable: true, nowrap: true, cell: (e) => e.author
+        ? <Link href={here({ author: e.author })} title={e.role || undefined} className="text-fg-2 hover:text-fg">{e.author}</Link>
+        : dash,
+    },
+    { key: "source", header: "Where", sortable: true, nowrap: true, cell: (e) => SOURCE_LABEL(e) ? <span title={e.category || undefined} className="text-fg-2">{SOURCE_LABEL(e)}</span> : dash },
+  ];
+
+  const count = (f: (e: ChangeEntry) => boolean) => scope.filter(f).length;
+  const authors = [...scope.reduce((m, e) => (e.author ? m.set(e.author, (m.get(e.author) ?? 0) + 1) : m), new Map<string, number>())]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  const controls: FilterControl[] = [
+    {
+      type: "menu", key: "show", label: "Type",
+      options: CHANGE_FILTERS.map((f) => ({
+        label: TYPE_FILTER_LABEL[f], href: here({ show: f }), on: q.show === f, ...(f === "all" ? { reset: true } : { count: filterTimeline(scope, f).length }),
+      })),
+    },
+    {
+      type: "menu", key: "game", label: "Game",
+      options: (Object.keys(GAMES) as Game[]).map((g) => ({ label: GAMES[g], href: here({ game: g }), on: q.game === g, reset: g === "forever" })),
+    },
+    {
+      type: "menu", key: "region", label: "Region",
+      options: [{ label: "Any region", href: here({ region: undefined }), on: !q.region, reset: true }, ...(Object.keys(REGIONS) as Region[]).map((r) => ({
+        label: REGIONS[r], href: here({ region: r }), on: q.region === r, count: count((e) => e.source === "forum" && (e.region ?? "us") === r),
+      }))],
+    },
+    {
+      type: "menu", key: "days", label: "Date",
+      options: [{ label: "Any date", href: here({ days: undefined }), on: !q.days, reset: true }, ...(Object.keys(DAYS).map(Number) as Days[]).map((d) => ({
+        label: DAYS[d], href: here({ days: d }), on: q.days === d,
+      }))],
+    },
+    {
+      type: "menu", key: "author", label: "Author",
+      options: [{ label: "Any author", href: here({ author: undefined }), on: !q.author, reset: true }, ...authors.map(([a, n]) => ({
+        label: a, href: here({ author: a }), on: q.author === a, count: n,
+      }))],
+    },
+  ];
+  const keep = Object.fromEntries(new URLSearchParams(href({ ...q, q: undefined, page: 1 }).split("?")[1] ?? ""));
+  const strip = <ResultStrip total={rows.length} noun={rows.length === 1 ? "entry" : "entries"} page={q.page} perPage={PER_PAGE} href={(page) => href({ ...q, page })} label="Change pages" />;
+  const chips = [
+    ...(q.q ? [{ label: `Search: ${q.q}`, href: here({ q: undefined }) }] : []),
+    ...(q.show !== "all" ? [{ label: TYPE_FILTER_LABEL[q.show], href: here({ show: "all" }) }] : []),
+    ...(q.game !== "forever" ? [{ label: GAMES[q.game], href: here({ game: "forever" }) }] : []),
+    ...(q.region ? [{ label: REGIONS[q.region], href: here({ region: undefined }) }] : []),
+    ...(q.days ? [{ label: DAYS[q.days], href: here({ days: undefined }) }] : []),
+    ...(q.author ? [{ label: `Author: ${q.author}`, href: here({ author: undefined }) }] : []),
+  ];
+  const empty = active(q) > 0
+    ? <NoMatches noun="entries" chips={chips} clearHref="/changes" />
+    : <p data-empty-state className="py-4 text-cell text-fg-2">Nothing recorded yet. New entries appear after the next check.</p>;
+
   return (
-    <article>
-      <JsonLd data={changesJsonLd({ name: TITLE, description: LEAD, path: "/changes", entries: shown })} />
-      <PageHeader
-        trail={trailFor("/changes")!}
-        title={TITLE}
-        lede={LEAD}
-        meta={
-          <>
-            <span className="text-fg-2">{latestBuildLine(all)}</span>
-            <span className="font-mono text-xs">
-              {entries.length} {entries.length === 1 ? "entry" : "entries"} · {newest ? `Newest entry ${stamp(newest)}` : "Nothing recorded yet"}
-            </span>
-          </>
-        }
-        actions={<a href="/changes/feed.xml" className="btn">RSS feed</a>}
-        banner={banner ? { image: <BannerArt art={banner} eager /> } : undefined}
-      />
-
-      <Container width="reading">
-        <LinkTabs
-          label="Filter changes"
-          tabs={CHANGE_FILTERS.map((f) => ({ href: href(f, both), label: FILTER_LABEL[f], current: f === show }))}
-          aside={<Link href={href(show, !both)} className={link}>{both ? "Show only WoW: Forever" : "Include WoW Classic"}</Link>}
+    <Container width="data">
+      <article>
+        <JsonLd data={changesJsonLd({ name: TITLE, description: LEAD, path: "/changes", entries: shown })} />
+        <DataTitle
+          title={TITLE}
+          meta={<>{LEAD} {latestBuildLine(all)} <a href="/changes/feed.xml" className={LINK}>RSS</a></>}
+          aside={strip}
         />
-        <div className="mt-6">
-          {shown.length === 0 ? (
-            <Card><p className="text-fg-2">Nothing recorded for this filter yet. New entries appear after the next check.</p></Card>
-          ) : (
-            <EntryList ordered label={both ? "WoW: Forever and WoW Classic, newest first" : "WoW: Forever, newest first"}>
-              {shown.map((entry) => <ChangeItem key={entry.id} entry={entry} index={index} />)}
-            </EntryList>
-          )}
-          {entries.length > shown.length && (
-            <p className="mt-4 text-sm text-muted">The {shown.length} newest are shown. The RSS feed carries the newest 50.</p>
-          )}
+        <FilterBar
+          label="Change filters"
+          search={{ action: "/changes", value: q.q, placeholder: "Title, text or author", label: "Search changes", keep }}
+          controls={controls}
+          active={active(q)}
+          clearHref="/changes"
+        />
+        <div className="mt-2">
+          <DataTable
+            dense
+            caption={`Changes, ${GAMES[q.game]}: ${rows.length}`}
+            columns={columns}
+            rows={shown}
+            rowKey={(e) => e.id}
+            sort={{ key: sort.key, direction: sort.desc ? "desc" : "asc" }}
+            sortHref={(k, d) => here({ sort: nextSort(k, d, DEFAULT_SORT) })}
+            meta={(e) => [e.at.slice(0, 10), TYPE_LABEL[e.type], e.author, SOURCE_LABEL(e)].filter(Boolean).join(" · ")}
+            empty={empty}
+          />
         </div>
-
-        <Explainer summary="Where these come from">
-          <p>
-            Everloot shows the title, who posted it, when, and the first couple of sentences, with a link to the original.
-            The full text is Blizzard&apos;s, so it stays on their site.
-          </p>
-          <p>
-            A build&apos;s date is when Everloot first saw it, not when Blizzard shipped it. Sources are checked every
-            30 minutes and the site updates after each check that finds something new.
-          </p>
-          <p>
-            Blue posts are read from Blizzard&apos;s public WoW forum and the official World of Warcraft account on Bluesky,
-            politely and within their robots rules. How Everloot collects and publishes data is in the{" "}
-            <a href={`${REPO_URL}/blob/main/docs/DATA_POLICY.md`} rel="noopener" className="text-accent">data policy</a>.
-          </p>
-        </Explainer>
+        {pages > 1 && <div className="mt-2">{strip}</div>}
         <AdSlot slot="inContent" />
-      </Container>
-    </article>
+      </article>
+    </Container>
   );
 }
