@@ -46,7 +46,13 @@ export interface UpdateCheck {
   /** This system's installer from that release; null when it has none. */
   downloadUrl: string | null;
   publishedAt: string | null;
+  /** The release's SHA256SUMS, which an in-app download is checked against. */
+  sumsUrl: string | null;
+  /** Whether this install can download the update and install it on restart (the Windows installer only). */
+  installable: boolean;
 }
+/** The in-app update download: idle until asked, then downloading, then ready to restart, or failed with why. */
+export interface UpdateProgress { stage: "idle" | "downloading" | "ready" | "failed"; percent: number; error: string | null }
 
 /** One dated copy of an account's Everloot.lua in the data folder, kept after each upload. */
 export interface BackupInfo { file: string; account: string; at: string; bytes: number }
@@ -218,6 +224,7 @@ export interface AppState {
   engine: EngineState;
   /** The desktop release check made once at start; null until it ran or when it could not reach GitHub. */
   update: UpdateCheck | null;
+  updateProgress: UpdateProgress;
   /** Realms whose last full scan is older than a day (or never dated), for the tray reminder. */
   staleScans: ScanAge[];
 }
@@ -237,6 +244,12 @@ export interface EverlootApi {
   openConfig(): Promise<void>;
   openExternal(url: string): Promise<boolean>;
   checkForUpdates(): Promise<UpdateCheck>;
+  /** Downloads the update to install on restart (Windows installs); progress arrives with the state. */
+  updateDownload(): Promise<void>;
+  /** Asks to restart, then installs the downloaded update; false when the player chose Not now. */
+  updateRestart(): Promise<boolean>;
+  /** Offers a GitHub bug report with these diagnostics, or copies them. */
+  reportBug(diagnostics: string): Promise<"opened" | "copied" | null>;
   uploadInfo(): Promise<FileSummary[]>;
   backups(): Promise<BackupInfo[]>;
   /** Asks the player to confirm, then copies the backup over the live file; returns the restored path or null when cancelled. */

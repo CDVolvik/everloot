@@ -1,5 +1,6 @@
 import type { ReleaseNote, UpdateCheck } from "../shared/types";
 import { compareVersions, newestRelease, RELEASES_API } from "./addon";
+import { canInstallInPlace } from "./self-update";
 
 export { compareVersions };
 export const RELEASES_PAGE = "https://github.com/Everloot/everloot/releases";
@@ -59,17 +60,22 @@ export function downloadFor(assets: unknown, platform: string, portable = false)
 /** What the update popover shows: the newest desktop release against this version, with its listed changes and this system's download. */
 export function updateFrom(releases: unknown, current: string, platform: string = process.platform, portable = false): UpdateCheck {
   const newest = newestDesktopRelease(releases);
-  if (!newest) return { current, latest: null, url: RELEASES_PAGE, newer: false, notes: [], downloadUrl: null, publishedAt: null };
+  if (!newest) return { current, latest: null, url: RELEASES_PAGE, newer: false, notes: [], downloadUrl: null, publishedAt: null, sumsUrl: null, installable: false };
   const release = (releases as { tag_name?: unknown; body?: unknown; assets?: unknown; published_at?: unknown }[])
     .find((r) => r.tag_name === `desktop-v${newest.version}`);
+  const downloadUrl = downloadFor(release?.assets, platform, portable);
+  const sums = Array.isArray(release?.assets) ? (release.assets as ReleaseAsset[]).find((a) => a.name === "SHA256SUMS") : undefined;
+  const sumsUrl = typeof sums?.browser_download_url === "string" ? sums.browser_download_url : null;
   return {
     current,
     latest: newest.version,
     url: newest.url,
     newer: compareVersions(newest.version, current) > 0,
     notes: typeof release?.body === "string" ? releaseNotes(release.body) : [],
-    downloadUrl: downloadFor(release?.assets, platform, portable),
+    downloadUrl,
     publishedAt: typeof release?.published_at === "string" ? release.published_at : null,
+    sumsUrl,
+    installable: Boolean(downloadUrl && sumsUrl && canInstallInPlace(platform, portable)),
   };
 }
 
