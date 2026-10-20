@@ -163,6 +163,7 @@ build that has a zip in the repository. Earlier builds have none.
 - `scripts/upload-bulk.mjs` refuses a folder whose `index.json` or any data file carries what looks like a
   machine's own filesystem path (a Windows drive path, `/Users/`, `/home/` or `AppData`) before anything is
   sent, like the sha256 check, so a bug in the export cannot publish a local path alongside the data.
+- The header menu brightens to the site's green on hover instead of the body text colour.
 
 Pull requests merged to `main` are listed in the nightly pre-releases until the next tagged release.
 

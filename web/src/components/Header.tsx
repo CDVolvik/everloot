@@ -27,7 +27,7 @@ const TOOL_HREFS = TOOL_GROUPS.flatMap((g) => g.links.map((l) => l.href));
 const isCurrent = (path: string, href: string) => path === href || path.startsWith(`${href}/`);
 
 const navItem = "inline-flex min-h-11 items-center whitespace-nowrap border-b-2 px-3 transition-colors";
-const navState = (on: boolean) => (on ? "border-accent text-fg" : "border-transparent text-fg-2 hover:text-fg");
+const navState = (on: boolean) => (on ? "border-accent text-fg" : "border-transparent text-fg-2 hover:text-accent");
 const menuLink = "flex min-h-11 items-center rounded-control px-3 text-sm text-fg-2 hover:bg-canvas hover:text-accent";
 
 function SearchIcon() {
