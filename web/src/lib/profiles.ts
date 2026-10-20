@@ -15,7 +15,11 @@ export function profilesOn(env: Record<string, string | undefined> = process.env
 /** Set by the middleware on `/` rewritten to /home, so /home knows not to send a stale session back to `/`. */
 export const HOME_REWRITE_HEADER = "x-everloot-home";
 
-export const PROFILE_LIMITS ={ handleMin: 3, handleMax: 24, displayName: 40, statusText: 80, emojiBytes: 16 } as const;
+/** Dispatched on window after a write that changes the shell (status, profile, main or active character). */
+export const SHELL_CHANGED_EVENT = "everloot:shell-changed";
+export const shellChanged = () => window.dispatchEvent(new Event(SHELL_CHANGED_EVENT));
+
+export const PROFILE_LIMITS = { handleMin: 3, handleMax: 24, displayName: 40, statusText: 80, emojiBytes: 16 } as const;
 export const HANDLE_CHANGES_PER_DAY = 5;
 export const HANDLE_PATTERN = /^[a-z0-9][a-z0-9-]{1,22}[a-z0-9]$/;
 /** Kept in step with the list in save_profile. */

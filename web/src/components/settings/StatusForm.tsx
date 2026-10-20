@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui";
 import type { AccountStatus } from "@/lib/account-shell-types";
-import { CLEAR_AFTER, clearsAtFor, PROFILE_LIMITS, type ClearAfter } from "@/lib/profiles";
+import { CLEAR_AFTER, clearsAtFor, PROFILE_LIMITS, shellChanged, type ClearAfter } from "@/lib/profiles";
 
 /** One emoji and a short line, cleared after a time the player picks, or by hand. */
 export default function StatusForm({ status }: { status: AccountStatus | null }) {
@@ -22,6 +22,7 @@ export default function StatusForm({ status }: { status: AccountStatus | null })
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.error ?? "That did not work. Try again.");
       setSaved(done);
+      shellChanged();
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "That did not work. Try again.");

@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui";
-import { PROFILE_LIMITS } from "@/lib/profiles";
+import { PROFILE_LIMITS, shellChanged } from "@/lib/profiles";
 import type { ProfileSettings } from "@/lib/account-shell";
 
 const box = "h-4 w-4 accent-accent";
@@ -33,6 +33,7 @@ export default function ProfileForm({ profile, accountName }: { profile: Profile
       const result = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(result.error ?? "That did not work. Try again.");
       setSaved(true);
+      shellChanged();
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "That did not work. Try again.");

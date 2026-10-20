@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import {
   askPrefill, checkHandle, clearsAtFor, greeting, liveStatus, parseProfileInput, parseStatusInput, profilesOn,
-  RESERVED_HANDLES, shortName, validEmoji,
+  RESERVED_HANDLES, SHELL_CHANGED_EVENT, shellChanged, shortName, validEmoji,
 } from "./profiles";
 
 const migration = readFileSync(new URL("../../../supabase/migrations/20261021170000_account_profiles.sql", import.meta.url), "utf8");
@@ -88,6 +88,15 @@ test("a stored status past its clear-after time, or empty, reads as none", () =>
   expect(liveStatus({ status_emoji: null, status_text: "Hi", status_clears_at: "2026-10-20T11:00:00Z" }, now)).toBeNull();
   expect(liveStatus({ status_emoji: null, status_text: "Hi", status_clears_at: "2026-10-20T13:00:00+00:00" }, now)).toEqual({ emoji: null, text: "Hi", clearsAt: "2026-10-20T13:00:00.000Z" });
   expect(liveStatus({ status_emoji: null, status_text: null, status_clears_at: null }, now)).toBeNull();
+});
+
+test("a write that changes the shell tells the avatar menu", () => {
+  const target = new EventTarget();
+  const heard: string[] = [];
+  target.addEventListener(SHELL_CHANGED_EVENT, (e) => heard.push(e.type));
+  vi.stubGlobal("window", target);
+  try { shellChanged(); } finally { vi.unstubAllGlobals(); }
+  expect(heard).toEqual(["everloot:shell-changed"]);
 });
 
 test("names and greetings", () => {

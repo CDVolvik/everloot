@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ShellCharacter } from "@/lib/account-shell-types";
 import { CLASS_TEXT } from "@/components/talents/TalentTreeView";
+import { shellChanged } from "@/lib/profiles";
 
 /** The ⇄ beside the active character: lists the player's characters; picking one makes it the active one. */
 export default function CharacterSwitch({ characters, activeId }: { characters: ShellCharacter[]; activeId: string | null }) {
@@ -21,6 +22,7 @@ export default function CharacterSwitch({ characters, activeId }: { characters: 
       });
       if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error ?? "That did not work. Try again.");
       setOpen(false);
+      shellChanged();
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "That did not work. Try again.");

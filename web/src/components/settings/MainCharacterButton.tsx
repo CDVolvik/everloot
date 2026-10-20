@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { shellChanged } from "@/lib/profiles";
 
 /** "Make main" on a character's row; the main character's row says Main and can be unset. */
 export default function MainCharacterButton({ characterId, main, name }: { characterId: string; main: boolean; name: string }) {
@@ -17,6 +18,7 @@ export default function MainCharacterButton({ characterId, main, name }: { chara
         method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ characterId: id }),
       });
       if (!response.ok) throw new Error((await response.json().catch(() => ({}))).error ?? "That did not work. Try again.");
+      shellChanged();
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "That did not work. Try again.");

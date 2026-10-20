@@ -111,7 +111,8 @@ test("the shell: profile, characters in name order, active falls back to main, n
     : [{ id: thrall, name: "thrall", class_slug: "warrior", realm: null, note: "secret" }, { id: JAINA, name: "Jaina", class_slug: "mage", realm: "Pioneer", note: null }]);
   const res = await shell();
   expect(res.status).toBe(200);
-  expect((await res.json()).shell).toEqual({
+  expect(res.headers.get("cache-control")).toBe("private, no-store");
+  expect(await res.json()).toEqual({
     userId: USER.id, name: "Thrall#1234", handle: "thrall", displayName: "Thrall", status: { emoji: "🔥", text: "MC", clearsAt: null },
     publicProfile: true,
     characters: [{ id: JAINA, name: "Jaina", classSlug: "mage", realm: "Pioneer" }, { id: thrall, name: "thrall", classSlug: "warrior", realm: null }],
@@ -120,7 +121,7 @@ test("the shell: profile, characters in name order, active falls back to main, n
   for (const [path] of auth.authQuery.mock.calls) expect(path).toContain(`user_id=eq.${USER.id}`);
   // A player who never saved a profile gets the defaults.
   auth.authQuery.mockImplementation(async (path: string) => (path.startsWith("user_profiles") ? [] : []));
-  expect((await (await shell()).json()).shell).toMatchObject({ handle: null, displayName: "Thrall", status: null, publicProfile: false, mainCharacterId: null, activeCharacterId: null });
+  expect(await (await shell()).json()).toMatchObject({ handle: null, displayName: "Thrall", status: null, publicProfile: false, mainCharacterId: null, activeCharacterId: null });
   auth.authQuery.mockRejectedValue(new Error("down"));
   expect((await shell()).status).toBe(503);
 });
