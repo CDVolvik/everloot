@@ -1,4 +1,5 @@
 import { BULK_URL, CORPUS_URL, MCP_PROMPTS, MCP_RESOURCE_TEMPLATES, MCP_RESOURCES, MCP_TOOLS, MCP_URL, REQUESTS_PER_HOUR } from "@/app/connect/connect-data";
+import { DOCS_TABS } from "@/lib/docs/nav";
 import { LAUNCH, longDate } from "@/data/wow-forever";
 import { tools, toolHref } from "@/data/tools";
 import { PUBLIC_RECORD_KINDS } from "@everloot/protocol";
@@ -100,6 +101,11 @@ function limitations(): string[] {
   return ["## Data limitations", ...LIMITATIONS.map((l) => `- ${l}`), ""];
 }
 
+/** Every docs page, by tab, in reading order. */
+function docs(): string[] {
+  return ["## Docs", ...DOCS_TABS.flatMap((tab) => tab.groups.flatMap((group) => group.pages.map((page) => bullet(`${tab.label}: ${page.title}`, page.href, page.lede)))), ""];
+}
+
 export function llmsTxt(): string {
   const { live, collecting } = toolLines();
   return [
@@ -115,6 +121,7 @@ export function llmsTxt(): string {
     `- Talent calculator per class: ${TALENT_CLASSES.map((c) => `[${cap(c)}](${url(`/tools/talents/${c}`)})`).join(", ")}.`,
     "",
     ...connect(),
+    ...docs(),
     ...limitations(),
     "## Full version",
     bullet("llms-full.txt", "/llms-full.txt", "The same map with every MCP tool described and the licences."),

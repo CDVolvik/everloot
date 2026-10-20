@@ -21,8 +21,8 @@ const primary = html.match(/<nav aria-label="Primary"[^>]*>([\s\S]*?)<\/nav>/)?.
 const topItems = () => [...primary.matchAll(/<(?:a|button) [^>]*class="[^"]*border-b-2[^"]*"[^>]*>([^<]+)/g)].map((m) => m[1].trim());
 
 test("the top bar has six items in the spec's order", () => {
-  expect(topItems()).toEqual(["Database", "Tools", "Map", "Changes", "Lore", "Open data"]);
-  expect(PRIMARY.map((l) => l.href)).toEqual(["/database", "/map", "/changes", "/lore", "/connect"]);
+  expect(topItems()).toEqual(["Database", "Tools", "Map", "Changes", "Lore", "Docs"]);
+  expect(PRIMARY.map((l) => l.href)).toEqual(["/database", "/map", "/changes", "/lore", "/docs"]);
 });
 
 test("no bracket labels", () => {

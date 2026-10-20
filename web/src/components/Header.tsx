@@ -14,7 +14,7 @@ export const PRIMARY: NavLink[] = [
   { label: "Map", href: "/map" },
   { label: "Changes", href: "/changes" },
   { label: "Lore", href: "/lore" },
-  { label: "Open data", href: "/connect" },
+  { label: "Docs", href: "/docs" },
 ];
 
 /** The Tools menu, grouped the way players use them. Every tool in data/tools.ts is here (header.test.tsx). */

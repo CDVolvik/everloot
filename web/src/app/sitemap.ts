@@ -2,6 +2,7 @@ import { MetadataRoute } from "next";
 import { LAUNCH } from "@/data/wow-forever";
 import { FAMILIES } from "@/data/families";
 import { tools, toolHref } from "@/data/tools";
+import { allDocsPages } from "@/lib/docs/nav";
 import { MAP_DATA_EXTRACTED_AT, TALENT_DATA_EXTRACTED_AT } from "@/lib/build-stamp";
 import { loadTimeline } from "@/lib/changes";
 import { TALENT_CLASSES } from "@/lib/talents/catalogs";
@@ -35,7 +36,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const contents = zoneContents(world);
     return publicZones().filter((z) => hasContent(contents.get(z.mapId))).map((z) => zoneHref(z.mapId, z.name));
   })();
-  const paths = [...new Set([...staticRoutes, ...talentRoutes, ...itemRoutes, ...zoneRoutes, ...tools.filter((tool) => tool.status !== "coming-soon").map(toolHref)])];
+  const paths = [...new Set([...staticRoutes, ...talentRoutes, ...itemRoutes, ...zoneRoutes, ...tools.filter((tool) => tool.status !== "coming-soon").map(toolHref), ...allDocsPages().map((page) => page.href)])];
 
   const newestChange = loadTimeline()[0]?.at;
   const modified = (path: string): Date | undefined => {

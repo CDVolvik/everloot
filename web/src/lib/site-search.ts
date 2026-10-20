@@ -1,4 +1,5 @@
 import { tools, toolHref } from "@/data/tools";
+import { allDocsPages } from "@/lib/docs/nav";
 import { entityHref } from "@/components/EntityLink";
 import { objectList } from "../../../kb/src/object-page";
 import { loreSlug, MAX_QUERY, searchLore, UNAVAILABLE } from "./lore";
@@ -9,16 +10,16 @@ import { zoneHref } from "./zones";
 
 /** One page the search found. `exact` is an exact id or an exact name: those lead their group, and the page. */
 export interface SearchResult { label: string; href: string; note?: string; exact: boolean }
-export type SearchType = "item" | "npc" | "quest" | "object" | "zone" | "lore" | "tool";
+export type SearchType = "item" | "npc" | "quest" | "object" | "zone" | "lore" | "tool" | "doc";
 export interface SearchGroup { type: SearchType; heading: string; results: SearchResult[] }
 
 export const GROUP_LIMIT = 8;
 export const LORE_LIMIT = 5;
 
 const HEADINGS: Record<SearchType, string> = {
-  item: "Items", npc: "NPCs", quest: "Quests", object: "Objects", zone: "Zones", lore: "Lore archive", tool: "Tools",
+  item: "Items", npc: "NPCs", quest: "Quests", object: "Objects", zone: "Zones", lore: "Lore archive", tool: "Tools", doc: "Docs",
 };
-const ORDER: SearchType[] = ["item", "npc", "quest", "object", "zone", "lore", "tool"];
+const ORDER: SearchType[] = ["item", "npc", "quest", "object", "zone", "lore", "tool", "doc"];
 
 /** 0 exact, 1 starts with, 2 contains, null no match; both sides lowercase. */
 function rank(name: string, q: string): number | null {
@@ -93,6 +94,12 @@ export async function siteSearch(raw: string): Promise<SearchGroup[]> {
     const r = rank(t.title.toLowerCase(), q) ?? (hay.some((s) => s.includes(q)) ? 2 : null);
     return r === null ? [] : [{ label: t.title, href: toolHref(t), note: t.tagline, exact: r === 0 }];
   }).sort((a, b) => Number(b.exact) - Number(a.exact)));
+
+  // Docs pages by title, then by their one-line description.
+  found.set("doc", allDocsPages().flatMap((p) => {
+    const r = rank(p.title.toLowerCase(), q) ?? (p.lede.toLowerCase().includes(q) ? 3 : null);
+    return r === null ? [] : [{ label: p.title, href: p.href, note: p.lede, exact: r === 0, r }];
+  }).sort((a, b) => a.r - b.r).slice(0, GROUP_LIMIT).map(({ r: _r, ...hit }) => hit));
 
   return ORDER
     .map((type) => ({ type, heading: HEADINGS[type], results: found.get(type) ?? [] }))

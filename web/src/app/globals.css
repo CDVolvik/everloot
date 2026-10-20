@@ -13,6 +13,17 @@ main:has([data-page-crumbs]) [data-layout-crumbs] {
   display: none;
 }
 
+/* The docs need room for a sidebar, the page and its code panel: their column is wider than the site's. */
+main:has([data-docs]) {
+  max-width: 88rem;
+}
+
+/* Thin scrollbars inside the docs' sidebar and code panels, in the line colour. */
+[data-docs] * {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--line)) transparent;
+}
+
 /* The map fills the screen: its page lifts the column's width limit and keeps only a small side margin. */
 main:has([data-map-page]) {
   max-width: none;
