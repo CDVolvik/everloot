@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import LoreSearchForm from "@/components/LoreSearchForm";
+import { Card, PageHeader, SectionHeading } from "@/components/ui";
 import { BROWSE_HEADINGS, BROWSE_TYPES, hasTypes, loreSlug, MAX_QUERY, searchLore, UNAVAILABLE, UNAVAILABLE_COPY, type BrowseSlug, type LoreType } from "@/lib/lore";
+import { siteSearch } from "@/lib/site-search";
 
 /** A `type=` value is one of the stored types; anything else means All. */
 function typeOf(raw: string | undefined): LoreType | undefined {
@@ -12,7 +14,7 @@ function typeOf(raw: string | undefined): LoreType | undefined {
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  ...pageMetadata({ title: "Search the Lore Archive", description: "Search the Warcraft Wiki archive as of November 2023, licensed CC BY-SA 4.0. It is lore and history, not collected WoW: Forever data.", path: "/search" }),
+  ...pageMetadata({ title: "Search Everloot", description: "Search WoW: Forever items, NPCs, quests, zones, lore archive pages and Everloot tools by name or id. An exact match comes first.", path: "/search" }),
   robots: { index: false, follow: true },
 };
 
@@ -27,19 +29,67 @@ function sourceHost(url: string): string {
 /** Next hands a repeated parameter over as an array; the first value is the one we answer. */
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
-export default async function SearchPage(props: { searchParams: Promise<{ q?: string | string[]; page?: string | string[]; type?: string | string[] }> }) {
+type Params = { q?: string | string[]; page?: string | string[]; type?: string | string[]; in?: string | string[] };
+
+export default async function SearchPage(props: { searchParams: Promise<Params> }) {
   const params = await props.searchParams;
   const q = (first(params.q) ?? "").trim().slice(0, MAX_QUERY);
+  // `in=lore` is the full lore list (with its type chips and pages) behind the lore group of the overview;
+  // the links this page gave out before it searched the whole site (`page=`, `type=`) still open it.
+  if (first(params.in) === "lore" || params.page !== undefined || params.type !== undefined) return <LoreResults q={q} params={params} />;
+
+  const groups = q ? await siteSearch(q) : null;
+  return (
+    <article className="space-y-8 max-w-4xl">
+      <PageHeader
+        title="Search Everloot"
+        lede="Items, NPCs, quests, zones, lore pages and tools. An exact id or name comes first."
+      />
+
+      <LoreSearchForm query={q} label="Search Everloot" placeholder="A name or an id: Thrall, Elwynn Forest, 6948" />
+
+      {groups === null ? null : groups.length === 0 ? (
+        <section className="space-y-2 text-sm text-fg-2">
+          <p>Nothing matches that. Items, NPCs and quests are searchable once 3 installs agree on a name; an id always opens its page.</p>
+        </section>
+      ) : (
+        groups.map((group) => (
+          <section key={group.type} aria-labelledby={`results-${group.type}`}>
+            <SectionHeading
+              id={`results-${group.type}`}
+              action={group.type === "lore" ? <Link href={`/search?q=${encodeURIComponent(q)}&in=lore`} className="text-accent hover:underline underline-offset-4">All lore results</Link> : undefined}
+            >
+              {group.heading}
+            </SectionHeading>
+            <Card padding="none">
+              <ul className="divide-y divide-line">
+                {group.results.map((result) => (
+                  <li key={result.href} className="px-4 py-3">
+                    <Link href={result.href} className="text-accent hover:underline underline-offset-4">{result.label}</Link>
+                    {result.note && <p className="mt-1 text-sm text-fg-2">{result.note}</p>}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          </section>
+        ))
+      )}
+    </article>
+  );
+}
+
+function LoreResults({ q, params }: { q: string; params: Params }) {
   const page = pageNumber(first(params.page));
   const typed = hasTypes() === true;
   const type = typed ? typeOf(first(params.type)) : undefined;
   const result = q ? searchLore(q, page, type) : null;
+  const base = `/search?q=${encodeURIComponent(q)}&in=lore`;
   const typeQuery = type ? `&type=${type}` : "";
   const chips: { label: string; href: string; active: boolean }[] = typed && q
     ? [
-        { label: "All", href: `/search?q=${encodeURIComponent(q)}`, active: !type },
+        { label: "All", href: base, active: !type },
         ...(Object.keys(BROWSE_TYPES) as BrowseSlug[]).map((slug) => ({
-          label: BROWSE_HEADINGS[slug], href: `/search?q=${encodeURIComponent(q)}&type=${BROWSE_TYPES[slug]}`, active: type === BROWSE_TYPES[slug],
+          label: BROWSE_HEADINGS[slug], href: `${base}&type=${BROWSE_TYPES[slug]}`, active: type === BROWSE_TYPES[slug],
         })),
       ]
     : [];
@@ -75,7 +125,7 @@ export default async function SearchPage(props: { searchParams: Promise<{ q?: st
       ) : result === null ? null : result.hits.length === 0 && page > 1 ? (
         <section className="space-y-2 text-sm text-fg-2">
           <p>No more results.</p>
-          <p><Link href={`/search?q=${encodeURIComponent(q)}`} className="text-accent hover:underline underline-offset-4">Back to the first page</Link></p>
+          <p><Link href={base} className="text-accent hover:underline underline-offset-4">Back to the first page</Link></p>
         </section>
       ) : result.hits.length === 0 ? (
         <section className="space-y-2 text-sm text-fg-2">
@@ -102,11 +152,11 @@ export default async function SearchPage(props: { searchParams: Promise<{ q?: st
           </ol>
           <nav aria-label="Search pages" className="flex items-center gap-4 text-sm">
             {page > 1 && (
-              <Link href={`/search?q=${encodeURIComponent(q)}${typeQuery}&page=${page - 1}`} className="text-accent hover:underline underline-offset-4">Previous</Link>
+              <Link href={`${base}${typeQuery}&page=${page - 1}`} className="text-accent hover:underline underline-offset-4">Previous</Link>
             )}
             <span className="text-muted">Page {page}</span>
             {result.hasNext && (
-              <Link href={`/search?q=${encodeURIComponent(q)}${typeQuery}&page=${page + 1}`} className="text-accent hover:underline underline-offset-4">Next</Link>
+              <Link href={`${base}${typeQuery}&page=${page + 1}`} className="text-accent hover:underline underline-offset-4">Next</Link>
             )}
           </nav>
         </section>
@@ -114,6 +164,7 @@ export default async function SearchPage(props: { searchParams: Promise<{ q?: st
 
       <p className="text-sm text-muted">
         <Link href="/lore" className="text-accent hover:underline underline-offset-4">About the lore archive</Link>
+        {q && <>{" · "}<Link href={`/search?q=${encodeURIComponent(q)}`} className="text-accent hover:underline underline-offset-4">Search all of Everloot</Link></>}
       </p>
     </article>
   );

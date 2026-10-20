@@ -73,6 +73,32 @@ function agreedLabel(rows: { installId: string; label: string }[]): string | nul
   return winners.length === 1 ? winners[0]!.label : null;
 }
 
+/** `agreedLabel` for many ids in one pass: id -> the label 3 installs agree on, ids without one left out. */
+function agreedLabelsById(rows: { id: number; installId: string; label: string }[]): Map<number, string> {
+  const byId = new Map<number, { installId: string; label: string }[]>();
+  for (const row of rows) {
+    const list = byId.get(row.id) ?? [];
+    list.push(row);
+    byId.set(row.id, list);
+  }
+  const out = new Map<number, string>();
+  for (const [id, list] of byId) {
+    const label = agreedLabel(list);
+    if (label) out.set(id, label);
+  }
+  return out;
+}
+
+/** Every NPC with an agreed name, by id: the names `npcPage` gives, in one pass over the sightings. */
+export function agreedNpcNames(facts: Pick<WorldFacts, "npcs">): Map<number, string> {
+  return agreedLabelsById(facts.npcs.map((row) => ({ id: row.npcId, installId: row.installId, label: row.name })));
+}
+
+/** Every quest with an agreed title, by id: the titles `questPage` gives, in one pass. */
+export function agreedQuestTitles(facts: Pick<WorldFacts, "quests">): Map<number, string> {
+  return agreedLabelsById(facts.quests.map((row) => ({ id: row.questId, installId: row.installId, label: row.title })));
+}
+
 function agreedNumber(rows: { installId: string; value: number }[]): number | null {
   const groups = new Map<number, Set<string>>();
   for (const row of rows) {

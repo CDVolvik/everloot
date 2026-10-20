@@ -14,6 +14,10 @@ build that has a zip in the repository. Earlier builds have none.
 
 ### Added
 - Site: embeddable tooltips. Any site can load `https://everloot.app/tooltips.js` so links to Everloot item, NPC, quest and object pages show a hover card (keyboard, touch, no cookies, no tracking), fed by the cached `GET /api/tooltip/<type>/<id>`; see `/connect#tooltips`.
+- One search on everloot.app: the header box and `/search` find items, NPCs, quests, zones, lore pages and
+  tools by name or id, grouped by type with an exact id or name first. Drop, reward, giver and vendor lists
+  show names and icons instead of "Item 1234", NPC, item and quest pages show a Lore section when the lore
+  archive has a page of the same name, and those lore pages link back to the database.
 - Addon: `/everloot price <item>` prints an item's price in chat, anywhere in the world: a shift-clicked
   link, an item id, or the name of an item the client has seen. It shows the same lines as the tooltip (community
   market value, minimum, historical, units up, reporters, how fresh the file is, and your own last scan) and
@@ -62,6 +66,9 @@ build that has a zip in the repository. Earlier builds have none.
   opens GitHub's bug form with the app version and its diagnostics filled in (user folder hidden, never the
   token), or copies them. The Addon page says Up to date instead of offering Reinstall as the main button;
   reinstalling is a small repair link.
+- Site: zone pages at `/database/zones`, one for every released zone, with its map, the dungeons and raids
+  entered there, and the NPCs, vendors and quests players have confirmed in it. Zone links in the database
+  now open the zone page instead of the map.
 
 ### Changed
 - The upload record contract moved from `web/src/lib/intake.ts` into one package, `packages/protocol`
