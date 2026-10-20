@@ -22,10 +22,13 @@ const routes: [string, () => Promise<{ metadata: Metadata }>, boolean][] = [
   ["/accessibility", () => import("./accessibility/page"), false],
   ["/contact", () => import("./contact/page"), false],
   ["/database", () => import("./database/page"), true],
-  ["/database/drops", () => import("./database/drops/page"), true],
-  ["/database/npcs", () => import("./database/npcs/page"), true],
-  ["/database/quests", () => import("./database/quests/page"), true],
-  ["/database/vendors", () => import("./database/vendors/page"), true],
+  // The lists are generated: a filtered or sorted view is noindex. Their plain URL is checked here.
+  ["/database/drops", async () => ({ metadata: await (await import("./database/drops/page")).generateMetadata({}) }), true],
+  ["/database/items", async () => ({ metadata: await (await import("./database/items/page")).generateMetadata({}) }), true],
+  ["/database/npcs", async () => ({ metadata: await (await import("./database/npcs/page")).generateMetadata({}) }), true],
+  ["/database/objects", async () => ({ metadata: await (await import("./database/objects/page")).generateMetadata({}) }), true],
+  ["/database/quests", async () => ({ metadata: await (await import("./database/quests/page")).generateMetadata({}) }), true],
+  ["/database/vendors", async () => ({ metadata: await (await import("./database/vendors/page")).generateMetadata({}) }), true],
   ["/lore", () => import("./lore/page"), false],
   // The map's description depends on whether the game's map pictures are on, so it is generated.
   ["/map", async () => ({ metadata: await (await import("./map/page")).generateMetadata() }), true],

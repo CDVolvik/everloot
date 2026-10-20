@@ -16,7 +16,7 @@ beforeAll(async () => { release = await buildLoreRelease(); });
 afterEach(() => { vi.unstubAllEnvs(); vi.resetModules(); vi.restoreAllMocks(); });
 
 const siteSearch = vi.hoisted(() => ({ groups: [] as unknown[] }));
-vi.mock("@/lib/site-search", () => ({ siteSearch: async () => siteSearch.groups }));
+vi.mock("@/lib/site-search", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/site-search")>()), siteSearch: async () => siteSearch.groups }));
 
 async function render(query: Record<string, string>, path = release) {
   vi.stubEnv("KB_SNAPSHOT_PATH", path);

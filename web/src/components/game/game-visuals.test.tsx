@@ -62,7 +62,7 @@ const market = foldMarket(emptyMarket(), ["install-a", "install-b", "install-c"]
 
 const pages: [string, () => Promise<ReactNode>][] = [
   ["home", () => Home()],
-  ["drops", () => DropsPage()],
+  ["drops", () => DropsPage({})],
   ["auctions", () => AuctionsRealmPage({ params: Promise.resolve({ realm: "forever" }) })],
   ["professions", () => ProfessionsPage({ searchParams: Promise.resolve({}) })],
   ["raid", () => RaidPage()],
@@ -120,15 +120,18 @@ test("drops and auctions: the item's icon beside its link, the tooltip as its de
   privateBucket();
   const fetcher = bucket();
   vi.stubGlobal("fetch", fetcher);
-  for (const page of [() => DropsPage(), () => AuctionsRealmPage({ params: Promise.resolve({ realm: "forever" }) })]) {
+  for (const [name, page] of [["drops", () => DropsPage({})], ["auctions", () => AuctionsRealmPage({ params: Promise.resolve({ realm: "forever" }) })]] as const) {
     const html = await render(page);
     expect(html).toContain(`src="${BASE}/icons/132889.webp"`);
     expect(html).toMatch(/<img[^>]*alt=""[^>]*aria-hidden="true"/);
     expect(html).toMatch(/href="\/(database\/items|tools\/auctions\/forever)\/9"/);
     expect(html).toMatch(/aria-describedby="[^"]+"/);
     expect(html).toContain("Linen Cloth, Common");
-    expect(html).toContain(CREDIT);
-    expect(html).toContain("1.60.1.70450");
+    // The database lists carry no credit line of their own: the site footer does (density spec, 2026-10-20).
+    if (name === "auctions") {
+      expect(html).toContain(CREDIT);
+      expect(html).toContain("1.60.1.70450");
+    }
   }
   // Item data is read from the private bucket, never from the public asset folder.
   const urls = fetcher.mock.calls.map(([input]) => (typeof input === "string" ? input : input.url));
@@ -139,7 +142,7 @@ test("drops and auctions: the item's icon beside its link, the tooltip as its de
 test("without the private bucket's variables, item links stay plain: no item icon, no tooltip, no credit for items", async () => {
   vi.stubEnv("NEXT_PUBLIC_GAME_ASSETS_URL", BASE);
   vi.stubGlobal("fetch", bucket());
-  const html = await render(() => DropsPage());
+  const html = await render(() => DropsPage({}));
   expect(html).not.toMatch(/data-item-tip|<img|data-game-credit/);
   expect(html).toContain("Item 9");
 });

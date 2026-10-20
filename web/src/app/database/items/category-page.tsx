@@ -1,19 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
-import { GAME_DATA_CREDIT } from "@everloot/protocol";
 import { itemPage } from "../../../../../kb/src/item-page";
 import { describe, filterItems, QUALITIES, resolveClass, resolveLegacyClass, resolveSubclass, slotOf, type ItemClass, type ItemRow, type ItemSubclass } from "../../../../../kb/src/item-taxonomy";
-import { CLIENT_LAYER, CLIENT_TAXONOMY as T, categoryNamedEnough, categoryQuery, ITEMS_PER_PAGE, itemsHref, NAME_SOURCE, shownItemName, type CategoryQuery } from "@/lib/items";
-import { CC_BY_SA } from "@/lib/jsonld";
+import {
+  activeFilters, CLIENT_LAYER, CLIENT_TAXONOMY as T, categoryNamedEnough, categoryQuery, itemFacets, ITEMS_PER_PAGE, itemsHref, listItems,
+  NAME_SOURCE, shownItemName, toggled, UNRECORDED, type CategoryQuery,
+} from "@/lib/items";
+import { loadItemSeen } from "@/lib/item-seen";
 import { pageMetadata } from "@/lib/seo";
 import { loadShownNames } from "@/lib/shown-item-names";
 import { loadItemTips, loadSiteAssets } from "@/lib/game-assets";
 import GameIcon from "@/components/game/GameIcon";
-import GameCredit from "@/components/game/GameCredit";
-import { Container, DataTable, PageHeader, QUALITY_TEXT, SourceLine, qualityOf, type Column } from "@/components/ui";
+import { Container, DataTable, DataTitle, FilterBar, QUALITY_TEXT, ResultStrip, qualityOf, type Column, type FilterControl } from "@/components/ui";
 import type { Crumb } from "@/lib/jsonld";
-import { LINK } from "../entity";
 
 type Search = Record<string, string | string[] | undefined>;
 
@@ -27,11 +27,11 @@ function legacyHref(classSlug: string, subclassKey: string | undefined, search: 
   return q ? itemsHref(cls.slug, sub?.slug, q) : null;
 }
 
-/** The class and subclass a path names, and the filters; null when any part is unknown. */
-function resolve(classSlug: string, subclassKey: string | undefined, search: Search): { cls: ItemClass; sub: ItemSubclass | null; q: CategoryQuery } | null {
-  const cls = resolveClass(T, classSlug);
-  if (!cls) return null;
-  const sub = subclassKey === undefined ? null : resolveSubclass(T, cls.id, subclassKey);
+/** The class and subclass a path names (none for /database/items), and the filters; null when any part is unknown. */
+function resolve(classSlug: string | undefined, subclassKey: string | undefined, search: Search): { cls: ItemClass | null; sub: ItemSubclass | null; q: CategoryQuery } | null {
+  const cls = classSlug === undefined ? null : resolveClass(T, classSlug);
+  if (classSlug !== undefined && !cls) return null;
+  const sub = subclassKey === undefined || !cls ? null : resolveSubclass(T, cls.id, subclassKey);
   if (subclassKey !== undefined && !sub) return null;
   const q = categoryQuery(search);
   return q ? { cls, sub, q } : null;
@@ -39,14 +39,23 @@ function resolve(classSlug: string, subclassKey: string | undefined, search: Sea
 
 const subName = (s: ItemSubclass) => s.name ?? `Subclass ${s.id}`;
 
-export async function categoryMetadata(classSlug: string, subclassKey: string | undefined, search: Search): Promise<Metadata> {
+/** Only the plain list is indexed; a filter, a sort, a name search or a later page is noindex and points its canonical at it. */
+const isPlain = (q: CategoryQuery) => activeFilters(q) === 0 && !q.sort && q.page === 1;
+
+export const ALL_ITEMS = {
+  title: "WoW Forever items by category",
+  description: `Every WoW: Forever item in build ${CLIENT_LAYER.build.version} by class and subclass, read from the game files and unconfirmed until players see it in game.`,
+};
+
+export async function categoryMetadata(classSlug: string | undefined, subclassKey: string | undefined, search: Search): Promise<Metadata> {
   const r = resolve(classSlug, subclassKey, search);
   if (!r) return { robots: { index: false, follow: true } };
+  if (!r.cls) return { ...pageMetadata({ ...ALL_ITEMS, path: "/database/items" }), ...(isPlain(r.q) ? {} : { robots: { index: false, follow: true } }) };
   const name = r.sub ? `${subName(r.sub)} (${r.cls.label})` : r.cls.label;
   const count = r.sub ? r.sub.items : r.cls.items;
   // Only the plain category page is indexed; filtered and later pages repeat it. And only once half its
   // rows have a name: until then it is a list of "Item N" (the sitemap leaves it out for the same reason).
-  const plain = !r.q.slot && !r.q.quality && r.q.page === 1;
+  const plain = isPlain(r.q);
   const named = plain ? (await loadShownNames()).named : null;
   return {
     ...pageMetadata({
@@ -58,44 +67,23 @@ export async function categoryMetadata(classSlug: string, subclassKey: string | 
   };
 }
 
-interface FilterOption { slug: string; name: string; count?: number }
+const plural = (n: number) => `${n.toLocaleString("en-US")} item${n === 1 ? "" : "s"}`;
 
-/**
- * One row of quiet tabs above the table, each a link (the filters live in the URL). `current` undefined is All.
- * Drawn like the shared Tabs so the table's toolbar reads as one control.
- */
-function FilterTabs({ label, options, current, href, allHref }: { label: string; options: FilterOption[]; current?: string; href: (slug: string) => string; allHref: string }) {
-  if (options.length < 2) return null;
-  const item = "inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3 text-sm";
-  const all: FilterOption & { href: string } = { slug: "", name: "All", href: allHref };
-  return (
-    <nav aria-label={label} className="flex items-center gap-1 overflow-x-auto px-2 [&+nav]:border-t [&+nav]:border-line">
-      <span className="shrink-0 px-2 font-mono text-xs text-muted">{label}</span>
-      {[all, ...options.map((o) => ({ ...o, href: href(o.slug) }))].map((o) => {
-        const on = (o.slug || undefined) === current;
-        const count = o.count !== undefined && <span className="font-mono text-xs tabular-nums text-muted">{o.count.toLocaleString("en-US")}</span>;
-        return on
-          ? <span key={o.slug || "all"} aria-current="page" className={`${item} border-accent font-medium text-fg`}>{o.name}{count}</span>
-          : <Link key={o.slug || "all"} href={o.href} className={`${item} border-transparent text-fg-2 hover:text-fg`}>{o.name}{count}</Link>;
-      })}
-    </nav>
-  );
-}
-
-export async function CategoryPage({ classSlug, subclassKey, search }: { classSlug: string; subclassKey?: string; search: Search }) {
+export async function CategoryPage({ classSlug, subclassKey, search }: { classSlug?: string; subclassKey?: string; search: Search }) {
   const r = resolve(classSlug, subclassKey, search);
   if (!r) {
-    const moved = legacyHref(classSlug, subclassKey, search);
+    const moved = classSlug === undefined ? null : legacyHref(classSlug, subclassKey, search);
     if (moved) permanentRedirect(moved);
     notFound();
   }
   const { cls, sub, q } = r;
-  const inCategory = filterItems(T, { classId: cls.id, subclassId: sub?.id });
-  const rows = filterItems(T, { classId: cls.id, subclassId: sub?.id, slot: q.slot, quality: q.quality });
+  const base = cls ? filterItems(T, { classId: cls.id, subclassId: sub?.id }) : T.items;
+  const [{ facts, agreed, matched }, seen] = await Promise.all([loadShownNames(), loadItemSeen()]);
+  const nameOf = (id: number) => agreed.get(id) ?? matched?.names.get(id)?.name;
+  const rows = listItems(base, q, { name: nameOf, seen: seen.seen });
   const pages = Math.max(1, Math.ceil(rows.length / ITEMS_PER_PAGE));
   if (q.page > pages) notFound();
   const shown = rows.slice((q.page - 1) * ITEMS_PER_PAGE, q.page * ITEMS_PER_PAGE);
-  const { facts, agreed, matched } = await loadShownNames();
   // The game file name and icon only for items players reported (3 installs), as on the item page, and for items
   // whose game file name the Warcraft Wiki gives too: a list of every id in the files must not become a list of
   // unreleased item names.
@@ -104,96 +92,155 @@ export async function CategoryPage({ classSlug, subclassKey, search }: { classSl
   const assets = withArt.length ? await loadSiteAssets() : null;
   const tips = await loadItemTips(assets, withArt);
   const names = new Map(shown.map((row) => [row[0], shownItemName(row[0], agreed, matched?.names, reported.includes(row[0]) ? tips.get(row[0]) : null)]));
-  const slots = [...new Map(inCategory.map((x) => slotOf(x[3])).filter((s) => s !== null).map((s) => [s!.slug, { slug: s!.slug, name: s!.name }])).values()];
-  const qualities = QUALITIES.filter((qq) => inCategory.some((x) => x[4] === qq.id)).map((qq) => ({ slug: qq.slug, name: qq.name }));
-  const subclasses = T.subclasses.filter((s) => s.classId === cls.id && s.items > 0);
-  const here = (over: Partial<CategoryQuery>) => itemsHref(cls.slug, sub?.slug, { ...q, page: 1, ...over });
-  const title = sub ? subName(sub) : cls.label;
   const icons = [...tips.values()].some((t) => t.icon);
+  const here = (over: Partial<CategoryQuery>) => itemsHref(cls?.slug, sub?.slug, { ...q, page: 1, ...over });
+  const title = sub ? subName(sub) : cls ? cls.label : "Items";
 
   const trail: Crumb[] = [
     { name: "Home", path: "/" },
     { name: "Database", path: "/database" },
     { name: "Items", path: "/database/items" },
-    { name: cls.label, path: itemsHref(cls.slug) },
-    ...(sub ? [{ name: subName(sub), path: itemsHref(cls.slug, sub.slug) }] : []),
+    ...(cls ? [{ name: cls.label, path: itemsHref(cls.slug) }] : []),
+    ...(cls && sub ? [{ name: subName(sub), path: itemsHref(cls.slug, sub.slug) }] : []),
   ];
 
+  const seenAs = (row: ItemRow) => seen.as.get(row[0])?.join(" · ") ?? null;
   const columns: Column<ItemRow>[] = [
     {
-      key: "item", header: "Item", nowrap: true, cell: (row) => {
+      key: "name", header: "Name", sortable: true, cell: (row) => {
         const c = describe(T, row);
         const tip = tips.get(row[0]);
         const name = names.get(row[0]);
         // A shown name carries its own quality colour; otherwise the game files' quality colours the row.
         const colour = name?.color ? "" : c.quality && c.quality.id <= 5 ? QUALITY_TEXT[qualityOf(c.quality.id)] : "text-fg";
+        const unconfirmed = name?.source === "files";
         return (
-          <span className="inline-flex items-center gap-2">
-            {tip?.icon ? <GameIcon src={tip.icon} size={20} /> : null}
-            <Link href={`/database/items/${row[0]}`} className={`${colour} hover:underline underline-offset-4`} style={name?.color ? { color: name.color } : undefined}>{name?.name ?? `Item ${row[0]}`}</Link>
-            {name?.wikiPage
-              ? <a href={name.wikiPage} className="text-xs text-muted hover:underline underline-offset-4">{NAME_SOURCE[name.source]}</a>
-              : name ? <span className="text-xs text-muted">{NAME_SOURCE[name.source]}</span> : null}
+          <span className="flex min-w-0 items-center gap-2">
+            {icons && (tip?.icon
+              // A name only the game files give is unconfirmed: a dashed edge on its icon, said in words to a screen reader.
+              ? <span className={`shrink-0 rounded-sm ${unconfirmed ? "outline-dashed outline-1 outline-offset-1 outline-muted" : ""}`} title={unconfirmed ? "From the game files, not yet confirmed by players" : undefined}><GameIcon src={tip.icon} size={24} /></span>
+              : <span aria-hidden="true" className="h-6 w-6 shrink-0 rounded-sm border border-line" />)}
+            <span className="min-w-0">
+              <Link href={`/database/items/${row[0]}`} className={`${colour} hover:underline underline-offset-4`} style={name?.color ? { color: name.color } : undefined}>{name?.name ?? `Item ${row[0]}`}</Link>
+              {unconfirmed && <span className="sr-only"> (unconfirmed)</span>}
+              {name?.wikiPage
+                ? <a href={name.wikiPage} className="block text-cell-2 text-muted hover:underline underline-offset-4">{NAME_SOURCE.wiki}</a>
+                : name?.source === "players" ? <span className="block text-cell-2 text-muted">{NAME_SOURCE.players}</span> : null}
+            </span>
           </span>
         );
       },
     },
-    ...(sub ? [] : [{ key: "subclass", header: "Subclass", cell: (row: ItemRow) => describe(T, row).subclass?.name ?? "None" }]),
-    { key: "slot", header: "Slot", cell: (row) => describe(T, row).slot?.name ?? "None" },
-    { key: "quality", header: "Quality", cell: (row) => describe(T, row).quality?.name ?? "unrecorded" },
-    { key: "id", header: "ID", numeric: true, cell: (row) => row[0] },
+    ...(sub ? [] : [{ key: "type", header: "Type", sortable: true, cell: (row: ItemRow) => describe(T, row).subclass?.name ?? "None" }]),
+    { key: "slot", header: "Slot", sortable: true, cell: (row) => slotOf(row[3])?.name ?? <span className="text-muted">—</span> },
+    { key: "seen", header: "Seen as", sortable: true, cell: (row) => seenAs(row) ?? <span className="text-muted">—</span> },
+    { key: "id", header: "ID", numeric: true, sortable: true, cell: (row) => row[0] },
   ];
 
-  const toolbar = (
-    <>
-      <FilterTabs
-        label="Subclass"
-        options={subclasses.map((s) => ({ slug: s.slug, name: subName(s), count: s.items }))}
-        current={sub?.slug}
-        href={(slug) => itemsHref(cls.slug, slug)}
-        allHref={itemsHref(cls.slug)}
-      />
-      <FilterTabs label="Slot" options={slots} current={q.slot} href={(slot) => here({ slot })} allHref={here({ slot: undefined })} />
-      <FilterTabs label="Quality" options={qualities} current={q.quality} href={(quality) => here({ quality })} allHref={here({ quality: undefined })} />
-    </>
-  );
+  // Choices with their counts in this category, so a menu never offers an empty list.
+  const counted = <K,>(key: (row: ItemRow) => K) => { const m = new Map<K, number>(); for (const row of base) m.set(key(row), (m.get(key(row)) ?? 0) + 1); return m; };
+  const slots = counted((row) => slotOf(row[3])?.slug ?? null);
+  const qualities = counted((row) => (row[4] === null ? UNRECORDED : QUALITIES[row[4]]?.slug ?? UNRECORDED));
+  const facets = itemFacets();
+  const inBase = (set: Set<number>) => base.reduce((n, row) => n + Number(set.has(row[0])), 0);
+  const skills = facets.professions.map((p) => ({ ...p, count: inBase(facets.bySkill.get(p.id)!) })).filter((p) => p.count > 0);
+  const slotNames = new Map(base.map((row) => slotOf(row[3])).filter((s) => s !== null).map((s) => [s!.slug, s!.name]));
+  const toggle = (key: "crafted" | "reagent" | "set" | "seen", label: string, count: number): FilterControl[] =>
+    count > 0 || q[key] ? [{ type: "toggle", key, label, href: here({ [key]: q[key] ? undefined : true }), on: Boolean(q[key]) }] : [];
+
+  const controls: FilterControl[] = [
+    {
+      type: "menu", key: "class", label: "Class",
+      options: [
+        { label: "All classes", href: itemsHref(undefined, undefined, { ...q, page: 1 }), on: !cls, reset: true, count: T.items.length },
+        ...T.classes.filter((c) => c.items > 0).map((c) => ({ label: c.label, href: itemsHref(c.slug, undefined, { ...q, page: 1 }), on: c.id === cls?.id, count: c.items })),
+      ],
+    },
+    ...(cls ? [{
+      type: "menu" as const, key: "type", label: "Type",
+      options: [
+        { label: `All ${cls.label.toLowerCase()}`, href: itemsHref(cls.slug, undefined, { ...q, page: 1 }), on: !sub, reset: true, count: cls.items },
+        ...T.subclasses.filter((s) => s.classId === cls.id && s.items > 0).map((s) => ({ label: subName(s), href: itemsHref(cls.slug, s.slug, { ...q, page: 1 }), on: s.id === sub?.id, count: s.items })),
+      ],
+    }] : []),
+    {
+      type: "menu", key: "slot", label: "Slot", multi: true,
+      options: [...slotNames].map(([slug, name]) => ({ label: name, href: itemsHref(cls?.slug, sub?.slug, toggled(q, "slot", slug)), on: Boolean(q.slot?.includes(slug)), count: slots.get(slug) ?? 0 })),
+    },
+    {
+      type: "menu", key: "quality", label: "Quality", multi: true,
+      options: [...QUALITIES.filter((x) => qualities.has(x.slug)).map((x) => ({
+        label: x.name, className: x.id <= 5 ? QUALITY_TEXT[qualityOf(x.id)] : undefined,
+        href: itemsHref(cls?.slug, sub?.slug, toggled(q, "quality", x.slug)), on: Boolean(q.quality?.includes(x.slug)), count: qualities.get(x.slug) ?? 0,
+      })), ...(qualities.has(UNRECORDED) ? [{
+        label: "Unrecorded", href: itemsHref(cls?.slug, sub?.slug, toggled(q, "quality", UNRECORDED)), on: Boolean(q.quality?.includes(UNRECORDED)), count: qualities.get(UNRECORDED) ?? 0,
+      }] : [])],
+    },
+    ...(skills.length ? [{
+      type: "menu" as const, key: "skill", label: "Profession",
+      options: [
+        { label: "Any profession", href: here({ skill: undefined }), on: !q.skill, reset: true },
+        ...skills.map((p) => ({ label: p.name, href: here({ skill: p.slug }), on: q.skill === p.slug, count: p.count })),
+      ],
+    }] : []),
+    ...toggle("crafted", "Crafted", inBase(facets.crafted)),
+    ...toggle("reagent", "Reagent", inBase(facets.reagent)),
+    ...toggle("set", "Set piece", inBase(facets.set)),
+    ...toggle("seen", "Seen by players", seen.seen.size),
+  ];
+  // The name box keeps every other filter (not the page) as hidden fields.
+  const keep = Object.fromEntries(new URLSearchParams(itemsHref(undefined, undefined, { ...q, q: undefined, page: 1 }).split("?")[1] ?? ""));
+  const pageHref = (page: number) => itemsHref(cls?.slug, sub?.slug, { ...q, page });
+  const strip = <ResultStrip total={rows.length} noun={rows.length === 1 ? "item" : "items"} page={q.page} perPage={ITEMS_PER_PAGE} href={pageHref} label="Item pages" />;
+  const active = activeFilters(q);
+
+  const chips = [
+    ...(q.q ? [{ label: `Name: ${q.q}`, href: here({ q: undefined }) }] : []),
+    ...(q.slot ?? []).map((s) => ({ label: slotNames.get(s) ?? s, href: itemsHref(cls?.slug, sub?.slug, toggled(q, "slot", s)) })),
+    ...(q.quality ?? []).map((s) => ({ label: QUALITIES.find((x) => x.slug === s)?.name ?? "Unrecorded", href: itemsHref(cls?.slug, sub?.slug, toggled(q, "quality", s)) })),
+    ...(q.skill ? [{ label: facets.professions.find((p) => p.slug === q.skill)?.name ?? q.skill, href: here({ skill: undefined }) }] : []),
+    ...(q.crafted ? [{ label: "Crafted", href: here({ crafted: undefined }) }] : []),
+    ...(q.reagent ? [{ label: "Reagent", href: here({ reagent: undefined }) }] : []),
+    ...(q.set ? [{ label: "Set piece", href: here({ set: undefined }) }] : []),
+    ...(q.seen ? [{ label: "Seen by players", href: here({ seen: undefined }) }] : []),
+  ];
+  const empty = active > 0 ? (
+    <div className="flex flex-wrap items-center gap-2 py-4 text-cell text-fg-2">
+      <span>No items match these filters.</span>
+      {chips.map((c) => (
+        <Link key={c.href} href={c.href} className="inline-flex h-6 items-center gap-1 rounded-full border border-edge px-2 text-cell-2 text-fg-2 hover:border-fg-2 hover:text-fg">
+          {c.label}<span aria-hidden="true">×</span><span className="sr-only">(remove)</span>
+        </Link>
+      ))}
+      <Link href={itemsHref(cls?.slug, sub?.slug)} className="text-accent hover:underline underline-offset-4">Clear filters</Link>
+    </div>
+  ) : <p className="py-4 text-cell text-fg-2">No items in this category.</p>;
 
   return (
-    <Container width="wide">
+    <Container width="data">
       <article>
-        <PageHeader
-          trail={trail}
-          title={title}
-          meta={<><span className="font-mono tabular-nums">{rows.length.toLocaleString("en-US")} items</span><span>build <span className="font-mono tabular-nums">{CLIENT_LAYER.build.version}</span></span></>}
+        <DataTitle title={title} trail={trail} aside={strip} />
+        <FilterBar
+          label="Item filters"
+          search={{ action: itemsHref(cls?.slug, sub?.slug), value: q.q, placeholder: "Name or id", label: "Filter by name or id", keep }}
+          controls={controls}
+          active={active}
+          clearHref={itemsHref(cls?.slug, sub?.slug)}
         />
-        <DataTable
-          caption={`${title} items`}
-          columns={columns}
-          rows={shown}
-          rowKey={(row) => String(row[0])}
-          toolbar={toolbar}
-          empty={<p className="px-4 py-8 text-fg-2 sm:px-6">No items in this category match. <Link href={itemsHref(cls.slug, sub?.slug)} className={LINK}>Clear the filters</Link></p>}
-          footer={pages > 1 ? (
-            <>
-              <span>Page {q.page} of {pages}</span>
-              <nav aria-label="Pages" className="flex gap-4">
-                {q.page > 1 ? <Link href={itemsHref(cls.slug, sub?.slug, { ...q, page: q.page - 1 })} className={LINK}>Previous</Link> : null}
-                {q.page < pages ? <Link href={itemsHref(cls.slug, sub?.slug, { ...q, page: q.page + 1 })} className={LINK}>Next</Link> : null}
-              </nav>
-            </>
-          ) : undefined}
-        />
-        <SourceLine build={CLIENT_LAYER.build.version}>
-          A name shows once 3 installs report the same one, or where the game files and the Warcraft Wiki give the same one. {GAME_DATA_CREDIT}
-          {matched && [...names.values()].some((n) => n?.source === "wiki") ? (
-            <>
-              {" "}{NAME_SOURCE.wiki}: the game files and the{" "}
-              <a href={matched.wiki.url} className={LINK}>{matched.wiki.name}</a> give the same name, not yet confirmed in play. Each label links to
-              its wiki page. Names from the wiki: Warcraft Wiki contributors, <a href={CC_BY_SA.url} className={LINK}>{CC_BY_SA.name}</a>.
-            </>
-          ) : null}
-          {assets && icons ? <>{" "}<GameCredit inline version={assets.version} label={assets.label} /></> : null}
-        </SourceLine>
+        <div className="mt-2">
+          <DataTable
+            dense
+            caption={`${title}: ${plural(rows.length)}`}
+            columns={columns}
+            rows={shown}
+            rowKey={(row) => String(row[0])}
+            sort={q.sort ? { key: q.sort.key, direction: q.sort.desc ? "desc" : "asc" } : { key: "id", direction: "asc" }}
+            sortHref={(key, dir) => here({ sort: key === "id" && dir === "asc" ? undefined : { key: key as NonNullable<CategoryQuery["sort"]>["key"], desc: dir === "desc" } })}
+            meta={(row) => [slotOf(row[3])?.name, sub ? null : describe(T, row).subclass?.name, seenAs(row)].filter(Boolean).join(" · ")}
+            empty={empty}
+          />
+        </div>
+        {pages > 1 && <div className="mt-2">{strip}</div>}
       </article>
     </Container>
   );
