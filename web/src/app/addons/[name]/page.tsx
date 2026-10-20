@@ -240,9 +240,9 @@ export default async function AddonProfilePage({ params }: Props) {
                 from it under the same licence. Your addon&apos;s own code can keep its licence.
               </p>
               <ul className="list-disc space-y-1 pl-6">
-                <li><Link href="/connect" className={link}>Connect</Link>: how to use the data from your own project.</li>
+                <li><Link href="/docs" className={link}>Docs</Link>: how to use the data from your own project.</li>
                 <li><a href="/api/corpus/public" className={link}>The public API</a>: the published records as JSON.</li>
-                <li>The MCP server, <code className="font-mono text-fg">/mcp/public</code>: the same data for AI tools. It speaks MCP, not a web page, so <Link href="/connect" className={link}>Connect</Link> explains how to point a tool at it.</li>
+                <li>The MCP server, <code className="font-mono text-fg">/mcp/public</code>: the same data for AI tools. It speaks MCP, not a web page, so <Link href="/docs/mcp/clients" className={link}>the docs</Link> explain how to point a tool at it.</li>
               </ul>
             </div>
           </section>

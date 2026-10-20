@@ -64,7 +64,7 @@ export default function TermsPage() {
             <p>
               Browsing is free and needs no account. A few clearly labelled ads pay for hosting. You may use the site, the API and
               the MCP server for any lawful purpose, within the rate limits on the{" "}
-              <Link href="/connect">Connect page</Link>. Do not try to get around those limits, probe or attack
+              <Link href="/docs/api/keys">Limits and keys page</Link>. Do not try to get around those limits, probe or attack
               the service, send uploads you have forged or altered, or use other players&apos; data in ways the{" "}
               <Link href="/privacy">Privacy Policy</Link> rules out. We may limit or block access that does.
             </p>

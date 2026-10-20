@@ -3,7 +3,7 @@ import Link from "next/link";
 import { C, Callout, H2, P, Step, Steps, docLink } from "@/components/docs/blocks";
 import { CodeGroup } from "@/components/docs/DocsClient";
 import DocPage from "@/components/docs/DocPage";
-import { CONNECT_EXAMPLES as ex, MCP_URL, REQUESTS_PER_HOUR } from "@/app/connect/connect-data";
+import { CONNECT_EXAMPLES as ex, MCP_URL, REQUESTS_PER_HOUR } from "@/lib/docs/connect-data";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata({

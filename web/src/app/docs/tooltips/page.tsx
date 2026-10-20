@@ -5,7 +5,7 @@ import { SITE } from "@everloot/protocol";
 import { Callout, C, H2, List, P, docLink } from "@/components/docs/blocks";
 import { CodeGroup } from "@/components/docs/DocsClient";
 import DocPage from "@/components/docs/DocPage";
-import { CONNECT_EXAMPLES as ex } from "@/app/connect/connect-data";
+import { CONNECT_EXAMPLES as ex } from "@/lib/docs/connect-data";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata({

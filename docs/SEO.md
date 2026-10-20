@@ -22,7 +22,7 @@ the owner can do. Written after the 2026-10-17 audit.
   (`web/src/lib/changes-facts.ts`). /wow-forever quotes Blizzard's launch sentence from
   `web/src/data/wow-forever.ts`; when you re-read the source, update `checkedOn` there.
 - **llms.txt and llms-full.txt** are route handlers built from the tool catalog, the MCP tool list in
-  `web/src/app/connect/connect-data.ts` and the changes data. A test fails if an MCP tool registered in
+  `web/src/lib/docs/connect-data.ts` and the changes data. A test fails if an MCP tool registered in
   `kb/src/mcp-server.ts` is missing from either.
 - **Sitemap.** `lastModified` only where one is known: newest change entry for /changes, the build extraction
   date for the talent, raid and map pages, the checked-on date for /wow-forever.

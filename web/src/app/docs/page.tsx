@@ -1,18 +1,21 @@
 import type { Metadata } from "next";
 import { Callout, Cards, H2, LinkCard, P, docLink } from "@/components/docs/blocks";
 import DocPage from "@/components/docs/DocPage";
+import { LegacyAnchors } from "@/components/docs/DocsClient";
+import { legacyAnchors } from "@/lib/docs/nav";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Everloot Docs",
-  description: "Everloot's documentation: install the addon, upload what you see in WoW: Forever, and build on the open data with the API, the MCP server and embeddable tooltips.",
+  title: "WoW Forever Docs: Addon, API and MCP Server",
+  description: "Install the Everloot addon, upload what you see in WoW: Forever, and build on the open data with the API, the MCP server and embeddable tooltips.",
   path: "/docs",
 });
 
 export default function DocsHome() {
   return (
     <DocPage href="/docs" title="Everloot Docs" lede="Everything about Everloot in one place: how to play with it, and how to build on it.">
+      <LegacyAnchors targets={legacyAnchors()} />
       <P>
         Everloot is a community database for World of Warcraft: Forever. Players run a small addon that notes what they
         see in game, upload it, and once three installs agree on something it becomes a fact on the site. All of it is

@@ -118,7 +118,7 @@ Cache-Control: no-store
 Content-Type: application/json
 Retry-After: 2758
 
-{"ok":false,"error":"Without a key this endpoint answers 30 requests per hour per address. Try again in 2758 seconds, or get a free key at https://everloot.app/connect#keys and send it as \\"Authorization: Bearer <key>\\".","getAKey":"https://everloot.app/connect#keys"}`;
+{"ok":false,"error":"Without a key this endpoint answers 30 requests per hour per address. Try again in 2758 seconds, or get a free key at https://everloot.app/docs/api/keys and send it as \\"Authorization: Bearer <key>\\".","getAKey":"https://everloot.app/docs/api/keys"}`;
 
 export default function Page() {
   return (

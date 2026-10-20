@@ -7,6 +7,7 @@ import { CodeGroup } from "@/components/docs/DocsClient";
 import DocPage from "@/components/docs/DocPage";
 import { endpointHref, endpointSlug, routeFromSlug } from "@/lib/docs/nav";
 import { requestSamples, responseSamples, schemaFields } from "@/lib/docs/examples";
+import { guardOn } from "@/lib/data-guard";
 import { DATA_LABEL } from "@/lib/protocol-docs";
 import { pageMetadata } from "@/lib/seo";
 
@@ -33,6 +34,8 @@ const ACCESS_TEXT: Record<string, string> = {
   open: "Open to anyone, no key.",
   "rate-limited": "Open to anyone, limited per IP address.",
   "key-or-rate-limited": "Open to anyone, limited per IP address; a free API key raises the limit.",
+  // The same routes while the data guard is off (EVERLOOT_DATA_GUARD): no limit and no key yet.
+  "key-or-rate-limited-off": "Open to anyone, no key needed. This endpoint has no limit of its own today.",
   cron: "Internal.",
 };
 
@@ -56,7 +59,7 @@ export default async function EndpointPage({ params }: { params: Promise<{ endpo
       <P><Prose text={route.description} /></P>
 
       <H2 id="access">Access</H2>
-      <P>{ACCESS_TEXT[route.access]} Data: {DATA_LABEL[route.data]}. {route.access !== "open" && <>Limits and keys are explained on <Link href="/docs/api/keys" className={docLink}>Limits and keys</Link>.</>}</P>
+      <P>{ACCESS_TEXT[route.access === "key-or-rate-limited" && !guardOn() ? "key-or-rate-limited-off" : route.access]} Data: {DATA_LABEL[route.data]}. {route.access !== "open" && <>Limits and keys are explained on <Link href="/docs/api/keys" className={docLink}>Limits and keys</Link>.</>}</P>
 
       {route.pathParams?.length ? (
         <>

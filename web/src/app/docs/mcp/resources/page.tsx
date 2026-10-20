@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { C, H2, P, Table, docLink } from "@/components/docs/blocks";
 import DocPage from "@/components/docs/DocPage";
-import { MCP_PROMPTS, MCP_RESOURCE_TEMPLATES, MCP_RESOURCES } from "@/app/connect/connect-data";
+import { MCP_PROMPTS, MCP_RESOURCE_TEMPLATES, MCP_RESOURCES } from "@/lib/docs/connect-data";
 import { toolHref } from "@/lib/docs/nav";
 import { pageMetadata } from "@/lib/seo";
 

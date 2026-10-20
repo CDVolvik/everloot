@@ -3,7 +3,7 @@ import Link from "next/link";
 import { C, H2, P, docLink } from "@/components/docs/blocks";
 import { CodeGroup } from "@/components/docs/DocsClient";
 import DocPage from "@/components/docs/DocPage";
-import { BULK_URL, CONNECT_EXAMPLES as ex } from "@/app/connect/connect-data";
+import { BULK_URL, CONNECT_EXAMPLES as ex } from "@/lib/docs/connect-data";
 import { guardOn } from "@/lib/data-guard";
 import { pageMetadata } from "@/lib/seo";
 

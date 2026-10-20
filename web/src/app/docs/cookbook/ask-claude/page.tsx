@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Callout, C, H2, List, P, Step, Steps, Table, docLink } from "@/components/docs/blocks";
 import { CodeGroup } from "@/components/docs/DocsClient";
 import DocPage from "@/components/docs/DocPage";
-import { CONNECT_EXAMPLES as ex, MCP_URL } from "@/app/connect/connect-data";
+import { CONNECT_EXAMPLES as ex, MCP_URL } from "@/lib/docs/connect-data";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 

@@ -4,7 +4,7 @@ import { PLAYER_DATA_TOOLS } from "@everloot/protocol";
 import { C, Cards, H2, H3, LinkCard, List, P, Table, docLink } from "@/components/docs/blocks";
 import { CodeGroup } from "@/components/docs/DocsClient";
 import DocPage from "@/components/docs/DocPage";
-import { CONNECT_EXAMPLES as ex, MCP_TOOLS, MCP_URL } from "@/app/connect/connect-data";
+import { CONNECT_EXAMPLES as ex, MCP_TOOLS, MCP_URL } from "@/lib/docs/connect-data";
 import { DOCS_TABS } from "@/lib/docs/nav";
 import { pageMetadata } from "@/lib/seo";
 

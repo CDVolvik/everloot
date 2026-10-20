@@ -52,17 +52,14 @@ export function OnThisPage() {
   if (headings.length < 2) return null;
   return (
     <nav aria-label="On this page" data-md-skip className="text-sm">
-      <p className="mb-3 flex items-center gap-2 font-semibold text-fg">
-        <svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"><path d="M4 6h16M4 12h10M4 18h13" /></svg>
-        On this page
-      </p>
-      <ul className="space-y-2 border-l border-line">
+      <p className="font-mono text-xs text-muted">On this page</p>
+      <ul className="mt-2 border-l border-line">
         {headings.map((h) => (
           <li key={h.id}>
             <a
               href={`#${h.id}`}
               aria-current={current === h.id ? "location" : undefined}
-              className={`-ml-px block border-l py-0.5 transition-colors ${h.level === 3 ? "pl-6" : "pl-3"} ${current === h.id ? "border-accent text-accent" : "border-transparent text-fg-2 hover:text-fg"}`}
+              className={`-ml-px flex min-h-9 items-center border-l transition-colors ${h.level === 3 ? "pl-6" : "pl-3"} ${current === h.id ? "border-accent text-accent" : "border-transparent text-fg-2 hover:border-accent hover:text-accent"}`}
             >
               {h.text}
             </a>
@@ -116,9 +113,9 @@ export function CodeGroup({ tabs, title, className = "" }: { tabs: CodeTab[]; ti
     } catch { /* the clipboard is unavailable; the code is still selectable */ }
   };
   return (
-    <div className={`overflow-hidden rounded-card border border-line bg-tooltip ${className}`.trim()}>
+    <div data-code-block className={`min-w-0 max-w-full overflow-hidden rounded-card border border-line bg-panel ${className}`.trim()}>
       <div data-md-skip className="flex items-center gap-1 border-b border-line px-2">
-        {title && <span className="mr-2 px-2 py-2 text-xs font-medium text-fg">{title}</span>}
+        {title && <span className="mr-2 px-2 py-2 font-mono text-xs text-muted">{title}</span>}
         <div role="tablist" aria-label={title ?? "Code examples"} className="flex min-w-0 flex-1 gap-1 overflow-x-auto">
           {tabs.length > 1 ? tabs.map((tab, i) => (
             <button
@@ -146,11 +143,20 @@ export function CodeGroup({ tabs, title, className = "" }: { tabs: CodeTab[]; ti
           hidden={i !== active}
           tabIndex={0}
           aria-label={tab.label}
-          className="max-h-[32rem] overflow-auto whitespace-pre-wrap p-4 font-mono text-[13px] leading-relaxed text-fg [overflow-wrap:anywhere]"
+          className="max-h-[32rem] max-w-full overflow-auto whitespace-pre p-4 font-mono text-sm leading-relaxed text-fg [overflow-wrap:normal]"
         >
           {highlight(tab.code, tab.lang)}
         </pre>
       ))}
     </div>
   );
+}
+
+/** On /docs: a link to an anchor of the old /connect page arrives here with its #anchor; send it on. */
+export function LegacyAnchors({ targets }: { targets: Record<string, string> }) {
+  useEffect(() => {
+    const target = targets[decodeURIComponent(window.location.hash.replace(/^#/, ""))];
+    if (target) window.location.replace(target);
+  }, [targets]);
+  return null;
 }

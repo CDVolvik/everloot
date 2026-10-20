@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import Crumbs from "@/components/ui/Crumbs";
+import PageHeader from "@/components/ui/PageHeader";
 import { docsPage, neighbours } from "@/lib/docs/nav";
 import { CopyPage, OnThisPage } from "./DocsClient";
 
@@ -22,14 +22,7 @@ export default function DocPage({ href, children, aside, title, lede }: { href: 
     <div className={`grid min-w-0 gap-10 ${aside ? "xl:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]" : "xl:grid-cols-[minmax(0,1fr)_12rem]"}`}>
       <div className="min-w-0">
         <article data-docs-article className="min-w-0">
-          <header className="mb-8 border-b border-line pb-6">
-            {trail.length > 1 && <div data-md-skip><Crumbs trail={trail} owner="page" className="mb-4" /></div>}
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <h1 className="min-w-0 text-3xl font-bold tracking-tight text-fg [overflow-wrap:anywhere] sm:text-4xl">{title ?? page.title}</h1>
-              <CopyPage />
-            </div>
-            <p className="mt-3 max-w-[65ch] text-lg text-fg-2">{lede ?? page.lede}</p>
-          </header>
+          <PageHeader trail={trail} title={title ?? page.title} lede={lede ?? page.lede} actions={<CopyPage />} />
           {children}
         </article>
         {aside && <div className="mt-10 space-y-4 xl:hidden">{aside}</div>}

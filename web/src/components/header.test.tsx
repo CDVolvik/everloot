@@ -69,7 +69,7 @@ test("every destination the old header linked is still one click from the header
     ...TOOL_GROUPS.flatMap((g) => g.links.map((l) => l.href)),
     ...[...footer.matchAll(/href="([^"]+)"/g)].map((m) => m[1]),
   ]);
-  const old = ["/database", "/lore", "/map", "/changes", "/upload", "/addons", "/connect", "/census", "/about", ...tools.map(toolHref)];
+  const old = ["/database", "/lore", "/map", "/changes", "/upload", "/addons", "/docs", "/census", "/about", ...tools.map(toolHref)];
   for (const href of old) expect(reachable.has(href), href).toBe(true);
 });
 

@@ -3,32 +3,24 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import LinkTabs from "@/components/ui/LinkTabs";
 import { DOCS_TABS, tabFor, type DocsTab } from "@/lib/docs/nav";
 import DocsIcon from "./DocsIcon";
 
-/** The docs' tab bar: Overview, Guides, API Reference, MCP, Cookbook. Scrolls sideways on a phone. */
+/** The docs' tab bar: Overview, Guides, API Reference, MCP, Cookbook. The site's LinkTabs, with an icon each. */
 export function DocsTabs() {
   const active = tabFor(usePathname() ?? "/docs").id;
   return (
-    <nav aria-label="Docs sections" className="-mx-4 mb-8 overflow-x-auto overflow-y-hidden border-b border-line px-4 [scrollbar-width:none]">
-      <ul className="flex min-w-max gap-6">
-        {DOCS_TABS.map((tab) => {
-          const on = tab.id === active;
-          return (
-            <li key={tab.id}>
-              <Link
-                href={tab.href}
-                aria-current={on ? "page" : undefined}
-                className={`-mb-px inline-flex min-h-11 items-center gap-2 border-b-2 text-sm font-medium transition-colors ${on ? "border-accent text-fg" : "border-transparent text-fg-2 hover:text-fg"}`}
-              >
-                <DocsIcon name={tab.icon} className={on ? "text-accent" : "text-muted"} />
-                {tab.label}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-    </nav>
+    <div className="mb-8">
+      <LinkTabs
+        label="Docs sections"
+        tabs={DOCS_TABS.map((tab) => ({
+          href: tab.href,
+          current: tab.id === active,
+          label: <><DocsIcon name={tab.icon} className={tab.id === active ? "text-accent" : "text-muted"} />{tab.label}</>,
+        }))}
+      />
+    </div>
   );
 }
 

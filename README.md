@@ -63,8 +63,8 @@ the original and an RSS feed. [everloot.app/changes](https://everloot.app/change
 share their list. A count appears only when three installs report it.
 [everloot.app/addons/popular](https://everloot.app/addons/popular)
 
-**Connect.** How to use the open data from an AI assistant or your own code.
-[everloot.app/connect](https://everloot.app/connect)
+**Docs.** How to use Everloot in game, and the open data from an AI assistant or your own code.
+[everloot.app/docs](https://everloot.app/docs)
 
 **Market prices.** Blizzard has no auction API for Forever, so prices come from full auction scans
 that players start with the addon's **Everloot scan** button. The site shows a realm table and a
@@ -161,7 +161,7 @@ claude mcp add --transport http everloot https://everloot.app/mcp/public
 ```
 
 or put `{ "mcpServers": { "everloot": { "type": "http", "url": "https://everloot.app/mcp/public" } } }`
-in the client's config. The [connect page](https://everloot.app/connect) lists every tool with its
+in the client's config. The [docs](https://everloot.app/docs) list every tool with its
 arguments and every JSON endpoint, the rate limit and how to credit the data. The API is described in
 [`/api/openapi.json`](https://everloot.app/api/openapi.json) (OpenAPI 3.1) and the protocol's JSON Schema
 files are under [`/schema/`](https://everloot.app/schema/index.json).

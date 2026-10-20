@@ -202,3 +202,28 @@ export function neighbours(href: string): { prev?: DocsPage; next?: DocsPage } {
   if (i < 0) return {};
   return { prev: pages[i - 1], next: pages[i + 1] };
 }
+
+/** Where an anchor of the old /connect page lives now (/connect redirects to /docs, keeping the #anchor). */
+const LEGACY_SECTIONS: Record<string, string> = {
+  mcp: "/docs/mcp", tools: "/docs/mcp", corpus: "/docs/api/corpus-public", tooltips: "/docs/tooltips", api: "/docs/api",
+  schemas: "/docs/api/schemas", keys: "/docs/api/keys", files: "/docs/api/data-files", licence: "/docs/licence",
+};
+
+export function legacyAnchorTarget(hash: string): string | undefined {
+  const id = decodeURIComponent(hash.replace(/^#/, ""));
+  if (LEGACY_SECTIONS[id]) return LEGACY_SECTIONS[id];
+  const tool = id.startsWith("tool-") ? MCP_TOOL_NAMES.find((name) => name === id.slice(5)) : undefined;
+  if (tool) return toolHref(tool);
+  const route = id.startsWith("api-") ? API_ROUTES.find((r) => `api-${r.path.replace(/^\/api\//, "").replace(/\//g, "-")}` === id) : undefined;
+  return route ? endpointHref(route) : undefined;
+}
+
+/** Every old /connect anchor and its page now, for the redirect on /docs. */
+export function legacyAnchors(): Record<string, string> {
+  const ids = [
+    ...Object.keys(LEGACY_SECTIONS),
+    ...MCP_TOOL_NAMES.map((name) => `tool-${name}`),
+    ...API_ROUTES.map((r) => `api-${r.path.replace(/^\/api\//, "").replace(/\//g, "-")}`),
+  ];
+  return Object.fromEntries(ids.map((id) => [id, legacyAnchorTarget(id)!]));
+}

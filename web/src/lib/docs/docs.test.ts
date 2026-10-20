@@ -6,7 +6,7 @@ import { z } from "zod";
 import { expect, test } from "vitest";
 import { exampleUrl, requestSamples, sample, TOOL_ARGS, toolSamples } from "./examples";
 import { articleMarkdown } from "./markdown";
-import { allDocsPages, DOCS_TABS, endpointHref, endpointSlug, neighbours, tabFor, toolHref } from "./nav";
+import { allDocsPages, DOCS_TABS, endpointHref, endpointSlug, legacyAnchors, neighbours, tabFor, toolHref } from "./nav";
 
 const app = join(__dirname, "../../app");
 
@@ -90,4 +90,11 @@ test("Copy page turns the article into Markdown and leaves the page furniture ou
     "cURL:", "```bash\ncurl x\n```", "Python:", "```python\nprint(1)\n```",
     "| Approach | Best for |\n| --- | --- |\n| API | Any language |",
   ].join("\n\n") + "\n");
+});
+
+test("every anchor of the old /connect page leads to a docs page", () => {
+  const targets = legacyAnchors();
+  const pages = new Set(allDocsPages().map((p) => p.href));
+  expect(targets).toMatchObject({ keys: "/docs/api/keys", "tool-get_by_name": "/docs/mcp/tools/get-by-name", "api-tooltip-{type}-{id}": "/docs/api/tooltip", "api-corpus-public": "/docs/api/corpus-public" });
+  for (const [id, href] of Object.entries(targets)) expect(pages.has(href), `${id} -> ${href}`).toBe(true);
 });

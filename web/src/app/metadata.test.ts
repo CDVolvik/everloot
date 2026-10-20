@@ -18,7 +18,7 @@ const routes: [string, () => Promise<{ metadata: Metadata }>, boolean][] = [
   ["/addons/popular", () => import("./addons/popular/page"), true],
   ["/census", () => import("./census/page"), true],
   ["/changes", () => import("./changes/page"), true],
-  ["/connect", () => import("./connect/page"), true],
+  ["/docs", () => import("./docs/page"), true],
   ["/accessibility", () => import("./accessibility/page"), false],
   ["/contact", () => import("./contact/page"), false],
   ["/database", () => import("./database/page"), true],

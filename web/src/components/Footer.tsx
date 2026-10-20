@@ -22,7 +22,7 @@ const COLUMNS: { title: string; items: Item[] }[] = [
     items: [
       { label: "Get the addon", href: "/addon" },
       { label: "Upload addon data", href: "/upload" },
-      { label: "API and MCP server", href: "/connect" },
+      { label: "Docs, API and MCP", href: "/docs" },
       { label: "How we count", href: "/methodology" },
       { label: "Data policy", href: `${REPO_URL}/blob/main/docs/DATA_POLICY.md`, external: true },
       { label: "Changes feed (RSS)", href: "/changes/feed.xml", plain: true },

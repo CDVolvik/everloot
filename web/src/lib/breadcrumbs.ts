@@ -13,7 +13,6 @@ const NAMES: Record<string, string> = {
   "/accessibility": "Accessibility",
   "/contact": "Contact",
   "/upload": "Upload addon data",
-  "/connect": "Connect",
   "/search": "Search",
   "/changes": "Patch notes and Blizzard posts",
   "/map": "World map",

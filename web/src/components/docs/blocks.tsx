@@ -13,11 +13,11 @@ function Anchor({ id }: { id: string }) {
 
 /** A section heading with its own link. Its id feeds "On this page". */
 export function H2({ id, children }: { id: string; children: ReactNode }) {
-  return <h2 id={id} className="group mt-12 scroll-mt-28 text-2xl font-semibold tracking-tight text-fg first:mt-0">{children}<Anchor id={id} /></h2>;
+  return <h2 id={id} className="group mt-12 scroll-mt-28 text-xl font-semibold tracking-tight text-fg first:mt-0">{children}<Anchor id={id} /></h2>;
 }
 
 export function H3({ id, children }: { id: string; children: ReactNode }) {
-  return <h3 id={id} className="group mt-8 scroll-mt-28 text-lg font-semibold text-fg">{children}<Anchor id={id} /></h3>;
+  return <h3 id={id} className="group mt-8 scroll-mt-28 text-lg font-semibold tracking-tight text-fg">{children}<Anchor id={id} /></h3>;
 }
 
 export function P({ children }: { children: ReactNode }) {

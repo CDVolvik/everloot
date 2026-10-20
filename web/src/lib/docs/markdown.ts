@@ -1,14 +1,14 @@
 /**
  * A docs page as Markdown, for "Copy page": read from the rendered article, so the copy always matches
  * what the reader sees. Elements marked `data-md-skip` (the copy button, "On this page", previous and
- * next) are left out; every tab of a code group is included, each under its label.
+ * next), the breadcrumb and scripts are left out; every tab of a code group is included, each under its label.
  */
 
 function inline(node: Node, base: string): string {
   if (node.nodeType === 3) return (node.textContent ?? "").replace(/\s+/g, " ");
   if (node.nodeType !== 1) return "";
   const el = node as Element;
-  if (el.hasAttribute("data-md-skip") || el.getAttribute("aria-hidden") === "true") return "";
+  if (skipped(el) || el.getAttribute("aria-hidden") === "true") return "";
   const inner = () => [...el.childNodes].map((child) => inline(child, base)).join("");
   switch (el.tagName) {
     case "CODE": return `\`${el.textContent ?? ""}\``;
@@ -24,8 +24,10 @@ function inline(node: Node, base: string): string {
   }
 }
 
+const skipped = (el: Element) => el.hasAttribute("data-md-skip") || el.hasAttribute("data-page-crumbs") || el.tagName === "SCRIPT";
+
 function block(el: Element, base: string, depth = 0): string[] {
-  if (el.hasAttribute("data-md-skip")) return [];
+  if (skipped(el)) return [];
   const text = () => inline(el, base).replace(/[ \t]+/g, " ").trim();
   const children = () => [...el.children].flatMap((child) => block(child, base, depth));
   switch (el.tagName) {
