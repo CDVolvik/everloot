@@ -19,7 +19,7 @@ const status: AppStatus = {
   version: "0.1.0", gameFolder: "C:\\Users\\carlos\\Games\\_classic_era_", files: 1, paused: false,
   switches: { upload: true, prices: true, ask: false },
   jobs: { upload: ok, prices: { state: "error", message: "HTTP 503 from everloot.app", at: "2026-10-19T07:01:00Z" }, ask: { state: "off", message: "", at: null } },
-  addonInstalled: "0.3.3", update: { current: "0.1.0", latest: "0.2.0", url: "https://example.test/r", newer: true },
+  addonInstalled: "0.3.3", update: { current: "0.1.0", latest: "0.2.0", url: "https://example.test/r", newer: true, notes: [], downloadUrl: null, publishedAt: null },
   errors: [{ at: "2026-10-19T07:01:00Z", level: "error", text: "prices: HTTP 503 from everloot.app writing C:\\Users\\carlos\\x" }],
 };
 

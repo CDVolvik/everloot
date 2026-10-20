@@ -261,3 +261,22 @@ details.panel[open] > summary::after { content: " −"; }
 details.panel[open] > summary { margin-bottom: 0.6rem; }
 #settings > * + * { margin-top: 0.85rem; }
 #settings .switch { display: flex; width: fit-content; margin-top: 0.4rem; }
+
+/* The update button beside Settings, and its popover: what changed in the new version, and the download. */
+.side-foot .foot-row { display: flex; flex-direction: row; align-items: center; gap: 0.35rem; }
+.side-foot .foot-row > button[data-page] { flex: 1; }
+/* Beats ".nav button", which makes every sidebar button a full-width row. */
+.nav .update-btn { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 999px; border: 1px solid rgb(var(--accent)); background: rgb(var(--accent) / 0.12); color: rgb(var(--accent)); cursor: pointer; padding: 0; }
+.nav .update-btn svg { width: 16px; height: 16px; }
+.nav .update-btn:hover, .nav .update-btn[aria-expanded="true"] { background: rgb(var(--accent) / 0.22); }
+.update-btn:focus-visible { outline: 2px solid rgb(var(--accent)); outline-offset: 2px; }
+.update-pop { position: fixed; left: 192px; bottom: 12px; z-index: 40; width: min(380px, calc(100vw - 24px)); max-height: min(560px, calc(100vh - 88px)); display: flex; flex-direction: column; gap: 0.6rem; padding: 0.9rem 1rem; border-radius: 12px; border: 1px solid rgb(var(--edge)); background: rgb(var(--panel)); box-shadow: 0 16px 48px rgb(0 0 0 / 0.45); }
+.update-pop[hidden] { display: none; }
+.update-pop h2 { font-size: 0.95rem; text-transform: none; letter-spacing: 0; color: rgb(var(--fg)); }
+.update-pop h3 { font-size: 0.85rem; font-weight: 600; margin: 0 0 0.35rem; }
+.update-pop .pop-body { overflow-y: auto; min-height: 0; padding-right: 0.25rem; }
+.update-pop ul { margin: 0 0 0.5rem; padding-left: 1.1rem; display: flex; flex-direction: column; gap: 0.35rem; }
+/* A long change reads as three lines; the release page has it in full. */
+.update-pop li { line-height: 1.4; }
+.update-pop li .note { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.update-pop .pop-foot { display: flex; gap: 0.5rem; }

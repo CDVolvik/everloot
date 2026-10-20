@@ -33,7 +33,20 @@ export interface EngineState {
 /** `files` counts accounts with an Everloot.lua; `hasAccounts` says WTF/Account exists at all. */
 export interface GameFolderCandidate { folder: string; product: string; files: number; hasAccounts: boolean }
 
-export interface UpdateCheck { current: string; latest: string | null; url: string | null; newer: boolean }
+/** One change a release lists; author and pull request when GitHub generated the line. */
+export interface ReleaseNote { text: string; author: string | null; pr: number | null }
+export interface UpdateCheck {
+  current: string;
+  latest: string | null;
+  /** The release page. */
+  url: string | null;
+  newer: boolean;
+  /** What the newest release lists as changed. */
+  notes: ReleaseNote[];
+  /** This system's installer from that release; null when it has none. */
+  downloadUrl: string | null;
+  publishedAt: string | null;
+}
 
 /** One dated copy of an account's Everloot.lua in the data folder, kept after each upload. */
 export interface BackupInfo { file: string; account: string; at: string; bytes: number }
