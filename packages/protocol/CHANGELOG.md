@@ -7,9 +7,8 @@ required, or tightening a limit is a major release.
 ## [Unreleased]
 
 ### Changed
-- Description text only, no shape change: the `limit` paging parameter states its caps (500 rows without a key, 5,000
-  with one), the corpus and client-layer routes and the market rule read in plain words, and the MCP tools say they
-  read "Everloot's public player data". `gold_ledger` explains its lines more plainly.
+- Description text only, no shape change: in `API_ROUTES`, the `limit` paging parameter states its caps (500 rows
+  without a key, 5,000 with one), and the corpus and client-layer routes and the market rule read in plain words.
 
 ### Added
 - 1.8.0: an optional `url` in tool answers, the everloot.app page that shows the answer, absolute, and absent when
