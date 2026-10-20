@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
 import ClassPicker from "@/components/talents/ClassPicker";
 import { classChoices } from "@/components/talents/class-choices";
-import { Container, Disclosure, PageHeader, SectionHeading, SourceLine } from "@/components/ui";
+import { Container, Disclosure, PageHeader, SectionHeading } from "@/components/ui";
 import { getTool } from "@/data/tools";
 import { trailFor } from "@/lib/breadcrumbs";
 import { loadSiteAssets } from "@/lib/game-assets";
@@ -41,8 +41,6 @@ export default async function TalentsIndexPage() {
           <p>{answers.setsAnswer}</p>
         </Disclosure>
       </section>
-
-      <SourceLine build={catalogs[0]?.build}>talent names &copy; Blizzard Entertainment</SourceLine>
     </Container>
   );
 }

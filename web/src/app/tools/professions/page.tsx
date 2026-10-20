@@ -9,9 +9,8 @@ import { STORAGE_UNREACHABLE, uploadStore } from "@/lib/upload-store";
 import { dataAgeLabel } from "@/lib/data-age";
 import { classAndProfessionIcons, loadSiteAssets } from "@/lib/game-assets";
 import GameIcon from "@/components/game/GameIcon";
-import GameCredit from "@/components/game/GameCredit";
 import { trailFor } from "@/lib/breadcrumbs";
-import { Card, Container, Disclosure, EmptyState, Field, PageHeader, SectionHeading, SourceLine } from "@/components/ui";
+import { Card, Container, Disclosure, EmptyState, Field, PageHeader, SectionHeading } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -62,7 +61,10 @@ export default async function ProfessionsPage(
         lede="Profession paths and recipe skill ranges, estimated from the recipes and prices players uploaded."
         meta={corpus.unreachable
           ? <span>Storage unreachable</span>
-          : reports > 0 && <span className="font-mono tabular-nums">{reports} recipe {reports === 1 ? "report" : "reports"}</span>}
+          : <>
+            {reports > 0 && <span className="font-mono tabular-nums">{reports} recipe {reports === 1 ? "report" : "reports"}</span>}
+            <span>{dataAgeLabel(corpus.dataAsOf)}</span>
+          </>}
       />
 
       <div className="space-y-8">
@@ -151,11 +153,6 @@ export default async function ProfessionsPage(
         </Card>
         <AdSlot slot="belowTool" />
       </div>
-
-      {assets && icons.length > 0 && <div className="mt-8"><GameCredit version={assets.version} label={assets.label} what="Icons" /></div>}
-      <SourceLine source="Player uploads; a step counts once 3 installs agree">
-        {corpus.unreachable ? "Storage unreachable" : dataAgeLabel(corpus.dataAsOf)}
-      </SourceLine>
     </Container>
   );
 }

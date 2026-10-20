@@ -5,7 +5,7 @@ import { BADGES, buildBoards, loadEcosystem, type BadgeId, type ProjectView } fr
 import { pageMetadata } from "@/lib/seo";
 import { REPO_URL } from "@/lib/source";
 import { trailFor } from "@/lib/breadcrumbs";
-import { Card, Container, EmptyState, Entry, EntryList, Explainer, PageHeader, SectionHeading, SourceLine } from "@/components/ui";
+import { Card, Container, EmptyState, Entry, EntryList, Explainer, PageHeader, SectionHeading } from "@/components/ui";
 
 export const metadata: Metadata = pageMetadata({
   title: "WoW Forever Addons and Open-Source Projects",
@@ -170,9 +170,6 @@ export default async function EcosystemPage() {
           </dl>
           <p>Everloot is not affiliated with these projects.</p>
         </Explainer>
-        <SourceLine source="Repository facts from GitHub; installs from Everloot uploads" licence="Install counts CC BY-SA 4.0">
-          <a href={`${REPO_URL}/blob/main/docs/DATA_POLICY.md`} rel="noopener" className={link}>Data policy</a>
-        </SourceLine>
       </article>
     </Container>
   );

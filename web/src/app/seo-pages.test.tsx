@@ -69,7 +69,8 @@ test("a class page: name matches the H1, description and facts are visible, the 
   expect(list["@type"]).toBe("BreadcrumbList");
   const names = list.itemListElement.map((i: { name: string }) => i.name);
   expect(names).toEqual(["Home", "Talent calculator", "Hunter"]);
-  for (const name of names) expect(visible(crumbs)).toContain(name);
+  // The trail is for search engines only: nothing visible (density spec, 2026-10-20).
+  expect(visible(crumbs).trim()).toBe("");
   expect(JSON.stringify(list)).not.toContain('"https://everloot.app/tools"');
   expect(crumbs).not.toContain('href="/tools"');
 });
@@ -185,8 +186,14 @@ test("/wow-forever shows Blizzard's race and class tables with the new combinati
 
 test("/methodology states the three-installs rule, unrecorded is not zero, and links the data policy", async () => {
   const { default: Page } = await import("./methodology/page");
-  const html = renderToStaticMarkup(<Page />);
+  const html = renderToStaticMarkup(await Page());
   expect(h1(html)).toBe("How we count");
+  // The full credits the footer's one line links to, with the build.
+  expect(html).toContain('id="credits"');
+  expect(visible(html)).toContain("Icons, tooltip text and interface art are © Blizzard Entertainment, Inc.");
+  expect(visible(html)).toMatch(/Game files read from build \d+\.\d+\.\d+\.\d+/);
+  expect(visible(html)).toContain("Warcraft Wiki contributors.");
+  expect(html).toContain('href="https://github.com/wowdev/WoWDBDefs"');
   expect(visible(html)).toContain("at least three different installs");
   expect(visible(html)).toContain("Unrecorded is not zero");
   expect(html).toContain('/blob/main/docs/DATA_POLICY.md"');

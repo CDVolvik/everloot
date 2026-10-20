@@ -9,10 +9,9 @@ import { zoneToMap } from "../../../../kb/src/world-coords";
 import { STORAGE_UNREACHABLE, uploadStore } from "@/lib/upload-store";
 import { dataAgeLabel } from "@/lib/data-age";
 import { parseDeepLink, parseViewState, parseZoneLink, type MapItems } from "@/lib/map-view";
-import { CONTINENTS, continentFlights, continentMap, continentPins, MAP_SOURCE, observedFacts, WORLD_MAP } from "@/lib/world-map";
+import { CONTINENTS, continentFlights, continentMap, continentPins, observedFacts, WORLD_MAP } from "@/lib/world-map";
 import WorldMapView from "@/components/WorldMapView";
-import { continentArt, creditWhat, instanceThumbs, loadSiteAssets } from "@/lib/game-assets";
-import GameCredit from "@/components/game/GameCredit";
+import { continentArt, instanceThumbs, loadSiteAssets } from "@/lib/game-assets";
 import { Container, SectionHeading } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
@@ -164,15 +163,6 @@ export default async function MapPage(props: { searchParams: Promise<Query> }) {
 
         <footer className="space-y-1 text-xs text-muted">
           {!corpus.unreachable && <p>{dataAgeLabel(corpus.dataAsOf)}</p>}
-          <p>
-            Map data read from the WoW: Forever game files, build {MAP_SOURCE.version}. It is Blizzard&apos;s data, found in the
-            files and unconfirmed, and is not under our licence. See the{" "}
-            <a className="text-accent hover:underline underline-offset-4" href={MAP_SOURCE.licenceUrl}>data policy</a>.
-            NPC and vendor points are from player uploads (CC BY-SA 4.0).
-          </p>
-          {assets && (art || thumbShown) && (
-            <GameCredit version={assets.version} label={assets.label} what={creditWhat(art && "map pictures", thumbShown && "loading screen art")} />
-          )}
         </footer>
       </Container>
     </article>

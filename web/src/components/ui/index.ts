@@ -5,7 +5,6 @@ export { default as Banner } from "./Banner";
 export { default as Card, type CardProps } from "./Card";
 export { default as CodeBlock } from "./CodeBlock";
 export { default as Container, type ContainerWidth } from "./Container";
-export { default as Crumbs } from "./Crumbs";
 export { default as DataTable, type Column, type DataTableProps, type SortDirection } from "./DataTable";
 export { default as Disclosure } from "./Disclosure";
 export { default as EmptyState, GET_THE_ADDON, type EmptyStateProps } from "./EmptyState";

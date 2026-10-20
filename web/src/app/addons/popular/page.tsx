@@ -3,10 +3,9 @@ import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { dataAgeLabel } from "@/lib/data-age";
 import { loadPopularAddons } from "@/lib/rollup-compute";
-import { REPO_URL } from "@/lib/source";
 import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
 import { trailFor } from "@/lib/breadcrumbs";
-import { Card, Container, DataTable, EmptyState, Explainer, PageHeader, SourceLine, type Column } from "@/components/ui";
+import { Card, Container, DataTable, EmptyState, Explainer, PageHeader, type Column } from "@/components/ui";
 
 export const metadata: Metadata = {
   ...pageMetadata({ title: "Popular WoW Forever Addons", description: "Which addons WoW: Forever players run, counted from Everloot uploads by players who share their addon list. An addon is listed once three installs report it.", path: "/addons/popular" }),
@@ -110,9 +109,6 @@ export default async function PopularAddonsPage() {
           </p>
           <p>Addon lists are never published row by row, only these counts.</p>
         </Explainer>
-        <SourceLine source="Counted from Everloot uploads">
-          <a href={`${REPO_URL}/blob/main/docs/DATA_POLICY.md`} rel="noopener" className={link}>Data policy</a>
-        </SourceLine>
       </article>
     </Container>
   );
