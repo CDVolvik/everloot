@@ -1,7 +1,7 @@
 import { accountOf as account } from "../main/engine";
 import { diagnostics } from "../shared/diagnostics";
 import { ago, clock, esc, gold, kb, msg, sparkline, statusText, when } from "./format";
-import { NO_SOURCED_ANSWER, type AddonInfo, type AppState, type AskInfo, type BackupInfo, type ChangeItem, type CharacterRow, type CharactersInfo, type ChatInfo, type ChatProgress, type EverlootApi, type FileSummary, type GameFolderCandidate, type Job, type JobStatus, type MarketInfo, type MoneyDay } from "../shared/types";
+import { NO_SOURCED_ANSWER, type AddonInfo, type AppState, type AskInfo, type BackupInfo, type ChangeItem, type CharacterRow, type CharactersInfo, type ChatInfo, type ChatProgress, type EverlootApi, type PriceLookup, type FileSummary, type GameFolderCandidate, type Job, type JobStatus, type MarketInfo, type MoneyDay } from "../shared/types";
 import { PROVIDER_PRESETS, presetFor, type ProviderKind } from "../shared/providers";
 import { WEBSITE_LINKS, websiteUrl } from "../shared/website";
 
@@ -34,6 +34,8 @@ let pickKind: ProviderKind = "anthropic";
 let pickOpen = false;
 /** The answer being written while a chat question is out; null otherwise. */
 let live: ChatProgress | null = null;
+/** The Market page's last price lookup; null before the first. */
+let priceLookup: PriceLookup | null = null;
 const data: { upload?: FileSummary[]; backups?: BackupInfo[]; market?: MarketInfo; ask?: AskInfo; addon?: AddonInfo; changes?: ChangeItem[]; changesError?: string; characters?: CharactersInfo; chat?: ChatInfo } = {};
 
 const main = document.getElementById("app")!;
@@ -485,6 +487,11 @@ function market(s: AppState): string {
   const scans = (m?.scans ?? []).map((sc) => `<tr><td>${esc(sc.realm)}</td><td>${sc.at ? ago(sc.at) : "unknown"}</td><td class="${stale(sc.at) ? "warn" : "ok"}">${stale(sc.at) ? "scan again next time you are at the auction house" : "fresh"}</td></tr>`).join("");
   return `<div class="page">
     <div class="head"><h1>Market</h1><div class="row">${jobSwitch("prices", s)}${runBtn("prices", s, "Refresh now")}</div></div>
+    <section class="panel"><div class="row between"><h2>Look up a price</h2>${ext(websiteUrl(s.settings.endpoint, "/tools/auctions"), "Auction prices on everloot.app ↗")}</div>
+      <form id="priceForm" class="row" autocomplete="off"><input type="text" id="priceItem" name="priceItem" class="grow" aria-label="Item id or link" placeholder="Item id, or an item link pasted from game chat" maxlength="500"><button type="submit" class="btn">Look up</button></form>
+      ${priceResult(s)}
+      <p class="muted small">From the prices file in your game, the same numbers your tooltips show. In game, <code>/everloot price [item]</code> prints them in chat, anywhere in the world. Charts, every realm and item names are on the site.</p>
+    </section>
     <p class="fg2">Community market values written into <code>EverlootPrices</code> so item tooltips show them after <code>/reload</code>. Realms from your own auction scans are always included; pick more below, the way TSM lets you pick realms, except the values are Everloot's own: a day counts once three reporters scanned it. Refreshed after each upload and every hour.</p>
     <section class="panel"><div class="row between"><h2>Realms to carry into the game</h2><span class="muted small">${m?.dataAsOf ? `site data as of ${when(m.dataAsOf)}` : ""}</span></div>
       ${checks}
@@ -498,9 +505,22 @@ function market(s: AppState): string {
     </section>
     <section class="panel"><div class="row between"><h2>Written into the game</h2><span class="muted small">${j.at ? when(j.at) : ""}</span></div>
       ${j.state === "error" ? `<p class="error">${esc(j.message)}</p>` : ""}
-      ${last.length ? `<table><thead><tr><th>Realm</th><th class="num">Items</th><th>Data as of</th><th>Why</th></tr></thead><tbody>${last.map((r) => `<tr><td>${esc(r.realm)}</td><td class="num">${r.items}</td><td>${r.dataAsOf ? when(r.dataAsOf) : "–"}</td><td class="muted">${r.source === "scan" ? "your scans" : "followed"}</td></tr>`).join("")}</tbody></table>` : '<p class="muted">Nothing written yet this session.</p>'}
+      ${last.length ? `<table><thead><tr><th>Realm</th><th class="num">Items</th><th>Data as of</th><th>Why</th></tr></thead><tbody>${last.map((r) => `<tr><td>${esc(r.realm)}</td><td class="num">${r.items}</td><td>${r.dataAsOf ? when(r.dataAsOf) : "–"}</td><td class="muted">${r.source === "scan" ? "your scans" : "followed"}</td></tr>`).join("")}</tbody></table>`
+        : m?.inGame?.length ? `<table><thead><tr><th>Realm</th><th class="num">Items</th><th>Data as of</th></tr></thead><tbody>${m.inGame.map((r) => `<tr><td>${esc(r.realm)}</td><td class="num">${r.items}</td><td>${r.dataAsOf ? when(r.dataAsOf) : "–"}</td></tr>`).join("")}</tbody></table><p class="muted small">The file in the game now; not refreshed yet this session.</p>`
+        : '<p class="muted">Nothing written yet.</p>'}
     </section>
   </div>`;
+}
+
+/** The last lookup on the Market page: each realm's row from the game's prices file, and the site's full history. */
+function priceResult(s: AppState): string {
+  const p = priceLookup;
+  if (!p) return "";
+  if (!p.rows.length) return `<p class="muted">${esc(p.note ?? "Nothing found.")}</p>`;
+  const site = (realm: string) => websiteUrl(s.settings.endpoint, `/tools/auctions?realm=${encodeURIComponent(realm)}&item=${p.itemId}`);
+  return `<table><thead><tr><th>Realm</th><th class="num">Market</th><th class="num">Min</th><th class="num">Historical</th><th class="num">Up</th><th class="num">Reporters</th><th>Day</th><th></th></tr></thead><tbody>${p.rows.map((r) =>
+    `<tr><td>${esc(r.realm)}</td><td class="num">${r.market === null ? '<span class="muted">unrecorded</span>' : gold(r.market)}</td><td class="num">${gold(r.min)}</td><td class="num">${gold(r.historical)}</td><td class="num">${r.quantity}</td><td class="num">${r.reporters}</td><td>${esc(r.day)}</td><td>${ext(site(r.realm), "history ↗")}</td></tr>`).join("")}</tbody></table>
+    <p class="muted small">Item ${p.itemId}. Market weighs the last 14 public days, historical is the 60-day median, min is the lowest buyout.</p>`;
 }
 
 function ask(s: AppState): string {
@@ -928,6 +948,11 @@ async function onSubmit(ev: SubmitEvent): Promise<void> {
       data.chat = await api.chatSetProvider({ kind: pickKind, key: text("key"), model, baseUrl: text("baseUrl") });
       pickOpen = false; flash = `Saved. Chat now runs ${data.chat.mode}.`;
     } catch (e) { flash = `!${msg(e)}`; }
+    render();
+    return;
+  }
+  if (form.id === "priceForm") {
+    priceLookup = await api.marketLookup(text("priceItem") || String(f.get("priceItem") ?? ""));
     render();
     return;
   }

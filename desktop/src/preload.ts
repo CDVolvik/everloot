@@ -21,6 +21,7 @@ const api: EverlootApi = {
   restoreBackup: (file: string) => ipcRenderer.invoke("restoreBackup", file),
   openBackupsFolder: () => ipcRenderer.invoke("openBackupsFolder"),
   marketInfo: () => ipcRenderer.invoke("marketInfo"),
+  marketLookup: (text: string) => ipcRenderer.invoke("marketLookup", text),
   askInfo: () => ipcRenderer.invoke("askInfo"),
   addonInfo: () => ipcRenderer.invoke("addonInfo"),
   installAddon: (version: string) => ipcRenderer.invoke("installAddon", version),
