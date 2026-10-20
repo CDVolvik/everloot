@@ -5,7 +5,7 @@ import { goldFactsFromRecords, handleGoldLedger } from "../../../../../kb/src/go
 import { STORAGE_UNREACHABLE, uploadStore } from "@/lib/upload-store";
 import { dataAgeLabel } from "@/lib/data-age";
 import { trailFor } from "@/lib/breadcrumbs";
-import { Card, Container, Disclosure, EmptyState, Field, PageHeader, SourceLine } from "@/components/ui";
+import { Card, Container, Disclosure, EmptyState, Field, PageHeader } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +38,7 @@ export default async function GoldLedgerPage(
         trail={trailFor("/tools/gold-ledger")!}
         title="Gold ledger"
         lede="Peak gold and the money events a character uploaded, from that player's own addon file."
+        meta={<span>{corpus.unreachable ? "Storage unreachable" : dataAgeLabel(corpus.dataAsOf)}</span>}
         actions={<>
           <Link href="/tools/auctions" className="btn">Auction House</Link>
         </>}
@@ -67,10 +68,6 @@ export default async function GoldLedgerPage(
           </p>
         </Disclosure>
       </div>
-
-      <SourceLine source="The character's own upload">
-        {corpus.unreachable ? "Storage unreachable" : dataAgeLabel(corpus.dataAsOf)}
-      </SourceLine>
     </Container>
   );
 }

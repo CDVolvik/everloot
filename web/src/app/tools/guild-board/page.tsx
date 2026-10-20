@@ -5,7 +5,7 @@ import { guildFactsFromRecords, handleGuildBoard } from "../../../../../kb/src/g
 import { STORAGE_UNREACHABLE, uploadStore } from "@/lib/upload-store";
 import { dataAgeLabel } from "@/lib/data-age";
 import { trailFor } from "@/lib/breadcrumbs";
-import { Card, Container, Disclosure, EmptyState, Field, PageHeader, SourceLine } from "@/components/ui";
+import { Card, Container, Disclosure, EmptyState, Field, PageHeader } from "@/components/ui";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +37,7 @@ export default async function GuildBoardPage(
         trail={trailFor("/tools/guild-board")!}
         title="Guild board"
         lede="Roster, bosses, loot and item level from officer uploads; a figure is public when two of them agree."
+        meta={<span>{corpus.unreachable ? "Storage unreachable" : dataAgeLabel(corpus.dataAsOf)}</span>}
         actions={<Link href="/guilds/olympus" className="btn">Olympus family record</Link>}
       />
 
@@ -59,10 +60,6 @@ export default async function GuildBoardPage(
           <p>A combined guild score is not available; each component is shown separately.</p>
         </Disclosure>
       </div>
-
-      <SourceLine source="Officer uploads, public once two agree">
-        {corpus.unreachable ? "Storage unreachable" : dataAgeLabel(corpus.dataAsOf)}
-      </SourceLine>
     </Container>
   );
 }

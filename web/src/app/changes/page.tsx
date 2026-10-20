@@ -11,13 +11,12 @@ import JsonLd from "@/components/JsonLd";
 import { latestBuildLine } from "@/lib/changes-facts";
 import { changesJsonLd } from "@/lib/jsonld";
 import { trailFor } from "@/lib/breadcrumbs";
-import { BANNER_MAP, creditWhat, loadingArt, loadSiteAssets } from "@/lib/game-assets";
+import { BANNER_MAP, loadingArt, loadSiteAssets } from "@/lib/game-assets";
 import { mentionIndex, siteSpellNames, splitMentions, type MentionIndex } from "@/lib/spell-mentions";
-import GameCredit from "@/components/game/GameCredit";
 import { BannerArt } from "@/components/game/PageBanner";
 import SpellTip from "@/components/game/SpellTip";
 import PostEntry, { stamp } from "@/components/PostEntry";
-import { Card, Container, Entry, EntryList, Explainer, LinkTabs, PageHeader, SourceLine } from "@/components/ui";
+import { Card, Container, Entry, EntryList, Explainer, LinkTabs, PageHeader } from "@/components/ui";
 
 export const metadata: Metadata = {
   ...pageMetadata({ title: "WoW Forever Patch Notes and Blizzard Posts", description: "New WoW: Forever builds, hotfixes and Blizzard blue posts, newest first. Each links to Blizzard's original; builds are dated when Everloot first saw them.", path: "/changes", image: "/changes/opengraph-image" }),
@@ -99,11 +98,6 @@ export default async function ChangesPage({ searchParams }: { searchParams: Prom
   const assets = await loadSiteAssets();
   const banner = loadingArt(assets, BANNER_MAP.changes);
   const index = mentionIndex(assets, assets ? await siteSpellNames() : []);
-  const named = shown.some((e) => [e.summary, e.excerpt].some((t) => t && splitMentions(t, index).some((p) => typeof p !== "string")));
-  // One full credit line for the page's game art, at the foot; the banner carries only its one-line caption.
-  const credit = assets && (banner || named)
-    ? <GameCredit version={assets.version} label={assets.label} what={creditWhat(named && "icons", named && "tooltip text", banner && "loading screen art")} />
-    : null;
   return (
     <article>
       <JsonLd data={changesJsonLd({ name: TITLE, description: LEAD, path: "/changes", entries: shown })} />
@@ -157,8 +151,6 @@ export default async function ChangesPage({ searchParams }: { searchParams: Prom
             <a href={`${REPO_URL}/blob/main/docs/DATA_POLICY.md`} rel="noopener" className="text-accent">data policy</a>.
           </p>
         </Explainer>
-        {credit && <div className="mt-6">{credit}</div>}
-        <SourceLine source="Blizzard's forum and Bluesky, linked to each original" licence="Post text is Blizzard's" />
         <AdSlot slot="inContent" />
       </Container>
     </article>

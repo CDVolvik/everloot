@@ -78,11 +78,11 @@ test("a continent with nothing placed says so and draws no map or legend", async
   expect(html).not.toContain("Dungeon (circle)");
 });
 
-test("the credit line is ours: game files, the build, Blizzard's data, no third-party project", async () => {
+test("no credit block on the page (it is site-wide), and no third-party project", async () => {
   store.loadCorpus.mockResolvedValue({ uploads: 0, records: [] });
   const html = await render();
-  expect(html).toMatch(/Map data read from the WoW: Forever game files, build 1\.60\.1\.\d+/);
-  expect(html).toContain("not under our licence");
+  expect(html).not.toMatch(/Map data read from the WoW: Forever game files, build/);
+  expect(html).not.toContain("data-game-credit");
   expect(html).not.toMatch(/OpenMap|warcraft\.wiki|creativecommons/);
 });
 

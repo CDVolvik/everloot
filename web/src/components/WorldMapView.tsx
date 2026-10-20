@@ -209,7 +209,7 @@ export default function WorldMapView(props: WorldMapViewProps) {
   return (
     <div className="space-y-3">
       <div className="mx-auto flex w-full max-w-[1800px] flex-wrap items-center gap-x-6 gap-y-2">
-        <nav aria-label="Where on the map" data-page-crumbs className="min-w-0 text-sm text-muted">
+        <nav aria-label="Where on the map" className="min-w-0 text-sm text-muted">
           <ol className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <li className="flex items-center gap-2"><span>Azeroth</span><span aria-hidden="true">›</span></li>
             <li className="flex items-center gap-2">
@@ -359,7 +359,7 @@ export default function WorldMapView(props: WorldMapViewProps) {
         </section>
 
         <section aria-labelledby="flights">
-          <SectionHeading id="flights" note="Positions and lines read from the game files, found in game files, unconfirmed. Boats and zeppelins are not drawn.">Flight masters</SectionHeading>
+          <SectionHeading id="flights" note="Boats and zeppelins are not drawn.">Flight masters</SectionHeading>
           {flightNames.length ? (
             <ul className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-fg-2">
               {flightNames.map((f) => (

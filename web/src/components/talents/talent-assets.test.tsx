@@ -74,10 +74,9 @@ test("with a good manifest: frames, icons, state colours, rank counters, tooltip
   await render();
   expect(container.querySelectorAll("[data-game-look]").length).toBeGreaterThan(0);
 
-  // Credit, exactly as the policy words it, with the build.
-  const credit = container.querySelector("[data-game-credit]")!;
-  expect(credit.textContent).toContain(CREDIT);
-  expect(credit.textContent).toContain("9.9.9.1");
+  // No credit block in the calculator: the credit is site-wide (footer and /methodology#credits).
+  expect(container.querySelector("[data-game-credit]")).toBeNull();
+  expect(container.textContent).not.toContain(CREDIT);
 
   // Open node is green, a locked one grey; passive (even id) is square, active round.
   expect(node(11).dataset.state).toBe("green");
