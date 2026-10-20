@@ -50,9 +50,9 @@ export const DATA_TYPE = {
 } as const;
 
 /** Sizes on data pages, in px: rows (36; two-line 52 on phones), the 32 px table header, controls
- *  (32; 40 on phones), the 24 px row icon, the sticky offset under the 64 px site header, and the
+ *  (32; 40 on phones), the 24 px row icon, the sticky offset under the 44 px site header, and the
  *  tooltip box's 320 px limit. */
-export const DATA_SIZE = { row: 36, "row-sm": 52, th: 32, control: 32, "control-sm": 40, icon: 24, header: 64, tip: 320 } as const;
+export const DATA_SIZE = { row: 36, "row-sm": 52, th: 32, control: 32, "control-sm": 40, icon: 24, header: 44, tip: 320 } as const;
 
 export const QUALITIES = ["poor", "common", "uncommon", "rare", "epic", "legendary"] as const;
 export const CLASSES = ["warrior", "paladin", "hunter", "rogue", "priest", "shaman", "mage", "warlock", "druid"] as const;

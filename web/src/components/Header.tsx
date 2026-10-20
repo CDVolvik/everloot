@@ -8,6 +8,7 @@ import AccountControls from "./AccountControls";
 import GameVersionLabel from "./GameVersionLabel";
 import { SuggestField } from "./ui/SearchBar";
 import { TOOL_GROUPS } from "@/data/tools";
+import type { AccountShell } from "@/lib/account-shell-types";
 
 type NavLink = { label: string; href: string };
 
@@ -27,7 +28,7 @@ const TOOL_HREFS = TOOL_GROUPS.flatMap((g) => g.links.map((l) => l.href));
 
 const isCurrent = (path: string, href: string) => path === href || path.startsWith(`${href}/`);
 
-const navItem = "inline-flex min-h-11 items-center whitespace-nowrap border-b-2 px-3 transition-colors";
+const navItem = "inline-flex min-h-11 items-center whitespace-nowrap border-b-2 px-2 transition-colors";
 const navState = (on: boolean) => (on ? "border-accent text-fg" : "border-transparent text-fg-2 hover:text-accent");
 const menuLink = "flex min-h-11 items-center rounded-control px-3 text-sm text-fg-2 hover:bg-canvas hover:text-accent";
 
@@ -39,8 +40,17 @@ function SearchIcon() {
   );
 }
 
-/** `savedBuilds` adds My builds to the account links (EVERLOOT_SAVED_BUILDS, read by the layout). */
-export default function Header({ savedBuilds = false }: { savedBuilds?: boolean }) {
+/**
+ * The compact bar (docs/design/specs/2026-10-20-account-shell-design.md). From the layout: `savedBuilds` adds Your
+ * builds to the avatar menu (EVERLOOT_SAVED_BUILDS); `shell` is the signed-in player (loadAccountShell(), null when
+ * signed out or EVERLOOT_PROFILES is off); `accountSwitching` is true with Better Auth (EVERLOOT_AUTH_V2), which
+ * can hold several accounts on one browser.
+ */
+export default function Header({ savedBuilds = false, shell = null, accountSwitching = false }: {
+  savedBuilds?: boolean;
+  shell?: AccountShell | null;
+  accountSwitching?: boolean;
+}) {
   const path = usePathname() ?? "/";
   const [open, setOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
@@ -91,8 +101,8 @@ export default function Header({ savedBuilds = false }: { savedBuilds?: boolean 
       if (searchOpen) { setSearchOpen(false); searchButton.current?.focus(); }
     }}>
       {/* The data column's width and gutters (globals.css), so the logo lines up with the data tables. */}
-      <div className="mx-auto flex min-h-16 max-w-data items-center gap-3 px-4 lg:gap-6 lg:px-6">
-        <Link href="/" className="inline-flex min-h-11 shrink-0 items-center gap-2 text-xl font-bold tracking-tight text-fg" onClick={closeAll}>
+      <div className="mx-auto flex h-header max-w-data items-center gap-3 px-4 lg:gap-4 lg:px-6">
+        <Link href="/" className="inline-flex min-h-11 shrink-0 items-center gap-2 text-lg font-bold tracking-tight text-fg" onClick={closeAll}>
           {/* The favicon's diamond, outlined in the accent green. */}
           <svg aria-hidden="true" viewBox="8 8 48 48" width="16" height="16" className="text-accent">
             <path d="M32 12 52 32 32 52 12 32Z" fill="none" stroke="currentColor" strokeWidth="5" strokeLinejoin="round" />
@@ -136,10 +146,10 @@ export default function Header({ savedBuilds = false }: { savedBuilds?: boolean 
           })}
         </nav>
 
-        <div className="ml-auto flex min-w-0 flex-1 items-center justify-end gap-2">
-          {/* The site's one search: items, NPCs, quests, zones, lore and tools, with instant suggestions for
-              database pages. A GET form, so it works without JavaScript. */}
-          <form action="/search" method="get" role="search" onSubmit={() => track("search", { surface: "lore" })} className="hidden h-10 min-w-0 max-w-[360px] flex-1 items-center gap-2 rounded-full border border-edge bg-panel px-3 text-muted focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent xl:flex">
+        {/* The site's one search, in the middle of the bar: items, NPCs, quests, zones, lore and tools, with instant
+            suggestions for database pages. A GET form, so it works without JavaScript. */}
+        <div className="hidden min-w-0 flex-1 justify-center xl:flex">
+          <form action="/search" method="get" role="search" onSubmit={() => track("search", { surface: "lore" })} className="flex h-8 w-full min-w-0 max-w-[360px] items-center gap-2 rounded-full border border-edge bg-panel px-3 text-muted focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent">
             <SearchIcon />
             <SuggestField
               id="site-search"
@@ -147,10 +157,13 @@ export default function Header({ savedBuilds = false }: { savedBuilds?: boolean 
               label="Search Everloot"
               placeholder="Search Everloot"
               listClassName="-left-9 -right-3 mt-2"
-              className="h-9 w-full min-w-0 bg-transparent text-sm text-fg placeholder:text-muted focus:outline-none"
+              className="h-7 w-full min-w-0 bg-transparent text-sm text-fg placeholder:text-muted focus:outline-none"
             />
             <kbd aria-hidden="true" className="rounded-[4px] border border-line px-1.5 font-mono text-xs text-muted">/</kbd>
           </form>
+        </div>
+
+        <div className="ml-auto flex shrink-0 items-center gap-2">
           <button
             ref={searchButton}
             type="button"
@@ -161,9 +174,8 @@ export default function Header({ savedBuilds = false }: { savedBuilds?: boolean 
             className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center text-fg-2 hover:text-accent xl:hidden"
           ><SearchIcon /></button>
           <GameVersionLabel className="hidden shrink-0 sm:block" />
-          <div className="hidden shrink-0 sm:block"><AccountControls savedBuilds={savedBuilds} /></div>
-          <Link href="/addon" onClick={closeAll} className="btn btn-primary min-h-10 shrink-0 whitespace-nowrap px-4 text-sm">Get the addon</Link>
-          <button ref={toggle} type="button" aria-label={open ? "Close menu" : "Menu"} aria-expanded={open} aria-controls="site-navigation" onClick={() => setOpen(!open)} className="btn min-h-10 shrink-0 px-3 text-sm lg:hidden">
+          <AccountControls savedBuilds={savedBuilds} shell={shell} accountSwitching={accountSwitching} />
+          <button ref={toggle} type="button" aria-label={open ? "Close menu" : "Menu"} aria-expanded={open} aria-controls="site-navigation" onClick={() => setOpen(!open)} className="btn min-h-8 shrink-0 px-3 text-sm lg:hidden">
             {open ? "Close" : "Menu"}
           </button>
         </div>
@@ -211,7 +223,7 @@ export default function Header({ savedBuilds = false }: { savedBuilds?: boolean 
                 </div>
               ))}
             </div>
-            <div className="border-t border-line pt-4 sm:hidden"><AccountControls savedBuilds={savedBuilds} /></div>
+            <AccountControls place="menu" shell={shell} />
           </div>
         </nav>
       )}
