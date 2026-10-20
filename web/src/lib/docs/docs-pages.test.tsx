@@ -40,7 +40,14 @@ async function renderDocs(): Promise<string> {
   }
   return out.join("\n");
 }
-const decode = (html: string) => html.replaceAll("&quot;", '"').replaceAll("&#x27;", "'").replaceAll("&amp;", "&").replaceAll("&lt;", "<").replaceAll("&gt;", ">");
+// &amp; last, so "&amp;lt;" stays "&lt;" instead of becoming "<".
+const decode = (html: string) => html.replaceAll("&quot;", '"').replaceAll("&#x27;", "'").replaceAll("&lt;", "<").replaceAll("&gt;", ">").replaceAll("&amp;", "&");
+/** The text of some HTML: tags removed until none are left. */
+function stripTags(html: string): string {
+  let out = html;
+  for (let prev = ""; prev !== out;) { prev = out; out = out.replace(/<[^>]*>/g, ""); }
+  return out;
+}
 
 let page = "";
 let decoded = "";
@@ -49,7 +56,7 @@ let text = "";
 beforeAll(async () => {
   page = await renderDocs();
   decoded = decode(page);
-  text = decode(page.replace(/<[^>]+>/g, ""));
+  text = decode(stripTags(page));
 });
 
 test("the tool list is exactly the tools the protocol declares, in order", () => {

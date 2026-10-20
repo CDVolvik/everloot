@@ -53,7 +53,7 @@ function block(el: Element, base: string, depth = 0): string[] {
       }).join("\n")];
     }
     case "TABLE": {
-      const rows = [...el.querySelectorAll("tr")].map((tr) => [...tr.children].map((cell) => inline(cell, base).replace(/\s+/g, " ").replace(/\|/g, "\\|").trim()));
+      const rows = [...el.querySelectorAll("tr")].map((tr) => [...tr.children].map((cell) => inline(cell, base).replace(/\s+/g, " ").replace(/\\/g, "\\\\").replace(/\|/g, "\\|").trim()));
       if (!rows.length) return [];
       const [head, ...body] = rows;
       return [[`| ${head!.join(" | ")} |`, `| ${head!.map(() => "---").join(" | ")} |`, ...body.map((r) => `| ${r.join(" | ")} |`)].join("\n")];
