@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { TabCount, tabClass } from "./tab-style";
 
 export interface TabItem {
   /** Also the URL hash that opens this tab: `#dropped-by`. Lowercase letters, digits and dashes. */
@@ -17,15 +18,20 @@ export function tabFromHash(hash: string, ids: string[]): string | null {
   return ids.includes(id) ? id : null;
 }
 
+/** The tab that opens first: the first one with rows (or no count), else the first one. */
+export function firstFilled(tabs: Pick<TabItem, "id" | "count">[]): string | undefined {
+  return (tabs.find((t) => t.count !== 0) ?? tabs[0])?.id;
+}
+
 /**
  * Tabs whose state is in the URL hash, so `/database/items/7960#sold-by` opens on that tab and the
  * address can be shared. Arrow keys, Home and End move between tabs (WAI-ARIA tabs pattern, automatic
- * activation). The first tab is open on the server and without JavaScript.
+ * activation). The first tab with rows is open on the server and without JavaScript.
  */
 export default function Tabs({ label, tabs, inFrame = false }: { label: string; tabs: TabItem[]; inFrame?: boolean }) {
   const uid = useId();
   const ids = tabs.map((t) => t.id);
-  const [selected, setSelected] = useState(ids[0]);
+  const [selected, setSelected] = useState(() => firstFilled(tabs) ?? ids[0]);
   const refs = useRef<Record<string, HTMLButtonElement | null>>({});
   const idsKey = ids.join(" ");
 
@@ -38,6 +44,16 @@ export default function Tabs({ label, tabs, inFrame = false }: { label: string; 
     window.addEventListener("hashchange", sync);
     return () => window.removeEventListener("hashchange", sync);
   }, [idsKey]);
+
+  // On a narrow screen the open tab can sit past the edge of the scrolling row: bring it into view, sideways only.
+  useEffect(() => {
+    const tab = refs.current[selected];
+    const list = tab?.parentElement;
+    if (!tab || !list || list.scrollWidth <= list.clientWidth) return;
+    const t = tab.getBoundingClientRect();
+    const l = list.getBoundingClientRect();
+    if (t.left < l.left || t.right > l.right) list.scrollLeft += t.left - l.left;
+  }, [selected]);
 
   function choose(id: string, focus = false) {
     setSelected(id);
@@ -65,7 +81,7 @@ export default function Tabs({ label, tabs, inFrame = false }: { label: string; 
     <div data-tabs className={inFrame ? "" : "min-w-0"}>
       {/* The hairline sits outside the scrolling list, so a narrow screen scrolls the tabs and not the page. */}
       <div className="border-b border-line">
-      <div role="tablist" aria-label={label} className={`flex gap-1 overflow-x-auto ${inFrame ? "px-2" : ""}`}>
+      <div role="tablist" aria-label={label} className={`flex overflow-x-auto ${inFrame ? "px-2" : ""}`}>
         {tabs.map((tab) => {
           const on = tab.id === selected;
           return (
@@ -80,19 +96,17 @@ export default function Tabs({ label, tabs, inFrame = false }: { label: string; 
               tabIndex={on ? 0 : -1}
               onClick={() => choose(tab.id)}
               onKeyDown={onKeyDown}
-              className={`inline-flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3 text-sm font-medium transition-colors ${on ? "border-accent text-fg" : "border-transparent text-fg-2 hover:text-fg"}`}
+              className={tabClass(on, tab.count === 0)}
             >
               {tab.label}
-              {tab.count !== undefined && (
-                <span className={`rounded-control px-1.5 font-mono text-xs tabular-nums ${tab.count === 0 ? "border border-line text-muted" : "bg-canvas text-fg-2"}`}>{tab.count}</span>
-              )}
+              {tab.count !== undefined && <TabCount count={tab.count} />}
             </button>
           );
         })}
       </div>
       </div>
       {tabs.map((tab) => (
-        <div key={tab.id} id={panelId(tab.id)} role="tabpanel" aria-labelledby={tabId(tab.id)} tabIndex={0} hidden={tab.id !== selected} data-tab-panel={tab.id}>
+        <div key={tab.id} id={panelId(tab.id)} role="tabpanel" aria-labelledby={tabId(tab.id)} tabIndex={0} hidden={tab.id !== selected} data-tab-panel={tab.id} className={inFrame ? undefined : "pt-2"}>
           {tab.panel}
         </div>
       ))}

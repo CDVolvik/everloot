@@ -1,49 +1,107 @@
 import type { ReactNode } from "react";
-import { AgreementMeter, Card, SectionHeading } from "@/components/ui";
+import Link from "next/link";
+import JsonLd from "@/components/JsonLd";
+import GameIcon from "@/components/game/GameIcon";
+import { AgreementMeter, GET_THE_ADDON, QUALITY_TEXT, type Quality } from "@/components/ui";
+import { trailFor } from "@/lib/breadcrumbs";
+import { breadcrumbJsonLd, type Crumb } from "@/lib/jsonld";
 import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
 
-// The layout every database entity page shares (item, NPC, quest, object, vendor): a left rail with the
-// tooltip frame and the facts, and the relation tabs on the right. Stacked on a phone.
+// The layout every database entity page shares (item, NPC, quest, object, vendor), read like an item
+// database: a compact title with its type line, the tooltip box and the quick facts side by side,
+// then full-width tabs of dense tables. Stacked on a phone. No breadcrumb on screen: the trail is
+// only the BreadcrumbList JSON-LD.
 
-export function EntityLayout({ rail, children }: { rail: ReactNode; children: ReactNode }) {
+export const UNCONFIRMED_TITLE = "From the game files, not yet confirmed by players";
+
+/**
+ * The quiet "unconfirmed" marker: a 1 px dashed edge around what it wraps, a tooltip and sr-only text.
+ * Never a chip or a sentence.
+ */
+export function Unconfirmed({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
-    <div className="grid gap-8 lg:grid-cols-[20rem_minmax(0,1fr)]">
-      <aside aria-label="Facts" className="min-w-0 space-y-6">{rail}</aside>
-      <div className="min-w-0 space-y-6">{children}</div>
+    <span data-unconfirmed title={UNCONFIRMED_TITLE} className={`inline-flex rounded-[3px] border border-dashed border-edge ${className}`.trim()}>
+      {children}
+      <span className="sr-only"> unconfirmed</span>
+    </span>
+  );
+}
+
+/** The header's icon: the game icon, or an empty frame of the same size when there is none to show. */
+export function EntityIcon({ src, unconfirmed = false }: { src?: string | null; unconfirmed?: boolean }) {
+  const icon = src
+    ? <GameIcon src={src} size={40} className="rounded-[3px]" />
+    : <span aria-hidden="true" className="block h-10 w-10 rounded-[3px] bg-panel" />;
+  return unconfirmed ? <Unconfirmed className="shrink-0 p-px">{icon}</Unconfirmed> : <span className="shrink-0">{icon}</span>;
+}
+
+/**
+ * The page title: an optional icon, the name (in its quality colour for items) and one 13 px type line
+ * ("Trade Goods · Cloth · ID 2589"). The trail feeds the BreadcrumbList JSON-LD only; the layout already
+ * emits it for routes lib/breadcrumbs.ts knows, so it is emitted here only for the others.
+ */
+export function EntityHeader({ trail, title, quality, icon, meta = [] }: {
+  trail: Crumb[]; title: ReactNode; quality?: Quality; icon?: ReactNode; meta?: ReactNode[];
+}) {
+  const page = trail[trail.length - 1];
+  const emitJsonLd = trail.length > 1 && page && !trailFor(page.path);
+  const parts = meta.filter((m) => m !== null && m !== undefined && m !== false && m !== "");
+  return (
+    <header data-page-header className="mb-4 flex min-w-0 items-center gap-3">
+      {emitJsonLd && <JsonLd data={breadcrumbJsonLd(trail)} />}
+      {icon}
+      <div className="min-w-0">
+        <h1 className={`text-title-sm [overflow-wrap:anywhere] sm:text-title ${quality ? QUALITY_TEXT[quality] : "text-fg"}`}>{title}</h1>
+        {parts.length > 0 && (
+          <p data-entity-meta className="text-meta text-muted">
+            {parts.map((part, i) => <span key={i}>{i > 0 && <span aria-hidden="true"> · </span>}{part}</span>)}
+          </p>
+        )}
+      </div>
+    </header>
+  );
+}
+
+/**
+ * The top band: the tooltip box (or a map thumbnail) at left, the quick facts beside it (two 280 px columns
+ * of them on a wide screen, so the band stays short); stacked on a phone.
+ */
+export function EntityTop({ box, facts }: { box: ReactNode; facts: ReactNode }) {
+  return (
+    <div className="mb-6 grid items-start gap-4 sm:grid-cols-[minmax(0,320px)_minmax(0,280px)] sm:gap-6 lg:grid-cols-[minmax(0,320px)_minmax(0,584px)]">
+      <div className="min-w-0">{box}</div>
+      <section aria-label="Quick facts" className="min-w-0">{facts}</section>
     </div>
   );
 }
 
-/** One fact: a value when there is one; without it the row shows the empty agreement meter. */
-export interface Fact { label: string; value?: ReactNode }
+/** A quick fact's value, or the empty agreement meter while no install has reported it. */
+export const known = (value: ReactNode) => (value === null || value === undefined || value === "" ? <AgreementMeter count={0} /> : value);
 
-const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-
-/** A titled list of facts in a card. `unconfirmed` dashes the edge: the values are from the game files. */
-export function FactsCard({ title, facts, unconfirmed = false }: { title: string; facts: Fact[]; unconfirmed?: boolean }) {
-  const id = `facts-${slug(title)}`;
+/**
+ * An empty tab: one line. The agreement meter and "Get the addon" for what players report; a plain line
+ * (and its own link, if any) for what the game files would give.
+ */
+export function EmptyTab({ message, players = true, action = GET_THE_ADDON }: { message: string; players?: boolean; action?: { href: string; label: string } | null }) {
   return (
-    <Card as="section" unconfirmed={unconfirmed} aria-labelledby={id}>
-      <SectionHeading as="h2" id={id}>{title}</SectionHeading>
-      <dl className="divide-y divide-line text-sm">
-        {facts.map((f) => (
-          <div key={f.label} className="flex min-h-10 items-center justify-between gap-4 py-2">
-            <dt className="shrink-0 text-muted">{f.label}</dt>
-            <dd className="min-w-0 text-right text-fg [overflow-wrap:anywhere]">{f.value ?? <AgreementMeter count={0} />}</dd>
-          </div>
-        ))}
-      </dl>
-    </Card>
+    <p data-empty-state className="flex flex-wrap items-center gap-x-3 gap-y-1 py-3 text-meta text-fg-2">
+      {players && <AgreementMeter count={0} />}
+      <span>{message}</span>
+      {action && <Link href={action.href} className={LINK}>{action.label}</Link>}
+    </p>
   );
 }
 
-/** What a player-data table says when storage cannot be read: unrecorded, never zero. */
+/** What a player-data tab says when storage cannot be read: unrecorded, never zero. */
 export function Unreachable() {
-  return <p className="px-4 py-8 text-fg-2 sm:px-6">{STORAGE_UNREACHABLE}</p>;
+  return <p className="py-3 text-meta text-fg-2">{STORAGE_UNREACHABLE}</p>;
 }
 
 /** An observed frequency as a percentage with one decimal. */
 export const percent = (rate: number) => `${(rate * 100).toFixed(1)}%`;
+
+/** The header of a frequency column; what a loot window is goes in its tooltip, not in a sentence under the table. */
+export const FREQUENCY = <span title="A loot window is a recorded loot, not a verified kill, so a frequency is not a drop chance.">Observed frequency</span>;
 
 /** The shared link style for a name in a table. */
 export const LINK = "text-accent hover:underline underline-offset-4";

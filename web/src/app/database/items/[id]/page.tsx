@@ -3,26 +3,25 @@ import AdSlot from "@/components/AdSlot";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { GAME_DATA_CREDIT } from "@everloot/protocol";
 import { itemPage } from "../../../../../../kb/src/item-page";
 import { loadShownNames } from "@/lib/shown-item-names";
 import { loadEdges } from "@/lib/edges";
 import { RelationTarget, SameIcon } from "@/components/EntityRelations";
 import { pinLink } from "@/lib/world-map";
 import { loadItemTips, loadSiteAssets } from "@/lib/game-assets";
-import GameIcon from "@/components/game/GameIcon";
-import GameCredit from "@/components/game/GameCredit";
-import { Badge, Container, DataTable, EmptyState, PageHeader, QUALITY_TEXT, SourceLine, Tabs, TooltipFrame, qualityOf, type Column, type TabItem } from "@/components/ui";
+import { Container, DataTable, Facts, QUALITY_TEXT, Tabs, TooltipFrame, qualityOf, type Column, type Fact, type TabItem } from "@/components/ui";
 import { categoryOf } from "../../../../../../kb/src/item-taxonomy";
 import { edgesFrom, evidenceLabel, type Edge, type Rel } from "../../../../../../kb/src/edges";
-import { CLIENT_LAYER, CLIENT_TAXONOMY, itemsHref, NAME_SOURCE, shownItemName } from "@/lib/items";
-import { CC_BY_SA, type Crumb } from "@/lib/jsonld";
+import { CLIENT_LAYER, CLIENT_TAXONOMY, itemsHref, shownItemName } from "@/lib/items";
+import type { Crumb } from "@/lib/jsonld";
 import { loadNames, nameOf } from "@/lib/names";
 import { loreForEntity } from "@/lib/lore";
 import EntityLink from "@/components/EntityLink";
 import LoreSection from "@/components/LoreSection";
 import { CategoryPage, categoryMetadata } from "../category-page";
-import { EntityLayout, FactsCard, LINK, percent, Unreachable } from "../../entity";
+import { EmptyTab, EntityHeader, EntityIcon, EntityTop, FREQUENCY, known, LINK, percent, Unconfirmed, Unreachable } from "../../entity";
+
+const PROFESSIONS = { href: "/tools/professions", label: "Professions" };
 
 /** The segment is an item id, or a class slug (/database/items/weapons): numbers are items, words are classes. */
 type Props = { params: Promise<{ id: string }>; searchParams?: Promise<Record<string, string | string[] | undefined>> };
@@ -46,10 +45,8 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   };
 }
 
-const BUILD = CLIENT_LAYER.build.version;
-
-/** Who vouches for a relation row: the installs that agree, or the game files. */
-const evidence = (e: Edge) => (e.evidence === "observed" ? evidenceLabel(e) : "Game files");
+/** Who vouches for a relation row: the installs that agree, or (the quiet marker) the game files. */
+const evidence = (e: Edge) => (e.evidence === "observed" ? evidenceLabel(e) : <Unconfirmed><span className="block h-3 w-5" /></Unconfirmed>);
 
 export default async function ItemPage(props: Props) {
   const params = await props.params;
@@ -76,7 +73,6 @@ export default async function ItemPage(props: Props) {
   const tip = seen ? loaded : undefined;
   const icon = !tip && wikiName ? loaded?.icon ?? null : null;
   const spellIcon = (spellId: number) => assets?.spellIcons.get(spellId);
-  const relationIcons = edges.client.some((e) => e.fromKind === "item" && e.fromId === itemId && e.toKind === "spell" && spellIcon(e.toId));
   const category = categoryOf(CLIENT_TAXONOMY, itemId);
   const quality = category?.quality && category.quality.id <= 5 ? qualityOf(category.quality.id) : undefined;
   const names = await loadNames();
@@ -95,15 +91,21 @@ export default async function ItemPage(props: Props) {
     { name: title, path: `/database/items/${itemId}` },
   ];
 
-  const relationColumns = (head: string): Column<Edge>[] => [
+  // The "Seen" column only where some row was seen in play; a tab read wholly from the game files carries
+  // the item's own unconfirmed marker instead of one per row.
+  const relationColumns = (head: string, rows: Edge[]): Column<Edge>[] => [
     { key: "target", header: head, cell: (e) => <span className="inline-flex flex-wrap items-center gap-1"><RelationTarget edge={e} rel={e.rel} client={edges.client} spellIcon={spellIcon} nameOf={nameFor} /></span> },
-    { key: "source", header: "Source", cell: evidence, nowrap: true },
+    ...(rows.some((e) => e.evidence === "observed") ? [{ key: "source", header: "Seen", cell: evidence, nowrap: true }] : []),
   ];
-  const relationTab = (id: string, label: string, r: Rel, head: string, empty: string, action?: { href: string; label: string }): TabItem => {
+  // A relation tab from player reports (sold by) empties with the agreement meter; one from the game files
+  // (created by, used in) with a plain line and its own link.
+  const relationTab = (id: string, label: string, r: Rel, head: string, empty: string, files?: { href: string; label: string }): TabItem => {
     const rows = rel(r);
     return {
       id, label, count: rows.length,
-      panel: <DataTable caption={`${label}: ${title}`} columns={relationColumns(head)} rows={rows} rowKey={(e) => `${e.evidence}-${e.toKind}-${e.toId}`} empty={<EmptyState framed={false} message={empty} action={action} />} />,
+      panel: rows.length
+        ? <DataTable caption={`${label}: ${title}`} columns={relationColumns(head, rows)} rows={rows} rowKey={(e) => `${e.evidence}-${e.toKind}-${e.toId}`} />
+        : <EmptyTab message={empty} {...(files ? { players: false, action: files } : {})} />,
     };
   };
 
@@ -113,7 +115,7 @@ export default async function ItemPage(props: Props) {
       : <EntityLink kind="object" id={d.sourceObjectId!} />) },
     { key: "windows", header: "Loot windows", numeric: true, cell: (d) => d.kills },
     { key: "drops", header: "Drops", numeric: true, cell: (d) => d.drops },
-    { key: "rate", header: "Observed frequency", numeric: true, cell: (d) => percent(d.rate) },
+    { key: "rate", header: FREQUENCY, numeric: true, cell: (d) => percent(d.rate) },
     { key: "installs", header: "Install IDs", numeric: true, cell: (d) => d.reporters },
   ];
   const pinColumns: Column<(typeof page.pins)[number]>[] = [
@@ -128,20 +130,13 @@ export default async function ItemPage(props: Props) {
   const tabs: TabItem[] = [
     {
       id: "dropped-by", label: "Dropped by", count: facts.unreachable ? undefined : page.drops.length,
-      panel: (
-        <DataTable
-          caption={`Where ${title} drops`}
-          columns={dropColumns}
-          rows={facts.unreachable ? [] : page.drops}
-          rowKey={(d) => d.source}
-          empty={facts.unreachable ? <Unreachable /> : <EmptyState framed={false} message="Nobody has looted this in Forever yet. A source shows here once 3 installs record it." />}
-          footer={page.drops.length > 0 ? <span>A loot window is a recorded loot, not a verified kill, so a frequency is not a drop chance.</span> : undefined}
-        />
-      ),
+      panel: facts.unreachable ? <Unreachable />
+        : page.drops.length ? <DataTable caption={`Where ${title} drops`} columns={dropColumns} rows={page.drops} rowKey={(d) => d.source} />
+        : <EmptyTab message="Nobody has looted this in Forever yet." />,
     },
-    relationTab("sold-by", "Sold by", "sold_by", "Vendor", "No vendor seen selling this yet. A vendor shows here once 3 installs agree."),
-    relationTab("created-by", "Created by", "created_by", "Recipe", `No recipe in build ${BUILD} makes this.`, { href: "/tools/professions", label: "Profession hubs" }),
-    relationTab("used-in", "Used in", "reagent_for", "Recipe", `No recipe in build ${BUILD} uses this.`, { href: "/tools/professions", label: "Profession hubs" }),
+    relationTab("sold-by", "Sold by", "sold_by", "Vendor", "No vendor seen selling this yet."),
+    relationTab("created-by", "Created by", "created_by", "Recipe", "No recipe makes this.", PROFESSIONS),
+    relationTab("used-in", "Used in", "reagent_for", "Recipe", "No recipe uses this.", PROFESSIONS),
     ...(rel("reward_from").length ? [relationTab("reward-from", "Reward from", "reward_from", "Quest", "")] : []),
     ...(page.pins.length ? [{
       id: "map", label: "Map", count: page.pins.length,
@@ -166,73 +161,47 @@ export default async function ItemPage(props: Props) {
   const tooltipLines = tip
     ? [...tip.lines, ...(tip.partial ? ["[?] marks a value the game files do not give us yet."] : [])]
     : [category?.subclass?.name ?? category?.class?.label, category?.slot?.name].filter((l): l is string => Boolean(l));
+  // The quality colour only where the name is shown from players or the wiki: an id nobody reported stays plain.
+  const shownQuality = name ? quality : undefined;
+  const subclassLabel = category?.subclass ? category.subclass.name ?? `Subclass ${category.subclass.id}` : undefined;
+
+  const quickFacts: Fact[] = [
+    ...(category ? [
+      { label: "Class", value: category.class ? <Link href={itemsHref(category.class.slug)} className={LINK}>{category.class.label}</Link> : known(null) },
+      { label: "Subclass", value: category.class && category.subclass ? <Link href={itemsHref(category.class.slug, category.subclass.slug)} className={LINK}>{subclassLabel}</Link> : known(null) },
+      { label: "Slot", value: category.slot?.name ?? "None" },
+      { label: "Quality", value: category.quality ? <span className={shownQuality ? QUALITY_TEXT[shownQuality] : undefined}>{category.quality.name}</span> : known(null) },
+    ] : [{ label: "Game files", value: "Not found" }]),
+    ...(facts.unreachable ? [] : [
+      { label: "Reported name", value: known(page.name) },
+      { label: "Drop sources", value: known(page.drops.length || null), numeric: true },
+      { label: "Map positions", value: known(page.pins.length || null), numeric: true },
+    ]),
+  ];
 
   return (
-    <Container width="wide">
+    <Container width="data">
       <article>
-        <PageHeader
+        <EntityHeader
           trail={trail}
           title={title}
-          quality={name ? quality : undefined}
-          icon={tip?.icon ?? icon ? <GameIcon src={(tip?.icon ?? icon)!} size={48} className="rounded-control" /> : undefined}
-          meta={
-            <>
-              {name && <span className="font-mono tabular-nums">Item {itemId}</span>}
-              {wikiName && <a href={wikiName.wikiPage!} className={LINK}>{NAME_SOURCE.wiki}</a>}
-              {category?.quality && <span className={quality ? QUALITY_TEXT[quality] : undefined}>{category.quality.name}</span>}
-              {!confirmed && <Badge tone="files">Unconfirmed</Badge>}
-            </>
-          }
+          quality={shownQuality}
+          icon={<EntityIcon src={tip?.icon ?? icon} unconfirmed={!confirmed} />}
+          meta={[category?.class?.label, subclassLabel, name ? <span className="tabular-nums">ID {itemId}</span> : null]}
         />
-        <EntityLayout
-          rail={
-            <>
-              <TooltipFrame name={tip?.name ?? title} quality={tip ? quality : undefined} label={`${tip?.name ?? title}, from the game files`} foot={`Build ${BUILD}`}>
-                {tooltipLines.map((line, i) => <p key={i}>{line}</p>)}
-              </TooltipFrame>
-              <FactsCard
-                title="Game files"
-                unconfirmed
-                facts={category ? [
-                  { label: "Item ID", value: <span className="font-mono tabular-nums">{itemId}</span> },
-                  { label: "Class", value: category.class ? <Link href={itemsHref(category.class.slug)} className={LINK}>{category.class.label}</Link> : "Not read" },
-                  { label: "Subclass", value: category.class && category.subclass ? <Link href={itemsHref(category.class.slug, category.subclass.slug)} className={LINK}>{category.subclass.name ?? `Subclass ${category.subclass.id}`}</Link> : "Not read" },
-                  { label: "Slot", value: category.slot?.name ?? "None" },
-                  { label: "Quality", value: category.quality ? <span className={quality ? QUALITY_TEXT[quality] : undefined}>{category.quality.name}</span> : "Not read" },
-                  { label: "Build", value: <span className="font-mono tabular-nums">{BUILD}</span> },
-                ] : [
-                  { label: "Item ID", value: <span className="font-mono tabular-nums">{itemId}</span> },
-                  { label: `In build ${BUILD}`, value: "Not found" },
-                ]}
-              />
-              {!facts.unreachable && (
-                <FactsCard
-                  title="Seen by players"
-                  facts={[
-                    { label: "Name", value: page.name ?? undefined },
-                    { label: "Drop sources", value: page.drops.length ? page.drops.length : undefined },
-                    { label: "Map positions", value: page.pins.length ? page.pins.length : undefined },
-                  ]}
-                />
-              )}
-            </>
+        <EntityTop
+          box={
+            <TooltipFrame name={tip?.name ?? title} quality={tip ? quality : undefined} label={`${tip?.name ?? title}, from the game files`}>
+              {tooltipLines.map((line, i) => <p key={i}>{line}</p>)}
+            </TooltipFrame>
           }
-        >
-          <Tabs label={`${title}: relations`} tabs={tabs} />
+          facts={<Facts layout="list" label={`${title}: quick facts`} items={quickFacts} />}
+        />
+        <Tabs label={`${title}: relations`} tabs={tabs} />
+        <div className="mt-6 space-y-6 empty:hidden">
           <LoreSection match={lore} />
           {!facts.unreachable && (page.name !== null || page.drops.length > 0) && <AdSlot slot="inContent" />}
-        </EntityLayout>
-        <SourceLine build={BUILD}>
-          {(category || all.some((e) => e.evidence === "client")) && GAME_DATA_CREDIT}
-          {wikiName && matched ? (
-            <>
-              {" "}{NAME_SOURCE.wiki}: the game files and the{" "}
-              <a href={matched.wiki.url} className={LINK}>{matched.wiki.name}</a> give the same name, not yet confirmed in play; a name 3 installs
-              report replaces it. The name from the wiki: Warcraft Wiki contributors, <a href={CC_BY_SA.url} className={LINK}>{CC_BY_SA.name}</a>.
-            </>
-          ) : null}
-          {assets && (tip || icon || relationIcons) && <>{" "}<GameCredit inline version={assets.version} label={assets.label} /></>}
-        </SourceLine>
+        </div>
       </article>
     </Container>
   );

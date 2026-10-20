@@ -41,11 +41,11 @@ const agreed = (itemId: number) => ["a", "b", "c"].map((installId) => ({ install
 
 beforeEach(() => { state.assets = null; state.names = []; state.tipCalls = []; state.matched = null; });
 
-test("an unreported item: the creating spell's icon and the credit, but no game file tooltip", async () => {
+test("an unreported item: the creating spell's icon, but no game file tooltip; the credit is the site footer's", async () => {
   state.assets = assets;
   const page = await html(ItemPage(props(String(made.fromId))));
   expect(page).toContain(`${BASE}/icons/spell.webp`);
-  expect(page).toContain(CREDIT);
+  expect(page).not.toContain(CREDIT);
   expect(page).not.toContain(`i${made.fromId}.webp`);
   expect(state.tipCalls).toEqual([]);
 });
@@ -117,17 +117,16 @@ test("wiki-matched names count toward the half a category needs to be indexed an
   expect((await sitemap()).map((e) => new URL(e.url).pathname)).toContain("/database/items/armor/cloth");
 });
 
-test("an item page with a matched name shows it with its icon, source, wiki link and credit, and is indexed; no tooltip card", async () => {
+test("an item page with a matched name shows it with its icon, marked unconfirmed, and is indexed; no tooltip text; credits are the footer's", async () => {
   state.assets = assets;
   const id = clothIds()[0];
   state.matched = matchedNames([id]);
   const page = await html(ItemPage(props(String(id))));
   expect(page).toContain(`Wiki name ${id}</h1>`);
-  expect(page).toContain(`i${id}.webp`);
-  expect(page).toContain(`href="https://warcraft.wiki.gg/wiki/Wiki_${id}"`);
-  expect(page).toContain(NAME_SOURCE.wiki);
-  expect(page).toContain("Warcraft Wiki contributors");
-  expect(page).toContain(CREDIT);
+  expect(page).toMatch(new RegExp(`data-unconfirmed[^>]*>(?:<[^>]+>)*?<img[^>]*i${id}\\.webp`));
+  // No source line on the page: the Warcraft Wiki and Blizzard credits are in the site footer and /methodology#credits.
+  expect(page).not.toContain(NAME_SOURCE.wiki);
+  expect(page).not.toContain(CREDIT);
   expect(page).not.toContain("Game name");
   const meta = await generateMetadata(props(String(id)));
   expect(meta.title).toContain(`Wiki name ${id}`);

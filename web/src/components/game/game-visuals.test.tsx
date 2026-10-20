@@ -151,7 +151,8 @@ test("item page: the tooltip card for an item players reported; an id nobody rep
   vi.stubGlobal("fetch", fetcher);
   const seen = await render(() => ItemPage({ params: Promise.resolve({ id: "9" }) }));
   expect(seen).toMatch(/data-tooltip-frame[^>]*>[\s\S]*Linen Cloth/);
-  expect(seen).toContain(CREDIT);
+  // The credit for the icon and tooltip is the site footer's line, not one on the page.
+  expect(seen).not.toContain(CREDIT);
   // Item 25 is in the same shard, but no install reported it: a typed id must not reveal it.
   fetcher.mockClear();
   forgetPrivateReads();
