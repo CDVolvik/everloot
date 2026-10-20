@@ -26,7 +26,7 @@ Use the same words everywhere, so the listings match the site and each other.
 | Website | `https://everloot.app` |
 | Source | `https://github.com/Everloot/everloot` (AGPL-3.0-only) |
 | Icon | `web/public/icon-512.png` and `icon-64.png`, rendered from the site icon (`https://everloot.app/icon-512.png`) |
-| Reads or writes | Reads only. Every tool carries `readOnlyHint: true` and a `title` (checked against the live endpoint on 2026-10-18: 27 tools, all annotated). |
+| Reads or writes | Reads only. Every tool carries `readOnlyHint: true` and a `title` (checked against the live endpoint on 2026-10-20: 28 tools, all annotated). |
 | Data handling | Our own API. No personal health data, no sponsored content, no conversation data collected. |
 
 ### Long description
@@ -39,10 +39,11 @@ Use the same words everywhere, so the listings match the site and each other.
 > is scraped from other sites and no fact is guessed: when something is not recorded yet, the tool says
 > so instead of making a number up.
 >
-> 27 read-only tools: search the lore archive, open one record, look up an item, NPC, object, quest or
+> 28 read-only tools: search the lore archive, open one record, look up an item, NPC, object, quest or
 > vendor, find what is near a spot on the map, follow relations (dropped by, sold by, reagent for),
 > browse item categories, plan a profession, read recipe skill ranges, check auction history and market
-> values, a gold ledger, a guild board, Blizzard's latest posts and builds, and the addon ecosystem.
+> values, a gold ledger, a guild board, achievement, reputation, title and quest progress, Blizzard's
+> latest posts and builds, and the addon ecosystem.
 > Game-file facts are labelled "found in game files, unconfirmed" with their build. Data is CC BY-SA 4.0
 > with a credit line in every answer; the code is open source. No account, no key, no sign-in wall.
 
@@ -96,7 +97,7 @@ by default; some get a human review. Escalations: `mcp-review@anthropic.com`.
 Portal steps and what to paste, in order:
 
 1. **Connection**: `https://everloot.app/mcp/public`.
-2. **Tools**: sync from the server. Nothing should be flagged (title and `readOnlyHint` on all 27).
+2. **Tools**: sync from the server. Nothing should be flagged (title and `readOnlyHint` on all 28).
 3. **Listing**: name `Everloot` (≤100), the ≤200 one-liner, the long description, categories, documentation
    `https://everloot.app/connect`, privacy `https://everloot.app/privacy`, support `hello@everloot.app`,
    icon `icon-512.png`, slug `everloot` (permanent).
@@ -153,8 +154,11 @@ Separately, Grok users can already add a remote MCP server at `grok.com/connecto
 Custom → the URL ([official connector instructions](https://docs.x.ai/grok/connectors)). This direct
 connection is separate from marketplace approval.
 
-The live endpoint returned HTTP 200 for `initialize` and `tools/list` during this check: 27 tools,
-all marked read-only, including `search` and `fetch`. In-app connection and tool execution subsequently succeeded on all three platforms. The official registry entry is now active: [`app.everloot/knowledge`](https://registry.modelcontextprotocol.io/v0.1/servers?search=app.everloot), version `0.8.0`, published 2026-10-19 at 06:08 UTC.
+The live endpoint returned HTTP 200 for `initialize` and `tools/list` during this check: 28 tools,
+all marked read-only, including `search` and `fetch`. The count was re-read on 2026-10-20, when the
+endpoint answered 28 tools, every one with a title and `readOnlyHint: true`, and a live
+`search_knowledge` call returned a sourced answer. The registry entry stays at version `0.8.0`: the
+server version did not move with the count. In-app connection and tool execution subsequently succeeded on all three platforms. The official registry entry is now active: [`app.everloot/knowledge`](https://registry.modelcontextprotocol.io/v0.1/servers?search=app.everloot), version `0.8.0`, published 2026-10-19 at 06:08 UTC.
 
 ## 5. Community directories (owner, a web form each)
 
