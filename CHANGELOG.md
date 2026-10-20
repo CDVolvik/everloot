@@ -128,6 +128,7 @@ that has a zip in the repository. Earlier builds have none.
   sent, like the sha256 check, so a bug in the export cannot publish a local path alongside the data.
 - The home page's launch banner now reaches both window edges, flush under the header, instead of sitting
   in the centred column as a rounded card.
+- The header menu brightens to the site's green on hover instead of the body text colour.
 
 Pull requests merged to `main` are listed in the nightly pre-releases until the next tagged release.
 

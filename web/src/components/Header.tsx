@@ -22,14 +22,14 @@ export default function Header() {
           everloot
         </Link>
         <nav aria-label="Primary" className="hidden sm:flex items-center gap-4 text-sm">
-          <Link href="/database" className="inline-flex items-center min-h-11 text-muted hover:text-fg"><Bracket>Database</Bracket></Link>
-          <Link href="/lore" className="inline-flex items-center min-h-11 text-muted hover:text-fg"><Bracket>Lore</Bracket></Link>
-          <Link href="/map" className="inline-flex items-center min-h-11 text-muted hover:text-fg"><Bracket>Map</Bracket></Link>
-          <Link href="/changes" className="inline-flex items-center min-h-11 text-muted hover:text-fg"><Bracket>Changes</Bracket></Link>
-          <Link href="/upload" className="inline-flex items-center min-h-11 text-muted hover:text-fg"><Bracket>Upload</Bracket></Link>
-          <Link href="/tools/gold-per-hour" className="inline-flex items-center min-h-11 text-muted hover:text-fg"><Bracket>Gold/Hour</Bracket></Link>
-          <Link href="/addons" className="inline-flex items-center min-h-11 text-muted hover:text-fg"><Bracket>Addons</Bracket></Link>
-          <Link href="/connect" className="hidden md:inline-flex items-center min-h-11 text-muted hover:text-fg"><Bracket>Connect</Bracket></Link>
+          <Link href="/database" className="inline-flex items-center min-h-11 text-muted hover:text-accent"><Bracket>Database</Bracket></Link>
+          <Link href="/lore" className="inline-flex items-center min-h-11 text-muted hover:text-accent"><Bracket>Lore</Bracket></Link>
+          <Link href="/map" className="inline-flex items-center min-h-11 text-muted hover:text-accent"><Bracket>Map</Bracket></Link>
+          <Link href="/changes" className="inline-flex items-center min-h-11 text-muted hover:text-accent"><Bracket>Changes</Bracket></Link>
+          <Link href="/upload" className="inline-flex items-center min-h-11 text-muted hover:text-accent"><Bracket>Upload</Bracket></Link>
+          <Link href="/tools/gold-per-hour" className="inline-flex items-center min-h-11 text-muted hover:text-accent"><Bracket>Gold/Hour</Bracket></Link>
+          <Link href="/addons" className="inline-flex items-center min-h-11 text-muted hover:text-accent"><Bracket>Addons</Bracket></Link>
+          <Link href="/connect" className="hidden md:inline-flex items-center min-h-11 text-muted hover:text-accent"><Bracket>Connect</Bracket></Link>
         </nav>
         <div className="flex items-center gap-1 shrink-0">
           <AccountControls />
