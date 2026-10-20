@@ -17,6 +17,7 @@ afterEach(() => { vi.unstubAllEnvs(); vi.resetModules(); vi.restoreAllMocks(); }
 
 const siteSearch = vi.hoisted(() => ({ groups: [] as unknown[] }));
 vi.mock("@/lib/site-search", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/site-search")>()), siteSearch: async () => siteSearch.groups }));
+vi.mock("@/lib/shown-search-names", () => ({ loadShownSearchNames: async () => ({ items: new Map(), npcs: new Map(), quests: new Map() }) }));
 
 async function render(query: Record<string, string>, path = release) {
   vi.stubEnv("KB_SNAPSHOT_PATH", path);
@@ -47,7 +48,11 @@ test("a query shows the groups the site search found, each under its heading, an
   expect(html.indexOf("NPCs")).toBeLessThan(html.indexOf("Lore archive"));
   expect(html).toContain('href="/search?q=thrall&amp;in=lore"');
   siteSearch.groups = [];
-  expect(await render({ q: "zzzz" })).toContain("Nothing matches that.");
+  const none = await render({ q: "zzzz" });
+  expect(none).toContain("Nothing matches that.");
+  // An empty search points at the database lists, not the lore archive.
+  expect(none).toContain('href="/database/items"');
+  expect(none).not.toContain("3 installs");
 });
 
 test("the search is a plain GET form, so it works without JavaScript", async () => {
