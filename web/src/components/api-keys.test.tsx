@@ -25,7 +25,7 @@ const buttonNamed = (label: string) => Array.from(container.querySelectorAll("bu
 test("signed out, it offers the Battle.net sign-in", async () => {
   vi.stubGlobal("fetch", async () => Response.json({ ok: false, error: "Sign in with Battle.net to manage keys." }, { status: 401 }));
   await act(async () => root.render(<ApiKeys />));
-  expect(container.querySelector('a[href="/api/auth/bnet"]')?.textContent).toBe("Sign in with Battle.net");
+  expect(container.querySelector('a[href="/sign-in"]')?.textContent).toBe("Sign in");
 });
 
 test("with the guard off, it says keys are not switched on", async () => {
