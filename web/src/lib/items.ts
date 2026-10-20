@@ -40,17 +40,24 @@ export function shownItemName(
 }
 
 /**
- * Whether a page of a category's plain list has enough names to be indexed. The plain list shows the named
- * rows first (sortItems), so page `page` holds the named rows left after the earlier pages, then unnamed ones.
- * No row gets a name it does not have: a category with too few names stays out.
+ * A subclass as a page labels it: the client's "(OBSOLETE)" suffix dropped, and "Other" for one the files leave
+ * unnamed, never "Subclass 0". `retired` marks the buckets the hub leaves out (the class page still lists them).
+ */
+export function subclassLabel(s: { name: string | null }): { label: string; retired: boolean } {
+  if (s.name === null) return { label: "Other", retired: true };
+  const label = s.name.replace(/\s*\(OBSOLETE\)\s*$/i, "");
+  return { label, retired: label !== s.name };
+}
+
+/**
+ * Whether a page of a category's plain list has enough names to be indexed. It reads the plain list's own
+ * order (sortItems with no sort: named rows first, each part by id), so page `page` holds the named rows left
+ * after the earlier pages, then unnamed ones. No row gets a name it does not have.
  */
 export function categoryNamedEnough(classId: number | undefined, subclassId: number | undefined, named: { has(id: number): boolean }, page = 1): boolean {
-  const rows = filterItems(CLIENT_TAXONOMY, { classId, subclassId });
-  const start = (page - 1) * ITEMS_PER_PAGE;
-  const shown = Math.min(ITEMS_PER_PAGE, rows.length - start);
-  if (shown <= 0) return false;
-  const namedRows = rows.reduce((n, row) => n + Number(named.has(row[0])), 0);
-  return Math.min(Math.max(namedRows - start, 0), shown) / shown >= MIN_NAMED_SHARE;
+  const rows = sortItems(filterItems(CLIENT_TAXONOMY, { classId, subclassId }), undefined, { name: (id) => (named.has(id) ? "" : undefined) });
+  const shown = rows.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+  return shown.length > 0 && shown.filter((row) => named.has(row[0])).length / shown.length >= MIN_NAMED_SHARE;
 }
 
 /** Slot slugs any item in the build uses, in inventory type order (robes and chest pieces share "chest"). */
@@ -134,7 +141,7 @@ export interface CategoryQuery {
   ilvl?: { min: number; max: number };
   req?: { min: number; max: number };
   bind?: string;
-  /** Absent: by id, ascending. */
+  /** Absent: named items first, each part by id (sortItems). */
   sort?: { key: ItemSort; desc: boolean };
   page: number;
 }
@@ -275,14 +282,11 @@ export function listItems(base: readonly ItemRow[], q: CategoryQuery, ctx: ItemL
 
 /**
  * Text keys sort A to Z and levels low to high, with the rows that have none last, whichever way; ties go by id.
- * With no sort, rows with a name the page may show come first, each part by id (the API passes no names, so
- * its order stays by id).
+ * With no sort, items with a name the page shows come first, each part by id, so a list opens on real items
+ * rather than "Item N"; `sort=id` is the plain id order. categoryNamedEnough reads this order.
  */
 export function sortItems(rows: ItemRow[], sort: CategoryQuery["sort"], ctx: ItemListContext = {}): ItemRow[] {
-  if (!sort && ctx.name) {
-    const named = rows.filter((row) => ctx.name!(row[0]) !== undefined);
-    return named.length === 0 || named.length === rows.length ? rows : [...named, ...rows.filter((row) => ctx.name!(row[0]) === undefined)];
-  }
+  if (!sort && ctx.name) return [...rows.filter((row) => ctx.name!(row[0]) !== undefined), ...rows.filter((row) => ctx.name!(row[0]) === undefined)];
   if (!sort || sort.key === "id") return sort?.desc ? [...rows].sort((a, b) => b[0] - a[0]) : rows;
   const dir = sort.desc ? -1 : 1;
   const key = (row: ItemRow): string | number | null => {

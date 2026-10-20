@@ -45,6 +45,18 @@ test("the index groups released zones by continent and links each one; held-back
   expect(metadata.alternates?.canonical).toBe("/database/zones");
 });
 
+test("the index is a database list: data width, zones A to Z, a dash for a count nobody reported, no all-zero column", async () => {
+  store.loadCorpus.mockResolvedValue(corpus(three(100, "Guard Orin", 1436, 40, 50)));
+  const page = await html(ZonesPage());
+  expect(page).toContain('data-container="data"');
+  expect(page.indexOf(">Duskwood<")).toBeLessThan(page.indexOf(">Elwynn Forest<"));
+  expect(page.indexOf(">Elwynn Forest<")).toBeLessThan(page.indexOf(">Westfall<"));
+  // Westfall's one NPC is a 1; the other zones' NPC cells are dashes, never 0. Nobody reported a vendor or a quest anywhere.
+  expect(page).not.toMatch(/tabular-nums[^"]*">0</);
+  for (const header of [">Vendors<", ">Quests<"]) expect(page).not.toContain(header);
+  expect(page).toContain(">NPCs<");
+});
+
 test("a zone page shows its confirmed NPCs, its lore, and the map link; the name is not enough for an indexed page", async () => {
   store.loadCorpus.mockResolvedValue(corpus(three(100, "Guard Orin", 1436, 40, 50)));
   const page = await html(ZonePage(props("1436-westfall")));

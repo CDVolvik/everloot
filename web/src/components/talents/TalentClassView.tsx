@@ -7,7 +7,7 @@ import { webApplicationJsonLd } from "@/lib/jsonld";
 import { loadSiteAssets } from "@/lib/game-assets";
 import { savedBuildsOn } from "@/lib/saved-builds";
 import { loadCatalog, type TalentClassSlug } from "@/lib/talents/catalogs";
-import { HOW_IT_WORKS_ID, classAnswers, classDescription, classFacts } from "@/lib/talents/facts";
+import { HOW_IT_WORKS_ID, classAnswers, classFacts, classLede } from "@/lib/talents/facts";
 import ClassPicker from "./ClassPicker";
 import { classChoices } from "./class-choices";
 import TalentCalculator from "./TalentCalculator";
@@ -26,7 +26,6 @@ export default async function TalentClassView({ slug, initialCodes, saved }: {
   const catalog = await loadCatalog(slug);
   const facts = classFacts(catalog);
   const answers = classAnswers(facts);
-  const description = classDescription(facts);
   const path = `/tools/talents/${slug}`;
   // Class and tree icons from the site's asset folder, matched by tree name; none when the folder is not set.
   const assets = await loadSiteAssets();
@@ -48,8 +47,8 @@ export default async function TalentClassView({ slug, initialCodes, saved }: {
 
   return (
     <Container>
-      <JsonLd data={webApplicationJsonLd({ name: pageTitle(catalog.className), path, description, hubPath: "/tools/talents" })} />
-      <PageHeader trail={trailFor(path)!} title={<span className={CLASS_TEXT[slug]}>{pageTitle(catalog.className)}</span>} lede={description} />
+      <JsonLd data={webApplicationJsonLd({ name: pageTitle(catalog.className), path, description: classLede(facts), hubPath: "/tools/talents" })} />
+      <PageHeader trail={trailFor(path)!} title={<span className={CLASS_TEXT[slug]}>{pageTitle(catalog.className)}</span>} lede={classLede(facts)} />
 
       <div className="space-y-4">
         <ClassPicker variant="strip" classes={classes} current={slug} />

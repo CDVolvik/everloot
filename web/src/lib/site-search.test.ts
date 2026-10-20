@@ -91,19 +91,6 @@ test("the Warcraft Wiki copies never move above Everloot's own pages, even on an
   expect(types.indexOf("item")).toBeLessThan(types.indexOf("lore"));
 });
 
-test("the /search page can pass the names item pages show; players' names win, and suggestions never use them", async () => {
-  vi.stubEnv("KB_SNAPSHOT_PATH", release);
-  const { siteSearch, suggest } = await import("./site-search");
-  mocks.names.items = new Map([[3, "Thrall's Agreed Cloak"]]);
-  const shownItemNames = new Map([[2589, "Linen Cloth"], [3, "Wiki Cloak"]]);
-  const linen = (await siteSearch("linen cloth", { shownItemNames })).find((g) => g.type === "item")!;
-  expect(linen.results[0]).toMatchObject({ label: "Linen Cloth", href: "/database/items/2589", exact: true });
-  const cloak = (await siteSearch("cloak", { shownItemNames })).find((g) => g.type === "item")!.results.map((r) => r.label);
-  expect(cloak).toEqual(["Thrall's Agreed Cloak"]);
-  expect((await siteSearch("linen cloth")).find((g) => g.type === "item")).toBeUndefined();
-  expect(await suggest("linen")).toEqual([]);
-});
-
 test("without a lore release the other groups still answer", async () => {
   vi.spyOn(console, "error").mockImplementation(() => {});
   mocks.names.npcs = new Map([[77, "Thrall"]]);

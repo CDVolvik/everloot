@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import LoreSearchForm from "@/components/LoreSearchForm";
-import { Container, DataTable, DataTitle, Entry, EntryList, LinkTabs, Pager, QUALITY_TEXT, SearchBar, qualityOf, type Column } from "@/components/ui";
+import { Container, DataTable, DataTitle, Entry, EntryList, filledColumns, LinkTabs, Pager, QUALITY_TEXT, SearchBar, qualityOf, type SparseColumn } from "@/components/ui";
 import { CC_BY_SA } from "@/lib/jsonld";
 import { BROWSE_HEADINGS, BROWSE_TYPES, hasTypes, loreSlug, MAX_QUERY, searchLore, UNAVAILABLE, UNAVAILABLE_COPY, type BrowseSlug, type LoreType } from "@/lib/lore";
 import { isScope, siteSearch, type Scope, type SearchGroup, type SearchResult } from "@/lib/site-search";
-import { loadShownNames } from "@/lib/shown-item-names";
+import { loadShownSearchNames } from "@/lib/shown-search-names";
 
 /** A `type=` value is one of the stored types; anything else means All. */
 function typeOf(raw: string | undefined): LoreType | undefined {
@@ -46,10 +46,8 @@ export default async function SearchPage(props: { searchParams: Promise<Params> 
   if (first(params.in) === "lore" || params.page !== undefined || params.type !== undefined) return <LoreResults q={q} params={params} />;
   const scope = isScope(first(params.in)) ? (first(params.in) as Scope) : undefined;
 
-  // Items are found by the name their page shows (players' name, else the game files' name the wiki matches).
-  const matched = q && (!scope || scope === "item") ? (await loadShownNames()).matched : null;
-  const shownItemNames = matched ? new Map([...matched.names].map(([id, n]) => [id, n.name])) : undefined;
-  const groups = q ? await siteSearch(q, { ...(scope ? { only: scope, limit: SCOPED_LIMIT } : {}), shownItemNames }) : null;
+  // Matched on the names the database pages show, so a name a list prints is found here too.
+  const groups = q ? await siteSearch(q, { ...(scope ? { only: scope, limit: SCOPED_LIMIT } : {}), names: await loadShownSearchNames() }) : null;
   const base = `/search?q=${encodeURIComponent(q)}`;
   const tabs = groups && groups.length > 0 && [
     { label: "All", href: base, current: !scope },
@@ -73,7 +71,11 @@ export default async function SearchPage(props: { searchParams: Promise<Params> 
         </div>
 
         {groups === null ? null : groups.length === 0 ? (
-          <p className="py-4 text-cell text-fg-2">Nothing matches that. Items, NPCs and quests are searchable once 3 installs agree on a name; an id always opens its page.</p>
+          <p className="py-4 text-cell text-fg-2">
+            Nothing matches that. An id always opens its page, or browse the{" "}
+            <Link href="/database/items" className={link}>items</Link>, <Link href="/database/quests" className={link}>quests</Link> and{" "}
+            <Link href="/database/npcs" className={link}>NPCs</Link>.
+          </p>
         ) : (
           groups.map((group) => <ResultTable key={group.type} group={group} q={q} scoped={Boolean(scope)} />)
         )}
@@ -90,10 +92,11 @@ function ResultTable({ group, q, scoped }: { group: SearchGroup; q: string; scop
     const colour = group.type === "item" && typeof r.quality === "number" && r.quality <= 5 ? QUALITY_TEXT[qualityOf(r.quality)] : "text-accent";
     return <Link href={r.href} className={`${colour} hover:underline underline-offset-4`}>{r.label}</Link>;
   };
-  const columns: Column<SearchResult>[] = [
+  const columns: SparseColumn<SearchResult>[] = [
     { key: "name", header: <>{group.heading} <span className="font-normal tabular-nums">({group.total})</span></>, cell: name },
     { key: "about", header: group.type === "item" ? "Type" : "", cell: (r) => <span className="line-clamp-1 text-fg-2">{group.type === "item" ? r.meta ?? "" : r.id !== undefined ? "" : r.note ?? ""}</span> },
-    { key: "id", header: "ID", numeric: true, cell: (r) => r.id ?? "" },
+    // Lore, zones, tools and docs have no id: the column is left out for them.
+    { key: "id", header: "ID", numeric: true, cell: (r) => r.id ?? "", blank: (r) => r.id === undefined },
   ];
   return (
     <section id={`results-${group.type}`} aria-labelledby={`results-${group.type}-heading`} className="mb-6 scroll-mt-20">
@@ -101,7 +104,7 @@ function ResultTable({ group, q, scoped }: { group: SearchGroup; q: string; scop
       <DataTable
         dense
         caption={`${group.heading} matching ${q}`}
-        columns={columns}
+        columns={filledColumns(columns, group.results)}
         rows={group.results}
         rowKey={(r) => r.href}
         meta={(r) => (group.type === "item" ? [r.meta, r.id !== undefined && `ID ${r.id}`] : [r.id !== undefined ? `ID ${r.id}` : r.note]).filter(Boolean).join(" · ")}

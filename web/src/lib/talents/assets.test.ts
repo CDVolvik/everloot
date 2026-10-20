@@ -117,6 +117,8 @@ const SHOWS_ART = new Set([
   // The item names shown from the game files and the Warcraft Wiki: read for the item pages, and by the sitemap
   // only to know whether a category has enough names to list.
   "web/src/lib/shown-item-names.ts", "web/src/app/sitemap.ts", "web/scripts/upload-item-names.mjs",
+  // The same names and the quest titles for the site's own search (/search and /search/suggest), never /api/suggest.
+  "web/src/lib/shown-search-names.ts",
 ]);
 
 test("nothing outside the pages that show the art can read the asset URL or the manifest modules", () => {
@@ -133,7 +135,8 @@ test("nothing outside the pages that show the art can read the asset URL or the 
     ...sources(join(root, "web/src/app/api")), ...sources(join(root, "web/src/app/mcp")), join(root, "web/src/lib/mcp-mount.ts"),
     join(root, "web/src/lib/bulk-export.ts"), join(root, "web/scripts/export-bulk.ts"), ...sources(join(root, "kb/src")).filter((p) => /mcp|exporters/.test(p)),
   ];
-  for (const p of api) expect(readFileSync(p, "utf8"), p).not.toMatch(/talents\/(assets|catalogs)|GAME_ASSETS|GAME_DATA_(S3|BUCKET|ACCESS|SECRET|REGION)|game-assets|components\/game\/|shown-item-names|src\/item-names|loadItemNames|loadShownNames|src\/game-names|loadQuestNames|loadItemSetNames|loadSpellNames/);
+  // site-search.ts serves /api/suggest too: the shown names reach it only as an argument from a page.
+  for (const p of [...api, join(root, "web/src/lib/site-search.ts")]) expect(readFileSync(p, "utf8"), p).not.toMatch(/talents\/(assets|catalogs)|GAME_ASSETS|GAME_DATA_(S3|BUCKET|ACCESS|SECRET|REGION)|game-assets|components\/game\/|shown-item-names|shown-search-names|src\/item-names|loadItemNames|loadShownNames|src\/game-names|loadQuestNames|loadItemSetNames|loadSpellNames/);
 });
 
 let release = "";

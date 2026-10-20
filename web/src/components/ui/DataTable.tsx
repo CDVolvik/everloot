@@ -15,6 +15,9 @@ export interface Column<Row> {
   nowrap?: boolean;
 }
 
+/** A column a list can leave out (filledColumns): `blank` says a cell has nothing to say ("—", 0, no id). */
+export type SparseColumn<Row> = Column<Row> & { blank?: (row: Row) => boolean };
+
 export interface DataTableProps<Row> {
   columns: Column<Row>[];
   rows: Row[];
@@ -39,6 +42,15 @@ export interface DataTableProps<Row> {
   dense?: boolean;
   /** Dense tables on a phone: the other columns' facts in one muted line under the first cell. */
   meta?: (row: Row) => ReactNode;
+}
+
+/**
+ * The columns with something to say for these rows: one whose `blank` holds on every row (a count nobody has
+ * reported yet, an id the results do not have) is noise. A list passes its whole result, not one page, so a
+ * column does not come and go from page to page.
+ */
+export function filledColumns<Row>(columns: SparseColumn<Row>[], rows: readonly Row[]): SparseColumn<Row>[] {
+  return rows.length ? columns.filter((col) => !col.blank || !rows.every(col.blank)) : columns;
 }
 
 const ariaSort = (direction: SortDirection) => (direction === "asc" ? "ascending" : "descending");
@@ -136,7 +148,9 @@ function DenseTable<Row>({ columns, rows, rowKey, caption, sort, sortHref, empty
                     key={col.key}
                     scope="col"
                     aria-sort={sorted ? ariaSort(sorted) : undefined}
-                    className={`sticky top-header z-10 h-th whitespace-nowrap border-b border-line bg-canvas px-3 text-th ${sorted ? "text-fg" : "text-muted"} ${col.numeric ? "text-right" : "text-left"} ${phoneHidden(i)}`}
+                    // Sticky under the site header from 640 px up only: below that a table that scrolls sideways is its
+                    // own sticky box, so the offset pushed the header down onto the rows.
+                    className={`z-10 h-th sm:sticky sm:top-header whitespace-nowrap border-b border-line bg-canvas px-3 text-th ${sorted ? "text-fg" : "text-muted"} ${col.numeric ? "text-right" : "text-left"} ${phoneHidden(i)}`}
                   >
                     {col.sortable && sortHref ? (
                       // Block-level, so the link fills the 32 px cell without a line box around it.

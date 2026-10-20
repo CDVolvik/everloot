@@ -31,7 +31,7 @@ if (!realm) {
   // Without a realm the endpoint lists the realms that have public prices.
   const { realms } = await get("/api/market/prices");
   if (realms.length === 0) {
-    console.log("No realm has public prices yet. A day is public once three players have scanned the realm.");
+    console.log("No realm has public prices yet. A day is public once 3 reporters have scanned the item on that realm.");
   } else {
     console.log("Realms with public prices:");
     for (const name of realms) console.log(\`  \${name}\`);
@@ -85,7 +85,7 @@ if realm is None:
     # Without a realm the endpoint lists the realms that have public prices.
     realms = get("/api/market/prices")["realms"]
     if not realms:
-        print("No realm has public prices yet. A day is public once three players have scanned the realm.")
+        print("No realm has public prices yet. A day is public once 3 reporters have scanned the item on that realm.")
     else:
         print("Realms with public prices:")
         for name in realms:
@@ -114,7 +114,7 @@ const REALMS_RAW = `{
   "attribution": { "licence": "CC BY-SA 4.0", "credit": "Data from Everloot (https://everloot.app), CC BY-SA 4.0.", "…": "…" }
 }`;
 
-const EMPTY_OUT = `No realm has public prices yet. A day is public once three players have scanned the realm.`;
+const EMPTY_OUT = `No realm has public prices yet. A day is public once 3 reporters have scanned the item on that realm.`;
 
 const SHAPE = `{
   "ok": true,
@@ -151,7 +151,7 @@ export default function Page() {
       </List>
 
       <Callout kind="note">
-        <p>WoW: Forever has not launched yet, so no realm has public prices and the scripts print the empty-answer message in step 3. The output in step 4 uses placeholder values, so you can see its shape. A day becomes public once three players have scanned the realm.</p>
+        <p>Before WoW: Forever launches on 4 November 2026, and until 3 reporters scan an item on a realm, no realm has public prices and the scripts print the empty-answer message in step 3. The output in step 4 uses placeholder values, so you can see its shape.</p>
       </Callout>
 
       <H2 id="steps">Steps</H2>
@@ -168,7 +168,7 @@ export default function Page() {
         <Step title="Run it" id="run">
           <p className="mt-2 leading-7 text-fg-2">Run it with no realm first.</p>
           <div className="mt-6"><CodeGroup title="Run" tabs={[{ label: "JavaScript", lang: "bash", code: RUN_JS }, { label: "Python", lang: "bash", code: RUN_PY }]} /></div>
-          <p className="mt-4 leading-7 text-fg-2">Today both print this, which is what an empty answer looks like:</p>
+          <p className="mt-4 leading-7 text-fg-2">With no public prices both print this, which is what an empty answer looks like:</p>
           <div className="mt-6"><CodeGroup title="Output" tabs={[{ label: "Output", lang: "text", code: EMPTY_OUT }]} /></div>
         </Step>
         <Step title="Ask for a realm" id="realm">

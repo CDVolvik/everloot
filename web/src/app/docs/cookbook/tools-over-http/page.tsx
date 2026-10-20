@@ -132,7 +132,7 @@ export default function Page() {
       <List>
         <li>curl, Node 18 or newer, or Python 3 with only its standard library. The curl examples also use <C>jq</C> to pick fields; leave it off to see the whole answer.</li>
         <li>No account. Every MCP tool answers <C>GET /api/tools/&#123;tool&#125;</C>, with the tool&apos;s arguments as query parameters.</li>
-        <li>Without a key, this endpoint allows 30 requests an hour for each IP address. <Link href="/docs/api/keys" className={docLink}>Limits and keys</Link> covers the free key.</li>
+        <li>Without a key, this endpoint allows 30 requests an hour for each IP address, shared with the corpus, drop list, items and edges endpoints. The MCP server has its own allowance of 200. <Link href="/docs/api/keys" className={docLink}>Limits and keys</Link> covers the free key.</li>
       </List>
 
       <H2 id="steps">Steps</H2>

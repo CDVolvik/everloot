@@ -86,22 +86,12 @@ async function objectById(id: number | null): Promise<SearchResult[]> {
 }
 
 /**
- * Everything the site knows by this name or id, grouped by type. Names are the ones players agree on, and for
- * items also the names the item pages show when the caller passes them, zones are the released ones on the map, lore comes from the archive, tools from
- * the tool list. A group with an exact id or name match comes first; an empty group is left out. `only`
- * keeps one database type; `limit` is the rows per group.
+ * Everything the site knows by this name or id, grouped by type. Names are the ones players agree on, or
+ * `names` when a page passes the ones it shows (never the API's caller); zones are the released ones on the map,
+ * lore comes from the archive, tools from the tool list. A group with an exact id or name match comes first; an
+ * empty group is left out. `only` keeps one database type; `limit` is the rows per group.
  */
-export async function siteSearch(
-  raw: string,
-  { only, limit = GROUP_LIMIT, shownItemNames }: {
-    only?: Scope; limit?: number;
-    /**
-     * The item names the item pages show beyond players' (game files + Warcraft Wiki, docs/DATA_POLICY.md). The
-     * /search page passes them; this module does not read them, so the suggestion API built on it never can.
-     */
-    shownItemNames?: ReadonlyMap<number, string>;
-  } = {},
-): Promise<SearchGroup[]> {
+export async function siteSearch(raw: string, { only, limit = GROUP_LIMIT, names: given }: { only?: Scope; limit?: number; names?: Names } = {}): Promise<SearchGroup[]> {
   const text = raw.trim().slice(0, MAX_QUERY);
   const q = text.toLowerCase();
   if (!q) return [];
@@ -109,10 +99,8 @@ export async function siteSearch(
   const found = new Map<SearchType, { results: SearchResult[]; total: number }>();
   const want = (t: SearchType) => !only || only === t;
 
-  const names = await loadNames();
-  // Players' agreed name wins over the shown one, as on the item page.
-  const items = shownItemNames ? new Map([...shownItemNames, ...names.items]) : names.items;
-  for (const kind of ["item", "npc", "quest"] as const) if (want(kind)) found.set(kind, agreed(kind, kind === "item" ? items : names[`${kind}s`], q, id));
+  const names = given ?? await loadNames();
+  for (const kind of ["item", "npc", "quest"] as const) if (want(kind)) found.set(kind, agreed(kind, names[`${kind}s`], q, id));
   if (want("object")) { const objects = await objectById(id); found.set("object", { results: objects, total: objects.length }); }
 
   if (!only) {

@@ -25,7 +25,7 @@ export default function SchemasPage() {
   return (
     <DocPage href="/docs/api/schemas">
       <P>
-        The contract behind the API is one package, <C>@everloot/protocol</C>, version <C>{PROTOCOL_VERSION}</C>: the{" "}
+        The contract behind the API is one package, <C>@everloot/protocol</C>, record protocol <C>{PROTOCOL_VERSION}</C>: the{" "}
         {ALL_RECORD_KINDS.length} record kinds the addon writes, the upload envelope and its limits, the {names.length} response
         shapes below and the MCP tool table. The site validates uploads with it, the MCP server registers its tools from it, and
         these pages are rendered from it.
@@ -56,10 +56,12 @@ export default function SchemasPage() {
 
       <H2 id="protocol-version">Protocol version</H2>
       <P>
-        The version is <C>{PROTOCOL_VERSION}</C>. It follows semver. A new kind, field or tool is a minor release. A removal, a
-        rename, a new required field or a tighter limit is a major release, and the server accepts the current major and the one
-        before it. The source and its changelog are in{" "}
-        <a href={`${REPO}/tree/main/packages/protocol`} rel="noopener" className={docLink}>packages/protocol</a>.
+        There are two numbers. The record protocol, <C>{PROTOCOL_VERSION}</C>, is the upload contract: uploaders stamp it on
+        every envelope, and the server accepts the current major and the one before it. The package has its own version,
+        which also moves when a response shape or a tool changes. Both follow semver. A new kind, field or tool is a minor
+        release. A removal, a rename, a new required field or a tighter limit is a major release. The source and its
+        changelog are in <a href={`${REPO}/tree/main/packages/protocol`} rel="noopener" className={docLink}>packages/protocol</a>.
+        The package is not on npm yet, so install it from that folder or read the JSON Schema files above.
       </P>
 
       <H2 id="record-kinds">Record kinds</H2>

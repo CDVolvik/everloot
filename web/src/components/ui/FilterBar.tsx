@@ -77,7 +77,8 @@ function Controls({ search, controls, active, clearHref, phone }: FilterBarProps
             placeholder={search.placeholder}
             className={`ctl w-full min-w-0 border bg-panel px-3 text-fg placeholder:text-muted focus:border-accent focus:outline-none sm:w-44 ${search.value ? "border-accent" : "border-edge"}`}
           />
-          <button type="submit" className="sr-only">Filter</button>
+          {/* Enter in the field submits; out of the tab order, so focus never lands on a ring around nothing. */}
+          <button type="submit" tabIndex={-1} className="sr-only">Filter</button>
         </form>
       )}
       {controls.map((c) => c.type === "menu"

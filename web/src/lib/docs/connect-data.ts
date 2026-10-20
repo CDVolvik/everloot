@@ -108,7 +108,7 @@ npm run dev               # MCP at http://localhost:3000/mcp/public`,
   tooltipLink: `<a href="${SITE}/database/items/19019">Thunderfury</a>`,
   tooltipCurl: `curl -s ${SITE}/api/tooltip/item/19019 | jq '{title, lines}'`,
   corpusCurl: `curl -s "${CORPUS_URL}?kinds=loot,vendor"`,
-  bulkCurl: `curl -s ${BULK_URL ?? "https://data.everloot.app"}/latest.json | jq -r .index   # the newest export's index.json`,
+  bulkCurl: `BASE=${BULK_URL ?? "https://data.everloot.app"}\n# latest.json names the newest export's index.json by a path relative to BASE\ncurl -s "$BASE/$(curl -s "$BASE/latest.json" | jq -r .index)"`,
   openapiCurl: `curl -s ${SITE}/api/openapi.json | jq '.paths | keys'`,
   pagingJs: `// Every loot record, page by page. Stop when next is null.
 let url = "${CORPUS_URL}?kinds=loot&limit=500";

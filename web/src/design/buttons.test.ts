@@ -104,3 +104,10 @@ test("links in running text are underlined at rest, so colour is not their only 
   expect(prose).toContain("text-decoration-line: underline");
   expect(prose).toContain("text-underline-offset: 4px");
 });
+
+test("a disabled primary button is plainly disabled, not a dimmer green", () => {
+  const off = rule('.btn-primary[aria-disabled="true"]');
+  expect(off).toContain("background: rgb(var(--panel))");
+  expect(off).toContain("color: rgb(var(--muted))");
+  expect(off).toContain("opacity: 1");
+});

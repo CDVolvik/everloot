@@ -51,8 +51,8 @@ export default function Page() {
         <Step title="Read the preview" id="preview">
           <P>
             The page lists each kind of record and how many it will send. It also tells you how many records it holds
-            back: older records without event ids, named records you did not tick, and invalid ones. If you turned on the
-            census or the installed addon list in the game, the preview says so here and counts them.
+            back: older records without event ids, named records you did not tick, and invalid ones. If your file holds
+            census rows, player rows or the installed addon list, the preview says so here and counts them.
           </P>
         </Step>
         <Step title="Choose what to share" id="consent">
@@ -71,7 +71,9 @@ export default function Page() {
           />
           <P>
             Everloot issues scoped grants after reviewing officer or owner evidence. An addon claim token is not
-            verification. Without a grant, named records stay out of the upload.
+            verification. Without a grant, named records stay out of the upload. Paste a grant in{" "}
+            <strong>Verification grants</strong> on the upload page; how to get one is{" "}
+            <a href="#get-a-grant" className={docLink}>below</a>.
           </P>
         </Step>
         <Step title="Send" id="send">
@@ -86,18 +88,44 @@ export default function Page() {
       <H2 id="desktop">Upload with the Desktop App</H2>
       <P>
         The <Link href="/docs/guides/desktop" className={docLink}>Desktop App</Link> finds your save files, then uploads
-        after every logout or <C>/reload</C>. It sends only anonymous open-world events. Named data (guild, gear, gold,
-        collection) stays on your computer, so if you want to share those, use the upload page.
+        after every logout or <C>/reload</C>. It sends anonymous open-world events, and census rows if you allowed the
+        census on its setup screen or in its settings. It never sends named data (guild, gear, gold, collection), player
+        rows or the installed addon list. Those stay on your computer, so if you want to share them, use the upload page.
+      </P>
+
+      <H2 id="get-a-grant">Get a sharing grant</H2>
+      <P>
+        A grant is how Everloot knows you may publish named data: you are an officer of the guild, or you own the
+        character. Grants are not made on the site. Signing in does not give you one. They are issued by hand, after
+        someone at Everloot has checked your evidence.
+      </P>
+      <List ordered>
+        <li>
+          Email <a className={docLink} href="mailto:hello@everloot.app">hello@everloot.app</a>. Say which realm, which guild
+          or character, and what you want to share: guild data, a character&apos;s gear or gold, or your collection.
+        </li>
+        <li>Include your install id, the code in brackets on the first line of <C>/everloot status</C>. A grant works only for that install.</li>
+        <li>Say how we can check you are an officer of that guild or the owner of that character. We may ask for more.</li>
+        <li>
+          We send back a grant: a long code to paste into <strong>Verification grants</strong> on the upload page. Keep it
+          private, as you would a password. It has an end date, and you can revoke it yourself at the bottom of the upload page.
+        </li>
+      </List>
+      <P>
+        One grant covers one realm and one subject. A guild grant covers guild data; a character grant covers that
+        character&apos;s gear and gold; an install grant covers your collection and completion progress.
       </P>
 
       <H2 id="after">What happens next</H2>
       <P>
         Your anonymous observations are published as individual records, without character names and without the
         addon&apos;s install id. A fact such as a drop rate, a spawn point or a vendor price appears on the site only after
-        3 installs have reported it. Until then it waits.
+        3 installs have reported it. Until then it waits. Names appear only in named records you share with a grant, on
+        guild boards a guild&apos;s officers publish, and on{" "}
+        <Link href="/docs/guides/privacy#player-pages" className={docLink}>player pages</Link>.
       </P>
       <List>
-        <li>Guild data publishes only through an authorised officer&apos;s upload.</li>
+        <li>Guild data publishes only through an authorized officer&apos;s upload.</li>
         <li>Uploaded observations are published under CC BY-SA 4.0, credited to Everloot contributors.</li>
         <li>Installed addon lists and census rows are never published one by one, only as counts.</li>
       </List>
@@ -109,9 +137,12 @@ export default function Page() {
       <H2 id="withdraw">Change your mind</H2>
       <P>
         At the bottom of the upload page, Withdraw named sharing lets you revoke a grant, which withdraws the records it
-        authorised. A verified character owner can also opt a character out across guild rosters, attendance, loot, gear
+        authorized. A verified character owner can also opt a character out across guild rosters, attendance, loot, gear
         and gold, and the opt-out stays in effect for later uploads. To have an anonymous upload removed, email{" "}
         <a className={docLink} href="mailto:hello@everloot.app">hello@everloot.app</a>.
+      </P>
+      <P>
+        An upload refused or stuck? See <Link href="/docs/guides/troubleshooting#upload-refused" className={docLink}>Troubleshooting</Link>.
       </P>
     </DocPage>
   );

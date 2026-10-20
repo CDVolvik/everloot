@@ -14,7 +14,7 @@ field.
 
 ## Run it
 
-Download the zip from everloot.app/upload, or build it from the repository root:
+Download the zip from everloot.app/addon, or build it from the repository root:
 
     python scripts/package-addon.py
 
@@ -136,8 +136,9 @@ stops it at once and deletes every row it wrote.
 - One row per character per UTC day, with the latest level that day. At most 2,000 rows of each kind;
   the oldest days go first. A player already recorded today at the same level costs no new memory, so
   mouseover in a busy city stays cheap.
-- The rows are sent only from the upload page, which counts them first ("312 characters seen, 2 of your
-  own"). The companion never sends them. The server replaces each GUID with a keyed hash before it
+- The rows are sent from the upload page, which counts them first ("312 characters seen, 2 of your
+  own"), or by the Desktop App if you allowed the census on its setup screen or in its settings. The
+  command-line uploader never sends them. The server replaces each GUID with a keyed hash before it
   stores anything, and the site publishes only counts that cover at least 10 characters from at least
   3 installs (`docs/design/specs/2026-10-18-census-design.md`).
 
@@ -159,7 +160,8 @@ whether it is on and how many characters it holds; `/everloot players off` stops
 - **Load**: a player already read is left alone for 10 minutes, target and mouseover reads are at least a
   quarter of a second apart, at most 300 new characters a UTC day, at most 1,000 rows in the file (the oldest
   go first, about 200 KB). One row per character, kept in place.
-- **Sending**: only from the upload page, which counts the rows first. The companion never sends them. The site
+- **Sending**: only from the upload page, which counts the rows first. The Desktop App and the command-line
+  uploader never send them. The site
   drops them until the owner has turned the player pages on.
 
 ## Talents, selftest and the plan panel

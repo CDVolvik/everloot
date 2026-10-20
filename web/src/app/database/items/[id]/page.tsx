@@ -14,7 +14,7 @@ import { gameNameFor, loadItemSetNames, loadItemTips, loadQuestNames, loadSiteAs
 import { Badge, Container, DataTable, Facts, QUALITY_TEXT, Tabs, TooltipFrame, qualityOf, type Column, type Fact, type TabItem } from "@/components/ui";
 import { categoryOf } from "../../../../../../kb/src/item-taxonomy";
 import { edgesFrom, evidenceLabel, type Edge, type Rel } from "../../../../../../kb/src/edges";
-import { CLIENT_LAYER, CLIENT_TAXONOMY, itemsHref, shownItemName } from "@/lib/items";
+import { CLIENT_LAYER, CLIENT_TAXONOMY, itemsHref, shownItemName, subclassLabel as labelOf } from "@/lib/items";
 import type { Crumb } from "@/lib/jsonld";
 import { loadNames, nameOf } from "@/lib/names";
 import { loreForEntity } from "@/lib/lore";
@@ -190,7 +190,8 @@ export default async function ItemPage(props: Props) {
     : [category?.subclass?.name ?? category?.class?.label, category?.slot?.name].filter((l): l is string => Boolean(l));
   // The quality colour only where the name is shown from players or the wiki: an id nobody reported stays plain.
   const shownQuality = name ? quality : undefined;
-  const subclassLabel = category?.subclass ? category.subclass.name ?? `Subclass ${category.subclass.id}` : undefined;
+  // As the lists label it: no "(OBSOLETE)" suffix and no "Subclass 0".
+  const subclassLabel = category?.subclass ? labelOf(category.subclass).label : undefined;
 
   // The same per-item index and 3-install gate as the item lists' Source column; no row when nothing is reported.
   const source = itemSourceValue(itemSeen.from.get(itemId), tabs.map((t) => t.id));

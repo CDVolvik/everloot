@@ -19,7 +19,7 @@ Use the same words everywhere, so the listings match the site and each other.
 | Categories | ChatGPT: Entertainment (game reference service). Other directories: Gaming or the closest game reference category. |
 | Endpoint | `https://everloot.app/mcp/public` (streamable HTTP, no sign-in, 200 requests per hour per IP) |
 | Authentication | None. Public data only; nothing acts on a user's account. |
-| Documentation | `https://everloot.app/connect` |
+| Documentation | `https://everloot.app/docs/mcp` |
 | Privacy policy | `https://everloot.app/privacy` |
 | Terms | `https://everloot.app/terms` |
 | Support | `hello@everloot.app`, `https://everloot.app/contact` |
@@ -99,7 +99,7 @@ Portal steps and what to paste, in order:
 1. **Connection**: `https://everloot.app/mcp/public`.
 2. **Tools**: sync from the server. Nothing should be flagged (title and `readOnlyHint` on all 28).
 3. **Listing**: name `Everloot` (≤100), the ≤200 one-liner, the long description, categories, documentation
-   `https://everloot.app/connect`, privacy `https://everloot.app/privacy`, support `hello@everloot.app`,
+   `https://everloot.app/docs/mcp`, privacy `https://everloot.app/privacy`, support `hello@everloot.app`,
    icon `icon-512.png`, slug `everloot` (permanent).
 4. **Use cases**: looking up WoW: Forever lore and player-observed game data while planning a character,
    a route or a purchase; nothing to set up before connecting; reads data only.

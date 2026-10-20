@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { SITE } from "@everloot/protocol";
 import ApiKeys from "@/components/ApiKeys";
-import { C, Callout, H2, List, P, docLink } from "@/components/docs/blocks";
+import { C, Callout, H2, List, P, Table, docLink } from "@/components/docs/blocks";
 import { CodeGroup } from "@/components/docs/DocsClient";
 import DocPage from "@/components/docs/DocPage";
 import { KEYS_MADE_PER_DAY, KEYS_PER_ACCOUNT, REVOKED_KEPT_DAYS, USAGE_KEPT_DAYS } from "@/lib/api-keys";
@@ -31,18 +31,34 @@ export default function KeysPage() {
       {guard ? (
         <>
           <H2 id="limits">Limits</H2>
+          <P>
+            Without a key, limits are counted per IP address; an IPv6 address counts by its /64 block. Each row below is a
+            separate allowance. The endpoints in the first row share one allowance between them, so a script that calls
+            the tools and then pages the corpus uses up the same {ANON_PER_HOUR} requests.
+          </P>
+          <Table
+            head={["Endpoints", "Without a key", "With a key"]}
+            rows={[
+              [
+                <><C>/api/corpus/public</C>, <C>/api/rollups/drops</C>, <C>/api/items</C>, <C>/api/edges</C> and <C>/api/tools/&#123;tool&#125;</C></>,
+                `${ANON_PER_HOUR} requests per hour for each IP address, ${ANON_PAGE} records a page, shared by all five.`,
+                "The key's allowance.",
+              ],
+              [<C key="m">/mcp/public</C>, `${REQUESTS_PER_HOUR} requests per hour for each IP address.`, "The key's allowance."],
+              [<C key="p">/api/market/prices</C>, `${REQUESTS_PER_HOUR} requests per hour for each IP address, apart from the MCP server's. Repeats the cache answers are not counted.`, "The key's allowance."],
+              [<><C>/api/tooltip</C>, <C>/api/items/categories</C>, <C>/api/edges/client-layer</C>, <C>/api/health</C> and <C>/api/openapi.json</C></>, "No limit of their own. Most are cached.", "No key needed."],
+            ]}
+          />
           <List>
             <li>
-              <strong>Asking questions needs no key.</strong> The MCP server and the market prices answer {REQUESTS_PER_HOUR}{" "}
-              requests per hour for each IP address.
+              <strong>A free key</strong> gives {KEY_PER_HOUR.toLocaleString("en-US")} requests per hour for your account,
+              across all its keys and every endpoint, {KEY_PAGE.toLocaleString("en-US")} records a page. Keyed requests do not
+              count against your address.
             </li>
             <li>
-              <strong>Copying in bulk does.</strong> Without a key, the corpus API and the drop list answer {ANON_PER_HOUR} requests
-              per hour for each IP address, {ANON_PAGE} records a page.
-            </li>
-            <li>
-              <strong>A free key raises that</strong> to {KEY_PER_HOUR.toLocaleString("en-US")} requests per hour for your
-              account, across all its keys and every endpoint, {KEY_PAGE.toLocaleString("en-US")} records a page.
+              <strong>Everyone without a key also shares an hourly cap</strong>: 3,000 requests for the first row, and 10,000
+              for the MCP server, the market prices and uploads together. When one is used up, every keyless caller gets the
+              same <C>429</C> until the hour resets.
             </li>
             <li>
               <strong>Over a limit</strong> you get <C>429</C>, a <C>retry-after</C> header in seconds and a message that points
@@ -74,7 +90,7 @@ export default function KeysPage() {
           <H2 id="about-keys">About keys</H2>
           <List>
             <li>
-              A key belongs to your Battle.net account, and we count requests per key. That is how we know who copies the data in
+              A key belongs to your account, and we count requests per key. That is how we know who copies the data in
               bulk, so we can ask what they are building.
             </li>
             <li>
@@ -133,7 +149,9 @@ export default function KeysPage() {
         </li>
         <li>Over the limit you get <C>429</C> and a <C>retry-after</C> header, in seconds.</li>
         <li>
-          All callers share one hourly cap, which uploads count against too. When it is used up, everyone gets the same <C>429</C>.
+          All keyless callers share one hourly cap of 10,000 requests, which the market prices and uploads count against
+          too. When it is used up, every caller without a key gets the same <C>429</C> and <C>retry-after</C> until the hour
+          resets.
         </li>
         <li>Only POST requests count. GET and OPTIONS are not counted.</li>
         <li>Requests larger than 1 MiB are refused.</li>

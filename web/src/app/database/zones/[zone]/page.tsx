@@ -4,7 +4,7 @@ import { notFound, permanentRedirect } from "next/navigation";
 import AdSlot from "@/components/AdSlot";
 import ZonePreview from "@/components/ZonePreview";
 import {
-  AgreementMeter, Badge, Card, Container, DataTable, EmptyState, PageHeader, SectionHeading, Tabs,
+  AgreementMeter, Badge, Card, Container, DataTable, DataTitle, EmptyState, SectionHeading, Tabs,
   type Column, type TabItem,
 } from "@/components/ui";
 import { GAME_NAME_TITLE } from "@/components/EntityRelations";
@@ -114,24 +114,24 @@ export default async function ZonePage(props: Props) {
   const tabs = facts.unreachable ? all.filter((t) => t.id === "dungeons") : all;
 
   return (
-    <article>
-      <Container>
-        <PageHeader
+    <Container width="data">
+      <article>
+        {/* The database title row: name, continent, and the map link as a quiet control (the header keeps the one filled button). */}
+        <DataTitle
           title={zone.name}
-          lede={`A zone in ${zone.continentName}.`}
+          meta={<span className="inline-flex items-center gap-2">{zone.continentName}<Badge tone="files">Zone outline · from game files</Badge></span>}
           trail={[
             { name: "Home", path: "/" },
             { name: "Database", path: "/database" },
             { name: "Zones", path: "/database/zones" },
             { name: zone.name, path: canonical },
           ]}
-          meta={<Badge tone="files">Zone outline · from game files</Badge>}
-          actions={<Link href={zoneMapHref(zone.mapId)} className="btn btn-primary">Open on the map</Link>}
+          aside={<Link href={zoneMapHref(zone.mapId)} className="ctl inline-flex items-center border border-edge px-3 text-control text-fg-2 hover:text-fg">Open on the map</Link>}
         />
 
-        {facts.unreachable && <p className="mb-6 text-sm text-warning">{STORAGE_UNREACHABLE} The lists below cannot be shown until it is back.</p>}
+        {facts.unreachable && <p className="mb-3 text-meta text-warning">{STORAGE_UNREACHABLE} The lists below cannot be shown until it is back.</p>}
 
-        <div className="space-y-10">
+        <div className="space-y-6">
           <ZonePreview
             name={zone.name}
             width={shape.bounds.left - shape.bounds.right}
@@ -162,7 +162,7 @@ export default async function ZonePage(props: Props) {
           </section>
         </div>
         {!facts.unreachable && hasContent(here) && <AdSlot slot="inContent" />}
-      </Container>
-    </article>
+      </article>
+    </Container>
   );
 }
