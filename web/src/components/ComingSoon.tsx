@@ -54,14 +54,13 @@ export default function ComingSoon({
 
       <section className="pt-4 border-t border-line">
         <p className="text-sm text-fg-2">
-          In the meantime, try the{" "}
+          In the meantime, check live prices in the{" "}
           <Link
-            href="/tools/gold-per-hour"
+            href="/tools/auctions"
             className="text-accent hover:text-accent underline-offset-4 hover:underline"
           >
-            Gold per Hour Calculator
-          </Link>{" "}
-          — our first live tool.
+            Auction House
+          </Link>.
         </p>
       </section>
     </article>

@@ -25,7 +25,6 @@ const link = "text-accent hover:underline underline-offset-4";
 /** What each tool in the grouped list is for, in a few words. The groups themselves are the header's Tools menu. */
 const TOOL_NOTES: Record<string, string> = {
   "/tools/raid": "Which buffs a raid covers",
-  "/tools/gold-per-hour": "Price a farm",
   "/tools/professions": "Leveling paths from uploads",
   "/tools/farming-routes": "Routes from uploaded sightings",
   "/tools/auctions": "Prices by realm, from scans",
