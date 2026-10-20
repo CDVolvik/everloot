@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import {
   MARKET_LIMITS, MARKET_MAX_BYTES, MAX_PRICE_ROWS, OPEN_DAYS, THIN_UNITS, emptyMarket, foldMarket, handleMarketValue, itemMarket,
-  marketBytes, marketPrices, marketRealms, realmMarket, uploadScans, validRealm,
+  marketBytes, marketHouses, marketPrices, marketRealms, parseHouse, realmMarket, uploadScans, validRealm,
 } from "../src/market.js";
 
 const NOW = new Date("2026-10-20T12:00:00Z");
@@ -297,4 +297,60 @@ test("a realm's price file carries at most the requested rows, the items with th
   expect(marketPrices(state, "Forever", NOW).items).toHaveLength(30);
   expect(marketPrices(state, "Forever", NOW, 5).items.map((r) => r[0])).toEqual([1, 2, 3, 4, 5]);
   expect(MAX_PRICE_ROWS).toBe(2000);
+});
+
+// --- Auction houses ---
+
+test("scans that name their house also make that house's own market; the realm-wide view blends every house", () => {
+  const day = "2026-10-20";
+  const rows = [
+    ...trio(day, 100, 2589, { house: "Horde", faction: "Horde" }),
+    ...[4, 5, 6].map((n) => snapshot(`install-${n}-a`, day, [[2589, 4, 100, 300, 300]], { reporter: reporter(n), eventId: `a${n}`, house: "Alliance", faction: "Alliance" })),
+  ];
+  const state = foldMarket(emptyMarket(), rows, NOW);
+  expect(itemMarket(state, "Forever", 2589, NOW, "Horde").value).toMatchObject({ market: 100, reporters: 3 });
+  expect(itemMarket(state, "forever", 2589, NOW, "Alliance").value).toMatchObject({ market: 300, reporters: 3 });
+  expect(itemMarket(state, "Forever", 2589, NOW, "Neutral")).toEqual({ value: null, points: [] });
+  // The realm-wide view is what every reader got before houses: all six reporters, every house.
+  expect(itemMarket(state, "Forever", 2589, NOW).value).toMatchObject({ reporters: 6, market: 200 });
+  expect(marketPrices(state, "Forever", NOW, MAX_PRICE_ROWS, "Horde")).toMatchObject({ realm: "Forever", house: "Horde", items: [[2589, 100, 100, 100, 100, day, 3]] });
+  expect(marketPrices(state, "Forever", NOW)).not.toHaveProperty("house");
+  expect(marketHouses(state, NOW)).toEqual({ Forever: ["Alliance", "Horde"] });
+});
+
+test("a scan without a house counts for its scanner's faction; one without either stays realm-wide only", () => {
+  const day = "2026-10-20";
+  const byFaction = foldMarket(emptyMarket(), trio(day, 100, 2589, { faction: "Horde" }), NOW);
+  expect(itemMarket(byFaction, "Forever", 2589, NOW, "Horde").value).toMatchObject({ reporters: 3 });
+  const neutral = foldMarket(emptyMarket(), trio(day, 100, 2589, { faction: "Horde", house: "Neutral" }), NOW);
+  expect(itemMarket(neutral, "Forever", 2589, NOW, "Horde").value).toBeNull();
+  expect(itemMarket(neutral, "Forever", 2589, NOW, "Neutral").value).toMatchObject({ reporters: 3 });
+  const old = foldMarket(emptyMarket(), trio(day, 100), NOW);
+  expect(old.houses).toBeUndefined();
+  expect(marketHouses(old, NOW)).toEqual({});
+  expect(itemMarket(old, "Forever", 2589, NOW).value).toMatchObject({ reporters: 3 });
+});
+
+test("a house needs its own 3 reporters, and closed house days collapse like realm days", () => {
+  const day = dayBefore(OPEN_DAYS + 1);
+  const rows = [...trio(day, 100).slice(0, 1), ...trio(day, 100, 2589, { house: "Horde" }).slice(1)];
+  const state = foldMarket(emptyMarket(), rows, NOW);
+  expect(itemMarket(state, "Forever", 2589, NOW).points).toMatchObject([{ day, reporters: 3 }]);
+  expect(itemMarket(state, "Forever", 2589, NOW, "Horde").points).toEqual([]);
+  expect(state.houses).toBeUndefined();
+});
+
+test("house scans count against the same entry cap, after the realm-wide view", () => {
+  const rows = trio("2026-10-20", 100, 2589, { house: "Horde" });
+  const state = foldMarket(emptyMarket(), rows, NOW, { entries: 4 });
+  expect(itemMarket(state, "Forever", 2589, NOW).value).toMatchObject({ reporters: 3 });
+  expect(Object.keys(state.houses!["forever|horde"]!.items["2589"]!.open["2026-10-20"]!)).toHaveLength(1);
+});
+
+test("uploadScans keeps the faction and house, and a house is named in any case", () => {
+  const [kept] = uploadScans([snapshot("install-a", "2026-10-20", [[2589, 1, 1, 5, 5]], { faction: "Alliance", house: "Neutral" })], reporter(1));
+  expect(kept).toMatchObject({ faction: "Alliance", house: "Neutral" });
+  expect(uploadScans([snapshot("install-a", "2026-10-20", [[2589, 1, 1, 5, 5]], { house: "Goblin" })])).toEqual([]);
+  expect(parseHouse(" HORDE ")).toBe("Horde");
+  expect(parseHouse("goblin")).toBeNull();
 });

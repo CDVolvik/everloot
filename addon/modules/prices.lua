@@ -110,6 +110,12 @@ local function communityRow(entry, itemId)
   }
 end
 
+--- The community row for one item on a realm ({ market, min, historical, quantity, day, reporters }), or
+--- nil while the file is missing, being checked or failed its checksum. The gold-per-hour tracker reads it.
+function E:CommunityPrice(realm, itemId)
+  return communityRow(communityFor(realm), itemId)
+end
+
 --- The price lines for one item on the player's realm, as { text, r, g, b }: the community market value
 --- from the companion's file (with its freshness) and the player's own last scan. The tooltip and the
 --- chat command show the same lines, so they always agree.

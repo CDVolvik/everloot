@@ -1515,6 +1515,23 @@
                 "minLength": 2,
                 "maxLength": 60
               },
+              "faction": {
+                "description": "The scanning character's faction. Scans from addons up to 0.3.3 have none.",
+                "type": "string",
+                "enum": [
+                  "Alliance",
+                  "Horde"
+                ]
+              },
+              "house": {
+                "description": "The auction house the scan read, from the auctioneer's faction: Neutral for a goblin house. Absent in older scans and when the addon could not tell.",
+                "type": "string",
+                "enum": [
+                  "Alliance",
+                  "Horde",
+                  "Neutral"
+                ]
+              },
               "scanId": {
                 "type": "string",
                 "minLength": 3,

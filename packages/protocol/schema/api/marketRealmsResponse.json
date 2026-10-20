@@ -25,6 +25,24 @@
         "type": "string"
       }
     },
+    "houses": {
+      "description": "Per realm, the auction houses that have public values of their own (scans that named their house).",
+      "type": "object",
+      "propertyNames": {
+        "type": "string"
+      },
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "enum": [
+            "Alliance",
+            "Horde",
+            "Neutral"
+          ]
+        }
+      }
+    },
     "attribution": {
       "type": "object",
       "properties": {

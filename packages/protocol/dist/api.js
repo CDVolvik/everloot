@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ENTITY_KINDS, MCP_TOOL_NAMES, RELS } from "./mcp.js";
-import { anyRecord, PUBLIC_RECORD_KINDS } from "./records.js";
+import { anyRecord, AUCTION_HOUSES, PUBLIC_RECORD_KINDS } from "./records.js";
 /**
  * The shapes everloot.app's JSON endpoints answer with. The routes build their bodies as they always
  * have; each route's test parses a real response with the matching schema here, so a route that drifts
@@ -54,6 +54,8 @@ export const marketRealmsResponse = z.object({
     ok: z.literal(true),
     dataAsOf: ISO_TIME.nullable(),
     realms: z.array(z.string()),
+    houses: z.record(z.string(), z.array(z.enum(AUCTION_HOUSES))).optional()
+        .describe("Per realm, the auction houses that have public values of their own (scans that named their house)."),
     attribution: attributionSchema,
 });
 export const MARKET_PRICE_FIELDS = ["itemId", "market", "min", "historical", "quantity", "day", "reporters"];
@@ -64,6 +66,7 @@ export const marketPricesResponse = z.object({
     rule: z.string().describe("How a day becomes public and how the values are computed."),
     fields: z.tuple([z.literal("itemId"), z.literal("market"), z.literal("min"), z.literal("historical"), z.literal("quantity"), z.literal("day"), z.literal("reporters")]),
     realm: z.string().nullable(),
+    house: z.enum(AUCTION_HOUSES).optional().describe("Present when the request named a house: the values come only from scans of that house."),
     items: z.array(z.tuple([
         z.number().int().positive(), z.number().int().nonnegative(), z.number().int().nonnegative(), z.number().int().nonnegative(),
         z.number().int().nonnegative(), z.string(), z.number().int().nonnegative(),
@@ -328,9 +331,12 @@ export const API_ROUTES = [
     {
         method: "GET", path: "/api/market/prices",
         summary: "Forever market values from full auction scans players started",
-        description: "Without `realm`, the realms that have public values. With it, the items with the most units listed on that realm as tuples in `fields` order, copper per unit. A day is public when three reporters scanned the item.",
+        description: "Without `realm`, the realms that have public values (and, in `houses`, which auction houses have values of their own). With it, the items with the most units listed on that realm as tuples in `fields` order, copper per unit. Without `house` the values blend every house of the realm; with it, only scans that named that house count. A day is public when three reporters scanned the item.",
         access: "rate-limited", data: "observed",
-        query: [{ name: "realm", description: "Realm name. Omit it to list realms.", schema: { type: "string", minLength: 2, maxLength: 40 } }],
+        query: [
+            { name: "realm", description: "Realm name. Omit it to list realms.", schema: { type: "string", minLength: 2, maxLength: 40 } },
+            { name: "house", description: "Alliance, Horde or Neutral (any case). Needs realm.", schema: { type: "string", enum: ["alliance", "horde", "neutral"] } },
+        ],
         responses: {
             "200": { description: "Realms when `realm` is absent (marketRealmsResponse), prices when present.", schema: "marketPricesResponse" },
             ...ERROR_RESPONSES,

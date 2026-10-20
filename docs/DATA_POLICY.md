@@ -24,7 +24,12 @@ upload, and named records only with that person's sharing choice.
 Full auction scans are not public records either. They feed market values only, and a value is
 published when three distinct reporters scanned the item. For that count, an upload containing a scan
 is stored with a keyed hash of the address it came from (never the address itself). The hash stays in
-private storage and is never published.
+private storage and is never published. A scan also records the scanning character's faction (Alliance
+or Horde) and which auction house it read (Alliance, Horde or neutral), so each house can have its own
+market values, published under the same three-reporter rule; no character, seller or buyer is recorded.
+
+The addon's gold-per-hour sessions (`/everloot gph`) are personal: they stay in your SavedVariables
+file, outside the records an upload reads, and are never sent to the site.
 
 Completion tracking (addon 0.3.3, off until `/everloot completion on`) follows the same split.
 Four catalog kinds (`achievement_catalog`, `reputation_catalog`, `title_catalog`,
