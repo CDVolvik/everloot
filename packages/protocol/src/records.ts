@@ -459,11 +459,14 @@ export const talentSnapshot = base.extend({
 export const PLAYER_GUID = z.string().regex(/^Player-[1-9]\d*-[0-9A-F]+$/)
   .describe("The player GUID, in transit only: the server replaces it with a keyed hash before anything is stored.");
 
+// Not a list: Forever adds Skyborne, whose token is not confirmed yet.
+const CENSUS_RACE = z.string().regex(/^[A-Za-z]{2,24}$/).describe("Race file token, UnitRace's second return, e.g. Scourge.");
+const CENSUS_CLASS = z.string().regex(/^[A-Z]{3,16}$/).describe("Class token, UnitClass's second return, e.g. HUNTER.");
+
 const censusBase = base.extend({
   guid: PLAYER_GUID,
-  // Not a list: Forever adds Skyborne, whose token is not confirmed yet.
-  race: z.string().regex(/^[A-Za-z]{2,24}$/).describe("Race file token, UnitRace's second return, e.g. Scourge."),
-  class: z.string().regex(/^[A-Z]{3,16}$/).describe("Class token, UnitClass's second return, e.g. HUNTER."),
+  race: CENSUS_RACE,
+  class: CENSUS_CLASS,
   level: z.number().int().min(1).max(60),
   faction: z.enum(["Alliance", "Horde"]),
 });
@@ -524,6 +527,37 @@ export const censusSeenStored = storedCensusBase.extend({
 export const storedCensusSchemas = { census_self: censusSelfStored, census_seen: censusSeenStored } as const;
 export type StoredCensusRecord = z.infer<typeof censusSelfStored> | z.infer<typeof censusSeenStored>;
 
+// --- Player pages: one named row per character (docs/design/specs/2026-10-20-player-pages-design.md) ---
+// Name, realm, race, class, level and guild of a player the addon saw, or of your own character. Off until
+// `/everloot players on`, and the site stores nothing from it until the owner turns the player pages on.
+// No GUID, position, gear or history: the site keeps the newest row per character, not the rows.
+
+/** A character name: letters only, 2 to 12 of them, in any script the game allows. */
+export function validPlayerName(name: unknown): name is string {
+  return typeof name === "string" && /^\p{L}{2,12}$/u.test(name);
+}
+
+/** A guild name: letters, digits, spaces, apostrophes and hyphens, 2 to 24 characters. */
+export function validGuildName(name: unknown): name is string {
+  return typeof name === "string" && name.length >= 2 && name.length <= 24 && /^[\p{L}\p{N}][\p{L}\p{N} '’-]*$/u.test(name);
+}
+
+/** One character, as the addon last saw it. The site keeps the newest row per character and realm. */
+export const playerSeen = base.extend({
+  kind: z.literal("player_seen"),
+  name: z.string().min(2).max(48).refine(validPlayerName, { message: "not a character name" })
+    .describe("UnitName: letters only, 2 to 12 of them."),
+  realm: CENSUS_REALM.describe("GetRealmName(): the realm the addon runs on. Players from another realm are not recorded."),
+  race: CENSUS_RACE,
+  class: CENSUS_CLASS,
+  level: z.number().int().min(1).max(60),
+  guild: z.string().min(2).max(96).refine(validGuildName, { message: "not a guild name" }).optional()
+    .describe("GetGuildInfo: the guild name, when the game showed one."),
+});
+
+/** The player-page kind. Never part of the public corpus; intake writes it to the players table, not to the upload. */
+export const PLAYER_KINDS: readonly string[] = ["player_seen"];
+
 /** Every record kind and its schema, in the order the contract lists them. */
 export const recordSchemas = {
   npc_sighting: npcSighting,
@@ -559,6 +593,7 @@ export const recordSchemas = {
   talent_snapshot: talentSnapshot,
   census_self: censusSelf,
   census_seen: censusSeen,
+  player_seen: playerSeen,
 } as const;
 
 export type RecordKind = keyof typeof recordSchemas;
@@ -577,6 +612,7 @@ const PUBLIC_KIND_LIST = [
   // only when 3 installs reported it identically. Owned rows are shown only to a granted owner. Both come
   // from the completion rollup, not from this corpus.
   // The census kinds are absent too: like addon lists, they are published only as counts.
+  // So is player_seen: named rows reach the player pages, never this corpus.
 ] as const satisfies readonly RecordKind[];
 export const PUBLIC_RECORD_KINDS: readonly string[] = PUBLIC_KIND_LIST;
 
@@ -585,12 +621,15 @@ export const anyRecord = z.discriminatedUnion("kind", [
   guildSnapshot, raidLockout, attendance, lootAward, gearSnapshot,
   collectionCatalog, collectionOwned, achievementCatalog, reputationCatalog, titleCatalog, questChainCatalog,
   achievementOwned, reputationOwned, titleOwned, questOwned, auctionScan, auctionSnapshot, recipeSeen, priceSeen, recipeObserved, trainerSeen,
-  goldSnapshot, moneyEvent, addonSeen, mapBounds, talentSnapshot, censusSelf, censusSeen,
+  goldSnapshot, moneyEvent, addonSeen, mapBounds, talentSnapshot, censusSelf, censusSeen, playerSeen,
 ]);
 
 export type IntakeRecord = z.infer<typeof anyRecord>;
-/** A record as intake stores it: census rows have their GUID swapped for a key, every other kind is as parsed. */
-export type StoredRecord = Exclude<IntakeRecord, { kind: "census_self" | "census_seen" }> | StoredCensusRecord;
+/**
+ * A record as intake stores it in an upload: census rows have their GUID swapped for a key, player rows are
+ * not in the upload at all (they go to the players table), every other kind is as parsed.
+ */
+export type StoredRecord = Exclude<IntakeRecord, { kind: "census_self" | "census_seen" | "player_seen" }> | StoredCensusRecord;
 
 /** The request envelope. `protocol` is the uploader's protocol version; a missing one means major 1. */
 export const uploadPayload = z.object({
