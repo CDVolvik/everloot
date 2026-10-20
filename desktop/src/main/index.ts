@@ -16,6 +16,7 @@ import { charactersFromFiles } from "./characters";
 import { createChat } from "./chat";
 import { localTools } from "./local-tools";
 import { createEngine } from "./engine";
+import { connectInBrowser } from "./connect";
 import { allowedExternal } from "./external";
 import { candidateRoots, detectGameFolders, realFs, resolvePickedFolder } from "./game-folder";
 import { newestScans, readScanAges, staleScans, summarizeFiles } from "./inspect";
@@ -308,6 +309,27 @@ if (!app.requestSingleInstanceLock()) {
     void builds.signedIn();
     return appState();
   });
+  // Browser sign-in: one at a time; a second press stops the first. The key it brings is checked and kept
+  // the same way as a pasted one, then the window comes back to the front.
+  let connecting: AbortController | null = null;
+  ipcMain.handle("accountConnect", async () => {
+    connecting?.abort();
+    const mine = new AbortController();
+    connecting = mine;
+    const endpoint = settings.endpoint;
+    try {
+      const key = await connectInBrowser(endpoint, (url) => {
+        if (allowedExternal(url) || new URL(url).origin === new URL(endpoint).origin) void shell.openExternal(url);
+      }, undefined, mine.signal);
+      await signIn(data, endpoint, key);
+      void builds.signedIn();
+      if (win) { if (win.isMinimized()) win.restore(); win.show(); win.focus(); }
+      return appState();
+    } finally {
+      if (connecting === mine) connecting = null;
+    }
+  });
+  ipcMain.handle("accountConnectCancel", () => { connecting?.abort(); });
   ipcMain.handle("accountSignOut", () => {
     signOut(data);
     builds.signedOut();

@@ -20,6 +20,11 @@ Pull requests merged to `main` are listed in the nightly pre-releases until the 
   form. The search index stays off for now, so the pages are reached by name and are not listed anywhere.
 
 ### Added
+- Desktop App: Sign in with everloot.app. The setup screen and Settings open everloot.app's new
+  `/desktop/connect` page in the browser; after Battle.net sign-in and Connect, the app has its own key named
+  "Everloot Desktop App". The key travels back to `127.0.0.1` sealed to a one-time key only that app holds
+  (ECDH P-256, AES-GCM), so it is never in a URL in the clear, and the app never sees a password. Pasting a key
+  still works. The setup screen also asks to agree to the Terms of Use and Privacy Policy before Start.
 - An Everloot settings page in the game: Esc > Options > AddOns > Everloot, or `/everloot options`. One switch
   per module and for the auction scan prompt, each saying what it records and where it goes, and a Reload now
   button. A switch with a `/everloot` command runs it, so turning the census, players, completion or addon

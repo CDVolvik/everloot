@@ -274,6 +274,10 @@ export interface EverlootApi {
   reportBug(diagnostics: string): Promise<"opened" | "copied" | null>;
   /** Checks an everloot.app API key with the site and keeps it; throws with the reason when it is refused. */
   accountSignIn(key: string): Promise<AppState>;
+  /** Signs in through the browser (everloot.app's connect page); throws with the reason when it does not finish. */
+  accountConnect(): Promise<AppState>;
+  /** Stops a browser sign-in that is still waiting. */
+  accountConnectCancel(): Promise<void>;
   /** Forgets the key on this computer. */
   accountSignOut(): Promise<AppState>;
   uploadInfo(): Promise<FileSummary[]>;
