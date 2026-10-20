@@ -1,6 +1,7 @@
 // The design system's components. Usage rules: docs/design/specs/2026-10-19-design-system.md.
 export { default as AgreementMeter, agreementLabel, clampAgreement, AGREEMENT_NEEDED, type Agreement } from "./AgreementMeter";
 export { default as Badge, type BadgeProps } from "./Badge";
+export { default as Banner } from "./Banner";
 export { default as Card, type CardProps } from "./Card";
 export { default as Container, type ContainerWidth } from "./Container";
 export { default as Crumbs } from "./Crumbs";

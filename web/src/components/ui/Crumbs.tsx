@@ -3,12 +3,13 @@ import type { Crumb } from "@/lib/jsonld";
 
 /**
  * The visible trail: every crumb a link except the last, which is the page itself. One style site-wide.
- * `owner` marks who drew it: when a PageHeader draws one, globals.css hides the layout's copy.
+ * `owner` marks who drew it: when a PageHeader draws one, globals.css hides the layout's copy. `onArt`
+ * lifts the links to fg-2 for a trail drawn over banner art, where muted would fall under 4.5:1.
  */
-export default function Crumbs({ trail, owner, className = "" }: { trail: Crumb[]; owner: "layout" | "page"; className?: string }) {
+export default function Crumbs({ trail, owner, onArt = false, className = "" }: { trail: Crumb[]; owner: "layout" | "page"; onArt?: boolean; className?: string }) {
   const marker = owner === "layout" ? { "data-layout-crumbs": "" } : { "data-page-crumbs": "" };
   return (
-    <nav aria-label="Breadcrumb" className={`text-sm text-muted ${className}`.trim()} {...marker}>
+    <nav aria-label="Breadcrumb" className={`text-sm ${onArt ? "text-fg-2" : "text-muted"} ${className}`.trim()} {...marker}>
       <ol className="flex flex-wrap items-center gap-x-2 gap-y-1">
         {trail.map((crumb, i) => {
           const last = i === trail.length - 1;

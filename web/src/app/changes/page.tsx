@@ -14,8 +14,9 @@ import { trailFor } from "@/lib/breadcrumbs";
 import { BANNER_MAP, creditWhat, loadingArt, loadSiteAssets } from "@/lib/game-assets";
 import { mentionIndex, siteSpellNames, splitMentions, type MentionIndex } from "@/lib/spell-mentions";
 import GameCredit from "@/components/game/GameCredit";
-import PageBanner from "@/components/game/PageBanner";
+import { BannerArt } from "@/components/game/PageBanner";
 import SpellTip from "@/components/game/SpellTip";
+import PostEntry, { stamp } from "@/components/PostEntry";
 import { Card, Container, Entry, EntryList, Explainer, LinkTabs, PageHeader, SourceLine } from "@/components/ui";
 
 export const metadata: Metadata = {
@@ -28,15 +29,14 @@ const LEAD = "Official posts from Blizzard staff and new game builds, newest fir
 const link = "text-accent hover:underline underline-offset-4";
 const PAGE_SIZE = 60;
 
-const FILTER_LABEL: Record<ChangeFilter, string> = { all: "Everything", posts: "Blue posts", hotfixes: "Hotfixes", builds: "Builds" };
+// The filters are link tabs. A blue tracker of staff forum posts joins them as one more tab (or a sibling
+// route such as /changes/blue-tracker with the same tabs), its items drawn by PostEntry like the posts here.
+const FILTER_LABEL: Record<ChangeFilter, string> ={ all: "Everything", posts: "Blue posts", hotfixes: "Hotfixes", builds: "Builds" };
 
 const href = (show: ChangeFilter, both: boolean) => {
   const query = [show !== "all" ? `show=${show}` : "", both ? "game=all" : ""].filter(Boolean).join("&");
   return query ? `/changes?${query}` : "/changes";
 };
-
-/** UTC to the minute, whatever offset the time was written with. */
-const stamp = (iso: string) => `${new Date(iso).toISOString().slice(0, 16).replace("T", " ")} UTC`;
 
 const ORIGIN_LABEL: Record<string, string> = { forum: "Blizzard's forum", bluesky: "Bluesky" };
 
@@ -70,21 +70,18 @@ function ChangeItem({ entry, index }: { entry: ChangeEntry; index: MentionIndex 
     );
   }
   return (
-    <Entry
-      meta={meta}
+    <PostEntry
+      kind={<>{TYPE_LABEL[entry.type]} · {GAME_LABEL[entry.game]}</>}
+      at={entry.at}
       title={entry.title}
-      actions={entry.url ? (
-        <a href={entry.url} rel="noopener" className={`inline-flex items-center min-h-11 font-medium ${link}`}>
-          Read the original on {ORIGIN_LABEL[entry.source ?? ""] ?? "Blizzard"}<span className="sr-only">: {entry.title}</span>
-        </a>
-      ) : (
-        <span className="text-muted">The link to the original is unavailable.</span>
-      )}
-    >
-      <p>{[entry.author, entry.role].filter(Boolean).join(", ")} · {entry.category}</p>
-      {entry.summary && <p className="text-fg"><span className="font-mono text-xs text-muted">Everloot summary </span><WithSpells text={entry.summary} index={index} /></p>}
-      {entry.excerpt && <p className="border-l-2 border-line pl-3 text-base"><WithSpells text={entry.excerpt} index={index} /></p>}
-    </Entry>
+      url={entry.url}
+      origin={ORIGIN_LABEL[entry.source ?? ""] ?? "Blizzard"}
+      author={entry.author}
+      role={entry.role}
+      forum={entry.category}
+      summary={entry.summary && <WithSpells text={entry.summary} index={index} />}
+      excerpt={entry.excerpt && <WithSpells text={entry.excerpt} index={index} />}
+    />
   );
 }
 
@@ -123,8 +120,8 @@ export default async function ChangesPage({ searchParams }: { searchParams: Prom
           </>
         }
         actions={<a href="/changes/feed.xml" className="btn">RSS feed</a>}
+        banner={banner ? { image: <BannerArt art={banner} eager />, credit } : undefined}
       />
-      {banner && <PageBanner art={banner} eager credit={credit} />}
 
       <Container width="reading">
         <LinkTabs

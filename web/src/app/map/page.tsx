@@ -13,7 +13,7 @@ import { CONTINENTS, continentMap, continentPins, MAP_SOURCE, observedFacts, WOR
 import WorldMapView from "@/components/WorldMapView";
 import { continentArt, creditWhat, instanceThumbs, loadingArt, loadSiteAssets } from "@/lib/game-assets";
 import GameCredit from "@/components/game/GameCredit";
-import PageBanner from "@/components/game/PageBanner";
+import { BannerArt } from "@/components/game/PageBanner";
 import { Card, Explainer, LinkTabs, PageHeader, SectionHeading, SourceLine } from "@/components/ui";
 import { trailFor } from "@/lib/breadcrumbs";
 
@@ -90,8 +90,12 @@ export default async function MapPage(props: { searchParams: Promise<Query> }) {
   return (
     <article>
       <JsonLd data={webApplicationJsonLd({ name: TITLE, path: "/map", description: lead })} />
-      <PageHeader trail={trailFor("/map")!} title={TITLE} lede={lead} />
-      {banner && <PageBanner art={banner} eager credit={credit} />}
+      <PageHeader
+        trail={trailFor("/map")!}
+        title={TITLE}
+        lede={lead}
+        banner={banner ? { image: <BannerArt art={banner} eager />, credit } : undefined}
+      />
 
       <LinkTabs
         label="Continent"

@@ -14,7 +14,7 @@ function typeOf(raw: string | undefined): LoreType | undefined {
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  ...pageMetadata({ title: "Search the Lore Archive", description: "Search the Warcraft Wiki archive as of November 2023, licensed CC BY-SA 4.0. It is lore and history, not collected WoW: Forever data.", path: "/search" }),
+  ...pageMetadata({ title: "Search the Database and Lore Archive", description: "Search the WoW: Forever database for items, NPCs, quests and objects, and the lore archive: the Warcraft Wiki as of November 2023 (CC BY-SA 4.0).", path: "/search" }),
   robots: { index: false, follow: true },
 };
 
@@ -53,8 +53,8 @@ export default async function SearchPage(props: { searchParams: Promise<{ q?: st
       <article>
         <PageHeader
           trail={trailFor("/search")!}
-          title="Search the lore archive"
-          lede="Pages named exactly what you typed come first. Every result links to its wiki source."
+          title="Search Everloot"
+          lede="The WoW: Forever database and the lore archive. Names that match exactly come first."
         />
         <LoreSearchForm query={q} />
 

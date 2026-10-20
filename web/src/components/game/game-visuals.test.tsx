@@ -26,6 +26,10 @@ import ItemPage from "@/app/database/items/[id]/page";
 import VendorPage from "@/app/database/vendors/[id]/page";
 import ChangesPage from "@/app/changes/page";
 import WowForeverPage from "@/app/wow-forever/page";
+import LorePage from "@/app/lore/page";
+
+/** The wide-screen banner's markup: from its start to the end of its credit caption. */
+const onBanner = (html: string) => html.slice(html.indexOf("data-banner"), html.indexOf("</div>", html.indexOf("data-banner-credit")));
 
 const BASE = "https://assets.example.test/wow_classic_beta-70450-84bea423";
 const PRIVATE = "https://r2.example.test/everloot-game-data/wow_classic_beta-70450-84bea423";
@@ -172,7 +176,7 @@ test("raid builder: a raid's loading screen above the title, and a buff's toolti
   vi.stubEnv("NEXT_PUBLIC_GAME_ASSETS_URL", BASE);
   vi.stubGlobal("fetch", bucket());
   const html = await render(() => RaidPage());
-  expect(html).toMatch(/<div aria-hidden="true" data-page-banner[^>]*><img[^>]*src="[^"]*loading\/9409\.webp"[^>]*alt=""[^>]*aria-hidden="true"/);
+  expect(html).toMatch(/<img[^>]*src="[^"]*loading\/9409\.webp"[^>]*alt=""[^>]*aria-hidden="true"[^>]*data-page-banner/);
   expect(html.indexOf("data-page-banner")).toBeLessThan(html.indexOf("<h1"));
   // The name stays text, focusable, described by the tooltip text.
   expect(html).toMatch(/data-spell-tip[^>]*><img[^>]*icons\/8001\.webp[^>]*\/?><span tabindex="0"[^>]*aria-describedby="[^"]+"[^>]*>Battle Shout<\/span>/);
@@ -222,19 +226,21 @@ test("map: the continent's loading screen above the map, and each dungeon's besi
   vi.stubEnv("NEXT_PUBLIC_GAME_ASSETS_URL", BASE);
   vi.stubGlobal("fetch", bucket());
   const html = await render(() => MapPage({ searchParams: Promise.resolve({ continent: "0" }) }));
-  expect(html).toMatch(/data-page-banner[^>]*><img[^>]*loading\/9000\.webp/);
+  expect(onBanner(html)).toMatch(/<img[^>]*loading\/9000\.webp[^>]*data-page-banner/);
+  expect(onBanner(html)).toMatch(/<h1[^>]*>WoW Forever World Map<\/h1>/);
+  expect(onBanner(html)).toContain("Map pictures and loading screen art from game build");
   expect(html).toMatch(/<li class="flex items-center gap-3"><img src="[^"]*loading\/9036-small\.webp" alt="" aria-hidden="true"[^>]*><span><span class="text-fg">Deadmines<\/span>/);
   expect(html).toContain("Map pictures and loading screen art from game build");
 });
 
-test("patch notes: a loading screen under the title with the credit as its caption, and a spell a post names gets its icon, tooltip and link", async () => {
+test("patch notes: a wide-screen loading screen with the title on it and the credit as its caption, and a spell a post names gets its icon, tooltip and link", async () => {
   vi.stubEnv("NEXT_PUBLIC_GAME_ASSETS_URL", BASE);
   vi.stubGlobal("fetch", bucket());
   const html = await render(() => ChangesPage({ searchParams: Promise.resolve({}) }));
-  expect(html).toMatch(/data-page-banner[^>]*><img[^>]*loading\/9001\.webp/);
-  // The title starts at the same height on every page: the banner follows the page header.
-  expect(html.indexOf("data-page-banner")).toBeGreaterThan(html.indexOf("<h1"));
-  expect(html).toMatch(/<figcaption><p[^>]*data-game-credit[^>]*>Icons, tooltip text and interface art are © Blizzard/);
+  expect(onBanner(html)).toMatch(/<img[^>]*loading\/9001\.webp[^>]*data-page-banner/);
+  // The breadcrumb and the title sit on the art; the credit is its caption.
+  expect(onBanner(html)).toMatch(/data-page-crumbs[\s\S]*<h1[^>]*>WoW Forever Patch Notes and Blizzard Posts<\/h1>/);
+  expect(onBanner(html)).toMatch(/data-banner-credit[^>]*><p[^>]*data-game-credit[^>]*>Icons, tooltip text and interface art are © Blizzard/);
   expect(html.match(/data-game-credit/g)).toHaveLength(1);
 });
 
@@ -271,4 +277,13 @@ test("map: zone pictures under the outlines; held-back zones and the continent p
   const kalimdor = await render(() => MapPage({ searchParams: Promise.resolve({ continent: "1" }) }));
   expect(kalimdor).not.toMatch(/<image|Map pictures/);
   expect(kalimdor).toContain("Loading screen art from game build");
+});
+
+test("lore archive: the same wide-screen banner, Scarlet Monastery's loading screen with the title on it", async () => {
+  vi.stubEnv("NEXT_PUBLIC_GAME_ASSETS_URL", BASE);
+  vi.stubGlobal("fetch", bucket());
+  const html = await render(() => LorePage());
+  expect(onBanner(html)).toMatch(/<img[^>]*loading\/9189\.webp[^>]*data-page-banner/);
+  expect(onBanner(html)).toMatch(/<h1[^>]*>Lore archive<\/h1>/);
+  expect(onBanner(html)).toContain("Loading screen art from game build 1.60.1.70450");
 });

@@ -4,6 +4,9 @@ import { unstable_noStore as noStore } from "next/cache";
 import LoreSearchForm from "@/components/LoreSearchForm";
 import { BROWSE_HEADINGS, BROWSE_TYPES, hasTypes, UNAVAILABLE_COPY, type BrowseSlug } from "@/lib/lore";
 import JsonLd from "@/components/JsonLd";
+import GameCredit from "@/components/game/GameCredit";
+import { BannerArt } from "@/components/game/PageBanner";
+import { BANNER_MAP, creditWhat, loadingArt, loadSiteAssets } from "@/lib/game-assets";
 import { Card, Container, Explainer, PageHeader, SectionHeading, SourceLine } from "@/components/ui";
 import { trailFor } from "@/lib/breadcrumbs";
 import { loreCollectionJsonLd } from "@/lib/jsonld";
@@ -28,15 +31,22 @@ export default async function LoreLanding() {
   // The wiki count only: curated Forever rows are not part of the 2023 wiki.
   const pages = release ? release.manifest.counts["warcraft-wiki-2023"] ?? null : null;
 
+  // The section's banner: a loading screen with the title on it, only when the asset URL is set and the upload has it.
+  const assets = await loadSiteAssets();
+  const banner = loadingArt(assets, BANNER_MAP.lore);
   return (
-    <Container width="reading">
-      <article>
-        <JsonLd data={loreCollectionJsonLd({ name: "Lore archive", description: LEAD, path: "/lore", creditText: CREDIT })} />
-        <PageHeader
-          trail={trailFor("/lore")!}
-          title="Lore archive"
-          lede={<>The Warcraft Wiki as it stood on 13 November 2023{pages !== null ? <>, {formatter.format(pages)} pages</> : null}. {LEAD}</>}
-        />
+    <article>
+      <JsonLd data={loreCollectionJsonLd({ name: "Lore archive", description: LEAD, path: "/lore", creditText: CREDIT })} />
+      <PageHeader
+        trail={trailFor("/lore")!}
+        title="Lore archive"
+        lede={<>The Warcraft Wiki as it stood on 13 November 2023{pages !== null ? <>, {formatter.format(pages)} pages</> : null}. {LEAD}</>}
+        banner={banner && assets ? {
+          image: <BannerArt art={banner} eager />,
+          credit: <GameCredit version={assets.version} label={assets.label} what={creditWhat("loading screen art")} />,
+        } : undefined}
+      />
+      <Container width="reading">
 
         {release ? (
           <div className="space-y-12">
@@ -79,7 +89,7 @@ export default async function LoreLanding() {
           </Explainer>
         )}
         <SourceLine source="Warcraft Wiki, 13 November 2023" licence="Warcraft Wiki contributors, CC BY-SA 4.0" />
-      </article>
-    </Container>
+      </Container>
+    </article>
   );
 }
