@@ -6,6 +6,8 @@ import { notFound } from "next/navigation";
 import { itemPage } from "../../../../../../kb/src/item-page";
 import { loadShownNames } from "@/lib/shown-item-names";
 import { loadEdges } from "@/lib/edges";
+import { loadItemSeen } from "@/lib/item-seen";
+import { itemSourceValue } from "./item-source";
 import { RelationTarget, SameIcon } from "@/components/EntityRelations";
 import { pinLink } from "@/lib/world-map";
 import { loadItemTips, loadSiteAssets } from "@/lib/game-assets";
@@ -53,7 +55,7 @@ export default async function ItemPage(props: Props) {
   if (/^[a-z][a-z0-9-]*$/.test(params.id)) return CategoryPage({ classSlug: params.id, search: (await props.searchParams) ?? {} });
   if (!/^[1-9]\d*$/.test(params.id)) notFound();
   const itemId = Number(params.id);
-  const [{ facts, agreed, matched, showsTip }, edges] = await Promise.all([loadShownNames(), loadEdges()]);
+  const [{ facts, agreed, matched, showsTip }, edges, itemSeen] = await Promise.all([loadShownNames(), loadEdges(), loadItemSeen()]);
   const page = itemPage(itemId, facts);
   // Named by players (3 installs agree); the badge and the facts card say so.
   const confirmed = !facts.unreachable && page.name !== null;
@@ -163,6 +165,8 @@ export default async function ItemPage(props: Props) {
   const shownQuality = name ? quality : undefined;
   const subclassLabel = category?.subclass ? category.subclass.name ?? `Subclass ${category.subclass.id}` : undefined;
 
+  // The same per-item index and 3-install gate as the item lists' Source column; no row when nothing is reported.
+  const source = itemSourceValue(itemSeen.from.get(itemId), tabs.map((t) => t.id));
   const quickFacts: Fact[] = [
     ...(category ? [
       { label: "Class", value: category.class ? <Link href={itemsHref(category.class.slug)} className={LINK}>{category.class.label}</Link> : known(null) },
@@ -174,6 +178,7 @@ export default async function ItemPage(props: Props) {
       { label: "Reported name", value: known(page.name) },
       { label: "Drop sources", value: known(page.drops.length || null), numeric: true },
       { label: "Map positions", value: known(page.pins.length || null), numeric: true },
+      ...(source ? [{ label: "Source", value: source }] : []),
     ]),
   ];
 
