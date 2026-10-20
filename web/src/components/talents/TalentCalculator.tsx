@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
-import { importCode, type ImportReport } from "@/lib/talents/import";
+import { importCode, planHash, readPlanHash, type ImportReport, type ImportResult } from "@/lib/talents/import";
 import {
   add, canAdd, canRemove, commit, entryAtRank, nodeMap, pointsAtLevel, pointsByTree, pointsSpent, redo, refusalText,
   remove, startHistory, undo, levelFor, type History,
@@ -37,6 +37,8 @@ export default function TalentCalculator({ catalog }: { catalog: TalentCatalog }
   const [tip, setTip] = useState<{ id: number; mode: TipMode } | null>(null);
   const press = useRef<ReturnType<typeof setTimeout> | null>(null);
   const suppressClick = useRef(false);
+  /** The address fragment the page last wrote for the build on screen. */
+  const written = useRef<string | null>(null);
 
   // The game's icons, tooltips and frame art, when the site has an asset folder. Anything wrong with
   // it leaves assets null and the page as it was.
@@ -91,24 +93,29 @@ export default function TalentCalculator({ catalog }: { catalog: TalentCatalog }
   // link into a tab that is already open loads it.
   useEffect(() => {
     function fromHash(opening: boolean) {
-      const code = /[#&]plan=([A-Za-z0-9_.-]+)/.exec(window.location.hash)?.[1];
-      if (!code) return;
-      const result = importCode(catalog, code);
-      if (!result.ok) {
-        setMessage(result.message);
-        return;
-      }
-      setHistory((h) => (opening ? startHistory<Sets>([result.ranks, {}]) : commit(h, [result.ranks, h.present[1]])));
-      setActive(0);
-      setLevel((current) => Math.min(rules.maxLevel, Math.max(opening ? rules.maxLevel : current, result.minLevel)));
-      setReport({ ...result.report, loaded: true });
-      setMessage(result.report.problems.length === 0 ? "Build loaded from the link." : "Build loaded from the link with changes. The list below says what.");
+      // The first set rides after #plan= (the code the addon reads), the second after &plan2=.
+      const codes = readPlanHash(window.location.hash);
+      if (!codes.first && !codes.second) return;
+      const results = [codes.first, codes.second].map((c) => (c ? importCode(catalog, c) : null));
+      for (const r of results) if (r && !r.ok) { setMessage(r.message); return; }
+      const [one, two] = results as (Extract<ImportResult, { ok: true }> | null)[];
+      const loaded = [one, two].filter((r) => r !== null);
+      setHistory((h) => (opening
+        ? startHistory<Sets>([one?.ranks ?? {}, two?.ranks ?? {}])
+        : commit(h, [one?.ranks ?? h.present[0], two?.ranks ?? h.present[1]])));
+      setActive(one ? 0 : 1);
+      const minLevel = Math.max(...loaded.map((r) => r.minLevel), two ? rules.dualSpecLevel : 0);
+      setLevel((current) => Math.min(rules.maxLevel, Math.max(opening ? rules.maxLevel : current, minLevel)));
+      const problems = loaded.flatMap((r) => r.report.problems);
+      setReport({ ...loaded[0].report, problems, loaded: true });
+      setMessage(problems.length === 0 ? `${loaded.length === 2 ? "Both sets" : "Build"} loaded from the link.` : "Loaded from the link with changes. The list below says what.");
     }
     fromHash(true);
-    const onHashChange = () => fromHash(false);
+    // The page rewrites its own address as points are spent; only a hash it did not write is a new link.
+    const onHashChange = () => { if (window.location.hash !== written.current) fromHash(false); };
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
-  }, [catalog, rules.maxLevel]);
+  }, [catalog, rules.maxLevel, rules.dualSpecLevel]);
 
   // Undo and redo can bring back more points than the level now holds (spend 8, undo 3, lower the
   // level, redo 3). Raise the level to fit rather than show more points spent than allowed.
@@ -165,9 +172,26 @@ export default function TalentCalculator({ catalog }: { catalog: TalentCatalog }
     setActive(slot);
   }
 
-  function share() {
-    const code = encodeBuild({ classSlug: catalog.classSlug, specId: catalog.specId, build: catalog.build, ranks });
-    setLink(`${window.location.origin}${window.location.pathname}#plan=${code}`);
+  // The page address is the build, as old talent calculators did it: every point spent rewrites the
+  // fragment, so copying the address bar shares both sets. Skipped on the first run, where the
+  // build from an opened link has not loaded yet and would be wiped.
+  const linkReady = useRef(false);
+  useEffect(() => {
+    if (!linkReady.current) { linkReady.current = true; return; }
+    const codeOf = (r: Ranks) => (pointsSpent(r) > 0 ? encodeBuild({ classSlug: catalog.classSlug, specId: catalog.specId, build: catalog.build, ranks: r }) : null);
+    const hash = planHash(codeOf(history.present[0]), codeOf(history.present[1]));
+    const { pathname, search, origin } = window.location;
+    written.current = hash;
+    if (window.location.hash !== hash) window.history.replaceState(window.history.state, "", `${pathname}${search}${hash}`);
+    setLink(hash ? `${origin}${pathname}${hash}` : "");
+  }, [history.present, catalog]);
+
+  const [copied, setCopied] = useState(false);
+  function copyLink() {
+    navigator.clipboard?.writeText(link).then(
+      () => { setCopied(true); setMessage("Link copied. It opens both sets as they are now."); setTimeout(() => setCopied(false), 1500); },
+      () => setMessage("Copy failed. Select the link and copy it."),
+    );
   }
 
   // Taps add. A long press (touch or pen) takes a point back, as does a right click, the Delete or
@@ -409,19 +433,14 @@ export default function TalentCalculator({ catalog }: { catalog: TalentCatalog }
       </section>
 
       <section aria-label="Share" className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <button type="button" className="btn btn-primary text-sm" onClick={share} disabled={spent === 0}>Make a share link</button>
-        </div>
-        {link && (
-          <div className="space-y-1">
-            <label className="block text-sm text-fg-2" htmlFor="talent-link">Link to the {active === 0 ? "first" : "second"} set (game build {catalog.build})</label>
-            <div className="flex gap-2">
-              <input id="talent-link" readOnly value={link} onFocus={(e) => e.currentTarget.select()} className="flex-1 min-w-0 rounded-lg border border-edge bg-panel px-3 font-mono text-xs text-fg" />
-              <button type="button" className="btn text-sm" onClick={() => { void navigator.clipboard?.writeText(link).then(() => setMessage("Link copied."), () => setMessage("Copy failed. Select the link and copy it.")); }}>Copy</button>
-            </div>
-            <p className="text-xs text-muted">The link holds the whole build and names the game build. If talents move, opening it lists what changed.</p>
+        <div className="space-y-1">
+          <label className="block text-sm text-fg-2" htmlFor="talent-link">Link to this build, both sets (game build {catalog.build})</label>
+          <div className="flex gap-2">
+            <input id="talent-link" readOnly value={link} placeholder="Spend a point and the page address becomes the link" onFocus={(e) => e.currentTarget.select()} className="flex-1 min-w-0 rounded-lg border border-edge bg-panel px-3 font-mono text-xs text-fg placeholder:text-muted" />
+            <button type="button" className="btn btn-primary text-sm" onClick={copyLink} disabled={!link}>{copied ? "Copied" : "Copy link"}</button>
           </div>
-        )}
+          <p className="text-xs text-muted">The page address changes as you spend points, so the address bar is the link too. It holds both sets and names the game build; if talents move, opening it lists what changed.</p>
+        </div>
         <form className="flex flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); load(pasted); }}>
           <label className="sr-only" htmlFor="talent-paste">Share code or link</label>
           <input id="talent-paste" value={pasted} onChange={(e) => setPasted(e.target.value)} placeholder="Paste a share code or link" className="flex-1 min-w-0 rounded-lg border border-edge bg-panel px-3 font-mono text-xs text-fg" />

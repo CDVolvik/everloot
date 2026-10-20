@@ -24,6 +24,20 @@ const DECODE_MESSAGES: Record<DecodeError, string> = {
   "newer-version": "That code was made by a newer version of this tool. Reload the page, and if it still fails, ask the person who shared it to share it again.",
 };
 
+/** The share codes a page address carries: the first set after #plan=, the second after &plan2=. */
+export function readPlanHash(hash: string): { first: string | null; second: string | null } {
+  return {
+    first: /[#&]plan=([A-Za-z0-9_.-]+)/.exec(hash)?.[1] ?? null,
+    second: /[#&]plan2=([A-Za-z0-9_.-]+)/.exec(hash)?.[1] ?? null,
+  };
+}
+
+/** The address fragment that carries both sets; empty when neither has a point. */
+export function planHash(first: string | null, second: string | null): string {
+  const parts = [first && `plan=${first}`, second && `plan2=${second}`].filter(Boolean);
+  return parts.length ? `#${parts.join("&")}` : "";
+}
+
 export function extractCode(text: string): string {
   const fromLink = /[#&?]plan=([A-Za-z0-9_.-]+)/.exec(text);
   return fromLink ? fromLink[1] : text.trim();
