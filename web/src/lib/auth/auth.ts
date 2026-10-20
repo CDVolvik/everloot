@@ -2,7 +2,7 @@ import { createHmac } from "node:crypto";
 import { betterAuth, type DBAdapterInstance } from "better-auth";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { nextCookies } from "better-auth/next-js";
-import { genericOAuth } from "better-auth/plugins";
+import { genericOAuth, multiSession } from "better-auth/plugins";
 import type { Pool } from "pg";
 import { siteUrl } from "@/lib/supabase/server";
 import { battlenetProvider, isPlaceholderEmail } from "./battlenet";
@@ -130,6 +130,9 @@ export function createAuth(options: {
     },
     plugins: [
       genericOAuth({ config: battlenetConfigured ? [battlenetProvider({ BNET_CLIENT_ID, BNET_CLIENT_SECRET })] : [] }),
+      // Up to 5 accounts signed in on one browser (the account switcher). Each sign-in also keeps its token in a
+      // signed `_multi-` cookie; its endpoints are reached only from /api/me/accounts and /api/auth/logout.
+      multiSession({ maximumSessions: 5 }),
       // Must stay last: it copies the cookies of direct getSession calls (the daily refresh) onto the response.
       nextCookies(),
     ],

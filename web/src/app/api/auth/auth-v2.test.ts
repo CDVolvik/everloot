@@ -7,7 +7,7 @@ const v2 = vi.hoisted(() => ({
   v1Token: undefined as string | undefined,
   fake: {
     handler: vi.fn(),
-    api: { getSession: vi.fn(), signOut: vi.fn() },
+    api: { getSession: vi.fn(), signOut: vi.fn(), listDeviceSessions: vi.fn(), revokeDeviceSession: vi.fn() },
   },
 }));
 vi.mock("@/lib/auth/auth", () => ({ authV2Enabled: () => v2.enabled, getAuth: () => v2.fake }));
@@ -150,6 +150,45 @@ test("v2 logout still signs out when the v1 session cannot be revoked", async ()
   expect(await res.json()).toEqual({ ok: true });
   expect(v2.fake.api.signOut).toHaveBeenCalledTimes(1);
   expect(res.headers.getSetCookie()).toContain("everloot_session=; Path=/; Max-Age=0; HttpOnly; SameSite=lax");
+});
+
+test("with account switching on, logout ends only this account and says whether another one took over", async () => {
+  vi.stubEnv("EVERLOOT_PROFILES", "1");
+  const ALT = "00000000-0000-4000-8000-000000000002";
+  v2.fake.api.getSession.mockResolvedValue({ user: { id: USER_ID, name: "Thrall#1" }, session: { token: "tok-me" } });
+  v2.fake.api.listDeviceSessions.mockResolvedValue([
+    { session: { token: "tok-me" }, user: { id: USER_ID, name: "Thrall#1" } },
+    { session: { token: "tok-alt" }, user: { id: ALT, name: "Jaina#2" } },
+  ]);
+  const headers = new Headers();
+  headers.append("set-cookie", "everloot.session_token=tok-alt.sig; Path=/");
+  v2.fake.api.revokeDeviceSession.mockResolvedValue(new Response(JSON.stringify({ status: true }), { headers }));
+  const send = () => logoutPOST(new Request("https://everloot.app/api/auth/logout", { method: "POST", headers: { origin: "https://everloot.app" } }));
+
+  const res = await send();
+  expect(await res.json()).toEqual({ ok: true, next: true });
+  expect(v2.fake.api.getSession.mock.calls[0][0].query).toEqual({ disableRefresh: true });
+  expect(v2.fake.api.revokeDeviceSession.mock.calls[0][0]).toMatchObject({ body: { sessionToken: "tok-me" }, asResponse: true });
+  expect(v2.fake.api.signOut).not.toHaveBeenCalled();
+  expect(res.headers.getSetCookie()).toContain("everloot.session_token=tok-alt.sig; Path=/");
+
+  // The last account on this browser: signed out for good.
+  v2.fake.api.listDeviceSessions.mockResolvedValue([{ session: { token: "tok-me" }, user: { id: USER_ID, name: "Thrall#1" } }]);
+  expect(await (await send()).json()).toEqual({ ok: true, next: false });
+
+  // A session with no multi-session cookie (from before the plugin) falls back to a full sign-out.
+  v2.fake.api.revokeDeviceSession.mockResolvedValue(Response.json({ code: "INVALID_SESSION_TOKEN" }, { status: 401 }));
+  v2.fake.api.signOut.mockResolvedValue(Response.json({ success: true }));
+  expect(await (await send()).json()).toEqual({ ok: true });
+  expect(v2.fake.api.signOut).toHaveBeenCalledTimes(1);
+});
+
+test("with account switching off, logout signs out of every account on the browser as before", async () => {
+  v2.fake.api.signOut.mockResolvedValue(Response.json({ success: true }));
+  const res = await logoutPOST(new Request("https://everloot.app/api/auth/logout", { method: "POST", headers: { origin: "https://everloot.app" } }));
+  expect(await res.json()).toEqual({ ok: true });
+  expect(v2.fake.api.getSession).not.toHaveBeenCalled();
+  expect(v2.fake.api.revokeDeviceSession).not.toHaveBeenCalled();
 });
 
 test("v2 logout fails closed when sign-out errors", async () => {
