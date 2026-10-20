@@ -3,7 +3,8 @@
 **Date:** 2026-10-19
 **Status:** foundation. Pages adopt it group by group (home and project pages, database, tools,
 world and community). Supersedes the theme, navigation and bracket-label parts of
-`2026-10-17-visual-identity-design.md`; its colours, type, buttons and banned list still hold.
+`2026-10-17-visual-identity-design.md`, and its gradient-ring primary button; its colours, type and
+banned list still hold.
 
 Every component is in `web/src/components/ui/` and shown in every state at `/dev/system` (not linked,
 not in the sitemap, `noindex`). Import from `@/components/ui`.
@@ -26,7 +27,8 @@ All in `web/src/design/tokens.ts`, exposed to Tailwind by `web/tailwind.config.t
   layout's `<main>` are `wide`.
 - **Type:** Geist; Geist Mono for numbers, ids, builds and dates. Page title 36 px (30 on a phone),
   section heading 20 px semibold, lede 18 px `fg-2`, body 16 px, small 14 px `muted`.
-- **Buttons:** unchanged: `btn` outline pill, `btn btn-primary` with the green ring. One primary per view.
+- **Buttons:** pills. Primary `btn btn-primary`: filled fel green (`accent`, `accent-hover` on hover)
+  with canvas-coloured text, one per view. Secondary `btn`: the outline pill. The gradient ring is gone.
 
 ## Components
 
@@ -66,8 +68,8 @@ All in `web/src/design/tokens.ts`, exposed to Tailwind by `web/tailwind.config.t
 8. **Badges are the four tones.** No status pill on every row; a collecting tool or row shows an
    `AgreementMeter`.
 9. **No sideways scroll at 390 px.** Wide tables scroll in their frame; long names wrap.
-10. The guard tests in `web/src/design/guard.test.ts` still apply: no shadows, glows, gradients
-    (except the primary ring), letter-spaced capitals or emoji.
+10. The guard tests in `web/src/design/guard.test.ts` still apply: no shadows, glows, gradients,
+    letter-spaced capitals or emoji.
 
 ## Navigation
 

@@ -58,9 +58,9 @@ test.each(["dark", "light"] as const)("control edges reach 3:1 on canvas and pan
     expect(contrast(hex(vars["--edge"]), hex(vars[`--${bg}`])), `edge on ${bg}`).toBeGreaterThanOrEqual(3);
 });
 
-test.each(["dark", "light"] as const)("the primary outline stops reach 3:1 on the canvas (%s)", (m) => {
-  for (const t of ["grad-from", "grad-to"] as const)
-    expect(contrast(tokens[m][t], tokens[m].canvas)).toBeGreaterThanOrEqual(3);
+test.each(["dark", "light"] as const)("the primary fill stands out from the canvas at rest and on hover (%s)", (m) => {
+  for (const t of ["accent", "accent-hover"] as const)
+    expect(contrast(tokens[m][t], tokens[m].canvas), t).toBeGreaterThanOrEqual(3);
 });
 
 test("channels", () => expect(channels("#0E0F0D")).toBe("14 15 13"));
@@ -93,5 +93,6 @@ test("Tailwind exposes the tokens as variables", () => {
   const colors = config.theme!.extend!.colors as Record<string, unknown>;
   expect(colors.fg).toBe("rgb(var(--fg) / <alpha-value>)");
   expect(Object.keys(colors)).toEqual(expect.arrayContaining(["canvas", "fg-2", "q-legendary", "class-druid", "chat-guild", "tooltip-border"]));
+  expect(colors["accent-hover"]).toBe("rgb(var(--accent-hover) / <alpha-value>)");
   expect(colors).not.toHaveProperty("grad-from");
 });

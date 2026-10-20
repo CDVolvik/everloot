@@ -133,10 +133,12 @@ export default function DesignSystemPage() {
           </div>
         </Specimen>
 
-        <Specimen id="buttons" title="Buttons and links" note="Outline pills; one primary per view.">
+        <Specimen id="buttons" title="Buttons and links" note="Primary: filled fel green, one per view. Secondary: the outline pill.">
           <div className="flex flex-wrap items-center gap-3">
             <a href="/addon" className="btn btn-primary">Get the addon</a>
             <a href="/methodology" className="btn">How we count</a>
+            <a href="/addon" className="btn btn-primary min-h-10 px-4 text-sm">Small primary</a>
+            <button type="button" className="btn btn-primary" disabled>Disabled primary</button>
             <button type="button" className="btn" disabled>Disabled</button>
             <a href="/database" className="text-accent underline underline-offset-4">A text link</a>
           </div>

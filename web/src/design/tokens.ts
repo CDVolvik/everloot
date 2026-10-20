@@ -24,7 +24,7 @@ export const CLASSES = ["warrior", "paladin", "hunter", "rogue", "priest", "sham
 
 export type TokenName =
   | "canvas" | "panel" | "line" | "edge" | "fg" | "fg-2" | "muted" | "accent" | "danger" | "warning"
-  | "tooltip" | "tooltip-border" | "tooltip-inner" | "grad-from" | "grad-to"
+  | "tooltip" | "tooltip-border" | "tooltip-inner" | "accent-hover"
   | `q-${(typeof QUALITIES)[number]}` | `class-${(typeof CLASSES)[number]}` | "chat-whisper" | "chat-guild";
 
 // Tooltip frames stay dark in both modes, as in the game.
@@ -44,8 +44,8 @@ export const tokens: Record<Mode, Record<TokenName, string>> = {
     danger: "#FF6B6B",
     warning: "#F5B83D",
     ...tooltip,
-    "grad-from": "#1EFF00",
-    "grad-to": "#9CF03A",
+    // The primary button's fill on hover; its text is the canvas colour.
+    "accent-hover": "#B3F566",
     "q-poor": "#9D9D9D",
     "q-common": "#F2F4F8",
     "q-uncommon": "#1EFF00",
@@ -76,9 +76,7 @@ export const tokens: Record<Mode, Record<TokenName, string>> = {
     danger: "#C62828",
     warning: "#8A5A00",
     ...tooltip,
-    // The dark stops are about 1.3:1 on the light canvas; these keep the outline visible.
-    "grad-from": "#1A7A12",
-    "grad-to": "#2F7A0A",
+    "accent-hover": "#256207",
     "q-poor": "#6B6B6B",
     "q-common": "#12130F",
     "q-uncommon": "#1A7A12",

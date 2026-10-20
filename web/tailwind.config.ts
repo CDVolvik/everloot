@@ -2,11 +2,8 @@ import type { Config } from "tailwindcss";
 import plugin from "tailwindcss/plugin";
 import { cssVariables, RADIUS, SITE_MODE, tokens, WIDTH, type TokenName } from "./src/design/tokens";
 
-// Every token except the gradient stops, which only the primary pill's outline uses.
 const tokenColors = Object.fromEntries(
-  (Object.keys(tokens.dark) as TokenName[])
-    .filter((name) => name !== "grad-from" && name !== "grad-to")
-    .map((name) => [name, `rgb(var(--${name}) / <alpha-value>)`]),
+  (Object.keys(tokens.dark) as TokenName[]).map((name) => [name, `rgb(var(--${name}) / <alpha-value>)`]),
 );
 
 const config: Config = {
