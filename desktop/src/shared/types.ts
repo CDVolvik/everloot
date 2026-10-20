@@ -121,6 +121,8 @@ export interface ChatInfo {
   busy: boolean;
   error: string | null;
 }
+/** The answer being written: the model's text so far in this round and the tool it is running, if any. */
+export interface ChatProgress { text: string; tool: string | null }
 
 /** One of the player's own characters, from the save file. Never uploaded from here. */
 export interface GearSlot {
@@ -238,4 +240,6 @@ export interface EverlootApi {
   onState(listener: (state: AppState) => void): () => void;
   /** The main side asks the page to open a screen: a tray entry or a notification was clicked. */
   onNavigate(listener: (page: string) => void): () => void;
+  /** The Chat page's answer as it is written, until chatSend resolves. */
+  onChatProgress(listener: (progress: ChatProgress) => void): () => void;
 }

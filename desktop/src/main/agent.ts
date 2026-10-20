@@ -5,7 +5,7 @@ import { existsSync } from "node:fs";
 import { readJsonFile } from "./json-file";
 import type { LocalTool } from "./local-tools";
 import { DEFAULT_MODEL, readKey } from "./providers";
-import { NO_SOURCED_ANSWER, type ChatMessage, type ChatStep } from "../shared/types";
+import { NO_SOURCED_ANSWER, type ChatMessage, type ChatProgress, type ChatStep } from "../shared/types";
 
 /**
  * The agent behind the Chat page. It talks to Everloot's own MCP server and, through the local
@@ -83,6 +83,8 @@ export interface AgentOptions {
   session?: typeof withMcp;
   /** Tools over the player's own files, offered beside the MCP server's. */
   local?: LocalTool[];
+  /** Called as the answer is written: the text so far in this round, and each tool as it runs. */
+  onProgress?: (progress: ChatProgress) => void;
 }
 
 interface ToolDef { name: string; description: string; inputSchema: unknown }
@@ -143,7 +145,10 @@ async function anthropicLoop(o: AgentOptions, entry: ProviderEntry): Promise<Age
     const sources: string[] = [];
     let usedModel = model;
     for (let round = 0; round <= maxRounds; round++) {
-      const res = await client.messages.create({ model, max_tokens: 1500, system: SYSTEM, tools, messages });
+      let draft = "";
+      const stream = client.messages.stream({ model, max_tokens: 1500, system: SYSTEM, tools, messages });
+      stream.on("text", (delta) => { draft += delta; o.onProgress?.({ text: draft, tool: null }); });
+      const res = await stream.finalMessage();
       usedModel = res.model;
       const toolUses = res.content.filter((b): b is Anthropic.ToolUseBlock => b.type === "tool_use");
       const text = res.content.filter((b): b is Anthropic.TextBlock => b.type === "text").map((b) => b.text).join("\n").trim();
@@ -153,6 +158,7 @@ async function anthropicLoop(o: AgentOptions, entry: ProviderEntry): Promise<Age
       messages.push({ role: "assistant", content: res.content });
       const results: Anthropic.ToolResultBlockParam[] = [];
       for (const use of toolUses) {
+        o.onProgress?.({ text: draft, tool: use.name });
         results.push({ type: "tool_result", tool_use_id: use.id, content: await runTool(mcp, local, use.name, use.input as Record<string, unknown>, steps, sources) });
       }
       messages.push({ role: "user", content: results });
@@ -164,6 +170,52 @@ async function anthropicLoop(o: AgentOptions, entry: ProviderEntry): Promise<Age
 interface OaiToolCall { id: string; type?: string; function: { name: string; arguments: string } }
 interface OaiMessage { role: "system" | "user" | "assistant" | "tool"; content: string | null; tool_calls?: OaiToolCall[]; tool_call_id?: string }
 interface OaiResponse { model?: string; error?: { message?: string }; choices?: { finish_reason?: string; message?: OaiMessage }[] }
+interface OaiChunk {
+  model?: string;
+  error?: { message?: string };
+  choices?: { delta?: { content?: string | null; tool_calls?: { index?: number; id?: string; function?: { name?: string; arguments?: string } }[] } }[];
+}
+
+/**
+ * A streamed chat completion (server-sent events) read into the shape of a plain one. The text goes
+ * to onText as it grows; tool calls arrive in pieces keyed by index and are put back together.
+ */
+export async function readStream(stream: ReadableStream<Uint8Array>, onText: (text: string) => void): Promise<OaiResponse> {
+  const reader = stream.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let text = "";
+  let model: string | undefined;
+  const calls: OaiToolCall[] = [];
+  const take = (line: string) => {
+    if (!line.startsWith("data:")) return;
+    const data = line.slice(5).trim();
+    if (!data || data === "[DONE]") return;
+    let chunk: OaiChunk;
+    try { chunk = JSON.parse(data) as OaiChunk; } catch { return; }
+    if (chunk.error?.message) throw new Error(chunk.error.message);
+    model ??= chunk.model;
+    const delta = chunk.choices?.[0]?.delta;
+    if (delta?.content) { text += delta.content; onText(text); }
+    for (const piece of delta?.tool_calls ?? []) {
+      // Without an index (some local servers) each piece is a whole call.
+      const call = (calls[piece.index ?? calls.length] ??= { id: "", type: "function", function: { name: "", arguments: "" } });
+      if (piece.id) call.id = piece.id;
+      if (piece.function?.name) call.function.name = piece.function.name;
+      if (piece.function?.arguments) call.function.arguments += piece.function.arguments;
+    }
+  };
+  for (;;) {
+    const { done, value } = await reader.read();
+    buffer += decoder.decode(value, { stream: !done });
+    const lines = buffer.split("\n");
+    buffer = done ? "" : lines.pop()!;
+    for (const line of lines) take(line.trim());
+    if (done) break;
+  }
+  const toolCalls = calls.filter(Boolean);
+  return { model, choices: [{ message: { role: "assistant", content: text || null, ...(toolCalls.length ? { tool_calls: toolCalls } : {}) } }] };
+}
 
 /**
  * Any OpenAI-compatible chat endpoint (OpenRouter, OpenCode Zen, Ollama, a server of the player's
@@ -193,13 +245,18 @@ async function openAiLoop(o: AgentOptions, entry: ProviderEntry): Promise<AgentR
         res = await send(url, {
           method: "POST",
           headers: { "content-type": "application/json", ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}), "user-agent": "everloot-desktop" },
-          body: JSON.stringify({ model, max_tokens: 1500, messages, tools }),
+          body: JSON.stringify({ model, max_tokens: 1500, messages, tools, stream: true }),
           signal: AbortSignal.timeout(90_000),
         });
       } catch (err) {
         throw new Error(`${entry.baseUrl}: ${err instanceof Error ? err.message : String(err)}`);
       }
-      const body = (await res.json().catch(() => ({}))) as OaiResponse;
+      // A server that ignores stream answers with one JSON body; both shapes are read.
+      let body: OaiResponse;
+      if (res.ok && res.body && (res.headers.get("content-type") ?? "").includes("text/event-stream")) {
+        try { body = await readStream(res.body, (text) => o.onProgress?.({ text, tool: null })); }
+        catch (err) { throw new Error(`${entry.baseUrl}: ${err instanceof Error ? err.message : String(err)}`); }
+      } else body = (await res.json().catch(() => ({}))) as OaiResponse;
       if (!res.ok) throw new Error(`${entry.baseUrl}: HTTP ${res.status}${body.error?.message ? `, ${body.error.message}` : ""}`);
       // OpenRouter and some proxies report an upstream failure as a 200 with an error and no choices.
       if (!body.choices && body.error?.message) throw new Error(`${entry.baseUrl}: ${body.error.message}`);
@@ -220,6 +277,7 @@ async function openAiLoop(o: AgentOptions, entry: ProviderEntry): Promise<AgentR
           messages.push({ role: "tool", tool_call_id: call.id, content: `The arguments for ${call.function.name} were not valid JSON; send them again.` });
           continue;
         }
+        o.onProgress?.({ text, tool: call.function.name });
         messages.push({ role: "tool", tool_call_id: call.id, content: await runTool(mcp, local, call.function.name, input, steps, sources) });
       }
     }

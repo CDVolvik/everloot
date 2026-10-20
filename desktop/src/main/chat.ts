@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { readJsonFile } from "./json-file";
-import type { ChatInfo, ChatMessage, Settings } from "../shared/types";
+import type { ChatInfo, ChatMessage, ChatProgress, Settings } from "../shared/types";
 import { answer, readProviderEntries } from "./agent";
 import type { LocalTool } from "./local-tools";
 import { DEFAULT_MODEL, ownProvider, removeProvider, setProvider } from "./providers";
@@ -55,7 +55,7 @@ export function createChat(dataFolder: string, current: () => Settings, local: L
     clear(): ChatInfo { messages = []; error = null; save(); return info(); },
     setProvider(choice: ProviderChoice): ChatInfo { setProvider(dataFolder, choice); error = null; return info(); },
     removeProvider(): ChatInfo { removeProvider(dataFolder); return info(); },
-    async send(text: string): Promise<ChatInfo> {
+    async send(text: string, onProgress?: (progress: ChatProgress) => void): Promise<ChatInfo> {
       const question = text.trim().slice(0, 2000);
       if (!question || busy) return info();
       busy = true; error = null;
@@ -63,7 +63,7 @@ export function createChat(dataFolder: string, current: () => Settings, local: L
       messages.push({ role: "user", text: question, at: new Date().toISOString(), model: null, sources: [], steps: [] });
       try {
         const entries = readProviderEntries(join(dataFolder, "config.json"));
-        const r = await answer({ mcp: target(), entries, history, question, local });
+        const r = await answer({ mcp: target(), entries, history, question, local, onProgress });
         messages.push({ role: "assistant", text: r.text, at: new Date().toISOString(), model: r.model, sources: r.sources, steps: r.steps });
       } catch (err) {
         error = err instanceof Error ? err.message : String(err);

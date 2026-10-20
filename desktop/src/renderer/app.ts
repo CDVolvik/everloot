@@ -1,7 +1,7 @@
 import { accountOf as account } from "../main/engine";
 import { diagnostics } from "../shared/diagnostics";
 import { ago, clock, esc, gold, kb, msg, sparkline, statusText, when } from "./format";
-import { NO_SOURCED_ANSWER, type AddonInfo, type AppState, type AskInfo, type BackupInfo, type ChangeItem, type CharacterRow, type CharactersInfo, type ChatInfo, type EverlootApi, type FileSummary, type GameFolderCandidate, type Job, type JobStatus, type MarketInfo, type MoneyDay } from "../shared/types";
+import { NO_SOURCED_ANSWER, type AddonInfo, type AppState, type AskInfo, type BackupInfo, type ChangeItem, type CharacterRow, type CharactersInfo, type ChatInfo, type ChatProgress, type EverlootApi, type FileSummary, type GameFolderCandidate, type Job, type JobStatus, type MarketInfo, type MoneyDay } from "../shared/types";
 import { PROVIDER_PRESETS, presetFor, type ProviderKind } from "../shared/providers";
 
 declare global { interface Window { everloot: EverlootApi } }
@@ -32,6 +32,8 @@ let siteUrl: string | null = null;
 /** The provider picked in the Chat page's form before it is saved; the form re-renders around it. */
 let pickKind: ProviderKind = "anthropic";
 let pickOpen = false;
+/** The answer being written while a chat question is out; null otherwise. */
+let live: ChatProgress | null = null;
 const data: { upload?: FileSummary[]; backups?: BackupInfo[]; market?: MarketInfo; ask?: AskInfo; addon?: AddonInfo; changes?: ChangeItem[]; changesError?: string; characters?: CharactersInfo; chat?: ChatInfo } = {};
 
 const main = document.getElementById("app")!;
@@ -113,9 +115,9 @@ function overview(s: AppState): string {
 
 function chat(): string {
   const c = data.chat;
-  const thread = (c?.messages ?? []).map((m) => {
+  const thread = (c?.messages ?? []).map((m, i) => {
     const meta = m.role === "assistant"
-      ? `<div class="meta">${m.model ? `<b>${esc(m.model)}</b>` : "<b>plain search</b>"}${m.steps.length ? ` · ${m.steps.length} tool call(s): ${esc(m.steps.map((st) => st.tool).join(", "))}` : ""}${m.sources.length ? `<br>Sources: ${m.sources.map((x) => esc(x)).join(" · ")}` : m.model && m.text !== NO_SOURCED_ANSWER ? "<br>No source in Everloot's data; the model's own knowledge" : ""}</div>`
+      ? `<div class="meta"><button type="button" class="link copy" data-copy="${i}">Copy</button>${m.model ? `<b>${esc(m.model)}</b>` : "<b>plain search</b>"}${m.steps.length ? ` · ${m.steps.length} tool call(s): ${esc(m.steps.map((st) => st.tool).join(", "))}` : ""}${m.sources.length ? `<br>Sources: ${m.sources.map((x) => esc(x)).join(" · ")}` : m.model && m.text !== NO_SOURCED_ANSWER ? "<br>No source in Everloot's data; the model's own knowledge" : ""}</div>`
       : `<div class="meta">${clock(m.at)}</div>`;
     return `<div class="msg msg-${m.role}">${esc(m.text)}${meta}</div>`;
   }).join("");
@@ -126,9 +128,15 @@ function chat(): string {
     ${c && !c.provider && !pickOpen ? `<p class="muted small">${c.mode === "plain search" ? "Without a provider you get the sourced search hits only." : "That provider comes from config.json, written by hand."} <button type="button" class="link" id="changeProvider">Use your own key or a free model</button></p>` : ""}
     ${c && pickOpen ? providerForm() : ""}
     ${flash ? `<p class="${flash.startsWith("!") ? "error" : "ok"} small">${esc(flash.replace(/^!/, ""))}</p>` : ""}
-    <div class="thread" id="thread">${thread || `<span class="muted">Ask anything about WoW: Forever: a drop, a vendor, a recipe, a price, a quest.</span><div class="chips">${starters(c).map((q) => askChip(q)).join("")}</div>`}${c?.busy ? '<div class="msg msg-assistant muted">Answering…</div>' : ""}${c?.error ? `<div class="msg msg-assistant error">${esc(c.error)}</div>` : ""}</div>
+    <div class="thread" id="thread">${thread || `<span class="muted">Ask anything about WoW: Forever: a drop, a vendor, a recipe, a price, a quest.</span><div class="chips">${starters(c).map((q) => askChip(q)).join("")}</div>`}${c?.busy ? `<div class="msg msg-assistant" id="chatLive">${liveAnswer()}</div>` : ""}${c?.error ? `<div class="msg msg-assistant error">${esc(c.error)}</div>` : ""}</div>
     <form id="chatForm"><textarea id="chatText" rows="2" placeholder="Ask about Forever. Enter sends, Shift+Enter is a new line." ${c?.busy ? "disabled" : ""}></textarea><button type="submit" class="btn btn-primary" ${c?.busy ? "disabled" : ""}>Send</button></form>
   </div>`;
+}
+
+/** The answer so far, and what the model is doing while there is no text or it is running a tool. */
+function liveAnswer(): string {
+  const doing = live?.tool ? `Looking up ${esc(live.tool)}…` : live?.text ? "" : "Answering…";
+  return `${live?.text ? esc(live.text) : ""}${doing ? `<div class="meta">${doing}</div>` : ""}`;
 }
 
 /** Questions to start with: about the game always; about the player's own data when a model can call the local tools. */
@@ -629,10 +637,22 @@ async function go(p: Page): Promise<void> {
 async function sendChat(question: string): Promise<void> {
   if (!question || data.chat?.busy) return;
   data.chat = { ...(data.chat ?? { messages: [], mode: "", mcpUrl: "", withToken: false, provider: null, error: null }), busy: true, messages: [...(data.chat?.messages ?? []), { role: "user", text: question, at: new Date().toISOString(), model: null, sources: [], steps: [] }] };
+  live = null;
   render();
-  data.chat = await api.chatSend(question);
+  try { data.chat = await api.chatSend(question); } finally { live = null; }
   render();
 }
+
+// The answer as it is written goes into its bubble only; the rest of the page stays as it is.
+api.onChatProgress((p) => {
+  live = p;
+  const bubble = page === "chat" ? main.querySelector("#chatLive") : null;
+  if (!bubble) return;
+  const thread = main.querySelector("#thread")!;
+  const atEnd = thread.scrollHeight - thread.scrollTop - thread.clientHeight < 40;
+  bubble.innerHTML = liveAnswer();
+  if (atEnd) thread.scrollTop = thread.scrollHeight;
+});
 
 document.body.addEventListener("click", async (ev) => {
   const el = ev.target as HTMLElement;
@@ -656,6 +676,13 @@ document.body.addEventListener("click", async (ev) => {
     if (page !== "chat") { if (page.startsWith("site:")) await api.siteHide(); page = "chat"; draftDirty = false; flash = ""; }
     if (!data.chat) data.chat = await api.chatInfo();
     void sendChat(question);
+    return;
+  }
+  if (t.dataset.copy) {
+    const text = data.chat?.messages[Number(t.dataset.copy)]?.text;
+    if (text === undefined) return;
+    try { await navigator.clipboard.writeText(text); t.textContent = "Copied"; } catch { t.textContent = "Copy failed"; }
+    setTimeout(() => { t.textContent = "Copy"; }, 1500);
     return;
   }
   if (t.dataset.open) { void api.openExternal(t.dataset.open); return; }

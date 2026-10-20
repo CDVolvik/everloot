@@ -171,6 +171,7 @@ ul.plain li { margin: 0.15rem 0; }
 .msg-assistant { align-self: flex-start; background: rgb(var(--panel)); }
 .msg .meta { margin-top: 0.35rem; font-size: 0.78rem; color: rgb(var(--muted)); white-space: normal; }
 .msg .meta b { color: rgb(var(--fg-2)); font-weight: 500; }
+.msg .meta .copy { float: right; margin-left: 0.75rem; }
 .chat form { display: flex; gap: 0.5rem; align-items: flex-end; margin-top: 0.5rem; }
 .chat #providerForm { flex-direction: column; align-items: stretch; margin: 0 0 0.6rem; }
 .chat #providerForm select, .chat #providerForm input { max-width: 36rem; }
