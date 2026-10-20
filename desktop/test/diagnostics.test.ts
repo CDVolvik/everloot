@@ -16,6 +16,7 @@ const state: AppState = {
     paused: false,
   },
   update: { current: "0.1.0", latest: "0.2.0", url: "https://github.com/Everloot/everloot/releases/tag/desktop-v0.2.0", newer: true, notes: [], downloadUrl: null, publishedAt: null, sumsUrl: null, installable: false }, updateProgress: { stage: "idle", percent: 0, error: null }, staleScans: [], account: { signedIn: true, hint: "9f3c" },
+  builds: { state: "forbidden", message: "This key can't read your saved builds.", syncedAt: null, builds: null },
 };
 
 test("the report has version, settings without the token, jobs and the last hundred log lines, with home folders hidden", () => {
@@ -29,6 +30,7 @@ test("the report has version, settings without the token, jobs and the last hund
   expect(text).toContain("update: 0.2.0 (newer)");
   expect(text).toContain("account: signed in with an everloot.app key");
   expect(text).not.toContain("9f3c");
+  expect(text).toContain("saved builds: forbidden, This key can't read your saved builds.");
   expect(text).toContain("log (last 100 of 120):");
   expect(text).not.toContain("line 19\n");
   expect(text).toContain("line 20\n");

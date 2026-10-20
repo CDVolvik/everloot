@@ -31,6 +31,7 @@ runs nothing until you press **Start**.
 | Upload | Sends events the site has not confirmed, from every account's `Everloot.lua` under the game folder | After the game writes the file (logout or `/reload`), once the write settles |
 | Market prices | Writes the `EverlootPrices` slot addon for the realms you scanned plus the realms you follow | After each upload and every hour |
 | `/ask` | Answers pending `/ask` questions into the `EverlootAnswers` slot addon | After the game writes the file; needs an MCP URL and a token file on the Ask page |
+| Saved builds | Reads the talent builds you saved on everloot.app with your account key (it needs the "Read my saved builds" permission) and writes them into the `EverlootBuilds` slot addon, where `/everloot plan` lists them after a `/reload`. Nothing goes back to the site | After you sign in, on **Sync builds** (Addon page), and every 15 minutes; never without a key |
 
 The window is a sidebar with one page per thing to manage:
 
@@ -42,7 +43,7 @@ The window is a sidebar with one page per thing to manage:
 | Upload | Each account file: when it was written, addon and client build, records per kind, how many the site confirmed. Run now |
 | Market | Realm picks: your scanned realms are always carried; tick more from the realms the site has public values for (TSM-style realm picks, on Everloot's own scan data). When you last scanned each realm, with a reminder past a day. What the last refresh wrote |
 | Ask | MCP server and token file, which provider answers (`config.json`), questions pending in game, recent answers |
-| Addon | Installed version against the latest `addon-v*` release, install or update in one click (the zip is checked against the release's `SHA256SUMS` before anything is written), the slot addons' state |
+| Addon | Installed version against the latest `addon-v*` release, install or update in one click (the zip is checked against the release's `SHA256SUMS` before anything is written), the slot addons' state, and the saved-builds sync: when it last synced, Sync builds, and why it could not (a key without the permission links to the key page) |
 | Changes | The site's change tracker feed: Blizzard posts, hotfixes and builds |
 | Log | Everything the engine did this session, with Pause |
 | Settings | Pinned at the bottom of the sidebar. What runs (upload, market prices, in-game `/ask`), the AI model keys (use, add, remove), the game folder, startup, the site address under Advanced, the data folder and the update check |

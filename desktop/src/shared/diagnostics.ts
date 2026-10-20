@@ -18,6 +18,7 @@ export function diagnostics(s: AppState, lines = 100, now = new Date()): string 
     `endpoint: ${st.endpoint}`,
     `upload: ${st.upload}, prices: ${st.prices}, ask: ${st.ask.enabled} (mcp ${st.ask.mcpUrl}, token file ${st.ask.tokenFile ?? "(none)"})`,
     `account: ${s.account.signedIn ? "signed in with an everloot.app key" : "signed out"}`,
+    `saved builds: ${s.builds.state}${s.builds.message ? `, ${s.builds.message}` : ""}${s.builds.syncedAt ? ` (synced ${s.builds.syncedAt})` : ""}`,
     `market realms: ${st.market.realms.join(", ") || "(none)"}`,
     `launch at login: ${st.launchAtLogin}, start in tray: ${st.startInTray}, consented: ${st.consentedAt ?? "no"}`,
     `update: ${s.update ? `${s.update.latest ?? "none"}${s.update.newer ? " (newer)" : ""}` : "not checked"}`,

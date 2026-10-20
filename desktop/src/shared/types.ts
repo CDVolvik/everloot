@@ -119,7 +119,7 @@ export interface AddonInfo {
   latest: { version: string; url: string } | null;
   /** The latest release is newer than what is installed; false for a nightly ahead of it. */
   newer: boolean;
-  slots: { prices: boolean; answers: boolean };
+  slots: { prices: boolean; answers: boolean; builds: boolean };
   error: string | null;
 }
 
@@ -215,6 +215,19 @@ export interface CharactersInfo {
 }
 
 
+/**
+ * The saved-builds sync into the EverlootBuilds slot addon. `off` without a key; `forbidden` when the key
+ * lacks the "Read my saved builds" permission; `unavailable` while the site has saved builds switched off.
+ */
+export interface BuildsStatus {
+  state: "off" | "running" | "ok" | "error" | "forbidden" | "unavailable";
+  message: string;
+  /** When the last sync that reached the site finished; null before one did. */
+  syncedAt: string | null;
+  /** How many builds the last sync wrote. */
+  builds: number | null;
+}
+
 /** Signed in to everloot.app with one of the account's API keys; the page sees only its last four characters. */
 export interface Account { signedIn: boolean; hint: string | null }
 
@@ -233,6 +246,7 @@ export interface AppState {
   /** Realms whose last full scan is older than a day (or never dated), for the tray reminder. */
   staleScans: ScanAge[];
   account: Account;
+  builds: BuildsStatus;
 }
 
 /** What `window.everloot` offers the page. Implemented in preload.ts over IPC. */
@@ -270,6 +284,8 @@ export interface EverlootApi {
   marketLookup(text: string): Promise<PriceLookup>;
   askInfo(): Promise<AskInfo>;
   addonInfo(): Promise<AddonInfo>;
+  /** Reads the saved builds from everloot.app with the account key and writes the EverlootBuilds slot addon. */
+  buildsSync(): Promise<AppState>;
   installAddon(version: string): Promise<{ version: string; files: number }>;
   changes(): Promise<ChangeItem[]>;
   charactersInfo(): Promise<CharactersInfo>;

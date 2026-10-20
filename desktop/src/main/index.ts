@@ -9,6 +9,7 @@ import { JOBS } from "../shared/types";
 import { presetFor, type ProviderKind } from "../shared/providers";
 import { accountInfo, signIn, signOut } from "./account";
 import { listBackups, restoreBackup } from "./backups";
+import { createBuildsSync } from "./builds";
 import { compareVersions, installAddon, installedAddonVersion, newestRelease, slotAddons } from "./addon";
 import { fetchChanges } from "./changes";
 import { charactersFromFiles } from "./characters";
@@ -95,7 +96,17 @@ if (!app.requestSingleInstanceLock()) {
       };
     },
   }));
-  const appState = (): AppState => ({ version: app.getVersion(), platform: process.platform, dataFolder: data, notice: loaded.error, settings, engine: engine.snapshot(), update, updateProgress, staleScans: staleScans(allScans()), account: accountInfo(data) });
+  // Saved talent builds into the EverlootBuilds slot addon: after a key is saved, on the Addon page's button, and every 15 minutes.
+  const builds = createBuildsSync({
+    dataFolder: data,
+    endpoint: () => settings.endpoint,
+    addonsDir: () => addonsDir(),
+    ready: () => Boolean(settings.consentedAt),
+    paused: () => engine.snapshot().paused,
+    onChange: () => broadcast(),
+    log: (level, text) => engine.log(level, text),
+  });
+  const appState = (): AppState => ({ version: app.getVersion(), platform: process.platform, dataFolder: data, notice: loaded.error, settings, engine: engine.snapshot(), update, updateProgress, staleScans: staleScans(allScans()), account: accountInfo(data), builds: builds.status() });
   const broadcast = () => {
     const s = appState();
     win?.webContents.send("state", s);
@@ -207,6 +218,7 @@ if (!app.requestSingleInstanceLock()) {
     settings = next;
     applyLoginItem();
     if (!before.consentedAt && settings.consentedAt) checkReleases();
+    if ((!before.consentedAt && settings.consentedAt) || before.gameFolder !== settings.gameFolder) void builds.tick();
     if (engineInputs(before) !== engineInputs(settings)) engine.start(settings);
     else if (JSON.stringify(before.market.realms) !== JSON.stringify(settings.market.realms) && settings.prices) void engine.runNow("prices");
     else broadcast();
@@ -294,11 +306,12 @@ if (!app.requestSingleInstanceLock()) {
     if (typeof key !== "string") throw new Error("Paste the key first.");
     await signIn(data, settings.endpoint, key);
     broadcast();
+    void builds.sync();
     return appState();
   });
   ipcMain.handle("accountSignOut", () => {
     signOut(data);
-    broadcast();
+    builds.reset();
     return appState();
   });
   ipcMain.handle("checkForUpdates", async () => {
@@ -358,12 +371,13 @@ if (!app.requestSingleInstanceLock()) {
   });
   ipcMain.handle("addonInfo", async (): Promise<AddonInfo> => {
     const dir = addonsDir();
-    const local = { addonsDir: dir, installed: dir ? installedAddonVersion(dir) : null, slots: dir ? slotAddons(dir) : { prices: false, answers: false } };
+    const local = { addonsDir: dir, installed: dir ? installedAddonVersion(dir) : null, slots: dir ? slotAddons(dir) : { prices: false, answers: false, builds: false } };
     try {
       const latest = newestRelease(await releases(), "addon-v");
       return { ...local, latest, newer: Boolean(latest && local.installed && compareVersions(latest.version, local.installed) > 0), error: null };
     } catch (err) { return { ...local, latest: null, newer: false, error: err instanceof Error ? err.message : String(err) }; }
   });
+  ipcMain.handle("buildsSync", async () => { await builds.sync(); return appState(); });
   ipcMain.handle("installAddon", async (_e, version: unknown) => {
     const dir = addonsDir();
     if (!dir) throw new Error("Pick the game folder first");
@@ -414,5 +428,8 @@ if (!app.requestSingleInstanceLock()) {
     checkReleases();
     // The app sits in the tray for weeks; look again once a day.
     setInterval(checkReleases, 24 * 60 * 60 * 1000);
+    // Saved builds once at start, then every 15 minutes; each turn does nothing without a key.
+    void builds.tick();
+    builds.start();
   });
 }

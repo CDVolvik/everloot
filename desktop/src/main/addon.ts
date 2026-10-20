@@ -16,9 +16,10 @@ export function installedAddonVersion(addonsDir: string): string | null {
   return m ? m[1] : null;
 }
 
-/** Whether the two slot addons the app writes exist yet. */
-export function slotAddons(addonsDir: string): { prices: boolean; answers: boolean } {
-  return { prices: existsSync(join(addonsDir, "EverlootPrices", "EverlootPrices.toc")), answers: existsSync(join(addonsDir, "EverlootAnswers", "EverlootAnswers.toc")) };
+/** Whether the three slot addons the app writes exist yet. */
+export function slotAddons(addonsDir: string): { prices: boolean; answers: boolean; builds: boolean } {
+  const has = (name: string) => existsSync(join(addonsDir, name, `${name}.toc`));
+  return { prices: has("EverlootPrices"), answers: has("EverlootAnswers"), builds: has("EverlootBuilds") };
 }
 
 interface Release { tag_name?: unknown; html_url?: unknown; draft?: unknown; prerelease?: unknown }
