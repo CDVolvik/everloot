@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "./PendingLink";
 
 type Steps = { label: string; page: number; prevHref?: string | null; nextHref?: string | null };
 type Numbered = { label: string; page: number; pages: number; href: (page: number) => string };

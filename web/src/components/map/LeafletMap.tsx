@@ -9,6 +9,7 @@ import { useEffect, useRef } from "react";
 import {
   labelFontPx, placeLabels, zoneArtShown, type ArtImage, type Box, type LabelCandidate, type MapArtLayer, type MapItems, type MapZone,
 } from "@/lib/map-view";
+import { reducedMotion } from "@/lib/motion";
 
 /** Where the reader's deep link points: a ring on the spot. */
 export interface MapMarker { x: number; y: number; label: string }
@@ -44,7 +45,6 @@ const ZONE_CLICK_SPAN = 1.6;
 const ll = (x: number, y: number) => L.latLng(-y, x);
 const bounds = (b: Box) => L.latLngBounds(ll(b.x, b.y + b.height), ll(b.x + b.width, b.y));
 const box = (b: L.LatLngBounds): Box => ({ x: b.getWest(), y: -b.getNorth(), width: b.getEast() - b.getWest(), height: b.getNorth() - b.getSouth() });
-const reducedMotion = () => typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 function pinIcon(kind: string, selected: boolean) {
   return L.divIcon({ className: `wm-pin wm-pin-${kind}${selected ? " wm-selected" : ""}`, html: "<span></span>", iconSize: [26, 26], iconAnchor: [13, 13] });

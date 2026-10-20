@@ -90,6 +90,29 @@ const RULES: Rule[] = [
     spares: ["animate-none"],
   },
   {
+    // Durations and curves come from MOTION in design/tokens.ts: `duration-fade`, `ease-out`, the default curve,
+    // and var(--dur-fade) / var(--ease-out) / var(--ease-color) in CSS. Nothing types its own.
+    name: "motion outside the tokens",
+    pattern: tokenOr(
+      String.raw`duration-(?:\d+|\[[^\]]*\])|ease-(?:linear|in|in-out|\[[^\]]*\])|delay-${REST}`,
+      String.raw`cubic-bezier\(|(?:transition|animation)(?:-duration|-delay)?:[^;]*\d+m?s\b`,
+    ),
+    bites: ["duration-200", "hover:duration-[250ms]", "ease-in-out", "ease-[cubic-bezier(0.4,0,0.2,1)]", "delay-75", "transition: transform 150ms;", "animation: fade-in 0.2s ease;", "transition-duration: 200ms;", "cubic-bezier(0.4, 0, 0.2, 1)"],
+    spares: ["duration-fade", "ease-out", "transition: opacity var(--dur-fade) var(--ease-out);", "transition: none !important;", "animation: none !important;"],
+    allow: ["design/tokens.ts"],
+  },
+  {
+    // Only colour, opacity and the transforms already there animate: never a layout property (width, height,
+    // position, spacing), and never the broad `transition` utility or `all`, which animate whatever changes.
+    name: "broad or layout transitions",
+    pattern: tokenOr(
+      String.raw`transition|transition-all|transition-\[${REST}`,
+      String.raw`transition(?:-property)?:\s*(?:all\b|[^;]*\b(?:width|height|top|left|right|bottom|inset|margin|padding)\b)`,
+    ),
+    bites: ["transition", "hover:text-accent transition", "transition-all", "transition-[width]", "transition: all 150ms", "transition: width var(--dur-fade)", "transition-property: height;"],
+    spares: ["transition-colors", "transition-opacity", "transition-transform", "transition-none", "transition: border-color var(--dur-fade) var(--ease-color);"],
+  },
+  {
     name: "text opacity",
     pattern: token(String.raw`text-(?:fg|fg-2|muted|accent|danger|warning|q-[a-z]+|class-[a-z]+|chat-[a-z]+)\/(?:\d+|\[[^\]]*\])`),
     bites: ["text-muted/60", "text-fg/[.85]", "hover:text-accent/[0.5]"],

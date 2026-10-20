@@ -12,7 +12,7 @@ import { encodeBuild } from "@/lib/talents/share";
 import { buildTitle, previewPath, summarizeBuild } from "@/lib/talents/summary";
 import type { Ranks, TalentCatalog } from "@/lib/talents/types";
 import GameIcon from "@/components/game/GameIcon";
-import { Card, Input, Segmented } from "@/components/ui";
+import { Card, CopyButton, Input, Segmented } from "@/components/ui";
 import GameTree from "./GameTree";
 import SaveBuild, { restorePendingSave } from "./SaveBuild";
 import TalentTooltip, { type TipContent } from "./TalentTooltip";
@@ -225,13 +225,7 @@ export default function TalentCalculator({ catalog, treeIcons, classIcon = null,
     setLink(preview ? `${origin}${preview}` : "");
   }, [codes, catalog, readOnly]);
 
-  const [copied, setCopied] = useState(false);
-  function copyLink() {
-    navigator.clipboard?.writeText(link).then(
-      () => { setCopied(true); setMessage("Link copied. It opens both sets as they are now."); setTimeout(() => setCopied(false), 1500); },
-      () => setMessage("Copy failed. Select the link and copy it."),
-    );
-  }
+  const onCopied = (ok: boolean) => setMessage(ok ? "Link copied. It opens both sets as they are now." : "Copy failed. Select the link and copy it.");
 
   // Taps add. A long press (touch or pen) takes a point back, as does a right click, the Delete or
   // Backspace key, and the "Take points back" switch. With the game's tooltips on the page, a long
@@ -419,7 +413,7 @@ export default function TalentCalculator({ catalog, treeIcons, classIcon = null,
               </span>
             </label>
           </div>
-          {!readOnly && <button type="button" className="btn btn-primary text-sm lg:ml-auto" onClick={copyLink} disabled={!link}>{copied ? "Copied" : "Copy link"}</button>}
+          {!readOnly && <CopyButton className="btn btn-primary text-sm lg:ml-auto" text={link} label="Copy link" onResult={onCopied} disabled={!link} />}
           {/* Save, My builds and the save panel, which takes its own row under the bar. */}
           {savedBuilds && !readOnly && (
             <SaveBuild classSlug={catalog.classSlug} codes={codes} defaultName={buildTitle(catalog, summarizeBuild(catalog, history.present[0]))} onMessage={setMessage} />
@@ -470,7 +464,7 @@ export default function TalentCalculator({ catalog, treeIcons, classIcon = null,
                     {!readOnly && <button type="button" className="min-h-11 px-1 text-sm text-muted hover:text-fg disabled:opacity-50" disabled={points === 0} aria-label={`Reset ${tree.name}`} onClick={() => resetTree(tree.id, tree.name)}>Reset</button>}
                   </div>
                   <div className="h-1 overflow-hidden rounded-full bg-canvas" aria-hidden="true">
-                    <div className={`h-full rounded-full bg-current transition-[width] duration-200 motion-reduce:transition-none ${classText}`} style={{ width: `${available ? Math.min(100, (points / available) * 100) : 0}%` }} />
+                    <div className={`h-full rounded-full bg-current ${classText}`} style={{ width: `${available ? Math.min(100, (points / available) * 100) : 0}%` }} />
                   </div>
                 </div>
                 {(() => {
@@ -508,7 +502,7 @@ export default function TalentCalculator({ catalog, treeIcons, classIcon = null,
             <label className="block text-sm text-fg-2" htmlFor="talent-link">Link to this build, both sets (game build {catalog.build})</label>
             <div className="flex gap-2">
               <Input id="talent-link" mono readOnly value={link} placeholder="Spend a point and the page address becomes the link" onFocus={(e) => e.currentTarget.select()} className="flex-1 text-xs" />
-              <button type="button" className="btn px-3 text-sm sm:px-5" onClick={copyLink} disabled={!link}>{copied ? "Copied" : "Copy"}</button>
+              <CopyButton className="btn px-3 text-sm sm:px-5" text={link} label="Copy" onResult={onCopied} disabled={!link} />
             </div>
           </div>
           <form className="min-w-0 space-y-1" onSubmit={(e) => { e.preventDefault(); load(pasted); }}>

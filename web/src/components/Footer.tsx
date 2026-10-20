@@ -50,8 +50,8 @@ const LEGAL: Item[] = [
   { label: "Accessibility", href: "/accessibility" },
 ];
 
-const itemClass = "inline-flex min-h-8 items-center text-sm text-fg-2 hover:text-accent transition";
-const legalClass = "inline-flex min-h-8 items-center text-fg-2 hover:text-accent transition";
+const itemClass = "inline-flex min-h-8 items-center text-sm text-fg-2 hover:text-accent transition-colors";
+const legalClass = "inline-flex min-h-8 items-center text-fg-2 hover:text-accent transition-colors";
 
 function FooterLink({ item, className = itemClass }: { item: Item; className?: string }) {
   if (item.external) return <a href={item.href} rel="noopener" className={className}>{item.label}</a>;
@@ -101,12 +101,12 @@ export default function Footer() {
           {/* The site-wide credit: it stands in for a per-page credit line (docs/DATA_POLICY.md). */}
           <p data-site-credit>
             Game data and art &copy; Blizzard Entertainment · Everloot data CC BY-SA 4.0 · Item and quest names from the Warcraft Wiki
-            (CC BY-SA 4.0) · <Link href="/methodology#credits" className="text-fg-2 underline underline-offset-4 hover:text-accent transition">Credits</Link>
+            (CC BY-SA 4.0) · <Link href="/methodology#credits" className="text-fg-2 underline underline-offset-4 hover:text-accent transition-colors">Credits</Link>
           </p>
           <p>
             &copy; {year} {OPERATOR}. Code AGPL-3.0.
-            {sha && <> Build <a href={sourceUrl()} rel="noopener" className="font-mono hover:text-accent transition">{sha.slice(0, 7)}</a>.</>}
-            {" "}Contact: <a href={`mailto:${CONTACT_EMAIL}`} className="hover:text-accent transition">{CONTACT_EMAIL}</a>
+            {sha && <> Build <a href={sourceUrl()} rel="noopener" className="font-mono hover:text-accent transition-colors">{sha.slice(0, 7)}</a>.</>}
+            {" "}Contact: <a href={`mailto:${CONTACT_EMAIL}`} className="hover:text-accent transition-colors">{CONTACT_EMAIL}</a>
           </p>
           <p>{NON_AFFILIATION} {TRADEMARK_LINE}</p>
         </div>

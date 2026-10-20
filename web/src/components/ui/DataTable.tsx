@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "./PendingLink";
 import type { ReactNode } from "react";
 
 export type SortDirection = "asc" | "desc";

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "./PendingLink";
 import type { ReactNode } from "react";
 import { TAB_SCROLL, TabCount, tabClass } from "./tab-style";
 
