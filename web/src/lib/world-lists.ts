@@ -1,4 +1,5 @@
-import { npcPage, questPage, vendorPage, type NpcPage, type QuestPage, type VendorPage, type WorldFacts } from "../../../kb/src/world-pages";
+import { npcPage, npcTraits, questPage, vendorPage, type NpcPage, type NpcReaction, type QuestPage, type VendorPage, type WorldFacts } from "../../../kb/src/world-pages";
+import { publicZones, type ZoneSummary } from "./zones";
 
 // The NPCs, quests and vendors that have at least one public fact (3 installs agree), for the list pages
 // and the database search. Built from the same page functions as the detail pages, so a row here never
@@ -20,6 +21,34 @@ const EMPTY: WorldFacts = { npcs: [], quests: [], vendors: [] };
 
 export function publicNpcs(facts: WorldFacts): NpcPage[] {
   return [...byId(facts.npcs, (r) => r.npcId)].map(([id, npcs]) => npcPage(id, { ...EMPTY, npcs })).filter((p) => p.name !== null || p.pins.length > 0);
+}
+
+/** One row of the NPC list: the page's facts, the level and reaction 3 installs agree on, its zone and its public drops. */
+export interface NpcRow extends NpcPage {
+  level: number | null;
+  reaction: NpcReaction | null;
+  /** The released zone of its first agreed pin; null when it has none, or the zone is held back. */
+  zone: ZoneSummary | null;
+  /** Items with a public loot frequency from it. */
+  drops: number;
+}
+
+/**
+ * Every NPC with a public fact: an agreed name, pin, level or reaction, or a public loot frequency (an NPC
+ * known only from what it dropped has a page too).
+ */
+export function npcRows(facts: WorldFacts, rates: readonly { sourceNpcId?: number; itemId: number; drops: number; public: boolean }[]): NpcRow[] {
+  const drops = new Map<number, Set<number>>();
+  for (const r of rates) if (r.public && r.drops > 0 && r.sourceNpcId !== undefined) drops.set(r.sourceNpcId, (drops.get(r.sourceNpcId) ?? new Set()).add(r.itemId));
+  const groups = byId(facts.npcs, (r) => r.npcId);
+  const ids = [...new Set([...groups.keys(), ...drops.keys()])].filter((id) => Number.isInteger(id) && id > 0).sort((a, b) => a - b);
+  const zones = new Map(publicZones().map((z) => [z.mapId, z]));
+  return ids.map((id) => {
+    const sightings = groups.get(id) ?? [];
+    const page = npcPage(id, { ...EMPTY, npcs: sightings });
+    const zone = page.pins.map((p) => zones.get(p.mapId)).find(Boolean) ?? null;
+    return { ...page, ...npcTraits(sightings), zone, drops: drops.get(id)?.size ?? 0 };
+  }).filter((r) => r.name !== null || r.pins.length > 0 || r.level !== null || r.reaction !== null || r.drops > 0);
 }
 
 export function publicQuests(facts: WorldFacts): QuestPage[] {

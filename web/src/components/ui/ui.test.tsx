@@ -17,6 +17,7 @@ import Card from "./Card";
 import Container from "./Container";
 import DataTable, { type Column } from "./DataTable";
 import EmptyState from "./EmptyState";
+import { pageWindow } from "./Pager";
 import PageHeader from "./PageHeader";
 import SectionHeading from "./SectionHeading";
 import SourceLine from "./SourceLine";
@@ -207,6 +208,34 @@ describe("DataTable", () => {
     expect(html).toContain('aria-sort="descending"');
     expect(html).toContain('href="?sort=count&amp;dir=asc"');
     expect(html).toContain('href="?sort=name&amp;dir=desc"');
+  });
+
+  test("dense: no card frame, sans 32 px headers that stick under the site header, 36 px rows, sort arrows and aria-sort", () => {
+    const html = render(
+      <DataTable dense caption="Items" columns={columns} rows={rows} rowKey={(r) => String(r.id)} sort={{ key: "name", direction: "asc" }} sortHref={(key, dir) => `?sort=${dir === "desc" ? "-" : ""}${key}`} />,
+    );
+    expect(html).not.toContain("rounded-card");
+    expect(html).toMatch(/<th scope="col" aria-sort="ascending" class="[^"]*sticky top-header[^"]*h-th[^"]*text-th/);
+    expect(html).not.toContain("font-mono text-xs");
+    expect(html).toMatch(/<td class="[^"]*sm:h-row/);
+    expect(html).toContain("▲");
+    // The sorted column turns around; an unsorted text column starts A to Z, a number column high to low.
+    expect(html).toContain('href="?sort=-name"');
+    expect(html).toContain('href="?sort=-count"');
+  });
+
+  test("dense with a phone line: only the first column shows below 640 px, the rest folds into its second line", () => {
+    const html = render(<DataTable dense caption="Items" columns={columns} rows={rows} rowKey={(r) => String(r.id)} meta={(r) => `Seen ${r.count}`} />);
+    expect(html.match(/hidden sm:table-cell/g)).toHaveLength(1 + rows.length);
+    expect(html).toContain('<div class="text-cell-2 text-muted sm:hidden">Seen 12</div>');
+    expect(html).not.toContain("overflow-x-auto");
+  });
+
+  test("the numbered pager keeps the first, the last and the neighbours of the current page", () => {
+    expect(pageWindow(1, 1)).toEqual([1]);
+    expect(pageWindow(1, 77)).toEqual([1, 2, null, 77]);
+    expect(pageWindow(40, 77)).toEqual([1, null, 39, 40, 41, null, 77]);
+    expect(pageWindow(3, 4)).toEqual([1, 2, 3, 4]);
   });
 
   test("with no rows it keeps the headers and shows the empty state", () => {

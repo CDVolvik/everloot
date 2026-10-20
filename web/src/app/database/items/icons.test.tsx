@@ -18,14 +18,15 @@ vi.mock("@/lib/rollup-compute", () => ({
   loadObservedEdges: async () => ({ edges: [], unreachable: false, dataAsOf: null }),
 }));
 vi.mock("@/lib/upload-store", () => ({ STORAGE_UNREACHABLE: "Storage unavailable" }));
-vi.mock("next/link", () => ({ default: ({ href, children, style }: { href: string; children: ReactNode; style?: object }) => <a href={href} style={style}>{children}</a> }));
+vi.mock("next/link", () => ({ default: ({ href, children, style, title }: { href: string; children: ReactNode; style?: object; title?: string }) => <a href={href} title={title} style={style}>{children}</a> }));
 vi.mock("next/navigation", () => ({ notFound: () => { throw new Error("NEXT_NOT_FOUND"); }, useRouter: () => ({ push: () => {} }) }));
 
 import ItemPage, { generateMetadata } from "./[id]/page";
 import SubclassPage, { generateMetadata as subclassMetadata } from "./[id]/[subclass]/page";
+import { NAME_TITLE } from "./category-page";
 import { CREDIT } from "@/lib/talents/assets";
 import { CLIENT_EDGES } from "@/lib/edges";
-import { CLIENT_TAXONOMY, ITEMS_PER_PAGE, NAME_SOURCE } from "@/lib/items";
+import { CLIENT_TAXONOMY, NAMED_SAMPLE, NAME_SOURCE } from "@/lib/items";
 import sitemap from "@/app/sitemap";
 
 const BASE = "https://assets.example.test/b";
@@ -66,7 +67,8 @@ test("a category list asks for game file names and icons only for items players 
   expect(page).not.toContain(`i${cloth[0]}.webp`);
   // The players' agreed name wins over the game file name.
   expect(page).toContain(`Agreed ${cloth[1]}`);
-  expect(page).toContain(CREDIT);
+  // The credit is the site footer's now (density spec, 2026-10-20), not a line on the list.
+  expect(page).not.toContain(CREDIT);
 });
 
 /** Names the game files and the Warcraft Wiki agree on, as loadItemNames gives them, for the given ids. */
@@ -75,10 +77,10 @@ const matchedNames = (ids: number[]) => ({
   wiki: { name: "Warcraft Wiki (Internet Archive dump, 2023-11-13)", url: "https://warcraft.wiki.gg" },
   names: new Map(ids.map((id) => [id, { name: `Wiki name ${id}`, color: "#a335ee", wikiPage: `https://warcraft.wiki.gg/wiki/Wiki_${id}` }])),
 });
-const clothIds = () => CLIENT_TAXONOMY.items.filter((r) => r[1] === 4 && r[2] === 1).slice(0, ITEMS_PER_PAGE).map((r) => r[0]);
+const clothIds = () => CLIENT_TAXONOMY.items.filter((r) => r[1] === 4 && r[2] === 1).slice(0, NAMED_SAMPLE).map((r) => r[0]);
 const cloth = () => SubclassPage({ params: Promise.resolve({ id: "armor", subclass: "cloth" }), searchParams: Promise.resolve({}) });
 
-test("a category row shows a name the game files and the wiki agree on, in its quality colour, with its source and wiki link", async () => {
+test("a category row shows a name the game files and the wiki agree on, in its quality colour, its source as the name's tooltip, no printed label", async () => {
   state.assets = assets;
   const ids = clothIds();
   state.matched = matchedNames([ids[0]]);
@@ -86,22 +88,23 @@ test("a category row shows a name the game files and the wiki agree on, in its q
   const page = await html(cloth());
   expect(page).toContain(`Wiki name ${ids[0]}`);
   expect(page).toContain("color:#a335ee");
-  expect(page).toContain(`href="https://warcraft.wiki.gg/wiki/Wiki_${ids[0]}"`);
-  expect(page).toContain(NAME_SOURCE.wiki);
-  // Players' names keep first place and say so; every other row stays "Item N" with no label.
+  expect(page).toContain(`title="${NAME_TITLE.wiki}"`);
+  expect(page).toContain(`<span class="sr-only"> (name from the warcraft wiki)</span>`);
+  // Players' names keep first place and say so in their tooltip; every other row stays "Item N" with none.
   expect(page).toContain(`Agreed ${ids[1]}`);
-  expect(page).toContain(NAME_SOURCE.players);
+  expect(page).toContain(`title="${NAME_TITLE.players}"`);
   expect(page).toContain(`>Item ${ids[2]}<`);
+  // No source line, no wiki link and no credit line on the list (density spec, 2026-10-20).
+  expect(page).not.toContain(NAME_SOURCE.wiki);
+  expect(page).not.toContain(NAME_SOURCE.players);
+  expect(page).not.toContain("warcraft.wiki.gg/wiki/");
   // Icons are asked for the reported item and the matched one only.
   expect(state.tipCalls).toEqual([[ids[1], ids[0]]]);
-  // The wiki is credited under its licence.
-  expect(page).toContain("Warcraft Wiki contributors");
-  expect(page).toContain("https://creativecommons.org/licenses/by-sa/4.0/");
 });
 
 test("without the names file a category shows Item N and no wiki credit", async () => {
   const page = await html(cloth());
-  expect(page).not.toContain(NAME_SOURCE.wiki);
+  expect(page).not.toContain(NAME_TITLE.wiki);
   expect(page).not.toContain("Warcraft Wiki contributors");
 });
 

@@ -32,7 +32,7 @@ test("an object with loot from 3 installs lists its drops; the list page links i
   expect(page).toContain('href="/database/items/2770"');
   expect(page).toContain("66.7%");
   expect((await generateMetadata(props("1731"))).robots).toMatchObject({ index: true });
-  expect(await html(ObjectsPage())).toContain('href="/database/objects/1731"');
+  expect(await html(ObjectsPage({}))).toContain('href="/database/objects/1731"');
   expect(await html(ItemPage({ params: Promise.resolve({ id: "2770" }) }))).toContain('href="/database/objects/1731"');
 });
 
@@ -44,7 +44,7 @@ test("two installs are not enough; storage down reads unavailable, never zero", 
   expect(queued).not.toContain('href="/database/items/765"');
   expect(queued).toContain("data-empty-state");
   expect((await generateMetadata(props("1618"))).robots).toMatchObject({ index: false });
-  expect(await html(ObjectsPage())).toContain("No object has public loot observations yet");
+  expect(await html(ObjectsPage({}))).toContain("No object has public loot observations yet");
   store.loadCorpus.mockResolvedValue({ uploads: 0, records: [], unreachable: true });
   const down = await html(ObjectPage(props("1731")));
   // Checked in the visible text: class names such as "shrink-0 items-center" are not a count.

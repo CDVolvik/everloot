@@ -95,3 +95,36 @@ test("without a lore release the other groups still answer", async () => {
 test("a name nobody matches gives no groups", async () => {
   expect(await search("qqqqzzzz")).toEqual([]);
 });
+
+test("a group counts every match, lists 8, and a scoped search keeps one type with more rows", async () => {
+  mocks.names.items = new Map(Array.from({ length: 12 }, (_, i) => [100 + i, `Linen thing ${i}`]));
+  mocks.names.npcs = new Map([[7, "Linen merchant"]]);
+  const all = await search("linen");
+  const items = all.find((g) => g.type === "item")!;
+  expect(items.total).toBe(12);
+  expect(items.results).toHaveLength(8);
+  vi.stubEnv("KB_SNAPSHOT_PATH", release);
+  const { siteSearch } = await import("./site-search");
+  const scoped = await siteSearch("linen", { only: "item", limit: 50 });
+  expect(scoped.map((g) => g.type)).toEqual(["item"]);
+  expect(scoped[0].results).toHaveLength(12);
+});
+
+test("item results carry the game files' quality and type, for colouring the name", async () => {
+  const groups = await search("2589");
+  expect(groups.find((g) => g.type === "item")!.results[0]).toMatchObject({ label: "Item 2589", id: 2589, quality: 1, meta: expect.stringContaining("Cloth") });
+});
+
+test("suggestions: an exact id first, then exact, prefix and contains names across types, at most 8, names players agree on only", async () => {
+  vi.stubEnv("KB_SNAPSHOT_PATH", release);
+  const { suggest } = await import("./site-search");
+  mocks.names.items = new Map([[1, "Thrall's Cloak"], [2, "Thrall"], ...Array.from({ length: 10 }, (_, i) => [200 + i, `Old Thrall ${i}`] as [number, string])]);
+  mocks.names.npcs = new Map([[77, "Thrall"]]);
+  const rows = await suggest("thrall");
+  expect(rows).toHaveLength(8);
+  expect(rows.slice(0, 3).map((r) => [r.type, r.label])).toEqual([["item", "Thrall"], ["npc", "Thrall"], ["item", "Thrall's Cloak"]]);
+  expect((await suggest("thrall", "npc")).map((r) => r.href)).toEqual(["/database/npcs/77"]);
+  const byId = await suggest("2589", "item");
+  expect(byId[0]).toEqual({ type: "item", id: 2589, label: "Item 2589", href: "/database/items/2589", quality: 1 });
+  expect(await suggest("  ")).toEqual([]);
+});

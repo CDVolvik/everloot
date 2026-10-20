@@ -6,6 +6,10 @@
 
 export const WORLD_AGREEMENT = 3;
 
+/** How the NPC stood toward the player who saw it, as the addon records it. */
+export type NpcReaction = "friendly" | "neutral" | "hostile";
+export const NPC_REACTIONS: readonly NpcReaction[] = ["friendly", "neutral", "hostile"];
+
 export type NpcSightingRow = {
   installId: string;
   npcId: number;
@@ -14,6 +18,8 @@ export type NpcSightingRow = {
   mapId: number;
   x: number;
   y: number;
+  level?: number;
+  reaction?: NpcReaction;
 };
 
 export type QuestSighting = {
@@ -151,6 +157,17 @@ export function npcPage(npcId: number, facts: WorldFacts): NpcPage {
   return { npcId, name, pins };
 }
 
+/**
+ * An NPC's level and reaction, each public when 3 installs report the same one, for the NPC list. Kept apart
+ * from `npcPage`, so the page and the MCP answer built on it stay as they are. A reaction is as seen by the
+ * reporting player, so Alliance and Horde reports can disagree; then there is no agreed one.
+ */
+export function npcTraits(rows: NpcSightingRow[]): { level: number | null; reaction: NpcReaction | null } {
+  const level = agreedNumber(rows.filter((row) => row.level !== undefined).map((row) => ({ installId: row.installId, value: row.level! })));
+  const reaction = agreedLabel(rows.filter((row) => row.reaction !== undefined).map((row) => ({ installId: row.installId, label: row.reaction! })));
+  return { level, reaction: reaction as NpcReaction | null };
+}
+
 export function formatNpcPage(page: NpcPage): string {
   const lines = [page.name ? `NPC ${page.npcId} — ${page.name}` : `NPC ${page.npcId}`];
   if (!page.name) lines.push("No agreed name yet. A name needs 3 installs reporting the same one.");
@@ -278,7 +295,9 @@ export function worldFactsFromRecords(records: unknown[]): WorldFacts {
       typeof row.y === "number"
     ) {
       facts.npcs.push({ installId: row.installId, npcId: row.npcId, name: row.name, mapId: row.mapId, x: row.x, y: row.y,
-        ...(row.positionKind === "npc" || row.positionKind === "player" ? { positionKind: row.positionKind } : {}) });
+        ...(row.positionKind === "npc" || row.positionKind === "player" ? { positionKind: row.positionKind } : {}),
+        ...(typeof row.level === "number" && Number.isInteger(row.level) && row.level > 0 ? { level: row.level } : {}),
+        ...(NPC_REACTIONS.includes(row.reaction as NpcReaction) ? { reaction: row.reaction as NpcReaction } : {}) });
     }
     if (row.kind === "quest" && typeof row.questId === "number" && typeof row.title === "string" && typeof row.level === "number") {
       facts.quests.push({

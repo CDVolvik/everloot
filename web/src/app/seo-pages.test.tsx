@@ -120,17 +120,17 @@ test("/upload: the structured version and download are the ones the page shows, 
   expect(visible(html)).toContain(app.description);
 });
 
-test("/database: no Dataset while nothing is uploaded, a Dataset once something is, and the CC BY-SA line is always shown", async () => {
+test("/database: no Dataset while nothing is uploaded, a Dataset with its licence once something is, and no licence text on the page", async () => {
   const { default: Page } = await import("./database/page");
   const empty = renderToStaticMarkup(await Page());
   expect(blocks(empty)).toEqual([]);
-  expect(visible(empty)).toContain("CC BY-SA 4.0");
   mocks.stats = { uploads: 2, lootWindows: 5, unreachable: false, dataAsOf: "2026-10-17T18:20:27.999Z" };
   const full = renderToStaticMarkup(await Page());
   const [dataset] = blocks(full);
   expect(dataset["@type"]).toBe("Dataset");
-  expect(visible(full)).toContain(dataset.description);
-  expect(visible(full)).toContain(dataset.name);
+  expect(JSON.stringify(dataset.license)).toContain("creativecommons.org/licenses/by-sa/4.0");
+  // The site footer and /methodology carry the licence (Carlos, 2026-10-20: no licence lines on pages).
+  expect(visible(full)).not.toContain("CC BY-SA");
   mocks.stats = { uploads: 9, lootWindows: 5, unreachable: true, dataAsOf: "2026-10-17T18:20:27.999Z" };
   expect(blocks(renderToStaticMarkup(await Page()))).toEqual([]);
 });

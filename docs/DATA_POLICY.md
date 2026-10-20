@@ -190,10 +190,10 @@ another version of the game, not something Forever has yet to reveal. The game f
 their own: in build 1.60.1.70450, 19,219 of the 19,231 named items, new ones included, list the base game
 as their expansion (`ItemSparse.ExpansionID` 0), so the expansion is not used. The rules:
 
-- Each such name says where it comes from: *Game files + Warcraft Wiki*, linked to its wiki page, and
+- Each such name says where it comes from in a tooltip on the name, *Name from the Warcraft Wiki* (and in words for screen readers), and
   the site-wide footer credits the Warcraft Wiki under CC BY-SA 4.0 beside Blizzard's credit, and
   `/methodology#credits` names the Warcraft Wiki contributors. A name
-  3 installs agree on comes first and reads *Confirmed by players*.
+  3 installs agree on comes first, with the tooltip *Name confirmed by players*. No source label is printed beside a name.
 - For the lowest spoiler risk, only items below id 25,000, the original game's range, are named this
   way (`SHOWN_MAX_ITEM_ID` in `kb/src/item-name-rule.ts`). Higher ids belong to later versions, such as
   Wrath Classic's Scourge event. A name that reads like a placeholder or an internal entry is never
