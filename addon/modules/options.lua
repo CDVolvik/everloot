@@ -17,7 +17,7 @@ O.ROWS = {
   { key = "census", command = "census", label = "Census",
     text = "Race, class, level and faction of your characters and of players you see. Never names, guilds, gear or places. Off deletes its rows." },
   { key = "openworld", label = "World",
-    text = "NPCs, loot, quests, vendors and items you see. Anonymous: no character or guild names." },
+    text = "NPCs, loot, quests, vendors and items you see, and where you stood at NPC windows and herbs, ore and chests. Anonymous: no character or guild names." },
   { key = "gold", label = "Your gold",
     text = "Your own gold in and out, for gold per hour. Sent only if you share it on the upload page." },
   { key = "gear", label = "Your gear",
@@ -72,8 +72,30 @@ local function build()
   intro:SetWidth(560)
   intro:SetJustifyH("LEFT")
   intro:SetText("What the addon records. Everything stays in your saved file until the Everloot Desktop App or the upload page sends it, as each line says.")
+  -- Ask Everloot: the question goes into the file, the companion answers it, and /reload prints it.
+  local ask = CreateFrame("EditBox", nil, page, "InputBoxTemplate")
+  ask:SetSize(380, 22)
+  ask:SetPoint("TOPLEFT", intro, "BOTTOMLEFT", 0, -22)
+  if ask.SetAutoFocus then ask:SetAutoFocus(false) end
+  if ask.EnableMouse then ask:EnableMouse(true) end
+  local askLabel = page:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+  askLabel:SetPoint("LEFT", ask, "RIGHT", 8, 0)
+  askLabel:SetText("Ask Everloot, then /reload for the answer")
+  local send = CreateFrame("Button", nil, page, "UIPanelButtonTemplate")
+  send:SetSize(64, 22)
+  send:SetPoint("LEFT", askLabel, "RIGHT", 8, 0)
+  send:SetText("Ask")
+  local function askNow()
+    local text = (ask:GetText() or ""):gsub("^%s+", ""):gsub("%s+$", "")
+    if text == "" then return end
+    if E.Ask then E:Ask(text) end
+    ask:SetText("")
+  end
+  send:SetScript("OnClick", askNow)
+  ask:SetScript("OnEnterPressed", askNow)
+  page.ask = ask
   page.boxes = {}
-  local anchor, gap = intro, -10
+  local anchor, gap = ask, -18
   for _, row in ipairs(O.ROWS) do
     local box = CreateFrame("CheckButton", nil, page, "UICheckButtonTemplate")
     box:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, gap)

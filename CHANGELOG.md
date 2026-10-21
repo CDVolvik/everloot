@@ -20,6 +20,9 @@ Pull requests merged to `main` are listed in the nightly pre-releases until the 
   form. The search index stays off for now, so the pages are reached by name and are not listed anywhere.
 
 ### Added
+- Knowledge base: `npm run kb -- name-gaps`, a local report of the items, quests, item sets and spells that
+  still print as an id, each with the reason and what would fill it (a rule decision, the addon's uploads, or no
+  source yet). Ids only, never names.
 - Site: the data layer for linking a character to an account, off by default. A signed-in player gets a code
   (live 15 minutes, good once), and a `character_link` row with that code is sent to `/api/me/characters/links`
   from the site or with an API key that has the new `link:own` scope. The GUID is replaced by a keyed hash, the
@@ -30,6 +33,46 @@ Pull requests merged to `main` are listed in the nightly pre-releases until the 
   usual rule, with a weekly chart and each rank's change against the week before. They start with the first
   full week after launch.
 - Site: an achievement's page lists its criteria, with how many each needs, once three players sent the same complete list; the list is agreed apart from the entry itself. Lists and search still show no criteria wording. Run the completion rebuild (`?rebuild=1`) once to fill it from uploads already stored.
+- Knowledge base: an NPC seen at its window places a pin like a spawn position (three installs on one map);
+  a targeting position still never does. Object spawn points are clustered per object and zone, become a pin
+  at three installs with a key that stays put once published, and an object's name needs three installs to
+  agree. Fishing (the bobber, or an object installs agree is fished) is never a pin. An upload of an event
+  that only adds fields to an earlier copy, as when an older Desktop App had dropped them, replaces that copy
+  instead of withdrawing the event as a conflict. The map shows none of this yet.
+
+## [0.3.10] - 2026-10-21
+
+### Added
+- Places for the world map. When an NPC's window opens (merchant, gossip, quest, trainer, flight map, bank,
+  auction house, stable, innkeeper) the addon records where you stand as that NPC's place, with the service the
+  window offered, once per NPC, service and zone. When you loot a herb, ore vein, chest or other object, its loot
+  row gets where you stand, how you opened it (from the spell you cast) and the object's name. Trainer rows name
+  the trainer. Event names and spell arguments not yet seen on the Forever client are read defensively: a missing
+  one records nothing. Launch-day checks: `docs/2026-10-21-addon-0.3.10-launch-checklist.md`.
+
+### Changed
+- Targeting or mousing over the same NPC at the same spot (to 1 unit on the map's 0 to 100 scale) records it
+  once, not every time. NPC window rows and object loot rows have their own 2,000-row room, apart from
+  targeting rows and creature loot, so a full targeting or corpse share pauses only itself.
+- An object's name comes only from a herb, ore or chest cast, never from another spell's target (such as a
+  player you healed). A fishing cast counts for 30 seconds, for a slow bite.
+
+## [0.3.9] - 2026-10-21
+
+### Added
+- A button at the top-left of the minimap, the way every other addon in the game is found. It opens
+  Everloot's panel, so nothing needs a command typed any more.
+- A box at the top of that panel to ask Everloot a question. The question goes into your file, the
+  companion answers it with its sources, and `/reload` prints the answer in the chat, exactly as
+  `/ask <question>` does.
+
+## [0.3.8] - 2026-10-21
+
+### Fixed
+- The player pages record the players you see again. The module asked the client for a name and a realm
+  and skipped anyone whose realm was not empty; the beta client answers every unit with its server, so
+  every player was dropped and no page ever had anything on it. It compares the realm with ours now, and
+  only a realm that is not ours is another realm.
 
 ## [0.3.7] - 2026-10-20
 
@@ -58,6 +101,14 @@ Pull requests merged to `main` are listed in the nightly pre-releases until the 
   off until `/everloot census on`. The Desktop App sends census rows with its uploads when the player leaves
   the census box ticked on its setup screen, or turns it on in Settings; a setup finished before this keeps
   it off. Still never names, guilds, gear or places, and the site shows only totals.
+
+## [desktop-v0.1.6] - 2026-10-21
+
+### Added
+- The player pages can go with the uploads, on a switch in Settings: "Send the player pages with the
+  uploads". It is off by default, so nothing changes until it is turned on, and the rows stay in
+  `Everloot.lua` until then — the same rule the named data follows. The privacy policy and the data
+  policy say so, in the words the switch uses.
 
 ## [desktop-v0.1.5] - 2026-10-20
 

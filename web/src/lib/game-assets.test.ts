@@ -133,7 +133,7 @@ test("the private bucket needs all four server-only variables, signs its reads, 
 
 test("an item tooltip reads like the game's and marks the stat amounts the tables do not give", () => {
   const text = itemTipText(shard0["25"]);
-  expect(text.lines).toEqual(["Binds when equipped", "Unique", "One-Hand · Sword", "Speed 1.90", "+[?] Stamina", "+[?] Strength", "Requires Level 5", "Item Level 2", '"Old."', "Sell Price: 7c"]);
+  expect(text.lines).toEqual(["Binds when equipped", "Unique", "One-Hand · Sword", "[?] - [?] Damage · Speed 1.90", "([?] damage per second)", "+[?] Stamina", "+[?] Strength", "Requires Level 5", "Item Level 2", '"Old."', "Sell Price: 7c"]);
   expect(text.partial).toBe(true);
   expect(itemTipText(shard0["9"]).partial).toBe(false);
   // A stat kind without a word is left out, not printed as "unknown stat 51".
@@ -142,6 +142,19 @@ test("an item tooltip reads like the game's and marks the stat amounts the table
   expect(odd.partial).toBe(false);
   expect(qualityColor(3)).toMatch(/^#/);
   expect(itemTip(shard0["9"], { base: BASE, version: "v", label: "l" }).color).toBe(qualityColor(1));
+});
+
+test("a weapon with no stats still marks its damage, and worn armor its armor value, as not in the tables", () => {
+  const plain = itemTipText({ ...shard0["25"], st: [], b: 0, u: 0, r: 1, t: undefined });
+  expect(plain.lines).toEqual(["One-Hand · Sword", "[?] - [?] Damage · Speed 1.90", "([?] damage per second)", "Item Level 2", "Sell Price: 7c"]);
+  expect(plain.partial).toBe(true);
+  const chest = { ...shard0["9"], c: 4, sc: 1, s: 20 };
+  expect(itemTipText(chest).lines.slice(0, 2)).toEqual(["Chest · Cloth", "[?] Armor"]);
+  expect(itemTipText(chest).partial).toBe(true);
+  // A shirt, a ring (armor subclass 0) and a libram carry no armor line, and nothing else gets a damage line.
+  for (const r of [{ ...chest, s: 4 }, { ...chest, sc: 0, s: 11 }, { ...chest, sc: 7, s: 28 }, { ...shard0["9"], d: 1500 }]) {
+    expect(itemTipText(r).lines.join(" ")).not.toMatch(/Armor|Damage|damage per second/);
+  }
 });
 
 test("the raid builder's icons match the buff table: trees by name, not position, and families by their spells", () => {

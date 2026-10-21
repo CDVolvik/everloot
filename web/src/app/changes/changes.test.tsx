@@ -4,10 +4,11 @@ import { afterEach, expect, test, vi } from "vitest";
 import type { ChangeEntry } from "@/lib/changes";
 
 const timeline = vi.hoisted((): { entries: ChangeEntry[] } => ({ entries: [] }));
-vi.mock("@/lib/changes", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/changes")>()),
-  loadTimeline: () => timeline.entries,
-}));
+vi.mock("@/lib/changes", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@/lib/changes")>();
+  // The real loadTimeline groups the bundled posts; the fixtures go through the same grouping.
+  return { ...real, loadTimeline: () => real.groupAnnouncements(timeline.entries) };
+});
 vi.mock("next/link", () => ({
   default: ({ href, children, className, ...rest }: { href: string; children: ReactNode; className?: string }) => (
     <a href={href} className={className} {...rest}>{children}</a>
@@ -198,6 +199,66 @@ test("a build has no page of its own: its title is plain text", async () => {
   const html = await page({ show: "builds" });
   expect(html).not.toMatch(/href="\/changes\/build/);
   expect(html).toContain('<span class="font-medium">WoW: Forever build 1.60.1.70460</span>');
+});
+
+// One announcement on both forums, and twice on the US forum (two threads), as on 2026-10-20.
+const raid = "World of Warcraft: Forever Raid Overview—Locations, Raid Sizes, and Attunement";
+const copy = (id: string, region: "us" | "eu", topicId: number, at: string, over: Partial<ChangeEntry> = {}): ChangeEntry => ({
+  id, type: "post", game: "forever", at, title: raid, url: `https://${region}.forums.blizzard.com/en/wow/t/raid/${topicId}`, author: "Blizzard Entertainment",
+  role: "Blizzard News", category: "WoW: Forever General Discussion", source: "forum", region, excerpt: "Raids unlock on December 9.", topicId, postNumber: 1, startedThread: true, ...over,
+});
+const announcement = [
+  copy("forum:eu:6443510", "eu", 636735, "2026-10-20T19:00:16.744Z", { author: "Euro CM" }),
+  copy("forum:30552119", "us", 2387821, "2026-10-20T19:00:16.705Z"),
+  copy("forum:30552118", "us", 2387820, "2026-10-20T19:00:15.102Z"),
+  copy("forum:eu:6443635", "eu", 636749, "2026-10-20T20:31:37.175Z", { title: "Heads Up -- WoW Forever Stress Test on 21 October", author: "Kaivax" }),
+  copy("forum:30553354", "us", 2387920, "2026-10-20T20:30:35.322Z", { title: "Heads Up -- WoW Forever Stress Test on October 21", author: "Kaivax" }),
+];
+
+test("an announcement posted on both forums is one row, linking the US copy, with every forum it was posted on", async () => {
+  timeline.entries = [...entries, ...announcement];
+  const html = await page();
+  expect(rows(html)).toBe(4 + 2);
+  const tableRows = html.split("<tr").slice(1);
+  expect(tableRows.filter((r) => r.includes("Raid Overview—Locations"))).toHaveLength(1);
+  expect(tableRows.filter((r) => /Stress Test on (21 October|October 21)/.test(r)).map((r) => /Stress Test on (21 October|October 21)/.exec(r)![1])).toEqual(["October 21"]);
+  expect(html).toContain('href="/changes/us-30552118-world-of-warcraft-forever-raid-overview-locations-raid-sizes-and-attunement"');
+  expect(html).not.toContain("us-30552119");
+  expect(html).not.toContain("eu-6443510");
+  expect(tableRows.find((r) => r.includes("Raid Overview"))).toContain(">US · EU forum</span>");
+  // A post on one forum still says just that forum.
+  expect(tableRows.find((r) => r.includes("Synthetic beta notice"))).toContain(">US forum</span>");
+});
+
+test("filters and counts count announcements; the region filter finds one posted in that region", async () => {
+  timeline.entries = [...entries, ...announcement];
+  const eu = await page({ region: "eu" });
+  // The EU hotfix and both announcements, each shown by its US copy.
+  expect(rows(eu)).toBe(3);
+  expect(eu).toContain('href="/changes/us-30552118-');
+  expect(eu).toContain("US · EU forum");
+  expect(rows(await page({ region: "us" }))).toBe(3);
+  const html = await page();
+  const count = (label: string) => new RegExp(`>${label}</span><span class="tabular-nums text-muted">(\\d+)<`).exec(html)?.[1];
+  expect(count("EU forum")).toBe("3");
+  expect(count("US forum")).toBe("3");
+  expect(count("Blue posts")).toBe("3");
+  expect(html).toContain("Changes, WoW: Forever: 6");
+  // The author of the EU copy finds the announcement too, counted once.
+  expect(rows(await page({ author: "Euro CM" }))).toBe(1);
+  expect(count("Euro CM")).toBe("1");
+  expect(count("Kaivax")).toBe("2");
+  // The search reads every copy's wording.
+  expect(rows(await page({ q: "on 21 October" }))).toBe(1);
+});
+
+test("the RSS feed has one item per announcement, linking the US copy's page", async () => {
+  timeline.entries = [...entries, ...announcement];
+  const xml = await GET().text();
+  expect((xml.match(/<item>/g) ?? []).length).toBe(4 + 2);
+  expect(xml.match(/<title>Blue post: World of Warcraft: Forever Raid Overview/g)).toHaveLength(1);
+  expect(xml).toContain("<link>https://everloot.app/changes/us-30552118-world-of-warcraft-forever-raid-overview-locations-raid-sizes-and-attunement</link>");
+  expect(xml).not.toContain("eu-6443635");
 });
 
 test("with the game art, a spell a post names gets its icon, its tooltip and a link to where the site shows it", async () => {

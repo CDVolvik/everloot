@@ -143,6 +143,31 @@ describe("bindings and tokens", () => {
     expect(problemsOf({ binds: {} })).toEqual([expect.stringMatching(/^binds\.entrance:/), "a published page binds at least one id, so it shows at least one live data block"]);
   });
 
+  describe("an entrance or race id may be left out only when the page lists a Blizzard post", () => {
+    const post = (url: string) => ({ sources: [{ title: "A Blizzard post", url, checkedOn: "2026-10-20" }], status: "draft", reviewed: null });
+    const news = post("https://worldofwarcraft.blizzard.com/en-us/news/24301455");
+    const race = (over: Record<string, unknown>) =>
+      checkWiki([file({ type: "race", ...over }, "## Overview\n\nText.\n\n## In WoW: Forever\n\nText.\n"), westfall()], ctx).problems.map((p) => p.message);
+
+    test("with a Blizzard news or US/EU forum post, a dungeon, raid or race page passes unbound", () => {
+      expect(problemsOf({ binds: {}, ...news })).toEqual([]);
+      expect(problemsOf({ type: "raid", binds: { zone: 1436 }, ...post("https://us.forums.blizzard.com/en/wow/t/x/1") })).toEqual([]);
+      expect(race({ binds: {}, ...post("https://eu.forums.blizzard.com/en/wow/t/x/1") })).toEqual([]);
+    });
+
+    test("without one, the binding is still required", () => {
+      const required = (key: string) => [`binds.${key}: required unless the page lists a Blizzard post (worldofwarcraft.blizzard.com or the US or EU forums) in sources`];
+      expect(problemsOf({ binds: {}, status: "draft", reviewed: null })).toEqual(required("entrance"));
+      expect(problemsOf({ binds: {}, ...post("https://www.wowhead.com/news/1") })).toEqual(required("entrance"));
+      expect(problemsOf({ binds: {}, ...post("https://worldofwarcraft.blizzard.com.example.com/news/1") })).toEqual(required("entrance"));
+      expect(race({ binds: {}, status: "draft", reviewed: null })).toEqual(required("race"));
+    });
+
+    test("a binding that is given must still resolve", () => {
+      expect(problemsOf({ binds: { entrance: "stockade" }, ...news })).toEqual(['binds.entrance "stockade" is not a dungeon or raid entrance in the game files']);
+    });
+  });
+
   test("item sets and /changes entries resolve", () => {
     const set = (itemSet: number) => checkWiki([file({ type: "item-set", binds: { itemSet }, status: "draft" }, "## Overview\n\nText.\n\n## Who wears it\n\nText.\n"), westfall()], ctx).problems.map((p) => p.message);
     expect(set(1)).toEqual([]);

@@ -105,7 +105,7 @@ export default function ApiOverview() {
         head={["Status", "Meaning"]}
         rows={[
           [<C key="s">400</C>, <>A parameter is wrong. <C>error</C> says what is wrong.</>],
-          [<C key="s">401</C>, "The key you sent is not valid or was revoked. Only when keys are switched on."],
+          [<C key="s">401</C>, "The key you sent is not valid, was revoked or has expired. Only when keys are switched on."],
           [<C key="s">404</C>, "Nothing there: an unknown tool, or no page players have reported."],
           [<C key="s">429</C>, <>Rate limited. The <C>Retry-After</C> header is the number of seconds to wait.</>],
           [<C key="s">503</C>, "A dependency is unavailable. The answer is unrecorded, not zero."],

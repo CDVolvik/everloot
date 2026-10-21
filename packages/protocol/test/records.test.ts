@@ -156,6 +156,52 @@ describe("intake contract", () => {
     expect(result.receipt.rejected.map((r) => r.index)).toEqual([2, 3]);
   });
 
+  test("an NPC seen at its window carries an interaction position and a role; older rows still parse", () => {
+    const seen = { ...base, kind: "npc_sighting", npcId: 3158, name: "Duokna", mapId: 1411, x: 51.2, y: 42.8, level: 15, reaction: "friendly" };
+    const result = parseRecords([
+      { ...seen, positionKind: "interaction", role: "vendor" },
+      { ...seen, positionKind: "interaction" },
+      { ...seen, positionKind: "player" },
+      seen,
+      { ...seen, positionKind: "interaction", role: "blacksmith" },
+      { ...seen, positionKind: "nearby" },
+    ]);
+    expect(result.records).toEqual([
+      expect.objectContaining({ positionKind: "interaction", role: "vendor" }),
+      expect.objectContaining({ positionKind: "interaction" }),
+      expect.objectContaining({ positionKind: "player" }),
+      expect.not.objectContaining({ positionKind: expect.anything() }),
+    ]);
+    expect(result.receipt.rejected.map((r) => r.index)).toEqual([4, 5]);
+  });
+
+  test("an object's loot window may carry where it was opened, how and the object's name", () => {
+    const herb = { ...base, kind: "loot", sourceEvidence: "loot-api", sourceObjectId: 1618, items: [{ itemId: 2447, count: 2 }] };
+    const result = parseRecords([
+      { ...herb, mapId: 1411, x: 52.4, y: 43.1, gatherKind: "herb", sourceObjectName: "Peacebloom" },
+      herb,
+      { ...herb, mapId: 1411, x: 52.4, y: 43.1, gatherKind: "other" },
+      { ...herb, mapId: 1411, x: 52.4 },
+      { ...herb, mapId: 1411, x: 101, y: 43.1 },
+      { ...herb, gatherKind: "skinning" },
+      { ...herb, sourceObjectName: "" },
+    ]);
+    expect(result.records).toEqual([
+      expect.objectContaining({ mapId: 1411, x: 52.4, y: 43.1, gatherKind: "herb", sourceObjectName: "Peacebloom" }),
+      expect.not.objectContaining({ mapId: expect.anything() }),
+      expect.objectContaining({ gatherKind: "other" }),
+    ]);
+    expect(result.receipt.rejected.map((r) => r.index)).toEqual([3, 4, 5, 6]);
+    expect(result.receipt.rejected[0]!.reason).toBe("a loot position needs mapId, x and y together");
+  });
+
+  test("a trainer row may name the trainer", () => {
+    const row = { ...base, kind: "trainer_seen", profession: "Alchemy", recipe: "Lesser Healing Potion", requiredRank: 55 };
+    const result = parseRecords([{ ...row, trainerNpcId: 3347 }, row, { ...row, trainerNpcId: 0 }]);
+    expect(result.records).toEqual([expect.objectContaining({ trainerNpcId: 3347 }), expect.not.objectContaining({ trainerNpcId: expect.anything() })]);
+    expect(result.receipt.rejected.map((r) => r.index)).toEqual([2]);
+  });
+
   test("a loot window with no items is a kill when it names a source", () => {
     const r = validateUpload({
       addonVersion: "0.1.0",

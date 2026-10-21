@@ -229,6 +229,8 @@ local function trainer()
     if okStep then stepIndex = step end
   end
   EverlootDB.trainerSeen = EverlootDB.trainerSeen or {}
+  -- The trainer whose window is open; each trainer's list is recorded once.
+  local trainerNpcId = E.NpcIdFromGuid and UnitGUID and E.NpcIdFromGuid(UnitGUID("npc")) or nil
   for i = 1, math.min(count, 500) do
     local okInfo, name, serviceType = pcall(GetTrainerServiceInfo, i)
     local okReq, profession, rank = pcall(GetTrainerServiceSkillReq, i)
@@ -238,6 +240,7 @@ local function trainer()
       if GetTrainerServiceCost then okCost, cost = pcall(GetTrainerServiceCost, i) end
       cost = (okCost and type(cost) == "number" and cost >= 0) and cost or nil
       local key = profession .. "|" .. name .. "|" .. rank .. "|" .. tostring(cost)
+      if trainerNpcId then key = key .. "|" .. trainerNpcId end
       if not EverlootDB.trainerSeen[key] then
         local stored = E:Store("trainer_seen", {
           installId = EverlootDB.installId,
@@ -246,6 +249,7 @@ local function trainer()
           recipe = name,
           requiredRank = rank,
           costCopper = cost,
+          trainerNpcId = trainerNpcId,
         })
         if stored then EverlootDB.trainerSeen[key] = true end
       end

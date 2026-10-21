@@ -14,7 +14,9 @@ sent only from the website's upload page, after the preview names each addon. Yo
 when to upload. On the website you preview everything before it is sent. The Desktop App sends
 anonymous open-world events, and census rows if you allowed the census on its setup screen; the
 command-line uploader sends only the anonymous events. Neither sends named data (guild, gear, gold,
-collection), player rows or the installed addon list: those stay on your machine.
+collection) or the installed addon list: those stay on your machine. Player rows are a third case:
+the Desktop App sends them only if you turn on "Send the player pages with the uploads" in its
+settings, and until you do, they stay on your machine like the named data.
 
 Uploaded observations are public as individual, anonymous records, with no character names and
 without the addon's install id, so anyone can check our counts. The facts the site states itself, such as drop rates, spawn points and recipe
@@ -46,6 +48,21 @@ person. Each is published only when three installs report the same value. A ques
 Alliance or Horde when three installs on that faction report it and none on the other; it is shown as
 Both when three installs on each faction report it; otherwise it stays blank, and it is never guessed from a
 title, a giver or a zone. Nothing is read from the game's Creature or quest tables for these columns.
+
+Places on the map come from where players stood, at two moments (addon 0.3.10). When an NPC's window
+opens (merchant, gossip, quest, trainer, flight map, bank, auction house, stable, innkeeper), the
+player is within a few yards of that NPC, so the addon records the player's position as the NPC's
+(`positionKind: "interaction"`) with the service the window offered (vendor, trainer, quest giver and so
+on), once per NPC, service and zone. When the player opens a herb, ore vein, chest or other object, its
+loot row carries the player's position, how it was opened (from the spell cast on it) and the object's
+name as the game showed it, taken only from a herb, ore or chest cast, so the target of any other spell (a
+player you healed, say) never becomes a name. Where you stand when you only target or mouse over an NPC
+(`positionKind: "player"`) is never used as the NPC's place. An NPC pin needs three installs on the same
+map; an object's spawn point needs three installs within one cluster (positions closer than 1 on the
+0 to 100 map scale), and a place seen by one or two installs is only counted, never drawn. An object's
+name is shown only when three installs report the same one; otherwise it is "Object" and its id. Fishing
+gives the zone only, never a pin. Object places come from play only: nothing is read from the game's
+files for them.
 
 Full auction scans are not public records either. They feed market values only, and a value is
 published when three distinct reporters scanned the item. For that count, an upload containing a scan
@@ -264,8 +281,8 @@ and tooltip facts, the same ones its page shows:
 - **Same spoiler and takedown rules** as the pages. The downloads, the rest of the API and the MCP
   server still carry no icons or tooltip text.
 
-**Quest titles from the game files and the Warcraft Wiki.** *Proposed 2026-10-20, awaiting the
-maintainer's approval.* The game files list quests by id (`QuestV2`) but carry no titles. A quest's
+**Quest titles from the game files and the Warcraft Wiki.** *Proposed 2026-10-20; decided 2026-10-21
+by Carlos.* The game files list quests by id (`QuestV2`) but carry no titles. A quest's
 title may be shown on its page, in the quest lists and where an item page names the quest as a reward,
 before players confirm it, when the quest id is in the current build's `QuestV2` table and the quest's
 page in the Warcraft Wiki dump of 2023-11-13 gives that id in its quest infobox. The title is the
@@ -287,8 +304,8 @@ the wiki's own note, such as "(Alliance, 55)". The rules:
   from the snapshot and the dump each run. In build 1.60.1.70450: 6,614 quest ids, 3,191 with one wiki
   title, 47 where the pages disagree and 3,376 the wiki lacks; 3,184 shown after the id range holds back 7.
 
-**Item set and spell names from the game files.** *Proposed 2026-10-20, awaiting the maintainer's
-approval.* The client layer relates items to item sets and to the spells that create or use them, by
+**Item set and spell names from the game files.** *Proposed 2026-10-20; decided 2026-10-21
+by Carlos.* The client layer relates items to item sets and to the spells that create or use them, by
 id. The names of those sets (`ItemSet.Name_lang`) and spells (`SpellName.Name_lang`) may be shown beside
 the relations on the item pages. They come from the game files alone, so:
 
@@ -516,10 +533,14 @@ things are asked in return: credit it, and use a free key when you copy all of i
   the licence above do not apply to them. The code is AGPL-3.0 and has its own terms.
 
 **What we keep about keys, and for how long.** For each key: a one-way hash of it, its last four
-characters, its label, its account, when it was made, last used and revoked, and a count of its
-requests per day and endpoint. Not what was asked. Daily counts are kept 90 days. A revoked key and
-its counts are deleted 30 days after it was revoked, or at once when its owner deletes it on
-/account. Deleting an account (write to hello@everloot.app) deletes its keys and counts. Anonymous
+characters, its name, what its owner says it is for, its permissions, its account, when it was
+made, when it expires, when it was last used and revoked, and a count of its requests per day and
+endpoint. Not what was asked. The purpose is asked when a key is made so we know what keys are used
+for; it is not published. A key made on /account expires on the date its owner picks (7, 30, 90 or
+365 days, or a date up to a year ahead); past it, every endpoint refuses the key, as it does a
+revoked one. Keys made before expiry existed, and the Desktop App's key, have no end date. Daily
+counts are kept 90 days. A revoked key and its counts are deleted 30 days after it was revoked, or
+at once when its owner deletes it on /account; an expired key stays until its owner deletes it. Deleting an account (write to hello@everloot.app) deletes its keys and counts. Anonymous
 requests are counted per hour against a keyed hash of the address, which is deleted after about a
 day; the address itself is never stored.
 

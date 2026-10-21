@@ -4,7 +4,7 @@ import { FAMILIES } from "@/data/families";
 import { tools, toolHref } from "@/data/tools";
 import { allDocsPages } from "@/lib/docs/nav";
 import { MAP_DATA_EXTRACTED_AT, TALENT_DATA_EXTRACTED_AT } from "@/lib/build-stamp";
-import { loadTimeline, loadWriteups, postPath } from "@/lib/changes";
+import { loadTimeline, loadWriteups, postPath, writeupFor } from "@/lib/changes";
 import { TALENT_CLASSES } from "@/lib/talents/catalogs";
 import { CLIENT_LAYER, CLIENT_TAXONOMY, categoryNamedEnough, itemsHref } from "@/lib/items";
 import { loadShownNames } from "@/lib/shown-item-names";
@@ -54,7 +54,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // A blue post's page only once it carries our reviewed write-up (it says noindex until then), dated by the review.
   const writeups = loadWriteups();
   const postRoutes = timeline.flatMap((e) => {
-    const w = writeups.get(e.id);
+    const w = writeupFor(e, writeups);
     const path = w && postPath(e);
     return path ? [{ url: `${baseUrl}${path}`, lastModified: new Date(w.reviewed.on) }] : [];
   });

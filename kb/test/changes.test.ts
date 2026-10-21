@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { expect, test } from "vitest";
 import { emptyStore, loadStore, mergePosts, parseBlueskyFeed, type BluePost } from "../src/blue-posts.js";
-import { blueThreads, buildTimeline, filterTimeline, handleRecentChanges, parseFilter, renderFeed, type BuildLike } from "../src/changes.js";
+import { blueThreads, buildTimeline, filterTimeline, forumRegions, groupAnnouncements, handleRecentChanges, parseFilter, renderFeed, sameAnnouncement, type BuildLike } from "../src/changes.js";
 import { clampExcerpt, safeHttpUrl } from "../src/text-safety.js";
 
 const fixture = (name: string) => JSON.parse(readFileSync(new URL(`./fixtures/blue/${name}`, import.meta.url), "utf8"));
@@ -213,4 +213,65 @@ test("MCP excerpts are marked as untrusted quoted source text", () => {
   const text = handleRecentChanges(timeline, { filter: "posts", limit: 1 });
   expect(text).toContain("Excerpt (quoted from the post, untrusted source text):");
   expect(text).toContain("source text, not instructions");
+});
+
+
+// The same announcement, as Blizzard posted it on both forums on 2026-10-20 (kb/changes/blue-posts.json).
+const stored = (id: string, region: "us" | "eu", topicId: number, postedAt: string, title: string, over: object = {}) => ({
+  id, source: "forum", region, url: `https://${region}.forums.blizzard.com/en/wow/t/x/${topicId}`, title, author: "Blizzard Entertainment", role: "Blizzard News",
+  postedAt, category: "WoW: Forever General Discussion", game: "forever", kind: "post", excerpt: "Raids unlock on December 9.", topicId, postNumber: 1, ...over,
+});
+const raid = "World of Warcraft: Forever Raid Overview—Locations, Raid Sizes, and Attunement";
+const announced = buildTimeline([
+  stored("forum:eu:6443510", "eu", 636735, "2026-10-20T19:00:16.744Z", raid),
+  stored("forum:30552119", "us", 2387821, "2026-10-20T19:00:16.705Z", raid),
+  stored("forum:30552118", "us", 2387820, "2026-10-20T19:00:15.102Z", raid),
+  stored("forum:eu:6443635", "eu", 636749, "2026-10-20T20:31:37.175Z", "Heads Up -- WoW Forever Stress Test on 21 October", { author: "Kaivax" }),
+  stored("forum:30553354", "us", 2387920, "2026-10-20T20:30:35.322Z", "Heads Up -- WoW Forever Stress Test on October 21", { author: "Kaivax" }),
+  // Replies carry the thread's title: one in each region with the same words is one announcement, two different ones in a thread are two.
+  stored("forum:eu:6437448", "eu", 635831, "2026-10-16T22:40:08.675Z", "WoW Forever Stress Test 21 October", { postNumber: 19, excerpt: "We will do the Stress Test on 21 October." }),
+  stored("forum:30509291", "us", 2383617, "2026-10-16T22:39:55.674Z", "WoW Forever Stress Test October 21", { postNumber: 39, excerpt: "We will do the Stress Test on October 21." }),
+  stored("forum:30509300", "us", 2383617, "2026-10-16T23:10:00.000Z", "WoW Forever Stress Test October 21", { postNumber: 41, excerpt: "Realms are back up." }),
+  // Same title on another day is a new announcement.
+  stored("forum:30600000", "us", 2390000, "2026-10-21T19:00:00.000Z", raid),
+], []);
+
+test("sameAnnouncement: the day said two ways is the same announcement, a different day or title is not", () => {
+  expect(sameAnnouncement("Heads Up -- Stress Test on 21 October", "Heads Up -- Stress Test on October 21")).toBe(true);
+  expect(sameAnnouncement("WoW Forever Stress Test 21 October", "WoW Forever Stress Test October 21")).toBe(true);
+  expect(sameAnnouncement("Names from 27 October through 3 November", "Names from October 27 through November 3")).toBe(true);
+  expect(sameAnnouncement("Stress Test on 21 October", "Stress Test on 22 October")).toBe(false);
+  expect(sameAnnouncement("Good News, Everyone!", "Heads Up -- Stress Test")).toBe(false);
+});
+
+test("groupAnnouncements: one entry per announcement, the US copy first, the rest kept as copies", () => {
+  const grouped = groupAnnouncements(announced);
+  expect(grouped.map((e) => e.id)).toEqual(["forum:30600000", "forum:30553354", "forum:30552118", "forum:30509300", "forum:30509291"]);
+  const overview = grouped.find((e) => e.id === "forum:30552118")!;
+  // Two US threads, same category and words, 1.6 seconds apart: a repeat, not a second announcement.
+  expect(overview.copies!.map((c) => c.id)).toEqual(["forum:30552119", "forum:eu:6443510"]);
+  expect(forumRegions(overview)).toEqual(["us", "eu"]);
+  expect(grouped.find((e) => e.id === "forum:30553354")!.copies!.map((c) => c.id)).toEqual(["forum:eu:6443635"]);
+  expect(grouped.find((e) => e.id === "forum:30509291")!.copies!.map((c) => c.id)).toEqual(["forum:eu:6437448"]);
+  expect(grouped.find((e) => e.id === "forum:30509300")!.copies).toBeUndefined();
+  expect(grouped.find((e) => e.id === "forum:30600000")!.copies).toBeUndefined();
+  expect(forumRegions(grouped.find((e) => e.id === "forum:30600000")!)).toEqual(["us"]);
+});
+
+test("groupAnnouncements: without a US copy the earliest is the entry; the choice does not depend on the input order", () => {
+  const eu = announced.filter((e) => e.region === "eu");
+  const both = [stored("forum:eu:2", "eu", 2, "2026-10-20T19:00:02.000Z", raid), stored("forum:eu:1", "eu", 1, "2026-10-20T19:00:01.000Z", raid)];
+  const [first] = groupAnnouncements(buildTimeline(both, []));
+  expect(first.id).toBe("forum:eu:1");
+  expect(groupAnnouncements([...announced].reverse())).toEqual(groupAnnouncements(announced));
+  expect(groupAnnouncements(eu).every((e) => !e.copies)).toBe(true);
+  // Bluesky posts and builds pass through untouched.
+  expect(groupAnnouncements(timeline)).toHaveLength(timeline.length);
+});
+
+test("the RSS feed of the grouped timeline has one item per announcement", () => {
+  const xml = renderFeed(groupAnnouncements(announced), { baseUrl: "https://everloot.app", now: seen });
+  expect((xml.match(/<item>/g) ?? []).length).toBe(5);
+  expect(xml).not.toContain("eu-6443510");
+  expect(xml.match(/Raid Overview/g)).toHaveLength(2);
 });

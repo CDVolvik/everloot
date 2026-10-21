@@ -101,7 +101,16 @@ How it works, and what it will not do:
 - **Item icons and tooltips.** `Item.IconFileDataID` for the icon; name, quality, item level,
   required level, binding, slot, armour or weapon kind, weapon speed, stat kinds, flavour text and
   sell price from `ItemSparse` and `Item`. Stat amounts, armour and damage are worked out by the
-  client from tables we do not read, so the tooltip shows `[?]` for them and says so. Which stat
+  client from tables we do not read, so the tooltip shows `[?]` for them and says so: `+[?] Stamina`,
+  `[?] Armor` on cloth to plate and shields, and `[?] - [?] Damage` with `([?] damage per second)` on
+  weapons. Build 1.60.1's `ItemSparse` has no `MinDamage`/`MaxDamage` columns (WoWDBDefs layout
+  6FCC3191, shared with retail 12.1.7); the client works damage out from the `ItemDamage*` tables (damage
+  per second by item level, one column per quality, one table per weapon kind), the weapon speed and
+  `ItemSparse.DmgVariance`. The snapshot now reads those tables, and each weapon's record keeps the
+  inputs as `w` (`t` table, `dps`, `dv` variance, `ds` damage school); the site does not print numbers
+  from them yet. Before it does, a maintainer checks a few weapons' `w` against the game's own tooltip
+  (which table each weapon kind uses, and how min and max are rounded), and the item name rule's list
+  of tooltip facts in `docs/DATA_POLICY.md` gains weapon damage. Which stat
   slots count is read from `StatPercentEditor` (a slot with a zero share is left out); that reading
   still has to be checked against a real snapshot.
 - **Class, tree, profession and buff icons.** `ChrClasses.IconFileDataID`; each talent tree's
@@ -282,6 +291,16 @@ repeat these steps for a new build or another deployment.
    It prints the counts and writes `quest-names.json`, `item-set-names.json` and `spell-names.json` beside
    `item-names.json`. Upload each one with the same script, dry run first. Without them, the pages read
    "Quest N", "item set N" and "spell N".
+
+   To see what is still unnamed and why, run the gap report with the same two files:
+
+   ```
+   npm run kb -- name-gaps data/client/<product>-<build>-<config>.sqlite --wiki data/release/<release>.sqlite --out data/name-gaps.md
+   ```
+
+   For items, quests, item sets and spells it counts the ids the rules name and gives every other id a
+   reason and a route: a rule only the maintainer can widen, the addon's uploads, no source yet, or a
+   placeholder hidden on purpose. It lists ids, never names, and writes no name file; keep it local.
 9. **Next build.** Repeat steps 5 to 8 with the new build. Check the counts against the last run
    before uploading; a jump in `iconsEncrypted`, `tooltipsUnresolved`, `mapsSkipped` or
    `loadingScreensSkipped`, or `logoExtracted` falling to 0, means Blizzard changed something.

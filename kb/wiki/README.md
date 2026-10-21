@@ -63,6 +63,9 @@ editor cannot drop or reorder them.
   infobox or a data block. Inside a quote (Blizzard's words, linked to the post) is the only exception.
 - **Nothing above the shown id ranges.** New Forever content is written about only from a Blizzard post or
   from what players have recorded, never from the game files alone.
+- **Announced but not in the files yet.** A `dungeon` or `raid` page may leave out `entrance`, and a `race` page
+  `race`, only when its `sources` list a Blizzard post (worldofwarcraft.blizzard.com or the US or EU forums).
+  The binding is added once the game files have it.
 - **Original pages only for now.** An original page is written in our own words from the game files,
   Blizzard's posts and Everloot's data. An adapted page reuses Warcraft Wiki text; it needs `adaptedFrom` for
   its credit line and cannot be published until the overlap check against the wiki dump exists.

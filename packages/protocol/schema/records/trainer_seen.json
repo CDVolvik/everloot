@@ -44,6 +44,12 @@
       "type": "integer",
       "minimum": 0,
       "maximum": 2000000000
+    },
+    "trainerNpcId": {
+      "description": "The trainer whose window listed it. Older addons send none.",
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740991
     }
   },
   "required": [

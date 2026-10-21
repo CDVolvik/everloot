@@ -19,12 +19,27 @@ export const NPC_RANKS: readonly NpcRank[] = ["normal", "elite", "rare", "rare_e
 export type QuestTag = "group" | "dungeon" | "raid" | "pvp";
 export const QUEST_TAGS: readonly QuestTag[] = ["group", "dungeon", "raid", "pvp"];
 export type QuestSide = "alliance" | "horde" | "both";
+/** What an NPC does for players, from the window that opened (the protocol's `NPC_ROLES`). */
+export type NpcRole = "vendor" | "trainer" | "questgiver" | "flightmaster" | "banker" | "auctioneer" | "stablemaster" | "innkeeper" | "repair";
+export const NPC_ROLES: readonly NpcRole[] = ["vendor", "trainer", "questgiver", "flightmaster", "banker", "auctioneer", "stablemaster", "innkeeper", "repair"];
+
+export type PositionKind = "player" | "npc" | "interaction";
+/**
+ * The positions that can make a pin: the NPC's own, and the player's while the NPC's window was open (a few
+ * yards away). `player`, where the player stood when targeting, never does, and neither does a row without one.
+ */
+export const PIN_POSITION_KINDS: readonly PositionKind[] = ["npc", "interaction"];
+export function isPinPosition(kind: unknown): boolean {
+  return PIN_POSITION_KINDS.includes(kind as PositionKind);
+}
 
 export type NpcSightingRow = {
   installId: string;
   npcId: number;
   name: string;
-  positionKind?: "player" | "npc";
+  positionKind?: PositionKind;
+  /** Only on `interaction` rows. */
+  role?: NpcRole;
   mapId: number;
   x: number;
   y: number;
@@ -96,7 +111,7 @@ function agreedLabel(rows: { installId: string; label: string }[]): string | nul
 }
 
 /** `agreedLabel` for many ids in one pass: id -> the label 3 installs agree on, ids without one left out. */
-function agreedLabelsById(rows: { id: number; installId: string; label: string }[]): Map<number, string> {
+export function agreedLabelsById(rows: { id: number; installId: string; label: string }[]): Map<number, string> {
   const byId = new Map<number, { installId: string; label: string }[]>();
   for (const row of rows) {
     const list = byId.get(row.id) ?? [];
@@ -156,7 +171,7 @@ export function npcPage(npcId: number, facts: WorldFacts): NpcPage {
   const name = agreedLabel(rows.map((row) => ({ installId: row.installId, label: row.name })));
   const grouped = new Map<number, Map<string, NpcSightingRow>>();
   for (const row of rows) {
-    if (row.positionKind !== "npc") continue;
+    if (!isPinPosition(row.positionKind)) continue;
     if (!Number.isInteger(row.mapId) || row.mapId < 0) continue;
     if (row.x < 0 || row.x > 100 || row.y < 0 || row.y > 100) continue;
     const installs = grouped.get(row.mapId) ?? new Map<string, NpcSightingRow>();
@@ -185,6 +200,21 @@ export function npcTraits(rows: NpcSightingRow[]): { level: number | null; react
   const creatureType = agreedLabel(rows.filter((row) => row.creatureType !== undefined).map((row) => ({ installId: row.installId, label: row.creatureType! })));
   const rank = agreedLabel(rows.filter((row) => row.rank !== undefined).map((row) => ({ installId: row.installId, label: row.rank! })));
   return { level, reaction: reaction as NpcReaction | null, creatureType, rank: rank as NpcRank | null };
+}
+
+/**
+ * What an NPC does for players: each role 3 installs saw from its window, in `NPC_ROLES` order. An NPC can have
+ * several (a quest giver who also sells), so this is not one agreed label.
+ */
+export function npcRoles(rows: NpcSightingRow[]): NpcRole[] {
+  const installs = new Map<NpcRole, Set<string>>();
+  for (const row of rows) {
+    if (row.positionKind !== "interaction" || !row.role || !row.installId.trim()) continue;
+    const set = installs.get(row.role) ?? new Set<string>();
+    set.add(row.installId.trim());
+    installs.set(row.role, set);
+  }
+  return NPC_ROLES.filter((role) => (installs.get(role)?.size ?? 0) >= WORLD_AGREEMENT);
 }
 
 export function formatNpcPage(page: NpcPage): string {
@@ -331,7 +361,8 @@ export function worldFactsFromRecords(records: unknown[]): WorldFacts {
       typeof row.y === "number"
     ) {
       facts.npcs.push({ installId: row.installId, npcId: row.npcId, name: row.name, mapId: row.mapId, x: row.x, y: row.y,
-        ...(row.positionKind === "npc" || row.positionKind === "player" ? { positionKind: row.positionKind } : {}),
+        ...(row.positionKind === "npc" || row.positionKind === "player" || row.positionKind === "interaction" ? { positionKind: row.positionKind } : {}),
+        ...(row.positionKind === "interaction" && NPC_ROLES.includes(row.role as NpcRole) ? { role: row.role as NpcRole } : {}),
         ...(typeof row.level === "number" && Number.isInteger(row.level) && row.level > 0 ? { level: row.level } : {}),
         ...(NPC_REACTIONS.includes(row.reaction as NpcReaction) ? { reaction: row.reaction as NpcReaction } : {}),
         ...(typeof row.creatureType === "string" && NPC_CREATURE_TYPES.includes(row.creatureType) ? { creatureType: row.creatureType } : {}),

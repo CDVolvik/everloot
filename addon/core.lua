@@ -5,7 +5,7 @@
 Everloot = Everloot or {}
 local E = Everloot
 
-E.VERSION = "0.3.7"
+E.VERSION = "0.3.10"
 E.MAX_ROWS_PER_KIND = 2000
 
 -- Same Adler-32 the companion writes into its slot addons; Lua 5.1 arithmetic only.
@@ -16,6 +16,17 @@ function E.Adler32(s)
     b = (b + a) % 65521
   end
   return b * 65536 + a
+end
+
+--- The NPC id in a creature GUID (Creature-0-server-instance-zone-NPCID-spawn); nil for anything else.
+function E.NpcIdFromGuid(guid)
+  if type(guid) ~= "string" then return nil end
+  local parts = {}
+  for p in guid:gmatch("[^-]+") do parts[#parts + 1] = p end
+  if parts[1] == "Creature" or parts[1] == "Vehicle" then
+    return tonumber(parts[6])
+  end
+  return nil
 end
 
 --- Copper as the site writes it: "1g 2s 3c", silver and copper always shown below a gold.
@@ -55,18 +66,37 @@ function E:IsEnabled(module)
   return EverlootDB and EverlootDB.toggles and EverlootDB.toggles[module] ~= false
 end
 
+-- Rows per budget, counted from the file the first time a budget is used in a session, then kept up to date.
+local budgetCounts = {}
+
+local function budgetCount(kind, store, budget)
+  local key = kind .. "/" .. budget.name
+  local entry = budgetCounts[key]
+  if not entry or entry.store ~= store or entry.n > #store then
+    local n = 0
+    for _, r in ipairs(store) do if budget.of(r) == budget.name then n = n + 1 end end
+    entry = { store = store, n = n }
+    budgetCounts[key] = entry
+  end
+  return entry
+end
+
 --- Preserve retained rows. At capacity, pause this kind instead of silently discarding data.
-function E:Store(kind, row, cap)
+--- A `budget` ({ name, of = function(row) return its budget's name end }) gives one share of a kind its own
+--- cap, so a busy share cannot fill the kind for the others; at capacity only that share pauses.
+function E:Store(kind, row, cap, budget)
   if type(row) ~= "table" then return false end
   local store = EverlootDB.records[kind]
   if not store then store = {}; EverlootDB.records[kind] = store end
+  local share = budget and budgetCount(kind, store, budget)
+  local label = budget and (kind .. " (" .. budget.name .. ")") or kind
   -- A module whose rows replace each other may state its own bound; the others keep the file-wide one.
-  if #store >= (cap or E.MAX_ROWS_PER_KIND) then
+  if (share and share.n or #store) >= (cap or E.MAX_ROWS_PER_KIND) then
     EverlootDB.paused = EverlootDB.paused or {}
-    if not EverlootDB.paused[kind] then
-      print("Everloot: " .. kind .. " collection paused at capacity. Keep and upload your SavedVariables file.")
+    if not EverlootDB.paused[label] then
+      print("Everloot: " .. label .. " collection paused at capacity. Keep and upload your SavedVariables file.")
     end
-    EverlootDB.paused[kind] = true
+    EverlootDB.paused[label] = true
     return false
   end
   -- Allocate once, not at export. Persist epoch + counter together; never reuse an ID.
@@ -79,6 +109,7 @@ function E:Store(kind, row, cap)
   row.eventId = EverlootDB.eventEpoch .. ":" .. string.format("%.0f", EverlootDB.nextEvent)
   row.kindLoggedAt = date("!%Y-%m-%dT%H:%M:%SZ")
   store[#store + 1] = row
+  if share then share.n = share.n + 1 end
   return true
 end
 

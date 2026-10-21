@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { buildItemSet, parseItemIds, shardOf, shardRecords, ITEM_SHARD_SIZE } from "../src/assets/items.js";
+import { buildItemSet, parseItemIds, shardOf, shardRecords, weaponDamageTable, ITEM_SHARD_SIZE } from "../src/assets/items.js";
 import { fitSize, planMapArt, stitchPlan } from "../src/assets/map-art.js";
 import type { Row, Rows } from "../src/talents/build-catalog.js";
 
@@ -25,6 +25,35 @@ test("item records keep what the tables give, and only stat kinds with a share",
   expect(records.get(600)).toMatchObject({ n: "Test Helm", q: 3, b: 2, s: 1, c: 4, sc: 4, st: [7, 4], u: 1, t: "Shiny." });
   // Only an item with an icon file has one; no icon is invented.
   expect([...iconOf]).toEqual([[25, 135274]]);
+});
+
+test("a weapon records the damage inputs its table, level and quality give, and nothing is invented", () => {
+  const sparse = (id: number, InventoryType: number, Flags: number[], extra: Record<string, unknown> = {}) =>
+    ({ ID: id, Display_lang: `Weapon ${id}`, OverallQualityID: 2, ItemLevel: 20, InventoryType, ItemDelay: 2000, DmgVariance: 0.4, DamageType: 0, Flags, ...extra });
+  const tables: Record<string, Rows> = {
+    ItemSparse: t([
+      sparse(1, 13, [0, 0]), sparse(2, 17, [0, 0x200]), sparse(3, 26, [0, 0], { DamageType: 5 }), sparse(4, 15, [0, 0]),
+      sparse(5, 13, [0, 0], { ItemLevel: 99 }), sparse(6, 17, [0, 0]), sparse(7, 1, [0, 0], { ItemDelay: 0 }),
+    ]),
+    Item: t([
+      { ID: 1, ClassID: 2, SubclassID: 7 }, { ID: 2, ClassID: 2, SubclassID: 10 }, { ID: 3, ClassID: 2, SubclassID: 19 },
+      { ID: 4, ClassID: 2, SubclassID: 2 }, { ID: 5, ClassID: 2, SubclassID: 7 }, { ID: 6, ClassID: 2, SubclassID: 8 }, { ID: 7, ClassID: 4, SubclassID: 4 },
+    ]),
+    ItemDamageOneHand: t([{ ID: 1, ItemLevel: 20, Quality: [1, 2, 7.5, 4, 5, 6, 7] }]),
+    ItemDamageTwoHandCaster: t([{ ID: 1, ItemLevel: 20, Quality: [1, 2, 8.25, 4, 5, 6, 7] }]),
+    ItemDamageWand: t([{ ID: 1, ItemLevel: 20, Quality: [1, 2, 12, 4, 5, 6, 7] }]),
+  };
+  const { records } = buildItemSet((n) => tables[n]);
+  expect(records.get(1)!.w).toEqual({ t: "ItemDamageOneHand", dps: 7.5, dv: 0.4, ds: 0 });
+  expect(records.get(2)!.w).toEqual({ t: "ItemDamageTwoHandCaster", dps: 8.25, dv: 0.4, ds: 0 });
+  expect(records.get(3)!.w).toEqual({ t: "ItemDamageWand", dps: 12, dv: 0.4, ds: 5 });
+  // No ItemDamageRanged table, no row at level 99, no ItemDamageTwoHand table, not a weapon: no inputs.
+  for (const id of [4, 5, 6, 7]) expect(records.get(id)!.w).toBeUndefined();
+  expect(weaponDamageTable(21, 7, false)).toBe("ItemDamageOneHand");
+  expect(weaponDamageTable(15, 18, false)).toBe("ItemDamageRanged");
+  expect(weaponDamageTable(25, 16, false)).toBe("ItemDamageThrown");
+  expect(weaponDamageTable(15, 20, false)).toBeNull();
+  expect(weaponDamageTable(1, null, false)).toBeNull();
 });
 
 test("an allowlist limits the items, and a snapshot without item tables is refused", () => {

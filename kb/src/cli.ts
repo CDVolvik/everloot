@@ -25,6 +25,7 @@ import { Curated, diffRaidBuffs, RaidBuffTable } from "./raid-buffs.js";
 import { parseItemIds } from "./assets/items.js";
 import { runItemNames } from "./item-names.js";
 import { runGameNames } from "./game-names.js";
+import { formatNameGaps, runNameGaps } from "./name-gaps.js";
 import { SHOWN_MAX_QUEST_ID, SHOWN_MAX_SET_ID, SHOWN_MAX_SPELL_ID } from "./game-name-rule.js";
 import { SHOWN_MAX_ITEM_ID } from "./item-name-rule.js";
 import { parse as parseYaml } from "yaml";
@@ -138,6 +139,10 @@ const USAGE = `usage: npm run kb -- <command> --db <path>
     Warcraft Wiki dump's quest infoboxes give it one title (quest-names.json), and the game files' names of the
     item sets and spells the client layer's relations name (item-set-names.json, spell-names.json), each held to
     the id ranges in kb/src/game-name-rule.ts. For the private bucket only; never commit them. See docs/DATA_POLICY.md)
+  name-gaps <snapshot.sqlite> --wiki <knowledge base or release .sqlite> [--out name-gaps.md] [--json name-gaps.json]
+    (for items, quests, item sets and spells: how many ids the name rules show, and for every other id the reason
+    it prints as "Item N" and what would fill it: a rule decision, the addon's uploads, or no source yet. Reads
+    the same sources as item-names and game-names and writes no name file. Ids only, never names; keep it local)
   client-map <snapshot.sqlite> [--out ../web/src/data/game-data/map.json]
     (zone rectangles in world coordinates, continents and dungeon and raid entrances from a client
     snapshot, for the world map page. Game file data, stamped with the build. See docs/DATA_POLICY.md)
@@ -540,6 +545,18 @@ async function main(): Promise<number> {
         console.log(`${label}: ${r.counts.referenced} in the client layer's relations, ${r.counts.named} named in the files, held back ${r.counts.held} (id from ${cap} or a placeholder name)`);
       }
       for (const r of [run.quests, run.sets, run.spells]) console.log(`shown -> ${r.path} (${r.file.count} names)`);
+      return 0;
+    }
+    case "name-gaps": {
+      const kbPath = flags.get("wiki");
+      if (!args[0] || !kbPath) break;
+      const report = runNameGaps({ snapshotPath: args[0], kbPath, edges: CLIENT_EDGES });
+      const md = formatNameGaps(report);
+      const out = flags.get("out"), json = flags.get("json");
+      if (out) writeFileSync(out, md);
+      if (json) writeFileSync(json, `${JSON.stringify(report, null, 2)}
+`);
+      process.stdout.write(md);
       return 0;
     }
     case "client-map": {

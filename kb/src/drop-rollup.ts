@@ -4,6 +4,7 @@
  * windows, not a census of kills or independent people. The legacy `kills`
  * field names the window count for compatibility. Unobserved kills are unknown.
  */
+import { isPinPosition } from "./world-pages.js";
 
 export const INDEPENDENT_INSTALLS = 3;
 
@@ -160,7 +161,7 @@ export function itemFactsFromRecords(records: unknown[]): ItemFactRows {
     }
     if (
       row.kind === "npc_sighting" &&
-      row.positionKind === "npc" &&
+      isPinPosition(row.positionKind) &&
       typeof row.npcId === "number" &&
       typeof row.name === "string" &&
       typeof row.mapId === "number" &&
