@@ -1,6 +1,26 @@
 {
   "posts": [
     {
+      "id": "forum:30559627",
+      "source": "forum",
+      "region": "us",
+      "url": "https://us.forums.blizzard.com/en/wow/t/mac-8-different-graphics-bugs-each-isolated-to-one-setting-%E2%80%94-with-repro-steps-for-each/2354050/682",
+      "title": "[Mac] 8 different graphics bugs, each isolated to one setting — with repro steps for each",
+      "author": "Rommax",
+      "role": "WoW Developer",
+      "postedAt": "2026-10-21T05:40:25.063Z",
+      "editedAt": null,
+      "category": "WoW: Forever Beta Discussion",
+      "game": "forever",
+      "kind": "post",
+      "excerpt": "There’ve been some technical difficulties with getting a build with the next round of fixes out. At this point, it’s unfortunately not going to be deployed until Thursday, after the server slam test is over.",
+      "topicId": 2354050,
+      "topicSlug": "mac-8-different-graphics-bugs-each-isolated-to-one-setting-%E2%80%94-with-repro-steps-for-each",
+      "postNumber": 682,
+      "startedThread": false,
+      "firstSeen": "2026-10-21T07:28:05.026Z"
+    },
+    {
       "id": "bluesky:3mydklukhq22f",
       "source": "bluesky",
       "url": "https://bsky.app/profile/worldofwarcraft.blizzard.com/post/3mydklukhq22f",
