@@ -123,3 +123,7 @@ export function zoneContents(
 
 /** Players' reports or the game files put something on the page beyond the zone's name. */
 export const hasContent = (c: ZoneContents | undefined): boolean => Boolean(c && (c.npcs.length || c.quests.length || c.entrances.length || c.treasures.length));
+
+/** Players put something on it: an entrance read only from the game files has no player behind it. */
+export const hasConfirmed = (c: ZoneContents | undefined): boolean =>
+  Boolean(c && (c.npcs.length || c.quests.length || c.treasures.length || c.entrances.some((e) => e.confirmed !== null)));
