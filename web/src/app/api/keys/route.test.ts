@@ -221,6 +221,12 @@ test("the list offers only the scopes that exist now", async () => {
   expect((await (await GET(call("GET"))).json()).scopes).toEqual(["read:public"]);
   vi.stubEnv("EVERLOOT_SAVED_BUILDS", "1");
   expect((await (await GET(call("GET"))).json()).scopes).toEqual(["read:public", "read:own"]);
+  expect((await POST(call("POST", "", { ...FORM, scopes: ["link:own"] }))).status).toBe(400);
+  vi.stubEnv("EVERLOOT_CHARACTER_LINKS", "1");
+  expect((await (await GET(call("GET"))).json()).scopes).toEqual(["read:public", "read:own", "link:own"]);
+  auth.authQuery.mockResolvedValue([{ key_ref: KEY_ID, refusal: null }]);
+  expect((await POST(call("POST", "", { ...FORM, scopes: ["link:own"] }))).status).toBe(201);
+  expect(JSON.parse(auth.authQuery.mock.calls.at(-1)![1].body).p_scopes).toEqual(["read:public", "link:own"]);
 });
 
 test("storage trouble is a 503, never a silent success", async () => {

@@ -20,6 +20,7 @@ export interface KeyRow {
 export const KEY_SCOPES = [
   { id: "read:public", label: "Read public data", note: "The corpus, drop list, items, market prices and the MCP server, at a key's higher limits.", always: true },
   { id: "read:own", label: "Read my saved builds", note: "Your saved builds and character labels, for the Desktop App, MCP clients and scripts.", always: false },
+  { id: "link:own", label: "Link my characters", note: "Send the in-game codes that link your characters to this account, as the Desktop App does.", always: false },
 ] as const;
 export type KeyScope = (typeof KEY_SCOPES)[number]["id"];
 

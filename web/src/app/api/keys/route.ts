@@ -3,6 +3,7 @@ import {
   cleanLabel, cleanPurpose, createKey, deleteKey, expiryFrom, issueKey, KEY_SCOPES, KEYS_MADE_PER_DAY, KEYS_PER_ACCOUNT,
   OWN_SCOPES, readKeys, revokeKey, rollKey, validKeyId, type Issue,
 } from "@/lib/api-keys";
+import { characterLinksOn } from "@/lib/character-links";
 import { guardOn } from "@/lib/data-guard";
 import { savedBuildsOn } from "@/lib/saved-builds";
 import { getUser, siteUrl } from "@/lib/supabase/server";
@@ -30,8 +31,14 @@ async function account(req: Request, write: boolean) {
   return user;
 }
 
-/** The scopes this site offers now: read:own only while saved builds are on. */
-const offered = () => KEY_SCOPES.filter((s) => s.id !== "read:own" || savedBuildsOn()).map((s) => s.id as string);
+/**
+ * The scopes this site offers now: read:own while saved builds are on, link:own while character links are on and
+ * the expiry migration is applied (the older call has no way to ask for it).
+ */
+function offered(records = true): string[] {
+  const on: Record<string, boolean> = { "read:own": savedBuildsOn(), "link:own": characterLinksOn() && records };
+  return KEY_SCOPES.filter((s) => on[s.id] ?? true).map((s) => s.id);
+}
 
 function refusal(made: Issue | Awaited<ReturnType<typeof createKey>>): Response | null {
   if ("missing" in made) return fail(503, NOT_YET);
@@ -46,7 +53,7 @@ export async function GET(req: Request) {
     const user = await account(req, false);
     if (user instanceof Response) return user;
     const { keys, records } = await readKeys(user.id);
-    return NextResponse.json({ ok: true, keys, limit: KEYS_PER_ACCOUNT, ownScope: savedBuildsOn(), records, scopes: offered() }, { headers });
+    return NextResponse.json({ ok: true, keys, limit: KEYS_PER_ACCOUNT, ownScope: savedBuildsOn(), records, scopes: offered(records) }, { headers });
   } catch {
     return fail(503, "Keys are temporarily unavailable.");
   }
