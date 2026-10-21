@@ -4,7 +4,8 @@
  * windows, not a census of kills or independent people. The legacy `kills`
  * field names the window count for compatibility. Unobserved kills are unknown.
  */
-import { objectSpawnRowsFromRecords, type ObjectSpawnRow } from "./object-spawns.js";
+import { objectSightingRowsFromRecords, objectSpawnRowsFromRecords, type ObjectSpawnRow } from "./object-spawns.js";
+import { pendingLootFromRecords, type PendingLoot } from "./pending-loot.js";
 import { isPinPosition } from "./world-pages.js";
 
 export const INDEPENDENT_INSTALLS = 3;
@@ -45,7 +46,7 @@ export interface RollupResult {
 export type ItemNameRow = { installId: string; itemId: number; name: string };
 export type NpcPinRow = { installId: string; npcId: number; name: string; mapId: number; x: number; y: number };
 /** Object rows that carry a name, for the agreed object names. */
-export type ItemFactRows = { rates: DropRate[]; names: ItemNameRow[]; npcs: NpcPinRow[]; objects: ObjectSpawnRow[] };
+export type ItemFactRows = { rates: DropRate[]; names: ItemNameRow[]; npcs: NpcPinRow[]; objects: ObjectSpawnRow[]; pending: PendingLoot };
 
 /** Frequency among source-attributed observations; missing kills are not inferred. */
 export function rollupDrops(windows: LootRow[]): RollupResult {
@@ -173,5 +174,8 @@ export function itemFactsFromRecords(records: unknown[]): ItemFactRows {
       npcs.push({ installId: row.installId, npcId: row.npcId, name: row.name, mapId: row.mapId, x: row.x, y: row.y });
     }
   }
-  return { rates: rollupDrops(lootWindowsFromRecords(records)).rates, names, npcs, objects: objectSpawnRowsFromRecords(records).filter((row) => row.name !== undefined) };
+  // Names from loot windows and from minimap sightings agree together: both are the name the client showed.
+  const objects = [...objectSpawnRowsFromRecords(records), ...objectSightingRowsFromRecords(records)].filter((row) => row.name !== undefined);
+  // Recorder windows are counted apart and never reach rollupDrops: lootWindowsFromRecords keeps loot-api rows only.
+  return { rates: rollupDrops(lootWindowsFromRecords(records)).rates, names, npcs, objects, pending: pendingLootFromRecords(records) };
 }

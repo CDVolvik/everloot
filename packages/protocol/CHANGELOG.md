@@ -12,6 +12,15 @@ required, or tightening a limit is a major release.
   without a key, 5,000 with one), and the corpus and client-layer routes and the market rule read in plain words.
 
 ### Added
+- 1.12.0 (record protocol 1.7.0), for rares, dungeons and treasures in a Polestar Recorder file:
+  `npc_sighting.positionKind` gains `vignette` (the NPC's own position from the game's vignette API). Three record
+  kinds, each public in the corpus: `instance_entrance` (`instanceMapId`, `name`, `instanceType` from
+  `INSTANCE_TYPES`, optional `difficulty`, and the last outdoor `mapId`, `x`, `y`), `encounter` (`encounterId`,
+  `name`, `instanceMapId`, optional `difficulty` and `size`, `success`, optional `npcIds`) and `object_sighting`
+  (`objectId`, `name`, the object's own `mapId`, `x`, `y`, optional `instanceMapId`). MCP: `item_page`, `npc_page`
+  and `object_page` gain an optional `pendingLoot` (loot windows reported but not in the rates: `windows`,
+  `reporters`), `object_page` an optional `pins`, and `world_map_near` an optional `treasures` list and an
+  optional `confirmed` count on each entrance.
 - 1.11.0 (record protocol 1.6.0), for uploads of a Polestar Recorder file: `npc_sighting.level` and
   `npc_sighting.reaction` are no longer required, because a Recorder file does not record them, and the upload
   envelope gains an optional `source` (`UPLOAD_SOURCES`: `polestar_recorder`), passed through as

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "vitest";
 import { openDb, type DB } from "../src/db.js";
 import { createMcpHttpHandler } from "../src/mcp-http-server.js";
 import type { CorpusLoader } from "../src/mcp-server.js";
-import { distanceYards, handleWorldMapNear, NEAR_MAX_LIMIT, observedPins } from "../src/world-map-near.js";
+import { distanceYards, handleWorldMapNear, mapFactsFromRecords, NEAR_MAX_LIMIT, nearResult, observedPins } from "../src/world-map-near.js";
 import { worldFactsFromRecords } from "../src/world-pages.js";
 import type { WorldMapData } from "../src/world-map-data.js";
 
@@ -69,6 +69,21 @@ describe("handleWorldMapNear", () => {
     expect(text.indexOf("Centre Guard")).toBeLessThan(text.indexOf("East Smith"));
     expect(text).toMatch(/Vendors[^\n]*\n\s+Clerk \(NPC 3\)/);
     expect(text).toContain("found in game files, unconfirmed");
+  });
+
+  test("an entrance 3 installs zoned in from is confirmed in place, and a treasure 3 installs saw is listed; 2 are not enough", () => {
+    const entered = (installId: string) => ({ kind: "instance_entrance", installId, instanceMapId: 34, name: "Synthetic Stockade", instanceType: "party", mapId: 1429, x: 51, y: 49, capturedAt: when });
+    const chest = (installId: string, objectId: number) => ({ kind: "object_sighting", installId, objectId, name: `Chest ${objectId}`, mapId: 1429, x: 50.5, y: 50, capturedAt: when });
+    const records = [...corpus, ...["i1", "i2", "i3"].map(entered), ...["i1", "i2", "i3"].map((i) => chest(i, 77)), ...["i1", "i2"].map((i) => chest(i, 78))];
+    const result = nearResult({ zone: "Synthetic Forest", x: 50, y: 50 }, data, mapFactsFromRecords(records));
+    expect(result.ok && result.entrances.map((e) => [e.names[0], e.confirmed])).toEqual([["Synthetic Stockade", 3], ["Synthetic Keep", undefined]]);
+    expect(result.ok && result.treasures).toEqual([{ objectId: 77, name: "Chest 77", mapId: 1429, zoneName: "Synthetic Forest", x: 50.5, y: 50, yards: 17.3, reporters: 3 }]);
+    const text = handleWorldMapNear({ zone: "Synthetic Forest", x: 50, y: 50 }, data, mapFactsFromRecords(records));
+    expect(text).toMatch(/Synthetic Stockade \(dungeon\).*confirmed by 3 installs/);
+    expect(text).toMatch(/Treasures[^\n]*\n\s+Chest 77 \(object 77\)/);
+    expect(text).not.toContain("Chest 78");
+    const two = nearResult({ zone: "Synthetic Forest", x: 50, y: 50 }, data, mapFactsFromRecords([...corpus, ...["i1", "i2"].map(entered)]));
+    expect(two.ok && two.entrances[0]?.confirmed).toBeUndefined();
   });
 
   test("a zone can be named by its map id", () => {

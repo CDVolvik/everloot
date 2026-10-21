@@ -50,6 +50,7 @@ export declare const npcSighting: z.ZodObject<{
         interaction: "interaction";
         npc: "npc";
         player: "player";
+        vignette: "vignette";
     }>>;
     role: z.ZodOptional<z.ZodEnum<{
         auctioneer: "auctioneer";
@@ -132,6 +133,52 @@ export declare const questEvent: z.ZodObject<{
         pvp: "pvp";
         raid: "raid";
     }>>;
+}, z.core.$strip>;
+/** The instance kinds `GetInstanceInfo` reports for a dungeon (`party`) and a raid. */
+export declare const INSTANCE_TYPES: readonly ["party", "raid"];
+/** Zoning into a dungeon or raid, with the last position outside it: the entrance. */
+export declare const instanceEntrance: z.ZodObject<{
+    installId: z.ZodString;
+    eventId: z.ZodOptional<z.ZodString>;
+    capturedAt: z.ZodString;
+    kind: z.ZodLiteral<"instance_entrance">;
+    instanceMapId: z.ZodNumber;
+    name: z.ZodString;
+    instanceType: z.ZodEnum<{
+        party: "party";
+        raid: "raid";
+    }>;
+    difficulty: z.ZodOptional<z.ZodNumber>;
+    mapId: z.ZodNumber;
+    x: z.ZodNumber;
+    y: z.ZodNumber;
+}, z.core.$strip>;
+/** A boss encounter's end, as `ENCOUNTER_END` reports it. */
+export declare const encounterEnd: z.ZodObject<{
+    installId: z.ZodString;
+    eventId: z.ZodOptional<z.ZodString>;
+    capturedAt: z.ZodString;
+    kind: z.ZodLiteral<"encounter">;
+    encounterId: z.ZodNumber;
+    name: z.ZodString;
+    instanceMapId: z.ZodNumber;
+    difficulty: z.ZodOptional<z.ZodNumber>;
+    size: z.ZodOptional<z.ZodNumber>;
+    success: z.ZodBoolean;
+    npcIds: z.ZodOptional<z.ZodArray<z.ZodNumber>>;
+}, z.core.$strip>;
+/** A game object the game's vignette API showed on the minimap, such as a treasure chest, at its own position. */
+export declare const objectSighting: z.ZodObject<{
+    installId: z.ZodString;
+    eventId: z.ZodOptional<z.ZodString>;
+    capturedAt: z.ZodString;
+    kind: z.ZodLiteral<"object_sighting">;
+    objectId: z.ZodNumber;
+    name: z.ZodString;
+    mapId: z.ZodNumber;
+    x: z.ZodNumber;
+    y: z.ZodNumber;
+    instanceMapId: z.ZodOptional<z.ZodNumber>;
 }, z.core.$strip>;
 export declare const vendorList: z.ZodObject<{
     installId: z.ZodString;
@@ -731,6 +778,7 @@ export declare const recordSchemas: {
             interaction: "interaction";
             npc: "npc";
             player: "player";
+            vignette: "vignette";
         }>>;
         role: z.ZodOptional<z.ZodEnum<{
             auctioneer: "auctioneer";
@@ -844,6 +892,47 @@ export declare const recordSchemas: {
             uncommon: "uncommon";
         }>;
         itemLevel: z.ZodOptional<z.ZodNumber>;
+    }, z.core.$strip>;
+    readonly instance_entrance: z.ZodObject<{
+        installId: z.ZodString;
+        eventId: z.ZodOptional<z.ZodString>;
+        capturedAt: z.ZodString;
+        kind: z.ZodLiteral<"instance_entrance">;
+        instanceMapId: z.ZodNumber;
+        name: z.ZodString;
+        instanceType: z.ZodEnum<{
+            party: "party";
+            raid: "raid";
+        }>;
+        difficulty: z.ZodOptional<z.ZodNumber>;
+        mapId: z.ZodNumber;
+        x: z.ZodNumber;
+        y: z.ZodNumber;
+    }, z.core.$strip>;
+    readonly encounter: z.ZodObject<{
+        installId: z.ZodString;
+        eventId: z.ZodOptional<z.ZodString>;
+        capturedAt: z.ZodString;
+        kind: z.ZodLiteral<"encounter">;
+        encounterId: z.ZodNumber;
+        name: z.ZodString;
+        instanceMapId: z.ZodNumber;
+        difficulty: z.ZodOptional<z.ZodNumber>;
+        size: z.ZodOptional<z.ZodNumber>;
+        success: z.ZodBoolean;
+        npcIds: z.ZodOptional<z.ZodArray<z.ZodNumber>>;
+    }, z.core.$strip>;
+    readonly object_sighting: z.ZodObject<{
+        installId: z.ZodString;
+        eventId: z.ZodOptional<z.ZodString>;
+        capturedAt: z.ZodString;
+        kind: z.ZodLiteral<"object_sighting">;
+        objectId: z.ZodNumber;
+        name: z.ZodString;
+        mapId: z.ZodNumber;
+        x: z.ZodNumber;
+        y: z.ZodNumber;
+        instanceMapId: z.ZodOptional<z.ZodNumber>;
     }, z.core.$strip>;
     readonly guild_snapshot: z.ZodObject<{
         installId: z.ZodString;
@@ -1282,6 +1371,7 @@ export declare const anyRecord: z.ZodDiscriminatedUnion<[z.ZodObject<{
         interaction: "interaction";
         npc: "npc";
         player: "player";
+        vignette: "vignette";
     }>>;
     role: z.ZodOptional<z.ZodEnum<{
         auctioneer: "auctioneer";
@@ -1391,6 +1481,44 @@ export declare const anyRecord: z.ZodDiscriminatedUnion<[z.ZodObject<{
         uncommon: "uncommon";
     }>;
     itemLevel: z.ZodOptional<z.ZodNumber>;
+}, z.core.$strip>, z.ZodObject<{
+    installId: z.ZodString;
+    eventId: z.ZodOptional<z.ZodString>;
+    capturedAt: z.ZodString;
+    kind: z.ZodLiteral<"instance_entrance">;
+    instanceMapId: z.ZodNumber;
+    name: z.ZodString;
+    instanceType: z.ZodEnum<{
+        party: "party";
+        raid: "raid";
+    }>;
+    difficulty: z.ZodOptional<z.ZodNumber>;
+    mapId: z.ZodNumber;
+    x: z.ZodNumber;
+    y: z.ZodNumber;
+}, z.core.$strip>, z.ZodObject<{
+    installId: z.ZodString;
+    eventId: z.ZodOptional<z.ZodString>;
+    capturedAt: z.ZodString;
+    kind: z.ZodLiteral<"encounter">;
+    encounterId: z.ZodNumber;
+    name: z.ZodString;
+    instanceMapId: z.ZodNumber;
+    difficulty: z.ZodOptional<z.ZodNumber>;
+    size: z.ZodOptional<z.ZodNumber>;
+    success: z.ZodBoolean;
+    npcIds: z.ZodOptional<z.ZodArray<z.ZodNumber>>;
+}, z.core.$strip>, z.ZodObject<{
+    installId: z.ZodString;
+    eventId: z.ZodOptional<z.ZodString>;
+    capturedAt: z.ZodString;
+    kind: z.ZodLiteral<"object_sighting">;
+    objectId: z.ZodNumber;
+    name: z.ZodString;
+    mapId: z.ZodNumber;
+    x: z.ZodNumber;
+    y: z.ZodNumber;
+    instanceMapId: z.ZodOptional<z.ZodNumber>;
 }, z.core.$strip>, z.ZodObject<{
     installId: z.ZodString;
     eventId: z.ZodOptional<z.ZodString>;

@@ -36,7 +36,7 @@ export default function Page() {
         <li>The census is on in a new install of the addon and says so once in chat. It is sent from the upload page, after the preview, or by the Desktop App if you allowed the census there.</li>
         <li>Player rows (names of characters you saw) are off in the game until you turn them on, and they are sent only from the upload page, after the preview. The Desktop App never sends them.</li>
         <li>An upload that contains a scan is stored with a keyed one-way hash of the address it came from, never the address, so distinct reporters can be counted. The hash stays in private storage and is never published.</li>
-        <li>A Polestar Recorder file you choose on the upload page is converted in your browser into NPC positions, quests and loot. Its character names, realms, session names and notes are not sent. The server gives it an install id made from keyed hashes of the character and of the address, and keeps a keyed hash of the address with the upload. Neither is published.</li>
+        <li>A Polestar Recorder file you choose on the upload page is converted in your browser into NPC positions, quests, loot, dungeon entrances, boss encounters and treasures. Its character names, realms, session names and notes are not sent. The server gives it an install id made from keyed hashes of the character and of the address, and keeps a keyed hash of the address with the upload. Neither is published.</li>
       </List>
 
       <H2 id="published">What is published</H2>

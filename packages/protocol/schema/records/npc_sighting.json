@@ -66,12 +66,13 @@
       ]
     },
     "positionKind": {
-      "description": "Whose coordinates were measured; legacy unknown positions never become spawn pins. `interaction` is the player's position while the NPC's window was open, a few yards from the NPC.",
+      "description": "Whose coordinates were measured; legacy unknown positions never become spawn pins. `interaction` is the player's position while the NPC's window was open, a few yards from the NPC. `vignette` is the NPC's own position, as the game's vignette API gave it for a rare on the minimap.",
       "type": "string",
       "enum": [
         "player",
         "npc",
-        "interaction"
+        "interaction",
+        "vignette"
       ]
     },
     "role": {

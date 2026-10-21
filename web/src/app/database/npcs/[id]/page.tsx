@@ -3,7 +3,8 @@ import AdSlot from "@/components/AdSlot";
 import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { npcPage, type NpcPin } from "../../../../../../kb/src/world-pages";
+import { npcPage, npcTraits, type NpcPin, type NpcRank } from "../../../../../../kb/src/world-pages";
+import { pendingForNpc, pendingLine } from "../../../../../../kb/src/pending-loot";
 import type { DropRateRow } from "../../../../../../kb/src/item-page";
 import { computeRollups, loadWorldFacts } from "@/lib/rollup-compute";
 import { pinLink, WORLD_MAP } from "@/lib/world-map";
@@ -24,7 +25,7 @@ import { entityTitle, npcDescription } from "@/lib/entity-meta";
 export const dynamic = "force-dynamic";
 
 /**
- * An id no upload mentions: no sighting, no vendor or quest row naming it, no loot window from it. The game
+ * An id no upload mentions: no sighting, no vendor or quest row naming it, no loot window from it, counted or not. The game
  * files the site reads hold no NPC table, so that is a 404, not an empty page. Unreachable storage rules nothing out.
  */
 function unknownNpc(npcId: number, facts: Awaited<ReturnType<typeof loadWorldFacts>>, rollup: Awaited<ReturnType<typeof computeRollups>>): boolean {
@@ -33,7 +34,8 @@ function unknownNpc(npcId: number, facts: Awaited<ReturnType<typeof loadWorldFac
     && !facts.vendors.some((r) => r.vendorNpcId === npcId)
     && !facts.quests.some((r) => r.giverNpcId === npcId || r.turnInNpcId === npcId)
     && !rollup.rates.some((r) => r.sourceNpcId === npcId)
-    && !rollup.measuredZeros.some((r) => r.sourceNpcId === npcId);
+    && !rollup.measuredZeros.some((r) => r.sourceNpcId === npcId)
+    && !pendingForNpc(facts.pending, npcId);
 }
 
 export async function generateMetadata(props: { params: Promise<{ id: string }> }): Promise<Metadata> {
@@ -49,6 +51,9 @@ export async function generateMetadata(props: { params: Promise<{ id: string }> 
     robots: { index: npcIndexable(page, facts.unreachable), follow: true },
   };
 }
+
+/** `UnitClassification` in words, as the game shows it. */
+const RANK_LABELS: Record<NpcRank, string> = { normal: "Normal", elite: "Elite", rare: "Rare", rare_elite: "Rare elite", boss: "Boss" };
 
 const pinColumns: Column<NpcPin>[] = [
   { key: "map", header: "Map", numeric: true, cell: (p) => p.mapId },
@@ -88,6 +93,9 @@ export default async function NpcPage(props: { params: Promise<{ id: string }> }
   if (unknownNpc(npcId, facts, rollup)) notFound();
   const unreachable = facts.unreachable || rollup.stats.unreachable;
   const page = npcPage(npcId, facts);
+  // Level and rank, each shown when 3 installs report the same one.
+  const traits = npcTraits(facts.npcs.filter((r) => r.npcId === npcId));
+  const pending = !unreachable && page.pendingLoot ? <p className="py-2 text-meta text-fg-2">{pendingLine(page.pendingLoot)}</p> : null;
   const title = unreachable ? `NPC ${page.npcId}` : page.name ?? `NPC ${page.npcId}`;
   const zero = rollup.measuredZeros.find((row) => row.public && row.sourceNpcId === npcId);
   const dropped = rollup.rates.filter((row) => row.public && row.sourceNpcId === npcId);
@@ -141,6 +149,8 @@ export default async function NpcPage(props: { params: Promise<{ id: string }> }
               label={`${title}: quick facts`}
               items={[
                 { label: "Reported name", value: known(page.name) },
+                { label: "Level", value: known(traits.level), numeric: true },
+                { label: "Rank", value: known(traits.rank && RANK_LABELS[traits.rank]) },
                 { label: "Zone", value: zone ? <Link href={zoneHref(zone.mapId, zone.name)} className={LINK}>{zone.name}</Link> : known(null) },
                 { label: "Map positions", value: known(page.pins.length || null), numeric: true },
                 { label: "Drops", value: known(zero ? `None in ${zero.kills} windows` : dropped.length ? `${dropped.length} items` : null) },
@@ -159,9 +169,12 @@ export default async function NpcPage(props: { params: Promise<{ id: string }> }
             {
               id: "drops", label: "Drops", count: unreachable ? undefined : dropped.length,
               panel: unreachable ? <Unreachable />
-                : dropped.length ? <DataTable dense caption={`What ${title} drops`} columns={dropColumns} rows={dropped} rowKey={(r) => String(r.itemId)} />
-                : zero ? <p className="py-3 text-meta text-fg">No items observed in {zero.kills} recorded loot windows. {zero.reporters} install IDs.</p>
-                : <EmptyTab message="Nobody has looted this NPC in Forever yet." />,
+                : <>
+                  {dropped.length ? <DataTable dense caption={`What ${title} drops`} columns={dropColumns} rows={dropped} rowKey={(r) => String(r.itemId)} />
+                    : zero ? <p className="py-3 text-meta text-fg">No items observed in {zero.kills} recorded loot windows. {zero.reporters} install IDs.</p>
+                    : <EmptyTab message="Nobody has looted this NPC in Forever yet." />}
+                  {pending}
+                </>,
             },
             {
               id: "map", label: "Map", count: unreachable ? undefined : page.pins.length,

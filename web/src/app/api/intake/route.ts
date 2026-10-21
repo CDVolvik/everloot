@@ -106,7 +106,7 @@ export async function POST(req: Request) {
   const scanRealms = new Set<string>();
   for (let i = 0; i < upload.records.length; i++) {
     const row = upload.records[i];
-    const recorderProblem = recorder ? (RECORDER_KINDS.includes(row.kind) ? null : "A Polestar Recorder upload carries NPC positions, quests and loot only.")
+    const recorderProblem = recorder ? (RECORDER_KINDS.includes(row.kind) ? null : "A Polestar Recorder upload carries NPC positions, quests, loot, instance entrances, encounters and object sightings only.")
       : isRecorderInstall(row.installId) ? "Install ids starting with ps- are given by the server to Polestar Recorder uploads." : null;
     if (recorderProblem) {
       receipt.rejected.push({ index: receipt.accepted[i].index, reason: recorderProblem });

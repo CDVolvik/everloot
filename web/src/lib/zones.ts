@@ -2,6 +2,8 @@ import { placeEntrances, worldToZone, zoneAt, zoneTable } from "../../../kb/src/
 import type { WorldMapData } from "../../../kb/src/world-map-data";
 import { observedPins } from "../../../kb/src/world-map-near";
 import { questPage, type WorldFacts } from "../../../kb/src/world-pages";
+import { confirmedEntrances, instanceBosses, type InstanceBoss, type InstanceFacts } from "../../../kb/src/instances";
+import { objectSpawns, type ObjectSpawnRow } from "../../../kb/src/object-spawns";
 import { slugify } from "../../../kb/src/lore-slug";
 import { WORLD_MAP } from "./world-map";
 
@@ -44,19 +46,31 @@ export function zoneByMapId(mapId: number, data: Pick<WorldMapData, "zones" | "c
 
 export interface ZoneNpc { npcId: number; name: string | null; x: number; y: number; reporters: number; vendor: boolean }
 export interface ZoneQuest { questId: number; title: string | null; level: number | null; giverNpcId: number | null; turnInNpcId: number | null }
-export interface ZoneEntrance { names: string[]; raid: boolean; x: number; y: number }
-export interface ZoneContents { npcs: ZoneNpc[]; quests: ZoneQuest[]; entrances: ZoneEntrance[] }
+/**
+ * A dungeon or raid entrance. `files` is true for one the game files place; `confirmed` is the installs that zoned
+ * in there, once 3 agree, else null; `bosses` are the encounters 3 installs report inside.
+ */
+export interface ZoneEntrance { names: string[]; raid: boolean; x: number; y: number; files: boolean; confirmed: number | null; bosses: InstanceBoss[] }
+/** An object players saw on the minimap here, at its own position, once 3 installs agree on the spot. */
+export interface ZoneTreasure { objectId: number; name: string | null; x: number; y: number; reporters: number }
+export interface ZoneContents { npcs: ZoneNpc[]; quests: ZoneQuest[]; entrances: ZoneEntrance[]; treasures: ZoneTreasure[] }
+
+/** What players' clients saw of dungeons and objects, for `zoneContents`. Names are the agreed object names. */
+export interface ZoneSightings { instances?: InstanceFacts; sightings?: ObjectSpawnRow[]; objectNames?: ReadonlyMap<number, string> }
 
 /**
  * What is known to be in each released zone. NPC and vendor positions come through `observedPins`, so the
  * 3-install rule holds as everywhere else. A quest is in the zone where its agreed giver or turn-in NPC
- * stands. Dungeon and raid entrances are read from the game files and go to the smallest zone around them.
+ * stands. Dungeon and raid entrances are read from the game files and go to the smallest zone around them; one is
+ * confirmed when 3 installs zoned into its instance, and an instance the files place nowhere gets the players'
+ * entrance instead, so no entrance has two pins. Treasures are objects seen on the minimap, pinned at 3 installs.
  */
 export function zoneContents(
   facts: Pick<WorldFacts, "npcs" | "quests" | "vendors">, data: Pick<WorldMapData, "zones" | "heldBackZones" | "continents" | "entrances"> = WORLD_MAP,
+  seen: ZoneSightings = {},
 ): Map<number, ZoneContents> {
   const zones = zoneTable(data);
-  const out = new Map<number, ZoneContents>(zones.map((z) => [z.mapId, { npcs: [], quests: [], entrances: [] }]));
+  const out = new Map<number, ZoneContents>(zones.map((z) => [z.mapId, { npcs: [], quests: [], entrances: [], treasures: [] }]));
 
   const npcsHere = new Map<number, Set<number>>();
   for (const pin of observedPins(facts, data)) {
@@ -77,18 +91,35 @@ export function zoneContents(
     }
   }
 
+  const confirmed = confirmedEntrances(seen.instances?.entrances ?? []);
+  const bosses = instanceBosses(seen.instances?.encounters ?? []);
+  const placed = new Set<number>();
   for (const pin of placeEntrances(data)) {
+    for (const id of pin.mapIds) placed.add(id);
     const zone = zoneAt(zones, pin.world);
     const at = zone && worldToZone(zones, zone.mapId, pin.world);
-    if (zone && at) out.get(zone.mapId)!.entrances.push({ names: pin.names, raid: pin.raid, x: Math.round(at.x * 1000) / 10, y: Math.round(at.y * 1000) / 10 });
+    const players = Math.max(0, ...confirmed.filter((e) => pin.mapIds.includes(e.instanceMapId)).map((e) => e.reporters));
+    if (zone && at) out.get(zone.mapId)!.entrances.push({
+      names: pin.names, raid: pin.raid, x: Math.round(at.x * 1000) / 10, y: Math.round(at.y * 1000) / 10,
+      files: true, confirmed: players || null, bosses: pin.mapIds.flatMap((id) => bosses.get(id) ?? []),
+    });
+  }
+  for (const e of confirmed) {
+    const here = placed.has(e.instanceMapId) ? undefined : out.get(e.mapId);
+    if (here) here.entrances.push({ names: [e.name ?? `Instance ${e.instanceMapId}`], raid: e.instanceType === "raid", x: e.x, y: e.y, files: false, confirmed: e.reporters, bosses: bosses.get(e.instanceMapId) ?? [] });
+  }
+
+  for (const pin of objectSpawns(seen.sightings ?? []).pins) {
+    out.get(pin.mapId)?.treasures.push({ objectId: pin.objectId, name: seen.objectNames?.get(pin.objectId) ?? null, x: pin.x, y: pin.y, reporters: pin.reporters });
   }
 
   for (const here of out.values()) {
     here.npcs.sort((a, b) => (a.name ?? "￿").localeCompare(b.name ?? "￿") || a.npcId - b.npcId);
     here.quests.sort((a, b) => (a.level ?? 999) - (b.level ?? 999) || a.questId - b.questId);
+    here.treasures.sort((a, b) => a.objectId - b.objectId || a.x - b.x || a.y - b.y);
   }
   return out;
 }
 
 /** Players' reports or the game files put something on the page beyond the zone's name. */
-export const hasContent = (c: ZoneContents | undefined): boolean => Boolean(c && (c.npcs.length || c.quests.length || c.entrances.length));
+export const hasContent = (c: ZoneContents | undefined): boolean => Boolean(c && (c.npcs.length || c.quests.length || c.entrances.length || c.treasures.length));

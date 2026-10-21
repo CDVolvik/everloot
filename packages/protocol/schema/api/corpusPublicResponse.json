@@ -61,7 +61,10 @@
           "trainer_seen",
           "gold_snapshot",
           "money_event",
-          "map_bounds"
+          "map_bounds",
+          "instance_entrance",
+          "encounter",
+          "object_sighting"
         ]
       }
     },

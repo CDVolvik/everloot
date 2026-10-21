@@ -81,6 +81,26 @@ test("each page tool answers with its page under the uploads envelope, and the t
   expect(object.page!.drops[0]).toMatchObject({ itemId: 2770, kills: 3, drops: 3, reporters: 3 });
 });
 
+test("reported loot windows not yet in the rates, and minimap pins, are in the page answers, never in the drops", async () => {
+  const ps = (c: string) => `ps-${c.repeat(16)}-${String.fromCharCode(c.charCodeAt(0) + 49).repeat(16)}`;
+  const recorder = ["1", "2", "3"].flatMap((c) => [
+    { installId: ps(c), capturedAt: base.capturedAt, eventId: `ps:1:1:loot`, kind: "loot", sourceNpcId: 456, items: [{ itemId: 1234, count: 1 }] },
+    { installId: ps(c), capturedAt: base.capturedAt, eventId: `ps:1:2:loot`, kind: "loot", sourceObjectId: 1731, items: [{ itemId: 2770, count: 1 }] },
+    { installId: ps(c), capturedAt: base.capturedAt, eventId: `ps:1:3:object_sighting`, kind: "object_sighting", objectId: 1731, name: "Copper Vein", mapId: 1411, x: 50, y: 50 },
+  ]);
+  const c = await client(async () => ({ records: [...records, ...recorder], dataAsOf: AS_OF }));
+  const npc = out("npc_page").parse((await c.callTool({ name: "npc_page", arguments: { npcId: 456 } })).structuredContent);
+  expect(npc.page!.pendingLoot).toEqual({ windows: 3, reporters: 3 });
+  const item = await c.callTool({ name: "item_page", arguments: { itemId: 1234 } });
+  const itemOut = out("item_page").parse(item.structuredContent);
+  expect(itemOut.page!.pendingLoot).toEqual({ windows: 3, reporters: 3 });
+  expect(itemOut.page!.drops[0]).toMatchObject({ kills: 12, drops: 3, reporters: 3 });
+  expect(JSON.stringify(item.content)).toContain("3 more loot windows with this item reported, not yet in the rates.");
+  const object = out("object_page").parse((await c.callTool({ name: "object_page", arguments: { objectId: 1731 } })).structuredContent);
+  expect(object.page).toMatchObject({ name: "Copper Vein", pendingLoot: { windows: 3, reporters: 3 }, pins: [{ mapId: 1411, x: 50, y: 50, reporters: 3 }] });
+  expect(object.page!.drops[0]).toMatchObject({ kills: 3, reporters: 3 });
+});
+
 test("an unknown id is a page with nothing agreed, not an error and not a zero", async () => {
   const c = await client(async () => ({ records, dataAsOf: AS_OF }));
   const result = await c.callTool({ name: "item_page", arguments: { itemId: 999 } });

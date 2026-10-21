@@ -135,6 +135,61 @@
           "queued": {
             "type": "boolean",
             "description": "Observations exist but fewer than 3 installs reported them."
+          },
+          "pendingLoot": {
+            "type": "object",
+            "properties": {
+              "windows": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "Reported loot windows not yet in the rates."
+              },
+              "reporters": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "Distinct reporters behind those windows."
+              }
+            },
+            "required": [
+              "windows",
+              "reporters"
+            ],
+            "additionalProperties": false,
+            "description": "Loot windows reported but not yet in the rates. Absent when there are none."
+          },
+          "pins": {
+            "description": "Where players saw the object on the minimap, at its own position; a pin needs 3 installs at one spot. Absent when there is none.",
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "mapId": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                },
+                "reporters": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "mapId",
+                "x",
+                "y",
+                "reporters"
+              ],
+              "additionalProperties": false
+            }
           }
         },
         "required": [

@@ -1,0 +1,84 @@
+{
+  "$id": "https://everloot.app/schema/records/instance_entrance.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "installId": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 64,
+      "description": "Random install id, no account needed."
+    },
+    "eventId": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 96,
+      "pattern": "^[A-Za-z0-9:_-]+$"
+    },
+    "capturedAt": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+      "description": "ISO time the event happened in-game."
+    },
+    "kind": {
+      "type": "string",
+      "const": "instance_entrance"
+    },
+    "instanceMapId": {
+      "type": "integer",
+      "exclusiveMinimum": 0,
+      "maximum": 9007199254740991,
+      "description": "The instance's map id, the 8th return of `GetInstanceInfo`: a map, not a UiMap."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120,
+      "description": "The instance's name as the game showed it, in the client's language. Public only when 3 installs agree on it."
+    },
+    "instanceType": {
+      "type": "string",
+      "enum": [
+        "party",
+        "raid"
+      ]
+    },
+    "difficulty": {
+      "description": "The difficulty id `GetInstanceInfo` reports. Absent when the source did not record it.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 255
+    },
+    "mapId": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991,
+      "description": "The UiMap the player stood on last before zoning in."
+    },
+    "x": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "The player's x there, 0 to 100."
+    },
+    "y": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "The player's y there, 0 to 100."
+    }
+  },
+  "required": [
+    "installId",
+    "capturedAt",
+    "kind",
+    "instanceMapId",
+    "name",
+    "instanceType",
+    "mapId",
+    "x",
+    "y"
+  ],
+  "description": "Everloot upload record: instance_entrance."
+}

@@ -4,6 +4,8 @@ import { itemFactsFromRecords } from "../../../kb/src/drop-rollup";
 import { observedEdges, type Edge } from "../../../kb/src/edges";
 import type { ItemFacts } from "../../../kb/src/item-page";
 import { craftedItemsFromRecords } from "../../../kb/src/item-source";
+import { instanceFactsFromRecords, type InstanceFacts } from "../../../kb/src/instances";
+import { objectSightingRowsFromRecords, type ObjectSpawnRow } from "../../../kb/src/object-spawns";
 import { worldFactsFromRecords, type WorldFacts } from "../../../kb/src/world-pages";
 import { lootWindowsFromRecords, rollupDrops, type RollupResult } from "./rollups";
 import { uploadStore, type CensusRead } from "./upload-store";
@@ -29,6 +31,9 @@ interface AggregateSet {
   drops: { rates: RollupResult["rates"]; measuredZeros: RollupResult["measuredZeros"]; rejected: RollupResult["rejected"] };
   items: ItemFacts;
   world: WorldFacts;
+  /** Entrances players zoned in from and the encounters inside, and objects seen on the minimap. */
+  instances: InstanceFacts;
+  sightings: ObjectSpawnRow[];
   /** Items 3 installs saw a recipe make. */
   crafted: Set<number>;
   addons: AddonRollup;
@@ -59,6 +64,7 @@ async function loadAggregates(): Promise<AggregateSet | null> {
   const key = corpusKey(corpus);
   if (memoized === null || memoized.key !== key) {
     const windows = lootWindowsFromRecords(corpus.records);
+    const items = itemFactsFromRecords(corpus.records);
     memoized = {
       key,
       uploads: corpus.uploads,
@@ -66,8 +72,11 @@ async function loadAggregates(): Promise<AggregateSet | null> {
       windows: windows.length,
       dataAsOf: corpus.dataAsOf ?? null,
       drops: rollupDrops(windows),
-      items: itemFactsFromRecords(corpus.records),
-      world: worldFactsFromRecords(corpus.records),
+      items,
+      // The NPC page reads the pending loot count with the world facts: the same count the item facts hold.
+      world: { ...worldFactsFromRecords(corpus.records), pending: items.pending },
+      instances: instanceFactsFromRecords(corpus.records),
+      sightings: objectSightingRowsFromRecords(corpus.records),
       crafted: craftedItemsFromRecords(corpus.records),
       // Addon rows dated after the corpus was current are ignored, so one forged clock cannot set "last seen".
       addons: popularAddonsFromRecords(corpus.records, corpus.dataAsOf ?? new Date()),
@@ -107,6 +116,13 @@ export async function loadWorldFacts(): Promise<WorldFacts & { unreachable: bool
   const agg = await loadAggregates();
   if (!agg) return { npcs: [], quests: [], vendors: [], unreachable: true };
   return { ...agg.world, unreachable: false };
+}
+
+/** Dungeon entrances and encounters players' clients saw, and objects seen on the minimap, each public at 3 installs. */
+export async function loadInstanceFacts(): Promise<InstanceFacts & { sightings: ObjectSpawnRow[]; unreachable: boolean }> {
+  const agg = await loadAggregates();
+  if (!agg) return { entrances: [], encounters: [], sightings: [], unreachable: true };
+  return { ...agg.instances, sightings: agg.sightings, unreachable: false };
 }
 
 /** Items players have seen a recipe make (3 installs), for the item lists' Source column. */

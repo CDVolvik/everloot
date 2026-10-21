@@ -2,13 +2,17 @@
  * Game objects (chests, herbs, ore veins, fishing pools) from loot windows players opened on them. The
  * addon records the object's entry id from its GUID (`sourceObjectId`). A frequency is public after 3
  * install reports, as for NPCs. A name is public when 3 installs agree on it; the client's GameObjects table
- * holds no lootable objects, so an object without an agreed name is known by its id.
+ * holds no lootable objects, so an object without an agreed name is known by its id. Where players saw the object
+ * on the minimap is a pin at 3 installs (object-spawns.ts), and loot windows the rates leave out are only counted
+ * (pending-loot.ts).
  */
 import { itemFactsFromRecords, lootWindowsFromRecords, rollupDrops, type DropRate, type ItemNameRow, type MeasuredZero } from "./drop-rollup.js";
 import { formatMeasuredZero, itemPage } from "./item-page.js";
-import { agreedObjectNames, type ObjectSpawnRow } from "./object-spawns.js";
+import { agreedObjectNames, objectSightingRowsFromRecords, objectSpawns, type ObjectSpawnRow } from "./object-spawns.js";
+import { pendingForObject, pendingLine, pendingLootFromRecords, type PendingCount, type PendingLoot } from "./pending-loot.js";
 
-export interface ObjectFacts { rates: DropRate[]; measuredZeros: MeasuredZero[]; names: ItemNameRow[]; objects?: ObjectSpawnRow[] }
+/** `sightings`: where players saw objects on the minimap; `pending`: loot windows not yet in the rates. */
+export interface ObjectFacts { rates: DropRate[]; measuredZeros: MeasuredZero[]; names: ItemNameRow[]; objects?: ObjectSpawnRow[]; sightings?: ObjectSpawnRow[]; pending?: PendingLoot }
 
 export interface ObjectDrop { itemId: number; itemName: string | null; kills: number; drops: number; rate: number; reporters: number }
 export interface ObjectPage {
@@ -20,12 +24,16 @@ export interface ObjectPage {
   zero: { kills: number; reporters: number } | null;
   /** Observations exist but fewer than 3 installs reported them. */
   queued: boolean;
+  /** Loot windows reported but not yet in the rates; absent when there are none. */
+  pendingLoot?: PendingCount;
+  /** Where 3 installs saw it on the minimap, at its own position; absent when nowhere. */
+  pins?: { mapId: number; x: number; y: number; reporters: number }[];
 }
 
 export function objectFactsFromRecords(records: unknown[]): ObjectFacts {
   const { rates, measuredZeros } = rollupDrops(lootWindowsFromRecords(records));
   const items = itemFactsFromRecords(records);
-  return { rates, measuredZeros, names: items.names, objects: items.objects };
+  return { rates, measuredZeros, names: items.names, objects: items.objects, sightings: objectSightingRowsFromRecords(records), pending: pendingLootFromRecords(records) };
 }
 
 export function objectPage(objectId: number, facts: ObjectFacts): ObjectPage {
@@ -36,10 +44,14 @@ export function objectPage(objectId: number, facts: ObjectFacts): ObjectPage {
     .map((r) => ({ itemId: r.itemId, itemName: nameOf(r.itemId), kills: r.kills, drops: r.drops, rate: r.rate, reporters: r.reporters }))
     .sort((a, b) => b.rate - a.rate || a.itemId - b.itemId);
   const zero = zeros.find((z) => z.public);
+  const pendingLoot = pendingForObject(facts.pending, objectId);
+  const pins = objectSpawns((facts.sightings ?? []).filter((r) => r.objectId === objectId)).pins.map(({ mapId, x, y, reporters }) => ({ mapId, x, y, reporters }));
   return {
     objectId, name: agreedObjectNames(facts.objects ?? []).get(objectId) ?? null, drops,
     zero: zero ? { kills: zero.kills, reporters: zero.reporters } : null,
     queued: !drops.length && !zero && (mine.length > 0 || zeros.length > 0),
+    ...(pendingLoot ? { pendingLoot } : {}),
+    ...(pins.length ? { pins } : {}),
   };
 }
 
@@ -71,6 +83,8 @@ export function formatObjectPage(page: ObjectPage): string {
       lines.push(`Item ${d.itemId}${d.itemName ? ` ${d.itemName}` : ""}  ${d.kills} observed loot windows  ${d.drops} windows with this item  ${(d.rate * 100).toFixed(1)}%  ${d.reporters} distinct install reports`);
     }
   }
+  if (page.pendingLoot) lines.push(pendingLine(page.pendingLoot));
+  for (const pin of page.pins ?? []) lines.push(`Seen on the minimap: map ${pin.mapId} at ${pin.x}, ${pin.y}  ${pin.reporters} reporters`);
   return lines.join("\n");
 }
 

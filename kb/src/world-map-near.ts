@@ -3,10 +3,11 @@
  *
  * Observed points are NPC pins from `npc_sighting` records, after the same 3-install rule the NPC page
  * applies (world-pages.ts `npcPage`: a pin needs 3 installs on one map, measured at the NPC). A vendor
- * is an NPC with at least one vendor offer that 3 installs agree on (`vendorPage`). Game objects are not
- * here: no public record kind gives an object a position (loot rows name an object id and nothing else).
+ * is an NPC with at least one vendor offer that 3 installs agree on (`vendorPage`). Treasures are objects players
+ * saw on the minimap, at the object's own position, pinned at 3 installs (object-spawns.ts).
  *
- * Entrances come from the game-file map layer (world-map-data.ts). Held-back zones are never used
+ * Entrances come from the game-file map layer (world-map-data.ts); one is confirmed when 3 installs zoned into its
+ * instance from outside (instances.ts). Held-back zones are never used
  * here: the public MCP tool does not carry spoilers.
  */
 import { npcPage, vendorPage, worldFactsFromRecords, type NpcSightingRow, type VendorSighting, type WorldFacts } from "./world-pages.js";
@@ -14,6 +15,11 @@ import {
   placeEntrances, worldToMap, zoneAt, zoneTable, zoneToWorld, type MapPoint, type WorldPoint, type ZoneEntry,
 } from "./world-coords.js";
 import type { WorldMapData } from "./world-map-data.js";
+import { confirmedEntrances, instanceFactsFromRecords, type InstanceEntranceRow } from "./instances.js";
+import { agreedObjectNames, objectSightingRowsFromRecords, objectSpawns, type ObjectSpawnRow } from "./object-spawns.js";
+
+/** What the tool reads: NPC positions, vendor offers, the entrances players zoned in from, and objects seen on the minimap. */
+export type NearFacts = Pick<WorldFacts, "npcs" | "vendors"> & { entrances?: InstanceEntranceRow[]; sightings?: ObjectSpawnRow[] };
 
 export type ObservedKind = "npc" | "vendor";
 
@@ -98,12 +104,14 @@ export interface NearArgs {
 const clip = (s: string) => (s.length > NAME_MAX ? `${s.slice(0, NAME_MAX - 1)}…` : s);
 const oneDecimal = (n: number) => Math.round(n * 10) / 10;
 
-export interface NearEntrance { names: string[]; raid: boolean; zone: string | null; yards: number }
+/** `confirmed`: installs that zoned into one of its instances, once 3 agree on where they stood; absent until then. */
+export interface NearEntrance { names: string[]; raid: boolean; zone: string | null; yards: number; confirmed?: number }
+export interface NearTreasure { objectId: number; name: string | null; mapId: number; zoneName: string; x: number; y: number; yards: number; reporters: number }
 export interface NearPin { npcId: number; name: string | null; mapId: number; zoneName: string; x: number; y: number; yards: number; reporters: number }
 /** What is near a spot, as data. A refused query (no spot, a bad radius, an unknown zone) is ok false with the text's message. */
 export type NearResult =
   | { ok: false; message: string }
-  | { ok: true; origin: string; radius: number; limit: number; entrances: NearEntrance[]; npcs: NearPin[]; vendors: NearPin[] };
+  | { ok: true; origin: string; radius: number; limit: number; entrances: NearEntrance[]; npcs: NearPin[]; vendors: NearPin[]; treasures: NearTreasure[] };
 
 /** A zone by map id or name, case-insensitive. */
 function findZone<Z extends { mapId: number; name: string }>(zones: readonly Z[], zone: string): Z | undefined {
@@ -119,7 +127,7 @@ export function nearZoneSpot(args: NearArgs, data: WorldMapData): { mapId: numbe
 }
 
 /** The result the text is written from. Held-back zones never appear: the public tool carries no spoilers. */
-export function nearResult(args: NearArgs, data: WorldMapData, facts: Pick<WorldFacts, "npcs" | "vendors">): NearResult {
+export function nearResult(args: NearArgs, data: WorldMapData, facts: NearFacts): NearResult {
   const no = (message: string): NearResult => ({ ok: false, message });
   const hasSpot = args.zone !== undefined || args.x !== undefined || args.y !== undefined;
   if (hasSpot && args.npcId !== undefined) return no("Give either a zone with x and y, or an npc id, not both.");
@@ -157,12 +165,18 @@ export function nearResult(args: NearArgs, data: WorldMapData, facts: Pick<World
     label = `${found.name} at ${x}, ${y}`;
   }
 
+  // An entrance the files place is confirmed by players who zoned into one of its instances; no second pin is made.
+  const confirmed = new Map<number, number>();
+  for (const e of confirmedEntrances(facts.entrances ?? [])) confirmed.set(e.instanceMapId, Math.max(confirmed.get(e.instanceMapId) ?? 0, e.reporters));
   const entrances = placeEntrances(data)
     .map((p) => ({ p, d: distanceYards(origin, p.world) }))
     .filter((e) => e.d <= radius)
     .sort((a, b) => a.d - b.d)
     .slice(0, limit)
-    .map(({ p, d }) => ({ names: p.names, raid: p.raid, zone: zoneAt(zones, p.world)?.name ?? null, yards: oneDecimal(d) }));
+    .map(({ p, d }) => {
+      const players = Math.max(0, ...p.mapIds.map((id) => confirmed.get(id) ?? 0));
+      return { names: p.names, raid: p.raid, zone: zoneAt(zones, p.world)?.name ?? null, yards: oneDecimal(d), ...(players ? { confirmed: players } : {}) };
+    });
   const observed = (kind: ObservedKind): NearPin[] => pins
     .filter((p) => p.kind === kind && p.npcId !== selfId)
     .map((p) => ({ p, d: distanceYards(origin, p.world) }))
@@ -170,21 +184,21 @@ export function nearResult(args: NearArgs, data: WorldMapData, facts: Pick<World
     .sort((a, b) => a.d - b.d || a.p.npcId - b.p.npcId)
     .slice(0, limit)
     .map(({ p, d }) => ({ npcId: p.npcId, name: p.name, mapId: p.mapId, zoneName: p.zoneName, x: p.x, y: p.y, yards: oneDecimal(d), reporters: p.reporters }));
-  return { ok: true, origin: label, radius, limit, entrances, npcs: observed("npc"), vendors: observed("vendor") };
+  return { ok: true, origin: label, radius, limit, entrances, npcs: observed("npc"), vendors: observed("vendor"), treasures: nearTreasures(facts.sightings ?? [], data, origin, radius, limit) };
 }
 
 /**
  * Entrances, NPCs and vendors near a spot, nearest first, with distances in yards. Give either a zone
  * (name or UiMap id) with x and y from 0 to 100, or an NPC id to start from where that NPC stands.
  */
-export function handleWorldMapNear(args: NearArgs, data: WorldMapData, facts: Pick<WorldFacts, "npcs" | "vendors">): string {
+export function handleWorldMapNear(args: NearArgs, data: WorldMapData, facts: NearFacts): string {
   const result = nearResult(args, data, facts);
   if (!result.ok) return result.message;
   const lines = [`Near ${result.origin}, within ${result.radius} yards. Distances are straight lines in yards.`];
   lines.push("Entrances (from the game files, found in game files, unconfirmed):");
   if (!result.entrances.length) lines.push("  none in range");
   for (const e of result.entrances) {
-    lines.push(`  ${clip(e.names.join(", "))} (${e.raid ? "raid" : "dungeon"})${e.zone ? ` in ${e.zone}` : ""}  ${e.yards} yards`);
+    lines.push(`  ${clip(e.names.join(", "))} (${e.raid ? "raid" : "dungeon"})${e.zone ? ` in ${e.zone}` : ""}  ${e.yards} yards${e.confirmed ? `  confirmed by ${e.confirmed} installs` : ""}`);
   }
   for (const [title, rows] of [["NPCs", result.npcs], ["Vendors", result.vendors]] as const) {
     lines.push(`${title} (players saw them; a pin needs 3 installs on the same map):`);
@@ -193,12 +207,29 @@ export function handleWorldMapNear(args: NearArgs, data: WorldMapData, facts: Pi
       lines.push(`  ${p.name ? clip(p.name) : "unnamed"} (NPC ${p.npcId}) in ${p.zoneName} at ${p.x}, ${p.y}  ${p.yards} yards  ${p.reporters} reporters`);
     }
   }
-  lines.push("Game objects are not listed: no public record gives an object a position.");
+  lines.push("Treasures (players saw them on the minimap; a pin needs 3 installs at one spot):");
+  if (!result.treasures.length) lines.push("  none in range");
+  for (const t of result.treasures) {
+    lines.push(`  ${t.name ? clip(t.name) : "unnamed"} (object ${t.objectId}) in ${t.zoneName} at ${t.x}, ${t.y}  ${t.yards} yards  ${t.reporters} reporters`);
+  }
   return lines.join("\n");
 }
 
-/** The facts this tool reads: NPC positions and vendor offers. Quests are left out, so the tool needs only its two kinds. */
-export function mapFactsFromRecords(records: unknown[]): Pick<WorldFacts, "npcs" | "vendors"> {
+/** The facts this tool reads: NPC positions, vendor offers, entrances and minimap objects. Quests are left out. */
+export function mapFactsFromRecords(records: unknown[]): Required<NearFacts> {
   const { npcs, vendors } = worldFactsFromRecords(records);
-  return { npcs, vendors };
+  return { npcs, vendors, entrances: instanceFactsFromRecords(records).entrances, sightings: objectSightingRowsFromRecords(records) };
+}
+
+/** Treasure pins within the radius, nearest first, outside held-back zones. */
+function nearTreasures(sightings: ObjectSpawnRow[], data: WorldMapData, origin: WorldPoint, radius: number, limit: number): NearTreasure[] {
+  if (!sightings.length) return [];
+  const { zones, held } = allZones(data);
+  const names = agreedObjectNames(sightings);
+  return objectSpawns(sightings).pins.flatMap((pin) => {
+    const zone = zones.find((z) => z.mapId === pin.mapId);
+    const world = zone && !held.has(pin.mapId) ? zoneToWorld(zones, pin.mapId, pin.x / 100, pin.y / 100) : null;
+    const d = world ? distanceYards(origin, world) : Infinity;
+    return zone && d <= radius ? [{ objectId: pin.objectId, name: names.get(pin.objectId) ?? null, mapId: pin.mapId, zoneName: zone.name, x: pin.x, y: pin.y, yards: oneDecimal(d), reporters: pin.reporters }] : [];
+  }).sort((a, b) => a.yards - b.yards || a.objectId - b.objectId).slice(0, limit);
 }

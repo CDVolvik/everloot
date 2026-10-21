@@ -5,6 +5,7 @@
  * Wowhead is the page shape. Its rows stay there.
  */
 import { agreedObjectNames, type ObjectSpawnRow } from "./object-spawns.js";
+import { pendingForItem, pendingLine, type PendingCount, type PendingLoot } from "./pending-loot.js";
 
 export const ITEM_AGREEMENT = 3;
 
@@ -54,6 +55,8 @@ export type ItemPage = {
   name: string | null;
   drops: ItemDrop[];
   pins: MapPin[];
+  /** Loot windows with this item reported but not yet in the rates; absent when there are none. */
+  pendingLoot?: PendingCount;
 };
 
 export type ItemFacts = {
@@ -62,6 +65,8 @@ export type ItemFacts = {
   npcs: NpcSighting[];
   /** Object rows that carry a name; absent where no object names are known. */
   objects?: ObjectSpawnRow[];
+  /** Loot windows the rates leave out, only counted (pending-loot.ts). */
+  pending?: PendingLoot;
 };
 
 function clean(value: string): string {
@@ -163,7 +168,8 @@ export function itemPage(itemId: number, facts: ItemFacts): ItemPage {
     });
   }
   pins.sort((a, b) => a.npcId - b.npcId || a.mapId - b.mapId);
-  return { itemId, name, drops, pins };
+  const pendingLoot = pendingForItem(facts.pending, itemId);
+  return { itemId, name, drops, pins, ...(pendingLoot ? { pendingLoot } : {}) };
 }
 
 /** Zero within an observed sample, not a census of kills. */
@@ -177,6 +183,7 @@ export function formatItemPage(page: ItemPage): string {
   if (!page.name) lines.push("No agreed name yet. A name needs 3 installs reporting the same one.");
   if (page.drops.length === 0) {
     lines.push("Drop rate unrecorded. Observed loot-window frequency needs 3 distinct install reports; total kills are unknown.");
+    if (page.pendingLoot) lines.push(pendingLine(page.pendingLoot, true));
     return lines.join("\n");
   }
   lines.push("Drops");
@@ -186,6 +193,7 @@ export function formatItemPage(page: ItemPage): string {
       : `${drop.kills} observed loot windows  ${drop.drops} windows with this item  ${(drop.rate * 100).toFixed(1)}%  ${drop.reporters} distinct install reports`;
     lines.push(`${drop.source}  ${rate}`);
   }
+  if (page.pendingLoot) lines.push(pendingLine(page.pendingLoot, true));
   lines.push("Map");
   if (page.pins.length === 0) lines.push("No agreed position. A pin needs 3 installs on the same map.");
   for (const pin of page.pins) {

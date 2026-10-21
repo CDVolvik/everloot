@@ -50,11 +50,20 @@ describe("POST /api/intake with a Polestar Recorder upload", () => {
     expect(JSON.stringify(stored)).not.toContain(character);
   });
 
-  test("takes NPC positions, quests and loot only", async () => {
-    const vendor = { kind: "vendor", installId: character, eventId: "ps:1:1:vendor", capturedAt: "2025-10-09T08:53:30.000Z", vendorNpcId: 78, items: [{ itemId: 1, priceCopper: 5 }] };
-    const body = await (await post(recorderUpload([sighting(), vendor]))).json();
-    expect(body.accepted).toHaveLength(1);
-    expect(body.rejected[0].reason).toMatch(/NPC positions, quests and loot only/);
+  test("takes NPC positions, quests, loot, instance entrances, encounters and object sightings only", async () => {
+    const at = { installId: character, capturedAt: "2025-10-09T08:53:30.000Z" };
+    const vendor = { ...at, kind: "vendor", eventId: "ps:1:1:vendor", vendorNpcId: 78, items: [{ itemId: 1, priceCopper: 5 }] };
+    const entrance = { ...at, kind: "instance_entrance", eventId: "ps:1760000000:5:instance_entrance", instanceMapId: 36, name: "Deadmines", instanceType: "party", mapId: 1436, x: 42.5, y: 71.6 };
+    const encounter = { ...at, kind: "encounter", eventId: "ps:1760000000:6:encounter", encounterId: 1144, name: "Edwin VanCleef", instanceMapId: 36, success: true, npcIds: [639] };
+    const chest = { ...at, kind: "object_sighting", eventId: "ps:1760000000:7:object_sighting", objectId: 2843, name: "Battered Chest", mapId: 1436, x: 30.1, y: 50.2 };
+    const rare = sighting({ eventId: "ps:1760000000:8:npc_sighting", npcId: 61, name: "Thuros Lightfingers", positionKind: "vignette", role: undefined, rank: "rare", level: 11 });
+    const body = await (await post(recorderUpload([sighting(), entrance, encounter, chest, rare, vendor]))).json();
+    expect(body.accepted).toHaveLength(5);
+    expect(body.rejected).toHaveLength(1);
+    expect(body.rejected[0].reason).toMatch(/instance entrances, encounters and object sightings only/);
+    const [, , stored] = store.putUpload.mock.calls[0]!;
+    expect(stored.records.map((r: { kind: string }) => r.kind)).toEqual(["npc_sighting", "instance_entrance", "encounter", "object_sighting", "npc_sighting"]);
+    expect(stored.records.every((r: { installId: string }) => r.installId === server)).toBe(true);
   });
 
   test("refuses a batch without one polestar- character id", async () => {
