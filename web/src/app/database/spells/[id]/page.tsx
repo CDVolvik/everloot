@@ -100,24 +100,29 @@ export default async function SpellPage(props: Props) {
   ];
 
   const trail = [...trailFor("/database/spells")!, { name: title, path: `/database/spells/${spellId}` }];
-  const facts: { label: string; value: React.ReactNode; numeric?: boolean }[] = [
-    { label: "Spell id", value: <span className="tabular-nums">{spellId}</span>, numeric: true },
-    { label: "Build", value: build },
-    { label: "Creates", value: known(creates.length || null), numeric: true },
-    { label: "Costs", value: known(costs.length || null), numeric: true },
-  ];
 
   return (
     <Container width="data">
       <article>
-        <EntityHeader trail={trail} title={title} meta={["Spell", <span className="tabular-nums">ID {spellId}</span>]} />
+        <EntityHeader trail={trail} title={title} meta={["Spell", <span key="id" className="tabular-nums">ID {spellId}</span>]} />
         <EntityTop
           box={
             <TooltipFrame name={tip?.name ?? title} label={`${tip?.name ?? title}, from the game files`}>
               {tip?.text ? <p>{tip.text}</p> : <p>No text for this spell in the client files.</p>}
             </TooltipFrame>
           }
-          facts={<Facts layout="list" label={`${title}: quick facts`} items={facts} />}
+          facts={
+            <Facts
+              layout="list"
+              label={`${title}: quick facts`}
+              items={[
+                { label: "Spell id", value: <span className="tabular-nums">{spellId}</span>, numeric: true },
+                { label: "Build", value: build },
+                { label: "Creates", value: known(creates.length || null), numeric: true },
+                { label: "Costs", value: known(costs.length || null), numeric: true },
+              ]}
+            />
+          }
         />
         <InShort summary="In short" bullets={summary} note={<Link href="/database#reading" className={LINK}>How to read these numbers</Link>} />
         <OpenData
