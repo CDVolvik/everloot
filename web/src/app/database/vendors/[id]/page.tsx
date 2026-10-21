@@ -9,10 +9,11 @@ import { pinLink } from "@/lib/world-map";
 import { trailFor } from "@/lib/breadcrumbs";
 import { loadItemFacts } from "@/lib/rollup-compute";
 import { itemNames, npcNames } from "@/lib/names";
+import { entitySummary, observedLine } from "@/lib/evidence";
 import EntityLink from "@/components/EntityLink";
 import { loadItemTips, loadSiteAssets } from "@/lib/game-assets";
 import ItemTip from "@/components/game/ItemTip";
-import { Container, DataTable, Facts, Tabs, TooltipFrame } from "@/components/ui";
+import { Container, DataTable, Facts, InShort, Tabs, TooltipFrame } from "@/components/ui";
 import { EmptyTab, EntityHeader, EntityTop, known, LINK, Unreachable } from "../../entity";
 import { vendorIndexable } from "@/lib/indexable";
 import { entityTitle, vendorDescription } from "@/lib/entity-meta";
@@ -67,6 +68,12 @@ export default async function VendorPage(props: { params: Promise<{ id: string }
   const vendorName = facts.unreachable ? undefined : npcNames(facts).get(page.vendorNpcId);
   const title = vendorName ? `${vendorName} (vendor)` : `Vendor NPC ${page.vendorNpcId}`;
   const trail = [...trailFor("/database/vendors")!, { name: title, path: `/database/vendors/${page.vendorNpcId}` }];
+  // The page in three lines: what it sells, where players saw it, and where the name came from.
+  const summary = entitySummary({
+    identity: page.offers.length ? `${page.offers.length} ${page.offers.length === 1 ? "price" : "prices"} reported` : "No prices reported yet",
+    observed: observedLine([places.length ? `${places.length} ${places.length === 1 ? "map position" : "map positions"}` : null], null, Date.now()),
+    named: Boolean(vendorName),
+  });
 
   return (
     <Container width="data">
@@ -93,6 +100,7 @@ export default async function VendorPage(props: { params: Promise<{ id: string }
             />
           )}
         />
+        <InShort summary="In short" bullets={summary} note={<Link href="/database#reading" className={LINK}>How to read these numbers</Link>} />
         <Tabs
           label={`${title}: relations`}
           tabs={[
