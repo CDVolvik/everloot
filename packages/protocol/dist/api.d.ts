@@ -404,8 +404,20 @@ export declare const intakeRequest: z.ZodObject<{
             neutral: "neutral";
         }>;
         positionKind: z.ZodOptional<z.ZodEnum<{
+            interaction: "interaction";
             npc: "npc";
             player: "player";
+        }>>;
+        role: z.ZodOptional<z.ZodEnum<{
+            auctioneer: "auctioneer";
+            banker: "banker";
+            flightmaster: "flightmaster";
+            innkeeper: "innkeeper";
+            questgiver: "questgiver";
+            repair: "repair";
+            stablemaster: "stablemaster";
+            trainer: "trainer";
+            vendor: "vendor";
         }>>;
         creatureType: z.ZodOptional<z.ZodEnum<{
             Beast: "Beast";
@@ -441,6 +453,17 @@ export declare const intakeRequest: z.ZodObject<{
             itemId: z.ZodNumber;
             count: z.ZodNumber;
         }, z.core.$strip>>;
+        mapId: z.ZodOptional<z.ZodNumber>;
+        x: z.ZodOptional<z.ZodNumber>;
+        y: z.ZodOptional<z.ZodNumber>;
+        gatherKind: z.ZodOptional<z.ZodEnum<{
+            chest: "chest";
+            fishing: "fishing";
+            herb: "herb";
+            ore: "ore";
+            other: "other";
+        }>>;
+        sourceObjectName: z.ZodOptional<z.ZodString>;
     }, z.core.$strip>, z.ZodObject<{
         installId: z.ZodString;
         eventId: z.ZodOptional<z.ZodString>;
@@ -737,6 +760,7 @@ export declare const intakeRequest: z.ZodObject<{
         recipe: z.ZodString;
         requiredRank: z.ZodNumber;
         costCopper: z.ZodOptional<z.ZodNumber>;
+        trainerNpcId: z.ZodOptional<z.ZodNumber>;
     }, z.core.$strip>, z.ZodObject<{
         installId: z.ZodString;
         eventId: z.ZodOptional<z.ZodString>;
@@ -1316,8 +1340,20 @@ export declare const API_SCHEMAS: {
                 neutral: "neutral";
             }>;
             positionKind: z.ZodOptional<z.ZodEnum<{
+                interaction: "interaction";
                 npc: "npc";
                 player: "player";
+            }>>;
+            role: z.ZodOptional<z.ZodEnum<{
+                auctioneer: "auctioneer";
+                banker: "banker";
+                flightmaster: "flightmaster";
+                innkeeper: "innkeeper";
+                questgiver: "questgiver";
+                repair: "repair";
+                stablemaster: "stablemaster";
+                trainer: "trainer";
+                vendor: "vendor";
             }>>;
             creatureType: z.ZodOptional<z.ZodEnum<{
                 Beast: "Beast";
@@ -1353,6 +1389,17 @@ export declare const API_SCHEMAS: {
                 itemId: z.ZodNumber;
                 count: z.ZodNumber;
             }, z.core.$strip>>;
+            mapId: z.ZodOptional<z.ZodNumber>;
+            x: z.ZodOptional<z.ZodNumber>;
+            y: z.ZodOptional<z.ZodNumber>;
+            gatherKind: z.ZodOptional<z.ZodEnum<{
+                chest: "chest";
+                fishing: "fishing";
+                herb: "herb";
+                ore: "ore";
+                other: "other";
+            }>>;
+            sourceObjectName: z.ZodOptional<z.ZodString>;
         }, z.core.$strip>, z.ZodObject<{
             installId: z.ZodString;
             eventId: z.ZodOptional<z.ZodString>;
@@ -1649,6 +1696,7 @@ export declare const API_SCHEMAS: {
             recipe: z.ZodString;
             requiredRank: z.ZodNumber;
             costCopper: z.ZodOptional<z.ZodNumber>;
+            trainerNpcId: z.ZodOptional<z.ZodNumber>;
         }, z.core.$strip>, z.ZodObject<{
             installId: z.ZodString;
             eventId: z.ZodOptional<z.ZodString>;

@@ -10,7 +10,7 @@ import { z } from "zod";
  * the generated JSON Schema's description, so a reader of the schema files knows the server checks them.
  */
 export declare const RULES: {
-    readonly loot: readonly ["loot needs a source: npc or object"];
+    readonly loot: readonly ["loot needs a source: npc or object", "a loot position needs mapId, x and y together"];
     readonly achievement_catalog: readonly ["criteria cannot outnumber criteriaCount"];
     readonly achievement_owned: readonly ["quantity and required come together", "quantity cannot exceed required", "criteriaMet cannot exceed criteriaTotal", "only a completed achievement has a date", "earnedOn is a real calendar date"];
     readonly reputation_owned: readonly ["floor cannot exceed ceiling"];
@@ -26,6 +26,10 @@ export declare const NPC_CREATURE_TYPES: readonly ["Beast", "Dragonkin", "Demon"
 export declare const NPC_RANKS: readonly ["normal", "elite", "rare", "rare_elite", "boss"];
 /** The group a quest asks for, from the quest tag the game reports. */
 export declare const QUEST_TAGS: readonly ["group", "dungeon", "raid", "pvp"];
+/** What the NPC does for players, from the window that opened (a merchant who repairs is `repair`). */
+export declare const NPC_ROLES: readonly ["vendor", "trainer", "questgiver", "flightmaster", "banker", "auctioneer", "stablemaster", "innkeeper", "repair"];
+/** How an object was opened, from the spell the player cast on it. */
+export declare const GATHER_KINDS: readonly ["herb", "ore", "chest", "fishing", "other"];
 export declare const npcSighting: z.ZodObject<{
     installId: z.ZodString;
     eventId: z.ZodOptional<z.ZodString>;
@@ -43,8 +47,20 @@ export declare const npcSighting: z.ZodObject<{
         neutral: "neutral";
     }>;
     positionKind: z.ZodOptional<z.ZodEnum<{
+        interaction: "interaction";
         npc: "npc";
         player: "player";
+    }>>;
+    role: z.ZodOptional<z.ZodEnum<{
+        auctioneer: "auctioneer";
+        banker: "banker";
+        flightmaster: "flightmaster";
+        innkeeper: "innkeeper";
+        questgiver: "questgiver";
+        repair: "repair";
+        stablemaster: "stablemaster";
+        trainer: "trainer";
+        vendor: "vendor";
     }>>;
     creatureType: z.ZodOptional<z.ZodEnum<{
         Beast: "Beast";
@@ -81,6 +97,17 @@ export declare const lootWindow: z.ZodObject<{
         itemId: z.ZodNumber;
         count: z.ZodNumber;
     }, z.core.$strip>>;
+    mapId: z.ZodOptional<z.ZodNumber>;
+    x: z.ZodOptional<z.ZodNumber>;
+    y: z.ZodOptional<z.ZodNumber>;
+    gatherKind: z.ZodOptional<z.ZodEnum<{
+        chest: "chest";
+        fishing: "fishing";
+        herb: "herb";
+        ore: "ore";
+        other: "other";
+    }>>;
+    sourceObjectName: z.ZodOptional<z.ZodString>;
 }, z.core.$strip>;
 export declare const questEvent: z.ZodObject<{
     installId: z.ZodString;
@@ -418,6 +445,7 @@ export declare const trainerSeen: z.ZodObject<{
     recipe: z.ZodString;
     requiredRank: z.ZodNumber;
     costCopper: z.ZodOptional<z.ZodNumber>;
+    trainerNpcId: z.ZodOptional<z.ZodNumber>;
 }, z.core.$strip>;
 export declare const priceSeen: z.ZodObject<{
     installId: z.ZodString;
@@ -700,8 +728,20 @@ export declare const recordSchemas: {
             neutral: "neutral";
         }>;
         positionKind: z.ZodOptional<z.ZodEnum<{
+            interaction: "interaction";
             npc: "npc";
             player: "player";
+        }>>;
+        role: z.ZodOptional<z.ZodEnum<{
+            auctioneer: "auctioneer";
+            banker: "banker";
+            flightmaster: "flightmaster";
+            innkeeper: "innkeeper";
+            questgiver: "questgiver";
+            repair: "repair";
+            stablemaster: "stablemaster";
+            trainer: "trainer";
+            vendor: "vendor";
         }>>;
         creatureType: z.ZodOptional<z.ZodEnum<{
             Beast: "Beast";
@@ -738,6 +778,17 @@ export declare const recordSchemas: {
             itemId: z.ZodNumber;
             count: z.ZodNumber;
         }, z.core.$strip>>;
+        mapId: z.ZodOptional<z.ZodNumber>;
+        x: z.ZodOptional<z.ZodNumber>;
+        y: z.ZodOptional<z.ZodNumber>;
+        gatherKind: z.ZodOptional<z.ZodEnum<{
+            chest: "chest";
+            fishing: "fishing";
+            herb: "herb";
+            ore: "ore";
+            other: "other";
+        }>>;
+        sourceObjectName: z.ZodOptional<z.ZodString>;
     }, z.core.$strip>;
     readonly quest: z.ZodObject<{
         installId: z.ZodString;
@@ -1058,6 +1109,7 @@ export declare const recordSchemas: {
         recipe: z.ZodString;
         requiredRank: z.ZodNumber;
         costCopper: z.ZodOptional<z.ZodNumber>;
+        trainerNpcId: z.ZodOptional<z.ZodNumber>;
     }, z.core.$strip>;
     readonly gold_snapshot: z.ZodObject<{
         installId: z.ZodString;
@@ -1227,8 +1279,20 @@ export declare const anyRecord: z.ZodDiscriminatedUnion<[z.ZodObject<{
         neutral: "neutral";
     }>;
     positionKind: z.ZodOptional<z.ZodEnum<{
+        interaction: "interaction";
         npc: "npc";
         player: "player";
+    }>>;
+    role: z.ZodOptional<z.ZodEnum<{
+        auctioneer: "auctioneer";
+        banker: "banker";
+        flightmaster: "flightmaster";
+        innkeeper: "innkeeper";
+        questgiver: "questgiver";
+        repair: "repair";
+        stablemaster: "stablemaster";
+        trainer: "trainer";
+        vendor: "vendor";
     }>>;
     creatureType: z.ZodOptional<z.ZodEnum<{
         Beast: "Beast";
@@ -1264,6 +1328,17 @@ export declare const anyRecord: z.ZodDiscriminatedUnion<[z.ZodObject<{
         itemId: z.ZodNumber;
         count: z.ZodNumber;
     }, z.core.$strip>>;
+    mapId: z.ZodOptional<z.ZodNumber>;
+    x: z.ZodOptional<z.ZodNumber>;
+    y: z.ZodOptional<z.ZodNumber>;
+    gatherKind: z.ZodOptional<z.ZodEnum<{
+        chest: "chest";
+        fishing: "fishing";
+        herb: "herb";
+        ore: "ore";
+        other: "other";
+    }>>;
+    sourceObjectName: z.ZodOptional<z.ZodString>;
 }, z.core.$strip>, z.ZodObject<{
     installId: z.ZodString;
     eventId: z.ZodOptional<z.ZodString>;
@@ -1560,6 +1635,7 @@ export declare const anyRecord: z.ZodDiscriminatedUnion<[z.ZodObject<{
     recipe: z.ZodString;
     requiredRank: z.ZodNumber;
     costCopper: z.ZodOptional<z.ZodNumber>;
+    trainerNpcId: z.ZodOptional<z.ZodNumber>;
 }, z.core.$strip>, z.ZodObject<{
     installId: z.ZodString;
     eventId: z.ZodOptional<z.ZodString>;
