@@ -11,15 +11,16 @@
  * come first.
  *
  * The ledger holds every item name in the build, released or not, so it stays on the maintainer's machine
- * like the snapshot. What the site may show is written to a separate, smaller file for the private bucket:
- * only the items whose game file name and wiki name agree (docs/DATA_POLICY.md, "Item names from the game
- * files and the Warcraft Wiki"). It never goes to the API, the MCP server or the bulk download.
+ * like the snapshot. What the site shows is written to a separate, smaller file for the private bucket: every
+ * item of the build a source names, the game file name first, with the wiki page where the wiki agrees
+ * (docs/DATA_POLICY.md, "Item names from the game files and the Warcraft Wiki"). It never goes to the API, the
+ * MCP server or the bulk download.
  */
 import Database from "better-sqlite3";
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { readClientMeta, readClientRows } from "./client-snapshot.js";
-import { mayShowName, SHOWN_MAX_ITEM_ID } from "./item-name-rule.js";
+import { mayShowName } from "./item-name-rule.js";
 import type { TableReader } from "./talents/build-catalog.js";
 
 export const LEDGER_SCHEMA = "everloot.item-name-ledger/1";
@@ -32,18 +33,21 @@ export interface LedgerEntry { files: FileName[]; wiki: WikiName[] }
 export interface LedgerRun { at: string; build: string; wikiDump: string | null; added: { files: number; wiki: number } }
 export interface Ledger { schema: typeof LEDGER_SCHEMA; runs: LedgerRun[]; items: Record<string, LedgerEntry> }
 
-/** match: game files and wiki agree (shown). mismatch: both name it, differently (kept, not shown). files, wiki: one source only. */
+/** match: game files and wiki agree. mismatch: both name it, differently. files, wiki: one source only. none: no name. */
 export type Tier = "match" | "mismatch" | "files" | "wiki" | "none";
 export const TIERS: Tier[] = ["match", "mismatch", "files", "wiki", "none"];
 
-/** The file the site reads: the shown names only, with what each row needs. */
+/** The file the site reads: the shown names, with what each row needs. */
 export interface ShownNames {
   schema: typeof SHOWN_SCHEMA;
   build: { version: string };
   wiki: { name: string; url: string; licence: string };
   count: number;
-  /** By item id: the game file name, its quality, and the wiki page that gives the same name (after WIKI_PAGE_PREFIX). */
-  names: Record<string, { n: string; q: number; w: string }>;
+  /**
+   * By item id: the name, its quality (absent for a name only the wiki gives), and the wiki page (after
+   * WIKI_PAGE_PREFIX) where the wiki gives this name. No `w`: the name is the game files' alone, unconfirmed.
+   */
+  names: Record<string, { n: string; q?: number; w?: string }>;
 }
 
 /** Two names agree when they differ only in case, spacing or the kind of apostrophe. */
@@ -105,33 +109,32 @@ export function parseLedger(json: unknown): Ledger {
   return l as Ledger;
 }
 
-/**
- * How many of `ids` fall in each tier for the build, how many matches are held back (id at or above
- * SHOWN_MAX_ITEM_ID, or a placeholder name), and the mismatches (id, game file name, wiki names).
- */
+/** How many of `ids` fall in each tier for the build, and the mismatches (id, game file name, wiki names). */
 export function coverage(ledger: Ledger, build: string, ids: Iterable<number>) {
   const counts = Object.fromEntries(TIERS.map((t) => [t, 0])) as Record<Tier, number>;
-  const held = { highId: 0, internalName: 0 };
   const mismatches: { id: number; files: string; wiki: string[] }[] = [];
   for (const id of ids) {
     const entry = ledger.items[String(id)];
     const { tier, file } = tierOf(entry, build);
     counts[tier] += 1;
-    if (tier === "match" && !mayShowName(id, file!.name)) held[id >= SHOWN_MAX_ITEM_ID ? "highId" : "internalName"] += 1;
     if (tier === "mismatch") mismatches.push({ id, files: file!.name, wiki: [...new Set(entry!.wiki.map((w) => w.name))] });
   }
-  return { counts, held, shownCount: counts.match - held.highId - held.internalName, mismatches };
+  return { counts, shownCount: counts.match + counts.mismatch + counts.files + counts.wiki, mismatches };
 }
 
 /**
- * The names the site may show for a build: the `match` tier, for ids in `ids` (the build's items), below
- * SHOWN_MAX_ITEM_ID and without a placeholder name (kb/src/item-name-rule.ts). The ledger keeps the rest.
+ * The names the site shows for a build, for ids in `ids` (the build's items): the game file name wherever the
+ * build has one, with its wiki page when the wiki agrees (a mismatch shows the game files' name, as this build
+ * has it); else the wiki's name, with its page. An item neither names is left out and reads "Item N".
  */
 export function shownNames(ledger: Ledger, build: string, ids: Iterable<number>, wiki: ShownNames["wiki"]): ShownNames {
   const names: ShownNames["names"] = {};
+  const page = (w: WikiName) => w.page.slice(WIKI_PAGE_PREFIX.length);
   for (const id of [...ids].sort((a, b) => a - b)) {
     const t = tierOf(ledger.items[String(id)], build);
-    if (t.tier === "match" && mayShowName(id, t.file!.name)) names[String(id)] = { n: t.file!.name, q: t.file!.quality, w: t.wiki!.page.slice(WIKI_PAGE_PREFIX.length) };
+    if (t.tier === "match" && mayShowName(id, t.file!.name)) names[String(id)] = { n: t.file!.name, q: t.file!.quality, w: page(t.wiki!) };
+    else if ((t.tier === "mismatch" || t.tier === "files") && mayShowName(id, t.file!.name)) names[String(id)] = { n: t.file!.name, q: t.file!.quality };
+    else if (t.tier === "wiki" && mayShowName(id, t.wiki!.name)) names[String(id)] = { n: t.wiki!.name, w: page(t.wiki!) };
   }
   return { schema: SHOWN_SCHEMA, build: { version: build }, wiki, count: Object.keys(names).length, names };
 }

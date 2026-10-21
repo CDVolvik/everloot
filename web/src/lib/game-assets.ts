@@ -291,16 +291,20 @@ const ItemNamesSchema = z.object({
   schema: z.literal("everloot.item-names/1"),
   build: z.object({ version: z.string() }),
   wiki: z.object({ name: z.string(), url: z.string().regex(/^https:\/\//), licence: z.literal("CC-BY-SA-4.0") }),
-  names: z.record(z.string().regex(/^\d+$/), z.object({ n: z.string().min(1), q: z.number().int(), w: z.string().regex(/^[^\s"<>]+$/) })),
+  names: z.record(z.string().regex(/^\d+$/), z.object({ n: z.string().min(1), q: z.number().int().optional(), w: z.string().regex(/^[^\s"<>]+$/).optional() })),
 });
 
-/** An item name the site shows before players confirm it: the game files and the Warcraft Wiki give the same one. */
+/**
+ * An item name the site shows before players confirm it: from the Warcraft Wiki where the wiki gives it (alone, or
+ * the same as the game files), else from the game files alone, unconfirmed.
+ */
 export interface MatchedName {
   name: string;
-  /** Name colour by quality. */
+  /** Name colour by quality; common when only the wiki names the item. */
   color: string;
-  /** The wiki article that gives the same name. */
-  wikiPage: string;
+  /** The wiki article that gives this name; null for a name from the game files alone. */
+  wikiPage: string | null;
+  source: "wiki" | "files";
 }
 
 export interface ItemNames {
@@ -330,7 +334,9 @@ export async function loadItemNames(version: string, base: string | null = asset
       version: f.data.build.version,
       wiki: { name: f.data.wiki.name, url: f.data.wiki.url },
       // The rule is applied again here, so a file written before a change to it cannot show what it now holds back.
-      names: new Map(Object.entries(f.data.names).filter(([id, x]) => mayShowName(Number(id), x.n)).map(([id, x]) => [Number(id), { name: x.n, color: qualityColor(x.q), wikiPage: `${WIKI_PAGE_PREFIX}${x.w}` }])),
+      names: new Map(Object.entries(f.data.names).filter(([id, x]) => mayShowName(Number(id), x.n)).map(([id, x]) => [Number(id), {
+        name: x.n, color: qualityColor(x.q ?? 1), wikiPage: x.w ? `${WIKI_PAGE_PREFIX}${x.w}` : null, source: x.w ? "wiki" : "files",
+      } satisfies MatchedName])),
     } : null);
   }
   const names = parsedNames.get(raw) ?? null;

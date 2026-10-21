@@ -229,45 +229,46 @@ batch." The rules above also cover:
   made, approves or supports Everloot. No logo in the files means no banner: Blizzard's marketing
   logos and art are still never used, not even as a stand-in.
 
-**Item names from the game files and the Warcraft Wiki.** Decided 2026-10-19 by Carlos: "Wiki match
-only". An item's name, quality and icon, and since 2026-10-20 its tooltip facts (item level, required level,
-binding, sell price, weapon speed, stat kinds and flavour text), may be shown on the item page and the category lists before
-players confirm it, when the name in the game files of the current build (`ItemSparse`) and the item's
-page in the Warcraft Wiki dump of 2023-11-13 give the same name, apart from case, spacing and the kind
-of apostrophe. The wiki page predates WoW: Forever, so a match says the item is released content in
-another version of the game, not something Forever has yet to reveal. The game files cannot say that on
-their own: in build 1.60.1.70450, 19,219 of the 19,231 named items, new ones included, list the base game
-as their expansion (`ItemSparse.ExpansionID` 0), so the expansion is not used. The rules:
+**Item names from the game files and the Warcraft Wiki.** Decided 2026-10-19 by Carlos ("Wiki match
+only") and widened 2026-10-21 by Carlos: "the goal is to name all the items that exist". Every item the
+current build lists (`Item`) is named when a source names it, before players confirm it, on the item page
+and the category lists, with its quality and icon and, where the game files hold them, its tooltip facts (item
+level, required level, binding, sell price, weapon speed, stat kinds and flavour text). The name comes from:
 
-- Each such name says where it comes from in a tooltip on the name, *Name from the Warcraft Wiki* (and in words for screen readers; on a link, the tooltip is the link's hover card), and
-  the site-wide footer credits the Warcraft Wiki under CC BY-SA 4.0 beside Blizzard's credit, and
-  `/methodology#credits` names the Warcraft Wiki contributors. A name
-  3 installs agree on comes first, with the tooltip *Name confirmed by players*. No source label is printed beside a name.
+- the game files of the current build (`ItemSparse`), wherever they name the item. Where the item's page in the
+  Warcraft Wiki dump of 2023-11-13 gives the same name, apart from case, spacing and the kind of apostrophe,
+  the name also carries the wiki's credit; where the two differ, the game files' name shows, as this build has it;
+- else the Warcraft Wiki dump's name, where only the wiki names the item.
+
+The rules:
+
+- Each name says where it comes from in a tooltip on the name (and in words for screen readers; on a link, the
+  tooltip is the link's hover card). A name the wiki gives reads *Name from the Warcraft Wiki*; the site-wide
+  footer credits the Warcraft Wiki under CC BY-SA 4.0 beside Blizzard's credit, and `/methodology#credits`
+  names the Warcraft Wiki contributors. A name from the game files alone carries the quiet unconfirmed marker,
+  *From the game files, not yet confirmed by players*. A name 3 installs agree on comes first, with the tooltip
+  *Name confirmed by players*. No source label is printed beside a name.
+- There is no id range and no placeholder filter: an item from a later version, an unreleased one, or one the
+  files call "Deprecated" or "[PH]" is named as the files name it. The marker and the build stamp say what the
+  name is: found in game files, unconfirmed.
 - The tooltip facts follow the name (added 2026-10-20, at Carlos's request that the database show the game file
   data it already holds, as Wowhead does). Until players confirm the item, its page keeps the quiet unconfirmed
   marker on the icon, whose tooltip says so, and prints no source line. The lists sort and filter by item level,
   required level and binding; an item whose facts are not shown matches none of those filters.
-- For the lowest spoiler risk, only items below id 25,000, the original game's range, are named this
-  way (`SHOWN_MAX_ITEM_ID` in `kb/src/item-name-rule.ts`). Higher ids belong to later versions, such as
-  Wrath Classic's Scourge event. A name that reads like a placeholder or an internal entry is never
-  shown either: one starting with "Deprecated", "DEP", "[PH]", "PH ", "Test", "QA" or "Monster -", or
-  containing "UNUSED", "zzOLD" or "(old)", in any case, or starting with "OLD" in capitals ("Old
-  Greatsword" is a real item and shows).
-- Every other item keeps "Item N", with no tooltip facts: a name only the game files give (it may be unreleased), a name only
-  the wiki gives (it may not be in Forever), an item whose two names differ, and a match the two rules
-  above hold back. A category page where
-  fewer than half the rows have a name stays out of search.
+- An item no source names keeps "Item N". The game server sends those names while the game runs, so they come
+  from the addon's uploads, after 3 installs agree. A category page where fewer than half the rows have a name
+  stays out of search.
 - Pages only. The data downloads, the API and the MCP server carry no item names and no tooltip facts for these
   items, as before; a test checks that their code does not read the names. The embeddable cards keep the
   three-install rule.
 - The names come from a ledger a maintainer builds with `npm run kb -- item-names`. It records every name
   each source gives for each item id, mismatches and single-source names included, and it only grows: a
-  new build, dump or source adds to it and removes nothing. It holds every name in the build, released or
-  not, so it stays on the maintainer's machine like the snapshots. Only the matched names go to the
-  private storage the site's server reads, never to git or the public asset bucket.
-- The maintainer review is the pull request that sets or changes the rule or adds a source. The first
-  one (2026-10-19) listed the count per tier, a sample of the shown names, the highest item ids among
-  them and the mismatches. A file for a new build is checked the same way before it is uploaded.
+  new build, dump or source adds to it and removes nothing. It stays on the maintainer's machine like the
+  snapshots. The names the site shows go to the private storage the site's server reads, never to git or the
+  public asset bucket. In build 1.60.1.70450: 31,849 items, 23,096 named (9,305 where the files and the wiki
+  agree, 228 where they differ, 9,698 from the files alone, 3,865 from the wiki alone) and 8,753 left to players.
+- The maintainer review is the pull request that sets or changes the rule or adds a source. A file for a new
+  build is checked against the last run's counts (`npm run kb -- name-gaps`) before it is uploaded.
 
 **Third extension: game icons and tooltip text in embeddable cards.** Decided 2026-10-19 (Carlos
 approved it with the site structure plan). The hover card any site can show through
@@ -282,44 +283,39 @@ and tooltip facts, the same ones its page shows:
   server still carry no icons or tooltip text.
 
 **Quest titles from the game files and the Warcraft Wiki.** *Proposed 2026-10-20; decided 2026-10-21
-by Carlos.* The game files list quests by id (`QuestV2`) but carry no titles. A quest's
-title may be shown on its page, in the quest lists and where an item page names the quest as a reward,
-before players confirm it, when the quest id is in the current build's `QuestV2` table and the quest's
-page in the Warcraft Wiki dump of 2023-11-13 gives that id in its quest infobox. The title is the
-infobox's name, or the page title where the infobox has none, kept as the wiki writes it; a few carry
-the wiki's own note, such as "(Alliance, 55)". The rules:
+by Carlos, and widened the same day to every quest the wiki titles.* The game files list quests by id
+(`QuestV2`) but carry no titles. A quest's title may be shown on its page, in the quest lists and where an item
+page names the quest as a reward, before players confirm it, when the quest id is in the current build's
+`QuestV2` table and the quest's page in the Warcraft Wiki dump of 2023-11-13 gives that id in its quest infobox.
+The title is the infobox's name, or the page title where the infobox has none, kept as the wiki writes it; a
+few carry the wiki's own note, such as "(Alliance, 55)". The rules:
 
 - As with item names, a title 3 installs agree on comes first. A wiki title says where it comes from in
   a tooltip on the title, *Name from the Warcraft Wiki* (and in words for screen readers; on a link, in the link's hover card); on the quest
   page it also carries the quiet unconfirmed marker. No source label is printed beside it. The
   footer credit reads "Item and quest names from the Warcraft Wiki (CC BY-SA 4.0)".
-- Only quests below id 10,000, the original game's range (`SHOWN_MAX_QUEST_ID` in
-  `kb/src/game-name-rule.ts`). The client also lists quests from later seasons and versions at higher ids.
-- Where wiki pages give one id different titles (a quest renamed in a later version, say), none is
-  shown. A quest the wiki lacks keeps "Quest N", and so does a wiki title for an id the build does not list.
+- Any quest id the build lists, with no id range. Where wiki pages give one id different titles (a quest
+  renamed in a later version, say), the first page's title shows and the run lists the id for review. A quest
+  the wiki lacks keeps "Quest N" until players title it, and a wiki title for an id the build does not list is
+  never shown.
 - Pages only. The data downloads, the API and the MCP server carry no quest titles from this file; a
   test checks that their code does not read it.
 - A maintainer makes the file with `npm run kb -- game-names`, into the same private storage as the item
   names, never git or the public asset bucket. Unlike the item names it keeps no ledger: it is rebuilt
-  from the snapshot and the dump each run. In build 1.60.1.70450: 6,614 quest ids, 3,191 with one wiki
-  title, 47 where the pages disagree and 3,376 the wiki lacks; 3,184 shown after the id range holds back 7.
+  from the snapshot and the dump each run. In build 1.60.1.70450: 6,614 quest ids, 3,238 titled (47 of them
+  where the pages disagree) and 3,376 the wiki lacks.
 
 **Item set and spell names from the game files.** *Proposed 2026-10-20; decided 2026-10-21
-by Carlos.* The client layer relates items to item sets and to the spells that create or use them, by
-id. The names of those sets (`ItemSet.Name_lang`) and spells (`SpellName.Name_lang`) may be shown beside
-the relations on the item pages. They come from the game files alone, so:
+by Carlos, and widened the same day to every set and spell the files name.* The names of item sets
+(`ItemSet.Name_lang`) and spells (`SpellName.Name_lang`) may be shown on their pages and beside the relations on
+the item pages. They come from the game files alone, so:
 
 - Each carries the quiet unconfirmed marker, with *From the game files, not yet confirmed by players*
   as its tooltip. No source label is printed.
-- Only the sets and spells the committed client layer's relations name, and only in the original
-  game's ranges: set ids below 1,000 and spell ids below 30,000 (`SHOWN_MAX_SET_ID`,
-  `SHOWN_MAX_SPELL_ID`). Above them sit Season of Discovery sets and recipes and entries new to Forever,
-  which could spoil unreleased content. A name that reads like an internal entry is held back too: the
-  item rule's placeholders, a bracketed tag such as "[DNT]", "OLD" at the end, or the client's own
-  "DND" (do not display) mark.
-- Every other one keeps "item set N" or "spell N".
-- Pages only, in the same private storage, made by the same command. In build 1.60.1.70450: 532 sets
-  in the relations, 172 shown; 4,085 spells, 4,044 named in the files, 1,868 shown.
+- Every set and spell of the build with a name, with no id range and no placeholder filter, as with items.
+  One without a name keeps "item set N" or "spell N".
+- Pages only, in the same private storage, made by the same command. In build 1.60.1.70450: 536 sets, all
+  named; 31,939 spells, 31,926 named.
 
 **The talent catalog.** The talent calculator at `/tools/talents` uses our own catalog, read from
 the public client by a maintainer, not taken from any other site. The catalog is the trait node

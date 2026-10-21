@@ -117,18 +117,16 @@ describe("bindings and tokens", () => {
     ]);
   });
 
-  test("an item id above the shown range fails, even when the game files have it", () => {
-    expect(problemsOf({}, withSection("History", "It drops {item:30000}."))).toEqual(["{item:30000} is above the shown item range (below 25000)"]);
-    expect(problemsOf({}, withSection("History", "It drops {item:24999} and {item:2589}."))).toEqual([]);
+  test("an item token at any id the game files have passes", () => {
+    expect(problemsOf({}, withSection("History", "It drops {item:30000} and {item:2589}."))).toEqual([]);
   });
 
   test("an item the game files do not have fails", () => {
     expect(problemsOf({}, withSection("History", "It drops {item:1234}."))).toEqual(["{item:1234} is not an item in the game files"]);
   });
 
-  test("a quest id above the shown range fails", () => {
-    expect(problemsOf({}, withSection("History", "Start with {quest:10000}."))).toEqual(["{quest:10000} is above the shown quest range (below 10000)"]);
-    expect(problemsOf({}, withSection("History", "Start with {quest:176}."))).toEqual([]);
+  test("a quest token at any id passes", () => {
+    expect(problemsOf({}, withSection("History", "Start with {quest:176} or {quest:10000}."))).toEqual([]);
   });
 
   test("a zone token or binding must be a released zone", () => {
@@ -172,7 +170,6 @@ describe("bindings and tokens", () => {
     const set = (itemSet: number) => checkWiki([file({ type: "item-set", binds: { itemSet }, status: "draft" }, "## Overview\n\nText.\n\n## Who wears it\n\nText.\n"), westfall()], ctx).problems.map((p) => p.message);
     expect(set(1)).toEqual([]);
     expect(set(2)).toEqual(["binds.itemSet 2 is not an item set in the game files"]);
-    expect(set(1000)).toEqual(["binds.itemSet 1000 is above the shown range (below 1000)"]);
     const change = (id: string) => checkWiki([file({ type: "change", binds: { changes: [id] }, status: "draft" }, "## What changed\n\nText.\n\n## What it affects\n\nText.\n"), westfall()], ctx).problems.map((p) => p.message);
     expect(change("us:12:3")).toEqual([]);
     expect(change("us:99:1")).toEqual(['binds.changes "us:99:1" is not an entry on /changes']);

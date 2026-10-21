@@ -4,20 +4,18 @@
  * - Quest titles: the game files list quest ids (`QuestV2`) but no titles, so a title is shown only where the
  *   quest id is in the build's QuestV2 table and the Warcraft Wiki dump of 2023-11-13 (CC BY-SA 4.0) has a quest
  *   infobox (`questbox`) with that id. The title is the infobox's `name` (else the page title), as the item
- *   names take theirs; nothing is stripped from it. Where wiki pages give the same id different titles, none is
- *   shown.
- * - Item set names: `ItemSet.Name_lang`, for the sets the committed client layer relates items to.
- * - Spell names: `SpellName.Name_lang`, for the spells the client layer says items are created by or used in.
+ *   names take theirs; nothing is stripped from it. Where wiki pages give the same id different titles, the
+ *   first page's is shown and the run lists the id.
+ * - Item set names: `ItemSet.Name_lang`, every named set of the build.
+ * - Spell names: `SpellName.Name_lang`, every named spell of the build.
  *
- * Every name is held to the id ranges and the placeholder check in game-name-rule.ts. What a run writes holds
- * only the names the site may show, for the private bucket beside item-names.json; it never goes to git, the
- * API, the MCP server or the bulk download (docs/DATA_POLICY.md).
+ * What a run writes is for the private bucket beside item-names.json; it never goes to git, the API, the MCP
+ * server or the bulk download (docs/DATA_POLICY.md).
  */
 import Database from "better-sqlite3";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { readClientMeta, readClientRows } from "./client-snapshot.js";
-import type { Edge } from "./edges.js";
 import { mayShowQuestTitle, mayShowSetName, mayShowSpellName } from "./game-name-rule.js";
 import { infoboxItemIds, isWikiPage, normName, shownNamesDir, WIKI_PAGE_PREFIX, WIKI_SOURCE_ID, type ShownNames } from "./item-names.js";
 
@@ -74,12 +72,13 @@ export function wikiQuestTitles(kbPath: string): { dump: string; wiki: ShownName
 }
 
 /**
- * The quest titles the site may show for a build: quest ids in the build (`questIds`) whose wiki pages agree on
- * one title, apart from case, spacing and the kind of apostrophe. Counts how many ids fall where.
+ * The quest titles the site shows for a build: quest ids in the build (`questIds`) with a wiki title. Where the
+ * pages disagree (apart from case, spacing and the kind of apostrophe) the first page's title is shown and the id
+ * is listed in `mismatches`. Counts how many ids fall where.
  */
 export function shownQuestNames(version: string, questIds: Iterable<number>, wikiTitles: WikiTitles, wiki: ShownNames["wiki"]) {
   const names: ShownQuestNames["names"] = {};
-  const counts = { quests: 0, match: 0, mismatch: 0, files: 0, held: 0 };
+  const counts = { quests: 0, match: 0, mismatch: 0, files: 0 };
   const mismatches: { id: number; wiki: string[] }[] = [];
   for (const id of [...questIds].sort((a, b) => a - b)) {
     counts.quests += 1;
@@ -91,15 +90,9 @@ export function shownQuestNames(version: string, questIds: Iterable<number>, wik
     if (new Set(pages.map((p) => normName(p.name))).size > 1) {
       counts.mismatch += 1;
       mismatches.push({ id, wiki: [...new Set(pages.map((p) => p.name))] });
-      continue;
-    }
-    counts.match += 1;
+    } else counts.match += 1;
     const page = pages[0]!;
-    if (!mayShowQuestTitle(id, page.name)) {
-      counts.held += 1;
-      continue;
-    }
-    names[String(id)] = { n: page.name, w: page.page.slice(WIKI_PAGE_PREFIX.length) };
+    if (mayShowQuestTitle(id, page.name)) names[String(id)] = { n: page.name, w: page.page.slice(WIKI_PAGE_PREFIX.length) };
   }
   const file: ShownQuestNames = { schema: QUEST_NAMES_SCHEMA, build: { version }, wiki, count: Object.keys(names).length, names };
   return { file, counts, mismatches };
@@ -110,29 +103,17 @@ export function shownFileNames<S extends string>(
   schema: S, version: string, rows: ReadonlyMap<number, Record<string, unknown>>, ids: Iterable<number>, may: (id: number, name: string) => boolean,
 ) {
   const names: Record<string, string> = {};
-  const counts = { referenced: 0, named: 0, held: 0 };
+  const counts = { ids: 0, named: 0 };
   for (const id of [...new Set(ids)].sort((a, b) => a - b)) {
-    counts.referenced += 1;
+    counts.ids += 1;
     const raw = rows.get(id)?.Name_lang;
     const name = typeof raw === "string" ? raw.trim() : "";
-    if (!name) continue;
+    if (!name || !may(id, name)) continue;
     counts.named += 1;
-    if (may(id, name)) names[String(id)] = name;
-    else counts.held += 1;
+    names[String(id)] = name;
   }
   const file: ShownFileNames<S> = { schema, build: { version }, count: Object.keys(names).length, names };
   return { file, counts };
-}
-
-/** The item sets and spells the client layer's relations name: the targets of part of set, created by and reagent for, and spells taught by a profession. */
-export function relationIds(edges: readonly Edge[]): { sets: number[]; spells: number[] } {
-  const sets = new Set<number>(), spells = new Set<number>();
-  for (const e of edges) {
-    if (e.toKind === "item_set") sets.add(e.toId);
-    if (e.toKind === "spell") spells.add(e.toId);
-    if (e.fromKind === "spell") spells.add(e.fromId);
-  }
-  return { sets: [...sets], spells: [...spells] };
 }
 
 /**
@@ -140,7 +121,7 @@ export function relationIds(edges: readonly Edge[]): { sets: number[]; spells: n
  * and writes quest-names.json, item-set-names.json and spell-names.json for the snapshot's build into the same
  * folder as item-names.json. Returns the counts for the report.
  */
-export function runGameNames(opts: { snapshotPath: string; kbPath: string; outDir: string; edges: readonly Edge[] }) {
+export function runGameNames(opts: { snapshotPath: string; kbPath: string; outDir: string }) {
   const meta = readClientMeta(opts.snapshotPath);
   const questIds = [...readClientRows(opts.snapshotPath, "QuestV2").keys()];
   if (!questIds.length) throw new Error("the snapshot has no QuestV2 table; run `client-extract --refresh` first");
@@ -148,10 +129,9 @@ export function runGameNames(opts: { snapshotPath: string; kbPath: string; outDi
   const spells = readClientRows(opts.snapshotPath, "SpellName");
   if (!sets.size || !spells.size) throw new Error("the snapshot has no ItemSet or SpellName table; run `client-extract --refresh` first");
   const wiki = wikiQuestTitles(opts.kbPath);
-  const ids = relationIds(opts.edges);
   const quests = shownQuestNames(meta.version, questIds, wiki.titles, wiki.wiki);
-  const setNames = shownFileNames(SET_NAMES_SCHEMA, meta.version, sets, ids.sets, mayShowSetName);
-  const spellNames = shownFileNames(SPELL_NAMES_SCHEMA, meta.version, spells, ids.spells, mayShowSpellName);
+  const setNames = shownFileNames(SET_NAMES_SCHEMA, meta.version, sets, sets.keys(), mayShowSetName);
+  const spellNames = shownFileNames(SPELL_NAMES_SCHEMA, meta.version, spells, spells.keys(), mayShowSpellName);
   const dir = shownNamesDir(opts.outDir, meta);
   mkdirSync(dir, { recursive: true });
   const write = (file: string, body: unknown) => {
