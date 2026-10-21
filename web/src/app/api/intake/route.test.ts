@@ -537,6 +537,19 @@ describe("player rows in an upload", () => {
     expect(capped.rejected[0].reason).toMatch(/at most 1000/);
   });
 
+  test("a row the players table would refuse is dropped with a reason, and the other rows still go", async () => {
+    vi.stubEnv("EVERLOOT_PLAYER_PAGES", "1");
+    const POST = await freshPost();
+    // "a-" is a realm the protocol allows, but its key is one character and the table wants two.
+    const response = await POST(request({ addonVersion: "0.4.0", records: [player("Thrallina", { realm: "a-" }), player("Throgar"), canonicalLoot] }));
+    const body = await response.json();
+    expect(response.status).toBe(200);
+    expect(body.rejected).toHaveLength(1);
+    expect(body.rejected[0].reason).toMatch(/cannot be stored/);
+    expect(players.upsert.mock.calls[0]![0].map((r: { name: string }) => r.name)).toEqual(["Throgar"]);
+    expect(store.putUpload.mock.calls[0]![2].records.map((r: { kind: string }) => r.kind)).toEqual(["loot"]);
+  });
+
   test("when the table cannot be written the upload is not confirmed and the player can retry", async () => {
     vi.stubEnv("EVERLOOT_PLAYER_PAGES", "1");
     players.upsert.mockRejectedValue(new Error("supabase down"));

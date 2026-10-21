@@ -1,4 +1,5 @@
 import { UPLOAD_LIMITS, validPlayerName, type IntakeRecord } from "@everloot/protocol";
+import { linkRealmKey } from "./character-links";
 
 /**
  * Player pages: one current row per character, found by name (docs/design/specs/2026-10-20-player-pages-design.md).
@@ -56,6 +57,22 @@ export function playerUpsert(row: PlayerRow, now: Date): PlayerUpsert {
 }
 
 export const PLAYERS_PER_UPLOAD = UPLOAD_LIMITS.playersPerUpload;
+
+/**
+ * Why the players table could not store this row, or null. The table's own checks are the last line: the site
+ * drops the row first, with the reason in the receipt, so one odd realm cannot fail a whole upload. The rules
+ * are the table's: the realm and its key are 2 to 40 characters. The key is the same one the character links
+ * use, so a realm spelled two ways is one realm, and a hide reaches the character however it was spelled.
+ * The key can be shorter than the realm: "a-" is one key character, and the table would refuse the whole
+ * batch for it.
+ */
+export function playerStoreProblem(row: PlayerUpsert): string | null {
+  const realm = row.realm.trim();
+  if (realm.length < 2 || realm.length > 40) return "This realm's name cannot be stored.";
+  const key = linkRealmKey(realm);
+  if (key.length < 2 || key.length > 40) return "This realm's name cannot be stored.";
+  return null;
+}
 
 /** A stored player, as the pages read it. */
 export interface Player { name: string; realm: string; ruleset: string; race: string; class: string; level: number; guild: string | null; lastSeen: string }
