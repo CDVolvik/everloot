@@ -37,7 +37,10 @@ test("the home page says what is new, with the kind and the date of each entry",
   expect(text).toMatch(/· (January|February|March|April|May|June|July|August|September|October|November|December) \d+, \d{4}/);
 });
 test("the panel shows a post that arrived from two regions once", () => {
-  const titles = [...html.matchAll(/href="https:\/\/bsky\.app[^"]*"[^>]*>([^<]+)</g)].map((m) => m[1]);
+  const start = html.indexOf('id="whats-new"');
+  const panel = html.slice(start, html.indexOf("</section>", start));
+  const titles = [...panel.matchAll(/<a [^>]*>([^<]+)<\/a>/g)].map((m) => m[1]).filter((t) => !t.startsWith("Every change"));
+  expect(titles.length).toBeGreaterThan(1);
   expect(new Set(titles).size).toBe(titles.length);
-  expect(titles.filter((x) => x.includes("Character Names")).length).toBe(1);
+  expect(titles.filter((t) => t.includes("Character Names")).length).toBe(1);
 });
