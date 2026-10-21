@@ -101,7 +101,7 @@ describe("zoneContents", () => {
       { names: ["Synthetic Stockade"], instanceMapIds: [34], raid: false, x: 19.8, y: 35.5, files: true, confirmed: 3, lastSeen: null, bosses: [{ encounterId: 9, name: "Warden", kills: 3, npcIds: [77], reporters: 3, lastSeen: null }] },
       { names: ["Synthetic Vault"], instanceMapIds: [35], raid: false, x: 60, y: 40, files: false, confirmed: 3, lastSeen: null, bosses: [] },
     ]);
-    expect(here.treasures).toEqual([{ objectId: 500, name: "Old Chest", x: 12, y: 34, reporters: 3 }]);
+    expect(here.treasures).toEqual([{ objectId: 500, name: "Old Chest", x: 12, y: 34, reporters: 3, lastSeen: null }]);
     expect(hasContent(zoneContents(empty, { ...data, entrances: [] }, { sightings }).get(1429))).toBe(true);
     const two = zoneContents(empty, data, { instances: { entrances: instances.entrances.filter((e) => e.installId !== "install-c"), encounters: instances.encounters.slice(0, 2) }, sightings: sightings.slice(0, 2) }).get(1429)!;
     expect(two.entrances).toEqual([{ names: ["Synthetic Stockade"], instanceMapIds: [34], raid: false, x: 19.8, y: 35.5, files: true, confirmed: null, lastSeen: null, bosses: [] }]);

@@ -214,7 +214,7 @@ export default function WorldMapView(props: WorldMapViewProps) {
       });
     }
     for (const t of shown.treasures) {
-      out.set(t.id, { id: t.id, kind: "treasure", title: t.name ?? `Object ${t.objectId}`, detail: "Treasure players saw on the minimap", x: t.x, y: t.y, objectId: t.objectId, reporters: t.reporters });
+      out.set(t.id, { id: t.id, kind: "treasure", title: t.name ?? `Object ${t.objectId}`, detail: "Treasure players saw on the minimap", x: t.x, y: t.y, objectId: t.objectId, confirmed: { installs: t.reporters, lastSeen: t.lastSeen ?? null } });
     }
     return out;
   }, [shown]);

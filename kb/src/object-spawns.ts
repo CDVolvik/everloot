@@ -12,6 +12,7 @@
  * forms, so found marks and links do not break when later reports move the median.
  */
 import { GATHER_KINDS } from "@everloot/protocol";
+import { latest } from "./instances.js";
 import { agreedLabelsById, WORLD_AGREEMENT } from "./world-pages.js";
 
 export type GatherKind = (typeof GATHER_KINDS)[number];
@@ -28,6 +29,8 @@ export interface ObjectSpawnRow {
   y?: number;
   gatherKind?: GatherKind;
   name?: string;
+  /** When the client recorded it; kept on minimap sightings only. */
+  capturedAt?: string;
 }
 
 type PlacedRow = ObjectSpawnRow & { mapId: number; x: number; y: number };
@@ -40,6 +43,8 @@ export interface ObjectSpawnPin {
   x: number;
   y: number;
   reporters: number;
+  /** With `asOf` only: the latest time among the pin's rows that is not after it, or null. */
+  lastSeen?: string | null;
 }
 
 export interface ObjectSpawns {
@@ -123,9 +128,9 @@ export const FISHING_BOBBER = 35591;
 /**
  * Pins for every object id and map with positions. `published` is the list of keys already shown; each
  * keeps its key while it still has 3 installs. A new pin's key is its median rounded to 0.5; if that key is
- * already taken in this pass, the cluster joins that pin.
+ * already taken in this pass, the cluster joins that pin. With `asOf`, each pin also says when it was last seen.
  */
-export function objectSpawns(rows: ObjectSpawnRow[], published: readonly string[] = []): ObjectSpawns {
+export function objectSpawns(rows: ObjectSpawnRow[], published: readonly string[] = [], asOf?: Date): ObjectSpawns {
   // Fishing is never a pin: a fishing row, the bobber, or an object installs agree is fished.
   const kinds = agreedGatherKinds(rows);
   const groups = new Map<string, PlacedRow[]>();
@@ -165,6 +170,7 @@ export function objectSpawns(rows: ObjectSpawnRow[], published: readonly string[
         key, objectId, mapId,
         x: median(members.map((r) => r.x)), y: median(members.map((r) => r.y)),
         reporters: new Set(members.map((r) => r.installId.trim())).size,
+        ...(asOf ? { lastSeen: latest(members, asOf) } : {}),
       });
     }
     if (few > 0) unconfirmed.push({ objectId, mapId, clusters: few });
@@ -205,7 +211,8 @@ export function objectSightingRowsFromRecords(records: unknown[]): ObjectSpawnRo
     if (typeof r.objectId !== "number" || !Number.isInteger(r.objectId) || r.objectId < 1) continue;
     if (typeof r.mapId !== "number" || typeof r.x !== "number" || typeof r.y !== "number") continue;
     const name = typeof r.name === "string" && r.name.trim() ? r.name.trim() : undefined;
-    out.push({ installId: r.installId, objectId: r.objectId, mapId: r.mapId, x: r.x, y: r.y, ...(name ? { name } : {}) });
+    const capturedAt = typeof r.capturedAt === "string" && Number.isFinite(Date.parse(r.capturedAt)) ? r.capturedAt : undefined;
+    out.push({ installId: r.installId, objectId: r.objectId, mapId: r.mapId, x: r.x, y: r.y, ...(name ? { name } : {}), ...(capturedAt ? { capturedAt } : {}) });
   }
   return out;
 }

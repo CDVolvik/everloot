@@ -12,7 +12,7 @@ import { loadQuestNames, loadSiteAssets } from "@/lib/game-assets";
 import { CLIENT_LAYER } from "@/lib/items";
 import { loadWorldFacts } from "@/lib/rollup-compute";
 import { bossLine, entranceLinks, instanceHref, loadSightings } from "@/lib/instances";
-import { confirmedLine } from "@/lib/report-labels";
+import { confirmedLine, dayLabel } from "@/lib/report-labels";
 import { pageMetadata } from "@/lib/seo";
 import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
 import { WORLD_MAP } from "@/lib/world-map";
@@ -118,6 +118,7 @@ export default async function ZonePage(props: Props) {
     { key: "name", header: "Name", cell: (t) => <Link href={`/database/objects/${t.objectId}`} className={link}>{t.name ?? `Object ${t.objectId}`}</Link> },
     { key: "at", header: "Position", numeric: true, cell: (t) => position(t.x, t.y) },
     { key: "installs", header: "Installs", cell: (t) => <AgreementMeter count={t.reporters} /> },
+    { key: "seen", header: "Last seen", cell: (t) => dayLabel(t.lastSeen) },
   ];
 
   const all: TabItem[] = [

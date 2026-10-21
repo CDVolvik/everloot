@@ -125,7 +125,7 @@ export default function MapList({ zones, shown, show, pinTotal, spoilers, thumbs
                   <Link href={`/database/objects/${t.objectId}`} className="text-accent hover:underline underline-offset-4">{t.name ?? `Object ${t.objectId}`}</Link>
                   {" · "}{t.zoneName}{" "}
                   <Link href={mapHref({ mapId: t.mapId, x: t.zoneX, y: t.zoneY })} className="font-mono text-xs text-muted hover:underline underline-offset-4">{t.zoneX}, {t.zoneY}</Link>
-                  {" · "}{t.reporters} installs
+                  {" · "}{confirmedLine(t.reporters, t.lastSeen ?? null)}
                   {" · "}<ShowButton onClick={() => onShow(t.id)} />
                 </li>
               ))}

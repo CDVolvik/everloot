@@ -29,8 +29,15 @@ export interface InstanceRow {
   bosses: InstanceBoss[];
 }
 
-/** The difficulty ids a classic client reports, by the names the game gives them. Any other id is printed as a number. */
-const DIFFICULTY_NAMES: Readonly<Record<number, string>> = { 1: "Normal", 9: "40 Player", 148: "20 Player" };
+/**
+ * The difficulty ids a classic client reports, by the names the game gives them (the Classic DifficultyID list on
+ * warcraft.wiki.gg). Any other id is printed as a number.
+ */
+const DIFFICULTY_NAMES: Readonly<Record<number, string>> = {
+  1: "Normal", 2: "Heroic", 3: "10 Player", 4: "25 Player", 5: "10 Player (Heroic)", 6: "25 Player (Heroic)",
+  9: "40 Player", 148: "20 Player",
+  173: "Normal", 174: "Heroic", 175: "10 Player", 176: "25 Player", 193: "10 Player (Heroic)", 194: "25 Player (Heroic)",
+};
 
 export const difficultyLabel = (id: number): string => DIFFICULTY_NAMES[id] ?? `Difficulty ${id}`;
 export const instanceTitle = (row: Pick<InstanceRow, "instanceMapId" | "name">): string => row.name ?? `Instance ${row.instanceMapId}`;
