@@ -424,5 +424,18 @@ assert(nameCalls == 0, 'the census never reads a name')
 assert(#rows() == 0, 'and writes no player row')
 """)
 
+# --- A client that answers every unit with a realm, ours included, still gives us the player: only a
+# --- realm that is not ours is another realm. The beta client answers with its server for everyone.
+lua = fresh("{ installId = 'abcd-1234', toggles = { players = true }, records = {} }", files=("core.lua", "modules/players.lua"))
+lua.execute("""
+local before = #rows()
+units.mouseover = player(1, { realmName = realm })
+event('UPDATE_MOUSEOVER_UNIT')
+assert(#rows() == before + 1, 'a unit with our own realm is a row; got ' .. (#rows() - before))
+units.mouseover = player(2, { realmName = 'Somewhere Else' })
+event('UPDATE_MOUSEOVER_UNIT')
+assert(#rows() == before + 1, 'a unit on another realm is not a row; got ' .. (#rows() - before))
+""")
+
 print("Lua 5.1 players: off by default, no roster/gear/position calls, one row per character kept in place, throttled reads, "
       "300 new a day, 1000 rows with the oldest dropped, rows match the protocol schema, off deletes, census stays anonymous")

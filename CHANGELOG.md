@@ -31,6 +31,14 @@ Pull requests merged to `main` are listed in the nightly pre-releases until the 
   full week after launch.
 - Site: an achievement's page lists its criteria, with how many each needs, once three players sent the same complete list; the list is agreed apart from the entry itself. Lists and search still show no criteria wording. Run the completion rebuild (`?rebuild=1`) once to fill it from uploads already stored.
 
+## [0.3.8] - 2026-10-21
+
+### Fixed
+- The player pages record the players you see again. The module asked the client for a name and a realm
+  and skipped anyone whose realm was not empty; the beta client answers every unit with its server, so
+  every player was dropped and no page ever had anything on it. It compares the realm with ours now, and
+  only a realm that is not ours is another realm.
+
 ## [0.3.7] - 2026-10-20
 
 ### Added
