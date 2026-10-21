@@ -5,6 +5,7 @@ import {
 } from "@/lib/api-keys";
 import { characterLinksOn } from "@/lib/character-links";
 import { guardOn } from "@/lib/data-guard";
+import { DESKTOP_KEY_LABEL } from "@/lib/desktop-connect";
 import { savedBuildsOn } from "@/lib/saved-builds";
 import { getUser, siteUrl } from "@/lib/supabase/server";
 
@@ -12,7 +13,8 @@ import { getUser, siteUrl } from "@/lib/supabase/server";
  * The signed-in player's free API keys. Battle.net sign-in is the identity; nothing works until EVERLOOT_DATA_GUARD=1.
  * GET lists them, with `records` true once 20261022120000_api_key_expiry.sql is applied (purpose and expiry).
  * POST { label, purpose, scopes, expiresInDays | expiresOn } makes one from the account page's form (shown once).
- * POST { label, builds } is the older call (the Desktop App's connect page): no purpose and no end date.
+ * POST { label, builds } is the older call, kept for the Desktop App's connect page (label DESKTOP_KEY_LABEL): no
+ * purpose and no end date. Any other label gets a 400 once the expiry migration is applied; before it, the form uses it.
  * POST ?roll=<id> gives a key a new secret with the same settings and revokes the old one.
  * DELETE ?id= revokes one; DELETE ?id=&erase=1 deletes a revoked or expired one with its counts.
  * Every write must come from this site: a request with another Origin, or none, is refused.
@@ -22,6 +24,7 @@ export const dynamic = "force-dynamic";
 const headers = { "Cache-Control": "private, no-store" };
 const fail = (status: number, error: string) => NextResponse.json({ ok: false, error }, { status, headers });
 const NOT_YET = "Key expiry is not switched on yet. Reload the page and try again.";
+const LEGACY_REFUSED = "Say what the key is for, pick its permissions and when it expires (purpose, scopes and expiresInDays or expiresOn).";
 
 async function account(req: Request, write: boolean) {
   if (!guardOn()) return fail(503, "API keys are not switched on yet.");
@@ -73,7 +76,10 @@ export async function POST(req: Request) {
     try { body = await req.json(); } catch {}
     const fields = (body ?? {}) as { label?: unknown; builds?: unknown; purpose?: unknown; scopes?: unknown; expiresInDays?: unknown; expiresOn?: unknown };
     if (!Array.isArray(fields.scopes)) {
-      const made = await createKey(user.id, cleanLabel(fields.label), fields.builds === true && savedBuildsOn() ? OWN_SCOPES : undefined);
+      const legacyLabel = cleanLabel(fields.label);
+      // Only the Desktop App's key skips purpose and expiry; any other caller must send them once the migration is in.
+      if (legacyLabel !== DESKTOP_KEY_LABEL && (await readKeys(user.id)).records) return fail(400, LEGACY_REFUSED);
+      const made = await createKey(user.id, legacyLabel, fields.builds === true && savedBuildsOn() ? OWN_SCOPES : undefined);
       return refusal(made) ?? NextResponse.json({ ok: true, ...made }, { status: 201, headers });
     }
     const label = cleanLabel(fields.label);

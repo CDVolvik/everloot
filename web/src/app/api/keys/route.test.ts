@@ -5,6 +5,7 @@ vi.mock("@/lib/supabase/server", () => ({ getUser: auth.getUser, authQuery: auth
 
 import { DELETE, GET, POST } from "./route";
 import { cleanLabel, hashKey, KEY_PATTERN } from "@/lib/api-keys";
+import { DESKTOP_KEY_LABEL as DESKTOP } from "@/lib/desktop-connect";
 
 const USER = { id: "11111111-2222-4333-8444-555555555555", bnet_id: "1", battletag: "Thrall#1" };
 const KEY_ID = "0b6f1c1e-3f43-4a4e-9a51-3d2a1f0c9e11";
@@ -37,7 +38,7 @@ test("keys need a Battle.net sign-in", async () => {
 
 test("making a key shows it once and stores only its hash, under the signed-in account", async () => {
   auth.authQuery.mockResolvedValue([{ key_ref: KEY_ID, refusal: null }]);
-  const res = await POST(call("POST", "", { label: "  my\u0007 bot  " }));
+  const res = await POST(call("POST", "", { label: "  Everloot Desktop\u0007 App  " }));
   expect(res.status).toBe(201);
   expect(res.headers.get("cache-control")).toBe("private, no-store");
   const made = await res.json();
@@ -45,18 +46,18 @@ test("making a key shows it once and stores only its hash, under the signed-in a
   expect(made).toMatchObject({ ok: true, id: KEY_ID, hint: made.token.slice(-4) });
   const [path, init] = auth.authQuery.mock.calls[0];
   expect(path).toBe("rpc/create_api_key");
-  expect(JSON.parse(init.body)).toEqual({ p_user_id: USER.id, p_token_hash: hashKey(made.token), p_hint: made.token.slice(-4), p_label: "my bot" });
+  expect(JSON.parse(init.body)).toEqual({ p_user_id: USER.id, p_token_hash: hashKey(made.token), p_hint: made.token.slice(-4), p_label: "Everloot Desktop App" });
   expect(init.body).not.toContain(made.token);
 });
 
 test("with saved builds on, a key can also read its owner's builds; otherwise the call is unchanged", async () => {
   auth.authQuery.mockResolvedValue([{ key_ref: KEY_ID, refusal: null }]);
-  await POST(call("POST", "", { label: "desktop", builds: true }));
+  await POST(call("POST", "", { label: DESKTOP, builds: true }));
   expect(JSON.parse(auth.authQuery.mock.calls[0][1].body)).not.toHaveProperty("p_scopes");
   vi.stubEnv("EVERLOOT_SAVED_BUILDS", "1");
-  await POST(call("POST", "", { label: "desktop", builds: true }));
+  await POST(call("POST", "", { label: DESKTOP, builds: true }));
   expect(JSON.parse(auth.authQuery.mock.calls[1][1].body).p_scopes).toEqual(["read:public", "read:own"]);
-  await POST(call("POST", "", { label: "bot", builds: "yes" }));
+  await POST(call("POST", "", { label: DESKTOP, builds: "yes" }));
   expect(JSON.parse(auth.authQuery.mock.calls[2][1].body)).not.toHaveProperty("p_scopes");
   auth.authQuery.mockResolvedValue([]);
   expect(await (await GET(call("GET"))).json()).toMatchObject({ ownScope: true });
@@ -64,16 +65,30 @@ test("with saved builds on, a key can also read its owner's builds; otherwise th
 
 test("a sixth live key is refused, and so is an eleventh key made in one day", async () => {
   auth.authQuery.mockResolvedValue([{ key_ref: null, refusal: "live_limit" }]);
-  const res = await POST(call("POST", "", {}));
+  const res = await POST(call("POST", "", { label: DESKTOP }));
   expect(res.status).toBe(409);
   expect((await res.json()).error).toContain("Revoke one first");
   auth.authQuery.mockResolvedValue([{ key_ref: null, refusal: "daily_limit" }]);
-  const churn = await POST(call("POST", "", {}));
+  const churn = await POST(call("POST", "", { label: DESKTOP }));
   expect(churn.status).toBe(429);
   expect((await churn.json()).error).toContain("10 keys in the last day");
   // An answer the database should never give is an error, not a key.
   auth.authQuery.mockResolvedValue([{ key_ref: null, refusal: null }]);
-  expect((await POST(call("POST", "", {}))).status).toBe(503);
+  expect((await POST(call("POST", "", { label: DESKTOP }))).status).toBe(503);
+});
+
+test("the older call without purpose, scopes or expiry makes only the Desktop App's key", async () => {
+  auth.authQuery.mockImplementation(async (path: string) => (path.startsWith("api_keys?") ? [] : [{ key_ref: KEY_ID, refusal: null }]));
+  for (const body of [{}, { label: "bot" }, { label: "bot", builds: true }, { label: "Everloot Desktop" }]) {
+    const res = await POST(call("POST", "", body));
+    expect(res.status, JSON.stringify(body)).toBe(400);
+    expect((await res.json()).error).toContain("what the key is for");
+  }
+  expect(auth.authQuery.mock.calls.some(([path]) => path === "rpc/create_api_key")).toBe(false);
+  const desktop = await POST(call("POST", "", { label: DESKTOP, builds: true }));
+  expect(desktop.status).toBe(201);
+  expect(auth.authQuery.mock.calls.at(-1)![0]).toBe("rpc/create_api_key");
+  expect(JSON.parse(auth.authQuery.mock.calls.at(-1)![1].body)).toMatchObject({ p_label: DESKTOP });
 });
 
 test("labels are cut at 60 whole characters, never inside an emoji", () => {
@@ -174,7 +189,7 @@ test("a custom date makes the key work through the end of that UTC day", async (
   auth.authQuery.mockResolvedValue([{ key_ref: KEY_ID, refusal: null }]);
   const date = new Date(Date.now() + 10 * 86_400_000).toISOString().slice(0, 10);
   expect((await POST(call("POST", "", { ...FORM, expiresInDays: undefined, expiresOn: date }))).status).toBe(201);
-  expect(JSON.parse(auth.authQuery.mock.calls[0][1].body).p_expires_at).toBe(`${date}T23:59:59.000Z`);
+  expect(JSON.parse(auth.authQuery.mock.calls[0][1].body).p_expires_at).toBe(`${date}T23:59:59.999Z`);
 });
 
 test("rolling keeps the key's settings in the database and shows the new secret once", async () => {
@@ -206,8 +221,9 @@ test("before the expiry migration: the list is read without purpose, and the for
   expect(form.status).toBe(503);
   expect((await form.json()).error).toContain("not switched on yet");
   expect((await POST(call("POST", `?roll=${KEY_ID}`))).status).toBe(503);
-  // The older call keeps working: the Desktop App's connect page.
+  // The older call keeps working: the Desktop App's connect page, and the form, which has no other call yet.
   expect((await POST(call("POST", "", { label: "Everloot Desktop App" }))).status).toBe(201);
+  expect((await POST(call("POST", "", { label: "bot", builds: true }))).status).toBe(201);
   // Once applied, the list says so.
   auth.authQuery.mockResolvedValue(keys.map((k) => ({ ...k, purpose: "A bot" })));
   expect(await (await GET(call("GET"))).json()).toMatchObject({ records: true, keys: [{ purpose: "A bot" }] });

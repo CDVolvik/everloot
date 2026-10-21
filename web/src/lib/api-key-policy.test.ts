@@ -17,9 +17,9 @@ test("expiry: the listed choices count from now; anything else is refused", () =
 });
 
 test("expiry: a custom date runs through the end of that UTC day, from tomorrow to a year ahead", () => {
-  expect(expiryFrom({ date: "2026-10-21" }, NOW)).toEqual({ expiresAt: "2026-10-21T23:59:59.000Z" });
+  expect(expiryFrom({ date: "2026-10-21" }, NOW)).toEqual({ expiresAt: "2026-10-21T23:59:59.999Z" });
   expect(expiryFrom({ date: "2026-10-20" }, NOW)).toEqual({ error: "Pick a date after today." });
-  expect(expiryFrom({ date: "2027-10-20" }, NOW)).toEqual({ expiresAt: "2027-10-20T23:59:59.000Z" });
+  expect(expiryFrom({ date: "2027-10-20" }, NOW)).toEqual({ expiresAt: "2027-10-20T23:59:59.999Z" });
   expect(expiryFrom({ date: "2027-10-22" }, NOW)).toEqual({ error: "A key can last a year at most." });
   expect(expiryFrom({ date: "2026-02-30" }, NOW)).toEqual({ error: "That is not a date." });
   expect(expiryFrom({ date: "21/10/2026" }, NOW)).toHaveProperty("error");

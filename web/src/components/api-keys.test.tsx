@@ -153,6 +153,35 @@ test("revoking asks first; Cancel leaves the key alone", async () => {
   expect(calls.some((c) => c.method === "DELETE" && c.url === `/api/keys?id=${KEY.id}`)).toBe(true);
 });
 
+test("Revoke and Roll move focus to the confirm button; Cancel returns it to the button that opened the box", async () => {
+  api(ready());
+  await act(async () => root.render(<ApiKeys />));
+  for (const [opener, confirm] of [["Revoke bot", "Revoke key"], ["Roll bot", "Roll key"]]) {
+    buttonNamed(opener)!.focus();
+    await click(opener);
+    expect(document.activeElement).toBe(buttonNamed(confirm));
+    await click("Cancel");
+    expect(buttonNamed(confirm)).toBeUndefined();
+    expect(document.activeElement).toBe(buttonNamed(opener));
+  }
+});
+
+test("after a revoke, focus stays on the key's row once its buttons are gone", async () => {
+  let revoked: string | null = null;
+  vi.stubGlobal("fetch", async (_url: string, init?: RequestInit) => {
+    if (init?.method === "DELETE") { revoked = "2026-10-20T00:00:00Z"; return Response.json({ ok: true }); }
+    return Response.json(ready({ keys: [{ ...KEY, revoked_at: revoked }] }));
+  });
+  await act(async () => root.render(<ApiKeys />));
+  buttonNamed("Revoke bot")!.focus();
+  await click("Revoke bot");
+  await click("Revoke key");
+  const row = container.querySelector<HTMLElement>(`li[data-key="${KEY.id}"]`)!;
+  expect(row.textContent).toContain("Revoked 2026-10-20");
+  expect(buttonNamed("Revoke bot")).toBeUndefined();
+  expect(document.activeElement).toBe(row);
+});
+
 test("rolling asks first, then shows the new secret once", async () => {
   const calls = api(ready(), { ok: true, id: "y", token: TOKEN, hint: "cccc", expires_at: "2027-01-01T00:00:00.000Z" });
   await act(async () => root.render(<ApiKeys />));

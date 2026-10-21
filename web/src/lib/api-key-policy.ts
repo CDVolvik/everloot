@@ -57,7 +57,8 @@ export function expiryFrom(choice: { days?: unknown; date?: unknown }, now = new
     return { expiresAt: new Date(now.getTime() + Number(choice.days) * DAY_MS).toISOString() };
   }
   if (typeof choice.date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(choice.date)) return { error: "Pick when the key expires." };
-  const end = new Date(`${choice.date}T23:59:59.000Z`);
+  // The last millisecond of the day: the key is live while expires_at > now(), here and in the database.
+  const end = new Date(`${choice.date}T23:59:59.999Z`);
   if (Number.isNaN(end.getTime()) || end.toISOString().slice(0, 10) !== choice.date) return { error: "That is not a date." };
   if (choice.date <= now.toISOString().slice(0, 10)) return { error: "Pick a date after today." };
   if (end.getTime() > now.getTime() + MAX_EXPIRY_DAYS * DAY_MS) return { error: "A key can last a year at most." };

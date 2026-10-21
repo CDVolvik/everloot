@@ -186,10 +186,23 @@ export default function ApiKeys() {
   const [creating, setCreating] = useState(false);
   const [fresh, setFresh] = useState<Fresh | null>(null);
   const [confirming, setConfirming] = useState<{ id: string; action: "revoke" | "roll" } | null>(null);
+  /** Where keyboard focus goes once a confirm box closes: the button that opened it, or the key's row. */
+  const [returnTo, setReturnTo] = useState<{ id: string; action: "revoke" | "roll" | "row" } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
   const createButton = useRef<HTMLButtonElement>(null);
+  const confirmButton = useRef<HTMLButtonElement>(null);
+  const list = useRef<HTMLUListElement>(null);
+
+  useEffect(() => { if (confirming) confirmButton.current?.focus(); }, [confirming]);
+  useEffect(() => {
+    if (!returnTo || confirming) return;
+    const row = Array.from(list.current?.children ?? []).find((li) => (li as HTMLElement).dataset.key === returnTo.id) as HTMLElement | undefined;
+    const target = row?.querySelector<HTMLElement>(`[data-action="${returnTo.action}"]`) ?? row ?? list.current ?? createButton.current;
+    target?.focus();
+    setReturnTo(null);
+  }, [returnTo, confirming, state]);
 
   useEffect(() => {
     let active = true;
@@ -221,7 +234,13 @@ export default function ApiKeys() {
     try { await run(); } catch (err) { setError(err instanceof Error ? err.message : "That did not work. Try again."); } finally { setBusy(false); }
   }
 
-  const revoke = (k: KeyRow) => act(async () => { await send("DELETE", `/api/keys?id=${encodeURIComponent(k.id)}`); setConfirming(null); setReload((n) => n + 1); });
+  // The revoked key keeps its row (its Roll and Revoke buttons go), so focus lands on the row.
+  const revoke = (k: KeyRow) => act(async () => {
+    await send("DELETE", `/api/keys?id=${encodeURIComponent(k.id)}`);
+    setConfirming(null);
+    setReturnTo({ id: k.id, action: "row" });
+    setReload((n) => n + 1);
+  });
   const erase = (k: KeyRow) => act(async () => { await send("DELETE", `/api/keys?id=${encodeURIComponent(k.id)}&erase=1`); setReload((n) => n + 1); });
   const roll = (k: KeyRow) => act(async () => {
     const made = await send("POST", `/api/keys?roll=${encodeURIComponent(k.id)}`);
@@ -260,14 +279,14 @@ export default function ApiKeys() {
       )}
 
       {state.keys.length > 0 && (
-        <ul aria-label="Your API keys" className="divide-y divide-line border-y border-line">
+        <ul ref={list} tabIndex={-1} aria-label="Your API keys" className="divide-y divide-line border-y border-line">
           {state.keys.map((k) => {
             const expired = !k.revoked_at && keyExpired(k, now);
             const status = k.revoked_at ? `Revoked ${day(k.revoked_at)}` : expired ? "Expired" : "Active";
             const asking = confirming?.id === k.id ? confirming.action : null;
             const name = k.label || "Unnamed key";
             return (
-              <li key={k.id} className="space-y-2 py-3">
+              <li key={k.id} data-key={k.id} tabIndex={-1} className="space-y-2 py-3">
                 <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                   <span className="font-semibold text-fg">{name}</span>
                   <span className={`rounded-full border px-2 text-xs ${status === "Active" ? "border-accent text-accent" : "border-line text-fg-2"}`}>{status}</span>
@@ -288,19 +307,19 @@ export default function ApiKeys() {
                         : `Roll ${name}? You get a new secret with the same name, permissions and lifetime. evl_…${k.hint} stops working at once.`}
                     </p>
                     <div className="flex flex-wrap gap-2">
-                      <button type="button" className={primary} disabled={busy} onClick={() => void (asking === "revoke" ? revoke(k) : roll(k))}>
+                      <button ref={confirmButton} type="button" className={primary} disabled={busy} onClick={() => void (asking === "revoke" ? revoke(k) : roll(k))}>
                         {asking === "revoke" ? "Revoke key" : "Roll key"}
                       </button>
-                      <button type="button" className={button} onClick={() => setConfirming(null)}>Cancel</button>
+                      <button type="button" className={button} onClick={() => { setConfirming(null); setReturnTo({ id: k.id, action: asking }); }}>Cancel</button>
                     </div>
                   </div>
                 ) : (
                   <div className="flex flex-wrap gap-2">
                     {!k.revoked_at && state.records && (
-                      <button type="button" className={button} disabled={busy || (expired && full)} aria-label={`Roll ${name}`} onClick={() => setConfirming({ id: k.id, action: "roll" })}>Roll</button>
+                      <button type="button" data-action="roll" className={button} disabled={busy || (expired && full)} aria-label={`Roll ${name}`} onClick={() => setConfirming({ id: k.id, action: "roll" })}>Roll</button>
                     )}
                     {!k.revoked_at && !expired && (
-                      <button type="button" className={button} disabled={busy} aria-label={`Revoke ${name}`} onClick={() => setConfirming({ id: k.id, action: "revoke" })}>Revoke</button>
+                      <button type="button" data-action="revoke" className={button} disabled={busy} aria-label={`Revoke ${name}`} onClick={() => setConfirming({ id: k.id, action: "revoke" })}>Revoke</button>
                     )}
                     {(k.revoked_at || expired) && (
                       <button type="button" className={button} disabled={busy} aria-label={`Delete ${name}`} onClick={() => void erase(k)}>Delete</button>
