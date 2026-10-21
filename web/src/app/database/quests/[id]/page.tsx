@@ -7,7 +7,7 @@ import { npcPage, questPage } from "../../../../../../kb/src/world-pages";
 import { loadWorldFacts } from "@/lib/rollup-compute";
 import { pinLink } from "@/lib/world-map";
 import { trailFor } from "@/lib/breadcrumbs";
-import { Badge, Container, DataTable, Facts, InShort, Tabs, TooltipFrame } from "@/components/ui";
+import { Badge, Container, DataTable, Facts, InShort, OpenData, Tabs, TooltipFrame } from "@/components/ui";
 import { EmptyTab, EntityHeader, EntityTop, known, LINK, Unreachable } from "../../entity";
 import { entitySummary, observedLine } from "@/lib/evidence";
 import { loadItemFacts } from "@/lib/rollup-compute";
@@ -128,6 +128,10 @@ export default async function QuestPage(props: { params: Promise<{ id: string }>
           )}
         />
         <InShort summary="In short" bullets={summary} note={<Link href="/database#reading" className={LINK}>How to read these numbers</Link>} />
+        <OpenData
+          text={[`${title} (quest ${page.questId})`, ...summary, `Source: https://everloot.app/database/quests/${page.questId}`].join("\n")}
+          jsonHref={`/api/tooltip/quest/${page.questId}`}
+        />
         <Tabs
           label={`${title}: relations`}
           tabs={[

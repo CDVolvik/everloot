@@ -7,7 +7,7 @@ import { entityTitle, objectDescription } from "@/lib/entity-meta";
 import { formatMeasuredZero } from "../../../../../../kb/src/item-page";
 import { loadObjectFacts } from "@/lib/objects";
 import { pageMetadata } from "@/lib/seo";
-import { Container, DataTable, Facts, InShort, Tabs, TooltipFrame, type Column } from "@/components/ui";
+import { Container, DataTable, Facts, InShort, OpenData, Tabs, TooltipFrame, type Column } from "@/components/ui";
 import type { Crumb } from "@/lib/jsonld";
 import { EmptyTab, EntityHeader, EntityTop, FREQUENCY, known, LINK, percent, Unreachable } from "../../entity";
 import { entitySummary, observedLine } from "@/lib/evidence";
@@ -82,6 +82,10 @@ export default async function ObjectPage(props: { params: Promise<{ id: string }
           )}
         />
         <InShort summary="In short" bullets={summary} note={<Link href="/database#reading" className={LINK}>How to read these numbers</Link>} />
+        <OpenData
+          text={[`${title} (object ${page.objectId})`, ...summary, `Source: https://everloot.app/database/objects/${page.objectId}`].join("\n")}
+          jsonHref={`/api/tooltip/object/${page.objectId}`}
+        />
         <Tabs
           label={`${title}: relations`}
           tabs={[{
