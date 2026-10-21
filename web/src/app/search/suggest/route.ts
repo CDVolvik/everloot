@@ -1,6 +1,7 @@
 import { MAX_QUERY } from "@/lib/lore";
 import { isScope, suggest, SUGGEST_LIMIT } from "@/lib/site-search";
 import { loadShownSearchNames } from "@/lib/shown-search-names";
+import { shownItemIcons } from "@/lib/item-icons";
 
 /**
  * GET /search/suggest?q=<text>[&in=item|npc|quest|object]: the type-ahead under the site's own search boxes
@@ -19,6 +20,9 @@ export async function GET(req: Request) {
   const scope = params.get("in");
   if (q.length > MAX_QUERY) return Response.json({ ok: false, error: `q is at most ${MAX_QUERY} characters.` }, { status: 400, headers: ERROR_HEADERS });
   if (scope !== null && !isScope(scope)) return Response.json({ ok: false, error: "in must be one of item, npc, quest, object." }, { status: 400, headers: ERROR_HEADERS });
-  const results = q ? await suggest(q, scope ?? undefined, await loadShownSearchNames()) : [];
+  const rows = q ? await suggest(q, scope ?? undefined, await loadShownSearchNames()) : [];
+  // Item rows carry the game icon where the item's page shows one.
+  const icons = await shownItemIcons(rows.flatMap((r) => (r.type === "item" ? [r.id] : [])));
+  const results = rows.map((r) => (r.type === "item" && icons.has(r.id) ? { ...r, icon: icons.get(r.id) } : r));
   return Response.json({ q, limit: SUGGEST_LIMIT, results }, { headers: HEADERS });
 }

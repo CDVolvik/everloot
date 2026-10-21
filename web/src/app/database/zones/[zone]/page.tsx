@@ -84,11 +84,11 @@ export default async function ZonePage(props: Props) {
   const npcLink = (id: number | null) => (id === null ? "unrecorded" : <Link href={`/database/npcs/${id}`} className={link}>NPC {id}</Link>);
   const questColumns: Column<ZoneQuest>[] = [
     { key: "title", header: "Quest", cell: (q) => {
-      // A title players agree on; else the Warcraft Wiki's, with its source as the tooltip.
+      // A title players agree on; else the Warcraft Wiki's, with its source in the link's hover card.
       const wiki = q.title ? undefined : wikiTitles?.names.get(q.questId)?.name;
       // The screen reader words follow the link, so its text is the title alone.
       return <>
-        <Link href={`/database/quests/${q.questId}`} title={wiki ? GAME_NAME_TITLE.wiki : undefined} className={link}>{q.title ?? wiki ?? `Quest ${q.questId}`}</Link>
+        <Link href={`/database/quests/${q.questId}`} className={link}>{q.title ?? wiki ?? `Quest ${q.questId}`}</Link>
         {wiki && <span className="sr-only"> ({GAME_NAME_TITLE.wiki.toLowerCase()})</span>}
       </>;
     } },

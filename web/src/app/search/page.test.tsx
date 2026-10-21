@@ -18,6 +18,8 @@ afterEach(() => { vi.unstubAllEnvs(); vi.resetModules(); vi.restoreAllMocks(); }
 const siteSearch = vi.hoisted(() => ({ groups: [] as unknown[] }));
 vi.mock("@/lib/site-search", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/site-search")>()), siteSearch: async () => siteSearch.groups }));
 vi.mock("@/lib/shown-search-names", () => ({ loadShownSearchNames: async () => ({ items: new Map(), npcs: new Map(), quests: new Map() }) }));
+const icons = vi.hoisted(() => ({ asked: [] as number[][], map: new Map<number, string>() }));
+vi.mock("@/lib/item-icons", () => ({ shownItemIcons: async (ids: number[]) => { icons.asked.push(ids); return icons.map; } }));
 
 async function render(query: Record<string, string>, path = release) {
   vi.stubEnv("KB_SNAPSHOT_PATH", path);
@@ -53,6 +55,27 @@ test("a query shows the groups the site search found, each under its heading, an
   // An empty search points at the database lists, not the lore archive.
   expect(none).toContain('href="/database/items"');
   expect(none).not.toContain("3 installs");
+});
+
+test("item hits lead with the game icon and the quality colour, and no hit carries a plain title tooltip (the hover card says it)", async () => {
+  siteSearch.groups = [
+    { type: "item", heading: "Items", total: 2, results: [
+      { label: "Thunderfury", href: "/database/items/19019", exact: true, id: 19019, quality: 5 },
+      { label: "Thunderfury's Hilt", href: "/database/items/5", exact: false, id: 5, quality: 1 },
+    ] },
+    { type: "lore", heading: "Lore archive", total: 1, results: [{ label: "Thunderfury", href: "/lore/2-thunderfury", note: "A sword.", exact: true }] },
+  ];
+  icons.asked = [];
+  icons.map = new Map([[19019, "https://assets.everloot.app/b/icons/1.webp"]]);
+  const html = await render({ q: "thunderfury" });
+  expect(icons.asked).toEqual([[19019, 5]]);
+  expect(html).toMatch(/<img src="https:\/\/assets\.everloot\.app\/b\/icons\/1\.webp"[^>]*>(<!-- -->)?<a href="\/database\/items\/19019" class="text-q-legendary/);
+  // An item without an icon keeps the place of one.
+  expect(html).toMatch(/<span aria-hidden="true" class="h-5 w-5[^"]*"><\/span><a href="\/database\/items\/5"/);
+  expect(html.indexOf('id="results-item"')).toBeLessThan(html.indexOf('id="results-lore"'));
+  expect(html).not.toMatch(/<a [^>]*title=/);
+  icons.map = new Map();
+  siteSearch.groups = [];
 });
 
 test("the search is a plain GET form, so it works without JavaScript", async () => {
