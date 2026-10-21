@@ -10,6 +10,7 @@ import { CLIENT_LAYER, CLIENT_TAXONOMY, categoryNamedEnough, itemsHref } from "@
 import { loadShownNames } from "@/lib/shown-item-names";
 import { achievementHref, chainHref, factionHref, loadCatalog, titleHref } from "@/lib/completion-lists";
 import { loadWorldFacts } from "@/lib/rollup-compute";
+import { RANKINGS, hubIndexable, loadRankingWeeks, rankingIndexable, rankingPath, rankingView } from "@/lib/rankings";
 import { hasContent, publicZones, zoneContents, zoneHref } from "@/lib/zones";
 
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://everloot.app";
@@ -39,7 +40,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Achievement, faction, title and quest chain pages exist only for entries three players reported, so each listed one has content.
   const catalog = await loadCatalog();
   const catalogRoutes = catalog ? [...catalog.achievements.map((a) => achievementHref(a.achievementId, a.name)), ...catalog.factions.map((f) => factionHref(f.factionId, f.name)), ...catalog.titles.map((t) => titleHref(t.titleId, t.name)), ...catalog.chains.map((c) => chainHref(c.questLineId, c.name))] : [];
-  const paths = [...new Set([...staticRoutes, ...talentRoutes, ...itemRoutes, ...zoneRoutes, ...catalogRoutes, ...tools.filter((tool) => tool.status !== "coming-soon").map(toolHref), ...allDocsPages().map((page) => page.href)])];
+  // The rankings hub and each unfiltered ranking, once it asks to be indexed (10 ranked rows).
+  const rankings = await loadRankingWeeks();
+  const rankingRoutes = rankings.unreachable ? [] : [
+    ...(hubIndexable(rankings.weeks) ? ["/rankings"] : []),
+    ...RANKINGS.filter((def) => rankingIndexable(rankingView(def, rankings.weeks))).map((def) => rankingPath(def.slug)),
+  ];
+  const paths = [...new Set([...staticRoutes, ...rankingRoutes, ...talentRoutes, ...itemRoutes, ...zoneRoutes, ...catalogRoutes, ...tools.filter((tool) => tool.status !== "coming-soon").map(toolHref), ...allDocsPages().map((page) => page.href)])];
 
   const newestChange = loadTimeline()[0]?.at;
   const modified = (path: string): Date | undefined => {
