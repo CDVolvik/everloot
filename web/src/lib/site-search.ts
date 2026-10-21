@@ -77,12 +77,13 @@ function agreed(kind: "item" | "npc" | "quest", names: Map<number, string>, q: s
   return { results: out, total: out.length };
 }
 
-/** Objects have no names in uploads yet: an id that has public loot observations is the only way to one. */
+/** An object is found by its id when it has public loot observations; its name is the agreed one, or the id. */
 async function objectById(id: number | null): Promise<SearchResult[]> {
   if (id === null) return [];
   const facts = await loadObjectFacts();
-  return !facts.unreachable && objectList(facts).some((o) => o.objectId === id)
-    ? [{ label: `Object ${id}`, href: entityHref("object", id), note: `id ${id}`, exact: true, id }] : [];
+  const found = facts.unreachable ? undefined : objectList(facts).find((o) => o.objectId === id);
+  return found
+    ? [{ label: found.name ?? `Object ${id}`, href: entityHref("object", id), note: `id ${id}`, exact: true, id }] : [];
 }
 
 /**

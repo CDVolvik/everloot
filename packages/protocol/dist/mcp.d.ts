@@ -221,6 +221,7 @@ export declare const vendorPage: z.ZodObject<{
 }, z.core.$strip>;
 export declare const objectPage: z.ZodObject<{
     objectId: z.ZodNumber;
+    name: z.ZodNullable<z.ZodString>;
     drops: z.ZodArray<z.ZodObject<{
         itemId: z.ZodNumber;
         itemName: z.ZodNullable<z.ZodString>;
@@ -1295,7 +1296,7 @@ export declare const MCP_TOOLS: {
     };
     readonly object_page: {
         readonly title: "Game object page";
-        readonly description: "One game object (a chest, herb, ore vein or fishing pool) by the id in its GUID: the items players looted from it, each with observed loot windows, windows with the item and distinct install reports. A frequency is public after 3 install reports; a public object with nothing in its windows reads as a measured zero. Objects have no names yet. Reads Everloot's current authorized public corpus when connected.";
+        readonly description: "One game object (a chest, herb, ore vein or fishing pool) by the id in its GUID: the items players looted from it, each with observed loot windows, windows with the item and distinct install reports. A frequency is public after 3 install reports; a public object with nothing in its windows reads as a measured zero. An object's name is public once 3 installs agree on it. Reads Everloot's current authorized public corpus when connected.";
         readonly inputSchema: {
             readonly objectId: z.ZodNumber;
         };
@@ -1306,6 +1307,7 @@ export declare const MCP_TOOLS: {
             readonly url: z.ZodOptional<z.ZodString>;
             readonly page: z.ZodOptional<z.ZodObject<{
                 objectId: z.ZodNumber;
+                name: z.ZodNullable<z.ZodString>;
                 drops: z.ZodArray<z.ZodObject<{
                     itemId: z.ZodNumber;
                     itemName: z.ZodNullable<z.ZodString>;
@@ -2680,7 +2682,7 @@ export declare const MCP_TOOL_LIST: ({
     name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "Game object page";
-    description: "One game object (a chest, herb, ore vein or fishing pool) by the id in its GUID: the items players looted from it, each with observed loot windows, windows with the item and distinct install reports. A frequency is public after 3 install reports; a public object with nothing in its windows reads as a measured zero. Objects have no names yet. Reads Everloot's current authorized public corpus when connected.";
+    description: "One game object (a chest, herb, ore vein or fishing pool) by the id in its GUID: the items players looted from it, each with observed loot windows, windows with the item and distinct install reports. A frequency is public after 3 install reports; a public object with nothing in its windows reads as a measured zero. An object's name is public once 3 installs agree on it. Reads Everloot's current authorized public corpus when connected.";
     inputSchema: {
         readonly objectId: z.ZodNumber;
     };
@@ -2691,6 +2693,7 @@ export declare const MCP_TOOL_LIST: ({
         readonly url: z.ZodOptional<z.ZodString>;
         readonly page: z.ZodOptional<z.ZodObject<{
             objectId: z.ZodNumber;
+            name: z.ZodNullable<z.ZodString>;
             drops: z.ZodArray<z.ZodObject<{
                 itemId: z.ZodNumber;
                 itemName: z.ZodNullable<z.ZodString>;

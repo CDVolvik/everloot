@@ -38,5 +38,6 @@ export async function loadShownSearchNames(): Promise<Names> {
     items: mergedOnce(agreed.items, shown.matched?.names),
     npcs: agreed.npcs,
     quests: mergedOnce(agreed.quests, quests?.names),
+    objects: agreed.objects,
   };
 }

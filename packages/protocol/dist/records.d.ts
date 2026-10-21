@@ -76,6 +76,7 @@ export declare const lootWindow: z.ZodObject<{
     kind: z.ZodLiteral<"loot">;
     sourceNpcId: z.ZodOptional<z.ZodNumber>;
     sourceObjectId: z.ZodOptional<z.ZodNumber>;
+    sourceObjectName: z.ZodOptional<z.ZodString>;
     sourceEvidence: z.ZodOptional<z.ZodLiteral<"loot-api">>;
     items: z.ZodArray<z.ZodObject<{
         itemId: z.ZodNumber;
@@ -733,6 +734,7 @@ export declare const recordSchemas: {
         kind: z.ZodLiteral<"loot">;
         sourceNpcId: z.ZodOptional<z.ZodNumber>;
         sourceObjectId: z.ZodOptional<z.ZodNumber>;
+        sourceObjectName: z.ZodOptional<z.ZodString>;
         sourceEvidence: z.ZodOptional<z.ZodLiteral<"loot-api">>;
         items: z.ZodArray<z.ZodObject<{
             itemId: z.ZodNumber;
@@ -1259,6 +1261,7 @@ export declare const anyRecord: z.ZodDiscriminatedUnion<[z.ZodObject<{
     kind: z.ZodLiteral<"loot">;
     sourceNpcId: z.ZodOptional<z.ZodNumber>;
     sourceObjectId: z.ZodOptional<z.ZodNumber>;
+    sourceObjectName: z.ZodOptional<z.ZodString>;
     sourceEvidence: z.ZodOptional<z.ZodLiteral<"loot-api">>;
     items: z.ZodArray<z.ZodObject<{
         itemId: z.ZodNumber;

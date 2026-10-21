@@ -436,6 +436,7 @@ export declare const intakeRequest: z.ZodObject<{
         kind: z.ZodLiteral<"loot">;
         sourceNpcId: z.ZodOptional<z.ZodNumber>;
         sourceObjectId: z.ZodOptional<z.ZodNumber>;
+        sourceObjectName: z.ZodOptional<z.ZodString>;
         sourceEvidence: z.ZodOptional<z.ZodLiteral<"loot-api">>;
         items: z.ZodArray<z.ZodObject<{
             itemId: z.ZodNumber;
@@ -1348,6 +1349,7 @@ export declare const API_SCHEMAS: {
             kind: z.ZodLiteral<"loot">;
             sourceNpcId: z.ZodOptional<z.ZodNumber>;
             sourceObjectId: z.ZodOptional<z.ZodNumber>;
+            sourceObjectName: z.ZodOptional<z.ZodString>;
             sourceEvidence: z.ZodOptional<z.ZodLiteral<"loot-api">>;
             items: z.ZodArray<z.ZodObject<{
                 itemId: z.ZodNumber;

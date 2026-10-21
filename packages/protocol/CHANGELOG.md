@@ -11,6 +11,9 @@ required, or tightening a limit is a major release.
   without a key, 5,000 with one), and the corpus and client-layer routes and the market rule read in plain words.
 
 ### Added
+- 1.10.0 (record protocol 1.5.0): `loot` gains an optional `sourceObjectName`, the name the client showed for the
+  object the player clicked, sent with `sourceObjectId`. Older addons send none. The `object_page` answer gains `name`,
+  the name 3 installs agree on or null.
 - 1.9.0 (record protocol 1.4.0): the record kind `character_link`, written when a player types a link code on one
   of their characters: the code (`LINK_CODE`), name, realm, race, class, level, faction, the GUID (in transit only)
   and the completion key, with `LINK_KINDS`. Not a public corpus kind and never kept in a stored upload: the site

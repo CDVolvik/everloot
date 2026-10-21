@@ -1,7 +1,7 @@
 {
   "$id": "https://everloot.app/schema/mcp/object_page.json",
   "title": "Game object page",
-  "description": "One game object (a chest, herb, ore vein or fishing pool) by the id in its GUID: the items players looted from it, each with observed loot windows, windows with the item and distinct install reports. A frequency is public after 3 install reports; a public object with nothing in its windows reads as a measured zero. Objects have no names yet. Reads Everloot's current authorized public corpus when connected.",
+  "description": "One game object (a chest, herb, ore vein or fishing pool) by the id in its GUID: the items players looted from it, each with observed loot windows, windows with the item and distinct install reports. A frequency is public after 3 install reports; a public object with nothing in its windows reads as a measured zero. An object's name is public once 3 installs agree on it. Reads Everloot's current authorized public corpus when connected.",
   "annotations": {
     "readOnlyHint": true,
     "openWorldHint": false
@@ -51,6 +51,13 @@
             "type": "integer",
             "minimum": -9007199254740991,
             "maximum": 9007199254740991
+          },
+          "name": {
+            "description": "The name 3 installs agree on; null until then.",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "drops": {
             "type": "array",
@@ -133,6 +140,7 @@
         },
         "required": [
           "objectId",
+          "name",
           "drops",
           "zero",
           "queued"

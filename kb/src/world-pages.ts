@@ -56,10 +56,15 @@ export type VendorSighting = {
   limitedStock?: number;
 };
 
+/** An object's name as an install's client showed it when its player clicked the object. */
+export type ObjectNameRow = { installId: string; objectId: number; name: string };
+
 export type WorldFacts = {
   npcs: NpcSightingRow[];
   quests: QuestSighting[];
   vendors: VendorSighting[];
+  /** Object names from loot windows; absent where only NPC, quest and vendor rows are at hand. */
+  objects?: ObjectNameRow[];
 };
 
 export type NpcPin = { mapId: number; x: number; y: number; reporters: number };
@@ -119,6 +124,11 @@ export function agreedNpcNames(facts: Pick<WorldFacts, "npcs">): Map<number, str
 /** Every quest with an agreed title, by id: the titles `questPage` gives, in one pass. */
 export function agreedQuestTitles(facts: Pick<WorldFacts, "quests">): Map<number, string> {
   return agreedLabelsById(facts.quests.map((row) => ({ id: row.questId, installId: row.installId, label: row.title })));
+}
+
+/** Every object with an agreed name, by id: the names the object pages give, in one pass over the loot windows. */
+export function agreedObjectNames(facts: { objects?: ObjectNameRow[] }): Map<number, string> {
+  return agreedLabelsById((facts.objects ?? []).map((row) => ({ id: row.objectId, installId: row.installId, label: row.name })));
 }
 
 function agreedNumber(rows: { installId: string; value: number }[]): number | null {
@@ -317,7 +327,7 @@ export function handleVendorPage(args: { vendorNpcId: number }, facts: WorldFact
 }
 
 export function worldFactsFromRecords(records: unknown[]): WorldFacts {
-  const facts: WorldFacts = { npcs: [], quests: [], vendors: [] };
+  const facts: WorldFacts & { objects: ObjectNameRow[] } = { npcs: [], quests: [], vendors: [], objects: [] };
   for (const raw of records) {
     if (!raw || typeof raw !== "object") continue;
     const row = raw as Record<string, unknown>;
@@ -351,6 +361,9 @@ export function worldFactsFromRecords(records: unknown[]): WorldFacts {
         ...(typeof row.suggestedGroup === "number" && Number.isInteger(row.suggestedGroup) && row.suggestedGroup > 1 ? { suggestedGroup: row.suggestedGroup } : {}),
         ...(QUEST_TAGS.includes(row.tag as QuestTag) ? { tag: row.tag as QuestTag } : {}),
       });
+    }
+    if (row.kind === "loot" && typeof row.sourceObjectId === "number" && typeof row.sourceObjectName === "string" && row.sourceObjectName.trim()) {
+      facts.objects.push({ installId: row.installId, objectId: row.sourceObjectId, name: row.sourceObjectName });
     }
     if (row.kind === "vendor" && typeof row.vendorNpcId === "number" && Array.isArray(row.items)) {
       for (const item of row.items) {

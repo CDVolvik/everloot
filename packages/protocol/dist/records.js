@@ -60,6 +60,7 @@ export const lootWindow = base.extend({
     kind: z.literal("loot"),
     sourceNpcId: z.number().int().positive().optional(),
     sourceObjectId: z.number().int().positive().optional(),
+    sourceObjectName: z.string().min(1).max(120).optional().describe("The object's name as the client showed it when the player clicked it, with `sourceObjectId`. Older addons send none."),
     sourceEvidence: z.literal("loot-api").optional().describe("Legacy target guesses are withheld from public loot observations."),
     items: z.array(z.object({ itemId: z.number().int().positive(), count: z.number().int().min(1).max(1000) })).max(50),
 }).refine((r) => r.sourceNpcId !== undefined || r.sourceObjectId !== undefined, {

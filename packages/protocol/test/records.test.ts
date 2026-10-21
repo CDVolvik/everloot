@@ -171,6 +171,14 @@ describe("intake contract", () => {
     expect(bare.rejected.map((row) => row.reason)).toContain("loot needs a source: npc or object");
   });
 
+  test("a loot window may carry the object's name, and an older one without it still validates", () => {
+    const named = parseRecords([{ ...base, kind: "loot", sourceObjectId: 1617, sourceObjectName: "Silverleaf", items: [{ itemId: 765, count: 1 }] }]);
+    expect(named.receipt.rejected).toHaveLength(0);
+    expect((named.records[0] as { sourceObjectName?: string }).sourceObjectName).toBe("Silverleaf");
+    expect(parseRecords([{ ...base, kind: "loot", sourceObjectId: 1617, items: [] }]).receipt.rejected).toHaveLength(0);
+    expect(parseRecords([{ ...base, kind: "loot", sourceObjectId: 1617, sourceObjectName: "", items: [] }]).records).toHaveLength(0);
+  });
+
   test("accepts a gold snapshot and a loot money event", () => {
     const r = validateUpload({
       addonVersion: "0.1.0",

@@ -41,6 +41,15 @@ GetLootSlotLink = function() return 'item:1234' end
 GetLootSlotInfo = function() return 'icon','Cloth',5 end
 local corpse = 'Creature-0-1-2-3-42-0000002'
 GetLootSourceInfo = function() return corpse,2,'Creature-0-1-2-3-43-0000003',3 end
+now = 1000
+GetTime = function() return now end
+mouseUnit = false
+UnitExists = function() return mouseUnit end
+tooltipShown = true
+tooltipTitle = 'Silverleaf'
+GameTooltip = {IsShown=function() return tooltipShown end}
+GameTooltipTextLeft1 = {GetText=function() return tooltipTitle end}
+WorldFrame = {clicks={}, HookScript=function(self, _, f) table.insert(self.clicks, f) end}
 GetGuildInfo = function() return 'Test Guild' end
 GetRealmName = function() return 'Test Realm' end
 UnitFactionGroup = function() return 'Alliance' end
@@ -79,6 +88,43 @@ assert(#EverlootDB.records.loot == 2, 'missing source API must not guess the tar
 GetNumLootItems = function() return 0 end
 for _, hook in ipairs(Everloot.frame.hooks) do hook(nil,'LOOT_OPENED') end
 assert(#EverlootDB.records.loot == 2, 'empty window must not invent a kill')
+-- An object's name is the tooltip title under the cursor at the click, kept with its id, and nothing otherwise.
+GetNumLootItems = function() return 1 end
+-- The module was loaded twice above, so the world frame holds two click hooks; a player's click reaches both.
+local function click() for _, f in ipairs(WorldFrame.clicks) do f() end end
+local function opened(...)
+ local sources = {}
+ for _, id in ipairs({...}) do
+  sources[#sources + 1] = 'GameObject-0-1-2-3-' .. id .. '-00000' .. id
+  sources[#sources + 1] = 1
+ end
+ GetLootSourceInfo = function() return unpack(sources) end
+ local before = #EverlootDB.records.loot
+ for _, hook in ipairs(Everloot.frame.hooks) do hook(nil,'LOOT_OPENED') end
+ assert(#EverlootDB.records.loot == before + select('#', ...), 'every object window is recorded')
+ return EverlootDB.records.loot[before + 1]
+end
+click()
+local herb = opened(1617)
+assert(herb.sourceObjectId == 1617 and herb.sourceObjectName == 'Silverleaf', 'a clicked object keeps the name it showed')
+assert(opened(1618).sourceObjectName == nil, 'one click names one loot window')
+tooltipTitle = 'Peacebloom'; click()
+assert(opened(1619).sourceObjectName == 'Peacebloom', 'a new click replaces the old one')
+mouseUnit = true; click(); mouseUnit = false
+assert(opened(1620).sourceObjectName == nil, 'a unit under the cursor is not an object')
+tooltipTitle = '|cffffffffSilverleaf|r'; click()
+assert(opened(1621).sourceObjectName == nil, 'escape codes in the title record no name')
+tooltipTitle = 'Silverleaf'; tooltipShown = false; click(); tooltipShown = true
+assert(opened(1622).sourceObjectName == nil, 'no tooltip, no name')
+click(); now = now + 60
+assert(opened(1623).sourceObjectName == nil, 'an old click is not this window')
+click()
+opened(1624, 1625)
+for _, row in ipairs(EverlootDB.records.loot) do
+ if row.sourceObjectId == 1624 or row.sourceObjectId == 1625 then assert(row.sourceObjectName == nil, 'two objects in one window cannot share a click') end
+end
+GetLootSourceInfo = nil
+GetNumLootItems = function() return 0 end
 for _, hook in ipairs(Everloot.frame.hooks) do hook(nil,'PLAYER_TARGET_CHANGED') end
 assert(EverlootDB.records.npc_sighting[1].positionKind == 'player')
 local sighting = EverlootDB.records.npc_sighting[1]
@@ -123,4 +169,4 @@ assert(member.lastOnlineDays == 0)
 # Every row the addon wrote is a record the site would accept (packages/protocol/schema).
 from protocol_schema import check_all  # noqa: E402
 check_all(lua)
-print("Lua 5.1 collection: physical sources, quantities, reopen/reload, missing APIs, position provenance, NPC type and rank, quest accept and roster passed")
+print("Lua 5.1 collection: physical sources, quantities, reopen/reload, missing APIs, position provenance, NPC type and rank, object names, quest accept and roster passed")

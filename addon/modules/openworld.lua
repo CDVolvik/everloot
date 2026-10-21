@@ -3,6 +3,7 @@
 -- (web/src/lib/intake.ts kinds: npc_sighting, loot, quest, vendor, item_seen).
 -- NPC type, rank and a quest's category, group size, tag and faction are game facts about the NPC or quest.
 -- The faction is the accepting character's side only; no character name is read or stored.
+-- A game object's name is the tooltip title under the cursor when the player clicked it, kept with its id only.
 
 local E = Everloot
 
@@ -136,6 +137,29 @@ local function rememberItem(itemId)
   })
 end
 
+-- The object under the cursor at the moment of a click in the world: the first line of the tooltip, only when
+-- no unit is under the cursor. Kept for a few seconds, used by one loot window, then dropped. A click with no
+-- tooltip, or a title with escape codes, leaves nothing to use.
+local OBJECT_CLICK_SECONDS = 15
+local clickedObject
+
+local function rememberClick()
+  clickedObject = nil
+  if not (GameTooltip and GameTooltip.IsShown and GameTooltip:IsShown() and GameTooltipTextLeft1 and GetTime) then return end
+  if UnitExists and UnitExists("mouseover") then return end
+  local okTitle, title = pcall(GameTooltipTextLeft1.GetText, GameTooltipTextLeft1)
+  if not okTitle or type(title) ~= "string" or title == "" or title:find("|", 1, true) or title:find("%c") then return end
+  if #title > 120 or not title:find("%S") then return end
+  clickedObject = { name = title, at = GetTime() }
+end
+
+local function takeClickedObject()
+  local click = clickedObject
+  clickedObject = nil
+  if click and GetTime and GetTime() - click.at <= OBJECT_CLICK_SECONDS then return click.name end
+  return nil
+end
+
 local function lootCapture()
   -- Source pairs are GUID, quantity, GUID, quantity. Never infer loot from the target.
   if not (GetLootSourceInfo and GetLootSlotInfo and GetLootSlotLink) then return end
@@ -165,7 +189,12 @@ local function lootCapture()
       rememberItem(itemId)
     end
   end
+  -- The clicked name belongs to the window only when exactly one object gave loot; otherwise it is a guess.
+  local objectGroups = 0
+  for _, group in pairs(groups) do if group.sourceObjectId then objectGroups = objectGroups + 1 end end
+  local objectName = takeClickedObject()
   for guid, group in pairs(groups) do
+    if objectName and objectGroups == 1 and group.sourceObjectId then group.sourceObjectName = objectName end
     if not EverlootDB.lootSources[guid] then
       group.installId = EverlootDB.installId
       group.capturedAt = date("!%Y-%m-%dT%H:%M:%SZ")
@@ -216,6 +245,8 @@ E:RegisterModule("openworld", function()
   f:RegisterEvent("UPDATE_MOUSEOVER_UNIT")
   f:RegisterEvent("LOOT_OPENED")
   pcall(function() f:RegisterEvent("QUEST_ACCEPTED") end)
+  -- A hook on the world frame sees the click that opens a chest or starts a gather; a missing frame disables it.
+  if WorldFrame and WorldFrame.HookScript then pcall(WorldFrame.HookScript, WorldFrame, "OnMouseDown", rememberClick) end
   -- MERCHANT_SHOW is an old client event. A missing event disables the hook.
   pcall(function() f:RegisterEvent("MERCHANT_SHOW") end)
   f:HookScript("OnEvent", function(_, event, arg1, arg2)

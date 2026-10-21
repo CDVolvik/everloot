@@ -35,9 +35,10 @@ export default async function ObjectsPage(props: { searchParams?: Promise<Search
   if (!q) notFound();
   const facts = await loadObjectFacts();
   const all = facts.unreachable ? [] : objectList(facts);
-  // Objects have no names in uploads: the box takes an id.
+  // The box takes an id or a part of an agreed name.
   const id = q.q && /^#?\d+$/.test(q.q) ? Number(q.q.replace("#", "")) : null;
-  const matched = q.q ? all.filter((o) => o.objectId === id) : all;
+  const needle = q.q?.trim().toLowerCase() ?? "";
+  const matched = q.q ? all.filter((o) => o.objectId === id || (id === null && o.name?.toLowerCase().includes(needle))) : all;
   const sort = q.sort ?? DEFAULT_SORT;
   const rows = sortRows(matched, (o) => (sort.key === "windows" ? o.windows : sort.key === "items" ? o.items : sort.key === "installs" ? o.reporters : o.objectId), sort.desc, (o) => o.objectId);
   const pages = Math.max(1, Math.ceil(rows.length / PER_PAGE));
@@ -46,7 +47,7 @@ export default async function ObjectsPage(props: { searchParams?: Promise<Search
   const here = (over: Partial<ListQuery<Sort>>) => href({ ...q, page: 1, ...over });
 
   const columns: Column<Row>[] = [
-    { key: "id", header: "Object", sortable: true, cell: (o) => <Link href={`/database/objects/${o.objectId}`} className={LINK}>Object {o.objectId}</Link> },
+    { key: "id", header: "Object", sortable: true, cell: (o) => <Link href={`/database/objects/${o.objectId}`} className={LINK}>{o.name ?? `Object ${o.objectId}`}</Link> },
     { key: "windows", header: "Loot windows", numeric: true, sortable: true, cell: (o) => o.windows },
     { key: "items", header: "Items seen", numeric: true, sortable: true, cell: (o) => o.items },
     { key: "installs", header: "Install IDs", numeric: true, sortable: true, cell: (o) => o.reporters },
@@ -66,7 +67,7 @@ export default async function ObjectsPage(props: { searchParams?: Promise<Search
         <DataTitle title="Objects" trail={TRAIL} aside={strip} />
         <FilterBar
           label="Object filters"
-          search={{ action: "/database/objects", value: q.q, placeholder: "Object id", label: "Find an object by id", keep }}
+          search={{ action: "/database/objects", value: q.q, placeholder: "Object name or id", label: "Find an object by name or id", keep }}
           controls={[]}
           active={q.q ? 1 : 0}
           clearHref="/database/objects"

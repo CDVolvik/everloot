@@ -1,6 +1,6 @@
 import type { EdgeKind } from "../../../kb/src/edges";
 import { agreedItemNames, type ItemFacts } from "../../../kb/src/item-page";
-import { agreedNpcNames, agreedQuestTitles, type WorldFacts } from "../../../kb/src/world-pages";
+import { agreedNpcNames, agreedObjectNames, agreedQuestTitles, type WorldFacts } from "../../../kb/src/world-pages";
 import { loadItemFacts, loadWorldFacts } from "./rollup-compute";
 
 /**
@@ -12,6 +12,7 @@ export interface Names {
   items: Map<number, string>;
   npcs: Map<number, string>;
   quests: Map<number, string>;
+  objects: Map<number, string>;
 }
 
 const memo = new WeakMap<object, Map<number, string>>();
@@ -24,20 +25,22 @@ function once(key: object, build: () => Map<number, string>): Map<number, string
 export const itemNames = (facts: Pick<ItemFacts, "names">) => once(facts.names, () => agreedItemNames(facts));
 export const npcNames = (facts: Pick<WorldFacts, "npcs">) => once(facts.npcs, () => agreedNpcNames(facts));
 export const questTitles = (facts: Pick<WorldFacts, "quests">) => once(facts.quests, () => agreedQuestTitles(facts));
+export const objectNames = (facts: Pick<WorldFacts, "objects">) => once(facts.objects ?? facts, () => agreedObjectNames(facts));
 
-/** All three name sets; empty when the store cannot be read (callers then print ids, never guesses). */
+/** All four name sets; empty when the store cannot be read (callers then print ids, never guesses). */
 export async function loadNames(): Promise<Names> {
   const [items, world] = await Promise.all([loadItemFacts(), loadWorldFacts()]);
   return {
     items: items.unreachable ? new Map() : itemNames(items),
     npcs: world.unreachable ? new Map() : npcNames(world),
     quests: world.unreachable ? new Map() : questTitles(world),
+    objects: world.unreachable ? new Map() : objectNames(world),
   };
 }
 
-/** The agreed name of a relation's target, for the item, NPC and quest kinds; other kinds have none yet. */
+/** The agreed name of a relation's target, for the item, NPC, quest and object kinds; other kinds have none yet. */
 export function nameOf(names: Names): (kind: EdgeKind, id: number) => string | undefined {
-  return (kind, id) => (kind === "item" ? names.items : kind === "npc" ? names.npcs : kind === "quest" ? names.quests : undefined)?.get(id);
+  return (kind, id) => (kind === "item" ? names.items : kind === "npc" ? names.npcs : kind === "quest" ? names.quests : kind === "object" ? names.objects : undefined)?.get(id);
 }
 
 const byName =new WeakMap<Map<number, string>, Map<string, number[]>>();

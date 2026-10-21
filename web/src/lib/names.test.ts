@@ -27,7 +27,7 @@ test("idForName finds the one entity with that name in any case, and nothing whe
   expect(idForName(map, "Garrosh")).toBeNull();
 });
 
-test("nameOf reads the item, NPC and quest sets and nothing for other kinds", () => {
-  const of = nameOf({ items: new Map([[1, "Cloth"]]), npcs: new Map([[1, "Thrall"]]), quests: new Map([[1, "Quest name"]]) });
-  expect([of("item", 1), of("npc", 1), of("quest", 1), of("spell", 1), of("item", 2)]).toEqual(["Cloth", "Thrall", "Quest name", undefined, undefined]);
+test("nameOf reads the item, NPC, quest and object sets and nothing for other kinds", () => {
+  const of = nameOf({ items: new Map([[1, "Cloth"]]), npcs: new Map([[1, "Thrall"]]), quests: new Map([[1, "Quest name"]]), objects: new Map([[1, "Peacebloom"]]) });
+  expect([of("item", 1), of("npc", 1), of("quest", 1), of("object", 1), of("spell", 1), of("item", 2)]).toEqual(["Cloth", "Thrall", "Quest name", "Peacebloom", undefined, undefined]);
 });

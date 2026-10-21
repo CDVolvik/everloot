@@ -48,6 +48,8 @@ person. Each is published only when three installs report the same value. A ques
 Alliance or Horde when three installs on that faction report it and none on the other; it is shown as
 Both when three installs on each faction report it; otherwise it stays blank, and it is never guessed from a
 title, a giver or a zone. Nothing is read from the game's Creature or quest tables for these columns.
+The name of a chest, herb or ore vein is recorded with its id when you loot it, as the game shows it,
+and is shown only after three installs agree.
 
 Full auction scans are not public records either. They feed market values only, and a value is
 published when three distinct reporters scanned the item. For that count, an upload containing a scan

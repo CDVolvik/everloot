@@ -20,6 +20,10 @@ Pull requests merged to `main` are listed in the nightly pre-releases until the 
   form. The search index stays off for now, so the pages are reached by name and are not listed anywhere.
 
 ### Added
+- Addon (not yet released) and site: a game object's name. When you loot a chest, herb or ore vein, the addon sends the
+  name the game showed under your cursor when you clicked it, with the object's id, and nothing when the cursor was
+  on anything else. The object pages, the list and the drop tables show a name once 3 installs agree on it, and
+  "Object 1234" until then. Protocol 1.10.0 (record protocol 1.5.0): `loot` gains `sourceObjectName`.
 - Site: the data layer for linking a character to an account, off by default. A signed-in player gets a code
   (live 15 minutes, good once), and a `character_link` row with that code is sent to `/api/me/characters/links`
   from the site or with an API key that has the new `link:own` scope. The GUID is replaced by a keyed hash, the

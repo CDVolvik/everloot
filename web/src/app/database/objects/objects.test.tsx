@@ -54,3 +54,17 @@ test("two installs are not enough; storage down reads unavailable, never zero", 
   expect(down).not.toContain("data-empty-state");
   await expect(html(ObjectPage(props("chest")))).rejects.toThrow("NEXT_NOT_FOUND");
 });
+
+test("an object shows the name 3 installs agree on, on its page and in the list, and falls back to its id", async () => {
+  const named = (installId: string, name: string, items: number[]) => ({ ...loot(installId, 1617, items), sourceObjectName: name });
+  store.loadCorpus.mockResolvedValue(corpus([named("install-a", "Silverleaf", [765]), named("install-b", "silverleaf", [765]), named("install-c", "Silverleaf", [765]), loot("install-a", 1731, []), loot("install-b", 1731, []), loot("install-c", 1731, [])]));
+  const page = await html(ObjectPage(props("1617")));
+  expect(page).toContain("Silverleaf");
+  expect(page).not.toContain("Object 1617");
+  const list = await html(ObjectsPage({}));
+  expect(list).toContain("Silverleaf");
+  expect(list).toContain("Object 1731");
+  expect(await html(ObjectsPage({ searchParams: Promise.resolve({ q: "silver" }) }))).not.toContain("Object 1731");
+  store.loadCorpus.mockResolvedValue(corpus([named("install-a", "Silverleaf", [765]), named("install-b", "Silverleaf", [765]), named("install-c", "Peacebloom", [765])]));
+  expect(await html(ObjectPage(props("1617")))).toContain("Object 1617");
+});

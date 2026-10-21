@@ -74,7 +74,7 @@ export async function loadTooltip(type: TooltipType, id: number): Promise<Toolti
     const page = objectPage(id, facts);
     if (!(page.drops.length || page.zero)) return notFound;
     return card({
-      title: `Object ${id}`,
+      title: page.name ?? `Object ${id}`,
       lines: page.zero
         ? [`No items in ${plural(page.zero.kills, "loot window", "loot windows")} players opened.`]
         : [`${plural(page.drops.length, "item", "items")} players looted from it (3 or more installs).`],
