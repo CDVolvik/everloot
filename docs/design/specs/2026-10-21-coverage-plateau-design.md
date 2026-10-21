@@ -321,10 +321,12 @@ Each step is one pull request and is useful alone.
 
 ## 7. Open questions for Carlos
 
-1. **Public counts from the baseline.** May the coverage page, API and MCP tool show counts and
-   percentages whose denominator comes from the local pfQuest baseline (never its names or rows)? If yes,
-   `docs/DATA_POLICY.md` gets one sentence saying so. If no, public coverage uses only game-file and
-   observed denominators, and the baseline stays in the internal report.
+1. **Public counts from the baseline. Decided (Carlos, 2026-10-21): yes.** The coverage page, API and MCP
+   tool may show counts and percentages whose denominator comes from the local pfQuest baseline, but never
+   its names or rows. The score is for the client build being played. A new build recomputes it: new
+   game-file ids and facts reported as new in Forever join the denominator, and the facts the patch
+   touched go to recheck. The PR that ships the public coverage page adds one sentence to
+   `docs/DATA_POLICY.md` saying so.
 2. **Where the denominator lives.** A counts-only file uploaded by the maintainer (recommended), or
    baseline ids in the private bucket so the server computes it exactly?
 3. **Tallies instead of rows** for settled facts: acceptable that past settling the extra agreement is a
