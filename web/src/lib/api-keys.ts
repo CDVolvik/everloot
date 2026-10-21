@@ -59,6 +59,19 @@ export async function listKeys(userId: string): Promise<KeyRow[]> {
   );
 }
 
+/**
+ * The account's keys and the requests they made over the last `days` UTC days, today included. The counts are
+ * read only for the keys this user owns, so another account's usage never reaches the total.
+ */
+export async function keySummary(userId: string, days = 7, now = new Date()): Promise<{ keys: KeyRow[]; requests: number }> {
+  const keys = await listKeys(userId);
+  const ids = keys.map((k) => k.id).filter((id) => ID_PATTERN.test(id));
+  if (ids.length === 0) return { keys, requests: 0 };
+  const since = new Date(now.getTime() - (days - 1) * 86_400_000).toISOString().slice(0, 10);
+  const rows = await authQuery<Array<{ count: number | string }>>(`api_key_usage?select=count&key_id=in.(${ids.join(",")})&day=gte.${since}`);
+  return { keys, requests: rows.reduce((sum, r) => sum + Number(r.count), 0) };
+}
+
 export type Refusal = "live_limit" | "daily_limit";
 
 /** read:own lets a key read its owner's saved builds ("Read my saved builds"), on top of the public data. */

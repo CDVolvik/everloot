@@ -3,6 +3,8 @@ import Link from "next/link";
 import { Callout, C, H2, List, P, docLink } from "@/components/docs/blocks";
 import DocPage from "@/components/docs/DocPage";
 import { KEYS_PER_ACCOUNT } from "@/lib/api-keys";
+import { guardOn } from "@/lib/data-guard";
+import { profilesOn } from "@/lib/profiles";
 import { savedBuildsOn } from "@/lib/saved-builds";
 import { pageMetadata } from "@/lib/seo";
 
@@ -15,6 +17,8 @@ export const metadata: Metadata = pageMetadata({
 export default function Page() {
   // Read at build time, like the keys page: switching saved builds on takes a redeploy, which rebuilds this page.
   const builds = savedBuildsOn();
+  const profiles = profilesOn();
+  const keys = guardOn();
   return (
     <DocPage href="/docs/guides/account">
       <P>
@@ -45,11 +49,25 @@ export default function Page() {
 
       <H2 id="your-account">Your account page</H2>
       <P>
-        <Link href="/account" className={docLink}>Your account</Link> shows your name, the email on the account if it
-        has one, and how you sign in. If you signed up with email and a password, it also links to changing your
-        password.{builds ? <> A link takes you to <Link href="/me" className={docLink}>My builds</Link>, where your saved talent builds and characters are.</> : null}{" "}
-        Below that is the list of your API keys.
+        <Link href="/account" className={docLink}>Your account</Link> has five sections, with links to each at the top.
+        Only you can open it.
       </P>
+      <List>
+        <li>
+          <strong>Overview.</strong> Your BattleTag or account name, how you sign in and when you joined.
+          {profiles && <> Your handle, whether your public profile is on, and your main character.</>}
+          {(profiles || builds) && <> How many characters{builds && <> and <Link href="/me" className={docLink}>saved builds</Link></>} you have.</>}
+          {keys && <> How many API keys you have, and how many requests they made in the last 7 days.</>}
+          {" "}Links to download the Desktop App and its guide{keys && <>, and whether it has a key</>}.
+        </li>
+        <li>
+          <strong>Profile.</strong> {profiles ? <>Your display name, the</> : <>The</>} email on the account if it has one,
+          and a link to change your password if you signed up with one.{profiles && <> Your handle, display name and status are edited on <Link href="/settings" className={docLink}>Settings</Link>.</>}
+        </li>
+        <li><strong>API keys.</strong> Your keys, described below.</li>
+        <li><strong>Chat keys.</strong> The keys Chat uses to answer with your own model. They stay in that browser and never reach Everloot.</li>
+        <li><strong>Data and privacy.</strong> What we keep, where you delete each part, and how to delete your account.</li>
+      </List>
 
       <H2 id="api-keys">API keys</H2>
       <P>
