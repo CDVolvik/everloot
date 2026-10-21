@@ -130,6 +130,15 @@ describe("uploading", () => {
     expect(api.bodies[0].records.map((r) => r.kind)).toEqual(["loot", "census_seen"]);
   });
 
+  test("the player pages go with the rest once the player allowed them in the Desktop App", async () => {
+    const player = { kind: "player_seen", lua: `["eventId"] = "player_seen:1", ["capturedAt"] = "2026-10-20T00:00:00Z", ["name"] = "Thrallina", ["realm"] = "Forever", ["race"] = "Orc", ["class"] = "SHAMAN", ["level"] = 20, ["guild"] = "Night Watch"` };
+    const { file, state } = workspace(luaFile([loot(1), player]));
+    const api = intake();
+    const result = await uploadFile(file, { endpoint: "https://everloot.example", fetch: api.send, state, players: true });
+    expect(result).toMatchObject({ sent: 2, heldCensus: 0, heldPlayers: 0, invalid: 0 });
+    expect(api.bodies[0].records.map((r) => r.kind)).toEqual(["loot", "player_seen"]);
+  });
+
   test("player rows never leave from here: the upload page says what they are first", async () => {
     const player = { kind: "player_seen", lua: `["eventId"] = "player_seen:1", ["capturedAt"] = "2026-10-20T00:00:00Z", ["name"] = "Thrallina", ["realm"] = "Forever", ["race"] = "Orc", ["class"] = "SHAMAN", ["level"] = 20, ["guild"] = "Night Watch"` };
     const { file, state } = workspace(luaFile([loot(1), player]));

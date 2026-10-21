@@ -91,6 +91,25 @@ test("the Warcraft Wiki copies never move above Everloot's own pages, even on an
   expect(types.indexOf("item")).toBeLessThan(types.indexOf("lore"));
 });
 
+test("game entries lead: an item named like a lore page comes first, and the lore archive after every database group", async () => {
+  mocks.names.items = new Map([[19019, "Thrall"]]);
+  const types = (await search("thrall")).map((g) => g.type);
+  expect(types[0]).toBe("item");
+  expect(types.indexOf("lore")).toBeGreaterThan(types.indexOf("item"));
+  const database = types.filter((t) => ["item", "npc", "quest", "object", "zone", "achievement", "faction", "title", "chain"].includes(t));
+  for (const t of database) expect(types.indexOf(t), t).toBeLessThan(types.indexOf("lore"));
+});
+
+test("an exact game entry leads an exact tool; a game entry that only contains the words still beats the lore archive", async () => {
+  mocks.names.items = new Map([[1, "Talent Calculator"]]);
+  const exact = (await search("talent calculator")).map((g) => g.type);
+  expect(exact.indexOf("item")).toBeLessThan(exact.indexOf("tool"));
+  mocks.names.items = new Map([[2, "Elwynn Forest Map"]]);
+  const zone = (await search("elwynn forest")).map((g) => g.type);
+  // The zone is an exact game entry, the item a prefix one; both come before any lore copy.
+  expect(zone.slice(0, 2)).toEqual(["zone", "item"]);
+});
+
 test("without a lore release the other groups still answer", async () => {
   vi.spyOn(console, "error").mockImplementation(() => {});
   mocks.names.npcs = new Map([[77, "Thrall"]]);

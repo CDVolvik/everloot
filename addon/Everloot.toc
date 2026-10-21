@@ -2,7 +2,7 @@
 ## Title: Everloot
 ## Notes: WoW: Forever data collector — drops, spawns, vendors, guilds, auctions, recipes. Answers never play.
 ## Author: Everloot
-## Version: 0.3.8
+## Version: 0.3.10
 ## X-License: AGPL-3.0
 ## SavedVariables: EverlootDB
 ## OptionalDeps: EverlootAnswers, EverlootPrices, EverlootBuilds
@@ -30,3 +30,4 @@ modules\prices.lua
 modules\auctiontab.lua
 modules\gph.lua
 modules\options.lua
+modules\minimap.lua

@@ -14,7 +14,9 @@ sent only from the website's upload page, after the preview names each addon. Yo
 when to upload. On the website you preview everything before it is sent. The Desktop App sends
 anonymous open-world events, and census rows if you allowed the census on its setup screen; the
 command-line uploader sends only the anonymous events. Neither sends named data (guild, gear, gold,
-collection), player rows or the installed addon list: those stay on your machine.
+collection) or the installed addon list: those stay on your machine. Player rows are a third case:
+the Desktop App sends them only if you turn on "Send the player pages with the uploads" in its
+settings, and until you do, they stay on your machine like the named data.
 
 Uploaded observations are public as individual, anonymous records, with no character names and
 without the addon's install id, so anyone can check our counts. The facts the site states itself, such as drop rates, spawn points and recipe
@@ -47,7 +49,7 @@ Alliance or Horde when three installs on that faction report it and none on the 
 Both when three installs on each faction report it; otherwise it stays blank, and it is never guessed from a
 title, a giver or a zone. Nothing is read from the game's Creature or quest tables for these columns.
 
-Places on the map come from where players stood, at two moments (addon 0.3.8). When an NPC's window
+Places on the map come from where players stood, at two moments (addon 0.3.10). When an NPC's window
 opens (merchant, gossip, quest, trainer, flight map, bank, auction house, stable, innkeeper), the
 player is within a few yards of that NPC, so the addon records the player's position as the NPC's
 (`positionKind: "interaction"`) with the service the window offered (vendor, trainer, quest giver and so
@@ -237,7 +239,7 @@ another version of the game, not something Forever has yet to reveal. The game f
 their own: in build 1.60.1.70450, 19,219 of the 19,231 named items, new ones included, list the base game
 as their expansion (`ItemSparse.ExpansionID` 0), so the expansion is not used. The rules:
 
-- Each such name says where it comes from in a tooltip on the name, *Name from the Warcraft Wiki* (and in words for screen readers), and
+- Each such name says where it comes from in a tooltip on the name, *Name from the Warcraft Wiki* (and in words for screen readers; on a link, the tooltip is the link's hover card), and
   the site-wide footer credits the Warcraft Wiki under CC BY-SA 4.0 beside Blizzard's credit, and
   `/methodology#credits` names the Warcraft Wiki contributors. A name
   3 installs agree on comes first, with the tooltip *Name confirmed by players*. No source label is printed beside a name.
@@ -288,7 +290,7 @@ infobox's name, or the page title where the infobox has none, kept as the wiki w
 the wiki's own note, such as "(Alliance, 55)". The rules:
 
 - As with item names, a title 3 installs agree on comes first. A wiki title says where it comes from in
-  a tooltip on the title, *Name from the Warcraft Wiki* (and in words for screen readers); on the quest
+  a tooltip on the title, *Name from the Warcraft Wiki* (and in words for screen readers; on a link, in the link's hover card); on the quest
   page it also carries the quiet unconfirmed marker. No source label is printed beside it. The
   footer credit reads "Item and quest names from the Warcraft Wiki (CC BY-SA 4.0)".
 - Only quests below id 10,000, the original game's range (`SHOWN_MAX_QUEST_ID` in

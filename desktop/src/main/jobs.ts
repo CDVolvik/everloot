@@ -26,7 +26,7 @@ export function companionJobs(dataFolder: string, current: () => Settings): { de
   const deps: EngineDeps = {
     findFiles: findEverlootFiles,
     async upload(file) {
-      const r = await uploadFile(file, { endpoint: current().endpoint, state, census: current().census });
+      const r = await uploadFile(file, { endpoint: current().endpoint, state, census: current().census, players: current().players });
       // A copy of the file as it was uploaded; a failed backup never fails the upload.
       let backup = "";
       try { backupSavedVariables(file, dataFolder); backup = "; backup kept"; } catch (err) { backup = `; backup failed: ${err instanceof Error ? err.message : String(err)}`; }

@@ -20,6 +20,8 @@ export type TooltipResult = { status: 200; body: TooltipResponse } | { status: 4
 
 const PAGE: Record<TooltipType, string> = { item: "items", npc: "npcs", quest: "quests", object: "objects" };
 const NO_NAME = "No agreed name yet. A name needs 3 installs reporting the same one.";
+/** A quest card's line when players agree on no title; the site's own card swaps it for the wiki title. */
+export const NO_QUEST_TITLE = "No agreed title yet. A title needs 3 installs reporting the same one.";
 const UNREACHABLE = "Storage is unavailable. The card is unrecorded, not empty.";
 const NOT_FOUND = "Nothing to show: no such page, or players have not reported it yet.";
 
@@ -99,7 +101,7 @@ export async function loadTooltip(type: TooltipType, id: number): Promise<Toolti
   return card({
     title: page.title ?? `Quest ${id}`,
     lines: [
-      ...(page.title ? [] : ["No agreed title yet. A title needs 3 installs reporting the same one."]),
+      ...(page.title ? [] : [NO_QUEST_TITLE]),
       ...(page.level === null ? [] : [`Level ${page.level}`]),
       ...(page.giverNpcId === null ? [] : [`Starts with ${npc(page.giverNpcId)}`]),
       ...(page.turnInNpcId === null ? [] : [`Ends with ${npc(page.turnInNpcId)}`]),

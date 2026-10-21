@@ -37,7 +37,7 @@ Pull requests merged to `main` are listed in the nightly pre-releases until the 
   that only adds fields to an earlier copy, as when an older Desktop App had dropped them, replaces that copy
   instead of withdrawing the event as a conflict. The map shows none of this yet.
 
-## [0.3.8] - 2026-10-21
+## [0.3.10] - 2026-10-21
 
 ### Added
 - Places for the world map. When an NPC's window opens (merchant, gossip, quest, trainer, flight map, bank,
@@ -45,7 +45,7 @@ Pull requests merged to `main` are listed in the nightly pre-releases until the 
   window offered, once per NPC, service and zone. When you loot a herb, ore vein, chest or other object, its loot
   row gets where you stand, how you opened it (from the spell you cast) and the object's name. Trainer rows name
   the trainer. Event names and spell arguments not yet seen on the Forever client are read defensively: a missing
-  one records nothing. Launch-day checks: `docs/2026-10-21-addon-0.3.8-launch-checklist.md`.
+  one records nothing. Launch-day checks: `docs/2026-10-21-addon-0.3.10-launch-checklist.md`.
 
 ### Changed
 - Targeting or mousing over the same NPC at the same spot (to 1 unit on the map's 0 to 100 scale) records it
@@ -53,6 +53,23 @@ Pull requests merged to `main` are listed in the nightly pre-releases until the 
   targeting rows and creature loot, so a full targeting or corpse share pauses only itself.
 - An object's name comes only from a herb, ore or chest cast, never from another spell's target (such as a
   player you healed). A fishing cast counts for 30 seconds, for a slow bite.
+
+## [0.3.9] - 2026-10-21
+
+### Added
+- A button at the top-left of the minimap, the way every other addon in the game is found. It opens
+  Everloot's panel, so nothing needs a command typed any more.
+- A box at the top of that panel to ask Everloot a question. The question goes into your file, the
+  companion answers it with its sources, and `/reload` prints the answer in the chat, exactly as
+  `/ask <question>` does.
+
+## [0.3.8] - 2026-10-21
+
+### Fixed
+- The player pages record the players you see again. The module asked the client for a name and a realm
+  and skipped anyone whose realm was not empty; the beta client answers every unit with its server, so
+  every player was dropped and no page ever had anything on it. It compares the realm with ours now, and
+  only a realm that is not ours is another realm.
 
 ## [0.3.7] - 2026-10-20
 
