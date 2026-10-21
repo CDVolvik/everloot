@@ -102,7 +102,14 @@ tickers, drop shadows on cards.
 9. **Spoiler gate:** game-file content blurred behind "Show unreleased", off by default, remembered.
 10. **Controls:** pill buttons, text links, inputs; a visible 2 px accent focus ring everywhere.
 11. **States:** unavailable, nothing yet, "waiting for three installs", in plain words.
-12. **Motion:** 150 ms fades and the chat cursor's blink; none of it under `prefers-reduced-motion`.
+12. **Motion:** 150 ms fades, the chat cursor's blink, and small purposeful transforms (amended
+    2026-10-20, Carlos: "allow small movement"). A transform has to show where something came from
+    or that a press landed: a translate of 8 px or less (a menu entering from its trigger's side), a
+    press scale between 0.98 and 1 on buttons, a sheet sliding in from the edge it is anchored to,
+    and FLIP moves (a raid member gliding to its new slot). Durations and easings come from `MOTION`
+    in `web/src/design/tokens.ts`; exits are faster than entrances. Only `transform` and `opacity`
+    animate, never layout. Data never moves for style, and nothing loops for decoration except the
+    mascot (`components/glint/`). Under `prefers-reduced-motion`: no transforms, fades at most.
 
 ## Rollout
 
@@ -140,4 +147,4 @@ Forever launch on 11/04.
 
 ## Out of scope
 
-The addon's in-game look; a mobile app; server-side model calls; animations beyond the two above.
+The addon's in-game look; a mobile app; server-side model calls; motion beyond item 12.
