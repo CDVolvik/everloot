@@ -12,7 +12,7 @@ import { parseDeepLink, parseViewState, parseZoneLink, type MapItems } from "@/l
 import { CONTINENTS, continentFlights, continentMap, continentPins, observedFacts, WORLD_MAP } from "@/lib/world-map";
 import WorldMapView from "@/components/WorldMapView";
 import { continentArt, instanceThumbs, loadSiteAssets } from "@/lib/game-assets";
-import { Container, SectionHeading } from "@/components/ui";
+import { SiteCredit } from "@/components/Footer";
 
 export const dynamic = "force-dynamic";
 
@@ -86,85 +86,58 @@ export default async function MapPage(props: { searchParams: Promise<Query> }) {
     return `/map?${q.toString()}`;
   })();
 
-  return (
-    <article data-map-page className="space-y-3">
-      <JsonLd data={webApplicationJsonLd({ name: TITLE, path: "/map", description: lead })} />
-      <header className="mx-auto w-full max-w-[1800px]">
-        <div className="flex flex-wrap items-baseline gap-x-6 gap-y-0">
-          <h1 className="text-title-sm text-fg sm:text-title">{TITLE}</h1>
-          <p className="text-sm text-fg-2">
-            <span className="text-fg">Spoilers: {spoilers ? "on" : "off"}.</span>{" "}
-            {spoilers
-              ? "Zones found only in the game files are drawn dashed and marked as unconfirmed. They may not be in the game."
-              : "Zones found only in the game files, which may not be released, are held back."}{" "}
-            <Link href={switchHref} className="inline-flex min-h-11 items-center text-accent hover:underline underline-offset-4">
-              {spoilers ? "Hide them" : "Show them"}
-            </Link>
-          </p>
-        </div>
-        {hiddenTarget && target && (
-          <p className="text-sm text-warning">{target.name} is held back as possibly unreleased. Turn spoilers on to see {deep ? "this spot" : "this zone"}.</p>
-        )}
-        {corpus.unreachable && <p className="text-sm text-warning">{STORAGE_UNREACHABLE} The in-game cross-check and player-observed points are missing; the map itself does not depend on them.</p>}
-      </header>
+  const notice = (hiddenTarget && target) || corpus.unreachable ? (
+    <>
+      {hiddenTarget && target && <p>{target.name} is held back as possibly unreleased. Turn spoilers on to see {deep ? "this spot" : "this zone"}.</p>}
+      {corpus.unreachable && <p>{STORAGE_UNREACHABLE} The in-game cross-check and player-observed points are missing; the map itself does not depend on them.</p>}
+    </>
+  ) : null;
 
+  // The sidebar's foot: the full-screen map has no site footer, so the credit line comes along.
+  const meta = (
+    <>
+      {(map.confirmedZones > 0 || map.disagreements.length > 0) && (
+        <p data-cross-check>
+          <span className="text-fg-2">In-game cross-check.</span> Where 3 installs agree on a zone&apos;s corners, we compare them with the game files:
+          {" "}{map.confirmedZones} zone{map.confirmedZones === 1 ? "" : "s"} match within a yard.
+          {map.disagreements.length > 0 && <> These differ, so treat their outlines as unconfirmed: {map.disagreements.map((d) => d.name).join(", ")}.</>}
+        </p>
+      )}
+      {!corpus.unreachable && <p>{dataAgeLabel(corpus.dataAsOf)}</p>}
+      <SiteCredit />
+      <p><Link href="/docs/guides/find#map" className="text-fg-2 hover:text-accent">How the map works</Link></p>
+    </>
+  );
+
+  return (
+    <article data-map-page>
+      <JsonLd data={webApplicationJsonLd({ name: TITLE, path: "/map", description: lead })} />
       {vb ? (
         <WorldMapView
           key={`${continentId}-${spoilers}-${link ? `${link.mapId}-${link.x}-${link.y}` : zoneId ?? ""}`}
+          title={TITLE}
           name={map.name}
           continentId={continentId}
           continents={CONTINENTS.map((c) => ({ id: c.id, name: c.name }))}
           base={vb}
           items={items}
           spoilers={spoilers}
+          spoilerHref={switchHref}
           art={art}
           thumbs={thumbShown ? thumbs : undefined}
           marker={marker}
           zoneId={zoneId}
           view={parseViewState(searchParams)}
+          notice={notice}
+          meta={meta}
         />
       ) : (
-        <p className="w-full max-w-wide rounded-card border border-line bg-panel p-5 text-sm text-fg-2">Nothing is placed on this continent yet.</p>
+        <div className="space-y-3">
+          <h1 className="text-title-sm text-fg sm:text-title">{TITLE}</h1>
+          {notice && <div className="text-sm text-warning">{notice}</div>}
+          <p className="w-full max-w-wide rounded-card border border-line bg-panel p-5 text-sm text-fg-2">Nothing is placed on this continent yet.</p>
+        </div>
       )}
-
-      <Container className="space-y-8 pt-8">
-        {vb && (
-          <section aria-labelledby="legend">
-            <SectionHeading id="legend">How to read the map</SectionHeading>
-            <p className="mb-3 text-sm text-fg-2">
-              {map.name}. Zone outlines, entrances and flights are positions read from the game files, found in the files and unconfirmed until players see
-              them in the game. Points for NPCs and vendors come from what players uploaded. Click a zone to zoom to it, click a pin for its card, and copy a waypoint for the game with the button on the card. Drag, scroll, pinch or use
-              the arrow keys, plus and minus to move around. The address keeps your view, so a link opens the same place. Everything on the map is also in
-              the lists below it.
-            </p>
-            <ul aria-label="Legend" className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-fg-2">
-              <li className="flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="5.5" className="fill-accent" /></svg>Dungeon (circle)</li>
-              <li className="flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><rect x="1.5" y="1.5" width="11" height="11" className="fill-warning" /></svg>Raid (square)</li>
-              <li className="flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M7 1.5L12.5 12L1.5 12Z" className="fill-fg" /></svg>Flight master (triangle)</li>
-              <li className="flex items-center gap-2"><svg width="18" height="14" viewBox="0 0 18 14" aria-hidden="true"><path d="M1 12L17 2" strokeWidth="1.5" strokeDasharray="3 2" className="stroke-fg-2" /></svg>Flight path (dashed line)</li>
-              <li className="flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="3.5" className="fill-fg-2" /></svg>NPC players saw (dot)</li>
-              <li className="flex items-center gap-2"><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M7 1.5L12.5 7L7 12.5L1.5 7Z" className="fill-fg" /></svg>Vendor players saw (diamond)</li>
-              <li className="flex items-center gap-2"><svg width="18" height="14" viewBox="0 0 18 14" aria-hidden="true"><rect x="1" y="1" width="16" height="12" strokeWidth="1.2" className="fill-fg/10 stroke-edge" /></svg>Zone outline (overlaps are real)</li>
-              {spoilers && <li className="flex items-center gap-2"><svg width="18" height="14" viewBox="0 0 18 14" aria-hidden="true"><rect x="1" y="1" width="16" height="12" strokeWidth="1.2" strokeDasharray="3 2" className="fill-warning/10 stroke-warning" /></svg>* Held-back zone: found in game files, unconfirmed</li>}
-            </ul>
-          </section>
-        )}
-
-        {(map.confirmedZones > 0 || map.disagreements.length > 0) && (
-          <section aria-labelledby="check">
-            <SectionHeading id="check">In-game cross-check</SectionHeading>
-            <p className="text-sm text-fg-2">
-              Where 3 installs agree on a zone&apos;s corners, we compare them with the game files:
-              {" "}{map.confirmedZones} zone{map.confirmedZones === 1 ? "" : "s"} match within a yard.
-              {map.disagreements.length > 0 && <> These differ, so treat their outlines as unconfirmed: {map.disagreements.map((d) => d.name).join(", ")}.</>}
-            </p>
-          </section>
-        )}
-
-        <footer className="space-y-1 text-xs text-muted">
-          {!corpus.unreachable && <p>{dataAgeLabel(corpus.dataAsOf)}</p>}
-        </footer>
-      </Container>
     </article>
   );
 }

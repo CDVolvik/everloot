@@ -19,8 +19,11 @@ export const LAYER_IDS = ["zones", "entrances", "flightMasters", "flightPaths", 
 export type LayerId = (typeof LAYER_IDS)[number];
 export type LayerState = Record<LayerId, boolean>;
 
+/** Every layer on, or every layer off: the sidebar's Show all and Hide all. */
+export const allLayers = (on: boolean): LayerState => Object.fromEntries(LAYER_IDS.map((id) => [id, on])) as LayerState;
+
 /** Every layer starts on; the spoiler switch is separate and starts off. */
-export const DEFAULT_LAYERS: LayerState = { zones: true, entrances: true, flightMasters: true, flightPaths: true, npcs: true, vendors: true };
+export const DEFAULT_LAYERS: LayerState = allLayers(true);
 /** Held-back zones, and anything in them, stay hidden until the reader turns this on. */
 export const DEFAULT_SPOILERS = false;
 
@@ -45,6 +48,23 @@ export function visibleItems(items: MapItems, layers: LayerState, spoilers: bool
     pins: items.pins.filter((p) => (p.kind === "npc" ? layers.npcs : layers.vendors) && (spoilers || !p.heldBack)),
     flightMasters: layers.flightMasters ? items.flightMasters.filter((f) => spoilers || !f.heldBack) : [],
     flightLines: layers.flightPaths ? items.flightLines.filter((l) => spoilers || !l.heldBack) : [],
+  };
+}
+
+/**
+ * How many items each layer holds on the continent, whether or not it is switched on, counting only what the
+ * spoiler switch lets through. Flight masters count by name, as the list and search show them: a few names have
+ * two nodes on one spot.
+ */
+export function layerCounts(items: MapItems, spoilers: boolean): Record<LayerId, number> {
+  const all = visibleItems(items, DEFAULT_LAYERS, spoilers);
+  return {
+    zones: all.zones.length,
+    entrances: all.entrances.length,
+    flightMasters: new Set(all.flightMasters.map((f) => f.name)).size,
+    flightPaths: all.flightLines.length,
+    npcs: all.pins.filter((p) => p.kind === "npc").length,
+    vendors: all.pins.filter((p) => p.kind === "vendor").length,
   };
 }
 
@@ -173,6 +193,33 @@ export function parseViewState(query: { at?: string | string[]; z?: string | str
     zoom: Number.isFinite(zoom) && zoom >= -12 && zoom <= 8 ? zoom : null,
     pin: pin && /^[a-z][A-Za-z0-9_.-]{0,40}$/.test(pin) ? pin : null,
   };
+}
+
+/** How many yards across the view is when it opens on a spot or a pin. */
+export const SPOT_SPAN = 1200;
+export const spotBox = (x: number, y: number): Box => ({ x: x - SPOT_SPAN / 2, y: y - SPOT_SPAN / 2, width: SPOT_SPAN, height: SPOT_SPAN });
+
+/** Where the map opens: a box to fit, or a centre and a zoom. */
+export type InitialView = { fit: Box } | { x: number; y: number; zoom: number };
+
+/**
+ * Where a link opens the map, first match wins: the camera in the address (`at` with `z`), the deep link's spot,
+ * the pin in the address, the zone the link asked for, else the whole continent. A pin that is not on this
+ * continent, or not shown, falls through.
+ */
+export function initialView(input: {
+  base: Box; items: MapItems; view: { at: [number, number] | null; zoom: number | null; pin: string | null };
+  marker: { x: number; y: number } | null; zoneId: number | null;
+}): InitialView {
+  const { base, items, view, marker, zoneId } = input;
+  if (view.at && view.zoom !== null) return { x: view.at[0], y: view.at[1], zoom: view.zoom };
+  if (marker) return { fit: spotBox(marker.x, marker.y) };
+  const pinned = view.pin
+    ? [...items.entrances.map((e) => ({ id: `e${e.id}`, x: e.x, y: e.y })), ...items.flightMasters, ...items.pins].find((p) => p.id === view.pin)
+    : undefined;
+  if (pinned) return { fit: spotBox(pinned.x, pinned.y) };
+  const zone = zoneId !== null ? items.zones.find((z) => z.mapId === zoneId) : undefined;
+  return { fit: zone ?? base };
 }
 
 /** The address for the reader's view: the fixed parts of the page's own address, then where the camera is. */
