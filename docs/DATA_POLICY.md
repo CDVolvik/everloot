@@ -53,7 +53,8 @@ player is within a few yards of that NPC, so the addon records the player's posi
 (`positionKind: "interaction"`) with the service the window offered (vendor, trainer, quest giver and so
 on), once per NPC, service and zone. When the player opens a herb, ore vein, chest or other object, its
 loot row carries the player's position, how it was opened (from the spell cast on it) and the object's
-name as the game showed it. Where you stand when you only target or mouse over an NPC
+name as the game showed it, taken only from a herb, ore or chest cast, so the target of any other spell (a
+player you healed, say) never becomes a name. Where you stand when you only target or mouse over an NPC
 (`positionKind: "player"`) is never used as the NPC's place. An NPC pin needs three installs on the same
 map; an object's spawn point needs three installs within one cluster (positions closer than 1 on the
 0 to 100 map scale), and a place seen by one or two installs is only counted, never drawn. An object's

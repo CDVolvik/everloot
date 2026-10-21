@@ -33,7 +33,9 @@ Pull requests merged to `main` are listed in the nightly pre-releases until the 
 - Knowledge base: an NPC seen at its window places a pin like a spawn position (three installs on one map);
   a targeting position still never does. Object spawn points are clustered per object and zone, become a pin
   at three installs with a key that stays put once published, and an object's name needs three installs to
-  agree. The map shows none of this yet.
+  agree. Fishing (the bobber, or an object installs agree is fished) is never a pin. An upload of an event
+  that only adds fields to an earlier copy, as when an older Desktop App had dropped them, replaces that copy
+  instead of withdrawing the event as a conflict. The map shows none of this yet.
 
 ## [0.3.8] - 2026-10-21
 
@@ -49,6 +51,8 @@ Pull requests merged to `main` are listed in the nightly pre-releases until the 
 - Targeting or mousing over the same NPC at the same spot (to 1 unit on the map's 0 to 100 scale) records it
   once, not every time. NPC window rows and object loot rows have their own 2,000-row room, apart from
   targeting rows and creature loot, so a full targeting or corpse share pauses only itself.
+- An object's name comes only from a herb, ore or chest cast, never from another spell's target (such as a
+  player you healed). A fishing cast counts for 30 seconds, for a slow bite.
 
 ## [0.3.7] - 2026-10-20
 
