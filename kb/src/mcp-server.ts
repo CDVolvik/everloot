@@ -393,6 +393,22 @@ export async function readTooledFacts<T>(tool: ToolName, loader?: CorpusLoader):
   return { facts: build(loadUploadRecords(dir)), dataAsOf: null };
 }
 
+/**
+ * The public records of `kinds` and the corpus time, from the same sources as the tools (the public URL, then
+ * local files), for a maintainer report. Null when no source is connected or the read failed.
+ */
+export async function readCorpusRecords(kinds: readonly string[]): Promise<{ records: unknown[]; dataAsOf: string | null } | null> {
+  const base = process.env.EVERLOOT_PUBLIC_CORPUS_URL?.trim();
+  if (base) {
+    const corpus = await fetchPublicCorpus(`${base}${base.includes("?") ? "&" : "?"}kinds=${kinds.join(",")}`);
+    return corpus ? { records: corpus.records, dataAsOf: typeof corpus.dataAsOf === "string" ? corpus.dataAsOf : null } : null;
+  }
+  const dir = process.env.EVERLOOT_UPLOADS?.trim();
+  if (!dir) return null;
+  const wanted = new Set(kinds);
+  return { records: loadUploadRecords(dir).filter((r) => wanted.has((r as { kind?: string }).kind ?? "")), dataAsOf: null };
+}
+
 /** What ends every answer built on player data: how old the data is, and the credit line it carries. */
 function answerFooter(dataAsOf: unknown): string {
   return `${dataAgeLine(dataAsOf)}\n${MCP_CREDIT}`;

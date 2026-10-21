@@ -1,6 +1,6 @@
 import type { DB } from "./db.js";
 
-export type SourceId = "warcraft-wiki-2023" | "curated" | "blizzard-api";
+export type SourceId = "warcraft-wiki-2023" | "curated" | "blizzard-api" | "pfquest-classic";
 
 export interface Source {
   id: SourceId;
@@ -33,6 +33,14 @@ export const SOURCES: Record<SourceId, Source> = {
     licence: "blizzard-developer-api-terms",
     publishable: false,
     homepage: "https://develop.battle.net",
+  },
+  // A Classic 1.12 baseline to check Forever uploads against, on the maintainer's machine only.
+  "pfquest-classic": {
+    id: "pfquest-classic",
+    name: "pfQuest database, Classic 1.12 (local baseline only)",
+    licence: "pfQuest addon MIT; database derived from VMaNGOS (GPL-2.0) and CMaNGOS classic-db (GPL-3.0)",
+    publishable: false,
+    homepage: "https://github.com/shagu/pfQuest",
   },
 };
 
