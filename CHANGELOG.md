@@ -31,6 +31,15 @@ Pull requests merged to `main` are listed in the nightly pre-releases until the 
   full week after launch.
 - Site: an achievement's page lists its criteria, with how many each needs, once three players sent the same complete list; the list is agreed apart from the entry itself. Lists and search still show no criteria wording. Run the completion rebuild (`?rebuild=1`) once to fill it from uploads already stored.
 
+## [0.3.9] - 2026-10-21
+
+### Added
+- A button at the top-left of the minimap, the way every other addon in the game is found. It opens
+  Everloot's panel, so nothing needs a command typed any more.
+- A box at the top of that panel to ask Everloot a question. The question goes into your file, the
+  companion answers it with its sources, and `/reload` prints the answer in the chat, exactly as
+  `/ask <question>` does.
+
 ## [0.3.8] - 2026-10-21
 
 ### Fixed
