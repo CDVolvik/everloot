@@ -7,8 +7,9 @@ import { npcPage, questPage } from "../../../../../../kb/src/world-pages";
 import { loadWorldFacts } from "@/lib/rollup-compute";
 import { pinLink } from "@/lib/world-map";
 import { trailFor } from "@/lib/breadcrumbs";
-import { Badge, Container, DataTable, Facts, Tabs, TooltipFrame } from "@/components/ui";
+import { Badge, Container, DataTable, Facts, InShort, Tabs, TooltipFrame } from "@/components/ui";
 import { EmptyTab, EntityHeader, EntityTop, known, LINK, Unreachable } from "../../entity";
+import { entitySummary, observedLine } from "@/lib/evidence";
 import { loadItemFacts } from "@/lib/rollup-compute";
 import { itemNames, npcNames } from "@/lib/names";
 import { loreForEntity } from "@/lib/lore";
@@ -79,6 +80,20 @@ export default async function QuestPage(props: { params: Promise<{ id: string }>
   const npcLink = (id: number) => <EntityLink kind="npc" id={id} name={npcs.get(id)} />;
 
   const named = title !== `Quest ${page.questId}`;
+  // The page in three lines: what it is, what players reported, and where the title came from.
+  const summary = entitySummary({
+    identity: [
+      page.level !== null ? `Level ${page.level}` : null,
+      page.giverNpcId !== null ? "has a giver" : null,
+      page.turnInNpcId !== null ? "and a turn-in" : null,
+    ].filter((x): x is string => Boolean(x)).join(" · ") || "A quest the game files list",
+    observed: observedLine(
+      [page.rewards.length ? `${page.rewards.length} ${page.rewards.length === 1 ? "reward" : "rewards"}` : null],
+      null,
+      Date.now(),
+    ),
+    named,
+  });
 
   return (
     <Container width="data">
@@ -112,6 +127,7 @@ export default async function QuestPage(props: { params: Promise<{ id: string }>
             />
           )}
         />
+        <InShort summary="In short" bullets={summary} note={<Link href="/database#reading" className={LINK}>How to read these numbers</Link>} />
         <Tabs
           label={`${title}: relations`}
           tabs={[

@@ -87,3 +87,21 @@ export function itemSummary(i: ItemSummaryInput): string[] {
 
   return bullets;
 }
+
+/** The line that says what players reported, with the count and the date, or that nobody has. */
+export function observedLine(parts: (string | null)[], lastSeen: string | null, now: number): string {
+  const said = parts.filter((p): p is string => Boolean(p));
+  if (!said.length) return "No player has reported it yet.";
+  const when = lastSeen ? `, last seen ${timeAgo(Date.parse(lastSeen), now)}` : "";
+  return `Players reported ${said.join(" and ")}${when}.`;
+}
+
+/** The line that says where the name came from, in the site's own words. */
+export function nameLine(named: boolean): string {
+  return named ? "Players agree on the name." : "It has no agreed name yet: that needs three installs reporting the same one.";
+}
+
+/** The pages that are not items: what it is, what players reported, and where the name came from. */
+export function entitySummary(i: { identity: string; observed: string; named: boolean }): string[] {
+  return [i.identity, i.observed, nameLine(i.named)];
+}

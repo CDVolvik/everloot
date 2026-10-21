@@ -20,6 +20,9 @@ Pull requests merged to `main` are listed in the nightly pre-releases until the 
   form. The search index stays off for now, so the pages are reached by name and are not listed anywhere.
 
 ### Added
+- Site: rankings at `/rankings`. Classes, races and faction balance by ISO week, from the census under its
+  usual rule, with a weekly chart and each rank's change against the week before. They start with the first
+  full week after launch.
 - Site: an achievement's page lists its criteria, with how many each needs, once three players sent the same complete list; the list is agreed apart from the entry itself. Lists and search still show no criteria wording. Run the completion rebuild (`?rebuild=1`) once to fill it from uploads already stored.
 
 ## [0.3.7] - 2026-10-20

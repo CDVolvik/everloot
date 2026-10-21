@@ -29,6 +29,7 @@ const TOOL_NOTES: Record<string, string> = {
   "/tools/farming-routes": "Routes from uploaded sightings",
   "/tools/auctions": "Prices by realm, from scans",
   "/census": "Who plays what",
+  "/rankings": "Classes and races by week",
   "/addons": "What players run",
   "/tools/guild-board": "Roster and progression",
   "/tools/collections": "Owned and missing",
