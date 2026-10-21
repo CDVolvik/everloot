@@ -19,7 +19,16 @@ export const SHOWN_MAX_SPELL_ID = 30_000;
  */
 export const looksInternalGameName = (name: string) => looksInternal(name) || /^\[|\sOLD$|\bDND\b|NEWTEST/.test(name.trim());
 
-/** A quest title both sources give. The wiki's titles are written by people, so only the id range and an empty title hold one back. */
-export const mayShowQuestTitle = (questId: number, title: string) => questId > 0 && questId < SHOWN_MAX_QUEST_ID && title.trim().length > 0;
+/**
+ * Quests whose 2023 wiki title a Forever-era source contradicts: Polestar's guides, built from Forever's quest data,
+ * name them differently (compared 2026-10-21; 516 "Beren's Peril", 5641 and 5645 "Chastise", 5646 and 5679 "Dark
+ * Sacrifice", 5762 "Hemet Nesingwary", 7383 "Crown of the Earth", 7647 "Judgment and Redemption", 8415 "Chillwind
+ * Point"). Neither title is shown until players confirm one; the other source's title is never used.
+ */
+export const CONTESTED_QUEST_IDS: ReadonlySet<number> = new Set([516, 5641, 5645, 5646, 5679, 5762, 7383, 7647, 8415]);
+
+/** A quest title both sources give. The wiki's titles are written by people, so only the id range, a contested id and an empty title hold one back. */
+export const mayShowQuestTitle = (questId: number, title: string) =>
+  questId > 0 && questId < SHOWN_MAX_QUEST_ID && !CONTESTED_QUEST_IDS.has(questId) && title.trim().length > 0;
 export const mayShowSetName = (setId: number, name: string) => setId > 0 && setId < SHOWN_MAX_SET_ID && Boolean(name.trim()) && !looksInternalGameName(name);
 export const mayShowSpellName = (spellId: number, name: string) => spellId > 0 && spellId < SHOWN_MAX_SPELL_ID && Boolean(name.trim()) && !looksInternalGameName(name);

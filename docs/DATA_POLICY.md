@@ -297,6 +297,12 @@ the wiki's own note, such as "(Alliance, 55)". The rules:
   `kb/src/game-name-rule.ts`). The client also lists quests from later seasons and versions at higher ids.
 - Where wiki pages give one id different titles (a quest renamed in a later version, say), none is
   shown. A quest the wiki lacks keeps "Quest N", and so does a wiki title for an id the build does not list.
+- Where a Forever-era source names a quest differently from the wiki, the wiki title is held too
+  (`CONTESTED_QUEST_IDS`, 9 quests found on 2026-10-21 against Polestar's guides) until players confirm
+  one. The other source's title is never shown.
+- `QuestV2` lists only quests with a completion bit (every row has a `UniqueBitFlag`), so repeatable
+  quests such as Additional Runecloth or the Scourgestone turn-ins are not in it and never get a wiki
+  title. Their pages and titles come from player uploads alone.
 - Pages only. The data downloads, the API and the MCP server carry no quest titles from this file; a
   test checks that their code does not read it.
 - A maintainer makes the file with `npm run kb -- game-names`, into the same private storage as the item

@@ -533,7 +533,7 @@ async function main(): Promise<number> {
       const run = runGameNames({ snapshotPath: args[0], kbPath, outDir: flags.get("out") || "data/assets", edges: CLIENT_EDGES });
       const q = run.quests.counts;
       console.log(`build ${run.build}, wiki dump ${run.wikiDump} (${run.wikiQuestIds} quest ids with a title)`);
-      console.log(`quests: ${q.quests} in QuestV2; ${q.match} with one wiki title, ${q.mismatch} where wiki pages disagree, ${q.files} the wiki lacks; held back ${q.held} with an id from ${SHOWN_MAX_QUEST_ID}`);
+      console.log(`quests: ${q.quests} in QuestV2; ${q.match} with one wiki title, ${q.mismatch} where wiki pages disagree, ${q.files} the wiki lacks; held back ${q.held} (an id from ${SHOWN_MAX_QUEST_ID} or a contested title)`);
       console.log(`wiki pages that disagree (not shown), first 15 of ${run.quests.mismatches.length}:`);
       for (const m of run.quests.mismatches.slice(0, 15)) console.log(`  ${m.id}: "${m.wiki.join('" | "')}"`);
       for (const [label, r, cap] of [["item sets", run.sets, SHOWN_MAX_SET_ID], ["spells", run.spells, SHOWN_MAX_SPELL_ID]] as const) {
