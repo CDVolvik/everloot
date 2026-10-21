@@ -1,5 +1,5 @@
 /** Shapes shared by the Node side and the page. No Node or Electron imports here. */
-import type { ProviderChoice, ProviderInUse, ProviderKind } from "./providers";
+import type { ModelChoice, ProviderChoice, ProviderInUse, ProviderKind } from "./providers";
 
 export type Job = "upload" | "prices" | "ask";
 export const JOBS: Job[] = ["upload", "prices", "ask"];
@@ -306,6 +306,8 @@ export interface EverlootApi {
   chatRemoveProvider(kind?: ProviderKind): Promise<ChatInfo>;
   /** Switches Chat and /ask to a model of a provider already saved. */
   chatUseModel(kind: ProviderKind, model: string): Promise<ChatInfo>;
+  /** The models a provider serves now, read from the provider with the saved key; null when it cannot be read. */
+  chatModels(kind: ProviderKind): Promise<ModelChoice[] | null>;
   onState(listener: (state: AppState) => void): () => void;
   /** The main side asks the page to open a screen: a tray entry or a notification was clicked. */
   onNavigate(listener: (page: string) => void): () => void;

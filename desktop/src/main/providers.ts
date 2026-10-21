@@ -1,7 +1,8 @@
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { readJsonFile } from "./json-file";
-import { MODEL_ID, presetFor, type ProviderChoice, type ProviderInUse, type ProviderKind } from "../shared/providers";
+import { catalogueProvider, listModels } from "../../../web/src/lib/chat/catalogue";
+import { MODEL_ID, presetFor, type ModelChoice, type ProviderChoice, type ProviderInUse, type ProviderKind } from "../shared/providers";
 
 /**
  * The Chat page's provider picker, on the Node side. The key goes into its own file in the data
@@ -130,4 +131,22 @@ export function readKey(entry: { apiKeyFile?: string }): string {
   const key = readFileSync(entry.apiKeyFile, "utf8").trim();
   if (!key) throw new Error(`${entry.apiKeyFile} is empty`);
   return key;
+}
+
+/**
+ * The models a provider serves now, for the Chat page's pickers: read from the provider itself with the key saved
+ * for it (OpenRouter's list and a local Ollama's need none). Null when it cannot be read, so the page shows the
+ * catalogue's shortlist instead. The key goes to that provider only.
+ */
+export async function modelsFor(dataFolder: string, kind: ProviderKind, send: typeof fetch = fetch): Promise<ModelChoice[] | null> {
+  const preset = presetFor(kind);
+  if (!preset) return null;
+  let own: Entry | undefined;
+  try { own = readConfig(join(dataFolder, "config.json")).providers.find((p) => p && isOwn(p, dataFolder) && kindOf(p) === kind); } catch { own = undefined; }
+  let key = "";
+  try { key = own ? readKey(own as { apiKeyFile?: string }) : ""; } catch { key = ""; }
+  if (preset.keyFile && preset.kind !== "custom" && !key) return null;
+  const baseUrl = preset.kind === "custom" ? (typeof own?.baseUrl === "string" ? own.baseUrl : "") : catalogueProvider(preset.kind)?.baseUrl ?? "";
+  if (!baseUrl) return null;
+  return listModels({ list: preset.list, baseUrl, models: preset.models }, key, send);
 }

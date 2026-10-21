@@ -24,6 +24,15 @@ function sse(events: unknown[]): Response {
 }
 
 type Call = { url: string; init?: RequestInit };
+/** OpenRouter's public model list: two of the catalogue's, one new cheap model, and one too dear to list. */
+const ROUTER_MODELS = [
+  { id: "deepseek/deepseek-v4.1-flash", pricing: { prompt: "0.00000003", completion: "0.0000004" }, supported_parameters: ["tools"] },
+  { id: "qwen/qwen3.7-flash", pricing: { prompt: "0.00000003", completion: "0.00000013" }, supported_parameters: ["tools"] },
+  { id: "newlab/cheap-1", name: "NewLab: Cheap 1", pricing: { prompt: "0.0000001", completion: "0.0000002" }, supported_parameters: ["tools"] },
+  { id: "dear/model", name: "Dear", pricing: { prompt: "0.00001", completion: "0.00003" }, supported_parameters: ["tools"] },
+];
+/** The requests other than OpenRouter's public model list, which carries no key. */
+const beyondList = () => calls.filter((c) => !c.url.startsWith("https://openrouter.ai/api/v1/models"));
 let calls: Call[];
 let modelTurns: number;
 
@@ -39,6 +48,7 @@ function api({ signed = true }: { signed?: boolean } = {}) {
     if (url.startsWith("/schema/mcp/")) return Response.json({ title: "T", inputSchema: { type: "object", properties: {} } });
     if (url.startsWith("/api/tools/")) return Response.json({ text: HIT });
     if (url === "https://openrouter.ai/api/v1/key") return Response.json({ data: {} });
+    if (url === "https://openrouter.ai/api/v1/models") return Response.json({ data: ROUTER_MODELS });
     if (url === "https://openrouter.ai/api/v1/chat/completions") {
       return modelTurns++ === 0
         ? sse([{ model: "deepseek/deepseek-v4.1-flash", choices: [{ delta: { tool_calls: [{ index: 0, id: "c1", type: "function", function: { name: "get_by_name", arguments: "{\"name\":\"Linen Cloth\"}" } }] } }] }])
@@ -217,7 +227,7 @@ describe("the Chat keys section", () => {
     api();
     await render(<ChatKeys />);
     const cards = container.querySelectorAll('ul[aria-label="Chat providers"] > li > section');
-    expect(Array.from(cards).map((c) => c.querySelector("h3")?.textContent)).toEqual(["OpenRouter", "Anthropic", "Ollama on this computer"]);
+    expect(Array.from(cards).map((c) => c.querySelector("h3")?.textContent)).toEqual(["OpenRouter", "Anthropic", "Ollama"]);
     expect(card("OpenRouter").textContent).toContain("Not set");
     expect(card("Ollama").textContent).toContain("Not set up");
     expect(card("OpenRouter").querySelector("a")?.getAttribute("href")).toBe("https://openrouter.ai/keys");
@@ -240,8 +250,9 @@ describe("the Chat keys section", () => {
     key.value = KEY;
     await act(async () => key.form!.requestSubmit());
     await settle();
-    // Saving makes no request at all.
-    expect(calls).toHaveLength(0);
+    // Saving sends the key nowhere; the card reads OpenRouter's public model list, without it.
+    expect(beyondList()).toHaveLength(0);
+    expect(keyOnlyToProvider()).toBe(0);
     expect(saved()).toEqual([{ kind: "openrouter", model: "deepseek/deepseek-v4.1-flash", key: KEY }]);
     expect(container.innerHTML).not.toContain(KEY);
     expect(card("OpenRouter").textContent).toContain("Set, ending ••••1234");
@@ -249,13 +260,16 @@ describe("the Chat keys section", () => {
     expect(text()).toContain("OpenRouter saved in this browser.");
 
     await click(inCard("OpenRouter", "Test OpenRouter"));
-    expect(calls.map((c) => c.url)).toEqual(["https://openrouter.ai/api/v1/key"]);
+    expect(beyondList().map((c) => c.url)).toEqual(["https://openrouter.ai/api/v1/key"]);
     expect(keyOnlyToProvider()).toBe(1);
     expect(text()).toContain("OpenRouter accepted the key.");
     expect(saved()[0].check.ok).toBe(true);
 
-    // The model is chosen inside the card.
+    // The model is chosen inside the card, from what OpenRouter serves now at today's price.
     const model = card("OpenRouter").querySelector<HTMLSelectElement>('select[aria-label="OpenRouter model"]')!;
+    expect(Array.from(model.options).map((o) => o.textContent)).toEqual([
+      "DeepSeek V4.1 Flash · $0.03 / $0.40", "Qwen 3.7 Flash · $0.03 / $0.13", "NewLab: Cheap 1 · $0.10 / $0.20", "Another model id…",
+    ]);
     await act(async () => setValue(model, "qwen/qwen3.7-flash"));
     expect(saved()[0].model).toBe("qwen/qwen3.7-flash");
 
@@ -312,13 +326,13 @@ describe("the Chat keys section", () => {
     await act(async () => key.form!.requestSubmit());
     expect(text()).toContain("That does not look like the right key");
     expect(localStorage.getItem(PROVIDERS)).toBeNull();
-    expect(calls).toHaveLength(0);
+    expect(beyondList()).toHaveLength(0);
   });
 
   test("Ollama needs no key: Set up asks only for the model", async () => {
     api();
     await render(<ChatKeys />);
-    await click(inCard("Ollama", "Set up Ollama on this computer"));
+    await click(inCard("Ollama", "Set up Ollama"));
     expect(card("Ollama").querySelector('input[name="key"]')).toBeNull();
     const model = card("Ollama").querySelector<HTMLInputElement>('input[name="modelText"]')!;
     model.value = "qwen3:8b";
