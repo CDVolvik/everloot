@@ -281,8 +281,8 @@ and tooltip facts, the same ones its page shows:
 - **Same spoiler and takedown rules** as the pages. The downloads, the rest of the API and the MCP
   server still carry no icons or tooltip text.
 
-**Quest titles from the game files and the Warcraft Wiki.** *Proposed 2026-10-20, awaiting the
-maintainer's approval.* The game files list quests by id (`QuestV2`) but carry no titles. A quest's
+**Quest titles from the game files and the Warcraft Wiki.** *Proposed 2026-10-20; decided 2026-10-21
+by Carlos.* The game files list quests by id (`QuestV2`) but carry no titles. A quest's
 title may be shown on its page, in the quest lists and where an item page names the quest as a reward,
 before players confirm it, when the quest id is in the current build's `QuestV2` table and the quest's
 page in the Warcraft Wiki dump of 2023-11-13 gives that id in its quest infobox. The title is the
@@ -304,8 +304,8 @@ the wiki's own note, such as "(Alliance, 55)". The rules:
   from the snapshot and the dump each run. In build 1.60.1.70450: 6,614 quest ids, 3,191 with one wiki
   title, 47 where the pages disagree and 3,376 the wiki lacks; 3,184 shown after the id range holds back 7.
 
-**Item set and spell names from the game files.** *Proposed 2026-10-20, awaiting the maintainer's
-approval.* The client layer relates items to item sets and to the spells that create or use them, by
+**Item set and spell names from the game files.** *Proposed 2026-10-20; decided 2026-10-21
+by Carlos.* The client layer relates items to item sets and to the spells that create or use them, by
 id. The names of those sets (`ItemSet.Name_lang`) and spells (`SpellName.Name_lang`) may be shown beside
 the relations on the item pages. They come from the game files alone, so:
 
