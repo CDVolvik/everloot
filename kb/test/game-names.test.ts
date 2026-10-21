@@ -45,6 +45,8 @@ test("set and spell names come from the game files for the ids asked for, held t
 test("the rule: original id ranges only, and no internal names from the files", () => {
   expect(mayShowQuestTitle(SHOWN_MAX_QUEST_ID - 1, "Test of Faith")).toBe(true);
   expect(mayShowQuestTitle(SHOWN_MAX_QUEST_ID, "The Binding")).toBe(false);
+  expect(mayShowQuestTitle(8415, "Chillwind Camp")).toBe(false);
+  expect(mayShowQuestTitle(8414, "Dispelling Evil")).toBe(true);
   expect(mayShowSetName(SHOWN_MAX_SET_ID - 1, "The Gladiator")).toBe(true);
   expect(mayShowSetName(SHOWN_MAX_SET_ID, "The Gladiator")).toBe(false);
   expect(mayShowSpellName(SHOWN_MAX_SPELL_ID - 1, "Linen Bandage")).toBe(true);
