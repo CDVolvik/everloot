@@ -121,10 +121,10 @@ export default function Header({ savedBuilds = false, profiles = false, accountS
               className={`${navItem} gap-1.5 ${navState(toolsCurrent || toolsOpen)}`}
             >
               Tools
-              <svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.5" /></svg>
+              <svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10" className={toolsOpen ? "rotate-180" : undefined}><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.5" /></svg>
             </button>
             {/* Always in the page, so the tools are in the HTML for crawlers; hidden until opened. */}
-            <div id="tools-menu" hidden={!toolsOpen} className={`absolute left-0 top-full mt-2 w-[36rem] grid-cols-3 gap-6 rounded-card border border-edge bg-panel p-6 ${toolsOpen ? "grid" : "hidden"}`}>
+            <div id="tools-menu" hidden={!toolsOpen} className={`pop absolute left-0 top-full mt-2 w-[36rem] grid-cols-3 gap-6 rounded-card border border-edge bg-panel p-6 ${toolsOpen ? "grid" : "hidden"}`}>
               {TOOL_GROUPS.map((group) => (
                 <div key={group.title}>
                   <p className="mb-2 px-3 font-mono text-xs text-muted">{group.title}</p>
@@ -194,7 +194,7 @@ export default function Header({ savedBuilds = false, profiles = false, accountS
       </div>
 
       {open && (
-        <nav id="site-navigation" aria-label="Site menu" className="absolute inset-x-0 top-full max-h-[75vh] overflow-y-auto border-b border-edge bg-panel lg:hidden">
+        <nav id="site-navigation" aria-label="Site menu" className="pop absolute inset-x-0 top-full max-h-[75vh] overflow-y-auto border-b border-edge bg-panel lg:hidden">
           <div className="mx-auto max-w-data space-y-6 px-4 py-6 lg:px-6">
             <form action="/search" method="get" role="search" onSubmit={() => track("search", { surface: "lore" })} className="flex items-center gap-2 rounded-full border border-edge bg-canvas px-3 text-muted focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent">
               <SearchIcon />

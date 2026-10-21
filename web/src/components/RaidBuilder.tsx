@@ -11,7 +11,7 @@ import {
 import type { RaidArt } from "@/lib/game-assets";
 import GameIcon from "@/components/game/GameIcon";
 import SpellTip from "@/components/game/SpellTip";
-import { Badge, Card, DataTable, Input, SectionHeading, Segmented, type Column } from "@/components/ui";
+import { Badge, Card, CopyButton, DataTable, Input, SectionHeading, Segmented, type Column } from "@/components/ui";
 
 const table = TABLES[CURRENT_BUILD];
 
@@ -98,7 +98,6 @@ export default function RaidBuilder({ art = null, initialCode }: { art?: RaidArt
   const [message, setMessage] = useState("");
   const [paste, setPaste] = useState("");
   const [ready, setReady] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [drag, setDrag] = useState<Drag | null>(null);
   const [moveTo, setMoveTo] = useState("");
   const pickerRef = useRef<HTMLDivElement>(null);
@@ -362,21 +361,7 @@ export default function RaidBuilder({ art = null, initialCode }: { art?: RaidArt
     setSelected(selected === index ? null : index);
   };
 
-  useEffect(() => {
-    if (!copied) return;
-    const t = setTimeout(() => setCopied(false), 2000);
-    return () => clearTimeout(t);
-  }, [copied]);
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(link);
-      setCopied(true);
-      setMessage("Link copied.");
-    } catch {
-      setMessage("Select the link and copy it.");
-    }
-  };
+  const onCopied = (ok: boolean) => setMessage(ok ? "Link copied." : "Select the link and copy it.");
 
   // The effect's name, with the game's tooltip on hover and keyboard focus when the page has it, and how far it reaches.
   const effectCell = (f: FamilyCoverage) => (
@@ -452,7 +437,7 @@ export default function RaidBuilder({ art = null, initialCode }: { art?: RaidArt
             >
               Clear
             </button>
-            <button type="button" className={`btn btn-primary ${compact}`} onClick={copy}>{copied ? "Copied" : "Copy link"}</button>
+            <CopyButton className={`btn btn-primary ${compact}`} text={link} label="Copy link" onResult={onCopied} />
           </div>
         </div>
 
@@ -469,7 +454,7 @@ export default function RaidBuilder({ art = null, initialCode }: { art?: RaidArt
                   onPointerDown={startDrag({ kind: "class", class: c })}
                   onDragStart={(e) => e.preventDefault()}
                   onClick={() => pickClass(c)}
-                  className={`flex h-9 min-w-0 cursor-grab items-center gap-1.5 rounded-control border border-l-4 bg-canvas px-2 text-left text-control font-medium transition-colors duration-150 ${draggable} ${CLASS_TEXT[c]} ${CLASS_BORDER[c]} ${
+                  className={`flex h-9 min-w-0 cursor-grab items-center gap-1.5 rounded-control border border-l-4 bg-canvas px-2 text-left text-control font-medium transition-colors ${draggable} ${CLASS_TEXT[c]} ${CLASS_BORDER[c]} ${
                     armed === c ? "border-accent" : "border-edge hover:border-fg-2"
                   }`}
                 >
@@ -481,7 +466,7 @@ export default function RaidBuilder({ art = null, initialCode }: { art?: RaidArt
             })}
             <div
               data-drop-trash
-              className={`flex h-9 items-center justify-center rounded-control border border-dashed px-2 text-cell-2 transition-colors duration-150 ${
+              className={`flex h-9 items-center justify-center rounded-control border border-dashed px-2 text-cell-2 transition-colors ${
                 overTrash ? "border-danger text-danger" : "border-edge text-muted"
               }`}
             >
@@ -526,7 +511,7 @@ export default function RaidBuilder({ art = null, initialCode }: { art?: RaidArt
                           onClick={() => pickSlot(index)}
                           onPointerDown={slot ? startDrag({ kind: "slot", index }) : undefined}
                           onDragStart={(e) => e.preventDefault()}
-                          className={`flex h-9 w-full min-w-0 items-center gap-2 rounded-control border px-2 text-left transition-colors duration-150 ${draggable} ${
+                          className={`flex h-9 w-full min-w-0 items-center gap-2 rounded-control border px-2 text-left transition-colors ${draggable} ${
                             slot
                               ? `border-l-4 bg-canvas ${CLASS_BORDER[slot.class]} cursor-grab ${selected === index ? "border-accent" : "border-edge hover:border-fg-2"}`
                               : `border-dashed ${selected === index ? "border-accent" : "border-edge hover:border-fg-2"}`
@@ -699,7 +684,7 @@ export default function RaidBuilder({ art = null, initialCode }: { art?: RaidArt
           <div className="flex gap-2">
             <label className="sr-only" htmlFor="raid-link">Share link</label>
             <Input id="raid-link" mono readOnly value={link} className="min-h-10 py-1.5 text-sm" />
-            <button type="button" className={`btn shrink-0 ${compact}`} onClick={copy}>{copied ? "Copied" : "Copy"}</button>
+            <CopyButton className={`btn shrink-0 ${compact}`} text={link} label="Copy" onResult={onCopied} />
           </div>
           <form
             className="flex gap-2"

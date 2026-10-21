@@ -91,7 +91,7 @@ main p a, main .list-disc a {
   background: transparent;
   color: rgb(var(--fg));
   font-weight: 500;
-  transition: border-color 150ms, color 150ms;
+  transition: border-color var(--dur-fade) var(--ease-color), color var(--dur-fade) var(--ease-color);
 }
 .btn:hover,
 .btn:focus-visible {
@@ -107,7 +107,7 @@ main p a, main .list-disc a {
   background: rgb(var(--accent));
   color: rgb(var(--canvas));
   font-weight: 600;
-  transition: background-color 150ms, border-color 150ms;
+  transition: background-color var(--dur-fade) var(--ease-color), border-color var(--dur-fade) var(--ease-color);
 }
 .btn-primary:hover,
 .btn-primary:focus-visible {
@@ -149,7 +149,31 @@ body {
 
 /* Tool cards: the border answers the pointer. No lift, no shadow. */
 .tool-card {
-  transition: border-color 150ms;
+  transition: border-color var(--dur-fade) var(--ease-color);
+}
+
+/* Menus and sheets (Tools, the phone menu, filter menus, the account menus) fade in over 150 ms when they open.
+   Closing is instant. A <details> menu's panel is in the page while closed, so the fade runs on [open]. */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+.pop {
+  animation: fade-in var(--dur-fade) var(--ease-out);
+}
+details:not([open]) > .pop {
+  animation: none;
+}
+
+/* The bar at the top of the window while a filter, sort, page or tab link loads (NavPending). It shows only
+   after MOTION.duration.pendingDelay, fades in, and goes at once. */
+.nav-pending {
+  opacity: 0;
+}
+.nav-pending[data-on] {
+  opacity: 1;
+  transition: opacity var(--dur-fade) var(--ease-out);
 }
 
 /* Motion is limited to 150 ms colour and opacity changes, and none at all when asked. */

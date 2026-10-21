@@ -11,7 +11,7 @@
   fill: rgb(var(--fg) / 0.05);
   stroke: rgb(var(--edge));
   cursor: pointer;
-  transition: fill 150ms, stroke 150ms;
+  transition: fill var(--dur-fade) var(--ease-color), stroke var(--dur-fade) var(--ease-color);
 }
 .wm-map .wm-zone:hover {
   fill: rgb(var(--accent) / 0.18);
@@ -43,9 +43,8 @@
   width: 12px;
   height: 12px;
   border: 1.5px solid rgb(var(--canvas));
-  transition: transform 150ms;
+  transition: transform var(--dur-fade) var(--ease-out);
 }
-.wm-pin:hover > span,
 .wm-pin.wm-selected > span {
   transform: scale(1.5);
 }
@@ -56,8 +55,13 @@
 .wm-pin-raid > span { background: rgb(var(--warning)); }
 .wm-pin-npc > span { background: rgb(var(--fg-2)); border-radius: 9999px; width: 9px; height: 9px; }
 .wm-pin-vendor > span { background: rgb(var(--fg)); transform: rotate(45deg); width: 10px; height: 10px; }
-.wm-pin-vendor:hover > span,
 .wm-pin-vendor.wm-selected > span { transform: rotate(45deg) scale(1.5); }
+/* Hover grows a pin only for a pointer that can hover; on touch a tap selects it instead. The vendor rule comes
+   second so a hovered vendor keeps its diamond. */
+@media (hover: hover) and (pointer: fine) {
+  .wm-pin:hover > span { transform: scale(1.5); }
+  .wm-pin-vendor:hover > span { transform: rotate(45deg) scale(1.5); }
+}
 /* A flight master: a small up-pointing triangle. */
 .wm-pin-flight > span {
   width: 0;

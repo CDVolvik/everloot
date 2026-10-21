@@ -88,13 +88,13 @@ function useDisclosure() {
 }
 
 const itemClass = "flex min-h-11 w-full items-center rounded-control px-3 text-left text-sm text-fg-2 hover:bg-canvas hover:text-accent disabled:opacity-60";
-const panelClass = "z-50 border-edge bg-panel p-2";
+const panelClass = "pop z-50 border-edge bg-panel p-2";
 
 function PlusIcon() {
   return <svg aria-hidden="true" width="14" height="14" viewBox="0 0 16 16"><path d="M8 2v12M2 8h12" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" /></svg>;
 }
-function Caret() {
-  return <svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.5" /></svg>;
+function Caret({ open }: { open: boolean }) {
+  return <svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10" className={open ? "rotate-180" : undefined}><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.5" /></svg>;
 }
 
 /** "+": Plan a build, Upload addon data, and New character while saved builds are on (it is on /me). */
@@ -111,7 +111,7 @@ export function CreateMenu({ savedBuilds }: { savedBuilds: boolean }) {
         aria-controls="create-menu"
         onClick={() => menu.setOpen(!menu.open)}
         className="inline-flex h-8 min-w-11 items-center justify-center gap-1 rounded-control border border-edge px-2 text-fg-2 hover:text-accent"
-      ><PlusIcon /><Caret /></button>
+      ><PlusIcon /><Caret open={menu.open} /></button>
       <div id="create-menu" hidden={!menu.open} className={`${panelClass} absolute right-0 top-full mt-2 w-56 rounded-card border`}>
         <ul>
           {links.map((link) => (
