@@ -185,7 +185,7 @@ export const tokens: Record<Mode, Record<TokenName, string>> = {
     // The primary button's fill on hover; its text is the canvas colour.
     "accent-hover": "#B3F566",
     // Blizzard's own posts (forum and Bluesky, posts and hotfixes; not builds) in the blue of a blue post.
-    "blue-post": "#00C0FF",
+    "blue-post": "#00B4FF",
     "q-poor": "#9D9D9D",
     "q-common": "#F2F4F8",
     "q-uncommon": "#1EFF00",
@@ -217,7 +217,7 @@ export const tokens: Record<Mode, Record<TokenName, string>> = {
     warning: "#8A5A00",
     ...tooltip,
     "accent-hover": "#256207",
-    "blue-post": "#00639E",
+    "blue-post": "#006A99",
     "q-poor": "#6B6B6B",
     "q-common": "#12130F",
     "q-uncommon": "#1A7A12",

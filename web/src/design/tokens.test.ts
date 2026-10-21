@@ -24,7 +24,7 @@ test("the values are the spec's", () => {
   expect(tokens.light["class-rogue"]).toBe("#746500");
   expect(tokens.light["chat-whisper"]).toBe("#A3218F");
   // Blue posts: a text colour in both modes, so the text-token contrast checks below cover it.
-  expect([tokens.dark["blue-post"], tokens.light["blue-post"]]).toEqual(["#00C0FF", "#00639E"]);
+  expect([tokens.dark["blue-post"], tokens.light["blue-post"]]).toEqual(["#00B4FF", "#006A99"]);
   expect(TEXT_TOKENS).toContain("blue-post");
   for (const m of ["dark", "light"] as const)
     expect([tokens[m].tooltip, tokens[m]["tooltip-border"], tokens[m]["tooltip-inner"]])

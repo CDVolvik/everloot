@@ -39,7 +39,7 @@ test("a write-up file: front matter, our words, named by its page id", () => {
   expect(w).toEqual({
     postId: "forum:70000001",
     reviewed: { by: "Test Maintainer", on: "2026-10-21" },
-    body: expect.stringMatching(/^The beta realms go down[\s\S]*\(\/changes\) for later posts\.$/),
+    body: expect.stringMatching(/^The beta realms go down[\s\S]*\(https:\/\/everloot\.app\/changes\) for later posts\.$/),
   });
   expect(() => parseWriteupFile("eu-70000001.md", fixture)).toThrow("must be named us-70000001.md");
   expect(() => parseWriteupFile("us-70000001.md", "no front matter")).toThrow("no front matter");
