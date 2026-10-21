@@ -3,8 +3,6 @@
  * caller passes the files, the category list and what the game files know, so tests can use small fixtures.
  * The overlap check against the Warcraft Wiki dump is not here; it needs the dump, which CI does not have.
  */
-import { SHOWN_MAX_QUEST_ID, SHOWN_MAX_SET_ID } from "../game-name-rule.js";
-import { SHOWN_MAX_ITEM_ID } from "../item-name-rule.js";
 import { BINDS, BLIZZARD_SOURCED, FrontMatter, inlineText, parsePage, SECTIONS, type Block, type Inline, type ParsedPage } from "./page.js";
 
 /** Ids the committed game data knows. Kinds with no committed list (NPCs, quests, factions) are checked for shape and range only. */
@@ -163,10 +161,7 @@ function checkPage(p: CheckedPage, ctx: CheckContext, bySlug: ReadonlyMap<string
       else if (e.raid !== (fm.type === "raid")) report(`binds.entrance "${b.entrance}" is a ${e.raid ? "raid" : "dungeon"}, but the page type is ${fm.type}`);
     }
     if (typeof b.zone === "number" && !known.zones.has(b.zone)) report(`binds.zone ${b.zone} is not a released zone in the game files`);
-    if (typeof b.itemSet === "number") {
-      if (b.itemSet >= SHOWN_MAX_SET_ID) report(`binds.itemSet ${b.itemSet} is above the shown range (below ${SHOWN_MAX_SET_ID})`);
-      else if (!known.itemSets.has(b.itemSet)) report(`binds.itemSet ${b.itemSet} is not an item set in the game files`);
-    }
+    if (typeof b.itemSet === "number" && !known.itemSets.has(b.itemSet)) report(`binds.itemSet ${b.itemSet} is not an item set in the game files`);
     for (const c of Array.isArray(b.changes) ? (b.changes as string[]) : []) if (!known.changes.has(c)) report(`binds.changes "${c}" is not an entry on /changes`);
   }
 
@@ -239,10 +234,7 @@ function checkPage(p: CheckedPage, ctx: CheckContext, bySlug: ReadonlyMap<string
 function tokenProblem(kind: string, id: number, known: KnownData): string | null {
   switch (kind) {
     case "item":
-      if (id >= SHOWN_MAX_ITEM_ID) return `is above the shown item range (below ${SHOWN_MAX_ITEM_ID})`;
       return known.items.has(id) ? null : "is not an item in the game files";
-    case "quest":
-      return id >= SHOWN_MAX_QUEST_ID ? `is above the shown quest range (below ${SHOWN_MAX_QUEST_ID})` : null;
     case "zone":
       return known.zones.has(id) ? null : "is not a released zone in the game files";
     default:

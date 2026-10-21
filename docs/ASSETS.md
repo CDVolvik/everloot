@@ -26,7 +26,7 @@ variables (`GAME_DATA_*`), item links stay plain while the other art still shows
 | `/tools/talents/<class>` | Talent icons, tooltips, node frames and spec backgrounds |
 | `/database/drops`, `/database/vendors/<id>`, `/tools/auctions` | Item icon beside each item link, the item's tooltip on hover and keyboard focus |
 | `/database/items/<id>` | The item's tooltip as a card, once players have reported the item; the icon of each spell that creates or uses the item, beside that relation; the item's name, quality colour and icon where the game files and the Warcraft Wiki give the same name |
-| `/database/items/<class>/<subclass>` | Icon and game file name of each listed item players have reported, and name, quality colour and icon where the game files and the Warcraft Wiki agree; other rows stay "Item N" |
+| `/database/items/<class>/<subclass>` | Icon and game file name of each listed item players have reported, and name, quality colour and icon for every item the game files or the Warcraft Wiki name; other rows stay "Item N" |
 | `/tools/professions` | Profession icons as a picker |
 | `/tools/raid` | Class, talent tree and buff icons, each buff's tooltip on hover and keyboard focus, and Molten Core's loading screen as the banner |
 | `/map` | The game's own continent and zone pictures under the zone outlines, with a switch to hide them; the continent's loading screen as the banner; each dungeon's and raid's loading screen, small, beside its entrance |
@@ -252,8 +252,8 @@ repeat these steps for a new build or another deployment.
    Redeploy. Open `/`, `/tools/talents/hunter`, `/database/drops`, `/tools/raid`, `/map` and
    `/changes`: the icons, pictures, banners and the credit line appear. Pages read the manifest and item files again at most once an
    hour. To turn it off, clear the variables and redeploy.
-8. **Item names.** The category lists and item pages name an item before players do where the game
-   files and the Warcraft Wiki agree ([data policy](DATA_POLICY.md), "Item names from the game files
+8. **Item names.** The category lists and item pages name an item before players do wherever the game
+   files or the Warcraft Wiki name it ([data policy](DATA_POLICY.md), "Item names from the game files
    and the Warcraft Wiki"). In `kb/`, with the snapshot and a knowledge base or release that holds the
    wiki dump:
 
@@ -262,7 +262,7 @@ repeat these steps for a new build or another deployment.
    ```
 
    It adds both sources to the name ledger (`data/item-names/ledger.json`, which only grows and stays on
-   this machine), prints the count per tier and the mismatches, and writes the matched names to
+   this machine), prints the count per tier and the mismatches, and writes the names to show to
    `data/assets/<product>-<build>-<config>-names/item-names.json`. Check the counts and a sample of the
    names in a pull request, then upload that one file to the private bucket from `web/`, with the same
    upload key in the environment:
@@ -298,9 +298,9 @@ repeat these steps for a new build or another deployment.
    npm run kb -- name-gaps data/client/<product>-<build>-<config>.sqlite --wiki data/release/<release>.sqlite --out data/name-gaps.md
    ```
 
-   For items, quests, item sets and spells it counts the ids the rules name and gives every other id a
-   reason and a route: a rule only the maintainer can widen, the addon's uploads, no source yet, or a
-   placeholder hidden on purpose. It lists ids, never names, and writes no name file; keep it local.
+   For items, quests, item sets and spells it gives every id the source of its name, or, for an id without
+   one, what would fill it: the addon's uploads, or no source yet. It lists ids, never names, and writes no
+   name file; keep it local.
 9. **Next build.** Repeat steps 5 to 8 with the new build. Check the counts against the last run
    before uploading; a jump in `iconsEncrypted`, `tooltipsUnresolved`, `mapsSkipped` or
    `loadingScreensSkipped`, or `logoExtracted` falling to 0, means Blizzard changed something.

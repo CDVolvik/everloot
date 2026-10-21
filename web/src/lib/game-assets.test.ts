@@ -268,14 +268,16 @@ test("the shown item names come from one private file for the client layer's bui
   const names = await loadItemNames("1.60.1.70450", BASE, store);
   expect(store.reads).toEqual([`${FOLDER}/item-names.json`]);
   expect(names?.wiki).toEqual({ name: namesFile.wiki.name, url: "https://warcraft.wiki.gg" });
-  expect(names?.names.get(19019)).toEqual({ name: "Thunderfury, Blessed Blade of the Windseeker", color: qualityColor(5), wikiPage: "https://warcraft.wiki.gg/wiki/Thunderfury,_Blessed_Blade_of_the_Windseeker" });
+  expect(names?.names.get(19019)).toEqual({ name: "Thunderfury, Blessed Blade of the Windseeker", color: qualityColor(5), wikiPage: "https://warcraft.wiki.gg/wiki/Thunderfury,_Blessed_Blade_of_the_Windseeker", source: "wiki" });
   expect(names?.names.has(9)).toBe(false);
 });
 
-test("the reader applies the id cap and the placeholder rule again, whatever the file holds", async () => {
-  const file = { ...namesFile, count: 4, names: { ...namesFile.names, 191666: { n: "Skeletal Steed", q: 4, w: "Skeletal_Steed" }, 883: { n: "Deprecated Fire Eyed Skull", q: 1, w: "Deprecated_Fire_Eyed_Skull" } } };
+test("every id shows; a name without a wiki page is the game files' alone, and one without a quality is common", async () => {
+  const file = { ...namesFile, count: 4, names: { ...namesFile.names, 191666: { n: "Skeletal Steed", q: 4 }, 883: { n: "Deprecated Fire Eyed Skull", w: "Deprecated_Fire_Eyed_Skull" } } };
   const names = await loadItemNames("1.60.1.70450", BASE, memoryStore({ [`${FOLDER}/item-names.json`]: file }));
-  expect([...names!.names.keys()].sort((a, b) => a - b)).toEqual([2589, 19019]);
+  expect([...names!.names.keys()].sort((a, b) => a - b)).toEqual([883, 2589, 19019, 191666]);
+  expect(names!.names.get(191666)).toEqual({ name: "Skeletal Steed", color: qualityColor(4), wikiPage: null, source: "files" });
+  expect(names!.names.get(883)).toEqual({ name: "Deprecated Fire Eyed Skull", color: qualityColor(1), wikiPage: "https://warcraft.wiki.gg/wiki/Deprecated_Fire_Eyed_Skull", source: "wiki" });
 });
 
 test("without the file, the bucket or the asset URL, or with a file for another build or of another kind, no names show", async () => {
@@ -297,13 +299,16 @@ const questFile = {
 const setFile = { schema: "everloot.item-set-names/1", build: { version: "1.60.1.70450" }, count: 2, names: { 1: "The Gladiator", 1570: "Twilight Invoker's Vestments" } };
 const spellFile = { schema: "everloot.spell-names/1", build: { version: "1.60.1.70450" }, count: 3, names: { 3275: "Linen Bandage", 16633: "Create Item Visual (DND)", 1316597: "Stock Crate" } };
 
-test("quest titles, set names and spell names each come from their own private file, with the rule applied again", async () => {
+test("quest titles, set names and spell names each come from their own private file, every id the file names", async () => {
   const store = memoryStore({ [`${FOLDER}/quest-names.json`]: questFile, [`${FOLDER}/item-set-names.json`]: setFile, [`${FOLDER}/spell-names.json`]: spellFile });
   const quests = await loadQuestNames("1.60.1.70450", BASE, store);
   expect(quests?.wiki).toEqual({ name: namesFile.wiki.name, url: "https://warcraft.wiki.gg" });
-  expect([...quests!.names]).toEqual([[176, { name: "Wanted: Hogger", wikiPage: "https://warcraft.wiki.gg/wiki/Wanted:_Hogger" }]]);
-  expect([...(await loadItemSetNames("1.60.1.70450", BASE, store))!.names]).toEqual([[1, "The Gladiator"]]);
-  expect([...(await loadSpellNames("1.60.1.70450", BASE, store))!.names]).toEqual([[3275, "Linen Bandage"]]);
+  expect([...quests!.names]).toEqual([
+    [176, { name: "Wanted: Hogger", wikiPage: "https://warcraft.wiki.gg/wiki/Wanted:_Hogger" }],
+    [65593, { name: "Hearts of the Lovers", wikiPage: "https://warcraft.wiki.gg/wiki/Hearts_of_the_Lovers" }],
+  ]);
+  expect([...(await loadItemSetNames("1.60.1.70450", BASE, store))!.names]).toEqual([[1, "The Gladiator"], [1570, "Twilight Invoker's Vestments"]]);
+  expect([...(await loadSpellNames("1.60.1.70450", BASE, store))!.names]).toEqual([[3275, "Linen Bandage"], [16633, "Create Item Visual (DND)"], [1316597, "Stock Crate"]]);
   expect(store.reads).toEqual([`${FOLDER}/quest-names.json`, `${FOLDER}/item-set-names.json`, `${FOLDER}/spell-names.json`]);
 });
 

@@ -1,7 +1,7 @@
 /**
- * The name gap report: for each kind the database pages name from the game files and the wiki, how many ids
- * the rules name and why each of the others prints as "Item N", "Quest N" and so on. Every blank gets one
- * reason and the route that would fill it, so the next step for each is a decision, a mining wave or the addon.
+ * The name gap report: for each kind the database pages name from the game files and the wiki, where each id's
+ * name comes from, and why the rest still print as "Item N", "Quest N" and so on. Every id gets one reason and
+ * the route that fills it, so the remaining blanks point at the addon or at a source we do not have yet.
  *
  * It reads the same sources and applies the same rules as item-names.ts and game-names.ts, in memory: it writes
  * no ledger and no name file. Names players agree on (3 installs) come first on the pages, but they live in the
@@ -10,22 +10,15 @@
  * The report lists ids, never names: it holds every id of the build, released or not, and stays local.
  */
 import { readClientMeta, readClientRows } from "./client-snapshot.js";
-import type { Edge } from "./edges.js";
-import { relationIds, shownQuestNames, wikiQuestTitles } from "./game-names.js";
-import { looksInternalGameName, mayShowSetName, mayShowSpellName, SHOWN_MAX_QUEST_ID, SHOWN_MAX_SET_ID, SHOWN_MAX_SPELL_ID } from "./game-name-rule.js";
+import { shownQuestNames, wikiQuestTitles } from "./game-names.js";
 import { emptyLedger, fileNames, mergeLedger, tierOf, wikiNames, type Ledger } from "./item-names.js";
-import { looksInternal, SHOWN_MAX_ITEM_ID } from "./item-name-rule.js";
 import type { TableReader } from "./talents/build-catalog.js";
 
 export const NAME_GAPS_SCHEMA = "everloot.name-gaps/1";
 
-/**
- * What fills a blank. shown: the rule names it. decision: a source names it, the rule holds it back, and only
- * the maintainer can change the rule. players: no file or wiki name; the addon's uploads name it after 3 installs.
- * none: no source names it yet. never: a placeholder or internal name, hidden on purpose.
- */
-export type Route = "shown" | "decision" | "players" | "none" | "never";
-export const ROUTES: Route[] = ["shown", "decision", "players", "none", "never"];
+/** What fills a blank. shown: a source names it. players: the addon's uploads, after 3 installs. none: no source yet. */
+export type Route = "shown" | "players" | "none";
+export const ROUTES: Route[] = ["shown", "players", "none"];
 
 export interface Bucket { reason: string; route: Route; count: number; sample: number[] }
 export interface KindGaps { kind: "item" | "quest" | "item_set" | "spell"; label: string; total: number; buckets: Bucket[] }
@@ -48,57 +41,40 @@ function tally(kind: KindGaps["kind"], label: string, ids: Iterable<number>, cla
   return { kind, label, total, buckets: [...buckets.values()].sort((a, b) => order(a) - order(b) || b.count - a.count) };
 }
 
-/** Items: every row of the build's Item table, by the ledger tier the item name rule reads. */
+/** Items: every row of the build's Item table, by the ledger tier the item names file is written from. */
 export function itemGaps(ledger: Ledger, build: string, ids: Iterable<number>): KindGaps {
   return tally("item", "Items", ids, (id) => {
-    const { tier, file } = tierOf(ledger.items[String(id)], build);
-    if (tier === "match") {
-      if (looksInternal(file!.name)) return ["placeholder or internal name", "never"];
-      if (id >= SHOWN_MAX_ITEM_ID) return [`files and wiki agree, id ${SHOWN_MAX_ITEM_ID} or above`, "decision"];
-      return ["files and wiki agree", "shown"];
-    }
-    if (tier === "mismatch") return ["files and wiki give different names", "decision"];
-    if (tier === "files") return ["name in the game files only", "decision"];
-    if (tier === "wiki") return ["name in the wiki only", "decision"];
+    const { tier } = tierOf(ledger.items[String(id)], build);
+    if (tier === "match") return ["files and wiki agree", "shown"];
+    if (tier === "mismatch") return ["files and wiki differ (the files' name shows)", "shown"];
+    if (tier === "files") return ["game files only", "shown"];
+    if (tier === "wiki") return ["wiki only", "shown"];
     return ["no name in the files or the wiki", "players"];
   });
 }
 
 /** Quests: every id of the build's QuestV2 table, which holds no titles; the wiki's quest infoboxes give them. */
 export function questGaps(build: string, questIds: number[], titles: Parameters<typeof shownQuestNames>[2]): KindGaps {
-  const wiki = { name: "", url: "", licence: "" };
-  const { file, mismatches } = shownQuestNames(build, questIds, titles, wiki);
+  const { file, mismatches } = shownQuestNames(build, questIds, titles, { name: "", url: "", licence: "" });
   const disagree = new Set(mismatches.map((m) => m.id));
   return tally("quest", "Quests", questIds, (id) => {
-    if (file.names[String(id)]) return ["wiki title for an id the build lists", "shown"];
-    if (disagree.has(id)) return ["wiki pages give different titles", "decision"];
-    if (titles.has(id)) return [`wiki title, id ${SHOWN_MAX_QUEST_ID} or above`, "decision"];
+    if (disagree.has(id)) return ["wiki pages differ (the first one's title shows)", "shown"];
+    if (file.names[String(id)]) return ["wiki title", "shown"];
+    if (titles.has(id)) return ["wiki title a Forever source contradicts", "players"];
     return ["no wiki title (the game files hold none)", "players"];
   });
 }
 
-/**
- * Item sets or spells: every row of the name table. The rule names only the ids the client layer's relations
- * point to, so a named id outside them is held back by the rule, not by a missing name.
- */
-export function fileNameGaps(
-  kind: "item_set" | "spell", label: string, rows: ReadonlyMap<number, Record<string, unknown>>, referenced: Iterable<number>,
-  may: (id: number, name: string) => boolean, cap: number,
-): KindGaps {
-  const used = new Set(referenced);
-  return tally(kind, label, [...rows.keys(), ...used], (id) => {
+/** Item sets or spells: every row of the name table. */
+export function fileNameGaps(kind: "item_set" | "spell", label: string, rows: ReadonlyMap<number, Record<string, unknown>>): KindGaps {
+  return tally(kind, label, rows.keys(), (id) => {
     const raw = rows.get(id)?.Name_lang;
-    const name = typeof raw === "string" ? raw.trim() : "";
-    if (!name) return ["no name in the game files", "none"];
-    if (looksInternalGameName(name)) return ["placeholder or internal name", "never"];
-    if (!used.has(id)) return ["named in the files, no item relation points to it", "decision"];
-    if (may(id, name)) return ["named in the files, used by a relation", "shown"];
-    return [`named in the files, id ${cap} or above`, "decision"];
+    return typeof raw === "string" && raw.trim() ? ["named in the game files", "shown"] : ["no name in the game files", "none"];
   });
 }
 
 /** One report from a snapshot and a knowledge base file with the Warcraft Wiki dump. Reads only; writes nothing. */
-export function runNameGaps(opts: { snapshotPath: string; kbPath: string; edges: readonly Edge[] }): NameGaps {
+export function runNameGaps(opts: { snapshotPath: string; kbPath: string }): NameGaps {
   const meta = readClientMeta(opts.snapshotPath);
   const get: TableReader = (t) => {
     const rows = readClientRows(opts.snapshotPath, t);
@@ -113,25 +89,22 @@ export function runNameGaps(opts: { snapshotPath: string; kbPath: string; edges:
   }
   const wiki = wikiNames(opts.kbPath);
   const ledger = mergeLedger(emptyLedger(), { at: meta.extractedAt, build: meta.version, files: fileNames(get), wikiDump: wiki.dump, wiki: wiki.names });
-  const ids = relationIds(opts.edges);
   return {
     schema: NAME_GAPS_SCHEMA,
     build: meta.version,
     kinds: [
       itemGaps(ledger, meta.version, itemIds),
       questGaps(meta.version, questIds, wikiQuestTitles(opts.kbPath).titles),
-      fileNameGaps("item_set", "Item sets", sets, ids.sets, mayShowSetName, SHOWN_MAX_SET_ID),
-      fileNameGaps("spell", "Spells", spells, ids.spells, mayShowSpellName, SHOWN_MAX_SPELL_ID),
+      fileNameGaps("item_set", "Item sets", sets),
+      fileNameGaps("spell", "Spells", spells),
     ],
   };
 }
 
 const ROUTE_TEXT: Record<Route, string> = {
-  shown: "named by the rule",
-  decision: "a source names it; the rule holds it back (maintainer's call)",
+  shown: "a source names it",
   players: "addon uploads, after 3 installs agree",
   none: "no source yet",
-  never: "hidden on purpose",
 };
 
 export function formatNameGaps(report: NameGaps): string {
@@ -141,8 +114,8 @@ export function formatNameGaps(report: NameGaps): string {
     "Names the game files and the Warcraft Wiki give, under the rules in docs/DATA_POLICY.md. Names players agree on",
     "(3 installs) are not counted: they live in the upload store and come first on the pages.",
     "",
-    "| Kind | Ids | Shown | Decision | Players | No source | Hidden |",
-    "|---|---|---|---|---|---|---|",
+    "| Kind | Ids | Shown | Players | No source |",
+    "|---|---|---|---|---|",
   ];
   for (const k of report.kinds) {
     const n = (r: Route) => k.buckets.filter((b) => b.route === r).reduce((s, b) => s + b.count, 0);
