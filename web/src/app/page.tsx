@@ -64,7 +64,9 @@ export default async function Home() {
   const addon = latestAddonRelease();
   const categories = CLIENT_TAXONOMY.classes.filter((c) => c.items > 0).sort((a, b) => b.items - a.items).slice(0, 6);
   // What's new: the newest entries the site's own timeline holds, newest first.
-  const newest = loadTimeline().slice(0, 4);
+  const newest = loadTimeline()
+    .filter((e, i, all) => all.findIndex((o) => o.title === e.title && o.at === e.at) === i)
+    .slice(0, 4);
   const status = new Map(tools.map((t) => [toolHref(t), t.status]));
   const groups = TOOL_GROUPS.map((g) => ({ ...g, links: g.links.filter((l) => l.href !== "/tools/talents") }));
 

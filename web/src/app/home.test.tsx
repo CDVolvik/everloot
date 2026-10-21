@@ -36,3 +36,7 @@ test("the home page says what is new, with the kind and the date of each entry",
   expect(html).toMatch(/(Blue post|Hotfix|Build)<\/span>/);
   expect(text).toMatch(/· (January|February|March|April|May|June|July|August|September|October|November|December) \d+, \d{4}/);
 });
+test("the panel shows a post that arrived from two regions once", () => {
+  const titles = [...html.matchAll(/href="https:\/\/bsky\.app[^"]*"[^>]*>([^<]+)</g)].map((m) => m[1]);
+  expect(new Set(titles).size).toBe(titles.length);
+});
