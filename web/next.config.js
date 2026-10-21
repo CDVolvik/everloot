@@ -48,6 +48,8 @@ const nextConfig = {
     "/lore/[slug]": ["./.release/*.sqlite", "./.release/*.manifest.json"],
     "/lore": ["./.release/*.sqlite", "./.release/*.manifest.json"],
     "/search": ["./.release/*.sqlite", "./.release/*.manifest.json"],
+    // The wiki's pages are read from kb/wiki when a page is rebuilt (the key covers /wiki and /wiki/[slug]).
+    "/wiki": ["../kb/wiki/*.md", "../kb/wiki/categories.yaml"],
     "/lore/browse/[type]": ["./.release/*.sqlite", "./.release/*.manifest.json"],
     "/lore/coverage": ["./.release/*.sqlite", "./.release/*.manifest.json"],
     // The build-link previews draw their card on each request, so they read the Geist fonts at run time.

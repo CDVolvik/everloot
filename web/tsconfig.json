@@ -18,6 +18,7 @@
       "@/*": ["./src/*"],
       "better-sqlite3": ["./node_modules/@types/better-sqlite3"],
       "zod": ["./node_modules/zod"],
+      "yaml": ["./node_modules/yaml"],
       "@everloot/protocol": ["./node_modules/@everloot/protocol"],
       "@modelcontextprotocol/sdk/*": ["./node_modules/@modelcontextprotocol/sdk/dist/esm/*"]
     }

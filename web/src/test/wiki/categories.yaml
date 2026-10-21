@@ -1,0 +1,9 @@
+# Fixture categories for the wiki page tests: a few of kb/wiki/categories.yaml.
+place:
+  eastern-kingdoms: Eastern Kingdoms
+  westfall: Westfall
+kind:
+  dungeons: Dungeons
+  zones: Zones
+  concepts: Concepts
+theme: {}
