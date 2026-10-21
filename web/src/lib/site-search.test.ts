@@ -2,7 +2,7 @@ import { afterEach, beforeAll, expect, test, vi } from "vitest";
 import { buildLoreRelease } from "@/test/lore-release";
 
 const mocks = vi.hoisted(() => ({
-  names: { items: new Map<number, string>(), npcs: new Map<number, string>(), quests: new Map<number, string>() },
+  names: { items: new Map<number, string>(), npcs: new Map<number, string>(), objects: new Map<number, string>(), quests: new Map<number, string>() },
   objects: { rates: [] as unknown[], measuredZeros: [] as unknown[], names: [] as unknown[], unreachable: false },
 }));
 vi.mock("@/lib/names", () => ({ loadNames: async () => mocks.names }));
@@ -13,7 +13,7 @@ beforeAll(async () => { release = await buildLoreRelease(); });
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.resetModules();
-  mocks.names = { items: new Map(), npcs: new Map(), quests: new Map() };
+  mocks.names = { items: new Map(), npcs: new Map(), objects: new Map(), quests: new Map() };
   mocks.objects = { rates: [], measuredZeros: [], names: [], unreachable: false };
 });
 
@@ -66,6 +66,9 @@ test("an id opens the item, NPC and quest with that id first, named when a name 
 test("an object is found by id, and only when it has public loot observations", async () => {
   mocks.objects.rates = [{ sourceObjectId: 55, itemId: 9, kills: 10, drops: 3, rate: 0.3, reporters: 3, public: true }];
   expect((await search("55")).find((g) => g.type === "object")!.results[0]).toMatchObject({ href: "/database/objects/55", exact: true });
+  mocks.names.objects = new Map([[55, "Copper Vein"]]);
+  expect((await search("55")).find((g) => g.type === "object")!.results[0]).toMatchObject({ label: "Copper Vein" });
+  mocks.names.objects = new Map();
   expect((await search("56")).find((g) => g.type === "object")).toBeUndefined();
   mocks.objects.unreachable = true;
   expect((await search("55")).find((g) => g.type === "object")).toBeUndefined();

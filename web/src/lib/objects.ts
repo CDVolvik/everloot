@@ -9,6 +9,7 @@ export async function loadObjectFacts(): Promise<ObjectFacts & { unreachable: bo
     rates: unreachable ? [] : rollup.rates,
     measuredZeros: unreachable ? [] : rollup.measuredZeros,
     names: unreachable ? [] : items.names,
+    objects: unreachable ? [] : items.objects,
     unreachable,
     dataAsOf: rollup.stats.dataAsOf,
   };

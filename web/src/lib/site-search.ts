@@ -77,12 +77,12 @@ function agreed(kind: "item" | "npc" | "quest", names: Map<number, string>, q: s
   return { results: out, total: out.length };
 }
 
-/** Objects have no names in uploads yet: an id that has public loot observations is the only way to one. */
-async function objectById(id: number | null): Promise<SearchResult[]> {
+/** An object is found by its id when it has public loot observations; its name is the agreed one, if any. */
+async function objectById(id: number | null, names: Map<number, string>): Promise<SearchResult[]> {
   if (id === null) return [];
   const facts = await loadObjectFacts();
   return !facts.unreachable && objectList(facts).some((o) => o.objectId === id)
-    ? [{ label: `Object ${id}`, href: entityHref("object", id), note: `id ${id}`, exact: true, id }] : [];
+    ? [{ label: names.get(id) ?? `Object ${id}`, href: entityHref("object", id), note: `id ${id}`, exact: true, id }] : [];
 }
 
 /**
@@ -101,7 +101,7 @@ export async function siteSearch(raw: string, { only, limit = GROUP_LIMIT, names
 
   const names = given ?? await loadNames();
   for (const kind of ["item", "npc", "quest"] as const) if (want(kind)) found.set(kind, agreed(kind, names[`${kind}s`], q, id));
-  if (want("object")) { const objects = await objectById(id); found.set("object", { results: objects, total: objects.length }); }
+  if (want("object")) { const objects = await objectById(id, names.objects); found.set("object", { results: objects, total: objects.length }); }
 
   if (!only) {
     // Achievements, factions, titles and quest chains three players reported, by name or id; none when the rollup cannot be read.
@@ -205,7 +205,7 @@ export async function suggest(raw: string, scope?: Scope, names?: Names): Promis
   const ranked: { s: Suggestion; r: number; t: number }[] = [];
   for (const [t, type] of order.entries()) {
     if (type === "object") {
-      for (const o of await objectById(id)) ranked.push({ s: { type, id: o.id!, label: o.label, href: o.href }, r: -1, t });
+      for (const o of await objectById(id, all.objects)) ranked.push({ s: { type, id: o.id!, label: o.label, href: o.href }, r: -1, t });
       continue;
     }
     for (const x of agreed(type, all[`${type}s`], q, id).results.slice(0, SUGGEST_LIMIT)) {

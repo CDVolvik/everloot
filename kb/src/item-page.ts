@@ -4,6 +4,7 @@
  * A name or a map pin is public when 3 installs agree.
  * Wowhead is the page shape. Its rows stay there.
  */
+import { agreedObjectNames, type ObjectSpawnRow } from "./object-spawns.js";
 
 export const ITEM_AGREEMENT = 3;
 
@@ -59,6 +60,8 @@ export type ItemFacts = {
   rates: DropRateRow[];
   names: ItemNameSighting[];
   npcs: NpcSighting[];
+  /** Object rows that carry a name; absent where no object names are known. */
+  objects?: ObjectSpawnRow[];
 };
 
 function clean(value: string): string {
@@ -101,15 +104,16 @@ function median(values: number[]): number {
   return Math.round(value * 10) / 10;
 }
 
-function sourceLabel(npcId: number | undefined, objectId: number | undefined, npcName: string | null): string {
+function sourceLabel(npcId: number | undefined, objectId: number | undefined, npcName: string | null, objectName: string | undefined): string {
   if (npcId !== undefined) return npcName ? `NPC ${npcId} ${npcName}` : `NPC ${npcId}`;
-  return `Object ${objectId}`;
+  return objectName ? `Object ${objectId} ${objectName}` : `Object ${objectId}`;
 }
 
 export function itemPage(itemId: number, facts: ItemFacts): ItemPage {
   const name = agreedLabel(
     facts.names.filter((row) => row.itemId === itemId).map((row) => ({ installId: row.installId, label: row.name })),
   );
+  const objectNames = agreedObjectNames(facts.objects ?? []);
   const drops = facts.rates
     .filter((row) => row.public && row.itemId === itemId)
     .map((row) => {
@@ -124,7 +128,7 @@ export function itemPage(itemId: number, facts: ItemFacts): ItemPage {
       return {
         sourceNpcId: row.sourceNpcId,
         sourceObjectId: row.sourceObjectId,
-        source: sourceLabel(row.sourceNpcId, row.sourceObjectId, npcName),
+        source: sourceLabel(row.sourceNpcId, row.sourceObjectId, npcName, row.sourceObjectId === undefined ? undefined : objectNames.get(row.sourceObjectId)),
         kills: row.kills,
         drops: row.drops,
         rate: row.rate,

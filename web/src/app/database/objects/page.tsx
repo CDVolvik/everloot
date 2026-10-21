@@ -5,6 +5,7 @@ import { objectList } from "../../../../../kb/src/object-page";
 import { Container, DataTable, DataTitle, FilterBar, ResultStrip, type Column } from "@/components/ui";
 import type { Crumb } from "@/lib/jsonld";
 import { loadObjectFacts } from "@/lib/objects";
+import { objectNames } from "@/lib/names";
 import { LINK } from "../entity";
 import { listHref, listMetadata, listQuery, nextSort, NoMatches, NoObservations, PER_PAGE, sortParam, sortRows, Unreadable, type ListQuery, type Search } from "../list-parts";
 
@@ -35,7 +36,8 @@ export default async function ObjectsPage(props: { searchParams?: Promise<Search
   if (!q) notFound();
   const facts = await loadObjectFacts();
   const all = facts.unreachable ? [] : objectList(facts);
-  // Objects have no names in uploads: the box takes an id.
+  const names = objectNames(facts);
+  // The box takes an id: an object is found by its number, whether or not players agree on a name yet.
   const id = q.q && /^#?\d+$/.test(q.q) ? Number(q.q.replace("#", "")) : null;
   const matched = q.q ? all.filter((o) => o.objectId === id) : all;
   const sort = q.sort ?? DEFAULT_SORT;
@@ -46,7 +48,7 @@ export default async function ObjectsPage(props: { searchParams?: Promise<Search
   const here = (over: Partial<ListQuery<Sort>>) => href({ ...q, page: 1, ...over });
 
   const columns: Column<Row>[] = [
-    { key: "id", header: "Object", sortable: true, cell: (o) => <Link href={`/database/objects/${o.objectId}`} className={LINK}>Object {o.objectId}</Link> },
+    { key: "id", header: "Object", sortable: true, cell: (o) => <Link href={`/database/objects/${o.objectId}`} className={LINK}>{names.get(o.objectId) ?? `Object ${o.objectId}`}</Link> },
     { key: "windows", header: "Loot windows", numeric: true, sortable: true, cell: (o) => o.windows },
     { key: "items", header: "Items seen", numeric: true, sortable: true, cell: (o) => o.items },
     { key: "installs", header: "Install IDs", numeric: true, sortable: true, cell: (o) => o.reporters },

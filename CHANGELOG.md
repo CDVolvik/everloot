@@ -15,6 +15,9 @@ build that has a zip in the repository. Earlier builds have none.
 Pull requests merged to `main` are listed in the nightly pre-releases until the next tagged release.
 
 ### Changed
+- Site and knowledge base: game objects show the name three installs agree on, on the object page, the objects
+  and drops lists, hover cards, search and the item pages that list them as a source, and in the `object_page`
+  answer. Until three agree, they still read Object and the id.
 - Site: the player pages are live. A player page shows what the addon last saw of a character — race, class,
   level, guild and the day — found by the start of the name, and every page carries a hide link and a hide
   form. The search index stays off for now, so the pages are reached by name and are not listed anywhere.

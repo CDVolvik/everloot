@@ -24,8 +24,9 @@ export async function generateMetadata(props: { params: Promise<{ id: string }> 
   const page = objectPage(Number(params.id), facts);
   if (unknownObject(page, facts.unreachable)) notFound();
   const windows = facts.unreachable ? null : page.zero?.kills ?? page.drops[0]?.kills ?? null;
+  const name = !facts.unreachable && page.name ? page.name : `Object ${params.id}`;
   return {
-    ...pageMetadata({ title: entityTitle(`Object ${params.id}`, "object"), description: objectDescription({ id: page.objectId, items: facts.unreachable ? 0 : page.drops.length, windows }), path: `/database/objects/${params.id}` }),
+    ...pageMetadata({ title: entityTitle(name, "object"), description: objectDescription({ name, id: page.objectId, items: facts.unreachable ? 0 : page.drops.length, windows }), path: `/database/objects/${params.id}` }),
     robots: { index: objectIndexable(page, facts.unreachable), follow: true },
   };
 }
@@ -44,7 +45,7 @@ export default async function ObjectPage(props: { params: Promise<{ id: string }
   const facts = await loadObjectFacts();
   const page = objectPage(Number(params.id), facts);
   if (unknownObject(page, facts.unreachable)) notFound();
-  const title = `Object ${page.objectId}`;
+  const title = !facts.unreachable && page.name ? page.name : `Object ${page.objectId}`;
   const trail: Crumb[] = [
     { name: "Home", path: "/" },
     { name: "Database", path: "/database" },
@@ -60,7 +61,7 @@ export default async function ObjectPage(props: { params: Promise<{ id: string }
       null,
       Date.now(),
     ),
-    named: false,
+    named: title !== `Object ${page.objectId}`,
   });
 
   return (

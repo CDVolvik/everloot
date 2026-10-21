@@ -7,6 +7,7 @@ required, or tightening a limit is a major release.
 ## [Unreleased]
 
 ### Changed
+- The `object_page` answer carries `name`, null until 3 installs agree on one, as the NPC page does.
 - Description text only, no shape change: in `API_ROUTES`, the `limit` paging parameter states its caps (500 rows
   without a key, 5,000 with one), and the corpus and client-layer routes and the market rule read in plain words.
 
