@@ -55,22 +55,37 @@ export const DATA_TYPE = {
 export const DATA_SIZE = { row: 36, "row-sm": 52, th: 32, control: 32, "control-sm": 40, icon: 24, header: 44, tip: 320 } as const;
 
 /**
- * Motion (visual identity spec, item 12: 150 ms fades, none under `prefers-reduced-motion`). Durations in ms,
- * curves as CSS timing functions. Tailwind's `duration-fade`, `ease-out` and default curve, and the CSS variables
- * `--dur-fade`, `--ease-out` and `--ease-color`, come from here; nothing else types a duration or a curve.
+ * Motion (visual identity spec, item 12: fades and small purposeful transforms, none under
+ * `prefers-reduced-motion`). Durations in ms, curves as CSS timing functions. Tailwind's `duration-fade`, `ease-out`
+ * and default curve, and the CSS variables `--dur-*` and `--ease-*`, come from here; nothing else types a duration
+ * or a curve.
  */
 export const MOTION = {
   duration: {
+    /** A button's press (scale 0.98). */
+    press: 100,
+    /** A menu closing: faster than it opened. */
+    exit: 100,
     /** The site's one fade: menus opening, label swaps, the navigation bar. Colour changes too. */
     fade: 150,
+    /** A raid member gliding to its new slot (FLIP); the phone sheet closing. */
+    panel: 200,
+    /** The phone account sheet sliding up; the only 300. */
+    sheet: 300,
+    /** The navigation bar growing towards 90 % while a page loads. */
+    grow: 2000,
     /** The wait before the navigation bar shows, so a fast page change never flashes it. */
     pendingDelay: 150,
     /** How long a copy button says "Copied". */
     copied: 2000,
   },
   ease: {
-    /** Fades in: anything answering the user. */
+    /** Entrances and feedback: anything answering the user. */
     out: "cubic-bezier(0.23, 1, 0.32, 1)",
+    /** Something moving from one place on screen to another (the raid glide). */
+    inOut: "cubic-bezier(0.77, 0, 0.175, 1)",
+    /** The phone sheet. */
+    drawer: "cubic-bezier(0.32, 0.72, 0, 1)",
     /** Hover colour changes, and the default for every transition. */
     color: "ease",
   },
@@ -79,8 +94,14 @@ export const MOTION = {
 /** The motion tokens as CSS variables, for globals.css and world-map.css. */
 export function motionVariables(): Record<string, string> {
   return {
+    "--dur-press": `${MOTION.duration.press}ms`,
+    "--dur-exit": `${MOTION.duration.exit}ms`,
     "--dur-fade": `${MOTION.duration.fade}ms`,
+    "--dur-panel": `${MOTION.duration.panel}ms`,
+    "--dur-sheet": `${MOTION.duration.sheet}ms`,
+    "--dur-grow": `${MOTION.duration.grow}ms`,
     "--ease-out": MOTION.ease.out,
+    "--ease-drawer": MOTION.ease.drawer,
     "--ease-color": MOTION.ease.color,
   };
 }

@@ -1,6 +1,7 @@
 // Keeps the old look from coming back: each rule scans every non-test .ts, .tsx and .css file
-// under web/src, line by line. One exception: the banner's scrim (components/ui/Banner.tsx), the fade that
-// lets section-hub art blend into the page (Carlos, 10/19). The primary button is a flat fill, not a gradient.
+// under web/src, line by line. Exceptions: the banner's scrim (components/ui/Banner.tsx), the fade that
+// lets section-hub art blend into the page (Carlos, 10/19), and the mascot (components/glint/), whose loops
+// and movement are its own. The primary button is a flat fill, not a gradient.
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -83,11 +84,29 @@ const RULES: Rule[] = [
     spares: ["price ticker"],
   },
   {
-    // Motion is 150 ms fades and the chat cursor only.
-    name: "attention animations",
-    pattern: token(String.raw`animate-(?:pulse|ping|bounce)`),
-    bites: ["animate-pulse", "motion-safe:animate-ping", "animate-bounce"],
-    spares: ["animate-none"],
+    // Motion answers the visitor (spec item 12); nothing loops for decoration. Two exceptions: the chat cursor's
+    // blink, and the mascot, which keeps its loops inside its own component.
+    name: "decorative loops",
+    pattern: tokenOr(
+      String.raw`animate-(?:pulse|ping|bounce|spin)`,
+      String.raw`^(?!.*caret-blink).*\banimation(?:-iteration-count)?:[^;]*\binfinite\b|iterations:\s*Infinity`,
+    ),
+    bites: ["animate-pulse", "motion-safe:animate-ping", "animate-bounce", "animate-spin", "animation: glow var(--dur-fade) infinite;", "animation-iteration-count: infinite;", "{ iterations: Infinity }"],
+    spares: ["animate-none", "animation: caret-blink var(--dur-blink) steps(1, end) infinite;", "animation: pop-in var(--dur-fade) var(--ease-out);", "Infinity"],
+    allow: ["components/glint/"],
+  },
+  {
+    // Small transforms only (spec item 12): a press scales between 0.98 and 1, and a fixed offset moves 8 px at
+    // most. A sheet slides by a percentage of itself and a FLIP move by a measured distance, so neither is a literal.
+    // The world map's pins grow 1.5x while hovered or selected: a marker's state on the map, not a press.
+    name: "transforms beyond item 12",
+    pattern: tokenOr(
+      String.raw`scale-(?!100(?:[\s"'\x60]|$))\d+|scale-\[(?!(?:0?\.9[89]\d*|1)\])[^\]]*\]`,
+      String.raw`\bscale\((?!\s*(?:1|0?\.9[89]\d*)\s*\))|translate(?:[XY]|3d)?\((?:[^)]*?[\s(,])?-?(?:9|[1-9]\d+)(?:\.\d+)?px`,
+    ),
+    bites: ["scale-95", "hover:scale-105", "active:scale-[0.96]", "transform: scale(0.97);", "transform: scale(1.05);", "scale(0)", "transform: translateY(-12px);", "translate(0, 16px)", "translateX(9px)"],
+    spares: ["scale-100", "active:scale-[0.98]", "transform: scale(0.98);", "transform: scaleX(0.1);", "transform: translateY(-4px);", "transform: translateY(100%);", "translate(${dx}px, ${dy}px)", "translate(${x + 12}px, ${y + 12}px)", "-translate-x-1/2", "translateY(8px)"],
+    allow: ["components/glint/", "components/map/world-map.css"],
   },
   {
     // Durations and curves come from MOTION in design/tokens.ts: `duration-fade`, `ease-out`, the default curve,
@@ -139,8 +158,11 @@ function* sourceFiles(dir: string): Generator<string> {
 
 const files = [...sourceFiles(src)].map((path) => ({ name: relative(src, path).replaceAll("\\", "/"), lines: readFileSync(path, "utf8").split(/\r?\n/) }));
 
+/** An allow entry is a file, or a folder when it ends in "/". */
+const allowed = (rule: Rule, name: string) => rule.allow?.some((a) => (a.endsWith("/") ? name.startsWith(a) : name === a)) ?? false;
+
 function offenders(rule: Rule): string[] {
-  return files.filter(({ name }) => !rule.allow?.includes(name)).flatMap(({ name, lines }) =>
+  return files.filter(({ name }) => !allowed(rule, name)).flatMap(({ name, lines }) =>
     lines.flatMap((line, i) => (rule.pattern.test(line) ? [`src/${name}:${i + 1}`] : [])));
 }
 

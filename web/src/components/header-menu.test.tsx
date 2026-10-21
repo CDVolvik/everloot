@@ -88,3 +88,19 @@ test("/ focuses the search field unless the visitor is typing", async () => {
   expect(document.activeElement).toBe(other);
   other.remove();
 });
+
+test("Tools stays in the page while closed (hidden), so it can leave by transition, and rapid toggling ends where the last click left it", async () => {
+  const panel = () => container.querySelector<HTMLElement>("#tools-menu")!;
+  expect(panel().className).toMatch(/(?:^|\s)pop(?:\s|$)/);
+  expect(panel().hidden).toBe(true);
+  for (let i = 0; i < 5; i++) await act(async () => toolsButton().click());
+  expect([toolsButton().getAttribute("aria-expanded"), panel().hidden]).toEqual(["true", false]);
+  await act(async () => toolsButton().click());
+  expect([toolsButton().getAttribute("aria-expanded"), panel().hidden]).toEqual(["false", true]);
+});
+
+test("the phone menu enters with the menu motion", async () => {
+  const toggle = Array.from(container.querySelectorAll("button")).find((b) => b.textContent === "Menu")!;
+  await act(async () => toggle.click());
+  expect(container.querySelector("#site-navigation")!.className).toMatch(/^pop /);
+});
