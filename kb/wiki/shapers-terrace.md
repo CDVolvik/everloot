@@ -2,8 +2,8 @@
 id: 28
 slug: shapers-terrace
 title: Shaper's Terrace
-type: concept
-binds: {}
+type: dungeon
+binds: { zone: 1449 }
 summary: A new WoW Forever dungeon in the northern hills of Un'Goro Crater, an old titan site where power crystals gathered in the crater are put to use. Known only from Blizzard's announcement so far.
 categories: [dungeons, kalimdor, un-goro-crater]
 origin: original
@@ -27,9 +27,6 @@ crystals, and the outdoor zone feeds into the dungeon. Players bring power cryst
 Un'Goro and use them at consoles inside the terrace, so time spent in the crater pays off once the group goes
 in.
 
-Players who did the crater's pylon quests in the original game will remember the coloured power crystals. Blizzard
-does not say whether the crystals the terrace wants are the same ones, so this page does not either.
-
 ## Getting there
 
 The terrace is in the northern hills of {zone:1449}. The game files list Marshal's Refuge as the crater's
@@ -39,9 +36,16 @@ The game files Everloot has read so far do not have an entrance for Shaper's Ter
 not tied to a dungeon entrance yet, and why the level range, bosses and loot a dungeon page normally shows are
 missing here.
 
+## History
+
+Blizzard calls the terrace an ancient titan facility but has not said who built it or what it was for.
+Players who did the crater's pylon quests in the original game will remember the coloured power crystals. Blizzard
+does not say whether the crystals the terrace wants are the same ones, so this page does not either.
+
 ## In WoW: Forever
 
 Shaper's Terrace is new in WoW: Forever. Blizzard lists it as the last of the new dungeons, alongside Blackmaw
 Hold, for characters at the end of the levelling road. This page is written from Blizzard's announcement of the
 new dungeons on October 20, 2026, and nothing on it has been seen in play or recorded on Everloot yet. When the
-entrance turns up in the game files or players record a run, this becomes a full dungeon page with live data.
+entrance turns up in the game files or players record a run, its entrance is bound here and the
+bosses, loot and level range fill in.

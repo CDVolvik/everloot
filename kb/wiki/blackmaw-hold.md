@@ -2,8 +2,8 @@
 id: 27
 slug: blackmaw-hold
 title: Blackmaw Hold
-type: concept
-binds: {}
+type: dungeon
+binds: { zone: 1447 }
 summary: A new max-level WoW Forever dungeon in Azshara, a furbolg city behind a long-sealed gate where the Blackmaw clan is fighting a spreading corruption. Known only from Blizzard's announcements so far.
 categories: [dungeons, kalimdor, azshara]
 origin: original
@@ -23,10 +23,6 @@ people of Kalimdor's forests. It belongs to the Blackmaw clan, and Blizzard says
 fight against a corruption that is spreading through their groves and the tunnels that wind through the
 mountain.
 
-Players who know Kalimdor have seen this before. In the original game most furbolg tribes had already fallen to
-corruption, and the Timbermaw of Felwood and Winterspring were the ones still holding out. Blizzard does not say
-what is corrupting the Blackmaw, so this page does not guess.
-
 Blizzard calls Blackmaw Hold a large dungeon for characters at the level cap, with more than one route through
 it and several bosses. It also says the deepest part of the hold may lead somewhere even further down.
 
@@ -39,6 +35,12 @@ The game files Everloot has read so far do not have an entrance for Blackmaw Hol
 tied to a dungeon entrance yet, and why the level range, bosses and loot a dungeon page normally shows are
 missing here.
 
+## History
+
+Players who know Kalimdor have seen this before. In the original game most furbolg tribes had already fallen to
+corruption, and the Timbermaw of Felwood and Winterspring were the ones still holding out. Blizzard does not say
+what is corrupting the Blackmaw, so this page does not guess.
+
 ## In WoW: Forever
 
 Blackmaw Hold is new in WoW: Forever. Blizzard's raid overview, also published on October 20, 2026, lists
@@ -46,5 +48,5 @@ Blackmaw Hold as one of the ways into the Barrow Deeps, one of the first raids. 
 further down, though Blizzard does not join the two in so many words.
 
 This page is written from those two announcements, and nothing on it has been seen in play or recorded on
-Everloot yet. When the entrance turns up in the game files or players record a run, this becomes a full
-dungeon page with live data.
+Everloot yet. When the entrance turns up in the game files or players record a run, its entrance is bound here and the
+bosses, loot and level range fill in.

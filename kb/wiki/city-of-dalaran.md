@@ -2,8 +2,8 @@
 id: 23
 slug: city-of-dalaran
 title: City of Dalaran
-type: concept
-binds: {}
+type: dungeon
+binds: { zone: 1416 }
 summary: A new WoW Forever dungeon in the Alterac Mountains. The barrier around Dalaran is down and the city is full of magic gone wrong. Each faction has an attunement quest line. Known only from Blizzard's announcement so far.
 categories: [dungeons, eastern-kingdoms, alterac-mountains]
 origin: original
@@ -17,11 +17,7 @@ reviewed: null
 
 ## Overview
 
-Dalaran, the city of the Kirin Tor mages, was destroyed during the Third War. In the original game it sat in
-the Alterac Mountains behind a violet barrier while the mages rebuilt it, and players could look at the dome but
-never go in.
-
-In WoW: Forever the barrier has come down, and the city behind it has turned on itself. Its constructs no
+The barrier around Dalaran has come down, and the city behind it has turned on itself. Its constructs no
 longer take orders, its enchantments do the opposite of what they were cast for, and wild arcane energy is loose
 in the streets. Once the Kirin Tor trust a group enough to
 let it in, the way in is through the sewers and then up into the city itself. Blizzard says the route through
@@ -43,8 +39,15 @@ The game files Everloot has read so far do not have an entrance for the City of 
 is not tied to a dungeon entrance yet, and why the level range, bosses, loot and the attunement quests' own
 pages are not linked here.
 
+## History
+
+Dalaran, the city of the Kirin Tor mages, was destroyed during the Third War. In the original game it sat in
+the Alterac Mountains behind a violet barrier while the mages rebuilt it, and players could look at the dome but
+never go in.
+
 ## In WoW: Forever
 
 The City of Dalaran is new in WoW: Forever. This page is written from Blizzard's announcement of the new
 dungeons on October 20, 2026, and nothing on it has been seen in play or recorded on Everloot yet. When the
-entrance and the quests can be matched to the game files, the page becomes a full dungeon page with live data.
+entrance and the quests can be matched to the game files, its entrance is bound here and the
+bosses, loot and level range fill in.

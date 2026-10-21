@@ -2,7 +2,7 @@
 id: 25
 slug: kroldok-stronghold
 title: Krol'dok Stronghold
-type: concept
+type: dungeon
 binds: {}
 summary: A new WoW Forever dungeon in the Riverglades, an ogre fortress whose raiders have been kidnapping travelers and sacking villages. Known only from Blizzard's announcement so far.
 categories: [dungeons, eastern-kingdoms]
@@ -40,9 +40,14 @@ The game files Everloot has read so far do not have an entrance for Krol'dok Str
 is not tied to a dungeon entrance yet, and why the level range, bosses and loot a dungeon page normally shows
 are missing here.
 
+## History
+
+Blizzard has not given the stronghold or its ogres a history yet. This section will be written when Blizzard
+says more or when quest text recorded in play tells the story.
+
 ## In WoW: Forever
 
 Krol'dok Stronghold is new in WoW: Forever, in a zone that is new as well. This page is written from Blizzard's
 announcement of the new dungeons on October 20, 2026, and nothing on it has been seen in play or recorded on
-Everloot yet. When the entrance turns up in the game files or players record a run, this becomes a full dungeon
-page with live data.
+Everloot yet. When the entrance turns up in the game files or players record a run, its entrance is bound here and the
+bosses, loot and level range fill in.

@@ -2,8 +2,8 @@
 id: 29
 slug: skyborne
 title: Skyborne
-type: concept
-binds: { tool: /wow-forever }
+type: race
+binds: {}
 summary: The new playable race in WoW Forever, descendants of Highborne exiles who made a pact with the spirits of the wind. Each Skyborne picks the Horde or the Alliance at character creation.
 categories: [races]
 origin: original

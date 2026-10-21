@@ -2,8 +2,8 @@
 id: 21
 slug: ruins-of-lordaeron
 title: Ruins of Lordaeron
-type: concept
-binds: {}
+type: dungeon
+binds: { zone: 1420 }
 summary: A new WoW Forever dungeon in the ruined capital above the Undercity, where the Forsaken are trying to take their old city back from the Scourge and a necromancer. Known only from Blizzard's announcement so far.
 categories: [dungeons, eastern-kingdoms, tirisfal-glades]
 origin: original
@@ -17,11 +17,7 @@ reviewed: null
 
 ## Overview
 
-Lordaeron was the capital of the human kingdom of the same name until Prince Arthas came home, killed his
-father and handed the city to the Scourge. The Forsaken later made their home in the crypts beneath it, and
-the Undercity grew there while the palace and streets above stayed in ruins.
-
-In WoW: Forever the Forsaken want the city above back. Blizzard describes them picking through the wreckage
+The Forsaken want the ruined city above the Undercity back. Blizzard describes them picking through the wreckage
 for the things their former lives left behind, while the Scourge still haunts the ruins. There is also word of
 a necromancer gathering power somewhere inside the walls. Players are called in to help the Forsaken hold the
 city and to deal with whatever that necromancer is building.
@@ -39,9 +35,16 @@ The game files Everloot has read so far do not have an entrance for the Ruins of
 page is not tied to a dungeon entrance yet, and why the level range, bosses and loot a dungeon page normally
 shows are missing here.
 
+## History
+
+Lordaeron was the capital of the human kingdom of the same name until Prince Arthas came home, killed his
+father and handed the city to the Scourge. The Forsaken later made their home in the crypts beneath it, and
+the Undercity grew there while the palace and streets above stayed in ruins.
+
 ## In WoW: Forever
 
 The Ruins of Lordaeron is new in WoW: Forever; in the original game the ruined city was a place you walked
 through on the way down to the Undercity, not a dungeon. This page is written from Blizzard's announcement of
 the new dungeons on October 20, 2026. Nothing here has been seen in play or recorded on Everloot yet. When the
-entrance appears in the game files or players record a run, the page becomes a full dungeon page.
+entrance appears in the game files or players record a run, its entrance is bound here and the
+bosses, loot and level range fill in.
