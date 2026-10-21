@@ -11,7 +11,7 @@ import { itemSourceValue } from "./item-source";
 import { RelationTarget, SameIcon } from "@/components/EntityRelations";
 import { pinLink } from "@/lib/world-map";
 import { gameNameFor, loadItemSetNames, loadItemTips, loadQuestNames, loadSiteAssets, loadSpellNames } from "@/lib/game-assets";
-import { Badge, Container, DataTable, EvidenceLine, Facts, InShort, QUALITY_TEXT, Tabs, TooltipFrame, qualityOf, type Column, type Fact, type TabItem } from "@/components/ui";
+import { Badge, Container, DataTable, EvidenceLine, Facts, InShort, OpenData, QUALITY_TEXT, Tabs, TooltipFrame, qualityOf, type Column, type Fact, type TabItem } from "@/components/ui";
 import { categoryOf } from "../../../../../../kb/src/item-taxonomy";
 import { edgesFrom, evidenceLabel, type Edge, type Rel } from "../../../../../../kb/src/edges";
 import { CLIENT_LAYER, CLIENT_TAXONOMY, itemsHref, shownItemName, subclassLabel as labelOf } from "@/lib/items";
@@ -255,6 +255,15 @@ export default async function ItemPage(props: Props) {
           facts={<Facts layout="list" label={`${title}: quick facts`} items={quickFacts} />}
         />
         <InShort summary="In short" bullets={summary} note={<Link href="/database#reading" className={LINK}>How to read these numbers</Link>} />
+        <OpenData
+          text={[
+            `${title} (item ${itemId})`,
+            ...tooltipLines,
+            ...summary,
+            `Source: https://everloot.app/database/items/${itemId}`,
+          ].join("\n")}
+          jsonHref={`/api/tooltip/item/${itemId}`}
+        />
         <MarketBox itemId={itemId} rows={auctions} />
         <Tabs label={`${title}: relations`} tabs={tabs} />
         <div className="mt-6 space-y-6 empty:hidden">

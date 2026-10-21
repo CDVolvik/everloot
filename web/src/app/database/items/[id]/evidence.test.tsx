@@ -41,3 +41,11 @@ test("an item nobody reported says so rather than staying silent", async () => {
   expect(page).toContain("No player has reported a drop source or a map position yet.");
   expect(page).toContain("It has no agreed name yet");
 });
+
+test("the page offers the record as text for an assistant and as JSON", async () => {
+  store.loadCorpus.mockResolvedValue({ uploads: 0, dataAsOf: "2026-10-10T00:00:00.000Z", records: [] });
+  const page = await render("2770");
+  expect(page).toContain("Copy for AI");
+  expect(page).toContain('href="/api/tooltip/item/2770"');
+  expect(page).toContain("Raw JSON");
+});

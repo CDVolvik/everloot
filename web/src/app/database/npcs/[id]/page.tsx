@@ -9,7 +9,7 @@ import { computeRollups, loadWorldFacts } from "@/lib/rollup-compute";
 import { pinLink, WORLD_MAP } from "@/lib/world-map";
 import { zoneByMapId, zoneHref } from "@/lib/zones";
 import { trailFor } from "@/lib/breadcrumbs";
-import { Container, DataTable, Facts, InShort, Tabs, TooltipFrame, type Column } from "@/components/ui";
+import { Container, DataTable, Facts, InShort, OpenData, Tabs, TooltipFrame, type Column } from "@/components/ui";
 import { EmptyTab, EntityHeader, EntityTop, FREQUENCY, known, LINK, percent, Unreachable } from "../../entity";
 import { entitySummary, observedLine } from "@/lib/evidence";
 import { loadItemFacts } from "@/lib/rollup-compute";
@@ -149,6 +149,10 @@ export default async function NpcPage(props: { params: Promise<{ id: string }> }
           )}
         />
         <InShort summary="In short" bullets={summary} note={<Link href="/database#reading" className={LINK}>How to read these numbers</Link>} />
+        <OpenData
+          text={[`${title} (npc ${npcId})`, ...summary, `Source: https://everloot.app/database/npcs/${npcId}`].join("\n")}
+          jsonHref={`/api/tooltip/npc/${npcId}`}
+        />
         <Tabs
           label={`${title}: relations`}
           tabs={[
