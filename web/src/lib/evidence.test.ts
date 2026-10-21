@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { EVIDENCE_KEY, entitySummary, evidenceLine, itemSummary, observedLine, type ItemSummaryInput } from "./evidence";
+import { asOfLine, EVIDENCE_KEY, entitySummary, evidenceLine, itemSummary, observedLine, type ItemSummaryInput } from "./evidence";
 import type { Edge } from "../../../kb/src/edges";
 
 const NOW = Date.parse("2026-10-20T12:00:00.000Z");
@@ -107,5 +107,18 @@ describe("the lines the other entity pages carry", () => {
     expect(entitySummary({ identity: "A quest", observed: "No player has reported it yet.", named: false })[2]).toBe(
       "It has no agreed name yet: that needs three installs reporting the same one.",
     );
+  });
+});
+describe("when the numbers were current", () => {
+  test("says how long ago the last upload was", () => {
+    expect(asOfLine("2026-10-20T09:00:00.000Z", NOW)).toBe("last upload 3 h ago");
+  });
+
+  test("says nothing when the corpus has no moment", () => {
+    expect(asOfLine(null, NOW)).toBeNull();
+  });
+
+  test("says nothing when the moment cannot be read", () => {
+    expect(asOfLine("not a date", NOW)).toBeNull();
   });
 });

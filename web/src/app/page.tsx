@@ -8,6 +8,9 @@ import { AgreementMeter, Banner, Card, CodeBlock, SectionHeading, type Agreement
 import { TOOL_GROUPS, tools, toolHref } from "@/data/tools";
 import { CLASSES } from "@/design/tokens";
 import { latestAddonRelease } from "@/lib/addon-release";
+import { loadTimeline } from "@/lib/changes";
+import { TYPE_LABEL } from "../../../kb/src/changes";
+import { longDate } from "@/data/wow-forever";
 import { CLIENT_TAXONOMY, itemsHref } from "@/lib/items";
 import { LORE_SEARCH_LABEL, organizationJsonLd, websiteJsonLd } from "@/lib/jsonld";
 import { FEED } from "@/lib/seo";
@@ -60,6 +63,8 @@ export default async function Home() {
   const classIcons = new Map(icons.classes.map((c) => [c.key, c.icon]));
   const addon = latestAddonRelease();
   const categories = CLIENT_TAXONOMY.classes.filter((c) => c.items > 0).sort((a, b) => b.items - a.items).slice(0, 6);
+  // What's new: the newest entries the site's own timeline holds, newest first.
+  const newest = loadTimeline().slice(0, 4);
   const status = new Map(tools.map((t) => [toolHref(t), t.status]));
   const groups = TOOL_GROUPS.map((g) => ({ ...g, links: g.links.filter((l) => l.href !== "/tools/talents") }));
 
@@ -108,6 +113,33 @@ export default async function Home() {
             <Link href="/tools/talents" className="btn">Plan a talent build</Link>
           </div>
         </Banner>
+      </section>
+
+      {/* What's new: the site's own clock, dated. The game builds and posts Everloot has seen, and the
+          addon that reads them. */}
+      <section aria-labelledby="whats-new">
+        <SectionHeading id="whats-new" action={<Link href="/changes" className={link}>Every change →</Link>}>What's new</SectionHeading>
+        <Card className="grid gap-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
+          <ul className="min-w-0 space-y-2">
+            {newest.map((e) => (
+              <li key={e.id} className="flex flex-wrap items-baseline gap-x-2 text-sm">
+                <span className="font-mono text-xs text-muted">{TYPE_LABEL[e.type]}</span>
+                {e.url ? (
+                  <a href={e.url} rel="noopener" className="text-fg hover:text-accent">{e.title}</a>
+                ) : (
+                  <span className="text-fg">{e.title}</span>
+                )}
+                <span className="text-muted">· {longDate(e.at.slice(0, 10))}</span>
+              </li>
+            ))}
+          </ul>
+          {addon && (
+            <p className="text-sm text-fg-2 md:max-w-[26ch]">
+              The addon is <span className="tabular-nums text-fg">{addon.version}</span>. It reads the client and
+              sends what you allow.
+            </p>
+          )}
+        </Card>
       </section>
 
       {/* The database: real counts from the game files carry the section while uploads are few. */}
