@@ -45,7 +45,7 @@ test("a write-up file: front matter, our words, named by its page id", () => {
   expect(() => parseWriteupFile("us-70000001.md", "no front matter")).toThrow("no front matter");
   expect(() => parseWriteupFile("us-70000001.md", fixture.replace("2026-10-21", "October 21"))).toThrow("reviewed.on");
   expect(() => parseWriteupFile("us-70000001.md", fixture.replace("Nothing to prepare.", "<script>x</script>"))).toThrow("HTML");
-  expect(() => parseWriteupFile("us-70000001.md", fixture.replace("  by: Test Maintainer\n", ""))).toThrow("reviewed.by");
+  expect(() => parseWriteupFile("us-70000001.md", fixture.replace(/ {2}by: Test Maintainer\r?\n/, ""))).toThrow("reviewed.by");
   expect(() => parseWriteupFile("us-70000001.md", `${fixture}${"x".repeat(6001)}`)).toThrow("longer than");
   expect(() => compileWriteups([{ name: "us-70000001.md", text: fixture }], new Set(["forum:1"]))).toThrow("no stored post forum:70000001");
 });
