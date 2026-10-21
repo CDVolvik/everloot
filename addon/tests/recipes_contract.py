@@ -249,6 +249,17 @@ assert(trained[1].profession == 'Alchemy' and trained[1].recipe == 'Lesser Heali
 assert(trained[2].recipe == 'Elixir of Minor Agility' and trained[2].requiredRank == 50, 'a recipe not yet learnable is still listed with its rank')
 event('TRAINER_UPDATE'); event('TRAINER_SHOW')
 assert(#EverlootDB.records.trainer_seen == 2, 'reopening the trainer adds nothing')
+assert(trained[1].trainerNpcId == nil, 'no NPC unit, no trainer id')
+-- With the trainer's GUID readable, its rows name it, once per trainer.
+UnitGUID = function(unit) if unit == 'npc' then return 'Creature-0-1-2-3-3347-0000000001' end end
+event('TRAINER_SHOW')
+assert(#EverlootDB.records.trainer_seen == 4 and trained[3].trainerNpcId == 3347 and trained[4].trainerNpcId == 3347)
+event('TRAINER_SHOW')
+assert(#EverlootDB.records.trainer_seen == 4, 'reopening the same trainer adds nothing')
+UnitGUID = function() return 'Player-1-00000001' end
+event('TRAINER_SHOW')
+assert(#EverlootDB.records.trainer_seen == 4, 'a GUID that is not a creature adds no trainer id and nothing new')
+UnitGUID = nil
 
 -- Missing calls record nothing, never error, and the status says which.
 local saved = C_TradeSkillUI.GetFilteredRecipeIDs

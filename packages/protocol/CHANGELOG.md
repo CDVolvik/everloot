@@ -11,6 +11,12 @@ required, or tightening a limit is a major release.
   without a key, 5,000 with one), and the corpus and client-layer routes and the market rule read in plain words.
 
 ### Added
+- 1.10.0 (record protocol 1.5.0), for the world map's player pins: `npc_sighting.positionKind` gains `interaction`
+  (the player's position while the NPC's window was open) and an optional `role` (`NPC_ROLES`: vendor, trainer,
+  questgiver, flightmaster, banker, auctioneer, stablemaster, innkeeper, repair). `loot` gains five optional
+  fields for an object source: `mapId`, `x` and `y` (the player's position, all three or none), `gatherKind`
+  (`GATHER_KINDS`: herb, ore, chest, fishing, other) and `sourceObjectName`. `trainer_seen` gains an optional
+  `trainerNpcId`. Older addons send none of them. MCP tools are unchanged.
 - 1.9.0 (record protocol 1.4.0): the record kind `character_link`, written when a player types a link code on one
   of their characters: the code (`LINK_CODE`), name, realm, race, class, level, faction, the GUID (in transit only)
   and the completion key, with `LINK_KINDS`. Not a public corpus kind and never kept in a stored upload: the site

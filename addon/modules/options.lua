@@ -17,7 +17,7 @@ O.ROWS = {
   { key = "census", command = "census", label = "Census",
     text = "Race, class, level and faction of your characters and of players you see. Never names, guilds, gear or places. Off deletes its rows." },
   { key = "openworld", label = "World",
-    text = "NPCs, loot, quests, vendors and items you see. Anonymous: no character or guild names." },
+    text = "NPCs, loot, quests, vendors and items you see, and where you stood at NPC windows and herbs, ore and chests. Anonymous: no character or guild names." },
   { key = "gold", label = "Your gold",
     text = "Your own gold in and out, for gold per hour. Sent only if you share it on the upload page." },
   { key = "gear", label = "Your gear",

@@ -14,7 +14,7 @@ import { validRealm } from "./realm.js";
  * the generated JSON Schema's description, so a reader of the schema files knows the server checks them.
  */
 export const RULES = {
-  loot: ["loot needs a source: npc or object"],
+  loot: ["loot needs a source: npc or object", "a loot position needs mapId, x and y together"],
   achievement_catalog: ["criteria cannot outnumber criteriaCount"],
   achievement_owned: [
     "quantity and required come together",
@@ -49,6 +49,10 @@ export const NPC_CREATURE_TYPES = [
 export const NPC_RANKS = ["normal", "elite", "rare", "rare_elite", "boss"] as const;
 /** The group a quest asks for, from the quest tag the game reports. */
 export const QUEST_TAGS = ["group", "dungeon", "raid", "pvp"] as const;
+/** What the NPC does for players, from the window that opened (a merchant who repairs is `repair`). */
+export const NPC_ROLES = ["vendor", "trainer", "questgiver", "flightmaster", "banker", "auctioneer", "stablemaster", "innkeeper", "repair"] as const;
+/** How an object was opened, from the spell the player cast on it. */
+export const GATHER_KINDS = ["herb", "ore", "chest", "fishing", "other"] as const;
 
 export const npcSighting = base.extend({
   kind: z.literal("npc_sighting"),
@@ -59,7 +63,8 @@ export const npcSighting = base.extend({
   y: z.number().min(0).max(100),
   level: z.number().int().min(1).max(100),
   reaction: z.enum(["friendly", "neutral", "hostile"]),
-  positionKind: z.enum(["player", "npc"]).optional().describe("Whose coordinates were measured; legacy unknown positions never become spawn pins."),
+  positionKind: z.enum(["player", "npc", "interaction"]).optional().describe("Whose coordinates were measured; legacy unknown positions never become spawn pins. `interaction` is the player's position while the NPC's window was open, a few yards from the NPC."),
+  role: z.enum(NPC_ROLES).optional().describe("With `interaction`: the window that opened (`NPC_ROLES`). Absent for a gossip window that names no service and from older addons."),
   creatureType: z.enum(NPC_CREATURE_TYPES).optional().describe("The creature type the game shows, as `UnitCreatureType` reports it in English. Older addons send none."),
   rank: z.enum(NPC_RANKS).optional().describe("`UnitClassification`: normal, elite, rare, rare_elite or boss (`worldboss`). Older addons send none."),
 });
@@ -70,8 +75,15 @@ export const lootWindow = base.extend({
   sourceObjectId: z.number().int().positive().optional(),
   sourceEvidence: z.literal("loot-api").optional().describe("Legacy target guesses are withheld from public loot observations."),
   items: z.array(z.object({ itemId: z.number().int().positive(), count: z.number().int().min(1).max(1000) })).max(50),
+  mapId: z.number().int().nonnegative().optional().describe("With an object source: the map the player stood on when the object was opened. Older addons send none."),
+  x: z.number().min(0).max(100).optional().describe("The player's x on that map, 0 to 100."),
+  y: z.number().min(0).max(100).optional().describe("The player's y on that map, 0 to 100."),
+  gatherKind: z.enum(GATHER_KINDS).optional().describe("How the object was opened, from the spell cast on it (`GATHER_KINDS`); `other` when the spell is not one the addon knows."),
+  sourceObjectName: z.string().min(1).max(120).optional().describe("The object's name as the game showed it. Public only when 3 installs agree on it."),
 }).refine((r) => r.sourceNpcId !== undefined || r.sourceObjectId !== undefined, {
   message: RULES.loot[0],
+}).refine((r) => (r.mapId === undefined) === (r.x === undefined) && (r.x === undefined) === (r.y === undefined), {
+  message: RULES.loot[1],
 });
 
 export const questEvent = base.extend({
@@ -356,6 +368,7 @@ export const trainerSeen = base.extend({
   recipe: z.string().min(1).max(120),
   requiredRank: z.number().int().min(1).max(500),
   costCopper: z.number().int().nonnegative().max(2_000_000_000).optional(),
+  trainerNpcId: z.number().int().positive().optional().describe("The trainer whose window listed it. Older addons send none."),
 });
 
 export const priceSeen = base.extend({

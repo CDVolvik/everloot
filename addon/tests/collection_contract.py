@@ -35,7 +35,8 @@ end
 Enum = {QuestTag = {Group = 1, PvP = 41, Raid = 62, Dungeon = 81}}
 C_QuestLog = {GetQuestTagInfo = function(id) if id == 176 then return {tagID = 81} end end}
 C_Map = {GetBestMapForUnit=function() return 141 end,
- GetPlayerMapPosition=function() return {x=.42,y=.61} end}
+ GetPlayerMapPosition=function() return pos end}
+pos = {x=.42,y=.61}
 GetNumLootItems = function() return 1 end
 GetLootSlotLink = function() return 'item:1234' end
 GetLootSlotInfo = function() return 'icon','Cloth',5 end
@@ -85,14 +86,20 @@ local sighting = EverlootDB.records.npc_sighting[1]
 assert(sighting.creatureType == 'Beast' and sighting.rank == 'rare_elite', 'type and rank come from the unit')
 UnitCreatureType = function() return 'Bestie' end
 UnitClassification = function() return 'trivial' end
+pos = {x=.45,y=.61}
 for _, hook in ipairs(Everloot.frame.hooks) do hook(nil,'PLAYER_TARGET_CHANGED') end
 local last = EverlootDB.records.npc_sighting[#EverlootDB.records.npc_sighting]
 assert(last.creatureType == nil and last.rank == nil, 'a localized type and a minor rank record nothing')
 UnitCreatureType = nil
 UnitClassification = nil
+pos = {x=.48,y=.61}
 for _, hook in ipairs(Everloot.frame.hooks) do hook(nil,'PLAYER_TARGET_CHANGED') end
 assert(EverlootDB.records.npc_sighting[#EverlootDB.records.npc_sighting].creatureType == nil, 'missing APIs leave the fields out')
 local n = #EverlootDB.records.npc_sighting
+-- Targeting or mousing over the same NPC at the same spot (rounded to 1 on the 0..100 scale) adds nothing.
+pos = {x=.482,y=.613}
+for _, hook in ipairs(Everloot.frame.hooks) do hook(nil,'UPDATE_MOUSEOVER_UNIT') end
+assert(#EverlootDB.records.npc_sighting == n, 'a repeat at the same spot adds no row')
 -- Quest accept: level, category (nearest header above), group size, tag, faction and giver.
 local function accept(index, id) for _, hook in ipairs(Everloot.frame.hooks) do hook(nil, 'QUEST_ACCEPTED', index, id) end end
 accept(2, 176)

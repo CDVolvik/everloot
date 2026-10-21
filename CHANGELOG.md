@@ -30,6 +30,29 @@ Pull requests merged to `main` are listed in the nightly pre-releases until the 
   usual rule, with a weekly chart and each rank's change against the week before. They start with the first
   full week after launch.
 - Site: an achievement's page lists its criteria, with how many each needs, once three players sent the same complete list; the list is agreed apart from the entry itself. Lists and search still show no criteria wording. Run the completion rebuild (`?rebuild=1`) once to fill it from uploads already stored.
+- Knowledge base: an NPC seen at its window places a pin like a spawn position (three installs on one map);
+  a targeting position still never does. Object spawn points are clustered per object and zone, become a pin
+  at three installs with a key that stays put once published, and an object's name needs three installs to
+  agree. Fishing (the bobber, or an object installs agree is fished) is never a pin. An upload of an event
+  that only adds fields to an earlier copy, as when an older Desktop App had dropped them, replaces that copy
+  instead of withdrawing the event as a conflict. The map shows none of this yet.
+
+## [0.3.10] - 2026-10-21
+
+### Added
+- Places for the world map. When an NPC's window opens (merchant, gossip, quest, trainer, flight map, bank,
+  auction house, stable, innkeeper) the addon records where you stand as that NPC's place, with the service the
+  window offered, once per NPC, service and zone. When you loot a herb, ore vein, chest or other object, its loot
+  row gets where you stand, how you opened it (from the spell you cast) and the object's name. Trainer rows name
+  the trainer. Event names and spell arguments not yet seen on the Forever client are read defensively: a missing
+  one records nothing. Launch-day checks: `docs/2026-10-21-addon-0.3.10-launch-checklist.md`.
+
+### Changed
+- Targeting or mousing over the same NPC at the same spot (to 1 unit on the map's 0 to 100 scale) records it
+  once, not every time. NPC window rows and object loot rows have their own 2,000-row room, apart from
+  targeting rows and creature loot, so a full targeting or corpse share pauses only itself.
+- An object's name comes only from a herb, ore or chest cast, never from another spell's target (such as a
+  player you healed). A fishing cast counts for 30 seconds, for a slow bite.
 
 ## [0.3.9] - 2026-10-21
 

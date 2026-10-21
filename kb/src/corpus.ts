@@ -22,6 +22,16 @@ export function canonicalJson(value: unknown): string {
     ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, v[k]])) : v);
 }
 
+/**
+ * True when `rich` is `poor` plus fields `poor` lacks, every shared field equal. An uploader built on an older
+ * protocol drops the fields it does not know; the same event sent later with them is the same event, not a conflict.
+ */
+function addsFieldsOnly(rich: IntakeRecord, poor: IntakeRecord): boolean {
+  const r = rich as Record<string, unknown>;
+  const p = poor as Record<string, unknown>;
+  return Object.keys(p).every((k) => k in r && canonicalJson(r[k]) === canonicalJson(p[k]));
+}
+
 /** No time/hash backfill for legacy observations: it could merge legitimate events. */
 export function mergeCorpus(previous: CorpusState | undefined, raw: readonly unknown[], grantIds: string[] = []): CorpusState {
   const events = new Map<string, CorpusEvent>();
@@ -45,11 +55,16 @@ export function mergeCorpus(previous: CorpusState | undefined, raw: readonly unk
     const key = eventKey(row);
     if (conflicts.has(key)) continue;
     const old = events.get(key);
-    if (old && canonicalJson(old.record) !== canonicalJson(row)) {
+    const grants = [...new Set([...(old?.grants ?? []), ...grantIds])].sort();
+    if (!old || canonicalJson(old.record) === canonicalJson(row) || addsFieldsOnly(row, old.record)) {
+      // New, the same, or the same event with fields an older uploader dropped: keep the fuller copy.
+      events.set(key, { record: row, grants });
+    } else if (addsFieldsOnly(old.record, row)) {
+      // An older uploader's copy arriving after the fuller one: keep the fuller one.
+      events.set(key, { record: old.record, grants });
+    } else {
       events.delete(key);
       conflicts.add(key);
-    } else {
-      events.set(key, { record: row, grants: [...new Set([...(old?.grants ?? []), ...grantIds])].sort() });
     }
   }
   return {

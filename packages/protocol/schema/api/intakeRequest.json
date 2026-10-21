@@ -84,11 +84,27 @@
                 ]
               },
               "positionKind": {
-                "description": "Whose coordinates were measured; legacy unknown positions never become spawn pins.",
+                "description": "Whose coordinates were measured; legacy unknown positions never become spawn pins. `interaction` is the player's position while the NPC's window was open, a few yards from the NPC.",
                 "type": "string",
                 "enum": [
                   "player",
-                  "npc"
+                  "npc",
+                  "interaction"
+                ]
+              },
+              "role": {
+                "description": "With `interaction`: the window that opened (`NPC_ROLES`). Absent for a gossip window that names no service and from older addons.",
+                "type": "string",
+                "enum": [
+                  "vendor",
+                  "trainer",
+                  "questgiver",
+                  "flightmaster",
+                  "banker",
+                  "auctioneer",
+                  "stablemaster",
+                  "innkeeper",
+                  "repair"
                 ]
               },
               "creatureType": {
@@ -199,6 +215,41 @@
                   ],
                   "additionalProperties": false
                 }
+              },
+              "mapId": {
+                "description": "With an object source: the map the player stood on when the object was opened. Older addons send none.",
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "x": {
+                "description": "The player's x on that map, 0 to 100.",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "y": {
+                "description": "The player's y on that map, 0 to 100.",
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "gatherKind": {
+                "description": "How the object was opened, from the spell cast on it (`GATHER_KINDS`); `other` when the spell is not one the addon knows.",
+                "type": "string",
+                "enum": [
+                  "herb",
+                  "ore",
+                  "chest",
+                  "fishing",
+                  "other"
+                ]
+              },
+              "sourceObjectName": {
+                "description": "The object's name as the game showed it. Public only when 3 installs agree on it.",
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120
               }
             },
             "required": [
@@ -1933,6 +1984,12 @@
                 "type": "integer",
                 "minimum": 0,
                 "maximum": 2000000000
+              },
+              "trainerNpcId": {
+                "description": "The trainer whose window listed it. Older addons send none.",
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
               }
             },
             "required": [

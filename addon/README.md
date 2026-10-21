@@ -7,9 +7,9 @@ companion, and adds auction prices to item tooltips. It uses only the game's add
 plays the character. Records match the upload contract (`packages/protocol`, see its `schema/records/`) field for
 field.
 
-**Status:** 0.3.9 beta. The automated contract tests pass; the in-client checks in
-`docs/2026-10-08-beta-client-checklist.md`, `docs/2026-10-18-addon-0.3.2-beta-checklist.md` and
-`docs/2026-10-19-addon-0.3.3-beta-checklist.md` are still open, and the full scan
+**Status:** 0.3.10 beta. The automated contract tests pass; the in-client checks in
+`docs/2026-10-08-beta-client-checklist.md`, `docs/2026-10-18-addon-0.3.2-beta-checklist.md`,
+`docs/2026-10-19-addon-0.3.3-beta-checklist.md` and `docs/2026-10-21-addon-0.3.10-launch-checklist.md` are still open, and the full scan
 (`docs/design/specs/2026-10-16-forever-market-design.md`) has not run in the Forever client.
 
 ## Run it
@@ -47,7 +47,17 @@ button and `/everloot scan` still work). With scans off, the first visit prints 
 
 When you target an NPC the addon also notes its creature type and rank, and when you accept a quest it
 records the quest's title, level, quest log header (category), suggested group size, tag, giver and your
-faction (Alliance or Horde, no name). The quest-log calls (`GetQuestLogTitle`, `C_QuestLog.GetQuestTagInfo`)
+faction (Alliance or Horde, no name).
+
+For the world map, an NPC window (merchant, gossip, quest, trainer, flight map, bank, auction house, stable,
+innkeeper) records where you stand as that NPC's place (`positionKind = "interaction"`) with a `role` for the
+service, once per NPC, role and zone. Targeting still records `positionKind = "player"`, which never becomes a
+pin. Looting an object adds where you stand (`mapId`, `x`, `y`), a `gatherKind` (herb, ore, chest, fishing,
+other) from the spell you cast just before (`UNIT_SPELLCAST_SENT`) and the object's name from that cast's
+target (`sourceObjectName`). Trainer rows carry `trainerNpcId`. Targeting rows are kept once per NPC, zone and
+spot (rounded to 1 on the 0..100 scale). Window rows and object loot rows each have their own 2,000-row cap,
+apart from targeting rows and creature loot, so `/everloot status` can show `npc_sighting (targeting)` paused
+while windows still record. The quest-log calls (`GetQuestLogTitle`, `C_QuestLog.GetQuestTagInfo`)
 have not been tried in the Forever client; a call that is missing or returns something unexpected records
 nothing for that field. The site shows each value only after 3 installs agree.
 
@@ -214,6 +224,7 @@ The contract tests run the Lua in real Lua 5.1 through `lupa`:
     python -m pip install lupa==2.6
     python addon/tests/event_identity.py
     python addon/tests/collection_contract.py
+    python addon/tests/map_positions_contract.py
     python addon/tests/auction_contract.py
     python addon/tests/auction_tab_contract.py
     python addon/tests/options_contract.py
@@ -245,7 +256,7 @@ addon/
 ├── Everloot.toc        Interface 16001 (Forever 1.60.1), SavedVariables: EverlootDB
 ├── core.lua            event dispatch, module registry, toggles, rolling store, /everloot
 ├── modules/
-│   ├── openworld.lua   target/mouseover sightings, loot windows, merchant windows
+│   ├── openworld.lua   target/mouseover sightings, NPC window places, loot windows, merchant windows
 │   ├── guild.lua       roster, attendance, saved lockouts (published only through an officer)
 │   ├── gear.lua        equipped item level sample, at most once an hour
 │   ├── auctions.lua    full auction-house scans you start (Forever); listed buyouts on older clients; on in a new install

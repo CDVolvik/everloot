@@ -64,11 +64,27 @@
       ]
     },
     "positionKind": {
-      "description": "Whose coordinates were measured; legacy unknown positions never become spawn pins.",
+      "description": "Whose coordinates were measured; legacy unknown positions never become spawn pins. `interaction` is the player's position while the NPC's window was open, a few yards from the NPC.",
       "type": "string",
       "enum": [
         "player",
-        "npc"
+        "npc",
+        "interaction"
+      ]
+    },
+    "role": {
+      "description": "With `interaction`: the window that opened (`NPC_ROLES`). Absent for a gossip window that names no service and from older addons.",
+      "type": "string",
+      "enum": [
+        "vendor",
+        "trainer",
+        "questgiver",
+        "flightmaster",
+        "banker",
+        "auctioneer",
+        "stablemaster",
+        "innkeeper",
+        "repair"
       ]
     },
     "creatureType": {
