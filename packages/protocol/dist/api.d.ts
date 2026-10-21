@@ -858,6 +858,23 @@ export declare const intakeRequest: z.ZodObject<{
         class: z.ZodString;
         level: z.ZodNumber;
         guild: z.ZodOptional<z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>>;
+    }, z.core.$strip>, z.ZodObject<{
+        installId: z.ZodString;
+        eventId: z.ZodOptional<z.ZodString>;
+        capturedAt: z.ZodString;
+        kind: z.ZodLiteral<"character_link">;
+        code: z.ZodString;
+        name: z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>;
+        realm: z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>;
+        race: z.ZodString;
+        class: z.ZodString;
+        level: z.ZodNumber;
+        faction: z.ZodEnum<{
+            Alliance: "Alliance";
+            Horde: "Horde";
+        }>;
+        guid: z.ZodString;
+        completionKey: z.ZodString;
     }, z.core.$strip>], "kind">>;
     sharing: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodBoolean>>;
     grantTokens: z.ZodOptional<z.ZodArray<z.ZodString>>;
@@ -1753,6 +1770,23 @@ export declare const API_SCHEMAS: {
             class: z.ZodString;
             level: z.ZodNumber;
             guild: z.ZodOptional<z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>>;
+        }, z.core.$strip>, z.ZodObject<{
+            installId: z.ZodString;
+            eventId: z.ZodOptional<z.ZodString>;
+            capturedAt: z.ZodString;
+            kind: z.ZodLiteral<"character_link">;
+            code: z.ZodString;
+            name: z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>;
+            realm: z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>;
+            race: z.ZodString;
+            class: z.ZodString;
+            level: z.ZodNumber;
+            faction: z.ZodEnum<{
+                Alliance: "Alliance";
+                Horde: "Horde";
+            }>;
+            guid: z.ZodString;
+            completionKey: z.ZodString;
         }, z.core.$strip>], "kind">>;
         sharing: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodBoolean>>;
         grantTokens: z.ZodOptional<z.ZodArray<z.ZodString>>;

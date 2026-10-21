@@ -5,7 +5,7 @@ const base = { installId: "test-install-1234", capturedAt: "2026-09-29T12:00:00.
 
 describe("intake contract", () => {
   test("all record kinds exist", () => {
-    expect(ALL_RECORD_KINDS).toHaveLength(34);
+    expect(ALL_RECORD_KINDS).toHaveLength(35);
     expect(ALL_RECORD_KINDS).toContain("census_self");
     expect(ALL_RECORD_KINDS).toContain("census_seen");
     expect(ALL_RECORD_KINDS).toContain("achievement_catalog");
