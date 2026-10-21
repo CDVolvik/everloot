@@ -404,6 +404,10 @@ assert(string.find(printed[#printed], 'on after /reload', 1, true), printed[#pri
 reload()
 SlashCmdList.EVERLOOT('players')
 assert(string.find(printed[#printed], 'players: on. 1 characters kept', 1, true), printed[#printed])
+-- The line has to say where the rows live: the game writes the file when it saves, so a number can change
+-- and a row can be lost if the client ends first.
+assert(string.find(printed[#printed], 'log out to be sure a character is in it', 1, true), printed[#printed])
+assert(string.find(printed[#printed], 'the Desktop App, with the player pages allowed', 1, true), printed[#printed])
 assert(tonumber(string.match(EverlootDB.records.player_seen[1].eventId, '%d+')) > last, 'ids are not reused after off')
 """)
 

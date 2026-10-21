@@ -200,7 +200,11 @@ function P.StatusLine()
   if not E:IsEnabled("players") then
     return "Everloot players: off. /everloot players on starts it."
   end
-  return string.format("Everloot players: %s. %d characters kept (at most %d). Nothing leaves this file until you upload it at everloot.app/upload.",
+  -- The number counts what is in the file, and the file is written by the game when it saves. A row read
+  -- since the last save is in the game but not yet in the file, so a number can go down after a reload and
+  -- a row can be lost if the client ends before the game saves. The line says so, because a player who
+  -- counted a character and then saw a smaller number has to know why.
+  return string.format("Everloot players: %s. %d characters kept (at most %d).\nThe game writes this file when it saves, so the number can change and a row can be lost if the client ends first: log out to be sure a character is in it. Nothing leaves it until you upload it: the Desktop App, with the player pages allowed, or everloot.app/upload.",
     active and "on" or "on after /reload", E:Count("player_seen"), MAX_ROWS)
 end
 
