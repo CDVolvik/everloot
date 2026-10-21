@@ -15,6 +15,9 @@ build that has a zip in the repository. Earlier builds have none.
 Pull requests merged to `main` are listed in the nightly pre-releases until the next tagged release.
 
 ### Changed
+- Site: records in `/api/corpus/public` and the bulk `corpus.ndjson` carry a per-install pseudonym (`pub-` and 32
+  hex, a keyed hash) in place of the install id, so they pass the protocol's parser again and anyone can count
+  installs. The addon's install id still never leaves. Protocol package 1.13.0, description only.
 - Site and knowledge base: game objects show the name three installs agree on, on the object page, the objects
   and drops lists, hover cards, search and the item pages that list them as a source, and in the `object_page`
   answer. Until three agree, they still read Object and the id.

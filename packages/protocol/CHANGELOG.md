@@ -7,6 +7,9 @@ required, or tightening a limit is a major release.
 ## [Unreleased]
 
 ### Changed
+- 1.13.0 (record protocol unchanged, 1.7.0), description text only, no shape change: `corpusPublicResponse.records`
+  now says each record's `installId` is a per-install pseudonym (`pub-` and 32 hex), never the addon's install id,
+  and absent when the server has no key to make one. The records pass `parseRecords` again, so installs can be counted.
 - The `object_page` answer carries `name`, null until 3 installs agree on one, as the NPC page does.
 - Description text only, no shape change: in `API_ROUTES`, the `limit` paging parameter states its caps (500 rows
   without a key, 5,000 with one), and the corpus and client-layer routes and the market rule read in plain words.

@@ -145,7 +145,8 @@ export default function PrivacyPage() {
                 <strong>Uploads:</strong> files you send on the upload page
                 (addon records plus a random install id — no account, no character
                 login). Your anonymous observations are published as individual
-                records without the install id, so anyone can check our counts. The
+                records without the install id, each with a per-install pseudonym (a keyed
+                hash that cannot be turned back into the id), so anyone can check our counts. The
                 facts the site states, such as drop rates, spawn points and recipe
                 ranges, appear only after at least three installs report them.
                 Install IDs are not proof of independent people. An upload that contains a scan is stored with a keyed

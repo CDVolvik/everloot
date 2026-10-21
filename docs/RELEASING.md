@@ -116,7 +116,7 @@ Unchanged: a maintainer builds it with `npm run kb -- snapshot`, checks it with
 ## Bulk export
 
 The published data as files (ROADMAP: "an open data export"), built from the same loaders the JSON
-API uses, so every row is one the API serves: the public corpus without install ids, drop rates and
+API uses, so every row is one the API serves: the public corpus with per-install pseudonyms in place of install ids, drop rates and
 measured zeros under the three-install rule, relations (observed and game-file, each labelled) and the
 items of the build. One NDJSON file per dataset plus `index.json`, whose shape is `bulkIndex` in the
 protocol (`/schema/api/bulkIndex.json`).

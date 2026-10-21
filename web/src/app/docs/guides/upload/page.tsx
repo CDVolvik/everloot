@@ -119,7 +119,7 @@ export default function Page() {
       <H2 id="after">What happens next</H2>
       <P>
         Your anonymous observations are published as individual records, without character names and without the
-        addon&apos;s install id. A fact such as a drop rate, a spawn point or a vendor price appears on the site only after
+        addon&apos;s install id; a per-install pseudonym takes its place, so installs can be counted. A fact such as a drop rate, a spawn point or a vendor price appears on the site only after
         3 installs have reported it. Until then it waits. Names appear only in named records you share with a grant, on
         guild boards a guild&apos;s officers publish, and on{" "}
         <Link href="/docs/guides/privacy#player-pages" className={docLink}>player pages</Link>.

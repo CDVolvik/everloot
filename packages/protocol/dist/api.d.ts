@@ -30,7 +30,7 @@ export declare const pageSchema: z.ZodObject<{
     next: z.ZodNullable<z.ZodString>;
 }, z.core.$strip>;
 export type Page = z.infer<typeof pageSchema>;
-/** GET /api/corpus/public: public records without install ids, optionally only some kinds. */
+/** GET /api/corpus/public: public records with per-install pseudonyms in place of install ids, optionally only some kinds. */
 export declare const corpusPublicResponse: z.ZodObject<{
     offset: z.ZodNumber;
     limit: z.ZodNumber;
