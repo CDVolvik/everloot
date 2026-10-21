@@ -6,7 +6,7 @@ import { Card, Container, Disclosure, PageHeader, Prose, SectionHeading } from "
 import { trailFor } from "@/lib/breadcrumbs";
 import { CC_BY_SA, wikiArticleJsonLd } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/seo";
-import { linkedFrom, loadWiki, publishedPage, publishedPages, sectionsInOrder, TYPE_LABEL, wikiHref, wikiIndexable, wikiTitle, type PageType, type WikiPage } from "@/lib/wiki";
+import { isBound, linkedFrom, loadWiki, publishedPage, publishedPages, sectionsInOrder, TYPE_LABEL, wikiHref, wikiIndexable, wikiTitle, type PageType, type WikiPage } from "@/lib/wiki";
 import { resolveTokens } from "@/lib/wiki-names";
 import { WORLD_MAP } from "@/lib/world-map";
 import { zoneByMapId, zoneHref } from "@/lib/zones";
@@ -73,7 +73,10 @@ export default async function WikiArticle(props: { params: Promise<{ slug: strin
   const sections = sectionsInOrder(page);
   const inbound = linkedFrom(wiki, page.slug);
   const categories = page.categories.map((c) => wiki.categories.get(c) ?? c);
-  const blocks = DATA_BLOCKS[page.type];
+  // A page that binds nothing yet (written from a Blizzard post before the game files have it) has no
+  // infobox or data blocks to fill, so it shows neither.
+  const bound = isBound(page);
+  const blocks = bound ? DATA_BLOCKS[page.type] : [];
   const path = wikiHref(page.slug);
   const trail = [...trailFor("/wiki")!, { name: page.title, path }];
 
@@ -88,12 +91,14 @@ export default async function WikiArticle(props: { params: Promise<{ slug: strin
           meta={<span>{TYPE_LABEL[page.type].word.replace(/^./, (c) => c.toUpperCase())}</span>}
         />
 
-        <Card as="section" aria-labelledby="at-a-glance" className="mb-8">
-          <div data-wiki-placeholder="infobox">
-            <h2 id="at-a-glance" className="text-sm font-semibold text-fg">At a glance</h2>
-            <p className="mt-1 text-sm text-muted">Facts from the database appear here in a later update.</p>
-          </div>
-        </Card>
+        {bound && (
+          <Card as="section" aria-labelledby="at-a-glance" className="mb-8">
+            <div data-wiki-placeholder="infobox">
+              <h2 id="at-a-glance" className="text-sm font-semibold text-fg">At a glance</h2>
+              <p className="mt-1 text-sm text-muted">Facts from the database appear here in a later update.</p>
+            </div>
+          </Card>
+        )}
 
         <Prose>
           {sections.map((s) => (

@@ -20,6 +20,8 @@ test("the hub lists published pages by type and the most recent first, with a ti
   expect(html).toContain('<input id="wiki-q" type="search"');
   expect(html).toMatch(/>Dungeons<\/h2>[\s\S]*href="\/wiki\/test-dungeon"/);
   expect(html).toMatch(/>Zones<\/h2>[\s\S]*href="\/wiki\/test-zone"/);
+  // A page with no entrance bound yet is listed like any other.
+  expect(html).toMatch(/>Dungeons<\/h2>[\s\S]*href="\/wiki\/test-new-dungeon"/);
   expect(html).not.toContain("test-draft");
   // Recent: reviewed 2026-10-27 before 2026-10-26.
   const recent = html.slice(html.indexOf(">Recent pages<"), html.indexOf('id="wiki-q"'));

@@ -52,7 +52,7 @@ test("a published page is in sitemap.xml, dated by its review; adapted pages and
 test("only published pages are built, and a draft answers 404 in production", async () => {
   vi.stubEnv("NODE_ENV", "production");
   const { default: WikiArticle, generateMetadata, generateStaticParams } = await import("./page");
-  expect(generateStaticParams().map((p) => p.slug).sort()).toEqual(["test-dungeon", "test-zone"]);
+  expect(generateStaticParams().map((p) => p.slug).sort()).toEqual(["test-dungeon", "test-new-dungeon", "test-zone"]);
   await expect(WikiArticle(params("test-draft"))).rejects.toThrow("NOT_FOUND");
   await expect(WikiArticle(params("no-such-page"))).rejects.toThrow("NOT_FOUND");
   expect((await generateMetadata(params("test-draft"))).robots).toEqual({ index: false, follow: true });
@@ -113,7 +113,22 @@ test("the page shows title, summary, sections in type order, categories, Linked 
   expect(html).not.toContain("adsbygoogle");
 });
 
+test("a dungeon known only from a Blizzard post, with no entrance bound, renders without placeholders or a map link and stays out of search", async () => {
+  const html = await render("test-new-dungeon");
+  expect(html).toContain("Test New Dungeon");
+  expect(html).toMatch(/>Overview<\/h2>[\s\S]*>Getting there<\/h2>[\s\S]*>In WoW: Forever<\/h2>/);
+  expect(html).not.toContain("data-wiki-placeholder");
+  expect(html).not.toContain("At a glance");
+  expect(html).not.toContain("/map");
+  expect(html).not.toContain('"about"');
+  expect(html).toContain('"@type":"Article"');
+  const { generateMetadata } = await import("./page");
+  expect((await generateMetadata(params("test-new-dungeon"))).robots).toEqual({ index: false, follow: true });
+  const { default: sitemap } = await import("../../sitemap");
+  expect((await sitemap()).map((e) => new URL(e.url).pathname)).not.toContain("/wiki/test-new-dungeon");
+});
+
 test("no private path or internal name reaches the output", async () => {
   const pattern = loadPrivatePathPattern();
-  for (const slug of ["test-dungeon", "test-zone"]) expect(await render(slug)).not.toMatch(pattern);
+  for (const slug of ["test-dungeon", "test-zone", "test-new-dungeon"]) expect(await render(slug)).not.toMatch(pattern);
 });

@@ -95,12 +95,18 @@ export function publishedPage(wiki: Wiki, slug: string): WikiPage | null {
 export const wikiHref = (slug: string) => `/wiki/${slug}`;
 
 /**
- * Whether a published page is indexed: reviewed, with its own prose over the bar. An adapted page stays out of
- * search until the overlap check against the Warcraft Wiki dump exists, which is what makes adapted text safe
- * to index.
+ * Whether a page binds anything. A dungeon, raid or race written from a Blizzard post before the game files
+ * have it may bind nothing yet; it then has no infobox or data blocks to show.
+ */
+export const isBound = (page: Pick<WikiPage, "binds">): boolean => Object.values(page.binds).some((v) => v !== undefined && v !== null);
+
+/**
+ * Whether a published page is indexed: reviewed, bound to at least one id, with its own prose over the bar. An
+ * adapted page stays out of search until the overlap check against the Warcraft Wiki dump exists, which is
+ * what makes adapted text safe to index.
  */
 export function wikiIndexable(page: WikiPage): boolean {
-  return page.status === "published" && page.reviewed !== null && page.origin === "original" && proseWords(page.blocks) >= MIN_PROSE_WORDS;
+  return page.status === "published" && page.reviewed !== null && page.origin === "original" && isBound(page) && proseWords(page.blocks) >= MIN_PROSE_WORDS;
 }
 
 /** The hub is indexed once it lists at least one indexable page. */
