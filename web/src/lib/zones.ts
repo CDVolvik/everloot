@@ -1,9 +1,9 @@
-import { placeEntrances, worldToZone, zoneAt, zoneTable } from "../../../kb/src/world-coords";
+import { placeEntrances, worldToZone, zoneAt, zoneTable, zoneToWorld, type WorldPoint } from "../../../kb/src/world-coords";
 import type { WorldMapData } from "../../../kb/src/world-map-data";
 import { observedPins } from "../../../kb/src/world-map-near";
 import { questPage, type WorldFacts } from "../../../kb/src/world-pages";
 import { confirmedEntrances, instanceBosses, type InstanceBoss, type InstanceFacts } from "../../../kb/src/instances";
-import { objectSpawns, type ObjectSpawnRow } from "../../../kb/src/object-spawns";
+import { objectSpawns, type ObjectSpawnPin, type ObjectSpawnRow } from "../../../kb/src/object-spawns";
 import { slugify } from "../../../kb/src/lore-slug";
 import { WORLD_MAP } from "./world-map";
 
@@ -48,15 +48,75 @@ export interface ZoneNpc { npcId: number; name: string | null; x: number; y: num
 export interface ZoneQuest { questId: number; title: string | null; level: number | null; giverNpcId: number | null; turnInNpcId: number | null }
 /**
  * A dungeon or raid entrance. `files` is true for one the game files place; `confirmed` is the installs that zoned
- * in there, once 3 agree, else null; `bosses` are the encounters 3 installs report inside.
+ * in there, once 3 agree, else null, and `lastSeen` the latest time one did; `bosses` are the encounters 3 installs
+ * report inside. `instanceMapIds` are the instances entered here, each with its own page.
  */
-export interface ZoneEntrance { names: string[]; raid: boolean; x: number; y: number; files: boolean; confirmed: number | null; bosses: InstanceBoss[] }
+export interface ZoneEntrance {
+  names: string[]; instanceMapIds: number[]; raid: boolean; x: number; y: number;
+  files: boolean; confirmed: number | null; lastSeen: string | null; bosses: InstanceBoss[];
+}
 /** An object players saw on the minimap here, at its own position, once 3 installs agree on the spot. */
 export interface ZoneTreasure { objectId: number; name: string | null; x: number; y: number; reporters: number }
 export interface ZoneContents { npcs: ZoneNpc[]; quests: ZoneQuest[]; entrances: ZoneEntrance[]; treasures: ZoneTreasure[] }
 
-/** What players' clients saw of dungeons and objects, for `zoneContents`. Names are the agreed object names. */
-export interface ZoneSightings { instances?: InstanceFacts; sightings?: ObjectSpawnRow[]; objectNames?: ReadonlyMap<number, string> }
+/**
+ * What players' clients saw of dungeons and objects, for `zoneContents`. Names are the agreed object names. `asOf` is
+ * when the corpus was current: a report dated after it does not set "last seen".
+ */
+export interface ZoneSightings { instances?: InstanceFacts; sightings?: ObjectSpawnRow[]; objectNames?: ReadonlyMap<number, string>; asOf?: Date }
+
+/**
+ * A dungeon or raid entrance in the world, with what players confirmed of it: the one list the zone pages, the
+ * instance pages and the map read, so a marker and a row never disagree. `zone` is the released zone it lies in and
+ * where, or null outside every released zone; `world` is null for a player entrance on a map we cannot place.
+ */
+export interface PlacedEntrance extends Omit<ZoneEntrance, "x" | "y"> {
+  world: WorldPoint | null;
+  zone: { mapId: number; x: number; y: number } | null;
+}
+
+/**
+ * Every entrance the game files place, then one per place players confirmed for an instance the files place
+ * nowhere, so no entrance has two pins. A files entrance is confirmed when 3 installs zoned into one of its
+ * instances; it carries the most installs and the latest time among them.
+ */
+export function placedEntrances(data: Pick<WorldMapData, "zones" | "entrances">, seen: ZoneSightings = {}): PlacedEntrance[] {
+  const zones = zoneTable(data);
+  const asOf = seen.asOf ?? new Date();
+  const confirmed = confirmedEntrances(seen.instances?.entrances ?? [], asOf);
+  const bosses = instanceBosses(seen.instances?.encounters ?? [], asOf);
+  const out: PlacedEntrance[] = [];
+  const placed = new Set<number>();
+  for (const pin of placeEntrances(data)) {
+    for (const id of pin.mapIds) placed.add(id);
+    const zone = zoneAt(zones, pin.world);
+    const at = zone && worldToZone(zones, zone.mapId, pin.world);
+    const mine = confirmed.filter((e) => pin.mapIds.includes(e.instanceMapId));
+    const players = Math.max(0, ...mine.map((e) => e.reporters));
+    const seenAt = mine.map((e) => e.lastSeen).filter((t): t is string => t !== null).sort().at(-1) ?? null;
+    out.push({
+      names: pin.names, instanceMapIds: pin.mapIds, raid: pin.raid, world: pin.world,
+      zone: zone && at ? { mapId: zone.mapId, x: Math.round(at.x * 1000) / 10, y: Math.round(at.y * 1000) / 10 } : null,
+      files: true, confirmed: players || null, lastSeen: players ? seenAt : null, bosses: pin.mapIds.flatMap((id) => bosses.get(id) ?? []),
+    });
+  }
+  for (const e of confirmed) {
+    if (placed.has(e.instanceMapId)) continue;
+    const released = zones.some((z) => z.mapId === e.mapId);
+    out.push({
+      names: [e.name ?? `Instance ${e.instanceMapId}`], instanceMapIds: [e.instanceMapId], raid: e.instanceType === "raid",
+      world: released ? zoneToWorld(zones, e.mapId, e.x / 100, e.y / 100) : null,
+      zone: released ? { mapId: e.mapId, x: e.x, y: e.y } : null,
+      files: false, confirmed: e.reporters, lastSeen: e.lastSeen, bosses: bosses.get(e.instanceMapId) ?? [],
+    });
+  }
+  return out;
+}
+
+/** Treasure pins: objects seen on the minimap where 3 installs agree on the spot, with their agreed names. */
+export function treasurePins(seen: ZoneSightings): (ObjectSpawnPin & { name: string | null })[] {
+  return objectSpawns(seen.sightings ?? []).pins.map((pin) => ({ ...pin, name: seen.objectNames?.get(pin.objectId) ?? null }));
+}
 
 /**
  * What is known to be in each released zone. NPC and vendor positions come through `observedPins`, so the
@@ -91,26 +151,17 @@ export function zoneContents(
     }
   }
 
-  const confirmed = confirmedEntrances(seen.instances?.entrances ?? []);
-  const bosses = instanceBosses(seen.instances?.encounters ?? []);
-  const placed = new Set<number>();
-  for (const pin of placeEntrances(data)) {
-    for (const id of pin.mapIds) placed.add(id);
-    const zone = zoneAt(zones, pin.world);
-    const at = zone && worldToZone(zones, zone.mapId, pin.world);
-    const players = Math.max(0, ...confirmed.filter((e) => pin.mapIds.includes(e.instanceMapId)).map((e) => e.reporters));
-    if (zone && at) out.get(zone.mapId)!.entrances.push({
-      names: pin.names, raid: pin.raid, x: Math.round(at.x * 1000) / 10, y: Math.round(at.y * 1000) / 10,
-      files: true, confirmed: players || null, bosses: pin.mapIds.flatMap((id) => bosses.get(id) ?? []),
+  for (const e of placedEntrances(data, seen)) {
+    const here = e.zone && out.get(e.zone.mapId);
+    if (!here || !e.zone) continue;
+    here.entrances.push({
+      names: e.names, instanceMapIds: e.instanceMapIds, raid: e.raid, x: e.zone.x, y: e.zone.y,
+      files: e.files, confirmed: e.confirmed, lastSeen: e.lastSeen, bosses: e.bosses,
     });
   }
-  for (const e of confirmed) {
-    const here = placed.has(e.instanceMapId) ? undefined : out.get(e.mapId);
-    if (here) here.entrances.push({ names: [e.name ?? `Instance ${e.instanceMapId}`], raid: e.instanceType === "raid", x: e.x, y: e.y, files: false, confirmed: e.reporters, bosses: bosses.get(e.instanceMapId) ?? [] });
-  }
 
-  for (const pin of objectSpawns(seen.sightings ?? []).pins) {
-    out.get(pin.mapId)?.treasures.push({ objectId: pin.objectId, name: seen.objectNames?.get(pin.objectId) ?? null, x: pin.x, y: pin.y, reporters: pin.reporters });
+  for (const pin of treasurePins(seen)) {
+    out.get(pin.mapId)?.treasures.push({ objectId: pin.objectId, name: pin.name, x: pin.x, y: pin.y, reporters: pin.reporters });
   }
 
   for (const here of out.values()) {

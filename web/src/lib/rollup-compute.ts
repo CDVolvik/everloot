@@ -119,10 +119,10 @@ export async function loadWorldFacts(): Promise<WorldFacts & { unreachable: bool
 }
 
 /** Dungeon entrances and encounters players' clients saw, and objects seen on the minimap, each public at 3 installs. */
-export async function loadInstanceFacts(): Promise<InstanceFacts & { sightings: ObjectSpawnRow[]; unreachable: boolean }> {
+export async function loadInstanceFacts(): Promise<InstanceFacts & { sightings: ObjectSpawnRow[]; unreachable: boolean; dataAsOf: string | null }> {
   const agg = await loadAggregates();
-  if (!agg) return { entrances: [], encounters: [], sightings: [], unreachable: true };
-  return { ...agg.instances, sightings: agg.sightings, unreachable: false };
+  if (!agg) return { entrances: [], encounters: [], sightings: [], unreachable: true, dataAsOf: null };
+  return { ...agg.instances, sightings: agg.sightings, unreachable: false, dataAsOf: agg.dataAsOf };
 }
 
 /** Items players have seen a recipe make (3 installs), for the item lists' Source column. */

@@ -46,6 +46,23 @@ test("the game files' tooltip text and icon come with their label and build, and
   expect(body.lines).toEqual(expect.arrayContaining(["Binds when picked up", '"Blessed Blade"']));
 });
 
+test("a tooltip line with no fact reads [?], never a blank: stat amounts, restrictions, the set and the Equip/Use lines", async () => {
+  const bare = tooltipResponse.parse(await (await call("item", "19019")).json());
+  expect(bare.lines).toEqual(["Stats: [?]", "Restrictions: [?]", "Set: [?]", "Equip and Use: [?]", "[?] marks a value the game files do not give us yet."]);
+  expect(bare.partial).toBe(true);
+  // With the files' own stat lines, the amounts stay on them and get no line of their own.
+  mocks.tips.mockResolvedValue(new Map([[19019, { name: "Thunderfury", color: "#ff8000", quality: "Legendary", icon: null, lines: ["One-Hand · Sword", "+[?] Agility"], partial: true, label: "x" }]]));
+  const withStats = tooltipResponse.parse(await (await call("item", "19019")).json());
+  expect(withStats.lines).toEqual(["One-Hand · Sword", "+[?] Agility", "Restrictions: [?]", "Set: [?]", "Equip and Use: [?]", "[?] marks a value the game files do not give us yet."]);
+  for (const line of [...bare.lines, ...withStats.lines]) expect(line.trim()).not.toMatch(/(^|:)$/);
+});
+
+test("agreed facts take the [?]'s place, line for line", async () => {
+  const { itemFactLines } = await import("@/lib/tooltip");
+  expect(itemFactLines({ restrictions: ["Classes: Warrior"], setName: "Synthetic Battlegear", effects: ["Equip: Synthetic effect."] }, true))
+    .toEqual(["Classes: Warrior", "Set: Synthetic Battlegear", "Equip: Synthetic effect."]);
+});
+
 test("an item nobody reported is a 404, and so is one a single install named (the 3-install rule)", async () => {
   expect((await call("item", "123456")).status).toBe(404);
   expect((await call("item", "5")).status).toBe(404);

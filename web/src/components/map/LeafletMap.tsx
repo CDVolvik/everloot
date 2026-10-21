@@ -152,6 +152,7 @@ export default function LeafletMap(props: LeafletMapProps) {
       for (const e of now.items.entrances) out.push({ id: `e${e.id}`, text: e.names[0]!, x: e.x + yards * 14, y: e.y, align: "start", priority: 60 });
       for (const f of now.items.flightMasters) if (zoom >= 3) out.push({ id: `f${f.id}`, text: f.name, x: f.x + yards * 14, y: f.y, align: "start", priority: 55 });
       if (zoom >= 6) for (const pin of now.items.pins) out.push({ id: `p${pin.id}`, text: pin.name ?? `NPC ${pin.npcId}`, x: pin.x + yards * 14, y: pin.y, align: "start", priority: 70 });
+      if (zoom >= 6) for (const t of now.items.treasures) out.push({ id: `p${t.id}`, text: t.name ?? `Object ${t.objectId}`, x: t.x + yards * 14, y: t.y, align: "start", priority: 65 });
       if (now.marker) out.push({ id: "marker", text: now.marker.label, x: now.marker.x + yards * 26, y: now.marker.y, align: "start", priority: 100 });
       for (const l of placeLabels(out, v, px, fontPx)) L.marker(ll(l.x, l.y), { icon: labelIcon(l), interactive: false, keyboard: false }).addTo(g.labels);
     };
@@ -236,6 +237,7 @@ export default function LeafletMap(props: LeafletMapProps) {
     for (const e of props.items.entrances) add(`e${e.id}`, e.x, e.y, e.raid ? "raid" : "dungeon");
     for (const f of props.items.flightMasters) add(f.id, f.x, f.y, "flight");
     for (const p of props.items.pins) add(p.id, p.x, p.y, p.kind);
+    for (const t of props.items.treasures) add(t.id, t.x, t.y, "chest");
     relabel.current();
   }, [props.items]);
 
