@@ -217,11 +217,41 @@ assert(lastLoot().gatherKind == 'chest' and lastLoot().sourceObjectName == 'Batt
 event('UNIT_SPELLCAST_SENT', 'player', '', 'Cast-2', 7620)
 loot('GameObject-0-1-2-3-35591-0000000001')
 assert(lastLoot().gatherKind == 'fishing' and lastLoot().sourceObjectName == nil)
+-- A fish can take 20 seconds to bite: the fishing cast still counts.
+event('UNIT_SPELLCAST_SENT', 'player', '', 'Cast-2b', 7620)
+clock = clock + 20
+loot('GameObject-0-1-2-3-35591-0000000002')
+assert(lastLoot().gatherKind == 'fishing', 'a slow bite is still fishing')
+event('UNIT_SPELLCAST_SENT', 'player', '', 'Cast-2c', 7620)
+clock = clock + 31
+loot('GameObject-0-1-2-3-35591-0000000003')
+assert(lastLoot().gatherKind == nil, 'past 30 seconds the cast is not this window')
 
--- A spell the addon does not know is "other", named by C_Spell or not at all.
+-- A spell the addon does not know is "other", and its target never becomes a name.
 event('UNIT_SPELLCAST_SENT', 'player', 'Strange Crate', 'Cast-3', 99999)
 loot('GameObject-0-1-2-3-7000-0000000001')
-assert(lastLoot().gatherKind == 'other' and lastLoot().sourceObjectName == 'Strange Crate')
+assert(lastLoot().gatherKind == 'other' and lastLoot().sourceObjectName == nil, 'an unknown spell keeps no target')
+-- Healing a player, then opening a crate with no cast: the player's name never reaches the loot row.
+event('UNIT_SPELLCAST_SENT', 'player', 'Bob', 'Cast-heal', 2050)
+loot('GameObject-0-1-2-3-7009-0000000001')
+assert(lastLoot().sourceObjectName == nil, 'a heal target is not an object name')
+event('UNIT_SPELLCAST_SENT', 'player', 'Lesser Heal', 'Rank 1', 'Bob')
+loot('GameObject-0-1-2-3-7010-0000000001')
+assert(lastLoot().sourceObjectName == nil, 'nor with the old argument order')
+-- A gather cast whose target is the targeted player's name keeps no name either.
+UnitIsPlayer = function(unit) return unit == 'target' end
+UnitName = function(unit) if unit == 'target' then return 'Bob' end end
+event('UNIT_SPELLCAST_SENT', 'player', 'Bob', 'Cast-odd', 2366)
+loot('GameObject-0-1-2-3-7011-0000000001')
+assert(lastLoot().gatherKind == 'herb' and lastLoot().sourceObjectName == nil, 'a targeted player name is dropped')
+UnitIsPlayer = function() error('broken') end
+event('UNIT_SPELLCAST_SENT', 'player', 'Peacebloom', 'Cast-ok', 2366)
+loot('GameObject-0-1-2-3-7012-0000000001')
+assert(lastLoot().sourceObjectName == 'Peacebloom', 'a failing UnitIsPlayer does not lose a real herb name')
+UnitIsPlayer, UnitName = nil, nil
+local names = {}
+for _, row in ipairs(rows()) do if row.sourceObjectName then names[row.sourceObjectName] = true end end
+assert(not names.Bob and not names['Strange Crate'])
 C_Spell = nil
 event('UNIT_SPELLCAST_SENT', 'player', 'Odd Thing', 'Cast-4', 123456)
 loot('GameObject-0-1-2-3-7001-0000000001')
@@ -280,7 +310,7 @@ loot('GameObject-0-1-2-3-1618-0000000097')
 assert(#rows() == count)
 """)
 counts = check_all(lua)
-assert counts["loot"] == 17, counts
+assert counts["loot"] == 23, counts
 
 # --- Budgets: a full targeting share and a full corpse share never stop NPC windows or object positions ---
 # An upgraded file: five targeting rows (one from before positionKind existed) and five corpse rows, with

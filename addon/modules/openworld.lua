@@ -149,7 +149,8 @@ local function interactionSighting(role)
 end
 
 -- The spell cast on an object, read at UNIT_SPELLCAST_SENT just before its loot window opens. English names
--- and the Classic spell ids; any other spell is "other". The cast's target is the object's name.
+-- and the Classic spell ids; any other spell is "other". The cast's target is the object's name, kept only for
+-- herb, ore and chest casts: any other spell's target may be a player, and a player's name never goes on a row.
 local GATHER_BY_NAME = {
   ["Herb Gathering"] = "herb", ["Mining"] = "ore", ["Opening"] = "chest", ["Opening - No Text"] = "chest",
   ["Fishing"] = "fishing",
@@ -160,9 +161,19 @@ local GATHER_BY_ID = {
   [3365] = "chest", [6247] = "chest", [6477] = "chest", [6478] = "chest", [21651] = "chest", [22810] = "chest",
   [7620] = "fishing", [7731] = "fishing", [7732] = "fishing", [18248] = "fishing",
 }
--- A loot window more than this many seconds after the cast is not that cast's.
-local GATHER_WINDOW = 8
+-- A loot window more than this many seconds after the cast is not that cast's. A fish can take longer to bite.
+local GATHER_WINDOW, FISHING_WINDOW = 8, 30
+local NAMED_KINDS = { herb = true, ore = true, chest = true }
 local lastCast
+
+-- True when the name is the targeted player's: such a cast target is never kept.
+local function targetPlayerNamed(name)
+  if not (UnitName and UnitIsPlayer) then return false end
+  local okPlayer, isPlayer = pcall(UnitIsPlayer, "target")
+  if not okPlayer or not isPlayer then return false end
+  local okName, targetName = pcall(UnitName, "target")
+  return okName and targetName == name
+end
 
 local function now()
   if not GetTime then return nil end
@@ -190,7 +201,9 @@ local function castSent(unit, a2, a3, a4)
   if type(a4) == "number" then spellId, target = a4, a2
   elseif type(a2) == "string" then name, target = a2, a4 end
   local kind = (spellId and GATHER_BY_ID[spellId]) or GATHER_BY_NAME[name or (spellId and spellName(spellId)) or ""] or "other"
-  if type(target) ~= "string" or target == "" or #target > 120 then target = nil end
+  if not NAMED_KINDS[kind] or type(target) ~= "string" or target == "" or #target > 120 or targetPlayerNamed(target) then
+    target = nil
+  end
   lastCast = { gatherKind = kind, name = target, at = now() }
 end
 
@@ -199,7 +212,8 @@ local function gatherContext()
   lastCast = nil
   if not cast then return nil end
   local t = now()
-  if cast.at and t and t - cast.at > GATHER_WINDOW then return nil end
+  local window = cast.gatherKind == "fishing" and FISHING_WINDOW or GATHER_WINDOW
+  if cast.at and t and t - cast.at > window then return nil end
   return cast
 end
 
