@@ -84,7 +84,7 @@ const matchedNames = (ids: number[]) => ({
 const clothIds = () => CLIENT_TAXONOMY.items.filter((r) => r[1] === 4 && r[2] === 1).map((r) => r[0]);
 const cloth = () => SubclassPage({ params: Promise.resolve({ id: "armor", subclass: "cloth" }), searchParams: Promise.resolve({}) });
 
-test("a category row shows a name the game files and the wiki agree on, in its quality colour, its source as the name's tooltip, no printed label", async () => {
+test("a category row shows a name the game files and the wiki agree on, in its quality colour, its source in the hover card and in words for a screen reader, no printed label", async () => {
   state.assets = assets;
   const ids = clothIds();
   state.matched = matchedNames([ids[0]]);
@@ -92,13 +92,15 @@ test("a category row shows a name the game files and the wiki agree on, in its q
   const page = await html(cloth());
   expect(page).toContain(`Wiki name ${ids[0]}`);
   expect(page).toContain("color:#a335ee");
-  expect(page).toContain(`title="${NAME_TITLE.wiki}"`);
+  // The source is in the link's hover card (/database/card), not a plain title that would double it.
+  expect(page).not.toContain(`title="${NAME_TITLE.wiki}"`);
   // The screen reader words follow the link: its anchor text is the name alone.
   expect(page).toContain(`>Wiki name ${ids[0]}</a><span class="sr-only"> (name from the warcraft wiki)</span>`);
   expect(page).not.toMatch(/<a [^>]*>[^<]*<span class="sr-only">/);
-  // Players' names keep first place and say so in their tooltip; every other row stays "Item N" with none.
+  // Players' names keep first place and say so; every other row stays "Item N" with none.
   expect(page).toContain(`Agreed ${ids[1]}`);
-  expect(page).toContain(`title="${NAME_TITLE.players}"`);
+  expect(page).not.toContain(`title="${NAME_TITLE.players}"`);
+  expect(page).toContain(`>Agreed ${ids[1]}</a><span class="sr-only"> (name confirmed by players)</span>`);
   expect(page).toContain(`>Item ${ids[2]}<`);
   // No source line, no wiki link and no credit line on the list (density spec, 2026-10-20).
   expect(page).not.toContain(NAME_SOURCE.wiki);

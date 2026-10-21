@@ -59,7 +59,8 @@ export function RelationTarget({ edge, rel, client, spellIcon, nameOf, gameName 
   return (
     <>
       {icon ? <><GameIcon src={icon} size={18} />{" "}</> : null}
-      {href ? <Link href={href} title={title} className="text-accent hover:underline underline-offset-4">{text}</Link> : title ? <span title={title}>{text}</span> : text}
+      {/* A link's hover card says where its name comes from; a name without a page keeps the plain tooltip. */}
+      {href ? <Link href={href} className="text-accent hover:underline underline-offset-4">{text}</Link> : title ? <span title={title}>{text}</span> : text}
       {fromFiles?.source === "wiki" ? <span className="sr-only"> ({GAME_NAME_TITLE.wiki.toLowerCase()})</span> : null}
       {/* A name only the game files give carries the quiet unconfirmed marker, as on the item lists. */}
       {fromFiles?.source === "files" ? <>{" "}<Badge tone="files" /></> : null}

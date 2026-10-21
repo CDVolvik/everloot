@@ -7,8 +7,13 @@ const mocks = vi.hoisted(() => ({
   quests: new Map([[176, { name: "Wanted: Hogger", wikiPage: "z" }]]),
 }));
 vi.mock("@/lib/names", () => ({ loadNames: async () => mocks.agreed }));
-vi.mock("@/lib/shown-item-names", () => ({ loadShownNames: async () => ({ matched: { names: mocks.matched } }) }));
-vi.mock("@/lib/game-assets", () => ({ loadQuestNames: async () => ({ names: mocks.quests }) }));
+vi.mock("@/lib/shown-item-names", () => ({ loadShownNames: async () => ({ matched: { names: mocks.matched }, showsTip: (id: number) => mocks.matched.has(id) }) }));
+vi.mock("@/lib/game-assets", () => ({
+  loadQuestNames: async () => ({ names: mocks.quests }),
+  loadSiteAssets: async () => ({ base: "https://assets.everloot.app/b" }),
+  // Only Thunderfury has an icon in these game files.
+  loadItemTips: async (_a: unknown, ids: number[]) => new Map(ids.filter((id) => id === 19019).map((id) => [id, { icon: "https://assets.everloot.app/b/icons/1.webp" }])),
+}));
 vi.mock("@/lib/objects", () => ({ loadObjectFacts: async () => ({ rates: [], measuredZeros: [], names: [], unreachable: false }) }));
 
 import { GET } from "./route";
@@ -22,6 +27,12 @@ test("the type-ahead finds items and quests by the names their pages show", asyn
   expect((await get("?q=wanted&in=quest"))[0]).toMatchObject({ label: "Wanted: Hogger", href: "/database/quests/176" });
   // An id is still named the way its page names it.
   expect((await get("?q=19019"))[0]).toMatchObject({ label: "Thunderfury, Blessed Blade of the Windseeker" });
+});
+
+test("an item row carries its game icon where its page shows one; NPCs and quests have none", async () => {
+  expect((await get("?q=thunderfury"))[0]).toMatchObject({ icon: "https://assets.everloot.app/b/icons/1.webp" });
+  expect((await get("?q=destiny"))[0]).not.toHaveProperty("icon");
+  expect((await get("?q=hogger")).every((r) => !("icon" in r))).toBe(true);
 });
 
 test("it is the site's route: never indexed, and /api/suggest keeps to the names players agree on", async () => {
