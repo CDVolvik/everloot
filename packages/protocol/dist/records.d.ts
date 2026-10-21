@@ -40,12 +40,12 @@ export declare const npcSighting: z.ZodObject<{
     mapId: z.ZodNumber;
     x: z.ZodNumber;
     y: z.ZodNumber;
-    level: z.ZodNumber;
-    reaction: z.ZodEnum<{
+    level: z.ZodOptional<z.ZodNumber>;
+    reaction: z.ZodOptional<z.ZodEnum<{
         friendly: "friendly";
         hostile: "hostile";
         neutral: "neutral";
-    }>;
+    }>>;
     positionKind: z.ZodOptional<z.ZodEnum<{
         interaction: "interaction";
         npc: "npc";
@@ -721,12 +721,12 @@ export declare const recordSchemas: {
         mapId: z.ZodNumber;
         x: z.ZodNumber;
         y: z.ZodNumber;
-        level: z.ZodNumber;
-        reaction: z.ZodEnum<{
+        level: z.ZodOptional<z.ZodNumber>;
+        reaction: z.ZodOptional<z.ZodEnum<{
             friendly: "friendly";
             hostile: "hostile";
             neutral: "neutral";
-        }>;
+        }>>;
         positionKind: z.ZodOptional<z.ZodEnum<{
             interaction: "interaction";
             npc: "npc";
@@ -1272,12 +1272,12 @@ export declare const anyRecord: z.ZodDiscriminatedUnion<[z.ZodObject<{
     mapId: z.ZodNumber;
     x: z.ZodNumber;
     y: z.ZodNumber;
-    level: z.ZodNumber;
-    reaction: z.ZodEnum<{
+    level: z.ZodOptional<z.ZodNumber>;
+    reaction: z.ZodOptional<z.ZodEnum<{
         friendly: "friendly";
         hostile: "hostile";
         neutral: "neutral";
-    }>;
+    }>>;
     positionKind: z.ZodOptional<z.ZodEnum<{
         interaction: "interaction";
         npc: "npc";
@@ -1783,10 +1783,16 @@ export type IntakeRecord = z.infer<typeof anyRecord>;
 export type StoredRecord = Exclude<IntakeRecord, {
     kind: "census_self" | "census_seen" | "player_seen" | "character_link";
 }> | StoredCensusRecord;
+/** Where an upload's rows came from when the Everloot addon did not write them. */
+export declare const UPLOAD_SOURCES: readonly ["polestar_recorder"];
+export type UploadSource = (typeof UPLOAD_SOURCES)[number];
 /** The request envelope. `protocol` is the uploader's protocol version; a missing one means major 1. */
 export declare const uploadPayload: z.ZodObject<{
     addonVersion: z.ZodString;
     clientBuild: z.ZodOptional<z.ZodString>;
     protocol: z.ZodOptional<z.ZodString>;
+    source: z.ZodOptional<z.ZodEnum<{
+        polestar_recorder: "polestar_recorder";
+    }>>;
     records: z.ZodArray<z.ZodUnknown>;
 }, z.core.$strip>;

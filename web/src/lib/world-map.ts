@@ -5,7 +5,7 @@ import { WorldMapData } from "../../../kb/src/world-map-data";
 import { allZones, observedPins } from "../../../kb/src/world-map-near";
 import { PUBLIC_RECORD_KINDS } from "@everloot/protocol";
 import { mapHref, type Candidate, type MapEntrance, type MapFlightLine, type MapFlightMaster, type MapPin, type MapPinSet } from "./map-view";
-import { vendorPage, WORLD_AGREEMENT, worldFactsFromRecords, type WorldFacts } from "../../../kb/src/world-pages";
+import { isPinPosition, vendorPage, WORLD_AGREEMENT, worldFactsFromRecords, type WorldFacts } from "../../../kb/src/world-pages";
 
 export const CONTINENTS = [
   { id: 0, name: "Eastern Kingdoms" },
@@ -127,7 +127,7 @@ export function continentCandidates(continentId: number, facts: WorldFacts, spoi
   const places = new Map<string, { npcId: number; mapId: number; installs: Set<string> }>();
   for (const row of facts.npcs) {
     const install = row.installId.trim();
-    if (!install || row.positionKind !== "npc" || !onContinent.has(row.mapId)) continue;
+    if (!install || !isPinPosition(row.positionKind) || !onContinent.has(row.mapId)) continue;
     if (!(row.x >= 0 && row.x <= 100 && row.y >= 0 && row.y <= 100)) continue;
     const key = `${row.npcId}:${row.mapId}`;
     const place = places.get(key) ?? { npcId: row.npcId, mapId: row.mapId, installs: new Set<string>() };

@@ -397,12 +397,12 @@ export declare const intakeRequest: z.ZodObject<{
         mapId: z.ZodNumber;
         x: z.ZodNumber;
         y: z.ZodNumber;
-        level: z.ZodNumber;
-        reaction: z.ZodEnum<{
+        level: z.ZodOptional<z.ZodNumber>;
+        reaction: z.ZodOptional<z.ZodEnum<{
             friendly: "friendly";
             hostile: "hostile";
             neutral: "neutral";
-        }>;
+        }>>;
         positionKind: z.ZodOptional<z.ZodEnum<{
             interaction: "interaction";
             npc: "npc";
@@ -1333,12 +1333,12 @@ export declare const API_SCHEMAS: {
             mapId: z.ZodNumber;
             x: z.ZodNumber;
             y: z.ZodNumber;
-            level: z.ZodNumber;
-            reaction: z.ZodEnum<{
+            level: z.ZodOptional<z.ZodNumber>;
+            reaction: z.ZodOptional<z.ZodEnum<{
                 friendly: "friendly";
                 hostile: "hostile";
                 neutral: "neutral";
-            }>;
+            }>>;
             positionKind: z.ZodOptional<z.ZodEnum<{
                 interaction: "interaction";
                 npc: "npc";

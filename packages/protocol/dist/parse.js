@@ -44,12 +44,12 @@ export function parseUpload(payload) {
     const parsed = uploadPayload.safeParse(payload);
     if (!parsed.success)
         return envelopeRefused("payload needs addonVersion + records[1..2000]");
-    const { addonVersion, clientBuild, protocol } = parsed.data;
+    const { addonVersion, clientBuild, protocol, source } = parsed.data;
     if (protocol !== undefined && !ACCEPTED_MAJORS.includes(protocolMajor(protocol) ?? -1)) {
         return envelopeRefused(`protocol ${protocol} is not supported; update the addon or uploader`);
     }
     const { records, receipt } = parseRecords(parsed.data.records);
-    return { ok: true, upload: { addonVersion, ...(clientBuild ? { clientBuild } : {}), records }, receipt };
+    return { ok: true, upload: { addonVersion, ...(clientBuild ? { clientBuild } : {}), ...(source ? { source } : {}), records }, receipt };
 }
 /**
  * Validate an upload: every record is checked against its kind schema.

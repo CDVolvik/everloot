@@ -12,6 +12,10 @@ required, or tightening a limit is a major release.
   without a key, 5,000 with one), and the corpus and client-layer routes and the market rule read in plain words.
 
 ### Added
+- 1.11.0 (record protocol 1.6.0), for uploads of a Polestar Recorder file: `npc_sighting.level` and
+  `npc_sighting.reaction` are no longer required, because a Recorder file does not record them, and the upload
+  envelope gains an optional `source` (`UPLOAD_SOURCES`: `polestar_recorder`), passed through as
+  `CanonicalUpload.source`. Rows from the Everloot addon still carry both fields. MCP tools are unchanged.
 - 1.10.0 (record protocol 1.5.0), for the world map's player pins: `npc_sighting.positionKind` gains `interaction`
   (the player's position while the NPC's window was open) and an optional `role` (`NPC_ROLES`: vendor, trainer,
   questgiver, flightmaster, banker, auctioneer, stablemaster, innkeeper, repair). `loot` gains five optional

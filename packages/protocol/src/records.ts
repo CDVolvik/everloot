@@ -61,8 +61,8 @@ export const npcSighting = base.extend({
   mapId: z.number().int().nonnegative(),
   x: z.number().min(0).max(100),
   y: z.number().min(0).max(100),
-  level: z.number().int().min(1).max(100),
-  reaction: z.enum(["friendly", "neutral", "hostile"]),
+  level: z.number().int().min(1).max(100).optional().describe("The NPC's level. Absent when the source did not record it, as in a converted Polestar Recorder file."),
+  reaction: z.enum(["friendly", "neutral", "hostile"]).optional().describe("How the NPC stood toward the player. Absent when the source did not record it, as in a converted Polestar Recorder file."),
   positionKind: z.enum(["player", "npc", "interaction"]).optional().describe("Whose coordinates were measured; legacy unknown positions never become spawn pins. `interaction` is the player's position while the NPC's window was open, a few yards from the NPC."),
   role: z.enum(NPC_ROLES).optional().describe("With `interaction`: the window that opened (`NPC_ROLES`). Absent for a gossip window that names no service and from older addons."),
   creatureType: z.enum(NPC_CREATURE_TYPES).optional().describe("The creature type the game shows, as `UnitCreatureType` reports it in English. Older addons send none."),
@@ -673,10 +673,15 @@ export type IntakeRecord = z.infer<typeof anyRecord>;
  */
 export type StoredRecord = Exclude<IntakeRecord, { kind: "census_self" | "census_seen" | "player_seen" | "character_link" }> | StoredCensusRecord;
 
+/** Where an upload's rows came from when the Everloot addon did not write them. */
+export const UPLOAD_SOURCES = ["polestar_recorder"] as const;
+export type UploadSource = (typeof UPLOAD_SOURCES)[number];
+
 /** The request envelope. `protocol` is the uploader's protocol version; a missing one means major 1. */
 export const uploadPayload = z.object({
   addonVersion: z.string().min(1).max(UPLOAD_LIMITS.addonVersionMax),
   clientBuild: CLIENT_BUILD.optional(),
   protocol: z.string().regex(/^\d+\.\d+\.\d+$/).optional(),
+  source: z.enum(UPLOAD_SOURCES).optional().describe("Absent for the Everloot addon's own file. `polestar_recorder`: the rows were converted in the browser from a Polestar Recorder file, and the server assigns their install id."),
   records: z.array(z.unknown()).min(1).max(UPLOAD_LIMITS.recordsPerBatch),
 });

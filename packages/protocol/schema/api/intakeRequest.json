@@ -71,11 +71,13 @@
                 "maximum": 100
               },
               "level": {
+                "description": "The NPC's level. Absent when the source did not record it, as in a converted Polestar Recorder file.",
                 "type": "integer",
                 "minimum": 1,
                 "maximum": 100
               },
               "reaction": {
+                "description": "How the NPC stood toward the player. Absent when the source did not record it, as in a converted Polestar Recorder file.",
                 "type": "string",
                 "enum": [
                   "friendly",
@@ -146,9 +148,7 @@
               "name",
               "mapId",
               "x",
-              "y",
-              "level",
-              "reaction"
+              "y"
             ],
             "additionalProperties": false
           },

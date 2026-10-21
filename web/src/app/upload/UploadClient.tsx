@@ -1,7 +1,8 @@
 "use client";
 import { useMemo, useRef, useState } from "react";
 import { track } from "@/lib/analytics/track";
-import { parseEverlootLua } from "@/lib/sv-parse";
+import { parseEverlootLua, parsePolestarTable } from "@/lib/sv-parse";
+import { convertRecorder, type RecorderPayload } from "@/lib/polestar-recorder";
 import { censusSummary, prepareUpload, sendBatches, type SharingChoices, type UploadSession } from "@/lib/upload-batches";
 import type { SharingCategory } from "../../../../kb/src/publication";
 import Card from "@/components/ui/Card";
@@ -47,7 +48,9 @@ export default function UploadClient({ playerPages = false }: { playerPages?: bo
       if (file.size > 20_000_000) throw new Error("This file exceeds 20 MB. Keep the original and split it before uploading.");
       const text = await file.text();
       let value: unknown;
-      if (/\.lua$/i.test(file.name) || /EverlootDB\s*=/.test(text.slice(0, 500))) {
+      // A Polestar Recorder file is converted here, in the browser; its names never leave this page.
+      if (/PolestarRecorderDB\s*=/.test(text.slice(0, 500))) value = await convertRecorder(parsePolestarTable(text));
+      else if (/\.lua$/i.test(file.name) || /EverlootDB\s*=/.test(text.slice(0, 500))) {
         const parsed = parseEverlootLua(text);
         value = { addonVersion: parsed.version, clientBuild: parsed.clientBuild, records: parsed.records };
       } else value = JSON.parse(text);
@@ -90,11 +93,14 @@ export default function UploadClient({ playerPages = false }: { playerPages?: bo
   const accepted = session?.receipts.reduce((n, receipt) => n + (receipt.accepted?.length ?? 0), 0) ?? 0;
   const rejected = session?.receipts.reduce((n, receipt) => n + (receipt.rejected?.length ?? 0), 0) ?? 0;
   const complete = !!session && session.next === session.batches.length;
+  const recorder = (payload as Partial<RecorderPayload> | null)?.recorder;
+  const skipped = recorder ? Object.entries(recorder.skipped).sort(([a], [b]) => a.localeCompare(b)) : [];
+  const capped = recorder ? Object.entries(recorder.capped).sort(([a], [b]) => a.localeCompare(b)) : [];
   return (
     <div className="space-y-6">
       <div onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); if (!busy && e.dataTransfer.files[0]) void loadFile(e.dataTransfer.files[0]); }}>
         <Card className="text-center">
-        <p className="text-fg-2">Drop your Everloot.lua or payload JSON here.</p>
+        <p className="text-fg-2">Drop your Everloot.lua, Polestar_Recorder.lua or payload JSON here.</p>
         <div className="mt-4 flex flex-wrap justify-center gap-3">
           <label className={button}>Choose file
             <input aria-label="Choose Everloot file" type="file" accept="application/json,.json,.lua" className="sr-only" disabled={busy}
@@ -127,6 +133,15 @@ export default function UploadClient({ playerPages = false }: { playerPages?: bo
             <span className="text-fg-2">{kind}</span><span className="text-accent font-semibold">{count}</span>
           </li>)}
         </ul>
+        {recorder && <div className="mt-3 text-sm text-fg-2">
+          {recorder.sessions === 0
+            ? <p>This <a className="text-accent hover:underline underline-offset-4" href="https://github.com/fitzforge/polestar" rel="noopener">Polestar Recorder</a> file holds nothing Everloot can use yet. The game can leave it empty after a restart: play a session with the Recorder on, log out, and choose it again.</p>
+            : <p>From your <a className="text-accent hover:underline underline-offset-4" href="https://github.com/fitzforge/polestar" rel="noopener">Polestar Recorder</a> file: {recorder.sessions} {recorder.sessions === 1 ? "session" : "sessions"} of {recorder.characters} {recorder.characters === 1 ? "character" : "characters"}, each sent as its own upload.</p>}
+          {recorder.unread > 0 && <p className="mt-1 text-fg-2">{recorder.unread} {recorder.unread === 1 ? "session is" : "sessions are"} in a format Everloot does not read and stay out.</p>}
+          <p className="mt-1 text-fg-2">What is sent: where you stood when an NPC&apos;s window was open (quest givers, vendors, trainers, flight masters), NPCs you killed or saw as rares (where you stood, never a map pin), the quests you accepted with their givers, turn-ins and rewards, and your loot windows. Character names, realms, session names and your notes stay on this computer. The server gives each character its own install id, so a fact counts once three characters on three connections agree on it.</p>
+          {skipped.length > 0 && <p className="mt-1 text-fg-2">Not converted: {skipped.map(([kind, n]) => `${kind} (${n.toLocaleString("en-US")})`).join(", ")}.</p>}
+          {capped.length > 0 && <p className="mt-1 text-fg-2">The Recorder stopped recording some kinds at its limits: {capped.map(([kind, n]) => `${kind} (${n.toLocaleString("en-US")} not recorded)`).join(", ")}. Those sessions are missing events of that kind.</p>}
+        </div>}
         {prepared.value.addons.length > 0 && <div className="mt-3 text-sm text-fg-2">
           <p>Installed addons in this upload ({prepared.value.addons.length}), recorded because you ran <code>/everloot addons on</code>:</p>
           <p className="mt-1 text-fg-2">{prepared.value.addons.join(", ")}</p>

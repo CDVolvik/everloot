@@ -17,6 +17,13 @@
       "type": "string",
       "pattern": "^\\d+\\.\\d+\\.\\d+$"
     },
+    "source": {
+      "description": "Absent for the Everloot addon's own file. `polestar_recorder`: the rows were converted in the browser from a Polestar Recorder file, and the server assigns their install id.",
+      "type": "string",
+      "enum": [
+        "polestar_recorder"
+      ]
+    },
     "records": {
       "minItems": 1,
       "maxItems": 2000,

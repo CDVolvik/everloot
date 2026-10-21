@@ -17,16 +17,17 @@ export class LuaParseError extends Error {}
 
 class Parser {
   private i = 0;
-  constructor(private readonly s: string) {}
+  /** `root` is the global the file assigns; `what` names the file in the error when it is missing. */
+  constructor(private readonly s: string, private readonly root = "EverlootDB", private readonly what = "an Everloot export") {}
 
   parse(): LuaTable {
-    // EverlootDB = { ... } — find the assignment, parse the table.
-    const m = /EverlootDB\s*=\s*/.exec(this.s);
-    if (!m) throw new LuaParseError("not an Everloot export (EverlootDB = {...} not found)");
+    // EverlootDB = { ... } (or the root given) — find the assignment, parse the table.
+    const m = new RegExp(`${this.root}\\s*=\\s*`).exec(this.s);
+    if (!m) throw new LuaParseError(`not ${this.what} (${this.root} = {...} not found)`);
     this.i = m.index + m[0].length;
     const v = this.value();
     if (typeof v !== "object" || v === null || !("array" in v)) {
-      throw new LuaParseError("EverlootDB is not a table");
+      throw new LuaParseError(`${this.root} is not a table`);
     }
     return v as LuaTable;
   }
@@ -152,6 +153,17 @@ export interface EverlootFile {
 /** The whole EverlootDB table as plain values, for readers that need more than the records (the /ask bridge). */
 export function parseEverlootTable(text: string): Record<string, unknown> {
   const plain = toPlain(new Parser(text).parse());
+  return Array.isArray(plain) ? {} : (plain as Record<string, unknown>);
+}
+
+/**
+ * The PolestarRecorderDB table of a Polestar_Recorder.lua file (written by the Polestar Recorder addon) as plain
+ * values: the same Lua subset, read the same way, never executed. Converting it is `lib/polestar-recorder.ts`.
+ */
+export function parsePolestarTable(text: string): Record<string, unknown> {
+  // The game can write the file back empty after a restart: that is an empty file, not a broken one.
+  if (/PolestarRecorderDB\s*=\s*nil\b/.test(text)) return {};
+  const plain = toPlain(new Parser(text, "PolestarRecorderDB", "a Polestar Recorder file").parse());
   return Array.isArray(plain) ? {} : (plain as Record<string, unknown>);
 }
 

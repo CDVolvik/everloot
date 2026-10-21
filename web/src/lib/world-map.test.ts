@@ -200,6 +200,12 @@ describe("player-observed points", () => {
     expect(JSON.stringify(continentCandidates(0, observedFacts(records), false, data))).not.toMatch(/npcId|"x"|installId|"a"/);
   });
 
+  test("an interaction position is read like the NPC's own: a candidate at one install, a pin at three, on the 0 to 100 scale", () => {
+    const at = (installId: string) => ({ ...sighting(installId, 40, 1429), positionKind: "interaction", role: "questgiver", level: undefined, reaction: undefined });
+    expect(continentCandidates(0, observedFacts([at("a")]), false, data)).toEqual([{ category: "npc", mapId: 1429, count: 1 }]);
+    expect(continentPins(0, observedFacts(["a", "b", "c"].map(at)), false, data)).toMatchObject([{ npcId: 40, zoneX: 40, zoneY: 60, reporters: 3 }]);
+  });
+
   test("a held-back zone's candidates count only with spoilers on", () => {
     const records = [sighting("a", 30, 2482)];
     expect(continentCandidates(1, observedFacts(records), false, data)).toEqual([]);
