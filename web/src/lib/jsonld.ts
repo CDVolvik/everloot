@@ -228,6 +228,27 @@ export function loreCollectionJsonLd(page: { name: string; description: string; 
   };
 }
 
+/**
+ * A wiki page: Everloot's own text, so its CC BY-SA licence may be stated. `about` names the bound entity when
+ * the page can name it; `dateModified` is the day a maintainer reviewed the page.
+ */
+export function wikiArticleJsonLd(page: { title: string; summary: string; path: string; reviewedOn: string | null; about: { name: string; path: string | null } | null }): JsonLd {
+  return {
+    "@context": CONTEXT,
+    "@type": "Article",
+    headline: page.title,
+    description: page.summary,
+    url: absoluteUrl(page.path),
+    mainEntityOfPage: absoluteUrl(page.path),
+    isPartOf: { "@id": WEBSITE_ID },
+    author: publisher,
+    publisher,
+    license: CC_BY_SA.url,
+    ...(page.reviewedOn ? { dateModified: page.reviewedOn } : {}),
+    ...(page.about ? { about: { "@type": "Thing", name: page.about.name, ...(page.about.path ? { url: absoluteUrl(page.about.path) } : {}) } } : {}),
+  };
+}
+
 export function aboutPageJsonLd(page: { name: string; description: string; path: string }): JsonLd {
   return {
     "@context": CONTEXT,
