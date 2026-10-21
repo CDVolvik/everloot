@@ -162,7 +162,7 @@ export const CLASSES = ["warrior", "paladin", "hunter", "rogue", "priest", "sham
 
 export type TokenName =
   | "canvas" | "panel" | "line" | "edge" | "fg" | "fg-2" | "muted" | "accent" | "danger" | "warning"
-  | "tooltip" | "tooltip-border" | "tooltip-inner" | "accent-hover"
+  | "tooltip" | "tooltip-border" | "tooltip-inner" | "accent-hover" | "blue-post"
   | `q-${(typeof QUALITIES)[number]}` | `class-${(typeof CLASSES)[number]}` | "chat-whisper" | "chat-guild";
 
 // Tooltip frames stay dark in both modes, as in the game.
@@ -184,6 +184,8 @@ export const tokens: Record<Mode, Record<TokenName, string>> = {
     ...tooltip,
     // The primary button's fill on hover; its text is the canvas colour.
     "accent-hover": "#B3F566",
+    // Blizzard's own posts (forum and Bluesky, posts and hotfixes; not builds) in the blue of a blue post.
+    "blue-post": "#00C0FF",
     "q-poor": "#9D9D9D",
     "q-common": "#F2F4F8",
     "q-uncommon": "#1EFF00",
@@ -215,6 +217,7 @@ export const tokens: Record<Mode, Record<TokenName, string>> = {
     warning: "#8A5A00",
     ...tooltip,
     "accent-hover": "#256207",
+    "blue-post": "#00639E",
     "q-poor": "#6B6B6B",
     "q-common": "#12130F",
     "q-uncommon": "#1A7A12",
@@ -236,7 +239,7 @@ export const tokens: Record<Mode, Record<TokenName, string>> = {
 };
 
 export const TEXT_TOKENS: TokenName[] = [
-  "fg", "fg-2", "muted", "accent", "danger", "warning",
+  "fg", "fg-2", "muted", "accent", "danger", "warning", "blue-post",
   ...QUALITIES.map((q) => `q-${q}` as const),
   ...CLASSES.map((c) => `class-${c}` as const),
   "chat-whisper", "chat-guild",

@@ -3,23 +3,25 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import AdSlot from "@/components/AdSlot";
 import JsonLd from "@/components/JsonLd";
-import SpellTip from "@/components/game/SpellTip";
 import { Badge, Container, DataTable, DataTitle, FilterBar, ResultStrip, type Column, type FilterControl } from "@/components/ui";
-import { CHANGE_FILTERS, GAME_LABEL, TYPE_LABEL, filterTimeline, loadTimeline, parseFilter, type ChangeEntry, type ChangeFilter } from "@/lib/changes";
+import { CHANGE_FILTERS, GAME_LABEL, TYPE_LABEL, filterTimeline, loadTimeline, parseFilter, postPath, type ChangeEntry, type ChangeFilter } from "@/lib/changes";
 import { latestBuildLine } from "@/lib/changes-facts";
 import { loadSiteAssets } from "@/lib/game-assets";
 import { changesJsonLd } from "@/lib/jsonld";
 import { pageMetadata } from "@/lib/seo";
-import { mentionIndex, siteSpellNames, splitMentions, type MentionIndex } from "@/lib/spell-mentions";
+import { mentionIndex, siteSpellNames } from "@/lib/spell-mentions";
 import { listHref, listQuery, nextSort, NoMatches, PER_PAGE, sortParam, type ListQuery, type Search } from "../database/list-parts";
+import WithSpells from "./with-spells";
 
 export const metadata: Metadata = {
-  ...pageMetadata({ title: "WoW Forever Patch Notes and Blizzard Posts", description: "New WoW: Forever builds, hotfixes and Blizzard blue posts, newest first. Each links to Blizzard's original; builds are dated when Everloot first saw them.", path: "/changes", image: "/changes/opengraph-image" }),
+  ...pageMetadata({ title: "WoW Forever Patch Notes and Blizzard Posts", description: "New WoW: Forever builds, hotfixes and Blizzard blue posts, newest first. Each post has a page linking the original; builds are dated as Everloot first saw them.", path: "/changes", image: "/changes/opengraph-image" }),
 };
 
 const TITLE = "Changes";
 const LEAD = "Blue posts, hotfixes and new game builds, newest first.";
 const LINK = "text-accent hover:underline underline-offset-4";
+/** Blizzard's posts and hotfixes, never builds, in the blue of a blue post. */
+const BLUE = "text-blue-post hover:underline underline-offset-4";
 
 /** UTC to the minute, whatever offset the time was written with. */
 const stamp = (iso: string) => `${new Date(iso).toISOString().slice(0, 16).replace("T", " ")} UTC`;
@@ -69,19 +71,6 @@ const active = (q: ChangesQuery) => [q.q, q.show !== "all", q.game !== "forever"
 
 const SOURCE_LABEL = (e: ChangeEntry) => e.type === "build" ? "" : e.source === "bluesky" ? "Bluesky" : REGIONS[e.region ?? "us"];
 
-/** Text with the spells it names given their icon and tooltip, linked to the page that shows them. Without the art, the text as it was. */
-function WithSpells({ text, index }: { text: string; index: MentionIndex }) {
-  return (
-    <>
-      {splitMentions(text, index).map((p, i) => (typeof p === "string" ? p : (
-        <SpellTip key={i} tip={p.mention.tip}>
-          <Link href={p.mention.href} className={LINK}>{p.text}</Link>
-        </SpellTip>
-      )))}
-    </>
-  );
-}
-
 export default async function ChangesPage({ searchParams }: { searchParams: Promise<Search> }) {
   const q = changesQuery((await searchParams) ?? {});
   if (!q) notFound();
@@ -126,10 +115,11 @@ export default async function ChangesPage({ searchParams }: { searchParams: Prom
         const line = e.type === "build"
           ? <>First seen by Everloot. {e.diffUrl ? <a href={e.diffUrl} className={LINK}>See what changed</a> : "What changed: not published yet."}</>
           : (e.summary ?? e.excerpt) && <WithSpells text={(e.summary ?? e.excerpt)!} index={index} />;
+        const page = postPath(e);
         return (
-          <div data-change-row className="min-w-0 py-1">
-            {e.url
-              ? <a href={e.url} rel="noopener" className={`${LINK} font-medium`}>{e.title}</a>
+          <div data-change-row data-blue-post={page ? "" : undefined} className="min-w-0 py-1">
+            {page
+              ? <Link href={page} className={`${BLUE} font-medium`}>{e.title}</Link>
               : <span className="font-medium">{e.title}</span>}
             {q.game === "all" && <span className="ml-2 text-cell-2 text-muted">{GAME_LABEL[e.game]}</span>}
             {line && <p className="line-clamp-2 text-cell-2 text-muted">{line}</p>}
@@ -139,7 +129,7 @@ export default async function ChangesPage({ searchParams }: { searchParams: Prom
     },
     {
       key: "author", header: "Author", sortable: true, nowrap: true, cell: (e) => e.author
-        ? <Link href={here({ author: e.author })} title={e.role || undefined} className="text-fg-2 hover:text-fg">{e.author}</Link>
+        ? <Link href={here({ author: e.author })} title={e.role || undefined} className={BLUE}>{e.author}</Link>
         : dash,
     },
     { key: "source", header: "Where", sortable: true, nowrap: true, cell: (e) => SOURCE_LABEL(e) ? <span title={e.category || undefined} className="text-fg-2">{SOURCE_LABEL(e)}</span> : dash },
