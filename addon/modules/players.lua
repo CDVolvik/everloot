@@ -133,9 +133,14 @@ end
 
 --- Read one player unit. `newLevel` is for yourself at level-up, before UnitLevel has it.
 local function read(unit, newLevel)
-  local name, unitRealm = UnitName(unit)
-  -- Another realm's player carries their realm here; one realm string is all a row holds, so skip them.
-  if not token(name, NAME, 2, 48) or (unitRealm ~= nil and unitRealm ~= "") then return true end
+  -- The realm-aware call, not the plain one: the plain call gives the server, which is never empty,
+  -- so a client that answers with the server would drop every player. A unit on another realm
+  -- carries a realm that is not ours, and that is the only thing that makes it another realm.
+  local name, unitRealm = UnitName(unit, true)
+  local ourRealm = GetRealmName()
+  local _, ourServer = UnitName("player")
+  local anotherRealm = unitRealm and unitRealm ~= "" and unitRealm ~= ourRealm and unitRealm ~= ourServer
+  if not token(name, NAME, 2, 48) or anotherRealm then return true end
   local level = tonumber(newLevel) or UnitLevel(unit)
   if type(level) ~= "number" or level < 1 or level > MAX_LEVEL then return false end
   local _, race = UnitRace(unit)
