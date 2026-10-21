@@ -5,11 +5,11 @@ import type { BlueWriteup, ChangeEntry } from "@/lib/changes";
 import { MAX_EXCERPT_CHARS } from "../../../../../kb/src/text-safety";
 
 const data = vi.hoisted((): { entries: ChangeEntry[]; writeups: Map<string, BlueWriteup> } => ({ entries: [], writeups: new Map() }));
-vi.mock("@/lib/changes", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/changes")>()),
-  loadTimeline: () => data.entries,
-  loadWriteups: () => data.writeups,
-}));
+vi.mock("@/lib/changes", async (importOriginal) => {
+  const real = await importOriginal<typeof import("@/lib/changes")>();
+  // The real loadTimeline groups the bundled posts; the fixtures go through the same grouping.
+  return { ...real, loadTimeline: () => real.groupAnnouncements(data.entries), loadWriteups: () => data.writeups };
+});
 vi.mock("next/link", () => ({
   default: ({ href, children, className }: { href: string; children: ReactNode; className?: string }) => <a href={href} className={className}>{children}</a>,
 }));
@@ -30,12 +30,13 @@ const sky: ChangeEntry = {
   id: "bluesky:3mydklukhq22f", type: "post", game: "forever", at: "2026-10-20T21:16:09.013Z", title: "Good News, Everyone!", url: "https://bsky.app/profile/worldofwarcraft.blizzard.com/post/3mydklukhq22f",
   author: "World of Warcraft", role: "Official account", category: "Bluesky", source: "bluesky", excerpt: "Reserve your first three names.",
 };
+const euOnly: ChangeEntry = { ...post, id: "forum:eu:6400001", region: "eu", at: "2026-10-14T10:00:00.000Z", title: "EU realm maintenance", url: "https://eu.forums.blizzard.com/en/wow/t/m/1" };
 const older: ChangeEntry = { ...post, id: "forum:30000001", at: "2026-10-12T10:00:00.000Z", title: "An older notice", excerpt: "Old." };
 const build: ChangeEntry = { id: "build:wow_classic_beta:aaa", type: "build", game: "forever", at: "2026-10-20T06:00:00.000Z", title: "WoW: Forever build 1.60.1.70460", url: null, version: "1.60.1.70460" };
 const writeup: BlueWriteup = { postId: "forum:30553826", reviewed: { by: "Maintainer", on: "2026-10-21" }, body: "Name reservations are a week long. Three names per account.\n\n- Pick names early.\n- See [every change](/changes)." };
 
 const CANONICAL = "us-30553826-claim-your-world-of-warcraft-forever-character-names";
-data.entries = [sky, eu, post, build, older];
+data.entries = [sky, eu, post, build, older, euOnly];
 
 const page = async (segment: string) => renderToStaticMarkup(await BluePostPage({ params: Promise.resolve({ post: segment }) }));
 const meta = (segment: string) => generateMetadata({ params: Promise.resolve({ post: segment }) });
@@ -74,7 +75,7 @@ test("Bluesky and EU posts get their own source line and link", async () => {
   expect(s).toContain("Bluesky");
   expect(s).not.toContain("· Bluesky · Bluesky");
   expect(s).toMatch(/href="https:\/\/bsky\.app\/profile\/worldofwarcraft\.blizzard\.com\/post\/3mydklukhq22f" rel="noopener"[^>]*>Read the full post on Bluesky<\/a>/);
-  expect(await page(`eu-6443686-claim-your-world-of-warcraft-forever-character-names`)).toContain("EU forum");
+  expect(await page("eu-6400001-eu-realm-maintenance")).toContain("EU forum");
 });
 
 test("the excerpt on the page is never longer than the policy allows, whatever the data says", async () => {
@@ -86,7 +87,7 @@ test("the excerpt on the page is never longer than the policy allows, whatever t
     expect(quoted.length).toBeLessThanOrEqual(MAX_EXCERPT_CHARS);
     expect(html).not.toContain("must not show");
   } finally {
-    data.entries = [sky, eu, post, build, older];
+    data.entries = [sky, eu, post, build, older, euOnly];
   }
 });
 
@@ -120,11 +121,11 @@ test("with a reviewed write-up: our notes with lists and links, the page is inde
   expect(JSON.stringify(article)).not.toContain('"Person"');
 });
 
-test("More from the author and Same day link to the other posts' pages, never to builds or the post itself", async () => {
+test("More from the author and Same day link to the other posts' pages, never to builds, the post itself or its copies", async () => {
   const html = await page(CANONICAL);
   const more = html.slice(html.indexOf('id="more-from"'), html.indexOf('id="same-day"'));
   expect(more).toContain("More from Blizzard Entertainment");
-  expect(more).toContain(`href="/changes/eu-6443686-claim-your-world-of-warcraft-forever-character-names"`);
+  expect(html).not.toContain("/changes/eu-6443686");
   expect(more).toContain('href="/changes/us-30000001-an-older-notice"');
   expect(more).toContain('href="/changes?author=Blizzard+Entertainment"');
   expect(more).not.toContain(`href="/changes/${CANONICAL}"`);
@@ -132,4 +133,34 @@ test("More from the author and Same day link to the other posts' pages, never to
   expect(day).toContain('href="/changes/bsky-3mydklukhq22f-good-news-everyone"');
   expect(day).not.toContain("an-older-notice");
   expect(html).not.toContain("1.60.1.70460");
+});
+
+test("a regional copy's address moves (308) to the announcement's page", async () => {
+  await expect(page("eu-6443686-claim-your-world-of-warcraft-forever-character-names")).rejects.toThrow(`NEXT_REDIRECT /changes/${CANONICAL}`);
+  await expect(page("eu-6443686")).rejects.toThrow(`NEXT_REDIRECT /changes/${CANONICAL}`);
+  expect((await meta("eu-6443686")).alternates?.canonical).toBe(`/changes/${CANONICAL}`);
+});
+
+test("the page says where else the announcement was posted, linking each copy", async () => {
+  const html = await page(CANONICAL);
+  expect(html).toMatch(/<p data-also-posted="true"[^>]*>Also posted <span><a href="https:\/\/eu\.forums\.blizzard\.com\/en\/wow\/t\/x\/636753" rel="noopener"[^>]*>on the EU forum<\/a><\/span>\.<\/p>/);
+  expect(await page("eu-6400001-eu-realm-maintenance")).not.toContain("data-also-posted");
+  // A repeat thread on the same forum says so.
+  const again: ChangeEntry = { ...post, id: "forum:30553827", at: "2026-10-20T21:00:13.000Z", url: "https://us.forums.blizzard.com/en/wow/t/y/2387946" };
+  data.entries = [eu, post, again];
+  try {
+    const both = await page(CANONICAL);
+    expect(both).toContain('>in a second thread on the US forum</a></span><span> and <a href="https://eu.forums.blizzard.com/en/wow/t/x/636753"');
+    await expect(page("us-30553827")).rejects.toThrow(`NEXT_REDIRECT /changes/${CANONICAL}`);
+  } finally {
+    data.entries = [sky, eu, post, build, older, euOnly];
+  }
+});
+
+test("a write-up filed under a regional copy shows on the announcement's page, which is then indexable", async () => {
+  data.writeups = new Map([["forum:eu:6443686", { ...writeup, postId: "forum:eu:6443686" }]]);
+  expect((await meta(CANONICAL)).robots).toEqual({ index: true, follow: true });
+  const html = await page(CANONICAL);
+  expect(html).toContain("<p>Name reservations are a week long. Three names per account.</p>");
+  expect(html).toContain('"@type":"Article"');
 });

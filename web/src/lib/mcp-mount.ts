@@ -26,8 +26,9 @@ export function unavailable(error: string, status = 503): Response {
 /** The site's readers the tools answer from, the same for the MCP mounts and GET /api/tools/{tool}. */
 export function toolLoaders(): ToolOptions {
   return {
-    // The same timeline the /changes page shows, read from the files bundled with the site.
-    changes: () => loadTimeline(),
+    // The same timeline the /changes page shows, read from the files bundled with the site. The regional
+    // copies stay on the site: the protocol's change entry has no field for them.
+    changes: () => loadTimeline().map(({ copies: _copies, ...e }) => e),
     // The registry and GitHub snapshot bundled with the site, joined with the same install counts as /addons/popular.
     ecosystem: () => loadEcosystem(),
     // Same deployment as the store: read the public records in process, no HTTP self-fetch or byte ceiling.
