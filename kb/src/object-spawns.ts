@@ -4,7 +4,8 @@
  * (`gatherKind`) and the object's name. One object id has many spawn points, so an id's positions within a
  * map are grouped into clusters: a position closer than `SPAWN_RADIUS` (on the 0..100 map scale) to a
  * cluster's centre joins it. A cluster is a pin at 3 distinct installs; 1 or 2 installs are only counted,
- * never placed. Fishing is left out: the window reports the bobber, not the pool.
+ * never placed. Fishing is left out: the window reports the bobber, not the pool. A cluster's centre is the
+ * mean of its installs' mean positions, so many rows from one install do not move it.
  *
  * A pin's key is `obj<objectId>-<mapId>-<x>_<y>`, its first agreed median rounded to 0.5. Pass the keys
  * already published back in and each keeps its place: positions near it join it before any new cluster
@@ -90,14 +91,25 @@ function clusterGroup(rows: PlacedRow[], anchors: { key: string; x: number; y: n
     const home = nearest(row, clusters);
     if (home) home.rows.push(row); else loose.push(row);
   }
-  // Then new clusters, each centred on the mean of what joined it so far.
+  // Then new clusters. Each is centred on the mean of its installs' own mean positions, so one install that
+  // sent many rows weighs as much as one that sent a single row and cannot drag the centre away.
   const fresh: Cluster[] = [];
+  const recentre = (c: Cluster) => {
+    const byInstall = new Map<string, { x: number; y: number; n: number }>();
+    for (const r of c.rows) {
+      const s = byInstall.get(r.installId.trim()) ?? { x: 0, y: 0, n: 0 };
+      s.x += r.x; s.y += r.y; s.n += 1;
+      byInstall.set(r.installId.trim(), s);
+    }
+    const means = [...byInstall.values()];
+    c.cx = means.reduce((sum, s) => sum + s.x / s.n, 0) / means.length;
+    c.cy = means.reduce((sum, s) => sum + s.y / s.n, 0) / means.length;
+  };
   for (const row of loose) {
     const home = nearest(row, fresh);
     if (home) {
       home.rows.push(row);
-      home.cx += (row.x - home.cx) / home.rows.length;
-      home.cy += (row.y - home.cy) / home.rows.length;
+      recentre(home);
     } else {
       fresh.push({ cx: row.x, cy: row.y, rows: [row] });
     }
@@ -105,15 +117,20 @@ function clusterGroup(rows: PlacedRow[], anchors: { key: string; x: number; y: n
   return [...clusters, ...fresh];
 }
 
+/** The fishing bobber: every fishing window reports it, wherever the pool is. */
+export const FISHING_BOBBER = 35591;
+
 /**
  * Pins for every object id and map with positions. `published` is the list of keys already shown; each
  * keeps its key while it still has 3 installs. A new pin's key is its median rounded to 0.5; if that key is
  * already taken in this pass, the cluster joins that pin.
  */
 export function objectSpawns(rows: ObjectSpawnRow[], published: readonly string[] = []): ObjectSpawns {
+  // Fishing is never a pin: a fishing row, the bobber, or an object installs agree is fished.
+  const kinds = agreedGatherKinds(rows);
   const groups = new Map<string, PlacedRow[]>();
   for (const row of rows) {
-    if (row.gatherKind === "fishing" || !placed(row)) continue;
+    if (row.gatherKind === "fishing" || row.objectId === FISHING_BOBBER || kinds.get(row.objectId) === "fishing" || !placed(row)) continue;
     const id = `${row.objectId}|${row.mapId}`;
     const list = groups.get(id) ?? [];
     list.push(row);

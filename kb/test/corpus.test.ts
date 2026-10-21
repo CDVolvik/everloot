@@ -26,6 +26,21 @@ test("conflicts are order independent and cannot be restored by replay", () => {
   expect(publicRecords(mergeCorpus(JSON.parse(JSON.stringify(a)), [loot()]))).toEqual([]);
   expect(a.conflicts).toHaveLength(1);
 });
+test("a copy that only adds optional fields upgrades the event, in either order; a changed field still conflicts", () => {
+  // An older Desktop App sent the object row without the fields its protocol did not know.
+  const stripped = loot("epoch:1", { sourceNpcId: undefined, sourceObjectId: 1618, sourceEvidence: "loot-api" });
+  const full = { ...stripped, mapId: 1411, x: 52.4, y: 43.1, gatherKind: "herb", sourceObjectName: "Peacebloom" };
+  const upgraded = mergeCorpus(mergeCorpus(undefined, [stripped], ["g1".padEnd(64, "1")]), [full]);
+  expect(upgraded.conflicts).toEqual([]);
+  expect(publicRecords(upgraded)).toEqual(parseRecords([full]).records);
+  expect(upgraded.events[0]!.grants).toEqual(["g1".padEnd(64, "1")]);
+  const late = mergeCorpus(mergeCorpus(undefined, [full]), [stripped]);
+  expect(late).toEqual(mergeCorpus(undefined, [full]));
+  expect(mergeCorpus(undefined, [stripped, full])).toEqual(mergeCorpus(undefined, [full]));
+  // Extra fields with a shared field changed are a conflict, as before.
+  const moved = { ...full, items: [{ itemId: 5, count: 9 }] };
+  expect(mergeCorpus(mergeCorpus(undefined, [stripped]), [moved]).conflicts).toHaveLength(1);
+});
 test("legacy rows and rejected rows are withheld while raw inputs remain untouched", () => {
   const legacy = loot(); delete (legacy as { eventId?: string }).eventId;
   const invalid = loot("epoch:2", { installId: "" });

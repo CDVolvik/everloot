@@ -89,6 +89,27 @@ describe("object spawn points", () => {
     ]);
   });
 
+  test("fishing is never a pin: the bobber, and an object installs agree is fished, even on rows with no kind", () => {
+    const at = (objectId: number, extra: Partial<ObjectSpawnRow> = {}) => ["a", "b", "c"].map((i) => herb(i, 40, 40, { objectId, gatherKind: undefined, ...extra }));
+    const { pins, unconfirmed } = objectSpawns([
+      ...at(35591), // the bobber, its kind lost to a slow bite
+      ...["d", "e", "f"].map((i) => herb(i, 1, 1, { objectId: 180582, gatherKind: "fishing" })), ...at(180582), // a pool
+      ...at(1618),
+    ]);
+    expect(pins.map((p) => p.objectId)).toEqual([1618]);
+    expect(unconfirmed).toEqual([]);
+  });
+
+  test("a cluster's centre weighs installs, not rows: one install's many rows cannot drag it away", () => {
+    const many = Array.from({ length: 20 }, () => herb("z", 51.1, 50));
+    const rows = [...many, herb("a", 52, 50), herb("b", 52, 50), herb("c", 52, 50), herb("d", 52.6, 50)];
+    // Weighted by rows the centre would sit near 51.2 and the install at 52.6 would start a cluster of its own.
+    const { pins, unconfirmed } = objectSpawns(rows);
+    expect(pins).toHaveLength(1);
+    expect(pins[0]!.reporters).toBe(5);
+    expect(unconfirmed).toEqual([]);
+  });
+
   test("the result does not depend on the order rows arrive in", () => {
     const rows = [herb("a", 10, 10), herb("b", 10.5, 10.2), herb("c", 10.9, 10.4), herb("d", 11.6, 10.6), herb("e", 12.2, 10.8), herb("f", 12.9, 11)];
     const expected = objectSpawns(rows);
