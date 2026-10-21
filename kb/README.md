@@ -94,6 +94,7 @@ and exits 1 if it holds anything that may not be published.
 | `src/*-rollup.ts`, `src/profession-path.ts`, `src/gold-ledger.ts`, … | The gameplay readers behind the MCP tools and site pages, built from player uploads |
 | `src/blizzard/` | The Battle.net API client; its cache stays local |
 | `curated/` | Facts written in our own words, each with its source URL |
+| `wiki/`, `src/wiki/` | The wiki's pages (CC BY-SA 4.0, see [`wiki/README.md`](wiki/README.md)) and their parser and page check, `npm run kb -- wiki-check` |
 | `test/` | Vitest tests and fixtures |
 
 ## Rules
