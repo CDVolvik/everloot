@@ -39,7 +39,7 @@ describe("schema files", () => {
 
   test("the envelope, limits and index are written", () => {
     const upload = JSON.parse(readFileSync(join(out, "upload.json"), "utf8")) as { properties: Record<string, unknown>; required: string[] };
-    expect(Object.keys(upload.properties).sort()).toEqual(["addonVersion", "clientBuild", "protocol", "records"]);
+    expect(Object.keys(upload.properties).sort()).toEqual(["addonVersion", "clientBuild", "protocol", "records", "source"]);
     expect(upload.required.sort()).toEqual(["addonVersion", "records"]);
     expect(JSON.parse(readFileSync(join(out, "limits.json"), "utf8"))).toEqual(UPLOAD_LIMITS);
     const index = JSON.parse(readFileSync(join(out, "index.json"), "utf8")) as { protocol: string; kinds: string[]; publicKinds: string[] };

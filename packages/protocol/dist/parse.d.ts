@@ -1,4 +1,4 @@
-import { type IntakeRecord, type RecordKind, type StoredRecord } from "./records.js";
+import { type IntakeRecord, type RecordKind, type StoredRecord, type UploadSource } from "./records.js";
 export interface AcceptedRecord {
     index: number;
     kind: RecordKind;
@@ -20,6 +20,8 @@ export interface CanonicalUpload {
      * The market counts installs behind one address once. Never published.
      */
     reporter?: string;
+    /** Set when the rows were converted from another addon's file (`UPLOAD_SOURCES`); absent for the Everloot addon's own. */
+    source?: UploadSource;
     records: IntakeRecord[];
 }
 /** What the intake route stores: the canonical upload with every census GUID already swapped for a key. */

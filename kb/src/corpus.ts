@@ -1,4 +1,5 @@
 import { CENSUS_KINDS, COMPLETION_KINDS, parseRecords, type IntakeRecord } from "@everloot/protocol";
+import { foldRecorderInstalls } from "./recorder-installs.js";
 
 export interface CorpusEvent { record: IntakeRecord; grants: string[] }
 export interface CorpusState {
@@ -100,13 +101,16 @@ export function mergeCorpusBatches(
   return key === null ? state ?? mergeCorpus(undefined, []) : mergeCorpus(state, raw, grants);
 }
 
-/** Named publication is evaluated against CURRENT authority, never a cached assertion. */
+/**
+ * Named publication is evaluated against CURRENT authority, never a cached assertion. Polestar Recorder install ids
+ * are folded into one voter per player (recorder-installs.ts) here, so every reader counts them the same way.
+ */
 export function publicRecords(state: CorpusState,
   authorize?: (row: IntakeRecord, grants: string[]) => IntakeRecord | null,
 ): IntakeRecord[] {
-  return state.events.flatMap(({ record, grants }) => {
+  return foldRecorderInstalls(state.events.flatMap(({ record, grants }) => {
     if (!namedRecord(record)) return [record];
     const allowed = authorize?.(record, grants);
     return allowed ? [allowed] : [];
-  });
+  }));
 }

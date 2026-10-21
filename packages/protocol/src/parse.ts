@@ -1,4 +1,4 @@
-import { recordSchemas, uploadPayload, type IntakeRecord, type RecordKind, type StoredRecord } from "./records.js";
+import { recordSchemas, uploadPayload, type IntakeRecord, type RecordKind, type StoredRecord, type UploadSource } from "./records.js";
 import { ACCEPTED_MAJORS, protocolMajor } from "./version.js";
 
 export interface AcceptedRecord {
@@ -25,6 +25,8 @@ export interface CanonicalUpload {
    * The market counts installs behind one address once. Never published.
    */
   reporter?: string;
+  /** Set when the rows were converted from another addon's file (`UPLOAD_SOURCES`); absent for the Everloot addon's own. */
+  source?: UploadSource;
   records: IntakeRecord[];
 }
 
@@ -87,12 +89,12 @@ const envelopeRefused = (reason: string): ParsedUpload => ({ ok: false, receipt:
 export function parseUpload(payload: unknown): ParsedUpload {
   const parsed = uploadPayload.safeParse(payload);
   if (!parsed.success) return envelopeRefused("payload needs addonVersion + records[1..2000]");
-  const { addonVersion, clientBuild, protocol } = parsed.data;
+  const { addonVersion, clientBuild, protocol, source } = parsed.data;
   if (protocol !== undefined && !ACCEPTED_MAJORS.includes(protocolMajor(protocol) ?? -1)) {
     return envelopeRefused(`protocol ${protocol} is not supported; update the addon or uploader`);
   }
   const { records, receipt } = parseRecords(parsed.data.records);
-  return { ok: true, upload: { addonVersion, ...(clientBuild ? { clientBuild } : {}), records }, receipt };
+  return { ok: true, upload: { addonVersion, ...(clientBuild ? { clientBuild } : {}), ...(source ? { source } : {}), records }, receipt };
 }
 
 /**

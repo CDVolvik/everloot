@@ -175,6 +175,22 @@ describe("intake contract", () => {
     expect(result.receipt.rejected.map((r) => r.index)).toEqual([4, 5]);
   });
 
+  test("an NPC sighting may leave out its level and reaction, as a converted Polestar Recorder row does", () => {
+    const seen = { ...base, kind: "npc_sighting", npcId: 197, name: "Marshal McBride", mapId: 1429, x: 48.17, y: 42.95, positionKind: "interaction", role: "questgiver" };
+    const result = parseRecords([seen, { ...seen, level: 0 }, { ...seen, reaction: "unfriendly" }]);
+    expect(result.records).toEqual([expect.not.objectContaining({ level: expect.anything() })]);
+    expect(result.receipt.rejected.map((r) => r.index)).toEqual([1, 2]);
+  });
+
+  test("the envelope may say its rows came from a Polestar Recorder file, and nothing else", () => {
+    const records = [{ ...base, kind: "npc_sighting", npcId: 197, name: "Marshal McBride", mapId: 1429, x: 48, y: 42 }];
+    const recorder = parseUpload({ addonVersion: "polestar-recorder", source: "polestar_recorder", records });
+    expect(recorder.ok && recorder.upload.source).toBe("polestar_recorder");
+    const addon = parseUpload({ addonVersion: "0.3.10", records });
+    expect(addon.ok && "source" in addon.upload).toBe(false);
+    expect(parseUpload({ addonVersion: "0.3.10", source: "questie", records }).ok).toBe(false);
+  });
+
   test("an object's loot window may carry where it was opened, how and the object's name", () => {
     const herb = { ...base, kind: "loot", sourceEvidence: "loot-api", sourceObjectId: 1618, items: [{ itemId: 2447, count: 2 }] };
     const result = parseRecords([

@@ -18,6 +18,27 @@ collection) or the installed addon list: those stay on your machine. Player rows
 the Desktop App sends them only if you turn on "Send the player pages with the uploads" in its
 settings, and until you do, they stay on your machine like the named data.
 
+**What a Polestar Recorder file holds.** A player who records with the
+[Polestar Recorder](https://github.com/fitzforge/polestar) addon (by fitzforge, GPL-3.0) can upload its
+`Polestar_Recorder.lua` from the website's upload page. Everloot reads the file's format with its own
+parser and uses none of Polestar's code. The file is converted in the browser, one session at a time,
+into three of Everloot's own kinds: where the player stood while an NPC's window was open (a quest giver,
+a quest turn-in, a gossip window offering quests, a vendor, a trainer, a flight master), stored as
+`positionKind: "interaction"` like the addon's; NPCs the player killed or saw as a rare on its nameplate,
+target or mouseover, where the player stood (`positionKind: "player"`, never a pin); the quests the
+player accepted with their title, level, giver, turn-in, reward items and the character's faction; and
+loot windows with items. The file holds no NPC level at a window and no reaction, so those fields are left
+out, never guessed, and it does not say whether the game's loot API named a window's source, so its loot
+rows do not count toward public drop rates. Everything else in the file stays on your computer: character
+names and realms, session names, notes typed with `/psrec mark`, Polestar's guide step titles, quest
+objective text, routes, flight paths, talents and the rest. A character becomes a hash in the browser, and
+the server replaces that hash with an install id of its own, keyed with a secret: one half from the
+character, one from the address the upload came from. Recorder install ids that share either half count as
+one reporter, so a Recorder fact needs three characters uploading from three addresses, and one player's
+alts or connections never confirm each other. The upload keeps a keyed hash of the address, as auction
+scans do, and it is never published. Corroborated, these are Everloot's own data under CC BY-SA 4.0, like
+any player upload.
+
 Uploaded observations are public as individual, anonymous records, with no character names and
 without the addon's install id, so anyone can check our counts. The facts the site states itself, such as drop rates, spawn points and recipe
 ranges, appear only once at least three installs have reported them. Addon lists are the
@@ -57,7 +78,8 @@ on), once per NPC, service and zone. When the player opens a herb, ore vein, che
 loot row carries the player's position, how it was opened (from the spell cast on it) and the object's
 name as the game showed it, taken only from a herb, ore or chest cast, so the target of any other spell (a
 player you healed, say) never becomes a name. Where you stand when you only target or mouse over an NPC
-(`positionKind: "player"`) is never used as the NPC's place. An NPC pin needs three installs on the same
+(`positionKind: "player"`) is never used as the NPC's place. A Polestar Recorder file's NPC windows become
+the same `interaction` positions, and its kills and rares seen on the unit become `player` ones. An NPC pin needs three installs on the same
 map; an object's spawn point needs three installs within one cluster (positions closer than 1 on the
 0 to 100 map scale), and a place seen by one or two installs is only counted, never drawn. An object's
 name is shown only when three installs report the same one; otherwise it is "Object" and its id. Fishing
@@ -461,7 +483,8 @@ same licence.
 - **Touching the running game.** No reading or changing the game's memory, no automation, no
   bypassing protections. The addon uses only the game's own addon API. The Desktop App and the command-line uploader read the
   SavedVariables file the game writes, and writes `/ask` answers into a file the addon loads after
-  `/reload`.
+  `/reload`. The upload page reads only the file a player chooses: Everloot's own, or a Polestar
+  Recorder file the player recorded and chose to upload.
 - **Decrypting game data.** Content Blizzard encrypts stays encrypted.
 - **Bulk exports of Blizzard's art or text.** Icons, tooltip text and frame textures appear on
   pages only, never in the downloads, API or MCP server.

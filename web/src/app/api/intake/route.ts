@@ -11,6 +11,8 @@ import { isPlayerRow, playerDateProblem, playerPagesOn, playerUpsert, PLAYERS_PE
 import { playerStore } from "@/lib/player-store";
 import { isLinkRow } from "@/lib/character-links";
 import { censusDailyCap } from "../../../../../kb/src/census-rows";
+import { isRecorderInstall } from "../../../../../kb/src/recorder-installs";
+import { RECORDER_KINDS, RECORDER_SOURCE, recorderCharacter } from "@/lib/polestar-recorder";
 
 /**
  * POST /api/intake — step 1: parse + store the accepted records, return a receipt.
@@ -62,6 +64,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, ...receipt }, { status: 422 });
   }
   const upload: CanonicalUpload = parsed.upload;
+  // Rows converted from a Polestar Recorder file come with a character id the browser hashed; the server gives them
+  // their install id, so a player cannot pick several. See lib/polestar-recorder.ts.
+  const recorder = upload.source === RECORDER_SOURCE;
+  let recorderInstall: string | undefined;
+  if (recorder) {
+    const character = recorderCharacter(upload.records);
+    if (!character) {
+      return NextResponse.json({ ok: false, error: "A Polestar Recorder upload carries one character's rows under one polestar- id.", ...receipt }, { status: 422 });
+    }
+    recorderInstall = intakeQuota.recorderInstall(req, character);
+    if (!recorderInstall) return NextResponse.json({ ok: false, error: "Upload admission unavailable. Keep your file and retry." }, { status: 503 });
+  }
   const options = payload as { sharing?: Record<string, unknown>; grantTokens?: unknown };
   const tokens = options.grantTokens ?? [];
   if (!Array.isArray(tokens) || tokens.length > UPLOAD_LIMITS.grantTokensMax || tokens.some((t) => typeof t !== "string" || !/^[a-f0-9]{64}$/.test(t))) {
@@ -92,6 +106,13 @@ export async function POST(req: Request) {
   const scanRealms = new Set<string>();
   for (let i = 0; i < upload.records.length; i++) {
     const row = upload.records[i];
+    const recorderProblem = recorder ? (RECORDER_KINDS.includes(row.kind) ? null : "A Polestar Recorder upload carries NPC positions, quests and loot only.")
+      : isRecorderInstall(row.installId) ? "Install ids starting with ps- are given by the server to Polestar Recorder uploads." : null;
+    if (recorderProblem) {
+      receipt.rejected.push({ index: receipt.accepted[i].index, reason: recorderProblem });
+      continue;
+    }
+    if (recorderInstall) row.installId = recorderInstall;
     if (row.kind === "auction_snapshot") {
       // One file cannot name dozens of realms: the market keeps a handful per upload.
       const key = realmKey(row.realm);
@@ -189,8 +210,9 @@ export async function POST(req: Request) {
     if (!authorized.length) return NextResponse.json({ ok: true, uploadId, persisted: true, ...receipt });
   }
   // The market and the completion lists count installs behind one address once; only a keyed hash of the
-  // address is kept, in the private upload object, and it is never published.
-  if (stored.records.some((r) => r.kind === "auction_snapshot" || COMPLETION_CATALOG_KINDS.includes(r.kind))) {
+  // address is kept, in the private upload object, and it is never published. Recorder uploads keep it too, so
+  // their voters can be checked again from the stored uploads.
+  if (recorder || stored.records.some((r) => r.kind === "auction_snapshot" || COMPLETION_CATALOG_KINDS.includes(r.kind))) {
     const reporter = intakeQuota.reporter(req);
     if (reporter) stored.reporter = reporter;
   }

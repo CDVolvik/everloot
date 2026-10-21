@@ -154,7 +154,11 @@ export default function PrivacyPage() {
                 which address hash and install produced each entry until it is rebuilt. Guild data publishes only through an authorized officer upload. A
                 character owner with a verified sharing grant can opt out on the upload
                 page; anyone else can ask us by email (below). Uploads build the public database; we never
-                sell them. Player rows are not part of the public records.
+                sell them. Player rows are not part of the public records. A Polestar Recorder file you choose
+                is converted in your browser into NPC positions, quests and loot; its character names, realms,
+                session names and notes are not sent. Its install id is made by our server from a keyed hash of
+                the character and one of the address the upload came from, and the upload keeps a keyed hash of
+                the address like a scan does. Neither is published.
               </li>
               <li>
                 <strong>Census (optional):</strong> on in a new install of the addon,

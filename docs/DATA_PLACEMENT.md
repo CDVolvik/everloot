@@ -31,7 +31,8 @@ Ask these in order. The first yes decides.
    config. Unencrypted rows only, extracted by a maintainer, labelled "found in game files, unconfirmed",
    build-stamped, never relicensed. Never Supabase, never git (the committed `web/src/data/game-data/*.json`
    files are our generated layer over it, reviewed in a pull request).
-3. **Is it a player's observation from the addon?** Raw upload to the uploads bucket under
+3. **Is it a player's observation from the addon, or from a Polestar Recorder file converted on the upload
+   page?** Raw upload to the uploads bucket under
    `uploads/<date>/<id>.json`, one index row in Supabase. It becomes public only through the corpus
    snapshot, with install ids removed, and a fact is stated only once three installs agree. Named records
    go public only with the player's own sharing choice or an officer grant that is checked on every read.

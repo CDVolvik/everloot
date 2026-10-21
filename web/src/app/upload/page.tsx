@@ -44,6 +44,7 @@ export default function UploadPage() {
               <p>The addon download is not available right now.</p>
             )}
             <p className="text-sm">Log out before selecting Everloot.lua from your account’s SavedVariables folder below. Keep a backup. Named records need your explicit sharing choice and verified authority.</p>
+            <p className="text-sm">Recording with the <a className={link} href="https://github.com/fitzforge/polestar" rel="noopener">Polestar Recorder</a> addon? Its Polestar_Recorder.lua, in the same folder, can be uploaded here too. Everloot turns it into NPC positions, quests and loot in your browser, and leaves character names and realms out.</p>
           </div>
         </Card>
         <UploadClient playerPages={playerPagesOn()} />
