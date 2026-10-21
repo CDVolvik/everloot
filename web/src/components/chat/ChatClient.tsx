@@ -1,242 +1,267 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { answer, loadTools, NO_SOURCED_ANSWER, searchOnly, signedIn, type ChatProgress, type ToolDef } from "@/lib/chat/agent";
-import { CHAT_PROVIDERS, chatProvider, type ChatProviderKind } from "@/lib/chat/providers";
-import { loadProviders, loadThread, pickModel, removeProvider, saveProvider, saveThread, type ChatMessage, type SavedProvider } from "@/lib/chat/store";
+import type { AccountShell, ShellCharacter } from "@/lib/account-shell-types";
+import { signInPath } from "@/lib/auth/return-to";
+import { answer, loadTools, searchOnly, signedIn, type ChatProgress, type ToolDef } from "@/lib/chat/agent";
+import { chatProvider } from "@/lib/chat/providers";
+import {
+  deleteConversation, keyReady, loadConversations, loadProviders, newConversationId, pickModel, PROVIDERS, saveConversation,
+  type ChatMessage, type Conversation, type SavedProvider,
+} from "@/lib/chat/store";
 import { askPrefill, validCharacterId } from "@/lib/profiles";
-import type { AccountBuilds, BuildCharacter, SavedBuild } from "@/lib/saved-builds";
+import type { AccountBuilds, SavedBuild } from "@/lib/saved-builds";
+import Composer from "./Composer";
+import ConversationRail from "./ConversationRail";
+import { AssistantMessage, UserMessage } from "./Message";
 
-const STARTERS = ["Who is Leeroy Jenkins?", "What drops the Bindings of the Windseeker?", "Where do I learn Enchanting past 225?", "What changed in the last build?"];
-const field = "w-full rounded-lg bg-canvas border border-edge px-3 py-2 text-fg placeholder:text-muted focus:border-accent";
+export const SUGGESTIONS = ["Where does Linen Cloth drop?", "Plan a level 40 Fury warrior", "What changed in the last build?", "What sells best on my realm?"];
+export const KEYS_PATH = "/account#chat-keys";
 
-/** "https://… (licence, retrieved …)" as a link and its note; anything else as text. */
-function Source({ text }: { text: string }) {
-  const m = /^(https:\/\/\S+)\s*(.*)$/.exec(text);
-  if (!m) return <span>{text}</span>;
-  return <span><a href={m[1]} target="_blank" rel="noopener noreferrer" className="underline hover:text-accent break-all">{decodeURIComponent(m[1].replace(/^https:\/\/(www\.)?/, ""))}</a> {m[2]}</span>;
+interface Characters { characters: ShellCharacter[]; builds: SavedBuild[] }
+
+/** The signed-in player's characters (and saved builds when that switch is on), for the context chip. */
+async function fetchCharacters(savedBuilds: boolean, profiles: boolean): Promise<Characters> {
+  try {
+    if (savedBuilds) {
+      const res = await fetch("/api/me/builds", { cache: "no-store" });
+      if (res.ok) {
+        const own = (await res.json()) as AccountBuilds;
+        return { characters: own.characters.map(({ id, name, classSlug, realm }) => ({ id, name, classSlug, realm })), builds: own.builds };
+      }
+    }
+    if (profiles) {
+      const res = await fetch("/api/me/shell", { cache: "no-store" });
+      if (res.ok) return { characters: ((await res.json()) as AccountShell).characters, builds: [] };
+    }
+  } catch { /* offline: no characters to offer */ }
+  return { characters: [], builds: [] };
 }
 
-/** `savedBuilds`: the saved-builds switch; with it on, a signed-in visitor's model also gets my_builds. */
-export default function ChatClient({ savedBuilds = false }: { savedBuilds?: boolean }) {
+const reducedMotion = () => typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/**
+ * The /chat conversation: a full-screen thread, one composer, and the browser-local conversation list.
+ * `savedBuilds` (EVERLOOT_SAVED_BUILDS) offers my_builds to a signed-in visitor's model; `profiles`
+ * (EVERLOOT_PROFILES) offers the account's characters as context. Keys are set up on /account#chat-keys.
+ */
+export default function ChatClient({ savedBuilds = false, profiles = false }: { savedBuilds?: boolean; profiles?: boolean }) {
   const [providers, setProviders] = useState<SavedProvider[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [currentId, setCurrentId] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
   const [live, setLive] = useState<ChatProgress | null>(null);
   const [error, setError] = useState("");
-  const [formKind, setFormKind] = useState<ChatProviderKind | null>(null);
-  const [notice, setNotice] = useState("");
+  const [signed, setSigned] = useState<boolean | null>(null);
   const [copied, setCopied] = useState<number | null>(null);
+  const [railOpen, setRailOpen] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [own, setOwn] = useState<Characters>({ characters: [], builds: [] });
+  const [context, setContext] = useState<ShellCharacter | null>(null);
+
   const tools = useRef<ToolDef[] | null>(null);
   const stop = useRef<AbortController | null>(null);
   const thread = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLTextAreaElement>(null);
+  const railToggle = useRef<HTMLButtonElement>(null);
+  const stick = useRef(true);
+  const prefilled = useRef(false);
+  const messagesRef = useRef<ChatMessage[]>([]);
+  const charactersOnce = useRef<Promise<Characters> | null>(null);
+  // What ask() and the shortcuts read, current at every render even from an older closure.
+  const latest = useRef({ providers, signed, context, own, busy, currentId });
+  latest.current = { providers, signed, context, own, busy, currentId };
 
-  // localStorage only exists in the browser; read it after the first render.
-  useEffect(() => { setProviders(loadProviders(localStorage)); setMessages(loadThread(localStorage)); setReady(true); }, []);
-  useEffect(() => { if (ready) saveThread(localStorage, messages); }, [messages, ready]);
-  // From the home's Ask box: /chat?q=<question>&character=<id> fills the question box, with the character and its
-  // saved builds when the visitor is signed in. Nothing is sent until the player presses Send.
+  // localStorage only exists in the browser; read it after the first render. A new chat opens each visit.
   useEffect(() => {
+    setProviders(loadProviders(localStorage));
+    setConversations(loadConversations(localStorage));
+    setCurrentId(newConversationId());
+    setRailOpen(typeof window.matchMedia === "function" && window.matchMedia("(min-width: 1024px)").matches);
+    setReady(true);
+    // Keys saved on /account in another tab apply here at once.
+    const onStorage = (e: StorageEvent) => { if (e.key === PROVIDERS || e.key === null) setProviders(loadProviders(localStorage)); };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void signedIn().then((s) => { if (!cancelled) setSigned(s); });
+    return () => { cancelled = true; };
+  }, []);
+
+  const characters = () => (charactersOnce.current ??= fetchCharacters(savedBuilds, profiles));
+  useEffect(() => {
+    if (signed !== true || !(savedBuilds || profiles)) return;
+    let cancelled = false;
+    void characters().then((c) => { if (!cancelled) setOwn(c); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `characters` is memoised in a ref
+  }, [signed, savedBuilds, profiles]);
+
+  // From the home's Ask box: /chat?q=<question>&character=<id>. The character becomes the context chip. With a key
+  // ready the question is sent at once; without one it waits in the box. The URL drops both so a reload does not resend.
+  useEffect(() => {
+    if (!ready || signed === null || prefilled.current) return;
     const params = new URLSearchParams(window.location.search);
-    const q = params.get("q") ?? "";
+    const q = (params.get("q") ?? "").trim().slice(0, 2000);
     const characterId = params.get("character");
     if (!q && !characterId) return;
-    let cancelled = false;
+    prefilled.current = true;
+    window.history.replaceState(window.history.state, "", window.location.pathname);
     void (async () => {
-      let character: BuildCharacter | null = null;
-      let builds: SavedBuild[] = [];
-      if (savedBuilds && validCharacterId(characterId)) {
-        try {
-          const res = await fetch("/api/me/builds", { cache: "no-store" });
-          if (res.ok) {
-            const own = (await res.json()) as AccountBuilds;
-            character = own.characters.find((c) => c.id === characterId) ?? null;
-            builds = character ? own.builds.filter((b) => b.characterId === characterId) : [];
-          }
-        } catch { /* signed out or offline: the question alone */ }
+      let character: ShellCharacter | null = null;
+      if (signed && validCharacterId(characterId) && (savedBuilds || profiles)) {
+        character = (await characters()).characters.find((c) => c.id === characterId) ?? null;
+        setContext(character);
       }
-      const text = askPrefill(q, character, builds);
-      if (!cancelled && text && box.current && !box.current.value) { box.current.value = text; box.current.focus(); }
+      if (q && keyReady(latest.current.providers)) void ask(q, character);
+      else { setDraft(q); box.current?.focus(); }
     })();
-    return () => { cancelled = true; };
-  }, [savedBuilds]);
-  useEffect(() => { const t = thread.current; if (t && t.scrollHeight - t.scrollTop - t.clientHeight < 80) t.scrollTop = t.scrollHeight; }, [messages, live]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once, when storage and the session are known
+  }, [ready, signed]);
 
-  const active = providers[0] ?? null;
+  // Keep the newest text in view while the reader is at the bottom; leave them be when they scrolled up.
+  useEffect(() => {
+    const t = thread.current;
+    if (t && stick.current) t.scrollTop = t.scrollHeight;
+  }, [messages, live]);
 
-  async function ask(question: string) {
+  function commit(id: string, next: ChatMessage[]) {
+    messagesRef.current = next;
+    setMessages(next);
+    setConversations(saveConversation(localStorage, { id, title: "", updatedAt: new Date().toISOString(), messages: next }));
+  }
+
+  async function ask(question: string, character: ShellCharacter | null = latest.current.context) {
     const q = question.trim().slice(0, 2000);
-    if (!q || busy) return;
-    const history = messages.map((m) => ({ role: m.role, text: m.text }));
-    setMessages((list) => [...list, { role: "user", text: q, at: new Date().toISOString(), model: null, sources: [], steps: [] }]);
-    setBusy(true); setError(""); setLive(null);
+    if (!q || latest.current.busy) return;
+    const { providers: saved, own: mine, currentId: id } = latest.current;
+    const builds = character ? mine.builds.filter((b) => b.characterId === character.id) : [];
+    const contextLine = character ? askPrefill("", character, builds) : "";
+    const prior = messagesRef.current;
+    const history = prior.map((m) => ({ role: m.role, text: m.context ? `${m.text}\n\n${m.context}` : m.text }));
+    const asked: ChatMessage[] = [...prior, { role: "user", text: q, ...(contextLine ? { context: contextLine } : {}), at: new Date().toISOString(), model: null, sources: [], pages: [], steps: [] }];
+    commit(id, asked);
+    setDraft(""); setBusy(true); setError(""); setLive(null);
+    latest.current.busy = true;
+    stick.current = true;
+    requestAnimationFrame(() => thread.current?.scrollTo?.({ top: thread.current.scrollHeight, behavior: reducedMotion() ? "auto" : "smooth" }));
     const ctl = new AbortController();
     stop.current = ctl;
     try {
+      const active = saved[0];
       let r;
       if (!active) r = await searchOnly(q);
       else {
-        tools.current ??= await loadTools(fetch, savedBuilds && await signedIn());
-        const preset = chatProvider(active.kind)!;
-        r = await answer({ provider: preset, model: active.model, key: active.key, history, question: q, tools: tools.current, onProgress: setLive, signal: ctl.signal });
+        tools.current ??= await loadTools(fetch, savedBuilds && latest.current.signed === true);
+        r = await answer({
+          provider: chatProvider(active.kind)!, model: active.model, key: active.key, history,
+          question: contextLine ? `${q}\n\n${contextLine}` : q, tools: tools.current, onProgress: setLive, signal: ctl.signal,
+        });
       }
-      setMessages((list) => [...list, { role: "assistant", text: r.text, at: new Date().toISOString(), model: r.model, sources: r.sources, steps: r.steps }]);
+      commit(id, [...asked, { role: "assistant", text: r.text, at: new Date().toISOString(), model: r.model, sources: r.sources, pages: r.pages, steps: r.steps }]);
     } catch (err) {
       setError(ctl.signal.aborted ? "Stopped." : err instanceof Error ? err.message : String(err));
     } finally {
       setBusy(false); setLive(null); stop.current = null;
+      latest.current.busy = false;
+      box.current?.focus();
     }
   }
 
-  function openForm(kind: ChatProviderKind | null) {
-    const saved = new Set(providers.map((p) => p.kind));
-    setFormKind(kind ?? CHAT_PROVIDERS.find((p) => !saved.has(p.kind))?.kind ?? "openrouter");
-    setNotice("");
-  }
+  const narrow = () => typeof window.matchMedia === "function" && !window.matchMedia("(min-width: 1024px)").matches;
 
-  function onModelPick(value: string) {
-    if (value === "add") return openForm(null);
-    if (value === "manage") return openForm(active?.kind ?? null);
-    const [kind, ...rest] = value.split("|");
-    if (!kind || !rest.length) return;
-    try { setProviders(pickModel(localStorage, kind as ChatProviderKind, rest.join("|"))); } catch (e) { setNotice(e instanceof Error ? e.message : String(e)); }
+  function open(id: string, list: ChatMessage[]) {
+    if (latest.current.busy) return;
+    setCurrentId(id);
+    messagesRef.current = list;
+    setMessages(list);
+    setError(""); setDraft("");
+    stick.current = true;
+    if (narrow()) setRailOpen(false);
+    box.current?.focus();
   }
+  const newChat = () => open(newConversationId(), []);
 
-  function onSaveProvider(form: HTMLFormElement) {
-    const f = new FormData(form);
-    const text = (k: string) => String(f.get(k) ?? "").trim();
-    try {
-      const next = saveProvider(localStorage, { kind: formKind!, model: text("model") || text("modelText"), key: text("key") });
-      setProviders(next); setFormKind(null);
-      setNotice(`Saved in this browser. Chat now uses ${next[0].model}.`);
-    } catch (e) { setNotice(e instanceof Error ? e.message : String(e)); }
+  function onDelete(c: Conversation) {
+    setConversations(deleteConversation(localStorage, c.id));
+    if (c.id === currentId) newChat();
   }
 
   async function copy(i: number, text: string) {
     try { await navigator.clipboard.writeText(text); setCopied(i); setTimeout(() => setCopied(null), 1500); } catch { /* the browser refused; nothing to undo */ }
   }
 
-  const preset = formKind ? chatProvider(formKind) : null;
-  const savedKind = (k: ChatProviderKind) => providers.some((p) => p.kind === k);
+  // Ctrl/Cmd+Shift+O starts a new chat, Shift+Esc goes back to the question box, Esc stops an answer.
+  const keys = useRef({ newChat, stop: () => stop.current?.abort() });
+  keys.current = { newChat, stop: () => stop.current?.abort() };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "o") { e.preventDefault(); keys.current.newChat(); return; }
+      if (e.key === "Escape" && e.shiftKey) { e.preventDefault(); box.current?.focus(); return; }
+      if (e.key === "Escape" && latest.current.busy) keys.current.stop();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
+
+  const keysHref = signed === false ? signInPath(KEYS_PATH) : KEYS_PATH;
+  const empty = messages.length === 0 && !busy;
 
   return (
-    <div className="space-y-4">
-      {!active && ready && (
-        <p className="text-sm text-fg-2">
-          No model yet, so you get Everloot&apos;s search hits as they are.{" "}
-          <button type="button" className="underline text-accent" onClick={() => openForm(null)}>Add your own key or a free model</button>
-        </p>
-      )}
-      {notice && <p role="status" className="text-sm text-fg-2">{notice}</p>}
-
-      {preset && (
-        <form className="rounded-xl border border-line bg-panel p-4 space-y-3" autoComplete="off" onSubmit={(e) => { e.preventDefault(); onSaveProvider(e.currentTarget); }}>
-          {providers.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2 text-sm">
-              <span className="text-muted">Saved in this browser:</span>
-              {providers.map((p) => (
-                <span key={p.kind} className="inline-flex items-center gap-2 rounded-full border border-line px-3 py-1">
-                  {chatProvider(p.kind)?.label}
-                  <button type="button" className="underline text-muted hover:text-danger" aria-label={`Remove ${chatProvider(p.kind)?.label}`} onClick={() => { setProviders(removeProvider(localStorage, p.kind)); setNotice("Removed from this browser."); }}>remove</button>
-                </span>
-              ))}
-            </div>
-          )}
-          <label className="block text-sm text-fg-2">Provider
-            <select className={`${field} mt-1`} value={preset.kind} onChange={(e) => setFormKind(e.target.value as ChatProviderKind)}>
-              {CHAT_PROVIDERS.map((p) => <option key={p.kind} value={p.kind}>{p.label}{savedKind(p.kind) ? " · saved" : ""}</option>)}
-            </select>
-          </label>
-          {preset.keyPattern && (
-            <label className="block text-sm text-fg-2">Key
-              <input type="password" name="key" spellCheck={false} className={`${field} mt-1`} placeholder={savedKind(preset.kind) ? "saved; paste a new one to replace it" : "paste the key"} />
-              <span className="block mt-1 text-xs text-muted">{preset.keyHint}</span>
-            </label>
-          )}
-          <label className="block text-sm text-fg-2">Model
-            {preset.models.length > 0 && (
-              <select name="model" className={`${field} mt-1`} defaultValue={providers.find((p) => p.kind === preset.kind)?.model ?? preset.models[0].id}>
-                {preset.models.map((m) => <option key={m.id} value={m.id}>{m.label} · {m.note}</option>)}
-                <option value="">Another model id…</option>
-              </select>
-            )}
-            <input name="modelText" spellCheck={false} className={`${field} mt-1`} placeholder={preset.models.length ? "only if you picked Another model id" : "the model you pulled, like qwen3:8b"} />
-          </label>
-          <p className="text-xs text-muted">{preset.dataNote} Your key is kept in this browser only and sent only to {preset.label.replace(/ \(.*\)$/, "")}, with your questions and the tool results. Everloot never receives it.</p>
-          <div className="flex gap-2">
-            <button type="submit" className="btn btn-primary min-h-11 px-4 text-sm">Save</button>
-            <button type="button" className="btn min-h-11 px-4 text-sm" onClick={() => setFormKind(null)}>Cancel</button>
-          </div>
-        </form>
+    <div data-chat-page className="fixed inset-x-0 bottom-0 top-header z-30 flex bg-canvas">
+      {railOpen && (
+        <ConversationRail conversations={conversations} currentId={currentId} busy={busy}
+          onNew={newChat} onOpen={(c) => open(c.id, c.messages)} onDelete={onDelete}
+          onClose={() => { if (narrow()) { setRailOpen(false); railToggle.current?.focus(); } }} />
       )}
 
-      <div ref={thread} className="rounded-xl border border-line bg-panel p-4 min-h-[16rem] max-h-[60vh] overflow-y-auto space-y-3">
-        {messages.length === 0 && !busy && (
-          <div className="space-y-3">
-            <p className="text-muted">Ask anything about WoW: Forever: a drop, a vendor, a recipe, a price, a quest, the lore.</p>
-            <div className="flex flex-wrap gap-2">
-              {STARTERS.map((q) => <button key={q} type="button" className="btn min-h-9 px-3 text-sm" onClick={() => void ask(q)}>{q}</button>)}
-            </div>
-          </div>
-        )}
-        {messages.map((m, i) => m.role === "user" ? (
-          <div key={i} className="ml-auto max-w-[80%] w-fit rounded-xl border border-edge bg-canvas px-3 py-2 whitespace-pre-wrap">{m.text}</div>
-        ) : (
-          <div key={i} className="max-w-[90%] w-fit rounded-xl border border-line bg-canvas px-3 py-2">
-            <div className="whitespace-pre-wrap break-words">{m.text}</div>
-            <div className="mt-2 text-xs text-muted space-y-1">
-              <div className="flex flex-wrap items-center gap-x-2">
-                <b className="text-fg-2 font-medium">{m.model ?? "search only"}</b>
-                {m.steps.length > 0 && <span>· {m.steps.length} lookup{m.steps.length === 1 ? "" : "s"}: {m.steps.map((s) => s.tool).join(", ")}</span>}
-                <button type="button" className="ml-auto underline hover:text-accent" onClick={() => void copy(i, m.text)}>{copied === i ? "Copied" : "Copy"}</button>
-              </div>
-              {m.sources.length > 0 ? (
-                <details>
-                  <summary className="cursor-pointer">Sources ({m.sources.length})</summary>
-                  <ul className="mt-1 space-y-1">{m.sources.map((s) => <li key={s}><Source text={s} /></li>)}</ul>
-                </details>
-              ) : m.model && m.text !== NO_SOURCED_ANSWER ? <div>No source in Everloot&apos;s data; the model&apos;s own knowledge.</div> : null}
-              {!m.model && m.text === NO_SOURCED_ANSWER && !active && (
-                <div>Search alone only matches names in Everloot&apos;s data. A model reads the question, fixes the spelling and looks it up for you.{" "}
-                  <button type="button" className="underline text-accent" onClick={() => openForm(null)}>Add a key or a free model</button>
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-        {busy && (
-          <div className="max-w-[90%] w-fit rounded-xl border border-line bg-canvas px-3 py-2">
-            {live?.text && <div className="whitespace-pre-wrap break-words">{live.text}</div>}
-            <div className="text-xs text-muted">{live?.tool ? `Looking up ${live.tool}…` : live?.text ? "" : "Answering…"}</div>
-          </div>
-        )}
-        {error && <div role="alert" className="text-sm text-danger">{error}</div>}
-      </div>
-
-      <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); const q = box.current?.value ?? ""; if (box.current) box.current.value = ""; void ask(q); }}>
-        <textarea ref={box} rows={2} aria-label="Your question" placeholder="Ask about Forever. Enter sends, Shift+Enter is a new line." disabled={busy}
-          className={`${field} min-h-11 text-base resize-y`}
-          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); e.currentTarget.form?.requestSubmit(); } }} />
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          {messages.length > 0 && !busy && <button type="button" className="mr-auto text-sm text-muted underline hover:text-fg" onClick={() => { setMessages([]); setError(""); }}>Clear chat</button>}
-          <select aria-label="Model" className="min-h-11 max-w-full sm:max-w-xs rounded-lg bg-panel border border-line px-2 text-sm text-fg-2 hover:border-edge focus:border-accent" disabled={busy}
-            value={active ? `${active.kind}|${active.model}` : ""} onChange={(e) => onModelPick(e.target.value)}>
-            {!active && <option value="">Search only, no model</option>}
-            {providers.map((p) => {
-              const pr = chatProvider(p.kind)!;
-              const models = pr.models.some((m) => m.id === p.model) ? pr.models : [{ id: p.model, label: p.model, note: "" }, ...pr.models];
-              return <optgroup key={p.kind} label={pr.label}>{models.map((m) => <option key={m.id} value={`${p.kind}|${m.id}`}>{m.label}</option>)}</optgroup>;
-            })}
-            <option value="add">Add a provider key…</option>
-            {providers.length > 0 && <option value="manage">Manage saved keys…</option>}
-          </select>
-          {busy
-            ? <button type="button" className="btn min-h-11 px-4 text-sm" onClick={() => stop.current?.abort()}>Stop</button>
-            : <button type="submit" className="btn btn-primary min-h-11 px-4 text-sm">Send</button>}
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex items-center gap-2 px-3 py-2">
+          <button ref={railToggle} type="button" className="btn min-h-9 px-3 text-sm" aria-expanded={railOpen} aria-controls="chat-rail" onClick={() => setRailOpen(!railOpen)}>
+            Chats
+          </button>
+          {!railOpen && <button type="button" className="btn min-h-9 px-3 text-sm" disabled={busy} aria-keyshortcuts="Control+Shift+O" onClick={newChat}>New chat</button>}
         </div>
-      </form>
+
+        <div ref={thread} className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+          onScroll={(e) => { const t = e.currentTarget; stick.current = t.scrollHeight - t.scrollTop - t.clientHeight < 80; }}>
+          <div className="mx-auto w-full max-w-reading px-4 py-6">
+            {empty ? (
+              <div className="flex min-h-[50vh] flex-col items-center justify-center gap-6 text-center">
+                <h2 className="text-2xl font-semibold text-fg">What do you want to know about WoW: Forever?</h2>
+                <ul aria-label="Suggestions" className="flex max-w-xl flex-wrap justify-center gap-2">
+                  {SUGGESTIONS.map((s) => <li key={s}><button type="button" className="btn min-h-9 px-3 text-sm" onClick={() => void ask(s)}>{s}</button></li>)}
+                </ul>
+              </div>
+            ) : (
+              <div role="log" aria-label="Conversation" aria-relevant="additions" className="space-y-6">
+                {messages.map((m, i) => m.role === "user"
+                  ? <UserMessage key={i} m={m} />
+                  : <AssistantMessage key={i} m={m} copied={copied === i} onCopy={() => void copy(i, m.text)} />)}
+                {busy && (
+                  <div aria-busy="true" className="whitespace-pre-wrap break-words leading-7 text-fg">
+                    {live?.text}
+                    <span aria-hidden="true" className="text-accent">▍</span>
+                  </div>
+                )}
+              </div>
+            )}
+            <p role="status" className="sr-only">{busy ? (live?.tool ? `Looking up ${live.tool}` : "Answering") : ""}</p>
+            {busy && live?.tool && <p className="mt-2 text-xs text-muted">Looking up {live.tool}…</p>}
+            {error && <p role="alert" className="mt-4 text-sm text-danger">{error}</p>}
+          </div>
+        </div>
+
+        <Composer box={box} value={draft} onValue={setDraft} onSend={() => void ask(draft)} onStop={() => stop.current?.abort()} busy={busy}
+          providers={providers} onPickModel={(kind, model) => { try { setProviders(pickModel(localStorage, kind, model)); } catch (e) { setError(e instanceof Error ? e.message : String(e)); } }}
+          keysHref={keysHref} signed={signed}
+          characters={own.characters} context={context} onContext={(c) => { setContext(c); box.current?.focus(); }} />
+      </div>
     </div>
   );
 }

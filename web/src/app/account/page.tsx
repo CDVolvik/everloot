@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import ApiKeys from "@/components/ApiKeys";
+import ChatKeys from "@/components/chat/ChatKeys";
 import { authV2Enabled, getAuth } from "@/lib/auth/auth";
 import { isPlaceholderEmail } from "@/lib/auth/battlenet";
 import { savedBuildsOn } from "@/lib/saved-builds";
@@ -79,6 +80,11 @@ export default async function AccountPage() {
           Keys for the Everloot API and MCP server. How to use them is in <Link href="/docs/api/keys" className="text-accent hover:underline underline-offset-4">the docs</Link>.
         </p>
         <ApiKeys />
+      </section>
+
+      <section id="chat-keys" aria-labelledby="chat-keys-heading" className="scroll-mt-20 space-y-3">
+        <h2 id="chat-keys-heading" className="text-xl text-fg">Chat keys</h2>
+        <ChatKeys />
       </section>
     </article>
   );

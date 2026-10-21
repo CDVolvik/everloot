@@ -2,9 +2,9 @@ import type { ChatStep } from "./agent";
 import { chatProvider, MODEL_ID, type ChatProviderKind } from "./providers";
 
 /**
- * What the /chat page keeps in this browser's localStorage, and nowhere else: the providers the
- * player saved (their keys included) and the transcript. Nothing here is sent to Everloot; a key
- * goes only to its own provider. Clearing the site's data in the browser removes all of it.
+ * What /chat and the Chat keys section of /settings keep in this browser's localStorage, and nowhere
+ * else: the providers the player saved (their keys included) and the conversations. Nothing here is
+ * sent to Everloot; a key goes only to its own provider. Clearing the site's data removes all of it.
  */
 
 export interface SavedProvider { kind: ChatProviderKind; model: string; key: string }
@@ -15,12 +15,21 @@ export interface ChatMessage {
   /** The model that wrote an assistant message; null for search only. */
   model: string | null;
   sources: string[];
+  /** The everloot.app pages the tools pointed to. Absent in messages saved before it existed. */
+  pages?: string[];
   steps: ChatStep[];
+  /** A user message's attached context ("I'm playing Jaina, a Mage."), sent to the model after the question. */
+  context?: string;
 }
+export interface Conversation { id: string; title: string; updatedAt: string; messages: ChatMessage[] }
 
-const PROVIDERS = "everloot.chat.providers.v1";
+/** The localStorage name of the saved providers; the chat listens for changes to it from other tabs. */
+export const PROVIDERS = "everloot.chat.providers.v1";
+/** The single transcript kept before conversations; read once, moved into a conversation and removed. */
 const THREAD = "everloot.chat.thread.v1";
+const CONVERSATIONS = "everloot.chat.conversations.v1";
 const MAX_MESSAGES = 60;
+const MAX_CONVERSATIONS = 30;
 
 type Storage = Pick<globalThis.Storage, "getItem" | "setItem" | "removeItem">;
 
@@ -76,11 +85,58 @@ export function removeProvider(storage: Storage, kind: ChatProviderKind): SavedP
   return next;
 }
 
-export function loadThread(storage: Storage): ChatMessage[] {
-  const list = read<unknown>(storage, THREAD, []);
-  return Array.isArray(list) ? (list as ChatMessage[]).filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.text === "string").slice(-MAX_MESSAGES) : [];
+/** Whether chat can call a model: at least one provider is saved (Ollama needs no key, the others do). */
+export const keyReady = (providers: SavedProvider[]) => providers.length > 0;
+
+/** A key as the settings list shows it: its last four characters only. */
+export const maskKey = (key: string) => (key ? `ending ${key.slice(-4)}` : "no key needed");
+
+function messagesIn(list: unknown): ChatMessage[] {
+  if (!Array.isArray(list)) return [];
+  return (list as ChatMessage[])
+    .filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.text === "string")
+    .map((m) => ({ ...m, sources: Array.isArray(m.sources) ? m.sources : [], steps: Array.isArray(m.steps) ? m.steps : [], model: m.model ?? null }))
+    .slice(-MAX_MESSAGES);
 }
 
-export function saveThread(storage: Storage, messages: ChatMessage[]): void {
-  if (messages.length) storage.setItem(THREAD, JSON.stringify(messages.slice(-MAX_MESSAGES))); else storage.removeItem(THREAD);
+/** A conversation's title: its first question, cut to fit the list. */
+export function titleFor(messages: ChatMessage[]): string {
+  const first = messages.find((m) => m.role === "user")?.text.replace(/\s+/g, " ").trim() ?? "";
+  return first.length > 60 ? `${first.slice(0, 59)}…` : first || "New chat";
+}
+
+export function newConversationId(): string {
+  return globalThis.crypto?.randomUUID?.() ?? `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/** The saved conversations, newest first. The old single transcript becomes the first conversation. */
+export function loadConversations(storage: Storage): Conversation[] {
+  const raw = read<unknown>(storage, CONVERSATIONS, []);
+  let list: Conversation[] = (Array.isArray(raw) ? raw : []).flatMap((c: Partial<Conversation>) => {
+    if (!c || typeof c.id !== "string") return [];
+    const messages = messagesIn(c.messages);
+    return messages.length ? [{ id: c.id, title: titleFor(messages), updatedAt: String(c.updatedAt ?? ""), messages }] : [];
+  });
+  const legacy = messagesIn(read<unknown>(storage, THREAD, []));
+  if (legacy.length) {
+    list = [{ id: newConversationId(), title: titleFor(legacy), updatedAt: legacy.at(-1)?.at ?? "", messages: legacy }, ...list];
+    storage.setItem(CONVERSATIONS, JSON.stringify(list.slice(0, MAX_CONVERSATIONS)));
+  }
+  storage.removeItem(THREAD);
+  return list.slice(0, MAX_CONVERSATIONS);
+}
+
+/** Saves a conversation at the top of the list; one with no messages is removed instead. */
+export function saveConversation(storage: Storage, conversation: Conversation): Conversation[] {
+  const others = loadConversations(storage).filter((c) => c.id !== conversation.id);
+  const messages = conversation.messages.slice(-MAX_MESSAGES);
+  const next = messages.length ? [{ ...conversation, title: titleFor(messages), messages }, ...others].slice(0, MAX_CONVERSATIONS) : others;
+  if (next.length) storage.setItem(CONVERSATIONS, JSON.stringify(next)); else storage.removeItem(CONVERSATIONS);
+  return next;
+}
+
+export function deleteConversation(storage: Storage, id: string): Conversation[] {
+  const next = loadConversations(storage).filter((c) => c.id !== id);
+  if (next.length) storage.setItem(CONVERSATIONS, JSON.stringify(next)); else storage.removeItem(CONVERSATIONS);
+  return next;
 }

@@ -97,6 +97,7 @@ export default async function SettingsPage() {
           <h2 id="more" className={heading}>More</h2>
           <ul className="space-y-1 text-sm">
             <li><Link href="/account#keys" className={link}>API keys</Link></li>
+            <li><Link href="/account#chat-keys" className={link}>Chat keys</Link></li>
             <li><Link href="/addon" className={link}>Desktop App and addon</Link></li>
           </ul>
         </section>
