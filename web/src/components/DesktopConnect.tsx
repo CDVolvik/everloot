@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { callbackUrl, sealForDesktop, type ConnectRequest } from "@/lib/desktop-connect";
+import { callbackUrl, DESKTOP_KEY_LABEL, sealForDesktop, type ConnectRequest } from "@/lib/desktop-connect";
 
 const primary = "inline-flex items-center justify-center min-h-11 px-5 rounded-lg bg-accent text-bg text-sm font-semibold hover:bg-accent/90 disabled:opacity-60";
 const secondary = "inline-flex items-center justify-center min-h-11 px-4 rounded-lg border border-line text-sm text-fg hover:text-accent disabled:opacity-60";
@@ -20,7 +20,7 @@ export default function DesktopConnect({ request, name }: { request: ConnectRequ
     setBusy(true);
     setError(null);
     try {
-      const response = await fetch("/api/keys", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ label: "Everloot Desktop App", builds: true }) });
+      const response = await fetch("/api/keys", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ label: DESKTOP_KEY_LABEL, builds: true }) });
       const result = await response.json();
       if (!response.ok || typeof result.token !== "string") throw new Error(result.error ?? "That did not work. Try again.");
       const sealed = await sealForDesktop(result.token, request);
