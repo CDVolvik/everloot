@@ -54,7 +54,10 @@ innkeeper) records where you stand as that NPC's place (`positionKind = "interac
 service, once per NPC, role and zone. Targeting still records `positionKind = "player"`, which never becomes a
 pin. Looting an object adds where you stand (`mapId`, `x`, `y`), a `gatherKind` (herb, ore, chest, fishing,
 other) from the spell you cast just before (`UNIT_SPELLCAST_SENT`) and the object's name from that cast's
-target (`sourceObjectName`). Trainer rows carry `trainerNpcId`. The quest-log calls (`GetQuestLogTitle`, `C_QuestLog.GetQuestTagInfo`)
+target (`sourceObjectName`). Trainer rows carry `trainerNpcId`. Targeting rows are kept once per NPC, zone and
+spot (rounded to 1 on the 0..100 scale). Window rows and object loot rows each have their own 2,000-row cap,
+apart from targeting rows and creature loot, so `/everloot status` can show `npc_sighting (targeting)` paused
+while windows still record. The quest-log calls (`GetQuestLogTitle`, `C_QuestLog.GetQuestTagInfo`)
 have not been tried in the Forever client; a call that is missing or returns something unexpected records
 nothing for that field. The site shows each value only after 3 installs agree.
 

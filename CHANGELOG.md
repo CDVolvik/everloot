@@ -45,6 +45,11 @@ Pull requests merged to `main` are listed in the nightly pre-releases until the 
   the trainer. Event names and spell arguments not yet seen on the Forever client are read defensively: a missing
   one records nothing. Launch-day checks: `docs/2026-10-21-addon-0.3.8-launch-checklist.md`.
 
+### Changed
+- Targeting or mousing over the same NPC at the same spot (to 1 unit on the map's 0 to 100 scale) records it
+  once, not every time. NPC window rows and object loot rows have their own 2,000-row room, apart from
+  targeting rows and creature loot, so a full targeting or corpse share pauses only itself.
+
 ## [0.3.7] - 2026-10-20
 
 ### Added

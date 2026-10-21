@@ -41,6 +41,15 @@ local function creatureTraits(unit)
   return creatureType, rank
 end
 
+-- Each share of a kind has its own cap, so targeting and corpses cannot use up the room that NPC windows
+-- and object positions need. Rows keep their kind and shape; the share is read from the row.
+local function sightingShare(row) return row.positionKind == "interaction" and "interaction" or "targeting" end
+local function lootShare(row) return row.sourceObjectId and "objects" or "creatures" end
+local TARGETING = { name = "targeting", of = sightingShare }
+local INTERACTION = { name = "interaction", of = sightingShare }
+local OBJECTS = { name = "objects", of = lootShare }
+local CREATURES = { name = "creatures", of = lootShare }
+
 local function targetSighting(unit)
   local guid = UnitGUID(unit)
   local npcId = npcIdFromGuid(guid)
@@ -50,18 +59,23 @@ local function targetSighting(unit)
   if not name or not level or level < 1 then return end
   local where = mapPosition()
   if not where or not where.x or not where.y then return end
+  -- One row per NPC, zone and spot (rounded to 1 on the 0..100 scale): retargeting the same NPC adds nothing.
+  EverlootDB.targetSeen = EverlootDB.targetSeen or {}
+  local seenKey = npcId .. ":" .. where.mapId .. ":" .. math.floor(where.x + 0.5) .. ":" .. math.floor(where.y + 0.5)
+  if EverlootDB.targetSeen[seenKey] then return end
   local reaction = "neutral"
   if UnitIsFriend("player", unit) then reaction = "friendly"
   elseif UnitCanAttack("player", unit) then reaction = "hostile" end
   local creatureType, rank = creatureTraits(unit)
-  E:Store("npc_sighting", {
+  local stored = E:Store("npc_sighting", {
     installId = EverlootDB.installId,
     capturedAt = date("!%Y-%m-%dT%H:%M:%SZ"),
     npcId = npcId, name = name,
     mapId = where.mapId, x = where.x, y = where.y, positionKind = "player",
     level = level, reaction = reaction,
     creatureType = creatureType, rank = rank,
-  })
+  }, nil, TARGETING)
+  if stored then EverlootDB.targetSeen[seenKey] = true end
 end
 
 -- NPC windows. While one is open the player stands within a few yards of the NPC that opened it, so the
@@ -130,7 +144,7 @@ local function interactionSighting(role)
     mapId = where.mapId, x = where.x, y = where.y, positionKind = "interaction", role = role or nil,
     level = level, reaction = reaction,
     creatureType = creatureType, rank = rank,
-  })
+  }, nil, INTERACTION)
   if stored then EverlootDB.interactionSeen[seenKey] = true end
 end
 
@@ -297,7 +311,7 @@ local function lootCapture()
       group.installId = EverlootDB.installId
       group.capturedAt = date("!%Y-%m-%dT%H:%M:%SZ")
       group.sourceEvidence = "loot-api"
-      if E:Store("loot", group) then
+      if E:Store("loot", group, nil, group.sourceObjectId and OBJECTS or CREATURES) then
         -- Local-only corpse identity: retained across reloads, never exported as a row.
         -- Bounded by the same retained loot-row capacity; failures do not mark seen.
         EverlootDB.lootSources[guid] = true
@@ -345,6 +359,8 @@ E:RegisterModule("openworld", function()
   pcall(function() f:RegisterEvent("QUEST_ACCEPTED") end)
   -- MERCHANT_SHOW is an old client event. A missing event disables the hook.
   pcall(function() f:RegisterEvent("MERCHANT_SHOW") end)
+  -- 0.3.7 and earlier paused a whole kind; these kinds now pause one share at a time.
+  if EverlootDB.paused then EverlootDB.paused.npc_sighting, EverlootDB.paused.loot = nil, nil end
   for event in pairs(WINDOW_ROLES) do pcall(function() f:RegisterEvent(event) end) end
   for _, event in ipairs({ "PLAYER_INTERACTION_MANAGER_FRAME_SHOW", "UNIT_SPELLCAST_SENT", "UNIT_SPELLCAST_FAILED",
     "UNIT_SPELLCAST_INTERRUPTED", "LOOT_CLOSED" }) do

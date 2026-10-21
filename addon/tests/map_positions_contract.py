@@ -281,6 +281,67 @@ assert(#rows() == count)
 """)
 counts = check_all(lua)
 assert counts["loot"] == 17, counts
+
+# --- Budgets: a full targeting share and a full corpse share never stop NPC windows or object positions ---
+# An upgraded file: five targeting rows (one from before positionKind existed) and five corpse rows, with
+# 0.3.7's whole-kind pause flags. The cap is lowered to five so "full" is easy to reach.
+lua = fresh("""
+local function seen(i, kind)
+  return { installId = 'abcd-1234', eventId = 'old:' .. i, capturedAt = '2026-10-20T00:00:00Z', npcId = 100 + i, name = 'Kobold',
+    mapId = 1429, x = 10 + i, y = 10, level = 5, reaction = 'hostile', positionKind = kind }
+end
+local function corpse(i)
+  return { installId = 'abcd-1234', eventId = 'old:c' .. i, capturedAt = '2026-10-20T00:00:00Z', sourceNpcId = 6,
+    sourceEvidence = 'loot-api', items = { { itemId = 2589, count = 1 } } }
+end
+EverlootDB = { installId = 'abcd-1234', toggles = { openworld = true }, paused = { npc_sighting = true, loot = true },
+  records = { npc_sighting = { seen(1), seen(2, 'player'), seen(3, 'player'), seen(4, 'player'), seen(5, 'player') },
+    loot = { corpse(1), corpse(2), corpse(3), corpse(4), corpse(5) } } }
+GetNumLootItems = function() return 1 end
+GetLootSlotLink = function() return 'item:2447' end
+GetLootSlotInfo = function() return 'icon', 'Peacebloom', 1 end
+GetLootSourceInfo = function() return source, 1 end
+""")
+lua.execute("""
+Everloot.MAX_ROWS_PER_KIND = 5
+assert(EverlootDB.paused.npc_sighting == nil and EverlootDB.paused.loot == nil, 'the whole-kind pauses of 0.3.7 are lifted')
+
+-- Targeting is full: a new NPC adds nothing, and only the targeting share pauses.
+guids.target = 'Creature-0-1-2-3-200-0000000001'
+event('PLAYER_TARGET_CHANGED')
+assert(#sightings() == 5 and EverlootDB.paused['npc_sighting (targeting)'], 'the targeting share is full')
+assert(Everloot:Status():find('npc_sighting (targeting): collection paused', 1, true), Everloot:Status())
+
+-- NPC windows still record, up to their own cap.
+for i = 1, 6 do
+  guids.npc = 'Creature-0-1-2-3-' .. (300 + i) .. '-0000000001'
+  event('BANKFRAME_OPENED')
+end
+local interaction = 0
+for _, row in ipairs(sightings()) do if row.positionKind == 'interaction' then interaction = interaction + 1 end end
+assert(interaction == 5 and #sightings() == 10, 'five window rows despite a full targeting share, then their own cap')
+assert(EverlootDB.paused['npc_sighting (interaction)'])
+assert(EverlootDB.interactionSeen['306::1411'] == nil and EverlootDB.interactionSeen['306:banker:1411'] == nil, 'a refused row is not marked seen')
+
+-- Corpses are full; an object's loot row with its position still records.
+source = 'Creature-0-1-2-3-6-0000000077'
+event('LOOT_OPENED'); event('LOOT_CLOSED')
+assert(#EverlootDB.records.loot == 5 and EverlootDB.paused['loot (creatures)'])
+source = 'GameObject-0-1-2-3-1618-0000000001'
+event('UNIT_SPELLCAST_SENT', 'player', 'Peacebloom', 'Cast-1', 2366)
+event('LOOT_OPENED'); event('LOOT_CLOSED')
+local herb = EverlootDB.records.loot[6]
+assert(herb and herb.sourceObjectId == 1618 and herb.mapId == 1411 and herb.gatherKind == 'herb', 'the object row records')
+assert(not EverlootDB.paused['loot (objects)'])
+
+-- The shares were counted from the rows already in the file (above); re-initialising keeps the window cap.
+Everloot:InitModules()
+guids.npc = 'Creature-0-1-2-3-400-0000000001'
+event('BANKFRAME_OPENED')
+assert(#sightings() == 10, 'still five window rows after a reload')
+""")
+counts = check_all(lua)
+assert counts == {"npc_sighting": 10, "loot": 6}, counts
 print("Lua 5.1 map positions: NPC windows (merchant, repair, trainer, quest detail and greeting, taxi, bank, auction house, "
       "stable, innkeeper, gossip, interaction manager) record interaction positions once per NPC, role and map; targeting stays "
       "player; object loot rows carry position, gather kind and name; missing events, calls and fields record nothing")
