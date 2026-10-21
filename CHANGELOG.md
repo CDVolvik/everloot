@@ -15,6 +15,9 @@ build that has a zip in the repository. Earlier builds have none.
 Pull requests merged to `main` are listed in the nightly pre-releases until the next tagged release.
 
 ### Changed
+- Site: every item, quest, item set and spell the game files or the Warcraft Wiki name is named on its page,
+  with no id range and no placeholder filter. A name from the game files alone carries the unconfirmed marker;
+  a name from the wiki says so in its tooltip. Items no source names still read "Item N" until players name them.
 - Site: the player pages are live. A player page shows what the addon last saw of a character — race, class,
   level, guild and the day — found by the start of the name, and every page carries a hide link and a hide
   form. The search index stays off for now, so the pages are reached by name and are not listed anywhere.

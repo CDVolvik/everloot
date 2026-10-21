@@ -110,6 +110,16 @@ test("a category row shows a name the game files and the wiki agree on, in its q
   expect(state.tipCalls).toEqual([[ids[0], ids[1]]]);
 });
 
+test("a name from the game files alone shows with the unconfirmed marker", async () => {
+  state.assets = assets;
+  const ids = clothIds();
+  state.matched = { ...matchedNames([]), names: new Map([[ids[0], { name: `File name ${ids[0]}`, color: "#a335ee", wikiPage: null, source: "files" }]]) };
+  const page = await html(cloth());
+  expect(page).toContain(`File name ${ids[0]}`);
+  expect(page).toContain('data-badge="files"');
+  expect(page).not.toContain(`>File name ${ids[0]}</a><span class="sr-only">`);
+});
+
 test("without the names file a category shows Item N and no wiki credit", async () => {
   const page = await html(cloth());
   expect(page).not.toContain(NAME_TITLE.wiki);
