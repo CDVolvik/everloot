@@ -72,8 +72,41 @@ test("links every legal page and the privacy choices anchor", () => {
   expect(markup).toContain("Cookie preferences");
 });
 
-test("groups the links under labelled columns", () => {
+test("groups the links under their names: one line each on a wide screen, a disclosure each on a phone", () => {
   const markup = html();
-  for (const heading of ["Browse", "Data and API", "Project", "Legal"]) expect(markup).toContain(heading);
   expect(markup).toContain('aria-label="Footer"');
+  for (const heading of ["Browse", "Data and API", "Project"]) {
+    expect(markup).toMatch(new RegExp(`<h2[^>]*>${heading}</h2>`));
+    expect(markup).toMatch(new RegExp(`<summary[^>]*>${heading}<svg`));
+  }
+  expect(markup.match(/<details/g)).toHaveLength(3);
+  expect(markup).toContain('<h2 class="sr-only">Legal</h2>');
+});
+
+test("is compact: two rows, no four-column block", () => {
+  const markup = html();
+  expect(markup).not.toMatch(/grid-cols-\[2fr/);
+  expect(markup).not.toContain("pt-12");
+  // Row one: the wordmark, the tagline, the groups and the icons; row two: the legal links over the small print.
+  expect(text()).toContain("The WoW: Forever database, written by its players.");
+  expect(markup).toMatch(/aria-label="Discord"[\s\S]*aria-label="GitHub"/);
+});
+
+test("keeps every link the four-column footer had", () => {
+  const markup = html();
+  const before = [
+    "/database", "/map", "/changes", "/lore", "/addons",
+    "/addon", "/upload", "/docs", "/methodology", "https://github.com/Everloot/everloot/blob/main/docs/DATA_POLICY.md", "/changes/feed.xml",
+    "/about", "/contact", "https://discord.gg/9CKsbHTRu3", "https://github.com/Everloot/everloot",
+    "https://github.com/Everloot/everloot/blob/main/CONTRIBUTING.md", "/security",
+    "/privacy", "/terms", "/privacy#choices", "/terms#takedown", "/terms#trademarks", "/accessibility",
+    "/methodology#credits", "mailto:hello@everloot.app", "/",
+  ];
+  for (const href of before) expect(markup, href).toContain(`href="${href}"`);
+});
+
+test("Glint perches on the footer's edge as a labelled button, his drawing hidden from screen readers", () => {
+  const markup = html();
+  expect(markup).toMatch(/data-footer-glint[\s\S]*<button[^>]*aria-label="Glint, the loot raven"[^>]*>\s*<svg[^>]*aria-hidden="true"/);
+  expect(markup).toMatch(/data-footer-glint[\s\S]*aria-live="polite"/);
 });

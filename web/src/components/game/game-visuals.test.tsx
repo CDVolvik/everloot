@@ -205,9 +205,9 @@ test("home: the hero shows the game's own logo, the name and the disclaimer as t
   expect(banner).toMatch(/<img[^>]*src="[^"]*loading\/9249\.webp"[^>]*alt=""[^>]*aria-hidden="true"/);
   expect(banner).toContain(">World of Warcraft: Forever</p>");
   expect(banner).toContain("Not affiliated with or endorsed by Blizzard Entertainment.");
-  // The countdown sits on the banner, and only there.
-  expect(banner).toMatch(/href="\/wow-forever"[^>]*>WoW: Forever launches <time/);
-  expect(html.match(/WoW: Forever launches/g)).toHaveLength(1);
+  // The countdown sits on the banner, in Glint's speech bubble, and only there.
+  expect(banner).toMatch(/data-glint-hero[\s\S]*Forever launches <a href="\/wow-forever"[^>]*><time/);
+  expect(html.match(/Forever launches/g)).toHaveLength(1);
   expect(html).not.toMatch(/data-game-credit|data-source-line/);
   expect(html.indexOf("data-launch-banner")).toBeLessThan(html.indexOf("<h1"));
 });
@@ -219,7 +219,7 @@ test("home: without the game's logo in the upload there is no launch banner, and
   expect(html).not.toMatch(/data-launch-banner|logo-wow|World of Warcraft: Forever<\/p>/);
   expect(html).not.toContain("loading/9249");
   // The countdown stays in the hero.
-  expect(html).toContain("WoW: Forever launches");
+  expect(html).toContain("Forever launches");
 });
 
 test("wow-forever: race and faction emblems beside the names in the race and class table, and no credit line", async () => {

@@ -2,7 +2,7 @@ import Link from "next/link";
 import AdSlot from "@/components/AdSlot";
 import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
-import LaunchCountdown from "@/components/LaunchCountdown";
+import GlintHero from "@/components/glint/GlintHero";
 import LoreSearchForm from "@/components/LoreSearchForm";
 import { AgreementMeter, Banner, Card, CodeBlock, SectionHeading, type Agreement } from "@/components/ui";
 import { TOOL_GROUPS, tools, toolHref } from "@/data/tools";
@@ -92,10 +92,13 @@ export default async function Home() {
             </div>
           )}
         >
-          <LaunchCountdown />
-          <h1 id="hero-title" className="mt-4 text-5xl font-bold leading-none tracking-tight text-fg sm:text-7xl">
-            Every drop.<br />Every guild.<br /><span className="text-accent">Every reset.</span>
-          </h1>
+          {/* Glint holds the launch countdown: above the title on a phone, beside it on a wide screen. */}
+          <div className="flex flex-col gap-4 xl:flex-row-reverse xl:items-end xl:justify-end xl:gap-12">
+            <GlintHero />
+            <h1 id="hero-title" className="text-5xl font-bold leading-none tracking-tight text-fg sm:text-7xl">
+              Every drop.<br />Every guild.<br /><span className="text-accent">Every reset.</span>
+            </h1>
+          </div>
           <p className="mt-4 max-w-[40ch] text-lg text-fg-2 sm:mt-6">
             The open WoW: Forever database, written by the addons of the people who play it.
           </p>

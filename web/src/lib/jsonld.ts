@@ -23,7 +23,7 @@ export const OPERATOR = "R21 Media Group, LLC";
 /** The Everloot Discord server; a permanent invite. */
 export const DISCORD_INVITE = "https://discord.gg/9CKsbHTRu3";
 /** The footer shows both sentences, and the Organization description repeats them. */
-export const SITE_BLURB = "The WoW: Forever database, built from player data.";
+export const SITE_BLURB = "The WoW: Forever database, written by its players.";
 /** Who runs Everloot, in the words /about uses; llms.txt and llms-full.txt say the same. */
 export const OPERATOR_LINE = `Everloot is run by ${OPERATOR}.`;
 /** The square logo the MCP listings use too (web/public/icon-512.png). */
