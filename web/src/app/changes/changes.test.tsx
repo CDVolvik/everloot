@@ -24,7 +24,7 @@ const entries: ChangeEntry[] = [
     id: "forum:1", type: "post", game: "forever", at: "2026-10-16T22:00:00.000Z", title: "Synthetic beta notice <b>", url: "https://us.forums.blizzard.com/en/wow/t/x/1",
     author: "Linxy", role: "Community Manager", category: "WoW: Forever Beta Discussion", source: "forum", region: "us", excerpt: "A short excerpt. Second sentence.",
   },
-  { id: "forum:2", type: "hotfix", game: "forever", at: "2026-10-16T18:00:00.000Z", title: "WoW: Forever Hotfixes", url: "https://eu.forums.blizzard.com/en/wow/t/y/2", author: "Kaivax", role: "Community Manager", category: "WoW: Forever", source: "forum", region: "eu", excerpt: "Fixed a thing." },
+  { id: "forum:eu:2", type: "hotfix", game: "forever", at: "2026-10-16T18:00:00.000Z", title: "WoW: Forever Hotfixes", url: "https://eu.forums.blizzard.com/en/wow/t/y/2", author: "Kaivax", role: "Community Manager", category: "WoW: Forever", source: "forum", region: "eu", excerpt: "Fixed a thing." },
   { id: "forum:3", type: "post", game: "classic", at: "2026-10-15T18:00:00.000Z", title: "Classic realm move", url: "https://us.forums.blizzard.com/en/wow/t/z/3", author: "Fwoibles", role: "WoW Developer", category: "WoW Classic", source: "forum", region: "us", excerpt: "Moving." },
   { id: "build:c", type: "build", game: "forever", at: "2026-09-01T06:00:00.000Z", title: "WoW: Forever build 1.60.1.70450", url: null, version: "1.60.1.70450", diffUrl: "https://everloot.app/changes/diff/70450" },
 ];
@@ -52,7 +52,7 @@ test("one compact title row: the name Changes, one intro line, the latest build 
   for (const word of ["sponsor", "advert", "premium", "subscribe", "buy now"]) expect(lower).not.toContain(word);
 });
 
-test("dense rows: date, type badge, title linked to the original, author, region and a short excerpt, newest first", async () => {
+test("dense rows: date, type badge, title linked to the post's page on Everloot, author, region and a short excerpt, newest first", async () => {
   const html = await page();
   expect(html).toContain("data-dense");
   expect(rows(html)).toBe(4);
@@ -60,7 +60,10 @@ test("dense rows: date, type badge, title linked to the original, author, region
   expect(html).toMatch(/<time dateTime="2026-10-16T22:00:00.000Z"[^>]*>2026-10-16<\/time>/);
   expect(html).toMatch(/data-badge="neutral"[^>]*>Blue post</);
   expect(html).toMatch(/data-badge="neutral"[^>]*>Hotfix</);
-  expect(html).toMatch(/<a href="https:\/\/us.forums.blizzard.com\/en\/wow\/t\/x\/1" rel="noopener"[^>]*>Synthetic beta notice &lt;b&gt;<\/a>/);
+  expect(html).toMatch(/<a href="\/changes\/us-1-synthetic-beta-notice-b"[^>]*>Synthetic beta notice &lt;b&gt;<\/a>/);
+  expect(html).toContain('href="/changes/eu-2-wow-forever-hotfixes"');
+  // The original is one click further, on the post's page.
+  expect(html).not.toContain("forums.blizzard.com");
   expect(html).toContain("A short excerpt. Second sentence.");
   expect(html).toMatch(/title="Community Manager"[^>]*>Linxy</);
   expect(html).toContain("US forum");
@@ -163,21 +166,38 @@ test("empty states: nothing recorded at all, or no match with the filters as rem
   expect(nomatch).toContain("Clear filters");
 });
 
-test("the RSS feed is Forever only, is RSS, and links to Blizzard's originals", async () => {
+test("the RSS feed is Forever only, is RSS, and links each post's page on Everloot with the original kept in the item", async () => {
   const response = GET();
   expect(response.headers.get("content-type")).toContain("application/rss+xml");
   const xml = await response.text();
   expect(xml).toContain("<rss version=\"2.0\"");
-  expect(xml).toContain("<link>https://us.forums.blizzard.com/en/wow/t/x/1</link>");
+  expect(xml).toContain("<link>https://everloot.app/changes/us-1-synthetic-beta-notice-b</link>");
+  expect(xml).toContain("Original: https://us.forums.blizzard.com/en/wow/t/x/1</description>");
+  expect(xml).toContain("<link>https://everloot.app/changes/eu-2-wow-forever-hotfixes</link>");
   expect(xml).not.toContain("Classic realm move");
   expect((xml.match(/<item>/g) ?? []).length).toBe(4);
 });
 
-test("a post whose stored link was not a web link shows its title without a link", async () => {
-  timeline.entries = [{ ...entries[1], url: null }];
+test("posts and hotfixes are blue (title and author); builds keep the plain style", async () => {
   const html = await page();
-  expect(html).toContain('<span class="font-medium">Synthetic beta notice &lt;b&gt;</span>');
-  expect(html).not.toContain("forums.blizzard.com");
+  const rowsHtml = html.split("<tr").slice(1);
+  const row = (text: string) => rowsHtml.find((r) => r.includes(text))!;
+  for (const text of ["Synthetic beta notice", "WoW: Forever Hotfixes"]) {
+    expect(row(text)).toContain('data-blue-post=""');
+    expect(row(text)).toMatch(/<a href="\/changes\/[^"]+" class="text-blue-post[^"]*font-medium">/);
+    expect(row(text)).toMatch(/class="text-blue-post[^"]*"[^>]*>(Linxy|Kaivax)</);
+  }
+  for (const text of ["1.60.1.70460", "1.60.1.70450"]) {
+    expect(row(text)).not.toContain("data-blue-post");
+    expect(row(text)).not.toContain("text-blue-post");
+    expect(row(text)).toContain('<span class="font-medium">WoW: Forever build');
+  }
+});
+
+test("a build has no page of its own: its title is plain text", async () => {
+  const html = await page({ show: "builds" });
+  expect(html).not.toMatch(/href="\/changes\/build/);
+  expect(html).toContain('<span class="font-medium">WoW: Forever build 1.60.1.70460</span>');
 });
 
 test("with the game art, a spell a post names gets its icon, its tooltip and a link to where the site shows it", async () => {

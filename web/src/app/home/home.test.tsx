@@ -22,7 +22,7 @@ vi.mock("../page", () => ({ default: () => <p>The landing page</p> }));
 vi.mock("@/lib/changes", () => ({
   TYPE_LABEL: { post: "Blue post", hotfix: "Hotfix", build: "Build" },
   loadTimeline: () => Array.from({ length: 8 }, (_, i) => ({
-    id: `e${i}`, type: i === 0 ? "build" : "post", game: i === 1 ? "classic" : "forever", at: `2026-10-${String(20 - i).padStart(2, "0")}T10:00:00Z`,
+    id: i === 0 ? "build:e0" : `forum:${i}`, type: i === 0 ? "build" : "post", game: i === 1 ? "classic" : "forever", at: `2026-10-${String(20 - i).padStart(2, "0")}T10:00:00Z`,
     title: `Entry ${i}`, url: i === 0 ? null : `https://us.forums.blizzard.com/t/${i}`,
   })),
   filterTimeline: (all: Array<{ game: string }>, _f: string, game?: string) => all.filter((e) => !game || e.game === game),
@@ -95,7 +95,9 @@ test("the three columns: the player, the Ask box and the active character's buil
   expect(html).toContain("Latest from Forever");
   expect(html).toContain("Entry 0");
   expect(html).toMatch(/<a href="\/changes" class="[^"]*">Entry 0</);
-  expect(html).toContain('href="https://us.forums.blizzard.com/t/2" rel="noopener"');
+  // A blue post links its page on Everloot, in blue; the build links the list.
+  expect(html).toMatch(/<a href="\/changes\/us-2-entry-2" class="[^"]*text-blue-post[^"]*">Entry 2</);
+  expect(html).not.toContain("forums.blizzard.com");
   expect(html).not.toContain("Entry 1<");
   expect(html).toContain("Entry 5");
   expect(html).not.toContain("Entry 6");

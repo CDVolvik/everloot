@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { auditSources } from "./audit-sources.js";
@@ -6,6 +6,7 @@ import { BlizzardClient } from "./blizzard/client.js";
 import {
   backfillBluePosts, ingestBluePosts, loadFetchState, loadOverrides, loadStore, saveFetchState, saveStore, type BlueGame, type BlueRegion, type IngestResult,
 } from "./blue-posts.js";
+import { compileWriteups } from "./blue-writeups.js";
 import { buildTimeline } from "./changes.js";
 import { checkBuilds, loadRegistry, recordBuilds, saveRegistry, versionsUrl } from "./builds.js";
 import { clientCoverage, formatCoverage } from "./client-coverage.js";
@@ -46,6 +47,8 @@ import { loadCategories, loadKnownData, loadPrivatePathPattern, readWikiPages, W
 const CHANGES_DIR = fileURLToPath(new URL("../changes/", import.meta.url));
 const ECOSYSTEM_FILE = fileURLToPath(new URL("../curated/ecosystem.json", import.meta.url));
 const ACCOUNTS_FILE = fileURLToPath(new URL("../curated/blue-accounts.json", import.meta.url));
+const WRITEUPS_DIR = fileURLToPath(new URL("../curated/blue-writeups/", import.meta.url));
+const WRITEUPS_FILE = fileURLToPath(new URL("../curated/blue-writeups.json", import.meta.url));
 
 const GAMES: Game[] = ["retail", "classic", "classic1x", "forever"];
 const KINDS: NsKind[] = ["static", "dynamic", "profile"];
@@ -86,6 +89,9 @@ const USAGE = `usage: npm run kb -- <command> --db <path>
     (one-off history for the blue tracker, not for the schedule: walks every page of the Forever topic
     lists, and the Classic ones back to --since, at the same pace and rules as blue-check, and keeps the
     staff posts of every topic that has one. Prints request counts by kind)
+  blue-writeups [--dir <kb>/curated/blue-writeups] [--out <kb>/curated/blue-writeups.json]
+    (checks the hand-written write-ups of blue posts, one Markdown file per post, and writes the JSON the
+    site bundles. Fails on a file that breaks a rule or names a post the store does not hold)
   ecosystem-check [--registry <kb>/curated/ecosystem.json] [--snapshot <kb>/changes/ecosystem.json]
     [--min-hours 3] [--force]
     (the ecosystem tracker: reads GitHub's public REST API for every project in the registry, one request at
@@ -362,6 +368,17 @@ async function main(): Promise<number> {
       saveStore(path, result.store);
       console.log(`${result.pages} list pages, ${result.topics} topics opened`);
       return reportBlue(result, path);
+    }
+    case "blue-writeups": {
+      const dir = flags.get("dir") || WRITEUPS_DIR;
+      const out = flags.get("out") || WRITEUPS_FILE;
+      const files = existsSync(dir) ? readdirSync(dir).map((name) => ({ name, text: readFileSync(join(dir, name), "utf8") })) : [];
+      const known = new Set(loadStore(join(CHANGES_DIR, "blue-posts.json")).posts.map((p) => p.id));
+      const writeups = compileWriteups(files, known);
+      const note = (JSON.parse(readFileSync(out, "utf8")) as { note?: string }).note;
+      writeFileSync(out, `${JSON.stringify({ note, writeups }, null, 2)}\n`);
+      console.log(`${writeups.length} write-ups written to ${out}`);
+      return 0;
     }
     case "ecosystem-check": {
       const registry = parseRegistry(JSON.parse(readFileSync(flags.get("registry") || ECOSYSTEM_FILE, "utf8")));

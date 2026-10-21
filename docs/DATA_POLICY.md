@@ -375,8 +375,11 @@ Blizzard's version service reports.
 
 - *Excerpts only.* For each post we keep the title, the author and role, the time, the category,
   an excerpt of at most two sentences (300 characters) and a link to the original. The text is
-  Blizzard's, so we never copy a post in full. A maintainer may add a one-line summary in our own
-  words; nothing writes one automatically.
+  Blizzard's, so we never copy a post in full. Each post has its own page on Everloot
+  (`/changes/<id>-<slug>`) with those fields, the excerpt marked as Blizzard's words, and the link.
+  A maintainer may add a write-up in our own words on that page (`kb/curated/blue-writeups/`),
+  reviewed before it is published; it never repeats more of the post than the excerpt, and nothing
+  writes one automatically. A page without a write-up is not indexed by search engines.
 - *Sources.* Forum posts come from the US and EU English WoW forums, only from the WoW: Forever and
   WoW Classic categories, and only from Blizzard staff: people on each forum's published staff list
   (`about.json`) or posts the forum itself marks as Blizzard's (its group tracker; the green MVP
