@@ -4,6 +4,8 @@ Implements PR 1 of the coverage engine, following the
 [coverage and plateau design](design/specs/2026-10-21-coverage-plateau-design.md)
 and this lane's narrower scope.
 
+Review: [PR #298](https://github.com/Everloot/everloot/pull/298), against `main`.
+
 ## Outcome
 
 `tallyVotes` returns every scalar value group, its distinct voters, first and last
@@ -46,7 +48,11 @@ the tally does not introduce a second identity rule or fold a field in isolation
 - Focused state, world-page and Recorder tests: 23 passed.
 - Full KB suite: 103 files, 1,085 tests passed.
 - KB typecheck passed.
+- Web regression suite: 207 files passed, one skipped; 2,035 tests passed, three
+  skipped. Web typecheck passed.
 - Wiki check: 28 pages, zero problems.
+- Internal-path, Markdown-link, DCO and attribution guards passed; diff whitespace
+  check passed.
 
 The tests cover every state; two versus three voters; four versus five voters;
 different values and multiple winning groups; repeated installs; one Recorder
