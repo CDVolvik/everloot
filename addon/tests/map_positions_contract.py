@@ -372,6 +372,172 @@ assert(#sightings() == 10, 'still five window rows after a reload')
 """)
 counts = check_all(lua)
 assert counts == {"npc_sighting": 10, "loot": 6}, counts
+
+# --- Vignettes: a rare's and a treasure's own position, from C_VignetteInfo (documented for Forever 1.60.1) ---
+lua = fresh("""
+vignettes = {
+  ['Vignette-1'] = { info = { objectGUID = 'Creature-0-1-2-3-61-0000000001', name = 'Thuros Lightfingers' }, x = .25, y = .75 },
+  ['Vignette-2'] = { info = { objectGUID = 'GameObject-0-1-2-3-2843-0000000001', name = 'Battered Chest' }, x = .5, y = .5 },
+}
+C_VignetteInfo = {
+  GetVignettes = function() local list = {}; for guid in pairs(vignettes) do list[#list + 1] = guid end; return list end,
+  GetVignetteInfo = function(guid) return vignettes[guid] and vignettes[guid].info end,
+  GetVignettePosition = function(guid, uiMap)
+    local v = vignettes[guid]
+    if v and uiMap == map and v.x then return { x = v.x, y = v.y } end
+  end,
+}
+instance = { 'Elwynn Forest', 'none', 0, '', 0, 0, false, 0 }
+GetInstanceInfo = function() return unpack(instance, 1, 10) end
+""")
+lua.execute("""
+local function objects() return EverlootDB.records.object_sighting or {} end
+event('VIGNETTE_MINIMAP_UPDATED', 'Vignette-1', true)
+local rare = last()
+assert(#sightings() == 1 and rare.npcId == 61 and rare.name == 'Thuros Lightfingers' and rare.positionKind == 'vignette')
+assert(rare.mapId == 1411 and rare.x == 25 and rare.y == 75, 'the rare own position, not the player one')
+assert(rare.level == nil and rare.reaction == nil and rare.role == nil, 'a vignette tells no level or reaction')
+event('VIGNETTE_MINIMAP_UPDATED', 'Vignette-2', true)
+local chest = objects()[1]
+assert(#objects() == 1 and chest.objectId == 2843 and chest.name == 'Battered Chest' and chest.x == 50 and chest.y == 50)
+assert(chest.mapId == 1411 and chest.instanceMapId == nil, 'outdoors: no instance')
+event('VIGNETTES_UPDATED')
+event('VIGNETTE_MINIMAP_UPDATED', 'Vignette-1', true)
+assert(#sightings() == 1 and #objects() == 1, 'the same vignette at the same spot adds nothing')
+
+-- Leaving the minimap, a player vignette, no name, no position, a broken API: nothing, and no error.
+vignettes['Vignette-3'] = { info = { objectGUID = 'Creature-0-1-2-3-62-0000000001', name = 'Gath Ilzogg' }, x = .1, y = .1 }
+event('VIGNETTE_MINIMAP_UPDATED', 'Vignette-3', false)
+vignettes['Vignette-3'] = { info = { objectGUID = 'Player-1-00000001', name = 'Bob' }, x = .1, y = .1 }
+event('VIGNETTE_MINIMAP_UPDATED', 'Vignette-3', true)
+vignettes['Vignette-3'] = { info = { objectGUID = 'Creature-0-1-2-3-62-0000000001', name = '' }, x = .1, y = .1 }
+event('VIGNETTE_MINIMAP_UPDATED', 'Vignette-3', true)
+vignettes['Vignette-3'] = { info = { objectGUID = 'Creature-0-1-2-3-62-0000000001', name = 'Gath Ilzogg' } }
+event('VIGNETTE_MINIMAP_UPDATED', 'Vignette-3', true)
+vignettes['Vignette-3'] = { info = { objectGUID = 'Creature-0-1-2-3-62-0000000001', name = 'Gath Ilzogg' }, x = 1.5, y = .1 }
+event('VIGNETTE_MINIMAP_UPDATED', 'Vignette-3', true)
+event('VIGNETTE_MINIMAP_UPDATED', nil, true)
+event('VIGNETTE_MINIMAP_UPDATED', 'Vignette-404', true)
+local savedApi = C_VignetteInfo
+C_VignetteInfo = { GetVignettes = function() error('broken') end, GetVignetteInfo = function() error('broken') end,
+  GetVignettePosition = function() error('broken') end }
+event('VIGNETTES_UPDATED')
+event('VIGNETTE_MINIMAP_UPDATED', 'Vignette-1', true)
+C_VignetteInfo = nil
+event('VIGNETTES_UPDATED')
+event('VIGNETTE_MINIMAP_UPDATED', 'Vignette-1', true)
+assert(#sightings() == 1 and #objects() == 1, 'nothing recorded from a refused vignette')
+C_VignetteInfo = savedApi
+
+-- A treasure inside an instance carries the instance map id (GetInstanceInfo's 8th return).
+instance = { 'The Deadmines', 'party', 1, 'Normal', 5, 0, false, 36 }
+vignettes['Vignette-4'] = { info = { objectGUID = 'GameObject-0-1-2-3-4096-0000000001', name = 'Solid Chest' }, x = .3, y = .4 }
+event('VIGNETTES_UPDATED')
+assert(#objects() == 2 and objects()[2].instanceMapId == 36)
+""")
+counts = check_all(lua)
+assert counts == {"npc_sighting": 1, "object_sighting": 2}, counts
+
+# --- Instance entrances and encounters (GetInstanceInfo, ENCOUNTER_END; documented for Forever 1.60.1) ---
+lua = fresh("""
+instance = { 'Elwynn Forest', 'none', 0, '', 0, 0, false, 0 }
+GetInstanceInfo = function() return unpack(instance, 1, 10) end
+""")
+lua.execute("""
+local function entrances() return EverlootDB.records.instance_entrance or {} end
+local function encounters() return EverlootDB.records.encounter or {} end
+for _, name in ipairs({'VIGNETTE_MINIMAP_UPDATED','VIGNETTES_UPDATED','PLAYER_LEAVING_WORLD','PLAYER_ENTERING_WORLD','ENCOUNTER_END'}) do
+  assert(Everloot.frame.events[name], name .. ' is not registered')
+end
+
+-- Zoning in from outdoors: the position where the loading screen started is the entrance.
+map, px, py = 1436, .422, .716
+event('PLAYER_LEAVING_WORLD')
+instance = { 'The Deadmines', 'party', 1, 'Normal', 5, 0, false, 36 }
+px = nil
+event('PLAYER_ENTERING_WORLD', false, false)
+local entrance = entrances()[1]
+assert(#entrances() == 1 and entrance.instanceMapId == 36 and entrance.name == 'The Deadmines' and entrance.instanceType == 'party')
+assert(entrance.difficulty == 1 and entrance.mapId == 1436 and math.abs(entrance.x - 42.2) < 1e-9 and math.abs(entrance.y - 71.6) < 1e-9)
+
+-- Out and back in through the same door: one row.
+px = .422
+event('PLAYER_LEAVING_WORLD')
+instance = { 'Westfall', 'none', 0, '', 0, 0, false, 0 }
+event('PLAYER_ENTERING_WORLD')
+event('PLAYER_LEAVING_WORLD')
+instance = { 'The Deadmines', 'party', 1, 'Normal', 5, 0, false, 36 }
+event('PLAYER_ENTERING_WORLD')
+assert(#entrances() == 1, 'the same instance from the same map adds nothing')
+
+-- A reload inside, a login inside, a dungeon finder teleport, a battleground, no position: nothing.
+event('PLAYER_LEAVING_WORLD')
+event('PLAYER_ENTERING_WORLD', false, true)
+event('PLAYER_ENTERING_WORLD', true, false)
+instance = { 'Westfall', 'none', 0, '', 0, 0, false, 0 }
+event('PLAYER_LEAVING_WORLD')
+instance = { 'Shadowfang Keep', 'party', 1, 'Normal', 5, 0, false, 33, 5, 8 }
+event('PLAYER_ENTERING_WORLD')
+instance = { 'Westfall', 'none', 0, '', 0, 0, false, 0 }
+event('PLAYER_LEAVING_WORLD')
+instance = { 'Warsong Gulch', 'pvp', 0, '', 10, 0, false, 489 }
+event('PLAYER_ENTERING_WORLD')
+instance = { 'Westfall', 'none', 0, '', 0, 0, false, 0 }
+px = nil
+event('PLAYER_LEAVING_WORLD')
+instance = { 'Shadowfang Keep', 'party', 1, 'Normal', 5, 0, false, 33 }
+event('PLAYER_ENTERING_WORLD')
+assert(#entrances() == 1, 'no entrance without an outdoor start, or from a dungeon finder or a battleground')
+
+-- A raid, and no difficulty when the client gives none.
+px = .5
+instance = { 'Burning Steppes', 'none', 0, '', 0, 0, false, 0 }
+event('PLAYER_LEAVING_WORLD')
+instance = { 'Molten Core', 'raid', nil, '', 40, 0, false, 409 }
+event('PLAYER_ENTERING_WORLD')
+assert(#entrances() == 2 and entrances()[2].instanceType == 'raid' and entrances()[2].difficulty == nil)
+
+-- A missing or failing GetInstanceInfo records nothing and never errors.
+instance = { 'Westfall', 'none', 0, '', 0, 0, false, 0 }
+event('PLAYER_LEAVING_WORLD')
+local saved = GetInstanceInfo
+GetInstanceInfo = function() error('broken') end
+event('PLAYER_ENTERING_WORLD')
+GetInstanceInfo = nil
+event('PLAYER_LEAVING_WORLD')
+event('PLAYER_ENTERING_WORLD')
+assert(#entrances() == 2)
+GetInstanceInfo = saved
+
+-- ENCOUNTER_END: encounterID, encounterName, difficultyID, groupSize, success, and the boss units when sent.
+instance = { 'The Deadmines', 'party', 1, 'Normal', 5, 0, false, 36 }
+event('ENCOUNTER_END', 1144, 'Edwin VanCleef', 1, 5, 1, { { creatureID = 639, creatureName = 'Edwin VanCleef', remainingHealthPercent = 0 } })
+local kill = encounters()[1]
+assert(kill.encounterId == 1144 and kill.name == 'Edwin VanCleef' and kill.instanceMapId == 36 and kill.success == true)
+assert(kill.difficulty == 1 and kill.size == 5 and #kill.npcIds == 1 and kill.npcIds[1] == 639)
+event('ENCOUNTER_END', 1144, 'Edwin VanCleef', 1, 5, 0)
+local wipe = encounters()[2]
+assert(wipe.success == false and wipe.npcIds == nil, 'a wipe, no unit list')
+local many = {}
+for i = 1, 45 do many[i] = { creatureID = 1000 + i } end
+many[46] = { creatureID = 1001 }
+many[47] = 'odd'
+event('ENCOUNTER_END', 1145, 'Big Fight', 9, 40, true, many)
+assert(#encounters()[3].npcIds == 40 and encounters()[3].size == 40, 'at most 40 boss ids, each once')
+
+-- Odd arguments, outdoors, no instance info: nothing, and no error.
+event('ENCOUNTER_END', 1144, 'Edwin VanCleef', 1, 5, 2)
+event('ENCOUNTER_END', 0, 'Edwin VanCleef', 1, 5, 1)
+event('ENCOUNTER_END', 1144, '', 1, 5, 1)
+event('ENCOUNTER_END')
+instance = { 'Kalimdor', 'none', 0, '', 0, 0, false, 1 }
+event('ENCOUNTER_END', 1144, 'Edwin VanCleef', 1, 5, 1)
+GetInstanceInfo = nil
+event('ENCOUNTER_END', 1144, 'Edwin VanCleef', 1, 5, 1)
+assert(#encounters() == 3)
+""")
+counts = check_all(lua)
+assert counts == {"instance_entrance": 2, "encounter": 3}, counts
 print("Lua 5.1 map positions: NPC windows (merchant, repair, trainer, quest detail and greeting, taxi, bank, auction house, "
       "stable, innkeeper, gossip, interaction manager) record interaction positions once per NPC, role and map; targeting stays "
       "player; object loot rows carry position, gather kind and name; missing events, calls and fields record nothing")
