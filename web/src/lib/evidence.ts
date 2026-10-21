@@ -107,6 +107,20 @@ export function entitySummary(i: { identity: string; observed: string; named: bo
 }
 
 /**
+ * Two titles that say the same thing: the same announcement can be worded "on 21 October" in one
+ * region and "on October 21" in another, and a panel that lists both reads as a repetition.
+ */
+export function sameAnnouncement(a: string, b: string): boolean {
+  const norm = (s: string) =>
+    s
+      .replace(/\bon (\d{1,2}) ([A-Z][a-z]+)\b/g, "on $2 $1")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase();
+  return norm(a) === norm(b);
+}
+
+/**
  * When the numbers behind a page were last current, in the site's words. The corpus carries the
  * moment its uploads were read; a page that shows a count says how fresh it is next to it.
  */
