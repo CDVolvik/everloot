@@ -105,3 +105,14 @@ export function nameLine(named: boolean): string {
 export function entitySummary(i: { identity: string; observed: string; named: boolean }): string[] {
   return [i.identity, i.observed, nameLine(i.named)];
 }
+
+/**
+ * When the numbers behind a page were last current, in the site's words. The corpus carries the
+ * moment its uploads were read; a page that shows a count says how fresh it is next to it.
+ */
+export function asOfLine(dataAsOf: string | null, now: number): string | null {
+  if (!dataAsOf) return null;
+  const at = Date.parse(dataAsOf);
+  if (!Number.isFinite(at)) return null;
+  return `last upload ${timeAgo(at, now)}`;
+}

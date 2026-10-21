@@ -27,3 +27,12 @@ test("tool status keeps its meaning: a tool still collecting shows the 0-of-3 me
 test("no emoji or pictographs", () => {
   expect(html).not.toMatch(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{25A0}-\u{25FF}]/u);
 });
+
+test("the home page says what is new, with the kind and the date of each entry", () => {
+  const text = html.replace(/&#x27;|&apos;/g, "'").replace(/&middot;/g, "·").replace(/&amp;/g, "&");
+  expect(text).toContain("What&#x27;s new".replace("&#x27;", "'"));
+  expect(html).toContain('id="whats-new"');
+  // The newest entries carry their kind and their date.
+  expect(html).toMatch(/(Blue post|Hotfix|Build)<\/span>/);
+  expect(text).toMatch(/· (January|February|March|April|May|June|July|August|September|October|November|December) \d+, \d{4}/);
+});

@@ -10,7 +10,7 @@ import { loadCatalog } from "@/lib/completion-lists";
 import { publicZones } from "@/lib/zones";
 import JsonLd from "@/components/JsonLd";
 import { AgreementMeter, Container, DataTitle, SearchBar } from "@/components/ui";
-import { EVIDENCE_KEY } from "@/lib/evidence";
+import { asOfLine, EVIDENCE_KEY } from "@/lib/evidence";
 import { datasetJsonLd } from "@/lib/jsonld";
 
 const TITLE = "WoW Forever Database";
@@ -74,7 +74,14 @@ export default async function DatabasePage() {
     <Container width="data">
       <article>
         <JsonLd data={datasetJsonLd({ uploads: stats.unreachable ? 0 : stats.uploads, name: DATASET_NAME, description, path: "/database", corpusPath: "/api/corpus/public", dataAsOf: stats.unreachable ? null : stats.dataAsOf })} />
-        <DataTitle title="Database" meta={`${n(T.items.length)} items · NPCs, quests and objects seen by players`} />
+        <DataTitle
+          title="Database"
+          meta={[
+            `${n(T.items.length)} items in the game files`,
+            "NPCs, quests and objects seen by players",
+            asOfLine(stats.unreachable ? null : stats.dataAsOf, Date.now()),
+          ].filter(Boolean).join(" · ")}
+        />
         <SearchBar
           action="/search"
           id="database-search"
