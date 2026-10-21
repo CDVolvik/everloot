@@ -1,5 +1,5 @@
 {
-  "protocol": "1.3.0",
+  "protocol": "1.4.0",
   "kinds": [
     "achievement_catalog",
     "achievement_owned",
@@ -9,6 +9,7 @@
     "auction_snapshot",
     "census_seen",
     "census_self",
+    "character_link",
     "collection_catalog",
     "collection_owned",
     "gear_snapshot",

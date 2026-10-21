@@ -1,3 +1,4 @@
+import { postPath } from "../../../kb/src/blue-pages";
 import type { ChangeEntry } from "./changes";
 import { REPO_URL } from "./source";
 import { absoluteUrl, SITE_NAME, SITE_URL } from "./seo";
@@ -190,12 +191,41 @@ function changeItem(entry: ChangeEntry): JsonLd {
       description: `First seen by Everloot on ${entry.at.slice(0, 10)}. Blizzard's own release time is not recorded.`,
     };
   }
+  // The row links the post's page on Everloot, which links the original.
+  const page = postPath(entry);
+  const url = page ? absoluteUrl(page) : entry.url;
   return {
     "@type": "CreativeWork",
     name: entry.title,
     datePublished: entry.at,
     ...(entry.author ? { author: entry.author } : {}),
-    ...(entry.url ? { url: entry.url } : {}),
+    ...(url ? { url } : {}),
+  };
+}
+
+/**
+ * A blue post's page once it carries our reviewed write-up: an Article by Everloot, dated the day the write-up
+ * was reviewed, based on Blizzard's post (its title, time and link, as the page shows them). No Person.
+ */
+export function blueWriteupJsonLd(page: { title: string; description: string; path: string; reviewedOn: string; original: { url: string | null; at: string } }): JsonLd {
+  return {
+    "@context": CONTEXT,
+    "@type": "Article",
+    headline: page.title,
+    description: page.description,
+    url: absoluteUrl(page.path),
+    mainEntityOfPage: absoluteUrl(page.path),
+    datePublished: page.reviewedOn,
+    dateModified: page.reviewedOn,
+    author: publisher,
+    publisher,
+    isPartOf: { "@id": WEBSITE_ID },
+    isBasedOn: {
+      "@type": "CreativeWork",
+      name: page.title,
+      datePublished: page.original.at,
+      ...(page.original.url ? { url: page.original.url } : {}),
+    },
   };
 }
 

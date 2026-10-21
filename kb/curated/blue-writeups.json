@@ -1,0 +1,4 @@
+{
+  "note": "Generated from kb/curated/blue-writeups/*.md by `npm run kb -- blue-writeups`; edit the Markdown files, not this file. Each file is our own write-up of one Blizzard post, in our words, shown on the post's Everloot page with the short excerpt and a link to the original. Never copy the post's text into a write-up. See kb/src/blue-writeups.ts for the format.",
+  "writeups": []
+}

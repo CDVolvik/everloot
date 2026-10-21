@@ -20,6 +20,12 @@ Pull requests merged to `main` are listed in the nightly pre-releases until the 
   form. The search index stays off for now, so the pages are reached by name and are not listed anywhere.
 
 ### Added
+- Site: the data layer for linking a character to an account, off by default. A signed-in player gets a code
+  (live 15 minutes, good once), and a `character_link` row with that code is sent to `/api/me/characters/links`
+  from the site or with an API key that has the new `link:own` scope. The GUID is replaced by a keyed hash, the
+  census must agree on race, class and faction, hidden characters are refused, and a character claimed by a second
+  account is frozen on both. Nothing is public and there is no page for it yet. Off until the migration is applied
+  and `EVERLOOT_CHARACTER_LINKS=1` is set; intake never stores link rows.
 - Site: rankings at `/rankings`. Classes, races and faction balance by ISO week, from the census under its
   usual rule, with a weekly chart and each rank's change against the week before. They start with the first
   full week after launch.

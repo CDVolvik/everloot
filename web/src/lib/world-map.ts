@@ -2,10 +2,10 @@ import mapJson from "@/data/game-data/map.json";
 import { rollupMapBounds, type MapBoundsRow } from "../../../kb/src/map-bounds";
 import { checkReportedBounds, placeEntrances, placeFlights, worldToMap, zoneTable, type BoundsCheck, type EntrancePin } from "../../../kb/src/world-coords";
 import { WorldMapData } from "../../../kb/src/world-map-data";
-import { observedPins } from "../../../kb/src/world-map-near";
+import { allZones, observedPins } from "../../../kb/src/world-map-near";
 import { PUBLIC_RECORD_KINDS } from "@everloot/protocol";
-import { mapHref, type MapFlightLine, type MapFlightMaster, type MapPin } from "./map-view";
-import { worldFactsFromRecords, type WorldFacts } from "../../../kb/src/world-pages";
+import { mapHref, type Candidate, type MapEntrance, type MapFlightLine, type MapFlightMaster, type MapPin, type MapPinSet } from "./map-view";
+import { vendorPage, WORLD_AGREEMENT, worldFactsFromRecords, type WorldFacts } from "../../../kb/src/world-pages";
 
 export const CONTINENTS = [
   { id: 0, name: "Eastern Kingdoms" },
@@ -92,6 +92,58 @@ export function continentPins(
       id: `${p.kind}-${p.npcId}-${p.mapId}`, kind: p.kind, npcId: p.npcId, name: p.name, mapId: p.mapId, zoneName: p.zoneName,
       x: p.map.x, y: p.map.y, zoneX: p.x, zoneY: p.y, reporters: p.reporters, heldBack: p.spoiler,
     }));
+}
+
+/** Dungeon and raid entrances on one continent, from the game files, in the map's own form. */
+export function continentEntrances(continentId: number, data: WorldMapData = WORLD_MAP): MapEntrance[] {
+  return placeEntrances(data).filter((p) => p.world.continentId === continentId)
+    .map((p) => ({ id: `${p.world.worldX}-${p.world.worldY}`, names: p.names, raid: p.raid, x: p.map.x, y: p.map.y, worldX: p.world.worldX, worldY: p.world.worldY }));
+}
+
+/** Every item the map draws on one continent besides the zones, from the game files and the public records (`observedFacts`). */
+export function continentPinSet(continentId: number, facts: WorldFacts, spoilers = false, data: WorldMapData = WORLD_MAP): MapPinSet {
+  const flights = continentFlights(continentId, spoilers, data);
+  return {
+    entrances: continentEntrances(continentId, data),
+    flightMasters: flights.masters,
+    flightLines: flights.lines,
+    pins: continentPins(continentId, facts, spoilers, data),
+  };
+}
+
+/**
+ * Places seen by 1 or 2 installs on one continent: an NPC on a map where fewer than 3 installs placed it, counted
+ * per zone and category (vendor when 3 installs agree on its offers, else other NPC). Read the same way as a pin
+ * (`npcPage`: measured at the NPC, a known zone, 0 to 100), so a candidate becomes a pin at the third install.
+ * Only counts leave this function. Held-back zones count only with spoilers on.
+ */
+export function continentCandidates(continentId: number, facts: WorldFacts, spoilers = false, data: WorldMapData = WORLD_MAP): Candidate[] {
+  const { zones, held } = allZones(data);
+  const onContinent = new Set(zones.filter((z) => z.continentId === continentId && (spoilers || !held.has(z.mapId))).map((z) => z.mapId));
+  const vendors = new Set<number>();
+  for (const id of new Set(facts.vendors.map((v) => v.vendorNpcId))) {
+    if (vendorPage(id, { npcs: [], quests: [], vendors: facts.vendors }).offers.length > 0) vendors.add(id);
+  }
+  const places = new Map<string, { npcId: number; mapId: number; installs: Set<string> }>();
+  for (const row of facts.npcs) {
+    const install = row.installId.trim();
+    if (!install || row.positionKind !== "npc" || !onContinent.has(row.mapId)) continue;
+    if (!(row.x >= 0 && row.x <= 100 && row.y >= 0 && row.y <= 100)) continue;
+    const key = `${row.npcId}:${row.mapId}`;
+    const place = places.get(key) ?? { npcId: row.npcId, mapId: row.mapId, installs: new Set<string>() };
+    place.installs.add(install);
+    places.set(key, place);
+  }
+  const counts = new Map<string, Candidate>();
+  for (const p of places.values()) {
+    if (p.installs.size >= WORLD_AGREEMENT) continue;
+    const category = vendors.has(p.npcId) ? "vendor" : "npc";
+    const key = `${category}:${p.mapId}`;
+    const c = counts.get(key) ?? { category, mapId: p.mapId, count: 0 };
+    c.count += 1;
+    counts.set(key, c);
+  }
+  return [...counts.values()].sort((a, b) => a.mapId - b.mapId || a.category.localeCompare(b.category));
 }
 
 /** The record kinds the map reads. Both are on the public allowlist; world-map.test.ts checks that. */

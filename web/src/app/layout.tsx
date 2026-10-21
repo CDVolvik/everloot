@@ -7,6 +7,7 @@ import Footer from "@/components/Footer";
 import CookieConsent from "@/components/CookieConsent";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { NavPendingBar } from "@/components/NavPending";
+import HoverCards from "@/components/game/HoverCards";
 import { analyticsConfig } from "@/lib/analytics/config";
 import { authV2Enabled } from "@/lib/auth/auth";
 import { profilesOn } from "@/lib/profiles";
@@ -89,6 +90,8 @@ export default function RootLayout({
           />
         )}
         <CookieConsent analytics={analyticsConfig()} />
+        {/* The in-game card on every link to an item, NPC, quest or object page. */}
+        <HoverCards />
       </body>
     </html>
   );

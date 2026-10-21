@@ -159,11 +159,25 @@ export async function siteSearch(raw: string, { only, limit = GROUP_LIMIT, names
       return { type, heading: HEADINGS[type], results: f.results.slice(0, limit).map(strip), total: f.total };
     })
     .filter((g) => g.results.length > 0)
-    // Stable: groups with an exact hit move up, the rest keep their order. The lore archive (Warcraft Wiki copies)
-    // keeps its place after Everloot's own pages even on an exact name: the Forever record comes first.
-    .map((g, i) => ({ g, i, exact: g.type !== "lore" && g.results.some((r) => r.exact) }))
-    .sort((a, b) => Number(b.exact) - Number(a.exact) || a.i - b.i)
+    .map((g, i) => ({ g, i, tier: tier(g) }))
+    .sort((a, b) => a.tier - b.tier || a.i - b.i)
     .map(({ g }) => g);
+}
+
+/** The things a player meets in the game: their groups lead the page. */
+const GAME: ReadonlySet<SearchType> = new Set(["item", "npc", "quest", "object", "zone"]);
+const DATABASE: ReadonlySet<SearchType> = new Set([...GAME, "achievement", "faction", "title", "chain"]);
+
+/**
+ * Where a group sits, lowest first; the order above within a tier. An exact name or id on a game entry leads,
+ * then any other exact hit, then the game entries, then the rest of the database. The lore archive (Warcraft
+ * Wiki copies) comes after every database group, even on an exact name: the Forever record comes first.
+ */
+function tier(g: SearchGroup): number {
+  const exact = g.results.some((r) => r.exact);
+  if (g.type === "lore") return 4;
+  if (exact) return GAME.has(g.type) ? 0 : 1;
+  return GAME.has(g.type) ? 2 : DATABASE.has(g.type) ? 3 : 5;
 }
 
 /** Drops the internal rank from a result. */

@@ -11,6 +11,10 @@ required, or tightening a limit is a major release.
   without a key, 5,000 with one), and the corpus and client-layer routes and the market rule read in plain words.
 
 ### Added
+- 1.9.0 (record protocol 1.4.0): the record kind `character_link`, written when a player types a link code on one
+  of their characters: the code (`LINK_CODE`), name, realm, race, class, level, faction, the GUID (in transit only)
+  and the completion key, with `LINK_KINDS`. Not a public corpus kind and never kept in a stored upload: the site
+  reads it at the account's link endpoint, keeps a keyed hash in place of the GUID, and drops it at intake.
 - 1.8.0: an optional `url` in tool answers, the everloot.app page that shows the answer, absolute, and absent when
   there is none or it would be empty (`PAGE_URL`). It is on `uploadsAnswer` (every tool built on player uploads),
   `knowledgeHit` (an indexed lore page), `evidence`, and the answers of `item_categories`, `talent_tree`,

@@ -2556,6 +2556,97 @@
               "level"
             ],
             "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "installId": {
+                "type": "string",
+                "minLength": 8,
+                "maxLength": 64,
+                "description": "Random install id, no account needed."
+              },
+              "eventId": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 96,
+                "pattern": "^[A-Za-z0-9:_-]+$"
+              },
+              "capturedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                "description": "ISO time the event happened in-game."
+              },
+              "kind": {
+                "type": "string",
+                "const": "character_link"
+              },
+              "code": {
+                "type": "string",
+                "pattern": "^EL-[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{2}$",
+                "description": "The code the site showed, as typed in game, e.g. EL-7K3Q-9P. Upper or lower case."
+              },
+              "name": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 48,
+                "description": "UnitName: letters only, 2 to 12 of them."
+              },
+              "realm": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 60,
+                "description": "GetRealmName() for your own character."
+              },
+              "race": {
+                "type": "string",
+                "pattern": "^[A-Za-z]{2,24}$",
+                "description": "Race file token, UnitRace's second return, e.g. Scourge."
+              },
+              "class": {
+                "type": "string",
+                "pattern": "^[A-Z]{3,16}$",
+                "description": "Class token, UnitClass's second return, e.g. HUNTER."
+              },
+              "level": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 60
+              },
+              "faction": {
+                "type": "string",
+                "enum": [
+                  "Alliance",
+                  "Horde"
+                ]
+              },
+              "guid": {
+                "type": "string",
+                "pattern": "^Player-[1-9]\\d*-[0-9A-F]+$",
+                "description": "The player GUID, in transit only: the server replaces it with a keyed hash before anything is stored."
+              },
+              "completionKey": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}$",
+                "description": "The completion module's 8-hex key for this character, so its completion rows can be joined."
+              }
+            },
+            "required": [
+              "installId",
+              "capturedAt",
+              "kind",
+              "code",
+              "name",
+              "realm",
+              "race",
+              "class",
+              "level",
+              "faction",
+              "guid",
+              "completionKey"
+            ],
+            "additionalProperties": false
           }
         ]
       }

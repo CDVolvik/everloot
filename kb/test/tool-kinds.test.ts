@@ -11,7 +11,7 @@ import { fromUploads, TOOL_KINDS, UPLOADS_UNSET } from "../src/mcp-server.js";
 import { pathFactsFromRecords, recipeFactsFromRecords } from "../src/recipe-thresholds.js";
 import { worldFactsFromRecords } from "../src/world-pages.js";
 import { mapFactsFromRecords } from "../src/world-map-near.js";
-import { ALL_RECORD_KINDS, CENSUS_KINDS, COMPLETION_KINDS, PLAYER_KINDS, parseRecords } from "@everloot/protocol";
+import { ALL_RECORD_KINDS, CENSUS_KINDS, COMPLETION_KINDS, LINK_KINDS, PLAYER_KINDS, parseRecords } from "@everloot/protocol";
 import { MCP_CREDIT } from "@everloot/protocol";
 
 const base = { installId: "install-one", capturedAt: "2026-10-09T00:00:00Z" };
@@ -55,6 +55,8 @@ const EVERY_KIND = parseRecords([
   { ...base, eventId: "e:32", kind: "census_self", guid: "Player-4395-0A1B2C3D", race: "Orc", class: "WARRIOR", level: 30, faction: "Horde", realm: "Forever" },
   // Player rows go to the player pages, never to a corpus tool.
   { ...base, eventId: "e:34", kind: "player_seen", name: "Thrallina", realm: "Forever", race: "Orc", class: "SHAMAN", level: 24, guild: "Night Watch" },
+  // Link rows go to the account's link endpoint and are never stored, so no tool can read one.
+  { ...base, eventId: "e:35", kind: "character_link", code: "EL-7K3Q-9P", name: "Thrallina", realm: "Forever", race: "Orc", class: "SHAMAN", level: 24, faction: "Horde", guid: "Player-4395-0A1B2C3D", completionKey: "0a1b2c3d" },
   { ...base, eventId: "e:33", kind: "census_seen", guid: "Player-4395-0F00BA44", race: "Human", class: "MAGE", level: 60, faction: "Alliance", via: "target" },
   { ...base, eventId: "e:22", kind: "talent_snapshot", class: "MAGE", level: 30, group: 1, active: true, configId: 7, treeId: 786, exportStatus: "unavailable", points: 2, nodes: [{ nodeId: 90001, ranks: 2 }] },
 ]);
@@ -93,8 +95,8 @@ test("no corpus tool reads a completion kind: completion_progress reads the roll
   for (const [tool, kinds] of Object.entries(TOOL_KINDS)) for (const kind of COMPLETION_KINDS) expect(kinds, tool).not.toContain(kind);
 });
 
-test("no corpus tool reads a census or player kind: the census is published as counts only", () => {
-  for (const [tool, kinds] of Object.entries(TOOL_KINDS)) for (const kind of [...CENSUS_KINDS, ...PLAYER_KINDS]) expect(kinds, tool).not.toContain(kind);
+test("no corpus tool reads a census, player or link kind: the census is published as counts only", () => {
+  for (const [tool, kinds] of Object.entries(TOOL_KINDS)) for (const kind of [...CENSUS_KINDS, ...PLAYER_KINDS, ...LINK_KINDS]) expect(kinds, tool).not.toContain(kind);
 });
 
 test("a tool asks the public corpus for its kinds only", async () => {

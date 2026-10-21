@@ -10,7 +10,7 @@ import { CLASSES } from "@/design/tokens";
 import { latestAddonRelease } from "@/lib/addon-release";
 import { loadTimeline } from "@/lib/changes";
 import { sameAnnouncement } from "@/lib/evidence";
-import { TYPE_LABEL } from "../../../kb/src/changes";
+import { TYPE_LABEL, postPath } from "../../../kb/src/changes";
 import { longDate } from "@/data/wow-forever";
 import { CLIENT_TAXONOMY, itemsHref } from "@/lib/items";
 import { LORE_SEARCH_LABEL, organizationJsonLd, websiteJsonLd } from "@/lib/jsonld";
@@ -127,8 +127,8 @@ export default async function Home() {
             {newest.map((e) => (
               <li key={e.id} className="flex flex-wrap items-baseline gap-x-2 text-sm">
                 <span className="font-mono text-xs text-muted">{TYPE_LABEL[e.type]}</span>
-                {e.url ? (
-                  <a href={e.url} rel="noopener" className="text-fg hover:text-accent">{e.title}</a>
+                {postPath(e) ? (
+                  <Link href={postPath(e)!} className="text-blue-post hover:underline underline-offset-4">{e.title}</Link>
                 ) : (
                   <span className="text-fg">{e.title}</span>
                 )}
