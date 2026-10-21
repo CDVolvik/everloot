@@ -14,6 +14,10 @@ export function timeLeft(now: number, at = Date.parse(LAUNCH_AT)): { days: numbe
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
+/** "17 days, 16 hours", or "5 hours, 1 minute" on the last day. */
+export const waitText = (left: { days: number; hours: number; minutes: number }): string =>
+  left.days > 0 ? `${plural(left.days, "day")}, ${plural(left.hours, "hour")}` : `${plural(left.hours, "hour")}, ${plural(left.minutes, "minute")}`;
+
 /**
  * "WoW: Forever launches in 17 days, 16 hours" on the home page. The server renders the plain date so
  * the line is right without JavaScript and hydration never disagrees; the browser then counts down
@@ -29,9 +33,7 @@ export default function LaunchCountdown({ initialNow }: { initialNow?: number })
 
   const left = now === null ? undefined : timeLeft(now);
   if (left === null) return null;
-  const when = left
-    ? `in ${left.days > 0 ? `${plural(left.days, "day")}, ${plural(left.hours, "hour")}` : `${plural(left.hours, "hour")}, ${plural(left.minutes, "minute")}`}`
-    : `on ${longDate(LAUNCH.date)}, 3:00 p.m. PST`;
+  const when = left ? `in ${waitText(left)}` : `on ${longDate(LAUNCH.date)}, 3:00 p.m. PST`;
   return (
     // fg-2, not muted: the line sits on the hero's art.
     <p className="font-mono text-xs text-fg-2">
