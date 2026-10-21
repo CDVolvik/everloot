@@ -22,6 +22,9 @@ test("/changes is dated by its newest entry", () => {
 test("the game-data pages are dated by the build extraction", () => {
   expect(TALENT_DATA_EXTRACTED_AT.getTime()).toBeGreaterThan(0);
   expect(byPath.get("/map")?.lastModified).toEqual(MAP_DATA_EXTRACTED_AT);
+  // Both continent pages are indexed pages of their own; no per-zone map page (the zone pages are those).
+  for (const path of ["/map/eastern-kingdoms", "/map/kalimdor"]) expect(byPath.get(path)?.lastModified, path).toEqual(MAP_DATA_EXTRACTED_AT);
+  expect([...byPath.keys()].filter((p) => p.startsWith("/map/")).sort()).toEqual(["/map/eastern-kingdoms", "/map/kalimdor"]);
   for (const path of ["/tools/talents", "/tools/talents/hunter", "/tools/talents/druid", "/tools/raid"]) {
     expect(byPath.get(path)?.lastModified, path).toEqual(TALENT_DATA_EXTRACTED_AT);
   }

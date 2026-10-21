@@ -13,17 +13,50 @@ export function cameraBox(base: Box, camera: Camera): Box {
   return { x: camera.cx - width / 2, y: camera.cy - height / 2, width, height };
 }
 
-// --- Layers ---
+// --- Categories ---
 
-export const LAYER_IDS = ["zones", "entrances", "flightMasters", "flightPaths", "npcs", "vendors"] as const;
-export type LayerId = (typeof LAYER_IDS)[number];
-export type LayerState = Record<LayerId, boolean>;
+/**
+ * What the sidebar can show, in groups. A live category has data on the map today. A waiting one ships empty
+ * and fills from player uploads once 3 installs agree on a place; its row stays listed with its zero, so a
+ * player sees what an upload would add. Categories with no honest source (boats, game-file object spawns)
+ * are not listed at all.
+ */
+export const CATEGORY_IDS = ["flight", "path", "dungeon", "raid", "zone", "vendor", "trainer", "quest", "service", "npc", "herb", "ore", "chest"] as const;
+export type CategoryId = (typeof CATEGORY_IDS)[number];
+export type CategoryState = Record<CategoryId, boolean>;
+export type CategoryStatus = "live" | "waiting";
+export interface Category { id: CategoryId; label: string; status: CategoryStatus }
+export interface CategoryGroup { id: string; label: string; categories: Category[] }
 
-/** Every layer on, or every layer off: the sidebar's Show all and Hide all. */
-export const allLayers = (on: boolean): LayerState => Object.fromEntries(LAYER_IDS.map((id) => [id, on])) as LayerState;
+export const CATEGORY_GROUPS: readonly CategoryGroup[] = [
+  { id: "travel", label: "Travel", categories: [
+    { id: "flight", label: "Flight masters", status: "live" },
+    { id: "path", label: "Flight paths", status: "live" },
+  ] },
+  { id: "instances", label: "Instances", categories: [
+    { id: "dungeon", label: "Dungeon entrances", status: "live" },
+    { id: "raid", label: "Raid entrances", status: "live" },
+  ] },
+  { id: "places", label: "Places", categories: [{ id: "zone", label: "Zones", status: "live" }] },
+  { id: "services", label: "Services", categories: [
+    { id: "vendor", label: "Vendors", status: "waiting" },
+    { id: "trainer", label: "Trainers", status: "waiting" },
+    { id: "quest", label: "Quest givers", status: "waiting" },
+    { id: "service", label: "Innkeepers, banks and more", status: "waiting" },
+    { id: "npc", label: "Other NPCs", status: "waiting" },
+  ] },
+  { id: "gathering", label: "Gathering", categories: [
+    { id: "herb", label: "Herbs", status: "waiting" },
+    { id: "ore", label: "Ore", status: "waiting" },
+    { id: "chest", label: "Chests and treasure", status: "waiting" },
+  ] },
+];
 
-/** Every layer starts on; the spoiler switch is separate and starts off. */
-export const DEFAULT_LAYERS: LayerState = allLayers(true);
+/** Every category on, or every category off: the sidebar's Show all and Hide all. */
+export const allCategories = (on: boolean): CategoryState => Object.fromEntries(CATEGORY_IDS.map((id) => [id, on])) as CategoryState;
+
+/** Every category starts on; the spoiler switch is separate and starts off. */
+export const DEFAULT_CATEGORIES: CategoryState = allCategories(true);
 /** Held-back zones, and anything in them, stay hidden until the reader turns this on. */
 export const DEFAULT_SPOILERS = false;
 
@@ -39,33 +72,68 @@ export interface MapItems {
   zones: MapZone[]; entrances: MapEntrance[]; pins: MapPin[];
   flightMasters: MapFlightMaster[]; flightLines: MapFlightLine[];
 }
+/** What the map draws besides the zones: the body of `/api/map/pins`, which the page fetches instead of inlining it. */
+export type MapPinSet = Omit<MapItems, "zones">;
 
-/** What the layers and the spoiler switch let through. Pure: the same inputs always give the same list. */
-export function visibleItems(items: MapItems, layers: LayerState, spoilers: boolean): MapItems {
+/** The pin set in a `/api/map/pins` answer, or null when the answer is not one. */
+export function readPinSet(body: unknown): MapPinSet | null {
+  const b = body as Partial<Record<keyof MapPinSet, unknown>> | null;
+  if (!b || typeof b !== "object") return null;
+  const { entrances, flightMasters, flightLines, pins } = b;
+  if (![entrances, flightMasters, flightLines, pins].every(Array.isArray)) return null;
+  return { entrances, flightMasters, flightLines, pins } as MapPinSet;
+}
+
+/** What the categories and the spoiler switch let through. Pure: the same inputs always give the same list. */
+export function visibleItems(items: MapItems, show: CategoryState, spoilers: boolean): MapItems {
   return {
-    zones: layers.zones ? items.zones.filter((z) => spoilers || !z.heldBack) : [],
-    entrances: layers.entrances ? items.entrances : [],
-    pins: items.pins.filter((p) => (p.kind === "npc" ? layers.npcs : layers.vendors) && (spoilers || !p.heldBack)),
-    flightMasters: layers.flightMasters ? items.flightMasters.filter((f) => spoilers || !f.heldBack) : [],
-    flightLines: layers.flightPaths ? items.flightLines.filter((l) => spoilers || !l.heldBack) : [],
+    zones: show.zone ? items.zones.filter((z) => spoilers || !z.heldBack) : [],
+    entrances: items.entrances.filter((e) => (e.raid ? show.raid : show.dungeon)),
+    pins: items.pins.filter((p) => (p.kind === "npc" ? show.npc : show.vendor) && (spoilers || !p.heldBack)),
+    flightMasters: show.flight ? items.flightMasters.filter((f) => spoilers || !f.heldBack) : [],
+    flightLines: show.path ? items.flightLines.filter((l) => spoilers || !l.heldBack) : [],
   };
 }
 
+const inside = (scope: Box, x: number, y: number) => x >= scope.x && x <= scope.x + scope.width && y >= scope.y && y <= scope.y + scope.height;
+/** A zone counts in a scope when it lies within it: the zone itself, and a city inside it. */
+const within = (scope: Box, z: Box) => inside(scope, z.x, z.y) && inside(scope, z.x + z.width, z.y + z.height);
+
 /**
- * How many items each layer holds on the continent, whether or not it is switched on, counting only what the
- * spoiler switch lets through. Flight masters count by name, as the list and search show them: a few names have
- * two nodes on one spot.
+ * How many items each category holds in a scope (the zone in focus, or the whole continent when null), whether or
+ * not it is switched on, counting only what the spoiler switch lets through. Flight masters count by name, as the
+ * list and search show them: a few names have two nodes on one spot. A flight path counts when either end is in
+ * scope. Waiting categories have no items yet, so they count 0.
  */
-export function layerCounts(items: MapItems, spoilers: boolean): Record<LayerId, number> {
-  const all = visibleItems(items, DEFAULT_LAYERS, spoilers);
-  return {
-    zones: all.zones.length,
-    entrances: all.entrances.length,
-    flightMasters: new Set(all.flightMasters.map((f) => f.name)).size,
-    flightPaths: all.flightLines.length,
-    npcs: all.pins.filter((p) => p.kind === "npc").length,
-    vendors: all.pins.filter((p) => p.kind === "vendor").length,
-  };
+export function categoryCounts(items: MapItems, spoilers: boolean, scope: Box | null = null): Record<CategoryId, number> {
+  const all = visibleItems(items, DEFAULT_CATEGORIES, spoilers);
+  const at = (x: number, y: number) => !scope || inside(scope, x, y);
+  const counts = Object.fromEntries(CATEGORY_IDS.map((id) => [id, 0])) as Record<CategoryId, number>;
+  counts.zone = all.zones.filter((z) => !scope || within(scope, z)).length;
+  counts.flight = new Set(all.flightMasters.filter((f) => at(f.x, f.y)).map((f) => f.name)).size;
+  counts.path = all.flightLines.filter((l) => {
+    const a = l.points[0], b = l.points[l.points.length - 1];
+    return Boolean(a && b) && (at(a![0], a![1]) || at(b![0], b![1]));
+  }).length;
+  counts.dungeon = all.entrances.filter((e) => !e.raid && at(e.x, e.y)).length;
+  counts.raid = all.entrances.filter((e) => e.raid && at(e.x, e.y)).length;
+  counts.npc = all.pins.filter((p) => p.kind === "npc" && at(p.x, p.y)).length;
+  counts.vendor = all.pins.filter((p) => p.kind === "vendor" && at(p.x, p.y)).length;
+  return counts;
+}
+
+/**
+ * Places that 1 or 2 installs reported and 3 have not yet agreed on, counted per category and zone. Only the
+ * number reaches the page: no position, no NPC, nothing that could be drawn.
+ */
+export interface Candidate { category: CategoryId; mapId: number; count: number }
+
+/** The candidates in a scope (zones lying within it), or on the whole continent when the scope is null. */
+export function candidateCounts(candidates: readonly Candidate[], zones: readonly MapZone[], scope: Box | null = null): Partial<Record<CategoryId, number>> {
+  const ids = scope ? new Set(zones.filter((z) => within(scope, z)).map((z) => z.mapId)) : null;
+  const out: Partial<Record<CategoryId, number>> = {};
+  for (const c of candidates) if (!ids || ids.has(c.mapId)) out[c.category] = (out[c.category] ?? 0) + c.count;
+  return out;
 }
 
 // --- Zone coordinates ---
@@ -230,6 +298,91 @@ export function viewSearch(base: URLSearchParams, state: ViewState): string {
   q.set("z", String(Math.round(state.zoom * 100) / 100));
   if (state.pin) q.set("pin", state.pin);
   return q.toString();
+}
+
+// --- Continent pages and the rest of the address ---
+
+/** Each continent's own page. `/map` alone opens the first. */
+export const CONTINENT_PATHS: Readonly<Record<number, string>> = { 0: "/map/eastern-kingdoms", 1: "/map/kalimdor" };
+export const continentPath = (continentId: number): string => CONTINENT_PATHS[continentId] ?? "/map";
+/** The continent a `/map/<slug>` segment names, or null. */
+export function continentFromSlug(slug: string): number | null {
+  const hit = Object.entries(CONTINENT_PATHS).find(([, path]) => path === `/map/${slug}`);
+  return hit ? Number(hit[0]) : null;
+}
+
+export type SidebarTab = "categories" | "list";
+/** What the sidebar shows, kept in the address: `show` (only when not every category), `q` (while a search is open), `view=list`. */
+export interface MapUrlState { show: CategoryState; q: string; tab: SidebarTab }
+export const DEFAULT_URL_STATE: MapUrlState = { show: DEFAULT_CATEGORIES, q: "", tab: "categories" };
+const QUERY_MAX = 80;
+
+/** Reads `show`, `q` and `view`. Anything unknown is dropped, so a bad link opens the plain sidebar. */
+export function parseMapUrl(query: { show?: string | string[]; q?: string | string[]; view?: string | string[] }): MapUrlState {
+  const raw = first(query.show);
+  let show = DEFAULT_CATEGORIES;
+  if (raw === "none") show = allCategories(false);
+  else if (raw) {
+    const ids = raw.split(",").map((s) => s.trim()).filter((s): s is CategoryId => (CATEGORY_IDS as readonly string[]).includes(s));
+    if (ids.length) show = Object.fromEntries(CATEGORY_IDS.map((id) => [id, ids.includes(id)])) as CategoryState;
+  }
+  return { show, q: (first(query.q) ?? "").trim().slice(0, QUERY_MAX), tab: first(query.view) === "list" ? "list" : "categories" };
+}
+
+/** `show` for a set of categories: null when every one is on, `none` when none is, else the ids in the sidebar's order. */
+export function showParam(show: CategoryState): string | null {
+  const on = CATEGORY_IDS.filter((id) => show[id]);
+  if (on.length === CATEGORY_IDS.length) return null;
+  return on.length ? on.join(",") : "none";
+}
+
+/** The address with the sidebar's state written in; the default state leaves no trace. */
+export function mapUrlSearch(base: URLSearchParams, state: MapUrlState): URLSearchParams {
+  const q = new URLSearchParams(base);
+  for (const k of ["show", "q", "view"]) q.delete(k);
+  const show = showParam(state.show);
+  if (show) q.set("show", show);
+  const text = state.q.trim().slice(0, QUERY_MAX);
+  if (text) q.set("q", text);
+  if (state.tab === "list") q.set("view", "list");
+  return q;
+}
+
+/**
+ * The address after moving to a zone (or back to the whole continent with null): a new history entry, so Back
+ * returns where the reader was. The spot, the camera and the selected item belong to the old view and go.
+ */
+export function zoneSearch(base: URLSearchParams, mapId: number | null): string {
+  const q = new URLSearchParams(base);
+  for (const k of ["zone", "x", "y", "at", "z", "pin"]) q.delete(k);
+  if (mapId !== null) q.set("zone", String(mapId));
+  return q.toString();
+}
+
+/** A link to one item on the map, as the card's Copy link gives it: the continent's page with `pin=`. */
+export const pinHref = (continentId: number, id: string, spoilers = false): string =>
+  `${continentPath(continentId)}?pin=${encodeURIComponent(id)}${spoilers ? "&spoilers=1" : ""}`;
+
+/** What a card can open: the item's own page on the site. */
+export interface PageLink { href: string; label: string }
+
+/**
+ * The page for an item on the map, by kind: an NPC's or a vendor's database page, the zone page that holds an
+ * entrance (there is no dungeon page yet), the zone page for a spot. Flight masters have no page, so no link.
+ * `zonePages` maps a zone id to its page; a zone without one (held back) gets no link.
+ */
+export function openPageLink(
+  item: { kind: "entrance" | "flight" | "npc" | "vendor" | "spot"; npcId?: number; x: number; y: number },
+  zones: readonly MapZone[], zonePages: Readonly<Record<number, string>>,
+): PageLink | null {
+  if (item.kind === "npc" && item.npcId) return { href: `/database/npcs/${item.npcId}`, label: "Open NPC page" };
+  if (item.kind === "vendor" && item.npcId) return { href: `/database/vendors/${item.npcId}`, label: "Open vendor page" };
+  if (item.kind === "entrance" || item.kind === "spot") {
+    const zone = zoneSpot(zones, item.x, item.y)?.zone;
+    const href = zone ? zonePages[zone.mapId] : undefined;
+    return href ? { href, label: "Open zone page" } : null;
+  }
+  return null;
 }
 
 // --- Labels ---
