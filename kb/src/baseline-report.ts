@@ -315,7 +315,7 @@ export function compareBaseline(baseline: Baseline, observed: Observed, zoneName
 const SUBJECT_LABEL: Record<Subject, string> = { npc: "NPCs", object: "Objects", quest: "Quests", drop: "Drops", vendor: "Vendor items" };
 const VERDICT_LABEL: Record<Verdict, string> = { confirmed: "Confirmed", changed: "Changed", new: "New in Forever", not_seen: "Not seen yet" };
 
-const cell = (s: string) => s.replace(/\|/g, "\\|");
+const cell = (s: string) => s.replace(/\\/g, "\\\\").replace(/\|/g, "\\|");
 
 export function formatBaselineReport(report: BaselineReport): string {
   const lines = [
