@@ -107,13 +107,15 @@ export default function PrivacyPage() {
                 Battle.net above.
               </li>
               <li>
-                <strong>API keys (optional):</strong> if you make a free API key on the
-                Connect page, we store a one-way hash of it, the last four characters,
-                your label, which account it belongs to, when it was made, last used
-                and revoked, and a daily count of its requests per endpoint. Not what
-                was asked. Revoking a key stops it at once. Daily counts are kept {USAGE_KEPT_DAYS}{" "}
-                days. A revoked key and its counts are deleted {REVOKED_KEPT_DAYS} days after it was
-                revoked, or at once when you delete it on the Connect page. To delete
+                <strong>API keys (optional):</strong> if you make a free API key on your
+                account page, we store a one-way hash of it, the last four characters,
+                its name, what you say it is for, its permissions, which account it
+                belongs to, when it was made, when it expires, when it was last used and
+                revoked, and a daily count of its requests per endpoint. Not what was
+                asked. Revoking a key stops it at once, and so does its end date. Daily
+                counts are kept {USAGE_KEPT_DAYS} days. A revoked key and its counts are deleted{" "}
+                {REVOKED_KEPT_DAYS} days after it was revoked, or at once when you delete it on your
+                account page. To delete
                 your account and everything tied to it, email us (below).
               </li>
               <li id="saved-builds">

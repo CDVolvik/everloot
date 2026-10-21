@@ -208,43 +208,123 @@ describe("the chat page", () => {
 });
 
 describe("the Chat keys section", () => {
-  test("a key is saved to this browser only, shown masked, tested with its provider alone and removable", async () => {
+  const card = (name: string) => Array.from(container.querySelectorAll("section")).find((s) => s.querySelector("h3")?.textContent?.startsWith(name))!;
+  const inCard = (name: string, label: string) =>
+    Array.from(card(name).querySelectorAll("button")).find((b) => b.textContent === label || b.getAttribute("aria-label") === label);
+  const saved = () => JSON.parse(localStorage.getItem(PROVIDERS) ?? "null");
+
+  test("one card per provider Chat supports, each with its status, a link to get a key, and no dropdown of providers", async () => {
     api();
     await render(<ChatKeys />);
-    expect(text()).toContain("Everloot's servers never receive them");
-    const key = container.querySelector<HTMLInputElement>('input[name="key"]')!;
+    const cards = container.querySelectorAll('ul[aria-label="Chat providers"] > li > section');
+    expect(Array.from(cards).map((c) => c.querySelector("h3")?.textContent)).toEqual(["OpenRouter", "Anthropic", "Ollama on this computer"]);
+    expect(card("OpenRouter").textContent).toContain("Not set");
+    expect(card("Ollama").textContent).toContain("Not set up");
+    expect(card("OpenRouter").querySelector("a")?.getAttribute("href")).toBe("https://openrouter.ai/keys");
+    expect(card("Anthropic").querySelector("a")?.getAttribute("href")).toBe("https://console.anthropic.com/settings/keys");
+    expect(card("OpenRouter").querySelector("a")?.getAttribute("rel")).toBe("noopener noreferrer");
+    // The keys stay in the browser, said once.
+    expect(text().match(/Everloot's servers never receive them/g)).toHaveLength(1);
+    expect(text()).not.toContain("Default provider for Chat");
+    expect(container.querySelectorAll("select")).toHaveLength(0);
+  });
+
+  test("a key is added in its card, kept in this browser only, shown masked, tested with its provider alone and removable", async () => {
+    api();
+    await render(<ChatKeys />);
+    await click(inCard("OpenRouter", "Add OpenRouter key"));
+    const key = card("OpenRouter").querySelector<HTMLInputElement>('input[name="key"]')!;
+    expect(key.type).toBe("password");
+    expect(document.activeElement).toBe(key);
+    expect(document.getElementById(key.getAttribute("aria-describedby")!)?.textContent).toContain("openrouter.ai/keys");
     key.value = KEY;
     await act(async () => key.form!.requestSubmit());
     await settle();
     // Saving makes no request at all.
     expect(calls).toHaveLength(0);
-    expect(JSON.parse(localStorage.getItem(PROVIDERS)!)).toEqual([{ kind: "openrouter", model: "deepseek/deepseek-v4.1-flash", key: KEY }]);
+    expect(saved()).toEqual([{ kind: "openrouter", model: "deepseek/deepseek-v4.1-flash", key: KEY }]);
     expect(container.innerHTML).not.toContain(KEY);
-    expect(text()).toContain("ending 1234");
-    expect(text()).toContain("Saved in this browser.");
+    expect(card("OpenRouter").textContent).toContain("Set, ending ••••1234");
+    expect(card("OpenRouter").textContent).toContain("Default");
+    expect(text()).toContain("OpenRouter saved in this browser.");
 
-    await click(button("Test"));
+    await click(inCard("OpenRouter", "Test OpenRouter"));
     expect(calls.map((c) => c.url)).toEqual(["https://openrouter.ai/api/v1/key"]);
     expect(keyOnlyToProvider()).toBe(1);
     expect(text()).toContain("OpenRouter accepted the key.");
+    expect(saved()[0].check.ok).toBe(true);
 
-    const model = container.querySelector<HTMLSelectElement>("select:not([name])")!;
-    expect(model.closest("label")?.textContent).toContain("Default model");
-    await act(async () => setValue(model, "openrouter|qwen/qwen3.7-flash"));
-    expect(JSON.parse(localStorage.getItem(PROVIDERS)!)[0].model).toBe("qwen/qwen3.7-flash");
+    // The model is chosen inside the card.
+    const model = card("OpenRouter").querySelector<HTMLSelectElement>('select[aria-label="OpenRouter model"]')!;
+    await act(async () => setValue(model, "qwen/qwen3.7-flash"));
+    expect(saved()[0].model).toBe("qwen/qwen3.7-flash");
 
-    await click(button("Remove OpenRouter"));
+    await click(inCard("OpenRouter", "Remove OpenRouter"));
     expect(localStorage.getItem(PROVIDERS)).toBeNull();
+    expect(card("OpenRouter").textContent).toContain("Not set");
+  });
+
+  test("a key that fails its test says Invalid last time, until a new key replaces it", async () => {
+    api();
+    saveKey();
+    const ok = globalThis.fetch;
+    vi.stubGlobal("fetch", vi.fn(async (input: string, init?: RequestInit) =>
+      String(input) === "https://openrouter.ai/api/v1/key" ? Response.json({ error: { message: "No auth credentials found" } }, { status: 401 }) : ok(input, init)));
+    await render(<ChatKeys />);
+    await click(inCard("OpenRouter", "Test OpenRouter"));
+    expect(card("OpenRouter").textContent).toContain("Invalid last time");
+    expect(saved()[0].check.ok).toBe(false);
+    await click(inCard("OpenRouter", "Replace OpenRouter key"));
+    const key = card("OpenRouter").querySelector<HTMLInputElement>('input[name="key"]')!;
+    key.value = "sk-or-v1-anotheranotheranother5678";
+    await act(async () => key.form!.requestSubmit());
+    await settle();
+    expect(card("OpenRouter").textContent).toContain("ending ••••5678");
+    expect(card("OpenRouter").textContent).not.toContain("Invalid last time");
+    expect(saved()[0]).not.toHaveProperty("check");
+  });
+
+  test("a second provider does not take over Chat; the default is a separate, explicit choice", async () => {
+    api();
+    saveKey();
+    await render(<ChatKeys />);
+    await click(inCard("Anthropic", "Add Anthropic key"));
+    const key = card("Anthropic").querySelector<HTMLInputElement>('input[name="key"]')!;
+    key.value = "sk-ant-api03-abcdefghijklmnopqrstuvwxyz0123456789";
+    await act(async () => key.form!.requestSubmit());
+    await settle();
+    expect(saved().map((p: { kind: string }) => p.kind)).toEqual(["openrouter", "anthropic"]);
+    const group = Array.from(container.querySelectorAll("fieldset")).find((f) => f.querySelector("legend")?.textContent === "Default provider for Chat")!;
+    const radios = Array.from(group.querySelectorAll<HTMLInputElement>('input[type="radio"]'));
+    expect(radios.map((r) => r.checked)).toEqual([true, false]);
+    await click(radios[1]);
+    expect(saved()[0].kind).toBe("anthropic");
+    expect(card("Anthropic").textContent).toContain("Default");
+    expect(text()).toContain("Chat now uses Anthropic");
   });
 
   test("a bad paste is refused and nothing is stored", async () => {
     api();
     await render(<ChatKeys />);
-    const key = container.querySelector<HTMLInputElement>('input[name="key"]')!;
+    await click(inCard("OpenRouter", "Add OpenRouter key"));
+    const key = card("OpenRouter").querySelector<HTMLInputElement>('input[name="key"]')!;
     key.value = "hunter2";
     await act(async () => key.form!.requestSubmit());
     expect(text()).toContain("That does not look like the right key");
     expect(localStorage.getItem(PROVIDERS)).toBeNull();
     expect(calls).toHaveLength(0);
+  });
+
+  test("Ollama needs no key: Set up asks only for the model", async () => {
+    api();
+    await render(<ChatKeys />);
+    await click(inCard("Ollama", "Set up Ollama on this computer"));
+    expect(card("Ollama").querySelector('input[name="key"]')).toBeNull();
+    const model = card("Ollama").querySelector<HTMLInputElement>('input[name="modelText"]')!;
+    model.value = "qwen3:8b";
+    await act(async () => model.form!.requestSubmit());
+    await settle();
+    expect(saved()).toEqual([{ kind: "ollama", model: "qwen3:8b", key: "" }]);
+    expect(card("Ollama").textContent).toContain("Set up, no key needed");
   });
 });

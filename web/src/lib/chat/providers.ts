@@ -21,6 +21,10 @@ export interface ChatProviderPreset {
   models: ChatModel[];
   /** What the player should know before sending questions there. */
   dataNote: string;
+  /** Where the provider issues keys (for Ollama, where to get it), for the provider's card on /account. */
+  getKey: { href: string; text: string };
+  /** The plain text mark the card shows in place of a logo. */
+  mark: string;
 }
 
 export const CHAT_PROVIDERS: ChatProviderPreset[] = [
@@ -40,6 +44,8 @@ export const CHAT_PROVIDERS: ChatProviderPreset[] = [
       { id: "nvidia/nemotron-3.5-lightning:free", label: "Nemotron 3.5 Lightning (free)", note: "free, 50 requests a day" },
     ],
     dataNote: "OpenRouter skips providers that log prompts unless you allow it in your OpenRouter settings.",
+    getKey: { href: "https://openrouter.ai/keys", text: "Get a key at openrouter.ai" },
+    mark: "OR",
   },
   {
     kind: "anthropic",
@@ -54,6 +60,8 @@ export const CHAT_PROVIDERS: ChatProviderPreset[] = [
       { id: "claude-opus-5-5", label: "Opus 5.5", note: "$15 / $75, best" },
     ],
     dataNote: "API traffic is not used to train Anthropic's models.",
+    getKey: { href: "https://console.anthropic.com/settings/keys", text: "Get a key at console.anthropic.com" },
+    mark: "A",
   },
   {
     kind: "ollama",
@@ -64,6 +72,8 @@ export const CHAT_PROVIDERS: ChatProviderPreset[] = [
     keyHint: "",
     models: [],
     dataNote: "Nothing leaves your computer. Start Ollama with OLLAMA_ORIGINS=https://everloot.app so this page may reach it, and pick a model that supports tool calling, such as qwen3.",
+    getKey: { href: "https://ollama.com/download", text: "Get Ollama at ollama.com" },
+    mark: "OL",
   },
 ];
 
