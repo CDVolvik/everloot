@@ -57,7 +57,13 @@ other) from the spell you cast just before (`UNIT_SPELLCAST_SENT`) and the objec
 target (`sourceObjectName`). Trainer rows carry `trainerNpcId`. Targeting rows are kept once per NPC, zone and
 spot (rounded to 1 on the 0..100 scale). Window rows and object loot rows each have their own 2,000-row cap,
 apart from targeting rows and creature loot, so `/everloot status` can show `npc_sighting (targeting)` paused
-while windows still record. The quest-log calls (`GetQuestLogTitle`, `C_QuestLog.GetQuestTagInfo`)
+while windows still record. A rare or a treasure the minimap shows (`C_VignetteInfo`) is recorded at its own
+position, as the vignette API gives it: a creature as an `npc_sighting` with `positionKind = "vignette"` (its own
+share and cap), a game object as an `object_sighting`, once per vignette, zone and spot. Zoning into a dungeon or
+raid records an `instance_entrance`: the instance from `GetInstanceInfo` and where you stood outdoors when the
+loading screen started (`PLAYER_LEAVING_WORLD`), once per instance and zone; a dungeon finder teleport records
+none. A boss fight's end inside one (`ENCOUNTER_END`) records an `encounter`: kill or wipe, difficulty, group size
+and the bosses' creature ids when the client sends them. None of these has run in the Forever client yet. The quest-log calls (`GetQuestLogTitle`, `C_QuestLog.GetQuestTagInfo`)
 have not been tried in the Forever client; a call that is missing or returns something unexpected records
 nothing for that field. The site shows each value only after 3 installs agree.
 

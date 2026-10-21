@@ -1,6 +1,8 @@
--- Everloot open-world collector: NPC sightings, loot windows, quests, vendors, items seen.
+-- Everloot open-world collector: NPC sightings, loot windows, quests, vendors, items seen, minimap vignettes,
+-- dungeon entrances and boss encounters.
 -- Anonymous by design: no character or guild names, no chat. Matches the intake contract
--- (web/src/lib/intake.ts kinds: npc_sighting, loot, quest, vendor, item_seen).
+-- (web/src/lib/intake.ts kinds: npc_sighting, loot, quest, vendor, item_seen, object_sighting, instance_entrance,
+-- encounter).
 -- NPC type, rank and a quest's category, group size, tag and faction are game facts about the NPC or quest.
 -- The faction is the accepting character's side only; no character name is read or stored.
 
@@ -18,6 +20,18 @@ local function mapPosition()
 end
 
 local npcIdFromGuid = E.NpcIdFromGuid
+
+-- The object id in a game object GUID (GameObject-0-server-instance-zone-ID-spawn); nil for anything else.
+local function objectIdFromGuid(guid)
+  return type(guid) == "string" and tonumber(guid:match("^GameObject%-%d+%-%d+%-%d+%-%d+%-(%d+)%-")) or nil
+end
+
+-- A whole number from lo to hi, else nil.
+local function whole(v, lo, hi)
+  if type(v) == "number" and v == math.floor(v) and v >= lo and v <= hi then return v end
+  return nil
+end
+local MAX_ID = 9007199254740991
 
 -- The English creature types the protocol accepts. A localized client names them in its own language and
 -- they do not match, so no type is recorded there rather than a guess.
@@ -43,10 +57,13 @@ end
 
 -- Each share of a kind has its own cap, so targeting and corpses cannot use up the room that NPC windows
 -- and object positions need. Rows keep their kind and shape; the share is read from the row.
-local function sightingShare(row) return row.positionKind == "interaction" and "interaction" or "targeting" end
+local function sightingShare(row)
+  return (row.positionKind == "interaction" or row.positionKind == "vignette") and row.positionKind or "targeting"
+end
 local function lootShare(row) return row.sourceObjectId and "objects" or "creatures" end
 local TARGETING = { name = "targeting", of = sightingShare }
 local INTERACTION = { name = "interaction", of = sightingShare }
+local VIGNETTE = { name = "vignette", of = sightingShare }
 local OBJECTS = { name = "objects", of = lootShare }
 local CREATURES = { name = "creatures", of = lootShare }
 
@@ -298,10 +315,10 @@ local function lootCapture()
         for j = 2, #sources, 2 do
           local guid, quantity = sources[j], sources[j + 1]
           local npcId = npcIdFromGuid(guid)
-          local objectId = type(guid) == "string" and guid:match("^GameObject%-%d+%-%d+%-%d+%-%d+%-(%d+)%-")
+          local objectId = objectIdFromGuid(guid)
           if (npcId or objectId) and type(quantity) == "number" and quantity >= 1
             and quantity <= 1000 and quantity == math.floor(quantity) then
-            local group = groups[guid] or { sourceNpcId = npcId, sourceObjectId = tonumber(objectId), items = {} }
+            local group = groups[guid] or { sourceNpcId = npcId, sourceObjectId = objectId, items = {} }
             group.items[#group.items + 1] = { itemId = itemId, count = quantity }
             groups[guid] = group
           end
@@ -332,6 +349,126 @@ local function lootCapture()
       end
     end
   end
+end
+
+-- GetInstanceInfo: name, instanceType, difficultyID, ..., the 8th return is the instance's map id (a map, not a
+-- UiMap), the 10th a dungeon finder id. Nil when the call is missing or fails.
+local function instanceInfo()
+  if not GetInstanceInfo then return nil end
+  local ok, name, instanceType, difficulty, _, _, _, _, instanceMapId, _, lfgDungeonId = pcall(GetInstanceInfo)
+  if not ok then return nil end
+  return { name = name, instanceType = instanceType, difficulty = difficulty, instanceMapId = instanceMapId,
+    lfgDungeonId = lfgDungeonId }
+end
+
+-- Vignettes: a rare or a treasure the minimap shows, at its own position as the game's vignette API gives it, not
+-- the player's. A creature becomes an npc_sighting with positionKind "vignette", a game object an object_sighting.
+local function vignetteSighting(guid)
+  local api = C_VignetteInfo
+  if type(guid) ~= "string" or not (api and api.GetVignetteInfo and api.GetVignettePosition) then return end
+  if not (C_Map and C_Map.GetBestMapForUnit) then return end
+  local info = api.GetVignetteInfo(guid)
+  if type(info) ~= "table" then return end
+  local npcId = npcIdFromGuid(info.objectGUID)
+  local objectId = not npcId and objectIdFromGuid(info.objectGUID)
+  local name = info.name
+  if not (npcId or objectId) or type(name) ~= "string" or name == "" or #name > 120 then return end
+  local mapId = whole(C_Map.GetBestMapForUnit("player"), 0, MAX_ID)
+  if not mapId then return end
+  local pos = api.GetVignettePosition(guid, mapId)
+  local x, y = type(pos) == "table" and pos.x, type(pos) == "table" and pos.y
+  if type(x) ~= "number" or type(y) ~= "number" or x < 0 or x > 1 or y < 0 or y > 1 then return end
+  x, y = x * 100, y * 100
+  EverlootDB.vignetteSeen = EverlootDB.vignetteSeen or {}
+  local seenKey = (npcId and "npc:" .. npcId or "object:" .. objectId) .. ":" .. mapId .. ":"
+    .. math.floor(x + 0.5) .. ":" .. math.floor(y + 0.5)
+  if EverlootDB.vignetteSeen[seenKey] then return end
+  local stored
+  if npcId then
+    stored = E:Store("npc_sighting", {
+      installId = EverlootDB.installId,
+      capturedAt = date("!%Y-%m-%dT%H:%M:%SZ"),
+      npcId = npcId, name = name, mapId = mapId, x = x, y = y, positionKind = "vignette",
+    }, nil, VIGNETTE)
+  else
+    local inside = instanceInfo()
+    stored = E:Store("object_sighting", {
+      installId = EverlootDB.installId,
+      capturedAt = date("!%Y-%m-%dT%H:%M:%SZ"),
+      objectId = objectId, name = name, mapId = mapId, x = x, y = y,
+      instanceMapId = inside and inside.instanceType ~= "none" and whole(inside.instanceMapId, 1, MAX_ID) or nil,
+    })
+  end
+  if stored then EverlootDB.vignetteSeen[seenKey] = true end
+end
+
+local function vignettesUpdated()
+  local api = C_VignetteInfo
+  if not (api and api.GetVignettes) then return end
+  local guids = api.GetVignettes()
+  if type(guids) ~= "table" then return end
+  for _, guid in ipairs(guids) do pcall(vignetteSighting, guid) end
+end
+
+-- Dungeon and raid entrances. The loading screen into an instance starts outdoors: PLAYER_LEAVING_WORLD keeps the
+-- player's position there, and PLAYER_ENTERING_WORLD inside a dungeon or raid records it as the entrance. A dungeon
+-- finder teleport starts anywhere, so it records nothing.
+local outside
+
+local function leavingWorld()
+  outside = nil
+  local info = instanceInfo()
+  if not info or info.instanceType ~= "none" then return end
+  local where = mapPosition()
+  if where and where.x and where.y then outside = where end
+end
+
+local function enteringWorld()
+  local from = outside
+  outside = nil
+  local info = instanceInfo()
+  if not from or not info or (info.instanceType ~= "party" and info.instanceType ~= "raid") then return end
+  if type(info.lfgDungeonId) == "number" and info.lfgDungeonId > 0 then return end
+  local instanceMapId = whole(info.instanceMapId, 1, MAX_ID)
+  local name = info.name
+  if not instanceMapId or type(name) ~= "string" or name == "" or #name > 120 then return end
+  if from.x < 0 or from.x > 100 or from.y < 0 or from.y > 100 then return end
+  EverlootDB.entranceSeen = EverlootDB.entranceSeen or {}
+  local seenKey = instanceMapId .. ":" .. from.mapId
+  if EverlootDB.entranceSeen[seenKey] then return end
+  if E:Store("instance_entrance", {
+    installId = EverlootDB.installId,
+    capturedAt = date("!%Y-%m-%dT%H:%M:%SZ"),
+    instanceMapId = instanceMapId, name = name, instanceType = info.instanceType,
+    difficulty = whole(info.difficulty, 0, 255),
+    mapId = from.mapId, x = from.x, y = from.y,
+  }) then EverlootDB.entranceSeen[seenKey] = true end
+end
+
+-- ENCOUNTER_END inside a dungeon or raid: encounterID, encounterName, difficultyID, groupSize, success (1 a kill, 0 a wipe) and, on clients
+-- that send it, the boss units engaged, each with a creatureID.
+local function encounterEnd(encounterId, name, difficulty, size, success, units)
+  encounterId = whole(encounterId, 1, MAX_ID)
+  if success == 1 then success = true elseif success == 0 then success = false end
+  if not encounterId or type(name) ~= "string" or name == "" or #name > 120 or type(success) ~= "boolean" then return end
+  local info = instanceInfo()
+  if not info or (info.instanceType ~= "party" and info.instanceType ~= "raid") then return end
+  local instanceMapId = whole(info.instanceMapId, 1, MAX_ID)
+  if not instanceMapId then return end
+  local npcIds, seen = {}, {}
+  if type(units) == "table" then
+    for _, unit in ipairs(units) do
+      local npcId = type(unit) == "table" and whole(unit.creatureID, 1, MAX_ID)
+      if npcId and not seen[npcId] and #npcIds < 40 then seen[npcId] = true; npcIds[#npcIds + 1] = npcId end
+    end
+  end
+  E:Store("encounter", {
+    installId = EverlootDB.installId,
+    capturedAt = date("!%Y-%m-%dT%H:%M:%SZ"),
+    encounterId = encounterId, name = name, instanceMapId = instanceMapId, success = success,
+    difficulty = whole(difficulty, 0, 255), size = whole(size, 1, 40),
+    npcIds = #npcIds > 0 and npcIds or nil,
+  })
 end
 
 local function vendorCapture()
@@ -377,10 +514,11 @@ E:RegisterModule("openworld", function()
   if EverlootDB.paused then EverlootDB.paused.npc_sighting, EverlootDB.paused.loot = nil, nil end
   for event in pairs(WINDOW_ROLES) do pcall(function() f:RegisterEvent(event) end) end
   for _, event in ipairs({ "PLAYER_INTERACTION_MANAGER_FRAME_SHOW", "UNIT_SPELLCAST_SENT", "UNIT_SPELLCAST_FAILED",
-    "UNIT_SPELLCAST_INTERRUPTED", "LOOT_CLOSED" }) do
+    "UNIT_SPELLCAST_INTERRUPTED", "LOOT_CLOSED", "VIGNETTE_MINIMAP_UPDATED", "VIGNETTES_UPDATED", "PLAYER_LEAVING_WORLD",
+    "PLAYER_ENTERING_WORLD", "ENCOUNTER_END" }) do
     pcall(function() f:RegisterEvent(event) end)
   end
-  f:HookScript("OnEvent", function(_, event, arg1, arg2, arg3, arg4)
+  f:HookScript("OnEvent", function(_, event, arg1, arg2, arg3, arg4, arg5, arg6)
     if event == "PLAYER_TARGET_CHANGED" then targetSighting("target")
     elseif event == "UPDATE_MOUSEOVER_UNIT" then targetSighting("mouseover")
     elseif event == "LOOT_OPENED" then lootCapture()
@@ -388,6 +526,11 @@ E:RegisterModule("openworld", function()
     elseif event == "UNIT_SPELLCAST_SENT" then pcall(castSent, arg1, arg2, arg3, arg4)
     elseif (event == "UNIT_SPELLCAST_FAILED" or event == "UNIT_SPELLCAST_INTERRUPTED") and arg1 == "player" then lastCast = nil
     elseif event == "LOOT_CLOSED" then lastCast = nil
+    elseif event == "VIGNETTE_MINIMAP_UPDATED" then if arg2 then pcall(vignetteSighting, arg1) end
+    elseif event == "VIGNETTES_UPDATED" then pcall(vignettesUpdated)
+    elseif event == "PLAYER_LEAVING_WORLD" then pcall(leavingWorld)
+    elseif event == "PLAYER_ENTERING_WORLD" then pcall(enteringWorld)
+    elseif event == "ENCOUNTER_END" then pcall(encounterEnd, arg1, arg2, arg3, arg4, arg5, arg6)
     elseif event == "PLAYER_INTERACTION_MANAGER_FRAME_SHOW" then
       local role = interactionRole(arg1)
       if role ~= nil then pcall(interactionSighting, role or nil) end
