@@ -180,6 +180,60 @@ export default async function AddonPage() {
           </Card>
         </div>
 
+        <section id="why" aria-labelledby="why-title" className="scroll-mt-20 space-y-6">
+          <div className="max-w-reading">
+            <SectionHeading id="why-title">Why run the addon</SectionHeading>
+            <p className="text-fg-2">
+              Blizzard hides some WoW: Forever details until an item drops, and runs no public test realm. What players
+              saw in play is how this site learns what is real. You play as you always do, and the addon writes down what
+              the game showed you.
+            </p>
+          </div>
+          <div className="grid items-start gap-6 md:grid-cols-3">
+            <Card as="section" aria-labelledby="why-records" className="space-y-3">
+              <SectionHeading id="why-records" as="h3">What it records</SectionHeading>
+              <ul className="list-disc space-y-2 pl-5 text-sm text-fg-2">
+                <li>What a creature, chest or herb gave you, and what vendors sell and trainers teach.</li>
+                <li>Prices on the items you look at in the auction house. A full scan runs only when you ask for one.</li>
+                <li>Where you stood when an NPC&apos;s window opened (a vendor, a quest giver, a trainer, a flight master), so that NPC can get a place on the map.</li>
+                <li>The census: the race, class, level and faction of characters, never a name. It is on in a new install and says so once in chat.</li>
+              </ul>
+            </Card>
+            <Card as="section" aria-labelledby="why-gives" className="space-y-3">
+              <SectionHeading id="why-gives" as="h3">What the site gives back</SectionHeading>
+              <ul className="list-disc space-y-2 pl-5 text-sm text-fg-2">
+                <li>
+                  <Link href="/database" className={link}>Database</Link> pages for drops, vendors, quests, NPCs and treasures, each with a row of diamonds for
+                  how many installs reported it.
+                </li>
+                <li>Places on the <Link href="/map" className={link}>map</Link> and in each <Link href="/database/zones" className={link}>zone</Link>, once three installs agree on them.</li>
+                <li>With the Desktop App, prices other players scanned on the realms you scanned, in your tooltips.</li>
+                <li>The same facts as open data, for the <Link href="/docs/api" className={link}>API</Link> and the <Link href="/docs/mcp" className={link}>MCP server</Link>.</li>
+              </ul>
+            </Card>
+            <Card as="section" aria-labelledby="why-never" className="space-y-3">
+              <SectionHeading id="why-never" as="h3">What it never collects or publishes</SectionHeading>
+              <ul className="list-disc space-y-2 pl-5 text-sm text-fg-2">
+                <li>Your install id, and the address an upload came from, are never published.</li>
+                <li>Gold, gear, guild and collection stay on your computer unless you tick them to share on the upload page. Gold per hour sessions never leave it.</li>
+                <li>For other players the census reads race, class, level and faction, and nothing else.</li>
+                <li>Where you stood when you only targeted an NPC is never used as that NPC&apos;s place.</li>
+                <li>The addon never plays your character, and never buys, bids on or posts anything at the auction house.</li>
+              </ul>
+              <p className="text-sm text-fg-2">
+                The one part that records names, the players module, is off until you turn it on. It is described under{" "}
+                <a href="#privacy" className={link}>Privacy</a> below.
+              </p>
+            </Card>
+          </div>
+          <p className="max-w-reading text-sm text-fg-2">
+            Everloot is young, and most pages are still collecting. A fact is shown when three installs agree on it. Until
+            then the page says nothing is confirmed instead of showing a number that is not. A drop rate is the share of
+            recorded loot windows that held the item. It is not a promise that the item will drop for you.{" "}
+            <Link href="/methodology" className={link}>How we count</Link>.
+          </p>
+        </section>
+
         <section id="gold-per-hour" aria-labelledby="gold-per-hour-title" className="max-w-reading scroll-mt-20">
           <SectionHeading id="gold-per-hour-title">Gold per hour, now in the addon</SectionHeading>
           <p className="text-sm text-fg-2">

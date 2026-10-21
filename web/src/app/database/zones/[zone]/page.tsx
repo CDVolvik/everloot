@@ -17,7 +17,7 @@ import { pageMetadata } from "@/lib/seo";
 import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
 import { WORLD_MAP } from "@/lib/world-map";
 import {
-  hasContent, parseZoneSegment, zoneByMapId, zoneContents, zoneHref, zoneMapHref,
+  hasConfirmed, hasContent, parseZoneSegment, zoneByMapId, zoneContents, zoneHref, zoneMapHref,
   type ZoneEntrance, type ZoneNpc, type ZoneQuest, type ZoneSightings, type ZoneTreasure,
 } from "@/lib/zones";
 import { zoneLore } from "@/lib/zone-lore";
@@ -179,6 +179,13 @@ export default async function ZonePage(props: Props) {
             <SectionHeading id="known" note="Positions, quests, bosses and treasures are public once 3 installs agree. Entrances are read from the game files and confirmed once 3 installs zoned in.">
               What we know here
             </SectionHeading>
+            {!facts.unreachable && !hasConfirmed(here) && (
+              <div className="mb-4">
+                <EmptyState
+                  message={`Players have not confirmed anything in ${zone.name} yet.${entrances.length ? " The dungeon and raid entrances here are read from the game files." : ""} A fact appears when 3 installs agree on it, and until then the lists below stay empty on purpose.`}
+                />
+              </div>
+            )}
             <Tabs label={`Known in ${zone.name}`} tabs={tabs} />
           </section>
         </div>

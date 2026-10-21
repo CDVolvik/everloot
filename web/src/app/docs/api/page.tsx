@@ -57,6 +57,37 @@ export default function ApiOverview() {
         />
       </div>
 
+      <H2 id="feed">What the feed holds</H2>
+      <P>
+        <C>/api/corpus/public</C> returns the records players uploaded, one at a time and without names. They come from the
+        Everloot addon and, since the <Link href="/upload" className={docLink}>upload page</Link> reads it, from a Polestar
+        Recorder file, which a player can send without installing anything else. Pass <C>kinds</C> to pick some. These are
+        the kinds a Recorder file adds to what the addon sends:
+      </P>
+      <Table
+        head={["Kind", "One record says"]}
+        rows={[
+          [<C key="k">npc_sighting</C>, <>An NPC at a place. <C>positionKind</C> says whose position it is: <C>interaction</C> is the player a few yards from the NPC while its window was open, <C>vignette</C> is the NPC&apos;s own position from the minimap, and <C>player</C> is where the player stood, which is never a pin.</>],
+          [<C key="k">quest</C>, "A quest the player accepted, with its title and level, and its giver and turn-in when seen."],
+          [<C key="k">loot</C>, <>One loot window and its items. A Recorder window names no source, so it is counted but left out of the drop rates.</>],
+          [<C key="k">instance_entrance</C>, "A dungeon or raid the player zoned into, and the last place outside it."],
+          [<C key="k">encounter</C>, "A boss encounter that ended inside an instance, as a kill or a wipe."],
+          [<C key="k">object_sighting</C>, "A treasure or other object the minimap showed, at its own position."],
+        ]}
+      />
+      <List>
+        <li>
+          <strong>A record is one install&apos;s word.</strong> The site states a fact only when 3 installs agree. For a Recorder
+          file that means 3 different characters uploading from 3 different addresses, so one player&apos;s alts never confirm
+          each other.
+        </li>
+        <li>
+          <strong>An empty answer is not a measured zero.</strong> Where nobody has reported a place yet, there are no
+          records, and the zone page on the site says that nothing is confirmed there.
+        </li>
+        <li>Records carry no character name. The full list of kinds and fields is in the <Link href="/docs/api/schemas" className={docLink}>schemas</Link>.</li>
+      </List>
+
       <H2 id="keys-and-limits">Keys and limits</H2>
       <P>
         {guard

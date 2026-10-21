@@ -242,3 +242,33 @@ test("field lists hide empty descriptions and generator noise", () => {
 test("the credit rule names the attribution field and headers every answer carries", () => {
   for (const text of ["attribution", "X-Everloot-Licence", "X-Everloot-Credit", "Link"]) expect(decoded).toContain(text);
 });
+
+test("the API overview says what the feed holds now that a Recorder file can be uploaded, and that a record is not a fact", () => {
+  for (const kind of ["npc_sighting", "quest", "loot", "instance_entrance", "encounter", "object_sighting"]) {
+    expect(PUBLIC_RECORD_KINDS, kind).toContain(kind);
+    expect(text, kind).toContain(kind);
+  }
+  for (const words of [
+    "What the feed holds",
+    "A record is one install's word",
+    "3 different characters uploading from 3 different addresses",
+    "An empty answer is not a measured zero",
+    "without installing anything else",
+  ]) expect(text).toContain(words);
+});
+
+test("the upload guide has a Recorder section, and no docs page says the Desktop App never sends player rows", () => {
+  for (const words of ["Upload a Polestar Recorder file", "You can send a recording without installing Everloot's addon", "It is a report, not a fact", "Character names, realms, session names and notes typed in game stay on your computer"]) {
+    expect(text).toContain(words);
+  }
+  expect(text).toContain("Send the player pages with the uploads");
+  expect(text).not.toContain("The Desktop App never sends them");
+  expect(text).not.toMatch(/named data \(guild, gear, gold, collection\), player\s+rows/);
+});
+
+test("the docs name no internal path and no AI as an author", () => {
+  // The words are joined so this file does not trip scripts/check_internal_paths.py itself.
+  const internal = new RegExp(["R21", "Brain"].join("-") + "|" + ["_sec", "rets"].join("") + "|" + ["Us", "ers[\\/]+car", "li"].join(""), "i");
+  expect(decoded).not.toMatch(internal);
+  expect(decoded).not.toMatch(/co-authored|generated (by|with)|written by (an )?(ai|claude|gpt)/i);
+});

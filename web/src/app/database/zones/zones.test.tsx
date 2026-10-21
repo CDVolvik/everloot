@@ -103,3 +103,25 @@ test("a relation to a released zone links the zone page; a held-back zone gets n
   expect(out).not.toContain("Hyjal");
   expect(out).toContain("zone 2482");
 });
+
+test("a zone with nothing confirmed says so once, above the lists, and a zone with a confirmed NPC does not", async () => {
+  store.loadCorpus.mockResolvedValue(corpus(three(100, "Guard Orin", 1436, 40, 50).slice(0, 2)));
+  const empty = await html(ZonePage(props("1450-moonglade")));
+  expect(empty).toContain("Players have not confirmed anything in Moonglade yet.");
+  expect(empty).toContain("A fact appears when 3 installs agree on it");
+  store.loadCorpus.mockResolvedValue(corpus(three(100, "Guard Orin", 1436, 40, 50)));
+  expect(await html(ZonePage(props("1436-westfall")))).not.toContain("Players have not confirmed anything");
+});
+
+test("the zone index says a dash is unrecorded, not none, and says so plainly when no zone has anything", async () => {
+  store.loadCorpus.mockResolvedValue(corpus(three(100, "Guard Orin", 1436, 40, 50)));
+  const some = await html(ZonesPage());
+  expect(some).toContain("A dash means nobody has confirmed anything of that kind in the zone yet. It does not mean there is none.");
+  store.loadCorpus.mockResolvedValue(corpus([]));
+  const none = await html(ZonesPage());
+  expect(none).toContain("Players have not confirmed anything in any zone yet");
+  expect(none).not.toContain("A dash means");
+  store.loadCorpus.mockResolvedValue({ uploads: 0, records: [], unreachable: true });
+  const down = await html(ZonesPage());
+  expect(down).not.toContain("Players have not confirmed anything in any zone yet");
+});

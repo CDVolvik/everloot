@@ -4,6 +4,7 @@ import { WIKI_URL } from "@/components/LoreSource";
 import { CURRENT_VERSION } from "@/lib/game-version";
 import { loadSiteAssets } from "@/lib/game-assets";
 import { CLIENT_LAYER } from "@/lib/items";
+import { playerPagesOn } from "@/lib/player-pages";
 import { pageMetadata } from "@/lib/seo";
 import { REPO_URL } from "@/lib/source";
 import { CREDIT } from "@/lib/talents/assets";
@@ -42,6 +43,17 @@ export default async function MethodologyPage() {
               with an IPv6 address counted by its /64 block, so one household can&apos;t make a fact true on its own. Until three agree,
               the page says so instead of guessing.
             </p>
+            <p className="text-fg-2">
+              A fact that comes from a Polestar Recorder file needs three different characters uploading from three different
+              addresses, and a player&apos;s alts or connections never confirm each other.
+            </p>
+            {playerPagesOn() && (
+              <p className="text-fg-2">
+                The player pages are the one exception. They are not facts: one upload makes a page, and the page says its data
+                is unchecked. They show a character&apos;s name, realm, race, class, level, guild and the day it was last seen, and
+                nothing else.
+              </p>
+            )}
           </div>
         </section>
 

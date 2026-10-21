@@ -90,6 +90,11 @@ export default function KeysPage() {
           <H2 id="about-keys">About keys</H2>
           <List>
             <li>
+              <strong>A key reads the same data, faster.</strong> It opens nothing extra. The feed it reads is described in{" "}
+              <Link href="/docs/api#feed" className={docLink}>What the feed holds</Link>: single reports, not facts, until 3
+              installs agree.
+            </li>
+            <li>
               A key belongs to your account, and we count requests per key. That is how we know who copies the data in
               bulk, so we can ask what they are building.
             </li>

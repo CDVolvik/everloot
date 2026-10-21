@@ -224,7 +224,7 @@ export default async function Home() {
       <section aria-labelledby="agree">
         <SectionHeading
           id="agree"
-          note="The addon records what you see. Nothing goes public on one person's word."
+          note="The addon records what you see. No fact goes public on one person's word."
           action={<Link href="/methodology" className={link}>How we count →</Link>}
         >
           Three players agree. Then it&apos;s a fact.
@@ -271,7 +271,10 @@ export default async function Home() {
             : <Link href="/addon" className="btn btn-primary">Get the addon</Link>}
           <Link href="/addon" className="btn">Desktop app</Link>
         </div>
-        <p className="mt-4 text-sm text-muted">Free and open source. You choose what is shared.</p>
+        <p className="mt-4 text-sm text-muted">
+          Free and open source. You choose what is shared.{" "}
+          <Link href="/addon#why" className={link}>What it records and what you get back</Link>
+        </p>
       </Card>
 
       {/* Lore search: the WebSite SearchAction points here. */}
