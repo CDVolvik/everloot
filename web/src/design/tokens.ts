@@ -140,7 +140,7 @@ export function motionVariables(): Record<string, string> {
 }
 
 /**
- * Glint's flat colours (brand brief, wiki/projects/everloot/ops/brand/glint-character-brief.md): a near-black raven
+ * Glint's flat colours, from the mascot's brand brief: a near-black raven
  * with blue-black highlights, a gold beak and talons, Everloot-green eyes, a brown leather satchel, and a cream
  * sticker edge so the dark bird reads on the dark canvas. The gem takes the accent or an item-quality colour.
  */
