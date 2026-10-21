@@ -31,7 +31,12 @@ const routes: [string, () => Promise<{ metadata: Metadata }>, boolean][] = [
   ["/database/vendors", async () => ({ metadata: await (await import("./database/vendors/page")).generateMetadata({}) }), true],
   ["/lore", () => import("./lore/page"), false],
   // The map's description depends on whether the game's map pictures are on, so it is generated.
-  ["/map", async () => ({ metadata: await (await import("./map/page")).generateMetadata() }), true],
+  ["/map", async () => ({ metadata: await (await import("./map/page")).generateMetadata({ searchParams: Promise.resolve({}) }) }), true],
+  ...(["eastern-kingdoms", "kalimdor"] as const).map((slug): [string, () => Promise<{ metadata: Metadata }>, boolean] => [
+    `/map/${slug}`,
+    async () => ({ metadata: await (await import("./map/[continent]/page")).generateMetadata({ params: Promise.resolve({ continent: slug }), searchParams: Promise.resolve({}) }) }),
+    true,
+  ]),
   ["/methodology", () => import("./methodology/page"), true],
   ["/privacy", () => import("./privacy/page"), false],
   ["/search", () => import("./search/page"), false],
@@ -96,6 +101,7 @@ test("the titles asked for are the titles used", async () => {
   expect((await routes.find(([p]) => p === "/tools/talents")![1]()).metadata.title).toBe("WoW Forever Talent Calculator");
   expect((await routes.find(([p]) => p === "/tools/raid")![1]()).metadata.title).toBe("WoW Forever Raid Buff Planner");
   expect((await routes.find(([p]) => p === "/map")![1]()).metadata.title).toBe("WoW Forever World Map");
+  expect((await routes.find(([p]) => p === "/map/kalimdor")![1]()).metadata.title).toBe("WoW Forever Map: Kalimdor");
   expect((await routes.find(([p]) => p === "/addons")![1]()).metadata.title).toBe("WoW Forever Addons");
   expect((await routes.find(([p]) => p === "/changes")![1]()).metadata.title).toBe("WoW Forever Patch Notes and Blizzard Posts");
   const { generateMetadata } = await import("./tools/talents/[class]/page");

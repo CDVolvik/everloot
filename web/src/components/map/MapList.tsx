@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { Badge, EmptyState } from "@/components/ui";
-import { mapHref, zoneHref, type LayerState, type MapItems, type MapZone } from "@/lib/map-view";
+import { mapHref, zoneHref, type CategoryState, type MapItems, type MapZone } from "@/lib/map-view";
 
-const LIST_LIMIT = 100;
+/** Player-observed points listed by name; the rest are on the map. The page inlines no more than these. */
+export const LIST_LIMIT = 100;
 export const HELD_LABEL = "found in game files, unconfirmed";
 
 const heading = "mb-2 text-h2-sm text-fg";
@@ -13,12 +14,14 @@ const showClass = "inline-flex min-h-11 items-center text-accent hover:underline
  * rather read. It follows the same layer switches as the map. The server renders it, so the page reads without
  * JavaScript.
  */
-export default function MapList({ zones, shown, layers, spoilers, thumbs, onZone, onShow }: {
-  /** Every zone the reader may see, whatever the zone layer says. */
+export default function MapList({ zones, shown, show, pinTotal, spoilers, thumbs, onZone, onShow }: {
+  /** Every zone the reader may see, whatever the zone category says. */
   zones: MapZone[];
-  /** What the layers and the spoiler switch let through: the same items the map draws. */
+  /** What the categories and the spoiler switch let through: the same items the map draws. */
   shown: MapItems;
-  layers: LayerState;
+  show: CategoryState;
+  /** How many player points there are, while the page holds only the first of them; absent once all have loaded. */
+  pinTotal?: number;
   spoilers: boolean;
   thumbs?: Record<string, string>;
   onZone: (mapId: number) => void;
@@ -27,6 +30,7 @@ export default function MapList({ zones, shown, layers, spoilers, thumbs, onZone
 }) {
   const seen = new Set<string>();
   const flightNames = shown.flightMasters.filter((f) => (seen.has(f.name) ? false : (seen.add(f.name), true)));
+  const more = (pinTotal ?? shown.pins.length) - Math.min(shown.pins.length, LIST_LIMIT);
   return (
     <div className="space-y-6 text-sm">
       <section aria-labelledby="map-list-zones">
@@ -68,7 +72,7 @@ export default function MapList({ zones, shown, layers, spoilers, thumbs, onZone
               );
             })}
           </ul>
-        ) : <p className="text-muted">{layers.entrances ? "None placed on this continent." : "This layer is off."}</p>}
+        ) : <p className="text-muted">{show.dungeon || show.raid ? "None placed on this continent." : "This category is off."}</p>}
       </section>
 
       <section aria-labelledby="map-list-flights">
@@ -82,11 +86,11 @@ export default function MapList({ zones, shown, layers, spoilers, thumbs, onZone
               </li>
             ))}
           </ul>
-        ) : <p className="text-muted">{layers.flightMasters ? "None placed on this continent." : "This layer is off."}</p>}
+        ) : <p className="text-muted">{show.flight ? "None placed on this continent." : "This category is off."}</p>}
         <p className="mt-2 text-xs text-muted">Boats and zeppelins are not drawn.</p>
       </section>
 
-      {(layers.npcs || layers.vendors) && (
+      {(show.npc || show.vendor) && (
         <section aria-labelledby="map-list-observed">
           <h2 id="map-list-observed" className={heading}>Seen by players</h2>
           <p className="mb-2 text-xs text-muted">A point shows once 3 installs agree on where the NPC stands. Distinct install ids do not prove independent players.</p>
@@ -102,7 +106,7 @@ export default function MapList({ zones, shown, layers, spoilers, thumbs, onZone
                   {" · "}<ShowButton onClick={() => onShow(p.id)} />
                 </li>
               ))}
-              {shown.pins.length > LIST_LIMIT && <li className="text-muted">and {shown.pins.length - LIST_LIMIT} more on the map.</li>}
+              {more > 0 && <li className="text-muted">and {more} more on the map.</li>}
             </ul>
           ) : <EmptyState message="No NPC or vendor position has 3 agreeing installs yet on this continent." />}
         </section>

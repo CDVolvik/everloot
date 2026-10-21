@@ -28,6 +28,7 @@ import AuctionsRealmPage from "@/app/tools/auctions/[realm]/page";
 import ProfessionsPage from "@/app/tools/professions/page";
 import RaidPage from "@/app/tools/raid/page";
 import MapPage from "@/app/map/page";
+import ContinentMapPage from "@/app/map/[continent]/page";
 import ItemPage from "@/app/database/items/[id]/page";
 import VendorPage from "@/app/database/vendors/[id]/page";
 import ChangesPage from "@/app/changes/page";
@@ -238,7 +239,7 @@ test("wow-forever: race and faction emblems beside the names in the race and cla
 test("map: each dungeon's loading screen beside its entrance in the list", async () => {
   vi.stubEnv("NEXT_PUBLIC_GAME_ASSETS_URL", BASE);
   vi.stubGlobal("fetch", bucket());
-  const html = await render(() => MapPage({ searchParams: Promise.resolve({ continent: "0" }) }));
+  const html = await render(() => ContinentMapPage({ params: Promise.resolve({ continent: "eastern-kingdoms" }), searchParams: Promise.resolve({}) }));
   expect(html).toMatch(/<li class="flex items-center gap-3"><img src="[^"]*loading\/9036-small\.webp" alt="" aria-hidden="true"[^>]*><span class="min-w-0"><span class="text-fg">Deadmines<\/span>/);
   expect(html).not.toMatch(/data-game-credit|data-source-line/);
 });
@@ -268,7 +269,7 @@ test("map: the continent picture and zone pictures; held-back zones only with sp
   vi.stubGlobal("fetch", bucket());
   const art = (html: string): { continent: { url: string } | null; zones: { url: string; smallUrl: string | null }[] } | null =>
     JSON.parse((html.match(/data-map-art="([^"]*)"/)![1]!).replaceAll("&quot;", '"'));
-  const off = await render(() => MapPage({ searchParams: Promise.resolve({ continent: "0" }) }));
+  const off = await render(() => ContinentMapPage({ params: Promise.resolve({ continent: "eastern-kingdoms" }), searchParams: Promise.resolve({}) }));
   // The continent's own picture always; never a held-back zone's.
   expect(art(off)!.continent!.url).toBe(`${BASE}/maps/13.webp`);
   expect(art(off)!.zones.find((z) => z.url === `${BASE}/maps/1429.webp`)?.smallUrl).toBe(`${BASE}/maps/1429-small.webp`);
@@ -277,13 +278,13 @@ test("map: the continent picture and zone pictures; held-back zones only with sp
   expect(off).not.toContain("No game art.");
   expect(off).not.toContain(CREDIT);
   // With spoilers on, the held-back zone's picture too.
-  const on = await render(() => MapPage({ searchParams: Promise.resolve({ continent: "0", spoilers: "1" }) }));
+  const on = await render(() => ContinentMapPage({ params: Promise.resolve({ continent: "eastern-kingdoms" }), searchParams: Promise.resolve({ spoilers: "1" }) }));
   expect(art(on)!.zones.some((z) => z.url === `${BASE}/maps/2548.webp`)).toBe(true);
   // The page's description no longer says "No game art" once the pictures are on.
   const { generateMetadata } = await import("@/app/map/page");
-  expect((await generateMetadata()).description).toContain("The map pictures are the game's own.");
+  expect((await generateMetadata({ searchParams: Promise.resolve({}) })).description).toContain("The map pictures are the game's own.");
   // Kalimdor has no map pictures in this upload: none drawn, and no credit for them.
-  const kalimdor = await render(() => MapPage({ searchParams: Promise.resolve({ continent: "1" }) }));
+  const kalimdor = await render(() => ContinentMapPage({ params: Promise.resolve({ continent: "kalimdor" }), searchParams: Promise.resolve({}) }));
   expect(art(kalimdor)).toBeNull();
   expect(kalimdor).not.toMatch(/Map pictures/);
 });
