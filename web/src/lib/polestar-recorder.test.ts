@@ -1,6 +1,6 @@
 import { parseRecords } from "@everloot/protocol";
-import { describe, expect, test } from "vitest";
-import { convertRecorder, recorderCharacter, RecorderFileError, RECORDER_CHARACTER } from "./polestar-recorder";
+import { describe, expect, test, vi } from "vitest";
+import { convertRecorder, recorderCharacter, RecorderFileError, RECORDER_CHARACTER, RECORDER_KEY_STORAGE } from "./polestar-recorder";
 import { parsePolestarTable } from "./sv-parse";
 import { prepareUpload } from "./upload-batches";
 
@@ -139,6 +139,25 @@ describe("convertRecorder", () => {
     expect(batches.map((b) => new Set(b.records.map((r: { eventId: string }) => r.eventId.split(":")[1])).size)).toEqual([1, 1, 1]);
     expect(batches[0].records[0].installId).toBe(batches[2].records[0].installId);
     expect(batches[1].records[0].installId).not.toBe(batches[0].records[0].installId);
+  });
+
+  test("a character id cannot be rebuilt from the name: it is keyed by this browser's random key", async () => {
+    const hex = (b: ArrayBuffer) => [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, "0")).join("").slice(0, 40);
+    const guesses = await Promise.all(["Aelwyn-Doomhowl", "Borric-Doomhowl"].flatMap((c) => [c, `everloot-polestar:${c}`])
+      .map(async (s) => `polestar-${hex(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)))}`));
+    const kept = new Map<string, string>();
+    vi.stubGlobal("localStorage", { getItem: (k: string) => kept.get(k) ?? null, setItem: (k: string, v: string) => void kept.set(k, v) });
+    try {
+      const idsOf = async () => new Set((await rowsOf()).map((r) => r.installId as string));
+      const ids = await idsOf();
+      expect([...ids].some((id) => guesses.includes(id))).toBe(false);
+      expect(kept.get(RECORDER_KEY_STORAGE)).toMatch(/^[0-9a-f]{64}$/);
+      expect(await idsOf()).toEqual(ids);
+      kept.clear();
+      expect([...(await idsOf())].some((id) => ids.has(id))).toBe(false);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   test("the same file converts to the same event ids, so sending it again changes nothing", async () => {

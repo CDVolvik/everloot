@@ -20,7 +20,8 @@ import { CLIENT_BUILD, type UploadSource } from "@everloot/protocol";
  * A rare seen through a minimap vignette is skipped too: its position is the vignette's, not the player's, and no
  * kind here says so yet. The file records neither an NPC's level at its window nor any NPC's reaction, so those are
  * left out, never guessed. Character names and realms, session keys, notes and the rest of the file never leave
- * this module: a character becomes a hash, which the server hashes again under its own key.
+ * this module: a character becomes an HMAC under a random key kept in this browser, which the server hashes again
+ * under its own key.
  */
 
 export const RECORDER_SOURCE: UploadSource = "polestar_recorder";
@@ -95,10 +96,37 @@ const RARE_SOURCES = new Set(["nameplate", "target", "mouseover"]);
 const GATHER: Record<string, string> = { herb: "herb", mine: "ore" };
 const READ = new Set([...Object.keys(WINDOWS), "rare", "slain", "drop"]);
 
+/** Where this browser keeps its random key for character ids. It never leaves the browser. */
+export const RECORDER_KEY_STORAGE = "everloot.recorder-key";
+let memoryKey: string | undefined;
+
+/**
+ * This browser's key, made once at random: 32 bytes as hex, in localStorage when there is one (so a character keeps
+ * its id across uploads from this browser), else for the life of the page.
+ */
+function browserKey(): string {
+  const storage = typeof localStorage === "undefined" ? undefined : localStorage;
+  const kept = storage ? storage.getItem(RECORDER_KEY_STORAGE) : memoryKey;
+  if (kept && /^[0-9a-f]{64}$/.test(kept)) return kept;
+  const made = [...crypto.getRandomValues(new Uint8Array(32))].map((b) => b.toString(16).padStart(2, "0")).join("");
+  try {
+    if (storage) storage.setItem(RECORDER_KEY_STORAGE, made);
+  } catch {
+    // A browser that refuses storage (a private window) still gets an id: it just will not carry to the next upload.
+  }
+  if (!storage) memoryKey = made;
+  return made;
+}
+
+/**
+ * A character as an HMAC under this browser's random key. A plain hash of a name and a realm could be reversed by
+ * hashing guessed names, from a request body or a log; without the key it cannot.
+ */
 async function characterId(name: string, realm: string): Promise<string> {
-  const bytes = new TextEncoder().encode(`everloot-polestar:${name}-${realm}`);
-  const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
-  return `polestar-${[...digest].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 40)}`;
+  const raw = new Uint8Array(browserKey().match(/../g)!.map((h) => parseInt(h, 16)));
+  const key = await crypto.subtle.importKey("raw", raw, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const mac = new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${name}-${realm}`)));
+  return `polestar-${[...mac].map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 40)}`;
 }
 
 /** One session's events as Everloot rows, without the install id. */

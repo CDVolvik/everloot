@@ -31,8 +31,8 @@ loot windows with items. The file holds no NPC level at a window and no reaction
 out, never guessed, and it does not say whether the game's loot API named a window's source, so its loot
 rows do not count toward public drop rates. Everything else in the file stays on your computer: character
 names and realms, session names, notes typed with `/psrec mark`, Polestar's guide step titles, quest
-objective text, routes, flight paths, talents and the rest. A character becomes a hash in the browser, and
-the server replaces that hash with an install id of its own, keyed with a secret: one half from the
+objective text, routes, flight paths, talents and the rest. A character becomes a hash in the browser, keyed
+with a random key that stays in that browser, so the name cannot be worked back from it; the server replaces that hash with an install id of its own, keyed with a secret: one half from the
 character, one from the address the upload came from. Recorder install ids that share either half count as
 one reporter, so a Recorder fact needs three characters uploading from three addresses, and one player's
 alts or connections never confirm each other. The upload keeps a keyed hash of the address, as auction
