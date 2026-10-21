@@ -246,7 +246,10 @@ export function createUploadStore(opts: {
         }),
       });
       if (!index.ok) {
-        console.error(`upload ${uploadId}: R2 object stored but index insert failed (${index.status})`);
+        // The status alone does not say what went wrong: PostgREST puts the reason (a column, a constraint, a
+        // type) in the body. Without it in the log, the 400 behind a 503 cannot be read.
+        const detail = await index.text().catch(() => "");
+        console.error(`upload ${uploadId}: R2 object stored but index insert failed (${index.status}): ${detail.slice(0, 500)}`);
         return false;
       }
       cached = null; completionCached = null; censusCached = null;

@@ -7,7 +7,7 @@ import { recordUsage } from "@/lib/usage-metrics";
 import { censusDateProblem, characterSecret, isCensusRow, storedCensusRow } from "@/lib/census-intake";
 import { MARKET_LIMITS, realmKey } from "../../../../../kb/src/market";
 import { authorizeRecord, sharingCategory, type PublicationGrant } from "../../../../../kb/src/publication";
-import { isPlayerRow, playerDateProblem, playerPagesOn, playerUpsert, PLAYERS_PER_UPLOAD, type PlayerUpsert } from "@/lib/player-pages";
+import { isPlayerRow, playerDateProblem, playerPagesOn, playerStoreProblem, playerUpsert, PLAYERS_PER_UPLOAD, type PlayerUpsert } from "@/lib/player-pages";
 import { playerStore } from "@/lib/player-store";
 import { isLinkRow } from "@/lib/character-links";
 import { censusDailyCap } from "../../../../../kb/src/census-rows";
@@ -142,7 +142,15 @@ export async function POST(req: Request) {
         receipt.rejected.push({ index: receipt.accepted[i].index, reason: problem });
         continue;
       }
-      players.push(playerUpsert(row, now)); playerInstalls.add(row.installId); accepted.push(receipt.accepted[i]);
+      const upsert = playerUpsert(row, now);
+      // The table's own checks are the last line. A row the table would refuse is dropped here, with the reason
+      // in the receipt, so it cannot fail the whole upload: the rows reach the site, not the table.
+      const storeProblem = playerStoreProblem(upsert);
+      if (storeProblem) {
+        receipt.rejected.push({ index: receipt.accepted[i].index, reason: storeProblem });
+        continue;
+      }
+      players.push(upsert); playerInstalls.add(row.installId); accepted.push(receipt.accepted[i]);
       continue;
     }
     if (isCensusRow(row)) {
