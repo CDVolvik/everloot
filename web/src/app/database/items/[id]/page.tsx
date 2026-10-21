@@ -11,7 +11,7 @@ import { itemSourceValue } from "./item-source";
 import { RelationTarget, SameIcon } from "@/components/EntityRelations";
 import { pinLink } from "@/lib/world-map";
 import { gameNameFor, loadItemSetNames, loadItemTips, loadQuestNames, loadSiteAssets, loadSpellNames } from "@/lib/game-assets";
-import { Badge, Container, DataTable, Facts, QUALITY_TEXT, Tabs, TooltipFrame, qualityOf, type Column, type Fact, type TabItem } from "@/components/ui";
+import { Badge, Container, DataTable, EvidenceLine, Facts, InShort, QUALITY_TEXT, Tabs, TooltipFrame, qualityOf, type Column, type Fact, type TabItem } from "@/components/ui";
 import { categoryOf } from "../../../../../../kb/src/item-taxonomy";
 import { edgesFrom, evidenceLabel, type Edge, type Rel } from "../../../../../../kb/src/edges";
 import { CLIENT_LAYER, CLIENT_TAXONOMY, itemsHref, shownItemName, subclassLabel as labelOf } from "@/lib/items";
@@ -25,6 +25,7 @@ import { itemIndexable } from "@/lib/indexable";
 import { entityTitle, itemDescription } from "@/lib/entity-meta";
 import { MarketBox, loadMarketBox } from "@/app/tools/auctions/MarketBox";
 import { EmptyTab, EntityHeader, EntityIcon, EntityTop, FREQUENCY, known, LINK, percent, Unreachable } from "../../entity";
+import { itemSummary } from "@/lib/evidence";
 
 const PROFESSIONS = { href: "/tools/professions", label: "Professions" };
 
@@ -101,6 +102,13 @@ export default async function ItemPage(props: Props) {
 
   const all = edgesFrom([...edges.observed, ...edges.client], "item", itemId);
   const rel = (r: Rel) => all.filter((e) => e.rel === r);
+  // The clock the page's "last seen" lines are written against, and the newest date among the observed rows.
+  const now = Date.now();
+  const newestSeen = [...all]
+    .filter((e) => e.evidence === "observed" && e.lastSeen)
+    .map((e) => e.lastSeen!)
+    .sort()
+    .pop() ?? null;
   // Names for the quests, sets and spells this item relates to, read only for the kinds it has (players' names come first).
   const kinds = new Set(all.map((e) => e.toKind));
   const version = CLIENT_LAYER.build.version;
@@ -131,7 +139,7 @@ export default async function ItemPage(props: Props) {
     return {
       id, label, count: rows.length,
       panel: rows.length
-        ? <DataTable dense caption={`${label}: ${title}`} columns={relationColumns(head, rows)} rows={rows} rowKey={(e) => `${e.evidence}-${e.toKind}-${e.toId}`} />
+        ? <><EvidenceLine rows={rows} now={now} /><DataTable dense caption={`${label}: ${title}`} columns={relationColumns(head, rows)} rows={rows} rowKey={(e) => `${e.evidence}-${e.toKind}-${e.toId}`} /></>
         : <EmptyTab message={empty} {...(files ? { players: false, action: files } : {})} />,
     };
   };
@@ -196,6 +204,23 @@ export default async function ItemPage(props: Props) {
 
   // The same per-item index and 3-install gate as the item lists' Source column; no row when nothing is reported.
   const source = itemSourceValue(itemSeen.from.get(itemId), tabs.map((t) => t.id));
+  // The page in four lines: what it is, what players saw, what nobody has reported, and where the name came from.
+  const requiredLevel = tip?.lines.find((l) => l.startsWith("Requires Level"))?.replace("Requires Level ", "") ?? null;
+  const identity = [
+    category?.subclass?.name ?? category?.class?.label,
+    shownQuality,
+    requiredLevel ? `Requires level ${requiredLevel}` : null,
+  ].filter((x): x is string => Boolean(x)).join(" · ");
+  const summary = itemSummary({
+    identity: identity || "An item the game files list.",
+    dropSources: page.drops.length,
+    mapPositions: page.pins.length,
+    vendors: rel("sold_by").length,
+    recipes: rel("created_by").length + rel("reagent_for").length,
+    nameFrom: confirmed ? "players" : name?.source === "wiki" ? "wiki" : name?.source === "files" ? "files" : "none",
+    lastSeen: newestSeen,
+    now,
+  });
   const quickFacts: Fact[] = [
     ...(category ? [
       { label: "Class", value: category.class ? <Link href={itemsHref(category.class.slug)} className={LINK}>{category.class.label}</Link> : known(null) },
@@ -229,6 +254,7 @@ export default async function ItemPage(props: Props) {
           }
           facts={<Facts layout="list" label={`${title}: quick facts`} items={quickFacts} />}
         />
+        <InShort summary="In short" bullets={summary} note={<Link href="/database#reading" className={LINK}>How to read these numbers</Link>} />
         <MarketBox itemId={itemId} rows={auctions} />
         <Tabs label={`${title}: relations`} tabs={tabs} />
         <div className="mt-6 space-y-6 empty:hidden">

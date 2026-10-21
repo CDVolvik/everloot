@@ -10,6 +10,7 @@ import { loadCatalog } from "@/lib/completion-lists";
 import { publicZones } from "@/lib/zones";
 import JsonLd from "@/components/JsonLd";
 import { AgreementMeter, Container, DataTitle, SearchBar } from "@/components/ui";
+import { EVIDENCE_KEY } from "@/lib/evidence";
 import { datasetJsonLd } from "@/lib/jsonld";
 
 const TITLE = "WoW Forever Database";
@@ -96,6 +97,21 @@ export default async function DatabasePage() {
             />
           ))}
         </nav>
+
+        <section id="reading" className="mt-8 border-t border-line pt-6">
+          <h2 className="text-cell font-semibold text-fg">How to read these numbers</h2>
+          <dl className="mt-3 space-y-3 text-sm text-fg-2">
+            {EVIDENCE_KEY.map((row) => (
+              <div key={row.term}>
+                <dt className="text-fg">{row.term}</dt>
+                <dd>{row.meaning}</dd>
+              </div>
+            ))}
+          </dl>
+          <p className="mt-3 text-sm text-fg-2">
+            The method behind every count is on the <Link href="/methodology" className="text-accent hover:underline underline-offset-4">methodology page</Link>.
+          </p>
+        </section>
       </article>
     </Container>
   );
