@@ -59,9 +59,11 @@ players module is on in the game, the addon records one row per character: its n
 class, level and guild, and the day it was last seen. It never records where a player was, their
 gear, talents, professions, gold, achievements, earlier levels or guilds, which install reported
 the row, the character's id, or a time of day. The table holds one row per character, matched
-case-insensitively, and a newer sighting replaces the older one. Each row is published only when
-three installs report the same character the same way. A row is deleted 90 days after the character
-was last seen, and a hidden character is deleted at once and never recorded again. The pages are
+case-insensitively, and a newer sighting replaces the older one. A row is not corroborated: one upload
+makes a page, and the page says the data is unchecked. Whether a page should wait for more than one
+reporter is a question the lawyer review is answering (the player-pages design, section 13, question 7),
+because counting the reporters would mean keeping who reported a row. A row is deleted 90 days after the
+character was last seen, and a hidden character is deleted at once and never recorded again. The pages are
 unverified information reported by other players, and Everloot makes no statement that a character
 belongs to anyone.
 
