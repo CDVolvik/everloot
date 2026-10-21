@@ -40,6 +40,11 @@ export function censusDateProblem(capturedAt: string, now: Date): string | null 
   return null;
 }
 
+/** A character's census key: the HMAC of its GUID under the server's character key. */
+export function censusKey(guid: string, secret: string): string {
+  return createHmac("sha256", secret).update(guid).digest("hex");
+}
+
 /**
  * The row as it is stored: `characterKey` and `serverId` in place of the GUID, and the server's own event id,
  * `<kind>:<UTC day>:<first 24 hex of characterKey>`, in place of the client's. It is parsed through the stored
@@ -50,7 +55,7 @@ export function censusDateProblem(capturedAt: string, now: Date): string | null 
 export function storedCensusRow(row: CensusRow, secret: string, reporter?: string): StoredCensusRecord | null {
   const serverId = Number(row.guid.split("-")[1]);
   if (!Number.isSafeInteger(serverId)) return null;
-  const characterKey = createHmac("sha256", secret).update(row.guid).digest("hex");
+  const characterKey = censusKey(row.guid, secret);
   const day = new Date(row.capturedAt).toISOString().slice(0, 10);
   const { guid: _guid, eventId: _clientEventId, ...rest } = row;
   const stored = storedCensusSchemas[row.kind].safeParse({ ...rest, characterKey, serverId, ...(reporter ? { reporter } : {}), eventId: `${row.kind}:${day}:${characterKey.slice(0, 24)}` });

@@ -9,6 +9,7 @@ import { MARKET_LIMITS, realmKey } from "../../../../../kb/src/market";
 import { authorizeRecord, sharingCategory, type PublicationGrant } from "../../../../../kb/src/publication";
 import { isPlayerRow, playerDateProblem, playerPagesOn, playerUpsert, PLAYERS_PER_UPLOAD, type PlayerUpsert } from "@/lib/player-pages";
 import { playerStore } from "@/lib/player-store";
+import { isLinkRow } from "@/lib/character-links";
 import { censusDailyCap } from "../../../../../kb/src/census-rows";
 
 /**
@@ -107,6 +108,11 @@ export async function POST(req: Request) {
       continue;
     }
     if ("claimToken" in row) delete row.claimToken;
+    if (isLinkRow(row)) {
+      // A link row carries a GUID and a code: it is redeemed at /api/me/characters/links and never stored here.
+      receipt.rejected.push({ index: receipt.accepted[i].index, reason: "Character links are sent from your account, not in uploads." });
+      continue;
+    }
     if (isPlayerRow(row)) {
       const now = new Date();
       const problem = !playersOn ? "Player pages are not collected yet." : players.length >= PLAYERS_PER_UPLOAD
