@@ -78,12 +78,12 @@ export function questDescription(f: { name: string; id: number; level: number | 
   return fit(lead, facts.length ? [`with ${list(facts)}`] : [], `Who gives it, where to turn it in and what it rewards. Quest ID ${f.id}.`);
 }
 
-export function objectDescription(f: { id: number; items: number; windows: number | null }): string {
+export function objectDescription(f: { name: string; id: number; items: number; windows: number | null }): string {
   const facts = [
     f.items ? `${count(f.items, "item", "items")} looted from it` : "",
     f.windows ? `${count(f.windows, "loot window", "loot windows")} counted` : "",
   ].filter(Boolean);
-  return fit(`Object ${f.id} is a chest, herb, ore vein or fishing pool in WoW: Forever.`, facts, "What players looted from it and how often.");
+  return fit(`${f.name} is a chest, herb, ore vein or fishing pool in WoW: Forever.`, facts, "What players looted from it and how often.");
 }
 
 export function vendorDescription(f: { name: string; id: number; offers: number }): string {

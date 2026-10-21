@@ -37,7 +37,7 @@ export default async function DropsPage(props: { searchParams?: Promise<Search> 
     ...live.map((r) => ({ key: `${r.sourceNpcId ?? r.sourceObjectId}-${r.itemId}`, itemId: r.itemId, sourceNpcId: r.sourceNpcId, sourceObjectId: r.sourceObjectId, kills: r.kills, drops: r.drops, rate: r.rate, reporters: r.reporters })),
     ...zeros.map((z) => ({ key: `zero-${z.sourceNpcId ?? "o"}-${z.sourceObjectId ?? "n"}`, itemId: null, sourceNpcId: z.sourceNpcId, sourceObjectId: z.sourceObjectId, kills: z.kills, drops: 0, rate: null, reporters: z.reporters })),
   ];
-  const sourceName = (r: Row) => (r.sourceNpcId !== undefined ? names.npcs.get(r.sourceNpcId)?.toLowerCase() ?? `~npc ${String(r.sourceNpcId).padStart(9, "0")}` : `~object ${String(r.sourceObjectId).padStart(9, "0")}`);
+  const sourceName = (r: Row) => (r.sourceNpcId !== undefined ? names.npcs.get(r.sourceNpcId)?.toLowerCase() ?? `~npc ${String(r.sourceNpcId).padStart(9, "0")}` : names.objects.get(r.sourceObjectId!)?.toLowerCase() ?? `~object ${String(r.sourceObjectId).padStart(9, "0")}`);
   const sort = q.sort;
   const rows = !sort ? all : sortRows(all, (r) => sort.key === "item" ? (r.itemId === null ? null : names.items.get(r.itemId)?.toLowerCase() ?? `~${String(r.itemId).padStart(9, "0")}`)
     : sort.key === "source" ? sourceName(r) : sort.key === "windows" ? r.kills : sort.key === "drops" ? r.drops : sort.key === "rate" ? r.rate : r.reporters, sort.desc, (r) => r.itemId ?? 0);
@@ -59,7 +59,7 @@ export default async function DropsPage(props: { searchParams?: Promise<Search> 
     {
       key: "source", header: "Source", sortable: true, cell: (r) => (r.sourceNpcId !== undefined
         ? <EntityLink kind="npc" id={r.sourceNpcId} name={names.npcs.get(r.sourceNpcId)} />
-        : <EntityLink kind="object" id={r.sourceObjectId!} />),
+        : <EntityLink kind="object" id={r.sourceObjectId!} name={names.objects.get(r.sourceObjectId!)} />),
     },
     { key: "windows", header: "Loot windows", numeric: true, sortable: true, cell: (r) => r.kills },
     { key: "drops", header: "Item observations", numeric: true, sortable: true, cell: (r) => r.drops },
@@ -87,7 +87,7 @@ export default async function DropsPage(props: { searchParams?: Promise<Search> 
             rowKey={(r) => r.key}
             sort={sort ? { key: sort.key, direction: sort.desc ? "desc" : "asc" } : undefined}
             sortHref={(k, dir) => href({ sort: { key: k as Sort, desc: dir === "desc" } })}
-            meta={(r) => [r.sourceNpcId !== undefined ? names.npcs.get(r.sourceNpcId) ?? `NPC ${r.sourceNpcId}` : `Object ${r.sourceObjectId}`, `${r.rate === null ? "0 observed" : percent(r.rate)} of ${r.kills} loot windows`].join(" · ")}
+            meta={(r) => [r.sourceNpcId !== undefined ? names.npcs.get(r.sourceNpcId) ?? `NPC ${r.sourceNpcId}` : names.objects.get(r.sourceObjectId!) ?? `Object ${r.sourceObjectId}`, `${r.rate === null ? "0 observed" : percent(r.rate)} of ${r.kills} loot windows`].join(" · ")}
             empty={<NoObservations>No public frequencies yet; one shows here once 3 installs record loot windows from the same creature or object.</NoObservations>}
           />
         </div>

@@ -15,6 +15,9 @@ build that has a zip in the repository. Earlier builds have none.
 Pull requests merged to `main` are listed in the nightly pre-releases until the next tagged release.
 
 ### Changed
+- Site and knowledge base: game objects show the name three installs agree on, on the object page, the objects
+  and drops lists, hover cards, search and the item pages that list them as a source, and in the `object_page`
+  answer. Until three agree, they still read Object and the id.
 - Site: every item, quest, item set and spell the game files or the Warcraft Wiki name is named on its page,
   with no id range and no placeholder filter. A name from the game files alone carries the unconfirmed marker;
   a name from the wiki says so in its tooltip. Items no source names still read "Item N" until players name them.

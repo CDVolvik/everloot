@@ -59,6 +59,11 @@ test("npc, quest and object cards say what the page says", async () => {
   expect((await call("npc", "999")).status).toBe(404);
 });
 
+test("an object card shows the name 3 installs agree on", async () => {
+  mocks.objects.mockResolvedValue({ rates: [], names: [], unreachable: false, dataAsOf: null, measuredZeros: [{ sourceObjectId: 7, kills: 12, reporters: 3, public: true }], objects: three((installId) => ({ installId, objectId: 7, name: "Copper Vein" })) });
+  expect(await (await call("object", "7")).json()).toMatchObject({ title: "Copper Vein" });
+});
+
 test("bad types and bad ids are 404s, without reading any data", async () => {
   for (const [type, id] of [["spell", "1"], ["item", "abc"], ["item", "0"], ["item", "-1"], ["item", "01"], ["item", "1.5"], ["item", "99999999999"], ["item", "2147483648"], ["items", "1"]]) {
     const res = await call(type, id);

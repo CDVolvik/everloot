@@ -4,6 +4,7 @@
  * windows, not a census of kills or independent people. The legacy `kills`
  * field names the window count for compatibility. Unobserved kills are unknown.
  */
+import { objectSpawnRowsFromRecords, type ObjectSpawnRow } from "./object-spawns.js";
 import { isPinPosition } from "./world-pages.js";
 
 export const INDEPENDENT_INSTALLS = 3;
@@ -43,7 +44,8 @@ export interface RollupResult {
 
 export type ItemNameRow = { installId: string; itemId: number; name: string };
 export type NpcPinRow = { installId: string; npcId: number; name: string; mapId: number; x: number; y: number };
-export type ItemFactRows = { rates: DropRate[]; names: ItemNameRow[]; npcs: NpcPinRow[] };
+/** Object rows that carry a name, for the agreed object names. */
+export type ItemFactRows = { rates: DropRate[]; names: ItemNameRow[]; npcs: NpcPinRow[]; objects: ObjectSpawnRow[] };
 
 /** Frequency among source-attributed observations; missing kills are not inferred. */
 export function rollupDrops(windows: LootRow[]): RollupResult {
@@ -171,5 +173,5 @@ export function itemFactsFromRecords(records: unknown[]): ItemFactRows {
       npcs.push({ installId: row.installId, npcId: row.npcId, name: row.name, mapId: row.mapId, x: row.x, y: row.y });
     }
   }
-  return { rates: rollupDrops(lootWindowsFromRecords(records)).rates, names, npcs };
+  return { rates: rollupDrops(lootWindowsFromRecords(records)).rates, names, npcs, objects: objectSpawnRowsFromRecords(records).filter((row) => row.name !== undefined) };
 }

@@ -155,6 +155,7 @@ export const vendorOffer = z.object({
 export const vendorPage = z.object({ vendorNpcId: z.number().int(), offers: z.array(vendorOffer) });
 export const objectPage = z.object({
   objectId: z.number().int(),
+  name: z.string().nullable(),
   drops: z.array(z.object({ itemId: z.number().int(), itemName: z.string().nullable(), kills: z.number().int(), drops: z.number().int(), rate: z.number(), reporters: z.number().int() })),
   zero: z.object({ kills: z.number().int(), reporters: z.number().int() }).nullable().describe("Public windows with no item at all: a measured zero."),
   queued: z.boolean().describe("Observations exist but fewer than 3 installs reported them."),
@@ -555,7 +556,7 @@ export const MCP_TOOLS = {
   object_page: {
     title: "Game object page",
     description:
-      "One game object (a chest, herb, ore vein or fishing pool) by the id in its GUID: the items players looted from it, each with observed loot windows, windows with the item and distinct install reports. A frequency is public after 3 install reports; a public object with nothing in its windows reads as a measured zero. Objects have no names yet. Reads Everloot's current authorized public corpus when connected.",
+      "One game object (a chest, herb, ore vein or fishing pool) by the id in its GUID: the items players looted from it, each with observed loot windows, windows with the item and distinct install reports. A frequency is public after 3 install reports; a public object with nothing in its windows reads as a measured zero. The name is shown when 3 installs agree on it. Reads Everloot's current authorized public corpus when connected.",
     inputSchema: { objectId: z.number().int().positive().describe("The object's entry id, as in /database/objects/1731.") },
     outputSchema: { ...uploadsAnswer, page: objectPage.optional() },
     annotations: { readOnlyHint: true, openWorldHint: false },

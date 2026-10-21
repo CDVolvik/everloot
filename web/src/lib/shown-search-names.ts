@@ -29,14 +29,15 @@ function mergedOnce<T extends { name: string }>(agreed: Map<number, string>, rul
 }
 
 /**
- * Item names, NPC names and quest titles as the pages print them: the name 3 installs agree on, else the
- * game files and Warcraft Wiki match for items, and the wiki title for quests. NPCs have agreed names only.
+ * Item names, NPC names, object names and quest titles as the pages print them: the name 3 installs agree on, else the
+ * game files and Warcraft Wiki match for items, and the wiki title for quests. NPCs and objects have agreed names only.
  */
 export async function loadShownSearchNames(): Promise<Names> {
   const [agreed, shown, quests] = await Promise.all([loadNames(), loadShownNames(), loadQuestNames(CLIENT_LAYER.build.version)]);
   return {
     items: mergedOnce(agreed.items, shown.matched?.names),
     npcs: agreed.npcs,
+    objects: agreed.objects,
     quests: mergedOnce(agreed.quests, quests?.names),
   };
 }
