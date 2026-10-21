@@ -12,6 +12,8 @@ export interface Settings {
   prices: boolean;
   /** Census counts go with the uploads: race, class, level and faction of players seen, never names. */
   census: boolean;
+  /** Player pages go with the uploads: the name, realm, race, class, level and guild of the players seen. Off by default. */
+  players: boolean;
   ask: { enabled: boolean; mcpUrl: string; tokenFile: string | null };
   /** Realms to keep prices for beyond the ones in the player's own scans (TSM-style realm picks). */
   market: { realms: string[] };

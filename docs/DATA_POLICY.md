@@ -14,7 +14,9 @@ sent only from the website's upload page, after the preview names each addon. Yo
 when to upload. On the website you preview everything before it is sent. The Desktop App sends
 anonymous open-world events, and census rows if you allowed the census on its setup screen; the
 command-line uploader sends only the anonymous events. Neither sends named data (guild, gear, gold,
-collection), player rows or the installed addon list: those stay on your machine.
+collection) or the installed addon list: those stay on your machine. Player rows are a third case:
+the Desktop App sends them only if you turn on "Send the player pages with the uploads" in its
+settings, and until you do, they stay on your machine like the named data.
 
 Uploaded observations are public as individual, anonymous records, with no character names and
 without the addon's install id, so anyone can check our counts. The facts the site states itself, such as drop rates, spawn points and recipe
