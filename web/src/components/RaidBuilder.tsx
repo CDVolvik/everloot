@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { CLASSES } from "@/design/tokens";
+import { glide } from "@/lib/motion";
 import { CURRENT_BUILD, TABLES, type BuffTable, type Scope } from "@/data/game-data/raid";
 import {
   treeNames, SIZES, STATE_LABEL, applyDrop, coverage, decodeRaid, describeRaid, emptySlots, encodeRaid, findCode, groupsOf, resize,
@@ -109,8 +110,20 @@ export default function RaidBuilder({ art = null, initialCode }: { art?: RaidArt
   const layoutRef = useRef<HTMLElement>(null);
   // A press that turned into a drag ends with a click on the button it started on; that click is not a pick.
   const suppressClick = useRef(false);
+  // Members moved by moveMember, with where each was on screen; they glide there once the new slots are drawn.
+  const glides = useRef<{ index: number; first: DOMRect }[]>([]);
 
   const { size, slots } = state;
+
+  // Only moveMember queues glides: a size switch, Clear, a loaded link, undo and the first render land at once.
+  useLayoutEffect(() => {
+    const queued = glides.current;
+    glides.current = [];
+    for (const { index, first } of queued) {
+      const el = slotRefs.current[index];
+      if (el) glide(el, first);
+    }
+  }, [slots]);
 
   const commit = useCallback((next: Snapshot) => {
     setPast((p) => [...p.slice(-(HISTORY_LIMIT - 1)), state]);
@@ -223,12 +236,18 @@ export default function RaidBuilder({ art = null, initialCode }: { art?: RaidArt
   const place = (i: number) => `group ${Math.floor(i / GROUP_SIZE) + 1}, slot ${(i % GROUP_SIZE) + 1}`;
   const describe = (s: Slot | null) => (s ? `${titleCase(s.class)}, ${s.tree ? treeNames(table, s.class)[s.tree - 1] : "any tree"}` : "empty");
 
-  // Move a member to another slot; an occupied target swaps places. One undo step either way.
-  const moveMember = (from: number, to: number) => {
+  // Move a member to another slot; an occupied target swaps places. One undo step either way. The member pushed out
+  // glides to its new slot, and so does the mover when it did not arrive under the pointer (Move to).
+  const moveMember = (from: number, to: number, glideMover = false) => {
     const next = swapSlots(slots, from, to);
     if (next === slots) return false;
     const mover = slots[from];
     const other = slots[to];
+    const rect = (i: number) => slotRefs.current[i]?.getBoundingClientRect();
+    const fromRect = rect(from);
+    const toRect = rect(to);
+    if (other && toRect) glides.current.push({ index: from, first: toRect });
+    if (glideMover && fromRect) glides.current.push({ index: to, first: fromRect });
     commit({ size, slots: next });
     setMessage(
       mover && other
@@ -617,7 +636,7 @@ export default function RaidBuilder({ art = null, initialCode }: { art?: RaidArt
                   onClick={() => {
                     const to = Number(moveTo);
                     setMoveTo("");
-                    if (moveMember(selected, to)) setSelected(to);
+                    if (moveMember(selected, to, true)) setSelected(to);
                   }}
                 >
                   Move

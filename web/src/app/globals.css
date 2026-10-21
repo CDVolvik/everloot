@@ -100,7 +100,7 @@ main p a, main .list-disc a {
   background: transparent;
   color: rgb(var(--fg));
   font-weight: 500;
-  transition: border-color var(--dur-fade) var(--ease-color), color var(--dur-fade) var(--ease-color);
+  transition: border-color var(--dur-fade) var(--ease-color), color var(--dur-fade) var(--ease-color), transform var(--dur-press) var(--ease-out);
 }
 .btn:hover,
 .btn:focus-visible {
@@ -116,7 +116,7 @@ main p a, main .list-disc a {
   background: rgb(var(--accent));
   color: rgb(var(--canvas));
   font-weight: 600;
-  transition: background-color var(--dur-fade) var(--ease-color), border-color var(--dur-fade) var(--ease-color);
+  transition: background-color var(--dur-fade) var(--ease-color), border-color var(--dur-fade) var(--ease-color), transform var(--dur-press) var(--ease-out);
 }
 .btn-primary:hover,
 .btn-primary:focus-visible {
@@ -161,31 +161,88 @@ body {
   transition: border-color var(--dur-fade) var(--ease-color);
 }
 
-/* Menus and sheets (Tools, the phone menu, filter menus, the account menus) fade in over 150 ms when they open.
-   Closing is instant. A <details> menu's panel is in the page while closed, so the fade runs on [open]. */
-@keyframes fade-in {
-  from {
+/* Menus (Tools, the phone menu, filter menus, the + and account menus) come 4 px from their trigger's side and fade
+   in over 150 ms. A menu kept in the page and toggled with `hidden` leaves faster, in 100 ms, and stays in the page
+   (display) until it has gone; a click meets nothing on its way out. These are transitions, so a menu toggled again
+   mid-way turns back from where it is. A menu that unmounts (the phone menu) or a <details> menu closes at once. */
+.pop {
+  transition: opacity var(--dur-fade) var(--ease-out), transform var(--dur-fade) var(--ease-out), display var(--dur-fade) allow-discrete;
+}
+@starting-style {
+  .pop {
     opacity: 0;
+    transform: translateY(-4px);
   }
 }
-.pop {
-  animation: fade-in var(--dur-fade) var(--ease-out);
+.pop[hidden] {
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+  transition: opacity var(--dur-exit) var(--ease-out), transform var(--dur-exit) var(--ease-out), display var(--dur-exit) allow-discrete;
 }
-details:not([open]) > .pop {
-  animation: none;
+/* A <details> menu's panel is in the page while closed, so its entrance runs each time the menu opens. */
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+details > .pop {
+  transition: none;
+}
+details[open] > .pop {
+  animation: pop-in var(--dur-fade) var(--ease-out);
+}
+/* On phones the account menu is a sheet: it slides up from the bottom edge (300 ms) and back down faster (200 ms). */
+@media (max-width: 639.98px) {
+  .pop.sheet {
+    transition: transform var(--dur-sheet) var(--ease-drawer), display var(--dur-sheet) allow-discrete;
+  }
+  @starting-style {
+    .pop.sheet {
+      opacity: 1;
+      transform: translateY(100%);
+    }
+  }
+  .pop.sheet[hidden] {
+    opacity: 1;
+    transform: translateY(100%);
+    transition: transform var(--dur-panel) var(--ease-out), display var(--dur-panel) allow-discrete;
+  }
 }
 
 /* The bar at the top of the window while a filter, sort, page or tab link loads (NavPending). It shows only
-   after MOTION.duration.pendingDelay, fades in, and goes at once. */
+   after MOTION.duration.pendingDelay and fades in; while the page loads it grows from 10 % towards 90 %, slowing
+   as it goes. When the page arrives it completes and fades out. If it gives up, it goes at once. */
 .nav-pending {
   opacity: 0;
+  transform-origin: left;
 }
-.nav-pending[data-on] {
+.nav-pending[data-state="on"] {
   opacity: 1;
   transition: opacity var(--dur-fade) var(--ease-out);
 }
 
-/* Motion is limited to 150 ms colour and opacity changes, and none at all when asked. */
+/* Transforms only when motion is welcome: the bar's growth, and a button sinking a little under a press (0.98;
+   buttons only, not table rows or links). */
+@media (prefers-reduced-motion: no-preference) {
+  .nav-pending {
+    transform: scaleX(0.1);
+  }
+  .nav-pending[data-state="on"] {
+    transform: scaleX(0.9);
+    transition: opacity var(--dur-fade) var(--ease-out), transform var(--dur-grow) var(--ease-out);
+  }
+  .nav-pending[data-state="done"] {
+    transform: scaleX(1);
+    transition: transform var(--dur-exit) var(--ease-out), opacity var(--dur-fade) var(--ease-out) var(--dur-exit);
+  }
+  button.btn:active:not(:disabled):not([aria-disabled="true"]) {
+    transform: scale(0.98);
+  }
+}
+
+/* Under reduced motion nothing moves: no transitions, no animations, and the transforms above never apply. */
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after {
     animation: none !important;

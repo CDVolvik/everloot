@@ -104,13 +104,26 @@ test("the data-page scale is the density spec's", () => {
   expect(extend.inset).toEqual({ header: "44px" });
 });
 
-test("motion is one 150 ms fade, one default curve, and the waits around it (spec item 12)", () => {
-  expect(MOTION.duration).toEqual({ fade: 150, pendingDelay: 150, copied: 2000 });
-  expect(MOTION.ease).toEqual({ out: "cubic-bezier(0.23, 1, 0.32, 1)", color: "ease" });
+test("motion is one 150 ms fade, small quick transforms, one default curve, and the waits around it (spec item 12)", () => {
+  expect(MOTION.duration).toEqual({ press: 100, exit: 100, fade: 150, panel: 200, sheet: 300, grow: 2000, pendingDelay: 150, copied: 2000 });
+  expect(MOTION.ease).toEqual({
+    out: "cubic-bezier(0.23, 1, 0.32, 1)",
+    inOut: "cubic-bezier(0.77, 0, 0.175, 1)",
+    drawer: "cubic-bezier(0.32, 0.72, 0, 1)",
+    color: "ease",
+  });
+  // Exits are faster than entrances; nothing in the interface takes longer than the sheet, except the loading
+  // bar's slow growth.
+  expect(MOTION.duration.exit).toBeLessThan(MOTION.duration.fade);
+  const { press, exit, fade, panel, sheet } = MOTION.duration;
+  expect(Math.max(press, exit, fade, panel)).toBeLessThan(sheet);
   const extend = config.theme!.extend!;
   expect(extend.transitionDuration).toEqual({ DEFAULT: "150ms", fade: "150ms" });
   expect(extend.transitionTimingFunction).toEqual({ DEFAULT: "ease", out: MOTION.ease.out });
-  expect(baseStyles()[":root"]).toMatchObject({ "--dur-fade": "150ms", "--ease-out": MOTION.ease.out, "--ease-color": "ease" });
+  expect(baseStyles()[":root"]).toMatchObject({
+    "--dur-press": "100ms", "--dur-exit": "100ms", "--dur-fade": "150ms", "--dur-panel": "200ms", "--dur-sheet": "300ms",
+    "--dur-grow": "2000ms", "--ease-out": MOTION.ease.out, "--ease-drawer": MOTION.ease.drawer, "--ease-color": "ease",
+  });
 });
 
 test("the stylesheets take every duration and curve from the motion variables", () => {
@@ -118,7 +131,7 @@ test("the stylesheets take every duration and curve from the motion variables", 
     const css = readFileSync(fileURLToPath(new URL(file, import.meta.url)), "utf8");
     const motion = css.match(/^\s*(?:transition|animation):[^;]*;/gm) ?? [];
     expect(motion.length, file).toBeGreaterThan(0);
-    for (const rule of motion) expect(rule, file).toMatch(/none|var\(--dur-fade\)/);
+    for (const rule of motion) expect(rule, file).toMatch(/none|var\(--dur-[a-z]+\)/);
   }
 });
 

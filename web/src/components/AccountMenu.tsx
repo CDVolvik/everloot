@@ -262,11 +262,11 @@ export function AvatarMenu({ name, initialShell = null, profiles = false, savedB
         onClick={() => menu.setOpen(!menu.open)}
         className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full"
       ><Avatar name={shown} fill={fill} /></button>
-      {/* On phones a sheet from the bottom of the screen; from 640 px a dropdown under the bubble. */}
+      {/* On phones a sheet that slides up from the bottom of the screen; from 640 px a dropdown under the bubble. */}
       <div
         id="account-menu"
         hidden={!menu.open}
-        className={`${panelClass} fixed inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto rounded-t-card border-t sm:absolute sm:inset-x-auto sm:bottom-auto sm:right-0 sm:top-full sm:mt-2 sm:w-72 sm:rounded-card sm:border`}
+        className={`${panelClass} sheet fixed inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto rounded-t-card border-t sm:absolute sm:inset-x-auto sm:bottom-auto sm:right-0 sm:top-full sm:mt-2 sm:w-72 sm:rounded-card sm:border`}
       >
         <div className="flex items-center gap-3 px-3 py-2">
           <Avatar name={shown} fill={fill} size="md" />
