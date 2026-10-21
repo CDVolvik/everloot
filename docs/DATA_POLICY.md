@@ -47,6 +47,20 @@ Alliance or Horde when three installs on that faction report it and none on the 
 Both when three installs on each faction report it; otherwise it stays blank, and it is never guessed from a
 title, a giver or a zone. Nothing is read from the game's Creature or quest tables for these columns.
 
+Places on the map come from where players stood, at two moments (addon 0.3.8). When an NPC's window
+opens (merchant, gossip, quest, trainer, flight map, bank, auction house, stable, innkeeper), the
+player is within a few yards of that NPC, so the addon records the player's position as the NPC's
+(`positionKind: "interaction"`) with the service the window offered (vendor, trainer, quest giver and so
+on), once per NPC, service and zone. When the player opens a herb, ore vein, chest or other object, its
+loot row carries the player's position, how it was opened (from the spell cast on it) and the object's
+name as the game showed it. Where you stand when you only target or mouse over an NPC
+(`positionKind: "player"`) is never used as the NPC's place. An NPC pin needs three installs on the same
+map; an object's spawn point needs three installs within one cluster (positions closer than 1 on the
+0 to 100 map scale), and a place seen by one or two installs is only counted, never drawn. An object's
+name is shown only when three installs report the same one; otherwise it is "Object" and its id. Fishing
+gives the zone only, never a pin. Object places come from play only: nothing is read from the game's
+files for them.
+
 Full auction scans are not public records either. They feed market values only, and a value is
 published when three distinct reporters scanned the item. For that count, an upload containing a scan
 is stored with a keyed hash of the address it came from (never the address itself). The hash stays in
