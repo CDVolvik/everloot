@@ -5,7 +5,7 @@
 Everloot = Everloot or {}
 local E = Everloot
 
-E.VERSION = "0.3.7"
+E.VERSION = "0.3.8"
 E.MAX_ROWS_PER_KIND = 2000
 
 -- Same Adler-32 the companion writes into its slot addons; Lua 5.1 arithmetic only.
@@ -16,6 +16,17 @@ function E.Adler32(s)
     b = (b + a) % 65521
   end
   return b * 65536 + a
+end
+
+--- The NPC id in a creature GUID (Creature-0-server-instance-zone-NPCID-spawn); nil for anything else.
+function E.NpcIdFromGuid(guid)
+  if type(guid) ~= "string" then return nil end
+  local parts = {}
+  for p in guid:gmatch("[^-]+") do parts[#parts + 1] = p end
+  if parts[1] == "Creature" or parts[1] == "Vehicle" then
+    return tonumber(parts[6])
+  end
+  return nil
 end
 
 --- Copper as the site writes it: "1g 2s 3c", silver and copper always shown below a gold.

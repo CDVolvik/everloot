@@ -69,6 +69,21 @@ describe("uploading", () => {
     expect(api.bodies).toHaveLength(1);
   });
 
+  test("map positions go through unchanged: interaction sightings with a role, object loot with a place, trainer ids", async () => {
+    const at = `["capturedAt"] = "2026-10-21T00:00:00Z"`;
+    const { file, state } = workspace(luaFile([
+      { kind: "npc_sighting", lua: `["eventId"] = "epoch:1", ${at}, ["npcId"] = 3158, ["name"] = "Duokna", ["mapId"] = 1411, ["x"] = 51.2, ["y"] = 42.8, ["level"] = 15, ["reaction"] = "friendly", ["positionKind"] = "interaction", ["role"] = "repair"` },
+      { kind: "loot", lua: `["eventId"] = "epoch:2", ${at}, ["sourceObjectId"] = 1618, ["sourceEvidence"] = "loot-api", ["items"] = {{["itemId"] = 2447, ["count"] = 2}}, ["mapId"] = 1411, ["x"] = 52.4, ["y"] = 43.1, ["gatherKind"] = "herb", ["sourceObjectName"] = "Peacebloom"` },
+      { kind: "trainer_seen", lua: `["eventId"] = "epoch:3", ${at}, ["profession"] = "Alchemy", ["recipe"] = "Elixir of Minor Agility", ["requiredRank"] = 50, ["trainerNpcId"] = 3347` },
+    ]));
+    const api = intake();
+    expect(await uploadFile(file, { endpoint: "https://everloot.example", fetch: api.send, state })).toMatchObject({ sent: 3, invalid: 0 });
+    const sent = api.bodies[0]!.records as unknown as Record<string, unknown>[];
+    expect(sent.find((r) => r.kind === "npc_sighting")).toMatchObject({ positionKind: "interaction", role: "repair", mapId: 1411, x: 51.2, y: 42.8 });
+    expect(sent.find((r) => r.kind === "loot")).toMatchObject({ mapId: 1411, x: 52.4, y: 43.1, gatherKind: "herb", sourceObjectName: "Peacebloom" });
+    expect(sent.find((r) => r.kind === "trainer_seen")).toMatchObject({ trainerNpcId: 3347 });
+  });
+
   test("a new event after a reload is the only one sent next time", async () => {
     const w = workspace(luaFile([loot(1)]));
     const api = intake();
