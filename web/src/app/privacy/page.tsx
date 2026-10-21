@@ -180,7 +180,9 @@ export default function PrivacyPage() {
                 realm, race, class, level and guild of your own characters, and of players you
                 target, mouse over or group with, and the day it saw them. It never records where a
                 player is, what they wear or what they do. You send these rows only from the upload
-                page, after a preview. We keep one row per character, the newest, and show it on a
+                page, after a preview, or from the Everloot Desktop App if you turn on{" "}
+                <em>Send the player pages with the uploads</em> in its settings. We keep one row per
+                character, the newest, and show it on a
                 public page you can find by searching for the name. The row says nothing about who
                 reported it, and we delete it 90 days after the character was last seen. The players
                 it names have not been asked. Anyone can have a character hidden, without an
