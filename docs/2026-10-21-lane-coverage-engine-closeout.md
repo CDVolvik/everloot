@@ -5,7 +5,7 @@ Implements the drop-rate settling rule from section 1 of the
 the first piece after the merged fact states (PR #298). One piece only; the next
 starts after this one is reviewed.
 
-Review: pull request against `main`, link [?] until it is opened.
+Review: [PR #303](https://github.com/Everloot/everloot/pull/303), against `main`.
 
 ## Outcome
 
