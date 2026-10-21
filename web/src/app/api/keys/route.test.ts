@@ -8,8 +8,10 @@ import { cleanLabel, hashKey, KEY_PATTERN } from "@/lib/api-keys";
 
 const USER = { id: "11111111-2222-4333-8444-555555555555", bnet_id: "1", battletag: "Thrall#1" };
 const KEY_ID = "0b6f1c1e-3f43-4a4e-9a51-3d2a1f0c9e11";
-const call = (method: string, query = "", body?: object, origin = "https://everloot.app") =>
-  new Request(`https://everloot.app/api/keys${query}`, { method, headers: { origin, "content-type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
+const call = (method: string, query = "", body?: object, origin: string | null = "https://everloot.app") =>
+  new Request(`https://everloot.app/api/keys${query}`, {
+    method, headers: { ...(origin === null ? {} : { origin }), "content-type": "application/json" }, body: body ? JSON.stringify(body) : undefined,
+  });
 
 beforeEach(() => {
   vi.stubEnv("EVERLOOT_DATA_GUARD", "1");
@@ -88,17 +90,21 @@ test("a revoked key can be deleted with its counts; a live one must be revoked f
   const [path, init] = auth.authQuery.mock.calls[0];
   expect(init.method).toBe("DELETE");
   expect(path).toContain(`user_id=eq.${USER.id}`);
-  expect(path).toContain("revoked_at=not.is.null");
+  expect(path).toMatch(/or=\(revoked_at\.not\.is\.null,expires_at\.lte\.[^)]+\)/);
   auth.authQuery.mockResolvedValueOnce([]);
   const live = await DELETE(call("DELETE", `?id=${KEY_ID}&erase=1`));
   expect(live.status).toBe(404);
   expect((await live.json()).error).toContain("Revoke it first");
 });
 
-test("another site cannot make or revoke keys with the visitor's cookie", async () => {
-  expect((await POST(call("POST", "", {}, "https://evil.example"))).status).toBe(403);
-  expect((await DELETE(call("DELETE", `?id=${KEY_ID}`, undefined, "https://evil.example"))).status).toBe(403);
+test("another site, or a request with no Origin, cannot make, roll or revoke keys with the visitor's cookie", async () => {
+  for (const origin of ["https://evil.example", null]) {
+    expect((await POST(call("POST", "", { label: "x" }, origin))).status).toBe(403);
+    expect((await POST(call("POST", `?roll=${KEY_ID}`, undefined, origin))).status).toBe(403);
+    expect((await DELETE(call("DELETE", `?id=${KEY_ID}`, undefined, origin))).status).toBe(403);
+  }
   expect(auth.authQuery).not.toHaveBeenCalled();
+  expect(auth.getUser).not.toHaveBeenCalled();
 });
 
 test("the list shows the account's own keys only", async () => {
@@ -121,6 +127,100 @@ test("revoking marks the key revoked for this account only; a key that is not th
   auth.authQuery.mockResolvedValueOnce([]);
   expect((await DELETE(call("DELETE", `?id=${KEY_ID}`))).status).toBe(404);
   expect((await DELETE(call("DELETE", "?id=not-a-uuid"))).status).toBe(400);
+});
+
+const FORM = { label: " Drop rates ", purpose: " A sheet for my guild ", scopes: [] as string[], expiresInDays: 90 };
+const storageFailed = (status: number) => new Error(`Authentication storage failed (${status})`);
+
+test("the create form's key: name, purpose, scopes and expiry go to issue_api_key; the key is shown once", async () => {
+  vi.stubEnv("EVERLOOT_SAVED_BUILDS", "1");
+  auth.authQuery.mockResolvedValue([{ key_ref: KEY_ID, refusal: null }]);
+  const before = Date.now();
+  const res = await POST(call("POST", "", { ...FORM, scopes: ["read:own"] }));
+  expect(res.status).toBe(201);
+  const made = await res.json();
+  expect(made.token).toMatch(KEY_PATTERN);
+  const [path, init] = auth.authQuery.mock.calls[0];
+  expect(path).toBe("rpc/issue_api_key");
+  const sent = JSON.parse(init.body);
+  expect(sent).toMatchObject({ p_user_id: USER.id, p_token_hash: hashKey(made.token), p_hint: made.token.slice(-4), p_label: "Drop rates",
+    p_purpose: "A sheet for my guild", p_scopes: ["read:public", "read:own"] });
+  expect(init.body).not.toContain(made.token);
+  const days = (Date.parse(sent.p_expires_at) - before) / 86_400_000;
+  expect(days).toBeGreaterThan(89.99);
+  expect(days).toBeLessThan(90.01);
+  expect(made.expires_at).toBe(sent.p_expires_at);
+});
+
+test("the create form is checked on the server: a name, a purpose, scopes that exist and an allowed expiry", async () => {
+  const refused = async (body: object) => {
+    const res = await POST(call("POST", "", body));
+    expect(res.status).toBe(400);
+    return (await res.json()).error as string;
+  };
+  expect(await refused({ ...FORM, label: "  " })).toContain("name");
+  expect(await refused({ ...FORM, purpose: "\u0007 " })).toContain("what the key is for");
+  expect(await refused({ ...FORM, scopes: ["write:everything"] })).toContain("does not exist");
+  // read:own exists only while saved builds are on.
+  expect(await refused({ ...FORM, scopes: ["read:own"] })).toContain("does not exist");
+  expect(await refused({ ...FORM, expiresInDays: 3650 })).toContain("expires");
+  expect(await refused({ ...FORM, expiresInDays: undefined })).toContain("expires");
+  expect(await refused({ ...FORM, expiresInDays: undefined, expiresOn: "2020-01-01" })).toContain("after today");
+  expect(await refused({ ...FORM, expiresInDays: undefined, expiresOn: "2999-01-01" })).toContain("a year at most");
+  expect(auth.authQuery).not.toHaveBeenCalled();
+});
+
+test("a custom date makes the key work through the end of that UTC day", async () => {
+  auth.authQuery.mockResolvedValue([{ key_ref: KEY_ID, refusal: null }]);
+  const date = new Date(Date.now() + 10 * 86_400_000).toISOString().slice(0, 10);
+  expect((await POST(call("POST", "", { ...FORM, expiresInDays: undefined, expiresOn: date }))).status).toBe(201);
+  expect(JSON.parse(auth.authQuery.mock.calls[0][1].body).p_expires_at).toBe(`${date}T23:59:59.000Z`);
+});
+
+test("rolling keeps the key's settings in the database and shows the new secret once", async () => {
+  auth.authQuery.mockResolvedValue([{ key_ref: KEY_ID, key_expires_at: "2027-01-01T00:00:00+00:00", refusal: null }]);
+  const res = await POST(call("POST", `?roll=${KEY_ID}`));
+  expect(res.status).toBe(201);
+  const made = await res.json();
+  expect(made).toMatchObject({ ok: true, id: KEY_ID, expires_at: "2027-01-01T00:00:00+00:00" });
+  const [path, init] = auth.authQuery.mock.calls[0];
+  expect(path).toBe("rpc/roll_api_key");
+  // Only who, which key and the new secret's hash: name, purpose, scopes and lifetime are copied by the database.
+  expect(JSON.parse(init.body)).toEqual({ p_user_id: USER.id, p_id: KEY_ID, p_token_hash: hashKey(made.token), p_hint: made.token.slice(-4) });
+  auth.authQuery.mockResolvedValue([{ key_ref: null, key_expires_at: null, refusal: "not_found" }]);
+  expect((await POST(call("POST", `?roll=${KEY_ID}`))).status).toBe(404);
+  expect((await POST(call("POST", "?roll=nope"))).status).toBe(400);
+});
+
+test("before the expiry migration: the list is read without purpose, and the form's call says so instead of making a key", async () => {
+  const keys = [{ id: KEY_ID, hint: "abcd", label: "bot", scopes: ["read:public"], created_at: "2026-10-19T00:00:00Z", last_used_at: null, revoked_at: null, expires_at: null }];
+  auth.authQuery.mockImplementation(async (path: string) => {
+    if (path.includes(",purpose")) throw storageFailed(400);
+    if (path.startsWith("rpc/issue_api_key") || path.startsWith("rpc/roll_api_key")) throw storageFailed(404);
+    if (path.startsWith("rpc/create_api_key")) return [{ key_ref: KEY_ID, refusal: null }];
+    return keys;
+  });
+  const listed = await (await GET(call("GET"))).json();
+  expect(listed).toMatchObject({ ok: true, records: false, keys });
+  const form = await POST(call("POST", "", FORM));
+  expect(form.status).toBe(503);
+  expect((await form.json()).error).toContain("not switched on yet");
+  expect((await POST(call("POST", `?roll=${KEY_ID}`))).status).toBe(503);
+  // The older call keeps working: the Desktop App's connect page.
+  expect((await POST(call("POST", "", { label: "Everloot Desktop App" }))).status).toBe(201);
+  // Once applied, the list says so.
+  auth.authQuery.mockResolvedValue(keys.map((k) => ({ ...k, purpose: "A bot" })));
+  expect(await (await GET(call("GET"))).json()).toMatchObject({ records: true, keys: [{ purpose: "A bot" }] });
+  // Any other storage error is still an error, never a quiet fallback.
+  auth.authQuery.mockRejectedValue(storageFailed(500));
+  expect((await GET(call("GET"))).status).toBe(503);
+});
+
+test("the list offers only the scopes that exist now", async () => {
+  auth.authQuery.mockResolvedValue([]);
+  expect((await (await GET(call("GET"))).json()).scopes).toEqual(["read:public"]);
+  vi.stubEnv("EVERLOOT_SAVED_BUILDS", "1");
+  expect((await (await GET(call("GET"))).json()).scopes).toEqual(["read:public", "read:own"]);
 });
 
 test("storage trouble is a 503, never a silent success", async () => {

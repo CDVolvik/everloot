@@ -7,7 +7,9 @@ import { chatProvider, MODEL_ID, type ChatProviderKind } from "./providers";
  * sent to Everloot; a key goes only to its own provider. Clearing the site's data removes all of it.
  */
 
-export interface SavedProvider { kind: ChatProviderKind; model: string; key: string }
+/** The result of the last Test of a saved key, so the provider's card can say "Invalid last time". */
+export interface KeyCheck { ok: boolean; at: string }
+export interface SavedProvider { kind: ChatProviderKind; model: string; key: string; check?: KeyCheck }
 export interface ChatMessage {
   role: "user" | "assistant";
   text: string;
@@ -45,15 +47,20 @@ export function loadProviders(storage: Storage): SavedProvider[] {
     const p = raw as Partial<SavedProvider>;
     const preset = chatProvider(String(p.kind));
     if (!preset || typeof p.model !== "string" || !MODEL_ID.test(p.model) || typeof p.key !== "string") return [];
-    return [{ kind: preset.kind, model: p.model, key: p.key }];
+    const check = p.check && typeof p.check.ok === "boolean" && typeof p.check.at === "string" ? { check: { ok: p.check.ok, at: p.check.at } } : {};
+    return [{ kind: preset.kind, model: p.model, key: p.key, ...check }];
   });
 }
 
 /**
- * Saves a provider and puts it first. A provider already saved keeps its key when none is pasted,
- * so changing the model does not mean pasting the key again.
+ * Saves a provider and puts it first, so Chat uses it. A provider already saved keeps its key when none is
+ * pasted, so changing the model does not mean pasting the key again. With `asDefault: false` (the account page's
+ * provider cards) the default stays as it was: a provider already saved keeps its place and a new one goes last,
+ * unless it is the only one. A new key forgets the last Test's result.
  */
-export function saveProvider(storage: Storage, choice: { kind: ChatProviderKind; model: string; key?: string }): SavedProvider[] {
+export function saveProvider(
+  storage: Storage, choice: { kind: ChatProviderKind; model: string; key?: string }, { asDefault = true }: { asDefault?: boolean } = {},
+): SavedProvider[] {
   const preset = chatProvider(choice.kind);
   if (!preset) throw new Error("Pick a provider");
   const model = choice.model.trim();
@@ -63,7 +70,34 @@ export function saveProvider(storage: Storage, choice: { kind: ChatProviderKind;
   const key = (choice.key ?? "").trim() || old?.key || "";
   if (preset.keyPattern && !preset.keyPattern.test(key)) throw new Error(key ? `That does not look like the right key. ${preset.keyHint}` : `Paste the key first. ${preset.keyHint}`);
   if (key.length > 500) throw new Error("That is too long for a key");
-  const next = [{ kind: preset.kind, model, key }, ...list.filter((p) => p !== old)];
+  const entry: SavedProvider = { kind: preset.kind, model, key, ...(old?.check && old.key === key ? { check: old.check } : {}) };
+  const next = asDefault ? [entry, ...list.filter((p) => p !== old)] : old ? list.map((p) => (p === old ? entry : p)) : [...list, entry];
+  storage.setItem(PROVIDERS, JSON.stringify(next));
+  return next;
+}
+
+/** Changes a saved provider's model without changing which provider Chat uses. */
+export function setModel(storage: Storage, kind: ChatProviderKind, model: string): SavedProvider[] {
+  const list = loadProviders(storage);
+  if (!list.some((p) => p.kind === kind)) throw new Error("That provider is not saved here");
+  if (!MODEL_ID.test(model)) throw new Error("That does not look like a model id");
+  const next = list.map((p) => (p.kind === kind ? { ...p, model } : p));
+  storage.setItem(PROVIDERS, JSON.stringify(next));
+  return next;
+}
+
+/** Makes a saved provider the one Chat uses, with the model it has. */
+export function setDefault(storage: Storage, kind: ChatProviderKind): SavedProvider[] {
+  const own = loadProviders(storage).find((p) => p.kind === kind);
+  if (!own) throw new Error("That provider is not saved here");
+  return pickModel(storage, kind, own.model);
+}
+
+/** Keeps the result of a Test with the saved key, for the card's status. */
+export function recordCheck(storage: Storage, kind: ChatProviderKind, ok: boolean, at = new Date().toISOString()): SavedProvider[] {
+  const list = loadProviders(storage);
+  if (!list.some((p) => p.kind === kind)) return list;
+  const next = list.map((p) => (p.kind === kind ? { ...p, check: { ok, at } } : p));
   storage.setItem(PROVIDERS, JSON.stringify(next));
   return next;
 }
@@ -88,8 +122,8 @@ export function removeProvider(storage: Storage, kind: ChatProviderKind): SavedP
 /** Whether chat can call a model: at least one provider is saved (Ollama needs no key, the others do). */
 export const keyReady = (providers: SavedProvider[]) => providers.length > 0;
 
-/** A key as the settings list shows it: its last four characters only. */
-export const maskKey = (key: string) => (key ? `ending ${key.slice(-4)}` : "no key needed");
+/** A key as the provider's card shows it: its last four characters only. */
+export const maskKey = (key: string) => (key ? `ending ••••${key.slice(-4)}` : "no key needed");
 
 function messagesIn(list: unknown): ChatMessage[] {
   if (!Array.isArray(list)) return [];

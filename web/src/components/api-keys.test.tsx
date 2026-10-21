@@ -6,7 +6,13 @@ import ApiKeys from "./ApiKeys";
 
 let container: HTMLDivElement;
 let root: Root;
-const KEY = { id: "0b6f1c1e-3f43-4a4e-9a51-3d2a1f0c9e11", hint: "beef", label: "bot", created_at: "2026-10-19T00:00:00Z", last_used_at: null, revoked_at: null };
+const DAY = 86_400_000;
+const KEY = {
+  id: "0b6f1c1e-3f43-4a4e-9a51-3d2a1f0c9e11", hint: "beef", label: "bot", purpose: "Drop rates", scopes: ["read:public"],
+  created_at: "2026-10-19T00:00:00Z", last_used_at: null, revoked_at: null, expires_at: new Date(Date.now() + 10 * DAY - 60_000).toISOString(),
+};
+const TOKEN = `evl_${"c".repeat(64)}`;
+type Call = { url: string; method: string; body: Record<string, unknown> | null };
 
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
@@ -20,7 +26,30 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 
-const buttonNamed = (label: string) => Array.from(container.querySelectorAll("button")).find((b) => b.textContent === label);
+const buttonNamed = (label: string) => Array.from(container.querySelectorAll("button")).find((b) => b.textContent === label || b.getAttribute("aria-label") === label);
+const click = async (label: string) => act(async () => buttonNamed(label)!.click());
+const labelled = <T extends HTMLElement>(text: string) => {
+  const label = Array.from(container.querySelectorAll("label")).find((l) => l.textContent?.startsWith(text))!;
+  return (label.htmlFor ? document.getElementById(label.htmlFor) : label.querySelector("input")) as T;
+};
+function type(el: HTMLInputElement | HTMLTextAreaElement, value: string) {
+  const setter = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(el), "value")!.set!;
+  setter.call(el, value);
+  el.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+/** The keys API, mocked: GET answers `list`, POST makes a key, DELETE succeeds. Every call is kept. */
+function api(list: object, made: object = { ok: true, id: "x", token: TOKEN, hint: "cccc", expires_at: "2027-01-18T00:00:00.000Z" }) {
+  const calls: Call[] = [];
+  vi.stubGlobal("fetch", async (url: string, init?: RequestInit) => {
+    calls.push({ url, method: init?.method ?? "GET", body: init?.body ? JSON.parse(String(init.body)) : null });
+    if (init?.method === "POST") return Response.json(made, { status: 201 });
+    if (init?.method === "DELETE") return Response.json({ ok: true });
+    return Response.json(list);
+  });
+  return calls;
+}
+const ready = (over: object = {}) => ({ ok: true, keys: [KEY], limit: 5, ownScope: true, records: true, scopes: ["read:public", "read:own"], ...over });
 
 test("signed out, it offers the Battle.net sign-in", async () => {
   vi.stubGlobal("fetch", async () => Response.json({ ok: false, error: "Sign in with Battle.net to manage keys." }, { status: 401 }));
@@ -34,55 +63,141 @@ test("with the guard off, it says keys are not switched on", async () => {
   expect(container.textContent).toContain("Keys are not switched on yet");
 });
 
-test("makes a key, shows it once, and revokes one", async () => {
-  const calls: Array<[string, RequestInit | undefined]> = [];
-  let keys = [KEY];
-  vi.stubGlobal("fetch", async (url: string, init?: RequestInit) => {
-    calls.push([url, init]);
-    if (init?.method === "POST") return Response.json({ ok: true, id: "x", token: `evl_${"c".repeat(64)}`, hint: "cccc" }, { status: 201 });
-    if (init?.method === "DELETE") { keys = []; return Response.json({ ok: true }); }
-    return Response.json({ ok: true, keys, limit: 5 });
-  });
+test("the list shows each key's name, purpose, prefix, permissions, dates and days left", async () => {
+  api(ready({ keys: [{ ...KEY, scopes: ["read:own", "read:public"], last_used_at: "2026-10-20T08:00:00Z" }] }));
   await act(async () => root.render(<ApiKeys />));
-  expect(container.textContent).toContain("evl_…beef");
-  await act(async () => buttonNamed("Make a key")!.click());
-  expect(container.textContent).toContain(`evl_${"c".repeat(64)}`);
-  expect(container.textContent).toContain("not shown again");
-  await act(async () => buttonNamed("Revoke")!.click());
-  expect(calls.some(([url, init]) => init?.method === "DELETE" && url === `/api/keys?id=${KEY.id}`)).toBe(true);
-  expect(buttonNamed("Revoke")).toBeUndefined();
+  const item = container.querySelector('ul[aria-label="Your API keys"] li')!.textContent!;
+  for (const part of ["bot", "Active", "Drop rates", "evl_…beef", "Read my saved builds", "Read public data", "2026-10-19", "in 10 days", "2026-10-20"]) {
+    expect(item).toContain(part);
+  }
+  expect(container.textContent).toContain("1 of 5 active keys");
 });
 
-test("with saved builds on, a key can be made to read them, and the list says which keys can", async () => {
-  const posts: unknown[] = [];
-  vi.stubGlobal("fetch", async (_url: string, init?: RequestInit) => {
-    if (init?.method === "POST") { posts.push(JSON.parse(String(init.body))); return Response.json({ ok: true, id: "x", token: `evl_${"c".repeat(64)}`, hint: "cccc" }, { status: 201 }); }
-    return Response.json({ ok: true, keys: [{ ...KEY, scopes: ["read:public", "read:own"] }], limit: 5, ownScope: true });
-  });
+test("an expired key says so, does not count as active, and offers Roll and Delete instead of Revoke", async () => {
+  api(ready({ keys: [{ ...KEY, expires_at: "2026-10-01T00:00:00Z" }] }));
   await act(async () => root.render(<ApiKeys />));
-  expect(container.textContent).toContain("reads your saved builds");
-  const box = container.querySelector<HTMLInputElement>('input[type="checkbox"]')!;
-  expect(box.parentElement!.textContent).toContain("Read my saved builds");
-  await act(async () => box.parentElement!.click());
-  expect(box.checked).toBe(true);
-  await act(async () => buttonNamed("Make a key")!.click());
-  expect(posts).toEqual([{ label: "", builds: true }]);
+  expect(container.textContent).toContain("Expired 2026-10-01");
+  expect(container.textContent).toContain("0 of 5 active keys");
+  expect(buttonNamed("Revoke bot")).toBeUndefined();
+  expect(buttonNamed("Roll bot")).toBeDefined();
+  expect(buttonNamed("Delete bot")).toBeDefined();
 });
 
-test("without saved builds there is no such option", async () => {
-  vi.stubGlobal("fetch", async () => Response.json({ ok: true, keys: [], limit: 5 }));
+test("the create form needs a name and a purpose, and says which is missing", async () => {
+  const calls = api(ready());
   await act(async () => root.render(<ApiKeys />));
-  expect(container.querySelector('input[type="checkbox"]')).toBeNull();
+  await click("Create API key");
+  await click("Create key");
+  expect(calls.filter((c) => c.method === "POST")).toHaveLength(0);
+  const name = labelled<HTMLInputElement>("Name");
+  expect(name.getAttribute("aria-invalid")).toBe("true");
+  expect(document.getElementById(name.getAttribute("aria-describedby")!)?.textContent).toBe("Give the key a name.");
+  expect(document.activeElement).toBe(name);
+  expect(container.textContent).toContain("Say what the key is for.");
+});
+
+test("a custom date must be after today", async () => {
+  const calls = api(ready());
+  await act(async () => root.render(<ApiKeys />));
+  await click("Create API key");
+  await act(async () => { type(labelled("Name"), "Sheet"); type(labelled("What it"), "Guild sheet"); });
+  await act(async () => labelled<HTMLInputElement>("Custom date").click());
+  await act(async () => type(labelled("Last day the key works"), "2020-01-01"));
+  await click("Create key");
+  expect(container.textContent).toContain("Pick a date after today.");
+  expect(calls.filter((c) => c.method === "POST")).toHaveLength(0);
+});
+
+test("creating a key sends name, purpose, permissions and 90 days by default, then shows the key once with a copy button", async () => {
+  const calls = api(ready());
+  await act(async () => root.render(<ApiKeys />));
+  await click("Create API key");
+  expect(labelled<HTMLInputElement>("90 days").checked).toBe(true);
+  expect(container.textContent).toContain("(recommended)");
+  const always = labelled<HTMLInputElement>("Read public data");
+  expect([always.checked, always.disabled]).toEqual([true, true]);
+  await act(async () => {
+    type(labelled("Name"), "Sheet");
+    type(labelled("What it"), "Drop rates for my guild");
+  });
+  await act(async () => labelled<HTMLInputElement>("Read my saved builds").click());
+  await act(async () => labelled<HTMLInputElement>("1 year").click());
+  await click("Create key");
+  expect(calls.find((c) => c.method === "POST")).toEqual({
+    url: "/api/keys", method: "POST",
+    body: { label: "Sheet", purpose: "Drop rates for my guild", scopes: ["read:own"], expiresInDays: 365 },
+  });
+  expect(container.textContent).toContain(TOKEN);
+  expect(container.textContent).toContain("It won't be shown again.");
+  expect(container.textContent).toContain("expires on 2027-01-18");
+  // The copy button keeps all its labels in the DOM and shows one: "Copy key" first.
+  const copy = Array.from(container.querySelectorAll("button")).find((b) => b.textContent?.startsWith("Copy key"))!;
+  const written: string[] = [];
+  vi.stubGlobal("navigator", { clipboard: { writeText: async (text: string) => void written.push(text) } });
+  await act(async () => copy.click());
+  expect(written).toEqual([TOKEN]);
+  // Done hides it for good: the list never has the key itself.
+  await click("Done");
+  expect(container.textContent).not.toContain(TOKEN);
+});
+
+test("revoking asks first; Cancel leaves the key alone", async () => {
+  const calls = api(ready());
+  await act(async () => root.render(<ApiKeys />));
+  await click("Revoke bot");
+  expect(container.textContent).toContain("Anything using evl_…beef stops working at once.");
+  await click("Cancel");
+  expect(calls.some((c) => c.method === "DELETE")).toBe(false);
+  await click("Revoke bot");
+  await click("Revoke key");
+  expect(calls.some((c) => c.method === "DELETE" && c.url === `/api/keys?id=${KEY.id}`)).toBe(true);
+});
+
+test("rolling asks first, then shows the new secret once", async () => {
+  const calls = api(ready(), { ok: true, id: "y", token: TOKEN, hint: "cccc", expires_at: "2027-01-01T00:00:00.000Z" });
+  await act(async () => root.render(<ApiKeys />));
+  await click("Roll bot");
+  expect(container.textContent).toContain("same name, permissions and lifetime");
+  await click("Roll key");
+  expect(calls.find((c) => c.method === "POST")?.url).toBe(`/api/keys?roll=${KEY.id}`);
+  expect(container.textContent).toContain("New secret for bot");
+  expect(container.textContent).toContain(TOKEN);
+  expect(container.textContent).toContain("The old secret has stopped working.");
+});
+
+test("before the expiry migration: no purpose or expiry fields, no Roll, and the older call", async () => {
+  const calls = api(ready({ records: false, keys: [{ ...KEY, purpose: undefined, expires_at: null }] }));
+  await act(async () => root.render(<ApiKeys />));
+  expect(container.textContent).toContain("Never");
+  expect(buttonNamed("Roll bot")).toBeUndefined();
+  await click("Create API key");
+  expect(container.textContent).not.toContain("What it's for");
+  expect(container.textContent).not.toContain("Expires after");
+  await act(async () => type(labelled("Name"), "Desktop"));
+  await act(async () => labelled<HTMLInputElement>("Read my saved builds").click());
+  await click("Create key");
+  expect(calls.find((c) => c.method === "POST")?.body).toEqual({ label: "Desktop", builds: true });
+});
+
+test("without saved builds there is no such permission", async () => {
+  api(ready({ ownScope: false, scopes: ["read:public"], keys: [] }));
+  await act(async () => root.render(<ApiKeys />));
+  await click("Create API key");
+  expect(container.textContent).not.toContain("Read my saved builds");
+});
+
+test("at the limit, Create is off and says why", async () => {
+  api(ready({ limit: 1 }));
+  await act(async () => root.render(<ApiKeys />));
+  expect(buttonNamed("Create API key")!.disabled).toBe(true);
+  expect(container.textContent).toContain("Revoke one to make another.");
 });
 
 test("a revoked key offers Delete, which erases it", async () => {
-  const calls: string[] = [];
-  vi.stubGlobal("fetch", async (url: string, init?: RequestInit) => {
-    if (init?.method === "DELETE") { calls.push(url); return Response.json({ ok: true }); }
-    return Response.json({ ok: true, keys: [{ ...KEY, revoked_at: "2026-10-19T01:00:00Z" }], limit: 5 });
-  });
+  const calls = api(ready({ keys: [{ ...KEY, revoked_at: "2026-10-19T01:00:00Z" }] }));
   await act(async () => root.render(<ApiKeys />));
-  expect(buttonNamed("Revoke")).toBeUndefined();
-  await act(async () => buttonNamed("Delete")!.click());
-  expect(calls).toEqual([`/api/keys?id=${KEY.id}&erase=1`]);
+  expect(buttonNamed("Revoke bot")).toBeUndefined();
+  expect(buttonNamed("Roll bot")).toBeUndefined();
+  await click("Delete bot");
+  expect(calls.filter((c) => c.method === "DELETE").map((c) => c.url)).toEqual([`/api/keys?id=${KEY.id}&erase=1`]);
 });

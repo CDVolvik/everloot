@@ -150,6 +150,14 @@ test("a key with read:own reads its owner's builds; the key itself never reaches
   expect(auth.getUser).not.toHaveBeenCalled();
 });
 
+test("an expired key is a 401: the database answers unknown_key for a key past its end date (api-key-expiry.integration.mjs)", async () => {
+  auth.authQuery.mockResolvedValueOnce([{ refusal: "unknown_key", retry_after: 0, characters: null, builds: null }]);
+  const res = await GET(call("GET", undefined, { authorization: `Bearer ${KEY}` }));
+  expect(res.status).toBe(401);
+  expect(res.headers.get("www-authenticate")).toContain('error="invalid_token"');
+  expect(await res.json()).not.toHaveProperty("builds");
+});
+
 test("a key without read:own is a 403, a dead key a 401, a spent allowance a 429 with Retry-After", async () => {
   const answer = (refusal: string, retry_after = 0) => auth.authQuery.mockResolvedValueOnce([{ refusal, retry_after, characters: null, builds: null }]);
   const keyed = () => GET(call("GET", undefined, { authorization: `Bearer ${KEY}` }));

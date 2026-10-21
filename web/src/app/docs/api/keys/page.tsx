@@ -83,8 +83,8 @@ export default function KeysPage() {
             />
           </div>
           <P>
-            A key that is not valid or was revoked gets <C>401</C>. Keep keys out of web pages and public repositories: a key in
-            a browser can be read by anyone who opens it.
+            A key that is not valid, was revoked or has expired gets <C>401</C>. Keep keys out of web pages and public
+            repositories: a key in a browser can be read by anyone who opens it.
           </P>
 
           <H2 id="about-keys">About keys</H2>
@@ -94,12 +94,23 @@ export default function KeysPage() {
               bulk, so we can ask what they are building.
             </li>
             <li>
-              You can hold {KEYS_PER_ACCOUNT} keys, make up to {KEYS_MADE_PER_DAY} a day, and revoke or delete any of them below.
+              When you create a key you give it a name, say what it is for, pick its permissions and pick when it expires:
+              7, 30 or 90 days (we suggest 90), a year, or a date of your own up to a year ahead. We keep what it is for with
+              the key, so we know what keys are used for.
+            </li>
+            <li>
+              An expired key stops working on every endpoint, the same as a revoked one. Roll a key to get a new secret with
+              the same name, permissions and lifetime; the old secret stops at once.
+            </li>
+            <li>
+              You can hold {KEYS_PER_ACCOUNT} active keys, make up to {KEYS_MADE_PER_DAY} a day, and revoke or delete any of them
+              below. Expired keys do not count toward the {KEYS_PER_ACCOUNT}.
             </li>
             <li>We revoke a key that is used to republish the data without credit.</li>
             <li>
               We keep a key&apos;s daily request counts for {USAGE_KEPT_DAYS} days. A revoked key and its counts are deleted{" "}
-              {REVOKED_KEPT_DAYS} days after it was revoked, or at once when you delete it. To delete your account and everything
+              {REVOKED_KEPT_DAYS} days after it was revoked, or at once when you delete it. You can delete an expired key at
+              any time. To delete your account and everything
               tied to it, write to <a href="mailto:hello@everloot.app" className={docLink}>hello@everloot.app</a>.
             </li>
           </List>

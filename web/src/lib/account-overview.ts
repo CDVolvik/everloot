@@ -1,6 +1,6 @@
 import type { ShellCharacter } from "./account-shell-types";
 import { readProfile, toShell } from "./account-shell";
-import { keySummary } from "./api-keys";
+import { keyLive, keySummary } from "./api-keys";
 import { guardOn } from "./data-guard";
 import { DESKTOP_KEY_LABEL } from "./desktop-connect";
 import { profilesOn } from "./profiles";
@@ -17,7 +17,7 @@ export interface AccountOverview {
   characters: number | null;
   /** EVERLOOT_SAVED_BUILDS. */
   builds: number | null;
-  /** EVERLOOT_DATA_GUARD. `desktop`: a live key made by the Desktop App's connect page. */
+  /** EVERLOOT_DATA_GUARD. `live`: keys not revoked or expired. `desktop`: a live key made by the Desktop App's connect page. */
   keys: { live: number; requests: number; desktop: boolean } | null;
 }
 
@@ -45,9 +45,9 @@ export async function loadOverview(user: AccountUser, env: Record<string, string
     characters: characters && characters.length,
     builds: buildRows && buildRows.length,
     keys: keys && {
-      live: keys.keys.filter((k) => !k.revoked_at).length,
+      live: keys.keys.filter((k) => keyLive(k)).length,
       requests: keys.requests,
-      desktop: keys.keys.some((k) => !k.revoked_at && k.label === DESKTOP_KEY_LABEL),
+      desktop: keys.keys.some((k) => keyLive(k) && k.label === DESKTOP_KEY_LABEL),
     },
   };
 }
