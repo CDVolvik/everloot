@@ -9,11 +9,11 @@ test("legacy target guesses are retained elsewhere but excluded from source roll
 });
 
 test("player and unknown positions can agree on NPC names without becoming spawn pins", () => {
-  for (const positionKind of [undefined, "player", "npc", "interaction", "nearby"]) {
+  for (const positionKind of [undefined, "player", "npc", "interaction", "vignette", "nearby"]) {
     const rows = ["a", "b", "c"].map(installId => ({
       kind: "npc_sighting", installId, npcId: 42, name: "Hogger", mapId: 12, x: 40, y: 20, positionKind,
     }));
-    const pinned = positionKind === "npc" || positionKind === "interaction";
+    const pinned = positionKind === "npc" || positionKind === "interaction" || positionKind === "vignette";
     const page = npcPage(42, worldFactsFromRecords(rows));
     expect(page.name).toBe("Hogger");
     expect(page.pins).toHaveLength(pinned ? 1 : 0);

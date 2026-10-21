@@ -24,6 +24,7 @@ import { CategoryPage, categoryMetadata } from "../category-page";
 import { itemIndexable } from "@/lib/indexable";
 import { entityTitle, itemDescription } from "@/lib/entity-meta";
 import { MarketBox, loadMarketBox } from "@/app/tools/auctions/MarketBox";
+import { pendingLine } from "../../../../../../kb/src/pending-loot";
 import { EmptyTab, EntityHeader, EntityIcon, EntityTop, FREQUENCY, known, LINK, percent, Unreachable } from "../../entity";
 import { itemSummary } from "@/lib/evidence";
 
@@ -166,8 +167,12 @@ export default async function ItemPage(props: Props) {
     {
       id: "dropped-by", label: "Dropped by", count: facts.unreachable ? undefined : page.drops.length,
       panel: facts.unreachable ? <Unreachable />
-        : page.drops.length ? <DataTable dense caption={`Where ${title} drops`} columns={dropColumns} rows={page.drops} rowKey={(d) => d.source} />
-        : <EmptyTab message="Nobody has looted this in Forever yet." />,
+        : <>
+          {page.drops.length ? <DataTable dense caption={`Where ${title} drops`} columns={dropColumns} rows={page.drops} rowKey={(d) => d.source} />
+            : <EmptyTab message="Nobody has looted this in Forever yet." />}
+          {/* Reported windows the rates leave out: a count, never a rate. */}
+          {page.pendingLoot && <p className="py-2 text-meta text-fg-2">{pendingLine(page.pendingLoot, true)}</p>}
+        </>,
     },
     relationTab("sold-by", "Sold by", "sold_by", "Vendor", "No vendor seen selling this yet."),
     relationTab("created-by", "Created by", "created_by", "Recipe", "No recipe makes this.", PROFESSIONS),

@@ -7,26 +7,29 @@ import { CLIENT_BUILD, type UploadSource } from "@everloot/protocol";
  * `WTF/Account/<account>/SavedVariables/Polestar_Recorder.lua` once a player turns it on. Everloot reads that file's
  * format (schema 1) with its own parser (`parsePolestarTable` in sv-parse.ts) and copies none of the addon's code.
  * Each session (one login) is converted on its own and sent as its own upload, under one install id per character.
- * Every position in the file is where the player stood. What is kept:
+ * Positions in the file are where the player stood, except a vignette's, which is the rare's or the object's own.
+ * What is kept:
  * - An NPC's window (a quest given or turned in, a gossip window offering quests, a vendor, a trainer, a flight
  *   master): `npc_sighting` with positionKind `interaction`, the player a few yards from the NPC.
  * - A rare the player saw on its nameplate, target or mouseover, and an NPC the player killed: `npc_sighting` with
- *   positionKind `player`, which is never a pin.
+ *   positionKind `player`, which is never a pin. A rare seen through a minimap vignette: `npc_sighting` with
+ *   positionKind `vignette`, the rare's own position from the game's vignette API. Each keeps its level and rank.
+ * - Zoning into a dungeon or raid (`enter`) with the last position outside: `instance_entrance`.
+ * - A boss encounter's end (`encounter`) inside an instance: `encounter`, with its result and boss ids.
+ * - A treasure seen through a minimap vignette (`treasure`): `object_sighting`, the object's own position.
  * - A quest accepted, joined to its turn-in in the same session: `quest`.
  * - A loot window with items: `loot`. The file does not say whether the loot API named the source, so there is no
  *   `sourceEvidence`, and public drop rates leave these windows out.
  * Every other event kind is counted as skipped, among them `step` (Polestar's own guide text), `progress` (quest
- * objective text), `kill` (`slain` records the same deaths with the unit's own name), `pos`, `enter` and `treasure`.
- * A rare seen through a minimap vignette is skipped too: its position is the vignette's, not the player's, and no
- * kind here says so yet. The file records neither an NPC's level at its window nor any NPC's reaction, so those are
- * left out, never guessed. Character names and realms, session keys, notes and the rest of the file never leave
- * this module: a character becomes an HMAC under a random key kept in this browser, which the server hashes again
- * under its own key.
+ * objective text), `kill` (`slain` records the same deaths with the unit's own name) and `pos`. The file records
+ * neither an NPC's level at its window nor any NPC's reaction, so those are left out, never guessed. Character
+ * names and realms, session keys, notes and the rest of the file never leave this module: a character becomes an
+ * HMAC under a random key kept in this browser, which the server hashes again under its own key.
  */
 
 export const RECORDER_SOURCE: UploadSource = "polestar_recorder";
 /** The record kinds a Recorder upload may carry. Intake refuses any other in one. */
-export const RECORDER_KINDS: readonly string[] = ["npc_sighting", "quest", "loot"];
+export const RECORDER_KINDS: readonly string[] = ["npc_sighting", "quest", "loot", "instance_entrance", "encounter", "object_sighting"];
 /** The install id the browser sends: a hash of the character, never its name. The server replaces it. */
 export const RECORDER_CHARACTER = /^polestar-[0-9a-f]{40}$/;
 /** The `addonVersion` of a converted file's envelope. */
@@ -94,7 +97,10 @@ const WINDOWS: Record<string, string | undefined> = { accept: "questgiver", turn
 const RARE_SOURCES = new Set(["nameplate", "target", "mouseover"]);
 /** A skinning window has no Everloot kind: as an NPC's it is not the NPC's drop, and it is skipped. */
 const GATHER: Record<string, string> = { herb: "herb", mine: "ore" };
-const READ = new Set([...Object.keys(WINDOWS), "rare", "slain", "drop"]);
+const READ = new Set([...Object.keys(WINDOWS), "rare", "slain", "drop", "enter", "encounter", "treasure"]);
+/** `GetInstanceInfo`'s instance types for a dungeon and a raid, the only ones the Recorder writes an `enter` for. */
+const INSTANCE_TYPES = new Set(["party", "raid"]);
+const small = (v: unknown, max: number): number | undefined => (typeof v === "number" && Number.isInteger(v) && v >= 0 && v <= max ? v : undefined);
 
 /** Where this browser keeps its random key for character ids. It never leaves the browser. */
 export const RECORDER_KEY_STORAGE = "everloot.recorder-key";
@@ -134,11 +140,12 @@ function convertSession(started: number, faction: unknown, events: Row[], skippe
   const sightings = new Map<string, Row>();
   const quests = new Map<number, { accept?: Row; turnin?: Row; eventId?: string; capturedAt?: string }>();
   const loot: Row[] = [];
+  const rows: Row[] = [];
+  const entered = new Set<string>();
   events.forEach((ev, index) => {
     const kind = typeof ev.e === "string" ? ev.e : "unknown";
-    if (!READ.has(kind) || (kind === "rare" && !RARE_SOURCES.has(String(ev.src)))) {
-      const label = kind === "rare" ? "rare (vignette)" : kind;
-      skipped[label] = (skipped[label] ?? 0) + 1;
+    if (!READ.has(kind) || (kind === "rare" && ev.src !== "vignette" && !RARE_SOURCES.has(String(ev.src)))) {
+      skipped[kind] = (skipped[kind] ?? 0) + 1;
       return;
     }
     const t = typeof ev.t === "number" && Number.isFinite(ev.t) && ev.t >= 0 ? ev.t : null;
@@ -147,7 +154,7 @@ function convertSession(started: number, faction: unknown, events: Row[], skippe
     // The session's start, the event's place in it and the kind made: the same file sent again makes the same ids,
     // and the session key, which holds the character's name, is never part of one.
     const eventId = (made: string) => `ps:${started}:${index + 1}:${made}`;
-    const sighting = (positionKind: "interaction" | "player", role?: string, extra: Row = {}) => {
+    const sighting = (positionKind: "interaction" | "player" | "vignette", role?: string, extra: Row = {}) => {
       const npcId = id(ev.npc), name = text(ev.npcName, 120), at = position(ev);
       if (!npcId || !name || !at) return;
       // One row per NPC, kind of position, role and map, as the Everloot addon keeps them.
@@ -167,10 +174,34 @@ function convertSession(started: number, faction: unknown, events: Row[], skippe
     } else if (kind === "slain" || kind === "rare") {
       const level = typeof ev.npcLvl === "number" && Number.isInteger(ev.npcLvl) && ev.npcLvl >= 1 && ev.npcLvl <= 100 ? ev.npcLvl : undefined;
       const rank = typeof ev.cls === "string" ? RANKS[ev.cls] : undefined;
-      sighting("player", undefined, { ...(level ? { level } : {}), ...(rank ? { rank } : {}) });
+      // A vignette gives the rare's own position; every other source, where the player stood.
+      sighting(kind === "rare" && ev.src === "vignette" ? "vignette" : "player", undefined, { ...(level ? { level } : {}), ...(rank ? { rank } : {}) });
     } else if (kind === "drop") {
       const row = lootRow(ev);
       if (row) loot.push({ kind: "loot", eventId: eventId("loot"), capturedAt, ...row });
+    } else if (kind === "enter") {
+      const instanceMapId = id(ev.inst), name = text(ev.instName, 120), at = position(ev);
+      // Without a position outside (a login inside the instance) there is no entrance to report.
+      if (!instanceMapId || !name || !INSTANCE_TYPES.has(String(ev.instType)) || !at) return;
+      const key = `enter|${instanceMapId}|${at.mapId}`;
+      if (entered.has(key)) return;
+      entered.add(key);
+      const difficulty = small(ev.diff, 255);
+      rows.push({ kind: "instance_entrance", eventId: eventId("instance_entrance"), capturedAt, instanceMapId, name, instanceType: ev.instType, ...(difficulty !== undefined ? { difficulty } : {}), ...at });
+    } else if (kind === "encounter") {
+      const encounterId = id(ev.enc), name = text(ev.encName, 120), instanceMapId = id(ev.inst);
+      if (!encounterId || !name || !instanceMapId || typeof ev.ok !== "boolean") return;
+      const difficulty = small(ev.diff, 255), size = small(ev.size, 40);
+      const npcIds = [...new Set(list(ev.npcs).map(id).filter((n): n is number => n !== null))].slice(0, 40);
+      rows.push({
+        kind: "encounter", eventId: eventId("encounter"), capturedAt, encounterId, name, instanceMapId, success: ev.ok,
+        ...(difficulty !== undefined ? { difficulty } : {}), ...(size ? { size } : {}), ...(npcIds.length ? { npcIds } : {}),
+      });
+    } else if (kind === "treasure") {
+      // The Recorder takes a treasure's position from its vignette: the object's own, never the player's.
+      const objectId = id(ev.object), name = text(ev.objName, 120), at = position(ev), instanceMapId = id(ev.inst);
+      if (ev.src !== "vignette" || !objectId || !name || !at) return;
+      rows.push({ kind: "object_sighting", eventId: eventId("object_sighting"), capturedAt, objectId, name, ...at, ...(instanceMapId ? { instanceMapId } : {}) });
     }
   });
   const questRows: Row[] = [];
@@ -189,7 +220,7 @@ function convertSession(started: number, faction: unknown, events: Row[], skippe
       ...(faction === "Alliance" || faction === "Horde" ? { faction: faction.toLowerCase() } : {}),
     });
   }
-  return [...sightings.values(), ...questRows, ...loot];
+  return [...sightings.values(), ...questRows, ...loot, ...rows];
 }
 
 /** A loot window with items, as Everloot's loot row, or null. */

@@ -36,6 +36,19 @@ PolestarRecorderDB = {
         { ["t"] = 90, ["e"] = "teleport", ["weird"] = true },
         { ["t"] = 95, ["e"] = "progress", ["q"] = 7, ["oi"] = 1, ["text"] = "Kobold Vermin slain: 1/8", ["cur"] = 1, ["max"] = 8 },
         { ["t"] = 96, ["e"] = "kill", ["npc"] = 6, ["npcName"] = "Kobold Vermin", ["map"] = 1429, ["x"] = 47, ["y"] = 38 },
+        { ["t"] = 100, ["e"] = "slain", ["npc"] = 474, ["npcName"] = "Defias Rogue Wizard", ["cls"] = "elite", ["npcLvl"] = 9, ["map"] = 1429, ["x"] = 40, ["y"] = 80 },
+        { ["t"] = 101, ["e"] = "slain", ["npc"] = 99, ["npcName"] = "Morgaine the Sly", ["cls"] = "rare", ["npcLvl"] = 10, ["map"] = 1429, ["x"] = 30, ["y"] = 80 },
+        { ["t"] = 102, ["e"] = "slain", ["npc"] = 6109, ["npcName"] = "Azuregos", ["cls"] = "worldboss", ["map"] = 1447, ["x"] = 50, ["y"] = 80 },
+        { ["t"] = 103, ["e"] = "slain", ["npc"] = 2442, ["npcName"] = "Cow", ["cls"] = "minus", ["npcLvl"] = 1, ["map"] = 1429, ["x"] = 33, ["y"] = 44 },
+        { ["t"] = 104, ["e"] = "rare", ["npc"] = 100, ["npcName"] = "Gruff Swiftbite", ["cls"] = "rare", ["src"] = "radar", ["map"] = 1429, ["x"] = 20, ["y"] = 20 },
+        { ["t"] = 110, ["e"] = "enter", ["inst"] = 36, ["instName"] = "Deadmines", ["instType"] = "party", ["diff"] = 1, ["map"] = 1436, ["x"] = 42.55, ["y"] = 71.68 },
+        { ["t"] = 111, ["e"] = "enter", ["inst"] = 36, ["instName"] = "Deadmines", ["instType"] = "party", ["diff"] = 1, ["map"] = 1436, ["x"] = 42.6, ["y"] = 71.7 },
+        { ["t"] = 112, ["e"] = "enter", ["inst"] = 34, ["instName"] = "The Stockade", ["instType"] = "party" },
+        { ["t"] = 120, ["e"] = "encounter", ["enc"] = 1144, ["encName"] = "Edwin VanCleef", ["diff"] = 1, ["size"] = 5, ["ok"] = true, ["inst"] = 36, ["npcs"] = { 639 }, ["map"] = 1581, ["x"] = 1, ["y"] = 1 },
+        { ["t"] = 121, ["e"] = "encounter", ["enc"] = 1145, ["encName"] = "Cookie", ["ok"] = false, ["inst"] = 36 },
+        { ["t"] = 122, ["e"] = "encounter", ["enc"] = 1146, ["encName"] = "Outdoors", ["ok"] = true },
+        { ["t"] = 130, ["e"] = "treasure", ["object"] = 2843, ["objName"] = "Battered Chest", ["src"] = "vignette", ["map"] = 1436, ["x"] = 30.12, ["y"] = 50.2 },
+        { ["t"] = 131, ["e"] = "treasure", ["object"] = 2844, ["src"] = "vignette", ["map"] = 1436, ["x"] = 31, ["y"] = 51 },
       },
       ["maps"] = { [1429] = { ["name"] = "Elwynn Forest", ["type"] = 3, ["parent"] = 1415 } },
       ["counts"] = {}, ["dropped"] = { ["pos"] = 12 },
@@ -91,11 +104,41 @@ describe("convertRecorder", () => {
     expect(sightings.every((r) => !("level" in r) && !("reaction" in r))).toBe(true);
   });
 
-  test("kills and rares seen on the unit are the player's position; a vignette rare is skipped", async () => {
+  test("kills and rares seen on the unit are the player's position, with every rank mapped", async () => {
     const player = (await rowsOf()).filter((r) => r.kind === "npc_sighting" && r.positionKind === "player");
-    expect(player.map((r) => [r.npcId, r.level, r.rank])).toEqual([[6, 2, "normal"], [61, 11, "rare_elite"]]);
+    expect(player.map((r) => [r.npcId, r.level, r.rank])).toEqual([
+      [6, 2, "normal"], [61, 11, "rare_elite"], [474, 9, "elite"], [99, 10, "rare"], [6109, undefined, "boss"], [2442, 1, undefined],
+    ]);
     expect(player.find((r) => r.npcId === 61)).toMatchObject({ x: 89, y: 79 });
+    expect(player.find((r) => r.npcId === 2442)).not.toHaveProperty("rank");
     expect((await rowsOf()).some((r) => r.positionKind === "npc")).toBe(false);
+  });
+
+  test("a rare seen through a vignette is its own position, with its level and rank; another source is skipped", async () => {
+    const vignette = (await rowsOf()).filter((r) => r.kind === "npc_sighting" && r.positionKind === "vignette");
+    expect(vignette).toEqual([expect.objectContaining({ npcId: 61, name: "Thuros Lightfingers", mapId: 1429, x: 90, y: 80, level: 11, rank: "rare_elite" })]);
+    expect((await rowsOf()).some((r) => r.npcId === 100)).toBe(false);
+  });
+
+  test("zoning in is an entrance at the last position outside, once per instance and map; no position, no entrance", async () => {
+    const entrances = (await rowsOf()).filter((r) => r.kind === "instance_entrance");
+    expect(entrances).toEqual([expect.objectContaining({ instanceMapId: 36, name: "Deadmines", instanceType: "party", difficulty: 1, mapId: 1436, x: 42.55, y: 71.68 })]);
+  });
+
+  test("an encounter in an instance keeps its result and boss ids; one outside an instance is left out", async () => {
+    const encounters = (await rowsOf()).filter((r) => r.kind === "encounter");
+    expect(encounters).toEqual([
+      { installId: expect.any(String), kind: "encounter", eventId: expect.stringMatching(/:encounter$/), capturedAt: expect.any(String), encounterId: 1144, name: "Edwin VanCleef", instanceMapId: 36, success: true, difficulty: 1, size: 5, npcIds: [639] },
+      expect.objectContaining({ encounterId: 1145, success: false }),
+    ]);
+    expect(encounters[1]).not.toHaveProperty("npcIds");
+    expect(encounters[1]).not.toHaveProperty("difficulty");
+  });
+
+  test("a treasure is an object sighting at the object's own position; one without a name is left out", async () => {
+    const objects = (await rowsOf()).filter((r) => r.kind === "object_sighting");
+    expect(objects).toEqual([expect.objectContaining({ objectId: 2843, name: "Battered Chest", mapId: 1436, x: 30.12, y: 50.2 })]);
+    expect(objects[0]).not.toHaveProperty("instanceMapId");
   });
 
   test("a quest joins its accept and turn-in within the session", async () => {
@@ -170,7 +213,7 @@ describe("convertRecorder", () => {
   test("the preview counts skipped kinds, sessions of another schema and the Recorder's own caps", async () => {
     const { recorder } = await convert();
     expect(recorder).toMatchObject({ characters: 2, sessions: 3, unread: 1, capped: { pos: 12 } });
-    expect(recorder.skipped).toEqual({ zone: 1, mark: 1, step: 1, teleport: 1, progress: 1, kill: 1, "rare (vignette)": 1 });
+    expect(recorder.skipped).toEqual({ zone: 1, mark: 1, step: 1, teleport: 1, progress: 1, kill: 1, rare: 1 });
   });
 
   test("a file of another schema is refused; an empty or nil file converts to nothing", async () => {

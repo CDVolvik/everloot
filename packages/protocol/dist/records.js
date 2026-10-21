@@ -56,7 +56,7 @@ export const npcSighting = base.extend({
     y: z.number().min(0).max(100),
     level: z.number().int().min(1).max(100).optional().describe("The NPC's level. Absent when the source did not record it, as in a converted Polestar Recorder file."),
     reaction: z.enum(["friendly", "neutral", "hostile"]).optional().describe("How the NPC stood toward the player. Absent when the source did not record it, as in a converted Polestar Recorder file."),
-    positionKind: z.enum(["player", "npc", "interaction"]).optional().describe("Whose coordinates were measured; legacy unknown positions never become spawn pins. `interaction` is the player's position while the NPC's window was open, a few yards from the NPC."),
+    positionKind: z.enum(["player", "npc", "interaction", "vignette"]).optional().describe("Whose coordinates were measured; legacy unknown positions never become spawn pins. `interaction` is the player's position while the NPC's window was open, a few yards from the NPC. `vignette` is the NPC's own position, as the game's vignette API gave it for a rare on the minimap."),
     role: z.enum(NPC_ROLES).optional().describe("With `interaction`: the window that opened (`NPC_ROLES`). Absent for a gossip window that names no service and from older addons."),
     creatureType: z.enum(NPC_CREATURE_TYPES).optional().describe("The creature type the game shows, as `UnitCreatureType` reports it in English. Older addons send none."),
     rank: z.enum(NPC_RANKS).optional().describe("`UnitClassification`: normal, elite, rare, rare_elite or boss (`worldboss`). Older addons send none."),
@@ -89,6 +89,42 @@ export const questEvent = base.extend({
     faction: z.enum(["alliance", "horde"]).optional().describe("The faction of the character that accepted it. Never the character's name."),
     suggestedGroup: z.number().int().min(2).max(40).optional().describe("The suggested group size the quest log shows; absent for a solo quest."),
     tag: z.enum(QUEST_TAGS).optional().describe("The quest tag the game reports, when it reports one."),
+});
+/** The instance kinds `GetInstanceInfo` reports for a dungeon (`party`) and a raid. */
+export const INSTANCE_TYPES = ["party", "raid"];
+const INSTANCE_MAP_ID = z.number().int().positive().describe("The instance's map id, the 8th return of `GetInstanceInfo`: a map, not a UiMap.");
+const DIFFICULTY = z.number().int().nonnegative().max(255).optional().describe("The difficulty id `GetInstanceInfo` reports. Absent when the source did not record it.");
+/** Zoning into a dungeon or raid, with the last position outside it: the entrance. */
+export const instanceEntrance = base.extend({
+    kind: z.literal("instance_entrance"),
+    instanceMapId: INSTANCE_MAP_ID,
+    name: z.string().min(1).max(120).describe("The instance's name as the game showed it, in the client's language. Public only when 3 installs agree on it."),
+    instanceType: z.enum(INSTANCE_TYPES),
+    difficulty: DIFFICULTY,
+    mapId: z.number().int().nonnegative().describe("The UiMap the player stood on last before zoning in."),
+    x: z.number().min(0).max(100).describe("The player's x there, 0 to 100."),
+    y: z.number().min(0).max(100).describe("The player's y there, 0 to 100."),
+});
+/** A boss encounter's end, as `ENCOUNTER_END` reports it. */
+export const encounterEnd = base.extend({
+    kind: z.literal("encounter"),
+    encounterId: z.number().int().positive(),
+    name: z.string().min(1).max(120).describe("The encounter's name in the client's language. Public only when 3 installs agree on it."),
+    instanceMapId: INSTANCE_MAP_ID,
+    difficulty: DIFFICULTY,
+    size: z.number().int().min(1).max(40).optional().describe("The group size the encounter reports."),
+    success: z.boolean().describe("True for a kill, false for a wipe."),
+    npcIds: z.array(z.number().int().positive()).max(40).optional().describe("The bosses' creature ids the client listed for the encounter, or the creatures that died in it. Absent when there were none."),
+});
+/** A game object the game's vignette API showed on the minimap, such as a treasure chest, at its own position. */
+export const objectSighting = base.extend({
+    kind: z.literal("object_sighting"),
+    objectId: z.number().int().positive(),
+    name: z.string().min(1).max(120).describe("The object's name in the client's language. Public only when 3 installs agree on it."),
+    mapId: z.number().int().nonnegative(),
+    x: z.number().min(0).max(100).describe("The object's own x on that map, 0 to 100, from the vignette: not the player's."),
+    y: z.number().min(0).max(100).describe("The object's own y on that map, 0 to 100."),
+    instanceMapId: INSTANCE_MAP_ID.optional(),
 });
 export const vendorList = base.extend({
     kind: z.literal("vendor"),
@@ -531,6 +567,9 @@ export const recordSchemas = {
     quest: questEvent,
     vendor: vendorList,
     item_seen: itemSeen,
+    instance_entrance: instanceEntrance,
+    encounter: encounterEnd,
+    object_sighting: objectSighting,
     guild_snapshot: guildSnapshot,
     raid_lockout: raidLockout,
     attendance,
@@ -572,6 +611,8 @@ const PUBLIC_KIND_LIST = [
     "npc_sighting", "loot", "quest", "vendor", "item_seen", "guild_snapshot", "raid_lockout", "attendance",
     "loot_award", "gear_snapshot", "collection_catalog", "collection_owned", "auction_scan", "recipe_seen",
     "price_seen", "recipe_observed", "trainer_seen", "gold_snapshot", "money_event", "map_bounds",
+    // Open-world facts like npc_sighting: anonymous rows, each shown on a page only once 3 installs agree.
+    "instance_entrance", "encounter", "object_sighting",
     // The eight completion kinds are deliberately absent. Catalog rows reflect one character's visible factions
     // and quest lines under a per-install event id, so they are never served raw: pages and MCP show an entry
     // only when 3 installs reported it identically. Owned rows are shown only to a granted owner. Both come
@@ -582,7 +623,7 @@ const PUBLIC_KIND_LIST = [
 ];
 export const PUBLIC_RECORD_KINDS = PUBLIC_KIND_LIST;
 export const anyRecord = z.discriminatedUnion("kind", [
-    npcSighting, lootWindow, questEvent, vendorList, itemSeen,
+    npcSighting, lootWindow, questEvent, vendorList, itemSeen, instanceEntrance, encounterEnd, objectSighting,
     guildSnapshot, raidLockout, attendance, lootAward, gearSnapshot,
     collectionCatalog, collectionOwned, achievementCatalog, reputationCatalog, titleCatalog, questChainCatalog,
     achievementOwned, reputationOwned, titleOwned, questOwned, auctionScan, auctionSnapshot, recipeSeen, priceSeen, recipeObserved, trainerSeen,

@@ -10,13 +10,15 @@ import {
 import { GAME_NAME_TITLE } from "@/components/EntityRelations";
 import { loadQuestNames, loadSiteAssets } from "@/lib/game-assets";
 import { CLIENT_LAYER } from "@/lib/items";
-import { loadWorldFacts } from "@/lib/rollup-compute";
+import { loadInstanceFacts, loadItemFacts, loadWorldFacts } from "@/lib/rollup-compute";
+import { objectNames } from "@/lib/names";
+import { bossLabel } from "../../../../../../kb/src/instances";
 import { pageMetadata } from "@/lib/seo";
 import { STORAGE_UNREACHABLE } from "@/lib/upload-store";
 import { WORLD_MAP } from "@/lib/world-map";
 import {
   hasContent, parseZoneSegment, zoneByMapId, zoneContents, zoneHref, zoneMapHref,
-  type ZoneEntrance, type ZoneNpc, type ZoneQuest,
+  type ZoneEntrance, type ZoneNpc, type ZoneQuest, type ZoneSightings, type ZoneTreasure,
 } from "@/lib/zones";
 import { zoneLore } from "@/lib/zone-lore";
 
@@ -25,6 +27,13 @@ export const dynamic = "force-dynamic";
 type Props = { params: Promise<{ zone: string }> };
 
 const link = "text-accent hover:underline underline-offset-4";
+
+/** What players' clients saw of dungeons and treasures, with the agreed object names; nothing when storage is down. */
+async function loadSightings(): Promise<ZoneSightings> {
+  const [instances, items] = await Promise.all([loadInstanceFacts(), loadItemFacts()]);
+  if (instances.unreachable || items.unreachable) return {};
+  return { instances, sightings: instances.sightings, objectNames: objectNames(items) };
+}
 
 /** Resolves the segment to a released zone, or null; a held-back zone is the same as one that does not exist. */
 function find(segment: string) {
@@ -36,8 +45,8 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   const { zone: segment } = await props.params;
   const zone = find(segment);
   if (!zone) return { robots: { index: false, follow: true } };
-  const facts = await loadWorldFacts();
-  const here = facts.unreachable ? undefined : zoneContents(facts).get(zone.mapId);
+  const [facts, seen] = await Promise.all([loadWorldFacts(), loadSightings()]);
+  const here = facts.unreachable ? undefined : zoneContents(facts, undefined, seen).get(zone.mapId);
   // Indexed once there is something on it (a player-confirmed NPC or quest, or an entrance), and as the sitemap lists it.
   // Storage down: noindex rather than cache a thin page.
   const indexable = !facts.unreachable && hasContent(here);
@@ -60,9 +69,9 @@ export default async function ZonePage(props: Props) {
   const canonical = zoneHref(zone.mapId, zone.name);
   if (`/database/zones/${segment}` !== canonical) permanentRedirect(canonical);
 
-  const facts = await loadWorldFacts();
+  const [facts, seen] = await Promise.all([loadWorldFacts(), loadSightings()]);
   // Entrances come from the game files, so they show even when storage is down; player reports do not.
-  const here = zoneContents(facts.unreachable ? { npcs: [], quests: [], vendors: [] } : facts).get(zone.mapId);
+  const here = zoneContents(facts.unreachable ? { npcs: [], quests: [], vendors: [] } : facts, undefined, facts.unreachable ? {} : seen).get(zone.mapId);
   const lore = zoneLore(zone.name);
   const shape = WORLD_MAP.zones.find((z) => z.uiMapId === zone.mapId)!;
   const assets = await loadSiteAssets();
@@ -73,6 +82,7 @@ export default async function ZonePage(props: Props) {
   const quests = here?.quests ?? [];
   const wikiTitles = quests.some((q) => !q.title) ? await loadQuestNames(CLIENT_LAYER.build.version) : null;
   const entrances = here?.entrances ?? [];
+  const treasures = here?.treasures ?? [];
   const nameOf = (n: ZoneNpc) => n.name ?? `NPC ${n.npcId}`;
   const empty = (message: string) => <EmptyState message={message} framed={false} />;
 
@@ -100,15 +110,26 @@ export default async function ZonePage(props: Props) {
     { key: "name", header: "Name", cell: (e) => e.names.join(", ") },
     { key: "kind", header: "Type", cell: (e) => <Badge tone="neutral">{e.raid ? "Raid" : "Dungeon"}</Badge> },
     { key: "at", header: "Entrance", numeric: true, cell: (e) => position(e.x, e.y) },
-    { key: "src", header: "Source", cell: () => <Badge tone="files" /> },
+    { key: "bosses", header: "Bosses", cell: (e) => (e.bosses.length ? e.bosses.map(bossLabel).join(", ") : "–") },
+    { key: "src", header: "Source", cell: (e) => (
+      <span className="inline-flex flex-wrap items-center gap-1">
+        {e.files && <Badge tone="files" />}
+        {e.confirmed !== null && <Badge tone="confirmed">Confirmed by {e.confirmed} installs</Badge>}
+      </span>
+    ) },
+  ];
+  const treasureColumns: Column<ZoneTreasure>[] = [
+    { key: "name", header: "Name", cell: (t) => <Link href={`/database/objects/${t.objectId}`} className={link}>{t.name ?? `Object ${t.objectId}`}</Link> },
+    { key: "at", header: "Position", numeric: true, cell: (t) => position(t.x, t.y) },
+    { key: "installs", header: "Installs", cell: (t) => <AgreementMeter count={t.reporters} /> },
   ];
 
   const all: TabItem[] = [
     { id: "npcs", label: "NPCs", count: npcs.length, panel: <DataTable dense caption={`NPCs players placed in ${zone.name}`} columns={npcColumns("npcs")} rows={npcs} rowKey={(n) => String(n.npcId)} empty={empty("No NPC has a confirmed position here yet. A pin needs 3 installs on the same map.")} /> },
     { id: "vendors", label: "Vendors", count: vendors.length, panel: <DataTable dense caption={`Vendors players placed in ${zone.name}`} columns={npcColumns("vendors")} rows={vendors} rowKey={(n) => String(n.npcId)} empty={empty("No vendor here has prices 3 installs agree on yet.")} /> },
     { id: "quests", label: "Quests", count: quests.length, panel: <DataTable dense caption={`Quests given or turned in at confirmed NPCs in ${zone.name}`} columns={questColumns} rows={quests} rowKey={(q) => String(q.questId)} empty={empty("No quest has a confirmed giver or turn-in here yet.")} /> },
-    { id: "dungeons", label: "Dungeons and raids", count: entrances.length, panel: <DataTable dense caption={`Dungeon and raid entrances in ${zone.name}`} columns={entranceColumns} rows={entrances} rowKey={(e) => e.names.join("|")} empty={<p className="px-4 py-8 text-fg-2 sm:px-6">No dungeon or raid is entered from this zone.</p>} /> },
-    { id: "objects", label: "Objects", count: 0, panel: <EmptyState message="Chests, herbs and ore veins have no position in what players have reported yet, so none can be placed in a zone." framed={false} /> },
+    { id: "dungeons", label: "Dungeons and raids", count: entrances.length, panel: <DataTable dense caption={`Dungeon and raid entrances in ${zone.name}`} columns={entranceColumns} rows={entrances} rowKey={(e) => `${e.names.join("|")}-${e.x}-${e.y}`} empty={<p className="px-4 py-8 text-fg-2 sm:px-6">No dungeon or raid is entered from this zone.</p>} /> },
+    { id: "objects", label: "Objects", count: treasures.length, panel: <DataTable dense caption={`Treasures players saw on the minimap in ${zone.name}`} columns={treasureColumns} rows={treasures} rowKey={(t) => `${t.objectId}-${t.x}-${t.y}`} empty={empty("No treasure has a confirmed position here yet. A pin needs 3 installs at the same spot.")} /> },
   ];
   // Storage down: an empty list would read as "nobody has seen anything", so only the game-file list stays.
   const tabs = facts.unreachable ? all.filter((t) => t.id === "dungeons") : all;
@@ -155,7 +176,7 @@ export default async function ZonePage(props: Props) {
           )}
 
           <section aria-labelledby="known">
-            <SectionHeading id="known" note="Positions and quests are public once 3 installs agree. Entrances are read from the game files.">
+            <SectionHeading id="known" note="Positions, quests, bosses and treasures are public once 3 installs agree. Entrances are read from the game files and confirmed once 3 installs zoned in.">
               What we know here
             </SectionHeading>
             <Tabs label={`Known in ${zone.name}`} tabs={tabs} />

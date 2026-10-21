@@ -126,16 +126,23 @@ export const itemDrop = z.object({
   reporters: z.number().int(),
 });
 export const mapPin = z.object({ npcId: z.number().int(), name: z.string().nullable(), mapId: z.number().int(), x: z.number(), y: z.number(), reporters: z.number().int() });
+/** Loot windows players reported that the public rates do not count yet. A count, never a rate. */
+export const pendingLoot = z.object({
+  windows: z.number().int().describe("Reported loot windows not yet in the rates."),
+  reporters: z.number().int().describe("Distinct reporters behind those windows."),
+}).describe("Loot windows reported but not yet in the rates. Absent when there are none.");
 export const itemPage = z.object({
   itemId: z.number().int(),
   name: z.string().nullable().describe("Null until 3 installs report the same name."),
   drops: z.array(itemDrop),
   pins: z.array(mapPin).describe("Agreed positions of the NPCs it drops from; a pin needs 3 installs on the same map."),
+  pendingLoot: pendingLoot.optional(),
 });
 export const npcPage = z.object({
   npcId: z.number().int(),
   name: z.string().nullable(),
   pins: z.array(z.object({ mapId: z.number().int(), x: z.number(), y: z.number(), reporters: z.number().int() })),
+  pendingLoot: pendingLoot.optional(),
 });
 export const questPage = z.object({
   questId: z.number().int(),
@@ -159,6 +166,9 @@ export const objectPage = z.object({
   drops: z.array(z.object({ itemId: z.number().int(), itemName: z.string().nullable(), kills: z.number().int(), drops: z.number().int(), rate: z.number(), reporters: z.number().int() })),
   zero: z.object({ kills: z.number().int(), reporters: z.number().int() }).nullable().describe("Public windows with no item at all: a measured zero."),
   queued: z.boolean().describe("Observations exist but fewer than 3 installs reported them."),
+  pendingLoot: pendingLoot.optional(),
+  pins: z.array(z.object({ mapId: z.number().int(), x: z.number(), y: z.number(), reporters: z.number().int() })).optional()
+    .describe("Where players saw the object on the minimap, at its own position; a pin needs 3 installs at one spot. Absent when there is none."),
 });
 
 export const auctionHistory = z.object({
@@ -311,10 +321,17 @@ export const mapNear = z.object({
   origin: z.string().optional().describe("The spot in words."),
   radius: z.number().optional(),
   limit: z.number().int().optional(),
-  entrances: z.array(z.object({ names: z.array(z.string()), raid: z.boolean(), zone: z.string().nullable(), yards: z.number() })).optional()
-    .describe("From the game files, found in game files, unconfirmed. Nearest first."),
+  entrances: z.array(z.object({
+    names: z.array(z.string()), raid: z.boolean(), zone: z.string().nullable(), yards: z.number(),
+    confirmed: z.number().int().optional().describe("Installs that zoned in from this entrance, once 3 agree on it; absent until then."),
+  })).optional()
+    .describe("From the game files, found in game files, unconfirmed unless confirmed is set. Nearest first."),
   npcs: z.array(nearPin).optional().describe("Players saw them; a pin needs 3 installs on the same map."),
   vendors: z.array(nearPin).optional(),
+  treasures: z.array(z.object({
+    objectId: z.number().int(), name: z.string().nullable(), mapId: z.number().int(), zoneName: z.string(),
+    x: z.number(), y: z.number(), yards: z.number(), reporters: z.number().int(),
+  })).optional().describe("Game objects players saw on the minimap at their own position, such as treasure chests; a pin needs 3 installs at one spot."),
 });
 
 /** The census's factions and windows (population). */
@@ -548,7 +565,7 @@ export const MCP_TOOLS = {
   npc_page: {
     title: "NPC page",
     description:
-      "One Forever NPC: agreed name and map pins. A name or pin needs 3 installs agreeing. The pin does not require a drop. No copied spawn list. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.",
+      "One Forever NPC: agreed name and map pins, and loot windows reported but not yet in the rates. A name or pin needs 3 installs agreeing. The pin does not require a drop. No copied spawn list. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.",
     inputSchema: { npcId: z.number().int().positive().describe("NPC id.") },
     outputSchema: { ...uploadsAnswer, page: npcPage.optional() },
     annotations: { readOnlyHint: true, openWorldHint: false },
@@ -580,7 +597,7 @@ export const MCP_TOOLS = {
   world_map_near: {
     title: "What is near a place on the map",
     description:
-      `Entrances, NPCs and vendors near a spot, nearest first, with straight-line distances in yards. Give a zone (name or map id) with x and y from 0 to 100, or an NPC id to start from where that NPC stands. Entrances come from the game files and are unconfirmed. NPCs and vendors are player-observed and listed only where 3 installs agree on the position. Zones the files hold back as possibly unreleased are not offered. Game objects are not listed: no public record gives them a position. Reads Everloot's current authorized public corpus when connected.`,
+      `Entrances, NPCs, vendors and treasures near a spot, nearest first, with straight-line distances in yards. Give a zone (name or map id) with x and y from 0 to 100, or an NPC id to start from where that NPC stands. Entrances come from the game files; one is confirmed once 3 installs zoned in from it. NPCs, vendors and treasures are player-observed and listed only where 3 installs agree on the position. Zones the files hold back as possibly unreleased are not offered. Reads Everloot's current authorized public corpus when connected.`,
     inputSchema: {
       zone: z.string().max(80).optional().describe("Zone name or map id, such as Elwynn Forest or 1429. Needs x and y."),
       x: z.number().min(0).max(100).optional().describe("Across the zone map, 0 (west) to 100 (east)."),

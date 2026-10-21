@@ -83,9 +83,29 @@ describe("zoneContents", () => {
 
   test("an entrance goes to the smallest released zone around it; one in a held-back zone is not placed", () => {
     const contents = zoneContents(empty, data);
-    expect(contents.get(1429)!.entrances).toEqual([{ names: ["Synthetic Stockade"], raid: false, x: 19.8, y: 35.5 }]);
+    expect(contents.get(1429)!.entrances).toEqual([{ names: ["Synthetic Stockade"], raid: false, x: 19.8, y: 35.5, files: true, confirmed: null, bosses: [] }]);
     expect(contents.get(1411)!.entrances.map((e) => e.names[0])).toEqual(["Synthetic Chasm"]);
     expect([...contents.values()].flatMap((c) => c.entrances).map((e) => e.names[0])).not.toContain("Synthetic Spire");
+  });
+
+  test("players confirm an entrance the files place, list its bosses, and place one the files lack; 2 installs do neither", () => {
+    const ids = ["a", "b", "c"].map((i) => `install-${i}`);
+    const entrance = (installId: string, instanceMapId: number, name: string) => ({ installId, instanceMapId, name, instanceType: "party" as const, mapId: 1429, x: 60, y: 40 });
+    const instances = {
+      entrances: [...ids.map((i) => entrance(i, 34, "Synthetic Stockade")), ...ids.map((i) => entrance(i, 35, "Synthetic Vault"))],
+      encounters: ids.map((installId) => ({ installId, encounterId: 9, name: "Warden", instanceMapId: 34, success: true, npcIds: [77] })),
+    };
+    const sightings = ids.map((installId) => ({ installId, objectId: 500, mapId: 1429, x: 12, y: 34, name: "Old Chest" }));
+    const here = zoneContents(empty, data, { instances, sightings, objectNames: new Map([[500, "Old Chest"]]) }).get(1429)!;
+    expect(here.entrances).toEqual([
+      { names: ["Synthetic Stockade"], raid: false, x: 19.8, y: 35.5, files: true, confirmed: 3, bosses: [{ encounterId: 9, name: "Warden", kills: 3, npcIds: [77], reporters: 3 }] },
+      { names: ["Synthetic Vault"], raid: false, x: 60, y: 40, files: false, confirmed: 3, bosses: [] },
+    ]);
+    expect(here.treasures).toEqual([{ objectId: 500, name: "Old Chest", x: 12, y: 34, reporters: 3 }]);
+    expect(hasContent(zoneContents(empty, { ...data, entrances: [] }, { sightings }).get(1429))).toBe(true);
+    const two = zoneContents(empty, data, { instances: { entrances: instances.entrances.filter((e) => e.installId !== "install-c"), encounters: instances.encounters.slice(0, 2) }, sightings: sightings.slice(0, 2) }).get(1429)!;
+    expect(two.entrances).toEqual([{ names: ["Synthetic Stockade"], raid: false, x: 19.8, y: 35.5, files: true, confirmed: null, bosses: [] }]);
+    expect(two.treasures).toEqual([]);
   });
 
   test("held-back zones are not in the result at all", () => {

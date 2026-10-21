@@ -5,7 +5,7 @@ const base = { installId: "test-install-1234", capturedAt: "2026-09-29T12:00:00.
 
 describe("intake contract", () => {
   test("all record kinds exist", () => {
-    expect(ALL_RECORD_KINDS).toHaveLength(35);
+    expect(ALL_RECORD_KINDS).toHaveLength(38);
     expect(ALL_RECORD_KINDS).toContain("census_self");
     expect(ALL_RECORD_KINDS).toContain("census_seen");
     expect(ALL_RECORD_KINDS).toContain("achievement_catalog");
@@ -180,6 +180,30 @@ describe("intake contract", () => {
     const result = parseRecords([seen, { ...seen, level: 0 }, { ...seen, reaction: "unfriendly" }]);
     expect(result.records).toEqual([expect.not.objectContaining({ level: expect.anything() })]);
     expect(result.receipt.rejected.map((r) => r.index)).toEqual([1, 2]);
+  });
+
+  test("a rare seen through a vignette carries the NPC's own position", () => {
+    const rare = { ...base, kind: "npc_sighting", npcId: 61, name: "Thuros Lightfingers", mapId: 1429, x: 70.1, y: 79.2, level: 11, rank: "rare", positionKind: "vignette" };
+    expect(parseRecords([rare]).records).toEqual([expect.objectContaining({ positionKind: "vignette", rank: "rare" })]);
+  });
+
+  test("an instance entrance, an encounter and an object sighting parse; optional fields stay optional", () => {
+    const entrance = { ...base, kind: "instance_entrance", instanceMapId: 36, name: "Deadmines", instanceType: "party", mapId: 1436, x: 42.5, y: 71.6 };
+    const encounter = { ...base, kind: "encounter", encounterId: 1144, name: "Edwin VanCleef", instanceMapId: 36, success: true };
+    const chest = { ...base, kind: "object_sighting", objectId: 2843, name: "Battered Chest", mapId: 1436, x: 30.1, y: 50.2 };
+    const result = parseRecords([
+      entrance, { ...entrance, difficulty: 1 },
+      encounter, { ...encounter, difficulty: 1, size: 5, npcIds: [639] },
+      chest, { ...chest, instanceMapId: 36 },
+      { ...entrance, instanceType: "scenario" },
+      { ...entrance, mapId: undefined },
+      { ...encounter, success: undefined },
+      { ...encounter, npcIds: [0] },
+      { ...chest, x: 101 },
+      { ...chest, name: "" },
+    ]);
+    expect(result.records.map((r) => r.kind)).toEqual(["instance_entrance", "instance_entrance", "encounter", "encounter", "object_sighting", "object_sighting"]);
+    expect(result.receipt.rejected.map((r) => r.index)).toEqual([6, 7, 8, 9, 10, 11]);
   });
 
   test("the envelope may say its rows came from a Polestar Recorder file, and nothing else", () => {

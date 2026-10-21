@@ -3,6 +3,7 @@
  * A name, pin, title, level, giver, reward, or price is public after 3 installs agree.
  * No copied catalog.
  */
+import { pendingForNpc, pendingLine, pendingLootFromRecords, type PendingCount, type PendingLoot } from "./pending-loot.js";
 
 export const WORLD_AGREEMENT = 3;
 
@@ -23,12 +24,14 @@ export type QuestSide = "alliance" | "horde" | "both";
 export type NpcRole = "vendor" | "trainer" | "questgiver" | "flightmaster" | "banker" | "auctioneer" | "stablemaster" | "innkeeper" | "repair";
 export const NPC_ROLES: readonly NpcRole[] = ["vendor", "trainer", "questgiver", "flightmaster", "banker", "auctioneer", "stablemaster", "innkeeper", "repair"];
 
-export type PositionKind = "player" | "npc" | "interaction";
+export type PositionKind = "player" | "npc" | "interaction" | "vignette";
+const POSITION_KINDS: readonly PositionKind[] = ["player", "npc", "interaction", "vignette"];
 /**
- * The positions that can make a pin: the NPC's own, and the player's while the NPC's window was open (a few
- * yards away). `player`, where the player stood when targeting, never does, and neither does a row without one.
+ * The positions that can make a pin: the NPC's own (`npc`, and `vignette`, the game's minimap marker for a rare),
+ * and the player's while the NPC's window was open (a few yards away). `player`, where the player stood when
+ * targeting, never does, and neither does a row without one.
  */
-export const PIN_POSITION_KINDS: readonly PositionKind[] = ["npc", "interaction"];
+export const PIN_POSITION_KINDS: readonly PositionKind[] = ["npc", "interaction", "vignette"];
 export function isPinPosition(kind: unknown): boolean {
   return PIN_POSITION_KINDS.includes(kind as PositionKind);
 }
@@ -75,10 +78,13 @@ export type WorldFacts = {
   npcs: NpcSightingRow[];
   quests: QuestSighting[];
   vendors: VendorSighting[];
+  /** Loot windows the rates leave out, only counted (pending-loot.ts); read by the NPC page. */
+  pending?: PendingLoot;
 };
 
 export type NpcPin = { mapId: number; x: number; y: number; reporters: number };
-export type NpcPage = { npcId: number; name: string | null; pins: NpcPin[] };
+/** `pendingLoot`: loot windows reported but not yet in the rates; absent when there are none. */
+export type NpcPage = { npcId: number; name: string | null; pins: NpcPin[]; pendingLoot?: PendingCount };
 export type QuestPage = {
   questId: number;
   title: string | null;
@@ -185,7 +191,8 @@ export function npcPage(npcId: number, facts: WorldFacts): NpcPage {
       return { mapId, x: median(seen.map((row) => row.x)), y: median(seen.map((row) => row.y)), reporters: installs.size };
     })
     .sort((a, b) => a.mapId - b.mapId);
-  return { npcId, name, pins };
+  const pendingLoot = pendingForNpc(facts.pending, npcId);
+  return { npcId, name, pins, ...(pendingLoot ? { pendingLoot } : {}) };
 }
 
 /**
@@ -223,6 +230,7 @@ export function formatNpcPage(page: NpcPage): string {
   lines.push("Map");
   if (page.pins.length === 0) lines.push("No agreed position. A pin needs 3 installs on the same map.");
   for (const pin of page.pins) lines.push(`Map ${pin.mapId} at ${pin.x}, ${pin.y}  ${pin.reporters} reporters`);
+  if (page.pendingLoot) lines.push(pendingLine(page.pendingLoot));
   return lines.join("\n");
 }
 
@@ -346,6 +354,11 @@ export function handleVendorPage(args: { vendorNpcId: number }, facts: WorldFact
   return formatVendorPage(vendorPage(args.vendorNpcId, facts));
 }
 
+/** The NPC page's facts: the world facts and the pending loot count. */
+export function npcFactsFromRecords(records: unknown[]): WorldFacts {
+  return { ...worldFactsFromRecords(records), pending: pendingLootFromRecords(records) };
+}
+
 export function worldFactsFromRecords(records: unknown[]): WorldFacts {
   const facts: WorldFacts = { npcs: [], quests: [], vendors: [] };
   for (const raw of records) {
@@ -361,7 +374,7 @@ export function worldFactsFromRecords(records: unknown[]): WorldFacts {
       typeof row.y === "number"
     ) {
       facts.npcs.push({ installId: row.installId, npcId: row.npcId, name: row.name, mapId: row.mapId, x: row.x, y: row.y,
-        ...(row.positionKind === "npc" || row.positionKind === "player" || row.positionKind === "interaction" ? { positionKind: row.positionKind } : {}),
+        ...(POSITION_KINDS.includes(row.positionKind as PositionKind) ? { positionKind: row.positionKind as PositionKind } : {}),
         ...(row.positionKind === "interaction" && NPC_ROLES.includes(row.role as NpcRole) ? { role: row.role as NpcRole } : {}),
         ...(typeof row.level === "number" && Number.isInteger(row.level) && row.level > 0 ? { level: row.level } : {}),
         ...(NPC_REACTIONS.includes(row.reaction as NpcReaction) ? { reaction: row.reaction as NpcReaction } : {}),

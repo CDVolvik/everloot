@@ -163,6 +163,11 @@ export declare const mapPin: z.ZodObject<{
     y: z.ZodNumber;
     reporters: z.ZodNumber;
 }, z.core.$strip>;
+/** Loot windows players reported that the public rates do not count yet. A count, never a rate. */
+export declare const pendingLoot: z.ZodObject<{
+    windows: z.ZodNumber;
+    reporters: z.ZodNumber;
+}, z.core.$strip>;
 export declare const itemPage: z.ZodObject<{
     itemId: z.ZodNumber;
     name: z.ZodNullable<z.ZodString>;
@@ -183,6 +188,10 @@ export declare const itemPage: z.ZodObject<{
         y: z.ZodNumber;
         reporters: z.ZodNumber;
     }, z.core.$strip>>;
+    pendingLoot: z.ZodOptional<z.ZodObject<{
+        windows: z.ZodNumber;
+        reporters: z.ZodNumber;
+    }, z.core.$strip>>;
 }, z.core.$strip>;
 export declare const npcPage: z.ZodObject<{
     npcId: z.ZodNumber;
@@ -191,6 +200,10 @@ export declare const npcPage: z.ZodObject<{
         mapId: z.ZodNumber;
         x: z.ZodNumber;
         y: z.ZodNumber;
+        reporters: z.ZodNumber;
+    }, z.core.$strip>>;
+    pendingLoot: z.ZodOptional<z.ZodObject<{
+        windows: z.ZodNumber;
         reporters: z.ZodNumber;
     }, z.core.$strip>>;
 }, z.core.$strip>;
@@ -235,6 +248,16 @@ export declare const objectPage: z.ZodObject<{
         reporters: z.ZodNumber;
     }, z.core.$strip>>;
     queued: z.ZodBoolean;
+    pendingLoot: z.ZodOptional<z.ZodObject<{
+        windows: z.ZodNumber;
+        reporters: z.ZodNumber;
+    }, z.core.$strip>>;
+    pins: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        mapId: z.ZodNumber;
+        x: z.ZodNumber;
+        y: z.ZodNumber;
+        reporters: z.ZodNumber;
+    }, z.core.$strip>>>;
 }, z.core.$strip>;
 export declare const auctionHistory: z.ZodObject<{
     realm: z.ZodString;
@@ -633,6 +656,7 @@ export declare const mapNear: z.ZodObject<{
         raid: z.ZodBoolean;
         zone: z.ZodNullable<z.ZodString>;
         yards: z.ZodNumber;
+        confirmed: z.ZodOptional<z.ZodNumber>;
     }, z.core.$strip>>>;
     npcs: z.ZodOptional<z.ZodArray<z.ZodObject<{
         npcId: z.ZodNumber;
@@ -646,6 +670,16 @@ export declare const mapNear: z.ZodObject<{
     }, z.core.$strip>>>;
     vendors: z.ZodOptional<z.ZodArray<z.ZodObject<{
         npcId: z.ZodNumber;
+        name: z.ZodNullable<z.ZodString>;
+        mapId: z.ZodNumber;
+        zoneName: z.ZodString;
+        x: z.ZodNumber;
+        y: z.ZodNumber;
+        yards: z.ZodNumber;
+        reporters: z.ZodNumber;
+    }, z.core.$strip>>>;
+    treasures: z.ZodOptional<z.ZodArray<z.ZodObject<{
+        objectId: z.ZodNumber;
         name: z.ZodNullable<z.ZodString>;
         mapId: z.ZodNumber;
         zoneName: z.ZodString;
@@ -1260,6 +1294,10 @@ export declare const MCP_TOOLS: {
                     y: z.ZodNumber;
                     reporters: z.ZodNumber;
                 }, z.core.$strip>>;
+                pendingLoot: z.ZodOptional<z.ZodObject<{
+                    windows: z.ZodNumber;
+                    reporters: z.ZodNumber;
+                }, z.core.$strip>>;
             }, z.core.$strip>>;
         };
         readonly annotations: {
@@ -1269,7 +1307,7 @@ export declare const MCP_TOOLS: {
     };
     readonly npc_page: {
         readonly title: "NPC page";
-        readonly description: "One Forever NPC: agreed name and map pins. A name or pin needs 3 installs agreeing. The pin does not require a drop. No copied spawn list. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.";
+        readonly description: "One Forever NPC: agreed name and map pins, and loot windows reported but not yet in the rates. A name or pin needs 3 installs agreeing. The pin does not require a drop. No copied spawn list. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.";
         readonly inputSchema: {
             readonly npcId: z.ZodNumber;
         };
@@ -1285,6 +1323,10 @@ export declare const MCP_TOOLS: {
                     mapId: z.ZodNumber;
                     x: z.ZodNumber;
                     y: z.ZodNumber;
+                    reporters: z.ZodNumber;
+                }, z.core.$strip>>;
+                pendingLoot: z.ZodOptional<z.ZodObject<{
+                    windows: z.ZodNumber;
                     reporters: z.ZodNumber;
                 }, z.core.$strip>>;
             }, z.core.$strip>>;
@@ -1321,6 +1363,16 @@ export declare const MCP_TOOLS: {
                     reporters: z.ZodNumber;
                 }, z.core.$strip>>;
                 queued: z.ZodBoolean;
+                pendingLoot: z.ZodOptional<z.ZodObject<{
+                    windows: z.ZodNumber;
+                    reporters: z.ZodNumber;
+                }, z.core.$strip>>;
+                pins: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                    mapId: z.ZodNumber;
+                    x: z.ZodNumber;
+                    y: z.ZodNumber;
+                    reporters: z.ZodNumber;
+                }, z.core.$strip>>>;
             }, z.core.$strip>>;
         };
         readonly annotations: {
@@ -1382,7 +1434,7 @@ export declare const MCP_TOOLS: {
     };
     readonly world_map_near: {
         readonly title: "What is near a place on the map";
-        readonly description: `Entrances, NPCs and vendors near a spot, nearest first, with straight-line distances in yards. Give a zone (name or map id) with x and y from 0 to 100, or an NPC id to start from where that NPC stands. Entrances come from the game files and are unconfirmed. NPCs and vendors are player-observed and listed only where 3 installs agree on the position. Zones the files hold back as possibly unreleased are not offered. Game objects are not listed: no public record gives them a position. Reads Everloot's current authorized public corpus when connected.`;
+        readonly description: `Entrances, NPCs, vendors and treasures near a spot, nearest first, with straight-line distances in yards. Give a zone (name or map id) with x and y from 0 to 100, or an NPC id to start from where that NPC stands. Entrances come from the game files; one is confirmed once 3 installs zoned in from it. NPCs, vendors and treasures are player-observed and listed only where 3 installs agree on the position. Zones the files hold back as possibly unreleased are not offered. Reads Everloot's current authorized public corpus when connected.`;
         readonly inputSchema: {
             readonly zone: z.ZodOptional<z.ZodString>;
             readonly x: z.ZodOptional<z.ZodNumber>;
@@ -1407,6 +1459,7 @@ export declare const MCP_TOOLS: {
                     raid: z.ZodBoolean;
                     zone: z.ZodNullable<z.ZodString>;
                     yards: z.ZodNumber;
+                    confirmed: z.ZodOptional<z.ZodNumber>;
                 }, z.core.$strip>>>;
                 npcs: z.ZodOptional<z.ZodArray<z.ZodObject<{
                     npcId: z.ZodNumber;
@@ -1420,6 +1473,16 @@ export declare const MCP_TOOLS: {
                 }, z.core.$strip>>>;
                 vendors: z.ZodOptional<z.ZodArray<z.ZodObject<{
                     npcId: z.ZodNumber;
+                    name: z.ZodNullable<z.ZodString>;
+                    mapId: z.ZodNumber;
+                    zoneName: z.ZodString;
+                    x: z.ZodNumber;
+                    y: z.ZodNumber;
+                    yards: z.ZodNumber;
+                    reporters: z.ZodNumber;
+                }, z.core.$strip>>>;
+                treasures: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                    objectId: z.ZodNumber;
                     name: z.ZodNullable<z.ZodString>;
                     mapId: z.ZodNumber;
                     zoneName: z.ZodString;
@@ -2646,6 +2709,10 @@ export declare const MCP_TOOL_LIST: ({
                 y: z.ZodNumber;
                 reporters: z.ZodNumber;
             }, z.core.$strip>>;
+            pendingLoot: z.ZodOptional<z.ZodObject<{
+                windows: z.ZodNumber;
+                reporters: z.ZodNumber;
+            }, z.core.$strip>>;
         }, z.core.$strip>>;
     };
     annotations: {
@@ -2655,7 +2722,7 @@ export declare const MCP_TOOL_LIST: ({
     name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "NPC page";
-    description: "One Forever NPC: agreed name and map pins. A name or pin needs 3 installs agreeing. The pin does not require a drop. No copied spawn list. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.";
+    description: "One Forever NPC: agreed name and map pins, and loot windows reported but not yet in the rates. A name or pin needs 3 installs agreeing. The pin does not require a drop. No copied spawn list. Reads Everloot's current authorized public corpus when connected. Missing or unavailable data is reported explicitly.";
     inputSchema: {
         readonly npcId: z.ZodNumber;
     };
@@ -2671,6 +2738,10 @@ export declare const MCP_TOOL_LIST: ({
                 mapId: z.ZodNumber;
                 x: z.ZodNumber;
                 y: z.ZodNumber;
+                reporters: z.ZodNumber;
+            }, z.core.$strip>>;
+            pendingLoot: z.ZodOptional<z.ZodObject<{
+                windows: z.ZodNumber;
                 reporters: z.ZodNumber;
             }, z.core.$strip>>;
         }, z.core.$strip>>;
@@ -2707,6 +2778,16 @@ export declare const MCP_TOOL_LIST: ({
                 reporters: z.ZodNumber;
             }, z.core.$strip>>;
             queued: z.ZodBoolean;
+            pendingLoot: z.ZodOptional<z.ZodObject<{
+                windows: z.ZodNumber;
+                reporters: z.ZodNumber;
+            }, z.core.$strip>>;
+            pins: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                mapId: z.ZodNumber;
+                x: z.ZodNumber;
+                y: z.ZodNumber;
+                reporters: z.ZodNumber;
+            }, z.core.$strip>>>;
         }, z.core.$strip>>;
     };
     annotations: {
@@ -2768,7 +2849,7 @@ export declare const MCP_TOOL_LIST: ({
     name: "answer_sources" | "auction_history" | "collection_gap" | "completion_progress" | "ecosystem_projects" | "entity_relations" | "everloot_plan" | "fetch" | "get_by_name" | "get_entity" | "gold_ledger" | "guild_board" | "item_categories" | "item_page" | "market_value" | "npc_page" | "object_page" | "population" | "profession_path" | "quest_page" | "recent_changes" | "recipe_thresholds" | "search" | "search_knowledge" | "talent_plan" | "talent_tree" | "vendor_page" | "world_map_near";
 } | {
     title: "What is near a place on the map";
-    description: `Entrances, NPCs and vendors near a spot, nearest first, with straight-line distances in yards. Give a zone (name or map id) with x and y from 0 to 100, or an NPC id to start from where that NPC stands. Entrances come from the game files and are unconfirmed. NPCs and vendors are player-observed and listed only where 3 installs agree on the position. Zones the files hold back as possibly unreleased are not offered. Game objects are not listed: no public record gives them a position. Reads Everloot's current authorized public corpus when connected.`;
+    description: `Entrances, NPCs, vendors and treasures near a spot, nearest first, with straight-line distances in yards. Give a zone (name or map id) with x and y from 0 to 100, or an NPC id to start from where that NPC stands. Entrances come from the game files; one is confirmed once 3 installs zoned in from it. NPCs, vendors and treasures are player-observed and listed only where 3 installs agree on the position. Zones the files hold back as possibly unreleased are not offered. Reads Everloot's current authorized public corpus when connected.`;
     inputSchema: {
         readonly zone: z.ZodOptional<z.ZodString>;
         readonly x: z.ZodOptional<z.ZodNumber>;
@@ -2793,6 +2874,7 @@ export declare const MCP_TOOL_LIST: ({
                 raid: z.ZodBoolean;
                 zone: z.ZodNullable<z.ZodString>;
                 yards: z.ZodNumber;
+                confirmed: z.ZodOptional<z.ZodNumber>;
             }, z.core.$strip>>>;
             npcs: z.ZodOptional<z.ZodArray<z.ZodObject<{
                 npcId: z.ZodNumber;
@@ -2806,6 +2888,16 @@ export declare const MCP_TOOL_LIST: ({
             }, z.core.$strip>>>;
             vendors: z.ZodOptional<z.ZodArray<z.ZodObject<{
                 npcId: z.ZodNumber;
+                name: z.ZodNullable<z.ZodString>;
+                mapId: z.ZodNumber;
+                zoneName: z.ZodString;
+                x: z.ZodNumber;
+                y: z.ZodNumber;
+                yards: z.ZodNumber;
+                reporters: z.ZodNumber;
+            }, z.core.$strip>>>;
+            treasures: z.ZodOptional<z.ZodArray<z.ZodObject<{
+                objectId: z.ZodNumber;
                 name: z.ZodNullable<z.ZodString>;
                 mapId: z.ZodNumber;
                 zoneName: z.ZodString;

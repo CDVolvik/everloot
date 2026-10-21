@@ -155,7 +155,7 @@ export default function PrivacyPage() {
                 character owner with a verified sharing grant can opt out on the upload
                 page; anyone else can ask us by email (below). Uploads build the public database; we never
                 sell them. Player rows are not part of the public records. A Polestar Recorder file you choose
-                is converted in your browser into NPC positions, quests and loot; its character names, realms,
+                is converted in your browser into NPC positions, quests, loot, dungeon entrances, boss encounters and treasures; its character names, realms,
                 session names and notes are not sent. Its install id is made by our server from a keyed hash of
                 the character and one of the address the upload came from, and the upload keeps a keyed hash of
                 the address like a scan does. Neither is published.

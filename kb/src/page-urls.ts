@@ -47,7 +47,7 @@ export const questHasFacts = (page: { title: string | null; level: number | null
 
 export const vendorHasFacts = (page: { offers: readonly unknown[] }): boolean => page.offers.length > 0;
 
-export const objectHasFacts = (page: { drops: readonly unknown[]; zero: unknown }): boolean => Boolean(page.drops.length || page.zero);
+export const objectHasFacts = (page: { drops: readonly unknown[]; zero: unknown; pins?: readonly unknown[] }): boolean => Boolean(page.drops.length || page.zero || page.pins?.length);
 
 /**
  * An item's page: one with a public fact from players, or (`inGameFiles`) one for an item the game files
@@ -72,7 +72,7 @@ export function vendorPageUrl(page: { vendorNpcId: number; offers: readonly unkn
   return vendorHasFacts(page) ? abs(`/database/vendors/${page.vendorNpcId}`) : undefined;
 }
 
-export function objectPageUrl(page: { objectId: number; drops: readonly unknown[]; zero: unknown }): string | undefined {
+export function objectPageUrl(page: { objectId: number; drops: readonly unknown[]; zero: unknown; pins?: readonly unknown[] }): string | undefined {
   return objectHasFacts(page) ? abs(`/database/objects/${page.objectId}`) : undefined;
 }
 

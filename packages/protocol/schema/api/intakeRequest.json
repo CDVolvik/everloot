@@ -86,12 +86,13 @@
                 ]
               },
               "positionKind": {
-                "description": "Whose coordinates were measured; legacy unknown positions never become spawn pins. `interaction` is the player's position while the NPC's window was open, a few yards from the NPC.",
+                "description": "Whose coordinates were measured; legacy unknown positions never become spawn pins. `interaction` is the player's position while the NPC's window was open, a few yards from the NPC. `vignette` is the NPC's own position, as the game's vignette API gave it for a rare on the minimap.",
                 "type": "string",
                 "enum": [
                   "player",
                   "npc",
-                  "interaction"
+                  "interaction",
+                  "vignette"
                 ]
               },
               "role": {
@@ -493,6 +494,240 @@
               "itemId",
               "name",
               "quality"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "installId": {
+                "type": "string",
+                "minLength": 8,
+                "maxLength": 64,
+                "description": "Random install id, no account needed."
+              },
+              "eventId": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 96,
+                "pattern": "^[A-Za-z0-9:_-]+$"
+              },
+              "capturedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                "description": "ISO time the event happened in-game."
+              },
+              "kind": {
+                "type": "string",
+                "const": "instance_entrance"
+              },
+              "instanceMapId": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991,
+                "description": "The instance's map id, the 8th return of `GetInstanceInfo`: a map, not a UiMap."
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120,
+                "description": "The instance's name as the game showed it, in the client's language. Public only when 3 installs agree on it."
+              },
+              "instanceType": {
+                "type": "string",
+                "enum": [
+                  "party",
+                  "raid"
+                ]
+              },
+              "difficulty": {
+                "description": "The difficulty id `GetInstanceInfo` reports. Absent when the source did not record it.",
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 255
+              },
+              "mapId": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "The UiMap the player stood on last before zoning in."
+              },
+              "x": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100,
+                "description": "The player's x there, 0 to 100."
+              },
+              "y": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100,
+                "description": "The player's y there, 0 to 100."
+              }
+            },
+            "required": [
+              "installId",
+              "capturedAt",
+              "kind",
+              "instanceMapId",
+              "name",
+              "instanceType",
+              "mapId",
+              "x",
+              "y"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "installId": {
+                "type": "string",
+                "minLength": 8,
+                "maxLength": 64,
+                "description": "Random install id, no account needed."
+              },
+              "eventId": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 96,
+                "pattern": "^[A-Za-z0-9:_-]+$"
+              },
+              "capturedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                "description": "ISO time the event happened in-game."
+              },
+              "kind": {
+                "type": "string",
+                "const": "encounter"
+              },
+              "encounterId": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120,
+                "description": "The encounter's name in the client's language. Public only when 3 installs agree on it."
+              },
+              "instanceMapId": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991,
+                "description": "The instance's map id, the 8th return of `GetInstanceInfo`: a map, not a UiMap."
+              },
+              "difficulty": {
+                "description": "The difficulty id `GetInstanceInfo` reports. Absent when the source did not record it.",
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 255
+              },
+              "size": {
+                "description": "The group size the encounter reports.",
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 40
+              },
+              "success": {
+                "type": "boolean",
+                "description": "True for a kill, false for a wipe."
+              },
+              "npcIds": {
+                "description": "The bosses' creature ids the client listed for the encounter, or the creatures that died in it. Absent when there were none.",
+                "maxItems": 40,
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                }
+              }
+            },
+            "required": [
+              "installId",
+              "capturedAt",
+              "kind",
+              "encounterId",
+              "name",
+              "instanceMapId",
+              "success"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "installId": {
+                "type": "string",
+                "minLength": 8,
+                "maxLength": 64,
+                "description": "Random install id, no account needed."
+              },
+              "eventId": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 96,
+                "pattern": "^[A-Za-z0-9:_-]+$"
+              },
+              "capturedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                "description": "ISO time the event happened in-game."
+              },
+              "kind": {
+                "type": "string",
+                "const": "object_sighting"
+              },
+              "objectId": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 120,
+                "description": "The object's name in the client's language. Public only when 3 installs agree on it."
+              },
+              "mapId": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              "x": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100,
+                "description": "The object's own x on that map, 0 to 100, from the vignette: not the player's."
+              },
+              "y": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100,
+                "description": "The object's own y on that map, 0 to 100."
+              },
+              "instanceMapId": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991,
+                "description": "The instance's map id, the 8th return of `GetInstanceInfo`: a map, not a UiMap."
+              }
+            },
+            "required": [
+              "installId",
+              "capturedAt",
+              "kind",
+              "objectId",
+              "name",
+              "mapId",
+              "x",
+              "y"
             ],
             "additionalProperties": false
           },

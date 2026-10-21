@@ -24,7 +24,7 @@ import { answerPopulation, type CensusLoader } from "./population.js";
 import { readResource } from "./resources.js";
 import { handleTalentPlan, handleTalentTree } from "./talent-tools.js";
 import { handleRecipeThresholds, pathFactsFromRecords, recipeFactsFromRecords, recipeThresholdsStructured } from "./recipe-thresholds.js";
-import { formatNpcPage, formatQuestPage, formatVendorPage, npcPage, questPage, vendorPage, worldFactsFromRecords } from "./world-pages.js";
+import { formatNpcPage, formatQuestPage, formatVendorPage, npcFactsFromRecords, npcPage, questPage, vendorPage, worldFactsFromRecords } from "./world-pages.js";
 import { handleWorldMapNear, mapFactsFromRecords, nearResult, nearZoneSpot } from "./world-map-near.js";
 import { WORLD_MAP_DATA } from "./world-map-file.js";
 import { CLIENT_EDGES, CLIENT_LAYER, CLIENT_TAXONOMY } from "./client-layer-file.js";
@@ -61,15 +61,15 @@ export const UPLOADS_UNSET =
 
 /** Record kinds each gameplay tool reads. tool-kinds.test.ts checks them against the fact functions. */
 export const TOOL_KINDS = {
-  answer_sources: ["loot", "item_seen", "npc_sighting", "quest", "vendor"],
+  answer_sources: ["loot", "item_seen", "npc_sighting", "quest", "vendor", "object_sighting"],
   profession_path: ["recipe_seen", "price_seen", "auction_scan", "item_seen", "recipe_observed", "trainer_seen", "vendor"],
   recipe_thresholds: ["recipe_observed", "price_seen", "auction_scan", "item_seen", "vendor"],
-  item_page: ["loot", "item_seen", "npc_sighting"],
-  npc_page: ["npc_sighting", "quest", "vendor"],
-  object_page: ["loot", "item_seen"],
+  item_page: ["loot", "item_seen", "npc_sighting", "object_sighting"],
+  npc_page: ["npc_sighting", "quest", "vendor", "loot"],
+  object_page: ["loot", "item_seen", "object_sighting"],
   quest_page: ["npc_sighting", "quest", "vendor"],
   vendor_page: ["npc_sighting", "quest", "vendor"],
-  world_map_near: ["npc_sighting", "vendor"],
+  world_map_near: ["npc_sighting", "vendor", "instance_entrance", "object_sighting"],
   entity_relations: ["loot", "vendor", "quest", "npc_sighting"],
   collection_gap: ["collection_catalog", "collection_owned"],
   guild_board: ["guild_snapshot", "raid_lockout", "attendance", "loot_award", "gear_snapshot"],
@@ -89,7 +89,7 @@ const TOOL_FACT_BUILDERS: Record<ToolName, (records: unknown[]) => unknown> = {
   profession_path: pathFactsFromRecords,
   recipe_thresholds: recipeFactsFromRecords,
   item_page: itemFactsFromRecords,
-  npc_page: worldFactsFromRecords,
+  npc_page: npcFactsFromRecords,
   object_page: objectFactsFromRecords,
   quest_page: worldFactsFromRecords,
   vendor_page: worldFactsFromRecords,

@@ -83,6 +83,8 @@ export function zoneToMap(zones: ZoneEntry[], mapId: number, x: number, y: numbe
 
 export interface EntrancePin {
   names: string[];
+  /** The instances' map ids, the ids `instance_entrance` rows carry. */
+  mapIds: number[];
   raid: boolean;
   world: WorldPoint;
   map: MapPoint;
@@ -96,9 +98,10 @@ export function placeEntrances(data: Pick<WorldMapData, "entrances">): EntranceP
     const same = pins.find((p) => p.world.continentId === e.continentId && Math.abs(p.world.worldX - e.worldX) <= 1 && Math.abs(p.world.worldY - e.worldY) <= 1);
     if (same) {
       if (!same.names.includes(e.name)) same.names.push(e.name);
+      if (!same.mapIds.includes(e.mapId)) same.mapIds.push(e.mapId);
       same.raid ||= e.raid;
     } else {
-      pins.push({ names: [e.name], raid: e.raid, world, map: worldToMap(world) });
+      pins.push({ names: [e.name], mapIds: [e.mapId], raid: e.raid, world, map: worldToMap(world) });
     }
   }
   return pins;

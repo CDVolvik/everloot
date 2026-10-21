@@ -153,6 +153,29 @@
               "additionalProperties": false
             },
             "description": "Agreed positions of the NPCs it drops from; a pin needs 3 installs on the same map."
+          },
+          "pendingLoot": {
+            "type": "object",
+            "properties": {
+              "windows": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "Reported loot windows not yet in the rates."
+              },
+              "reporters": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "Distinct reporters behind those windows."
+              }
+            },
+            "required": [
+              "windows",
+              "reporters"
+            ],
+            "additionalProperties": false,
+            "description": "Loot windows reported but not yet in the rates. Absent when there are none."
           }
         },
         "required": [

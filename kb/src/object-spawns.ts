@@ -192,6 +192,25 @@ export function agreedGatherKinds(rows: ObjectSpawnRow[]): Map<number, GatherKin
 }
 
 /**
+ * Objects players saw on the minimap (`object_sighting`), such as treasure chests. Their position is the object's
+ * own, from the game's vignette API, not the player's, so they are kept apart from the loot rows below: pass them
+ * to `objectSpawns` alone for treasure pins, under the same clusters and 3-install rule.
+ */
+export function objectSightingRowsFromRecords(records: unknown[]): ObjectSpawnRow[] {
+  const out: ObjectSpawnRow[] = [];
+  for (const raw of records) {
+    if (!raw || typeof raw !== "object") continue;
+    const r = raw as Record<string, unknown>;
+    if (r.kind !== "object_sighting" || typeof r.installId !== "string" || !r.installId.trim()) continue;
+    if (typeof r.objectId !== "number" || !Number.isInteger(r.objectId) || r.objectId < 1) continue;
+    if (typeof r.mapId !== "number" || typeof r.x !== "number" || typeof r.y !== "number") continue;
+    const name = typeof r.name === "string" && r.name.trim() ? r.name.trim() : undefined;
+    out.push({ installId: r.installId, objectId: r.objectId, mapId: r.mapId, x: r.x, y: r.y, ...(name ? { name } : {}) });
+  }
+  return out;
+}
+
+/**
  * Object loot rows from uploads, for the functions above: every loot-api row with an object source. The place,
  * the kind and the name are each kept only when present, so rows from older addons carry just the id.
  */

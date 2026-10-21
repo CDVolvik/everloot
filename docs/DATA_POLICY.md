@@ -22,14 +22,20 @@ settings, and until you do, they stay on your machine like the named data.
 [Polestar Recorder](https://github.com/fitzforge/polestar) addon (by fitzforge, GPL-3.0) can upload its
 `Polestar_Recorder.lua` from the website's upload page. Everloot reads the file's format with its own
 parser and uses none of Polestar's code. The file is converted in the browser, one session at a time,
-into three of Everloot's own kinds: where the player stood while an NPC's window was open (a quest giver,
+into Everloot's own kinds: where the player stood while an NPC's window was open (a quest giver,
 a quest turn-in, a gossip window offering quests, a vendor, a trainer, a flight master), stored as
 `positionKind: "interaction"` like the addon's; NPCs the player killed or saw as a rare on its nameplate,
-target or mouseover, where the player stood (`positionKind: "player"`, never a pin); the quests the
-player accepted with their title, level, giver, turn-in, reward items and the character's faction; and
-loot windows with items. The file holds no NPC level at a window and no reaction, so those fields are left
-out, never guessed, and it does not say whether the game's loot API named a window's source, so its loot
-rows do not count toward public drop rates. Everything else in the file stays on your computer: character
+target or mouseover, where the player stood (`positionKind: "player"`, never a pin); rares the minimap
+showed, at the rare's own position from the game's vignette API (`positionKind: "vignette"`); the
+dungeons and raids the player zoned into, with the instance's name and type and the last position outside
+it (`instance_entrance`); the boss encounters that ended inside, with their result and the bosses' ids
+(`encounter`); treasures the minimap showed, at the object's own position (`object_sighting`); the quests
+the player accepted with their title, level, giver, turn-in, reward items and the character's faction; and
+loot windows with items. Rares and kills keep the level and rank the game showed. The file holds no NPC
+level at a window and no reaction, so those fields are left out, never guessed. It does not say whether
+the game's loot API named a window's source either, so its loot windows stay out of the public drop rates:
+they are counted instead, and the NPC, object and item pages say how many were reported and are not yet in
+the rates. Everything else in the file stays on your computer: character
 names and realms, session names, notes typed with `/psrec mark`, Polestar's guide step titles, quest
 objective text, routes, flight paths, talents and the rest. A character becomes a hash in the browser, keyed
 with a random key that stays in that browser, so the name cannot be worked back from it; the server replaces that hash with an install id of its own, keyed with a secret: one half from the
@@ -79,8 +85,14 @@ loot row carries the player's position, how it was opened (from the spell cast o
 name as the game showed it, taken only from a herb, ore or chest cast, so the target of any other spell (a
 player you healed, say) never becomes a name. Where you stand when you only target or mouse over an NPC
 (`positionKind: "player"`) is never used as the NPC's place. A Polestar Recorder file's NPC windows become
-the same `interaction` positions, and its kills and rares seen on the unit become `player` ones. An NPC pin needs three installs on the same
-map; an object's spawn point needs three installs within one cluster (positions closer than 1 on the
+the same `interaction` positions, and its kills and rares seen on the unit become `player` ones. A rare or
+treasure the minimap showed is at its own position, as the game's vignette API gives it (`vignette` for a
+rare, an `object_sighting` for a treasure), so it can make a pin. An NPC pin needs three installs on the same
+map; a treasure's, three installs within one cluster, as below; a dungeon entrance players zoned in from,
+three installs on the same map, and it confirms the entrance the game files place rather than adding a
+second one. A boss is listed for an instance once three installs report its encounter there. Instance,
+encounter and object names arrive in the player's client language, so each is shown only when three
+installs report the same one; an object's spawn point needs three installs within one cluster (positions closer than 1 on the
 0 to 100 map scale), and a place seen by one or two installs is only counted, never drawn. An object's
 name is shown only when three installs report the same one; otherwise it is "Object" and its id. Fishing
 gives the zone only, never a pin. Object places come from play only: nothing is read from the game's
