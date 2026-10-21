@@ -161,15 +161,15 @@ test("a stream without indexes treats each tool piece as a whole call", async ()
 });
 
 describe("Everloot first", () => {
-  test("the tool policy covers every tool once, database, wiki and lore, market, then builds, and the web only after", () => {
+  test("the tool policy covers every tool once, database, wiki and lore, market, then builds, and the model's own knowledge only after", () => {
     expect(TOOL_POLICY.map((g) => g.label)).toEqual(["the database", "the wiki and lore archive", "the market", "builds and talents"]);
     const listed = TOOL_POLICY.flatMap((g) => g.tools);
     expect([...listed].sort()).toEqual([...CHAT_TOOLS, "my_builds"].sort());
     expect(new Set(listed).size).toBe(listed.length);
-    // The prompt names the groups in that order, and the web fallback comes after all of them.
+    // The prompt names the groups in that order, and the own-knowledge fallback comes after all of them.
     const at = TOOL_POLICY.map((g) => SYSTEM.indexOf(g.label));
     expect(at.every((n, i) => n > 0 && (i === 0 || n > at[i - 1]))).toBe(true);
-    expect(SYSTEM.indexOf("from the web")).toBeGreaterThan(at.at(-1)!);
+    expect(SYSTEM.indexOf("your own knowledge")).toBeGreaterThan(at.at(-1)!);
     expect(SYSTEM.indexOf("Everloot's data comes first")).toBeLessThan(at[0]);
     expect(SYSTEM).toContain(UNSOURCED);
   });
@@ -183,14 +183,14 @@ describe("Everloot first", () => {
     expect((await searchOnly("linen", one as never)).pages).toEqual(["https://everloot.app/database/item/2589"]);
   });
 
-  test("labels: From Everloot when the tools backed it, From the web when the model answered alone or said so", () => {
+  test("labels: From Everloot when the tools backed it, From the model when it answered alone or said so", () => {
     const base = { text: "Tailors make it.", model: "m", sources: [] as string[], pages: [] as string[] };
-    expect(answerOrigin({ ...base, pages: ["https://everloot.app/x"] })).toEqual({ everloot: true, web: false });
-    expect(answerOrigin({ ...base, sources: ["https://warcraft.wiki.gg/wiki/X"] })).toEqual({ everloot: true, web: false });
-    expect(answerOrigin(base)).toEqual({ everloot: false, web: true });
-    expect(answerOrigin({ ...base, pages: ["https://everloot.app/x"], text: `Drops in Elwynn. ${UNSOURCED} it is common.` })).toEqual({ everloot: true, web: true });
-    expect(answerOrigin({ ...base, text: NO_SOURCED_ANSWER })).toEqual({ everloot: false, web: false });
-    expect(answerOrigin({ ...base, model: null, sources: ["s"] })).toEqual({ everloot: true, web: false });
+    expect(answerOrigin({ ...base, pages: ["https://everloot.app/x"] })).toEqual({ everloot: true, model: false });
+    expect(answerOrigin({ ...base, sources: ["https://warcraft.wiki.gg/wiki/X"] })).toEqual({ everloot: true, model: false });
+    expect(answerOrigin(base)).toEqual({ everloot: false, model: true });
+    expect(answerOrigin({ ...base, pages: ["https://everloot.app/x"], text: `Drops in Elwynn. ${UNSOURCED} it is common.` })).toEqual({ everloot: true, model: true });
+    expect(answerOrigin({ ...base, text: NO_SOURCED_ANSWER })).toEqual({ everloot: false, model: false });
+    expect(answerOrigin({ ...base, model: null, sources: ["s"] })).toEqual({ everloot: true, model: false });
   });
 });
 

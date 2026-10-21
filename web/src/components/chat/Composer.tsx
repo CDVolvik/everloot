@@ -23,9 +23,8 @@ export default function Composer(p: {
   busy: boolean;
   providers: SavedProvider[];
   onPickModel: (kind: SavedProvider["kind"], model: string) => void;
-  /** Where to set keys up; null opens the keys panel on this page instead (onOpenKeys). */
-  keysHref: string | null;
-  onOpenKeys: () => void;
+  /** Where to set keys up: /account#chat-keys, through sign-in when signed out. */
+  keysHref: string;
   signed: boolean | null;
   characters: ShellCharacter[];
   context: ShellCharacter | null;
@@ -42,17 +41,13 @@ export default function Composer(p: {
     t.style.height = `${Math.min(t.scrollHeight, MAX_HEIGHT)}px`;
   }, [p.value, p.box]);
 
-  const setupLink = p.keysHref
-    ? <a href={p.keysHref} className="text-accent underline underline-offset-4">Finish your key setup</a>
-    : <button type="button" className="text-accent underline underline-offset-4" onClick={p.onOpenKeys}>Finish your key setup</button>;
-
   return (
     <form className="mx-auto w-full max-w-reading px-4 pb-3" aria-label="Ask Everloot"
       onSubmit={(e) => { e.preventDefault(); p.onSend(); }}>
       <div className="rounded-card border border-edge bg-panel focus-within:border-accent">
         {!ready && (
           <p className="border-b border-line px-4 py-2 text-sm text-fg-2">
-            {setupLink}{p.keysHref && p.signed === false ? " (sign in first)" : ""} to answer with a model. Until then, Send shows Everloot&apos;s search results.
+            <a href={p.keysHref} className="text-accent underline underline-offset-4">Finish your key setup</a>{p.signed === false ? " (sign in first)" : ""} to answer with a model. Until then, Send shows Everloot&apos;s search results.
           </p>
         )}
         <textarea ref={p.box} rows={1} value={p.value} aria-label="Your question" aria-keyshortcuts="Enter Shift+Enter"
@@ -67,7 +62,7 @@ export default function Composer(p: {
           {ready && (
             <select aria-label="Model" className={menu} disabled={p.busy} value={`${active!.kind}|${active!.model}`}
               onChange={(e) => {
-                if (e.target.value === "manage") { if (p.keysHref) window.location.assign(p.keysHref); else p.onOpenKeys(); return; }
+                if (e.target.value === "manage") { window.location.assign(p.keysHref); return; }
                 const [kind, ...rest] = e.target.value.split("|");
                 p.onPickModel(kind as SavedProvider["kind"], rest.join("|"));
               }}>
@@ -92,7 +87,7 @@ export default function Composer(p: {
             </select>
           )}
           {p.signed !== null && (
-            <span className="text-xs text-muted">{p.signed ? "Using your Everloot account" : "Signed out: lookups use the public limits"}</span>
+            <span className="text-xs text-muted">{p.signed ? "Game data through your Everloot account" : "Signed out: lookups use the public limits"}</span>
           )}
           {p.busy
             ? <button type="button" className="btn ml-auto min-h-9 px-4 text-sm" aria-keyshortcuts="Escape" onClick={p.onStop}>Stop</button>

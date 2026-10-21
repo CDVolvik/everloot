@@ -20,11 +20,11 @@ export function modelOptions(providers: SavedProvider[]) {
 }
 
 /**
- * The Chat keys section of /settings: the player's provider keys and default model for /chat. Everything is
+ * The Chat keys section of /account: the player's provider keys and default model for /chat. Everything is
  * read from and written to this browser's localStorage (lib/chat/store.ts); nothing here talks to Everloot.
- * Test sends the key to its own provider only. `onChange` lets a page on the same tab follow the change.
+ * Test sends the key to its own provider only.
  */
-export default function ChatKeys({ onChange }: { onChange?: (providers: SavedProvider[]) => void }) {
+export default function ChatKeys() {
   const [providers, setProviders] = useState<SavedProvider[]>([]);
   const [kind, setKind] = useState<ChatProviderKind>("openrouter");
   const [status, setStatus] = useState("");
@@ -35,7 +35,6 @@ export default function ChatKeys({ onChange }: { onChange?: (providers: SavedPro
 
   function apply(next: SavedProvider[], message: string) {
     setProviders(next);
-    onChange?.(next);
     setStatus(message);
   }
 

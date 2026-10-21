@@ -10,7 +10,7 @@ const description = "Ask about WoW: Forever in plain words. Your own AI model lo
 export const metadata: Metadata = pageMetadata({ title: TITLE, description, path: "/chat" });
 
 // No ad slot here: the page is a conversation. It fills the screen under the header (ChatClient is fixed there),
-// with no footer; keys are set up in /settings, which needs EVERLOOT_PROFILES.
+// with no footer; keys are set up on /account#chat-keys.
 export default function ChatPage() {
   return (
     <>

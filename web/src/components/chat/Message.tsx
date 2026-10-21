@@ -21,7 +21,7 @@ export function UserMessage({ m }: { m: ChatMessage }) {
   );
 }
 
-/** An answer, its origin (From Everloot with the pages, From the web), the model and a copy button. */
+/** An answer, its origin (From Everloot with the pages, From the model), the model and a copy button. */
 export function AssistantMessage({ m, copied, onCopy }: { m: ChatMessage; copied: boolean; onCopy: () => void }) {
   const origin = answerOrigin(m);
   const pages = m.pages ?? [];
@@ -46,9 +46,9 @@ export function AssistantMessage({ m, copied, onCopy }: { m: ChatMessage; copied
           )}
         </div>
       )}
-      {origin.web && (
+      {origin.model && (
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs text-fg-2">
-          <span className="rounded-full border border-edge px-2">From the web</span>
+          <span className="rounded-full border border-edge px-2">From the model</span>
           <span className="text-muted">{origin.everloot ? "Part of this is the model's own knowledge, not Everloot's data." : "Everloot had nothing on this, so the model answered from what it knows."}</span>
         </div>
       )}

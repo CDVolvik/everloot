@@ -11,13 +11,12 @@ import {
 } from "@/lib/chat/store";
 import { askPrefill, validCharacterId } from "@/lib/profiles";
 import type { AccountBuilds, SavedBuild } from "@/lib/saved-builds";
-import ChatKeys from "./ChatKeys";
 import Composer from "./Composer";
 import ConversationRail from "./ConversationRail";
 import { AssistantMessage, UserMessage } from "./Message";
 
 export const SUGGESTIONS = ["Where does Linen Cloth drop?", "Plan a level 40 Fury warrior", "What changed in the last build?", "What sells best on my realm?"];
-export const KEYS_PATH = "/settings#chat-keys";
+export const KEYS_PATH = "/account#chat-keys";
 
 interface Characters { characters: ShellCharacter[]; builds: SavedBuild[] }
 
@@ -44,7 +43,7 @@ const reducedMotion = () => typeof window.matchMedia === "function" && window.ma
 /**
  * The /chat conversation: a full-screen thread, one composer, and the browser-local conversation list.
  * `savedBuilds` (EVERLOOT_SAVED_BUILDS) offers my_builds to a signed-in visitor's model; `profiles`
- * (EVERLOOT_PROFILES) means /settings exists, so key setup links there. Without it, keys open in a panel here.
+ * (EVERLOOT_PROFILES) offers the account's characters as context. Keys are set up on /account#chat-keys.
  */
 export default function ChatClient({ savedBuilds = false, profiles = false }: { savedBuilds?: boolean; profiles?: boolean }) {
   const [providers, setProviders] = useState<SavedProvider[]>([]);
@@ -66,7 +65,6 @@ export default function ChatClient({ savedBuilds = false, profiles = false }: { 
   const stop = useRef<AbortController | null>(null);
   const thread = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLTextAreaElement>(null);
-  const keysPanel = useRef<HTMLDialogElement>(null);
   const railToggle = useRef<HTMLButtonElement>(null);
   const stick = useRef(true);
   const prefilled = useRef(false);
@@ -83,7 +81,7 @@ export default function ChatClient({ savedBuilds = false, profiles = false }: { 
     setCurrentId(newConversationId());
     setRailOpen(typeof window.matchMedia === "function" && window.matchMedia("(min-width: 1024px)").matches);
     setReady(true);
-    // Keys saved in /settings in another tab apply here at once.
+    // Keys saved on /account in another tab apply here at once.
     const onStorage = (e: StorageEvent) => { if (e.key === PROVIDERS || e.key === null) setProviders(loadProviders(localStorage)); };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
@@ -194,10 +192,6 @@ export default function ChatClient({ savedBuilds = false, profiles = false }: { 
     if (c.id === currentId) newChat();
   }
 
-  function openKeys() {
-    keysPanel.current?.showModal();
-  }
-
   async function copy(i: number, text: string) {
     try { await navigator.clipboard.writeText(text); setCopied(i); setTimeout(() => setCopied(null), 1500); } catch { /* the browser refused; nothing to undo */ }
   }
@@ -215,7 +209,7 @@ export default function ChatClient({ savedBuilds = false, profiles = false }: { 
     return () => document.removeEventListener("keydown", onKey);
   }, []);
 
-  const keysHref = profiles ? (signed === false ? signInPath(KEYS_PATH) : KEYS_PATH) : null;
+  const keysHref = signed === false ? signInPath(KEYS_PATH) : KEYS_PATH;
   const empty = messages.length === 0 && !busy;
 
   return (
@@ -265,19 +259,9 @@ export default function ChatClient({ savedBuilds = false, profiles = false }: { 
 
         <Composer box={box} value={draft} onValue={setDraft} onSend={() => void ask(draft)} onStop={() => stop.current?.abort()} busy={busy}
           providers={providers} onPickModel={(kind, model) => { try { setProviders(pickModel(localStorage, kind, model)); } catch (e) { setError(e instanceof Error ? e.message : String(e)); } }}
-          keysHref={keysHref} onOpenKeys={openKeys} signed={signed}
+          keysHref={keysHref} signed={signed}
           characters={own.characters} context={context} onContext={(c) => { setContext(c); box.current?.focus(); }} />
       </div>
-
-      {!profiles && (
-        <dialog ref={keysPanel} aria-labelledby="chat-keys-title" className="w-[min(92vw,36rem)] rounded-card border border-line bg-canvas p-4 text-fg backdrop:bg-canvas/80">
-          <div className="mb-3 flex items-center">
-            <h2 id="chat-keys-title" className="text-lg font-semibold">Chat keys</h2>
-            <button type="button" className="btn ml-auto min-h-9 px-3 text-sm" onClick={() => keysPanel.current?.close()}>Close</button>
-          </div>
-          <ChatKeys onChange={setProviders} />
-        </dialog>
-      )}
     </div>
   );
 }

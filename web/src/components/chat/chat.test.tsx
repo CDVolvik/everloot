@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import type { AccountShell } from "@/lib/account-shell-types";
 import ChatClient, { SUGGESTIONS } from "./ChatClient";
 import ChatKeys from "./ChatKeys";
+import { AssistantMessage } from "./Message";
 
 const ME = "11111111-2222-4333-8444-555555555555";
 const MAGE = "33333333-4444-4555-8666-777777777777";
@@ -87,14 +88,14 @@ function setValue(el: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
 }
 
 describe("the chat page", () => {
-  test("no key, signed in: one composer that asks to finish key setup in Settings, the account label and four suggestions", async () => {
+  test("no key, signed in: one composer that asks to finish key setup on /account, the account label and four suggestions", async () => {
     api();
     await render(<ChatClient profiles />);
     expect(container.querySelectorAll("textarea")).toHaveLength(1);
     expect(container.querySelector('input[type="password"]')).toBeNull();
     const setup = Array.from(container.querySelectorAll("a")).find((a) => a.textContent === "Finish your key setup");
-    expect(setup?.getAttribute("href")).toBe("/settings#chat-keys");
-    expect(text()).toContain("Using your Everloot account");
+    expect(setup?.getAttribute("href")).toBe("/account#chat-keys");
+    expect(text()).toContain("Game data through your Everloot account");
     expect(container.querySelector('select[aria-label="Model"]')).toBeNull();
     for (const s of SUGGESTIONS) expect(button(s)).toBeTruthy();
     expect(SUGGESTIONS).toHaveLength(4);
@@ -104,17 +105,18 @@ describe("the chat page", () => {
     api({ signed: false });
     await render(<ChatClient profiles />);
     const setup = Array.from(container.querySelectorAll("a")).find((a) => a.textContent === "Finish your key setup");
-    expect(setup?.getAttribute("href")).toBe("/sign-in?returnTo=%2Fsettings%23chat-keys");
+    expect(setup?.getAttribute("href")).toBe("/sign-in?returnTo=%2Faccount%23chat-keys");
     expect(text()).toContain("Signed out: lookups use the public limits");
-    expect(text()).not.toContain("Using your Everloot account");
+    expect(text()).not.toContain("Game data through your Everloot account");
   });
 
-  test("without /settings (profiles off) the setup opens a keys panel on the page instead", async () => {
+  test("with profiles off, setup still links to /account, and the page has no key field of its own", async () => {
     api();
     await render(<ChatClient />);
-    expect(Array.from(container.querySelectorAll("a")).some((a) => a.textContent === "Finish your key setup")).toBe(false);
-    expect(button("Finish your key setup")).toBeTruthy();
-    expect(container.querySelector("dialog")).not.toBeNull();
+    const setup = Array.from(container.querySelectorAll("a")).find((a) => a.textContent === "Finish your key setup");
+    expect(setup?.getAttribute("href")).toBe("/account#chat-keys");
+    expect(container.querySelector("dialog")).toBeNull();
+    expect(container.querySelector('input[name="key"]')).toBeNull();
   });
 
   test("?q= without a key waits in the box with the character as a chip, and nothing is sent", async () => {
@@ -183,6 +185,12 @@ describe("the chat page", () => {
     expect(text()).toContain("From Everloot");
     expect(text()).toContain("Everloot search");
     expect(text()).not.toMatch(/Source: |More: /);
+  });
+
+  test("an answer the tools did not back is labelled From the model", async () => {
+    await render(<AssistantMessage m={{ role: "assistant", text: "Tailors make it.", at: "", model: "m", sources: [], pages: [], steps: [] }} copied={false} onCopy={() => {}} />);
+    expect(text()).toContain("From the model");
+    expect(text()).not.toContain("From Everloot");
   });
 
   test("Ctrl+Shift+O starts a new chat", async () => {

@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import ChatKeys from "@/components/chat/ChatKeys";
 import { className } from "@/components/builds/describe";
 import MainCharacterButton from "@/components/settings/MainCharacterButton";
 import ProfileForm from "@/components/settings/ProfileForm";
@@ -94,15 +93,11 @@ export default async function SettingsPage() {
           </p>
         </section>
 
-        <section id="chat-keys" aria-labelledby="chat-keys-heading" className="scroll-mt-16 space-y-2">
-          <h2 id="chat-keys-heading" className={heading}>Chat keys</h2>
-          <ChatKeys />
-        </section>
-
         <section aria-labelledby="more" className="space-y-2">
           <h2 id="more" className={heading}>More</h2>
           <ul className="space-y-1 text-sm">
             <li><Link href="/account#keys" className={link}>API keys</Link></li>
+            <li><Link href="/account#chat-keys" className={link}>Chat keys</Link></li>
             <li><Link href="/addon" className={link}>Desktop App and addon</Link></li>
           </ul>
         </section>
