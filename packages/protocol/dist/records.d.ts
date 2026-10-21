@@ -658,6 +658,29 @@ export declare const playerSeen: z.ZodObject<{
 }, z.core.$strip>;
 /** The player-page kind. Never part of the public corpus; intake writes it to the players table, not to the upload. */
 export declare const PLAYER_KINDS: readonly string[];
+/** A link code as the site shows it: EL-, four characters, a hyphen and two more, from Crockford's base 32 alphabet. */
+export declare const LINK_CODE: z.ZodString;
+/** One of your own characters, written when you type `/everloot link <code>` on it. */
+export declare const characterLink: z.ZodObject<{
+    installId: z.ZodString;
+    eventId: z.ZodOptional<z.ZodString>;
+    capturedAt: z.ZodString;
+    kind: z.ZodLiteral<"character_link">;
+    code: z.ZodString;
+    name: z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>;
+    realm: z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>;
+    race: z.ZodString;
+    class: z.ZodString;
+    level: z.ZodNumber;
+    faction: z.ZodEnum<{
+        Alliance: "Alliance";
+        Horde: "Horde";
+    }>;
+    guid: z.ZodString;
+    completionKey: z.ZodString;
+}, z.core.$strip>;
+/** The link kind. Not a public corpus kind and never kept in a stored upload. */
+export declare const LINK_KINDS: readonly string[];
 /** Every record kind and its schema, in the order the contract lists them. */
 export declare const recordSchemas: {
     readonly npc_sighting: z.ZodObject<{
@@ -1165,6 +1188,24 @@ export declare const recordSchemas: {
         level: z.ZodNumber;
         guild: z.ZodOptional<z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>>;
     }, z.core.$strip>;
+    readonly character_link: z.ZodObject<{
+        installId: z.ZodString;
+        eventId: z.ZodOptional<z.ZodString>;
+        capturedAt: z.ZodString;
+        kind: z.ZodLiteral<"character_link">;
+        code: z.ZodString;
+        name: z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>;
+        realm: z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>;
+        race: z.ZodString;
+        class: z.ZodString;
+        level: z.ZodNumber;
+        faction: z.ZodEnum<{
+            Alliance: "Alliance";
+            Horde: "Horde";
+        }>;
+        guid: z.ZodString;
+        completionKey: z.ZodString;
+    }, z.core.$strip>;
 };
 export type RecordKind = keyof typeof recordSchemas;
 export declare const ALL_RECORD_KINDS: RecordKind[];
@@ -1640,14 +1681,31 @@ export declare const anyRecord: z.ZodDiscriminatedUnion<[z.ZodObject<{
     class: z.ZodString;
     level: z.ZodNumber;
     guild: z.ZodOptional<z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>>;
+}, z.core.$strip>, z.ZodObject<{
+    installId: z.ZodString;
+    eventId: z.ZodOptional<z.ZodString>;
+    capturedAt: z.ZodString;
+    kind: z.ZodLiteral<"character_link">;
+    code: z.ZodString;
+    name: z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>;
+    realm: z.ZodString & z.ZodType<string, string, z.core.$ZodTypeInternals<string, string>>;
+    race: z.ZodString;
+    class: z.ZodString;
+    level: z.ZodNumber;
+    faction: z.ZodEnum<{
+        Alliance: "Alliance";
+        Horde: "Horde";
+    }>;
+    guid: z.ZodString;
+    completionKey: z.ZodString;
 }, z.core.$strip>], "kind">;
 export type IntakeRecord = z.infer<typeof anyRecord>;
 /**
  * A record as intake stores it in an upload: census rows have their GUID swapped for a key, player rows are
- * not in the upload at all (they go to the players table), every other kind is as parsed.
+ * not in the upload at all (they go to the players table), link rows are never stored, every other kind is as parsed.
  */
 export type StoredRecord = Exclude<IntakeRecord, {
-    kind: "census_self" | "census_seen" | "player_seen";
+    kind: "census_self" | "census_seen" | "player_seen" | "character_link";
 }> | StoredCensusRecord;
 /** The request envelope. `protocol` is the uploader's protocol version; a missing one means major 1. */
 export declare const uploadPayload: z.ZodObject<{
