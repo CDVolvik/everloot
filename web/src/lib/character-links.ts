@@ -52,6 +52,24 @@ export function linkKey(guid: string, secret: string): string {
 }
 
 /**
+ * The realm as one key however it was spelled, exactly as `public.link_realm_key` makes it: lower case, the curly
+ * apostrophe as a straight one, any run of spaces and hyphens as one space. "Forever-Pioneer" and "forever  pioneer"
+ * are one realm, so a spelling cannot dodge a freeze or a hide.
+ */
+export function linkRealmKey(realm: string): string {
+  return realm.toLowerCase().replace(/’/g, "'").replace(/[\s-]+/g, " ").trim();
+}
+
+/**
+ * What is kept in place of the install id and completion key. The addon derives the completion key from the install
+ * id and the GUID, so the two together would let the GUID be guessed back; the keyed hash cannot be. Completion rows
+ * can still be joined later by hashing their install id and character key the same way.
+ */
+export function completionRef(installId: string, completionKey: string, secret: string): string {
+  return createHmac("sha256", secret).update(`completion:${installId}:${completionKey}`).digest("hex");
+}
+
+/**
  * Whether the census agrees with a link row: every stored census row of the same character (by its census key,
  * computed here and not kept) has the row's race, class and faction. No census row for it is agreement.
  */

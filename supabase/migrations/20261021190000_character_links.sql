@@ -1,5 +1,5 @@
 -- Character links: a signed-in player ties one of their in-game characters to their account by typing a short
--- code on it. Additive: three new tables and seven functions; api_keys may now hold a 'link:own' scope. Needs
+-- code on it. Additive: three new tables and eight functions; api_keys may now hold a 'link:own' scope. Needs
 -- 20261021150000_saved_builds.sql first (its create_api_key is replaced here). Apply before setting
 -- EVERLOOT_CHARACTER_LINKS=1; until then the site never calls anything here. Safe to apply twice.
 --
@@ -8,12 +8,13 @@
 -- claims the same character (same game id, or same name on the same realm): then the character is frozen on every
 -- account that holds it, and shows nowhere until an operator decides.
 --
--- Stored: the code's SHA-256 (never the code), and per link the character's name, realm, race, class, faction,
--- level, completion key and install id, plus `link_key`, a keyed hash the server makes from the GUID. The GUID
--- never reaches this database. Nothing is public: every visibility flag starts false, and a hidden character
--- (character_suppressions) can be neither linked nor shown. The server reads with the service role and writes only
--- through the functions below, which hold the limits: 10 codes a day, each live 15 minutes and good once, and
--- 50 linked characters per account.
+-- Stored: the code's SHA-256 (never the code), and per link the character's name, realm, race, class, faction and
+-- level, plus two keyed hashes the server makes: `link_key` from the GUID, and `completion_ref` from the install id
+-- and the completion key (which the addon derives from the install id and the GUID, so neither is kept raw: together
+-- they would let the GUID be guessed back). The GUID never reaches this database. Nothing is public: every
+-- visibility flag starts false, and a hidden character (character_suppressions) can be neither linked nor shown.
+-- The server reads with the service role and writes only through the functions below, which hold the limits:
+-- 10 codes a day, each live 15 minutes and good once, and 50 linked characters per account.
 
 do $$
 begin
@@ -21,6 +22,19 @@ begin
     raise exception 'Apply 20261021150000_saved_builds.sql first';
   end if;
 end $$;
+
+-- A realm as one key, however it was spelled: lower case, the curly apostrophe as a straight one, and any run of
+-- spaces and hyphens as one space. "Forever-Pioneer", "forever  pioneer" and the page address "forever-pioneer"
+-- are one realm. Every realm comparison below goes through this, so a spelling cannot dodge a freeze or a hide.
+-- The site mirrors it in web/src/lib/character-links.ts (linkRealmKey).
+create or replace function public.link_realm_key(p_realm text)
+returns text
+language sql immutable set search_path = ''
+as $$
+  select btrim(regexp_replace(replace(lower(p_realm), chr(8217), ''''), '[[:space:]-]+', ' ', 'g'));
+$$;
+revoke all on function public.link_realm_key(text) from public, anon, authenticated;
+grant execute on function public.link_realm_key(text) to service_role;
 
 create table if not exists public.link_codes (
   code_hash text primary key check (code_hash ~ '^[a-f0-9]{64}$'),
@@ -38,7 +52,7 @@ create table if not exists public.character_links (
   user_id uuid not null references public.users(id) on delete cascade,
   link_key text not null check (link_key ~ '^[a-f0-9]{64}$'),
   ruleset text not null check (ruleset ~ '^[a-z0-9-]{1,32}$'),
-  realm_key text not null check (realm_key = lower(btrim(realm_key)) and char_length(realm_key) between 2 and 40),
+  realm_key text not null check (realm_key = public.link_realm_key(realm_key) and char_length(realm_key) between 2 and 40),
   name_key text not null check (name_key = lower(name_key) and char_length(name_key) between 2 and 12),
   realm text not null check (char_length(realm) between 2 and 40),
   name text not null check (char_length(name) between 2 and 12),
@@ -46,8 +60,7 @@ create table if not exists public.character_links (
   class text not null check (class ~ '^[A-Z]{3,16}$'),
   faction text not null check (faction in ('Alliance', 'Horde')),
   level smallint not null check (level between 1 and 60),
-  completion_key text not null check (completion_key ~ '^[0-9a-f]{8}$'),
-  install_id text not null check (char_length(install_id) between 8 and 64),
+  completion_ref text not null check (completion_ref ~ '^[a-f0-9]{64}$'),
   status text not null default 'linked' check (status in ('linked', 'frozen')),
   linked_at timestamptz not null default now(),
   last_upload_at timestamptz not null default now()
@@ -135,20 +148,23 @@ revoke all on function public.create_link_code(uuid, text) from public, anon, au
 grant execute on function public.create_link_code(uuid, text) to service_role;
 
 -- 2. Redeem a code with the character it was typed on. The server has already checked the row's shape, turned
--- the GUID into p_link_key and checked the census agrees. Refusals (nothing written, the code stays live):
--- code_unknown, code_foreign (another account's code), code_used, code_expired, suppressed (a hide request names
--- this character), name_linked (this account links another character of that name and realm), link_limit (50).
+-- the GUID into p_link_key and the install id and completion key into p_completion_ref, and says in p_census_agrees
+-- whether the census agrees on race, class and faction. The code is checked first, so nothing about the character
+-- is told to an account without a live code of its own. Refusals: code_unknown, code_foreign (another account's
+-- code), code_used, code_expired (nothing written); census_mismatch (the code is spent, so the census cannot be
+-- probed); suppressed (a hide request names this character), name_linked (this account links another character of
+-- that name and realm), link_limit (50) (nothing written, the code stays live).
 -- Otherwise the code is spent and the link written or refreshed. When another account holds the same game id or
 -- the same name and realm, every one of those links and this one are frozen: link_status 'frozen'.
 create or replace function public.redeem_link(
   p_user_id uuid, p_code_hash text, p_link_key text, p_ruleset text, p_realm text, p_name text,
-  p_race text, p_class text, p_faction text, p_level integer, p_completion_key text, p_install_id text)
+  p_race text, p_class text, p_faction text, p_level integer, p_completion_ref text, p_census_agrees boolean)
 returns table (link_ref uuid, link_status text, refusal text)
 language plpgsql security definer set search_path = '' set lock_timeout = '3s'
 as $$
 declare
   v_realm text := btrim(p_realm);
-  v_realm_key text := lower(btrim(p_realm));
+  v_realm_key text := public.link_realm_key(p_realm);
   v_name_key text := lower(p_name);
   v_code public.link_codes%rowtype;
   v_own public.character_links%rowtype;
@@ -160,12 +176,11 @@ begin
   if p_user_id is null or p_code_hash is null or p_code_hash !~ '^[a-f0-9]{64}$'
     or p_link_key is null or p_link_key !~ '^[a-f0-9]{64}$'
     or p_ruleset is null or p_ruleset !~ '^[a-z0-9-]{1,32}$'
-    or v_realm is null or char_length(v_realm) not between 2 and 40
+    or v_realm is null or char_length(v_realm) not between 2 and 40 or char_length(v_realm_key) not between 2 and 40
     or p_name is null or char_length(p_name) not between 2 and 12
     or p_race is null or p_race !~ '^[A-Za-z]{2,24}$' or p_class is null or p_class !~ '^[A-Z]{3,16}$'
     or p_faction is null or p_faction not in ('Alliance', 'Horde') or p_level is null or p_level not between 1 and 60
-    or p_completion_key is null or p_completion_key !~ '^[0-9a-f]{8}$'
-    or p_install_id is null or char_length(p_install_id) not between 8 and 64 then
+    or p_completion_ref is null or p_completion_ref !~ '^[a-f0-9]{64}$' or p_census_agrees is null then
     raise exception 'Invalid link';
   end if;
   -- The user row, then the character by game id, then by name: always in this order, so two claims of one
@@ -180,7 +195,11 @@ begin
   if v_code.user_id <> p_user_id then refusal := 'code_foreign'; return next; return; end if;
   if v_code.used_at is not null then refusal := 'code_used'; return next; return; end if;
   if v_code.expires_at <= now() then refusal := 'code_expired'; return next; return; end if;
-  if exists (select 1 from public.character_suppressions s where s.realm = v_realm_key and s.character = v_name_key) then
+  if not p_census_agrees then
+    update public.link_codes c set used_at = now() where c.code_hash = p_code_hash;
+    refusal := 'census_mismatch'; return next; return;
+  end if;
+  if exists (select 1 from public.character_suppressions s where public.link_realm_key(s.realm) = v_realm_key and s.character = v_name_key) then
     refusal := 'suppressed'; return next; return;
   end if;
 
@@ -205,14 +224,14 @@ begin
 
   if v_own.id is null then
     insert into public.character_links (user_id, link_key, ruleset, realm_key, name_key, realm, name, race, class, faction,
-        level, completion_key, install_id, status)
+        level, completion_ref, status)
       values (p_user_id, p_link_key, p_ruleset, v_realm_key, v_name_key, v_realm, p_name, p_race, p_class, p_faction,
-        p_level, p_completion_key, p_install_id, v_status)
+        p_level, p_completion_ref, v_status)
       returning id into link_ref;
   else
     update public.character_links l set ruleset = p_ruleset, realm_key = v_realm_key, name_key = v_name_key, realm = v_realm,
-        name = p_name, race = p_race, class = p_class, faction = p_faction, level = p_level, completion_key = p_completion_key,
-        install_id = p_install_id, status = v_status, last_upload_at = now()
+        name = p_name, race = p_race, class = p_class, faction = p_faction, level = p_level, completion_ref = p_completion_ref,
+        status = v_status, last_upload_at = now()
       where l.id = v_own.id
       returning l.id into link_ref;
   end if;
@@ -223,8 +242,8 @@ begin
   return next;
 end;
 $$;
-revoke all on function public.redeem_link(uuid, text, text, text, text, text, text, text, text, integer, text, text) from public, anon, authenticated;
-grant execute on function public.redeem_link(uuid, text, text, text, text, text, text, text, text, integer, text, text) to service_role;
+revoke all on function public.redeem_link(uuid, text, text, text, text, text, text, text, text, integer, text, boolean) from public, anon, authenticated;
+grant execute on function public.redeem_link(uuid, text, text, text, text, text, text, text, text, integer, text, boolean) to service_role;
 
 -- 3. Unlink one of the owner's characters: the link and its visibility go. False when there is none with that id on
 -- the account. Another account's frozen link of the same character stays frozen until an operator decides.
@@ -281,8 +300,9 @@ revoke all on function public.set_visibility(uuid, uuid, jsonb) from public, ano
 grant execute on function public.set_visibility(uuid, uuid, jsonb) to service_role;
 
 -- 5. The public read of one linked character, or no row: only a live (not frozen) link whose owner made the page
--- public, and never a hidden character. The realm is its key with spaces as hyphens, as the page address spells
--- it. No account, key or install id comes out of here.
+-- public, and never a hidden character. The realm may be spelled as the page address spells it (hyphens) or any
+-- other way: it is compared as a link_realm_key. Two accounts holding one character are both frozen, so at most
+-- one live link matches. No account, key or hash comes out of here.
 create or replace function public.public_character(p_ruleset text, p_realm_slug text, p_name text)
 returns table (name text, realm text, race text, class text, faction text, level smallint, linked_at timestamptz,
   last_upload_at timestamptz, show_gear boolean, show_collections boolean, show_gold boolean, show_guild boolean,
@@ -293,11 +313,12 @@ as $$
     v.show_gear, v.show_collections, v.show_gold, v.show_guild, v.indexable
   from public.character_links l
   join public.character_visibility v on v.link_id = l.id
-  where l.ruleset = p_ruleset and l.name_key = lower(p_name) and replace(l.realm_key, ' ', '-') = lower(p_realm_slug)
+  where l.ruleset = p_ruleset and l.name_key = lower(p_name) and l.realm_key = public.link_realm_key(p_realm_slug)
     and l.status = 'linked' and v.page_public
-    and not exists (select 1 from public.character_suppressions s where s.realm = l.realm_key and s.character = l.name_key)
+    and not exists (select 1 from public.character_suppressions s where public.link_realm_key(s.realm) = l.realm_key and s.character = l.name_key)
     and not exists (select 1 from public.character_links o where o.id <> l.id and o.status = 'frozen'
       and (o.link_key = l.link_key or (o.ruleset = l.ruleset and o.realm_key = l.realm_key and o.name_key = l.name_key)))
+  order by l.linked_at, l.id
   limit 1;
 $$;
 revoke all on function public.public_character(text, text, text) from public, anon, authenticated;
@@ -395,15 +416,16 @@ notify pgrst, 'reload schema';
 --   drop function if exists public.public_character(text, text, text);
 --   drop function if exists public.set_visibility(uuid, uuid, jsonb);
 --   drop function if exists public.unlink_character(uuid, uuid);
---   drop function if exists public.redeem_link(uuid, text, text, text, text, text, text, text, text, integer, text, text);
+--   drop function if exists public.redeem_link(uuid, text, text, text, text, text, text, text, text, integer, text, boolean);
 --   drop function if exists public.create_link_code(uuid, text);
 --   drop function if exists public.take_link_code(uuid);
 --   drop table if exists public.character_visibility;
 --   drop table if exists public.character_links;
 --   drop table if exists public.link_codes;
+--   drop function if exists public.link_realm_key(text);
 --   delete from public.intake_quota_buckets where bucket like 'link_codes:%';
+--   delete from public.api_keys where scopes = array['link:own']::text[];
 --   update public.api_keys set scopes = array_remove(scopes, 'link:own') where 'link:own' = any(scopes);
---   delete from public.api_keys where cardinality(scopes) = 0;
 --   then re-run section 8 of 20261021150000_saved_builds.sql, and:
 --   alter table public.api_keys drop constraint if exists api_keys_scopes_check;
 --   alter table public.api_keys add constraint api_keys_scopes_check check (cardinality(scopes) > 0 and scopes <@ array['read:public', 'read:own']::text[]);

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { hashKey, KEY_PATTERN, presentedKey } from "./api-keys";
 import { signInPath } from "./auth/return-to";
-import { characterLinksOn, linkCodeHash, linkKey, newLinkCode, type LinkRow } from "./character-links";
+import { characterLinksOn, completionRef, linkCodeHash, linkKey, linkRealmKey, newLinkCode, type LinkRow } from "./character-links";
 import { rulesetOf } from "./player-pages";
 import { authQuery, getUser, siteUrl } from "./supabase/server";
 
@@ -26,21 +26,25 @@ export async function createLinkCode(userId: string): Promise<{ code: string; ex
   throw new Error("No free code");
 }
 
-export type LinkRefusal = "code_unknown" | "code_foreign" | "code_used" | "code_expired" | "suppressed" | "name_linked" | "link_limit";
-const LINK_REFUSALS: readonly string[] = ["code_unknown", "code_foreign", "code_used", "code_expired", "suppressed", "name_linked", "link_limit"];
+export type LinkRefusal =
+  | "code_unknown" | "code_foreign" | "code_used" | "code_expired" | "census_mismatch" | "suppressed" | "name_linked" | "link_limit";
+const LINK_REFUSALS: readonly string[] = [
+  "code_unknown", "code_foreign", "code_used", "code_expired", "census_mismatch", "suppressed", "name_linked", "link_limit",
+];
 
 /**
- * Redeems the row's code for the account. The GUID goes no further than this function: the database gets the
- * keyed hash only.
+ * Redeems the row's code for the account. The GUID goes no further than this function: the database gets keyed
+ * hashes only, never the GUID, the install id or the completion key. `censusAgrees` is used only after the database
+ * has found the code live and the account's, and a mismatch spends the code.
  */
-export async function redeemLink(userId: string, row: LinkRow, secret: string): Promise<{ id: string; status: "linked" | "frozen" } | { refused: LinkRefusal }> {
+export async function redeemLink(userId: string, row: LinkRow, secret: string, censusAgrees: boolean): Promise<{ id: string; status: "linked" | "frozen" } | { refused: LinkRefusal }> {
   const realm = row.realm.trim();
   const rows = await authQuery<Array<{ link_ref: string | null; link_status: string | null; refusal: string | null }>>("rpc/redeem_link", {
     method: "POST",
     body: JSON.stringify({
-      p_user_id: userId, p_code_hash: linkCodeHash(row.code), p_link_key: linkKey(row.guid, secret), p_ruleset: rulesetOf(realm),
+      p_user_id: userId, p_code_hash: linkCodeHash(row.code), p_link_key: linkKey(row.guid, secret), p_ruleset: rulesetOf(linkRealmKey(realm)),
       p_realm: realm, p_name: row.name, p_race: row.race, p_class: row.class, p_faction: row.faction, p_level: row.level,
-      p_completion_key: row.completionKey, p_install_id: row.installId,
+      p_completion_ref: completionRef(row.installId, row.completionKey, secret), p_census_agrees: censusAgrees,
     }),
   });
   const result = Array.isArray(rows) && rows.length === 1 ? rows[0] : null;

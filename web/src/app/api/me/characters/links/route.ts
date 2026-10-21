@@ -8,26 +8,29 @@ import { uploadStore } from "@/lib/upload-store";
 /**
  * POST /api/me/characters/links: `{ records: [character_link rows] }`, from the signed-in upload page (session
  * cookie, this site's Origin) or the Desktop App (`Authorization: Bearer evl_...` with link:own). Each row's code
- * must be live and this account's. The GUID becomes a keyed hash here and goes no further; the census, when it
- * knows the character, must agree on race, class and faction. A new link is private. A character another account
- * has linked too is frozen on both. 404 until EVERLOOT_CHARACTER_LINKS=1.
+ * must be live and this account's; only then does the census answer count: when the census knows the character it
+ * must agree on race, class and faction, and a mismatch spends the code. The GUID becomes a keyed hash here and goes
+ * no further. A new link is private. A character another account has linked too is frozen on both. Each row gets its
+ * own result; after a storage failure the remaining rows are marked to send again. 404 until EVERLOOT_CHARACTER_LINKS=1.
  */
 export const dynamic = "force-dynamic";
 
 type Result =
   | { index: number; status: "linked" | "frozen"; name: string; realm: string; message: string }
-  | { index: number; status: "refused"; message: string };
+  | { index: number; status: "refused" | "retry"; message: string };
 
-const REFUSED: Record<LinkRefusal | "census_mismatch", string> = {
+const REFUSED: Record<LinkRefusal, string> = {
   code_unknown: "This code is not one of yours, or it was never made.",
   code_foreign: "This code is not one of yours, or it was never made.",
   code_used: "This code was already used. Make a new one.",
   code_expired: "This code has expired. Make a new one.",
+  // Says nothing about what the census holds; the code is spent.
+  census_mismatch: "This character could not be linked with this code. Make a new code and type it on the character itself.",
   suppressed: "This character is hidden by a hide request, so it can't be linked. Write to us to lift it.",
   name_linked: "This account already links another character with this name and realm. Unlink it first.",
   link_limit: `You have ${LINKS_PER_ACCOUNT} linked characters. Unlink one to link another.`,
-  census_mismatch: "The census knows this character as another race, class or faction, so it can't be linked.",
 };
+const RETRY = "This row could not be saved. Send it again in a minute.";
 
 export async function POST(req: Request) {
   try {
@@ -53,11 +56,21 @@ export async function POST(req: Request) {
       if (census.unreachable) return unavailable();
     }
     const results: Result[] = [];
+    let failed = false;
     for (let index = 0; index < rows.length; index++) {
       const row: LinkRow | null = rows[index];
       if (!row) { results.push({ index, status: "refused", message: "Not a character_link row." }); continue; }
-      if (!censusAgrees(row, secret, census?.rows ?? [])) { results.push({ index, status: "refused", message: REFUSED.census_mismatch }); continue; }
-      const linked = await redeemLink(account, row, secret);
+      // Rows after a storage failure are not tried: each says to send it again, and the rows before keep their answers.
+      if (failed) { results.push({ index, status: "retry", message: RETRY }); continue; }
+      // The census answer goes to the database, which uses it only once the code is found live and this account's.
+      let linked: Awaited<ReturnType<typeof redeemLink>>;
+      try {
+        linked = await redeemLink(account, row, secret, censusAgrees(row, secret, census?.rows ?? []));
+      } catch {
+        failed = true;
+        results.push({ index, status: "retry", message: RETRY });
+        continue;
+      }
       if ("refused" in linked) { results.push({ index, status: "refused", message: REFUSED[linked.refused] }); continue; }
       results.push({
         index, status: linked.status, name: row.name, realm: row.realm.trim(),
@@ -66,7 +79,8 @@ export async function POST(req: Request) {
           : "Another account has linked this character too, so it is frozen on both accounts until we look at it.",
       });
     }
-    return NextResponse.json({ results }, { headers: NO_STORE });
+    // 503 only when no row got an answer; otherwise each row says what happened to it.
+    return NextResponse.json({ results }, { status: results.some((r) => r.status !== "retry") ? 200 : 503, headers: NO_STORE });
   } catch {
     return unavailable();
   }

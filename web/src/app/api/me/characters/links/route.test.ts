@@ -110,9 +110,10 @@ describe("linking", () => {
       p_user_id: USER.id, p_code_hash: createHash("sha256").update("EL-7K3Q-9P").digest("hex"),
       p_link_key: createHmac("sha256", SECRET).update(`link:${GUID}`).digest("hex"), p_ruleset: "forever",
       p_realm: "Forever Pioneer", p_name: "Thrallina", p_race: "Orc", p_class: "SHAMAN", p_faction: "Horde", p_level: 24,
-      p_completion_key: "0a1b2c3d", p_install_id: "install-1234",
+      p_completion_ref: createHmac("sha256", SECRET).update("completion:install-1234:0a1b2c3d").digest("hex"), p_census_agrees: true,
     });
-    for (const secret of [GUID, "0A1B2C3D", "Player-", "el-7k3q-9p", "EL-7K3Q-9P"]) expect(sentToDatabase()).not.toContain(secret);
+    // Neither the GUID nor the install id and completion key it could be guessed back from, nor the code.
+    for (const secret of [GUID, "0A1B2C3D", "Player-", "el-7k3q-9p", "EL-7K3Q-9P", "install-1234", "0a1b2c3d"]) expect(sentToDatabase()).not.toContain(secret);
     expect(JSON.stringify(body)).not.toContain(GUID);
   });
 
@@ -126,6 +127,7 @@ describe("linking", () => {
     const cases: Array<[string, RegExp]> = [
       ["code_expired", /expired/], ["code_used", /already used/], ["code_foreign", /not one of yours/], ["code_unknown", /not one of yours/],
       ["suppressed", /hide request/], ["name_linked", /Unlink it first/], ["link_limit", /50 linked characters/],
+      ["census_mismatch", /could not be linked with this code/],
     ];
     for (const [refusal, message] of cases) {
       auth.authQuery.mockResolvedValueOnce(refused(refusal));
@@ -134,12 +136,20 @@ describe("linking", () => {
     }
   });
 
-  test("a row the census knows as another race, class or faction is refused before the database is asked", async () => {
+  test("a census mismatch goes to the database with the code, which checks the code first: no code, no census answer", async () => {
     const characterKey = createHmac("sha256", SECRET).update(GUID).digest("hex");
     store.loadCensus.mockResolvedValue({ rows: [{ kind: "census_self", characterKey, race: "Troll", class: "SHAMAN", faction: "Horde" }], dataAsOf: null });
-    const body = await (await send({ records: [row] })).json();
-    expect(body.results[0]).toMatchObject({ status: "refused", message: expect.stringContaining("census") });
-    expect(auth.authQuery).not.toHaveBeenCalled();
+    // Without a live code of this account the answer is about the code only, whatever the census holds.
+    auth.authQuery.mockResolvedValueOnce(refused("code_unknown"));
+    const probe = (await (await send({ records: [row] })).json()).results[0];
+    expect(probe.message).toMatch(/not one of yours/);
+    expect(JSON.stringify(probe)).not.toMatch(/census|race|class|faction/i);
+    expect(JSON.parse(auth.authQuery.mock.calls[0][1].body).p_census_agrees).toBe(false);
+    // With one, the database spends it and the answer still says nothing about what the census holds.
+    auth.authQuery.mockResolvedValueOnce(refused("census_mismatch"));
+    const spent = (await (await send({ records: [row] })).json()).results[0];
+    expect(spent).toMatchObject({ status: "refused", message: expect.stringContaining("Make a new code") });
+    expect(JSON.stringify(spent)).not.toMatch(/census|race|class|faction|Troll/i);
   });
 
   test("when the census cannot be read, nothing is linked and the player can retry", async () => {
@@ -164,9 +174,19 @@ describe("linking", () => {
     for (const bad of [{}, { records: [] }, { records: Array(11).fill(row) }, { records: "x" }]) expect((await send(bad)).status).toBe(400);
   });
 
-  test("storage failing is a 503, never a false success", async () => {
+  test("storage failing before any answer is a 503, never a false success", async () => {
     auth.authQuery.mockRejectedValueOnce(new Error("down"));
-    expect((await send({ records: [row] })).status).toBe(503);
+    const res = await send({ records: [row] });
+    expect(res.status).toBe(503);
+    expect((await res.json()).results).toEqual([{ index: 0, status: "retry", message: expect.stringContaining("Send it again") }]);
+  });
+
+  test("storage failing mid-batch keeps the earlier rows' answers and marks the rest to send again", async () => {
+    auth.authQuery.mockResolvedValueOnce(redeemed("linked")).mockRejectedValueOnce(new Error("down"));
+    const res = await send({ records: [row, { ...row, code: "EL-AAAA-02" }, { ...row, code: "EL-AAAA-03" }] });
+    expect(res.status).toBe(200);
+    expect((await res.json()).results.map((r: { status: string }) => r.status)).toEqual(["linked", "retry", "retry"]);
+    expect(auth.authQuery).toHaveBeenCalledTimes(2);
   });
 });
 

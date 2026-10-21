@@ -12,7 +12,7 @@ begin
     end loop;
     foreach fn in array array[
       'public.create_link_code(uuid, text)', 'public.unlink_character(uuid, uuid)', 'public.set_visibility(uuid, uuid, jsonb)',
-      'public.redeem_link(uuid, text, text, text, text, text, text, text, text, integer, text, text)',
+      'public.redeem_link(uuid, text, text, text, text, text, text, text, text, integer, text, boolean)',
       'public.public_character(text, text, text)', 'public.link_account_for_key(text)', 'public.take_link_code(uuid)'
     ] loop
       if has_function_privilege(role_name, fn, 'EXECUTE') then raise exception '% can execute %', role_name, fn; end if;
@@ -24,13 +24,14 @@ begin
   if has_table_privilege('service_role', 'public.link_codes', 'SELECT') then raise exception 'code hashes are readable'; end if;
   if has_table_privilege('service_role', 'public.character_links', 'INSERT,UPDATE,DELETE') then raise exception 'links writable outside the functions'; end if;
   if has_function_privilege('service_role', 'public.take_link_code(uuid)', 'EXECUTE') then raise exception 'the code counter is callable'; end if;
-  if not has_function_privilege('service_role', 'public.redeem_link(uuid, text, text, text, text, text, text, text, text, integer, text, text)', 'EXECUTE') then
+  if not has_function_privilege('service_role', 'public.redeem_link(uuid, text, text, text, text, text, text, text, text, integer, text, boolean)', 'EXECUTE') then
     raise exception 'server cannot redeem';
   end if;
-  -- No column anywhere can hold a GUID.
+  -- No column anywhere can hold a GUID, or the install id and completion key it could be guessed back from.
   if exists (select 1 from information_schema.columns where table_schema = 'public'
-      and table_name in ('link_codes', 'character_links', 'character_visibility') and column_name ilike '%guid%') then
-    raise exception 'a GUID column exists';
+      and table_name in ('link_codes', 'character_links', 'character_visibility')
+      and (column_name ilike '%guid%' or column_name in ('install_id', 'completion_key'))) then
+    raise exception 'a GUID column, or one it could be recovered from, exists';
   end if;
 end $$;
 
@@ -40,10 +41,11 @@ insert into public.users (id, bnet_id, battletag) values
   ('00000000-0000-4000-8000-00000000000c', 'test-c', 'Charlie#3');
 
 -- A tiny helper for this test only: redeem with fixed character fields.
-create function pg_temp.redeem(p_user text, p_code text, p_key text, p_name text default 'Thrallina', p_realm text default 'Forever Pioneer')
+create function pg_temp.redeem(p_user text, p_code text, p_key text, p_name text default 'Thrallina', p_realm text default 'Forever Pioneer',
+  p_census_agrees boolean default true)
 returns table (link_ref uuid, link_status text, refusal text) language sql as $$
   select * from public.redeem_link(p_user::uuid, encode(sha256(convert_to(p_code, 'UTF8')), 'hex'), p_key, 'forever', p_realm, p_name,
-    'Orc', 'SHAMAN', 'Horde', 24, '0a1b2c3d', 'install-0001');
+    'Orc', 'SHAMAN', 'Horde', 24, repeat('c', 64), p_census_agrees);
 $$;
 create function pg_temp.code(p_user text, p_code text) returns text language sql as $$
   select coalesce(refusal, 'ok') from public.create_link_code(p_user::uuid, encode(sha256(convert_to(p_code, 'UTF8')), 'hex'));
@@ -104,6 +106,32 @@ begin
   if (select refusal from pg_temp.redeem(a, 'EL-AAAA-04', repeat('2', 64))) <> 'name_linked' then raise exception 'second game id for one name'; end if;
 end $$;
 
+-- One realm however it is spelled: case, hyphens, runs of spaces and the curly apostrophe all fold to one key.
+do $$
+begin
+  if public.link_realm_key('Forever-Pioneer') <> 'forever pioneer' or public.link_realm_key('  forever -  PIONEER ') <> 'forever pioneer'
+    or public.link_realm_key('Ka' || chr(8217) || 'ra') <> public.link_realm_key('ka''ra') then
+    raise exception 'realm spellings differ';
+  end if;
+end $$;
+
+-- The code is checked before the census answer is used: without a live code of your own nothing is learned, and a
+-- mismatch spends the code, so the census cannot be probed for free.
+do $$
+declare
+  a constant text := '00000000-0000-4000-8000-00000000000a';
+  b constant text := '00000000-0000-4000-8000-00000000000b';
+begin
+  perform pg_temp.code(b, 'EL-BBBB-09');
+  if (select refusal from pg_temp.redeem(a, 'EL-ZZZZ-98', repeat('8', 64), 'Probe', 'Forever Pioneer', false)) <> 'code_unknown' then raise exception 'census answered without a code'; end if;
+  if (select refusal from pg_temp.redeem(a, 'EL-BBBB-09', repeat('8', 64), 'Probe', 'Forever Pioneer', false)) <> 'code_foreign' then raise exception 'census answered on a foreign code'; end if;
+  if (select used_at from public.link_codes where code_hash = encode(sha256(convert_to('EL-BBBB-09', 'UTF8')), 'hex')) is not null then raise exception 'foreign code spent'; end if;
+  if (select refusal from pg_temp.redeem(a, 'EL-AAAA-08', repeat('8', 64), 'Probe', 'Forever Pioneer', false)) <> 'census_mismatch' then raise exception 'mismatch linked'; end if;
+  if (select used_at from public.link_codes where code_hash = encode(sha256(convert_to('EL-AAAA-08', 'UTF8')), 'hex')) is null then raise exception 'mismatch left the code live'; end if;
+  if (select refusal from pg_temp.redeem(a, 'EL-AAAA-08', repeat('8', 64), 'Probe')) <> 'code_used' then raise exception 'spent code reused'; end if;
+  if exists (select 1 from public.character_links where name_key = 'probe') then raise exception 'mismatch wrote a link'; end if;
+end $$;
+
 -- Visibility: the owner's flags only, unknown flags raise, and a public link reads without any account data.
 do $$
 declare
@@ -155,6 +183,25 @@ begin
   if (select status from public.character_links where user_id = a::uuid and name_key = 'throgar') <> 'frozen' then raise exception 'name owner not frozen'; end if;
 end $$;
 
+-- Spelling the realm another way does not dodge the freeze: one key, one character.
+do $$
+declare
+  a constant text := '00000000-0000-4000-8000-00000000000a';
+  b constant text := '00000000-0000-4000-8000-00000000000b';
+begin
+  if (select link_status from pg_temp.redeem(a, 'EL-AAAA-09', repeat('9', 64), 'Realmy')) <> 'linked' then raise exception 'Realmy not linked'; end if;
+  perform public.set_visibility(a::uuid, (select id from public.character_links where name_key = 'realmy'), '{"page_public": true}');
+  if (select count(*) from public.public_character('forever', 'forever-pioneer', 'realmy')) <> 1
+    or (select count(*) from public.public_character('forever', 'Forever Pioneer', 'Realmy')) <> 1 then
+    raise exception 'public read misses a spelling';
+  end if;
+  perform pg_temp.code(b, 'EL-BBBB-02');
+  if (select link_status from pg_temp.redeem(b, 'EL-BBBB-02', repeat('a', 64), 'Realmy', ' forever-PIONEER')) <> 'frozen' then raise exception 'hyphenated realm dodged the freeze'; end if;
+  if (select count(distinct realm_key) from public.character_links where name_key = 'realmy') <> 1 then raise exception 'two keys for one realm'; end if;
+  if exists (select 1 from public.character_links where name_key = 'realmy' and status <> 'frozen') then raise exception 'Realmy not frozen everywhere'; end if;
+  if exists (select 1 from public.public_character('forever', 'forever-pioneer', 'realmy')) then raise exception 'frozen Realmy read'; end if;
+end $$;
+
 -- A hidden character cannot be linked, and a linked one that is hidden later is not read.
 insert into public.character_suppressions values ('forever pioneer', 'hidden');
 do $$
@@ -163,6 +210,9 @@ declare
   link uuid;
 begin
   if (select refusal from pg_temp.redeem(a, 'EL-AAAA-06', repeat('5', 64), 'Hidden')) <> 'suppressed' then raise exception 'hidden character linked'; end if;
+  if (select refusal from pg_temp.redeem(a, 'EL-AAAA-06', repeat('5', 64), 'Hidden', 'FOREVER-pioneer')) <> 'suppressed' then raise exception 'realm spelling dodged a hide'; end if;
+  insert into public.character_suppressions values ('forever-pioneer', 'hyphenhid');
+  if (select refusal from pg_temp.redeem(a, 'EL-AAAA-06', repeat('5', 64), 'Hyphenhid')) <> 'suppressed' then raise exception 'hide spelled with a hyphen missed'; end if;
   if exists (select 1 from public.character_links where name_key = 'hidden') then raise exception 'hidden character written'; end if;
   if (select used_at from public.link_codes where code_hash = encode(sha256(convert_to('EL-AAAA-06', 'UTF8')), 'hex')) is not null then
     raise exception 'a refused redeem spent the code';
@@ -195,9 +245,9 @@ declare
 begin
   delete from public.intake_quota_buckets where bucket = 'link_codes:' || c::text;
   for i in 1..49 loop
-    insert into public.character_links (user_id, link_key, ruleset, realm_key, name_key, realm, name, race, class, faction, level, completion_key, install_id)
+    insert into public.character_links (user_id, link_key, ruleset, realm_key, name_key, realm, name, race, class, faction, level, completion_ref)
       values (c, lpad(to_hex(1000 + i), 64, 'a'), 'forever', 'forever pioneer', 'fill' || chr(96 + i % 26) || chr(97 + i / 26), 'Forever Pioneer',
-        'Fill' || chr(96 + i % 26) || chr(97 + i / 26), 'Orc', 'SHAMAN', 'Horde', 1, '00000000', 'install-0001');
+        'Fill' || chr(96 + i % 26) || chr(97 + i / 26), 'Orc', 'SHAMAN', 'Horde', 1, repeat('c', 64));
   end loop;
   if (select count(*) from public.character_links where user_id = c) <> 50 then raise exception 'fixture count'; end if;
   perform pg_temp.code(c::text, 'EL-CCCC-02');

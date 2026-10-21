@@ -1,7 +1,7 @@
 import { createHash, createHmac } from "node:crypto";
 import { expect, test } from "vitest";
 import { LINK_CODE, type StoredCensusRecord } from "@everloot/protocol";
-import { censusAgrees, characterLinksOn, linkCodeHash, linkKey, newLinkCode, type LinkRow } from "./character-links";
+import { censusAgrees, characterLinksOn, completionRef, linkCodeHash, linkKey, linkRealmKey, newLinkCode, type LinkRow } from "./character-links";
 import { censusKey } from "./census-intake";
 
 const SECRET = "s".repeat(40);
@@ -36,6 +36,23 @@ test("the link key is HMAC(secret, 'link:' + guid): not the census key, not the 
   expect(key).toMatch(/^[a-f0-9]{64}$/);
   expect(key).not.toBe(censusKey(GUID, SECRET));
   expect(linkKey(GUID, "t".repeat(40))).not.toBe(key);
+});
+
+test("one realm key however the realm is spelled, the same as public.link_realm_key", () => {
+  for (const spelling of ["Forever Pioneer", "Forever-Pioneer", "forever-pioneer", "  FOREVER  -  pioneer "]) {
+    expect(linkRealmKey(spelling), spelling).toBe("forever pioneer");
+  }
+  expect(linkRealmKey("Ka’ra")).toBe(linkRealmKey("ka'ra"));
+  expect(linkRealmKey("Ka'ra")).toBe("ka'ra");
+  expect(linkRealmKey("Forever Pioneer")).not.toBe(linkRealmKey("Forever Pioneers"));
+});
+
+test("the completion ref is HMAC(secret, 'completion:' + installId + ':' + key), never the raw values", () => {
+  const ref = completionRef("install-1234", "0a1b2c3d", SECRET);
+  expect(ref).toBe(createHmac("sha256", SECRET).update("completion:install-1234:0a1b2c3d").digest("hex"));
+  expect(ref).not.toContain("0a1b2c3d");
+  expect(completionRef("install-1234", "0a1b2c3d", "t".repeat(40))).not.toBe(ref);
+  expect(completionRef("install-5678", "0a1b2c3d", SECRET)).not.toBe(ref);
 });
 
 test("the census agrees when it has no row for the character or every row matches; one mismatch refuses", () => {
