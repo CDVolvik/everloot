@@ -4,8 +4,9 @@
  * No copied catalog.
  */
 import { pendingForNpc, pendingLine, pendingLootFromRecords, type PendingCount, type PendingLoot } from "./pending-loot.js";
+import { tallyVotes, WORLD_AGREEMENT } from "./fact-states.js";
 
-export const WORLD_AGREEMENT = 3;
+export { WORLD_AGREEMENT } from "./fact-states.js";
 
 /** How the NPC stood toward the player who saw it, as the addon records it. */
 export type NpcReaction = "friendly" | "neutral" | "hostile";
@@ -99,21 +100,8 @@ export type VendorPage = { vendorNpcId: number; offers: VendorOffer[] };
 
 const EMPTY: WorldFacts = { npcs: [], quests: [], vendors: [] };
 
-function clean(value: string): string {
-  return value.trim().toLowerCase();
-}
-
 function agreedLabel(rows: { installId: string; label: string }[]): string | null {
-  const groups = new Map<string, { label: string; installs: Set<string> }>();
-  for (const row of rows) {
-    const key = clean(row.label);
-    if (!row.installId.trim() || !key) continue;
-    const group = groups.get(key) ?? { label: row.label.trim(), installs: new Set<string>() };
-    group.installs.add(row.installId.trim());
-    groups.set(key, group);
-  }
-  const winners = [...groups.values()].filter((group) => group.installs.size >= WORLD_AGREEMENT);
-  return winners.length === 1 ? winners[0]!.label : null;
+  return (tallyVotes(rows.map((row) => ({ installId: row.installId, value: row.label }))).winner?.value as string | undefined) ?? null;
 }
 
 /** `agreedLabel` for many ids in one pass: id -> the label 3 installs agree on, ids without one left out. */
@@ -143,15 +131,7 @@ export function agreedQuestTitles(facts: Pick<WorldFacts, "quests">): Map<number
 }
 
 function agreedNumber(rows: { installId: string; value: number }[]): number | null {
-  const groups = new Map<number, Set<string>>();
-  for (const row of rows) {
-    if (!row.installId.trim() || !Number.isInteger(row.value)) continue;
-    const set = groups.get(row.value) ?? new Set<string>();
-    set.add(row.installId.trim());
-    groups.set(row.value, set);
-  }
-  const winners = [...groups.entries()].filter(([, installs]) => installs.size >= WORLD_AGREEMENT);
-  return winners.length === 1 ? winners[0]![0] : null;
+  return (tallyVotes(rows).winner?.value as number | undefined) ?? null;
 }
 
 function median(values: number[]): number {
