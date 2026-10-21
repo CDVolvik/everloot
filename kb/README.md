@@ -24,6 +24,7 @@ First build (2026-09-27): 257,110 lore pages, 18,713 skipped, 48,341 redirects d
 | Warcraft Wiki, Internet Archive dump 2023-11-13 | CC BY-SA 4.0 | yes |
 | Curated entries (`curated/*.yaml`) | CC BY-SA 4.0 | yes |
 | Blizzard Battle.net API | Blizzard Developer API Terms | no, local cache only |
+| pfQuest database, Classic 1.12 (`pfquest-classic`) | addon MIT; data from VMaNGOS (GPL-2.0) and CMaNGOS (GPL-3.0) | no, local baseline only |
 
 wago.tools is not used: its robots.txt disallows everything but its home page.
 
@@ -31,6 +32,20 @@ wago.tools is not used: its robots.txt disallows everything but its home page.
 database's own folder) and a `.manifest.json` with its sha256. The file is built and verified in a
 work file next to the live database, filtered by the code's source registry, and only then moved
 into place.
+
+## Classic baseline (local only)
+
+pfQuest's Classic 1.12 database is a checklist for what Forever players still need to confirm. It is
+never published. With a pfQuest download at the pinned commit and a client snapshot for the zone ids:
+
+    git clone https://github.com/shagu/pfQuest <folder> && git -C <folder> checkout 104f3567
+    npm run kb -- import-pfquest <folder> --client data/client/<snapshot>.sqlite
+    npm run kb -- baseline-report --db data/everloot-kb.sqlite [--out <folder outside the repository>]
+
+The import reads the Lua files as data and never runs them. The report compares the baseline with the
+uploads that `EVERLOOT_PUBLIC_CORPUS_URL` or `EVERLOOT_UPLOADS` points at, and writes Markdown and JSON
+outside the repository (by default to the system temp folder). Design:
+`../docs/design/specs/2026-10-17-classic-baseline-design.md`.
 
 ## Serve a public release
 
@@ -87,7 +102,7 @@ and exits 1 if it holds anything that may not be published.
 
 | Path | What |
 |---|---|
-| `src/importers/` | The Warcraft Wiki dump importer (XML, templates, infoboxes, page types) and curated entries |
+| `src/importers/` | The Warcraft Wiki dump importer (XML, templates, infoboxes, page types), curated entries and the local pfQuest baseline |
 | `src/snapshot.ts`, `src/public-snapshot.ts` | Building a public release and checking one before it is served |
 | `src/search.ts`, `src/entities.ts`, `src/db.ts` | The database, its full-text search and row writes |
 | `src/mcp-server.ts`, `src/mcp-http-*.ts` | The MCP server and its HTTP transport (the site mounts the same handler) |

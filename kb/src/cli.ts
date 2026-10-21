@@ -1,7 +1,9 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { auditSources } from "./audit-sources.js";
+import { compareBaseline, readBaseline, writeBaselineReport } from "./baseline-report.js";
 import { BlizzardClient } from "./blizzard/client.js";
 import {
   backfillBluePosts, ingestBluePosts, loadFetchState, loadOverrides, loadStore, saveFetchState, saveStore, type BlueGame, type BlueRegion, type IngestResult,
@@ -20,6 +22,8 @@ import { writeCatalogs } from "./client-catalog.js";
 import { buildClientAssets } from "./client-assets.js";
 import { CLIENT_EDGES } from "./client-layer-file.js";
 import { writeWorldMapData } from "./world-map-data.js";
+import { WORLD_MAP_DATA } from "./world-map-file.js";
+import { worldFactsFromRecords } from "./world-pages.js";
 import { clientSnapshotName, readClientMeta, writeClientSnapshot } from "./client-snapshot.js";
 import { Curated, diffRaidBuffs, RaidBuffTable } from "./raid-buffs.js";
 import { parseItemIds } from "./assets/items.js";
@@ -34,9 +38,12 @@ import { buildWatchCommand } from "./build-watch/command.js";
 import type { Game, NsKind, Region } from "./blizzard/namespaces.js";
 import { openDb, openExistingReadOnlyDb, type DB } from "./db.js";
 import { importCurated } from "./importers/curated.js";
+import { importPfquest } from "./importers/pfquest.js";
 import { importWikiDump } from "./importers/wiki-dump.js";
+import { lootWindowsFromRecords, rollupDrops } from "./drop-rollup.js";
 import { startHttpBridge } from "./mcp-http.js";
-import { serveStdio } from "./mcp-server.js";
+import { readCorpusRecords, serveStdio } from "./mcp-server.js";
+import { objectSpawnRowsFromRecords } from "./object-spawns.js";
 import { openPublicSnapshot } from "./public-snapshot.js";
 import { search } from "./search.js";
 import { snapshot } from "./snapshot.js";
@@ -152,6 +159,15 @@ const USAGE = `usage: npm run kb -- <command> --db <path>
     nothing else. --check only says whether there is work. See docs/BUILD_WATCH.md)
   audit-sources <file.sqlite...>   (rows per source and cached API rows in each file; exits 1 if anything
     is not publishable)
+  import-pfquest <pfQuest checkout> [--client <snapshot.sqlite>] [--unpinned]
+    (the Classic 1.12 baseline: reads the vanilla db/*.lua of a local pfQuest download as data, never running
+    it, into pfquest-classic rows, which are never published. Only names and quest titles from enUS, no quest
+    text. Refuses a checkout not at the pinned commit unless --unpinned. --client maps each spawn's AreaTable
+    zone to the UiMap id uploads use. See docs/design/specs/2026-10-17-classic-baseline-design.md)
+  baseline-report --db <source db> [--out <folder outside the repository>]
+    (the baseline against the corroborated uploads from EVERLOOT_PUBLIC_CORPUS_URL or EVERLOOT_UPLOADS:
+    confirmed, changed, new in Forever and not seen yet, by zone and level. Writes baseline-report.md and
+    .json, by default to <temp>/everloot-baseline-report; never inside the repository, never published)
   wiki-check [--dir <kb>/wiki]
     (the wiki's page check: front matter, ids and slugs, categories, bindings and tokens against the committed
     game data and the shown id ranges, [[links]], hand-typed gameplay numbers, section order, credit fields,
@@ -598,6 +614,41 @@ async function main(): Promise<number> {
         if (audit.unexpected.length) clean = false;
       }
       return clean ? 0 : 1;
+    }
+    case "import-pfquest": {
+      if (!args[0]) break;
+      const snapshotPath = flags.get("client") || undefined;
+      if (!snapshotPath) console.error("no --client snapshot: spawns keep only their AreaTable zone id, so the report cannot place them on upload maps");
+      const run = await importPfquest(db(), args[0], { snapshotPath, allowOtherCommit: flags.has("unpinned") });
+      db().pragma("wal_checkpoint(TRUNCATE)");
+      const { units, objects, items, quests } = run.rows;
+      console.log(`pfQuest ${run.commit.slice(0, 8)}: ${units} units, ${objects} objects, ${items} items, ${quests} quests as pfquest-classic (local only)`);
+      console.log(`skipped ${run.skipped.junk} GM, test or placeholder entries and ${run.skipped.unnamed} without an English name`);
+      const unmapped = Object.entries(run.spawns.unmappedAreas).sort((a, b) => b[1] - a[1]);
+      console.log(`spawns: ${run.spawns.mapped} of ${run.spawns.total} placed on a UiMap; ${run.spawns.total - run.spawns.mapped} in ${unmapped.length} areas keep only their area id`);
+      if (unmapped.length) console.log(`  most unplaced: ${unmapped.slice(0, 10).map(([area, n]) => `area ${area} (${n})`).join(", ")}`);
+      return 0;
+    }
+    case "baseline-report": {
+      const source = openExistingReadOnlyDb(requireDbPath(flags, "baseline-report"));
+      const baseline = readBaseline(source);
+      source.close();
+      if (!baseline.units.size && !baseline.quests.size) throw new Error("baseline-report: no pfquest-classic rows in this database; run import-pfquest first");
+      const corpus = await readCorpusRecords(["npc_sighting", "quest", "vendor", "loot"]);
+      if (!corpus) console.error("uploads not connected or unreadable (EVERLOOT_PUBLIC_CORPUS_URL, EVERLOOT_UPLOADS): comparing against no uploads");
+      const records = corpus?.records ?? [];
+      const zoneNames = new Map([...WORLD_MAP_DATA.zones, ...WORLD_MAP_DATA.heldBackZones].map((z) => [z.uiMapId, z.name]));
+      const report = compareBaseline(baseline, {
+        world: worldFactsFromRecords(records), drops: rollupDrops(lootWindowsFromRecords(records)).rates,
+        objects: objectSpawnRowsFromRecords(records), dataAsOf: corpus?.dataAsOf ?? null, connected: corpus !== null,
+      }, zoneNames);
+      const paths = writeBaselineReport(report, flags.get("out") || join(tmpdir(), "everloot-baseline-report"));
+      console.log(`${records.length} upload records read`);
+      for (const [subject, c] of Object.entries(report.counts)) {
+        console.log(`${subject}: ${c.confirmed} confirmed, ${c.changed} changed, ${c.new} new in Forever, ${c.not_seen} not seen yet`);
+      }
+      console.log(`-> ${paths.markdown}\n-> ${paths.json}`);
+      return 0;
     }
     case "wiki-check": {
       const dir = flags.get("dir") || WIKI_DIR;

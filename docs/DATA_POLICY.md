@@ -450,6 +450,10 @@ maintainer has checked and added to `kb/curated/ecosystem.json`.
 **Open sources.** The lore archive is built from the Warcraft Wiki dump of 2023-11-13
 (CC BY-SA 4.0). We may add other openly licensed datasets later. Each one goes in the
 [source ledger](sources/LEDGER.md) with its licence and exact version before any of it ships.
+A Classic 1.12 baseline, pfQuest's database (built from the VMaNGOS and CMaNGOS emulator databases,
+GPL-2.0 and GPL-3.0), is used on a maintainer's machine to check what Forever players have confirmed and
+where they have not looked yet. It is never published and never mixed into the CC BY-SA data: only what
+players' uploads confirm is published.
 
 **Facts we write ourselves**, in our own words, each with the page it came from and the date.
 

@@ -5,7 +5,9 @@ import { expect, test } from "vitest";
 import { auditSources } from "../src/audit-sources.js";
 import { openDb } from "../src/db.js";
 import { replaceSourceRows } from "../src/entities.js";
+import { importPfquest } from "../src/importers/pfquest.js";
 import type { SourceId } from "../src/sources.js";
+import { pfquestCheckout } from "./pfquest-fixture.js";
 
 const page = (extId: string) => ({
   kind: "lore_page" as const, extId, name: `Page ${extId}`, body: "Body text", gameVersion: "lore" as const,
@@ -30,6 +32,14 @@ test("a database with only wiki and curated rows passes", async () => {
 test("any other source is reported", async () => {
   const p = await dbWith({ "warcraft-wiki-2023": 1, "blizzard-api": 1 });
   expect(auditSources(p).unexpected).toEqual(["blizzard-api"]);
+});
+
+test("the local Classic baseline is reported as not publishable", async () => {
+  const p = await dbWith({ "warcraft-wiki-2023": 1 });
+  const db = openDb(p);
+  await importPfquest(db, pfquestCheckout(), { now: new Date("2026-10-21T00:00:00Z") });
+  db.close();
+  expect(auditSources(p)).toMatchObject({ sources: { "warcraft-wiki-2023": 1, "pfquest-classic": 10 }, unexpected: ["pfquest-classic"] });
 });
 
 test("cached Blizzard API responses are reported even with no blizzard-api rows", async () => {
