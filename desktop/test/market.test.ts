@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, test, vi } from "vitest";
 import { writePricesAddon } from "../../companion/src/prices";
-import { itemIdFrom, listRealms, mergeRealms, ownRealms, priceRows, readPricesFile, refreshMarket } from "../src/main/market";
+import { fetchDropSources, itemIdFrom, listRealms, mergeRealms, ownRealms, priceRows, readDropsBlock, readPricesFile, refreshMarket } from "../src/main/market";
 
 const dirs: string[] = [];
 const dir = () => { const d = mkdtempSync(join(tmpdir(), "everloot-market-")); dirs.push(d); return d; };
@@ -32,6 +32,8 @@ test("a refresh fetches scanned and followed realms and writes the slot addon; a
   writeFileSync(sv, `EverlootDB = { ["version"] = "0.3.3", ["installId"] = "x", ["records"] = {}, ["lastScans"] = { ["Nightslayer"] = { ["at"] = "2026-10-18T00:00:00Z" } } }`);
   const asked: string[] = [];
   const send = vi.fn(async (url: string) => {
+    // The drop rates are down: the prices are written all the same.
+    if (url.includes("/api/rollups/drops")) return new Response("", { status: 503 });
     const realm = new URL(url).searchParams.get("realm")!;
     asked.push(realm);
     return new Response(JSON.stringify({ ok: true, dataAsOf: "2026-10-18", realm, fields: [], items: [[1, 10, 9, 11, 5, "2026-10-17", 3]] }));
@@ -64,4 +66,54 @@ test("an item is given by id, by a link pasted from game chat, or by its everloo
   expect(itemIdFrom("https://everloot.app/database/items/19019")).toBe(19019);
   expect(itemIdFrom("Linen Cloth")).toBeNull();
   expect(itemIdFrom("")).toBeNull();
+});
+
+const rate = (itemId: number, source: Record<string, number>, drops: number, kills: number, reporters: number) =>
+  ({ itemId, ...source, drops, kills, reporters, rate: drops / kills, public: true });
+const dropsPage = (rates: unknown[], next: string | null = null) =>
+  new Response(JSON.stringify({ unreachable: false, dataAsOf: "2026-10-20T06:00:00.000Z", rates, measuredZeros: [{ sourceNpcId: 9, kills: 40, reporters: 3, public: true }], next }));
+
+test("drop rates come from the public rollup, every page on the same site, three installs and one source each", async () => {
+  const asked: string[] = [];
+  const send = vi.fn(async (url: string) => {
+    asked.push(url);
+    if (!url.includes("offset")) {
+      return dropsPage([rate(2589, { sourceNpcId: 116 }, 42, 340, 5), rate(2770, { sourceObjectId: 1731 }, 300, 310, 6),
+        rate(1, { sourceNpcId: 2 }, 1, 9, 2), rate(1, { sourceNpcId: 2, sourceObjectId: 3 }, 1, 9, 3), rate(1, { sourceNpcId: 2 }, 1, 0, 3)],
+      "https://everloot.app/api/rollups/drops?offset=500&limit=500");
+    }
+    return dropsPage([rate(12345, { sourceNpcId: 61 }, 1, 80, 3)], "https://elsewhere.example/api/rollups/drops?offset=1000");
+  });
+  const drops = await fetchDropSources("https://everloot.app", send as unknown as typeof fetch, new Date("2026-10-21T10:00:00Z"));
+  expect(asked).toEqual(["https://everloot.app/api/rollups/drops", "https://everloot.app/api/rollups/drops?offset=500&limit=500"]);
+  expect(drops).toEqual({
+    dataAsOf: "2026-10-20T06:00:00.000Z", fetchedAt: "2026-10-21T10:00:00.000Z",
+    rows: [[2589, "n", 116, 42, 340, 5], [2770, "o", 1731, 300, 310, 6], [12345, "n", 61, 1, 80, 3]].sort((a, b) => (b[4] as number) - (a[4] as number)),
+  });
+  const down = vi.fn(async () => new Response(JSON.stringify({ unreachable: true, rates: [] })));
+  await expect(fetchDropSources("https://everloot.app", down as unknown as typeof fetch)).rejects.toThrow(/unreachable/);
+});
+
+test("drop rates are fetched once a day; between fetches and after a failure the last good block is kept", async () => {
+  const d = dir();
+  const addons = join(d, "AddOns");
+  let dropCalls = 0;
+  let dropsUp = true;
+  const send = vi.fn(async (url: string) => {
+    if (url.includes("/api/rollups/drops")) {
+      dropCalls++;
+      return dropsUp ? dropsPage([rate(2589, { sourceNpcId: 116 }, 42, 340, 5)]) : new Response("", { status: 503 });
+    }
+    return new Response(JSON.stringify({ ok: true, dataAsOf: "2026-10-18", realm: "Doomhowl", fields: [], items: [[1, 10, 9, 11, 5, "2026-10-17", 3]] }));
+  });
+  const run = (now: string) => refreshMarket({ svFiles: [], followed: ["Doomhowl"], addonsDir: addons, endpoint: "https://everloot.app", send: send as unknown as typeof fetch, now: new Date(now) });
+  expect((await run("2026-10-21T10:00:00Z")).drops).toBe(1);
+  expect((await run("2026-10-21T11:00:00Z")).drops).toBe(1);
+  expect(dropCalls).toBe(1);
+  dropsUp = false;
+  expect((await run("2026-10-22T11:00:00Z")).drops).toBe(1);
+  expect(dropCalls).toBe(2);
+  expect(readDropsBlock(addons)).toEqual({ dataAsOf: "2026-10-20T06:00:00.000Z", fetchedAt: "2026-10-21T10:00:00.000Z", rows: [[2589, "n", 116, 42, 340, 5]] });
+  // The drops block is never read back as a realm.
+  expect(readPricesFile(addons)!.realms.map((r) => r.realm)).toEqual(["doomhowl"]);
 });

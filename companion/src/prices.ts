@@ -69,8 +69,21 @@ export async function fetchRealmPrices(endpoint: string, realm: string, send: ty
   };
 }
 
-/** The slot addon: per lower-cased realm, one "id,market,min,historical,quantity,day,reporters;..." string and its Adler-32. */
-export function renderPricesAddon(realms: RealmPrices[]): { toc: string; lua: string } {
+/** [itemId, "n" (NPC) | "o" (object), sourceId, drops, loot windows, installs]: one public drop rate. */
+export type DropRow = [number, "n" | "o", number, number, number, number];
+/** The public drop rates in the file: when the site's uploads were current, and when the app fetched them. */
+export interface DropSources { dataAsOf: string | null; fetchedAt: string; rows: DropRow[] }
+
+/** Rows grouped by item (ascending), each item's sources best rate first, so the addon reads one run per item. */
+export function sortDropRows(rows: DropRow[]): DropRow[] {
+  return [...rows].sort((a, b) => a[0] - b[0] || b[3] / b[4] - a[3] / a[4] || b[4] - a[4] || a[2] - b[2]);
+}
+
+/**
+ * The slot addon: per lower-cased realm, one "id,market,min,historical,quantity,day,reporters;..." string and its
+ * Adler-32; with `drops`, one "itemId,kind,sourceId,drops,windows,installs;..." string and its Adler-32 beside them.
+ */
+export function renderPricesAddon(realms: RealmPrices[], drops?: DropSources): { toc: string; lua: string } {
   const toc = [
     `## Interface: ${INTERFACE}`,
     "## Title: Everloot Prices",
@@ -85,20 +98,26 @@ export function renderPricesAddon(realms: RealmPrices[]): { toc: string; lua: st
     return `  [${luaString(realmKey(r.realm))}] = { ["dataAsOf"] = ${luaString(r.dataAsOf ?? "")}, ` +
       `["data"] = ${luaString(data)}, ["sum"] = ${adler32(data)} },`;
   });
+  // `data` comes first in the drops table, so a reader looking for realm tables ({ ["dataAsOf"] = ...) never takes it for one.
+  const dropData = drops ? sortDropRows(drops.rows).map((r) => r.join(",")).join(";") : "";
+  const close = drops
+    ? `}, ["drops"] = { ["data"] = ${luaString(dropData)}, ["sum"] = ${adler32(dropData)}, ` +
+      `["dataAsOf"] = ${luaString(drops.dataAsOf ?? "")}, ["fetchedAt"] = ${luaString(drops.fetchedAt)} } }`
+    : "} }";
   const lua = [
     "-- Written by the Everloot companion. Do not edit: the next refresh replaces this file.",
     "EverlootPricesDB = { [\"realms\"] = {",
     ...rows,
-    "} }",
+    close,
     "",
   ].join("\n");
   return { toc, lua };
 }
 
-export function writePricesAddon(addonsDir: string, realms: RealmPrices[]): void {
+export function writePricesAddon(addonsDir: string, realms: RealmPrices[], drops?: DropSources): void {
   const dir = join(addonsDir, PRICES_ADDON);
   mkdirSync(dir, { recursive: true });
-  const { toc, lua } = renderPricesAddon(realms);
+  const { toc, lua } = renderPricesAddon(realms, drops);
   for (const [name, text] of [[`${PRICES_ADDON}.toc`, toc], [`${PRICES_ADDON}.lua`, lua]] as const) {
     writeFileSync(join(dir, `${name}.tmp`), text);
     renameSync(join(dir, `${name}.tmp`), join(dir, name));
