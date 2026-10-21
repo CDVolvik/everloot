@@ -7,9 +7,10 @@ import { entityTitle, objectDescription } from "@/lib/entity-meta";
 import { formatMeasuredZero } from "../../../../../../kb/src/item-page";
 import { loadObjectFacts } from "@/lib/objects";
 import { pageMetadata } from "@/lib/seo";
-import { Container, DataTable, Facts, Tabs, TooltipFrame, type Column } from "@/components/ui";
+import { Container, DataTable, Facts, InShort, Tabs, TooltipFrame, type Column } from "@/components/ui";
 import type { Crumb } from "@/lib/jsonld";
 import { EmptyTab, EntityHeader, EntityTop, FREQUENCY, known, LINK, percent, Unreachable } from "../../entity";
+import { entitySummary, observedLine } from "@/lib/evidence";
 
 export const dynamic = "force-dynamic";
 
@@ -51,6 +52,16 @@ export default async function ObjectPage(props: { params: Promise<{ id: string }
     { name: title, path: `/database/objects/${page.objectId}` },
   ];
   const windows = page.zero?.kills ?? page.drops[0]?.kills;
+  // The page in three lines: what it is, what players found in it, and what is not known.
+  const summary = entitySummary({
+    identity: "A chest, herb, ore vein or fishing pool",
+    observed: observedLine(
+      [page.drops.length ? `${page.drops.length} ${page.drops.length === 1 ? "item seen" : "items seen"}` : null, windows ? `${windows} ${windows === 1 ? "loot window" : "loot windows"}` : null],
+      null,
+      Date.now(),
+    ),
+    named: false,
+  });
 
   return (
     <Container width="data">
@@ -70,6 +81,7 @@ export default async function ObjectPage(props: { params: Promise<{ id: string }
             />
           )}
         />
+        <InShort summary="In short" bullets={summary} note={<Link href="/database#reading" className={LINK}>How to read these numbers</Link>} />
         <Tabs
           label={`${title}: relations`}
           tabs={[{

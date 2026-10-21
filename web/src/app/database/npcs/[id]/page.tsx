@@ -9,8 +9,9 @@ import { computeRollups, loadWorldFacts } from "@/lib/rollup-compute";
 import { pinLink, WORLD_MAP } from "@/lib/world-map";
 import { zoneByMapId, zoneHref } from "@/lib/zones";
 import { trailFor } from "@/lib/breadcrumbs";
-import { Container, DataTable, Facts, Tabs, TooltipFrame, type Column } from "@/components/ui";
+import { Container, DataTable, Facts, InShort, Tabs, TooltipFrame, type Column } from "@/components/ui";
 import { EmptyTab, EntityHeader, EntityTop, FREQUENCY, known, LINK, percent, Unreachable } from "../../entity";
+import { entitySummary, observedLine } from "@/lib/evidence";
 import { loadItemFacts } from "@/lib/rollup-compute";
 import { itemNames } from "@/lib/names";
 import { loreForEntity } from "@/lib/lore";
@@ -108,6 +109,21 @@ export default async function NpcPage(props: { params: Promise<{ id: string }> }
   ];
   const trail = [...trailFor("/database/npcs")!, { name: title, path: `/database/npcs/${npcId}` }];
   const named = title !== `NPC ${npcId}`;
+  // The page in three lines: where it is, what players reported, and where the name came from.
+  const now = Date.now();
+  const summary = entitySummary({
+    identity: zone
+      ? `Seen in ${zone.name}`
+      : firstPin
+        ? `Seen at map ${firstPin.mapId}, ${firstPin.x}, ${firstPin.y}`
+        : "No position has been reported yet",
+    observed: observedLine(
+      [dropped.length ? `${dropped.length} ${dropped.length === 1 ? "item drops" : "item drops"}` : null, page.pins.length ? `${page.pins.length} ${page.pins.length === 1 ? "map position" : "map positions"}` : null],
+      null,
+      now,
+    ),
+    named,
+  });
 
   return (
     <Container width="data">
@@ -132,6 +148,7 @@ export default async function NpcPage(props: { params: Promise<{ id: string }> }
             />
           )}
         />
+        <InShort summary="In short" bullets={summary} note={<Link href="/database#reading" className={LINK}>How to read these numbers</Link>} />
         <Tabs
           label={`${title}: relations`}
           tabs={[

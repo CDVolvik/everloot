@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { EVIDENCE_KEY, evidenceLine, itemSummary, type ItemSummaryInput } from "./evidence";
+import { EVIDENCE_KEY, entitySummary, evidenceLine, itemSummary, observedLine, type ItemSummaryInput } from "./evidence";
 import type { Edge } from "../../../kb/src/edges";
 
 const NOW = Date.parse("2026-10-20T12:00:00.000Z");
@@ -75,10 +75,37 @@ describe("the page's four lines", () => {
     expect(itemSummary({ ...base, nameFrom: "files" })[3]).toBe("The name is shown from the game files; players have not reported it yet.");
     expect(itemSummary({ ...base, nameFrom: "wiki" })[3]).toBe("The name is shown from the Warcraft Wiki; players have not reported it yet.");
   });
-
   test("the page never shouts that a name is unconfirmed, because the quiet badge already says it", () => {
     for (const nameFrom of ["players", "wiki", "files", "none"] as const) {
       expect(itemSummary({ ...base, nameFrom }).join(" ")).not.toMatch(/unconfirmed/i);
     }
+  });
+});
+
+describe("the lines the other entity pages carry", () => {
+  test("what players reported, with the count", () => {
+    expect(observedLine(["2 item drops", "1 map position"], null, NOW)).toBe("Players reported 2 item drops and 1 map position.");
+  });
+
+  test("nothing reported says so", () => {
+    expect(observedLine([null, null], null, NOW)).toBe("No player has reported it yet.");
+  });
+
+  test("the date rides along when there is one", () => {
+    expect(observedLine(["1 map position"], "2026-10-20T09:00:00.000Z", NOW)).toBe("Players reported 1 map position, last seen 3 h ago.");
+  });
+
+  test("the three lines a page carries", () => {
+    expect(entitySummary({ identity: "Seen in Elwynn Forest", observed: "Players reported 1 map position.", named: true })).toEqual([
+      "Seen in Elwynn Forest",
+      "Players reported 1 map position.",
+      "Players agree on the name.",
+    ]);
+  });
+
+  test("a name nobody agrees on says what it takes", () => {
+    expect(entitySummary({ identity: "A quest", observed: "No player has reported it yet.", named: false })[2]).toBe(
+      "It has no agreed name yet: that needs three installs reporting the same one.",
+    );
   });
 });

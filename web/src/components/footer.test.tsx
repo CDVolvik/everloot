@@ -110,3 +110,9 @@ test("Glint perches on the footer's edge as a labelled button, his drawing hidde
   expect(markup).toMatch(/data-footer-glint[\s\S]*<button[^>]*aria-label="Glint, the loot raven"[^>]*>\s*<svg[^>]*aria-hidden="true"/);
   expect(markup).toMatch(/data-footer-glint[\s\S]*aria-live="polite"/);
 });
+
+test("says when the beta ends and when the game launches", () => {
+  const t = text();
+  expect(t).toContain("The beta runs until October 21, 2026");
+  expect(t).toContain("the game launches November 4, 2026");
+});

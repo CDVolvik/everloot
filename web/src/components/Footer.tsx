@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CONTACT_EMAIL, DISCORD_INVITE, NON_AFFILIATION, OPERATOR, SITE_BLURB, TRADEMARK_LINE } from "@/lib/jsonld";
 import { deployedSha, REPO_URL, sourceUrl } from "@/lib/source";
+import { BETA, LAUNCH, longDate } from "@/data/wow-forever";
 import { CookiePreferencesButton } from "./CookieConsent";
 import FooterGlint from "./glint/FooterGlint";
 
@@ -129,6 +130,10 @@ export default function Footer() {
           </div>
         </nav>
         <div className="space-y-0.5 pb-3 text-xs leading-relaxed text-muted">
+          {/* The site's own clock: the beta the data comes from, and the launch it is for. */}
+          <p data-site-dates>
+            The beta runs until {longDate(BETA.endsOn)}, and the game launches {longDate(LAUNCH.date)}.
+          </p>
           {/* The site-wide credit: it stands in for a per-page credit line (docs/DATA_POLICY.md). */}
           <p data-site-credit>
             Game data and art &copy; Blizzard Entertainment · Everloot data CC BY-SA 4.0 · Item and quest names from the Warcraft Wiki
