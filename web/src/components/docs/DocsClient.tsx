@@ -1,27 +1,25 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import CopyButton from "@/components/ui/CopyButton";
 import { articleMarkdown } from "@/lib/docs/markdown";
 
 /** Copies the page as Markdown, for pasting into an assistant or an issue. Says when it worked. */
 export function CopyPage() {
-  const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
-  const copy = async () => {
+  const markdown = () => {
     const article = document.querySelector("[data-docs-article]");
-    if (!article) return;
-    try {
-      await navigator.clipboard.writeText(articleMarkdown(article, window.location.origin));
-      setState("copied");
-    } catch {
-      setState("failed");
-    }
-    window.setTimeout(() => setState("idle"), 2000);
+    return article ? articleMarkdown(article, window.location.origin) : null;
   };
   return (
-    <button type="button" onClick={copy} data-md-skip className="btn min-h-9 px-3 text-sm" aria-live="polite">
-      <svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinejoin="round"><path d="M8 8h11v12H8zM5 16V4h11" /></svg>
-      {state === "copied" ? "Copied" : state === "failed" ? "Copy failed" : "Copy page"}
-    </button>
+    <CopyButton
+      text={markdown}
+      label="Copy page"
+      failedLabel="Copy failed"
+      icon={<svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinejoin="round"><path d="M8 8h11v12H8zM5 16V4h11" /></svg>}
+      data-md-skip
+      className="btn min-h-9 px-3 text-sm"
+      aria-live="polite"
+    />
   );
 }
 
@@ -104,14 +102,6 @@ function highlight(code: string, lang: string) {
  */
 export function CodeGroup({ tabs, title, className = "" }: { tabs: CodeTab[]; title?: string; className?: string }) {
   const [active, setActive] = useState(0);
-  const [copied, setCopied] = useState(false);
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(tabs[active]!.code);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
-    } catch { /* the clipboard is unavailable; the code is still selectable */ }
-  };
   return (
     <div data-code-block className={`min-w-0 max-w-full overflow-hidden rounded-card border border-line bg-panel ${className}`.trim()}>
       <div data-md-skip className="flex items-center gap-1 border-b border-line px-2">
@@ -130,10 +120,14 @@ export function CodeGroup({ tabs, title, className = "" }: { tabs: CodeTab[]; ti
             </button>
           )) : !title && <span className="px-2 py-2 text-xs font-medium text-muted">{tabs[0]?.label}</span>}
         </div>
-        <button type="button" onClick={copy} aria-label={`Copy ${tabs[active]?.label ?? "code"}`} className="inline-flex min-h-9 shrink-0 items-center gap-1.5 px-2 text-xs text-muted hover:text-fg">
-          <svg aria-hidden="true" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinejoin="round"><path d="M8 8h11v12H8zM5 16V4h11" /></svg>
-          {copied ? "Copied" : "Copy"}
-        </button>
+        {/* A failed copy says nothing: the code is still selectable. */}
+        <CopyButton
+          text={tabs[active]!.code}
+          label="Copy"
+          icon={<svg aria-hidden="true" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinejoin="round"><path d="M8 8h11v12H8zM5 16V4h11" /></svg>}
+          aria-label={`Copy ${tabs[active]?.label ?? "code"}`}
+          className="inline-flex min-h-9 shrink-0 items-center gap-1.5 px-2 text-xs text-muted hover:text-fg"
+        />
       </div>
       {tabs.map((tab, i) => (
         <pre

@@ -93,6 +93,18 @@ export default async function EndpointPage({ params }: { params: Promise<{ endpo
           <Params rows={fields} />
         </>
       )}
+
+      {route.path === "/api/market/prices" && (
+        <>
+          <H2 id="response-fields-no-realm">Response fields without a realm</H2>
+          <P>
+            Without <C>realm</C> the answer is the list of realms that have public values, the{" "}
+            <Link href="/docs/api/schemas#marketRealmsResponse" className={docLink}><C>marketRealmsResponse</C></Link> shape.
+            The example request above has no realm, so this is what it returns.
+          </P>
+          <Params rows={schemaFields("marketRealmsResponse")} />
+        </>
+      )}
     </DocPage>
   );
 }

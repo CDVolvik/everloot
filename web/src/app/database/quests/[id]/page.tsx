@@ -17,18 +17,33 @@ import { CLIENT_LAYER } from "@/lib/items";
 import { GAME_NAME_TITLE } from "@/components/EntityRelations";
 import EntityLink from "@/components/EntityLink";
 import LoreSection from "@/components/LoreSection";
+import { questIndexable } from "@/lib/indexable";
+import { entityTitle, questDescription } from "@/lib/entity-meta";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * An id no upload mentions and the game files' quest list (the titles file) does not hold: a 404, not an empty
+ * page. Without that file, or with storage out of reach, nothing can be ruled out.
+ */
+function unknownQuest(questId: number, facts: Awaited<ReturnType<typeof loadWorldFacts>>, wiki: Awaited<ReturnType<typeof loadQuestNames>>): boolean {
+  return !facts.unreachable && wiki !== null && !wiki.names.has(questId) && !facts.quests.some((r) => r.questId === questId);
+}
 
 export async function generateMetadata(props: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const params = await props.params;
   if (!/^[1-9]\d*$/.test(params.id)) return { robots: { index: false, follow: true } };
   const [facts, wiki] = await Promise.all([loadWorldFacts(), loadQuestNames(CLIENT_LAYER.build.version)]);
   const page = questPage(Number(params.id), facts);
+  if (unknownQuest(page.questId, facts, wiki)) notFound();
   const title = (!facts.unreachable && page.title) || wiki?.names.get(page.questId)?.name || `Quest ${params.id}`;
+  const shown = facts.unreachable ? null : page;
+  const description = questDescription({
+    name: title, id: page.questId, level: shown?.level ?? null, giver: shown?.giverNpcId != null, turnIn: shown?.turnInNpcId != null, rewards: shown?.rewards.length ?? 0,
+  });
   return {
-    ...pageMetadata({ title, description: "A WoW: Forever quest page from corroborated titles, levels, givers, and rewards.", path: `/database/quests/${params.id}` }),
-    robots: { index: !facts.unreachable && Boolean(page.title || page.level !== null || page.giverNpcId !== null || page.turnInNpcId !== null || page.rewards.length), follow: true },
+    ...pageMetadata({ title: entityTitle(title, "quest"), description, path: `/database/quests/${params.id}` }),
+    robots: { index: questIndexable(page, facts.unreachable), follow: true },
   };
 }
 
@@ -39,6 +54,7 @@ export default async function QuestPage(props: { params: Promise<{ id: string }>
   if (!/^[1-9]\d*$/.test(params.id)) notFound();
   const [facts, wiki] = await Promise.all([loadWorldFacts(), loadQuestNames(CLIENT_LAYER.build.version)]);
   const page = questPage(Number(params.id), facts);
+  if (unknownQuest(page.questId, facts, wiki)) notFound();
   // Where players saw the giver and the turn-in NPC stand, as map links, when 3 installs agree.
   const where = (npcId: number | null) => {
     const pin = npcId === null || facts.unreachable ? undefined : npcPage(npcId, facts).pins.find((p) => pinLink(p.mapId, p.x, p.y));

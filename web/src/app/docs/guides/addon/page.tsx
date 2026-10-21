@@ -75,13 +75,17 @@ export default function Page() {
       <Table
         head={["Command", "What it does"]}
         rows={[
-          [<C key="a">/everloot status</C>, "Prints the version, each part of the addon and how many rows it holds."],
+          [<C key="a">/everloot status</C>, "Prints the version and your install id, each part of the addon and how many rows it holds."],
+          [<C key="a2">/everloot options</C>, "Opens the addon's settings page, with a switch for each part and what it records."],
           [<C key="b">/everloot version</C>, "Prints the addon version."],
-          [<C key="c">/everloot auctions on</C>, <>Turns on auction capture. It is off until you do this. Type <C>/reload</C> to apply it. <C>auctions off</C> turns it off.</>],
-          [<C key="d">/everloot scan</C>, "At the auction house, starts a full scan. The Everloot scan button there does the same. At most one scan every 15 minutes, and nothing scans until you ask."],
+          [<C key="c">/everloot auctions off</C>, <>Turns off auction capture, which is on in a new install. <C>auctions on</C> turns it back on. Type <C>/reload</C> to apply either.</>],
+          [<C key="d">/everloot scan</C>, "At the auction house, starts a full scan, like the Scan this house button. At most one scan every 15 minutes, and nothing scans until you ask."],
+          [<C key="d2">/everloot scanprompt off</C>, <>Stops the small Scan prices for Everloot prompt that shows when you open the auction house. <C>scanprompt on</C> brings it back. The button and <C>/everloot scan</C> still work.</>],
           [<C key="e">/everloot price [item]</C>, "Prints the price of an item. Shift-click an item into the command, or give its item id."],
+          [<C key="e2">/everloot gph start</C>, <>Starts a gold per hour session in a small window. <C>gph pause</C>, <C>gph stop</C> (saves it), <C>gph reset</C>, <C>gph show</C>, <C>gph hide</C>, <C>gph history</C> (the last five) and <C>gph cut on|off</C> (the 5% auction cut). Sessions stay in your file and are never uploaded.</>],
           [<C key="f">/everloot completion on</C>, <>Turns on the completion tracker, which reads your achievements, reputation, titles and completed quests. <C>completion</C> reads now; <C>completion off</C> turns it off and deletes every row it wrote.</>],
-          [<C key="g">/everloot census on</C>, <>Turns on the census, which counts race, class, level and faction, never a name. <C>census</C> says whether it is on; <C>census off</C> turns it off and deletes every row it wrote.</>],
+          [<C key="g">/everloot census off</C>, <>Turns off the census, which is on in a new install and counts race, class, level and faction, never a name. It deletes every row the census wrote. <C>census</C> says whether it is on; <C>census on</C> turns it back on.</>],
+          [<C key="g2">/everloot players on</C>, <>Turns on the players module, the one part that records other players&apos; names: name, realm, race, class, level and guild of characters you target, mouse over or group with. Its rows are sent only from the upload page and can appear on <Link href="/docs/guides/privacy#player-pages" className={docLink}>player pages</Link>. <C>players</C> says whether it is on; <C>players off</C> turns it off and deletes every row it wrote.</>],
           [<C key="h">/everloot addons on</C>, <>Records the list of your installed addons. <C>addons off</C> stops it and deletes every recorded addon row.</>],
           [<C key="i">/everloot talents</C>, "Prints your talent build for each spec group, with a share code."],
           [<C key="j">/everloot plan &lt;share code&gt;</C>, <>Loads a plan from the <Link href="/tools/talents" className={docLink}>talent calculator</Link> and shows it beside the talent window. It is display only. <C>plan</C> reopens the panel, <C>plan hide</C> closes it and <C>plan clear</C> forgets it.</>],
@@ -92,10 +96,24 @@ export default function Page() {
       />
       <Callout kind="tip">
         <p>
-          The completion tracker, the census, the installed addon list and auction capture are all off until you turn
-          them on. Nothing in the addon buys, bids on or posts anything at the auction house.
+          In a new install, auction capture and the census are on. The census says so once in chat; an install from
+          before the census keeps it off. The completion tracker, the players module and the installed addon list are
+          off until you turn them on. Nothing in the addon buys, bids on or posts anything at the auction house.
         </p>
       </Callout>
+
+      <H2 id="auction-house">At the auction house</H2>
+      <P>
+        The addon adds an <strong>Everloot</strong> tab after Blizzard&apos;s tabs. Click <strong>Scan this house</strong>{" "}
+        for a full scan. The tab shows the scan cooldown, whether the last scan is in your save file yet, a{" "}
+        <strong>Share now</strong> button that reloads the game so the file is written and the Desktop App can send it,
+        and a price lookup. If the tab cannot be added, an <strong>Everloot scan</strong> button takes its place.
+      </P>
+      <P>
+        When a scan is allowed, opening the auction house also shows a small <strong>Scan prices for Everloot</strong>{" "}
+        prompt, once per visit. One click scans. It never scans by itself, and <C>/everloot scanprompt off</C> hides it
+        for good.
+      </P>
 
       <H2 id="update">Update the addon</H2>
       <P>
@@ -114,6 +132,7 @@ export default function Page() {
         <li>Send what the addon collected: <Link href="/docs/guides/upload" className={docLink}>upload your data</Link>.</li>
         <li>Have it uploaded after every logout: <Link href="/docs/guides/desktop" className={docLink}>the Desktop App</Link>.</li>
         <li>See what an upload carries and what is published: <Link href="/docs/guides/privacy" className={docLink}>privacy and your data</Link>.</li>
+        <li>Something not working: <Link href="/docs/guides/troubleshooting" className={docLink}>troubleshooting</Link>.</li>
       </List>
     </DocPage>
   );

@@ -10,10 +10,10 @@ import GameIcon from "@/components/game/GameIcon";
 import { trailFor } from "@/lib/breadcrumbs";
 import { Card, Container, Disclosure, EmptyState, PageHeader, SectionHeading } from "@/components/ui";
 import {
-  AH_PATH, crossRealmHref, indexable, itemAcrossRealms, itemIdParam, itemLabel, loadAuctionNames, realmBoards, type MarketRow,
+  AH_PATH, crossRealmHref, indexable, itemAcrossRealms, itemIdParam, itemLabel, realmBoards, type MarketRow,
 } from "@/lib/auction-house";
-import { itemArt } from "../../art";
-import { Contribute, Facts, PriceFacts, RealmPrices, count, qualityOf } from "../../parts";
+import { auctionNames, itemArt } from "../../art";
+import { Contribute, Facts, PriceFacts, RealmPrices, count, itemQuality } from "../../parts";
 
 type Props = { params: Promise<{ itemId: string }> };
 
@@ -29,8 +29,9 @@ async function load(params: Props["params"]) {
   const now = new Date();
   const market = await uploadStore.loadMarket();
   const rows = market.state ? itemAcrossRealms(realmBoards(market.state, now), itemId) : [];
-  const names = await loadAuctionNames();
-  return { itemId, market, rows, label: itemLabel(itemId, names) };
+  const { tips } = await itemArt(rows.length ? [itemId] : []);
+  const names = await auctionNames([itemId], tips);
+  return { itemId, market, rows, tip: tips.get(itemId), names, label: itemLabel(itemId, names) };
 }
 
 /** The row with the lowest or highest market value; rows without one are skipped. */
@@ -52,10 +53,8 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
 }
 
 export default async function CrossRealmItemPage(props: Props) {
-  const { itemId, market, rows, label } = await load(props.params);
+  const { itemId, market, rows, tip, names, label } = await load(props.params);
   const state = market.state;
-  const { tips } = await itemArt(rows.length ? [itemId] : []);
-  const tip = tips.get(itemId);
   const path = crossRealmHref(itemId);
   const low = extreme(rows, (a, b) => a < b);
   const high = extreme(rows, (a, b) => a > b);
@@ -78,7 +77,7 @@ export default async function CrossRealmItemPage(props: Props) {
         trail={[...trailFor(AH_PATH)!, { name: label, path }]}
         icon={tip?.icon ? <GameIcon src={tip.icon} size={40} /> : undefined}
         title={label}
-        quality={qualityOf(tip) ?? undefined}
+        quality={itemQuality(itemId, tip, names.has(itemId)) ?? undefined}
         lede="Auction House prices on every realm with public scans."
         meta={rows.length > 0 && <Facts items={[count(rows.length, "realm"), `Newest public day ${days.at(-1)}`]} />}
         actions={<Link href={`/database/items/${itemId}`} className="btn">Item details</Link>}
@@ -90,7 +89,7 @@ export default async function CrossRealmItemPage(props: Props) {
         )}
 
         {state && rows.length === 0 && (
-          <EmptyState message={`No realm has a public price for ${label} yet: a price shows once 3 reporters scan it on a realm.`} />
+          <EmptyState message={`No price for ${label} yet: it needs scans from 3 players on one realm.`} />
         )}
 
         {rows.length > 0 && (

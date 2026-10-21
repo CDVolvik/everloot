@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { pageMetadata } from "@/lib/seo";
-import JsonLd from "@/components/JsonLd";
 import { latestAddonRelease } from "@/lib/addon-release";
-import { softwareApplicationJsonLd } from "@/lib/jsonld";
 import { REPO_URL } from "@/lib/source";
 import { playerPagesOn } from "@/lib/player-pages";
 import { Card, Container, PageHeader, SectionHeading } from "@/components/ui";
@@ -16,14 +14,12 @@ export const metadata: Metadata = {
 
 const ADDON_DESCRIPTION = "A beta addon that records what happens around you while you play, for upload to Everloot.";
 const LICENCE_NAME = "AGPL-3.0";
-const LICENCE_URL = "https://www.gnu.org/licenses/agpl-3.0.html";
 const link = "text-accent hover:underline underline-offset-4";
 
 export default function UploadPage() {
   const addon = latestAddonRelease();
   return (
     <Container width="reading">
-      {addon && <JsonLd data={softwareApplicationJsonLd({ name: "Everloot addon", description: ADDON_DESCRIPTION, version: addon.version, downloadPath: addon.downloadPath, licenceUrl: LICENCE_URL, path: "/upload" })} />}
       <PageHeader
         title="Upload addon data"
         lede="Collected by the Everloot addon while you play. You preview exactly what goes out before anything is sent."

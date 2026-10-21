@@ -33,8 +33,10 @@ export default function Page() {
       <H2 id="is-the-addon-safe">Is the addon safe?</H2>
       <P>
         The addon records what you see in game and saves it to a file on your computer. Nothing is sent until you upload, and the
-        upload page shows you everything first. The source is public, and each download has a SHA-256 checksum so you can verify it. Character names
-        and your install id are not published. See <Link href="/docs/guides/privacy" className={docLink}>Privacy and your data</Link>.
+        upload page shows you everything first. The source is public, and each download has a SHA-256 checksum so you can verify it. Your
+        install id is never published, and anonymous observations carry no character names. Names appear only in records their
+        owner shares, on guild boards a guild&apos;s officers publish, and on player pages, which anyone can ask to hide. See{" "}
+        <Link href="/docs/guides/privacy" className={docLink}>Privacy and your data</Link>.
       </P>
       <Callout kind="note">
         <p>Everloot is a fan project, not affiliated with or endorsed by Blizzard, so it cannot speak for Blizzard about addon rules.</p>
@@ -84,6 +86,12 @@ export default function Page() {
       <P>
         Yes. One script tag adds a hover card to every link to an Everloot item, NPC, quest or object page. See{" "}
         <Link href="/docs/tooltips" className={docLink}>Embeddable tooltips</Link>.
+      </P>
+
+      <H2 id="something-is-wrong">Something is not working</H2>
+      <P>
+        The addon will not load, a part of it is off, an upload is refused or the API answers 429: see{" "}
+        <Link href="/docs/guides/troubleshooting" className={docLink}>Troubleshooting</Link>.
       </P>
 
       <H2 id="report-a-mistake">How do I report a mistake or contact you?</H2>

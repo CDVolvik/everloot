@@ -85,3 +85,24 @@ test("the old gold per hour address lands on a section that says where the calcu
   expect(visible(html)).toContain("Gold per hour, now in the addon");
   expect(html).toContain('href="/tools/auctions"');
 });
+
+/** The JSON-LD blocks in the page. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const blocks = (html: string): Record<string, any>[] => [...html.matchAll(/<script type="application\/ld\+json">(.*?)<\/script>/g)].map((m) => JSON.parse(m[1]!));
+
+test("the addon and the Desktop App each carry a SoftwareApplication with the version, download and systems the page shows", async () => {
+  const html = await render(() => Promise.resolve(Response.json(releases)));
+  const apps = blocks(html).filter((b) => b["@type"] === "SoftwareApplication");
+  expect(apps.map((a) => a.name)).toEqual(["Everloot addon", "Everloot Desktop App"]);
+  const [addonApp, desktopApp] = apps;
+  expect(addonApp).toMatchObject({ softwareVersion: addon.version, downloadUrl: `https://everloot.app${addon.downloadPath}`, url: "https://everloot.app/addon", offers: { price: "0" } });
+  expect(addonApp).not.toHaveProperty("operatingSystem");
+  expect(desktopApp).toMatchObject({ softwareVersion: "0.1.0", downloadUrl: "https://github.com/Everloot/everloot/releases/tag/desktop-v0.1.0", operatingSystem: "Windows, macOS, Linux" });
+  for (const app of apps) {
+    expect(visible(html)).toContain(app.description);
+    expect(JSON.stringify(app)).not.toMatch(/aggregateRating|ratingValue/);
+  }
+  // Without the release list, only the addon the site serves is described.
+  const offline = await render(() => Promise.reject(new Error("offline")));
+  expect(blocks(offline).filter((b) => b["@type"] === "SoftwareApplication").map((a) => a.name)).toEqual(["Everloot addon"]);
+});

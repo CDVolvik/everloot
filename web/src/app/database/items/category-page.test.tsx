@@ -20,7 +20,7 @@ vi.mock("next/navigation", () => ({
 import ItemPage, { generateMetadata } from "./[id]/page";
 import SubclassPage, { generateMetadata as subclassMetadata } from "./[id]/[subclass]/page";
 import ItemsPage from "./page";
-import { CLIENT_LAYER, CLIENT_TAXONOMY, ITEMS_PER_PAGE, NAMED_SAMPLE } from "@/lib/items";
+import { CLIENT_LAYER, CLIENT_TAXONOMY, ITEMS_PER_PAGE } from "@/lib/items";
 
 const props = (id: string, search: Record<string, string> = {}) => ({ params: Promise.resolve({ id }), searchParams: Promise.resolve(search) });
 const sub = (id: string, subclass: string, search: Record<string, string> = {}) => ({ params: Promise.resolve({ id, subclass }), searchParams: Promise.resolve(search) });
@@ -60,7 +60,8 @@ test("filters, sort and page live in the URL in one order; several values join w
   expect(many).toContain('href="/database/items/armor/cloth?quality=rare&amp;sort=-id"');
   expect(many).toContain('href="/database/items/armor/cloth?quality=uncommon,rare,epic&amp;sort=-id"');
   // The sorted column says so, and its header turns the order around.
-  expect(many).toMatch(/aria-sort="descending"[^>]*>[\s\S]*?href="\/database\/items\/armor\/cloth\?quality=rare,epic"/);
+  // (Ascending by id is its own URL: the plain list opens on the named items first.)
+  expect(many).toMatch(/aria-sort="descending"[^>]*>[\s\S]*?href="\/database\/items\/armor\/cloth\?quality=rare,epic&amp;sort=id"/);
   await expect(html(SubclassPage(sub("armor", "cloth", { sort: "price" })))).rejects.toThrow("NEXT_NOT_FOUND");
   await expect(html(SubclassPage(sub("armor", "cloth", { crafted: "yes" })))).rejects.toThrow("NEXT_NOT_FOUND");
   await expect(html(items({ skill: "basket-weaving" }))).rejects.toThrow("NEXT_NOT_FOUND");
@@ -76,15 +77,29 @@ test("game-file filters: crafted, reagent, set piece and profession narrow the r
   expect(none).toContain('href="/database/items/armor/cloth"');
 });
 
-test("filtered, sorted and searched views are noindex with the plain category as canonical", async () => {
-  for (const search of [{ quality: "epic" }, { sort: "name" }, { q: "robe" }, { page: "2" }] as Record<string, string>[]) {
+test("filtered, sorted and searched views are noindex with the plain category as canonical; a later plain page is its own", async () => {
+  for (const search of [{ quality: "epic" }, { sort: "name" }, { q: "robe" }, { quality: "epic", page: "2" }] as Record<string, string>[]) {
     const m = await subclassMetadata(sub("armor", "cloth", search));
     expect(m.robots).toMatchObject({ index: false, follow: true });
     expect(m.alternates?.canonical).toBe("/database/items/armor/cloth");
   }
+  const second = await subclassMetadata(sub("armor", "cloth", { page: "2" }));
+  expect(second.alternates?.canonical).toBe("/database/items/armor/cloth?page=2");
+  expect(second.title).toMatch(/^WoW Forever Cloth \(Armor\): [\d,]+ Items – Page 2$/);
   const { generateMetadata: allMetadata } = await import("./page");
   expect((await allMetadata({ searchParams: Promise.resolve({}) })).robots).toBeUndefined();
   expect((await allMetadata({ searchParams: Promise.resolve({ seen: "1" }) })).robots).toMatchObject({ index: false });
+  expect((await allMetadata({ searchParams: Promise.resolve({ page: "3" }) })).alternates?.canonical).toBe("/database/items?page=3");
+});
+
+test("category titles lead with WoW Forever and the item count; descriptions carry no build or source wording", async () => {
+  const weapons = CLIENT_TAXONOMY.classes.find((c) => c.slug === "weapons")!;
+  const m = await generateMetadata(props("weapons"));
+  expect(m.title).toBe(`WoW Forever Weapons: All ${weapons.items.toLocaleString("en-US")} Items`);
+  for (const meta of [m, await subclassMetadata(sub("trade-goods", "cloth"))]) {
+    expect(String(meta.description)).toMatch(/^All [\d,]+ .+ items in WoW: Forever, with filters/);
+    expect(String(meta.description)).not.toMatch(/build|game files|unconfirmed/i);
+  }
 });
 
 test("the first, singular class URLs move to the plural ones for good, filters kept", async () => {
@@ -102,22 +117,34 @@ test("unknown categories and filters are a 404, not an empty page", async () => 
   await expect(html(SubclassPage(sub("armor", "cloth", { page: "9999" })))).rejects.toThrow("NEXT_NOT_FOUND");
 });
 
-test("only the plain category page is indexed, and only once half its rows have an agreed name", async () => {
+test("a plain category page is indexed once half the rows it shows have a name, and the named rows come first", async () => {
   // No names yet: every category page is a list of "Item N", so none is indexed.
   expect((await subclassMetadata(sub("weapons", "one-handed-swords"))).robots).toMatchObject({ index: false, follow: true });
   expect((await generateMetadata(props("weapons"))).robots).toMatchObject({ index: false, follow: true });
   const swords = CLIENT_TAXONOMY.subclasses.find((s) => s.slug === "one-handed-swords")!;
-  const ids = CLIENT_TAXONOMY.items.filter((r) => r[1] === swords.classId && r[2] === swords.id).slice(0, NAMED_SAMPLE).map((r) => r[0]);
-  const name = (n: number) => ids.slice(0, n).flatMap((itemId) => ["a", "b", "c"].map((installId) => ({ installId, itemId, name: `Sword ${itemId}` })));
+  const all = CLIENT_TAXONOMY.items.filter((r) => r[1] === swords.classId && r[2] === swords.id).map((r) => r[0]);
+  expect(all.length).toBeGreaterThan(ITEMS_PER_PAGE * 2);
+  // Named items from the end of the id order: they lead the plain list anyway.
+  const late = all.slice(-ITEMS_PER_PAGE);
+  const name = (ids: number[]) => ids.flatMap((itemId) => ["a", "b", "c"].map((installId) => ({ installId, itemId, name: `Sword ${itemId}` })));
+  const half = Math.ceil(ITEMS_PER_PAGE / 2);
   try {
-    facts.names = name(Math.ceil(ids.length / 2) - 1);
+    facts.names = name(late.slice(0, half - 1));
     expect((await subclassMetadata(sub("weapons", "one-handed-swords"))).robots).toMatchObject({ index: false });
-    facts.names = name(Math.ceil(ids.length / 2));
+    facts.names = name(late.slice(0, half));
     expect((await subclassMetadata(sub("weapons", "one-handed-swords"))).robots).toMatchObject({ index: true });
-    // Filtered and later pages repeat the plain one and stay out either way.
+    const list = await html(SubclassPage(sub("weapons", "one-handed-swords")));
+    const firstRow = list.slice(list.indexOf("<tbody"));
+    expect(firstRow.indexOf(`Sword ${late[0]}`)).toBeGreaterThan(-1);
+    expect(firstRow.indexOf(`Sword ${late[0]}`)).toBeLessThan(firstRow.indexOf(`>Item ${all[0]}<`));
+    // Page 2 holds no named row, so it stays out; a filter stays out whatever the names.
+    expect((await subclassMetadata(sub("weapons", "one-handed-swords", { page: "2" }))).robots).toMatchObject({ index: false });
     expect((await subclassMetadata(sub("weapons", "one-handed-swords", { quality: "epic" }))).robots).toMatchObject({ index: false });
+    // Enough names spill onto page 2 and index it too.
+    facts.names = name(all.slice(-(ITEMS_PER_PAGE + half)));
+    expect((await subclassMetadata(sub("weapons", "one-handed-swords", { page: "2" }))).robots).toMatchObject({ index: true });
     // Two installs are not an agreed name.
-    facts.names = facts.names.filter((row) => (row as { installId: string }).installId !== "c");
+    facts.names = name(late.slice(0, half)).filter((row) => row.installId !== "c");
     expect((await subclassMetadata(sub("weapons", "one-handed-swords"))).robots).toMatchObject({ index: false });
   } finally {
     facts.names = [];

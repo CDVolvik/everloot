@@ -87,7 +87,9 @@ function bucket(manifest: unknown = siteManifest) {
 
 beforeEach(() => {
   forgetPrivateReads();
-  store.loadCorpus.mockReset().mockResolvedValue({ uploads: 3, records: ["install-a", "install-b", "install-c"].map(loot), dataAsOf: "2026-10-09T00:00:00.000Z" });
+  // One install's vendor row for NPC 1: short of agreement, but enough that its vendor page exists (an NPC no upload names as a vendor is a 404).
+  const vendorRow = { kind: "vendor", installId: "install-a", eventId: "vendor-1", capturedAt: "2026-10-09T00:00:00.000Z", vendorNpcId: 1, items: [{ itemId: 2589, priceCopper: 10 }] };
+  store.loadCorpus.mockReset().mockResolvedValue({ uploads: 3, records: [...["install-a", "install-b", "install-c"].map(loot), vendorRow], dataAsOf: "2026-10-09T00:00:00.000Z" });
   store.loadMarket.mockReset().mockResolvedValue({ state: market, dataAsOf: "2026-10-09T00:00:00.000Z" });
 });
 afterEach(() => {

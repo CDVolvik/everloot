@@ -7,10 +7,6 @@
   color-scheme: dark;
 }
 
-/* The docs need room for a sidebar, the page and its code panel: their column is wider than the site's. */
-main:has([data-docs]) {
-  max-width: 88rem;
-}
 
 /* Thin scrollbars inside the docs' sidebar and code panels, in the line colour. */
 [data-docs] * {
@@ -24,16 +20,22 @@ body:has([data-banner]) {
   overflow-x: clip;
 }
 
-/* Data pages (a <Container width="data">): the column grows to 1440 with 24 px sides (16 under
-   1024 px) and the title sits 16 px under the header (density spec, 2026-10-20). */
-main:has([data-container="data"]) {
+/* One content width (design review 2026-10-20, H1): every page's column is the header's and footer's own
+   container, 1440 with 16 px sides (24 from 1024 px), so a page's left edge lines up with the logo. A page that
+   wants a narrower measure caps its Container inside it (wide 1152, reading 768), left-aligned, never centred.
+   The id outranks the layout's own width classes on <main>. */
+#main-content {
   max-width: 1440px;
-  padding-top: 1rem;
 }
 @media (min-width: 1024px) {
-  main:has([data-container="data"]) {
+  #main-content {
     padding-inline: 1.5rem;
   }
+}
+
+/* Data pages (a <Container width="data">): the title sits 16 px under the header (density spec, 2026-10-20). */
+#main-content:has([data-container="data"]) {
+  padding-top: 1rem;
 }
 
 /* Controls on data pages (filter buttons, pager, tabs): 32 px tall with 13 px text, 40 px on phones.
@@ -52,10 +54,9 @@ main:has([data-container="data"]) {
   }
 }
 
-/* The map fills the screen: its page lifts the column's width limit and keeps only a small side margin. */
-main:has([data-map-page]) {
+/* The map fills the screen: its page lifts the column's width limit and keeps the header's side margins. */
+#main-content:has([data-map-page]) {
   max-width: none;
-  padding-inline: 0.75rem;
   padding-top: 1rem;
 }
 
@@ -99,7 +100,7 @@ main p a, main .list-disc a {
   background: transparent;
   color: rgb(var(--fg));
   font-weight: 500;
-  transition: border-color 150ms, color 150ms;
+  transition: border-color var(--dur-fade) var(--ease-color), color var(--dur-fade) var(--ease-color);
 }
 .btn:hover,
 .btn:focus-visible {
@@ -115,12 +116,20 @@ main p a, main .list-disc a {
   background: rgb(var(--accent));
   color: rgb(var(--canvas));
   font-weight: 600;
-  transition: background-color 150ms, border-color 150ms;
+  transition: background-color var(--dur-fade) var(--ease-color), border-color var(--dur-fade) var(--ease-color);
 }
 .btn-primary:hover,
 .btn-primary:focus-visible {
   border-color: rgb(var(--accent-hover));
   background: rgb(var(--accent-hover));
+}
+/* A disabled primary button drops its fill: at half opacity the green read as a different olive colour. */
+.btn-primary:disabled,
+.btn-primary[aria-disabled="true"] {
+  opacity: 1;
+  border-color: rgb(var(--line));
+  background: rgb(var(--panel));
+  color: rgb(var(--muted));
 }
 }
 
@@ -149,7 +158,31 @@ body {
 
 /* Tool cards: the border answers the pointer. No lift, no shadow. */
 .tool-card {
-  transition: border-color 150ms;
+  transition: border-color var(--dur-fade) var(--ease-color);
+}
+
+/* Menus and sheets (Tools, the phone menu, filter menus, the account menus) fade in over 150 ms when they open.
+   Closing is instant. A <details> menu's panel is in the page while closed, so the fade runs on [open]. */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+.pop {
+  animation: fade-in var(--dur-fade) var(--ease-out);
+}
+details:not([open]) > .pop {
+  animation: none;
+}
+
+/* The bar at the top of the window while a filter, sort, page or tab link loads (NavPending). It shows only
+   after MOTION.duration.pendingDelay, fades in, and goes at once. */
+.nav-pending {
+  opacity: 0;
+}
+.nav-pending[data-on] {
+  opacity: 1;
+  transition: opacity var(--dur-fade) var(--ease-out);
 }
 
 /* Motion is limited to 150 ms colour and opacity changes, and none at all when asked. */

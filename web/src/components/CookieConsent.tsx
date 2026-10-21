@@ -11,7 +11,7 @@ const NONE: Choices = { advertising: null, analytics: null };
 
 export function CookiePreferencesButton() {
   return (
-    <button type="button" className="inline-flex items-center min-h-11 text-sm text-fg-2 hover:text-accent transition" onClick={() => window.dispatchEvent(new Event(OPEN_PREFERENCES))}>
+    <button type="button" className="inline-flex items-center min-h-11 text-sm text-fg-2 hover:text-accent transition-colors" onClick={() => window.dispatchEvent(new Event(OPEN_PREFERENCES))}>
       Cookie preferences
     </button>
   );

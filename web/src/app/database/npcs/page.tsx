@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { NPC_CREATURE_TYPES, NPC_RANKS, type NpcRank, type NpcReaction } from "../../../../../kb/src/world-pages";
-import { Container, DataTable, DataTitle, FilterBar, ResultStrip, type Column, type FilterControl } from "@/components/ui";
+import { Container, DataTable, DataTitle, filledColumns, FilterBar, ResultStrip, type FilterControl, type SparseColumn } from "@/components/ui";
 import { computeRollups, loadWorldFacts } from "@/lib/rollup-compute";
-import { npcRows, type NpcRow } from "@/lib/world-lists";
+import { bareNpcRow, npcRows, publicQuests, publicVendors, type NpcRow } from "@/lib/world-lists";
 import { parseZoneSegment, publicZones, zoneSlug } from "@/lib/zones";
 import { LINK } from "../entity";
 import {
@@ -55,14 +55,19 @@ const filters = (q: NpcQuery) => Number(Boolean(q.q)) + Number(Boolean(q.zone)) 
 
 export async function generateMetadata(props: { searchParams?: Promise<Search> }): Promise<Metadata> {
   const q = npcQuery((await props.searchParams) ?? {});
-  return listMetadata(META, Boolean(q) && filters(q!) === 0 && !q!.sort && q!.page === 1);
+  return listMetadata(META, Boolean(q) && filters(q!) === 0 && !q!.sort, q?.page);
 }
 
 export default async function NpcListPage(props: { searchParams?: Promise<Search> }) {
   const q = npcQuery((await props.searchParams) ?? {});
   if (!q) notFound();
   const [facts, { rates }] = await Promise.all([loadWorldFacts(), computeRollups()]);
-  const all = facts.unreachable ? [] : npcRows(facts, rates);
+  const reported = facts.unreachable ? [] : npcRows(facts, rates);
+  // An NPC known from a public quest (its giver or turn-in) or a vendor with agreed prices has a page too, so it is
+  // listed like the rest, its unknown cells "—".
+  const known = new Set(reported.map((n) => n.npcId));
+  const linked = facts.unreachable ? [] : [...publicQuests(facts).flatMap((x) => [x.giverNpcId, x.turnInNpcId]), ...publicVendors(facts).map((v) => v.vendorNpcId)];
+  const all = [...reported, ...[...new Set(linked)].filter((n): n is number => n !== null && !known.has(n)).map(bareNpcRow)];
   const text = q.q?.toLowerCase();
   const id = text && /^#?\d+$/.test(text) ? Number(text.replace("#", "")) : null;
   const matched = all.filter((n) =>
@@ -82,14 +87,14 @@ export default async function NpcListPage(props: { searchParams?: Promise<Search
   const here = (over: Partial<NpcQuery>) => href({ ...q, page: 1, ...over });
 
   const dash = <span className="text-muted">—</span>;
-  const columns: Column<NpcRow>[] = [
+  const columns: SparseColumn<NpcRow>[] = [
     { key: "name", header: "Name", sortable: true, cell: (n) => <Link href={`/database/npcs/${n.npcId}`} className={LINK}>{n.name ?? `NPC ${n.npcId}`}</Link> },
-    { key: "level", header: "Level", numeric: true, sortable: true, cell: (n) => n.level ?? dash },
-    { key: "type", header: "Type", sortable: true, cell: (n) => n.creatureType ?? dash },
-    { key: "rank", header: "Rank", sortable: true, cell: (n) => (n.rank ? RANK_LABEL[n.rank] : dash) },
-    { key: "react", header: "Reaction", sortable: true, cell: (n) => (n.reaction ? REACTION_LABEL[n.reaction] : dash) },
-    { key: "zone", header: "Zone", sortable: true, cell: (n) => n.zone?.name ?? dash },
-    { key: "drops", header: "Drops", numeric: true, sortable: true, cell: (n) => n.drops || dash },
+    { key: "level", header: "Level", numeric: true, sortable: true, cell: (n) => n.level ?? dash, blank: (n) => n.level === null },
+    { key: "type", header: "Type", sortable: true, cell: (n) => n.creatureType ?? dash, blank: (n) => !n.creatureType },
+    { key: "rank", header: "Rank", sortable: true, cell: (n) => (n.rank ? RANK_LABEL[n.rank] : dash), blank: (n) => !n.rank },
+    { key: "react", header: "Reaction", sortable: true, cell: (n) => (n.reaction ? REACTION_LABEL[n.reaction] : dash), blank: (n) => !n.reaction },
+    { key: "zone", header: "Zone", sortable: true, cell: (n) => n.zone?.name ?? dash, blank: (n) => !n.zone },
+    { key: "drops", header: "Drops", numeric: true, sortable: true, cell: (n) => n.drops || dash, blank: (n) => !n.drops },
     { key: "id", header: "ID", numeric: true, sortable: true, cell: (n) => n.npcId },
   ];
 
@@ -156,11 +161,13 @@ export default async function NpcListPage(props: { searchParams?: Promise<Search
           active={filters(q)}
           clearHref="/database/npcs"
         />
-        <div className="mt-2">
+        {/* With nothing to list at all, the one line says so without a row of column headers over it. */}
+        <div className="mt-2">{all.length === 0 ? empty : (
           <DataTable
             dense
-            caption={`NPCs players have reported: ${rows.length}`}
-            columns={columns}
+            caption={`NPCs: ${rows.length}`}
+            // A column no NPC in the result has a value for is left out.
+            columns={filledColumns(columns, rows)}
             rows={shown}
             rowKey={(n) => String(n.npcId)}
             sort={{ key: sort.key, direction: sort.desc ? "desc" : "asc" }}
@@ -168,7 +175,7 @@ export default async function NpcListPage(props: { searchParams?: Promise<Search
             meta={(n) => [n.level !== null && `Level ${n.level}`, n.rank && n.rank !== "normal" && RANK_LABEL[n.rank], n.creatureType, n.reaction && REACTION_LABEL[n.reaction], n.zone?.name, n.drops > 0 && `${n.drops} drops`, `ID ${n.npcId}`].filter(Boolean).join(" · ")}
             empty={empty}
           />
-        </div>
+        )}</div>
         {pages > 1 && <div className="mt-2">{strip}</div>}
       </article>
     </Container>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { TabCount, tabClass } from "./tab-style";
+import { TAB_SCROLL, TabCount, tabClass } from "./tab-style";
 
 export interface TabItem {
   /** Also the URL hash that opens this tab: `#dropped-by`. Lowercase letters, digits and dashes. */
@@ -81,7 +81,7 @@ export default function Tabs({ label, tabs, inFrame = false }: { label: string; 
     <div data-tabs className={inFrame ? "" : "min-w-0"}>
       {/* The hairline sits outside the scrolling list, so a narrow screen scrolls the tabs and not the page. */}
       <div className="border-b border-line">
-      <div role="tablist" aria-label={label} className={`flex overflow-x-auto ${inFrame ? "px-2" : ""}`}>
+      <div role="tablist" aria-label={label} className={`flex ${TAB_SCROLL} ${inFrame ? "px-2" : ""}`}>
         {tabs.map((tab) => {
           const on = tab.id === selected;
           return (

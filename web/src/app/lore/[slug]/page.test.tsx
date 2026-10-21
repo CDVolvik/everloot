@@ -25,11 +25,11 @@ async function page(path = release) {
 }
 const params = (slug: string) => ({ params: Promise.resolve({ slug }) });
 
-test("a substantive page is indexed with its name, canonical slug and first sentence", async () => {
+test("a Warcraft Wiki copy keeps its name, canonical slug and first sentence, and stays out of search (links followed)", async () => {
   const { generateMetadata } = await page();
   const meta = await generateMetadata(params("1-thrall"));
   expect(meta.title).toBe("Thrall · Lore archive");
-  expect(meta.robots).toMatchObject({ index: true, follow: true });
+  expect(meta.robots).toMatchObject({ index: false, follow: true });
   expect(meta.alternates).toMatchObject({ canonical: "/lore/1-thrall" });
   expect(meta.description).toBe("Thrall is the former Warchief of the Horde.");
   expect(meta.openGraph).toMatchObject({ type: "article", title: "Thrall", description: "Thrall is the former Warchief of the Horde.", url: "/lore/1-thrall" });

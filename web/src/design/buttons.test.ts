@@ -75,7 +75,6 @@ test("the focus ring follows each element's own corners", () => {
 });
 
 const PRIMARY = [
-  "app/tools/auctions/parts.tsx",
   "app/tools/collections/page.tsx",
   "app/tools/gold-ledger/page.tsx",
   "app/tools/guild-board/page.tsx",
@@ -103,4 +102,11 @@ test("links in running text are underlined at rest, so colour is not their only 
   const prose = rule("main p a, main .list-disc a");
   expect(prose).toContain("text-decoration-line: underline");
   expect(prose).toContain("text-underline-offset: 4px");
+});
+
+test("a disabled primary button is plainly disabled, not a dimmer green", () => {
+  const off = rule('.btn-primary[aria-disabled="true"]');
+  expect(off).toContain("background: rgb(var(--panel))");
+  expect(off).toContain("color: rgb(var(--muted))");
+  expect(off).toContain("opacity: 1");
 });

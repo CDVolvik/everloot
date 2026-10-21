@@ -28,7 +28,7 @@ import { formatNpcPage, formatQuestPage, formatVendorPage, npcPage, questPage, v
 import { handleWorldMapNear, mapFactsFromRecords, nearResult, nearZoneSpot } from "./world-map-near.js";
 import { WORLD_MAP_DATA } from "./world-map-file.js";
 import { CLIENT_EDGES, CLIENT_LAYER, CLIENT_TAXONOMY } from "./client-layer-file.js";
-import { handleItemCategories, itemCategoriesStructured } from "./item-taxonomy.js";
+import { categoryOf, handleItemCategories, itemCategoriesStructured } from "./item-taxonomy.js";
 import { entityRelationsStructured, handleEntityRelations, observedEdgesFromRecords, type Edge } from "./edges.js";
 import type { DB } from "./db.js";
 import { recordUrl } from "./lore-slug.js";
@@ -489,11 +489,14 @@ export async function readPage<T>(
   };
 }
 
+/** Whether the committed game-file layer lists the item: its page then shows the item's class, type, slot and quality. */
+const inGameFiles = (itemId: number): boolean => categoryOf(CLIENT_TAXONOMY, itemId) !== null;
+
 /** The page of an entity entity_relations was asked about, when the site has one with something on it. */
 async function entityPageUrl(kind: EntityKind, id: number, loader?: CorpusLoader): Promise<string | undefined> {
   if (kind === "item") {
     const read = await readTooledFacts<ReturnType<typeof itemFactsFromRecords>>("item_page", loader);
-    return read ? itemPageUrl(itemPage(id, read.facts)) : undefined;
+    return read ? itemPageUrl(itemPage(id, read.facts), inGameFiles(id)) : undefined;
   }
   if (kind === "object") {
     const read = await readTooledFacts<ObjectFacts>("object_page", loader);
@@ -573,7 +576,7 @@ export function createToolHandlers(db: DB, options: ToolOptions = {}): ToolHandl
     },
     item_page: (args) => readPage("item_page", options.corpus, (facts: ReturnType<typeof itemFactsFromRecords>) => {
       const page = itemPage(args.itemId, facts);
-      return { text: formatItemPage(page), page, url: itemPageUrl(page) };
+      return { text: formatItemPage(page), page, url: itemPageUrl(page, inGameFiles(page.itemId)) };
     }),
     npc_page: (args) => readPage("npc_page", options.corpus, (facts: ReturnType<typeof worldFactsFromRecords>) => {
       const page = npcPage(args.npcId, facts);

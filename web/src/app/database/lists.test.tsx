@@ -9,6 +9,12 @@ vi.mock("@/lib/upload-store", async (importOriginal) => ({
 }));
 vi.mock("next/link", () => ({ default: ({ href, children }: { href: string; children: ReactNode }) => <a href={href}>{children}</a> }));
 vi.mock("next/navigation", () => ({ notFound: () => { throw new Error("NEXT_NOT_FOUND"); } }));
+// The quest titles a page may show from the Warcraft Wiki (none unless a test sets them).
+const wiki = vi.hoisted(() => ({ titles: null as Map<number, { name: string; wikiPage: string }> | null }));
+vi.mock("@/lib/game-assets", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/game-assets")>()),
+  loadQuestNames: async () => (wiki.titles ? { version: "x", wiki: { name: "Warcraft Wiki", url: "https://warcraft.wiki.gg" }, names: wiki.titles } : null),
+}));
 
 import NpcList, { generateMetadata as npcMetadata } from "./npcs/page";
 import QuestList, { generateMetadata as questMetadata } from "./quests/page";
@@ -34,6 +40,7 @@ const search = (s: Record<string, string> = {}) => ({ searchParams: Promise.reso
 /** The names linked in the table body, in order. */
 const rows = (page: string, kind: string) => [...(page.split("<tbody>")[1] ?? "").matchAll(new RegExp(`href="/database/${kind}/(\\d+)"`, "g"))].map((m) => Number(m[1]));
 
+beforeEach(() => wiki.titles = null);
 beforeEach(() => store.loadCorpus.mockReset().mockResolvedValue({ uploads: 3, records, dataAsOf: `2026-10-10T00:00:${String(n++ % 60).padStart(2, "0")}.000Z` }));
 
 test("the NPC list shows the agreed level, reaction, zone and drops, and filters and sorts by them in the URL", async () => {
@@ -113,13 +120,52 @@ test("nothing uploaded yet: the empty meter, one sentence and a plain addon link
   expect(page).not.toContain("btn");
 });
 
-test("the plain lists are indexed; any filter, sort, search or later page is noindex with the plain list as canonical", async () => {
+test("the plain lists are indexed, each page under its own URL; any filter, sort or search is noindex with the plain list as canonical", async () => {
   expect((await npcMetadata(search())).robots).toBeUndefined();
   expect((await questMetadata(search())).robots).toBeUndefined();
-  for (const s of [{ zone: "1429-elwynn-forest" }, { sort: "name" }, { q: "hog" }, { page: "2" }] as Record<string, string>[]) {
+  for (const s of [{ zone: "1429-elwynn-forest" }, { sort: "name" }, { q: "hog" }, { sort: "name", page: "2" }] as Record<string, string>[]) {
     const m = await npcMetadata(search(s));
     expect(m.robots).toMatchObject({ index: false, follow: true });
     expect(m.alternates?.canonical).toBe("/database/npcs");
   }
   expect((await questMetadata(search({ rewards: "1" }))).robots).toMatchObject({ index: false });
+  // A later page of the plain list is the only path to its rows: indexed, its own canonical, its own title.
+  const second = await npcMetadata(search({ page: "2" }));
+  expect(second.robots).toBeUndefined();
+  expect(second.alternates?.canonical).toBe("/database/npcs?page=2");
+  expect(String(second.title)).toMatch(/ – Page 2$/);
+});
+
+test("a quest a page can title from the Warcraft Wiki is listed beside the reported ones, its unknown cells left out or '—'", async () => {
+  wiki.titles = new Map([[176, { name: "Wanted: Hogger", wikiPage: "x" }], [783, { name: "A Threat Within", wikiPage: "y" }]]);
+  const page = await html(QuestList(search()));
+  expect(rows(page, "quests")).toEqual([7, 176, 783]);
+  expect(page).toContain(">A Threat Within<");
+  expect(rows(await html(QuestList(search({ q: "threat" }))), "quests")).toEqual([783]);
+  // Only the wiki rows: no column that none of them has a value for.
+  store.loadCorpus.mockResolvedValue({ uploads: 0, records: [], dataAsOf: "2026-10-10T00:00:00.000Z" });
+  const bare = await html(QuestList(search()));
+  expect(rows(bare, "quests")).toEqual([176, 783]);
+  const head = bare.split("<thead>")[1]!.split("</thead>")[0];
+  for (const header of [">Giver<", ">Turn-in<", ">Rewards<", ">Category<"]) expect(head).not.toContain(header);
+  expect(head).toContain(">Name<");
+});
+
+test("an NPC known only as a quest giver or a vendor is listed too", async () => {
+  store.loadCorpus.mockResolvedValue({ uploads: 3, dataAsOf: "2026-10-10T00:00:00.000Z", records: [
+    ...three.map((i) => ({ ...base(i), kind: "quest", questId: 9, title: "Report to Goldshire", level: 5, giverNpcId: 240, rewardItemIds: [] })),
+    ...three.map((i) => ({ ...base(i), kind: "vendor", vendorNpcId: 74, items: [{ itemId: 159, priceCopper: 25 }] })),
+  ] });
+  const page = await html(NpcList(search()));
+  expect(rows(page, "npcs")).toEqual([74, 240]);
+  expect(page).toContain(">NPC 240<");
+  expect(page.split("<thead>")[1]!.split("</thead>")[0]).not.toContain(">Reaction<");
+});
+
+test("with nothing to list, the one line stands alone, without column headers", async () => {
+  store.loadCorpus.mockResolvedValue({ uploads: 0, records: [], dataAsOf: "2026-10-10T00:00:00.000Z" });
+  for (const page of [await html(NpcList(search())), await html(QuestList(search()))]) {
+    expect(page).toContain("data-empty-state");
+    expect(page).not.toContain("<th");
+  }
 });

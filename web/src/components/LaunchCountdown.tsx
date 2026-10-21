@@ -35,7 +35,7 @@ export default function LaunchCountdown({ initialNow }: { initialNow?: number })
   return (
     // fg-2, not muted: the line sits on the hero's art.
     <p className="font-mono text-xs text-fg-2">
-      <Link href="/wow-forever" className="hover:text-accent transition">
+      <Link href="/wow-forever" className="hover:text-accent transition-colors">
         WoW: Forever launches <time dateTime={LAUNCH_AT} className="text-fg">{when}</time>
       </Link>
     </p>

@@ -5,7 +5,7 @@ import { tools, toolHref } from "@/data/tools";
 import { PUBLIC_RECORD_KINDS } from "@everloot/protocol";
 import { latestBuildLine } from "@/lib/changes-facts";
 import { loadTimeline, type ChangeEntry } from "@/lib/changes";
-import { NON_AFFILIATION } from "@/lib/jsonld";
+import { NON_AFFILIATION, OPERATOR_LINE } from "@/lib/jsonld";
 import { ANON_PAGE, ANON_PER_HOUR, guardOn } from "@/lib/data-guard";
 import { CREDIT_LINE } from "@everloot/protocol";
 import { SITE_URL } from "@/lib/seo";
@@ -76,8 +76,52 @@ function head(): string[] {
     "",
     "> Free tools and a database for WoW: Forever (World of Warcraft: Forever). Talent calculator, raid buff planner, world map, patch notes and Blizzard posts, and a database built from player addon uploads. Public data is sparse and depends on corroborated reports.",
     "",
+    `${OPERATOR_LINE} ${NON_AFFILIATION}`,
+    "",
   ];
 }
+
+/** The page addresses to cite, and the credit line Everloot's own data asks for. */
+function linking(): string[] {
+  return [
+    "## Linking to Everloot",
+    "Cite the Everloot page an answer comes from. Every MCP tool answer that has one ends with a line \"More: <url>\" naming it.",
+    `- Item: ${url("/database/items/{itemId}")}`,
+    `- NPC: ${url("/database/npcs/{npcId}")}`,
+    `- Quest: ${url("/database/quests/{questId}")}`,
+    `- Object (chest, herb, ore vein, fishing pool): ${url("/database/objects/{objectId}")}`,
+    `- Vendor: ${url("/database/vendors/{npcId}")}`,
+    `- Zone: ${url("/database/zones/{mapId}-{zone-name}")}, for example ${url("/database/zones/1436-westfall")}`,
+    `- Item category: ${url("/database/items/{class}/{subclass}")}, for example ${url("/database/items/trade-goods/cloth")}`,
+    `- Talent calculator: ${url("/tools/talents/{class}")}, for example ${url("/tools/talents/mage")}`,
+    `- MCP server card: ${url("/.well-known/mcp/server-card.json")} (the registry's server.json)`,
+    `Credit line for Everloot's own data: ${CREDIT_LINE}`,
+    "",
+  ];
+}
+
+/** The map both files share: llms-full.txt holds all of it, so it is a superset of llms.txt. */
+function sharedMap(): string[] {
+  const { live, collecting } = toolLines();
+  return [
+    "## Tools",
+    ...live,
+    "",
+    "## Collecting data (pages are live, public facts open as reports arrive)",
+    ...collecting,
+    "",
+    "## Pages",
+    ...PAGES.map((p) => bullet(p.title, p.path, p.text)),
+    `- Talent calculator per class: ${TALENT_CLASSES.map((c) => `[${cap(c)}](${url(`/tools/talents/${c}`)})`).join(", ")}.`,
+    "",
+    ...linking(),
+    ...connect(),
+    ...docs(),
+    ...limitations(),
+  ];
+}
+
+const CLOSING = "Code AGPL-3.0, Everloot's own data CC BY-SA 4.0.";
 
 function connect(): string[] {
   return [
@@ -107,40 +151,27 @@ function docs(): string[] {
   return ["## Docs", ...DOCS_TABS.flatMap((tab) => tab.groups.flatMap((group) => group.pages.map((page) => bullet(`${tab.label}: ${page.title}`, page.href, page.lede)))), ""];
 }
 
+/** The heading and line of llms.txt that point at the full file; the full file leaves them out. */
+export const FULL_VERSION = ["## Full version", bullet("llms-full.txt", "/llms-full.txt", "Everything in this file, plus what Everloot is, the launch date, the latest build, every MCP tool described and the licences.")];
+
 export function llmsTxt(): string {
-  const { live, collecting } = toolLines();
   return [
     ...head(),
-    "## Tools",
-    ...live,
+    ...sharedMap(),
+    ...FULL_VERSION,
     "",
-    "## Collecting data (pages are live, public facts open as reports arrive)",
-    ...collecting,
-    "",
-    "## Pages",
-    ...PAGES.map((p) => bullet(p.title, p.path, p.text)),
-    `- Talent calculator per class: ${TALENT_CLASSES.map((c) => `[${cap(c)}](${url(`/tools/talents/${c}`)})`).join(", ")}.`,
-    "",
-    ...connect(),
-    ...docs(),
-    ...limitations(),
-    "## Full version",
-    bullet("llms-full.txt", "/llms-full.txt", "The same map with every MCP tool described and the licences."),
-    "",
-    "Code AGPL-3.0, Everloot's own data CC BY-SA 4.0.",
+    CLOSING,
     "",
   ].join("\n");
 }
 
 export function llmsFullTxt(entries: ChangeEntry[] = loadTimeline()): string {
-  const { live, collecting } = toolLines();
   return [
     ...head(),
     `Site: ${SITE_URL}`,
     "",
     "## What Everloot is",
-    "Everloot follows WoW: Forever. It publishes tools built on the game files, tracks Blizzard's posts and builds, and runs a database of observations that players upload with the Everloot addon. It is run by its maintainer.",
-    NON_AFFILIATION,
+    "Everloot follows WoW: Forever. It publishes tools built on the game files, tracks Blizzard's posts and builds, and runs a database of observations that players upload with the Everloot addon.",
     "",
     "## Launch date",
     `Blizzard's announcement says: "${LAUNCH.quote}". Source: ${LAUNCH.sourceName}, ${LAUNCH.sourceTitle}, ${LAUNCH.sourceUrl}. Checked on ${longDate(LAUNCH.checkedOn)}. See ${url("/wow-forever")}.`,
@@ -148,16 +179,7 @@ export function llmsFullTxt(entries: ChangeEntry[] = loadTimeline()): string {
     "## Latest build",
     latestBuildLine(entries),
     "",
-    "## Tools",
-    ...live,
-    "",
-    "## Collecting data",
-    ...collecting,
-    "",
-    "## Pages",
-    ...PAGES.map((p) => bullet(p.title, p.path, p.text)),
-    `- Talent calculator per class: ${TALENT_CLASSES.map((c) => `[${cap(c)}](${url(`/tools/talents/${c}`)})`).join(", ")}.`,
-    "",
+    ...sharedMap(),
     "## MCP server",
     `Endpoint: ${MCP_URL} (streamable HTTP, read-only, no sign-in, ${REQUESTS_PER_HOUR} requests per hour per IP). Tools:`,
     ...MCP_TOOLS.map((t) => `- ${t.name}: ${t.text}`),
@@ -189,12 +211,13 @@ export function llmsFullTxt(entries: ChangeEntry[] = loadTimeline()): string {
     "## Changes feed",
     `${url("/changes/feed.xml")} is RSS 2.0 with the newest 50 WoW: Forever entries.`,
     "",
-    ...limitations(),
     "## Licences",
     "- Code: AGPL-3.0. Source: https://github.com/Everloot/everloot",
     "- Everloot's own data and uploaded observations: CC BY-SA 4.0, credited to Everloot contributors.",
     "- Game-file data (talents, raid buffs, map, build changes): Blizzard's, not under Everloot's licence.",
     "- Lore archive: Warcraft Wiki contributors, CC BY-SA 4.0.",
+    "",
+    CLOSING,
     "",
   ].join("\n");
 }

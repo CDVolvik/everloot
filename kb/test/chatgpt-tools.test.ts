@@ -81,6 +81,8 @@ test("record URLs follow the site's lore slugs", () => {
   expect(slugify("Thunderfury, Blessed Blade of the Windseeker")).toBe("thunderfury-blessed-blade-of-the-windseeker");
   expect(loreSlug({ extId: "291323", name: "Frostwhisper" })).toBe("291323-frostwhisper");
   expect(loreSlug({ extId: "forever-launch-date", name: "WoW: Forever launch date" })).toBe("forever-launch-date");
-  expect(recordUrl({ kind: "lore_page", extId: "forever-launch-date", name: "x", sourceUrl: "https://s" }, "https://everloot.app")).toBe("https://everloot.app/lore/forever-launch-date");
+  // The launch date has its own page now; the lore address redirects there, so the record links the page.
+  expect(recordUrl({ kind: "lore_page", extId: "forever-launch-date", name: "x", sourceUrl: "https://s" }, "https://everloot.app")).toBe("https://everloot.app/wow-forever");
+  expect(recordUrl({ kind: "lore_page", extId: "291323", name: "Frostwhisper", sourceUrl: "https://s" }, "https://everloot.app")).toBe("https://everloot.app/lore/291323-frostwhisper");
   expect(recordUrl({ kind: "npc", extId: "1", name: "x", sourceUrl: "https://s" }, "https://everloot.app")).toBe("https://s");
 });

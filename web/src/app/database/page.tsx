@@ -4,7 +4,7 @@ import { pageMetadata } from "@/lib/seo";
 import Link from "next/link";
 import { objectList } from "../../../../kb/src/object-page";
 import { computeRollups, loadWorldFacts } from "@/lib/rollup-compute";
-import { CLIENT_TAXONOMY as T, itemsHref } from "@/lib/items";
+import { CLIENT_TAXONOMY as T, itemsHref, subclassLabel } from "@/lib/items";
 import { npcRows, publicQuests, publicVendors } from "@/lib/world-lists";
 import { loadCatalog } from "@/lib/completion-lists";
 import { publicZones } from "@/lib/zones";
@@ -78,7 +78,7 @@ export default async function DatabasePage() {
           action="/search"
           id="database-search"
           label="Search the database"
-          placeholder="An item, NPC, quest or object: a name or an id"
+          placeholder="A name or an id"
           scopes
         />
 
@@ -91,7 +91,8 @@ export default async function DatabasePage() {
               heading={c.label}
               href={itemsHref(c.slug)}
               count={n(c.items)}
-              links={T.subclasses.filter((s) => s.classId === c.id && s.items > 0).map((s) => ({ href: itemsHref(c.slug, s.slug), label: s.name ?? `Subclass ${s.id}`, count: n(s.items) }))}
+              // Retired and unnamed buckets ("Trade Goods (OBSOLETE)", "Subclass 0") stay on the class page only.
+              links={T.subclasses.filter((s) => s.classId === c.id && s.items > 0 && !subclassLabel(s).retired).map((s) => ({ href: itemsHref(c.slug, s.slug), label: subclassLabel(s).label, count: n(s.items) }))}
             />
           ))}
         </nav>

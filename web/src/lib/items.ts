@@ -7,12 +7,10 @@ export { CLIENT_LAYER, CLIENT_TAXONOMY };
 export const ITEMS_PER_PAGE = 50;
 
 /**
- * A category page stays out of search (noindex, and out of the sitemap) until at least this share of its
- * first rows has a name. A page of "Item 1234" rows is thin, and search engines judge the whole site by it.
+ * A page of a category stays out of search (noindex, and out of the sitemap) until at least this share of the
+ * rows it shows has a name. A page of "Item 1234" rows is thin, and search engines judge the whole site by it.
  */
 export const MIN_NAMED_SHARE = 0.5;
-/** The rows that share is read over: the first 100 by id, as when a page held 100 rows, so the same categories stay indexed. */
-export const NAMED_SAMPLE = 100;
 
 /** Where a shown item name comes from, in the words each page writes beside it. */
 export const NAME_SOURCE = {
@@ -41,10 +39,25 @@ export function shownItemName(
   return null;
 }
 
-/** Whether the plain first rows of a category have enough names to be indexed. */
-export function categoryNamedEnough(classId: number, subclassId: number | undefined, named: { has(id: number): boolean }): boolean {
-  const ids = filterItems(CLIENT_TAXONOMY, { classId, subclassId }).slice(0, NAMED_SAMPLE).map((row) => row[0]);
-  return ids.length > 0 && ids.filter((id) => named.has(id)).length / ids.length >= MIN_NAMED_SHARE;
+/**
+ * A subclass as a page labels it: the client's "(OBSOLETE)" suffix dropped, and "Other" for one the files leave
+ * unnamed, never "Subclass 0". `retired` marks the buckets the hub leaves out (the class page still lists them).
+ */
+export function subclassLabel(s: { name: string | null }): { label: string; retired: boolean } {
+  if (s.name === null) return { label: "Other", retired: true };
+  const label = s.name.replace(/\s*\(OBSOLETE\)\s*$/i, "");
+  return { label, retired: label !== s.name };
+}
+
+/**
+ * Whether a page of a category's plain list has enough names to be indexed. It reads the plain list's own
+ * order (sortItems with no sort: named rows first, each part by id), so page `page` holds the named rows left
+ * after the earlier pages, then unnamed ones. No row gets a name it does not have.
+ */
+export function categoryNamedEnough(classId: number | undefined, subclassId: number | undefined, named: { has(id: number): boolean }, page = 1): boolean {
+  const rows = sortItems(filterItems(CLIENT_TAXONOMY, { classId, subclassId }), undefined, { name: (id) => (named.has(id) ? "" : undefined) });
+  const shown = rows.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+  return shown.length > 0 && shown.filter((row) => named.has(row[0])).length / shown.length >= MIN_NAMED_SHARE;
 }
 
 /** Slot slugs any item in the build uses, in inventory type order (robes and chest pieces share "chest"). */
@@ -128,7 +141,7 @@ export interface CategoryQuery {
   ilvl?: { min: number; max: number };
   req?: { min: number; max: number };
   bind?: string;
-  /** Absent: by id, ascending. */
+  /** Absent: named items first, each part by id (sortItems). */
   sort?: { key: ItemSort; desc: boolean };
   page: number;
 }
@@ -267,8 +280,13 @@ export function listItems(base: readonly ItemRow[], q: CategoryQuery, ctx: ItemL
   return sortItems(rows, q.sort, ctx);
 }
 
-/** Text keys sort A to Z and levels low to high, with the rows that have none last, whichever way; ties go by id. */
+/**
+ * Text keys sort A to Z and levels low to high, with the rows that have none last, whichever way; ties go by id.
+ * With no sort, items with a name the page shows come first, each part by id, so a list opens on real items
+ * rather than "Item N"; `sort=id` is the plain id order. categoryNamedEnough reads this order.
+ */
 export function sortItems(rows: ItemRow[], sort: CategoryQuery["sort"], ctx: ItemListContext = {}): ItemRow[] {
+  if (!sort && ctx.name) return [...rows.filter((row) => ctx.name!(row[0]) !== undefined), ...rows.filter((row) => ctx.name!(row[0]) === undefined)];
   if (!sort || sort.key === "id") return sort?.desc ? [...rows].sort((a, b) => b[0] - a[0]) : rows;
   const dir = sort.desc ? -1 : 1;
   const key = (row: ItemRow): string | number | null => {

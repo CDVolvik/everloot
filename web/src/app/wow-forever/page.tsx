@@ -4,6 +4,8 @@ import { CLASSES, LAUNCH, longDate, NEW_COMBOS, RACES } from "@/data/wow-forever
 import { latestBuildLine } from "@/lib/changes-facts";
 import { loadTimeline } from "@/lib/changes";
 import { pageMetadata } from "@/lib/seo";
+import JsonLd from "@/components/JsonLd";
+import { videoGamePageJsonLd } from "@/lib/jsonld";
 import { trailFor } from "@/lib/breadcrumbs";
 import { emblems, loadSiteAssets } from "@/lib/game-assets";
 import GameIcon from "@/components/game/GameIcon";
@@ -12,7 +14,9 @@ import { Container, DataTable, PageHeader, SectionHeading, type Column } from "@
 const description =
   "WoW Forever is Blizzard's World of Warcraft: Forever: the launch date, every playable race and class combination, and the newest game build Everloot has seen.";
 
-export const metadata: Metadata = pageMetadata({ title: "What Is WoW Forever? Launch Date and Latest Build", description, path: "/wow-forever" });
+const title = "What Is WoW Forever? Launch Date and Latest Build";
+
+export const metadata: Metadata = pageMetadata({ title, description, path: "/wow-forever" });
 
 const link = "text-accent hover:underline underline-offset-4";
 const isNew = (race: string, cls: string) => NEW_COMBOS.some(([r, c]) => r === race && c === cls);
@@ -65,6 +69,7 @@ export default async function WowForeverPage() {
   const icons = emblems(assets);
   return (
     <Container width="reading">
+      <JsonLd data={videoGamePageJsonLd({ name: title, description, path: "/wow-forever", source: { title: LAUNCH.sourceTitle, url: LAUNCH.sourceUrl } })} />
       <PageHeader
         title="What is WoW: Forever?"
         lede="WoW: Forever is short for World of Warcraft: Forever, the Blizzard release Everloot follows."

@@ -67,6 +67,10 @@ export function publicQuests(facts: WorldFacts): QuestRow[] {
     .filter((p) => p.title !== null || p.level !== null || p.giverNpcId !== null || p.turnInNpcId !== null || p.rewards.length > 0);
 }
 
+/** A quest or NPC row with no agreed facts, for an id the list knows from elsewhere: every cell reads "—". */
+export const bareQuestRow = (questId: number): QuestRow => ({ ...questPage(questId, EMPTY), ...questTraits([]) });
+export const bareNpcRow = (npcId: number): NpcRow => ({ ...npcPage(npcId, EMPTY), ...npcTraits([]), zone: null, drops: 0 });
+
 export function publicVendors(facts: WorldFacts): VendorPage[] {
   return [...byId(facts.vendors, (r) => r.vendorNpcId)].map(([id, vendors]) => vendorPage(id, { ...EMPTY, vendors })).filter((p) => p.offers.length > 0);
 }

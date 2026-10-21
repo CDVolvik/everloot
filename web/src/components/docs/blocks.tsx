@@ -97,7 +97,7 @@ export function Params({ rows, empty = "None." }: { rows: ParamRow[]; empty?: st
             <span className="rounded-[4px] bg-panel px-1.5 font-mono text-xs text-fg-2">{row.type}</span>
             {row.required && <span className="rounded-[4px] bg-danger/10 px-1.5 font-mono text-xs text-danger">required</span>}
           </dt>
-          <dd className="mt-2 text-sm leading-6 text-fg-2">{row.description || <span className="text-muted">No description.</span>}</dd>
+          {row.description ? <dd className="mt-2 text-sm leading-6 text-fg-2">{row.description}</dd> : null}
         </div>
       ))}
     </dl>

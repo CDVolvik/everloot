@@ -85,6 +85,12 @@ test("lore pages come with their lore link, and tools by title or keyword", asyn
   expect((await search("raid planner")).find((g) => g.type === "tool")!.results[0].href).toBe("/tools/raid");
 });
 
+test("the Warcraft Wiki copies never move above Everloot's own pages, even on an exact name", async () => {
+  mocks.names.items = new Map([[19019, "Thrall's Cloak"]]);
+  const types = (await search("thrall")).map((g) => g.type);
+  expect(types.indexOf("item")).toBeLessThan(types.indexOf("lore"));
+});
+
 test("without a lore release the other groups still answer", async () => {
   vi.spyOn(console, "error").mockImplementation(() => {});
   mocks.names.npcs = new Map([[77, "Thrall"]]);

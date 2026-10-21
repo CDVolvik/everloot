@@ -4,13 +4,13 @@ import { notFound } from "next/navigation";
 import type { QuestSide, QuestTag } from "../../../../../kb/src/world-pages";
 import { GAME_NAME_TITLE } from "@/components/EntityRelations";
 import GameIcon from "@/components/game/GameIcon";
-import { Container, DataTable, DataTitle, FilterBar, ResultStrip, type Column, type FilterControl } from "@/components/ui";
+import { Container, DataTable, DataTitle, filledColumns, FilterBar, ResultStrip, type FilterControl, type SparseColumn } from "@/components/ui";
 import { loadItemTips, loadQuestNames, loadSiteAssets } from "@/lib/game-assets";
 import { CLIENT_LAYER, shownItemName } from "@/lib/items";
 import { npcNames } from "@/lib/names";
 import { loadWorldFacts } from "@/lib/rollup-compute";
 import { loadShownNames } from "@/lib/shown-item-names";
-import { publicQuests, type QuestRow } from "@/lib/world-lists";
+import { bareQuestRow, publicQuests, type QuestRow } from "@/lib/world-lists";
 import { LINK } from "../entity";
 import {
   flag, LEVEL_BRACKETS, listHref, listMetadata, listQuery, nextSort, NoMatches, NoObservations, PER_PAGE, range, rangeParam, sortParam, sortRows, Unreadable,
@@ -49,17 +49,20 @@ const filters = (q: QuestQuery) => Number(Boolean(q.q)) + Number(Boolean(q.level
 
 export async function generateMetadata(props: { searchParams?: Promise<Search> }): Promise<Metadata> {
   const q = questQuery((await props.searchParams) ?? {});
-  return listMetadata(META, Boolean(q) && filters(q!) === 0 && !q!.sort && q!.page === 1);
+  return listMetadata(META, Boolean(q) && filters(q!) === 0 && !q!.sort, q?.page);
 }
 
 export default async function QuestListPage(props: { searchParams?: Promise<Search> }) {
   const q = questQuery((await props.searchParams) ?? {});
   if (!q) notFound();
   const facts = await loadWorldFacts();
-  const all = facts.unreachable ? [] : publicQuests(facts);
+  const reported = facts.unreachable ? [] : publicQuests(facts);
   const npcs = facts.unreachable ? new Map<number, string>() : npcNames(facts);
   // A title players agree on; else the Warcraft Wiki's, for a quest the game files list (docs/DATA_POLICY.md).
-  const wikiTitles = all.some((x) => !x.title) ? await loadQuestNames(CLIENT_LAYER.build.version) : null;
+  const wikiTitles = await loadQuestNames(CLIENT_LAYER.build.version);
+  // Every quest a page can title is listed, as the item lists do: the ones players have not reported read "—".
+  const known = new Set(reported.map((x) => x.questId));
+  const all = [...reported, ...[...(wikiTitles?.names.keys() ?? [])].filter((n) => !known.has(n)).map(bareQuestRow)];
   const titleOf = (x: QuestRow) => x.title ?? wikiTitles?.names.get(x.questId)?.name ?? null;
   const text = q.q?.toLowerCase();
   const id = text && /^#?\d+$/.test(text) ? Number(text.replace("#", "")) : null;
@@ -87,23 +90,24 @@ export default async function QuestListPage(props: { searchParams?: Promise<Sear
 
   const dash = <span className="text-muted">—</span>;
   const npc = (n: number | null) => (n === null ? dash : <Link href={`/database/npcs/${n}`} className={LINK}>{npcs.get(n) ?? `NPC ${n}`}</Link>);
-  const columns: Column<QuestRow>[] = [
+  const columns: SparseColumn<QuestRow>[] = [
     { key: "name", header: "Name", sortable: true, cell: (x) => {
       const wiki = !x.title && titleOf(x);
       // Where a title comes from is its tooltip (and words for a screen reader), never a printed label.
-      return <Link href={`/database/quests/${x.questId}`} title={wiki ? GAME_NAME_TITLE.wiki : undefined} className={LINK}>
-        {titleOf(x) ?? `Quest ${x.questId}`}
+      // The screen reader words follow the link, so its text is the title alone.
+      return <>
+        <Link href={`/database/quests/${x.questId}`} title={wiki ? GAME_NAME_TITLE.wiki : undefined} className={LINK}>{titleOf(x) ?? `Quest ${x.questId}`}</Link>
         {wiki && <span className="sr-only"> ({GAME_NAME_TITLE.wiki.toLowerCase()})</span>}
-      </Link>;
+      </>;
     } },
-    { key: "level", header: "Level", numeric: true, sortable: true, cell: (x) => x.level ?? dash },
-    { key: "category", header: "Category", sortable: true, cell: (x) => x.category ?? dash },
-    { key: "side", header: "Side", sortable: true, cell: (x) => (x.side ? SIDE_LABEL[x.side] : dash) },
-    { key: "group", header: "Group", sortable: true, cell: (x) => groupLabel(x) || dash },
-    { key: "giver", header: "Giver", sortable: true, cell: (x) => npc(x.giverNpcId) },
-    { key: "turnin", header: "Turn-in", sortable: true, cell: (x) => npc(x.turnInNpcId) },
+    { key: "level", header: "Level", numeric: true, sortable: true, cell: (x) => x.level ?? dash, blank: (x) => x.level === null },
+    { key: "category", header: "Category", sortable: true, cell: (x) => x.category ?? dash, blank: (x) => x.category === null },
+    { key: "side", header: "Side", sortable: true, cell: (x) => (x.side ? SIDE_LABEL[x.side] : dash), blank: (x) => !x.side },
+    { key: "group", header: "Group", sortable: true, cell: (x) => groupLabel(x) || dash, blank: (x) => !groupLabel(x) },
+    { key: "giver", header: "Giver", sortable: true, cell: (x) => npc(x.giverNpcId), blank: (x) => x.giverNpcId === null },
+    { key: "turnin", header: "Turn-in", sortable: true, cell: (x) => npc(x.turnInNpcId), blank: (x) => x.turnInNpcId === null },
     {
-      key: "rewards", header: "Rewards", sortable: true, cell: (x) => x.rewards.length === 0 ? dash : (
+      key: "rewards", header: "Rewards", sortable: true, blank: (x) => x.rewards.length === 0, cell: (x) => x.rewards.length === 0 ? dash : (
         <span className="flex flex-wrap items-center gap-1">
           {x.rewards.map((rid) => {
             const icon = tips.get(rid)?.icon;
@@ -166,11 +170,13 @@ export default async function QuestListPage(props: { searchParams?: Promise<Sear
           active={filters(q)}
           clearHref="/database/quests"
         />
-        <div className="mt-2">
+        {/* With nothing to list at all, the one line says so without a row of column headers over it. */}
+        <div className="mt-2">{all.length === 0 ? empty : (
           <DataTable
             dense
-            caption={`Quests with agreed facts: ${rows.length}`}
-            columns={columns}
+            caption={`Quests: ${rows.length}`}
+            // A column no quest in the result has a value for (before players report any) is left out.
+            columns={filledColumns(columns, rows)}
             rows={shown}
             rowKey={(x) => String(x.questId)}
             sort={{ key: sort.key, direction: sort.desc ? "desc" : "asc" }}
@@ -178,7 +184,7 @@ export default async function QuestListPage(props: { searchParams?: Promise<Sear
             meta={(x) => [x.level !== null && `Level ${x.level}`, x.category, x.side && SIDE_LABEL[x.side], x.giverNpcId !== null && `From ${npcs.get(x.giverNpcId) ?? `NPC ${x.giverNpcId}`}`, x.rewards.length > 0 && `${x.rewards.length} reward${x.rewards.length === 1 ? "" : "s"}`, `ID ${x.questId}`].filter(Boolean).join(" · ")}
             empty={empty}
           />
-        </div>
+        )}</div>
         {pages > 1 && <div className="mt-2">{strip}</div>}
       </article>
     </Container>

@@ -25,9 +25,11 @@ export default function DocsHome() {
       <H2 id="players">If you play</H2>
       <Cards>
         <LinkCard href="/docs/guides/addon" title="Install the addon" icon="rocket">Get Everloot into the game and check it is running.</LinkCard>
+        <LinkCard href="/docs/guides/desktop" title="The Desktop App" icon="monitor">Upload after every logout and get prices in your tooltips.</LinkCard>
         <LinkCard href="/docs/guides/upload" title="Upload your data" icon="upload">Share what you saw, from the browser or the Desktop App.</LinkCard>
         <LinkCard href="/docs/guides/find" title="Find things on the site" icon="search">Search, the database, zone pages and the world map.</LinkCard>
         <LinkCard href="/docs/guides/privacy" title="Privacy and your data" icon="shield">What an upload carries and what is published.</LinkCard>
+        <LinkCard href="/docs/guides/account" title="Your account" icon="user">Sign in, and make API keys.</LinkCard>
       </Cards>
 
       <H2 id="builders">If you build</H2>

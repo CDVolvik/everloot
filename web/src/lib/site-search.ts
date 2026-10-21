@@ -86,12 +86,12 @@ async function objectById(id: number | null): Promise<SearchResult[]> {
 }
 
 /**
- * Everything the site knows by this name or id, grouped by type. Names are the ones players agree on (the
- * database pages' own rule), zones are the released ones on the map, lore comes from the archive, tools from
- * the tool list. A group with an exact id or name match comes first; an empty group is left out. `only`
- * keeps one database type; `limit` is the rows per group.
+ * Everything the site knows by this name or id, grouped by type. Names are the ones players agree on, or
+ * `names` when a page passes the ones it shows (never the API's caller); zones are the released ones on the map,
+ * lore comes from the archive, tools from the tool list. A group with an exact id or name match comes first; an
+ * empty group is left out. `only` keeps one database type; `limit` is the rows per group.
  */
-export async function siteSearch(raw: string, { only, limit = GROUP_LIMIT }: { only?: Scope; limit?: number } = {}): Promise<SearchGroup[]> {
+export async function siteSearch(raw: string, { only, limit = GROUP_LIMIT, names: given }: { only?: Scope; limit?: number; names?: Names } = {}): Promise<SearchGroup[]> {
   const text = raw.trim().slice(0, MAX_QUERY);
   const q = text.toLowerCase();
   if (!q) return [];
@@ -99,7 +99,7 @@ export async function siteSearch(raw: string, { only, limit = GROUP_LIMIT }: { o
   const found = new Map<SearchType, { results: SearchResult[]; total: number }>();
   const want = (t: SearchType) => !only || only === t;
 
-  const names = await loadNames();
+  const names = given ?? await loadNames();
   for (const kind of ["item", "npc", "quest"] as const) if (want(kind)) found.set(kind, agreed(kind, names[`${kind}s`], q, id));
   if (want("object")) { const objects = await objectById(id); found.set("object", { results: objects, total: objects.length }); }
 
@@ -159,8 +159,9 @@ export async function siteSearch(raw: string, { only, limit = GROUP_LIMIT }: { o
       return { type, heading: HEADINGS[type], results: f.results.slice(0, limit).map(strip), total: f.total };
     })
     .filter((g) => g.results.length > 0)
-    // Stable: groups with an exact hit move up, the rest keep their order.
-    .map((g, i) => ({ g, i, exact: g.results.some((r) => r.exact) }))
+    // Stable: groups with an exact hit move up, the rest keep their order. The lore archive (Warcraft Wiki copies)
+    // keeps its place after Everloot's own pages even on an exact name: the Forever record comes first.
+    .map((g, i) => ({ g, i, exact: g.type !== "lore" && g.results.some((r) => r.exact) }))
     .sort((a, b) => Number(b.exact) - Number(a.exact) || a.i - b.i)
     .map(({ g }) => g);
 }

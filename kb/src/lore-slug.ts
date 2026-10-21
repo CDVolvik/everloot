@@ -23,9 +23,21 @@ export function isIndexable(body: string): boolean {
 }
 
 /**
+ * Curated records whose subject now has an Everloot page of its own. The old lore address redirects there
+ * (web/next.config.js), so an answer links the page instead of the redirect.
+ */
+export const MOVED_LORE: Readonly<Record<string, string>> = { "forever-launch-date": "/wow-forever" };
+
+/** The site path of a lore record: its /lore page, or the page its subject moved to. */
+export function lorePath(row: { extId: string; name: string }): string {
+  const slug = loreSlug(row);
+  return MOVED_LORE[slug] ?? `/lore/${slug}`;
+}
+
+/**
  * Where a knowledge record is read: a lore page has its own page on the site, where the source and
  * licence are shown with the text; any other record points at the source's own page.
  */
 export function recordUrl(row: { kind: string; extId: string; name: string; sourceUrl: string }, site: string): string {
-  return row.kind === "lore_page" ? `${site}/lore/${loreSlug(row)}` : row.sourceUrl;
+  return row.kind === "lore_page" ? `${site}${lorePath(row)}` : row.sourceUrl;
 }

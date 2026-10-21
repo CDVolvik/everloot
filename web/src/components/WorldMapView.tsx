@@ -8,6 +8,7 @@ import {
   DEFAULT_LAYERS, mapHref, searchMap, viewSearch, visibleItems, wayCommand, zoneHref, zoneSpot,
   type Box, type LayerId, type LayerState, type MapArtLayer, type MapItems, type SearchHit,
 } from "@/lib/map-view";
+import { scrollBehavior } from "@/lib/motion";
 import type { FitRequest, MapMarker, MapViewChange } from "./map/LeafletMap";
 
 export type { MapMarker };
@@ -315,14 +316,14 @@ export default function WorldMapView(props: WorldMapViewProps) {
 
       <noscript><p className="text-sm text-muted">The map needs JavaScript. The places on it are listed below.</p></noscript>
 
-      <div className="mx-auto w-full max-w-wide space-y-10 pt-6">
+      <div className="w-full max-w-wide space-y-10 pt-6">
         <section aria-labelledby="zones">
           <SectionHeading id="zones">Zones</SectionHeading>
           <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
             {zones.map((z) => (
               <li key={z.mapId}>
                 <Link
-                  href={zoneHref(z.mapId, spoilers)} onClick={(e) => { e.preventDefault(); goZone(z.mapId); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                  href={zoneHref(z.mapId, spoilers)} onClick={(e) => { e.preventDefault(); goZone(z.mapId); window.scrollTo({ top: 0, behavior: scrollBehavior() }); }}
                   className="inline-flex min-h-11 items-center text-accent hover:underline underline-offset-4"
                 >
                   {z.name}{z.heldBack ? ` * (${HELD_LABEL})` : ""}
@@ -402,7 +403,7 @@ function ShowButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       type="button"
-      onClick={() => { onClick(); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+      onClick={() => { onClick(); window.scrollTo({ top: 0, behavior: scrollBehavior() }); }}
       className="inline-flex min-h-11 items-center text-accent hover:underline underline-offset-4"
     >
       Show on map

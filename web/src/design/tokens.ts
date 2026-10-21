@@ -16,9 +16,9 @@ export const SPACE = [4, 8, 12, 16, 24, 32, 48, 72] as const;
  *  icons and the tooltip frame; `rounded-full` for buttons, badges and pills. */
 export const RADIUS = { control: 6, card: 12 } as const;
 
-/** Three content widths: `reading` for documents, `wide` for tools and hubs (and the header and
- *  footer), `data` for the database, search and the item, NPC and quest pages (1440 with 24 px
- *  sides, 16 px under 1024 px). */
+/** Three content widths: `reading` for documents, `wide` for tools and hubs, `data` for the database,
+ *  search and the item, NPC and quest pages. The header, the footer and <main> run at `data` (1440 with
+ *  24 px sides, 16 px under 1024 px), and every page's column starts at its left edge. */
 export const WIDTH = { reading: 768, wide: 1152, data: 1440 } as const;
 
 /**
@@ -53,6 +53,37 @@ export const DATA_TYPE = {
  *  (32; 40 on phones), the 24 px row icon, the sticky offset under the 44 px site header, and the
  *  tooltip box's 320 px limit. */
 export const DATA_SIZE = { row: 36, "row-sm": 52, th: 32, control: 32, "control-sm": 40, icon: 24, header: 44, tip: 320 } as const;
+
+/**
+ * Motion (visual identity spec, item 12: 150 ms fades, none under `prefers-reduced-motion`). Durations in ms,
+ * curves as CSS timing functions. Tailwind's `duration-fade`, `ease-out` and default curve, and the CSS variables
+ * `--dur-fade`, `--ease-out` and `--ease-color`, come from here; nothing else types a duration or a curve.
+ */
+export const MOTION = {
+  duration: {
+    /** The site's one fade: menus opening, label swaps, the navigation bar. Colour changes too. */
+    fade: 150,
+    /** The wait before the navigation bar shows, so a fast page change never flashes it. */
+    pendingDelay: 150,
+    /** How long a copy button says "Copied". */
+    copied: 2000,
+  },
+  ease: {
+    /** Fades in: anything answering the user. */
+    out: "cubic-bezier(0.23, 1, 0.32, 1)",
+    /** Hover colour changes, and the default for every transition. */
+    color: "ease",
+  },
+} as const;
+
+/** The motion tokens as CSS variables, for globals.css and world-map.css. */
+export function motionVariables(): Record<string, string> {
+  return {
+    "--dur-fade": `${MOTION.duration.fade}ms`,
+    "--ease-out": MOTION.ease.out,
+    "--ease-color": MOTION.ease.color,
+  };
+}
 
 export const QUALITIES = ["poor", "common", "uncommon", "rare", "epic", "legendary"] as const;
 export const CLASSES = ["warrior", "paladin", "hunter", "rogue", "priest", "shaman", "mage", "warlock", "druid"] as const;

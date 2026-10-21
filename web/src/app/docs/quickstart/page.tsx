@@ -77,8 +77,9 @@ export default function Page() {
 
       <H2 id="api">API</H2>
       <P>
-        The API is JSON over HTTPS. Reading needs no key. This call looks up a name and returns the records that match, each
-        with its source and licence.
+        The API is JSON over HTTPS. Reading needs no key, but without one the API answers a limited number of requests an
+        hour for each address; <Link href="/docs/api/keys" className={docLink}>Limits and keys</Link> has the numbers. This
+        call looks up a name and returns the records that match, each with its source and licence.
       </P>
       <div className="mt-6">
         <CodeGroup
@@ -136,7 +137,9 @@ export default function Page() {
         />
       </div>
       <P>
-        More on <Link href="/docs/tooltips" className={docLink}>Embeddable tooltips</Link>.
+        A card shows only for a page players have reported, once 3 installs agree. Until then, and before WoW: Forever
+        launches on 4 November 2026, a link gets no card and works as a plain link. More on{" "}
+        <Link href="/docs/tooltips" className={docLink}>Embeddable tooltips</Link>.
       </P>
 
       <H2 id="next">Next steps</H2>

@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import { craftedItemsFromRecords } from "../../../kb/src/item-source";
 import { buildItemSources } from "./item-seen";
-import { activeFilters, categoryQuery, CLIENT_TAXONOMY, itemsHref, listItems, toggled, type CategoryQuery, type SourceSlug } from "./items";
+import { activeFilters, categoryQuery, CLIENT_TAXONOMY, itemsHref, listItems, subclassLabel, toggled, type CategoryQuery, type SourceSlug } from "./items";
 
 const rate = (itemId: number, over: object = {}) => ({ itemId, drops: 4, public: true, sourceNpcId: 1, ...over });
 const sources = buildItemSources({
@@ -43,6 +43,15 @@ test("sorting by source puts the reported items first, A to Z", () => {
   expect(ids({ sort: { key: "seen", desc: false } }).slice(0, 3)).toEqual([rows[0][0], rows[2][0], rows[1][0]]);
 });
 
+test("with no sort the named items come first, each part in id order; sort=id is the plain id order", () => {
+  const named = new Map([[rows[30][0], "Linen Cloth"], [rows[5][0], "Worn Shortsword"]]);
+  const list = (q: Partial<CategoryQuery>) => listItems(rows, { page: 1, ...q }, { name: (id) => named.get(id) }).map((r) => r[0]);
+  expect(list({})).toEqual([rows[5][0], rows[30][0], ...rows.map((r) => r[0]).filter((id) => !named.has(id))]);
+  expect(list({ sort: { key: "id", desc: false } })).toEqual(rows.map((r) => r[0]));
+  // Without names (the API's case) the order stays by id.
+  expect(ids({})).toEqual(rows.map((r) => r[0]));
+});
+
 test("src round-trips through the URL, in one order, beside the other filters", () => {
   const q = categoryQuery({ src: "quest,drop", quality: "epic", q: "robe", sort: "-seen", page: "2" })!;
   expect(q.src).toEqual(["drop", "quest"]);
@@ -51,4 +60,13 @@ test("src round-trips through the URL, in one order, beside the other filters", 
   expect(toggled(q, "src", "drop")).toMatchObject({ src: ["quest"], page: 1 });
   expect(toggled(toggled(q, "src", "drop"), "src", "quest").src).toBeUndefined();
   expect(categoryQuery({ src: "loot" })).toBeNull();
+});
+
+test("a subclass is labelled without the client's OBSOLETE suffix or a bare number, and those buckets are marked retired", () => {
+  expect(subclassLabel({ name: "Trade Goods (OBSOLETE)" })).toEqual({ label: "Trade Goods", retired: true });
+  expect(subclassLabel({ name: "Wand(OBSOLETE)" })).toEqual({ label: "Wand", retired: true });
+  expect(subclassLabel({ name: null })).toEqual({ label: "Other", retired: true });
+  expect(subclassLabel({ name: "Cloth" })).toEqual({ label: "Cloth", retired: false });
+  // Every listed subclass in the build gets a label with neither.
+  for (const s of CLIENT_TAXONOMY.subclasses) expect(subclassLabel(s).label).not.toMatch(/OBSOLETE|^Subclass \d/);
 });

@@ -106,18 +106,27 @@ test("/changes opens with the latest build and its ItemList items are the entrie
   for (const { item } of page.mainEntity.itemListElement) expect(visible(html)).toContain(item.name);
 });
 
-test("/upload: the structured version and download are the ones the page shows, with the licence beside them", async () => {
+test("/upload: the download is the one the site serves, with the licence beside it; the addon's structured data is on /addon", async () => {
   const { default: Page } = await import("./upload/page");
   const { latestAddonRelease } = await import("@/lib/addon-release");
   const html = renderToStaticMarkup(<Page />);
-  const app = blocks(html).find((b) => b["@type"] === "SoftwareApplication")!;
+  expect(blocks(html).find((b) => b["@type"] === "SoftwareApplication")).toBeUndefined();
   const release = latestAddonRelease()!;
-  expect(app.softwareVersion).toBe(release.version);
-  expect(app.downloadUrl).toBe(`https://everloot.app${release.downloadPath}`);
   expect(html).toContain(`href="${release.downloadPath}"`);
   expect(visible(html)).toContain(`Download beta addon ${release.version}`);
   expect(visible(html)).toContain("Licence: AGPL-3.0");
-  expect(visible(html)).toContain(app.description);
+});
+
+test("/wow-forever: the page is about the VideoGame it names, published by Blizzard, with the post it quotes", async () => {
+  const { default: Page } = await import("./wow-forever/page");
+  const { LAUNCH } = await import("@/data/wow-forever");
+  const html = renderToStaticMarkup(await Page());
+  const page = blocks(html).find((b) => b["@type"] === "WebPage")!;
+  expect(page.url).toBe("https://everloot.app/wow-forever");
+  expect(page.about).toMatchObject({ "@type": "VideoGame", name: "World of Warcraft: Forever", publisher: { name: "Blizzard Entertainment" } });
+  expect(page.about.subjectOf).toEqual({ "@type": "Article", headline: LAUNCH.sourceTitle, url: LAUNCH.sourceUrl });
+  for (const shown of ["World of Warcraft: Forever", "WoW: Forever", "Blizzard"]) expect(visible(html)).toContain(shown);
+  expect(html).toContain(`href="${LAUNCH.sourceUrl}"`);
 });
 
 test("/database: no Dataset while nothing is uploaded, a Dataset with its licence once something is, and no licence text on the page", async () => {
@@ -160,7 +169,8 @@ test("/wow-forever quotes only the source, shows the checked-on date and links t
   expect(html).toContain(`href="${LAUNCH.sourceUrl}"`);
   expect(visible(html)).toContain("What is WoW: Forever?");
   expect(visible(html)).toContain("When does WoW: Forever launch?");
-  expect(blocks(html)).toEqual([]);
+  // One block: the page and the game it is about (its own test below); no claim of its own beyond that.
+  expect(blocks(html).map((b) => b["@type"])).toEqual(["WebPage"]);
 });
 
 test("the launch source and date agree with the curated lore row", () => {

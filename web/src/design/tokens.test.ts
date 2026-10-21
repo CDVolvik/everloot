@@ -1,6 +1,8 @@
 import { expect, test } from "vitest";
 import config from "../../tailwind.config";
-import { channels, cssVariables, RADIUS, SITE_MODE, SPACE, TEXT_TOKENS, tokens, WIDTH } from "./tokens";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { channels, cssVariables, MOTION, motionVariables, RADIUS, SITE_MODE, SPACE, TEXT_TOKENS, tokens, WIDTH } from "./tokens";
 
 // WCAG 2.x relative luminance and contrast ratio.
 function luminance(hex: string): number {
@@ -74,7 +76,7 @@ test("the site is dark-only: no system setting switches it to the light values",
   expect(SITE_MODE).toBe("dark");
   const base = baseStyles();
   expect(Object.keys(base).some((k) => k.includes("prefers-color-scheme"))).toBe(false);
-  expect(base[":root"]).toEqual(cssVariables("dark"));
+  expect(base[":root"]).toEqual({ ...cssVariables("dark"), ...motionVariables() });
   // The light values stay in tokens.ts, complete, for a light theme to come back to.
   expect(Object.keys(tokens.light)).toEqual(Object.keys(tokens.dark));
 });
@@ -100,6 +102,24 @@ test("the data-page scale is the density spec's", () => {
   expect(extend.height).toMatchObject({ row: "36px", "row-sm": "52px", th: "32px", control: "32px", "control-sm": "40px" });
   // The compact header (account shell spec, 2026-10-20): two thirds of the old 64 px.
   expect(extend.inset).toEqual({ header: "44px" });
+});
+
+test("motion is one 150 ms fade, one default curve, and the waits around it (spec item 12)", () => {
+  expect(MOTION.duration).toEqual({ fade: 150, pendingDelay: 150, copied: 2000 });
+  expect(MOTION.ease).toEqual({ out: "cubic-bezier(0.23, 1, 0.32, 1)", color: "ease" });
+  const extend = config.theme!.extend!;
+  expect(extend.transitionDuration).toEqual({ DEFAULT: "150ms", fade: "150ms" });
+  expect(extend.transitionTimingFunction).toEqual({ DEFAULT: "ease", out: MOTION.ease.out });
+  expect(baseStyles()[":root"]).toMatchObject({ "--dur-fade": "150ms", "--ease-out": MOTION.ease.out, "--ease-color": "ease" });
+});
+
+test("the stylesheets take every duration and curve from the motion variables", () => {
+  for (const file of ["../app/globals.css", "../components/map/world-map.css"]) {
+    const css = readFileSync(fileURLToPath(new URL(file, import.meta.url)), "utf8");
+    const motion = css.match(/^\s*(?:transition|animation):[^;]*;/gm) ?? [];
+    expect(motion.length, file).toBeGreaterThan(0);
+    for (const rule of motion) expect(rule, file).toMatch(/none|var\(--dur-fade\)/);
+  }
 });
 
 test("Tailwind exposes the tokens as variables", () => {

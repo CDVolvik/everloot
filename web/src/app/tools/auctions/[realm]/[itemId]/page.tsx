@@ -11,11 +11,11 @@ import GameIcon from "@/components/game/GameIcon";
 import { trailFor } from "@/lib/breadcrumbs";
 import { Card, Container, Disclosure, EmptyState, PageHeader, SectionHeading, Tabs } from "@/components/ui";
 import {
-  AH_PATH, agreementSoFar, crossRealmHref, findBoard, indexable, itemAcrossRealms, itemHref, itemIdParam, itemLabel,
-  loadAuctionNames, money, realmBoards, realmHref, slugParam, slugWords,
+  AH_PATH, HOUSES, agreementSoFar, crossRealmHref, findBoard, indexable, itemAcrossRealms, itemByHouse, itemHref, itemIdParam, itemLabel,
+  money, realmBoards, realmHref, slugParam, slugWords,
 } from "@/lib/auction-house";
-import { itemArt } from "../../art";
-import { Contribute, DayTable, Facts, PriceChart, PriceFacts, RealmPrices, count, qualityOf } from "../../parts";
+import { auctionNames, itemArt } from "../../art";
+import { Contribute, DayTable, Facts, HousePrices, PriceChart, PriceFacts, RealmPrices, count, itemQuality } from "../../parts";
 import TimeAgo from "../../TimeAgo";
 
 type Props = { params: Promise<{ realm: string; itemId: string }> };
@@ -36,8 +36,11 @@ async function load(params: Props["params"]) {
   const board = findBoard(boards, slug);
   const row = board?.byItem.get(itemId) ?? null;
   const others = itemAcrossRealms(boards, itemId).filter((r) => r.realm.key !== board?.realm.key);
-  const names = await loadAuctionNames();
-  return { raw, slug, itemId, now, market, board, row, others, names, realm: board?.realm.name ?? slugWords(slug), label: itemLabel(itemId, names) };
+  const houses = market.state ? itemByHouse(market.state, now, slug, itemId) : [];
+  // Art only for an item with a public price somewhere: an id typed into the URL may be unreleased.
+  const { tips } = await itemArt(row || others.length ? [itemId] : []);
+  const names = await auctionNames([itemId], tips);
+  return { raw, slug, itemId, now, market, board, row, others, houses, tip: tips.get(itemId), names, realm: board?.realm.name ?? slugWords(slug), label: itemLabel(itemId, names) };
 }
 
 export async function generateMetadata(props: Props): Promise<Metadata> {
@@ -52,13 +55,10 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
 }
 
 export default async function RealmItemPage(props: Props) {
-  const { raw, slug, itemId, now, market, row, others, realm, label } = await load(props.params);
+  const { raw, slug, itemId, now, market, row, others, houses, tip, names, realm, label } = await load(props.params);
   if (decodeURIComponent(raw.realm) !== slug) permanentRedirect(itemHref({ slug }, itemId));
   const state = market.state;
-  // Art only for an item with a public price somewhere: an id typed into the URL may be unreleased.
-  const { tips } = await itemArt(row || others.length ? [itemId] : []);
-  const tip = tips.get(itemId);
-  const quality = qualityOf(tip) ?? undefined;
+  const quality = itemQuality(itemId, tip, names.has(itemId)) ?? undefined;
   const corpus = row ? await uploadStore.loadCorpus() : null;
   const browse = corpus && (corpus.unreachable
     ? STORAGE_UNREACHABLE
@@ -88,9 +88,8 @@ export default async function RealmItemPage(props: Props) {
         lede={`Auction House price on ${realm} in WoW: Forever.`}
         meta={v && (
           <Facts items={[
-            `Newest public day ${v.day}`,
+            row.updatedAt !== null ? <>Updated <TimeAgo key="t" at={row.updatedAt} renderedAt={now.getTime()} /></> : `Newest public day ${v.day}`,
             count(v.reporters, "reporter"),
-            ...(row.updatedAt !== null ? [<>Last scan <TimeAgo key="t" at={row.updatedAt} renderedAt={now.getTime()} /></>] : []),
           ]} />
         )}
         actions={<>
@@ -107,7 +106,7 @@ export default async function RealmItemPage(props: Props) {
         {state && !v && (
           <EmptyState
             count={agreementSoFar(state, slug, itemId)}
-            message={`No public price for ${label} on ${realm} yet: a price shows once 3 reporters scan it here.`}
+            message={`No price for ${label} on ${realm} yet: it needs scans from 3 players.`}
           />
         )}
 
@@ -130,6 +129,12 @@ export default async function RealmItemPage(props: Props) {
           <Tabs
             label="Prices"
             tabs={[
+              ...(row ? [{
+                id: "houses", label: "Houses", count: houses.length,
+                panel: houses.length
+                  ? <div className="pt-4"><HousePrices rows={houses} caption={`${label} in each auction house on ${realm}`} now={now} /></div>
+                  : <div className="pt-4"><EmptyState framed={false} count={Math.max(...HOUSES.map((h) => agreementSoFar(state, slug, itemId, h)))} message="No auction house has its own price for this item yet: a house's price needs scans from 3 players in that house." /></div>,
+              }] : []),
               {
                 id: "other-realms", label: "Other realms", count: others.length,
                 panel: <div className="pt-4"><RealmPrices rows={others} caption={`${label} on other realms`} empty="No other realm has a public price for this item yet." /></div>,

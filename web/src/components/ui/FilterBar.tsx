@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "./PendingLink";
 import type { CSSProperties, ReactNode } from "react";
 
 /** One choice in a filter menu: a link to the list with that choice toggled, so a filtered view is a URL. */
@@ -31,8 +31,9 @@ const control = "ctl inline-flex items-center gap-1.5 whitespace-nowrap border p
 const idle = "border-edge text-fg-2 hover:border-fg-2 hover:text-fg";
 const lit = "border-accent text-fg";
 
+// Points up while its own <details> is open (a menu inside the phone sheet does not follow the sheet).
 function Chevron() {
-  return <svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10" className="text-muted"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.5" /></svg>;
+  return <svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10" className="text-muted [[open]>summary>&]:rotate-180"><path d="M2 3.5 5 6.5 8 3.5" fill="none" stroke="currentColor" strokeWidth="1.5" /></svg>;
 }
 
 function Menu({ c, phone }: { c: Extract<FilterControl, { type: "menu" }>; phone: boolean }) {
@@ -45,7 +46,7 @@ function Menu({ c, phone }: { c: Extract<FilterControl, { type: "menu" }>; phone
       <summary className={`${control} cursor-pointer list-none [&::-webkit-details-marker]:hidden ${on.length ? lit : idle}`}>
         {summary}<Chevron />
       </summary>
-      <ul className="z-30 mt-1 max-h-80 min-w-52 overflow-y-auto rounded-control border border-edge bg-panel p-1 sm:absolute sm:left-0 sm:top-full">
+      <ul className="pop z-30 mt-1 max-h-80 min-w-52 overflow-y-auto rounded-control border border-edge bg-panel p-1 sm:absolute sm:left-0 sm:top-full">
         {c.options.map((o, i) => (
           <li key={i}>
             <Link href={o.href} aria-current={o.on ? "true" : undefined} className="flex min-h-8 items-center gap-2 rounded-control px-2 text-control text-fg-2 hover:bg-canvas hover:text-fg">
@@ -77,7 +78,8 @@ function Controls({ search, controls, active, clearHref, phone }: FilterBarProps
             placeholder={search.placeholder}
             className={`ctl w-full min-w-0 border bg-panel px-3 text-fg placeholder:text-muted focus:border-accent focus:outline-none sm:w-44 ${search.value ? "border-accent" : "border-edge"}`}
           />
-          <button type="submit" className="sr-only">Filter</button>
+          {/* Enter in the field submits; out of the tab order, so focus never lands on a ring around nothing. */}
+          <button type="submit" tabIndex={-1} className="sr-only">Filter</button>
         </form>
       )}
       {controls.map((c) => c.type === "menu"
@@ -104,7 +106,7 @@ export default function FilterBar(props: FilterBarProps) {
         <summary className={`${control} cursor-pointer list-none [&::-webkit-details-marker]:hidden ${active ? lit : idle}`}>
           Filters{active > 0 && <span className="tabular-nums"> ({active})</span>}<Chevron />
         </summary>
-        <div className="mt-2 flex flex-wrap gap-2 rounded-control border border-line bg-panel p-2">
+        <div className="pop mt-2 flex flex-wrap gap-2 rounded-control border border-line bg-panel p-2">
           <Controls {...props} phone />
         </div>
       </details>
