@@ -39,4 +39,5 @@ test("the home page says what is new, with the kind and the date of each entry",
 test("the panel shows a post that arrived from two regions once", () => {
   const titles = [...html.matchAll(/href="https:\/\/bsky\.app[^"]*"[^>]*>([^<]+)</g)].map((m) => m[1]);
   expect(new Set(titles).size).toBe(titles.length);
+  expect(titles.filter((x) => x.includes("Character Names")).length).toBe(1);
 });
