@@ -99,6 +99,14 @@ Pull requests merged to `main` are listed in the nightly pre-releases until the 
   the census box ticked on its setup screen, or turns it on in Settings; a setup finished before this keeps
   it off. Still never names, guilds, gear or places, and the site shows only totals.
 
+## [desktop-v0.1.6] - 2026-10-21
+
+### Added
+- The player pages can go with the uploads, on a switch in Settings: "Send the player pages with the
+  uploads". It is off by default, so nothing changes until it is turned on, and the rows stay in
+  `Everloot.lua` until then — the same rule the named data follows. The privacy policy and the data
+  policy say so, in the words the switch uses.
+
 ## [desktop-v0.1.5] - 2026-10-20
 
 ### Added
