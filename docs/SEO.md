@@ -40,7 +40,13 @@ the owner can do. Written after the 2026-10-17 audit.
   indexed, and listed in `/auctions-sitemap.xml`, only when it has a market value: a day 3 reporters scanned,
   with more than 5 units listed, in the last 14 days (`indexable` in `web/src/lib/auction-house.ts`). Every
   other price page says noindex. Item pages carry a Dataset, not a Product: nobody here sells the item.
-- **RSS.** Every page advertises `/changes/feed.xml`.
+- **RSS.** Every page advertises `/changes/feed.xml`. A post's item links its page on Everloot and names the
+  original in its description.
+- **Blue post pages** (`/changes/<id>-<slug>`, id from the stored post: `us-`, `eu-` or `bsky-`). /changes, the
+  home page's What's new and the signed-in home's rail link here; each page links Blizzard's original. A wrong
+  slug answers 308 to the canonical address, an unknown id 404. A page says `noindex, follow` until it has a
+  reviewed write-up (`kb/curated/blue-writeups/`); then it is indexed, self-canonical, in the sitemap with the
+  review date as `lastModified`, and carries an `Article` by Everloot based on Blizzard's post.
 - **Security headers** in `web/next.config.js`: nosniff, `X-Frame-Options: SAMEORIGIN`, Referrer-Policy,
   Permissions-Policy, HSTS with `includeSubDomains`, an enforced CSP with only `object-src 'none'`,
   `base-uri 'self'` and `frame-ancestors 'self'`, and a report-only CSP that lists the analytics and ads

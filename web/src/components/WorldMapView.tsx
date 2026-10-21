@@ -5,8 +5,9 @@ import Link from "next/link";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Badge, Card, LinkTabs, Segmented } from "@/components/ui";
 import {
-  allLayers, DEFAULT_LAYERS, initialView, layerCounts, LAYER_IDS, searchMap, spotBox, viewSearch, visibleItems, wayCommand, zoneSpot,
-  type Box, type LayerId, type LayerState, type MapArtLayer, type MapItems, type SearchHit,
+  allCategories, candidateCounts, categoryCounts, CATEGORY_GROUPS, CATEGORY_IDS, continentPath, initialView, mapUrlSearch, openPageLink,
+  parseDeepLink, parseZoneLink, pinHref, readPinSet, searchMap, spotBox, viewSearch, visibleItems, wayCommand, zoneSearch, zoneSpot,
+  type Box, type Candidate, type CategoryId, type CategoryState, type MapArtLayer, type MapItems, type MapPinSet, type MapUrlState, type SearchHit,
 } from "@/lib/map-view";
 import MapList, { HELD_LABEL } from "./map/MapList";
 import type { FitRequest, MapMarker, MapViewChange } from "./map/LeafletMap";
@@ -21,31 +22,25 @@ const LeafletMap = dynamic(() => import("./map/LeafletMap"), {
   loading: () => <p className="grid h-full place-items-center px-4 text-center text-sm text-muted">Loading the map. The same places are in the List tab.</p>,
 });
 
-const LAYER_LABELS: Record<LayerId, string> = {
-  zones: "Zones",
-  entrances: "Entrances",
-  flightMasters: "Flight masters",
-  flightPaths: "Flight paths",
-  npcs: "NPCs players saw",
-  vendors: "Vendors players saw",
-};
-
 /** Where the desktop sidebar's collapsed state is kept, in this browser only. */
 export const SIDEBAR_KEY = "everloot.map.sidebar";
 
 /** The sidebar's two views on a desk; on a phone, which bottom sheet is open. */
-type View = "categories" | "list";
+type View = MapUrlState["tab"];
 type Sheet = View | "search";
 
-function Swatch({ layer }: { layer: LayerId }) {
+/** Each category's mark, the same shape the map draws; a category with nothing on the map yet gets an empty ring. */
+function Swatch({ category }: { category: CategoryId }) {
   return (
-    <svg width={layer === "entrances" ? 26 : 14} height="14" viewBox={layer === "entrances" ? "0 0 26 14" : "0 0 14 14"} aria-hidden="true" className="shrink-0">
-      {layer === "zones" && <rect x="1.5" y="1.5" width="11" height="11" strokeWidth="1.2" className="fill-fg/10 stroke-edge" />}
-      {layer === "entrances" && <><circle cx="7" cy="7" r="5" className="fill-accent" /><rect x="15" y="2" width="10" height="10" className="fill-warning" /></>}
-      {layer === "flightMasters" && <path d="M7 1.5L12.5 12L1.5 12Z" className="fill-fg" />}
-      {layer === "flightPaths" && <path d="M1 11L13 3" strokeWidth="1.5" strokeDasharray="3 2" className="stroke-fg-2" />}
-      {layer === "npcs" && <circle cx="7" cy="7" r="3.5" className="fill-fg-2" />}
-      {layer === "vendors" && <path d="M7 1.5L12.5 7L7 12.5L1.5 7Z" className="fill-fg" />}
+    <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" className="shrink-0">
+      {category === "zone" && <rect x="1.5" y="1.5" width="11" height="11" strokeWidth="1.2" className="fill-fg/10 stroke-edge" />}
+      {category === "dungeon" && <circle cx="7" cy="7" r="5" className="fill-accent" />}
+      {category === "raid" && <rect x="2" y="2" width="10" height="10" className="fill-warning" />}
+      {category === "flight" && <path d="M7 1.5L12.5 12L1.5 12Z" className="fill-fg" />}
+      {category === "path" && <path d="M1 11L13 3" strokeWidth="1.5" strokeDasharray="3 2" className="stroke-fg-2" />}
+      {category === "npc" && <circle cx="7" cy="7" r="3.5" className="fill-fg-2" />}
+      {category === "vendor" && <path d="M7 1.5L12.5 7L7 12.5L1.5 7Z" className="fill-fg" />}
+      {["trainer", "quest", "service", "herb", "ore", "chest"].includes(category) && <circle cx="7" cy="7" r="4" fill="none" strokeWidth="1.2" className="stroke-muted" />}
     </svg>
   );
 }
@@ -73,9 +68,10 @@ interface Subject {
   detail: string;
   x: number;
   y: number;
-  /** The database page, for a player-observed NPC. */
-  href?: string;
+  /** The NPC, for a player-observed point: its page. */
+  npcId?: number;
   reporters?: number;
+  heldBack?: boolean;
 }
 
 export interface WorldMapViewProps {
@@ -86,8 +82,21 @@ export interface WorldMapViewProps {
   continents: { id: number; name: string }[];
   /** The continent's box in yards. */
   base: Box;
-  /** Everything the reader may see on this continent: held-back zones and their pins are in only with spoilers on. */
+  /**
+   * What the page carries for its List tab: the zones, entrances and flight masters, and the first player points.
+   * Held-back zones and their items are in only with spoilers on. The rest comes from `pinsUrl`.
+   */
   items: MapItems;
+  /** `/api/map/pins` for this continent and spoiler switch: every item the map draws besides the zones. */
+  pinsUrl: string;
+  /** Until the pins load: the counts in the opening scope, and how many player points there are by kind. */
+  seed: { counts: Record<CategoryId, number>; pins: { npc: number; vendor: number } };
+  /** Places seen by 1 or 2 installs, as counts per zone and category. */
+  candidates: Candidate[];
+  /** Each public zone's database page, by zone id, for the card's Open zone page. */
+  zonePages: Record<number, string>;
+  /** The sidebar's state from the address: categories shown, the search, the tab. */
+  url: MapUrlState;
   spoilers: boolean;
   /** The address that turns the spoiler switch the other way, keeping the zone or spot. */
   spoilerHref: string;
@@ -113,17 +122,20 @@ export interface WorldMapViewProps {
  * from a bar, and a pin's card is a sheet too.
  */
 export default function WorldMapView(props: WorldMapViewProps) {
-  const { base, items, marker, spoilers, art } = props;
-  const [layers, setLayers] = useState<LayerState>(DEFAULT_LAYERS);
+  const { base, marker, spoilers, art } = props;
+  const [show, setShow] = useState<CategoryState>(props.url.show);
   const [showArt, setShowArt] = useState(true);
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(props.url.q);
+  // Everything the map draws besides the zones, once /api/map/pins answers; until then, what the page carried.
+  const [pinSet, setPinSet] = useState<MapPinSet | null>(null);
+  const [pinsFailed, setPinsFailed] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(props.view.pin);
   const [focusZone, setFocusZone] = useState<number | null>(props.marker?.mapId ?? props.zoneId);
   const [spot, setSpot] = useState<{ x: number; y: number } | null>(null);
   const [hover, setHover] = useState<{ x: number; y: number } | null>(null);
   const [copied, setCopied] = useState("");
   const [request, setRequest] = useState<FitRequest | null>(null);
-  const [view, setView] = useState<View>("categories");
+  const [view, setView] = useState<View>(props.url.tab);
   const [collapsed, setCollapsed] = useState(false);
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const [full, setFull] = useState(false);
@@ -152,19 +164,38 @@ export default function WorldMapView(props: WorldMapViewProps) {
     try { if (on) localStorage.setItem(SIDEBAR_KEY, "collapsed"); else localStorage.removeItem(SIDEBAR_KEY); } catch { /* not remembered */ }
   };
 
-  const shown = useMemo(() => visibleItems(items, layers, spoilers), [items, layers, spoilers]);
-  const counts = useMemo(() => layerCounts(items, spoilers), [items, spoilers]);
-  // Zones the reader may see, whatever the zone layer says: coordinates and a click on a zone use them.
+  // The pins are fetched, not inlined in the page: the CDN keeps one copy per continent between corpus snapshots.
+  useEffect(() => {
+    let live = true;
+    fetch(props.pinsUrl)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((body: unknown) => {
+        if (!live) return;
+        const set = readPinSet(body);
+        if (set) setPinSet(set); else setPinsFailed(true);
+      })
+      .catch(() => { if (live) setPinsFailed(true); });
+    return () => { live = false; };
+  }, [props.pinsUrl]);
+
+  const items = useMemo<MapItems>(() => (pinSet ? { zones: props.items.zones, ...pinSet } : props.items), [pinSet, props.items]);
+  const shown = useMemo(() => visibleItems(items, show, spoilers), [items, show, spoilers]);
+  // Zones the reader may see, whatever the zone category says: coordinates and a click on a zone use them.
   const zones = useMemo(() => items.zones.filter((z) => spoilers || !z.heldBack), [items.zones, spoilers]);
+  const focus = focusZone !== null ? items.zones.find((z) => z.mapId === focusZone) : undefined;
+  // Counts in the zone in focus, else the continent. Until the pins load, the page's own counts for the opening view.
+  const counts = useMemo(() => (pinSet ? categoryCounts(items, spoilers, focus ?? null) : props.seed.counts), [pinSet, items, spoilers, focus, props.seed.counts]);
+  const candidates = useMemo(() => candidateCounts(props.candidates, zones, focus ?? null), [props.candidates, zones, focus]);
+  const pinTotal = pinSet ? undefined : (show.npc ? props.seed.pins.npc : 0) + (show.vendor ? props.seed.pins.vendor : 0);
 
   const subjects = useMemo(() => {
     const out = new Map<string, Subject>();
     for (const e of shown.entrances) out.set(`e${e.id}`, { id: `e${e.id}`, kind: "entrance", title: e.names.join(", "), detail: e.raid ? "Raid entrance" : "Dungeon entrance", x: e.x, y: e.y });
-    for (const f of shown.flightMasters) out.set(f.id, { id: f.id, kind: "flight", title: f.name, detail: "Flight master", x: f.x, y: f.y });
+    for (const f of shown.flightMasters) out.set(f.id, { id: f.id, kind: "flight", title: f.name, detail: "Flight master", x: f.x, y: f.y, heldBack: f.heldBack });
     for (const p of shown.pins) {
       out.set(p.id, {
         id: p.id, kind: p.kind, title: p.name ?? `NPC ${p.npcId}`, detail: p.kind === "vendor" ? "Vendor players saw" : "NPC players saw",
-        x: p.x, y: p.y, href: `/database/npcs/${p.npcId}`, reporters: p.reporters,
+        x: p.x, y: p.y, npcId: p.npcId, reporters: p.reporters, heldBack: p.heldBack,
       });
     }
     return out;
@@ -200,14 +231,29 @@ export default function WorldMapView(props: WorldMapViewProps) {
   };
 
   const fit = useCallback((b: Box) => setRequest({ id: ++requestId.current, box: b }), []);
-  const goZone = useCallback((mapId: number) => {
-    const z = items.zones.find((s) => s.mapId === mapId);
-    if (!z) return;
+  /** Moving to a zone, or back to the continent (null), is a new history entry: Back returns where the reader was. */
+  const pushZone = useCallback((mapId: number | null) => {
+    const now = new URLSearchParams(window.location.search);
+    if (now.get("zone") === (mapId === null ? null : String(mapId)) && !now.has("x")) return;
+    const s = zoneSearch(now, mapId);
+    window.history.pushState(window.history.state, "", `${window.location.pathname}${s ? `?${s}` : ""}`);
+  }, []);
+  const moveZone = useCallback((mapId: number) => {
+    const z = props.items.zones.find((s) => s.mapId === mapId);
+    if (!z) return false;
     setFocusZone(mapId);
     setSelectedId(null);
     setSpot(null);
     fit(z);
-  }, [items.zones, fit]);
+    return true;
+  }, [props.items.zones, fit]);
+  const moveHome = useCallback(() => {
+    setFocusZone(null);
+    setSelectedId(null);
+    setSpot(null);
+    fit(base);
+  }, [base, fit]);
+  const goZone = useCallback((mapId: number) => { if (moveZone(mapId)) pushZone(mapId); }, [moveZone, pushZone]);
   const goSubject = useCallback((s: Subject) => {
     setSelectedId(s.id);
     setSpot(null);
@@ -235,11 +281,22 @@ export default function WorldMapView(props: WorldMapViewProps) {
     else showItem(hit.id);
   };
   const goHome = () => {
-    setFocusZone(null);
-    setSelectedId(null);
-    setSpot(null);
-    fit(base);
+    moveHome();
+    pushZone(null);
   };
+  // Back and Forward between zones on this page: the map follows the address. Another page's entry is the router's.
+  useEffect(() => {
+    const path = window.location.pathname;
+    const onPop = () => {
+      if (window.location.pathname !== path) return;
+      const q = new URLSearchParams(window.location.search);
+      const link = { zone: q.get("zone") ?? undefined, x: q.get("x") ?? undefined, y: q.get("y") ?? undefined };
+      const mapId = parseDeepLink(link)?.mapId ?? parseZoneLink(link);
+      if (mapId === null || !moveZone(mapId)) moveHome();
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [moveZone, moveHome]);
   const closeCard = () => {
     setSelectedId(null);
     setSpot(null);
@@ -249,23 +306,34 @@ export default function WorldMapView(props: WorldMapViewProps) {
     if (back?.isConnected && back.offsetParent !== null) back.focus();
   };
 
-  // The address keeps the continent, zone, spot and spoiler switch it was opened with, and adds where the reader is.
+  // The address keeps the zone, spot and spoiler switch it was opened with, and adds where the reader is and what
+  // the sidebar shows. Camera moves replace the entry; only zone changes add one (pushZone).
+  const urlState = useRef<MapUrlState>({ show, q: query, tab: view });
+  urlState.current = { show, q: query, tab: view };
   const sync = useCallback(() => {
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => {
       const c = camera.current;
-      if (!c) return;
-      const search = viewSearch(new URLSearchParams(window.location.search), { x: c.x, y: c.y, zoom: c.zoom, pin: selectedRef.current });
-      window.history.replaceState(window.history.state, "", `${window.location.pathname}?${search}`);
+      const withState = mapUrlSearch(new URLSearchParams(window.location.search), urlState.current);
+      const search = c ? viewSearch(withState, { x: c.x, y: c.y, zoom: c.zoom, pin: selectedRef.current }) : withState.toString();
+      window.history.replaceState(window.history.state, "", `${window.location.pathname}${search ? `?${search}` : ""}`);
     }, 250);
   }, []);
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
-  useEffect(() => { sync(); }, [selectedId, sync]);
+  useEffect(() => { sync(); }, [selectedId, show, query, view, sync]);
   const onView = useCallback((v: MapViewChange) => { camera.current = v; sync(); }, [sync]);
 
   // Read once, when the map opens.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const initial = useMemo(() => initialView({ base, items, view: props.view, marker, zoneId: props.zoneId }), []);
+  // A `pin=` for a player point past the first the page carried: the map moves to it once the pins load.
+  const pinWaiting = useRef(Boolean(props.view.pin && !(props.view.at && props.view.zoom !== null) && !marker && !subjects.has(props.view.pin)));
+  useEffect(() => {
+    if (!pinSet || !pinWaiting.current || !props.view.pin) return;
+    pinWaiting.current = false;
+    const s = subjects.get(props.view.pin);
+    if (s) fit(spotBox(s.x, s.y));
+  }, [pinSet, subjects, props.view.pin, fit]);
 
   // Zones are found whether or not their layer is on; everything else only while its layer shows.
   const hits = useMemo(() => searchMap({ ...shown, zones }, query), [shown, zones, query]);
@@ -274,22 +342,29 @@ export default function WorldMapView(props: WorldMapViewProps) {
     ? { name: selected.title, at: selectedSpot }
     : spot ? { name: here?.zone.name ?? "", at: here } : null;
   const command = target?.at ? wayCommand(target.at.x, target.at.y, target.name) : null;
-  const copy = async () => {
-    if (!command) return;
+  // The card's own link: the continent's page with the item selected; a held-back item's link keeps spoilers on.
+  const permalink = selected ? pinHref(props.continentId, selected.id, spoilers && Boolean(selected.heldBack)) : null;
+  const page = selected
+    ? openPageLink({ kind: selected.kind, npcId: selected.npcId, x: selected.x, y: selected.y }, zones, props.zonePages)
+    : spot ? openPageLink({ kind: "spot", x: spot.x, y: spot.y }, zones, props.zonePages) : null;
+  const copy = async (text: string, failed: string) => {
     try {
-      await navigator.clipboard.writeText(command);
-      setCopied(`Copied: ${command}`);
+      await navigator.clipboard.writeText(text);
+      setCopied(`Copied: ${text}`);
     } catch {
-      setCopied("Could not copy. Select the line and copy it.");
+      setCopied(failed);
     }
   };
   useEffect(() => { setCopied(""); }, [command]);
 
-  const focus = focusZone !== null ? items.zones.find((z) => z.mapId === focusZone) : undefined;
-  const spoilerQuery = spoilers ? "&spoilers=1" : "";
+  // The continent tabs keep the spoiler switch, the categories and the tab.
+  const tabHref = (id: number) => {
+    const s = mapUrlSearch(new URLSearchParams(spoilers ? "spoilers=1" : ""), { show, q: "", tab: view }).toString();
+    return `${continentPath(id)}${s ? `?${s}` : ""}`;
+  };
   const cardSpot = selected ? selectedSpot : here;
-  const allOn = LAYER_IDS.every((id) => layers[id]);
-  const allOff = LAYER_IDS.every((id) => !layers[id]);
+  const allOn = CATEGORY_IDS.every((id) => show[id]);
+  const allOff = CATEGORY_IDS.every((id) => !show[id]);
   const railButton = "inline-flex h-11 w-11 items-center justify-center rounded-control text-fg-2 hover:bg-canvas hover:text-accent";
 
   return (
@@ -347,7 +422,7 @@ export default function WorldMapView(props: WorldMapViewProps) {
           <div className="min-w-0 flex-1">
             <LinkTabs
               label="Continent"
-              tabs={props.continents.map((c) => ({ href: `/map?continent=${c.id}${spoilerQuery}`, label: c.name, current: c.id === props.continentId }))}
+              tabs={props.continents.map((c) => ({ href: tabHref(c.id), label: c.name, current: c.id === props.continentId }))}
             />
           </div>
           <button
@@ -394,20 +469,40 @@ export default function WorldMapView(props: WorldMapViewProps) {
 
             <div data-map-categories hidden={view !== "categories"} className="space-y-4">
               <div className="flex gap-2">
-                <button type="button" onClick={() => setLayers(allLayers(true))} disabled={allOn} className="btn min-h-11 flex-1 px-3 text-sm md:min-h-8">Show all</button>
-                <button type="button" onClick={() => setLayers(allLayers(false))} disabled={allOff} className="btn min-h-11 flex-1 px-3 text-sm md:min-h-8">Hide all</button>
+                <button type="button" onClick={() => setShow(allCategories(true))} disabled={allOn} className="btn min-h-11 flex-1 px-3 text-sm md:min-h-8">Show all</button>
+                <button type="button" onClick={() => setShow(allCategories(false))} disabled={allOff} className="btn min-h-11 flex-1 px-3 text-sm md:min-h-8">Hide all</button>
               </div>
-              <fieldset>
-                <legend className="mb-1 text-h2-sm text-fg">Categories</legend>
-                {LAYER_IDS.map((id) => (
-                  <label key={id} className="flex min-h-11 cursor-pointer items-center gap-2 text-sm text-fg-2 md:min-h-9">
-                    <input type="checkbox" checked={layers[id]} onChange={() => setLayers((l) => ({ ...l, [id]: !l[id] }))} className="h-4 w-4 accent-accent" />
-                    <Swatch layer={id} />
-                    <span className="min-w-0 flex-1 text-fg">{LAYER_LABELS[id]}</span>
-                    <span data-count className="tabular-nums text-muted"><span className="sr-only">, </span>{counts[id]}</span>
-                  </label>
-                ))}
-              </fieldset>
+              {CATEGORY_GROUPS.map((group) => {
+                // A waiting category with nothing yet is listed greyed, so a player sees what an upload adds.
+                const empty = group.categories.filter((c) => c.status === "waiting" && counts[c.id] === 0);
+                return (
+                  <fieldset key={group.id} data-category-group={group.id}>
+                    <legend className="mb-0.5 text-sm font-medium text-fg">{group.label}</legend>
+                    {empty.length > 0 && <p className="text-xs text-muted">Filled by uploads from the <Link href="/addon" className="text-accent hover:underline underline-offset-4">addon</Link> once 3 installs agree on a place.</p>}
+                    {group.categories.map((c) => {
+                      const idle = c.status === "waiting" && counts[c.id] === 0;
+                      const near = candidates[c.id] ?? 0;
+                      const note = near > 0
+                        ? `${near} ${idle ? (near === 1 ? "place" : "places") : "more"} seen by 1 or 2 installs`
+                        : idle ? "waiting for player uploads" : null;
+                      return (
+                        <div key={c.id}>
+                          <label className={`flex min-h-11 items-center gap-2 text-sm md:min-h-9 ${idle ? "text-muted" : "cursor-pointer text-fg-2"}`}>
+                            <input
+                              type="checkbox" checked={show[c.id]} disabled={idle} aria-describedby={note ? `map-category-${c.id}` : undefined}
+                              onChange={() => setShow((s) => ({ ...s, [c.id]: !s[c.id] }))} className="h-4 w-4 accent-accent"
+                            />
+                            <Swatch category={c.id} />
+                            <span className={`min-w-0 flex-1 ${idle ? "text-muted" : "text-fg"}`}>{c.label}</span>
+                            <span data-count className="tabular-nums text-muted"><span className="sr-only">, </span>{counts[c.id]}</span>
+                          </label>
+                          {note && <p id={`map-category-${c.id}`} data-category-note className="-mt-1 pb-1 pl-6 text-xs text-muted">{note}</p>}
+                        </div>
+                      );
+                    })}
+                  </fieldset>
+                );
+              })}
               {spoilers && (
                 <p className="flex items-center gap-2 text-xs text-muted">
                   <svg width="18" height="14" viewBox="0 0 18 14" aria-hidden="true"><rect x="1" y="1" width="16" height="12" strokeWidth="1.2" strokeDasharray="3 2" className="fill-warning/10 stroke-warning" /></svg>
@@ -428,11 +523,16 @@ export default function WorldMapView(props: WorldMapViewProps) {
             </div>
 
             <div data-map-list hidden={view !== "list"}>
-              <MapList zones={zones} shown={shown} layers={layers} spoilers={spoilers} thumbs={props.thumbs} onZone={showZone} onShow={showItem} />
+              <MapList zones={zones} shown={shown} show={show} pinTotal={pinTotal} spoilers={spoilers} thumbs={props.thumbs} onZone={showZone} onShow={showItem} />
             </div>
           </div>
 
-          {props.meta && <div data-map-meta className="space-y-1 border-t border-line pt-3 text-xs leading-relaxed text-muted">{props.meta}</div>}
+          {(props.meta || pinsFailed) && (
+            <div data-map-meta className="space-y-1 border-t border-line pt-3 text-xs leading-relaxed text-muted">
+              {pinsFailed && <p className="text-warning">Flight paths and player points did not load. Reload the page to try again.</p>}
+              {props.meta}
+            </div>
+          )}
         </div>
       </aside>
 
@@ -477,8 +577,13 @@ export default function WorldMapView(props: WorldMapViewProps) {
                 {selected?.reporters ? <Badge tone="confirmed">Seen by {selected.reporters} installs</Badge> : null}
               </div>
               <div className="flex flex-wrap gap-2">
-                {command && <button type="button" onClick={copy} className="btn min-h-11 px-4 text-sm">Copy /way</button>}
-                {selected?.href && <Link href={selected.href} className="btn min-h-11 px-4 text-sm">Open page</Link>}
+                {command && <button type="button" onClick={() => copy(command, "Could not copy. Select the line and copy it.")} className="btn min-h-11 px-4 text-sm">Copy /way</button>}
+                {permalink && (
+                  <button type="button" onClick={() => copy(new URL(permalink, window.location.origin).toString(), "Could not copy. The link is in the address bar.")} className="btn min-h-11 px-4 text-sm">
+                    Copy link
+                  </button>
+                )}
+                {page && <Link href={page.href} className="btn min-h-11 px-4 text-sm">{page.label}</Link>}
               </div>
               {command && <p className="font-mono text-xs text-muted" data-way>{command}</p>}
               <p role="status" className="text-xs text-fg-2">{copied}</p>

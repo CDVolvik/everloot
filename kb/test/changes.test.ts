@@ -43,14 +43,17 @@ test("filters: blue posts, hotfixes, builds, and a game", () => {
   expect(parseFilter(undefined)).toBe("all");
 });
 
-test("RSS: valid shape, newest first, every post item links to Blizzard's original", () => {
+test("RSS: valid shape, newest first, every post item links to its Everloot page and names Blizzard's original", () => {
   const xml = renderFeed(timeline, { baseUrl: "https://everloot.app/", now: seen });
   expect(xml.startsWith('<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0"')).toBe(true);
   expect(xml).toContain("<link>https://everloot.app/changes</link>");
   expect(xml).toContain('<atom:link href="https://everloot.app/changes/feed.xml" rel="self"');
   expect((xml.match(/<item>/g) ?? []).length).toBe(timeline.length);
-  expect(xml).toContain("<link>https://us.forums.blizzard.com/en/wow/t/synthetic-beta-maintenance/9000001</link>");
-  expect(xml).toContain("<link>https://bsky.app/profile/worldofwarcraft.blizzard.com/post/3synthetic1</link>");
+  // A post links to its page on Everloot; the original stays in the item.
+  expect(xml).toContain("<link>https://everloot.app/changes/us-70000001-synthetic-beta-realm-maintenance-restart</link>");
+  expect(xml).toContain("Original: https://us.forums.blizzard.com/en/wow/t/synthetic-beta-maintenance/9000001</description>");
+  expect(xml).toMatch(/<link>https:\/\/everloot\.app\/changes\/bsky-3synthetic1(?:-[a-z0-9-]+)?<\/link>/);
+  expect(xml).toContain("Original: https://bsky.app/profile/worldofwarcraft.blizzard.com/post/3synthetic1</description>");
   expect(xml).toContain('<guid isPermaLink="false">build:wow_classic_beta:aaa</guid>');
   expect(xml).toContain("<link>https://everloot.app/changes/diff/70460</link>");
   expect(xml).toContain("<link>https://everloot.app/changes?show=builds</link>");

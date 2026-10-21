@@ -548,3 +548,33 @@ describe("player rows in an upload", () => {
     expect(store.putUpload).not.toHaveBeenCalled();
   });
 });
+
+describe("character link rows in an upload", () => {
+  const link = {
+    kind: "character_link", installId: "install-1234", eventId: "character_link:1", capturedAt, code: "EL-7K3Q-9P",
+    name: "Thrallina", realm: "Forever Pioneer", race: "Orc", class: "SHAMAN", level: 24, faction: "Horde",
+    guid: "Player-4395-0A1B2C3D", completionKey: "0a1b2c3d",
+  };
+  afterEach(() => { vi.unstubAllEnvs(); });
+
+  test("with the switch off or on they are dropped, GUID and code with them, and the rest of the upload is kept", async () => {
+    for (const value of ["", "1"]) {
+      vi.stubEnv("EVERLOOT_CHARACTER_LINKS", value);
+      store.putUpload.mockClear();
+      const POST = await freshPost();
+      const response = await POST(request({ addonVersion: "0.5.0", records: [link, canonicalLoot] }));
+      const body = await response.json();
+      expect(response.status).toBe(200);
+      expect(body.accepted.map((a: { kind: string }) => a.kind)).toEqual(["loot"]);
+      expect(body.rejected).toEqual([{ index: 0, reason: expect.stringContaining("not in uploads") }]);
+      const stored = JSON.stringify(store.putUpload.mock.calls[0]);
+      for (const secret of ["Player-4395", "EL-7K3Q-9P", "character_link"]) expect(stored).not.toContain(secret);
+    }
+  });
+
+  test("an upload of link rows only is refused and stores nothing", async () => {
+    const POST = await freshPost();
+    expect((await POST(request({ addonVersion: "0.5.0", records: [link] }))).status).toBe(422);
+    expect(store.putUpload).not.toHaveBeenCalled();
+  });
+});

@@ -11,6 +11,8 @@ import { publicZones } from "@/lib/zones";
 import JsonLd from "@/components/JsonLd";
 import { AgreementMeter, Container, DataTitle, SearchBar } from "@/components/ui";
 import { asOfLine, EVIDENCE_KEY } from "@/lib/evidence";
+import { loadSpellNames } from "@/lib/game-assets";
+import { CLIENT_LAYER } from "@/lib/items";
 import { datasetJsonLd } from "@/lib/jsonld";
 
 const TITLE = "WoW Forever Database";
@@ -49,7 +51,7 @@ function Block({ heading, href, count, links }: { heading: string; href?: string
 }
 
 export default async function DatabasePage() {
-  const [{ rates, measuredZeros, stats }, world, catalog] = await Promise.all([computeRollups(), loadWorldFacts(), loadCatalog()]);
+  const [{ rates, measuredZeros, stats }, world, catalog, spellNames] = await Promise.all([computeRollups(), loadWorldFacts(), loadCatalog(), loadSpellNames(CLIENT_LAYER.build.version)]);
   const live = rates.filter((r) => r.public).length + measuredZeros.filter((z) => z.public).length;
   const classes = T.classes.filter((c) => c.items > 0).sort((a, b) => b.items - a.items);
   // What players have made public so far, per place: a count once there is one, the empty meter until then.
@@ -61,6 +63,7 @@ export default async function DatabasePage() {
     { href: "/database/quests", label: "Quests", count: seen(readable ? publicQuests(world).length : 0) },
     { href: "/database/vendors", label: "Vendors", count: seen(readable ? publicVendors(world).length : 0) },
     { href: "/database/objects", label: "Objects: chests, herbs, ore", count: seen(stats.unreachable ? 0 : objectList({ rates, measuredZeros, names: [] }).length) },
+    { href: "/database/spells", label: "Spells", count: listed(spellNames?.names.size) },
     { href: "/database/achievements", label: "Achievements", count: listed(catalog?.achievements.length) },
     { href: "/database/factions", label: "Factions", count: listed(catalog?.factions.length) },
     { href: "/database/titles", label: "Titles", count: listed(catalog?.titles.length) },

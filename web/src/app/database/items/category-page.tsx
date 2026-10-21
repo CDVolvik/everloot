@@ -4,7 +4,7 @@ import { notFound, permanentRedirect } from "next/navigation";
 import { describe, filterItems, QUALITIES, resolveClass, resolveLegacyClass, resolveSubclass, slotOf, type ItemClass, type ItemRow, type ItemSubclass } from "../../../../../kb/src/item-taxonomy";
 import {
   activeFilters, BINDINGS, CLIENT_TAXONOMY as T, categoryNamedEnough, categoryQuery, itemFacets, ITEM_LEVEL_BRACKETS, ITEMS_PER_PAGE, itemsHref,
-  listItems, SOURCES, shownItemName, subclassLabel, toggled, UNRECORDED, type CategoryQuery, type NameSource,
+  listItems, NAME_FROM, SOURCES, shownItemName, subclassLabel, toggled, UNRECORDED, type CategoryQuery, type NameSource,
 } from "@/lib/items";
 import { loadItemSeen } from "@/lib/item-seen";
 import { pageMetadata } from "@/lib/seo";
@@ -40,12 +40,8 @@ function resolve(classSlug: string | undefined, subclassKey: string | undefined,
 
 const subName = (s: ItemSubclass) => s.name ?? `Subclass ${s.id}`;
 
-/** The tooltip on a shown name: where it comes from (DATA_POLICY, item names). */
-export const NAME_TITLE: Record<NameSource, string> = {
-  players: "Name confirmed by players",
-  wiki: "Name from the Warcraft Wiki",
-  files: UNCONFIRMED_TITLE,
-};
+/** Where a shown name comes from (DATA_POLICY, item names): in the link's hover card, and in words for a screen reader. */
+export const NAME_TITLE: Record<NameSource, string> = { ...NAME_FROM, files: UNCONFIRMED_TITLE };
 
 /**
  * The plain list, on any page, is its own canonical; a filter, a sort or a name search is noindex and points
@@ -142,10 +138,10 @@ export async function CategoryPage({ classSlug, subclassKey, search }: { classSl
             {icons && (tip?.icon
               ? <GameIcon src={tip.icon} size={24} />
               : <span aria-hidden="true" className="h-6 w-6 shrink-0 rounded-sm border border-line" />)}
-            {/* Where the name comes from is the name's tooltip (and words for a screen reader, after the link so the
+            {/* Where the name comes from is in the link's hover card (and words for a screen reader, after the link so the
                 link's text is the name alone), never a printed label; a name only the game files give carries the
                 quiet unconfirmed marker. */}
-            <Link href={`/database/items/${row[0]}`} title={name ? NAME_TITLE[name.source] : undefined} className={`min-w-0 ${colour} hover:underline underline-offset-4`} style={name?.color ? { color: name.color } : undefined}>
+            <Link href={`/database/items/${row[0]}`} className={`min-w-0 ${colour} hover:underline underline-offset-4`} style={name?.color ? { color: name.color } : undefined}>
               {name?.name ?? `Item ${row[0]}`}
             </Link>
             {name && name.source !== "files" && <span className="sr-only"> ({NAME_TITLE[name.source].toLowerCase()})</span>}

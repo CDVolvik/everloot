@@ -558,6 +558,33 @@ export const playerSeen = base.extend({
 /** The player-page kind. Never part of the public corpus; intake writes it to the players table, not to the upload. */
 export const PLAYER_KINDS: readonly string[] = ["player_seen"];
 
+// --- Character links: a code typed in game ties one character to an Everloot account ---
+// The site shows a signed-in player a short code; typed in game, it becomes one character_link row, which the
+// player sends to the account's link endpoint. The GUID is in transit only: the server turns it into a keyed hash
+// and keeps nothing else of it. Never stored in an upload and never public.
+
+/** A link code as the site shows it: EL-, four characters, a hyphen and two more, from Crockford's base 32 alphabet. */
+export const LINK_CODE = z.string().regex(/^EL-[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{2}$/i)
+  .describe("The code the site showed, as typed in game, e.g. EL-7K3Q-9P. Upper or lower case.");
+
+/** One of your own characters, written when you type `/everloot link <code>` on it. */
+export const characterLink = base.extend({
+  kind: z.literal("character_link"),
+  code: LINK_CODE,
+  name: z.string().min(2).max(48).refine(validPlayerName, { message: "not a character name" })
+    .describe("UnitName: letters only, 2 to 12 of them."),
+  realm: CENSUS_REALM,
+  race: CENSUS_RACE,
+  class: CENSUS_CLASS,
+  level: z.number().int().min(1).max(60),
+  faction: z.enum(["Alliance", "Horde"]),
+  guid: PLAYER_GUID,
+  completionKey: CHARACTER_KEY.describe("The completion module's 8-hex key for this character, so its completion rows can be joined."),
+});
+
+/** The link kind. Not a public corpus kind and never kept in a stored upload. */
+export const LINK_KINDS: readonly string[] = ["character_link"];
+
 /** Every record kind and its schema, in the order the contract lists them. */
 export const recordSchemas = {
   npc_sighting: npcSighting,
@@ -594,6 +621,7 @@ export const recordSchemas = {
   census_self: censusSelf,
   census_seen: censusSeen,
   player_seen: playerSeen,
+  character_link: characterLink,
 } as const;
 
 export type RecordKind = keyof typeof recordSchemas;
@@ -613,6 +641,7 @@ const PUBLIC_KIND_LIST = [
   // from the completion rollup, not from this corpus.
   // The census kinds are absent too: like addon lists, they are published only as counts.
   // So is player_seen: named rows reach the player pages, never this corpus.
+  // So is character_link: it goes to the account's link endpoint and is never stored as sent.
 ] as const satisfies readonly RecordKind[];
 export const PUBLIC_RECORD_KINDS: readonly string[] = PUBLIC_KIND_LIST;
 
@@ -621,15 +650,15 @@ export const anyRecord = z.discriminatedUnion("kind", [
   guildSnapshot, raidLockout, attendance, lootAward, gearSnapshot,
   collectionCatalog, collectionOwned, achievementCatalog, reputationCatalog, titleCatalog, questChainCatalog,
   achievementOwned, reputationOwned, titleOwned, questOwned, auctionScan, auctionSnapshot, recipeSeen, priceSeen, recipeObserved, trainerSeen,
-  goldSnapshot, moneyEvent, addonSeen, mapBounds, talentSnapshot, censusSelf, censusSeen, playerSeen,
+  goldSnapshot, moneyEvent, addonSeen, mapBounds, talentSnapshot, censusSelf, censusSeen, playerSeen, characterLink,
 ]);
 
 export type IntakeRecord = z.infer<typeof anyRecord>;
 /**
  * A record as intake stores it in an upload: census rows have their GUID swapped for a key, player rows are
- * not in the upload at all (they go to the players table), every other kind is as parsed.
+ * not in the upload at all (they go to the players table), link rows are never stored, every other kind is as parsed.
  */
-export type StoredRecord = Exclude<IntakeRecord, { kind: "census_self" | "census_seen" | "player_seen" }> | StoredCensusRecord;
+export type StoredRecord = Exclude<IntakeRecord, { kind: "census_self" | "census_seen" | "player_seen" | "character_link" }> | StoredCensusRecord;
 
 /** The request envelope. `protocol` is the uploader's protocol version; a missing one means major 1. */
 export const uploadPayload = z.object({

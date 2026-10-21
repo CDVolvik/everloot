@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 import type { MapBoundsRow } from "../../../kb/src/map-bounds";
 import type { WorldMapData } from "../../../kb/src/world-map-data";
 import { worldToZone, zoneAt, zoneTable } from "../../../kb/src/world-coords";
-import { continentFlights, continentMap, continentPins, MAP_RECORD_KINDS, observedFacts, pinLink, WORLD_MAP } from "./world-map";
+import { continentCandidates, continentFlights, continentMap, continentPins, MAP_RECORD_KINDS, observedFacts, pinLink, WORLD_MAP } from "./world-map";
 import { PUBLIC_RECORD_KINDS } from "@everloot/protocol";
 
 // SYNTHETIC data in the shape of the generated file; the numbers are made up.
@@ -179,6 +179,31 @@ describe("player-observed points", () => {
     expect(PUBLIC_RECORD_KINDS).not.toContain("addon_seen");
     const facts = observedFacts([...three(7, 1429), { kind: "gold_snapshot", installId: "a" }, null, "text"]);
     expect(facts.npcs).toHaveLength(3);
+  });
+
+  test("places seen by 1 or 2 installs are counted per zone and category; a third install makes a pin instead", () => {
+    const records = [
+      sighting("a", 20, 1429), sighting("b", 20, 1429), // two installs: a candidate
+      sighting("a", 21, 1429), sighting("a", 21, 1429, 41, 61), // one install twice: still one candidate
+      ...three(22, 1429), // a pin, not a candidate
+      sighting("a", 23, 1429), ...["a", "b", "c"].map((i) => vendor(i, 23)), // an agreed vendor seen by one install
+      sighting("a", 24, 1411), // the other continent
+      { ...sighting("a", 25, 1429), positionKind: "player" }, // where the player stood: never a place
+      sighting("a", 26, 5555), sighting("a", 27, 1429, 140, 60), // an unknown zone, a spot off the map
+    ];
+    expect(continentCandidates(0, observedFacts(records), false, data)).toEqual([
+      { category: "npc", mapId: 1429, count: 2 },
+      { category: "vendor", mapId: 1429, count: 1 },
+    ]);
+    expect(continentCandidates(1, observedFacts(records), false, data)).toEqual([{ category: "npc", mapId: 1411, count: 1 }]);
+    // Only counts: no NPC, no spot, no install.
+    expect(JSON.stringify(continentCandidates(0, observedFacts(records), false, data))).not.toMatch(/npcId|"x"|installId|"a"/);
+  });
+
+  test("a held-back zone's candidates count only with spoilers on", () => {
+    const records = [sighting("a", 30, 2482)];
+    expect(continentCandidates(1, observedFacts(records), false, data)).toEqual([]);
+    expect(continentCandidates(1, observedFacts(records), true, data)).toEqual([{ category: "npc", mapId: 2482, count: 1 }]);
   });
 });
 describe("flights on the map", () => {

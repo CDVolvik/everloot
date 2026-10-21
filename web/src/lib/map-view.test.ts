@@ -1,7 +1,9 @@
 import { describe, expect, test } from "vitest";
 import {
-  allLayers, DEFAULT_LAYERS, DEFAULT_SPOILERS, initialView, labelFontPx, LAYER_IDS, layerCounts, mapHref, parseDeepLink, parseViewState, parseZoneLink,
-  placeLabels, searchMap, SPOT_SPAN, spotBox, viewSearch, visibleItems, wayCommand, zoneHref, zoneSpot, type MapItems,
+  allCategories, candidateCounts, categoryCounts, CATEGORY_GROUPS, CATEGORY_IDS, continentFromSlug, continentPath, DEFAULT_CATEGORIES, DEFAULT_SPOILERS,
+  DEFAULT_URL_STATE, initialView, labelFontPx, mapHref, mapUrlSearch, openPageLink, parseDeepLink, parseMapUrl, parseViewState, parseZoneLink, pinHref,
+  placeLabels, readPinSet, searchMap, showParam, SPOT_SPAN, spotBox, viewSearch, visibleItems, wayCommand, zoneHref, zoneSearch, zoneSpot,
+  type CategoryState, type MapItems, type MapUrlState,
 } from "./map-view";
 
 const items: MapItems = {
@@ -26,10 +28,12 @@ const items: MapItems = {
   ],
 };
 
-describe("layers and the spoiler switch", () => {
+const raidToo: MapItems = { ...items, entrances: [...items.entrances, { id: "r", names: ["Open Raid"], raid: true, x: 6, y: 6, worldX: 1, worldY: 1 }] };
+
+describe("categories and the spoiler switch", () => {
   test("spoilers are off by default, and held-back zones and their points stay hidden", () => {
     expect(DEFAULT_SPOILERS).toBe(false);
-    const shown = visibleItems(items, DEFAULT_LAYERS, DEFAULT_SPOILERS);
+    const shown = visibleItems(items, DEFAULT_CATEGORIES, DEFAULT_SPOILERS);
     expect(shown.zones.map((z) => z.name)).toEqual(["Open", "Open City"]);
     expect(shown.pins.map((p) => p.id)).toEqual(["n1", "v1"]);
     expect(shown.flightMasters.map((f) => f.id)).toEqual(["f1"]);
@@ -37,46 +41,83 @@ describe("layers and the spoiler switch", () => {
   });
 
   test("the spoiler switch reveals them", () => {
-    const shown = visibleItems(items, DEFAULT_LAYERS, true);
+    const shown = visibleItems(items, DEFAULT_CATEGORIES, true);
     expect(shown.zones.map((z) => z.name)).toEqual(["Open", "Held", "Open City"]);
     expect(shown.pins.map((p) => p.id)).toEqual(["n1", "n2", "v1"]);
     expect(shown.flightMasters).toHaveLength(2);
     expect(shown.flightLines).toHaveLength(2);
   });
 
-  test("each layer toggles on its own", () => {
-    expect(visibleItems(items, { ...DEFAULT_LAYERS, zones: false }, true).zones).toEqual([]);
-    expect(visibleItems(items, { ...DEFAULT_LAYERS, entrances: false }, true).entrances).toEqual([]);
-    expect(visibleItems(items, { ...DEFAULT_LAYERS, npcs: false }, true).pins.map((p) => p.kind)).toEqual(["vendor"]);
-    expect(visibleItems(items, { ...DEFAULT_LAYERS, vendors: false }, true).pins.map((p) => p.kind)).toEqual(["npc", "npc"]);
-    expect(visibleItems(items, { ...DEFAULT_LAYERS, flightMasters: false }, true).flightMasters).toEqual([]);
-    expect(visibleItems(items, { ...DEFAULT_LAYERS, flightPaths: false }, true).flightLines).toEqual([]);
-    const none = visibleItems(items, { zones: false, entrances: false, flightMasters: false, flightPaths: false, npcs: false, vendors: false }, true);
-    expect(none).toEqual({ zones: [], entrances: [], pins: [], flightMasters: [], flightLines: [] });
+  test("each category toggles on its own; dungeon and raid entrances apart", () => {
+    const off = (id: keyof CategoryState) => ({ ...DEFAULT_CATEGORIES, [id]: false });
+    expect(visibleItems(items, off("zone"), true).zones).toEqual([]);
+    expect(visibleItems(raidToo, off("dungeon"), true).entrances.map((e) => e.id)).toEqual(["r"]);
+    expect(visibleItems(raidToo, off("raid"), true).entrances.map((e) => e.id)).toEqual(["e"]);
+    expect(visibleItems(items, off("npc"), true).pins.map((p) => p.kind)).toEqual(["vendor"]);
+    expect(visibleItems(items, off("vendor"), true).pins.map((p) => p.kind)).toEqual(["npc", "npc"]);
+    expect(visibleItems(items, off("flight"), true).flightMasters).toEqual([]);
+    expect(visibleItems(items, off("path"), true).flightLines).toEqual([]);
+    expect(visibleItems(raidToo, allCategories(false), true)).toEqual({ zones: [], entrances: [], pins: [], flightMasters: [], flightLines: [] });
   });
 
   test("filtering does not change the input", () => {
     const copy = JSON.stringify(items);
-    visibleItems(items, DEFAULT_LAYERS, false);
+    visibleItems(items, DEFAULT_CATEGORIES, false);
     expect(JSON.stringify(items)).toBe(copy);
   });
 
-  test("Show all and Hide all switch every layer", () => {
-    expect(allLayers(true)).toEqual(DEFAULT_LAYERS);
-    expect(Object.values(allLayers(false))).toEqual(LAYER_IDS.map(() => false));
-    expect(visibleItems(items, allLayers(false), true)).toEqual({ zones: [], entrances: [], pins: [], flightMasters: [], flightLines: [] });
+  test("Show all and Hide all switch every category", () => {
+    expect(allCategories(true)).toEqual(DEFAULT_CATEGORIES);
+    expect(Object.values(allCategories(false))).toEqual(CATEGORY_IDS.map(() => false));
+  });
+
+  test("the groups hold every category once; live ones carry today's data, the rest wait for uploads", () => {
+    const listed = CATEGORY_GROUPS.flatMap((g) => g.categories.map((c) => c.id));
+    expect([...listed].sort()).toEqual([...CATEGORY_IDS].sort());
+    expect(CATEGORY_GROUPS.map((g) => g.label)).toEqual(["Travel", "Instances", "Places", "Services", "Gathering"]);
+    const status = Object.fromEntries(CATEGORY_GROUPS.flatMap((g) => g.categories.map((c) => [c.id, c.status])));
+    for (const id of ["flight", "path", "dungeon", "raid", "zone"]) expect(status[id], id).toBe("live");
+    for (const id of ["vendor", "trainer", "quest", "service", "npc", "herb", "ore", "chest"]) expect(status[id], id).toBe("waiting");
   });
 });
 
 describe("category counts", () => {
-  test("each layer counts what it would show on the continent, held-back items only with spoilers on", () => {
-    expect(layerCounts(items, false)).toEqual({ zones: 2, entrances: 1, flightMasters: 1, flightPaths: 1, npcs: 1, vendors: 1 });
-    expect(layerCounts(items, true)).toEqual({ zones: 3, entrances: 1, flightMasters: 2, flightPaths: 2, npcs: 2, vendors: 1 });
+  test("each category counts what it would show on the continent, held-back items only with spoilers on", () => {
+    const zero = { trainer: 0, quest: 0, service: 0, herb: 0, ore: 0, chest: 0 };
+    expect(categoryCounts(raidToo, false)).toEqual({ zone: 2, dungeon: 1, raid: 1, flight: 1, path: 1, npc: 1, vendor: 1, ...zero });
+    expect(categoryCounts(raidToo, true)).toEqual({ zone: 3, dungeon: 1, raid: 1, flight: 2, path: 2, npc: 2, vendor: 1, ...zero });
+  });
+
+  test("a category's count does not depend on whether it is switched on", () => {
+    expect(categoryCounts(items, false)).toEqual(categoryCounts(visibleItems(items, DEFAULT_CATEGORIES, true), false));
   });
 
   test("flight masters count by name, as the list shows them: two nodes on one spot are one row", () => {
     const twin = { ...items, flightMasters: [...items.flightMasters, { id: "f3", name: "Open Post", x: 1, y: 1, heldBack: false }] };
-    expect(layerCounts(twin, false).flightMasters).toBe(1);
+    expect(categoryCounts(twin, false).flight).toBe(1);
+  });
+
+  test("in a zone, only what lies in it counts: the zone, a city inside it, its points; a flight path by either end", () => {
+    const city = items.zones[2]!;
+    const inCity: MapItems = {
+      ...items,
+      entrances: [{ id: "c", names: ["City Vault"], raid: false, x: 150, y: 150, worldX: 0, worldY: 0 }],
+      flightMasters: [{ id: "f9", name: "City Post", x: 120, y: 120, heldBack: false }, ...items.flightMasters],
+      flightLines: [{ id: "l9", from: "f9", to: "f1", points: [[120, 120], [1, 1]], heldBack: false }],
+      pins: [{ ...items.pins[0]!, id: "n9", x: 199, y: 101 }],
+    };
+    expect(categoryCounts(inCity, false, city)).toMatchObject({ zone: 1, dungeon: 1, flight: 1, path: 1, npc: 1, vendor: 0 });
+    // The zone around the city counts the city too, and everything in either.
+    expect(categoryCounts(inCity, false, items.zones[0]!)).toMatchObject({ zone: 2, dungeon: 1, flight: 2, path: 1, npc: 1 });
+    expect(categoryCounts(inCity, false, { x: 5000, y: 5000, width: 1, height: 1 })).toMatchObject({ zone: 0, flight: 0, path: 0, npc: 0 });
+  });
+
+  test("places seen by 1 or 2 installs are counted per category in scope, never placed", () => {
+    const candidates = [{ category: "npc" as const, mapId: 1, count: 4 }, { category: "npc" as const, mapId: 3, count: 2 }, { category: "vendor" as const, mapId: 3, count: 1 }];
+    expect(candidateCounts(candidates, items.zones)).toEqual({ npc: 6, vendor: 1 });
+    expect(candidateCounts(candidates, items.zones, items.zones[2]!)).toEqual({ npc: 2, vendor: 1 });
+    expect(candidateCounts(candidates, items.zones, items.zones[0]!)).toEqual({ npc: 6, vendor: 1 });
+    expect(candidateCounts([], items.zones)).toEqual({});
   });
 });
 
@@ -152,9 +193,9 @@ describe("map search", () => {
   });
 
   test("searches only what is shown, so a held-back zone never turns up", () => {
-    const shown = visibleItems(items, DEFAULT_LAYERS, false);
+    const shown = visibleItems(items, DEFAULT_CATEGORIES, false);
     expect(searchMap(shown, "held")).toEqual([]);
-    expect(searchMap(visibleItems(items, DEFAULT_LAYERS, true), "held").map((h) => h.label)).toContain("Held");
+    expect(searchMap(visibleItems(items, DEFAULT_CATEGORIES, true), "held").map((h) => h.label)).toContain("Held");
   });
 
   test("a zone hit points at the middle of the zone, and the list is capped", () => {
@@ -208,6 +249,103 @@ describe("links", () => {
   test("a malformed view is left out, so a bad link opens the plain map", () => {
     expect(parseViewState({ at: "abc,1", z: "99", pin: "<script>" })).toEqual({ at: null, zoom: null, pin: null });
     expect(parseViewState({})).toEqual({ at: null, zoom: null, pin: null });
+  });
+});
+
+describe("the sidebar in the address: show, q, view", () => {
+  const read = (search: string) => {
+    const q = new URLSearchParams(search);
+    return parseMapUrl({ show: q.get("show") ?? undefined, q: q.get("q") ?? undefined, view: q.get("view") ?? undefined });
+  };
+  const only = (...ids: (keyof CategoryState)[]) => Object.fromEntries(CATEGORY_IDS.map((id) => [id, ids.includes(id)])) as CategoryState;
+
+  test("the default state leaves no trace, and an address without any reads as the default", () => {
+    expect(mapUrlSearch(new URLSearchParams("zone=1411"), DEFAULT_URL_STATE).toString()).toBe("zone=1411");
+    expect(parseMapUrl({})).toEqual(DEFAULT_URL_STATE);
+  });
+
+  test("every state round-trips through the address", () => {
+    const states: MapUrlState[] = [
+      { show: only("flight", "dungeon", "herb"), q: "", tab: "categories" },
+      { show: allCategories(false), q: "", tab: "categories" },
+      { show: DEFAULT_CATEGORIES, q: "gadget", tab: "categories" },
+      { show: DEFAULT_CATEGORIES, q: "", tab: "list" },
+      { show: only("zone"), q: "ragefire chasm", tab: "list" },
+      { show: { ...DEFAULT_CATEGORIES, path: false }, q: "", tab: "categories" },
+    ];
+    for (const s of states) expect(read(mapUrlSearch(new URLSearchParams("zone=1411&spoilers=1"), s).toString()), JSON.stringify(s)).toEqual(s);
+  });
+
+  test("show is written in the sidebar's order, as none when nothing is on, and not at all when everything is", () => {
+    expect(showParam(only("herb", "flight", "dungeon"))).toBe("flight,dungeon,herb");
+    expect(showParam(allCategories(false))).toBe("none");
+    expect(showParam(DEFAULT_CATEGORIES)).toBeNull();
+    expect(mapUrlSearch(new URLSearchParams(), { show: only("flight", "dungeon"), q: "", tab: "list" }).toString()).toBe("show=flight%2Cdungeon&view=list");
+  });
+
+  test("the rest of the address stays: zone, spot, camera, pin, spoilers, and the old continent", () => {
+    const base = new URLSearchParams("continent=1&zone=1411&x=52.1&y=43&at=-512,1830&z=1.5&pin=f12&spoilers=1&show=zone&q=old&view=list");
+    const out = mapUrlSearch(base, DEFAULT_URL_STATE);
+    for (const k of ["continent", "zone", "x", "y", "at", "z", "pin", "spoilers"]) expect(out.get(k), k).toBe(base.get(k));
+    for (const k of ["show", "q", "view"]) expect(out.has(k), k).toBe(false);
+    // With the camera added on top, both read back.
+    const search = viewSearch(mapUrlSearch(base, { show: only("raid"), q: "hogger", tab: "categories" }), { x: 1, y: 2, zoom: 1, pin: "e5" });
+    expect(read(search)).toEqual({ show: only("raid"), q: "hogger", tab: "categories" });
+    expect(parseViewState({ at: new URLSearchParams(search).get("at")!, z: "1", pin: new URLSearchParams(search).get("pin")! })).toEqual({ at: [1, 2], zoom: 1, pin: "e5" });
+  });
+
+  test("anything unknown is dropped, so a bad link opens the plain sidebar", () => {
+    expect(parseMapUrl({ show: "bogus,<x>" }).show).toEqual(DEFAULT_CATEGORIES);
+    expect(parseMapUrl({ show: "herb,bogus" }).show).toEqual(only("herb"));
+    expect(parseMapUrl({ view: "grid" }).tab).toBe("categories");
+    expect(parseMapUrl({ q: "  hogger  " }).q).toBe("hogger");
+    expect(parseMapUrl({ q: "x".repeat(200) }).q).toHaveLength(80);
+    expect(parseMapUrl({ show: ["flight", "zone"] }).show).toEqual(only("flight"));
+  });
+
+  test("moving to a zone is a new address with that zone; the old spot, camera and pin go, the rest stays", () => {
+    const base = new URLSearchParams("zone=1411&x=50&y=50&at=1,2&z=1&pin=f1&spoilers=1&show=zone");
+    expect(zoneSearch(base, 1429)).toBe("spoilers=1&show=zone&zone=1429");
+    expect(zoneSearch(base, null)).toBe("spoilers=1&show=zone");
+    expect(parseZoneLink(Object.fromEntries(new URLSearchParams(zoneSearch(base, 1429))))).toBe(1429);
+  });
+});
+
+describe("continent pages and the card's links", () => {
+  test("each continent has its own page, and the slug reads back", () => {
+    expect(continentPath(0)).toBe("/map/eastern-kingdoms");
+    expect(continentPath(1)).toBe("/map/kalimdor");
+    expect(continentPath(7)).toBe("/map");
+    expect(continentFromSlug("eastern-kingdoms")).toBe(0);
+    expect(continentFromSlug("kalimdor")).toBe(1);
+    expect(continentFromSlug("outland")).toBeNull();
+  });
+
+  test("Copy link gives the continent page with the pin, which opens on it", () => {
+    expect(pinHref(1, "f12")).toBe("/map/kalimdor?pin=f12");
+    expect(pinHref(0, "npc-7-1429", true)).toBe("/map/eastern-kingdoms?pin=npc-7-1429&spoilers=1");
+    const pin = new URLSearchParams(pinHref(0, "e-4459.4--1660.2").split("?")[1]).get("pin")!;
+    expect(parseViewState({ pin }).pin).toBe("e-4459.4--1660.2");
+  });
+
+  test("Open page goes where the kind has a page: NPC, vendor, the zone holding an entrance or a spot; a flight master has none", () => {
+    const pages = { 1: "/database/zones/1-open", 3: "/database/zones/3-open-city" };
+    expect(openPageLink({ kind: "npc", npcId: 7, x: 0, y: 0 }, items.zones, pages)).toEqual({ href: "/database/npcs/7", label: "Open NPC page" });
+    expect(openPageLink({ kind: "vendor", npcId: 8, x: 0, y: 0 }, items.zones, pages)).toEqual({ href: "/database/vendors/8", label: "Open vendor page" });
+    expect(openPageLink({ kind: "entrance", x: 150, y: 150 }, items.zones, pages)).toEqual({ href: "/database/zones/3-open-city", label: "Open zone page" });
+    expect(openPageLink({ kind: "spot", x: 500, y: 300 }, items.zones, pages)).toEqual({ href: "/database/zones/1-open", label: "Open zone page" });
+    expect(openPageLink({ kind: "flight", x: 1, y: 1 }, items.zones, pages)).toBeNull();
+    // A held-back zone has no page, and outside every zone there is nothing to open.
+    expect(openPageLink({ kind: "entrance", x: 2050, y: 50 }, items.zones, pages)).toBeNull();
+    expect(openPageLink({ kind: "spot", x: 9000, y: 9000 }, items.zones, pages)).toBeNull();
+  });
+
+  test("a pins answer is read only when it has every list", () => {
+    const body = { ok: true, entrances: [], flightMasters: [], flightLines: [], pins: [], extra: 1 };
+    expect(readPinSet(body)).toEqual({ entrances: [], flightMasters: [], flightLines: [], pins: [] });
+    expect(readPinSet({ ...body, pins: null })).toBeNull();
+    expect(readPinSet(null)).toBeNull();
+    expect(readPinSet("nope")).toBeNull();
   });
 });
 

@@ -1,7 +1,7 @@
 import { expect, test, vi } from "vitest";
 import { LAUNCH } from "@/data/wow-forever";
 import { MAP_DATA_EXTRACTED_AT, TALENT_DATA_EXTRACTED_AT } from "@/lib/build-stamp";
-import { loadTimeline } from "@/lib/changes";
+import { loadTimeline, postPath } from "@/lib/changes";
 import { CLIENT_TAXONOMY, ITEMS_PER_PAGE, itemsHref } from "@/lib/items";
 import { filterItems } from "../../../kb/src/item-taxonomy";
 import sitemap from "./sitemap";
@@ -9,6 +9,8 @@ import sitemap from "./sitemap";
 const facts = vi.hoisted(() => ({ rates: [] as unknown[], names: [] as { installId: string; itemId: number; name: string }[], npcs: [] as unknown[], unreachable: false }));
 const world = vi.hoisted(() => ({ npcs: [] as unknown[], quests: [] as unknown[], vendors: [] as unknown[], unreachable: false }));
 vi.mock("@/lib/rollup-compute", () => ({ loadItemFacts: async () => facts, loadWorldFacts: async () => world }));
+const blue = vi.hoisted(() => ({ writeups: new Map<string, { postId: string; reviewed: { by: string; on: string }; body: string }>() }));
+vi.mock("@/lib/changes", async (importOriginal) => ({ ...(await importOriginal<typeof import("@/lib/changes")>()), loadWriteups: () => blue.writeups }));
 
 const entries = await sitemap();
 const byPath = new Map(entries.map((e) => [new URL(e.url).pathname, e]));
@@ -19,9 +21,28 @@ test("/changes is dated by its newest entry", () => {
   expect(byPath.get("/changes")?.lastModified).toEqual(new Date(newest.at));
 });
 
+test("a blue post's page is listed only once it has a reviewed write-up, dated by the review", async () => {
+  const posts = loadTimeline().filter((e) => e.type !== "build");
+  const listed = (all: typeof entries) => all.map((e) => new URL(e.url).pathname).filter((p) => /^\/changes\/./.test(p) && p !== "/changes/feed.xml");
+  expect(listed(entries)).toEqual([]);
+  const [first, second] = posts;
+  try {
+    blue.writeups = new Map([[first.id, { postId: first.id, reviewed: { by: "Maintainer", on: "2026-10-21" }, body: "Our words." }]]);
+    const withOne = await sitemap();
+    expect(listed(withOne)).toEqual([postPath(first)]);
+    expect(withOne.find((e) => e.url.endsWith(postPath(first)!))?.lastModified).toEqual(new Date("2026-10-21"));
+    expect(listed(withOne)).not.toContain(postPath(second));
+  } finally {
+    blue.writeups = new Map();
+  }
+});
+
 test("the game-data pages are dated by the build extraction", () => {
   expect(TALENT_DATA_EXTRACTED_AT.getTime()).toBeGreaterThan(0);
   expect(byPath.get("/map")?.lastModified).toEqual(MAP_DATA_EXTRACTED_AT);
+  // Both continent pages are indexed pages of their own; no per-zone map page (the zone pages are those).
+  for (const path of ["/map/eastern-kingdoms", "/map/kalimdor"]) expect(byPath.get(path)?.lastModified, path).toEqual(MAP_DATA_EXTRACTED_AT);
+  expect([...byPath.keys()].filter((p) => p.startsWith("/map/")).sort()).toEqual(["/map/eastern-kingdoms", "/map/kalimdor"]);
   for (const path of ["/tools/talents", "/tools/talents/hunter", "/tools/talents/druid", "/tools/raid"]) {
     expect(byPath.get(path)?.lastModified, path).toEqual(TALENT_DATA_EXTRACTED_AT);
   }

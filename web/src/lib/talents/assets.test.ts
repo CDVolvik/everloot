@@ -104,12 +104,19 @@ const root = join(__dirname, "../../../..");
 const SHOWS_ART = new Set([
   "web/src/lib/talents/assets.ts", "web/src/lib/game-assets.ts", "web/src/lib/game-assets.fixture.ts",
   "web/src/components/RaidBuilder.tsx",
-  "web/src/app/page.tsx", "web/src/app/map/page.tsx", "web/src/components/RaidView.tsx", "web/src/app/tools/auctions/page.tsx", "web/src/app/tools/auctions/art.ts",
+  "web/src/app/page.tsx", "web/src/app/map/map-screen.tsx", "web/src/components/RaidView.tsx", "web/src/app/tools/auctions/page.tsx", "web/src/app/tools/auctions/art.ts",
   "web/src/app/tools/professions/page.tsx", "web/src/app/database/drops/page.tsx", "web/src/app/database/items/[id]/page.tsx", "web/src/app/database/items/category-page.tsx",
   "web/src/lib/tooltip.ts", // the embeddable hover card: one item per request
-  "web/src/app/database/vendors/[id]/page.tsx", "web/src/app/database/npcs/[id]/page.tsx", "web/src/app/database/quests/[id]/page.tsx", "web/src/app/changes/page.tsx", "web/src/app/lore/page.tsx", "web/src/lib/spell-mentions.ts", "web/src/app/wow-forever/page.tsx", "web/src/app/tools/talents/page.tsx",
+  "web/src/app/database/vendors/[id]/page.tsx", "web/src/app/database/npcs/[id]/page.tsx", "web/src/app/database/quests/[id]/page.tsx", "web/src/app/changes/page.tsx", "web/src/app/changes/[post]/page.tsx", "web/src/app/lore/page.tsx", "web/src/lib/spell-mentions.ts", "web/src/app/wow-forever/page.tsx", "web/src/app/tools/talents/page.tsx",
   "kb/src/cli.ts", "web/scripts/upload-game-assets.mjs", "web/scripts/game-assets-upload.mjs",
   "web/src/app/database/zones/[zone]/page.tsx",
+  // The spell page: the spell's icon and its text come from the same manifest as the item's.
+  "web/src/app/database/spells/[id]/page.tsx",
+  // The spell list reads the spell names to list them, under the quest list's rule. No art, no tooltip.
+  "web/src/app/database/spells/page.tsx",
+  // The database index reads the spell names for the count beside the link, the way the sitemap reads
+  // the item names only to know whether a category has enough to list. No art, no tooltip.
+  "web/src/app/database/page.tsx",
   // The quest list's reward icons, under the item lists' rule (reported or wiki-named items only).
   "web/src/app/database/quests/page.tsx",
   // The site-wide credit (footer → /methodology#credits): reads only the manifest's build and label, no art.
@@ -119,6 +126,9 @@ const SHOWS_ART = new Set([
   "web/src/lib/shown-item-names.ts", "web/src/app/sitemap.ts", "web/scripts/upload-item-names.mjs",
   // The same names and the quest titles for the site's own search (/search and /search/suggest), never /api/suggest.
   "web/src/lib/shown-search-names.ts",
+  // The hover card on the site's own database links, one entity per request, under the pages' rules; and the
+  // icons beside the item hits of /search and the type-ahead, for the items whose pages show them.
+  "web/src/lib/site-card.ts", "web/src/lib/item-icons.ts",
   // The same names and quest titles for the entity tokens on a wiki page.
   "web/src/lib/wiki-names.ts",
 ]);

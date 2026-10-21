@@ -93,10 +93,10 @@ export default async function QuestListPage(props: { searchParams?: Promise<Sear
   const columns: SparseColumn<QuestRow>[] = [
     { key: "name", header: "Name", sortable: true, cell: (x) => {
       const wiki = !x.title && titleOf(x);
-      // Where a title comes from is its tooltip (and words for a screen reader), never a printed label.
+      // Where a title comes from is in the link's hover card (and words for a screen reader), never a printed label.
       // The screen reader words follow the link, so its text is the title alone.
       return <>
-        <Link href={`/database/quests/${x.questId}`} title={wiki ? GAME_NAME_TITLE.wiki : undefined} className={LINK}>{titleOf(x) ?? `Quest ${x.questId}`}</Link>
+        <Link href={`/database/quests/${x.questId}`} className={LINK}>{titleOf(x) ?? `Quest ${x.questId}`}</Link>
         {wiki && <span className="sr-only"> ({GAME_NAME_TITLE.wiki.toLowerCase()})</span>}
       </>;
     } },
@@ -112,7 +112,7 @@ export default async function QuestListPage(props: { searchParams?: Promise<Sear
           {x.rewards.map((rid) => {
             const icon = tips.get(rid)?.icon;
             return icon
-              ? <Link key={rid} href={`/database/items/${rid}`} title={itemName(rid)} aria-label={itemName(rid)}><GameIcon src={icon} size={24} /></Link>
+              ? <Link key={rid} href={`/database/items/${rid}`} aria-label={itemName(rid)}><GameIcon src={icon} size={24} /></Link>
               : <Link key={rid} href={`/database/items/${rid}`} className={`${LINK} mr-2`}>{itemName(rid)}</Link>;
           })}
         </span>

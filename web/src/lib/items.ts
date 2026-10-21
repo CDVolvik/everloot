@@ -19,6 +19,8 @@ export const NAME_SOURCE = {
   files: "Game files, unconfirmed",
 } as const;
 export type NameSource = keyof typeof NAME_SOURCE;
+/** Where a shown name comes from, as its tooltip says it (docs/DATA_POLICY.md); on a link, the hover card says it. */
+export const NAME_FROM = { players: "Name confirmed by players", wiki: "Name from the Warcraft Wiki" } as const;
 export interface ShownItemName { name: string; source: NameSource; color: string | null; wikiPage: string | null }
 
 /**

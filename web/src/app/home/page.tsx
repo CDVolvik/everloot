@@ -14,6 +14,7 @@ import type { AccountShell } from "@/lib/account-shell-types";
 import { loadAccountShell } from "@/lib/account-shell";
 import { ADD_FROM_COOKIE } from "@/lib/auth/device-accounts";
 import { filterTimeline, loadTimeline, TYPE_LABEL } from "@/lib/changes";
+import { postPath } from "../../../../kb/src/blue-pages";
 import { HOME_REWRITE_HEADER, profilesOn } from "@/lib/profiles";
 import { editPath, type AccountBuilds } from "@/lib/saved-builds";
 import { listOwn } from "@/lib/saved-builds-store";
@@ -164,7 +165,9 @@ export default async function SignedInHome({ searchParams }: { searchParams?: Pr
             {latest.map((e) => (
               <li key={e.id} className="border-b border-line py-1.5">
                 <p className="text-meta text-muted">{TYPE_LABEL[e.type]} · <time dateTime={e.at}>{e.at.slice(0, 10)}</time></p>
-                <a href={e.url ?? "/changes"} rel={e.url ? "noopener" : undefined} className="text-cell text-fg [overflow-wrap:anywhere] hover:text-accent">{e.title}</a>
+                {postPath(e)
+                  ? <Link href={postPath(e)!} className="text-cell text-blue-post [overflow-wrap:anywhere] hover:underline underline-offset-4">{e.title}</Link>
+                  : <Link href="/changes" className="text-cell text-fg [overflow-wrap:anywhere] hover:text-accent">{e.title}</Link>}
               </li>
             ))}
           </ol>

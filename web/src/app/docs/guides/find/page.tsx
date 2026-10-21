@@ -65,11 +65,11 @@ export default function Page() {
       <List>
         <li><strong>Zoom.</strong> Pick a continent at the top of the sidebar. Click a zone to zoom to it, and click a pin for its card. Drag, scroll or pinch to move around, or use the arrow keys, plus and minus.</li>
         <li><strong>Search.</strong> The search box in the sidebar finds a zone, entrance, flight master or NPC.</li>
-        <li><strong>Categories.</strong> The sidebar switches zones, entrances, flight masters, flight paths, NPCs players saw and vendors players saw on and off, each with how many the continent has. Show all and Hide all switch them together. The arrow at the top folds the sidebar away; the map remembers that in your browser.</li>
+        <li><strong>Categories.</strong> The sidebar groups what the map can show: travel, instances, places, services and gathering, each category with how many the zone in view (or the continent) has. Services and gathering fill from addon uploads once 3 installs agree on a place; until then they show 0, and how many places 1 or 2 installs have seen so far. Show all and Hide all switch them together. The arrow at the top folds the sidebar away; the map remembers that in your browser.</li>
         <li><strong>List.</strong> The List tab has everything the map shows, as lists, with a Show on map button on each row. It follows the same category switches.</li>
         <li><strong>On a phone.</strong> The bar along the bottom opens Categories, Search and the List as sheets. Drag a sheet up for the whole screen, or down to close it.</li>
         <li><strong>Coordinates.</strong> Select a pin or zone and use Copy /way on its card. Paste the line into the game chat to set a waypoint, in the form <C>/way 42.5 61 Name</C>.</li>
-        <li><strong>Links.</strong> The address keeps your view, so a link opens the same place.</li>
+        <li><strong>Links.</strong> Each continent has its own page, <Link href="/map/eastern-kingdoms" className={docLink}>Eastern Kingdoms</Link> and <Link href="/map/kalimdor" className={docLink}>Kalimdor</Link>. The address keeps your view, the categories shown, an open search and the List tab, so a link opens the same place; Copy link on a card links that one pin. Back returns from a zone to the continent.</li>
       </List>
       <Callout kind="warning">
         <p>

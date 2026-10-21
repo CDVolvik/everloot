@@ -43,12 +43,14 @@ test("a spell's own relations name its profession and link to the profession pag
   expect(html).toContain(">Blacksmithing<");
 });
 
-test("a relation target named from the name files: players first, a wiki title with its tooltip, a game-file name with the quiet marker", () => {
+test("a relation target named from the name files: players first, a wiki title (its source in the hover card), a game-file name with the quiet marker", () => {
   const reward: Edge = { ...client(2862, "reward_from", "quest", 176), evidence: "observed", build: null, installs: 3 };
   const gameName = (kind: Edge["toKind"], id: number) =>
     kind === "quest" && id === 176 ? { name: "Wanted: Hogger", source: "wiki" as const } : kind === "spell" && id === 2660 ? { name: "Rough Sharpening Stone", source: "files" as const } : undefined;
   const quest = renderToStaticMarkup(<RelationTarget edge={reward} rel="reward_from" client={edges} gameName={gameName} />);
-  expect(quest).toContain('title="Name from the Warcraft Wiki">Wanted: Hogger</a>');
+  // The link's hover card says where the title comes from; no plain title doubles it.
+  expect(quest).toContain('<a href="/database/quests/176">Wanted: Hogger</a>');
+  expect(quest).not.toContain("title=");
   expect(quest).toContain('class="sr-only"> (name from the warcraft wiki)');
   expect(quest).not.toContain("data-badge");
   // A title players agree on wins, with no tooltip of the wiki's.

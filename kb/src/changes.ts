@@ -1,5 +1,8 @@
+import { postPath } from "./blue-pages.js";
 import type { BlueGame, BluePost, BlueRegion } from "./blue-posts.js";
 import { clampExcerpt, clampText, isoTime, safeHttpUrl } from "./text-safety.js";
+
+export { postIdOfSegment, postPageId, postPath } from "./blue-pages.js";
 
 /**
  * "What changed in the game": official blue posts and game builds in one list, newest first.
@@ -204,11 +207,17 @@ export function entryDescription(e: ChangeEntry): string {
   return `${lead}${e.excerpt ? `"${e.excerpt}" ` : ""}From ${by || "Blizzard"} on ${e.category || e.source}. Read the original post for the full text.`.trim();
 }
 
-/** RSS 2.0 of the timeline. Every item links to the original post, or to the changes page for a build. */
+/**
+ * RSS 2.0 of the timeline. A post's item links to its page on Everloot and names the original in its
+ * description; a build's links to its diff, or to the changes page.
+ */
 export function renderFeed(entries: ChangeEntry[], site: { baseUrl: string; now: Date; limit?: number }): string {
   const base = site.baseUrl.replace(/\/$/, "");
   const items = entries.slice(0, site.limit ?? 50).map((e) => {
-    const link = safeHttpUrl(e.url) ?? safeHttpUrl(e.diffUrl) ?? `${base}/changes${e.type === "build" ? "?show=builds" : ""}`;
+    const page = postPath(e);
+    const original = safeHttpUrl(e.url);
+    const link = page ? `${base}${page}` : original ?? safeHttpUrl(e.diffUrl) ?? `${base}/changes${e.type === "build" ? "?show=builds" : ""}`;
+    const description = `${entryDescription(e)}${page && original ? ` Original: ${original}` : ""}`;
     return [
       "    <item>",
       `      <title>${xml(clean(`${TYPE_LABEL[e.type]}: ${e.title}`))}</title>`,
@@ -216,7 +225,7 @@ export function renderFeed(entries: ChangeEntry[], site: { baseUrl: string; now:
       `      <guid isPermaLink="false">${xml(e.id)}</guid>`,
       `      <pubDate>${new Date(e.at).toUTCString()}</pubDate>`,
       `      <category>${xml(TYPE_LABEL[e.type])}</category>`,
-      `      <description>${xml(clean(entryDescription(e)))}</description>`,
+      `      <description>${xml(clean(description))}</description>`,
       "    </item>",
     ].join("\n");
   });
@@ -227,7 +236,7 @@ export function renderFeed(entries: ChangeEntry[], site: { baseUrl: string; now:
     "    <title>Everloot: what changed in WoW: Forever</title>",
     `    <link>${xml(`${base}/changes`)}</link>`,
     `    <atom:link href="${xml(`${base}/changes/feed.xml`)}" rel="self" type="application/rss+xml"/>`,
-    "    <description>Official Blizzard posts and new game builds for WoW: Forever, newest first. Each item links to Blizzard's original.</description>",
+    "    <description>Official Blizzard posts and new game builds for WoW: Forever, newest first. Each post links to its page on Everloot, which links Blizzard's original.</description>",
     "    <language>en-us</language>",
     `    <lastBuildDate>${(entries[0] ? new Date(entries[0].at) : site.now).toUTCString()}</lastBuildDate>`,
     ...items,

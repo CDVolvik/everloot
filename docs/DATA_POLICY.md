@@ -222,7 +222,7 @@ another version of the game, not something Forever has yet to reveal. The game f
 their own: in build 1.60.1.70450, 19,219 of the 19,231 named items, new ones included, list the base game
 as their expansion (`ItemSparse.ExpansionID` 0), so the expansion is not used. The rules:
 
-- Each such name says where it comes from in a tooltip on the name, *Name from the Warcraft Wiki* (and in words for screen readers), and
+- Each such name says where it comes from in a tooltip on the name, *Name from the Warcraft Wiki* (and in words for screen readers; on a link, the tooltip is the link's hover card), and
   the site-wide footer credits the Warcraft Wiki under CC BY-SA 4.0 beside Blizzard's credit, and
   `/methodology#credits` names the Warcraft Wiki contributors. A name
   3 installs agree on comes first, with the tooltip *Name confirmed by players*. No source label is printed beside a name.
@@ -273,7 +273,7 @@ infobox's name, or the page title where the infobox has none, kept as the wiki w
 the wiki's own note, such as "(Alliance, 55)". The rules:
 
 - As with item names, a title 3 installs agree on comes first. A wiki title says where it comes from in
-  a tooltip on the title, *Name from the Warcraft Wiki* (and in words for screen readers); on the quest
+  a tooltip on the title, *Name from the Warcraft Wiki* (and in words for screen readers; on a link, in the link's hover card); on the quest
   page it also carries the quiet unconfirmed marker. No source label is printed beside it. The
   footer credit reads "Item and quest names from the Warcraft Wiki (CC BY-SA 4.0)".
 - Only quests below id 10,000, the original game's range (`SHOWN_MAX_QUEST_ID` in
@@ -375,8 +375,11 @@ Blizzard's version service reports.
 
 - *Excerpts only.* For each post we keep the title, the author and role, the time, the category,
   an excerpt of at most two sentences (300 characters) and a link to the original. The text is
-  Blizzard's, so we never copy a post in full. A maintainer may add a one-line summary in our own
-  words; nothing writes one automatically.
+  Blizzard's, so we never copy a post in full. Each post has its own page on Everloot
+  (`/changes/<id>-<slug>`) with those fields, the excerpt marked as Blizzard's words, and the link.
+  A maintainer may add a write-up in our own words on that page (`kb/curated/blue-writeups/`),
+  reviewed before it is published; it never repeats more of the post than the excerpt, and nothing
+  writes one automatically. A page without a write-up is not indexed by search engines.
 - *Sources.* Forum posts come from the US and EU English WoW forums, only from the WoW: Forever and
   WoW Classic categories, and only from Blizzard staff: people on each forum's published staff list
   (`about.json`) or posts the forum itself marks as Blizzard's (its group tracker; the green MVP
