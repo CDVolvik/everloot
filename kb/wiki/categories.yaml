@@ -1,0 +1,72 @@
+# The wiki's categories: a controlled list. A page may use only the slugs below (npm run kb -- wiki-check).
+# Three groups, each mapping a slug to the name a category page shows. Add a category in the same pull
+# request as the first page that needs it. Places are the continents and released zones of the game files.
+# Licence: CC BY-SA 4.0 (same as the rest of the published dataset).
+
+place:
+  eastern-kingdoms: Eastern Kingdoms
+  kalimdor: Kalimdor
+  # Eastern Kingdoms
+  alterac-mountains: Alterac Mountains
+  arathi-highlands: Arathi Highlands
+  badlands: Badlands
+  blasted-lands: Blasted Lands
+  burning-steppes: Burning Steppes
+  deadwind-pass: Deadwind Pass
+  dun-morogh: Dun Morogh
+  duskwood: Duskwood
+  eastern-plaguelands: Eastern Plaguelands
+  elwynn-forest: Elwynn Forest
+  hillsbrad-foothills: Hillsbrad Foothills
+  ironforge: Ironforge
+  loch-modan: Loch Modan
+  redridge-mountains: Redridge Mountains
+  searing-gorge: Searing Gorge
+  silverpine-forest: Silverpine Forest
+  stormwind-city: Stormwind City
+  stranglethorn-vale: Stranglethorn Vale
+  swamp-of-sorrows: Swamp of Sorrows
+  the-hinterlands: The Hinterlands
+  tirisfal-glades: Tirisfal Glades
+  undercity: Undercity
+  western-plaguelands: Western Plaguelands
+  westfall: Westfall
+  wetlands: Wetlands
+  # Kalimdor
+  ashenvale: Ashenvale
+  azshara: Azshara
+  darkshore: Darkshore
+  darnassus: Darnassus
+  desolace: Desolace
+  durotar: Durotar
+  dustwallow-marsh: Dustwallow Marsh
+  felwood: Felwood
+  feralas: Feralas
+  moonglade: Moonglade
+  mulgore: Mulgore
+  orgrimmar: Orgrimmar
+  silithus: Silithus
+  stonetalon-mountains: Stonetalon Mountains
+  tanaris: Tanaris
+  teldrassil: Teldrassil
+  the-barrens: The Barrens
+  thousand-needles: Thousand Needles
+  thunder-bluff: Thunder Bluff
+  un-goro-crater: "Un'Goro Crater"
+  winterspring: Winterspring
+
+kind:
+  dungeons: Dungeons
+  raids: Raids
+  zones: Zones
+  npcs: Notable characters
+  factions: Factions
+  item-sets: Item sets
+  events: Events
+  concepts: Concepts
+  forever-changes: Forever changes
+  classes: Classes
+  races: Races
+
+# Themes are added when a page needs one.
+theme: {}

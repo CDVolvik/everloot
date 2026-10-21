@@ -39,6 +39,8 @@ import { openPublicSnapshot } from "./public-snapshot.js";
 import { search } from "./search.js";
 import { snapshot } from "./snapshot.js";
 import { validate } from "./validate.js";
+import { checkWiki } from "./wiki/check.js";
+import { loadCategories, loadKnownData, loadPrivatePathPattern, readWikiPages, WIKI_DIR } from "./wiki/data.js";
 
 /** The committed changes data and the tracked accounts, found from this file so the cwd does not matter. */
 const CHANGES_DIR = fileURLToPath(new URL("../changes/", import.meta.url));
@@ -139,6 +141,10 @@ const USAGE = `usage: npm run kb -- <command> --db <path>
     nothing else. --check only says whether there is work. See docs/BUILD_WATCH.md)
   audit-sources <file.sqlite...>   (rows per source and cached API rows in each file; exits 1 if anything
     is not publishable)
+  wiki-check [--dir <kb>/wiki]
+    (the wiki's page check: front matter, ids and slugs, categories, bindings and tokens against the committed
+    game data and the shown id ranges, [[links]], hand-typed gameplay numbers, section order, credit fields,
+    the index bar for published pages, private paths and AI credits. Exits 1 on any problem. See wiki/README.md)
 
   A source database and a public release are different artifacts. The serve commands accept only a
   release: an existing file plus its <release>.manifest.json, opened read-only and checked against
@@ -558,6 +564,15 @@ async function main(): Promise<number> {
         if (audit.unexpected.length) clean = false;
       }
       return clean ? 0 : 1;
+    }
+    case "wiki-check": {
+      const dir = flags.get("dir") || WIKI_DIR;
+      const result = checkWiki(readWikiPages(dir), { categories: loadCategories(dir), known: loadKnownData(), privatePaths: loadPrivatePathPattern() });
+      for (const p of result.problems) console.error(`${p.file}${p.line ? `:${p.line}` : ""}: ${p.message}`);
+      const published = result.pages.filter((p) => p.fm.status === "published").length;
+      console.log(`${result.pages.length} pages (${published} published, ${result.pages.length - published} draft), ${result.problems.length} problems`);
+      console.log("checked against the game files: items, zones, entrances, item sets, /changes entries; npc, quest, faction, race, class, event and LFG dungeon ids by shape and shown range only");
+      return result.problems.length ? 1 : 0;
     }
     case "snapshot":
       if (!args[0]) break;
