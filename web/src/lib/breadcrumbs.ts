@@ -36,6 +36,7 @@ const NAMES: Record<string, string> = {
   "/database/factions": "Factions",
   "/database/titles": "Titles",
   "/database/quest-chains": "Quest chains",
+  "/database/spells": "Spell lookup",
   "/addons": "Addons",
   "/addons/popular": "Popular addons",
   "/addons/ecosystem": "Addon tracker",
