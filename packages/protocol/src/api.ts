@@ -49,11 +49,11 @@ export const pageSchema = z.object({
 });
 export type Page = z.infer<typeof pageSchema>;
 
-/** GET /api/corpus/public: public records without install ids, optionally only some kinds. */
+/** GET /api/corpus/public: public records with per-install pseudonyms in place of install ids, optionally only some kinds. */
 export const corpusPublicResponse = z.object({
   ok: z.literal(true),
   uploads: z.number().int().nonnegative(),
-  records: z.array(z.record(z.string(), z.unknown())).describe("Records of the public kinds, each without its installId. Shapes: schema/records/<kind>.json."),
+  records: z.array(z.record(z.string(), z.unknown())).describe("Records of the public kinds. installId holds a per-install pseudonym (pub- and 32 hex), never the addon's install id, so installs can be counted; it is absent when the server has no key to make one. Shapes: schema/records/<kind>.json."),
   dataAsOf: ISO_TIME.nullish().describe("When these records were current. Null or absent when unrecorded, never \"now\"."),
   kinds: z.array(z.enum(PUBLIC_RECORD_KINDS as [string, ...string[]])).optional().describe("Present when the request asked for some kinds."),
   legacyRecords: z.number().int().nonnegative().optional(),

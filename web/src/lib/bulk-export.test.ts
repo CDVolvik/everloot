@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { API_SCHEMAS, bulkIndex, corpusPublicResponse, dropsResponse, edgesResponse, itemsResponse, type BulkDataset } from "@everloot/protocol";
+import { API_SCHEMAS, bulkIndex, corpusPublicResponse, dropsResponse, edgesResponse, itemsResponse, parseRecords, type BulkDataset } from "@everloot/protocol";
 import { z } from "zod";
 
 const store = vi.hoisted(() => ({ loadCorpus: vi.fn(), loadMarket: vi.fn(), loadCompletion: vi.fn() }));
@@ -26,7 +26,7 @@ beforeEach(() => {
   store.loadMarket.mockReset().mockResolvedValue({ state: null, dataAsOf: null });
   store.loadCompletion.mockReset().mockResolvedValue(null);
 });
-afterEach(() => rmSync(dir, { recursive: true, force: true }));
+afterEach(() => { rmSync(dir, { recursive: true, force: true }); vi.unstubAllEnvs(); });
 
 function lines(name: string): Record<string, unknown>[] {
   return readFileSync(join(dir, name), "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l) as Record<string, unknown>);
@@ -52,7 +52,7 @@ test("every file's rows are rows of the API response it names, and the index val
   }
 });
 
-test("observed files leave without install ids and follow the three-install rule; game-file files carry the notice", async () => {
+test("without a key observed files leave without install ids and follow the three-install rule; game-file files carry the notice", async () => {
   const index = await exportBulk(dir);
   const corpus = lines("corpus.ndjson");
   expect(corpus.length).toBe(records.length);
@@ -79,4 +79,17 @@ test("unreachable storage leaves the observed files out and says so; the game-fi
   expect(datasets).not.toContain("drops");
   expect(datasets).toEqual(["edges", "items"]);
   expect(index.files.find((f) => f.name === "edges.ndjson")).toMatchObject({ data: "game-files", attribution: null });
+});
+
+test("with a key the corpus file carries one pseudonym per install, never the install id, and its rows parse", async () => {
+  vi.stubEnv("EVERLOOT_CHARACTER_KEY", "k".repeat(32));
+  await exportBulk(dir);
+  const corpus = lines("corpus.ndjson");
+  const ids = corpus.map((r) => r.installId as string);
+  for (const id of ids) expect(id).toMatch(/^pub-[0-9a-f]{32}$/);
+  expect(new Set(ids).size).toBe(3);
+  expect(ids[0]).toBe(ids[1]);
+  const parsed = parseRecords(corpus);
+  expect(parsed.receipt.rejected).toEqual([]);
+  expect(parsed.records).toHaveLength(records.length);
 });

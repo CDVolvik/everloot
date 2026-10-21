@@ -21,7 +21,7 @@
         },
         "additionalProperties": {}
       },
-      "description": "Records of the public kinds, each without its installId. Shapes: schema/records/<kind>.json."
+      "description": "Records of the public kinds. installId holds a per-install pseudonym (pub- and 32 hex), never the addon's install id, so installs can be counted; it is absent when the server has no key to make one. Shapes: schema/records/<kind>.json."
     },
     "dataAsOf": {
       "description": "When these records were current. Null or absent when unrecorded, never \"now\".",

@@ -46,7 +46,9 @@ scans do, and it is never published. Corroborated, these are Everloot's own data
 any player upload.
 
 Uploaded observations are public as individual, anonymous records, with no character names and
-without the addon's install id, so anyone can check our counts. The facts the site states itself, such as drop rates, spawn points and recipe
+without the addon's install id. Each record carries a per-install pseudonym instead (`pub-` and 32 hex
+characters, a keyed hash of the install id that cannot be turned back into it), so anyone can count
+installs and check our counts. The facts the site states itself, such as drop rates, spawn points and recipe
 ranges, appear only once at least three installs have reported them. Addon lists are the
 exception to public records: they are never published row by row, only as counts for addons that
 at least three installs report. Guild data is published only through an officer's

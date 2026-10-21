@@ -1,19 +1,15 @@
 import { NextResponse } from "next/server";
 import { PUBLIC_RECORD_KINDS as PUBLIC_KINDS } from "@everloot/protocol";
 import { admit, attribution, attributionHeaders, badPage, pageOf, pageRequest } from "@/lib/data-guard";
+import { published, publicInstallSecret } from "@/lib/public-install";
 import { uploadStore } from "@/lib/upload-store";
 import { recordUsage } from "@/lib/usage-metrics";
 export const dynamic = "force-dynamic";
 
-/**
- * Records leave the site without their install id, so nobody can link one player's observations.
- * The site's own pages and MCP endpoints read the corpus in process and keep it for corroboration.
+/*
+ * Records leave the site with a per-install pseudonym in place of the addon's install id (lib/public-install.ts),
+ * so anyone can count installs without learning the id. The site's own pages and MCP endpoints read the corpus in process.
  */
-function published<T extends object>(record: T): Omit<T, "installId"> {
-  const copy = { ...record } as Record<string, unknown>;
-  delete copy.installId;
-  return copy as Omit<T, "installId">;
-}
 
 const NO_STORE = { "Cache-Control": "no-store" };
 
@@ -36,9 +32,10 @@ export async function GET(req: Request) {
   const corpus = await uploadStore.loadCorpus();
   if (corpus.unreachable) return NextResponse.json({ ok: false, error: "Public corpus unavailable." }, { status: 503, headers: NO_STORE });
   const wanted = new Set(kinds ?? PUBLIC_KINDS);
+  const secret = publicInstallSecret();
   const { items, page } = pageOf(req, corpus.records.filter((r) => wanted.has(r.kind)), at);
   return NextResponse.json(
-    { ok: true, ...corpus, ...(kinds ? { kinds } : {}), records: items.map(published), ...page, attribution: attribution("/database") },
+    { ok: true, ...corpus, ...(kinds ? { kinds } : {}), records: items.map((r) => published(r, secret)), ...page, attribution: attribution("/database") },
     { headers: { ...NO_STORE, ...attributionHeaders() } },
   );
 }

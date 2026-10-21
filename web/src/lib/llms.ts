@@ -194,7 +194,7 @@ export function llmsFullTxt(entries: ChangeEntry[] = loadTimeline()): string {
     ...MCP_PROMPTS.map((p) => `- ${p.name}: ${p.text}`),
     "",
     "## Public corpus API",
-    `GET ${CORPUS_URL}. Raw records in bulk; for answering questions the MCP server above is the right tool. Optional ?kinds= takes a comma-separated list of: ${PUBLIC_RECORD_KINDS.join(", ")}. Records carry no install id. ${corpusAccess()} Each response carries the licence and credit line in an attribution field and in X-Everloot-Licence, X-Everloot-Credit and Link headers. Credit: ${CREDIT_LINE}`,
+    `GET ${CORPUS_URL}. Raw records in bulk; for answering questions the MCP server above is the right tool. Optional ?kinds= takes a comma-separated list of: ${PUBLIC_RECORD_KINDS.join(", ")}. Records carry a per-install pseudonym (pub- and 32 hex) in place of the install id, so installs can be counted. ${corpusAccess()} Each response carries the licence and credit line in an attribution field and in X-Everloot-Licence, X-Everloot-Credit and Link headers. Credit: ${CREDIT_LINE}`,
     "",
     "## Relations API",
     `GET ${url("/api/edges")}. One row per relation: fromKind, fromId, rel, toKind, toId, evidence (observed or client), build, installs, firstSeen, lastSeen. Filters: from_kind, from_id, to_kind, to_id, rel, evidence; with none, the whole table pages like the corpus API. Observed rows follow the 3-install rule and carry ${CREDIT_LINE} Client rows are found in game files, unconfirmed, stamped with their build, and carry a gameData notice: Blizzard's data, not under Everloot's licence. ${url("/api/edges/client-layer")} returns the current build's whole game-file layer in one file.`,

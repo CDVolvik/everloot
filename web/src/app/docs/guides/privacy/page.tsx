@@ -41,7 +41,7 @@ export default function Page() {
 
       <H2 id="published">What is published</H2>
       <List>
-        <li>Your anonymous observations are published as individual records, without character names and without the install id, so anyone can check our counts. They are under CC BY-SA 4.0, credited to Everloot contributors.</li>
+        <li>Your anonymous observations are published as individual records, without character names and without the install id. Each carries a per-install pseudonym instead, a keyed hash that cannot be turned back into the id, so anyone can check our counts. They are under CC BY-SA 4.0, credited to Everloot contributors.</li>
         <li>The facts the site states, such as drop rates, spawn points and recipe ranges, appear only after at least 3 installs report them. Distinct install ids do not prove independent players.</li>
         <li>Full auction scans are not public records. They feed market values, and a value is published when 3 distinct reporters scanned the item.</li>
         <li>Character names appear in three places only: named records their owner shares with a grant (gear, gold, collection), guild boards a guild&apos;s officers publish, and <a href="#player-pages" className={docLink}>player pages</a>.</li>
