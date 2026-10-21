@@ -5,6 +5,7 @@ import { observedEdges, type Edge } from "../../../kb/src/edges";
 import type { ItemFacts } from "../../../kb/src/item-page";
 import { craftedItemsFromRecords } from "../../../kb/src/item-source";
 import { instanceFactsFromRecords, type InstanceFacts } from "../../../kb/src/instances";
+import { lootTablesFromRecords, type LootTables } from "../../../kb/src/loot-tables";
 import { objectSightingRowsFromRecords, type ObjectSpawnRow } from "../../../kb/src/object-spawns";
 import { worldFactsFromRecords, type WorldFacts } from "../../../kb/src/world-pages";
 import { lootWindowsFromRecords, rollupDrops, type RollupResult } from "./rollups";
@@ -38,6 +39,8 @@ interface AggregateSet {
   crafted: Set<number>;
   addons: AddonRollup;
   edges: Edge[];
+  /** The NPC loot and item-source tables, with each source's windows, installs and dates. */
+  loot: LootTables;
 }
 
 /**
@@ -81,6 +84,7 @@ async function loadAggregates(): Promise<AggregateSet | null> {
       // Addon rows dated after the corpus was current are ignored, so one forged clock cannot set "last seen".
       addons: popularAddonsFromRecords(corpus.records, corpus.dataAsOf ?? new Date()),
       edges: observedEdges(corpus.records, corpus.dataAsOf ?? new Date()),
+      loot: lootTablesFromRecords(corpus.records, corpus.dataAsOf ?? null),
     };
   }
   return memoized;
@@ -136,6 +140,13 @@ export async function loadObservedEdges(): Promise<{ edges: Edge[]; unreachable:
   const agg = await loadAggregates();
   if (!agg) return { edges: [], unreachable: true, dataAsOf: null };
   return { edges: agg.edges, unreachable: false, dataAsOf: agg.dataAsOf };
+}
+
+/** Loot windows per source and item, with their installs and dates (kb/src/loot-tables.ts), and the corpus time. */
+export async function loadLootTables(): Promise<{ tables: LootTables; unreachable: boolean; dataAsOf: string | null }> {
+  const agg = await loadAggregates();
+  if (!agg) return { tables: { sources: new Map(), leftOut: 0 }, unreachable: true, dataAsOf: null };
+  return { tables: agg.loot, unreachable: false, dataAsOf: agg.dataAsOf };
 }
 
 /** The addon leaderboard: only addons three installs report, as counts with no install ids. */

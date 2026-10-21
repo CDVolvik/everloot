@@ -5,13 +5,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { npcPage, npcTraits, type NpcPin, type NpcRank } from "../../../../../../kb/src/world-pages";
 import { pendingForNpc, pendingLine } from "../../../../../../kb/src/pending-loot";
-import type { DropRateRow } from "../../../../../../kb/src/item-page";
-import { computeRollups, loadWorldFacts } from "@/lib/rollup-compute";
+import { npcLootTable } from "../../../../../../kb/src/loot-tables";
+import { computeRollups, loadLootTables, loadWorldFacts } from "@/lib/rollup-compute";
 import { pinLink, WORLD_MAP } from "@/lib/world-map";
 import { zoneByMapId, zoneHref } from "@/lib/zones";
 import { trailFor } from "@/lib/breadcrumbs";
 import { Container, DataTable, Facts, InShort, OpenData, Tabs, TooltipFrame, type Column } from "@/components/ui";
-import { EmptyTab, EntityHeader, EntityTop, FREQUENCY, known, LINK, percent, Unreachable } from "../../entity";
+import { EmptyTab, EntityHeader, EntityTop, known, LINK, Unreachable } from "../../entity";
+import { NpcLootPanel } from "../../loot-tables";
 import { entitySummary, observedLine } from "@/lib/evidence";
 import { loadItemFacts } from "@/lib/rollup-compute";
 import { itemNames } from "@/lib/names";
@@ -108,13 +109,9 @@ export default async function NpcPage(props: { params: Promise<{ id: string }> }
   const tips = await loadItemTips(assets, dropped.map((row) => row.itemId));
   const art = zone ? assets?.maps.find((m) => m.kind === "zone" && m.uiMapId === zone.mapId && !m.heldBack) : undefined;
   const lore = !unreachable && page.name ? loreForEntity("npc", page.name) : null;
-  const dropColumns: Column<DropRateRow>[] = [
-    { key: "item", header: "Item", cell: (r) => <EntityLink kind="item" id={r.itemId} name={names.get(r.itemId) ?? tips.get(r.itemId)?.name} icon={tips.get(r.itemId)?.icon} /> },
-    { key: "windows", header: "Loot windows", numeric: true, cell: (r) => r.kills },
-    { key: "drops", header: "Item observations", numeric: true, cell: (r) => r.drops },
-    { key: "rate", header: FREQUENCY, numeric: true, cell: (r) => percent(r.rate) },
-    { key: "installs", header: "Install IDs", numeric: true, cell: (r) => r.reporters },
-  ];
+  // The loot table with each number's windows, installs and dates; its public rows are the rates above.
+  const loot = await loadLootTables();
+  const lootTable = npcLootTable(loot.tables, npcId);
   const trail = [...trailFor("/database/npcs")!, { name: title, path: `/database/npcs/${npcId}` }];
   const named = title !== `NPC ${npcId}`;
   // The page in three lines: where it is, what players reported, and where the name came from.
@@ -170,9 +167,12 @@ export default async function NpcPage(props: { params: Promise<{ id: string }> }
               id: "drops", label: "Drops", count: unreachable ? undefined : dropped.length,
               panel: unreachable ? <Unreachable />
                 : <>
-                  {dropped.length ? <DataTable dense caption={`What ${title} drops`} columns={dropColumns} rows={dropped} rowKey={(r) => String(r.itemId)} />
-                    : zero ? <p className="py-3 text-meta text-fg">No items observed in {zero.kills} recorded loot windows. {zero.reporters} install IDs.</p>
-                    : <EmptyTab message="Nobody has looted this NPC in Forever yet." />}
+                  <NpcLootPanel
+                    table={lootTable}
+                    title={title}
+                    dataAsOf={loot.dataAsOf}
+                    item={(itemId) => <EntityLink kind="item" id={itemId} name={names.get(itemId) ?? tips.get(itemId)?.name} icon={tips.get(itemId)?.icon} />}
+                  />
                   {pending}
                 </>,
             },
