@@ -1,8 +1,8 @@
 /**
  * Item icon ids and item tooltip facts from the client's item tables, in shards the site reads on demand.
  * Pure: it takes a table reader and writes nothing. Only what the tables give is recorded. What they do
- * not give (stat amounts, armor, damage: the client works those out from tables we do not read) is left
- * out, and the site shows `[?]` for it.
+ * not give (stat amounts and armor: the client works those out from tables we do not read) is left out,
+ * and the site shows `[?]` for it.
  *
  * Tables, with column names from WoWDBDefs:
  * - ItemSparse: name (Display_lang), flavour text (Description_lang), OverallQualityID, ItemLevel,
@@ -10,6 +10,11 @@
  *   and the stat kinds of the item (StatModifier_bonusStat). StatPercentEditor is a share of a budget
  *   the client computes, not an amount, so no amount is recorded.
  * - Item: IconFileDataID, ClassID and SubclassID.
+ * - ItemDamage*: a weapon's damage per second by item level and quality. In 1.60.1 ItemSparse has no
+ *   MinDamage/MaxDamage; the client works a weapon's damage out from this value, the weapon speed and
+ *   ItemSparse.DmgVariance. Those inputs are recorded as the tables give them (`w`), not the damage:
+ *   which table goes with which weapon kind (weaponDamageTable) and the client's rounding still have to
+ *   be checked against the game's own tooltips for a few weapons before the site prints "N - M Damage".
  *
  * The numbers for quality, binding, slot, class and subclass are the client's own enumerations (the
  * WoWDev wiki documents them); the names for them are in item-names.ts of the web app.
@@ -49,6 +54,39 @@ export interface ItemRecord {
   t?: string;
   /** Icon file data id, set only after the icon file was extracted. */
   i?: number;
+  /** Weapon damage inputs; omitted when the item is not a weapon or the build has no row for it. */
+  w?: WeaponDamageInputs;
+}
+
+/** What the client works a weapon's damage out from, as the tables give it. */
+export interface WeaponDamageInputs {
+  /** The ItemDamage table the value came from. */
+  t: string;
+  /** That table's damage per second for the item's level and quality. */
+  dps: number;
+  /** ItemSparse.DmgVariance. */
+  dv: number;
+  /** ItemSparse.DamageType: the damage school, 0 physical. */
+  ds: number;
+}
+
+/** ITEM_FLAG2_CASTER_WEAPON, in the second Flags word. */
+const CASTER_WEAPON = 0x200;
+
+/**
+ * The ItemDamage table a weapon's damage per second is read from, by inventory type and weapon subclass:
+ * the retail client's choice for one-hand, two-hand and ammo, and the Ranged, Thrown and Wand tables 1.60.1
+ * adds for those kinds. Null for anything else.
+ */
+export function weaponDamageTable(inventoryType: number, subclass: number | null, caster: boolean): string | null {
+  switch (inventoryType) {
+    case 13: case 21: case 22: return caster ? "ItemDamageOneHandCaster" : "ItemDamageOneHand";
+    case 17: return caster ? "ItemDamageTwoHandCaster" : "ItemDamageTwoHand";
+    case 15: case 26: return subclass === 19 ? "ItemDamageWand" : subclass === 2 || subclass === 3 || subclass === 18 ? "ItemDamageRanged" : null;
+    case 25: return "ItemDamageThrown";
+    case 24: return "ItemDamageAmmo";
+    default: return null;
+  }
 }
 
 const num = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) ? v : 0);
@@ -67,6 +105,12 @@ export function buildItemSet(get: TableReader, only?: ReadonlySet<number>): Item
   if (!sparse || !item) throw new Error("the snapshot has no ItemSparse and Item tables; run `client-extract --refresh` first");
   const records = new Map<number, ItemRecord>();
   const iconOf = new Map<number, number>();
+  // Damage per second by table and item level: the Quality column, one value per quality.
+  const damage = new Map<string, Map<number, unknown[]>>();
+  const damageAt = (table: string, level: number): unknown[] | undefined => {
+    if (!damage.has(table)) damage.set(table, new Map(list(get(table)).map((r) => [num(r.ItemLevel), Array.isArray(r.Quality) ? r.Quality : []])));
+    return damage.get(table)!.get(level);
+  };
   for (const row of list(sparse)) {
     const id = num(row.ID);
     const name = text(row.Display_lang);
@@ -83,6 +127,10 @@ export function buildItemSet(get: TableReader, only?: ReadonlySet<number>): Item
       d: num(row.ItemDelay), st, sp: num(row.SellPrice), u: num(row.MaxCount),
     };
     if (flavour) record.t = flavour;
+    const flags = Array.isArray(row.Flags) ? row.Flags.map(num) : [];
+    const table = record.c === 2 || record.s === 24 ? weaponDamageTable(record.s, record.sc, ((flags[1] ?? 0) & CASTER_WEAPON) !== 0) : null;
+    const dps = table ? damageAt(table, record.l)?.[record.q] : undefined;
+    if (table && typeof dps === "number" && dps > 0) record.w = { t: table, dps, dv: num(row.DmgVariance), ds: num(row.DamageType) };
     records.set(id, record);
     const icon = base ? num(base.IconFileDataID) : 0;
     if (icon > 0) iconOf.set(id, icon);

@@ -29,6 +29,9 @@ const WEAPON: Record<number, string> = {
   13: "Fist Weapon", 14: "Miscellaneous", 15: "Dagger", 16: "Thrown", 18: "Crossbow", 19: "Wand", 20: "Fishing Pole",
 };
 const ARMOR: Record<number, string> = { 1: "Cloth", 2: "Leather", 3: "Mail", 4: "Plate", 6: "Shield", 7: "Libram", 8: "Idol", 9: "Totem" };
+/** Armor subclasses that carry an armor value (cloth to plate, shields), and the slots that never do (shirt, tabard). */
+const ARMORED = new Set([1, 2, 3, 4, 6]);
+const NO_ARMOR_SLOT = new Set([4, 19]);
 
 const STAT: Record<number, string> = {
   1: "Health", 3: "Agility", 4: "Strength", 5: "Intellect", 6: "Spirit", 7: "Stamina", 12: "Defense Rating", 13: "Dodge Rating",
@@ -48,11 +51,11 @@ export interface ItemTipText {
   quality: string;
   /** The tooltip's lines under the name, in the game's order. */
   lines: string[];
-  /** True when a line holds the placeholder for a value the tables do not give (stat amounts). */
+  /** True when a line holds the placeholder for a value the tables do not give (damage, armor, stat amounts). */
   partial: boolean;
 }
 
-/** The tooltip of an item as the game lays it out, from what the record holds. Stat amounts are not in the tables: `[?]`. */
+/** The tooltip of an item as the game lays it out, from what the record holds. Damage, armor and stat amounts are not in the tables: `[?]`. */
 export function itemTipText(r: ItemRecord): ItemTipText {
   const lines: string[] = [];
   if (BINDING[r.b]) lines.push(BINDING[r.b]);
@@ -60,7 +63,15 @@ export function itemTipText(r: ItemRecord): ItemTipText {
   const slot = SLOT[r.s];
   const k = kind(r.c, r.sc);
   if (slot || k) lines.push([slot, k].filter(Boolean).join(" · "));
-  if (r.d > 0) lines.push(`Speed ${(r.d / 1000).toFixed(2)}`);
+  // A weapon's damage is not in the 1.60.1 item tables (the client works it out from ItemDamage*), so its
+  // damage and per-second lines carry the placeholder; the speed sits beside the damage, as in the game.
+  const weapon = r.c === 2 && r.d > 0;
+  const speed = r.d > 0 ? `Speed ${(r.d / 1000).toFixed(2)}` : null;
+  if (weapon) lines.push(`${PLACEHOLDER} - ${PLACEHOLDER} Damage · ${speed}`, `(${PLACEHOLDER} damage per second)`);
+  else if (speed) lines.push(speed);
+  // Cloth, leather, mail, plate and shields always carry armor in the game; its amount is not in the tables either.
+  const armor = r.c === 4 && r.sc !== null && ARMORED.has(r.sc) && !NO_ARMOR_SLOT.has(r.s);
+  if (armor) lines.push(`${PLACEHOLDER} Armor`);
   // A stat kind this file has no word for is left out rather than printed as "unknown stat 51".
   const stats = r.st.filter((s) => STAT[s]);
   for (const s of stats) lines.push(`+${PLACEHOLDER} ${STAT[s]}`);
@@ -68,5 +79,5 @@ export function itemTipText(r: ItemRecord): ItemTipText {
   if (r.l > 0) lines.push(`Item Level ${r.l}`);
   if (r.t) lines.push(`"${r.t}"`);
   if (r.sp > 0) lines.push(`Sell Price: ${formatCopper(r.sp)}`);
-  return { name: r.n, quality: QUALITY_NAMES[r.q] ?? `quality ${r.q}`, lines, partial: stats.length > 0 };
+  return { name: r.n, quality: QUALITY_NAMES[r.q] ?? `quality ${r.q}`, lines, partial: stats.length > 0 || weapon || armor };
 }

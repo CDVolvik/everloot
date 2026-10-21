@@ -14,6 +14,11 @@ import { sha256File } from "./snapshot.js";
  */
 export const CLIENT_TABLES = {
   ItemSparse: 1572924, Item: 841626, SpellName: 1990283, Spell: 1140089,
+  // Weapon damage per second by item level, one column per quality and one table per weapon kind. ItemSparse
+  // in 1.60.1 has no MinDamage/MaxDamage, so the client works a weapon's damage out from these and DmgVariance.
+  ItemDamageOneHand: 1277743, ItemDamageOneHandCaster: 1277739, ItemDamageTwoHand: 1277738,
+  ItemDamageTwoHandCaster: 1277742, ItemDamageRanged: 6156256, ItemDamageThrown: 6156257, ItemDamageWand: 6156258,
+  ItemDamageAmmo: 1277740,
   // Talents: the trait system, and what ties a tree to a class and its three talent groups.
   TraitTree: 4420305, TraitNode: 4420297, TraitNodeEntry: 4420298, TraitDefinition: 4420327, TraitEdge: 4420308,
   TraitCond: 4543085, TraitNodeGroup: 4420300, TraitNodeGroupXTraitNode: 4420302, TraitNodeXTraitNodeEntry: 4420304,
