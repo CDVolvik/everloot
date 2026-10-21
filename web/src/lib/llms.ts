@@ -10,6 +10,7 @@ import { ANON_PAGE, ANON_PER_HOUR, guardOn } from "@/lib/data-guard";
 import { CREDIT_LINE } from "@everloot/protocol";
 import { SITE_URL } from "@/lib/seo";
 import { TALENT_CLASSES } from "@/lib/talents/catalogs";
+import { RANKINGS, rankingPath } from "@/lib/rankings";
 
 /**
  * /llms.txt and /llms-full.txt are generated here from the same lists the site reads (the tool catalog, the MCP
@@ -23,6 +24,8 @@ const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
 const PAGES: { title: string; path: string; text: string }[] = [
   { title: "What is WoW: Forever", path: "/wow-forever", text: "The launch date quoted from Blizzard's announcement with its source and the date it was checked, and the latest game build Everloot has seen." },
   { title: "Census", path: "/census", text: "Who plays what: factions, races, classes, race and class, and level bands, from players who turned the census on. Each character counts once; a count shows from 10 characters reported by 3 installs, rounded to the nearest 5." },
+  { title: "Rankings", path: "/rankings", text: "WoW: Forever week by week from the census: the top classes, races and the faction balance, each with its change against last week." },
+  ...RANKINGS.map((r) => ({ title: `Rankings: ${r.title}`, path: rankingPath(r.slug), text: `${r.lede} Ranked by census counts under the same rule, with a weekly chart.` })),
   { title: "Patch notes and Blizzard posts", path: "/changes", text: "New game builds, hotfixes and Blizzard blue posts, newest first, with links to Blizzard's originals. A build's date is when Everloot first saw it." },
   { title: "World map", path: "/map", text: "Zones and dungeon and raid entrances read from the game files, drawn by Everloot with no game art. Found in game files, unconfirmed." },
   { title: "Addons", path: "/addons", text: "Addons and tools made for WoW: Forever, ranked by GitHub stars, as a leaderboard or cards." },
