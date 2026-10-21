@@ -20,6 +20,9 @@ Pull requests merged to `main` are listed in the nightly pre-releases until the 
   form. The search index stays off for now, so the pages are reached by name and are not listed anywhere.
 
 ### Added
+- Knowledge base: `npm run kb -- name-gaps`, a local report of the items, quests, item sets and spells that
+  still print as an id, each with the reason and what would fill it (a rule decision, the addon's uploads, or no
+  source yet). Ids only, never names.
 - Site: the data layer for linking a character to an account, off by default. A signed-in player gets a code
   (live 15 minutes, good once), and a `character_link` row with that code is sent to `/api/me/characters/links`
   from the site or with an API key that has the new `link:own` scope. The GUID is replaced by a keyed hash, the

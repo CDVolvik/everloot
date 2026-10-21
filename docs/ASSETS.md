@@ -291,6 +291,16 @@ repeat these steps for a new build or another deployment.
    It prints the counts and writes `quest-names.json`, `item-set-names.json` and `spell-names.json` beside
    `item-names.json`. Upload each one with the same script, dry run first. Without them, the pages read
    "Quest N", "item set N" and "spell N".
+
+   To see what is still unnamed and why, run the gap report with the same two files:
+
+   ```
+   npm run kb -- name-gaps data/client/<product>-<build>-<config>.sqlite --wiki data/release/<release>.sqlite --out data/name-gaps.md
+   ```
+
+   For items, quests, item sets and spells it counts the ids the rules name and gives every other id a
+   reason and a route: a rule only the maintainer can widen, the addon's uploads, no source yet, or a
+   placeholder hidden on purpose. It lists ids, never names, and writes no name file; keep it local.
 9. **Next build.** Repeat steps 5 to 8 with the new build. Check the counts against the last run
    before uploading; a jump in `iconsEncrypted`, `tooltipsUnresolved`, `mapsSkipped` or
    `loadingScreensSkipped`, or `logoExtracted` falling to 0, means Blizzard changed something.
