@@ -9,6 +9,7 @@
  */
 import { GAME_DATA_CREDIT, MCP_CREDIT, RELS, type EntityKind, type Rel } from "@everloot/protocol";
 import { INDEPENDENT_INSTALLS, lootWindowsFromRecords, rollupDrops } from "./drop-rollup.js";
+import { isPinPosition } from "./world-pages.js";
 
 export const EDGE_SCHEMA = "everloot.edges/1";
 export const CLIENT_LABEL = "Found in game files, unconfirmed";
@@ -145,7 +146,7 @@ export function observedEdges(records: unknown[], dataAsOf: string | Date): Edge
       }
     }
     if (r.kind === "quest" && id(r.questId)) for (const item of ids(r.rewardItemIds)) touch(`reward|${id(r.questId)}|${item}`, r.installId, r.capturedAt);
-    if (r.kind === "npc_sighting" && r.positionKind === "npc" && id(r.npcId) && typeof r.mapId === "number" && Number.isInteger(r.mapId) && r.mapId >= 0) {
+    if (r.kind === "npc_sighting" && isPinPosition(r.positionKind) && id(r.npcId) && typeof r.mapId === "number" && Number.isInteger(r.mapId) && r.mapId >= 0) {
       touch(`zone|${id(r.npcId)}|${r.mapId}`, r.installId, r.capturedAt);
     }
   }
