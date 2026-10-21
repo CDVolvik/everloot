@@ -60,6 +60,7 @@ export function questGaps(build: string, questIds: number[], titles: Parameters<
   return tally("quest", "Quests", questIds, (id) => {
     if (disagree.has(id)) return ["wiki pages differ (the first one's title shows)", "shown"];
     if (file.names[String(id)]) return ["wiki title", "shown"];
+    if (titles.has(id)) return ["wiki title a Forever source contradicts", "players"];
     return ["no wiki title (the game files hold none)", "players"];
   });
 }

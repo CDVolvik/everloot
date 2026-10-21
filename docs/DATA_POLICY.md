@@ -298,12 +298,18 @@ few carry the wiki's own note, such as "(Alliance, 55)". The rules:
   renamed in a later version, say), the first page's title shows and the run lists the id for review. A quest
   the wiki lacks keeps "Quest N" until players title it, and a wiki title for an id the build does not list is
   never shown.
+- Where a Forever-era source names a quest differently from the wiki, the wiki title is held
+  (`CONTESTED_QUEST_IDS`, 9 quests found on 2026-10-21 against Polestar's guides) until players confirm
+  one. The other source's title is never shown.
+- `QuestV2` lists only quests with a completion bit (every row has a `UniqueBitFlag`), so repeatable
+  quests such as Additional Runecloth or the Scourgestone turn-ins are not in it and never get a wiki
+  title. Their pages and titles come from player uploads alone.
 - Pages only. The data downloads, the API and the MCP server carry no quest titles from this file; a
   test checks that their code does not read it.
 - A maintainer makes the file with `npm run kb -- game-names`, into the same private storage as the item
   names, never git or the public asset bucket. Unlike the item names it keeps no ledger: it is rebuilt
-  from the snapshot and the dump each run. In build 1.60.1.70450: 6,614 quest ids, 3,238 titled (47 of them
-  where the pages disagree) and 3,376 the wiki lacks.
+  from the snapshot and the dump each run. In build 1.60.1.70450: 6,614 quest ids, 3,229 titled (47 of them
+  where the pages disagree), 9 held as contested and 3,376 the wiki lacks.
 
 **Item set and spell names from the game files.** *Proposed 2026-10-20; decided 2026-10-21
 by Carlos, and widened the same day to every set and spell the files name.* The names of item sets

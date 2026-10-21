@@ -26,7 +26,7 @@ test("a quest title shows where the build lists the id and the wiki gives a titl
     33: { n: "Wolves Across the Border", w: "Wolves_Across_the_Border" }, 176: { n: "Wanted: Hogger", w: "Wanted:_Hogger" },
     185: { n: "Tiger Mastery", w: "Tiger_Mastery_(Classic)" }, 10000: { n: "Later Quest", w: "Later_Quest" },
   });
-  expect(counts).toEqual({ quests: 5, match: 3, mismatch: 1, files: 1 });
+  expect(counts).toEqual({ quests: 5, match: 3, mismatch: 1, files: 1, held: 0 });
   expect(mismatches).toEqual([{ id: 185, wiki: ["Tiger Mastery", "Tiger Hunting"] }]);
   // A wiki title for an id the build does not list (26329) is never shown.
   expect(file.names["26329"]).toBeUndefined();
@@ -48,6 +48,9 @@ test("the rule: any id, any name that is not empty", () => {
     expect(may(0, "Linen Bandage")).toBe(false);
     expect(may(1, " ")).toBe(false);
   }
+  // A wiki title a Forever source contradicts waits for players.
+  expect(mayShowQuestTitle(8415, "Chillwind Camp")).toBe(false);
+  expect(mayShowQuestTitle(8414, "Dispelling Evil")).toBe(true);
 });
 
 function fixtures() {

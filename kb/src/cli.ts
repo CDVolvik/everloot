@@ -536,7 +536,7 @@ async function main(): Promise<number> {
       const run = runGameNames({ snapshotPath: args[0], kbPath, outDir: flags.get("out") || "data/assets" });
       const q = run.quests.counts;
       console.log(`build ${run.build}, wiki dump ${run.wikiDump} (${run.wikiQuestIds} quest ids with a title)`);
-      console.log(`quests: ${q.quests} in QuestV2; ${q.match} with one wiki title, ${q.mismatch} where wiki pages disagree, ${q.files} the wiki lacks`);
+      console.log(`quests: ${q.quests} in QuestV2; ${q.match} with one wiki title, ${q.mismatch} where wiki pages disagree, ${q.files} the wiki lacks; held back ${q.held} a Forever source contradicts`);
       console.log(`wiki pages that disagree (the first page's title is shown), first 15 of ${run.quests.mismatches.length}:`);
       for (const m of run.quests.mismatches.slice(0, 15)) console.log(`  ${m.id}: "${m.wiki.join('" | "')}"`);
       for (const [label, r] of [["item sets", run.sets], ["spells", run.spells]] as const) console.log(`${label}: ${r.counts.ids} in the files, ${r.counts.named} named`);

@@ -78,7 +78,7 @@ export function wikiQuestTitles(kbPath: string): { dump: string; wiki: ShownName
  */
 export function shownQuestNames(version: string, questIds: Iterable<number>, wikiTitles: WikiTitles, wiki: ShownNames["wiki"]) {
   const names: ShownQuestNames["names"] = {};
-  const counts = { quests: 0, match: 0, mismatch: 0, files: 0 };
+  const counts = { quests: 0, match: 0, mismatch: 0, files: 0, held: 0 };
   const mismatches: { id: number; wiki: string[] }[] = [];
   for (const id of [...questIds].sort((a, b) => a - b)) {
     counts.quests += 1;
@@ -93,6 +93,7 @@ export function shownQuestNames(version: string, questIds: Iterable<number>, wik
     } else counts.match += 1;
     const page = pages[0]!;
     if (mayShowQuestTitle(id, page.name)) names[String(id)] = { n: page.name, w: page.page.slice(WIKI_PAGE_PREFIX.length) };
+    else counts.held += 1;
   }
   const file: ShownQuestNames = { schema: QUEST_NAMES_SCHEMA, build: { version }, wiki, count: Object.keys(names).length, names };
   return { file, counts, mismatches };
