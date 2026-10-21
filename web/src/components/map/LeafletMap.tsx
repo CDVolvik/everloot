@@ -4,10 +4,9 @@
 // (x east, y south), so Leaflet's latitude is minus y. Loaded only on /map, through next/dynamic with ssr off.
 import * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import "./world-map.css";
 import { useEffect, useRef } from "react";
 import {
-  labelFontPx, placeLabels, zoneArtShown, type ArtImage, type Box, type LabelCandidate, type MapArtLayer, type MapItems, type MapZone,
+  labelFontPx, placeLabels, zoneArtShown, type ArtImage, type Box, type InitialView, type LabelCandidate, type MapArtLayer, type MapItems, type MapZone,
 } from "@/lib/map-view";
 import { reducedMotion } from "@/lib/motion";
 
@@ -30,7 +29,7 @@ export interface LeafletMapProps {
   selectedId: string | null;
   marker: MapMarker | null;
   /** Where to open: a box to fit, or a centre and a zoom from the address. */
-  initial: { fit: Box } | { x: number; y: number; zoom: number };
+  initial: InitialView;
   request: FitRequest | null;
   onSelect: (id: string | null) => void;
   onZone: (mapId: number) => void;
@@ -107,13 +106,13 @@ export default function LeafletMap(props: LeafletMapProps) {
     m.setMaxBounds(limit);
     zoomButtons(m).addTo(m);
     m.getContainer().setAttribute("role", "group");
-    m.getContainer().setAttribute("aria-label", `${p.name} map. Arrow keys pan, plus and minus zoom. The same items are listed below the map.`);
+    m.getContainer().setAttribute("aria-label", `${p.name} map. Arrow keys pan, plus and minus zoom. The same items are in the List tab.`);
     for (const [pane, z] of [["art", 210], ["flights", 420], ["labels", 650]] as const) {
       const pn = m.createPane(pane);
       pn.style.zIndex = String(z);
       if (pane !== "art") pn.style.pointerEvents = "none";
     }
-    // The picture drawn on the map is for the eyes; every item on it is in the list under the map.
+    // The picture drawn on the map is for the eyes; every item on it is in the List tab.
     for (const pane of ["overlayPane", "markerPane", "labels", "flights", "art"]) m.getPane(pane)?.setAttribute("aria-hidden", "true");
     groups.current = {
       art: L.layerGroup().addTo(m), zones: L.layerGroup().addTo(m), flights: L.layerGroup().addTo(m),

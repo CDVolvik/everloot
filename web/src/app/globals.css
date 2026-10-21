@@ -54,10 +54,13 @@ body:has([data-banner]) {
   }
 }
 
-/* The map fills the screen: its page lifts the column's width limit and keeps the header's side margins. */
-#main-content:has([data-map-page]) {
-  max-width: none;
-  padding-top: 1rem;
+/* The map fills the screen under the header (components/WorldMapView.tsx), like chat: the page does not scroll and
+   the footer stays off it. Its sidebar carries the footer's credit line instead. */
+body:has([data-map-shell]) {
+  overflow: hidden;
+}
+body:has([data-map-shell]) > footer {
+  display: none;
 }
 
 /* Chat fills the screen under the header (components/chat/ChatClient.tsx): the page itself does not scroll,

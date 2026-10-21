@@ -134,11 +134,7 @@ export default function Footer() {
           <p data-site-dates>
             The beta runs until {longDate(BETA.endsOn)}, and the game launches {longDate(LAUNCH.date)}.
           </p>
-          {/* The site-wide credit: it stands in for a per-page credit line (docs/DATA_POLICY.md). */}
-          <p data-site-credit>
-            Game data and art &copy; Blizzard Entertainment · Everloot data CC BY-SA 4.0 · Item and quest names from the Warcraft Wiki
-            (CC BY-SA 4.0) · <Link href="/methodology#credits" className="text-fg-2 underline underline-offset-4 hover:text-accent transition-colors">Credits</Link>
-          </p>
+          <SiteCredit />
           <p>
             &copy; {year} {OPERATOR}. Code AGPL-3.0.
             {sha && <> Build <a href={sourceUrl()} rel="noopener" className="font-mono hover:text-accent transition-colors">{sha.slice(0, 7)}</a>.</>}
@@ -148,6 +144,19 @@ export default function Footer() {
         </div>
       </div>
     </footer>
+  );
+}
+
+/**
+ * The site-wide credit: it stands in for a per-page credit line (docs/DATA_POLICY.md). The footer carries it, and
+ * so does the map's sidebar, because the full-screen map has no footer.
+ */
+export function SiteCredit() {
+  return (
+    <p data-site-credit>
+      Game data and art &copy; Blizzard Entertainment · Everloot data CC BY-SA 4.0 · Item and quest names from the Warcraft Wiki
+      (CC BY-SA 4.0) · <Link href="/methodology#credits" className="text-fg-2 underline underline-offset-4 hover:text-accent transition-colors">Credits</Link>
+    </p>
   );
 }
 

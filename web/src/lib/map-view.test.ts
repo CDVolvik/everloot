@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import {
-  DEFAULT_LAYERS, DEFAULT_SPOILERS, labelFontPx, mapHref, parseDeepLink, parseViewState, parseZoneLink, placeLabels, searchMap, viewSearch,
-  visibleItems, wayCommand, zoneHref, zoneSpot, type MapItems,
+  allLayers, DEFAULT_LAYERS, DEFAULT_SPOILERS, initialView, labelFontPx, LAYER_IDS, layerCounts, mapHref, parseDeepLink, parseViewState, parseZoneLink,
+  placeLabels, searchMap, SPOT_SPAN, spotBox, viewSearch, visibleItems, wayCommand, zoneHref, zoneSpot, type MapItems,
 } from "./map-view";
 
 const items: MapItems = {
@@ -59,6 +59,62 @@ describe("layers and the spoiler switch", () => {
     const copy = JSON.stringify(items);
     visibleItems(items, DEFAULT_LAYERS, false);
     expect(JSON.stringify(items)).toBe(copy);
+  });
+
+  test("Show all and Hide all switch every layer", () => {
+    expect(allLayers(true)).toEqual(DEFAULT_LAYERS);
+    expect(Object.values(allLayers(false))).toEqual(LAYER_IDS.map(() => false));
+    expect(visibleItems(items, allLayers(false), true)).toEqual({ zones: [], entrances: [], pins: [], flightMasters: [], flightLines: [] });
+  });
+});
+
+describe("category counts", () => {
+  test("each layer counts what it would show on the continent, held-back items only with spoilers on", () => {
+    expect(layerCounts(items, false)).toEqual({ zones: 2, entrances: 1, flightMasters: 1, flightPaths: 1, npcs: 1, vendors: 1 });
+    expect(layerCounts(items, true)).toEqual({ zones: 3, entrances: 1, flightMasters: 2, flightPaths: 2, npcs: 2, vendors: 1 });
+  });
+
+  test("flight masters count by name, as the list shows them: two nodes on one spot are one row", () => {
+    const twin = { ...items, flightMasters: [...items.flightMasters, { id: "f3", name: "Open Post", x: 1, y: 1, heldBack: false }] };
+    expect(layerCounts(twin, false).flightMasters).toBe(1);
+  });
+});
+
+describe("where a link opens the map", () => {
+  const base = { x: -5000, y: -5000, width: 10000, height: 10000 };
+  const none: { at: [number, number] | null; zoom: number | null; pin: string | null } = { at: null, zoom: null, pin: null };
+  const open = (view: Partial<typeof none>, marker: { x: number; y: number } | null = null, zoneId: number | null = null) =>
+    initialView({ base, items, view: { ...none, ...view }, marker, zoneId });
+
+  test("a plain /map fits the continent", () => {
+    expect(open({})).toEqual({ fit: base });
+  });
+
+  test("?zone= alone fits the zone; an unknown zone fits the continent", () => {
+    expect(open({}, null, 3)).toEqual({ fit: items.zones[2] });
+    expect(open({}, null, 99)).toEqual({ fit: base });
+  });
+
+  test("?zone=&x=&y= opens on the spot, before the zone", () => {
+    expect(open({}, { x: 500, y: 250 }, 1)).toEqual({ fit: spotBox(500, 250) });
+    expect(spotBox(500, 250)).toEqual({ x: 500 - SPOT_SPAN / 2, y: 250 - SPOT_SPAN / 2, width: SPOT_SPAN, height: SPOT_SPAN });
+  });
+
+  test("?pin= opens on the pin: an entrance, a flight master or a player-seen NPC; an unknown pin falls through", () => {
+    expect(open({ pin: "ee" })).toEqual({ fit: spotBox(5, 5) });
+    expect(open({ pin: "f1" })).toEqual({ fit: spotBox(1, 1) });
+    expect(open({ pin: "v1" })).toEqual({ fit: spotBox(0, 0) });
+    expect(open({ pin: "zz" }, null, 1)).toEqual({ fit: items.zones[0] });
+  });
+
+  test("?at=&z= wins over everything else; at without z does not", () => {
+    expect(open({ at: [10, 20], zoom: 1.5, pin: "f1" }, { x: 1, y: 1 }, 1)).toEqual({ x: 10, y: 20, zoom: 1.5 });
+    expect(open({ at: [10, 20] })).toEqual({ fit: base });
+  });
+
+  test("an old address read by parseViewState opens the same view", () => {
+    const view = parseViewState({ at: "-512,1830", z: "1.5", pin: "fm12" });
+    expect(initialView({ base, items, view, marker: null, zoneId: null })).toEqual({ x: -512, y: 1830, zoom: 1.5 });
   });
 });
 

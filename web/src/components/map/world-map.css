@@ -1,5 +1,50 @@
 /* The world map's look, on top of Leaflet's own stylesheet. Colours are the design tokens. */
 
+/* The full-screen shell (components/WorldMapView.tsx). A desk: the sidebar is a 320 px column beside the map, and
+   collapsed it is a 48 px rail. */
+@media (min-width: 768px) {
+  [data-map-shell][data-collapsed] [data-map-panel],
+  [data-map-shell]:not([data-collapsed]) [data-map-rail] {
+    display: none;
+  }
+}
+/* A phone: the sidebar is a bottom sheet over the map, just above the bar, half the screen tall or all of it once
+   dragged up. Search opens it with the field and its results only. */
+@media (max-width: 767.98px) {
+  [data-map-panel] {
+    position: fixed;
+    inset-inline: 0;
+    bottom: calc(3.5rem + env(safe-area-inset-bottom));
+    z-index: 20;
+    height: 50dvh;
+    border-top: 1px solid rgb(var(--edge));
+    border-radius: 12px 12px 0 0;
+  }
+  [data-map-panel][data-full] {
+    height: calc(100dvh - 2.75rem - 3.5rem - env(safe-area-inset-bottom));
+  }
+  [data-map-panel]:not([data-open]),
+  [data-map-panel][data-mode="search"] [data-map-view] {
+    display: none;
+  }
+}
+/* The sheet slides up (300 ms) and back down faster (200 ms), as the account sheet does; under reduced motion it
+   just appears. */
+@media (max-width: 767.98px) and (prefers-reduced-motion: no-preference) {
+  [data-map-panel] {
+    transition: transform var(--dur-sheet) var(--ease-drawer), display var(--dur-sheet) allow-discrete;
+  }
+  @starting-style {
+    [data-map-panel][data-open] {
+      transform: translateY(100%);
+    }
+  }
+  [data-map-panel]:not([data-open]) {
+    transform: translateY(100%);
+    transition: transform var(--dur-panel) var(--ease-out), display var(--dur-panel) allow-discrete;
+  }
+}
+
 .wm-map {
   background: rgb(var(--panel));
   font: inherit;
