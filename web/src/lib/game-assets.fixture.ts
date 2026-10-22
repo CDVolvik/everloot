@@ -56,8 +56,8 @@ export const itemIndex = {
 };
 
 export const shard0 = {
-  "9": { n: "Linen Cloth", q: 1, l: 5, r: 0, b: 0, s: 0, c: 7, sc: 5, d: 0, st: [], sp: 13, u: 0, i: 132889 },
-  "25": { n: "Worn Shortsword", q: 3, l: 2, r: 5, b: 2, s: 13, c: 2, sc: 7, d: 1900, st: [7, 4], sp: 7, u: 1, t: "Old." },
+  "9": { n: "Linen Cloth", q: 1, l: 5, r: 0, b: 0, s: 0, c: 7, sc: 5, d: 0, st: [], sp: 13, u: 0, i: 132889, cr: [], rq: [], fx: [] },
+  "25": { n: "Worn Shortsword", q: 3, l: 2, r: 5, b: 2, s: 13, c: 2, sc: 7, d: 1900, st: [7, 4], sp: 7, u: 1, t: "Old.", cr: [], rq: [], fx: [] },
 };
 
 /** A private bucket in memory: path -> JSON. Records what was asked for. */

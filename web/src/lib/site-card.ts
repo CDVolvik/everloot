@@ -1,7 +1,7 @@
 import type { TooltipType } from "@everloot/protocol";
 import { categoryOf } from "../../../kb/src/item-taxonomy";
 import { loadItemTips, loadQuestNames, loadSiteAssets } from "./game-assets";
-import { PLACEHOLDER } from "./item-names";
+import { tipLines } from "./item-names";
 import { CLIENT_LAYER, CLIENT_TAXONOMY, NAME_FROM, shownItemName } from "./items";
 import { loadShownNames } from "./shown-item-names";
 import { loadTooltip, NO_QUEST_TITLE } from "./tooltip";
@@ -58,7 +58,7 @@ async function itemCard(id: number): Promise<SiteCardResult> {
   const category = categoryOf(CLIENT_TAXONOMY, id);
   // As the item page's box: the game's lines, else the type and slot from the client layer.
   const lines = tip
-    ? [...tip.lines, ...(tip.partial ? [`${PLACEHOLDER} marks a value the game files do not give us yet.`] : [])]
+    ? tipLines(tip)
     : [category?.subclass?.name ?? category?.class?.label, category?.slot?.name].filter((l): l is string => Boolean(l));
   // The quality colour only where a name is shown, as on the item page; "Item N" stays plain.
   const quality = name && category?.quality && category.quality.id <= 5 ? category.quality.id : null;

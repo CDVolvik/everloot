@@ -15,6 +15,7 @@ import { Badge, Container, DataTable, EvidenceLine, Facts, InShort, OpenData, QU
 import { categoryOf } from "../../../../../../kb/src/item-taxonomy";
 import { edgesFrom, evidenceLabel, type Edge, type Rel } from "../../../../../../kb/src/edges";
 import { CLIENT_LAYER, CLIENT_TAXONOMY, itemsHref, shownItemName, subclassLabel as labelOf } from "@/lib/items";
+import { tipLines } from "@/lib/item-names";
 import type { Crumb } from "@/lib/jsonld";
 import { loadNames, nameOf } from "@/lib/names";
 import { loreForEntity } from "@/lib/lore";
@@ -203,7 +204,7 @@ export default async function ItemPage(props: Props) {
   ];
 
   const tooltipLines = tip
-    ? [...tip.lines, ...(tip.partial ? ["[?] marks a value the game files do not give us yet."] : [])]
+    ? tipLines(tip)
     : [category?.subclass?.name ?? category?.class?.label, category?.slot?.name].filter((l): l is string => Boolean(l));
   // The quality colour only where the name is shown from players or the wiki: an id nobody reported stays plain.
   const shownQuality = name ? quality : undefined;

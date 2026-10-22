@@ -39,21 +39,26 @@ test("an item card carries the page's name, the licence and the page URL, and pa
 });
 
 test("the game files' tooltip text and icon come with their label and build, and the Blizzard credit", async () => {
-  mocks.tips.mockResolvedValue(new Map([[19019, { name: "Thunderfury", color: "#ff8000", quality: "Legendary", icon: "https://assets.everloot.app/b/icons/1.webp", lines: ["Binds when picked up", '"Blessed Blade"'], partial: true, label: "x" }]]));
+  mocks.tips.mockResolvedValue(new Map([[19019, { name: "Thunderfury", color: "#ff8000", quality: "Legendary", icon: "https://assets.everloot.app/b/icons/1.webp", lines: ["Binds when picked up", '"Blessed Blade"'], partial: true, why: [], label: "x" }]]));
   const body = tooltipResponse.parse(await (await call("item", "19019")).json());
   expect(body).toMatchObject({ color: "#ff8000", icon: "https://assets.everloot.app/b/icons/1.webp", partial: true, gameData: { label: "Found in game files, unconfirmed", build: "70450" } });
   expect(body.gameData?.credit).toContain("Blizzard");
   expect(body.lines).toEqual(expect.arrayContaining(["Binds when picked up", '"Blessed Blade"']));
 });
 
-test("a tooltip line with no fact reads [?], never a blank: stat amounts, restrictions, the set and the Equip/Use lines", async () => {
+test("a tooltip line with no fact reads [?], never a blank, and the card says why", async () => {
+  // Without the game files every line is a placeholder, and the last line says the files are not available.
   const bare = tooltipResponse.parse(await (await call("item", "19019")).json());
-  expect(bare.lines).toEqual(["Stats: [?]", "Restrictions: [?]", "Set: [?]", "Equip and Use: [?]", "[?] marks a value the game files do not give us yet."]);
+  expect(bare.lines).toEqual(["Stats: [?]", "Restrictions: [?]", "Set: [?]", "Equip and Use: [?]", "[?] The game files the card reads are not available right now."]);
   expect(bare.partial).toBe(true);
-  // With the files' own stat lines, the amounts stay on them and get no line of their own.
-  mocks.tips.mockResolvedValue(new Map([[19019, { name: "Thunderfury", color: "#ff8000", quality: "Legendary", icon: null, lines: ["One-Hand · Sword", "+[?] Agility"], partial: true, label: "x" }]]));
+  // With them, the card carries the files' lines and the reasons the tooltip gives for its placeholders, nothing more.
+  mocks.tips.mockResolvedValue(new Map([[19019, { name: "Thunderfury", color: "#ff8000", quality: "Legendary", icon: null, lines: ["One-Hand · Sword", "+[?] Agility", "Set: Synthetic Battlegear"], partial: true, why: ["[?] stat amounts: reason."], label: "x" }]]));
   const withStats = tooltipResponse.parse(await (await call("item", "19019")).json());
-  expect(withStats.lines).toEqual(["One-Hand · Sword", "+[?] Agility", "Restrictions: [?]", "Set: [?]", "Equip and Use: [?]", "[?] marks a value the game files do not give us yet."]);
+  expect(withStats.lines).toEqual(["One-Hand · Sword", "+[?] Agility", "Set: Synthetic Battlegear", "[?] stat amounts: reason."]);
+  expect(withStats.partial).toBe(true);
+  // A tooltip with nothing unknown is not partial.
+  mocks.tips.mockResolvedValue(new Map([[19019, { name: "Thunderfury", color: "#ff8000", quality: "Legendary", icon: null, lines: ["Quest Item"], partial: false, why: [], label: "x" }]]));
+  expect(tooltipResponse.parse(await (await call("item", "19019")).json())).toMatchObject({ lines: ["Quest Item"], partial: false });
   for (const line of [...bare.lines, ...withStats.lines]) expect(line.trim()).not.toMatch(/(^|:)$/);
 });
 
