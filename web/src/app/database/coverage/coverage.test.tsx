@@ -98,7 +98,7 @@ test("the expected file is read from the private bucket for this build only, cou
 });
 
 test("the cron writer skips a run that added nothing and writes coverage/<build>.json otherwise", async () => {
-  const fetcher = vi.fn(async () => new Response(null, { status: 200 }));
+  const fetcher = vi.fn<typeof fetch>(async () => new Response(null, { status: 200 }));
   const cloud = { r2AccountId: "acct", r2AccessKeyId: "k", r2SecretAccessKey: "s", r2Bucket: "b", supabaseUrl: "https://x", supabaseServiceKey: "y" };
   expect(await writeCoverage({ added: 0 }, { cloud, fetch: fetcher })).toEqual({ written: false });
   expect(fetcher).not.toHaveBeenCalled();
@@ -106,7 +106,7 @@ test("the cron writer skips a run that added nothing and writes coverage/<build>
   store.loadCorpus.mockResolvedValue(corpus(westfall));
   const result = await writeCoverage({ added: 2 }, { cloud, fetch: fetcher });
   expect(result).toMatchObject({ written: true, key: `coverage/${COVERAGE_BUILD}.json` });
-  const sent = fetcher.mock.calls[0]![0] as unknown as Request;
+  const sent = fetcher.mock.calls[0]![0] as Request;
   expect(sent.method).toBe("PUT");
   expect(sent.url).toBe(`https://acct.r2.cloudflarestorage.com/b/coverage/${COVERAGE_BUILD}.json`);
   const body = JSON.parse(await sent.text());
