@@ -754,6 +754,94 @@
               },
               "kind": {
                 "type": "string",
+                "const": "item_fact"
+              },
+              "itemId": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "fact": {
+                "type": "string",
+                "enum": [
+                  "armor",
+                  "block",
+                  "damage_per_second",
+                  "health",
+                  "mana",
+                  "agility",
+                  "strength",
+                  "intellect",
+                  "spirit",
+                  "stamina",
+                  "defense_rating",
+                  "dodge_rating",
+                  "parry_rating",
+                  "block_rating",
+                  "hit_rating",
+                  "crit_rating",
+                  "haste_rating",
+                  "expertise_rating",
+                  "resilience_rating",
+                  "attack_power",
+                  "mana_regeneration",
+                  "spell_power",
+                  "holy_resistance",
+                  "fire_resistance",
+                  "nature_resistance",
+                  "frost_resistance",
+                  "shadow_resistance",
+                  "arcane_resistance"
+                ],
+                "description": "Which tooltip line the value is (`ITEM_FACTS`)."
+              },
+              "value": {
+                "type": "number",
+                "minimum": -10000,
+                "maximum": 10000,
+                "description": "The number on that line. A whole number, except damage_per_second, which has one decimal."
+              },
+              "clientBuild": {
+                "type": "string",
+                "maxLength": 32,
+                "pattern": "^\\d+(\\.\\d+)+$",
+                "description": "The build of the client that showed it, from GetBuildInfo(): a patch can change an item's numbers."
+              }
+            },
+            "required": [
+              "installId",
+              "capturedAt",
+              "kind",
+              "itemId",
+              "fact",
+              "value",
+              "clientBuild"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "installId": {
+                "type": "string",
+                "minLength": 8,
+                "maxLength": 64,
+                "description": "Random install id, no account needed."
+              },
+              "eventId": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 96,
+                "pattern": "^[A-Za-z0-9:_-]+$"
+              },
+              "capturedAt": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                "description": "ISO time the event happened in-game."
+              },
+              "kind": {
+                "type": "string",
                 "const": "guild_snapshot"
               },
               "guildName": {

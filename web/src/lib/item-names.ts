@@ -1,9 +1,11 @@
 // Words for the numbers in an item record (kb/src/assets/items.ts): quality, binding, slot, armour and
 // weapon kind, stat kind. These are the client's own enumerations, as the WoWDev wiki documents them.
 // A number this file does not know is printed as unknown, never guessed; a stat kind it does not know is left out.
+import { ITEM_FACTS } from "@everloot/protocol";
 import { tokens } from "@/design/tokens";
 import { formatCopper } from "../../../kb/src/market";
 import type { ItemRecord } from "../../../kb/src/assets/items";
+import type { ItemFactName, ItemFactState } from "../../../kb/src/item-facts";
 
 export const PLACEHOLDER = "[?]";
 
@@ -118,4 +120,74 @@ export function itemTipText(r: ItemRecord): ItemTipText {
   if (r.t) lines.push(`"${r.t}"`);
   if (r.sp > 0) lines.push(`Sell Price: ${formatCopper(r.sp)}`);
   return { name: r.n, quality: QUALITY_NAMES[r.q] ?? `quality ${r.q}`, lines, partial: why.size > 0, why: [...why] };
+}
+
+/* ---------- The numbers players' tooltips showed (kb/src/item-facts.ts) ---------- */
+
+/** The word on each tooltip line a player can report, as the game prints it; the stats match `STAT`. */
+const FACT_WORD: Record<ItemFactName, string> = {
+  armor: "Armor", block: "Block", damage_per_second: "damage per second", health: "Health", mana: "Mana",
+  agility: "Agility", strength: "Strength", intellect: "Intellect", spirit: "Spirit", stamina: "Stamina",
+  defense_rating: "Defense Rating", dodge_rating: "Dodge Rating", parry_rating: "Parry Rating", block_rating: "Block Rating",
+  hit_rating: "Hit Rating", crit_rating: "Critical Strike Rating", haste_rating: "Haste Rating", expertise_rating: "Expertise Rating",
+  resilience_rating: "Resilience Rating", attack_power: "Attack Power", mana_regeneration: "Mana Regeneration", spell_power: "Spell Power",
+  holy_resistance: "Holy Resistance", fire_resistance: "Fire Resistance", nature_resistance: "Nature Resistance",
+  frost_resistance: "Frost Resistance", shadow_resistance: "Shadow Resistance", arcane_resistance: "Arcane Resistance",
+};
+
+/** A fact's tooltip line with its number, or with the placeholder (null), exactly as `itemTipText` prints it. */
+export function factLine(fact: ItemFactName, value: number | null): string {
+  const n = value === null ? PLACEHOLDER : fact === "damage_per_second" ? value.toFixed(1) : String(value);
+  if (fact === "damage_per_second") return `(${n} damage per second)`;
+  if (fact === "armor" || fact === "block") return `${n} ${FACT_WORD[fact]}`;
+  return `${value !== null && value < 0 ? "" : "+"}${n} ${FACT_WORD[fact]}`;
+}
+
+const NUMBER = String.raw`(?:\[\?\]|-?\d+(?:\.\d)?)`;
+const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const FACT_LINE = ITEM_FACTS.map((fact) => ({
+  fact,
+  re: fact === "damage_per_second" ? new RegExp(`^\\(${NUMBER} damage per second\\)$`)
+    : fact === "armor" || fact === "block" ? new RegExp(`^${NUMBER} ${FACT_WORD[fact]}$`)
+    : new RegExp(`^\\+?${NUMBER} ${escape(FACT_WORD[fact])}$`),
+}));
+const rank = (fact: ItemFactName) => ITEM_FACTS.indexOf(fact);
+const factOf = (line: string) => FACT_LINE.find((f) => f.re.test(line))?.fact ?? null;
+/** The first line the game prints below the armour, stats and resistances. */
+const BELOW_STATS = /^(Classes: |Races: |Requires |Item Level |Use: |Equip: |Chance on hit: |Set: |Restrictions: |Equip and Use: |"|Sell Price: )/;
+
+/** Where a line the files did not print goes: after the facts that come before it in the game, else before the rest. */
+function slotFor(lines: readonly string[], fact: ItemFactName): number {
+  let after = -1;
+  lines.forEach((line, i) => { const f = factOf(line); if (f && rank(f) < rank(fact)) after = i + 1; });
+  if (after >= 0) return after;
+  const before = lines.findIndex((line) => { const f = factOf(line); return (f && rank(f) > rank(fact)) || BELOW_STATS.test(line); });
+  return before >= 0 ? before : lines.length;
+}
+
+const installs = (n: number) => `${n.toLocaleString("en-US")} ${n === 1 ? "install" : "installs"}`;
+
+/**
+ * The tooltip with the numbers 3 installs agree on in place of their placeholders, a line the files did not print
+ * added where the game prints it, and one line per number saying how many installs reported it, from which build,
+ * and when. A contested line keeps its placeholder and says why. The reasons for the stat and armour placeholders go
+ * once no such placeholder is left.
+ */
+export function withReported<T extends Pick<ItemTipText, "lines" | "why" | "partial">>(tip: T, state: Pick<ItemFactState, "shown" | "contested">): T {
+  if (!state.shown.length && !state.contested.length) return tip;
+  const lines = [...tip.lines];
+  const evidence: string[] = [];
+  for (const f of state.shown) {
+    const text = factLine(f.fact, f.value);
+    const at = lines.indexOf(factLine(f.fact, null));
+    if (at >= 0) lines[at] = text;
+    else lines.splice(slotFor(lines, f.fact), 0, text);
+    const seen = f.lastSeen ? f.lastSeen.slice(0, 10) : PLACEHOLDER;
+    evidence.push(`${text.replace(/^\((.*)\)$/, "$1")}: reported by ${installs(f.reporters)}, last seen ${seen}, build ${f.build}.`);
+  }
+  const why = tip.why.filter((w) =>
+    !(w === WHY.stats && !lines.some((l) => l.startsWith(`+${PLACEHOLDER} `))) && !(w === WHY.armor && !lines.includes(factLine("armor", null))));
+  const disputed = state.contested.filter((fact) => lines.includes(factLine(fact, null))).map((fact) => FACT_WORD[fact]);
+  if (disputed.length) why.push(`${PLACEHOLDER} ${disputed.join(", ")}: installs disagree on the number, so none is shown until 3 agree on one.`);
+  return { ...tip, lines, why: [...why, ...evidence], partial: lines.some((l) => l.includes(PLACEHOLDER)) };
 }
