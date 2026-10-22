@@ -1,6 +1,26 @@
 {
   "posts": [
     {
+      "id": "forum:30571231",
+      "source": "forum",
+      "region": "us",
+      "url": "https://us.forums.blizzard.com/en/wow/t/forever-beta-will-return-shortly/2389150",
+      "title": "Forever Beta Will Return Shortly",
+      "author": "Zorbrix",
+      "role": "Game Producer",
+      "postedAt": "2026-10-22T01:46:44.190Z",
+      "editedAt": null,
+      "category": "WoW: Forever Beta Discussion",
+      "game": "forever",
+      "kind": "post",
+      "excerpt": "Good evening folks, We hit a small snag while turning the WoW Forever Beta back online. We’re working right now to get it back.",
+      "topicId": 2389150,
+      "topicSlug": "forever-beta-will-return-shortly",
+      "postNumber": 1,
+      "startedThread": true,
+      "firstSeen": "2026-10-22T05:18:43.615Z"
+    },
+    {
       "id": "bluesky:3myfv4z4w2724",
       "source": "bluesky",
       "url": "https://bsky.app/profile/worldofwarcraft.blizzard.com/post/3myfv4z4w2724",
