@@ -29,6 +29,14 @@ Pull requests merged to `main` are listed in the nightly pre-releases until the 
   form. The search index stays off for now, so the pages are reached by name and are not listed anywhere.
 
 ### Added
+- Site and knowledge base: the open data export, `npm run kb -- open-data <folder>`, and its page at
+  `/database/download`. One folder of NDJSON files: `observed/` holds only facts three installs agree on (NPCs,
+  quests, vendor offers, drop rates, relations, entrances, bosses, objects and their pins, item names), each row
+  with how many installs agree and no install id; `game-files/` holds the build's item categories, relations,
+  zones, entrances and flight lines, as Blizzard's data outside our licence. A manifest, README, licence text and
+  a JSON Schema per file come with it; every count is a number of rows out of how many were reported, with the
+  date and the method. A maintainer makes and uploads an export by hand (`web/scripts/upload-open-data.mjs`);
+  until the first is uploaded the page says there is none. See `docs/OPEN_DATA.md`.
 - Addon and desktop app: item tooltips show where an item drops. The Desktop App writes the public drop rates
   (three installs looted the source) into the `EverlootPrices` file beside the prices, at most once a day; the
   tooltip and `/everloot price` show up to three sources as drops of loot windows, with installs and the upload

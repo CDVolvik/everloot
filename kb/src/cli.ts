@@ -21,7 +21,10 @@ import { loadSnapshotFile, refreshSnapshot, saveSnapshotFile } from "./ecosystem
 import { CASC_LIBRARY, extractTables, iconIds, NOT_IN_BUILD, openCdn, pinDefinitions, probeFiles } from "./client-extract.js";
 import { writeCatalogs } from "./client-catalog.js";
 import { buildClientAssets } from "./client-assets.js";
-import { CLIENT_EDGES } from "./client-layer-file.js";
+import { CLIENT_EDGES, CLIENT_LAYER, CLIENT_TAXONOMY } from "./client-layer-file.js";
+import { OPEN_DATA_KINDS } from "./open-data/build.js";
+import { readRecordsFile } from "./open-data/read.js";
+import { writeOpenData } from "./open-data/write.js";
 import { writeWorldMapData } from "./world-map-data.js";
 import { WORLD_MAP_DATA } from "./world-map-file.js";
 import { worldFactsFromRecords } from "./world-pages.js";
@@ -179,6 +182,12 @@ const USAGE = `usage: npm run kb -- <command> --db <path>
     names included. Also writes coverage-expected.json: zone/type/field counts only, no entity ids.
     Uses the same upload sources as baseline-report. --client adds QuestV2 and boss candidates;
     without it those game-file-only facts are unknown. Never publishes or uploads either artifact)
+  open-data <folder> [--records <file>]
+    (the open data export: the published data as NDJSON files under CC BY-SA 4.0, plus the game-file layer
+    as Blizzard's, with a manifest, a README, the licence and a JSON Schema per file. Only facts that 3
+    installs agree on leave the records; it refuses a row under that and an install id in any row. The
+    records come from EVERLOOT_PUBLIC_CORPUS_URL (EVERLOOT_API_KEY for the whole feed) or EVERLOOT_UPLOADS,
+    or from --records, a saved corpus answer. The folder must be new or empty. See docs/OPEN_DATA.md)
   wiki-check [--dir <kb>/wiki]
     (the wiki's page check: front matter, ids and slugs, categories, bindings and tokens against the committed
     game data and the shown id ranges, [[links]], hand-typed gameplay numbers, section order, credit fields,
@@ -709,6 +718,21 @@ async function main(): Promise<number> {
         console.log(`${subject}: ${c.confirmed} confirmed, ${c.changed} changed, ${c.new} new in Forever, ${c.not_seen} not seen yet`);
       }
       console.log(`-> ${paths.markdown}\n-> ${paths.json}`);
+      return 0;
+    }
+    case "open-data": {
+      if (!args[0]) break;
+      const file = flags.get("records");
+      const corpus = file ? readRecordsFile(file) : await readCorpusRecords(OPEN_DATA_KINDS);
+      // No records is not an empty export: a folder that says nothing was confirmed would be a false statement.
+      if (!corpus) throw new Error("open-data: no records. Set EVERLOOT_PUBLIC_CORPUS_URL (and EVERLOOT_API_KEY for the whole feed) or EVERLOOT_UPLOADS, or pass --records <file>");
+      const { manifest, paths } = writeOpenData(args[0], {
+        records: corpus.records, dataAsOf: corpus.dataAsOf, generatedAt: new Date().toISOString(),
+        gameFiles: { build: CLIENT_LAYER.build, edges: CLIENT_EDGES, taxonomy: CLIENT_TAXONOMY, map: WORLD_MAP_DATA },
+      });
+      for (const f of manifest.files) console.log(`${f.path}: ${f.rows} rows${f.candidates === null ? "" : ` of ${f.candidates} (${f.candidatesAre})`}`);
+      console.log(`${manifest.source.records} records from ${manifest.source.installs} installs; data as of ${manifest.dataAsOf ?? "[?]"}; game build ${manifest.gameFiles.version}`);
+      console.log(`${paths.length} files -> ${args[0]}`);
       return 0;
     }
     case "wiki-check": {
