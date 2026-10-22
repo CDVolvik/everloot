@@ -5,6 +5,7 @@ import { pruneKeys } from "@/lib/api-keys";
 import { guardOn } from "@/lib/data-guard";
 import { playerPagesOn } from "@/lib/player-pages";
 import { playerStore } from "@/lib/player-store";
+import { writeCoverage } from "@/lib/coverage-store";
 
 /**
  * GET /api/cron/snapshot — Vercel Cron (vercel.json) extends the corpus snapshot with new uploads,
@@ -61,8 +62,17 @@ export async function GET(req: Request) {
       console.error("completion rollup failed", err);
     }
     if (!completion) return NextResponse.json({ ok: false, error: "completion rollup failed", rebuild, ...result, market }, { status: 500 });
+    // The coverage score changes only with the snapshot, so an idle run never recomputes it. It is dated by the
+    // snapshot's time, the heartbeat's `dataAsOf`. The pages compute it themselves, so a failure here is logged and
+    // the cron carries on; the next run that adds uploads writes it again.
+    let coverage: { written: boolean } | null = null;
+    try {
+      coverage = idle ? { written: false } : await writeCoverage({ added: result.added, rebuild, dataAsOf: result.dataAsOf });
+    } catch (err) {
+      console.error("coverage failed", err);
+    }
     await uploadStore.writeCronRun(completion.remaining > 0 || completion.rebuilding, result.dataAsOf);
-    return NextResponse.json({ ok: true, rebuild, ...result, market, completion });
+    return NextResponse.json({ ok: true, rebuild, ...result, market, completion, coverage });
   } catch (err) {
     console.error("snapshot failed", err);
     return NextResponse.json({ ok: false, error: "snapshot failed" }, { status: 500 });
