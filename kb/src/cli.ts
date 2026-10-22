@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { auditSources } from "./audit-sources.js";
 import { compareBaseline, readBaseline, writeBaselineReport } from "./baseline-report.js";
+import { buildCoverageReport, readCoverageBaseline, writeCoverageReport } from "./coverage-report.js";
 import { BlizzardClient } from "./blizzard/client.js";
 import {
   backfillBluePosts, ingestBluePosts, loadFetchState, loadOverrides, loadStore, saveFetchState, saveStore, type BlueGame, type BlueRegion, type IngestResult,
@@ -24,7 +25,7 @@ import { CLIENT_EDGES } from "./client-layer-file.js";
 import { writeWorldMapData } from "./world-map-data.js";
 import { WORLD_MAP_DATA } from "./world-map-file.js";
 import { worldFactsFromRecords } from "./world-pages.js";
-import { clientSnapshotName, readClientMeta, writeClientSnapshot } from "./client-snapshot.js";
+import { clientSnapshotName, readClientMeta, readClientRows, writeClientSnapshot } from "./client-snapshot.js";
 import { Curated, diffRaidBuffs, RaidBuffTable } from "./raid-buffs.js";
 import { parseItemIds } from "./assets/items.js";
 import { runItemNames } from "./item-names.js";
@@ -170,6 +171,12 @@ const USAGE = `usage: npm run kb -- <command> --db <path>
     (the baseline against the corroborated uploads from EVERLOOT_PUBLIC_CORPUS_URL or EVERLOOT_UPLOADS:
     confirmed, changed, new in Forever and not seen yet, by zone and level. Writes baseline-report.md and
     .json, by default to <temp>/everloot-baseline-report; never inside the repository, never published)
+  coverage-report --db <source db> --out <folder outside the repository> [--client <snapshot.sqlite>]
+    [--recheck-since <ISO timestamp>]
+    (local per-field missing, reported, contested, spread and recheck detail by zone and level, baseline
+    names included. Also writes coverage-expected.json: zone/type/field counts only, no entity ids.
+    Uses the same upload sources as baseline-report. --client adds QuestV2 and boss candidates;
+    without it those game-file-only facts are unknown. Never publishes or uploads either artifact)
   wiki-check [--dir <kb>/wiki]
     (the wiki's page check: front matter, ids and slugs, categories, bindings and tokens against the committed
     game data and the shown id ranges, [[links]], hand-typed gameplay numbers, section order, credit fields,
@@ -637,6 +644,38 @@ async function main(): Promise<number> {
       const unmapped = Object.entries(run.spawns.unmappedAreas).sort((a, b) => b[1] - a[1]);
       console.log(`spawns: ${run.spawns.mapped} of ${run.spawns.total} placed on a UiMap; ${run.spawns.total - run.spawns.mapped} in ${unmapped.length} areas keep only their area id`);
       if (unmapped.length) console.log(`  most unplaced: ${unmapped.slice(0, 10).map(([area, n]) => `area ${area} (${n})`).join(", ")}`);
+      return 0;
+    }
+    case "coverage-report": {
+      const out = flags.get("out");
+      if (!out) throw new Error("coverage-report: --out must name a folder outside the repository");
+      const recheckSince = flags.get("recheck-since") || undefined;
+      if (recheckSince && !Number.isFinite(Date.parse(recheckSince))) throw new Error("coverage-report: --recheck-since must be an ISO timestamp");
+      const source = openExistingReadOnlyDb(requireDbPath(flags, "coverage-report"));
+      let local: ReturnType<typeof readCoverageBaseline>;
+      try { local = readCoverageBaseline(source); } finally { source.close(); }
+      if (!local.baseline.units.size && !local.baseline.quests.size) throw new Error("coverage-report: no pfquest-classic rows in this database; run import-pfquest first");
+      const client = flags.get("client");
+      const questIds = client ? readClientRows(client, "QuestV2").keys() : undefined;
+      const bosses: { encounterId: number; instanceMapId?: number }[] = [];
+      if (client) {
+        for (const [encounterId, row] of readClientRows(client, "DungeonEncounter")) {
+          bosses.push({ encounterId, ...(typeof row.MapID === "number" ? { instanceMapId: row.MapID } : {}) });
+        }
+        const instances = readClientRows(client, "JournalInstance");
+        for (const row of readClientRows(client, "JournalEncounter").values()) {
+          // The encounter API reports DungeonEncounter ids; journal-only ids cannot be matched to it.
+          if (typeof row.DungeonEncounterID !== "number" || row.DungeonEncounterID <= 0) continue;
+          const instance = instances.get(Number(row.JournalInstanceID));
+          bosses.push({ encounterId: row.DungeonEncounterID, ...(typeof instance?.MapID === "number" ? { instanceMapId: instance.MapID } : {}) });
+        }
+      }
+      const corpus = await readCorpusRecords(["npc_sighting", "quest", "vendor", "loot", "instance_entrance", "encounter", "object_sighting"]);
+      const report = buildCoverageReport({ ...local, records: corpus?.records ?? [], dataAsOf: corpus?.dataAsOf ?? null,
+        connected: corpus !== null, clientConnected: Boolean(client), questIds, bosses, recheckSince });
+      const paths = writeCoverageReport(report, out);
+      console.log(`${report.rows.length} local fact fields; uploads ${report.connected ? "connected" : "disconnected ([?])"}`);
+      console.log(`-> ${paths.markdown}\n-> ${paths.json}\n-> ${paths.expected}`);
       return 0;
     }
     case "baseline-report": {

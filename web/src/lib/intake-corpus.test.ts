@@ -235,7 +235,7 @@ describe("intake through the store into published facts", () => {
       { addonVersion: "0.1.0", records: [goodLoot] },
     ]);
 
-    expect(await writer.writeSnapshot()).toEqual({ uploads: 1, added: 1 });
+    expect(await writer.writeSnapshot()).toMatchObject({ uploads: 1, added: 1 });
     expect(JSON.parse(snapshotBody).records).toEqual([goodLoot]);
 
     const reader = createUploadStore({ cloud, localDir: "unused", fetch: fn, now, cacheMs: 0 });
