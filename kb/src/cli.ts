@@ -30,7 +30,7 @@ import { Curated, diffRaidBuffs, RaidBuffTable } from "./raid-buffs.js";
 import { parseItemIds } from "./assets/items.js";
 import { runItemNames } from "./item-names.js";
 import { runGameNames } from "./game-names.js";
-import { formatNameGaps, runNameGaps } from "./name-gaps.js";
+import { baselineNames, formatNameGaps, playerNames, runNameGaps } from "./name-gaps.js";
 import { parse as parseYaml } from "yaml";
 import { parseArgs } from "./args.js";
 import { buildWatchCommand } from "./build-watch/command.js";
@@ -149,10 +149,12 @@ const USAGE = `usage: npm run kb -- <command> --db <path>
     Warcraft Wiki dump's quest infoboxes give it a title (quest-names.json), and the game files' names of every
     item set and spell in the build (item-set-names.json, spell-names.json). For the private bucket only; never
     commit them. See docs/DATA_POLICY.md)
-  name-gaps <snapshot.sqlite> --wiki <knowledge base or release .sqlite> [--out name-gaps.md] [--json name-gaps.json]
-    (for items, quests, item sets and spells: where each id's name comes from, and for every id without one what
-    would fill it: the addon's uploads, or no source yet. Reads
-    the same sources as item-names and game-names and writes no name file. Ids only, never names; keep it local)
+  name-gaps <snapshot.sqlite> --wiki <knowledge base or release .sqlite> [--baseline-db <source db>] [--out name-gaps.md] [--json name-gaps.json]
+    (for items, quests, item sets and spells: how many ids each source names (the game files, the wiki, the local
+    baseline, and the names 3 installs agree on from EVERLOOT_PUBLIC_CORPUS_URL or EVERLOOT_UPLOADS), out of the ids
+    the game files and the baseline list; then where each id's name comes from, and for every id without one what
+    would fill it: the addon's uploads, or no source yet. Without --baseline-db or uploads those columns print [?].
+    Reads the same sources as item-names and game-names and writes no name file. Ids and counts only, never names; keep it local)
   client-map <snapshot.sqlite> [--out ../web/src/data/game-data/map.json]
     (zone rectangles in world coordinates, continents and dungeon and raid entrances from a client
     snapshot, for the world map page. Game file data, stamped with the build. See docs/DATA_POLICY.md)
@@ -583,7 +585,17 @@ async function main(): Promise<number> {
     case "name-gaps": {
       const kbPath = flags.get("wiki");
       if (!args[0] || !kbPath) break;
-      const report = runNameGaps({ snapshotPath: args[0], kbPath });
+      const baselineDb = flags.get("baseline-db");
+      let baseline = null;
+      if (baselineDb) {
+        const source = openExistingReadOnlyDb(baselineDb);
+        baseline = baselineNames(source);
+        source.close();
+        if (!baseline.items.size && !baseline.quests.size) throw new Error("name-gaps: no pfquest-classic rows in --baseline-db; run import-pfquest first");
+      }
+      const corpus = await readCorpusRecords(["item_seen", "quest"]);
+      if (!corpus) console.error("uploads not connected or unreadable (EVERLOOT_PUBLIC_CORPUS_URL, EVERLOOT_UPLOADS): the Players column prints [?]");
+      const report = runNameGaps({ snapshotPath: args[0], kbPath, baseline, players: corpus && playerNames(corpus.records, corpus.dataAsOf) });
       const md = formatNameGaps(report);
       const out = flags.get("out"), json = flags.get("json");
       if (out) writeFileSync(out, md);

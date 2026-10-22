@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test } from "vitest";
 import { openDb } from "../src/db.js";
-import { areaToUiMap, checkoutCommit, importPfquest, JUNK_NAME, parseLuaData, PFQUEST_COMMIT } from "../src/importers/pfquest.js";
+import { areaToUiMap, checkoutCommit, importPfquest, JUNK_NAME, JUNK_QUEST_TITLE, parseLuaData, PFQUEST_COMMIT } from "../src/importers/pfquest.js";
 import { validate } from "../src/validate.js";
 import { mapSnapshot, pfquestCheckout } from "./pfquest-fixture.js";
 
@@ -34,6 +34,16 @@ test("the junk rule drops GM, test and placeholder names and keeps ordinary ones
   for (const name of ["Test of Faith", "Old Blanchy", "Field Rat", "Captain's Chest"]) expect(JUNK_NAME.test(name), name).toBe(false);
 });
 
+test("the quest rule drops the developers' test quests and keeps real ones, quotes and the word Test included", () => {
+  // Titles as pfQuest's quest list gives them (ids 1 and 9065, 1263, 5101, 7681, 8274 and 9378).
+  for (const title of ["The \"Chow\" Quest (123)aa", "The Burning Inn <CHANGE TO GOSSIP>", "Lee's Ultimate Test Quest... of Doom!", "Hunter test quest2", "Test Kill Quest", "DND FLAG The Dread Citadel - Naxxramas"]) {
+    expect(JUNK_QUEST_TITLE.test(title), title).toBe(true);
+  }
+  for (const title of ["The \"Seam\" Report", "Test of Faith", "The Test of Righteousness", "The Gordok Taste Test", "Toxic Test", "Rat Problem (Part 2)", "Wanted: <Name>", "Dread Citadel - Naxxramas"]) {
+    expect(JUNK_QUEST_TITLE.test(title), title).toBe(false);
+  }
+});
+
 test("the checkout's commit is read from .git without running git, loose or packed", () => {
   const dir = pfquestCheckout();
   expect(checkoutCommit(dir)).toBe(PFQUEST_COMMIT);
@@ -60,7 +70,8 @@ test("the fixture imports as pfquest-classic rows, junk and unnamed entries left
   const db = openDb(":memory:");
   const run = await importPfquest(db, pfquestCheckout(), { snapshotPath: mapSnapshot(), now: NOW });
   expect(run.rows).toEqual({ units: 3, objects: 2, items: 3, quests: 2 });
-  expect(run.skipped).toEqual({ junk: 4, unnamed: 1 });
+  // Quest 303 is the developers' "Chow" test quest: its title ends in a build number the junk rule did not know.
+  expect(run.skipped).toEqual({ junk: 5, unnamed: 1 });
   // Area 87 has no UiMap of its own; pfQuest's zone table puts it in area 12. Instance area 1581 has none.
   expect(run.spawns).toEqual({ total: 5, mapped: 4, unmappedAreas: { 1581: 1 } });
 

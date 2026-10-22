@@ -15,8 +15,9 @@ vi.mock("next/navigation", () => ({
 vi.mock("@/lib/rollup-compute", () => ({
   loadItemFacts: async () => ({ rates: [], names: [], npcs: [], unreachable: false }),
   loadWorldFacts: async () => ({ npcs: [], quests: [], vendors: [], unreachable: false }),
+  loadInstanceFacts: async () => ({ entrances: [], encounters: [], sightings: [], unreachable: false, dataAsOf: null }),
 }));
-vi.mock("@/lib/names", () => ({ loadNames: async () => ({ items: new Map(), npcs: new Map(), quests: new Map() }) }));
+vi.mock("@/lib/names", () => ({ loadNames: async () => ({ items: new Map(), npcs: new Map(), quests: new Map() }), objectNames: () => new Map() }));
 vi.mock("@/lib/objects", () => ({ loadObjectFacts: async () => ({ rates: [], measuredZeros: [], names: [], unreachable: false }) }));
 
 import AchievementList, { generateMetadata as achievementListMetadata } from "./achievements/page";

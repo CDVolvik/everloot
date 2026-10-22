@@ -2,10 +2,12 @@ import { itemPage } from "../../../kb/src/item-page";
 import { objectPage } from "../../../kb/src/object-page";
 import { npcPage, questPage, vendorPage } from "../../../kb/src/world-pages";
 import { itemIndexable, npcIndexable, objectIndexable, questIndexable, vendorIndexable } from "./indexable";
+import { instanceHref, instanceRows } from "./instances";
 import { shownItemName } from "./items";
 import { loadObjectFacts } from "./objects";
 import { loadWorldFacts } from "./rollup-compute";
 import { loadShownNames } from "./shown-item-names";
+import type { ZoneSightings } from "./zones";
 
 /** Database detail URLs per sitemap file, under the protocol's 50,000. */
 export const DATABASE_CHUNK = 40_000;
@@ -66,6 +68,17 @@ export async function databasePaths(): Promise<string[] | null> {
     ...objectIds.map((id) => `/database/objects/${id}`),
     ...vendors.map((id) => `/database/vendors/${id}`),
   ];
+}
+
+/**
+ * The instance pages that ask to be indexed: one per row `instanceRows` gives, which leaves out an instance known
+ * only from a held-back zone, as the page 404s for it. The page says noindex while storage cannot be read (it would
+ * cache a page without players' reports), so none is listed then, as with the zone pages. Zones, like instances,
+ * are listed by sitemap.ts: there are tens of them, not thousands.
+ */
+export function instancePaths(seen: ZoneSightings & { unreachable?: boolean }): string[] {
+  if (seen.unreachable) return [];
+  return [...instanceRows(seen).values()].map((row) => instanceHref(row.instanceMapId, row.name));
 }
 
 export function databaseUnavailable(): Response {

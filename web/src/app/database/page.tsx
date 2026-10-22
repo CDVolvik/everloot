@@ -7,6 +7,8 @@ import { computeRollups, loadWorldFacts } from "@/lib/rollup-compute";
 import { CLIENT_TAXONOMY as T, itemsHref, subclassLabel } from "@/lib/items";
 import { npcRows, publicQuests, publicVendors } from "@/lib/world-lists";
 import { loadCatalog } from "@/lib/completion-lists";
+import { DATABASE_HUBS } from "@/lib/database-hubs";
+import { instanceRows } from "@/lib/instances";
 import { publicZones } from "@/lib/zones";
 import JsonLd from "@/components/JsonLd";
 import { AgreementMeter, Container, DataTitle, SearchBar } from "@/components/ui";
@@ -27,7 +29,7 @@ export const dynamic = "force-dynamic";
 const n = (x: number) => x.toLocaleString("en-US");
 
 /** One block of the browse index: a heading with its count, then its links, 13 px on 26 px lines. */
-function Block({ heading, href, count, links }: { heading: string; href?: string; count?: ReactNode; links: { href: string; label: string; count: ReactNode }[] }) {
+function Block({ heading, href, count, links }: { heading: string; href?: string; count?: ReactNode; links: { href: string; label: string; count?: ReactNode }[] }) {
   return (
     <section className="mb-6 break-inside-avoid">
       <h2 className="flex items-baseline justify-between gap-3 text-cell font-semibold text-fg">
@@ -40,7 +42,7 @@ function Block({ heading, href, count, links }: { heading: string; href?: string
             <li key={l.href}>
               <Link href={l.href} className="flex h-[26px] items-center justify-between gap-3 text-meta text-fg-2 hover:text-accent">
                 <span className="min-w-0 truncate">{l.label}</span>
-                <span className="shrink-0 tabular-nums text-muted">{l.count}</span>
+                {l.count !== undefined && <span className="shrink-0 tabular-nums text-muted">{l.count}</span>}
               </Link>
             </li>
           ))}
@@ -58,20 +60,24 @@ export default async function DatabasePage() {
   const seen = (x: number) => (stats.unreachable ? "unrecorded" : x > 0 ? n(x) : <AgreementMeter count={0} />);
   const listed = (x?: number) => (x === undefined ? "unrecorded" : x > 0 ? n(x) : <AgreementMeter count={0} />);
   const readable = !world.unreachable;
-  const players = [
-    { href: "/database/npcs", label: "NPCs", count: seen(readable ? npcRows(world, rates).length : 0) },
-    { href: "/database/quests", label: "Quests", count: seen(readable ? publicQuests(world).length : 0) },
-    { href: "/database/vendors", label: "Vendors", count: seen(readable ? publicVendors(world).length : 0) },
-    { href: "/database/objects", label: "Objects: chests, herbs, ore", count: seen(stats.unreachable ? 0 : objectList({ rates, measuredZeros, names: [] }).length) },
-    { href: "/database/spells", label: "Spells", count: listed(spellNames?.names.size) },
-    { href: "/database/achievements", label: "Achievements", count: listed(catalog?.achievements.length) },
-    { href: "/database/factions", label: "Factions", count: listed(catalog?.factions.length) },
-    { href: "/database/titles", label: "Titles", count: listed(catalog?.titles.length) },
-    { href: "/database/quest-chains", label: "Quest chains", count: listed(catalog?.chains.length) },
-    { href: "/database/drops", label: "Loot observations", count: seen(live) },
-    { href: "/database/zones", label: "Zones", count: n(publicZones().length) },
-    { href: "/tools/guild-board", label: "Guilds", count: "uploads" },
-  ];
+  // The rows come from DATABASE_HUBS, which the sitemap reads too; a hub with no count here prints none.
+  const counts: Record<string, ReactNode> = {
+    "/database/npcs": seen(readable ? npcRows(world, rates).length : 0),
+    "/database/quests": seen(readable ? publicQuests(world).length : 0),
+    "/database/vendors": seen(readable ? publicVendors(world).length : 0),
+    "/database/objects": seen(stats.unreachable ? 0 : objectList({ rates, measuredZeros, names: [] }).length),
+    "/database/spells": listed(spellNames?.names.size),
+    "/database/achievements": listed(catalog?.achievements.length),
+    "/database/factions": listed(catalog?.factions.length),
+    "/database/titles": listed(catalog?.titles.length),
+    "/database/quest-chains": listed(catalog?.chains.length),
+    "/database/drops": seen(live),
+    "/database/zones": n(publicZones().length),
+    // The instances the game files place in a released zone, like the zone count: it reads the files, not the uploads.
+    "/database/instances": n(instanceRows().size),
+    "/tools/guild-board": "uploads",
+  };
+  const players = DATABASE_HUBS.map((h) => ({ href: h.href, label: h.label, count: counts[h.href] }));
 
   return (
     <Container width="data">

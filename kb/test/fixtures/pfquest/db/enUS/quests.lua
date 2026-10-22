@@ -14,4 +14,9 @@ pfDB["quests"]["enUS"] = {
     ["O"] = "",
     ["T"] = "The \"Seam\" Report",
   },
+  [303] = {
+    ["D"] = "",
+    ["O"] = "",
+    ["T"] = "The \"Chow\" Quest (123)aa",
+  },
 }

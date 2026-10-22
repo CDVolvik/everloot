@@ -18,6 +18,7 @@ vi.mock("@/lib/game-assets", async (importOriginal) => ({
 vi.mock("@/lib/rollup-compute", () => ({
   loadItemFacts: async () => ({ rates: [], names: state.names, npcs: [], unreachable: false }),
   loadWorldFacts: async () => ({ npcs: [], quests: [], vendors: [], unreachable: false }),
+  loadInstanceFacts: async () => ({ entrances: [], encounters: [], sightings: [], unreachable: false, dataAsOf: null }),
   loadCraftedItems: async () => ({ items: new Set<number>(), unreachable: false }),
   loadObservedEdges: async () => ({ edges: [], unreachable: false, dataAsOf: null }),
   loadLootTables: async () => ({ tables: { sources: new Map(), leftOut: 0 }, unreachable: false, dataAsOf: null }),
