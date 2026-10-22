@@ -102,6 +102,19 @@ name is shown only when three installs report the same one; otherwise it is "Obj
 gives the zone only, never a pin. Object places come from play only: nothing is read from the game's
 files for them.
 
+**Item numbers players report.** *Proposed 2026-10-21, in the pull request that adds the `item_fact` kind
+(the maintainer review).* The numbers on an item's tooltip that the game files do not hold (armour, block,
+damage per second, each stat and each resistance) come from players' own tooltips (addon 0.3.10). When the
+game shows the player an item's tooltip, the addon reads those numbers for the plain item, never an enchant or
+a random suffix on the player's copy, and records the item id, which line, the number and the client build.
+Nothing about the character is recorded, and nothing is read from a tooltip about anything other than an item.
+These are player data like any other upload: public as anonymous records, under CC BY-SA 4.0, and stated on a
+page only when three installs report the same number for the same line. A patch can change an item, so the
+number is decided within the newest build that three installs reported. Each number shown says how many
+installs reported it, from which build and when it was last seen. A line installs disagree on is not shown;
+it stays `[?]`, and the tooltip says the installs disagree. The game files' tooltip carries these numbers only
+where it is already shown (the item tooltip rule below).
+
 Full auction scans are not public records either. They feed market values only, and a value is
 published when three distinct reporters scanned the item. For that count, an upload containing a scan
 is stored with a keyed hash of the address it came from (never the address itself). The hash stays in

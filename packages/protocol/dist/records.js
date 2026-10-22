@@ -26,6 +26,7 @@ export const RULES = {
     gold_snapshot: ["peak gold cannot be below current gold"],
     map_bounds: ["map bounds need a width and a height"],
     talent_snapshot: ["talent points must equal the sum of node ranks", "talent node ids must be unique"],
+    item_fact: ["an item fact other than damage_per_second is a whole number"],
 };
 export const INSTALL_ID = z.string().min(8).max(64).describe("Random install id, no account needed.");
 const base = z.object({
@@ -416,6 +417,29 @@ export const mapBounds = base.extend({
 });
 /** The game client's version and build from GetBuildInfo(), e.g. 1.60.1.70450. Addon 0.2.6+. */
 export const CLIENT_BUILD = z.string().max(32).regex(/^\d+(\.\d+)+$/);
+// --- Addon 0.3.10: the numbers an item's tooltip shows that the game files do not hold ---
+/**
+ * The tooltip numbers a player can see and the game files do not give: armour, block, the weapon's damage per
+ * second, each stat and each resistance. The addon reads them with `GetItemStats` on the plain item (no enchant,
+ * no random suffix), whose keys do not depend on the client's language.
+ */
+export const ITEM_FACTS = [
+    "armor", "block", "damage_per_second",
+    "health", "mana", "agility", "strength", "intellect", "spirit", "stamina",
+    "defense_rating", "dodge_rating", "parry_rating", "block_rating", "hit_rating", "crit_rating", "haste_rating",
+    "expertise_rating", "resilience_rating", "attack_power", "mana_regeneration", "spell_power",
+    "holy_resistance", "fire_resistance", "nature_resistance", "frost_resistance", "shadow_resistance", "arcane_resistance",
+];
+/** One number on an item's tooltip, as the player's own client showed it: anonymous, like `item_seen`. */
+export const itemFact = base.extend({
+    kind: z.literal("item_fact"),
+    itemId: z.number().int().positive(),
+    fact: z.enum(ITEM_FACTS).describe("Which tooltip line the value is (`ITEM_FACTS`)."),
+    value: z.number().min(-10_000).max(10_000).describe("The number on that line. A whole number, except damage_per_second, which has one decimal."),
+    clientBuild: CLIENT_BUILD.describe("The build of the client that showed it, from GetBuildInfo(): a patch can change an item's numbers."),
+}).refine((row) => row.fact === "damage_per_second" || Number.isInteger(row.value), {
+    message: RULES.item_fact[0],
+});
 // --- Addon 0.2.7: the player's own talent build, read through the game's trait API ---
 /** One spent talent node. `nodeId` is the client's trait node id; `choice` is the zero-based entry of a choice node. */
 const talentNode = z.object({
@@ -570,6 +594,7 @@ export const recordSchemas = {
     instance_entrance: instanceEntrance,
     encounter: encounterEnd,
     object_sighting: objectSighting,
+    item_fact: itemFact,
     guild_snapshot: guildSnapshot,
     raid_lockout: raidLockout,
     attendance,
@@ -613,6 +638,8 @@ const PUBLIC_KIND_LIST = [
     "price_seen", "recipe_observed", "trainer_seen", "gold_snapshot", "money_event", "map_bounds",
     // Open-world facts like npc_sighting: anonymous rows, each shown on a page only once 3 installs agree.
     "instance_entrance", "encounter", "object_sighting",
+    // A tooltip number, anonymous like item_seen: shown on an item page only once 3 installs agree on it.
+    "item_fact",
     // The eight completion kinds are deliberately absent. Catalog rows reflect one character's visible factions
     // and quest lines under a per-install event id, so they are never served raw: pages and MCP show an entry
     // only when 3 installs reported it identically. Owned rows are shown only to a granted owner. Both come
@@ -623,7 +650,7 @@ const PUBLIC_KIND_LIST = [
 ];
 export const PUBLIC_RECORD_KINDS = PUBLIC_KIND_LIST;
 export const anyRecord = z.discriminatedUnion("kind", [
-    npcSighting, lootWindow, questEvent, vendorList, itemSeen, instanceEntrance, encounterEnd, objectSighting,
+    npcSighting, lootWindow, questEvent, vendorList, itemSeen, instanceEntrance, encounterEnd, objectSighting, itemFact,
     guildSnapshot, raidLockout, attendance, lootAward, gearSnapshot,
     collectionCatalog, collectionOwned, achievementCatalog, reputationCatalog, titleCatalog, questChainCatalog,
     achievementOwned, reputationOwned, titleOwned, questOwned, auctionScan, auctionSnapshot, recipeSeen, priceSeen, recipeObserved, trainerSeen,

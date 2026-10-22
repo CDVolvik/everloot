@@ -71,6 +71,13 @@ and the bosses' creature ids when the client sends them. None of these has run i
 have not been tried in the Forever client; a call that is missing or returns something unexpected records
 nothing for that field. The site shows each value only after 3 installs agree.
 
+When the game shows you an item's tooltip, `modules/itemfacts.lua` records the numbers the game files do not
+hold: armor, block, damage per second, each stat and each resistance, one `item_fact` row per line with the item
+id, the number and the client build. It reads them with `GetItemStats` on the plain item from `GetItemInfo`, so
+an enchant or a random suffix on your copy never counts, and a tooltip whose GUID is not an item's records
+nothing. Each item is read once per client build; an item with no numbers is read once per session and not kept.
+It follows the open-world toggle and shares the 2,000-row cap. Not yet run in the Forever client.
+
 ## Gold per hour
 
 `/everloot gph start` begins a session and opens a small window you can drag; `gph pause` stops the clock
@@ -235,6 +242,7 @@ The contract tests run the Lua in real Lua 5.1 through `lupa`:
     python addon/tests/event_identity.py
     python addon/tests/collection_contract.py
     python addon/tests/map_positions_contract.py
+    python addon/tests/item_facts_contract.py
     python addon/tests/auction_contract.py
     python addon/tests/auction_tab_contract.py
     python addon/tests/options_contract.py
@@ -267,6 +275,7 @@ addon/
 ├── core.lua            event dispatch, module registry, toggles, rolling store, /everloot
 ├── modules/
 │   ├── openworld.lua   target/mouseover sightings, NPC window places, loot windows, merchant windows
+│   ├── itemfacts.lua   armor, stats and resistances from the item tooltips you see, once per item and build
 │   ├── guild.lua       roster, attendance, saved lockouts (published only through an officer)
 │   ├── gear.lua        equipped item level sample, at most once an hour
 │   ├── auctions.lua    full auction-house scans you start (Forever); listed buyouts on older clients; on in a new install
