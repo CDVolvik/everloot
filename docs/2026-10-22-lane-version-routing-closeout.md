@@ -16,9 +16,11 @@ says so where it does not have one. It does not add a second snapshot.
   - `WITHOUT_SNAPSHOT`: the prefixed versions that are not served (PTR today).
   The table is JSON because `web/next.config.js` is CommonJS and reads it for the rewrites; the tests hold the
   JSON to the TypeScript model.
-- **The prefixes** (`web/next.config.js`, rewrites, ahead of the lore rewrite so `/beta/lore/npcs` still reaches
-  the browse page):
-  - the served version's prefix shows the same pages: `/beta` → `/`, `/beta/<path>` → `/<path>`;
+- **The prefixes** (`web/next.config.js`, rewrites):
+  - the served version's prefix shows the same pages: `/beta` → `/`, `/beta/<path>` → `/<path>`. Next stops at
+    the first route a rewrite lands on, dynamic ones included, so `/beta/lore/npcs` → `/lore/npcs` would be
+    `/lore/[slug]` and 404. The site's own rewrites (the lore one today) therefore get a copy under the served
+    prefix, ahead of its catch-all: `/beta/lore/npcs` → `/lore/browse/npcs`;
   - any other prefix shows the notice: `/ptr` and `/ptr/<path>` → `/game-version/ptr`;
   - `/game-version/<id>` redirects 308 to `/<id>`, as `/lore/browse/<type>` does to `/lore/<type>`.
 - **The canonical tags.** A page under the served prefix is the unprefixed page, so its canonical is the
@@ -36,15 +38,20 @@ No `EVERLOOT_*` switch was added or changed; nothing here needs one.
 ## How it was verified
 
 - `web/src/lib/build-versions.test.ts` (6 tests): the served version is the header's and the only one holding the
-  snapshot; Live has no prefix; `versionHref`; the rewrites, run through Next's own path matcher and chained in
-  order as Next's router does (`/beta/database/items/2589` → `/database/items/2589`, `/beta/lore/npcs` →
+  snapshot; Live has no prefix; `versionHref`; the rewrites, run through Next's own path matcher, first match
+  only, as Next's router does (`/beta/database/items/2589` → `/database/items/2589`, `/beta/lore/npcs` →
   `/lore/browse/npcs`, `/ptr/...` → `/game-version/ptr`, `/betamax` untouched); the internal route's redirect.
 - `web/src/app/game-version/[id]/page.test.tsx` (3 tests): only PTR has a notice (Beta answers 404 there), the
   copy, the canonical `/ptr`, `noindex`, and the description length the site's other pages keep.
 - `web/src/next-config.test.ts`: the existing lore and redirect tests, updated for the new rewrite and redirect.
-- Not checked against a deployment: no preview was built or opened in this lane, so the rewrite chaining is
-  verified against Next's matcher in the tests only. Check `/beta/lore/npcs`, `/beta/database/items/2589` and
-  `/ptr` on the pull request's preview.
+- The pull request's Vercel preview, fetched with curl:
+  - `/beta` → 200, the home page, canonical `https://everloot.app`;
+  - `/beta/database/items/2589` → 200, Linen Cloth, canonical `https://everloot.app/database/items/2589`;
+  - `/ptr` and `/ptr/database` → 200, "PTR game data", `noindex, follow`, canonical `https://everloot.app/ptr`;
+  - `/game-version/ptr` → 308 to `/ptr`;
+  - `/methodology` → canonical unchanged.
+  The first preview answered 404 for `/beta/lore/npcs`. My test had assumed Next chains rewrites; it does not.
+  The fix and the corrected test are described above. The second preview's result is below.
 
 ## The numbers
 

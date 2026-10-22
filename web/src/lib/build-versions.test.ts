@@ -7,14 +7,14 @@ import { CURRENT_VERSION, GAME_VERSIONS } from "./game-version";
 const byId = (id: string) => GAME_VERSIONS.find((v) => v.id === id)!;
 
 /**
- * Where Next's router sends a path that is not a file: each rewrite in order, checked against the path the earlier
- * ones left, with its parameters filled in.
+ * Where Next's router sends a path that is not a static file: the first rewrite that matches, with its parameters
+ * filled in. Next stops at the route the rewrite lands on, dynamic ones included, so one rewrite is all a path gets.
  */
 async function served(path: string): Promise<string> {
   const rewrites = (await nextConfig.rewrites!()) as { source: string; destination: string }[];
   for (const r of rewrites) {
     const params = getPathMatch(r.source)(path) as Record<string, string | string[]> | false;
-    if (params !== false) path = r.destination.replace(/:(\w+)\+?/g, (_, name: string) => [params[name]].flat().join("/"));
+    if (params !== false) return r.destination.replace(/:(\w+)\+?/g, (_, name: string) => [params[name]].flat().join("/"));
   }
   return path;
 }

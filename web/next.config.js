@@ -64,14 +64,16 @@ const nextConfig = {
   // /lore/browse/<type> and are served at the short URL. afterFiles rewrites run before dynamic routes.
   // A game version's prefix (src/data/build-versions.json, read by lib/build-versions.ts): the served version's
   // prefix shows the same pages, whose canonical stays the unprefixed URL; any other version's prefix shows
-  // the page saying the site holds no snapshot of it, never another version's data. They come first: Next
-  // checks the later rewrites against the rewritten path, so /beta/lore/npcs still reaches the browse page.
+  // the page saying the site holds no snapshot of it, never another version's data. Once a rewrite lands on a
+  // route, dynamic ones included, Next stops there: /beta/lore/npcs rewritten to /lore/npcs would be /lore/[slug].
+  // So each of the site's own rewrites gets a copy under the served prefix, ahead of the prefix's catch-all.
   async rewrites() {
+    const own = [{ source: "/lore/:type(npcs|items|quests|zones|spells)", destination: "/lore/browse/:type" }];
     return [
       ...Object.entries(versions.prefixes).flatMap(([id, prefix]) => id === versions.served
-        ? [{ source: prefix, destination: "/" }, { source: `${prefix}/:path+`, destination: "/:path+" }]
+        ? [...own.map((r) => ({ source: `${prefix}${r.source}`, destination: r.destination })), { source: prefix, destination: "/" }, { source: `${prefix}/:path+`, destination: "/:path+" }]
         : [{ source: prefix, destination: `/game-version/${id}` }, { source: `${prefix}/:path+`, destination: `/game-version/${id}` }]),
-      { source: "/lore/:type(npcs|items|quests|zones|spells)", destination: "/lore/browse/:type" },
+      ...own,
     ];
   },
   // One page, one URL: the internal route name is never a second address. Redirects match the
