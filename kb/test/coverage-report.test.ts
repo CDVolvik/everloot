@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, test } from "vitest";
 import { buildCoverageReport, formatCoverageReport, writeCoverageReport } from "../src/coverage-report.js";
+import { CoverageExpected as CoverageExpectedFile } from "../src/coverage.js";
 import type { Baseline } from "../src/baseline-report.js";
 import { WORLD_MAP_DATA } from "../src/world-map-file.js";
 import { zoneTable, zoneToWorld } from "../src/world-coords.js";
@@ -70,6 +71,16 @@ test("writer refuses the repository before making files and writes all three loc
   expect(JSON.parse(readFileSync(paths.expected, "utf8"))).toEqual(run().expected);
   expect(readFileSync(paths.markdown, "utf8")).toContain("Local only");
   expect(JSON.parse(readFileSync(paths.json, "utf8")).rows.length).toBeGreaterThan(0);
+});
+
+test("the expected counts carry the date they were made, so a count is never dateless", () => {
+  const root = mkdtempSync(join(tmpdir(), "coverage-date-root-"));
+  const outside = mkdtempSync(join(tmpdir(), "coverage-date-out-"));
+  const paths = writeCoverageReport(run(), outside, root);
+  const expected = JSON.parse(readFileSync(paths.expected, "utf8"));
+  expect(expected.dataAsOf).toBe("2026-10-22T00:00:00Z");
+  // The page's strict parser reads the same file, so the date survives the round trip.
+  expect(CoverageExpectedFile.parse(expected).dataAsOf).toBe("2026-10-22T00:00:00Z");
 });
 
 test("rare ranks, vendor stock, entrances, bosses and separate treasure clusters remain local facts", () => {

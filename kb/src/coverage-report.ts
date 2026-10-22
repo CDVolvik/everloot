@@ -35,6 +35,8 @@ export interface CoverageRow {
 }
 export interface CoverageExpected {
   version: 1;
+  /** When the counts were made: the corpus date the report was built from, so a count is never dateless. */
+  dataAsOf?: string | null;
   /** Facts are entity fields, not whole entities. Includes observed additions; shared loot joins excluded. */
   zones: { zone: string; types: Record<CoverageType, number>; fields: Partial<Record<CoverageType, Record<string, number>>> }[];
 }
@@ -261,7 +263,7 @@ export function buildCoverageReport(input: CoverageInput): CoverageReport {
       "Patch detection is not wired; recheck requires an explicit local cutoff. Drop recheck is not implemented.",
       ...(input.connected ? [] : ["Uploads are disconnected or unreadable; missing is not a measured zero."]),
       ...(input.clientConnected ? [] : ["No client snapshot supplied: game-file-only quests and bosses are unknown ([?])."])],
-    rows, expected: { version: 1, zones: [...counts.values()].sort((a, b) => a.zone.localeCompare(b.zone, "en", { numeric: true })) },
+    rows, expected: { version: 1, dataAsOf: input.dataAsOf ?? null, zones: [...counts.values()].sort((a, b) => a.zone.localeCompare(b.zone, "en", { numeric: true })) },
   };
 }
 
