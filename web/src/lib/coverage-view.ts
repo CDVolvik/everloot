@@ -37,10 +37,10 @@ export function cellRank(cell: CoverageCell): number | null {
  * How the figures were measured, when the data was current and by how many installs, and where the expected counts
  * came from: counts only, from the game files and the local Classic baseline (docs/DATA_POLICY.md).
  */
-export function measuredLine(report: Pick<CoverageReport, "installs" | "dataAsOf" | "expected">): string {
+export function measuredLine(report: Pick<CoverageReport, "installs" | "dataAsOf" | "expected" | "build">): string {
   const installs = `${report.installs.toLocaleString("en-US")} ${report.installs === 1 ? "install" : "installs"}`;
   const expected = report.expected
-    ? `Expected counts for build ${report.expected.build}, counted ${report.expected.measuredAt.slice(0, 10)} from ${report.expected.sources.map((s) => (s === "game-files" ? "the game files" : "a local Classic baseline")).join(" and ")}: counts only.`
+    ? `Expected counts for build ${report.build ?? PLACEHOLDER}, counted ${report.expected.dataAsOf?.slice(0, 10) ?? PLACEHOLDER} from the game files and a local Classic baseline: counts only.`
     : `No expected counts yet, so shares read ${PLACEHOLDER} except entrances, which the game files list.`;
   return `${dataAgeLabel(report.dataAsOf)}, from ${installs}. ${expected}`;
 }

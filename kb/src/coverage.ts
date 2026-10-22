@@ -4,11 +4,15 @@
  * with `confirmed / expected` beside it, where a zone's denominator is `max(expected, observed)` so a fact new in
  * Forever never pushes a share over 100%.
  *
+ * A fact is one field of one entity (a quest's turn-in, an NPC's level, a pin's position), the grain the maintainer's
+ * coverage report (`coverage-report.ts`) counts its expected facts in, so the numerator and the denominator count the
+ * same thing: a type's cell counts every field fact of that type, and a field's cell that field's facts.
+ *
  * Pure: the folded public records (`publicRecords`), the fact states (`fact-states.ts`, `drop-rate-settling.ts`),
- * the counts-only expected file and the recheck scopes go in; counts come out. The expected file holds counts per
- * zone and type and nothing else (its schema is strict), so no baseline row, name or id can reach the output. The
- * lists of facts that need more voters hold only what players reported, by id, with no value that has not reached
- * three installs.
+ * the counts-only expected file and the recheck scopes go in; counts come out. The expected file is parsed strictly
+ * (counts under known zone, type and field keys, nothing else), so no baseline row, name or id can reach the
+ * output. The lists of facts that need more voters hold only what players reported, by id, with no value fewer than
+ * three installs agree on.
  */
 import { z } from "zod";
 import { measureDropRate } from "./drop-rate-settling.js";
@@ -19,7 +23,6 @@ import { objectSightingRowsFromRecords, objectSpawnRowsFromRecords, objectSpawns
 import { isPinPosition, worldFactsFromRecords } from "./world-pages.js";
 
 export const COVERAGE_SCHEMA = "everloot.coverage/1";
-export const EXPECTED_SCHEMA = "everloot.coverage-expected/1";
 export const RECHECK_SCHEMA = "everloot.recheck/1";
 /** Facts that need more voters, listed per zone at most; the count beside the list is the full one. */
 export const NEEDS_LIMIT = 200;
@@ -33,61 +36,61 @@ export const POSITION_TOLERANCE = 5;
 export const COVERAGE_TYPES = ["quests", "npcs", "pins", "vendors", "drops", "rares", "entrances", "bosses", "treasures"] as const;
 export type CoverageType = (typeof COVERAGE_TYPES)[number];
 
+/** Each type's key in the expected file (`coverage-report.ts`'s `COVERAGE_TYPES`). */
+export const EXPECTED_TYPE: Record<CoverageType, string> = {
+  quests: "quest", npcs: "npc", pins: "npc_pin", vendors: "vendor", drops: "drop", rares: "rare", entrances: "entrance", bosses: "boss", treasures: "treasure",
+};
+
 /**
- * The fields of each type that get a state (spec section 1). `core` fields decide the entity's own state, the one
- * the type's column counts: the lowest state among them, and no better than reported while one has no report.
- * `perEntity` fields have one value per entity, so the type's denominator is theirs too; the others (a quest's
- * rewards, an NPC's roles, a boss's NPC ids) are counted without one.
+ * The fields of each type that get a state (spec section 1), by the expected file's field key, with the words the
+ * page shows. A quest's rewards, an NPC's roles and a boss's NPC ids are one fact per reward, role or NPC.
  */
-export const COVERAGE_FIELDS: Record<CoverageType, readonly { field: string; core: boolean; perEntity: boolean }[]> = {
+export const COVERAGE_FIELDS: Record<CoverageType, readonly { field: string; label: string }[]> = {
   quests: [
-    { field: "title", core: true, perEntity: true }, { field: "level", core: true, perEntity: true },
-    { field: "giver", core: true, perEntity: true }, { field: "turn-in", core: true, perEntity: true },
-    { field: "reward", core: false, perEntity: false }, { field: "category", core: false, perEntity: true },
-    { field: "side", core: false, perEntity: true }, { field: "group size", core: false, perEntity: true },
-    { field: "tag", core: false, perEntity: true },
+    { field: "title", label: "title" }, { field: "level", label: "level" }, { field: "giver", label: "giver" }, { field: "turn-in", label: "turn-in" },
+    { field: "reward", label: "reward" }, { field: "category", label: "category" }, { field: "side", label: "side" },
+    { field: "group-size", label: "group size" }, { field: "tag", label: "tag" },
   ],
   npcs: [
-    { field: "name", core: true, perEntity: true }, { field: "level", core: false, perEntity: true },
-    { field: "creature type", core: false, perEntity: true }, { field: "rank", core: false, perEntity: true },
-    { field: "role", core: false, perEntity: false },
+    { field: "name", label: "name" }, { field: "level", label: "level" }, { field: "creatureType", label: "creature type" },
+    { field: "rank", label: "rank" }, { field: "role", label: "role" },
   ],
-  pins: [{ field: "position", core: true, perEntity: true }],
-  vendors: [{ field: "price", core: true, perEntity: true }, { field: "stock", core: false, perEntity: true }],
-  drops: [{ field: "rate", core: true, perEntity: true }],
-  rares: [{ field: "name", core: true, perEntity: true }, { field: "pin", core: true, perEntity: true }],
-  entrances: [{ field: "position", core: true, perEntity: true }, { field: "name", core: false, perEntity: true }, { field: "type", core: false, perEntity: true }],
-  bosses: [{ field: "listed", core: true, perEntity: true }, { field: "name", core: false, perEntity: true }, { field: "boss NPC", core: false, perEntity: false }],
-  treasures: [{ field: "position", core: true, perEntity: true }, { field: "name", core: false, perEntity: true }],
+  pins: [{ field: "position", label: "position" }],
+  vendors: [{ field: "price", label: "price" }, { field: "stock", label: "stock" }],
+  drops: [{ field: "rate", label: "rate" }],
+  rares: [{ field: "name", label: "name" }, { field: "position", label: "pin" }],
+  entrances: [{ field: "position", label: "position" }, { field: "name", label: "name" }, { field: "instanceType", label: "type" }],
+  bosses: [{ field: "listed", label: "listed" }, { field: "name", label: "name" }, { field: "npc", label: "boss NPC" }],
+  treasures: [{ field: "position", label: "position" }, { field: "name", label: "name" }],
 };
+const FIELD_KEYS = [...new Set(Object.values(COVERAGE_FIELDS).flatMap((list) => list.map((f) => f.field)))] as [string, ...string[]];
+export const fieldLabel = (type: CoverageType, field: string): string => COVERAGE_FIELDS[type].find((f) => f.field === field)?.label ?? field;
 
 /** How the score is measured, said once wherever it is shown. */
 export const COVERAGE_METHOD =
-  `A fact is confirmed when ${WORLD_AGREEMENT} installs agree on it and settled when ${WORLD_AGREEMENT + SETTLE_EXTRA_VOTERS} agree, `
-  + `the third at least ${SETTLE_WINDOW_DAYS} days ago, with no other value reported since. A pin settles when all ${WORLD_AGREEMENT + SETTLE_EXTRA_VOTERS} `
-  + `stood within ${POSITION_TOLERANCE} map units of the median, and a drop rate when its 95% interval is narrow enough. `
+  `A fact is one field of one entity, such as a quest's turn-in or an NPC's level. It is confirmed when ${WORLD_AGREEMENT} installs agree on it and settled when `
+  + `${WORLD_AGREEMENT + SETTLE_EXTRA_VOTERS} agree, the third at least ${SETTLE_WINDOW_DAYS} days ago, with no other value reported since. A pin settles when `
+  + `all ${WORLD_AGREEMENT + SETTLE_EXTRA_VOTERS} stood within ${POSITION_TOLERANCE} map units of the median, and a drop rate when its 95% interval is narrow enough. `
   + "Installs that share a Polestar character or address count once. A zone's denominator is the larger of the facts expected there and the facts players reported.";
 
 const count = z.number().int().nonnegative();
-const posInt = z.number().int().positive();
-const TypeCounts = z.object({
-  quests: count.optional(), npcs: count.optional(), pins: count.optional(), vendors: count.optional(), drops: count.optional(),
-  rares: count.optional(), entrances: count.optional(), bosses: count.optional(), treasures: count.optional(),
-}).strict();
+const typeKey = z.enum(Object.values(EXPECTED_TYPE) as [string, ...string[]]);
 
 /**
- * `coverage-expected.json`, written by the maintainer's local coverage report and uploaded to the private bucket: how
- * many facts of each type each zone is expected to hold, for one client build. Counts only; strict, so a file that
- * carries anything else (a name, an id list) is refused whole. `types` lists the types the file counts: a type it
- * does not list has no denominator, and a zone it leaves out of a listed type expects none.
+ * `coverage-expected.json`, written by the maintainer's coverage report (`coverage-report.ts`) and uploaded to the
+ * private bucket's build folder: how many entity fields of each type, and of each field, each zone is expected to
+ * hold. Counts only; strict, so a file that carries anything else (a name, an id, an unknown key) is refused whole.
+ * Zones are UiMap ids, Area ids (`area:N`) or `unplaced`; only released UiMap zones are read.
  */
 export const CoverageExpected = z.object({
-  schema: z.literal(EXPECTED_SCHEMA),
-  build: z.object({ version: z.string().regex(/^\d+(\.\d+){2,3}$/) }).strict(),
-  measuredAt: z.string().datetime({ offset: true }),
-  sources: z.array(z.enum(["game-files", "classic-baseline"])).min(1),
-  types: z.array(z.enum(COVERAGE_TYPES)).min(1),
-  zones: z.record(z.string().regex(/^[1-9]\d*$/), TypeCounts),
+  version: z.literal(1),
+  /** When the counts were made; the report does not write it yet, and the page then says `[?]`. */
+  dataAsOf: z.string().datetime({ offset: true }).nullable().optional(),
+  zones: z.array(z.object({
+    zone: z.string().regex(/^([1-9]\d*|area:\d+|unplaced)$/),
+    types: z.partialRecord(typeKey, count),
+    fields: z.partialRecord(typeKey, z.partialRecord(z.enum(FIELD_KEYS), count)),
+  }).strict()),
 }).strict();
 export type CoverageExpected = z.infer<typeof CoverageExpected>;
 
@@ -101,8 +104,8 @@ export const RecheckScope = z.object({
   /** The post's url, or `build-watch <product>-<buildId>`. */
   source: z.string().min(1).max(300),
   type: z.enum(COVERAGE_TYPES).optional(),
-  zones: z.array(posInt).optional(),
-  ids: z.array(posInt).optional(),
+  zones: z.array(z.number().int().positive()).optional(),
+  ids: z.array(z.number().int().positive()).optional(),
   note: z.string().max(300).optional(),
 }).strict().refine((s) => Boolean(s.type || s.zones?.length || s.ids?.length), { message: "a scope names a type, zones or ids" });
 export type RecheckScope = z.infer<typeof RecheckScope>;
@@ -110,11 +113,11 @@ export const RecheckFile = z.object({ schema: z.literal(RECHECK_SCHEMA), scopes:
 export type RecheckFile = z.infer<typeof RecheckFile>;
 
 export interface CoverageCell {
-  /** From the expected file; null when it does not count this type (or there is no file). */
+  /** From the expected file; null without one. */
   expected: number | null;
-  /** Facts Everloot holds: reported by players, or an entrance the game files place. */
+  /** Field facts Everloot holds: reported by players, or an entrance the game files place. */
   observed: number;
-  /** `max(expected, observed)`; null without an expected count, except entrances, which the game files list. */
+  /** `max(expected, observed)`; null without an expected file, except entrances, which the game files list. */
   denominator: number | null;
   reported: number;
   recheck: number;
@@ -146,12 +149,16 @@ export interface CoverageArea {
 export interface ZoneCoverage extends CoverageArea { mapId: number; name: string }
 export interface CoverageReport {
   schema: typeof COVERAGE_SCHEMA;
+  /** The client build the score is for, when the caller names it. */
+  build: string | null;
   /** When the records were current; null when unrecorded. */
   dataAsOf: string | null;
   method: string;
   /** Distinct folded installs behind every counted fact. */
   installs: number;
-  expected: { build: string; measuredAt: string; sources: string[]; types: CoverageType[] } | null;
+  /** The expected file's own date (null when it carries none); null for the whole field without a file. */
+  expected: { dataAsOf: string | null } | null;
+  /** The released zones together; unplaced facts and held-back zones are never in them. */
   totals: Record<CoverageType, CoverageCell>;
   zones: ZoneCoverage[];
   /** Facts in no released zone (an NPC seen only inside a dungeon, a quest with no placed giver): never in a denominator. */
@@ -163,8 +170,9 @@ export interface CoverageReport {
 export interface CoverageInput {
   /** Records after `publicRecords`, so Recorder installs are folded. */
   records: readonly unknown[];
-  /** Corpus time (ISO); without it nothing settles. */
+  /** Corpus time (ISO): the time of the last real change. Without it nothing settles. */
   asOf: string | null;
+  build?: string;
   /** The released zones; facts elsewhere are unplaced. */
   zones: readonly { mapId: number; name: string }[];
   /** Zones found only in the game files: their facts are left out entirely. */
@@ -179,10 +187,9 @@ type FieldFact = { field: string; state: FactState; leading: number; contested: 
 interface Fact {
   type: CoverageType;
   zone: number | null;
-  /** Ids a recheck scope can name. */
+  /** Ids a recheck scope can name; the first is the entity's own. */
   refs: number[];
   fields: FieldFact[];
-  state: FactState;
   voters: Set<string>;
   label: string;
   href: string | null;
@@ -200,6 +207,8 @@ function time(value: unknown): number | null {
 function emptyCell(): CoverageCell {
   return { expected: null, observed: 0, denominator: null, reported: 0, recheck: 0, confirmed: 0, settled: 0 };
 }
+
+const missing = (field: string): FieldFact => ({ field, state: "missing", leading: 0, contested: false });
 
 /** One scalar field through the shared tally: the states the readers' agreement rule gives. */
 function scalar(field: string, rows: readonly VoteRow[], asOf: string | null, since: string | null): FieldFact | null {
@@ -220,7 +229,7 @@ type Placed = { installId: string; x: number; y: number; capturedAt?: string };
  * when every install stood within `radius` of the median and the third reported at least 14 days before `asOf`. A
  * spread pin stays confirmed. With `since`, a pin that was confirmed before it counts only reports after it.
  */
-function position(field: string, rows: readonly Placed[], asOf: string | null, since: string | null, radius = POSITION_TOLERANCE): FieldFact | null {
+function position(rows: readonly Placed[], asOf: string | null, since: string | null, radius = POSITION_TOLERANCE): FieldFact | null {
   if (!rows.length) return null;
   const now = time(asOf);
   const at = (r: Placed) => { const t = time(r.capturedAt); return t === null ? null : Math.min(t, now ?? t); };
@@ -239,13 +248,13 @@ function position(field: string, rows: readonly Placed[], asOf: string | null, s
     by.set(id, e);
   }
   const n = by.size;
-  if (n < WORLD_AGREEMENT) return { field, state: recheck ? "recheck" : n ? "reported" : "missing", leading: n, contested: false };
+  if (n < WORLD_AGREEMENT) return { field: "position", state: recheck ? "recheck" : n ? "reported" : "missing", leading: n, contested: false };
   const each = [...by.values()].map((e) => ({ x: median(e.x), y: median(e.y), first: e.first }));
   const mx = median(each.map((e) => e.x)), my = median(each.map((e) => e.y));
   const tight = each.every((e) => Math.hypot(e.x - mx, e.y - my) <= radius);
   const third = each.map((e) => e.first).filter((t): t is number => t !== null).sort((a, b) => a - b)[WORLD_AGREEMENT - 1];
   const settled = n >= SETTLE_VOTERS && tight && now !== null && third !== undefined && third <= now - SETTLE_WINDOW_DAYS * DAY;
-  return { field, state: settled ? "settled" : "confirmed", leading: n, contested: false };
+  return { field: "position", state: settled ? "settled" : "confirmed", leading: n, contested: false };
 }
 
 function median(values: number[]): number {
@@ -263,15 +272,6 @@ function side(rows: readonly { installId: string; faction?: "alliance" | "horde"
   return { field: "side", state: agree(SETTLE_VOTERS) ? "settled" : agree(WORLD_AGREEMENT) ? "confirmed" : "reported", leading: Math.max(a.size, h.size), contested: false };
 }
 
-/** The lowest state among the core fields; no better than reported while a core field has no report. */
-function entityState(type: CoverageType, fields: readonly FieldFact[]): FactState {
-  const core = COVERAGE_FIELDS[type].filter((f) => f.core).map((f) => f.field);
-  const have = fields.filter((f) => core.includes(f.field));
-  if (!have.length) return fields.length ? "reported" : "missing";
-  const low = have.reduce((min, f) => (RANK[f.state] < RANK[min] ? f.state : min), "settled" as FactState);
-  return have.length < core.length && RANK[low] > RANK.reported ? "reported" : low;
-}
-
 /** The map with the most installs, ties to the lower id; null for none. */
 function busiest(installs: Map<number, Set<string>>): number | null {
   let best: number | null = null, size = 0;
@@ -283,10 +283,20 @@ function addTo(map: Map<number, Set<string>>, key: number, installId: string) {
   map.set(key, (map.get(key) ?? new Set<string>()).add(installId.trim()));
 }
 
+function groupBy<T, K>(rows: readonly T[], key: (r: T) => K): Map<K, T[]> {
+  const out = new Map<K, T[]>();
+  for (const r of rows) {
+    const k = key(r), list = out.get(k);
+    if (list) list.push(r); else out.set(k, [r]);
+  }
+  return out;
+}
+
 const capturedOf = (raw: unknown): { capturedAt?: string } => {
   const c = raw && typeof raw === "object" ? (raw as { capturedAt?: unknown }).capturedAt : undefined;
   return typeof c === "string" && time(c) !== null ? { capturedAt: c } : {};
 };
+const at = (r: { capturedAt?: string }) => (r.capturedAt ? { capturedAt: r.capturedAt } : {});
 
 export function computeCoverage(input: CoverageInput): CoverageReport {
   const asOf = input.asOf && time(input.asOf) !== null ? new Date(time(input.asOf)!).toISOString() : null;
@@ -296,25 +306,17 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
   const facts: Fact[] = [];
 
   // The world rows with their capture times: the readers' own parsing, one record at a time.
-  const npcs: (ReturnType<typeof worldFactsFromRecords>["npcs"][number] & { capturedAt?: string })[] = [];
-  const quests: (ReturnType<typeof worldFactsFromRecords>["quests"][number] & { capturedAt?: string })[] = [];
-  const vendors: (ReturnType<typeof worldFactsFromRecords>["vendors"][number] & { capturedAt?: string })[] = [];
+  type World = ReturnType<typeof worldFactsFromRecords>;
+  const npcs: (World["npcs"][number] & { capturedAt?: string })[] = [];
+  const quests: (World["quests"][number] & { capturedAt?: string })[] = [];
+  const vendors: (World["vendors"][number] & { capturedAt?: string })[] = [];
   for (const raw of input.records) {
     const one = worldFactsFromRecords([raw]);
-    const at = capturedOf(raw);
-    for (const r of one.npcs) npcs.push({ ...r, ...at });
-    for (const r of one.quests) quests.push({ ...r, ...at });
-    for (const r of one.vendors) vendors.push({ ...r, ...at });
+    const when = capturedOf(raw);
+    for (const r of one.npcs) npcs.push({ ...r, ...when });
+    for (const r of one.quests) quests.push({ ...r, ...when });
+    for (const r of one.vendors) vendors.push({ ...r, ...when });
   }
-
-  const groupBy = <T, K>(rows: readonly T[], key: (r: T) => K) => {
-    const out = new Map<K, T[]>();
-    for (const r of rows) {
-      const k = key(r), list = out.get(k);
-      if (list) list.push(r); else out.set(k, [r]);
-    }
-    return out;
-  };
   const npcRows = groupBy(npcs.filter((r) => r.installId.trim()), (r) => r.npcId);
 
   // Where an NPC is counted: the map most installs placed it on (a pin position first, any position after).
@@ -339,8 +341,7 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
   };
 
   const push = (type: CoverageType, zone: number | null, refs: number[], fields: (FieldFact | null)[], voters: Iterable<string>, label: string, href: string | null) => {
-    const kept = fields.filter((f): f is FieldFact => f !== null);
-    facts.push({ type, zone, refs, fields: kept, state: entityState(type, kept), voters: new Set([...voters].map((v) => v.trim()).filter(Boolean)), label, href });
+    facts.push({ type, zone, refs, fields: fields.filter((f): f is FieldFact => f !== null), voters: new Set([...voters].map((v) => v.trim()).filter(Boolean)), label, href });
   };
   const installsOf = (rows: readonly { installId: string }[]) => rows.map((r) => r.installId);
 
@@ -348,35 +349,33 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
   for (const [npcId, rows] of npcRows) {
     const zone = zoneOfNpc(npcId);
     const s = since("npcs", zone, [npcId]);
-    const vote = <K extends keyof (typeof rows)[number]>(k: K) => rows.filter((r) => r[k] !== undefined).map((r) => ({ installId: r.installId, value: r[k] as unknown as string | number, ...(r.capturedAt ? { capturedAt: r.capturedAt } : {}) }));
+    const vote = (k: "name" | "level" | "creatureType" | "rank") => rows.flatMap((r) => (r[k] === undefined ? [] : [{ installId: r.installId, value: r[k]!, ...at(r) }]));
     const roles = groupBy(rows.filter((r) => r.positionKind === "interaction" && r.role), (r) => r.role!);
-    const name = scalar("name", vote("name"), asOf, s);
     const rank = scalar("rank", vote("rank"), asOf, s);
     push("npcs", zone, [npcId], [
-      name, scalar("level", vote("level"), asOf, s), scalar("creature type", vote("creatureType"), asOf, s), rank,
+      scalar("name", vote("name"), asOf, s), scalar("level", vote("level"), asOf, s), scalar("creatureType", vote("creatureType"), asOf, s), rank,
       ...[...roles.values()].map((list) => listed("role", list, asOf, s)),
     ], installsOf(rows), `NPC ${npcId}`, `/database/npcs/${npcId}`);
 
-    const pins: FieldFact[] = [];
-    for (const [mapId, list] of groupBy(rows.filter((r) => isPinPosition(r.positionKind) && Number.isInteger(r.mapId) && r.mapId >= 0 && r.x >= 0 && r.x <= 100 && r.y >= 0 && r.y <= 100), (r) => r.mapId)) {
-      const pin = position("position", list, asOf, since("pins", mapId, [npcId]));
-      if (pin) pins.push(pin);
-      push("pins", released.has(mapId) || held.has(mapId) ? mapId : null, [npcId], [pin], installsOf(list), `NPC ${npcId} · map ${mapId}`, `/database/npcs/${npcId}`);
+    const pinRows = groupBy(rows.filter((r) => isPinPosition(r.positionKind) && Number.isInteger(r.mapId) && r.mapId >= 0 && r.x >= 0 && r.x <= 100 && r.y >= 0 && r.y <= 100), (r) => r.mapId);
+    for (const [mapId, list] of pinRows) {
+      push("pins", released.has(mapId) || held.has(mapId) ? mapId : null, [npcId], [position(list, asOf, since("pins", mapId, [npcId]))], installsOf(list), `NPC ${npcId} · map ${mapId}`, `/database/npcs/${npcId}`);
     }
     // A rare is an NPC whose agreed rank is rare or rare elite, or, with no agreed rank yet, one reported as either.
+    // Like the report, its name is one fact and each map's pin another.
     const rareRank = (v: unknown) => v === "rare" || v === "rare_elite";
-    const agreedRank = rank && (rank.state === "confirmed" || rank.state === "settled") ? tallyVotes(vote("rank")).winner?.value : undefined;
+    const agreedRank = rank && RANK[rank.state] >= RANK.confirmed ? tallyVotes(vote("rank")).winner?.value : undefined;
     if (agreedRank !== undefined ? rareRank(agreedRank) : rows.some((r) => rareRank(r.rank))) {
-      const rs = since("rares", zone, [npcId]);
-      const best = pins.reduce<FieldFact | null>((b, p) => (!b || RANK[p.state] > RANK[b.state] ? p : b), null);
-      push("rares", zone, [npcId], [scalar("name", vote("name"), asOf, rs), best && { ...best, field: "pin" }], installsOf(rows), `NPC ${npcId}`, `/database/npcs/${npcId}`);
+      push("rares", zone, [npcId], [scalar("name", vote("name"), asOf, since("rares", zone, [npcId]))], installsOf(rows), `NPC ${npcId}`, `/database/npcs/${npcId}`);
+      for (const [mapId, list] of pinRows) {
+        push("rares", released.has(mapId) || held.has(mapId) ? mapId : null, [npcId], [position(list, asOf, since("rares", mapId, [npcId]))], installsOf(list), `NPC ${npcId} · map ${mapId}`, `/database/npcs/${npcId}`);
+      }
     }
   }
 
   // Quests, counted where their giver (or turn-in) NPC is.
   for (const [questId, rows] of groupBy(quests.filter((r) => r.installId.trim()), (r) => r.questId)) {
-    const at = (r: (typeof rows)[number]) => (r.capturedAt ? { capturedAt: r.capturedAt } : {});
-    const ids = (k: "giverNpcId" | "turnInNpcId") => rows.filter((r) => r[k] !== undefined).map((r) => ({ installId: r.installId, value: r[k]!, ...at(r) }));
+    const ids = (k: "giverNpcId" | "turnInNpcId") => rows.flatMap((r) => (r[k] === undefined ? [] : [{ installId: r.installId, value: r[k]!, ...at(r) }]));
     const lead = (list: VoteRow[]) => tallyVotes(list).groups.sort((a, b) => b.voters.size - a.voters.size)[0]?.value as number | undefined;
     const zone = zoneOfNpc(lead(ids("giverNpcId"))) ?? zoneOfNpc(lead(ids("turnInNpcId")));
     const s = since("quests", zone, [questId]);
@@ -386,23 +385,22 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
       const list = rewards.get(item);
       if (list) list.push(r); else rewards.set(item, [r]);
     }
-    const text = (k: "title" | "category" | "tag") => rows.filter((r) => r[k] !== undefined).map((r) => ({ installId: r.installId, value: r[k]!, ...at(r) }));
+    const text = (k: "title" | "category" | "tag") => rows.flatMap((r) => (r[k] === undefined ? [] : [{ installId: r.installId, value: r[k]!, ...at(r) }]));
     push("quests", zone, [questId, ...rewards.keys()], [
       scalar("title", text("title"), asOf, s), scalar("level", rows.map((r) => ({ installId: r.installId, value: r.level, ...at(r) })), asOf, s),
       scalar("giver", ids("giverNpcId"), asOf, s), scalar("turn-in", ids("turnInNpcId"), asOf, s),
       ...[...rewards.values()].map((list) => listed("reward", list, asOf, s)),
       scalar("category", text("category"), asOf, s), side(rows),
-      scalar("group size", rows.filter((r) => r.suggestedGroup !== undefined).map((r) => ({ installId: r.installId, value: r.suggestedGroup!, ...at(r) })), asOf, s),
+      scalar("group-size", rows.flatMap((r) => (r.suggestedGroup === undefined ? [] : [{ installId: r.installId, value: r.suggestedGroup, ...at(r) }])), asOf, s),
       scalar("tag", text("tag"), asOf, s),
     ], installsOf(rows), `Quest ${questId}`, `/database/quests/${questId}`);
   }
 
-  // Vendor offers: one fact per vendor and item.
+  // Vendor offers: one entity per vendor and item.
   for (const [, rows] of groupBy(vendors.filter((r) => r.installId.trim() && Number.isInteger(r.itemId) && r.itemId > 0 && Number.isInteger(r.priceCopper) && r.priceCopper >= 0), (r) => `${r.vendorNpcId}|${r.itemId}`)) {
     const { vendorNpcId, itemId } = rows[0]!;
     const zone = zoneOfNpc(vendorNpcId);
     const s = since("vendors", zone, [vendorNpcId, itemId]);
-    const at = (r: (typeof rows)[number]) => (r.capturedAt ? { capturedAt: r.capturedAt } : {});
     // Stock 0 stands for "not limited", as a row without a limit says.
     push("vendors", zone, [vendorNpcId, itemId], [
       scalar("price", rows.map((r) => ({ installId: r.installId, value: r.priceCopper, ...at(r) })), asOf, s),
@@ -412,9 +410,9 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
 
   // Drop rates: the merged settling rule over the loot-api windows the public rates read.
   const windows = lootWindowsFromRecords(input.records as unknown[]);
-  const objectRows = [...objectSpawnRowsFromRecords(input.records as unknown[]), ...objectSightingRowsFromRecords(input.records as unknown[])];
   const objectMaps = new Map<number, Map<number, Set<string>>>();
-  for (const r of objectRows) if (typeof r.mapId === "number") {
+  for (const r of [...objectSpawnRowsFromRecords(input.records as unknown[]), ...objectSightingRowsFromRecords(input.records as unknown[])]) {
+    if (typeof r.mapId !== "number") continue;
     const maps = objectMaps.get(r.objectId) ?? new Map<number, Set<string>>();
     addTo(maps, r.mapId, r.installId);
     objectMaps.set(r.objectId, maps);
@@ -428,13 +426,13 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
     const npc = rate.sourceNpcId !== undefined;
     const sourceId = (rate.sourceNpcId ?? rate.sourceObjectId)!;
     const zone = npc ? zoneOfNpc(sourceId) : busiest(objectMaps.get(sourceId) ?? new Map());
-    const settled = rate.public && measureDropRate(rate, asOf ?? "").settled;
+    const settled = rate.public && measureDropRate(rate, asOf ?? "[?]").settled;
     push("drops", zone, [sourceId, rate.itemId], [{ field: "rate", state: settled ? "settled" : rate.public ? "confirmed" : "reported", leading: rate.reporters, contested: false }],
       sourceInstalls.get(`${npc ? "npc" : "obj"}:${sourceId}`) ?? [], `${npc ? "NPC" : "Object"} ${sourceId} · item ${rate.itemId}`,
       npc ? `/database/npcs/${sourceId}` : `/database/objects/${sourceId}`);
   }
 
-  // Dungeon entrances and bosses.
+  // Dungeon entrances and bosses. An entrance the game files place is a fact before anyone reports it.
   const instances = instanceFactsFromRecords(input.records as unknown[]);
   const entranceRows = groupBy(instances.entrances, (r) => r.instanceMapId);
   const instanceZone = new Map<number, number | null>();
@@ -446,9 +444,10 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
     const where = zone ?? map;
     for (const id of ids) instanceZone.set(id, where);
     const s = since("entrances", where, [...ids]);
-    const vote = (k: "name" | "instanceType") => rows.map((r) => ({ installId: r.installId, value: r[k], ...(r.capturedAt ? { capturedAt: r.capturedAt } : {}) }));
+    const vote = (k: "name" | "instanceType") => rows.map((r) => ({ installId: r.installId, value: r[k], ...at(r) }));
     push("entrances", where, [...ids], [
-      map === null ? null : position("position", rows.filter((r) => r.mapId === map), asOf, s), scalar("name", vote("name"), asOf, s), scalar("type", vote("instanceType"), asOf, s),
+      (map === null ? null : position(rows.filter((r) => r.mapId === map), asOf, s)) ?? missing("position"),
+      scalar("name", vote("name"), asOf, s) ?? missing("name"), scalar("instanceType", vote("instanceType"), asOf, s) ?? missing("instanceType"),
     ], installsOf(rows), `Instance ${ids[0]}`, `/database/instances/${ids[0]}`);
   };
   const filed = new Set<number>();
@@ -467,12 +466,12 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
       if (list) list.push(r); else npcVotes.set(id, [r]);
     }
     push("bosses", zone, [instanceMapId, encounterId, ...npcVotes.keys()], [
-      listed("listed", rows, asOf, s), scalar("name", rows.map((r) => ({ installId: r.installId, value: r.name, ...(r.capturedAt ? { capturedAt: r.capturedAt } : {}) })), asOf, s),
-      ...[...npcVotes.values()].map((list) => listed("boss NPC", list, asOf, s)),
+      listed("listed", rows, asOf, s), scalar("name", rows.map((r) => ({ installId: r.installId, value: r.name, ...at(r) })), asOf, s),
+      ...[...npcVotes.values()].map((list) => listed("npc", list, asOf, s)),
     ], installsOf(rows), `Instance ${instanceMapId} · encounter ${encounterId}`, `/database/instances/${instanceMapId}`);
   }
 
-  // Treasures: objects seen on the minimap, one fact per spawn cluster, as the treasure pins are drawn.
+  // Treasures: objects seen on the minimap, one entity per spawn cluster, as the treasure pins are drawn.
   const sightings = objectSightingRowsFromRecords(input.records as unknown[]);
   const spawns = objectSpawns(sightings, [], asOf ? new Date(asOf) : undefined);
   const sightingsOf = groupBy(sightings, (r) => r.objectId);
@@ -480,10 +479,10 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
     const all = sightingsOf.get(pin.objectId) ?? [];
     const near = all.filter((r) => r.mapId === pin.mapId && Math.hypot((r.x ?? -99) - pin.x, (r.y ?? -99) - pin.y) <= SPAWN_RADIUS) as Placed[];
     const s = since("treasures", pin.mapId, [pin.objectId]);
-    const at = position("position", near, asOf, s, SPAWN_RADIUS);
+    const placed = position(near, asOf, s, SPAWN_RADIUS);
     // The cluster rule already holds 3 installs; a radius check that sees fewer leaves the pin confirmed, not settled.
-    const pos: FieldFact = at && RANK[at.state] >= RANK.confirmed ? at : { field: "position", state: "confirmed", leading: pin.reporters, contested: false };
-    const names = all.filter((r) => r.name !== undefined).map((r) => ({ installId: r.installId, value: r.name!, ...(r.capturedAt ? { capturedAt: r.capturedAt } : {}) }));
+    const pos: FieldFact = placed && RANK[placed.state] >= RANK.confirmed ? placed : { field: "position", state: "confirmed", leading: pin.reporters, contested: false };
+    const names = all.flatMap((r) => (r.name === undefined ? [] : [{ installId: r.installId, value: r.name, ...at(r) }]));
     push("treasures", pin.mapId, [pin.objectId], [pos, scalar("name", names, asOf, s)], installsOf(near), `Object ${pin.objectId}`, `/database/objects/${pin.objectId}`);
   }
   for (const u of spawns.unconfirmed) {
@@ -497,11 +496,13 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
 
 function summarize(facts: Fact[], input: CoverageInput, asOf: string | null, released: Set<number>, held: Set<number>): CoverageReport {
   const expected = input.expected ?? null;
-  const counted = new Set(expected?.types ?? []);
-  const expectedFor = (zone: number, type: CoverageType): number | null =>
-    expected && counted.has(type) ? expected.zones[String(zone)]?.[type] ?? 0 : null;
+  // Only released UiMap zones are read from the file: Area ids, `unplaced` and held-back zones stay out of every share.
+  const byZone = new Map((expected?.zones ?? []).filter((z) => /^\d+$/.test(z.zone)).map((z) => [Number(z.zone), z]));
+  const expectedType = (zone: number, type: CoverageType) => (expected ? byZone.get(zone)?.types[EXPECTED_TYPE[type]] ?? 0 : null);
+  const expectedField = (zone: number, type: CoverageType, field: string) => (expected ? byZone.get(zone)?.fields[EXPECTED_TYPE[type]]?.[field] ?? 0 : null);
+  const denominator = (type: CoverageType, cell: CoverageCell) =>
+    cell.expected !== null ? Math.max(cell.expected, cell.observed) : type === "entrances" ? cell.observed : null;
 
-  // Held-back zones are left out entirely; anything outside a released zone is unplaced.
   const shown = facts.filter((f) => f.zone === null || !held.has(f.zone));
   const area = (list: Fact[], zone: number | null): CoverageArea => {
     const types = Object.fromEntries(COVERAGE_TYPES.map((t) => [t, emptyCell()])) as Record<CoverageType, CoverageCell>;
@@ -517,29 +518,33 @@ function summarize(facts: Fact[], input: CoverageInput, asOf: string | null, rel
     };
     for (const f of list) {
       for (const v of f.voters) voters.add(v);
-      tally(types[f.type], f.state);
       for (const field of f.fields) {
+        tally(types[f.type], field.state);
         const key = `${f.type}|${field.field}`;
         const cell = fieldCells.get(key) ?? { ...emptyCell(), type: f.type, field: field.field };
         tally(cell, field.state);
         fieldCells.set(key, cell);
         const short = field.state === "reported" || field.state === "recheck";
         if (short && !field.contested && field.leading >= 1 && field.leading < WORLD_AGREEMENT) {
-          needs.push({ type: f.type, field: field.field, label: f.label, voters: field.leading, need: WORLD_AGREEMENT - field.leading, href: f.href });
+          needs.push({ type: f.type, field: fieldLabel(f.type, field.field), label: f.label, voters: field.leading, need: WORLD_AGREEMENT - field.leading, href: f.href });
         }
       }
     }
+    // A field the file expects here that nobody has reported still gets its row, at 0 of its count.
+    if (zone !== null) for (const t of COVERAGE_TYPES) for (const { field } of COVERAGE_FIELDS[t]) {
+      const key = `${t}|${field}`;
+      if (!fieldCells.has(key) && (expectedField(zone, t, field) ?? 0) > 0) fieldCells.set(key, { ...emptyCell(), type: t, field });
+    }
     for (const t of COVERAGE_TYPES) {
       const cell = types[t];
-      cell.expected = zone === null ? null : expectedFor(zone, t);
-      cell.denominator = zone === null ? null : cell.expected !== null ? Math.max(cell.expected, cell.observed) : t === "entrances" ? cell.observed : null;
+      cell.expected = zone === null ? null : expectedType(zone, t);
+      cell.denominator = zone === null ? null : denominator(t, cell);
     }
-    const order = new Map(COVERAGE_TYPES.flatMap((t) => COVERAGE_FIELDS[t].map((f, i) => [`${t}|${f.field}`, COVERAGE_TYPES.indexOf(t) * 100 + i] as const)));
+    const order = new Map(COVERAGE_TYPES.flatMap((t, ti) => COVERAGE_FIELDS[t].map((f, i) => [`${t}|${f.field}`, ti * 100 + i] as const)));
     const fields = [...fieldCells.values()].sort((a, b) => (order.get(`${a.type}|${a.field}`) ?? 0) - (order.get(`${b.type}|${b.field}`) ?? 0));
     for (const cell of fields) {
-      const perEntity = COVERAGE_FIELDS[cell.type].find((f) => f.field === cell.field)?.perEntity ?? false;
-      cell.expected = perEntity ? types[cell.type].expected : null;
-      cell.denominator = perEntity && types[cell.type].denominator !== null ? Math.max(types[cell.type].denominator!, cell.observed) : null;
+      cell.expected = zone === null ? null : expectedField(zone, cell.type, cell.field);
+      cell.denominator = zone === null ? null : denominator(cell.type, cell);
     }
     // The closest first: one more install before two, then by type and label.
     needs.sort((a, b) => a.need - b.need || COVERAGE_TYPES.indexOf(a.type) - COVERAGE_TYPES.indexOf(b.type) || a.label.localeCompare(b.label, "en", { numeric: true }) || a.field.localeCompare(b.field));
@@ -554,20 +559,19 @@ function summarize(facts: Fact[], input: CoverageInput, asOf: string | null, rel
   const totals = Object.fromEntries(COVERAGE_TYPES.map((t) => {
     const cells = zones.map((z) => z.types[t]);
     const sum = (k: keyof CoverageCell) => cells.reduce((n, c) => n + (c[k] ?? 0), 0);
-    const known = cells.every((c) => c.denominator !== null);
+    const all = (k: "expected" | "denominator") => cells.length > 0 && cells.every((c) => c[k] !== null);
     return [t, {
-      expected: cells.every((c) => c.expected !== null) && cells.length ? sum("expected") : null,
-      observed: sum("observed"), denominator: known && cells.length ? sum("denominator") : null,
+      expected: all("expected") ? sum("expected") : null, observed: sum("observed"), denominator: all("denominator") ? sum("denominator") : null,
       reported: sum("reported"), recheck: sum("recheck"), confirmed: sum("confirmed"), settled: sum("settled"),
     } satisfies CoverageCell];
   })) as Record<CoverageType, CoverageCell>;
 
-  const installs = new Set(shown.flatMap((f) => [...f.voters])).size;
   const locate = (type: "quests" | "npcs") => shown.filter((f) => f.type === type)
     .map((f): [number, number | null] => [f.refs[0]!, f.zone !== null && released.has(f.zone) ? f.zone : null]).sort((a, b) => a[0] - b[0]);
   return {
-    schema: COVERAGE_SCHEMA, dataAsOf: asOf, method: COVERAGE_METHOD, installs,
-    expected: expected && { build: expected.build.version, measuredAt: expected.measuredAt, sources: [...expected.sources], types: [...expected.types] },
+    schema: COVERAGE_SCHEMA, build: input.build ?? null, dataAsOf: asOf, method: COVERAGE_METHOD,
+    installs: new Set(shown.flatMap((f) => [...f.voters])).size,
+    expected: expected && { dataAsOf: expected.dataAsOf ?? null },
     totals, zones, unplaced, locate: { quests: locate("quests"), npcs: locate("npcs") },
   };
 }
@@ -579,9 +583,8 @@ export function coverageShares(cell: Pick<CoverageCell, "denominator" | "confirm
   return { settled: Math.min(1, cell.settled / d), confirmed: Math.min(1, cell.confirmed / d) };
 }
 
-/** The expected file, or null when it is missing, malformed, carries anything but counts, or is for another build. */
-export function parseCoverageExpected(raw: unknown, build?: string): CoverageExpected | null {
+/** The expected file, or null when it is missing, malformed, or carries anything but counts under known keys. */
+export function parseCoverageExpected(raw: unknown): CoverageExpected | null {
   const parsed = CoverageExpected.safeParse(raw);
-  if (!parsed.success) return null;
-  return build === undefined || parsed.data.build.version === build ? parsed.data : null;
+  return parsed.success ? parsed.data : null;
 }

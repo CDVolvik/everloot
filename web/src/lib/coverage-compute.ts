@@ -17,21 +17,25 @@ export const RECHECK_SCOPES: readonly RecheckScope[] = (() => {
 })();
 
 /**
- * The counts-only expected file (`<build folder>/coverage-expected.json` in the private bucket, uploaded by the
- * maintainer beside the item names). Null when it is missing, malformed, holds anything but counts, or is for
- * another build: the score then has no denominator and the pages show the reported facts alone. Never throws.
+ * The counts-only expected file the maintainer's `coverage-report` writes, uploaded to the private bucket's folder
+ * for the build (`<build folder>/coverage-expected.json`, beside the item names): the folder is what ties it to a
+ * build. Null when it is missing, malformed or holds anything but counts: the score then has no denominator and
+ * the pages show the reported facts alone. Never throws.
  */
-export async function loadCoverageExpected(build: string = COVERAGE_BUILD, base: string | null = assetsBaseUrl(), store: PrivateStore | null = privateStoreFromEnv()): Promise<CoverageExpected | null> {
+export async function loadCoverageExpected(base: string | null = assetsBaseUrl(), store: PrivateStore | null = privateStoreFromEnv()): Promise<CoverageExpected | null> {
   const folder = base ? buildFolder(base) : null;
   if (!folder || !store) return null;
-  return parseCoverageExpected(await store.read(`${folder}/coverage-expected.json`), build);
+  return parseCoverageExpected(await store.read(`${folder}/coverage-expected.json`));
 }
 
-/** The score for one corpus: the released zones, the entrances the game files place, the expected counts and the recheck scopes. */
-export function coverageFor(corpus: Pick<Corpus, "records" | "dataAsOf">, expected: CoverageExpected | null): CoverageReport {
+/**
+ * The score for one corpus: the released zones, the entrances the game files place, the expected counts and the
+ * recheck scopes. `asOf` is the time of the last real change (the snapshot's), never the time this ran.
+ */
+export function coverageFor(corpus: Pick<Corpus, "records" | "dataAsOf">, expected: CoverageExpected | null, asOf: string | null = corpus.dataAsOf ?? null): CoverageReport {
   const fileEntrances = placedEntrances(WORLD_MAP).flatMap((e) => (e.files && e.zone ? [{ instanceMapIds: e.instanceMapIds, zone: e.zone.mapId }] : []));
   return computeCoverage({
-    records: corpus.records, asOf: corpus.dataAsOf ?? null,
+    records: corpus.records, asOf, build: COVERAGE_BUILD,
     zones: publicZones().map((z) => ({ mapId: z.mapId, name: z.name })),
     heldBack: WORLD_MAP.heldBackZones.map((z) => z.uiMapId),
     fileEntrances, expected, recheck: RECHECK_SCOPES,

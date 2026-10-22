@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
-import type { CoverageNeed, FieldCell } from "../../../../../../kb/src/coverage";
+import { fieldLabel, type CoverageNeed, type FieldCell } from "../../../../../../kb/src/coverage";
 import { Container, DataTable, DataTitle, type SparseColumn } from "@/components/ui";
 import { loadCoverage } from "@/lib/coverage-compute";
 import { cellDetail, measuredLine, shareText, TYPE_LABEL, zoneCoverageHref } from "@/lib/coverage-view";
@@ -39,7 +39,7 @@ export default async function ZoneCoveragePage(props: Props) {
 
   const fieldColumns: SparseColumn<FieldCell>[] = [
     { key: "type", header: "Type", cell: (f) => TYPE_LABEL[f.type] },
-    { key: "field", header: "Field", cell: (f) => f.field },
+    { key: "field", header: "Field", cell: (f) => fieldLabel(f.type, f.field) },
     { key: "share", header: "Settled / confirmed", numeric: true, cell: (f) => <span title={cellDetail(f)} className="tabular-nums">{shareText(f)}</span> },
     { key: "settled", header: "Settled", numeric: true, cell: (f) => f.settled },
     { key: "confirmed", header: "Confirmed", numeric: true, cell: (f) => f.confirmed },

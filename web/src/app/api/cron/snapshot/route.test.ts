@@ -8,6 +8,8 @@ const keys = vi.hoisted(() => ({ pruneKeys: vi.fn() }));
 vi.mock("@/lib/api-keys", () => ({ pruneKeys: keys.pruneKeys }));
 const players = vi.hoisted(() => ({ prune: vi.fn() }));
 vi.mock("@/lib/player-store", () => ({ playerStore: () => ({ prune: players.prune }) }));
+const coverage = vi.hoisted(() => ({ writeCoverage: vi.fn() }));
+vi.mock("@/lib/coverage-store", () => ({ writeCoverage: coverage.writeCoverage }));
 import { GET } from "./route";
 beforeEach(() => {
   vi.stubEnv("CRON_SECRET", "synthetic-cron-key");
@@ -19,6 +21,7 @@ beforeEach(() => {
   store.prune.mockReset().mockResolvedValue(undefined);
   keys.pruneKeys.mockReset().mockResolvedValue(undefined);
   players.prune.mockReset().mockResolvedValue(undefined);
+  coverage.writeCoverage.mockReset().mockResolvedValue({ written: false });
 });
 const req = (auth = "Bearer synthetic-cron-key", query = "") =>
   new Request(`https://everloot.app/api/cron/snapshot${query}`, { headers: { authorization: auth } });
@@ -41,6 +44,28 @@ test("an idle run skips corpus and completion, day-gates market, and heartbeats"
   expect(store.writeMarket).toHaveBeenCalledWith({ idle: true });
   expect(store.writeCronRun).toHaveBeenCalledWith(false, "2026-10-01");
   expect(store.prune).toHaveBeenCalledOnce();
+});
+
+test("the coverage score is written after a snapshot that changed, dated by the snapshot, and never on an idle run", async () => {
+  store.snapshotWork.mockResolvedValue({ idle: true, retryRollups: false, dataAsOf: "2026-10-01" });
+  expect(await (await GET(req())).json()).toMatchObject({ ok: true, coverage: { written: false } });
+  expect(coverage.writeCoverage).not.toHaveBeenCalled();
+  store.snapshotWork.mockResolvedValue({ idle: false, retryRollups: false, dataAsOf: "2026-10-01" });
+  store.writeSnapshot.mockResolvedValue({ uploads: 9, added: 2, dataAsOf: "2026-10-02T00:00:00.000Z" });
+  coverage.writeCoverage.mockResolvedValue({ written: true });
+  expect(await (await GET(req())).json()).toMatchObject({ ok: true, coverage: { written: true } });
+  expect(coverage.writeCoverage).toHaveBeenCalledWith({ added: 2, rebuild: false, dataAsOf: "2026-10-02T00:00:00.000Z" });
+  expect(store.writeCronRun).toHaveBeenLastCalledWith(false, "2026-10-02T00:00:00.000Z");
+});
+
+test("a coverage failure is logged and the run, its heartbeat included, still succeeds", async () => {
+  store.writeSnapshot.mockResolvedValue({ uploads: 9, added: 1, dataAsOf: "2026-10-02T00:00:00.000Z" });
+  coverage.writeCoverage.mockRejectedValue(new Error("r2 down"));
+  vi.spyOn(console, "error").mockImplementation(() => {});
+  const res = await GET(req());
+  expect(res.status).toBe(200);
+  expect(await res.json()).toMatchObject({ ok: true, coverage: null });
+  expect(store.writeCronRun).toHaveBeenCalledOnce();
 });
 
 test("idle does not strand rollups left behind by failure or a bounded completion batch", async () => {

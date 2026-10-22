@@ -83,34 +83,29 @@ test("unreachable storage says so, never a table of zeros", async () => {
   expect(page).not.toContain("<table");
 });
 
-test("the expected file is read from the private bucket for this build only, counts only", async () => {
-  const file = {
-    schema: "everloot.coverage-expected/1", build: { version: COVERAGE_BUILD }, measuredAt: "2026-10-21T00:00:00Z",
-    sources: ["game-files", "classic-baseline"], types: ["npcs"], zones: { 1436: { npcs: 4 } },
-  };
+test("the expected file is the maintainer report's counts, read from the private bucket's build folder, and refused if it holds more", async () => {
+  const file = { version: 1, zones: [{ zone: "1436", types: { npc: 4 }, fields: { npc: { name: 2, level: 2 } } }] };
   const base = "https://assets.example/wow_classic_beta-70450-84bea423";
   const read = vi.fn(async () => file);
-  expect(await loadCoverageExpected(COVERAGE_BUILD, base, { read })).toMatchObject({ zones: { 1436: { npcs: 4 } } });
+  expect(await loadCoverageExpected(base, { read })).toMatchObject({ zones: [{ zone: "1436", types: { npc: 4 } }] });
   expect(read).toHaveBeenCalledWith("wow_classic_beta-70450-84bea423/coverage-expected.json");
-  expect(await loadCoverageExpected("1.0.0.1", base, { read })).toBeNull();
-  expect(await loadCoverageExpected(COVERAGE_BUILD, base, { read: async () => ({ ...file, zones: { 1436: { npcs: 4, name: "x" } } }) })).toBeNull();
-  expect(await loadCoverageExpected(COVERAGE_BUILD, null, { read })).toBeNull();
+  expect(await loadCoverageExpected(base, { read: async () => ({ ...file, rows: [{ name: "Hogger" }] }) })).toBeNull();
+  expect(await loadCoverageExpected(null, { read })).toBeNull();
 });
-
 test("the cron writer skips a run that added nothing and writes coverage/<build>.json otherwise", async () => {
   const fetcher = vi.fn<typeof fetch>(async () => new Response(null, { status: 200 }));
   const cloud = { r2AccountId: "acct", r2AccessKeyId: "k", r2SecretAccessKey: "s", r2Bucket: "b", supabaseUrl: "https://x", supabaseServiceKey: "y" };
-  expect(await writeCoverage({ added: 0 }, { cloud, fetch: fetcher })).toEqual({ written: false });
+  expect(await writeCoverage({ added: 0, dataAsOf: null }, { cloud, fetch: fetcher })).toEqual({ written: false });
   expect(fetcher).not.toHaveBeenCalled();
   expect(store.loadCorpus).not.toHaveBeenCalled();
   store.loadCorpus.mockResolvedValue(corpus(westfall));
-  const result = await writeCoverage({ added: 2 }, { cloud, fetch: fetcher });
+  const result = await writeCoverage({ added: 2, dataAsOf: "2026-10-19T00:00:00.000Z" }, { cloud, fetch: fetcher });
   expect(result).toMatchObject({ written: true, key: `coverage/${COVERAGE_BUILD}.json` });
   const sent = fetcher.mock.calls[0]![0] as Request;
   expect(sent.method).toBe("PUT");
   expect(sent.url).toBe(`https://acct.r2.cloudflarestorage.com/b/coverage/${COVERAGE_BUILD}.json`);
   const body = JSON.parse(await sent.text());
-  expect(body).toMatchObject({ schema: "everloot.coverage/1", build: COVERAGE_BUILD });
+  expect(body).toMatchObject({ schema: "everloot.coverage/1", build: COVERAGE_BUILD, dataAsOf: "2026-10-19T00:00:00.000Z" });
   expect(JSON.stringify(body)).not.toContain("Guard Orin");
-  expect(await writeCoverage({ added: 0, rebuild: true }, { cloud, fetch: fetcher })).toMatchObject({ written: true });
+  expect(await writeCoverage({ added: 0, rebuild: true, dataAsOf: null }, { cloud, fetch: fetcher })).toMatchObject({ written: true });
 });
