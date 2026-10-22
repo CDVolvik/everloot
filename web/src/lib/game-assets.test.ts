@@ -144,6 +144,21 @@ test("an item tooltip reads like the game's and marks the stat amounts the table
   expect(itemTip(shard0["9"], { base: BASE, version: "v", label: "l" }).color).toBe(qualityColor(1));
 });
 
+test("who may use it, its Equip and Use lines and its set sit where the game prints them", () => {
+  const r = { ...shard0["25"], cl: ["Warrior", "Rogue"], set: "Synthetic Battlegear", fx: [{ k: 1, x: "Increases your chance to hit by 1%." }, { k: 0, x: "Restores [?] health." }, { k: 2, x: "Strikes." }] };
+  expect(itemTipText(r).lines.slice(6)).toEqual([
+    "+[?] Strength", "Classes: Warrior, Rogue", "Requires Level 5", "Item Level 2",
+    "Equip: Increases your chance to hit by 1%.", "Use: Restores [?] health.", "Chance on hit: Strikes.", "Synthetic Battlegear", '"Old."', "Sell Price: 7c",
+  ]);
+});
+
+test("the index says when the records carry those lines, and a tooltip says so", async () => {
+  const a = parseSiteManifest(siteManifest, BASE)!;
+  expect((await loadItemTips(a, [9], memoryStore(privateFiles))).get(9)?.gameFacts).toBe(false);
+  const withFacts = memoryStore({ ...privateFiles, [`${FOLDER}/items.json`]: { ...itemIndex, gameFacts: true } });
+  expect((await loadItemTips(a, [9], withFacts)).get(9)?.gameFacts).toBe(true);
+});
+
 test("a weapon with no stats still marks its damage, and worn armor its armor value, as not in the tables", () => {
   const plain = itemTipText({ ...shard0["25"], st: [], b: 0, u: 0, r: 1, t: undefined });
   expect(plain.lines).toEqual(["One-Hand · Sword", "[?] - [?] Damage · Speed 1.90", "([?] damage per second)", "Item Level 2", "Sell Price: 7c"]);

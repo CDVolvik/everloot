@@ -56,6 +56,35 @@ test("a weapon records the damage inputs its table, level and quality give, and 
   expect(weaponDamageTable(1, null, false)).toBeNull();
 });
 
+test("who may use an item, its set and its Equip and Use lines come from the tables; every class is no restriction", () => {
+  const sparse = (ID: number, extra: Record<string, unknown>) => ({ ID, Display_lang: `Item ${ID}`, OverallQualityID: 3, ...extra });
+  const tables: Record<string, Rows> = {
+    ItemSparse: t([sparse(1, { AllowableClass: 0b1001, ItemSet: 7 }), sparse(2, { AllowableClass: -1 }), sparse(3, { AllowableClass: 0b1111 }), sparse(4, { ItemSet: 99 })]),
+    Item: t([{ ID: 1 }, { ID: 2 }, { ID: 3 }, { ID: 4 }]),
+    ChrClasses: t([{ ID: 1, Name_lang: "Warrior" }, { ID: 2, Name_lang: "Paladin" }, { ID: 3, Name_lang: "Hunter" }, { ID: 4, Name_lang: "Rogue" }]),
+    ItemSet: t([{ ID: 7, Name_lang: "Synthetic Battlegear" }]),
+    ItemEffect: t([
+      { ID: 50, LegacySlotIndex: 1, TriggerType: 0, SpellID: 900 },
+      { ID: 51, LegacySlotIndex: 0, TriggerType: 1, SpellID: 901 },
+      { ID: 52, LegacySlotIndex: 2, TriggerType: 6, SpellID: 902 },
+      { ID: 53, LegacySlotIndex: 3, TriggerType: 1, SpellID: 903 },
+    ]),
+    ItemXItemEffect: t([{ ID: 1, ItemID: 1, ItemEffectID: 50 }, { ID: 2, ItemID: 1, ItemEffectID: 51 }, { ID: 3, ItemID: 1, ItemEffectID: 52 }, { ID: 4, ItemID: 1, ItemEffectID: 53 }]),
+  };
+  const text: Record<number, string> = { 900: "Restores [?] health.", 901: "Increases your chance to hit by 1%.", 902: "Teaches you something." };
+  const { records } = buildItemSet((n) => tables[n], undefined, (id) => text[id] ?? null);
+  // In slot order; a recipe's learning spell prints no line, and a spell with no text gives none.
+  expect(records.get(1)).toMatchObject({
+    cl: ["Warrior", "Rogue"], set: "Synthetic Battlegear",
+    fx: [{ k: 1, x: "Increases your chance to hit by 1%." }, { k: 0, x: "Restores [?] health." }],
+  });
+  // -1 and a mask that covers every class are no restriction; a set the table lacks is none.
+  for (const id of [2, 3, 4]) expect(records.get(id)).not.toHaveProperty("cl");
+  expect(records.get(4)).not.toHaveProperty("set");
+  // Without a way to read the spells' text no effect is recorded.
+  expect(buildItemSet((n) => tables[n]).records.get(1)).not.toHaveProperty("fx");
+});
+
 test("an allowlist limits the items, and a snapshot without item tables is refused", () => {
   expect([...buildItemSet((n) => itemTables[n], new Set([600])).records.keys()]).toEqual([600]);
   expect(() => buildItemSet(() => undefined)).toThrow(/client-extract --refresh/);

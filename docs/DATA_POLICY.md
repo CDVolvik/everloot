@@ -228,7 +228,10 @@ interface files, is a different thing and is covered by the second extension. Th
   icons, read from the client's tables the same way.
 - **Item tooltip facts**: what the item tables (`ItemSparse`, `Item`) give for an item: name,
   quality, item level, required level, binding, slot, armour or weapon kind, weapon speed, stat kinds
-  (not amounts), flavour text and sell price. Shown on a page only for an item that 3 installs have
+  (not amounts), flavour text and sell price. Added 2026-10-21 (Carlos: "yeah do both"): the classes
+  that may use it (`ItemSparse.AllowableClass`, with the class names from `ChrClasses`), the name of its
+  item set (`ItemSet`), and its Equip, Use and Chance on hit lines (`ItemXItemEffect`, `ItemEffect`,
+  with the spell's own tooltip text resolved as the talent calculator resolves it). Shown on a page only for an item that 3 installs have
   reported (a drop, a vendor offer, an auction scan), never in bulk and never for an id someone types
   into a URL. The one exception is an item the item name rule below names: its name, quality, icon and these facts. The extracted facts cover every named item in the build, released or not, so they are
   kept in private storage that only the site's server reads, never in the public asset bucket.

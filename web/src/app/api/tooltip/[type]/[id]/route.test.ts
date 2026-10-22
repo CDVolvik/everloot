@@ -57,6 +57,12 @@ test("a tooltip line with no fact reads [?], never a blank: stat amounts, restri
   for (const line of [...bare.lines, ...withStats.lines]) expect(line.trim()).not.toMatch(/(^|:)$/);
 });
 
+test("when the game files say who may use it, its set and its effects, the card prints theirs and no [?] for them", async () => {
+  mocks.tips.mockResolvedValue(new Map([[19019, { name: "Thunderfury", color: "#ff8000", quality: "Legendary", icon: null, lines: ["One-Hand · Sword", "+[?] Agility", "Classes: Warrior", "Chance on hit: Blasts your enemy."], partial: true, label: "x", gameFacts: true }]]));
+  const body = tooltipResponse.parse(await (await call("item", "19019")).json());
+  expect(body.lines).toEqual(["One-Hand · Sword", "+[?] Agility", "Classes: Warrior", "Chance on hit: Blasts your enemy.", "[?] marks a value the game files do not give us yet."]);
+});
+
 test("agreed facts take the [?]'s place, line for line", async () => {
   const { itemFactLines } = await import("@/lib/tooltip");
   expect(itemFactLines({ restrictions: ["Classes: Warrior"], setName: "Synthetic Battlegear", effects: ["Equip: Synthetic effect."] }, true))

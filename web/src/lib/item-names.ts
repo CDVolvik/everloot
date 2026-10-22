@@ -16,6 +16,9 @@ export function qualityColor(q: number): string {
   return q === 6 ? "#E6CC80" : q === 7 ? "#00CCFF" : tokens.dark["q-common"];
 }
 
+/** How an item's spell effect triggers (ItemEffect.TriggerType), as its tooltip line begins. */
+const TRIGGER: Record<number, string> = { 0: "Use", 1: "Equip", 2: "Chance on hit", 5: "Use" };
+
 const BINDING: Record<number, string> = { 1: "Binds when picked up", 2: "Binds when equipped", 3: "Binds when used", 4: "Quest Item" };
 
 const SLOT: Record<number, string> = {
@@ -75,8 +78,11 @@ export function itemTipText(r: ItemRecord): ItemTipText {
   // A stat kind this file has no word for is left out rather than printed as "unknown stat 51".
   const stats = r.st.filter((s) => STAT[s]);
   for (const s of stats) lines.push(`+${PLACEHOLDER} ${STAT[s]}`);
+  if (r.cl?.length) lines.push(`Classes: ${r.cl.join(", ")}`);
   if (r.r > 1) lines.push(`Requires Level ${r.r}`);
   if (r.l > 0) lines.push(`Item Level ${r.l}`);
+  for (const e of r.fx ?? []) lines.push(`${TRIGGER[e.k] ?? "Use"}: ${e.x}`);
+  if (r.set) lines.push(r.set);
   if (r.t) lines.push(`"${r.t}"`);
   if (r.sp > 0) lines.push(`Sell Price: ${formatCopper(r.sp)}`);
   return { name: r.n, quality: QUALITY_NAMES[r.q] ?? `quality ${r.q}`, lines, partial: stats.length > 0 || weapon || armor };

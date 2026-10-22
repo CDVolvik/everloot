@@ -54,14 +54,17 @@ export const NO_ITEM_FACTS: ItemCardFacts = { restrictions: null, setName: null,
 /**
  * The card's lines for `ItemCardFacts`. A value nobody agreed on reads `[?]`, never a blank or a missing line, so a
  * reader can tell "not known" from "none". `hasStats` is true when the files' own lines already name the stats (as
- * `+[?] Stamina`); without them the amounts get one line of their own.
+ * `+[?] Stamina`); without them the amounts get one line of their own. `fromFiles` is true when the files' lines
+ * already say who may use the item, its set and its effects (`ItemTip.gameFacts`): a line they leave out is none.
  */
-export function itemFactLines(facts: ItemCardFacts, hasStats: boolean): string[] {
+export function itemFactLines(facts: ItemCardFacts, hasStats: boolean, fromFiles = false): string[] {
   return [
     ...(hasStats ? [] : [`Stats: ${PLACEHOLDER}`]),
-    ...(facts.restrictions?.length ? facts.restrictions : [`Restrictions: ${PLACEHOLDER}`]),
-    `Set: ${facts.setName ?? PLACEHOLDER}`,
-    ...(facts.effects?.length ? facts.effects : [`Equip and Use: ${PLACEHOLDER}`]),
+    ...(fromFiles ? [] : [
+      ...(facts.restrictions?.length ? facts.restrictions : [`Restrictions: ${PLACEHOLDER}`]),
+      `Set: ${facts.setName ?? PLACEHOLDER}`,
+      ...(facts.effects?.length ? facts.effects : [`Equip and Use: ${PLACEHOLDER}`]),
+    ]),
   ];
 }
 
@@ -91,7 +94,7 @@ export async function loadTooltip(type: TooltipType, id: number): Promise<Toolti
     const assets = await loadSiteAssets();
     const tip = assets ? (await loadItemTips(assets, [id])).get(id) : undefined;
     const lines = [...(tip?.lines ?? [])];
-    lines.push(...itemFactLines(NO_ITEM_FACTS, lines.some((l) => STAT_LINE.test(l))));
+    lines.push(...itemFactLines(NO_ITEM_FACTS, lines.some((l) => STAT_LINE.test(l)), tip?.gameFacts));
     lines.push(`${PLACEHOLDER} marks a value the game files do not give us yet.`);
     if (!page.name && !tip) lines.push(NO_NAME);
     if (page.drops.length) lines.push(`Dropped by ${plural(page.drops.length, "source", "sources")} players looted (3 or more installs).`);

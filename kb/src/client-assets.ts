@@ -192,6 +192,8 @@ export const ItemIndex = z.object({
   build: z.object({ product: z.string(), buildId: z.number().int(), version: z.string(), buildConfig: z.string() }),
   shardSize: z.number().int(),
   count: z.number().int(),
+  /** The records carry who may use an item, its set and its Equip and Use lines: absent from a record means none. */
+  gameFacts: z.literal(true).optional(),
   shards: z.record(z.string(), DataFile),
 });
 export type ItemIndex = z.infer<typeof ItemIndex>;
@@ -456,7 +458,12 @@ export async function buildAssetsFromTables(opts: { get: TableReader; build: Bui
   for (const row of list(get("CreatureFamily"))) if (num(row.IconFileID) > 0) familyIconOf.set(num(row.ID), num(row.IconFileID));
 
   // Items: tooltip facts for every named item (or the allowlist), and their icons.
-  const itemSet = get("ItemSparse") && get("Item") ? buildItemSet(get, opts.items) : null;
+  // An item's Equip and Use lines are its spells' tooltip text, resolved like the talents'.
+  const describe = (id: number): string | null => {
+    const raw = text(spellRows.get(id)?.Description_lang);
+    return raw ? resolveTooltip(raw, factsFor(id) ?? { effects: [], durationMs: null }, factsFor).text || null : null;
+  };
+  const itemSet = get("ItemSparse") && get("Item") ? buildItemSet(get, opts.items, describe) : null;
 
   // Icons: one file per file data id, whoever asks for it.
   const wantedIcons = new Set<number>([
@@ -513,7 +520,7 @@ export async function buildAssetsFromTables(opts: { get: TableReader; build: Bui
     items = ItemIndex.parse({
       schema: ITEM_INDEX_SCHEMA, label: LABEL,
       build: { product: build.product, buildId: build.buildId, version: build.version, buildConfig: build.buildConfig },
-      shardSize: ITEM_SHARD_SIZE, count: itemSet.records.size, shards,
+      shardSize: ITEM_SHARD_SIZE, count: itemSet.records.size, gameFacts: true, shards,
     });
     writeFileSync(join(privateDir, "items.json"), `${JSON.stringify(items, null, 1)}\n`);
   }

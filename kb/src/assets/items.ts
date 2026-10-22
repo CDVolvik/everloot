@@ -10,6 +10,9 @@
  *   and the stat kinds of the item (StatModifier_bonusStat). StatPercentEditor is a share of a budget
  *   the client computes, not an amount, so no amount is recorded.
  * - Item: IconFileDataID, ClassID and SubclassID.
+ * - ItemSparse.AllowableClass (a mask, bit class id - 1) with ChrClasses' names; ItemSparse.ItemSet with
+ *   ItemSet.Name_lang; ItemXItemEffect and ItemEffect (SpellID, TriggerType) for the Equip and Use lines, whose
+ *   text is the spell's tooltip resolved by the caller.
  * - ItemDamage*: a weapon's damage per second by item level and quality. In 1.60.1 ItemSparse has no
  *   MinDamage/MaxDamage; the client works a weapon's damage out from this value, the weapon speed and
  *   ItemSparse.DmgVariance. Those inputs are recorded as the tables give them (`w`), not the damage:
@@ -56,7 +59,19 @@ export interface ItemRecord {
   i?: number;
   /** Weapon damage inputs; omitted when the item is not a weapon or the build has no row for it. */
   w?: WeaponDamageInputs;
+  /** The classes that may use it (ChrClasses names, by class id); omitted when every class may. */
+  cl?: string[];
+  /** Its item set's name; omitted when it is in none. */
+  set?: string;
+  /** Its Equip, Use and Chance on hit lines: the trigger (ItemEffect.TriggerType) and the spell's tooltip text. */
+  fx?: ItemEffectLine[];
 }
+
+/** One spell effect of an item. `k` is 0 Use, 1 Equip, 2 Chance on hit, 5 Use (no delay); `x` is the resolved text. */
+export interface ItemEffectLine { k: number; x: string }
+
+/** The triggers an item tooltip prints a line for; others (soulstone, learning a recipe's spell) print none. */
+const SHOWN_TRIGGERS = new Set([0, 1, 2, 5]);
 
 /** What the client works a weapon's damage out from, as the tables give it. */
 export interface WeaponDamageInputs {
@@ -99,12 +114,22 @@ export interface ItemSet {
   iconOf: Map<number, number>;
 }
 
-/** The item records, for every ItemSparse row (or only for `only`, when given) that has a name. */
-export function buildItemSet(get: TableReader, only?: ReadonlySet<number>): ItemSet {
+/**
+ * The item records, for every ItemSparse row (or only for `only`, when given) that has a name. `describe` gives a
+ * spell's tooltip text, resolved, for the item's Equip and Use lines; without it no effect is recorded.
+ */
+export function buildItemSet(get: TableReader, only?: ReadonlySet<number>, describe?: (spellId: number) => string | null): ItemSet {
   const sparse = get("ItemSparse"), item = get("Item");
   if (!sparse || !item) throw new Error("the snapshot has no ItemSparse and Item tables; run `client-extract --refresh` first");
   const records = new Map<number, ItemRecord>();
   const iconOf = new Map<number, number>();
+  // AllowableClass is a mask with bit (class id - 1) per class; a mask that covers every class is no restriction.
+  const classes = list(get("ChrClasses")).map((r) => ({ id: num(r.ID), name: text(r.Name_lang) })).filter((c) => c.id > 0 && c.name).sort((a, b) => a.id - b.id);
+  const everyClass = classes.reduce((mask, c) => mask | (1 << (c.id - 1)), 0);
+  const setName = new Map(list(get("ItemSet")).map((r) => [num(r.ID), text(r.Name_lang)]));
+  const effect = new Map(list(get("ItemEffect")).map((r) => [num(r.ID), r]));
+  const effectsOf = new Map<number, number[]>();
+  for (const r of list(get("ItemXItemEffect"))) effectsOf.set(num(r.ItemID), [...(effectsOf.get(num(r.ItemID)) ?? []), num(r.ItemEffectID)]);
   // Damage per second by table and item level: the Quality column, one value per quality.
   const damage = new Map<string, Map<number, unknown[]>>();
   const damageAt = (table: string, level: number): unknown[] | undefined => {
@@ -131,6 +156,21 @@ export function buildItemSet(get: TableReader, only?: ReadonlySet<number>): Item
     const table = record.c === 2 || record.s === 24 ? weaponDamageTable(record.s, record.sc, ((flags[1] ?? 0) & CASTER_WEAPON) !== 0) : null;
     const dps = table ? damageAt(table, record.l)?.[record.q] : undefined;
     if (table && typeof dps === "number" && dps > 0) record.w = { t: table, dps, dv: num(row.DmgVariance), ds: num(row.DamageType) };
+    const mask = num(row.AllowableClass);
+    if (mask > 0 && everyClass > 0 && (mask & everyClass) !== everyClass) {
+      const cl = classes.filter((c) => (mask & (1 << (c.id - 1))) !== 0).map((c) => c.name!);
+      if (cl.length) record.cl = cl;
+    }
+    const inSet = setName.get(num(row.ItemSet));
+    if (inSet) record.set = inSet;
+    const fx = describe ? (effectsOf.get(id) ?? [])
+      .map((e) => effect.get(e)).filter((e) => e !== undefined)
+      .sort((a, b) => num(a.LegacySlotIndex) - num(b.LegacySlotIndex) || num(a.ID) - num(b.ID))
+      .flatMap((e) => {
+        const k = num(e.TriggerType), x = num(e.SpellID) > 0 && SHOWN_TRIGGERS.has(k) ? describe(num(e.SpellID)) : null;
+        return x ? [{ k, x }] : [];
+      }) : [];
+    if (fx.length) record.fx = fx;
     records.set(id, record);
     const icon = base ? num(base.IconFileDataID) : 0;
     if (icon > 0) iconOf.set(id, icon);

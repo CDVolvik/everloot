@@ -218,6 +218,8 @@ const ItemIndexSchema = z.object({
   schema: z.literal("everloot.game-items/1"),
   build: z.object({ version: z.string() }),
   shardSize: z.number().int().positive(),
+  /** Set when the records carry who may use an item, its set and its Equip and Use lines. */
+  gameFacts: z.literal(true).optional(),
   shards: z.record(z.string(), z.object({ file: assetPath })),
 });
 
@@ -225,6 +227,7 @@ const ItemRecordSchema = z.object({
   n: z.string(), q: z.number().int(), l: z.number(), r: z.number(), b: z.number(), s: z.number(),
   c: z.number().nullable(), sc: z.number().nullable(), d: z.number(), st: z.array(z.number()), sp: z.number(), u: z.number(),
   t: z.string().optional(), i: z.number().int().positive().optional(),
+  cl: z.array(z.string()).optional(), set: z.string().optional(), fx: z.array(z.object({ k: z.number().int(), x: z.string() })).optional(),
 });
 
 /** What an item link shows: plain, serialisable data for the tooltip. */
@@ -242,13 +245,15 @@ export interface ItemTip {
   level: number;
   required: number;
   binding: number;
+  /** The files say who may use it, its set and its Equip and Use lines; a missing line is then none, not unknown. */
+  gameFacts: boolean;
 }
 
-export function itemTip(r: ItemRecord, assets: Pick<SiteAssets, "base" | "version" | "label">): ItemTip {
+export function itemTip(r: ItemRecord, assets: Pick<SiteAssets, "base" | "version" | "label">, gameFacts = false): ItemTip {
   const text = itemTipText(r);
   return {
     ...text, color: qualityColor(r.q), icon: r.i ? itemIconUrl(assets.base, r.i) : null, label: `${assets.label} · build ${assets.version}`,
-    level: r.l, required: r.r, binding: r.b,
+    level: r.l, required: r.r, binding: r.b, gameFacts,
   };
 }
 
@@ -277,7 +282,7 @@ export async function loadItemTips(assets: SiteAssets | null, ids: readonly numb
     if (!body.success) return;
     for (const id of ids) {
       const r = ItemRecordSchema.safeParse(body.data[String(id)]);
-      if (r.success) out.set(id, itemTip(r.data, assets));
+      if (r.success) out.set(id, itemTip(r.data, assets, index.data.gameFacts === true));
     }
   }));
   return out;
