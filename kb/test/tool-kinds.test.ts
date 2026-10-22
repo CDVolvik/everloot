@@ -2,7 +2,7 @@ import { expect, test, vi } from "vitest";
 import { answerSourcesFactsFromRecords } from "../src/answer-sources.js";
 import { auctionSightingsFromRecords } from "../src/auction-history.js";
 import { collectionFactsFromRecords } from "../src/collection-gap.js";
-import { itemFactsFromRecords } from "../src/drop-rollup.js";
+import { itemToolFactsFromRecords } from "../src/item-page-tool.js";
 import { observedEdgesFromRecords } from "../src/edges.js";
 import { objectFactsFromRecords } from "../src/object-page.js";
 import { goldFactsFromRecords } from "../src/gold-ledger.js";
@@ -44,7 +44,7 @@ const EVERY_KIND = parseRecords([
   { ...base, eventId: "e:37", kind: "instance_entrance", instanceMapId: 36, name: "Deadmines", instanceType: "party", mapId: 1436, x: 42, y: 71 },
   { ...base, eventId: "e:38", kind: "encounter", encounterId: 1144, name: "Edwin VanCleef", instanceMapId: 36, success: true, npcIds: [639] },
   { ...base, eventId: "e:39", kind: "object_sighting", objectId: 2843, name: "Battered Chest", mapId: 1436, x: 30, y: 50 },
-  // Read by the site's item pages (kb/src/item-facts.ts), never by a corpus tool: the tool schemas are frozen.
+  // Read by item_page as well as the site's item pages; the tool input stays frozen.
   { ...base, eventId: "e:40", kind: "item_fact", itemId: 5, fact: "stamina", value: 3, clientBuild: "1.60.1.70450" },
   { ...base, eventId: "e:21", kind: "map_bounds", mapId: 1429, continentId: 0, left: 1535.4, top: -7939.6, right: -1599.6, bottom: -10254.2 },
   // Read by the completion rollup (kb/src/completion-rollup.ts), never by a corpus tool.
@@ -72,7 +72,7 @@ const FACTS: Record<keyof typeof TOOL_KINDS, (records: unknown[]) => unknown> = 
   answer_sources: answerSourcesFactsFromRecords,
   profession_path: pathFactsFromRecords,
   recipe_thresholds: recipeFactsFromRecords,
-  item_page: itemFactsFromRecords,
+  item_page: itemToolFactsFromRecords,
   npc_page: npcFactsFromRecords,
   object_page: objectFactsFromRecords,
   quest_page: worldFactsFromRecords,

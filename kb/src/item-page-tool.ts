@@ -1,0 +1,35 @@
+import { ITEM_FACTS } from "@everloot/protocol";
+import { itemFactsFromRecords } from "./drop-rollup.js";
+import { itemFactRowsFromRecords, type ItemFactName, type ItemFactState } from "./item-facts.js";
+
+/** MCP's index adds item numbers without changing the page reader used by other callers. */
+export function itemToolFactsFromRecords(records: unknown[]) {
+  return { ...itemFactsFromRecords(records), numbers: itemFactRowsFromRecords(records) };
+}
+
+const words: Record<ItemFactName, string> = {
+  armor: "Armor", block: "Block", damage_per_second: "damage per second", health: "Health", mana: "Mana",
+  agility: "Agility", strength: "Strength", intellect: "Intellect", spirit: "Spirit", stamina: "Stamina",
+  defense_rating: "Defense Rating", dodge_rating: "Dodge Rating", parry_rating: "Parry Rating", block_rating: "Block Rating",
+  hit_rating: "Hit Rating", crit_rating: "Critical Strike Rating", haste_rating: "Haste Rating", expertise_rating: "Expertise Rating",
+  resilience_rating: "Resilience Rating", attack_power: "Attack Power", mana_regeneration: "Mana Regeneration", spell_power: "Spell Power",
+  holy_resistance: "Holy Resistance", fire_resistance: "Fire Resistance", nature_resistance: "Nature Resistance",
+  frost_resistance: "Frost Resistance", shadow_resistance: "Shadow Resistance", arcane_resistance: "Arcane Resistance",
+};
+
+export function formatItemNumbers(state: ItemFactState): string {
+  const lines = ["Item numbers reported by players", "Method: each install's latest report per line and build; the newest build with at least 3 reporting installs decides. One value needs 3 agreeing installs and no competing value with 3. Missing is not zero."];
+  for (const fact of ITEM_FACTS) {
+    const shown = state.shown.find((f) => f.fact === fact);
+    if (!shown) {
+      lines.push(`${words[fact]}: [?]; ${state.contested.includes(fact) ? "contested: installs disagree on the number" : "no number confirmed by 3 agreeing installs"}; agreeing installs [?], last seen [?], build [?].`);
+      continue;
+    }
+    const n = fact === "damage_per_second" ? shown.value.toFixed(1) : String(shown.value);
+    const line = fact === "damage_per_second" ? `${n} damage per second`
+      : fact === "armor" || fact === "block" ? `${n} ${words[fact]}`
+      : `${shown.value < 0 ? "" : "+"}${n} ${words[fact]}`;
+    lines.push(`${line}: reported by ${shown.reporters} installs, last seen ${shown.lastSeen ?? "[?]"}, build ${shown.build}.`);
+  }
+  return lines.join("\n");
+}

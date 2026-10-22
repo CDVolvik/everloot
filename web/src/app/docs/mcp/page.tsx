@@ -77,7 +77,7 @@ export default function McpOverview() {
       <H3 id="structured-content">structuredContent</H3>
       <P>
         Tools with an output schema return <C>structuredContent</C> beside the text, of the shape in their schema file at{" "}
-        <C>/schema/mcp/&lt;tool&gt;.json</C>. <C>coverage</C> returns text only. Each structured tool page lists the top-level fields. Structured answers built on player data start with{" "}
+        <C>/schema/mcp/&lt;tool&gt;.json</C>. <C>coverage</C> returns text only, including scoped field totals and the separately dated whole-fact settled-list size for the build. <C>item_page</C> adds player-reported numbers with agreement evidence in <C>page.reported</C>; its input is unchanged. Each structured tool page lists the top-level fields. Structured answers built on player data start with{" "}
         <C>connected</C> and <C>dataAsOf</C>, and carry a <C>page</C> only when a corpus was read: an absent page is not a
         measured zero.
       </P>

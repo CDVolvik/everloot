@@ -15,6 +15,10 @@ required, or tightening a limit is a major release.
   without a key, 5,000 with one), and the corpus and client-layer routes and the market rule read in plain words.
 
 ### Added
+- 1.17.0 (record protocol unchanged, 1.8.0): optional `itemPage.reported` holds agreed item numbers with
+  installs, build and last seen, plus contested line keys without values. Tool inputs are unchanged.
+  `item_page` and `coverage` descriptions now document item-number evidence, scoped coverage totals and
+  the separately dated whole-fact settled-list size. The public catalogue remains 29 tools.
 - 1.16.0 (record protocol unchanged, 1.8.0): the route `GET /api/coverage/settled` is in `API_ROUTES`, with its
   response schema `settledListResponse` (`everloot.settled/1`): per upload row kind, the delta-encoded ids whose
   facts are settled for one client build. The route already existed; it is now in the OpenAPI document, the API
