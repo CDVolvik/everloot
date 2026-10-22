@@ -17,6 +17,7 @@ export const DATABASE_HUBS: readonly DatabaseHub[] = [
   { href: "/database/titles", label: "Titles" },
   { href: "/database/quest-chains", label: "Quest chains" },
   { href: "/database/drops", label: "Loot observations" },
+  { href: "/database/coverage", label: "Coverage: where the data is thin" },
   { href: "/database/zones", label: "Zones" },
   { href: "/database/instances", label: "Dungeons and raids" },
   { href: "/tools/guild-board", label: "Guilds" },
