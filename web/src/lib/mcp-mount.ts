@@ -1,6 +1,7 @@
 import { createMcpHttpHandler } from "../../../kb/src/mcp-http-server";
 import type { ToolOptions } from "../../../kb/src/mcp-server";
 import { loadTimeline } from "./changes";
+import { loadCoverage } from "./coverage-compute";
 import { loadCompletion } from "./completion-store";
 import { attributionHeaders } from "./data-guard";
 import { loadEcosystem } from "./ecosystem";
@@ -26,6 +27,7 @@ export function unavailable(error: string, status = 503): Response {
 /** The site's readers the tools answer from, the same for the MCP mounts and GET /api/tools/{tool}. */
 export function toolLoaders(): ToolOptions {
   return {
+    coverage: () => loadCoverage(),
     // The same timeline the /changes page shows, read from the files bundled with the site. The regional
     // copies stay on the site: the protocol's change entry has no field for them.
     changes: () => loadTimeline().map(({ copies: _copies, ...e }) => e),

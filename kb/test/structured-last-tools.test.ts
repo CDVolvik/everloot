@@ -39,10 +39,10 @@ async function client(corpus?: () => Promise<{ records: unknown[]; dataAsOf: str
   return c;
 }
 
-test("every tool declares an output schema now", async () => {
-  expect(STRUCTURED_TOOLS).toEqual(MCP_TOOL_NAMES);
+test("every tool except text-only coverage declares an output schema", async () => {
+  expect(STRUCTURED_TOOLS).toEqual(MCP_TOOL_NAMES.filter((name) => name !== "coverage"));
   const listed = (await (await client()).listTools()).tools;
-  for (const tool of listed) expect(tool.outputSchema, tool.name).toBeDefined();
+  for (const tool of listed) expect(tool.outputSchema !== undefined, tool.name).toBe(tool.name !== "coverage");
 });
 
 test("gold_ledger answers with one ledger per install, never merged, with unrecorded as null", async () => {

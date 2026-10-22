@@ -11,7 +11,15 @@ vi.mock("./release", () => ({ getRelease: () => ({ db: {} }) }));
 vi.mock("./upload-store", () => ({ uploadStore: {} }));
 vi.mock("./usage-metrics", async (importActual) => ({ ...(await importActual<typeof import("./usage-metrics")>()), recordUsage: hoisted.record }));
 
-import { createMount } from "./mcp-mount";
+import { createMount, toolLoaders } from "./mcp-mount";
+import { loadCoverage } from "./coverage-compute";
+
+vi.mock("./coverage-compute", () => ({ loadCoverage: vi.fn(async () => null) }));
+
+it("lends MCP and HTTP tools the public coverage page's reader", async () => {
+  expect(await toolLoaders().coverage!()).toBeNull();
+  expect(loadCoverage).toHaveBeenCalledOnce();
+});
 
 const call = (name: string) => ({ jsonrpc: "2.0", method: "tools/call", params: { name } });
 function post(body: unknown, headers: Record<string, string> = {}) {

@@ -80,7 +80,9 @@ function outputTypeLabel(node: JsonSchemaNode & { properties?: unknown }): strin
 
 /** The top-level fields of one tool's structuredContent, in declaration order. */
 export function toolOutput(name: McpToolName): ParamRow[] {
-  const json = z.toJSONSchema(z.object(MCP_TOOLS[name].outputSchema), { io: "output" }) as { properties?: Record<string, JsonSchemaNode>; required?: string[] };
+  const def = MCP_TOOLS[name];
+  if (!("outputSchema" in def)) return [];
+  const json = z.toJSONSchema(z.object(def.outputSchema), { io: "output" }) as { properties?: Record<string, JsonSchemaNode>; required?: string[] };
   const required = new Set(json.required ?? []);
   return Object.entries(json.properties ?? {}).map(([field, node]) => ({
     name: field,

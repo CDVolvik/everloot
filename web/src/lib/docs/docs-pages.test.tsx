@@ -272,3 +272,10 @@ test("the docs name no internal path and no AI as an author", () => {
   expect(decoded).not.toMatch(internal);
   expect(decoded).not.toMatch(/co-authored|generated (by|with)|written by (an )?(ai|claude|gpt)/i);
 });
+
+test("the tool catalogue documents coverage filters, field grain and withheld values", () => {
+  expect(page).toContain("/docs/mcp/tools/coverage");
+  for (const words of ["Database coverage", "UiMap zone id", "settled / expected", "confirmed / expected", "unconfirmed values", "text only"]) {
+    expect(text).toContain(words);
+  }
+});
