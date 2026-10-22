@@ -6,7 +6,7 @@ import { guardOn } from "@/lib/data-guard";
 import { playerPagesOn } from "@/lib/player-pages";
 import { playerStore } from "@/lib/player-store";
 import { writeCoverage } from "@/lib/coverage-store";
-import { writeSettled } from "@/lib/settled-store";
+import { currentSettledWeek, writeSettled } from "@/lib/settled-store";
 
 /**
  * GET /api/cron/snapshot — Vercel Cron (vercel.json) extends the corpus snapshot with new uploads,
@@ -32,7 +32,7 @@ export async function GET(req: Request) {
   }
   const rebuild = new URL(req.url).searchParams.get("rebuild") === "1";
   try {
-    const work = rebuild ? { idle: false, retryRollups: false, dataAsOf: null } : await uploadStore.snapshotWork();
+    const work = rebuild ? { idle: false, retryRollups: false, dataAsOf: null, settledWeek: null } : await uploadStore.snapshotWork();
     const idle = work.idle && !rebuild;
     const result = idle ? { added: 0, skipped: true, dataAsOf: work.dataAsOf } : await uploadStore.writeSnapshot({ rebuild });
     await intakeQuota.prune();
@@ -72,15 +72,24 @@ export async function GET(req: Request) {
     } catch (err) {
       console.error("coverage failed", err);
     }
-    // The settled list (kb/src/settled-list.ts) goes beside the score, under the same rule: only after a changed
-    // snapshot, dated by it. A failure is logged; uploaders keep the list they have and the intake stores every row.
-    let settled: { written: boolean; facts?: number } | null = null;
+    // The settled list (kb/src/settled-list.ts) goes beside the score, dated by the snapshot. It is also rewritten
+    // once per ISO week on an idle run, so the weekly spot check rotates even when nothing new arrives. A failure is
+    // logged; uploaders keep the list they have and the heartbeat keeps the week, so the next run retries it.
+    const week = currentSettledWeek();
+    const settledStale = idle && work.settledWeek !== week;
+    let settled: { written: boolean; facts?: number; week?: string } | null = null;
     try {
-      settled = idle ? { written: false } : await writeSettled({ added: result.added, rebuild, dataAsOf: result.dataAsOf });
+      settled = idle && !settledStale
+        ? { written: false }
+        : await writeSettled({ added: result.added, rebuild, dataAsOf: result.dataAsOf, force: settledStale, week });
     } catch (err) {
       console.error("settled list failed", err);
     }
-    await uploadStore.writeCronRun(completion.remaining > 0 || completion.rebuilding, result.dataAsOf);
+    await uploadStore.writeCronRun(
+      completion.remaining > 0 || completion.rebuilding,
+      result.dataAsOf,
+      settled?.written ? week : work.settledWeek ?? null,
+    );
     return NextResponse.json({ ok: true, rebuild, ...result, market, completion, coverage, settled });
   } catch (err) {
     console.error("snapshot failed", err);

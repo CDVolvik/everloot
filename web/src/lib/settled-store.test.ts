@@ -22,11 +22,14 @@ test("the cron writes the list and its values beside the score, dated by the sna
   expect(await writeSettled({ added: 0, dataAsOf: day(30) }, { cloud: CLOUD, fetch })).toEqual({ written: false });
   expect(fetch).not.toHaveBeenCalled();
   const out = await writeSettled({ added: 2, dataAsOf: day(30) }, { cloud: CLOUD, fetch, build: BUILD, recheck: [], week: WEEK });
-  expect(out).toEqual({ written: true, key: `coverage/settled-${BUILD}.json`, facts: 1 });
+  expect(out).toEqual({ written: true, key: `coverage/settled-${BUILD}.json`, facts: 1, week: WEEK });
   const put = fetch.mock.calls[0]![0] as Request;
   expect(put.method).toBe("PUT");
   expect(put.url).toBe(`https://acct.r2.cloudflarestorage.com/everloot-uploads/${settledKey(BUILD)}`);
   expect(JSON.parse(await put.text())).toEqual(FILE);
+  const forced = await writeSettled({ added: 0, dataAsOf: day(30), force: true, week: WEEK }, { cloud: CLOUD, fetch, build: BUILD, recheck: [] });
+  expect(forced).toEqual({ written: true, key: `coverage/settled-${BUILD}.json`, facts: 1, week: WEEK });
+  expect(fetch).toHaveBeenCalledTimes(2);
   await expect(writeSettled({ added: 1, dataAsOf: null }, { cloud: null })).rejects.toThrow(/cloud/);
 });
 

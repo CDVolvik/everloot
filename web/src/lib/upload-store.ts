@@ -697,7 +697,7 @@ export function createUploadStore(opts: {
   }
 
   /** One bounded index probe before any corpus replay. A successful run records its corpus generation. */
-  async function snapshotWork(): Promise<{ idle: boolean; retryRollups: boolean; dataAsOf: string | null }> {
+  async function snapshotWork(): Promise<{ idle: boolean; retryRollups: boolean; dataAsOf: string | null; settledWeek: string | null }> {
     if (!cloud) throw new Error("snapshots need the cloud store");
     const snapshot = await readSnapshot();
     const filter = snapshot?.lastReceivedAt ? `&received_at=gt.${encodeURIComponent(snapshot.lastReceivedAt)}` : "";
@@ -706,22 +706,24 @@ export function createUploadStore(opts: {
     const rows = await res.json() as unknown[];
     const idle = snapshot !== null && rows.length === 0;
     let retryRollups = false;
-    if (idle) {
-      const run = await r2Fetch("cron/last-run.json", { method: "GET" });
-      if (run.status === 404) retryRollups = true;
-      else {
-        if (!run.ok) throw new Error(`cron heartbeat read failed (${run.status})`);
-        const previous = await run.json() as { dataAsOf?: string; completionPending?: boolean };
-        retryRollups = previous.dataAsOf !== snapshot.generatedAt || previous.completionPending === true;
-      }
+    let settledWeek: string | null = null;
+    const run = await r2Fetch("cron/last-run.json", { method: "GET" });
+    if (run.status === 404) {
+      if (idle) retryRollups = true;
+    } else if (run.ok) {
+      const previous = await run.json() as { dataAsOf?: string; completionPending?: boolean; settledWeek?: string };
+      if (typeof previous.settledWeek === "string") settledWeek = previous.settledWeek;
+      if (idle) retryRollups = previous.dataAsOf !== snapshot.generatedAt || previous.completionPending === true;
+    } else if (idle) {
+      throw new Error(`cron heartbeat read failed (${run.status})`);
     }
-    return { idle, retryRollups, dataAsOf: snapshot?.generatedAt ?? null };
+    return { idle, retryRollups, dataAsOf: snapshot?.generatedAt ?? null, settledWeek };
   }
 
-  async function writeCronRun(completionPending: boolean, dataAsOf: string | null): Promise<void> {
+  async function writeCronRun(completionPending: boolean, dataAsOf: string | null, settledWeek: string | null): Promise<void> {
     const res = await r2Fetch("cron/last-run.json", {
       method: "PUT", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ generatedAt: now().toISOString(), dataAsOf, completionPending }),
+      body: JSON.stringify({ generatedAt: now().toISOString(), dataAsOf, completionPending, settledWeek }),
     });
     if (!res.ok) throw new Error(`cron heartbeat write failed (${res.status})`);
   }
