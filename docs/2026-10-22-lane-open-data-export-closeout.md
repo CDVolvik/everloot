@@ -91,15 +91,31 @@ Wiki, and icons and art (the data policy keeps them on pages only); held-back zo
   hub entry and the description length. `web/src/lib/open-data.test.ts`, 3 tests: none, ok, and a pointer to anything
   but its own folder's manifest, a manifest that does not parse or a failing fetch all read as unreachable.
   `web/scripts/upload-open-data.test.ts`, 6 tests, one of them over a folder the real exporter wrote.
-- Full web suite: 216 files pass and 1 is skipped; 2,114 tests pass and 3 are skipped. Web typecheck passes; lint
-  passes with only the existing warnings, none in this lane's files; `next build` passes.
-- Full kb suite: 110 files, 1,168 tests pass; kb typecheck passes.
+- On the branch merged with `main` (after #319, #320, #321 and #324): full kb suite 114 files, 1,202 tests pass, kb
+  typecheck passes; full web suite 221 files pass and 1 is skipped, 2,137 tests pass and 3 are skipped; web typecheck,
+  lint (existing warnings only, none in this lane's files) and `next build` pass; protocol 81 tests, typecheck and
+  `check-semver` pass, and the build leaves no diff beyond the committed `dist/` and `schema/`.
 - A real run, `npm run kb -- open-data` against the live public feed (the only source available here): 81 records
   from 1 install (all `npc_sighting`), so every observed file is empty and says so (`npcs`: 0 rows of 18 NPCs reported;
   the rest 0 of 0), and the game-files folder carries the build 1.60.1.70450 layer. That is the true state of the feed
   today, not a failure. How many facts three real installs confirm is [?] until more players upload.
 - A synthetic corpus of 55,000 records (4,000 NPCs, 3,000 quests, 30,000 loot windows) is built in about 0.45 s.
 - Internal-path, Markdown-link, DCO and attribution guards pass.
+
+## After the merge with `main`: the settled list's route in the protocol
+
+Lane A left `/api/coverage/settled` out of the route catalogue, so the coordinator handed it to this lane.
+
+- `packages/protocol` 1.15.0 (record protocol unchanged, 1.7.0): the route is in `API_ROUTES` (open, observed data, a
+  required `build` query parameter, answers 200, 304, 400 and 503) and its answer has a schema, `settledListResponse`
+  (`everloot.settled/1`: per upload row kind the delta-encoded ids, `dataAsOf` null for a build not yet looked at).
+  `dist/` and `schema/` are regenerated (`schema/api/settledListResponse.json` is new), and the OpenAPI document and the
+  API docs now list the route, under "Player data" in the docs navigation.
+- `web/src/lib/settled-protocol.test.ts` keeps the protocol schema and the kb's `SettledList` in step: an empty list and
+  a computed list with a settled NPC satisfy both. The protocol cannot import the kb, so the shape is written twice.
+- `kb/src/cli.ts` conflicted with the `spot-check` command; every command is kept.
+- The root `CHANGELOG.md` is not changed by this branch: the coordinator adds this lane's line when it merges. The
+  protocol's own changelog has the 1.15.0 line.
 
 ## Policy sentence proposed (docs/DATA_POLICY.md is lane D's file)
 
@@ -131,5 +147,5 @@ the site and committed, and does not mention the download. The client layer para
 - No dataset-level JSON-LD on the page: it would need a real download URL, which exists only after the first upload.
 - The `[?]` convention is `null` in the files and `[?]` on the page and in the README, stated in both.
 
-Nothing here touches a migration, a switch (`EVERLOOT_*`), a secret, the protocol, a record kind, an MCP tool, a
-release or a tag. The coordinator reviews the diff and the checks and owns the merge.
+Nothing here touches a migration, a switch (`EVERLOOT_*`), a secret, a record kind, an MCP tool schema, a release or a
+tag. The protocol change is one route and its response schema. The coordinator reviews the diff and the checks and owns the merge.

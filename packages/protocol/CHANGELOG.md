@@ -15,6 +15,10 @@ required, or tightening a limit is a major release.
   without a key, 5,000 with one), and the corpus and client-layer routes and the market rule read in plain words.
 
 ### Added
+- 1.15.0 (record protocol unchanged, 1.7.0): the route `GET /api/coverage/settled` is in `API_ROUTES`, with its
+  response schema `settledListResponse` (`everloot.settled/1`): per upload row kind, the delta-encoded ids whose
+  facts are settled for one client build. The route already existed; it is now in the OpenAPI document, the API
+  docs and `schema/api/`.
 - 1.14.0 (record protocol unchanged, 1.7.0): read-only, text-only MCP tool `coverage`, with optional
   UiMap `zone` and coverage `type`. Returns the public coverage page's dated counts, method, install
   counts and reported-field lists without unconfirmed values or baseline rows, names or ids.

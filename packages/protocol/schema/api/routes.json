@@ -345,6 +345,46 @@
   },
   {
     "method": "GET",
+    "path": "/api/coverage/settled",
+    "summary": "The facts that are settled for one client build, so an uploader can skip repeating them",
+    "description": "Per upload row kind, the ids whose facts are settled (five installs agree and no other value was reported for 14 days), sorted and delta-encoded. Only facts the site already shows are in it, and never their values. The Desktop App and the upload page leave those rows out of an upload. A build the server has not looked at yet gets an empty list, so nothing is skipped on a new patch. `ETag` and `If-None-Match` let a client revalidate its copy for nothing; a 304 has no body. Cached for ten minutes.",
+    "access": "open",
+    "data": "observed",
+    "query": [
+      {
+        "name": "build",
+        "description": "The client build, such as 1.60.1.70450.",
+        "schema": {
+          "type": "string",
+          "pattern": "^\\d+(\\.\\d+)+$",
+          "maxLength": 32,
+          "examples": [
+            "1.60.1.70450"
+          ]
+        },
+        "required": true
+      }
+    ],
+    "responses": {
+      "200": {
+        "description": "The settled list.",
+        "schema": "settledListResponse"
+      },
+      "304": {
+        "description": "The copy you sent in `If-None-Match` is current."
+      },
+      "400": {
+        "description": "`build` is missing or is not a client build.",
+        "schema": "apiError"
+      },
+      "503": {
+        "description": "Storage is unreachable. Keep the list you have and retry later; an unrecorded list is not an empty one.",
+        "schema": "apiError"
+      }
+    }
+  },
+  {
+    "method": "GET",
     "path": "/api/market/prices",
     "summary": "Forever market values from full auction scans players started",
     "description": "Without `realm`, the realms that have public values (and, in `houses`, which auction houses have values of their own). With it, the items with the most units listed on that realm as tuples in `fields` order, copper per unit. Without `house` the values blend every house of the realm; with it, only scans that named that house count. A day is public when three reporters scanned the item on that realm.",

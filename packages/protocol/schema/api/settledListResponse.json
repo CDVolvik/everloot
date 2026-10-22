@@ -1,0 +1,220 @@
+{
+  "$id": "https://everloot.app/schema/api/settledListResponse.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "everloot.settled/1"
+    },
+    "build": {
+      "type": "string",
+      "description": "The client build the list is for, such as 1.60.1.70450."
+    },
+    "dataAsOf": {
+      "anyOf": [
+        {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "The corpus time the list was made from; null for a build the server has not looked at yet, whose list is empty so nothing is skipped."
+    },
+    "npc_sighting": {
+      "type": "object",
+      "properties": {
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "description": "Ids sorted ascending and delta-encoded: the first entry is the id, each later one the gap to the id before it, so [3, 4, 1] is 3, 7, 8."
+        },
+        "maps": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "description": "Ids sorted ascending and delta-encoded: the first entry is the id, each later one the gap to the id before it, so [3, 4, 1] is 3, 7, 8."
+          },
+          "description": "One delta-encoded list per id, in the same order as ids."
+        }
+      },
+      "required": [
+        "ids",
+        "maps"
+      ],
+      "additionalProperties": false,
+      "description": "NPC ids whose name and traits are settled, each with the maps whose pin is settled."
+    },
+    "quest": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": -9007199254740991,
+        "maximum": 9007199254740991
+      },
+      "description": "Quest ids with every reported field settled."
+    },
+    "vendor": {
+      "type": "array",
+      "items": {
+        "type": "integer",
+        "minimum": -9007199254740991,
+        "maximum": 9007199254740991
+      },
+      "description": "Vendor NPC ids whose every offer is settled."
+    },
+    "loot": {
+      "type": "object",
+      "properties": {
+        "npc": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "description": "Ids sorted ascending and delta-encoded: the first entry is the id, each later one the gap to the id before it, so [3, 4, 1] is 3, 7, 8."
+        },
+        "obj": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "description": "Ids sorted ascending and delta-encoded: the first entry is the id, each later one the gap to the id before it, so [3, 4, 1] is 3, 7, 8."
+        }
+      },
+      "required": [
+        "npc",
+        "obj"
+      ],
+      "additionalProperties": false,
+      "description": "Sources whose loot is settled: enough loot windows and a settled rate for every common item."
+    },
+    "instance_entrance": {
+      "type": "object",
+      "properties": {
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "description": "Ids sorted ascending and delta-encoded: the first entry is the id, each later one the gap to the id before it, so [3, 4, 1] is 3, 7, 8."
+        },
+        "maps": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "description": "Ids sorted ascending and delta-encoded: the first entry is the id, each later one the gap to the id before it, so [3, 4, 1] is 3, 7, 8."
+          },
+          "description": "One delta-encoded list per id, in the same order as ids."
+        }
+      },
+      "required": [
+        "ids",
+        "maps"
+      ],
+      "additionalProperties": false,
+      "description": "Instance map ids with the outdoor maps whose entrance is settled."
+    },
+    "encounter": {
+      "type": "object",
+      "properties": {
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "description": "Ids sorted ascending and delta-encoded: the first entry is the id, each later one the gap to the id before it, so [3, 4, 1] is 3, 7, 8."
+        },
+        "maps": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "description": "Ids sorted ascending and delta-encoded: the first entry is the id, each later one the gap to the id before it, so [3, 4, 1] is 3, 7, 8."
+          },
+          "description": "One delta-encoded list per id, in the same order as ids."
+        }
+      },
+      "required": [
+        "ids",
+        "maps"
+      ],
+      "additionalProperties": false,
+      "description": "Encounter ids with the instance map ids they are settled in."
+    },
+    "object_sighting": {
+      "type": "object",
+      "properties": {
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "description": "Ids sorted ascending and delta-encoded: the first entry is the id, each later one the gap to the id before it, so [3, 4, 1] is 3, 7, 8."
+        },
+        "maps": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "description": "Ids sorted ascending and delta-encoded: the first entry is the id, each later one the gap to the id before it, so [3, 4, 1] is 3, 7, 8."
+          },
+          "description": "One delta-encoded list per id, in the same order as ids."
+        }
+      },
+      "required": [
+        "ids",
+        "maps"
+      ],
+      "additionalProperties": false,
+      "description": "Object ids with the maps where every treasure cluster and its name are settled."
+    }
+  },
+  "required": [
+    "schema",
+    "build",
+    "dataAsOf",
+    "npc_sighting",
+    "quest",
+    "vendor",
+    "loot",
+    "instance_entrance",
+    "encounter",
+    "object_sighting"
+  ],
+  "additionalProperties": false
+}
