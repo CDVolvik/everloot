@@ -19,8 +19,10 @@
  * - ItemDamage*: a weapon's damage per second by item level and quality. In 1.60.1 ItemSparse has no
  *   MinDamage/MaxDamage; the client works a weapon's damage out from this value, the weapon speed and
  *   ItemSparse.DmgVariance. Those inputs are recorded as the tables give them (`w`), not the damage:
- *   which table goes with which weapon kind (weaponDamageTable) and the client's rounding still have to
- *   be checked against the game's own tooltips for a few weapons before the site prints "N - M Damage".
+ *   which table goes with which weapon kind (weaponDamageTable), how the client combines the value with the
+ *   swing time, and its rounding are in no file. The two readings the files allow are DAMAGE_READINGS; the
+ *   site prints "N - M Damage" only under the one that the weapons in CHECKED_WEAPONS, read off the game's
+ *   own tooltip, all agree with, and only for the tables those weapons came from (weapon-damage.ts).
  *
  * The numbers for quality, binding, slot, class and subclass are the client's own enumerations (the
  * WoWDev wiki documents them); the names for them are in item-names.ts of the web app.
@@ -28,6 +30,7 @@
 import type { Rows, TableReader } from "../talents/build-catalog.js";
 import { RACE_ATLAS } from "./banners.js";
 import { PLACEHOLDER } from "./tooltip.js";
+import type { WeaponDamageInputs } from "./weapon-damage.js";
 
 /** Items per shard file. Items a page shows tend to sit near each other, so a page reads few shards. */
 export const ITEM_SHARD_SIZE = 512;
@@ -76,18 +79,6 @@ export interface ItemRecord {
   cr?: string[];
   rq?: string[];
   fx?: string[];
-}
-
-/** What the client works a weapon's damage out from, as the tables give it. */
-export interface WeaponDamageInputs {
-  /** The ItemDamage table the value came from. */
-  t: string;
-  /** That table's damage per second for the item's level and quality. */
-  dps: number;
-  /** ItemSparse.DmgVariance. */
-  dv: number;
-  /** ItemSparse.DamageType: the damage school, 0 physical. */
-  ds: number;
 }
 
 /** ITEM_FLAG2_CASTER_WEAPON, in the second Flags word. */
