@@ -8,6 +8,7 @@ vi.mock("@/lib/rollup-compute", () => ({
   loadWorldFacts: async () => ({ npcs: [], quests: [], vendors: [], unreachable: false }),
   loadCraftedItems: async () => ({ items: new Set<number>(), unreachable: false }),
   loadObservedEdges: async () => ({ edges: [], unreachable: false, dataAsOf: null }),
+  loadLootTables: async () => ({ tables: { sources: new Map(), leftOut: 0 }, unreachable: false, dataAsOf: null }),
 }));
 vi.mock("@/lib/upload-store", () => ({ STORAGE_UNREACHABLE: "Storage unavailable" }));
 vi.mock("next/link", () => ({ default: ({ href, children }: { href: string; children: ReactNode }) => <a href={href}>{children}</a> }));
