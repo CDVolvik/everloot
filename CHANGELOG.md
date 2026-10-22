@@ -42,6 +42,12 @@ Pull requests merged to `main` are listed in the nightly pre-releases until the 
   form. The search index stays off for now, so the pages are reached by name and are not listed anywhere.
 
 ### Added
+- Site: the open data export, at `/database/download`. The published data as NDJSON files anyone can download
+  and build on, under CC BY-SA 4.0: what three installs agree on, and the game files' own layer, with a
+  manifest that says the build, the date the data was current, the method, the row count of every file and
+  what each one counts. The local Classic baseline is never in it — it is GPL-derived and stays on the
+  maintainer's machine — and a fact fewer than three installs agree on is not in it either. The page says so
+  in the same words as the policy.
 - Site: `/database/coverage` says how much of the game three players have agreed on, per zone, per type and
   per field, with the confirmed share beside the settled one, and the zones that need players first. A type is
   at its plateau when 90% of its expected facts are confirmed, 75% are settled, and under 0.5% became confirmed
