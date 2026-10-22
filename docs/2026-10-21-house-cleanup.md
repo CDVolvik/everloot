@@ -106,7 +106,7 @@ Agent worktrees under `.claude/worktrees/` (29), by branch:
 | `t3-31dac94a` | `fix/lockfile-install-script` | 220 commits not on main; `web/src/app/upload/page.tsx` modified, an untracked `kb/test/builds.test.ts` and design screenshots. |
 | `t3-5ca3a51f` | `t3/chatgpt-plugin-submission-fix` | 1 commit not on main (ChatGPT listing category). |
 | `t3-9211bf0d` | `feat/accounts-email` | Merged, but an untracked `players_contract.py`. |
-| `R21-Brain` T3 worktree `t3-248c1b60/tmp/everloot` | `fix/replay-sharing-2026-10-07` | Its `.git` file points at the repository's old `wowvault` path, so git cannot read its status. The branch is merged; the folder needs a person to look before it goes. |
+| A T3 worktree left under the workspace's temporary folder | `fix/replay-sharing-2026-10-07` | Its `.git` file points at the repository's old `wowvault` path, so git cannot read its status. The branch is merged; the folder needs a person to look before it goes. |
 
 Several "commits not on main" counts above run into the hundreds. Those branches probably
 predate a history rewrite around 2026-10-16 (an `old-main-2026-10-16` branch exists), so
