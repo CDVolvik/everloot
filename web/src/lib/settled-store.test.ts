@@ -11,7 +11,8 @@ const day = (n: number) => new Date(Date.UTC(2026, 9, 1 + n)).toISOString();
 const records = Array.from({ length: 5 }, (_, i) => ({
   kind: "npc_sighting", installId: `install-${i}`, capturedAt: day(0), npcId: 1, name: "Marshal Dughan", mapId: 1429, x: 42, y: 65, positionKind: "npc",
 }));
-const FILE = computeSettled({ records, asOf: day(30), build: BUILD });
+const WEEK = "2026-W03";
+const FILE = computeSettled({ records, asOf: day(30), build: BUILD, week: WEEK });
 const answer = (status: number, body?: unknown) => vi.fn(async () => new Response(body === undefined ? null : JSON.stringify(body), { status }));
 
 beforeEach(() => { corpus.load.mockReset().mockResolvedValue({ uploads: 1, records, dataAsOf: day(29) }); });
@@ -20,7 +21,7 @@ test("the cron writes the list and its values beside the score, dated by the sna
   const fetch = vi.fn(async (_req: string | URL | Request) => new Response(null, { status: 200 }));
   expect(await writeSettled({ added: 0, dataAsOf: day(30) }, { cloud: CLOUD, fetch })).toEqual({ written: false });
   expect(fetch).not.toHaveBeenCalled();
-  const out = await writeSettled({ added: 2, dataAsOf: day(30) }, { cloud: CLOUD, fetch, build: BUILD, recheck: [] });
+  const out = await writeSettled({ added: 2, dataAsOf: day(30) }, { cloud: CLOUD, fetch, build: BUILD, recheck: [], week: WEEK });
   expect(out).toEqual({ written: true, key: `coverage/settled-${BUILD}.json`, facts: 1 });
   const put = fetch.mock.calls[0]![0] as Request;
   expect(put.method).toBe("PUT");

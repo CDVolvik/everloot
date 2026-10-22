@@ -1,5 +1,6 @@
 import { createHmac } from "node:crypto";
 import { AwsClient } from "aws4fetch";
+import { isoWeek } from "../../../kb/src/spot-check";
 import { computeSettled, emptySettledList, listOf, parseSettledFile, type SettledFile, type SettledList } from "../../../kb/src/settled-list";
 import { BUILD_PATTERN } from "./settled-cache";
 import { cloudConfig, uploadStore, type CloudConfig } from "./upload-store";
@@ -26,7 +27,7 @@ function r2Client(cloud: CloudConfig): AwsClient {
  * time is the snapshot's. Dated by the snapshot's `dataAsOf`, never the run's clock.
  */
 export async function writeSettled(opts: { added: number; rebuild?: boolean; dataAsOf: string | null }, deps: {
-  cloud?: CloudConfig | null; fetch?: typeof fetch; build?: string; recheck?: Parameters<typeof computeSettled>[0]["recheck"];
+  cloud?: CloudConfig | null; fetch?: typeof fetch; build?: string; recheck?: Parameters<typeof computeSettled>[0]["recheck"]; week?: string;
 } = {}): Promise<{ written: boolean; key?: string; facts?: number }> {
   if (opts.added <= 0 && !opts.rebuild) return { written: false };
   const cloud = deps.cloud === undefined ? cloudConfig() : deps.cloud;
@@ -36,7 +37,7 @@ export async function writeSettled(opts: { added: number; rebuild?: boolean; dat
   // The build and the recheck scopes are the coverage score's; loaded here so the intake never parses the client layer.
   const { COVERAGE_BUILD, RECHECK_SCOPES } = deps.build && deps.recheck ? { COVERAGE_BUILD: deps.build, RECHECK_SCOPES: deps.recheck } : await import("./coverage-compute");
   const build = deps.build ?? COVERAGE_BUILD;
-  const file = computeSettled({ records: corpus.records, asOf: opts.dataAsOf ?? corpus.dataAsOf ?? null, build, recheck: deps.recheck ?? RECHECK_SCOPES });
+  const file = computeSettled({ records: corpus.records, asOf: opts.dataAsOf ?? corpus.dataAsOf ?? null, build, recheck: deps.recheck ?? RECHECK_SCOPES, week: deps.week ?? isoWeek(new Date()) });
   const key = settledKey(build);
   const put = await (deps.fetch ?? fetch)(await r2Client(cloud).sign(r2Url(cloud, key), { method: "PUT", body: JSON.stringify(file), headers: { "content-type": "application/json" } }));
   if (!put.ok) throw new Error(`settled list write failed (${put.status})`);

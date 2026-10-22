@@ -148,7 +148,7 @@ reverted, and is in the appendix for the coordinator.
 
 ## What is not built, and what remains
 
-- **The settled list's spot check and the drop cut-off there** (appendix), for the coordinator to apply: it makes
+- **The settled list's spot check and the drop cut-off there** (appendix), applied on 2026-10-22: it makes
   `computeSettled` leave out an entry when `isSpotChecked({ key, zone }, week, scopes)` with the keys `npc:<id>`,
   `pin:<npc>:<map>`, `quest:<id>`, `vendor:<id>` and `loot:npc|obj:<id>`, the zones placed by the score's rule; takes the
   week as an input (the cron passes `isoWeek(new Date())`; without it nothing is spot-checked, so the list stays a pure
@@ -167,7 +167,7 @@ reverted, and is in the appendix for the coordinator.
 
 ## Appendix: the proposed settled-list change
 
-Applies to `main` at the time of this lane with `git apply`. Not part of this pull request.
+Applied to `main` on 2026-10-22; `writeSettled` takes an optional `week` so its test does not depend on the calendar week.
 
 ```diff
 diff --git a/kb/src/settled-list.ts b/kb/src/settled-list.ts
