@@ -379,12 +379,16 @@ export function createUploadStore(opts: {
    * Fold full scans from uploads not yet seen into the market rollup (cron). `rebuild` starts
    * from empty. A missed object writes nothing, so the next run reads it again.
    */
-  async function writeMarket(opts: { rebuild?: boolean } = {}): Promise<{ added: number; scans: number }> {
+  async function writeMarket(opts: { rebuild?: boolean; idle?: boolean } = {}): Promise<{ added: number; scans: number; skipped?: boolean }> {
     if (!cloud) throw new Error("the market rollup needs the cloud store");
     const current = await readMarketSnapshot();
     if (current && (!current.etag || current.etag.startsWith("W/"))) throw new Error("market rollup has no strong ETag: cannot safely update it");
     if (current && !current.snapshot && !opts.rebuild) throw new Error("market rollup is invalid: rebuild it with ?rebuild=1");
     const prev = opts.rebuild ? null : current?.snapshot ?? null;
+    if (opts.idle && !opts.rebuild && prev && validTime(prev.generatedAt) &&
+        new Date(prev.generatedAt).toISOString().slice(0, 10) === now().toISOString().slice(0, 10)) {
+      return { added: 0, scans: 0, skipped: true };
+    }
     const seen = new Set(prev?.seenUploadIds ?? []);
     const rows = await listIndex(new Date(now().getTime() - MARKET_READ_DAYS * 86_400_000).toISOString());
     const fresh = rows.filter((r) => !seen.has(r.id));
@@ -664,6 +668,36 @@ export function createUploadStore(opts: {
     };
   }
 
+  /** One bounded index probe before any corpus replay. A successful run records its corpus generation. */
+  async function snapshotWork(): Promise<{ idle: boolean; retryRollups: boolean; dataAsOf: string | null }> {
+    if (!cloud) throw new Error("snapshots need the cloud store");
+    const snapshot = await readSnapshot();
+    const filter = snapshot?.lastReceivedAt ? `&received_at=gt.${encodeURIComponent(snapshot.lastReceivedAt)}` : "";
+    const res = await doFetch(rest(`uploads?select=id&limit=1${filter}`), { headers: restHeaders() });
+    if (!res.ok) throw new Error(`upload index probe failed (${res.status})`);
+    const rows = await res.json() as unknown[];
+    const idle = snapshot !== null && rows.length === 0;
+    let retryRollups = false;
+    if (idle) {
+      const run = await r2Fetch("cron/last-run.json", { method: "GET" });
+      if (run.status === 404) retryRollups = true;
+      else {
+        if (!run.ok) throw new Error(`cron heartbeat read failed (${run.status})`);
+        const previous = await run.json() as { dataAsOf?: string; completionPending?: boolean };
+        retryRollups = previous.dataAsOf !== snapshot.generatedAt || previous.completionPending === true;
+      }
+    }
+    return { idle, retryRollups, dataAsOf: snapshot?.generatedAt ?? null };
+  }
+
+  async function writeCronRun(completionPending: boolean, dataAsOf: string | null): Promise<void> {
+    const res = await r2Fetch("cron/last-run.json", {
+      method: "PUT", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ generatedAt: now().toISOString(), dataAsOf, completionPending }),
+    });
+    if (!res.ok) throw new Error(`cron heartbeat write failed (${res.status})`);
+  }
+
   function stateOf(snapshot: Snapshot): CorpusState {
     const state = snapshot.corpusState;
     if (!state) {
@@ -702,7 +736,7 @@ export function createUploadStore(opts: {
    * Extend the snapshot with uploads newer than its last one (cron). `rebuild` starts from empty,
    * which is how a deleted upload leaves the snapshot.
    */
-  async function writeSnapshot(opts: { rebuild?: boolean } = {}): Promise<{ uploads: number; added: number }> {
+  async function writeSnapshot(opts: { rebuild?: boolean } = {}): Promise<{ uploads: number; added: number; dataAsOf: string }> {
     if (!cloud) throw new Error("snapshots need the cloud store");
     const current = await readSnapshot();
     if (current && !current.etag) throw new Error("snapshot has no ETag: cannot safely update it");
@@ -739,7 +773,7 @@ export function createUploadStore(opts: {
     });
     if (!put.ok) throw new Error(`snapshot write failed (${put.status})`);
     cached = null; completionCached = null; censusCached = null;
-    return { uploads: snapshot.uploads, added: fresh.length };
+    return { uploads: snapshot.uploads, added: fresh.length, dataAsOf: snapshot.generatedAt };
   }
 
   async function loadCorpus(): Promise<Corpus> {
@@ -800,18 +834,19 @@ export function createUploadStore(opts: {
     if (unavailable) return { status: "unavailable", ...unknown };
     if (!cloud) return { status: "local", ...unknown };
     try {
-      // Metadata only: never expose raw snapshot contents, keys or credentials.
-      const res = await r2Fetch(SNAPSHOT_KEY, { method: "HEAD", signal: AbortSignal.timeout(10_000) });
+      // Cron freshness is independent of the last real corpus change.
+      const res = await r2Fetch("cron/last-run.json", { method: "GET", signal: AbortSignal.timeout(10_000) });
       if (res.status === 404) return { status: "missing", ...unknown };
       if (!res.ok) return { status: "unavailable", ...unknown };
-      const modified = Date.parse(res.headers.get("last-modified") ?? "");
+      const heartbeat = await res.json() as { generatedAt?: string };
+      const modified = Date.parse(heartbeat.generatedAt ?? "");
       const age = now().getTime() - modified;
       if (!Number.isFinite(age) || age < -30_000) return { status: "unavailable", ...unknown };
       return { status: age > 30 * 60_000 ? "stale" : "fresh", updatedAt: new Date(modified).toISOString(), ageSeconds: Math.max(0, Math.floor(age / 1000)) };
     } catch { return { status: "unavailable", ...unknown }; }
   }
 
-  return { putUpload, loadCorpus, putWaitlist, writeSnapshot, snapshotHealth, writeMarket, loadMarket, writeCompletion, loadCompletion, loadCensus, installCensus };
+  return { putUpload, loadCorpus, putWaitlist, snapshotWork, writeCronRun, writeSnapshot, snapshotHealth, writeMarket, loadMarket, writeCompletion, loadCompletion, loadCensus, installCensus };
 }
 
 /** The store the routes and pages use. */

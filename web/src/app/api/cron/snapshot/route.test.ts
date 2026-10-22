@@ -1,6 +1,6 @@
 import { beforeEach, expect, test, vi } from "vitest";
-const store = vi.hoisted(() => ({ writeSnapshot: vi.fn(), writeMarket: vi.fn(), writeCompletion: vi.fn(), prune: vi.fn() }));
-vi.mock("@/lib/upload-store", () => ({ uploadStore: { writeSnapshot: store.writeSnapshot, writeMarket: store.writeMarket, writeCompletion: store.writeCompletion },
+const store = vi.hoisted(() => ({ snapshotWork: vi.fn(), writeCronRun: vi.fn(), writeSnapshot: vi.fn(), writeMarket: vi.fn(), writeCompletion: vi.fn(), prune: vi.fn() }));
+vi.mock("@/lib/upload-store", () => ({ uploadStore: { snapshotWork: store.snapshotWork, writeCronRun: store.writeCronRun, writeSnapshot: store.writeSnapshot, writeMarket: store.writeMarket, writeCompletion: store.writeCompletion },
   sharingStore: { loadState: async () => ({ grants: [], suppressions: [] }) },
 }));
 vi.mock("@/lib/intake-quota", () => ({ intakeQuota: { prune: store.prune } }));
@@ -11,6 +11,8 @@ vi.mock("@/lib/player-store", () => ({ playerStore: () => ({ prune: players.prun
 import { GET } from "./route";
 beforeEach(() => {
   vi.stubEnv("CRON_SECRET", "synthetic-cron-key");
+  store.snapshotWork.mockReset().mockResolvedValue({ idle: false, retryRollups: false });
+  store.writeCronRun.mockReset().mockResolvedValue(undefined);
   store.writeSnapshot.mockReset().mockResolvedValue({ uploads: 0 });
   store.writeMarket.mockReset().mockResolvedValue({ added: 0, scans: 0 });
   store.writeCompletion.mockReset().mockResolvedValue({ added: 0, remaining: 0, trimmed: 0, rebuilding: false });
@@ -29,6 +31,34 @@ test("unauthorized cron cannot prune counters or rebuild", async () => {
 test("authorized cron prunes stale counters after snapshot success", async () => {
   expect((await GET(req())).status).toBe(200);
   expect(store.prune).toHaveBeenCalledOnce();
+});
+
+test("an idle run skips corpus and completion, day-gates market, and heartbeats", async () => {
+  store.snapshotWork.mockResolvedValue({ idle: true, retryRollups: false, dataAsOf: "2026-10-01" });
+  expect((await GET(req())).status).toBe(200);
+  expect(store.writeSnapshot).not.toHaveBeenCalled();
+  expect(store.writeCompletion).not.toHaveBeenCalled();
+  expect(store.writeMarket).toHaveBeenCalledWith({ idle: true });
+  expect(store.writeCronRun).toHaveBeenCalledWith(false, "2026-10-01");
+  expect(store.prune).toHaveBeenCalledOnce();
+});
+
+test("idle does not strand rollups left behind by failure or a bounded completion batch", async () => {
+  store.snapshotWork.mockResolvedValue({ idle: true, retryRollups: true, dataAsOf: "2026-10-01" });
+  store.writeCompletion.mockResolvedValue({ added: 1, remaining: 2, trimmed: 0, rebuilding: false });
+  expect((await GET(req())).status).toBe(200);
+  expect(store.writeSnapshot).not.toHaveBeenCalled();
+  expect(store.writeMarket).toHaveBeenCalledWith({ rebuild: false });
+  expect(store.writeCompletion).toHaveBeenCalledOnce();
+  expect(store.writeCronRun).toHaveBeenCalledWith(true, "2026-10-01");
+});
+
+test("an explicit rebuild bypasses idle and a failed run never advances the heartbeat", async () => {
+  store.snapshotWork.mockResolvedValue({ idle: true, retryRollups: false });
+  store.writeMarket.mockRejectedValue(new Error("down"));
+  expect((await GET(req(undefined, "?rebuild=1"))).status).toBe(500);
+  expect(store.writeSnapshot).toHaveBeenCalledWith({ rebuild: true });
+  expect(store.writeCronRun).not.toHaveBeenCalled();
 });
 test("quota cleanup failure is reported so stale storage cannot silently grow", async () => {
   store.prune.mockRejectedValue(new Error("quota database down"));
