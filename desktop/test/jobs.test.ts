@@ -1,7 +1,8 @@
-import { mkdtempSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, expect, test } from "vitest";
+import { afterEach, expect, test, vi } from "vitest";
+import { emptySettledList, encodeIds } from "../../kb/src/settled-list";
 import { companionJobs } from "../src/main/jobs";
 import { defaultSettings } from "../src/main/settings";
 
@@ -74,4 +75,39 @@ test("the ask job refuses a token file it cannot read or that is empty", async (
   const run = (tokenFile: string | null) => companionJobs(join(d, "data"), () => ({ ...defaultSettings(), ask: { enabled: true, mcpUrl: "https://example.test/mcp", tokenFile } })).deps.ask(join(d, "Everloot.lua"));
   await expect(run(join(d, "nope.txt"))).rejects.toThrow(/could not be read/);
   await expect(run(empty)).rejects.toThrow(/is empty/);
+});
+
+test("an upload leaves out settled rows, keeps the list in the data folder, and says how many it skipped", async () => {
+  const d = dir();
+  const build = "1.60.1.70450";
+  const row = (n: number, npc: number) => `{["eventId"] = "epoch:${n}", ["capturedAt"] = "2026-10-09T00:00:00Z", ["sourceNpcId"] = ${npc}, ["sourceEvidence"] = "loot-api", ["items"] = {{["itemId"] = 5, ["count"] = 1}}},`;
+  const file = join(d, "Everloot.lua");
+  writeFileSync(file, `EverlootDB = {
+["version"] = "0.2.2",
+["clientBuild"] = "${build}",
+["installId"] = "abcd-1234-ef56-7890",
+["records"] = {
+["loot"] = {
+${row(1, 42)}
+${row(2, 42)}
+${row(3, 43)}
+},
+},
+}
+`);
+  const list = { ...emptySettledList(build), dataAsOf: "2026-10-20T00:00:00.000Z", loot: { npc: encodeIds([42]), obj: [] } };
+  const fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+    const url = String(input instanceof Request ? input.url : input);
+    if (url.includes("/api/coverage/settled")) return Response.json(list, { headers: { etag: "\"a\"" } });
+    const body = JSON.parse(String(init?.body));
+    return Response.json({ ok: true, persisted: true, uploadId: "u-1", accepted: body.records.map((r: { kind: string }, index: number) => ({ index, kind: r.kind })), rejected: [] });
+  });
+  vi.stubGlobal("fetch", fetch);
+  try {
+    const { deps } = companionJobs(join(d, "data"), () => ({ ...defaultSettings(), endpoint: "https://everloot.app" }));
+    expect(await deps.upload(file)).toMatch(/^sent 1 new events in 1 batch\(es\); skipped 2 already settled; kept /);
+    expect(existsSync(join(d, "data", `settled-${build}.json`))).toBe(true);
+  } finally {
+    vi.unstubAllGlobals();
+  }
 });

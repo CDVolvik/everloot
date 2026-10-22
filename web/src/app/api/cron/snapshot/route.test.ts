@@ -10,6 +10,8 @@ const players = vi.hoisted(() => ({ prune: vi.fn() }));
 vi.mock("@/lib/player-store", () => ({ playerStore: () => ({ prune: players.prune }) }));
 const coverage = vi.hoisted(() => ({ writeCoverage: vi.fn() }));
 vi.mock("@/lib/coverage-store", () => ({ writeCoverage: coverage.writeCoverage }));
+const settled = vi.hoisted(() => ({ writeSettled: vi.fn() }));
+vi.mock("@/lib/settled-store", () => ({ writeSettled: settled.writeSettled }));
 import { GET } from "./route";
 beforeEach(() => {
   vi.stubEnv("CRON_SECRET", "synthetic-cron-key");
@@ -22,6 +24,7 @@ beforeEach(() => {
   keys.pruneKeys.mockReset().mockResolvedValue(undefined);
   players.prune.mockReset().mockResolvedValue(undefined);
   coverage.writeCoverage.mockReset().mockResolvedValue({ written: false });
+  settled.writeSettled.mockReset().mockResolvedValue({ written: false });
 });
 const req = (auth = "Bearer synthetic-cron-key", query = "") =>
   new Request(`https://everloot.app/api/cron/snapshot${query}`, { headers: { authorization: auth } });
@@ -138,4 +141,20 @@ test("player rows are pruned only with the player pages on, and a failure does n
   expect((await GET(req())).status).toBe(200);
   expect(players.prune).toHaveBeenCalledOnce();
   vi.unstubAllEnvs();
+});
+
+test("the settled list is written beside the score after a changed snapshot, never on an idle run, and a failure does not fail the run", async () => {
+  store.snapshotWork.mockResolvedValue({ idle: true, retryRollups: false, dataAsOf: "2026-10-01" });
+  expect(await (await GET(req())).json()).toMatchObject({ ok: true, settled: { written: false } });
+  expect(settled.writeSettled).not.toHaveBeenCalled();
+  store.snapshotWork.mockResolvedValue({ idle: false, retryRollups: false, dataAsOf: "2026-10-01" });
+  store.writeSnapshot.mockResolvedValue({ uploads: 9, added: 2, dataAsOf: "2026-10-02T00:00:00.000Z" });
+  settled.writeSettled.mockResolvedValue({ written: true, facts: 3 });
+  expect(await (await GET(req())).json()).toMatchObject({ ok: true, settled: { written: true, facts: 3 } });
+  expect(settled.writeSettled).toHaveBeenCalledWith({ added: 2, rebuild: false, dataAsOf: "2026-10-02T00:00:00.000Z" });
+  settled.writeSettled.mockRejectedValue(new Error("r2 down"));
+  vi.spyOn(console, "error").mockImplementation(() => {});
+  const res = await GET(req());
+  expect(res.status).toBe(200);
+  expect(await res.json()).toMatchObject({ ok: true, settled: null });
 });

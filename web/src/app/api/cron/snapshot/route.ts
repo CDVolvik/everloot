@@ -6,6 +6,7 @@ import { guardOn } from "@/lib/data-guard";
 import { playerPagesOn } from "@/lib/player-pages";
 import { playerStore } from "@/lib/player-store";
 import { writeCoverage } from "@/lib/coverage-store";
+import { writeSettled } from "@/lib/settled-store";
 
 /**
  * GET /api/cron/snapshot — Vercel Cron (vercel.json) extends the corpus snapshot with new uploads,
@@ -71,8 +72,16 @@ export async function GET(req: Request) {
     } catch (err) {
       console.error("coverage failed", err);
     }
+    // The settled list (kb/src/settled-list.ts) goes beside the score, under the same rule: only after a changed
+    // snapshot, dated by it. A failure is logged; uploaders keep the list they have and the intake stores every row.
+    let settled: { written: boolean; facts?: number } | null = null;
+    try {
+      settled = idle ? { written: false } : await writeSettled({ added: result.added, rebuild, dataAsOf: result.dataAsOf });
+    } catch (err) {
+      console.error("settled list failed", err);
+    }
     await uploadStore.writeCronRun(completion.remaining > 0 || completion.rebuilding, result.dataAsOf);
-    return NextResponse.json({ ok: true, rebuild, ...result, market, completion, coverage });
+    return NextResponse.json({ ok: true, rebuild, ...result, market, completion, coverage, settled });
   } catch (err) {
     console.error("snapshot failed", err);
     return NextResponse.json({ ok: false, error: "snapshot failed" }, { status: 500 });
