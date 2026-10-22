@@ -103,8 +103,16 @@ const nextConfig = {
   // here: the `*` seen on pages is added by Vercel for prerendered responses, and a header set here could not
   // remove it.
   async headers() {
+    const databaseItemsCdnHeaders = [
+      { key: "Vercel-CDN-Cache-Control", value: "max-age=3600, stale-while-revalidate=86400" },
+      { key: "CDN-Cache-Control", value: "max-age=3600, stale-while-revalidate=86400" },
+    ];
     return [
       { source: "/:path*", headers: securityHeaders },
+      // These pages read no cookies, so the CDN can serve them. Next overwrites Cache-Control on
+      // dynamic pages, so the CDN-specific headers are used.
+      { source: "/database/items", headers: databaseItemsCdnHeaders },
+      { source: "/database/items/:path*", headers: databaseItemsCdnHeaders },
       // The embeddable tooltip script other sites load: an hour in browsers and at the CDN, so a fix reaches them quickly.
       { source: "/tooltips.js", headers: [
         { key: "Cache-Control", value: "public, max-age=3600, s-maxage=3600, stale-while-revalidate=86400" },
