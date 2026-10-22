@@ -34,7 +34,10 @@ import { baselineNames, formatNameGaps, playerNames, runNameGaps } from "./name-
 import { parse as parseYaml } from "yaml";
 import { parseArgs } from "./args.js";
 import { buildWatchCommand } from "./build-watch/command.js";
-import { addRecheckScopes, RECHECK_FILE, scopesFromClientDiff } from "./build-watch/recheck.js";
+import { addRecheckScopes, readRecheck, RECHECK_FILE, scopesFromClientDiff } from "./build-watch/recheck.js";
+import { isoWeek, spotCheckConflicts } from "./spot-check.js";
+import { foldRecorderInstalls } from "./recorder-installs.js";
+import { parseRecords } from "@everloot/protocol";
 import type { Game, NsKind, Region } from "./blizzard/namespaces.js";
 import { openDb, openExistingReadOnlyDb, type DB } from "./db.js";
 import { importCurated } from "./importers/curated.js";
@@ -174,11 +177,18 @@ const USAGE = `usage: npm run kb -- <command> --db <path>
     confirmed, changed, new in Forever and not seen yet, by zone and level. Writes baseline-report.md and
     .json, by default to <temp>/everloot-baseline-report; never inside the repository, never published)
   coverage-report --db <source db> --out <folder outside the repository> [--client <snapshot.sqlite>]
-    [--recheck-since <ISO timestamp>]
+    [--recheck-since <ISO timestamp>] [--root ..]
     (local per-field missing, reported, contested, spread and recheck detail by zone and level, baseline
-    names included. Also writes coverage-expected.json: zone/type/field counts only, no entity ids.
-    Uses the same upload sources as baseline-report. --client adds QuestV2 and boss candidates;
-    without it those game-file-only facts are unknown. Never publishes or uploads either artifact)
+    names included, and the plateau per type over the released zones. Also writes coverage-expected.json:
+    zone/type/field counts only, no entity ids. Uses the same upload sources as baseline-report. The recheck
+    scopes in kb/curated/recheck.json apply per fact; --recheck-since adds one cutoff for every fact.
+    --client adds QuestV2 and boss candidates; without it those game-file-only facts are unknown. Never
+    publishes or uploads either artifact)
+  spot-check [--week <YYYY-Www>] [--root ..] [--dry-run]
+    (the weekly spot check over the uploads: how many settled NPCs, pins, quests and vendors the week leaves
+    out of the settled list, and the spot-checked facts that got a conflicting report since their week began,
+    added to kb/curated/recheck.json as scopes that raise their zone's rate. The week defaults to the current
+    UTC week; the pick is a hash of each fact's key and the week, so a rerun picks the same facts)
   wiki-check [--dir <kb>/wiki]
     (the wiki's page check: front matter, ids and slugs, categories, bindings and tokens against the committed
     game data and the shown id ranges, [[links]], hand-typed gameplay numbers, section order, credit fields,
@@ -683,11 +693,30 @@ async function main(): Promise<number> {
         }
       }
       const corpus = await readCorpusRecords(["npc_sighting", "quest", "vendor", "loot", "instance_entrance", "encounter", "object_sighting"]);
+      const recheck = readRecheck(flags.get("root") || "..").scopes;
       const report = buildCoverageReport({ ...local, records: corpus?.records ?? [], dataAsOf: corpus?.dataAsOf ?? null,
-        connected: corpus !== null, clientConnected: Boolean(client), questIds, bosses, recheckSince });
+        connected: corpus !== null, clientConnected: Boolean(client), questIds, bosses, recheckSince, recheck });
       const paths = writeCoverageReport(report, out);
-      console.log(`${report.rows.length} local fact fields; uploads ${report.connected ? "connected" : "disconnected ([?])"}`);
+      console.log(`${report.rows.length} local fact fields, ${report.rows.filter((r) => r.state === "recheck").length} in recheck (${recheck.length} scopes); uploads ${report.connected ? "connected" : "disconnected ([?])"}`);
+      const plateau = report.plateau;
+      console.log(`plateau: ${plateau?.site === true ? "yes" : plateau?.site === false ? "no" : "[?]"}${plateau ? ` (${plateau.types.map((t) => `${t.type} ${t.atPlateau === null ? "[?]" : t.atPlateau ? "yes" : "no"}`).join(", ")})` : ""}`);
       console.log(`-> ${paths.markdown}\n-> ${paths.json}\n-> ${paths.expected}`);
+      return 0;
+    }
+    case "spot-check": {
+      const root = flags.get("root") || "..";
+      const corpus = await readCorpusRecords(["npc_sighting", "quest", "vendor"]);
+      if (!corpus) throw new Error("spot-check: uploads not connected or unreadable (EVERLOOT_PUBLIC_CORPUS_URL, EVERLOOT_UPLOADS)");
+      // The week this runs in, as the settled list's own pick: an idle corpus must not hold one week's pick forever.
+      const week = flags.get("week") || isoWeek(new Date());
+      if (!/^\d{4}-W\d{2}$/.test(week)) throw new Error("spot-check: --week must read YYYY-Www");
+      const records = foldRecorderInstalls(parseRecords(corpus.records).records);
+      const run = spotCheckConflicts(records, week, readRecheck(root).scopes);
+      console.log(`${week}: ${run.checked} of ${run.settled} settled NPCs, pins, quests and vendors left out of the settled list`);
+      for (const c of run.conflicts) console.log(`conflict: ${c.key} (zone ${c.zone ?? "[?]"}), spot-checked in ${c.checkedIn}`);
+      if (!run.conflicts.length) console.log("no spot-checked fact got a conflicting report");
+      else if (flags.has("dry-run")) console.log(`dry run: ${run.conflicts.length} scopes not written`);
+      else console.log(addRecheckScopes(root, root, run.conflicts.map((c) => c.scope)) ? `-> ${RECHECK_FILE}` : `${RECHECK_FILE} already holds these scopes`);
       return 0;
     }
     case "baseline-report": {

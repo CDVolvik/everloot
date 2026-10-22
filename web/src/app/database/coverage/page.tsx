@@ -6,8 +6,10 @@ import { Container, DataTable, DataTitle, FilterBar, type SparseColumn } from "@
 import { loadCoverage } from "@/lib/coverage-compute";
 import { cellDetail, cellRank, COVERAGE_SORTS, measuredLine, shareText, TYPE_LABEL, zoneCoverageHref, type CoverageSort } from "@/lib/coverage-view";
 import { pageMetadata } from "@/lib/seo";
+import { PLATEAU_TYPES, type TypePlateau } from "../../../../../kb/src/plateau";
 import { LINK } from "../entity";
 import { listHref, NoMatches, nextSort, sortParam, sortRows, Unreadable, type Search } from "../list-parts";
+import { loadPlateau, plateauDetail, plateauMeasured, plateauShare, plateauVerdict } from "./plateau";
 
 const META = {
   title: "WoW Forever Database Coverage",
@@ -35,6 +37,8 @@ export default async function CoveragePage(props: { searchParams?: Promise<Searc
   const q = coverageQuery((await props.searchParams) ?? {});
   if (!q) notFound();
   const report = await loadCoverage();
+  const plateau = report && (await loadPlateau(report));
+  const deciding = plateau ? PLATEAU_TYPES.map((t) => plateau.types.find((p) => p.type === t)!) : [];
   const href = (over: Partial<typeof q>) => listHref(META.path, [["q", "q" in over ? over.q : q.q], ["sort", sortParam("sort" in over ? over.sort : q.sort)]]);
 
   // The search: a zone's name, or a quest or NPC id, which finds the zone the score counts it in.
@@ -56,6 +60,13 @@ export default async function CoveragePage(props: { searchParams?: Promise<Searc
       cell: (z) => <span title={cellDetail(z.types[t])} className="tabular-nums">{shareText(z.types[t])}<span className="sr-only">: {cellDetail(z.types[t])}</span></span>,
     })),
   ];
+  const plateauColumns: SparseColumn<TypePlateau>[] = [
+    { key: "type", header: "Type", cell: (t) => TYPE_LABEL[t.type] },
+    { key: "confirmed", header: "Confirmed", numeric: true, cell: (t) => <span className="tabular-nums">{plateauShare(t.shares.confirmed)}</span> },
+    { key: "settled", header: "Settled", numeric: true, cell: (t) => <span className="tabular-nums">{plateauShare(t.shares.settled)}</span> },
+    { key: "new", header: "Newly confirmed", numeric: true, cell: (t) => <span className="tabular-nums">{plateauShare(t.shares.newlyConfirmed)}</span> },
+    { key: "plateau", header: "At plateau", cell: (t) => <span title={plateauDetail(t)}>{plateauVerdict(t.atPlateau)}<span className="sr-only">: {plateauDetail(t)}</span></span> },
+  ];
 
   return (
     <Container width="data">
@@ -75,6 +86,13 @@ export default async function CoveragePage(props: { searchParams?: Promise<Searc
               Lowest first, so the zones that need players most are on top. {report.method}
             </p>
             <p className="mb-3 max-w-reading text-meta text-muted">{measuredLine(report)}</p>
+            {plateau && (
+              <p className="mb-3 max-w-reading text-cell text-fg-2">
+                Plateau: {plateau.site === true ? "reached" : plateau.site === false ? "not yet" : "[?]"}.{" "}
+                {deciding.map((t, i) => <span key={t.type}>{i ? ", " : ""}{TYPE_LABEL[t.type]} {plateauVerdict(t.atPlateau)}</span>)}.{" "}
+                <a href="#plateau" className={LINK}>The numbers</a>
+              </p>
+            )}
             {id !== null && (
               <p className="mb-3 text-cell text-fg-2">
                 {found.length === 0 ? `No quest or NPC ${id} has been reported yet.` : found.map((f, i) => {
@@ -99,6 +117,13 @@ export default async function CoveragePage(props: { searchParams?: Promise<Searc
                 Not in any zone yet, so in no share: {report.unplaced.types.quests.observed.toLocaleString("en-US")} quests whose giver has no agreed place
                 and {report.unplaced.types.npcs.observed.toLocaleString("en-US")} NPCs seen only inside a dungeon or on no released map.
               </p>
+            )}
+            {plateau && (
+              <section aria-labelledby="plateau" className="mt-6">
+                <h2 id="plateau" className="mb-2 text-h2-sm text-fg sm:text-h2">Plateau</h2>
+                <DataTable dense caption="Plateau by type: the types the site's plateau is measured on" columns={plateauColumns} rows={deciding} rowKey={(t) => t.type} meta={(t) => plateauDetail(t)} />
+                <p className="mt-2 max-w-reading text-meta text-muted">{plateauMeasured(plateau)} {plateau.method}</p>
+              </section>
             )}
           </>
         )}
