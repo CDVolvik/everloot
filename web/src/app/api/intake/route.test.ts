@@ -104,6 +104,19 @@ describe("POST /api/intake", () => {
     expect(await response.json()).toMatchObject({ ok: false });
   });
 
+  test.each([["a NUL", "install-\u00001234"], ["half a character pair", "install-\ud8001234"]])(
+    "an install id with %s is refused before anything is written: the index cannot store it",
+    async (_, installId) => {
+      const POST = await freshPost();
+      const response = await POST(request({ addonVersion: "0.1.0", records: [loot(installId)] }));
+
+      expect(response.status).toBe(422);
+      expect(await response.json()).toMatchObject({ ok: false, error: "This install id holds a character the store cannot keep." });
+      expect(store.installQuota).not.toHaveBeenCalled();
+      expect(store.putUpload).not.toHaveBeenCalled();
+    },
+  );
+
   test("a valid envelope with no accepted row is refused and writes nothing", async () => {
     const POST = await freshPost();
     const response = await POST(request({ addonVersion: "0.1.0", records: [{ ...loot("install-1234"), capturedAt: "nope" }] }));

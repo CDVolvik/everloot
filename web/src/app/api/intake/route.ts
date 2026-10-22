@@ -219,6 +219,12 @@ export async function POST(req: Request) {
     );
   }
   const installId = [...installs][0];
+  // The index keeps the install id as Postgres text, which cannot hold a NUL or half of a UTF-16 pair. The protocol
+  // allows any 8 to 64 characters, so without this the index insert refuses the row after the object is written,
+  // and the upload answers 503 on every retry.
+  if (installId.includes("\u0000") || !installId.isWellFormed()) {
+    return NextResponse.json({ ok: false, error: "This install id holds a character the store cannot keep.", ...receipt }, { status: 422 });
+  }
   const installDenied = await admission(() => intakeQuota.install(installId));
   if (installDenied) return installDenied;
   const uploadId = randomUUID();
