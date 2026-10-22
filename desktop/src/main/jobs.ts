@@ -7,6 +7,7 @@ import { loadProviders } from "../../../companion/src/providers/config";
 import { findEverlootFiles } from "../../../companion/src/savedvariables";
 import { createSentState } from "../../../companion/src/sent-state";
 import { uploadFile } from "../../../companion/src/uploader";
+import { appSettledList } from "../../../web/src/lib/settled-cache";
 import type { RealmSummary, Settings } from "../shared/types";
 import { readAccountKey } from "./account";
 import { backupSavedVariables } from "./backups";
@@ -26,11 +27,14 @@ export function companionJobs(dataFolder: string, current: () => Settings): { de
   const deps: EngineDeps = {
     findFiles: findEverlootFiles,
     async upload(file) {
-      const r = await uploadFile(file, { endpoint: current().endpoint, state, census: current().census, players: current().players });
+      const endpoint = current().endpoint;
+      // The settled list is kept beside sent.json and refreshed once a day.
+      const settled = (build: string | undefined) => appSettledList({ folder: dataFolder, endpoint, build });
+      const r = await uploadFile(file, { endpoint, state, census: current().census, players: current().players, settled });
       // A copy of the file as it was uploaded; a failed backup never fails the upload.
       let backup = "";
       try { backupSavedVariables(file, dataFolder); backup = "; backup kept"; } catch (err) { backup = `; backup failed: ${err instanceof Error ? err.message : String(err)}`; }
-      return `sent ${r.sent} new events in ${r.batches} batch(es); kept ${r.heldNamed} named, ${r.heldAddons} installed-addon, ${r.heldCensus} census and ${r.heldLegacy} legacy rows here${backup}`;
+      return `sent ${r.sent} new events in ${r.batches} batch(es); skipped ${r.skipped} already settled; kept ${r.heldNamed} named, ${r.heldAddons} installed-addon, ${r.heldCensus} census and ${r.heldLegacy} legacy rows here${backup}`;
     },
     async prices(files) {
       const s = current();

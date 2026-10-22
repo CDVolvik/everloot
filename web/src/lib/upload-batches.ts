@@ -10,6 +10,8 @@ export interface UploadSession {
   addons: string[];
   /** Distinct characters in the census rows this upload sends: players seen, and your own. */
   census: { seen: number; self: number };
+  /** Event ids of the rows `skip` left out: facts already settled, so the upload does not repeat them. */
+  skipped: string[];
 }
 // census_self and census_seen are being added to @everloot/protocol by the census intake change, so the
 // kinds are plain strings here. Until the protocol has them, parseRecords rejects these rows as invalid.
@@ -31,7 +33,12 @@ export function censusSummary(census: UploadSession["census"]): string | null {
   if (!census.seen && !census.self) return null;
   return `${census.seen.toLocaleString("en-US")} ${census.seen === 1 ? "character" : "characters"} seen, ${census.self.toLocaleString("en-US")} of your own`;
 }
-export function prepareUpload(payload: unknown, sharing: SharingChoices, grantTokens: string[], maxBytes: number = UPLOAD_LIMITS.batchBytes): UploadSession {
+/**
+ * Builds the upload's batches. `skip(record)`, when given, leaves out rows whose fact is already settled
+ * (kb/src/settled-list.ts `settledSkip`); their event ids are returned in `skipped`, so a caller can mark them handled.
+ */
+export function prepareUpload(payload: unknown, sharing: SharingChoices, grantTokens: string[], maxBytes: number = UPLOAD_LIMITS.batchBytes,
+  skip?: (record: Readonly<Record<string, unknown>>) => boolean): UploadSession {
   const envelope = payload as { addonVersion?: unknown; clientBuild?: unknown; source?: unknown; records?: unknown };
   if (!envelope || typeof envelope.addonVersion !== "string" || envelope.addonVersion.length > UPLOAD_LIMITS.addonVersionMax || !Array.isArray(envelope.records)) throw new Error("Choose an Everloot file with a version and records array.");
   if (envelope.records.length > UPLOAD_LIMITS.recordsPerFile) throw new Error(`This file is too large. Keep the original and split it into files of at most ${UPLOAD_LIMITS.recordsPerFile.toLocaleString("en-US")} records.`);
@@ -43,11 +50,13 @@ export function prepareUpload(payload: unknown, sharing: SharingChoices, grantTo
   const census: { kind: string; guid?: unknown }[] = [];
   const rows: string[] = [];
   const groups: string[] = [];
+  const skipped: string[] = [];
   for (const record of parsed.records) {
     if (!record.eventId) { held.legacy++; continue; }
     const category = sharingCategory(record);
     if (category && !sharing[category]) { held.named++; continue; }
     if (category && !grantTokens.length) throw new Error("A verified grant is required for the named categories you selected.");
+    if (!category && skip?.(record as unknown as Record<string, unknown>)) { skipped.push(record.eventId); continue; }
     if ("claimToken" in record) delete record.claimToken;
     if (record.kind === "addon_seen") addons.set(record.name, `${record.title} (${record.name})`);
     if (record.kind.startsWith("census_")) census.push(record as { kind: string; guid?: unknown });
@@ -75,7 +84,7 @@ export function prepareUpload(payload: unknown, sharing: SharingChoices, grantTo
     size += length + (chunk.length ? 1 : 0); chunk.push(row);
   }
   if (chunk.length) batches.push(prefix + chunk.join(",") + suffix);
-  return { batches, next: 0, receipts: [], counts, held, addons: [...addons.values()].sort(), census: censusCharacters(census) };
+  return { batches, next: 0, receipts: [], counts, held, addons: [...addons.values()].sort(), census: censusCharacters(census), skipped };
 }
 /** Advance only after a confirmed durable receipt; retries send the identical batch. */
 export async function sendBatches(session: UploadSession, send: typeof fetch = fetch, onProgress: () => void = () => {}, url = "/api/intake") {
