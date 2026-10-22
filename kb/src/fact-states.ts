@@ -22,7 +22,7 @@ export type VoteTally = {
 export type TallyOptions = {
   /** Corpus time (ISO); required for settling. Future capture times clamp to it. */
   asOf?: string;
-  /** Build firstSeen or maintainer scope date. Signal wiring belongs to a later PR. */
+  /** Build firstSeen or a recheck scope's date (`scopeSince` in recheck-scopes.ts). */
   recheckSince?: string;
 };
 
@@ -64,25 +64,43 @@ function winners(groups: VoteGroup[]): VoteGroup[] {
 }
 
 /**
+ * The rows a fact counts under a recheck cut-off (spec section 5): when the rows captured before `since` agreed on one
+ * value, so the fact was confirmed, only the rows captured after it, and `recheck` is true; otherwise every row. A row
+ * without a capture time is in neither part. `value` defaults to one value for every row, for a fact that is there or
+ * not (a pin, a reward, a role, a listed boss), which is confirmed before the cut-off when 3 installs reported it.
+ */
+export function recheckRows<T extends { installId: string; capturedAt?: string }>(
+  rows: readonly T[], since: string | null | undefined, options: { asOf?: string; value?: (row: T) => string | number } = {},
+): { rows: T[]; recheck: boolean } {
+  const cutoff = timestamp(since ?? undefined);
+  if (cutoff === null) return { rows: [...rows], recheck: false };
+  const asOf = timestamp(options.asOf);
+  const value = options.value ?? (() => "listed");
+  const captured = (row: T) => {
+    const time = timestamp(row.capturedAt);
+    return time === null ? null : Math.min(time, asOf ?? time);
+  };
+  const before = rows.filter((row) => {
+    const time = captured(row);
+    return time !== null && time < cutoff;
+  });
+  const recheck = winners(groupVotes(before.map((row) => ({ installId: row.installId, value: value(row), capturedAt: row.capturedAt })), asOf)).length === 1;
+  return recheck ? { rows: rows.filter((row) => {
+    const time = captured(row);
+    return time !== null && time > cutoff;
+  }), recheck } : { rows: [...rows], recheck };
+}
+
+/**
  * Empty input means an expected candidate with no report; discovering that universe is the caller's job.
  * Recorder identities must already be folded by publicRecords, before selecting a field's rows.
  * No drop-rate, position, or quest-side settling is inferred from this scalar tally.
  */
 export function tallyVotes(rows: readonly VoteRow[], options: TallyOptions = {}): VoteTally {
   const asOf = timestamp(options.asOf);
-  const cutoff = timestamp(options.recheckSince);
-  const captured = (row: VoteRow) => {
-    const time = timestamp(row.capturedAt);
-    return time === null ? null : Math.min(time, asOf ?? time);
-  };
-  const recheck = cutoff !== null && winners(groupVotes(rows.filter((row) => {
-    const time = captured(row);
-    return time !== null && time < cutoff;
-  }), asOf)).length === 1;
-  const groups = groupVotes(recheck ? rows.filter((row) => {
-    const time = captured(row);
-    return time !== null && time > cutoff!;
-  }) : rows, asOf);
+  const counted = recheckRows(rows, options.recheckSince, { ...(options.asOf ? { asOf: options.asOf } : {}), value: (row) => row.value });
+  const recheck = counted.recheck;
+  const groups = groupVotes(counted.rows, asOf);
   const agreed = winners(groups);
   const winner = agreed.length === 1 ? agreed[0]! : null;
   let state: FactState = recheck ? "recheck" : groups.length ? "reported" : "missing";

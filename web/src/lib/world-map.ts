@@ -8,6 +8,7 @@ import { PUBLIC_RECORD_KINDS } from "@everloot/protocol";
 import { mapHref, type Candidate, type MapEntrance, type MapFlightLine, type MapFlightMaster, type MapPin, type MapPinSet, type MapTreasure } from "./map-view";
 import { placedEntrances, treasurePins, type ZoneSightings } from "./zones";
 import { isPinPosition, vendorPage, WORLD_AGREEMENT, worldFactsFromRecords, type WorldFacts } from "../../../kb/src/world-pages";
+import { RECHECK_SCOPES } from "./recheck-scopes";
 
 export const CONTINENTS = [
   { id: 0, name: "Eastern Kingdoms" },
@@ -145,7 +146,7 @@ export function continentPinSet(continentId: number, facts: WorldFacts, spoilers
 export function continentTreasureCandidates(continentId: number, seen: ZoneSightings, data: WorldMapData = WORLD_MAP): Candidate[] {
   const onContinent = new Set(zoneTable(data).filter((z) => z.continentId === continentId).map((z) => z.mapId));
   const counts = new Map<number, number>();
-  for (const u of objectSpawns(seen.sightings ?? []).unconfirmed) if (onContinent.has(u.mapId)) counts.set(u.mapId, (counts.get(u.mapId) ?? 0) + u.clusters);
+  for (const u of objectSpawns(seen.sightings ?? [], [], undefined, RECHECK_SCOPES).unconfirmed) if (onContinent.has(u.mapId)) counts.set(u.mapId, (counts.get(u.mapId) ?? 0) + u.clusters);
   return [...counts].sort(([a], [b]) => a - b).map(([mapId, count]) => ({ category: "chest", mapId, count }));
 }
 
@@ -160,7 +161,7 @@ export function continentCandidates(continentId: number, facts: WorldFacts, spoi
   const onContinent = new Set(zones.filter((z) => z.continentId === continentId && (spoilers || !held.has(z.mapId))).map((z) => z.mapId));
   const vendors = new Set<number>();
   for (const id of new Set(facts.vendors.map((v) => v.vendorNpcId))) {
-    if (vendorPage(id, { npcs: [], quests: [], vendors: facts.vendors }).offers.length > 0) vendors.add(id);
+    if (vendorPage(id, { npcs: facts.npcs, quests: [], vendors: facts.vendors, recheck: facts.recheck }).offers.length > 0) vendors.add(id);
   }
   const places = new Map<string, { npcId: number; mapId: number; installs: Set<string> }>();
   for (const row of facts.npcs) {
@@ -190,7 +191,7 @@ export const MAP_RECORD_KINDS = ["npc_sighting", "vendor"] as const;
 /** NPC and vendor facts from records, taking only allowlisted kinds, whatever the caller passed in. */
 export function observedFacts(records: readonly unknown[]): WorldFacts {
   const allowed = new Set<string>(PUBLIC_RECORD_KINDS.filter((k) => (MAP_RECORD_KINDS as readonly string[]).includes(k)));
-  return worldFactsFromRecords(records.filter((r) => allowed.has((r as { kind?: string } | null)?.kind ?? "")));
+  return { ...worldFactsFromRecords(records.filter((r) => allowed.has((r as { kind?: string } | null)?.kind ?? ""))), recheck: RECHECK_SCOPES };
 }
 
 /**

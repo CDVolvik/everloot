@@ -16,11 +16,12 @@
  */
 import { z } from "zod";
 import { measureDropRate } from "./drop-rate-settling.js";
-import { lootWindowsFromRecords, rollupDrops } from "./drop-rollup.js";
+import { lootRecheckSince, lootWindowsFromRecords, recheckLootRecords, rollupDrops } from "./drop-rollup.js";
 import { SETTLE_EXTRA_VOTERS, SETTLE_WINDOW_DAYS, tallyVotes, WORLD_AGREEMENT, type FactState, type VoteRow } from "./fact-states.js";
 import { instanceFactsFromRecords } from "./instances.js";
 import { objectSightingRowsFromRecords, objectSpawnRowsFromRecords, objectSpawns, SPAWN_RADIUS } from "./object-spawns.js";
-import { isPinPosition, worldFactsFromRecords } from "./world-pages.js";
+import { busiestMap as busiest, npcZones, scopeSince } from "./recheck-scopes.js";
+import { isPinPosition, sideRows, worldFactsFromRecords } from "./world-pages.js";
 
 export const COVERAGE_SCHEMA = "everloot.coverage/1";
 export const RECHECK_SCHEMA = "everloot.recheck/1";
@@ -98,6 +99,7 @@ export type CoverageExpected = z.infer<typeof CoverageExpected>;
  * One recheck scope in `kb/curated/recheck.json` (spec section 5): facts a patch or a blue post may have changed.
  * A fact is in the scope when it is of `type` (when given), in one of `zones` (when given), and involves one of
  * `ids` (when given: a quest, NPC, item, instance, encounter or object id). Only reports after `since` count for it.
+ * The match is `scopeSince` in recheck-scopes.ts, shared with the internal report and the public readers.
  */
 export const RecheckScope = z.object({
   since: z.string().datetime({ offset: true }),
@@ -263,20 +265,18 @@ function median(values: number[]): number {
   return s.length % 2 ? s[mid]! : (s[mid - 1]! + s[mid]!) / 2;
 }
 
-/** A quest's side (spec section 1): Alliance or Horde with 5 of that faction and none of the other, Both with 5 of each. */
-function side(rows: readonly { installId: string; faction?: "alliance" | "horde" }[]): FieldFact | null {
+/**
+ * A quest's side (spec section 1): Alliance or Horde with 5 of that faction and none of the other, Both with 5 of each.
+ * With `since`, a side given before it counts only reports after it (`sideRows`).
+ */
+function side(rows: readonly { installId: string; faction?: "alliance" | "horde"; capturedAt?: string }[], asOf: string | null, since: string | null): FieldFact | null {
+  if (!rows.some((r) => r.faction && r.installId.trim())) return null;
+  const counted = sideRows(rows, since, asOf);
   const a = new Set<string>(), h = new Set<string>();
-  for (const r of rows) if (r.faction && r.installId.trim()) (r.faction === "alliance" ? a : h).add(r.installId.trim());
-  if (!a.size && !h.size) return null;
+  for (const r of counted.rows) if (r.faction && r.installId.trim()) (r.faction === "alliance" ? a : h).add(r.installId.trim());
   const agree = (k: number) => (a.size >= k && h.size === 0) || (h.size >= k && a.size === 0) || (a.size >= k && h.size >= k);
-  return { field: "side", state: agree(SETTLE_VOTERS) ? "settled" : agree(WORLD_AGREEMENT) ? "confirmed" : "reported", leading: Math.max(a.size, h.size), contested: false };
-}
-
-/** The map with the most installs, ties to the lower id; null for none. */
-function busiest(installs: Map<number, Set<string>>): number | null {
-  let best: number | null = null, size = 0;
-  for (const [mapId, set] of [...installs].sort((a, b) => a[0] - b[0])) if (set.size > size) { best = mapId; size = set.size; }
-  return best;
+  const state = agree(SETTLE_VOTERS) ? "settled" : agree(WORLD_AGREEMENT) ? "confirmed" : counted.recheck ? "recheck" : "reported";
+  return { field: "side", state, leading: Math.max(a.size, h.size), contested: false };
 }
 
 function addTo(map: Map<number, Set<string>>, key: number, installId: string) {
@@ -320,25 +320,11 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
   const npcRows = groupBy(npcs.filter((r) => r.installId.trim()), (r) => r.npcId);
 
   // Where an NPC is counted: the map most installs placed it on (a pin position first, any position after).
-  const npcZone = new Map<number, number | null>();
-  for (const [npcId, rows] of npcRows) {
-    const pinMaps = new Map<number, Set<string>>(), anyMaps = new Map<number, Set<string>>();
-    for (const r of rows) { addTo(anyMaps, r.mapId, r.installId); if (isPinPosition(r.positionKind)) addTo(pinMaps, r.mapId, r.installId); }
-    npcZone.set(npcId, busiest(pinMaps) ?? busiest(anyMaps));
-  }
+  const npcZone = npcZones([...npcRows.values()].flat().map((r) => ({ npcId: r.npcId, mapId: r.mapId, installId: r.installId, pin: isPinPosition(r.positionKind) })));
   const zoneOfNpc = (id: number | null | undefined) => (id === null || id === undefined ? null : npcZone.get(id) ?? null);
 
   /** The latest scope date that covers a fact, or null. */
-  const since = (type: CoverageType, zone: number | null, refs: readonly number[]): string | null => {
-    let best: string | null = null;
-    for (const s of scopes) {
-      if (s.type && s.type !== type) continue;
-      if (s.zones?.length && (zone === null || !s.zones.includes(zone))) continue;
-      if (s.ids?.length && !refs.some((id) => s.ids!.includes(id))) continue;
-      if (best === null || time(s.since)! > time(best)!) best = s.since;
-    }
-    return best;
-  };
+  const since = (type: CoverageType, zone: number | null, refs: readonly number[]): string | null => scopeSince(scopes, { types: [type], zones: [zone], ids: refs });
 
   const push = (type: CoverageType, zone: number | null, refs: number[], fields: (FieldFact | null)[], voters: Iterable<string>, label: string, href: string | null) => {
     facts.push({ type, zone, refs, fields: fields.filter((f): f is FieldFact => f !== null), voters: new Set([...voters].map((v) => v.trim()).filter(Boolean)), label, href });
@@ -390,7 +376,7 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
       scalar("title", text("title"), asOf, s), scalar("level", rows.map((r) => ({ installId: r.installId, value: r.level, ...at(r) })), asOf, s),
       scalar("giver", ids("giverNpcId"), asOf, s), scalar("turn-in", ids("turnInNpcId"), asOf, s),
       ...[...rewards.values()].map((list) => listed("reward", list, asOf, s)),
-      scalar("category", text("category"), asOf, s), side(rows),
+      scalar("category", text("category"), asOf, s), side(rows, asOf, s),
       scalar("group-size", rows.flatMap((r) => (r.suggestedGroup === undefined ? [] : [{ installId: r.installId, value: r.suggestedGroup, ...at(r) }])), asOf, s),
       scalar("tag", text("tag"), asOf, s),
     ], installsOf(rows), `Quest ${questId}`, `/database/quests/${questId}`);
@@ -408,8 +394,13 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
     ], installsOf(rows), `NPC ${vendorNpcId} · item ${itemId}`, `/database/vendors/${vendorNpcId}`);
   }
 
-  // Drop rates: the merged settling rule over the loot-api windows the public rates read.
-  const windows = lootWindowsFromRecords(input.records as unknown[]);
+  // Drop rates: the merged settling rule over the loot-api windows the public rates read. A source under a recheck scope
+  // counts only the windows after its date (`recheckLootRecords`); a rate public before that and not again since is
+  // in recheck.
+  const scopedLoot = lootRecheckSince(input.records, scopes);
+  const allWindows = lootWindowsFromRecords(input.records as unknown[]);
+  const windows = scopedLoot.size ? lootWindowsFromRecords(recheckLootRecords(input.records as unknown[], scopes)) : allWindows;
+  const counted = new Map(rollupDrops(windows).rates.map((r) => [`${r.sourceNpcId !== undefined ? "npc" : "obj"}:${r.sourceNpcId ?? r.sourceObjectId}|${r.itemId}`, r]));
   const objectMaps = new Map<number, Map<number, Set<string>>>();
   for (const r of [...objectSpawnRowsFromRecords(input.records as unknown[]), ...objectSightingRowsFromRecords(input.records as unknown[])]) {
     if (typeof r.mapId !== "number") continue;
@@ -422,13 +413,16 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
     const key = w.sourceNpcId !== undefined ? `npc:${w.sourceNpcId}` : `obj:${w.sourceObjectId}`;
     sourceInstalls.set(key, (sourceInstalls.get(key) ?? new Set<string>()).add(w.installId));
   }
-  for (const rate of rollupDrops(windows).rates) {
-    const npc = rate.sourceNpcId !== undefined;
-    const sourceId = (rate.sourceNpcId ?? rate.sourceObjectId)!;
+  for (const before of rollupDrops(allWindows).rates) {
+    const npc = before.sourceNpcId !== undefined;
+    const sourceId = (before.sourceNpcId ?? before.sourceObjectId)!;
     const zone = npc ? zoneOfNpc(sourceId) : busiest(objectMaps.get(sourceId) ?? new Map());
-    const settled = rate.public && measureDropRate(rate, asOf ?? "[?]").settled;
-    push("drops", zone, [sourceId, rate.itemId], [{ field: "rate", state: settled ? "settled" : rate.public ? "confirmed" : "reported", leading: rate.reporters, contested: false }],
-      sourceInstalls.get(`${npc ? "npc" : "obj"}:${sourceId}`) ?? [], `${npc ? "NPC" : "Object"} ${sourceId} · item ${rate.itemId}`,
+    const recheck = scopedLoot.has(`${npc ? "npc" : "obj"}:${sourceId}`);
+    const rate = recheck ? counted.get(`${npc ? "npc" : "obj"}:${sourceId}|${before.itemId}`) : before;
+    const settled = rate?.public === true && measureDropRate(rate, asOf ?? "[?]").settled;
+    const state: FactState = settled ? "settled" : rate?.public ? "confirmed" : recheck && before.public ? "recheck" : "reported";
+    push("drops", zone, [sourceId, before.itemId], [{ field: "rate", state, leading: rate?.reporters ?? 0, contested: false }],
+      sourceInstalls.get(`${npc ? "npc" : "obj"}:${sourceId}`) ?? [], `${npc ? "NPC" : "Object"} ${sourceId} · item ${before.itemId}`,
       npc ? `/database/npcs/${sourceId}` : `/database/objects/${sourceId}`);
   }
 
@@ -481,7 +475,8 @@ export function computeCoverage(input: CoverageInput): CoverageReport {
     const s = since("treasures", pin.mapId, [pin.objectId]);
     const placed = position(near, asOf, s, SPAWN_RADIUS);
     // The cluster rule already holds 3 installs; a radius check that sees fewer leaves the pin confirmed, not settled.
-    const pos: FieldFact = placed && RANK[placed.state] >= RANK.confirmed ? placed : { field: "position", state: "confirmed", leading: pin.reporters, contested: false };
+    // A pin in recheck stays in recheck: it is neither confirmed nor settled until 3 new installs place it.
+    const pos: FieldFact = placed && (RANK[placed.state] >= RANK.confirmed || placed.state === "recheck") ? placed : { field: "position", state: "confirmed", leading: pin.reporters, contested: false };
     const names = all.flatMap((r) => (r.name === undefined ? [] : [{ installId: r.installId, value: r.name, ...at(r) }]));
     push("treasures", pin.mapId, [pin.objectId], [pos, scalar("name", names, asOf, s)], installsOf(near), `Object ${pin.objectId}`, `/database/objects/${pin.objectId}`);
   }

@@ -20,7 +20,7 @@ function byId<T>(rows: T[], id: (row: T) => number): Map<number, T[]> {
 const EMPTY: WorldFacts = { npcs: [], quests: [], vendors: [] };
 
 export function publicNpcs(facts: WorldFacts): NpcPage[] {
-  return [...byId(facts.npcs, (r) => r.npcId)].map(([id, npcs]) => npcPage(id, { ...EMPTY, npcs })).filter((p) => p.name !== null || p.pins.length > 0);
+  return [...byId(facts.npcs, (r) => r.npcId)].map(([id, npcs]) => npcPage(id, { ...EMPTY, npcs, recheck: facts.recheck })).filter((p) => p.name !== null || p.pins.length > 0);
 }
 
 /** One row of the NPC list: the page's facts, the level and reaction 3 installs agree on, its zone and its public drops. */
@@ -48,9 +48,9 @@ export function npcRows(facts: WorldFacts, rates: readonly { sourceNpcId?: numbe
   const zones = new Map(publicZones().map((z) => [z.mapId, z]));
   return ids.map((id) => {
     const sightings = groups.get(id) ?? [];
-    const page = npcPage(id, { ...EMPTY, npcs: sightings });
+    const page = npcPage(id, { ...EMPTY, npcs: sightings, recheck: facts.recheck });
     const zone = page.pins.map((p) => zones.get(p.mapId)).find(Boolean) ?? null;
-    return { ...page, ...npcTraits(sightings), zone, drops: drops.get(id)?.size ?? 0 };
+    return { ...page, ...npcTraits(sightings, facts.recheck), zone, drops: drops.get(id)?.size ?? 0 };
   }).filter((r) => r.name !== null || r.pins.length > 0 || r.level !== null || r.reaction !== null || r.drops > 0);
 }
 
@@ -63,7 +63,7 @@ export interface QuestRow extends QuestPage {
 }
 
 export function publicQuests(facts: WorldFacts): QuestRow[] {
-  return [...byId(facts.quests, (r) => r.questId)].map(([id, quests]) => ({ ...questPage(id, { ...EMPTY, quests }), ...questTraits(quests) }))
+  return [...byId(facts.quests, (r) => r.questId)].map(([id, quests]) => ({ ...questPage(id, { ...EMPTY, quests, npcs: facts.npcs, recheck: facts.recheck }), ...questTraits(quests, facts) }))
     .filter((p) => p.title !== null || p.level !== null || p.giverNpcId !== null || p.turnInNpcId !== null || p.rewards.length > 0);
 }
 
@@ -72,5 +72,5 @@ export const bareQuestRow = (questId: number): QuestRow => ({ ...questPage(quest
 export const bareNpcRow = (npcId: number): NpcRow => ({ ...npcPage(npcId, EMPTY), ...npcTraits([]), zone: null, drops: 0 });
 
 export function publicVendors(facts: WorldFacts): VendorPage[] {
-  return [...byId(facts.vendors, (r) => r.vendorNpcId)].map(([id, vendors]) => vendorPage(id, { ...EMPTY, vendors })).filter((p) => p.offers.length > 0);
+  return [...byId(facts.vendors, (r) => r.vendorNpcId)].map(([id, vendors]) => vendorPage(id, { ...EMPTY, vendors, npcs: facts.npcs, recheck: facts.recheck })).filter((p) => p.offers.length > 0);
 }

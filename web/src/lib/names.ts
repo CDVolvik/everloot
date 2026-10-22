@@ -2,6 +2,7 @@ import type { EdgeKind } from "../../../kb/src/edges";
 import { agreedObjectNames } from "../../../kb/src/object-spawns";
 import { agreedItemNames, type ItemFacts } from "../../../kb/src/item-page";
 import { agreedNpcNames, agreedQuestTitles, type WorldFacts } from "../../../kb/src/world-pages";
+import { RECHECK_SCOPES } from "./recheck-scopes";
 import { loadItemFacts, loadWorldFacts } from "./rollup-compute";
 
 /**
@@ -26,7 +27,7 @@ function once(key: object, build: () => Map<number, string>): Map<number, string
 
 export const itemNames = (facts: Pick<ItemFacts, "names">) => once(facts.names, () => agreedItemNames(facts));
 export const npcNames = (facts: Pick<WorldFacts, "npcs">) => once(facts.npcs, () => agreedNpcNames(facts));
-export const objectNames = (facts: Pick<ItemFacts, "objects">) => once(facts.objects ?? NO_OBJECTS, () => agreedObjectNames(facts.objects ?? []));
+export const objectNames = (facts: Pick<ItemFacts, "objects">) => once(facts.objects ?? NO_OBJECTS, () => agreedObjectNames(facts.objects ?? [], RECHECK_SCOPES));
 export const questTitles = (facts: Pick<WorldFacts, "quests">) => once(facts.quests, () => agreedQuestTitles(facts));
 
 /** All four name sets; empty when the store cannot be read (callers then print ids, never guesses). */

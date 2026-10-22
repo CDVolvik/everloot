@@ -6,9 +6,13 @@
  * report it there; its name, and each boss id, need 3 installs agreeing too. Names come in the client's language,
  * so a name is shown only when they agree. Instance ids are the game's map ids, the ids the game files' entrances
  * carry (`WorldMapData.entrances[].mapId`). Each agreed fact carries when it was last seen: the latest `capturedAt` among
- * its rows, leaving out any time after `asOf`, so one install with a clock set ahead cannot move it.
+ * its rows, leaving out any time after `asOf`, so one install with a clock set ahead cannot move it. An entrance or a
+ * boss under a recheck scope that was agreed before the scope's date counts only the rows captured after it.
  */
 import { INSTANCE_TYPES } from "@everloot/protocol";
+import type { RecheckScope } from "./coverage.js";
+import { recheckRows } from "./fact-states.js";
+import { busiestMap, scopeSince } from "./recheck-scopes.js";
 import { agreedLabelsById, WORLD_AGREEMENT } from "./world-pages.js";
 
 export type InstanceType = (typeof INSTANCE_TYPES)[number];
@@ -56,6 +60,7 @@ export interface InstanceBoss {
 }
 
 const valid = (v: unknown): v is number => typeof v === "number" && Number.isInteger(v) && v > 0;
+const at = (r: { capturedAt?: string }) => (r.capturedAt ? { capturedAt: r.capturedAt } : {});
 
 /** The latest of the rows' times that is not after `asOf`, as ISO, or null. */
 export function latest(rows: readonly { capturedAt?: string }[], asOf: Date): string | null {
@@ -101,14 +106,39 @@ export function instanceFactsFromRecords(records: unknown[]): InstanceFacts {
   return facts;
 }
 
-/** Every instance's agreed entrances, one per instance and outdoor map, by instance id then map id. */
-export function confirmedEntrances(rows: readonly InstanceEntranceRow[], asOf: Date = new Date()): ConfirmedEntrance[] {
-  const names = agreedLabelsById(rows.map((r) => ({ id: r.instanceMapId, installId: r.installId, label: r.name })));
-  const types = agreedLabelsById(rows.map((r) => ({ id: r.instanceMapId, installId: r.installId, label: r.instanceType })));
+/** The outdoor map most installs zoned in from, per instance: where the score counts its entrance and its bosses. */
+export function entranceZones(rows: readonly InstanceEntranceRow[]): Map<number, number | null> {
+  const maps = new Map<number, Map<number, Set<string>>>();
+  for (const r of rows) {
+    const byMap = maps.get(r.instanceMapId) ?? new Map<number, Set<string>>();
+    byMap.set(r.mapId, (byMap.get(r.mapId) ?? new Set<string>()).add(r.installId));
+    maps.set(r.instanceMapId, byMap);
+  }
+  return new Map([...maps].map(([id, byMap]) => [id, busiestMap(byMap)]));
+}
+
+/**
+ * Every instance's agreed entrances, one per instance and outdoor map, by instance id then map id. `recheck`: the
+ * scopes in `kb/curated/recheck.json`.
+ */
+export function confirmedEntrances(rows: readonly InstanceEntranceRow[], asOf: Date = new Date(), recheck: readonly RecheckScope[] = []): ConfirmedEntrance[] {
+  const zones = recheck.length ? entranceZones(rows) : new Map<number, number | null>();
+  const since = (instanceMapId: number, zone: number | null) => (recheck.length ? scopeSince(recheck, { types: ["entrances"], zones: [zone], ids: [instanceMapId] }) : null);
+  const sinceOf = (instanceMapId: number) => since(instanceMapId, zones.get(instanceMapId) ?? null);
+  const names = agreedLabelsById(rows.map((r) => ({ id: r.instanceMapId, installId: r.installId, label: r.name, ...at(r) })), sinceOf);
+  const types = agreedLabelsById(rows.map((r) => ({ id: r.instanceMapId, installId: r.installId, label: r.instanceType, ...at(r) })), sinceOf);
+  // A place 3 installs zoned in from before its scope's date counts only the rows after it.
+  const places = new Map<string, InstanceEntranceRow[]>();
+  for (const r of rows) {
+    const key = `${r.instanceMapId}|${r.mapId}`;
+    const list = places.get(key);
+    if (list) list.push(r); else places.set(key, [r]);
+  }
+  const counted = [...places.values()].flatMap((list) => recheckRows(list, since(list[0]!.instanceMapId, list[0]!.mapId)).rows);
   // One position per install and place: an install that zoned in many times counts once, at its median.
   const groups = new Map<string, Map<string, { x: number[]; y: number[] }>>();
   const byPlace = new Map<string, InstanceEntranceRow[]>();
-  for (const r of rows) {
+  for (const r of counted) {
     const key = `${r.instanceMapId}|${r.mapId}`;
     const installs = groups.get(key) ?? new Map<string, { x: number[]; y: number[] }>();
     const at = installs.get(r.installId) ?? { x: [], y: [] };
@@ -131,22 +161,34 @@ export function confirmedEntrances(rows: readonly InstanceEntranceRow[], asOf: D
   return out.sort((a, b) => a.instanceMapId - b.instanceMapId || a.mapId - b.mapId);
 }
 
-/** The bosses 3 installs report in each instance, by instance id, each instance's in encounter id order. */
-export function instanceBosses(rows: readonly EncounterRow[], asOf: Date = new Date()): Map<number, InstanceBoss[]> {
+/**
+ * The bosses 3 installs report in each instance, by instance id, each instance's in encounter id order. `recheck`: the
+ * scopes in `kb/curated/recheck.json`; `entrances` place an instance for a scope that names zones.
+ */
+export function instanceBosses(rows: readonly EncounterRow[], asOf: Date = new Date(), recheck: readonly RecheckScope[] = [], entrances: readonly InstanceEntranceRow[] = []): Map<number, InstanceBoss[]> {
   const byEncounter = new Map<string, EncounterRow[]>();
   for (const r of rows) {
     const key = `${r.instanceMapId}|${r.encounterId}`;
     byEncounter.set(key, [...(byEncounter.get(key) ?? []), r]);
   }
+  const zones = recheck.length ? entranceZones(entrances) : new Map<number, number | null>();
   const out = new Map<number, InstanceBoss[]>();
-  for (const [key, list] of byEncounter) {
+  for (const [key, all] of byEncounter) {
+    const [instanceMapId, encounterId] = key.split("|").map(Number) as [number, number];
+    const s = recheck.length
+      ? scopeSince(recheck, { types: ["bosses"], zones: [zones.get(instanceMapId) ?? null], ids: [instanceMapId, encounterId, ...new Set(all.flatMap((r) => r.npcIds))] })
+      : null;
+    // Listed, kills and last seen read the rows the cut-off leaves; the name and each boss id are cut on their own.
+    const list = recheckRows(all, s).rows;
     const reporters = new Set(list.map((r) => r.installId)).size;
     if (reporters < WORLD_AGREEMENT) continue;
-    const [instanceMapId, encounterId] = key.split("|").map(Number) as [number, number];
-    const name = agreedLabelsById(list.map((r) => ({ id: encounterId, installId: r.installId, label: r.name }))).get(encounterId) ?? null;
-    const npcInstalls = new Map<number, Set<string>>();
-    for (const r of list) for (const npcId of r.npcIds) npcInstalls.set(npcId, (npcInstalls.get(npcId) ?? new Set()).add(r.installId));
-    const npcIds = [...npcInstalls].filter(([, installs]) => installs.size >= WORLD_AGREEMENT).map(([npcId]) => npcId).sort((a, b) => a - b);
+    const name = agreedLabelsById(all.map((r) => ({ id: encounterId, installId: r.installId, label: r.name, ...at(r) })), () => s).get(encounterId) ?? null;
+    const npcRows = new Map<number, EncounterRow[]>();
+    for (const r of all) for (const npcId of r.npcIds) {
+      const voters = npcRows.get(npcId);
+      if (voters) voters.push(r); else npcRows.set(npcId, [r]);
+    }
+    const npcIds = [...npcRows].filter(([, voters]) => new Set(recheckRows(voters, s).rows.map((r) => r.installId)).size >= WORLD_AGREEMENT).map(([npcId]) => npcId).sort((a, b) => a - b);
     const boss = { encounterId, name, kills: list.filter((r) => r.success).length, npcIds, reporters, lastSeen: latest(list, asOf) };
     out.set(instanceMapId, [...(out.get(instanceMapId) ?? []), boss].sort((a, b) => a.encounterId - b.encounterId));
   }

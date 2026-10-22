@@ -3,6 +3,7 @@ import { dayLabel } from "./report-labels";
 import type { WorldMapData } from "../../../kb/src/world-map-data";
 import { slugify } from "../../../kb/src/lore-slug";
 import { objectNames } from "./names";
+import { RECHECK_SCOPES } from "./recheck-scopes";
 import { loadInstanceFacts, loadItemFacts } from "./rollup-compute";
 import { WORLD_MAP } from "./world-map";
 import { placedEntrances, publicZones, type PlacedEntrance, type ZoneSightings } from "./zones";
@@ -101,7 +102,7 @@ export function instanceRows(seen: ZoneSightings = {}, data: Pick<WorldMapData, 
       r.files.push(at);
     }
   }
-  for (const e of confirmedEntrances(facts.entrances, asOf)) {
+  for (const e of confirmedEntrances(facts.entrances, asOf, RECHECK_SCOPES)) {
     const at = place(e.mapId, e.x, e.y);
     if (!at) continue;
     const r = row(e.instanceMapId);
@@ -109,7 +110,7 @@ export function instanceRows(seen: ZoneSightings = {}, data: Pick<WorldMapData, 
     if (r.raid === null && e.instanceType) r.raid = e.instanceType === "raid";
     r.confirmed.push({ ...at, installs: e.reporters, lastSeen: e.lastSeen });
   }
-  for (const [id, list] of instanceBosses(facts.encounters, asOf)) row(id).bosses = list;
+  for (const [id, list] of instanceBosses(facts.encounters, asOf, RECHECK_SCOPES, facts.entrances)) row(id).bosses = list;
   for (const r of out.values()) {
     if (r.confirmed.length) continue;
     const installs = new Set(facts.entrances.filter((e) => e.instanceMapId === r.instanceMapId).map((e) => e.installId));
