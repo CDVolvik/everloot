@@ -166,12 +166,11 @@ reverted, and is in the appendix for the coordinator.
   records the week it last wrote, and a failed rewrite leaves the old week so the next run retries it. Its `scopeSince`
   still passes every map an NPC was seen on as the zones, where the score uses the busiest one; aligning that is a
   further step.
-- **The MCP tools** (`npc_page`, `quest_page`, `vendor_page`, `item_page`, `object_page`, `world_map_near`) build their
-  facts in `kb/src/mcp-server.ts` without scopes, so they do not apply the cut-off yet. That file is lane E's. The fix
-  is to attach the scopes in the fact builders (`recheck` on the world facts, `itemFactsFromRecords(records, scopes)`).
-- **`kb/src/object-page.ts`** (the object page's pins and names), **`kb/src/edges.ts`** (relation edges from drops) and
-  **`kb/src/open-data/build.ts`** call the readers without scopes. The open data is a record of what was reported, so
-  leaving it whole may be right; the object page should pass them.
+- **The MCP tools** now read the scopes (follow-up above): `entity_relations` forwards them into `observedEdges`, which
+  cuts drop windows through `recheckLootRecords` and vendor, quest and `located_in` edges through `recheckRows`, and
+  `world_map_near` passes them to the entrance confirmations.
+- **`kb/src/open-data/build.ts`** still calls the readers without scopes. The open data is a record of what was
+  reported, so leaving it whole may be right.
 - Writing scopes is unchanged: the build watch writes map scopes, `client-diff` and maintainers the rest, and the weekly
   `spot-check` run is still not scheduled.
 

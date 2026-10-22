@@ -8,7 +8,10 @@
  * when it was first and last seen. Pages, the MCP tool, the API and the bulk file all read this shape.
  */
 import { GAME_DATA_CREDIT, MCP_CREDIT, RELS, type EntityKind, type Rel } from "@everloot/protocol";
-import { INDEPENDENT_INSTALLS, lootWindowsFromRecords, rollupDrops } from "./drop-rollup.js";
+import { INDEPENDENT_INSTALLS, lootWindowsFromRecords, recheckLootRecords, rollupDrops } from "./drop-rollup.js";
+import type { RecheckScope } from "./coverage.js";
+import { recheckRows } from "./fact-states.js";
+import { npcZones, scopeSince } from "./recheck-scopes.js";
 import { isPinPosition } from "./world-pages.js";
 
 export const EDGE_SCHEMA = "everloot.edges/1";
@@ -114,29 +117,30 @@ class Span {
   get last() { return Number.isFinite(this.max) ? new Date(this.max).toISOString() : null; }
 }
 
-interface Group { installs: Set<string>; span: Span }
+interface Group { rows: { installId: string; capturedAt?: string }[] }
 
 /**
  * Edges from upload records, each public under the rule its page already uses: a drop once 3 installs
  * reported loot windows from the source, a vendor item once 3 agree on its price, a quest reward once 3
  * report it, an NPC's zone once 3 measured it there (NPC positions only, never the player's).
  */
-export function observedEdges(records: unknown[], dataAsOf: string | Date): Edge[] {
+export function observedEdges(records: unknown[], dataAsOf: string | Date, recheck: readonly RecheckScope[] = []): Edge[] {
   const ceiling = new Date(dataAsOf).getTime();
+  // Loot rates settle on recheck scopes by dropping windows before the scope's date; names and places keep theirs.
+  const source = recheck.length ? recheckLootRecords(records, recheck) : records;
   const groups = new Map<string, Group>();
   const touch = (key: string, installId: string, capturedAt: unknown) => {
-    const g = groups.get(key) ?? { installs: new Set<string>(), span: new Span(ceiling) };
-    g.installs.add(installId.trim());
-    g.span.add(capturedAt);
+    const g = groups.get(key) ?? { rows: [] };
+    g.rows.push({ installId: installId.trim(), ...(typeof capturedAt === "string" ? { capturedAt } : {}) });
     groups.set(key, g);
   };
-  for (const raw of records) {
+  for (const raw of source) {
     if (!raw || typeof raw !== "object") continue;
     const r = raw as Record<string, unknown>;
     if (typeof r.installId !== "string" || !r.installId.trim()) continue;
     if (r.kind === "loot" && r.sourceEvidence === "loot-api" && Array.isArray(r.items)) {
-      const source = id(r.sourceNpcId) ? `npc:${id(r.sourceNpcId)}` : id(r.sourceObjectId) ? `object:${id(r.sourceObjectId)}` : null;
-      if (source) for (const it of r.items as { itemId?: unknown }[]) if (id(it?.itemId)) touch(`drop|${source}|${id(it.itemId)}`, r.installId, r.capturedAt);
+      const sourceKey = id(r.sourceNpcId) ? `npc:${id(r.sourceNpcId)}` : id(r.sourceObjectId) ? `object:${id(r.sourceObjectId)}` : null;
+      if (sourceKey) for (const it of r.items as { itemId?: unknown }[]) if (id(it?.itemId)) touch(`drop|${sourceKey}|${id(it.itemId)}`, r.installId, r.capturedAt);
     }
     if (r.kind === "vendor" && id(r.vendorNpcId) && Array.isArray(r.items)) {
       for (const o of r.items as { itemId?: unknown; priceCopper?: unknown }[]) {
@@ -150,43 +154,79 @@ export function observedEdges(records: unknown[], dataAsOf: string | Date): Edge
       touch(`zone|${id(r.npcId)}|${r.mapId}`, r.installId, r.capturedAt);
     }
   }
+  // A vendor offer counts where its vendor stands, a quest where its leading giver stands, a pin on its own map.
+  const npcZone = new Map<number, number | null>(), questZone = new Map<number, number | null>();
+  if (recheck.length) {
+    for (const [npcId, zone] of npcZones(records.flatMap((raw) => {
+      const r = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : null;
+      if (!r || r.kind !== "npc_sighting" || !id(r.npcId) || typeof r.mapId !== "number" || !Number.isInteger(r.mapId) || r.mapId < 0 || typeof r.installId !== "string") return [];
+      return [{ npcId: id(r.npcId), mapId: r.mapId, installId: String(r.installId ?? ""), pin: isPinPosition(r.positionKind) }];
+    }))) npcZone.set(npcId, zone);
+    for (const raw of records) {
+      const r = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : null;
+      if (!r || r.kind !== "quest" || !id(r.questId) || questZone.has(id(r.questId))) continue;
+      const lead = id(r.giverNpcId) || id(r.turnInNpcId);
+      if (lead) questZone.set(id(r.questId), npcZone.get(lead) ?? null);
+    }
+  }
+  const scopeFor = (key: string): string | null => {
+    if (!recheck.length) return null;
+    const [kind, a, b] = key.split("|");
+    if (kind === "sold") return scopeSince(recheck, { types: ["vendors"], zones: [npcZone.get(Number(a)) ?? null], ids: [Number(a), Number(b)] });
+    if (kind === "reward") return scopeSince(recheck, { types: ["quests"], zones: [questZone.get(Number(a)) ?? null], ids: [Number(a), Number(b)] });
+    if (kind === "zone") return scopeSince(recheck, { types: ["pins"], zones: [Number(b)], ids: [Number(a)] });
+    return null;
+  };
+  const qualified = (key: string, rows: Group["rows"]) => {
+    const since = scopeFor(key);
+    const kept = since ? recheckRows(rows, since).rows : rows;
+    const installs = new Set(kept.map((row) => row.installId));
+    const span = new Span(ceiling);
+    for (const row of kept) span.add(row.capturedAt);
+    return { installs: installs.size, span };
+  };
   const edge = (fromKind: EdgeKind, fromId: number, rel: Rel, toKind: EdgeKind, toId: number, installs: number, span: Span): Edge =>
     ({ fromKind, fromId, rel, toKind, toId, evidence: "observed", build: null, installs, firstSeen: span.first, lastSeen: span.last });
   const out: Edge[] = [];
 
   // Drops: exactly the public rates of the drop table, so the edge and the item page agree.
-  for (const rate of rollupDrops(lootWindowsFromRecords(records)).rates) {
+  for (const rate of rollupDrops(lootWindowsFromRecords(source)).rates) {
     if (!rate.public || rate.drops === 0) continue;
     const toKind: EdgeKind = rate.sourceNpcId !== undefined ? "npc" : "object";
     const toId = rate.sourceNpcId ?? rate.sourceObjectId!;
     const g = groups.get(`drop|${toKind}:${toId}|${rate.itemId}`);
-    out.push(edge("item", rate.itemId, "dropped_by", toKind, toId, rate.reporters, g?.span ?? new Span(ceiling)));
+    const span = g ? qualified(`drop|${toKind}:${toId}|${rate.itemId}`, g.rows).span : new Span(ceiling);
+    out.push(edge("item", rate.itemId, "dropped_by", toKind, toId, rate.reporters, span));
   }
   // Vendors: the price most installs agree on, at 3 or more; ties keep the lower price.
-  const sold = new Map<string, { vendor: number; item: number; g: Group }>();
+  const sold = new Map<string, { vendor: number; item: number; installs: number; span: Span }>();
   for (const [key, g] of groups) {
     const [kind, vendor, item] = key.split("|");
-    if (kind !== "sold" || g.installs.size < INDEPENDENT_INSTALLS) continue;
+    if (kind !== "sold") continue;
+    const q = qualified(key, g.rows);
+    if (q.installs < INDEPENDENT_INSTALLS) continue;
     const k = `${vendor}|${item}`;
     const best = sold.get(k);
-    if (!best || g.installs.size > best.g.installs.size) sold.set(k, { vendor: Number(vendor), item: Number(item), g });
+    if (!best || q.installs > best.installs) sold.set(k, { vendor: Number(vendor), item: Number(item), installs: q.installs, span: q.span });
   }
-  for (const s of sold.values()) out.push(edge("item", s.item, "sold_by", "npc", s.vendor, s.g.installs.size, s.g.span));
+  for (const s of sold.values()) out.push(edge("item", s.item, "sold_by", "npc", s.vendor, s.installs, s.span));
   for (const [key, g] of groups) {
-    if (g.installs.size < INDEPENDENT_INSTALLS) continue;
+    const q = qualified(key, g.rows);
+    if (q.installs < INDEPENDENT_INSTALLS) continue;
     const [kind, a, b] = key.split("|");
-    if (kind === "reward") out.push(edge("item", Number(b), "reward_from", "quest", Number(a), g.installs.size, g.span));
+    if (kind === "reward") out.push(edge("item", Number(b), "reward_from", "quest", Number(a), q.installs, q.span));
   }
   for (const [key, g] of groups) {
-    if (g.installs.size < INDEPENDENT_INSTALLS) continue;
+    const q = qualified(key, g.rows);
+    if (q.installs < INDEPENDENT_INSTALLS) continue;
     const [kind, a, b] = key.split("|");
-    if (kind === "zone") out.push(edge("npc", Number(a), "located_in", "zone", Number(b), g.installs.size, g.span));
+    if (kind === "zone") out.push(edge("npc", Number(a), "located_in", "zone", Number(b), q.installs, q.span));
   }
   return out;
 }
 
-/** The corpus fact builder for the MCP tool: times after now are ignored. */
-export const observedEdgesFromRecords = (records: unknown[]): Edge[] => observedEdges(records, new Date());
+/** The corpus fact builder for the MCP tool: times after now are ignored, and recheck scopes cut confirmed facts. */
+export const observedEdgesFromRecords = (records: unknown[], recheck: readonly RecheckScope[] = []): Edge[] => observedEdges(records, new Date(), recheck);
 
 export function edgesFrom(edges: readonly Edge[], kind: EdgeKind, entityId: number): Edge[] {
   return edges.filter((e) => e.fromKind === kind && e.fromId === entityId);

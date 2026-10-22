@@ -168,7 +168,7 @@ export function nearResult(args: NearArgs, data: WorldMapData, facts: NearFacts)
 
   // An entrance the files place is confirmed by players who zoned into one of its instances; no second pin is made.
   const confirmed = new Map<number, number>();
-  for (const e of confirmedEntrances(facts.entrances ?? [])) confirmed.set(e.instanceMapId, Math.max(confirmed.get(e.instanceMapId) ?? 0, e.reporters));
+  for (const e of confirmedEntrances(facts.entrances ?? [], new Date(), facts.recheck ?? [])) confirmed.set(e.instanceMapId, Math.max(confirmed.get(e.instanceMapId) ?? 0, e.reporters));
   const entrances = placeEntrances(data)
     .map((p) => ({ p, d: distanceYards(origin, p.world) }))
     .filter((e) => e.d <= radius)
