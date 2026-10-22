@@ -10,6 +10,7 @@
 
 core.lua
 modules\openworld.lua
+modules\itemfacts.lua
 modules\guild.lua
 modules\gear.lua
 modules\auctions.lua

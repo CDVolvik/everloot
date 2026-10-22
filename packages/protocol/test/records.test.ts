@@ -1,11 +1,12 @@
 import { describe, expect, test } from "vitest";
-import { ALL_RECORD_KINDS, parseRecords, parseUpload, validateUpload } from "../src/index.js";
+import { ALL_RECORD_KINDS, parseRecords, parseUpload, PUBLIC_RECORD_KINDS, validateUpload } from "../src/index.js";
 
 const base = { installId: "test-install-1234", capturedAt: "2026-09-29T12:00:00.000Z", eventId: "evt-1" };
 
 describe("intake contract", () => {
   test("all record kinds exist", () => {
-    expect(ALL_RECORD_KINDS).toHaveLength(38);
+    expect(ALL_RECORD_KINDS).toHaveLength(39);
+    expect(ALL_RECORD_KINDS).toContain("item_fact");
     expect(ALL_RECORD_KINDS).toContain("census_self");
     expect(ALL_RECORD_KINDS).toContain("census_seen");
     expect(ALL_RECORD_KINDS).toContain("achievement_catalog");
@@ -204,6 +205,26 @@ describe("intake contract", () => {
     ]);
     expect(result.records.map((r) => r.kind)).toEqual(["instance_entrance", "instance_entrance", "encounter", "encounter", "object_sighting", "object_sighting"]);
     expect(result.receipt.rejected.map((r) => r.index)).toEqual([6, 7, 8, 9, 10, 11]);
+  });
+
+  test("an item fact carries the item, the line, its number and the build; only damage per second has a decimal", () => {
+    const fact = { ...base, kind: "item_fact", itemId: 6070, fact: "stamina", value: 5, clientBuild: "1.60.1.70450" };
+    const result = parseRecords([
+      fact,
+      { ...fact, fact: "armor", value: 103 },
+      { ...fact, fact: "spirit", value: -5 },
+      { ...fact, fact: "damage_per_second", value: 12.4 },
+      { ...fact, value: 5.5 },
+      { ...fact, fact: "luck" },
+      { ...fact, clientBuild: undefined },
+      { ...fact, clientBuild: "beta" },
+      { ...fact, itemId: 0 },
+      { ...fact, value: 10_001 },
+      { ...fact, value: "5" },
+    ]);
+    expect(result.records.map((r) => r.kind === "item_fact" && r.fact)).toEqual(["stamina", "armor", "spirit", "damage_per_second"]);
+    expect(result.receipt.rejected.map((r) => r.index)).toEqual([4, 5, 6, 7, 8, 9, 10]);
+    expect(PUBLIC_RECORD_KINDS).toContain("item_fact");
   });
 
   test("the envelope may say its rows came from a Polestar Recorder file, and nothing else", () => {

@@ -3,9 +3,9 @@ import { beforeEach, expect, test, vi } from "vitest";
 // Players agree on one item name (19019) and one quest; the name rule shows a wiki-matched item (647) and a
 // wiki quest title (176). Item 5 is in the game files only: no card, as on its page.
 const mocks = vi.hoisted(() => ({
-  items: vi.fn(), world: vi.fn(), objects: vi.fn(), assets: vi.fn(), tips: vi.fn(), quests: vi.fn(), shown: vi.fn(),
+  items: vi.fn(), world: vi.fn(), reported: vi.fn(), objects: vi.fn(), assets: vi.fn(), tips: vi.fn(), quests: vi.fn(), shown: vi.fn(),
 }));
-vi.mock("@/lib/rollup-compute", () => ({ loadItemFacts: mocks.items, loadWorldFacts: mocks.world }));
+vi.mock("@/lib/rollup-compute", () => ({ loadItemFacts: mocks.items, loadWorldFacts: mocks.world, loadReportedItemFacts: mocks.reported }));
 vi.mock("@/lib/objects", () => ({ loadObjectFacts: mocks.objects }));
 vi.mock("@/lib/game-assets", () => ({ loadSiteAssets: mocks.assets, loadItemTips: mocks.tips, loadQuestNames: mocks.quests }));
 vi.mock("@/lib/shown-item-names", () => ({ loadShownNames: mocks.shown }));
@@ -23,6 +23,7 @@ beforeEach(() => {
     npcs: three((installId) => ({ installId, npcId: 6, name: "Thrall", positionKind: "npc", mapId: 1, x: 40, y: 50 })),
     quests: three((installId) => ({ installId, questId: 9, title: "Cutting Teeth", level: 1, giverNpcId: 6, rewardItemIds: [] })),
   });
+  mocks.reported.mockReset().mockResolvedValue({ shown: [], contested: [], unreachable: false });
   mocks.objects.mockReset().mockResolvedValue({ rates: [], names: [], unreachable: false, dataAsOf: null, measuredZeros: [] });
   mocks.assets.mockReset().mockResolvedValue({ base: "https://assets.everloot.app/b", version: "70450", label: "Found in game files, unconfirmed" });
   mocks.tips.mockReset().mockImplementation(async (_a: unknown, ids: number[]) => new Map(ids.includes(647) ? [[647, TIP]] : []));
@@ -44,6 +45,15 @@ test("an item the name rule shows gets its page's box: the game's lines, its qua
   expect(card.lines).toEqual(["Two-Hand", "+[?] Strength", "[?] stat amounts: reason."]);
   expect(card.foot).toBe("Name from the Warcraft Wiki · Found in game files, unconfirmed · build 70450");
   expect(mocks.tips).toHaveBeenCalledWith(expect.anything(), [647]);
+});
+
+test("a number 3 installs' tooltips agree on fills its placeholder, with the installs, the build and the date", async () => {
+  mocks.reported.mockResolvedValue({
+    shown: [{ fact: "strength", value: 7, reporters: 4, build: "1.60.1.70450", lastSeen: "2026-11-05T12:00:00.000Z" }], contested: [], unreachable: false,
+  });
+  const { card } = await (await call("item", "647")).json();
+  expect(card.lines).toEqual(["Two-Hand", "+7 Strength", "[?] stat amounts: reason.", "+7 Strength: reported by 4 installs, last seen 2026-11-05, build 1.60.1.70450."]);
+  expect(mocks.reported).toHaveBeenCalledWith(647);
 });
 
 test("a name players agree on says so; an item without its game file tooltip still names its type", async () => {

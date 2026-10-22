@@ -15,7 +15,7 @@ import { Badge, Container, DataTable, EvidenceLine, Facts, InShort, OpenData, QU
 import { categoryOf } from "../../../../../../kb/src/item-taxonomy";
 import { edgesFrom, evidenceLabel, type Edge, type Rel } from "../../../../../../kb/src/edges";
 import { CLIENT_LAYER, CLIENT_TAXONOMY, itemsHref, shownItemName, subclassLabel as labelOf } from "@/lib/items";
-import { tipLines } from "@/lib/item-names";
+import { tipLines, withReported } from "@/lib/item-names";
 import type { Crumb } from "@/lib/jsonld";
 import { loadNames, nameOf } from "@/lib/names";
 import { loreForEntity } from "@/lib/lore";
@@ -27,7 +27,7 @@ import { entityTitle, itemDescription } from "@/lib/entity-meta";
 import { MarketBox, loadMarketBox } from "@/app/tools/auctions/MarketBox";
 import { pendingLine } from "../../../../../../kb/src/pending-loot";
 import { itemDropSources } from "../../../../../../kb/src/loot-tables";
-import { loadLootTables } from "@/lib/rollup-compute";
+import { loadLootTables, loadReportedItemFacts } from "@/lib/rollup-compute";
 import { EmptyTab, EntityHeader, EntityIcon, EntityTop, known, LINK, Unreachable } from "../../entity";
 import { ItemSourcesPanel } from "../../loot-tables";
 import { itemSummary } from "@/lib/evidence";
@@ -97,7 +97,9 @@ export default async function ItemPage(props: Props) {
   // files say makes or uses it. An id nobody reported or named and nothing links to reads nothing.
   const spellLinked = edges.client.some((e) => e.fromKind === "item" && e.fromId === itemId && e.toKind === "spell");
   const assets = tipped || spellLinked ? await loadSiteAssets() : null;
-  const tip = tipped ? (await loadItemTips(assets, [itemId])).get(itemId) : undefined;
+  const filesTip = tipped ? (await loadItemTips(assets, [itemId])).get(itemId) : undefined;
+  // The numbers 3 installs' tooltips agree on fill the files' placeholders, each with its installs, build and date.
+  const tip = filesTip && withReported(filesTip, await loadReportedItemFacts(itemId));
   const spellIcon = (spellId: number) => assets?.spellIcons.get(spellId);
   const category = categoryOf(CLIENT_TAXONOMY, itemId);
   const quality = category?.quality && category.quality.id <= 5 ? qualityOf(category.quality.id) : undefined;

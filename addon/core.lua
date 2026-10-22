@@ -151,7 +151,7 @@ function E:Status()
   for _, m in ipairs(modules) do
     lines[#lines + 1] = string.format("  %s: %s", m.name, m.note)
   end
-  for _, kind in ipairs({ "npc_sighting", "loot", "quest", "vendor", "item_seen",
+  for _, kind in ipairs({ "npc_sighting", "loot", "quest", "vendor", "item_seen", "item_fact",
     "object_sighting", "instance_entrance", "encounter", "guild_snapshot", "raid_lockout", "attendance", "loot_award", "gear_snapshot",
     "collection_catalog", "collection_owned", "auction_scan", "auction_snapshot", "recipe_seen", "recipe_observed", "trainer_seen", "price_seen",
     "gold_snapshot", "money_event", "addon_seen", "map_bounds", "talent_snapshot",

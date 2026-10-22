@@ -15,6 +15,11 @@ required, or tightening a limit is a major release.
   without a key, 5,000 with one), and the corpus and client-layer routes and the market rule read in plain words.
 
 ### Added
+- 1.15.0 (record protocol 1.8.0), for the numbers an item's tooltip shows that the game files do not hold: the
+  record kind `item_fact`, public in the corpus, with `itemId`, `fact` (which line, from `ITEM_FACTS`: armor, block,
+  damage_per_second, each stat and each resistance), `value` (a whole number, but damage_per_second has one decimal)
+  and `clientBuild`, which is required here because a patch can change an item's numbers. The addon writes it from
+  the player's own tooltips. MCP tools are unchanged.
 - 1.14.0 (record protocol unchanged, 1.7.0): read-only, text-only MCP tool `coverage`, with optional
   UiMap `zone` and coverage `type`. Returns the public coverage page's dated counts, method, install
   counts and reported-field lists without unconfirmed values or baseline rows, names or ids.
