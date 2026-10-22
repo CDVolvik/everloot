@@ -15,6 +15,10 @@ build that has a zip in the repository. Earlier builds have none.
 Pull requests merged to `main` are listed in the nightly pre-releases until the next tagged release.
 
 ### Changed
+- Site and MCP: the public page tools count only reports after a recheck scope's date, as the coverage score and
+  the site's pages already did. `ToolOptions.recheck` carries the curated scopes into every page tool, the object
+  pages cut their loot windows, names and pins the same way, and the facts memo keys on the scopes so a scoped and
+  an unscoped read never share facts. The standalone MCP server has no curated file and stays unscoped.
 - Site and knowledge base: the settled list leaves out about 2% of settled facts each ISO week (the spot check), so
   the desktop app re-sends them and a hotfix that never changed a build still reaches the corpus. A loot source under
   a recheck scope counts only its windows after the scope's date and settles again, instead of staying out until the

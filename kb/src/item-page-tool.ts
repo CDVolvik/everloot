@@ -1,10 +1,11 @@
 import { ITEM_FACTS } from "@everloot/protocol";
 import { itemFactsFromRecords } from "./drop-rollup.js";
 import { itemFactRowsFromRecords, type ItemFactName, type ItemFactState } from "./item-facts.js";
+import type { RecheckScope } from "./coverage.js";
 
 /** MCP's index adds item numbers without changing the page reader used by other callers. */
-export function itemToolFactsFromRecords(records: unknown[]) {
-  return { ...itemFactsFromRecords(records), numbers: itemFactRowsFromRecords(records) };
+export function itemToolFactsFromRecords(records: unknown[], recheck: readonly RecheckScope[] = []) {
+  return { ...itemFactsFromRecords(records, recheck), numbers: itemFactRowsFromRecords(records) };
 }
 
 const words: Record<ItemFactName, string> = {

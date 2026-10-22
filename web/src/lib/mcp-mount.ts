@@ -7,6 +7,7 @@ import { attributionHeaders } from "./data-guard";
 import { loadEcosystem } from "./ecosystem";
 import { accountMcpTools } from "./my-builds-tool";
 import { getRelease } from "./release";
+import { RECHECK_SCOPES } from "./recheck-scopes";
 import { loadCensus } from "./rollup-compute";
 import { readSettledList } from "./settled-store";
 import { settledKeys } from "../../../kb/src/settled-list";
@@ -29,6 +30,8 @@ export function unavailable(error: string, status = 503): Response {
 /** The site's readers the tools answer from, the same for the MCP mounts and GET /api/tools/{tool}. */
 export function toolLoaders(): ToolOptions {
   return {
+    // The curated scopes: page tools count only reports after a scope's date, as the coverage score does.
+    recheck: RECHECK_SCOPES,
     coverage: () => loadCoverage(),
     settledSummary: async (build) => {
       const list = await readSettledList(build);

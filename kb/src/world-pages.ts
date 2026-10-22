@@ -455,12 +455,12 @@ export function handleVendorPage(args: { vendorNpcId: number }, facts: WorldFact
 }
 
 /** The NPC page's facts: the world facts and the pending loot count. */
-export function npcFactsFromRecords(records: unknown[]): WorldFacts {
-  return { ...worldFactsFromRecords(records), pending: pendingLootFromRecords(records) };
+export function npcFactsFromRecords(records: unknown[], recheck: readonly RecheckScope[] = NO_SCOPES): WorldFacts {
+  return { ...worldFactsFromRecords(records, recheck), pending: pendingLootFromRecords(records) };
 }
 
-export function worldFactsFromRecords(records: unknown[]): WorldFacts {
-  const facts: WorldFacts = { npcs: [], quests: [], vendors: [] };
+export function worldFactsFromRecords(records: unknown[], recheck: readonly RecheckScope[] = NO_SCOPES): WorldFacts {
+  const facts: WorldFacts = { npcs: [], quests: [], vendors: [], ...(recheck.length ? { recheck } : {}) };
   for (const raw of records) {
     if (!raw || typeof raw !== "object") continue;
     const row = raw as Record<string, unknown>;
