@@ -48,13 +48,13 @@ export async function databasePaths(): Promise<string[] | null> {
     return itemIndexable(page, false, shownItemName(id, agreed, matched?.names));
   });
 
-  const none = { npcs: [], quests: [], vendors: [] };
+  const none = { npcs: [], quests: [], vendors: [], recheck: world.recheck };
   const npcRows = byKey(world.npcs, (r) => r.npcId);
   const npcs = ascending(npcRows.keys()).filter((id) => npcIndexable(npcPage(id, { ...none, npcs: npcRows.get(id)! }), false));
   const questRows = byKey(world.quests, (r) => r.questId);
-  const quests = ascending(questRows.keys()).filter((id) => questIndexable(questPage(id, { ...none, quests: questRows.get(id)! }), false));
+  const quests = ascending(questRows.keys()).filter((id) => questIndexable(questPage(id, { ...none, quests: questRows.get(id)!, npcs: world.npcs }), false));
   const vendorRows = byKey(world.vendors, (r) => r.vendorNpcId);
-  const vendors = ascending(vendorRows.keys()).filter((id) => vendorIndexable(vendorPage(id, { ...none, vendors: vendorRows.get(id)! }), false));
+  const vendors = ascending(vendorRows.keys()).filter((id) => vendorIndexable(vendorPage(id, { ...none, vendors: vendorRows.get(id)!, npcs: world.npcs }), false));
 
   const objectRates = byKey(objects.rates, (r) => r.sourceObjectId);
   const objectZeros = byKey(objects.measuredZeros, (r) => r.sourceObjectId);

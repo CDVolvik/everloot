@@ -1,6 +1,6 @@
 import { popularAddonsFromRecords, type AddonRollup } from "../../../kb/src/addon-rollup";
 import { censusFromRows, type CensusView } from "../../../kb/src/census";
-import { itemFactsFromRecords } from "../../../kb/src/drop-rollup";
+import { itemFactsFromRecords, recheckLootRecords } from "../../../kb/src/drop-rollup";
 import { observedEdges, type Edge } from "../../../kb/src/edges";
 import { itemFactRowsFromRecords, reportedItemFacts, type ItemFactState } from "../../../kb/src/item-facts";
 import type { ItemFacts } from "../../../kb/src/item-page";
@@ -9,6 +9,7 @@ import { instanceFactsFromRecords, type InstanceFacts } from "../../../kb/src/in
 import { lootTablesFromRecords, type LootTables } from "../../../kb/src/loot-tables";
 import { objectSightingRowsFromRecords, type ObjectSpawnRow } from "../../../kb/src/object-spawns";
 import { worldFactsFromRecords, type WorldFacts } from "../../../kb/src/world-pages";
+import { RECHECK_SCOPES } from "./recheck-scopes";
 import { lootWindowsFromRecords, rollupDrops, type RollupResult } from "./rollups";
 import { uploadStore, type CensusRead } from "./upload-store";
 
@@ -70,17 +71,21 @@ async function loadAggregates(): Promise<AggregateSet | null> {
   const key = corpusKey(corpus);
   if (memoized === null || memoized.key !== key) {
     const windows = lootWindowsFromRecords(corpus.records);
-    const items = itemFactsFromRecords(corpus.records);
+    // A loot source under a recheck scope counts only the windows after its date; the corpus count stays whole.
+    const lootRecords = recheckLootRecords(corpus.records, RECHECK_SCOPES);
+    const counted = lootRecords === corpus.records ? windows : lootWindowsFromRecords(lootRecords);
+    const items = itemFactsFromRecords(corpus.records, RECHECK_SCOPES);
     memoized = {
       key,
       uploads: corpus.uploads,
       records: corpus.records.length,
       windows: windows.length,
       dataAsOf: corpus.dataAsOf ?? null,
-      drops: rollupDrops(windows),
+      drops: rollupDrops(counted),
       items,
       // The NPC page reads the pending loot count with the world facts: the same count the item facts hold.
-      world: { ...worldFactsFromRecords(corpus.records), pending: items.pending },
+      // The readers count only new reports for a fact under a recheck scope (kb/curated/recheck.json).
+      world: { ...worldFactsFromRecords(corpus.records), pending: items.pending, recheck: RECHECK_SCOPES },
       instances: instanceFactsFromRecords(corpus.records),
       sightings: objectSightingRowsFromRecords(corpus.records),
       itemFacts: itemFactRowsFromRecords(corpus.records),
@@ -88,7 +93,7 @@ async function loadAggregates(): Promise<AggregateSet | null> {
       // Addon rows dated after the corpus was current are ignored, so one forged clock cannot set "last seen".
       addons: popularAddonsFromRecords(corpus.records, corpus.dataAsOf ?? new Date()),
       edges: observedEdges(corpus.records, corpus.dataAsOf ?? new Date()),
-      loot: lootTablesFromRecords(corpus.records, corpus.dataAsOf ?? null),
+      loot: lootTablesFromRecords(lootRecords, corpus.dataAsOf ?? null),
     };
   }
   return memoized;

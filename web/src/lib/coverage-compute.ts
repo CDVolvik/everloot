@@ -1,20 +1,16 @@
-import recheckFile from "../../../kb/curated/recheck.json";
-import { computeCoverage, parseCoverageExpected, RecheckFile, type CoverageExpected, type CoverageReport, type RecheckScope } from "../../../kb/src/coverage";
+import { computeCoverage, parseCoverageExpected, type CoverageExpected, type CoverageReport } from "../../../kb/src/coverage";
 import { buildFolder, privateStoreFromEnv, type PrivateStore } from "./game-assets";
 import { CLIENT_LAYER } from "./items";
 import { assetsBaseUrl } from "./talents/assets";
 import { uploadStore, type Corpus } from "./upload-store";
 import { WORLD_MAP } from "./world-map";
+import { RECHECK_SCOPES } from "./recheck-scopes";
 import { placedEntrances, publicZones } from "./zones";
+
+export { RECHECK_SCOPES } from "./recheck-scopes";
 
 /** The client build the score is for: the build the site's game files are read from. */
 export const COVERAGE_BUILD = CLIENT_LAYER.build.version;
-
-/** The recheck scopes in kb/curated/recheck.json, bundled like the other curated files; a malformed file scopes nothing. */
-export const RECHECK_SCOPES: readonly RecheckScope[] = (() => {
-  const parsed = RecheckFile.safeParse(recheckFile);
-  return parsed.success ? parsed.data.scopes : [];
-})();
 
 /**
  * The counts-only expected file the maintainer's `coverage-report` writes, uploaded to the private bucket's folder

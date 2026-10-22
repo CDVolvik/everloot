@@ -49,7 +49,7 @@ export function allZones(data: Pick<WorldMapData, "zones" | "heldBackZones">): {
 }
 
 /** Corroborated NPC and vendor pins that fall inside a known zone. Pins in unknown zones are dropped. */
-export function observedPins(facts: Pick<WorldFacts, "npcs" | "vendors">, data: Pick<WorldMapData, "zones" | "heldBackZones">): ObservedPin[] {
+export function observedPins(facts: Pick<WorldFacts, "npcs" | "vendors" | "recheck">, data: Pick<WorldMapData, "zones" | "heldBackZones">): ObservedPin[] {
   const { zones, held } = allZones(data);
   const npcRows = new Map<number, NpcSightingRow[]>();
   for (const row of facts.npcs) {
@@ -64,11 +64,11 @@ export function observedPins(facts: Pick<WorldFacts, "npcs" | "vendors">, data: 
     vendorRows.set(row.vendorNpcId, rows);
   }
   const vendors = new Set<number>();
-  for (const [id, rows] of vendorRows) if (vendorPage(id, { npcs: [], quests: [], vendors: rows }).offers.length > 0) vendors.add(id);
+  for (const [id, rows] of vendorRows) if (vendorPage(id, { npcs: facts.npcs, quests: [], vendors: rows, recheck: facts.recheck }).offers.length > 0) vendors.add(id);
 
   const pins: ObservedPin[] = [];
   for (const [npcId, rows] of npcRows) {
-    const page = npcPage(npcId, { npcs: rows, quests: [], vendors: [] });
+    const page = npcPage(npcId, { npcs: rows, quests: [], vendors: [], recheck: facts.recheck });
     for (const pin of page.pins) {
       const zone = zones.find((z) => z.mapId === pin.mapId);
       const world = zoneToWorld(zones, pin.mapId, pin.x / 100, pin.y / 100);

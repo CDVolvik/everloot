@@ -95,7 +95,7 @@ export default async function NpcPage(props: { params: Promise<{ id: string }> }
   const unreachable = facts.unreachable || rollup.stats.unreachable;
   const page = npcPage(npcId, facts);
   // Level and rank, each shown when 3 installs report the same one.
-  const traits = npcTraits(facts.npcs.filter((r) => r.npcId === npcId));
+  const traits = npcTraits(facts.npcs.filter((r) => r.npcId === npcId), facts.recheck);
   const pending = !unreachable && page.pendingLoot ? <p className="py-2 text-meta text-fg-2">{pendingLine(page.pendingLoot)}</p> : null;
   const title = unreachable ? `NPC ${page.npcId}` : page.name ?? `NPC ${page.npcId}`;
   const zero = rollup.measuredZeros.find((row) => row.public && row.sourceNpcId === npcId);

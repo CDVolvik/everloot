@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { parseRecords, type IntakeRecord } from "@everloot/protocol";
 import { POSITION_TOLERANCE, readBaseline, type Baseline } from "./baseline-report.js";
 import type { DB } from "./db.js";
-import { lootWindowsFromRecords, rollupDrops } from "./drop-rollup.js";
+import { lootRecheckSince, lootWindowsFromRecords, recheckLootRecords, rollupDrops } from "./drop-rollup.js";
 import { measureDropRate, type DropRateMeasurement } from "./drop-rate-settling.js";
 import { computeCoverage, EXPECTED_TYPE, parseCoverageExpected, type CoverageType as ScoreType, type RecheckScope } from "./coverage.js";
 import { tallyVotes, type FactState, type VoteRow } from "./fact-states.js";
@@ -13,6 +13,7 @@ import type { Spawn } from "./importers/pfquest.js";
 import { objectSightingRowsFromRecords, objectSpawnRowsFromRecords, SPAWN_RADIUS } from "./object-spawns.js";
 import { computePlateau, type PlateauReport } from "./plateau.js";
 import { foldRecorderInstalls } from "./recorder-installs.js";
+import { scopeSince } from "./recheck-scopes.js";
 import { isPinPosition } from "./world-pages.js";
 import type { WorldMapData } from "./world-map-data.js";
 import { WORLD_MAP_DATA } from "./world-map-file.js";
@@ -102,24 +103,19 @@ export function buildCoverageReport(input: CoverageInput): CoverageReport {
   const scoreType = Object.fromEntries(Object.entries(EXPECTED_TYPE).map(([k, v]) => [v, k])) as Record<CoverageType, ScoreType>;
   const questRewards = new Map<number, Set<number>>();
   for (const r of quests) for (const item of r.rewardItemIds) questRewards.set(r.questId, (questRewards.get(r.questId) ?? new Set<number>()).add(item));
-  const time = (value: string | undefined) => (value === undefined ? NaN : Date.parse(value));
-  // The latest cutoff that covers a fact: the explicit one or a scope's date, matched by type, zone and ids as the
-  // public score matches them (`since` in coverage.ts). A drop rate has no tally to cut, so scopes leave it alone.
-  const cutoff = (type: CoverageType, id: string, field: string, zone: string): string | undefined => {
+  const bossNpcs = new Map<string, number[]>();
+  for (const r of records) if (r.kind === "encounter") bossNpcs.set(`${r.instanceMapId}:${r.encounterId}`, [...new Set([...(bossNpcs.get(`${r.instanceMapId}:${r.encounterId}`) ?? []), ...(r.npcIds ?? [])])]);
+  // `--recheck-since` is one more scope, with nothing named, so it covers every fact.
+  const scopes = [...(input.recheck ?? []), ...(input.recheckSince ? [{ since: input.recheckSince, source: "--recheck-since" }] : [])];
+  // The latest cutoff that covers a fact, matched by type, zone and ids by the public score's own rule (`scopeSince`):
+  // a quest names its rewards, a vendor offer its item, and every field of a boss its boss NPCs.
+  const cutoff = (type: CoverageType, id: string, zone: string): string | undefined => {
     const parts = id.split(":").map(Number), head = parts[0]!;
     const refs = type === "quest" ? [head, ...(questRewards.get(head) ?? [])]
       : type === "vendor" ? parts.slice(0, 2)
-      : type === "boss" ? [...parts.slice(0, 2), ...(field.startsWith("npc:") ? [Number(field.slice(4))] : [])]
+      : type === "boss" ? [...parts.slice(0, 2), ...(bossNpcs.get(id) ?? [])]
       : [head];
-    const placed = /^\d+$/.test(zone) ? Number(zone) : null;
-    let best = input.recheckSince;
-    for (const s of input.recheck ?? []) {
-      if (s.type && s.type !== scoreType[type]) continue;
-      if (s.zones?.length && (placed === null || !s.zones.includes(placed))) continue;
-      if (s.ids?.length && !refs.some(r => s.ids!.includes(r))) continue;
-      if (best === undefined || time(s.since) > time(best)) best = s.since;
-    }
-    return best;
+    return scopeSince(scopes, { types: [scoreType[type]], zones: [/^\d+$/.test(zone) ? Number(zone) : null], ids: refs }) ?? undefined;
   };
   const zoneName = (zone: string) => zone === "unplaced" ? "Unplaced" : zone.startsWith("area:") ? `Area ${zone.slice(5)}` : zones.find(z => String(z.uiMapId) === zone)?.name ?? `UiMap ${zone}`;
   const baselineZone = (spawns: readonly Spawn[] | undefined): string => {
@@ -140,7 +136,7 @@ export function buildCoverageReport(input: CoverageInput): CoverageReport {
     return agreed.length ? String(agreed[0]![0]) : baselineZone(baseline.units.get(id)?.spawns);
   };
   const add = (type: CoverageType, id: string, field: string, name: string | undefined, zone: string, level: number | undefined | null, votes: VoteRow[]): CoverageRow => {
-    const tally = tallyVotes(votes, { asOf, recheckSince: cutoff(type, id, field, zone) });
+    const tally = tallyVotes(votes, { asOf, recheckSince: cutoff(type, id, zone) });
     const row: CoverageRow = {
       type, id, field, name: name?.trim() || "[?]", zone, zoneName: zoneName(zone), level: level ?? null,
       state: tally.state, contested: tally.contested, spread: false,
@@ -216,7 +212,10 @@ export function buildCoverageReport(input: CoverageInput): CoverageReport {
       return field === "price" ? item?.priceCopper : item ? item.limitedStock ?? "unlimited" : undefined;
     }));
   }
+  // A source under a scope counts only the windows after its date, as the public rates do (`recheckLootRecords`).
+  const scopedLoot = lootRecheckSince(records, scopes);
   const rates = rollupDrops(lootWindowsFromRecords(records)).rates;
+  const counted = scopedLoot.size ? rollupDrops(lootWindowsFromRecords(recheckLootRecords(records, scopes))).rates : rates;
   const drops = new Map<string, { npc?: number; object?: number; item: number }>();
   for (const item of baseline.items.values()) for (const d of item.drops) drops.set(`${d.npc === undefined ? "obj" : "npc"}:${d.npc ?? d.object}:${item.id}`, { ...d, item: item.id });
   for (const r of rates) drops.set(`${r.sourceNpcId === undefined ? "obj" : "npc"}:${r.sourceNpcId ?? r.sourceObjectId}:${r.itemId}`, { npc: r.sourceNpcId, object: r.sourceObjectId, item: r.itemId });
@@ -224,11 +223,13 @@ export function buildCoverageReport(input: CoverageInput): CoverageReport {
     const rate = rates.find(r => r.itemId === d.item && r.sourceNpcId === d.npc && r.sourceObjectId === d.object);
     const sourceName = d.npc === undefined ? baseline.objects.get(d.object!)?.name : npcName(d.npc);
     const row = add("drop", key, "rate", `${baseline.items.get(d.item)?.name ?? "[?]"} from ${sourceName ?? "[?]"}`, d.npc === undefined ? baselineZone(baseline.objects.get(d.object!)?.spawns) : npcZone(d.npc), d.npc === undefined ? undefined : npcLevel(d.npc), []);
-    if (rate) {
-      row.measurement = measureDropRate(rate, input.dataAsOf ?? "[?]");
-      row.state = row.measurement.settled ? "settled" : rate.public ? "confirmed" : "reported";
-      row.values = [{ value: `${rate.drops}/${rate.kills}`, voters: rate.reporters, firstCapturedAt: null, lastCapturedAt: null }];
-    }
+    const recheck = scopedLoot.has(key.slice(0, key.lastIndexOf(":")));
+    const now = recheck ? counted.find(r => r.itemId === d.item && r.sourceNpcId === d.npc && r.sourceObjectId === d.object) : rate;
+    if (now) {
+      row.measurement = measureDropRate(now, input.dataAsOf ?? "[?]");
+      row.state = row.measurement.settled ? "settled" : now.public ? "confirmed" : recheck && rate?.public ? "recheck" : "reported";
+      row.values = [{ value: `${now.drops}/${now.kills}`, voters: now.reporters, firstCapturedAt: null, lastCapturedAt: null }];
+    } else if (recheck && rate?.public) row.state = "recheck";
   }
   const entrances = records.filter(r => r.kind === "instance_entrance");
   const entranceKeys = new Map<string, { instance: number; map: number | undefined; name?: string }>();
@@ -300,7 +301,7 @@ export function buildCoverageReport(input: CoverageInput): CoverageReport {
     notes: ["Local only: never published or committed. Counts are entity fields; shared loot tables stay a join.",
       "Unplaced and held-back zones remain in this local report. No counts are uploaded by this command.",
       "Quest-side settling is pending; confirmed sides keep collecting. Position spread prevents settling. Object loot without capture times cannot settle a pin.",
-      `Recheck: ${(input.recheck ?? []).length} scopes from kb/curated/recheck.json${input.recheckSince ? `, and every fact from ${input.recheckSince}` : ""}. A fact in a scope that was confirmed before the scope's date counts only reports after it, and stays recheck (neither confirmed nor settled, here and in the plateau) until 3 new installs agree. ${rows.filter(r => r.state === "recheck").length} fact fields are in recheck. Drop rates ignore scopes.`,
+      `Recheck: ${(input.recheck ?? []).length} scopes from kb/curated/recheck.json${input.recheckSince ? `, and every fact from ${input.recheckSince}` : ""}. A fact in a scope that was confirmed before the scope's date counts only reports after it, and stays recheck (neither confirmed nor settled, here and in the plateau) until 3 new installs agree. ${rows.filter(r => r.state === "recheck").length} fact fields are in recheck. A drop source in a scope counts only the loot windows captured after its date, public rate or not.`,
       ...(input.connected ? [] : ["Uploads are disconnected or unreadable; missing is not a measured zero."]),
       ...(input.clientConnected ? [] : ["No client snapshot supplied: game-file-only quests and bosses are unknown ([?])."])],
     rows, expected, plateau,

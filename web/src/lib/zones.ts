@@ -5,6 +5,7 @@ import { questPage, type WorldFacts } from "../../../kb/src/world-pages";
 import { confirmedEntrances, instanceBosses, type InstanceBoss, type InstanceFacts } from "../../../kb/src/instances";
 import { objectSpawns, type ObjectSpawnPin, type ObjectSpawnRow } from "../../../kb/src/object-spawns";
 import { slugify } from "../../../kb/src/lore-slug";
+import { RECHECK_SCOPES } from "./recheck-scopes";
 import { WORLD_MAP } from "./world-map";
 
 /** The zone's own address segment: `1411-durotar`. A name with no letters or digits leaves the bare id. */
@@ -83,8 +84,8 @@ export interface PlacedEntrance extends Omit<ZoneEntrance, "x" | "y"> {
 export function placedEntrances(data: Pick<WorldMapData, "zones" | "entrances">, seen: ZoneSightings = {}): PlacedEntrance[] {
   const zones = zoneTable(data);
   const asOf = seen.asOf ?? new Date();
-  const confirmed = confirmedEntrances(seen.instances?.entrances ?? [], asOf);
-  const bosses = instanceBosses(seen.instances?.encounters ?? [], asOf);
+  const confirmed = confirmedEntrances(seen.instances?.entrances ?? [], asOf, RECHECK_SCOPES);
+  const bosses = instanceBosses(seen.instances?.encounters ?? [], asOf, RECHECK_SCOPES, seen.instances?.entrances ?? []);
   const out: PlacedEntrance[] = [];
   const placed = new Set<number>();
   for (const pin of placeEntrances(data)) {
@@ -115,7 +116,7 @@ export function placedEntrances(data: Pick<WorldMapData, "zones" | "entrances">,
 
 /** Treasure pins: objects seen on the minimap where 3 installs agree on the spot, with their agreed names and last seen. */
 export function treasurePins(seen: ZoneSightings): (ObjectSpawnPin & { name: string | null; lastSeen: string | null })[] {
-  return objectSpawns(seen.sightings ?? [], [], seen.asOf ?? new Date())
+  return objectSpawns(seen.sightings ?? [], [], seen.asOf ?? new Date(), RECHECK_SCOPES)
     .pins.map((pin) => ({ ...pin, name: seen.objectNames?.get(pin.objectId) ?? null, lastSeen: pin.lastSeen ?? null }));
 }
 
@@ -127,7 +128,7 @@ export function treasurePins(seen: ZoneSightings): (ObjectSpawnPin & { name: str
  * entrance instead, so no entrance has two pins. Treasures are objects seen on the minimap, pinned at 3 installs.
  */
 export function zoneContents(
-  facts: Pick<WorldFacts, "npcs" | "quests" | "vendors">, data: Pick<WorldMapData, "zones" | "heldBackZones" | "continents" | "entrances"> = WORLD_MAP,
+  facts: Pick<WorldFacts, "npcs" | "quests" | "vendors" | "recheck">, data: Pick<WorldMapData, "zones" | "heldBackZones" | "continents" | "entrances"> = WORLD_MAP,
   seen: ZoneSightings = {},
 ): Map<number, ZoneContents> {
   const zones = zoneTable(data);
@@ -144,7 +145,7 @@ export function zoneContents(
   const byQuest = new Map<number, WorldFacts["quests"]>();
   for (const q of facts.quests) byQuest.set(q.questId, [...(byQuest.get(q.questId) ?? []), q]);
   for (const [questId, rows] of byQuest) {
-    const q = questPage(questId, { npcs: [], quests: rows, vendors: [] });
+    const q = questPage(questId, { npcs: facts.npcs, quests: rows, vendors: [], recheck: facts.recheck });
     for (const [mapId, npcs] of npcsHere) {
       if ((q.giverNpcId !== null && npcs.has(q.giverNpcId)) || (q.turnInNpcId !== null && npcs.has(q.turnInNpcId))) {
         out.get(mapId)!.quests.push({ questId, title: q.title, level: q.level, giverNpcId: q.giverNpcId, turnInNpcId: q.turnInNpcId });

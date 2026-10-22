@@ -10,9 +10,15 @@
  * A pin's key is `obj<objectId>-<mapId>-<x>_<y>`, its first agreed median rounded to 0.5. Pass the keys
  * already published back in and each keeps its place: positions near it join it before any new cluster
  * forms, so found marks and links do not break when later reports move the median.
+ *
+ * A treasure under a recheck scope (`kb/curated/recheck.json`) counts, in a cluster 3 installs placed before the
+ * scope's date, only the rows captured after it; so does its name. Loot rows carry no capture time and are never cut.
  */
 import { GATHER_KINDS } from "@everloot/protocol";
+import type { RecheckScope } from "./coverage.js";
+import { recheckRows } from "./fact-states.js";
 import { latest } from "./instances.js";
+import { busiestMap, scopeSince } from "./recheck-scopes.js";
 import { agreedLabelsById, WORLD_AGREEMENT } from "./world-pages.js";
 
 export type GatherKind = (typeof GATHER_KINDS)[number];
@@ -129,8 +135,9 @@ export const FISHING_BOBBER = 35591;
  * Pins for every object id and map with positions. `published` is the list of keys already shown; each
  * keeps its key while it still has 3 installs. A new pin's key is its median rounded to 0.5; if that key is
  * already taken in this pass, the cluster joins that pin. With `asOf`, each pin also says when it was last seen.
+ * `recheck`: the scopes in `kb/curated/recheck.json`.
  */
-export function objectSpawns(rows: ObjectSpawnRow[], published: readonly string[] = [], asOf?: Date): ObjectSpawns {
+export function objectSpawns(rows: ObjectSpawnRow[], published: readonly string[] = [], asOf?: Date, recheck: readonly RecheckScope[] = []): ObjectSpawns {
   // Fishing is never a pin: a fishing row, the bobber, or an object installs agree is fished.
   const kinds = agreedGatherKinds(rows);
   const groups = new Map<string, PlacedRow[]>();
@@ -158,12 +165,14 @@ export function objectSpawns(rows: ObjectSpawnRow[], published: readonly string[
     const sorted = [...list].sort((a, b) => a.x - b.x || a.y - b.y || (a.installId < b.installId ? -1 : a.installId > b.installId ? 1 : 0));
     const byKey = new Map<string, PlacedRow[]>();
     let few = 0;
+    const since = recheck.length ? scopeSince(recheck, { types: ["treasures"], zones: [mapId], ids: [objectId] }) : null;
     for (const cluster of clusterGroup(sorted, anchorsByGroup.get(id) ?? [])) {
-      const installs = new Set(cluster.rows.map((r) => r.installId.trim()));
+      const members = recheckRows(cluster.rows, since).rows;
+      const installs = new Set(members.map((r) => r.installId.trim()));
       if (installs.size === 0) continue;
       if (installs.size < WORLD_AGREEMENT) { few += 1; continue; }
-      const key = cluster.key ?? spawnKey(objectId, mapId, median(cluster.rows.map((r) => r.x)), median(cluster.rows.map((r) => r.y)));
-      byKey.set(key, [...(byKey.get(key) ?? []), ...cluster.rows]);
+      const key = cluster.key ?? spawnKey(objectId, mapId, median(members.map((r) => r.x)), median(members.map((r) => r.y)));
+      byKey.set(key, [...(byKey.get(key) ?? []), ...members]);
     }
     for (const [key, members] of byKey) {
       pins.push({
@@ -187,9 +196,23 @@ function placed(row: ObjectSpawnRow): row is PlacedRow {
     typeof x === "number" && typeof y === "number" && x >= 0 && x <= 100 && y >= 0 && y <= 100;
 }
 
-/** Object names 3 installs agree on, by object id. Ids without one are left out: show "Object <id>". */
-export function agreedObjectNames(rows: ObjectSpawnRow[]): Map<number, string> {
-  return agreedLabelsById(rows.filter((r) => r.name !== undefined).map((r) => ({ id: r.objectId, installId: r.installId, label: r.name! })));
+/**
+ * Object names 3 installs agree on, by object id. Ids without one are left out: show "Object <id>". Under `recheck`,
+ * an object is placed on the map most installs saw it on.
+ */
+export function agreedObjectNames(rows: ObjectSpawnRow[], recheck: readonly RecheckScope[] = []): Map<number, string> {
+  let sinceOf: ((id: number) => string | null) | undefined;
+  if (recheck.length) {
+    const maps = new Map<number, Map<number, Set<string>>>();
+    for (const r of rows) {
+      if (typeof r.mapId !== "number") continue;
+      const byMap = maps.get(r.objectId) ?? new Map<number, Set<string>>();
+      byMap.set(r.mapId, (byMap.get(r.mapId) ?? new Set<string>()).add(r.installId.trim()));
+      maps.set(r.objectId, byMap);
+    }
+    sinceOf = (id) => scopeSince(recheck, { types: ["treasures"], zones: [busiestMap(maps.get(id) ?? new Map())], ids: [id] });
+  }
+  return agreedLabelsById(rows.filter((r) => r.name !== undefined).map((r) => ({ id: r.objectId, installId: r.installId, label: r.name!, ...(r.capturedAt ? { capturedAt: r.capturedAt } : {}) })), sinceOf);
 }
 
 /** How each object is opened, by object id, when 3 installs agree on one kind. */
