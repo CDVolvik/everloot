@@ -123,6 +123,7 @@
     "auction_history",
     "market_value",
     "gold_ledger",
+    "coverage",
     "population",
     "recent_changes",
     "ecosystem_projects",

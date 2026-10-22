@@ -23,6 +23,16 @@ const INSTALL_ID = (
 
 /** Tools whose rule is not the usual 3-install one get their own note instead of the generic one. */
 const TOOL_NOTES: Partial<Record<McpToolName, ReactNode>> = {
+  coverage: (
+    <>
+      Reads the same score as <Link href="/database/coverage" className={docLink}>Database coverage</Link>.
+      Omit zone and type for all released zones and types, or pass a UiMap zone id and a type to narrow the answer.
+      Counts are entity-field facts: settled / expected, with confirmed / expected beside it, using the larger of
+      expected and observed as the denominator. Each answer includes the method, corpus date, build and install counts.
+      The reported-fields list identifies fields needing votes without disclosing their unconfirmed values.
+      Baseline data contributes counts only. Unknown values read <C>[?]</C>. The answer is text only.
+    </>
+  ),
   guild_board: (
     <>
       Built on officers&apos; uploads, not the 3-install rule: a figure is public when uploads from 2 of the guild&apos;s

@@ -15,6 +15,9 @@ required, or tightening a limit is a major release.
   without a key, 5,000 with one), and the corpus and client-layer routes and the market rule read in plain words.
 
 ### Added
+- 1.14.0 (record protocol unchanged, 1.7.0): read-only, text-only MCP tool `coverage`, with optional
+  UiMap `zone` and coverage `type`. Returns the public coverage page's dated counts, method, install
+  counts and reported-field lists without unconfirmed values or baseline rows, names or ids.
 - 1.12.0 (record protocol 1.7.0), for rares, dungeons and treasures in a Polestar Recorder file:
   `npc_sighting.positionKind` gains `vignette` (the NPC's own position from the game's vignette API). Three record
   kinds, each public in the corpus: `instance_entrance` (`instanceMapId`, `name`, `instanceType` from

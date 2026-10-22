@@ -133,6 +133,7 @@ export function responseSamples(route: ApiRoute): CodeTab[] {
  * and plain stand-ins (`YourRealm`) where the value is the reader's own.
  */
 export const TOOL_ARGS: Record<McpToolName, Record<string, string | number>> = {
+  coverage: { zone: 1429, type: "quests" },
   search_knowledge: { query: "Thunderfury" },
   get_entity: { id: 146235 },
   get_by_name: { name: "Hogger" },
