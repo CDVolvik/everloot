@@ -49,10 +49,9 @@ test("with an export, the page prints what its manifest says: dates, counts with
   expect(page).toContain("NPCs that at least one install reported");
   // A denominator the layer does not have is [?], never a made-up number.
   const zones = page.split("<tr").find((r) => r.includes("game-files/zones.ndjson"))!;
-  const cells = [...zones.matchAll(/<(?:td|th)[^>]*>(.*?)<\/(?:td|th)>/g)].map((m) => m[1]!.replace(/<[^>]+>/g, ""));
-  // The first cell carries the phone's one-line summary under the name.
-  expect(cells[0]).toBe("game-files/zones.ndjson46 of [?] · 800 B");
-  expect(cells.slice(1, 4)).toEqual(["46", "[?]", "zones in the files"]);
+  // The phone's one-line summary under the name, then the rows, of how many and what that counts cells.
+  expect(zones).toContain("46 of [?] · 800 B");
+  expect(zones).toMatch(/>46<\/td><td[^>]*>\[\?\]<\/td><td[^>]*>zones in the files<\/td>/);
   expect(page).toContain("87.9 KB");
   expect(page).toContain(sha("a").slice(0, 12));
   expect(page).toContain("manifest.json");
