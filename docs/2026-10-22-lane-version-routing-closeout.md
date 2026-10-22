@@ -51,7 +51,9 @@ No `EVERLOOT_*` switch was added or changed; nothing here needs one.
   - `/game-version/ptr` → 308 to `/ptr`;
   - `/methodology` → canonical unchanged.
   The first preview answered 404 for `/beta/lore/npcs`. My test had assumed Next chains rewrites; it does not.
-  The fix and the corrected test are described above. The second preview's result is below.
+  The fix and the corrected test are described above. On the second preview, `/beta/lore/npcs` and
+  `/beta/lore/items` answer 200 with the same canonical and robots as `/lore/npcs` and `/lore/items`.
+  `/ptr/lore/npcs` shows the notice, and `/betamax` answers 404.
 
 ## The numbers
 
